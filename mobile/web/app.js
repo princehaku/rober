@@ -219,6 +219,7 @@ const WAVE_ROVER_FEEDBACK_REPLAY_BOUNDARY = "software_proof_docker_wave_rover_fe
 const WAVE_ROVER_HIL_PACKET_INTAKE_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_intake_gate";
 const WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_review_decision_gate";
 const WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_execution_pack_gate";
+const WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_collection_drill_gate";
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
@@ -420,6 +421,7 @@ const UNSAFE_WAVE_ROVER_FEEDBACK_REPLAY_TEXT = /(authorization|bearer|token|oss\
 const UNSAFE_WAVE_ROVER_HIL_PACKET_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial device|uart device|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw packet|raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*packet|完整\s*反馈)/i;
 const UNSAFE_WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial device|uart device|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw packet|raw review|raw feedback|full raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_passed|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*packet|完整\s*反馈)/i;
 const UNSAFE_WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial device|uart device|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw packet|raw review|raw execution pack|raw feedback|full raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_passed|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*packet|完整\s*执行包|完整\s*反馈)/i;
+const UNSAFE_WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw packet|raw drill|raw feedback|full raw feedback|full feedback|complete feedback|complete artifact|complete artifacts|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|primary_actions_enabled\s*=\s*true|delivery_success\s*=\s*true|hil_pass|hil passed|field pass|已\s*通过|可\s*发车|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*packet|完整\s*反馈|成功)/i;
 const UNSAFE_TERMINAL_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_REAL_DEVICE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|complete artifact|artifact|raw robot response|robot response|raw intake json|robot\/internal|internal technical|password)/i;
 const UNSAFE_REAL_DEVICE_ACCEPTANCE_REVIEW_HANDOFF_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|https?:\/\/[^\s/]+:[^\s@]+@|raw ros topic|ros topic|raw json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|wave\s*rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|complete acceptance materials|complete artifact|complete artifacts|raw robot response|raw robot responses|robot response|raw intake json|robot\/internal|internal technical|ack payload|cursor|control authorization|control grant|control enabled|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|completed delivery|field pass|hil_pass|hil passed|真实手机已验收|验收通过|现场通过|真实送达成功|投放完成|取消完成|成功)/i;
@@ -536,6 +538,7 @@ let latestWaveRoverFeedbackReplay = null;
 let latestWaveRoverHilPacketIntake = null;
 let latestWaveRoverHilPacketReviewDecision = null;
 let latestWaveRoverHilPacketExecutionPack = null;
+let latestWaveRoverHilPacketCollectionDrill = null;
 let latestRouteTaskTerminalCompletionRehearsal = null;
 let latestRouteTaskTerminalReviewDecision = null;
 let latestTaskTerminalCompletionMainline = null;
@@ -1772,6 +1775,15 @@ function safeWaveRoverHilPacketExecutionPackText(value, fallback = "not_proven")
   // execution-pack 是现场交接摘要，不允许 raw packet、底层设备细节或成功放行语义进入手机端。
   const text = safeText(value, fallback);
   if (UNSAFE_WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeWaveRoverHilPacketCollectionDrillText(value, fallback = "not_proven") {
+  // collection drill 只展示采集演练的 phone-safe 摘要；任何底层设备、raw 材料或放行语义都降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -26063,6 +26075,153 @@ function waveRoverHilPacketExecutionPackFromStatus(status, readiness, diagnostic
   };
 }
 
+function waveRoverHilPacketCollectionDrillCandidate(status, readiness, diagnostics) {
+  // collection drill 可由 PC gate、summary 或 Robot diagnostics 透出；手机端只消费 safe summary。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const candidates = [
+    status?.wave_rover_hil_packet_collection_drill,
+    status?.wave_rover_hil_packet_collection_drill_summary,
+    status?.robot_diagnostics_wave_rover_hil_packet_collection_drill_summary,
+    readiness?.wave_rover_hil_packet_collection_drill,
+    readiness?.wave_rover_hil_packet_collection_drill_summary,
+    readiness?.robot_diagnostics_wave_rover_hil_packet_collection_drill_summary,
+    diagnostics?.wave_rover_hil_packet_collection_drill,
+    diagnostics?.wave_rover_hil_packet_collection_drill_summary,
+    diagnostics?.robot_diagnostics_wave_rover_hil_packet_collection_drill_summary,
+    diagnosticsReadiness.wave_rover_hil_packet_collection_drill,
+    diagnosticsReadiness.wave_rover_hil_packet_collection_drill_summary,
+    diagnosticsReadiness.robot_diagnostics_wave_rover_hil_packet_collection_drill_summary,
+    diagnosticsSummary.wave_rover_hil_packet_collection_drill,
+    diagnosticsSummary.wave_rover_hil_packet_collection_drill_summary,
+    diagnosticsSummary.robot_diagnostics_wave_rover_hil_packet_collection_drill_summary,
+    nestedDiagnosticsSummary.wave_rover_hil_packet_collection_drill,
+    nestedDiagnosticsSummary.wave_rover_hil_packet_collection_drill_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_wave_rover_hil_packet_collection_drill_summary,
+    nestedDiagnosticsInnerSummary.wave_rover_hil_packet_collection_drill,
+    nestedDiagnosticsInnerSummary.wave_rover_hil_packet_collection_drill_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_wave_rover_hil_packet_collection_drill_summary,
+    statusDiagnosticsSummary.wave_rover_hil_packet_collection_drill,
+    statusDiagnosticsSummary.wave_rover_hil_packet_collection_drill_summary,
+    statusDiagnosticsSummary.robot_diagnostics_wave_rover_hil_packet_collection_drill_summary,
+  ];
+  return candidates.find((value) => value && typeof value === "object") || null;
+}
+
+function waveRoverHilPacketCollectionDrillSummaryText(value, fallback) {
+  // drill 字段可能来自数组或对象；统一压成短文案，避免把 raw 采集材料带到手机端。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safeWaveRoverHilPacketCollectionDrillText(
+        item?.safe_phone_copy || item?.summary || item?.status || item?.state ||
+          item?.name || item?.template || item?.step || item?.owner || item?.command ||
+          item?.check || item?.next_required_evidence || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.summary || value.status || value.state ||
+      value.name || value.template || value.step || value.owner || value.command ||
+      value.check || value.next_required_evidence;
+    if (direct) {
+      return safeWaveRoverHilPacketCollectionDrillText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safeWaveRoverHilPacketCollectionDrillText(key, "");
+        const copy = waveRoverHilPacketCollectionDrillSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 10).join("；") : fallback;
+  }
+  return safeWaveRoverHilPacketCollectionDrillText(value, fallback);
+}
+
+function waveRoverHilPacketCollectionDrillNotProvenList(value) {
+  // collection drill 只证明软件采集流程可展示，不证明真实底盘材料、现场路线或手机验收。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "real_wave_rover_material",
+    "real_low_level_link",
+    "hil_result_not_proven",
+    "real_motion_topics",
+    "real_route_elevator_field_pass",
+    "real_phone_browser",
+    "delivery_success",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 16);
+}
+
+function waveRoverHilPacketCollectionDrillFromStatus(status, readiness, diagnostics) {
+  const provided = waveRoverHilPacketCollectionDrillCandidate(status, readiness, diagnostics) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.wave_rover_hil_packet_collection_drill_summary.v1",
+    source_schema: provided.source_schema || provided.schema || "trashbot.wave_rover_hil_packet_collection_drill.v1",
+    source_execution_pack_schema: provided.source_execution_pack_schema || provided.source_pack_schema,
+    schema_version: 1,
+    drill_status: safeWaveRoverHilPacketCollectionDrillText(
+      provided.drill_status || provided.collection_drill_status || provided.overall_status || provided.status,
+      "wave_rover_hil_packet_collection_drill_not_proven",
+    ),
+    safe_evidence_ref: safeWaveRoverHilPacketCollectionDrillText(
+      provided.safe_evidence_ref || provided.evidence_ref,
+      "evidence_ref=not_proven",
+    ),
+    required_material_templates: waveRoverHilPacketCollectionDrillSummaryText(
+      provided.required_material_templates || provided.material_templates || provided.required_templates,
+      "required_material_templates=feedback_summary, motion_summary, battery_summary, operator_report.",
+    ),
+    preflight_checklist: waveRoverHilPacketCollectionDrillSummaryText(
+      provided.preflight_checklist || provided.preflight_checks || provided.checklist,
+      "preflight_checklist=review safe evidence_ref, verify summaries, keep mobile controls disabled.",
+    ),
+    collection_sequence: waveRoverHilPacketCollectionDrillSummaryText(
+      provided.collection_sequence || provided.collection_steps || provided.sequence,
+      "collection_sequence=collect safe summaries, rerun drill gate, publish Robot diagnostics summary.",
+    ),
+    backfill_rerun_commands: waveRoverHilPacketCollectionDrillSummaryText(
+      provided.backfill_rerun_commands || provided.rerun_commands || provided.safe_rerun_commands,
+      "backfill_rerun_commands=rerun collection drill after real material summary exists.",
+    ),
+    owner_handoff: waveRoverHilPacketCollectionDrillSummaryText(
+      provided.owner_handoff || provided.owner_follow_up || provided.handoff,
+      "owner_handoff=Hardware collects material; Robot publishes summary; Full-stack stays read-only.",
+    ),
+    safe_copy: safeWaveRoverHilPacketCollectionDrillText(
+      provided.safe_copy || provided.safe_phone_copy || provided.safe_summary,
+      "WAVE ROVER HIL packet collection drill 只读展示采集演练状态、材料模板、预检清单、回填命令和 owner handoff；这是 software proof only。",
+    ),
+    evidence_boundary: safeWaveRoverHilPacketCollectionDrillText(
+      provided.evidence_boundary,
+      WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_BOUNDARY,
+    ),
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_to_control: false,
+    not_proven: waveRoverHilPacketCollectionDrillNotProvenList(provided),
+  };
+}
+
 function elevatorAssistCandidate(status, readiness, diagnostics) {
   // evidence-driven artifact 优先级高于旧 dry-run summary，避免新主链路被旧兼容字段遮住。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -37001,6 +37160,75 @@ function renderWaveRoverHilPacketExecutionPack(status) {
   $("waveRoverHilPacketExecutionPackNotProven").textContent = summary.not_proven.join("、");
 }
 
+function ensureWaveRoverHilPacketCollectionDrillPanel() {
+  // collection drill 接在 execution-pack 后，明确它只是采集演练摘要，不改任何主操作 gate。
+  let panel = $("waveRoverHilPacketCollectionDrillPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("waveRoverHilPacketExecutionPackTitle")?.closest("section") ||
+    $("waveRoverHilPacketReviewDecisionTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "waveRoverHilPacketCollectionDrillPanel";
+  panel.className = "wave-rover-hil-packet-collection-drill-panel";
+  panel.setAttribute("aria-labelledby", "waveRoverHilPacketCollectionDrillTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="waveRoverHilPacketCollectionDrillTitle">WAVE ROVER HIL packet collection drill</h2>
+      <span id="waveRoverHilPacketCollectionDrillBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="waveRoverHilPacketCollectionDrillCopy" class="message">
+      wave_rover_hil_packet_collection_drill 只读展示 drill status、safe evidence ref、材料模板、预检清单、采集顺序、回填命令、owner handoff 和边界。
+    </p>
+    <dl class="wave-rover-hil-packet-collection-drill-grid">
+      <div><dt>Drill Status</dt><dd id="waveRoverHilPacketCollectionDrillStatus">wave_rover_hil_packet_collection_drill_not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="waveRoverHilPacketCollectionDrillEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Required Material Templates</dt><dd id="waveRoverHilPacketCollectionDrillTemplates">required_material_templates=not_proven</dd></div>
+      <div><dt>Preflight Checklist</dt><dd id="waveRoverHilPacketCollectionDrillPreflight">preflight_checklist=not_proven</dd></div>
+      <div><dt>Collection Sequence</dt><dd id="waveRoverHilPacketCollectionDrillSequence">collection_sequence=not_proven</dd></div>
+      <div><dt>Backfill / Rerun Commands</dt><dd id="waveRoverHilPacketCollectionDrillRerunCommands">backfill_rerun_commands=not_proven</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="waveRoverHilPacketCollectionDrillOwnerHandoff">owner_handoff=Hardware / Robot / Full-stack keep evidence read-only.</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="waveRoverHilPacketCollectionDrillControls">delivery_success=false / primary_actions_enabled=false / safe_to_control=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="waveRoverHilPacketCollectionDrillBoundary">software_proof_docker_wave_rover_hil_packet_collection_drill_gate</dd></div>
+      <div><dt>not_proven</dt><dd id="waveRoverHilPacketCollectionDrillNotProven">field evidence、phone proof 和 delivery_success 未证明。</dd></div>
+    </dl>
+    <p id="waveRoverHilPacketCollectionDrillHint" class="hint">
+      本 panel 只消费 wave_rover_hil_packet_collection_drill / summary / Robot diagnostics compatible summary 的 safe fields；不新增 copy/export 或控制入口，也不改变 Start Delivery、Confirm Dropoff 或 Cancel gating。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderWaveRoverHilPacketCollectionDrill(status) {
+  const panel = ensureWaveRoverHilPacketCollectionDrillPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = waveRoverHilPacketCollectionDrillFromStatus(status, readiness, latestDiagnostics);
+  latestWaveRoverHilPacketCollectionDrill = summary;
+  const badge = $("waveRoverHilPacketCollectionDrillBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 collection drill" : "not_proven";
+  $("waveRoverHilPacketCollectionDrillCopy").textContent = summary.safe_copy;
+  $("waveRoverHilPacketCollectionDrillStatus").textContent = summary.drill_status;
+  $("waveRoverHilPacketCollectionDrillEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("waveRoverHilPacketCollectionDrillTemplates").textContent = summary.required_material_templates;
+  $("waveRoverHilPacketCollectionDrillPreflight").textContent = summary.preflight_checklist;
+  $("waveRoverHilPacketCollectionDrillSequence").textContent = summary.collection_sequence;
+  $("waveRoverHilPacketCollectionDrillRerunCommands").textContent = summary.backfill_rerun_commands;
+  $("waveRoverHilPacketCollectionDrillOwnerHandoff").textContent = summary.owner_handoff;
+  $("waveRoverHilPacketCollectionDrillControls").textContent =
+    `delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled} / safe_to_control=${summary.safe_to_control}`;
+  $("waveRoverHilPacketCollectionDrillBoundary").textContent = summary.evidence_boundary;
+  $("waveRoverHilPacketCollectionDrillNotProven").textContent = summary.not_proven.join("、");
+}
+
 function ensureElevatorAssistPanel() {
   // 本轮文件范围不改 index.html，因此用 JS 注入只读 panel，保持静态壳兼容旧浏览器测试。
   let panel = $("elevatorAssistPanel");
@@ -43171,6 +43399,11 @@ function renderDiagnosticsSummary(payload) {
     readinessFromStatus(latestStatus || {}),
     payload || {},
   );
+  const waveRoverHilPacketCollectionDrill = waveRoverHilPacketCollectionDrillFromStatus(
+    latestStatus || {},
+    readinessFromStatus(latestStatus || {}),
+    payload || {},
+  );
   const mobileRealDeviceAcceptanceExecutionCallbackReviewHandoff =
     mobileRealDeviceFieldTrialAcceptanceExecutionCallbackReviewHandoffFromStatus(
       payload || {},
@@ -43536,6 +43769,7 @@ function renderDiagnosticsSummary(payload) {
     ["wave_rover_hil_packet_intake", waveRoverHilPacketIntake.packet_status],
     ["wave_rover_hil_packet_review_decision", waveRoverHilPacketReviewDecision.review_decision],
     ["wave_rover_hil_packet_execution_pack", waveRoverHilPacketExecutionPack.execution_pack_status],
+    ["wave_rover_hil_packet_collection_drill", waveRoverHilPacketCollectionDrill.drill_status],
     ["task_terminal_completion_mainline", latestTaskTerminalCompletionMainline?.status || "not_proven"],
     ["task_terminal_field_material_intake", latestTaskTerminalFieldMaterialIntake?.intake_status || "not_proven"],
     [
@@ -43722,6 +43956,7 @@ function renderOfflineFailure() {
   renderWaveRoverHilPacketIntake({});
   renderWaveRoverHilPacketReviewDecision({});
   renderWaveRoverHilPacketExecutionPack({});
+  renderWaveRoverHilPacketCollectionDrill({});
   renderTaskTerminalCompletionMainline({});
   renderTaskTerminalFieldMaterialIntake({});
   renderTaskTerminalFieldMaterialReviewDecision({});
@@ -43872,6 +44107,7 @@ function renderStatus(status) {
   renderWaveRoverHilPacketIntake(status);
   renderWaveRoverHilPacketReviewDecision(status);
   renderWaveRoverHilPacketExecutionPack(status);
+  renderWaveRoverHilPacketCollectionDrill(status);
   renderCloudReadiness(status);
   renderCloudSupportHandoffSafeExport(status);
   renderCloudCommandLifecycleAuditExport(status);
@@ -44207,6 +44443,7 @@ async function openDiagnostics() {
     renderWaveRoverHilPacketIntake(latestStatus || {});
     renderWaveRoverHilPacketReviewDecision(latestStatus || {});
     renderWaveRoverHilPacketExecutionPack(latestStatus || {});
+    renderWaveRoverHilPacketCollectionDrill(latestStatus || {});
     renderMobileDeviceAcceptance(latestStatus || {});
     renderMobileDeviceEvidence(latestStatus || {});
     renderMobileDeviceHandoffSession(latestStatus || {});

@@ -803,6 +803,104 @@
       "delivery_success"
     ]
   },
+  "wave_rover_hil_packet_collection_drill": {
+    "schema": "trashbot.wave_rover_hil_packet_collection_drill.v1",
+    "schema_version": 1,
+    "summary_schema": "trashbot.wave_rover_hil_packet_collection_drill_summary.v1",
+    "source": "software_proof",
+    "overall_status": "not_proven",
+    "drill_status": "wave_rover_hil_packet_collection_drill_not_proven",
+    "safe_evidence_ref": "wave_rover_hil_packet_collection_drill_fixture_20260522_0001",
+    "source_execution_pack_schema": "trashbot.wave_rover_hil_packet_execution_pack_summary.v1",
+    "required_material_templates": [
+      "required_material_templates=feedback_summary",
+      "required_material_templates=motion_summary",
+      "required_material_templates=battery_summary",
+      "required_material_templates=operator_report_summary"
+    ],
+    "preflight_checklist": [
+      "preflight_checklist=confirm same safe evidence_ref",
+      "preflight_checklist=confirm phone-safe summaries only",
+      "preflight_checklist=confirm Start Delivery disabled",
+      "preflight_checklist=confirm Confirm Dropoff disabled",
+      "preflight_checklist=confirm Cancel disabled"
+    ],
+    "collection_sequence": [
+      "collection_sequence=collect safe packet summaries",
+      "collection_sequence=run collection drill gate",
+      "collection_sequence=publish Robot diagnostics summary",
+      "collection_sequence=keep mobile read-only until new review changes"
+    ],
+    "backfill_rerun_commands": [
+      "backfill_rerun_commands=run packet collection drill after safe summaries exist",
+      "backfill_rerun_commands=rerun Robot diagnostics summary after drill summary exists"
+    ],
+    "owner_handoff": {
+      "hardware-engineer": "collect material summaries and preserve the safe evidence_ref",
+      "robot-software-engineer": "publish Robot diagnostics summary without control grant",
+      "full-stack-software-engineer": "display collection drill summary read-only"
+    },
+    "safe_phone_copy": "WAVE ROVER HIL packet collection drill fixture 只展示 drill status、材料模板、预检清单、采集顺序、回填命令和 owner handoff；这是 Docker/local software proof，不放行手机主操作。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false,
+    "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_collection_drill_gate",
+    "not_proven": [
+      "real_wave_rover_material",
+      "real_low_level_link",
+      "hil_result_not_proven",
+      "real_motion_topics",
+      "real_route_elevator_field_pass",
+      "real_phone_browser",
+      "delivery_success"
+    ]
+  },
+  "wave_rover_hil_packet_collection_drill_summary": {
+    "schema": "trashbot.wave_rover_hil_packet_collection_drill_summary.v1",
+    "schema_version": 1,
+    "source": "software_proof",
+    "overall_status": "not_proven",
+    "drill_status": "wave_rover_hil_packet_collection_drill_not_proven",
+    "safe_evidence_ref": "wave_rover_hil_packet_collection_drill_fixture_20260522_0001",
+    "required_material_templates": "required_material_templates=feedback_summary, motion_summary, battery_summary, operator_report_summary.",
+    "preflight_checklist": "preflight_checklist=same safe evidence_ref, phone-safe summaries only, primary actions disabled.",
+    "collection_sequence": "collection_sequence=collect safe summaries, run drill gate, publish Robot diagnostics summary.",
+    "backfill_rerun_commands": "backfill_rerun_commands=rerun collection drill and Robot diagnostics summary after safe material summary exists.",
+    "owner_handoff": "owner_handoff=Hardware collects summaries; Robot publishes diagnostics summary; Full-stack displays read-only.",
+    "safe_phone_copy": "wave_rover_hil_packet_collection_drill_summary 只用于手机只读采集演练，不放行 Start、Confirm 或 Cancel。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false,
+    "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_collection_drill_gate",
+    "not_proven": [
+      "real_wave_rover_material",
+      "hil_result_not_proven",
+      "delivery_success"
+    ]
+  },
+  "robot_diagnostics_wave_rover_hil_packet_collection_drill_summary": {
+    "schema": "trashbot.wave_rover_hil_packet_collection_drill_summary.v1",
+    "schema_version": 1,
+    "source": "robot_diagnostics_summary",
+    "overall_status": "not_proven",
+    "drill_status": "wave_rover_hil_packet_collection_drill_not_proven",
+    "safe_evidence_ref": "wave_rover_hil_packet_collection_drill_fixture_20260522_0001",
+    "required_material_templates": "required_material_templates=Robot diagnostics summary mirrors collection drill safe fields.",
+    "preflight_checklist": "preflight_checklist=Robot diagnostics keeps primary_actions_enabled=false and safe_to_control=false.",
+    "collection_sequence": "collection_sequence=Robot exposes summary only after collection drill summary exists.",
+    "backfill_rerun_commands": "backfill_rerun_commands=refresh diagnostics summary after safe drill backfill.",
+    "owner_handoff": "owner_handoff=Robot summary remains read-only for mobile consumption.",
+    "safe_phone_copy": "robot_diagnostics_wave_rover_hil_packet_collection_drill_summary 只给手机端显示 safe summary；不放行控制。",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false,
+    "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_collection_drill_gate",
+    "not_proven": [
+      "real_wave_rover_material",
+      "hil_result_not_proven",
+      "delivery_success"
+    ]
+  },
   "route_task_field_retest_result_backfill_review_decision": {
     "schema": "trashbot.route_task_field_retest_result_backfill_review_decision.v1",
     "schema_version": 1,

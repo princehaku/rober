@@ -1,0 +1,64 @@
+{
+  "backfill_guidance": [
+    "Backfill missing packet files into a single material directory before rerunning intake.",
+    "Do not change delivery_success=false or primary_actions_enabled=false from this execution pack."
+  ],
+  "collection_sequence": [
+    "collect same evidence_ref feedback_T1001.log with evidence_ref=hil-packet-collection-drill-fixture",
+    "capture odom_once.jsonl with evidence_ref=hil-packet-collection-drill-fixture",
+    "capture imu_once.jsonl with evidence_ref=hil-packet-collection-drill-fixture",
+    "capture battery_once.jsonl with evidence_ref=hil-packet-collection-drill-fixture",
+    "write operator_hil_report with evidence_ref=hil-packet-collection-drill-fixture"
+  ],
+  "delivery_success": false,
+  "evidence_boundary": "software_proof_docker_wave_rover_hil_packet_execution_pack_gate",
+  "evidence_ref": "hil-packet-collection-drill-fixture",
+  "execution_pack_status": "ready_for_real_hil_collection_not_proven",
+  "not_proven": [
+    "real_wave_rover",
+    "real_uart",
+    "hil_pass",
+    "real_odom",
+    "real_imu",
+    "real_battery",
+    "delivery_success"
+  ],
+  "overall_status": "not_proven",
+  "owner_handoff": {
+    "full-stack-software-engineer": "keep mobile execution pack read-only and actions disabled",
+    "hardware-engineer": "run real HIL collection on WAVE ROVER host and keep one evidence_ref across all packet files",
+    "robot-software-engineer": "consume only accepted review-decision summaries until real packet exists"
+  },
+  "primary_actions_enabled": false,
+  "required_material_templates": [
+    {
+      "file": "feedback_T1001.log",
+      "vendor_basis": "json_cmd.h FEEDBACK_BASE_INFO 1001; base_ctrl.py newline JSON read"
+    },
+    {
+      "file": "odom_once.jsonl",
+      "vendor_basis": "project odom must be real runtime output"
+    },
+    {
+      "file": "imu_once.jsonl",
+      "vendor_basis": "json_cmd.h IMU feedback family"
+    },
+    {
+      "file": "battery_once.jsonl",
+      "vendor_basis": "config.yaml fb.base_voltage and WAVE ROVER feedback contract"
+    },
+    {
+      "file": "operator_hil_report",
+      "vendor_basis": "VENDOR_INDEX.md evidence separation"
+    }
+  ],
+  "rerun_commands": [
+    "python3 pc-tools/evidence/wave_rover_hil_packet_intake.py --packet-dir <real_packet_dir> --evidence-ref hil-packet-collection-drill-fixture",
+    "python3 pc-tools/evidence/wave_rover_hil_packet_review_decision.py --intake-summary <summary.json> --evidence-ref hil-packet-collection-drill-fixture",
+    "python3 pc-tools/evidence/wave_rover_hil_packet_execution_pack.py --review-summary <summary.json> --evidence-ref hil-packet-collection-drill-fixture --once-json"
+  ],
+  "same_evidence_ref_required": true,
+  "schema": "trashbot.wave_rover_hil_packet_execution_pack.v1",
+  "source": "software_proof",
+  "summary_schema": "trashbot.wave_rover_hil_packet_execution_pack_summary.v1"
+}

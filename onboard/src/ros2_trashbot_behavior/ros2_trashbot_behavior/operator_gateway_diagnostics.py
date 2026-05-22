@@ -1112,6 +1112,15 @@ WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_SUMMARY_SCHEMA = (
 WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_GATE = (
     "software_proof_docker_wave_rover_hil_packet_execution_pack_gate"
 )
+WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_SCHEMA = (
+    "trashbot.wave_rover_hil_packet_collection_drill.v1"
+)
+WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_SUMMARY_SCHEMA = (
+    "trashbot.wave_rover_hil_packet_collection_drill_summary.v1"
+)
+WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_GATE = (
+    "software_proof_docker_wave_rover_hil_packet_collection_drill_gate"
+)
 HARDWARE_BASELINE_REVIEW_SCHEMA = "trashbot.hardware_baseline_review_gate.v1"
 HARDWARE_BASELINE_REVIEW_SUMMARY_SCHEMA = "trashbot.hardware_baseline_review_summary.v1"
 HARDWARE_BASELINE_REVIEW_GATE = "software_proof_docker_hardware_baseline_review_gate"
@@ -5828,6 +5837,61 @@ def _wave_rover_hil_packet_execution_pack_not_proven(pack=None, summary_fragment
         if text and text not in values:
             values.append(text)
     return values
+
+
+def _wave_rover_hil_packet_collection_drill_not_proven(drill=None, summary_fragment=None):
+    # collection drill 只展示采集演练元数据；不能证明真实串口、底盘运动、HIL 或投放成功。
+    drill = drill if isinstance(drill, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    for candidate in (drill, summary_fragment):
+        if isinstance(candidate.get("not_proven"), list):
+            source_values.extend(candidate.get("not_proven"))
+        if isinstance(candidate.get("blocked_reasons"), list):
+            source_values.extend(candidate.get("blocked_reasons"))
+    required = (
+        "not_proven",
+        "software_proof_only",
+        "real_wave_rover",
+        "real_uart",
+        "hil_pass",
+        "real_feedback_T1001",
+        "real_odom",
+        "real_imu",
+        "real_battery",
+        "ack_mutation",
+        "cursor_mutation",
+        "route_or_nav2_runtime",
+        "cmd_vel",
+        "wave_rover_command",
+        "safe_to_control",
+        "delivery_success",
+        "primary_actions",
+    )
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _wave_rover_hil_packet_collection_drill_has_not_proven(drill, summary_fragment):
+    # 来源必须显式声明 not_proven；缺字段时 Robot 不能替 PC gate 背书为安全摘要。
+    for candidate in (summary_fragment, drill):
+        if not isinstance(candidate, dict):
+            continue
+        if not isinstance(candidate.get("not_proven"), list) or not candidate.get("not_proven"):
+            continue
+        status = str(
+            candidate.get("overall_status")
+            or candidate.get("status")
+            or candidate.get("verdict")
+            or ""
+        ).strip()
+        if status == "not_proven":
+            return True
+    return False
 
 
 def _hardware_baseline_review_not_proven(review=None, summary_fragment=None):
@@ -13875,6 +13939,69 @@ def _default_wave_rover_hil_packet_execution_pack_summary(
     }
 
 
+def _default_wave_rover_hil_packet_collection_drill_summary(
+    path,
+    status="blocked_missing_wave_rover_hil_packet_collection_drill",
+    read_error="",
+):
+    # 默认摘要完整补齐 false 栅栏，避免缺 collection drill 时 UI 或 API 误开控制入口。
+    boundary_flags = {
+        "metadata_only": True,
+        "real_hardware_observed": False,
+        "real_wave_rover": False,
+        "real_uart": False,
+        "real_feedback_T1001": False,
+        "real_odom": False,
+        "real_imu": False,
+        "real_battery": False,
+        "hil_pass": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "nav2_triggered": False,
+        "production_ready": False,
+    }
+    return {
+        "schema": WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "overall_status": "not_proven",
+        "collection_drill_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": read_error or "WAVE ROVER HIL packet collection drill is not configured",
+        },
+        "safe_evidence_ref": "",
+        "required_material_templates": [],
+        "preflight_checklist": [],
+        "collection_sequence": [],
+        "backfill_commands": [],
+        "owner_handoff": {},
+        "blocked_reasons": [],
+        "boundary_flags": dict(boundary_flags),
+        "not_proven": _wave_rover_hil_packet_collection_drill_not_proven(),
+        "boundary": WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_GATE,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_robot_copy": (
+            "WAVE ROVER HIL packet collection drill is metadata-only; not real HIL; "
+            "delivery_success=false; primary_actions_enabled=false; safe_to_control=false."
+        ),
+        **boundary_flags,
+    }
+
+
 def _default_hardware_baseline_review_summary(path, status="not_configured", read_error=""):
     # 缺少硬件 baseline review 时也必须显式 fail-closed，避免 diagnostics 被误当成硬件准入通过。
     return {
@@ -17021,6 +17148,16 @@ def _wave_rover_hil_packet_execution_pack_source_contract(value):
     source_schema = str(value.get("schema") or "")
     source_boundary = str(value.get("evidence_boundary") or "")
     if source_schema == WAVE_ROVER_HIL_PACKET_EXECUTION_PACK_SUMMARY_SCHEMA:
+        source_schema = str(value.get("source_schema") or source_schema)
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _wave_rover_hil_packet_collection_drill_source_contract(value):
+    # 支持 direct artifact、summary wrapper 和 nested diagnostics；summary 必须回指 collection-drill gate。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema == WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_SUMMARY_SCHEMA:
         source_schema = str(value.get("source_schema") or source_schema)
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
     return source_schema, source_boundary
@@ -20738,6 +20875,32 @@ def _wave_rover_hil_packet_execution_pack_has_disabled_actions(pack, summary_fra
     return delivery_success is False and primary_actions_enabled is False
 
 
+def _wave_rover_hil_packet_collection_drill_has_disabled_actions(drill, summary_fragment):
+    # collection drill 还必须显式 safe_to_control=false，避免“采集演练”被前端误读为可控状态。
+    drill = drill if isinstance(drill, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    delivery_success = (
+        summary_fragment.get("delivery_success")
+        if "delivery_success" in summary_fragment
+        else drill.get("delivery_success")
+    )
+    primary_actions_enabled = (
+        summary_fragment.get("primary_actions_enabled")
+        if "primary_actions_enabled" in summary_fragment
+        else drill.get("primary_actions_enabled")
+    )
+    safe_to_control = (
+        summary_fragment.get("safe_to_control")
+        if "safe_to_control" in summary_fragment
+        else drill.get("safe_to_control")
+    )
+    return (
+        delivery_success is False
+        and primary_actions_enabled is False
+        and safe_to_control is False
+    )
+
+
 def _wave_rover_hil_packet_review_decision_has_unsafe_fields(value, key_path=""):
     # review decision 的安全边界和 intake 一致：只允许白名单摘要，拒绝 raw/HIL pass/控制成功 claim。
     return _wave_rover_hil_packet_intake_has_unsafe_fields(value, key_path)
@@ -20775,6 +20938,7 @@ def _wave_rover_hil_packet_intake_has_unsafe_fields(value, key_path=""):
     unsafe_true_keys = {
         "delivery_success",
         "primary_actions_enabled",
+        "safe_to_control",
         "collect_triggered",
         "dropoff_triggered",
         "cancel_triggered",
@@ -20813,6 +20977,7 @@ def _wave_rover_hil_packet_intake_has_unsafe_fields(value, key_path=""):
             "not delivery success",
             "delivery_success=false",
             "primary_actions_enabled=false",
+            "safe_to_control=false",
             "not_proven",
             "not proven",
             "metadata-only",
@@ -20843,6 +21008,8 @@ def _wave_rover_hil_packet_intake_has_unsafe_fields(value, key_path=""):
             or "nav2 started" in guarded
             or "hil pass" in guarded
             or "delivery success" in guarded
+            or "safe_to_control=true" in guarded
+            or "safe to control" in guarded
         )
     return False
 
@@ -51460,6 +51627,306 @@ def summarize_wave_rover_hil_packet_execution_pack(source):
     return summary
 
 
+def summarize_wave_rover_hil_packet_collection_drill(source):
+    """构建 WAVE ROVER HIL packet collection drill 的 metadata-only diagnostics 摘要。"""
+    # Robot 只复制 Hardware gate 的安全摘要；不得打开串口、发布 /cmd_vel 或发送 WAVE ROVER JSON。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_wave_rover_hil_packet_collection_drill_summary(
+        source_path,
+        read_error="WAVE ROVER HIL packet collection drill is not configured",
+    )
+    if isinstance(source, dict):
+        drill = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "collection_drill_status": {
+                        "status": "missing",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": "WAVE ROVER HIL packet collection drill artifact missing",
+                    },
+                    "read_error": "WAVE ROVER HIL packet collection drill artifact missing",
+                }
+            )
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                drill = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading WAVE ROVER HIL packet collection drill: {exc}"
+            )
+            summary.update(
+                {
+                    "collection_drill_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "evidence_source": "software_proof",
+                        "reason": safe_error,
+                    },
+                    "read_error": safe_error,
+                }
+            )
+            return summary
+
+    if not isinstance(drill, dict):
+        summary.update(
+            {
+                "collection_drill_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "WAVE ROVER HIL packet collection drill JSON must be an object",
+                }
+            }
+        )
+        return summary
+
+    diagnostics = drill.get("diagnostics") if isinstance(drill.get("diagnostics"), dict) else {}
+    # 支持 direct artifact、兼容 summary 和 diagnostics wrapper；输出仍只保留白名单字段。
+    summary_fragment = {}
+    for candidate in (
+        drill.get("wave_rover_hil_packet_collection_drill_summary"),
+        drill.get("wave_rover_hil_packet_collection_drill"),
+        drill.get("robot_diagnostics_summary"),
+        drill.get("robot_diagnostics_wave_rover_hil_packet_collection_drill_summary"),
+        drill.get("diagnostics_summary"),
+        diagnostics.get("summary"),
+        diagnostics.get("diagnostics_summary"),
+        diagnostics.get("wave_rover_hil_packet_collection_drill_summary"),
+        drill.get("phone_safe_summary"),
+        drill.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            summary_fragment = candidate
+            break
+
+    source_schema, source_boundary = _wave_rover_hil_packet_collection_drill_source_contract(
+        drill
+    )
+    if not source_schema and summary_fragment:
+        source_schema, source_boundary = _wave_rover_hil_packet_collection_drill_source_contract(
+            summary_fragment
+        )
+    status_source = (
+        drill.get("collection_drill_status")
+        if isinstance(drill.get("collection_drill_status"), dict)
+        else summary_fragment.get("collection_drill_status")
+        if isinstance(summary_fragment.get("collection_drill_status"), dict)
+        else {}
+    )
+    safe_copy = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_robot_copy")
+        or summary_fragment.get("safe_copy")
+        or drill.get("safe_robot_copy")
+        or drill.get("safe_copy")
+        or (
+            "WAVE ROVER HIL packet collection drill is metadata-only; "
+            "delivery_success=false; primary_actions_enabled=false; safe_to_control=false."
+        )
+    )
+    boundary_flags = _safe_pc_route_debug_dict(summary_fragment.get("boundary_flags"))
+    if not boundary_flags and isinstance(drill.get("boundary_flags"), dict):
+        boundary_flags = _safe_pc_route_debug_dict(drill.get("boundary_flags"))
+    # 不信任来源的 flag 完整性；Robot alias 强制覆盖为只读、不可控、未证明。
+    boundary_flags.update(
+        {
+            "metadata_only": True,
+            "real_hardware_observed": False,
+            "real_wave_rover": False,
+            "real_uart": False,
+            "real_feedback_T1001": False,
+            "real_odom": False,
+            "real_imu": False,
+            "real_battery": False,
+            "hil_pass": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "collect_triggered": False,
+            "dropoff_triggered": False,
+            "cancel_triggered": False,
+            "ack_post_allowed": False,
+            "remote_ack_allowed": False,
+            "cursor_updates_allowed": False,
+            "persistence_updates_allowed": False,
+            "terminal_ack_allowed": False,
+            "nav2_triggered": False,
+            "production_ready": False,
+        }
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": drill.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "overall_status": "not_proven",
+            "collection_drill_status": {
+                "status": _redact_route_task_rehearsal_text(
+                    status_source.get("status")
+                    or summary_fragment.get("collection_drill_status")
+                    or summary_fragment.get("overall_status")
+                    or drill.get("overall_status")
+                    or "blocked"
+                ),
+                "verdict": _redact_route_task_rehearsal_text(
+                    status_source.get("verdict")
+                    or summary_fragment.get("verdict")
+                    or drill.get("verdict")
+                    or "not_proven"
+                ),
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    status_source.get("reason")
+                    or summary_fragment.get("reason")
+                    or drill.get("reason")
+                    or "WAVE ROVER HIL packet collection drill consumed without real HIL evidence"
+                ),
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or drill.get("safe_evidence_ref")
+                or drill.get("evidence_ref", "")
+            ),
+            "required_material_templates": _safe_pc_route_debug_value(
+                drill.get("required_material_templates")
+                if "required_material_templates" in drill
+                else summary_fragment.get("required_material_templates")
+            )
+            or [],
+            "preflight_checklist": _safe_pc_route_debug_value(
+                drill.get("preflight_checklist")
+                if "preflight_checklist" in drill
+                else summary_fragment.get("preflight_checklist")
+            )
+            or [],
+            "collection_sequence": _safe_pc_route_debug_value(
+                drill.get("collection_sequence")
+                if "collection_sequence" in drill
+                else summary_fragment.get("collection_sequence")
+            )
+            or [],
+            "backfill_commands": _safe_route_task_rehearsal_list(
+                drill.get("backfill_commands")
+                if isinstance(drill.get("backfill_commands"), list)
+                else summary_fragment.get("backfill_commands")
+            ),
+            "owner_handoff": _safe_pc_route_debug_value(
+                drill.get("owner_handoff")
+                if "owner_handoff" in drill
+                else summary_fragment.get("owner_handoff")
+            )
+            or {},
+            "blocked_reasons": _safe_route_task_rehearsal_list(
+                drill.get("blocked_reasons")
+                if isinstance(drill.get("blocked_reasons"), list)
+                else summary_fragment.get("blocked_reasons")
+            ),
+            "boundary_flags": boundary_flags,
+            "not_proven": _wave_rover_hil_packet_collection_drill_not_proven(
+                drill,
+                summary_fragment,
+            ),
+            "boundary": WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_GATE,
+            "read_error": "",
+            "safe_robot_copy": safe_copy,
+            "metadata_only": True,
+            "real_hardware_observed": False,
+            "real_wave_rover": False,
+            "real_uart": False,
+            "real_feedback_T1001": False,
+            "real_odom": False,
+            "real_imu": False,
+            "real_battery": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "collect_triggered": False,
+            "dropoff_triggered": False,
+            "cancel_triggered": False,
+            "ack_post_allowed": False,
+            "remote_ack_allowed": False,
+            "cursor_updates_allowed": False,
+            "persistence_updates_allowed": False,
+            "terminal_ack_allowed": False,
+            "nav2_triggered": False,
+            "hil_pass": False,
+            "production_ready": False,
+        }
+    )
+
+    accepted_schemas = {
+        WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_SCHEMA,
+        WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_SUMMARY_SCHEMA,
+    }
+    if source_schema not in accepted_schemas or source_boundary != WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_GATE:
+        summary.update(
+            {
+                "collection_drill_status": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "WAVE ROVER HIL packet collection drill schema or evidence boundary is unsupported",
+                },
+                "required_material_templates": [],
+                "preflight_checklist": [],
+                "collection_sequence": [],
+                "backfill_commands": [],
+                "owner_handoff": {},
+                "blocked_reasons": ["unsupported_schema_or_boundary"],
+                "safe_robot_copy": (
+                    "WAVE ROVER HIL packet collection drill was blocked because the source "
+                    "schema or proof boundary was not diagnostics-safe."
+                ),
+            }
+        )
+        return summary
+
+    if (
+        not _wave_rover_hil_packet_collection_drill_has_not_proven(
+            drill,
+            summary_fragment,
+        )
+        or not _wave_rover_hil_packet_collection_drill_has_disabled_actions(
+            drill,
+            summary_fragment,
+        )
+        or _wave_rover_hil_packet_review_decision_has_unsafe_fields(drill)
+        or _route_task_field_run_readiness_copy_is_unsafe(safe_copy)
+    ):
+        summary.update(
+            {
+                "collection_drill_status": {
+                    "status": "unsafe_fields",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": (
+                        "WAVE ROVER HIL packet collection drill contains unsafe fields, "
+                        "missing not_proven, enabled actions, or success/control/HIL claims"
+                    ),
+                },
+                "required_material_templates": [],
+                "preflight_checklist": [],
+                "collection_sequence": [],
+                "backfill_commands": [],
+                "owner_handoff": {},
+                "blocked_reasons": ["unsafe_fields_or_enabled_actions"],
+                "safe_robot_copy": (
+                    "WAVE ROVER HIL packet collection drill was blocked because the source "
+                    "contained unsafe raw material, enabled actions, or success/HIL claims."
+                ),
+            }
+        )
+        return summary
+
+    return summary
+
+
 def summarize_hardware_baseline_review(source):
     """构建 hardware baseline review 的 metadata-only diagnostics 摘要。"""
     # 支持 explicit ref、env path 和 latest_status/diagnostics dict；所有来源都只能进入白名单摘要字段。
@@ -65167,6 +65634,7 @@ def build_diagnostics_payload(
     wave_rover_hil_packet_intake_ref="",
     wave_rover_hil_packet_review_decision_ref="",
     wave_rover_hil_packet_execution_pack_ref="",
+    wave_rover_hil_packet_collection_drill_ref="",
     hardware_baseline_review_ref="",
     hardware_baseline_source_alignment_ref="",
     hardware_sensor_procurement_intake_ref="",
@@ -67194,6 +67662,25 @@ def build_diagnostics_payload(
         if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
         else {}
     )
+    wave_rover_hil_packet_collection_drill_source = (
+        latest_status.get("wave_rover_hil_packet_collection_drill")
+        if isinstance(latest_status.get("wave_rover_hil_packet_collection_drill"), dict)
+        else latest_status.get("wave_rover_hil_packet_collection_drill_summary")
+        if isinstance(latest_status.get("wave_rover_hil_packet_collection_drill_summary"), dict)
+        else latest_status.get("robot_diagnostics_wave_rover_hil_packet_collection_drill_summary")
+        if isinstance(latest_status.get("robot_diagnostics_wave_rover_hil_packet_collection_drill_summary"), dict)
+        else diagnostics_source.get("wave_rover_hil_packet_collection_drill")
+        if isinstance(diagnostics_source.get("wave_rover_hil_packet_collection_drill"), dict)
+        else diagnostics_source.get("wave_rover_hil_packet_collection_drill_summary")
+        if isinstance(diagnostics_source.get("wave_rover_hil_packet_collection_drill_summary"), dict)
+        else diagnostics_source.get("robot_diagnostics_wave_rover_hil_packet_collection_drill_summary")
+        if isinstance(diagnostics_source.get("robot_diagnostics_wave_rover_hil_packet_collection_drill_summary"), dict)
+        else diagnostics_source.get("summary")
+        if isinstance(diagnostics_source.get("summary"), dict)
+        else diagnostics_source.get("diagnostics_summary")
+        if isinstance(diagnostics_source.get("diagnostics_summary"), dict)
+        else {}
+    )
     route_task_terminal_completion_rehearsal_source = (
         latest_status.get("route_task_terminal_completion_rehearsal")
         if isinstance(latest_status.get("route_task_terminal_completion_rehearsal"), dict)
@@ -68511,6 +68998,10 @@ def build_diagnostics_payload(
     latest_status.pop("wave_rover_hil_packet_execution_pack_summary", None)
     latest_status.pop("wave_rover_hil_packet_execution_pack_copy", None)
     latest_status.pop("robot_diagnostics_wave_rover_hil_packet_execution_pack_summary", None)
+    latest_status.pop("wave_rover_hil_packet_collection_drill", None)
+    latest_status.pop("wave_rover_hil_packet_collection_drill_summary", None)
+    latest_status.pop("wave_rover_hil_packet_collection_drill_copy", None)
+    latest_status.pop("robot_diagnostics_wave_rover_hil_packet_collection_drill_summary", None)
     latest_status.pop("route_task_terminal_completion_rehearsal", None)
     latest_status.pop("route_task_terminal_completion_rehearsal_summary", None)
     latest_status.pop("route_task_terminal_completion_rehearsal_copy", None)
@@ -70773,6 +71264,17 @@ def build_diagnostics_payload(
             wave_rover_hil_packet_execution_pack_source
         )
     )
+    wave_rover_hil_packet_collection_drill_source = (
+        wave_rover_hil_packet_collection_drill_ref
+        or os.environ.get("TRASHBOT_WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL", "")
+        or os.environ.get("TRASHBOT_WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_SUMMARY", "")
+        or wave_rover_hil_packet_collection_drill_source
+    )
+    wave_rover_hil_packet_collection_drill_summary = (
+        summarize_wave_rover_hil_packet_collection_drill(
+            wave_rover_hil_packet_collection_drill_source
+        )
+    )
     hardware_baseline_review_source = (
         hardware_baseline_review_ref
         or os.environ.get("TRASHBOT_HARDWARE_BASELINE_REVIEW", "")
@@ -71751,6 +72253,13 @@ def build_diagnostics_payload(
         wave_rover_hil_packet_execution_pack_summary=wave_rover_hil_packet_execution_pack_summary,
         robot_diagnostics_wave_rover_hil_packet_execution_pack_summary=(
             wave_rover_hil_packet_execution_pack_summary
+        ),
+        wave_rover_hil_packet_collection_drill=wave_rover_hil_packet_collection_drill_summary,
+        wave_rover_hil_packet_collection_drill_summary=(
+            wave_rover_hil_packet_collection_drill_summary
+        ),
+        robot_diagnostics_wave_rover_hil_packet_collection_drill_summary=(
+            wave_rover_hil_packet_collection_drill_summary
         ),
         hardware_baseline_review=hardware_baseline_review_summary,
         hardware_baseline_review_summary=hardware_baseline_review_summary,

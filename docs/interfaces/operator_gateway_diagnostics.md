@@ -767,6 +767,49 @@ success/control claims, or enabled action flags. Inputs with
 `delivery_success=true`, `primary_actions_enabled=true`, or
 `safe_to_control=true` fail closed as blocked/not_proven.
 
+## robot_diagnostics_wave_rover_hil_packet_collection_drill_summary
+
+Robot diagnostics exposes `wave_rover_hil_packet_collection_drill`,
+`wave_rover_hil_packet_collection_drill_summary`, and
+`robot_diagnostics_wave_rover_hil_packet_collection_drill_summary` as the safe
+alias for the PC-side WAVE ROVER HIL packet collection drill gate.
+
+- Source artifact schema:
+  `trashbot.wave_rover_hil_packet_collection_drill.v1`
+- Source summary schema:
+  `trashbot.wave_rover_hil_packet_collection_drill_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.wave_rover_hil_packet_collection_drill_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_wave_rover_hil_packet_collection_drill_gate`
+
+The local hardware source boundary for this alias is
+`docs/vendor/VENDOR_INDEX.md`: WAVE ROVER upper/lower communication is UART
+newline-delimited JSON, vendor Raspberry Pi examples are not Orange Pi launch
+defaults, and Robot diagnostics must not open serial or send WAVE ROVER
+commands.
+
+Allowed fields are limited to collection drill status, safe `evidence_ref`,
+required material templates, preflight checklist, collection sequence,
+backfill commands, owner handoff, blocked reasons, evidence boundary,
+`source=software_proof`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`.
+
+The alias is read-only metadata. Missing summary, unreadable input, unsupported
+schema or boundary, missing `not_proven`, unsafe `evidence_ref`, unsafe copy,
+raw artifacts, raw JSON, local paths, credentials, checksums, tracebacks, ROS
+topics, `/cmd_vel`, serial/UART details, WAVE ROVER raw details, ACK/cursor
+payloads, Nav2 route/runtime hints, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true` must fail closed as
+blocked/not_proven.
+
+`ready_for_collection_drill_not_proven` only means the next real collection
+drill has a sanitized checklist. It is not delivery success, real WAVE ROVER
+proof, real UART feedback, real `feedback_T1001.log`, real odom/IMU/battery
+material, HIL pass, Nav2 runtime proof, PR #5 reviewer resolution, Objective 5
+external proof, or permission to start/confirm/cancel/ACK/replay/resubmit
+robot commands.
+
 ## robot_diagnostics_field_evidence_material_resolution_intake_summary
 
 `robot_diagnostics_field_evidence_material_resolution_intake_summary` is the

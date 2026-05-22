@@ -4786,6 +4786,105 @@ class WaveRoverHilPacketExecutionPackMobileTest(unittest.TestCase):
             self.assertNotIn(forbidden, execution_pack_text)
 
 
+class WaveRoverHilPacketCollectionDrillMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_wave_rover_hil_packet_collection_drill_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # collection drill panel 接在 execution-pack 后，只展示白名单摘要，不新增 copy/export 或控制入口。
+        self.assertIn("waveRoverHilPacketCollectionDrillTitle", app)
+        self.assertIn("WAVE ROVER HIL packet collection drill", app)
+        self.assertIn("waveRoverHilPacketExecutionPackTitle", app)
+        self.assertIn('anchor.insertAdjacentElement("afterend", panel)', app)
+        self.assertNotIn("copyWaveRoverHilPacketCollectionDrillButton", app)
+        self.assertNotIn("downloadWaveRoverHilPacketCollectionDrillButton", app)
+
+        # 状态来源兼容 artifact、summary 和 Robot diagnostics compatible summary。
+        self.assertIn("WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_BOUNDARY", app)
+        self.assertIn("UNSAFE_WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_TEXT", app)
+        self.assertIn("safeWaveRoverHilPacketCollectionDrillText", app)
+        self.assertIn("waveRoverHilPacketCollectionDrillCandidate", app)
+        self.assertIn("waveRoverHilPacketCollectionDrillFromStatus", app)
+        self.assertIn("wave_rover_hil_packet_collection_drill", app)
+        self.assertIn("wave_rover_hil_packet_collection_drill_summary", app)
+        self.assertIn("robot_diagnostics_wave_rover_hil_packet_collection_drill_summary", app)
+        self.assertIn("diagnosticsSummary.wave_rover_hil_packet_collection_drill", app)
+        self.assertIn("statusDiagnosticsSummary.wave_rover_hil_packet_collection_drill", app)
+        self.assertIn("required_material_templates", app)
+        self.assertIn("preflight_checklist", app)
+        self.assertIn("collection_sequence", app)
+        self.assertIn("backfill_rerun_commands", app)
+        self.assertIn("owner_handoff", app)
+
+        # 主操作继续 fail-closed，且 collection drill 不主动请求 diagnostics 或控制 endpoint。
+        self.assertIn("delivery_success: false", app)
+        self.assertIn("primary_actions_enabled: false", app)
+        self.assertIn("safe_to_control: false", app)
+        self.assertIn("delivery_success=false / primary_actions_enabled=false / safe_to_control=false", app)
+        self.assertIn("Start Delivery", app)
+        self.assertIn("Confirm Dropoff", app)
+        self.assertIn("Cancel", app)
+        self.assertNotRegex(app, r"waveRoverHilPacketCollectionDrill.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)")
+
+        # fixture 和产品文档必须固定 collection drill 的 software proof / not_proven 边界。
+        drill = fixture["wave_rover_hil_packet_collection_drill"]
+        self.assertEqual(drill["drill_status"], "wave_rover_hil_packet_collection_drill_not_proven")
+        self.assertEqual(drill["overall_status"], "not_proven")
+        self.assertEqual(drill["delivery_success"], False)
+        self.assertEqual(drill["primary_actions_enabled"], False)
+        self.assertEqual(drill["safe_to_control"], False)
+        self.assertIn("software_proof_docker_wave_rover_hil_packet_collection_drill_gate", fixture_text)
+        self.assertIn("required_material_templates", fixture_text)
+        self.assertIn("preflight_checklist", fixture_text)
+        self.assertIn("collection_sequence", fixture_text)
+        self.assertIn("backfill_rerun_commands", fixture_text)
+        self.assertIn("robot_diagnostics_wave_rover_hil_packet_collection_drill_summary", fixture_text)
+        self.assertIn("wave_rover_hil_packet_collection_drill", doc)
+        self.assertIn("safe_to_control=false", doc)
+
+    def test_wave_rover_hil_packet_collection_drill_fixture_stays_phone_safe(self):
+        fixture = json.loads(MOBILE_STATUS_FIXTURE.read_text(encoding="utf-8"))
+        drill_text = json.dumps(
+            fixture["wave_rover_hil_packet_collection_drill"],
+            ensure_ascii=False,
+        ).lower()
+
+        # collection drill fixture 只能携带白名单摘要，不能带 raw 材料、底层设备、凭证或成功宣称。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw artifact",
+            "raw packet",
+            "raw drill",
+            "raw feedback",
+            "full raw feedback",
+            "serial device",
+            "uart device",
+            "baudrate",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "checksum",
+            "complete artifact",
+            "traceback",
+            "hil passed",
+            "field pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, drill_text)
+
+
 class RouteTaskTerminalCompletionRehearsalMobileTest(unittest.TestCase):
     def read_web(self, name):
         return (WEB_ROOT / name).read_text(encoding="utf-8")
