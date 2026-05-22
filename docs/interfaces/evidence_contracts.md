@@ -2247,6 +2247,95 @@ ROVER/UART feedback, not true phone/browser proof, not PR #5 resolution, not
 Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, not an OKR percentage
 lift, and not any primary robot action being enabled.
 
+## field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff
+
+`pc-tools/evidence/field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff.py`
+generates the PC-only owner response review handoff gate after
+`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision.py`.
+It consumes only a safe owner response review decision artifact/summary, Robot
+diagnostics safe alias, or wrapper/nested JSON plus a sanitized owner/support/
+reviewer handoff packet. It does not copy raw material bodies and does not read
+real Nav2 runtime, ROS graph state, serial/UART or WAVE ROVER data, real
+elevator systems, external cloud evidence, real phone/browser runtime state,
+hardware/HIL evidence, GitHub review state, or raw field artifacts.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_summary.v1`
+- Handoff packet schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_packet.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision.v1`,
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision_summary.v1`,
+  and the Robot safe alias under
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision_gate`.
+
+Allowed `handoff_status` values are exactly
+`ready_for_owner_response_review_handoff_not_proven`,
+`handoff_needs_owner_rework`, `handoff_evidence_ref_mismatch`,
+`handoff_unsafe_rejected`, and
+`blocked_missing_owner_response_review_decision`. The ready state requires the
+previous owner response review decision to be
+`ready_for_owner_response_review_handoff_not_proven`, `source=software_proof`,
+`software_proof`, `not_proven`, safe `evidence_ref`,
+`same_evidence_ref_required=true`, a sanitized handoff packet with owner,
+support, reviewer, and `next_required_evidence`, all required handoff material
+categories, and no unsafe or success/control claim. The CLI returns zero only
+for `ready_for_owner_response_review_handoff_not_proven`; all other states
+return nonzero.
+
+The required handoff checklist is fixed to true task record, true
+Nav2/fixed-route runtime log, route completion signal, true elevator door state,
+target floor confirmation, human assistance record, dropoff/cancel completion,
+delivery result, true route/elevator field pass, true phone/browser evidence,
+and PR #5 hardware material remaining pending unless
+`PRRT_kwDOSWB9286CJ3tX` is live resolved by reviewer. These are handoff category
+names only; this gate does not validate raw task records, runtime logs, route
+completion signals, elevator/floor records, human assistance records,
+dropoff/cancel completion, delivery results, field passes, phone/browser
+runtime, hardware/HIL state, or GitHub review state.
+
+The output always includes `source=software_proof`, `software_proof`,
+`handoff_status`, `allowed_handoff_states`, `handoff_reasons`, safe
+`evidence_ref`, `source_owner_response_review_decision`,
+`owner_support_reviewer_handoff_packet`, `owner_support_reviewer_routing`,
+`material_status`, `handoff_checklist`, `owner_handoff`,
+`next_required_evidence`, `rerun_commands`, `safe_copy`, `not_proven`,
+`non_access_scope`, `delivery_success=false`,
+`primary_actions_enabled=false`, `safe_to_control=false`,
+`no OKR percentage lift`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_gate`.
+
+Missing owner response review decision, missing handoff packet, bad JSON,
+unsupported schema/boundary, source or handoff packet not marked as
+`source=software_proof` with `not_proven`, previous owner response review
+decision not `ready_for_owner_response_review_handoff_not_proven`, missing safe
+`evidence_ref`, evidence_ref mismatch, weak `same_evidence_ref_required`,
+missing owner/support/reviewer routing, missing `next_required_evidence`,
+missing required handoff materials, rejected or unsafe handoff materials,
+unsafe copy, raw or local paths, credentials, ROS topics, `/cmd_vel`,
+serial/UART/WAVE ROVER wording, raw/complete artifacts, checksums, tracebacks,
+true phone/browser proof claims, real route/elevator field pass claims, real
+Nav2/fixed-route pass claims, verified terminal result claims, Objective 5
+external proof claims, O1 HIL claims, PR #5 resolution claims,
+success/control claims, `safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` all fail closed to one of the five allowed
+states.
+
+This contract is software proof only.
+`ready_for_owner_response_review_handoff_not_proven` means the metadata-only
+owner response review decision and handoff packet can move to later owner/
+support/reviewer handoff while remaining fail-closed. It is not real field
+rerun proof, not real route/elevator field pass, not real Nav2/fixed-route
+execution, not true task record validation, not route completion signal
+validation, not dropoff/cancel completion, not delivery result, not delivery
+success, not HIL, not WAVE ROVER/UART feedback, not true phone/browser proof,
+not PR #5 resolution, not Objective 5 external cloud/4G/OSS/CDN/DB/queue proof,
+not an OKR percentage lift, and not any primary robot action being enabled.
+
 ## field_evidence_real_material_request_dispatch
 
 `pc-tools/evidence/field_evidence_real_material_request_dispatch.py` generates

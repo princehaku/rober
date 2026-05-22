@@ -124,6 +124,10 @@ FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_R
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision.json"
 )
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEW_HANDOFF_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff.json"
+)
 FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_real_material_request_dispatch.json"
@@ -13688,6 +13692,203 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "raw owner response",
             "raw review",
             "raw decision",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "route pass",
+            "elevator pass",
+            "hil_pass",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "material fetch",
+            "replay",
+            "resubmit",
+            "robot command",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, response_text)
+
+    def test_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEW_HANDOFF_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # review handoff 只读消费 Robot safe alias；不新增 handoff/owner-response route 或任何控制授权。
+        self.assertIn(
+            "FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEW_HANDOFF_BOUNDARY",
+            app,
+        )
+        self.assertIn(
+            "UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEW_HANDOFF_TEXT",
+            app,
+        )
+        self.assertIn(
+            "safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoffText",
+            app,
+        )
+        self.assertIn(
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoffCandidate",
+            app,
+        )
+        self.assertIn(
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoffFromStatus",
+            app,
+        )
+        self.assertIn(
+            "renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoff",
+            app,
+        )
+        self.assertIn(
+            "现场证据复跑执行结果验收交接回执 owner response review handoff",
+            app,
+        )
+        self.assertIn(
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_summary",
+            app,
+        )
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_summary",
+            app,
+        )
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff?.summary",
+            app,
+        )
+        for required in (
+            "handoff_status",
+            "source_owner_response_review_decision_status",
+            "handoff_reasons",
+            "next_required_evidence",
+            "owner_next_step",
+            "support_next_step",
+            "reviewer_next_step",
+            "source=software_proof",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "ready_for_owner_response_review_handoff_not_proven",
+            "handoff_needs_owner_rework",
+            "handoff_evidence_ref_mismatch",
+            "handoff_unsafe_rejected",
+            "blocked_missing_owner_response_review_decision",
+        ):
+            self.assertIn(required, app + dedicated_text)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "copyFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoffButton",
+            "ackFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoff",
+            "cursorFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoff",
+            "fetchFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoffDiagnostics",
+            "fetchFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoffMaterial",
+            "submitFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoff",
+            "replayFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoff",
+            "resubmitFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoff",
+            "commandFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewHandoff",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_summary"
+        ]
+        fallback = dedicated_fixture[
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_summary"
+        ]
+        nested = dedicated_fixture[
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff"
+        ]["summary"]
+        self.assertEqual(
+            summary["capability"],
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff",
+        )
+        self.assertEqual(summary["handoff_status"], "ready_for_owner_response_review_handoff_not_proven")
+        self.assertEqual(fallback["handoff_status"], "handoff_needs_owner_rework")
+        self.assertEqual(nested["handoff_status"], "blocked_missing_owner_response_review_decision")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff",
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_summary",
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_gate",
+            "source=software_proof",
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn("field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff", doc)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_summary",
+            doc,
+        )
+        self.assertIn(
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_gate",
+            doc,
+        )
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not Objective 5 external proof", doc)
+
+    def test_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEW_HANDOFF_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        response_text = json.dumps(
+            {
+                "robot": dedicated_fixture[
+                    "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_summary"
+                ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只能包含 review handoff safe summary，不泄漏 raw 材料、路径、凭证、ACK/cursor 或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw material",
+            "raw owner response",
+            "raw review",
+            "raw handoff",
             "complete artifact",
             "checksum",
             "credential",
