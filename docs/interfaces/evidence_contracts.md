@@ -1842,6 +1842,83 @@ success, not HIL, not WAVE ROVER/UART feedback, not true phone/browser proof,
 not PR #5 resolution, not Objective 5 external cloud/4G/OSS/CDN/DB/queue proof,
 and not any primary robot action being enabled.
 
+## field_evidence_rerun_execution_result_acceptance_handoff_intake_review_decision
+
+`pc-tools/evidence/field_evidence_rerun_execution_result_acceptance_handoff_intake_review_decision.py`
+generates the PC-only review-decision gate after
+`field_evidence_rerun_execution_result_acceptance_handoff_intake.py`. It
+consumes only a safe handoff-intake artifact/summary, Robot diagnostics safe
+alias, or wrapper/nested JSON plus a field owner/support safe review packet. It
+does not scan a material directory and does not read real Nav2 runtime, ROS graph
+state, serial/UART or WAVE ROVER data, real elevator systems, external cloud
+evidence, real phone/browser runtime state, or raw field artifacts.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_review_decision.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_review_decision_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_decision_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake.v1`
+  and
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_summary.v1`
+  under
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_gate`.
+
+Allowed `review_decision` values are exactly
+`ready_for_acceptance_handoff_review_handoff_not_proven`,
+`review_needs_owner_rework`, `review_evidence_ref_mismatch`,
+`review_unsafe_rejected`, and `blocked_missing_handoff_intake`. The ready state
+requires the previous safe intake
+`ready_for_acceptance_handoff_owner_intake_not_proven`,
+`source=software_proof`, `not_proven`, safe `evidence_ref`,
+`same_evidence_ref_required=true`, a safe owner/support review packet accepting
+all required checklist categories, and no unsafe or success/control claim. The
+CLI returns zero only for the ready state; missing material, evidence-ref
+mismatch, unsafe/rejected content, or missing handoff intake returns nonzero.
+
+The owner/support review checklist is fixed to true task record, true
+Nav2/fixed-route runtime log, route completion signal, true elevator door state,
+target floor confirmation, human assistance record, dropoff/cancel completion or
+delivery result, and true phone/browser evidence. These are review checklist
+category names only; this gate does not validate raw task records, runtime logs,
+route completion signals, elevator/floor records, human assistance records,
+dropoff/cancel completion, delivery results, or true phone/browser runtime.
+
+The output always includes `source=software_proof`, `review_decision`,
+`allowed_review_decisions`, `decision_reasons`, safe `evidence_ref`,
+`source_handoff_intake`, `owner_support_review_packet`, `required_materials`,
+`material_status`, `review_checklist`, `owner_handoff`,
+`next_required_evidence`, `rerun_commands`, `safe_copy`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_decision_gate`.
+
+Missing handoff intake, missing owner/support review packet, bad JSON,
+unsupported schema/boundary, source or review packet not marked as
+`source=software_proof` with `not_proven`, source intake not
+`ready_for_acceptance_handoff_owner_intake_not_proven`, missing safe
+`evidence_ref`, evidence_ref mismatch, weak `same_evidence_ref_required`,
+missing checklist review, rejected or unsafe material refs, unsafe copy, raw or
+local paths, credentials, ROS topics, `/cmd_vel`, serial/UART/WAVE ROVER details,
+raw/complete artifacts, checksums, tracebacks, true phone/browser proof claims,
+real route/elevator field pass claims, verified terminal result claims,
+Objective 5 external proof claims, HIL claims, PR #5 resolution claims,
+success/control claims, `safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` all fail closed to one of the allowed review
+decision states.
+
+This contract is software proof only. A ready review decision means the
+metadata-only handoff intake and owner/support review packet can move to the next
+review handoff while remaining fail-closed. It is not real field rerun proof, not
+real route/elevator field pass, not real Nav2/fixed-route execution, not true
+task record validation, not route completion signal validation, not
+dropoff/cancel completion, not verified terminal result, not delivery result,
+not delivery success, not HIL, not WAVE ROVER/UART feedback, not true
+phone/browser proof, not PR #5 resolution, not Objective 5 external
+cloud/4G/OSS/CDN/DB/queue proof, and not any primary robot action being enabled.
+
 ## field_evidence_real_material_request_dispatch
 
 `pc-tools/evidence/field_evidence_real_material_request_dispatch.py` generates
