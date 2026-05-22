@@ -1163,8 +1163,13 @@ O5 external proof、真实 phone/browser 证据或 PR #5 resolved。
 
 `pc-tools/evidence/field_evidence_material_resolution_owner_response_intake.py`
 只读上一节 `field_evidence_material_resolution_followup_escalation_status`
-artifact、summary、Robot safe alias 或 wrapper/nested JSON，并可选读取脱敏 owner
-response material metadata，把 owner 回复材料归类为 accepted/missing/rejected/unsafe：
+artifact、summary、Robot safe alias 或 wrapper/nested JSON；也兼容 reviewer ACK followup
+bridge source，包括
+`trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1`、
+`trashbot.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1`
+以及 `field_evidence_material_resolution_reviewer_ack_followup_escalation_status`
+artifact/summary wrapper。它可选读取脱敏 owner response material metadata，把 owner
+回复材料归类为 accepted/missing/rejected/unsafe：
 
 ```bash
 python3 pc-tools/evidence/field_evidence_material_resolution_owner_response_intake.py \
@@ -1190,6 +1195,12 @@ safe `evidence_ref`、`owner_response_material_status`、`review_readiness`、
 `safe_copy`、`source=software_proof`、`not_proven`、`primary_actions_enabled=false`、
 `delivery_success=false` 和 `safe_to_control=false`。
 
+当 source bridge 为 `field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge`
+时，source 必须仍是 `source=software_proof`、`not_proven`、同一 safe
+`evidence_ref`，并且 reviewer ACK followup state 必须是安全状态，例如
+`accepted_for_owner_response_intake_not_proven`。旧
+`field_evidence_material_resolution_followup_escalation_status` source path 保持兼容。
+
 `owner_response_material_status` 只允许 `missing`、`received_not_reviewed` 和
 `rejected_not_proven`。`review_readiness` 只允许
 `blocked_missing_owner_response_material_not_proven`、
@@ -1198,9 +1209,11 @@ safe `evidence_ref`、`owner_response_material_status`、`review_readiness`、
 missing safe `evidence_ref`、evidence-ref mismatch、缺上一环 proof boundary、
 unsupported schema、success/control/reviewer-resolution claim、raw artifact、
 credential/local path、ROS/control detail、field/cloud/phone/HIL proof claim 都会
-fail closed。accepted material 只表示 `accepted_for_review_not_proven`，不是 OKR
-movement、真实 field pass、verified terminal result、delivery success、HIL、O5
-external proof、真实 phone/browser 证据或 PR #5 resolved。
+fail closed。accepted material 只表示 `accepted_for_review_not_proven`；reviewer ACK
+bridge 的 `accepted_for_owner_response_intake_not_proven` 只表示可以进入 owner
+response intake，不是 review approval、OKR movement、真实 field pass、verified
+terminal result、delivery success、HIL、O5 external proof、真实 phone/browser 证据或
+PR #5 resolved。
 
 该 gate 保留上一环 escalation trace 到
 `field_evidence_material_resolution_followup_escalation_status`，并保留上一轮 handoff

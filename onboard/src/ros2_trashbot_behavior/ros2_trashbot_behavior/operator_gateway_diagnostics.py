@@ -645,6 +645,9 @@ FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_SUMMARY_SCHEMA = (
 FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_GATE = (
     "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate"
 )
+FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_REVIEWER_ACK_BRIDGE = (
+    "field_evidence_material_resolution_reviewer_ack_followup_escalation_status"
+)
 FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_STATUSES = (
     "accepted",
     "missing",
@@ -654,6 +657,7 @@ FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_STATUSES = (
     "missing_not_proven",
     "rejected_not_proven",
     "blocked_not_proven",
+    "accepted_for_owner_response_intake_not_proven",
 )
 FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_REVIEW_DECISION_SCHEMA = (
     "trashbot.field_evidence_material_resolution_owner_response_review_decision.v1"
@@ -12111,9 +12115,12 @@ def _default_field_evidence_material_resolution_owner_response_intake_summary(
             "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
             "reason": reason,
         },
+        "source_bridge": "",
+        "source_reviewer_ack_followup_status": {},
         "accepted_materials_summary": [],
         "missing_materials_summary": [],
         "rejected_materials_summary": [],
+        "unsafe_materials_summary": [],
         "next_required_evidence": [],
         "operator_support_handoff": [],
         "robot_diagnostics_summary": {
@@ -20807,18 +20814,25 @@ def _field_evidence_material_resolution_owner_response_intake_has_unsafe_fields(
         "status",
         "overall_status",
         "owner_response_status",
+        "source_bridge",
+        "source_reviewer_ack_followup_status",
+        "source_followup_status",
+        "reviewer_ack_followup_status",
         "status_summary",
         "verdict",
         "reason",
         "accepted_materials_summary",
         "missing_materials_summary",
         "rejected_materials_summary",
+        "unsafe_materials_summary",
         "accepted_summary",
         "missing_summary",
         "rejected_summary",
+        "unsafe_summary",
         "accepted",
         "missing",
         "rejected",
+        "unsafe",
         "next_required_evidence",
         "operator_support_handoff",
         "owner_handoff",
@@ -63565,6 +63579,27 @@ def summarize_field_evidence_material_resolution_owner_response_intake(source):
         if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
         else {}
     )
+    raw_source_bridge = str(
+        summary_fragment.get("source_bridge")
+        or summary_fragment.get("source_bridge_marker")
+        or ""
+    ).strip()
+    # reviewer ACK bridge 只能暴露固定安全标记；不允许透传 raw source artifact/path。
+    source_bridge = (
+        FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_REVIEWER_ACK_BRIDGE
+        if raw_source_bridge
+        == FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_REVIEWER_ACK_BRIDGE
+        else ""
+    )
+    source_reviewer_ack_followup_status = (
+        summary_fragment.get("source_reviewer_ack_followup_status")
+        if isinstance(summary_fragment.get("source_reviewer_ack_followup_status"), dict)
+        else summary_fragment.get("source_followup_status")
+        if isinstance(summary_fragment.get("source_followup_status"), dict)
+        else summary_fragment.get("reviewer_ack_followup_status")
+        if isinstance(summary_fragment.get("reviewer_ack_followup_status"), dict)
+        else {}
+    )
     safe_copy = (
         summary_fragment.get("safe_copy")
         or summary_fragment.get("safe_phone_copy")
@@ -63620,6 +63655,10 @@ def summarize_field_evidence_material_resolution_owner_response_intake(source):
                     )
                 ),
             },
+            "source_bridge": source_bridge,
+            "source_reviewer_ack_followup_status": _safe_pc_route_debug_dict(
+                source_reviewer_ack_followup_status
+            ),
             "accepted_materials_summary": _safe_route_task_rehearsal_list(
                 summary_fragment.get("accepted_materials_summary")
                 or summary_fragment.get("accepted_summary")
@@ -63634,6 +63673,11 @@ def summarize_field_evidence_material_resolution_owner_response_intake(source):
                 summary_fragment.get("rejected_materials_summary")
                 or summary_fragment.get("rejected_summary")
                 or summary_fragment.get("rejected")
+            ),
+            "unsafe_materials_summary": _safe_route_task_rehearsal_list(
+                summary_fragment.get("unsafe_materials_summary")
+                or summary_fragment.get("unsafe_summary")
+                or summary_fragment.get("unsafe")
             ),
             "next_required_evidence": _safe_route_task_rehearsal_list(
                 summary_fragment.get("next_required_evidence")
@@ -63667,15 +63711,29 @@ def summarize_field_evidence_material_resolution_owner_response_intake(source):
         bool(summary["operator_support_handoff"]),
     )
     boundary_flags = _safe_pc_route_debug_dict(summary_fragment.get("boundary_flags")) or {}
+    reviewer_ack_bridge_source = (
+        bool(source_bridge)
+        and source_schema
+        == FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_SCHEMA
+        and source_boundary
+        == FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_GATE
+    )
+    owner_response_intake_source = (
+        source_schema == FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_SCHEMA
+        and source_boundary == FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_GATE
+    )
     unsafe_material = any(
         _field_evidence_material_resolution_owner_response_intake_has_unsafe_fields(
             item
         )
         for item in (
             status_doc,
+            raw_source_bridge,
+            source_reviewer_ack_followup_status,
             summary["accepted_materials_summary"],
             summary["missing_materials_summary"],
             summary["rejected_materials_summary"],
+            summary["unsafe_materials_summary"],
             summary["next_required_evidence"],
             summary["operator_support_handoff"],
             robot_summary,
@@ -63689,12 +63747,21 @@ def summarize_field_evidence_material_resolution_owner_response_intake(source):
         )
         summary["status"] = summary["owner_response_status"]["status"]
         return summary
-    if (
-        source_schema
-        != FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_SCHEMA
-        or source_boundary
-        != FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_GATE
-    ):
+    if raw_source_bridge and not source_bridge:
+        summary["owner_response_status"] = {
+            "status": (
+                "blocked_unsupported_field_evidence_material_resolution_owner_response_intake"
+            ),
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": (
+                "field evidence material resolution owner response intake source bridge "
+                "marker is unsupported"
+            ),
+        }
+        summary["status"] = summary["owner_response_status"]["status"]
+        return summary
+    if not (owner_response_intake_source or reviewer_ack_bridge_source):
         summary["owner_response_status"] = {
             "status": (
                 "blocked_unsupported_field_evidence_material_resolution_owner_response_intake"
@@ -63772,6 +63839,7 @@ def summarize_field_evidence_material_resolution_owner_response_intake(source):
                 "accepted_materials_summary": [],
                 "missing_materials_summary": [],
                 "rejected_materials_summary": [],
+                "unsafe_materials_summary": [],
                 "next_required_evidence": [],
                 "operator_support_handoff": [],
                 "safe_copy": blocked_copy,

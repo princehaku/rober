@@ -13973,10 +13973,20 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
         )
         self.assertIn("field_evidence_material_resolution_owner_response_intake_summary", app)
         self.assertIn("field_evidence_material_resolution_owner_response_intake?.summary", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary",
+            app,
+        )
+        self.assertIn(
+            "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary",
+            app,
+        )
+        self.assertIn("field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge?.summary", app)
         self.assertIn("received_owner_response_not_proven", app)
         self.assertIn("partial_owner_response_missing_materials_not_proven", app)
         self.assertIn("rejected_owner_response_unsafe_not_proven", app)
         self.assertIn("blocked_missing_owner_response_not_proven", app)
+        self.assertIn("accepted_for_owner_response_intake_not_proven", app)
         self.assertIn("owner response material", app)
         self.assertIn("accepted_materials", app)
         self.assertIn("missing_materials", app)
@@ -14011,28 +14021,58 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
         nested = dedicated_fixture[
             "field_evidence_material_resolution_owner_response_intake"
         ]["summary"]
+        bridge = dedicated_fixture[
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary"
+        ]
+        bridge_fallback = dedicated_fixture[
+            "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary"
+        ]
+        bridge_nested = dedicated_fixture[
+            "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge"
+        ]["summary"]
         self.assertEqual(summary["capability"], "field_evidence_material_resolution_owner_response_intake")
         self.assertEqual(summary["response_status"], "partial_owner_response_missing_materials_not_proven")
         self.assertEqual(fallback["response_status"], "received_owner_response_not_proven")
         self.assertEqual(nested["response_status"], "blocked_missing_owner_response_not_proven")
+        self.assertEqual(bridge["response_status"], "accepted_for_owner_response_intake_not_proven")
+        self.assertEqual(bridge_fallback["response_status"], "accepted_for_owner_response_intake_not_proven")
+        self.assertEqual(bridge_nested["response_status"], "accepted_for_owner_response_intake_not_proven")
+        self.assertEqual(
+            bridge["bridge_capability"],
+            "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge",
+        )
+        self.assertIn(
+            "field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
+            bridge["source_path"],
+        )
+        self.assertIn("safe source bridge copy", bridge["safe_copy"])
         self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(bridge["source"], "software_proof")
         self.assertEqual(summary["safe_to_control"], False)
         self.assertEqual(summary["delivery_success"], False)
         self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(bridge["safe_to_control"], False)
+        self.assertEqual(bridge["delivery_success"], False)
+        self.assertEqual(bridge["primary_actions_enabled"], False)
         self.assertIn("owner response material=", summary["owner_response_material_status"])
         self.assertEqual(dedicated_fixture["can_collect"], False)
         self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
         self.assertEqual(dedicated_fixture["can_cancel"], False)
         for required in (
             "field_evidence_material_resolution_owner_response_intake",
+            "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge",
+            "field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
             "robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary",
             "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate",
             "owner response material",
+            "accepted_for_owner_response_intake_not_proven",
+            "safe source bridge copy",
             "accepted_materials",
             "missing_materials",
             "rejected_materials",
             "review_readiness",
             "not_proven",
+            "not true phone/browser",
             "delivery_success=false",
             "primary_actions_enabled=false",
             "safe_to_control=false",
@@ -14047,6 +14087,10 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate",
             doc,
         )
+        self.assertIn("field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge", doc)
+        self.assertIn("field_evidence_material_resolution_reviewer_ack_followup_escalation_status", doc)
+        self.assertIn("accepted_for_owner_response_intake_not_proven", doc)
+        self.assertIn("not true phone/browser", doc)
         self.assertIn("owner response material", doc)
         self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
 
@@ -14067,6 +14111,15 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
                 "nested": dedicated_fixture[
                     "field_evidence_material_resolution_owner_response_intake"
                 ]["summary"],
+                "bridge": dedicated_fixture[
+                    "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary"
+                ],
+                "bridge_fallback": dedicated_fixture[
+                    "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary"
+                ],
+                "bridge_nested": dedicated_fixture[
+                    "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge"
+                ]["summary"],
             },
             ensure_ascii=False,
         ).lower()
@@ -14079,6 +14132,8 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "raw diagnostics",
             "raw material",
             "raw owner packet",
+            "raw ack",
+            "raw followup",
             "complete artifact",
             "checksum",
             "credential",

@@ -58,6 +58,123 @@
     "delivery_success": false,
     "primary_actions_enabled": false
   },
+  "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_owner_response_intake_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1",
+    "capability": "field_evidence_material_resolution_owner_response_intake",
+    "bridge_capability": "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge",
+    "source_path": "field_evidence_material_resolution_reviewer_ack_followup_escalation_status -> field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge -> field_evidence_material_resolution_owner_response_intake",
+    "source": "software_proof",
+    "response_status": "accepted_for_owner_response_intake_not_proven",
+    "owner_response_material_status": "owner response material=bridge_summary_received_not_reviewed",
+    "review_readiness": "review_readiness=accepted_for_owner_response_intake_not_proven",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_owner_response_intake_fixture_20260522_0001",
+    "accepted_materials": [
+      "accepted_materials=safe source bridge copy from field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
+      "accepted_materials=accepted_for_owner_response_intake_not_proven"
+    ],
+    "missing_materials": [
+      "missing_materials=true phone browser proof",
+      "missing_materials=route elevator runtime summary",
+      "missing_materials=verified terminal result material"
+    ],
+    "rejected_materials": [
+      "rejected_materials=unsafe success claim",
+      "rejected_materials=unsafe reviewer ACK followup payload"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=owner response review decision",
+      "next_required_evidence=same safe evidence_ref material review"
+    ],
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate",
+    "safe_copy": "safe source bridge copy: reviewer ACK follow-up escalation status was accepted_for_owner_response_intake_not_proven; source=software_proof; not_proven; delivery_success=false; primary_actions_enabled=false; safe_to_control=false.",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "accepted_for_owner_response_intake_not_proven",
+      "source=software_proof",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "not true phone/browser",
+      "not robot control grant",
+      "not PR #5 resolution",
+      "not HIL",
+      "route_elevator_material_not_verified"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_owner_response_intake_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1",
+    "capability": "field_evidence_material_resolution_owner_response_intake",
+    "bridge_capability": "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge",
+    "source_path": "field_evidence_material_resolution_reviewer_ack_followup_escalation_status -> field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge -> field_evidence_material_resolution_owner_response_intake",
+    "source": "software_proof",
+    "response_status": "accepted_for_owner_response_intake_not_proven",
+    "owner_response_material_status": "owner response material=bridge_fallback_received_not_reviewed",
+    "review_readiness": "review_readiness=accepted_for_owner_response_intake_not_proven",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_owner_response_intake_fixture_20260522_0001",
+    "accepted_materials": [
+      "accepted_materials=safe source bridge copy"
+    ],
+    "missing_materials": [
+      "missing_materials=owner response review decision"
+    ],
+    "rejected_materials": [
+      "rejected_materials=none"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=review bridge summary"
+    ],
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "accepted_for_owner_response_intake_not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "not true phone/browser"
+    ]
+  },
+  "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge": {
+    "summary": {
+      "schema": "trashbot.field_evidence_material_resolution_owner_response_intake_summary.v1",
+      "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1",
+      "capability": "field_evidence_material_resolution_owner_response_intake",
+      "bridge_capability": "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge",
+      "source_path": "field_evidence_material_resolution_reviewer_ack_followup_escalation_status -> field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge -> field_evidence_material_resolution_owner_response_intake",
+      "source": "software_proof",
+      "response_status": "accepted_for_owner_response_intake_not_proven",
+      "owner_response_material_status": "owner response material=nested_bridge_received_not_reviewed",
+      "review_readiness": "review_readiness=accepted_for_owner_response_intake_not_proven",
+      "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_owner_response_intake_fixture_20260522_0001",
+      "accepted_materials": [
+        "accepted_materials=safe nested bridge summary"
+      ],
+      "missing_materials": [
+        "missing_materials=review decision pending"
+      ],
+      "rejected_materials": [
+        "rejected_materials=none"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=owner response review decision"
+      ],
+      "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
   "field_evidence_material_resolution_owner_response_intake_summary": {
     "schema": "trashbot.field_evidence_material_resolution_owner_response_intake_summary.v1",
     "capability": "field_evidence_material_resolution_owner_response_intake",

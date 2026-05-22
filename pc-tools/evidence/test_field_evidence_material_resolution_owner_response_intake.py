@@ -17,6 +17,7 @@ sys.path.insert(0, str(EVIDENCE_DIR))
 
 import field_evidence_material_resolution_followup_escalation_status as followup  # noqa: E402
 import field_evidence_material_resolution_owner_response_intake as gate  # noqa: E402
+import field_evidence_material_resolution_reviewer_ack_followup_escalation_status as reviewer_ack_followup  # noqa: E402
 
 
 # 测试约束 01：fixture 只表达上一轮 safe followup escalation summary。
@@ -72,6 +73,47 @@ class FieldEvidenceMaterialResolutionOwnerResponseIntakeTest(unittest.TestCase):
                 f"{followup.CAPABILITY}: evidence_ref={evidence_ref}; owner response material missing; "
                 "source=software_proof; not_proven; primary_actions_enabled=false; "
                 "delivery_success=false; safe_to_control=false."
+            ),
+        }
+
+    def _reviewer_ack_summary(
+        self,
+        evidence_ref: str,
+        status: str = reviewer_ack_followup.ACCEPTED_FOR_OWNER_RESPONSE_INTAKE,
+        schema: str = reviewer_ack_followup.SUMMARY_SCHEMA,
+    ) -> dict[str, object]:
+        # reviewer ACK followup 是本轮新增桥接 source，仍然只能是 software_proof/not_proven。
+        return {
+            "schema": schema,
+            "schema_version": 1,
+            "source": "software_proof",
+            "status": "not_proven",
+            "capability": reviewer_ack_followup.CAPABILITY,
+            "followup_status": status,
+            "field_evidence_material_resolution_reviewer_ack_followup_escalation_status": status,
+            "evidence_boundary": reviewer_ack_followup.EVIDENCE_BOUNDARY,
+            "safe_evidence_ref": evidence_ref,
+            "evidence_ref": evidence_ref,
+            "same_evidence_ref_required": True,
+            "owner_response_material_status": "pending",
+            "next_required_evidence": list(gate.DEFAULT_REQUIRED_MATERIALS),
+            "lineage": {
+                "previous_handoff": "field_evidence_material_resolution_reviewer_ack_review_handoff",
+                "previous_handoff_capability": "field_evidence_material_resolution_reviewer_ack_review_handoff",
+            },
+            "pr5_thread": {
+                "thread_id": followup.PR5_THREAD_ID,
+                "state": "unresolved",
+                "material_state": "hardware_material_pending",
+            },
+            "not_proven": ["not_proven"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_copy": (
+                f"{reviewer_ack_followup.CAPABILITY}: followup_status={status}; "
+                f"evidence_ref={evidence_ref}; source=software_proof; not_proven; "
+                "primary_actions_enabled=false; delivery_success=false; safe_to_control=false."
             ),
         }
 
@@ -144,6 +186,56 @@ class FieldEvidenceMaterialResolutionOwnerResponseIntakeTest(unittest.TestCase):
         self.assertFalse(artifact["delivery_success"])
         self.assertFalse(artifact["safe_to_control"])
 
+    def test_reviewer_ack_bridge_accepts_owner_response_intake_ready_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact, summary, exit_code = self._build(
+                Path(tmp),
+                self._reviewer_ack_summary("field-resolution-reviewer-ack-101"),
+                self._accepted_response("field-resolution-reviewer-ack-101"),
+                "field-resolution-reviewer-ack-101",
+            )
+
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(artifact["owner_response_material_status"], "received_not_reviewed")
+        self.assertEqual(artifact["source_capability"], reviewer_ack_followup.CAPABILITY)
+        self.assertEqual(artifact["source_bridge"], gate.SOURCE_BRIDGE)
+        self.assertEqual(artifact["previous_escalation_reference"]["bridge_status"], reviewer_ack_followup.ACCEPTED_FOR_OWNER_RESPONSE_INTAKE)
+        self.assertIn("accepted_for_owner_response_intake_not_proven", encoded)
+        self.assertFalse(artifact["delivery_success"])
+        self.assertFalse(artifact["primary_actions_enabled"])
+        self.assertFalse(artifact["safe_to_control"])
+
+    def test_reviewer_ack_robot_alias_and_wrapper_inputs_are_supported(self) -> None:
+        robot_alias = self._reviewer_ack_summary(
+            "field-resolution-reviewer-ack-102",
+            schema=f"trashbot.{reviewer_ack_followup.ROBOT_ALIAS}.v1",
+        )
+        wrapper = {
+            "field_evidence_material_resolution_reviewer_ack_followup_escalation_status": {
+                "summary": self._reviewer_ack_summary("field-resolution-reviewer-ack-103")
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            alias_artifact, _alias_summary, _alias_exit = self._build(
+                Path(tmp),
+                robot_alias,
+                self._accepted_response("field-resolution-reviewer-ack-102"),
+                "field-resolution-reviewer-ack-102",
+            )
+        with tempfile.TemporaryDirectory() as tmp:
+            wrapper_artifact, _wrapper_summary, _wrapper_exit = self._build(
+                Path(tmp),
+                wrapper,
+                self._accepted_response("field-resolution-reviewer-ack-103"),
+                "field-resolution-reviewer-ack-103",
+            )
+
+        self.assertEqual(alias_artifact["review_readiness"], gate.ACCEPTED_REVIEW_READINESS)
+        self.assertEqual(wrapper_artifact["review_readiness"], gate.ACCEPTED_REVIEW_READINESS)
+        self.assertEqual(alias_artifact["source_bridge"], gate.SOURCE_BRIDGE)
+        self.assertEqual(wrapper_artifact["source_bridge"], gate.SOURCE_BRIDGE)
+
     def test_missing_owner_response_blocks_all_required_materials(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             artifact, summary, exit_code = self._build(
@@ -160,6 +252,20 @@ class FieldEvidenceMaterialResolutionOwnerResponseIntakeTest(unittest.TestCase):
         self.assertEqual(artifact["accepted_materials"], [])
         self.assertIn("owner_response_json_not_provided", json.dumps(summary, ensure_ascii=False))
         self.assertFalse(summary["primary_actions_enabled"])
+
+    def test_old_followup_source_path_remains_supported(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact, _summary, exit_code = self._build(
+                Path(tmp),
+                self._followup_summary("field-resolution-owner-legacy-101"),
+                self._accepted_response("field-resolution-owner-legacy-101"),
+                "field-resolution-owner-legacy-101",
+            )
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(artifact["source_capability"], followup.CAPABILITY)
+        self.assertEqual(artifact["source_bridge"], "field_evidence_material_resolution_followup_owner_response_intake_legacy_path")
+        self.assertEqual(artifact["review_readiness"], gate.ACCEPTED_REVIEW_READINESS)
 
     def test_partial_response_reports_accepted_missing_rejected_and_unsafe_categories(self) -> None:
         response = self._accepted_response("field-resolution-owner-103")
@@ -230,6 +336,30 @@ class FieldEvidenceMaterialResolutionOwnerResponseIntakeTest(unittest.TestCase):
         self.assertNotIn("delivery_success=true", encoded)
         self.assertNotIn("/cmd_vel", encoded)
         self.assertFalse(unsafe["delivery_success"])
+
+    def test_reviewer_ack_source_rejects_unsafe_status_and_missing_material(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            unsafe_status, unsafe_status_summary, _ = self._build(
+                Path(tmp),
+                self._reviewer_ack_summary(
+                    "field-resolution-reviewer-ack-104",
+                    reviewer_ack_followup.BLOCKED_UNSAFE_MATERIAL_CLAIMS,
+                ),
+                self._accepted_response("field-resolution-reviewer-ack-104"),
+                "field-resolution-reviewer-ack-104",
+            )
+        with tempfile.TemporaryDirectory() as tmp:
+            missing_material, _missing_summary, _ = self._build(
+                Path(tmp),
+                self._reviewer_ack_summary("field-resolution-reviewer-ack-105"),
+                None,
+                "field-resolution-reviewer-ack-105",
+            )
+
+        self.assertEqual(unsafe_status["review_readiness"], gate.MISSING_REVIEW_READINESS)
+        self.assertIn("previous_escalation_status_not_safe_for_owner_response_intake", json.dumps(unsafe_status_summary, ensure_ascii=False))
+        self.assertEqual(missing_material["owner_response_material_status"], "missing")
+        self.assertEqual(missing_material["review_readiness"], gate.MISSING_REVIEW_READINESS)
 
     def test_cli_help_and_output_literals_are_stable(self) -> None:
         help_result = subprocess.run(

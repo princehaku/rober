@@ -2339,7 +2339,9 @@ success, or any primary robot action being enabled.
 
 `pc-tools/evidence/field_evidence_material_resolution_owner_response_intake.py`
 generates the PC-only owner-response-intake gate after
-`field_evidence_material_resolution_followup_escalation_status.py`.
+`field_evidence_material_resolution_followup_escalation_status.py`, and also
+bridges the newer reviewer ACK follow-up escalation status into the same owner
+response intake mainline.
 
 - Artifact schema:
   `trashbot.field_evidence_material_resolution_owner_response_intake.v1`
@@ -2357,6 +2359,18 @@ generates the PC-only owner-response-intake gate after
   the Robot safe alias, or a compatible wrapper containing one of those safe
   schemas under
   `software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate`.
+- Reviewer ACK bridge source inputs:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1`,
+  `trashbot.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1`,
+  or a compatible
+  `field_evidence_material_resolution_reviewer_ack_followup_escalation_status`
+  artifact/summary wrapper under
+  `software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate`.
+  The bridge marker is
+  `field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge`.
+  The source must preserve `source=software_proof`, `not_proven`, the false
+  control flags, and a safe reviewer ACK follow-up state such as
+  `accepted_for_owner_response_intake_not_proven`.
 - Optional owner response input:
   sanitized owner response material metadata using
   `trashbot.field_evidence_material_resolution_owner_response_packet.v1`,
@@ -2373,6 +2387,9 @@ The output always includes safe `evidence_ref`,
 `previous_escalation_reference`, `previous_handoff_reference`, `pr5_thread`,
 `safe_copy`, and
 `evidence_boundary=software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate`.
+It may include `source_bridge=field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge`
+when the source was the reviewer ACK follow-up gate; this marker is only lineage,
+not approval.
 
 The `robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary`
 alias name is reserved as a read-only safe summary surface for downstream
@@ -2382,6 +2399,17 @@ not copy raw artifacts, raw GitHub data, local paths, credentials, DB/queue
 URLs, OSS AK/SK, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER
 parameters, tracebacks, checksums, review-acceptance claims, delivery success,
 or command authorization into any Robot-facing payload.
+
+The owner response intake output remains material classification only:
+accepted/missing/rejected/unsafe material buckets for later review. It is not
+review approval, PR closure, hardware proof, phone proof, cloud proof,
+route/elevator proof, verified terminal result, delivery success, HIL pass, or
+Objective 5 external proof. It must fail closed on mismatched or missing
+`evidence_ref`, unsupported source schema/boundary, unsafe copy, raw materials,
+credentials, bearer tokens, signed URLs, ROS topics, `/cmd_vel`, serial/UART or
+WAVE ROVER details, tracebacks, raw checksums, success/control claims, true
+phone/browser claims, `PRRT_kwDOSWB9286CJ3tX` resolution claims, or
+`delivery_success=true`.
 
 Allowed `owner_response_material_status` values are `missing`,
 `received_not_reviewed`, and `rejected_not_proven`. Allowed

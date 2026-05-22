@@ -35000,6 +35000,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             "accepted_materials_summary": ["phone_safe_resolution_note"],
             "missing_materials_summary": ["same_ref_terminal_delivery_result"],
             "rejected_materials_summary": ["unsafe_external_payload"],
+            "unsafe_materials_summary": ["unsafe_external_payload_blocked"],
             "next_required_evidence": [
                 "Inspect accepted/missing/rejected material buckets before closeout."
             ],
@@ -35023,6 +35024,31 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             "primary_actions_enabled": False,
             "safe_to_control": False,
         }
+        bridged_summary = dict(
+            safe_summary,
+            source_schema=(
+                "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status.v1"
+            ),
+            source_evidence_boundary=(
+                "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate"
+            ),
+            source_bridge=(
+                "field_evidence_material_resolution_reviewer_ack_followup_escalation_status"
+            ),
+            status="accepted_for_owner_response_intake_not_proven",
+            owner_response_status={
+                "status": "accepted_for_owner_response_intake_not_proven",
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": "reviewer ACK follow-up was bridged as safe intake metadata only",
+            },
+            source_reviewer_ack_followup_status={
+                "status": "accepted_for_owner_response_intake_not_proven",
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": "source reviewer ACK follow-up remains non-claim metadata",
+            },
+        )
         artifact = {
             "schema": "trashbot.field_evidence_material_resolution_owner_response_intake.v1",
             "evidence_boundary": (
@@ -35126,6 +35152,29 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                     "raw_github_data": {"checksum": "abc", "topic": "/cmd_vel"},
                 }
             )
+            bridged = summarize_field_evidence_material_resolution_owner_response_intake(
+                bridged_summary
+            )
+            bridged_wrapper = summarize_field_evidence_material_resolution_owner_response_intake(
+                {
+                    "schema": "trashbot.field_evidence_material_resolution_owner_response_intake.v1",
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate"
+                    ),
+                    "raw_source_artifact": {"Authorization": "Bearer unsafe"},
+                    "field_evidence_material_resolution_owner_response_intake_summary": (
+                        bridged_summary
+                    ),
+                }
+            )
+            unsafe_bridge_marker = (
+                summarize_field_evidence_material_resolution_owner_response_intake(
+                    dict(
+                        bridged_summary,
+                        source_bridge="/tmp/raw-source-artifact.json",
+                    )
+                )
+            )
             unsafe = summarize_field_evidence_material_resolution_owner_response_intake(
                 dict(
                     safe_summary,
@@ -35174,6 +35223,10 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             summary["missing_materials_summary"],
         )
         self.assertIn("unsafe_external_payload", summary["rejected_materials_summary"])
+        self.assertIn(
+            "unsafe_external_payload_blocked",
+            summary["unsafe_materials_summary"],
+        )
         self.assertFalse(summary["delivery_success"])
         self.assertFalse(summary["primary_actions_enabled"])
         self.assertFalse(summary["safe_to_control"])
@@ -35200,6 +35253,33 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             raw_only["owner_response_status"]["status"],
             "blocked_missing_field_evidence_material_resolution_owner_response_intake_summary",
         )
+        self.assertEqual(
+            bridged["status"],
+            "accepted_for_owner_response_intake_not_proven",
+        )
+        self.assertEqual(
+            bridged["source_bridge"],
+            "field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
+        )
+        self.assertEqual(
+            bridged["source_reviewer_ack_followup_status"]["status"],
+            "accepted_for_owner_response_intake_not_proven",
+        )
+        self.assertEqual(
+            bridged_wrapper["owner_response_status"]["status"],
+            "blocked_unsafe_field_evidence_material_resolution_owner_response_intake",
+        )
+        self.assertEqual(
+            unsafe_bridge_marker["owner_response_status"]["status"],
+            "blocked_unsupported_field_evidence_material_resolution_owner_response_intake",
+        )
+        bridged_encoded = json.dumps(bridged, ensure_ascii=False)
+        self.assertIn(
+            "field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
+            bridged_encoded,
+        )
+        self.assertNotIn("raw_source_artifact", bridged_encoded)
+        self.assertNotIn("Authorization", bridged_encoded)
         self.assertEqual(
             unsafe["owner_response_status"]["status"],
             "blocked_unsafe_field_evidence_material_resolution_owner_response_intake",

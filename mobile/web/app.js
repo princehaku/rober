@@ -25409,7 +25409,7 @@ function fieldEvidenceMaterialResolutionFollowupEscalationStatusFromStatus(statu
 }
 
 function fieldEvidenceMaterialResolutionOwnerResponseIntakeCandidate(status, readiness, diagnostics) {
-  // owner response intake 只走 Robot/PC 产出的 safe summary；不主动读取 raw diagnostics 或材料源文件。
+  // owner response intake 只走 Robot/PC 产出的 safe summary；bridge 也必须是脱敏后的 summary。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
     ? diagnostics.phone_readiness
     : {};
@@ -25436,6 +25436,14 @@ function fieldEvidenceMaterialResolutionOwnerResponseIntakeCandidate(status, rea
     nestedDiagnosticsSummary.field_evidence_material_resolution_owner_response_intake?.summary ||
     nestedDiagnosticsInnerSummary.field_evidence_material_resolution_owner_response_intake?.summary ||
     statusDiagnosticsSummary.field_evidence_material_resolution_owner_response_intake?.summary;
+  // reviewer ACK follow-up bridge 只作为 owner response intake 的来源说明，不新增 ACK/cursor/owner-response route。
+  const nestedBridgeSummary = status?.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge?.summary ||
+    readiness?.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge?.summary ||
+    diagnostics?.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge?.summary ||
+    diagnosticsSummary.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge?.summary ||
+    nestedDiagnosticsSummary.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge?.summary ||
+    nestedDiagnosticsInnerSummary.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge?.summary ||
+    statusDiagnosticsSummary.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge?.summary;
   return firstObject(
     status?.robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary,
     readiness?.robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary,
@@ -25454,6 +25462,23 @@ function fieldEvidenceMaterialResolutionOwnerResponseIntakeCandidate(status, rea
     nestedDiagnosticsInnerSummary.field_evidence_material_resolution_owner_response_intake_summary,
     statusDiagnosticsSummary.field_evidence_material_resolution_owner_response_intake_summary,
     nestedSafeSummary,
+    status?.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    readiness?.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    diagnostics?.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    diagnosticsReadiness.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    diagnosticsSummary.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    statusDiagnosticsSummary.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    status?.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    readiness?.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    diagnostics?.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    diagnosticsReadiness.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    diagnosticsSummary.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    nestedDiagnosticsSummary.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    nestedDiagnosticsInnerSummary.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    statusDiagnosticsSummary.field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_summary,
+    nestedBridgeSummary,
   );
 }
 
@@ -25503,6 +25528,7 @@ function fieldEvidenceMaterialResolutionOwnerResponseIntakeFromStatus(status, re
     "partial_owner_response_missing_materials_not_proven",
     "rejected_owner_response_unsafe_not_proven",
     "blocked_missing_owner_response_not_proven",
+    "accepted_for_owner_response_intake_not_proven",
   ]);
   const candidateStatus = safeFieldEvidenceMaterialResolutionOwnerResponseIntakeText(
     provided.response_status || provided.intake_status || provided.status || provided.decision,
@@ -37243,7 +37269,7 @@ function ensureFieldEvidenceMaterialResolutionOwnerResponseIntakePanel() {
       </section>
     </div>
     <p id="fieldEvidenceMaterialResolutionOwnerResponseIntakeHint" class="hint">
-      本 panel 只消费 robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary / field_evidence_material_resolution_owner_response_intake_summary / nested safe summary；展示 response status、accepted_materials、missing_materials、rejected_materials、next_required_evidence、review_readiness、evidence boundary 和 not_proven flags；不触发 Start Delivery、Confirm Dropoff、Cancel、ACK、cursor、diagnostics fetch、raw artifact、material fetch、replay、resubmit 或 robot command，也不展示 success copy。
+      本 panel 只消费 robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary / field_evidence_material_resolution_owner_response_intake_summary / field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge safe summary；展示 response status、accepted_materials、missing_materials、rejected_materials、next_required_evidence、review_readiness、evidence boundary 和 not_proven flags；不触发 Start Delivery、Confirm Dropoff、Cancel、ACK、cursor、diagnostics fetch、raw artifact、material fetch、replay、resubmit 或 robot command，也不展示 success copy。
     </p>
   `;
   anchor.insertAdjacentElement("afterend", panel);

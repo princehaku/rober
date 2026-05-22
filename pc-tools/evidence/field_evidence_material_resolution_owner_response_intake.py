@@ -27,9 +27,16 @@ ROBOT_ALIAS = "robot_diagnostics_field_evidence_material_resolution_owner_respon
 SCHEMA_VERSION = 1
 CAPABILITY = "field_evidence_material_resolution_owner_response_intake"
 SOURCE_CAPABILITY = followup.CAPABILITY
+REVIEWER_ACK_SCHEMA = "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status.v1"
+REVIEWER_ACK_SUMMARY_SCHEMA = "trashbot.field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary.v1"
+REVIEWER_ACK_ROBOT_ALIAS = "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary"
+REVIEWER_ACK_SOURCE_CAPABILITY = "field_evidence_material_resolution_reviewer_ack_followup_escalation_status"
+REVIEWER_ACK_ACCEPTED_FOR_OWNER_RESPONSE_INTAKE = "accepted_for_owner_response_intake_not_proven"
 SOURCE = "software_proof"
 EVIDENCE_BOUNDARY = "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate"
 SOURCE_BOUNDARY = followup.EVIDENCE_BOUNDARY
+REVIEWER_ACK_SOURCE_BOUNDARY = "software_proof_docker_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_gate"
+SOURCE_BRIDGE = "field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge"
 
 # 设计约束 01：本 gate 只处理脱敏 metadata，不读取真实文件、ROS graph、手机或云端。
 # 设计约束 02：上一环必须是 followup escalation status，不能绕过 owner handoff。
@@ -49,6 +56,33 @@ SUPPORTED_SOURCE_SCHEMAS = {
     followup.SUMMARY_SCHEMA,
     followup.ROBOT_ALIAS,
     f"trashbot.{followup.ROBOT_ALIAS}.v1",
+    REVIEWER_ACK_SCHEMA,
+    REVIEWER_ACK_SUMMARY_SCHEMA,
+    REVIEWER_ACK_ROBOT_ALIAS,
+    f"trashbot.{REVIEWER_ACK_ROBOT_ALIAS}.v1",
+}
+SUPPORTED_SOURCE_CAPABILITIES = {
+    SOURCE_CAPABILITY,
+    REVIEWER_ACK_SOURCE_CAPABILITY,
+}
+SOURCE_BOUNDARIES_BY_CAPABILITY = {
+    SOURCE_CAPABILITY: SOURCE_BOUNDARY,
+    REVIEWER_ACK_SOURCE_CAPABILITY: REVIEWER_ACK_SOURCE_BOUNDARY,
+}
+OLD_FOLLOWUP_SAFE_STATUSES = {
+    followup.PENDING_STATUS,
+    followup.OVERDUE_STATUS,
+    followup.ESCALATED_STATUS,
+}
+REVIEWER_ACK_SAFE_FOLLOWUP_STATUSES = {
+    "owner_response_pending_not_proven",
+    "owner_response_overdue_escalate_not_proven",
+    "blocked_missing_required_materials_not_proven",
+    REVIEWER_ACK_ACCEPTED_FOR_OWNER_RESPONSE_INTAKE,
+}
+SAFE_SOURCE_STATUSES_BY_CAPABILITY = {
+    SOURCE_CAPABILITY: OLD_FOLLOWUP_SAFE_STATUSES,
+    REVIEWER_ACK_SOURCE_CAPABILITY: REVIEWER_ACK_SAFE_FOLLOWUP_STATUSES,
 }
 RESPONSE_SCHEMAS = {
     "",
@@ -74,8 +108,12 @@ DEFAULT_REQUIRED_MATERIALS = (
 WRAPPER_KEYS = (
     "field_evidence_material_resolution_followup_escalation_status",
     "field_evidence_material_resolution_followup_escalation_status_summary",
+    "field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
+    "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary",
     followup.ROBOT_ALIAS,
+    REVIEWER_ACK_ROBOT_ALIAS,
     "robot_diagnostics_summary",
+    "mobile_readonly_summary",
     "summary",
     "artifact",
     "payload",
@@ -230,7 +268,7 @@ def _find_source(payload: dict[str, Any]) -> dict[str, Any]:
     for candidate in _candidates(payload):
         schema = _safe_text(candidate.get("schema"))
         capability = _safe_text(candidate.get("capability"))
-        if schema in SUPPORTED_SOURCE_SCHEMAS or capability == SOURCE_CAPABILITY:
+        if schema in SUPPORTED_SOURCE_SCHEMAS or capability in SUPPORTED_SOURCE_CAPABILITIES:
             return candidate
     return payload
 
@@ -337,12 +375,20 @@ def _source_view(payload: dict[str, Any], read_issue: str) -> dict[str, Any]:
     source = _find_source(payload) if payload else {}
     ref, ref_errors = _source_ref(source) if source else ("", [])
     followup_status = _safe_text(
-        source.get("followup_status") or source.get("field_evidence_material_resolution_followup_escalation_status")
+        source.get("followup_status")
+        or source.get("field_evidence_material_resolution_followup_escalation_status")
+        or source.get("field_evidence_material_resolution_reviewer_ack_followup_escalation_status")
     )
+    capability = _safe_text(source.get("capability"))
+    if not capability:
+        if _safe_text(source.get("schema")) in {REVIEWER_ACK_SCHEMA, REVIEWER_ACK_SUMMARY_SCHEMA, REVIEWER_ACK_ROBOT_ALIAS, f"trashbot.{REVIEWER_ACK_ROBOT_ALIAS}.v1"}:
+            capability = REVIEWER_ACK_SOURCE_CAPABILITY
+        elif _safe_text(source.get("schema")) in {followup.SCHEMA, followup.SUMMARY_SCHEMA, followup.ROBOT_ALIAS, f"trashbot.{followup.ROBOT_ALIAS}.v1"}:
+            capability = SOURCE_CAPABILITY
     return {
         "read_issue": read_issue,
         "schema": _safe_text(source.get("schema")),
-        "capability": _safe_text(source.get("capability")),
+        "capability": capability,
         "evidence_boundary": _safe_text(source.get("evidence_boundary") or source.get("boundary")),
         "followup_status": followup_status,
         "owner_response_material_status": _safe_text(source.get("owner_response_material_status")),
@@ -360,8 +406,10 @@ def _source_view(payload: dict[str, Any], read_issue: str) -> dict[str, Any]:
 def _source_ready(source: dict[str, Any]) -> tuple[bool, list[str]]:
     # source 不 ready 时不继续消费 owner response，防止用新材料掩盖坏 handoff。
     reasons: list[str] = []
-    schema_ok = source["schema"] in SUPPORTED_SOURCE_SCHEMAS or source["capability"] == SOURCE_CAPABILITY
-    boundary_ok = source["evidence_boundary"] == SOURCE_BOUNDARY
+    capability = source["capability"]
+    schema_ok = source["schema"] in SUPPORTED_SOURCE_SCHEMAS or capability in SUPPORTED_SOURCE_CAPABILITIES
+    boundary_ok = source["evidence_boundary"] == SOURCE_BOUNDARIES_BY_CAPABILITY.get(capability, "")
+    safe_statuses = SAFE_SOURCE_STATUSES_BY_CAPABILITY.get(capability, set())
     if source["read_issue"]:
         reasons.append(source["read_issue"])
     if not schema_ok:
@@ -374,8 +422,8 @@ def _source_ready(source: dict[str, Any]) -> tuple[bool, list[str]]:
         reasons.append("source_not_software_proof_not_proven_or_false_flags_changed")
     if source["ref_errors"] or not source["safe_evidence_ref"] or source["same_evidence_ref_required"] is not True:
         reasons.extend(source["ref_errors"] or ["missing_or_weak_same_evidence_ref"])
-    if source["followup_status"] not in {followup.PENDING_STATUS, followup.OVERDUE_STATUS, followup.ESCALATED_STATUS}:
-        reasons.append("previous_escalation_status_not_owner_response_pending_or_escalated")
+    if source["followup_status"] not in safe_statuses:
+        reasons.append("previous_escalation_status_not_safe_for_owner_response_intake")
     return not reasons, list(dict.fromkeys(reasons))
 
 
@@ -507,7 +555,7 @@ def _readiness(source_ready: bool, source_reasons: list[str], response_issue: st
     return ACCEPTED_REVIEW_READINESS, "received_not_reviewed", ["accepted_for_review_not_proven"]
 
 
-def _safe_copy(readiness: str, owner_status: str, evidence_ref: str, categories: dict[str, list[str]]) -> dict[str, Any]:
+def _safe_copy(readiness: str, owner_status: str, evidence_ref: str, categories: dict[str, list[str]], source_bridge: str) -> dict[str, Any]:
     # safe_copy 是后续 review/diagnostics/mobile 的白名单消费面。
     return {
         **_safe_flags(),
@@ -524,6 +572,7 @@ def _safe_copy(readiness: str, owner_status: str, evidence_ref: str, categories:
         "rejected_materials": categories["rejected"],
         "unsafe_materials": categories["unsafe"],
         "accepted_means": "accepted_for_review_not_proven",
+        "source_bridge": source_bridge,
         "pr5_thread": {
             "thread_id": followup.PR5_THREAD_ID,
             "state": "unresolved",
@@ -554,11 +603,13 @@ def build_field_evidence_material_resolution_owner_response_intake(
     categories, response_details, response_unsafe = _classify_materials(source, response, response_issue, requested_ref)
     readiness, owner_status, reasons = _readiness(source_ok, source_reasons, response_issue, categories, response_unsafe)
     generated_at = _utc_now()
-    safe_copy = _safe_copy(readiness, owner_status, requested_ref, categories)
+    source_bridge = SOURCE_BRIDGE if source["capability"] == REVIEWER_ACK_SOURCE_CAPABILITY else "field_evidence_material_resolution_followup_owner_response_intake_legacy_path"
+    safe_copy = _safe_copy(readiness, owner_status, requested_ref, categories, source_bridge)
     common = {
         **_safe_flags(),
         "capability": CAPABILITY,
-        "source_capability": SOURCE_CAPABILITY,
+        "source_capability": source["capability"] or SOURCE_CAPABILITY,
+        "source_bridge": source_bridge,
         "evidence_boundary": EVIDENCE_BOUNDARY,
         "safe_evidence_ref": requested_ref,
         "evidence_ref": requested_ref,
@@ -574,11 +625,12 @@ def build_field_evidence_material_resolution_owner_response_intake(
         "material_response_details": response_details,
         "accepted_means": "accepted_for_review_not_proven",
         "previous_escalation_reference": {
-            "capability": SOURCE_CAPABILITY,
+            "capability": source["capability"] or SOURCE_CAPABILITY,
             "schema": source["schema"],
             "evidence_boundary": source["evidence_boundary"],
             "followup_status": source["followup_status"],
             "safe_evidence_ref": source["safe_evidence_ref"],
+            "bridge_status": source["followup_status"] if source["capability"] == REVIEWER_ACK_SOURCE_CAPABILITY else "",
         },
         "previous_handoff_reference": {
             "capability": "field_evidence_material_resolution_review_handoff",
@@ -611,6 +663,8 @@ def build_field_evidence_material_resolution_owner_response_intake(
             "delivery_success=false",
             "safe_to_control=false",
             "accepted_for_review_not_proven",
+            "accepted_for_owner_response_intake_not_proven",
+            SOURCE_BRIDGE,
         ],
     }
     summary = {

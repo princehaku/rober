@@ -984,6 +984,61 @@ a verified terminal delivery/dropoff/cancel result, real phone/browser proof,
 public cloud proof, PR #5 reviewer resolution, HIL, Nav2 runtime proof, or
 permission to start/confirm/cancel/ACK/replay/resubmit robot commands.
 
+## robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary
+
+`robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary`
+is the Robot diagnostics safe alias for
+`field_evidence_material_resolution_owner_response_intake`. It consumes only
+the PC safe summary
+`trashbot.field_evidence_material_resolution_owner_response_intake_summary.v1`,
+an artifact wrapper containing that summary, or compatible latest status /
+diagnostics fallback metadata. When the PC summary was produced by
+`field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge`,
+Robot diagnostics may expose only the safe marker
+`source_bridge=field_evidence_material_resolution_reviewer_ack_followup_escalation_status`
+and the sanitized source reviewer ACK follow-up status. It must not expose raw
+source artifacts, local paths, raw GitHub payloads, credentials, or control
+fields from the bridge.
+
+- Source artifact schema:
+  `trashbot.field_evidence_material_resolution_owner_response_intake.v1`
+- Source summary schema:
+  `trashbot.field_evidence_material_resolution_owner_response_intake_summary.v1`
+- Supported bridge source:
+  `field_evidence_material_resolution_reviewer_ack_followup_escalation_status`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate`
+
+Allowed intake statuses are `accepted_not_proven`, `missing_not_proven`,
+`rejected_not_proven`, `blocked_not_proven`, and
+`accepted_for_owner_response_intake_not_proven`. These statuses are
+metadata-only intake states; they are not delivery success, owner-material real
+acceptance, field pass, PR #5 reviewer resolution, or robot-control
+authorization.
+
+Allowed fields are limited to capability, schema, evidence boundary, source,
+safe `evidence_ref`, owner response intake status, source reviewer ACK
+follow-up status, accepted/missing/rejected/unsafe material summaries, next
+required evidence, phone-safe copy, `source=software_proof`, `not_proven`,
+`delivery_success=false`, `safe_to_control=false`, and
+`primary_actions_enabled=false`.
+
+The alias must fail closed on unsupported source schema or bridge markers,
+unsafe raw/path/credential/control material, bearer tokens, DB/queue URLs, OSS
+secrets, raw GitHub payloads, complete artifacts, checksums, ROS topics,
+`/cmd_vel`, serial/UART details, WAVE ROVER parameters, ACK/cursor/command
+data, tracebacks, readiness/review-acceptance claims, `delivery_success=true`,
+`safe_to_control=true`, or `primary_actions_enabled=true`.
+
+`accepted_for_owner_response_intake_not_proven` only means the reviewer ACK
+follow-up bridge produced sanitized owner-response-intake metadata. It remains
+`software_proof` and `not_proven`; it is not real O5 external proof, HIL, real
+phone/browser proof, public cloud proof, a route/elevator field pass, PR #5
+thread `PRRT_kwDOSWB9286CJ3tX` resolution, or permission to
+start/confirm/cancel/ACK/replay/resubmit robot commands.
+
 ## robot_diagnostics_field_evidence_material_resolution_owner_response_review_decision_summary
 
 `robot_diagnostics_field_evidence_material_resolution_owner_response_review_decision_summary`
