@@ -1509,6 +1509,36 @@ wording. It must not enable Start Delivery, Confirm Dropoff, Cancel, ACK
 mutation, cursor mutation, replay, resubmit, robot control, route/elevator
 field pass, HIL, dropoff completion, cancel completion, or delivery success.
 
+Verified terminal-result material review handoff adds the next Robot
+diagnostics safe alias:
+
+- `robot_diagnostics_verified_terminal_result_material_review_handoff_summary`
+- `schema=trashbot.robot_diagnostics_verified_terminal_result_material_review_handoff_summary.v1`
+- `source_schema=trashbot.verified_terminal_result_material_review_handoff.v1`
+- `evidence_boundary=software_proof_docker_verified_terminal_result_material_review_handoff_gate`
+- `source=software_proof`
+- `not_proven`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+
+The alias only proves that Robot diagnostics can surface a sanitized owner
+handoff summary for verified terminal delivery/dropoff/cancel result materials.
+It can consume the canonical handoff artifact, canonical handoff summary,
+Robot alias, or compatible nested diagnostics/status summary. Handoff statuses
+such as `ready_for_owner_handoff`, `needs_material_backfill`, `rejected`, and
+`blocked` are read-only support states, not delivery success and not route,
+dropoff, cancel, ACK, or control authorization.
+
+Unsafe raw fields, raw diagnostics fetch fields, ACK/cursor mutation hints,
+replay/resubmit hints, robot-control hints, credentials, paths, checksums, ROS
+topics, serial/UART details, WAVE ROVER details, hardware raw details, and
+success/control claims must fail closed. This alias must not enable Start
+Delivery, Confirm Dropoff, Cancel, ACK mutation, cursor mutation, replay,
+resubmit, raw diagnostics fetch, robot control, route/elevator field pass, HIL,
+dropoff completion, cancel completion, terminal delivery result, or delivery
+success.
+
 ## Safety Rules
 
 - The robot never exposes `/cmd_vel` over the remote bridge.

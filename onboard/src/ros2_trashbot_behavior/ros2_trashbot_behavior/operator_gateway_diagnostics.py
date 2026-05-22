@@ -1301,6 +1301,24 @@ VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_SUMMARY_SCHEMA = (
 VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_GATE = (
     "software_proof_docker_verified_terminal_result_material_review_decision_gate"
 )
+VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_SCHEMA = (
+    "trashbot.verified_terminal_result_material_review_handoff.v1"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.verified_terminal_result_material_review_handoff_summary.v1"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_verified_terminal_result_material_review_handoff_summary.v1"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_GATE = (
+    "software_proof_docker_verified_terminal_result_material_review_handoff_gate"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_STATUSES = (
+    "ready_for_owner_handoff",
+    "needs_material_backfill",
+    "rejected",
+    "blocked",
+)
 REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SCHEMA = (
     "trashbot.real_material_followup_escalation_status.v1"
 )
@@ -57526,6 +57544,583 @@ def summarize_verified_terminal_result_material_review_decision(source):
     return summary
 
 
+def _verified_terminal_result_material_review_handoff_not_proven(
+    handoff=None, summary_fragment=None
+):
+    # handoff 只表示 owner 交接材料状态，不能被解释成终态送达、投放、取消或控制授权。
+    values = [
+        "verified_terminal_result_material_review_handoff_only",
+        "handoff_status_not_delivery_success",
+        "real_delivery_result",
+        "dropoff_completion",
+        "cancel_completion",
+        "delivery_success",
+        "robot_control_authorization",
+        "ACK_mutation",
+        "cursor_mutation",
+        "replay_or_resubmit",
+        "real_hil_pass",
+    ]
+    for container in (handoff or {}, summary_fragment or {}):
+        for item in container.get("not_proven", []) if isinstance(container, dict) else []:
+            safe_item = _redact_route_task_rehearsal_text(item)
+            if safe_item and safe_item not in values:
+                values.append(safe_item)
+    return values
+
+
+def _default_verified_terminal_result_material_review_handoff_summary(
+    path,
+    handoff_status="blocked",
+    read_error="",
+):
+    # 缺 handoff 时仍返回完整 false flags，避免空 diagnostics 被误当成送达完成或控制入口。
+    safe_copy = (
+        "Verified terminal result material review handoff is metadata-only; "
+        "source=software_proof; not_proven; safe_to_control=false; "
+        "delivery_success=false; primary_actions_enabled=false."
+    )
+    reason = read_error or (
+        "verified_terminal_result_material_review_handoff summary is not configured"
+    )
+    return {
+        "schema": VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "capability": "verified_terminal_result_material_review_handoff",
+        "evidence_boundary": VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source_contract": {"schema": "", "evidence_boundary": "", "metadata_only": True},
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "status": handoff_status,
+        "overall_status": "not_proven",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "source_review_decision": {},
+        "handoff_status": handoff_status,
+        "handoff_status_detail": {
+            "status": handoff_status,
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": reason,
+        },
+        "safe_evidence_ref": "",
+        "safe_command_id": "",
+        "terminal_result_type": "",
+        "material_status_summary": {},
+        "accepted_material_refs": [],
+        "missing_required_materials": [],
+        "rejected_material_refs": [],
+        "owner_handoff": [],
+        "next_required_evidence": [],
+        "blocked_reason": read_error,
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "robot_diagnostics_summary": {
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+        },
+        "not_proven": _verified_terminal_result_material_review_handoff_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "summary_required": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "ack_mutation_allowed": False,
+        "cursor_mutation_allowed": False,
+        "replay_allowed": False,
+        "resubmit_allowed": False,
+        "robot_control_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+    }
+
+
+def _verified_terminal_result_material_review_handoff_source_contract(value):
+    # source summary 和 Robot alias 都必须回指 handoff artifact 与本轮 handoff gate。
+    value = value if isinstance(value, dict) else {}
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema in (
+        VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_SOURCE_SUMMARY_SCHEMA,
+        VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+    ):
+        source_schema = str(
+            value.get("source_schema")
+            or VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _verified_terminal_result_material_review_handoff_summary_fragment(value):
+    # 兼容 latest_status / diagnostics / status 多层包装，但只取已经消毒的 summary。
+    if not isinstance(value, dict):
+        return {}
+    if str(value.get("schema") or "") in (
+        VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_SOURCE_SUMMARY_SCHEMA,
+        VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+    ):
+        return value
+    for candidate in (
+        value.get("verified_terminal_result_material_review_handoff_summary"),
+        value.get(
+            "robot_diagnostics_verified_terminal_result_material_review_handoff_summary"
+        ),
+        value.get("diagnostics_summary"),
+        value.get("robot_diagnostics_summary"),
+        value.get("robot_compatible_summary"),
+        value.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            return candidate
+    for container_name in ("diagnostics", "status", "latest_status"):
+        container = value.get(container_name)
+        if isinstance(container, dict):
+            nested = _verified_terminal_result_material_review_handoff_summary_fragment(
+                container
+            )
+            if nested:
+                return nested
+    return {}
+
+
+def _verified_terminal_result_material_review_handoff_has_unsafe_controls(value):
+    # 任意控制、ACK/cursor mutation、重放、resubmit 或 raw diagnostics fetch 线索都要整体降级。
+    unsafe_true_keys = {
+        "ack_mutation_allowed",
+        "cursor_mutation_allowed",
+        "replay_allowed",
+        "resubmit_allowed",
+        "robot_control_allowed",
+        "robot_command_allowed",
+        "raw_diagnostics_fetch_allowed",
+        "start_delivery_enabled",
+        "confirm_dropoff_enabled",
+        "cancel_enabled",
+        "commands_enabled",
+    }
+    unsafe_key_fragments = (
+        "raw",
+        "ack_cursor",
+        "ack_mutation",
+        "cursor_mutation",
+        "replay",
+        "resubmit",
+        "robot_control",
+        "command_envelope",
+        "control_envelope",
+        "raw_diagnostics",
+        "diagnostics_fetch",
+        "authorization",
+        "credential",
+        "secret",
+        "token",
+        "checksum",
+        "traceback",
+        "local_path",
+        "artifact_path",
+        "file_path",
+        "serial",
+        "uart",
+        "baud",
+        "cmd_vel",
+        "wave_rover",
+    )
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text == "not_proven":
+                continue
+            if key_text in unsafe_true_keys and bool(item):
+                return True
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if key_text == "delivery_success" and item is not False:
+                return True
+            if key_text == "primary_actions_enabled" and item is not False:
+                return True
+            if key_text == "safe_to_control" and item is not False:
+                return True
+            if _verified_terminal_result_material_review_handoff_has_unsafe_controls(
+                item
+            ):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _verified_terminal_result_material_review_handoff_has_unsafe_controls(item)
+            for item in value
+        )
+    if isinstance(value, str):
+        if not value.strip():
+            return False
+        return (
+            _task_terminal_field_material_intake_copy_is_unsafe(value)
+            or _route_task_field_retest_execution_pack_has_success_wording(value)
+        )
+    return False
+
+
+def _verified_terminal_result_material_review_handoff_safe_list(value):
+    # 列表字段只保留可展示的短文本，过滤所有 mutation/replay/control/raw diagnostics 词面。
+    safe_items = []
+    for item in _safe_route_task_rehearsal_list(value):
+        lowered = str(item or "").lower()
+        if any(
+            marker in lowered
+            for marker in (
+                "raw",
+                "ack_cursor",
+                "cursor_mutation",
+                "ack_mutation",
+                "replay",
+                "resubmit",
+                "robot_control",
+                "diagnostics_fetch",
+                "/cmd_vel",
+            )
+        ):
+            continue
+        safe_items.append(item)
+    return safe_items
+
+
+def summarize_verified_terminal_result_material_review_handoff(source):
+    """构建 verified terminal result material review handoff 的只读 Robot diagnostics 摘要。"""
+    # Robot 只消费 Task A 的 sanitized handoff；handoff 状态不能开启发车、投放确认、取消或 ACK/cursor 修改。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_verified_terminal_result_material_review_handoff_summary(
+        source_path,
+        read_error=(
+            "verified_terminal_result_material_review_handoff summary is not configured"
+        ),
+    )
+    if isinstance(source, dict):
+        handoff = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = (
+                "verified_terminal_result_material_review_handoff summary artifact missing"
+            )
+            summary["handoff_status_detail"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                handoff = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading verified_terminal_result_material_review_handoff summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["handoff_status_detail"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(handoff, dict):
+        summary["handoff_status_detail"]["reason"] = (
+            "verified_terminal_result_material_review_handoff JSON must be an object"
+        )
+        return summary
+
+    raw_schema = str(handoff.get("schema") or "")
+    summary_fragment = _verified_terminal_result_material_review_handoff_summary_fragment(
+        handoff
+    )
+    contract_source = summary_fragment if summary_fragment else handoff
+    source_schema, source_boundary = (
+        _verified_terminal_result_material_review_handoff_source_contract(
+            contract_source
+        )
+    )
+    if not source_schema and raw_schema:
+        source_schema = raw_schema
+    if not source_boundary:
+        source_boundary = str(handoff.get("evidence_boundary") or "")
+    handoff_status_doc = (
+        summary_fragment.get("handoff_status_detail")
+        if isinstance(summary_fragment.get("handoff_status_detail"), dict)
+        else summary_fragment.get("handoff_status")
+        if isinstance(summary_fragment.get("handoff_status"), dict)
+        else summary_fragment.get("status_summary")
+        if isinstance(summary_fragment.get("status_summary"), dict)
+        else {}
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or handoff.get("safe_copy")
+        or handoff.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    safe_copy_text = _redact_route_task_rehearsal_text(safe_copy)
+    if "delivery_success=false" not in safe_copy_text:
+        # 下游可直接展示 safe_copy，所以固定补齐 false-state 边界。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    status_value = _redact_route_task_rehearsal_text(
+        handoff_status_doc.get("status")
+        or summary_fragment.get("handoff_status")
+        or summary_fragment.get("status")
+        or handoff.get("handoff_status")
+        or handoff.get("status")
+        or "blocked"
+    )
+    overall_status = _redact_route_task_rehearsal_text(
+        summary_fragment.get("overall_status")
+        or handoff.get("overall_status")
+        or "not_proven"
+    )
+    source_value = _redact_route_task_rehearsal_text(
+        summary_fragment.get("source")
+        or handoff.get("source")
+        or handoff_status_doc.get("evidence_source")
+        or ""
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or handoff.get("safe_evidence_ref")
+        or handoff.get("evidence_ref", "")
+    )
+    safe_command_id = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_command_id")
+        or summary_fragment.get("command_id")
+        or handoff.get("safe_command_id")
+        or handoff.get("command_id")
+        or ""
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                summary_fragment.get("source_schema_version")
+                or summary_fragment.get("schema_version")
+                or handoff.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+            "source_contract": {
+                "schema": _redact_route_task_rehearsal_text(source_schema),
+                "evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "metadata_only": True,
+            },
+            "configured": bool(str(source_path or "").strip()) or isinstance(source, dict),
+            "exists": True,
+            "status": status_value,
+            "overall_status": "not_proven",
+            "source": EVIDENCE_SOURCE_SOFTWARE,
+            "source_review_decision": _safe_pc_route_debug_value(
+                summary_fragment.get("source_review_decision")
+                if isinstance(summary_fragment.get("source_review_decision"), dict)
+                else {}
+            ),
+            "handoff_status": status_value,
+            "handoff_status_detail": {
+                "status": status_value,
+                "verdict": "not_proven",
+                "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                "reason": _redact_route_task_rehearsal_text(
+                    handoff_status_doc.get("reason")
+                    or summary_fragment.get("reason")
+                    or handoff.get("reason")
+                    or "verified terminal result material review handoff is software_proof only"
+                ),
+            },
+            "safe_evidence_ref": safe_evidence_ref,
+            "safe_command_id": safe_command_id,
+            "terminal_result_type": _redact_route_task_rehearsal_text(
+                summary_fragment.get("terminal_result_type")
+                or handoff.get("terminal_result_type")
+                or ""
+            ),
+            "material_status_summary": _safe_pc_route_debug_value(
+                summary_fragment.get("material_status_summary")
+                if isinstance(summary_fragment.get("material_status_summary"), dict)
+                else {}
+            ),
+            "accepted_material_refs": (
+                _verified_terminal_result_material_review_handoff_safe_list(
+                    summary_fragment.get("accepted_material_refs")
+                )
+            ),
+            "missing_required_materials": (
+                _verified_terminal_result_material_review_handoff_safe_list(
+                    summary_fragment.get("missing_required_materials")
+                )
+            ),
+            "rejected_material_refs": (
+                _verified_terminal_result_material_review_handoff_safe_list(
+                    summary_fragment.get("rejected_material_refs")
+                )
+            ),
+            "owner_handoff": _verified_terminal_result_material_review_handoff_safe_list(
+                summary_fragment.get("owner_handoff")
+            ),
+            "next_required_evidence": (
+                _verified_terminal_result_material_review_handoff_safe_list(
+                    summary_fragment.get("next_required_evidence")
+                )
+            ),
+            "blocked_reason": _redact_route_task_rehearsal_text(
+                summary_fragment.get("blocked_reason") or handoff.get("blocked_reason") or ""
+            ),
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "safe_copy": safe_copy_text,
+                "safe_phone_copy": safe_copy_text,
+                "status": status_value,
+            },
+            "not_proven": _verified_terminal_result_material_review_handoff_not_proven(
+                handoff,
+                summary_fragment,
+            ),
+            "read_error": "",
+        }
+    )
+    if (
+        source_schema != VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_SCHEMA
+        or source_boundary != VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_GATE
+    ):
+        summary.update(
+            {
+                "status": "unsupported_schema",
+                "handoff_status": "blocked",
+                "handoff_status_detail": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "verified_terminal_result_material_review_handoff schema or evidence boundary is unsupported",
+                },
+                "source_review_decision": {},
+                "safe_evidence_ref": "",
+                "safe_command_id": "",
+                "material_status_summary": {},
+                "accepted_material_refs": [],
+                "missing_required_materials": [],
+                "rejected_material_refs": [],
+                "owner_handoff": [],
+                "next_required_evidence": [],
+            }
+        )
+        return summary
+    if (
+        raw_schema == VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_SCHEMA
+        and not summary_fragment
+    ):
+        summary.update(
+            {
+                "status": "blocked_missing_verified_terminal_result_material_review_handoff_summary",
+                "handoff_status": "blocked",
+                "handoff_status_detail": {
+                    "status": "blocked_missing_verified_terminal_result_material_review_handoff_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "verified_terminal_result_material_review_handoff artifact is missing sanitized summary",
+                },
+                "safe_evidence_ref": "",
+            }
+        )
+        return summary
+
+    # 合法 handoff 也只能是 read-only proof；任何成功/控制/raw 线索都固定转为 blocked。
+    required_safe_metadata = (
+        bool(summary_fragment),
+        source_value == EVIDENCE_SOURCE_SOFTWARE,
+        overall_status == "not_proven",
+        status_value in VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_STATUSES,
+        bool(summary["safe_evidence_ref"]),
+        bool(summary["safe_command_id"]),
+        bool(summary["terminal_result_type"]),
+        bool(summary["next_required_evidence"]),
+        bool(summary["owner_handoff"]),
+    )
+    unsafe_payload = (
+        not all(required_safe_metadata)
+        or _real_material_evidence_ref_is_unsafe(summary["safe_evidence_ref"])
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or summary_fragment.get("safe_to_control") is not False
+        or _route_task_field_run_readiness_has_unsafe_fields(handoff)
+        or _route_task_field_run_readiness_has_unsafe_fields(summary_fragment)
+        or _verified_terminal_result_material_review_handoff_has_unsafe_controls(
+            handoff
+        )
+        or _verified_terminal_result_material_review_handoff_has_unsafe_controls(
+            summary_fragment
+        )
+        or _verified_terminal_result_material_review_handoff_has_unsafe_controls(
+            robot_summary
+        )
+        or _task_terminal_field_material_intake_copy_is_unsafe(safe_copy_text)
+    )
+    if unsafe_payload:
+        blocked_copy = (
+            "Verified terminal result material review handoff was blocked because "
+            "the summary did not remain source=software_proof/not_proven with "
+            "delivery_success=false, primary_actions_enabled=false, "
+            "safe_to_control=false, and no control, ACK/cursor, replay, resubmit, "
+            "raw diagnostics, or robot-control claims."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_verified_terminal_result_material_review_handoff_summary",
+                "handoff_status": "blocked",
+                "handoff_status_detail": {
+                    "status": "blocked_unsafe_verified_terminal_result_material_review_handoff_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "verified_terminal_result_material_review_handoff contains unsafe fields, missing safe metadata, success wording, raw diagnostics, ACK/cursor/replay claims, or control claims",
+                },
+                "source_review_decision": {},
+                "safe_evidence_ref": "",
+                "safe_command_id": "",
+                "material_status_summary": {},
+                "accepted_material_refs": [],
+                "missing_required_materials": [],
+                "rejected_material_refs": [],
+                "owner_handoff": [],
+                "next_required_evidence": [],
+                "blocked_reason": blocked_copy,
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                    "status": "blocked",
+                },
+            }
+        )
+    return summary
+
+
 def summarize_real_material_followup_escalation_status(source):
     """构建真实材料 follow-up escalation status 的 summary-only Robot diagnostics 摘要。"""
     # 这里故意只读 sanitized summary；raw manifest/materials 即使存在也不能进入 Robot diagnostics。
@@ -64593,6 +65188,7 @@ def build_diagnostics_payload(
     real_material_evidence_intake_ref="",
     verified_terminal_result_material_intake_ref="",
     verified_terminal_result_material_review_decision_ref="",
+    verified_terminal_result_material_review_handoff_ref="",
     real_material_followup_escalation_status_ref="",
     field_evidence_real_material_followup_escalation_status_ref="",
     field_evidence_real_material_owner_ack_intake_ref="",
@@ -65151,6 +65747,55 @@ def build_diagnostics_payload(
         else diagnostics_source.get("verified_terminal_result_material_review_decision")
         if isinstance(
             diagnostics_source.get("verified_terminal_result_material_review_decision"),
+            dict,
+        )
+        else diagnostics_source
+        if diagnostics_source
+        else {}
+    )
+    verified_terminal_result_material_review_handoff_preserved_source = (
+        latest_status.get(
+            "robot_diagnostics_verified_terminal_result_material_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_verified_terminal_result_material_review_handoff_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "verified_terminal_result_material_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get("verified_terminal_result_material_review_handoff_summary"),
+            dict,
+        )
+        else latest_status.get("verified_terminal_result_material_review_handoff")
+        if isinstance(
+            latest_status.get("verified_terminal_result_material_review_handoff"),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_verified_terminal_result_material_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_verified_terminal_result_material_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "verified_terminal_result_material_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "verified_terminal_result_material_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("verified_terminal_result_material_review_handoff")
+        if isinstance(
+            diagnostics_source.get("verified_terminal_result_material_review_handoff"),
             dict,
         )
         else diagnostics_source
@@ -70367,6 +71012,27 @@ def build_diagnostics_payload(
         "robot_diagnostics_verified_terminal_result_material_review_decision_summary",
     ):
         latest_status.pop(unsafe_latest_key, None)
+    verified_terminal_result_material_review_handoff_source = (
+        verified_terminal_result_material_review_handoff_ref
+        or os.environ.get("TRASHBOT_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF", "")
+        or os.environ.get(
+            "TRASHBOT_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_SUMMARY",
+            "",
+        )
+        or verified_terminal_result_material_review_handoff_preserved_source
+    )
+    verified_terminal_result_material_review_handoff_summary = (
+        summarize_verified_terminal_result_material_review_handoff(
+            verified_terminal_result_material_review_handoff_source
+        )
+    )
+    # handoff 输入可带 wrapper/raw sibling；输出前仅保留统一 Robot-safe alias。
+    for unsafe_latest_key in (
+        "verified_terminal_result_material_review_handoff",
+        "verified_terminal_result_material_review_handoff_summary",
+        "robot_diagnostics_verified_terminal_result_material_review_handoff_summary",
+    ):
+        latest_status.pop(unsafe_latest_key, None)
     real_material_followup_escalation_status_source = (
         real_material_followup_escalation_status_ref
         or os.environ.get("TRASHBOT_REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS", "")
@@ -71188,6 +71854,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_verified_terminal_result_material_review_decision_summary=(
             verified_terminal_result_material_review_decision_summary
+        ),
+        verified_terminal_result_material_review_handoff=(
+            verified_terminal_result_material_review_handoff_summary
+        ),
+        verified_terminal_result_material_review_handoff_summary=(
+            verified_terminal_result_material_review_handoff_summary
+        ),
+        robot_diagnostics_verified_terminal_result_material_review_handoff_summary=(
+            verified_terminal_result_material_review_handoff_summary
         ),
         real_material_followup_escalation_status=(
             real_material_followup_escalation_status_summary

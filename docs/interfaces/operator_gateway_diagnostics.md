@@ -604,6 +604,54 @@ ACK mutation, cursor mutation, replay, resubmit, robot control, commands, Nav2,
 WAVE ROVER, HIL, material collection, production readiness, dropoff/cancel
 completion, or delivery success.
 
+## robot_diagnostics_verified_terminal_result_material_review_handoff_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_verified_terminal_result_material_review_handoff_summary`
+as the safe alias for `verified_terminal_result_material_review_handoff`.
+
+- Source artifact schema:
+  `trashbot.verified_terminal_result_material_review_handoff.v1`
+- Source summary schema:
+  `trashbot.verified_terminal_result_material_review_handoff_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_verified_terminal_result_material_review_handoff_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_verified_terminal_result_material_review_handoff_gate`
+
+The alias is metadata-only and read-only. It may consume
+`verified_terminal_result_material_review_handoff`,
+`verified_terminal_result_material_review_handoff_summary`, the Robot alias,
+or a compatible nested diagnostics/status summary. A raw artifact wrapper is
+accepted only when it contains the sanitized summary.
+
+Allowed handoff statuses are `ready_for_owner_handoff`,
+`needs_material_backfill`, `rejected`, and `blocked`. These are owner-handoff
+metadata states only; they are not delivery success, dropoff/cancel completion,
+readiness, or permission to operate the robot.
+
+Allowed fields are limited to source review decision summary, handoff status,
+safe `evidence_ref`, safe `command_id`, terminal result type, material status
+summary, accepted material refs, missing required materials, rejected material
+refs, owner handoff, next required evidence, blocked reason, safe copy,
+`source=software_proof`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`.
+
+The alias must fail closed for missing sanitized summary, unreadable input,
+unsupported schema or evidence boundary, `source` other than `software_proof`,
+`overall_status` other than `not_proven`, unsafe `evidence_ref`, unsafe copy,
+raw artifact fields, raw diagnostics fetch fields, credentials, local paths,
+checksums, ROS topics, `/cmd_vel`, ACK mutation hints, cursor mutation hints,
+replay/resubmit hints, serial/UART details, WAVE ROVER details,
+success/control claims, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true`.
+
+This alias must not enable Start Delivery, Confirm Dropoff, Cancel, ACK
+mutation, cursor mutation, replay, resubmit, raw diagnostics fetch, robot
+control, commands, Nav2, WAVE ROVER, HIL, material collection, production
+readiness, dropoff/cancel completion, cancel completion, delivery result, or
+delivery success.
+
 ## robot_diagnostics_real_material_followup_escalation_status_summary
 
 Robot diagnostics exposes

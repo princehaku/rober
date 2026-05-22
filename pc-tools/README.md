@@ -119,6 +119,38 @@ reviewer-resolution claims 和 success/control overclaim；`accepted_for_review`
 不证明真实 delivery/dropoff/cancel、真实手机/browser、HIL、O5 external proof
 或机器人控制权限。
 
+## verified terminal result material review handoff
+
+`pc-tools/evidence/verified_terminal_result_material_review_handoff.py` 是
+PC-only terminal-result 材料 owner handoff gate，能力名
+`verified_terminal_result_material_review_handoff`：
+
+```bash
+python3 pc-tools/evidence/verified_terminal_result_material_review_handoff.py \
+  --input /tmp/verified_terminal_result_material_review_decision_summary.json \
+  --output-dir /tmp/verified_terminal_result_material_review_handoff
+```
+
+输入支持上一轮 `verified_terminal_result_material_review_decision` artifact、summary、
+Robot safe alias `robot_diagnostics_verified_terminal_result_material_review_decision_summary`
+以及常见 wrapper/nested JSON。输出写入
+`verified_terminal_result_material_review_handoff.json` 和
+`verified_terminal_result_material_review_handoff_summary.json`，证据边界固定为
+`software_proof_docker_verified_terminal_result_material_review_handoff_gate`，
+并始终保持 `not_proven`、`delivery_success=false`、
+`primary_actions_enabled=false`、`safe_to_control=false`。
+
+`handoff_status` 只允许 `ready_for_owner_handoff`、`needs_material_backfill`、
+`rejected` 和 `blocked`。该 gate 输出 source review decision、safe
+`evidence_ref`、safe `command_id`、`terminal_result_type`、material status
+summary、`accepted_material_refs`、`missing_required_materials`、
+`rejected_material_refs`、`owner_handoff`、`next_required_evidence`、
+`blocked_reason` 和 `safe_copy`。它拒绝 raw artifacts、本机路径、凭证、
+DB/queue URL、ROS/control details、hardware/UART details、reviewer-resolution
+claims 和 success/control overclaim；`ready_for_owner_handoff` 只表示 owner 可接手
+脱敏 handoff package，不证明真实 terminal delivery/dropoff/cancel result、
+delivery success、真实手机/browser、HIL、O5 external proof 或机器人控制权限。
+
 ## hardware sensor HIL-entry callback intake
 
 `pc-tools/evidence/hardware_sensor_hil_entry_callback_intake_gate.py` 是

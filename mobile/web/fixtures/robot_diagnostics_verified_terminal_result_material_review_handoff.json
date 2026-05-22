@@ -1,0 +1,154 @@
+{
+  "robot_diagnostics_verified_terminal_result_material_review_handoff_summary": {
+    "schema": "trashbot.verified_terminal_result_material_review_handoff_summary.v1",
+    "capability": "verified_terminal_result_material_review_handoff",
+    "source": "software_proof",
+    "handoff_status": "needs_material_backfill",
+    "source_review_decision": "source_review_decision=needs_material_backfill",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "command_id": "cmd_terminal_result_material_handoff_20260522_0001",
+    "safe_command_id": "command_id=cmd_terminal_result_material_handoff_20260522_0001",
+    "evidence_ref": "verified_terminal_result_material_review_handoff_fixture_20260522_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_review_handoff_fixture_20260522_0001",
+    "material_status_summary": [
+      "material_status=terminal result summary pending",
+      "material_status=task record summary accepted",
+      "material_status=phone behavior note pending"
+    ],
+    "accepted_material_refs": [
+      "accepted_material=task_record_summary_safe_ref",
+      "accepted_material=review_decision_summary_safe_ref"
+    ],
+    "missing_required_materials": [
+      "missing_material=verified_terminal_result_summary",
+      "missing_material=field_owner_phone_behavior_note"
+    ],
+    "rejected_material_refs": [
+      "rejected_material=none"
+    ],
+    "owner_handoff": [
+      "owner handoff=field_owner_backfills_verified_terminal_result_materials",
+      "owner handoff=robot_owner_confirms_same_safe_evidence_ref_before_closeout"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=field owner uploads verified terminal result summary under same safe evidence_ref",
+      "next_required_evidence=Robot/API republishes sanitized handoff summary",
+      "next_required_evidence=real public cloud, phone browser, route elevator evidence, and HIL remain pending"
+    ],
+    "blocked_reason": "blocked_reason=missing_verified_terminal_result_material_review_handoff_not_proven",
+    "safe_copy": {
+      "handoff_status": "handoff_status=needs_material_backfill",
+      "source_review_decision": "source_review_decision=needs_material_backfill",
+      "terminal_result_type": "terminal_result_type=delivery",
+      "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_review_handoff_fixture_20260522_0001",
+      "safe_command_id": "command_id=cmd_terminal_result_material_handoff_20260522_0001",
+      "material_status_summary": [
+        "material_status=terminal result summary pending",
+        "material_status=task record summary accepted",
+        "material_status=phone behavior note pending"
+      ],
+      "accepted_material_refs": [
+        "accepted_material=task_record_summary_safe_ref",
+        "accepted_material=review_decision_summary_safe_ref"
+      ],
+      "missing_required_materials": [
+        "missing_material=verified_terminal_result_summary",
+        "missing_material=field_owner_phone_behavior_note"
+      ],
+      "rejected_material_refs": [
+        "rejected_material=none"
+      ],
+      "owner_handoff": [
+        "owner handoff=field_owner_backfills_verified_terminal_result_materials",
+        "owner handoff=robot_owner_confirms_same_safe_evidence_ref_before_closeout"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=field owner uploads verified terminal result summary under same safe evidence_ref",
+        "next_required_evidence=Robot/API republishes sanitized handoff summary"
+      ],
+      "blocked_reason": "blocked_reason=missing_verified_terminal_result_material_review_handoff_not_proven",
+      "evidence_boundary": "software_proof_docker_verified_terminal_result_material_review_handoff_gate"
+    },
+    "safe_phone_copy": "Terminal result 材料复核交接为 needs_material_backfill；owner handoff 已列出缺口，Start Delivery、Confirm Dropoff、Cancel 继续 disabled。",
+    "recovery_hint": "把 safe_copy 交给现场 owner 和支持人员；等待同一 safe evidence_ref 的 verified terminal result 材料回填。",
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_review_handoff_gate",
+    "proof_boundary": "software_proof_docker_verified_terminal_result_material_review_handoff_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "verified_terminal_result_missing",
+      "true_phone_browser_proof_missing",
+      "route_elevator_evidence_missing",
+      "hil_pass_missing",
+      "o5_external_proof_missing"
+    ]
+  },
+  "verified_terminal_result_material_review_handoff_summary": {
+    "schema": "trashbot.verified_terminal_result_material_review_handoff_summary.v1",
+    "capability": "verified_terminal_result_material_review_handoff",
+    "source": "software_proof",
+    "handoff_status": "blocked",
+    "source_review_decision": "source_review_decision=needs_material_backfill",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "safe_command_id": "command_id=cmd_terminal_result_material_handoff_20260522_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_review_handoff_fixture_20260522_0001",
+    "material_status_summary": [
+      "material_status=terminal result summary pending"
+    ],
+    "accepted_material_refs": [
+      "accepted_material=task_record_summary_safe_ref"
+    ],
+    "missing_required_materials": [
+      "missing_material=verified_terminal_result_summary"
+    ],
+    "rejected_material_refs": [
+      "rejected_material=none"
+    ],
+    "owner_handoff": [
+      "owner handoff=field_owner_material_backfill"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=verified terminal result material backfill"
+    ],
+    "blocked_reason": "blocked_reason=missing_verified_terminal_result_material_review_handoff_not_proven",
+    "safe_copy": "verified_terminal_result_material_review_handoff；handoff_status=blocked；owner handoff=field_owner_material_backfill；command_id=cmd_terminal_result_material_handoff_20260522_0001；evidence_ref=verified_terminal_result_material_review_handoff_fixture_20260522_0001；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_review_handoff_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "verified_terminal_result_material_review_handoff": {
+    "summary": {
+      "schema": "trashbot.verified_terminal_result_material_review_handoff_summary.v1",
+      "capability": "verified_terminal_result_material_review_handoff",
+      "source": "software_proof",
+      "handoff_status": "blocked",
+      "source_review_decision": "source_review_decision=needs_material_backfill",
+      "terminal_result_type": "terminal_result_type=delivery",
+      "safe_command_id": "command_id=cmd_terminal_result_material_handoff_20260522_0001",
+      "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_review_handoff_fixture_20260522_0001",
+      "blocked_reason": "blocked_reason=missing_verified_terminal_result_material_review_handoff_not_proven",
+      "safe_copy": "nested verified_terminal_result_material_review_handoff safe_copy only；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+      "evidence_boundary": "software_proof_docker_verified_terminal_result_material_review_handoff_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

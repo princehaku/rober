@@ -32,6 +32,9 @@ VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
 VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_review_decision.json"
 )
+VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_review_handoff.json"
+)
 CLOUD_COMMAND_EXPIRY_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_expiry_safety_guard.json"
 CLOUD_COMMAND_IDEMPOTENCY_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_idempotency_visibility_guard.json"
@@ -647,6 +650,177 @@ class VerifiedTerminalResultMaterialReviewDecisionMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, review_text)
+
+
+class VerifiedTerminalResultMaterialReviewHandoffMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_verified_terminal_result_material_review_handoff_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(
+            VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # handoff panel 只消费 safe summary 和 backend safe_copy，不新增控制、ACK/cursor、raw/handoff route。
+        self.assertIn("VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_BOUNDARY", app)
+        self.assertIn("UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_TEXT", app)
+        self.assertIn("safeVerifiedTerminalResultMaterialReviewHandoffText", app)
+        self.assertIn("verifiedTerminalResultMaterialReviewHandoffCandidate", app)
+        self.assertIn("verifiedTerminalResultMaterialReviewHandoffFromStatus", app)
+        self.assertIn("renderVerifiedTerminalResultMaterialReviewHandoff", app)
+        self.assertIn("Terminal Result 材料复核交接", app)
+        self.assertIn("robot_diagnostics_verified_terminal_result_material_review_handoff_summary", app)
+        self.assertIn("verified_terminal_result_material_review_handoff_summary", app)
+        self.assertIn("verified_terminal_result_material_review_handoff?.summary", app)
+        self.assertIn("safe_copy", app)
+        self.assertIn("handoff_status", app)
+        self.assertIn("source_review_decision", app)
+        self.assertIn("terminal_result_type", app)
+        self.assertIn("material_status_summary", app)
+        self.assertIn("accepted_material_refs", app)
+        self.assertIn("missing_required_materials", app)
+        self.assertIn("rejected_material_refs", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("blocked_reason", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("verified-terminal-result-material-review-handoff-panel", styles)
+        self.assertNotRegex(
+            app,
+            r"verifiedTerminalResultMaterialReviewHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackVerifiedTerminalResultMaterialReviewHandoff",
+            "cursorVerifiedTerminalResultMaterialReviewHandoff",
+            "fetchVerifiedTerminalResultMaterialReviewHandoffDiagnostics",
+            "fetchVerifiedTerminalResultMaterialReviewHandoffArtifact",
+            "replayVerifiedTerminalResultMaterialReviewHandoff",
+            "resubmitVerifiedTerminalResultMaterialReviewHandoff",
+            "commandVerifiedTerminalResultMaterialReviewHandoff",
+            "reviewVerifiedTerminalResultMaterialReviewHandoff",
+            "handoffVerifiedTerminalResultMaterialReviewHandoff",
+            "downloadVerifiedTerminalResultMaterialReviewHandoffButton",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # fixture 明确 owner handoff 是 software_proof/not_proven，safe_copy 存在但三类主操作继续 disabled。
+        summary = fixture[
+            "robot_diagnostics_verified_terminal_result_material_review_handoff_summary"
+        ]
+        fallback = fixture["verified_terminal_result_material_review_handoff_summary"]
+        nested = fixture["verified_terminal_result_material_review_handoff"]["summary"]
+        self.assertEqual(summary["capability"], "verified_terminal_result_material_review_handoff")
+        self.assertEqual(summary["handoff_status"], "needs_material_backfill")
+        self.assertEqual(summary["source_review_decision"], "source_review_decision=needs_material_backfill")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("cmd_terminal_result_material_handoff_20260522_0001", summary["safe_command_id"])
+        self.assertIn("verified_terminal_result_material_review_handoff_fixture", summary["safe_evidence_ref"])
+        self.assertIn("safe_copy", summary)
+        self.assertEqual(fallback["handoff_status"], "blocked")
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        for required in (
+            "verified_terminal_result_material_review_handoff",
+            "software_proof_docker_verified_terminal_result_material_review_handoff_gate",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "handoff_status=needs_material_backfill",
+            "source_review_decision=needs_material_backfill",
+            "terminal_result_type=delivery",
+            "owner handoff=field_owner_backfills_verified_terminal_result_materials",
+            "command_id=cmd_terminal_result_material_handoff_20260522_0001",
+            "evidence_ref=verified_terminal_result_material_review_handoff_fixture_20260522_0001",
+        ):
+            self.assertIn(required, fixture_text)
+
+        # 产品文档必须写清 handoff 只是只读 owner 交接，不是真实手机、HIL 或送达证明。
+        self.assertIn("verified_terminal_result_material_review_handoff", doc)
+        self.assertIn("robot_diagnostics_verified_terminal_result_material_review_handoff_summary", doc)
+        self.assertIn("software_proof_docker_verified_terminal_result_material_review_handoff_gate", doc)
+        self.assertIn("owner handoff", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not HIL", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_verified_terminal_result_material_review_handoff_fixture_stays_phone_safe(self):
+        fixture = json.loads(
+            VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        handoff_text = json.dumps(
+            {
+                "robot": fixture[
+                    "robot_diagnostics_verified_terminal_result_material_review_handoff_summary"
+                ],
+                "fallback": fixture["verified_terminal_result_material_review_handoff_summary"],
+                "nested": fixture["verified_terminal_result_material_review_handoff"]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留 phone-safe owner handoff metadata，不泄漏材料原文、路径、凭证、ACK/cursor 或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw status",
+            "raw artifact",
+            "raw command",
+            "raw terminal result",
+            "raw material",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "command route",
+            "ack route",
+            "cursor route",
+            "handoff route",
+            "authorization",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "artifact fetch",
+            "replay",
+            "resubmit",
+            "robot command",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, handoff_text)
 
 
 class FieldEvidenceRerunMaterialDispatchMobileTest(unittest.TestCase):
