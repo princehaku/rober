@@ -1,0 +1,109 @@
+{
+  "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_summary.v1",
+    "schema_version": 1,
+    "source_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_summary",
+    "source": "software_proof",
+    "review_handoff_status": "ready_for_acceptance_review_handoff_not_proven",
+    "source_review_decision_status": "ready_for_acceptance_handoff_review_handoff_not_proven",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_fixture_20260523_0203",
+    "accepted_safe_material_refs": [
+      "accepted_safe_material_refs=acceptance_handoff_intake_review_decision_same_evidence_ref",
+      "accepted_safe_material_refs=owner_support_reviewer_next_step_summary"
+    ],
+    "missing_rework_reasons": [
+      "missing_rework_reasons=handoff_needs_owner_rework",
+      "missing_rework_reasons=real task record summary not_proven",
+      "missing_rework_reasons=real Nav2 fixed route runtime log not_proven",
+      "missing_rework_reasons=real route completion signal not_proven",
+      "missing_rework_reasons=real elevator evidence not_proven",
+      "missing_rework_reasons=real dropoff cancel completion not_proven",
+      "missing_rework_reasons=true phone browser evidence not_proven"
+    ],
+    "rejected_unsafe_material_refs": [
+      "rejected_unsafe_material_refs=handoff_evidence_ref_mismatch",
+      "rejected_unsafe_material_refs=handoff_unsafe_rejected"
+    ],
+    "owner_support_reviewer_next_step": "owner_support_reviewer_next_step=handoff_needs_owner_rework until field owner supplies same safe evidence_ref materials",
+    "safe_phone_copy": "现场证据复跑执行结果验收交接回执复核交接 safe copy: review_handoff_status=ready_for_acceptance_review_handoff_not_proven, source=software_proof, not_proven, safe_to_control=false, delivery_success=false, primary_actions_enabled=false.",
+    "boundary_flags": "source=software_proof / software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "真实 task record",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 elevator evidence",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "true phone/browser evidence",
+      "HIL",
+      "O5 external proof"
+    ]
+  },
+  "field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_summary.v1",
+    "source": "software_proof",
+    "review_handoff_status": "handoff_needs_owner_rework",
+    "source_review_decision_status": "blocked_missing_review_decision",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_fixture_20260523_0203",
+    "accepted_safe_material_refs": [
+      "accepted_safe_material_refs=acceptance_handoff_intake_review_decision_same_evidence_ref"
+    ],
+    "missing_rework_reasons": [
+      "missing_rework_reasons=handoff_needs_owner_rework"
+    ],
+    "rejected_unsafe_material_refs": [
+      "rejected_unsafe_material_refs=handoff_evidence_ref_mismatch",
+      "rejected_unsafe_material_refs=handoff_unsafe_rejected"
+    ],
+    "owner_support_reviewer_next_step": "owner_support_reviewer_next_step=wait for same safe evidence_ref materials before review handoff closure",
+    "safe_phone_copy": "fallback summary keeps 现场证据复跑执行结果验收交接回执复核交接 read-only；not_proven。",
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "true phone/browser evidence"
+    ]
+  },
+  "field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff": {
+    "summary": {
+      "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_summary.v1",
+      "source": "software_proof",
+      "review_handoff_status": "blocked_missing_review_decision",
+      "source_review_decision_status": "blocked_missing_review_decision",
+      "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_fixture_20260523_0203",
+      "accepted_safe_material_refs": [
+        "accepted_safe_material_refs=none_not_proven"
+      ],
+      "missing_rework_reasons": [
+        "missing_rework_reasons=blocked_missing_review_decision"
+      ],
+      "rejected_unsafe_material_refs": [
+        "rejected_unsafe_material_refs=handoff_unsafe_rejected"
+      ],
+      "owner_support_reviewer_next_step": "owner_support_reviewer_next_step=handoff_needs_owner_rework until safe review decision materials are complete",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}
