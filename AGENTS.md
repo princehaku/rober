@@ -265,3 +265,67 @@ Sprint 文档是项目迭代的主线，不允许因为"执行优先"就不写�
 - 没有验证证据就宣称完成。
 - 验证失败后不定位、不修复，直接交差。
 - 不按迭代推进。
+
+### 代码目录分层与测试分层（仓库级强制规范）
+
+为解决“目录结构混乱、单测平铺”问题，后续所有子 Agent 任务必须遵循以下仓库级分层规范：
+
+#### 目录分层规范（Directory Layering）
+
+- **L0 根目录（只放治理文件）**：`AGENTS.md`、`OKR.md`、`README*`、`docs/`、`sprints/`、`onboard/`、`.codex/`。禁止把业务脚本、临时测试、实验产物直接堆在仓库根目录。
+- **L1 域目录（按职责分区）**：
+  - `onboard/src/ros2_trashbot_interfaces`：接口契约层（msg/srv/action）。
+  - `onboard/src/ros2_trashbot_behavior`：行为编排层（task_orchestrator、状态机）。
+  - `onboard/src/ros2_trashbot_nav`：导航能力层（Nav2、waypoint、地图流程）。
+  - `onboard/src/ros2_trashbot_bringup`：启动装配层（launch、参数入口、模式切换）。
+  - `onboard/src/ros2_trashbot_vision`：感知扩展层（可选视觉能力）。
+- **L2 包内目录（按运行职责分层）**：建议固定 `launch/`、`config/`、`scripts/`、`src/`、`include/`、`resource/`、`test/`；禁止把 launch、配置、脚本、测试互相平铺混放。
+- **L3 文档目录（与代码同频）**：`docs/` 下按 `process/`、`hardware/`、`product/`、`integration/` 等主题分区；任何架构或流程改动必须同步更新对应文档，不允许“代码已改、文档滞后”。
+
+#### 测试分层规范（Testing Layering）
+
+- **T0 快速静态检查层**：格式、lint、基础脚本自检（如 `rg` 规则扫描、`git diff --check`）。目标是分钟级反馈。
+- **T1 包内单元测试层**：每个 ROS2 包的 `test/` 目录只放该包单测，禁止跨包平铺；命名建议 `test_<module>_<behavior>.py`。
+- **T2 包间集成测试层**：跨 topic/action/service 契约验证统一放到集成测试目录（建议 `onboard/tests/integration/`，若未创建则在对应 sprint 建立并登记）。
+- **T3 端到端/场景测试层**：learn/autonomous 全链路、容器化构建、回归 smoke；结果必须落地到 sprint 文档作为证据边界。
+- **禁止项**：不得把临时验证脚本伪装成单测长期留存；不得把跨包测试塞进任一单包 `test/` 导致职责污染。
+
+#### 子 Agent 拆分执行模板（强制带文件范围与验收命令）
+
+当任务需要 2+ owner 且文件范围可分离时，主节点必须按以下模板并行派发，不得串行口头转述：
+
+```markdown
+[角色 System Prompt]
+（完整粘贴对应 .codex/agents/<role>.toml prompt）
+
+[本轮任务]
+- 目标：
+- 上下文：
+- 预期产出：
+
+[目录分层与测试分层约束]
+- 目录分层：仅允许在 <paths...> 内改动，禁止新增根目录散落文件。
+- 测试分层：新增/修改测试必须落在 <package>/test 或 onboard/tests/integration 对应层级。
+
+[文件范围]
+- Allowed:
+  - <file_a>
+  - <file_b>
+- Forbidden:
+  - 任何未列出的路径
+
+[验收命令]
+- <cmd_1>
+- <cmd_2>
+
+[输出要求]
+1. 实际改动文件列表
+2. 验证命令日志片段
+3. 失败定位与修复（如有）
+4. 剩余风险与协同请求（Product/Hardware/Autonomy/Full-Stack）
+```
+
+补充要求：
+- 每个子 Agent 输出必须明确“本次变更对应 T0/T1/T2/T3 哪一层测试”。
+- 若目录调整会影响其他并行任务，必须先在任务描述中写明接口影响，再执行改动。
+- 若无法满足文件范围或验收命令，子 Agent 必须在结果中显式声明阻塞原因，禁止静默降级。

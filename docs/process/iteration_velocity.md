@@ -181,3 +181,40 @@ Epic sprint 的 tech-plan.md 推荐使用以下模板：
 ### 6.2 自指风险与首个示范用例
 
 本文规则的引入本身就是一个 Epic sprint：`sprints/2026.05.12_23-24_iteration-velocity-fence-tuning/`。该 sprint 走完整六文档，作为新分层规则的首个示范用例。新规则只覆盖未来 sprint，**不追溯过往 sprint**。
+
+## 7. 目录分层规范与测试分层规范（新增）
+
+### 7.1 目录分层规范（Repository Layering）
+
+为减少“文件平铺 + 职责耦合”导致的并行冲突，后续 sprint 必须按以下目录分层执行：
+
+1. **根目录治理层**：仓库根仅保留治理与入口文件（`AGENTS.md`、`OKR.md`、`docs/`、`sprints/`、`onboard/`、`.codex/`）。
+2. **域职责层**：`onboard/src/` 下按 interfaces / behavior / nav / bringup / vision 五域分治，不跨域随意落文件。
+3. **包内运行层**：每个包内部按 `launch/ config/ src/ scripts/ test/` 职责分区；禁止 launch、参数、测试混放。
+4. **文档同步层**：流程规则、架构边界、验证口径变化必须同步更新 `docs/`，并在 sprint 留档写明证据边界。
+
+### 7.2 测试分层规范（Testing Pyramid for ros_rbs）
+
+每轮改动至少声明命中哪一层测试，避免“只跑一个命令就宣称闭环”：
+
+- **T0 静态快速层**：`rg` 规则扫描、`git diff --check`、基础 lint/格式检查。
+- **T1 包内单测层**：单包 `test/` 内的单元测试，禁止跨包平铺。
+- **T2 包间集成层**：topic/action/service 契约测试，统一进入集成测试目录（建议 `onboard/tests/integration/`）。
+- **T3 端到端场景层**：learn/autonomous 或容器化链路回归，输出可复验日志。
+
+规则：
+- PR / sprint 的 `tech-done.md` 必须至少记录 1 条 T0 或 T1 命令；涉及接口改动时必须补 T2；涉及流程入口或行为链路改动时必须补 T3 或说明无法执行原因。
+- 临时脚本默认视为实验资产，不得直接等价替代正式单元测试。
+
+### 7.3 子 Agent 拆分执行模板（并行落地）
+
+当 tech-plan 判定为 2+ owner 且可并行时，主节点派发必须包含以下模板字段：
+
+1. 角色 System Prompt（完整注入）；
+2. 本轮任务（目标/上下文/预期产出）；
+3. 目录分层与测试分层约束；
+4. 文件范围（Allowed + Forbidden）；
+5. 验收命令（至少 1 条，且可复验）；
+6. 输出要求（改动文件、日志片段、失败定位、剩余风险）。
+
+若任一字段缺失，视为派发信息不完整；子 Agent 可拒绝执行并回传阻塞说明，主节点需先补全再派发。

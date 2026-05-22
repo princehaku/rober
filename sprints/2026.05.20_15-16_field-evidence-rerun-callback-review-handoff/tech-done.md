@@ -34,7 +34,17 @@
 - 改动 `docs/product/mobile_user_flow.md`。
 - 新增只读“现场证据复跑复核交接”panel，优先消费 `robot_diagnostics_field_evidence_rerun_callback_review_handoff_summary`，兼容 direct / nested summary，不启用 Start / Confirm / Cancel。
 
+
+
+### Product / 子agent 架构化拆分补录
+
+- 按“子agent 架构化拆分目录和测试”要求补充：本轮已按 Autonomy / Robot / Full-Stack 三条并行子任务拆分目录与测试范围，分别限定在 `pc-tools+tests+docs/interfaces`、`onboard/src/ros2_trashbot_behavior+test+docs/interfaces`、`mobile/web+mobile/fixtures+docs/product`，避免跨域互相改写。
+- 三条子任务均要求并回传独立验证结果（编译/单测/结构化检索/差异检查），并在本文件统一归档到“验证结果”章节，满足“实现与测试同域收口”的交接要求。
+- 交接口径：该补录仅确认目录与测试分治执行方式已落地，不新增硬件事实，不改变 `software_proof` 证据边界。
+
 ## 3. 验证结果
+
+- 子agent 架构化拆分核对：三条任务的目录边界、测试命令与结果均已逐项记录并可追溯。
 
 ### Autonomy Task A
 
@@ -76,6 +86,7 @@
 
 ## 6. 剩余风险
 
+- 子agent 拆分虽已覆盖软件目录与测试分治，但仍缺跨端联调实机证据；若后续改动跨域接口，需新增一次端到端回归以防分治通过但集成失配。
 - Objective 5 仍缺真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、production worker/migration/cutover 和真实手机/browser external proof。
 - Objective 1 仍缺真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、operator HIL report，以及 PR #5 `PRRT_kwDOSWB9286CJ3tX` 所需真实 2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry 材料。
 - Objective 2 / 3 / 4 仍缺真实现场 task record、真实 route completion signal、真实 Nav2/fixed-route runtime log、真实电梯门/楼层/人工协助记录、真实 dropoff/cancel completion、delivery result 和真实手机/browser evidence。
