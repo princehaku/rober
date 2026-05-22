@@ -2523,6 +2523,63 @@ details, reviewer resolution claims, enabled primary actions, delivery-success
 claims, or field/cloud/phone/HIL proof claims are rejected without copying raw
 material into the artifact.
 
+## field_evidence_material_resolution_reviewer_ack_intake
+
+`pc-tools/evidence/field_evidence_material_resolution_reviewer_ack_intake.py`
+generates the PC-only reviewer ACK intake gate after
+`field_evidence_material_resolution_owner_response_review_handoff.py`.
+
+- Artifact schema:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_intake.v1`
+- Summary schema:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_intake_summary.v1`
+- Robot diagnostics alias:
+  `robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate`
+- Capability:
+  `field_evidence_material_resolution_reviewer_ack_intake`
+- Allowed source inputs:
+  `trashbot.field_evidence_material_resolution_owner_response_review_handoff.v1`,
+  `trashbot.field_evidence_material_resolution_owner_response_review_handoff_summary.v1`,
+  the Robot safe alias, or a compatible wrapper containing one of those safe
+  schemas under
+  `software_proof_docker_field_evidence_material_resolution_owner_response_review_handoff_gate`.
+- Allowed ACK inputs:
+  an optional-schema
+  `trashbot.field_evidence_material_resolution_reviewer_ack_packet.v1` or
+  `_summary.v1` object with `source=software_proof`, `not_proven`, same safe
+  `evidence_ref`, `same_evidence_ref_required=true`, and all action flags
+  false.
+
+The output always includes safe `evidence_ref`,
+`same_evidence_ref_required=true`, `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, `reviewer_ack_state`,
+`source_handoff_status`, `source_handoff`, `reviewer_acknowledgement`,
+`next_required_evidence`, `proof_flags`, `safe_copy`, and
+`evidence_boundary=software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate`.
+
+Allowed `reviewer_ack_state` values are exactly `acknowledged`,
+`needs_reassignment`, `blocked_missing_handoff`, and `rejected_unsafe_ack`.
+`acknowledged` means only that reviewer/support/field-owner has received the
+sanitized handoff ACK under the same safe evidence ref. `needs_reassignment`
+means only that the sanitized handoff needs a different owner route. Missing
+source or ACK JSON, bad JSON, unsupported source schema or boundary, missing
+software-proof/not-proven fields, missing safe `evidence_ref`,
+evidence-ref mismatch, or weak `same_evidence_ref_required` typing maps to
+`blocked_missing_handoff`. Unsafe copy, raw paths, credentials, ROS/control
+details, checksums, stack traces, reviewer-resolution claims, enabled primary
+actions, delivery-success claims, PR #5 resolution claims, or
+field/cloud/phone/HIL proof claims map to `rejected_unsafe_ack`.
+
+This contract is software proof only. It does not prove a real reviewer
+resolution, real owner acceptance, real route/elevator field pass, real
+Nav2/fixed-route execution, real task record, real route completion signal,
+real dropoff or cancel completion, verified terminal result, delivery success,
+real phone/browser evidence, HIL pass, Objective 5 external cloud/4G/OSS/CDN/
+DB/queue proof, PR #5 resolution, or any primary robot action being enabled.
+
 ## route_task_field_retest_result_callback_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_callback_review_decision.py`

@@ -1300,6 +1300,55 @@ reviewer-resolution claim、raw artifact、credential/local path、ROS/control d
 field/cloud/phone/HIL proof claim 会输出
 `rejected_unsafe_owner_response_handoff_not_proven`。
 
+## field evidence material resolution reviewer ack intake
+
+`pc-tools/evidence/field_evidence_material_resolution_reviewer_ack_intake.py`
+只读上一节
+`field_evidence_material_resolution_owner_response_review_handoff` artifact、
+summary、Robot safe alias 或 wrapper/nested JSON，并读取 reviewer/support/field-owner
+提交的脱敏 ACK packet，把 reviewer ACK 转成 canonical safe artifact / summary：
+
+```bash
+python3 pc-tools/evidence/field_evidence_material_resolution_reviewer_ack_intake.py \
+  --handoff-json /tmp/field_evidence_material_resolution_owner_response_review_handoff_summary.json \
+  --reviewer-ack-json /tmp/field_evidence_material_resolution_reviewer_ack_packet.json \
+  --evidence-ref field-material-resolution-reviewer-ack-001 \
+  --output /tmp/field_evidence_material_resolution_reviewer_ack_intake.json \
+  --summary-output /tmp/field_evidence_material_resolution_reviewer_ack_intake_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.field_evidence_material_resolution_reviewer_ack_intake.v1`，
+summary 使用
+`schema=trashbot.field_evidence_material_resolution_reviewer_ack_intake_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary`，
+证据边界固定为
+`software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate`。
+核心字段包括
+`capability=field_evidence_material_resolution_reviewer_ack_intake`、safe
+`evidence_ref`、`reviewer_ack_state`、`source_handoff_status`、
+`source_handoff`、`reviewer_acknowledgement`、`next_required_evidence`、
+`proof_flags`、`safe_copy`、`source=software_proof`、`not_proven`、
+`primary_actions_enabled=false`、`delivery_success=false` 和
+`safe_to_control=false`。
+
+`reviewer_ack_state` 枚举严格固定为 `acknowledged`、`needs_reassignment`、
+`blocked_missing_handoff` 和 `rejected_unsafe_ack`。`acknowledged` 只表示
+reviewer/support/field-owner 已收到脱敏 handoff ACK，`needs_reassignment` 只表示需要
+把同一 safe `evidence_ref` 下的 handoff 转派给新的 owner；二者都不是真实 material
+accepted、OKR movement、真实 field pass、verified terminal result、delivery success、
+HIL、O5 external proof、真实 phone/browser 证据或 PR #5 resolved。缺 handoff、缺 ACK、
+bad JSON、unsupported schema、缺上一环 proof boundary、缺 safe `evidence_ref` 或
+evidence-ref mismatch 会 fail closed 到 `blocked_missing_handoff`；success/control/
+reviewer-resolution claim、raw artifact、credential/local path、ROS/control detail、
+field/cloud/phone/HIL proof claim 会输出 `rejected_unsafe_ack`。顶层 acceptance command
+可用
+`python3 -m unittest pc-tools.evidence.test_field_evidence_material_resolution_reviewer_ack_intake`
+运行离线围栏测试；该入口只证明本地
+`software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate`
+的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

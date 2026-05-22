@@ -217,6 +217,7 @@ const FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_BOUNDARY = "
 const FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_BOUNDARY = "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate";
 const FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_REVIEW_DECISION_BOUNDARY = "software_proof_docker_field_evidence_material_resolution_owner_response_review_decision_gate";
 const FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_field_evidence_material_resolution_owner_response_review_handoff_gate";
+const FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_INTAKE_BOUNDARY = "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate";
 const WAVE_ROVER_FEEDBACK_REPLAY_BOUNDARY = "software_proof_docker_wave_rover_feedback_replay_gate";
 const WAVE_ROVER_HIL_PACKET_INTAKE_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_intake_gate";
 const WAVE_ROVER_HIL_PACKET_REVIEW_DECISION_BOUNDARY = "software_proof_docker_wave_rover_hil_packet_review_decision_gate";
@@ -337,6 +338,7 @@ const UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_FOLLOWUP_ESCALATION_STATUS_TEXT 
 const UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw response|raw material|raw blocker|raw escalation|raw resolution|raw owner packet|raw packet|raw review|raw decision|raw handoff|raw followup|raw result|upload|download|copy raw|ack payload|cursor|diagnostics fetch|material fetch|command replay|replay request|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw response|raw material|raw blocker|raw escalation|raw resolution|raw owner packet|raw packet|raw review artifact|raw decision|raw handoff|raw followup|raw result|upload|download|copy raw|ack payload|cursor|diagnostics fetch|material fetch|command replay|replay request|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|reviewer resolved|github resolved|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_REVIEW_HANDOFF_TEXT = UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_REVIEW_DECISION_TEXT;
+const UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_INTAKE_TEXT = UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_REVIEW_DECISION_TEXT;
 const UNSAFE_FIELD_RUN_READINESS_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_FIELD_RUN_CONSOLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw route response|raw robot response|complete bundle|complete artifact|field run artifact|execution bundle|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
 const UNSAFE_FIELD_RUN_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|execution bundle|raw robot response|robot\/internal|internal technical|password|dropoff success|cancel completed|hil_pass)/i;
@@ -535,6 +537,7 @@ let latestFieldEvidenceMaterialResolutionFollowupEscalationStatus = null;
 let latestFieldEvidenceMaterialResolutionOwnerResponseIntake = null;
 let latestFieldEvidenceMaterialResolutionOwnerResponseReviewDecision = null;
 let latestFieldEvidenceMaterialResolutionOwnerResponseReviewHandoff = null;
+let latestFieldEvidenceMaterialResolutionReviewerAckIntake = null;
 let latestCloudSupportHandoffSafeExport = null;
 let latestCloudCommandLifecycleAuditExport = null;
 let latestVerifiedTerminalResultMaterialIntake = null;
@@ -1412,6 +1415,15 @@ function safeFieldEvidenceMaterialResolutionOwnerResponseReviewHandoffText(value
   // review handoff 只允许交接摘要；完整 artifact、ACK/cursor、控制授权或完成语义都必须降级。
   const text = safeText(value, fallback);
   if (UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_REVIEW_HANDOFF_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeFieldEvidenceMaterialResolutionReviewerAckIntakeText(value, fallback = "not_proven") {
+  // reviewer ACK intake 只是 PR/材料复核入口摘要；任何 reviewer resolved、raw ACK 或控制语义都降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_INTAKE_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -25865,6 +25877,175 @@ function fieldEvidenceMaterialResolutionOwnerResponseReviewHandoffFromStatus(sta
   };
 }
 
+function fieldEvidenceMaterialResolutionReviewerAckIntakeCandidate(status, readiness, diagnostics) {
+  // reviewer ACK intake 只读 status/readiness/diagnostics 里的 safe summary，不新增后端拉取路径。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const nestedSafeSummary = status?.field_evidence_material_resolution_reviewer_ack_intake?.summary ||
+    readiness?.field_evidence_material_resolution_reviewer_ack_intake?.summary ||
+    diagnostics?.field_evidence_material_resolution_reviewer_ack_intake?.summary ||
+    diagnosticsSummary.field_evidence_material_resolution_reviewer_ack_intake?.summary ||
+    nestedDiagnosticsSummary.field_evidence_material_resolution_reviewer_ack_intake?.summary ||
+    nestedDiagnosticsInnerSummary.field_evidence_material_resolution_reviewer_ack_intake?.summary ||
+    statusDiagnosticsSummary.field_evidence_material_resolution_reviewer_ack_intake?.summary;
+  return firstObject(
+    status?.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary,
+    readiness?.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary,
+    diagnostics?.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary,
+    diagnosticsReadiness.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary,
+    diagnosticsSummary.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary,
+    statusDiagnosticsSummary.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary,
+    status?.field_evidence_material_resolution_reviewer_ack_intake_summary,
+    readiness?.field_evidence_material_resolution_reviewer_ack_intake_summary,
+    diagnostics?.field_evidence_material_resolution_reviewer_ack_intake_summary,
+    diagnosticsReadiness.field_evidence_material_resolution_reviewer_ack_intake_summary,
+    diagnosticsSummary.field_evidence_material_resolution_reviewer_ack_intake_summary,
+    nestedDiagnosticsSummary.field_evidence_material_resolution_reviewer_ack_intake_summary,
+    nestedDiagnosticsInnerSummary.field_evidence_material_resolution_reviewer_ack_intake_summary,
+    statusDiagnosticsSummary.field_evidence_material_resolution_reviewer_ack_intake_summary,
+    nestedSafeSummary,
+  );
+}
+
+function fieldEvidenceMaterialResolutionReviewerAckIntakeList(value, fallback) {
+  // ACK 附带的材料/下一步只作为短列表展示；对象会转成 key=value，避免渲染原始包。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        return safeFieldEvidenceMaterialResolutionReviewerAckIntakeText(
+          `${item[0]}=${safeFieldEvidenceMaterialResolutionReviewerAckIntakeText(item[1], "")}`,
+          "",
+        );
+      }
+      return safeFieldEvidenceMaterialResolutionReviewerAckIntakeText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 12) : [fallback];
+}
+
+function fieldEvidenceMaterialResolutionReviewerAckIntakeNotProvenList(value) {
+  // reviewer ACK 只表示已收到 reviewer 入口摘要，不证明 PR 关闭、现场通过、手机验证或控制授权。
+  const provided = notProvenList(value?.not_proven || value?.not_proven_flags);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "same_evidence_ref_required=true",
+    "reviewer_ack_not_pr5_resolution",
+    "not_true_phone_browser",
+    "not_robot_control_grant",
+    "route_elevator_runtime_missing",
+    "dropoff_completion_missing",
+    "cancel_completion_missing",
+    "verified_delivery_result_missing",
+    "hardware_hil_missing",
+    "o5_external_proof_missing",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 32);
+}
+
+function fieldEvidenceMaterialResolutionReviewerAckIntakeFromStatus(status, readiness, diagnostics) {
+  const provided = fieldEvidenceMaterialResolutionReviewerAckIntakeCandidate(status, readiness, diagnostics) || {};
+  const allowedAckStatuses = new Set([
+    "ack_received_not_proven",
+    "ack_needs_more_material_not_proven",
+    "ack_rejected_unsafe_not_proven",
+    "blocked_missing_reviewer_ack_not_proven",
+  ]);
+  const candidateStatus = safeFieldEvidenceMaterialResolutionReviewerAckIntakeText(
+    provided.ack_status || provided.reviewer_ack_status || provided.status || provided.intake_status,
+    "blocked_missing_reviewer_ack_not_proven",
+  );
+  const failClosedFlags = provided.safe_to_control === true ||
+    provided.delivery_success === true ||
+    provided.primary_actions_enabled === true;
+  const ackStatus = allowedAckStatuses.has(candidateStatus) && !failClosedFlags
+    ? candidateStatus
+    : "blocked_missing_reviewer_ack_not_proven";
+  return {
+    missing: !Object.keys(provided).length || failClosedFlags,
+    schema: "trashbot.field_evidence_material_resolution_reviewer_ack_intake_summary.v1",
+    source_schema: safeFieldEvidenceMaterialResolutionReviewerAckIntakeText(
+      provided.source_schema || provided.artifact_schema,
+      "trashbot.field_evidence_material_resolution_reviewer_ack_intake.v1",
+    ),
+    capability: "field_evidence_material_resolution_reviewer_ack_intake",
+    source: safeFieldEvidenceMaterialResolutionReviewerAckIntakeText(provided.source, "software_proof"),
+    ack_status: ackStatus,
+    source_handoff_status: safeFieldEvidenceMaterialResolutionReviewerAckIntakeText(
+      provided.source_handoff_status || provided.source_review_handoff_status || provided.source_review_handoff,
+      "source_handoff_status=blocked_missing_owner_response_review_handoff_not_proven",
+    ),
+    safe_evidence_ref: safeFieldEvidenceMaterialResolutionReviewerAckIntakeText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    actor_role: safeFieldEvidenceMaterialResolutionReviewerAckIntakeText(
+      provided.actor_role || provided.reviewer_role || provided.actor,
+      "actor_role=reviewer_ack_reader",
+    ),
+    reviewer_material_review_next_step: fieldEvidenceMaterialResolutionReviewerAckIntakeList(
+      provided.reviewer_material_review_next_step || provided.material_review_next_step || provided.reviewer_next_steps,
+      "reviewer_material_review_next_step=等待 reviewer 提供 phone-safe ACK 或补证要求。",
+    ),
+    reassignment: fieldEvidenceMaterialResolutionReviewerAckIntakeList(
+      provided.reassignment || provided.reassignment_next_steps || provided.reassigned_owner,
+      "reassignment=none_not_proven",
+    ),
+    field_owner_supplement: fieldEvidenceMaterialResolutionReviewerAckIntakeList(
+      provided.field_owner_supplement || provided.field_owner_supplements || provided.owner_supplement,
+      "field_owner_supplement=同一 safe evidence_ref 补齐现场材料。",
+    ),
+    missing_required_materials: fieldEvidenceMaterialResolutionReviewerAckIntakeList(
+      provided.missing_required_materials || provided.missing_materials || provided.required_missing,
+      "missing_required_materials=true phone/browser、route/elevator runtime、verified terminal result、HIL 或 O5 external material",
+    ),
+    rejected_unsafe_ack_reasons: fieldEvidenceMaterialResolutionReviewerAckIntakeList(
+      provided.rejected_unsafe_ack_reasons || provided.rejected_unsafe_reasons || provided.unsafe_reasons,
+      "rejected_unsafe_ack_reasons=none",
+    ),
+    next_required_evidence: fieldEvidenceMaterialResolutionReviewerAckIntakeList(
+      provided.next_required_evidence || provided.next_evidence || provided.required_evidence,
+      "next_required_evidence=同一 safe evidence_ref 的 reviewer ACK 补证和现场材料摘要。",
+    ),
+    evidence_boundary: safeFieldEvidenceMaterialResolutionReviewerAckIntakeText(
+      provided.evidence_boundary || provided.proof_boundary,
+      FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_INTAKE_BOUNDARY,
+    ),
+    safe_copy: safeFieldEvidenceMaterialResolutionReviewerAckIntakeText(
+      provided.safe_copy || provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary,
+      "reviewer ACK intake blocked/not_proven; not true phone/browser, delivery_success=false, safe_to_control=false.",
+    ),
+    boundary_flags: "source=software_proof / not_proven / not true phone/browser / delivery_success=false / primary_actions_enabled=false / safe_to_control=false / not robot control grant / not PR #5 resolution",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: fieldEvidenceMaterialResolutionReviewerAckIntakeNotProvenList(provided),
+  };
+}
+
 function waveRoverFeedbackReplayCandidate(status, readiness, diagnostics) {
   // 兼容 PC gate、Robot diagnostics 和 status 多层 summary；前端拒绝读取 raw artifact。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -36844,6 +37025,140 @@ function renderFieldEvidenceMaterialResolutionOwnerResponseReviewHandoff(status)
   );
 }
 
+function ensureFieldEvidenceMaterialResolutionReviewerAckIntakePanel() {
+  // reviewer ACK 入口紧跟 owner response handoff；它只解释复核 ACK，不提交材料或控制机器人。
+  let panel = $("fieldEvidenceMaterialResolutionReviewerAckIntakePanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("fieldEvidenceMaterialResolutionOwnerResponseReviewHandoffTitle")?.closest("section") ||
+    $("fieldEvidenceMaterialResolutionOwnerResponseReviewDecisionTitle")?.closest("section") ||
+    $("fieldEvidenceMaterialResolutionOwnerResponseIntakeTitle")?.closest("section") ||
+    $("elevatorAssistPanel");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "fieldEvidenceMaterialResolutionReviewerAckIntakePanel";
+  panel.className = "field-evidence-material-resolution-reviewer-ack-intake-panel";
+  panel.setAttribute("aria-labelledby", "fieldEvidenceMaterialResolutionReviewerAckIntakeTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="fieldEvidenceMaterialResolutionReviewerAckIntakeTitle">现场材料 reviewer ACK 入口</h2>
+      <span id="fieldEvidenceMaterialResolutionReviewerAckIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="fieldEvidenceMaterialResolutionReviewerAckIntakeCopy" class="message">
+      等待 robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary。
+    </p>
+    <dl class="field-evidence-material-resolution-reviewer-ack-intake-grid">
+      <div><dt>ACK Status</dt><dd id="fieldEvidenceMaterialResolutionReviewerAckIntakeStatus">blocked_missing_reviewer_ack_not_proven</dd></div>
+      <div><dt>Source Handoff Status</dt><dd id="fieldEvidenceMaterialResolutionReviewerAckIntakeSourceHandoff">source_handoff_status=blocked_missing_owner_response_review_handoff_not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="fieldEvidenceMaterialResolutionReviewerAckIntakeEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Actor Role</dt><dd id="fieldEvidenceMaterialResolutionReviewerAckIntakeActorRole">actor_role=reviewer_ack_reader</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="fieldEvidenceMaterialResolutionReviewerAckIntakeBoundary">software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate</dd></div>
+      <div><dt>Fail-Closed Flags</dt><dd id="fieldEvidenceMaterialResolutionReviewerAckIntakeFlags">source=software_proof / not_proven / not true phone/browser / delivery_success=false / primary_actions_enabled=false / safe_to_control=false / not robot control grant / not PR #5 resolution</dd></div>
+      <div><dt>not_proven</dt><dd id="fieldEvidenceMaterialResolutionReviewerAckIntakeNotProven">reviewer ACK、真实手机/browser、路线电梯现场通过、dropoff/cancel、HIL、PR #5 resolution 和 delivery_success=false 边界未解除。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section>
+        <h3>Reviewer Material Review Next Step</h3>
+        <ol id="fieldEvidenceMaterialResolutionReviewerAckIntakeNextStep" class="handoff-checklist">
+          <li>等待 reviewer material review next step。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Reassignment</h3>
+        <ol id="fieldEvidenceMaterialResolutionReviewerAckIntakeReassignment" class="handoff-checklist">
+          <li>等待 reassignment。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Field Owner Supplement</h3>
+        <ol id="fieldEvidenceMaterialResolutionReviewerAckIntakeSupplement" class="handoff-checklist">
+          <li>等待 field owner supplement。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Missing Required Materials</h3>
+        <ol id="fieldEvidenceMaterialResolutionReviewerAckIntakeMissing" class="handoff-checklist">
+          <li>等待 missing required materials。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Rejected Unsafe ACK Reasons</h3>
+        <ol id="fieldEvidenceMaterialResolutionReviewerAckIntakeRejected" class="handoff-checklist">
+          <li>等待 rejected unsafe ACK reasons。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Next Required Evidence</h3>
+        <ol id="fieldEvidenceMaterialResolutionReviewerAckIntakeNextEvidence" class="handoff-checklist">
+          <li>等待 next required evidence。</li>
+        </ol>
+      </section>
+    </div>
+    <p id="fieldEvidenceMaterialResolutionReviewerAckIntakeHint" class="hint">
+      本 panel 只消费 robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary / field_evidence_material_resolution_reviewer_ack_intake_summary / nested safe summary；展示 ack_status、source handoff status、safe evidence ref、actor role、reviewer material review next step、reassignment、field owner supplement、missing required materials、rejected unsafe ACK reasons、next required evidence、proof boundary 和 flags；不触发 Start Delivery、Confirm Dropoff、Cancel、ACK、cursor、diagnostics fetch、raw artifact、material fetch、replay、resubmit 或 robot command；not true phone/browser、not delivery success、not robot control grant、not PR #5 resolution。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderFieldEvidenceMaterialResolutionReviewerAckIntake(status) {
+  const panel = ensureFieldEvidenceMaterialResolutionReviewerAckIntakePanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = fieldEvidenceMaterialResolutionReviewerAckIntakeFromStatus(
+    status,
+    readiness,
+    latestDiagnostics,
+  );
+  latestFieldEvidenceMaterialResolutionReviewerAckIntake = summary;
+  const badge = $("fieldEvidenceMaterialResolutionReviewerAckIntakeBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 reviewer ACK" : "reviewer ACK not_proven";
+  $("fieldEvidenceMaterialResolutionReviewerAckIntakeCopy").textContent = summary.safe_copy;
+  $("fieldEvidenceMaterialResolutionReviewerAckIntakeStatus").textContent =
+    `${summary.source} / ${summary.ack_status}`;
+  $("fieldEvidenceMaterialResolutionReviewerAckIntakeSourceHandoff").textContent =
+    summary.source_handoff_status;
+  $("fieldEvidenceMaterialResolutionReviewerAckIntakeEvidenceRef").textContent =
+    summary.safe_evidence_ref;
+  $("fieldEvidenceMaterialResolutionReviewerAckIntakeActorRole").textContent = summary.actor_role;
+  $("fieldEvidenceMaterialResolutionReviewerAckIntakeBoundary").textContent = summary.evidence_boundary;
+  $("fieldEvidenceMaterialResolutionReviewerAckIntakeFlags").textContent = summary.boundary_flags;
+  $("fieldEvidenceMaterialResolutionReviewerAckIntakeNotProven").textContent =
+    summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceMaterialResolutionReviewerAckIntakeNextStep",
+    summary.reviewer_material_review_next_step,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceMaterialResolutionReviewerAckIntakeReassignment",
+    summary.reassignment,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceMaterialResolutionReviewerAckIntakeSupplement",
+    summary.field_owner_supplement,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceMaterialResolutionReviewerAckIntakeMissing",
+    summary.missing_required_materials,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceMaterialResolutionReviewerAckIntakeRejected",
+    summary.rejected_unsafe_ack_reasons,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceMaterialResolutionReviewerAckIntakeNextEvidence",
+    summary.next_required_evidence,
+  );
+}
+
 function renderHardwareSensorProcurementIntake(status) {
   const readiness = readinessFromStatus(status);
   const summary = hardwareSensorProcurementIntakeFromStatus(status, readiness, latestDiagnostics);
@@ -44390,6 +44705,14 @@ function renderDiagnosticsSummary(payload) {
       ).handoff_status,
     ],
     [
+      "field_evidence_material_resolution_reviewer_ack_intake",
+      fieldEvidenceMaterialResolutionReviewerAckIntakeFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).ack_status,
+    ],
+    [
       "cloud_support_handoff_safe_export",
       cloudSupportHandoffSafeExportFromStatus(
         payload || {},
@@ -44613,6 +44936,7 @@ function renderOfflineFailure() {
   renderFieldEvidenceMaterialResolutionOwnerResponseIntake({});
   renderFieldEvidenceMaterialResolutionOwnerResponseReviewDecision({});
   renderFieldEvidenceMaterialResolutionOwnerResponseReviewHandoff({});
+  renderFieldEvidenceMaterialResolutionReviewerAckIntake({});
   renderCloudSupportHandoffSafeExport({});
   renderCloudCommandLifecycleAuditExport({});
   renderVerifiedTerminalResultMaterialIntake({});
@@ -44771,6 +45095,7 @@ function renderStatus(status) {
   renderFieldEvidenceMaterialResolutionOwnerResponseIntake(status);
   renderFieldEvidenceMaterialResolutionOwnerResponseReviewDecision(status);
   renderFieldEvidenceMaterialResolutionOwnerResponseReviewHandoff(status);
+  renderFieldEvidenceMaterialResolutionReviewerAckIntake(status);
   renderWaveRoverFeedbackReplay(status);
   renderWaveRoverHilPacketIntake(status);
   renderWaveRoverHilPacketReviewDecision(status);

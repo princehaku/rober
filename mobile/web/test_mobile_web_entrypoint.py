@@ -148,6 +148,10 @@ FIELD_EVIDENCE_MATERIAL_RESOLUTION_OWNER_RESPONSE_REVIEW_HANDOFF_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_material_resolution_owner_response_review_handoff_summary.json"
 )
+FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_INTAKE_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -813,7 +817,6 @@ class VerifiedTerminalResultMaterialReviewHandoffMobileTest(unittest.TestCase):
             "serial",
             "uart",
             "wave rover",
-            "delivery success",
             "dropoff success",
             "cancel completed",
             "field pass",
@@ -13137,7 +13140,6 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "serial",
             "uart",
             "wave rover",
-            "delivery success",
             "dropoff success",
             "cancel completed",
             "field pass",
@@ -14390,6 +14392,181 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "uart",
             "wave rover",
             "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "hil_pass",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "material fetch",
+            "replay",
+            "resubmit",
+            "robot command",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, response_text)
+
+    def test_field_evidence_material_resolution_reviewer_ack_intake_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_INTAKE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # reviewer ACK intake 只读 safe summary；不得新增 ACK/cursor/raw fetch 或主操作授权。
+        self.assertIn("FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_INTAKE_TEXT", app)
+        self.assertIn("safeFieldEvidenceMaterialResolutionReviewerAckIntakeText", app)
+        self.assertIn("fieldEvidenceMaterialResolutionReviewerAckIntakeCandidate", app)
+        self.assertIn("fieldEvidenceMaterialResolutionReviewerAckIntakeFromStatus", app)
+        self.assertIn("renderFieldEvidenceMaterialResolutionReviewerAckIntake", app)
+        self.assertIn("现场材料 reviewer ACK 入口", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary",
+            app,
+        )
+        self.assertIn("field_evidence_material_resolution_reviewer_ack_intake_summary", app)
+        self.assertIn("field_evidence_material_resolution_reviewer_ack_intake?.summary", app)
+        self.assertIn("ack_status", app)
+        self.assertIn("source_handoff_status", app)
+        self.assertIn("actor_role", app)
+        self.assertIn("reviewer_material_review_next_step", app)
+        self.assertIn("reassignment", app)
+        self.assertIn("field_owner_supplement", app)
+        self.assertIn("missing_required_materials", app)
+        self.assertIn("rejected_unsafe_ack_reasons", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("not true phone/browser", app)
+        self.assertIn("not delivery success", app)
+        self.assertIn("not robot control grant", app)
+        self.assertIn("not PR #5 resolution", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("field-evidence-material-resolution-reviewer-ack-intake-panel", styles)
+        self.assertNotIn("copyFieldEvidenceMaterialResolutionReviewerAckIntakeButton", app)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceMaterialResolutionReviewerAckIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackFieldEvidenceMaterialResolutionReviewerAckIntake",
+            "cursorFieldEvidenceMaterialResolutionReviewerAckIntake",
+            "fetchFieldEvidenceMaterialResolutionReviewerAckIntakeDiagnostics",
+            "fetchFieldEvidenceMaterialResolutionReviewerAckIntakeMaterial",
+            "replayFieldEvidenceMaterialResolutionReviewerAckIntake",
+            "resubmitFieldEvidenceMaterialResolutionReviewerAckIntake",
+            "commandFieldEvidenceMaterialResolutionReviewerAckIntake",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # dedicated fixture 覆盖 ACK 主摘要、fallback、nested summary，并保持主操作和成功语义关闭。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary"
+        ]
+        fallback = dedicated_fixture[
+            "field_evidence_material_resolution_reviewer_ack_intake_summary"
+        ]
+        nested = dedicated_fixture[
+            "field_evidence_material_resolution_reviewer_ack_intake"
+        ]["summary"]
+        self.assertEqual(summary["capability"], "field_evidence_material_resolution_reviewer_ack_intake")
+        self.assertEqual(summary["ack_status"], "ack_needs_more_material_not_proven")
+        self.assertEqual(fallback["ack_status"], "ack_received_not_proven")
+        self.assertEqual(nested["ack_status"], "blocked_missing_reviewer_ack_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "field_evidence_material_resolution_reviewer_ack_intake",
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary",
+            "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
+            "ack_status",
+            "source_handoff_status",
+            "safe_evidence_ref",
+            "actor_role",
+            "reviewer_material_review_next_step",
+            "reassignment",
+            "field_owner_supplement",
+            "missing_required_materials",
+            "rejected_unsafe_ACK_reason",
+            "next_required_evidence",
+            "not true phone/browser",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not robot control grant",
+            "not PR #5 resolution",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn("field_evidence_material_resolution_reviewer_ack_intake", doc)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary",
+            doc,
+        )
+        self.assertIn(
+            "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
+            doc,
+        )
+        self.assertIn("not true phone/browser", doc)
+        self.assertIn("not delivery success", doc)
+        self.assertIn("not robot control grant", doc)
+        self.assertIn("not PR #5 resolution", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+
+    def test_field_evidence_material_resolution_reviewer_ack_intake_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_INTAKE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        response_text = json.dumps(
+            {
+                "robot": dedicated_fixture[
+                    "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary"
+                ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_material_resolution_reviewer_ack_intake_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "field_evidence_material_resolution_reviewer_ack_intake"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只能包含 reviewer ACK safe summary，不泄漏原始材料、凭证、ACK/cursor 或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw material",
+            "raw owner packet",
+            "raw ack",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
             "dropoff success",
             "cancel completed",
             "field pass",

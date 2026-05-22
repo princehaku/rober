@@ -1,0 +1,156 @@
+{
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false,
+  "command_safety": {
+    "primary_actions_enabled": false,
+    "actions": {
+      "start": {
+        "enabled": false,
+        "reason": "field_evidence_material_resolution_reviewer_ack_intake_not_control_grant"
+      },
+      "confirm_dropoff": {
+        "enabled": false,
+        "reason": "field_evidence_material_resolution_reviewer_ack_intake_not_dropoff_completion"
+      },
+      "cancel": {
+        "enabled": false,
+        "reason": "field_evidence_material_resolution_reviewer_ack_intake_not_cancel_completion"
+      }
+    }
+  },
+  "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_intake_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_intake_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_intake.v1",
+    "capability": "field_evidence_material_resolution_reviewer_ack_intake",
+    "source": "software_proof",
+    "ack_status": "ack_needs_more_material_not_proven",
+    "source_handoff_status": "source_handoff_status=needs_owner_more_evidence_handoff_not_proven",
+    "safe_evidence_ref": "safe_evidence_ref=field_evidence_material_resolution_reviewer_ack_intake:TASK-2026-05-22-ACK",
+    "actor_role": "actor_role=reviewer_ack_reader",
+    "reviewer_material_review_next_step": [
+      "reviewer_material_review_next_step=确认 owner response handoff 后继续等待真实现场材料补证",
+      "reviewer_material_review_next_step=不得把 reviewer ACK 写成 PR #5 resolution"
+    ],
+    "reassignment": [
+      "reassignment=field_owner 继续补齐 route/elevator material",
+      "reassignment=support 只读同步 missing materials"
+    ],
+    "field_owner_supplement": [
+      "field_owner_supplement=补齐同一 safe evidence_ref 的 task record",
+      "field_owner_supplement=补齐 true phone/browser evidence"
+    ],
+    "missing_required_materials": [
+      "missing_required_materials=true phone/browser evidence",
+      "missing_required_materials=route/elevator runtime material",
+      "missing_required_materials=verified terminal delivery/dropoff/cancel result",
+      "missing_required_materials=hardware HIL material"
+    ],
+    "rejected_unsafe_ack_reasons": [
+      "rejected_unsafe_ACK_reason=contains reviewer resolved claim",
+      "rejected_unsafe_ACK_reason=contains control grant wording"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=同一 safe evidence_ref 的 reviewer ACK 补证",
+      "next_required_evidence=真实手机/browser 与 route/elevator 现场材料摘要"
+    ],
+    "safe_copy": "field_evidence_material_resolution_reviewer_ack_intake: reviewer ACK received as software_proof only; not true phone/browser, not delivery success, not robot control grant, not PR #5 resolution.",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "not true phone/browser",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "not robot control grant",
+      "not PR #5 resolution"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_reviewer_ack_intake_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_intake_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_intake.v1",
+    "capability": "field_evidence_material_resolution_reviewer_ack_intake",
+    "source": "software_proof",
+    "ack_status": "ack_received_not_proven",
+    "source_handoff_status": "source_handoff_status=ready_for_material_review_handoff_not_proven",
+    "safe_evidence_ref": "safe_evidence_ref=field_evidence_material_resolution_reviewer_ack_intake:fallback",
+    "actor_role": "actor_role=reviewer_ack_reader",
+    "reviewer_material_review_next_step": [
+      "reviewer_material_review_next_step=review sanitized ACK only"
+    ],
+    "reassignment": [
+      "reassignment=none_not_proven"
+    ],
+    "field_owner_supplement": [
+      "field_owner_supplement=keep same safe evidence_ref"
+    ],
+    "missing_required_materials": [
+      "missing_required_materials=true phone/browser evidence"
+    ],
+    "rejected_unsafe_ack_reasons": [
+      "rejected_unsafe_ACK_reason=none"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=reviewer ACK supplement"
+    ],
+    "safe_copy": "fallback reviewer ACK intake summary; not true phone/browser and delivery_success=false.",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
+    "not_proven": [
+      "software_proof",
+      "not true phone/browser",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_reviewer_ack_intake": {
+    "summary": {
+      "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_intake_summary.v1",
+      "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_intake.v1",
+      "capability": "field_evidence_material_resolution_reviewer_ack_intake",
+      "source": "software_proof",
+      "ack_status": "blocked_missing_reviewer_ack_not_proven",
+      "source_handoff_status": "source_handoff_status=blocked_missing_owner_response_review_handoff_not_proven",
+      "safe_evidence_ref": "safe_evidence_ref=field_evidence_material_resolution_reviewer_ack_intake:nested",
+      "actor_role": "actor_role=reviewer_ack_reader",
+      "reviewer_material_review_next_step": [
+        "reviewer_material_review_next_step=wait for ACK"
+      ],
+      "reassignment": [
+        "reassignment=none_not_proven"
+      ],
+      "field_owner_supplement": [
+        "field_owner_supplement=missing"
+      ],
+      "missing_required_materials": [
+        "missing_required_materials=reviewer ACK"
+      ],
+      "rejected_unsafe_ack_reasons": [
+        "rejected_unsafe_ACK_reason=none"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=reviewer ACK safe summary"
+      ],
+      "safe_copy": "nested reviewer ACK intake blocked; not PR #5 resolution.",
+      "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
+      "not_proven": [
+        "software_proof",
+        "not true phone/browser",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  }
+}
