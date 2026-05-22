@@ -8,7 +8,27 @@
 
 ## 2026-05-23 系列
 
-更新时间：2026-05-23 04:48 Asia/Shanghai。
+更新时间：2026-05-23 05:32 Asia/Shanghai。
+
+### 2026-05-23 05-06｜field-evidence-rerun-acceptance-owner-response-intake｜acceptance owner response intake software proof
+
+本轮 `sprints/2026.05.23_05-06_field-evidence-rerun-acceptance-owner-response-intake/` 执行 `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake` epic closeout。用户价值是把上一轮 acceptance handoff intake follow-up escalation status 推进到现场 owner response intake，让现场 owner 对同一 safe `evidence_ref` 回填真实 task record、真实 Nav2/fixed-route runtime log、route completion signal、电梯门状态、目标楼层确认、人工协助记录、dropoff/cancel completion、delivery result、真实 route/elevator field pass 和 true phone/browser evidence。本轮边界为 `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate`，必须保留 `source=software_proof`、`software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+Autonomy worker 新增 PC-only owner response intake gate、focused tests、`pc-tools/README.md` 和 `docs/interfaces/evidence_contracts.md` 更新；首轮失败是 safety scanner over-blocked allowed `PRRT_kwDOSWB9286CJ3tX ... live resolved` checklist wording，已 scrub allowed checklist labels，同时仍 blocking overclaims。Robot worker 新增 `robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary` safe alias、targeted tests 和 `docs/interfaces/ros_runtime_contracts.md` 更新；首轮失败是 malformed-input test 传入 Python list 而不是 invalid JSON file，已修复并复跑。Full-Stack worker 新增 mobile/web read-only owner response intake panel、fixture、tests 和 `docs/product/mobile_user_flow.md` 更新，保持 Start Delivery / Confirm Dropoff / Cancel disabled。
+
+Live PR #5 state：`PRRT_kwDOSWB9286CJ3tQ` resolved，`PRRT_kwDOSWB9286CJ3tU` resolved，`PRRT_kwDOSWB9286CJ3tX` remains `is_resolved=false` / unresolved / `hardware_material_pending`。`PRRT_kwDOSWB9286CJ3tQ` 与 `PRRT_kwDOSWB9286CJ3tU` resolved 不关闭 `PRRT_kwDOSWB9286CJ3tX`。
+
+本轮不是 true phone/browser proof，不是 route/elevator field pass，不是 Nav2/fixed-route runtime pass，不是 verified terminal result，不是 dropoff/cancel completion，不是 delivery result，不是 delivery success，不是 Objective 5 external proof，不是 Objective 1 HIL，不是 WAVE ROVER/UART proof，不是 LiDAR/ToF installed proof，也不是 PR #5 resolution；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮只把现场 owner response intake metadata 转成 safe accepted/missing/rejected/blocked 状态；没有真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、operator HIL report 或 reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只处理现场 owner response intake metadata；没有真实 task record、真实电梯、dropoff/cancel completion、delivery result、verified terminal delivery/dropoff/cancel result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；owner response intake gate 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能只读展示现场 owner response intake 状态，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料；本轮 not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate` 只证明 Docker/local PC owner response intake gate + Robot diagnostics + mobile static fixture 下现场 owner response intake metadata 可见、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；unittest 输出 `Ran 6 tests ... OK`；CLI `--help`、required `rg` 与 scoped `git diff --check` 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 300 tests in 2.429s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check` 通过；fixture `json.tool` 通过；mobile unittest 输出 `Ran 286 tests in 2.588s OK`；required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、combined `py_compile`、combined unittest 输出 `Ran 592 tests in 5.065s OK`、`node --check`、fixture `json.tool`、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `pc-tools/README.md`、`docs/interfaces/evidence_contracts.md`、`docs/interfaces/ros_runtime_contracts.md`、`docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。
 
 ### 2026-05-23 04-05｜pr5-mandatory-sensor-material-followup-escalation-status｜PR #5 mandatory sensor material follow-up escalation software proof
 

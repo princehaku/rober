@@ -210,6 +210,7 @@ const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_BOUNDARY =
 const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_REVIEW_DECISION_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_decision_gate";
 const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_gate";
 const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_FOLLOWUP_ESCALATION_STATUS_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_gate";
+const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate";
 const FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_BOUNDARY = "software_proof_docker_field_evidence_real_material_request_dispatch_gate";
 const FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_BOUNDARY = "software_proof_docker_field_evidence_real_material_response_intake_gate";
 const FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_DECISION_BOUNDARY = "software_proof_docker_field_evidence_real_material_response_review_decision_gate";
@@ -339,6 +340,7 @@ const UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_TEX
 const UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw packet|raw acceptance|raw backfill|raw material|raw review|raw decision|raw handoff|raw intake|raw result|raw execution|raw execution pack|full execution pack|material upload|upload material|fetch route|command route|material route|review route|handoff route|callback route|ack route|cursor route|robot command|hidden action|action enablement|result submission|submit result|material submission|review submission|handoff submission|acceptance submission|submit acceptance|callback submission|submit callback|submit handoff|ack payload|cursor|diagnostics fetch|command replay|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|route pass|elevator pass|hil_pass|pr #5 resolution|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_REVIEW_HANDOFF_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw packet|raw acceptance|raw backfill|raw material|raw review|raw decision|raw handoff|raw intake|raw result|raw execution|raw execution pack|full execution pack|material upload|upload material|fetch route|command route|material route|review route|handoff route|callback route|ack route|cursor route|robot command|hidden action|action enablement|result submission|submit result|material submission|review submission|handoff submission|acceptance submission|submit acceptance|callback submission|submit callback|submit handoff|ack payload|cursor|diagnostics fetch|command replay|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|route pass|elevator pass|verified terminal result|hil_pass|pr #5 resolution|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_FOLLOWUP_ESCALATION_STATUS_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw packet|raw acceptance|raw backfill|raw material|raw review|raw decision|raw handoff|raw intake|raw result|raw execution|raw execution pack|full execution pack|material upload|upload material|fetch route|command route|material route|review route|handoff route|follow-up route|followup route|callback route|ack route|cursor route|robot command|hidden action|action enablement|result submission|submit result|material submission|review submission|handoff submission|followup submission|acceptance submission|submit acceptance|callback submission|submit callback|submit handoff|submit followup|ack payload|cursor|diagnostics fetch|command replay|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|route pass|elevator pass|verified terminal result|hil_pass|pr #5 resolution|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
+const UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw packet|raw acceptance|raw backfill|raw material|raw review|raw decision|raw handoff|raw intake|raw owner response|raw owner-response|raw result|raw execution|raw execution pack|full execution pack|material upload|upload material|fetch route|command route|material route|review route|handoff route|follow-up route|followup route|owner-response route|owner response route|callback route|ack route|cursor route|robot command|hidden action|action enablement|result submission|submit result|material submission|review submission|handoff submission|followup submission|owner response submission|owner-response submission|acceptance submission|submit acceptance|callback submission|submit callback|submit handoff|submit followup|ack payload|cursor|diagnostics fetch|material fetch|command replay|replay|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|route pass|elevator pass|verified terminal result|hil_pass|pr #5 resolution|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw callback|raw packet|raw acceptance|raw backfill|raw request|raw dispatch|raw review|raw decision|raw handoff|raw result|raw execution|full execution pack|execution scheduling|schedule execution|queue scheduling|result submission|submit result|review submission|handoff submission|acceptance submission|request submission|dispatch submission|callback submission|ack payload|cursor|diagnostics fetch|command replay|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw response|raw material|raw callback|raw packet|raw acceptance|raw backfill|raw request|raw dispatch|raw review|raw decision|raw handoff|raw result|raw execution|full execution pack|execution scheduling|schedule execution|queue scheduling|result submission|submit result|review submission|handoff submission|acceptance submission|request submission|dispatch submission|callback submission|upload|download|copy raw|ack payload|cursor|diagnostics fetch|command replay|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
 const UNSAFE_FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_DECISION_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw response|raw material|raw callback|raw packet|raw acceptance|raw backfill|raw request|raw dispatch|raw review|raw decision|raw handoff|raw result|raw execution|full execution pack|execution scheduling|schedule execution|queue scheduling|result submission|submit result|review submission|handoff submission|acceptance submission|request submission|dispatch submission|callback submission|upload|download|copy raw|ack payload|cursor|diagnostics fetch|command replay|resubmit|automatic resubmit|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|field pass|hil_pass|control authorization|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i;
@@ -549,6 +551,7 @@ let latestFieldEvidenceRerunExecutionResultAcceptanceHandoffIntake = null;
 let latestFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeReviewDecision = null;
 let latestFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeReviewHandoff = null;
 let latestFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatus = null;
+let latestFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntake = null;
 let latestFieldEvidenceRealMaterialRequestDispatch = null;
 let latestFieldEvidenceRealMaterialResponseIntake = null;
 let latestFieldEvidenceRealMaterialResponseReviewDecision = null;
@@ -1364,6 +1367,15 @@ function safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEsc
   // 跟进升级状态只给手机端看 due-status 摘要；任何原始材料、提交路线或控制暗示都必须降级。
   const text = safeText(value, fallback);
   if (UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_FOLLOWUP_ESCALATION_STATUS_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(value, fallback = "not_proven") {
+  // owner response intake 只展示已脱敏回执材料分类；raw owner response、ACK/cursor 和控制暗示都降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -24829,6 +24841,200 @@ function fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalat
   };
 }
 
+function fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeCandidate(
+  status,
+  readiness,
+  diagnostics,
+) {
+  // owner response intake 优先消费 Robot safe alias；兼容路径也只接受 summary，不读取原始 owner response 包。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const topDiagnosticsSummary = status?.diagnostics_summary && typeof status.diagnostics_summary === "object"
+    ? status.diagnostics_summary
+    : {};
+  const artifactSummary =
+    status?.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake?.summary ||
+    readiness?.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake?.summary ||
+    diagnostics?.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake?.summary ||
+    diagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake?.summary ||
+    nestedDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake?.summary ||
+    nestedDiagnosticsInnerSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake?.summary ||
+    statusDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake?.summary;
+  return firstObject(
+    status?.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    readiness?.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    diagnostics?.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    diagnosticsReadiness.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    diagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    statusDiagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    topDiagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    status?.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    readiness?.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    diagnostics?.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    diagnosticsReadiness.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    diagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    nestedDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    nestedDiagnosticsInnerSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    statusDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    topDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
+    artifactSummary,
+  );
+}
+
+function fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeList(value, fallback) {
+  // 回执材料分类可能来自数组或 map；统一折叠成 safe text，避免手机端展示原始材料内容。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        return safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+          `${item[0]}=${safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(item[1], "")}`,
+          "",
+        );
+      }
+      return safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 12) : [fallback];
+}
+
+function fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeNotProvenList(value) {
+  // owner response intake 是本地软件证明，不解除现场、手机、终态结果、硬件和外部云证明边界。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "source=software_proof",
+    "software_proof",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "same_evidence_ref_required=true",
+    "owner_response_intake_not_field_pass",
+    "true_phone_browser_proof_missing",
+    "route_elevator_runtime_missing",
+    "dropoff_completion_missing",
+    "cancel_completion_missing",
+    "verified_delivery_result_missing",
+    "hardware_hil_missing",
+    "o5_external_proof_missing",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 28);
+}
+
+function fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFromStatus(
+  status,
+  readiness,
+  diagnostics,
+) {
+  const provided = fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeCandidate(
+    status,
+    readiness,
+    diagnostics,
+  ) || {};
+  const allowedStatuses = new Set([
+    "received_owner_response_not_proven",
+    "partial_owner_response_missing_materials_not_proven",
+    "rejected_owner_response_unsafe_not_proven",
+    "blocked_missing_owner_response_not_proven",
+    "accepted_for_owner_response_intake_not_proven",
+  ]);
+  const candidateStatus = safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+    provided.owner_response_intake_status || provided.response_status || provided.intake_status ||
+      provided.status || provided.overall_status,
+    "blocked_missing_owner_response_not_proven",
+  );
+  const failClosedFlags = provided.safe_to_control === true ||
+    provided.delivery_success === true ||
+    provided.primary_actions_enabled === true;
+  const intakeStatus = allowedStatuses.has(candidateStatus) && !failClosedFlags
+    ? candidateStatus
+    : "blocked_missing_owner_response_not_proven";
+  return {
+    missing: !Object.keys(provided).length || failClosedFlags,
+    schema: "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary.v1",
+    source_schema: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.source_schema || provided.artifact_schema || provided.owner_response_intake_schema,
+      "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake.v1",
+    ),
+    capability: "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
+    source: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.source,
+      "software_proof",
+    ),
+    owner_response_intake_status: intakeStatus,
+    source_followup_escalation_status: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.source_followup_escalation_status || provided.source_followup_status ||
+        provided.followup_status || provided.source_escalation_status,
+      "source_followup_escalation_status=blocked_missing_followup_escalation_status_not_proven",
+    ),
+    safe_evidence_ref: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    accepted_material_refs: fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeList(
+      provided.accepted_material_refs || provided.accepted_materials || provided.accepted_refs || provided.accepted,
+      "accepted_material_refs=none_not_field_proof",
+    ),
+    missing_material_refs: fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeList(
+      provided.missing_material_refs || provided.missing_materials || provided.missing_refs || provided.missing,
+      "missing_material_refs=task_record / nav2_fixed_route_runtime_log / route_completion_signal / elevator_evidence / dropoff_cancel / delivery_result / true_phone_browser",
+    ),
+    rejected_material_refs: fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeList(
+      provided.rejected_material_refs || provided.rejected_materials || provided.rejected_refs || provided.rejected,
+      "rejected_material_refs=none",
+    ),
+    blocked_material_refs: fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeList(
+      provided.blocked_material_refs || provided.blocked_materials || provided.blocked_refs ||
+        provided.blocked_reasons || provided.blocked,
+      "blocked_material_refs=missing_same_safe_evidence_ref_owner_response_materials",
+    ),
+    owner_next_step: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.owner_next_step || provided.field_owner_next_step || provided.owner_action,
+      "owner_next_step=backfill_same_safe_evidence_ref_material_refs",
+    ),
+    support_next_step: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.support_next_step || provided.support_action,
+      "support_next_step=keep_primary_actions_disabled_and_request_safe_owner_response_refs",
+    ),
+    reviewer_next_step: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.reviewer_next_step || provided.review_next_step,
+      "reviewer_next_step=wait_for_owner_response_material_refs_before_acceptance_review",
+    ),
+    evidence_boundary: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.evidence_boundary || provided.proof_boundary,
+      FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_BOUNDARY,
+    ),
+    safe_phone_copy: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary || provided.safe_copy,
+      "现场证据复跑执行结果验收交接回执 owner response intake 摘要缺失；等待 Robot diagnostics safe summary。",
+    ),
+    boundary_flags: "source=software_proof / software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeNotProvenList(provided),
+  };
+}
+
 function fieldEvidenceRealMaterialRequestDispatchCandidate(status, readiness, diagnostics) {
   // 手机端只读取 Robot diagnostics safe alias 与兼容 summary；不读取完整请求包或现场材料原文。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -37983,6 +38189,134 @@ function renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupE
   );
 }
 
+function ensureFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakePanel() {
+  // owner response intake 紧跟 follow-up escalation status；它只是只读回执摄取面板，不提交材料或控制机器人。
+  let panel = $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakePanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatusTitle")?.closest("section") ||
+    $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeReviewHandoffTitle")?.closest("section") ||
+    $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeReviewDecisionTitle")?.closest("section") ||
+    $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeTitle")?.closest("section") ||
+    $("elevatorAssistPanel");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakePanel";
+  panel.className = "field-evidence-rerun-execution-result-acceptance-handoff-intake-owner-response-intake-panel";
+  panel.setAttribute(
+    "aria-labelledby",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeTitle",
+  );
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeTitle">现场证据复跑执行结果验收交接回执 owner response intake</h2>
+      <span id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeCopy" class="message">
+      等待 robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary。
+    </p>
+    <dl class="field-evidence-rerun-execution-result-acceptance-handoff-intake-owner-response-intake-grid">
+      <div><dt>Owner Response Intake Status</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeStatus">blocked_missing_owner_response_not_proven</dd></div>
+      <div><dt>Source Follow-Up Escalation Status</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeSourceFollowup">source_followup_escalation_status=blocked_missing_followup_escalation_status_not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Owner Next Step</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeOwnerNextStep">owner_next_step=backfill_same_safe_evidence_ref_material_refs</dd></div>
+      <div><dt>Support Next Step</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeSupportNextStep">support_next_step=keep_primary_actions_disabled_and_request_safe_owner_response_refs</dd></div>
+      <div><dt>Reviewer Next Step</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeReviewerNextStep">reviewer_next_step=wait_for_owner_response_material_refs_before_acceptance_review</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBoundary">software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFlags">source=software_proof / software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeNotProven">真实现场复跑、true phone/browser、HIL、路线/电梯通过、投放和 delivery success 未证明。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section>
+        <h3>Accepted Material Refs</h3>
+        <ol id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeAccepted" class="handoff-checklist">
+          <li>等待 accepted material refs。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Missing Material Refs</h3>
+        <ol id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeMissing" class="handoff-checklist">
+          <li>等待 missing material refs。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Rejected Material Refs</h3>
+        <ol id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeRejected" class="handoff-checklist">
+          <li>等待 rejected material refs。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Blocked Material Refs</h3>
+        <ol id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBlocked" class="handoff-checklist">
+          <li>等待 blocked material refs。</li>
+        </ol>
+      </section>
+    </div>
+    <p id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeHint" class="hint">
+      本 panel 只消费 safe owner response intake summary；不新增 fetch/raw diagnostics/ACK/cursor/material/review/handoff/follow-up/owner-response/Start/Confirm/Cancel/robot command endpoint，也不展示 raw artifact、success copy 或 control authorization。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntake(status) {
+  const panel = ensureFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakePanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFromStatus(
+    status,
+    readiness,
+    latestDiagnostics,
+  );
+  latestFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntake = summary;
+  const badge = $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 owner response intake" : "owner response intake not_proven";
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeCopy").textContent =
+    summary.safe_phone_copy;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeStatus").textContent =
+    `${summary.source} / ${summary.owner_response_intake_status}`;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeSourceFollowup").textContent =
+    summary.source_followup_escalation_status;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeEvidenceRef").textContent =
+    summary.safe_evidence_ref;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeOwnerNextStep").textContent =
+    summary.owner_next_step;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeSupportNextStep").textContent =
+    summary.support_next_step;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeReviewerNextStep").textContent =
+    summary.reviewer_next_step;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBoundary").textContent =
+    summary.evidence_boundary;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFlags").textContent =
+    summary.boundary_flags;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeNotProven").textContent =
+    summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeAccepted",
+    summary.accepted_material_refs,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeMissing",
+    summary.missing_material_refs,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeRejected",
+    summary.rejected_material_refs,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBlocked",
+    summary.blocked_material_refs,
+  );
+}
+
 function ensureFieldEvidenceRealMaterialRequestDispatchPanel() {
   // 真实材料请求 panel 紧跟 acceptance backfill，只把现场 owner 该补什么讲清楚，不提供上传或控制动作。
   let panel = $("fieldEvidenceRealMaterialRequestDispatchPanel");
@@ -47370,6 +47704,12 @@ function renderDiagnosticsSummary(payload) {
       readinessFromStatus(latestStatus || {}),
       payload || {},
     );
+  const fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntake =
+    fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      payload || {},
+    );
   const waveRoverFeedbackReplay = waveRoverFeedbackReplayFromStatus(
     latestStatus || {},
     readinessFromStatus(latestStatus || {}),
@@ -47651,6 +47991,10 @@ function renderDiagnosticsSummary(payload) {
     [
       "field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status",
       fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatus.followup_status,
+    ],
+    [
+      "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
+      fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntake.owner_response_intake_status,
     ],
     [
       "field_evidence_real_material_request_dispatch",
@@ -48012,6 +48356,7 @@ function renderOfflineFailure() {
   renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeReviewDecision({});
   renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeReviewHandoff({});
   renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatus({});
+  renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntake({});
   renderFieldEvidenceRealMaterialRequestDispatch({});
   renderFieldEvidenceRealMaterialResponseIntake({});
   renderFieldEvidenceRealMaterialResponseReviewDecision({});
@@ -48181,6 +48526,7 @@ function renderStatus(status) {
   renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeReviewDecision(status);
   renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeReviewHandoff(status);
   renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatus(status);
+  renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntake(status);
   renderFieldEvidenceRealMaterialRequestDispatch(status);
   renderFieldEvidenceRealMaterialResponseIntake(status);
   renderFieldEvidenceRealMaterialResponseReviewDecision(status);
@@ -48529,6 +48875,7 @@ async function openDiagnostics() {
     renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeReviewDecision(latestStatus || {});
     renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeReviewHandoff(latestStatus || {});
     renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeFollowupEscalationStatus(latestStatus || {});
+    renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntake(latestStatus || {});
     renderFieldEvidenceRealMaterialRequestDispatch(latestStatus || {});
     renderFieldEvidenceRealMaterialResponseIntake(latestStatus || {});
     renderFieldEvidenceRealMaterialResponseReviewDecision(latestStatus || {});

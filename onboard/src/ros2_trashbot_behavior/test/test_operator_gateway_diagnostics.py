@@ -63,6 +63,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_decision,
     summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff,
     summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status,
+    summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake,
     summarize_field_evidence_real_material_request_dispatch,
     summarize_field_evidence_real_material_response_intake,
     summarize_field_evidence_real_material_response_review_decision,
@@ -35565,6 +35566,236 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("safe_to_control=false", encoded)
         self.assertIn("delivery_success=false", encoded)
         self.assertIn("primary_actions_enabled=false", encoded)
+
+    def test_field_evidence_rerun_acceptance_handoff_owner_response_intake_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake.v1"
+            ),
+            "source_schema_version": 1,
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate"
+            ),
+            "source": "software_proof",
+            "safe_evidence_ref": "field-rerun-owner-response-001",
+            "status": "accepted",
+            "overall_status": "not_proven",
+            "owner_response_intake_status": {
+                "status": "accepted",
+                "verdict": "not_proven",
+                "reason": "owner response material refs are classified only",
+            },
+            "source_followup_escalation_status": {
+                "state": "overdue",
+                "verdict": "not_proven",
+            },
+            "accepted_material_refs": ["owner_response_note"],
+            "missing_material_refs": ["true_phone_browser_evidence"],
+            "rejected_material_refs": ["bad_delivery_claim"],
+            "blocked_material_refs": ["raw_route_log"],
+            "owner_next_step": "Owner supplies same-ref sanitized material refs.",
+            "support_next_step": "Support keeps escalation metadata-only.",
+            "reviewer_next_step": "Reviewer waits for safe owner response review.",
+            "evidence_boundary_status": "not_proven",
+            "robot_diagnostics_summary": {
+                "safe_copy": (
+                    "Owner response intake is metadata-only; source=software_proof; "
+                    "not_proven; safe_to_control=false; delivery_success=false; "
+                    "primary_actions_enabled=false."
+                )
+            },
+            "software_proof": True,
+            "not_proven": ["delivery_success", "real_route_elevator_field_not_verified"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+        artifact = {
+            "schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate"
+            ),
+            "safe_evidence_ref": "field-rerun-owner-response-001",
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary": (
+                safe_summary
+            ),
+        }
+        with tempfile.TemporaryDirectory() as td:
+            response_path = (
+                Path(td)
+                / "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake.json"
+            )
+            response_path.write_text(json.dumps(artifact), encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake": {
+                        "delivery_success": True,
+                        "raw_artifact": {"ros_topic": "/cmd_vel"},
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_ref=str(
+                    response_path
+                ),
+            )
+            from_nested = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake(
+                artifact
+            )
+            from_safe_wrapper = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake(
+                {
+                    "diagnostics": {
+                        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary": (
+                            safe_summary
+                        )
+                    }
+                }
+            )
+            missing = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake(
+                Path(td) / "missing_owner_response_intake.json"
+            )
+            malformed_path = Path(td) / "malformed_owner_response_intake.json"
+            malformed_path.write_text("{not-json", encoding="utf-8")
+            unsupported = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake(
+                dict(
+                    safe_summary,
+                    source_schema=(
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status.v1"
+                    ),
+                    source_evidence_boundary=(
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_gate"
+                    ),
+                )
+            )
+            malformed = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake(
+                malformed_path
+            )
+            unsafe = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake(
+                {
+                    "schema": (
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate"
+                    ),
+                    "safe_evidence_ref": "field-rerun-owner-response-001",
+                    "raw_artifact": {
+                        "checksum": "abc",
+                        "local_path": "/tmp/raw-owner-response.json",
+                        "ros_topic": "/cmd_vel",
+                        "uart": "/dev/ttyUSB0",
+                        "wave_rover": "detail",
+                    },
+                    "diagnostics": {
+                        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary": (
+                            safe_summary
+                        )
+                    },
+                }
+            )
+
+        summary = payload[
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary"
+        ]
+        self.assertEqual(
+            payload[
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake"
+            ],
+            summary,
+        )
+        self.assertEqual(
+            payload[
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary"
+            ],
+            summary,
+        )
+        self.assertNotIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["status"], "accepted")
+        self.assertEqual(summary["owner_response_intake_status"]["status"], "accepted")
+        self.assertEqual(
+            summary["source_followup_escalation_status"]["state"], "overdue"
+        )
+        self.assertIn("owner_response_note", summary["accepted_material_refs"])
+        self.assertIn("true_phone_browser_evidence", summary["missing_material_refs"])
+        self.assertIn("bad_delivery_claim", summary["rejected_material_refs"])
+        self.assertIn("raw_route_log", summary["blocked_material_refs"])
+        self.assertIn("Owner", summary["owner_next_step"])
+        self.assertIn("Support", summary["support_next_step"])
+        self.assertIn("Reviewer", summary["reviewer_next_step"])
+        self.assertEqual(summary["evidence_boundary_status"], "not_proven")
+        self.assertTrue(summary["software_proof"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_only",
+            summary["not_proven"],
+        )
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertEqual(from_nested["status"], "accepted")
+        self.assertEqual(from_safe_wrapper["status"], "accepted")
+        self.assertIn("missing", missing["owner_response_intake_status"]["reason"])
+        self.assertEqual(
+            unsupported["owner_response_intake_status"]["status"],
+            "blocked_unsupported_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
+        )
+        self.assertIn(
+            "failed reading", malformed["owner_response_intake_status"]["reason"]
+        )
+        self.assertEqual(
+            unsafe["owner_response_intake_status"]["status"],
+            "blocked_unsafe_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("checksum", encoded)
+        self.assertNotIn("/tmp/raw-owner-response.json", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("traceback", encoded.lower())
+        self.assertNotIn("WAVE ROVER", encoded)
+        self.assertNotIn("serial", encoded.lower())
+        self.assertNotIn("uart", encoded.lower())
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("accepted", encoded)
+        self.assertIn("missing", encoded)
+        self.assertIn("rejected", encoded)
+        self.assertIn("blocked", encoded)
 
     def test_field_evidence_real_material_followup_escalation_status_safe_alias_and_fail_closed(self):
         safe_summary = {
