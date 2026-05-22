@@ -8,7 +8,27 @@
 
 ## 2026-05-23 系列
 
-更新时间：2026-05-23 03:19 Asia/Shanghai。
+更新时间：2026-05-23 04:48 Asia/Shanghai。
+
+### 2026-05-23 04-05｜pr5-mandatory-sensor-material-followup-escalation-status｜PR #5 mandatory sensor material follow-up escalation software proof
+
+本轮 `sprints/2026.05.23_04-05_pr5-mandatory-sensor-material-followup-escalation-status/` 执行 `pr5_mandatory_sensor_material_followup_escalation_status` epic closeout。用户价值是把 `pr5_mandatory_sensor_source_alignment` 之后的 PR #5 强制传感器真实材料缺口转成 owner/reviewer 可消费的安全跟进升级状态：`pending`、`overdue`、`escalated`、`blocked` 或 `ready_for_reviewer_followup_not_proven`。本轮边界为 `software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate`，必须保留 `source=software_proof`、`software_proof`、`hardware_material_pending`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+Hardware worker 新增 `pc-tools/evidence/pr5_mandatory_sensor_material_followup_escalation_status.py`、focused tests，并更新 `pc-tools/README.md`、`docs/interfaces/pr5_mandatory_sensor_source_alignment.md`、`docs/product/production_hardware_boundary.md`。Vendor 来源已读：`docs/vendor/VENDOR_INDEX.md`、Orange Pi Zero 3 manual/schematic PDFs、WAVE ROVER `ugv_rpi/README.md`、`base_ctrl.py`、`config.yaml`、`WAVE_ROVER_V0.9/json_cmd.h`、`uart_ctrl.h`、`movtion_module.h`；这些只支持 source boundary，不证明真实 LiDAR/ToF、HIL、UART 或安装完成。Robot worker 新增 `robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary` safe alias、targeted tests 和 `docs/interfaces/ros_runtime_contracts.md` 更新；首轮失败是 unsafe blocked summary text 仍提到 `/cmd_vel`，已改成 generic wording 后通过。Full-Stack worker 新增 mobile/web read-only “PR #5 强制传感器材料跟进升级状态” panel、fixture、tests 和 `docs/product/mobile_user_flow.md` 更新，保持 Start Delivery / Confirm Dropoff / Cancel disabled。
+
+Live PR #5 state：`PRRT_kwDOSWB9286CJ3tQ` resolved，`PRRT_kwDOSWB9286CJ3tU` resolved，`PRRT_kwDOSWB9286CJ3tX` remains `is_resolved=false` / unresolved / `hardware_material_pending`。`PRRT_kwDOSWB9286CJ3tQ` 与 `PRRT_kwDOSWB9286CJ3tU` resolved 不关闭 `PRRT_kwDOSWB9286CJ3tX`。
+
+本轮不是 true phone/browser proof，不是 route/elevator field pass，不是 Nav2/fixed-route runtime pass，不是 verified terminal result，不是 dropoff/cancel completion，不是 delivery result，不是 delivery success，不是 Objective 5 external proof，不是 Objective 1 HIL，不是 WAVE ROVER/UART proof，不是 LiDAR/ToF installed proof，也不是 PR #5 resolution；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮只把 PR #5 `PRRT_kwDOSWB9286CJ3tX` mandatory sensor material gap 转成 follow-up escalation status；没有真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、operator HIL report 或 reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只处理 PR #5 传感器材料跟进 metadata；没有真实 task record、真实电梯、dropoff/cancel completion、delivery result、verified terminal delivery/dropoff/cancel result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；follow-up escalation gate 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能只读展示 PR #5 强制传感器材料跟进升级状态，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料；本轮 not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate` 只证明 Docker/local PC follow-up escalation gate + Robot diagnostics + mobile static fixture 下 PR #5 material follow-up metadata 可见、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Hardware worker 报告 `py_compile` 通过；unittest 输出 `Ran 7 tests in 0.399s OK`；CLI `--help`、required `rg` 与 scoped `git diff --check` 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 299 tests in 2.385s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check` 通过；fixture `json.tool` 通过；mobile unittest 输出 `Ran 284 tests in 2.532s OK`；required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、combined `py_compile`、combined unittest 输出 `Ran 590 tests in 5.330s OK`、`node --check`、fixture `json.tool`、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `pc-tools/README.md`、`docs/interfaces/pr5_mandatory_sensor_source_alignment.md`、`docs/interfaces/ros_runtime_contracts.md`、`docs/product/production_hardware_boundary.md`、`docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。
 
 ### 2026-05-23 03-04｜field-evidence-rerun-acceptance-handoff-intake-followup-escalation-status｜acceptance handoff intake follow-up escalation software proof
 

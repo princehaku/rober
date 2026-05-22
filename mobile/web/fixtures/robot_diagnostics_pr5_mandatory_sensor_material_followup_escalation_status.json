@@ -1,0 +1,91 @@
+{
+  "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary": {
+    "schema": "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary.v1",
+    "source_schema": "trashbot.pr5_mandatory_sensor_material_followup_escalation_status_summary.v1",
+    "schema_version": 1,
+    "capability": "pr5_mandatory_sensor_material_followup_escalation_status",
+    "source": "software_proof",
+    "followup_status": "ready_for_reviewer_followup_not_proven",
+    "source_alignment_status": "pr5_mandatory_sensor_source_alignment=hardware_material_pending / not_proven",
+    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "safe_evidence_ref": "PRRT_kwDOSWB9286CJ3tX",
+    "missing_required_material_refs": [
+      "2D LiDAR SKU/source/receipt/procurement material pending",
+      "ToF SKU/source/receipt/procurement material pending",
+      "mounting/installation material pending",
+      "wiring and power-budget material pending",
+      "calibration plan or calibration result pending",
+      "HIL-entry material pending",
+      "operator HIL report pending",
+      "PR #5 reviewer follow-up evidence pending"
+    ],
+    "pending_reasons": [
+      "pending=2D LiDAR and ToF material refs still missing",
+      "pending=reviewer follow-up evidence still not supplied"
+    ],
+    "overdue_reasons": [
+      "overdue=mandatory sensor material follow-up exceeded local software-proof window"
+    ],
+    "escalated_reasons": [
+      "escalated=Hardware owner and reviewer need next safe material summary"
+    ],
+    "blocked_reasons": [
+      "blocked=hardware_material_pending",
+      "blocked=PRRT_kwDOSWB9286CJ3tX is_resolved=false"
+    ],
+    "owner_next_step": "owner_next_step=Hardware owner provides phone-safe 2D LiDAR / ToF material refs and keeps source=software_proof until real material exists.",
+    "reviewer_next_step": "reviewer_next_step=ready_for_reviewer_followup_not_proven; wait for reviewer follow-up without claiming PR closure.",
+    "safe_copy": "PR #5 强制传感器材料跟进升级状态只读展示；source=software_proof / software_proof / hardware_material_pending / not_proven。",
+    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate",
+    "proof_status": "hardware_material_pending",
+    "boundary_flags": "source=software_proof / software_proof / hardware_material_pending / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "source=software_proof",
+      "software_proof",
+      "hardware_material_pending",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "PRRT_kwDOSWB9286CJ3tX is_resolved=false",
+      "pending",
+      "overdue",
+      "escalated",
+      "blocked",
+      "ready_for_reviewer_followup_not_proven"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "pr5_mandatory_sensor_material_followup_escalation_status_summary": {
+    "schema": "trashbot.pr5_mandatory_sensor_material_followup_escalation_status_summary.v1",
+    "source": "software_proof",
+    "followup_status": "blocked",
+    "source_alignment_status": "hardware_material_pending / not_proven",
+    "safe_evidence_ref": "PRRT_kwDOSWB9286CJ3tX",
+    "missing_required_material_refs": "missing_required_material_refs=2D LiDAR / ToF / mounting / wiring / calibration / HIL-entry / reviewer follow-up pending",
+    "blocked_reasons": "blocked=hardware_material_pending",
+    "safe_copy": "Compatible safe summary only; source=software_proof and not_proven.",
+    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "pr5_mandatory_sensor_material_followup_escalation_status": {
+    "summary": {
+      "schema": "trashbot.pr5_mandatory_sensor_material_followup_escalation_status_summary.v1",
+      "source": "software_proof",
+      "followup_status": "pending",
+      "safe_evidence_ref": "PRRT_kwDOSWB9286CJ3tX",
+      "pending_reasons": "pending=safe material refs still missing",
+      "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

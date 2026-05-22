@@ -69,6 +69,10 @@ PR5_VENDOR_SOURCE_REVIEW_PACKET_FIXTURE = (
 PR5_VENDOR_SOURCE_REVIEW_REPLY_DISPATCH_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_pr5_vendor_source_review_reply_dispatch_summary.json"
 )
+PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status.json"
+)
 FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_field_evidence_rerun_execution_result_intake.json"
 )
@@ -2941,6 +2945,180 @@ class Pr5MandatorySensorSourceAlignmentMobileTest(unittest.TestCase):
             "primary_actions_enabled\": true",
         ):
             self.assertNotIn(forbidden, summary_text)
+
+
+class Pr5MandatorySensorMaterialFollowupEscalationStatusMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_pr5_mandatory_sensor_material_followup_escalation_status_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # PR #5 follow-up panel 只消费 Robot safe alias 或兼容 summary，不新增控制、材料上传或复核路由。
+        self.assertIn("PR #5 强制传感器材料跟进升级状态", app)
+        self.assertIn("PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_BOUNDARY", app)
+        self.assertIn("UNSAFE_PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_TEXT", app)
+        self.assertIn("safePr5MandatorySensorMaterialFollowupEscalationStatusText", app)
+        self.assertIn("pr5MandatorySensorMaterialFollowupEscalationStatusCandidate", app)
+        self.assertIn("pr5MandatorySensorMaterialFollowupEscalationStatusFromStatus", app)
+        self.assertIn("renderPr5MandatorySensorMaterialFollowupEscalationStatus", app)
+        self.assertIn(
+            "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary",
+            app,
+        )
+        self.assertIn("pr5_mandatory_sensor_material_followup_escalation_status_summary", app)
+        self.assertIn("pr5_mandatory_sensor_material_followup_escalation_status?.summary", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("hardware_material_pending", app)
+        self.assertIn("not_proven", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("pending", app)
+        self.assertIn("overdue", app)
+        self.assertIn("escalated", app)
+        self.assertIn("blocked", app)
+        self.assertIn("ready_for_reviewer_followup_not_proven", app)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", app)
+        self.assertNotRegex(
+            app,
+            r"pr5MandatorySensorMaterialFollowupEscalationStatus.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "uploadPr5MandatorySensorMaterialFollowupEscalationStatus",
+            "ackPr5MandatorySensorMaterialFollowupEscalationStatus",
+            "cursorPr5MandatorySensorMaterialFollowupEscalationStatus",
+            "reviewPr5MandatorySensorMaterialFollowupEscalationStatus",
+            "handoffPr5MandatorySensorMaterialFollowupEscalationStatus",
+            "followupPr5MandatorySensorMaterialFollowupEscalationStatus",
+            "commandPr5MandatorySensorMaterialFollowupEscalationStatus",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # dedicated fixture 明确所有主操作保持 disabled，且只证明 Docker/local software-proof 展示链路。
+        summary = dedicated_fixture[
+            "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary"
+        ]
+        fallback = dedicated_fixture[
+            "pr5_mandatory_sensor_material_followup_escalation_status_summary"
+        ]
+        nested = dedicated_fixture[
+            "pr5_mandatory_sensor_material_followup_escalation_status"
+        ]["summary"]
+        self.assertEqual(summary["capability"], "pr5_mandatory_sensor_material_followup_escalation_status")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["followup_status"], "ready_for_reviewer_followup_not_proven")
+        self.assertEqual(summary["proof_status"], "hardware_material_pending")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fallback["safe_to_control"], False)
+        self.assertEqual(nested["delivery_success"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate",
+            "source=software_proof",
+            "hardware_material_pending",
+            "not_proven",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "pending",
+            "overdue",
+            "escalated",
+            "blocked",
+            "ready_for_reviewer_followup_not_proven",
+            "PRRT_kwDOSWB9286CJ3tX",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn("pr5_mandatory_sensor_material_followup_escalation_status", doc)
+        self.assertIn(
+            "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary",
+            doc,
+        )
+        self.assertIn("PR #5 强制传感器材料跟进升级状态", doc)
+        self.assertIn("software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate", doc)
+        self.assertIn("safe_to_control=false", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+
+    def test_pr5_mandatory_sensor_material_followup_escalation_status_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        followup_text = json.dumps(
+            {
+                "robot_alias": dedicated_fixture[
+                    "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary"
+                ],
+                "fallback": dedicated_fixture[
+                    "pr5_mandatory_sensor_material_followup_escalation_status_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "pr5_mandatory_sensor_material_followup_escalation_status"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留脱敏 follow-up metadata，不泄漏 raw 材料、路径、凭证、底盘细节或启用控制。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw artifact",
+            "raw material",
+            "raw followup",
+            "raw review",
+            "raw handoff",
+            "complete artifact",
+            "full execution bundle",
+            "serial device",
+            "ttyusb",
+            "ttyacm",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "traceback",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "material upload",
+            "review route",
+            "handoff route",
+            "follow-up route",
+            "robot command",
+            "control enabled",
+            "installed sensor",
+            "hil_pass",
+            "field pass",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, followup_text)
 
 
 class TaskTerminalCompletionMainlineMobileTest(unittest.TestCase):

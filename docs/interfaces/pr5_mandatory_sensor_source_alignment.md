@@ -55,3 +55,61 @@ Missing source files, missing product boundary semantics, raw local paths, raw
 serial paths, credentials, HIL/field pass wording, PR thread resolved wording,
 `delivery_success=true`, `safe_to_control=true`, or
 `primary_actions_enabled=true` must fail closed.
+
+## Material Follow-Up Escalation Status
+
+`pc-tools/evidence/pr5_mandatory_sensor_material_followup_escalation_status.py`
+is the PC-only follow-up gate after `pr5_mandatory_sensor_source_alignment`.
+
+- Artifact schema:
+  `trashbot.pr5_mandatory_sensor_material_followup_escalation_status.v1`
+- Summary schema:
+  `trashbot.pr5_mandatory_sensor_material_followup_escalation_status_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate`
+- Previous required capability: `pr5_mandatory_sensor_source_alignment`
+- Previous required boundary:
+  `software_proof_docker_pr5_mandatory_sensor_source_alignment_gate`
+- Required state: `source=software_proof`, `hardware_material_pending`,
+  `not_proven`, `safe_to_control=false`, `delivery_success=false`, and
+  `primary_actions_enabled=false`
+
+The gate accepts the previous source-alignment artifact, summary, Robot safe
+alias, or wrapper JSON plus a safe material follow-up packet. Both inputs must
+carry the same safe `evidence_ref`, `source=software_proof`,
+`hardware_material_pending`, `not_proven`, and all fail-closed control flags.
+
+Allowed `followup_status` values are:
+
+- `pending`
+- `overdue`
+- `escalated`
+- `blocked`
+- `ready_for_reviewer_followup_not_proven`
+
+The safe material packet must acknowledge all required follow-up categories:
+2D LiDAR SKU/source/receipt/procurement material, ToF
+SKU/source/receipt/procurement material, mounting/installation material,
+wiring and power-budget material, calibration plan or calibration result,
+HIL-entry material, operator HIL report, and PR #5 reviewer follow-up or
+reviewer resolution evidence.
+
+The summary exposes only sanitized fields: `followup_status`, allowed states,
+safe `evidence_ref`, source-alignment status, safe packet status, required
+materials, missing/rejected materials, owner escalation, next required
+evidence, rerun commands, `hardware_material_pending`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+The gate never reads ROS graph, GitHub write interfaces, serial/UART, real
+hardware, real 2D LiDAR / ToF, HIL rigs, phone/browser runtime, external cloud,
+OSS/CDN, DB/queue, 4G, or network resources, and it does not modify vendor
+files. `docs/vendor/VENDOR_INDEX.md` and its local source files remain
+source-context evidence only. They do not prove real 2D LiDAR / ToF material,
+HIL, PRRT_kwDOSWB9286CJ3tX resolved, delivery success, Objective 5 external
+proof, procurement, installation, wiring, power budget, or calibration.
+
+Fail-closed `blocked` reasons include missing source alignment, missing
+material packet, missing required material, `evidence_ref` mismatch, unsafe
+copy, success/control claim, HIL claim, installed-sensor claim, Objective 5
+external-proof claim, and PR thread resolved claim.

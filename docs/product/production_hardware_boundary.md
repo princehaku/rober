@@ -590,6 +590,50 @@ aligned to local source boundaries; it is not real procurement, installation,
 wiring, power, calibration, HIL, field, PR thread resolved, Objective 5
 external proof, or delivery success.
 
+## PR #5 Mandatory Sensor Material Follow-Up Escalation Status Gate
+
+`pr5_mandatory_sensor_material_followup_escalation_status` is the PC-only
+follow-up gate after `pr5_mandatory_sensor_source_alignment`. It emits
+`schema=trashbot.pr5_mandatory_sensor_material_followup_escalation_status.v1`
+and
+`schema=trashbot.pr5_mandatory_sensor_material_followup_escalation_status_summary.v1`
+under
+`software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate`.
+
+The gate consumes only the previous source-alignment safe output plus a safe
+material follow-up packet. The previous output must still identify
+`pr5_mandatory_sensor_source_alignment`, the boundary
+`software_proof_docker_pr5_mandatory_sensor_source_alignment_gate`, the same
+safe `evidence_ref`, `source=software_proof`, `software_proof`,
+`hardware_material_pending`, `not_proven`, `safe_to_control=false`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
+Allowed follow-up states are `pending`, `overdue`, `escalated`, `blocked`, and
+`ready_for_reviewer_followup_not_proven`. The safe packet must acknowledge
+2D LiDAR SKU/source/receipt/procurement material, ToF
+SKU/source/receipt/procurement material, mounting/installation material,
+wiring and power-budget material, calibration plan or calibration result,
+HIL-entry material, operator HIL report, and PR #5 reviewer follow-up or
+reviewer resolution evidence. These acknowledgements are tracking categories,
+not proof that the real materials exist.
+
+Missing source alignment, missing material packet, missing required material,
+`evidence_ref` mismatch, unsafe copy, success/control claim, HIL claim,
+installed-sensor claim, Objective 5 external-proof claim, or PR thread resolved
+claim must fail closed to `blocked` with structured reasons. The summary only
+exposes safe status, missing/rejected material categories, owner escalation,
+next required evidence, and non-claim flags.
+
+This gate does not read ROS graph, GitHub write interfaces, serial/UART, real
+WAVE ROVER, real 2D LiDAR / ToF, HIL rigs, field logs, phone/browser runtime,
+external cloud, OSS/CDN, DB/queue, 4G, or network resources, and it does not
+modify vendor files. `docs/vendor/VENDOR_INDEX.md` plus its local Orange Pi /
+WAVE ROVER / UART JSON / firmware/vendor-app files remain source-boundary
+context only. They do not prove real 2D LiDAR / ToF material, HIL,
+PRRT_kwDOSWB9286CJ3tX resolved, delivery success, Objective 5 external proof,
+procurement, installation, wiring, power budget, calibration, route/elevator
+field pass, or true phone/browser proof.
+
 ## Cloud Command Lifecycle Audit/Export Hardware Boundary
 
 `cloud_command_lifecycle_audit_export` is an Objective 5 software-proof

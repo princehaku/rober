@@ -1466,6 +1466,25 @@ PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SUMMARY_SCHEMA = (
 PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_GATE = (
     "software_proof_docker_pr5_mandatory_sensor_source_alignment_gate"
 )
+PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SCHEMA = (
+    "trashbot.pr5_mandatory_sensor_material_followup_escalation_status.v1"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.pr5_mandatory_sensor_material_followup_escalation_status_summary.v1"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary.v1"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_GATE = (
+    "software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATES = (
+    "pending",
+    "overdue",
+    "escalated",
+    "blocked",
+    "ready_for_reviewer_followup_not_proven",
+)
 HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SCHEMA = (
     "trashbot.hardware_real_material_escalation_request.v1"
 )
@@ -1788,6 +1807,25 @@ PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_REQUIRED_NOT_PROVEN = (
     "route_elevator_field_pass",
     "delivery_success",
     "primary_actions_enabled",
+)
+PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_REQUIRED_NOT_PROVEN = (
+    "pr5_mandatory_sensor_material_followup_escalation_status_only",
+    "pr5_PRRT_kwDOSWB9286CJ3tX_unresolved",
+    "hardware_material_pending",
+    "real_2d_lidar_sku_source_receipt_procurement_material",
+    "real_tof_sku_source_receipt_procurement_material",
+    "mounting_installation_material",
+    "wiring_power_budget_material",
+    "calibration_plan_or_result",
+    "hil_entry_material",
+    "operator_hil_report",
+    "pr5_reviewer_resolution_evidence",
+    "real_sensor_installed_on_robot",
+    "real_hil_pass",
+    "route_elevator_field_pass",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
 )
 HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_REQUIRED_NOT_PROVEN = (
     "real_wave_rover",
@@ -6796,6 +6834,48 @@ def _pr5_mandatory_sensor_source_alignment_not_proven(source=None, summary_fragm
     ) + PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_REQUIRED_NOT_PROVEN
     for item in list(source_values) + list(required):
         text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _pr5_mandatory_sensor_material_followup_escalation_status_not_proven(
+    source=None,
+    summary_fragment=None,
+):
+    # follow-up status 只是 owner/reviewer 跟进状态，不能证明 PR 已 resolve、传感器已安装或 HIL 通过。
+    source = source if isinstance(source, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    for item_source in (source, summary_fragment):
+        if isinstance(item_source.get("not_proven"), list):
+            source_values.extend(item_source.get("not_proven"))
+        for key in (
+            "missing_required_material_refs",
+            "missing_required_evidence",
+            "pending_reasons",
+            "overdue_reasons",
+            "escalated_reasons",
+            "blocked_reasons",
+            "next_required_evidence",
+        ):
+            if isinstance(item_source.get(key), list):
+                source_values.extend(item_source.get(key))
+    required = (
+        "not_proven",
+        "software_proof",
+        "hardware_material_pending",
+    ) + PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_REQUIRED_NOT_PROVEN
+    for item in list(source_values) + list(required):
+        text = _redact_route_task_rehearsal_text(item)
+        lowered = text.lower()
+        # raw/path/checksum/HIL pass 细节只用于阻断；Robot-safe not_proven 里保留材料名和缺口，不保留敏感实现细节。
+        if any(
+            marker in lowered
+            for marker in ("raw", "path", "checksum", "hil pass", "[redacted")
+        ):
+            continue
         if text and text not in values:
             values.append(text)
     return values
@@ -16738,6 +16818,91 @@ def _default_pr5_mandatory_sensor_source_alignment_summary(
     }
 
 
+def _default_pr5_mandatory_sensor_material_followup_escalation_status_summary(
+    path,
+    status="blocked",
+    read_error="",
+):
+    # 缺 summary 时仍返回完整 false 栅栏，避免 diagnostics UI 把“无材料”误读成可控或已 resolve。
+    reason = read_error or (
+        "PR #5 mandatory sensor material follow-up escalation status summary is not configured"
+    )
+    safe_copy = (
+        "PR #5 mandatory sensor material follow-up escalation status is "
+        "metadata-only; source=software_proof; hardware_material_pending; "
+        "not_proven; safe_to_control=false; delivery_success=false; "
+        "primary_actions_enabled=false."
+    )
+    return {
+        "schema": PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_GATE,
+        "proof_boundary": PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_GATE,
+        "capability": "pr5_mandatory_sensor_material_followup_escalation_status",
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source": "software_proof",
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "evidence_ref": "",
+        "followup_status": status,
+        "status": status,
+        "overall_status": "not_proven",
+        "source_alignment_status": "blocked_missing_pr5_mandatory_sensor_source_alignment",
+        "followup_status_summary": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": reason,
+        },
+        "pending_reasons": [],
+        "overdue_reasons": [],
+        "escalated_reasons": [],
+        "blocked_reasons": [reason],
+        "missing_required_material_refs": [],
+        "owner_next_step": "",
+        "reviewer_next_step": "",
+        "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+        "pr5_thread_state": "unresolved",
+        "pr5_material_state": "hardware_material_pending",
+        "false_states": {
+            "hardware_material_pending": True,
+            "not_proven": True,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        },
+        "not_proven": (
+            _pr5_mandatory_sensor_material_followup_escalation_status_not_proven()
+        ),
+        "metadata_only": True,
+        "summary_required": True,
+        "hardware_material_pending": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "command_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "field_pass": False,
+        "sensor_installed": False,
+        "pr_resolved": False,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+    }
+
+
 def _default_hardware_real_material_escalation_request_summary(
     path,
     status="blocked_missing_hardware_real_material_escalation_request_summary",
@@ -18948,6 +19113,23 @@ def _pr5_mandatory_sensor_source_alignment_source_contract(value):
     if source_schema == PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SOURCE_SUMMARY_SCHEMA:
         source_schema = str(
             value.get("source_schema") or PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_SCHEMA
+        )
+        source_boundary = str(
+            value.get("source_evidence_boundary")
+            or value.get("proof_boundary")
+            or source_boundary
+        )
+    return source_schema, source_boundary
+
+
+def _pr5_mandatory_sensor_material_followup_escalation_status_source_contract(value):
+    # PR #5 follow-up status 只能接 Hardware 产出的消毒 summary；artifact wrapper 不能绕过字段白名单。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or value.get("proof_boundary") or "")
+    if source_schema == PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SOURCE_SUMMARY_SCHEMA:
+        source_schema = str(
+            value.get("source_schema")
+            or PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SCHEMA
         )
         source_boundary = str(
             value.get("source_evidence_boundary")
@@ -62010,6 +62192,180 @@ def _pr5_mandatory_sensor_source_alignment_false_states_ok(source, summary_fragm
     return pending is True and not_proven_state is True
 
 
+def _pr5_mandatory_sensor_material_followup_copy_is_unsafe(value):
+    # follow-up 文案允许描述 false-state，但任何成功、安装、HIL、PR resolved 或控制启用暗示都要阻断。
+    redacted = _redact_route_task_rehearsal_text(value)
+    guarded = redacted.lower()
+    for phrase in (
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false",
+        "source=software_proof",
+        "software_proof",
+        "hardware_material_pending",
+        "not_proven",
+        "not proven",
+        "not_reviewer_resolution",
+        "not resolved",
+        "unresolved",
+        "metadata-only",
+        "must not",
+        "not real",
+        "不证明",
+    ):
+        guarded = guarded.replace(phrase, "")
+    return (
+        "success" in guarded
+        or "passed" in guarded
+        or " pass" in guarded
+        or "hil" in guarded
+        or "installed" in guarded
+        or "sensor installed" in guarded
+        or "delivery success" in guarded
+        or "control enabled" in guarded
+        or "primary action" in guarded
+        or "external proof" in guarded
+        or "public https" in guarded
+        or "4g proof" in guarded
+        or "reviewer resolved" in guarded
+        or "pr resolved" in guarded
+        or "thread resolved" in guarded
+        or "is_resolved=true" in guarded
+        or "ros topic" in guarded
+        or "/cmd_vel" in guarded
+        or "serial" in guarded
+        or "uart" in guarded
+        or "wave rover" in guarded
+        or "wave_rover" in guarded
+        or any(marker in redacted for marker in (
+            "[REDACTED_AUTH_HEADER]",
+            "Bearer [REDACTED]",
+            "[REDACTED_URL]",
+            "/dev/[REDACTED_SERIAL]",
+            "[REDACTED_BAUD]",
+            "[REDACTED_TRACEBACK]",
+            "[REDACTED_LOCAL_PATH]",
+        ))
+    )
+
+
+def _pr5_mandatory_sensor_material_followup_has_unsafe_fields(value, key_path=""):
+    # 只允许 summary 级材料缺口；raw artifact、路径、checksum、ROS/串口/凭证/控制字段出现即 fail closed。
+    unsafe_key_fragments = (
+        "raw",
+        "body",
+        "credential",
+        "token",
+        "secret",
+        "authorization",
+        "serial",
+        "uart",
+        "baud",
+        "ros",
+        "topic",
+        "cmd_vel",
+        "ack",
+        "cursor",
+        "command",
+        "control_claim",
+        "local_path",
+        "path",
+        "checksum",
+        "traceback",
+        "wave_rover",
+        "installed_sensor",
+        "installed",
+        "hil_pass",
+        "external_proof",
+        "pr_resolution",
+        "reviewer_resolution",
+        "complete_artifact",
+    )
+    unsafe_true_keys = {
+        "delivery_success",
+        "primary_actions_enabled",
+        "safe_to_control",
+        "hardware_read",
+        "raw_materials_exposed",
+        "collect_triggered",
+        "dropoff_triggered",
+        "cancel_triggered",
+        "ack_post_allowed",
+        "remote_ack_allowed",
+        "cursor_updates_allowed",
+        "persistence_updates_allowed",
+        "terminal_ack_allowed",
+        "command_allowed",
+        "nav2_triggered",
+        "hil_pass",
+        "field_pass",
+        "sensor_installed",
+        "pr_resolved",
+        "reviewer_resolved",
+    }
+    safe_key_fragments = (
+        "missing_required_material",
+        "pending_reason",
+        "overdue_reason",
+        "escalated_reason",
+        "blocked_reason",
+        "not_proven",
+        "false_states",
+    )
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            current_path = f"{key_path}.{key_text}" if key_path else key_text
+            if key_text in unsafe_true_keys:
+                if item is not False:
+                    return True
+                continue
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if any(fragment in key_text for fragment in safe_key_fragments):
+                continue
+            if _pr5_mandatory_sensor_material_followup_has_unsafe_fields(item, current_path):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _pr5_mandatory_sensor_material_followup_has_unsafe_fields(item, key_path)
+            for item in value
+        )
+    if isinstance(value, str):
+        return _pr5_mandatory_sensor_material_followup_copy_is_unsafe(value)
+    return False
+
+
+def _pr5_mandatory_sensor_material_followup_false_states_ok(source, summary_fragment):
+    # Hardware PC summary 必须显式保持三 false 与 hardware_material_pending，省略时保守阻断。
+    false_states = {}
+    for candidate in (
+        source.get("false_states") if isinstance(source, dict) else {},
+        summary_fragment.get("false_states") if isinstance(summary_fragment, dict) else {},
+    ):
+        if isinstance(candidate, dict):
+            false_states.update(candidate)
+    required_false = {
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+    for key, expected in required_false.items():
+        if false_states.get(key, source.get(key, summary_fragment.get(key))) is not expected:
+            return False
+    pending = false_states.get(
+        "hardware_material_pending",
+        source.get("hardware_material_pending", summary_fragment.get("hardware_material_pending")),
+    )
+    not_proven_state = false_states.get(
+        "not_proven",
+        source.get("overall_status") == "not_proven"
+        or summary_fragment.get("overall_status") == "not_proven",
+    )
+    return pending is True and not_proven_state is True
+
+
 def summarize_pr5_mandatory_sensor_source_alignment(source):
     """构建 PR #5 mandatory sensor source alignment 的 metadata-only Robot diagnostics 摘要。"""
     # 这里故意只消费 Hardware gate 的 sanitized summary；raw source material 不进入 Robot diagnostics。
@@ -62275,6 +62631,337 @@ def summarize_pr5_mandatory_sensor_source_alignment(source):
             }
         )
         return summary
+    return summary
+
+
+def summarize_pr5_mandatory_sensor_material_followup_escalation_status(source):
+    """构建 PR #5 mandatory sensor material follow-up escalation 的 Robot-safe 摘要。"""
+    # Robot 只消费 Hardware worker 的 PC safe summary；raw manifest 或完整 artifact 一律不进入 diagnostics。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_pr5_mandatory_sensor_material_followup_escalation_status_summary(
+        source_path,
+        read_error=(
+            "PR #5 mandatory sensor material follow-up escalation status summary is not configured"
+        ),
+    )
+    if isinstance(source, dict):
+        followup = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = (
+                "PR #5 mandatory sensor material follow-up escalation status summary artifact missing"
+            )
+            summary["followup_status_summary"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                followup = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                "failed reading PR #5 mandatory sensor material follow-up escalation "
+                f"status summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["followup_status_summary"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(followup, dict):
+        summary["followup_status_summary"]["reason"] = (
+            "PR #5 mandatory sensor material follow-up escalation status JSON must be an object"
+        )
+        return summary
+
+    diagnostics = followup.get("diagnostics") if isinstance(followup.get("diagnostics"), dict) else {}
+    raw_schema = str(followup.get("schema") or "")
+    source_schema, source_boundary = (
+        _pr5_mandatory_sensor_material_followup_escalation_status_source_contract(
+            followup
+        )
+    )
+    if raw_schema in {
+        PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SOURCE_SUMMARY_SCHEMA,
+        PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SUMMARY_SCHEMA,
+    }:
+        summary_fragment = followup
+    else:
+        summary_fragment = {}
+        for candidate in (
+            followup.get(
+                "pr5_mandatory_sensor_material_followup_escalation_status_summary"
+            ),
+            followup.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary"
+            ),
+            followup.get("diagnostics_summary"),
+            followup.get("robot_diagnostics_summary"),
+            followup.get("robot_compatible_summary"),
+            followup.get("summary"),
+            diagnostics.get(
+                "pr5_mandatory_sensor_material_followup_escalation_status_summary"
+            ),
+            diagnostics.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary"
+            ),
+            diagnostics.get("diagnostics_summary"),
+            diagnostics.get("summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if summary_fragment:
+        nested_schema, nested_boundary = (
+            _pr5_mandatory_sensor_material_followup_escalation_status_source_contract(
+                summary_fragment
+            )
+        )
+        if nested_schema:
+            source_schema, source_boundary = nested_schema, nested_boundary
+
+    status_doc = (
+        summary_fragment.get("followup_status_summary")
+        if isinstance(summary_fragment.get("followup_status_summary"), dict)
+        else summary_fragment.get("followup_status_detail")
+        if isinstance(summary_fragment.get("followup_status_detail"), dict)
+        else summary_fragment.get("status_summary")
+        if isinstance(summary_fragment.get("status_summary"), dict)
+        else {}
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or followup.get("safe_copy")
+        or followup.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    safe_copy_text = _redact_route_task_rehearsal_text(safe_copy)
+    if "delivery_success=false" not in safe_copy_text:
+        # 下游 UI 会直接展示 safe_copy，强制补齐软件证明和三 false flags。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; hardware_material_pending; "
+            "not_proven; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    followup_status = _redact_route_task_rehearsal_text(
+        summary_fragment.get("followup_status")
+        if isinstance(summary_fragment.get("followup_status"), str)
+        else status_doc.get("status")
+        or summary_fragment.get("status")
+        or followup.get("followup_status")
+        or followup.get("status")
+        or "blocked"
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or followup.get("safe_evidence_ref")
+        or followup.get("evidence_ref", "")
+    )
+    reason = _redact_route_task_rehearsal_text(
+        status_doc.get("reason")
+        or summary_fragment.get("reason")
+        or followup.get("reason")
+        or "PR #5 mandatory sensor material follow-up remains software_proof only"
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                summary_fragment.get("source_schema_version")
+                or summary_fragment.get("schema_version")
+                or followup.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or followup.get("source") or "software_proof"
+            ),
+            "exists": True,
+            "safe_evidence_ref": safe_evidence_ref,
+            "evidence_ref": safe_evidence_ref,
+            "followup_status": followup_status,
+            "status": followup_status,
+            "overall_status": "not_proven",
+            "source_alignment_status": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source_alignment_status")
+                or followup.get("source_alignment_status")
+                or "not_proven"
+            ),
+            "followup_status_summary": {
+                "status": followup_status,
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": reason,
+            },
+            "pending_reasons": _safe_route_task_rehearsal_list(
+                summary_fragment.get("pending_reasons")
+            ),
+            "overdue_reasons": _safe_route_task_rehearsal_list(
+                summary_fragment.get("overdue_reasons")
+            ),
+            "escalated_reasons": _safe_route_task_rehearsal_list(
+                summary_fragment.get("escalated_reasons")
+            ),
+            "blocked_reasons": _safe_route_task_rehearsal_list(
+                summary_fragment.get("blocked_reasons")
+            ) or [reason],
+            "missing_required_material_refs": _safe_route_task_rehearsal_list(
+                summary_fragment.get("missing_required_material_refs")
+                if isinstance(summary_fragment.get("missing_required_material_refs"), list)
+                else summary_fragment.get("missing_required_evidence")
+            ),
+            "owner_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("owner_next_step")
+                or summary_fragment.get("owner_action")
+                or followup.get("owner_next_step")
+            ),
+            "reviewer_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("reviewer_next_step")
+                or followup.get("reviewer_next_step")
+            ),
+            "pr5_thread_id": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_thread_id")
+                or followup.get("pr5_thread_id")
+                or "PRRT_kwDOSWB9286CJ3tX"
+            ),
+            "pr5_thread_state": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_thread_state")
+                or followup.get("pr5_thread_state")
+                or "unresolved"
+            ),
+            "pr5_material_state": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_material_state")
+                or followup.get("pr5_material_state")
+                or "hardware_material_pending"
+            ),
+            "false_states": {
+                "hardware_material_pending": True,
+                "not_proven": True,
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            },
+            "not_proven": (
+                _pr5_mandatory_sensor_material_followup_escalation_status_not_proven(
+                    followup,
+                    summary_fragment,
+                )
+            ),
+            "read_error": "",
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+        }
+    )
+    required_safe_metadata = (
+        bool(summary_fragment),
+        bool(summary["safe_evidence_ref"]),
+        followup_status in PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATES,
+        bool(summary["source_alignment_status"]),
+        bool(summary["missing_required_material_refs"]),
+        bool(summary["owner_next_step"]),
+        bool(summary["reviewer_next_step"]),
+        summary["pr5_thread_id"] == "PRRT_kwDOSWB9286CJ3tX",
+        summary["pr5_thread_state"] in {"unresolved", "is_resolved=false"},
+        summary["pr5_material_state"] == "hardware_material_pending",
+    )
+    if not summary_fragment:
+        summary["followup_status_summary"]["status"] = (
+            "blocked_missing_pr5_mandatory_sensor_material_followup_escalation_status_summary"
+        )
+        summary["status"] = summary["followup_status_summary"]["status"]
+        return summary
+    if (
+        source_schema
+        != PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SCHEMA
+        or source_boundary
+        != PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_GATE
+    ):
+        summary["followup_status_summary"] = {
+            "status": (
+                "blocked_unsupported_pr5_mandatory_sensor_material_followup_escalation_status"
+            ),
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": (
+                "PR #5 mandatory sensor material follow-up escalation status schema "
+                "or evidence boundary is unsupported"
+            ),
+        }
+        summary["status"] = summary["followup_status_summary"]["status"]
+        return summary
+    if summary["source"] != "software_proof":
+        summary["followup_status_summary"]["status"] = (
+            "blocked_unsupported_pr5_mandatory_sensor_material_followup_escalation_status"
+        )
+        summary["followup_status_summary"]["reason"] = (
+            "PR #5 mandatory sensor material follow-up must remain source=software_proof"
+        )
+        summary["status"] = summary["followup_status_summary"]["status"]
+        return summary
+    if not all(required_safe_metadata):
+        summary["followup_status_summary"]["status"] = (
+            "blocked_missing_pr5_mandatory_sensor_material_followup_escalation_status_materials"
+        )
+        summary["followup_status_summary"]["reason"] = (
+            "PR #5 mandatory sensor material follow-up is missing required safe metadata"
+        )
+        summary["status"] = summary["followup_status_summary"]["status"]
+        return summary
+    if (
+        not _pr5_mandatory_sensor_material_followup_false_states_ok(
+            followup,
+            summary_fragment,
+        )
+        or _pr5_mandatory_sensor_material_followup_has_unsafe_fields(followup)
+        or _pr5_mandatory_sensor_material_followup_has_unsafe_fields(summary_fragment)
+        or _pr5_mandatory_sensor_material_followup_has_unsafe_fields(status_doc)
+        or _pr5_mandatory_sensor_material_followup_copy_is_unsafe(safe_copy_text)
+    ):
+        blocked_copy = (
+            "PR #5 mandatory sensor material follow-up escalation status was blocked "
+            "because summary fields could expose raw artifacts, local paths, checksums, "
+            "tracebacks, robot command topics, transport details, hardware details, "
+            "credentials, external-proof, HIL, installed-sensor, PR-resolution, "
+            "success, or control wording; source=software_proof; "
+            "hardware_material_pending; not_proven; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "followup_status": "blocked",
+                "status": (
+                    "blocked_unsafe_pr5_mandatory_sensor_material_followup_escalation_status"
+                ),
+                "followup_status_summary": {
+                    "status": (
+                        "blocked_unsafe_pr5_mandatory_sensor_material_followup_escalation_status"
+                    ),
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": (
+                        "unsafe artifact, raw field, local path, checksum, traceback, "
+                        "robot command topic, transport detail, hardware detail, credential, external-proof, "
+                        "HIL, installed-sensor, PR-resolution, success, or control material"
+                    ),
+                },
+                "safe_evidence_ref": "",
+                "evidence_ref": "",
+                "source_alignment_status": "",
+                "pending_reasons": [],
+                "overdue_reasons": [],
+                "escalated_reasons": [],
+                "blocked_reasons": [
+                    "unsafe summary fields were redacted and blocked"
+                ],
+                "missing_required_material_refs": [],
+                "owner_next_step": "",
+                "reviewer_next_step": "",
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+            }
+        )
     return summary
 
 
@@ -73976,6 +74663,7 @@ def build_diagnostics_payload(
     pr5_vendor_source_review_packet_ref="",
     pr5_vendor_source_review_reply_dispatch_ref="",
     pr5_mandatory_sensor_source_alignment_ref="",
+    pr5_mandatory_sensor_material_followup_escalation_status_ref="",
     hardware_real_material_escalation_request_ref="",
     real_material_readiness_board_ref="",
     real_material_evidence_intake_ref="",
@@ -75808,6 +76496,59 @@ def build_diagnostics_payload(
         if isinstance(
             diagnostics_source.get(
                 "robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary"
+            ),
+            dict,
+        )
+        else {}
+    )
+    pr5_mandatory_sensor_material_followup_escalation_status_source = (
+        latest_status.get("pr5_mandatory_sensor_material_followup_escalation_status")
+        if isinstance(
+            latest_status.get("pr5_mandatory_sensor_material_followup_escalation_status"),
+            dict,
+        )
+        else latest_status.get(
+            "pr5_mandatory_sensor_material_followup_escalation_status_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "pr5_mandatory_sensor_material_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "pr5_mandatory_sensor_material_followup_escalation_status"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "pr5_mandatory_sensor_material_followup_escalation_status"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "pr5_mandatory_sensor_material_followup_escalation_status_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "pr5_mandatory_sensor_material_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary"
             ),
             dict,
         )
@@ -80686,6 +81427,30 @@ def build_diagnostics_payload(
             pr5_mandatory_sensor_source_alignment_source
         )
     )
+    pr5_mandatory_sensor_material_followup_escalation_status_source = (
+        pr5_mandatory_sensor_material_followup_escalation_status_ref
+        or os.environ.get(
+            "TRASHBOT_PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SUMMARY",
+            "",
+        )
+        or pr5_mandatory_sensor_material_followup_escalation_status_source
+    )
+    pr5_mandatory_sensor_material_followup_escalation_status_summary = (
+        summarize_pr5_mandatory_sensor_material_followup_escalation_status(
+            pr5_mandatory_sensor_material_followup_escalation_status_source
+        )
+    )
+    # follow-up 输入可能来自 wrapper/raw latest_status；输出前只保留统一 Robot-safe alias。
+    for unsafe_latest_key in (
+        "pr5_mandatory_sensor_material_followup_escalation_status",
+        "pr5_mandatory_sensor_material_followup_escalation_status_summary",
+        "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary",
+    ):
+        latest_status.pop(unsafe_latest_key, None)
     hardware_real_material_escalation_request_source = (
         hardware_real_material_escalation_request_ref
         or os.environ.get("TRASHBOT_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST", "")
@@ -81741,6 +82506,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary=(
             pr5_mandatory_sensor_source_alignment_summary
+        ),
+        pr5_mandatory_sensor_material_followup_escalation_status=(
+            pr5_mandatory_sensor_material_followup_escalation_status_summary
+        ),
+        pr5_mandatory_sensor_material_followup_escalation_status_summary=(
+            pr5_mandatory_sensor_material_followup_escalation_status_summary
+        ),
+        robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary=(
+            pr5_mandatory_sensor_material_followup_escalation_status_summary
         ),
         hardware_real_material_escalation_request=(
             hardware_real_material_escalation_request_summary

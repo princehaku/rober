@@ -87,6 +87,27 @@ Allowed Robot-visible fields are limited to sanitized source-alignment metadata:
 
 The alias must not expose raw source material, raw local paths, serial/UART details, credentials, ROS topic or control details, HIL/pass wording, delivery success wording, GitHub resolution claims, ACK/cursor state, or robot command requests. Missing sanitized summary, unsupported schema or boundary, missing false states, unsafe copy, raw markers, enabled action flags, `delivery_success=true`, `primary_actions_enabled=true`, or `safe_to_control=true` keeps the summary blocked/not_proven and leaves Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, hardware validation, dropoff/cancel completion, delivery result, and primary robot actions disabled.
 
+## robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary
+
+`robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary` is the Robot diagnostics safe alias for `pr5_mandatory_sensor_material_followup_escalation_status`. It consumes only the PC sanitized summary schema `trashbot.pr5_mandatory_sensor_material_followup_escalation_status_summary.v1`, whose `source_schema` must point back to `trashbot.pr5_mandatory_sensor_material_followup_escalation_status.v1` and whose evidence boundary must remain `software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate`.
+
+The alias is metadata-only and fail-closed:
+
+- `source=software_proof`
+- `software_proof`
+- `hardware_material_pending`
+- `not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `metadata_only=true`
+
+Allowed Robot-visible fields are limited to safe follow-up metadata: `followup_status` (`pending`, `overdue`, `escalated`, `blocked`, or `ready_for_reviewer_followup_not_proven`), `source_alignment_status`, `safe_evidence_ref`, `pending_reasons`, `overdue_reasons`, `escalated_reasons`, `blocked_reasons`, `missing_required_material_refs`, `owner_next_step`, `reviewer_next_step`, `pr5_thread_id=PRRT_kwDOSWB9286CJ3tX`, `pr5_material_state=hardware_material_pending`, `evidence_boundary`, `proof_boundary`, `false_states`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
+
+The alias must not expose raw manifests, complete artifacts, local paths, checksums, tracebacks, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details, credentials, DB/queue URLs, success wording, external-proof wording, HIL/pass wording, installed-sensor wording, PR-resolution wording, ACK/cursor state, or robot command requests. Missing summary, malformed input, unsupported schema or boundary, weak safe evidence ref, unsafe copy, raw markers, enabled action flags, `delivery_success=true`, `primary_actions_enabled=true`, or `safe_to_control=true` keeps the summary blocked/not_proven and leaves Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, hardware validation, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
+This boundary is Docker/local `software_proof` only. It does not prove real 2D LiDAR / ToF SKU/source/receipt/procurement material, mounting/installation material, wiring or power-budget material, calibration, HIL-entry material, operator HIL report, installed sensors, WAVE ROVER/UART proof, route/elevator field pass, delivery success, Objective 5 external proof, verified terminal result, or PR #5 reviewer resolution.
+
 ## robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary
 
 `robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary` is the Robot diagnostics safe alias for the `hardware_sensor_hil_entry_callback_review_decision` gate. It consumes only the sanitized summary schema `trashbot.hardware_sensor_hil_entry_callback_review_decision_summary.v1`, whose `source_schema` must point back to `trashbot.hardware_sensor_hil_entry_callback_review_decision.v1` and whose evidence boundary must remain `software_proof_docker_hardware_sensor_hil_entry_callback_review_decision_gate`.

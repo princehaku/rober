@@ -262,6 +262,61 @@ source-boundary context，不证明真实 SKU、安装、接线、电源、标�
 WAVE ROVER/UART/HIL evidence、PRRT_kwDOSWB9286CJ3tX 关闭、Objective 5 external
 proof、真实手机/browser、route/elevator field pass 或 delivery success。
 
+## PR #5 mandatory sensor material follow-up escalation status
+
+`pc-tools/evidence/pr5_mandatory_sensor_material_followup_escalation_status.py`
+只读上一轮 `pr5_mandatory_sensor_source_alignment` artifact、summary、Robot safe
+alias 或 wrapper/nested JSON，再读取 safe material follow-up packet，把 PR #5
+thread `PRRT_kwDOSWB9286CJ3tX` 的 mandatory 2D LiDAR / ToF 材料跟进状态整理成
+PC follow-up escalation artifact / summary：
+
+```bash
+python3 pc-tools/evidence/pr5_mandatory_sensor_material_followup_escalation_status.py \
+  --source-alignment-json /tmp/pr5_mandatory_sensor_source_alignment_summary.json \
+  --material-followup-json /tmp/pr5_mandatory_sensor_material_followup_packet.json \
+  --evidence-ref pr5-material-followup-001 \
+  --output /tmp/pr5_mandatory_sensor_material_followup_escalation_status.json \
+  --summary-output /tmp/pr5_mandatory_sensor_material_followup_escalation_status_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.pr5_mandatory_sensor_material_followup_escalation_status.v1`，
+summary 使用
+`schema=trashbot.pr5_mandatory_sensor_material_followup_escalation_status_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status_summary`，
+证据边界固定为
+`software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate`。
+核心字段包括 `followup_status`、`allowed_followup_statuses`、safe
+`evidence_ref`、`source_alignment`、`safe_material_followup_packet`、
+`required_materials`、`material_status`、`owner_escalation`、
+`next_required_evidence`、`rerun_commands`、`source=software_proof`、
+`software_proof`、`hardware_material_pending`、`not_proven`、
+`safe_to_control=false`、`delivery_success=false` 和
+`primary_actions_enabled=false`。
+
+`followup_status` 只允许 `pending`、`overdue`、`escalated`、`blocked` 和
+`ready_for_reviewer_followup_not_proven`。safe material follow-up packet 必须
+在同一 safe `evidence_ref` 下确认八类 required material 已纳入跟进：2D LiDAR
+SKU/source/receipt/procurement material、ToF SKU/source/receipt/procurement
+material、mounting/installation material、wiring and power-budget material、
+calibration plan or calibration result、HIL-entry material、operator HIL
+report、PR #5 reviewer follow-up or reviewer resolution evidence。CLI 在安全的
+`pending`、`overdue`、`escalated` 或
+`ready_for_reviewer_followup_not_proven` 状态返回 0；缺 source alignment、缺
+material packet、缺 required material、`evidence_ref` mismatch、unsupported
+status、unsafe copy、success/control claim、HIL claim、installed-sensor claim、
+Objective 5 external proof claim 或 PR thread resolved claim 都会 fail closed
+到 `blocked` 并返回非 0。
+
+该 gate 不读取 ROS graph、GitHub 写接口、serial/UART、真实 WAVE ROVER、真实
+2D LiDAR / ToF、HIL rig、真实手机/browser、外部云、OSS/CDN、DB/queue、4G 或
+网络，也不修改 vendor 文件。`docs/vendor/VENDOR_INDEX.md` 及其本地 Orange Pi /
+WAVE ROVER / UART JSON / firmware/vendor-app 来源只证明 source context；本 gate
+不证明 real 2D LiDAR / ToF material、HIL、PRRT_kwDOSWB9286CJ3tX resolved、
+delivery success、Objective 5 external proof、真实采购、真实安装、真实接线、
+真实电源预算或真实标定。
+
 ## PC route debug console
 
 `pc-tools/route/route_debug_web.py` 是本地 PC console，不依赖 ROS2，不 import `ros2_trashbot_*`，不访问硬件、serial/UART、Nav2 runtime、ROS graph 或网络外部服务：
