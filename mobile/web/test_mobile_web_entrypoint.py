@@ -92,6 +92,10 @@ FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_REVIEW_DECISION_FIXTUR
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_review_decision.json"
 )
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff.json"
+)
 FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_real_material_request_dispatch.json"
@@ -12235,6 +12239,170 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, review_decision_text)
+
+    def test_field_evidence_rerun_execution_result_acceptance_review_handoff_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 验收交接 panel 只读消费 Robot safe alias，不新增 raw/handoff/control endpoint。
+        self.assertIn("FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_TEXT", app)
+        self.assertIn("safeFieldEvidenceRerunExecutionResultAcceptanceReviewHandoffText", app)
+        self.assertIn("fieldEvidenceRerunExecutionResultAcceptanceReviewHandoffCandidate", app)
+        self.assertIn("fieldEvidenceRerunExecutionResultAcceptanceReviewHandoffFromStatus", app)
+        self.assertIn("renderFieldEvidenceRerunExecutionResultAcceptanceReviewHandoff", app)
+        self.assertIn("现场证据复跑执行结果验收交接", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary",
+            app,
+        )
+        self.assertIn("field_evidence_rerun_execution_result_acceptance_review_handoff_summary", app)
+        self.assertIn("field_evidence_rerun_execution_result_acceptance_review_handoff?.summary", app)
+        self.assertIn("handoff_status", app)
+        self.assertIn("required_material_checklist", app)
+        self.assertIn("blocked_categories", app)
+        self.assertIn("rejected_categories", app)
+        self.assertIn("owner_support_reviewer_next_step", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceRerunExecutionResultAcceptanceReviewHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        self.assertNotIn("copyFieldEvidenceRerunExecutionResultAcceptanceReviewHandoffButton", app)
+        self.assertNotIn("downloadFieldEvidenceRerunExecutionResultAcceptanceReviewHandoffButton", app)
+        self.assertNotIn("submitFieldEvidenceRerunExecutionResultAcceptanceReviewHandoff", app)
+        self.assertNotIn("replayFieldEvidenceRerunExecutionResultAcceptanceReviewHandoff", app)
+        self.assertNotIn("resubmitFieldEvidenceRerunExecutionResultAcceptanceReviewHandoff", app)
+
+        # dedicated fixture 固定 handoff 状态和 false flags，不能打开三类主操作。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+        ]
+        fallback = dedicated_fixture[
+            "field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+        ]
+        nested = dedicated_fixture[
+            "field_evidence_rerun_execution_result_acceptance_review_handoff"
+        ]["summary"]
+        self.assertEqual(
+            summary["handoff_status"],
+            "ready_for_field_owner_support_reviewer_handoff_not_proven",
+        )
+        self.assertEqual(summary["source_review_decision"], "ready_for_field_rerun_result_acceptance_review_handoff")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("required_material_checklist", summary)
+        self.assertIn("blocked_categories", summary)
+        self.assertIn("rejected_categories", summary)
+        self.assertIn("owner_support_reviewer_next_step", summary)
+        self.assertEqual(fallback["handoff_status"], "handoff_needs_more_material")
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        self.assertIn(
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate",
+            dedicated_text,
+        )
+        self.assertIn("ready_for_field_owner_support_reviewer_handoff_not_proven", dedicated_text)
+        self.assertIn("handoff_needs_more_material", dedicated_text)
+        self.assertIn("handoff_evidence_ref_mismatch", dedicated_text)
+        self.assertIn("handoff_unsafe_rejected", dedicated_text)
+        self.assertIn("blocked_missing_review_decision", dedicated_text)
+        self.assertIn("field_evidence_rerun_execution_result_acceptance_review_handoff", doc)
+        self.assertIn("现场证据复跑执行结果验收交接", doc)
+        self.assertIn("not Objective 5 external proof", doc)
+
+    def test_field_evidence_rerun_execution_result_acceptance_review_handoff_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        handoff_text = json.dumps(
+            {
+                "handoff":
+                    dedicated_fixture[
+                        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+                    ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "field_evidence_rerun_execution_result_acceptance_review_handoff"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # 验收交接 fixture 只保留 checklist、blocked/rejected 分类和下一步，不泄漏原始材料或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw path",
+            "raw callback",
+            "raw packet",
+            "raw acceptance",
+            "raw backfill",
+            "raw material",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "raw result",
+            "raw execution",
+            "full execution pack",
+            "serial device",
+            "uart",
+            "baudrate",
+            "wave rover parameter",
+            "authorization",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "complete artifact",
+            "raw artifact",
+            "raw robot response",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "material route",
+            "callback route",
+            "review route",
+            "handoff route",
+            "command replay",
+            "automatic resubmit",
+            "queue scheduling",
+            "execution scheduling",
+            "callback submission",
+            "review submission",
+            "handoff submission",
+            "result submission",
+            "acceptance submission",
+            "robot command",
+            "robot/internal",
+            "control authorization",
+            "hil_pass",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, handoff_text)
 
     def test_field_evidence_real_material_request_dispatch_panel_is_fail_closed(self):
         app = self.read_web("app.js")

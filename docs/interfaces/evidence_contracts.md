@@ -1696,6 +1696,76 @@ result, not delivery success, not HIL, not WAVE ROVER/UART feedback, not true
 phone/browser proof, not Objective 5 external cloud/4G/OSS/CDN/DB/queue proof,
 and not any primary robot action being enabled.
 
+## field_evidence_rerun_execution_result_acceptance_review_handoff
+
+`pc-tools/evidence/field_evidence_rerun_execution_result_acceptance_review_handoff.py`
+generates the PC-only handoff gate after
+`field_evidence_rerun_execution_result_acceptance_backfill_review_decision.py`.
+It consumes only a safe review-decision artifact/summary, Robot diagnostics safe
+alias, or wrapper/nested JSON. It does not scan a material directory and does not
+read real Nav2 runtime, ROS graph state, serial/UART or WAVE ROVER data, real
+elevator systems, external cloud evidence, real phone/browser runtime state, or
+raw field artifacts.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_backfill_review_decision.v1`
+  and
+  `trashbot.field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary.v1`
+  under
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_gate`.
+
+Allowed `handoff_status` values are exactly
+`ready_for_field_owner_support_reviewer_handoff_not_proven`,
+`handoff_needs_more_material`, `handoff_evidence_ref_mismatch`,
+`handoff_unsafe_rejected`, and `blocked_missing_review_decision`. The ready state
+requires the previous safe decision
+`ready_for_field_rerun_result_acceptance_review_handoff`, `source=software_proof`,
+`not_proven`, safe `evidence_ref`, `same_evidence_ref_required=true`, no missing
+or rejected material category, and no unsafe or success/control claim.
+
+The handoff checklist is fixed to true task record, true Nav2/fixed-route runtime
+log, route completion signal, true elevator door state, target floor
+confirmation, human assistance record, dropoff/cancel completion or delivery
+result, and true phone/browser evidence. These are handoff checklist category
+names only; this gate does not validate raw task records, runtime logs, route
+completion signals, elevator/floor records, human assistance records,
+dropoff/cancel completion, delivery results, or true phone/browser runtime.
+
+The output always includes `source=software_proof`, `handoff_status`,
+`allowed_handoff_states`, `handoff_reasons`, safe `evidence_ref`,
+`source_review_decision`, `material_status`, `handoff_checklist`,
+`owner_handoff`, `next_required_evidence`, `rerun_commands`, `safe_copy`,
+`not_proven`, `safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate`.
+
+Missing source, bad JSON, unsupported schema/boundary, source not marked as
+`source=software_proof` with `not_proven`, source review decision not
+`ready_for_field_rerun_result_acceptance_review_handoff`, missing safe
+`evidence_ref`, evidence_ref mismatch, weak `same_evidence_ref_required`,
+missing materials, rejected materials, unsafe copy, raw or local paths,
+credentials, ROS topics, `/cmd_vel`, serial/UART/WAVE ROVER details, external
+proof claims, HIL claims, PR #5 resolution claims, success/control claims,
+`safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true` all fail closed to one of the allowed handoff
+states.
+
+This contract is software proof only. A ready handoff means the metadata-only
+review decision can be handed to field owner, support reviewer, and Product
+closeout while remaining fail-closed. It is not real field rerun proof, not real
+route/elevator field pass, not real Nav2/fixed-route execution, not true task
+record validation, not route completion signal validation, not dropoff/cancel
+completion, not verified terminal result, not delivery result, not delivery
+success, not HIL, not WAVE ROVER/UART feedback, not true phone/browser proof,
+not PR #5 resolution, not Objective 5 external cloud/4G/OSS/CDN/DB/queue proof,
+and not any primary robot action being enabled.
+
 ## field_evidence_real_material_request_dispatch
 
 `pc-tools/evidence/field_evidence_real_material_request_dispatch.py` generates

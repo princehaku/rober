@@ -1,0 +1,111 @@
+{
+  "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff_summary.v1",
+    "schema_version": 1,
+    "source_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff.v1",
+    "source_alias": "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary",
+    "source": "software_proof",
+    "handoff_status": "ready_for_field_owner_support_reviewer_handoff_not_proven",
+    "source_review_decision": "ready_for_field_rerun_result_acceptance_review_handoff",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_review_handoff_fixture_20260522_0001",
+    "required_material_checklist": [
+      "required_material_checklist=same safe evidence_ref acceptance backfill review decision",
+      "required_material_checklist=field owner support reviewer summary",
+      "required_material_checklist=real task record summary not_proven",
+      "required_material_checklist=real Nav2 fixed route runtime log not_proven",
+      "required_material_checklist=real route completion signal not_proven",
+      "required_material_checklist=real elevator evidence not_proven",
+      "required_material_checklist=real dropoff cancel completion not_proven",
+      "required_material_checklist=true phone browser evidence not_proven"
+    ],
+    "blocked_categories": [
+      "blocked_categories=blocked_missing_review_decision",
+      "blocked_categories=handoff_needs_more_material",
+      "blocked_categories=success control claims stay blocked"
+    ],
+    "rejected_categories": [
+      "rejected_categories=handoff_evidence_ref_mismatch",
+      "rejected_categories=handoff_unsafe_rejected"
+    ],
+    "owner_support_reviewer_next_step": "owner_support_reviewer_next_step=ready_for_field_owner_support_reviewer_handoff_not_proven after same safe evidence_ref materials",
+    "safe_phone_copy": "现场证据复跑执行结果验收交接 safe copy: handoff_status=ready_for_field_owner_support_reviewer_handoff_not_proven, source=software_proof, not_proven, safe_to_control=false, delivery_success=false, primary_actions_enabled=false.",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "真实 task record",
+      "真实 Nav2/fixed-route runtime log",
+      "真实 route completion signal",
+      "真实 elevator evidence",
+      "真实 dropoff/cancel completion",
+      "真实 delivery result",
+      "true phone/browser evidence",
+      "HIL",
+      "O5 external proof"
+    ]
+  },
+  "field_evidence_rerun_execution_result_acceptance_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff_summary.v1",
+    "source": "software_proof",
+    "handoff_status": "handoff_needs_more_material",
+    "source_review_decision": "blocked_missing_review_decision",
+    "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_review_handoff_fixture_20260522_0001",
+    "required_material_checklist": [
+      "required_material_checklist=same safe evidence_ref materials"
+    ],
+    "blocked_categories": [
+      "blocked_categories=blocked_missing_review_decision",
+      "blocked_categories=handoff_needs_more_material"
+    ],
+    "rejected_categories": [
+      "rejected_categories=handoff_evidence_ref_mismatch",
+      "rejected_categories=handoff_unsafe_rejected"
+    ],
+    "owner_support_reviewer_next_step": "owner_support_reviewer_next_step=wait for same safe evidence_ref materials before handoff",
+    "safe_phone_copy": "fallback summary keeps 现场证据复跑执行结果验收交接 read-only；not_proven。",
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "true phone/browser evidence"
+    ]
+  },
+  "field_evidence_rerun_execution_result_acceptance_review_handoff": {
+    "summary": {
+      "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff_summary.v1",
+      "source": "software_proof",
+      "handoff_status": "blocked_missing_review_decision",
+      "safe_evidence_ref": "field_evidence_rerun_execution_result_acceptance_review_handoff_fixture_20260522_0001",
+      "required_material_checklist": [
+        "required_material_checklist=same safe evidence_ref materials"
+      ],
+      "blocked_categories": [
+        "blocked_categories=blocked_missing_review_decision"
+      ],
+      "rejected_categories": [
+        "rejected_categories=handoff_unsafe_rejected"
+      ],
+      "owner_support_reviewer_next_step": "owner_support_reviewer_next_step=ready_for_field_owner_support_reviewer_handoff_not_proven after same safe evidence_ref materials",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

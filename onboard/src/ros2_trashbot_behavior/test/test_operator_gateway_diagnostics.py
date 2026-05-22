@@ -58,6 +58,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_field_evidence_rerun_execution_result_acceptance_packet,
     summarize_field_evidence_rerun_execution_result_acceptance_backfill,
     summarize_field_evidence_rerun_execution_result_acceptance_backfill_review_decision,
+    summarize_field_evidence_rerun_execution_result_acceptance_review_handoff,
     summarize_field_evidence_real_material_request_dispatch,
     summarize_field_evidence_real_material_response_intake,
     summarize_field_evidence_real_material_response_review_decision,
@@ -34010,6 +34011,258 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("raw_manifest", encoded)
         self.assertNotIn("checksum", encoded)
         self.assertNotIn("/tmp/raw-review-decision.json", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("traceback", encoded.lower())
+        self.assertNotIn("WAVE ROVER", encoded)
+        self.assertNotIn("serial", encoded.lower())
+        self.assertNotIn("uart", encoded.lower())
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+
+    def test_field_evidence_rerun_execution_result_acceptance_review_handoff_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff.v1"
+            ),
+            "source_schema_version": 1,
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate"
+            ),
+            "source": "software_proof",
+            "safe_evidence_ref": "field-rerun-execution-result-acceptance-review-handoff-001",
+            "handoff_status": {
+                "status": "ready_for_field_owner_support_reviewer_handoff_not_proven",
+                "verdict": "not_proven",
+                "reason": "handoff only routes sanitized metadata to owner/support/reviewer",
+            },
+            "required_materials": [
+                "same_evidence_ref_acceptance_review_decision",
+                "field_owner_support_reviewer_handoff_notes",
+            ],
+            "blocked_categories": ["handoff_needs_more_material"],
+            "rejected_categories": ["handoff_evidence_ref_mismatch"],
+            "owner_next_step": "Field owner attaches the same-ref review handoff packet.",
+            "support_next_step": "Support checks the safe handoff metadata only.",
+            "reviewer_next_step": "Reviewer keeps the result not_proven until real evidence arrives.",
+            "evidence_boundary_status": "not_proven",
+            "robot_diagnostics_summary": {
+                "status": "metadata_only",
+                "reason": "Robot mirrors canonical acceptance review handoff summary only",
+            },
+            "safe_copy": (
+                "Field evidence rerun execution result acceptance review handoff "
+                "is metadata-only; source=software_proof; not_proven; "
+                "safe_to_control=false; delivery_success=false; primary_actions_enabled=false."
+            ),
+            "not_proven": ["handoff is not delivery success"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+        artifact = {
+            "schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate"
+            ),
+            "safe_evidence_ref": (
+                "field-rerun-execution-result-acceptance-review-handoff-001"
+            ),
+            "field_evidence_rerun_execution_result_acceptance_review_handoff_summary": (
+                safe_summary
+            ),
+        }
+        with tempfile.TemporaryDirectory() as td:
+            handoff_path = (
+                Path(td)
+                / "field_evidence_rerun_execution_result_acceptance_review_handoff.json"
+            )
+            handoff_path.write_text(json.dumps(artifact), encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "field_evidence_rerun_execution_result_acceptance_review_handoff": {
+                        "safe_to_control": True,
+                        "raw_manifest": {"ros_topic": "/cmd_vel"},
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                field_evidence_rerun_execution_result_acceptance_review_handoff_ref=str(
+                    handoff_path
+                ),
+            )
+            from_nested = summarize_field_evidence_rerun_execution_result_acceptance_review_handoff(
+                {
+                    "schema": (
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate"
+                    ),
+                    "field_evidence_rerun_execution_result_acceptance_review_handoff_summary": (
+                        safe_summary
+                    ),
+                }
+            )
+            missing = summarize_field_evidence_rerun_execution_result_acceptance_review_handoff(
+                Path(td)
+                / "missing_execution_result_acceptance_review_handoff.json"
+            )
+            unsupported = summarize_field_evidence_rerun_execution_result_acceptance_review_handoff(
+                dict(
+                    safe_summary,
+                    source_schema=(
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_backfill_review_decision.v1"
+                    ),
+                    source_evidence_boundary=(
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_gate"
+                    ),
+                )
+            )
+            mismatch = summarize_field_evidence_rerun_execution_result_acceptance_review_handoff(
+                dict(artifact, safe_evidence_ref="different-ref")
+            )
+            unsafe = summarize_field_evidence_rerun_execution_result_acceptance_review_handoff(
+                {
+                    "schema": (
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate"
+                    ),
+                    "safe_evidence_ref": (
+                        "field-rerun-execution-result-acceptance-review-handoff-001"
+                    ),
+                    "raw_manifest": {
+                        "checksum": "abc",
+                        "local_path": "/tmp/raw-review-handoff.json",
+                        "ros_topic": "/cmd_vel",
+                    },
+                    "diagnostics": {
+                        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary": (
+                            safe_summary
+                        )
+                    },
+                }
+            )
+            success_wording = summarize_field_evidence_rerun_execution_result_acceptance_review_handoff(
+                dict(safe_summary, safe_copy="PR resolved with HIL pass")
+            )
+            raw_only = summarize_field_evidence_rerun_execution_result_acceptance_review_handoff(
+                {
+                    "schema": (
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate"
+                    ),
+                    "safe_evidence_ref": (
+                        "field-rerun-execution-result-acceptance-review-handoff-001"
+                    ),
+                    "raw_manifest": {"token": "secret"},
+                }
+            )
+
+        summary = payload[
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+        ]
+        self.assertEqual(
+            payload["field_evidence_rerun_execution_result_acceptance_review_handoff"],
+            summary,
+        )
+        self.assertEqual(
+            payload[
+                "field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+            ],
+            summary,
+        )
+        self.assertNotIn(
+            "field_evidence_rerun_execution_result_acceptance_review_handoff",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(
+            summary["handoff_status"]["status"],
+            "ready_for_field_owner_support_reviewer_handoff_not_proven",
+        )
+        self.assertEqual(summary["evidence_boundary_status"], "not_proven")
+        self.assertIn("same_evidence_ref", summary["required_materials"][0])
+        self.assertIn("handoff_needs_more_material", summary["blocked_categories"][0])
+        self.assertIn("handoff_evidence_ref_mismatch", summary["rejected_categories"][0])
+        self.assertIn("Field owner", summary["owner_next_step"])
+        self.assertIn("Support", summary["support_next_step"])
+        self.assertIn("Reviewer", summary["reviewer_next_step"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_review_handoff_only",
+            summary["not_proven"],
+        )
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertEqual(
+            from_nested["handoff_status"]["status"],
+            "ready_for_field_owner_support_reviewer_handoff_not_proven",
+        )
+        self.assertEqual(
+            missing["handoff_status"]["status"],
+            "blocked_missing_review_decision",
+        )
+        self.assertEqual(
+            unsupported["handoff_status"]["status"],
+            "blocked_missing_review_decision",
+        )
+        self.assertEqual(
+            mismatch["handoff_status"]["status"],
+            "handoff_evidence_ref_mismatch",
+        )
+        self.assertEqual(
+            unsafe["handoff_status"]["status"],
+            "handoff_unsafe_rejected",
+        )
+        self.assertEqual(
+            success_wording["handoff_status"]["status"],
+            "handoff_unsafe_rejected",
+        )
+        self.assertEqual(
+            raw_only["handoff_status"]["status"],
+            "blocked_missing_review_decision",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_manifest", encoded)
+        self.assertNotIn("checksum", encoded)
+        self.assertNotIn("/tmp/raw-review-handoff.json", encoded)
         self.assertNotIn("/cmd_vel", encoded)
         self.assertNotIn("traceback", encoded.lower())
         self.assertNotIn("WAVE ROVER", encoded)

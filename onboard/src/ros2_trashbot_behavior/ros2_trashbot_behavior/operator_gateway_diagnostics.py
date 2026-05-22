@@ -463,6 +463,22 @@ FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_REVIEW_DECISION_SUMMAR
 FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_BACKFILL_REVIEW_DECISION_GATE = (
     "software_proof_docker_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_gate"
 )
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_SCHEMA = (
+    "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff.v1"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_SUMMARY_SCHEMA = (
+    "trashbot.field_evidence_rerun_execution_result_acceptance_review_handoff_summary.v1"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_GATE = (
+    "software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_STATUSES = (
+    "ready_for_field_owner_support_reviewer_handoff_not_proven",
+    "handoff_needs_more_material",
+    "handoff_evidence_ref_mismatch",
+    "handoff_unsafe_rejected",
+    "blocked_missing_review_decision",
+)
 FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_SCHEMA = (
     "trashbot.field_evidence_real_material_request_dispatch.v1"
 )
@@ -4820,6 +4836,40 @@ def _field_evidence_rerun_execution_result_acceptance_backfill_review_decision_n
             source_values.extend(item.get("not_proven"))
     required = (
         "field_evidence_rerun_execution_result_acceptance_backfill_review_decision_only",
+        "field_rerun_not_executed_by_robot",
+        "real_route_completion_not_verified",
+        "real_field_task_record_not_verified",
+        "real_nav2_fixed_route_runtime_not_verified",
+        "real_elevator_operation_not_verified",
+        "real_dropoff_cancel_completion_not_verified",
+        "real_delivery_result_not_verified",
+        "real_phone_browser_not_verified",
+        "real_hardware_runtime_not_verified",
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "hardware_transport_control",
+        "delivery_success",
+    )
+    values = []
+    for item in list(source_values) + list(required):
+        text = str(item or "").strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _field_evidence_rerun_execution_result_acceptance_review_handoff_not_proven(
+    handoff=None,
+    summary_fragment=None,
+):
+    # handoff 只说明支持/owner/reviewer 的安全交接，不能被解释为现场复跑或投递已成功。
+    source_values = []
+    for item in (handoff, summary_fragment):
+        if isinstance(item, dict) and isinstance(item.get("not_proven"), list):
+            source_values.extend(item.get("not_proven"))
+    required = (
+        "field_evidence_rerun_execution_result_acceptance_review_handoff_only",
         "field_rerun_not_executed_by_robot",
         "real_route_completion_not_verified",
         "real_field_task_record_not_verified",
@@ -10769,6 +10819,66 @@ def _default_field_evidence_rerun_execution_result_acceptance_backfill_review_de
         ),
         "not_proven": (
             _field_evidence_rerun_execution_result_acceptance_backfill_review_decision_not_proven()
+        ),
+        "metadata_only": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+    }
+
+
+def _default_field_evidence_rerun_execution_result_acceptance_review_handoff_summary(
+    path,
+    handoff_status="blocked_missing_review_decision",
+    read_error="",
+):
+    # 缺省态只返回交接元数据，避免 diagnostics 把缺失 handoff 当成现场验收完成。
+    safe_copy = (
+        "Field evidence rerun execution result acceptance review handoff "
+        "is metadata-only; source=software_proof; not_proven; "
+        "safe_to_control=false; delivery_success=false; primary_actions_enabled=false."
+    )
+    reason = read_error or (
+        "field evidence rerun execution result acceptance review handoff is not configured"
+    )
+    return {
+        "schema": FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "handoff_status": {
+            "status": handoff_status,
+            "verdict": "not_proven",
+            "reason": reason,
+        },
+        "required_materials": [],
+        "blocked_categories": [],
+        "rejected_categories": [],
+        "owner_next_step": "Attach same-ref sanitized acceptance review handoff.",
+        "support_next_step": "Wait for sanitized same-ref support handoff metadata.",
+        "reviewer_next_step": "Review only software-proof safe handoff metadata.",
+        "evidence_boundary_status": "not_proven",
+        "robot_diagnostics_summary": {"status": "blocked", "reason": reason},
+        "robot_compatible_summary": {"status": "blocked", "reason": reason},
+        "boundary": FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_GATE,
+        "not_proven": (
+            _field_evidence_rerun_execution_result_acceptance_review_handoff_not_proven()
         ),
         "metadata_only": True,
         "safe_to_control": False,
@@ -19987,6 +20097,25 @@ def _field_evidence_rerun_execution_result_acceptance_backfill_review_decision_s
     return source_schema, source_boundary
 
 
+def _field_evidence_rerun_execution_result_acceptance_review_handoff_source_contract(
+    value,
+):
+    # handoff alias 只接受 PC gate 的 canonical summary，raw handoff wrapper 必须另带 safe summary。
+    value = value if isinstance(value, dict) else {}
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if (
+        source_schema
+        == FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_SUMMARY_SCHEMA
+    ):
+        source_schema = str(
+            value.get("source_schema")
+            or FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _field_evidence_real_material_request_dispatch_source_contract(value):
     # Robot 只接受 Autonomy 的 canonical summary，或带 canonical summary 的 compatible wrapper。
     value = value if isinstance(value, dict) else {}
@@ -22275,6 +22404,148 @@ def _field_evidence_rerun_execution_result_acceptance_backfill_review_decision_h
         "cancel enabled",
         "hil pass",
         "real hil",
+        "success/control",
+        "passed",
+        " pass",
+    )
+    return any(marker in text for marker in unsafe_text_fragments)
+
+
+def _field_evidence_rerun_execution_result_acceptance_review_handoff_has_unsafe_fields(
+    value,
+):
+    # handoff 对 Robot 只暴露白名单交接字段；raw、控制、外部证明和 PR 解决宣称全部闭锁。
+    unsafe_key_fragments = (
+        "raw",
+        "manifest",
+        "artifact_path",
+        "artifact_ref",
+        "complete_artifact",
+        "full_artifact",
+        "local_path",
+        "path",
+        "checksum",
+        "credential",
+        "secret",
+        "token",
+        "authorization",
+        "bearer",
+        "traceback",
+        "ros_topic",
+        "topic",
+        "cmd_vel",
+        "serial",
+        "uart",
+        "baud",
+        "wave_rover",
+        "db_url",
+        "queue_url",
+        "oss",
+        "control",
+        "ack",
+        "cursor",
+        "command",
+        "external",
+        "hil",
+        "pr_resolution",
+    )
+    safe_keys = {
+        "schema",
+        "schema_version",
+        "source",
+        "source_schema",
+        "source_schema_version",
+        "source_evidence_boundary",
+        "evidence_boundary",
+        "boundary",
+        "safe_evidence_ref",
+        "evidence_ref",
+        "handoff_status",
+        "status",
+        "status_summary",
+        "verdict",
+        "reason",
+        "required_materials",
+        "blocked_categories",
+        "rejected_categories",
+        "missing_categories",
+        "owner_next_step",
+        "support_next_step",
+        "reviewer_next_step",
+        "evidence_boundary_status",
+        "robot_diagnostics_summary",
+        "robot_compatible_summary",
+        "safe_copy",
+        "safe_phone_copy",
+        "not_proven",
+        "safe_to_control",
+        "delivery_success",
+        "primary_actions_enabled",
+        "metadata_only",
+        "boundary_flags",
+        "field_evidence_rerun_execution_result_acceptance_review_handoff_summary",
+        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary",
+        "diagnostics",
+        "summary",
+        "diagnostics_summary",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text not in safe_keys and any(
+                fragment in key_text for fragment in unsafe_key_fragments
+            ):
+                return True
+            if _field_evidence_rerun_execution_result_acceptance_review_handoff_has_unsafe_fields(
+                item
+            ):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _field_evidence_rerun_execution_result_acceptance_review_handoff_has_unsafe_fields(
+                item
+            )
+            for item in value
+        )
+    text = str(value or "").strip().lower()
+    # not_proven 中允许安全否定句，先归一化以避免被 success/pass 关键字误伤。
+    text = text.replace("not delivery success", "not_delivery_success")
+    text = text.replace("not proven delivery success", "not_proven_delivery_success")
+    text = text.replace("not hil pass", "not_hil_pass")
+    text = text.replace("not proven hil pass", "not_proven_hil_pass")
+    unsafe_text_fragments = (
+        "/cmd_vel",
+        "/dev/tty",
+        "ttyusb",
+        "wave rover",
+        "wave_rover",
+        "traceback",
+        "checksum",
+        "bearer",
+        "authorization",
+        "credential",
+        "secret",
+        "token",
+        "db://",
+        "queue://",
+        "oss ak",
+        "oss sk",
+        "delivery success",
+        "delivery_success=true",
+        "primary_actions_enabled=true",
+        "safe_to_control=true",
+        "control enabled",
+        "start delivery",
+        "confirm dropoff",
+        "cancel enabled",
+        "external proof",
+        "real external",
+        "hil pass",
+        "real hil",
+        "pr resolved",
+        "pr reviewer resolved",
+        "reviewer resolved",
         "success/control",
         "passed",
         " pass",
@@ -25329,7 +25600,7 @@ def summarize_route_task_field_retest_session_handoff(source):
             summary.update(
                 {
                     "handoff_status": {
-                        "status": "read_error",
+                        "status": "blocked_missing_review_decision",
                         "verdict": "not_proven",
                         "reason": _redact_route_task_rehearsal_text(
                             f"failed reading route-task field retest session handoff: {exc}"
@@ -25354,8 +25625,8 @@ def summarize_route_task_field_retest_session_handoff(source):
     if not isinstance(handoff, dict):
         summary.update(
             {
-                "handoff_status": {
-                    "status": "read_error",
+                    "handoff_status": {
+                    "status": "blocked_missing_review_decision",
                     "verdict": "not_proven",
                     "reason": "route-task field retest session handoff JSON must be an object",
                 },
@@ -30758,7 +31029,7 @@ def summarize_route_task_field_retest_review_result_handoff(source):
             summary.update(
                 {
                     "handoff_status": {
-                        "status": "read_error",
+                        "status": "blocked_missing_review_decision",
                         "verdict": "not_proven",
                         "reason": _redact_route_task_rehearsal_text(
                             f"failed reading route-task field retest review result handoff: {exc}"
@@ -30782,7 +31053,7 @@ def summarize_route_task_field_retest_review_result_handoff(source):
         summary.update(
             {
                 "handoff_status": {
-                    "status": "read_error",
+                    "status": "blocked_missing_review_decision",
                     "verdict": "not_proven",
                     "reason": "route-task field retest review result handoff JSON must be an object",
                 },
@@ -43709,6 +43980,397 @@ def summarize_field_evidence_rerun_execution_result_acceptance_backfill_review_d
                 "missing_categories": [],
                 "rejected_categories": ["unsafe_rejected"],
                 "owner_next_step": "Remove unsafe material and provide a sanitized same-ref review decision.",
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+            }
+        )
+    return summary
+
+
+def summarize_field_evidence_rerun_execution_result_acceptance_review_handoff(source):
+    """构建 acceptance review handoff 的 Robot-safe 摘要。"""
+    source_path = ""
+    if isinstance(source, dict):
+        handoff = source
+    else:
+        source_path = os.path.expanduser(str(source or ""))
+        summary = _default_field_evidence_rerun_execution_result_acceptance_review_handoff_summary(
+            source_path,
+            read_error=(
+                "field evidence rerun execution result acceptance review handoff is not configured"
+            ),
+        )
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary.update(
+                {
+                    "handoff_status": {
+                        "status": "blocked_missing_review_decision",
+                        "verdict": "not_proven",
+                        "reason": "execution result acceptance review handoff summary missing",
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "execution result acceptance review handoff summary missing",
+                    },
+                }
+            )
+            return summary
+        summary["exists"] = True
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                handoff = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            summary.update(
+                {
+                    "handoff_status": {
+                        "status": "read_error",
+                        "verdict": "not_proven",
+                        "reason": _redact_route_task_rehearsal_text(
+                            "failed reading field evidence rerun execution result "
+                            f"acceptance review handoff: {exc}"
+                        ),
+                    },
+                    "robot_diagnostics_summary": {
+                        "status": "blocked",
+                        "reason": "execution result acceptance review handoff JSON read error",
+                    },
+                }
+            )
+            return summary
+
+    summary = _default_field_evidence_rerun_execution_result_acceptance_review_handoff_summary(
+        source_path,
+        read_error=(
+            "field evidence rerun execution result acceptance review handoff is not configured"
+        ),
+    )
+    summary["exists"] = bool(source_path) or isinstance(source, dict)
+    if not isinstance(handoff, dict):
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "read_error",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "field evidence rerun execution result acceptance review handoff JSON must be an object"
+                    ),
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "execution result acceptance review handoff JSON shape is invalid",
+                },
+            }
+        )
+        return summary
+
+    diagnostics = (
+        handoff.get("diagnostics")
+        if isinstance(handoff.get("diagnostics"), dict)
+        else {}
+    )
+    # 完整 handoff artifact 只能作为 safe summary 容器，Robot 不直接消费 raw handoff body。
+    summary_fragment = (
+        handoff
+        if str(handoff.get("schema") or "")
+        == FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_SUMMARY_SCHEMA
+        else {}
+    )
+    if not summary_fragment:
+        for candidate in (
+            handoff.get(
+                "field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+            ),
+            handoff.get(
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+            ),
+            handoff.get("robot_compatible_summary"),
+            handoff.get("summary"),
+            handoff.get("diagnostics_summary"),
+            diagnostics.get(
+                "field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+            ),
+            diagnostics.get(
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+            ),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+
+    contract_source = summary_fragment if summary_fragment else handoff
+    source_schema, source_boundary = (
+        _field_evidence_rerun_execution_result_acceptance_review_handoff_source_contract(
+            contract_source
+        )
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": contract_source.get("schema_version"),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+        }
+    )
+    if not summary_fragment:
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "blocked_missing_review_decision",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "field evidence rerun execution result acceptance review handoff lacks a safe canonical summary"
+                    ),
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing safe execution result acceptance review handoff summary",
+                },
+            }
+        )
+        return summary
+
+    status_source = summary_fragment.get("handoff_status")
+    if not isinstance(status_source, dict):
+        status_source = summary_fragment.get("status_summary")
+    if not isinstance(status_source, dict):
+        status_source = {}
+    handoff_status = _redact_route_task_rehearsal_text(
+        status_source.get("status")
+        or summary_fragment.get("handoff_status")
+        or summary_fragment.get("status")
+        or "blocked_missing_review_decision"
+    )
+    verdict = _redact_route_task_rehearsal_text(
+        status_source.get("verdict") or summary_fragment.get("verdict") or "not_proven"
+    )
+    reason = _redact_route_task_rehearsal_text(
+        status_source.get("reason")
+        or summary_fragment.get("reason")
+        or "field evidence rerun execution result acceptance review handoff consumed as software_proof"
+    )
+    safe_copy = _safe_pc_route_debug_value(
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or (
+            "Field evidence rerun execution result acceptance review handoff "
+            "is metadata-only; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; primary_actions_enabled=false."
+        )
+    )
+    safe_copy_text = (
+        json.dumps(safe_copy, ensure_ascii=False, sort_keys=True)
+        if isinstance(safe_copy, (dict, list))
+        else str(safe_copy or "")
+    )
+    if "delivery_success=false" not in safe_copy_text:
+        # safe_copy 必须保留 false literal，避免下游 UI 重新推断控制权限。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    source_ref = str(
+        handoff.get("safe_evidence_ref") or handoff.get("evidence_ref") or ""
+    ).strip()
+    summary_ref = str(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or ""
+    ).strip()
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    summary.update(
+        {
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or EVIDENCE_SOURCE_SOFTWARE
+            ),
+            "handoff_status": {
+                "status": handoff_status or "blocked_missing_review_decision",
+                "verdict": verdict or "not_proven",
+                "reason": reason,
+            },
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_ref or source_ref
+            ),
+            "required_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("required_materials")
+                or summary_fragment.get("required_material_checklist")
+            ),
+            "blocked_categories": _safe_route_task_rehearsal_list(
+                summary_fragment.get("blocked_categories")
+                or summary_fragment.get("missing_categories")
+            ),
+            "rejected_categories": _safe_route_task_rehearsal_list(
+                summary_fragment.get("rejected_categories")
+            ),
+            "owner_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("owner_next_step")
+                or "Field owner attaches same-ref sanitized support handoff material."
+            ),
+            "support_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("support_next_step")
+                or "Support validates only metadata-only handoff fields."
+            ),
+            "reviewer_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("reviewer_next_step")
+                or "Reviewer keeps acceptance not_proven until real field evidence exists."
+            ),
+            "evidence_boundary_status": _redact_route_task_rehearsal_text(
+                summary_fragment.get("evidence_boundary_status") or "not_proven"
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": handoff_status or "blocked_missing_review_decision",
+                "safe_copy": safe_copy_text,
+                "safe_phone_copy": safe_copy_text,
+            },
+            "not_proven": (
+                _field_evidence_rerun_execution_result_acceptance_review_handoff_not_proven(
+                    handoff,
+                    summary_fragment,
+                )
+            ),
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+            "read_error": "",
+        }
+    )
+    unsafe_material = any(
+        _field_evidence_rerun_execution_result_acceptance_review_handoff_has_unsafe_fields(
+            item
+        )
+        for item in (
+            status_source,
+            summary["required_materials"],
+            summary["blocked_categories"],
+            summary["rejected_categories"],
+            summary["owner_next_step"],
+            summary["support_next_step"],
+            summary["reviewer_next_step"],
+            robot_summary,
+            safe_copy,
+            safe_copy_text,
+        )
+    )
+    if (
+        source_schema
+        != FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_SCHEMA
+        or source_boundary
+        != FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_GATE
+    ):
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "blocked_missing_review_decision",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "field evidence rerun execution result acceptance review handoff schema or boundary is unsupported"
+                    ),
+                },
+                "required_materials": [],
+                "blocked_categories": [],
+                "rejected_categories": [],
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "unsupported execution result acceptance review handoff schema or boundary",
+                },
+            }
+        )
+        return summary
+    if (
+        summary["source"] != EVIDENCE_SOURCE_SOFTWARE
+        or verdict != "not_proven"
+        or summary["evidence_boundary_status"] != "not_proven"
+        or handoff_status
+        not in FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_STATUSES
+    ):
+        summary["handoff_status"] = {
+            "status": "handoff_unsafe_rejected",
+            "verdict": "not_proven",
+            "reason": "execution result acceptance review handoff must remain software_proof and not_proven",
+        }
+        return summary
+    if (
+        not summary["safe_evidence_ref"]
+        or not summary["owner_next_step"]
+        or not summary["support_next_step"]
+        or not summary["reviewer_next_step"]
+    ):
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "blocked_missing_review_decision",
+                    "verdict": "not_proven",
+                    "reason": "execution result acceptance review handoff is missing safe metadata",
+                },
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "reason": "missing required execution result acceptance review handoff fields",
+                },
+            }
+        )
+        return summary
+    if source_ref and summary_ref and source_ref != summary_ref:
+        summary["handoff_status"] = {
+            "status": "handoff_evidence_ref_mismatch",
+            "verdict": "not_proven",
+            "reason": "execution result acceptance review handoff evidence_ref values do not match",
+        }
+        return summary
+    boundary_flags = _safe_pc_route_debug_dict(summary_fragment.get("boundary_flags")) or {}
+    if (
+        summary_fragment.get("safe_to_control") is not False
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or bool(boundary_flags.get("control_entrypoint_enabled"))
+        or unsafe_material
+        or _field_evidence_rerun_execution_result_acceptance_review_handoff_has_unsafe_fields(
+            handoff
+        )
+        or _field_evidence_rerun_execution_result_acceptance_review_handoff_has_unsafe_fields(
+            summary_fragment
+        )
+        or _field_evidence_rerun_execution_result_acceptance_review_handoff_has_unsafe_fields(
+            robot_summary
+        )
+    ):
+        blocked_copy = (
+            "Field evidence rerun execution result acceptance review handoff "
+            "was blocked because summary fields could expose raw manifest contents, "
+            "control data, paths, credentials, external proof, HIL/pass, PR resolution, "
+            "or success wording; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "handoff_status": {
+                    "status": "handoff_unsafe_rejected",
+                    "verdict": "not_proven",
+                    "reason": (
+                        "unsafe raw manifest, control, path, credential, external proof, HIL/pass, PR-resolution, or success material"
+                    ),
+                },
+                "required_materials": [],
+                "blocked_categories": ["handoff_unsafe_rejected"],
+                "rejected_categories": ["handoff_unsafe_rejected"],
+                "owner_next_step": "Remove unsafe material and provide a sanitized same-ref handoff.",
+                "support_next_step": "Reject unsafe handoff metadata until only safe fields remain.",
+                "reviewer_next_step": "Keep handoff not_proven and request sanitized software-proof metadata.",
                 "robot_diagnostics_summary": {
                     "status": "blocked",
                     "safe_copy": blocked_copy,
@@ -70543,6 +71205,7 @@ def build_diagnostics_payload(
     field_evidence_rerun_execution_result_acceptance_packet_ref="",
     field_evidence_rerun_execution_result_acceptance_backfill_ref="",
     field_evidence_rerun_execution_result_acceptance_backfill_review_decision_ref="",
+    field_evidence_rerun_execution_result_acceptance_review_handoff_ref="",
     field_evidence_real_material_request_dispatch_ref="",
     field_evidence_real_material_response_intake_ref="",
     field_evidence_real_material_response_review_decision_ref="",
@@ -74619,6 +75282,22 @@ def build_diagnostics_payload(
         "field_evidence_rerun_execution_result_acceptance_backfill_review_decision_copy",
         None,
     )
+    latest_status.pop(
+        "field_evidence_rerun_execution_result_acceptance_review_handoff",
+        None,
+    )
+    latest_status.pop(
+        "field_evidence_rerun_execution_result_acceptance_review_handoff_summary",
+        None,
+    )
+    latest_status.pop(
+        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary",
+        None,
+    )
+    latest_status.pop(
+        "field_evidence_rerun_execution_result_acceptance_review_handoff_copy",
+        None,
+    )
     latest_status.pop("field_evidence_real_material_request_dispatch", None)
     latest_status.pop("field_evidence_real_material_request_dispatch_summary", None)
     latest_status.pop(
@@ -76029,6 +76708,80 @@ def build_diagnostics_payload(
     field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary = (
         summarize_field_evidence_rerun_execution_result_acceptance_backfill_review_decision(
             field_evidence_rerun_execution_result_acceptance_backfill_review_decision_source
+        )
+    )
+    field_evidence_rerun_execution_result_acceptance_review_handoff_status_source = (
+        latest_status.get(
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "field_evidence_rerun_execution_result_acceptance_review_handoff"
+        )
+        if isinstance(
+            latest_status.get(
+                "field_evidence_rerun_execution_result_acceptance_review_handoff"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "field_evidence_rerun_execution_result_acceptance_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "field_evidence_rerun_execution_result_acceptance_review_handoff"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "field_evidence_rerun_execution_result_acceptance_review_handoff"
+            ),
+            dict,
+        )
+        else {}
+    )
+    field_evidence_rerun_execution_result_acceptance_review_handoff_source = (
+        field_evidence_rerun_execution_result_acceptance_review_handoff_ref
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_REVIEW_HANDOFF_SUMMARY",
+            "",
+        )
+        or field_evidence_rerun_execution_result_acceptance_review_handoff_status_source
+    )
+    field_evidence_rerun_execution_result_acceptance_review_handoff_summary = (
+        summarize_field_evidence_rerun_execution_result_acceptance_review_handoff(
+            field_evidence_rerun_execution_result_acceptance_review_handoff_source
         )
     )
     field_evidence_real_material_request_dispatch_status_source = (
@@ -77592,6 +78345,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary=(
             field_evidence_rerun_execution_result_acceptance_backfill_review_decision_summary
+        ),
+        field_evidence_rerun_execution_result_acceptance_review_handoff=(
+            field_evidence_rerun_execution_result_acceptance_review_handoff_summary
+        ),
+        field_evidence_rerun_execution_result_acceptance_review_handoff_summary=(
+            field_evidence_rerun_execution_result_acceptance_review_handoff_summary
+        ),
+        robot_diagnostics_field_evidence_rerun_execution_result_acceptance_review_handoff_summary=(
+            field_evidence_rerun_execution_result_acceptance_review_handoff_summary
         ),
         field_evidence_real_material_request_dispatch=(
             field_evidence_real_material_request_dispatch_summary
