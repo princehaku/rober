@@ -1213,6 +1213,67 @@ Reviewer ACK review decision must preserve the false-state boundary:
 `not_proven`, `delivery_success=false`, `safe_to_control=false`, and
 `primary_actions_enabled=false`.
 
+## robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary
+
+`robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary`
+is the Robot diagnostics safe alias for
+`field_evidence_material_resolution_reviewer_ack_review_handoff`. It consumes
+only the phone-safe Autonomy reviewer ACK review-handoff summary
+`trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff_summary.v1`,
+an artifact wrapper containing that summary, or compatible latest status /
+diagnostics fallback metadata.
+
+- Source artifact schema:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff.v1`
+- Source summary schema:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate`
+
+Allowed handoff statuses are
+`accepted_for_material_review_handoff_not_proven`,
+`needs_reassignment_not_proven`,
+`needs_field_owner_supplement_not_proven`,
+`rejected_unsafe_ack_review_handoff_not_proven`, and
+`blocked_missing_reviewer_ack_review_decision_not_proven`. These statuses are
+read-only review-routing metadata only.
+
+Allowed fields are limited to safe `evidence_ref`, source reviewer ACK review
+decision schema/status, previous reviewer ACK review-decision ref, handoff
+reasons, handoff targets, accepted/missing/rejected/unsafe material categories,
+next required evidence, owner action, CEO escalation recommendation, PR #5
+thread id `PRRT_kwDOSWB9286CJ3tX`, PR #5 state `unresolved`, material state
+`hardware_material_pending`, reply comment `3269642220`, reply resolution
+claim `not_reviewer_resolution`, evidence boundary, `source=software_proof`,
+`not_proven`, `safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+The alias must never turn reviewer ACK review-handoff metadata into readiness,
+command authorization, delivery success, owner-material real acceptance, PR
+reviewer resolution, ACK mutation, cursor mutation, replay, resubmit, serial
+open, WAVE ROVER command, Nav2 route execution, or action-result mutation. It
+must fail closed on raw ACK artifacts, complete artifacts, raw GitHub payloads,
+local paths, credentials, bearer tokens, DB/queue URLs, OSS secrets, checksums,
+ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER parameters,
+ACK/cursor/command data, tracebacks, field/cloud/phone/HIL proof claims,
+reviewer-resolution claims, owner-material acceptance claims,
+`safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true`.
+
+`accepted_for_material_review_handoff_not_proven` only means a sanitized
+reviewer ACK review handoff can enter a later material-review follow-up. It is
+not delivery success, real route/elevator field pass, verified terminal
+delivery/dropoff/cancel result, real phone/browser proof, public cloud proof,
+PR #5 reviewer resolution, HIL, Nav2 runtime proof, or permission to
+start/confirm/cancel/ACK/replay/resubmit robot commands.
+
+Reviewer ACK review handoff must preserve the false-state boundary:
+`software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate`,
+`not_proven`, `delivery_success=false`, `safe_to_control=false`, and
+`primary_actions_enabled=false`.
+
 ## robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary
 
 `robot_diagnostics_field_evidence_real_material_owner_ack_review_decision_summary`

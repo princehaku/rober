@@ -156,6 +156,10 @@ FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_REVIEW_DECISION_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_decision_summary.json"
 )
+FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_REVIEW_HANDOFF_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary.json"
+)
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
 
@@ -14766,6 +14770,179 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "raw owner packet",
             "raw ack",
             "raw decision",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "hil_pass",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "material fetch",
+            "replay",
+            "resubmit",
+            "robot command",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, response_text)
+
+    def test_field_evidence_material_resolution_reviewer_ack_review_handoff_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_REVIEW_HANDOFF_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # reviewer ACK review handoff 只读 Robot diagnostics safe summary，不新增 copy/export/ACK/cursor 或控制端点。
+        self.assertIn("FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_REVIEW_HANDOFF_BOUNDARY", app)
+        self.assertIn("UNSAFE_FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_REVIEW_HANDOFF_TEXT", app)
+        self.assertIn("safeFieldEvidenceMaterialResolutionReviewerAckReviewHandoffText", app)
+        self.assertIn("fieldEvidenceMaterialResolutionReviewerAckReviewHandoffCandidate", app)
+        self.assertIn("fieldEvidenceMaterialResolutionReviewerAckReviewHandoffFromStatus", app)
+        self.assertIn("renderFieldEvidenceMaterialResolutionReviewerAckReviewHandoff", app)
+        self.assertIn("现场材料 reviewer ACK 复核交接", app)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary",
+            app,
+        )
+        self.assertIn("field_evidence_material_resolution_reviewer_ack_review_handoff_summary", app)
+        self.assertIn("field_evidence_material_resolution_reviewer_ack_review_handoff?.summary", app)
+        self.assertIn("ready_for_material_review_handoff_not_proven", app)
+        self.assertIn("needs_field_owner_supplement_handoff_not_proven", app)
+        self.assertIn("needs_reassignment_handoff_not_proven", app)
+        self.assertIn("rejected_unsafe_ack_handoff_not_proven", app)
+        self.assertIn("blocked_missing_reviewer_ack_review_decision_not_proven", app)
+        self.assertIn("handoff_status", app)
+        self.assertIn("source_review_decision", app)
+        self.assertIn("field_owner_handoff", app)
+        self.assertIn("reviewer_handoff", app)
+        self.assertIn("support_handoff", app)
+        self.assertIn("missing_required_evidence", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("not true phone/browser", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertNotIn("copyFieldEvidenceMaterialResolutionReviewerAckReviewHandoffButton", app)
+        self.assertNotRegex(
+            app,
+            r"fieldEvidenceMaterialResolutionReviewerAckReviewHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackFieldEvidenceMaterialResolutionReviewerAckReviewHandoff",
+            "cursorFieldEvidenceMaterialResolutionReviewerAckReviewHandoff",
+            "fetchFieldEvidenceMaterialResolutionReviewerAckReviewHandoffDiagnostics",
+            "fetchFieldEvidenceMaterialResolutionReviewerAckReviewHandoffMaterial",
+            "replayFieldEvidenceMaterialResolutionReviewerAckReviewHandoff",
+            "resubmitFieldEvidenceMaterialResolutionReviewerAckReviewHandoff",
+            "commandFieldEvidenceMaterialResolutionReviewerAckReviewHandoff",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # dedicated fixture 覆盖 Robot alias、fallback、nested summary，并保持三 false flags 和主操作关闭。
+        summary = dedicated_fixture[
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary"
+        ]
+        fallback = dedicated_fixture[
+            "field_evidence_material_resolution_reviewer_ack_review_handoff_summary"
+        ]
+        nested = dedicated_fixture[
+            "field_evidence_material_resolution_reviewer_ack_review_handoff"
+        ]["summary"]
+        self.assertEqual(summary["capability"], "field_evidence_material_resolution_reviewer_ack_review_handoff")
+        self.assertEqual(summary["handoff_status"], "ready_for_material_review_handoff_not_proven")
+        self.assertEqual(fallback["handoff_status"], "needs_field_owner_supplement_handoff_not_proven")
+        self.assertEqual(nested["handoff_status"], "blocked_missing_reviewer_ack_review_decision_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "field_evidence_material_resolution_reviewer_ack_review_handoff",
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary",
+            "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate",
+            "handoff_status",
+            "source_review_decision",
+            "safe_evidence_ref",
+            "field_owner_handoff",
+            "reviewer_handoff",
+            "support_handoff",
+            "missing_required_evidence",
+            "next_required_evidence",
+            "not true phone/browser",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not robot control grant",
+            "not PR #5 resolution",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn("field_evidence_material_resolution_reviewer_ack_review_handoff", doc)
+        self.assertIn(
+            "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary",
+            doc,
+        )
+        self.assertIn(
+            "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate",
+            doc,
+        )
+        self.assertIn("ready_for_material_review_handoff_not_proven", doc)
+        self.assertIn("not true phone/browser", doc)
+        self.assertIn("not delivery success", doc)
+        self.assertIn("not robot control grant", doc)
+        self.assertIn("not PR #5 resolution", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+
+    def test_field_evidence_material_resolution_reviewer_ack_review_handoff_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_REVIEW_HANDOFF_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        response_text = json.dumps(
+            {
+                "robot": dedicated_fixture[
+                    "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary"
+                ],
+                "fallback": dedicated_fixture[
+                    "field_evidence_material_resolution_reviewer_ack_review_handoff_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "field_evidence_material_resolution_reviewer_ack_review_handoff"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只能包含 reviewer ACK review-handoff safe summary，不泄漏原始材料、凭证或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw material",
+            "raw owner packet",
+            "raw ack",
+            "raw handoff",
             "complete artifact",
             "checksum",
             "credential",

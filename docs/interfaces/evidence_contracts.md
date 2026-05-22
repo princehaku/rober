@@ -2642,6 +2642,71 @@ result, delivery success, real phone/browser evidence, HIL pass, Objective 5
 external cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, or any primary
 robot action being enabled.
 
+## field_evidence_material_resolution_reviewer_ack_review_handoff
+
+`pc-tools/evidence/field_evidence_material_resolution_reviewer_ack_review_handoff.py`
+generates the PC-only reviewer ACK review handoff gate after
+`field_evidence_material_resolution_reviewer_ack_review_decision.py`.
+
+- Artifact schema:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff.v1`
+- Summary schema:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff_summary.v1`
+- Robot diagnostics alias:
+  `robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate`
+- Capability:
+  `field_evidence_material_resolution_reviewer_ack_review_handoff`
+- Allowed source inputs:
+  `trashbot.field_evidence_material_resolution_reviewer_ack_review_decision.v1`,
+  `trashbot.field_evidence_material_resolution_reviewer_ack_review_decision_summary.v1`,
+  the Robot safe alias, or a compatible wrapper containing one of those safe
+  schemas under
+  `software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_decision_gate`.
+
+The output always includes safe `evidence_ref`,
+`same_evidence_ref_required=true`, `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, `handoff_status`,
+`source_review_decision`, `reviewer_ack_state`, `ack_owner`,
+`acknowledged_at`, `reassignment_target`, `field_owner_handoff`,
+`support_handoff`, `reviewer_handoff`, `decision_reasons`,
+`next_required_evidence`, `proof_flags`, `safe_copy`, and
+`evidence_boundary=software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate`.
+
+Allowed `handoff_status` values are
+`ready_for_reviewer_ack_material_review_handoff_not_proven`,
+`needs_reassignment_handoff_not_proven`,
+`needs_field_owner_supplement_handoff_not_proven`,
+`rejected_unsafe_reviewer_ack_handoff_not_proven`, and
+`blocked_missing_reviewer_ack_review_decision_handoff_not_proven`. Accepted
+upstream reviewer ACK review decision maps only to
+`ready_for_reviewer_ack_material_review_handoff_not_proven`; this is support /
+field owner / reviewer package readiness only, not real reviewer resolution,
+not owner acceptance, not OKR movement, not delivery success, and not PR #5
+resolution. Reassignment maps to `needs_reassignment_handoff_not_proven`.
+Field-owner supplement maps to
+`needs_field_owner_supplement_handoff_not_proven`. Rejected or unsafe ACK
+material maps to `rejected_unsafe_reviewer_ack_handoff_not_proven`. Missing
+JSON, bad JSON, unsupported review-decision schema, wrong proof boundary, or
+missing safe `evidence_ref` maps to
+`blocked_missing_reviewer_ack_review_decision_handoff_not_proven`.
+
+Decision mapping is fail closed. Evidence-ref mismatch, source not preserving
+`source=software_proof` / `not_proven` / false-state flags, unsafe raw
+artifacts, local paths, credentials, checksums, stack traces, ROS/control
+details, reviewer resolution claims, enabled primary actions, delivery-success
+claims, or field/cloud/phone/HIL proof claims are rejected without copying raw
+material into the artifact.
+
+This contract is software proof only. It does not prove a real reviewer
+resolution, real owner acceptance, real material-review completion, real
+route/elevator field pass, real Nav2/fixed-route execution, verified terminal
+result, delivery success, real phone/browser evidence, HIL pass, Objective 5
+external cloud/4G/OSS/CDN/DB/queue proof, PR #5 resolution, or any primary
+robot action being enabled.
+
 ## route_task_field_retest_result_callback_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_callback_review_decision.py`

@@ -1396,6 +1396,53 @@ verified terminal result、delivery success、HIL、O5 external proof、真实 p
 claim、raw artifact、credential/local path、ROS/control detail、field/cloud/phone/HIL
 proof claim 会输出 `rejected_unsafe_ack_not_proven`。
 
+## field evidence material resolution reviewer ACK review handoff
+
+`pc-tools/evidence/field_evidence_material_resolution_reviewer_ack_review_handoff.py`
+只读上一节 `field_evidence_material_resolution_reviewer_ack_review_decision`
+artifact、summary、Robot safe alias 或 wrapper/nested JSON，把 reviewer ACK
+review decision 转成 support / field owner / reviewer handoff package：
+
+```bash
+python3 pc-tools/evidence/field_evidence_material_resolution_reviewer_ack_review_handoff.py \
+  --input /tmp/field_evidence_material_resolution_reviewer_ack_review_decision_summary.json \
+  --output /tmp/field_evidence_material_resolution_reviewer_ack_review_handoff.json \
+  --summary-output /tmp/field_evidence_material_resolution_reviewer_ack_review_handoff_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff.v1`，
+summary 使用
+`schema=trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary`，
+证据边界固定为
+`software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate`。
+核心字段包括
+`capability=field_evidence_material_resolution_reviewer_ack_review_handoff`、safe
+`evidence_ref`、`handoff_status`、`source_review_decision`、
+`reviewer_ack_state`、`ack_owner`、`reassignment_target`、
+`field_owner_handoff`、`support_handoff`、`reviewer_handoff`、
+`decision_reasons`、`next_required_evidence`、`proof_flags`、`source=software_proof`、
+`not_proven`、`primary_actions_enabled=false`、`delivery_success=false` 和
+`safe_to_control=false`。
+
+`handoff_status` 枚举固定为
+`ready_for_reviewer_ack_material_review_handoff_not_proven`、
+`needs_reassignment_handoff_not_proven`、
+`needs_field_owner_supplement_handoff_not_proven`、
+`rejected_unsafe_reviewer_ack_handoff_not_proven` 和
+`blocked_missing_reviewer_ack_review_decision_handoff_not_proven`。ready 只表示
+support、field owner 与 reviewer 可以拿到脱敏 reviewer ACK handoff package，仍不是真实
+material accepted、OKR movement、真实 field pass、verified terminal result、
+delivery success、HIL、O5 external proof、真实 phone/browser 证据或 PR #5 resolved。
+缺 input、bad JSON、unsupported schema、缺上一环 proof boundary 或缺 safe
+`evidence_ref` 会 fail closed；success/control/reviewer-resolution claim、raw artifact、
+credential/local path、ROS/control detail、field/cloud/phone/HIL proof claim 会输出
+`rejected_unsafe_reviewer_ack_handoff_not_proven`。该入口只证明本地
+`software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate`
+的 fail-closed contract 可复跑，仍属于 Docker/local software proof。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

@@ -1,0 +1,144 @@
+{
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false,
+  "command_safety": {
+    "primary_actions_enabled": false,
+    "actions": {
+      "start": {
+        "enabled": false,
+        "reason": "field_evidence_material_resolution_reviewer_ack_review_handoff_not_control_grant"
+      },
+      "confirm_dropoff": {
+        "enabled": false,
+        "reason": "field_evidence_material_resolution_reviewer_ack_review_handoff_not_dropoff_completion"
+      },
+      "cancel": {
+        "enabled": false,
+        "reason": "field_evidence_material_resolution_reviewer_ack_review_handoff_not_cancel_completion"
+      }
+    }
+  },
+  "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff.v1",
+    "capability": "field_evidence_material_resolution_reviewer_ack_review_handoff",
+    "source": "software_proof",
+    "handoff_status": "ready_for_material_review_handoff_not_proven",
+    "source_review_decision": "source_review_decision=accepted_for_material_review_not_proven",
+    "safe_evidence_ref": "safe_evidence_ref=field_evidence_material_resolution_reviewer_ack_review_handoff:TASK-2026-05-22-ACK-HANDOFF",
+    "field_owner_handoff": [
+      "field_owner_handoff=keep same safe evidence_ref for route elevator runtime material",
+      "field_owner_handoff=provide true phone/browser note before any field rerun"
+    ],
+    "reviewer_handoff": [
+      "reviewer_handoff=manual reviewer keeps PR #5 thread PRRT_kwDOSWB9286CJ3tX hardware_material_pending",
+      "reviewer_handoff=review only sanitized material summary"
+    ],
+    "support_handoff": [
+      "support_handoff=explain missing field materials to owner",
+      "support_handoff=do not claim robot control grant"
+    ],
+    "missing_required_evidence": [
+      "missing_required_evidence=not true phone/browser",
+      "missing_required_evidence=route elevator runtime summary",
+      "missing_required_evidence=verified terminal delivery/dropoff/cancel result",
+      "missing_required_evidence=real reviewer resolved evidence"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real field material under same safe evidence_ref",
+      "next_required_evidence=manual GitHub reviewer resolution evidence",
+      "next_required_evidence=true phone/browser proof"
+    ],
+    "safe_copy": "field_evidence_material_resolution_reviewer_ack_review_handoff: ready_for_material_review_handoff_not_proven; not true phone/browser; delivery_success=false; primary_actions_enabled=false; safe_to_control=false.",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "not true phone/browser",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "not robot control grant",
+      "not PR #5 resolution"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_reviewer_ack_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff.v1",
+    "capability": "field_evidence_material_resolution_reviewer_ack_review_handoff",
+    "source": "software_proof",
+    "handoff_status": "needs_field_owner_supplement_handoff_not_proven",
+    "source_review_decision": "source_review_decision=needs_field_owner_supplement_not_proven",
+    "safe_evidence_ref": "safe_evidence_ref=field_evidence_material_resolution_reviewer_ack_review_handoff:fallback",
+    "field_owner_handoff": [
+      "field_owner_handoff=add missing field owner supplement"
+    ],
+    "reviewer_handoff": [
+      "reviewer_handoff=wait for field owner supplement before manual thread decision"
+    ],
+    "support_handoff": [
+      "support_handoff=keep Start Delivery Confirm Dropoff Cancel disabled"
+    ],
+    "missing_required_evidence": [
+      "missing_required_evidence=field owner supplement"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same safe evidence_ref supplement"
+    ],
+    "safe_copy": "fallback reviewer ACK review handoff summary; not true phone/browser; delivery_success=false.",
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate",
+    "not_proven": [
+      "software_proof",
+      "not true phone/browser",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_reviewer_ack_review_handoff": {
+    "summary": {
+      "schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff_summary.v1",
+      "source_schema": "trashbot.field_evidence_material_resolution_reviewer_ack_review_handoff.v1",
+      "capability": "field_evidence_material_resolution_reviewer_ack_review_handoff",
+      "source": "software_proof",
+      "handoff_status": "blocked_missing_reviewer_ack_review_decision_not_proven",
+      "source_review_decision": "source_review_decision=blocked_missing_reviewer_ack_review_decision_not_proven",
+      "safe_evidence_ref": "safe_evidence_ref=field_evidence_material_resolution_reviewer_ack_review_handoff:nested",
+      "field_owner_handoff": [
+        "field_owner_handoff=wait for reviewer ACK review decision"
+      ],
+      "reviewer_handoff": [
+        "reviewer_handoff=do not close PR #5 thread without manual resolution"
+      ],
+      "support_handoff": [
+        "support_handoff=explain missing reviewer ACK review decision"
+      ],
+      "missing_required_evidence": [
+        "missing_required_evidence=reviewer ACK review decision safe summary"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=reviewer ACK review decision safe summary"
+      ],
+      "safe_copy": "nested reviewer ACK review handoff blocked; not PR #5 resolution.",
+      "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_review_handoff_gate",
+      "not_proven": [
+        "software_proof",
+        "not true phone/browser",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  }
+}
