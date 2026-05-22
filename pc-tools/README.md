@@ -1127,6 +1127,55 @@ reviewer resolution。`owner response material` 与 `escalate` 只用于 owner/C
 不是 OKR 百分比提升、真实 field pass、verified terminal result、delivery success、HIL、
 O5 external proof、真实 phone/browser 证据或 PR #5 resolved。
 
+## field evidence material resolution owner response intake
+
+`pc-tools/evidence/field_evidence_material_resolution_owner_response_intake.py`
+只读上一节 `field_evidence_material_resolution_followup_escalation_status`
+artifact、summary、Robot safe alias 或 wrapper/nested JSON，并可选读取脱敏 owner
+response material metadata，把 owner 回复材料归类为 accepted/missing/rejected/unsafe：
+
+```bash
+python3 pc-tools/evidence/field_evidence_material_resolution_owner_response_intake.py \
+  --followup-summary-json /tmp/field_evidence_material_resolution_followup_escalation_status_summary.json \
+  --owner-response-json /tmp/owner_response_material_metadata.json \
+  --evidence-ref field-resolution-owner-001 \
+  --output /tmp/field_evidence_material_resolution_owner_response_intake.json \
+  --summary-output /tmp/field_evidence_material_resolution_owner_response_intake_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.field_evidence_material_resolution_owner_response_intake.v1`，
+summary 使用
+`schema=trashbot.field_evidence_material_resolution_owner_response_intake_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary`，
+证据边界固定为
+`software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate`。
+核心字段包括 `capability=field_evidence_material_resolution_owner_response_intake`、
+safe `evidence_ref`、`owner_response_material_status`、`review_readiness`、
+`accepted_materials`、`missing_materials`、`rejected_materials`、`unsafe_materials`、
+`previous_escalation_reference`、`previous_handoff_reference`、`pr5_thread`、
+`safe_copy`、`source=software_proof`、`not_proven`、`primary_actions_enabled=false`、
+`delivery_success=false` 和 `safe_to_control=false`。
+
+`owner_response_material_status` 只允许 `missing`、`received_not_reviewed` 和
+`rejected_not_proven`。`review_readiness` 只允许
+`blocked_missing_owner_response_material_not_proven`、
+`accepted_for_review_not_proven` 和
+`rejected_unsafe_owner_response_material_not_proven`。缺 owner response material、
+missing safe `evidence_ref`、evidence-ref mismatch、缺上一环 proof boundary、
+unsupported schema、success/control/reviewer-resolution claim、raw artifact、
+credential/local path、ROS/control detail、field/cloud/phone/HIL proof claim 都会
+fail closed。accepted material 只表示 `accepted_for_review_not_proven`，不是 OKR
+movement、真实 field pass、verified terminal result、delivery success、HIL、O5
+external proof、真实 phone/browser 证据或 PR #5 resolved。
+
+该 gate 保留上一环 escalation trace 到
+`field_evidence_material_resolution_followup_escalation_status`，并保留上一轮 handoff
+trace 到 `field_evidence_material_resolution_review_handoff`。PR #5 thread
+`PRRT_kwDOSWB9286CJ3tX` 仍输出为 unresolved / `hardware_material_pending`，只有真实 live
+evidence 与 reviewer 实际 resolve 后才能改变该状态。
+
 ## route/task field retest evidence dispatch
 
 `pc-tools/evidence/route_task_field_retest_evidence_dispatch.py` 只读上一节 acceptance brief artifact、summary 或 wrapper/nested JSON，把必需证据包派发成 material owners、recommended filenames、same-evidence-ref rule、backfill order、callback checklist 和 fail-closed rerun notes：

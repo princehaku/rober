@@ -1,0 +1,123 @@
+{
+  "robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_owner_response_intake_summary.v1",
+    "source_schema": "trashbot.field_evidence_material_resolution_owner_response_intake.v1",
+    "capability": "field_evidence_material_resolution_owner_response_intake",
+    "source": "software_proof",
+    "response_status": "partial_owner_response_missing_materials_not_proven",
+    "response_status_options": [
+      "received_owner_response_not_proven",
+      "partial_owner_response_missing_materials_not_proven",
+      "rejected_owner_response_unsafe_not_proven",
+      "blocked_missing_owner_response_not_proven"
+    ],
+    "owner_response_material_status": "owner response material=partial_missing_route_elevator_and_terminal_result_material",
+    "review_readiness": "review_readiness=blocked_until_missing_materials_backfilled_not_proven",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_owner_response_intake_fixture_20260522_0001",
+    "accepted_materials": [
+      "accepted_materials=owner response index references same safe evidence_ref",
+      "accepted_materials=sanitized owner note confirms response packet received"
+    ],
+    "missing_materials": [
+      "missing_materials=real task_record",
+      "missing_materials=route elevator runtime summary",
+      "missing_materials=verified terminal delivery dropoff cancel result material",
+      "missing_materials=true phone browser evidence"
+    ],
+    "rejected_materials": [
+      "rejected_materials=success claim without verified terminal result",
+      "rejected_materials=material outside same safe evidence_ref"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same safe evidence_ref task_record",
+      "next_required_evidence=route elevator runtime summary",
+      "next_required_evidence=verified terminal delivery dropoff cancel result material",
+      "next_required_evidence=true phone browser note"
+    ],
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate",
+    "safe_copy": "owner response material intake is partial and not_proven; primary_actions_enabled=false; delivery_success=false; safe_to_control=false.",
+    "boundary_flags": "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "same_evidence_ref_required=true",
+      "owner_response_material_not_field_pass",
+      "true_phone_browser_proof_missing",
+      "route_elevator_runtime_missing",
+      "dropoff_completion_missing",
+      "cancel_completion_missing",
+      "verified_delivery_result_missing",
+      "hardware_hil_missing",
+      "o5_external_proof_missing"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_material_resolution_owner_response_intake_summary": {
+    "schema": "trashbot.field_evidence_material_resolution_owner_response_intake_summary.v1",
+    "capability": "field_evidence_material_resolution_owner_response_intake",
+    "source": "software_proof",
+    "response_status": "received_owner_response_not_proven",
+    "owner_response_material_status": "owner response material=received_but_not_reviewed",
+    "review_readiness": "review_readiness=needs_review_decision_not_proven",
+    "safe_evidence_ref": "evidence_ref=field_evidence_material_resolution_owner_response_intake_fixture_20260522_0001",
+    "accepted_materials": [
+      "accepted_materials=safe owner response envelope"
+    ],
+    "missing_materials": [
+      "missing_materials=review decision pending"
+    ],
+    "rejected_materials": [
+      "rejected_materials=none"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=owner response review decision"
+    ],
+    "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "field_evidence_material_resolution_owner_response_intake": {
+    "summary": {
+      "schema": "trashbot.field_evidence_material_resolution_owner_response_intake_summary.v1",
+      "capability": "field_evidence_material_resolution_owner_response_intake",
+      "source": "software_proof",
+      "response_status": "blocked_missing_owner_response_not_proven",
+      "owner_response_material_status": "owner response material=missing",
+      "review_readiness": "review_readiness=blocked_missing_owner_response_not_proven",
+      "safe_evidence_ref": "evidence_ref=not_proven",
+      "accepted_materials": [
+        "accepted_materials=none_not_field_proof"
+      ],
+      "missing_materials": [
+        "missing_materials=canonical Robot summary before review"
+      ],
+      "rejected_materials": [
+        "rejected_materials=unsafe_success_copy"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=canonical owner response safe summary"
+      ],
+      "evidence_boundary": "software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

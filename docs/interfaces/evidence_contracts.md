@@ -2335,6 +2335,80 @@ external cloud, real phone/browser, real route/elevator field pass, HIL,
 verified terminal result, dropoff/cancel completion, PR #5 resolution, delivery
 success, or any primary robot action being enabled.
 
+## field_evidence_material_resolution_owner_response_intake
+
+`pc-tools/evidence/field_evidence_material_resolution_owner_response_intake.py`
+generates the PC-only owner-response-intake gate after
+`field_evidence_material_resolution_followup_escalation_status.py`.
+
+- Artifact schema:
+  `trashbot.field_evidence_material_resolution_owner_response_intake.v1`
+- Summary schema:
+  `trashbot.field_evidence_material_resolution_owner_response_intake_summary.v1`
+- Robot diagnostics alias:
+  `robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate`
+- Capability:
+  `field_evidence_material_resolution_owner_response_intake`
+- Allowed source inputs:
+  `trashbot.field_evidence_material_resolution_followup_escalation_status.v1`,
+  `trashbot.field_evidence_material_resolution_followup_escalation_status_summary.v1`,
+  the Robot safe alias, or a compatible wrapper containing one of those safe
+  schemas under
+  `software_proof_docker_field_evidence_material_resolution_followup_escalation_status_gate`.
+- Optional owner response input:
+  sanitized owner response material metadata using
+  `trashbot.field_evidence_material_resolution_owner_response_packet.v1`,
+  `trashbot.field_evidence_material_resolution_owner_response_packet_summary.v1`,
+  or a schema-less safe form with `materials`, `accepted_materials`,
+  `missing_materials`, `rejected_materials`, or `unsafe_materials`.
+
+The output always includes safe `evidence_ref`,
+`same_evidence_ref_required=true`, `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, `owner_response_material_status`,
+`review_readiness`, `accepted_materials`, `missing_materials`,
+`rejected_materials`, `unsafe_materials`,
+`previous_escalation_reference`, `previous_handoff_reference`, `pr5_thread`,
+`safe_copy`, and
+`evidence_boundary=software_proof_docker_field_evidence_material_resolution_owner_response_intake_gate`.
+
+The `robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary`
+alias name is reserved as a read-only safe summary surface for downstream
+Robot/mobile consumers. This PC gate only emits the sanitized summary contract;
+Robot diagnostics wrappers must preserve the same false-state flags and must
+not copy raw artifacts, raw GitHub data, local paths, credentials, DB/queue
+URLs, OSS AK/SK, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER
+parameters, tracebacks, checksums, review-acceptance claims, delivery success,
+or command authorization into any Robot-facing payload.
+
+Allowed `owner_response_material_status` values are `missing`,
+`received_not_reviewed`, and `rejected_not_proven`. Allowed
+`review_readiness` values are
+`blocked_missing_owner_response_material_not_proven`,
+`accepted_for_review_not_proven`, and
+`rejected_unsafe_owner_response_material_not_proven`. Missing owner response
+material maps to `blocked_missing_owner_response_material_not_proven`.
+Fully accepted sanitized categories map only to
+`accepted_for_review_not_proven`; this is not OKR movement, not delivery
+success, and not reviewer resolution. Rejected or unsafe categories map to
+`rejected_unsafe_owner_response_material_not_proven`.
+
+Decision mapping is fail closed. Missing safe `evidence_ref`, evidence-ref
+mismatch, missing or wrong source proof boundary, unsupported schema, source
+not preserving `source=software_proof` / `not_proven` / false-state flags,
+unsafe raw artifacts, local paths, credentials, ROS/control details, reviewer
+resolution claims, enabled primary actions, delivery-success claims, or
+field/cloud/phone/HIL proof claims are blocked or rejected without copying raw
+material into the artifact.
+
+The contract traces previous escalation to
+`field_evidence_material_resolution_followup_escalation_status` and previous
+handoff to `field_evidence_material_resolution_review_handoff`. It keeps PR #5
+thread `PRRT_kwDOSWB9286CJ3tX` unresolved / `hardware_material_pending` unless
+real live evidence and reviewer action change that state.
+
 ## route_task_field_retest_result_callback_review_decision
 
 `pc-tools/evidence/route_task_field_retest_result_callback_review_decision.py`
