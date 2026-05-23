@@ -106,6 +106,48 @@ class FieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntak
             "safe_to_control": False,
         }
 
+    def _reviewer_ack_followup_summary(self, evidence_ref: str) -> dict[str, object]:
+        # bridge source 复用 reviewer-ACK followup 的脱敏 summary，不新建 owner-response mainline。
+        return {
+            "schema": gate.BRIDGE_SOURCE_SUMMARY_SCHEMA,
+            "schema_version": 1,
+            "source": "software_proof",
+            "status": "not_proven",
+            "capability": gate.BRIDGE_SOURCE_CAPABILITY,
+            "evidence_boundary": gate.BRIDGE_SOURCE_BOUNDARY,
+            "followup_status": "escalated_missing_real_material_not_proven",
+            "safe_evidence_ref": evidence_ref,
+            "evidence_ref": evidence_ref,
+            "same_evidence_ref_required": True,
+            "missing_required_evidence": [
+                "route_elevator_field_pass",
+                "verified_terminal_result",
+                "true_phone_browser_or_device_proof",
+                "owner response material that preserves source=software_proof and not_proven",
+            ],
+            "not_proven": [
+                "real_owner_response_intake_completion",
+                "real_route_elevator_field_pass",
+                "real_phone_browser_or_device",
+                "delivery_success",
+            ],
+            "software_proof": True,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_copy": {
+                "source": "software_proof",
+                "status": "not_proven",
+                "followup_status": "escalated_missing_real_material_not_proven",
+                "safe_evidence_ref": evidence_ref,
+                "evidence_ref": evidence_ref,
+                "not_proven": "not_proven",
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            },
+        }
+
     def _build(
         self,
         root: Path,
@@ -149,6 +191,46 @@ class FieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntak
         self.assertEqual(artifact["pr5_thread"]["material_state"], "hardware_material_pending")
         self.assertFalse(artifact["primary_actions_enabled"])
         self.assertFalse(artifact["delivery_success"])
+        self.assertFalse(artifact["safe_to_control"])
+
+    def test_reviewer_ack_followup_source_outputs_owner_response_intake_bridge(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact, summary, exit_code = self._build(
+                Path(tmp),
+                self._reviewer_ack_followup_summary("field-rerun-owner-response-bridge-201"),
+                self._owner_response("field-rerun-owner-response-bridge-201"),
+                "field-rerun-owner-response-bridge-201",
+            )
+
+        encoded = json.dumps(artifact, ensure_ascii=False)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(artifact["owner_response_status"], "accepted")
+        self.assertEqual(artifact["bridge_capability"], gate.BRIDGE_CAPABILITY)
+        self.assertEqual(artifact["evidence_boundary"], gate.BRIDGE_EVIDENCE_BOUNDARY)
+        self.assertEqual(
+            artifact["source_bridge"],
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
+        )
+        self.assertIn(gate.BRIDGE_CAPABILITY, encoded)
+        self.assertIn(gate.BRIDGE_EVIDENCE_BOUNDARY, encoded)
+        self.assertIn("source_bridge=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status", encoded)
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+
+    def test_reviewer_ack_followup_bridge_ref_mismatch_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            artifact, summary, exit_code = self._build(
+                Path(tmp),
+                self._reviewer_ack_followup_summary("field-rerun-owner-response-bridge-202"),
+                self._owner_response("other-field-rerun-owner-response-bridge-202"),
+                "field-rerun-owner-response-bridge-202",
+            )
+
+        self.assertEqual(artifact["owner_response_status"], "blocked")
+        self.assertNotEqual(exit_code, 0)
+        self.assertIn("owner_response_evidence_ref_mismatch", artifact["owner_response_reasons"])
+        self.assertEqual(summary["source_bridge"], gate.BRIDGE_SOURCE_CAPABILITY)
         self.assertFalse(artifact["safe_to_control"])
 
     def test_missing_owner_response_or_required_material_is_missing_nonzero(self) -> None:
@@ -251,8 +333,8 @@ class FieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntak
         response = self._owner_response("field-rerun-owner-response-108")
         materials = response["materials"]
         self.assertIsInstance(materials, dict)
-        materials["true task record"]["summary"] = "raw artifact at /Users/m4/log with /cmd_vel /dev/ttyUSB0 WAVE ROVER"
-        materials["true task record"]["safe_to_control"] = True
+        materials["real task record"]["summary"] = "raw artifact at /Users/m4/log with /cmd_vel /dev/ttyUSB0 WAVE ROVER"
+        materials["real task record"]["safe_to_control"] = True
         with tempfile.TemporaryDirectory() as tmp:
             artifact, summary, exit_code = self._build(
                 Path(tmp),

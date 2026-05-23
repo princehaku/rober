@@ -573,6 +573,7 @@ FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_I
     "missing_not_proven",
     "rejected_not_proven",
     "blocked_not_proven",
+    "accepted_for_owner_response_intake_not_proven",
 )
 FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEW_DECISION_SCHEMA = (
     "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision.v1"
@@ -687,6 +688,15 @@ FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_R
     "escalated_missing_real_material_not_proven",
     "blocked_missing_reviewer_ack_review_handoff_not_proven",
     "ready_for_real_material_reviewer_followup_not_proven",
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE = (
+    "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_GATE = (
+    "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_SOURCE = (
+    "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status"
 )
 FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_SCHEMA = (
     "trashbot.field_evidence_real_material_request_dispatch.v1"
@@ -12543,6 +12553,8 @@ def _default_field_evidence_rerun_execution_result_acceptance_handoff_intake_own
             FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_GATE
         ),
         "capability": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
+        "source_bridge": "",
+        "source_followup_status": {},
         "source_schema": "",
         "source_schema_version": None,
         "source_evidence_boundary": "",
@@ -12563,6 +12575,21 @@ def _default_field_evidence_rerun_execution_result_acceptance_handoff_intake_own
         "missing_material_refs": [],
         "rejected_material_refs": [],
         "blocked_material_refs": [],
+        "owner_route": [],
+        "reviewer_route": [],
+        "support_route": [],
+        "next_required_field_owner_materials": [],
+        "false_state_flags": {
+            "source": EVIDENCE_SOURCE_SOFTWARE,
+            "overall_status": "not_proven",
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "ack_post_allowed": False,
+            "cursor_updates_allowed": False,
+            "nav2_triggered": False,
+            "hil_pass": False,
+        },
         "owner_next_step": "Attach same-ref sanitized owner response intake metadata.",
         "support_next_step": "Wait for sanitized software-proof owner response intake metadata.",
         "reviewer_next_step": "Keep owner response intake not_proven until real field evidence exists.",
@@ -22729,7 +22756,7 @@ def _field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_es
 def _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_source_contract(
     value,
 ):
-    # owner response intake 只信任 PC safe summary 或 Robot alias；raw wrapper 必须另带 safe summary。
+    # owner response intake 只信任 PC safe summary、桥接 safe summary 或 Robot alias；raw wrapper 必须另带 safe summary。
     value = value if isinstance(value, dict) else {}
     source_schema = str(value.get("schema") or "")
     source_boundary = str(value.get("evidence_boundary") or "")
@@ -22737,11 +22764,20 @@ def _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_respo
         FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_SOURCE_SUMMARY_SCHEMA,
         FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_SUMMARY_SCHEMA,
     }:
+        source_bridge = str(value.get("source_bridge") or "")
         source_schema = str(
             value.get("source_schema")
             or FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_SCHEMA
         )
         source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+        if source_bridge == (
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_SOURCE
+        ):
+            # 桥接摘要仍复用 owner-response intake schema，但 proof boundary 必须指向本轮 bridge gate。
+            source_boundary = str(
+                value.get("source_evidence_boundary")
+                or FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_GATE
+            )
     return source_schema, source_boundary
 
 
@@ -25936,6 +25972,7 @@ def _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_respo
         "safe_evidence_ref",
         "evidence_ref",
         "capability",
+        "source_bridge",
         "status",
         "overall_status",
         "owner_response_intake_status",
@@ -25949,6 +25986,19 @@ def _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_respo
         "missing_material_refs",
         "rejected_material_refs",
         "blocked_material_refs",
+        "owner_route",
+        "field_owner_route",
+        "reviewer_route",
+        "reviewer_support_route",
+        "support_route",
+        "operator_support_route",
+        "next_required_field_owner_materials",
+        "next_required_evidence",
+        "false_state_flags",
+        "ack_post_allowed",
+        "cursor_updates_allowed",
+        "nav2_triggered",
+        "hil_pass",
         "accepted",
         "missing",
         "rejected",
@@ -26024,6 +26074,13 @@ def _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_respo
         "start delivery",
         "confirm dropoff",
         "cancel enabled",
+        "raw artifact",
+        "raw robot response",
+        "ack payload",
+        "cursor payload",
+        "diagnostics fetch mutation",
+        "github mutation",
+        "robot command",
         "external proof",
         "real external",
         "hil pass",
@@ -50055,17 +50112,40 @@ def summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_ow
         if isinstance(summary_fragment.get("source_followup_status"), dict)
         else {}
     )
+    source_bridge = _redact_route_task_rehearsal_text(
+        summary_fragment.get("source_bridge") or ""
+    )
+    is_bridge_summary = (
+        source_bridge
+        == FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_SOURCE
+    )
+    bridge_boundary = (
+        FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_GATE
+    )
+    active_boundary = bridge_boundary if is_bridge_summary else source_boundary
+    source_followup_status = (
+        summary_fragment.get("source_followup_status")
+        if isinstance(summary_fragment.get("source_followup_status"), dict)
+        else source_followup_escalation_status
+    )
     summary.update(
         {
+            "capability": (
+                FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE
+                if is_bridge_summary
+                else summary.get("capability")
+            ),
+            "source_bridge": source_bridge,
             "source_schema": _redact_route_task_rehearsal_text(source_schema),
             "source_schema_version": (
                 summary_fragment.get("source_schema_version")
                 or summary_fragment.get("schema_version")
                 or response_doc.get("schema_version")
             ),
-            "source_evidence_boundary": _redact_route_task_rehearsal_text(
-                source_boundary
-            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(active_boundary),
+            "evidence_boundary": _redact_route_task_rehearsal_text(active_boundary),
+            "boundary": _redact_route_task_rehearsal_text(active_boundary),
+            "proof_boundary": _redact_route_task_rehearsal_text(active_boundary),
             "source": _redact_route_task_rehearsal_text(
                 summary_fragment.get("source") or EVIDENCE_SOURCE_SOFTWARE
             ),
@@ -50089,6 +50169,7 @@ def summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_ow
             "source_followup_escalation_status": _safe_pc_route_debug_dict(
                 source_followup_escalation_status
             ),
+            "source_followup_status": _safe_pc_route_debug_dict(source_followup_status),
             "accepted_material_refs": _safe_route_task_rehearsal_list(
                 summary_fragment.get("accepted_material_refs")
                 or summary_fragment.get("accepted")
@@ -50105,6 +50186,37 @@ def summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_ow
                 summary_fragment.get("blocked_material_refs")
                 or summary_fragment.get("blocked")
             ),
+            "owner_route": _safe_route_task_rehearsal_list(
+                summary_fragment.get("owner_route")
+                or summary_fragment.get("field_owner_route")
+            ),
+            "reviewer_route": _safe_route_task_rehearsal_list(
+                summary_fragment.get("reviewer_route")
+                or summary_fragment.get("reviewer_support_route")
+            ),
+            "support_route": _safe_route_task_rehearsal_list(
+                summary_fragment.get("support_route")
+                or summary_fragment.get("operator_support_route")
+            ),
+            "next_required_field_owner_materials": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_field_owner_materials")
+                or summary_fragment.get("next_required_evidence")
+                or summary_fragment.get("missing_material_refs")
+            ),
+            "false_state_flags": _safe_pc_route_debug_dict(
+                summary_fragment.get("false_state_flags")
+            )
+            or {
+                "source": EVIDENCE_SOURCE_SOFTWARE,
+                "overall_status": "not_proven",
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "safe_to_control": False,
+                "ack_post_allowed": False,
+                "cursor_updates_allowed": False,
+                "nav2_triggered": False,
+                "hil_pass": False,
+            },
             "owner_next_step": _redact_route_task_rehearsal_text(
                 summary_fragment.get("owner_next_step")
                 or "Field owner supplies same-ref sanitized response materials."
@@ -50150,6 +50262,11 @@ def summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_ow
             summary["missing_material_refs"],
             summary["rejected_material_refs"],
             summary["blocked_material_refs"],
+            summary["source_followup_status"],
+            summary["owner_route"],
+            summary["reviewer_route"],
+            summary["support_route"],
+            summary["next_required_field_owner_materials"],
             summary["owner_next_step"],
             summary["support_next_step"],
             summary["reviewer_next_step"],
@@ -50172,8 +50289,17 @@ def summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_ow
     if (
         source_schema
         != FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_SCHEMA
-        or source_boundary
-        != FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_GATE
+        or active_boundary
+        not in {
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_GATE,
+            bridge_boundary,
+        }
+        or bool(source_bridge)
+        != bool(
+            active_boundary == bridge_boundary
+            and source_bridge
+            == FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_SOURCE
+        )
     ):
         summary["owner_response_intake_status"] = {
             "status": (
@@ -50182,6 +50308,28 @@ def summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_ow
             "verdict": "not_proven",
             "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
             "reason": "owner response intake schema or boundary is unsupported",
+        }
+        summary["status"] = summary["owner_response_intake_status"]["status"]
+        return summary
+    if is_bridge_summary and (
+        summary["capability"]
+        != FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE
+        or not summary["source_followup_status"]
+        or not summary["owner_route"]
+        or not summary["reviewer_route"]
+        or not summary["support_route"]
+        or not summary["next_required_field_owner_materials"]
+        or summary["false_state_flags"].get("delivery_success") is not False
+        or summary["false_state_flags"].get("primary_actions_enabled") is not False
+        or summary["false_state_flags"].get("safe_to_control") is not False
+        or summary["false_state_flags"].get("source") != EVIDENCE_SOURCE_SOFTWARE
+        or summary["false_state_flags"].get("overall_status") != "not_proven"
+    ):
+        summary["owner_response_intake_status"] = {
+            "status": "blocked_unsupported_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": "reviewer ACK owner-response bridge is missing safe bridge metadata",
         }
         summary["status"] = summary["owner_response_intake_status"]["status"]
         return summary
@@ -50220,6 +50368,11 @@ def summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_ow
         or summary_fragment.get("primary_actions_enabled") is not False
         or bool(boundary_flags.get("control_entrypoint_enabled"))
         or bool(boundary_flags.get("readiness_enabled"))
+        or bool(boundary_flags.get("ack_mutation_enabled"))
+        or bool(boundary_flags.get("cursor_mutation_enabled"))
+        or bool(boundary_flags.get("diagnostics_fetch_mutation_enabled"))
+        or bool(boundary_flags.get("github_mutation_enabled"))
+        or bool(boundary_flags.get("robot_command_hint_enabled"))
         or unsafe_material
         or _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_has_unsafe_fields(
             response_doc

@@ -1499,6 +1499,44 @@ a verified terminal delivery/dropoff/cancel result, real phone/browser proof,
 public cloud proof, PR #5 reviewer resolution, HIL, Nav2 runtime proof, or
 permission to start/confirm/cancel/ACK/replay/resubmit robot commands.
 
+## robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary
+
+`robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary`
+is the Robot diagnostics safe alias for
+`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake`.
+When Autonomy PC gate produces the reviewer ACK follow-up -> owner response
+intake bridge, Robot diagnostics may expose only the bridge-safe fields:
+`source_bridge`, source follow-up status, the same safe `evidence_ref`, owner
+route, reviewer/support route, next required field-owner materials, false-state
+flags, and phone-safe copy.
+
+- Source artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake.v1`
+- Source summary schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary.v1`
+- Bridge capability marker:
+  `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge`
+- Supported bridge source:
+  `source_bridge=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status`
+- Bridge evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate`
+
+The alias must preserve `source=software_proof`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`. `accepted_for_owner_response_intake_not_proven` only
+means a sanitized reviewer ACK follow-up bridge is available for owner-response
+intake review; it is not task record proof, dropoff completion, cancel
+completion, Nav2 route completion, elevator proof, phone/browser proof, HIL, or
+permission to control the robot.
+
+The bridge alias must fail closed on raw artifacts, credentials, local paths,
+raw robot responses, ROS topics, `/cmd_vel`, serial/UART details, ACK/cursor
+payloads, diagnostics fetch mutation hints, GitHub mutation hints, robot command
+hints, success/pass/control wording, `delivery_success=true`,
+`primary_actions_enabled=true`, or `safe_to_control=true`.
+
 ## robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary
 
 `robot_diagnostics_field_evidence_material_resolution_owner_response_intake_summary`

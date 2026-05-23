@@ -29,9 +29,23 @@ ROBOT_ALIAS = "robot_diagnostics_field_evidence_rerun_execution_result_acceptanc
 SCHEMA_VERSION = 1
 CAPABILITY = "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake"
 SOURCE_CAPABILITY = followup.CAPABILITY
+BRIDGE_CAPABILITY = "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge"
+BRIDGE_SOURCE_CAPABILITY = "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status"
 SOURCE = "software_proof"
 EVIDENCE_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate"
 SOURCE_BOUNDARY = followup.BOUNDARY
+BRIDGE_EVIDENCE_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate"
+BRIDGE_SOURCE_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate"
+BRIDGE_SOURCE_SCHEMA = "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.v1"
+BRIDGE_SOURCE_SUMMARY_SCHEMA = "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary.v1"
+BRIDGE_SOURCE_ROBOT_ALIAS = "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary"
+BRIDGE_SOURCE_STATUSES = (
+    "pending_reviewer_ack_followup_not_proven",
+    "overdue_reviewer_ack_followup_not_proven",
+    "escalated_missing_real_material_not_proven",
+    "blocked_missing_reviewer_ack_review_handoff_not_proven",
+    "ready_for_real_material_reviewer_followup_not_proven",
+)
 
 ACCEPTED = "accepted"
 MISSING = "missing"
@@ -40,15 +54,15 @@ BLOCKED = "blocked"
 ALLOWED_OWNER_RESPONSE_STATUSES = (ACCEPTED, MISSING, REJECTED, BLOCKED)
 
 REQUIRED_OWNER_RESPONSE_MATERIALS = (
-    "true task record",
-    "true Nav2/fixed-route runtime log",
+    "real task record",
+    "Nav2/fixed-route runtime log",
     "route completion signal",
-    "true elevator door state",
-    "target floor confirmation",
-    "human assistance record",
     "dropoff/cancel completion",
+    "elevator door status",
+    "floor confirmation",
+    "human assistance note",
     "delivery result",
-    "true route/elevator field pass",
+    "route/elevator field pass",
     "true phone/browser evidence",
     "PR #5 hardware material remains pending unless PRRT_kwDOSWB9286CJ3tX is live resolved by reviewer",
 )
@@ -59,6 +73,10 @@ SOURCE_SCHEMAS = {
     followup.SUMMARY_SCHEMA,
     followup.ROBOT_ALIAS,
     f"trashbot.{followup.ROBOT_ALIAS}.v1",
+    BRIDGE_SOURCE_SCHEMA,
+    BRIDGE_SOURCE_SUMMARY_SCHEMA,
+    BRIDGE_SOURCE_ROBOT_ALIAS,
+    f"trashbot.{BRIDGE_SOURCE_ROBOT_ALIAS}.v1",
 }
 OWNER_RESPONSE_SCHEMAS = {"", OWNER_RESPONSE_PACKET_SCHEMA, f"{OWNER_RESPONSE_PACKET_SCHEMA}.summary"}
 
@@ -89,9 +107,13 @@ OWNER_RESPONSE_SCHEMAS = {"", OWNER_RESPONSE_PACKET_SCHEMA, f"{OWNER_RESPONSE_PA
 
 BOUNDARY_NOTE = (
     "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake; "
+    "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge; "
     "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate; "
+    "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate; "
     "field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status; "
+    "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status; "
     "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_gate; "
+    "source_bridge=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status; "
     "source=software_proof; software_proof; not_proven; delivery_success=false; "
     "primary_actions_enabled=false; safe_to_control=false; accepted; missing; rejected; blocked; "
     "no OKR percentage lift"
@@ -101,6 +123,9 @@ WRAPPER_KEYS = (
     "field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status",
     "field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_summary",
     "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_followup_escalation_status_summary",
+    "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
+    "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary",
+    "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary",
     "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_packet",
     "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response",
     "owner_response_packet",
@@ -143,6 +168,12 @@ FORBIDDEN_KEY_TERMS = (
     "external_proof",
     "phone_proof",
     "review_thread_resolved",
+    "ack_cursor",
+    "ack_mutation",
+    "github_mutation",
+    "upload_action",
+    "review_action",
+    "robot_command",
 )
 UNSAFE_TEXT_PATTERNS = (
     re.compile(r"(?i)\bdelivery_success\s*[:=]\s*true\b"),
@@ -162,12 +193,29 @@ UNSAFE_TEXT_PATTERNS = (
     re.compile(r"(?i)\b(signed_url|oss://|s3://|https://[^\s]*token=)\b"),
     re.compile(r"(?i)\b(ros2\s+topic|/cmd_vel|/odom|/tf|/trashbot/|ros graph|rclpy)\b"),
     re.compile(r"(?i)\b(WAVE ROVER|ESP32|Orange Pi|UART|serial device|baudrate|GPIO|voltage|firmware)\b"),
+    re.compile(r"(?i)\b(ack|cursor)\s+(mutation|advance|update|write)\b"),
+    re.compile(r"(?i)\b(github|review|upload)\s+(mutation|action|submit|resolve|comment)\b"),
+    re.compile(r"(?i)\b(robot|base|nav2|fixed[-_ ]route)\s+(command|hint|instruction)\b"),
 )
 
 
 def _scrub_allowed_category_terms(text: str) -> str:
     # required checklist 类别名本身允许出现，扫描时只拦截“已证明/已完成”语义。
     allowed_terms = list(REQUIRED_OWNER_RESPONSE_MATERIALS) + list(followup.REQUIRED_FOLLOWUP_MATERIALS)
+    allowed_terms.extend(
+        [
+            "objective_5_external_cloud_4g_oss_cdn_db_queue_proof",
+            "route_elevator_field_pass",
+            "verified_terminal_result",
+            "dropoff_cancel_completion",
+            "delivery_result",
+            "true_phone_browser_or_device_proof",
+            "pr5_hardware_material_resolution",
+            "reviewer ACK followup acknowledgement without reviewer-resolution claim",
+            "support escalation owner decision or due-date response under the same safe evidence_ref",
+            "owner response material that preserves source=software_proof and not_proven",
+        ]
+    )
     allowed_terms.extend(
         [
             "PR #5 hardware material remains pending unless PRRT_kwDOSWB9286CJ3tX is live resolved",
@@ -266,9 +314,23 @@ def _find_source(payload: dict[str, Any]) -> dict[str, Any]:
     for candidate in _candidates(payload):
         schema = _safe_text(candidate.get("schema"))
         capability = _safe_text(candidate.get("capability"))
-        if schema in SOURCE_SCHEMAS or capability == SOURCE_CAPABILITY:
+        if schema in SOURCE_SCHEMAS or capability in {SOURCE_CAPABILITY, BRIDGE_SOURCE_CAPABILITY}:
             return candidate
     return payload
+
+
+def _source_bridge(source: dict[str, Any]) -> str:
+    # reviewer-ACK followup 只能作为桥接 source，不新建 owner-response mainline。
+    schema = _safe_text(source.get("schema"))
+    capability = _safe_text(source.get("capability"))
+    if schema in {
+        BRIDGE_SOURCE_SCHEMA,
+        BRIDGE_SOURCE_SUMMARY_SCHEMA,
+        BRIDGE_SOURCE_ROBOT_ALIAS,
+        f"trashbot.{BRIDGE_SOURCE_ROBOT_ALIAS}.v1",
+    } or capability == BRIDGE_SOURCE_CAPABILITY:
+        return BRIDGE_SOURCE_CAPABILITY
+    return ""
 
 
 def _has_response_material(payload: dict[str, Any]) -> bool:
@@ -374,10 +436,12 @@ def _source_view(payload: dict[str, Any], read_issue: str) -> dict[str, Any]:
     # normalized source 是唯一参与 source 合同判断的数据面。
     source = _find_source(payload) if payload else {}
     ref, ref_errors = _source_ref(source) if source else ("", [])
+    source_bridge = _source_bridge(source)
     return {
         "read_issue": read_issue,
         "schema": _safe_text(source.get("schema")),
-        "capability": _safe_text(source.get("capability")) or SOURCE_CAPABILITY,
+        "capability": _safe_text(source.get("capability")) or (source_bridge or SOURCE_CAPABILITY),
+        "source_bridge": source_bridge,
         "evidence_boundary": _safe_text(source.get("evidence_boundary") or source.get("boundary")),
         "followup_status": _safe_text(source.get("followup_status") or source.get("due_state") or source.get("status")),
         "safe_evidence_ref": ref,
@@ -393,15 +457,24 @@ def _source_view(payload: dict[str, Any], read_issue: str) -> dict[str, Any]:
 def _source_ready(source: dict[str, Any]) -> tuple[bool, list[str]]:
     # source 不 ready 时不消费 owner response，防止新材料掩盖坏上游。
     reasons: list[str] = []
-    schema_ok = source["schema"] in SOURCE_SCHEMAS or source["capability"] == SOURCE_CAPABILITY
+    source_bridge = source.get("source_bridge") == BRIDGE_SOURCE_CAPABILITY
+    schema_ok = source["schema"] in SOURCE_SCHEMAS or source["capability"] in {SOURCE_CAPABILITY, BRIDGE_SOURCE_CAPABILITY}
+    boundary_ok = source["evidence_boundary"] == (BRIDGE_SOURCE_BOUNDARY if source_bridge else SOURCE_BOUNDARY)
+    status_ok = (
+        source["followup_status"] in BRIDGE_SOURCE_STATUSES
+        if source_bridge
+        else source["followup_status"] in SAFE_SOURCE_STATUSES
+    )
     if source["read_issue"]:
         reasons.append(source["read_issue"])
     if not schema_ok:
         reasons.append("unsupported_followup_escalation_status_schema")
-    if source["evidence_boundary"] != SOURCE_BOUNDARY:
+    if not boundary_ok:
         reasons.append("missing_or_wrong_followup_escalation_status_boundary")
-    if source["followup_status"] not in SAFE_SOURCE_STATUSES:
+    if not status_ok:
         reasons.append("previous_followup_status_not_safe_for_owner_response_intake")
+    if source_bridge and _safe_text(source.get("source_bridge")) != BRIDGE_SOURCE_CAPABILITY:
+        reasons.append("missing_or_unsafe_reviewer_ack_owner_response_intake_bridge")
     if source["unsafe_reasons"]:
         reasons.extend(source["unsafe_reasons"])
     if not source["source_is_safe"]:
@@ -608,11 +681,16 @@ def _rerun_commands(evidence_ref: str) -> list[str]:
 
 def _safe_copy(owner_status: str, evidence_ref: str, reasons: list[str], categories: dict[str, list[str]], source_view: dict[str, Any]) -> dict[str, Any]:
     # safe_copy 是后续 review/diagnostics/mobile 的白名单消费面。
+    bridge_enabled = source_view.get("source_bridge") == BRIDGE_SOURCE_CAPABILITY
+    output_boundary = BRIDGE_EVIDENCE_BOUNDARY if bridge_enabled else EVIDENCE_BOUNDARY
     return {
         **_safe_flags(),
         "schema": f"{SUMMARY_SCHEMA}.safe_copy",
         "capability": CAPABILITY,
-        "evidence_boundary": EVIDENCE_BOUNDARY,
+        "bridge_capability": BRIDGE_CAPABILITY if bridge_enabled else "",
+        "evidence_boundary": output_boundary,
+        "bridge_evidence_boundary": BRIDGE_EVIDENCE_BOUNDARY if bridge_enabled else "",
+        "source_bridge": BRIDGE_SOURCE_CAPABILITY if bridge_enabled else "",
         "safe_evidence_ref": evidence_ref,
         "evidence_ref": evidence_ref,
         "same_evidence_ref_required": True,
@@ -624,7 +702,7 @@ def _safe_copy(owner_status: str, evidence_ref: str, reasons: list[str], categor
         "rejected_materials": categories[REJECTED],
         "blocked_materials": categories[BLOCKED],
         "source_followup_status": source_view["followup_status"],
-        "source_boundary": SOURCE_BOUNDARY,
+        "source_boundary": source_view["evidence_boundary"] or (BRIDGE_SOURCE_BOUNDARY if bridge_enabled else SOURCE_BOUNDARY),
         "accepted_means": "accepted_for_review_not_proven",
         "pr5_thread": {
             "thread_id": "PRRT_kwDOSWB9286CJ3tX",
@@ -661,11 +739,17 @@ def build_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_
     next_required_evidence = _next_required_evidence(owner_status, requested_ref, categories, reasons)
     rerun_commands = _rerun_commands(requested_ref)
     safe_copy = _safe_copy(owner_status, requested_ref, reasons, categories, source_view)
+    bridge_enabled = source_view.get("source_bridge") == BRIDGE_SOURCE_CAPABILITY
+    output_boundary = BRIDGE_EVIDENCE_BOUNDARY if bridge_enabled else EVIDENCE_BOUNDARY
     common = {
         **_safe_flags(),
         "capability": CAPABILITY,
+        "bridge_capability": BRIDGE_CAPABILITY if bridge_enabled else "",
         "source_capability": SOURCE_CAPABILITY,
-        "evidence_boundary": EVIDENCE_BOUNDARY,
+        "bridge_source_capability": BRIDGE_SOURCE_CAPABILITY if bridge_enabled else "",
+        "evidence_boundary": output_boundary,
+        "bridge_evidence_boundary": BRIDGE_EVIDENCE_BOUNDARY if bridge_enabled else "",
+        "source_bridge": BRIDGE_SOURCE_CAPABILITY if bridge_enabled else "",
         "safe_evidence_ref": requested_ref,
         "evidence_ref": requested_ref,
         "same_evidence_ref_required": True,
@@ -680,11 +764,13 @@ def build_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_
         "material_response_details": material_details,
         "accepted_means": "accepted_for_review_not_proven",
         "previous_followup_reference": {
-            "capability": SOURCE_CAPABILITY,
+            "capability": source_view["capability"],
             "schema": source_view["schema"],
             "evidence_boundary": source_view["evidence_boundary"],
             "followup_status": source_view["followup_status"],
             "safe_evidence_ref": source_view["safe_evidence_ref"],
+            "source_bridge": BRIDGE_SOURCE_CAPABILITY if bridge_enabled else "",
+            "bridge_capability": BRIDGE_CAPABILITY if bridge_enabled else "",
         },
         "pr5_thread": {
             "thread_id": "PRRT_kwDOSWB9286CJ3tX",
@@ -714,6 +800,9 @@ def build_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_
             "delivery_success=false",
             "primary_actions_enabled=false",
             "safe_to_control=false",
+            BRIDGE_CAPABILITY,
+            BRIDGE_EVIDENCE_BOUNDARY,
+            "source_bridge=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
             "no OKR percentage lift",
             ACCEPTED,
             MISSING,

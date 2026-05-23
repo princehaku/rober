@@ -239,6 +239,7 @@ const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESP
 const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_DECISION_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision_gate";
 const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_gate";
 const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate";
+const FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_BOUNDARY = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate";
 const FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_BOUNDARY = "software_proof_docker_field_evidence_real_material_request_dispatch_gate";
 const FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_INTAKE_BOUNDARY = "software_proof_docker_field_evidence_real_material_response_intake_gate";
 const FIELD_EVIDENCE_REAL_MATERIAL_RESPONSE_REVIEW_DECISION_BOUNDARY = "software_proof_docker_field_evidence_real_material_response_review_decision_gate";
@@ -25302,7 +25303,34 @@ function fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIn
     nestedDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake?.summary ||
     nestedDiagnosticsInnerSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake?.summary ||
     statusDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake?.summary;
+  const bridgeArtifactSummary =
+    status?.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge?.summary ||
+    readiness?.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge?.summary ||
+    diagnostics?.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge?.summary ||
+    diagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge?.summary ||
+    nestedDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge?.summary ||
+    nestedDiagnosticsInnerSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge?.summary ||
+    statusDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge?.summary;
   return firstObject(
+    status?.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    readiness?.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    diagnostics?.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    diagnosticsReadiness.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    diagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    statusDiagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    topDiagnosticsSummary.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    status?.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    readiness?.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    diagnostics?.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    diagnosticsReadiness.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    diagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    nestedDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    nestedDiagnosticsInnerSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    statusDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    topDiagnosticsSummary.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary,
+    bridgeArtifactSummary,
     status?.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
     readiness?.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
     diagnostics?.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary,
@@ -25354,6 +25382,7 @@ function fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIn
     "primary_actions_enabled=false",
     "same_evidence_ref_required=true",
     "owner_response_intake_not_field_pass",
+    "source_bridge=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
     "true_phone_browser_proof_missing",
     "route_elevator_runtime_missing",
     "dropoff_completion_missing",
@@ -25400,10 +25429,21 @@ function fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIn
       provided.source_schema || provided.artifact_schema || provided.owner_response_intake_schema,
       "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake.v1",
     ),
-    capability: "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
+    capability: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.capability,
+      "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
+    ),
+    bridge_capability: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.bridge_capability || provided.capability_marker || provided.capability,
+      "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
+    ),
     source: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
       provided.source,
       "software_proof",
+    ),
+    source_bridge: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.source_bridge || provided.source_bridge_status || provided.source_path,
+      "source_bridge=not_proven",
     ),
     owner_response_intake_status: intakeStatus,
     source_followup_escalation_status: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
@@ -25444,9 +25484,24 @@ function fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIn
       provided.reviewer_next_step || provided.review_next_step,
       "reviewer_next_step=wait_for_owner_response_material_refs_before_acceptance_review",
     ),
+    owner_route: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.owner_route || provided.field_owner_route || provided.owner_handoff,
+      "owner_route=field_owner_backfills_same_safe_evidence_ref_materials",
+    ),
+    reviewer_support_route: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
+      provided.reviewer_support_route || provided.support_reviewer_route || provided.reviewer_handoff,
+      "reviewer_support_route=reviewer_and_support_wait_for_safe_field_owner_materials",
+    ),
+    next_required_field_owner_materials: fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeList(
+      provided.next_required_field_owner_materials || provided.next_required_materials ||
+        provided.next_required_evidence,
+      "next_required_field_owner_materials=task record / Nav2 route completion / elevator evidence / phone evidence / dropoff or cancel result",
+    ),
     evidence_boundary: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
       provided.evidence_boundary || provided.proof_boundary,
-      FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_BOUNDARY,
+      provided.source_bridge
+        ? FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_BOUNDARY
+        : FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_BOUNDARY,
     ),
     safe_phone_copy: safeFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeText(
       provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary || provided.safe_copy,
@@ -40144,11 +40199,15 @@ function ensureFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResp
     </p>
     <dl class="field-evidence-rerun-execution-result-acceptance-handoff-intake-owner-response-intake-grid">
       <div><dt>Owner Response Intake Status</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeStatus">blocked_missing_owner_response_not_proven</dd></div>
+      <div><dt>Bridge Capability</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeCapability">field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake</dd></div>
+      <div><dt>Source Bridge</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeSourceBridge">source_bridge=not_proven</dd></div>
       <div><dt>Source Follow-Up Escalation Status</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeSourceFollowup">source_followup_escalation_status=blocked_missing_followup_escalation_status_not_proven</dd></div>
       <div><dt>Safe Evidence Ref</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeEvidenceRef">evidence_ref=not_proven</dd></div>
       <div><dt>Owner Next Step</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeOwnerNextStep">owner_next_step=backfill_same_safe_evidence_ref_material_refs</dd></div>
       <div><dt>Support Next Step</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeSupportNextStep">support_next_step=keep_primary_actions_disabled_and_request_safe_owner_response_refs</dd></div>
       <div><dt>Reviewer Next Step</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeReviewerNextStep">reviewer_next_step=wait_for_owner_response_material_refs_before_acceptance_review</dd></div>
+      <div><dt>Owner Route</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeOwnerRoute">owner_route=field_owner_backfills_same_safe_evidence_ref_materials</dd></div>
+      <div><dt>Reviewer / Support Route</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeReviewerSupportRoute">reviewer_support_route=reviewer_and_support_wait_for_safe_field_owner_materials</dd></div>
       <div><dt>Evidence Boundary</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBoundary">software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate</dd></div>
       <div><dt>Boundary Flags</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFlags">source=software_proof / software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
       <div><dt>not_proven</dt><dd id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeNotProven">真实现场复跑、true phone/browser、HIL、路线/电梯通过、投放和 delivery success 未证明。</dd></div>
@@ -40176,6 +40235,12 @@ function ensureFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResp
         <h3>Blocked Material Refs</h3>
         <ol id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBlocked" class="handoff-checklist">
           <li>等待 blocked material refs。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Next Field Owner Materials</h3>
+        <ol id="fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeNextFieldOwnerMaterials" class="handoff-checklist">
+          <li>等待 next field owner materials。</li>
         </ol>
       </section>
     </div>
@@ -40207,6 +40272,10 @@ function renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResp
     summary.safe_phone_copy;
   $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeStatus").textContent =
     `${summary.source} / ${summary.owner_response_intake_status}`;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeCapability").textContent =
+    summary.bridge_capability;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeSourceBridge").textContent =
+    summary.source_bridge;
   $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeSourceFollowup").textContent =
     summary.source_followup_escalation_status;
   $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeEvidenceRef").textContent =
@@ -40217,6 +40286,10 @@ function renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResp
     summary.support_next_step;
   $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeReviewerNextStep").textContent =
     summary.reviewer_next_step;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeOwnerRoute").textContent =
+    summary.owner_route;
+  $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeReviewerSupportRoute").textContent =
+    summary.reviewer_support_route;
   $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBoundary").textContent =
     summary.evidence_boundary;
   $("fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFlags").textContent =
@@ -40238,6 +40311,10 @@ function renderFieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResp
   renderFieldEvidenceRerunMaterialDispatchList(
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBlocked",
     summary.blocked_material_refs,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeNextFieldOwnerMaterials",
+    summary.next_required_field_owner_materials,
   );
 }
 

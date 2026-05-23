@@ -36608,6 +36608,140 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("rejected", encoded)
         self.assertIn("blocked", encoded)
 
+    def test_field_evidence_rerun_acceptance_handoff_owner_response_intake_bridge_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake.v1"
+            ),
+            "source_schema_version": 1,
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate"
+            ),
+            "capability": (
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge"
+            ),
+            "source_bridge": (
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status"
+            ),
+            "source": "software_proof",
+            "safe_evidence_ref": "field-rerun-reviewer-ack-owner-response-bridge-001",
+            "status": "accepted_for_owner_response_intake_not_proven",
+            "overall_status": "not_proven",
+            "owner_response_intake_status": {
+                "status": "accepted_for_owner_response_intake_not_proven",
+                "verdict": "not_proven",
+                "reason": "bridge imports reviewer ACK follow-up as owner-response intake metadata only",
+            },
+            "source_followup_status": {
+                "status": "overdue_reviewer_ack_followup_not_proven",
+                "verdict": "not_proven",
+            },
+            "source_followup_escalation_status": {
+                "status": "overdue_reviewer_ack_followup_not_proven",
+                "verdict": "not_proven",
+            },
+            "missing_material_refs": ["task record", "dropoff cancel note"],
+            "owner_route": ["field owner collects task record and dropoff evidence"],
+            "reviewer_route": ["reviewer/support route stays not_proven"],
+            "support_route": ["support exposes safe bridge summary only"],
+            "next_required_field_owner_materials": [
+                "task record",
+                "dropoff cancel completion",
+                "route completion",
+                "elevator evidence",
+                "phone browser proof",
+            ],
+            "false_state_flags": {
+                "source": "software_proof",
+                "overall_status": "not_proven",
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "safe_to_control": False,
+                "ack_post_allowed": False,
+                "cursor_updates_allowed": False,
+                "nav2_triggered": False,
+                "hil_pass": False,
+            },
+            "owner_next_step": "Field owner supplies same-ref task record and dropoff materials.",
+            "support_next_step": "Support keeps reviewer ACK bridge read-only.",
+            "reviewer_next_step": "Reviewer waits for owner response review without PR resolution.",
+            "evidence_boundary_status": "not_proven",
+            "robot_diagnostics_summary": {
+                "safe_copy": (
+                    "Reviewer ACK owner-response intake bridge is metadata-only; "
+                    "source=software_proof; not_proven; safe_to_control=false; "
+                    "delivery_success=false; primary_actions_enabled=false."
+                )
+            },
+            "software_proof": True,
+            "not_proven": ["delivery_success", "same evidence_ref only"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+        summary = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake(
+            {"diagnostics": {"robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary": safe_summary}}
+        )
+        unsafe = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake(
+            dict(
+                safe_summary,
+                raw_artifacts=["/tmp/raw.json"],
+                raw_robot_response={"ros_topic": "/cmd_vel"},
+                ack_payload={"cursor": "raw"},
+                diagnostics_fetch_mutation_hint="fetch and mutate diagnostics",
+                github_mutation_hint="resolve PR thread",
+                robot_command_hint="start delivery",
+            )
+        )
+        self.assertEqual(
+            summary["capability"],
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge",
+        )
+        self.assertEqual(
+            summary["source_bridge"],
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["overall_status"], "not_proven")
+        self.assertEqual(summary["status"], "accepted_for_owner_response_intake_not_proven")
+        self.assertEqual(summary["source_followup_status"]["status"], "overdue_reviewer_ack_followup_not_proven")
+        self.assertIn("task record", summary["next_required_field_owner_materials"])
+        self.assertIn("dropoff", json.dumps(summary["next_required_field_owner_materials"]))
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["false_state_flags"]["delivery_success"])
+        self.assertFalse(summary["false_state_flags"]["primary_actions_enabled"])
+        self.assertFalse(summary["false_state_flags"]["safe_to_control"])
+        self.assertEqual(
+            unsafe["owner_response_intake_status"]["status"],
+            "blocked_unsafe_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_artifacts", encoded)
+        self.assertNotIn("raw_robot_response", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("ack payload", encoded.lower())
+        self.assertNotIn("cursor payload", encoded.lower())
+        self.assertNotIn("diagnostics fetch mutation", encoded.lower())
+        self.assertNotIn("github mutation", encoded.lower())
+        self.assertNotIn("robot command", encoded.lower())
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+
     def test_field_evidence_rerun_acceptance_handoff_owner_response_review_decision_safe_alias_and_fail_closed(self):
         safe_summary = {
             "schema": (

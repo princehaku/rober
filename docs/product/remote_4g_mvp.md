@@ -1852,6 +1852,31 @@ claims, review-authorization claims, handoff-authorization claims, and
 collect/dropoff/cancel hints must fail closed. This diagnostics alias does not
 change command safety, ACK/cursor, cloud bridge, task execution, or control
 semantics.
+
+Field evidence rerun acceptance handoff owner-response reviewer ACK bridge adds
+the next Robot diagnostics safe alias on the existing owner-response intake
+surface:
+
+- `robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary`
+- `capability=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge`
+- `source_bridge=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status`
+- `evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate`
+- `source=software_proof`
+- `not_proven`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+
+The bridge exposes only sanitized source follow-up status, the same safe
+`evidence_ref`, owner route, reviewer/support route, next required field-owner
+materials, false-state flags, and safe copy. It is not task record proof,
+dropoff completion, cancel completion, Nav2 route completion, elevator proof,
+phone/browser proof, HIL, or robot-control permission.
+
+Raw artifacts, credentials, local paths, raw robot responses, ROS topics,
+`/cmd_vel`, serial/UART details, ACK/cursor payloads, diagnostics fetch
+mutation hints, GitHub mutation hints, robot command hints, and success/control
+claims must fail closed.
 Start Delivery, Confirm Dropoff, or Cancel semantics.
 
 ## Safety Rules

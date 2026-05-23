@@ -15656,6 +15656,10 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             app,
         )
         self.assertIn(
+            "FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_BOUNDARY",
+            app,
+        )
+        self.assertIn(
             "UNSAFE_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_INTAKE_TEXT",
             app,
         )
@@ -15688,7 +15692,21 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake?.summary",
             app,
         )
+        self.assertIn(
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary",
+            app,
+        )
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary",
+            app,
+        )
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge?.summary",
+            app,
+        )
         self.assertIn("owner_response_intake_status", app)
+        self.assertIn("bridge_capability", app)
+        self.assertIn("source_bridge", app)
         self.assertIn("source_followup_escalation_status", app)
         self.assertIn("accepted_material_refs", app)
         self.assertIn("missing_material_refs", app)
@@ -15697,6 +15715,9 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
         self.assertIn("owner_next_step", app)
         self.assertIn("support_next_step", app)
         self.assertIn("reviewer_next_step", app)
+        self.assertIn("owner_route", app)
+        self.assertIn("reviewer_support_route", app)
+        self.assertIn("next_required_field_owner_materials", app)
         self.assertIn("source=software_proof", app)
         self.assertIn("safe_to_control=false", app)
         self.assertIn("delivery_success=false", app)
@@ -15727,25 +15748,61 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
         nested = dedicated_fixture[
             "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake"
         ]["summary"]
+        bridge = dedicated_fixture[
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary"
+        ]
+        bridge_fallback = dedicated_fixture[
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary"
+        ]
+        bridge_nested = dedicated_fixture[
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge"
+        ]["summary"]
         self.assertEqual(
             summary["capability"],
             "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
         )
+        self.assertEqual(
+            bridge["capability"],
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge",
+        )
+        self.assertEqual(
+            bridge["bridge_capability"],
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge",
+        )
         self.assertEqual(summary["owner_response_intake_status"], "partial_owner_response_missing_materials_not_proven")
         self.assertEqual(fallback["owner_response_intake_status"], "received_owner_response_not_proven")
         self.assertEqual(nested["owner_response_intake_status"], "blocked_missing_owner_response_not_proven")
+        self.assertEqual(bridge["owner_response_intake_status"], "accepted_for_owner_response_intake_not_proven")
+        self.assertEqual(bridge_fallback["owner_response_intake_status"], "accepted_for_owner_response_intake_not_proven")
+        self.assertEqual(bridge_nested["owner_response_intake_status"], "accepted_for_owner_response_intake_not_proven")
+        self.assertEqual(
+            bridge["source_bridge"],
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
+        )
         self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(bridge["source"], "software_proof")
         self.assertEqual(summary["safe_to_control"], False)
         self.assertEqual(summary["delivery_success"], False)
         self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(bridge["safe_to_control"], False)
+        self.assertEqual(bridge["delivery_success"], False)
+        self.assertEqual(bridge["primary_actions_enabled"], False)
         self.assertEqual(dedicated_fixture["can_collect"], False)
         self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
         self.assertEqual(dedicated_fixture["can_cancel"], False)
         for required in (
             "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake",
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge",
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
             "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_summary",
             "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate",
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate",
             "source_followup_escalation_status",
+            "source_bridge",
+            "owner_route",
+            "reviewer_support_route",
+            "task record",
+            "dropoff or cancel result",
             "source=software_proof",
             "software_proof",
             "not_proven",
@@ -15770,6 +15827,14 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate",
             doc,
         )
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge",
+            doc,
+        )
+        self.assertIn(
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate",
+            doc,
+        )
         self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
         self.assertIn("not Objective 5 external proof", doc)
 
@@ -15789,6 +15854,15 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
                 ],
                 "nested": dedicated_fixture[
                     "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake"
+                ]["summary"],
+                "bridge": dedicated_fixture[
+                    "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary"
+                ],
+                "bridge_fallback": dedicated_fixture[
+                    "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary"
+                ],
+                "bridge_nested": dedicated_fixture[
+                    "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge"
                 ]["summary"],
             },
             ensure_ascii=False,
