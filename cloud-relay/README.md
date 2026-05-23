@@ -68,6 +68,19 @@ TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token bash scripts/docker_smoke.sh
 
 该 smoke 现在包含 `cloud_command_lifecycle_replay_acceptance_packet_docker_smoke_proof` focused section：它只在 Docker 容器内证明现有 cloud command lifecycle replay acceptance packet 的 fail-closed markers 可被 cloud-relay deploy-smoke 路径复核，边界是 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_docker_smoke_gate`。它不是 real external cloud proof、不是 public HTTPS/TLS、不是 4G/SIM、不是 OSS/CDN live traffic、不是 production DB/queue、不是 worker/cutover、not true phone/browser proof、不是 verified terminal result、不是 HIL、不是 PR #5 resolution、不是 delivery success；no OKR percentage lift。
 
+## Command lifecycle acceptance packet CLI export
+
+支持/field owner 可以不启动 HTTP server，直接从 independent relay CLI 导出上一轮 Docker smoke 已复核的只读验收包：
+
+```bash
+PYTHONPATH=../onboard/src/ros2_trashbot_behavior python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --write-cloud-command-lifecycle-replay-acceptance-packet-cli-export /tmp/trashbot_cli_export.json
+```
+
+该 JSON artifact 的 capability 是 `cloud_command_lifecycle_replay_acceptance_packet_cli_export`，证据边界是 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_cli_export_gate`，并保留源 packet marker `cloud_command_lifecycle_replay_acceptance_packet` / `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate`。导出内容只允许包含 `accepted_processing_only_not_delivery_success`、`terminal_result_pending`、`owner_handoff`、`next_required_evidence`、`not_proven` 和支持复核所需的安全摘要；`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false` 必须保持。
+
+该 CLI export 是 support / field-owner review metadata，不 replay/resubmit command、不 post ACK、不 mutate cursor/state、不上传材料、不触发 GitHub action、Nav2 或机器人控制。它仍然 not delivery success、not true phone/browser proof、not real external cloud proof、not production DB/queue、not worker/cutover、not HIL、not PR #5 resolution；no OKR percentage lift。
+
 ## Cloud-hosted mobile web shell
 
 `remote_cloud_relay` 现在在同一个 HTTP server 上服务 `mobile/web/` 静态壳：

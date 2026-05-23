@@ -114,6 +114,26 @@ CLOUD_HOSTED_MOBILE_WEB_GATE_SCHEMA_VERSION = 1
 CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_CAPABILITY = (
     "cloud_hosted_mobile_web_degradation_passthrough"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CAPABILITY = (
+    "cloud_command_lifecycle_replay_acceptance_packet"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SCHEMA = (
+    "trashbot.cloud_command_lifecycle_replay_acceptance_packet_summary.v1"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_CAPABILITY = (
+    "cloud_command_lifecycle_replay_acceptance_packet_cli_export"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_SCHEMA = (
+    "trashbot.cloud_command_lifecycle_replay_acceptance_packet_cli_export.v1"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_cli_export_gate"
+)
+ACCEPTED_PROCESSING_ONLY_ACK_SEMANTICS = "accepted_processing_only_not_delivery_success"
+TERMINAL_RESULT_PENDING_STATUS = "terminal_result_pending"
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -473,6 +493,31 @@ CLOUD_HOSTED_MOBILE_WEB_NOT_PROVEN = [
     "nav2_or_fixed_route_delivery",
     "wave_rover_or_hil",
     "delivery_success",
+]
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_NOT_PROVEN = [
+    "not_proven",
+    "cli_export_only",
+    "source_acceptance_packet_only",
+    "accepted_processing_only_not_delivery_success",
+    "terminal_result_pending",
+    "verified_terminal_result",
+    "delivery_result",
+    "dropoff_completion",
+    "cancel_completion",
+    "real_external_cloud_proof",
+    "public_https_tls",
+    "real_4g_sim",
+    "oss_cdn_live_traffic",
+    "production_db_queue",
+    "production_worker_cutover",
+    "true_phone_browser_proof",
+    "route_elevator_field_pass",
+    "nav2_fixed_route_runtime_pass",
+    "hil_pass",
+    "pr5_resolution",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
 ]
 CLOUD_HOSTED_MOBILE_WEB_SAFE_DEGRADATION_STATES = {
     "auth_failed",
@@ -7693,6 +7738,191 @@ def _write_json_artifact(artifact_path, payload):
             os.unlink(tmp_path)
 
 
+def _cloud_command_lifecycle_replay_acceptance_packet_cli_export_has_unsafe_material(payload):
+    # CLI export 面向支持同学和 field owner，递归拦截原始凭证、路径、控制面和成功语义。
+    unsafe_true_keys = {
+        "delivery_success",
+        "primary_actions_enabled",
+        "safe_to_control",
+        "remote_ready",
+        "ack_post_allowed",
+        "cursor_updates_allowed",
+        "persistence_updates_allowed",
+        "command_replay_allowed",
+        "command_resubmit_allowed",
+        "material_upload_allowed",
+        "review_action_allowed",
+        "github_action_allowed",
+        "robot_command_side_effects_allowed",
+        "nav2_triggered",
+        "hil_pass",
+    }
+    unsafe_key_fragments = (
+        "authorization",
+        "bearer",
+        "token",
+        "credential",
+        "password",
+        "secret",
+        "signed_url",
+        "raw_path",
+        "local_path",
+        "raw_response",
+        "raw_body",
+        "ack_payload",
+        "cursor",
+        "checksum",
+        "complete_artifact",
+        "artifact_body",
+        "ros_topic",
+        "cmd_vel",
+        "serial",
+        "uart",
+        "wave_rover",
+        "traceback",
+    )
+    if isinstance(payload, dict):
+        for key, item in payload.items():
+            key_text = str(key or "").strip().lower()
+            if key_text in unsafe_true_keys:
+                if bool(item):
+                    return True
+                continue
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if _cloud_command_lifecycle_replay_acceptance_packet_cli_export_has_unsafe_material(item):
+                return True
+        return False
+    if isinstance(payload, list):
+        return any(
+            _cloud_command_lifecycle_replay_acceptance_packet_cli_export_has_unsafe_material(item)
+            for item in payload
+        )
+    if isinstance(payload, str):
+        guarded = payload.strip().lower()
+        # 这些短语是安全边界本身，不能被通用 success/control 文本检查误判。
+        for phrase in (
+            "accepted_processing_only_not_delivery_success",
+            "not delivery success",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not_proven",
+            "not proven",
+            "no okr percentage lift",
+        ):
+            guarded = guarded.replace(phrase, "")
+        return (
+            "delivery success" in guarded
+            or "primary actions enabled" in guarded
+            or "safe to control" in guarded
+            or "ack payload" in guarded
+            or "cursor" in guarded
+            or "complete artifact" in guarded
+            or "checksum" in guarded
+        )
+    return False
+
+
+def build_cloud_command_lifecycle_replay_acceptance_packet_cli_export_payload(*, now=None):
+    """构造独立 cloud relay CLI 的只读验收包导出 payload。"""
+    generated_at = _utc_iso(now if now is not None else _now())
+    # 这里固定为上一轮 Docker smoke 已复核的安全验收包语义；不读取/重放 command 或 ACK。
+    source_packet = {
+        "schema": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SCHEMA,
+        "schema_version": 1,
+        "capability": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CAPABILITY,
+        "source": "software_proof",
+        "evidence_boundary": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_EVIDENCE_BOUNDARY,
+        "status": "ready_for_field_owner_acceptance_review_not_proven",
+        "acceptance_packet_status": "ready_for_field_owner_acceptance_review_not_proven",
+        "ack_semantics": ACCEPTED_PROCESSING_ONLY_ACK_SEMANTICS,
+        "terminal_result_status": TERMINAL_RESULT_PENDING_STATUS,
+        "owner_handoff": {
+            "handoff_status": "hardware_material_pending_not_proven",
+            "review_owner": "field_owner",
+            "next_action": "collect_same_safe_evidence_ref_terminal_result_material",
+            "pr5_thread_status": "hardware_material_pending",
+        },
+        "next_required_evidence": [
+            "same_safe_command_id",
+            "same_safe_evidence_ref",
+            "verified_terminal_delivery_dropoff_or_cancel_result",
+            "real_external_cloud_or_true_phone_browser_evidence",
+        ],
+        "support_acceptance_copy": (
+            "cloud_command_lifecycle_replay_acceptance_packet: "
+            "ack_semantics=accepted_processing_only_not_delivery_success; "
+            "terminal_result_status=terminal_result_pending; "
+            "owner_handoff=field_owner; next_required_evidence=verified_terminal_result; "
+            "source=software_proof; not_proven; not delivery success; "
+            "safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false; no OKR percentage lift."
+        ),
+        "not_proven": list(CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_NOT_PROVEN),
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "command_replay_allowed": False,
+        "command_resubmit_allowed": False,
+        "material_upload_allowed": False,
+        "review_action_allowed": False,
+        "github_action_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+    }
+    payload = {
+        "ok": True,
+        "schema": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_SCHEMA,
+        "schema_version": 1,
+        "capability": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_CAPABILITY,
+        "source": "software_proof",
+        "evidence_boundary": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_EVIDENCE_BOUNDARY
+        ),
+        "generated_at": generated_at,
+        "artifact_status": "export_ready_for_field_owner_review_not_proven",
+        "source_packet_capability": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CAPABILITY,
+        "source_packet_evidence_boundary": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_EVIDENCE_BOUNDARY,
+        "ack_semantics": ACCEPTED_PROCESSING_ONLY_ACK_SEMANTICS,
+        "terminal_result_status": TERMINAL_RESULT_PENDING_STATUS,
+        "owner_handoff": source_packet["owner_handoff"],
+        "next_required_evidence": list(source_packet["next_required_evidence"]),
+        "source_packet": source_packet,
+        "safe_summary": (
+            "CLI export writes support / field-owner review metadata only; "
+            "it is not delivery success and no OKR percentage lift."
+        ),
+        "review_scope": {
+            "support_or_field_owner_can_review": True,
+            "robot_control_authorized": False,
+            "external_cloud_proven": False,
+            "true_phone_browser_proven": False,
+            "production_db_queue_proven": False,
+            "worker_cutover_proven": False,
+            "pr5_resolved": False,
+        },
+        "not_proven": list(CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_NOT_PROVEN),
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+    }
+    if _cloud_command_lifecycle_replay_acceptance_packet_cli_export_has_unsafe_material(payload):
+        raise ValueError("cloud command lifecycle replay acceptance packet CLI export is unsafe")
+    return safe_value(payload)
+
+
+def create_cloud_command_lifecycle_replay_acceptance_packet_cli_export_artifact(artifact_path):
+    # 导出命令只写 JSON artifact，不启动 HTTP server，不触碰 state store、ACK 或机器人控制面。
+    payload = build_cloud_command_lifecycle_replay_acceptance_packet_cli_export_payload()
+    _write_json_artifact(artifact_path, payload)
+    return payload
+
+
 def create_sqlite_backup_artifact(state_path, artifact_path):
     # 本 helper 只支持 SQLite proof store；生产 DB/queue 备份策略必须另行验证。
     store = SQLiteRelayStore(state_path)
@@ -8541,6 +8771,14 @@ def main(argv=None):
         help="drain Docker/local relay pending commands and write a phone-safe cutover/drain artifact",
     )
     parser.add_argument(
+        "--write-cloud-command-lifecycle-replay-acceptance-packet-cli-export",
+        default="",
+        help=(
+            "write cloud_command_lifecycle_replay_acceptance_packet_cli_export "
+            "software_proof JSON and exit"
+        ),
+    )
+    parser.add_argument(
         "--cloud-external-probe-base-url",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_EXTERNAL_PROBE_BASE_URL", ""),
         help="base URL used only for live endpoint probing; it is not written into the artifact",
@@ -8768,6 +9006,18 @@ def main(argv=None):
             )
         except (ValueError, OSError, sqlite3.Error) as exc:
             payload = phone_error("cloud_worker_cutover_drain_blocked", _safe_error_reason(exc))
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("ok") else 2
+    if args.write_cloud_command_lifecycle_replay_acceptance_packet_cli_export:
+        try:
+            payload = create_cloud_command_lifecycle_replay_acceptance_packet_cli_export_artifact(
+                args.write_cloud_command_lifecycle_replay_acceptance_packet_cli_export
+            )
+        except (ValueError, OSError) as exc:
+            payload = phone_error(
+                "cloud_command_lifecycle_replay_acceptance_packet_cli_export_blocked",
+                _safe_error_reason(exc),
+            )
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload.get("ok") else 2
     if args.write_external_evidence_intake_artifact:

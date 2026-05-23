@@ -150,6 +150,34 @@ public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production DB/queue,
 not worker/cutover, not verified terminal result, not HIL, not PR #5
 resolution, not delivery success, and no OKR percentage lift.
 
+The independent cloud relay CLI can now export that same read-only acceptance
+packet as a deterministic JSON artifact for support / field-owner review:
+
+```bash
+PYTHONPATH=onboard/src/ros2_trashbot_behavior python3 -m ros2_trashbot_behavior.remote_cloud_relay \
+  --write-cloud-command-lifecycle-replay-acceptance-packet-cli-export /tmp/trashbot_cli_export.json
+```
+
+The export capability is
+`cloud_command_lifecycle_replay_acceptance_packet_cli_export`, with evidence
+boundary
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_cli_export_gate`.
+It preserves the source packet marker
+`cloud_command_lifecycle_replay_acceptance_packet`, the source packet boundary
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate`,
+`accepted_processing_only_not_delivery_success`, `terminal_result_pending`,
+`owner_handoff`, `next_required_evidence`, and `not_proven`.
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false` remain mandatory.
+
+This CLI export is not a user-visible control, not delivery success, not true
+phone/browser proof, not real external cloud proof, not public HTTPS/TLS, not
+4G/SIM, not OSS/CDN live traffic, not production DB/queue, not worker/cutover,
+not verified terminal result, not HIL, not PR #5 resolution, and no OKR
+percentage lift. It does not replay or resubmit commands, post ACKs, mutate
+cursors or persistence, upload materials, perform a GitHub action, trigger
+Nav2, touch WAVE ROVER, use UART, or authorize robot control.
+
 The independent relay now also hosts the dependency-free `mobile/web/` PWA
 shell on the same origin:
 
