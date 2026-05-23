@@ -2336,6 +2336,89 @@ success, not HIL, not WAVE ROVER/UART feedback, not true phone/browser proof,
 not PR #5 resolution, not Objective 5 external cloud/4G/OSS/CDN/DB/queue proof,
 not an OKR percentage lift, and not any primary robot action being enabled.
 
+## field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake
+
+`pc-tools/evidence/field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake.py`
+generates the PC-only reviewer ACK intake gate after
+`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff.py`.
+It consumes only a safe owner response review handoff artifact/summary, Robot
+diagnostics safe alias, or wrapper/nested JSON plus a sanitized reviewer ACK
+packet. It does not copy raw reviewer ACK bodies or raw material bodies and does
+not read real Nav2 runtime, ROS graph state, serial/UART or WAVE ROVER data,
+real elevator systems, external cloud evidence, real phone/browser runtime
+state, hardware/HIL evidence, GitHub review state, or raw field artifacts.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary.v1`
+- Robot safe alias:
+  `robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary`
+- Reviewer ACK packet schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_packet.v1`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff.v1`,
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_summary.v1`,
+  and the Robot safe alias under
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_gate`.
+
+Allowed `reviewer_ack_state` values are exactly
+`reviewer_acknowledged_not_proven`, `reviewer_ack_needs_reassignment`,
+`reviewer_ack_evidence_ref_mismatch`, `reviewer_ack_rejected_unsafe`, and
+`blocked_missing_owner_response_review_handoff`. The acknowledged state requires
+the previous safe output to include capability
+`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff`,
+boundary
+`software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_gate`,
+handoff status `ready_for_owner_response_review_handoff_not_proven`,
+`source=software_proof`, `software_proof`, `not_proven`, safe `evidence_ref`,
+and `delivery_success=false`, `primary_actions_enabled=false`,
+`safe_to_control=false`.
+
+The reviewer ACK packet must stay under the same safe `evidence_ref` and must
+confirm reviewer role, reviewer identity label, ACK reason, owner next step,
+support next step, reviewer next step, and next required evidence. It may ask
+for safe reassignment through `reviewer_ack_needs_reassignment`, but that state
+does not enable Robot/mobile actions. The packet must not copy raw material
+bodies, local paths, credentials, ROS topics, `/cmd_vel`, serial/UART/WAVE ROVER
+wording, raw/complete artifacts, checksums, tracebacks, success/control claims,
+Objective 5 external proof claims, O1 HIL claims, PR #5 resolution claims,
+`safe_to_control=true`, `delivery_success=true`, or
+`primary_actions_enabled=true`.
+
+The output always includes `source=software_proof`, `software_proof`,
+`reviewer_ack_state`, `allowed_reviewer_ack_states`, `ack_reasons`, safe
+`evidence_ref`, `source_owner_response_review_handoff`,
+`reviewer_acknowledgement`, `next_required_evidence`, `safe_copy`,
+`not_proven`, `non_access_scope`, `delivery_success=false`,
+`primary_actions_enabled=false`, `safe_to_control=false`,
+`no OKR percentage lift`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate`.
+
+Missing owner response review handoff, missing ACK packet, bad JSON,
+unsupported schema/boundary, missing previous capability, previous handoff not
+ready, source or ACK not marked as `source=software_proof` with `not_proven`,
+missing safe `evidence_ref`, evidence_ref mismatch, missing ACK fields, unsafe
+copy, raw or local paths, credentials, ROS/control text, serial/UART/WAVE ROVER
+text, raw/complete artifacts, checksums, tracebacks, verified terminal result
+claims, delivery/dropoff/cancel success claims, Objective 5 external proof
+claims, O1 HIL claims, PR #5 resolution claims, `safe_to_control=true`,
+`delivery_success=true`, or `primary_actions_enabled=true` all fail closed to
+one of the five allowed states.
+
+This contract is software proof only. `reviewer_acknowledged_not_proven` means
+the metadata-only previous owner response review handoff and reviewer ACK packet
+can move to later review follow-through while remaining fail-closed. It is not
+real field rerun proof, not real route/elevator field pass, not real
+Nav2/fixed-route execution, not true task record validation, not route
+completion signal validation, not dropoff/cancel completion, not delivery
+result, not delivery success, not HIL, not WAVE ROVER/UART feedback, not true
+phone/browser proof, not PR #5 resolution, not Objective 5 external
+cloud/4G/OSS/CDN/DB/queue proof, not an OKR percentage lift, and not any primary
+robot action being enabled.
+
 ## field_evidence_real_material_request_dispatch
 
 `pc-tools/evidence/field_evidence_real_material_request_dispatch.py` generates

@@ -602,6 +602,25 @@ FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_R
     "handoff_unsafe_rejected",
     "blocked_missing_owner_response_review_decision",
 )
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SCHEMA = (
+    "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake.v1"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary.v1"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary.v1"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_GATE = (
+    "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate"
+)
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_STATUSES = (
+    "reviewer_acknowledged_not_proven",
+    "reviewer_ack_needs_reassignment",
+    "blocked_missing_owner_response_review_handoff",
+    "reviewer_ack_evidence_ref_mismatch",
+    "reviewer_ack_rejected_unsafe",
+)
 FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_SCHEMA = (
     "trashbot.field_evidence_real_material_request_dispatch.v1"
 )
@@ -5297,6 +5316,49 @@ def _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_respo
         text = _redact_route_task_rehearsal_text(item)
         lowered = text.lower()
         # raw/path/checksum/HIL 等敏感词只作为阻断线索，不进入 Robot 可见 not_proven 列表。
+        if any(marker in lowered for marker in ("raw", "path", "checksum", "hil", " pass", "[redacted")):
+            continue
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_not_proven(
+    ack=None,
+    summary_fragment=None,
+):
+    # reviewer ACK intake 只是复核确认的安全元数据，不能被解释成现场成功或控制许可。
+    source_values = []
+    for item in (ack, summary_fragment):
+        if isinstance(item, dict) and isinstance(item.get("not_proven"), list):
+            source_values.extend(item.get("not_proven"))
+        if isinstance(item, dict) and isinstance(item.get("next_required_evidence"), list):
+            source_values.extend(item.get("next_required_evidence"))
+    required = (
+        "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_only",
+        "source_owner_response_review_handoff_not_field_proof",
+        "field_rerun_not_executed_by_robot",
+        "real_route_completion_not_verified",
+        "real_field_task_record_not_verified",
+        "real_nav2_fixed_route_runtime_not_verified",
+        "real_elevator_operation_not_verified",
+        "real_dropoff_cancel_completion_not_verified",
+        "real_delivery_result_not_verified",
+        "real_phone_browser_not_verified",
+        "real_hardware_runtime_not_verified",
+        "collect_dropoff_cancel_control",
+        "remote_ack",
+        "cursor_advance_or_persistence",
+        "hardware_transport_control",
+        "delivery_success",
+        "primary_actions_enabled",
+        "safe_to_control",
+    )
+    values = []
+    for item in list(source_values) + list(required):
+        text = _redact_route_task_rehearsal_text(item)
+        lowered = text.lower()
+        # 不把 raw/path/checksum/HIL 词带入 Robot 可见 not_proven，避免摘要反向泄漏敏感线索。
         if any(marker in lowered for marker in ("raw", "path", "checksum", "hil", " pass", "[redacted")):
             continue
         if text and text not in values:
@@ -11837,6 +11899,85 @@ def _default_field_evidence_rerun_execution_result_acceptance_handoff_intake_own
         "software_proof": True,
         "not_proven": (
             _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_not_proven()
+        ),
+        "metadata_only": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+    }
+
+
+def _default_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary(
+    path,
+    status="blocked_missing_owner_response_review_handoff",
+    read_error="",
+):
+    # 缺 reviewer ACK intake 时必须明确阻断，不能让 ACK 入口变成控制或成功信号。
+    safe_copy = (
+        "Field evidence rerun execution result acceptance handoff intake owner "
+        "response reviewer ACK intake is metadata-only; source=software_proof; "
+        "not_proven; safe_to_control=false; delivery_success=false; "
+        "primary_actions_enabled=false."
+    )
+    reason = read_error or (
+        "field evidence rerun execution result acceptance handoff intake owner response reviewer ACK intake is not configured"
+    )
+    return {
+        "schema": (
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SUMMARY_SCHEMA
+        ),
+        "schema_version": 1,
+        "evidence_boundary": (
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_GATE
+        ),
+        "capability": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake",
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "status": status,
+        "ack_intake_status": status,
+        "overall_status": "not_proven",
+        "reviewer_ack_intake_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": reason,
+        },
+        "source_owner_response_review_handoff_status": "unknown",
+        "ack_reasons": [reason],
+        "next_required_evidence": [],
+        "owner_next_step": "Attach same-ref sanitized reviewer ACK intake metadata.",
+        "support_next_step": "Wait for sanitized software-proof reviewer ACK intake metadata.",
+        "reviewer_next_step": "Keep reviewer ACK intake not_proven until real field evidence exists.",
+        "evidence_boundary_status": "not_proven",
+        "robot_diagnostics_summary": {
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+        },
+        "robot_compatible_summary": {"status": status, "reason": reason},
+        "boundary": (
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_GATE
+        ),
+        "proof_boundary": (
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_GATE
+        ),
+        "software_proof": True,
+        "not_proven": (
+            _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_not_proven()
         ),
         "metadata_only": True,
         "safe_to_control": False,
@@ -21309,6 +21450,25 @@ def _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_respo
     return source_schema, source_boundary
 
 
+def _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_source_contract(
+    value,
+):
+    # reviewer ACK intake 只接收 PC safe summary 或 Robot alias；raw wrapper 必须内嵌安全摘要。
+    value = value if isinstance(value, dict) else {}
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema in {
+        FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SOURCE_SUMMARY_SCHEMA,
+        FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SUMMARY_SCHEMA,
+    }:
+        source_schema = str(
+            value.get("source_schema")
+            or FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
 def _field_evidence_real_material_request_dispatch_source_contract(value):
     # Robot 只接受 Autonomy 的 canonical summary，或带 canonical summary 的 compatible wrapper。
     value = value if isinstance(value, dict) else {}
@@ -24748,6 +24908,157 @@ def _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_respo
         )
     text = str(value or "").strip().lower()
     # 允许否定式 proof 边界文案；禁止真实成功、控制、外部证明、HIL 和 PR resolved 语义。
+    text = text.replace("not delivery success", "not_delivery_success")
+    text = text.replace("not proven delivery success", "not_proven_delivery_success")
+    text = text.replace("not hil pass", "not_hil_pass")
+    text = text.replace("not proven hil pass", "not_proven_hil_pass")
+    unsafe_text_fragments = (
+        "/cmd_vel",
+        "/dev/tty",
+        "ttyusb",
+        "wave rover",
+        "wave_rover",
+        "traceback",
+        "checksum",
+        "bearer",
+        "authorization",
+        "credential",
+        "secret",
+        "token",
+        "db://",
+        "queue://",
+        "oss ak",
+        "oss sk",
+        "delivery success",
+        "delivery_success=true",
+        "primary_actions_enabled=true",
+        "safe_to_control=true",
+        "control enabled",
+        "start delivery",
+        "confirm dropoff",
+        "cancel enabled",
+        "external proof",
+        "real external",
+        "hil pass",
+        "real hil",
+        "field pass",
+        "pr resolved",
+        "pr reviewer resolved",
+        "reviewer resolved",
+        "delivery passed",
+        "passed",
+        " pass",
+        "replay enabled",
+        "resubmit enabled",
+    )
+    return any(marker in text for marker in unsafe_text_fragments)
+
+
+def _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_has_unsafe_fields(
+    value,
+):
+    # reviewer ACK 允许 ACK reason 字段名，但仍拒绝 raw、控制、外部证明、HIL 和 PR resolved 语义。
+    unsafe_key_fragments = (
+        "raw",
+        "manifest",
+        "artifact_path",
+        "artifact_ref",
+        "complete_artifact",
+        "full_artifact",
+        "local_path",
+        "path",
+        "checksum",
+        "credential",
+        "secret",
+        "token",
+        "authorization",
+        "bearer",
+        "traceback",
+        "ros_topic",
+        "topic",
+        "cmd_vel",
+        "serial",
+        "uart",
+        "baud",
+        "wave_rover",
+        "db_url",
+        "queue_url",
+        "oss",
+        "control",
+        "cursor",
+        "command",
+        "external",
+        "hil",
+        "pr_resolution",
+        "reviewer_resolution",
+        "replay",
+        "resubmit",
+    )
+    safe_keys = {
+        "schema",
+        "schema_version",
+        "source",
+        "source_schema",
+        "source_schema_version",
+        "source_evidence_boundary",
+        "evidence_boundary",
+        "boundary",
+        "proof_boundary",
+        "safe_evidence_ref",
+        "evidence_ref",
+        "capability",
+        "status",
+        "ack_intake_status",
+        "overall_status",
+        "reviewer_ack_intake_status",
+        "status_summary",
+        "verdict",
+        "reason",
+        "source_owner_response_review_handoff_status",
+        "source_review_handoff_status",
+        "ack_reasons",
+        "next_required_evidence",
+        "owner_next_step",
+        "support_next_step",
+        "reviewer_next_step",
+        "evidence_boundary_status",
+        "robot_diagnostics_summary",
+        "robot_compatible_summary",
+        "safe_copy",
+        "safe_phone_copy",
+        "software_proof",
+        "not_proven",
+        "safe_to_control",
+        "delivery_success",
+        "primary_actions_enabled",
+        "metadata_only",
+        "boundary_flags",
+        "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary",
+        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary",
+        "diagnostics",
+        "summary",
+        "diagnostics_summary",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text not in safe_keys and any(
+                fragment in key_text for fragment in unsafe_key_fragments
+            ):
+                return True
+            if _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_has_unsafe_fields(
+                item
+            ):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_has_unsafe_fields(
+                item
+            )
+            for item in value
+        )
+    text = str(value or "").strip().lower()
     text = text.replace("not delivery success", "not_delivery_success")
     text = text.replace("not proven delivery success", "not_proven_delivery_success")
     text = text.replace("not hil pass", "not_hil_pass")
@@ -49254,6 +49565,349 @@ def summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_ow
                 "owner_next_step": "Remove unsafe material and provide sanitized same-ref owner response review handoff.",
                 "support_next_step": "Reject unsafe owner response review handoff metadata until only safe fields remain.",
                 "reviewer_next_step": "Keep owner response review handoff not_proven and request sanitized software-proof metadata.",
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "status": "blocked",
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                },
+            }
+        )
+    return summary
+
+
+def summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake(
+    source,
+):
+    """构建 acceptance handoff intake owner response reviewer ACK intake 的 Robot-safe 摘要。"""
+    # ACK intake 是只读治理状态，Robot diagnostics 不能从这里派生控制、ACK 写入或 HIL 结论。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = (
+        _default_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary(
+            source_path,
+            read_error=(
+                "field evidence rerun execution result acceptance handoff intake "
+                "owner response reviewer ACK intake is not configured"
+            ),
+        )
+    )
+    if isinstance(source, dict):
+        ack_doc = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = (
+                "field evidence rerun execution result acceptance handoff intake "
+                "owner response reviewer ACK intake summary missing"
+            )
+            summary["reviewer_ack_intake_status"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                ack_doc = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                "failed reading field evidence rerun execution result acceptance "
+                f"handoff intake owner response reviewer ACK intake: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["reviewer_ack_intake_status"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(ack_doc, dict):
+        summary["reviewer_ack_intake_status"]["reason"] = (
+            "field evidence rerun execution result acceptance handoff intake owner response reviewer ACK intake JSON must be an object"
+        )
+        return summary
+
+    diagnostics = ack_doc.get("diagnostics") if isinstance(ack_doc.get("diagnostics"), dict) else {}
+    raw_schema = str(ack_doc.get("schema") or "")
+    source_schema, source_boundary = (
+        _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_source_contract(
+            ack_doc
+        )
+    )
+    if raw_schema in {
+        FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SOURCE_SUMMARY_SCHEMA,
+        FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SUMMARY_SCHEMA,
+    }:
+        summary_fragment = ack_doc
+    else:
+        summary_fragment = {}
+        for candidate in (
+            ack_doc.get(
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary"
+            ),
+            ack_doc.get(
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary"
+            ),
+            ack_doc.get("robot_compatible_summary"),
+            ack_doc.get("summary"),
+            ack_doc.get("diagnostics_summary"),
+            diagnostics.get(
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary"
+            ),
+            diagnostics.get(
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary"
+            ),
+            diagnostics.get("summary"),
+            diagnostics.get("diagnostics_summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if summary_fragment:
+        nested_schema, nested_boundary = (
+            _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_source_contract(
+                summary_fragment
+            )
+        )
+        if nested_schema:
+            source_schema, source_boundary = nested_schema, nested_boundary
+
+    status_doc = (
+        summary_fragment.get("reviewer_ack_intake_status")
+        if isinstance(summary_fragment.get("reviewer_ack_intake_status"), dict)
+        else summary_fragment.get("ack_status_summary")
+        if isinstance(summary_fragment.get("ack_status_summary"), dict)
+        else summary_fragment.get("status_summary")
+        if isinstance(summary_fragment.get("status_summary"), dict)
+        else {}
+    )
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    safe_copy = summary_fragment.get("safe_copy") or summary_fragment.get("safe_phone_copy") or summary["safe_copy"]
+    safe_copy_text = _redact_route_task_rehearsal_text(safe_copy)
+    if (
+        "source=software_proof" not in safe_copy_text
+        or "not_proven" not in safe_copy_text
+        or "safe_to_control=false" not in safe_copy_text
+        or "delivery_success=false" not in safe_copy_text
+        or "primary_actions_enabled=false" not in safe_copy_text
+    ):
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; primary_actions_enabled=false."
+        )
+    ack_status = _redact_route_task_rehearsal_text(
+        status_doc.get("status")
+        or summary_fragment.get("ack_intake_status")
+        or summary_fragment.get("status")
+        or "blocked_missing_owner_response_review_handoff"
+    )
+    source_handoff_status = summary_fragment.get(
+        "source_owner_response_review_handoff_status"
+    ) or summary_fragment.get("source_review_handoff_status")
+    if isinstance(source_handoff_status, dict):
+        source_handoff_status = source_handoff_status.get("status") or source_handoff_status.get("handoff_status")
+    source_handoff_status = _redact_route_task_rehearsal_text(source_handoff_status or "unknown")
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or ack_doc.get("safe_evidence_ref")
+        or ack_doc.get("evidence_ref", "")
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                summary_fragment.get("source_schema_version")
+                or summary_fragment.get("schema_version")
+                or ack_doc.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or EVIDENCE_SOURCE_SOFTWARE
+            ),
+            "exists": True,
+            "safe_evidence_ref": safe_evidence_ref,
+            "status": ack_status,
+            "ack_intake_status": ack_status,
+            "overall_status": "not_proven",
+            "reviewer_ack_intake_status": {
+                "status": ack_status,
+                "verdict": "not_proven",
+                "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                "reason": _redact_route_task_rehearsal_text(
+                    status_doc.get("reason")
+                    or summary_fragment.get("reason")
+                    or (
+                        "field evidence rerun execution result acceptance handoff "
+                        "intake owner response reviewer ACK intake is software_proof only"
+                    )
+                ),
+            },
+            "source_owner_response_review_handoff_status": source_handoff_status,
+            "ack_reasons": _safe_route_task_rehearsal_list(
+                summary_fragment.get("ack_reasons") or summary_fragment.get("reviewer_ack_reasons")
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "owner_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("owner_next_step")
+                or "Owner keeps same-ref reviewer ACK intake metadata separate from field proof."
+            ),
+            "support_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("support_next_step")
+                or "Support checks only metadata-only reviewer ACK intake fields."
+            ),
+            "reviewer_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("reviewer_next_step")
+                or "Reviewer records ACK intake without PR resolution, HIL, or delivery success."
+            ),
+            "evidence_boundary_status": _redact_route_task_rehearsal_text(
+                summary_fragment.get("evidence_boundary_status") or "not_proven"
+            ),
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "status": ack_status,
+                "safe_copy": safe_copy_text,
+                "safe_phone_copy": safe_copy_text,
+            },
+            "software_proof": summary_fragment.get("software_proof") is not False,
+            "not_proven": (
+                _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_not_proven(
+                    ack_doc,
+                    summary_fragment,
+                )
+            ),
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+            "read_error": "",
+        }
+    )
+    boundary_flags = _safe_pc_route_debug_dict(summary_fragment.get("boundary_flags")) or {}
+    unsafe_material = any(
+        _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_has_unsafe_fields(
+            item
+        )
+        for item in (
+            status_doc,
+            summary["source_owner_response_review_handoff_status"],
+            summary["ack_reasons"],
+            summary["next_required_evidence"],
+            summary["owner_next_step"],
+            summary["support_next_step"],
+            summary["reviewer_next_step"],
+            robot_summary,
+            safe_copy,
+            safe_copy_text,
+        )
+    )
+    if not summary_fragment:
+        summary["reviewer_ack_intake_status"] = {
+            "status": "blocked_missing_owner_response_review_handoff",
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": "missing safe reviewer ACK intake summary",
+        }
+        summary["status"] = summary["reviewer_ack_intake_status"]["status"]
+        summary["ack_intake_status"] = summary["status"]
+        return summary
+    if (
+        source_schema
+        != FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SCHEMA
+        or source_boundary
+        != FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_GATE
+    ):
+        summary["reviewer_ack_intake_status"] = {
+            "status": "reviewer_ack_rejected_unsafe",
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": "reviewer ACK intake schema or boundary is unsupported",
+        }
+        summary["status"] = summary["reviewer_ack_intake_status"]["status"]
+        summary["ack_intake_status"] = summary["status"]
+        return summary
+    if (
+        summary["source"] != EVIDENCE_SOURCE_SOFTWARE
+        or summary["evidence_boundary_status"] != "not_proven"
+        or summary["ack_intake_status"]
+        not in FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_STATUSES
+        or not summary["software_proof"]
+    ):
+        summary["reviewer_ack_intake_status"] = {
+            "status": "reviewer_ack_rejected_unsafe",
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": "reviewer ACK intake must remain software_proof and not_proven",
+        }
+        summary["status"] = summary["reviewer_ack_intake_status"]["status"]
+        summary["ack_intake_status"] = summary["status"]
+        return summary
+    if (
+        not summary["safe_evidence_ref"]
+        or not summary["source_owner_response_review_handoff_status"]
+        or not summary["ack_reasons"]
+        or not summary["next_required_evidence"]
+        or not summary["owner_next_step"]
+        or not summary["support_next_step"]
+        or not summary["reviewer_next_step"]
+    ):
+        summary["reviewer_ack_intake_status"] = {
+            "status": "blocked_missing_owner_response_review_handoff",
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": "reviewer ACK intake is missing safe metadata",
+        }
+        summary["status"] = summary["reviewer_ack_intake_status"]["status"]
+        summary["ack_intake_status"] = summary["status"]
+        return summary
+    if (
+        summary_fragment.get("safe_to_control") is not False
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or bool(boundary_flags.get("control_entrypoint_enabled"))
+        or bool(boundary_flags.get("readiness_enabled"))
+        or bool(boundary_flags.get("reviewer_resolution_enabled"))
+        or bool(boundary_flags.get("external_proof_enabled"))
+        or bool(boundary_flags.get("hil_pass_enabled"))
+        or unsafe_material
+        or _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_has_unsafe_fields(
+            ack_doc
+        )
+        or _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_has_unsafe_fields(
+            summary_fragment
+        )
+        or _field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_has_unsafe_fields(
+            robot_summary
+        )
+    ):
+        blocked_copy = (
+            "Field evidence rerun execution result acceptance handoff intake owner "
+            "response reviewer ACK intake was blocked because summary fields could expose "
+            "raw manifests, artifacts, control data, paths, credentials, DB/queue URLs, "
+            "checksums, tracebacks, ROS topics, serial/UART, WAVE ROVER, HIL/pass, "
+            "external proof, PR-resolution, or success wording; safe_to_control=false; "
+            "delivery_success=false; primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "status": "reviewer_ack_rejected_unsafe",
+                "ack_intake_status": "reviewer_ack_rejected_unsafe",
+                "reviewer_ack_intake_status": {
+                    "status": "reviewer_ack_rejected_unsafe",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": (
+                        "unsafe raw manifest, artifact, control, path, credential, "
+                        "DB/queue, checksum, traceback, ROS topic, serial/UART, "
+                        "WAVE ROVER, HIL/pass, external proof, PR-resolution, or success material"
+                    ),
+                },
+                "ack_reasons": [],
+                "next_required_evidence": [],
+                "owner_next_step": "Remove unsafe material and provide sanitized same-ref reviewer ACK intake.",
+                "support_next_step": "Reject unsafe reviewer ACK intake metadata until only safe fields remain.",
+                "reviewer_next_step": "Keep reviewer ACK intake not_proven and request sanitized software-proof metadata.",
                 "safe_copy": blocked_copy,
                 "safe_phone_copy": blocked_copy,
                 "robot_diagnostics_summary": {
@@ -76601,6 +77255,7 @@ def build_diagnostics_payload(
     field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_ref="",
     field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision_ref="",
     field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_ref="",
+    field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_ref="",
     field_evidence_real_material_request_dispatch_ref="",
     field_evidence_real_material_response_intake_ref="",
     field_evidence_real_material_response_review_decision_ref="",
@@ -76722,6 +77377,36 @@ def build_diagnostics_payload(
         if isinstance(
             latest_status.get(
                 "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff"
+            ),
+            dict,
+        )
+        else {}
+    )
+    field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_preserved_source = (
+        latest_status.get(
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake"
+        )
+        if isinstance(
+            latest_status.get(
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake"
             ),
             dict,
         )
@@ -80889,6 +81574,22 @@ def build_diagnostics_payload(
         "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_copy",
         None,
     )
+    latest_status.pop(
+        "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake",
+        None,
+    )
+    latest_status.pop(
+        "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary",
+        None,
+    )
+    latest_status.pop(
+        "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary",
+        None,
+    )
+    latest_status.pop(
+        "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_copy",
+        None,
+    )
     latest_status.pop("field_evidence_real_material_request_dispatch", None)
     latest_status.pop("field_evidence_real_material_request_dispatch_summary", None)
     latest_status.pop(
@@ -82871,6 +83572,58 @@ def build_diagnostics_payload(
             field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_source
         )
     )
+    field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_status_source = (
+        field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_preserved_source
+        if isinstance(
+            field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_preserved_source,
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake"
+            ),
+            dict,
+        )
+        else {}
+    )
+    field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_source = (
+        field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_ref
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SUMMARY",
+            "",
+        )
+        or field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_status_source
+    )
+    field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary = (
+        summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake(
+            field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_source
+        )
+    )
     field_evidence_real_material_request_dispatch_status_source = (
         latest_status.get(
             "robot_diagnostics_field_evidence_real_material_request_dispatch_summary"
@@ -84528,6 +85281,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_summary=(
             field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_summary
+        ),
+        field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake=(
+            field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary
+        ),
+        field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary=(
+            field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary
+        ),
+        robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary=(
+            field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary
         ),
         field_evidence_real_material_request_dispatch=(
             field_evidence_real_material_request_dispatch_summary
