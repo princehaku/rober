@@ -8,7 +8,23 @@
 
 ## 2026-05-23 系列
 
-更新时间：2026-05-23 16:23 Asia/Shanghai。
+更新时间：2026-05-23 17:18 Asia/Shanghai。
+
+### 2026-05-23 17-18｜pr5-mandatory-sensor-material-owner-response-review-decision｜PR #5 mandatory sensor material owner response review decision
+
+本轮 `sprints/2026.05.23_17-18_pr5-mandatory-sensor-material-owner-response-review-decision/` 执行 `pr5_mandatory_sensor_material_owner_response_review_decision` epic closeout。用户价值是把上一轮 owner-response intake 安全摘要推进为 review-decision，明确 `accepted_for_reviewer_closeout_not_proven`、`needs_more_material_not_proven`、`rejected_unsafe_material_not_proven`、`blocked_missing_owner_response_intake_not_proven`、`blocked_evidence_ref_mismatch_not_proven`，同时保持控制面 fail-closed。本轮边界为 `software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate`，必须保留 `hardware_material_pending`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+Hardware worker 落地 PC gate 与对应测试，并同步 `pc-tools/README.md`、`docs/product/production_hardware_boundary.md`、`docs/interfaces/pr5_mandatory_sensor_material_owner_response_review_decision.md`；验证通过：`py_compile`、unittest `Ran 7 tests in 0.515s OK`、CLI `--help`、required `rg`、scoped `git diff --check`。Robot worker 落地 `robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary` safe alias 与测试，同步 `docs/interfaces/ros_runtime_contracts.md`；验证通过：`py_compile`、diagnostics unittest `Ran 310 tests in 3.217s OK`、required `rg`、scoped `git diff --check`。Full-Stack worker 落地 `mobile/web` read-only review-decision panel、fixture 与测试，同步 `docs/product/mobile_user_flow.md`；验证通过：fixture `json.tool`、mobile unittest `Ran 306 tests in 2.952s OK`、required `rg`、scoped `git diff --check`。本轮 docs 同步完成；硬件实现/测试新增中文技术注释比例回传约 `20.4%/20.1%`，Robot/Full-Stack 新增中文注释，Product 未做全仓库比例复算。
+
+Live PR #5 recheck：`PRRT_kwDOSWB9286CJ3tQ` resolved，`PRRT_kwDOSWB9286CJ3tU` resolved，`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `is_resolved=false` / `is_outdated=false` / `resolved_by=null` / `hardware_material_pending`（path `docs/product/production_hardware_boundary.md`）。因此本轮不是 PR #5 resolution，不是真实 2D LiDAR/ToF proof，不是真实 WAVE ROVER/UART/HIL，不是 true phone/browser proof，不是 O5 external proof，不是 route/elevator/Nav2 runtime pass，不是 delivery success；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮把 PR #5 mandatory sensor owner-response intake 推进到 review-decision rung，并在 PC/Robot/mobile 一致 fail-closed 展示；但 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved，仍缺真实 2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、WAVE ROVER powered bench/UART/HIL logs、operator HIL report 与 reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只推进 PR #5 review-decision metadata，不涉及 task_orchestrator、route/elevator runtime、dropoff/cancel completion、terminal result 或 delivery result。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮不涉及路线采集、Nav2/fixed-route runtime、route completion signal 与现场任务复账；review-decision gate 不代表导航实跑通过。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 新增 read-only review-decision panel，且 Start Delivery / Confirm Dropoff / Cancel 继续 disabled；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice 与 true phone/browser acceptance。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮仅是 Docker/local software proof，不证明 public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、真实手机/browser 外部证据或 verified terminal delivery/dropoff/cancel result。 |
 
 ### 2026-05-23 16-17｜pr5-mandatory-sensor-material-owner-response-intake｜PR #5 mandatory sensor material owner response intake
 

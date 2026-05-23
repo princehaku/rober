@@ -1621,6 +1621,25 @@ PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_INTAKE_DECISIONS = (
     "unsafe",
     "blocked",
 )
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_SCHEMA = (
+    "trashbot.pr5_mandatory_sensor_material_owner_response_review_decision.v1"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.pr5_mandatory_sensor_material_owner_response_review_decision_summary.v1"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary.v1"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_GATE = (
+    "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISIONS = (
+    "accepted_for_reviewer_closeout_not_proven",
+    "needs_more_material_not_proven",
+    "rejected_unsafe_material_not_proven",
+    "blocked_missing_owner_response_intake_not_proven",
+    "blocked_evidence_ref_mismatch_not_proven",
+)
 HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SCHEMA = (
     "trashbot.hardware_real_material_escalation_request.v1"
 )
@@ -2024,6 +2043,26 @@ PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_REQUIRED_NOT_PROVEN = (
 PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REQUIRED_NOT_PROVEN = (
     "pr5_mandatory_sensor_material_owner_response_intake_only",
     "source_followup_escalation_status_not_proven",
+    "pr5_PRRT_kwDOSWB9286CJ3tX_unresolved",
+    "hardware_material_pending",
+    "real_2d_lidar_sku_source_receipt_procurement_material",
+    "real_tof_sku_source_receipt_procurement_material",
+    "mounting_installation_material",
+    "wiring_power_budget_material",
+    "calibration_plan_or_result",
+    "hil_entry_material",
+    "operator_hil_report",
+    "pr5_reviewer_resolution_evidence",
+    "real_sensor_installed_on_robot",
+    "real_hil_pass",
+    "route_elevator_field_pass",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_REQUIRED_NOT_PROVEN = (
+    "pr5_mandatory_sensor_material_owner_response_review_decision_only",
+    "source_owner_response_intake_not_proven",
     "pr5_PRRT_kwDOSWB9286CJ3tX_unresolved",
     "hardware_material_pending",
     "real_2d_lidar_sku_source_receipt_procurement_material",
@@ -7368,6 +7407,46 @@ def _pr5_mandatory_sensor_material_owner_response_intake_not_proven(
         text = _redact_route_task_rehearsal_text(item)
         lowered = text.lower()
         # raw/path/checksum 等只用于阻断，Robot-safe not_proven 只留下可读材料缺口。
+        if any(
+            marker in lowered
+            for marker in ("raw", "path", "checksum", "hil pass", "[redacted")
+        ):
+            continue
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _pr5_mandatory_sensor_material_owner_response_review_decision_not_proven(
+    source=None,
+    summary_fragment=None,
+):
+    # review decision 只是复核 safe intake metadata，不能被解释成 reviewer 已关闭 PR 或硬件材料真实到位。
+    source = source if isinstance(source, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    for item_source in (source, summary_fragment):
+        if isinstance(item_source.get("not_proven"), list):
+            source_values.extend(item_source.get("not_proven"))
+        for key in (
+            "missing_material_summaries",
+            "rejected_material_summaries",
+            "unsafe_material_summaries",
+            "next_required_evidence",
+            "decision_reasons",
+        ):
+            if isinstance(item_source.get(key), list):
+                source_values.extend(item_source.get(key))
+    required = (
+        "not_proven",
+        "software_proof",
+        "hardware_material_pending",
+    ) + PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_REQUIRED_NOT_PROVEN
+    for item in list(source_values) + list(required):
+        text = _redact_route_task_rehearsal_text(item)
+        lowered = text.lower()
+        # raw/path/checksum/HIL pass 等只用于 fail-closed 判定，不能回流到 Robot 可见摘要。
         if any(
             marker in lowered
             for marker in ("raw", "path", "checksum", "hil pass", "[redacted")
@@ -17991,6 +18070,99 @@ def _default_pr5_mandatory_sensor_material_owner_response_intake_summary(
     }
 
 
+def _default_pr5_mandatory_sensor_material_owner_response_review_decision_summary(
+    path,
+    decision="blocked_missing_owner_response_intake_not_proven",
+    read_error="",
+):
+    # 缺 review-decision summary 时固定输出 blocked，Robot 侧不能读取 raw owner response 或硬件材料正文补齐。
+    reason = read_error or (
+        "PR #5 mandatory sensor material owner response review decision summary is not configured"
+    )
+    safe_copy = (
+        "PR #5 mandatory sensor material owner response review decision is "
+        "metadata-only; source=software_proof; hardware_material_pending; "
+        "not_proven; safe_to_control=false; delivery_success=false; "
+        "primary_actions_enabled=false."
+    )
+    return {
+        "schema": PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_GATE,
+        "proof_boundary": PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_GATE,
+        "capability": "pr5_mandatory_sensor_material_owner_response_review_decision",
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source": "software_proof",
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "evidence_ref": "",
+        "review_decision": decision,
+        "status": decision,
+        "overall_status": "not_proven",
+        "review_status": {
+            "status": decision,
+            "decision": decision,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": reason,
+        },
+        "source_intake_status": "blocked",
+        "source_intake_summary": {
+            "status": "blocked",
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": reason,
+        },
+        "missing_material_summaries": [],
+        "rejected_material_summaries": [],
+        "unsafe_material_summaries": [],
+        "decision_reasons": [],
+        "next_required_evidence": [],
+        "reviewer_next_step": "",
+        "owner_next_step": "",
+        "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+        "pr5_thread_state": "unresolved",
+        "pr5_material_state": "hardware_material_pending",
+        "evidence_boundary_status": "not_proven",
+        "false_states": {
+            "hardware_material_pending": True,
+            "not_proven": True,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        },
+        "not_proven": (
+            _pr5_mandatory_sensor_material_owner_response_review_decision_not_proven()
+        ),
+        "metadata_only": True,
+        "summary_required": True,
+        "hardware_material_pending": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "command_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "field_pass": False,
+        "sensor_installed": False,
+        "pr_resolved": False,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+    }
+
+
 def _default_hardware_real_material_escalation_request_summary(
     path,
     status="blocked_missing_hardware_real_material_escalation_request_summary",
@@ -20238,6 +20410,26 @@ def _pr5_mandatory_sensor_material_owner_response_intake_source_contract(value):
         source_schema = str(
             value.get("source_schema")
             or PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_INTAKE_SCHEMA
+        )
+        source_boundary = str(
+            value.get("source_evidence_boundary")
+            or value.get("proof_boundary")
+            or source_boundary
+        )
+    return source_schema, source_boundary
+
+
+def _pr5_mandatory_sensor_material_owner_response_review_decision_source_contract(value):
+    # review-decision 只能来自 PC gate 的 safe summary；Robot 不信任 raw PR 回复或真实硬件材料 payload。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or value.get("proof_boundary") or "")
+    if source_schema in {
+        PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_SOURCE_SUMMARY_SCHEMA,
+        PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_SUMMARY_SCHEMA,
+    }:
+        source_schema = str(
+            value.get("source_schema")
+            or PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_SCHEMA
         )
         source_boundary = str(
             value.get("source_evidence_boundary")
@@ -66588,6 +66780,108 @@ def _pr5_mandatory_sensor_material_owner_response_false_states_ok(
     return pending is True and not_proven_state is True
 
 
+def _pr5_mandatory_sensor_material_owner_response_review_decision_has_unsafe_fields(
+    value,
+    key_path="",
+):
+    # 复核摘要会进入 Robot diagnostics，所以这里按字段白名单递归拒绝 raw/hardware/control 线索。
+    unsafe_key_fragments = (
+        "raw",
+        "body",
+        "credential",
+        "token",
+        "secret",
+        "authorization",
+        "serial",
+        "uart",
+        "baud",
+        "ros",
+        "topic",
+        "cmd_vel",
+        "ack",
+        "cursor",
+        "command",
+        "control_claim",
+        "local_path",
+        "path",
+        "checksum",
+        "traceback",
+        "wave_rover",
+        "installed_sensor",
+        "installed",
+        "hil_pass",
+        "external_proof",
+        "pr_resolution",
+        "reviewer_resolution",
+        "complete_artifact",
+        "owner_response_body",
+        "material_payload",
+    )
+    unsafe_true_keys = {
+        "delivery_success",
+        "primary_actions_enabled",
+        "safe_to_control",
+        "hardware_read",
+        "raw_materials_exposed",
+        "collect_triggered",
+        "dropoff_triggered",
+        "cancel_triggered",
+        "ack_post_allowed",
+        "remote_ack_allowed",
+        "cursor_updates_allowed",
+        "persistence_updates_allowed",
+        "terminal_ack_allowed",
+        "command_allowed",
+        "nav2_triggered",
+        "hil_pass",
+        "field_pass",
+        "sensor_installed",
+        "pr_resolved",
+        "reviewer_resolved",
+    }
+    safe_key_fragments = (
+        "missing_material_summ",
+        "rejected_material_summ",
+        "unsafe_material_summ",
+        "next_required_evidence",
+        "decision_reason",
+        "not_proven",
+        "false_states",
+        "review_decision",
+        "review_status",
+        "source_intake_status",
+    )
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            current_path = f"{key_path}.{key_text}" if key_path else key_text
+            if key_text in unsafe_true_keys:
+                if item is not False:
+                    return True
+                continue
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if any(fragment in key_text for fragment in safe_key_fragments):
+                continue
+            if _pr5_mandatory_sensor_material_owner_response_review_decision_has_unsafe_fields(
+                item,
+                current_path,
+            ):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _pr5_mandatory_sensor_material_owner_response_review_decision_has_unsafe_fields(
+                item,
+                key_path,
+            )
+            for item in value
+        )
+    if isinstance(value, str):
+        return _pr5_mandatory_sensor_material_owner_response_copy_is_unsafe(value)
+    return False
+
+
 def summarize_pr5_mandatory_sensor_source_alignment(source):
     """构建 PR #5 mandatory sensor source alignment 的 metadata-only Robot diagnostics 摘要。"""
     # 这里故意只消费 Hardware gate 的 sanitized summary；raw source material 不进入 Robot diagnostics。
@@ -67556,6 +67850,397 @@ def summarize_pr5_mandatory_sensor_material_owner_response_intake(source):
                 "missing_material_refs": [],
                 "rejected_material_refs": [],
                 "unsafe_material_refs": [],
+                "next_required_evidence": [],
+                "owner_next_step": "",
+                "reviewer_next_step": "",
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+            }
+        )
+    return summary
+
+
+def summarize_pr5_mandatory_sensor_material_owner_response_review_decision(source):
+    """构建 PR #5 mandatory sensor material owner-response review-decision 的 Robot-safe 摘要。"""
+    # Robot 只消费 PC gate safe summary；raw PR 回复和真实硬件 material payload 可能含凭证、路径或串口细节。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_pr5_mandatory_sensor_material_owner_response_review_decision_summary(
+        source_path,
+        read_error=(
+            "PR #5 mandatory sensor material owner response review decision summary is not configured"
+        ),
+    )
+    if isinstance(source, dict):
+        decision_doc = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = (
+                "PR #5 mandatory sensor material owner response review decision summary artifact missing"
+            )
+            summary["review_status"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                decision_doc = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                "failed reading PR #5 mandatory sensor material owner response "
+                f"review decision summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["review_status"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(decision_doc, dict):
+        summary["review_status"]["reason"] = (
+            "PR #5 mandatory sensor material owner response review decision JSON must be an object"
+        )
+        return summary
+
+    diagnostics = (
+        decision_doc.get("diagnostics")
+        if isinstance(decision_doc.get("diagnostics"), dict)
+        else {}
+    )
+    raw_schema = str(decision_doc.get("schema") or "")
+    source_schema, source_boundary = (
+        _pr5_mandatory_sensor_material_owner_response_review_decision_source_contract(
+            decision_doc
+        )
+    )
+    if raw_schema in {
+        PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_SOURCE_SUMMARY_SCHEMA,
+        PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_SUMMARY_SCHEMA,
+    }:
+        summary_fragment = decision_doc
+    else:
+        summary_fragment = {}
+        for candidate in (
+            decision_doc.get(
+                "pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+            ),
+            decision_doc.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+            ),
+            decision_doc.get("diagnostics_summary"),
+            decision_doc.get("robot_diagnostics_summary"),
+            decision_doc.get("robot_compatible_summary"),
+            decision_doc.get("summary"),
+            diagnostics.get(
+                "pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+            ),
+            diagnostics.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+            ),
+            diagnostics.get("diagnostics_summary"),
+            diagnostics.get("summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if summary_fragment:
+        nested_schema, nested_boundary = (
+            _pr5_mandatory_sensor_material_owner_response_review_decision_source_contract(
+                summary_fragment
+            )
+        )
+        if nested_schema:
+            source_schema, source_boundary = nested_schema, nested_boundary
+
+    status_doc = (
+        summary_fragment.get("review_status")
+        if isinstance(summary_fragment.get("review_status"), dict)
+        else summary_fragment.get("decision_summary")
+        if isinstance(summary_fragment.get("decision_summary"), dict)
+        else summary_fragment.get("status_summary")
+        if isinstance(summary_fragment.get("status_summary"), dict)
+        else {}
+    )
+    source_intake_doc = (
+        summary_fragment.get("source_intake_status")
+        if isinstance(summary_fragment.get("source_intake_status"), dict)
+        else summary_fragment.get("source_owner_response_intake_status")
+        if isinstance(summary_fragment.get("source_owner_response_intake_status"), dict)
+        else summary_fragment.get("source_intake_summary")
+        if isinstance(summary_fragment.get("source_intake_summary"), dict)
+        else {}
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or decision_doc.get("safe_copy")
+        or decision_doc.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    safe_copy_text = _redact_route_task_rehearsal_text(safe_copy)
+    if "delivery_success=false" not in safe_copy_text:
+        # 下游直接展示 safe_copy，必须显式保留软件证明和三 false flags。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; hardware_material_pending; "
+            "not_proven; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    review_decision = _redact_route_task_rehearsal_text(
+        summary_fragment.get("review_decision")
+        or summary_fragment.get("decision")
+        or status_doc.get("decision")
+        or status_doc.get("status")
+        or summary_fragment.get("status")
+        or decision_doc.get("review_decision")
+        or decision_doc.get("decision")
+        or decision_doc.get("status")
+        or "blocked_missing_owner_response_intake_not_proven"
+    )
+    source_intake_status = _redact_route_task_rehearsal_text(
+        source_intake_doc.get("status")
+        or summary_fragment.get("source_intake_status")
+        or summary_fragment.get("source_owner_response_intake_status")
+        or summary_fragment.get("owner_response_intake_status")
+        or decision_doc.get("source_intake_status")
+        or "blocked"
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or decision_doc.get("safe_evidence_ref")
+        or decision_doc.get("evidence_ref", "")
+    )
+    reason = _redact_route_task_rehearsal_text(
+        status_doc.get("reason")
+        or summary_fragment.get("reason")
+        or decision_doc.get("reason")
+        or "PR #5 mandatory sensor material owner response review decision remains software_proof only"
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                summary_fragment.get("source_schema_version")
+                or summary_fragment.get("schema_version")
+                or decision_doc.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or decision_doc.get("source") or "software_proof"
+            ),
+            "exists": True,
+            "safe_evidence_ref": safe_evidence_ref,
+            "evidence_ref": safe_evidence_ref,
+            "review_decision": review_decision,
+            "status": review_decision,
+            "overall_status": "not_proven",
+            "review_status": {
+                "status": review_decision,
+                "decision": review_decision,
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": reason,
+            },
+            "source_intake_status": source_intake_status,
+            "source_intake_summary": {
+                "status": source_intake_status,
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    source_intake_doc.get("reason")
+                    or "source owner-response intake remains not_proven"
+                ),
+            },
+            "missing_material_summaries": _safe_route_task_rehearsal_list(
+                summary_fragment.get("missing_material_summaries")
+                or summary_fragment.get("missing_material_refs")
+                or summary_fragment.get("missing")
+            ),
+            "rejected_material_summaries": _safe_route_task_rehearsal_list(
+                summary_fragment.get("rejected_material_summaries")
+                or summary_fragment.get("rejected_material_refs")
+                or summary_fragment.get("rejected")
+            ),
+            "unsafe_material_summaries": _safe_route_task_rehearsal_list(
+                summary_fragment.get("unsafe_material_summaries")
+                or summary_fragment.get("unsafe_material_refs")
+                or summary_fragment.get("unsafe")
+            ),
+            "decision_reasons": _safe_route_task_rehearsal_list(
+                summary_fragment.get("decision_reasons")
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "owner_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("owner_next_step")
+                or summary_fragment.get("owner_action")
+                or decision_doc.get("owner_next_step")
+            ),
+            "reviewer_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("reviewer_next_step")
+                or decision_doc.get("reviewer_next_step")
+            ),
+            "pr5_thread_id": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_thread_id")
+                or decision_doc.get("pr5_thread_id")
+                or "PRRT_kwDOSWB9286CJ3tX"
+            ),
+            "pr5_thread_state": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_thread_state")
+                or decision_doc.get("pr5_thread_state")
+                or "unresolved"
+            ),
+            "pr5_material_state": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_material_state")
+                or decision_doc.get("pr5_material_state")
+                or "hardware_material_pending"
+            ),
+            "evidence_boundary_status": _redact_route_task_rehearsal_text(
+                summary_fragment.get("evidence_boundary_status") or "not_proven"
+            ),
+            "false_states": {
+                "hardware_material_pending": True,
+                "not_proven": True,
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            },
+            "not_proven": (
+                _pr5_mandatory_sensor_material_owner_response_review_decision_not_proven(
+                    decision_doc,
+                    summary_fragment,
+                )
+            ),
+            "read_error": "",
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+        }
+    )
+    material_summaries_present = any(
+        summary[key]
+        for key in (
+            "missing_material_summaries",
+            "rejected_material_summaries",
+            "unsafe_material_summaries",
+        )
+    )
+    required_safe_metadata = (
+        bool(summary_fragment),
+        bool(summary["safe_evidence_ref"]),
+        review_decision in PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISIONS,
+        bool(source_intake_status),
+        material_summaries_present,
+        bool(summary["next_required_evidence"]),
+        bool(summary["reviewer_next_step"]),
+        summary["pr5_thread_id"] == "PRRT_kwDOSWB9286CJ3tX",
+        summary["pr5_thread_state"] in {"unresolved", "is_resolved=false"},
+        summary["pr5_material_state"] == "hardware_material_pending",
+        summary["evidence_boundary_status"] == "not_proven",
+    )
+    if not summary_fragment:
+        summary["review_status"]["status"] = (
+            "blocked_missing_owner_response_intake_not_proven"
+        )
+        summary["status"] = summary["review_status"]["status"]
+        summary["review_decision"] = summary["status"]
+        return summary
+    if (
+        source_schema
+        != PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_SCHEMA
+        or source_boundary
+        != PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_GATE
+    ):
+        summary["review_status"] = {
+            "status": "blocked_missing_owner_response_intake_not_proven",
+            "decision": "blocked_missing_owner_response_intake_not_proven",
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": (
+                "PR #5 mandatory sensor material owner response review decision "
+                "schema or evidence boundary is unsupported"
+            ),
+        }
+        summary["status"] = summary["review_status"]["status"]
+        summary["review_decision"] = summary["status"]
+        return summary
+    if summary["source"] != "software_proof":
+        summary["review_status"]["status"] = (
+            "rejected_unsafe_material_not_proven"
+        )
+        summary["review_status"]["reason"] = (
+            "PR #5 mandatory sensor material owner response review decision must remain source=software_proof"
+        )
+        summary["status"] = summary["review_status"]["status"]
+        summary["review_decision"] = summary["status"]
+        return summary
+    if not all(required_safe_metadata):
+        summary["review_status"]["status"] = (
+            "blocked_missing_owner_response_intake_not_proven"
+        )
+        summary["review_status"]["reason"] = (
+            "PR #5 mandatory sensor material owner response review decision is missing required safe metadata"
+        )
+        summary["status"] = summary["review_status"]["status"]
+        summary["review_decision"] = summary["status"]
+        return summary
+    if (
+        not _pr5_mandatory_sensor_material_owner_response_false_states_ok(
+            decision_doc,
+            summary_fragment,
+        )
+        or _pr5_mandatory_sensor_material_owner_response_review_decision_has_unsafe_fields(
+            decision_doc
+        )
+        or _pr5_mandatory_sensor_material_owner_response_review_decision_has_unsafe_fields(
+            summary_fragment
+        )
+        or _pr5_mandatory_sensor_material_owner_response_review_decision_has_unsafe_fields(
+            status_doc
+        )
+        or _pr5_mandatory_sensor_material_owner_response_review_decision_has_unsafe_fields(
+            source_intake_doc
+        )
+        or _pr5_mandatory_sensor_material_owner_response_copy_is_unsafe(safe_copy_text)
+    ):
+        blocked_copy = (
+            "PR #5 mandatory sensor material owner response review decision was "
+            "blocked because summary fields could expose raw owner response bodies, "
+            "hardware material payloads, local paths, checksums, tracebacks, robot "
+            "command topics, serial/UART details, WAVE ROVER parameters, credentials, "
+            "external-proof, HIL pass, installed-sensor, PR-resolution, success, or "
+            "control wording; source=software_proof; hardware_material_pending; "
+            "not_proven; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "review_decision": "rejected_unsafe_material_not_proven",
+                "status": "rejected_unsafe_material_not_proven",
+                "review_status": {
+                    "status": "rejected_unsafe_material_not_proven",
+                    "decision": "rejected_unsafe_material_not_proven",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": (
+                        "unsafe raw owner body, hardware material payload, local path, "
+                        "checksum, traceback, robot command topic, serial/UART detail, "
+                        "WAVE ROVER detail, credential, external-proof, HIL pass, "
+                        "installed-sensor, PR-resolution, success, or control material"
+                    ),
+                },
+                "safe_evidence_ref": "",
+                "evidence_ref": "",
+                "source_intake_status": "blocked",
+                "source_intake_summary": {
+                    "status": "blocked",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "unsafe owner response review decision summary was redacted and blocked",
+                },
+                "missing_material_summaries": [],
+                "rejected_material_summaries": [],
+                "unsafe_material_summaries": ["rejected_unsafe_material_not_proven"],
+                "decision_reasons": [],
                 "next_required_evidence": [],
                 "owner_next_step": "",
                 "reviewer_next_step": "",
@@ -81125,6 +81810,7 @@ def build_diagnostics_payload(
     pr5_mandatory_sensor_source_alignment_ref="",
     pr5_mandatory_sensor_material_followup_escalation_status_ref="",
     pr5_mandatory_sensor_material_owner_response_intake_ref="",
+    pr5_mandatory_sensor_material_owner_response_review_decision_ref="",
     hardware_real_material_escalation_request_ref="",
     real_material_readiness_board_ref="",
     real_material_evidence_intake_ref="",
@@ -83340,6 +84026,59 @@ def build_diagnostics_payload(
         if isinstance(
             diagnostics_source.get(
                 "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake_summary"
+            ),
+            dict,
+        )
+        else {}
+    )
+    pr5_mandatory_sensor_material_owner_response_review_decision_source = (
+        latest_status.get("pr5_mandatory_sensor_material_owner_response_review_decision")
+        if isinstance(
+            latest_status.get("pr5_mandatory_sensor_material_owner_response_review_decision"),
+            dict,
+        )
+        else latest_status.get(
+            "pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "pr5_mandatory_sensor_material_owner_response_review_decision"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "pr5_mandatory_sensor_material_owner_response_review_decision"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary"
             ),
             dict,
         )
@@ -88720,6 +89459,30 @@ def build_diagnostics_payload(
         "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake_summary",
     ):
         latest_status.pop(unsafe_latest_key, None)
+    pr5_mandatory_sensor_material_owner_response_review_decision_source = (
+        pr5_mandatory_sensor_material_owner_response_review_decision_ref
+        or os.environ.get(
+            "TRASHBOT_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_SUMMARY",
+            "",
+        )
+        or pr5_mandatory_sensor_material_owner_response_review_decision_source
+    )
+    pr5_mandatory_sensor_material_owner_response_review_decision_summary = (
+        summarize_pr5_mandatory_sensor_material_owner_response_review_decision(
+            pr5_mandatory_sensor_material_owner_response_review_decision_source
+        )
+    )
+    # review-decision 只允许 safe summary 进入 payload，raw owner/material 字段必须在这里剥离。
+    for unsafe_latest_key in (
+        "pr5_mandatory_sensor_material_owner_response_review_decision",
+        "pr5_mandatory_sensor_material_owner_response_review_decision_summary",
+        "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary",
+    ):
+        latest_status.pop(unsafe_latest_key, None)
     hardware_real_material_escalation_request_source = (
         hardware_real_material_escalation_request_ref
         or os.environ.get("TRASHBOT_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST", "")
@@ -89919,6 +90682,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake_summary=(
             pr5_mandatory_sensor_material_owner_response_intake_summary
+        ),
+        pr5_mandatory_sensor_material_owner_response_review_decision=(
+            pr5_mandatory_sensor_material_owner_response_review_decision_summary
+        ),
+        pr5_mandatory_sensor_material_owner_response_review_decision_summary=(
+            pr5_mandatory_sensor_material_owner_response_review_decision_summary
+        ),
+        robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary=(
+            pr5_mandatory_sensor_material_owner_response_review_decision_summary
         ),
         hardware_real_material_escalation_request=(
             hardware_real_material_escalation_request_summary

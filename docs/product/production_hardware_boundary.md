@@ -679,6 +679,40 @@ PRRT_kwDOSWB9286CJ3tX resolved, delivery success, Objective 5 external proof,
 procurement, installation, wiring, power budget, calibration, route/elevator
 field pass, or true phone/browser proof.
 
+## PR #5 Mandatory Sensor Material Owner-Response Review Decision Gate
+
+`pr5_mandatory_sensor_material_owner_response_review_decision` is the PC-only
+review-decision gate after `pr5_mandatory_sensor_material_owner_response_intake`.
+It emits
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_review_decision.v1`
+and
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_review_decision_summary.v1`
+under
+`software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate`.
+
+The gate consumes only the sanitized owner-response intake artifact, summary,
+Robot safe alias, or wrapper/nested safe fields. It does not consume raw owner
+response body text, real material payloads, receipt files, source PDFs, local
+paths, checksums, serial/UART logs, ROS topics, HIL logs, GitHub write state, or
+review-thread resolution state. The same safe `evidence_ref` is required from
+source intake to review-decision output.
+
+Allowed review decisions are `accepted_for_reviewer_closeout_not_proven`,
+`needs_more_material_not_proven`, `rejected_unsafe_material_not_proven`,
+`blocked_missing_owner_response_intake_not_proven`, and
+`blocked_evidence_ref_mismatch_not_proven`. Every decision preserves
+`software_proof`, `hardware_material_pending`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
+The local vendor/source chain for this gate remains `docs/vendor/VENDOR_INDEX.md`
+plus its Orange Pi Zero 3 manual/schematic and WAVE ROVER / UART JSON /
+firmware/vendor-app references. Those refs support source attribution and
+prevent hardware guessing. They do not prove a real project 2D LiDAR or ToF
+SKU/source/receipt/procurement/install/wiring/power/calibration/HIL, do not
+prove `PRRT_kwDOSWB9286CJ3tX` resolved, and do not prove Objective 5 external
+proof or delivery success.
+
 ## Cloud Command Lifecycle Audit/Export Hardware Boundary
 
 `cloud_command_lifecycle_audit_export` is an Objective 5 software-proof

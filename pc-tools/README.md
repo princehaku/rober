@@ -497,6 +497,56 @@ WAVE ROVER / UART JSON / firmware/vendor-app 资料：`base_ctrl.py`、
 Orange Pi / WAVE ROVER / UART JSON 事实边界，但不能替代 PR #5 owner response
 里的真实传感器材料。
 
+## PR #5 mandatory sensor material owner-response review decision
+
+`pc-tools/evidence/pr5_mandatory_sensor_material_owner_response_review_decision.py`
+只读上一轮 `pr5_mandatory_sensor_material_owner_response_intake` artifact、
+summary、Robot safe alias 或 wrapper/nested JSON，把 PR #5 thread
+`PRRT_kwDOSWB9286CJ3tX` 的 mandatory 2D LiDAR / ToF material owner response
+intake 转成 PC-only review-decision artifact / summary：
+
+```bash
+python3 pc-tools/evidence/pr5_mandatory_sensor_material_owner_response_review_decision.py \
+  --owner-response-intake-json /tmp/pr5_mandatory_sensor_material_owner_response_intake_summary.json \
+  --evidence-ref pr5-material-owner-response-001 \
+  --output /tmp/pr5_mandatory_sensor_material_owner_response_review_decision.json \
+  --summary-output /tmp/pr5_mandatory_sensor_material_owner_response_review_decision_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_review_decision.v1`，
+summary 使用
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_review_decision_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary`，
+证据边界固定为
+`software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate`。
+核心字段包括 `review_decision`、`allowed_review_decisions`、safe
+`evidence_ref`、`source_owner_response_intake`、`material_status`、
+`owner_handoff`、`next_required_evidence`、`rerun_commands`、`safe_copy`、
+`software_proof`、`hardware_material_pending`、`not_proven`、
+`delivery_success=false`、`primary_actions_enabled=false` 和
+`safe_to_control=false`。
+
+`review_decision` 只允许 `accepted_for_reviewer_closeout_not_proven`、
+`needs_more_material_not_proven`、`rejected_unsafe_material_not_proven`、
+`blocked_missing_owner_response_intake_not_proven` 和
+`blocked_evidence_ref_mismatch_not_proven`。该 gate 只消费上一轮 intake 的
+sanitized summary 字段，不读取 raw owner-response body 或真实材料 payload。
+缺 source、bad JSON、unsupported schema/boundary、缺 safe `evidence_ref`、证据号
+不一致、缺 `software_proof` / `hardware_material_pending` / `not_proven` /
+false flags、raw artifact、credential、local path、ROS topic、`/cmd_vel`、
+serial/UART path、baudrate、HIL/pass copy、PR resolved claim、Objective 5
+external proof claim、delivery success 或 control enablement 都会 fail closed。
+
+`accepted_for_reviewer_closeout_not_proven` 只表示 safe owner-response intake
+metadata 可进入 reviewer closeout 人工复核；它不证明真实 2D LiDAR / ToF SKU、
+source、receipt、procurement、install、wiring、power、calibration、HIL、
+`PRRT_kwDOSWB9286CJ3tX` resolved、Objective 5 external proof 或 delivery
+success。`docs/vendor/VENDOR_INDEX.md` 及本地 Orange Pi / WAVE ROVER /
+UART JSON / firmware/vendor-app refs 只支持 source attribution，不证明真实 2D
+LiDAR / ToF SKU/source/receipt/procurement/install/wiring/power/calibration/HIL。
+
 ## PC route debug console
 
 `pc-tools/route/route_debug_web.py` 是本地 PC console，不依赖 ROS2，不 import `ros2_trashbot_*`，不访问硬件、serial/UART、Nav2 runtime、ROS graph 或网络外部服务：

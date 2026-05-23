@@ -89,6 +89,10 @@ PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake.json"
 )
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision.json"
+)
 FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_field_evidence_rerun_execution_result_intake.json"
 )
@@ -3885,6 +3889,188 @@ class Pr5MandatorySensorMaterialOwnerResponseIntakeMobileTest(unittest.TestCase)
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, owner_response_text)
+
+
+class Pr5MandatorySensorMaterialOwnerResponseReviewDecisionMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_pr5_mandatory_sensor_material_owner_response_review_decision_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # review decision 只消费 Robot safe alias 或兼容 summary，不增加控制、复制导出或 raw material 路径。
+        self.assertIn("PR #5 强制传感器 owner response review decision", app)
+        self.assertIn("PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safePr5MandatorySensorMaterialOwnerResponseReviewDecisionText", app)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewDecisionCandidate", app)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewDecisionFromStatus", app)
+        self.assertIn("renderPr5MandatorySensorMaterialOwnerResponseReviewDecision", app)
+        self.assertIn(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary",
+            app,
+        )
+        self.assertIn("pr5_mandatory_sensor_material_owner_response_review_decision_summary", app)
+        self.assertIn("pr5_mandatory_sensor_material_owner_response_review_decision?.summary", app)
+        self.assertIn("source_intake_status", app)
+        self.assertIn("missing_material_summaries", app)
+        self.assertIn("rejected_material_summaries", app)
+        self.assertIn("unsafe_material_summaries", app)
+        self.assertIn("reviewer_next_step", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("hardware_material_pending", app)
+        self.assertIn("not_proven", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", app)
+        self.assertNotIn("copyPr5MandatorySensorMaterialOwnerResponseReviewDecisionButton", app)
+        self.assertNotRegex(
+            app,
+            r"pr5MandatorySensorMaterialOwnerResponseReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackPr5MandatorySensorMaterialOwnerResponseReviewDecision",
+            "cursorPr5MandatorySensorMaterialOwnerResponseReviewDecision",
+            "fetchPr5MandatorySensorMaterialOwnerResponseReviewDecisionDiagnostics",
+            "copyPr5MandatorySensorMaterialOwnerResponseReviewDecision",
+            "exportPr5MandatorySensorMaterialOwnerResponseReviewDecision",
+            "reviewPr5MandatorySensorMaterialOwnerResponseReviewDecision",
+            "materialPr5MandatorySensorMaterialOwnerResponseReviewDecision",
+            "commandPr5MandatorySensorMaterialOwnerResponseReviewDecision",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        summary = dedicated_fixture[
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+        ]
+        fallback = dedicated_fixture[
+            "pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+        ]
+        nested = dedicated_fixture[
+            "pr5_mandatory_sensor_material_owner_response_review_decision"
+        ]["summary"]
+        self.assertEqual(summary["capability"], "pr5_mandatory_sensor_material_owner_response_review_decision")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["review_decision"], "needs_more_material_not_proven")
+        self.assertEqual(summary["source_intake_status"], "partial_owner_response_missing_materials_not_proven")
+        self.assertEqual(summary["proof_status"], "hardware_material_pending")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fallback["safe_to_control"], False)
+        self.assertEqual(nested["delivery_success"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "pr5_mandatory_sensor_material_owner_response_review_decision",
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary",
+            "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate",
+            "accepted_for_reviewer_closeout_not_proven",
+            "needs_more_material_not_proven",
+            "rejected_unsafe_material_not_proven",
+            "blocked_missing_owner_response_intake_not_proven",
+            "blocked_evidence_ref_mismatch_not_proven",
+            "hardware_material_pending",
+            "not_proven",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "PRRT_kwDOSWB9286CJ3tX",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn("pr5_mandatory_sensor_material_owner_response_review_decision", doc)
+        self.assertIn(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary",
+            doc,
+        )
+        self.assertIn(
+            "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate",
+            doc,
+        )
+        self.assertIn("safe_to_control=false", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+
+    def test_pr5_mandatory_sensor_material_owner_response_review_decision_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        review_decision_text = json.dumps(
+            {
+                "robot_alias": dedicated_fixture[
+                    "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+                ],
+                "fallback": dedicated_fixture[
+                    "pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "pr5_mandatory_sensor_material_owner_response_review_decision"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留脱敏 review-decision metadata，不泄漏 raw JSON、底层控制、路径、凭证或成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "ros topic",
+            "raw diagnostics",
+            "raw artifact",
+            "raw material",
+            "raw owner response",
+            "complete artifact",
+            "complete artifacts",
+            "full execution bundle",
+            "serial",
+            "uart",
+            "ttyusb",
+            "ttyacm",
+            "baudrate",
+            "/dev/",
+            "wave rover parameter",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "traceback",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "material route",
+            "review route",
+            "handoff route",
+            "robot command",
+            "objective 5 external proof",
+            "real phone/browser proof",
+            "hil_pass",
+            "hil passed",
+            "field pass",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, review_decision_text)
 
 
 class TaskTerminalCompletionMainlineMobileTest(unittest.TestCase):
