@@ -1,0 +1,148 @@
+{
+  "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary": {
+    "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary.v1",
+    "capability": "verified_terminal_result_material_owner_response_reviewer_ack_review_decision",
+    "source": "software_proof",
+    "source_schema": "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_decision.v1",
+    "safe_decision": "accepted_for_reviewer_ack_review_not_proven",
+    "source_ack_intake_status": "source_ack_intake_status=reviewer_acknowledged_not_proven",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "command_id": "cmd_terminal_result_owner_response_reviewer_ack_review_decision_20260524_0001",
+    "safe_command_id": "command_id=cmd_terminal_result_owner_response_reviewer_ack_review_decision_20260524_0001",
+    "evidence_ref": "verified_terminal_result_material_owner_response_reviewer_ack_review_decision_fixture_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_reviewer_ack_review_decision_fixture_20260524_0001",
+    "owner_routing": [
+      "owner_routing=field_owner_backfill_missing_terminal_result_safe_summary",
+      "owner_routing=same_safe_evidence_ref_required"
+    ],
+    "support_routing": [
+      "support_routing=keep_PRRT_kwDOSWB9286CJ3tX_unresolved",
+      "support_routing=hardware_material_pending"
+    ],
+    "reviewer_routing": [
+      "reviewer_routing=prepare_reviewer_ack_review_handoff_not_proven",
+      "reviewer_routing=reject_delivery_success_claims"
+    ],
+    "missing_materials": [
+      "missing_material=real_verified_terminal_result",
+      "missing_material=PRRT_kwDOSWB9286CJ3tX hardware_material_pending"
+    ],
+    "rejected_materials": [
+      "rejected_material=raw_success_or_control_claims"
+    ],
+    "decision_reasons": [
+      "decision_reason=reviewer_ACK_intake_safe_summary_visible",
+      "decision_reason=source=software_proof not_proven false flags intact",
+      "decision_reason=PRRT_kwDOSWB9286CJ3tX unresolved hardware_material_pending"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=owner backfills verified terminal result safe summary under same safe evidence_ref",
+      "next_required_evidence=reviewer handoff records missing/rejected classifications",
+      "next_required_evidence=support keeps PRRT_kwDOSWB9286CJ3tX unresolved hardware_material_pending visible"
+    ],
+    "blocked_reason": "blocked_reason=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "pr5_thread_status": "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "safe_phone_copy": "Terminal result owner response reviewer ACK review decision 已显示 safe decision、source ACK intake status、missing/rejected classifications、safe evidence_ref 和 safe command id；source=software_proof；not_proven；Start Delivery、Confirm Dropoff、Cancel 继续 disabled。",
+    "recovery_hint": "等待同一 safe evidence_ref 的 verified terminal result reviewer ACK review handoff；手机端保持只读，不提交回执、review、handoff、owner-response、reviewer-ACK、外部写操作或控制动作。",
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_gate",
+    "proof_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "verified_terminal_result_material_owner_response_reviewer_ack_review_decision_only",
+      "reviewer ACK review decision",
+      "PRRT_kwDOSWB9286CJ3tX unresolved",
+      "hardware_material_pending",
+      "real_terminal_result_proof_missing",
+      "true_phone_browser_proof_missing",
+      "route_elevator_evidence_missing",
+      "hardware_hil_missing",
+      "o5_external_proof_missing",
+      "no OKR percentage lift"
+    ]
+  },
+  "verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary": {
+    "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary.v1",
+    "capability": "verified_terminal_result_material_owner_response_reviewer_ack_review_decision",
+    "source": "software_proof",
+    "safe_decision": "reviewer_ack_review_needs_reassignment_not_proven",
+    "source_ack_intake_status": "source_ack_intake_status=reviewer_ack_needs_reassignment",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "safe_command_id": "command_id=cmd_terminal_result_owner_response_reviewer_ack_review_decision_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_reviewer_ack_review_decision_fixture_20260524_0001",
+    "owner_routing": [
+      "owner_routing=field_owner_backfill_safe_terminal_result"
+    ],
+    "support_routing": [
+      "support_routing=PRRT_kwDOSWB9286CJ3tX unresolved hardware_material_pending"
+    ],
+    "reviewer_routing": [
+      "reviewer_routing=needs_reassignment_until_same_safe_evidence_ref"
+    ],
+    "missing_materials": [
+      "missing_material=same_safe_evidence_ref_verified_terminal_result"
+    ],
+    "rejected_materials": [
+      "rejected_material=unsafe_success_or_control_claim"
+    ],
+    "decision_reasons": [
+      "decision_reason=fallback_reviewer_ack_review_needs_reassignment"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=reviewer ACK review handoff safe summary"
+    ],
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "verified_terminal_result_material_owner_response_reviewer_ack_review_decision": {
+    "summary": {
+      "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary.v1",
+      "capability": "verified_terminal_result_material_owner_response_reviewer_ack_review_decision",
+      "source": "software_proof",
+      "safe_decision": "blocked_missing_source_reviewer_ack_intake_not_proven",
+      "source_ack_intake_status": "source_ack_intake_status=blocked_missing_verified_terminal_result_material_owner_response_reviewer_ack_intake",
+      "terminal_result_type": "terminal_result_type=delivery",
+      "safe_command_id": "command_id=cmd_terminal_result_owner_response_reviewer_ack_review_decision_20260524_0001",
+      "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_reviewer_ack_review_decision_fixture_20260524_0001",
+      "owner_routing": [
+        "owner_routing=waiting_for_safe_source_ack_intake"
+      ],
+      "support_routing": [
+        "support_routing=hardware_material_pending"
+      ],
+      "reviewer_routing": [
+        "reviewer_routing=not_proven"
+      ],
+      "missing_materials": [
+        "missing_material=source_reviewer_ack_intake_safe_summary"
+      ],
+      "rejected_materials": [
+        "rejected_material=none_safe_summary_only"
+      ],
+      "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

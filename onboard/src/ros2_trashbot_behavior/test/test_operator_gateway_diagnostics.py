@@ -174,6 +174,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_verified_terminal_result_material_owner_response_review_decision,
     summarize_verified_terminal_result_material_owner_response_review_handoff,
     summarize_verified_terminal_result_material_owner_response_reviewer_ack_intake,
+    summarize_verified_terminal_result_material_owner_response_reviewer_ack_review_decision,
     summarize_real_material_followup_escalation_status,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
@@ -43431,6 +43432,301 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(
             unsafe["reviewer_ack_status"]["status"],
             "blocked_unsafe_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_source", encoded)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("complete_json", encoded)
+        self.assertNotIn("Authorization", encoded)
+        self.assertNotIn("Bearer", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("delivery_success=true", encoded)
+        self.assertNotIn("reviewer resolved", encoded.lower())
+        self.assertNotIn("pr #5 resolved", encoded.lower())
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", encoded)
+        self.assertIn("hardware_material_pending", encoded)
+
+    def test_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_safe_alias_and_fail_closed(self):
+        safe_ack_summary = {
+            "schema": (
+                "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_intake.v1"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate"
+            ),
+            "schema_version": 1,
+            "capability": (
+                "verified_terminal_result_material_owner_response_reviewer_ack_intake"
+            ),
+            "status": "acknowledged_not_proven",
+            "overall_status": "not_proven",
+            "source": "software_proof",
+            "reviewer_ack_status": {
+                "status": "acknowledged_not_proven",
+                "reason": "reviewer ACK metadata was recorded without resolving PR #5",
+                "evidence_source": "software_proof",
+            },
+            "source_handoff_status": "accepted_for_next_handoff_not_proven",
+            "source_review_decision_status": "accepted_for_next_handoff_not_proven",
+            "source_owner_response_status": "accepted_for_later_review_not_proven",
+            "safe_evidence_ref": "evidence://terminal-result-owner-reviewer-ack-002",
+            "safe_command_id": "cmd-terminal-owner-reviewer-ack-002",
+            "terminal_result_type": "delivery",
+            "acknowledged_by": "product-okr-owner",
+            "acknowledged_at": "2026-05-24T00:02:00+08:00",
+            "ack_reasons": ["reviewer ACK intake remains safe metadata"],
+            "accepted_materials_summary": ["owner-response-review-handoff-summary"],
+            "missing_materials_summary": ["real reviewer resolution evidence"],
+            "rejected_materials_summary": ["raw control transcript"],
+            "unsafe_materials_summary": [],
+            "next_required_evidence": ["collect reviewer ACK review decision"],
+            "owner_handoff": ["owner keeps PR #5 material followup open"],
+            "operator_support_handoff": ["support tracks reviewer ACK as not_proven"],
+            "reviewer_route": ["reviewer keeps PRRT_kwDOSWB9286CJ3tX unresolved"],
+            "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+            "pr5_thread_state": "unresolved",
+            "pr5_material_state": "hardware_material_pending",
+            "pr5_reply_resolution_claim": "not_reviewer_resolution",
+            "safe_copy": (
+                "Verified terminal result material owner response reviewer ACK "
+                "intake is metadata-only; source=software_proof; not_proven; "
+                "delivery_success=false; primary_actions_enabled=false; "
+                "safe_to_control=false; PR #5 PRRT_kwDOSWB9286CJ3tX unresolved; "
+                "hardware_material_pending."
+            ),
+            "not_proven": ["reviewer ACK intake is not PR #5 resolution"],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "pr5_resolved": False,
+            "hardware_material_pending": True,
+        }
+        safe_decision_summary = {
+            "schema": (
+                "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_decision.v1"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_gate"
+            ),
+            "schema_version": 1,
+            "capability": (
+                "verified_terminal_result_material_owner_response_reviewer_ack_review_decision"
+            ),
+            "status": "accepted_for_review_not_proven",
+            "overall_status": "not_proven",
+            "source": "software_proof",
+            "reviewer_ack_review_decision": {
+                "status": "accepted_for_review_not_proven",
+                "reason": "reviewer ACK can be reviewed without resolving PR #5",
+                "evidence_source": "software_proof",
+            },
+            "source_reviewer_ack_intake_status": "acknowledged_not_proven",
+            "source_handoff_status": "accepted_for_next_handoff_not_proven",
+            "source_review_decision_status": "accepted_for_next_handoff_not_proven",
+            "source_owner_response_status": "accepted_for_later_review_not_proven",
+            "safe_evidence_ref": "evidence://terminal-result-owner-reviewer-ack-decision-001",
+            "safe_command_id": "cmd-terminal-owner-reviewer-ack-decision-001",
+            "terminal_result_type": "delivery",
+            "acknowledged_by": "product-okr-owner",
+            "acknowledged_at": "2026-05-24T00:04:00+08:00",
+            "decision_reasons": ["safe ACK intake fields are complete"],
+            "ack_reasons": ["reviewer ACK remains unresolved metadata"],
+            "accepted_materials_summary": ["reviewer-ack-intake-summary"],
+            "missing_materials_summary": ["real hardware terminal result packet"],
+            "rejected_materials_summary": ["traceback transcript"],
+            "unsafe_materials_summary": ["raw UART claim"],
+            "reassignment_reason": "hardware owner must provide real material source",
+            "next_required_evidence": ["collect real terminal result material packet"],
+            "owner_handoff": ["owner keeps PR #5 material followup open"],
+            "operator_support_handoff": ["support tracks review decision as not_proven"],
+            "reviewer_route": ["reviewer keeps PRRT_kwDOSWB9286CJ3tX unresolved"],
+            "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+            "pr5_thread_state": "unresolved",
+            "pr5_material_state": "hardware_material_pending",
+            "pr5_reply_resolution_claim": "not_reviewer_resolution",
+            "safe_copy": (
+                "Verified terminal result material owner response reviewer ACK "
+                "review decision is metadata-only; source=software_proof; "
+                "not_proven; delivery_success=false; "
+                "primary_actions_enabled=false; safe_to_control=false; PR #5 "
+                "PRRT_kwDOSWB9286CJ3tX unresolved; hardware_material_pending."
+            ),
+            "not_proven": ["review decision is not PR #5 resolution"],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "pr5_resolved": False,
+            "hardware_material_pending": True,
+        }
+        artifact = {
+            "schema": (
+                "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_decision.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_gate"
+            ),
+            "verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary": (
+                safe_decision_summary
+            ),
+        }
+        payload = self._base_build_payload(
+            {
+                "verified_terminal_result_material_owner_response_reviewer_ack_review_decision": (
+                    artifact
+                ),
+                "diagnostics": {
+                    "verified_terminal_result_material_owner_response_reviewer_ack_review_decision": {
+                        "delivery_success": True,
+                        "raw_artifact": {"Authorization": "Bearer unsafe"},
+                    }
+                },
+            }
+        )
+        summary = payload[
+            "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary"
+        ]
+        from_nested = (
+            summarize_verified_terminal_result_material_owner_response_reviewer_ack_review_decision(
+                {
+                    "status": {
+                        "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary": (
+                            safe_decision_summary
+                        )
+                    }
+                }
+            )
+        )
+        from_ack_intake = (
+            summarize_verified_terminal_result_material_owner_response_reviewer_ack_review_decision(
+                safe_ack_summary
+            )
+        )
+        raw_only = (
+            summarize_verified_terminal_result_material_owner_response_reviewer_ack_review_decision(
+                {
+                    "schema": (
+                        "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_decision.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_gate"
+                    ),
+                }
+            )
+        )
+        unsafe = (
+            summarize_verified_terminal_result_material_owner_response_reviewer_ack_review_decision(
+                dict(
+                    safe_decision_summary,
+                    safe_copy=(
+                        "PR #5 resolved; delivery success; HIL pass; WAVE ROVER "
+                        "proof; Start Delivery control enabled."
+                    ),
+                    delivery_success=True,
+                    primary_actions_enabled=True,
+                    safe_to_control=True,
+                    pr5_resolved=True,
+                    reviewer_resolution=True,
+                    raw_source={"complete_json": {"cmd_vel": "unsafe"}},
+                )
+            )
+        )
+
+        self.assertEqual(
+            payload[
+                "verified_terminal_result_material_owner_response_reviewer_ack_review_decision"
+            ],
+            summary,
+        )
+        self.assertEqual(
+            payload[
+                "verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary"
+            ],
+            summary,
+        )
+        self.assertNotIn(
+            "verified_terminal_result_material_owner_response_reviewer_ack_review_decision",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_decision.v1",
+        )
+        self.assertEqual(
+            summary["upstream_source_schema"],
+            "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_decision.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["status"], "accepted_for_review_not_proven")
+        self.assertEqual(
+            summary["source_reviewer_ack_intake_status"],
+            "acknowledged_not_proven",
+        )
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://terminal-result-owner-reviewer-ack-decision-001",
+        )
+        self.assertEqual(
+            summary["safe_command_id"],
+            "cmd-terminal-owner-reviewer-ack-decision-001",
+        )
+        self.assertEqual(
+            summary["reviewer_ack_review_decision"]["status"],
+            "accepted_for_review_not_proven",
+        )
+        self.assertIn("safe ACK intake fields are complete", summary["decision_reasons"])
+        self.assertIn(
+            "real hardware terminal result packet",
+            summary["missing_materials_summary"],
+        )
+        self.assertIn("traceback transcript", summary["rejected_materials_summary"])
+        self.assertEqual(
+            summary["reassignment_reason"],
+            "hardware owner must provide real material source",
+        )
+        self.assertIn("owner keeps PR #5 material followup open", summary["owner_handoff"])
+        self.assertIn(
+            "support tracks review decision as not_proven",
+            summary["operator_support_handoff"],
+        )
+        self.assertIn("reviewer keeps PRRT_kwDOSWB9286CJ3tX unresolved", summary["reviewer_route"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["robot_control_allowed"])
+        self.assertFalse(summary["review_decision_authorized"])
+        self.assertFalse(summary["pr5_resolved"])
+        self.assertTrue(summary["hardware_material_pending"])
+        self.assertEqual(
+            from_nested["safe_command_id"],
+            "cmd-terminal-owner-reviewer-ack-decision-001",
+        )
+        self.assertEqual(from_ack_intake["status"], "blocked_missing_source_intake_not_proven")
+        self.assertEqual(
+            raw_only["reviewer_ack_review_decision"]["status"],
+            "blocked_missing_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary",
+        )
+        self.assertEqual(
+            unsafe["reviewer_ack_review_decision"]["status"],
+            "blocked_unsafe_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_summary",
         )
         encoded = json.dumps(summary, ensure_ascii=False)
         self.assertNotIn("raw_source", encoded)
