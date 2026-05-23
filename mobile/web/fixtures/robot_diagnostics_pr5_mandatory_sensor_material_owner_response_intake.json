@@ -1,0 +1,95 @@
+{
+  "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake_summary": {
+    "schema": "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake_summary.v1",
+    "source_schema": "trashbot.pr5_mandatory_sensor_material_owner_response_intake_summary.v1",
+    "schema_version": 1,
+    "capability": "pr5_mandatory_sensor_material_owner_response_intake",
+    "source": "software_proof",
+    "decision": "partial_owner_response_missing_materials_not_proven",
+    "source_followup_status": "pr5_mandatory_sensor_material_followup_escalation_status=ready_for_reviewer_followup_not_proven / hardware_material_pending",
+    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "safe_evidence_ref": "PRRT_kwDOSWB9286CJ3tX",
+    "accepted_reasons": [
+      "accepted=owner response summary received for PRRT_kwDOSWB9286CJ3tX",
+      "accepted=follow-up status can be reviewed as safe summary only"
+    ],
+    "missing_reasons": [
+      "missing=2D LiDAR SKU/source/receipt/procurement summary",
+      "missing=ToF SKU/source/receipt/procurement summary",
+      "missing=mounting, wiring, power, calibration and reviewer response summaries"
+    ],
+    "rejected_reasons": [
+      "rejected=complete internal material bundle is not phone-safe",
+      "rejected=success or hardware-ready claim is not accepted"
+    ],
+    "unsafe_reasons": [
+      "unsafe=control detail, credential, local path, full artifact, approval claim, or success claim filtered",
+      "unsafe=reviewer closure or PR resolution claim filtered"
+    ],
+    "next_required_evidence": "next_required_evidence=phone-safe 2D LiDAR / ToF source, receipt, procurement, mounting, wiring, power, calibration and reviewer response summaries under the same safe evidence_ref.",
+    "owner_next_step": "owner_next_step=Hardware owner supplies sanitized 2D LiDAR / ToF material summaries only; keep source=software_proof until real material exists.",
+    "reviewer_next_step": "reviewer_next_step=review the sanitized owner response without marking PRRT_kwDOSWB9286CJ3tX resolved from this intake.",
+    "safe_copy": "PR #5 强制传感器 owner response intake 只读展示；source=software_proof / software_proof / hardware_material_pending / not_proven。",
+    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_material_owner_response_intake_gate",
+    "proof_status": "hardware_material_pending",
+    "boundary_flags": "source=software_proof / software_proof / hardware_material_pending / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "source=software_proof",
+      "software_proof",
+      "hardware_material_pending",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "PRRT_kwDOSWB9286CJ3tX is_resolved=false",
+      "accepted",
+      "missing",
+      "rejected",
+      "unsafe",
+      "blocked",
+      "partial_owner_response_missing_materials_not_proven"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "pr5_mandatory_sensor_material_owner_response_intake_summary": {
+    "schema": "trashbot.pr5_mandatory_sensor_material_owner_response_intake_summary.v1",
+    "source": "software_proof",
+    "decision": "received_owner_response_not_proven",
+    "source_followup_status": "hardware_material_pending / ready_for_reviewer_followup_not_proven",
+    "safe_evidence_ref": "PRRT_kwDOSWB9286CJ3tX",
+    "accepted_reasons": "accepted=owner response safe summary received",
+    "missing_reasons": "missing=2D LiDAR / ToF source, receipt, procurement and reviewer response summaries",
+    "rejected_reasons": "rejected=complete/internal/success-claim material filtered",
+    "unsafe_reasons": "unsafe=control detail, credential, local path, full artifact, approval claim, or success claim filtered",
+    "next_required_evidence": "next_required_evidence=sanitized material summaries under PRRT_kwDOSWB9286CJ3tX",
+    "owner_next_step": "owner_next_step=provide phone-safe material refs",
+    "reviewer_next_step": "reviewer_next_step=review safe owner response only",
+    "safe_copy": "Compatible safe owner response intake summary only; source=software_proof and not_proven.",
+    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_material_owner_response_intake_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "pr5_mandatory_sensor_material_owner_response_intake": {
+    "summary": {
+      "schema": "trashbot.pr5_mandatory_sensor_material_owner_response_intake_summary.v1",
+      "source": "software_proof",
+      "decision": "blocked_missing_owner_response_not_proven",
+      "source_followup_status": "hardware_material_pending / blocked",
+      "safe_evidence_ref": "PRRT_kwDOSWB9286CJ3tX",
+      "accepted_reasons": "accepted=none_not_control_proof",
+      "missing_reasons": "missing=safe owner response material refs still pending",
+      "rejected_reasons": "rejected=unsafe_or_success_claim_materials_filtered",
+      "unsafe_reasons": "unsafe=control detail or success claim filtered",
+      "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_material_owner_response_intake_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

@@ -634,6 +634,51 @@ PRRT_kwDOSWB9286CJ3tX resolved, delivery success, Objective 5 external proof,
 procurement, installation, wiring, power budget, calibration, route/elevator
 field pass, or true phone/browser proof.
 
+## PR #5 Mandatory Sensor Material Owner-Response Intake Gate
+
+`pr5_mandatory_sensor_material_owner_response_intake` is the PC-only intake
+gate after `pr5_mandatory_sensor_material_followup_escalation_status`. It
+emits `schema=trashbot.pr5_mandatory_sensor_material_owner_response_intake.v1`
+and
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_intake_summary.v1`
+under
+`software_proof_docker_pr5_mandatory_sensor_material_owner_response_intake_gate`.
+
+The gate consumes only the previous follow-up escalation safe output plus a
+sanitized owner response packet. The previous output must still identify
+`pr5_mandatory_sensor_material_followup_escalation_status`, the boundary
+`software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate`,
+the same safe `evidence_ref`, `source=software_proof`, `software_proof`,
+`hardware_material_pending`, `not_proven`, `safe_to_control=false`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
+Allowed decisions are `accepted`, `missing`, `rejected`, `unsafe`, and
+`blocked`. The sanitized owner response packet may include owner id/role,
+response status, the same safe `evidence_ref`, material refs, missing refs,
+rejected refs, reviewer next step, and safe notes. It must not include raw
+artifact bodies, credentials, signed URLs, ROS topics, `/cmd_vel`, serial/UART
+paths, baudrate values, WAVE ROVER parameters, checksums, local filesystem
+paths, HIL/pass copy, installed-sensor claims, delivery-success claims, or
+PR-resolution claims.
+
+`accepted` is not a hardware pass. It means only that the owner response refs
+are complete enough for the next human review step while preserving
+`software_proof`, `hardware_material_pending`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`. `missing`, `rejected`, `unsafe`, and `blocked` keep
+the same fail-closed flags and list the next required safe owner response
+evidence.
+
+This gate does not read ROS graph, GitHub write interfaces, serial/UART, real
+WAVE ROVER, real 2D LiDAR / ToF, HIL rigs, field logs, phone/browser runtime,
+external cloud, OSS/CDN, DB/queue, 4G, or network resources, and it does not
+modify vendor files. `docs/vendor/VENDOR_INDEX.md` plus its local Orange Pi /
+WAVE ROVER / UART JSON / firmware/vendor-app files remain source-boundary
+context only. They do not prove real 2D LiDAR / ToF material, HIL,
+PRRT_kwDOSWB9286CJ3tX resolved, delivery success, Objective 5 external proof,
+procurement, installation, wiring, power budget, calibration, route/elevator
+field pass, or true phone/browser proof.
+
 ## Cloud Command Lifecycle Audit/Export Hardware Boundary
 
 `cloud_command_lifecycle_audit_export` is an Objective 5 software-proof

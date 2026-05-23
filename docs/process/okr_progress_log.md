@@ -8,7 +8,25 @@
 
 ## 2026-05-23 系列
 
-更新时间：2026-05-23 15:32 Asia/Shanghai。
+更新时间：2026-05-23 16:23 Asia/Shanghai。
+
+### 2026-05-23 16-17｜pr5-mandatory-sensor-material-owner-response-intake｜PR #5 mandatory sensor material owner response intake
+
+本轮 `sprints/2026.05.23_16-17_pr5-mandatory-sensor-material-owner-response-intake/` 执行 `pr5_mandatory_sensor_material_owner_response_intake` epic closeout。用户价值是让 PR #5 mandatory sensor material owner response 有一个安全 intake 入口，能把 owner response 分类为 `accepted`、`missing`、`rejected`、`unsafe` 或 `blocked`，同时继续说明机器人不能控制、硬件未证明、交付未证明。本轮边界为 `software_proof_docker_pr5_mandatory_sensor_material_owner_response_intake_gate`，必须保留 `not_proven`、`hardware_material_pending`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+Hardware worker 新增 PC gate、focused tests、`pc-tools/README.md`、`docs/product/production_hardware_boundary.md` 和 `docs/interfaces/pr5_mandatory_sensor_material_owner_response_intake.md` 更新；首轮失败因 unsafe input initially left serial path in safe notes，已改为 unsafe branch 清空 notes/reviewer step。Robot worker 新增 `robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake_summary` safe alias、targeted tests 和 `docs/interfaces/ros_runtime_contracts.md` 更新。Full-Stack worker 新增 `mobile/web` read-only panel、fixture、tests 和 `docs/product/mobile_user_flow.md` 更新。Docs sync 已覆盖 hardware/product/interface/runtime/mobile docs。
+
+Live PR #5 state preserved：`PRRT_kwDOSWB9286CJ3tQ` resolved；`PRRT_kwDOSWB9286CJ3tU` resolved；`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `is_resolved=false` / `is_outdated=false` / `resolved_by=null` / `hardware_material_pending`，path `docs/product/production_hardware_boundary.md`。本轮不是 true phone/browser proof，不是 O5 external proof，不是 public HTTPS/TLS，不是 4G/SIM，不是 OSS/CDN live traffic，不是 production DB/queue，不是 worker/cutover，不是 real 2D LiDAR/ToF proof，不是 WAVE ROVER/UART/HIL proof，不是 PR #5 resolution，不是 route/elevator field pass，不是 Nav2/fixed-route runtime pass，也不是 delivery success；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮把 PR #5 mandatory sensor material owner response 安全接入 PC/Robot/mobile fail-closed chain；但没有真实 2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、WAVE ROVER powered bench/UART/HIL logs、operator HIL report 或 reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮没有真实 task record、真实电梯、dropoff/cancel completion、delivery result、verified terminal delivery/dropoff/cancel result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；owner-response intake gate 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能只读展示 PR #5 mandatory sensor material owner-response intake 状态，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料；本轮 not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_pr5_mandatory_sensor_material_owner_response_intake_gate` 只证明 Docker/local PC owner-response intake gate + Robot diagnostics + mobile fixture/UI 下 PR #5 material owner-response metadata 可见、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Hardware worker 报告 `py_compile` 通过；unittest 输出 `Ran 7 tests in 0.499s OK`；CLI `--help`、required `rg` 与 scoped `git diff --check` 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 309 tests in 3.042s OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 fixture `json.tool` 通过；mobile unittest 输出 `Ran 304 tests in 2.928s OK`；required `rg` 与 scoped `git diff --check` 通过。Product closeout combined `py_compile`、combined unittest、`node --check`、fixture `json.tool`、file existence check、required `rg` 和 scoped `git diff --check` 通过。Closeout observation: touched implementation files contain Chinese technical comments in reviewed new/surrounding logic, but no exact global >20% comment-ratio measurement was performed.
 
 ### 2026-05-23 15-16｜mobile-current-panel-browser-proof-refresh-terminal-result-owner-response｜current-panel terminal-result owner-response browser proof refresh
 

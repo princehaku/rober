@@ -85,6 +85,10 @@ PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_pr5_mandatory_sensor_material_followup_escalation_status.json"
 )
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_INTAKE_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake.json"
+)
 FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_field_evidence_rerun_execution_result_intake.json"
 )
@@ -3702,6 +3706,185 @@ class Pr5MandatorySensorMaterialFollowupEscalationStatusMobileTest(unittest.Test
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, followup_text)
+
+
+class Pr5MandatorySensorMaterialOwnerResponseIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_pr5_mandatory_sensor_material_owner_response_intake_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_INTAKE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # owner response intake 只显示 Robot safe alias 或兼容 summary，不增加控制、复制导出或 raw material 路径。
+        self.assertIn("PR #5 强制传感器 owner response intake", app)
+        self.assertIn("PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_INTAKE_TEXT", app)
+        self.assertIn("safePr5MandatorySensorMaterialOwnerResponseIntakeText", app)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseIntakeCandidate", app)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseIntakeFromStatus", app)
+        self.assertIn("renderPr5MandatorySensorMaterialOwnerResponseIntake", app)
+        self.assertIn(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake_summary",
+            app,
+        )
+        self.assertIn("pr5_mandatory_sensor_material_owner_response_intake_summary", app)
+        self.assertIn("pr5_mandatory_sensor_material_owner_response_intake?.summary", app)
+        self.assertIn("source_followup_status", app)
+        self.assertIn("accepted_reasons", app)
+        self.assertIn("missing_reasons", app)
+        self.assertIn("rejected_reasons", app)
+        self.assertIn("unsafe_reasons", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("hardware_material_pending", app)
+        self.assertIn("not_proven", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", app)
+        self.assertNotIn("copyPr5MandatorySensorMaterialOwnerResponseIntakeButton", app)
+        self.assertNotRegex(
+            app,
+            r"pr5MandatorySensorMaterialOwnerResponseIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackPr5MandatorySensorMaterialOwnerResponseIntake",
+            "cursorPr5MandatorySensorMaterialOwnerResponseIntake",
+            "fetchPr5MandatorySensorMaterialOwnerResponseIntakeDiagnostics",
+            "copyPr5MandatorySensorMaterialOwnerResponseIntake",
+            "exportPr5MandatorySensorMaterialOwnerResponseIntake",
+            "reviewPr5MandatorySensorMaterialOwnerResponseIntake",
+            "materialPr5MandatorySensorMaterialOwnerResponseIntake",
+            "commandPr5MandatorySensorMaterialOwnerResponseIntake",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # dedicated fixture 证明 owner response intake 仍然 fail closed，不放行三类主操作。
+        summary = dedicated_fixture[
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake_summary"
+        ]
+        fallback = dedicated_fixture[
+            "pr5_mandatory_sensor_material_owner_response_intake_summary"
+        ]
+        nested = dedicated_fixture[
+            "pr5_mandatory_sensor_material_owner_response_intake"
+        ]["summary"]
+        self.assertEqual(summary["capability"], "pr5_mandatory_sensor_material_owner_response_intake")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["decision"], "partial_owner_response_missing_materials_not_proven")
+        self.assertEqual(summary["proof_status"], "hardware_material_pending")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fallback["safe_to_control"], False)
+        self.assertEqual(nested["delivery_success"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "pr5_mandatory_sensor_material_owner_response_intake",
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake_summary",
+            "software_proof_docker_pr5_mandatory_sensor_material_owner_response_intake_gate",
+            "hardware_material_pending",
+            "not_proven",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "accepted",
+            "missing",
+            "rejected",
+            "unsafe",
+            "blocked",
+            "PRRT_kwDOSWB9286CJ3tX",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn("pr5_mandatory_sensor_material_owner_response_intake", doc)
+        self.assertIn(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake_summary",
+            doc,
+        )
+        self.assertIn("software_proof_docker_pr5_mandatory_sensor_material_owner_response_intake_gate", doc)
+        self.assertIn("safe_to_control=false", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+
+    def test_pr5_mandatory_sensor_material_owner_response_intake_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_INTAKE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        owner_response_text = json.dumps(
+            {
+                "robot_alias": dedicated_fixture[
+                    "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake_summary"
+                ],
+                "fallback": dedicated_fixture[
+                    "pr5_mandatory_sensor_material_owner_response_intake_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "pr5_mandatory_sensor_material_owner_response_intake"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留脱敏 owner response metadata，不泄漏 raw JSON、底层控制、路径、凭证或成功语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "ros topic",
+            "raw diagnostics",
+            "raw artifact",
+            "raw material",
+            "raw owner response",
+            "complete artifact",
+            "complete artifacts",
+            "full execution bundle",
+            "serial",
+            "uart",
+            "ttyusb",
+            "ttyacm",
+            "baudrate",
+            "/dev/",
+            "wave rover parameter",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "traceback",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "material route",
+            "review route",
+            "handoff route",
+            "robot command",
+            "objective 5 external proof",
+            "real phone/browser proof",
+            "hil_pass",
+            "hil passed",
+            "field pass",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, owner_response_text)
 
 
 class TaskTerminalCompletionMainlineMobileTest(unittest.TestCase):

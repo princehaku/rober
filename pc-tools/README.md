@@ -447,6 +447,56 @@ WAVE ROVER / UART JSON / firmware/vendor-app 来源只证明 source context；�
 delivery success、Objective 5 external proof、真实采购、真实安装、真实接线、
 真实电源预算或真实标定。
 
+## PR #5 mandatory sensor material owner-response intake
+
+`pc-tools/evidence/pr5_mandatory_sensor_material_owner_response_intake.py`
+只读上一轮 `pr5_mandatory_sensor_material_followup_escalation_status` artifact、
+summary、Robot safe alias 或 wrapper/nested JSON，再读取 sanitized owner response
+packet，把 PR #5 thread `PRRT_kwDOSWB9286CJ3tX` 的 mandatory 2D LiDAR / ToF
+材料 owner response 整理成 PC intake artifact / summary：
+
+```bash
+python3 pc-tools/evidence/pr5_mandatory_sensor_material_owner_response_intake.py \
+  --followup-summary-json /tmp/pr5_mandatory_sensor_material_followup_escalation_status_summary.json \
+  --owner-response-json /tmp/pr5_mandatory_sensor_material_owner_response_packet.json \
+  --evidence-ref pr5-material-owner-response-001 \
+  --output /tmp/pr5_mandatory_sensor_material_owner_response_intake.json \
+  --summary-output /tmp/pr5_mandatory_sensor_material_owner_response_intake_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_intake.v1`，
+summary 使用
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_intake_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_pr5_mandatory_sensor_material_owner_response_intake_summary`，
+证据边界固定为
+`software_proof_docker_pr5_mandatory_sensor_material_owner_response_intake_gate`。
+核心字段包括 `decision`、`allowed_decisions`、safe `evidence_ref`、
+`followup_escalation_status`、`safe_owner_response_packet`、
+`required_owner_response_refs`、`material_status`、`owner_handoff`、
+`next_required_evidence`、`rerun_commands`、`source=software_proof`、
+`software_proof`、`hardware_material_pending`、`not_proven`、
+`safe_to_control=false`、`delivery_success=false` 和
+`primary_actions_enabled=false`。
+
+`decision` 只允许 `accepted`、`missing`、`rejected`、`unsafe` 和 `blocked`。
+owner response packet 可包含 owner id/role、response status、同一 safe
+`evidence_ref`、material refs、missing refs、rejected refs、reviewer next step
+和 safe notes；它不得包含 raw artifact bodies、credentials、signed URLs、ROS
+topics、`/cmd_vel`、serial/UART paths、baudrate values、WAVE ROVER parameters、
+checksums、local filesystem paths、HIL/pass copy、installed-sensor claims、
+delivery-success claims 或 PR-resolution claims。`accepted` 只表示 owner
+response refs 齐全且可进入人工 review，不证明真实 SKU、采购、安装、接线、电源、
+标定、HIL、PRRT_kwDOSWB9286CJ3tX resolved、Objective 5 external proof 或
+delivery success。
+
+vendor/source boundary 仍只引用 `docs/vendor/VENDOR_INDEX.md` 及其列出的本地
+WAVE ROVER / UART JSON / firmware/vendor-app 资料：`base_ctrl.py`、
+`config.yaml`、`json_cmd.h`、`uart_ctrl.h` 和 `movtion_module.h`。这些来源能约束
+Orange Pi / WAVE ROVER / UART JSON 事实边界，但不能替代 PR #5 owner response
+里的真实传感器材料。
+
 ## PC route debug console
 
 `pc-tools/route/route_debug_web.py` 是本地 PC console，不依赖 ROS2，不 import `ros2_trashbot_*`，不访问硬件、serial/UART、Nav2 runtime、ROS graph 或网络外部服务：
