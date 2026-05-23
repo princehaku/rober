@@ -1,0 +1,173 @@
+{
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false,
+  "phone_readiness": {
+    "remote_ready": false,
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_summary": {
+      "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_summary.v1",
+      "source_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff.v1",
+      "capability": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff",
+      "source": "software_proof",
+      "handoff_status": "ready_for_field_owner_reviewer_ack_followup_not_proven",
+      "source_review_decision": "source_review_decision=accepted_for_reviewer_ack_review_not_proven",
+      "safe_evidence_ref": "safe_evidence_ref=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff:TASK-2026-05-23-ACK-HANDOFF",
+      "field_owner_handoff": [
+        "field_owner_handoff=continue_same_safe_evidence_ref_followup_not_proven",
+        "state=needs_field_owner_ack_material_supplement_not_proven"
+      ],
+      "reviewer_handoff": [
+        "reviewer_handoff=review_safe_summary_only_not_proven",
+        "state=needs_reviewer_handoff_reassignment_not_proven"
+      ],
+      "support_handoff": [
+        "support_handoff=keep_primary_actions_disabled",
+        "state=rejected_unsafe_reviewer_ack_handoff_not_proven"
+      ],
+      "missing_materials": [
+        "missing_material=true_phone_browser_proof_missing",
+        "missing_material=route_elevator_runtime_missing"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=same_safe_evidence_ref_field_owner_followup",
+        "next_required_evidence=real_route_elevator_and_phone_materials"
+      ],
+      "safe_phone_copy": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff: ready_for_field_owner_reviewer_ack_followup_not_proven; source=software_proof; software_proof; not_proven; delivery_success=false; primary_actions_enabled=false; safe_to_control=false.",
+      "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_gate",
+      "proof_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_gate",
+      "boundary_flags": "source=software_proof / software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+      "not_proven": [
+        "source=software_proof",
+        "software_proof",
+        "not_proven",
+        "not true phone/browser",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false",
+        "blocked_missing_reviewer_ack_review_decision_not_proven"
+      ],
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_summary.v1",
+    "source_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff.v1",
+    "capability": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff",
+    "source": "software_proof",
+    "handoff_status": "ready_for_field_owner_reviewer_ack_followup_not_proven",
+    "source_review_decision": "source_review_decision=accepted_for_reviewer_ack_review_not_proven",
+    "safe_evidence_ref": "safe_evidence_ref=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff:TASK-2026-05-23-ACK-HANDOFF",
+    "field_owner_handoff": [
+      "field_owner_handoff=continue_same_safe_evidence_ref_followup_not_proven",
+      "state=needs_field_owner_ack_material_supplement_not_proven"
+    ],
+    "reviewer_handoff": [
+      "reviewer_handoff=review_safe_summary_only_not_proven",
+      "state=needs_reviewer_handoff_reassignment_not_proven"
+    ],
+    "support_handoff": [
+      "support_handoff=keep_primary_actions_disabled",
+      "state=rejected_unsafe_reviewer_ack_handoff_not_proven"
+    ],
+    "missing_materials": [
+      "missing_material=true_phone_browser_proof_missing",
+      "missing_material=route_elevator_runtime_missing"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same_safe_evidence_ref_field_owner_followup",
+      "next_required_evidence=real_route_elevator_and_phone_materials"
+    ],
+    "safe_phone_copy": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff: ready_for_field_owner_reviewer_ack_followup_not_proven; source=software_proof; software_proof; not_proven; delivery_success=false; primary_actions_enabled=false; safe_to_control=false.",
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_gate",
+    "boundary_flags": "source=software_proof / software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "source=software_proof",
+      "software_proof",
+      "not_proven",
+      "not true phone/browser",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "blocked_missing_reviewer_ack_review_decision_not_proven"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_summary.v1",
+    "source_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff.v1",
+    "capability": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff",
+    "source": "software_proof",
+    "handoff_status": "needs_reviewer_handoff_reassignment_not_proven",
+    "source_review_decision": "source_review_decision=needs_reviewer_reassignment_not_proven",
+    "safe_evidence_ref": "safe_evidence_ref=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff:fallback",
+    "field_owner_handoff": [
+      "field_owner_handoff=wait_for_reviewer_reassignment_not_proven"
+    ],
+    "reviewer_handoff": [
+      "reviewer_handoff=reassign_reviewer_before_followup_not_proven"
+    ],
+    "support_handoff": [
+      "support_handoff=keep_start_confirm_cancel_disabled"
+    ],
+    "missing_materials": [
+      "missing_material=same_safe_evidence_ref_reviewer_handoff"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=reassigned_reviewer_safe_summary"
+    ],
+    "safe_phone_copy": "fallback reviewer ACK review handoff safe summary; source=software_proof; not_proven; delivery_success=false.",
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_gate",
+    "not_proven": [
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff": {
+    "summary": {
+      "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_summary.v1",
+      "source_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff.v1",
+      "capability": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff",
+      "source": "software_proof",
+      "handoff_status": "blocked_missing_reviewer_ack_review_decision_not_proven",
+      "source_review_decision": "source_review_decision=blocked_missing_reviewer_ack_review_decision_not_proven",
+      "safe_evidence_ref": "safe_evidence_ref=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff:nested",
+      "field_owner_handoff": [
+        "field_owner_handoff=blocked_until_reviewer_ack_review_decision"
+      ],
+      "reviewer_handoff": [
+        "reviewer_handoff=blocked_missing_reviewer_ack_review_decision_not_proven"
+      ],
+      "support_handoff": [
+        "support_handoff=explain_missing_safe_review_decision"
+      ],
+      "missing_materials": [
+        "missing_material=reviewer_ack_review_decision_safe_summary"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=robot_diagnostics_reviewer_ack_review_decision_summary"
+      ],
+      "safe_phone_copy": "nested reviewer ACK review handoff blocked; source=software_proof; not_proven; delivery_success=false.",
+      "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_gate",
+      "not_proven": [
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  }
+}

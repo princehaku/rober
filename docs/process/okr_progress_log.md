@@ -8,7 +8,25 @@
 
 ## 2026-05-23 系列
 
-更新时间：2026-05-23 10:20 Asia/Shanghai。
+更新时间：2026-05-23 11:55 Asia/Shanghai。
+
+### 2026-05-23 11-12｜field-evidence-rerun-acceptance-owner-response-reviewer-ack-review-handoff｜acceptance owner response reviewer ACK review-handoff software proof
+
+本轮 `sprints/2026.05.23_11-12_field-evidence-rerun-acceptance-owner-response-reviewer-ack-review-handoff/` 执行 `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff` epic closeout。用户价值是把 reviewer ACK review-decision 转成安全 review-handoff packet，让 field owner / support / reviewer 知道下一步、缺什么材料，以及为什么仍不能控制机器人。本轮边界为 `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_gate`，必须保留 `source=software_proof`、`software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+Autonomy worker 新增 PC-only reviewer ACK review-handoff gate、focused tests、`pc-tools/README.md` 和 `docs/interfaces/evidence_contracts.md` 更新；首轮 unittest 因 supplement branch fixture 失败，已修复并重跑通过。Robot worker 新增 `robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_summary` safe alias、targeted tests 和 `docs/interfaces/ros_runtime_contracts.md` 更新；首轮 validation 因 raw `latest_status` handoff key retained 失败，已通过 sanitization `pop` 修复并重跑通过。Full-Stack worker 新增 mobile/web read-only reviewer ACK review-handoff panel、fixture、tests 和 `docs/product/mobile_user_flow.md` 更新；首轮 unittest 因 fixture 缺少 explicit not true phone/browser boundary phrase 失败，已修复并重跑通过。
+
+Live PR #5 state preserved：`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `is_resolved=false` / `hardware_material_pending`。本轮不是 true phone/browser proof，不是 route/elevator field pass，不是 Nav2/fixed-route runtime pass，不是 verified terminal result，不是 dropoff/cancel completion，不是 delivery result，不是 delivery success，不是 Objective 5 external proof，不是 Objective 1 HIL，不是 WAVE ROVER/UART proof，不是 LiDAR/ToF installed proof，也不是 PR #5 resolution；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮只把 reviewer ACK review-decision 转成 reviewer ACK review-handoff metadata；没有真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、operator HIL report 或 reviewer resolution。PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `is_resolved=false` / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只处理 reviewer ACK review-handoff metadata；没有真实 task record、真实电梯、dropoff/cancel completion、delivery result、verified terminal delivery/dropoff/cancel result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；reviewer ACK review-handoff gate 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能只读展示 reviewer ACK review-handoff 状态，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料；本轮 not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_gate` 只证明 Docker/local PC reviewer ACK review-handoff gate + Robot diagnostics + mobile static fixture 下 review-handoff metadata 可见、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；unittest 输出 `Ran 9 tests in 0.061s OK`；CLI `--help`、required `rg` 与 scoped `git diff --check` 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 305 tests ... OK`；required `rg` 与 scoped `git diff --check` 通过，且 raw `latest_status` cleanup 修复后通过。Full-Stack worker 报告 `node --check` 通过；fixture `json.tool` 通过；mobile unittest 输出 `Ran 296 tests in 2.730s OK`；required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `pc-tools/README.md`、`docs/interfaces/evidence_contracts.md`、`docs/interfaces/ros_runtime_contracts.md`、`docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。
 
 ### 2026-05-23 10-11｜field-evidence-rerun-acceptance-owner-response-reviewer-ack-review-decision｜acceptance owner response reviewer ACK review-decision software proof
 
