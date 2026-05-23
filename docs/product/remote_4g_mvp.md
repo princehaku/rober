@@ -1539,6 +1539,46 @@ resubmit, raw diagnostics fetch, robot control, route/elevator field pass, HIL,
 dropoff completion, cancel completion, terminal delivery result, or delivery
 success.
 
+Verified terminal-result material follow-up escalation status adds the next
+Robot diagnostics safe alias:
+
+- `robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary`
+- `schema=trashbot.robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary.v1`
+- `source_schema=trashbot.verified_terminal_result_material_followup_escalation_status.v1`
+- `evidence_boundary=software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate`
+- `source=software_proof`
+- `not_proven`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+
+The alias only proves that Robot diagnostics can surface a sanitized terminal
+result material follow-up escalation summary for field owner, support owner,
+and reviewer routing. It can consume the canonical follow-up summary, Robot
+alias, or compatible nested diagnostics/status summary; a raw artifact wrapper
+is valid only when it contains the sanitized summary and the Robot output strips
+raw sibling keys before exposing the safe alias.
+
+Follow-up statuses such as
+`escalated_for_terminal_result_material_followup_not_proven`,
+`waiting_for_terminal_result_material_backfill_not_proven`,
+`needs_support_owner_reassignment_not_proven`,
+`rejected_unsafe_terminal_result_followup_not_proven`, and
+`blocked_missing_terminal_result_review_handoff_not_proven` are read-only
+support/material-routing states. They are not reviewer resolution, route
+completion, dropoff completion, cancel completion, ACK/cursor mutation,
+replay/resubmit authorization, HIL pass, terminal delivery result, or delivery
+success.
+
+Unsafe raw source fields, raw artifacts, complete JSON, credentials, paths,
+checksums, ROS topics, serial/UART details, WAVE ROVER details, hardware raw
+details, ACK/cursor mutation hints, replay/resubmit hints, reviewer-resolution
+claims, and success/completion/control claims must fail closed. This alias must
+not enable Start Delivery, Confirm Dropoff, Cancel, ACK mutation, cursor
+mutation, replay, resubmit, raw diagnostics fetch, robot control, route/elevator
+field pass, HIL, dropoff completion, cancel completion, terminal delivery
+result, reviewer resolution, or delivery success.
+
 ## Safety Rules
 
 - The robot never exposes `/cmd_vel` over the remote bridge.

@@ -166,6 +166,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_verified_terminal_result_material_intake,
     summarize_verified_terminal_result_material_review_decision,
     summarize_verified_terminal_result_material_review_handoff,
+    summarize_verified_terminal_result_material_followup_escalation_status,
     summarize_real_material_followup_escalation_status,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
@@ -41349,6 +41350,194 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("Bearer", encoded)
         self.assertNotIn("/cmd_vel", encoded)
         self.assertNotIn("passed", encoded.lower())
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+
+    def test_verified_terminal_result_material_followup_escalation_status_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": (
+                "trashbot.verified_terminal_result_material_followup_escalation_status_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.verified_terminal_result_material_followup_escalation_status.v1"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate"
+            ),
+            "schema_version": 1,
+            "capability": "verified_terminal_result_material_followup_escalation_status",
+            "status": "escalated_for_terminal_result_material_followup_not_proven",
+            "overall_status": "not_proven",
+            "source": "software_proof",
+            "source_handoff_status": "ready_for_owner_handoff",
+            "followup_status": (
+                "escalated_for_terminal_result_material_followup_not_proven"
+            ),
+            "followup_status_detail": {
+                "status": "escalated_for_terminal_result_material_followup_not_proven",
+                "reason": "field owner needs terminal-result material backfill",
+                "evidence_source": "software_proof",
+            },
+            "safe_evidence_ref": "evidence://terminal-result-followup-001",
+            "safe_command_id": "cmd-001",
+            "terminal_result_type": "delivery",
+            "assigned_owner": "field_owner",
+            "support_owner": "support_ops",
+            "reviewer_route": "terminal_result_material_reviewer",
+            "required_material_backfill": ["real phone terminal-result screenshot"],
+            "escalation_reason": "missing real terminal-result material",
+            "blocked_reason": "waiting for field owner material backfill",
+            "next_required_evidence": ["attach real terminal-result material"],
+            "safe_copy": (
+                "Verified terminal result material follow-up escalation status is "
+                "metadata-only; source=software_proof; not_proven; "
+                "delivery_success=false; primary_actions_enabled=false; "
+                "safe_to_control=false."
+            ),
+            "not_proven": ["reviewer_resolution_not_proven"],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+        }
+        artifact = {
+            "schema": (
+                "trashbot.verified_terminal_result_material_followup_escalation_status.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate"
+            ),
+            "verified_terminal_result_material_followup_escalation_status_summary": (
+                safe_summary
+            ),
+        }
+        payload = self._base_build_payload(
+            {
+                "verified_terminal_result_material_followup_escalation_status": artifact,
+                "diagnostics": {
+                    "verified_terminal_result_material_followup_escalation_status": {
+                        "delivery_success": True,
+                        "raw_artifact": {"Authorization": "Bearer unsafe"},
+                    }
+                },
+            }
+        )
+        summary = payload[
+            "robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary"
+        ]
+        from_nested = (
+            summarize_verified_terminal_result_material_followup_escalation_status(
+                {
+                    "status": {
+                        "robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary": safe_summary
+                    }
+                }
+            )
+        )
+        from_diagnostics = self._base_build_payload(
+            {
+                "diagnostics": {
+                    "verified_terminal_result_material_followup_escalation_status_summary": (
+                        safe_summary
+                    )
+                }
+            }
+        )[
+            "robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary"
+        ]
+        raw_only = (
+            summarize_verified_terminal_result_material_followup_escalation_status(
+                {
+                    "schema": (
+                        "trashbot.verified_terminal_result_material_followup_escalation_status.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate"
+                    ),
+                }
+            )
+        )
+        unsafe = summarize_verified_terminal_result_material_followup_escalation_status(
+            dict(
+                safe_summary,
+                safe_evidence_ref="unsafe ref with spaces",
+                safe_copy="Reviewer resolved the follow-up; delivery success.",
+                delivery_success=True,
+                primary_actions_enabled=True,
+                safe_to_control=True,
+                raw_source={"complete_json": {"cmd_vel": "unsafe"}},
+                reviewer_resolution=True,
+            )
+        )
+
+        self.assertEqual(
+            payload["verified_terminal_result_material_followup_escalation_status"],
+            summary,
+        )
+        self.assertEqual(
+            payload[
+                "verified_terminal_result_material_followup_escalation_status_summary"
+            ],
+            summary,
+        )
+        self.assertNotIn(
+            "verified_terminal_result_material_followup_escalation_status",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.verified_terminal_result_material_followup_escalation_status.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(
+            summary["followup_status"],
+            "escalated_for_terminal_result_material_followup_not_proven",
+        )
+        self.assertEqual(
+            summary["safe_evidence_ref"], "evidence://terminal-result-followup-001"
+        )
+        self.assertEqual(summary["safe_command_id"], "cmd-001")
+        self.assertEqual(summary["assigned_owner"], "field_owner")
+        self.assertEqual(summary["support_owner"], "support_ops")
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_mutation_allowed"])
+        self.assertFalse(summary["cursor_mutation_allowed"])
+        self.assertFalse(summary["replay_allowed"])
+        self.assertFalse(summary["resubmit_allowed"])
+        self.assertFalse(summary["robot_control_allowed"])
+        self.assertEqual(
+            from_nested["followup_status"],
+            "escalated_for_terminal_result_material_followup_not_proven",
+        )
+        self.assertEqual(from_diagnostics["safe_command_id"], "cmd-001")
+        self.assertEqual(
+            raw_only["followup_status_detail"]["status"],
+            "blocked_missing_verified_terminal_result_material_followup_escalation_status_summary",
+        )
+        self.assertEqual(
+            unsafe["followup_status_detail"]["status"],
+            "blocked_unsafe_verified_terminal_result_material_followup_escalation_status_summary",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_source", encoded)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("complete_json", encoded)
+        self.assertNotIn("Authorization", encoded)
+        self.assertNotIn("Bearer", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("reviewer resolved", encoded.lower())
+        self.assertIn("source=software_proof", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success=false", encoded)
         self.assertIn("primary_actions_enabled=false", encoded)

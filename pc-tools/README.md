@@ -151,6 +151,44 @@ claims 和 success/control overclaim；`ready_for_owner_handoff` 只表示 owner
 脱敏 handoff package，不证明真实 terminal delivery/dropoff/cancel result、
 delivery success、真实手机/browser、HIL、O5 external proof 或机器人控制权限。
 
+## verified terminal result material follow-up escalation status
+
+`pc-tools/evidence/verified_terminal_result_material_followup_escalation_status.py`
+是 PC-only terminal-result 材料补证跟进状态 gate，能力名
+`verified_terminal_result_material_followup_escalation_status`：
+
+```bash
+python3 pc-tools/evidence/verified_terminal_result_material_followup_escalation_status.py \
+  --input /tmp/verified_terminal_result_material_review_handoff_summary.json \
+  --output-dir /tmp/verified_terminal_result_material_followup_escalation_status
+```
+
+输入支持上一轮 `verified_terminal_result_material_review_handoff` artifact、summary、
+Robot safe alias `robot_diagnostics_verified_terminal_result_material_review_handoff_summary`
+以及常见 wrapper/nested JSON。输出写入
+`verified_terminal_result_material_followup_escalation_status.json` 和
+`verified_terminal_result_material_followup_escalation_status_summary.json`，证据边界固定为
+`software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate`，
+并始终保持 `source=software_proof`、`software_proof`、`not_proven`、
+`delivery_success=false`、`primary_actions_enabled=false`、
+`safe_to_control=false` 和 `no OKR percentage lift`。
+
+`followup_status` 只允许
+`escalated_for_terminal_result_material_followup_not_proven`、
+`waiting_for_terminal_result_material_backfill_not_proven`、
+`needs_support_owner_reassignment_not_proven`、
+`rejected_unsafe_terminal_result_followup_not_proven` 和
+`blocked_missing_terminal_result_review_handoff_not_proven`。该 gate 输出 source
+handoff status、safe `evidence_ref`、safe `command_id`、`terminal_result_type`、
+`assigned_owner`、`support_owner`、`reviewer_route`、
+`required_material_backfill`、`escalation_reason`、`blocked_reason`、
+`next_required_evidence` 和 `safe_copy`。它拒绝 raw artifacts、本机路径、凭证、
+DB/queue/OSS URL、ROS/control details、hardware/UART/WAVE ROVER details、
+ACK/cursor/replay/resubmit hints、reviewer-resolution claims 和
+success/control overclaim；escalated/waiting 只表示 field owner/support/reviewer
+补证跟进状态，不证明 verified terminal result、delivery success、真实手机/browser、
+HIL、O5 external proof 或机器人控制权限。
+
 ## hardware sensor HIL-entry callback intake
 
 `pc-tools/evidence/hardware_sensor_hil_entry_callback_intake_gate.py` 是

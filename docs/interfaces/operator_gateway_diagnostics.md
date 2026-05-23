@@ -652,6 +652,60 @@ control, commands, Nav2, WAVE ROVER, HIL, material collection, production
 readiness, dropoff/cancel completion, cancel completion, delivery result, or
 delivery success.
 
+## robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary`
+as the safe alias for
+`verified_terminal_result_material_followup_escalation_status`.
+
+- Source artifact schema:
+  `trashbot.verified_terminal_result_material_followup_escalation_status.v1`
+- Source summary schema:
+  `trashbot.verified_terminal_result_material_followup_escalation_status_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate`
+
+The alias is metadata-only and read-only. It may consume the sanitized summary,
+the Robot alias, or a compatible nested diagnostics/status summary. A raw
+artifact wrapper is accepted only when it contains the sanitized follow-up
+summary; Robot output strips raw sibling keys and re-emits only the safe alias.
+
+Allowed follow-up statuses are
+`escalated_for_terminal_result_material_followup_not_proven`,
+`waiting_for_terminal_result_material_backfill_not_proven`,
+`needs_support_owner_reassignment_not_proven`,
+`rejected_unsafe_terminal_result_followup_not_proven`, and
+`blocked_missing_terminal_result_review_handoff_not_proven`. These are
+material follow-up states only; they are not reviewer resolution, delivery
+success, dropoff/cancel completion, HIL pass, readiness, or permission to
+operate the robot.
+
+Allowed fields are limited to source handoff status, follow-up status, safe
+`evidence_ref`, safe `command_id`, terminal result type, assigned owner,
+support owner, reviewer route, required material backfill, escalation reason,
+blocked reason, next required evidence, safe copy, `source=software_proof`,
+`not_proven`, `delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
+The alias must fail closed for missing sanitized summary, unreadable input,
+unsupported schema or evidence boundary, `source` other than `software_proof`,
+`overall_status` other than `not_proven`, unsafe `evidence_ref`, unsafe copy,
+raw source, raw artifact, complete JSON, credentials, local paths, checksums,
+ROS topics, `/cmd_vel`, ACK mutation hints, cursor mutation hints,
+replay/resubmit hints, serial/UART details, WAVE ROVER details, hardware raw
+details, reviewer-resolution claims, success/completion claims,
+`delivery_success=true`, `primary_actions_enabled=true`, or
+`safe_to_control=true`.
+
+This alias must not enable Start Delivery, Confirm Dropoff, Cancel, ACK
+mutation, cursor mutation, replay, resubmit, raw diagnostics fetch, robot
+control, commands, Nav2, WAVE ROVER, HIL, material collection, production
+readiness, reviewer resolution, dropoff/cancel completion, terminal delivery
+result, or delivery success.
+
 ## robot_diagnostics_real_material_followup_escalation_status_summary
 
 Robot diagnostics exposes

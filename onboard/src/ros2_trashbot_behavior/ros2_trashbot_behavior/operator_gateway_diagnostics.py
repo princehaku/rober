@@ -1668,6 +1668,25 @@ VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_STATUSES = (
     "rejected",
     "blocked",
 )
+VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SCHEMA = (
+    "trashbot.verified_terminal_result_material_followup_escalation_status.v1"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.verified_terminal_result_material_followup_escalation_status_summary.v1"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary.v1"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_GATE = (
+    "software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_STATUSES = (
+    "escalated_for_terminal_result_material_followup_not_proven",
+    "waiting_for_terminal_result_material_backfill_not_proven",
+    "needs_support_owner_reassignment_not_proven",
+    "rejected_unsafe_terminal_result_followup_not_proven",
+    "blocked_missing_terminal_result_review_handoff_not_proven",
+)
 REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SCHEMA = (
     "trashbot.real_material_followup_escalation_status.v1"
 )
@@ -68622,6 +68641,12 @@ def _verified_terminal_result_material_review_handoff_has_unsafe_controls(value)
             key_text = str(key or "").strip().lower()
             if key_text == "not_proven":
                 continue
+            if key_text in (
+                "delivery_success",
+                "primary_actions_enabled",
+                "safe_to_control",
+            ) and item is False:
+                continue
             if key_text in unsafe_true_keys and bool(item):
                 return True
             if any(fragment in key_text for fragment in unsafe_key_fragments):
@@ -68992,6 +69017,608 @@ def summarize_verified_terminal_result_material_review_handoff(source):
                     "safe_copy": blocked_copy,
                     "safe_phone_copy": blocked_copy,
                     "status": "blocked",
+                },
+            }
+        )
+    return summary
+
+
+def _verified_terminal_result_material_followup_escalation_status_not_proven(
+    followup=None, summary_fragment=None
+):
+    # follow-up escalation 只说明材料追办状态，不能被解释为 reviewer 已解决、送达成功或 HIL 通过。
+    values = [
+        "verified_terminal_result_material_followup_escalation_status_only",
+        "followup_status_not_delivery_success",
+        "reviewer_resolution_not_proven",
+        "real_delivery_result",
+        "dropoff_completion",
+        "cancel_completion",
+        "delivery_success",
+        "robot_control_authorization",
+        "ACK_mutation",
+        "cursor_mutation",
+        "replay_or_resubmit",
+        "real_hil_pass",
+    ]
+    for container in (followup or {}, summary_fragment or {}):
+        for item in container.get("not_proven", []) if isinstance(container, dict) else []:
+            safe_item = _redact_route_task_rehearsal_text(item)
+            if safe_item and safe_item not in values:
+                values.append(safe_item)
+    return values
+
+
+def _default_verified_terminal_result_material_followup_escalation_status_summary(
+    path,
+    followup_status="blocked_missing_terminal_result_review_handoff_not_proven",
+    read_error="",
+):
+    # 缺 follow-up 输入时也返回完整 false flags，避免空状态被移动端或支持端误读成可控制。
+    safe_copy = (
+        "Verified terminal result material follow-up escalation status is "
+        "metadata-only; source=software_proof; not_proven; "
+        "safe_to_control=false; delivery_success=false; "
+        "primary_actions_enabled=false."
+    )
+    reason = read_error or (
+        "verified_terminal_result_material_followup_escalation_status summary is not configured"
+    )
+    return {
+        "schema": VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "capability": "verified_terminal_result_material_followup_escalation_status",
+        "evidence_boundary": VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source_contract": {"schema": "", "evidence_boundary": "", "metadata_only": True},
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "status": followup_status,
+        "overall_status": "not_proven",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "source_handoff_status": "",
+        "followup_status": followup_status,
+        "followup_status_detail": {
+            "status": followup_status,
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": reason,
+        },
+        "safe_evidence_ref": "",
+        "safe_command_id": "",
+        "terminal_result_type": "",
+        "assigned_owner": "",
+        "support_owner": "",
+        "reviewer_route": "",
+        "required_material_backfill": [],
+        "escalation_reason": "",
+        "blocked_reason": read_error,
+        "next_required_evidence": [],
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "robot_diagnostics_summary": {
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+        },
+        "not_proven": (
+            _verified_terminal_result_material_followup_escalation_status_not_proven()
+        ),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "summary_required": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "ack_mutation_allowed": False,
+        "cursor_mutation_allowed": False,
+        "replay_allowed": False,
+        "resubmit_allowed": False,
+        "robot_control_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+        "reviewer_resolution": False,
+    }
+
+
+def _verified_terminal_result_material_followup_escalation_status_source_contract(
+    value,
+):
+    # source summary 和 Robot alias 都必须回指 follow-up artifact 与本轮 follow-up gate。
+    value = value if isinstance(value, dict) else {}
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema in (
+        VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SOURCE_SUMMARY_SCHEMA,
+        VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SUMMARY_SCHEMA,
+    ):
+        source_schema = str(
+            value.get("source_schema")
+            or VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _verified_terminal_result_material_followup_escalation_status_summary_fragment(
+    value,
+):
+    # 兼容 latest_status / diagnostics / status 嵌套，但只接受已经消毒的 summary 或 Robot alias。
+    if not isinstance(value, dict):
+        return {}
+    if str(value.get("schema") or "") in (
+        VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SOURCE_SUMMARY_SCHEMA,
+        VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SUMMARY_SCHEMA,
+    ):
+        return value
+    for candidate in (
+        value.get("verified_terminal_result_material_followup_escalation_status_summary"),
+        value.get(
+            "robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary"
+        ),
+        value.get("diagnostics_summary"),
+        value.get("robot_diagnostics_summary"),
+        value.get("robot_compatible_summary"),
+        value.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            return candidate
+    for container_name in ("diagnostics", "status", "latest_status"):
+        container = value.get(container_name)
+        if isinstance(container, dict):
+            nested = (
+                _verified_terminal_result_material_followup_escalation_status_summary_fragment(
+                    container
+                )
+            )
+            if nested:
+                return nested
+    return {}
+
+
+def _verified_terminal_result_material_followup_escalation_status_has_unsafe_controls(
+    value,
+):
+    # follow-up alias 必须比 handoff 更保守，reviewer resolution、raw artifact 和控制线索都整体拒绝。
+    if _verified_terminal_result_material_review_handoff_has_unsafe_controls(value):
+        return True
+    unsafe_true_keys = {
+        "reviewer_resolution",
+        "reviewer_resolved",
+        "resolved",
+        "complete",
+        "completed",
+        "hil_pass",
+        "field_pass",
+        "delivery_complete",
+    }
+    unsafe_key_fragments = (
+        "complete_json",
+        "raw_artifact",
+        "raw_source",
+        "reviewer_resolution",
+        "resolution_claim",
+        "hardware",
+        "device_path",
+        "wave_rover",
+        "uart",
+        "serial",
+        "credential",
+        "secret",
+        "token",
+        "ack_cursor",
+        "replay",
+        "resubmit",
+        "cmd_vel",
+        "ros",
+        "control",
+    )
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text == "not_proven":
+                continue
+            if key_text in (
+                "delivery_success",
+                "primary_actions_enabled",
+                "safe_to_control",
+            ) and item is False:
+                continue
+            if key_text in unsafe_true_keys and bool(item):
+                return True
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if _verified_terminal_result_material_followup_escalation_status_has_unsafe_controls(
+                item
+            ):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _verified_terminal_result_material_followup_escalation_status_has_unsafe_controls(
+                item
+            )
+            for item in value
+        )
+    if isinstance(value, str):
+        lowered = value.lower()
+        if any(
+            marker in lowered
+            for marker in (
+                "reviewer resolved",
+                "complete json",
+                "raw artifact",
+                "raw source",
+                "hil pass",
+                "delivery success",
+            )
+        ):
+            return True
+    return False
+
+
+def _verified_terminal_result_material_followup_escalation_status_safe_list(value):
+    # 列表字段只保留可读的追办/补证文本，过滤 raw、resolution、ACK/cursor 和控制语义。
+    safe_items = []
+    for item in _verified_terminal_result_material_review_handoff_safe_list(value):
+        lowered = str(item or "").lower()
+        if any(
+            marker in lowered
+            for marker in (
+                "reviewer resolved",
+                "resolution",
+                "complete json",
+                "raw artifact",
+                "raw source",
+                "ack",
+                "cursor",
+                "replay",
+                "resubmit",
+                "hardware",
+                "uart",
+                "wave rover",
+                "control",
+            )
+        ):
+            continue
+        safe_items.append(item)
+    return safe_items
+
+
+def summarize_verified_terminal_result_material_followup_escalation_status(source):
+    """构建 verified terminal result material follow-up escalation 的只读 Robot diagnostics 摘要。"""
+    # Robot 只转发 Task A 已消毒的追办 summary；任何 raw/source sibling 都不能穿透到 diagnostics。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = (
+        _default_verified_terminal_result_material_followup_escalation_status_summary(
+            source_path,
+            read_error=(
+                "verified_terminal_result_material_followup_escalation_status summary is not configured"
+            ),
+        )
+    )
+    if isinstance(source, dict):
+        followup = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = (
+                "verified_terminal_result_material_followup_escalation_status summary artifact missing"
+            )
+            summary["followup_status_detail"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                followup = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading verified_terminal_result_material_followup_escalation_status summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["followup_status_detail"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(followup, dict):
+        summary["followup_status_detail"]["reason"] = (
+            "verified_terminal_result_material_followup_escalation_status JSON must be an object"
+        )
+        return summary
+
+    raw_schema = str(followup.get("schema") or "")
+    summary_fragment = (
+        _verified_terminal_result_material_followup_escalation_status_summary_fragment(
+            followup
+        )
+    )
+    contract_source = summary_fragment if summary_fragment else followup
+    source_schema, source_boundary = (
+        _verified_terminal_result_material_followup_escalation_status_source_contract(
+            contract_source
+        )
+    )
+    if not source_schema and raw_schema:
+        source_schema = raw_schema
+    if not source_boundary:
+        source_boundary = str(followup.get("evidence_boundary") or "")
+
+    followup_status_doc = (
+        summary_fragment.get("followup_status_detail")
+        if isinstance(summary_fragment.get("followup_status_detail"), dict)
+        else summary_fragment.get("followup_status")
+        if isinstance(summary_fragment.get("followup_status"), dict)
+        else summary_fragment.get("status_summary")
+        if isinstance(summary_fragment.get("status_summary"), dict)
+        else {}
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or followup.get("safe_copy")
+        or followup.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    safe_copy_text = _redact_route_task_rehearsal_text(safe_copy)
+    if "delivery_success=false" not in safe_copy_text:
+        # safe_copy 是 UI 可展示文本，固定带上 false-state，避免后续复制时丢失证据边界。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    status_value = _redact_route_task_rehearsal_text(
+        followup_status_doc.get("status")
+        or summary_fragment.get("followup_status")
+        or summary_fragment.get("status")
+        or followup.get("followup_status")
+        or followup.get("status")
+        or "blocked_missing_terminal_result_review_handoff_not_proven"
+    )
+    overall_status = _redact_route_task_rehearsal_text(
+        summary_fragment.get("overall_status")
+        or followup.get("overall_status")
+        or "not_proven"
+    )
+    source_value = _redact_route_task_rehearsal_text(
+        summary_fragment.get("source")
+        or followup.get("source")
+        or followup_status_doc.get("evidence_source")
+        or ""
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or followup.get("safe_evidence_ref")
+        or followup.get("evidence_ref", "")
+    )
+    safe_command_id = _redact_route_task_rehearsal_text(
+        summary_fragment.get("safe_command_id")
+        or summary_fragment.get("command_id")
+        or followup.get("safe_command_id")
+        or followup.get("command_id")
+        or ""
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                summary_fragment.get("source_schema_version")
+                or summary_fragment.get("schema_version")
+                or followup.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+            "source_contract": {
+                "schema": _redact_route_task_rehearsal_text(source_schema),
+                "evidence_boundary": _redact_route_task_rehearsal_text(source_boundary),
+                "metadata_only": True,
+            },
+            "configured": bool(str(source_path or "").strip()) or isinstance(source, dict),
+            "exists": True,
+            "status": status_value,
+            "overall_status": "not_proven",
+            "source": EVIDENCE_SOURCE_SOFTWARE,
+            "source_handoff_status": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source_handoff_status")
+                or followup.get("source_handoff_status")
+                or ""
+            ),
+            "followup_status": status_value,
+            "followup_status_detail": {
+                "status": status_value,
+                "verdict": "not_proven",
+                "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                "reason": _redact_route_task_rehearsal_text(
+                    followup_status_doc.get("reason")
+                    or summary_fragment.get("escalation_reason")
+                    or followup.get("escalation_reason")
+                    or "verified terminal result material follow-up escalation is software_proof only"
+                ),
+            },
+            "safe_evidence_ref": safe_evidence_ref,
+            "safe_command_id": safe_command_id,
+            "terminal_result_type": _redact_route_task_rehearsal_text(
+                summary_fragment.get("terminal_result_type")
+                or followup.get("terminal_result_type")
+                or ""
+            ),
+            "assigned_owner": _redact_route_task_rehearsal_text(
+                summary_fragment.get("assigned_owner")
+                or followup.get("assigned_owner")
+                or ""
+            ),
+            "support_owner": _redact_route_task_rehearsal_text(
+                summary_fragment.get("support_owner")
+                or followup.get("support_owner")
+                or ""
+            ),
+            "reviewer_route": _redact_route_task_rehearsal_text(
+                summary_fragment.get("reviewer_route")
+                or followup.get("reviewer_route")
+                or ""
+            ),
+            "required_material_backfill": (
+                _verified_terminal_result_material_followup_escalation_status_safe_list(
+                    summary_fragment.get("required_material_backfill")
+                )
+            ),
+            "escalation_reason": _redact_route_task_rehearsal_text(
+                summary_fragment.get("escalation_reason")
+                or followup.get("escalation_reason")
+                or ""
+            ),
+            "blocked_reason": _redact_route_task_rehearsal_text(
+                summary_fragment.get("blocked_reason") or followup.get("blocked_reason") or ""
+            ),
+            "next_required_evidence": (
+                _verified_terminal_result_material_followup_escalation_status_safe_list(
+                    summary_fragment.get("next_required_evidence")
+                )
+            ),
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "safe_copy": safe_copy_text,
+                "safe_phone_copy": safe_copy_text,
+                "status": status_value,
+            },
+            "not_proven": (
+                _verified_terminal_result_material_followup_escalation_status_not_proven(
+                    followup,
+                    summary_fragment,
+                )
+            ),
+            "read_error": "",
+        }
+    )
+    if (
+        source_schema != VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SCHEMA
+        or source_boundary
+        != VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_GATE
+    ):
+        summary.update(
+            {
+                "status": "unsupported_schema",
+                "followup_status": "blocked_missing_terminal_result_review_handoff_not_proven",
+                "followup_status_detail": {
+                    "status": "unsupported_schema",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "verified_terminal_result_material_followup_escalation_status schema or evidence boundary is unsupported",
+                },
+                "safe_evidence_ref": "",
+                "safe_command_id": "",
+                "required_material_backfill": [],
+                "next_required_evidence": [],
+            }
+        )
+        return summary
+    if (
+        raw_schema == VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SCHEMA
+        and not summary_fragment
+    ):
+        summary.update(
+            {
+                "status": "blocked_missing_verified_terminal_result_material_followup_escalation_status_summary",
+                "followup_status": "blocked_missing_terminal_result_review_handoff_not_proven",
+                "followup_status_detail": {
+                    "status": "blocked_missing_verified_terminal_result_material_followup_escalation_status_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "verified_terminal_result_material_followup_escalation_status artifact is missing sanitized summary",
+                },
+                "safe_evidence_ref": "",
+            }
+        )
+        return summary
+
+    # 合法 follow-up 也只能是追办软件证明；任何完成、resolution 或控制语义都必须 fail closed。
+    required_safe_metadata = (
+        bool(summary_fragment),
+        source_value == EVIDENCE_SOURCE_SOFTWARE,
+        overall_status == "not_proven",
+        status_value
+        in VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_STATUSES,
+        bool(summary["safe_evidence_ref"]),
+        bool(summary["safe_command_id"]),
+        bool(summary["terminal_result_type"]),
+        bool(summary["source_handoff_status"]),
+        bool(summary["assigned_owner"]),
+        bool(summary["support_owner"]),
+        bool(summary["reviewer_route"]),
+        bool(summary["required_material_backfill"]),
+        bool(summary["next_required_evidence"]),
+    )
+    unsafe_payload = (
+        not all(required_safe_metadata)
+        or _real_material_evidence_ref_is_unsafe(summary["safe_evidence_ref"])
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or summary_fragment.get("safe_to_control") is not False
+        or _route_task_field_run_readiness_has_unsafe_fields(followup)
+        or _route_task_field_run_readiness_has_unsafe_fields(summary_fragment)
+        or _verified_terminal_result_material_followup_escalation_status_has_unsafe_controls(
+            followup
+        )
+        or _verified_terminal_result_material_followup_escalation_status_has_unsafe_controls(
+            summary_fragment
+        )
+        or _verified_terminal_result_material_followup_escalation_status_has_unsafe_controls(
+            robot_summary
+        )
+        or _task_terminal_field_material_intake_copy_is_unsafe(safe_copy_text)
+    )
+    if unsafe_payload:
+        blocked_copy = (
+            "Verified terminal result material follow-up escalation status was blocked "
+            "because the summary did not remain source=software_proof/not_proven "
+            "with delivery_success=false, primary_actions_enabled=false, "
+            "safe_to_control=false, and no raw source, raw artifact, complete JSON, "
+            "reviewer-resolution, ACK/cursor, replay, resubmit, hardware, ROS, "
+            "or robot-control claims."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_verified_terminal_result_material_followup_escalation_status_summary",
+                "followup_status": "rejected_unsafe_terminal_result_followup_not_proven",
+                "followup_status_detail": {
+                    "status": "blocked_unsafe_verified_terminal_result_material_followup_escalation_status_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "verified_terminal_result_material_followup_escalation_status contains unsafe fields, missing safe metadata, success wording, reviewer-resolution, raw artifacts, ACK/cursor/replay claims, hardware details, or control claims",
+                },
+                "safe_evidence_ref": "",
+                "safe_command_id": "",
+                "required_material_backfill": [],
+                "next_required_evidence": [],
+                "blocked_reason": blocked_copy,
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                    "status": "rejected_unsafe_terminal_result_followup_not_proven",
                 },
             }
         )
@@ -78461,6 +79088,7 @@ def build_diagnostics_payload(
     verified_terminal_result_material_intake_ref="",
     verified_terminal_result_material_review_decision_ref="",
     verified_terminal_result_material_review_handoff_ref="",
+    verified_terminal_result_material_followup_escalation_status_ref="",
     real_material_followup_escalation_status_ref="",
     field_evidence_real_material_followup_escalation_status_ref="",
     field_evidence_real_material_owner_ack_intake_ref="",
@@ -79538,6 +80166,63 @@ def build_diagnostics_payload(
         )
         else diagnostics_source
         if diagnostics_source
+        else {}
+    )
+    verified_terminal_result_material_followup_escalation_status_preserved_source = (
+        latest_status.get(
+            "robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "verified_terminal_result_material_followup_escalation_status_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "verified_terminal_result_material_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "verified_terminal_result_material_followup_escalation_status"
+        )
+        if isinstance(
+            latest_status.get(
+                "verified_terminal_result_material_followup_escalation_status"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "verified_terminal_result_material_followup_escalation_status_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "verified_terminal_result_material_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "verified_terminal_result_material_followup_escalation_status"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "verified_terminal_result_material_followup_escalation_status"
+            ),
+            dict,
+        )
         else {}
     )
     cloud_guard_source = (
@@ -85908,6 +86593,30 @@ def build_diagnostics_payload(
         "robot_diagnostics_verified_terminal_result_material_review_handoff_summary",
     ):
         latest_status.pop(unsafe_latest_key, None)
+    verified_terminal_result_material_followup_escalation_status_source = (
+        verified_terminal_result_material_followup_escalation_status_ref
+        or os.environ.get(
+            "TRASHBOT_VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SUMMARY",
+            "",
+        )
+        or verified_terminal_result_material_followup_escalation_status_preserved_source
+    )
+    verified_terminal_result_material_followup_escalation_status_summary = (
+        summarize_verified_terminal_result_material_followup_escalation_status(
+            verified_terminal_result_material_followup_escalation_status_source
+        )
+    )
+    # follow-up 输入可能夹带 raw/source sibling；返回前只保留 Robot-safe alias。
+    for unsafe_latest_key in (
+        "verified_terminal_result_material_followup_escalation_status",
+        "verified_terminal_result_material_followup_escalation_status_summary",
+        "robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary",
+    ):
+        latest_status.pop(unsafe_latest_key, None)
     real_material_followup_escalation_status_source = (
         real_material_followup_escalation_status_ref
         or os.environ.get("TRASHBOT_REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS", "")
@@ -86980,6 +87689,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_verified_terminal_result_material_review_handoff_summary=(
             verified_terminal_result_material_review_handoff_summary
+        ),
+        verified_terminal_result_material_followup_escalation_status=(
+            verified_terminal_result_material_followup_escalation_status_summary
+        ),
+        verified_terminal_result_material_followup_escalation_status_summary=(
+            verified_terminal_result_material_followup_escalation_status_summary
+        ),
+        robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary=(
+            verified_terminal_result_material_followup_escalation_status_summary
         ),
         real_material_followup_escalation_status=(
             real_material_followup_escalation_status_summary

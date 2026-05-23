@@ -1,0 +1,115 @@
+{
+  "robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary": {
+    "schema": "trashbot.verified_terminal_result_material_followup_escalation_status_summary.v1",
+    "capability": "verified_terminal_result_material_followup_escalation_status",
+    "source": "software_proof",
+    "source_schema": "trashbot.verified_terminal_result_material_followup_escalation_status.v1",
+    "followup_status": "escalated_for_terminal_result_material_followup_not_proven",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "evidence_ref": "verified_terminal_result_material_followup_escalation_status_fixture_20260523_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_followup_escalation_status_fixture_20260523_0001",
+    "assigned_owner": "assigned_owner=field_owner_terminal_result_material_backfill",
+    "support_owner": "support_owner=mobile_support_terminal_result_material_followup",
+    "reviewer_route": "reviewer_route=terminal_result_material_review_queue_safe",
+    "required_material_backfill": [
+      "required_material_backfill=verified_terminal_result_summary",
+      "required_material_backfill=field_owner_phone_behavior_note"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=field owner attaches verified terminal result summary under same safe evidence_ref",
+      "next_required_evidence=support owner confirms phone-safe material summary remains not_proven",
+      "next_required_evidence=reviewer receives safe summary while review remains pending"
+    ],
+    "escalation_reason": "escalation_reason=terminal result material remains missing after owner handoff",
+    "blocked_reason": "blocked_reason=terminal_result_material_followup_not_proven",
+    "safe_copy": {
+      "followup_status": "followup_status=escalated_for_terminal_result_material_followup_not_proven",
+      "terminal_result_type": "terminal_result_type=delivery",
+      "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_followup_escalation_status_fixture_20260523_0001",
+      "assigned_owner": "assigned_owner=field_owner_terminal_result_material_backfill",
+      "support_owner": "support_owner=mobile_support_terminal_result_material_followup",
+      "reviewer_route": "reviewer_route=terminal_result_material_review_queue_safe",
+      "next_required_evidence": [
+        "next_required_evidence=field owner attaches verified terminal result summary under same safe evidence_ref",
+        "next_required_evidence=support owner confirms phone-safe material summary remains not_proven"
+      ],
+      "escalation_reason": "escalation_reason=terminal result material remains missing after owner handoff",
+      "blocked_reason": "blocked_reason=terminal_result_material_followup_not_proven",
+      "evidence_boundary": "software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate"
+    },
+    "safe_phone_copy": "Terminal result material follow-up 已升级给 field owner/support/reviewer；Start Delivery、Confirm Dropoff、Cancel 继续 disabled。",
+    "recovery_hint": "等待同一 safe evidence_ref 的 terminal result material follow-up 证据；手机端保持只读，不提交控制动作。",
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate",
+    "proof_boundary": "software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "terminal_result_material_followup_escalation_status_only",
+      "review_pending_not_proven",
+      "true_phone_browser_proof_missing",
+      "route_elevator_evidence_missing",
+      "hil_pass_missing",
+      "o5_external_proof_missing"
+    ]
+  },
+  "verified_terminal_result_material_followup_escalation_status_summary": {
+    "schema": "trashbot.verified_terminal_result_material_followup_escalation_status_summary.v1",
+    "capability": "verified_terminal_result_material_followup_escalation_status",
+    "source": "software_proof",
+    "followup_status": "waiting_for_terminal_result_material_backfill_not_proven",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_followup_escalation_status_fixture_20260523_0001",
+    "assigned_owner": "assigned_owner=field_owner_terminal_result_material_backfill",
+    "support_owner": "support_owner=mobile_support_terminal_result_material_followup",
+    "reviewer_route": "reviewer_route=terminal_result_material_review_queue_safe",
+    "next_required_evidence": [
+      "next_required_evidence=verified terminal result material backfill"
+    ],
+    "escalation_reason": "escalation_reason=waiting_for_terminal_result_material_backfill_not_proven",
+    "blocked_reason": "blocked_reason=terminal_result_material_followup_not_proven",
+    "safe_copy": "verified_terminal_result_material_followup_escalation_status；followup_status=waiting_for_terminal_result_material_backfill_not_proven；assigned_owner=field_owner_terminal_result_material_backfill；support_owner=mobile_support_terminal_result_material_followup；reviewer_route=terminal_result_material_review_queue_safe；evidence_ref=verified_terminal_result_material_followup_escalation_status_fixture_20260523_0001；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "verified_terminal_result_material_followup_escalation_status": {
+    "summary": {
+      "schema": "trashbot.verified_terminal_result_material_followup_escalation_status_summary.v1",
+      "capability": "verified_terminal_result_material_followup_escalation_status",
+      "source": "software_proof",
+      "followup_status": "needs_support_owner_reassignment_not_proven",
+      "terminal_result_type": "terminal_result_type=delivery",
+      "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_followup_escalation_status_fixture_20260523_0001",
+      "assigned_owner": "assigned_owner=field_owner_terminal_result_material_backfill",
+      "support_owner": "support_owner=mobile_support_terminal_result_material_followup",
+      "reviewer_route": "reviewer_route=terminal_result_material_review_queue_safe",
+      "next_required_evidence": [
+        "next_required_evidence=safe reassignment summary"
+      ],
+      "safe_copy": "nested verified_terminal_result_material_followup_escalation_status safe_copy only；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+      "evidence_boundary": "software_proof_docker_verified_terminal_result_material_followup_escalation_status_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}
