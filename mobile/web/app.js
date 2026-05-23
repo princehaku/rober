@@ -59,6 +59,8 @@ const VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_DECIS
 const VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_DECISION_COPY = "verified terminal result owner response reviewer ACK review decision 只读可见；safe decision 不等于 delivery success，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_gate";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_HANDOFF_COPY = "verified terminal result owner response reviewer ACK review handoff 只读可见；handoff 不等于 delivery success，主操作保持禁用。";
+const VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_BOUNDARY = "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate";
+const VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_COPY = "verified terminal result owner response reviewer ACK follow-up escalation status 只读可见；PR #5 仍 unresolved / hardware_material_pending，主操作保持禁用。";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY = "software_proof_docker_cloud_poll_backoff_rate_limit_guard";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_COPY = "远程控制正在等待重试退避窗口；窗口结束前 Start Delivery、Confirm Dropoff、Cancel 保持禁用。";
 const CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_BOUNDARY = "software_proof_docker_cloud_support_handoff_safe_export_gate";
@@ -351,6 +353,7 @@ const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_TEX
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_TEXT = UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_TEXT;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_DECISION_TEXT = UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_TEXT;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_HANDOFF_TEXT = UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_TEXT;
+const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_TEXT = UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_TEXT;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_OPERATOR_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|raw robot response|robot\/internal|internal technical|password)/i;
 const UNSAFE_PC_ROUTE_DEBUG_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
@@ -635,6 +638,7 @@ let latestVerifiedTerminalResultMaterialOwnerResponseReviewHandoff = null;
 let latestVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntake = null;
 let latestVerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewDecision = null;
 let latestVerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewHandoff = null;
+let latestVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus = null;
 let latestWaveRoverFeedbackReplay = null;
 let latestWaveRoverHilPacketIntake = null;
 let latestWaveRoverHilPacketReviewDecision = null;
@@ -1807,6 +1811,15 @@ function safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewHandoff
   // reviewer ACK review handoff 只展示安全交接摘要；raw handoff、材料、控制或成功暗示都降级。
   const text = safeText(value, fallback);
   if (UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_HANDOFF_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(value, fallback = "not_proven") {
+  // follow-up escalation 只能解释材料阻塞和升级状态；任何 raw/control/success 词都会回落为 not_proven。
+  const text = safeText(value, fallback);
+  if (UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -50326,6 +50339,399 @@ function renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewHando
     summary.recovery_hint;
 }
 
+function verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusCandidate(
+  status,
+  readiness,
+  diagnostics,
+) {
+  // 手机端优先消费 Robot diagnostics safe alias；fallback 只限同名 safe summary，避免读取 raw 材料或诊断原文。
+  const diagnosticsReadiness = readinessFromStatus(diagnostics || {});
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object" ? diagnostics.summary : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object" ? diagnostics.diagnostics : {};
+  const nestedDiagnosticsSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const nestedDiagnosticsInner = nestedDiagnostics && typeof nestedDiagnostics.diagnostics === "object"
+    ? nestedDiagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnosticsInner && typeof nestedDiagnosticsInner.summary === "object"
+    ? nestedDiagnosticsInner.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const topDiagnosticsSummary = status?.diagnostics_summary && typeof status.diagnostics_summary === "object"
+    ? status.diagnostics_summary
+    : {};
+  const artifactSummary =
+    status?.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status?.summary ||
+    readiness?.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status?.summary ||
+    diagnostics?.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status?.summary ||
+    diagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status?.summary ||
+    nestedDiagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status?.summary ||
+    nestedDiagnosticsInnerSummary.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status?.summary ||
+    statusDiagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status?.summary;
+  return firstObject(
+    status?.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    readiness?.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    diagnostics?.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    diagnosticsReadiness.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    diagnosticsSummary.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    statusDiagnosticsSummary.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    topDiagnosticsSummary.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    status?.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    readiness?.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    diagnostics?.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    diagnosticsReadiness.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    diagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    nestedDiagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    nestedDiagnosticsInnerSummary.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    statusDiagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    topDiagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary,
+    artifactSummary,
+  );
+}
+
+function verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusList(value, fallback) {
+  // route / evidence / reason 可能是数组或对象；统一压成短文本，手机端不展示原始结构。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        const key = safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(item[0], "");
+        const detail = safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(item[1], "");
+        return key && detail ? `${key}=${detail}` : key || detail;
+      }
+      return safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 12) : [fallback];
+}
+
+function verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusNotProvenList(value) {
+  // 固定追加 false-state 边界，避免 follow-up escalation 被误读为真实材料到位、PR 关闭或送达成功。
+  const provided = notProvenList(value?.not_proven || value?.not_proven_flags);
+  const required = [
+    "source=software_proof",
+    "software_proof",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_only",
+    "followup_escalation_status_not_delivery_success",
+    "PRRT_kwDOSWB9286CJ3tX unresolved",
+    "hardware_material_pending",
+    "true_phone_browser_proof_missing",
+    "real_terminal_result_proof_missing",
+    "route_elevator_field_pass_missing",
+    "hardware_hil_missing",
+    "o5_external_proof_missing",
+    "no OKR percentage lift",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 36);
+}
+
+function verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusHasUnsafeRawFields(value) {
+  // 安全字段只允许三个 false flag；其它 key/value 如果携带 raw、控制、成功或凭证语义就 fail closed。
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const allowedSafetyKeys = new Set(["delivery_success", "primary_actions_enabled", "safe_to_control"]);
+  const stack = [value];
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current || typeof current !== "object") {
+      continue;
+    }
+    for (const [key, rawValue] of Object.entries(current)) {
+      if (key === "not_proven") {
+        continue;
+      }
+      if (!allowedSafetyKeys.has(key) &&
+        UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_TEXT.test(String(key))) {
+        return true;
+      }
+      if (rawValue && typeof rawValue === "object") {
+        stack.push(rawValue);
+      } else if (
+        UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_TEXT.test(String(rawValue))
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusFromStatus(
+  status,
+  readiness,
+  diagnostics,
+) {
+  const provided = verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusCandidate(
+    status,
+    readiness,
+    diagnostics,
+  ) || {};
+  const unsafeRawFields = verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusHasUnsafeRawFields(
+    provided,
+  );
+  const failClosedFlags = unsafeRawFields ||
+    provided.source !== undefined && provided.source !== "software_proof" ||
+    provided.safe_to_control === true ||
+    provided.delivery_success === true ||
+    provided.primary_actions_enabled === true;
+  const allowedStatuses = new Set([
+    "pending_followup_not_proven",
+    "due_followup_not_proven",
+    "overdue_followup_not_proven",
+    "escalated_hardware_material_pending_not_proven",
+    "blocked_missing_reviewer_ack_review_handoff_not_proven",
+  ]);
+  const candidateStatus = safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(
+    provided.followup_status || provided.escalation_status || provided.status || provided.overall_status,
+    "blocked_missing_reviewer_ack_review_handoff_not_proven",
+  );
+  const followupStatus = allowedStatuses.has(candidateStatus) && !failClosedFlags
+    ? candidateStatus
+    : "blocked_missing_reviewer_ack_review_handoff_not_proven";
+  return {
+    missing: !Object.keys(provided).length || failClosedFlags,
+    unsafe_raw_fields: unsafeRawFields,
+    schema: "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary.v1",
+    source_schema: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(
+      provided.source_schema || provided.artifact_schema || provided.followup_escalation_status_schema,
+      "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.v1",
+    ),
+    capability: "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status",
+    source: "software_proof",
+    followup_status: followupStatus,
+    source_review_handoff: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(
+      provided.source_review_handoff || provided.source_handoff_status || provided.handoff_status,
+      "source_review_handoff=blocked_missing_reviewer_ack_review_handoff_not_proven",
+    ),
+    blocker_identity: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(
+      provided.blocker_identity || provided.blocker || provided.blocked_reason,
+      "blocker_identity=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    ),
+    pr5_thread_status: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(
+      provided.pr5_thread_status || provided.review_thread_status,
+      "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    ),
+    safe_evidence_ref: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    due_status: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(
+      provided.due_status || provided.followup_due_status,
+      "due_status=pending_followup_not_proven",
+    ),
+    owner_route: verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusList(
+      provided.owner_route || provided.owner_next_step || provided.field_owner_route || provided.field_owner_next_steps,
+      "owner_route=provide_same_safe_evidence_ref_real_materials_without_upload_action",
+    ),
+    support_route: verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusList(
+      provided.support_route || provided.support_next_step || provided.support_next_steps,
+      "support_route=keep_PRRT_kwDOSWB9286CJ3tX_unresolved_hardware_material_pending_visible",
+    ),
+    reviewer_route: verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusList(
+      provided.reviewer_route || provided.reviewer_next_step || provided.reviewer_next_steps,
+      "reviewer_route=review_followup_state_after_real_material_evidence_arrives",
+    ),
+    escalation_reason: verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusList(
+      provided.escalation_reason || provided.escalation_reasons || provided.blocked_reason || provided.blockers,
+      "escalation_reason=PRRT_kwDOSWB9286CJ3tX unresolved and hardware_material_pending",
+    ),
+    next_required_evidence: verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusList(
+      provided.next_required_evidence || provided.next_evidence || provided.required_evidence,
+      "next_required_evidence=真实 2D LiDAR / ToF source receipt install calibration HIL-entry evidence under same safe evidence_ref",
+    ),
+    false_state_flags: verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusList(
+      provided.false_state_flags || provided.required_false_state_flags || provided.false_flags,
+      "false_state_flag=safe_to_control=false_delivery_success=false_primary_actions_enabled=false",
+    ),
+    evidence_boundary: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(
+      provided.evidence_boundary || provided.proof_boundary,
+      VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_BOUNDARY,
+    ),
+    safe_phone_copy: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary || provided.safe_copy,
+      VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_COPY,
+    ),
+    recovery_hint: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText(
+      provided.recovery_hint || provided.retry_hint,
+      "等待 owner/support/reviewer 在同一 safe evidence_ref 下提供真实材料；手机端只读展示，不提交上传、复核、采购、GitHub mutation 或机器人控制。",
+    ),
+    boundary_flags: "source=software_proof / software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusNotProvenList(provided),
+  };
+}
+
+function ensureVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusPanel() {
+  // follow-up escalation status 放在 reviewer ACK review handoff 后面；它只显示升级状态，不创建任何动作入口。
+  let panel = $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("verifiedTerminalResultMaterialOwnerResponseReviewerAckReviewHandoffTitle")?.closest("section") ||
+    $("verifiedTerminalResultMaterialOwnerResponseReviewerAckReviewDecisionTitle")?.closest("section") ||
+    $("cloudReadinessTitle")?.closest("section") ||
+    $("supportTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusPanel";
+  panel.className = "verified-terminal-result-material-owner-response-reviewer-ack-followup-escalation-status-panel";
+  panel.setAttribute(
+    "aria-labelledby",
+    "verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusTitle",
+  );
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusTitle">Terminal Result Owner Response Reviewer ACK Follow-up Escalation Status</h2>
+      <span id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusCopy" class="message">
+      等待 robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary。
+    </p>
+    <dl class="verified-terminal-result-material-owner-response-reviewer-ack-followup-escalation-status-grid">
+      <div><dt>Follow-up Status</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusStatus">blocked_missing_reviewer_ack_review_handoff_not_proven</dd></div>
+      <div><dt>Source Review Handoff</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusSourceHandoff">source_review_handoff=blocked_missing_reviewer_ack_review_handoff_not_proven</dd></div>
+      <div><dt>Blocker Identity</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusBlocker">blocker_identity=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending</dd></div>
+      <div><dt>PR #5 Thread</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusPr5">PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending</dd></div>
+      <div><dt>Due Status</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusDue">due_status=pending_followup_not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusBoundary">software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusFlags">source=software_proof / software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusNotProven">真实手机/browser、real terminal result、route/elevator field pass、HIL、O5 external proof、PR #5 resolved 和 delivery success 未证明。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section>
+        <h3>Owner Route</h3>
+        <ol id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusOwner" class="handoff-checklist">
+          <li>等待 owner route。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Support Route</h3>
+        <ol id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusSupport" class="handoff-checklist">
+          <li>等待 support route。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Reviewer Route</h3>
+        <ol id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusReviewer" class="handoff-checklist">
+          <li>等待 reviewer route。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Escalation Reason</h3>
+        <ol id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusReason" class="handoff-checklist">
+          <li>等待 escalation reason。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Next Required Evidence</h3>
+        <ol id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusNextEvidence" class="handoff-checklist">
+          <li>等待 next required evidence。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Required False-State Flags</h3>
+        <ol id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusFalseFlags" class="handoff-checklist">
+          <li>等待 false-state flags。</li>
+        </ol>
+      </section>
+    </div>
+    <pre id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusSafeCopy" class="safe-copy" aria-label="verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status safe_copy">blocked copy unavailable</pre>
+    <p id="verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusHint" class="hint">
+      本 panel 只消费 robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary / safe summary fallback；不读取 raw diagnostics/material，不新增 ACK/cursor/review/handoff/owner-response/reviewer-ACK/material upload/GitHub mutation/replay/resubmit/procurement/control 路径。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus(status) {
+  const panel = ensureVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusFromStatus(
+    status,
+    readiness,
+    latestDiagnostics,
+  );
+  latestVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus = summary;
+  const badge = $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 follow-up status" : "follow-up not_proven";
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusCopy").textContent =
+    summary.safe_phone_copy;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusStatus").textContent =
+    `${summary.source} / ${summary.followup_status}`;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusSourceHandoff").textContent =
+    summary.source_review_handoff;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusBlocker").textContent =
+    summary.blocker_identity;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusPr5").textContent =
+    summary.pr5_thread_status;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusDue").textContent =
+    summary.due_status;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusEvidenceRef").textContent =
+    summary.safe_evidence_ref;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusBoundary").textContent =
+    summary.evidence_boundary;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusFlags").textContent =
+    summary.boundary_flags;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusNotProven").textContent =
+    summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusOwner",
+    summary.owner_route,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusSupport",
+    summary.support_route,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusReviewer",
+    summary.reviewer_route,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusReason",
+    summary.escalation_reason,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusNextEvidence",
+    summary.next_required_evidence,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusFalseFlags",
+    summary.false_state_flags,
+  );
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusSafeCopy").textContent =
+    [
+      `followup_status=${summary.followup_status}`,
+      summary.blocker_identity,
+      summary.pr5_thread_status,
+      summary.boundary_flags,
+      summary.evidence_boundary,
+    ].join("\n");
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusHint").textContent =
+    summary.recovery_hint;
+}
+
 function renderMobileDeviceAcceptance(status) {
   const readiness = readinessFromStatus(status);
   const summary = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics);
@@ -54420,6 +54826,14 @@ function renderDiagnosticsSummary(payload) {
         latestDiagnostics || {},
       ).safe_decision,
     ],
+    [
+      "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status",
+      verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).followup_status,
+    ],
     ["wave_rover_feedback_replay", waveRoverFeedbackReplay.replay_status],
     ["wave_rover_hil_packet_intake", waveRoverHilPacketIntake.packet_status],
     ["wave_rover_hil_packet_review_decision", waveRoverHilPacketReviewDecision.review_decision],
@@ -54638,6 +55052,7 @@ function renderOfflineFailure() {
   renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntake({});
   renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewDecision({});
   renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewHandoff({});
+  renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus({});
   renderWaveRoverFeedbackReplay({});
   renderWaveRoverHilPacketIntake({});
   renderWaveRoverHilPacketReviewDecision({});
@@ -54831,6 +55246,7 @@ function renderStatus(status) {
   renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntake(status);
   renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewDecision(status);
   renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewHandoff(status);
+  renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
   renderMobileDeviceHandoffSession(status);
@@ -55183,6 +55599,7 @@ async function openDiagnostics() {
     renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntake(latestStatus || {});
     renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewDecision(latestStatus || {});
     renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewHandoff(latestStatus || {});
+    renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus(latestStatus || {});
     renderWaveRoverFeedbackReplay(latestStatus || {});
     renderWaveRoverHilPacketIntake(latestStatus || {});
     renderWaveRoverHilPacketReviewDecision(latestStatus || {});

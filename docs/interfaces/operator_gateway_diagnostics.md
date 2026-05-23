@@ -1110,6 +1110,63 @@ readiness, reviewer resolution, review authorization, handoff authorization,
 dropoff/cancel completion, terminal delivery result, phone/browser proof, or
 delivery success.
 
+## robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary`
+as the safe alias for
+`verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status`.
+The alias consumes only the sanitized PC summary or its Robot-safe alias. If no
+follow-up summary is present, it can derive a blocked read-only state from the
+sanitized reviewer ACK review-handoff summary.
+
+- Source artifact schema:
+  `trashbot.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.v1`
+- Source summary schema:
+  `trashbot.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate`
+- Upstream safe handoff source:
+  `trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_handoff.v1`
+  with
+  `software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_gate`
+
+The alias is metadata-only and read-only. It preserves source reviewer ACK
+review-handoff status, follow-up status, safe `evidence_ref`, safe
+`command_id`, terminal result type, acknowledged-by/acknowledged-at metadata,
+due/overdue/escalated state, escalation reason, blocked reason,
+owner/support/reviewer route, next required evidence, safe copy,
+`source=software_proof`, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`.
+
+PR #5 thread `PRRT_kwDOSWB9286CJ3tX` remains unresolved and
+`hardware_material_pending`. The alias must express the owner/support/reviewer
+route, due/overdue/escalated state, and next required evidence, but it does not
+prove real terminal result material, O5 external proof, true phone/browser
+proof, public HTTPS/TLS, 4G/SIM, OSS/CDN live traffic, production DB/queue,
+worker/cutover, route/elevator field pass, HIL, WAVE ROVER/UART proof, PR #5
+resolution, reviewer resolution, review authorization, handoff authorization,
+or delivery success.
+
+The alias must fail closed for missing sanitized summaries, unsupported source
+schema or boundary, `source` other than `software_proof`, `overall_status`
+other than `not_proven`, unsafe `evidence_ref`, unsafe copy, raw artifacts,
+credentials, local paths, raw robot responses, ROS topics, `/cmd_vel`,
+serial/UART details, WAVE ROVER details, ACK payloads, cursor values,
+diagnostics fetch mutation hints, robot command hints, success wording, true
+control flags, PR-resolution claims, reviewer-resolution claims, HIL wording,
+field-pass wording, true phone/browser proof, review authorization, handoff
+authorization, collect/dropoff/cancel hints, or hardware proof claims.
+
+This alias must not enable Start Delivery, Confirm Dropoff, Cancel, ACK
+mutation, cursor mutation, replay, resubmit, raw diagnostics fetch, robot
+control, robot commands, Nav2, WAVE ROVER, HIL, material collection, production
+readiness, reviewer resolution, review authorization, handoff authorization,
+dropoff/cancel completion, terminal delivery result, phone/browser proof, OKR
+percentage lift, or delivery success.
+
 ## robot_diagnostics_real_material_followup_escalation_status_summary
 
 Robot diagnostics exposes

@@ -176,6 +176,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_verified_terminal_result_material_owner_response_reviewer_ack_intake,
     summarize_verified_terminal_result_material_owner_response_reviewer_ack_review_decision,
     summarize_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff,
+    summarize_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status,
     summarize_real_material_followup_escalation_status,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
@@ -44059,6 +44060,298 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("safe_to_control=false", encoded)
         self.assertIn("PRRT_kwDOSWB9286CJ3tX", encoded)
         self.assertIn("hardware_material_pending", encoded)
+
+    def test_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_safe_alias_and_fail_closed(self):
+        safe_handoff_summary = {
+            "schema": (
+                "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_handoff.v1"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_gate"
+            ),
+            "schema_version": 1,
+            "capability": (
+                "verified_terminal_result_material_owner_response_reviewer_ack_review_handoff"
+            ),
+            "status": "ready_for_field_owner_reviewer_ack_followup_not_proven",
+            "overall_status": "not_proven",
+            "source": "software_proof",
+            "handoff_status": {
+                "status": "ready_for_field_owner_reviewer_ack_followup_not_proven",
+                "reason": "reviewer ACK review handoff can enter follow-up",
+                "evidence_source": "software_proof",
+            },
+            "source_reviewer_ack_review_decision_status": "accepted_for_review_not_proven",
+            "safe_evidence_ref": "evidence://terminal-result-owner-reviewer-ack-followup-001",
+            "safe_command_id": "cmd-terminal-owner-reviewer-ack-followup-001",
+            "terminal_result_type": "delivery",
+            "next_required_evidence": ["collect owner response reviewer ACK follow-up status"],
+            "owner_handoff": ["owner keeps PR #5 material followup open"],
+            "operator_support_handoff": ["support tracks reviewer ACK handoff as not_proven"],
+            "reviewer_route": ["reviewer keeps PRRT_kwDOSWB9286CJ3tX unresolved"],
+            "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+            "pr5_thread_state": "unresolved",
+            "pr5_material_state": "hardware_material_pending",
+            "pr5_reply_resolution_claim": "not_reviewer_resolution",
+            "safe_copy": (
+                "Verified terminal result material owner response reviewer ACK "
+                "review handoff is metadata-only; source=software_proof; "
+                "not_proven; delivery_success=false; "
+                "primary_actions_enabled=false; safe_to_control=false; PR #5 "
+                "PRRT_kwDOSWB9286CJ3tX unresolved; hardware_material_pending."
+            ),
+            "not_proven": ["review handoff is not PR #5 resolution"],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "hardware_material_pending": True,
+        }
+        safe_followup_summary = {
+            "schema": (
+                "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.v1"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate"
+            ),
+            "upstream_source_schema": (
+                "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_handoff.v1"
+            ),
+            "upstream_source_evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_gate"
+            ),
+            "schema_version": 1,
+            "capability": (
+                "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status"
+            ),
+            "status": "overdue",
+            "overall_status": "not_proven",
+            "source": "software_proof",
+            "followup_status": {
+                "status": "overdue",
+                "reason": "owner response reviewer ACK follow-up is overdue",
+                "evidence_source": "software_proof",
+                "due_at": "2026-05-24T03:00:00+08:00",
+            },
+            "source_reviewer_ack_review_handoff_status": (
+                "ready_for_field_owner_reviewer_ack_followup_not_proven"
+            ),
+            "source_reviewer_ack_review_decision_status": "accepted_for_review_not_proven",
+            "safe_evidence_ref": "evidence://terminal-result-owner-reviewer-ack-followup-001",
+            "safe_command_id": "cmd-terminal-owner-reviewer-ack-followup-001",
+            "terminal_result_type": "delivery",
+            "acknowledged_by": "product-okr-owner",
+            "acknowledged_at": "2026-05-24T02:05:00+08:00",
+            "due_at": "2026-05-24T03:00:00+08:00",
+            "overdue": True,
+            "escalated": True,
+            "escalation_reason": "hardware owner has not supplied real material packet",
+            "blocked_reason": "hardware_material_pending",
+            "owner_route": ["hardware owner supplies real LiDAR/ToF and terminal-result packet"],
+            "support_route": ["support keeps PR #5 follow-up visible"],
+            "reviewer_route": ["reviewer keeps PRRT_kwDOSWB9286CJ3tX unresolved"],
+            "next_required_evidence": [
+                "same evidence_ref real terminal-result packet",
+                "PR #5 reviewer confirmation after hardware material arrives",
+            ],
+            "missing_materials_summary": ["real hardware terminal result packet"],
+            "rejected_materials_summary": ["unsafe ACK material label blocked"],
+            "unsafe_materials_summary": ["unsafe cursor material label blocked"],
+            "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+            "pr5_thread_state": "unresolved",
+            "pr5_material_state": "hardware_material_pending",
+            "pr5_reply_resolution_claim": "not_reviewer_resolution",
+            "safe_copy": (
+                "Verified terminal result material owner response reviewer ACK "
+                "follow-up escalation status is overdue and escalated; "
+                "source=software_proof; not_proven; delivery_success=false; "
+                "primary_actions_enabled=false; safe_to_control=false; PR #5 "
+                "PRRT_kwDOSWB9286CJ3tX unresolved; hardware_material_pending; "
+                "no OKR percentage lift."
+            ),
+            "not_proven": ["follow-up escalation is not PR #5 resolution"],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "hardware_material_pending": True,
+            "pr5_resolved": False,
+        }
+        artifact = {
+            "schema": (
+                "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate"
+            ),
+            "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary": (
+                safe_followup_summary
+            ),
+        }
+        payload = self._base_build_payload(
+            {
+                "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status": (
+                    artifact
+                ),
+                "diagnostics": {
+                    "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status": {
+                        "delivery_success": True,
+                        "raw_ack_payload": {"cursor": "unsafe"},
+                    }
+                },
+            }
+        )
+        summary = payload[
+            "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary"
+        ]
+        from_nested = (
+            summarize_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status(
+                {
+                    "status": {
+                        "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary": (
+                            safe_followup_summary
+                        )
+                    }
+                }
+            )
+        )
+        from_handoff = (
+            summarize_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status(
+                safe_handoff_summary
+            )
+        )
+        raw_only = (
+            summarize_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status(
+                {
+                    "schema": (
+                        "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate"
+                    ),
+                }
+            )
+        )
+        unsafe = (
+            summarize_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status(
+                dict(
+                    safe_followup_summary,
+                    safe_copy=(
+                        "PR #5 resolved; delivery success; HIL pass; /cmd_vel "
+                        "robot command ready; ACK payload cursor value available."
+                    ),
+                    delivery_success=True,
+                    primary_actions_enabled=True,
+                    safe_to_control=True,
+                    pr5_resolved=True,
+                    raw_robot_response={"cmd_vel": "unsafe"},
+                    raw_ack_payload={"cursor": "unsafe"},
+                )
+            )
+        )
+
+        self.assertEqual(
+            payload[
+                "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status"
+            ],
+            summary,
+        )
+        self.assertEqual(
+            payload[
+                "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary"
+            ],
+            summary,
+        )
+        self.assertNotIn(
+            "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.v1",
+        )
+        self.assertEqual(
+            summary["upstream_source_schema"],
+            "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_handoff.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["status"], "overdue")
+        self.assertTrue(summary["overdue"])
+        self.assertTrue(summary["escalated"])
+        self.assertEqual(
+            summary["source_reviewer_ack_review_handoff_status"],
+            "ready_for_field_owner_reviewer_ack_followup_not_proven",
+        )
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://terminal-result-owner-reviewer-ack-followup-001",
+        )
+        self.assertEqual(
+            summary["safe_command_id"],
+            "cmd-terminal-owner-reviewer-ack-followup-001",
+        )
+        self.assertEqual(summary["blocked_reason"], "hardware_material_pending")
+        self.assertIn("hardware owner supplies real LiDAR/ToF and terminal-result packet", summary["owner_route"])
+        self.assertIn("support keeps PR #5 follow-up visible", summary["support_route"])
+        self.assertIn("reviewer keeps PRRT_kwDOSWB9286CJ3tX unresolved", summary["reviewer_route"])
+        self.assertIn(
+            "same evidence_ref real terminal-result packet",
+            summary["next_required_evidence"],
+        )
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_mutation_allowed"])
+        self.assertFalse(summary["cursor_mutation_allowed"])
+        self.assertFalse(summary["diagnostics_fetch_mutation_allowed"])
+        self.assertFalse(summary["robot_command_hint_allowed"])
+        self.assertFalse(summary["robot_control_allowed"])
+        self.assertFalse(summary["pr5_resolved"])
+        self.assertFalse(summary["okr_percentage_lift"])
+        self.assertTrue(summary["hardware_material_pending"])
+        self.assertEqual(
+            from_nested["safe_command_id"],
+            "cmd-terminal-owner-reviewer-ack-followup-001",
+        )
+        self.assertEqual(from_handoff["status"], "blocked_missing_real_materials")
+        self.assertEqual(
+            raw_only["followup_status"]["status"],
+            "blocked_missing_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary",
+        )
+        self.assertEqual(
+            unsafe["followup_status"]["status"],
+            "blocked_unsafe_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_robot_response", encoded)
+        self.assertNotIn("raw_ack_payload", encoded)
+        self.assertNotIn("Authorization", encoded)
+        self.assertNotIn("Bearer", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("delivery_success=true", encoded)
+        self.assertNotIn("pr #5 resolved", encoded.lower())
+        self.assertNotIn("hil pass", encoded.lower())
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", encoded)
+        self.assertIn("hardware_material_pending", encoded)
+        self.assertIn("overdue", encoded)
+        self.assertIn("escalated", encoded)
 
 
 if __name__ == "__main__":

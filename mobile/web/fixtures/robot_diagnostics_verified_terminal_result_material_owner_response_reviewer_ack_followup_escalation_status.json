@@ -1,0 +1,153 @@
+{
+  "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary": {
+    "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary.v1",
+    "capability": "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status",
+    "source": "software_proof",
+    "source_schema": "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.v1",
+    "followup_status": "escalated_hardware_material_pending_not_proven",
+    "source_review_handoff": "source_review_handoff=ready_for_terminal_result_material_reviewer_ack_review_handoff_not_proven",
+    "blocker_identity": "blocker_identity=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "pr5_thread_status": "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "due_status": "due_status=escalated",
+    "evidence_ref": "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_fixture_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_fixture_20260524_0001",
+    "owner_route": [
+      "owner_route=provide_same_safe_evidence_ref_real_materials",
+      "owner_route=keep_followup_state_escalated_until_reviewer_confirms"
+    ],
+    "support_route": [
+      "support_route=keep_PRRT_kwDOSWB9286CJ3tX_unresolved_hardware_material_pending_visible",
+      "support_route=explain_delivery_success_false_to_operator"
+    ],
+    "reviewer_route": [
+      "reviewer_route=review_only_after_real_material_evidence_arrives",
+      "reviewer_route=do_not_resolve_PRRT_kwDOSWB9286CJ3tX_from_software_proof"
+    ],
+    "escalation_reason": [
+      "escalation_reason=followup_overdue",
+      "escalation_reason=hardware_material_pending",
+      "escalation_reason=PRRT_kwDOSWB9286CJ3tX unresolved"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=real 2D LiDAR ToF source receipt installation calibration evidence under same safe evidence_ref",
+      "next_required_evidence=reviewer confirms PRRT_kwDOSWB9286CJ3tX only after real material evidence",
+      "next_required_evidence=verified terminal result safe summary remains not_proven until real result material exists"
+    ],
+    "false_state_flags": [
+      "source=software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "no OKR percentage lift"
+    ],
+    "safe_phone_copy": "Terminal result owner response reviewer ACK follow-up escalation status 已只读显示 blocker identity、owner/support/reviewer route、due/overdue/escalated state、escalation reason、next required evidence 和 safe copy；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false；Start Delivery、Confirm Dropoff、Cancel 继续 disabled。",
+    "recovery_hint": "等待同一 safe evidence_ref 的真实材料和 reviewer follow-up；手机端保持只读，不提交材料、复核、采购、外部写操作或机器人控制。",
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate",
+    "proof_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_only",
+      "followup escalation status",
+      "PRRT_kwDOSWB9286CJ3tX unresolved",
+      "hardware_material_pending",
+      "real_terminal_result_proof_missing",
+      "true_phone_browser_proof_missing",
+      "route_elevator_field_pass_missing",
+      "hardware_hil_missing",
+      "o5_external_proof_missing",
+      "no OKR percentage lift"
+    ]
+  },
+  "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary": {
+    "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary.v1",
+    "capability": "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status",
+    "source": "software_proof",
+    "followup_status": "overdue_followup_not_proven",
+    "source_review_handoff": "source_review_handoff=needs_reassignment_handoff_not_proven",
+    "blocker_identity": "blocker_identity=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "pr5_thread_status": "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "due_status": "due_status=overdue",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_fixture_20260524_0001",
+    "owner_route": [
+      "owner_route=overdue_followup_same_safe_evidence_ref_required"
+    ],
+    "support_route": [
+      "support_route=hardware_material_pending"
+    ],
+    "reviewer_route": [
+      "reviewer_route=wait_for_real_materials_before_resolution"
+    ],
+    "escalation_reason": [
+      "escalation_reason=overdue"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=same_safe_evidence_ref_real_materials"
+    ],
+    "false_state_flags": [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ],
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status": {
+    "summary": {
+      "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary.v1",
+      "capability": "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status",
+      "source": "software_proof",
+      "followup_status": "due_followup_not_proven",
+      "source_review_handoff": "source_review_handoff=blocked_missing_reviewer_ack_review_handoff_not_proven",
+      "blocker_identity": "blocker_identity=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+      "pr5_thread_status": "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+      "due_status": "due_status=due",
+      "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_fixture_20260524_0001",
+      "owner_route": [
+        "owner_route=waiting_for_safe_review_handoff"
+      ],
+      "support_route": [
+        "support_route=hardware_material_pending"
+      ],
+      "reviewer_route": [
+        "reviewer_route=not_proven"
+      ],
+      "escalation_reason": [
+        "escalation_reason=due"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=source_reviewer_ack_review_handoff_safe_summary"
+      ],
+      "false_state_flags": [
+        "safe_to_control=false",
+        "delivery_success=false",
+        "primary_actions_enabled=false"
+      ],
+      "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

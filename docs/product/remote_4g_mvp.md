@@ -1814,6 +1814,44 @@ control flags, PR-resolution claims, reviewer-resolution claims,
 review-authorization claims, handoff-authorization claims, ACK/cursor mutation
 hints, and collect/dropoff/cancel hints must fail closed. This diagnostics
 alias does not change command safety, ACK/cursor, cloud bridge, task execution,
+or control semantics.
+
+Verified terminal-result material owner-response reviewer ACK follow-up
+escalation status adds the next Robot diagnostics safe alias:
+
+- `robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary`
+- `schema=trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary.v1`
+- `source_schema=trashbot.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.v1`
+- `evidence_boundary=software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate`
+- `source=software_proof`
+- `not_proven`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+- PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved
+- `hardware_material_pending=true`
+- `overdue` / `escalated` states are follow-up metadata only
+
+The alias is read-only and consumes only the sanitized PC follow-up summary or
+compatible Robot-safe alias. It can fall back to a blocked state derived from
+the sanitized reviewer ACK review-handoff summary. It preserves source reviewer
+ACK review-handoff status, due/overdue/escalated state, owner/support/reviewer
+route, escalation reason, blocked reason, next required evidence, and safe
+copy. It is only a software-proof escalation-status packet for unresolved
+material follow-through; it does not prove PR #5 resolution, reviewer
+resolution, real terminal result, O5 external proof, true phone/browser proof,
+public HTTPS/TLS, 4G/SIM, OSS/CDN live traffic, production DB/queue,
+worker/cutover, route/elevator field pass, HIL, WAVE ROVER/UART proof, review
+authorization, handoff authorization, OKR percentage lift, or delivery success.
+
+Unsafe raw artifacts, credentials, local paths, raw robot responses, ROS topics,
+`/cmd_vel`, serial/UART details, ACK payloads, cursor values, diagnostics fetch
+mutation hints, robot command hints, success wording, HIL/pass wording, field
+pass wording, true control flags, PR-resolution claims, reviewer-resolution
+claims, review-authorization claims, handoff-authorization claims, and
+collect/dropoff/cancel hints must fail closed. This diagnostics alias does not
+change command safety, ACK/cursor, cloud bridge, task execution, or control
+semantics.
 Start Delivery, Confirm Dropoff, or Cancel semantics.
 
 ## Safety Rules

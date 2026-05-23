@@ -465,6 +465,48 @@ OSS/CDN live traffic、production DB/queue、route/elevator field pass、HIL、
 WAVE ROVER/UART proof、O5 external proof、PR #5 closure 或机器人控制权限。PR #5
 thread `PRRT_kwDOSWB9286CJ3tX` 继续保持 unresolved / hardware_material_pending。
 
+## verified terminal result material owner response reviewer ACK follow-up escalation status
+
+`pc-tools/evidence/verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.py`
+是 PC-only reviewer ACK follow-up escalation status gate，能力名
+`verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status`：
+
+```bash
+python3 pc-tools/evidence/verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.py \
+  --reviewer-ack-review-handoff-json /tmp/verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_summary.json \
+  --followup-state overdue \
+  --output-dir /tmp/verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status
+```
+
+输入必须是上一节
+`verified_terminal_result_material_owner_response_reviewer_ack_review_handoff`
+artifact、summary、Robot safe alias 或 wrapper/nested safe JSON。输出写入
+`verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.json`
+和
+`verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary.json`，
+schema 固定为
+`trashbot.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.v1`
+和
+`trashbot.verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary`，
+证据边界固定为
+`software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate`。
+所有输出继续保持 `source=software_proof`、`software_proof`、`not_proven`、
+`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`
+和 `no OKR percentage lift`。
+
+`followup_state` 只允许 `pending`、`due`、`overdue`、`escalated`
+和 `blocked_missing_real_materials`。summary 会暴露 unresolved blocker、
+follow-up state、owner route、reviewer route、support route、escalation reason、
+due/overdue/escalated status、next required evidence、safe `evidence_ref`、
+safe `command_id`、`safe_copy` 和 proof boundary flags。该 gate 不读取真实材料目录，
+不触发 GitHub mutation，不访问 ROS graph、Nav2、serial/UART、WAVE ROVER、真实电梯、
+外部云、OSS/CDN、DB/queue、4G 或真实手机/browser。`overdue` 和 `escalated`
+只表示真实材料跟进已到期或升级，不证明真实 terminal result、delivery success、
+O5 external proof、HIL、LiDAR/ToF installed proof 或 PR #5 resolution。PR #5 thread
+`PRRT_kwDOSWB9286CJ3tX` 继续保持 unresolved / hardware_material_pending。
+
 ## hardware sensor HIL-entry callback intake
 
 `pc-tools/evidence/hardware_sensor_hil_entry_callback_intake_gate.py` 是

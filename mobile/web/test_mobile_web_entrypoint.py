@@ -70,6 +70,10 @@ VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_HANDOFF_FIX
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff.json"
 )
+VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status.json"
+)
 CLOUD_COMMAND_EXPIRY_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_expiry_safety_guard.json"
 CLOUD_COMMAND_IDEMPOTENCY_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_idempotency_visibility_guard.json"
@@ -2539,6 +2543,224 @@ class VerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewHandoffMobileT
             "cancel completed",
             "hil_pass",
             "field pass",
+            "robot command",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, response_text)
+
+
+class VerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(
+            VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # follow-up escalation 只展示升级状态和下一份 evidence，不允许手机端新增写入或控制入口。
+        self.assertIn(
+            "VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_BOUNDARY",
+            app,
+        )
+        self.assertIn(
+            "UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_TEXT",
+            app,
+        )
+        self.assertIn(
+            "safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusText",
+            app,
+        )
+        self.assertIn(
+            "verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusCandidate",
+            app,
+        )
+        self.assertIn(
+            "verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusFromStatus",
+            app,
+        )
+        self.assertIn(
+            "renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            app,
+        )
+        self.assertIn("Terminal Result Owner Response Reviewer ACK Follow-up Escalation Status", app)
+        self.assertIn(
+            "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary",
+            app,
+        )
+        self.assertIn(
+            "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary",
+            app,
+        )
+        self.assertIn(
+            "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status?.summary",
+            app,
+        )
+        for required in (
+            "pending_followup_not_proven",
+            "due_followup_not_proven",
+            "overdue_followup_not_proven",
+            "escalated_hardware_material_pending_not_proven",
+            "blocked_missing_reviewer_ack_review_handoff_not_proven",
+            "followup_status",
+            "source_review_handoff",
+            "blocker_identity",
+            "owner_route",
+            "support_route",
+            "reviewer_route",
+            "due_status",
+            "escalation_reason",
+            "next_required_evidence",
+            "false_state_flags",
+            "PRRT_kwDOSWB9286CJ3tX unresolved",
+            "hardware_material_pending",
+            "source=software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "no OKR percentage lift",
+        ):
+            self.assertIn(required, app + fixture_text)
+        self.assertNotRegex(
+            app,
+            r"verifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "copyVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusButton",
+            "ackVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            "cursorVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            "fetchVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusDiagnostics",
+            "fetchVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusMaterial",
+            "submitVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            "reviewRouteVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            "handoffRouteVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            "ownerResponseRouteVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            "reviewerAckRouteVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            "materialUploadVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            "githubMutationVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            "procureVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            "replayVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            "resubmitVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+            "commandVerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatus",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        summary = fixture[
+            "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary"
+        ]
+        fallback = fixture["verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary"]
+        nested = fixture["verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status"]["summary"]
+        self.assertEqual(
+            summary["capability"],
+            "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status",
+        )
+        self.assertEqual(summary["followup_status"], "escalated_hardware_material_pending_not_proven")
+        self.assertEqual(fallback["followup_status"], "overdue_followup_not_proven")
+        self.assertEqual(nested["followup_status"], "due_followup_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        for required in (
+            "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate",
+            "PRRT_kwDOSWB9286CJ3tX unresolved",
+            "hardware_material_pending",
+            "due_status=escalated",
+            "due_status=overdue",
+            "due_status=due",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "Start Delivery、Confirm Dropoff、Cancel 继续 disabled",
+        ):
+            self.assertIn(required, fixture_text)
+
+        # 产品文档必须同步声明这只是只读升级状态，不是真实材料、PR resolved 或送达成功。
+        self.assertIn("verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status", doc)
+        self.assertIn(
+            "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary",
+            doc,
+        )
+        self.assertIn(
+            "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate",
+            doc,
+        )
+        self.assertIn("blocker identity", doc)
+        self.assertIn("owner route", doc)
+        self.assertIn("support route", doc)
+        self.assertIn("reviewer route", doc)
+        self.assertIn("due/overdue/escalated state", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", doc)
+        self.assertIn("hardware_material_pending", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_fixture_stays_phone_safe(self):
+        fixture = json.loads(
+            VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        response_text = json.dumps(
+            {
+                "robot": fixture[
+                    "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary"
+                ],
+                "fallback": fixture[
+                    "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_summary"
+                ],
+                "nested": fixture[
+                    "verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只能包含 follow-up escalation safe metadata，不泄漏材料正文、路径、凭证或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw material",
+            "raw owner response",
+            "raw ack",
+            "raw followup",
+            "raw artifact",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "hil_pass",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "material fetch",
+            "replay",
+            "resubmit",
             "robot command",
             "delivery_success\": true",
             "primary_actions_enabled\": true",
