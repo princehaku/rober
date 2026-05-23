@@ -77,6 +77,32 @@ commands, advance ACK cursors, prove real external cloud/4G/OSS/CDN/DB/queue,
 prove a real phone/browser, prove HIL, resolve PR #5, or prove delivery
 success.
 
+The same Robot/API surfaces now derive a read-only support replay drill from
+that audit/export summary only:
+
+```text
+cloud_command_lifecycle_replay_drill
+cloud_command_lifecycle_replay_drill_summary
+robot_diagnostics_cloud_command_lifecycle_replay_drill_summary
+```
+
+The schema is `trashbot.cloud_command_lifecycle_replay_drill_summary.v1` and
+the evidence boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_drill_gate`. The drill
+preserves the safe `command_id`, safe `evidence_ref`, ordered
+`replay_timeline`, `ack_semantics=accepted_processing_only_not_delivery_success`,
+`terminal_result_status`, `next_required_evidence`, and sanitized
+`support_drill_copy`.
+
+This is a support drill artifact for reproducing the lifecycle explanation. It
+does not replay or resubmit commands, post ACKs, mutate cursors or persistence,
+trigger Nav2, touch WAVE ROVER, prove HIL, or authorize robot control. It keeps
+`not_proven`, `delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`; missing IDs, conflicting refs, unsafe text, raw paths,
+credentials, secret URLs, ROS topics, `/cmd_vel`, serial/UART details, WAVE
+ROVER details, tracebacks, complete artifacts, checksums, success wording, or
+any true-state control flags remain blocked/not_proven.
+
 The independent relay now also hosts the dependency-free `mobile/web/` PWA
 shell on the same origin:
 

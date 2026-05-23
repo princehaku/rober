@@ -184,6 +184,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_cloud_terminal_result_verification_guard,
     summarize_cloud_cancel_pending_command_safety_guard,
     summarize_cloud_command_lifecycle_audit_export,
+    summarize_cloud_command_lifecycle_replay_drill,
     summarize_cloud_poll_backoff_rate_limit_guard,
     summarize_vision_manifest,
 )
@@ -30602,6 +30603,129 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(summary["delivery_success"])
         self.assertFalse(summary["primary_actions_enabled"])
         self.assertIn("safe_to_control=false", summary["copy_export_text"])
+        for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_command_lifecycle_replay_drill_summary_is_fail_closed(self):
+        summary = summarize_cloud_command_lifecycle_replay_drill(
+            {
+                "schema": "trashbot.cloud_command_lifecycle_audit_export_summary.v1",
+                "capability": "cloud_command_lifecycle_audit_export",
+                "command_id": "cmd-safe-replay-001",
+                "evidence_ref": "ev-safe-replay-001",
+                "lifecycle_state": "terminal_result_pending",
+                "lifecycle_timeline": [
+                    {
+                        "stage": "ack_lookup_or_processing",
+                        "status": "pending_terminal_result_not_delivery_success",
+                        "safe_copy": "Authorization Bearer token raw response /cmd_vel",
+                    }
+                ],
+                "terminal_result_status": "pending_verified_terminal_result_not_proven",
+                "next_required_evidence": [
+                    "same_safe_command_id",
+                    "same_safe_evidence_ref",
+                    "verified_terminal_delivery_dropoff_or_cancel_result",
+                ],
+                "copy_export_text": (
+                    "cloud_command_lifecycle_audit_export: command_id=cmd-safe-replay-001; "
+                    "evidence_ref=ev-safe-replay-001; not_proven; safe_to_control=false; "
+                    "delivery_success=false; primary_actions_enabled=false."
+                ),
+                "safe_to_control": True,
+                "delivery_success": True,
+                "primary_actions_enabled": True,
+            }
+        )
+
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.cloud_command_lifecycle_replay_drill_summary.v1",
+        )
+        self.assertEqual(summary["capability"], "cloud_command_lifecycle_replay_drill")
+        self.assertEqual(summary["source_schema"], "trashbot.cloud_command_lifecycle_audit_export_summary.v1")
+        self.assertEqual(summary["command_id"], "cmd-safe-replay-001")
+        self.assertEqual(summary["evidence_ref"], "ev-safe-replay-001")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_drill_gate",
+        )
+        self.assertEqual(
+            summary["status"],
+            "blocked_unsafe_cloud_command_lifecycle_replay_drill_not_proven",
+        )
+        self.assertEqual(
+            summary["ack_semantics"],
+            "accepted_processing_only_not_delivery_success",
+        )
+        self.assertEqual(
+            summary["terminal_result_status"],
+            "pending_verified_terminal_result_not_proven",
+        )
+        self.assertIn("same_safe_command_id", summary["next_required_evidence"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["persistence_updates_allowed"])
+        self.assertFalse(summary["command_replay_allowed"])
+        self.assertIn("safe_to_control=false", summary["support_drill_copy"])
+        self.assertIn("delivery_success=false", summary["support_drill_copy"])
+        self.assertIn("primary_actions_enabled=false", summary["support_drill_copy"])
+        self.assertIn("command_replay", summary["not_proven"])
+        self.assertTrue(summary["raw_material_redacted"])
+        for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel", "/tmp/"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_diagnostics_payload_surfaces_cloud_command_lifecycle_replay_drill_summary(self):
+        payload = self._base_build_payload(
+            {
+                "state": "remote_degraded",
+                "message": "safe lifecycle replay drill pending details",
+                "can_collect": True,
+                "can_confirm_dropoff": True,
+                "can_cancel": True,
+                "evidence_ref": "ev-safe-replay-003",
+                "remote_readiness": {
+                    "capability": "cloud_terminal_result_verification_guard",
+                    "degradation_state": "terminal_result_pending",
+                    "last_command_ack": "cmd-safe-replay-003",
+                    "safe_phone_copy": "等待 verified terminal result；这不是送达成功。",
+                    "remote_ready": True,
+                    "safe_to_control": True,
+                    "delivery_success": True,
+                    "primary_actions_enabled": True,
+                    "retry_hint": "retry_cloud",
+                },
+            }
+        )
+
+        summary = payload["robot_diagnostics_cloud_command_lifecycle_replay_drill_summary"]
+        encoded = json.dumps(payload, ensure_ascii=False)
+
+        self.assertEqual(summary["capability"], "cloud_command_lifecycle_replay_drill")
+        self.assertEqual(summary["command_id"], "cmd-safe-replay-003")
+        self.assertEqual(summary["evidence_ref"], "ev-safe-replay-003")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_drill_gate",
+        )
+        self.assertEqual(
+            summary["ack_semantics"],
+            "accepted_processing_only_not_delivery_success",
+        )
+        self.assertEqual(
+            summary["terminal_result_status"],
+            "pending_verified_terminal_result_not_proven",
+        )
+        self.assertIn("verified_terminal_result", summary["not_proven"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["command_replay_allowed"])
+        self.assertIn("safe_to_control=false", summary["support_drill_copy"])
         for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel"):
             self.assertNotIn(forbidden, encoded)
 

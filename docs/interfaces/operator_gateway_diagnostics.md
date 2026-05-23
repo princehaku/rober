@@ -35,6 +35,44 @@ replay/resubmit, terminal ACK, Nav2, route execution, WAVE ROVER, HIL,
 verified delivery/dropoff/cancel result, PR #5 reviewer resolution, or delivery
 success.
 
+## robot_diagnostics_cloud_command_lifecycle_replay_drill_summary
+
+Robot/API exposes `cloud_command_lifecycle_replay_drill`,
+`cloud_command_lifecycle_replay_drill_summary`, and
+`robot_diagnostics_cloud_command_lifecycle_replay_drill_summary` on
+`/api/status` and `/api/diagnostics` for support to rehearse the already
+sanitized lifecycle audit as a read-only drill.
+
+- API schema: `trashbot.cloud_command_lifecycle_replay_drill_summary.v1`
+- Source schema: `trashbot.cloud_command_lifecycle_audit_export_summary.v1`
+- Capability: `cloud_command_lifecycle_replay_drill`
+- Evidence boundary:
+  `software_proof_docker_cloud_command_lifecycle_replay_drill_gate`
+- Required safe fields: safe `command_id`, safe `evidence_ref`,
+  `replay_timeline`, `ack_semantics`, `terminal_result_status`,
+  `next_required_evidence`, and `support_drill_copy`
+
+The drill is derived only from `cloud_command_lifecycle_audit_export` or
+`robot_diagnostics_cloud_command_lifecycle_audit_export_summary`. It preserves
+the ordered lifecycle timeline, ACK meaning
+`accepted_processing_only_not_delivery_success`, terminal result pending
+status, next required evidence, and support drill copy. It is a support drill
+artifact, not a command replay, ACK post, cursor update, persistence update, or
+robot control route.
+
+Missing safe IDs, conflicting command/evidence refs, unsafe copy, raw paths,
+credentials, secret URLs, tracebacks, ROS topics, `/cmd_vel`, serial/UART
+details, WAVE ROVER details, complete artifacts, checksums, success wording,
+`delivery_success=true`, `primary_actions_enabled=true`, or
+`safe_to_control=true` must fail closed as blocked/not_proven.
+
+The required false-state boundary is `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`. It must not enable Start Delivery, Confirm
+Dropoff, Cancel, command replay/resubmit, ACK posting, cursor mutation,
+persistence mutation, Nav2, route execution, WAVE ROVER, HIL, verified
+delivery/dropoff/cancel result, real external cloud proof, or delivery success.
+
 ## cloud_support_handoff_safe_export
 
 Robot/API exposes `cloud_support_handoff_safe_export` on `/api/status` and

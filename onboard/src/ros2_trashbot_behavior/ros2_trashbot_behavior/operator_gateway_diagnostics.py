@@ -25,8 +25,13 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_FALSE_STATES,
     CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_NOT_PROVEN,
     CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA,
+    CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_EVIDENCE_BOUNDARY,
+    CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_FALSE_STATES,
+    CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_NOT_PROVEN,
+    CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_SCHEMA,
     normalize_elevator_assist,
     build_cloud_command_lifecycle_audit_export,
+    build_cloud_command_lifecycle_replay_drill,
     status_payload,
 )
 from ros2_trashbot_behavior.remote_cloud_relay import (
@@ -3041,6 +3046,116 @@ def summarize_cloud_command_lifecycle_audit_export(value):
         "hil_pass": False,
         "missing_lifecycle_state": bool(missing_lifecycle_state),
         "conflicting_lifecycle_state": bool(conflicting_lifecycle_state),
+        "raw_material_redacted": bool(unsafe),
+    }
+
+
+def summarize_cloud_command_lifecycle_replay_drill(value):
+    """从 audit/export 安全摘要派生只读 command lifecycle replay drill。"""
+    audit_summary = summarize_cloud_command_lifecycle_audit_export(value)
+    replay_drill = build_cloud_command_lifecycle_replay_drill(audit_summary)
+    source = value if isinstance(value, dict) else {}
+    unsafe = bool(audit_summary.get("raw_material_redacted")) or _cloud_guard_has_unsafe_material(source)
+    support_drill_copy = _cloud_guard_safe_text(
+        replay_drill.get("support_drill_copy") or replay_drill.get("safe_copy"),
+        (
+            "cloud_command_lifecycle_replay_drill: source=software_proof; "
+            "not_proven; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        ),
+    )
+    if (
+        "safe_to_control=false" not in support_drill_copy
+        or "delivery_success=false" not in support_drill_copy
+        or "primary_actions_enabled=false" not in support_drill_copy
+    ):
+        support_drill_copy = (
+            "cloud_command_lifecycle_replay_drill: source=software_proof; "
+            "not_proven; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+        unsafe = True
+    status = str(replay_drill.get("status") or "")
+    if unsafe and not status.startswith("blocked_unsafe"):
+        status = "blocked_unsafe_cloud_command_lifecycle_replay_drill_not_proven"
+    replay_timeline = []
+    # Robot diagnostics 只保留复演需要的三个短字段，避免支持 drill 演变成 replay script。
+    for item in replay_drill.get("replay_timeline") if isinstance(replay_drill.get("replay_timeline"), list) else []:
+        if not isinstance(item, dict):
+            continue
+        stage = _cloud_guard_safe_text(item.get("stage"), "")
+        if not stage:
+            unsafe = True
+            continue
+        replay_timeline.append(
+            {
+                "stage": stage,
+                "status": _cloud_guard_safe_text(item.get("status"), "not_proven"),
+                "safe_copy": _cloud_guard_safe_text(
+                    item.get("safe_copy"),
+                    "lifecycle stage remains not_proven.",
+                ),
+            }
+        )
+    source_next_required = (
+        replay_drill.get("next_required_evidence")
+        if isinstance(replay_drill.get("next_required_evidence"), list)
+        else []
+    )
+    source_not_proven = (
+        list(replay_drill.get("not_proven"))
+        if isinstance(replay_drill.get("not_proven"), list)
+        else []
+    )
+    return {
+        "schema": CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_SCHEMA,
+        "source_schema": CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA,
+        "schema_version": 1,
+        "capability": "cloud_command_lifecycle_replay_drill",
+        "source": "software_proof",
+        "evidence_boundary": CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_EVIDENCE_BOUNDARY,
+        "status": status or "missing_cloud_command_lifecycle_audit_export",
+        "command_id": _cloud_guard_safe_text(replay_drill.get("command_id"), ""),
+        "evidence_ref": _cloud_guard_safe_text(replay_drill.get("evidence_ref"), ""),
+        "lifecycle_state": _cloud_guard_safe_text(replay_drill.get("lifecycle_state"), "not_proven"),
+        "replay_timeline": replay_timeline,
+        "lifecycle_timeline": replay_timeline,
+        "ack_semantics": _cloud_guard_safe_text(
+            replay_drill.get("ack_semantics"),
+            "accepted_processing_only_not_delivery_success",
+        ),
+        "terminal_result_status": _cloud_guard_safe_text(
+            replay_drill.get("terminal_result_status"),
+            "verified_terminal_result_not_proven",
+        ),
+        "next_required_evidence": [
+            _cloud_guard_safe_text(item, "")
+            for item in source_next_required
+            if _cloud_guard_safe_text(item, "")
+        ],
+        "support_drill_copy": support_drill_copy,
+        "safe_copy": support_drill_copy,
+        "safe_phone_copy": _cloud_guard_safe_text(
+            replay_drill.get("safe_phone_copy"),
+            "云命令生命周期复演演练仅为 support drill；主操作保持不可用。",
+        ),
+        "false_states": list(CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_FALSE_STATES),
+        "not_proven": _dedupe_ordered(
+            source_not_proven + list(CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_NOT_PROVEN)
+        ),
+        "remote_ready": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "command_replay_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "missing_lifecycle_state": bool(replay_drill.get("missing_lifecycle_state")),
+        "conflicting_lifecycle_state": bool(replay_drill.get("conflicting_lifecycle_state")),
         "raw_material_redacted": bool(unsafe),
     }
 
@@ -83855,6 +83970,9 @@ def build_diagnostics_payload(
     cloud_command_lifecycle_audit_export_summary = summarize_cloud_command_lifecycle_audit_export(
         cloud_command_lifecycle_audit_export_source
     )
+    cloud_command_lifecycle_replay_drill_summary = summarize_cloud_command_lifecycle_replay_drill(
+        cloud_command_lifecycle_audit_export_summary
+    )
     task_terminal_field_material_intake_source = (
         _task_terminal_field_material_intake_source_from_payloads(
             latest_status,
@@ -86345,6 +86463,9 @@ def build_diagnostics_payload(
     latest_status.pop("cloud_command_lifecycle_audit_export", None)
     latest_status.pop("cloud_command_lifecycle_audit_export_summary", None)
     latest_status.pop("robot_diagnostics_cloud_command_lifecycle_audit_export_summary", None)
+    latest_status.pop("cloud_command_lifecycle_replay_drill", None)
+    latest_status.pop("cloud_command_lifecycle_replay_drill_summary", None)
+    latest_status.pop("robot_diagnostics_cloud_command_lifecycle_replay_drill_summary", None)
     latest_status.pop("cloud_cancel_pending_command_safety_guard", None)
     latest_status.pop("cloud_cancel_pending_command_safety_guard_summary", None)
     latest_status.pop("robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary", None)
@@ -90619,6 +90740,13 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_cloud_command_lifecycle_audit_export_summary=(
             cloud_command_lifecycle_audit_export_summary
+        ),
+        cloud_command_lifecycle_replay_drill=cloud_command_lifecycle_replay_drill_summary,
+        cloud_command_lifecycle_replay_drill_summary=(
+            cloud_command_lifecycle_replay_drill_summary
+        ),
+        robot_diagnostics_cloud_command_lifecycle_replay_drill_summary=(
+            cloud_command_lifecycle_replay_drill_summary
         ),
         route_task_rehearsal=summarize_route_task_rehearsal_artifact(
             route_task_rehearsal_artifact_ref

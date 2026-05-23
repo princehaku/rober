@@ -1,0 +1,91 @@
+{
+  "robot_diagnostics_cloud_command_lifecycle_replay_drill_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_replay_drill_summary.v1",
+    "capability": "cloud_command_lifecycle_replay_drill",
+    "drill_status": "ready_for_cloud_command_lifecycle_replay_drill_not_proven",
+    "source": "software_proof",
+    "command_id": "cmd_lifecycle_replay_drill_20260523_0001",
+    "safe_command_id": "command_id=cmd_lifecycle_replay_drill_20260523_0001",
+    "evidence_ref": "cloud_command_lifecycle_replay_drill_fixture_20260523_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_drill_fixture_20260523_0001",
+    "replay_timeline": [
+      "command_enqueued=not_proven_safe_queue_record",
+      "robot_polled_next_command=not_proven_safe_poll_record",
+      "ack_lookup=accepted_processing_only_not_delivery_success",
+      "accepted_processing=terminal_result_pending_not_proven",
+      "terminal_result=pending"
+    ],
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "terminal_result_status": "pending",
+    "next_required_evidence": [
+      "verified terminal delivery result under same safe evidence_ref",
+      "verified dropoff or cancel completion under same safe evidence_ref",
+      "real public HTTPS/TLS, 4G/SIM, OSS/CDN, production DB/queue, and true phone/browser evidence remain pending"
+    ],
+    "support_drill_copy": "cloud_command_lifecycle_replay_drill：command_id=cmd_lifecycle_replay_drill_20260523_0001；evidence_ref=cloud_command_lifecycle_replay_drill_fixture_20260523_0001；ack_semantics=accepted_processing_only_not_delivery_success；terminal_result_status=pending；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+    "safe_phone_copy": "云命令生命周期复演演练只读可见；ACK 只代表 accepted/processing，terminal result 仍 pending，主操作保持禁用。",
+    "recovery_hint": "把 support_drill_copy 交给支持人员复盘后，等待 Robot/API 或现场 owner 回填 terminal result；手机端不重放、不请求 ACK/cursor，也不提交控制动作。",
+    "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_drill_gate",
+    "proof_boundary": "software_proof_docker_cloud_command_lifecycle_replay_drill_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "real_public_https_tls",
+      "real_4g_sim",
+      "oss_cdn_live_traffic",
+      "production_db_queue",
+      "true_phone_browser_proof",
+      "verified_terminal_result",
+      "hil_pass"
+    ]
+  },
+  "cloud_command_lifecycle_replay_drill_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_replay_drill_summary.v1",
+    "capability": "cloud_command_lifecycle_replay_drill",
+    "drill_status": "ready_for_cloud_command_lifecycle_replay_drill_not_proven",
+    "source": "software_proof",
+    "command_id": "cmd_lifecycle_replay_drill_20260523_0001",
+    "safe_command_id": "command_id=cmd_lifecycle_replay_drill_20260523_0001",
+    "evidence_ref": "cloud_command_lifecycle_replay_drill_fixture_20260523_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_drill_fixture_20260523_0001",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "terminal_result_status": "pending",
+    "support_drill_copy": "cloud_command_lifecycle_replay_drill：command_id=cmd_lifecycle_replay_drill_20260523_0001；evidence_ref=cloud_command_lifecycle_replay_drill_fixture_20260523_0001；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+    "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_drill_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ]
+  },
+  "cloud_command_lifecycle_replay_drill": {
+    "summary": {
+      "schema": "trashbot.cloud_command_lifecycle_replay_drill_summary.v1",
+      "capability": "cloud_command_lifecycle_replay_drill",
+      "drill_status": "ready_for_cloud_command_lifecycle_replay_drill_not_proven",
+      "source": "software_proof",
+      "command_id": "cmd_lifecycle_replay_drill_20260523_0001",
+      "evidence_ref": "cloud_command_lifecycle_replay_drill_fixture_20260523_0001",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "terminal_result_status": "pending",
+      "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_drill_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

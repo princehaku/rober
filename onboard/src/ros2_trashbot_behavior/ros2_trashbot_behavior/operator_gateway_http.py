@@ -45,6 +45,12 @@ CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA = (
 CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_command_lifecycle_audit_export_gate"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_SCHEMA = (
+    "trashbot.cloud_command_lifecycle_replay_drill_summary.v1"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_command_lifecycle_replay_drill_gate"
+)
 VOICE_PROMPT_READINESS_SCHEMA = "trashbot.voice_prompt_readiness.v1"
 VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_voice_prompt_readiness_gate"
 PHONE_OFFLINE_RESUME_READINESS_SCHEMA = "trashbot.phone_offline_resume_readiness.v1"
@@ -467,6 +473,36 @@ CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_NOT_PROVEN = [
 ]
 
 CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_FALSE_STATES = [
+    "source=software_proof",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+]
+
+CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_NOT_PROVEN = [
+    "support_drill_only",
+    "command_replay",
+    "ack_posting",
+    "cursor_mutation",
+    "persistence_mutation",
+    "verified_terminal_result",
+    "delivery_result",
+    "dropoff_completion",
+    "cancel_completion",
+    "real_public_https_tls",
+    "real_4g_or_sim",
+    "production_db_queue",
+    "oss_cdn_live_traffic",
+    "route_elevator_field_pass",
+    "real_phone_device_or_browser",
+    "hil_pass",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
+]
+
+CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_FALSE_STATES = [
     "source=software_proof",
     "not_proven",
     "safe_to_control=false",
@@ -4298,6 +4334,143 @@ def build_cloud_command_lifecycle_audit_export(
     }
 
 
+def build_cloud_command_lifecycle_replay_drill(audit_export, *, now=None):
+    """Build a read-only support drill from the sanitized audit/export summary.
+
+    复演演练只能复用 audit/export 的安全摘要，不读取原始 cloud payload；
+    这样 support 可以复盘时间线，但不会获得重放、ACK 或控制能力。
+    """
+    source = audit_export if isinstance(audit_export, dict) else {}
+    unsupported = bool(source) and source.get("schema") != CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA
+    command_id = _cloud_lifecycle_safe_text(source.get("command_id"), "")
+    evidence_ref = _cloud_lifecycle_safe_text(source.get("evidence_ref"), "")
+    missing_lifecycle_state = bool(
+        source.get("missing_lifecycle_state") or not command_id or not evidence_ref
+    )
+    conflicting_lifecycle_state = bool(source.get("conflicting_lifecycle_state"))
+    unsafe = any(
+        _cloud_lifecycle_safe_text(value, "") == ""
+        and str(value or "").strip()
+        for value in (
+            source.get("copy_export_text"),
+            source.get("safe_copy"),
+            source.get("safe_phone_copy"),
+            source.get("command_id"),
+            source.get("evidence_ref"),
+            source.get("terminal_result_status"),
+        )
+    )
+    unsafe = unsafe or bool(
+        source.get("safe_to_control")
+        or source.get("delivery_success")
+        or source.get("primary_actions_enabled")
+        or source.get("raw_material_redacted")
+    )
+    if not source:
+        drill_status = "missing_cloud_command_lifecycle_audit_export"
+    elif unsupported:
+        drill_status = "blocked_unsupported_cloud_command_lifecycle_audit_export_not_proven"
+    elif unsafe:
+        drill_status = "blocked_unsafe_cloud_command_lifecycle_replay_drill_not_proven"
+    elif conflicting_lifecycle_state:
+        drill_status = "blocked_conflicting_lifecycle_state_not_proven"
+    elif missing_lifecycle_state:
+        drill_status = "blocked_missing_lifecycle_state_not_proven"
+    else:
+        drill_status = "ready_for_cloud_command_lifecycle_replay_drill_not_proven"
+
+    replay_timeline = []
+    # 复演时间线只转写 stage/status/safe_copy，避免把 raw ACK/body 当成可执行脚本。
+    for item in source.get("lifecycle_timeline") if isinstance(source.get("lifecycle_timeline"), list) else []:
+        if not isinstance(item, dict):
+            continue
+        stage = _cloud_lifecycle_safe_text(item.get("stage"), "")
+        if not stage:
+            unsafe = True
+            continue
+        replay_timeline.append(
+            {
+                "stage": stage,
+                "status": _cloud_lifecycle_safe_text(item.get("status"), "not_proven"),
+                "safe_copy": _cloud_lifecycle_safe_text(
+                    item.get("safe_copy"),
+                    "lifecycle stage remains not_proven.",
+                ),
+            }
+        )
+    if unsafe and drill_status == "ready_for_cloud_command_lifecycle_replay_drill_not_proven":
+        drill_status = "blocked_unsafe_cloud_command_lifecycle_replay_drill_not_proven"
+
+    next_required_evidence = []
+    for item in source.get("next_required_evidence") if isinstance(source.get("next_required_evidence"), list) else []:
+        safe_item = _cloud_lifecycle_safe_text(item, "")
+        if safe_item:
+            next_required_evidence.append(safe_item)
+    if not next_required_evidence:
+        next_required_evidence = [
+            "same_safe_command_id",
+            "same_safe_evidence_ref",
+            "verified_terminal_delivery_dropoff_or_cancel_result",
+        ]
+    terminal_result_status = _cloud_lifecycle_safe_text(
+        source.get("terminal_result_status"),
+        "verified_terminal_result_not_proven",
+    )
+    ack_semantics = "accepted_processing_only_not_delivery_success"
+    support_drill_copy = (
+        "cloud_command_lifecycle_replay_drill: "
+        f"command_id={command_id or 'missing'}; "
+        f"evidence_ref={evidence_ref or 'missing'}; "
+        f"ack_semantics={ack_semantics}; "
+        f"terminal_result_status={terminal_result_status}; "
+        f"status={drill_status}; "
+        "source=software_proof; not_proven; safe_to_control=false; "
+        "delivery_success=false; primary_actions_enabled=false."
+    )
+    support_drill_copy = _cloud_lifecycle_safe_text(support_drill_copy, "")
+    return {
+        "schema": CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_SCHEMA,
+        "source_schema": CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_SCHEMA,
+        "schema_version": 1,
+        "api_version": API_VERSION,
+        "capability": "cloud_command_lifecycle_replay_drill",
+        "source": "software_proof",
+        "evidence_boundary": CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_EVIDENCE_BOUNDARY,
+        "status": drill_status,
+        "generated_at": float(now if now is not None else time.time()),
+        "command_id": command_id,
+        "evidence_ref": evidence_ref,
+        "lifecycle_state": _cloud_lifecycle_safe_text(source.get("lifecycle_state"), "not_proven"),
+        "replay_timeline": replay_timeline,
+        "lifecycle_timeline": replay_timeline,
+        "ack_semantics": ack_semantics,
+        "terminal_result_status": terminal_result_status,
+        "next_required_evidence": next_required_evidence,
+        "support_drill_copy": support_drill_copy,
+        "safe_copy": support_drill_copy,
+        "safe_phone_copy": _cloud_lifecycle_safe_text(
+            source.get("safe_phone_copy"),
+            "云命令生命周期复演演练仅为 support drill；主操作保持不可用。",
+        ),
+        "false_states": list(CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_FALSE_STATES),
+        "not_proven": list(CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_NOT_PROVEN),
+        "remote_ready": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "command_replay_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "missing_lifecycle_state": bool(missing_lifecycle_state),
+        "conflicting_lifecycle_state": bool(conflicting_lifecycle_state),
+        "raw_material_redacted": bool(unsafe),
+    }
+
+
 def _voice_prompt_safe_text(value, fallback):
     # 提示词可能来自 status 文件或 task record；自由文本进入手机前必须脱敏。
     text_value = str(value or "").strip()
@@ -5058,6 +5231,7 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         payload,
         payload["phone_readiness"],
     )
+    replay_drill = build_cloud_command_lifecycle_replay_drill(lifecycle_export)
     voice_prompt_readiness = build_voice_prompt_readiness(
         payload,
         payload["phone_readiness"],
@@ -5073,6 +5247,12 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         lifecycle_export
     )
     payload["phone_readiness"]["cloud_command_lifecycle_audit_export"] = dict(lifecycle_export)
+    payload["cloud_command_lifecycle_replay_drill"] = replay_drill
+    payload["cloud_command_lifecycle_replay_drill_summary"] = dict(replay_drill)
+    payload["robot_diagnostics_cloud_command_lifecycle_replay_drill_summary"] = dict(
+        replay_drill
+    )
+    payload["phone_readiness"]["cloud_command_lifecycle_replay_drill"] = dict(replay_drill)
     payload["voice_prompt_readiness"] = voice_prompt_readiness
     payload["phone_readiness"]["voice_prompt_readiness"] = dict(voice_prompt_readiness)
     offline_resume_readiness = build_phone_offline_resume_readiness(
@@ -5107,6 +5287,8 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
         diagnostics_payload,
     )
     phone_readiness["cloud_command_lifecycle_audit_export"] = dict(lifecycle_export)
+    replay_drill = build_cloud_command_lifecycle_replay_drill(lifecycle_export)
+    phone_readiness["cloud_command_lifecycle_replay_drill"] = dict(replay_drill)
     voice_prompt_readiness = build_voice_prompt_readiness(status, phone_readiness, phone_support_bundle)
     offline_resume_readiness = build_phone_offline_resume_readiness(
         status,
@@ -5121,6 +5303,11 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
     diagnostics_payload["cloud_command_lifecycle_audit_export_summary"] = dict(lifecycle_export)
     diagnostics_payload["robot_diagnostics_cloud_command_lifecycle_audit_export_summary"] = dict(
         lifecycle_export
+    )
+    diagnostics_payload["cloud_command_lifecycle_replay_drill"] = replay_drill
+    diagnostics_payload["cloud_command_lifecycle_replay_drill_summary"] = dict(replay_drill)
+    diagnostics_payload["robot_diagnostics_cloud_command_lifecycle_replay_drill_summary"] = dict(
+        replay_drill
     )
     diagnostics_payload["voice_prompt_readiness"] = voice_prompt_readiness
     diagnostics_payload["phone_offline_resume_readiness"] = offline_resume_readiness
@@ -5142,6 +5329,11 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
         latest_status["cloud_command_lifecycle_audit_export_summary"] = dict(lifecycle_export)
         latest_status["robot_diagnostics_cloud_command_lifecycle_audit_export_summary"] = dict(
             lifecycle_export
+        )
+        latest_status["cloud_command_lifecycle_replay_drill"] = replay_drill
+        latest_status["cloud_command_lifecycle_replay_drill_summary"] = dict(replay_drill)
+        latest_status["robot_diagnostics_cloud_command_lifecycle_replay_drill_summary"] = dict(
+            replay_drill
         )
         latest_status["voice_prompt_readiness"] = voice_prompt_readiness
         latest_status["phone_offline_resume_readiness"] = offline_resume_readiness

@@ -26,6 +26,9 @@ CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_FIXTURE = (
 CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_lifecycle_audit_export.json"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_lifecycle_replay_drill.json"
+)
 VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_intake.json"
 )
@@ -457,6 +460,143 @@ class CloudCommandLifecycleAuditExportMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, lifecycle_text)
+
+
+class CloudCommandLifecycleReplayDrillMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_command_lifecycle_replay_drill_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # replay drill 只消费 Robot/API safe summary；手机端不新增控制、ACK/cursor 或 raw 诊断入口。
+        self.assertIn("CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_BOUNDARY", app)
+        self.assertIn("UNSAFE_CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_TEXT", app)
+        self.assertIn("safeCloudCommandLifecycleReplayDrillText", app)
+        self.assertIn("cloudCommandLifecycleReplayDrillCandidate", app)
+        self.assertIn("cloudCommandLifecycleReplayDrillFromStatus", app)
+        self.assertIn("renderCloudCommandLifecycleReplayDrill", app)
+        self.assertIn("云命令生命周期复演演练", app)
+        self.assertIn("robot_diagnostics_cloud_command_lifecycle_replay_drill_summary", app)
+        self.assertIn("cloud_command_lifecycle_replay_drill_summary", app)
+        self.assertIn("cloud_command_lifecycle_replay_drill?.summary", app)
+        self.assertIn("support_drill_copy", app)
+        self.assertIn("command_id", app)
+        self.assertIn("evidence_ref", app)
+        self.assertIn("replay_timeline", app)
+        self.assertIn("ack_semantics", app)
+        self.assertIn("terminal_result_status", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(
+            app,
+            r"cloudCommandLifecycleReplayDrill.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackCloudCommandLifecycleReplayDrill",
+            "cursorCloudCommandLifecycleReplayDrill",
+            "fetchCloudCommandLifecycleReplayDrillDiagnostics",
+            "replayCloudCommandLifecycleReplayDrill",
+            "resubmitCloudCommandLifecycleReplayDrill",
+            "commandCloudCommandLifecycleReplayDrill",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # fixture 明确 replay drill 是 support 演练，不是命令 replay/resubmit，也不是送达证明。
+        summary = fixture["robot_diagnostics_cloud_command_lifecycle_replay_drill_summary"]
+        fallback = fixture["cloud_command_lifecycle_replay_drill_summary"]
+        nested = fixture["cloud_command_lifecycle_replay_drill"]["summary"]
+        self.assertEqual(summary["capability"], "cloud_command_lifecycle_replay_drill")
+        self.assertEqual(summary["drill_status"], "ready_for_cloud_command_lifecycle_replay_drill_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["ack_semantics"], "accepted_processing_only_not_delivery_success")
+        self.assertEqual(summary["terminal_result_status"], "pending")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("cmd_lifecycle_replay_drill_20260523_0001", summary["command_id"])
+        self.assertIn("cloud_command_lifecycle_replay_drill_fixture", summary["evidence_ref"])
+        self.assertIn("support_drill_copy", summary)
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        for required in (
+            "cloud_command_lifecycle_replay_drill",
+            "robot_diagnostics_cloud_command_lifecycle_replay_drill_summary",
+            "software_proof_docker_cloud_command_lifecycle_replay_drill_gate",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "command_id=cmd_lifecycle_replay_drill_20260523_0001",
+            "evidence_ref=cloud_command_lifecycle_replay_drill_fixture_20260523_0001",
+        ):
+            self.assertIn(required, fixture_text)
+
+        # 产品文档必须声明 read-only contract 和 fail-closed 手机边界。
+        self.assertIn("cloud_command_lifecycle_replay_drill", doc)
+        self.assertIn("robot_diagnostics_cloud_command_lifecycle_replay_drill_summary", doc)
+        self.assertIn("software_proof_docker_cloud_command_lifecycle_replay_drill_gate", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not HIL", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_cloud_command_lifecycle_replay_drill_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_FIXTURE.read_text(encoding="utf-8"))
+        drill_text = json.dumps(
+            {
+                "robot": fixture["robot_diagnostics_cloud_command_lifecycle_replay_drill_summary"],
+                "fallback": fixture["cloud_command_lifecycle_replay_drill_summary"],
+                "nested": fixture["cloud_command_lifecycle_replay_drill"]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留复演演练 metadata，不泄漏 raw 入口、凭证、路径、底盘细节或控制授权。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw status",
+            "raw command",
+            "command route",
+            "ack route",
+            "cursor route",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "ack payload",
+            "cursor request",
+            "replay request",
+            "resubmit request",
+            "robot command",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, drill_text)
 
 
 class VerifiedTerminalResultMaterialIntakeMobileTest(unittest.TestCase):

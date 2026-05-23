@@ -35,6 +35,8 @@ const CLOUD_TERMINAL_RESULT_VERIFICATION_BOUNDARY = "software_proof_docker_cloud
 const CLOUD_TERMINAL_RESULT_VERIFICATION_COPY = "命令/result 字段存在，但 verified terminal delivery、dropoff 或 cancel result 仍缺失；主操作保持禁用，请等待结果或联系支持。";
 const CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_BOUNDARY = "software_proof_docker_cloud_command_lifecycle_audit_export_gate";
 const CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_COPY = "命令生命周期审计只读可见；缺 verified terminal delivery/dropoff/cancel result，主操作保持禁用。";
+const CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_BOUNDARY = "software_proof_docker_cloud_command_lifecycle_replay_drill_gate";
+const CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_COPY = "云命令生命周期复演演练只读可见；ACK 只代表 accepted/processing，terminal result 仍 pending，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_BOUNDARY = "software_proof_docker_verified_terminal_result_material_intake_gate";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_COPY = "verified terminal result material intake 只读可见；材料回填不等于 delivery success，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_verified_terminal_result_material_review_decision_gate";
@@ -327,6 +329,7 @@ const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_HANDOFF_REVIEW_HANDOFF_SUMMAR
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|complete artifact|artifact|raw browser event|raw event|raw promise|complete ua|full ua|完整 ua|raw robot response|raw intake json|robot\/internal|internal technical)/i;
 const UNSAFE_CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_TEXT = /(authorization|bearer|token|github[_ -]?token|github action|gh workflow|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|robot\/internal|internal technical|password|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|command route|ack route|cursor route|robot\/internal|internal technical|password|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
+const UNSAFE_CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|command route|ack route|cursor route|diagnostics fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|raw decision|review route|command route|ack route|cursor route|diagnostics fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|raw decision|raw handoff|review route|handoff route|command route|ack route|cursor route|diagnostics fetch|artifact fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
@@ -605,6 +608,7 @@ let latestFieldEvidenceMaterialResolutionReviewerAckReviewHandoff = null;
 let latestFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatus = null;
 let latestCloudSupportHandoffSafeExport = null;
 let latestCloudCommandLifecycleAuditExport = null;
+let latestCloudCommandLifecycleReplayDrill = null;
 let latestVerifiedTerminalResultMaterialIntake = null;
 let latestVerifiedTerminalResultMaterialReviewDecision = null;
 let latestVerifiedTerminalResultMaterialReviewHandoff = null;
@@ -1672,6 +1676,15 @@ function safeCloudCommandLifecycleAuditExportText(value, fallback = "not_proven"
   // lifecycle audit/export 只展示后端脱敏摘要，拒绝 raw command、ACK/cursor 路由和任何成功/控制授权暗示。
   const text = safeText(value, fallback);
   if (UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeCloudCommandLifecycleReplayDrillText(value, fallback = "not_proven") {
+  // replay drill 只能复演 safe summary；任何 raw route、重放请求或成功暗示都退回 not_proven。
+  const text = safeText(value, fallback);
+  if (UNSAFE_CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -45538,6 +45551,263 @@ function renderCloudCommandLifecycleAuditExport(status) {
   $("cloudCommandLifecycleAuditExportHint").textContent = summary.recovery_hint;
 }
 
+function cloudCommandLifecycleReplayDrillCandidate(status, readiness, diagnostics) {
+  // Robot/API 的专用 replay drill summary 是第一优先级；兼容字段只从既有 safe status/diagnostics 聚合面读取。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.cloud_command_lifecycle_replay_drill?.summary ||
+    readiness?.cloud_command_lifecycle_replay_drill?.summary ||
+    diagnostics?.cloud_command_lifecycle_replay_drill?.summary ||
+    diagnosticsSummary.cloud_command_lifecycle_replay_drill?.summary ||
+    nestedDiagnosticsSummary.cloud_command_lifecycle_replay_drill?.summary ||
+    nestedDiagnosticsInnerSummary.cloud_command_lifecycle_replay_drill?.summary ||
+    statusDiagnosticsSummary.cloud_command_lifecycle_replay_drill?.summary;
+  return firstObject(
+    status?.robot_diagnostics_cloud_command_lifecycle_replay_drill_summary,
+    readiness?.robot_diagnostics_cloud_command_lifecycle_replay_drill_summary,
+    diagnostics?.robot_diagnostics_cloud_command_lifecycle_replay_drill_summary,
+    diagnosticsReadiness.robot_diagnostics_cloud_command_lifecycle_replay_drill_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_drill_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_drill_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_cloud_command_lifecycle_replay_drill_summary,
+    statusDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_drill_summary,
+    status?.cloud_command_lifecycle_replay_drill_summary,
+    readiness?.cloud_command_lifecycle_replay_drill_summary,
+    diagnostics?.cloud_command_lifecycle_replay_drill_summary,
+    diagnosticsReadiness.cloud_command_lifecycle_replay_drill_summary,
+    diagnosticsSummary.cloud_command_lifecycle_replay_drill_summary,
+    nestedDiagnosticsSummary.cloud_command_lifecycle_replay_drill_summary,
+    nestedDiagnosticsInnerSummary.cloud_command_lifecycle_replay_drill_summary,
+    statusDiagnosticsSummary.cloud_command_lifecycle_replay_drill_summary,
+    artifactSummary,
+  );
+}
+
+function cloudCommandLifecycleReplayDrillList(value, fallback) {
+  // timeline/evidence 允许数组或 map，但每项都先压成 phone-safe 短句，避免把完整材料包搬进手机端。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        const key = safeCloudCommandLifecycleReplayDrillText(item[0], "");
+        const detail = safeCloudCommandLifecycleReplayDrillText(item[1], "");
+        return key && detail ? `${key}=${detail}` : key || detail;
+      }
+      if (item && typeof item === "object") {
+        const step = safeCloudCommandLifecycleReplayDrillText(
+          item.stage || item.step || item.lifecycle_state || item.status || item.safe_summary,
+          "",
+        );
+        const detail = safeCloudCommandLifecycleReplayDrillText(
+          item.result || item.summary || item.safe_phone_copy || item.next_action,
+          "",
+        );
+        return step && detail ? `${step}: ${detail}` : step || detail;
+      }
+      return safeCloudCommandLifecycleReplayDrillText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 12) : [fallback];
+}
+
+function cloudCommandLifecycleReplayDrillNotProvenList(value) {
+  // 复演演练只帮助支持人员复盘生命周期，不能把 ACK 或 pending result 升级成真实送达。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "source=software_proof",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "real_public_https_tls",
+    "real_4g_sim",
+    "oss_cdn_live_traffic",
+    "production_db_queue",
+    "true_phone_browser_proof",
+    "verified_terminal_result",
+    "dropoff_cancel_completion",
+    "hil_pass",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 24);
+}
+
+function cloudCommandLifecycleReplayDrillFromStatus(status, readiness, diagnostics) {
+  const provided = cloudCommandLifecycleReplayDrillCandidate(status, readiness, diagnostics) || {};
+  const safeCommandId = safeCloudCommandLifecycleReplayDrillText(
+    provided.safe_command_id || provided.command_id,
+    "command_id=not_proven",
+  );
+  const safeEvidenceRef = safeCloudCommandLifecycleReplayDrillText(
+    provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+    "evidence_ref=not_proven",
+  );
+  const supportDrillCopy = safeCloudCommandLifecycleReplayDrillText(
+    provided.support_drill_copy || provided.safe_support_drill_copy || provided.safe_copy,
+    "",
+  );
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.cloud_command_lifecycle_replay_drill_summary.v1",
+    capability: safeCloudCommandLifecycleReplayDrillText(
+      provided.capability,
+      "cloud_command_lifecycle_replay_drill",
+    ),
+    source: safeCloudCommandLifecycleReplayDrillText(provided.source, "software_proof"),
+    drill_status: safeCloudCommandLifecycleReplayDrillText(
+      provided.drill_status || provided.replay_drill_status || provided.status || provided.overall_status,
+      "blocked_missing_cloud_command_lifecycle_replay_drill_not_proven",
+    ),
+    safe_command_id: safeCommandId,
+    safe_evidence_ref: safeEvidenceRef,
+    replay_timeline: cloudCommandLifecycleReplayDrillList(
+      provided.replay_timeline || provided.lifecycle_timeline || provided.timeline || provided.lifecycle_stages,
+      "等待 command enqueue、robot poll、ACK accepted/processing、terminal-result pending 复演摘要。",
+    ),
+    ack_semantics: safeCloudCommandLifecycleReplayDrillText(
+      provided.ack_semantics || provided.ack_status || provided.ack_summary,
+      "accepted_processing_only_not_delivery_success",
+    ),
+    terminal_result_status: safeCloudCommandLifecycleReplayDrillText(
+      provided.terminal_result_status || provided.result_status || provided.verified_terminal_result_status,
+      "pending",
+    ),
+    next_required_evidence: cloudCommandLifecycleReplayDrillList(
+      provided.next_required_evidence || provided.required_evidence,
+      "需要同一 safe evidence_ref 的 verified terminal delivery/dropoff/cancel result 和真实外部材料。",
+    ),
+    support_drill_copy_status: supportDrillCopy ? "support_drill_copy_available" : "support_drill_copy_unavailable",
+    support_drill_copy: supportDrillCopy || "support_drill_copy_unavailable",
+    safe_phone_copy: safeCloudCommandLifecycleReplayDrillText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary,
+      CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_COPY,
+    ),
+    recovery_hint: safeCloudCommandLifecycleReplayDrillText(
+      provided.recovery_hint || provided.retry_hint,
+      "等待 Robot/API 或现场 owner 回填 terminal result；手机端不重放、不请求 ACK/cursor，也不提交控制动作。",
+    ),
+    evidence_boundary: safeCloudCommandLifecycleReplayDrillText(
+      provided.evidence_boundary || provided.proof_boundary,
+      CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_BOUNDARY,
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: cloudCommandLifecycleReplayDrillNotProvenList(provided),
+  };
+}
+
+function ensureCloudCommandLifecycleReplayDrillPanel() {
+  // replay drill 紧跟 audit export，让支持同学先看到审计边界，再复演同一 command/evidence_ref 生命周期。
+  let panel = $("cloudCommandLifecycleReplayDrillPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("cloudCommandLifecycleAuditExportTitle")?.closest("section") ||
+    $("cloudSupportHandoffSafeExportTitle")?.closest("section") ||
+    $("cloudReadinessTitle")?.closest("section") ||
+    $("supportTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "cloudCommandLifecycleReplayDrillPanel";
+  panel.className = "cloud-command-lifecycle-replay-drill-panel";
+  panel.setAttribute("aria-labelledby", "cloudCommandLifecycleReplayDrillTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="cloudCommandLifecycleReplayDrillTitle">云命令生命周期复演演练</h2>
+      <span id="cloudCommandLifecycleReplayDrillBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="cloudCommandLifecycleReplayDrillCopy" class="message">
+      等待 robot_diagnostics_cloud_command_lifecycle_replay_drill_summary。
+    </p>
+    <dl class="cloud-command-lifecycle-replay-drill-grid">
+      <div><dt>Drill Status</dt><dd id="cloudCommandLifecycleReplayDrillStatus">blocked_missing_cloud_command_lifecycle_replay_drill_not_proven</dd></div>
+      <div><dt>Command ID</dt><dd id="cloudCommandLifecycleReplayDrillCommandId">command_id=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="cloudCommandLifecycleReplayDrillEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>ACK Semantics</dt><dd id="cloudCommandLifecycleReplayDrillAck">accepted_processing_only_not_delivery_success</dd></div>
+      <div><dt>Terminal Result</dt><dd id="cloudCommandLifecycleReplayDrillTerminalResult">pending</dd></div>
+      <div><dt>Support Drill Copy</dt><dd id="cloudCommandLifecycleReplayDrillCopyState">support_drill_copy_unavailable</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="cloudCommandLifecycleReplayDrillBoundary">software_proof_docker_cloud_command_lifecycle_replay_drill_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="cloudCommandLifecycleReplayDrillFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="cloudCommandLifecycleReplayDrillNotProven">真实公网、4G、OSS/CDN、DB/queue、真实手机/browser、terminal result、HIL 和 delivery_success=false 边界未解除。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section>
+        <h3>Lifecycle Timeline</h3>
+        <ol id="cloudCommandLifecycleReplayDrillTimeline" class="handoff-checklist">
+          <li>等待 replay timeline。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Next Required Evidence</h3>
+        <ol id="cloudCommandLifecycleReplayDrillNextEvidence" class="handoff-checklist">
+          <li>等待 next required evidence。</li>
+        </ol>
+      </section>
+    </div>
+    <pre id="cloudCommandLifecycleReplayDrillSafeCopy" class="safe-copy" aria-label="cloud_command_lifecycle_replay_drill support_drill_copy">support_drill_copy_unavailable</pre>
+    <p id="cloudCommandLifecycleReplayDrillHint" class="hint">
+      本 panel 只消费 Robot/API 提供的 safe replay drill summary；不会请求 raw diagnostics、raw JSON、command route、ACK route、cursor route、raw artifact，也不会 replay/resubmit 或启用 Start Delivery、Confirm Dropoff、Cancel。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderCloudCommandLifecycleReplayDrill(status) {
+  const panel = ensureCloudCommandLifecycleReplayDrillPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = cloudCommandLifecycleReplayDrillFromStatus(status, readiness, latestDiagnostics);
+  latestCloudCommandLifecycleReplayDrill = summary;
+  const badge = $("cloudCommandLifecycleReplayDrillBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 replay drill 摘要" : "replay drill not_proven";
+  $("cloudCommandLifecycleReplayDrillCopy").textContent = summary.safe_phone_copy;
+  $("cloudCommandLifecycleReplayDrillStatus").textContent = `${summary.source} / ${summary.drill_status}`;
+  $("cloudCommandLifecycleReplayDrillCommandId").textContent = summary.safe_command_id;
+  $("cloudCommandLifecycleReplayDrillEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("cloudCommandLifecycleReplayDrillAck").textContent = summary.ack_semantics;
+  $("cloudCommandLifecycleReplayDrillTerminalResult").textContent = summary.terminal_result_status;
+  $("cloudCommandLifecycleReplayDrillCopyState").textContent = summary.support_drill_copy_status;
+  $("cloudCommandLifecycleReplayDrillBoundary").textContent = summary.evidence_boundary;
+  $("cloudCommandLifecycleReplayDrillFlags").textContent = summary.boundary_flags;
+  $("cloudCommandLifecycleReplayDrillNotProven").textContent = summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayDrillTimeline",
+    summary.replay_timeline,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayDrillNextEvidence",
+    summary.next_required_evidence,
+  );
+  $("cloudCommandLifecycleReplayDrillSafeCopy").textContent = summary.support_drill_copy;
+  $("cloudCommandLifecycleReplayDrillHint").textContent = summary.recovery_hint;
+}
+
 function verifiedTerminalResultMaterialIntakeCandidate(status, readiness, diagnostics) {
   // 只从 status/readiness/diagnostics 的 safe summary 取值；前端不拉 raw diagnostics、ACK/cursor 或 command route。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -45812,12 +46082,13 @@ function verifiedTerminalResultMaterialIntakeCopyPayload(summary) {
 }
 
 function ensureVerifiedTerminalResultMaterialIntakePanel() {
-  // intake panel 紧跟 lifecycle audit，强调 terminal result 材料只是待复核输入，不是 delivery success。
+  // intake panel 紧跟 replay drill，强调 terminal result 材料只是待复核输入，不是 delivery success。
   let panel = $("verifiedTerminalResultMaterialIntakePanel");
   if (panel) {
     return panel;
   }
-  const anchor = $("cloudCommandLifecycleAuditExportTitle")?.closest("section") ||
+  const anchor = $("cloudCommandLifecycleReplayDrillTitle")?.closest("section") ||
+    $("cloudCommandLifecycleAuditExportTitle")?.closest("section") ||
     $("cloudSupportHandoffSafeExportTitle")?.closest("section") ||
     $("cloudReadinessTitle")?.closest("section") ||
     $("supportTitle")?.closest("section");
@@ -52311,6 +52582,7 @@ function renderOfflineFailure() {
   renderFieldEvidenceMaterialResolutionReviewerAckFollowupEscalationStatus({});
   renderCloudSupportHandoffSafeExport({});
   renderCloudCommandLifecycleAuditExport({});
+  renderCloudCommandLifecycleReplayDrill({});
   renderVerifiedTerminalResultMaterialIntake({});
   renderVerifiedTerminalResultMaterialReviewDecision({});
   renderVerifiedTerminalResultMaterialReviewHandoff({});
@@ -52498,6 +52770,7 @@ function renderStatus(status) {
   renderCloudReadiness(status);
   renderCloudSupportHandoffSafeExport(status);
   renderCloudCommandLifecycleAuditExport(status);
+  renderCloudCommandLifecycleReplayDrill(status);
   renderVerifiedTerminalResultMaterialIntake(status);
   renderVerifiedTerminalResultMaterialReviewDecision(status);
   renderVerifiedTerminalResultMaterialReviewHandoff(status);
@@ -52844,6 +53117,7 @@ async function openDiagnostics() {
     renderFieldEvidenceMaterialResolutionOwnerResponseReviewHandoff(latestStatus || {});
     renderCloudSupportHandoffSafeExport(latestStatus || {});
     renderCloudCommandLifecycleAuditExport(latestStatus || {});
+    renderCloudCommandLifecycleReplayDrill(latestStatus || {});
     renderVerifiedTerminalResultMaterialIntake(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewDecision(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewHandoff(latestStatus || {});
