@@ -132,6 +132,15 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_SCHEMA = (
 CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_cli_export_gate"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_HTTP_EXPORT_CAPABILITY = (
+    "cloud_command_lifecycle_replay_acceptance_packet_http_export"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_HTTP_EXPORT_SCHEMA = (
+    "trashbot.cloud_command_lifecycle_replay_acceptance_packet_http_export.v1"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_HTTP_EXPORT_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate"
+)
 ACCEPTED_PROCESSING_ONLY_ACK_SEMANTICS = "accepted_processing_only_not_delivery_success"
 TERMINAL_RESULT_PENDING_STATUS = "terminal_result_pending"
 OSS_CDN_BUCKET = "bytegallop"
@@ -7916,6 +7925,64 @@ def build_cloud_command_lifecycle_replay_acceptance_packet_cli_export_payload(*,
     return safe_value(payload)
 
 
+def build_cloud_command_lifecycle_replay_acceptance_packet_http_export_payload(*, now=None):
+    """构造 support HTTP GET 的只读验收包导出 payload。"""
+    # HTTP export 必须复用 CLI builder，避免 route 和 CLI 分叉出两套验收包协议。
+    cli_export = build_cloud_command_lifecycle_replay_acceptance_packet_cli_export_payload(now=now)
+    generated_at = _utc_iso(now if now is not None else _now())
+    payload = {
+        "ok": True,
+        "schema": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_HTTP_EXPORT_SCHEMA,
+        "schema_version": 1,
+        "capability": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_HTTP_EXPORT_CAPABILITY,
+        "source": "software_proof",
+        "evidence_boundary": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_HTTP_EXPORT_EVIDENCE_BOUNDARY
+        ),
+        "generated_at": generated_at,
+        "artifact_status": "http_export_ready_for_field_owner_review_not_proven",
+        "source_cli_export_capability": cli_export["capability"],
+        "source_cli_export_evidence_boundary": cli_export["evidence_boundary"],
+        "source_packet_capability": cli_export["source_packet_capability"],
+        "source_packet_evidence_boundary": cli_export["source_packet_evidence_boundary"],
+        "ack_semantics": cli_export["ack_semantics"],
+        "terminal_result_status": cli_export["terminal_result_status"],
+        "owner_handoff": cli_export["owner_handoff"],
+        "next_required_evidence": list(cli_export["next_required_evidence"]),
+        "source_cli_export": cli_export,
+        "safe_summary": (
+            "HTTP GET export reads support / field-owner review metadata only; "
+            "it is not delivery success, not true phone/browser proof, "
+            "and no OKR percentage lift."
+        ),
+        "redaction_status": "passed",
+        "http_route": "/api/support/cloud-command-lifecycle-replay-acceptance-packet-export",
+        "http_method": "GET",
+        "phone_safe": True,
+        "support_safe": True,
+        "read_only": True,
+        # 这些 false flag 是 GET route 的安全合同，防止 support API 被误接成控制面。
+        "not_proven": list(CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_NOT_PROVEN),
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "command_replay_allowed": False,
+        "command_resubmit_allowed": False,
+        "material_upload_allowed": False,
+        "review_action_allowed": False,
+        "github_action_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+    }
+    if _cloud_command_lifecycle_replay_acceptance_packet_cli_export_has_unsafe_material(payload):
+        raise ValueError("cloud command lifecycle replay acceptance packet HTTP export is unsafe")
+    return safe_value(payload)
+
+
 def create_cloud_command_lifecycle_replay_acceptance_packet_cli_export_artifact(artifact_path):
     # 导出命令只写 JSON artifact，不启动 HTTP server，不触碰 state store、ACK 或机器人控制面。
     payload = build_cloud_command_lifecycle_replay_acceptance_packet_cli_export_payload()
@@ -8507,6 +8574,13 @@ def make_handler(store, bearer_token):
             if parsed.path == "/api/diagnostics":
                 # diagnostics 给支持人员复现 blocked 状态，不能泄露 token、路径或 ROS/硬件细节。
                 self._send_json(200, cloud_hosted_mobile_web_diagnostics_payload(store))
+                return
+            if parsed.path == "/api/support/cloud-command-lifecycle-replay-acceptance-packet-export":
+                # support GET route 只构造安全 JSON，不读取或修改 command/status/ACK state。
+                self._send_json(
+                    200,
+                    build_cloud_command_lifecycle_replay_acceptance_packet_http_export_payload(),
+                )
                 return
             route = _route(parsed.path)
             if not route:

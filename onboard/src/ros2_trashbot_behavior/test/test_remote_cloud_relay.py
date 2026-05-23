@@ -376,6 +376,103 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(status, 404)
         self.assertEqual(payload["error"]["code"], "status_missing")
 
+    def test_cloud_command_lifecycle_replay_acceptance_packet_http_export_is_support_safe(self):
+        status, payload = self.client.request(
+            "GET",
+            "/api/support/cloud-command-lifecycle-replay-acceptance-packet-export",
+            token="",
+        )
+        encoded = json.dumps(payload, ensure_ascii=False)
+
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(
+            payload["capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet_http_export",
+        )
+        self.assertEqual(
+            payload["evidence_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate",
+        )
+        self.assertEqual(
+            payload["source_cli_export_capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet_cli_export",
+        )
+        self.assertEqual(
+            payload["source_cli_export_evidence_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_cli_export_gate",
+        )
+        self.assertEqual(
+            payload["source_packet_evidence_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate",
+        )
+        self.assertEqual(payload["ack_semantics"], "accepted_processing_only_not_delivery_success")
+        self.assertEqual(payload["terminal_result_status"], "terminal_result_pending")
+        self.assertIn("owner_handoff", payload)
+        self.assertIn("next_required_evidence", payload)
+        self.assertEqual(payload["redaction_status"], "passed")
+        self.assertTrue(payload["read_only"])
+        self.assertTrue(payload["phone_safe"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["primary_actions_enabled"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["ack_post_allowed"])
+        self.assertFalse(payload["cursor_updates_allowed"])
+        self.assertFalse(payload["persistence_updates_allowed"])
+        self.assertFalse(payload["command_replay_allowed"])
+        self.assertFalse(payload["command_resubmit_allowed"])
+        self.assertFalse(payload["material_upload_allowed"])
+        self.assertFalse(payload["github_action_allowed"])
+        self.assertFalse(payload["robot_command_side_effects_allowed"])
+        self.assertIn("not_proven", payload)
+        self.assertIn("not true phone/browser proof", encoded)
+        self.assertIn("no OKR percentage lift", encoded)
+        self.assertIn("not delivery success", encoded)
+        for forbidden in (
+            "phone-token",
+            "Authorization",
+            "Bearer",
+            "raw_path",
+            str(REPO_ROOT),
+            "/cmd_vel",
+            "ttyUSB",
+            "serial",
+            "baudrate",
+            "WAVE ROVER",
+            "traceback",
+            "complete artifact",
+            "checksum",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_http_export_has_no_state_side_effects(self):
+        status, _ = self.client.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "delivering",
+                "message": "state exists before support export",
+                "updated_at": time.time(),
+            },
+        )
+        self.assertEqual(status, 200)
+        before = self.state_path.read_text(encoding="utf-8")
+
+        status, payload = self.client.request(
+            "GET",
+            "/api/support/cloud-command-lifecycle-replay-acceptance-packet-export",
+            token="",
+        )
+        after = self.state_path.read_text(encoding="utf-8")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["capability"], "cloud_command_lifecycle_replay_acceptance_packet_http_export")
+        self.assertEqual(before, after)
+
     def test_mobile_web_phone_safe_api_uses_default_robot_id_and_fails_closed(self):
         with mock.patch.dict(os.environ, {"TRASHBOT_REMOTE_CLOUD_DEFAULT_ROBOT_ID": "robot-web-42"}):
             status, payload = self.client.request("GET", "/api/status", token="")

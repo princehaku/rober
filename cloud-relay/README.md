@@ -81,6 +81,32 @@ PYTHONPATH=../onboard/src/ros2_trashbot_behavior python3 -m ros2_trashbot_behavi
 
 该 CLI export 是 support / field-owner review metadata，不 replay/resubmit command、不 post ACK、不 mutate cursor/state、不上传材料、不触发 GitHub action、Nav2 或机器人控制。它仍然 not delivery success、not true phone/browser proof、not real external cloud proof、not production DB/queue、not worker/cutover、not HIL、not PR #5 resolution；no OKR percentage lift。
 
+## Command lifecycle acceptance packet HTTP export
+
+支持/field owner 也可以从 independent relay HTTP server 读取同源验收包：
+
+```text
+GET /api/support/cloud-command-lifecycle-replay-acceptance-packet-export
+```
+
+该 route 不要求 bearer auth，因为它和 `/api/status` 一样只返回 phone-safe /
+support-safe JSON。响应 capability 是
+`cloud_command_lifecycle_replay_acceptance_packet_http_export`，证据边界是
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate`。
+响应由 CLI export helper 生成同源材料，并保留 CLI export boundary
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_cli_export_gate`、
+源 packet boundary `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate`、
+`accepted_processing_only_not_delivery_success`、`terminal_result_pending`、
+`owner_handoff`、`next_required_evidence`、`not_proven`、
+`delivery_success=false`、`primary_actions_enabled=false`、
+`safe_to_control=false` 和 `redaction_status=passed`。
+
+该 HTTP export 只是 support / field-owner review metadata，不 replay/resubmit
+command、不 post ACK、不 mutate cursor/state、不上传材料、不触发 GitHub action、
+Nav2 或机器人控制，也不写 delivery success。它仍然 not delivery success、not
+true phone/browser proof、not real external cloud proof、not production DB/queue、
+not worker/cutover、not HIL、not PR #5 resolution；no OKR percentage lift。
+
 ## Cloud-hosted mobile web shell
 
 `remote_cloud_relay` 现在在同一个 HTTP server 上服务 `mobile/web/` 静态壳：

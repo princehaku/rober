@@ -8,6 +8,28 @@
 
 ## 2026-05-24 系列
 
+更新时间：2026-05-24 07:44 Asia/Shanghai。
+
+### 2026-05-24 07-08｜cloud-command-lifecycle-acceptance-http-export｜command lifecycle acceptance packet HTTP export
+
+本轮 `sprints/2026.05.24_07-08_cloud-command-lifecycle-acceptance-http-export/` 执行 `cloud_command_lifecycle_replay_acceptance_packet_http_export` epic closeout。用户价值是让 support reviewer 和 field owner 能通过 independent cloud relay 的只读 HTTP GET route 获取上一轮 CLI/Docker smoke 已复核的 command lifecycle replay acceptance packet，而不是依赖 SSH、CLI 参数、抓 smoke log、重放 command、post ACK、mutate cursor/persistence、上传材料、触发 GitHub action、Nav2 或机器人控制。本轮边界为 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate`。
+
+Task A Full-Stack worker 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py`、`cloud-relay/README.md`、`docs/product/remote_4g_mvp.md` 和 `docs/product/cloud_4g_infrastructure.md`。新增免 bearer 的只读 GET route `/api/support/cloud-command-lifecycle-replay-acceptance-packet-export`，返回 `cloud_command_lifecycle_replay_acceptance_packet_http_export` JSON payload。Payload 保留源 CLI export boundary `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_cli_export_gate`、源 packet boundary `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate`、`accepted_processing_only_not_delivery_success`、`terminal_result_pending`、`owner_handoff`、`next_required_evidence`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false` 和 `redaction_status=passed`。验证通过：`py_compile` passed；系统 Python 缺 pytest 后复用 `/tmp/rober-pytest-venv`，focused pytest 输出 `2 passed, 77 deselected`；required `rg` passed；scoped `git diff --check` passed。
+
+Task B Robot consultation changed no files。Robot/API diagnostics already expose `cloud_command_lifecycle_replay_acceptance_packet`、`cloud_command_lifecycle_replay_acceptance_packet_summary` and `robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary` with fail-closed flags, accepted-processing-only semantics, terminal-result pending, owner handoff, next evidence, and disabled ACK/cursor/replay/material/GitHub/robot/Nav2/HIL side effects。Robot required `rg` 首轮失败仅因为本 sprint `tech-done.md` 尚未存在；Robot scoped `git diff --check` passed。
+
+PR #5 status preserved：`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。本轮保留 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`；不是 O5 external proof，不是 public HTTPS/TLS，不是 4G/SIM，不是 OSS/CDN live traffic，不是 production DB/queue，不是 worker/cutover，不是 O1 HIL，不是 WAVE ROVER/UART proof，不是 LiDAR/ToF installed proof，不是 PR #5 resolved，不是 true phone/browser proof，不是 route/elevator field pass，不是 Nav2/fixed-route runtime pass，不是 dropoff/cancel completion，不是 verified terminal result，不是 delivery result，也不是 delivery success；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰硬件桥、串口、WAVE ROVER、UART、HIL、2D LiDAR / ToF 或 vendor-source 材料；PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只证明 HTTP export payload 保持 ACK accepted/processing only、terminal result pending、owner handoff 和 fail-closed；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal result、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；HTTP export 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | 本轮没有真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice 或 true phone/browser acceptance；not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate` 只证明 Docker/local independent relay HTTP route 能导出已复核的 command lifecycle replay acceptance packet、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Task A `py_compile` / focused pytest、Product closeout required file checks、required `rg`、scoped `git diff --check` 和 `git diff --cached --check` 通过。Docs 同步已覆盖 `cloud-relay/README.md`、`docs/product/remote_4g_mvp.md`、`docs/product/cloud_4g_infrastructure.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。Product 未运行 broad tests 或全仓库中文注释比例复算；本轮只记录 worker-scoped 验证、Robot read-only consultation 和 closeout 证据。
+
 更新时间：2026-05-24 06:16 Asia/Shanghai。
 
 ### 2026-05-24 06-07｜cloud-command-lifecycle-acceptance-cli-export｜command lifecycle acceptance packet CLI export

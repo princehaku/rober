@@ -178,6 +178,35 @@ percentage lift. It does not replay or resubmit commands, post ACKs, mutate
 cursors or persistence, upload materials, perform a GitHub action, trigger
 Nav2, touch WAVE ROVER, use UART, or authorize robot control.
 
+The independent relay HTTP server now exposes the same support / field-owner
+review metadata through a read-only route:
+
+```text
+GET /api/support/cloud-command-lifecycle-replay-acceptance-packet-export
+```
+
+The HTTP export capability is
+`cloud_command_lifecycle_replay_acceptance_packet_http_export`, with evidence
+boundary
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate`.
+It is built from the CLI export helper, so it preserves the CLI export boundary
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_cli_export_gate`,
+the source packet boundary
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate`,
+`accepted_processing_only_not_delivery_success`, `terminal_result_pending`,
+`owner_handoff`, `next_required_evidence`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`,
+`safe_to_control=false`, and `redaction_status=passed`.
+
+This route does not require bearer auth because it is a phone/support-safe GET
+surface like `/api/status`. It is read-only: it does not replay or resubmit
+commands, post ACKs, mutate cursors or persistence, upload materials, trigger
+GitHub action, trigger Nav2, touch WAVE ROVER, use UART, write delivery
+success, or enable controls. It is not delivery success, not true phone/browser
+proof, not real external cloud proof, not public HTTPS/TLS, not 4G/SIM, not
+OSS/CDN live traffic, not production DB/queue, not worker/cutover, not verified
+terminal result, not HIL, not PR #5 resolution, and no OKR percentage lift.
+
 The independent relay now also hosts the dependency-free `mobile/web/` PWA
 shell on the same origin:
 

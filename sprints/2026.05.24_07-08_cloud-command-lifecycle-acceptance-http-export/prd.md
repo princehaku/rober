@@ -46,7 +46,7 @@ sprint_type: epic
 
 `full-stack-software-engineer` 需要：
 
-- 在 independent cloud relay 中新增只读 GET endpoint。
+- 在 onboard relay implementation 中新增只读 GET endpoint；`cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py` 仅作为 thin wrapper，只有需要 wrapper docs marker 时才改。
 - 让 endpoint 返回 phone-safe / support-safe JSON。
 - 增加 targeted HTTP tests，证明 route 输出 required markers 且 GET 没有副作用。
 - 同步更新 `docs/product/cloud_4g_infrastructure.md` 或相关接口说明，写清 HTTP export 是 Docker/local software proof。

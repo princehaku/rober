@@ -36,10 +36,18 @@ Owner：`full-stack-software-engineer`
 
 允许改动：
 
-- `cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py`
-- `cloud-relay/tests/` 中与 remote relay HTTP/API 相关的 focused test 文件
+- `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py`
+- `onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py`
+- `cloud-relay/README.md`
 - `docs/product/cloud_4g_infrastructure.md`
+- `docs/product/remote_4g_mvp.md`
 - 本 sprint `tech-done.md` 中 Task A 结果段
+
+说明：
+
+- `cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py` 当前只是 thin wrapper；只有需要补 wrapper docs marker 时才允许改动该文件。
+- 实际 `make_handler`、`/api/status`、HTTP route 和 CLI export builder 均在 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py`。
+- focused HTTP tests 使用 `onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py`；不得引用不存在的 `cloud-relay/tests/`。
 
 要求：
 
@@ -54,10 +62,10 @@ Owner：`full-stack-software-engineer`
 验收命令建议：
 
 ```bash
-python3 -m py_compile cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py
-PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior python3 -m pytest cloud-relay/tests/test_remote_bridge.py -k "cloud_command_lifecycle_replay_acceptance_packet_http_export or support"
-rg -n "cloud_command_lifecycle_replay_acceptance_packet_http_export|software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate|accepted_processing_only_not_delivery_success|delivery_success.*false|primary_actions_enabled.*false|safe_to_control.*false" cloud-relay/src cloud-relay/tests docs/product/cloud_4g_infrastructure.md
-git diff --check -- cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py cloud-relay/tests docs/product/cloud_4g_infrastructure.md
+python3 -m py_compile onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py
+PYTHONPATH=onboard/src/ros2_trashbot_behavior python3 -m pytest onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py -k "cloud_command_lifecycle_replay_acceptance_packet_http_export or support"
+rg -n "cloud_command_lifecycle_replay_acceptance_packet_http_export|software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate|accepted_processing_only_not_delivery_success|delivery_success.*false|primary_actions_enabled.*false|safe_to_control.*false" onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py cloud-relay/README.md docs/product/cloud_4g_infrastructure.md docs/product/remote_4g_mvp.md
+git diff --check -- onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py cloud-relay/README.md docs/product/cloud_4g_infrastructure.md docs/product/remote_4g_mvp.md sprints/2026.05.24_07-08_cloud-command-lifecycle-acceptance-http-export/tech-done.md
 ```
 
 ### Task B - Robot Safe-Alias Boundary Check
