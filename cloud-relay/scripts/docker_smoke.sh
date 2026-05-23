@@ -550,6 +550,164 @@ for forbidden in ("Authorization", "Bearer", "postgres://", "redis://", "queue U
         raise SystemExit(f"worker migration rehearsal preflight leaked forbidden marker: {forbidden}")
 PY
 
+echo "== cloud command lifecycle replay acceptance packet docker smoke proof =="
+# 本段只新增 Docker smoke 证明，不改变 relay runtime、Robot 代码或任何控制 API。
+docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" exec -T remote-cloud-relay \
+  python - <<'PY' >/tmp/trashbot_cloud_command_lifecycle_replay_acceptance_packet_docker_smoke.json
+import json
+
+# 导入 Robot/API 侧现有构建器，确保 smoke 复核的是同一份后端合同。
+from ros2_trashbot_behavior.operator_gateway_http import (
+    build_cloud_command_lifecycle_audit_export,
+    build_cloud_command_lifecycle_replay_acceptance_packet,
+    build_cloud_command_lifecycle_replay_drill,
+)
+
+# 这个 smoke 在容器内复用 Robot/API 的唯一验收包构建函数，避免 Docker proof 自己发明状态。
+# command_id 和 evidence_ref 使用短 safe 文本，避免把真实路径或外部材料混进 Docker proof。
+status = {
+    "state": "idle",
+    "command_id": "cmd-docker-smoke-acceptance",
+    "evidence_ref": "ev-docker-smoke-acceptance",
+    "remote_readiness": {
+        # terminal_result_pending 表示 ACK 已进入待结果状态，但仍不是送达或取消完成。
+        "degradation_state": "terminal_result_pending",
+        "command_id": "cmd-docker-smoke-acceptance",
+        "safe_phone_copy": "terminal result pending; software_proof only.",
+    },
+}
+# phone_readiness 只承载 remote_readiness 摘要，不打开 collect/dropoff/cancel。
+phone_readiness = {"remote_readiness": dict(status["remote_readiness"])}
+# 先构造 audit/export，再构造 replay drill，最后构造 acceptance packet，保持既有链路顺序。
+audit_export = build_cloud_command_lifecycle_audit_export(status, phone_readiness)
+replay_drill = build_cloud_command_lifecycle_replay_drill(audit_export)
+acceptance_packet = build_cloud_command_lifecycle_replay_acceptance_packet(replay_drill)
+# wrapper 只给 smoke 增加新的证据边界；源 packet 边界必须原样保留。
+payload = {
+    "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_docker_smoke.v1",
+    "capability": "cloud_command_lifecycle_replay_acceptance_packet_docker_smoke_proof",
+    "source": "software_proof",
+    "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_docker_smoke_gate",
+    "packet_evidence_boundary": acceptance_packet.get("evidence_boundary"),
+    "cloud_command_lifecycle_replay_acceptance_packet": acceptance_packet,
+    "cloud_command_lifecycle_replay_acceptance_packet_summary": dict(acceptance_packet),
+    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary": dict(acceptance_packet),
+    "proof_boundary_copy": (
+        "Docker smoke checks the existing acceptance packet only; "
+        "not true phone/browser proof; no OKR percentage lift."
+    ),
+    # not_proven 列表把 Docker/local smoke 与真实云、真实手机和 HIL 边界分开。
+    "not_proven": [
+        "real_external_cloud",
+        "public_https_tls",
+        "real_4g_sim",
+        "oss_cdn_live_traffic",
+        "production_db_queue",
+        "worker_cutover",
+        "true_phone_browser_proof",
+        "verified_terminal_result",
+        "hil",
+        "delivery_success",
+    ],
+    # wrapper 自身也显式 fail-closed，避免调用方误把 smoke pass 当控制授权。
+    "delivery_success": False,
+    "primary_actions_enabled": False,
+    "safe_to_control": False,
+}
+# 输出单行 JSON，便于 shell 日志和后续 Product closeout 直接引用。
+print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+PY
+cat /tmp/trashbot_cloud_command_lifecycle_replay_acceptance_packet_docker_smoke.json
+echo
+python3 - /tmp/trashbot_cloud_command_lifecycle_replay_acceptance_packet_docker_smoke.json <<'PY'
+import json
+import sys
+
+# 第二段在宿主机校验容器产物，证明 Docker 路径真的产出了 marker。
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+encoded = json.dumps(payload, ensure_ascii=False)
+packet = payload.get("cloud_command_lifecycle_replay_acceptance_packet", {})
+# Docker-smoke 边界和源验收包边界必须同时存在，二者不能相互替代。
+if payload.get("evidence_boundary") != "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_docker_smoke_gate":
+    raise SystemExit("wrong acceptance packet docker smoke boundary")
+if packet.get("evidence_boundary") != "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate":
+    raise SystemExit("wrong source acceptance packet boundary")
+# wrapper 层保持禁用，避免 smoke section 被误解为一个新的控制通路。
+if payload.get("delivery_success") or payload.get("primary_actions_enabled") or payload.get("safe_to_control"):
+    raise SystemExit("docker smoke wrapper must keep primary controls disabled")
+# 源 packet 层也保持禁用，证明复用后端构建器没有放宽安全字段。
+if packet.get("delivery_success") or packet.get("primary_actions_enabled") or packet.get("safe_to_control"):
+    raise SystemExit("acceptance packet must keep primary controls disabled")
+# required markers 是本 sprint 的验收合同，缺一项都说明 Docker smoke 没覆盖到目标能力。
+required = (
+    # 顶层 packet 与 summary 名称必须进入日志，方便 Product closeout 用 rg 复核。
+    "cloud_command_lifecycle_replay_acceptance_packet",
+    "cloud_command_lifecycle_replay_acceptance_packet_summary",
+    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary",
+    # 源边界和新 Docker-smoke 边界必须并存，避免把旧 proof 改名冒充新 proof。
+    "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate",
+    "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_docker_smoke_gate",
+    # ACK 和 terminal markers 证明这里只是 accepted/processing，不是 terminal delivery。
+    "accepted_processing_only_not_delivery_success",
+    "terminal_result_pending",
+    # owner_handoff 与 next_required_evidence 保证该包仍是交接材料，不是控制动作。
+    "owner_handoff",
+    "next_required_evidence",
+    # fail-closed markers 是本 section 的产品安全底线。
+    "not_proven",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "safe_to_control=false",
+)
+for marker in required:
+    if marker not in encoded:
+        raise SystemExit(f"missing acceptance packet docker smoke marker: {marker}")
+# forbidden markers 覆盖凭证、路径、ROS/串口、硬件、traceback、artifact 和 true-state 控制旗标。
+# 这里不禁止 delivery_success=false 这类 fail-closed 文案，只禁止 true 值或成功语义泄漏。
+for forbidden in (
+    # 凭证类字段不能出现在面向 closeout 的 smoke JSON。
+    "Authorization",
+    "Bearer",
+    "token",
+    "credential",
+    "secret",
+    # 生产 DB/queue endpoint 或 root password 不属于 Docker/local acceptance proof。
+    "postgres://",
+    "redis://",
+    "queue URL",
+    "database URL",
+    "root password",
+    # 本机路径和设备路径会破坏 phone-safe 证据边界。
+    "raw local path",
+    "/tmp/",
+    "/dev/",
+    "ttyUSB",
+    # 串口、硬件和 ROS 控制面都不属于 cloud-relay acceptance packet。
+    "serial",
+    "UART",
+    "WAVE ROVER",
+    "ROS topic",
+    "/cmd_vel",
+    # traceback、完整 artifact 和 checksum 会把支持摘要变成调试原文。
+    "Traceback",
+    "complete artifact",
+    "checksum",
+    # true-state 控制旗标一旦出现，说明 smoke 或后端 packet 放宽了安全语义。
+    "delivery_success\": true",
+    "primary_actions_enabled\": true",
+    "safe_to_control\": true",
+    "remote_ready\": true",
+    "ack_post_allowed\": true",
+    "cursor_updates_allowed\": true",
+    "command_replay_allowed\": true",
+    "command_resubmit_allowed\": true",
+    "material_upload_allowed\": true",
+    "hil_pass\": true",
+):
+    if forbidden in encoded:
+        raise SystemExit(f"acceptance packet docker smoke leaked forbidden marker: {forbidden}")
+PY
+
 echo "== post status =="
 NOW="$(python3 - <<'PY'
 import time

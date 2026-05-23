@@ -132,6 +132,24 @@ URLs, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details,
 tracebacks, complete artifacts, checksums, ACK payloads, cursors, success copy,
 or any true-state control flags remain blocked/not_proven.
 
+The cloud-relay Docker smoke now has a focused
+`cloud_command_lifecycle_replay_acceptance_packet_docker_smoke_proof` section
+for that same packet. It reuses the Robot/API acceptance-packet builder inside
+the relay container and asserts
+`cloud_command_lifecycle_replay_acceptance_packet`,
+`cloud_command_lifecycle_replay_acceptance_packet_summary`,
+`robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary`,
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate`,
+`accepted_processing_only_not_delivery_success`, `terminal_result_pending`,
+`owner_handoff`, `next_required_evidence`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`. Its Docker-smoke boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_docker_smoke_gate`.
+This is still not true phone/browser proof, not real external cloud proof, not
+public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production DB/queue,
+not worker/cutover, not verified terminal result, not HIL, not PR #5
+resolution, not delivery success, and no OKR percentage lift.
+
 The independent relay now also hosts the dependency-free `mobile/web/` PWA
 shell on the same origin:
 

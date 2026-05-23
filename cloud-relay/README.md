@@ -25,6 +25,7 @@
   - `trashbot.cloud_db_queue_config_gate` artifact，区分完全缺生产 DB/queue 配置包与配置包存在但缺真实连接、多实例、一致性、备份和灾备实证；证据边界固定为 `software_proof_docker_cloud_db_queue_config_gate`，`production_ready=false` 和 `overall_status=blocked` 必须保持
   - `trashbot.cloud_db_queue_external_probe_bundle` artifact，记录 DB/queue connectivity、migration、worker、多实例、ordering、transaction isolation、backup/recovery 外部探测入口的枚举状态；证据边界固定为 `software_proof_docker_cloud_db_queue_external_probe_gate`，只证明 schema/checksum/redaction/preflight consumption
   - `trashbot.cloud_worker_migration_rehearsal.v1` artifact，在本地 SQLite relay state 上演练 migration schema 标记、幂等重跑、command enqueue、status write、ACK accepted/processing 和 terminal ACK cursor 语义；summary schema 固定为 `trashbot.cloud_worker_migration_rehearsal_summary.v1`，证据边界固定为 `software_proof_docker_cloud_worker_migration_rehearsal_gate`，`production_ready=false`、`delivery_success=false`、`primary_actions_enabled=false` 必须保持
+  - `cloud_command_lifecycle_replay_acceptance_packet_docker_smoke_proof` smoke section，在 Docker relay 容器内复用 Robot/API 的 `cloud_command_lifecycle_replay_acceptance_packet` 构建函数，检查 `cloud_command_lifecycle_replay_acceptance_packet_summary`、`robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary`、ACK 只表示 accepted/processing、`terminal_result_pending`、`owner_handoff` 和 `next_required_evidence`；新增 Docker smoke 边界固定为 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_docker_smoke_gate`，源验收包边界仍是 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate`，`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false` 必须保持
   - `trashbot.cloud_worker_cutover_drain.v1` artifact，在 Docker/local File 或 SQLite relay state 上 drain pending command 并记录 cursor、terminal ACK summary、幂等重跑和 fail-closed 状态；summary schema 固定为 `trashbot.cloud_worker_cutover_drain_summary.v1`，证据边界固定为 `software_proof_docker_cloud_worker_cutover_drain_gate`，`production_ready=false`、`delivery_success=false`、`primary_actions_enabled=false` 必须保持
   - `trashbot.oss_cdn_live_probe` artifact，复用 OSS/CDN manifest 输入，只记录 endpoint path、object key hash、HTTP 状态和脱敏摘要；证据边界固定为 `software_proof_docker_oss_cdn_live_probe_gate`，`production_ready=false`、`overall_status=blocked`、`live_probe_complete=false` 必须保持
   - `trashbot.external_evidence_intake` artifact，为未来公网入口/TLS、OSS/CDN、production DB/queue、4G/SIM 真实外部材料提供安全收件 gate；证据边界固定为 `software_proof_docker_external_evidence_intake_gate`，只证明 schema/checksum/redaction/preflight consumption，`production_ready=false`、`overall_status=blocked`、`external_evidence_complete=false` 必须保持
@@ -64,6 +65,8 @@ docker compose down
 cd cloud-relay
 TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-smoke-token bash scripts/docker_smoke.sh
 ```
+
+该 smoke 现在包含 `cloud_command_lifecycle_replay_acceptance_packet_docker_smoke_proof` focused section：它只在 Docker 容器内证明现有 cloud command lifecycle replay acceptance packet 的 fail-closed markers 可被 cloud-relay deploy-smoke 路径复核，边界是 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_docker_smoke_gate`。它不是 real external cloud proof、不是 public HTTPS/TLS、不是 4G/SIM、不是 OSS/CDN live traffic、不是 production DB/queue、不是 worker/cutover、not true phone/browser proof、不是 verified terminal result、不是 HIL、不是 PR #5 resolution、不是 delivery success；no OKR percentage lift。
 
 ## Cloud-hosted mobile web shell
 
