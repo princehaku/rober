@@ -8,7 +8,27 @@
 
 ## 2026-05-23 系列
 
-更新时间：2026-05-23 20:18 Asia/Shanghai。
+更新时间：2026-05-23 21:23 Asia/Shanghai。
+
+### 2026-05-23 21-22｜cloud-command-lifecycle-replay-acceptance-packet｜cloud command lifecycle replay acceptance packet software proof
+
+本轮 `sprints/2026.05.23_21-22_cloud-command-lifecycle-replay-acceptance-packet/` 执行 `cloud_command_lifecycle_replay_acceptance_packet` epic closeout。用户价值是把已有 `cloud_command_lifecycle_replay_drill` safe summary 转成 support / field-owner acceptance packet，让 support / field owner 能看清一个云命令的 safe command/evidence IDs、ordered timeline、ACK semantics、terminal-result pending status、packet status、owner handoff、next evidence 和 support copy availability，而不用查看 raw cloud logs、ROS topics、ACK cursor、credentials、local paths 或 robot internals。本轮边界为 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate`。
+
+Robot/API worker 新增 safe alias `cloud_command_lifecycle_replay_acceptance_packet`，暴露 `robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary`，仅从 `cloud_command_lifecycle_replay_drill` safe summary 派生，保留 safe command/evidence IDs、ordered timeline、ACK semantics、terminal-result pending status、acceptance packet status、owner handoff、next evidence 和 support acceptance copy；没有新增 replay/resubmit、ACK post、cursor/persistence mutation、material upload、GitHub action、Nav2、WAVE ROVER、UART 或 HIL 行为。验证通过：`python3 -m py_compile ...` passed，diagnostics unittest 输出 `Ran 315 tests in 3.912s OK`，required `rg` fence 通过，scoped `git diff --check` 通过。首轮 safe-copy long summary 被误判 unsafe，已改为 canonical safe copy fallback 并重跑通过。
+
+Full-Stack worker 新增 read-only “云命令生命周期验收包” panel，优先消费 `robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary`，展示 safe command/evidence IDs、timeline、ACK semantics、pending terminal result、packet status、owner handoff、next evidence、support copy availability 和 fail-closed flags；没有 raw diagnostics/raw JSON/replay/resubmit/ACK cursor/material upload/review/GitHub/robot command route，Start Delivery / Confirm Dropoff / Cancel 继续 disabled。验证通过：`node --check mobile/web/app.js` exit 0、fixture `json.tool` valid、mobile unittest 输出 `Ran 312 tests in 2.884s OK`、required `rg` fence 和 scoped `git diff --check`。
+
+PR #5 status preserved：`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`，Q 和 U resolved。本轮保留 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`；不是 real external cloud proof，不是 true phone/browser proof，不是 public HTTPS/TLS，不是 4G/SIM，不是 OSS/CDN live traffic，不是 production DB/queue，不是 worker/cutover，不是 HIL，不是 WAVE ROVER/UART proof，不是 route/elevator field pass，不是 verified terminal result，不是 delivery result，也不是 delivery success；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰硬件桥、串口、WAVE ROVER、UART、HIL、2D LiDAR / ToF 或 vendor-source 材料；PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只表达 cloud command lifecycle 的 ACK/pending terminal-result/support-owner handoff acceptance packet；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal result、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；acceptance packet 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` 能只读展示云命令生命周期验收包，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate` 只证明 Docker/local Robot/API diagnostics + mobile static fixture/UI 下 lifecycle replay drill 可转成 support / field-owner acceptance packet、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `docs/interfaces/operator_gateway_diagnostics.md`、`docs/product/remote_4g_mvp.md`、`docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。Product 未运行全仓库中文注释比例复算；本轮只记录 worker-scoped 验证与 docs 同步证据。
 
 ### 2026-05-23 20-21｜cloud-command-lifecycle-replay-drill｜cloud command lifecycle replay drill software proof
 

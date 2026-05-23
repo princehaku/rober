@@ -51,6 +51,12 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_SCHEMA = (
 CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_command_lifecycle_replay_drill_gate"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SCHEMA = (
+    "trashbot.cloud_command_lifecycle_replay_acceptance_packet_summary.v1"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate"
+)
 VOICE_PROMPT_READINESS_SCHEMA = "trashbot.voice_prompt_readiness.v1"
 VOICE_PROMPT_READINESS_EVIDENCE_BOUNDARY = "software_proof_docker_phone_voice_prompt_readiness_gate"
 PHONE_OFFLINE_RESUME_READINESS_SCHEMA = "trashbot.phone_offline_resume_readiness.v1"
@@ -503,6 +509,43 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_NOT_PROVEN = [
 ]
 
 CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_FALSE_STATES = [
+    "source=software_proof",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+]
+
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_NOT_PROVEN = [
+    "acceptance_packet_only",
+    "field_owner_acceptance_review",
+    "command_replay",
+    "command_resubmit",
+    "ack_posting",
+    "ack_payload",
+    "cursor_mutation",
+    "persistence_mutation",
+    "material_upload",
+    "review_action",
+    "github_action",
+    "verified_terminal_result",
+    "delivery_result",
+    "dropoff_completion",
+    "cancel_completion",
+    "real_public_https_tls",
+    "real_4g_or_sim",
+    "production_db_queue",
+    "oss_cdn_live_traffic",
+    "route_elevator_field_pass",
+    "real_phone_device_or_browser",
+    "hil_pass",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
+    "pr5_thread_resolved",
+]
+
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_FALSE_STATES = [
     "source=software_proof",
     "not_proven",
     "safe_to_control=false",
@@ -4471,6 +4514,226 @@ def build_cloud_command_lifecycle_replay_drill(audit_export, *, now=None):
     }
 
 
+def _cloud_replay_acceptance_has_unsafe_material(value):
+    # 验收包是给 owner 复核的只读材料；递归拦截原始 payload、游标、路径和控制成功语义。
+    unsafe_true_keys = {
+        "safe_to_control",
+        "delivery_success",
+        "primary_actions_enabled",
+        "remote_ready",
+        "ack_post_allowed",
+        "cursor_updates_allowed",
+        "persistence_updates_allowed",
+        "command_replay_allowed",
+        "command_resubmit_allowed",
+        "material_upload_allowed",
+        "review_action_allowed",
+        "github_action_allowed",
+        "robot_command_side_effects_allowed",
+        "nav2_triggered",
+        "hil_pass",
+    }
+    unsafe_key_fragments = (
+        "authorization",
+        "bearer",
+        "token",
+        "credential",
+        "password",
+        "secret",
+        "signed_url",
+        "url_with_secret",
+        "raw_path",
+        "local_path",
+        "raw_response",
+        "raw_body",
+        "ack_payload",
+        "cursor",
+        "checksum",
+        "complete_artifact",
+        "artifact_body",
+        "ros_topic",
+        "cmd_vel",
+        "serial",
+        "uart",
+        "wave_rover",
+        "traceback",
+    )
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text in unsafe_true_keys:
+                if bool(item):
+                    return True
+                continue
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if _cloud_replay_acceptance_has_unsafe_material(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_cloud_replay_acceptance_has_unsafe_material(item) for item in value)
+    if isinstance(value, str):
+        redacted = _cloud_lifecycle_safe_text(value, "")
+        guarded = str(redacted or "").lower()
+        for phrase in (
+            "not_delivery_success",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "cursor_mutation",
+            "not_proven",
+            "not proven",
+            "不是送达成功",
+        ):
+            guarded = guarded.replace(phrase, "")
+        return (
+            redacted == ""
+            and bool(str(value or "").strip())
+            or "ack payload" in guarded
+            or "cursor" in guarded
+            or "checksum" in guarded
+            or "complete artifact" in guarded
+            or "delivery success" in guarded
+            or "safe to control" in guarded
+            or "primary actions enabled" in guarded
+        )
+    return False
+
+
+def build_cloud_command_lifecycle_replay_acceptance_packet(replay_drill, *, now=None):
+    """Build a read-only field-owner acceptance packet from the replay drill.
+
+    验收包只从 replay drill 安全摘要派生，不能回读原始 ACK、cursor 或 artifact；
+    这样 owner 可以复核材料缺口，但系统不会新增重放、上传或评审副作用。
+    """
+    source = replay_drill if isinstance(replay_drill, dict) else {}
+    unsupported = bool(source) and source.get("schema") != CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_SCHEMA
+    unsafe = _cloud_replay_acceptance_has_unsafe_material(source) or bool(
+        source.get("raw_material_redacted")
+        or source.get("missing_lifecycle_state")
+        or source.get("conflicting_lifecycle_state")
+    )
+    command_id = _cloud_lifecycle_safe_text(source.get("command_id"), "")
+    evidence_ref = _cloud_lifecycle_safe_text(source.get("evidence_ref"), "")
+    missing_safe_ids = not command_id or not evidence_ref
+    if not source:
+        packet_status = "missing_cloud_command_lifecycle_replay_drill"
+    elif unsupported:
+        packet_status = "blocked_unsupported_cloud_command_lifecycle_replay_drill_not_proven"
+    elif unsafe:
+        packet_status = "blocked_unsafe_cloud_command_lifecycle_replay_acceptance_packet_not_proven"
+    elif missing_safe_ids:
+        packet_status = "blocked_missing_safe_replay_acceptance_ids_not_proven"
+    else:
+        packet_status = "ready_for_field_owner_acceptance_review_not_proven"
+
+    replay_timeline = []
+    # timeline 只复制安全 stage/status/copy，避免验收包变成可执行 replay 脚本。
+    for item in source.get("replay_timeline") if isinstance(source.get("replay_timeline"), list) else []:
+        if not isinstance(item, dict):
+            continue
+        stage = _cloud_lifecycle_safe_text(item.get("stage"), "")
+        if not stage:
+            unsafe = True
+            continue
+        replay_timeline.append(
+            {
+                "stage": stage,
+                "status": _cloud_lifecycle_safe_text(item.get("status"), "not_proven"),
+                "safe_copy": _cloud_lifecycle_safe_text(
+                    item.get("safe_copy"),
+                    "lifecycle stage remains not_proven.",
+                ),
+            }
+        )
+    if unsafe and packet_status == "ready_for_field_owner_acceptance_review_not_proven":
+        packet_status = "blocked_unsafe_cloud_command_lifecycle_replay_acceptance_packet_not_proven"
+
+    next_required_evidence = []
+    for item in source.get("next_required_evidence") if isinstance(source.get("next_required_evidence"), list) else []:
+        safe_item = _cloud_lifecycle_safe_text(item, "")
+        if safe_item:
+            next_required_evidence.append(safe_item)
+    if not next_required_evidence:
+        next_required_evidence = [
+            "same_safe_command_id",
+            "same_safe_evidence_ref",
+            "verified_terminal_delivery_dropoff_or_cancel_result",
+        ]
+    ack_semantics = _cloud_lifecycle_safe_text(
+        source.get("ack_semantics"),
+        "accepted_processing_only_not_delivery_success",
+    )
+    terminal_result_status = _cloud_lifecycle_safe_text(
+        source.get("terminal_result_status"),
+        "pending",
+    )
+    owner_handoff = {
+        "handoff_status": "hardware_material_pending_not_proven",
+        "review_owner": "field_owner",
+        "next_action": "collect_same_safe_evidence_ref_terminal_result_material",
+        "pr5_thread_status": "hardware_material_pending",
+    }
+    support_acceptance_copy = (
+        "cloud_command_lifecycle_replay_acceptance_packet: "
+        f"command_id={command_id or 'missing'}; "
+        f"evidence_ref={evidence_ref or 'missing'}; "
+        f"ack_semantics={ack_semantics}; "
+        f"terminal_result_status={terminal_result_status}; "
+        f"acceptance_packet_status={packet_status}; "
+        "owner_handoff=field_owner; source=software_proof; not_proven; "
+        "safe_to_control=false; delivery_success=false; primary_actions_enabled=false."
+    )
+    support_acceptance_copy = _cloud_lifecycle_safe_text(support_acceptance_copy, "")
+    return {
+        "schema": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SCHEMA,
+        "source_schema": CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_SCHEMA,
+        "schema_version": 1,
+        "api_version": API_VERSION,
+        "capability": "cloud_command_lifecycle_replay_acceptance_packet",
+        "source": "software_proof",
+        "evidence_boundary": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_EVIDENCE_BOUNDARY,
+        "status": packet_status,
+        "acceptance_packet_status": packet_status,
+        "generated_at": float(now if now is not None else time.time()),
+        "command_id": command_id,
+        "evidence_ref": evidence_ref,
+        "lifecycle_state": _cloud_lifecycle_safe_text(source.get("lifecycle_state"), "not_proven"),
+        "replay_timeline": replay_timeline,
+        "lifecycle_timeline": replay_timeline,
+        "ack_semantics": ack_semantics,
+        "terminal_result_status": terminal_result_status,
+        "owner_handoff": owner_handoff,
+        "next_required_evidence": next_required_evidence,
+        "support_acceptance_copy": support_acceptance_copy,
+        "safe_copy": support_acceptance_copy,
+        "safe_phone_copy": _cloud_lifecycle_safe_text(
+            source.get("safe_phone_copy"),
+            "云命令生命周期验收包仅供 owner 复核；主操作保持不可用。",
+        ),
+        "false_states": list(CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_FALSE_STATES),
+        "not_proven": list(CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_NOT_PROVEN),
+        "remote_ready": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "command_replay_allowed": False,
+        "command_resubmit_allowed": False,
+        "material_upload_allowed": False,
+        "review_action_allowed": False,
+        "github_action_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "missing_safe_ids": bool(missing_safe_ids),
+        "conflicting_lifecycle_state": bool(source.get("conflicting_lifecycle_state")),
+        "raw_material_redacted": bool(unsafe),
+    }
+
+
 def _voice_prompt_safe_text(value, fallback):
     # 提示词可能来自 status 文件或 task record；自由文本进入手机前必须脱敏。
     text_value = str(value or "").strip()
@@ -5232,6 +5495,7 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         payload["phone_readiness"],
     )
     replay_drill = build_cloud_command_lifecycle_replay_drill(lifecycle_export)
+    acceptance_packet = build_cloud_command_lifecycle_replay_acceptance_packet(replay_drill)
     voice_prompt_readiness = build_voice_prompt_readiness(
         payload,
         payload["phone_readiness"],
@@ -5253,6 +5517,16 @@ def _status_with_phone_readiness(gateway, mock_cloud):
         replay_drill
     )
     payload["phone_readiness"]["cloud_command_lifecycle_replay_drill"] = dict(replay_drill)
+    payload["cloud_command_lifecycle_replay_acceptance_packet"] = acceptance_packet
+    payload["cloud_command_lifecycle_replay_acceptance_packet_summary"] = dict(
+        acceptance_packet
+    )
+    payload["robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary"] = (
+        dict(acceptance_packet)
+    )
+    payload["phone_readiness"]["cloud_command_lifecycle_replay_acceptance_packet"] = dict(
+        acceptance_packet
+    )
     payload["voice_prompt_readiness"] = voice_prompt_readiness
     payload["phone_readiness"]["voice_prompt_readiness"] = dict(voice_prompt_readiness)
     offline_resume_readiness = build_phone_offline_resume_readiness(
@@ -5289,6 +5563,10 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
     phone_readiness["cloud_command_lifecycle_audit_export"] = dict(lifecycle_export)
     replay_drill = build_cloud_command_lifecycle_replay_drill(lifecycle_export)
     phone_readiness["cloud_command_lifecycle_replay_drill"] = dict(replay_drill)
+    acceptance_packet = build_cloud_command_lifecycle_replay_acceptance_packet(replay_drill)
+    phone_readiness["cloud_command_lifecycle_replay_acceptance_packet"] = dict(
+        acceptance_packet
+    )
     voice_prompt_readiness = build_voice_prompt_readiness(status, phone_readiness, phone_support_bundle)
     offline_resume_readiness = build_phone_offline_resume_readiness(
         status,
@@ -5309,6 +5587,13 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
     diagnostics_payload["robot_diagnostics_cloud_command_lifecycle_replay_drill_summary"] = dict(
         replay_drill
     )
+    diagnostics_payload["cloud_command_lifecycle_replay_acceptance_packet"] = acceptance_packet
+    diagnostics_payload["cloud_command_lifecycle_replay_acceptance_packet_summary"] = dict(
+        acceptance_packet
+    )
+    diagnostics_payload[
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary"
+    ] = dict(acceptance_packet)
     diagnostics_payload["voice_prompt_readiness"] = voice_prompt_readiness
     diagnostics_payload["phone_offline_resume_readiness"] = offline_resume_readiness
     # HTTP diagnostics 复用 status 里的同一份摘要，避免 status/diagnostics 对 transaction gate 给出两套口径。
@@ -5335,6 +5620,13 @@ def _diagnostics_with_phone_task_flow(gateway, mock_cloud):
         latest_status["robot_diagnostics_cloud_command_lifecycle_replay_drill_summary"] = dict(
             replay_drill
         )
+        latest_status["cloud_command_lifecycle_replay_acceptance_packet"] = acceptance_packet
+        latest_status["cloud_command_lifecycle_replay_acceptance_packet_summary"] = dict(
+            acceptance_packet
+        )
+        latest_status[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary"
+        ] = dict(acceptance_packet)
         latest_status["voice_prompt_readiness"] = voice_prompt_readiness
         latest_status["phone_offline_resume_readiness"] = offline_resume_readiness
     remote_state = _remote_degradation(phone_readiness.get("remote_readiness"))

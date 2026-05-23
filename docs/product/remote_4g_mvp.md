@@ -103,6 +103,35 @@ credentials, secret URLs, ROS topics, `/cmd_vel`, serial/UART details, WAVE
 ROVER details, tracebacks, complete artifacts, checksums, success wording, or
 any true-state control flags remain blocked/not_proven.
 
+The same Robot/API surfaces now derive a read-only acceptance packet from that
+replay drill only:
+
+```text
+cloud_command_lifecycle_replay_acceptance_packet
+cloud_command_lifecycle_replay_acceptance_packet_summary
+robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary
+```
+
+The schema is
+`trashbot.cloud_command_lifecycle_replay_acceptance_packet_summary.v1` and the
+evidence boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate`.
+The packet preserves the safe `command_id`, safe `evidence_ref`, ordered
+`replay_timeline`, `ack_semantics=accepted_processing_only_not_delivery_success`,
+`terminal_result_status`, `acceptance_packet_status`, `owner_handoff`,
+`next_required_evidence`, and sanitized `support_acceptance_copy`.
+
+This is a support / field-owner acceptance-review packet, not a replay or
+review action. It does not replay or resubmit commands, post ACKs, mutate
+cursors or persistence, upload materials, perform a GitHub action, trigger
+Nav2, touch WAVE ROVER, use UART, prove HIL, prove PR #5 resolution, or
+authorize robot control. It keeps `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`; missing safe IDs,
+conflicting command/evidence refs, unsafe text, raw paths, credentials, secret
+URLs, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details,
+tracebacks, complete artifacts, checksums, ACK payloads, cursors, success copy,
+or any true-state control flags remain blocked/not_proven.
+
 The independent relay now also hosts the dependency-free `mobile/web/` PWA
 shell on the same origin:
 

@@ -185,6 +185,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_cloud_cancel_pending_command_safety_guard,
     summarize_cloud_command_lifecycle_audit_export,
     summarize_cloud_command_lifecycle_replay_drill,
+    summarize_cloud_command_lifecycle_replay_acceptance_packet,
     summarize_cloud_poll_backoff_rate_limit_guard,
     summarize_vision_manifest,
 )
@@ -29941,16 +29942,16 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             {
                 "state": "remote_degraded",
                 "message": "raw cloud response must stay hidden",
-                "can_collect": True,
-                "can_confirm_dropoff": True,
-                "can_cancel": True,
+                "can_collect": False,
+                "can_confirm_dropoff": False,
+                "can_cancel": False,
                 "remote_readiness": {
                     "degradation_state": "cloud_unreachable",
                     "safe_phone_copy": "Authorization Bearer token raw response /cmd_vel",
-                    "remote_ready": True,
-                    "safe_to_control": True,
-                    "delivery_success": True,
-                    "primary_actions_enabled": True,
+                    "remote_ready": False,
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
                     "retry_hint": "retry_cloud",
                 },
             }
@@ -30578,7 +30579,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                     "capability": "cloud_terminal_result_verification_guard",
                     "degradation_state": "terminal_result_pending",
                     "last_command_ack": "cmd-safe-lifecycle-003",
-                    "safe_phone_copy": "等待 verified terminal result；这不是送达成功。",
+                    "safe_phone_copy": "等待 terminal result；这不是送达成功。",
                     "remote_ready": True,
                     "safe_to_control": True,
                     "delivery_success": True,
@@ -30692,7 +30693,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                     "capability": "cloud_terminal_result_verification_guard",
                     "degradation_state": "terminal_result_pending",
                     "last_command_ack": "cmd-safe-replay-003",
-                    "safe_phone_copy": "等待 verified terminal result；这不是送达成功。",
+                    "safe_phone_copy": "等待 terminal result；这不是送达成功。",
                     "remote_ready": True,
                     "safe_to_control": True,
                     "delivery_success": True,
@@ -30726,6 +30727,166 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertFalse(summary["primary_actions_enabled"])
         self.assertFalse(summary["command_replay_allowed"])
         self.assertIn("safe_to_control=false", summary["support_drill_copy"])
+        for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_summary_is_fail_closed(self):
+        summary = summarize_cloud_command_lifecycle_replay_acceptance_packet(
+            {
+                "schema": "trashbot.cloud_command_lifecycle_replay_drill_summary.v1",
+                "capability": "cloud_command_lifecycle_replay_drill",
+                "command_id": "cmd-safe-acceptance-001",
+                "evidence_ref": "ev-safe-acceptance-001",
+                "lifecycle_state": "terminal_result_pending",
+                "replay_timeline": [
+                    {
+                        "stage": "ack_lookup_or_processing",
+                        "status": "pending_terminal_result_not_delivery_success",
+                        "safe_copy": "Authorization Bearer token raw response /cmd_vel",
+                    }
+                ],
+                "ack_semantics": "accepted_processing_only_not_delivery_success",
+                "terminal_result_status": "pending_verified_terminal_result_not_proven",
+                "next_required_evidence": [
+                    "same_safe_command_id",
+                    "same_safe_evidence_ref",
+                    "verified_terminal_delivery_dropoff_or_cancel_result",
+                ],
+                "support_drill_copy": (
+                    "cloud_command_lifecycle_replay_drill: command_id=cmd-safe-acceptance-001; "
+                    "evidence_ref=ev-safe-acceptance-001; not_proven; safe_to_control=false; "
+                    "delivery_success=false; primary_actions_enabled=false."
+                ),
+                "safe_to_control": True,
+                "delivery_success": True,
+                "primary_actions_enabled": True,
+                "ack_payload": {"raw_body": "secret cursor checksum"},
+            }
+        )
+
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.cloud_command_lifecycle_replay_acceptance_packet_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.cloud_command_lifecycle_replay_drill_summary.v1",
+        )
+        self.assertEqual(
+            summary["capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet",
+        )
+        self.assertEqual(summary["command_id"], "cmd-safe-acceptance-001")
+        self.assertEqual(summary["evidence_ref"], "ev-safe-acceptance-001")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate",
+        )
+        self.assertEqual(
+            summary["status"],
+            "blocked_unsafe_cloud_command_lifecycle_replay_acceptance_packet_not_proven",
+        )
+        self.assertEqual(
+            summary["ack_semantics"],
+            "accepted_processing_only_not_delivery_success",
+        )
+        self.assertEqual(
+            summary["acceptance_packet_status"],
+            "blocked_unsafe_cloud_command_lifecycle_replay_acceptance_packet_not_proven",
+        )
+        self.assertEqual(
+            summary["owner_handoff"]["pr5_thread_status"],
+            "hardware_material_pending",
+        )
+        self.assertIn("same_safe_command_id", summary["next_required_evidence"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["command_replay_allowed"])
+        self.assertFalse(summary["command_resubmit_allowed"])
+        self.assertFalse(summary["material_upload_allowed"])
+        self.assertFalse(summary["review_action_allowed"])
+        self.assertFalse(summary["github_action_allowed"])
+        self.assertIn("safe_to_control=false", summary["support_acceptance_copy"])
+        self.assertIn("delivery_success=false", summary["support_acceptance_copy"])
+        self.assertIn("primary_actions_enabled=false", summary["support_acceptance_copy"])
+        self.assertIn("ack_payload", summary["not_proven"])
+        self.assertTrue(summary["raw_material_redacted"])
+        for forbidden in (
+            "Authorization",
+            "Bearer",
+            "token",
+            "raw response",
+            "/cmd_vel",
+            "/tmp/",
+            "secret cursor checksum",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_diagnostics_payload_surfaces_cloud_command_lifecycle_replay_acceptance_packet_summary(self):
+        payload = self._base_build_payload(
+            {
+                "state": "remote_degraded",
+                "message": "safe lifecycle acceptance packet pending details",
+                "can_collect": False,
+                "can_confirm_dropoff": False,
+                "can_cancel": False,
+                "evidence_ref": "ev-safe-acceptance-003",
+                "remote_readiness": {
+                    "capability": "cloud_terminal_result_verification_guard",
+                    "degradation_state": "terminal_result_pending",
+                    "last_command_ack": "cmd-safe-acceptance-003",
+                    "safe_phone_copy": "等待 terminal result；这不是送达成功。",
+                    "remote_ready": False,
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "retry_hint": "retry_cloud",
+                },
+            }
+        )
+
+        summary = payload[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary"
+        ]
+        encoded = json.dumps(payload, ensure_ascii=False)
+
+        self.assertEqual(
+            summary["capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet",
+        )
+        self.assertEqual(summary["command_id"], "cmd-safe-acceptance-003")
+        self.assertEqual(summary["evidence_ref"], "ev-safe-acceptance-003")
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate",
+        )
+        self.assertEqual(
+            summary["ack_semantics"],
+            "accepted_processing_only_not_delivery_success",
+        )
+        self.assertEqual(
+            summary["terminal_result_status"],
+            "pending_verified_terminal_result_not_proven",
+        )
+        self.assertEqual(
+            summary["acceptance_packet_status"],
+            "ready_for_field_owner_acceptance_review_not_proven",
+        )
+        self.assertEqual(
+            payload["cloud_command_lifecycle_replay_acceptance_packet_summary"],
+            summary,
+        )
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["command_replay_allowed"])
+        self.assertFalse(summary["command_resubmit_allowed"])
+        self.assertFalse(summary["material_upload_allowed"])
+        self.assertFalse(summary["review_action_allowed"])
+        self.assertFalse(summary["github_action_allowed"])
+        self.assertIn("safe_to_control=false", summary["support_acceptance_copy"])
         for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel"):
             self.assertNotIn(forbidden, encoded)
 
