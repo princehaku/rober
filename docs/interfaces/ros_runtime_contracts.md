@@ -508,6 +508,24 @@ Allowed Robot-visible fields are limited to sanitized reviewer ACK intake metada
 
 The alias must not expose raw manifest contents, complete artifacts, local paths, checksum values, tracebacks, raw route/elevator materials, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, full material bodies, cursor state, external-proof wording, HIL/pass wording, PR-resolution wording, dropoff/cancel completion, delivery result success, or success/control claims. Missing canonical summary, malformed input, unsupported schema or boundary, missing `safe_evidence_ref`, unsupported reviewer ACK intake status, unsafe copy, raw manifest/artifact marker, local path, checksum, credential, DB/queue URL, traceback marker, HIL/pass wording, external-proof wording, PR-resolution wording, or enabled action flags keep the summary blocked/not_proven and leave task_orchestrator, Start, Confirm Dropoff, Cancel, ACK posting, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
 
+## robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision_summary
+
+`robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision_summary` is the Robot diagnostics safe alias for the `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision` gate. It consumes only the canonical sanitized summary schema `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision_summary.v1`, whose `source_schema` must point back to `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision.v1` and whose evidence boundary must remain `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision_gate`.
+
+The alias is metadata-only and fail-closed:
+
+- `source=software_proof`
+- `software_proof=true`
+- `not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `metadata_only=true`
+
+Allowed Robot-visible fields are limited to sanitized reviewer ACK review-decision metadata: `status`, `review_decision`, `review_status`, `source_reviewer_ack_intake_status`, `previous_reviewer_ack_intake_ref`, `safe_evidence_ref`, `decision_reasons`, `accepted_materials`, `missing_materials`, `rejected_materials`, `unsafe_materials`, `next_required_evidence`, `owner_next_step`, `support_next_step`, `reviewer_next_step`, `review_handoff_recommendation`, `evidence_boundary_status`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, `software_proof`, and `not_proven`. Expected reviewer ACK review-decision status values are exactly `accepted_for_reviewer_ack_review_not_proven`, `needs_reviewer_reassignment_not_proven`, `needs_field_owner_supplement_not_proven`, `rejected_unsafe_reviewer_ack_not_proven`, and `blocked_missing_reviewer_ack_intake_not_proven`.
+
+The alias must not expose raw manifest contents, complete artifacts, local paths, checksum values, tracebacks, raw route/elevator materials, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, full material bodies, ACK/cursor mutation state, external-proof wording, HIL/pass wording, route/elevator field-pass wording, PR-resolution wording, dropoff/cancel completion, delivery result success, or success/control claims. Missing canonical summary, malformed input, unsupported schema or boundary, missing `safe_evidence_ref`, unsupported reviewer ACK review-decision status, unsafe copy, raw manifest/artifact marker, local path, checksum, credential, DB/queue URL, traceback marker, HIL/pass wording, external-proof wording, route/elevator field-pass wording, PR-resolution wording, or enabled action flags keep the summary blocked/not_proven and leave task_orchestrator, Start, Confirm Dropoff, Cancel, ACK posting, cursor, replay/resubmit, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
 ## robot_diagnostics_field_evidence_real_material_request_dispatch_summary
 
 `robot_diagnostics_field_evidence_real_material_request_dispatch_summary` is the Robot diagnostics safe alias for the `field_evidence_real_material_request_dispatch` gate. It consumes the canonical sanitized summary schema `trashbot.field_evidence_real_material_request_dispatch_summary.v1`, or a compatible wrapper that contains that summary and points back to `trashbot.field_evidence_real_material_request_dispatch.v1`; the evidence boundary must remain `software_proof_docker_field_evidence_real_material_request_dispatch_gate`.

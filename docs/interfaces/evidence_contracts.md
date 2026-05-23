@@ -2419,6 +2419,68 @@ phone/browser proof, not PR #5 resolution, not Objective 5 external
 cloud/4G/OSS/CDN/DB/queue proof, not an OKR percentage lift, and not any primary
 robot action being enabled.
 
+## field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision
+
+`pc-tools/evidence/field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision.py`
+generates the PC-only reviewer ACK review-decision gate after
+`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake.py`.
+It consumes only the prior safe artifact, summary, Robot diagnostics safe alias,
+or wrapper/nested JSON. It does not copy raw reviewer ACK bodies, raw material
+bodies, local paths, ROS topics, serial/UART paths, credentials, DB/queue URLs,
+complete artifacts, checksums, tracebacks, HIL/pass claims, delivery completion
+claims, true phone/browser proof, PR #5 resolved claims, or raw field artifacts.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision_summary.v1`
+- Suggested Robot diagnostics alias:
+  `robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision_gate`
+- Capability:
+  `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake.v1`,
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_summary.v1`,
+  the Robot safe alias, or a compatible wrapper containing one of those safe
+  schemas under
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate`.
+
+The output always includes safe `evidence_ref`,
+`same_evidence_ref_required=true`, `source=software_proof`, `software_proof`,
+`not_proven`, `safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, `no OKR percentage lift`,
+`previous_intake_reference`, `reviewer_ack_state`, `review_decision`,
+`decision_reasons`, `ack_owner`, `acknowledged_at`, `reassignment_target`,
+`next_required_evidence`, `owner_action`, `review_handoff_recommendation`,
+`safe_copy`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision_gate`.
+
+Allowed `review_decision` values are
+`accepted_for_reviewer_ack_review_not_proven`,
+`needs_reviewer_reassignment_not_proven`,
+`needs_field_owner_supplement_not_proven`,
+`rejected_unsafe_reviewer_ack_not_proven`, and
+`blocked_missing_reviewer_ack_intake_not_proven`. A sanitized acknowledged ACK
+maps only to `accepted_for_reviewer_ack_review_not_proven`; this is later
+reviewer ACK review readiness only, not real reviewer resolution, not real
+owner acceptance, not real route/elevator field pass, not verified terminal
+result, not dropoff/cancel completion, not delivery success, not HIL, not
+Objective 5 external cloud/4G/OSS/CDN/DB/queue proof, not true phone/browser
+proof, not PR #5 resolution, not an OKR percentage lift, and not any primary
+robot action being enabled.
+
+Missing input, bad JSON, unsupported source schema, missing or wrong source
+boundary, source not marked `source=software_proof` / `not_proven`, missing or
+mismatched safe `evidence_ref`, unsafe copy, raw ROS topics, `/cmd_vel`,
+serial/UART paths, local filesystem paths, credentials, DB/queue URLs, complete
+artifacts, checksums, tracebacks, HIL/pass claims, delivery/dropoff/cancel
+completion claims, true phone/browser claims, or PR #5 resolved claims all fail
+closed to one of the five allowed states. The summary and Robot alias remain
+read-only and keep `delivery_success=false`, `primary_actions_enabled=false`,
+and `safe_to_control=false`.
+
 ## field_evidence_real_material_request_dispatch
 
 `pc-tools/evidence/field_evidence_real_material_request_dispatch.py` generates
