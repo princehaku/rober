@@ -168,6 +168,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_verified_terminal_result_material_review_handoff,
     summarize_verified_terminal_result_material_followup_escalation_status,
     summarize_verified_terminal_result_material_owner_response_intake,
+    summarize_verified_terminal_result_material_owner_response_review_decision,
     summarize_real_material_followup_escalation_status,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
@@ -41727,6 +41728,207 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("Bearer", encoded)
         self.assertNotIn("/cmd_vel", encoded)
         self.assertNotIn("reviewer resolved", encoded.lower())
+        self.assertNotIn("delivery_success=true", encoded)
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+
+    def test_verified_terminal_result_material_owner_response_review_decision_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": (
+                "trashbot.verified_terminal_result_material_owner_response_review_decision_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.verified_terminal_result_material_owner_response_review_decision.v1"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate"
+            ),
+            "schema_version": 1,
+            "capability": (
+                "verified_terminal_result_material_owner_response_review_decision"
+            ),
+            "status": "accepted_for_next_handoff_not_proven",
+            "overall_status": "not_proven",
+            "source": "software_proof",
+            "review_decision": {
+                "status": "accepted_for_next_handoff_not_proven",
+                "reason": "owner response material can move to next handoff only",
+                "evidence_source": "software_proof",
+            },
+            "safe_evidence_ref": "evidence://terminal-result-owner-response-review-001",
+            "safe_command_id": "cmd-terminal-owner-review-001",
+            "terminal_result_type": "delivery",
+            "source_owner_response_status": "accepted_for_later_review_not_proven",
+            "accepted_materials_summary": ["owner_safe_response_review_note"],
+            "missing_materials_summary": ["real terminal-result run packet"],
+            "rejected_materials_summary": ["raw command transcript"],
+            "unsafe_materials_summary": ["handoff authorization claim blocked"],
+            "next_required_evidence": ["prepare owner response review handoff packet"],
+            "owner_handoff": ["handoff to material owner response reviewer"],
+            "safe_copy": (
+                "Verified terminal result material owner response review decision "
+                "is metadata-only; source=software_proof; not_proven; "
+                "delivery_success=false; primary_actions_enabled=false; "
+                "safe_to_control=false; accepted_for_next_handoff is not delivery "
+                "success."
+            ),
+            "not_proven": ["accepted_for_next_handoff_not_robot_control"],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+        }
+        artifact = {
+            "schema": (
+                "trashbot.verified_terminal_result_material_owner_response_review_decision.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate"
+            ),
+            "verified_terminal_result_material_owner_response_review_decision_summary": (
+                safe_summary
+            ),
+        }
+        payload = self._base_build_payload(
+            {
+                "verified_terminal_result_material_owner_response_review_decision": artifact,
+                "diagnostics": {
+                    "verified_terminal_result_material_owner_response_review_decision": {
+                        "delivery_success": True,
+                        "raw_artifact": {"Authorization": "Bearer unsafe"},
+                    }
+                },
+            }
+        )
+        summary = payload[
+            "robot_diagnostics_verified_terminal_result_material_owner_response_review_decision_summary"
+        ]
+        from_nested = (
+            summarize_verified_terminal_result_material_owner_response_review_decision(
+                {
+                    "status": {
+                        "robot_diagnostics_verified_terminal_result_material_owner_response_review_decision_summary": (
+                            safe_summary
+                        )
+                    }
+                }
+            )
+        )
+        from_diagnostics = self._base_build_payload(
+            {
+                "diagnostics": {
+                    "verified_terminal_result_material_owner_response_review_decision_summary": (
+                        safe_summary
+                    )
+                }
+            }
+        )[
+            "robot_diagnostics_verified_terminal_result_material_owner_response_review_decision_summary"
+        ]
+        raw_only = (
+            summarize_verified_terminal_result_material_owner_response_review_decision(
+                {
+                    "schema": (
+                        "trashbot.verified_terminal_result_material_owner_response_review_decision.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate"
+                    ),
+                }
+            )
+        )
+        unsafe = (
+            summarize_verified_terminal_result_material_owner_response_review_decision(
+                dict(
+                    safe_summary,
+                    safe_evidence_ref="unsafe ref with spaces",
+                    safe_copy=(
+                        "Owner response accepted; handoff authorized; Start "
+                        "Delivery control enabled."
+                    ),
+                    delivery_success=True,
+                    primary_actions_enabled=True,
+                    safe_to_control=True,
+                    handoff_authorized=True,
+                    raw_source={"complete_json": {"cmd_vel": "unsafe"}},
+                )
+            )
+        )
+
+        self.assertEqual(
+            payload["verified_terminal_result_material_owner_response_review_decision"],
+            summary,
+        )
+        self.assertEqual(
+            payload[
+                "verified_terminal_result_material_owner_response_review_decision_summary"
+            ],
+            summary,
+        )
+        self.assertNotIn(
+            "verified_terminal_result_material_owner_response_review_decision",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_review_decision_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.verified_terminal_result_material_owner_response_review_decision.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["status"], "accepted_for_next_handoff_not_proven")
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://terminal-result-owner-response-review-001",
+        )
+        self.assertEqual(summary["safe_command_id"], "cmd-terminal-owner-review-001")
+        self.assertEqual(summary["terminal_result_type"], "delivery")
+        self.assertIn(
+            "owner_safe_response_review_note", summary["accepted_materials_summary"]
+        )
+        self.assertIn(
+            "accepted_for_next_handoff_not_robot_control",
+            summary["not_proven"],
+        )
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["robot_control_allowed"])
+        self.assertFalse(summary["owner_response_material_accepted"])
+        self.assertFalse(summary["handoff_authorized"])
+        self.assertEqual(from_nested["status"], "accepted_for_next_handoff_not_proven")
+        self.assertEqual(
+            from_diagnostics["safe_command_id"], "cmd-terminal-owner-review-001"
+        )
+        self.assertEqual(
+            raw_only["review_decision"]["status"],
+            "blocked_missing_verified_terminal_result_material_owner_response_review_decision_summary",
+        )
+        self.assertEqual(
+            unsafe["review_decision"]["status"],
+            "blocked_unsafe_verified_terminal_result_material_owner_response_review_decision_summary",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_source", encoded)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("complete_json", encoded)
+        self.assertNotIn("Authorization", encoded)
+        self.assertNotIn("Bearer", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("handoff authorized", encoded.lower())
         self.assertNotIn("delivery_success=true", encoded)
         self.assertIn("source=software_proof", encoded)
         self.assertIn("not_proven", encoded)

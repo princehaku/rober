@@ -1607,6 +1607,32 @@ details, hardware raw details, ACK/cursor mutation hints, collect/dropoff/cancel
 hints, reviewer-resolution or PR-resolution claims, and
 success/completion/control claims must fail closed.
 
+Verified terminal-result material owner-response review decision adds the next
+Robot diagnostics safe alias:
+
+- `robot_diagnostics_verified_terminal_result_material_owner_response_review_decision_summary`
+- `schema=trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_review_decision_summary.v1`
+- `source_schema=trashbot.verified_terminal_result_material_owner_response_review_decision.v1`
+- `evidence_boundary=software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate`
+- `source=software_proof`
+- `not_proven`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+
+The alias only proves that Robot diagnostics can surface a sanitized
+owner-response review decision for the next handoff. Even when the review
+decision is `accepted_for_next_handoff_not_proven`, the state remains a
+handoff/readiness hint only; it does not enable collect, dropoff, cancel,
+ACK/cursor mutation, replay/resubmit, command control, HIL, route/elevator
+field pass, terminal delivery result, or delivery success.
+
+Unsafe raw source fields, raw artifacts, complete JSON, credentials, paths,
+checksums, ROS topics, serial/UART details, WAVE ROVER details, hardware raw
+details, ACK/cursor mutation hints, collect/dropoff/cancel hints,
+handoff-authorization claims, and success/completion/control claims must fail
+closed.
+
 ## Safety Rules
 
 - The robot never exposes `/cmd_vel` over the remote bridge.
