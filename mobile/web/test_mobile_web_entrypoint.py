@@ -4514,6 +4514,14 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
             "software_proof_docker_mobile_current_panel_browser_proof_refresh_latest_field_evidence_gate",
             gate,
         )
+        self.assertIn(
+            "mobile_current_panel_browser_proof_refresh_terminal_result_owner_response",
+            gate,
+        )
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_terminal_result_owner_response_gate",
+            gate,
+        )
         for token in (
             "cloudReadinessTitle",
             "cloudEvidenceBoundary",
@@ -4528,6 +4536,13 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
             "verifiedTerminalResultMaterialIntakeTitle",
             "verifiedTerminalResultMaterialReviewDecisionTitle",
             "verifiedTerminalResultMaterialReviewHandoffTitle",
+            "verifiedTerminalResultMaterialOwnerResponseIntakeTitle",
+            "verifiedTerminalResultMaterialOwnerResponseIntakeBoundary",
+            "verifiedTerminalResultMaterialOwnerResponseIntakeFlags",
+            "verifiedTerminalResultMaterialOwnerResponseReviewDecisionTitle",
+            "verifiedTerminalResultMaterialOwnerResponseReviewDecisionBoundary",
+            "verifiedTerminalResultMaterialOwnerResponseReviewDecisionFlags",
+            "terminal_result_owner_response_panels_fail_closed",
         ):
             self.assertIn(token, gate)
         for token in (
@@ -4536,6 +4551,8 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
             "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
             "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate",
             "software_proof_docker_verified_terminal_result_material_review_handoff_gate",
+            "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate",
+            "software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate",
             "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
         ):
             self.assertIn(token, gate)
@@ -4549,9 +4566,19 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
             doc,
         )
         self.assertIn(
+            "mobile_current_panel_browser_proof_refresh_terminal_result_owner_response",
+            doc,
+        )
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_terminal_result_owner_response_gate",
+            doc,
+        )
+        self.assertIn(
             "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake",
             doc,
         )
+        self.assertIn("verified_terminal_result_material_owner_response_intake", doc)
+        self.assertIn("verified_terminal_result_material_owner_response_review_decision", doc)
         self.assertIn("not true phone/browser", doc)
 
 

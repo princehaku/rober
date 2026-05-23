@@ -8,7 +8,27 @@
 
 ## 2026-05-23 系列
 
-更新时间：2026-05-23 14:17 Asia/Shanghai。
+更新时间：2026-05-23 15:32 Asia/Shanghai。
+
+### 2026-05-23 15-16｜mobile-current-panel-browser-proof-refresh-terminal-result-owner-response｜current-panel terminal-result owner-response browser proof refresh
+
+本轮 `sprints/2026.05.23_15-16_mobile-current-panel-browser-proof-refresh-terminal-result-owner-response/` 执行 `mobile_current_panel_browser_proof_refresh_terminal_result_owner_response` epic closeout。用户价值是让手机/support current panel 跟上最新 terminal-result owner-response intake/review-decision 安全面板，避免手机入口落后于安全证据链，同时继续说明机器人不能控制、交付未证明。本轮边界为 `software_proof_docker_mobile_current_panel_browser_proof_refresh_terminal_result_owner_response_gate`，必须保留 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+Task A Full-Stack evidence accepted：`pc-tools/evidence/phone_browser_acceptance_gate.py`、`mobile/web/test_mobile_web_entrypoint.py`、`mobile/test_mobile_web_entrypoint.py`、`docs/product/mobile_user_flow.md`、本 sprint `tech-done.md` 和 evidence JSON/PNG 已更新；browser gate 在 `390x844` 与 `768x900` 均通过，均报告 `terminal_result_owner_response_panels_fail_closed=true`、`current_panels_status=passed`、`current_boundaries_status=passed`、`console_zero_status=passed`。Unit tests 通过：`mobile.web.test_mobile_web_entrypoint` 输出 `Ran 302 tests ... OK`，`mobile.test_mobile_web_entrypoint` 输出 `Ran 54 tests ... OK`。首轮失败因 gate 过度依赖动态 not_proven copy 中的 `not true phone/browser` wording，已修正为断言两个 panels 的 fail-closed flags：`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+Task B Robot evidence accepted：read-only consultation changed no files；确认 `mobile/web/app.js` 中 `verified_terminal_result_material_owner_response_intake` 与 `verified_terminal_result_material_owner_response_review_decision` panels 优先消费 `robot_diagnostics_verified_terminal_result_material_owner_response_*_summary`，再回退到 safe summary / nested safe summary，不读取 raw material；unsafe raw-field detection 与 whitelist safe_copy paths 保持 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`can_collect=false`、`can_confirm_dropoff=false`、`can_cancel=false`。Spot check 唯一 unsafe-ish hit 是 `hil_pass_missing`，它是缺材料声明，不是 HIL pass。
+
+Live PR #5 state preserved：`PRRT_kwDOSWB9286CJ3tQ` resolved；`PRRT_kwDOSWB9286CJ3tU` resolved；`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `is_resolved=false` / `hardware_material_pending`。本轮不是 real terminal result，不是 O5 external proof，不是 true phone/browser proof，不是 public HTTPS/TLS，不是 4G/SIM，不是 OSS/CDN live traffic，不是 production DB/queue，不是 worker/cutover，不是 route/elevator field pass，不是 Nav2/fixed-route runtime pass，不是 HIL，不是 WAVE ROVER/UART proof，不是 PR #5 resolution，也不是 delivery success；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮只做 mobile current-panel browser proof refresh；没有真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、operator HIL report 或 reviewer resolution。PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `is_resolved=false` / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只证明 terminal-result owner-response panels 在 mobile current-panel browser proof 中 fail closed；没有真实 task record、真实电梯、dropoff/cancel completion、delivery result、verified terminal delivery/dropoff/cancel result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；browser proof refresh 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` current-panel browser proof refresh 覆盖 `verified_terminal_result_material_owner_response_intake` 与 `verified_terminal_result_material_owner_response_review_decision`，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料；本轮 not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_mobile_current_panel_browser_proof_refresh_terminal_result_owner_response_gate` 只证明 Docker/local Chromium-family current-panel browser proof refresh；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Task A 报告 browser gate 通过，unit tests 分别输出 `Ran 302 tests ... OK` 与 `Ran 54 tests ... OK`，required `rg` 与 scoped `git diff --check` 通过。Task B 报告 required `rg` 与 scoped sprint `git diff --check` 通过。Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。
 
 ### 2026-05-23 14-15｜verified-terminal-result-material-owner-response-review-decision｜terminal result material owner-response review-decision software proof
 

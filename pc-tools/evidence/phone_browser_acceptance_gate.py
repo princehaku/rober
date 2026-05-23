@@ -42,6 +42,12 @@ LATEST_FIELD_EVIDENCE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY = (
 LATEST_FIELD_EVIDENCE_CURRENT_PANEL_BROWSER_PROOF_BOUNDARY = (
     "software_proof_docker_mobile_current_panel_browser_proof_refresh_latest_field_evidence_gate"
 )
+TERMINAL_RESULT_OWNER_RESPONSE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY = (
+    "mobile_current_panel_browser_proof_refresh_terminal_result_owner_response"
+)
+TERMINAL_RESULT_OWNER_RESPONSE_CURRENT_PANEL_BROWSER_PROOF_BOUNDARY = (
+    "software_proof_docker_mobile_current_panel_browser_proof_refresh_terminal_result_owner_response_gate"
+)
 FRESH_ARTIFACT_PREFIX = "mobile_pwa_fresh_browser_proof"
 DEFAULT_ARTIFACT_PREFIX = "mobile_current_pwa_field_trial_browser"
 ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF = "mobile_route_elevator_handoff_browser"
@@ -119,6 +125,12 @@ KEY_ELEMENT_IDS = (
     "verifiedTerminalResultMaterialReviewHandoffTitle",
     "verifiedTerminalResultMaterialReviewHandoffBoundary",
     "verifiedTerminalResultMaterialReviewHandoffFlags",
+    "verifiedTerminalResultMaterialOwnerResponseIntakeTitle",
+    "verifiedTerminalResultMaterialOwnerResponseIntakeBoundary",
+    "verifiedTerminalResultMaterialOwnerResponseIntakeFlags",
+    "verifiedTerminalResultMaterialOwnerResponseReviewDecisionTitle",
+    "verifiedTerminalResultMaterialOwnerResponseReviewDecisionBoundary",
+    "verifiedTerminalResultMaterialOwnerResponseReviewDecisionFlags",
     "mobileDeviceEvidenceTitle",
     "mobileDeviceEvidenceSafeCopy",
     "mobileDeviceEvidenceBoundary",
@@ -233,6 +245,8 @@ CURRENT_PANEL_EXPECTATIONS = {
     "verifiedTerminalResultMaterialIntakeTitle": "Terminal Result 材料回填入口",
     "verifiedTerminalResultMaterialReviewDecisionTitle": "Terminal Result 材料复核决策",
     "verifiedTerminalResultMaterialReviewHandoffTitle": "Terminal Result 材料复核交接",
+    "verifiedTerminalResultMaterialOwnerResponseIntakeTitle": "Terminal Result Owner Response Intake",
+    "verifiedTerminalResultMaterialOwnerResponseReviewDecisionTitle": "Terminal Result Owner Response Review Decision",
     "terminalActionTitle": "终端动作二次确认",
     "mobileDeviceEvidenceTitle": "手机设备证据采集",
     "mobileDeviceHandoffTitle": "真实手机验收交接会话",
@@ -269,6 +283,10 @@ CURRENT_BOUNDARY_EXPECTATIONS = {
     "verifiedTerminalResultMaterialReviewDecisionFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
     "verifiedTerminalResultMaterialReviewHandoffBoundary": "software_proof_docker_verified_terminal_result_material_review_handoff_gate",
     "verifiedTerminalResultMaterialReviewHandoffFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "verifiedTerminalResultMaterialOwnerResponseIntakeBoundary": "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate",
+    "verifiedTerminalResultMaterialOwnerResponseIntakeFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "verifiedTerminalResultMaterialOwnerResponseReviewDecisionBoundary": "software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate",
+    "verifiedTerminalResultMaterialOwnerResponseReviewDecisionFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
     "terminalActionBoundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
     "mobileDeviceEvidenceBoundary": "software_proof_docker_mobile_device_evidence_capture_gate",
     "mobileDeviceHandoffBoundary": "software_proof_docker_mobile_device_handoff_session_gate",
@@ -823,6 +841,8 @@ def viewport_script():
         fieldTrialRetest && fieldTrialRetest.innerText.includes('trashbot.mobile_real_device_field_trial_retest_execution_copy.v1') &&
         materialResolutionAck && materialResolutionAck.innerText.includes('software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate') &&
         latestFieldEvidenceAck && latestFieldEvidenceAck.innerText.includes('software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate') &&
+        document.getElementById('verifiedTerminalResultMaterialOwnerResponseIntakeBoundary')?.innerText.includes('software_proof_docker_verified_terminal_result_material_owner_response_intake_gate') &&
+        document.getElementById('verifiedTerminalResultMaterialOwnerResponseReviewDecisionBoundary')?.innerText.includes('software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate') &&
         diag && !diag.disabled && ack && ack.innerText.includes('不代表送达成功')) break;
     await sleep(100);
   }}
@@ -990,6 +1010,17 @@ def viewport_script():
       }}) &&
       (document.getElementById('fieldEvidenceMaterialResolutionReviewerAckIntakeFlags')?.innerText || '')
         .includes('not true phone/browser'),
+    terminalResultOwnerResponsePanelsFailClosed:
+      [
+        'verifiedTerminalResultMaterialOwnerResponseIntakeFlags',
+        'verifiedTerminalResultMaterialOwnerResponseReviewDecisionFlags'
+      ].every((id) => {{
+        const text = document.getElementById(id)?.innerText || '';
+        return text.includes('not_proven') &&
+          text.includes('delivery_success=false') &&
+          text.includes('primary_actions_enabled=false') &&
+          text.includes('safe_to_control=false');
+      }}),
     pwaInstallPromptVisible:
       document.getElementById('mobilePwaInstallPromptSafeCopy').innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_package.v1') ||
       document.getElementById('mobilePwaInstallPromptSafeCopy').innerText.includes('trashbot.mobile_pwa_install_prompt_evidence_export_copy.v1'),
@@ -1182,6 +1213,9 @@ def judge_viewport(result, *, fresh_mode=False, service_worker_assertions=None, 
         "route_elevator_field_session_handoff_visible": bool(result.get("routeElevatorFieldSessionHandoffVisible")),
         "route_elevator_field_session_handoff_fail_closed": bool(route_handoff_fail_closed),
         "material_resolution_panels_fail_closed": bool(result.get("materialResolutionPanelsFailClosed")),
+        "terminal_result_owner_response_panels_fail_closed": bool(
+            result.get("terminalResultOwnerResponsePanelsFailClosed")
+        ),
         "pwa_install_prompt_evidence_visible": bool(result.get("pwaInstallPromptVisible")),
         "real_device_retest_request_visible": bool(result.get("retestRequestVisible")),
         "real_device_retest_request_copyable": bool(result.get("retestRequestCopyable")),
@@ -1390,6 +1424,7 @@ def main():
                         and judgment["route_elevator_field_session_handoff_visible"]
                         and judgment["route_elevator_field_session_handoff_fail_closed"]
                         and judgment["material_resolution_panels_fail_closed"]
+                        and judgment["terminal_result_owner_response_panels_fail_closed"]
                         and judgment["pwa_install_prompt_evidence_visible"]
                         and judgment["real_device_retest_request_visible"]
                         and judgment["real_device_retest_request_copyable"]
@@ -1450,6 +1485,8 @@ def main():
                         f"{str(judgment['route_elevator_field_session_handoff_fail_closed']).lower()} "
                         f"material_resolution_panels_fail_closed="
                         f"{str(judgment['material_resolution_panels_fail_closed']).lower()} "
+                        f"terminal_result_owner_response_panels_fail_closed="
+                        f"{str(judgment['terminal_result_owner_response_panels_fail_closed']).lower()} "
                         f"route_elevator_handoff_browser_proof={ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF} "
                         f"pwa_install_prompt_evidence_visible={str(judgment['pwa_install_prompt_evidence_visible']).lower()} "
                         f"real_device_retest_request_visible={str(judgment['real_device_retest_request_visible']).lower()} "

@@ -147,6 +147,23 @@ class MobileWebEntrypointTest(unittest.TestCase):
             "software_proof_docker_mobile_current_panel_browser_proof_refresh_latest_field_evidence_gate",
             script,
         )
+        self.assertIn(
+            "mobile_current_panel_browser_proof_refresh_terminal_result_owner_response",
+            script,
+        )
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_terminal_result_owner_response_gate",
+            script,
+        )
+        self.assertIn('"verifiedTerminalResultMaterialOwnerResponseIntakeTitle"', script)
+        self.assertIn('"verifiedTerminalResultMaterialOwnerResponseIntakeBoundary"', script)
+        self.assertIn('"verifiedTerminalResultMaterialOwnerResponseIntakeFlags"', script)
+        self.assertIn('"verifiedTerminalResultMaterialOwnerResponseReviewDecisionTitle"', script)
+        self.assertIn('"verifiedTerminalResultMaterialOwnerResponseReviewDecisionBoundary"', script)
+        self.assertIn('"verifiedTerminalResultMaterialOwnerResponseReviewDecisionFlags"', script)
+        self.assertIn("verified_terminal_result_material_owner_response_intake", script)
+        self.assertIn("verified_terminal_result_material_owner_response_review_decision", script)
+        self.assertIn("terminal_result_owner_response_panels_fail_closed", script)
         self.assertIn("software_proof_docker_mobile_web_browser_proof_gate", script)
         self.assertIn("software_proof_docker_route_elevator_field_session_handoff_gate", script)
         self.assertIn("software_proof_docker_field_evidence_material_resolution_intake_gate", script)
