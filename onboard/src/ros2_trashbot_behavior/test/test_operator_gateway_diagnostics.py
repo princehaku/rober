@@ -69,6 +69,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake,
     summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision,
     summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff,
+    summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status,
     summarize_field_evidence_real_material_request_dispatch,
     summarize_field_evidence_real_material_response_intake,
     summarize_field_evidence_real_material_response_review_decision,
@@ -37617,6 +37618,270 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             "needs_field_owner_ack_material_supplement_not_proven",
             "rejected_unsafe_reviewer_ack_handoff_not_proven",
             "blocked_missing_reviewer_ack_review_decision_not_proven",
+        ):
+            self.assertIn(state, states_text)
+
+    def test_field_evidence_rerun_acceptance_handoff_owner_response_reviewer_ack_followup_escalation_status_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.v1"
+            ),
+            "source_schema_version": 1,
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate"
+            ),
+            "capability": (
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status"
+            ),
+            "source": "software_proof",
+            "safe_evidence_ref": "field-rerun-reviewer-ack-followup-status-001",
+            "status": "overdue_reviewer_ack_followup_not_proven",
+            "overall_status": "not_proven",
+            "followup_escalation_status": {
+                "status": "overdue_reviewer_ack_followup_not_proven",
+                "verdict": "not_proven",
+                "reason": "reviewer ACK followup still requires real field materials",
+            },
+            "source_reviewer_ack_review_handoff_schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_summary.v1"
+            ),
+            "source_reviewer_ack_review_handoff_status": (
+                "ready_for_field_owner_reviewer_ack_followup_not_proven"
+            ),
+            "previous_reviewer_ack_review_handoff_ref": (
+                "field-rerun-reviewer-ack-review-handoff-001"
+            ),
+            "missing_evidence_summary": [
+                "real route/elevator field materials pending",
+                "verified terminal result",
+                "true phone/browser proof",
+                "PRRT_kwDOSWB9286CJ3tX hardware_material_pending",
+            ],
+            "next_required_evidence": [
+                "Collect reviewer ACK followup real materials before claiming closure."
+            ],
+            "owner_next_step": "Owner escalates missing reviewer ACK followup materials.",
+            "reviewer_next_step": "Reviewer keeps ACK followup not_proven.",
+            "support_next_step": "Support exposes only safe followup escalation metadata.",
+            "evidence_boundary_status": "not_proven",
+            "robot_diagnostics_summary": {
+                "safe_copy": (
+                    "Reviewer ACK followup escalation status is metadata-only; "
+                    "source=software_proof; not_proven; safe_to_control=false; "
+                    "delivery_success=false; primary_actions_enabled=false."
+                )
+            },
+            "software_proof": True,
+            "not_proven": ["delivery_success", "real_field_materials_pending"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+        artifact = {
+            "schema": (
+                "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate"
+            ),
+            "safe_evidence_ref": "field-rerun-reviewer-ack-followup-status-001",
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary": (
+                safe_summary
+            ),
+        }
+        with tempfile.TemporaryDirectory() as td:
+            status_path = (
+                Path(td)
+                / "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.json"
+            )
+            status_path.write_text(json.dumps(artifact), encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status": {
+                        "delivery_success": True,
+                        "raw_artifact": {"ros_topic": "/cmd_vel"},
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_ref=str(
+                    status_path
+                ),
+            )
+            from_nested = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status(
+                artifact
+            )
+            from_latest_status = build_diagnostics_payload(
+                {
+                    "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary": (
+                        safe_summary
+                    )
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )[
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary"
+            ]
+            nested_diagnostics = build_diagnostics_payload(
+                {"diagnostics": {"field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary": safe_summary}},
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )[
+                "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary"
+            ]
+            missing = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status(
+                Path(td) / "missing_reviewer_ack_followup_status.json"
+            )
+            unsupported = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status(
+                dict(
+                    safe_summary,
+                    source_schema=(
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff.v1"
+                    ),
+                    source_evidence_boundary=(
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_gate"
+                    ),
+                )
+            )
+            raw_only = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status(
+                {
+                    "schema": (
+                        "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.v1"
+                    ),
+                    "evidence_boundary": (
+                        "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate"
+                    ),
+                    "safe_evidence_ref": "field-rerun-reviewer-ack-followup-status-001",
+                    "raw_artifact": {"checksum": "abc"},
+                }
+            )
+            unsafe = summarize_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status(
+                dict(
+                    safe_summary,
+                    safe_copy="PR reviewer resolved; field pass; Start Delivery control enabled.",
+                    delivery_success=True,
+                    primary_actions_enabled=True,
+                    safe_to_control=True,
+                )
+            )
+
+        summary = payload[
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary"
+        ]
+        self.assertEqual(
+            summary,
+            payload[
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status"
+            ],
+        )
+        self.assertEqual(
+            summary,
+            payload[
+                "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary"
+            ],
+        )
+        self.assertNotIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["status"], "overdue_reviewer_ack_followup_not_proven")
+        self.assertEqual(
+            summary["source_reviewer_ack_review_handoff_status"],
+            "ready_for_field_owner_reviewer_ack_followup_not_proven",
+        )
+        self.assertEqual(summary["evidence_boundary_status"], "not_proven")
+        self.assertTrue(summary["software_proof"])
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", summary["not_proven"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertEqual(from_nested["status"], "overdue_reviewer_ack_followup_not_proven")
+        self.assertEqual(from_latest_status["status"], "overdue_reviewer_ack_followup_not_proven")
+        self.assertEqual(nested_diagnostics["status"], "overdue_reviewer_ack_followup_not_proven")
+        self.assertEqual(
+            missing["followup_escalation_status"]["status"],
+            "blocked_missing_reviewer_ack_review_handoff_not_proven",
+        )
+        self.assertEqual(
+            unsupported["followup_escalation_status"]["status"],
+            "blocked_missing_reviewer_ack_review_handoff_not_proven",
+        )
+        self.assertEqual(
+            raw_only["followup_escalation_status"]["status"],
+            "blocked_missing_reviewer_ack_review_handoff_not_proven",
+        )
+        self.assertEqual(
+            unsafe["followup_escalation_status"]["status"],
+            "escalated_missing_real_material_not_proven",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("checksum", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("traceback", encoded.lower())
+        self.assertNotIn("WAVE ROVER", encoded)
+        self.assertNotIn("serial", encoded.lower())
+        self.assertNotIn("uart", encoded.lower())
+        self.assertNotIn("field pass", encoded.lower())
+        self.assertNotIn("reviewer resolved", encoded.lower())
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        states_text = " ".join(
+            (
+                "pending_reviewer_ack_followup_not_proven",
+                "overdue_reviewer_ack_followup_not_proven",
+                "escalated_missing_real_material_not_proven",
+                "blocked_missing_reviewer_ack_review_handoff_not_proven",
+                "ready_for_real_material_reviewer_followup_not_proven",
+            )
+        )
+        for state in (
+            "pending_reviewer_ack_followup_not_proven",
+            "overdue_reviewer_ack_followup_not_proven",
+            "escalated_missing_real_material_not_proven",
+            "blocked_missing_reviewer_ack_review_handoff_not_proven",
+            "ready_for_real_material_reviewer_followup_not_proven",
         ):
             self.assertIn(state, states_text)
 

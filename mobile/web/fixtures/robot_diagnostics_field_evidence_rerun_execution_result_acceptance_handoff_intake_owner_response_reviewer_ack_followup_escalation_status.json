@@ -1,0 +1,179 @@
+{
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false,
+  "phone_readiness": {
+    "remote_ready": false,
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary": {
+      "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary.v1",
+      "source_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.v1",
+      "capability": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
+      "source": "software_proof",
+      "followup_status": "ready_for_real_material_reviewer_followup_not_proven",
+      "source_review_handoff": "source_review_handoff=ready_for_field_owner_reviewer_ack_followup_not_proven",
+      "due_status": "due_status=pending_reviewer_ack_followup_not_proven",
+      "safe_evidence_ref": "safe_evidence_ref=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status:TASK-2026-05-23-ACK-FOLLOWUP",
+      "owner_next_step": [
+        "owner_next_step=provide_same_safe_evidence_ref_real_materials_not_proven",
+        "state=overdue_reviewer_ack_followup_not_proven"
+      ],
+      "reviewer_next_step": [
+        "reviewer_next_step=review_safe_summary_only_not_proven",
+        "state=escalated_missing_real_material_not_proven"
+      ],
+      "support_next_step": [
+        "support_next_step=keep_primary_actions_disabled",
+        "state=blocked_missing_reviewer_ack_review_handoff_not_proven"
+      ],
+      "missing_evidence": [
+        "missing_evidence=true_phone_browser_proof_missing",
+        "missing_evidence=route_elevator_runtime_missing",
+        "missing_evidence=verified_terminal_result_missing"
+      ],
+      "blocked_reason": [
+        "blocked_reason=delivery_success=false_until_real_materials",
+        "blocked_reason=pr5_resolution_missing"
+      ],
+      "safe_phone_copy": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status: ready_for_real_material_reviewer_followup_not_proven; source=software_proof; software_proof; not_proven; delivery_success=false; primary_actions_enabled=false; safe_to_control=false.",
+      "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate",
+      "proof_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate",
+      "boundary_flags": "source=software_proof / software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+      "not_proven": [
+        "source=software_proof",
+        "software_proof",
+        "not_proven",
+        "not true phone/browser",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false",
+        "blocked_missing_reviewer_ack_review_handoff_not_proven"
+      ],
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary.v1",
+    "source_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.v1",
+    "capability": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
+    "source": "software_proof",
+    "followup_status": "ready_for_real_material_reviewer_followup_not_proven",
+    "source_review_handoff": "source_review_handoff=ready_for_field_owner_reviewer_ack_followup_not_proven",
+    "due_status": "due_status=pending_reviewer_ack_followup_not_proven",
+    "safe_evidence_ref": "safe_evidence_ref=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status:TASK-2026-05-23-ACK-FOLLOWUP",
+    "owner_next_step": [
+      "owner_next_step=provide_same_safe_evidence_ref_real_materials_not_proven",
+      "state=overdue_reviewer_ack_followup_not_proven"
+    ],
+    "reviewer_next_step": [
+      "reviewer_next_step=review_safe_summary_only_not_proven",
+      "state=escalated_missing_real_material_not_proven"
+    ],
+    "support_next_step": [
+      "support_next_step=keep_primary_actions_disabled",
+      "state=blocked_missing_reviewer_ack_review_handoff_not_proven"
+    ],
+    "missing_evidence": [
+      "missing_evidence=true_phone_browser_proof_missing",
+      "missing_evidence=route_elevator_runtime_missing",
+      "missing_evidence=verified_terminal_result_missing"
+    ],
+    "blocked_reason": [
+      "blocked_reason=delivery_success=false_until_real_materials",
+      "blocked_reason=pr5_resolution_missing"
+    ],
+    "safe_phone_copy": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status: ready_for_real_material_reviewer_followup_not_proven; source=software_proof; software_proof; not_proven; delivery_success=false; primary_actions_enabled=false; safe_to_control=false.",
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate",
+    "proof_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate",
+    "boundary_flags": "source=software_proof / software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "source=software_proof",
+      "software_proof",
+      "not_proven",
+      "not true phone/browser",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false",
+      "blocked_missing_reviewer_ack_review_handoff_not_proven"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary": {
+    "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary.v1",
+    "source_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.v1",
+    "capability": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
+    "source": "software_proof",
+    "followup_status": "overdue_reviewer_ack_followup_not_proven",
+    "source_review_handoff": "source_review_handoff=needs_reviewer_handoff_reassignment_not_proven",
+    "due_status": "due_status=overdue_reviewer_ack_followup_not_proven",
+    "safe_evidence_ref": "safe_evidence_ref=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status:fallback",
+    "owner_next_step": [
+      "owner_next_step=refresh_same_safe_evidence_ref_followup_not_proven"
+    ],
+    "reviewer_next_step": [
+      "reviewer_next_step=reassign_reviewer_before_followup_not_proven"
+    ],
+    "support_next_step": [
+      "support_next_step=keep_start_confirm_cancel_disabled"
+    ],
+    "missing_evidence": [
+      "missing_evidence=same_safe_evidence_ref_reviewer_ack_review_handoff"
+    ],
+    "blocked_reason": [
+      "blocked_reason=reviewer_ack_followup_overdue_not_proven"
+    ],
+    "safe_phone_copy": "fallback reviewer ACK followup escalation status safe summary; source=software_proof; not_proven; delivery_success=false.",
+    "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate",
+    "not_proven": [
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status": {
+    "summary": {
+      "schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary.v1",
+      "source_schema": "trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.v1",
+      "capability": "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
+      "source": "software_proof",
+      "followup_status": "blocked_missing_reviewer_ack_review_handoff_not_proven",
+      "source_review_handoff": "source_review_handoff=blocked_missing_reviewer_ack_review_handoff_not_proven",
+      "due_status": "due_status=pending_reviewer_ack_followup_not_proven",
+      "safe_evidence_ref": "safe_evidence_ref=field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status:nested",
+      "owner_next_step": [
+        "owner_next_step=blocked_until_reviewer_ack_review_handoff"
+      ],
+      "reviewer_next_step": [
+        "reviewer_next_step=blocked_missing_reviewer_ack_review_handoff_not_proven"
+      ],
+      "support_next_step": [
+        "support_next_step=explain_missing_safe_review_handoff"
+      ],
+      "missing_evidence": [
+        "missing_evidence=reviewer_ack_review_handoff_safe_summary"
+      ],
+      "blocked_reason": [
+        "blocked_reason=missing_reviewer_ack_review_handoff_safe_summary"
+      ],
+      "safe_phone_copy": "nested reviewer ACK followup escalation status blocked; source=software_proof; not_proven; delivery_success=false.",
+      "evidence_boundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate",
+      "not_proven": [
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  }
+}

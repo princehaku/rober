@@ -8,7 +8,25 @@
 
 ## 2026-05-23 系列
 
-更新时间：2026-05-23 17:18 Asia/Shanghai。
+更新时间：2026-05-23 18:45 Asia/Shanghai。
+
+### 2026-05-23 18-19｜field-evidence-rerun-acceptance-owner-response-reviewer-ack-followup-escalation-status｜reviewer ACK follow-up escalation status software proof
+
+本轮 `sprints/2026.05.23_18-19_field-evidence-rerun-acceptance-owner-response-reviewer-ack-followup-escalation-status/` 执行 `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status` epic closeout。用户价值是把上一轮 reviewer ACK review-handoff safe metadata 推进为明确 follow-up escalation status，让 field owner、reviewer、support owner、Robot diagnostics 和 `mobile/web` 都能看到该 follow-up 是 pending、overdue、escalated、blocked 还是 ready for real-material reviewer follow-up，同时继续说明机器人不能控制、交付未证明。本轮边界为 `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate`，必须保留 `source=software_proof`、`software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+Autonomy worker 新增 PC-only reviewer ACK follow-up escalation status gate、focused tests、`pc-tools/README.md` 和 `docs/interfaces/evidence_contracts.md` 更新；验证通过：`py_compile`、unittest `Ran 10 tests in 0.046s OK`、CLI `--help`、required `rg` 与 scoped `git diff --check`。Robot worker 新增 `robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary` safe alias、targeted tests 和 `docs/interfaces/ros_runtime_contracts.md` 更新；验证通过：`py_compile`、diagnostics unittest `Ran 311 tests ... OK`、required `rg` 与 scoped `git diff --check`，并修正 unsafe "field pass" wording。Full-Stack worker 新增 `mobile/web` read-only follow-up escalation status panel、fixture、tests 和 `docs/product/mobile_user_flow.md` 更新；验证通过：`node --check`、fixture `json.tool`、mobile unittest `Ran 308 tests in 2.929s OK`、required `rg` 与 scoped `git diff --check`。
+
+Live PR #5 state preserved：`PRRT_kwDOSWB9286CJ3tQ` resolved，`PRRT_kwDOSWB9286CJ3tU` resolved，`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `is_resolved=false` / `hardware_material_pending`。本轮不是 true phone/browser proof，不是 route/elevator field pass，不是 Nav2/fixed-route runtime pass，不是 verified terminal result，不是 dropoff/cancel completion，不是 delivery result，不是 delivery success，不是 Objective 5 external proof，不是 Objective 1 HIL，不是 WAVE ROVER/UART proof，不是 LiDAR/ToF installed proof，也不是 PR #5 resolution；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮只把 route/elevator reviewer ACK review-handoff metadata 转成 follow-up escalation status；没有真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、operator HIL report 或 reviewer resolution。PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `is_resolved=false` / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只处理 reviewer ACK follow-up escalation metadata；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal result、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；follow-up escalation status 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` 能只读展示 reviewer ACK follow-up escalation status，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料；本轮 not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate` 只证明 Docker/local PC follow-up escalation status gate + Robot diagnostics + mobile static fixture 下 reviewer ACK follow-up metadata 可见、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Product closeout required file checks、combined `py_compile`、combined unittest、`node --check`、fixture `json.tool`、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `pc-tools/README.md`、`docs/interfaces/evidence_contracts.md`、`docs/interfaces/ros_runtime_contracts.md`、`docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。Closeout observation: touched implementation files contain Chinese technical comments in reviewed new/surrounding logic, but no exact global >20% comment-ratio measurement was performed.
 
 ### 2026-05-23 17-18｜pr5-mandatory-sensor-material-owner-response-review-decision｜PR #5 mandatory sensor material owner response review decision
 

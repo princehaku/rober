@@ -2534,6 +2534,64 @@ external cloud/4G/OSS/CDN/DB/queue proof, not true phone/browser proof, not PR
 #5 resolution, not an OKR percentage lift, and not any primary robot action
 being enabled.
 
+## field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status
+
+`pc-tools/evidence/field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.py`
+generates the PC-only reviewer ACK follow-up escalation status gate after
+`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff.py`.
+It consumes only the prior safe artifact, summary, Robot diagnostics safe alias,
+or wrapper/nested JSON. It does not copy raw reviewer ACK bodies, raw field
+materials, local paths, ROS topics, serial/UART paths, credentials, DB/queue
+URLs, complete artifacts, checksums, tracebacks, HIL/pass claims, delivery
+completion claims, true phone/browser proof, route/elevator field-pass claims,
+PR #5 resolved claims, or raw diagnostics.
+
+- Artifact schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.v1`
+- Summary schema:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary.v1`
+- Suggested Robot diagnostics alias:
+  `robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_summary`
+- Evidence boundary:
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate`
+- Capability:
+  `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status`
+- Allowed source inputs:
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff.v1`,
+  `trashbot.field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_summary.v1`,
+  the Robot safe alias, or a compatible wrapper containing one of those safe
+  schemas under
+  `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_gate`.
+
+The output always includes safe `evidence_ref`,
+`same_evidence_ref_required=true`, `source=software_proof`, `software_proof`,
+`not_proven`, `safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, `followup_status`, `due_status`,
+`source_handoff_status`, `reviewer_ack_status`, `source_review_decision`,
+`field_owner_handoff`, `support_escalation_owner`,
+`missing_required_evidence`, `rejected_or_unsafe_reasons`,
+`next_required_evidence`, `phone_safe_copy`, `proof_flags`, `safe_copy`, and
+`evidence_boundary=software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate`.
+
+Allowed `followup_status` values are
+`pending_reviewer_ack_followup_not_proven`,
+`overdue_reviewer_ack_followup_not_proven`,
+`escalated_missing_real_material_not_proven`,
+`blocked_missing_reviewer_ack_review_handoff_not_proven`, and
+`ready_for_real_material_reviewer_followup_not_proven`. Ready only means the
+sanitized reviewer ACK review handoff can move into real-material reviewer
+follow-up. It is not real reviewer resolution, not owner acceptance, not PR #5
+resolution, not OKR movement, not delivery success, not HIL, not verified
+terminal result, not true phone/browser proof, not dropoff/cancel completion,
+not real route/elevator field pass, and not Objective 5 external cloud/4G/OSS
+/CDN/DB/queue proof. Missing JSON, bad JSON, unsupported review-handoff schema,
+wrong proof boundary, or missing/mismatched safe `evidence_ref` maps to
+`blocked_missing_reviewer_ack_review_handoff_not_proven`. A non-ready source
+handoff or unsafe source material maps to
+`escalated_missing_real_material_not_proven`; all outputs keep
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
 Missing input, bad JSON, unsupported source schema, missing or wrong source
 boundary, source not marked `source=software_proof` / `not_proven`, missing or
 mismatched safe `evidence_ref`, unsafe copy, raw ROS topics, `/cmd_vel`,
