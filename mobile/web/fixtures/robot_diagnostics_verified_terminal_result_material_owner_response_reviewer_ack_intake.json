@@ -1,0 +1,129 @@
+{
+  "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary": {
+    "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary.v1",
+    "capability": "verified_terminal_result_material_owner_response_reviewer_ack_intake",
+    "source": "software_proof",
+    "source_schema": "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_intake.v1",
+    "ack_status": "reviewer_acknowledged_not_proven",
+    "source_handoff_status": "source_handoff_status=owner_support_reviewer_handoff_ready_not_proven",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "command_id": "cmd_terminal_result_owner_response_reviewer_ack_intake_20260523_0001",
+    "safe_command_id": "command_id=cmd_terminal_result_owner_response_reviewer_ack_intake_20260523_0001",
+    "evidence_ref": "verified_terminal_result_material_owner_response_reviewer_ack_intake_fixture_20260523_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_reviewer_ack_intake_fixture_20260523_0001",
+    "owner_routing": [
+      "owner_routing=field_owner_backfill_verified_terminal_result_safe_summary",
+      "owner_routing=same_safe_evidence_ref_required"
+    ],
+    "support_routing": [
+      "support_routing=keep_PRRT_kwDOSWB9286CJ3tX_unresolved",
+      "support_routing=hardware_material_pending"
+    ],
+    "reviewer_routing": [
+      "reviewer_routing=review_false_flags_before_next_material_decision",
+      "reviewer_routing=reject_delivery_success_claims"
+    ],
+    "ack_reasons": [
+      "ack_reason=reviewer_ack_received_for_safe_handoff_not_proven",
+      "ack_reason=verified_terminal_result_safe_summary_still_pending",
+      "ack_reason=PRRT_kwDOSWB9286CJ3tX unresolved hardware_material_pending"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=owner backfills verified terminal result safe summary under same safe evidence_ref",
+      "next_required_evidence=reviewer checks source=software_proof not_proven false flags",
+      "next_required_evidence=support keeps PRRT_kwDOSWB9286CJ3tX unresolved hardware_material_pending visible"
+    ],
+    "blocked_reason": "blocked_reason=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "pr5_thread_status": "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "safe_phone_copy": "Terminal result owner response reviewer ACK intake 已显示 reviewer ACK status、owner/support/reviewer routing、safe evidence_ref 和 safe command id；source=software_proof；not_proven；Start Delivery、Confirm Dropoff、Cancel 继续 disabled。",
+    "recovery_hint": "等待同一 safe evidence_ref 的 verified terminal result safe summary；手机端保持只读，不提交回执、review、handoff、owner-response、reviewer-ACK 或控制动作。",
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate",
+    "proof_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "verified_terminal_result_material_owner_response_reviewer_ack_intake_only",
+      "reviewer ACK intake",
+      "PRRT_kwDOSWB9286CJ3tX unresolved",
+      "hardware_material_pending",
+      "real_terminal_result_proof_missing",
+      "true_phone_browser_proof_missing",
+      "route_elevator_evidence_missing",
+      "hardware_hil_missing",
+      "o5_external_proof_missing",
+      "no OKR percentage lift"
+    ]
+  },
+  "verified_terminal_result_material_owner_response_reviewer_ack_intake_summary": {
+    "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary.v1",
+    "capability": "verified_terminal_result_material_owner_response_reviewer_ack_intake",
+    "source": "software_proof",
+    "ack_status": "reviewer_ack_needs_reassignment",
+    "source_handoff_status": "source_handoff_status=fallback_owner_response_review_handoff_not_proven",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "safe_command_id": "command_id=cmd_terminal_result_owner_response_reviewer_ack_intake_20260523_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_reviewer_ack_intake_fixture_20260523_0001",
+    "owner_routing": [
+      "owner_routing=field_owner_backfill_safe_terminal_result"
+    ],
+    "support_routing": [
+      "support_routing=PRRT_kwDOSWB9286CJ3tX unresolved hardware_material_pending"
+    ],
+    "reviewer_routing": [
+      "reviewer_routing=needs_reassignment_until_same_safe_evidence_ref"
+    ],
+    "ack_reasons": [
+      "ack_reason=fallback_reviewer_ack_needs_reassignment"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=reviewer ACK intake safe summary"
+    ],
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "verified_terminal_result_material_owner_response_reviewer_ack_intake": {
+    "summary": {
+      "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary.v1",
+      "capability": "verified_terminal_result_material_owner_response_reviewer_ack_intake",
+      "source": "software_proof",
+      "ack_status": "blocked_missing_source_handoff",
+      "source_handoff_status": "source_handoff_status=blocked_missing_verified_terminal_result_material_owner_response_review_handoff",
+      "terminal_result_type": "terminal_result_type=delivery",
+      "safe_command_id": "command_id=cmd_terminal_result_owner_response_reviewer_ack_intake_20260523_0001",
+      "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_reviewer_ack_intake_fixture_20260523_0001",
+      "owner_routing": [
+        "owner_routing=waiting_for_safe_source_handoff"
+      ],
+      "support_routing": [
+        "support_routing=hardware_material_pending"
+      ],
+      "reviewer_routing": [
+        "reviewer_routing=not_proven"
+      ],
+      "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

@@ -53,6 +53,8 @@ const VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_BOUNDARY 
 const VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_COPY = "verified terminal result owner response review decision 只读可见；review decision 不等于 delivery success，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_verified_terminal_result_material_owner_response_review_handoff_gate";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_COPY = "verified terminal result owner response review handoff 只读可见；owner/support/reviewer handoff 不等于 delivery success，主操作保持禁用。";
+const VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_BOUNDARY = "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate";
+const VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_COPY = "verified terminal result owner response reviewer ACK intake 只读可见；reviewer ACK 不等于 delivery success，主操作保持禁用。";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_BOUNDARY = "software_proof_docker_cloud_poll_backoff_rate_limit_guard";
 const CLOUD_POLL_BACKOFF_RATE_LIMIT_COPY = "远程控制正在等待重试退避窗口；窗口结束前 Start Delivery、Confirm Dropoff、Cancel 保持禁用。";
 const CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_BOUNDARY = "software_proof_docker_cloud_support_handoff_safe_export_gate";
@@ -342,6 +344,7 @@ const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_TEXT =
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|raw decision|raw handoff|raw followup|raw response material|review route|handoff route|followup route|owner response route|material route|command route|ack route|cursor route|diagnostics fetch|artifact fetch|material fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|reviewer resolution|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_TEXT = UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_TEXT;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_TEXT = UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_TEXT;
+const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_TEXT = UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_TEXT;
 const UNSAFE_RECOVERY_TEXT = /(delivery success|dropoff success|cancel completed|送达已?成功|投放已?完成|取消已?完成|hil_pass|\/cmd_vel|authorization|bearer|token|oss\s*(ak|sk)|database url|queue url|serial|baudrate|wave rover|traceback|checksum|artifact)/i;
 const UNSAFE_OPERATOR_REVIEW_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|raw robot response|robot\/internal|internal technical|password)/i;
 const UNSAFE_PC_ROUTE_DEBUG_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|raw ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|full execution bundle|complete artifact|raw robot response|robot\/internal|internal technical|password|delivery success|dropoff success|cancel completed|hil_pass)/i;
@@ -623,6 +626,7 @@ let latestVerifiedTerminalResultMaterialFollowupEscalationStatus = null;
 let latestVerifiedTerminalResultMaterialOwnerResponseIntake = null;
 let latestVerifiedTerminalResultMaterialOwnerResponseReviewDecision = null;
 let latestVerifiedTerminalResultMaterialOwnerResponseReviewHandoff = null;
+let latestVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntake = null;
 let latestWaveRoverFeedbackReplay = null;
 let latestWaveRoverHilPacketIntake = null;
 let latestWaveRoverHilPacketReviewDecision = null;
@@ -1768,6 +1772,15 @@ function safeVerifiedTerminalResultMaterialOwnerResponseReviewHandoffText(value,
   // owner response review handoff 只展示脱敏交接摘要；raw handoff、ACK/cursor、控制或成功暗示都降级。
   const text = safeText(value, fallback);
   if (UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(value, fallback = "not_proven") {
+  // reviewer ACK intake 只展示脱敏回执摘要；raw ACK、材料原文、控制或成功暗示都降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -49090,6 +49103,386 @@ function renderVerifiedTerminalResultMaterialOwnerResponseReviewHandoff(status) 
   $("verifiedTerminalResultMaterialOwnerResponseReviewHandoffHint").textContent = summary.recovery_hint;
 }
 
+function verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeCandidate(status, readiness, diagnostics) {
+  // reviewer ACK intake 只读取现有 safe summary；不请求 ACK、cursor、owner-response、handoff 或 raw material route。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const topDiagnosticsSummary = status?.diagnostics_summary && typeof status.diagnostics_summary === "object"
+    ? status.diagnostics_summary
+    : {};
+  const artifactSummary = status?.verified_terminal_result_material_owner_response_reviewer_ack_intake?.summary ||
+    readiness?.verified_terminal_result_material_owner_response_reviewer_ack_intake?.summary ||
+    diagnostics?.verified_terminal_result_material_owner_response_reviewer_ack_intake?.summary ||
+    diagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_intake?.summary ||
+    nestedDiagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_intake?.summary ||
+    nestedDiagnosticsInnerSummary.verified_terminal_result_material_owner_response_reviewer_ack_intake?.summary ||
+    statusDiagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_intake?.summary;
+  return firstObject(
+    status?.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    readiness?.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    diagnostics?.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    diagnosticsReadiness.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    diagnosticsSummary.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    statusDiagnosticsSummary.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    topDiagnosticsSummary.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    status?.verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    readiness?.verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    diagnostics?.verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    diagnosticsReadiness.verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    diagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    nestedDiagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    nestedDiagnosticsInnerSummary.verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    statusDiagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    topDiagnosticsSummary.verified_terminal_result_material_owner_response_reviewer_ack_intake_summary,
+    artifactSummary,
+  );
+}
+
+function verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeList(value, fallback) {
+  // ACK reason / routing / evidence 列表只显示短安全摘要，避免把 reviewer ACK payload 或材料结构透出。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        const key = safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(item[0], "");
+        const detail = safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(item[1], "");
+        return key && detail ? `${key}=${detail}` : key || detail;
+      }
+      if (item && typeof item === "object") {
+        const label = safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+          item.role || item.owner || item.route || item.status || item.material || item.summary,
+          "",
+        );
+        const detail = safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+          item.next_step || item.reason || item.safe_phone_copy || item.detail,
+          "",
+        );
+        return label && detail ? `${label}: ${detail}` : label || detail;
+      }
+      return safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 12) : [fallback];
+}
+
+function verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeNotProvenList(value) {
+  // reviewer ACK 只说明安全回执已进入待复核链路，不解除真实 terminal result、手机、现场、HIL 或 PR #5 缺口。
+  const provided = notProvenList(value?.not_proven || value?.not_proven_flags);
+  const required = [
+    "source=software_proof",
+    "software_proof",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "verified_terminal_result_material_owner_response_reviewer_ack_intake_only",
+    "reviewer_ack_intake_not_delivery_success",
+    "PRRT_kwDOSWB9286CJ3tX unresolved",
+    "hardware_material_pending",
+    "true_phone_browser_proof_missing",
+    "real_terminal_result_proof_missing",
+    "route_elevator_field_pass_missing",
+    "hardware_hil_missing",
+    "o5_external_proof_missing",
+    "no OKR percentage lift",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 32);
+}
+
+function verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeHasUnsafeRawFields(value) {
+  // 任意层级出现 raw/control/success/credential/route 语义时，ACK intake panel 直接 fail closed。
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const allowedSafetyKeys = new Set(["delivery_success", "primary_actions_enabled", "safe_to_control"]);
+  const stack = [value];
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current || typeof current !== "object") {
+      continue;
+    }
+    for (const [key, rawValue] of Object.entries(current)) {
+      if (key === "not_proven") {
+        continue;
+      }
+      if (!allowedSafetyKeys.has(key) &&
+        UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_TEXT.test(String(key))) {
+        return true;
+      }
+      if (rawValue && typeof rawValue === "object") {
+        stack.push(rawValue);
+      } else if (
+        UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_TEXT.test(String(rawValue))
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeFromStatus(status, readiness, diagnostics) {
+  const provided = verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeCandidate(
+    status,
+    readiness,
+    diagnostics,
+  ) || {};
+  const unsafeRawFields = verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeHasUnsafeRawFields(provided);
+  const failClosedFlags = unsafeRawFields ||
+    provided.safe_to_control === true ||
+    provided.delivery_success === true ||
+    provided.primary_actions_enabled === true;
+  const allowedAckStatuses = new Set([
+    "reviewer_acknowledged_not_proven",
+    "reviewer_ack_needs_reassignment",
+    "reviewer_ack_missing_material_not_proven",
+    "blocked_missing_source_handoff",
+    "blocked_missing_owner_response_review_handoff",
+    "reviewer_ack_rejected_unsafe",
+    "reviewer_ack_evidence_ref_mismatch",
+  ]);
+  const candidateStatus = safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+    provided.ack_status || provided.reviewer_ack_status || provided.intake_status || provided.status ||
+      provided.overall_status,
+    "blocked_missing_source_handoff",
+  );
+  const ackStatus = allowedAckStatuses.has(candidateStatus) && !failClosedFlags
+    ? candidateStatus
+    : "reviewer_ack_rejected_unsafe";
+  return {
+    missing: !Object.keys(provided).length || failClosedFlags,
+    unsafe_raw_fields: unsafeRawFields,
+    schema: "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary.v1",
+    source_schema: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+      provided.source_schema || provided.artifact_schema || provided.reviewer_ack_intake_schema,
+      "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_intake.v1",
+    ),
+    capability: "verified_terminal_result_material_owner_response_reviewer_ack_intake",
+    source: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(provided.source, "software_proof"),
+    ack_status: ackStatus,
+    source_handoff_status: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+      provided.source_handoff_status || provided.source_owner_response_review_handoff_status ||
+        provided.owner_response_review_handoff_status || provided.source_review_handoff_status,
+      "source_handoff_status=blocked_missing_verified_terminal_result_material_owner_response_review_handoff",
+    ),
+    terminal_result_type: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+      provided.terminal_result_type || provided.result_type || provided.terminal_type,
+      "terminal_result_type=not_proven",
+    ),
+    safe_evidence_ref: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    safe_command_id: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+      provided.safe_command_id || provided.command_id,
+      "command_id=not_proven",
+    ),
+    owner_routing: verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeList(
+      provided.owner_routing || provided.owner_route || provided.owner_next_step || provided.owner_handoff,
+      "owner_routing=backfill_same_safe_evidence_ref_verified_terminal_result_material",
+    ),
+    support_routing: verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeList(
+      provided.support_routing || provided.support_route || provided.support_next_step || provided.support_handoff,
+      "support_routing=keep_PRRT_kwDOSWB9286CJ3tX_unresolved_hardware_material_pending",
+    ),
+    reviewer_routing: verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeList(
+      provided.reviewer_routing || provided.reviewer_route || provided.reviewer_next_step || provided.reviewer_handoff,
+      "reviewer_routing=review_false_flags_before_next_material_decision",
+    ),
+    ack_reasons: verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeList(
+      provided.ack_reasons || provided.reviewer_ack_reasons || provided.reasons || provided.decision_reasons,
+      "ack_reasons=blocked_until_same_safe_evidence_ref_owner_response_review_handoff",
+    ),
+    next_required_evidence: verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeList(
+      provided.next_required_evidence || provided.next_evidence || provided.required_evidence ||
+        provided.missing_required_materials,
+      "next_required_evidence=同一 safe evidence_ref 的 verified terminal result owner response reviewer ACK safe summary。",
+    ),
+    blocked_reason: failClosedFlags
+      ? "blocked_reason=unsafe_raw_fields_or_true_state_flags_present_not_proven"
+      : safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+        provided.blocked_reason || provided.reason,
+        "blocked_reason=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+      ),
+    pr5_thread_status: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+      provided.pr5_thread_status || provided.review_thread_status,
+      "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    ),
+    evidence_boundary: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+      provided.evidence_boundary || provided.proof_boundary,
+      VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_BOUNDARY,
+    ),
+    safe_phone_copy: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary || provided.safe_copy,
+      VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_COPY,
+    ),
+    recovery_hint: safeVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeText(
+      provided.recovery_hint || provided.retry_hint,
+      "等待 reviewer ACK intake safe summary；手机端只读展示，不提交 ACK、review、handoff、owner-response 或控制动作。",
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeNotProvenList(provided),
+  };
+}
+
+function ensureVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakePanel() {
+  // reviewer ACK intake 紧跟 owner response review handoff；这里只读展示路由和 false-state，不新增任何提交路径。
+  let panel = $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakePanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("verifiedTerminalResultMaterialOwnerResponseReviewHandoffTitle")?.closest("section") ||
+    $("verifiedTerminalResultMaterialOwnerResponseReviewDecisionTitle")?.closest("section") ||
+    $("verifiedTerminalResultMaterialOwnerResponseIntakeTitle")?.closest("section") ||
+    $("verifiedTerminalResultMaterialFollowupEscalationStatusTitle")?.closest("section") ||
+    $("cloudReadinessTitle")?.closest("section") ||
+    $("supportTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakePanel";
+  panel.className = "verified-terminal-result-material-owner-response-reviewer-ack-intake-panel";
+  panel.setAttribute("aria-labelledby", "verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeTitle">Terminal Result Owner Response Reviewer ACK Intake</h2>
+      <span id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeCopy" class="message">
+      等待 robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary。
+    </p>
+    <dl class="verified-terminal-result-material-owner-response-reviewer-ack-intake-grid">
+      <div><dt>Reviewer ACK Status</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeStatus">blocked_missing_source_handoff</dd></div>
+      <div><dt>Source Handoff Status</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeSourceHandoff">source_handoff_status=blocked_missing_verified_terminal_result_material_owner_response_review_handoff</dd></div>
+      <div><dt>Terminal Result Type</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeType">terminal_result_type=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Safe Command ID</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeCommandId">command_id=not_proven</dd></div>
+      <div><dt>PR #5 Thread</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakePr5">PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending</dd></div>
+      <div><dt>Blocked Reason</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeReason">blocked_reason=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeBoundary">software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeNotProven">reviewer ACK intake、真实手机/browser、real terminal result、route/elevator field pass、HIL、O5 external proof、PR #5 resolved 和 delivery_success=false 边界未解除。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section>
+        <h3>Owner Routing</h3>
+        <ol id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeOwner" class="handoff-checklist">
+          <li>等待 owner routing。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Support Routing</h3>
+        <ol id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeSupport" class="handoff-checklist">
+          <li>等待 support routing。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Reviewer Routing</h3>
+        <ol id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeReviewer" class="handoff-checklist">
+          <li>等待 reviewer routing。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>ACK Reasons</h3>
+        <ol id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeReasons" class="handoff-checklist">
+          <li>等待 ACK reasons。</li>
+        </ol>
+      </section>
+      <section>
+        <h3>Next Required Evidence</h3>
+        <ol id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeNextEvidence" class="handoff-checklist">
+          <li>等待 next required evidence。</li>
+        </ol>
+      </section>
+    </div>
+    <p id="verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeHint" class="hint">
+      本 panel 只消费 robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary / safe summary fallback；不读取 raw diagnostics/material，不新增 ACK/cursor/review/handoff/owner-response/reviewer-ACK/material upload/GitHub mutation/control 路径。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntake(status) {
+  const panel = ensureVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakePanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeFromStatus(
+    status,
+    readiness,
+    latestDiagnostics,
+  );
+  latestVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntake = summary;
+  const badge = $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 reviewer ACK intake" : "reviewer ACK intake not_proven";
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeCopy").textContent = summary.safe_phone_copy;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeStatus").textContent =
+    `${summary.source} / ${summary.ack_status}`;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeSourceHandoff").textContent =
+    summary.source_handoff_status;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeType").textContent =
+    summary.terminal_result_type;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeEvidenceRef").textContent =
+    summary.safe_evidence_ref;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeCommandId").textContent =
+    summary.safe_command_id;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakePr5").textContent = summary.pr5_thread_status;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeReason").textContent = summary.blocked_reason;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeBoundary").textContent =
+    summary.evidence_boundary;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeFlags").textContent = summary.boundary_flags;
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeNotProven").textContent =
+    summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeOwner",
+    summary.owner_routing,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeSupport",
+    summary.support_routing,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeReviewer",
+    summary.reviewer_routing,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeReasons",
+    summary.ack_reasons,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeNextEvidence",
+    summary.next_required_evidence,
+  );
+  $("verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeHint").textContent = summary.recovery_hint;
+}
+
 function renderMobileDeviceAcceptance(status) {
   const readiness = readinessFromStatus(status);
   const summary = mobileDeviceAcceptanceReadinessFromStatus(status, readiness, latestDiagnostics);
@@ -53160,6 +53553,22 @@ function renderDiagnosticsSummary(payload) {
         latestDiagnostics || {},
       ).review_decision,
     ],
+    [
+      "verified_terminal_result_material_owner_response_review_handoff",
+      verifiedTerminalResultMaterialOwnerResponseReviewHandoffFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).handoff_status,
+    ],
+    [
+      "verified_terminal_result_material_owner_response_reviewer_ack_intake",
+      verifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).ack_status,
+    ],
     ["wave_rover_feedback_replay", waveRoverFeedbackReplay.replay_status],
     ["wave_rover_hil_packet_intake", waveRoverHilPacketIntake.packet_status],
     ["wave_rover_hil_packet_review_decision", waveRoverHilPacketReviewDecision.review_decision],
@@ -53375,6 +53784,7 @@ function renderOfflineFailure() {
   renderVerifiedTerminalResultMaterialOwnerResponseIntake({});
   renderVerifiedTerminalResultMaterialOwnerResponseReviewDecision({});
   renderVerifiedTerminalResultMaterialOwnerResponseReviewHandoff({});
+  renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntake({});
   renderWaveRoverFeedbackReplay({});
   renderWaveRoverHilPacketIntake({});
   renderWaveRoverHilPacketReviewDecision({});
@@ -53565,6 +53975,7 @@ function renderStatus(status) {
   renderVerifiedTerminalResultMaterialOwnerResponseIntake(status);
   renderVerifiedTerminalResultMaterialOwnerResponseReviewDecision(status);
   renderVerifiedTerminalResultMaterialOwnerResponseReviewHandoff(status);
+  renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntake(status);
   renderMobileDeviceAcceptance(status);
   renderMobileDeviceEvidence(status);
   renderMobileDeviceHandoffSession(status);
@@ -53914,6 +54325,7 @@ async function openDiagnostics() {
     renderVerifiedTerminalResultMaterialOwnerResponseIntake(latestStatus || {});
     renderVerifiedTerminalResultMaterialOwnerResponseReviewDecision(latestStatus || {});
     renderVerifiedTerminalResultMaterialOwnerResponseReviewHandoff(latestStatus || {});
+    renderVerifiedTerminalResultMaterialOwnerResponseReviewerAckIntake(latestStatus || {});
     renderWaveRoverFeedbackReplay(latestStatus || {});
     renderWaveRoverHilPacketIntake(latestStatus || {});
     renderWaveRoverHilPacketReviewDecision(latestStatus || {});

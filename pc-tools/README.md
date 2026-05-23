@@ -330,6 +330,49 @@ production DB/queue、worker/cutover、route/elevator field pass、HIL、WAVE RO
 proof、O5 external proof、PR #5 closure 或机器人控制权限。PR #5 thread
 `PRRT_kwDOSWB9286CJ3tX` 继续保持 unresolved / hardware_material_pending。
 
+## verified terminal result material owner response reviewer ACK intake
+
+`pc-tools/evidence/verified_terminal_result_material_owner_response_reviewer_ack_intake.py`
+是 PC-only reviewer ACK intake gate，能力名
+`verified_terminal_result_material_owner_response_reviewer_ack_intake`：
+
+```bash
+python3 pc-tools/evidence/verified_terminal_result_material_owner_response_reviewer_ack_intake.py \
+  --owner-response-review-handoff-json /tmp/verified_terminal_result_material_owner_response_review_handoff_summary.json \
+  --reviewer-ack-json /tmp/verified_terminal_result_material_owner_response_reviewer_ack_packet.json \
+  --output-dir /tmp/verified_terminal_result_material_owner_response_reviewer_ack_intake
+```
+
+输入必须是上一节 `verified_terminal_result_material_owner_response_review_handoff`
+artifact、summary、Robot safe alias 或 wrapper/nested safe JSON，再加一个脱敏 reviewer
+ACK packet。输出写入
+`verified_terminal_result_material_owner_response_reviewer_ack_intake.json` 和
+`verified_terminal_result_material_owner_response_reviewer_ack_intake_summary.json`，schema
+固定为 `trashbot.verified_terminal_result_material_owner_response_reviewer_ack_intake.v1`
+和
+`trashbot.verified_terminal_result_material_owner_response_reviewer_ack_intake_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary`，
+reviewer ACK packet schema 为
+`trashbot.verified_terminal_result_material_owner_response_reviewer_ack_packet.v1`，证据边界固定为
+`software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate`。
+所有输出继续保持 `source=software_proof`、`software_proof`、`not_proven`、
+`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`
+和 `no OKR percentage lift`。
+
+`reviewer_ack_state` 只允许 `reviewer_acknowledged_not_proven`、
+`reviewer_ack_needs_reassignment`、`reviewer_ack_evidence_ref_mismatch`、
+`reviewer_ack_rejected_unsafe` 和
+`blocked_missing_terminal_result_owner_response_review_handoff`。该 gate 输出上一跳
+handoff status、safe `evidence_ref`、safe `command_id`、`terminal_result_type`、
+reviewer ACK role/label/reason、三方 next step、`next_required_evidence`、
+`safe_copy`、`pr5_thread` 和 fail-closed diagnostics。ACK acknowledged 只表示同一 safe
+`evidence_ref` 下 reviewer 已收到上一跳 safe metadata；它不是真实 terminal result、
+delivery/dropoff/cancel success、真实 phone/browser proof、public HTTPS/TLS、4G/SIM、
+OSS/CDN live traffic、production DB/queue、route/elevator field pass、HIL、WAVE ROVER/UART
+proof、O5 external proof、PR #5 closure 或机器人控制权限。PR #5 thread
+`PRRT_kwDOSWB9286CJ3tX` 继续保持 unresolved / hardware_material_pending。
+
 ## hardware sensor HIL-entry callback intake
 
 `pc-tools/evidence/hardware_sensor_hil_entry_callback_intake_gate.py` 是

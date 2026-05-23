@@ -943,6 +943,61 @@ control, commands, Nav2, WAVE ROVER, HIL, material collection, production
 readiness, reviewer resolution, PR resolution, handoff authorization,
 dropoff/cancel completion, terminal delivery result, or delivery success.
 
+## robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary
+
+Robot diagnostics exposes
+`robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary`
+as the safe alias for
+`verified_terminal_result_material_owner_response_reviewer_ack_intake`. The
+alias first consumes the sanitized
+`verified_terminal_result_material_owner_response_reviewer_ack_intake_summary`
+or its Robot-safe alias. If no ACK summary is present, it can derive a blocked
+read-only state from the sanitized owner-response review handoff summary.
+
+- Source artifact schema:
+  `trashbot.verified_terminal_result_material_owner_response_reviewer_ack_intake.v1`
+- Source summary schema:
+  `trashbot.verified_terminal_result_material_owner_response_reviewer_ack_intake_summary.v1`
+- Robot diagnostics alias schema:
+  `trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary.v1`
+- Evidence boundary:
+  `software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate`
+- Upstream safe handoff source:
+  `trashbot.verified_terminal_result_material_owner_response_review_handoff.v1`
+  with
+  `software_proof_docker_verified_terminal_result_material_owner_response_review_handoff_gate`
+
+The alias is metadata-only and read-only. It preserves source handoff status,
+safe `evidence_ref`, safe `command_id`, terminal result type, source review
+decision status, source owner-response status, reviewer ACK status,
+acknowledged-by/acknowledged-at metadata, ACK reasons,
+accepted/missing/rejected/unsafe summaries, next required evidence, owner
+handoff, support handoff, reviewer routing, safe copy, `source=software_proof`,
+`not_proven`, `delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
+PR #5 thread `PRRT_kwDOSWB9286CJ3tX` remains unresolved and
+`hardware_material_pending`. The reviewer ACK intake alias does not prove real
+terminal result material, O5 external proof, true phone/browser proof, public
+HTTPS/TLS, 4G/SIM, OSS/CDN live traffic, production DB/queue, worker/cutover,
+route/elevator field pass, HIL, WAVE ROVER/UART proof, PR #5 resolution,
+reviewer resolution, or delivery success.
+
+The alias must fail closed for missing sanitized summaries, unsupported source
+schema or boundary, `source` other than `software_proof`, `overall_status`
+other than `not_proven`, unsafe `evidence_ref`, unsafe copy, raw fields,
+credentials, local paths, ROS topics, `/cmd_vel`, serial/UART details, WAVE
+ROVER details, tracebacks, complete artifacts, checksums, success wording, true
+control flags, PR-resolution claims, reviewer-resolution claims, handoff
+authorization, ACK/cursor mutation hints, collect/dropoff/cancel hints, or
+hardware proof claims.
+
+This alias must not enable Start Delivery, Confirm Dropoff, Cancel, ACK
+mutation, cursor mutation, replay, resubmit, raw diagnostics fetch, robot
+control, commands, Nav2, WAVE ROVER, HIL, material collection, production
+readiness, reviewer resolution, handoff authorization, dropoff/cancel
+completion, terminal delivery result, or delivery success.
+
 ## robot_diagnostics_real_material_followup_escalation_status_summary
 
 Robot diagnostics exposes

@@ -8,6 +8,32 @@
 
 ## 2026-05-23 系列
 
+更新时间：2026-05-23 23:24 Asia/Shanghai。
+
+### 2026-05-23 23-24｜verified-terminal-result-material-owner-response-reviewer-ack-intake｜verified terminal-result material owner-response reviewer ACK intake software proof
+
+本轮 `sprints/2026.05.23_23-24_verified-terminal-result-material-owner-response-reviewer-ack-intake/` 执行 `verified_terminal_result_material_owner_response_reviewer_ack_intake` epic closeout。用户价值是把 `verified_terminal_result_material_owner_response_review_handoff` 的 safe metadata 转成 reviewer ACK intake，让 support、field owner 和 reviewer 看清 acknowledged、missing material、reassignment needed、rejected unsafe ACK 或 blocked missing handoff 状态，以及为什么机器人仍不能控制。本轮边界为 `software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate`。
+
+Task A PC gate worker 新增 `verified_terminal_result_material_owner_response_reviewer_ack_intake`。验证通过：focused unittest 输出 `Ran 8 tests in 0.183s OK`，`py_compile`、required `rg` 与 scoped `git diff --check` 通过。
+
+Task B Robot worker 新增 `robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary` safe alias。验证通过：diagnostics unittest 输出 `Ran 317 tests OK`，`py_compile`、required `rg` 与 scoped `git diff --check` 通过。
+
+Task C Full-Stack worker 新增 `mobile/web` read-only reviewer ACK intake panel、fixture、tests 和 docs 更新，保持 Start Delivery、Confirm Dropoff、Cancel disabled。验证通过：mobile unittest 输出 `Ran 316 tests OK`，`node --check`、fixture `json.tool`、required `rg` 与 scoped `git diff --check` 通过。
+
+Integration acceptance worker read-only 验证通过：combined `py_compile` exit 0；combined unittest `Ran 641 tests in 7.247s OK`；`node --check` exit 0；fixture `json.tool` passed；required cross-surface `rg` passed；scoped `git diff --check` passed。
+
+PR #5 status preserved：`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。本轮保留 `source=software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`；不是 real terminal result，不是 O5 external proof，不是 true phone/browser proof，不是 public HTTPS/TLS，不是 4G/SIM，不是 OSS/CDN live traffic，不是 production DB/queue，不是 worker/cutover，不是 route/elevator field pass，不是 HIL，不是 WAVE ROVER/UART proof，不是 PR #5 resolved，也不是 delivery success；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰硬件桥、串口、WAVE ROVER、UART、HIL、2D LiDAR / ToF 或 vendor-source 材料；PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只表达 terminal-result material reviewer ACK intake；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal result、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；reviewer ACK intake 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` 能只读展示 verified terminal-result material owner response reviewer ACK intake，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate` 只证明 Docker/local PC gate + Robot diagnostics + mobile static fixture/UI 下 terminal-result material review-handoff 可转成 reviewer ACK intake metadata、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `pc-tools/README.md`、`docs/interfaces/verified_terminal_result_material_owner_response_reviewer_ack_intake.md`、`docs/interfaces/operator_gateway_diagnostics.md`、`docs/product/remote_4g_mvp.md`、`docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。Product 未运行全仓库中文注释比例复算；本轮只记录 worker-scoped 验证、integration acceptance worker 证据与 docs 同步证据。
+
 更新时间：2026-05-23 22:20 Asia/Shanghai。
 
 ### 2026-05-23 22-23｜verified-terminal-result-material-owner-response-review-handoff｜verified terminal-result material owner-response review handoff software proof

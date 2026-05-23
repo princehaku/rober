@@ -1719,6 +1719,32 @@ checksums, success wording, true control flags, PR-resolution claims,
 handoff-authorization claims, ACK/cursor mutation hints, and
 collect/dropoff/cancel hints must fail closed.
 
+Verified terminal-result material owner-response reviewer ACK intake adds the
+next Robot diagnostics safe alias:
+
+- `robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary`
+- `schema=trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_intake_summary.v1`
+- `source_schema=trashbot.verified_terminal_result_material_owner_response_reviewer_ack_intake.v1`
+- `evidence_boundary=software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate`
+- `source=software_proof`
+- `not_proven`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+- PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved
+- `hardware_material_pending=true`
+
+The alias is read-only and consumes the sanitized reviewer ACK intake summary
+first, then the compatible Robot-safe alias. It can fall back to a blocked state
+derived from the sanitized owner-response review handoff summary. It preserves
+source handoff status, safe `evidence_ref`, safe `command_id`, reviewer ACK
+status, owner/support/reviewer routing, next required evidence, and safe copy.
+It is only a reviewer ACK intake packet for unresolved material follow-through;
+it does not prove PR #5 resolution, reviewer resolution, real terminal result,
+O5 external proof, true phone/browser proof, public HTTPS/TLS, 4G/SIM, OSS/CDN
+live traffic, production DB/queue, worker/cutover, route/elevator field pass,
+HIL, WAVE ROVER/UART proof, or delivery success.
+
 ## Safety Rules
 
 - The robot never exposes `/cmd_vel` over the remote bridge.
