@@ -1688,6 +1688,37 @@ details, ACK/cursor mutation hints, collect/dropoff/cancel hints,
 handoff-authorization claims, and success/completion/control claims must fail
 closed.
 
+Verified terminal-result material owner-response review handoff adds the next
+Robot diagnostics safe alias:
+
+- `robot_diagnostics_verified_terminal_result_material_owner_response_review_handoff_summary`
+- `schema=trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_review_handoff_summary.v1`
+- `source_schema=trashbot.verified_terminal_result_material_owner_response_review_handoff.v1`
+- `evidence_boundary=software_proof_docker_verified_terminal_result_material_owner_response_review_handoff_gate`
+- `source=software_proof`
+- `not_proven`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+- PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved
+- `hardware_material_pending=true`
+
+The alias is read-only and can be derived from the sanitized
+`verified_terminal_result_material_owner_response_review_decision` safe summary.
+It preserves the upstream review decision status, safe `evidence_ref`, safe
+`command_id`, owner/support/reviewer routing, next required evidence, and safe
+copy. It is only a handoff packet for owner-response review follow-through; it
+does not prove a real terminal result, O5 external proof, true phone/browser
+proof, public HTTPS/TLS, 4G/SIM, OSS/CDN live traffic, production DB/queue,
+worker/cutover, route/elevator field pass, HIL, WAVE ROVER/UART proof, PR #5
+resolution, or delivery success.
+
+Unsafe raw fields, credentials, local paths, ROS topics, `/cmd_vel`,
+serial/UART details, WAVE ROVER details, tracebacks, complete artifacts,
+checksums, success wording, true control flags, PR-resolution claims,
+handoff-authorization claims, ACK/cursor mutation hints, and
+collect/dropoff/cancel hints must fail closed.
+
 ## Safety Rules
 
 - The robot never exposes `/cmd_vel` over the remote bridge.
