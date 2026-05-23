@@ -167,6 +167,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_verified_terminal_result_material_review_decision,
     summarize_verified_terminal_result_material_review_handoff,
     summarize_verified_terminal_result_material_followup_escalation_status,
+    summarize_verified_terminal_result_material_owner_response_intake,
     summarize_real_material_followup_escalation_status,
     summarize_mobile_route_elevator_field_device_precheck,
     summarize_route_elevator_field_session_handoff,
@@ -41537,6 +41538,196 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("Bearer", encoded)
         self.assertNotIn("/cmd_vel", encoded)
         self.assertNotIn("reviewer resolved", encoded.lower())
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+
+    def test_verified_terminal_result_material_owner_response_intake_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": (
+                "trashbot.verified_terminal_result_material_owner_response_intake_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.verified_terminal_result_material_owner_response_intake.v1"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate"
+            ),
+            "schema_version": 1,
+            "capability": "verified_terminal_result_material_owner_response_intake",
+            "status": "accepted_for_later_review_not_proven",
+            "overall_status": "not_proven",
+            "source": "software_proof",
+            "owner_response_status": {
+                "status": "accepted_for_later_review_not_proven",
+                "reason": "owner response material is safe enough for later review only",
+                "evidence_source": "software_proof",
+            },
+            "safe_evidence_ref": "evidence://terminal-result-owner-response-001",
+            "safe_command_id": "cmd-terminal-owner-001",
+            "terminal_result_type": "delivery",
+            "source_followup_status": (
+                "escalated_for_terminal_result_material_followup_not_proven"
+            ),
+            "accepted_materials_summary": ["owner_safe_response_note"],
+            "missing_materials_summary": ["real terminal-result screenshot"],
+            "rejected_materials_summary": ["raw command transcript"],
+            "unsafe_materials_summary": ["raw control claim blocked"],
+            "next_required_evidence": ["review owner response against PR #5 pending material"],
+            "operator_support_handoff": ["queue for terminal-result material reviewer"],
+            "safe_copy": (
+                "Verified terminal result material owner response intake is "
+                "metadata-only; source=software_proof; not_proven; "
+                "delivery_success=false; primary_actions_enabled=false; "
+                "safe_to_control=false; PR #5 PRRT_kwDOSWB9286CJ3tX remains "
+                "hardware_material_pending."
+            ),
+            "not_proven": ["hardware_material_pending"],
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+        }
+        artifact = {
+            "schema": (
+                "trashbot.verified_terminal_result_material_owner_response_intake.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate"
+            ),
+            "verified_terminal_result_material_owner_response_intake_summary": (
+                safe_summary
+            ),
+        }
+        payload = self._base_build_payload(
+            {
+                "verified_terminal_result_material_owner_response_intake": artifact,
+                "diagnostics": {
+                    "verified_terminal_result_material_owner_response_intake": {
+                        "delivery_success": True,
+                        "raw_artifact": {"Authorization": "Bearer unsafe"},
+                    }
+                },
+            }
+        )
+        summary = payload[
+            "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary"
+        ]
+        from_nested = summarize_verified_terminal_result_material_owner_response_intake(
+            {
+                "status": {
+                    "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary": (
+                        safe_summary
+                    )
+                }
+            }
+        )
+        from_diagnostics = self._base_build_payload(
+            {
+                "diagnostics": {
+                    "verified_terminal_result_material_owner_response_intake_summary": (
+                        safe_summary
+                    )
+                }
+            }
+        )[
+            "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary"
+        ]
+        raw_only = summarize_verified_terminal_result_material_owner_response_intake(
+            {
+                "schema": (
+                    "trashbot.verified_terminal_result_material_owner_response_intake.v1"
+                ),
+                "evidence_boundary": (
+                    "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate"
+                ),
+            }
+        )
+        unsafe = summarize_verified_terminal_result_material_owner_response_intake(
+            dict(
+                safe_summary,
+                safe_evidence_ref="unsafe ref with spaces",
+                safe_copy="Owner response accepted; reviewer resolved PR; Start Delivery control enabled.",
+                delivery_success=True,
+                primary_actions_enabled=True,
+                safe_to_control=True,
+                pr5_review_thread_resolved=True,
+                raw_source={"complete_json": {"cmd_vel": "unsafe"}},
+            )
+        )
+
+        self.assertEqual(
+            payload["verified_terminal_result_material_owner_response_intake"],
+            summary,
+        )
+        self.assertEqual(
+            payload["verified_terminal_result_material_owner_response_intake_summary"],
+            summary,
+        )
+        self.assertNotIn(
+            "verified_terminal_result_material_owner_response_intake",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.verified_terminal_result_material_owner_response_intake.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(
+            summary["status"], "accepted_for_later_review_not_proven"
+        )
+        self.assertEqual(
+            summary["safe_evidence_ref"], "evidence://terminal-result-owner-response-001"
+        )
+        self.assertEqual(summary["safe_command_id"], "cmd-terminal-owner-001")
+        self.assertEqual(summary["terminal_result_type"], "delivery")
+        self.assertIn("owner_safe_response_note", summary["accepted_materials_summary"])
+        self.assertIn("hardware_material_pending", summary["not_proven"])
+        self.assertIn(
+            "pr5_PRRT_kwDOSWB9286CJ3tX_unresolved",
+            summary["not_proven"],
+        )
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["collect_triggered"])
+        self.assertFalse(summary["dropoff_triggered"])
+        self.assertFalse(summary["cancel_triggered"])
+        self.assertFalse(summary["robot_control_allowed"])
+        self.assertFalse(summary["pr5_review_thread_resolved"])
+        self.assertFalse(summary["okr_percentage_lift"])
+        self.assertEqual(
+            from_nested["status"], "accepted_for_later_review_not_proven"
+        )
+        self.assertEqual(from_diagnostics["safe_command_id"], "cmd-terminal-owner-001")
+        self.assertEqual(
+            raw_only["owner_response_status"]["status"],
+            "blocked_missing_verified_terminal_result_material_owner_response_intake_summary",
+        )
+        self.assertEqual(
+            unsafe["owner_response_status"]["status"],
+            "blocked_unsafe_verified_terminal_result_material_owner_response_intake_summary",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_source", encoded)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("complete_json", encoded)
+        self.assertNotIn("Authorization", encoded)
+        self.assertNotIn("Bearer", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("reviewer resolved", encoded.lower())
+        self.assertNotIn("delivery_success=true", encoded)
         self.assertIn("source=software_proof", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success=false", encoded)

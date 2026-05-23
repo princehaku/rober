@@ -189,6 +189,52 @@ success/control overclaim；escalated/waiting 只表示 field owner/support/revi
 补证跟进状态，不证明 verified terminal result、delivery success、真实手机/browser、
 HIL、O5 external proof 或机器人控制权限。
 
+## verified terminal result material owner response intake
+
+`pc-tools/evidence/verified_terminal_result_material_owner_response_intake.py`
+是 PC-only terminal-result 材料 owner response intake gate，能力名
+`verified_terminal_result_material_owner_response_intake`：
+
+```bash
+python3 pc-tools/evidence/verified_terminal_result_material_owner_response_intake.py \
+  --input /tmp/verified_terminal_result_material_followup_escalation_status_summary.json \
+  --owner-response /tmp/sanitized_owner_response_packet.json \
+  --output-dir /tmp/verified_terminal_result_material_owner_response_intake
+```
+
+`--source` 是 `--input` 的别名；`--owner-response` 可省略，省略时输出
+`missing_terminal_result_material_owner_response_not_proven` 并返回非 0。输入支持上一轮
+`verified_terminal_result_material_followup_escalation_status` artifact、summary、
+Robot safe alias `robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary`
+以及常见 wrapper/nested JSON。输出写入
+`verified_terminal_result_material_owner_response_intake.json` 和
+`verified_terminal_result_material_owner_response_intake_summary.json`，schema 固定为
+`trashbot.verified_terminal_result_material_owner_response_intake.v1` 和
+`trashbot.verified_terminal_result_material_owner_response_intake_summary.v1`，
+证据边界固定为
+`software_proof_docker_verified_terminal_result_material_owner_response_intake_gate`，
+并始终保持 `source=software_proof`、`software_proof`、`not_proven`、
+`delivery_success=false`、`primary_actions_enabled=false`、
+`safe_to_control=false` 和 `no OKR percentage lift`。
+
+`owner_response_status` 只允许
+`accepted_terminal_result_material_owner_response_not_proven`、
+`missing_terminal_result_material_owner_response_not_proven`、
+`rejected_terminal_result_material_owner_response_not_proven`、
+`unsafe_terminal_result_material_owner_response_not_proven`、
+`blocked_missing_terminal_result_followup_escalation_status_not_proven` 和
+`blocked_evidence_ref_mismatch_not_proven`。该 gate 输出 source follow-up status、safe
+`evidence_ref`、safe `command_id`、`terminal_result_type`、`field_owner`、
+`support_owner`、`reviewer_route`、accepted/missing/rejected/unsafe materials、
+`blocked_reason`、`next_required_evidence` 和 `safe_copy`。它拒绝 raw artifacts、
+完整 JSON dump、raw owner response body、raw terminal material、凭证、URL、
+DB/queue、OSS、本机路径、traceback、ROS topic、`/cmd_vel`、serial/UART、
+WAVE ROVER、ACK/cursor/replay/resubmit hints、reviewer-resolution claims 和
+success/control overclaim；accepted 只表示脱敏 owner response metadata 可进入后续
+review，不证明真实 terminal result、delivery success、真实手机/browser、HIL、
+O5 external proof、PR #5 closure 或机器人控制权限。PR #5 thread
+`PRRT_kwDOSWB9286CJ3tX` 继续保持 unresolved / hardware_material_pending。
+
 ## hardware sensor HIL-entry callback intake
 
 `pc-tools/evidence/hardware_sensor_hil_entry_callback_intake_gate.py` 是

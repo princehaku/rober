@@ -1687,6 +1687,26 @@ VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_STATUSES = (
     "rejected_unsafe_terminal_result_followup_not_proven",
     "blocked_missing_terminal_result_review_handoff_not_proven",
 )
+VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_SCHEMA = (
+    "trashbot.verified_terminal_result_material_owner_response_intake.v1"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.verified_terminal_result_material_owner_response_intake_summary.v1"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary.v1"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_GATE = (
+    "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate"
+)
+VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_STATUSES = (
+    "accepted_not_proven",
+    "missing_not_proven",
+    "rejected_not_proven",
+    "blocked_not_proven",
+    "accepted_for_later_review_not_proven",
+    "blocked_missing_terminal_result_followup_not_proven",
+)
 REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_SCHEMA = (
     "trashbot.real_material_followup_escalation_status.v1"
 )
@@ -69625,6 +69645,625 @@ def summarize_verified_terminal_result_material_followup_escalation_status(sourc
     return summary
 
 
+def _verified_terminal_result_material_owner_response_intake_not_proven(
+    response=None,
+    summary_fragment=None,
+):
+    # owner response intake 只证明安全材料进入后续复核队列，不代表 PR #5 关闭或终态送达成立。
+    values = [
+        "verified_terminal_result_material_owner_response_intake_only",
+        "owner_response_material_not_reviewer_resolution",
+        "owner_response_material_not_delivery_success",
+        "accepted_materials_for_later_review_only",
+        "pr5_PRRT_kwDOSWB9286CJ3tX_unresolved",
+        "hardware_material_pending",
+        "real_delivery_result",
+        "dropoff_completion",
+        "cancel_completion",
+        "delivery_success",
+        "robot_control_authorization",
+        "ACK_mutation",
+        "cursor_mutation",
+        "collect_dropoff_cancel_control",
+        "real_hil_pass",
+    ]
+    for container in (response or {}, summary_fragment or {}):
+        if not isinstance(container, dict):
+            continue
+        for item in container.get("not_proven", []):
+            safe_item = _redact_route_task_rehearsal_text(item)
+            lowered = safe_item.lower()
+            # raw/path/checksum/HIL pass 线索只用于阻断，不暴露到 Robot-safe not_proven 列表。
+            if any(
+                marker in lowered
+                for marker in ("raw", "path", "checksum", "hil pass", "[redacted")
+            ):
+                continue
+            if safe_item and safe_item not in values:
+                values.append(safe_item)
+        for item in container.get("next_required_evidence", []):
+            safe_item = _redact_route_task_rehearsal_text(item)
+            if safe_item and safe_item not in values:
+                values.append(safe_item)
+    return values
+
+
+def _default_verified_terminal_result_material_owner_response_intake_summary(
+    path,
+    status="blocked_missing_terminal_result_followup_not_proven",
+    read_error="",
+):
+    # 默认值也显式保持三类 false flag，防止缺材料时被 UI 解释成可继续控制。
+    safe_copy = (
+        "Verified terminal result material owner response intake is metadata-only; "
+        "source=software_proof; not_proven; safe_to_control=false; "
+        "delivery_success=false; primary_actions_enabled=false."
+    )
+    reason = read_error or (
+        "verified_terminal_result_material_owner_response_intake summary is not configured"
+    )
+    return {
+        "schema": VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "capability": "verified_terminal_result_material_owner_response_intake",
+        "evidence_boundary": VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_GATE,
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "status": status,
+        "overall_status": "not_proven",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "owner_response_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": reason,
+        },
+        "safe_evidence_ref": "",
+        "safe_command_id": "",
+        "terminal_result_type": "",
+        "source_followup_status": "",
+        "accepted_materials_summary": [],
+        "missing_materials_summary": [],
+        "rejected_materials_summary": [],
+        "unsafe_materials_summary": [],
+        "next_required_evidence": [],
+        "operator_support_handoff": [],
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "robot_diagnostics_summary": {
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "status": status,
+        },
+        "not_proven": _verified_terminal_result_material_owner_response_intake_not_proven(),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "summary_required": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "ack_mutation_allowed": False,
+        "cursor_mutation_allowed": False,
+        "replay_allowed": False,
+        "resubmit_allowed": False,
+        "robot_control_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "production_ready": False,
+        "dropoff_completion": False,
+        "cancel_completion": False,
+        "reviewer_resolution": False,
+        "pr5_review_thread_resolved": False,
+        "okr_percentage_lift": False,
+    }
+
+
+def _verified_terminal_result_material_owner_response_intake_source_contract(value):
+    # source summary 和 Robot alias 都必须回指 owner-response intake artifact 与本轮 intake gate。
+    value = value if isinstance(value, dict) else {}
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or "")
+    if source_schema in (
+        VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_SOURCE_SUMMARY_SCHEMA,
+        VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_SUMMARY_SCHEMA,
+    ):
+        source_schema = str(
+            value.get("source_schema")
+            or VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_SCHEMA
+        )
+        source_boundary = str(value.get("source_evidence_boundary") or source_boundary)
+    return source_schema, source_boundary
+
+
+def _verified_terminal_result_material_owner_response_intake_summary_fragment(value):
+    # 只接受 Task A 已消毒 summary 或 Robot alias；raw owner-response artifact 不能直接展示。
+    if not isinstance(value, dict):
+        return {}
+    if str(value.get("schema") or "") in (
+        VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_SOURCE_SUMMARY_SCHEMA,
+        VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_SUMMARY_SCHEMA,
+    ):
+        return value
+    for candidate in (
+        value.get("verified_terminal_result_material_owner_response_intake_summary"),
+        value.get(
+            "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary"
+        ),
+        value.get("diagnostics_summary"),
+        value.get("robot_diagnostics_summary"),
+        value.get("robot_compatible_summary"),
+        value.get("summary"),
+    ):
+        if isinstance(candidate, dict):
+            return candidate
+    for container_name in ("diagnostics", "status", "latest_status"):
+        container = value.get(container_name)
+        if isinstance(container, dict):
+            nested = (
+                _verified_terminal_result_material_owner_response_intake_summary_fragment(
+                    container
+                )
+            )
+            if nested:
+                return nested
+    return {}
+
+
+def _verified_terminal_result_material_owner_response_intake_has_unsafe_controls(
+    value,
+):
+    # 新 alias 允许 safe_command_id 等安全字段，但 raw/control/PR resolved 线索仍必须阻断。
+    unsafe_key_fragments = (
+        "raw",
+        "artifact_path",
+        "artifact_ref",
+        "complete_artifact",
+        "full_artifact",
+        "local_path",
+        "path",
+        "checksum",
+        "credential",
+        "secret",
+        "token",
+        "authorization",
+        "bearer",
+        "github",
+        "traceback",
+        "db_url",
+        "queue_url",
+        "oss_ak",
+        "oss_sk",
+        "ros_topic",
+        "cmd_vel",
+        "serial",
+        "uart",
+        "baud",
+        "wave_rover",
+        "ack_cursor",
+    )
+    safe_keys = {
+        "schema",
+        "schema_version",
+        "capability",
+        "source",
+        "source_schema",
+        "source_schema_version",
+        "source_evidence_boundary",
+        "evidence_boundary",
+        "safe_evidence_ref",
+        "evidence_ref",
+        "safe_command_id",
+        "command_id",
+        "terminal_result_type",
+        "status",
+        "overall_status",
+        "owner_response_status",
+        "source_followup_status",
+        "status_summary",
+        "verdict",
+        "reason",
+        "evidence_source",
+        "accepted_materials_summary",
+        "missing_materials_summary",
+        "rejected_materials_summary",
+        "unsafe_materials_summary",
+        "accepted_summary",
+        "missing_summary",
+        "rejected_summary",
+        "unsafe_summary",
+        "accepted",
+        "missing",
+        "rejected",
+        "unsafe",
+        "next_required_evidence",
+        "operator_support_handoff",
+        "owner_handoff",
+        "robot_diagnostics_summary",
+        "robot_compatible_summary",
+        "safe_copy",
+        "safe_phone_copy",
+        "not_proven",
+        "safe_to_control",
+        "delivery_success",
+        "primary_actions_enabled",
+        "metadata_only",
+        "boundary_flags",
+        "verified_terminal_result_material_owner_response_intake_summary",
+        "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary",
+        "diagnostics",
+        "status",
+        "latest_status",
+        "summary",
+        "diagnostics_summary",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text == "not_proven":
+                continue
+            if key_text not in safe_keys and any(
+                fragment in key_text for fragment in unsafe_key_fragments
+            ):
+                return True
+            if key_text in (
+                "delivery_success",
+                "primary_actions_enabled",
+                "safe_to_control",
+            ) and item is False:
+                continue
+            if key_text in (
+                "reviewer_resolution",
+                "reviewer_resolved",
+                "pr5_review_thread_resolved",
+                "owner_material_real_acceptance",
+                "collect_triggered",
+                "dropoff_triggered",
+                "cancel_triggered",
+                "ack_post_allowed",
+                "cursor_updates_allowed",
+                "robot_control_allowed",
+            ) and bool(item):
+                return True
+            if _verified_terminal_result_material_owner_response_intake_has_unsafe_controls(
+                item
+            ):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _verified_terminal_result_material_owner_response_intake_has_unsafe_controls(
+                item
+            )
+            for item in value
+        )
+    if isinstance(value, str):
+        lowered = value.lower()
+        return any(
+            marker in lowered
+            for marker in (
+                "reviewer resolved",
+                "thread resolved",
+                "pr resolved",
+                "delivery success",
+                "control enabled",
+                "start delivery",
+                "confirm dropoff",
+            )
+        )
+    return False
+
+
+def summarize_verified_terminal_result_material_owner_response_intake(source):
+    """构建 verified terminal result material owner-response intake 的只读 Robot diagnostics 摘要。"""
+    # accepted 也只表示进入 later review queue，不能启用 collect/dropoff/cancel、ACK/cursor 或 OKR 提升。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_verified_terminal_result_material_owner_response_intake_summary(
+        source_path,
+        read_error=(
+            "verified_terminal_result_material_owner_response_intake summary is not configured"
+        ),
+    )
+    if isinstance(source, dict):
+        response = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = (
+                "verified_terminal_result_material_owner_response_intake summary artifact missing"
+            )
+            summary["owner_response_status"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                response = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                "failed reading verified_terminal_result_material_owner_response_intake "
+                f"summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["owner_response_status"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(response, dict):
+        summary["owner_response_status"]["reason"] = (
+            "verified_terminal_result_material_owner_response_intake JSON must be an object"
+        )
+        return summary
+
+    raw_schema = str(response.get("schema") or "")
+    summary_fragment = (
+        _verified_terminal_result_material_owner_response_intake_summary_fragment(
+            response
+        )
+    )
+    contract_source = summary_fragment if summary_fragment else response
+    source_schema, source_boundary = (
+        _verified_terminal_result_material_owner_response_intake_source_contract(
+            contract_source
+        )
+    )
+    if not source_schema and raw_schema:
+        source_schema = raw_schema
+    if not source_boundary:
+        source_boundary = str(response.get("evidence_boundary") or "")
+
+    status_doc = (
+        summary_fragment.get("owner_response_status")
+        if isinstance(summary_fragment.get("owner_response_status"), dict)
+        else summary_fragment.get("status_summary")
+        if isinstance(summary_fragment.get("status_summary"), dict)
+        else {}
+    )
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or response.get("safe_copy")
+        or response.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    safe_copy_text = _redact_route_task_rehearsal_text(safe_copy)
+    if "delivery_success=false" not in safe_copy_text:
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; not_proven; "
+            "safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    status = _redact_route_task_rehearsal_text(
+        status_doc.get("status")
+        or summary_fragment.get("owner_response_status")
+        or summary_fragment.get("status")
+        or response.get("status")
+        or "blocked_missing_terminal_result_followup_not_proven"
+    )
+    overall_status = _redact_route_task_rehearsal_text(
+        summary_fragment.get("overall_status")
+        or response.get("overall_status")
+        or "not_proven"
+    )
+    source_value = _redact_route_task_rehearsal_text(
+        summary_fragment.get("source")
+        or response.get("source")
+        or status_doc.get("evidence_source")
+        or ""
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or response.get("safe_evidence_ref")
+        or response.get("evidence_ref", "")
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                summary_fragment.get("source_schema_version")
+                or summary_fragment.get("schema_version")
+                or response.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+            "configured": bool(str(source_path or "").strip()) or isinstance(source, dict),
+            "exists": True,
+            "status": status,
+            "overall_status": "not_proven",
+            "source": EVIDENCE_SOURCE_SOFTWARE,
+            "owner_response_status": {
+                "status": status,
+                "verdict": "not_proven",
+                "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                "reason": _redact_route_task_rehearsal_text(
+                    status_doc.get("reason")
+                    or summary_fragment.get("reason")
+                    or "verified terminal result material owner response intake is software_proof only"
+                ),
+            },
+            "safe_evidence_ref": safe_evidence_ref,
+            "safe_command_id": _redact_route_task_rehearsal_text(
+                summary_fragment.get("safe_command_id")
+                or summary_fragment.get("command_id")
+                or response.get("safe_command_id")
+                or response.get("command_id")
+                or ""
+            ),
+            "terminal_result_type": _redact_route_task_rehearsal_text(
+                summary_fragment.get("terminal_result_type")
+                or response.get("terminal_result_type")
+                or ""
+            ),
+            "source_followup_status": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source_followup_status")
+                or summary_fragment.get("source_followup_status_summary")
+                or response.get("source_followup_status")
+                or ""
+            ),
+            "accepted_materials_summary": _safe_route_task_rehearsal_list(
+                summary_fragment.get("accepted_materials_summary")
+                or summary_fragment.get("accepted_summary")
+                or summary_fragment.get("accepted")
+            ),
+            "missing_materials_summary": _safe_route_task_rehearsal_list(
+                summary_fragment.get("missing_materials_summary")
+                or summary_fragment.get("missing_summary")
+                or summary_fragment.get("missing")
+            ),
+            "rejected_materials_summary": _safe_route_task_rehearsal_list(
+                summary_fragment.get("rejected_materials_summary")
+                or summary_fragment.get("rejected_summary")
+                or summary_fragment.get("rejected")
+            ),
+            "unsafe_materials_summary": _safe_route_task_rehearsal_list(
+                summary_fragment.get("unsafe_materials_summary")
+                or summary_fragment.get("unsafe_summary")
+                or summary_fragment.get("unsafe")
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "operator_support_handoff": _safe_route_task_rehearsal_list(
+                summary_fragment.get("operator_support_handoff")
+                or summary_fragment.get("owner_handoff")
+            ),
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {
+                "safe_copy": safe_copy_text,
+                "safe_phone_copy": safe_copy_text,
+                "status": status,
+            },
+            "not_proven": (
+                _verified_terminal_result_material_owner_response_intake_not_proven(
+                    response,
+                    summary_fragment,
+                )
+            ),
+            "read_error": "",
+        }
+    )
+    if (
+        source_schema != VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_SCHEMA
+        or source_boundary
+        != VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_GATE
+    ):
+        summary.update(
+            {
+                "status": "blocked_unsupported_verified_terminal_result_material_owner_response_intake",
+                "owner_response_status": {
+                    "status": "blocked_unsupported_verified_terminal_result_material_owner_response_intake",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "verified_terminal_result_material_owner_response_intake schema or evidence boundary is unsupported",
+                },
+                "safe_evidence_ref": "",
+                "safe_command_id": "",
+            }
+        )
+        return summary
+    if (
+        raw_schema == VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_SCHEMA
+        and not summary_fragment
+    ):
+        summary.update(
+            {
+                "status": "blocked_missing_verified_terminal_result_material_owner_response_intake_summary",
+                "owner_response_status": {
+                    "status": "blocked_missing_verified_terminal_result_material_owner_response_intake_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "verified_terminal_result_material_owner_response_intake artifact is missing sanitized summary",
+                },
+                "safe_evidence_ref": "",
+            }
+        )
+        return summary
+
+    required_safe_metadata = (
+        bool(summary_fragment),
+        source_value == EVIDENCE_SOURCE_SOFTWARE,
+        overall_status == "not_proven",
+        status in VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_STATUSES,
+        bool(summary["safe_evidence_ref"]),
+        bool(summary["safe_command_id"]),
+        bool(summary["terminal_result_type"]),
+        bool(summary["next_required_evidence"]),
+        bool(summary["operator_support_handoff"]),
+    )
+    unsafe_payload = (
+        not all(required_safe_metadata)
+        or _real_material_evidence_ref_is_unsafe(summary["safe_evidence_ref"])
+        or summary_fragment.get("delivery_success") is not False
+        or summary_fragment.get("primary_actions_enabled") is not False
+        or summary_fragment.get("safe_to_control") is not False
+        or _verified_terminal_result_material_owner_response_intake_has_unsafe_controls(
+            response
+        )
+        or _verified_terminal_result_material_owner_response_intake_has_unsafe_controls(
+            summary_fragment
+        )
+        or _verified_terminal_result_material_owner_response_intake_has_unsafe_controls(
+            robot_summary
+        )
+        or _task_terminal_field_material_intake_copy_is_unsafe(safe_copy_text)
+    )
+    if unsafe_payload:
+        blocked_copy = (
+            "Verified terminal result material owner response intake was blocked "
+            "because the summary did not remain source=software_proof/not_proven "
+            "with safe_to_control=false, delivery_success=false, "
+            "primary_actions_enabled=false, PR #5 PRRT_kwDOSWB9286CJ3tX unresolved, "
+            "and no raw artifact, reviewer-resolution, ACK/cursor, collect/dropoff/"
+            "cancel, hardware, ROS, or robot-control claims."
+        )
+        summary.update(
+            {
+                "status": "blocked_unsafe_verified_terminal_result_material_owner_response_intake_summary",
+                "owner_response_status": {
+                    "status": "blocked_unsafe_verified_terminal_result_material_owner_response_intake_summary",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "verified_terminal_result_material_owner_response_intake contains unsafe fields, missing safe metadata, success wording, reviewer-resolution, ACK/cursor, collect/dropoff/cancel, hardware details, or control claims",
+                },
+                "safe_evidence_ref": "",
+                "safe_command_id": "",
+                "accepted_materials_summary": [],
+                "missing_materials_summary": [],
+                "rejected_materials_summary": [],
+                "unsafe_materials_summary": [],
+                "next_required_evidence": [],
+                "operator_support_handoff": [],
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                    "status": "blocked",
+                },
+            }
+        )
+    return summary
+
+
 def summarize_real_material_followup_escalation_status(source):
     """构建真实材料 follow-up escalation status 的 summary-only Robot diagnostics 摘要。"""
     # 这里故意只读 sanitized summary；raw manifest/materials 即使存在也不能进入 Robot diagnostics。
@@ -79089,6 +79728,7 @@ def build_diagnostics_payload(
     verified_terminal_result_material_review_decision_ref="",
     verified_terminal_result_material_review_handoff_ref="",
     verified_terminal_result_material_followup_escalation_status_ref="",
+    verified_terminal_result_material_owner_response_intake_ref="",
     real_material_followup_escalation_status_ref="",
     field_evidence_real_material_followup_escalation_status_ref="",
     field_evidence_real_material_owner_ack_intake_ref="",
@@ -80221,6 +80861,59 @@ def build_diagnostics_payload(
             diagnostics_source.get(
                 "verified_terminal_result_material_followup_escalation_status"
             ),
+            dict,
+        )
+        else {}
+    )
+    verified_terminal_result_material_owner_response_intake_preserved_source = (
+        latest_status.get(
+            "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "verified_terminal_result_material_owner_response_intake_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "verified_terminal_result_material_owner_response_intake_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "verified_terminal_result_material_owner_response_intake"
+        )
+        if isinstance(
+            latest_status.get("verified_terminal_result_material_owner_response_intake"),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "verified_terminal_result_material_owner_response_intake_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "verified_terminal_result_material_owner_response_intake_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "verified_terminal_result_material_owner_response_intake"
+        )
+        if isinstance(
+            diagnostics_source.get("verified_terminal_result_material_owner_response_intake"),
             dict,
         )
         else {}
@@ -86617,6 +87310,30 @@ def build_diagnostics_payload(
         "robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary",
     ):
         latest_status.pop(unsafe_latest_key, None)
+    verified_terminal_result_material_owner_response_intake_source = (
+        verified_terminal_result_material_owner_response_intake_ref
+        or os.environ.get(
+            "TRASHBOT_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_SUMMARY",
+            "",
+        )
+        or verified_terminal_result_material_owner_response_intake_preserved_source
+    )
+    verified_terminal_result_material_owner_response_intake_summary = (
+        summarize_verified_terminal_result_material_owner_response_intake(
+            verified_terminal_result_material_owner_response_intake_source
+        )
+    )
+    # owner response accepted 也只能进入 later review queue；latest_status 不保留 raw/source sibling。
+    for unsafe_latest_key in (
+        "verified_terminal_result_material_owner_response_intake",
+        "verified_terminal_result_material_owner_response_intake_summary",
+        "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary",
+    ):
+        latest_status.pop(unsafe_latest_key, None)
     real_material_followup_escalation_status_source = (
         real_material_followup_escalation_status_ref
         or os.environ.get("TRASHBOT_REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS", "")
@@ -87698,6 +88415,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_verified_terminal_result_material_followup_escalation_status_summary=(
             verified_terminal_result_material_followup_escalation_status_summary
+        ),
+        verified_terminal_result_material_owner_response_intake=(
+            verified_terminal_result_material_owner_response_intake_summary
+        ),
+        verified_terminal_result_material_owner_response_intake_summary=(
+            verified_terminal_result_material_owner_response_intake_summary
+        ),
+        robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary=(
+            verified_terminal_result_material_owner_response_intake_summary
         ),
         real_material_followup_escalation_status=(
             real_material_followup_escalation_status_summary

@@ -39,6 +39,10 @@ VERIFIED_TERMINAL_RESULT_MATERIAL_FOLLOWUP_ESCALATION_STATUS_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_verified_terminal_result_material_followup_escalation_status.json"
 )
+VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_verified_terminal_result_material_owner_response_intake.json"
+)
 CLOUD_COMMAND_EXPIRY_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_expiry_safety_guard.json"
 CLOUD_COMMAND_IDEMPOTENCY_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_idempotency_visibility_guard.json"
@@ -1072,6 +1076,192 @@ class VerifiedTerminalResultMaterialFollowupEscalationStatusMobileTest(unittest.
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, followup_text)
+
+
+class VerifiedTerminalResultMaterialOwnerResponseIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_verified_terminal_result_material_owner_response_intake_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        styles = self.read_web("styles.css")
+        fixture = json.loads(
+            VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # owner response intake panel 只消费 safe summary 和 backend safe_copy，不新增控制、ACK/cursor、raw material route。
+        self.assertIn("VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_TEXT", app)
+        self.assertIn("safeVerifiedTerminalResultMaterialOwnerResponseIntakeText", app)
+        self.assertIn("verifiedTerminalResultMaterialOwnerResponseIntakeCandidate", app)
+        self.assertIn("verifiedTerminalResultMaterialOwnerResponseIntakeFromStatus", app)
+        self.assertIn("renderVerifiedTerminalResultMaterialOwnerResponseIntake", app)
+        self.assertIn("Terminal Result Owner Response Intake", app)
+        self.assertIn("robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary", app)
+        self.assertIn("verified_terminal_result_material_owner_response_intake_summary", app)
+        self.assertIn("verified_terminal_result_material_owner_response_intake?.summary", app)
+        self.assertIn("safe_copy", app)
+        self.assertIn("owner_response_status", app)
+        self.assertIn("accepted_material_classifications", app)
+        self.assertIn("missing_material_classifications", app)
+        self.assertIn("rejected_material_classifications", app)
+        self.assertIn("unsafe_material_classifications", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("verified-terminal-result-material-owner-response-intake-panel", styles)
+        self.assertNotRegex(
+            app,
+            r"verifiedTerminalResultMaterialOwnerResponseIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackVerifiedTerminalResultMaterialOwnerResponseIntake",
+            "cursorVerifiedTerminalResultMaterialOwnerResponseIntake",
+            "fetchVerifiedTerminalResultMaterialOwnerResponseIntakeDiagnostics",
+            "fetchVerifiedTerminalResultMaterialOwnerResponseIntakeArtifact",
+            "fetchVerifiedTerminalResultMaterialOwnerResponseIntakeMaterial",
+            "replayVerifiedTerminalResultMaterialOwnerResponseIntake",
+            "resubmitVerifiedTerminalResultMaterialOwnerResponseIntake",
+            "commandVerifiedTerminalResultMaterialOwnerResponseIntake",
+            "reviewVerifiedTerminalResultMaterialOwnerResponseIntake",
+            "handoffVerifiedTerminalResultMaterialOwnerResponseIntake",
+            "followupVerifiedTerminalResultMaterialOwnerResponseIntake",
+            "downloadVerifiedTerminalResultMaterialOwnerResponseIntakeButton",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # fixture 明确 owner response intake 是 software_proof/not_proven，三类主操作继续 disabled。
+        summary = fixture[
+            "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary"
+        ]
+        fallback = fixture["verified_terminal_result_material_owner_response_intake_summary"]
+        nested = fixture["verified_terminal_result_material_owner_response_intake"]["summary"]
+        self.assertEqual(summary["capability"], "verified_terminal_result_material_owner_response_intake")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("accepted_missing_rejected_blocked_not_proven", summary["owner_response_status"])
+        self.assertIn("verified_terminal_result_material_owner_response_intake_fixture", summary["safe_evidence_ref"])
+        self.assertIn("safe_copy", summary)
+        self.assertEqual(
+            fallback["owner_response_status"],
+            "owner_response_status=waiting_for_verified_terminal_result_owner_material_not_proven",
+        )
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        for required in (
+            "verified_terminal_result_material_owner_response_intake",
+            "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary",
+            "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate",
+            "source=software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "owner_response_status=accepted_missing_rejected_blocked_not_proven",
+            "terminal_result_type=delivery",
+            "accepted_material=field_owner_phone_behavior_note_safe",
+            "missing_material=verified_terminal_result_safe_summary",
+            "rejected_material=success_claim_without_verified_terminal_result",
+            "unsafe_material=none",
+            "command_id=cmd_terminal_result_owner_response_20260523_0001",
+            "evidence_ref=verified_terminal_result_material_owner_response_intake_fixture_20260523_0001",
+            "no OKR percentage lift",
+        ):
+            self.assertIn(required, fixture_text)
+
+        # 产品文档必须写清 intake 只是只读 owner response 分类，不是真实手机、HIL、真实 terminal result 或送达证明。
+        self.assertIn("verified_terminal_result_material_owner_response_intake", doc)
+        self.assertIn("robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary", doc)
+        self.assertIn("software_proof_docker_verified_terminal_result_material_owner_response_intake_gate", doc)
+        self.assertIn("owner response intake", doc)
+        self.assertIn("accepted/missing/rejected/unsafe material classifications", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not real terminal result", doc)
+        self.assertIn("not HIL", doc)
+        self.assertIn("not delivery success", doc)
+        self.assertIn("no OKR percentage lift", doc)
+
+    def test_verified_terminal_result_material_owner_response_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(
+            VERIFIED_TERMINAL_RESULT_MATERIAL_OWNER_RESPONSE_INTAKE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        owner_response_text = json.dumps(
+            {
+                "robot": fixture[
+                    "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary"
+                ],
+                "fallback": fixture["verified_terminal_result_material_owner_response_intake_summary"],
+                "nested": fixture["verified_terminal_result_material_owner_response_intake"]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留 phone-safe owner response metadata，不泄漏材料原文、路径、凭证、ACK/cursor 或控制语义。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw status",
+            "raw artifact",
+            "raw command",
+            "raw terminal result",
+            "raw material",
+            "raw intake",
+            "raw owner",
+            "raw response material",
+            "raw review",
+            "raw decision",
+            "raw handoff",
+            "raw followup",
+            "command route",
+            "ack route",
+            "cursor route",
+            "handoff route",
+            "followup route",
+            "owner response route",
+            "material route",
+            "authorization",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "artifact fetch",
+            "material fetch",
+            "replay",
+            "resubmit",
+            "robot command",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, owner_response_text)
 
 
 class FieldEvidenceRerunMaterialDispatchMobileTest(unittest.TestCase):

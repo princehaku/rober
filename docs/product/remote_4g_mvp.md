@@ -1579,6 +1579,34 @@ mutation, replay, resubmit, raw diagnostics fetch, robot control, route/elevator
 field pass, HIL, dropoff completion, cancel completion, terminal delivery
 result, reviewer resolution, or delivery success.
 
+Verified terminal-result material owner-response intake adds the next Robot
+diagnostics safe alias:
+
+- `robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary`
+- `schema=trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary.v1`
+- `source_schema=trashbot.verified_terminal_result_material_owner_response_intake.v1`
+- `evidence_boundary=software_proof_docker_verified_terminal_result_material_owner_response_intake_gate`
+- `source=software_proof`
+- `not_proven`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+
+The alias only proves that Robot diagnostics can surface a sanitized owner
+response intake summary for later terminal-result material review. Even when
+owner response material is `accepted_for_later_review_not_proven`, the state is
+only a queueing/review hint; it does not enable collect, dropoff, cancel,
+ACK/cursor mutation, replay/resubmit, command control, or delivery success.
+
+PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved /
+`hardware_material_pending`; this Robot alias must keep
+`pr5_PRRT_kwDOSWB9286CJ3tX_unresolved` in the not-proven boundary and must not
+claim OKR percentage lift. Unsafe raw source fields, raw artifacts, complete
+JSON, credentials, paths, checksums, ROS topics, serial/UART details, WAVE ROVER
+details, hardware raw details, ACK/cursor mutation hints, collect/dropoff/cancel
+hints, reviewer-resolution or PR-resolution claims, and
+success/completion/control claims must fail closed.
+
 ## Safety Rules
 
 - The robot never exposes `/cmd_vel` over the remote bridge.

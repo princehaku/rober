@@ -1,0 +1,145 @@
+{
+  "robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary": {
+    "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary.v1",
+    "capability": "verified_terminal_result_material_owner_response_intake",
+    "source": "software_proof",
+    "source_schema": "trashbot.verified_terminal_result_material_owner_response_intake.v1",
+    "owner_response_status": "owner_response_status=accepted_missing_rejected_blocked_not_proven",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "command_id": "cmd_terminal_result_owner_response_20260523_0001",
+    "safe_command_id": "command_id=cmd_terminal_result_owner_response_20260523_0001",
+    "evidence_ref": "verified_terminal_result_material_owner_response_intake_fixture_20260523_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_intake_fixture_20260523_0001",
+    "accepted_material_classifications": [
+      "accepted_material=field_owner_phone_behavior_note_safe",
+      "accepted_material=terminal_result_summary_placeholder_safe"
+    ],
+    "missing_material_classifications": [
+      "missing_material=verified_terminal_result_safe_summary",
+      "missing_material=public_cloud_external_probe_safe_summary"
+    ],
+    "rejected_material_classifications": [
+      "rejected_material=success_claim_without_verified_terminal_result"
+    ],
+    "unsafe_material_classifications": [
+      "unsafe_material=none"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=field owner attaches verified terminal result safe summary under same safe evidence_ref",
+      "next_required_evidence=support owner confirms backend safe_copy stays software_proof and not_proven",
+      "next_required_evidence=reviewer receives accepted missing rejected owner response classifications"
+    ],
+    "blocked_reason": "blocked_reason=verified_terminal_result_owner_response_intake_not_proven",
+    "safe_copy": {
+      "owner_response_status": "owner_response_status=accepted_missing_rejected_blocked_not_proven",
+      "terminal_result_type": "terminal_result_type=delivery",
+      "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_intake_fixture_20260523_0001",
+      "safe_command_id": "command_id=cmd_terminal_result_owner_response_20260523_0001",
+      "accepted_material_classifications": [
+        "accepted_material=field_owner_phone_behavior_note_safe",
+        "accepted_material=terminal_result_summary_placeholder_safe"
+      ],
+      "missing_material_classifications": [
+        "missing_material=verified_terminal_result_safe_summary",
+        "missing_material=public_cloud_external_probe_safe_summary"
+      ],
+      "rejected_material_classifications": [
+        "rejected_material=success_claim_without_verified_terminal_result"
+      ],
+      "unsafe_material_classifications": [
+        "unsafe_material=none"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=field owner attaches verified terminal result safe summary under same safe evidence_ref",
+        "next_required_evidence=support owner confirms backend safe_copy stays software_proof and not_proven"
+      ],
+      "blocked_reason": "blocked_reason=verified_terminal_result_owner_response_intake_not_proven",
+      "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate"
+    },
+    "safe_phone_copy": "Terminal result owner response intake 已显示 accepted/missing/rejected/unsafe 分类；Start Delivery、Confirm Dropoff、Cancel 继续 disabled。",
+    "recovery_hint": "等待同一 safe evidence_ref 的 verified terminal result owner response material；手机端保持只读，不提交控制动作。",
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate",
+    "proof_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "terminal_result_material_owner_response_intake_only",
+      "real_terminal_result_proof_missing",
+      "true_phone_browser_proof_missing",
+      "route_elevator_evidence_missing",
+      "hil_pass_missing",
+      "o5_external_proof_missing",
+      "no OKR percentage lift"
+    ]
+  },
+  "verified_terminal_result_material_owner_response_intake_summary": {
+    "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary.v1",
+    "capability": "verified_terminal_result_material_owner_response_intake",
+    "source": "software_proof",
+    "owner_response_status": "owner_response_status=waiting_for_verified_terminal_result_owner_material_not_proven",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "safe_command_id": "command_id=cmd_terminal_result_owner_response_20260523_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_intake_fixture_20260523_0001",
+    "accepted_material_classifications": [
+      "accepted_material=field_owner_phone_behavior_note_safe"
+    ],
+    "missing_material_classifications": [
+      "missing_material=verified_terminal_result_safe_summary"
+    ],
+    "rejected_material_classifications": [
+      "rejected_material=success_claim_without_verified_terminal_result"
+    ],
+    "unsafe_material_classifications": [
+      "unsafe_material=none"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=verified terminal result owner response safe summary"
+    ],
+    "blocked_reason": "blocked_reason=verified_terminal_result_owner_response_intake_not_proven",
+    "safe_copy": "verified_terminal_result_material_owner_response_intake；owner_response_status=waiting_for_verified_terminal_result_owner_material_not_proven；command_id=cmd_terminal_result_owner_response_20260523_0001；evidence_ref=verified_terminal_result_material_owner_response_intake_fixture_20260523_0001；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "verified_terminal_result_material_owner_response_intake": {
+    "summary": {
+      "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary.v1",
+      "capability": "verified_terminal_result_material_owner_response_intake",
+      "source": "software_proof",
+      "owner_response_status": "owner_response_status=blocked_missing_verified_terminal_result_owner_response_not_proven",
+      "terminal_result_type": "terminal_result_type=delivery",
+      "safe_command_id": "command_id=cmd_terminal_result_owner_response_20260523_0001",
+      "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_intake_fixture_20260523_0001",
+      "accepted_material_classifications": [
+        "accepted_material=field_owner_phone_behavior_note_safe"
+      ],
+      "missing_material_classifications": [
+        "missing_material=verified_terminal_result_safe_summary"
+      ],
+      "safe_copy": "nested verified_terminal_result_material_owner_response_intake safe_copy only；source=software_proof；not_proven；delivery_success=false；primary_actions_enabled=false；safe_to_control=false。",
+      "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

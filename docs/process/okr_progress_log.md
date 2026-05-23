@@ -8,7 +8,25 @@
 
 ## 2026-05-23 系列
 
-更新时间：2026-05-23 12:13 Asia/Shanghai。
+更新时间：2026-05-23 13:14 Asia/Shanghai。
+
+### 2026-05-23 13-14｜verified-terminal-result-material-owner-response-intake｜terminal result material owner response intake software proof
+
+本轮 `sprints/2026.05.23_13-14_verified-terminal-result-material-owner-response-intake/` 执行 `verified_terminal_result_material_owner_response_intake` epic closeout。用户价值是把 verified terminal-result material follow-up escalation status 转成安全 owner response/backfill intake，让 field owner、support owner 和 reviewer 知道 owner response material 是 accepted、missing、rejected、unsafe 还是 blocked，同时继续说明机器人不能控制、交付未证明。本轮边界为 `software_proof_docker_verified_terminal_result_material_owner_response_intake_gate`，必须保留 `source=software_proof`、`software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。
+
+Autonomy worker 新增 PC-only terminal-result material owner response intake gate、focused tests、`docs/interfaces/verified_terminal_result_material_owner_response_intake.md` 和 `pc-tools/README.md` 更新；首轮失败因 safety key scanner 误把 `field_owner_acknowledgement` 当成 ACK command hint，已收窄 scanner 并继续拒绝 ACK/cursor/replay/resubmit command wording。Robot worker 新增 `robot_diagnostics_verified_terminal_result_material_owner_response_intake_summary` safe alias、targeted tests、`docs/interfaces/operator_gateway_diagnostics.md` 和 `docs/product/remote_4g_mvp.md` 更新；首轮失败因 generic unsafe filter 误把 `safe_command_id` 中的 command 子串当成 control，已加入 alias-specific whitelist filtering 并重跑通过。Full-Stack worker 新增 mobile/web read-only terminal-result material owner response intake panel、fixture、tests 和 `docs/product/mobile_user_flow.md` 更新；未报告失败。
+
+Live PR #5 state preserved：`PRRT_kwDOSWB9286CJ3tQ` resolved；`PRRT_kwDOSWB9286CJ3tU` resolved；`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `is_resolved=false` / `hardware_material_pending`。本轮不是 real terminal delivery/dropoff/cancel result，不是 true phone/browser proof，不是 route/elevator field pass，不是 Nav2/fixed-route runtime pass，不是 dropoff/cancel completion，不是 delivery result，不是 delivery success，不是 Objective 5 external proof，不是 public HTTPS/TLS，不是 4G/SIM，不是 OSS/CDN live traffic，不是 production DB/queue，不是 worker/cutover，不是 Objective 1 HIL，不是 WAVE ROVER/UART proof，不是 LiDAR/ToF installed proof，也不是 PR #5 resolution；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮只把 O5 terminal-result material follow-up escalation status 转成 owner response intake metadata；没有真实 WAVE ROVER/UART/HIL、真实 `feedback_T1001.log`、真实 `/odom`、`/imu/data`、`/battery`、2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、operator HIL report 或 reviewer resolution。PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `is_resolved=false` / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只处理 terminal-result material owner response intake metadata；没有真实 task record、真实电梯、dropoff/cancel completion、delivery result、verified terminal delivery/dropoff/cancel result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；owner response intake gate 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 能只读展示 terminal-result material owner response intake 状态，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料；本轮 not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_verified_terminal_result_material_owner_response_intake_gate` 只证明 Docker/local PC owner response intake gate + Robot diagnostics + mobile static fixture 下 terminal-result material owner response intake metadata 可见、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Autonomy worker 报告 `py_compile` 通过；unittest 输出 `Ran 7 tests ... OK`；CLI `--help`、required `rg` 与 scoped `git diff --check` 通过。Robot worker 报告 `py_compile` 通过；diagnostics unittest 输出 `Ran 307 tests ... OK`；required `rg` 与 scoped `git diff --check` 通过。Full-Stack worker 报告 `node --check` 通过；fixture `json.tool` 通过；mobile unittest 输出 `Ran 300 tests ... OK`；required `rg` 与 scoped `git diff --check` 通过。Product closeout required file checks、combined `py_compile`、combined unittest、`node --check`、fixture `json.tool`、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `pc-tools/README.md`、`docs/interfaces/verified_terminal_result_material_owner_response_intake.md`、`docs/interfaces/operator_gateway_diagnostics.md`、`docs/product/remote_4g_mvp.md`、`docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。
 
 ### 2026-05-23 12-13｜verified-terminal-result-material-followup-escalation-status｜terminal result material follow-up escalation software proof
 
