@@ -191,6 +191,10 @@ FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_R
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status.json"
 )
+FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge.json"
+)
 FIELD_EVIDENCE_REAL_MATERIAL_REQUEST_DISPATCH_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_field_evidence_real_material_request_dispatch.json"
@@ -6263,6 +6267,21 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
         self.assertIn("mobile_current_panel_browser_proof_refresh_field_evidence_followup", doc)
         self.assertIn(
             "software_proof_docker_mobile_current_panel_browser_proof_refresh_field_evidence_followup_gate",
+            doc,
+        )
+        self.assertIn("mobile_current_panel_browser_proof_refresh_owner_response_bridge", gate)
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_owner_response_bridge_gate",
+            gate,
+        )
+        self.assertIn(
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBoundary",
+            gate,
+        )
+        self.assertIn("owner_response_bridge_panel_fail_closed", gate)
+        self.assertIn("mobile_current_panel_browser_proof_refresh_owner_response_bridge", doc)
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_owner_response_bridge_gate",
             doc,
         )
         self.assertIn(
@@ -15909,6 +15928,45 @@ class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, response_text)
+
+    def test_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_bridge_fixture_stays_fail_closed(self):
+        dedicated_fixture = json.loads(
+            FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_ACCEPTANCE_HANDOFF_INTAKE_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        fixture_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        bridge = dedicated_fixture[
+            "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_summary"
+        ]
+
+        # browser proof 专用 fixture 只证明 current-panel 渲染，仍保持 owner/support/reviewer 安全路线和三类主操作关闭。
+        self.assertEqual(
+            bridge["capability"],
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge",
+        )
+        self.assertEqual(
+            bridge["source_bridge"],
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
+        )
+        self.assertEqual(bridge["owner_response_intake_status"], "accepted_for_owner_response_intake_not_proven")
+        self.assertEqual(bridge["safe_to_control"], False)
+        self.assertEqual(bridge["delivery_success"], False)
+        self.assertEqual(bridge["primary_actions_enabled"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate",
+            "PRRT_kwDOSWB9286CJ3tX unresolved",
+            "hardware_material_pending",
+            "source=software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+        ):
+            self.assertIn(required, fixture_text)
 
     def test_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision_panel_is_fail_closed(self):
         app = self.read_web("app.js")

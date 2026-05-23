@@ -29,6 +29,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MOBILE_WEB_ROOT = REPO_ROOT / "mobile" / "web"
 MOBILE_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
+OWNER_RESPONSE_BRIDGE_FIXTURE = (
+    MOBILE_WEB_ROOT
+    / "fixtures"
+    / "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge.json"
+)
 EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate"
 COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate"
 REFRESH_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"
@@ -54,6 +59,15 @@ FIELD_EVIDENCE_FOLLOWUP_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY = (
 FIELD_EVIDENCE_FOLLOWUP_CURRENT_PANEL_BROWSER_PROOF_BOUNDARY = (
     "software_proof_docker_mobile_current_panel_browser_proof_refresh_field_evidence_followup_gate"
 )
+OWNER_RESPONSE_BRIDGE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY = (
+    "mobile_current_panel_browser_proof_refresh_owner_response_bridge"
+)
+OWNER_RESPONSE_BRIDGE_CURRENT_PANEL_BROWSER_PROOF_BOUNDARY = (
+    "software_proof_docker_mobile_current_panel_browser_proof_refresh_owner_response_bridge_gate"
+)
+CAPABILITY_FIXTURES = {
+    OWNER_RESPONSE_BRIDGE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY: OWNER_RESPONSE_BRIDGE_FIXTURE,
+}
 FRESH_ARTIFACT_PREFIX = "mobile_pwa_fresh_browser_proof"
 DEFAULT_ARTIFACT_PREFIX = "mobile_current_pwa_field_trial_browser"
 ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF = "mobile_route_elevator_handoff_browser"
@@ -126,6 +140,10 @@ KEY_ELEMENT_IDS = (
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusBoundary",
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusFlags",
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusNotProven",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeTitle",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBoundary",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFlags",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeNotProven",
     "verifiedTerminalResultMaterialIntakeTitle",
     "verifiedTerminalResultMaterialIntakeBoundary",
     "verifiedTerminalResultMaterialIntakeFlags",
@@ -255,6 +273,9 @@ CURRENT_PANEL_EXPECTATIONS = {
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusTitle": (
         "现场证据复跑执行结果验收交接回执 owner response reviewer ACK followup escalation status"
     ),
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeTitle": (
+        "现场证据复跑执行结果验收交接回执 owner response intake"
+    ),
     "verifiedTerminalResultMaterialIntakeTitle": "Terminal Result 材料回填入口",
     "verifiedTerminalResultMaterialReviewDecisionTitle": "Terminal Result 材料复核决策",
     "verifiedTerminalResultMaterialReviewHandoffTitle": "Terminal Result 材料复核交接",
@@ -293,6 +314,9 @@ CURRENT_BOUNDARY_EXPECTATIONS = {
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusBoundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate",
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusNotProven": "not true phone/browser",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBoundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeNotProven": "true_phone_browser_proof_missing",
     "verifiedTerminalResultMaterialIntakeBoundary": "software_proof_docker_verified_terminal_result_material_intake_gate",
     "verifiedTerminalResultMaterialIntakeFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
     "verifiedTerminalResultMaterialReviewDecisionBoundary": "software_proof_docker_verified_terminal_result_material_review_decision_gate",
@@ -319,6 +343,17 @@ CURRENT_BOUNDARY_EXPECTATIONS = {
     "mobileRealDeviceFieldTrialRetestExecutionSourceBoundary": "software_proof_docker_mobile_real_device_field_trial_evidence_verdict_gate",
     "mobileBrowserBoundary": "software_proof_docker_mobile_browser_acceptance_bundle_gate",
 }
+
+
+def current_boundary_expectations_for_capability(capability):
+    """按 capability 收紧 current-panel 断言，避免旧 proof 被新 bridge fixture 误判。"""
+
+    expectations = dict(CURRENT_BOUNDARY_EXPECTATIONS)
+    if capability == OWNER_RESPONSE_BRIDGE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY:
+        expectations[
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBoundary"
+        ] = "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate"
+    return expectations
 PHONE_SAFE_FORBIDDEN_VISIBLE = (
     "authorization",
     "oss ak",
@@ -457,13 +492,14 @@ class MobileWebHandler(BaseHTTPRequestHandler):
 class LocalServer:
     """本地 HTTP server 生命周期，验证时不依赖 ROS2 或 cloud runtime。"""
 
-    def __init__(self):
+    def __init__(self, fixture_path=MOBILE_FIXTURE):
         self.server = None
         self.thread = None
         self.url = ""
+        self.fixture_path = Path(fixture_path)
 
     def __enter__(self):
-        fixture = json.loads(MOBILE_FIXTURE.read_text(encoding="utf-8"))
+        fixture = json.loads(self.fixture_path.read_text(encoding="utf-8"))
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), MobileWebHandler)
         self.server.fixture = fixture
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -553,6 +589,7 @@ def run_config(args):
             if fresh else "mobile_current_pwa_field_trial_browser_acceptance_summary.json"
         )
     )
+    fixture_path = CAPABILITY_FIXTURES.get(capability, MOBILE_FIXTURE)
     return {
         "fresh_profile": fresh,
         "require_console_zero": bool(args.require_console_zero),
@@ -560,6 +597,7 @@ def run_config(args):
         "artifact_prefix": artifact_prefix,
         "summary_name": summary_name,
         "evidence_boundary": evidence_boundary,
+        "fixture_path": str(fixture_path),
         "proof_type": (
             "fresh local Chromium-family browser proof for current mobile/web PWA with isolated profile, "
             "console/runtime capture, service-worker cache recovery marker, and dynamic no-store assertions"
@@ -818,13 +856,19 @@ class CDPClient:
         return failures
 
 
-def viewport_script():
+def viewport_script(config):
     ids_json = json.dumps(list(KEY_ELEMENT_IDS))
     current_panel_expectations_json = json.dumps(CURRENT_PANEL_EXPECTATIONS, ensure_ascii=False)
-    current_boundary_expectations_json = json.dumps(CURRENT_BOUNDARY_EXPECTATIONS, ensure_ascii=False)
+    current_boundary_expectations_json = json.dumps(
+        current_boundary_expectations_for_capability(config["capability"]),
+        ensure_ascii=False,
+    )
+    capability_json = json.dumps(config["capability"])
     return f"""
 (async () => {{
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const capability = {capability_json};
+  const ownerResponseBridgeRequired = capability === 'mobile_current_panel_browser_proof_refresh_owner_response_bridge';
   for (let i = 0; i < 100; i += 1) {{
     const bundle = document.getElementById('mobileBrowserSafeCopy');
     const bundleBoundary = document.getElementById('mobileBrowserBoundary');
@@ -842,6 +886,7 @@ def viewport_script():
     const materialResolutionAck = document.getElementById('fieldEvidenceMaterialResolutionReviewerAckIntakeBoundary');
     const latestFieldEvidenceAck = document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeBoundary');
     const latestFieldEvidenceFollowup = document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusBoundary');
+    const ownerResponseBridge = document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBoundary');
     const diag = document.getElementById('diagnosticsButton');
     const ack = document.getElementById('ackCopy');
     if (bundleBoundary && bundleBoundary.innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate') &&
@@ -859,6 +904,8 @@ def viewport_script():
         materialResolutionAck && materialResolutionAck.innerText.includes('software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate') &&
         latestFieldEvidenceAck && latestFieldEvidenceAck.innerText.includes('software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate') &&
         latestFieldEvidenceFollowup && latestFieldEvidenceFollowup.innerText.includes('software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate') &&
+        (!ownerResponseBridgeRequired ||
+          ownerResponseBridge?.innerText.includes('software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate')) &&
         document.getElementById('verifiedTerminalResultMaterialOwnerResponseIntakeBoundary')?.innerText.includes('software_proof_docker_verified_terminal_result_material_owner_response_intake_gate') &&
         document.getElementById('verifiedTerminalResultMaterialOwnerResponseReviewDecisionBoundary')?.innerText.includes('software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate') &&
         diag && !diag.disabled && ack && ack.innerText.includes('不代表送达成功')) break;
@@ -1041,6 +1088,20 @@ def viewport_script():
         .includes('primary_actions_enabled=false') &&
       (document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusFlags')?.innerText || '')
         .includes('safe_to_control=false'),
+    ownerResponseBridgePanelFailClosed:
+      !ownerResponseBridgeRequired ||
+      (
+        (document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBoundary')?.innerText || '')
+          .includes('software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate') &&
+        (document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFlags')?.innerText || '')
+          .includes('delivery_success=false') &&
+        (document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFlags')?.innerText || '')
+          .includes('primary_actions_enabled=false') &&
+        (document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFlags')?.innerText || '')
+          .includes('safe_to_control=false') &&
+        (document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeNotProven')?.innerText || '')
+          .includes('true_phone_browser_proof_missing')
+      ),
     terminalResultOwnerResponsePanelsFailClosed:
       [
         'verifiedTerminalResultMaterialOwnerResponseIntakeFlags',
@@ -1245,6 +1306,7 @@ def judge_viewport(result, *, fresh_mode=False, service_worker_assertions=None, 
         "route_elevator_field_session_handoff_fail_closed": bool(route_handoff_fail_closed),
         "material_resolution_panels_fail_closed": bool(result.get("materialResolutionPanelsFailClosed")),
         "field_evidence_followup_panel_fail_closed": bool(result.get("fieldEvidenceFollowupPanelFailClosed")),
+        "owner_response_bridge_panel_fail_closed": bool(result.get("ownerResponseBridgePanelFailClosed")),
         "terminal_result_owner_response_panels_fail_closed": bool(
             result.get("terminalResultOwnerResponsePanelsFailClosed")
         ),
@@ -1306,7 +1368,7 @@ def run_viewport(cdp, url, width, height, output_dir, config, service_worker_ass
     event_start = len(cdp.events)
     cdp.call("Page.navigate", {"url": target_url})
     time.sleep(0.5)
-    result = cdp.evaluate(viewport_script(), timeout=30.0)
+    result = cdp.evaluate(viewport_script(config), timeout=30.0)
     cdp.drain_events(duration=0.5)
     console_failures = cdp.console_runtime_failures_since(event_start)
     judgment = judge_viewport(
@@ -1381,7 +1443,7 @@ def write_failure_summary(output_dir, config, *, browser="", error="", service_w
         "ok": False,
         "browser": browser,
         "served_root": str(MOBILE_WEB_ROOT),
-        "fixture": str(MOBILE_FIXTURE),
+        "fixture": config["fixture_path"],
         "viewports": [f"{width}x{height}" for width, height in VIEWPORTS],
         "checks": [],
         "failure": {
@@ -1419,7 +1481,7 @@ def main():
     per_viewport = []
     try:
         browser = find_browser(args.browser)
-        with LocalServer() as server, ChromeProcess(browser, fresh_profile=config["fresh_profile"]) as chrome:
+        with LocalServer(config["fixture_path"]) as server, ChromeProcess(browser, fresh_profile=config["fresh_profile"]) as chrome:
             with WebSocket(chrome.new_page_ws()) as ws:
                 cdp = CDPClient(ws)
                 cdp.call("Page.enable")
@@ -1457,6 +1519,7 @@ def main():
                         and judgment["route_elevator_field_session_handoff_fail_closed"]
                         and judgment["material_resolution_panels_fail_closed"]
                         and judgment["field_evidence_followup_panel_fail_closed"]
+                        and judgment["owner_response_bridge_panel_fail_closed"]
                         and judgment["terminal_result_owner_response_panels_fail_closed"]
                         and judgment["pwa_install_prompt_evidence_visible"]
                         and judgment["real_device_retest_request_visible"]
@@ -1520,6 +1583,8 @@ def main():
                         f"{str(judgment['material_resolution_panels_fail_closed']).lower()} "
                         f"field_evidence_followup_panel_fail_closed="
                         f"{str(judgment['field_evidence_followup_panel_fail_closed']).lower()} "
+                        f"owner_response_bridge_panel_fail_closed="
+                        f"{str(judgment['owner_response_bridge_panel_fail_closed']).lower()} "
                         f"terminal_result_owner_response_panels_fail_closed="
                         f"{str(judgment['terminal_result_owner_response_panels_fail_closed']).lower()} "
                         f"route_elevator_handoff_browser_proof={ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF} "
@@ -1573,7 +1638,7 @@ def main():
         "ok": bool(all_passed),
         "browser": browser,
         "served_root": str(MOBILE_WEB_ROOT),
-        "fixture": str(MOBILE_FIXTURE),
+        "fixture": config["fixture_path"],
         "viewports": [f"{width}x{height}" for width, height in VIEWPORTS],
         "checks": per_viewport,
         "fresh_profile": bool(config["fresh_profile"]),
