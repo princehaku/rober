@@ -36,6 +36,12 @@ LEGACY_ARTIFACT_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_web_browser_pr
 FRESH_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_pwa_fresh_browser_proof_gate"
 CURRENT_PANEL_BROWSER_PROOF_REFRESH_CAPABILITY = "mobile_current_panel_browser_proof_refresh"
 CURRENT_PANEL_BROWSER_PROOF_REFRESH_BOUNDARY = "software_proof_docker_mobile_current_panel_browser_proof_refresh_gate"
+LATEST_FIELD_EVIDENCE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY = (
+    "mobile_current_panel_browser_proof_refresh_latest_field_evidence"
+)
+LATEST_FIELD_EVIDENCE_CURRENT_PANEL_BROWSER_PROOF_BOUNDARY = (
+    "software_proof_docker_mobile_current_panel_browser_proof_refresh_latest_field_evidence_gate"
+)
 FRESH_ARTIFACT_PREFIX = "mobile_pwa_fresh_browser_proof"
 DEFAULT_ARTIFACT_PREFIX = "mobile_current_pwa_field_trial_browser"
 ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF = "mobile_route_elevator_handoff_browser"
@@ -101,6 +107,9 @@ KEY_ELEMENT_IDS = (
     "fieldEvidenceMaterialResolutionReviewerAckIntakeTitle",
     "fieldEvidenceMaterialResolutionReviewerAckIntakeBoundary",
     "fieldEvidenceMaterialResolutionReviewerAckIntakeFlags",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeTitle",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeBoundary",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeFlags",
     "verifiedTerminalResultMaterialIntakeTitle",
     "verifiedTerminalResultMaterialIntakeBoundary",
     "verifiedTerminalResultMaterialIntakeFlags",
@@ -218,6 +227,9 @@ CURRENT_PANEL_EXPECTATIONS = {
     "fieldEvidenceMaterialResolutionOwnerResponseReviewDecisionTitle": "现场材料 owner response 复核决策",
     "fieldEvidenceMaterialResolutionOwnerResponseReviewHandoffTitle": "现场材料 owner response 复核交接",
     "fieldEvidenceMaterialResolutionReviewerAckIntakeTitle": "现场材料 reviewer ACK 入口",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeTitle": (
+        "现场证据复跑执行结果验收交接回执 owner response reviewer ACK intake"
+    ),
     "verifiedTerminalResultMaterialIntakeTitle": "Terminal Result 材料回填入口",
     "verifiedTerminalResultMaterialReviewDecisionTitle": "Terminal Result 材料复核决策",
     "verifiedTerminalResultMaterialReviewHandoffTitle": "Terminal Result 材料复核交接",
@@ -249,6 +261,8 @@ CURRENT_BOUNDARY_EXPECTATIONS = {
     "fieldEvidenceMaterialResolutionOwnerResponseReviewDecisionBoundary": "software_proof_docker_field_evidence_material_resolution_owner_response_review_decision_gate",
     "fieldEvidenceMaterialResolutionOwnerResponseReviewHandoffBoundary": "software_proof_docker_field_evidence_material_resolution_owner_response_review_handoff_gate",
     "fieldEvidenceMaterialResolutionReviewerAckIntakeBoundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeBoundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
     "verifiedTerminalResultMaterialIntakeBoundary": "software_proof_docker_verified_terminal_result_material_intake_gate",
     "verifiedTerminalResultMaterialIntakeFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
     "verifiedTerminalResultMaterialReviewDecisionBoundary": "software_proof_docker_verified_terminal_result_material_review_decision_gate",
@@ -792,6 +806,7 @@ def viewport_script():
     const fieldTrialRetest = document.getElementById('mobileRealDeviceFieldTrialRetestExecutionSafeCopy');
     const routeElevatorHandoff = document.getElementById('routeElevatorFieldSessionHandoffBoundary');
     const materialResolutionAck = document.getElementById('fieldEvidenceMaterialResolutionReviewerAckIntakeBoundary');
+    const latestFieldEvidenceAck = document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeBoundary');
     const diag = document.getElementById('diagnosticsButton');
     const ack = document.getElementById('ackCopy');
     if (bundleBoundary && bundleBoundary.innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate') &&
@@ -807,6 +822,7 @@ def viewport_script():
         fieldTrialVerdict && fieldTrialVerdict.innerText.includes('trashbot.mobile_real_device_field_trial_evidence_verdict_copy.v1') &&
         fieldTrialRetest && fieldTrialRetest.innerText.includes('trashbot.mobile_real_device_field_trial_retest_execution_copy.v1') &&
         materialResolutionAck && materialResolutionAck.innerText.includes('software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate') &&
+        latestFieldEvidenceAck && latestFieldEvidenceAck.innerText.includes('software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate') &&
         diag && !diag.disabled && ack && ack.innerText.includes('不代表送达成功')) break;
     await sleep(100);
   }}

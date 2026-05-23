@@ -3942,6 +3942,11 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
         # current-panel refresh 需要把最近新增的只读材料、云支持和 terminal-result 链纳入浏览器 proof。
         self.assertIn("mobile_current_panel_browser_proof_refresh", gate)
         self.assertIn("software_proof_docker_mobile_current_panel_browser_proof_refresh_gate", gate)
+        self.assertIn("mobile_current_panel_browser_proof_refresh_latest_field_evidence", gate)
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_latest_field_evidence_gate",
+            gate,
+        )
         for token in (
             "cloudReadinessTitle",
             "cloudEvidenceBoundary",
@@ -3950,6 +3955,9 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
             "fieldEvidenceMaterialResolutionOwnerResponseIntakeTitle",
             "fieldEvidenceMaterialResolutionOwnerResponseReviewDecisionTitle",
             "fieldEvidenceMaterialResolutionReviewerAckIntakeTitle",
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeTitle",
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeBoundary",
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeFlags",
             "verifiedTerminalResultMaterialIntakeTitle",
             "verifiedTerminalResultMaterialReviewDecisionTitle",
             "verifiedTerminalResultMaterialReviewHandoffTitle",
@@ -3959,6 +3967,7 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
             "software_proof_docker_mobile_cloud_readiness_summary_gate",
             "software_proof_docker_cloud_support_handoff_safe_export_gate",
             "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate",
             "software_proof_docker_verified_terminal_result_material_review_handoff_gate",
             "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
         ):
@@ -3967,6 +3976,15 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
         # 产品文档同步说明新 capability 仍只是本地 Chromium software proof，不是真机或送达证明。
         self.assertIn("mobile_current_panel_browser_proof_refresh", doc)
         self.assertIn("software_proof_docker_mobile_current_panel_browser_proof_refresh_gate", doc)
+        self.assertIn("mobile_current_panel_browser_proof_refresh_latest_field_evidence", doc)
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_latest_field_evidence_gate",
+            doc,
+        )
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake",
+            doc,
+        )
         self.assertIn("not true phone/browser", doc)
 
 

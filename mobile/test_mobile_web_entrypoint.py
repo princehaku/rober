@@ -58,6 +58,18 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn('"fieldEvidenceMaterialResolutionOwnerResponseReviewDecisionTitle"', script)
         self.assertIn('"fieldEvidenceMaterialResolutionOwnerResponseReviewHandoffTitle"', script)
         self.assertIn('"fieldEvidenceMaterialResolutionReviewerAckIntakeTitle"', script)
+        self.assertIn(
+            '"fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeTitle"',
+            script,
+        )
+        self.assertIn(
+            '"fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeBoundary"',
+            script,
+        )
+        self.assertIn(
+            '"fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeFlags"',
+            script,
+        )
         self.assertIn("material_resolution_panels_fail_closed", script)
         self.assertIn('"terminalActionTitle"', script)
         self.assertIn('"mobileDeviceEvidenceTitle"', script)
@@ -130,6 +142,11 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate", script)
         self.assertIn("software_proof_docker_mobile_current_panel_browser_proof_refresh_gate", script)
         self.assertIn("mobile_current_panel_browser_proof_refresh", script)
+        self.assertIn("mobile_current_panel_browser_proof_refresh_latest_field_evidence", script)
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_latest_field_evidence_gate",
+            script,
+        )
         self.assertIn("software_proof_docker_mobile_web_browser_proof_gate", script)
         self.assertIn("software_proof_docker_route_elevator_field_session_handoff_gate", script)
         self.assertIn("software_proof_docker_field_evidence_material_resolution_intake_gate", script)
@@ -140,6 +157,14 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("software_proof_docker_field_evidence_material_resolution_owner_response_review_decision_gate", script)
         self.assertIn("software_proof_docker_field_evidence_material_resolution_owner_response_review_handoff_gate", script)
         self.assertIn("software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate", script)
+        self.assertIn(
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate",
+            script,
+        )
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake",
+            script,
+        )
         self.assertIn("software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate", script)
         self.assertIn("trashbot.mobile_pwa_install_prompt_evidence_export_copy.v1", script)
         self.assertIn("route_elevator_handoff_browser_proof", script)
