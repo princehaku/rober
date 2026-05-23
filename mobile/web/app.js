@@ -26413,6 +26413,7 @@ function fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseRe
     "primary_actions_enabled=false",
     "same_evidence_ref_required=true",
     "reviewer_ack_followup_escalation_status_not_field_pass",
+    "not true phone/browser proof",
     "true_phone_browser_proof_missing",
     "route_elevator_runtime_missing",
     "verified_terminal_result_missing",

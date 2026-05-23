@@ -4876,6 +4876,7 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
         self.assertIn("not_proven", gate)
 
     def test_current_panel_refresh_capability_covers_latest_read_only_panels(self):
+        app = self.read_web("app.js")
         gate = self.read_gate()
         doc = DOC.read_text(encoding="utf-8")
 
@@ -4895,6 +4896,11 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
             "software_proof_docker_mobile_current_panel_browser_proof_refresh_terminal_result_owner_response_gate",
             gate,
         )
+        self.assertIn("mobile_current_panel_browser_proof_refresh_field_evidence_followup", gate)
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_field_evidence_followup_gate",
+            gate,
+        )
         for token in (
             "cloudReadinessTitle",
             "cloudEvidenceBoundary",
@@ -4906,6 +4912,11 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
             "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeTitle",
             "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeBoundary",
             "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeFlags",
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusTitle",
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusBoundary",
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusFlags",
+            "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusNotProven",
+            "field_evidence_followup_panel_fail_closed",
             "verifiedTerminalResultMaterialIntakeTitle",
             "verifiedTerminalResultMaterialReviewDecisionTitle",
             "verifiedTerminalResultMaterialReviewHandoffTitle",
@@ -4923,12 +4934,15 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
             "software_proof_docker_cloud_support_handoff_safe_export_gate",
             "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
             "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate",
+            "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate",
             "software_proof_docker_verified_terminal_result_material_review_handoff_gate",
             "software_proof_docker_verified_terminal_result_material_owner_response_intake_gate",
             "software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate",
             "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
         ):
             self.assertIn(token, gate)
+        self.assertIn("not true phone/browser proof", app)
+        self.assertIn("true_phone_browser_proof_missing", app)
 
         # 产品文档同步说明新 capability 仍只是本地 Chromium software proof，不是真机或送达证明。
         self.assertIn("mobile_current_panel_browser_proof_refresh", doc)
@@ -4946,8 +4960,17 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
             "software_proof_docker_mobile_current_panel_browser_proof_refresh_terminal_result_owner_response_gate",
             doc,
         )
+        self.assertIn("mobile_current_panel_browser_proof_refresh_field_evidence_followup", doc)
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_field_evidence_followup_gate",
+            doc,
+        )
         self.assertIn(
             "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake",
+            doc,
+        )
+        self.assertIn(
+            "field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status",
             doc,
         )
         self.assertIn("verified_terminal_result_material_owner_response_intake", doc)

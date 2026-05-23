@@ -8,7 +8,27 @@
 
 ## 2026-05-23 系列
 
-更新时间：2026-05-23 18:45 Asia/Shanghai。
+更新时间：2026-05-23 19:14 Asia/Shanghai。
+
+### 2026-05-23 19-20｜mobile-current-panel-browser-proof-refresh-field-evidence-followup｜field-evidence follow-up current-panel browser proof refresh
+
+本轮 `sprints/2026.05.23_19-20_mobile-current-panel-browser-proof-refresh-field-evidence-followup/` 执行 Task C Product closeout。用户价值是让手机/support current-panel browser proof 覆盖最新 `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status` panel，同时保持所有主操作 fail closed。本轮边界为 `software_proof_docker_mobile_current_panel_browser_proof_refresh_field_evidence_followup_gate`，覆盖 local Chromium-family/current-panel proof，不是 true phone/browser proof。
+
+Task A Full-Stack evidence accepted：`pc-tools/evidence/phone_browser_acceptance_gate.py` 新增 proof flavor，`mobile/web/test_mobile_web_entrypoint.py` 增加 targeted assertions，`docs/product/mobile_user_flow.md` 同步 proof run mode，`tech-done.md` 记录验证。验证通过：`node --check mobile/web/app.js`、fixture `json.tool`、`python3 -m unittest mobile/web/test_mobile_web_entrypoint.py` 输出 `Ran 308 tests in 2.990s OK`、`phone_browser_acceptance_gate.py --help`、required `rg` 与 scoped `git diff --check`。
+
+Task B Robot read-only consultation changed no files；确认 existing safe alias 是 metadata-only/read-only/fail-closed，Robot code change required: no。不需要 raw artifacts、raw diagnostics、ROS topics、`/cmd_vel`、serial/UART paths、WAVE ROVER details、credentials、local filesystem paths、checksums、tracebacks、field-pass wording、reviewer-resolution wording、control/success copy 或 robot command route。
+
+PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending` based on provided closeout evidence；本轮未浏览或重新查询 GitHub live state。本轮保留 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`，不是 Objective 5 external proof，不是 route/elevator field pass，不是 verified terminal result，不是 HIL，不是 PR #5 resolution，也不是 delivery success；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮只刷新手机 current-panel browser proof；没有真实 WAVE ROVER/UART/HIL、真实 `/odom`、`/imu/data`、`/battery`、2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry、operator HIL report 或 reviewer resolution。PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只证明 latest field-evidence follow-up panel 在 local current-panel browser proof 中 fail closed；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal result、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；browser proof refresh 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` current-panel browser proof 覆盖 `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status`，且 Start Delivery / Confirm Dropoff / Cancel 继续 disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_mobile_current_panel_browser_proof_refresh_field_evidence_followup_gate` 只证明 Docker/local browser proof refresh 可校验 latest current panel；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs；Task A 另已同步 `docs/product/mobile_user_flow.md`。
 
 ### 2026-05-23 18-19｜field-evidence-rerun-acceptance-owner-response-reviewer-ack-followup-escalation-status｜reviewer ACK follow-up escalation status software proof
 

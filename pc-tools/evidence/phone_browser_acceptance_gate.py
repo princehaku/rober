@@ -48,6 +48,12 @@ TERMINAL_RESULT_OWNER_RESPONSE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY = (
 TERMINAL_RESULT_OWNER_RESPONSE_CURRENT_PANEL_BROWSER_PROOF_BOUNDARY = (
     "software_proof_docker_mobile_current_panel_browser_proof_refresh_terminal_result_owner_response_gate"
 )
+FIELD_EVIDENCE_FOLLOWUP_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY = (
+    "mobile_current_panel_browser_proof_refresh_field_evidence_followup"
+)
+FIELD_EVIDENCE_FOLLOWUP_CURRENT_PANEL_BROWSER_PROOF_BOUNDARY = (
+    "software_proof_docker_mobile_current_panel_browser_proof_refresh_field_evidence_followup_gate"
+)
 FRESH_ARTIFACT_PREFIX = "mobile_pwa_fresh_browser_proof"
 DEFAULT_ARTIFACT_PREFIX = "mobile_current_pwa_field_trial_browser"
 ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF = "mobile_route_elevator_handoff_browser"
@@ -116,6 +122,10 @@ KEY_ELEMENT_IDS = (
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeTitle",
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeBoundary",
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeFlags",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusTitle",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusBoundary",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusFlags",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusNotProven",
     "verifiedTerminalResultMaterialIntakeTitle",
     "verifiedTerminalResultMaterialIntakeBoundary",
     "verifiedTerminalResultMaterialIntakeFlags",
@@ -242,6 +252,9 @@ CURRENT_PANEL_EXPECTATIONS = {
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeTitle": (
         "现场证据复跑执行结果验收交接回执 owner response reviewer ACK intake"
     ),
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusTitle": (
+        "现场证据复跑执行结果验收交接回执 owner response reviewer ACK followup escalation status"
+    ),
     "verifiedTerminalResultMaterialIntakeTitle": "Terminal Result 材料回填入口",
     "verifiedTerminalResultMaterialReviewDecisionTitle": "Terminal Result 材料复核决策",
     "verifiedTerminalResultMaterialReviewHandoffTitle": "Terminal Result 材料复核交接",
@@ -277,6 +290,9 @@ CURRENT_BOUNDARY_EXPECTATIONS = {
     "fieldEvidenceMaterialResolutionReviewerAckIntakeBoundary": "software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate",
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeBoundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate",
     "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusBoundary": "software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusNotProven": "not true phone/browser",
     "verifiedTerminalResultMaterialIntakeBoundary": "software_proof_docker_verified_terminal_result_material_intake_gate",
     "verifiedTerminalResultMaterialIntakeFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
     "verifiedTerminalResultMaterialReviewDecisionBoundary": "software_proof_docker_verified_terminal_result_material_review_decision_gate",
@@ -825,6 +841,7 @@ def viewport_script():
     const routeElevatorHandoff = document.getElementById('routeElevatorFieldSessionHandoffBoundary');
     const materialResolutionAck = document.getElementById('fieldEvidenceMaterialResolutionReviewerAckIntakeBoundary');
     const latestFieldEvidenceAck = document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeBoundary');
+    const latestFieldEvidenceFollowup = document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusBoundary');
     const diag = document.getElementById('diagnosticsButton');
     const ack = document.getElementById('ackCopy');
     if (bundleBoundary && bundleBoundary.innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate') &&
@@ -841,6 +858,7 @@ def viewport_script():
         fieldTrialRetest && fieldTrialRetest.innerText.includes('trashbot.mobile_real_device_field_trial_retest_execution_copy.v1') &&
         materialResolutionAck && materialResolutionAck.innerText.includes('software_proof_docker_field_evidence_material_resolution_reviewer_ack_intake_gate') &&
         latestFieldEvidenceAck && latestFieldEvidenceAck.innerText.includes('software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate') &&
+        latestFieldEvidenceFollowup && latestFieldEvidenceFollowup.innerText.includes('software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate') &&
         document.getElementById('verifiedTerminalResultMaterialOwnerResponseIntakeBoundary')?.innerText.includes('software_proof_docker_verified_terminal_result_material_owner_response_intake_gate') &&
         document.getElementById('verifiedTerminalResultMaterialOwnerResponseReviewDecisionBoundary')?.innerText.includes('software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate') &&
         diag && !diag.disabled && ack && ack.innerText.includes('不代表送达成功')) break;
@@ -1010,6 +1028,19 @@ def viewport_script():
       }}) &&
       (document.getElementById('fieldEvidenceMaterialResolutionReviewerAckIntakeFlags')?.innerText || '')
         .includes('not true phone/browser'),
+    fieldEvidenceFollowupPanelFailClosed:
+      [
+        'fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusFlags',
+        'fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusNotProven'
+      ].every((id) => {{
+        const text = document.getElementById(id)?.innerText || '';
+        return text.includes('delivery_success=false') ||
+          text.includes('not true phone/browser');
+      }}) &&
+      (document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusFlags')?.innerText || '')
+        .includes('primary_actions_enabled=false') &&
+      (document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusFlags')?.innerText || '')
+        .includes('safe_to_control=false'),
     terminalResultOwnerResponsePanelsFailClosed:
       [
         'verifiedTerminalResultMaterialOwnerResponseIntakeFlags',
@@ -1213,6 +1244,7 @@ def judge_viewport(result, *, fresh_mode=False, service_worker_assertions=None, 
         "route_elevator_field_session_handoff_visible": bool(result.get("routeElevatorFieldSessionHandoffVisible")),
         "route_elevator_field_session_handoff_fail_closed": bool(route_handoff_fail_closed),
         "material_resolution_panels_fail_closed": bool(result.get("materialResolutionPanelsFailClosed")),
+        "field_evidence_followup_panel_fail_closed": bool(result.get("fieldEvidenceFollowupPanelFailClosed")),
         "terminal_result_owner_response_panels_fail_closed": bool(
             result.get("terminalResultOwnerResponsePanelsFailClosed")
         ),
@@ -1424,6 +1456,7 @@ def main():
                         and judgment["route_elevator_field_session_handoff_visible"]
                         and judgment["route_elevator_field_session_handoff_fail_closed"]
                         and judgment["material_resolution_panels_fail_closed"]
+                        and judgment["field_evidence_followup_panel_fail_closed"]
                         and judgment["terminal_result_owner_response_panels_fail_closed"]
                         and judgment["pwa_install_prompt_evidence_visible"]
                         and judgment["real_device_retest_request_visible"]
@@ -1485,6 +1518,8 @@ def main():
                         f"{str(judgment['route_elevator_field_session_handoff_fail_closed']).lower()} "
                         f"material_resolution_panels_fail_closed="
                         f"{str(judgment['material_resolution_panels_fail_closed']).lower()} "
+                        f"field_evidence_followup_panel_fail_closed="
+                        f"{str(judgment['field_evidence_followup_panel_fail_closed']).lower()} "
                         f"terminal_result_owner_response_panels_fail_closed="
                         f"{str(judgment['terminal_result_owner_response_panels_fail_closed']).lower()} "
                         f"route_elevator_handoff_browser_proof={ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF} "
