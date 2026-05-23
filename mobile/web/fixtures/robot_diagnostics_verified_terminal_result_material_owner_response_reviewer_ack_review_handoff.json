@@ -1,0 +1,156 @@
+{
+  "robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_summary": {
+    "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_summary.v1",
+    "capability": "verified_terminal_result_material_owner_response_reviewer_ack_review_handoff",
+    "source": "software_proof",
+    "source_schema": "trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_handoff.v1",
+    "handoff_status": "ready_for_terminal_result_material_reviewer_ack_review_handoff_not_proven",
+    "source_review_decision_status": "source_review_decision_status=accepted_for_reviewer_ack_review_not_proven",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "command_id": "cmd_terminal_result_owner_response_reviewer_ack_review_handoff_20260524_0001",
+    "safe_command_id": "command_id=cmd_terminal_result_owner_response_reviewer_ack_review_handoff_20260524_0001",
+    "evidence_ref": "verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_fixture_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_fixture_20260524_0001",
+    "field_owner_handoff": [
+      "field_owner_handoff=backfill_missing_terminal_result_safe_summary",
+      "field_owner_handoff=same_safe_evidence_ref_required"
+    ],
+    "support_handoff": [
+      "support_handoff=keep_PRRT_kwDOSWB9286CJ3tX_unresolved",
+      "support_handoff=hardware_material_pending"
+    ],
+    "reviewer_handoff": [
+      "reviewer_handoff=verify_missing_rejected_and_false_state_flags",
+      "reviewer_handoff=prepare_followup_escalation_not_proven"
+    ],
+    "missing_classifications": [
+      "missing_classification=real_verified_terminal_result",
+      "missing_classification=PRRT_kwDOSWB9286CJ3tX hardware_material_pending"
+    ],
+    "rejected_classifications": [
+      "rejected_classification=raw_success_or_control_claims",
+      "rejected_classification=unsafe_true_state_flags"
+    ],
+    "false_state_flags": [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=field owner supplies verified terminal result safe summary under same safe evidence_ref",
+      "next_required_evidence=support keeps PRRT_kwDOSWB9286CJ3tX unresolved hardware_material_pending visible",
+      "next_required_evidence=reviewer confirms no true phone browser HIL or sent_success claim"
+    ],
+    "blocked_reason": "blocked_reason=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "pr5_thread_status": "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "safe_phone_copy": "Terminal result owner response reviewer ACK review handoff 已显示 handoff status、source review-decision status、safe IDs、owner/support/reviewer route、missing/rejected classifications、next required evidence 和 false-state flags；source=software_proof；not_proven；Start Delivery、Confirm Dropoff、Cancel 继续 disabled。",
+    "recovery_hint": "等待同一 safe evidence_ref 的 field-owner/support/reviewer follow-up；手机端保持只读，不提交回执、复核、交接、owner response、reviewer ACK、材料上传、外部写操作、重放/重提或控制动作。",
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_gate",
+    "proof_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_only",
+      "reviewer ACK review handoff",
+      "PRRT_kwDOSWB9286CJ3tX unresolved",
+      "hardware_material_pending",
+      "real_terminal_result_proof_missing",
+      "true_phone_browser_proof_missing",
+      "route_elevator_evidence_missing",
+      "hardware_hil_missing",
+      "o5_external_proof_missing",
+      "no OKR percentage lift"
+    ]
+  },
+  "verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_summary": {
+    "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_summary.v1",
+    "capability": "verified_terminal_result_material_owner_response_reviewer_ack_review_handoff",
+    "source": "software_proof",
+    "handoff_status": "needs_reassignment_handoff_not_proven",
+    "source_review_decision_status": "source_review_decision_status=reviewer_ack_review_needs_reassignment_not_proven",
+    "terminal_result_type": "terminal_result_type=delivery",
+    "safe_command_id": "command_id=cmd_terminal_result_owner_response_reviewer_ack_review_handoff_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_fixture_20260524_0001",
+    "field_owner_handoff": [
+      "field_owner_handoff=needs_reassignment_until_same_safe_evidence_ref"
+    ],
+    "support_handoff": [
+      "support_handoff=PRRT_kwDOSWB9286CJ3tX unresolved hardware_material_pending"
+    ],
+    "reviewer_handoff": [
+      "reviewer_handoff=recheck_missing_and_rejected_classifications"
+    ],
+    "missing_classifications": [
+      "missing_classification=same_safe_evidence_ref_verified_terminal_result"
+    ],
+    "rejected_classifications": [
+      "rejected_classification=unsafe_success_or_control_claim"
+    ],
+    "false_state_flags": [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=reviewer ACK review handoff safe follow-up"
+    ],
+    "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ]
+  },
+  "verified_terminal_result_material_owner_response_reviewer_ack_review_handoff": {
+    "summary": {
+      "schema": "trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_summary.v1",
+      "capability": "verified_terminal_result_material_owner_response_reviewer_ack_review_handoff",
+      "source": "software_proof",
+      "handoff_status": "blocked_missing_reviewer_ack_review_decision_not_proven",
+      "source_review_decision_status": "source_review_decision_status=blocked_missing_verified_terminal_result_material_owner_response_reviewer_ack_review_decision",
+      "terminal_result_type": "terminal_result_type=delivery",
+      "safe_command_id": "command_id=cmd_terminal_result_owner_response_reviewer_ack_review_handoff_20260524_0001",
+      "safe_evidence_ref": "evidence_ref=verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_fixture_20260524_0001",
+      "field_owner_handoff": [
+        "field_owner_handoff=waiting_for_safe_review_decision"
+      ],
+      "support_handoff": [
+        "support_handoff=hardware_material_pending"
+      ],
+      "reviewer_handoff": [
+        "reviewer_handoff=not_proven"
+      ],
+      "missing_classifications": [
+        "missing_classification=source_review_decision_safe_summary"
+      ],
+      "rejected_classifications": [
+        "rejected_classification=none_safe_summary_only"
+      ],
+      "false_state_flags": [
+        "safe_to_control=false",
+        "delivery_success=false",
+        "primary_actions_enabled=false"
+      ],
+      "evidence_boundary": "software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

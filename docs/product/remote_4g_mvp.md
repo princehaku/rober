@@ -1779,6 +1779,43 @@ checksums, success wording, HIL wording, true control flags, PR-resolution
 claims, reviewer-resolution claims, review-authorization claims, ACK/cursor
 mutation hints, and collect/dropoff/cancel hints must fail closed.
 
+Verified terminal-result material owner-response reviewer ACK review handoff
+adds the next Robot diagnostics safe alias:
+
+- `robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_summary`
+- `schema=trashbot.robot_diagnostics_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_summary.v1`
+- `source_schema=trashbot.verified_terminal_result_material_owner_response_reviewer_ack_review_handoff.v1`
+- `evidence_boundary=software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_gate`
+- `source=software_proof`
+- `not_proven`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `safe_to_control=false`
+- PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved
+- `hardware_material_pending=true`
+
+The alias is read-only and consumes the sanitized reviewer ACK review-handoff
+summary first, then the compatible Robot-safe alias. It can fall back to a
+blocked state derived from the sanitized reviewer ACK review-decision summary.
+It preserves source reviewer ACK review-decision status, handoff status, safe
+`evidence_ref`, safe `command_id`, missing/rejected materials, reassignment
+reason, handoff reasons, next required evidence, owner/support/reviewer
+routing, and safe copy. It is only a reviewer ACK review-handoff packet for
+unresolved material follow-through; it does not prove PR #5 resolution,
+reviewer resolution, real terminal result, O5 external proof, true
+phone/browser proof, public HTTPS/TLS, 4G/SIM, OSS/CDN live traffic, production
+DB/queue, worker/cutover, route/elevator field pass, HIL, WAVE ROVER/UART
+proof, review authorization, handoff authorization, or delivery success.
+
+Unsafe raw fields, credentials, local paths, ROS topics, `/cmd_vel`,
+serial/UART details, WAVE ROVER details, tracebacks, complete artifacts,
+checksums, success wording, HIL/pass wording, true phone/browser proof, true
+control flags, PR-resolution claims, reviewer-resolution claims,
+review-authorization claims, handoff-authorization claims, ACK/cursor mutation
+hints, and collect/dropoff/cancel hints must fail closed. This diagnostics
+alias does not change command safety, ACK/cursor, cloud bridge, task execution,
+Start Delivery, Confirm Dropoff, or Cancel semantics.
+
 ## Safety Rules
 
 - The robot never exposes `/cmd_vel` over the remote bridge.
