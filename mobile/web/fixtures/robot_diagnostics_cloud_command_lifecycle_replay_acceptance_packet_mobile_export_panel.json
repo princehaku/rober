@@ -1,0 +1,96 @@
+{
+  "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary.v1",
+    "schema_version": 1,
+    "capability": "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel",
+    "source_capability": "cloud_command_lifecycle_replay_acceptance_packet_http_export",
+    "source_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate",
+    "source": "software_proof",
+    "acceptance_packet_status": "ready_for_field_owner_acceptance_review_not_proven",
+    "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_mobile_export_panel_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_fixture_20260524_0001",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "terminal_result_status": "terminal_result_pending",
+    "owner_handoff": "field owner must provide verified terminal delivery/dropoff/cancel result under the same safe evidence_ref before acceptance can move forward.",
+    "next_required_evidence": [
+      "verified terminal delivery result under the same safe evidence_ref",
+      "verified dropoff or cancel completion under the same safe evidence_ref",
+      "real public HTTPS/TLS, 4G/SIM, OSS/CDN, production DB/queue, and true phone/browser evidence remain pending"
+    ],
+    "redaction_status": "passed",
+    "safe_copy": "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel;command_id=cmd_lifecycle_replay_acceptance_packet_mobile_export_panel_20260524_0001;evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_fixture_20260524_0001;ack_semantics=accepted_processing_only_not_delivery_success;terminal_result_status=terminal_result_pending;acceptance_packet_status=ready_for_field_owner_acceptance_review_not_proven;redaction_status=passed;source=software_proof;not_proven;delivery_success=false;primary_actions_enabled=false;safe_to_control=false.",
+    "safe_phone_copy": "云命令生命周期验收包手机导出面板只读可见；ACK 只代表 accepted/processing，terminal result 仍 pending，主操作保持禁用。",
+    "recovery_hint": "等待同一 safe evidence_ref 的 verified terminal result；手机端不请求未脱敏诊断、ACK/cursor、review、material、代码托管变更、复演重提或控制路径。",
+    "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate",
+    "proof_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "real_public_https_tls",
+      "real_4g_sim",
+      "oss_cdn_live_traffic",
+      "production_db_queue",
+      "true_phone_browser_proof",
+      "verified_terminal_result",
+      "hil_pass"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary.v1",
+    "schema_version": 1,
+    "capability": "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel",
+    "source_capability": "cloud_command_lifecycle_replay_acceptance_packet_http_export",
+    "source": "software_proof",
+    "packet_status": "ready_for_field_owner_acceptance_review_not_proven",
+    "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_mobile_export_panel_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_fixture_20260524_0001",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "terminal_result_status": "terminal_result_pending",
+    "owner_handoff": "field owner terminal-result material still pending.",
+    "next_required_evidence": [
+      "verified terminal delivery/dropoff/cancel result under same safe evidence_ref"
+    ],
+    "redaction_status": "passed",
+    "safe_copy": "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel;not_proven;delivery_success=false;primary_actions_enabled=false;safe_to_control=false.",
+    "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate",
+    "source_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ]
+  },
+  "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel": {
+    "summary": {
+      "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary.v1",
+      "capability": "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel",
+      "packet_status": "ready_for_field_owner_acceptance_review_not_proven",
+      "source": "software_proof",
+      "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_mobile_export_panel_20260524_0001",
+      "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_fixture_20260524_0001",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "terminal_result_status": "terminal_result_pending",
+      "owner_handoff": "field owner terminal-result material still pending.",
+      "redaction_status": "passed",
+      "safe_copy": "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel;not_proven;delivery_success=false;primary_actions_enabled=false;safe_to_control=false.",
+      "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

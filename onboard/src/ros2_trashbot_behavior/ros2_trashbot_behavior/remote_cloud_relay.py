@@ -143,6 +143,8 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_HTTP_EXPORT_EVIDENCE_BOUNDARY =
 )
 ACCEPTED_PROCESSING_ONLY_ACK_SEMANTICS = "accepted_processing_only_not_delivery_success"
 TERMINAL_RESULT_PENDING_STATUS = "terminal_result_pending"
+PENDING_SAFE_COMMAND_ID = "pending_same_safe_command_id"
+PENDING_SAFE_EVIDENCE_REF = "pending_same_safe_evidence_ref"
 OSS_CDN_BUCKET = "bytegallop"
 OSS_CDN_REGION = "oss-cn-hangzhou"
 OSS_CDN_PREFIX_ROOT = "rober/"
@@ -7845,6 +7847,10 @@ def build_cloud_command_lifecycle_replay_acceptance_packet_cli_export_payload(*,
         "evidence_boundary": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_EVIDENCE_BOUNDARY,
         "status": "ready_for_field_owner_acceptance_review_not_proven",
         "acceptance_packet_status": "ready_for_field_owner_acceptance_review_not_proven",
+        # 这里不能伪造真实 command/evidence，只给手机面板一个明确的安全占位。
+        "safe_command_id": PENDING_SAFE_COMMAND_ID,
+        "safe_evidence_ref": PENDING_SAFE_EVIDENCE_REF,
+        "safe_id_status": "pending_owner_material_not_proven",
         "ack_semantics": ACCEPTED_PROCESSING_ONLY_ACK_SEMANTICS,
         "terminal_result_status": TERMINAL_RESULT_PENDING_STATUS,
         "owner_handoff": {
@@ -7897,6 +7903,9 @@ def build_cloud_command_lifecycle_replay_acceptance_packet_cli_export_payload(*,
         "artifact_status": "export_ready_for_field_owner_review_not_proven",
         "source_packet_capability": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CAPABILITY,
         "source_packet_evidence_boundary": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_EVIDENCE_BOUNDARY,
+        "safe_command_id": source_packet["safe_command_id"],
+        "safe_evidence_ref": source_packet["safe_evidence_ref"],
+        "safe_id_status": source_packet["safe_id_status"],
         "ack_semantics": ACCEPTED_PROCESSING_ONLY_ACK_SEMANTICS,
         "terminal_result_status": TERMINAL_RESULT_PENDING_STATUS,
         "owner_handoff": source_packet["owner_handoff"],
@@ -7945,6 +7954,9 @@ def build_cloud_command_lifecycle_replay_acceptance_packet_http_export_payload(*
         "source_cli_export_evidence_boundary": cli_export["evidence_boundary"],
         "source_packet_capability": cli_export["source_packet_capability"],
         "source_packet_evidence_boundary": cli_export["source_packet_evidence_boundary"],
+        "safe_command_id": cli_export["safe_command_id"],
+        "safe_evidence_ref": cli_export["safe_evidence_ref"],
+        "safe_id_status": cli_export["safe_id_status"],
         "ack_semantics": cli_export["ack_semantics"],
         "terminal_result_status": cli_export["terminal_result_status"],
         "owner_handoff": cli_export["owner_handoff"],

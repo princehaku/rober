@@ -193,6 +193,7 @@ It is built from the CLI export helper, so it preserves the CLI export boundary
 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_cli_export_gate`,
 the source packet boundary
 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate`,
+`pending_same_safe_command_id`, `pending_same_safe_evidence_ref`,
 `accepted_processing_only_not_delivery_success`, `terminal_result_pending`,
 `owner_handoff`, `next_required_evidence`, `not_proven`,
 `delivery_success=false`, `primary_actions_enabled=false`,
@@ -206,6 +207,39 @@ success, or enable controls. It is not delivery success, not true phone/browser
 proof, not real external cloud proof, not public HTTPS/TLS, not 4G/SIM, not
 OSS/CDN live traffic, not production DB/queue, not worker/cutover, not verified
 terminal result, not HIL, not PR #5 resolution, and no OKR percentage lift.
+The pending safe command/evidence identifiers are explicit placeholders for
+the later same-ref owner material; they are not raw command IDs and do not prove
+that owner material has arrived.
+
+The same-origin `mobile/web` shell can now consume that HTTP export/support
+packet through a read-only phone/support panel:
+
+```text
+cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel
+cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary
+robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary
+```
+
+The mobile panel evidence boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate`.
+It prefers the Robot diagnostics mobile-export summary, falls back to the
+mobile-export summary, the existing acceptance-packet safe summary, or HTTP
+export compatible safe fields, and shows only safe command id, safe
+`evidence_ref`, acceptance packet status,
+`ack_semantics=accepted_processing_only_not_delivery_success`,
+`terminal_result_status=terminal_result_pending`, owner handoff, next required
+evidence, redaction status, evidence/source boundaries, and backend-provided
+safe copy. It keeps `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`.
+
+The panel is not a new cloud control surface. It does not fetch raw
+diagnostics, raw materials, command routes, ACK/cursor routes, review routes,
+material routes, GitHub mutation routes, replay/resubmit routes, or any control
+path, and it does not enable Start Delivery, Confirm Dropoff, or Cancel. This
+is not delivery success, not true phone/browser proof, not public HTTPS/TLS,
+not 4G/SIM, not OSS/CDN live traffic, not production DB/queue, not
+worker/cutover, not verified terminal result, not HIL, not WAVE ROVER/UART
+proof, not PR #5 resolution, and no OKR percentage lift.
 
 The independent relay now also hosts the dependency-free `mobile/web/` PWA
 shell on the same origin:

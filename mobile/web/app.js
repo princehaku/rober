@@ -39,6 +39,8 @@ const CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_BOUNDARY = "software_proof_docker_clo
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_COPY = "云命令生命周期复演演练只读可见；ACK 只代表 accepted/processing，terminal result 仍 pending，主操作保持禁用。";
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_BOUNDARY = "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_gate";
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_COPY = "云命令生命周期验收包只读可见；ACK 只代表 accepted/processing，terminal result 仍 pending，主操作保持禁用。";
+const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_BOUNDARY = "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate";
+const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_COPY = "云命令生命周期验收包手机导出面板只读可见；ACK 只代表 accepted/processing，terminal result 仍 pending，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_BOUNDARY = "software_proof_docker_verified_terminal_result_material_intake_gate";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_COPY = "verified terminal result material intake 只读可见；材料回填不等于 delivery success，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_verified_terminal_result_material_review_decision_gate";
@@ -629,6 +631,7 @@ let latestCloudSupportHandoffSafeExport = null;
 let latestCloudCommandLifecycleAuditExport = null;
 let latestCloudCommandLifecycleReplayDrill = null;
 let latestCloudCommandLifecycleReplayAcceptancePacket = null;
+let latestCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel = null;
 let latestVerifiedTerminalResultMaterialIntake = null;
 let latestVerifiedTerminalResultMaterialReviewDecision = null;
 let latestVerifiedTerminalResultMaterialReviewHandoff = null;
@@ -1722,6 +1725,15 @@ function safeCloudCommandLifecycleReplayAcceptancePacketText(value, fallback = "
     UNSAFE_CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_TEXT.test(text) ||
     /(raw packet|material upload|review action|github action|complete artifacts?)/i.test(text)
   ) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(value, fallback = "not_proven") {
+  // 手机导出面板复用验收包安全词表；额外拒绝 raw/export/replay 语义，避免把支持摘要变成控制或取证入口。
+  const text = safeCloudCommandLifecycleReplayAcceptancePacketText(value, fallback);
+  if (/(raw diagnostics|raw materials?|command routes?|ack routes?|cursor routes?|review routes?|github mutation|replay\/resubmit|resubmit route)/i.test(text)) {
     return fallback;
   }
   return text;
@@ -46230,6 +46242,240 @@ function renderCloudCommandLifecycleReplayAcceptancePacket(status) {
   $("cloudCommandLifecycleReplayAcceptancePacketHint").textContent = summary.recovery_hint;
 }
 
+function cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelCandidate(status, readiness, diagnostics) {
+  // 优先读取专用 mobile export summary；fallback 只接受上一层验收包/HTTP export 已经脱敏后的 safe 字段。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel?.summary ||
+    readiness?.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel?.summary ||
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel?.summary ||
+    diagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel?.summary ||
+    nestedDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel?.summary ||
+    nestedDiagnosticsInnerSummary.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel?.summary ||
+    statusDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel?.summary;
+  const httpExportSummary = status?.cloud_command_lifecycle_replay_acceptance_packet_http_export ||
+    readiness?.cloud_command_lifecycle_replay_acceptance_packet_http_export ||
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet_http_export ||
+    diagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_http_export ||
+    nestedDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_http_export ||
+    statusDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_http_export;
+  return firstObject(
+    status?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    readiness?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    diagnostics?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    diagnosticsReadiness.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    statusDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    status?.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    readiness?.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    diagnosticsReadiness.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    diagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    nestedDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    nestedDiagnosticsInnerSummary.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    statusDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    artifactSummary,
+    status?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary,
+    readiness?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary,
+    diagnostics?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary,
+    status?.cloud_command_lifecycle_replay_acceptance_packet_summary,
+    readiness?.cloud_command_lifecycle_replay_acceptance_packet_summary,
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet_summary,
+    httpExportSummary,
+    status?.cloud_command_lifecycle_replay_acceptance_packet?.summary,
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet?.summary,
+  );
+}
+
+function cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelFromStatus(status, readiness, diagnostics) {
+  const provided = cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelCandidate(status, readiness, diagnostics) || {};
+  const safeCopy = safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+    provided.safe_copy || provided.support_acceptance_copy || provided.safe_support_acceptance_copy,
+    "",
+  );
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary.v1",
+    capability: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.capability,
+      "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel",
+    ),
+    source_capability: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.source_capability || provided.source_packet_capability || provided.source_capability_name,
+      "cloud_command_lifecycle_replay_acceptance_packet_http_export",
+    ),
+    source: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(provided.source, "software_proof"),
+    packet_status: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.acceptance_packet_status || provided.packet_status || provided.status || provided.overall_status,
+      "blocked_missing_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_not_proven",
+    ),
+    safe_command_id: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.safe_command_id || provided.command_id,
+      "command_id=not_proven",
+    ),
+    safe_evidence_ref: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    ack_semantics: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.ack_semantics || provided.ack_status || provided.ack_summary,
+      "accepted_processing_only_not_delivery_success",
+    ),
+    terminal_result_status: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.terminal_result_status || provided.result_status || provided.verified_terminal_result_status,
+      "terminal_result_pending",
+    ),
+    owner_handoff: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.owner_handoff || provided.support_owner_handoff || provided.handoff_summary,
+      "owner_handoff=等待现场 owner 回填同一 safe evidence_ref 的 terminal result。",
+    ),
+    next_required_evidence: cloudCommandLifecycleReplayAcceptancePacketList(
+      provided.next_required_evidence || provided.required_evidence,
+      "需要同一 safe evidence_ref 的 verified terminal delivery/dropoff/cancel result 和真实外部材料。",
+    ),
+    redaction_status: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.redaction_status || provided.safe_redaction_status,
+      "blocked_unavailable",
+    ),
+    safe_copy_status: safeCopy ? "safe_copy_available" : "blocked copy unavailable",
+    safe_copy: safeCopy || "blocked copy unavailable",
+    safe_phone_copy: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary,
+      CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_COPY,
+    ),
+    recovery_hint: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.recovery_hint || provided.retry_hint,
+      "等待同一 safe evidence_ref 的 verified terminal result；手机端不请求未脱敏诊断、ACK/cursor、review、material、代码托管变更、复演重提或控制路径。",
+    ),
+    evidence_boundary: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.evidence_boundary || provided.proof_boundary,
+      CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_BOUNDARY,
+    ),
+    source_boundary: safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(
+      provided.source_boundary || provided.source_evidence_boundary || provided.source_proof_boundary,
+      "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate",
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: cloudCommandLifecycleReplayAcceptancePacketNotProvenList(provided),
+  };
+}
+
+function ensureCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel() {
+  // 手机导出 panel 放在 acceptance packet 后面；它只解释阻塞状态，不增加复制按钮或任何控制动作。
+  let panel = $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("cloudCommandLifecycleReplayAcceptancePacketTitle")?.closest("section") ||
+    $("cloudCommandLifecycleReplayDrillTitle")?.closest("section") ||
+    $("cloudCommandLifecycleAuditExportTitle")?.closest("section") ||
+    $("cloudSupportHandoffSafeExportTitle")?.closest("section") ||
+    $("cloudReadinessTitle")?.closest("section") ||
+    $("supportTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "cloudCommandLifecycleReplayAcceptancePacketMobileExportPanel";
+  panel.className = "cloud-command-lifecycle-replay-acceptance-packet-mobile-export-panel";
+  panel.setAttribute("aria-labelledby", "cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelTitle">云命令验收包手机导出面板</h2>
+      <span id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelCopy" class="message">
+      等待 robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary。
+    </p>
+    <dl class="cloud-command-lifecycle-replay-acceptance-packet-mobile-export-panel-grid">
+      <div><dt>Panel Capability</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelCapability">cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel</dd></div>
+      <div><dt>Packet Status</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelStatus">blocked_missing_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_not_proven</dd></div>
+      <div><dt>Command ID</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelCommandId">command_id=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>ACK Semantics</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelAck">accepted_processing_only_not_delivery_success</dd></div>
+      <div><dt>Terminal Result</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelTerminalResult">terminal_result_pending</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelOwnerHandoff">owner_handoff=not_proven</dd></div>
+      <div><dt>Redaction</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelRedaction">blocked_unavailable</dd></div>
+      <div><dt>Safe Copy</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelCopyState">blocked copy unavailable</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelBoundary">software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate</dd></div>
+      <div><dt>Source Boundary</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelSourceBoundary">software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelNotProven">真实公网、4G、OSS/CDN、DB/queue、真实手机/browser、terminal result、HIL 和 delivery_success=false 边界未解除。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section>
+        <h3>Next Required Evidence</h3>
+        <ol id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelNextEvidence" class="handoff-checklist">
+          <li>等待 next required evidence。</li>
+        </ol>
+      </section>
+    </div>
+    <pre id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelSafeCopy" class="safe-copy" aria-label="cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel safe_copy">blocked copy unavailable</pre>
+    <p id="cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelHint" class="hint">
+      本 panel 只消费同源 safe summary 或 HTTP export 兼容 payload；不会请求 raw diagnostics、raw materials、command routes、ACK/cursor routes、review/material/GitHub mutation routes、replay/resubmit routes 或任何控制路径。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel(status) {
+  const panel = ensureCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelFromStatus(status, readiness, latestDiagnostics);
+  latestCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel = summary;
+  const badge = $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 mobile export panel 摘要" : "mobile export panel not_proven";
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelCopy").textContent = summary.safe_phone_copy;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelCapability").textContent = summary.capability;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelStatus").textContent = `${summary.source} / ${summary.packet_status}`;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelCommandId").textContent = summary.safe_command_id;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelAck").textContent = summary.ack_semantics;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelTerminalResult").textContent = summary.terminal_result_status;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelOwnerHandoff").textContent = summary.owner_handoff;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelRedaction").textContent = summary.redaction_status;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelCopyState").textContent = summary.safe_copy_status;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelBoundary").textContent = summary.evidence_boundary;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelSourceBoundary").textContent = summary.source_boundary;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelFlags").textContent = summary.boundary_flags;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelNotProven").textContent = summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelNextEvidence",
+    summary.next_required_evidence,
+  );
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelSafeCopy").textContent = summary.safe_copy;
+  $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelHint").textContent = summary.recovery_hint;
+}
+
 function verifiedTerminalResultMaterialIntakeCandidate(status, readiness, diagnostics) {
   // 只从 status/readiness/diagnostics 的 safe summary 取值；前端不拉 raw diagnostics、ACK/cursor 或 command route。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -54840,6 +55086,14 @@ function renderDiagnosticsSummary(payload) {
       ).packet_status,
     ],
     [
+      "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel",
+      cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).packet_status,
+    ],
+    [
       "verified_terminal_result_material_intake",
       verifiedTerminalResultMaterialIntakeFromStatus(
         payload || {},
@@ -55119,6 +55373,7 @@ function renderOfflineFailure() {
   renderCloudCommandLifecycleAuditExport({});
   renderCloudCommandLifecycleReplayDrill({});
   renderCloudCommandLifecycleReplayAcceptancePacket({});
+  renderCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel({});
   renderVerifiedTerminalResultMaterialIntake({});
   renderVerifiedTerminalResultMaterialReviewDecision({});
   renderVerifiedTerminalResultMaterialReviewHandoff({});
@@ -55313,6 +55568,7 @@ function renderStatus(status) {
   renderCloudCommandLifecycleAuditExport(status);
   renderCloudCommandLifecycleReplayDrill(status);
   renderCloudCommandLifecycleReplayAcceptancePacket(status);
+  renderCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel(status);
   renderVerifiedTerminalResultMaterialIntake(status);
   renderVerifiedTerminalResultMaterialReviewDecision(status);
   renderVerifiedTerminalResultMaterialReviewHandoff(status);
@@ -55666,6 +55922,7 @@ async function openDiagnostics() {
     renderCloudCommandLifecycleAuditExport(latestStatus || {});
     renderCloudCommandLifecycleReplayDrill(latestStatus || {});
     renderCloudCommandLifecycleReplayAcceptancePacket(latestStatus || {});
+    renderCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel(latestStatus || {});
     renderVerifiedTerminalResultMaterialIntake(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewDecision(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewHandoff(latestStatus || {});
@@ -55755,6 +56012,7 @@ function wireEvents() {
   ensureCloudCommandLifecycleAuditExportPanel();
   ensureCloudCommandLifecycleReplayDrillPanel();
   ensureCloudCommandLifecycleReplayAcceptancePacketPanel();
+  ensureCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel();
   ensureVerifiedTerminalResultMaterialIntakePanel();
   ensureVerifiedTerminalResultMaterialReviewDecisionPanel();
   ensureHardwareBaselineSourceAlignmentPanel();

@@ -8,6 +8,28 @@
 
 ## 2026-05-24 系列
 
+更新时间：2026-05-24 08:16 Asia/Shanghai。
+
+### 2026-05-24 08-09｜cloud-command-lifecycle-acceptance-mobile-export-panel｜command lifecycle acceptance packet mobile export panel
+
+本轮 `sprints/2026.05.24_08-09_cloud-command-lifecycle-acceptance-mobile-export-panel/` 执行 `cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel` epic closeout。用户价值是让普通手机用户、field owner 和 support reviewer 能在 `mobile/web` 的只读 phone/support panel 里看到 command lifecycle acceptance packet 的安全摘要、ACK accepted/processing 语义、terminal result pending、owner handoff、下一步证据需求和 false-state flags，而不是依赖 SSH、CLI、raw diagnostics、GitHub mutation、ACK/cursor route、material upload、Nav2 或机器人控制。本轮边界为 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate`。
+
+Task A Full-Stack worker 更新 `mobile/web/app.js`、`mobile/web/test_mobile_web_entrypoint.py`、`mobile/web/fixtures/robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel.json`、`docs/product/mobile_user_flow.md` 和 `docs/product/remote_4g_mvp.md`。新增只读 `cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel`，消费 command lifecycle acceptance packet safe fields，显示 `accepted_processing_only_not_delivery_success`、`terminal_result_pending`、safe command/evidence fields、owner handoff、next required evidence、redaction status、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false` 和 `safe_to_control=false`；Start Delivery、Confirm Dropoff、Cancel 保持 disabled。验证通过：`node --check` passed；fixture `json.tool` passed；targeted mobile unittest 输出 `Ran 2 tests ... OK`；required `rg` passed；scoped `git diff --check` passed。第一轮失败因为 fixture `recovery_hint` 含 forbidden `raw diagnostics` / `GitHub mutation`，已改为 phone-safe 文案并复跑通过。
+
+Task B Robot worker 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py` 和 `docs/product/remote_4g_mvp.md`。Robot 发现 HTTP export payload 顶层缺显式 `safe_command_id` / `safe_evidence_ref`，因此补 pending-safe placeholders `pending_same_safe_command_id` / `pending_same_safe_evidence_ref` 并透传到 CLI/HTTP export payload；这些 pending safe IDs 是兼容占位，不是 owner material、真实 command execution proof 或 delivery proof。验证通过：`py_compile` passed；targeted unittest 输出 `Ran 2 tests in 36.046s OK`；required `rg` passed；scoped `git diff --check` passed。
+
+PR #5 status preserved：`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。本轮保留 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`；不是 O5 external proof，不是 public HTTPS/TLS，不是 4G/SIM，不是 OSS/CDN live traffic，不是 production DB/queue，不是 worker/cutover，不是 O1 HIL，不是 WAVE ROVER/UART proof，不是 LiDAR/ToF installed proof，不是 PR #5 resolved，不是 true phone/browser proof，不是 route/elevator field pass，不是 Nav2/fixed-route runtime pass，不是 dropoff/cancel completion，不是 verified terminal result，不是 delivery result，也不是 delivery success；not delivery success；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰硬件桥、串口、WAVE ROVER、UART、HIL、2D LiDAR / ToF 或 vendor-source 材料；PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只证明 mobile/support panel 与 HTTP export payload 保持 ACK accepted/processing only、terminal result pending、owner handoff、pending-safe IDs 和 fail-closed；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal result、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；mobile export panel 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` 能只读展示 command lifecycle acceptance packet mobile export panel，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice 或 true phone/browser acceptance；not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate` 只证明 Docker/local mobile static fixture/UI 与 Robot/API HTTP export compatibility 能让 command lifecycle acceptance packet 被 phone/support view 安全消费、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Task A `node --check` / fixture `json.tool` / targeted mobile unittest、Task B `py_compile` / targeted Robot unittest、Product closeout required file checks、required `rg`、scoped `git diff --check` 和 `git diff --cached --check` 通过。Docs 同步已覆盖 `docs/product/mobile_user_flow.md`、`docs/product/remote_4g_mvp.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。Product 未运行 broad tests、Docker build、真实手机/browser、public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、WAVE ROVER/UART 或 HIL；本轮只记录 worker-scoped validation、Robot compatibility fix 和 closeout 证据。
+
 更新时间：2026-05-24 07:44 Asia/Shanghai。
 
 ### 2026-05-24 07-08｜cloud-command-lifecycle-acceptance-http-export｜command lifecycle acceptance packet HTTP export

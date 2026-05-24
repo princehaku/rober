@@ -33,6 +33,10 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet.json"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel.json"
+)
 VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_intake.json"
 )
@@ -763,6 +767,138 @@ class CloudCommandLifecycleReplayAcceptancePacketMobileTest(unittest.TestCase):
             "cursor request",
             "replay request",
             "resubmit request",
+            "robot command",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, packet_text)
+
+
+class CloudCommandLifecycleReplayAcceptancePacketMobileExportPanelTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_FIXTURE.read_text(encoding="utf-8")
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # mobile export panel 只解释 safe acceptance packet，不新增任何 raw route、ACK/cursor 或控制动作。
+        self.assertIn("CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_BOUNDARY", app)
+        self.assertIn("safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText", app)
+        self.assertIn("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelCandidate", app)
+        self.assertIn("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelFromStatus", app)
+        self.assertIn("renderCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel", app)
+        self.assertIn("云命令验收包手机导出面板", app)
+        self.assertIn(
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary",
+            app,
+        )
+        self.assertIn("cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary", app)
+        self.assertIn("cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel?.summary", app)
+        self.assertIn("cloud_command_lifecycle_replay_acceptance_packet_http_export", app)
+        self.assertIn("safe_copy", app)
+        self.assertIn("redaction_status", app)
+        self.assertIn("accepted_processing_only_not_delivery_success", app)
+        self.assertIn("terminal_result_pending", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertNotRegex(
+            app,
+            r"cloudCommandLifecycleReplayAcceptancePacketMobileExportPanel.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel",
+            "cursorCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel",
+            "fetchCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelDiagnostics",
+            "fetchCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelMaterial",
+            "reviewCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel",
+            "replayCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel",
+            "resubmitCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel",
+            "githubCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel",
+            "commandCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        # fixture 保持 false flags 和脱敏字段；safe_copy 可见但不等于复制按钮、控制授权或送达成功。
+        summary = fixture[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary"
+        ]
+        fallback = fixture["cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary"]
+        nested = fixture["cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel"]["summary"]
+        self.assertEqual(summary["capability"], "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel")
+        self.assertEqual(summary["source_capability"], "cloud_command_lifecycle_replay_acceptance_packet_http_export")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["redaction_status"], "passed")
+        self.assertEqual(summary["ack_semantics"], "accepted_processing_only_not_delivery_success")
+        self.assertEqual(summary["terminal_result_status"], "terminal_result_pending")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fallback["safe_to_control"], False)
+        self.assertEqual(nested["primary_actions_enabled"], False)
+        for required in (
+            "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel",
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate",
+            "accepted_processing_only_not_delivery_success",
+            "terminal_result_pending",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not true phone/browser proof",
+        ):
+            self.assertIn(required, fixture_text + doc)
+
+        # 文档必须同步声明手机/support 只读消费边界，避免把 HTTP export 误读成真实手机或交付证明。
+        self.assertIn("robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_fixture_stays_phone_safe(self):
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_FIXTURE.read_text(encoding="utf-8")
+        )
+        packet_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # fixture 不包含 raw 诊断、材料、控制、凭证、路径或硬件细节；只保留 phone-safe 支持摘要。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw materials",
+            "command route",
+            "ack route",
+            "cursor route",
+            "review route",
+            "material route",
+            "github mutation",
+            "replay route",
+            "resubmit route",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "ack payload",
+            "cursor request",
             "robot command",
             "control authorization",
             "delivery_success\": true",
