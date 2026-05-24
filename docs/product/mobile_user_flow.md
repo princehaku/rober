@@ -13,6 +13,14 @@
 9. User taps confirm after removing or disposing of the load.
 10. Robot returns, waits, or reports that human help is required.
 
+## Map-First App Target
+
+The consumer phone target can borrow the information architecture of a map-first home robot app, but it must not copy a cleaning brand or vacuum-specific feature set. For rober, the first screen should make the delivery task understandable before any technical detail appears: a map-first view of floors, areas, stations, the robot location, top-level battery/connection/status reminders, and one primary action button.
+
+The bottom mode switch can use a familiar whole-home / selected-area / drawn-area pattern as a product analogy. In rober terms this means "all-route patrol", "selected station or zone", and "draw/confirm a bounded route area" for route cruise or trash-delivery tasks. The station/base concept maps only to station, trash station, recharge, or standby status. It is not a claim that rober has vacuum cleaning, mop, water tank, suction, or brand-specific base-station features.
+
+Normal users should never need ROS2, raw JSON, topics, serial tools, map files, or SSH to operate this screen. If backend proof is missing, the same map-first UI must stay fail closed: the primary button remains disabled, the state explains what evidence is missing, and diagnostics/support can be shown without turning local/static software proof into true phone/browser proof.
+
 ## Status States
 
 - Waiting for trash.

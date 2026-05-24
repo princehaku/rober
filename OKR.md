@@ -123,17 +123,17 @@
 
 ### Objective 4：建立手机用户体验与低成本量产边界
 
-**目标说明**：让不会电脑和硬件的用户可以用手机完成核心任务，同时把硬件方案控制在低成本、可批量装配、可售后诊断的范围内。
+**目标说明**：让不会电脑和硬件的用户可以用手机完成核心任务，同时把硬件方案控制在低成本、可批量装配、可售后诊断的范围内。手机端目标口径是地图优先：首屏展示可理解的楼层/区域/站点地图、机器人当前位置、顶部电量/连接/状态提醒和一个明确主按钮；普通用户通过全屋/选区/划区类似的区域化入口选择路线巡航或送垃圾主任务，而不是接触 ROS、raw JSON、topic、串口或调试页面。
 
 **Key Results**
 
-- KR1：定义手机端最小流程：连接设备 -> 选择/确认垃圾站 -> 确认已放入垃圾 -> 一键发车 -> 查看状态 -> 处理异常。
+- KR1：定义手机端最小流程：打开手机端 -> 地图首屏查看机器人当前位置、电量、连接和状态提醒 -> 选择楼层/区域/站点或确认垃圾站 -> 确认已放入垃圾 -> 通过一键主按钮发起路线巡航/送垃圾主任务 -> 查看状态 -> 处理异常。
 - KR2：定义语音/喇叭提示词和状态触发点，覆盖待装载、准备出发、行驶中、到达、失败、需要人工接管。
 - KR3：形成量产硬件约束表，默认只包含小车底盘、上位板、随身 WiFi、摄像头、麦克风、喇叭；新增硬件必须有成本、装配、维护和软件收益说明。
-- KR4：建立远程诊断最小数据包：软件版本、地图/路线版本、最近任务状态、失败原因、关键日志、摄像头快照引用。
-- KR5：形成用户验收标准：普通用户不接触命令行、不插线调试、不理解 ROS2，也能完成一次送垃圾任务并知道失败时该怎么做。
+- KR4：建立远程诊断最小数据包：软件版本、地图/路线版本、楼层/区域/站点版本、最近任务状态、失败原因、关键日志、摄像头快照引用。
+- KR5：形成用户验收标准：普通用户不接触命令行、不插线调试、不理解 ROS2、不阅读 raw JSON，也能通过地图优先首屏、一键主按钮和普通中文状态说明完成一次送垃圾任务并知道失败时该怎么做。
 - KR6 ：跨楼层 trash delivery 的手机/语音体验必须落地：用户只选择目标楼层和垃圾站，小车在电梯内主动求助按键，失败时能在手机端解释"未开门、未确认目标楼层、需要人工接管"；手机端不暴露 raw JSON 或 ROS topic 名。
-- KR7 ：手机端 UI **美观且能直接使用**：视觉系统统一（配色 token、字号、间距、卡片、按钮态）、主操作主路径 ≤ 3 步、文案中文优先、iPhone/Android 主流尺寸适配、最小可点击区域 ≥ 44pt、首屏可交互 < 3 秒。当前可用流程与 readiness gate 口径见 `docs/product/mobile_user_flow.md`；本地 phone-first HTML 仍是 fallback 调试入口，正式手机端必须另行完成真实手机浏览器/设备验收。
+- KR7 ：手机端 UI **美观且能直接使用**：视觉系统统一（配色 token、字号、间距、卡片、按钮态）、主操作主路径 ≤ 3 步、文案中文优先、iPhone/Android 主流尺寸适配、最小可点击区域 ≥ 44pt、首屏可交互 < 3 秒。地图优先首屏必须支持多区域/楼层/站点可视化、机器人当前位置、顶部电量/连接/状态提醒、底部全屋/选区/划区类似模式切换和一个一键主按钮；基站类功能只映射为站点/垃圾站/回充/待命，不照抄扫地机品牌或清洁功能。当前可用流程与 readiness gate 口径见 `docs/product/mobile_user_flow.md`；本地 phone-first HTML 仍是 fallback 调试入口，正式手机端必须另行完成真实手机浏览器/设备验收。
 - KR8：默认导航/感知硬件约束固化为“单目摄像头 + 2D LiDAR + ToF 安全环（可先 2 路后扩 4 路）”：2D LiDAR 负责 SLAM/Nav2 主链，单目负责电梯门/楼层语义证据，ToF 负责近场防撞；不把 ToF 当主建图输入。
 - KR9：电梯 assisted delivery 作为必须实现能力写入工程扩展约束：状态机、感知 contract、手机状态展示均需预留参数化扩展点（传感器数量、阈值、状态枚举可配置），避免写死单机型/单传感器实现。
 
@@ -152,14 +152,14 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-05-24 14:18 Asia/Shanghai。最新 sprint：`2026.05.24_14-15_cloud-command-lifecycle-support-owner-response-review-decision`。详细历史见 `docs/process/okr_progress_log.md`。
+更新时间：2026-05-24 15:16 Asia/Shanghai。最新 sprint：`2026.05.24_15-16_mobile-map-first-okr-kr-refresh`。详细历史见 `docs/process/okr_progress_log.md`。
 
 | Objective | 当前进度 | 本轮证据与边界 | 主要缺口 |
 | --- | --- | --- | --- |
 | Objective 1：硬件协议可信底盘 | 约 81% | 本轮是 `cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision` / `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_gate`，只推进 O5 cloud command lifecycle owner-response review-decision safe summary 和只读手机面板。PR #5 thread `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `hardware_material_pending`；Objective 1 保守保持约 81%，no OKR percentage lift。 | 仍需真实 2D LiDAR / ToF SKU/source/receipt、采购、安装、接线、电源、标定、真实 HIL-entry、WAVE ROVER powered bench/UART/HIL logs、同一 safe `evidence_ref` captures、operator HIL report 和 reviewer resolution。本轮 not HIL、not WAVE ROVER/UART proof、not LiDAR/ToF installed proof、not PR #5 resolved、not delivery success。 |
 | Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 约 99% | 本轮只证明 owner-response review-decision metadata 可在 Robot/API 和 mobile/web 中 fail closed；没有改变 task_orchestrator、route/elevator runtime、dropoff/cancel result、terminal result、delivery result 或 real field execution。Objective 2 保守保持约 99%，no OKR percentage lift。 | 仍缺真实 field rerun、真实电梯、真实喇叭/TTS、真实 Nav2/fixed-route 运行、真实 route completion signal、真实现场 task record、真实门状态、真实楼层确认、人工协助现场记录、真实送达、失败恢复实测、真实 dropoff/cancel completion、真实 cancel completion、verified terminal delivery/dropoff/cancel result、delivery result 和 delivery success；本轮不是 route/elevator field pass。 |
 | Objective 3：可验证导航与固定路线 | 约 99% | 本轮没有改变路线、Nav2、fixed-route、PC keyframe runtime 或 route completion signal；owner-response review-decision gate 只覆盖云命令生命周期 support metadata 的 local software proof。Objective 3 保守保持约 99%，no OKR percentage lift。 | 仍缺真实路线采集、Nav2 waypoint/fixed-route 实跑、关键帧实景证据、真实 route completion signal、真实现场 task record、真实 Nav2/fixed-route runtime log、真实电梯材料、真实 dropoff/cancel completion、verified terminal delivery/dropoff/cancel result 和同一 safe `evidence_ref` 上车实机复账；本轮 gate 不证明 Nav2/fixed-route runtime pass 或路线/电梯 field pass。 |
-| Objective 4：手机用户体验与低成本量产边界 | 约 99% | Task B 在 `mobile/web/app.js`、`mobile/web/test_mobile_web_entrypoint.py`、fixture 和 `docs/product/mobile_user_flow.md` 中新增 owner-response intake 后的只读 panel，优先消费 `robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary`，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。`node --check`、fixture `json.tool`、focused unittest、required `rg` 和 scoped diff checks passed。Objective 4 仍约 99%，no OKR percentage lift；本轮 is not true phone/browser proof。 | 仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true_phone_browser_evidence、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、真实 cancel completion、delivery success、O5 external proof、WAVE ROVER、HIL 和量产实物验收；本轮不是 true phone/browser proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 约 99% | 本轮只更新 O4 产品目标和 KR 细节，把扫地机器人 App 参考图转译为 rober 手机端地图优先信息架构：地图首屏、多区域/楼层/站点可视化、机器人当前位置、底部全屋/选区/划区类似模式、一键主按钮、路线巡航/送垃圾主任务、站点/垃圾站/回充/待命和顶部电量/连接/状态提醒；普通用户不接触 ROS/raw JSON。Objective 4 仍约 99%，no OKR percentage lift；本轮 is not true phone/browser proof。 | 仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true_phone_browser_evidence、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、真实 cancel completion、delivery success、O5 external proof、WAVE ROVER、HIL 和量产实物验收；本轮不是 true phone/browser proof，也没有实现前端代码。 |
 | Objective 5：云中转 + OSS/CDN 数据通路产品化（历史 O6） | 约 68% | Objective 5 仍最低；本轮把 `cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake` 后继状态推进为 owner-response review decision。Task A Robot/API 新增 safe summary builder 与 status/diagnostics embedding；Task B mobile/web 新增只读 panel；Product closeout 保留 `delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`、`not verified terminal result`、`not true phone/browser proof`、`no OKR percentage lift`。Objective 5 保持约 68%。 | 仍没有真实公网 HTTPS/TLS、真实 4G/SIM、真实手机设备/browser、production app、真实 PWA prompt/userChoice、OSS/CDN live traffic、真实 production DB/queue connectivity、真实 production worker/migration/cutover、多实例一致性、真实 production queue ordering、transaction isolation、backup/recovery、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或真实送达；PR #4 route/elevator field materials 和 PR #5 2D LiDAR / ToF hardware materials 仍是独立缺口，`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / hardware_material_pending；本轮 is not real terminal result、not O5 external proof、not true phone/browser proof、不是 public HTTPS/TLS、不是 4G/SIM、不是 OSS/CDN live traffic、not production DB/queue、not worker/cutover、not HIL、not PR #5 resolved、not route/elevator field pass、not delivery success。 |
 
 

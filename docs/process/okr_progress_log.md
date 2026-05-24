@@ -8,6 +8,14 @@
 
 ## 2026-05-24 系列
 
+### 2026-05-24 15-16｜mobile-map-first-okr-kr-refresh｜O4 map-first mobile target refresh
+
+本轮 `sprints/2026.05.24_15-16_mobile-map-first-okr-kr-refresh/` 是 Product/OKR micro sprint，只更新目标口径和 KR 细节，不实现前端代码。用户价值是把 CEO 给出的扫地机器人 App 风格参考图转译成 rober 手机端可执行目标：地图优先首屏、多区域/楼层/站点可视化、机器人当前位置、底部全屋/选区/划区类似模式切换、一键主按钮、路线巡航/送垃圾主任务、站点/垃圾站/回充/待命、顶部电量/连接/状态提醒，以及普通用户不接触 ROS/raw JSON 的体验。
+
+本轮明确不照抄品牌或扫地机功能，不写成已实现，不提升 OKR 百分比。Objective 4 保持约 99%，no OKR percentage lift；仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true_phone_browser_evidence、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、delivery success、O5 external proof、WAVE ROVER、HIL 和量产实物验收。本轮 not true phone/browser proof。
+
+验证围栏：`git diff --check -- OKR.md docs/product/mobile_user_flow.md docs/process/okr_progress_log.md sprints/2026.05.24_15-16_mobile-map-first-okr-kr-refresh/tech-done.md` 通过；required `rg` 覆盖 `地图优先`、`选区`、`划区`、`一键`、`主按钮`、`普通用户`、`not true phone`、`no OKR percentage lift` 通过。
+
 更新时间：2026-05-24 14:18 Asia/Shanghai。
 
 ### 2026-05-24 14-15｜cloud-command-lifecycle-support-owner-response-review-decision｜command lifecycle support owner-response review decision
