@@ -323,6 +323,33 @@ proof, route/elevator field pass, delivery result, or delivery success, and it
 does not enable Start Delivery, Confirm Dropoff, Cancel, ACK, cursor,
 review-thread update, or robot command side effects.
 
+Robot/API also exposes the PR #5 mandatory-sensor owner-response reviewer ACK
+intake as a phone-safe status/diagnostics alias when the backend has already
+provided the sanitized summary:
+
+```text
+pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake
+pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary
+robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary
+```
+
+The alias evidence boundary is
+`software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate`.
+It preserves `source=software_proof`, `hardware_material_pending`,
+`not_proven`, `safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`. The safe summary is intentionally narrow:
+capability, proof boundary, PR thread `PRRT_kwDOSWB9286CJ3tX`,
+`hardware_material_pending`, reviewer ACK/intake status, next required
+evidence, safe copy, and false flags.
+
+This reviewer ACK intake alias is embedded in `/api/status`, `/api/diagnostics`,
+and `phone_readiness` for read-only mobile/support compatibility. It does not
+expose raw artifacts, serial/UART details, credentials, `/cmd_vel`, ROS control
+topics, GitHub write/resolve actions, ACK/cursor mutation, or robot command side
+effects. Missing, unsupported, or unsafe summaries fail closed and do not enable
+Start Delivery, Confirm Dropoff, Cancel, ACK, cursor, review-thread update,
+Nav2, HIL, dropoff/cancel completion, delivery result, or primary robot actions.
+
 The independent relay now also hosts the dependency-free `mobile/web/` PWA
 shell on the same origin:
 

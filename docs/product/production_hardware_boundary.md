@@ -757,6 +757,47 @@ installation, wiring, calibration, HIL entry, route/elevator field pass, true
 phone/browser proof, PR #5 resolution, Objective 5 external proof, or delivery
 success.
 
+## PR #5 Mandatory Sensor Owner-Response Reviewer ACK Intake Boundary
+
+`pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake` is the
+PC-only reviewer ACK intake gate after
+`pr5_mandatory_sensor_material_owner_response_review_handoff`. It emits
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.v1`
+and
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary.v1`
+under
+`software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate`.
+
+The gate consumes only the sanitized owner-response review-handoff artifact,
+summary, Robot safe alias, or wrapper/nested safe fields, plus an optional
+sanitized reviewer ACK packet. It does not consume raw owner-response handoff
+bodies, raw reviewer ACK bodies, real material payloads, receipt files, source
+PDFs, local paths, serial/UART logs, ROS topics, HIL logs, GitHub write state,
+or review-thread mutation state.
+
+Allowed ACK states are `accepted_acknowledged_not_proven`,
+`needs_reassignment`, `blocked_missing_handoff`, `rejected_unsafe_ack`, and
+`evidence_ref_mismatch`. Every state preserves `source=software_proof`,
+`software_proof`, `hardware_material_pending`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
+`accepted_acknowledged_not_proven` is not a hardware pass. It means only that
+the reviewer-safe ACK packet matched the previous safe handoff under the same
+safe `evidence_ref`. It does not prove a real 2D LiDAR or ToF SKU/source/
+receipt/procurement/install/wiring/power/calibration/HIL, does not prove
+WAVE ROVER/UART runtime, does not prove `PRRT_kwDOSWB9286CJ3tX` resolved, does
+not mutate GitHub, and does not prove Objective 5 external proof or delivery
+success.
+
+The local vendor/source chain for this gate remains `docs/vendor/VENDOR_INDEX.md`
+plus its Orange Pi Zero 3 manual/schematic and WAVE ROVER / UART JSON /
+firmware/vendor-app references. Those refs support source attribution and
+prevent hardware guessing. They still do not prove real sensor procurement,
+installation, wiring, calibration, HIL entry, route/elevator field pass, true
+phone/browser proof, PR #5 resolution, Objective 5 external proof, or delivery
+success.
+
 ## Cloud Command Lifecycle Audit/Export Hardware Boundary
 
 `cloud_command_lifecycle_audit_export` is an Objective 5 software-proof

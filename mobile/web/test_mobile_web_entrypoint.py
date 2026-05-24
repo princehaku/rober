@@ -136,6 +136,10 @@ PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff.json"
 )
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.json"
+)
 FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_field_evidence_rerun_execution_result_intake.json"
 )
@@ -6023,6 +6027,217 @@ class Pr5MandatorySensorMaterialOwnerResponseReviewHandoffMobileTest(unittest.Te
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, review_handoff_text)
+
+
+class Pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(
+            PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # reviewer ACK intake panel 只消费 Robot safe alias 和 safe fallback，不新增任何控制或提交路径。
+        self.assertIn("PR5 material reviewer ACK intake", app)
+        self.assertIn("PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_BOUNDARY", app)
+        self.assertIn("UNSAFE_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_TEXT", app)
+        self.assertIn("safePr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeText", app)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeCandidate", app)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeFromStatus", app)
+        self.assertIn("renderPr5MandatorySensorMaterialOwnerResponseReviewerAckIntake", app)
+        self.assertIn(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary",
+            app,
+        )
+        self.assertIn("pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary", app)
+        self.assertIn("pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake?.summary", app)
+        for required in (
+            "capability",
+            "ack_status",
+            "owner_route",
+            "support_route",
+            "reviewer_route",
+            "next_required_materials",
+            "reviewer_acknowledged_not_proven",
+            "reviewer_ack_needs_reassignment",
+            "reviewer_ack_missing_material_not_proven",
+            "blocked_missing_owner_response_review_handoff_not_proven",
+            "reviewer_ack_rejected_unsafe",
+            "hardware_material_pending",
+            "source=software_proof",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "PRRT_kwDOSWB9286CJ3tX",
+        ):
+            self.assertIn(required, app + fixture_text)
+        self.assertNotRegex(
+            app,
+            r"pr5MandatorySensorMaterialOwnerResponseReviewerAckIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "copyPr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeButton",
+            "ackPr5MandatorySensorMaterialOwnerResponseReviewerAckIntake",
+            "cursorPr5MandatorySensorMaterialOwnerResponseReviewerAckIntake",
+            "updatePr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeCursor",
+            "fetchPr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeDiagnostics",
+            "fetchPr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeMaterial",
+            "submitPr5MandatorySensorMaterialOwnerResponseReviewerAckIntake",
+            "reviewRoutePr5MandatorySensorMaterialOwnerResponseReviewerAckIntake",
+            "handoffRoutePr5MandatorySensorMaterialOwnerResponseReviewerAckIntake",
+            "ownerResponseRoutePr5MandatorySensorMaterialOwnerResponseReviewerAckIntake",
+            "reviewerAckRoutePr5MandatorySensorMaterialOwnerResponseReviewerAckIntake",
+            "materialUploadPr5MandatorySensorMaterialOwnerResponseReviewerAckIntake",
+            "githubMutationPr5MandatorySensorMaterialOwnerResponseReviewerAckIntake",
+            "replayPr5MandatorySensorMaterialOwnerResponseReviewerAckIntake",
+            "resubmitPr5MandatorySensorMaterialOwnerResponseReviewerAckIntake",
+            "commandPr5MandatorySensorMaterialOwnerResponseReviewerAckIntake",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        summary = fixture[
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+        ]
+        fallback = fixture["pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"]
+        nested = fixture["pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake"]["summary"]
+        self.assertEqual(summary["capability"], "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake")
+        self.assertEqual(summary["ack_status"], "reviewer_acknowledged_not_proven")
+        self.assertEqual(fallback["ack_status"], "reviewer_ack_needs_reassignment")
+        self.assertEqual(nested["ack_status"], "blocked_missing_owner_response_review_handoff_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["proof_status"], "hardware_material_pending")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        for required in (
+            "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake",
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary",
+            "software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate",
+            "source=software_proof",
+            "hardware_material_pending",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "reviewer_acknowledged_not_proven",
+            "reviewer_ack_needs_reassignment",
+            "blocked_missing_owner_response_review_handoff_not_proven",
+            "owner_route=provide phone-safe 2D LiDAR source summary",
+            "support_route=keep hardware_material_pending visible",
+            "reviewer_route=review sanitized ACK intake only",
+            "next_required_materials=phone-safe 2D LiDAR source and receipt summary",
+            "PRRT_kwDOSWB9286CJ3tX",
+            "no OKR percentage lift",
+        ):
+            self.assertIn(required, fixture_text)
+
+        # 产品文档必须写清这是首屏只读 ACK intake，不是真实手机/browser、HIL、PR resolved 或送达成功。
+        self.assertIn("pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake", doc)
+        self.assertIn(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary",
+            doc,
+        )
+        self.assertIn(
+            "software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate",
+            doc,
+        )
+        self.assertIn("reviewer ACK intake status", doc)
+        self.assertIn("owner/support/reviewer route", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", doc)
+        self.assertIn("hardware_material_pending", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not HIL", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(
+            PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        ack_intake_text = json.dumps(
+            {
+                "robot_alias": fixture[
+                    "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+                ],
+                "fallback": fixture[
+                    "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+                ],
+                "nested": fixture[
+                    "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留脱敏 reviewer ACK metadata；任何 raw、控制、GitHub mutation 或 success 语义都不得出现。
+        self.assertIn("blocked_missing_owner_response_review_handoff_not_proven", ack_intake_text)
+        self.assertIn("hardware_material_pending", ack_intake_text)
+        self.assertIn("not_proven", ack_intake_text)
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "ros topic",
+            "raw diagnostics",
+            "raw artifact",
+            "raw material",
+            "raw owner response",
+            "complete artifact",
+            "complete artifacts",
+            "full execution bundle",
+            "serial",
+            "uart",
+            "ttyusb",
+            "ttyacm",
+            "baudrate",
+            "/dev/",
+            "wave rover parameter",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "traceback",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "upload route",
+            "material route",
+            "review route",
+            "handoff route",
+            "github mutation",
+            "replay",
+            "resubmit",
+            "robot command",
+            "objective 5 external proof",
+            "real phone/browser proof",
+            "pr resolution",
+            "reviewer resolved",
+            "hil_pass",
+            "hil passed",
+            "field pass",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, ack_intake_text)
 
 
 class TaskTerminalCompletionMainlineMobileTest(unittest.TestCase):

@@ -164,6 +164,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_pr5_mandatory_sensor_material_owner_response_intake,
     summarize_pr5_mandatory_sensor_material_owner_response_review_decision,
     summarize_pr5_mandatory_sensor_material_owner_response_review_handoff,
+    summarize_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake,
     summarize_hardware_real_material_escalation_request,
     summarize_real_material_readiness_board,
     summarize_real_material_evidence_intake,
@@ -43563,6 +43564,182 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("Bearer", encoded)
         self.assertNotIn("/cmd_vel", encoded)
         self.assertNotIn("delivery_success=true", encoded)
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", encoded)
+        self.assertIn("hardware_material_pending", encoded)
+
+    def test_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": (
+                "trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.v1"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate"
+            ),
+            "schema_version": 1,
+            "capability": (
+                "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake"
+            ),
+            "status": "acknowledged_not_proven",
+            "ack_intake_status": "acknowledged_not_proven",
+            "overall_status": "not_proven",
+            "source": "software_proof",
+            "reviewer_ack_status": {
+                "status": "acknowledged_not_proven",
+                "reason": "reviewer ACK metadata was recorded without resolving PR #5",
+                "evidence_source": "software_proof",
+            },
+            "next_required_evidence": [
+                "2d_lidar_sku_source_receipt_procurement_material",
+                "tof_sku_source_receipt_procurement_material",
+                "hil_entry_material",
+            ],
+            "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+            "pr5_thread_state": "unresolved",
+            "pr5_material_state": "hardware_material_pending",
+            "safe_copy": (
+                "PR #5 mandatory sensor material owner response reviewer ACK "
+                "intake is metadata-only; source=software_proof; "
+                "hardware_material_pending; not_proven; delivery_success=false; "
+                "primary_actions_enabled=false; safe_to_control=false."
+            ),
+            "false_states": {
+                "hardware_material_pending": True,
+                "not_proven": True,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "safe_to_control": False,
+                "ack_post_allowed": False,
+                "cursor_updates_allowed": False,
+                "review_thread_updates_allowed": False,
+                "robot_command_side_effects_allowed": False,
+                "source_payload_exposed": False,
+            },
+            "hardware_material_pending": True,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "ack_post_allowed": False,
+            "cursor_updates_allowed": False,
+            "review_thread_updates_allowed": False,
+            "robot_command_side_effects_allowed": False,
+            "source_payload_exposed": False,
+        }
+        artifact = {
+            "schema": (
+                "trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate"
+            ),
+            "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary": (
+                safe_summary
+            ),
+        }
+        payload = build_diagnostics_payload(
+            {
+                "state": "waiting_for_trash",
+                "diagnostics": {
+                    "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary": (
+                        safe_summary
+                    ),
+                    "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake": {
+                        "delivery_success": True,
+                        "raw_artifact": {"topic": "/cmd_vel"},
+                    },
+                },
+            },
+            software_version="",
+            map_version="",
+            route_version="",
+            log_refs=[],
+            vision_sample_manifest_ref="",
+            review_decision_log_ref="",
+            operator_status_file="/tmp/status.json",
+        )
+        from_nested = (
+            summarize_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake(
+                artifact
+            )
+        )
+        unsafe = (
+            summarize_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake(
+                dict(
+                    safe_summary,
+                    safe_copy="Reviewer resolved; sensor installed; HIL pass; Start Delivery control enabled.",
+                    delivery_success=True,
+                    primary_actions_enabled=True,
+                    safe_to_control=True,
+                    raw_artifact={
+                        "Authorization": "Bearer unsafe",
+                        "topic": "/cmd_vel",
+                        "github_mutation": True,
+                    },
+                )
+            )
+        )
+
+        summary = payload[
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+        ]
+        self.assertEqual(
+            summary,
+            payload["pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake"],
+        )
+        self.assertEqual(
+            summary,
+            payload[
+                "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+            ],
+        )
+        self.assertNotIn(
+            "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake",
+            payload["latest_status"]["diagnostics"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["ack_intake_status"], "acknowledged_not_proven")
+        self.assertEqual(summary["reviewer_ack_status"]["status"], "acknowledged_not_proven")
+        self.assertEqual(summary["pr5_thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(summary["pr5_thread_state"], "unresolved")
+        self.assertEqual(summary["pr5_material_state"], "hardware_material_pending")
+        self.assertIn("hil_entry_material", summary["next_required_evidence"])
+        self.assertTrue(summary["hardware_material_pending"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["review_thread_updates_allowed"])
+        self.assertFalse(summary["robot_command_side_effects_allowed"])
+        self.assertFalse(summary["source_payload_exposed"])
+        self.assertEqual(from_nested["ack_intake_status"], "acknowledged_not_proven")
+        self.assertEqual(unsafe["ack_intake_status"], "rejected_unsafe_ack_not_proven")
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("Authorization", encoded)
+        self.assertNotIn("Bearer", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("delivery_success=true", encoded)
+        self.assertNotIn("reviewer resolved", encoded.lower())
         self.assertIn("source=software_proof", encoded)
         self.assertIn("not_proven", encoded)
         self.assertIn("delivery_success=false", encoded)

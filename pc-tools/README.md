@@ -822,6 +822,52 @@ publication，不是 resolution。`docs/vendor/VENDOR_INDEX.md` 及本地 Orange
 WAVE ROVER / UART JSON / firmware/vendor-app refs 只支持 source attribution，
 不证明真实 2D LiDAR / ToF material。
 
+## PR #5 mandatory sensor material owner-response reviewer ACK intake
+
+`pc-tools/evidence/pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.py`
+只读上一轮 `pr5_mandatory_sensor_material_owner_response_review_handoff`
+artifact、summary、Robot safe alias 或 wrapper/nested JSON，并可选读取一个脱敏
+reviewer ACK packet，把 PR #5 thread `PRRT_kwDOSWB9286CJ3tX` 的 reviewer ACK
+metadata 转成 PC-only ACK intake artifact / summary：
+
+```bash
+python3 pc-tools/evidence/pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.py \
+  --owner-response-review-handoff-json /tmp/pr5_mandatory_sensor_material_owner_response_review_handoff_summary.json \
+  --reviewer-ack-json /tmp/pr5_mandatory_sensor_material_owner_response_reviewer_ack_packet.json \
+  --evidence-ref pr5-reviewer-ack-001 \
+  --output /tmp/pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.json \
+  --summary-output /tmp/pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.v1`，
+summary 使用
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary`，
+证据边界固定为
+`software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate`。
+核心字段包括 `reviewer_ack_state`、`allowed_reviewer_ack_states`、safe
+`evidence_ref`、`source_owner_response_review_handoff`、
+`reviewer_acknowledgement`、`next_required_evidence`、`rerun_commands`、
+`safe_copy`、`software_proof`、`hardware_material_pending`、`not_proven`、
+`delivery_success=false`、`primary_actions_enabled=false` 和
+`safe_to_control=false`。
+
+`reviewer_ack_state` 只允许 `accepted_acknowledged_not_proven`、
+`needs_reassignment`、`blocked_missing_handoff`、`rejected_unsafe_ack` 和
+`evidence_ref_mismatch`。ACK packet 是可选输入；缺失或字段不足会保守输出
+`needs_reassignment`，不会写 GitHub、不会 resolve PR #5、不会触发 Robot/mobile
+动作。
+
+`accepted_acknowledged_not_proven` 只表示 reviewer-safe ACK packet 和上一跳
+safe handoff 在同一 safe `evidence_ref` 下完成复账；它不证明真实 2D LiDAR /
+ToF SKU、source、receipt、procurement、install、wiring、power、calibration、
+HIL、WAVE ROVER/UART runtime、`PRRT_kwDOSWB9286CJ3tX` resolved、Objective 5
+external proof 或 delivery success。`docs/vendor/VENDOR_INDEX.md` 及本地
+Orange Pi / WAVE ROVER / UART JSON / firmware/vendor-app refs 只支持 source
+attribution，不证明真实材料或 HIL。
+
 ## PC route debug console
 
 `pc-tools/route/route_debug_web.py` 是本地 PC console，不依赖 ROS2，不 import `ros2_trashbot_*`，不访问硬件、serial/UART、Nav2 runtime、ROS graph 或网络外部服务：

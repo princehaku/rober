@@ -1698,6 +1698,24 @@ PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_STATUSES = (
     "blocked_missing_review_decision_not_proven",
     "blocked_evidence_ref_mismatch_not_proven",
 )
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SCHEMA = (
+    "trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.v1"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary.v1"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary.v1"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_GATE = (
+    "software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_STATUSES = (
+    "acknowledged_not_proven",
+    "needs_more_material_not_proven",
+    "blocked_missing_review_handoff_not_proven",
+    "rejected_unsafe_ack_not_proven",
+)
 HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SCHEMA = (
     "trashbot.hardware_real_material_escalation_request.v1"
 )
@@ -18943,6 +18961,91 @@ def _default_pr5_mandatory_sensor_material_owner_response_review_handoff_summary
         "pr_resolved": False,
         "review_thread_updates_allowed": False,
         "source_payload_exposed": False,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+    }
+
+
+def _default_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary(
+    path,
+    status="blocked_missing_review_handoff_not_proven",
+    read_error="",
+):
+    # reviewer ACK intake 对 Robot 侧只是只读排队状态；默认必须 blocked，不能暗示 PR 已解决。
+    reason = read_error or (
+        "PR #5 mandatory sensor material owner response reviewer ACK intake summary is not configured"
+    )
+    safe_copy = (
+        "PR #5 mandatory sensor material owner response reviewer ACK intake is "
+        "metadata-only; source=software_proof; hardware_material_pending; "
+        "not_proven; safe_to_control=false; delivery_success=false; "
+        "primary_actions_enabled=false."
+    )
+    return {
+        "schema": PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "capability": "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake",
+        "source_schema": "",
+        "source_evidence_boundary": "",
+        "evidence_boundary": PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_GATE,
+        "proof_boundary": PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_GATE,
+        "source": "software_proof",
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "status": status,
+        "ack_intake_status": status,
+        "reviewer_ack_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": reason,
+        },
+        "overall_status": "not_proven",
+        "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+        "pr5_thread_state": "unresolved",
+        "pr5_material_state": "hardware_material_pending",
+        "hardware_material_pending": True,
+        "next_required_evidence": [],
+        "false_states": {
+            "hardware_material_pending": True,
+            "not_proven": True,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "ack_post_allowed": False,
+            "cursor_updates_allowed": False,
+            "review_thread_updates_allowed": False,
+            "robot_command_side_effects_allowed": False,
+            "source_payload_exposed": False,
+        },
+        "not_proven": [
+            "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_only",
+            "pr5_PRRT_kwDOSWB9286CJ3tX_unresolved",
+            "hardware_material_pending",
+            "real_sensor_installed_on_robot",
+            "real_hil_pass",
+            "route_elevator_field_pass",
+            "delivery_success",
+            "primary_actions_enabled",
+            "safe_to_control",
+        ],
+        "metadata_only": True,
+        "summary_required": True,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "review_thread_updates_allowed": False,
+        "source_payload_exposed": False,
+        "robot_command_side_effects_allowed": False,
+        "command_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "field_pass": False,
+        "sensor_installed": False,
+        "pr_resolved": False,
         "read_error": _redact_route_task_rehearsal_text(read_error),
         "safe_copy": safe_copy,
         "safe_phone_copy": safe_copy,
@@ -69923,6 +70026,257 @@ def summarize_pr5_mandatory_sensor_material_owner_response_review_handoff(source
     return summary
 
 
+def summarize_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake(source):
+    """构建 PR #5 mandatory sensor material reviewer ACK intake 的 Robot-safe 摘要。"""
+    # 只消费 Hardware gate 已消毒 summary；ACK/cursor/GitHub 写动作和机器人控制字段一律不透出。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = (
+        _default_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary(
+            source_path,
+            read_error=(
+                "PR #5 mandatory sensor material owner response reviewer ACK intake summary is not configured"
+            ),
+        )
+    )
+    if isinstance(source, dict):
+        intake_doc = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = (
+                "PR #5 mandatory sensor material owner response reviewer ACK intake summary artifact missing"
+            )
+            summary["reviewer_ack_status"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                intake_doc = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                "failed reading PR #5 mandatory sensor material owner response "
+                f"reviewer ACK intake summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["reviewer_ack_status"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(intake_doc, dict):
+        summary["reviewer_ack_status"]["reason"] = (
+            "PR #5 mandatory sensor material owner response reviewer ACK intake JSON must be an object"
+        )
+        return summary
+
+    diagnostics = (
+        intake_doc.get("diagnostics")
+        if isinstance(intake_doc.get("diagnostics"), dict)
+        else {}
+    )
+    raw_schema = str(intake_doc.get("schema") or "")
+    if raw_schema in {
+        PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SOURCE_SUMMARY_SCHEMA,
+        PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SUMMARY_SCHEMA,
+    }:
+        summary_fragment = intake_doc
+    else:
+        summary_fragment = {}
+        for candidate in (
+            intake_doc.get(
+                "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+            ),
+            intake_doc.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+            ),
+            intake_doc.get("diagnostics_summary"),
+            intake_doc.get("robot_diagnostics_summary"),
+            intake_doc.get("robot_compatible_summary"),
+            intake_doc.get("summary"),
+            diagnostics.get(
+                "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+            ),
+            diagnostics.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+            ),
+            diagnostics.get("diagnostics_summary"),
+            diagnostics.get("summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if not summary_fragment:
+        summary["status"] = "blocked_missing_review_handoff_not_proven"
+        summary["ack_intake_status"] = summary["status"]
+        summary["reviewer_ack_status"]["status"] = summary["status"]
+        return summary
+
+    fragment_schema = str(summary_fragment.get("schema") or "")
+    source_schema = str(
+        summary_fragment.get("source_schema")
+        or (
+            PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SCHEMA
+            if fragment_schema
+            in {
+                PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SOURCE_SUMMARY_SCHEMA,
+                PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SUMMARY_SCHEMA,
+            }
+            else raw_schema
+        )
+    )
+    source_boundary = str(
+        summary_fragment.get("source_evidence_boundary")
+        or summary_fragment.get("proof_boundary")
+        or summary_fragment.get("evidence_boundary")
+        or intake_doc.get("evidence_boundary")
+        or ""
+    )
+    ack_doc = (
+        summary_fragment.get("reviewer_ack_status")
+        if isinstance(summary_fragment.get("reviewer_ack_status"), dict)
+        else summary_fragment.get("ack_intake_status")
+        if isinstance(summary_fragment.get("ack_intake_status"), dict)
+        else {}
+    )
+    status = _redact_route_task_rehearsal_text(
+        ack_doc.get("status")
+        or summary_fragment.get("ack_intake_status")
+        or summary_fragment.get("status")
+        or "blocked_missing_review_handoff_not_proven"
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    safe_copy_text = _redact_route_task_rehearsal_text(safe_copy)
+    required_suffix = (
+        "source=software_proof; hardware_material_pending; not_proven; "
+        "safe_to_control=false; delivery_success=false; "
+        "primary_actions_enabled=false."
+    )
+    if "delivery_success=false" not in safe_copy_text:
+        # safe copy 是 operator/relay 可见文案，必须自带 fail-closed 边界，避免 UI 误读。
+        safe_copy_text = f"{safe_copy_text}; {required_suffix}"
+
+    summary.update(
+        {
+            "configured": bool(str(source_path or "").strip()) or isinstance(source, dict),
+            "exists": True,
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or intake_doc.get("source") or "software_proof"
+            ),
+            "status": status,
+            "ack_intake_status": status,
+            "reviewer_ack_status": {
+                "status": status,
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    ack_doc.get("reason")
+                    or summary_fragment.get("reason")
+                    or "PR #5 reviewer ACK intake remains software_proof metadata only"
+                ),
+            },
+            "overall_status": "not_proven",
+            "pr5_thread_id": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_thread_id")
+                or intake_doc.get("pr5_thread_id")
+                or "PRRT_kwDOSWB9286CJ3tX"
+            ),
+            "pr5_thread_state": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_thread_state")
+                or intake_doc.get("pr5_thread_state")
+                or "unresolved"
+            ),
+            "pr5_material_state": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_material_state")
+                or intake_doc.get("pr5_material_state")
+                or "hardware_material_pending"
+            ),
+            "hardware_material_pending": True,
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "false_states": {
+                "hardware_material_pending": True,
+                "not_proven": True,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "safe_to_control": False,
+                "ack_post_allowed": False,
+                "cursor_updates_allowed": False,
+                "review_thread_updates_allowed": False,
+                "robot_command_side_effects_allowed": False,
+                "source_payload_exposed": False,
+            },
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+            "read_error": "",
+        }
+    )
+    required_safe_metadata = (
+        fragment_schema
+        in {
+            PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SOURCE_SUMMARY_SCHEMA,
+            PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SUMMARY_SCHEMA,
+        },
+        source_schema == PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SCHEMA,
+        source_boundary == PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_GATE,
+        summary["source"] == "software_proof",
+        status in PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_STATUSES,
+        summary["pr5_thread_id"] == "PRRT_kwDOSWB9286CJ3tX",
+        summary["pr5_thread_state"] == "unresolved",
+        summary["pr5_material_state"] == "hardware_material_pending",
+        bool(summary["next_required_evidence"]),
+        summary_fragment.get("delivery_success") is False,
+        summary_fragment.get("primary_actions_enabled") is False,
+        summary_fragment.get("safe_to_control") is False,
+        _pr5_mandatory_sensor_material_owner_response_false_states_ok(
+            intake_doc,
+            summary_fragment,
+        ),
+    )
+    unsafe_payload = (
+        not all(required_safe_metadata)
+        or _verified_terminal_result_material_owner_response_reviewer_ack_intake_has_unsafe_controls(
+            intake_doc
+        )
+        or _verified_terminal_result_material_owner_response_reviewer_ack_intake_has_unsafe_controls(
+            summary_fragment
+        )
+        or _task_terminal_field_material_intake_copy_is_unsafe(safe_copy_text)
+    )
+    if unsafe_payload:
+        blocked_copy = (
+            "PR #5 mandatory sensor material owner response reviewer ACK intake "
+            "was blocked because the summary did not remain source=software_proof, "
+            "not_proven, hardware_material_pending, safe_to_control=false, "
+            "delivery_success=false, primary_actions_enabled=false, and free of "
+            "raw artifacts, credentials, serial/UART, ROS control topics, GitHub "
+            "write/resolve, ACK/cursor mutation, robot command side effects, "
+            "HIL pass, installed-sensor, success, or control claims."
+        )
+        summary.update(
+            {
+                "status": "rejected_unsafe_ack_not_proven",
+                "ack_intake_status": "rejected_unsafe_ack_not_proven",
+                "reviewer_ack_status": {
+                    "status": "rejected_unsafe_ack_not_proven",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "unsafe PR #5 reviewer ACK intake summary was redacted and blocked",
+                },
+                "next_required_evidence": [],
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+            }
+        )
+    return summary
+
+
 def summarize_hardware_real_material_escalation_request(source):
     """构建真实硬件材料升级请求的 metadata-only Robot diagnostics 摘要。"""
     # 只读消费 Hardware worker 的 sanitized summary；不能读取串口、ROS graph 或原始硬件材料正文。
@@ -86675,6 +87029,7 @@ def build_diagnostics_payload(
     pr5_mandatory_sensor_material_owner_response_intake_ref="",
     pr5_mandatory_sensor_material_owner_response_review_decision_ref="",
     pr5_mandatory_sensor_material_owner_response_review_handoff_ref="",
+    pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_ref="",
     hardware_real_material_escalation_request_ref="",
     real_material_readiness_board_ref="",
     real_material_evidence_intake_ref="",
@@ -89324,6 +89679,63 @@ def build_diagnostics_payload(
         if isinstance(
             diagnostics_source.get(
                 "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+            ),
+            dict,
+        )
+        else {}
+    )
+    pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_source = (
+        latest_status.get(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake"
+        )
+        if isinstance(
+            latest_status.get(
+                "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake"
             ),
             dict,
         )
@@ -94830,6 +95242,32 @@ def build_diagnostics_payload(
         "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary",
     ):
         latest_status.pop(unsafe_latest_key, None)
+    pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_source = (
+        pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_ref
+        or os.environ.get(
+            "TRASHBOT_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_SUMMARY",
+            "",
+        )
+        or pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_source
+    )
+    pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary = (
+        summarize_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake(
+            pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_source
+        )
+    )
+    # reviewer ACK intake 仅作为 Robot diagnostics safe alias，不能保留 raw ACK 或 GitHub mutation sibling。
+    for unsafe_latest_key in (
+        "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake",
+        "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary",
+        "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary",
+    ):
+        latest_status.pop(unsafe_latest_key, None)
+        if isinstance(diagnostics_source, dict):
+            diagnostics_source.pop(unsafe_latest_key, None)
     hardware_real_material_escalation_request_source = (
         hardware_real_material_escalation_request_ref
         or os.environ.get("TRASHBOT_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST", "")
@@ -96197,6 +96635,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary=(
             pr5_mandatory_sensor_material_owner_response_review_handoff_summary
+        ),
+        pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake=(
+            pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary
+        ),
+        pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary=(
+            pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary
+        ),
+        robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary=(
+            pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary
         ),
         hardware_real_material_escalation_request=(
             hardware_real_material_escalation_request_summary

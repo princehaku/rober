@@ -1,0 +1,127 @@
+{
+  "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary": {
+    "schema": "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary.v1",
+    "source_schema": "trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary.v1",
+    "schema_version": 1,
+    "capability": "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake",
+    "source": "software_proof",
+    "ack_status": "reviewer_acknowledged_not_proven",
+    "source_handoff_status": "source_handoff_status=ready_for_reviewer_material_handoff_not_proven",
+    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "safe_evidence_ref": "PRRT_kwDOSWB9286CJ3tX",
+    "owner_route": [
+      "owner_route=provide phone-safe 2D LiDAR source summary",
+      "owner_route=provide phone-safe ToF source summary",
+      "owner_route=provide receipt, mounting, wiring, power and calibration summaries"
+    ],
+    "support_route": [
+      "support_route=keep hardware_material_pending visible",
+      "support_route=do not enable Start Delivery, Confirm Dropoff or Cancel"
+    ],
+    "reviewer_route": [
+      "reviewer_route=review sanitized ACK intake only",
+      "reviewer_route=keep PRRT_kwDOSWB9286CJ3tX unresolved until real materials are accepted"
+    ],
+    "next_required_materials": [
+      "next_required_materials=phone-safe 2D LiDAR source and receipt summary",
+      "next_required_materials=phone-safe ToF source and receipt summary",
+      "next_required_materials=mounting, wiring, power, calibration and reviewer closeout summaries"
+    ],
+    "ack_reasons": [
+      "ack_reason=reviewer ACK intake captured as summary-only",
+      "ack_reason=real mandatory sensor material remains hardware_material_pending"
+    ],
+    "pr5_thread_status": "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "blocked_reason": "blocked_reason=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "safe_copy": "PR #5 mandatory sensor material reviewer ACK intake 已显示 reviewer ACK status、owner/support/reviewer route、next required materials 和 false flags；source=software_proof；hardware_material_pending；not_proven；Start Delivery、Confirm Dropoff、Cancel 继续 disabled。",
+    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate",
+    "proof_status": "hardware_material_pending",
+    "boundary_flags": "source=software_proof / hardware_material_pending / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "source=software_proof",
+      "software_proof",
+      "hardware_material_pending",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "PRRT_kwDOSWB9286CJ3tX is_resolved=false",
+      "reviewer_acknowledged_not_proven",
+      "reviewer_ack_needs_reassignment",
+      "reviewer_ack_missing_material_not_proven",
+      "blocked_missing_owner_response_review_handoff_not_proven",
+      "reviewer_ack_rejected_unsafe",
+      "reviewer_ack_evidence_ref_mismatch_not_proven",
+      "no OKR percentage lift"
+    ]
+  },
+  "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary": {
+    "schema": "trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary.v1",
+    "source": "software_proof",
+    "capability": "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake",
+    "ack_status": "reviewer_ack_needs_reassignment",
+    "source_handoff_status": "source_handoff_status=fallback_owner_response_review_handoff_not_proven",
+    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "safe_evidence_ref": "PRRT_kwDOSWB9286CJ3tX",
+    "owner_route": [
+      "owner_route=backfill phone-safe mandatory sensor material summary"
+    ],
+    "support_route": [
+      "support_route=hardware_material_pending"
+    ],
+    "reviewer_route": [
+      "reviewer_route=needs reassignment until same safe evidence_ref"
+    ],
+    "next_required_materials": [
+      "next_required_materials=reviewer ACK intake safe summary"
+    ],
+    "ack_reasons": [
+      "ack_reason=fallback_reviewer_ack_needs_reassignment"
+    ],
+    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "source=software_proof",
+      "hardware_material_pending",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false"
+    ]
+  },
+  "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake": {
+    "summary": {
+      "schema": "trashbot.pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary.v1",
+      "source": "software_proof",
+      "capability": "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake",
+      "ack_status": "blocked_missing_owner_response_review_handoff_not_proven",
+      "source_handoff_status": "source_handoff_status=blocked_missing_pr5_mandatory_sensor_material_owner_response_review_handoff",
+      "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+      "safe_evidence_ref": "PRRT_kwDOSWB9286CJ3tX",
+      "owner_route": [
+        "owner_route=waiting_for_safe_source_handoff"
+      ],
+      "support_route": [
+        "support_route=hardware_material_pending"
+      ],
+      "reviewer_route": [
+        "reviewer_route=not_proven"
+      ],
+      "next_required_materials": [
+        "next_required_materials=safe owner response review handoff"
+      ],
+      "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}
