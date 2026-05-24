@@ -39,6 +39,11 @@ PR5_REVIEWER_ACK_INTAKE_FIXTURE = (
     / "fixtures"
     / "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.json"
 )
+CLOUD_COMMAND_LIFECYCLE_OWNER_RESPONSE_INTAKE_BRIDGE_FIXTURE = (
+    MOBILE_WEB_ROOT
+    / "fixtures"
+    / "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge.json"
+)
 EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate"
 COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate"
 REFRESH_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"
@@ -76,9 +81,18 @@ PR5_REVIEWER_ACK_INTAKE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY = (
 PR5_REVIEWER_ACK_INTAKE_CURRENT_PANEL_BROWSER_PROOF_BOUNDARY = (
     "software_proof_docker_mobile_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake_gate"
 )
+CLOUD_COMMAND_LIFECYCLE_OWNER_RESPONSE_INTAKE_BRIDGE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY = (
+    "mobile_current_panel_browser_proof_refresh_cloud_command_lifecycle_owner_response_intake_bridge"
+)
+CLOUD_COMMAND_LIFECYCLE_OWNER_RESPONSE_INTAKE_BRIDGE_CURRENT_PANEL_BROWSER_PROOF_BOUNDARY = (
+    "software_proof_docker_mobile_current_panel_browser_proof_refresh_cloud_command_lifecycle_owner_response_intake_bridge_gate"
+)
 CAPABILITY_FIXTURES = {
     OWNER_RESPONSE_BRIDGE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY: OWNER_RESPONSE_BRIDGE_FIXTURE,
     PR5_REVIEWER_ACK_INTAKE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY: PR5_REVIEWER_ACK_INTAKE_FIXTURE,
+    CLOUD_COMMAND_LIFECYCLE_OWNER_RESPONSE_INTAKE_BRIDGE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY: (
+        CLOUD_COMMAND_LIFECYCLE_OWNER_RESPONSE_INTAKE_BRIDGE_FIXTURE
+    ),
 }
 FRESH_ARTIFACT_PREFIX = "mobile_pwa_fresh_browser_proof"
 DEFAULT_ARTIFACT_PREFIX = "mobile_current_pwa_field_trial_browser"
@@ -303,6 +317,9 @@ CURRENT_PANEL_EXPECTATIONS = {
     "verifiedTerminalResultMaterialOwnerResponseIntakeTitle": "Terminal Result Owner Response Intake",
     "verifiedTerminalResultMaterialOwnerResponseReviewDecisionTitle": "Terminal Result Owner Response Review Decision",
     "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeTitle": "PR5 material reviewer ACK intake",
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeTitle": (
+        "云命令 reviewer ACK follow-up -> owner response intake bridge"
+    ),
     "terminalActionTitle": "终端动作二次确认",
     "mobileDeviceEvidenceTitle": "手机设备证据采集",
     "mobileDeviceHandoffTitle": "真实手机验收交接会话",
@@ -353,6 +370,11 @@ CURRENT_BOUNDARY_EXPECTATIONS = {
     "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
     "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeThread": "PRRT_kwDOSWB9286CJ3tX",
     "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeNotProven": "true_phone_browser_proof_missing",
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeBoundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_gate",
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgePr5": "PRRT_kwDOSWB9286CJ3tX",
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeBlocker": "hardware_material_pending",
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeNotProven": "not true phone/browser proof",
     "terminalActionBoundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
     "mobileDeviceEvidenceBoundary": "software_proof_docker_mobile_device_evidence_capture_gate",
     "mobileDeviceHandoffBoundary": "software_proof_docker_mobile_device_handoff_session_gate",
@@ -896,6 +918,8 @@ def viewport_script(config):
   const capability = {capability_json};
   const ownerResponseBridgeRequired = capability === 'mobile_current_panel_browser_proof_refresh_owner_response_bridge';
   const pr5ReviewerAckIntakeRequired = capability === 'mobile_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake';
+  const cloudLifecycleOwnerResponseIntakeBridgeRequired =
+    capability === 'mobile_current_panel_browser_proof_refresh_cloud_command_lifecycle_owner_response_intake_bridge';
   for (let i = 0; i < 100; i += 1) {{
     const bundle = document.getElementById('mobileBrowserSafeCopy');
     const bundleBoundary = document.getElementById('mobileBrowserBoundary');
@@ -915,6 +939,7 @@ def viewport_script(config):
     const latestFieldEvidenceFollowup = document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusBoundary');
     const ownerResponseBridge = document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBoundary');
     const pr5ReviewerAckIntake = document.getElementById('pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeBoundary');
+    const cloudLifecycleOwnerResponseIntakeBridge = document.getElementById('cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeBoundary');
     const diag = document.getElementById('diagnosticsButton');
     const ack = document.getElementById('ackCopy');
     if (bundleBoundary && bundleBoundary.innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate') &&
@@ -936,6 +961,8 @@ def viewport_script(config):
           ownerResponseBridge?.innerText.includes('software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate')) &&
         (!pr5ReviewerAckIntakeRequired ||
           pr5ReviewerAckIntake?.innerText.includes('software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate')) &&
+        (!cloudLifecycleOwnerResponseIntakeBridgeRequired ||
+          cloudLifecycleOwnerResponseIntakeBridge?.innerText.includes('software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_gate')) &&
         document.getElementById('verifiedTerminalResultMaterialOwnerResponseIntakeBoundary')?.innerText.includes('software_proof_docker_verified_terminal_result_material_owner_response_intake_gate') &&
         document.getElementById('verifiedTerminalResultMaterialOwnerResponseReviewDecisionBoundary')?.innerText.includes('software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate') &&
         diag && !diag.disabled && ack && ack.innerText.includes('不代表送达成功')) break;
@@ -1150,6 +1177,24 @@ def viewport_script(config):
         (document.getElementById('pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeNotProven')?.innerText || '')
           .includes('true_phone_browser_proof_missing')
       ),
+    cloudLifecycleOwnerResponseIntakeBridgePanelFailClosed:
+      !cloudLifecycleOwnerResponseIntakeBridgeRequired ||
+      (
+        (document.getElementById('cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeBoundary')?.innerText || '')
+          .includes('software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_gate') &&
+        (document.getElementById('cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgePr5')?.innerText || '')
+          .includes('PRRT_kwDOSWB9286CJ3tX') &&
+        (document.getElementById('cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeBlocker')?.innerText || '')
+          .includes('hardware_material_pending') &&
+        (document.getElementById('cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeFlags')?.innerText || '')
+          .includes('delivery_success=false') &&
+        (document.getElementById('cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeFlags')?.innerText || '')
+          .includes('primary_actions_enabled=false') &&
+        (document.getElementById('cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeFlags')?.innerText || '')
+          .includes('safe_to_control=false') &&
+        (document.getElementById('cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeNotProven')?.innerText || '')
+          .includes('not true phone/browser proof')
+      ),
     terminalResultOwnerResponsePanelsFailClosed:
       [
         'verifiedTerminalResultMaterialOwnerResponseIntakeFlags',
@@ -1356,6 +1401,9 @@ def judge_viewport(result, *, fresh_mode=False, service_worker_assertions=None, 
         "field_evidence_followup_panel_fail_closed": bool(result.get("fieldEvidenceFollowupPanelFailClosed")),
         "owner_response_bridge_panel_fail_closed": bool(result.get("ownerResponseBridgePanelFailClosed")),
         "pr5_reviewer_ack_intake_panel_fail_closed": bool(result.get("pr5ReviewerAckIntakePanelFailClosed")),
+        "cloud_lifecycle_owner_response_intake_bridge_panel_fail_closed": bool(
+            result.get("cloudLifecycleOwnerResponseIntakeBridgePanelFailClosed")
+        ),
         "terminal_result_owner_response_panels_fail_closed": bool(
             result.get("terminalResultOwnerResponsePanelsFailClosed")
         ),
@@ -1577,6 +1625,7 @@ def main():
                         and judgment["field_evidence_followup_panel_fail_closed"]
                         and judgment["owner_response_bridge_panel_fail_closed"]
                         and judgment["pr5_reviewer_ack_intake_panel_fail_closed"]
+                        and judgment["cloud_lifecycle_owner_response_intake_bridge_panel_fail_closed"]
                         and judgment["terminal_result_owner_response_panels_fail_closed"]
                         and judgment["pwa_install_prompt_evidence_visible"]
                         and judgment["real_device_retest_request_visible"]
@@ -1644,6 +1693,8 @@ def main():
                         f"{str(judgment['owner_response_bridge_panel_fail_closed']).lower()} "
                         f"pr5_reviewer_ack_intake_panel_fail_closed="
                         f"{str(judgment['pr5_reviewer_ack_intake_panel_fail_closed']).lower()} "
+                        f"cloud_lifecycle_owner_response_intake_bridge_panel_fail_closed="
+                        f"{str(judgment['cloud_lifecycle_owner_response_intake_bridge_panel_fail_closed']).lower()} "
                         f"terminal_result_owner_response_panels_fail_closed="
                         f"{str(judgment['terminal_result_owner_response_panels_fail_closed']).lower()} "
                         f"route_elevator_handoff_browser_proof={ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF} "

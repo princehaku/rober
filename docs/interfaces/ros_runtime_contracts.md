@@ -69,6 +69,25 @@ This boundary is Docker/local `software_proof` only. It is not real external
 cloud proof, true phone/browser proof, HIL, WAVE ROVER/UART proof,
 route/elevator field pass, delivery result, or delivery success.
 
+## robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary
+
+`robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary` is the Robot diagnostics safe alias for the `cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge` gate. It consumes only the sanitized summary schema `trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary.v1`, whose evidence boundary must remain `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_gate`.
+
+The alias is read-only metadata and fail-closed:
+
+- `source=software_proof`
+- `hardware_material_pending`
+- `not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+
+Allowed Robot-visible fields are limited to sanitized bridge metadata: `source_capability`, `source_proof_boundary`, `source_followup_status`, `bridge_status`, `owner_response_intake_readiness`, safe `command_id`, safe `evidence_ref`, `accepted_materials`, `missing_materials`, `rejected_materials`, `unsafe_materials`, `blocked_materials`, `owner_route`, `support_route`, `reviewer_route`, `next_required_evidence`, `blocker_status`, `pr_thread_id=PRRT_kwDOSWB9286CJ3tX`, `hardware_material_pending`, `delivery_success=false`, `primary_actions_enabled=false`, `safe_to_control=false`, `terminal_result_verified=false`, `phone_browser_proof=not true phone/browser proof`, and `okr_progress_effect=no OKR percentage lift`.
+
+The alias must not expose raw diagnostics, raw material, raw command payloads, Authorization headers, bearer tokens, signed URLs, local paths, tracebacks, checksums, complete artifacts, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details, ACK/cursor mutation, GitHub mutation, replay/resubmit actions, material upload, owner-response submission, reviewer-ACK submission, or robot command side effects. Unsupported, unsafe, missing, mismatched `safe_command_id`, mismatched `safe_evidence_ref`, enabled action flags, `delivery_success=true`, `primary_actions_enabled=true`, or `safe_to_control=true` keeps the bridge blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, GitHub update, replay, resubmit, material upload, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
+This boundary is Docker/local `software_proof` only. It is not true phone/browser proof, public HTTPS/TLS, 4G/SIM, OSS/CDN live traffic, production DB/queue, worker/cutover, HIL, PR #5 resolved, route/elevator field pass, delivery result, delivery success, or an OKR percentage lift.
+
 ## robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary
 
 `robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary` is the Robot diagnostics safe alias for the `pr5_mandatory_sensor_source_alignment` gate. It consumes only the sanitized summary schema `trashbot.pr5_mandatory_sensor_source_alignment_summary.v1`, whose `source_schema` must point back to `trashbot.pr5_mandatory_sensor_source_alignment.v1` and whose evidence boundary must remain `software_proof_docker_pr5_mandatory_sensor_source_alignment_gate`.

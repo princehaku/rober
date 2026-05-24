@@ -8533,6 +8533,82 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
         self.assertIn("not true phone/browser proof", doc)
         self.assertIn("delivery success", doc)
 
+    def test_current_panel_browser_proof_refresh_cloud_command_lifecycle_owner_response_intake_bridge_contract(self):
+        gate = self.read_gate()
+        doc = DOC.read_text(encoding="utf-8")
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_FIXTURE.read_text(
+                encoding="utf-8",
+            ),
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # 新 capability 复用既有 browser gate，只切换 cloud lifecycle bridge fixture 和只读断言。
+        self.assertIn("CLOUD_COMMAND_LIFECYCLE_OWNER_RESPONSE_INTAKE_BRIDGE_FIXTURE", gate)
+        self.assertIn(
+            "mobile_current_panel_browser_proof_refresh_cloud_command_lifecycle_owner_response_intake_bridge",
+            gate,
+        )
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_cloud_command_lifecycle_owner_response_intake_bridge_gate",
+            gate,
+        )
+        self.assertIn(
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge.json",
+            gate,
+        )
+        for dom_id in (
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeTitle",
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeBoundary",
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeFlags",
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgePr5",
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeBlocker",
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeNotProven",
+        ):
+            self.assertIn(dom_id, gate)
+        self.assertIn("cloud_lifecycle_owner_response_intake_bridge_panel_fail_closed", gate)
+
+        summary = fixture[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary"
+        ]
+        self.assertEqual(
+            summary["capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge",
+        )
+        self.assertEqual(
+            summary["proof_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_gate",
+        )
+        self.assertIs(summary["delivery_success"], False)
+        self.assertIs(summary["primary_actions_enabled"], False)
+        self.assertIs(summary["safe_to_control"], False)
+        for token in (
+            "PRRT_kwDOSWB9286CJ3tX",
+            "hardware_material_pending",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not true phone/browser proof",
+            "not verified terminal result",
+        ):
+            self.assertIn(token, fixture_text)
+
+        # 产品文档必须声明这是 local Chromium software proof refresh，不解除任何外部/硬件边界。
+        self.assertIn(
+            "mobile_current_panel_browser_proof_refresh_cloud_command_lifecycle_owner_response_intake_bridge",
+            doc,
+        )
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_cloud_command_lifecycle_owner_response_intake_bridge_gate",
+            doc,
+        )
+        self.assertIn("cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not verified terminal result", doc)
+        self.assertIn("not HIL", doc)
+        self.assertIn("not WAVE ROVER/UART proof", doc)
+        self.assertIn("not PR #5 resolved", doc)
+
 
 class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
