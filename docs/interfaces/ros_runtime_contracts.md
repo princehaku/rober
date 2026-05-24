@@ -111,6 +111,30 @@ The alias must not expose raw artifacts, raw diagnostics, credential-bearing end
 
 This boundary is Docker/local `software_proof` only. It is not true phone/browser proof, public HTTPS/TLS, 4G/SIM, OSS/CDN live traffic, production DB/queue, worker/cutover, HIL, PR #5 resolved, route/elevator field pass, delivery result, delivery success, or an OKR percentage lift.
 
+## robot_diagnostics_cloud_external_evidence_review_handoff_summary
+
+`robot_diagnostics_cloud_external_evidence_review_handoff_summary` is the Robot diagnostics safe alias for the `cloud_external_evidence_review_handoff` gate. It consumes only the sanitized summary schema `trashbot.cloud_external_evidence_review_handoff_summary.v1`, whose source capability must remain `cloud_external_evidence_review_decision` and whose evidence boundary must remain `software_proof_docker_cloud_external_evidence_review_handoff_gate`.
+
+The alias is read-only metadata and fail-closed:
+
+- `source=software_proof`
+- `not_proven`
+- `source_capability=cloud_external_evidence_review_decision`
+- `production_ready=false`
+- `overall_status=blocked`
+- `external_evidence_complete=false`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `not true phone/browser proof`
+- `no OKR percentage lift`
+
+Allowed Robot-visible fields are limited to sanitized handoff metadata: `handoff_status`, `source_review_decision_status`, safe `command_id`, safe `evidence_ref`, `owner_route`, `support_route`, `reviewer_route`, `handoff_reasons`, `next_required_evidence`, redacted material family lists, `pr5_thread_id=PRRT_kwDOSWB9286CJ3tX`, `pr5_status=hardware_material_pending`, `hardware_material_pending`, `phone_browser_proof=not true phone/browser proof`, and `okr_progress_effect=no OKR percentage lift`.
+
+The alias must not expose raw artifacts, raw diagnostics, credential-bearing endpoints, Authorization headers, bearer tokens, OSS AK/SK, DB/queue URLs, local paths, response bodies, tracebacks, checksums, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER details, ACK/cursor mutation, raw diagnostics fetch, GitHub mutation, replay/resubmit actions, material upload, review mutation, handoff mutation, or robot command side effects. Missing summary, unsupported schema, unsafe copy, raw markers, enabled action flags, `production_ready=true`, `external_evidence_complete=true`, `delivery_success=true`, `primary_actions_enabled=true`, `safe_to_control=true`, true phone/browser proof wording, PR #5 resolution wording, or OKR-lift wording keeps the review handoff blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, GitHub update, replay, resubmit, material upload, raw diagnostics fetch, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
+This boundary is Docker/local `software_proof` only. It is not true phone/browser proof, public HTTPS/TLS, 4G/SIM, OSS/CDN live traffic, production DB/queue, worker/cutover, HIL, PR #5 resolved, route/elevator field pass, delivery result, delivery success, or an OKR percentage lift.
+
 ## robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary
 
 `robot_diagnostics_pr5_mandatory_sensor_source_alignment_summary` is the Robot diagnostics safe alias for the `pr5_mandatory_sensor_source_alignment` gate. It consumes only the sanitized summary schema `trashbot.pr5_mandatory_sensor_source_alignment_summary.v1`, whose `source_schema` must point back to `trashbot.pr5_mandatory_sensor_source_alignment.v1` and whose evidence boundary must remain `software_proof_docker_pr5_mandatory_sensor_source_alignment_gate`.

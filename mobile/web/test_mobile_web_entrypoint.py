@@ -76,6 +76,9 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_
 CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_external_evidence_review_decision.json"
 )
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_external_evidence_review_handoff.json"
+)
 VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_intake.json"
 )
@@ -2666,6 +2669,137 @@ class CloudExternalEvidenceReviewDecisionMobileTest(unittest.TestCase):
             "artifact fetch",
             "material upload",
             "review mutation",
+            "robot command",
+            "control authorization",
+            "authorization",
+            "bearer",
+            "credential",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, response_text)
+
+
+class CloudExternalEvidenceReviewHandoffMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_external_evidence_review_handoff_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # handoff panel 只承接 review-decision safe summary，不新增控制、ACK/cursor、材料上传或 GitHub mutation。
+        self.assertIn("CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_BOUNDARY", app)
+        self.assertIn("UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_TEXT", app)
+        self.assertIn("safeCloudExternalEvidenceReviewHandoffText", app)
+        self.assertIn("cloudExternalEvidenceReviewHandoffCandidate", app)
+        self.assertIn("cloudExternalEvidenceReviewHandoffFromStatus", app)
+        self.assertIn("renderCloudExternalEvidenceReviewHandoff", app)
+        self.assertIn("robot_diagnostics_cloud_external_evidence_review_handoff_summary", app)
+        self.assertIn("cloud_external_evidence_review_handoff_summary", app)
+        self.assertIn("cloud_external_evidence_review_handoff?.summary", app)
+        for required in (
+            "ready_for_owner_support_reviewer_handoff_not_proven",
+            "needs_external_evidence_backfill_handoff_not_proven",
+            "rejected_unsafe_external_evidence_handoff_not_proven",
+            "blocked_missing_external_evidence_handoff_not_proven",
+            "external_evidence_ref_mismatch_handoff_not_proven",
+            "cloud_external_evidence_review_decision",
+            "owner_route",
+            "support_route",
+            "reviewer_route",
+            "next_required_evidence",
+            "PRRT_kwDOSWB9286CJ3tX",
+            "hardware_material_pending",
+            "source=software_proof",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not true phone/browser proof",
+            "no OKR percentage lift",
+        ):
+            self.assertIn(required, app + fixture_text + doc)
+        self.assertNotRegex(
+            app,
+            r"cloudExternalEvidenceReviewHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackCloudExternalEvidenceReviewHandoff",
+            "cursorCloudExternalEvidenceReviewHandoff",
+            "fetchCloudExternalEvidenceReviewHandoffDiagnostics",
+            "fetchCloudExternalEvidenceReviewHandoffArtifact",
+            "uploadCloudExternalEvidenceReviewHandoffMaterial",
+            "submitCloudExternalEvidenceReviewHandoff",
+            "reviewCloudExternalEvidenceReviewHandoff",
+            "githubCloudExternalEvidenceReviewHandoff",
+            "replayCloudExternalEvidenceReviewHandoff",
+            "resubmitCloudExternalEvidenceReviewHandoff",
+            "commandCloudExternalEvidenceReviewHandoff",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        summary = fixture["robot_diagnostics_cloud_external_evidence_review_handoff_summary"]
+        fallback = fixture["cloud_external_evidence_review_handoff_summary"]
+        nested = fixture["cloud_external_evidence_review_handoff"]["summary"]
+        self.assertEqual(summary["capability"], "cloud_external_evidence_review_handoff")
+        self.assertEqual(summary["source_capability"], "cloud_external_evidence_review_decision")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["handoff_status"], "needs_external_evidence_backfill_handoff_not_proven")
+        self.assertIn("support_owner", json.dumps(summary["support_route"]))
+        self.assertIn("hardware_material_pending", json.dumps(summary["pr5_review_context"]))
+        self.assertEqual(fallback["handoff_status"], "external_evidence_ref_mismatch_handoff_not_proven")
+        self.assertEqual(nested["handoff_status"], "blocked_missing_external_evidence_handoff_not_proven")
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+
+        self.assertIn("cloud_external_evidence_review_handoff", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not delivery success", doc)
+        self.assertIn("no OKR percentage lift", doc)
+
+    def test_cloud_external_evidence_review_handoff_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FIXTURE.read_text(encoding="utf-8"))
+        response_text = json.dumps(
+            {
+                "robot": fixture["robot_diagnostics_cloud_external_evidence_review_handoff_summary"],
+                "fallback": fixture["cloud_external_evidence_review_handoff_summary"],
+                "nested": fixture["cloud_external_evidence_review_handoff"]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留交接所需的 redacted safe fields，不能携带 raw payload、路径、凭证或控制授权。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw artifact",
+            "raw pr payload",
+            "command route",
+            "ack route",
+            "cursor route",
+            "github mutation",
+            "artifact fetch",
+            "material upload",
+            "review mutation",
+            "handoff mutation",
             "robot command",
             "control authorization",
             "authorization",

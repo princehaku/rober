@@ -2363,6 +2363,42 @@ CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_NOT_PROVEN = (
     "safe_to_control",
     "okr_percentage_lift",
 )
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SCHEMA = (
+    "trashbot.cloud_external_evidence_review_handoff.v1"
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.cloud_external_evidence_review_handoff_summary.v1"
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_cloud_external_evidence_review_handoff_summary.v1"
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_GATE = (
+    "software_proof_docker_cloud_external_evidence_review_handoff_gate"
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_STATUSES = (
+    "ready_for_owner_support_reviewer_handoff_not_proven",
+    "needs_external_evidence_backfill_handoff_not_proven",
+    "rejected_unsafe_external_evidence_handoff_not_proven",
+    "blocked_missing_external_evidence_handoff_not_proven",
+    "external_evidence_ref_mismatch_handoff_not_proven",
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_NOT_PROVEN = (
+    "cloud_external_evidence_review_handoff_only",
+    "source_cloud_external_evidence_review_decision_not_proven",
+    "production_ready",
+    "external_evidence_complete",
+    "real_public_https_tls",
+    "real_4g_or_sim",
+    "oss_cdn_live_traffic",
+    "production_db_queue",
+    "worker_cutover_or_migration",
+    "verified_terminal_result",
+    "true_phone_browser_proof",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
+    "okr_percentage_lift",
+)
 REAL_MATERIAL_MANIFEST_TEMPLATE_FIELDS = (
     "manifest_template",
     "template_groups",
@@ -3144,6 +3180,403 @@ def summarize_cloud_external_evidence_review_decision(source):
                 "owner_handoff": [],
                 "operator_support_handoff": [],
                 "reviewer_route": [],
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                    "status": "blocked",
+                },
+            }
+        )
+    return summary
+
+
+def _cloud_external_evidence_review_handoff_copy():
+    # handoff 是 review decision 的责任链摘要，不允许被前端或 Robot 误读成外部证据闭环。
+    return (
+        "cloud_external_evidence_review_handoff is metadata-only; "
+        "source=software_proof; not_proven; source_capability="
+        "cloud_external_evidence_review_decision; production_ready=false; "
+        "overall_status=blocked; external_evidence_complete=false; "
+        "delivery_success=false; primary_actions_enabled=false; "
+        "safe_to_control=false; not true phone/browser proof; "
+        "no OKR percentage lift; PR #5 PRRT_kwDOSWB9286CJ3tX "
+        "hardware_material_pending."
+    )
+
+
+def _default_cloud_external_evidence_review_handoff_summary(
+    status="blocked_missing_external_evidence_handoff_not_proven",
+    read_error="",
+):
+    # 缺上游 handoff summary 时仍输出完整 false flags，避免 diagnostics 空洞导致按钮误启用。
+    safe_copy = _cloud_external_evidence_review_handoff_copy()
+    reason = read_error or "cloud_external_evidence_review_handoff summary is not configured"
+    return {
+        "schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "capability": "cloud_external_evidence_review_handoff",
+        "source_capability": "cloud_external_evidence_review_decision",
+        "source_schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SCHEMA,
+        "source_summary_schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SOURCE_SUMMARY_SCHEMA,
+        "source_decision_schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA,
+        "source_decision_summary_schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SOURCE_SUMMARY_SCHEMA,
+        "source_evidence_boundary": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_GATE,
+        "evidence_boundary": CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_GATE,
+        "configured": False,
+        "exists": False,
+        "status": status,
+        "overall_status": "blocked",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "handoff_status": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": reason,
+        },
+        "source_review_decision_status": "",
+        "safe_evidence_ref": "",
+        "safe_command_id": "",
+        "owner_route": [],
+        "support_route": [],
+        "reviewer_route": [],
+        "handoff_reasons": [],
+        "next_required_evidence": [],
+        "accepted_materials": [],
+        "missing_materials": [],
+        "rejected_materials": [],
+        "unsafe_materials": [],
+        "blocked_materials": [],
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "robot_diagnostics_summary": {"safe_copy": safe_copy, "status": status},
+        "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+        "pr5_status": "hardware_material_pending",
+        "pr5_material_state": "hardware_material_pending",
+        "pr5_resolution_claim": "not_pr5_resolution",
+        "phone_browser_proof": "not true phone/browser proof",
+        "okr_progress_effect": "no OKR percentage lift",
+        "not_proven": list(CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_NOT_PROVEN),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "summary_required": True,
+        "production_ready": False,
+        "external_evidence_complete": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "true_phone_browser_proof": False,
+        "robot_control_allowed": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "cursor_mutation_allowed": False,
+        "github_mutation_allowed": False,
+        "raw_diagnostics_fetch_allowed": False,
+        "handoff_mutation_allowed": False,
+        "material_upload_allowed": False,
+        "replay_allowed": False,
+        "resubmit_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "delivery_result_verified": False,
+        "okr_percentage_lift": False,
+        "pr5_resolved": False,
+        "hardware_material_pending": True,
+    }
+
+
+def _cloud_external_evidence_review_handoff_summary_fragment(value):
+    # Robot 只接受 Task A/PC gate 产出的 safe handoff summary；raw artifact 只可作为被拒输入。
+    if not isinstance(value, dict):
+        return {}
+    if str(value.get("schema") or "") in (
+        CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SOURCE_SUMMARY_SCHEMA,
+        CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+    ):
+        return value
+    for key in (
+        "robot_diagnostics_cloud_external_evidence_review_handoff_summary",
+        "cloud_external_evidence_review_handoff_summary",
+        "cloud_external_evidence_review_handoff",
+        "diagnostics_summary",
+        "robot_diagnostics_summary",
+        "robot_compatible_summary",
+        "summary",
+    ):
+        nested = _cloud_external_evidence_review_handoff_summary_fragment(value.get(key))
+        if nested:
+            return nested
+    for key in ("diagnostics", "status", "latest_status"):
+        nested = _cloud_external_evidence_review_handoff_summary_fragment(value.get(key))
+        if nested:
+            return nested
+    return {}
+
+
+def _cloud_external_evidence_handoff_not_proven(summary_fragment):
+    # 继承上游附加的 not_proven 项，但固定保留本 rung 的核心边界项。
+    values = list(CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_NOT_PROVEN)
+    for item in summary_fragment.get("not_proven", []):
+        text = _cloud_guard_safe_text(item, "")
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def summarize_cloud_external_evidence_review_handoff(source):
+    """构建 cloud external evidence review handoff 的只读 Robot diagnostics 摘要。"""
+    # handoff 只把 review decision 后续责任链暴露给 diagnostics，不产生 ACK、GitHub 或机器人控制副作用。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_cloud_external_evidence_review_handoff_summary(
+        read_error="cloud_external_evidence_review_handoff summary is not configured"
+    )
+    if isinstance(source, dict):
+        response = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = "cloud_external_evidence_review_handoff summary artifact missing"
+            summary["handoff_status"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                response = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading cloud_external_evidence_review_handoff summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["handoff_status"]["reason"] = safe_error
+            return summary
+    if not isinstance(response, dict):
+        summary["handoff_status"]["reason"] = (
+            "cloud_external_evidence_review_handoff JSON must be an object"
+        )
+        return summary
+
+    summary_fragment = _cloud_external_evidence_review_handoff_summary_fragment(response)
+    if not summary_fragment:
+        summary["handoff_status"]["reason"] = (
+            "cloud_external_evidence_review_handoff input is missing sanitized summary"
+        )
+        return summary
+
+    handoff_doc = (
+        summary_fragment.get("handoff_status")
+        if isinstance(summary_fragment.get("handoff_status"), dict)
+        else {}
+    )
+    status = _cloud_guard_safe_text(
+        handoff_doc.get("status")
+        or summary_fragment.get("handoff_status")
+        or summary_fragment.get("status"),
+        "blocked_missing_external_evidence_handoff_not_proven",
+    )
+    if status not in CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_STATUSES:
+        status = "blocked_missing_external_evidence_handoff_not_proven"
+
+    safe_copy = _cloud_guard_safe_text(
+        summary_fragment.get("safe_copy") or summary_fragment.get("safe_phone_copy"),
+        _cloud_external_evidence_review_handoff_copy(),
+    )
+    required_copy = _cloud_external_evidence_review_handoff_copy()
+    for marker in (
+        "source=software_proof",
+        "not_proven",
+        "source_capability=cloud_external_evidence_review_decision",
+        "production_ready=false",
+        "overall_status=blocked",
+        "external_evidence_complete=false",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false",
+        "not true phone/browser proof",
+        "no OKR percentage lift",
+        "PRRT_kwDOSWB9286CJ3tX",
+        "hardware_material_pending",
+    ):
+        if marker not in safe_copy:
+            safe_copy = required_copy
+            break
+
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    source_review_decision_status = _cloud_guard_safe_text(
+        summary_fragment.get("source_review_decision_status")
+        or summary_fragment.get("source_decision_status")
+        or summary_fragment.get("review_decision_status"),
+        "",
+    )
+    summary.update(
+        {
+            "configured": True,
+            "exists": True,
+            "status": status,
+            "overall_status": "blocked",
+            "source": EVIDENCE_SOURCE_SOFTWARE,
+            "source_schema_version": summary_fragment.get("source_schema_version")
+            or summary_fragment.get("schema_version"),
+            "source_schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SCHEMA,
+            "source_summary_schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SOURCE_SUMMARY_SCHEMA,
+            "source_capability": _cloud_guard_safe_text(
+                summary_fragment.get("source_capability"),
+                "cloud_external_evidence_review_decision",
+            ),
+            "source_decision_schema": _cloud_guard_safe_text(
+                summary_fragment.get("source_decision_schema"),
+                CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA,
+            ),
+            "source_decision_summary_schema": _cloud_guard_safe_text(
+                summary_fragment.get("source_decision_summary_schema"),
+                CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SOURCE_SUMMARY_SCHEMA,
+            ),
+            "source_evidence_boundary": _cloud_guard_safe_text(
+                summary_fragment.get("source_evidence_boundary")
+                or summary_fragment.get("source_proof_boundary"),
+                CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_GATE,
+            ),
+            "evidence_boundary": CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_GATE,
+            "handoff_status": {
+                "status": status,
+                "verdict": "not_proven",
+                "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                "reason": _cloud_guard_safe_text(
+                    handoff_doc.get("reason") or summary_fragment.get("reason"),
+                    "cloud external evidence review handoff remains software_proof only",
+                ),
+            },
+            "source_review_decision_status": source_review_decision_status,
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or response.get("safe_evidence_ref")
+                or response.get("evidence_ref")
+                or ""
+            ),
+            "safe_command_id": _cloud_guard_safe_text(
+                summary_fragment.get("safe_command_id")
+                or summary_fragment.get("command_id")
+                or response.get("safe_command_id")
+                or response.get("command_id"),
+                "",
+            ),
+            "owner_route": _cloud_external_evidence_safe_list(
+                summary_fragment.get("owner_route") or summary_fragment.get("owner_handoff")
+            ),
+            "support_route": _cloud_external_evidence_safe_list(
+                summary_fragment.get("support_route")
+                or summary_fragment.get("operator_support_handoff")
+                or summary_fragment.get("support_handoff")
+            ),
+            "reviewer_route": _cloud_external_evidence_safe_list(
+                summary_fragment.get("reviewer_route")
+            ),
+            "handoff_reasons": _cloud_external_evidence_safe_list(
+                summary_fragment.get("handoff_reasons")
+                or summary_fragment.get("decision_reasons")
+            ),
+            "next_required_evidence": _cloud_external_evidence_safe_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "accepted_materials": _cloud_external_evidence_safe_list(
+                summary_fragment.get("accepted_materials")
+            ),
+            "missing_materials": _cloud_external_evidence_safe_list(
+                summary_fragment.get("missing_materials")
+            ),
+            "rejected_materials": _cloud_external_evidence_safe_list(
+                summary_fragment.get("rejected_materials")
+            ),
+            "unsafe_materials": _cloud_external_evidence_safe_list(
+                summary_fragment.get("unsafe_materials")
+            ),
+            "blocked_materials": _cloud_external_evidence_safe_list(
+                summary_fragment.get("blocked_materials")
+            ),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {"safe_copy": safe_copy, "status": status},
+            "pr5_thread_id": _cloud_guard_safe_text(
+                summary_fragment.get("pr5_thread_id"), "PRRT_kwDOSWB9286CJ3tX"
+            ),
+            "pr5_status": _cloud_guard_safe_text(
+                summary_fragment.get("pr5_status"), "hardware_material_pending"
+            ),
+            "pr5_material_state": _cloud_guard_safe_text(
+                summary_fragment.get("pr5_material_state"), "hardware_material_pending"
+            ),
+            "pr5_resolution_claim": _cloud_guard_safe_text(
+                summary_fragment.get("pr5_resolution_claim"), "not_pr5_resolution"
+            ),
+            "phone_browser_proof": "not true phone/browser proof",
+            "okr_progress_effect": "no OKR percentage lift",
+            "not_proven": _cloud_external_evidence_handoff_not_proven(summary_fragment),
+            "read_error": "",
+        }
+    )
+
+    required_safe_metadata = (
+        str(summary_fragment.get("schema") or "")
+        in (
+            CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SOURCE_SUMMARY_SCHEMA,
+            CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+        ),
+        summary["source"] == EVIDENCE_SOURCE_SOFTWARE,
+        summary["source_capability"] == "cloud_external_evidence_review_decision",
+        summary["source_decision_schema"] == CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA,
+        summary["source_evidence_boundary"] == CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_GATE,
+        summary["overall_status"] == "blocked",
+        summary_fragment.get("production_ready") is False,
+        summary_fragment.get("external_evidence_complete") is False,
+        summary_fragment.get("delivery_success") is False,
+        summary_fragment.get("primary_actions_enabled") is False,
+        summary_fragment.get("safe_to_control") is False,
+        summary["pr5_thread_id"] == "PRRT_kwDOSWB9286CJ3tX",
+        summary["pr5_status"] == "hardware_material_pending",
+        summary["pr5_material_state"] == "hardware_material_pending",
+        summary["pr5_resolution_claim"] == "not_pr5_resolution",
+        bool(summary["next_required_evidence"]),
+    )
+    unsafe_payload = (
+        not all(required_safe_metadata)
+        or _real_material_evidence_ref_is_unsafe(summary["safe_evidence_ref"])
+        or _cloud_external_evidence_review_decision_has_unsafe_fields(response)
+        or _cloud_external_evidence_review_decision_has_unsafe_fields(summary_fragment)
+        or _cloud_external_evidence_review_decision_has_unsafe_fields(robot_summary)
+        or _cloud_external_evidence_review_decision_has_unsafe_fields(safe_copy)
+    )
+    if unsafe_payload:
+        blocked_copy = _cloud_external_evidence_review_handoff_copy()
+        summary.update(
+            {
+                "status": "rejected_unsafe_external_evidence_handoff_not_proven",
+                "handoff_status": {
+                    "status": "rejected_unsafe_external_evidence_handoff_not_proven",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "cloud external evidence review handoff summary contains unsafe fields or missing false-state metadata",
+                },
+                "safe_evidence_ref": "",
+                "safe_command_id": "",
+                "owner_route": [],
+                "support_route": [],
+                "reviewer_route": [],
+                "handoff_reasons": [],
+                "next_required_evidence": [],
+                "accepted_materials": [],
+                "missing_materials": [],
+                "rejected_materials": [],
+                "unsafe_materials": [],
+                "blocked_materials": [],
                 "safe_copy": blocked_copy,
                 "safe_phone_copy": blocked_copy,
                 "robot_diagnostics_summary": {
@@ -89641,6 +90074,52 @@ def build_diagnostics_payload(
             cloud_external_evidence_review_decision_source
         )
     )
+    cloud_external_evidence_review_handoff_status_source = (
+        latest_status.get("robot_diagnostics_cloud_external_evidence_review_handoff_summary")
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_cloud_external_evidence_review_handoff_summary"
+            ),
+            dict,
+        )
+        else latest_status.get("cloud_external_evidence_review_handoff_summary")
+        if isinstance(
+            latest_status.get("cloud_external_evidence_review_handoff_summary"),
+            dict,
+        )
+        else latest_status.get("cloud_external_evidence_review_handoff")
+        if isinstance(latest_status.get("cloud_external_evidence_review_handoff"), dict)
+        else diagnostics_source.get(
+            "robot_diagnostics_cloud_external_evidence_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_cloud_external_evidence_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("cloud_external_evidence_review_handoff_summary")
+        if isinstance(
+            diagnostics_source.get("cloud_external_evidence_review_handoff_summary"),
+            dict,
+        )
+        else diagnostics_source.get("cloud_external_evidence_review_handoff")
+        if isinstance(
+            diagnostics_source.get("cloud_external_evidence_review_handoff"),
+            dict,
+        )
+        else {}
+    )
+    cloud_external_evidence_review_handoff_source = (
+        os.environ.get("TRASHBOT_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_SUMMARY", "")
+        or os.environ.get("TRASHBOT_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF", "")
+        or cloud_external_evidence_review_handoff_status_source
+    )
+    cloud_external_evidence_review_handoff_summary = (
+        summarize_cloud_external_evidence_review_handoff(
+            cloud_external_evidence_review_handoff_source
+        )
+    )
     task_terminal_field_material_intake_source = (
         _task_terminal_field_material_intake_source_from_payloads(
             latest_status,
@@ -96639,6 +97118,9 @@ def build_diagnostics_payload(
         "cloud_external_evidence_review_decision",
         "cloud_external_evidence_review_decision_summary",
         "robot_diagnostics_cloud_external_evidence_review_decision_summary",
+        "cloud_external_evidence_review_handoff",
+        "cloud_external_evidence_review_handoff_summary",
+        "robot_diagnostics_cloud_external_evidence_review_handoff_summary",
     ):
         latest_status.pop(unsafe_latest_key, None)
     return status_payload(
@@ -96745,6 +97227,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_cloud_external_evidence_review_decision_summary=(
             cloud_external_evidence_review_decision_summary
+        ),
+        cloud_external_evidence_review_handoff=(
+            cloud_external_evidence_review_handoff_summary
+        ),
+        cloud_external_evidence_review_handoff_summary=(
+            cloud_external_evidence_review_handoff_summary
+        ),
+        robot_diagnostics_cloud_external_evidence_review_handoff_summary=(
+            cloud_external_evidence_review_handoff_summary
         ),
         route_task_rehearsal=summarize_route_task_rehearsal_artifact(
             route_task_rehearsal_artifact_ref

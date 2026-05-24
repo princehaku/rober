@@ -61,6 +61,8 @@ const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RES
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_COPY = "云命令生命周期 reviewer ACK follow-up bridge 只读可见；它只把 follow-up escalation status 接回 owner-response intake 主线，不创建新的 wrapper 或控制入口。";
 const CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_BOUNDARY = "software_proof_docker_cloud_external_evidence_review_decision_gate";
 const CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_COPY = "cloud_external_evidence_review_decision 只读可见；只展示 external evidence intake 的脱敏复核结论、材料族状态和下一步补证据，主操作保持禁用。";
+const CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_cloud_external_evidence_review_handoff_gate";
+const CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_COPY = "cloud_external_evidence_review_handoff 只读可见；只展示 external evidence review decision 的 owner/support/reviewer 交接路线，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_BOUNDARY = "software_proof_docker_verified_terminal_result_material_intake_gate";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_COPY = "verified terminal result material intake 只读可见；材料回填不等于 delivery success，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_verified_terminal_result_material_review_decision_gate";
@@ -370,6 +372,7 @@ const UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT = /(authorization|bearer|
 const UNSAFE_CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
 const UNSAFE_CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
 const UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
+const UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|command route|ack route|cursor route|diagnostics fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|raw decision|review route|command route|ack route|cursor route|diagnostics fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|raw decision|raw handoff|review route|handoff route|command route|ack route|cursor route|diagnostics fetch|artifact fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
@@ -668,6 +671,7 @@ let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponse
 let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus = null;
 let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridge = null;
 let latestCloudExternalEvidenceReviewDecision = null;
+let latestCloudExternalEvidenceReviewHandoff = null;
 let latestVerifiedTerminalResultMaterialIntake = null;
 let latestVerifiedTerminalResultMaterialReviewDecision = null;
 let latestVerifiedTerminalResultMaterialReviewHandoff = null;
@@ -50771,6 +50775,290 @@ function renderCloudExternalEvidenceReviewDecision(status) {
   $("cloudExternalEvidenceReviewDecisionHint").textContent = summary.recovery_hint;
 }
 
+function safeCloudExternalEvidenceReviewHandoffText(value, fallback = "not_proven") {
+  // 交接面只显示 Robot/API 已脱敏短文本，避免把 raw artifact 或控制语义带到手机端。
+  const text = safeText(value, fallback);
+  if (UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function cloudExternalEvidenceReviewHandoffCandidate(status, readiness, diagnostics) {
+  // 候选来源必须是 safe summary；前端不主动读取 raw diagnostics、GitHub thread 或材料文件。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.cloud_external_evidence_review_handoff?.summary ||
+    readiness?.cloud_external_evidence_review_handoff?.summary ||
+    diagnostics?.cloud_external_evidence_review_handoff?.summary ||
+    diagnosticsSummary.cloud_external_evidence_review_handoff?.summary ||
+    nestedDiagnosticsSummary.cloud_external_evidence_review_handoff?.summary ||
+    nestedDiagnosticsInnerSummary.cloud_external_evidence_review_handoff?.summary ||
+    statusDiagnosticsSummary.cloud_external_evidence_review_handoff?.summary;
+  return firstObject(
+    status?.robot_diagnostics_cloud_external_evidence_review_handoff_summary,
+    readiness?.robot_diagnostics_cloud_external_evidence_review_handoff_summary,
+    diagnostics?.robot_diagnostics_cloud_external_evidence_review_handoff_summary,
+    diagnosticsReadiness.robot_diagnostics_cloud_external_evidence_review_handoff_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_external_evidence_review_handoff_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_cloud_external_evidence_review_handoff_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_cloud_external_evidence_review_handoff_summary,
+    statusDiagnosticsSummary.robot_diagnostics_cloud_external_evidence_review_handoff_summary,
+    status?.cloud_external_evidence_review_handoff_summary,
+    readiness?.cloud_external_evidence_review_handoff_summary,
+    diagnostics?.cloud_external_evidence_review_handoff_summary,
+    diagnosticsReadiness.cloud_external_evidence_review_handoff_summary,
+    diagnosticsSummary.cloud_external_evidence_review_handoff_summary,
+    nestedDiagnosticsSummary.cloud_external_evidence_review_handoff_summary,
+    nestedDiagnosticsInnerSummary.cloud_external_evidence_review_handoff_summary,
+    statusDiagnosticsSummary.cloud_external_evidence_review_handoff_summary,
+    artifactSummary,
+  );
+}
+
+function cloudExternalEvidenceReviewHandoffList(value, fallback) {
+  // 交接路线允许数组或对象，但只保留 name/status/safe_summary 这类 phone-safe 字段。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        const key = safeCloudExternalEvidenceReviewHandoffText(item[0], "");
+        const raw = item[1];
+        if (raw && typeof raw === "object") {
+          const status = safeCloudExternalEvidenceReviewHandoffText(raw.status || raw.route || raw.safe_summary, "");
+          return status ? `${key}=${status}` : key;
+        }
+        const detail = safeCloudExternalEvidenceReviewHandoffText(raw, "");
+        return key && detail ? `${key}=${detail}` : key || detail;
+      }
+      if (item && typeof item === "object") {
+        const label = safeCloudExternalEvidenceReviewHandoffText(
+          item.name || item.owner || item.route || item.status || item.safe_summary,
+          "",
+        );
+        const detail = safeCloudExternalEvidenceReviewHandoffText(
+          item.status || item.reason || item.summary || item.safe_phone_copy,
+          "",
+        );
+        return label && detail ? `${label}: ${detail}` : label || detail;
+      }
+      return safeCloudExternalEvidenceReviewHandoffText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 14) : [fallback];
+}
+
+function cloudExternalEvidenceReviewHandoffHasUnsafeRawFields(value) {
+  // 任意 raw/control/secret/success 语义都会让 handoff panel 保持 blocked，不渲染可复制 payload。
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const allowedSafetyKeys = new Set(["delivery_success", "primary_actions_enabled", "safe_to_control"]);
+  const stack = [value];
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current || typeof current !== "object") {
+      continue;
+    }
+    for (const [key, rawValue] of Object.entries(current)) {
+      if (key === "not_proven") {
+        continue;
+      }
+      if (!allowedSafetyKeys.has(key) &&
+        UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_TEXT.test(String(key))) {
+        return true;
+      }
+      if (rawValue && typeof rawValue === "object") {
+        stack.push(rawValue);
+      } else if (UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_TEXT.test(String(rawValue))) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function cloudExternalEvidenceReviewHandoffNotProvenList(value) {
+  // handoff 只证明交接 metadata 可见，不解除外部云、手机、terminal result 或 PR #5 缺口。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "source=software_proof",
+    "cloud_external_evidence_review_decision",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "hardware_material_pending",
+    "not_o5_external_proof",
+    "not_public_https_tls_proof",
+    "not_4g_sim_proof",
+    "not_oss_cdn_live_traffic",
+    "not_production_db_queue_proof",
+    "not_worker_cutover_proof",
+    "not_verified_terminal_result",
+    "not true phone/browser proof",
+    "no OKR percentage lift",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 30);
+}
+
+function cloudExternalEvidenceReviewHandoffFromStatus(status, readiness, diagnostics) {
+  const provided = cloudExternalEvidenceReviewHandoffCandidate(status, readiness, diagnostics) || {};
+  const unsafeRawFields = cloudExternalEvidenceReviewHandoffHasUnsafeRawFields(provided);
+  const handoffStatus = unsafeRawFields
+    ? "rejected_unsafe_external_evidence_handoff_not_proven"
+    : safeCloudExternalEvidenceReviewHandoffText(
+      provided.handoff_status || provided.status || provided.decision,
+      "blocked_missing_external_evidence_handoff_not_proven",
+    );
+  return {
+    missing: !Object.keys(provided).length,
+    unsafe_raw_fields: unsafeRawFields,
+    schema: "trashbot.robot_diagnostics_cloud_external_evidence_review_handoff_summary.v1",
+    capability: safeCloudExternalEvidenceReviewHandoffText(provided.capability, "cloud_external_evidence_review_handoff"),
+    source_capability: safeCloudExternalEvidenceReviewHandoffText(provided.source_capability, "cloud_external_evidence_review_decision"),
+    source: safeCloudExternalEvidenceReviewHandoffText(provided.source, "software_proof"),
+    source_review_decision: safeCloudExternalEvidenceReviewHandoffText(
+      provided.source_review_decision || provided.review_decision,
+      "blocked_missing_external_evidence_intake_not_proven",
+    ),
+    handoff_status: handoffStatus,
+    safe_evidence_ref: safeCloudExternalEvidenceReviewHandoffText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    safe_command_ref: safeCloudExternalEvidenceReviewHandoffText(
+      provided.safe_command_ref || provided.safe_command_id || provided.command_ref || provided.command_id,
+      "command_ref=not_proven",
+    ),
+    owner_route: cloudExternalEvidenceReviewHandoffList(provided.owner_route || provided.owner_handoff, "owner_route=waiting_for_safe_handoff"),
+    support_route: cloudExternalEvidenceReviewHandoffList(provided.support_route || provided.support_handoff, "support_route=keep_PRRT_kwDOSWB9286CJ3tX_hardware_material_pending_visible"),
+    reviewer_route: cloudExternalEvidenceReviewHandoffList(provided.reviewer_route || provided.reviewer_handoff, "reviewer_route=do_not_resolve_PRRT_kwDOSWB9286CJ3tX_from_software_proof"),
+    next_required_evidence: cloudExternalEvidenceReviewHandoffList(
+      provided.next_required_evidence || provided.next_evidence || provided.required_evidence,
+      "next_required_evidence=backfill_same_safe_evidence_ref_external_proof_materials",
+    ),
+    pr5_context: cloudExternalEvidenceReviewHandoffList(
+      provided.pr5_review_context || provided.pr5_context || provided.pr5_thread_status,
+      "PRRT_kwDOSWB9286CJ3tX=hardware_material_pending",
+    ),
+    evidence_boundary: safeCloudExternalEvidenceReviewHandoffText(
+      provided.evidence_boundary || provided.proof_boundary,
+      CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_BOUNDARY,
+    ),
+    safe_phone_copy: safeCloudExternalEvidenceReviewHandoffText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary,
+      CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_COPY,
+    ),
+    recovery_hint: safeCloudExternalEvidenceReviewHandoffText(
+      provided.recovery_hint || provided.retry_hint,
+      "等待同一 safe evidence_ref 的 cloud_external_evidence_review_handoff；手机端只读展示，不提交控制动作。",
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / not true phone/browser proof / no OKR percentage lift",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: cloudExternalEvidenceReviewHandoffNotProvenList(provided),
+  };
+}
+
+function ensureCloudExternalEvidenceReviewHandoffPanel() {
+  // handoff panel 紧跟 review-decision panel，呈现责任链而不是创建任何可操作入口。
+  let panel = $("cloudExternalEvidenceReviewHandoffPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("cloudExternalEvidenceReviewDecisionPanel") ||
+    $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeTitle")?.closest("section") ||
+    $("cloudReadinessTitle")?.closest("section") ||
+    $("supportTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "cloudExternalEvidenceReviewHandoffPanel";
+  panel.className = "cloud-external-evidence-review-handoff-panel";
+  panel.setAttribute("aria-labelledby", "cloudExternalEvidenceReviewHandoffTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="cloudExternalEvidenceReviewHandoffTitle">Cloud External Evidence Review Handoff</h2>
+      <span id="cloudExternalEvidenceReviewHandoffBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="cloudExternalEvidenceReviewHandoffCopy" class="message">
+      等待 robot_diagnostics_cloud_external_evidence_review_handoff_summary。
+    </p>
+    <dl class="cloud-external-evidence-review-handoff-grid">
+      <div><dt>Handoff Status</dt><dd id="cloudExternalEvidenceReviewHandoffStatus">blocked_missing_external_evidence_handoff_not_proven</dd></div>
+      <div><dt>Source Decision</dt><dd id="cloudExternalEvidenceReviewHandoffSourceDecision">blocked_missing_external_evidence_intake_not_proven</dd></div>
+      <div><dt>Source Capability</dt><dd id="cloudExternalEvidenceReviewHandoffSourceCapability">cloud_external_evidence_review_decision</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="cloudExternalEvidenceReviewHandoffEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Safe Command Ref</dt><dd id="cloudExternalEvidenceReviewHandoffCommandRef">command_ref=not_proven</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="cloudExternalEvidenceReviewHandoffBoundary">software_proof_docker_cloud_external_evidence_review_handoff_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="cloudExternalEvidenceReviewHandoffFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / not true phone/browser proof / no OKR percentage lift</dd></div>
+      <div><dt>not_proven</dt><dd id="cloudExternalEvidenceReviewHandoffNotProven">O5 external proof、true phone/browser proof、verified terminal result、delivery_success=false 和 no OKR percentage lift 边界未解除。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section><h3>Owner Route</h3><ol id="cloudExternalEvidenceReviewHandoffOwnerRoute" class="handoff-checklist"><li>等待 owner route。</li></ol></section>
+      <section><h3>Support Route</h3><ol id="cloudExternalEvidenceReviewHandoffSupportRoute" class="handoff-checklist"><li>等待 support route。</li></ol></section>
+      <section><h3>Reviewer Route</h3><ol id="cloudExternalEvidenceReviewHandoffReviewerRoute" class="handoff-checklist"><li>等待 reviewer route。</li></ol></section>
+      <section><h3>Next Required Evidence</h3><ol id="cloudExternalEvidenceReviewHandoffNextEvidence" class="handoff-checklist"><li>等待 next required evidence。</li></ol></section>
+      <section><h3>PR #5 Context</h3><ol id="cloudExternalEvidenceReviewHandoffPr5Context" class="handoff-checklist"><li>PRRT_kwDOSWB9286CJ3tX=hardware_material_pending。</li></ol></section>
+    </div>
+    <p id="cloudExternalEvidenceReviewHandoffHint" class="hint">
+      本 panel 只消费 robot_diagnostics_cloud_external_evidence_review_handoff_summary / safe summary fallback；不读取 raw artifact、URL、credentials、response body、ROS topic、hardware details，不新增 ACK/cursor/upload/handoff/review/GitHub mutation/replay/resubmit/control 路径。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderCloudExternalEvidenceReviewHandoff(status) {
+  const panel = ensureCloudExternalEvidenceReviewHandoffPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = cloudExternalEvidenceReviewHandoffFromStatus(status, readiness, latestDiagnostics);
+  latestCloudExternalEvidenceReviewHandoff = summary;
+  const badge = $("cloudExternalEvidenceReviewHandoffBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 external evidence handoff" : "handoff not_proven";
+  $("cloudExternalEvidenceReviewHandoffCopy").textContent = summary.safe_phone_copy;
+  $("cloudExternalEvidenceReviewHandoffStatus").textContent = `${summary.source} / ${summary.handoff_status}`;
+  $("cloudExternalEvidenceReviewHandoffSourceDecision").textContent = summary.source_review_decision;
+  $("cloudExternalEvidenceReviewHandoffSourceCapability").textContent = summary.source_capability;
+  $("cloudExternalEvidenceReviewHandoffEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("cloudExternalEvidenceReviewHandoffCommandRef").textContent = summary.safe_command_ref;
+  $("cloudExternalEvidenceReviewHandoffBoundary").textContent = summary.evidence_boundary;
+  $("cloudExternalEvidenceReviewHandoffFlags").textContent = summary.boundary_flags;
+  $("cloudExternalEvidenceReviewHandoffNotProven").textContent = summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewHandoffOwnerRoute", summary.owner_route);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewHandoffSupportRoute", summary.support_route);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewHandoffReviewerRoute", summary.reviewer_route);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewHandoffNextEvidence", summary.next_required_evidence);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewHandoffPr5Context", summary.pr5_context);
+  $("cloudExternalEvidenceReviewHandoffHint").textContent = summary.recovery_hint;
+}
+
 function verifiedTerminalResultMaterialIntakeCandidate(status, readiness, diagnostics) {
   // 只从 status/readiness/diagnostics 的 safe summary 取值；前端不拉 raw diagnostics、ACK/cursor 或 command route。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -59477,6 +59765,14 @@ function renderDiagnosticsSummary(payload) {
       ).review_decision,
     ],
     [
+      "cloud_external_evidence_review_handoff",
+      cloudExternalEvidenceReviewHandoffFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).handoff_status,
+    ],
+    [
       "verified_terminal_result_material_intake",
       verifiedTerminalResultMaterialIntakeFromStatus(
         payload || {},
@@ -59769,6 +60065,7 @@ function renderOfflineFailure() {
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus({});
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridge({});
   renderCloudExternalEvidenceReviewDecision({});
+  renderCloudExternalEvidenceReviewHandoff({});
   renderVerifiedTerminalResultMaterialIntake({});
   renderVerifiedTerminalResultMaterialReviewDecision({});
   renderVerifiedTerminalResultMaterialReviewHandoff({});
@@ -59976,6 +60273,7 @@ function renderStatus(status) {
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus(status);
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridge(status);
   renderCloudExternalEvidenceReviewDecision(status);
+  renderCloudExternalEvidenceReviewHandoff(status);
   renderVerifiedTerminalResultMaterialIntake(status);
   renderVerifiedTerminalResultMaterialReviewDecision(status);
   renderVerifiedTerminalResultMaterialReviewHandoff(status);
