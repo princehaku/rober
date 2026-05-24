@@ -1,0 +1,179 @@
+{
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false,
+  "primary_actions_enabled": false,
+  "safe_to_control": false,
+  "delivery_success": false,
+  "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary.v1",
+    "source_schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge.v1",
+    "capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge",
+    "source_capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status",
+    "source_proof_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_gate",
+    "source": "software_proof",
+    "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_fixture_20260524_0001",
+    "source_followup_status": "source_followup_status=reviewer_ack_followup_escalated_not_proven",
+    "bridge_status": "accepted_for_owner_response_intake_bridge_not_proven",
+    "owner_response_intake_readiness": "owner_response_intake_readiness=accepted_for_owner_response_intake_not_proven",
+    "accepted_materials": [
+      "accepted_materials=safe reviewer ACK follow-up summary can bridge back to owner-response intake",
+      "accepted_materials=source=software_proof"
+    ],
+    "missing_materials": [
+      "missing_materials=verified terminal delivery/dropoff/cancel result under same safe evidence_ref",
+      "missing_materials=true phone/browser proof",
+      "missing_materials=public HTTPS/TLS or 4G/SIM or OSS/CDN live traffic or production DB/queue evidence"
+    ],
+    "rejected_materials": [
+      "rejected_materials=none_safe_summary_only"
+    ],
+    "unsafe_materials": [
+      "unsafe_materials=none_safe_summary_only"
+    ],
+    "blocked_materials": [
+      "blocked_materials=PRRT_kwDOSWB9286CJ3tX unresolved",
+      "blocked_materials=hardware_material_pending"
+    ],
+    "owner_route": [
+      "owner_route=return_to_owner_response_intake_mainline_under_same_safe_evidence_ref"
+    ],
+    "support_route": [
+      "support_route=keep_PRRT_kwDOSWB9286CJ3tX_unresolved_hardware_material_pending"
+    ],
+    "reviewer_route": [
+      "reviewer_route=review_owner_response_intake_after_real_material_arrives"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=verified terminal delivery/dropoff/cancel result under same safe evidence_ref",
+      "next_required_evidence=true phone/browser proof",
+      "next_required_evidence=public HTTPS/TLS or 4G/SIM or OSS/CDN live traffic or production DB/queue evidence"
+    ],
+    "blocker_status": "blocker_status=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "pr_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "pr5_thread_status": "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "proof_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_gate",
+    "safe_phone_copy": "Bridge consumes reviewer ACK follow-up escalation safe summary and routes it back to owner-response intake; source=software_proof; not_proven; safe_to_control=false; delivery_success=false; primary_actions_enabled=false; not verified terminal result; not true phone/browser proof; no OKR percentage lift.",
+    "recovery_hint": "Wait for owner-response intake mainline to consume the same safe evidence_ref; mobile is read-only and exposes no mutable owner, reviewer, support, material, GitHub, or robot-control path.",
+    "not_proven": [
+      "source=software_proof",
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "not verified terminal result",
+      "not true phone/browser proof",
+      "PRRT_kwDOSWB9286CJ3tX unresolved",
+      "hardware_material_pending",
+      "no OKR percentage lift"
+    ],
+    "terminal_result_verified": false,
+    "phone_browser_proof": "not true phone/browser proof",
+    "okr_progress_effect": "no OKR percentage lift",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary.v1",
+    "capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge",
+    "source_capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status",
+    "source": "software_proof",
+    "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_fallback_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_fallback_20260524_0001",
+    "source_followup_status": "source_followup_status=reviewer_ack_followup_pending_not_proven",
+    "bridge_status": "owner_response_intake_bridge_missing_owner_material_not_proven",
+    "owner_response_intake_readiness": "owner_response_intake_readiness=missing_owner_material_not_proven",
+    "accepted_materials": [
+      "accepted_materials=safe fallback summary only"
+    ],
+    "missing_materials": [
+      "missing_materials=owner response intake material still pending"
+    ],
+    "rejected_materials": [
+      "rejected_materials=none_safe_summary_only"
+    ],
+    "unsafe_materials": [
+      "unsafe_materials=none_safe_summary_only"
+    ],
+    "blocked_materials": [
+      "blocked_materials=hardware_material_pending"
+    ],
+    "owner_route": [
+      "owner_route=return_to_owner_response_intake_mainline_under_same_safe_evidence_ref"
+    ],
+    "support_route": [
+      "support_route=keep_PRRT_kwDOSWB9286CJ3tX_unresolved"
+    ],
+    "reviewer_route": [
+      "reviewer_route=wait_for_owner_material"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=owner response intake material under same safe evidence_ref"
+    ],
+    "blocker_status": "blocker_status=hardware_material_pending",
+    "pr_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "pr5_thread_status": "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "proof_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_gate",
+    "safe_phone_copy": "Fallback bridge remains source=software_proof; not_proven; safe_to_control=false; delivery_success=false; primary_actions_enabled=false; not verified terminal result; not true phone/browser proof; no OKR percentage lift.",
+    "terminal_result_verified": false,
+    "phone_browser_proof": "not true phone/browser proof",
+    "okr_progress_effect": "no OKR percentage lift",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge": {
+    "summary": {
+      "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary.v1",
+      "capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge",
+      "source_capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status",
+      "source": "software_proof",
+      "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_nested_20260524_0001",
+      "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_nested_20260524_0001",
+      "source_followup_status": "source_followup_status=blocked_missing_source_reviewer_ack_followup_escalation_status_not_proven",
+      "bridge_status": "blocked_missing_source_reviewer_ack_followup_escalation_status_not_proven",
+      "owner_response_intake_readiness": "owner_response_intake_readiness=blocked_missing_source_not_proven",
+      "accepted_materials": [
+        "accepted_materials=none"
+      ],
+      "missing_materials": [
+        "missing_materials=source reviewer ACK follow-up escalation status safe summary"
+      ],
+      "rejected_materials": [
+        "rejected_materials=none_safe_summary_only"
+      ],
+      "unsafe_materials": [
+        "unsafe_materials=none_safe_summary_only"
+      ],
+      "blocked_materials": [
+        "blocked_materials=hardware_material_pending"
+      ],
+      "owner_route": [
+        "owner_route=wait_for_source_followup_before_owner_response_intake"
+      ],
+      "support_route": [
+        "support_route=keep_PRRT_kwDOSWB9286CJ3tX_unresolved"
+      ],
+      "reviewer_route": [
+        "reviewer_route=wait_for_safe_followup_summary"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=source reviewer ACK follow-up escalation status safe summary"
+      ],
+      "blocker_status": "blocker_status=hardware_material_pending",
+      "pr_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+      "pr5_thread_status": "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+      "proof_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_gate",
+      "safe_phone_copy": "Nested bridge is blocked until source reviewer ACK follow-up safe summary is present; source=software_proof; not_proven; safe_to_control=false; delivery_success=false; primary_actions_enabled=false; not verified terminal result; not true phone/browser proof; no OKR percentage lift.",
+      "terminal_result_verified": false,
+      "phone_browser_proof": "not true phone/browser proof",
+      "okr_progress_effect": "no OKR percentage lift",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  }
+}

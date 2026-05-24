@@ -1238,6 +1238,157 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
                 self.assertNotIn("primary_actions_enabled\": true", encoded)
                 self.assertNotIn("safe_to_control\": true", encoded)
 
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_is_safe(self):
+        status, status_payload = self.client.request("GET", "/api/status", token="")
+        diag_status, diagnostics_payload = self.client.request("GET", "/api/diagnostics", token="")
+        payload = status_payload[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary"
+        ]
+        diagnostics_summary = diagnostics_payload[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary"
+        ]
+        encoded = json.dumps({"status": status_payload, "diagnostics": diagnostics_payload}, ensure_ascii=False)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(diag_status, 200)
+        self.assertEqual(
+            payload["schema"],
+            "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary.v1",
+        )
+        self.assertEqual(
+            payload["capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge",
+        )
+        self.assertEqual(
+            payload["proof_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_gate",
+        )
+        self.assertEqual(payload["source"], "software_proof")
+        self.assertEqual(
+            payload["source_capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status",
+        )
+        self.assertEqual(
+            payload["source_proof_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_gate",
+        )
+        self.assertEqual(payload["source_followup_status"], "reviewer_ack_followup_pending_not_proven")
+        self.assertEqual(payload["bridge_status"], "accepted_for_owner_response_intake_bridge_not_proven")
+        self.assertEqual(payload["owner_response_intake_readiness"], "ready_for_safe_owner_response_intake_not_proven")
+        self.assertEqual(payload["safe_command_id"], "pending_same_safe_command_id")
+        self.assertEqual(payload["evidence_ref"], "pending_same_safe_evidence_ref")
+        self.assertEqual(payload["safe_evidence_ref"], "pending_same_safe_evidence_ref")
+        self.assertIn("safe_reviewer_ack_followup_escalation_status_summary", payload["accepted_materials"])
+        self.assertIn("owner_response_material_packet", payload["missing_materials"])
+        self.assertIn("hardware_material_pending", payload["blocked_materials"])
+        self.assertEqual(payload["owner_route"], "field_owner")
+        self.assertEqual(payload["support_route"], "support_triage")
+        self.assertEqual(payload["reviewer_route"], "pr5_reviewer")
+        self.assertEqual(payload["pr_thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(payload["phone_browser_proof"], "not true phone/browser proof")
+        self.assertEqual(payload["okr_progress_effect"], "no OKR percentage lift")
+        self.assertIn("not verified terminal result", payload["non_claims"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["primary_actions_enabled"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["terminal_result_verified"])
+        self.assertFalse(payload["owner_response_submission_allowed"])
+        self.assertFalse(payload["reviewer_ack_submission_allowed"])
+        self.assertFalse(payload["diagnostics_mutation_allowed"])
+        self.assertFalse(payload["github_action_allowed"])
+        self.assertFalse(payload["robot_command_side_effects_allowed"])
+        self.assertFalse(payload["verified_terminal_result"])
+        self.assertEqual(diagnostics_summary["evidence_ref"], payload["evidence_ref"])
+        self.assertIn(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary",
+            encoded,
+        )
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not verified terminal result", encoded)
+        self.assertIn("not true phone/browser proof", encoded)
+        self.assertIn("no OKR percentage lift", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", encoded)
+        self.assertIn("hardware_material_pending", encoded)
+        for forbidden in (
+            "phone-token",
+            "Authorization",
+            "Bearer",
+            "raw_command_payload",
+            "owner_response_submission_payload",
+            "raw_reviewer_material",
+            "signed_url",
+            "raw_path",
+            str(REPO_ROOT),
+            "/cmd_vel",
+            "ttyUSB",
+            "traceback",
+            "complete artifact",
+            "checksum",
+            "verified terminal result success",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_states_are_not_proven(self):
+        base_followup = (
+            relay_module.build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_payload()
+        )
+        cases = [
+            (
+                {"followup_status": ""},
+                "blocked_missing_source_reviewer_ack_followup_escalation_status_not_proven",
+            ),
+            (
+                {"expected_evidence_ref": "different-safe-ref"},
+                "owner_response_intake_bridge_evidence_ref_mismatch_not_proven",
+            ),
+            (
+                {"followup_status": "reviewer_ack_followup_blocked_missing_material_not_proven"},
+                "owner_response_intake_bridge_missing_owner_material_not_proven",
+            ),
+            (
+                {"followup_status": "reviewer_ack_followup_rejected_unsafe_not_proven"},
+                "owner_response_intake_bridge_rejected_unsafe_not_proven",
+            ),
+            (
+                {"raw_command_payload": {"T": 1}},
+                "owner_response_intake_bridge_rejected_unsafe_not_proven",
+            ),
+        ]
+        for extra_fields, expected_status in cases:
+            with self.subTest(expected_status=expected_status):
+                source_followup = dict(base_followup, **extra_fields)
+                payload = (
+                    relay_module.build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_payload(
+                        source_followup_summary=source_followup
+                    )
+                )
+                encoded = json.dumps(payload, ensure_ascii=False)
+
+                self.assertEqual(payload["bridge_status"], expected_status)
+                self.assertIn(expected_status, payload["supported_bridge_statuses"])
+                self.assertEqual(payload["pr_thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+                self.assertIn("hardware_material_pending", payload["blocker_status"])
+                self.assertFalse(payload["delivery_success"])
+                self.assertFalse(payload["primary_actions_enabled"])
+                self.assertFalse(payload["safe_to_control"])
+                self.assertFalse(payload["terminal_result_verified"])
+                self.assertFalse(payload["owner_response_submission_allowed"])
+                self.assertFalse(payload["reviewer_ack_submission_allowed"])
+                self.assertFalse(payload["diagnostics_mutation_allowed"])
+                self.assertFalse(payload["github_action_allowed"])
+                self.assertFalse(payload["robot_command_side_effects_allowed"])
+                self.assertFalse(payload["verified_terminal_result"])
+                self.assertNotIn("raw_command_payload", encoded)
+                self.assertNotIn("delivery_success\": true", encoded)
+                self.assertNotIn("primary_actions_enabled\": true", encoded)
+                self.assertNotIn("safe_to_control\": true", encoded)
+
     def test_pr5_mandatory_sensor_material_owner_response_review_handoff_alias_is_phone_safe(self):
         safe_summary = {
             "schema": "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1",

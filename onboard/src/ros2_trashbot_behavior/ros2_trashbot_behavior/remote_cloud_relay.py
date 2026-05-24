@@ -204,6 +204,15 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_
 CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_gate"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_CAPABILITY = (
+    "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_SCHEMA = (
+    "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary.v1"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_gate"
+)
 PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_CAPABILITY = (
     "pr5_mandatory_sensor_material_owner_response_review_handoff"
 )
@@ -7871,6 +7880,10 @@ def _cloud_command_lifecycle_replay_acceptance_packet_cli_export_has_unsafe_mate
         "signed_url",
         "raw_path",
         "local_path",
+        "raw_command",
+        "command_payload",
+        "owner_response_submission_payload",
+        "raw_reviewer",
         "raw_response",
         "raw_body",
         "ack_payload",
@@ -9511,6 +9524,259 @@ def build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner
     return safe_value(payload)
 
 
+def _cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_owner_response_intake_bridge_status(
+    followup_summary,
+):
+    # bridge 只判断上一阶 safe follow-up 是否可接回 intake；不把任何状态升级成真实材料通过。
+    source_status = str(followup_summary.get("followup_status") or "").strip()
+    if not source_status:
+        return (
+            "blocked_missing_source_reviewer_ack_followup_escalation_status_not_proven",
+            ["missing_source_followup_status"],
+        )
+    expected_command_id = str(followup_summary.get("expected_command_id") or "").strip()
+    safe_command_id = str(followup_summary.get("safe_command_id") or "").strip()
+    expected_evidence_ref = str(followup_summary.get("expected_evidence_ref") or "").strip()
+    evidence_ref = str(
+        followup_summary.get("evidence_ref")
+        or followup_summary.get("safe_evidence_ref")
+        or ""
+    ).strip()
+    if (expected_command_id and expected_command_id != safe_command_id) or (
+        expected_evidence_ref and expected_evidence_ref != evidence_ref
+    ):
+        return (
+            "owner_response_intake_bridge_evidence_ref_mismatch_not_proven",
+            ["safe_command_id_or_evidence_ref_mismatch"],
+        )
+    if "rejected_unsafe" in source_status:
+        return (
+            "owner_response_intake_bridge_rejected_unsafe_not_proven",
+            ["source_followup_rejected_unsafe"],
+        )
+    if "blocked_missing" in source_status or "missing_material" in source_status:
+        return (
+            "owner_response_intake_bridge_missing_owner_material_not_proven",
+            ["source_followup_missing_material"],
+        )
+    if "source_not_ready" in source_status:
+        return (
+            "owner_response_intake_bridge_source_not_ready_not_proven",
+            ["source_followup_not_ready"],
+        )
+    if "hardware_material_pending" in json.dumps(
+        followup_summary.get("blocker_status") or [], ensure_ascii=False
+    ):
+        return (
+            "accepted_for_owner_response_intake_bridge_not_proven",
+            ["source_followup_safe", "hardware_material_pending"],
+        )
+    return (
+        "accepted_for_owner_response_intake_bridge_not_proven",
+        ["source_followup_safe"],
+    )
+
+
+def build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_payload(
+    *,
+    now=None,
+    source_followup_summary=None,
+):
+    """构造 reviewer ACK follow-up 下游接回 owner-response intake 的只读 bridge 摘要。"""
+    # 允许 status/diagnostics 直接传 safe alias；缺省时从上一阶 builder 派生，避免读取 raw artifact。
+    followup_summary = (
+        safe_value(source_followup_summary)
+        if isinstance(source_followup_summary, dict)
+        else build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_payload(
+            now=now
+        )
+    )
+    generated_at = _utc_iso(now if now is not None else _now())
+    source_boundary = str(
+        followup_summary.get("proof_boundary")
+        or followup_summary.get("evidence_boundary")
+        or ""
+    ).strip()
+    safe_command_id = str(followup_summary.get("safe_command_id") or "").strip()
+    evidence_ref = str(
+        followup_summary.get("evidence_ref")
+        or followup_summary.get("safe_evidence_ref")
+        or ""
+    ).strip()
+    required_safe = (
+        followup_summary.get("capability")
+        == CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_CAPABILITY,
+        source_boundary
+        == CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_EVIDENCE_BOUNDARY,
+        bool(safe_command_id),
+        bool(evidence_ref),
+        followup_summary.get("delivery_success") is False,
+        followup_summary.get("primary_actions_enabled") is False,
+        followup_summary.get("safe_to_control") is False,
+        followup_summary.get("terminal_result_verified") is False,
+        followup_summary.get("owner_response_submission_allowed") is False,
+        followup_summary.get("reviewer_ack_submission_allowed") is False,
+        followup_summary.get("diagnostics_mutation_allowed") is False,
+        followup_summary.get("github_action_allowed") is False,
+        followup_summary.get("robot_command_side_effects_allowed") is False,
+        followup_summary.get("verified_terminal_result") is False,
+    )
+    bridge_status, bridge_reasons = (
+        _cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_owner_response_intake_bridge_status(
+            followup_summary
+        )
+    )
+    if (
+        not all(required_safe)
+        or _cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_intake_has_unsafe_material(
+            followup_summary
+        )
+    ) and bridge_status not in {
+        "blocked_missing_source_reviewer_ack_followup_escalation_status_not_proven",
+        "owner_response_intake_bridge_evidence_ref_mismatch_not_proven",
+    }:
+        bridge_status = "owner_response_intake_bridge_rejected_unsafe_not_proven"
+        bridge_reasons = [
+            "unsafe_or_incompatible_source_followup_escalation_status",
+            "fail_closed_to_not_proven",
+        ]
+    owner_response_intake_readiness = (
+        "ready_for_safe_owner_response_intake_not_proven"
+        if bridge_status == "accepted_for_owner_response_intake_bridge_not_proven"
+        else "blocked_for_safe_owner_response_intake_not_proven"
+    )
+    payload = {
+        "ok": True,
+        "schema": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_SCHEMA
+        ),
+        "schema_version": 1,
+        "capability": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_CAPABILITY
+        ),
+        "source": "software_proof",
+        "source_capability": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_CAPABILITY
+        ),
+        "source_proof_boundary": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_EVIDENCE_BOUNDARY
+        ),
+        "source_evidence_boundary": source_boundary,
+        "source_boundary": "safe_reviewer_ack_followup_escalation_status_only",
+        "evidence_boundary": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_EVIDENCE_BOUNDARY
+        ),
+        "proof_boundary": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_EVIDENCE_BOUNDARY
+        ),
+        "generated_at": generated_at,
+        "artifact_status": "owner_response_intake_bridge_not_proven",
+        "source_followup_status": str(
+            followup_summary.get("followup_status")
+            or "blocked_missing_source_reviewer_ack_followup_escalation_status_not_proven"
+        ),
+        "bridge_status": bridge_status,
+        "supported_bridge_statuses": [
+            "accepted_for_owner_response_intake_bridge_not_proven",
+            "owner_response_intake_bridge_missing_owner_material_not_proven",
+            "owner_response_intake_bridge_rejected_unsafe_not_proven",
+            "owner_response_intake_bridge_blocked_hardware_material_pending_not_proven",
+            "blocked_missing_source_reviewer_ack_followup_escalation_status_not_proven",
+            "owner_response_intake_bridge_evidence_ref_mismatch_not_proven",
+            "owner_response_intake_bridge_source_not_ready_not_proven",
+        ],
+        "bridge_reasons": bridge_reasons,
+        "owner_response_intake_readiness": owner_response_intake_readiness,
+        "safe_command_id": safe_command_id or PENDING_SAFE_COMMAND_ID,
+        "evidence_ref": evidence_ref or PENDING_SAFE_EVIDENCE_REF,
+        "safe_evidence_ref": evidence_ref or PENDING_SAFE_EVIDENCE_REF,
+        "accepted_materials": [
+            "safe_reviewer_ack_followup_escalation_status_summary"
+        ]
+        if bridge_status == "accepted_for_owner_response_intake_bridge_not_proven"
+        else [],
+        "missing_materials": [
+            "verified_terminal_delivery_dropoff_or_cancel_result",
+            "real_external_cloud_or_true_phone_browser_evidence",
+            "owner_response_material_packet",
+        ],
+        "rejected_materials": [],
+        "unsafe_materials": [
+            "unsafe_source_followup_summary"
+        ]
+        if bridge_status == "owner_response_intake_bridge_rejected_unsafe_not_proven"
+        else [],
+        "blocked_materials": [
+            "hardware_material_pending",
+            "PRRT_kwDOSWB9286CJ3tX_unresolved",
+        ],
+        "owner_route": str(followup_summary.get("followup_owner") or "field_owner"),
+        "support_route": str(followup_summary.get("support_route") or "support_triage"),
+        "reviewer_route": str(followup_summary.get("reviewer_route") or "pr5_reviewer"),
+        "next_required_evidence": list(
+            followup_summary.get("next_required_evidence")
+            or [
+                "same_safe_command_id",
+                "same_safe_evidence_ref",
+                "verified_terminal_delivery_dropoff_or_cancel_result",
+                "real_external_cloud_or_true_phone_browser_evidence",
+            ]
+        ),
+        "blocker_status": [
+            "hardware_material_pending",
+            "PRRT_kwDOSWB9286CJ3tX_unresolved",
+            "verified_terminal_result_missing",
+            "not true phone/browser proof",
+        ],
+        "pr_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+        "phone_browser_proof": "not true phone/browser proof",
+        "okr_progress_effect": "no OKR percentage lift",
+        "non_claims": [
+            "not verified terminal result",
+            "not true phone/browser proof",
+            "not delivery success",
+            "not owner-response submission",
+            "not raw reviewer material",
+            "not GitHub mutation",
+            "not WAVE ROVER/UART proof",
+        ],
+        "safe_summary": (
+            "Reviewer ACK owner-response intake bridge consumes safe follow-up escalation "
+            "status only and routes it back to owner-response intake; source=software_proof, "
+            "delivery_success=false, primary_actions_enabled=false, safe_to_control=false, "
+            "not verified terminal result, PRRT_kwDOSWB9286CJ3tX hardware_material_pending, "
+            "no OKR percentage lift."
+        ),
+        "not_proven": list(CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_NOT_PROVEN),
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "terminal_result_verified": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "command_replay_allowed": False,
+        "command_resubmit_allowed": False,
+        "material_upload_allowed": False,
+        "review_action_allowed": False,
+        "handoff_action_allowed": False,
+        "owner_response_submission_allowed": False,
+        "reviewer_ack_submission_allowed": False,
+        "github_action_allowed": False,
+        "diagnostics_mutation_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "pr5_resolved": False,
+        "verified_terminal_result": False,
+    }
+    if _cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_intake_has_unsafe_material(payload):
+        raise ValueError(
+            "cloud command lifecycle replay acceptance packet reviewer ACK owner-response intake bridge is unsafe"
+        )
+    return safe_value(payload)
+
+
 def create_cloud_command_lifecycle_replay_acceptance_packet_cli_export_artifact(artifact_path):
     # 导出命令只写 JSON artifact，不启动 HTTP server，不触碰 state store、ACK 或机器人控制面。
     payload = build_cloud_command_lifecycle_replay_acceptance_packet_cli_export_payload()
@@ -10433,6 +10699,42 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
             )
         )
     )
+    latest_status_for_reviewer_ack_bridge = latest_status or {}
+    owner_response_reviewer_ack_owner_response_intake_bridge_source = (
+        latest_status_for_reviewer_ack_bridge.get(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status"
+        )
+        if isinstance(
+            latest_status_for_reviewer_ack_bridge.get(
+                "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status"
+            ),
+            dict,
+        )
+        else latest_status_for_reviewer_ack_bridge.get(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
+        )
+        if isinstance(
+            latest_status_for_reviewer_ack_bridge.get(
+                "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else latest_status_for_reviewer_ack_bridge.get(
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
+        )
+        if isinstance(
+            latest_status_for_reviewer_ack_bridge.get(
+                "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
+            ),
+            dict,
+        )
+        else owner_response_reviewer_ack_followup_escalation_status
+    )
+    owner_response_reviewer_ack_owner_response_intake_bridge = (
+        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_payload(
+            source_followup_summary=owner_response_reviewer_ack_owner_response_intake_bridge_source
+        )
+    )
     pr5_review_handoff = _phone_safe_pr5_mandatory_sensor_review_handoff_summary(
         latest_status or {}
     )
@@ -10518,6 +10820,15 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
         ),
         "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
             owner_response_reviewer_ack_followup_escalation_status
+        ),
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge": (
+            owner_response_reviewer_ack_owner_response_intake_bridge
+        ),
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": (
+            owner_response_reviewer_ack_owner_response_intake_bridge
+        ),
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": (
+            owner_response_reviewer_ack_owner_response_intake_bridge
         ),
         "pr5_mandatory_sensor_material_owner_response_review_handoff": pr5_review_handoff,
         "pr5_mandatory_sensor_material_owner_response_review_handoff_summary": (
@@ -10623,6 +10934,15 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
             "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
                 owner_response_reviewer_ack_followup_escalation_status
             ),
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge": (
+                owner_response_reviewer_ack_owner_response_intake_bridge
+            ),
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": (
+                owner_response_reviewer_ack_owner_response_intake_bridge
+            ),
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": (
+                owner_response_reviewer_ack_owner_response_intake_bridge
+            ),
             "pr5_mandatory_sensor_material_owner_response_review_handoff": (
                 pr5_review_handoff
             ),
@@ -10703,6 +11023,11 @@ def cloud_hosted_mobile_web_diagnostics_payload(store, robot_id=None):
                 "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status": (
                     status_payload.get(
                         "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status"
+                    )
+                ),
+                "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge": (
+                    status_payload.get(
+                        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge"
                     )
                 ),
                 "pr5_mandatory_sensor_material_owner_response_review_handoff": (
@@ -10795,6 +11120,21 @@ def cloud_hosted_mobile_web_diagnostics_payload(store, robot_id=None):
             "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
                 status_payload.get(
                     "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
+                )
+            ),
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge": (
+                status_payload.get(
+                    "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge"
+                )
+            ),
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": (
+                status_payload.get(
+                    "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary"
+                )
+            ),
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": (
+                status_payload.get(
+                    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary"
                 )
             ),
             "pr5_mandatory_sensor_material_owner_response_review_handoff": (

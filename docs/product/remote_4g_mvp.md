@@ -507,6 +507,66 @@ phone/browser proof, not public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic,
 not production DB/queue, not worker/cutover, not HIL, not PR #5 resolved, not
 route/elevator field pass, not delivery success, and no OKR percentage lift.
 
+Robot/API now exposes the reviewer ACK owner-response intake bridge. This is a
+read-only bridge from reviewer ACK follow-up escalation status back into the
+owner-response intake mainline, not a new independent action wrapper:
+
+```text
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary
+robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary
+```
+
+The bridge schema is
+`trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary.v1`.
+Its proof boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_gate`.
+It is derived only from the safe
+`cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status`
+summary or an equivalent safe status/diagnostics alias. It preserves the same
+safe `command_id` and safe `evidence_ref`; command or evidence mismatch fails
+closed to
+`owner_response_intake_bridge_evidence_ref_mismatch_not_proven`.
+
+The bridge exposes `source_capability`, `source_proof_boundary`,
+`source_followup_status`, `bridge_status`,
+`owner_response_intake_readiness`, `accepted_materials`,
+`missing_materials`, `rejected_materials`, `unsafe_materials`,
+`blocked_materials`, `owner_route`, `support_route`, `reviewer_route`,
+`next_required_evidence`, `blocker_status`,
+`pr_thread_id=PRRT_kwDOSWB9286CJ3tX`, `hardware_material_pending`,
+`delivery_success=false`, `primary_actions_enabled=false`,
+`safe_to_control=false`, `terminal_result_verified=false`,
+`phone_browser_proof=not true phone/browser proof`, and
+`okr_progress_effect=no OKR percentage lift`.
+
+Supported bridge states are
+`accepted_for_owner_response_intake_bridge_not_proven`,
+`owner_response_intake_bridge_missing_owner_material_not_proven`,
+`owner_response_intake_bridge_rejected_unsafe_not_proven`,
+`owner_response_intake_bridge_blocked_hardware_material_pending_not_proven`,
+`blocked_missing_source_reviewer_ack_followup_escalation_status_not_proven`,
+`owner_response_intake_bridge_evidence_ref_mismatch_not_proven`, and
+`owner_response_intake_bridge_source_not_ready_not_proven`.
+
+The bridge-to-owner-response-intake semantics are intentionally narrow:
+`accepted_for_owner_response_intake_bridge_not_proven` only means the safe
+reviewer ACK follow-up summary can be copied into the owner-response intake
+review path with the same safe `command_id` and `evidence_ref`. It does not
+submit owner response material, read raw reviewer material, resolve PR #5, or
+turn any owner-response classification into verified terminal result wording.
+
+Unsupported, unsafe, or missing source follow-up state must stay blocked or
+not_proven. The bridge must not expose raw command payloads, Authorization
+headers, bearer tokens, signed URLs, local paths, tracebacks, checksums,
+complete artifacts, ROS topics, `/cmd_vel`, serial/UART details, WAVE ROVER
+details, true-state flags, verified terminal result wording, success wording,
+owner-response submission payloads, or raw reviewer material. It remains not
+verified terminal result, not true phone/browser proof, not public HTTPS/TLS,
+not 4G/SIM, not OSS/CDN live traffic, not production DB/queue, not
+worker/cutover, not HIL, not PR #5 resolved, not route/elevator field pass,
+not delivery success, and no OKR percentage lift.
+
 Robot/API also exposes the PR #5 mandatory-sensor owner-response review handoff
 as a phone-safe status/diagnostics alias when the backend has already provided
 the sanitized summary:
