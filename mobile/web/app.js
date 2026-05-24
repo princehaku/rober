@@ -49,6 +49,8 @@ const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RES
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEW_DECISION_COPY = "云命令生命周期支持交接 owner response review decision 只读可见；只展示 review decision、owner response status、safe command id、safe evidence_ref 和 next required evidence，主操作保持禁用。";
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff_gate";
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEW_HANDOFF_COPY = "云命令生命周期支持交接 owner response review handoff 只读可见；只展示 review decision、handoff owner/reason、owner response status、safe command id、safe evidence_ref、blocker summary 和 next required evidence，主操作保持禁用。";
+const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_BOUNDARY = "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_gate";
+const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_COPY = "云命令生命周期支持交接 owner response reviewer ACK intake 只读可见；只展示 reviewer ACK、source handoff、safe command id、safe evidence_ref、owner/support/reviewer routing、ACK reasons 和 next required evidence，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_BOUNDARY = "software_proof_docker_verified_terminal_result_material_intake_gate";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_COPY = "verified terminal result material intake 只读可见；材料回填不等于 delivery success，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_verified_terminal_result_material_review_decision_gate";
@@ -649,6 +651,7 @@ let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle = null
 let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake = null;
 let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision = null;
 let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewHandoff = null;
+let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntake = null;
 let latestVerifiedTerminalResultMaterialIntake = null;
 let latestVerifiedTerminalResultMaterialReviewDecision = null;
 let latestVerifiedTerminalResultMaterialReviewHandoff = null;
@@ -48387,6 +48390,388 @@ function renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerRes
     summary.recovery_hint;
 }
 
+function safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+  value,
+  fallback = "not_proven",
+) {
+  // reviewer ACK intake 延续 review handoff 的白名单口径，任何 ACK/cursor、上传、mutation 或控制暗示都降级。
+  const text = safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewHandoffText(
+    value,
+    fallback,
+  );
+  if (
+    /(reviewer ack route|reviewer-ack route|ack submission|ack mutation|owner response submission|submit owner response|diagnostics mutation|handoff mutation|review mutation|github mutation|material upload|artifact fetch|raw artifact|raw diagnostics|raw materials|ack route|cursor route|replay route|resubmit route|robot command|robot control|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i.test(text)
+  ) {
+    return fallback;
+  }
+  return text;
+}
+
+function cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeCandidate(
+  status,
+  readiness,
+  diagnostics,
+) {
+  // 新 rung 必须优先消费 Robot diagnostics safe alias；fallback 只接受同 capability 的 safe summary。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const topDiagnosticsSummary = status?.diagnostics_summary && typeof status.diagnostics_summary === "object"
+    ? status.diagnostics_summary
+    : {};
+  const artifactSummary =
+    status?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake?.summary ||
+    readiness?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake?.summary ||
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake?.summary ||
+    diagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake?.summary ||
+    nestedDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake?.summary ||
+    nestedDiagnosticsInnerSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake?.summary ||
+    statusDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake?.summary;
+  return firstObject(
+    status?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    readiness?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    diagnostics?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    diagnosticsReadiness.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    statusDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    topDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    status?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    readiness?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    diagnosticsReadiness.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    diagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    nestedDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    nestedDiagnosticsInnerSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    statusDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    topDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary,
+    artifactSummary,
+  );
+}
+
+function cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeList(value, fallback) {
+  // routing、ACK reasons 和 next evidence 只显示短摘要，避免把 reviewer ACK payload 或材料结构透出。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        const key = safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+          item[0],
+          "",
+        );
+        const detail = safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+          item[1],
+          "",
+        );
+        return key && detail ? `${key}=${detail}` : key || detail;
+      }
+      if (item && typeof item === "object") {
+        const label = safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+          item.role || item.owner || item.route || item.status || item.material || item.summary,
+          "",
+        );
+        const detail = safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+          item.next_step || item.reason || item.safe_phone_copy || item.detail,
+          "",
+        );
+        return label && detail ? `${label}: ${detail}` : label || detail;
+      }
+      return safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 12) : [fallback];
+}
+
+function cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeHasUnsafeRawFields(
+  value,
+) {
+  // 出现 raw/control/success/mutation 语义时，整块 ACK intake 直接 fail closed，避免安全字段被局部绕过。
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const allowedSafetyKeys = new Set(["delivery_success", "primary_actions_enabled", "safe_to_control"]);
+  const stack = [value];
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current || typeof current !== "object") {
+      continue;
+    }
+    for (const [key, rawValue] of Object.entries(current)) {
+      if (key === "not_proven") {
+        continue;
+      }
+      if (!allowedSafetyKeys.has(key) &&
+        safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+          key,
+          "",
+        ) === "") {
+        return true;
+      }
+      if (rawValue && typeof rawValue === "object") {
+        stack.push(rawValue);
+      } else if (
+        safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+          rawValue,
+          "",
+        ) === ""
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeFromStatus(
+  status,
+  readiness,
+  diagnostics,
+) {
+  const provided = cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeCandidate(
+    status,
+    readiness,
+    diagnostics,
+  ) || {};
+  const unsafeRawFields =
+    cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeHasUnsafeRawFields(provided);
+  const failClosedFlags = unsafeRawFields ||
+    provided.safe_to_control === true ||
+    provided.delivery_success === true ||
+    provided.primary_actions_enabled === true;
+  const allowedAckStatuses = new Set([
+    "reviewer_acknowledged_not_proven",
+    "reviewer_ack_needs_reassignment",
+    "reviewer_ack_missing_material_not_proven",
+    "blocked_missing_source_handoff",
+    "blocked_missing_owner_response_review_handoff",
+    "reviewer_ack_evidence_ref_mismatch",
+    "reviewer_ack_rejected_unsafe",
+  ]);
+  const candidateStatus = safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+    provided.ack_status || provided.reviewer_ack_status || provided.intake_status || provided.status ||
+      provided.overall_status,
+    "blocked_missing_source_handoff",
+  );
+  const ackStatus = allowedAckStatuses.has(candidateStatus) && !failClosedFlags
+    ? candidateStatus
+    : "reviewer_ack_rejected_unsafe";
+  return {
+    missing: !Object.keys(provided).length || failClosedFlags,
+    unsafe_raw_fields: unsafeRawFields,
+    schema: "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary.v1",
+    source_schema: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+      provided.source_schema || provided.artifact_schema || provided.reviewer_ack_intake_schema,
+      "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake.v1",
+    ),
+    capability: "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake",
+    source: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+      provided.source,
+      "software_proof",
+    ),
+    ack_status: ackStatus,
+    source_handoff_status: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+      provided.source_handoff_status || provided.source_owner_response_review_handoff_status ||
+        provided.owner_response_review_handoff_status || provided.source_review_handoff_status,
+      "source_handoff_status=blocked_missing_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff",
+    ),
+    safe_command_id: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+      provided.safe_command_id || provided.command_id,
+      "command_id=not_proven",
+    ),
+    safe_evidence_ref: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    owner_routing: cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeList(
+      provided.owner_routing || provided.owner_route || provided.owner_next_step || provided.owner_handoff,
+      "owner_routing=backfill_same_safe_evidence_ref_verified_terminal_result_material",
+    ),
+    support_routing: cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeList(
+      provided.support_routing || provided.support_route || provided.support_next_step || provided.support_handoff,
+      "support_routing=keep_PRRT_kwDOSWB9286CJ3tX_unresolved_hardware_material_pending",
+    ),
+    reviewer_routing: cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeList(
+      provided.reviewer_routing || provided.reviewer_route || provided.reviewer_next_step || provided.reviewer_handoff,
+      "reviewer_routing=review_false_flags_before_next_support_decision",
+    ),
+    ack_reasons: cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeList(
+      provided.ack_reasons || provided.reviewer_ack_reasons || provided.reasons || provided.decision_reasons,
+      "ack_reasons=blocked_until_same_safe_evidence_ref_owner_response_review_handoff",
+    ),
+    next_required_evidence: cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeList(
+      provided.next_required_evidence || provided.next_evidence || provided.required_evidence ||
+        provided.missing_required_materials,
+      "next_required_evidence=同一 safe evidence_ref 的 reviewer ACK intake safe summary 和 verified terminal result。",
+    ),
+    blocked_reason: failClosedFlags
+      ? "blocked_reason=unsafe_raw_fields_or_true_state_flags_present_not_proven"
+      : safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+        provided.blocked_reason || provided.reason,
+        "blocked_reason=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+      ),
+    pr5_thread_status: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+      provided.pr5_thread_status || provided.review_thread_status,
+      "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    ),
+    proof_boundary: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+      provided.proof_boundary || provided.evidence_boundary,
+      CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_BOUNDARY,
+    ),
+    safe_phone_copy: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary || provided.safe_copy,
+      CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_COPY,
+    ),
+    recovery_hint: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeText(
+      provided.recovery_hint || provided.retry_hint,
+      "等待 reviewer ACK intake safe summary；手机端只读展示，不提交 ACK、review、handoff、owner-response 或控制动作。",
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / not true phone/browser proof / no OKR percentage lift / not delivery success",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: cloudCommandLifecycleReplayAcceptancePacketNotProvenList(provided).concat([
+      "not true phone/browser proof",
+      "no OKR percentage lift",
+      "not delivery success",
+      "PRRT_kwDOSWB9286CJ3tX hardware_material_pending",
+    ]),
+  };
+}
+
+function ensureCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakePanel() {
+  // reviewer ACK intake 紧跟 review handoff；这里只读展示 ACK 状态和三方 routing，不引入任何提交入口。
+  let panel = $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakePanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewHandoffTitle")?.closest("section") ||
+    $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecisionTitle")?.closest("section") ||
+    $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeTitle")?.closest("section") ||
+    $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleTitle")?.closest("section") ||
+    $("cloudCommandLifecycleReplayAcceptancePacketTitle")?.closest("section") ||
+    $("cloudSupportHandoffSafeExportTitle")?.closest("section") ||
+    $("supportTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakePanel";
+  panel.className = "cloud-command-lifecycle-replay-acceptance-packet-support-handoff-owner-response-reviewer-ack-intake-panel";
+  panel.setAttribute(
+    "aria-labelledby",
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeTitle",
+  );
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeTitle">云命令交接 owner response reviewer ACK intake</h2>
+      <span id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeCopy" class="message">
+      等待 robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary。
+    </p>
+    <dl class="cloud-command-lifecycle-replay-acceptance-packet-support-handoff-owner-response-reviewer-ack-intake-grid">
+      <div><dt>Reviewer ACK Status</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeStatus">blocked_missing_source_handoff</dd></div>
+      <div><dt>Source Handoff Status</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeSourceHandoff">source_handoff_status=blocked_missing_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff</dd></div>
+      <div><dt>Safe Command ID</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeCommandId">command_id=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>PR #5 Thread</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakePr5">PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending</dd></div>
+      <div><dt>Blocked Reason</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeReason">blocked_reason=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending</dd></div>
+      <div><dt>Proof Boundary</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeBoundary">software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / not true phone/browser proof / no OKR percentage lift / not delivery success</dd></div>
+      <div><dt>not_proven</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeNotProven">reviewer ACK intake、真实手机/browser、verified terminal result、公网云、4G/SIM、OSS/CDN、DB/queue、HIL、delivery_success=false 和 PR #5 边界未解除。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section><h3>Owner Routing</h3><ol id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeOwner" class="handoff-checklist"><li>等待 owner routing。</li></ol></section>
+      <section><h3>Support Routing</h3><ol id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeSupport" class="handoff-checklist"><li>等待 support routing。</li></ol></section>
+      <section><h3>Reviewer Routing</h3><ol id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeReviewer" class="handoff-checklist"><li>等待 reviewer routing。</li></ol></section>
+      <section><h3>ACK Reasons</h3><ol id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeReasons" class="handoff-checklist"><li>等待 ACK reasons。</li></ol></section>
+      <section><h3>Next Required Evidence</h3><ol id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeNextEvidence" class="handoff-checklist"><li>等待 next_required_evidence。</li></ol></section>
+    </div>
+    <p id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeHint" class="hint">
+      本 panel 只消费 robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary / safe summary fallback；不读取 raw diagnostics/material，不新增 replay/resubmit、ACK/cursor、material upload、review mutation、handoff mutation、GitHub mutation、diagnostics mutation、owner-response submission、raw artifact fetch 或 robot control path。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntake(status) {
+  const panel = ensureCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakePanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeFromStatus(
+    status,
+    readiness,
+    latestDiagnostics,
+  );
+  latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntake = summary;
+  const badge = $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 reviewer ACK intake" : "reviewer ACK intake not_proven";
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeCopy").textContent =
+    summary.safe_phone_copy;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeStatus").textContent =
+    `${summary.source} / ${summary.ack_status}`;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeSourceHandoff").textContent =
+    summary.source_handoff_status;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeCommandId").textContent =
+    summary.safe_command_id;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeEvidenceRef").textContent =
+    summary.safe_evidence_ref;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakePr5").textContent =
+    summary.pr5_thread_status;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeReason").textContent =
+    summary.blocked_reason;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeBoundary").textContent =
+    summary.proof_boundary;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeFlags").textContent =
+    summary.boundary_flags;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeNotProven").textContent =
+    summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeOwner",
+    summary.owner_routing,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeSupport",
+    summary.support_routing,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeReviewer",
+    summary.reviewer_routing,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeReasons",
+    summary.ack_reasons,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeNextEvidence",
+    summary.next_required_evidence,
+  );
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeHint").textContent =
+    summary.recovery_hint;
+}
+
 function verifiedTerminalResultMaterialIntakeCandidate(status, readiness, diagnostics) {
   // 只从 status/readiness/diagnostics 的 safe summary 取值；前端不拉 raw diagnostics、ACK/cursor 或 command route。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -57045,6 +57430,14 @@ function renderDiagnosticsSummary(payload) {
       ).review_decision,
     ],
     [
+      "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake",
+      cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).ack_status,
+    ],
+    [
       "verified_terminal_result_material_intake",
       verifiedTerminalResultMaterialIntakeFromStatus(
         payload || {},
@@ -57331,6 +57724,7 @@ function renderOfflineFailure() {
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake({});
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision({});
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewHandoff({});
+  renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntake({});
   renderVerifiedTerminalResultMaterialIntake({});
   renderVerifiedTerminalResultMaterialReviewDecision({});
   renderVerifiedTerminalResultMaterialReviewHandoff({});
@@ -57532,6 +57926,7 @@ function renderStatus(status) {
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake(status);
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision(status);
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewHandoff(status);
+  renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntake(status);
   renderVerifiedTerminalResultMaterialIntake(status);
   renderVerifiedTerminalResultMaterialReviewDecision(status);
   renderVerifiedTerminalResultMaterialReviewHandoff(status);
@@ -57892,6 +58287,7 @@ async function openDiagnostics() {
     renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake(latestStatus || {});
     renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision(latestStatus || {});
     renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewHandoff(latestStatus || {});
+    renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntake(latestStatus || {});
     renderVerifiedTerminalResultMaterialIntake(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewDecision(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewHandoff(latestStatus || {});

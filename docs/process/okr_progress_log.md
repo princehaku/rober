@@ -8,6 +8,30 @@
 
 ## 2026-05-24 系列
 
+### 2026-05-24 16-17｜cloud-command-lifecycle-support-owner-response-reviewer-ack-intake｜command lifecycle support owner-response reviewer ACK intake
+
+本轮 `sprints/2026.05.24_16-17_cloud-command-lifecycle-support-owner-response-reviewer-ack-intake/` 执行 `cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake` epic closeout。用户价值是把 cloud command lifecycle replay acceptance packet support handoff 的 owner-response review handoff 推进到 reviewer ACK intake，让 support reviewer、field owner 和普通手机用户看到明确的 reviewer ACK status、source handoff status、owner/support/reviewer routing、ACK reasons、next required evidence 和 false-state flags，而不是把 ACK metadata 误读成真实 terminal result、机器人执行或 delivery success。本轮边界为 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_gate`。
+
+Task A Robot Platform Engineer 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py` 和 `docs/product/remote_4g_mvp.md`。新增 safe summary builder 与 `/api/status`、`/api/diagnostics`、`phone_readiness`、`robot_diagnostics_*_summary` aliases，覆盖 safe command/evidence、reviewer ACK intake、source handoff status、owner/support/reviewer routing、next evidence、false flags，以及敏感/control 字段不外泄。验证通过：`python3 -m py_compile onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py` exit 0；`python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py -k cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake` 输出 `Ran 1 test in 35.547s OK`；required `rg` passed；scoped `git diff --check` passed。
+
+Task B User Touchpoint Full-Stack Engineer 更新 `mobile/web/app.js`、`mobile/web/test_mobile_web_entrypoint.py`、`mobile/web/fixtures/robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake.json` 和 `docs/product/mobile_user_flow.md`。新增 owner-response review-handoff 后的只读 mobile panel，优先消费 `robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary`，只使用安全 fallback 字段；Start Delivery、Confirm Dropoff、Cancel 保持 disabled，无 replay/resubmit/mutation/control path。验证通过：`node --check` passed；fixture `json.tool` passed；focused unittest 输出 `Ran 2 tests ... OK`；required `rg` passed；scoped `git diff --check` passed。
+
+Task C Product closeout 创建 `tech-done.md`、`side2side_check.md`、`final.md`，并更新 `OKR.md` 与本进度日志。Combined validation 通过：Robot `py_compile`、Robot focused unittest、mobile `node --check`、fixture `json.tool`、mobile focused unittest、required `rg` 和 scoped `git diff --check` 均通过。
+
+本轮保留 `delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`、`not verified terminal result`、`not true phone/browser proof`、`no OKR percentage lift`。PR #5 thread `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`；PR #7 has no review threads/comments；本轮不作为 PR #5 resolution。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰硬件桥、串口、WAVE ROVER、UART、HIL、2D LiDAR / ToF 或 vendor-source 材料；`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只证明 reviewer ACK intake safe metadata；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal result、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；reviewer ACK intake 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` 能只读展示 command lifecycle support handoff owner-response reviewer ACK intake，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice 或 true phone/browser acceptance；not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_gate` 只证明 Docker/local Robot/API safe alias 与 mobile static fixture/UI 能让 command lifecycle support handoff owner-response reviewer ACK intake 被安全消费、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Task A Robot `py_compile` / targeted unittest、Task B `node --check` / fixture `json.tool` / targeted mobile unittest、Product closeout required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `docs/product/remote_4g_mvp.md`、`docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。Product 未运行 broad tests、Docker build、真实手机/browser、public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、WAVE ROVER/UART 或 HIL；本轮只记录 worker-scoped validation 和 closeout 证据。
+
+更新时间：2026-05-24 16:13 Asia/Shanghai。
+
 ### 2026-05-24 16-17｜cloud-command-lifecycle-support-owner-response-review-handoff｜command lifecycle support owner-response review handoff
 
 本轮 `sprints/2026.05.24_16-17_cloud-command-lifecycle-support-owner-response-review-handoff/` 执行 `cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff` epic closeout。用户价值是把 cloud command lifecycle replay acceptance packet support handoff 的 owner-response review decision 推进到 review handoff，让 support reviewer、field owner 和普通手机用户看到明确的 handoff owner、handoff reason、owner response status、next required evidence 和 false-state flags，而不是把 support metadata 误读成真实 terminal result、机器人执行或 delivery success。本轮边界为 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff_gate`。

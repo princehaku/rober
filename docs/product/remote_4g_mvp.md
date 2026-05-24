@@ -345,6 +345,33 @@ not public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production
 DB/queue, not worker/cutover, not HIL, not PR #5 resolved, not route/elevator
 field pass, not delivery success, and no OKR percentage lift.
 
+Robot/API now exposes the downstream reviewer ACK intake summary for that same
+safe owner-response review handoff:
+
+```text
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake
+robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary
+```
+
+The reviewer ACK intake proof boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_gate`.
+It is derived only from safe owner-response review-handoff fields. The summary
+preserves one safe `command_id`, one safe `evidence_ref`,
+`reviewer_ack_status=acknowledged_not_proven`, source handoff status,
+owner/support/reviewer routing, ACK reasons, next required evidence, proof
+boundary, source boundary, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`.
+
+Unsupported, unsafe, or missing source handoff state must stay blocked or
+not_proven. The summary must not expose credentials, bearer tokens, signed URLs,
+raw paths, ROS topics, `/cmd_vel`, serial/UART, WAVE ROVER details, tracebacks,
+complete artifacts, checksums, success wording, ACK cursor changes, control
+flags, raw ACK payloads, or material uploads. It remains not verified terminal
+result, not true phone/browser proof, not public HTTPS/TLS, not 4G/SIM, not
+OSS/CDN live traffic, not production DB/queue, not worker/cutover, not HIL, not
+PR #5 resolved, not route/elevator field pass, not delivery success, and no OKR
+percentage lift.
+
 Robot/API also exposes the PR #5 mandatory-sensor owner-response review handoff
 as a phone-safe status/diagnostics alias when the backend has already provided
 the sanitized summary:
