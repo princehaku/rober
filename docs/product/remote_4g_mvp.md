@@ -320,6 +320,31 @@ Nav2, touch WAVE ROVER/UART, authorize robot control, prove PR #5 resolved,
 prove delivery success, prove real cloud, provide not verified terminal result,
 or provide not true phone/browser proof.
 
+Robot/API additionally exposes the next owner-response review-handoff summary:
+
+```text
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff
+robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff_summary
+```
+
+The review-handoff evidence boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff_gate`.
+It is derived only from the safe owner-response review-decision fields. The
+summary preserves safe command id, safe evidence ref, `review_decision`,
+`handoff_owner`, `handoff_reason`, owner response status, next required
+evidence, blocker summary, source boundary, proof boundary, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
+Unsupported, unsafe, or missing review-decision state must stay blocked or
+not_proven. The summary must not expose credentials, bearer tokens, signed URLs,
+raw paths, ROS topics, `/cmd_vel`, serial/UART, WAVE ROVER details, tracebacks,
+complete artifacts, checksums, success wording, ACK cursor changes, or control
+flags. It remains not verified terminal result, not true phone/browser proof,
+not public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production
+DB/queue, not worker/cutover, not HIL, not PR #5 resolved, not route/elevator
+field pass, not delivery success, and no OKR percentage lift.
+
 Robot/API also exposes the PR #5 mandatory-sensor owner-response review handoff
 as a phone-safe status/diagnostics alias when the backend has already provided
 the sanitized summary:
