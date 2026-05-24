@@ -410,6 +410,52 @@ not OSS/CDN live traffic, not production DB/queue, not worker/cutover, not HIL,
 not PR #5 resolved, not route/elevator field pass, not delivery success, and no
 OKR percentage lift.
 
+Robot/API now exposes the downstream reviewer ACK review-handoff summary for
+that same safe reviewer ACK review-decision:
+
+```text
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary
+robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary
+```
+
+The reviewer ACK review-handoff schema is
+`trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary.v1`.
+Its proof boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_gate`.
+It is derived only from the safe
+`cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision`
+summary and preserves the same safe `command_id` and safe `evidence_ref`.
+
+The summary exposes the source review decision, `review_handoff_status`,
+`handoff_owner`, `support_route`, `reviewer_route`, `handoff_reason`,
+`decision_reasons`, `next_required_evidence`, `blocker_status`,
+`pr_thread_id=PRRT_kwDOSWB9286CJ3tX`,
+`hardware_material_pending`, `delivery_success=false`,
+`primary_actions_enabled=false`, `safe_to_control=false`,
+`terminal_result_verified=false`, `phone_browser_proof=not true phone/browser proof`,
+and `okr_progress_effect=no OKR percentage lift`.
+
+Supported reviewer ACK review-handoff states are
+`accepted_for_reviewer_ack_review_handoff_not_proven`,
+`reviewer_ack_review_handoff_needs_reassignment_not_proven`,
+`reviewer_ack_review_handoff_missing_material_not_proven`,
+`reviewer_ack_review_handoff_rejected_unsafe_not_proven`,
+`blocked_missing_source_reviewer_ack_review_decision_not_proven`, and
+`reviewer_ack_review_handoff_evidence_ref_mismatch_not_proven`. Evidence-ref
+mismatch must fail closed to
+`reviewer_ack_review_handoff_evidence_ref_mismatch_not_proven`.
+
+Unsupported, unsafe, or missing source review-decision state must stay blocked
+or not_proven. The summary must not expose credentials, bearer tokens, signed
+URLs, local paths, ROS topics, `/cmd_vel`, serial/UART, WAVE ROVER details,
+tracebacks, complete artifacts, checksums, success wording, raw artifacts,
+review mutations, GitHub mutations, handoff mutations, or true-state control
+flags. It remains not verified terminal result, not true phone/browser proof,
+not public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production
+DB/queue, not worker/cutover, not HIL, not PR #5 resolved, not route/elevator
+field pass, not delivery success, and no OKR percentage lift.
+
 Robot/API also exposes the PR #5 mandatory-sensor owner-response review handoff
 as a phone-safe status/diagnostics alias when the backend has already provided
 the sanitized summary:

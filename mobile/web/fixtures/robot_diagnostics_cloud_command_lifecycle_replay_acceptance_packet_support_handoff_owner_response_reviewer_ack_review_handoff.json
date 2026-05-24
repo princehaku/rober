@@ -1,0 +1,143 @@
+{
+  "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary.v1",
+    "schema_version": 1,
+    "capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff",
+    "source_schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff.v1",
+    "source_capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision",
+    "source_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_gate",
+    "source": "software_proof",
+    "source_review_decision": "accepted_for_reviewer_ack_review_not_proven",
+    "review_handoff_status": "accepted_for_reviewer_ack_review_handoff_not_proven",
+    "handoff_owner": "handoff_owner=support_owner",
+    "support_route": [
+      "support_route=keep_PRRT_kwDOSWB9286CJ3tX_unresolved",
+      "support_route=hardware_material_pending"
+    ],
+    "reviewer_route": [
+      "reviewer_route=review_false_state_flags_before_followup",
+      "reviewer_route=do_not_resolve_PRRT_kwDOSWB9286CJ3tX"
+    ],
+    "handoff_reason": "handoff_reason=verified_terminal_result_and_true_phone_browser_proof_missing",
+    "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_fixture_20260524_0001",
+    "decision_reasons": [
+      "source_review_decision=accepted_for_reviewer_ack_review_not_proven",
+      "decision_reason=reviewer_ack_review_decision_safe_summary_visible",
+      "decision_reason=delivery_success_false_primary_actions_disabled_and_safe_to_control_false",
+      "decision_reason=PRRT_kwDOSWB9286CJ3tX unresolved hardware_material_pending"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=verified terminal delivery/dropoff/cancel result under same safe evidence_ref",
+      "next_required_evidence=true phone/browser proof remains pending",
+      "next_required_evidence=real public HTTPS/TLS, 4G/SIM, OSS/CDN live traffic and production DB/queue evidence remain pending"
+    ],
+    "blocker_status": "blocker_status=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "pr_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "pr5_thread_status": "PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    "safe_phone_copy": "云命令生命周期 owner response reviewer ACK review handoff 只读可见；accepted_for_reviewer_ack_review_handoff_not_proven 只说明 reviewer ACK review decision safe summary 已进入人工交接，不是真实 verified terminal result、真实手机/browser 或 delivery success。",
+    "recovery_hint": "等待 support/reviewer 在同一 safe evidence_ref 下补齐 verified terminal result、true phone/browser proof 和真实云材料；手机端不提交 ACK、review、handoff、owner-response、GitHub、材料上传或控制动作。",
+    "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_gate",
+    "proof_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_gate",
+    "terminal_result_verified": false,
+    "phone_browser_proof": "not true phone/browser proof",
+    "okr_progress_effect": "no OKR percentage lift",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "source=software_proof",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "not true phone/browser proof",
+      "not verified terminal result",
+      "no OKR percentage lift",
+      "not delivery success",
+      "not HIL",
+      "hardware_material_pending",
+      "PRRT_kwDOSWB9286CJ3tX unresolved",
+      "real_public_https_tls",
+      "real_4g_sim",
+      "oss_cdn_live_traffic",
+      "production_db_queue"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary.v1",
+    "schema_version": 1,
+    "capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff",
+    "source": "software_proof",
+    "source_review_decision": "reviewer_ack_review_needs_reassignment_not_proven",
+    "review_handoff_status": "reviewer_ack_review_handoff_needs_reassignment_not_proven",
+    "handoff_owner": "handoff_owner=support_owner",
+    "support_route": [
+      "support_route=keep_PRRT_kwDOSWB9286CJ3tX_unresolved"
+    ],
+    "reviewer_route": [
+      "reviewer_route=needs_reassignment_until_same_safe_evidence_ref"
+    ],
+    "handoff_reason": "handoff_reason=reviewer_ack_review_decision_needs_reassignment",
+    "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_fixture_20260524_0001",
+    "decision_reasons": [
+      "decision_reason=fallback_reviewer_ack_review_handoff_needs_reassignment"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=reviewer ACK review handoff safe summary under same safe evidence_ref"
+    ],
+    "blocker_status": "blocker_status=hardware_material_pending",
+    "proof_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_gate",
+    "terminal_result_verified": false,
+    "phone_browser_proof": "not true phone/browser proof",
+    "okr_progress_effect": "no OKR percentage lift",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "not true phone/browser proof",
+      "not verified terminal result",
+      "no OKR percentage lift"
+    ]
+  },
+  "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff": {
+    "summary": {
+      "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary.v1",
+      "capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff",
+      "source": "software_proof",
+      "source_review_decision": "blocked_missing_source_reviewer_ack_review_decision_not_proven",
+      "review_handoff_status": "blocked_missing_source_reviewer_ack_review_decision_not_proven",
+      "handoff_owner": "handoff_owner=missing",
+      "support_route": [
+        "support_route=keep_PRRT_kwDOSWB9286CJ3tX_unresolved"
+      ],
+      "reviewer_route": [
+        "reviewer_route=wait_for_source_reviewer_ack_review_decision"
+      ],
+      "handoff_reason": "handoff_reason=missing_reviewer_ack_review_decision_safe_summary",
+      "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_20260524_0001",
+      "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_fixture_20260524_0001",
+      "decision_reasons": [
+        "decision_reason=source_reviewer_ack_review_decision_missing"
+      ],
+      "next_required_evidence": [
+        "next_required_evidence=reviewer ACK review decision safe summary"
+      ],
+      "blocker_status": "blocker_status=blocked_missing_source_reviewer_ack_review_decision_not_proven",
+      "proof_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}
