@@ -43,6 +43,8 @@ const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_BOUND
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_COPY = "云命令生命周期验收包手机导出面板只读可见；ACK 只代表 accepted/processing，terminal result 仍 pending，主操作保持禁用。";
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_BUNDLE_BOUNDARY = "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_gate";
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_BUNDLE_COPY = "云命令生命周期支持交接包只读可见；只可复制/下载后端脱敏 safe copy，ACK 仍只是 accepted/processing，terminal result 仍 pending。";
+const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_BOUNDARY = "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_gate";
+const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_COPY = "云命令生命周期支持交接 owner response intake 只读可见；只展示 owner/support response 分类、owner handoff 和 next required evidence，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_BOUNDARY = "software_proof_docker_verified_terminal_result_material_intake_gate";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_COPY = "verified terminal result material intake 只读可见；材料回填不等于 delivery success，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_verified_terminal_result_material_review_decision_gate";
@@ -635,6 +637,7 @@ let latestCloudCommandLifecycleReplayDrill = null;
 let latestCloudCommandLifecycleReplayAcceptancePacket = null;
 let latestCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel = null;
 let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle = null;
+let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake = null;
 let latestVerifiedTerminalResultMaterialIntake = null;
 let latestVerifiedTerminalResultMaterialReviewDecision = null;
 let latestVerifiedTerminalResultMaterialReviewHandoff = null;
@@ -46795,6 +46798,306 @@ function renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle(s
   $("downloadCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleButton").disabled = !copyPayload;
 }
 
+function safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(value, fallback = "not_proven") {
+  // owner response intake 只能显示后端已经脱敏的 owner/support 回执摘要，拒绝上传、复演、GitHub 和控制语义。
+  const text = safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(value, fallback);
+  if (
+    /(owner response route|support response route|material upload|upload route|github mutation|review mutation|ack route|cursor route|replay route|resubmit route|robot control|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i.test(text)
+  ) {
+    return fallback;
+  }
+  return text;
+}
+
+function cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeCandidate(
+  status,
+  readiness,
+  diagnostics,
+) {
+  // 只从 status/readiness/diagnostics 的 safe summary 读取；不新增 diagnostics fetch、ACK/cursor 或 owner mutation。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake?.summary ||
+    readiness?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake?.summary ||
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake?.summary ||
+    diagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake?.summary ||
+    nestedDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake?.summary ||
+    nestedDiagnosticsInnerSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake?.summary ||
+    statusDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake?.summary;
+  return firstObject(
+    status?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    readiness?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    diagnostics?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    diagnosticsReadiness.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    statusDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    status?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    readiness?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    diagnosticsReadiness.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    diagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    nestedDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    nestedDiagnosticsInnerSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    statusDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary,
+    artifactSummary,
+  );
+}
+
+function cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeList(value, fallback) {
+  // 分类项可能来自数组或对象；手机端只保留短安全摘要，避免渲染 owner 原始材料。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        const key = safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(item[0], "");
+        const detail = safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(item[1], "");
+        return key && detail ? `${key}=${detail}` : key || detail;
+      }
+      if (item && typeof item === "object") {
+        const label = safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(
+          item.material || item.classification || item.kind || item.status || item.owner || item.safe_summary,
+          "",
+        );
+        const detail = safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(
+          item.summary || item.reason || item.next_action || item.material_status || item.safe_phone_copy,
+          "",
+        );
+        return label && detail ? `${label}: ${detail}` : label || detail;
+      }
+      return safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 12) : [fallback];
+}
+
+function cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeFromStatus(
+  status,
+  readiness,
+  diagnostics,
+) {
+  const provided = cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeCandidate(
+    status,
+    readiness,
+    diagnostics,
+  ) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary.v1",
+    capability: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(
+      provided.capability,
+      "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake",
+    ),
+    source: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(
+      provided.source,
+      "software_proof",
+    ),
+    owner_response_status: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(
+      provided.owner_response_status || provided.owner_support_response_status ||
+        provided.response_status || provided.intake_status || provided.status,
+      "blocked_missing_owner_support_response_not_proven",
+    ),
+    safe_command_id: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(
+      provided.safe_command_id || provided.command_id,
+      "command_id=not_proven",
+    ),
+    safe_evidence_ref: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    accepted_classifications: cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeList(
+      provided.accepted_classifications || provided.accepted_materials || provided.accepted,
+      "accepted=none_not_proven",
+    ),
+    missing_classifications: cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeList(
+      provided.missing_classifications || provided.missing_materials || provided.missing,
+      "missing=verified_terminal_result_owner_response_pending",
+    ),
+    rejected_classifications: cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeList(
+      provided.rejected_classifications || provided.rejected_materials || provided.rejected,
+      "rejected=none",
+    ),
+    unsafe_classifications: cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeList(
+      provided.unsafe_classifications || provided.unsafe_materials || provided.unsafe,
+      "unsafe=none",
+    ),
+    blocked_classifications: cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeList(
+      provided.blocked_classifications || provided.blocked_materials || provided.blocked,
+      "blocked=hardware_material_pending",
+    ),
+    owner_handoff: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(
+      provided.owner_handoff || provided.owner_next_step || provided.field_owner_handoff,
+      "owner_handoff=等待同一 safe evidence_ref 的 verified terminal result owner response。",
+    ),
+    support_handoff: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(
+      provided.support_handoff || provided.support_next_step,
+      "support_handoff=保持 PR #5 hardware_material_pending 只读追踪。",
+    ),
+    next_required_evidence: cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeList(
+      provided.next_required_evidence || provided.required_evidence || provided.next_evidence,
+      "next_required_evidence=同一 safe evidence_ref 的 verified terminal delivery/dropoff/cancel result owner response。",
+    ),
+    safe_copy: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(
+      provided.safe_copy || provided.safe_phone_copy || provided.support_safe_copy,
+      CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_COPY,
+    ),
+    recovery_hint: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(
+      provided.recovery_hint || provided.retry_hint,
+      "等待 owner/support 回填同一 safe evidence_ref 的 terminal result 证据；手机端不提交 ACK、cursor、review、upload 或控制动作。",
+    ),
+    evidence_boundary: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText(
+      provided.evidence_boundary || provided.proof_boundary,
+      CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_BOUNDARY,
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / not true phone/browser proof / no OKR percentage lift / not delivery success",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: cloudCommandLifecycleReplayAcceptancePacketNotProvenList(provided).concat([
+      "not true phone/browser proof",
+      "no OKR percentage lift",
+      "not delivery success",
+      "PRRT_kwDOSWB9286CJ3tX hardware_material_pending",
+    ]),
+  };
+}
+
+function ensureCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakePanel() {
+  // owner response intake 紧跟支持交接包，只读显示 owner/support response 分类，不提供复制下载或提交动作。
+  let panel = $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakePanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleTitle")?.closest("section") ||
+    $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelTitle")?.closest("section") ||
+    $("cloudCommandLifecycleReplayAcceptancePacketTitle")?.closest("section") ||
+    $("cloudSupportHandoffSafeExportTitle")?.closest("section") ||
+    $("supportTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakePanel";
+  panel.className = "cloud-command-lifecycle-replay-acceptance-packet-support-handoff-owner-response-intake-panel";
+  panel.setAttribute("aria-labelledby", "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeTitle">云命令交接 owner response intake</h2>
+      <span id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeCopy" class="message">
+      等待 robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary。
+    </p>
+    <dl class="cloud-command-lifecycle-replay-acceptance-packet-support-handoff-owner-response-intake-grid">
+      <div><dt>Capability</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeCapability">cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake</dd></div>
+      <div><dt>Owner/Support Response</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeStatus">blocked_missing_owner_support_response_not_proven</dd></div>
+      <div><dt>Safe Command ID</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeCommandId">command_id=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeOwnerHandoff">owner_handoff=not_proven</dd></div>
+      <div><dt>Support Handoff</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeSupportHandoff">support_handoff=not_proven</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeBoundary">software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / not true phone/browser proof / no OKR percentage lift / not delivery success</dd></div>
+      <div><dt>not_proven</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeNotProven">真实手机/browser、terminal result、公网云、4G/SIM、OSS/CDN、DB/queue、HIL、delivery_success=false 和 PR #5 边界未解除。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section><h3>Accepted</h3><ol id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeAccepted" class="handoff-checklist"><li>等待 accepted 分类。</li></ol></section>
+      <section><h3>Missing</h3><ol id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeMissing" class="handoff-checklist"><li>等待 missing 分类。</li></ol></section>
+      <section><h3>Rejected</h3><ol id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeRejected" class="handoff-checklist"><li>等待 rejected 分类。</li></ol></section>
+      <section><h3>Unsafe</h3><ol id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeUnsafe" class="handoff-checklist"><li>等待 unsafe 分类。</li></ol></section>
+      <section><h3>Blocked</h3><ol id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeBlocked" class="handoff-checklist"><li>等待 blocked 分类。</li></ol></section>
+      <section><h3>Next Required Evidence</h3><ol id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeNextEvidence" class="handoff-checklist"><li>等待 next_required_evidence。</li></ol></section>
+    </div>
+    <pre id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeSafeCopy" class="safe-copy" aria-label="cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake safe_copy">blocked copy unavailable</pre>
+    <p id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeHint" class="hint">
+      本 panel 只消费 owner/support safe summary；不新增 replay/resubmit、ACK/cursor、review mutation、material upload、GitHub mutation 或 robot control path。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake(status) {
+  const panel = ensureCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakePanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeFromStatus(
+    status,
+    readiness,
+    latestDiagnostics,
+  );
+  latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake = summary;
+  const badge = $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 owner response intake 摘要" : "owner response intake not_proven";
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeCopy").textContent = summary.safe_copy;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeCapability").textContent = summary.capability;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeStatus").textContent =
+    `${summary.source} / ${summary.owner_response_status}`;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeCommandId").textContent =
+    summary.safe_command_id;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeEvidenceRef").textContent =
+    summary.safe_evidence_ref;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeOwnerHandoff").textContent =
+    summary.owner_handoff;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeSupportHandoff").textContent =
+    summary.support_handoff;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeBoundary").textContent =
+    summary.evidence_boundary;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeFlags").textContent =
+    summary.boundary_flags;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeNotProven").textContent =
+    summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeAccepted",
+    summary.accepted_classifications,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeMissing",
+    summary.missing_classifications,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeRejected",
+    summary.rejected_classifications,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeUnsafe",
+    summary.unsafe_classifications,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeBlocked",
+    summary.blocked_classifications,
+  );
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeNextEvidence",
+    summary.next_required_evidence,
+  );
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeSafeCopy").textContent =
+    summary.safe_copy;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeHint").textContent =
+    summary.recovery_hint;
+}
+
 function verifiedTerminalResultMaterialIntakeCandidate(status, readiness, diagnostics) {
   // 只从 status/readiness/diagnostics 的 safe summary 取值；前端不拉 raw diagnostics、ACK/cursor 或 command route。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -55421,6 +55724,14 @@ function renderDiagnosticsSummary(payload) {
       ).bundle_status,
     ],
     [
+      "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake",
+      cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).owner_response_status,
+    ],
+    [
       "verified_terminal_result_material_intake",
       verifiedTerminalResultMaterialIntakeFromStatus(
         payload || {},
@@ -55702,6 +56013,7 @@ function renderOfflineFailure() {
   renderCloudCommandLifecycleReplayAcceptancePacket({});
   renderCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel({});
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle({});
+  renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake({});
   renderVerifiedTerminalResultMaterialIntake({});
   renderVerifiedTerminalResultMaterialReviewDecision({});
   renderVerifiedTerminalResultMaterialReviewHandoff({});
@@ -55898,6 +56210,7 @@ function renderStatus(status) {
   renderCloudCommandLifecycleReplayAcceptancePacket(status);
   renderCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel(status);
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle(status);
+  renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake(status);
   renderVerifiedTerminalResultMaterialIntake(status);
   renderVerifiedTerminalResultMaterialReviewDecision(status);
   renderVerifiedTerminalResultMaterialReviewHandoff(status);
@@ -56253,6 +56566,7 @@ async function openDiagnostics() {
     renderCloudCommandLifecycleReplayAcceptancePacket(latestStatus || {});
     renderCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel(latestStatus || {});
     renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle(latestStatus || {});
+    renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake(latestStatus || {});
     renderVerifiedTerminalResultMaterialIntake(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewDecision(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewHandoff(latestStatus || {});

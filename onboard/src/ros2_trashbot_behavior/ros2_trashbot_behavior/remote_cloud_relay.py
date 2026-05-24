@@ -141,6 +141,15 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_HTTP_EXPORT_SCHEMA = (
 CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_HTTP_EXPORT_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_CAPABILITY = (
+    "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_SCHEMA = (
+    "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake.v1"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_gate"
+)
 ACCEPTED_PROCESSING_ONLY_ACK_SEMANTICS = "accepted_processing_only_not_delivery_success"
 TERMINAL_RESULT_PENDING_STATUS = "terminal_result_pending"
 PENDING_SAFE_COMMAND_ID = "pending_same_safe_command_id"
@@ -7995,6 +8004,84 @@ def build_cloud_command_lifecycle_replay_acceptance_packet_http_export_payload(*
     return safe_value(payload)
 
 
+def build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_payload(*, now=None):
+    """构造 /api/status 与 /api/diagnostics 共用的只读 owner-response intake 兼容 alias。"""
+    # 该 alias 只吃上一轮 HTTP export 的安全字段，不能回读原始 command、ACK 或材料正文。
+    http_export = build_cloud_command_lifecycle_replay_acceptance_packet_http_export_payload(now=now)
+    source_packet = http_export.get("source_cli_export", {}).get("source_packet", {})
+    generated_at = _utc_iso(now if now is not None else _now())
+    safe_copy = str(source_packet.get("support_acceptance_copy") or http_export.get("safe_summary") or "").strip()
+    if not safe_copy:
+        safe_copy = "blocked copy unavailable"
+    payload = {
+        "ok": True,
+        "schema": CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_SCHEMA,
+        "schema_version": 1,
+        "capability": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_CAPABILITY
+        ),
+        "source": "software_proof",
+        "evidence_boundary": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_EVIDENCE_BOUNDARY
+        ),
+        "generated_at": generated_at,
+        "artifact_status": "owner_response_intake_pending_owner_material_not_proven",
+        "owner_response_status": "pending_safe_owner_response_material_not_proven",
+        "source_http_export_capability": http_export["capability"],
+        "source_http_export_evidence_boundary": http_export["evidence_boundary"],
+        "source_packet_capability": http_export["source_packet_capability"],
+        "source_packet_evidence_boundary": http_export["source_packet_evidence_boundary"],
+        "safe_command_id": http_export["safe_command_id"],
+        "safe_evidence_ref": http_export["safe_evidence_ref"],
+        "safe_id_status": http_export["safe_id_status"],
+        "ack_semantics": ACCEPTED_PROCESSING_ONLY_ACK_SEMANTICS,
+        "terminal_result_status": TERMINAL_RESULT_PENDING_STATUS,
+        "owner_handoff": http_export["owner_handoff"],
+        "next_required_evidence": list(http_export["next_required_evidence"]),
+        "safe_copy": safe_copy,
+        "support_handoff_copy": safe_copy,
+        "sanitized_support_copy": safe_copy,
+        "redaction_status": "passed",
+        # intake 只是兼容摘要，不接受上传材料；分类数组保持空，等真实 owner material 到齐后再进入评审链。
+        "accepted_owner_response_materials": [],
+        "missing_owner_response_materials": [
+            "verified_terminal_delivery_dropoff_or_cancel_result",
+            "real_external_cloud_or_true_phone_browser_evidence",
+            "same_safe_command_id",
+            "same_safe_evidence_ref",
+        ],
+        "rejected_owner_response_materials": [],
+        "unsafe_owner_response_materials": [],
+        "blocked_reason": "owner_response_material_pending",
+        "safe_summary": (
+            "Owner response intake alias exposes support handoff safe copy only; "
+            "accepted_processing_only_not_delivery_success, terminal_result_pending, "
+            "delivery_success=false, primary_actions_enabled=false, safe_to_control=false, "
+            "not verified terminal result, not HIL, not PR #5 resolved."
+        ),
+        "not_proven": list(CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_NOT_PROVEN),
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "command_replay_allowed": False,
+        "command_resubmit_allowed": False,
+        "material_upload_allowed": False,
+        "review_action_allowed": False,
+        "github_action_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "pr5_resolved": False,
+        "verified_terminal_result": False,
+    }
+    if _cloud_command_lifecycle_replay_acceptance_packet_cli_export_has_unsafe_material(payload):
+        raise ValueError("cloud command lifecycle replay acceptance packet owner response intake alias is unsafe")
+    return safe_value(payload)
+
+
 def create_cloud_command_lifecycle_replay_acceptance_packet_cli_export_artifact(artifact_path):
     # 导出命令只写 JSON artifact，不启动 HTTP server，不触碰 state store、ACK 或机器人控制面。
     payload = build_cloud_command_lifecycle_replay_acceptance_packet_cli_export_payload()
@@ -8380,6 +8467,9 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
     latest_status = store_payload.get("status") if isinstance(store_payload, dict) else None
     latest_status = safe_value(latest_status) if isinstance(latest_status, dict) else None
     remote_readiness, degradation_state = _remote_readiness_passthrough(latest_status or {})
+    owner_response_intake = (
+        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_payload()
+    )
     if status_code == 200 and latest_status:
         state = degradation_state or str(latest_status.get("state") or "status_present")
         reason = "cloud-hosted mobile web gate keeps primary actions fail-closed."
@@ -8410,6 +8500,12 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
         "support_level": "support_required",
         "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_EVIDENCE_BOUNDARY,
         "remote_readiness": remote_readiness,
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake": (
+            owner_response_intake
+        ),
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary": (
+            owner_response_intake
+        ),
         "cloud_hosted_mobile_web_gate": {
             "overall_status": "blocked",
             "production_ready": False,
@@ -8450,6 +8546,12 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
             "command_safety": command_safety,
             "phone_readiness": phone_readiness,
             "remote_readiness": remote_readiness,
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake": (
+                owner_response_intake
+            ),
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary": (
+                owner_response_intake
+            ),
             "safe_phone_copy": safe_phone_copy,
             "recovery_hint": phone_readiness["recovery_hint"],
             "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_EVIDENCE_BOUNDARY,
@@ -8479,8 +8581,23 @@ def cloud_hosted_mobile_web_diagnostics_payload(store, robot_id=None):
                 "can_confirm_dropoff": False,
                 "can_cancel": False,
                 "remote_readiness": status_payload.get("remote_readiness"),
+                "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake": (
+                    status_payload.get(
+                        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake"
+                    )
+                ),
             },
             "phone_readiness": status_payload["phone_readiness"],
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake": (
+                status_payload.get(
+                    "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake"
+                )
+            ),
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary": (
+                status_payload.get(
+                    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary"
+                )
+            ),
             "command_safety": status_payload["command_safety"],
             "latest_status": status_payload.get("latest_status"),
             "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_EVIDENCE_BOUNDARY,

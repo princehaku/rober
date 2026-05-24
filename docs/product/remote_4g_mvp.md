@@ -270,6 +270,32 @@ OSS/CDN live traffic, not production DB/queue, not worker/cutover, not verified
 terminal result, not HIL, not WAVE ROVER/UART proof, not PR #5 resolution, and
 no OKR percentage lift.
 
+Robot/API now exposes a status/diagnostics compatible owner-response-intake
+alias for that same support handoff safe bundle:
+
+```text
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake
+robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary
+```
+
+The alias evidence boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_gate`.
+It is derived from the HTTP export safe fields only, so it preserves
+`pending_same_safe_command_id`, `pending_same_safe_evidence_ref`,
+`safe_copy`, `support_handoff_copy`, `sanitized_support_copy`,
+`owner_handoff`, `next_required_evidence`, `redaction_status=passed`,
+`accepted_processing_only_not_delivery_success`, `terminal_result_pending`,
+`not_proven`, `delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
+This alias is embedded in `/api/status` and `/api/diagnostics` as read-only
+metadata for mobile/support compatibility. It does not add a new control route,
+ACK/cursor mutation, replay/resubmit behavior, material upload, GitHub
+mutation, or robot command route. It remains not verified terminal result, not
+HIL, not PR #5 resolved, not delivery success, not true phone/browser proof,
+not public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production
+DB/queue, not worker/cutover, and no OKR percentage lift.
+
 The independent relay now also hosts the dependency-free `mobile/web/` PWA
 shell on the same origin:
 

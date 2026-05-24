@@ -478,6 +478,78 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(payload["capability"], "cloud_command_lifecycle_replay_acceptance_packet_http_export")
         self.assertEqual(before, after)
 
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_alias_is_safe(self):
+        status, status_payload = self.client.request("GET", "/api/status", token="")
+        diag_status, diagnostics_payload = self.client.request("GET", "/api/diagnostics", token="")
+        payload = status_payload[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary"
+        ]
+        encoded = json.dumps({"status": status_payload, "diagnostics": diagnostics_payload}, ensure_ascii=False)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(diag_status, 200)
+        self.assertEqual(
+            payload["capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake",
+        )
+        self.assertEqual(
+            payload["evidence_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_gate",
+        )
+        self.assertEqual(
+            payload["source_http_export_evidence_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_http_export_gate",
+        )
+        self.assertEqual(payload["ack_semantics"], "accepted_processing_only_not_delivery_success")
+        self.assertEqual(payload["terminal_result_status"], "terminal_result_pending")
+        self.assertEqual(payload["safe_command_id"], "pending_same_safe_command_id")
+        self.assertEqual(payload["safe_evidence_ref"], "pending_same_safe_evidence_ref")
+        self.assertEqual(payload["redaction_status"], "passed")
+        self.assertIn("owner_handoff", payload)
+        self.assertIn("next_required_evidence", payload)
+        self.assertIn("safe_copy", payload)
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["primary_actions_enabled"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["ack_post_allowed"])
+        self.assertFalse(payload["cursor_updates_allowed"])
+        self.assertFalse(payload["command_replay_allowed"])
+        self.assertFalse(payload["command_resubmit_allowed"])
+        self.assertFalse(payload["material_upload_allowed"])
+        self.assertFalse(payload["github_action_allowed"])
+        self.assertFalse(payload["robot_command_side_effects_allowed"])
+        self.assertFalse(payload["verified_terminal_result"])
+        self.assertFalse(payload["hil_pass"])
+        self.assertFalse(payload["pr5_resolved"])
+        self.assertEqual(
+            diagnostics_payload[
+                "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary"
+            ]["safe_evidence_ref"],
+            payload["safe_evidence_ref"],
+        )
+        self.assertIn("not verified terminal result", encoded)
+        self.assertIn("not HIL", encoded)
+        self.assertIn("not PR #5 resolved", encoded)
+        for forbidden in (
+            "phone-token",
+            "Authorization",
+            "Bearer",
+            "raw_path",
+            str(REPO_ROOT),
+            "/cmd_vel",
+            "ttyUSB",
+            "serial",
+            "baudrate",
+            "WAVE ROVER",
+            "traceback",
+            "complete artifact",
+            "checksum",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
     def test_mobile_web_phone_safe_api_uses_default_robot_id_and_fails_closed(self):
         with mock.patch.dict(os.environ, {"TRASHBOT_REMOTE_CLOUD_DEFAULT_ROBOT_ID": "robot-web-42"}):
             status, payload = self.client.request("GET", "/api/status", token="")

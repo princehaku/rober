@@ -8,7 +8,27 @@
 
 ## 2026-05-24 系列
 
-更新时间：2026-05-24 09:18 Asia/Shanghai。
+更新时间：2026-05-24 10:17 Asia/Shanghai。
+
+### 2026-05-24 10-11｜cloud-command-lifecycle-support-handoff-owner-response-intake｜command lifecycle support handoff owner response intake
+
+本轮 `sprints/2026.05.24_10-11_cloud-command-lifecycle-support-handoff-owner-response-intake/` 执行 `cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake` epic closeout。用户价值是让普通手机用户、field owner 和 support reviewer 能在 support handoff bundle 之后看到 owner/support response 的 accepted、missing、rejected、unsafe、blocked 分类，而不是把 ACK accepted、pending-safe placeholder、safe copy 或 response intake 误读成真实 terminal result、机器人执行或 delivery success。本轮边界为 `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_gate`。
+
+Task A Full-Stack worker 更新 `mobile/web/app.js`、`mobile/web/test_mobile_web_entrypoint.py`、`mobile/web/fixtures/robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake.json` 和 `docs/product/mobile_user_flow.md`。新增只读 `cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake` panel，展示 safe command id、safe `evidence_ref`、owner/support response status、accepted/missing/rejected/unsafe/blocked 分类、owner/support handoff、next evidence、safe copy、proof boundary 和 false-state flags；Start Delivery、Confirm Dropoff、Cancel 保持 disabled，无 replay/resubmit、ACK/cursor、review mutation、material upload、GitHub mutation 或 robot control path。验证通过：`node --check` passed；fixture `json.tool` passed；focused mobile unittest 输出 `Ran 2 tests in 0.023s OK`；required `rg` passed；scoped `git diff --check` passed。首轮 fixture 含 `github mutation` unsafe wording，已修复并复跑通过。
+
+Task B Robot/API worker 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py` 和 `docs/product/remote_4g_mvp.md`。新增只读 `cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake` safe alias builder，并嵌入 `/api/status` 与 `/api/diagnostics`；只暴露 safe copy、pending-safe command/evidence、`owner_handoff`、`next_required_evidence`、`redaction_status=passed`、`accepted_processing_only_not_delivery_success`、`terminal_result_pending` 和 false-state flags。无控制 route、ACK/cursor mutation、replay/resubmit、material upload、GitHub mutation 或 robot command route；未碰硬件/串口/launch/WAVE ROVER。验证通过：`py_compile` passed；focused Robot unittest 输出 `Ran 3 tests in 36.543s OK`；required `rg` passed；scoped `git diff --check` passed。
+
+PR #5 status preserved：`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。本轮保留 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`；不是 O5 external proof，不是 public HTTPS/TLS，不是 4G/SIM，不是 OSS/CDN live traffic，不是 production DB/queue，不是 worker/cutover，不是 O1 HIL，不是 WAVE ROVER/UART proof，不是 LiDAR/ToF installed proof，不是 PR #5 resolved，不是 true phone/browser proof，不是 route/elevator field pass，不是 Nav2/fixed-route runtime pass，不是 dropoff/cancel completion，不是 verified terminal result，不是 delivery result，也不是 delivery success；not delivery success；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰硬件桥、串口、WAVE ROVER、UART、HIL、2D LiDAR / ToF 或 vendor-source 材料；PR #5 `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只证明 owner/support response intake safe metadata；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal result、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；owner response intake 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` 能只读展示 command lifecycle acceptance packet support handoff owner response intake，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice 或 true phone/browser acceptance；not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_gate` 只证明 Docker/local mobile static fixture/UI 与 Robot/API safe alias 能让 command lifecycle support handoff context 被 owner/support response intake 安全消费、分类、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Task A `node --check` / fixture `json.tool` / targeted mobile unittest、Task B `py_compile` / targeted Robot unittest、Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `docs/product/mobile_user_flow.md`、`docs/product/remote_4g_mvp.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。Product 未运行 broad tests、Docker build、真实手机/browser、public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、WAVE ROVER/UART 或 HIL；本轮只记录 worker-scoped validation、Robot safe alias evidence 和 closeout 证据。
 
 ### 2026-05-24 09-10｜cloud-command-lifecycle-acceptance-support-handoff-bundle｜command lifecycle acceptance packet support handoff bundle
 

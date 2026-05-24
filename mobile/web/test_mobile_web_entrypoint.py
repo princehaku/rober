@@ -41,6 +41,10 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_BUNDLE_FIXTURE 
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle.json"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake.json"
+)
 VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_intake.json"
 )
@@ -1012,6 +1016,167 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleTest(unitte
         packet_text = json.dumps(fixture, ensure_ascii=False).lower()
 
         # fixture 只保留脱敏支持交接 copy；不得包含 raw 路由、凭证、路径、硬件细节或成功/控制授权。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw materials",
+            "command route",
+            "ack route",
+            "cursor route",
+            "review route",
+            "material route",
+            "github mutation",
+            "replay route",
+            "resubmit route",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "ack payload",
+            "cursor request",
+            "robot command",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, packet_text)
+
+
+class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # owner response intake 只消费 safe summary，不新增复演、ACK/cursor、review/upload/GitHub 或控制路径。
+        self.assertIn(
+            "CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_BOUNDARY",
+            app,
+        )
+        self.assertIn("safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeText", app)
+        self.assertIn(
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeCandidate",
+            app,
+        )
+        self.assertIn(
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeFromStatus",
+            app,
+        )
+        self.assertIn(
+            "renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake",
+            app,
+        )
+        self.assertIn(
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary",
+            app,
+        )
+        self.assertIn("owner_response_status", app)
+        self.assertIn("accepted_classifications", app)
+        self.assertIn("missing_classifications", app)
+        self.assertIn("rejected_classifications", app)
+        self.assertIn("unsafe_classifications", app)
+        self.assertIn("blocked_classifications", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("not true phone/browser proof", app)
+        self.assertIn("no OKR percentage lift", app)
+        self.assertIn("not delivery success", app)
+        for blocked_name in (
+            "ackCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake",
+            "cursorCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake",
+            "fetchCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeDiagnostics",
+            "uploadCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeMaterial",
+            "reviewCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake",
+            "replayCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake",
+            "resubmitCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake",
+            "githubCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake",
+            "commandCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake",
+        ):
+            self.assertNotIn(blocked_name, app)
+        self.assertNotRegex(
+            app,
+            r"cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntake.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+
+        summary = fixture[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary"
+        ]
+        fallback = fixture[
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary"
+        ]
+        nested = fixture[
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake"
+        ]["summary"]
+        self.assertEqual(
+            summary["capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["owner_response_status"], "hardware_material_pending")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("accepted_classifications", summary)
+        self.assertIn("missing_classifications", summary)
+        self.assertIn("rejected_classifications", summary)
+        self.assertIn("unsafe_classifications", summary)
+        self.assertIn("blocked_classifications", summary)
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertEqual(nested["safe_to_control"], False)
+        for required in (
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake",
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_gate",
+            "hardware_material_pending",
+            "PRRT_kwDOSWB9286CJ3tX",
+            "owner_handoff",
+            "next_required_evidence",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not true phone/browser proof",
+            "no OKR percentage lift",
+            "not delivery success",
+        ):
+            self.assertIn(required, fixture_text + doc)
+
+        self.assertIn(
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary",
+            doc,
+        )
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_fixture_stays_phone_safe(self):
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_INTAKE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        packet_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # fixture 只保留 owner/support 脱敏分类，不能夹带 raw artifact、凭证、硬件参数或成功/控制授权。
         for forbidden in (
             "/cmd_vel",
             "raw ros topic",
