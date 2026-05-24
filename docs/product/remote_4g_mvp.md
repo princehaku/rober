@@ -456,6 +456,57 @@ not public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production
 DB/queue, not worker/cutover, not HIL, not PR #5 resolved, not route/elevator
 field pass, not delivery success, and no OKR percentage lift.
 
+Robot/API now exposes the downstream reviewer ACK follow-up escalation status
+summary for that same safe reviewer ACK review-handoff:
+
+```text
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary
+robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary
+```
+
+The reviewer ACK follow-up escalation status schema is
+`trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary.v1`.
+Its proof boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_gate`.
+It is derived only from the safe
+`cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff`
+summary or equivalent safe diagnostics/status alias. It preserves the same safe
+`command_id` and safe `evidence_ref`; mismatches fail closed to
+`reviewer_ack_followup_evidence_ref_mismatch_not_proven`.
+
+The summary exposes `source_capability`,
+`source_proof_boundary`, `source_review_handoff_status`, `followup_status`,
+`due_status`, `followup_owner`, `support_route`, `reviewer_route`,
+`escalation_route`, `escalation_reason`, `decision_reasons`,
+`next_required_evidence`, `blocker_status`,
+`pr_thread_id=PRRT_kwDOSWB9286CJ3tX`, `hardware_material_pending`,
+`delivery_success=false`, `primary_actions_enabled=false`,
+`safe_to_control=false`, `terminal_result_verified=false`,
+`phone_browser_proof=not true phone/browser proof`, and
+`okr_progress_effect=no OKR percentage lift`.
+
+Supported reviewer ACK follow-up escalation statuses are
+`reviewer_ack_followup_pending_not_proven`,
+`reviewer_ack_followup_overdue_not_proven`,
+`reviewer_ack_followup_escalated_not_proven`,
+`reviewer_ack_followup_blocked_missing_material_not_proven`,
+`ready_for_reviewer_followup_not_proven`,
+`blocked_missing_source_reviewer_ack_review_handoff_not_proven`,
+`reviewer_ack_followup_evidence_ref_mismatch_not_proven`, and
+`reviewer_ack_followup_rejected_unsafe_not_proven`.
+
+Unsupported, unsafe, or missing source review-handoff state must stay blocked
+or not_proven. The summary must not expose robot commands, ACK/cursor changes,
+material uploads, owner-response submissions, reviewer-ACK submissions, raw
+artifact fetches, diagnostics mutations, GitHub mutations, Nav2 triggers, ROS
+topics, `/cmd_vel`, serial/UART, WAVE ROVER details, tracebacks, complete
+artifacts, checksums, verified terminal result wording, success wording, or
+true-state control flags. It remains not verified terminal result, not true
+phone/browser proof, not public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic,
+not production DB/queue, not worker/cutover, not HIL, not PR #5 resolved, not
+route/elevator field pass, not delivery success, and no OKR percentage lift.
+
 Robot/API also exposes the PR #5 mandatory-sensor owner-response review handoff
 as a phone-safe status/diagnostics alias when the backend has already provided
 the sanitized summary:

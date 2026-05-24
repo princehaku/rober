@@ -40,6 +40,7 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     status_payload,
 )
 from ros2_trashbot_behavior.remote_cloud_relay import (
+    build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_payload,
     build_phone_credential_rotation_summary,
     build_phone_network_recovery_summary,
     build_phone_oss_cdn_manifest_summary,
@@ -88842,6 +88843,72 @@ def build_diagnostics_payload(
             cloud_command_lifecycle_replay_drill_summary
         )
     )
+    cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_followup_source = (
+        latest_status.get(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff"
+        )
+        if isinstance(
+            latest_status.get(
+                "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary"
+            ),
+            dict,
+        )
+        else {}
+    )
+    # operator diagnostics 只消费上一阶 safe summary；缺失时由 relay builder 给出 fail-closed 默认摘要。
+    cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_followup_summary = (
+        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_payload(
+            source_review_handoff=(
+                cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_followup_source
+                or None
+            )
+        )
+    )
     task_terminal_field_material_intake_source = (
         _task_terminal_field_material_intake_source_from_payloads(
             latest_status,
@@ -95916,6 +95983,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary=(
             cloud_command_lifecycle_replay_acceptance_packet_summary
+        ),
+        cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status=(
+            cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_followup_summary
+        ),
+        cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary=(
+            cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_followup_summary
+        ),
+        robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary=(
+            cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_followup_summary
         ),
         route_task_rehearsal=summarize_route_task_rehearsal_artifact(
             route_task_rehearsal_artifact_ref

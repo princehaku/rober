@@ -195,6 +195,15 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_
 CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_HANDOFF_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_gate"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_CAPABILITY = (
+    "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_SCHEMA = (
+    "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary.v1"
+)
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_gate"
+)
 PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_CAPABILITY = (
     "pr5_mandatory_sensor_material_owner_response_review_handoff"
 )
@@ -9167,6 +9176,341 @@ def build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner
     return safe_value(payload)
 
 
+def _cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_followup_source(
+    *payloads,
+):
+    """从 status/diagnostics 安全摘要中提取上一阶 reviewer ACK review-handoff。"""
+    # 只扫描已经脱敏的 summary key；不读取 raw artifact，也不跟随任何外部路径。
+    keys = (
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary",
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary",
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff",
+    )
+    nested_keys = ("diagnostics", "phone_readiness", "phone_safe_summary")
+    for payload in payloads:
+        if not isinstance(payload, dict):
+            continue
+        for source in (payload, *(payload.get(key) for key in nested_keys)):
+            if not isinstance(source, dict):
+                continue
+            for key in keys:
+                candidate = source.get(key)
+                if isinstance(candidate, dict):
+                    return safe_value(candidate)
+    return {}
+
+
+def _cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_followup_status(
+    source_review_handoff,
+):
+    """把 review-handoff 状态折叠成 follow-up escalation 的只读状态。"""
+    # 状态只来自上一阶 safe summary；due/escalation 只是路由元数据，不代表外部材料已到位。
+    source_status = str(
+        source_review_handoff.get("review_handoff_status")
+        or source_review_handoff.get("source_review_handoff_status")
+        or ""
+    ).strip()
+    safe_command_id = str(source_review_handoff.get("safe_command_id") or "").strip()
+    evidence_ref = str(
+        source_review_handoff.get("evidence_ref")
+        or source_review_handoff.get("safe_evidence_ref")
+        or ""
+    ).strip()
+    expected_evidence_ref = str(
+        source_review_handoff.get("expected_evidence_ref") or evidence_ref
+    ).strip()
+    source_due_status = str(source_review_handoff.get("due_status") or "").strip().lower()
+    requested_followup_status = str(
+        source_review_handoff.get("followup_status") or ""
+    ).strip()
+    supported_followup_statuses = {
+        "reviewer_ack_followup_pending_not_proven",
+        "reviewer_ack_followup_overdue_not_proven",
+        "reviewer_ack_followup_escalated_not_proven",
+        "reviewer_ack_followup_blocked_missing_material_not_proven",
+        "ready_for_reviewer_followup_not_proven",
+        "blocked_missing_source_reviewer_ack_review_handoff_not_proven",
+        "reviewer_ack_followup_evidence_ref_mismatch_not_proven",
+        "reviewer_ack_followup_rejected_unsafe_not_proven",
+    }
+
+    if not source_status:
+        return (
+            "blocked_missing_source_reviewer_ack_review_handoff_not_proven",
+            [
+                "source_reviewer_ack_review_handoff_missing",
+                "fail_closed_to_not_proven",
+            ],
+        )
+    if not safe_command_id or not evidence_ref:
+        return (
+            "blocked_missing_source_reviewer_ack_review_handoff_not_proven",
+            [
+                "missing_safe_command_or_evidence_ref",
+                "same_safe_command_id_and_evidence_ref_required",
+            ],
+        )
+    if expected_evidence_ref and expected_evidence_ref != evidence_ref:
+        return (
+            "reviewer_ack_followup_evidence_ref_mismatch_not_proven",
+            [
+                "source_reviewer_ack_review_handoff_evidence_ref_mismatch",
+                "same_safe_evidence_ref_required",
+            ],
+        )
+    if source_status == "reviewer_ack_review_handoff_rejected_unsafe_not_proven":
+        return (
+            "reviewer_ack_followup_rejected_unsafe_not_proven",
+            [
+                "source_reviewer_ack_review_handoff_rejected_unsafe",
+                "fail_closed_to_not_proven",
+            ],
+        )
+    if source_status == "blocked_missing_source_reviewer_ack_review_decision_not_proven":
+        return (
+            "blocked_missing_source_reviewer_ack_review_handoff_not_proven",
+            [
+                "source_reviewer_ack_review_handoff_blocked_missing",
+                "fail_closed_to_not_proven",
+            ],
+        )
+    if source_status == "reviewer_ack_review_handoff_missing_material_not_proven":
+        return (
+            "reviewer_ack_followup_blocked_missing_material_not_proven",
+            [
+                "source_reviewer_ack_review_handoff_missing_material",
+                "hardware_material_pending",
+            ],
+        )
+    if requested_followup_status in supported_followup_statuses:
+        return (
+            requested_followup_status,
+            [
+                "source_reviewer_ack_review_handoff_followup_status_preserved",
+                "metadata_only_not_proven",
+            ],
+        )
+    if "escalated" in source_due_status:
+        return (
+            "reviewer_ack_followup_escalated_not_proven",
+            [
+                "source_due_status_escalated",
+                "hardware_material_pending",
+            ],
+        )
+    if "overdue" in source_due_status:
+        return (
+            "reviewer_ack_followup_overdue_not_proven",
+            [
+                "source_due_status_overdue",
+                "hardware_material_pending",
+            ],
+        )
+    if source_status == "reviewer_ack_review_handoff_needs_reassignment_not_proven":
+        return (
+            "ready_for_reviewer_followup_not_proven",
+            [
+                "source_reviewer_ack_review_handoff_needs_reassignment",
+                "reviewer_followup_route_required",
+            ],
+        )
+    return (
+        "reviewer_ack_followup_pending_not_proven",
+        [
+            "source_reviewer_ack_review_handoff_safe",
+            "PRRT_kwDOSWB9286CJ3tX_unresolved",
+            "hardware_material_pending",
+        ],
+    )
+
+
+def build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_payload(
+    *,
+    now=None,
+    source_review_handoff=None,
+):
+    """构造 reviewer ACK review-handoff 下游的只读 follow-up escalation 摘要。"""
+    # 默认从上一阶 builder 派生；传入值仅允许是同 schema 的 safe summary 或 diagnostics/status alias。
+    review_handoff = (
+        safe_value(source_review_handoff)
+        if isinstance(source_review_handoff, dict)
+        else build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_payload(
+            now=now
+        )
+    )
+    generated_at = _utc_iso(now if now is not None else _now())
+    source_status = str(review_handoff.get("review_handoff_status") or "").strip()
+    safe_command_id = str(review_handoff.get("safe_command_id") or "").strip()
+    evidence_ref = str(
+        review_handoff.get("evidence_ref")
+        or review_handoff.get("safe_evidence_ref")
+        or ""
+    ).strip()
+    source_boundary = str(
+        review_handoff.get("evidence_boundary")
+        or review_handoff.get("proof_boundary")
+        or ""
+    ).strip()
+    required_safe = (
+        review_handoff.get("capability")
+        == CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_HANDOFF_CAPABILITY,
+        source_boundary
+        == CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_HANDOFF_EVIDENCE_BOUNDARY,
+        bool(safe_command_id),
+        bool(evidence_ref),
+        review_handoff.get("delivery_success") is False,
+        review_handoff.get("primary_actions_enabled") is False,
+        review_handoff.get("safe_to_control") is False,
+        review_handoff.get("terminal_result_verified") is False,
+        review_handoff.get("review_action_allowed") is False,
+        review_handoff.get("github_action_allowed") is False,
+        review_handoff.get("robot_command_side_effects_allowed") is False,
+        review_handoff.get("verified_terminal_result") is False,
+    )
+    unsafe_or_missing = (
+        not all(required_safe)
+        or _cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_intake_has_unsafe_material(
+            review_handoff
+        )
+    )
+    followup_status, decision_reasons = (
+        _cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_followup_status(
+            review_handoff
+        )
+    )
+    if unsafe_or_missing and followup_status not in {
+        "blocked_missing_source_reviewer_ack_review_handoff_not_proven",
+        "reviewer_ack_followup_evidence_ref_mismatch_not_proven",
+    }:
+        followup_status = "reviewer_ack_followup_rejected_unsafe_not_proven"
+        decision_reasons = [
+            "unsafe_or_missing_source_reviewer_ack_review_handoff",
+            "fail_closed_to_not_proven",
+        ]
+
+    due_status = str(
+        review_handoff.get("due_status")
+        or (
+            "reviewer_ack_followup_escalated_not_proven"
+            if followup_status == "reviewer_ack_followup_escalated_not_proven"
+            else "reviewer_ack_followup_overdue_not_proven"
+            if followup_status == "reviewer_ack_followup_overdue_not_proven"
+            else "reviewer_ack_followup_due_pending_not_proven"
+        )
+    )
+    payload = {
+        "ok": True,
+        "schema": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_SCHEMA
+        ),
+        "schema_version": 1,
+        "capability": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_CAPABILITY
+        ),
+        "source": "software_proof",
+        "source_capability": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_HANDOFF_CAPABILITY
+        ),
+        "source_proof_boundary": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_HANDOFF_EVIDENCE_BOUNDARY
+        ),
+        "source_evidence_boundary": source_boundary,
+        "source_boundary": "safe_reviewer_ack_review_handoff_only",
+        "evidence_boundary": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_EVIDENCE_BOUNDARY
+        ),
+        "proof_boundary": (
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_EVIDENCE_BOUNDARY
+        ),
+        "generated_at": generated_at,
+        "artifact_status": "reviewer_ack_followup_escalation_status_not_proven",
+        "source_review_handoff_status": source_status
+        or "blocked_missing_source_reviewer_ack_review_handoff_not_proven",
+        "followup_status": followup_status,
+        "supported_followup_statuses": [
+            "reviewer_ack_followup_pending_not_proven",
+            "reviewer_ack_followup_overdue_not_proven",
+            "reviewer_ack_followup_escalated_not_proven",
+            "reviewer_ack_followup_blocked_missing_material_not_proven",
+            "ready_for_reviewer_followup_not_proven",
+            "blocked_missing_source_reviewer_ack_review_handoff_not_proven",
+            "reviewer_ack_followup_evidence_ref_mismatch_not_proven",
+            "reviewer_ack_followup_rejected_unsafe_not_proven",
+        ],
+        "due_status": due_status,
+        "safe_command_id": safe_command_id or PENDING_SAFE_COMMAND_ID,
+        "evidence_ref": evidence_ref or PENDING_SAFE_EVIDENCE_REF,
+        "safe_evidence_ref": evidence_ref or PENDING_SAFE_EVIDENCE_REF,
+        "followup_owner": str(review_handoff.get("handoff_owner") or "field_owner"),
+        "support_route": str(review_handoff.get("support_route") or "support_triage"),
+        "reviewer_route": str(review_handoff.get("reviewer_route") or "pr5_reviewer"),
+        "escalation_route": "product_owner_or_ceo_decision_queue",
+        "escalation_reason": "PRRT_kwDOSWB9286CJ3tX hardware_material_pending",
+        "decision_reasons": decision_reasons,
+        "next_required_evidence": list(
+            review_handoff.get("next_required_evidence")
+            or [
+                "same_safe_command_id",
+                "same_safe_evidence_ref",
+                "verified_terminal_delivery_dropoff_or_cancel_result",
+                "real_external_cloud_or_true_phone_browser_evidence",
+            ]
+        ),
+        "blocker_status": [
+            "hardware_material_pending",
+            "PRRT_kwDOSWB9286CJ3tX_unresolved",
+            "verified_terminal_result_missing",
+            "not true phone/browser proof",
+        ],
+        "pr_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+        "phone_browser_proof": "not true phone/browser proof",
+        "okr_progress_effect": "no OKR percentage lift",
+        "non_claims": [
+            "not verified terminal result",
+            "not true phone/browser proof",
+            "not delivery success",
+            "not owner-response submission",
+            "not reviewer-ACK submission",
+            "not raw artifact fetch",
+            "not GitHub mutation",
+            "not WAVE ROVER/UART proof",
+        ],
+        "safe_summary": (
+            "Reviewer ACK follow-up escalation status is read-only support routing; "
+            "delivery_success=false, primary_actions_enabled=false, safe_to_control=false, "
+            "not verified terminal result, not true phone/browser proof, "
+            "PRRT_kwDOSWB9286CJ3tX hardware_material_pending, no OKR percentage lift."
+        ),
+        "not_proven": list(CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_CLI_EXPORT_NOT_PROVEN),
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "terminal_result_verified": False,
+        "ack_post_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "command_replay_allowed": False,
+        "command_resubmit_allowed": False,
+        "material_upload_allowed": False,
+        "review_action_allowed": False,
+        "handoff_action_allowed": False,
+        "owner_response_submission_allowed": False,
+        "reviewer_ack_submission_allowed": False,
+        "github_action_allowed": False,
+        "diagnostics_mutation_allowed": False,
+        "robot_command_side_effects_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "pr5_resolved": False,
+        "verified_terminal_result": False,
+    }
+    if _cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_intake_has_unsafe_material(payload):
+        raise ValueError(
+            "cloud command lifecycle replay acceptance packet reviewer ACK follow-up escalation status is unsafe"
+        )
+    return safe_value(payload)
+
+
 def create_cloud_command_lifecycle_replay_acceptance_packet_cli_export_artifact(artifact_path):
     # 导出命令只写 JSON artifact，不启动 HTTP server，不触碰 state store、ACK 或机器人控制面。
     payload = build_cloud_command_lifecycle_replay_acceptance_packet_cli_export_payload()
@@ -10079,6 +10423,16 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
     owner_response_reviewer_ack_review_handoff = (
         build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_payload()
     )
+    owner_response_reviewer_ack_followup_escalation_status = (
+        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_payload(
+            source_review_handoff=(
+                _cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_followup_source(
+                    latest_status or {}
+                )
+                or owner_response_reviewer_ack_review_handoff
+            )
+        )
+    )
     pr5_review_handoff = _phone_safe_pr5_mandatory_sensor_review_handoff_summary(
         latest_status or {}
     )
@@ -10155,6 +10509,15 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
         ),
         "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary": (
             owner_response_reviewer_ack_review_handoff
+        ),
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status": (
+            owner_response_reviewer_ack_followup_escalation_status
+        ),
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
+            owner_response_reviewer_ack_followup_escalation_status
+        ),
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
+            owner_response_reviewer_ack_followup_escalation_status
         ),
         "pr5_mandatory_sensor_material_owner_response_review_handoff": pr5_review_handoff,
         "pr5_mandatory_sensor_material_owner_response_review_handoff_summary": (
@@ -10251,6 +10614,15 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
             "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary": (
                 owner_response_reviewer_ack_review_handoff
             ),
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status": (
+                owner_response_reviewer_ack_followup_escalation_status
+            ),
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
+                owner_response_reviewer_ack_followup_escalation_status
+            ),
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
+                owner_response_reviewer_ack_followup_escalation_status
+            ),
             "pr5_mandatory_sensor_material_owner_response_review_handoff": (
                 pr5_review_handoff
             ),
@@ -10328,6 +10700,11 @@ def cloud_hosted_mobile_web_diagnostics_payload(store, robot_id=None):
                         "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff"
                     )
                 ),
+                "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status": (
+                    status_payload.get(
+                        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status"
+                    )
+                ),
                 "pr5_mandatory_sensor_material_owner_response_review_handoff": (
                     status_payload.get(
                         "pr5_mandatory_sensor_material_owner_response_review_handoff"
@@ -10403,6 +10780,21 @@ def cloud_hosted_mobile_web_diagnostics_payload(store, robot_id=None):
             "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary": (
                 status_payload.get(
                     "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary"
+                )
+            ),
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status": (
+                status_payload.get(
+                    "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status"
+                )
+            ),
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
+                status_payload.get(
+                    "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
+                )
+            ),
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
+                status_payload.get(
+                    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
                 )
             ),
             "pr5_mandatory_sensor_material_owner_response_review_handoff": (

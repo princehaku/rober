@@ -65,6 +65,10 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff.json"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status.json"
+)
 VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_intake.json"
 )
@@ -2150,6 +2154,208 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseRevi
             "material upload",
             "review mutation",
             "handoff mutation",
+            "reviewer ack submission",
+            "robot command",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, response_text)
+
+
+class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatusTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # follow-up escalation status 只展示 Robot safe summary，不新增 ACK、review、GitHub、material 或控制路径。
+        self.assertIn(
+            "CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_BOUNDARY",
+            app,
+        )
+        self.assertIn(
+            "safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatusText",
+            app,
+        )
+        self.assertIn(
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatusCandidate",
+            app,
+        )
+        self.assertIn(
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatusFromStatus",
+            app,
+        )
+        self.assertIn(
+            "renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus",
+            app,
+        )
+        self.assertIn(
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary",
+            app,
+        )
+        self.assertIn(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary",
+            app,
+        )
+        self.assertIn(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status?.summary",
+            app,
+        )
+        for required in (
+            "follow-up escalation status",
+            "source_review_handoff_status",
+            "followup_status",
+            "due_status",
+            "followup_owner",
+            "safe_command_id",
+            "safe_evidence_ref",
+            "support_route",
+            "reviewer_route",
+            "escalation_route",
+            "escalation_reason",
+            "decision_reasons",
+            "next_required_evidence",
+            "blocker_status",
+            "reviewer_ack_followup_pending_not_proven",
+            "reviewer_ack_followup_overdue_not_proven",
+            "reviewer_ack_followup_escalated_not_proven",
+            "reviewer_ack_followup_blocked_missing_material_not_proven",
+            "ready_for_reviewer_followup_not_proven",
+            "blocked_missing_source_reviewer_ack_review_handoff_not_proven",
+            "reviewer_ack_followup_evidence_ref_mismatch_not_proven",
+            "reviewer_ack_followup_rejected_unsafe_not_proven",
+            "PRRT_kwDOSWB9286CJ3tX",
+            "hardware_material_pending",
+            "source=software_proof",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "not true phone/browser proof",
+            "not verified terminal result",
+            "no OKR percentage lift",
+        ):
+            self.assertIn(required, app + fixture_text + doc)
+        self.assertNotRegex(
+            app,
+            r"cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "copyCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatusButton",
+            "ackCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus",
+            "cursorCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus",
+            "fetchCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatusDiagnostics",
+            "uploadCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatusMaterial",
+            "submitCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus",
+            "reviewCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus",
+            "githubCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus",
+            "commandCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        summary = fixture[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
+        ]
+        fallback = fixture[
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
+        ]
+        nested = fixture[
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status"
+        ]["summary"]
+        self.assertEqual(
+            summary["capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status",
+        )
+        self.assertEqual(summary["followup_status"], "reviewer_ack_followup_escalated_not_proven")
+        self.assertEqual(fallback["followup_status"], "reviewer_ack_followup_pending_not_proven")
+        self.assertEqual(nested["followup_status"], "blocked_missing_source_reviewer_ack_review_handoff_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(summary["terminal_result_verified"], False)
+        self.assertEqual(summary["phone_browser_proof"], "not true phone/browser proof")
+        self.assertEqual(summary["okr_progress_effect"], "no OKR percentage lift")
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        for required in (
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status",
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary",
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_gate",
+            "source_review_handoff_status=accepted_for_reviewer_ack_review_handoff_not_proven",
+            "reviewer_ack_followup_escalated_not_proven",
+            "reviewer_ack_followup_pending_not_proven",
+            "blocked_missing_source_reviewer_ack_review_handoff_not_proven",
+            "followup_owner=support_owner",
+            "support_route=keep_PRRT_kwDOSWB9286CJ3tX_unresolved",
+            "reviewer_route=review_followup_state_after_real_material_evidence_arrives",
+            "escalation_route=owner_support_reviewer",
+            "escalation_reason=PRRT_kwDOSWB9286CJ3tX unresolved and hardware_material_pending",
+            "next_required_evidence=verified terminal delivery/dropoff/cancel result under same safe evidence_ref",
+            "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_fixture_20260524_0001",
+            "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_20260524_0001",
+            "PRRT_kwDOSWB9286CJ3tX",
+            "hardware_material_pending",
+            "not true phone/browser proof",
+            "not verified terminal result",
+            "no OKR percentage lift",
+        ):
+            self.assertIn(required, fixture_text + doc)
+
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not verified terminal result", doc)
+        self.assertIn("not HIL", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_fixture_stays_phone_safe(self):
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        response_text = json.dumps(
+            {
+                "robot": fixture[
+                    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
+                ],
+                "fallback": fixture[
+                    "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
+                ],
+                "nested": fixture[
+                    "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留 follow-up safe summary，禁止 raw 材料、凭证、ACK/cursor、提交或机器人控制授权。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw artifacts",
+            "raw materials",
+            "raw owner response",
+            "command route",
+            "ack route",
+            "cursor route",
+            "owner response submission",
+            "github mutation",
+            "artifact fetch",
+            "material upload",
+            "review mutation",
             "reviewer ack submission",
             "robot command",
             "control authorization",
