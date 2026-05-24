@@ -8,7 +8,31 @@
 
 ## 2026-05-24 系列
 
-更新时间：2026-05-24 10:17 Asia/Shanghai。
+更新时间：2026-05-24 11:38 Asia/Shanghai。
+
+### 2026-05-24 11-12｜pr5-mandatory-sensor-material-owner-response-review-handoff｜PR #5 mandatory sensor material owner-response review handoff
+
+本轮 `sprints/2026.05.24_11-12_pr5-mandatory-sensor-material-owner-response-review-handoff/` 执行 `pr5_mandatory_sensor_material_owner_response_review_handoff` epic closeout。用户价值是把 PR #5 unresolved sensor-material review decision 转成硬件 owner、Robot diagnostics、手机支持页都能复账的 owner/support/reviewer handoff，而不是把 vendor source、safe copy 或 review handoff 误讲成真实 LiDAR/ToF、WAVE ROVER/UART/HIL、PR resolution 或 delivery success。本轮边界为 `software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate`。
+
+Task A Hardware worker 更新 `pc-tools/evidence/pr5_mandatory_sensor_material_owner_response_review_handoff.py`、`pc-tools/evidence/test_pr5_mandatory_sensor_material_owner_response_review_handoff.py`、`pc-tools/README.md`、`docs/product/production_hardware_boundary.md` 和 `docs/interfaces/pr5_mandatory_sensor_material_owner_response_review_handoff.md`。新增 PC-only handoff gate，消费上一轮 owner-response review-decision safe artifact/summary，输出 fail-closed handoff artifact/summary，记录 `docs/vendor/VENDOR_INDEX.md` 及 WAVE ROVER `base_ctrl.py`、`config.yaml`、`json_cmd.h`、`uart_ctrl.h`、`movtion_module.h` 为 source attribution only。验证通过：`py_compile` passed；unittest 输出 `Ran 7 tests ... OK`；CLI `--help` passed；required `rg` passed；scoped `git diff --check` passed。
+
+Task B Robot worker 更新 `operator_gateway_diagnostics.py`、`remote_cloud_relay.py`、`test_operator_gateway_diagnostics.py`、`test_remote_cloud_relay.py`、`docs/interfaces/ros_runtime_contracts.md` 和 `docs/product/remote_4g_mvp.md`。新增 `robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary` safe alias，并嵌入 `/api/status` 与 `/api/diagnostics`；只暴露 safe copy、safe evidence/thread/material state、owner/support/reviewer route、next required evidence 和 false-state flags，不暴露 raw artifact、serial/UART details、`/cmd_vel`、credentials、ACK/cursor mutation、review-thread update 或 robot command side effects。验证通过：diagnostics 和 remote relay `py_compile` passed；focused diagnostics unittest 输出 `Ran 1 test ... OK`；focused remote relay unittest 输出 `Ran 1 test ... OK`；required `rg` passed；scoped `git diff --check` passed。
+
+Task C Full-Stack worker 更新 `mobile/web/app.js`、`mobile/web/fixtures/robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff.json`、`mobile/web/test_mobile_web_entrypoint.py` 和 `docs/product/mobile_user_flow.md`。新增 first-screen read-only PR5 material handoff panel，展示 handoff status、source review decision、PR #5 thread、`hardware_material_pending`、owner/support/reviewer handoff、next required evidence、safe copy、proof boundary 和 false-state flags；Start Delivery、Confirm Dropoff、Cancel 继续 disabled，无 upload/material fetch、GitHub mutation、ACK/cursor、replay/resubmit、raw diagnostics 或 robot command path。验证通过：`node --check` passed；fixture `json.tool` passed；focused mobile unittest 输出 `Ran 2 tests ... OK`；required `rg` passed；scoped `git diff --check` passed。
+
+Live PR check：PR #5 closed/merged；review threads Q/U resolved，`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。PR #7 open，review-thread check returned no threads；本轮不把 PR #7 作为 PR #5 material thread 的解除证据。
+
+本轮保留 `source=software_proof`、`hardware_material_pending`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`；不是 real LiDAR/ToF proof，不是 WAVE ROVER/UART/HIL，不是 PR #5 resolved，不是 O5 external proof，不是 true phone/browser proof，不是 route/elevator field pass，也不是 delivery success；not delivery success；no OKR percentage lift。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | `software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate` 只证明 PR #5 material owner-response review decision 可安全交接到 owner/support/reviewer route；仍缺真实 2D LiDAR / ToF SKU/source/receipt、采购、安装、接线、电源、标定、HIL-entry、WAVE ROVER powered bench/UART/HIL logs、operator HIL report 和 reviewer resolution。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只证明 sensor-material review handoff metadata；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal result、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；review handoff 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` 能只读展示 PR5 material handoff，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice 或 true phone/browser acceptance；not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | 本轮不继续叠 O5 local wrapper，只把 PR #5 material handoff safe alias 读入 Robot/mobile support surface；不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、Nav2/fixed-route、WAVE ROVER、HIL、verified terminal delivery/dropoff/cancel result 或 delivery success。 |
+
+本轮验证：Hardware `py_compile` / unittest / CLI help、Robot `py_compile` / targeted diagnostics unittest / targeted remote relay unittest、Full-Stack `node --check` / fixture `json.tool` / targeted mobile unittest、Product closeout required file checks、required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `pc-tools/README.md`、`docs/product/production_hardware_boundary.md`、`docs/interfaces/pr5_mandatory_sensor_material_owner_response_review_handoff.md`、`docs/interfaces/ros_runtime_contracts.md`、`docs/product/remote_4g_mvp.md`、`docs/product/mobile_user_flow.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。Product 未运行 broad tests、Docker build、真实手机/browser、public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、WAVE ROVER/UART 或 HIL；本轮只记录 worker-scoped validation、live PR check 和 closeout 证据。
 
 ### 2026-05-24 10-11｜cloud-command-lifecycle-support-handoff-owner-response-intake｜command lifecycle support handoff owner response intake
 

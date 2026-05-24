@@ -132,6 +132,10 @@ PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision.json"
 )
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff.json"
+)
 FIELD_EVIDENCE_RERUN_EXECUTION_RESULT_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_field_evidence_rerun_execution_result_intake.json"
 )
@@ -5824,6 +5828,201 @@ class Pr5MandatorySensorMaterialOwnerResponseReviewDecisionMobileTest(unittest.T
             "safe_to_control\": true",
         ):
             self.assertNotIn(forbidden, review_decision_text)
+
+
+class Pr5MandatorySensorMaterialOwnerResponseReviewHandoffMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_pr5_mandatory_sensor_material_owner_response_review_handoff_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        dedicated_fixture = json.loads(
+            PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        dedicated_text = json.dumps(dedicated_fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # review handoff 只消费 Robot safe alias 或兼容 summary，不新增控制、上传、GitHub mutation 或 raw material 路径。
+        self.assertIn("PR5 material handoff state", app)
+        self.assertIn("PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_BOUNDARY", app)
+        self.assertIn("UNSAFE_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_TEXT", app)
+        self.assertIn("safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText", app)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewHandoffCandidate", app)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewHandoffFromStatus", app)
+        self.assertIn("renderPr5MandatorySensorMaterialOwnerResponseReviewHandoff", app)
+        self.assertIn(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary",
+            app,
+        )
+        self.assertIn("pr5_mandatory_sensor_material_owner_response_review_handoff_summary", app)
+        self.assertIn("pr5_mandatory_sensor_material_owner_response_review_handoff?.summary", app)
+        self.assertIn("source_review_decision_status", app)
+        self.assertIn("source_boundary_refs", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("support_handoff", app)
+        self.assertIn("reviewer_handoff", app)
+        self.assertIn("decision_reasons", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("source=software_proof", app)
+        self.assertIn("hardware_material_pending", app)
+        self.assertIn("not_proven", app)
+        self.assertIn("safe_to_control=false", app)
+        self.assertIn("delivery_success=false", app)
+        self.assertIn("primary_actions_enabled=false", app)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", app)
+        self.assertNotIn("copyPr5MandatorySensorMaterialOwnerResponseReviewHandoffButton", app)
+        self.assertNotRegex(
+            app,
+            r"pr5MandatorySensorMaterialOwnerResponseReviewHandoff.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackPr5MandatorySensorMaterialOwnerResponseReviewHandoff",
+            "cursorPr5MandatorySensorMaterialOwnerResponseReviewHandoff",
+            "fetchPr5MandatorySensorMaterialOwnerResponseReviewHandoffDiagnostics",
+            "copyPr5MandatorySensorMaterialOwnerResponseReviewHandoff",
+            "exportPr5MandatorySensorMaterialOwnerResponseReviewHandoff",
+            "uploadPr5MandatorySensorMaterialOwnerResponseReviewHandoff",
+            "githubMutationPr5MandatorySensorMaterialOwnerResponseReviewHandoff",
+            "reviewPr5MandatorySensorMaterialOwnerResponseReviewHandoff",
+            "materialPr5MandatorySensorMaterialOwnerResponseReviewHandoff",
+            "commandPr5MandatorySensorMaterialOwnerResponseReviewHandoff",
+            "replayPr5MandatorySensorMaterialOwnerResponseReviewHandoff",
+            "resubmitPr5MandatorySensorMaterialOwnerResponseReviewHandoff",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        summary = dedicated_fixture[
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+        ]
+        fallback = dedicated_fixture[
+            "pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+        ]
+        nested = dedicated_fixture[
+            "pr5_mandatory_sensor_material_owner_response_review_handoff"
+        ]["summary"]
+        self.assertEqual(summary["capability"], "pr5_mandatory_sensor_material_owner_response_review_handoff")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["handoff_status"], "ready_for_reviewer_material_handoff_not_proven")
+        self.assertEqual(summary["source_review_decision_status"], "needs_more_material_not_proven")
+        self.assertEqual(summary["proof_status"], "hardware_material_pending")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fallback["safe_to_control"], False)
+        self.assertEqual(nested["delivery_success"], False)
+        self.assertEqual(dedicated_fixture["can_collect"], False)
+        self.assertEqual(dedicated_fixture["can_confirm_dropoff"], False)
+        self.assertEqual(dedicated_fixture["can_cancel"], False)
+        for required in (
+            "pr5_mandatory_sensor_material_owner_response_review_handoff",
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary",
+            "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate",
+            "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate",
+            "ready_for_reviewer_material_handoff_not_proven",
+            "needs_owner_material_backfill_handoff_not_proven",
+            "blocked_missing_owner_response_review_decision_not_proven",
+            "blocked_evidence_ref_mismatch_not_proven",
+            "hardware_material_pending",
+            "not_proven",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "PRRT_kwDOSWB9286CJ3tX",
+        ):
+            self.assertIn(required, dedicated_text)
+        self.assertIn("pr5_mandatory_sensor_material_owner_response_review_handoff", doc)
+        self.assertIn(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary",
+            doc,
+        )
+        self.assertIn(
+            "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate",
+            doc,
+        )
+        self.assertIn("safe_to_control=false", doc)
+        self.assertIn("delivery_success=false", doc)
+        self.assertIn("primary_actions_enabled=false", doc)
+
+    def test_pr5_mandatory_sensor_material_owner_response_review_handoff_fixture_stays_phone_safe(self):
+        dedicated_fixture = json.loads(
+            PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        review_handoff_text = json.dumps(
+            {
+                "robot_alias": dedicated_fixture[
+                    "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+                ],
+                "fallback": dedicated_fixture[
+                    "pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+                ],
+                "nested": dedicated_fixture[
+                    "pr5_mandatory_sensor_material_owner_response_review_handoff"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留脱敏 handoff metadata；missing/unsafe summary 在 app.js 中降级到 blocked/not_proven 文案。
+        self.assertIn("blocked_missing_owner_response_review_decision_not_proven", review_handoff_text)
+        self.assertIn("not_proven", review_handoff_text)
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "ros topic",
+            "raw diagnostics",
+            "raw artifact",
+            "raw material",
+            "raw owner response",
+            "complete artifact",
+            "complete artifacts",
+            "full execution bundle",
+            "serial",
+            "uart",
+            "ttyusb",
+            "ttyacm",
+            "baudrate",
+            "/dev/",
+            "wave rover parameter",
+            "authorization",
+            "bearer",
+            "token",
+            "oss_access_key_secret",
+            "database url",
+            "queue url",
+            "credential url",
+            "checksum",
+            "traceback",
+            "ack payload",
+            "cursor",
+            "diagnostics fetch",
+            "upload route",
+            "material route",
+            "review route",
+            "handoff route",
+            "github mutation",
+            "replay",
+            "resubmit",
+            "robot command",
+            "objective 5 external proof",
+            "real phone/browser proof",
+            "pr resolution",
+            "reviewer resolved",
+            "hil_pass",
+            "hil passed",
+            "field pass",
+            "delivery success",
+            "dropoff success",
+            "cancel completed",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, review_handoff_text)
 
 
 class TaskTerminalCompletionMainlineMobileTest(unittest.TestCase):

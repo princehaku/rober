@@ -713,6 +713,50 @@ SKU/source/receipt/procurement/install/wiring/power/calibration/HIL, do not
 prove `PRRT_kwDOSWB9286CJ3tX` resolved, and do not prove Objective 5 external
 proof or delivery success.
 
+## PR #5 Mandatory Sensor Material Owner-Response Review Handoff Gate
+
+`pr5_mandatory_sensor_material_owner_response_review_handoff` is the PC-only
+review-handoff gate after
+`pr5_mandatory_sensor_material_owner_response_review_decision`. It emits
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff.v1`
+and
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1`
+under
+`software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate`.
+
+The gate consumes only the sanitized owner-response review-decision artifact,
+summary, Robot safe alias, or wrapper/nested safe fields. It does not consume
+raw owner response body text, real material payloads, receipt files, source
+PDFs, local paths, checksums, serial/UART logs, ROS topics, HIL logs, GitHub
+write state, or review-thread resolution state. The same safe `evidence_ref`
+is required from source review decision to review handoff output.
+
+Allowed handoff statuses are
+`ready_for_owner_response_review_handoff_not_proven`,
+`needs_more_material_before_owner_response_review_handoff_not_proven`,
+`rejected_unsafe_owner_response_review_handoff_not_proven`,
+`blocked_missing_owner_response_review_decision_not_proven`, and
+`blocked_evidence_ref_mismatch_not_proven`. Every status preserves
+`software_proof`, `hardware_material_pending`, `not_proven`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`.
+
+`ready_for_owner_response_review_handoff_not_proven` is not a hardware pass. It
+means only that the previous safe review-decision metadata can be handed to a
+human owner/support/reviewer route for continued closeout handling. It does not
+prove a real 2D LiDAR or ToF SKU/source/receipt/procurement/install/wiring/
+power/calibration/HIL, does not prove `PRRT_kwDOSWB9286CJ3tX` resolved, does
+not upgrade comment `3269642220` beyond software-proof reply publication, and
+does not prove Objective 5 external proof or delivery success.
+
+The local vendor/source chain for this gate remains `docs/vendor/VENDOR_INDEX.md`
+plus its Orange Pi Zero 3 manual/schematic and WAVE ROVER / UART JSON /
+firmware/vendor-app references. Those refs support source attribution and
+prevent hardware guessing. They still do not prove real sensor procurement,
+installation, wiring, calibration, HIL entry, route/elevator field pass, true
+phone/browser proof, PR #5 resolution, Objective 5 external proof, or delivery
+success.
+
 ## Cloud Command Lifecycle Audit/Export Hardware Boundary
 
 `cloud_command_lifecycle_audit_export` is an Objective 5 software-proof

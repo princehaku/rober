@@ -296,6 +296,33 @@ HIL, not PR #5 resolved, not delivery success, not true phone/browser proof,
 not public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production
 DB/queue, not worker/cutover, and no OKR percentage lift.
 
+Robot/API also exposes the PR #5 mandatory-sensor owner-response review handoff
+as a phone-safe status/diagnostics alias when the backend has already provided
+the sanitized summary:
+
+```text
+pr5_mandatory_sensor_material_owner_response_review_handoff
+pr5_mandatory_sensor_material_owner_response_review_handoff_summary
+robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary
+```
+
+The alias evidence boundary is
+`software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate`.
+It preserves `source=software_proof`, `hardware_material_pending`,
+`not_proven`, `safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`. Missing, unsupported, or unsafe backend
+summaries fail closed to a blocked summary; the relay does not synthesize a
+handoff from raw artifacts, raw diagnostics, local paths, credentials,
+checksums, serial/UART details, ACK/cursor mutation, review-thread update,
+`/cmd_vel`, or other control endpoints.
+
+This handoff alias is embedded in `/api/status`, `/api/diagnostics`, and
+`phone_readiness` for read-only mobile/support compatibility. It does not prove
+real LiDAR/ToF material, WAVE ROVER/UART/HIL, PR #5 resolution, O5 external
+proof, route/elevator field pass, delivery result, or delivery success, and it
+does not enable Start Delivery, Confirm Dropoff, Cancel, ACK, cursor,
+review-thread update, or robot command side effects.
+
 The independent relay now also hosts the dependency-free `mobile/web/` PWA
 shell on the same origin:
 
@@ -332,7 +359,10 @@ always fail closed: `can_collect=false`, `can_confirm_dropoff=false`,
 `can_cancel=false`, `phone_readiness.can_continue=false`, and
 `command_safety.actions.*.enabled=false`. `/api/diagnostics` includes the same
 summary, `cloud_hosted_mobile_web_gate`, `latest_status` when safe, and
-`evidence_boundary=software_proof_docker_cloud_hosted_mobile_web_gate`.
+`evidence_boundary=software_proof_docker_cloud_hosted_mobile_web_gate`. When a
+backend sanitized PR #5 review-handoff summary is present, both endpoints expose
+the `robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary`
+alias with the same fail-closed action boundaries.
 
 The independent relay also has a production preflight gate for deployment
 readiness:

@@ -550,6 +550,168 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, encoded)
 
+    def test_pr5_mandatory_sensor_material_owner_response_review_handoff_alias_is_phone_safe(self):
+        safe_summary = {
+            "schema": "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1",
+            "source_schema": "trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff.v1",
+            "source_schema_version": 1,
+            "evidence_boundary": (
+                "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate"
+            ),
+            "capability": "pr5_mandatory_sensor_material_owner_response_review_handoff",
+            "source": "software_proof",
+            "safe_evidence_ref": "pr5-mandatory-sensor-owner-response-handoff-001",
+            "handoff_status": "handoff_ready_not_proven",
+            "overall_status": "not_proven",
+            "handoff_reasons": ["safe handoff only; PR #5 remains unresolved"],
+            "missing_material_summaries": [
+                "2d_lidar_sku_source_receipt_procurement_material",
+                "tof_sku_source_receipt_procurement_material",
+            ],
+            "next_required_evidence": ["hil_entry_material"],
+            "reviewer_next_step": "Reviewer keeps PRRT_kwDOSWB9286CJ3tX unresolved.",
+            "support_next_step": "Phone status renders this as read-only metadata.",
+            "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+            "pr5_thread_state": "unresolved",
+            "pr5_material_state": "hardware_material_pending",
+            "evidence_boundary_status": "not_proven",
+            "false_states": {
+                "hardware_material_pending": True,
+                "not_proven": True,
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            },
+            "safe_copy": (
+                "PR #5 mandatory sensor material owner response review handoff is "
+                "metadata-only; source=software_proof; hardware_material_pending; "
+                "not_proven; safe_to_control=false; delivery_success=false; "
+                "primary_actions_enabled=false."
+            ),
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "ack_post_allowed": False,
+            "cursor_updates_allowed": False,
+            "review_thread_updates_allowed": False,
+            "source_payload_exposed": False,
+            "command_allowed": False,
+            "nav2_triggered": False,
+            "hil_pass": False,
+            "field_pass": False,
+            "sensor_installed": False,
+            "pr_resolved": False,
+        }
+        status, _ = self.client.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "waiting_for_trash",
+                "updated_at": time.time(),
+                "diagnostics": {
+                    "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary": safe_summary
+                },
+            },
+        )
+        self.assertEqual(status, 200)
+
+        status, status_payload = self.client.request("GET", "/api/status", token="")
+        diag_status, diagnostics_payload = self.client.request("GET", "/api/diagnostics", token="")
+        payload = status_payload[
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+        ]
+        encoded = json.dumps({"status": status_payload, "diagnostics": diagnostics_payload}, ensure_ascii=False)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(diag_status, 200)
+        self.assertEqual(payload["capability"], "pr5_mandatory_sensor_material_owner_response_review_handoff")
+        self.assertEqual(
+            payload["evidence_boundary"],
+            "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate",
+        )
+        self.assertEqual(payload["source"], "software_proof")
+        self.assertEqual(payload["handoff_status"], "handoff_ready_not_proven")
+        self.assertEqual(payload["safe_evidence_ref"], safe_summary["safe_evidence_ref"])
+        self.assertEqual(payload["pr5_thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(payload["pr5_thread_state"], "unresolved")
+        self.assertEqual(payload["pr5_material_state"], "hardware_material_pending")
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["primary_actions_enabled"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["ack_post_allowed"])
+        self.assertFalse(payload["cursor_updates_allowed"])
+        self.assertFalse(payload["review_thread_updates_allowed"])
+        self.assertFalse(payload["source_payload_exposed"])
+        self.assertFalse(payload["command_allowed"])
+        self.assertFalse(payload["nav2_triggered"])
+        self.assertFalse(payload["hil_pass"])
+        self.assertFalse(payload["field_pass"])
+        self.assertFalse(payload["sensor_installed"])
+        self.assertFalse(payload["pr_resolved"])
+        self.assertEqual(
+            diagnostics_payload[
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+            ]["safe_evidence_ref"],
+            payload["safe_evidence_ref"],
+        )
+        for forbidden in (
+            "phone-token",
+            "Authorization",
+            "Bearer",
+            "raw_path",
+            str(REPO_ROOT),
+            "/cmd_vel",
+            "ttyUSB",
+            "serial",
+            "baudrate",
+            "WAVE ROVER",
+            "traceback",
+            "complete artifact",
+            "checksum",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+        unsafe = dict(
+            safe_summary,
+            safe_copy="Reviewer resolved; sensor installed; HIL pass; Start Delivery control enabled.",
+            delivery_success=True,
+            primary_actions_enabled=True,
+            safe_to_control=True,
+            raw_artifact={"topic": "/cmd_vel", "Authorization": "Bearer unsafe"},
+        )
+        status, _ = self.client.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "waiting_for_trash",
+                "updated_at": time.time(),
+                "diagnostics": {
+                    "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary": unsafe
+                },
+            },
+        )
+        self.assertEqual(status, 200)
+        status, blocked_payload = self.client.request("GET", "/api/status", token="")
+        blocked = blocked_payload[
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+        ]
+        blocked_encoded = json.dumps(blocked_payload, ensure_ascii=False)
+        self.assertEqual(status, 200)
+        self.assertEqual(blocked["handoff_status"], "blocked_unsafe_review_handoff_summary")
+        self.assertFalse(blocked["delivery_success"])
+        self.assertFalse(blocked["primary_actions_enabled"])
+        self.assertFalse(blocked["safe_to_control"])
+        self.assertNotIn("/cmd_vel", blocked_encoded)
+        self.assertNotIn("Authorization", blocked_encoded)
+
     def test_mobile_web_phone_safe_api_uses_default_robot_id_and_fails_closed(self):
         with mock.patch.dict(os.environ, {"TRASHBOT_REMOTE_CLOUD_DEFAULT_ROBOT_ID": "robot-web-42"}):
             status, payload = self.client.request("GET", "/api/status", token="")

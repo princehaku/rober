@@ -163,6 +163,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_pr5_mandatory_sensor_material_followup_escalation_status,
     summarize_pr5_mandatory_sensor_material_owner_response_intake,
     summarize_pr5_mandatory_sensor_material_owner_response_review_decision,
+    summarize_pr5_mandatory_sensor_material_owner_response_review_handoff,
     summarize_hardware_real_material_escalation_request,
     summarize_real_material_readiness_board,
     summarize_real_material_evidence_intake,
@@ -27910,6 +27911,242 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertNotIn("material_payload", encoded)
         self.assertNotIn("/cmd_vel", encoded)
         self.assertNotIn("Authorization", encoded)
+        self.assertNotIn("wave_rover", encoded.lower())
+        self.assertNotIn("reviewer resolved", encoded.lower())
+        self.assertNotIn("sensor installed", encoded.lower())
+        self.assertNotIn("control enabled", encoded.lower())
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("hardware_material_pending", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        self.assertNotIn("/cmd_vel", unsafe_encoded)
+        self.assertIn("rejected_unsafe_material_not_proven", unsafe_encoded)
+
+    def test_pr5_mandatory_sensor_material_owner_response_review_handoff_safe_alias_and_fail_closed(self):
+        safe_summary = {
+            "schema": "trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1",
+            "source_schema": "trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff.v1",
+            "source_schema_version": 1,
+            "evidence_boundary": (
+                "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate"
+            ),
+            "capability": "pr5_mandatory_sensor_material_owner_response_review_handoff",
+            "source": "software_proof",
+            "safe_evidence_ref": "pr5-mandatory-sensor-owner-response-handoff-001",
+            "handoff_status": "handoff_ready_not_proven",
+            "handoff_summary": {
+                "status": "handoff_ready_not_proven",
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": "safe review handoff keeps PR #5 unresolved until real material appears",
+            },
+            "source_review_decision_summary": {
+                "status": "needs_more_material_not_proven",
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": "source review decision remains hardware_material_pending",
+            },
+            "handoff_reasons": ["safe reviewer handoff for unresolved PR #5 material gaps"],
+            "missing_material_summaries": [
+                "2d_lidar_sku_source_receipt_procurement_material",
+                "tof_sku_source_receipt_procurement_material",
+            ],
+            "next_required_evidence": [
+                "2d_lidar_sku_source_receipt_procurement_material",
+                "tof_sku_source_receipt_procurement_material",
+                "hil_entry_material",
+            ],
+            "owner_next_step": "Hardware owner must provide same-ref sanitized material summaries.",
+            "reviewer_next_step": "Reviewer keeps PRRT_kwDOSWB9286CJ3tX unresolved.",
+            "support_next_step": "Phone surface displays this as read-only handoff metadata.",
+            "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+            "pr5_thread_state": "unresolved",
+            "pr5_material_state": "hardware_material_pending",
+            "evidence_boundary_status": "not_proven",
+            "false_states": {
+                "hardware_material_pending": True,
+                "not_proven": True,
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            },
+            "safe_copy": (
+                "PR #5 mandatory sensor material owner response review handoff is "
+                "metadata-only; source=software_proof; hardware_material_pending; "
+                "not_proven; safe_to_control=false; delivery_success=false; "
+                "primary_actions_enabled=false."
+            ),
+            "not_proven": ["hardware_material_pending", "PRRT_kwDOSWB9286CJ3tX"],
+            "hardware_material_pending": True,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "ack_post_allowed": False,
+            "cursor_updates_allowed": False,
+            "review_thread_updates_allowed": False,
+        }
+        artifact = {
+            "schema": "trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff.v1",
+            "evidence_boundary": (
+                "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate"
+            ),
+            "pr5_mandatory_sensor_material_owner_response_review_handoff_summary": safe_summary,
+        }
+        with tempfile.TemporaryDirectory() as td:
+            handoff_path = (
+                Path(td)
+                / "pr5_mandatory_sensor_material_owner_response_review_handoff.json"
+            )
+            handoff_path.write_text(json.dumps(artifact), encoding="utf-8")
+            payload = build_diagnostics_payload(
+                {
+                    "state": "waiting_for_trash",
+                    "pr5_mandatory_sensor_material_owner_response_review_handoff": {
+                        "delivery_success": True,
+                        "raw_artifact": {"topic": "/cmd_vel"},
+                    },
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+                pr5_mandatory_sensor_material_owner_response_review_handoff_ref=str(
+                    handoff_path
+                ),
+            )
+            from_nested = (
+                summarize_pr5_mandatory_sensor_material_owner_response_review_handoff(
+                    artifact
+                )
+            )
+            from_latest_status = build_diagnostics_payload(
+                {
+                    "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary": (
+                        safe_summary
+                    )
+                },
+                software_version="",
+                map_version="",
+                route_version="",
+                log_refs=[],
+                vision_sample_manifest_ref="",
+                review_decision_log_ref="",
+                operator_status_file="/tmp/status.json",
+            )[
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+            ]
+            missing = summarize_pr5_mandatory_sensor_material_owner_response_review_handoff(
+                Path(td) / "missing_pr5_owner_response_review_handoff.json"
+            )
+            unsupported = summarize_pr5_mandatory_sensor_material_owner_response_review_handoff(
+                dict(
+                    safe_summary,
+                    source_schema=(
+                        "trashbot.pr5_mandatory_sensor_material_owner_response_review_decision.v1"
+                    ),
+                    source_evidence_boundary=(
+                        "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate"
+                    ),
+                )
+            )
+            unsafe = summarize_pr5_mandatory_sensor_material_owner_response_review_handoff(
+                dict(
+                    safe_summary,
+                    safe_copy="Reviewer resolved; sensor installed; HIL pass; Start Delivery control enabled.",
+                    delivery_success=True,
+                    primary_actions_enabled=True,
+                    safe_to_control=True,
+                    raw_artifact={
+                        "Authorization": "Bearer unsafe",
+                        "topic": "/cmd_vel",
+                        "github_mutation": True,
+                    },
+                )
+            )
+
+        summary = payload[
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+        ]
+        self.assertEqual(
+            summary,
+            payload["pr5_mandatory_sensor_material_owner_response_review_handoff"],
+        )
+        self.assertEqual(
+            summary,
+            payload["pr5_mandatory_sensor_material_owner_response_review_handoff_summary"],
+        )
+        self.assertNotIn(
+            "pr5_mandatory_sensor_material_owner_response_review_handoff",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff.v1",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["handoff_status"], "handoff_ready_not_proven")
+        self.assertEqual(
+            summary["source_review_decision_status"],
+            "needs_more_material_not_proven",
+        )
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "pr5-mandatory-sensor-owner-response-handoff-001",
+        )
+        self.assertIn("hil_entry_material", summary["next_required_evidence"])
+        self.assertEqual(summary["pr5_thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(summary["pr5_thread_state"], "unresolved")
+        self.assertEqual(summary["pr5_material_state"], "hardware_material_pending")
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["ack_post_allowed"])
+        self.assertFalse(summary["cursor_updates_allowed"])
+        self.assertFalse(summary["review_thread_updates_allowed"])
+        self.assertFalse(summary["source_payload_exposed"])
+        self.assertFalse(summary["command_allowed"])
+        self.assertFalse(summary["nav2_triggered"])
+        self.assertFalse(summary["hil_pass"])
+        self.assertFalse(summary["field_pass"])
+        self.assertFalse(summary["sensor_installed"])
+        self.assertFalse(summary["pr_resolved"])
+        self.assertIn("hardware_material_pending", summary["not_proven"])
+        self.assertEqual(from_nested["safe_evidence_ref"], summary["safe_evidence_ref"])
+        self.assertEqual(from_latest_status["handoff_status"], summary["handoff_status"])
+        self.assertEqual(
+            missing["handoff_summary"]["status"],
+            "blocked_missing_review_decision_not_proven",
+        )
+        self.assertEqual(
+            unsupported["handoff_summary"]["status"],
+            "blocked_missing_review_decision_not_proven",
+        )
+        self.assertEqual(
+            unsafe["handoff_summary"]["status"],
+            "rejected_unsafe_material_not_proven",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        unsafe_encoded = json.dumps(unsafe, ensure_ascii=False)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("Authorization", encoded)
+        self.assertNotIn("github_mutation", encoded)
         self.assertNotIn("wave_rover", encoded.lower())
         self.assertNotIn("reviewer resolved", encoded.lower())
         self.assertNotIn("sensor installed", encoded.lower())

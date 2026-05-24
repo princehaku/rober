@@ -1679,6 +1679,25 @@ PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISIONS = (
     "blocked_missing_owner_response_intake_not_proven",
     "blocked_evidence_ref_mismatch_not_proven",
 )
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_SCHEMA = (
+    "trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff.v1"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_GATE = (
+    "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate"
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_STATUSES = (
+    "handoff_ready_not_proven",
+    "needs_more_material_not_proven",
+    "rejected_unsafe_material_not_proven",
+    "blocked_missing_review_decision_not_proven",
+    "blocked_evidence_ref_mismatch_not_proven",
+)
 HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_SCHEMA = (
     "trashbot.hardware_real_material_escalation_request.v1"
 )
@@ -2196,6 +2215,26 @@ PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REQUIRED_NOT_PROVEN = (
 PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_REQUIRED_NOT_PROVEN = (
     "pr5_mandatory_sensor_material_owner_response_review_decision_only",
     "source_owner_response_intake_not_proven",
+    "pr5_PRRT_kwDOSWB9286CJ3tX_unresolved",
+    "hardware_material_pending",
+    "real_2d_lidar_sku_source_receipt_procurement_material",
+    "real_tof_sku_source_receipt_procurement_material",
+    "mounting_installation_material",
+    "wiring_power_budget_material",
+    "calibration_plan_or_result",
+    "hil_entry_material",
+    "operator_hil_report",
+    "pr5_reviewer_resolution_evidence",
+    "real_sensor_installed_on_robot",
+    "real_hil_pass",
+    "route_elevator_field_pass",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
+)
+PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_REQUIRED_NOT_PROVEN = (
+    "pr5_mandatory_sensor_material_owner_response_review_handoff_only",
+    "source_owner_response_review_decision_not_proven",
     "pr5_PRRT_kwDOSWB9286CJ3tX_unresolved",
     "hardware_material_pending",
     "real_2d_lidar_sku_source_receipt_procurement_material",
@@ -7957,6 +7996,48 @@ def _pr5_mandatory_sensor_material_owner_response_review_decision_not_proven(
         text = _redact_route_task_rehearsal_text(item)
         lowered = text.lower()
         # raw/path/checksum/HIL pass 等只用于 fail-closed 判定，不能回流到 Robot 可见摘要。
+        if any(
+            marker in lowered
+            for marker in ("raw", "path", "checksum", "hil pass", "[redacted")
+        ):
+            continue
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _pr5_mandatory_sensor_material_owner_response_review_handoff_not_proven(
+    source=None,
+    summary_fragment=None,
+):
+    # review handoff 只把复核结果交给只读 surface，不能被解释为 PR 已关闭或硬件材料到位。
+    source = source if isinstance(source, dict) else {}
+    summary_fragment = summary_fragment if isinstance(summary_fragment, dict) else {}
+    values = []
+    source_values = []
+    for item_source in (source, summary_fragment):
+        if isinstance(item_source.get("not_proven"), list):
+            source_values.extend(item_source.get("not_proven"))
+        for key in (
+            "handoff_reasons",
+            "missing_material_summaries",
+            "next_required_evidence",
+            "reviewer_next_step",
+            "support_next_step",
+        ):
+            if isinstance(item_source.get(key), list):
+                source_values.extend(item_source.get(key))
+            elif isinstance(item_source.get(key), str):
+                source_values.append(item_source.get(key))
+    required = (
+        "not_proven",
+        "software_proof",
+        "hardware_material_pending",
+    ) + PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_REQUIRED_NOT_PROVEN
+    for item in list(source_values) + list(required):
+        text = _redact_route_task_rehearsal_text(item)
+        lowered = text.lower()
+        # raw/path/checksum/HIL pass 等只用于阻断，handoff 可见摘要只保留材料缺口和下一步。
         if any(
             marker in lowered
             for marker in ("raw", "path", "checksum", "hil pass", "[redacted")
@@ -18775,6 +18856,99 @@ def _default_pr5_mandatory_sensor_material_owner_response_review_decision_summar
     }
 
 
+def _default_pr5_mandatory_sensor_material_owner_response_review_handoff_summary(
+    path,
+    status="blocked_missing_review_decision_not_proven",
+    read_error="",
+):
+    # 缺 handoff summary 时保持 blocked，避免 Robot 侧把上游 review-decision 当成可直接操作的材料闭环。
+    reason = read_error or (
+        "PR #5 mandatory sensor material owner response review handoff summary is not configured"
+    )
+    safe_copy = (
+        "PR #5 mandatory sensor material owner response review handoff is "
+        "metadata-only; source=software_proof; hardware_material_pending; "
+        "not_proven; safe_to_control=false; delivery_success=false; "
+        "primary_actions_enabled=false."
+    )
+    return {
+        "schema": PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_GATE,
+        "proof_boundary": PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_GATE,
+        "capability": "pr5_mandatory_sensor_material_owner_response_review_handoff",
+        "source_schema": "",
+        "source_schema_version": None,
+        "source_evidence_boundary": "",
+        "source": "software_proof",
+        "configured": bool(str(path or "").strip()),
+        "exists": False,
+        "safe_evidence_ref": "",
+        "evidence_ref": "",
+        "handoff_status": status,
+        "status": status,
+        "overall_status": "not_proven",
+        "handoff_summary": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": reason,
+        },
+        "source_review_decision_status": "blocked",
+        "source_review_decision_summary": {
+            "status": "blocked",
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": reason,
+        },
+        "handoff_reasons": [],
+        "missing_material_summaries": [],
+        "next_required_evidence": [],
+        "owner_next_step": "",
+        "reviewer_next_step": "",
+        "support_next_step": "",
+        "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+        "pr5_thread_state": "unresolved",
+        "pr5_material_state": "hardware_material_pending",
+        "evidence_boundary_status": "not_proven",
+        "false_states": {
+            "hardware_material_pending": True,
+            "not_proven": True,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        },
+        "not_proven": (
+            _pr5_mandatory_sensor_material_owner_response_review_handoff_not_proven()
+        ),
+        "metadata_only": True,
+        "summary_required": True,
+        "hardware_material_pending": True,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "collect_triggered": False,
+        "dropoff_triggered": False,
+        "cancel_triggered": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "persistence_updates_allowed": False,
+        "terminal_ack_allowed": False,
+        "command_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "field_pass": False,
+        "sensor_installed": False,
+        "pr_resolved": False,
+        "review_thread_updates_allowed": False,
+        "source_payload_exposed": False,
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+    }
+
+
 def _default_hardware_real_material_escalation_request_summary(
     path,
     status="blocked_missing_hardware_real_material_escalation_request_summary",
@@ -21042,6 +21216,26 @@ def _pr5_mandatory_sensor_material_owner_response_review_decision_source_contrac
         source_schema = str(
             value.get("source_schema")
             or PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_SCHEMA
+        )
+        source_boundary = str(
+            value.get("source_evidence_boundary")
+            or value.get("proof_boundary")
+            or source_boundary
+        )
+    return source_schema, source_boundary
+
+
+def _pr5_mandatory_sensor_material_owner_response_review_handoff_source_contract(value):
+    # review-handoff 只能来自 Hardware worker 的 safe summary；Robot 不读取 raw artifact 或远端评审更新结果。
+    source_schema = str(value.get("schema") or "")
+    source_boundary = str(value.get("evidence_boundary") or value.get("proof_boundary") or "")
+    if source_schema in {
+        PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_SOURCE_SUMMARY_SCHEMA,
+        PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+    }:
+        source_schema = str(
+            value.get("source_schema")
+            or PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_SCHEMA
         )
         source_boundary = str(
             value.get("source_evidence_boundary")
@@ -69368,6 +69562,367 @@ def summarize_pr5_mandatory_sensor_material_owner_response_review_decision(sourc
     return summary
 
 
+def summarize_pr5_mandatory_sensor_material_owner_response_review_handoff(source):
+    """构建 PR #5 mandatory sensor material owner-response review-handoff 的 Robot-safe 摘要。"""
+    # handoff 面向 status/diagnostics/phone；这里只允许 PC gate safe summary 进入 Robot 负载。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_pr5_mandatory_sensor_material_owner_response_review_handoff_summary(
+        source_path,
+        read_error=(
+            "PR #5 mandatory sensor material owner response review handoff summary is not configured"
+        ),
+    )
+    if isinstance(source, dict):
+        handoff_doc = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = (
+                "PR #5 mandatory sensor material owner response review handoff summary artifact missing"
+            )
+            summary["handoff_summary"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                handoff_doc = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                "failed reading PR #5 mandatory sensor material owner response "
+                f"review handoff summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["handoff_summary"]["reason"] = safe_error
+            return summary
+
+    if not isinstance(handoff_doc, dict):
+        summary["handoff_summary"]["reason"] = (
+            "PR #5 mandatory sensor material owner response review handoff JSON must be an object"
+        )
+        return summary
+
+    diagnostics = (
+        handoff_doc.get("diagnostics")
+        if isinstance(handoff_doc.get("diagnostics"), dict)
+        else {}
+    )
+    raw_schema = str(handoff_doc.get("schema") or "")
+    source_schema, source_boundary = (
+        _pr5_mandatory_sensor_material_owner_response_review_handoff_source_contract(
+            handoff_doc
+        )
+    )
+    if raw_schema in {
+        PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_SOURCE_SUMMARY_SCHEMA,
+        PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_SUMMARY_SCHEMA,
+    }:
+        summary_fragment = handoff_doc
+    else:
+        summary_fragment = {}
+        for candidate in (
+            handoff_doc.get(
+                "pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+            ),
+            handoff_doc.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+            ),
+            handoff_doc.get("diagnostics_summary"),
+            handoff_doc.get("robot_diagnostics_summary"),
+            handoff_doc.get("robot_compatible_summary"),
+            handoff_doc.get("summary"),
+            diagnostics.get(
+                "pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+            ),
+            diagnostics.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+            ),
+            diagnostics.get("diagnostics_summary"),
+            diagnostics.get("summary"),
+        ):
+            if isinstance(candidate, dict):
+                summary_fragment = candidate
+                break
+    if summary_fragment:
+        nested_schema, nested_boundary = (
+            _pr5_mandatory_sensor_material_owner_response_review_handoff_source_contract(
+                summary_fragment
+            )
+        )
+        if nested_schema:
+            source_schema, source_boundary = nested_schema, nested_boundary
+
+    status_doc = (
+        summary_fragment.get("handoff_summary")
+        if isinstance(summary_fragment.get("handoff_summary"), dict)
+        else summary_fragment.get("review_handoff_status")
+        if isinstance(summary_fragment.get("review_handoff_status"), dict)
+        else summary_fragment.get("status_summary")
+        if isinstance(summary_fragment.get("status_summary"), dict)
+        else {}
+    )
+    source_review_doc = (
+        summary_fragment.get("source_review_decision_summary")
+        if isinstance(summary_fragment.get("source_review_decision_summary"), dict)
+        else summary_fragment.get("source_review_decision_status")
+        if isinstance(summary_fragment.get("source_review_decision_status"), dict)
+        else summary_fragment.get("source_review_summary")
+        if isinstance(summary_fragment.get("source_review_summary"), dict)
+        else {}
+    )
+    safe_copy = (
+        summary_fragment.get("safe_copy")
+        or summary_fragment.get("safe_phone_copy")
+        or handoff_doc.get("safe_copy")
+        or handoff_doc.get("safe_phone_copy")
+        or summary["safe_copy"]
+    )
+    safe_copy_text = _redact_route_task_rehearsal_text(safe_copy)
+    if "delivery_success=false" not in safe_copy_text:
+        # 手机/诊断会直接展示 handoff copy，因此必须把边界词补齐到 copy 内。
+        safe_copy_text = (
+            f"{safe_copy_text}; source=software_proof; hardware_material_pending; "
+            "not_proven; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+    handoff_status = _redact_route_task_rehearsal_text(
+        summary_fragment.get("handoff_status")
+        or summary_fragment.get("status")
+        or status_doc.get("status")
+        or handoff_doc.get("handoff_status")
+        or handoff_doc.get("status")
+        or "blocked_missing_review_decision_not_proven"
+    )
+    source_review_decision_status = _redact_route_task_rehearsal_text(
+        source_review_doc.get("status")
+        or summary_fragment.get("source_review_decision_status")
+        or handoff_doc.get("source_review_decision_status")
+        or "blocked"
+    )
+    safe_evidence_ref = _safe_route_task_rehearsal_ref(
+        summary_fragment.get("safe_evidence_ref")
+        or summary_fragment.get("evidence_ref")
+        or handoff_doc.get("safe_evidence_ref")
+        or handoff_doc.get("evidence_ref", "")
+    )
+    reason = _redact_route_task_rehearsal_text(
+        status_doc.get("reason")
+        or summary_fragment.get("reason")
+        or handoff_doc.get("reason")
+        or "PR #5 mandatory sensor material owner response review handoff remains software_proof only"
+    )
+    summary.update(
+        {
+            "source_schema": _redact_route_task_rehearsal_text(source_schema),
+            "source_schema_version": (
+                summary_fragment.get("source_schema_version")
+                or summary_fragment.get("schema_version")
+                or handoff_doc.get("schema_version")
+            ),
+            "source_evidence_boundary": _redact_route_task_rehearsal_text(
+                source_boundary
+            ),
+            "source": _redact_route_task_rehearsal_text(
+                summary_fragment.get("source") or handoff_doc.get("source") or "software_proof"
+            ),
+            "exists": True,
+            "safe_evidence_ref": safe_evidence_ref,
+            "evidence_ref": safe_evidence_ref,
+            "handoff_status": handoff_status,
+            "status": handoff_status,
+            "overall_status": "not_proven",
+            "handoff_summary": {
+                "status": handoff_status,
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": reason,
+            },
+            "source_review_decision_status": source_review_decision_status,
+            "source_review_decision_summary": {
+                "status": source_review_decision_status,
+                "verdict": "not_proven",
+                "evidence_source": "software_proof",
+                "reason": _redact_route_task_rehearsal_text(
+                    source_review_doc.get("reason")
+                    or "source owner-response review decision remains not_proven"
+                ),
+            },
+            "handoff_reasons": _safe_route_task_rehearsal_list(
+                summary_fragment.get("handoff_reasons")
+                or summary_fragment.get("decision_reasons")
+            ),
+            "missing_material_summaries": _safe_route_task_rehearsal_list(
+                summary_fragment.get("missing_material_summaries")
+                or summary_fragment.get("missing_material_refs")
+            ),
+            "next_required_evidence": _safe_route_task_rehearsal_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "owner_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("owner_next_step")
+                or summary_fragment.get("owner_action")
+                or handoff_doc.get("owner_next_step")
+            ),
+            "reviewer_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("reviewer_next_step")
+                or handoff_doc.get("reviewer_next_step")
+            ),
+            "support_next_step": _redact_route_task_rehearsal_text(
+                summary_fragment.get("support_next_step")
+                or handoff_doc.get("support_next_step")
+            ),
+            "pr5_thread_id": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_thread_id")
+                or handoff_doc.get("pr5_thread_id")
+                or "PRRT_kwDOSWB9286CJ3tX"
+            ),
+            "pr5_thread_state": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_thread_state")
+                or handoff_doc.get("pr5_thread_state")
+                or "unresolved"
+            ),
+            "pr5_material_state": _redact_route_task_rehearsal_text(
+                summary_fragment.get("pr5_material_state")
+                or handoff_doc.get("pr5_material_state")
+                or "hardware_material_pending"
+            ),
+            "evidence_boundary_status": _redact_route_task_rehearsal_text(
+                summary_fragment.get("evidence_boundary_status") or "not_proven"
+            ),
+            "false_states": {
+                "hardware_material_pending": True,
+                "not_proven": True,
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            },
+            "not_proven": (
+                _pr5_mandatory_sensor_material_owner_response_review_handoff_not_proven(
+                    handoff_doc,
+                    summary_fragment,
+                )
+            ),
+            "read_error": "",
+            "safe_copy": safe_copy_text,
+            "safe_phone_copy": safe_copy_text,
+        }
+    )
+    required_safe_metadata = (
+        bool(summary_fragment),
+        bool(summary["safe_evidence_ref"]),
+        handoff_status in PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_STATUSES,
+        bool(source_review_decision_status),
+        bool(summary["next_required_evidence"]),
+        bool(summary["reviewer_next_step"] or summary["support_next_step"]),
+        summary["pr5_thread_id"] == "PRRT_kwDOSWB9286CJ3tX",
+        summary["pr5_thread_state"] in {"unresolved", "is_resolved=false"},
+        summary["pr5_material_state"] == "hardware_material_pending",
+        summary["evidence_boundary_status"] == "not_proven",
+    )
+    if not summary_fragment:
+        summary["handoff_summary"]["status"] = "blocked_missing_review_decision_not_proven"
+        summary["status"] = summary["handoff_summary"]["status"]
+        summary["handoff_status"] = summary["status"]
+        return summary
+    if (
+        source_schema
+        != PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_SCHEMA
+        or source_boundary
+        != PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_GATE
+    ):
+        summary["handoff_summary"] = {
+            "status": "blocked_missing_review_decision_not_proven",
+            "verdict": "not_proven",
+            "evidence_source": "software_proof",
+            "reason": (
+                "PR #5 mandatory sensor material owner response review handoff "
+                "schema or evidence boundary is unsupported"
+            ),
+        }
+        summary["status"] = summary["handoff_summary"]["status"]
+        summary["handoff_status"] = summary["status"]
+        return summary
+    if summary["source"] != "software_proof":
+        summary["handoff_summary"]["status"] = "rejected_unsafe_material_not_proven"
+        summary["handoff_summary"]["reason"] = (
+            "PR #5 mandatory sensor material owner response review handoff must remain source=software_proof"
+        )
+        summary["status"] = summary["handoff_summary"]["status"]
+        summary["handoff_status"] = summary["status"]
+        return summary
+    if not all(required_safe_metadata):
+        summary["handoff_summary"]["status"] = "blocked_missing_review_decision_not_proven"
+        summary["handoff_summary"]["reason"] = (
+            "PR #5 mandatory sensor material owner response review handoff is missing required safe metadata"
+        )
+        summary["status"] = summary["handoff_summary"]["status"]
+        summary["handoff_status"] = summary["status"]
+        return summary
+    if (
+        not _pr5_mandatory_sensor_material_owner_response_false_states_ok(
+            handoff_doc,
+            summary_fragment,
+        )
+        or _pr5_mandatory_sensor_material_owner_response_review_decision_has_unsafe_fields(
+            handoff_doc
+        )
+        or _pr5_mandatory_sensor_material_owner_response_review_decision_has_unsafe_fields(
+            summary_fragment
+        )
+        or _pr5_mandatory_sensor_material_owner_response_review_decision_has_unsafe_fields(
+            status_doc
+        )
+        or _pr5_mandatory_sensor_material_owner_response_review_decision_has_unsafe_fields(
+            source_review_doc
+        )
+        or _pr5_mandatory_sensor_material_owner_response_copy_is_unsafe(safe_copy_text)
+    ):
+        blocked_copy = (
+            "PR #5 mandatory sensor material owner response review handoff was "
+            "blocked because summary fields could expose raw artifacts, local paths, "
+            "checksums, tracebacks, robot command topics, ACK/cursor mutation, "
+            "serial/UART details, WAVE ROVER parameters, credentials, remote review updates, "
+            "external-proof, HIL pass, installed-sensor, PR-resolution, success, or "
+            "control wording; source=software_proof; hardware_material_pending; "
+            "not_proven; safe_to_control=false; delivery_success=false; "
+            "primary_actions_enabled=false."
+        )
+        summary.update(
+            {
+                "handoff_status": "rejected_unsafe_material_not_proven",
+                "status": "rejected_unsafe_material_not_proven",
+                "handoff_summary": {
+                    "status": "rejected_unsafe_material_not_proven",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": (
+                        "unsafe raw artifact, local path, checksum, traceback, robot "
+                        "command topic, ACK/cursor mutation, serial/UART detail, WAVE "
+                        "ROVER detail, credential, remote review update, external-proof, HIL "
+                        "pass, installed-sensor, PR-resolution, success, or control material"
+                    ),
+                },
+                "safe_evidence_ref": "",
+                "evidence_ref": "",
+                "source_review_decision_status": "blocked",
+                "source_review_decision_summary": {
+                    "status": "blocked",
+                    "verdict": "not_proven",
+                    "evidence_source": "software_proof",
+                    "reason": "unsafe owner response review handoff summary was redacted and blocked",
+                },
+                "handoff_reasons": [],
+                "missing_material_summaries": [],
+                "next_required_evidence": [],
+                "owner_next_step": "",
+                "reviewer_next_step": "",
+                "support_next_step": "",
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+            }
+        )
+    return summary
+
+
 def summarize_hardware_real_material_escalation_request(source):
     """构建真实硬件材料升级请求的 metadata-only Robot diagnostics 摘要。"""
     # 只读消费 Hardware worker 的 sanitized summary；不能读取串口、ROS graph 或原始硬件材料正文。
@@ -86119,6 +86674,7 @@ def build_diagnostics_payload(
     pr5_mandatory_sensor_material_followup_escalation_status_ref="",
     pr5_mandatory_sensor_material_owner_response_intake_ref="",
     pr5_mandatory_sensor_material_owner_response_review_decision_ref="",
+    pr5_mandatory_sensor_material_owner_response_review_handoff_ref="",
     hardware_real_material_escalation_request_ref="",
     real_material_readiness_board_ref="",
     real_material_evidence_intake_ref="",
@@ -88715,6 +89271,59 @@ def build_diagnostics_payload(
         if isinstance(
             diagnostics_source.get(
                 "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary"
+            ),
+            dict,
+        )
+        else {}
+    )
+    pr5_mandatory_sensor_material_owner_response_review_handoff_source = (
+        latest_status.get("pr5_mandatory_sensor_material_owner_response_review_handoff")
+        if isinstance(
+            latest_status.get("pr5_mandatory_sensor_material_owner_response_review_handoff"),
+            dict,
+        )
+        else latest_status.get(
+            "pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+            ),
+            dict,
+        )
+        else latest_status.get(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+        )
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "pr5_mandatory_sensor_material_owner_response_review_handoff"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "pr5_mandatory_sensor_material_owner_response_review_handoff"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary"
             ),
             dict,
         )
@@ -94197,6 +94806,30 @@ def build_diagnostics_payload(
         "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary",
     ):
         latest_status.pop(unsafe_latest_key, None)
+    pr5_mandatory_sensor_material_owner_response_review_handoff_source = (
+        pr5_mandatory_sensor_material_owner_response_review_handoff_ref
+        or os.environ.get(
+            "TRASHBOT_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF",
+            "",
+        )
+        or os.environ.get(
+            "TRASHBOT_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_SUMMARY",
+            "",
+        )
+        or pr5_mandatory_sensor_material_owner_response_review_handoff_source
+    )
+    pr5_mandatory_sensor_material_owner_response_review_handoff_summary = (
+        summarize_pr5_mandatory_sensor_material_owner_response_review_handoff(
+            pr5_mandatory_sensor_material_owner_response_review_handoff_source
+        )
+    )
+    # review-handoff 是 phone/status 只读面；raw artifact、ACK/cursor/远端评审更新字段不能留在 latest_status。
+    for unsafe_latest_key in (
+        "pr5_mandatory_sensor_material_owner_response_review_handoff",
+        "pr5_mandatory_sensor_material_owner_response_review_handoff_summary",
+        "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary",
+    ):
+        latest_status.pop(unsafe_latest_key, None)
     hardware_real_material_escalation_request_source = (
         hardware_real_material_escalation_request_ref
         or os.environ.get("TRASHBOT_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST", "")
@@ -95555,6 +96188,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_decision_summary=(
             pr5_mandatory_sensor_material_owner_response_review_decision_summary
+        ),
+        pr5_mandatory_sensor_material_owner_response_review_handoff=(
+            pr5_mandatory_sensor_material_owner_response_review_handoff_summary
+        ),
+        pr5_mandatory_sensor_material_owner_response_review_handoff_summary=(
+            pr5_mandatory_sensor_material_owner_response_review_handoff_summary
+        ),
+        robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary=(
+            pr5_mandatory_sensor_material_owner_response_review_handoff_summary
         ),
         hardware_real_material_escalation_request=(
             hardware_real_material_escalation_request_summary

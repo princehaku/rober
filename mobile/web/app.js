@@ -212,6 +212,7 @@ const PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_BOUNDARY = "software_proof_docker_pr
 const PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_BOUNDARY = "software_proof_docker_pr5_mandatory_sensor_material_followup_escalation_status_gate";
 const PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_INTAKE_BOUNDARY = "software_proof_docker_pr5_mandatory_sensor_material_owner_response_intake_gate";
 const PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_BOUNDARY = "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate";
+const PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate";
 const HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_BOUNDARY = "software_proof_docker_hardware_real_material_escalation_request_gate";
 const REAL_MATERIAL_READINESS_BOARD_BOUNDARY = "software_proof_docker_real_material_readiness_board_gate";
 const REAL_MATERIAL_EVIDENCE_INTAKE_BOUNDARY = "software_proof_docker_real_material_evidence_intake_gate";
@@ -494,6 +495,7 @@ const UNSAFE_PR5_MANDATORY_SENSOR_SOURCE_ALIGNMENT_TEXT = /(authorization|bearer
 const UNSAFE_PR5_MANDATORY_SENSOR_MATERIAL_FOLLOWUP_ESCALATION_STATUS_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw followup|raw escalation|raw review|raw handoff|complete artifact|complete artifacts|full execution bundle|execution bundle|ack payload|cursor|retry request|diagnostics fetch|upload route|material route|review route|handoff route|follow-up route|followup route|queue scheduling|callback submission|review submission|handoff submission|procurement action|github action|robot command|raw robot response|robot\/internal|internal technical|password|objective 5 external proof|real phone\/browser proof|pr resolution|reviewer resolved|resolved by reviewer|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|dropoff completion|cancel completed|cancel completion|control grant|control enabled|safe_to_control\s*=\s*true|delivery_success\s*=\s*true|primary_actions_enabled\s*=\s*true|hil_pass|hil passed|field pass|installed sensor|sensor installed|lidar installed|tof installed|采购\s*完成|安装\s*完成|标定\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*标定|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|真实\s*手机\s*验收\s*通过|真实\s*送达|升级完成|材料已完成|完整\s*材料)/i;
 const UNSAFE_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_INTAKE_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|wave rover parameter|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw owner response|raw followup|raw escalation|raw review|raw handoff|complete artifact|complete artifacts|full execution bundle|execution bundle|ack payload|cursor|retry request|diagnostics fetch|copy route|export route|material route|review route|handoff route|follow-up route|followup route|queue scheduling|callback submission|review submission|handoff submission|procurement action|github action|robot command|raw robot response|robot\/internal|internal technical|password|objective 5 external proof|real phone\/browser proof|pr resolution|reviewer resolved|resolved by reviewer|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|dropoff completion|cancel completed|cancel completion|control grant|control enabled|safe_to_control\s*=\s*true|delivery_success\s*=\s*true|primary_actions_enabled\s*=\s*true|hil_pass|\bhil\b|hil passed|pass wording|field pass|installed sensor|sensor installed|lidar installed|tof installed|采购\s*完成|安装\s*完成|标定\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*标定|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|真实\s*手机\s*验收\s*通过|真实\s*送达|升级完成|材料已完成|完整\s*材料)/i;
 const UNSAFE_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|wave rover parameter|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw owner response|raw review|raw decision|raw followup|raw escalation|raw handoff|complete artifact|complete artifacts|full execution bundle|execution bundle|ack payload|cursor|retry request|diagnostics fetch|copy route|export route|material route|review route|handoff route|follow-up route|followup route|queue scheduling|callback submission|review submission|handoff submission|procurement action|github action|robot command|raw robot response|robot\/internal|internal technical|password|objective 5 external proof|real phone\/browser proof|pr resolution|reviewer resolved|resolved by reviewer|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|dropoff completion|cancel completed|cancel completion|control grant|control enabled|safe_to_control\s*=\s*true|delivery_success\s*=\s*true|primary_actions_enabled\s*=\s*true|hil_pass|\bhil\b|hil passed|pass wording|field pass|installed sensor|sensor installed|lidar installed|tof installed|采购\s*完成|安装\s*完成|标定\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*标定|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|真实\s*手机\s*验收\s*通过|真实\s*送达|升级完成|材料已完成|完整\s*材料)/i;
+const UNSAFE_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|wave rover parameter|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw owner response|raw review|raw decision|raw followup|raw escalation|raw handoff|complete artifact|complete artifacts|full execution bundle|execution bundle|ack payload|cursor|retry request|diagnostics fetch|copy route|export route|upload route|material route|review route|handoff route|owner response route|owner-response route|follow-up route|followup route|queue scheduling|callback submission|review submission|handoff submission|procurement action|github action|github mutation|robot command|raw robot response|robot\/internal|internal technical|password|objective 5 external proof|real phone\/browser proof|pr resolution|reviewer resolved|resolved by reviewer|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|dropoff completion|cancel completed|cancel completion|control grant|control enabled|safe_to_control\s*=\s*true|delivery_success\s*=\s*true|primary_actions_enabled\s*=\s*true|hil_pass|\bhil\b|hil passed|pass wording|field pass|installed sensor|sensor installed|lidar installed|tof installed|采购\s*完成|安装\s*完成|标定\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*标定|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|真实\s*手机\s*验收\s*通过|真实\s*送达|升级完成|材料已完成|完整\s*材料)/i;
 const UNSAFE_HARDWARE_REAL_MATERIAL_ESCALATION_REQUEST_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw request|raw escalation|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|hil_pass|hil passed|\bhil\b|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_REAL_MATERIAL_READINESS_BOARD_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw diagnostics|raw material|raw board|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|hil_pass|hil passed|field pass|采购\s*完成|安装\s*完成|接线\s*完成|已\s*通过|可\s*发车|已\s*采购|已\s*安装|已\s*接线|已\s*hil|已\s*送达|真实\s*hil\s*通过|完整\s*材料)/i;
 const UNSAFE_REAL_MATERIAL_EVIDENCE_INTAKE_TEXT = /(authorization|bearer|token|github[_ -]?token|ghp_|oss\s*(ak|sk)|oss\/cdn|cdn|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|raw json|full json|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|\/dev\/|gpio|pinout|voltage|firmware path|hardware path|absolute path|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|raw artifacts|raw diagnostics|raw material|raw intake|raw evidence|complete artifact|complete artifacts|complete-artifact|full execution bundle|execution bundle|raw robot response|robot\/internal|internal technical|password|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|control grant|control enabled|safe_to_control\s*=\s*true|hil_pass|hil passed|field pass|现场通过|真实手机已验收|真实送达成功|投放完成|取消完成|完整\s*材料)/i;
@@ -2147,6 +2149,15 @@ function safePr5MandatorySensorMaterialOwnerResponseReviewDecisionText(value, fa
   // 复核决策只展示 Robot safe summary；raw 材料、review route、控制语义或完成声明都降级。
   const text = safeText(value, fallback);
   if (UNSAFE_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText(value, fallback = "not_proven") {
+  // review handoff 只展示下一步交接摘要，任何 raw material、路由、GitHub mutation 或控制语义都降级。
+  const text = safeText(value, fallback);
+  if (UNSAFE_PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_TEXT.test(text)) {
     return fallback;
   }
   return text;
@@ -37367,6 +37378,287 @@ function renderPr5MandatorySensorMaterialOwnerResponseReviewDecision(status) {
     `safe_to_control=${summary.safe_to_control} / delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
 }
 
+function pr5MandatorySensorMaterialOwnerResponseReviewHandoffCandidate(status, readiness, diagnostics) {
+  // Robot safe alias 必须优先；fallback 只接受既有 status/diagnostics 中已经脱敏的 summary。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.pr5_mandatory_sensor_material_owner_response_review_handoff?.summary ||
+    readiness?.pr5_mandatory_sensor_material_owner_response_review_handoff?.summary ||
+    diagnostics?.pr5_mandatory_sensor_material_owner_response_review_handoff?.summary ||
+    diagnosticsSummary.pr5_mandatory_sensor_material_owner_response_review_handoff?.summary ||
+    nestedDiagnosticsSummary.pr5_mandatory_sensor_material_owner_response_review_handoff?.summary ||
+    nestedDiagnosticsInnerSummary.pr5_mandatory_sensor_material_owner_response_review_handoff?.summary ||
+    statusDiagnosticsSummary.pr5_mandatory_sensor_material_owner_response_review_handoff?.summary;
+  return firstObject(
+    status?.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    readiness?.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    diagnostics?.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    diagnosticsReadiness.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    diagnosticsSummary.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    statusDiagnosticsSummary.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    status?.pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    readiness?.pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    diagnostics?.pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    diagnosticsReadiness.pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    diagnosticsSummary.pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    nestedDiagnosticsSummary.pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    nestedDiagnosticsInnerSummary.pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    statusDiagnosticsSummary.pr5_mandatory_sensor_material_owner_response_review_handoff_summary,
+    artifactSummary,
+  );
+}
+
+function pr5MandatorySensorMaterialOwnerResponseReviewHandoffNotProvenList(value) {
+  // handoff 只证明手机端能看见脱敏交接状态，不证明 PR #5 关闭、传感器到货或硬件 HIL。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "source=software_proof",
+    "software_proof",
+    "hardware_material_pending",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "PRRT_kwDOSWB9286CJ3tX is_resolved=false",
+    "owner response review handoff is summary-only",
+    "real LiDAR/ToF material not_proven",
+    "reviewer closure not_proven",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 18);
+}
+
+function pr5MandatorySensorMaterialOwnerResponseReviewHandoffSummaryText(value, fallback) {
+  // 交接字段允许数组/对象，手机端只拼接安全短句，避免完整材料或 raw diagnostics 泄漏。
+  if (Array.isArray(value)) {
+    const safeItems = value
+      .map((item) => safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText(
+        item?.safe_phone_copy || item?.summary || item?.status || item?.state ||
+          item?.handoff || item?.owner || item?.support || item?.reviewer ||
+          item?.next_step || item?.reason || item?.material_ref || item,
+      ))
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 12).join("；") : fallback;
+  }
+  if (value && typeof value === "object") {
+    const direct = value.safe_phone_copy || value.safe_copy || value.summary ||
+      value.status || value.state || value.handoff || value.owner ||
+      value.support || value.reviewer || value.next_step || value.reason ||
+      value.material_ref;
+    if (direct) {
+      return safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText(direct, fallback);
+    }
+    const safeItems = Object.entries(value)
+      .map(([key, detail]) => {
+        const label = safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText(key, "");
+        const copy = pr5MandatorySensorMaterialOwnerResponseReviewHandoffSummaryText(detail, "");
+        return label && copy ? `${label}=${copy}` : copy || label;
+      })
+      .filter((item) => item && item !== "not_proven");
+    return safeItems.length ? safeItems.slice(0, 12).join("；") : fallback;
+  }
+  return safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText(value, fallback);
+}
+
+function pr5MandatorySensorMaterialOwnerResponseReviewHandoffFromStatus(status, readiness, diagnostics) {
+  const provided = pr5MandatorySensorMaterialOwnerResponseReviewHandoffCandidate(
+    status,
+    readiness,
+    diagnostics,
+  ) || {};
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1",
+    source_schema: provided.source_schema ||
+      "trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1",
+    schema_version: 1,
+    capability: "pr5_mandatory_sensor_material_owner_response_review_handoff",
+    source: safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText(provided.source, "software_proof"),
+    handoff_status: safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText(
+      provided.handoff_status || provided.status || provided.decision,
+      "blocked_missing_owner_response_review_decision_not_proven",
+    ),
+    source_review_decision_status: pr5MandatorySensorMaterialOwnerResponseReviewHandoffSummaryText(
+      provided.source_review_decision_status || provided.source_review_decision ||
+        provided.review_decision || provided.source_decision,
+      "source_review_decision=blocked_missing_owner_response_review_decision_not_proven",
+    ),
+    safe_evidence_ref: safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "PRRT_kwDOSWB9286CJ3tX",
+    ),
+    thread_id: safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText(
+      provided.thread_id || provided.review_thread_id,
+      "PRRT_kwDOSWB9286CJ3tX",
+    ),
+    source_boundary_refs: pr5MandatorySensorMaterialOwnerResponseReviewHandoffSummaryText(
+      provided.source_boundary_refs || provided.source_boundary || provided.source_evidence_boundary,
+      PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_DECISION_BOUNDARY,
+    ),
+    owner_handoff: pr5MandatorySensorMaterialOwnerResponseReviewHandoffSummaryText(
+      provided.owner_handoff || provided.field_owner_handoff || provided.owner_next_step,
+      "owner_handoff=provide phone-safe 2D LiDAR / ToF material refs under PRRT_kwDOSWB9286CJ3tX",
+    ),
+    support_handoff: pr5MandatorySensorMaterialOwnerResponseReviewHandoffSummaryText(
+      provided.support_handoff || provided.support_next_step || provided.support_route,
+      "support_handoff=track hardware_material_pending without enabling controls",
+    ),
+    reviewer_handoff: pr5MandatorySensorMaterialOwnerResponseReviewHandoffSummaryText(
+      provided.reviewer_handoff || provided.reviewer_next_step || provided.reviewer_route,
+      "reviewer_handoff=review sanitized owner response; do not mark PRRT_kwDOSWB9286CJ3tX resolved.",
+    ),
+    decision_reasons: pr5MandatorySensorMaterialOwnerResponseReviewHandoffSummaryText(
+      provided.decision_reasons || provided.handoff_reasons || provided.reasons,
+      "decision_reason=owner response review handoff is pending real material summaries",
+    ),
+    missing_material_summaries: pr5MandatorySensorMaterialOwnerResponseReviewHandoffSummaryText(
+      provided.missing_material_summaries || provided.missing_materials || provided.missing_reasons,
+      "missing=2D LiDAR / ToF source, receipt, procurement, mounting, wiring, power, calibration, and reviewer closeout summaries",
+    ),
+    rejected_material_summaries: pr5MandatorySensorMaterialOwnerResponseReviewHandoffSummaryText(
+      provided.rejected_material_summaries || provided.rejected_materials || provided.rejected_reasons,
+      "rejected=complete/internal/success-claim material is not phone-safe",
+    ),
+    next_required_evidence: pr5MandatorySensorMaterialOwnerResponseReviewHandoffSummaryText(
+      provided.next_required_evidence || provided.next_evidence || provided.next_steps,
+      "next_required_evidence=phone-safe 2D LiDAR / ToF source, receipt, install, wiring, power, calibration, and reviewer closeout material summaries",
+    ),
+    evidence_boundary: safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText(
+      provided.evidence_boundary || provided.proof_boundary,
+      PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEW_HANDOFF_BOUNDARY,
+    ),
+    proof_status: safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText(
+      provided.proof_status || provided.material_state,
+      "hardware_material_pending",
+    ),
+    safe_copy: safePr5MandatorySensorMaterialOwnerResponseReviewHandoffText(
+      provided.safe_copy || provided.safe_phone_copy || provided.safe_summary,
+      "PR #5 强制传感器 owner response review handoff 只读展示；source=software_proof / hardware_material_pending / not_proven。",
+    ),
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: pr5MandatorySensorMaterialOwnerResponseReviewHandoffNotProvenList(provided),
+  };
+}
+
+function ensurePr5MandatorySensorMaterialOwnerResponseReviewHandoffPanel() {
+  // handoff 面板紧跟 review decision，只提供只读交接状态，不添加复制、上传、ACK/cursor 或控制入口。
+  let panel = $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("pr5MandatorySensorMaterialOwnerResponseReviewDecisionTitle")?.closest("section") ||
+    $("pr5MandatorySensorMaterialOwnerResponseIntakeTitle")?.closest("section") ||
+    $("pr5MandatorySensorMaterialFollowupEscalationStatusTitle")?.closest("section") ||
+    $("pr5MandatorySensorSourceAlignmentTitle")?.closest("section") ||
+    $("pr5VendorSourceReviewReplyDispatchTitle")?.closest("section") ||
+    $("pr5VendorSourceReviewPacketTitle")?.closest("section") ||
+    $("pr5ReviewThreadCloseoutTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "pr5MandatorySensorMaterialOwnerResponseReviewHandoffPanel";
+  panel.className = "pr5-mandatory-sensor-material-owner-response-review-handoff-panel";
+  panel.setAttribute("aria-labelledby", "pr5MandatorySensorMaterialOwnerResponseReviewHandoffTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffTitle">PR5 material handoff state</h2>
+      <span id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffCopy" class="message">
+      等待 robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary。
+    </p>
+    <dl class="pr5-mandatory-sensor-material-owner-response-review-handoff-grid">
+      <div><dt>Handoff Status</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffStatus">blocked_missing_owner_response_review_decision_not_proven</dd></div>
+      <div><dt>Source Review Decision</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffSourceDecision">source_review_decision=blocked_missing_owner_response_review_decision_not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffEvidenceRef">PRRT_kwDOSWB9286CJ3tX</dd></div>
+      <div><dt>Source Boundary</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffSourceBoundary">software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffOwner">owner_handoff=phone-safe material refs pending</dd></div>
+      <div><dt>Support Handoff</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffSupport">support_handoff=hardware_material_pending</dd></div>
+      <div><dt>Reviewer Handoff</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffReviewer">reviewer_handoff=review safe owner response only</dd></div>
+      <div><dt>Decision Reasons</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffReasons">decision_reason=not_proven</dd></div>
+      <div><dt>Missing Materials</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffMissing">missing=2D LiDAR / ToF safe material refs</dd></div>
+      <div><dt>Rejected Materials</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffRejected">rejected=complete/internal/success claims filtered</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffNextEvidence">next_required_evidence=phone-safe material summaries</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffBoundary">software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate</dd></div>
+      <div><dt>Conservative Flags</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffFlags">source=software_proof / hardware_material_pending / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false</dd></div>
+      <div><dt>not_proven</dt><dd id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffNotProven">真实 2D LiDAR / ToF、reviewer closure 和 delivery success 未证明。</dd></div>
+    </dl>
+    <p id="pr5MandatorySensorMaterialOwnerResponseReviewHandoffHint" class="hint">
+      本 panel 只消费 Robot safe alias 或兼容 safe summary；不新增 upload/material fetch endpoint、GitHub mutation、ACK/cursor、replay/resubmit、raw diagnostics、Start Delivery、Confirm Dropoff、Cancel 或 robot command requests。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderPr5MandatorySensorMaterialOwnerResponseReviewHandoff(status) {
+  const panel = ensurePr5MandatorySensorMaterialOwnerResponseReviewHandoffPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = pr5MandatorySensorMaterialOwnerResponseReviewHandoffFromStatus(
+    status,
+    readiness,
+    latestDiagnostics,
+  );
+  const badge = $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 handoff" : summary.handoff_status;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffCopy").textContent = summary.safe_copy;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffStatus").textContent = summary.handoff_status;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffSourceDecision").textContent =
+    summary.source_review_decision_status;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffEvidenceRef").textContent =
+    summary.safe_evidence_ref;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffSourceBoundary").textContent =
+    summary.source_boundary_refs;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffOwner").textContent =
+    summary.owner_handoff;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffSupport").textContent =
+    summary.support_handoff;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffReviewer").textContent =
+    summary.reviewer_handoff;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffReasons").textContent =
+    summary.decision_reasons;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffMissing").textContent =
+    summary.missing_material_summaries;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffRejected").textContent =
+    summary.rejected_material_summaries;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffNextEvidence").textContent =
+    summary.next_required_evidence;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffBoundary").textContent =
+    summary.evidence_boundary;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffFlags").textContent =
+    `source=${summary.source} / ${summary.proof_status} / not_proven / safe_to_control=${summary.safe_to_control} / delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffNotProven").textContent =
+    summary.not_proven.join("、");
+  $("pr5MandatorySensorMaterialOwnerResponseReviewHandoffHint").textContent =
+    `safe_to_control=${summary.safe_to_control} / delivery_success=${summary.delivery_success} / primary_actions_enabled=${summary.primary_actions_enabled}`;
+}
+
 function ensureHardwareRealMaterialEscalationRequestPanel() {
   // 升级请求紧跟 PR #5 closeout，只读说明真实材料缺口，不提供复制、ACK、cursor 或控制入口。
   let panel = $("hardwareRealMaterialEscalationRequestPanel");
@@ -55447,6 +55739,14 @@ function renderDiagnosticsSummary(payload) {
         latestDiagnostics || {},
       ).review_decision,
     ],
+    [
+      "pr5_mandatory_sensor_material_owner_response_review_handoff",
+      pr5MandatorySensorMaterialOwnerResponseReviewHandoffFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).handoff_status,
+    ],
     ["hardware_real_material_escalation_request", hardwareRealMaterialEscalationRequest.safe_status],
     ["real_material_readiness_board", realMaterialReadinessBoard.status],
     ["real_material_evidence_intake", realMaterialEvidenceIntake.intake_status],
@@ -55956,6 +56256,7 @@ function renderOfflineFailure() {
   renderPr5MandatorySensorMaterialFollowupEscalationStatus({});
   renderPr5MandatorySensorMaterialOwnerResponseIntake({});
   renderPr5MandatorySensorMaterialOwnerResponseReviewDecision({});
+  renderPr5MandatorySensorMaterialOwnerResponseReviewHandoff({});
   renderHardwareRealMaterialEscalationRequest({});
   renderRealMaterialReadinessBoard({});
   renderRealMaterialEvidenceIntake({});
@@ -56147,6 +56448,7 @@ function renderStatus(status) {
   renderPr5MandatorySensorMaterialFollowupEscalationStatus(status);
   renderPr5MandatorySensorMaterialOwnerResponseIntake(status);
   renderPr5MandatorySensorMaterialOwnerResponseReviewDecision(status);
+  renderPr5MandatorySensorMaterialOwnerResponseReviewHandoff(status);
   renderHardwareRealMaterialEscalationRequest(status);
   renderRealMaterialReadinessBoard(status);
   renderRealMaterialEvidenceIntake(status);
@@ -56517,6 +56819,7 @@ async function openDiagnostics() {
     renderPr5MandatorySensorMaterialFollowupEscalationStatus(latestStatus || {});
     renderPr5MandatorySensorMaterialOwnerResponseIntake(latestStatus || {});
     renderPr5MandatorySensorMaterialOwnerResponseReviewDecision(latestStatus || {});
+    renderPr5MandatorySensorMaterialOwnerResponseReviewHandoff(latestStatus || {});
     renderHardwareRealMaterialEscalationRequest(latestStatus || {});
     renderRealMaterialReadinessBoard(latestStatus || {});
     renderRealMaterialEvidenceIntake(latestStatus || {});

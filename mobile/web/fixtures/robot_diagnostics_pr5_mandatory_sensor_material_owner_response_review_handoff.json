@@ -1,0 +1,101 @@
+{
+  "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary": {
+    "schema": "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1",
+    "source_schema": "trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1",
+    "schema_version": 1,
+    "capability": "pr5_mandatory_sensor_material_owner_response_review_handoff",
+    "source": "software_proof",
+    "handoff_status": "ready_for_reviewer_material_handoff_not_proven",
+    "source_review_decision_status": "needs_more_material_not_proven",
+    "source_boundary_refs": [
+      "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate",
+      "docs/vendor/VENDOR_INDEX.md"
+    ],
+    "thread_id": "PRRT_kwDOSWB9286CJ3tX",
+    "safe_evidence_ref": "PRRT_kwDOSWB9286CJ3tX",
+    "owner_handoff": "owner_handoff=provide phone-safe 2D LiDAR and ToF source, receipt, procurement, mounting, wiring, power and calibration summaries only.",
+    "support_handoff": "support_handoff=track hardware_material_pending; do not enable Start Delivery, Confirm Dropoff, or Cancel.",
+    "reviewer_handoff": "reviewer_handoff=review sanitized owner response and keep PRRT_kwDOSWB9286CJ3tX unresolved until real material is accepted.",
+    "decision_reasons": [
+      "decision_reason=owner response review decision can move to safe handoff metadata",
+      "decision_reason=real 2D LiDAR and ToF materials remain pending"
+    ],
+    "missing_material_summaries": [
+      "missing=2D LiDAR source/receipt/procurement/install summary",
+      "missing=ToF source/receipt/procurement/install summary",
+      "missing=wiring, power, calibration, HIL-entry and reviewer closeout summaries"
+    ],
+    "rejected_material_summaries": [
+      "rejected=complete internal material bundle is not phone-safe",
+      "rejected=success, installed-sensor or reviewer-resolution claim is not accepted"
+    ],
+    "next_required_evidence": "next_required_evidence=phone-safe 2D LiDAR / ToF source, receipt, procurement, mounting, wiring, power, calibration and reviewer-closeout material summaries under the same safe evidence_ref.",
+    "safe_copy": "PR #5 强制传感器 owner response review handoff 只读展示；source=software_proof / software_proof / hardware_material_pending / not_proven；PRRT_kwDOSWB9286CJ3tX remains unresolved。",
+    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate",
+    "proof_status": "hardware_material_pending",
+    "boundary_flags": "source=software_proof / software_proof / hardware_material_pending / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "not_proven": [
+      "source=software_proof",
+      "software_proof",
+      "hardware_material_pending",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "PRRT_kwDOSWB9286CJ3tX is_resolved=false",
+      "ready_for_reviewer_material_handoff_not_proven",
+      "needs_more_material_not_proven",
+      "rejected_unsafe_material_not_proven",
+      "blocked_missing_owner_response_review_decision_not_proven",
+      "blocked_evidence_ref_mismatch_not_proven"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "pr5_mandatory_sensor_material_owner_response_review_handoff_summary": {
+    "schema": "trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1",
+    "source": "software_proof",
+    "handoff_status": "needs_owner_material_backfill_handoff_not_proven",
+    "source_review_decision_status": "needs_more_material_not_proven",
+    "source_boundary_refs": "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate",
+    "safe_evidence_ref": "PRRT_kwDOSWB9286CJ3tX",
+    "owner_handoff": "owner_handoff=provide phone-safe material refs",
+    "support_handoff": "support_handoff=keep hardware_material_pending visible",
+    "reviewer_handoff": "reviewer_handoff=review safe owner response only",
+    "decision_reasons": "decision_reason=handoff is summary-only",
+    "missing_material_summaries": "missing=2D LiDAR / ToF source, receipt, procurement and reviewer response summaries",
+    "rejected_material_summaries": "rejected=complete/internal/success-claim material filtered",
+    "next_required_evidence": "next_required_evidence=sanitized material summaries under PRRT_kwDOSWB9286CJ3tX",
+    "safe_copy": "Compatible safe owner response review handoff summary only; source=software_proof and not_proven.",
+    "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate",
+    "proof_status": "hardware_material_pending",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "pr5_mandatory_sensor_material_owner_response_review_handoff": {
+    "summary": {
+      "schema": "trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1",
+      "source": "software_proof",
+      "handoff_status": "blocked_missing_owner_response_review_decision_not_proven",
+      "source_review_decision_status": "blocked_missing_owner_response_review_decision_not_proven",
+      "source_boundary_refs": "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate",
+      "safe_evidence_ref": "PRRT_kwDOSWB9286CJ3tX",
+      "owner_handoff": "owner_handoff=waiting for safe review decision",
+      "support_handoff": "support_handoff=hardware_material_pending",
+      "reviewer_handoff": "reviewer_handoff=wait for safe review decision",
+      "decision_reasons": "decision_reason=source review decision missing",
+      "missing_material_summaries": "missing=safe owner response review decision still pending",
+      "rejected_material_summaries": "rejected=unsafe_or_success_claim_materials_filtered",
+      "next_required_evidence": "next_required_evidence=safe owner response review decision under same evidence_ref",
+      "evidence_boundary": "software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

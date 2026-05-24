@@ -773,6 +773,55 @@ success。`docs/vendor/VENDOR_INDEX.md` 及本地 Orange Pi / WAVE ROVER /
 UART JSON / firmware/vendor-app refs 只支持 source attribution，不证明真实 2D
 LiDAR / ToF SKU/source/receipt/procurement/install/wiring/power/calibration/HIL。
 
+## PR #5 mandatory sensor material owner-response review handoff
+
+`pc-tools/evidence/pr5_mandatory_sensor_material_owner_response_review_handoff.py`
+只读上一轮 `pr5_mandatory_sensor_material_owner_response_review_decision`
+artifact、summary、Robot safe alias 或 wrapper/nested JSON，把 PR #5 thread
+`PRRT_kwDOSWB9286CJ3tX` 的 mandatory 2D LiDAR / ToF material owner-response
+review-decision 转成 PC-only review-handoff artifact / summary：
+
+```bash
+python3 pc-tools/evidence/pr5_mandatory_sensor_material_owner_response_review_handoff.py \
+  --owner-response-review-decision-json /tmp/pr5_mandatory_sensor_material_owner_response_review_decision_summary.json \
+  --evidence-ref pr5-material-owner-response-001 \
+  --output /tmp/pr5_mandatory_sensor_material_owner_response_review_handoff.json \
+  --summary-output /tmp/pr5_mandatory_sensor_material_owner_response_review_handoff_summary.json
+```
+
+输出 artifact 使用
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff.v1`，
+summary 使用
+`schema=trashbot.pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1`，
+Robot safe alias 为
+`robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary`，
+证据边界固定为
+`software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate`。
+核心字段包括 `handoff_status`、`allowed_handoff_statuses`、safe
+`evidence_ref`、`source_owner_response_review_decision`、`material_status`、
+`review_handoff`、`next_required_evidence`、`rerun_commands`、`safe_copy`、
+`software_proof`、`hardware_material_pending`、`not_proven`、
+`delivery_success=false`、`primary_actions_enabled=false` 和
+`safe_to_control=false`。
+
+`handoff_status` 只允许 `ready_for_owner_response_review_handoff_not_proven`、
+`needs_more_material_before_owner_response_review_handoff_not_proven`、
+`rejected_unsafe_owner_response_review_handoff_not_proven`、
+`blocked_missing_owner_response_review_decision_not_proven` 和
+`blocked_evidence_ref_mismatch_not_proven`。该 gate 只消费上一轮 review-decision
+的 sanitized summary 字段，不读取 raw owner-response body、真实材料 payload、
+receipt/source 原文、serial/UART logs、ROS topics、GitHub write state 或
+review-thread resolution state。
+
+`ready_for_owner_response_review_handoff_not_proven` 只表示 safe review-decision
+metadata 可交给人工 owner/support/reviewer 继续 closeout 复核；它不证明真实 2D
+LiDAR / ToF SKU、source、receipt、procurement、install、wiring、power、
+calibration、HIL、`PRRT_kwDOSWB9286CJ3tX` resolved、Objective 5 external
+proof 或 delivery success。comment `3269642220` 仍只是 software-proof reply
+publication，不是 resolution。`docs/vendor/VENDOR_INDEX.md` 及本地 Orange Pi /
+WAVE ROVER / UART JSON / firmware/vendor-app refs 只支持 source attribution，
+不证明真实 2D LiDAR / ToF material。
+
 ## PC route debug console
 
 `pc-tools/route/route_debug_web.py` 是本地 PC console，不依赖 ROS2，不 import `ros2_trashbot_*`，不访问硬件、serial/UART、Nav2 runtime、ROS graph 或网络外部服务：
