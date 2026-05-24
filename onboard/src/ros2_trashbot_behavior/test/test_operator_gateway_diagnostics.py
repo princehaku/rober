@@ -195,6 +195,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_cloud_command_lifecycle_replay_acceptance_packet,
     summarize_cloud_external_evidence_review_decision,
     summarize_cloud_external_evidence_review_handoff,
+    summarize_cloud_external_evidence_review_handoff_followup_escalation_status,
     summarize_cloud_poll_backoff_rate_limit_guard,
     summarize_vision_manifest,
 )
@@ -31517,6 +31518,233 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("not_proven", encoded)
         self.assertIn("production_ready=false", encoded)
         self.assertIn("external_evidence_complete=false", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        self.assertIn("not true phone/browser proof", encoded)
+        self.assertIn("no OKR percentage lift", encoded)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", encoded)
+        self.assertIn("hardware_material_pending", encoded)
+
+    def test_cloud_external_evidence_review_handoff_followup_escalation_status_safe_alias_and_fail_closed(self):
+        safe_followup_summary = {
+            "schema": (
+                "trashbot.cloud_external_evidence_review_handoff_followup_escalation_status_summary.v1"
+            ),
+            "source_schema": (
+                "trashbot.cloud_external_evidence_review_handoff_followup_escalation_status.v1"
+            ),
+            "source_summary_schema": (
+                "trashbot.cloud_external_evidence_review_handoff_followup_escalation_status_summary.v1"
+            ),
+            "source_capability": "cloud_external_evidence_review_handoff",
+            "upstream_capability": "cloud_external_evidence_review_decision",
+            "source_handoff_schema": "trashbot.cloud_external_evidence_review_handoff.v1",
+            "source_handoff_summary_schema": (
+                "trashbot.cloud_external_evidence_review_handoff_summary.v1"
+            ),
+            "upstream_decision_schema": "trashbot.cloud_external_evidence_review_decision.v1",
+            "upstream_decision_summary_schema": (
+                "trashbot.cloud_external_evidence_review_decision_summary.v1"
+            ),
+            "source_evidence_boundary": (
+                "software_proof_docker_cloud_external_evidence_review_handoff_gate"
+            ),
+            "upstream_evidence_boundary": (
+                "software_proof_docker_cloud_external_evidence_review_decision_gate"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate"
+            ),
+            "schema_version": 1,
+            "capability": "cloud_external_evidence_review_handoff_followup_escalation_status",
+            "status": "followup_overdue_not_proven",
+            "overall_status": "blocked",
+            "source": "software_proof",
+            "followup_status": {
+                "status": "followup_overdue_not_proven",
+                "reason": "handoff remains unresolved because real external evidence is missing",
+            },
+            "source_handoff_status": "needs_external_evidence_backfill_handoff_not_proven",
+            "upstream_review_decision_status": "needs_external_evidence_backfill_not_proven",
+            "safe_evidence_ref": "evidence://cloud-external-followup-001",
+            "safe_command_id": "cmd-cloud-external-followup-001",
+            "due_status": "overdue",
+            "blocked_reason": "hardware_material_pending",
+            "owner_action": "owner collects public HTTPS/TLS and DB queue proof",
+            "support_action": "support keeps phone/browser proof marked not true",
+            "reviewer_action": "reviewer keeps PRRT_kwDOSWB9286CJ3tX unresolved",
+            "ceo_escalation_recommendation": "escalate_to_ceo_review_not_proven",
+            "next_required_evidence": [
+                "real_public_https_tls_material",
+                "real_4g_or_sim_material",
+                "production_db_queue_material",
+            ],
+            "safe_copy": (
+                "cloud_external_evidence_review_handoff_followup_escalation_status is "
+                "metadata-only; source=software_proof; not_proven; source_capability="
+                "cloud_external_evidence_review_handoff; upstream_capability="
+                "cloud_external_evidence_review_decision; delivery_success=false; "
+                "primary_actions_enabled=false; safe_to_control=false; "
+                "not true phone/browser proof; no OKR percentage lift; PR #5 "
+                "PRRT_kwDOSWB9286CJ3tX hardware_material_pending."
+            ),
+            "not_proven": ["real_public_https_tls", "real_4g_or_sim"],
+            "production_ready": False,
+            "external_evidence_complete": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+            "pr5_status": "hardware_material_pending",
+            "pr5_material_state": "hardware_material_pending",
+            "pr5_resolution_claim": "not_pr5_resolution",
+        }
+        artifact = {
+            "schema": (
+                "trashbot.cloud_external_evidence_review_handoff_followup_escalation_status.v1"
+            ),
+            "evidence_boundary": (
+                "software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate"
+            ),
+            "cloud_external_evidence_review_handoff_followup_escalation_status_summary": (
+                safe_followup_summary
+            ),
+        }
+        payload = self._base_build_payload(
+            {
+                "cloud_external_evidence_review_handoff_followup_escalation_status": artifact,
+                "diagnostics": {
+                    "cloud_external_evidence_review_handoff_followup_escalation_status": {
+                        "delivery_success": True,
+                        "raw_command": {"/cmd_vel": "unsafe"},
+                        "signed_url": "https://unsafe.example/signed",
+                    }
+                },
+            }
+        )
+        summary = payload[
+            "robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary"
+        ]
+        nested = summarize_cloud_external_evidence_review_handoff_followup_escalation_status(
+            {
+                "status": {
+                    "robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary": (
+                        safe_followup_summary
+                    )
+                }
+            }
+        )
+        raw_only = summarize_cloud_external_evidence_review_handoff_followup_escalation_status(
+            {
+                "schema": (
+                    "trashbot.cloud_external_evidence_review_handoff_followup_escalation_status.v1"
+                ),
+                "evidence_boundary": (
+                    "software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate"
+                ),
+            }
+        )
+        unsafe = summarize_cloud_external_evidence_review_handoff_followup_escalation_status(
+            dict(
+                safe_followup_summary,
+                safe_copy=(
+                    "external proof passed; delivery success; Start Delivery enabled; "
+                    "PR #5 resolved."
+                ),
+                delivery_success=True,
+                primary_actions_enabled=True,
+                safe_to_control=True,
+                pr5_resolved=True,
+                production_endpoint_allowed=True,
+                signed_url_allowed=True,
+                raw_source={"complete_json": {"/cmd_vel": "unsafe", "serial": "ttyUSB0"}},
+            )
+        )
+
+        self.assertEqual(
+            payload["cloud_external_evidence_review_handoff_followup_escalation_status"],
+            summary,
+        )
+        self.assertEqual(
+            payload[
+                "cloud_external_evidence_review_handoff_followup_escalation_status_summary"
+            ],
+            summary,
+        )
+        self.assertNotIn(
+            "cloud_external_evidence_review_handoff_followup_escalation_status",
+            payload["latest_status"],
+        )
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.cloud_external_evidence_review_handoff_followup_escalation_status.v1",
+        )
+        self.assertEqual(
+            summary["source_capability"],
+            "cloud_external_evidence_review_handoff",
+        )
+        self.assertEqual(
+            summary["upstream_capability"],
+            "cloud_external_evidence_review_decision",
+        )
+        self.assertEqual(
+            summary["source_evidence_boundary"],
+            "software_proof_docker_cloud_external_evidence_review_handoff_gate",
+        )
+        self.assertEqual(
+            summary["upstream_evidence_boundary"],
+            "software_proof_docker_cloud_external_evidence_review_decision_gate",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["status"], "followup_overdue_not_proven")
+        self.assertEqual(summary["due_status"], "overdue")
+        self.assertEqual(summary["blocked_reason"], "hardware_material_pending")
+        self.assertEqual(
+            summary["ceo_escalation_recommendation"],
+            "escalate_to_ceo_review_not_proven",
+        )
+        self.assertIn("production_db_queue_material", summary["next_required_evidence"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["robot_control_allowed"])
+        self.assertFalse(summary["ack_cursor_mutation_allowed"])
+        self.assertFalse(summary["github_mutation_allowed"])
+        self.assertFalse(summary["production_endpoint_allowed"])
+        self.assertFalse(summary["signed_url_allowed"])
+        self.assertEqual(nested["safe_command_id"], "cmd-cloud-external-followup-001")
+        self.assertEqual(
+            raw_only["followup_status"]["status"],
+            "followup_blocked_missing_external_evidence_not_proven",
+        )
+        self.assertEqual(
+            unsafe["followup_status"]["status"],
+            "followup_rejected_unsafe_material_not_proven",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_source", encoded)
+        self.assertNotIn("raw_command", encoded)
+        self.assertNotIn("complete_json", encoded)
+        self.assertNotIn("unsafe.example", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("serial", encoded)
+        self.assertNotIn("UART", encoded)
+        self.assertNotIn("WAVE ROVER", encoded)
+        self.assertNotIn("delivery_success=true", encoded)
+        self.assertNotIn("PR #5 resolved", encoded)
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("cloud_external_evidence_review_handoff", encoded)
+        self.assertIn("cloud_external_evidence_review_decision", encoded)
         self.assertIn("delivery_success=false", encoded)
         self.assertIn("primary_actions_enabled=false", encoded)
         self.assertIn("safe_to_control=false", encoded)

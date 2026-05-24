@@ -63,6 +63,8 @@ const CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_BOUNDARY = "software_proof_docker_
 const CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_COPY = "cloud_external_evidence_review_decision 只读可见；只展示 external evidence intake 的脱敏复核结论、材料族状态和下一步补证据，主操作保持禁用。";
 const CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_BOUNDARY = "software_proof_docker_cloud_external_evidence_review_handoff_gate";
 const CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_COPY = "cloud_external_evidence_review_handoff 只读可见；只展示 external evidence review decision 的 owner/support/reviewer 交接路线，主操作保持禁用。";
+const CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_BOUNDARY = "software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate";
+const CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_COPY = "cloud_external_evidence_review_handoff_followup_escalation_status 只读可见；只展示 source handoff status、due status、blocked reason、owner/support/reviewer action、CEO escalation recommendation、next required evidence 和 false-state flags，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_BOUNDARY = "software_proof_docker_verified_terminal_result_material_intake_gate";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_COPY = "verified terminal result material intake 只读可见；材料回填不等于 delivery success，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_verified_terminal_result_material_review_decision_gate";
@@ -373,6 +375,7 @@ const UNSAFE_CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_TEXT = UNSAFE_CLOUD_COMMAND_LI
 const UNSAFE_CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
 const UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
 const UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
+const UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|command route|ack route|cursor route|diagnostics fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|raw decision|review route|command route|ack route|cursor route|diagnostics fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|raw decision|raw handoff|review route|handoff route|command route|ack route|cursor route|diagnostics fetch|artifact fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
@@ -672,6 +675,7 @@ let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponse
 let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridge = null;
 let latestCloudExternalEvidenceReviewDecision = null;
 let latestCloudExternalEvidenceReviewHandoff = null;
+let latestCloudExternalEvidenceReviewHandoffFollowupEscalationStatus = null;
 let latestVerifiedTerminalResultMaterialIntake = null;
 let latestVerifiedTerminalResultMaterialReviewDecision = null;
 let latestVerifiedTerminalResultMaterialReviewHandoff = null;
@@ -51059,6 +51063,335 @@ function renderCloudExternalEvidenceReviewHandoff(status) {
   $("cloudExternalEvidenceReviewHandoffHint").textContent = summary.recovery_hint;
 }
 
+function safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(value, fallback = "not_proven") {
+  // follow-up status 只展示后端/Robot safe summary，不能把 raw artifact、控制语义或 PR mutation 泄漏到手机端。
+  const text = safeText(value, fallback);
+  if (UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function cloudExternalEvidenceReviewHandoffFollowupEscalationStatusCandidate(status, readiness, diagnostics) {
+  // 候选来源限定为 summary / Robot alias；前端不主动拉取诊断详情、GitHub thread 或证据文件。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.cloud_external_evidence_review_handoff_followup_escalation_status?.summary ||
+    readiness?.cloud_external_evidence_review_handoff_followup_escalation_status?.summary ||
+    diagnostics?.cloud_external_evidence_review_handoff_followup_escalation_status?.summary ||
+    diagnosticsSummary.cloud_external_evidence_review_handoff_followup_escalation_status?.summary ||
+    nestedDiagnosticsSummary.cloud_external_evidence_review_handoff_followup_escalation_status?.summary ||
+    nestedDiagnosticsInnerSummary.cloud_external_evidence_review_handoff_followup_escalation_status?.summary ||
+    statusDiagnosticsSummary.cloud_external_evidence_review_handoff_followup_escalation_status?.summary;
+  return firstObject(
+    status?.robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    readiness?.robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    diagnostics?.robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    diagnosticsReadiness.robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    statusDiagnosticsSummary.robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    status?.cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    readiness?.cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    diagnostics?.cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    diagnosticsReadiness.cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    diagnosticsSummary.cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    nestedDiagnosticsSummary.cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    nestedDiagnosticsInnerSummary.cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    statusDiagnosticsSummary.cloud_external_evidence_review_handoff_followup_escalation_status_summary,
+    artifactSummary,
+  );
+}
+
+function cloudExternalEvidenceReviewHandoffFollowupEscalationStatusList(value, fallback) {
+  // action/evidence/reason 允许 list 或 map；输出统一压成手机可读短文本。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        const key = safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(item[0], "");
+        const raw = item[1];
+        const detail = raw && typeof raw === "object"
+          ? safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(
+            raw.status || raw.action || raw.reason || raw.safe_summary,
+            "",
+          )
+          : safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(raw, "");
+        return key && detail ? `${key}=${detail}` : key || detail;
+      }
+      return safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 14) : [fallback];
+}
+
+function cloudExternalEvidenceReviewHandoffFollowupEscalationStatusHasUnsafeRawFields(value) {
+  // false-state flags 只能为 false；其它 raw/control/secret/success 字段出现时 panel fail closed。
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const allowedSafetyKeys = new Set(["delivery_success", "primary_actions_enabled", "safe_to_control"]);
+  const stack = [value];
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current || typeof current !== "object") {
+      continue;
+    }
+    for (const [key, rawValue] of Object.entries(current)) {
+      if (key === "not_proven") {
+        continue;
+      }
+      if (!allowedSafetyKeys.has(key) &&
+        UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_TEXT.test(String(key))) {
+        return true;
+      }
+      if (rawValue && typeof rawValue === "object") {
+        stack.push(rawValue);
+      } else if (
+        UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_TEXT.test(String(rawValue))
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function cloudExternalEvidenceReviewHandoffFollowupEscalationStatusNotProvenList(value) {
+  // 固定追加 false-state 边界，避免 due/escalation 被误读为外部证据已通过。
+  const provided = notProvenList(value?.not_proven || value?.not_proven_flags);
+  const required = [
+    "source=software_proof",
+    "software_proof",
+    "not_proven",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "cloud_external_evidence_review_handoff_followup_escalation_status_only",
+    "followup_escalation_status_not_external_proof",
+    "PRRT_kwDOSWB9286CJ3tX",
+    "hardware_material_pending",
+    "not true phone/browser proof",
+    "public_https_tls_or_4g_or_oss_cdn_or_db_queue_missing",
+    "verified_terminal_result_missing",
+    "HIL_missing",
+    "delivery_success=false",
+    "no OKR percentage lift",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 36);
+}
+
+function cloudExternalEvidenceReviewHandoffFollowupEscalationStatusFromStatus(status, readiness, diagnostics) {
+  const provided = cloudExternalEvidenceReviewHandoffFollowupEscalationStatusCandidate(
+    status,
+    readiness,
+    diagnostics,
+  ) || {};
+  const unsafeRawFields = cloudExternalEvidenceReviewHandoffFollowupEscalationStatusHasUnsafeRawFields(provided);
+  const failClosedFlags = unsafeRawFields ||
+    provided.source !== undefined && provided.source !== "software_proof" ||
+    provided.safe_to_control === true ||
+    provided.delivery_success === true ||
+    provided.primary_actions_enabled === true;
+  const allowedStatuses = new Set([
+    "pending_followup_not_proven",
+    "due_followup_not_proven",
+    "overdue_followup_not_proven",
+    "escalated_hardware_material_pending_not_proven",
+    "blocked_missing_external_evidence_review_handoff_not_proven",
+  ]);
+  const candidateStatus = safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(
+    provided.followup_status || provided.escalation_status || provided.status || provided.overall_status,
+    "blocked_missing_external_evidence_review_handoff_not_proven",
+  );
+  const followupStatus = allowedStatuses.has(candidateStatus) && !failClosedFlags
+    ? candidateStatus
+    : "blocked_missing_external_evidence_review_handoff_not_proven";
+  return {
+    missing: !Object.keys(provided).length || failClosedFlags,
+    unsafe_raw_fields: unsafeRawFields,
+    schema: "trashbot.robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary.v1",
+    capability: "cloud_external_evidence_review_handoff_followup_escalation_status",
+    source_capability: "cloud_external_evidence_review_handoff",
+    source: "software_proof",
+    followup_status: followupStatus,
+    source_handoff_status: safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(
+      provided.source_handoff_status || provided.handoff_status || provided.source_review_handoff,
+      "blocked_missing_external_evidence_review_handoff_not_proven",
+    ),
+    due_status: safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(
+      typeof provided.due_status === "object" ? provided.due_status.status : provided.due_status || provided.followup_due_status,
+      "due_status=pending_followup_not_proven",
+    ),
+    blocked_reason: safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(
+      provided.blocked_reason || provided.blocker_identity || provided.blocker,
+      "blocked_reason=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending",
+    ),
+    owner_action: cloudExternalEvidenceReviewHandoffFollowupEscalationStatusList(
+      provided.owner_action || provided.owner_route || provided.owner_next_step,
+      "owner_action=backfill_same_safe_evidence_ref_external_materials",
+    ),
+    support_action: cloudExternalEvidenceReviewHandoffFollowupEscalationStatusList(
+      provided.support_action || provided.support_route || provided.support_next_step,
+      "support_action=keep_PRRT_kwDOSWB9286CJ3tX_hardware_material_pending_visible",
+    ),
+    reviewer_action: cloudExternalEvidenceReviewHandoffFollowupEscalationStatusList(
+      provided.reviewer_action || provided.reviewer_route || provided.reviewer_next_step,
+      "reviewer_action=do_not_resolve_PRRT_kwDOSWB9286CJ3tX_before_real_external_evidence",
+    ),
+    ceo_escalation_recommendation: safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(
+      provided.ceo_escalation_recommendation || provided.ceo_escalation || provided.escalation_recommendation,
+      "ceo_escalation_recommended=prepare_escalation_if_owner_support_reviewer_do_not_backfill",
+    ),
+    next_required_evidence: cloudExternalEvidenceReviewHandoffFollowupEscalationStatusList(
+      provided.next_required_evidence || provided.next_evidence || provided.required_evidence,
+      "next_required_evidence=real_public_https_tls_or_4g_or_oss_cdn_or_db_queue_safe_summary",
+    ),
+    pr5_review_thread: safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(
+      provided.pr5_review_thread || provided.pr5_thread || provided.review_thread,
+      "PRRT_kwDOSWB9286CJ3tX",
+    ),
+    pr5_material_state: safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(
+      provided.pr5_material_state || provided.material_state,
+      "hardware_material_pending",
+    ),
+    safe_evidence_ref: safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    false_state_flags: cloudExternalEvidenceReviewHandoffFollowupEscalationStatusList(
+      provided.false_state_flags || provided.required_false_state_flags || provided.false_flags,
+      "false_state_flag=delivery_success=false_primary_actions_enabled=false_safe_to_control=false",
+    ),
+    evidence_boundary: safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(
+      provided.evidence_boundary || provided.proof_boundary,
+      CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_BOUNDARY,
+    ),
+    safe_phone_copy: safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary,
+      CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_COPY,
+    ),
+    recovery_hint: safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText(
+      provided.recovery_hint || provided.retry_hint,
+      "等待同一 safe evidence_ref 的真实外部材料或 reviewer resolution；手机端只读展示，不提交控制动作。",
+    ),
+    boundary_flags: "source=software_proof / software_proof / not_proven / delivery_success=false / primary_actions_enabled=false / safe_to_control=false / not true phone/browser proof / no OKR percentage lift",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: cloudExternalEvidenceReviewHandoffFollowupEscalationStatusNotProvenList(provided),
+  };
+}
+
+function ensureCloudExternalEvidenceReviewHandoffFollowupEscalationStatusPanel() {
+  // follow-up panel 紧跟 handoff panel，只呈现 due/escalation 责任链，不创建操作按钮。
+  let panel = $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("cloudExternalEvidenceReviewHandoffTitle")?.closest("section") ||
+    $("cloudExternalEvidenceReviewDecisionPanel") ||
+    $("cloudReadinessTitle")?.closest("section") ||
+    $("supportTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "cloudExternalEvidenceReviewHandoffFollowupEscalationStatusPanel";
+  panel.className = "cloud-external-evidence-review-handoff-followup-escalation-status-panel";
+  panel.setAttribute("aria-labelledby", "cloudExternalEvidenceReviewHandoffFollowupEscalationStatusTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusTitle">Cloud External Evidence Review Handoff Follow-up Escalation Status</h2>
+      <span id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusCopy" class="message">
+      等待 robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary。
+    </p>
+    <dl class="cloud-external-evidence-review-handoff-followup-escalation-status-grid">
+      <div><dt>Follow-up Status</dt><dd id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusStatus">blocked_missing_external_evidence_review_handoff_not_proven</dd></div>
+      <div><dt>Source Handoff Status</dt><dd id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusSourceHandoff">blocked_missing_external_evidence_review_handoff_not_proven</dd></div>
+      <div><dt>Due Status</dt><dd id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusDue">due_status=pending_followup_not_proven</dd></div>
+      <div><dt>Blocked Reason</dt><dd id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusBlockedReason">blocked_reason=PRRT_kwDOSWB9286CJ3tX unresolved / hardware_material_pending</dd></div>
+      <div><dt>CEO Escalation</dt><dd id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusCeo">ceo_escalation_recommended=prepare_escalation_if_owner_support_reviewer_do_not_backfill</dd></div>
+      <div><dt>PR #5 Thread</dt><dd id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusPr5">PRRT_kwDOSWB9286CJ3tX / hardware_material_pending</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusBoundary">software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusFlags">source=software_proof / software_proof / not_proven / delivery_success=false / primary_actions_enabled=false / safe_to_control=false / not true phone/browser proof / no OKR percentage lift</dd></div>
+      <div><dt>not_proven</dt><dd id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusNotProven">真实外部云、真实手机/browser、verified terminal result、HIL、delivery success 和 OKR lift 未证明。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section><h3>Owner Action</h3><ol id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusOwner" class="handoff-checklist"><li>等待 owner action。</li></ol></section>
+      <section><h3>Support Action</h3><ol id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusSupport" class="handoff-checklist"><li>等待 support action。</li></ol></section>
+      <section><h3>Reviewer Action</h3><ol id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusReviewer" class="handoff-checklist"><li>等待 reviewer action。</li></ol></section>
+      <section><h3>Next Required Evidence</h3><ol id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusNextEvidence" class="handoff-checklist"><li>等待 next required evidence。</li></ol></section>
+      <section><h3>False-State Flags</h3><ol id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusFalseFlags" class="handoff-checklist"><li>delivery_success=false / primary_actions_enabled=false / safe_to_control=false。</li></ol></section>
+    </div>
+    <p id="cloudExternalEvidenceReviewHandoffFollowupEscalationStatusHint" class="hint">
+      本 panel 只消费 robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary / safe summary fallback；不读取 raw artifact、URL、credentials、response body、ROS topic、hardware details，不新增 ACK/cursor/upload/handoff/review/GitHub mutation/replay/resubmit/control 路径。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderCloudExternalEvidenceReviewHandoffFollowupEscalationStatus(status) {
+  const panel = ensureCloudExternalEvidenceReviewHandoffFollowupEscalationStatusPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = cloudExternalEvidenceReviewHandoffFollowupEscalationStatusFromStatus(
+    status,
+    readiness,
+    latestDiagnostics,
+  );
+  latestCloudExternalEvidenceReviewHandoffFollowupEscalationStatus = summary;
+  const badge = $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 follow-up status" : "follow-up not_proven";
+  $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusCopy").textContent = summary.safe_phone_copy;
+  $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusStatus").textContent =
+    `${summary.source} / ${summary.followup_status}`;
+  $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusSourceHandoff").textContent =
+    summary.source_handoff_status;
+  $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusDue").textContent = summary.due_status;
+  $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusBlockedReason").textContent = summary.blocked_reason;
+  $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusCeo").textContent =
+    summary.ceo_escalation_recommendation;
+  $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusPr5").textContent =
+    `${summary.pr5_review_thread} / ${summary.pr5_material_state}`;
+  $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusBoundary").textContent = summary.evidence_boundary;
+  $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusFlags").textContent = summary.boundary_flags;
+  $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusNotProven").textContent = summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusOwner", summary.owner_action);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusSupport", summary.support_action);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusReviewer", summary.reviewer_action);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusNextEvidence", summary.next_required_evidence);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusFalseFlags", summary.false_state_flags);
+  $("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusHint").textContent = summary.recovery_hint;
+}
+
 function verifiedTerminalResultMaterialIntakeCandidate(status, readiness, diagnostics) {
   // 只从 status/readiness/diagnostics 的 safe summary 取值；前端不拉 raw diagnostics、ACK/cursor 或 command route。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -59773,6 +60106,14 @@ function renderDiagnosticsSummary(payload) {
       ).handoff_status,
     ],
     [
+      "cloud_external_evidence_review_handoff_followup_escalation_status",
+      cloudExternalEvidenceReviewHandoffFollowupEscalationStatusFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).followup_status,
+    ],
+    [
       "verified_terminal_result_material_intake",
       verifiedTerminalResultMaterialIntakeFromStatus(
         payload || {},
@@ -60066,6 +60407,7 @@ function renderOfflineFailure() {
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridge({});
   renderCloudExternalEvidenceReviewDecision({});
   renderCloudExternalEvidenceReviewHandoff({});
+  renderCloudExternalEvidenceReviewHandoffFollowupEscalationStatus({});
   renderVerifiedTerminalResultMaterialIntake({});
   renderVerifiedTerminalResultMaterialReviewDecision({});
   renderVerifiedTerminalResultMaterialReviewHandoff({});
@@ -60274,6 +60616,7 @@ function renderStatus(status) {
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridge(status);
   renderCloudExternalEvidenceReviewDecision(status);
   renderCloudExternalEvidenceReviewHandoff(status);
+  renderCloudExternalEvidenceReviewHandoffFollowupEscalationStatus(status);
   renderVerifiedTerminalResultMaterialIntake(status);
   renderVerifiedTerminalResultMaterialReviewDecision(status);
   renderVerifiedTerminalResultMaterialReviewHandoff(status);
@@ -60639,6 +60982,9 @@ async function openDiagnostics() {
     renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewHandoff(latestStatus || {});
     renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus(latestStatus || {});
     renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridge(latestStatus || {});
+    renderCloudExternalEvidenceReviewDecision(latestStatus || {});
+    renderCloudExternalEvidenceReviewHandoff(latestStatus || {});
+    renderCloudExternalEvidenceReviewHandoffFollowupEscalationStatus(latestStatus || {});
     renderVerifiedTerminalResultMaterialIntake(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewDecision(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewHandoff(latestStatus || {});

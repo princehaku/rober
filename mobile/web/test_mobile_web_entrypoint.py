@@ -79,6 +79,10 @@ CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_FIXTURE = (
 CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_external_evidence_review_handoff.json"
 )
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status.json"
+)
 VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_intake.json"
 )
@@ -4599,6 +4603,158 @@ class VerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewHandoffMobileT
             "delivery_success\": true",
             "primary_actions_enabled\": true",
             "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, response_text)
+
+
+class CloudExternalEvidenceReviewHandoffFollowupEscalationStatusMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_external_evidence_review_handoff_followup_escalation_status_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(
+            CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_FIXTURE.read_text(encoding="utf-8")
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # follow-up escalation 只显示责任和时效，不创建上传、复核、GitHub mutation 或控制入口。
+        self.assertIn("CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_BOUNDARY", app)
+        self.assertIn("UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_TEXT", app)
+        self.assertIn("safeCloudExternalEvidenceReviewHandoffFollowupEscalationStatusText", app)
+        self.assertIn("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusCandidate", app)
+        self.assertIn("cloudExternalEvidenceReviewHandoffFollowupEscalationStatusFromStatus", app)
+        self.assertIn("renderCloudExternalEvidenceReviewHandoffFollowupEscalationStatus", app)
+        self.assertIn("Cloud External Evidence Review Handoff Follow-up Escalation Status", app)
+        self.assertIn("robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary", app)
+        self.assertIn("cloud_external_evidence_review_handoff_followup_escalation_status_summary", app)
+        self.assertIn("cloud_external_evidence_review_handoff_followup_escalation_status?.summary", app)
+        for required in (
+            "pending_followup_not_proven",
+            "due_followup_not_proven",
+            "overdue_followup_not_proven",
+            "escalated_hardware_material_pending_not_proven",
+            "blocked_missing_external_evidence_review_handoff_not_proven",
+            "source_handoff_status",
+            "due_status",
+            "blocked_reason",
+            "owner_action",
+            "support_action",
+            "reviewer_action",
+            "ceo_escalation_recommendation",
+            "next_required_evidence",
+            "false_state_flags",
+            "cloud_external_evidence_review_handoff",
+            "PRRT_kwDOSWB9286CJ3tX",
+            "hardware_material_pending",
+            "source=software_proof",
+            "software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not true phone/browser proof",
+            "no OKR percentage lift",
+        ):
+            self.assertIn(required, app + fixture_text)
+        self.assertNotRegex(
+            app,
+            r"cloudExternalEvidenceReviewHandoffFollowupEscalationStatus.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "copyCloudExternalEvidenceReviewHandoffFollowupEscalationStatusButton",
+            "ackCloudExternalEvidenceReviewHandoffFollowupEscalationStatus",
+            "cursorCloudExternalEvidenceReviewHandoffFollowupEscalationStatus",
+            "fetchCloudExternalEvidenceReviewHandoffFollowupEscalationStatusDiagnostics",
+            "uploadCloudExternalEvidenceReviewHandoffFollowupEscalationStatusMaterial",
+            "submitCloudExternalEvidenceReviewHandoffFollowupEscalationStatus",
+            "reviewCloudExternalEvidenceReviewHandoffFollowupEscalationStatus",
+            "githubCloudExternalEvidenceReviewHandoffFollowupEscalationStatus",
+            "replayCloudExternalEvidenceReviewHandoffFollowupEscalationStatus",
+            "resubmitCloudExternalEvidenceReviewHandoffFollowupEscalationStatus",
+            "commandCloudExternalEvidenceReviewHandoffFollowupEscalationStatus",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        summary = fixture[
+            "robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary"
+        ]
+        fallback = fixture["cloud_external_evidence_review_handoff_followup_escalation_status_summary"]
+        nested = fixture["cloud_external_evidence_review_handoff_followup_escalation_status"]["summary"]
+        self.assertEqual(summary["capability"], "cloud_external_evidence_review_handoff_followup_escalation_status")
+        self.assertEqual(summary["source_capability"], "cloud_external_evidence_review_handoff")
+        self.assertEqual(summary["followup_status"], "escalated_hardware_material_pending_not_proven")
+        self.assertEqual(fallback["followup_status"], "overdue_followup_not_proven")
+        self.assertEqual(nested["followup_status"], "due_followup_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertIn("hardware_material_pending", summary["blocked_reason"])
+        self.assertIn("ceo_escalation_recommended", summary["ceo_escalation_recommendation"])
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+
+        # 产品文档同步声明本 panel 只是 Docker/local software_proof，不是真手机、外部 proof、HIL 或成功。
+        self.assertIn("cloud_external_evidence_review_handoff_followup_escalation_status", doc)
+        self.assertIn(
+            "robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary",
+            doc,
+        )
+        self.assertIn(
+            "software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate",
+            doc,
+        )
+        self.assertIn("source handoff status", doc)
+        self.assertIn("owner action", doc)
+        self.assertIn("support action", doc)
+        self.assertIn("reviewer action", doc)
+        self.assertIn("CEO escalation recommendation", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", doc)
+        self.assertIn("hardware_material_pending", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_cloud_external_evidence_review_handoff_followup_escalation_status_fixture_stays_phone_safe(self):
+        fixture = json.loads(
+            CLOUD_EXTERNAL_EVIDENCE_REVIEW_HANDOFF_FOLLOWUP_ESCALATION_STATUS_FIXTURE.read_text(encoding="utf-8")
+        )
+        response_text = json.dumps(
+            {
+                "robot": fixture[
+                    "robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary"
+                ],
+                "fallback": fixture["cloud_external_evidence_review_handoff_followup_escalation_status_summary"],
+                "nested": fixture["cloud_external_evidence_review_handoff_followup_escalation_status"]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只能包含 phone-safe metadata，不允许 raw material、凭证、路径、控制授权或成功 claim。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw artifact",
+            "raw pr payload",
+            "command route",
+            "ack route",
+            "cursor route",
+            "github mutation",
+            "artifact fetch",
+            "material upload",
+            "review mutation",
+            "handoff mutation",
+            "robot command",
+            "control authorization",
+            "authorization",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+            "delivery_success\": true",
         ):
             self.assertNotIn(forbidden, response_text)
 

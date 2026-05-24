@@ -1,0 +1,226 @@
+{
+  "connection_state": "online",
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false,
+  "phone_readiness": {
+    "source": "software_proof",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false,
+    "robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary": {
+      "schema": "trashbot.robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary.v1",
+      "schema_version": 1,
+      "summary_alias": "robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary",
+      "capability": "cloud_external_evidence_review_handoff_followup_escalation_status",
+      "source_capability": "cloud_external_evidence_review_handoff",
+      "upstream_capability": "cloud_external_evidence_review_decision",
+      "source": "software_proof",
+      "status": "not_proven",
+      "followup_status": "escalated_hardware_material_pending_not_proven",
+      "source_handoff_status": "needs_external_evidence_backfill_handoff_not_proven",
+      "source_review_decision": "needs_external_evidence_backfill_not_proven",
+      "due_status": {
+        "status": "escalated_hardware_material_pending_not_proven",
+        "is_pending": false,
+        "is_due": false,
+        "is_overdue": false,
+        "is_escalated": true,
+        "is_blocked": false
+      },
+      "blocked_reason": "blocked_reason=hardware_material_pending",
+      "owner_action": [
+        "owner_action=backfill_same_safe_evidence_ref_external_materials",
+        "owner_action=report_due_status_before_reviewer_resolution"
+      ],
+      "support_action": [
+        "support_action=keep_PRRT_kwDOSWB9286CJ3tX_visible",
+        "support_action=keep_hardware_material_pending_visible"
+      ],
+      "reviewer_action": [
+        "reviewer_action=do_not_resolve_PRRT_kwDOSWB9286CJ3tX_from_software_proof"
+      ],
+      "ceo_escalation_recommendation": "ceo_escalation_recommended=escalate_PRRT_kwDOSWB9286CJ3tX_hardware_material_pending",
+      "next_required_evidence": [
+        "next_required_evidence=real_public_https_tls_or_4g_or_oss_cdn_or_db_queue_safe_summary",
+        "next_required_evidence=true_phone_browser_or_verified_terminal_result_safe_summary",
+        "next_required_evidence=PRRT_kwDOSWB9286CJ3tX_real_material_resolution_before_reviewer_closeout"
+      ],
+      "pr5_review_thread": "PRRT_kwDOSWB9286CJ3tX",
+      "pr5_material_state": "hardware_material_pending",
+      "safe_evidence_ref": "evidence_ref=cloud_external_evidence_review_handoff_followup_fixture_20260525_0001",
+      "safe_command_ref": "command_ref=cloud_external_evidence_review_handoff_followup_fixture_command",
+      "evidence_boundary": "software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate",
+      "source_evidence_boundary": "software_proof_docker_cloud_external_evidence_review_handoff_gate",
+      "safe_phone_copy": "cloud_external_evidence_review_handoff_followup_escalation_status=escalated_hardware_material_pending_not_proven; source=software_proof; blocked_reason=hardware_material_pending; PRRT_kwDOSWB9286CJ3tX=hardware_material_pending; delivery_success=false; primary_actions_enabled=false; safe_to_control=false; not true phone/browser proof; no OKR percentage lift",
+      "recovery_hint": "等待同一 safe evidence_ref 的真实外部材料或 reviewer resolution；手机端只读展示，不提交控制动作。",
+      "false_state_flags": [
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "safe_to_control": false,
+      "not_proven": [
+        "software_proof",
+        "not_proven",
+        "not_o5_external_proof",
+        "not_public_https_tls_proof",
+        "not_4g_sim_proof",
+        "not_oss_cdn_live_traffic",
+        "not_production_db_queue_proof",
+        "not_worker_cutover_proof",
+        "not_verified_terminal_result",
+        "not true phone/browser proof",
+        "not_hil",
+        "not_delivery_success",
+        "no OKR percentage lift"
+      ]
+    }
+  },
+  "robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary": {
+    "schema": "trashbot.robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary.v1",
+    "schema_version": 1,
+    "summary_alias": "robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary",
+    "capability": "cloud_external_evidence_review_handoff_followup_escalation_status",
+    "source_capability": "cloud_external_evidence_review_handoff",
+    "upstream_capability": "cloud_external_evidence_review_decision",
+    "source": "software_proof",
+    "status": "not_proven",
+    "followup_status": "escalated_hardware_material_pending_not_proven",
+    "source_handoff_status": "needs_external_evidence_backfill_handoff_not_proven",
+    "source_review_decision": "needs_external_evidence_backfill_not_proven",
+    "due_status": {
+      "status": "escalated_hardware_material_pending_not_proven",
+      "is_pending": false,
+      "is_due": false,
+      "is_overdue": false,
+      "is_escalated": true,
+      "is_blocked": false
+    },
+    "blocked_reason": "blocked_reason=hardware_material_pending",
+    "owner_action": [
+      "owner_action=backfill_same_safe_evidence_ref_external_materials",
+      "owner_action=report_due_status_before_reviewer_resolution"
+    ],
+    "support_action": [
+      "support_action=keep_PRRT_kwDOSWB9286CJ3tX_visible",
+      "support_action=keep_hardware_material_pending_visible"
+    ],
+    "reviewer_action": [
+      "reviewer_action=do_not_resolve_PRRT_kwDOSWB9286CJ3tX_from_software_proof"
+    ],
+    "ceo_escalation_recommendation": "ceo_escalation_recommended=escalate_PRRT_kwDOSWB9286CJ3tX_hardware_material_pending",
+    "next_required_evidence": [
+      "next_required_evidence=real_public_https_tls_or_4g_or_oss_cdn_or_db_queue_safe_summary",
+      "next_required_evidence=true_phone_browser_or_verified_terminal_result_safe_summary",
+      "next_required_evidence=PRRT_kwDOSWB9286CJ3tX_real_material_resolution_before_reviewer_closeout"
+    ],
+    "pr5_review_thread": "PRRT_kwDOSWB9286CJ3tX",
+    "pr5_material_state": "hardware_material_pending",
+    "safe_evidence_ref": "evidence_ref=cloud_external_evidence_review_handoff_followup_fixture_20260525_0001",
+    "safe_command_ref": "command_ref=cloud_external_evidence_review_handoff_followup_fixture_command",
+    "evidence_boundary": "software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate",
+    "source_evidence_boundary": "software_proof_docker_cloud_external_evidence_review_handoff_gate",
+    "safe_phone_copy": "cloud_external_evidence_review_handoff_followup_escalation_status=escalated_hardware_material_pending_not_proven; source=software_proof; blocked_reason=hardware_material_pending; PRRT_kwDOSWB9286CJ3tX=hardware_material_pending; delivery_success=false; primary_actions_enabled=false; safe_to_control=false; not true phone/browser proof; no OKR percentage lift",
+    "recovery_hint": "等待同一 safe evidence_ref 的真实外部材料或 reviewer resolution；手机端只读展示，不提交控制动作。",
+    "false_state_flags": [
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ],
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "not_o5_external_proof",
+      "not_public_https_tls_proof",
+      "not_4g_sim_proof",
+      "not_oss_cdn_live_traffic",
+      "not_production_db_queue_proof",
+      "not_worker_cutover_proof",
+      "not_verified_terminal_result",
+      "not true phone/browser proof",
+      "not_hil",
+      "not_delivery_success",
+      "no OKR percentage lift"
+    ]
+  },
+  "cloud_external_evidence_review_handoff_followup_escalation_status_summary": {
+    "schema": "trashbot.cloud_external_evidence_review_handoff_followup_escalation_status_summary.v1",
+    "schema_version": 1,
+    "capability": "cloud_external_evidence_review_handoff_followup_escalation_status",
+    "source_capability": "cloud_external_evidence_review_handoff",
+    "source": "software_proof",
+    "followup_status": "overdue_followup_not_proven",
+    "source_handoff_status": "needs_external_evidence_backfill_handoff_not_proven",
+    "due_status": "due_status=overdue",
+    "blocked_reason": "blocked_reason=hardware_material_pending",
+    "owner_action": [
+      "owner_action=backfill_same_safe_evidence_ref_external_materials"
+    ],
+    "support_action": [
+      "support_action=keep_PRRT_kwDOSWB9286CJ3tX_visible"
+    ],
+    "reviewer_action": [
+      "reviewer_action=do_not_resolve_PRRT_kwDOSWB9286CJ3tX_from_software_proof"
+    ],
+    "ceo_escalation_recommendation": "ceo_escalation_recommended=prepare_escalation_if_owner_support_reviewer_do_not_backfill",
+    "next_required_evidence": [
+      "next_required_evidence=true_phone_browser_or_verified_terminal_result_safe_summary"
+    ],
+    "pr5_review_thread": "PRRT_kwDOSWB9286CJ3tX",
+    "pr5_material_state": "hardware_material_pending",
+    "evidence_boundary": "software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate",
+    "safe_phone_copy": "cloud_external_evidence_review_handoff_followup_escalation_status=overdue_followup_not_proven; source=software_proof; PRRT_kwDOSWB9286CJ3tX=hardware_material_pending; delivery_success=false; primary_actions_enabled=false; safe_to_control=false; not true phone/browser proof; no OKR percentage lift",
+    "false_state_flags": [
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "safe_to_control=false"
+    ],
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false
+  },
+  "cloud_external_evidence_review_handoff_followup_escalation_status": {
+    "summary": {
+      "schema": "trashbot.cloud_external_evidence_review_handoff_followup_escalation_status.v1",
+      "schema_version": 1,
+      "capability": "cloud_external_evidence_review_handoff_followup_escalation_status",
+      "source_capability": "cloud_external_evidence_review_handoff",
+      "source": "software_proof",
+      "followup_status": "due_followup_not_proven",
+      "source_handoff_status": "needs_external_evidence_backfill_handoff_not_proven",
+      "due_status": "due_status=due",
+      "blocked_reason": "blocked_reason=hardware_material_pending",
+      "owner_action": [
+        "owner_action=backfill_same_safe_evidence_ref_external_materials"
+      ],
+      "support_action": [
+        "support_action=keep_hardware_material_pending_visible"
+      ],
+      "reviewer_action": [
+        "reviewer_action=wait_for_real_external_evidence_before_resolution"
+      ],
+      "ceo_escalation_recommendation": "ceo_escalation_recommended=not_yet_escalated_due_followup_required",
+      "next_required_evidence": [
+        "next_required_evidence=real_public_https_tls_or_4g_or_oss_cdn_or_db_queue_safe_summary"
+      ],
+      "pr5_review_thread": "PRRT_kwDOSWB9286CJ3tX",
+      "pr5_material_state": "hardware_material_pending",
+      "evidence_boundary": "software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate",
+      "safe_phone_copy": "cloud_external_evidence_review_handoff_followup_escalation_status=due_followup_not_proven; source=software_proof; PRRT_kwDOSWB9286CJ3tX=hardware_material_pending; delivery_success=false; primary_actions_enabled=false; safe_to_control=false; not true phone/browser proof; no OKR percentage lift",
+      "false_state_flags": [
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false"
+      ],
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "safe_to_control": false
+    }
+  }
+}

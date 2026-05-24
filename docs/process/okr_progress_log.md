@@ -6,6 +6,32 @@
 
 ---
 
+## 2026-05-25 系列
+
+### 2026-05-25 00-01｜cloud-external-evidence-review-handoff-followup-escalation-status｜external evidence review handoff follow-up escalation status
+
+本轮 `sprints/2026.05.25_00-01_cloud-external-evidence-review-handoff-followup-escalation-status/` 执行 `cloud_external_evidence_review_handoff_followup_escalation_status` epic closeout。用户价值是把 `cloud_external_evidence_review_handoff` 的 owner/support/reviewer handoff 转成可跟进的 due / overdue / escalated / blocked accountability status，让 owner、support、reviewer 和 CEO 能看到下一步证据、blocked reason 和升级建议，而不是把 handoff 停留在无人跟进状态。本轮边界为 `software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate`，上游能力为 `cloud_external_evidence_review_handoff`，再上游为 `cloud_external_evidence_review_decision`。
+
+Task A Full-Stack Engineer 新增 PC evidence gate、mobile/web read-only panel、fixture 和 docs：`pc-tools/evidence/cloud_external_evidence_review_handoff_followup_escalation_status.py`、`pc-tools/evidence/test_cloud_external_evidence_review_handoff_followup_escalation_status.py`、`mobile/web/app.js`、`mobile/web/test_mobile_web_entrypoint.py`、`mobile/web/fixtures/robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status.json`、`docs/product/mobile_user_flow.md`、`docs/product/remote_4g_mvp.md`。PC gate 输出 `cloud_external_evidence_review_handoff_followup_escalation_status` 和 `robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary`；mobile/web 只读 panel 展示 source handoff status、due/overdue/escalated、blocked reason、owner/support/reviewer action、CEO escalation recommendation、next required evidence、`PRRT_kwDOSWB9286CJ3tX`、`hardware_material_pending` 和 false-state flags。验证通过：PC `py_compile` passed；PC focused unittest 输出 `Ran 5 tests ... OK`；fixture `json.tool` passed；mobile focused unittest 输出 `Ran 2 tests ... OK`；required `rg` passed；scoped `git diff --check` passed；extra `node --check mobile/web/app.js` passed。
+
+Task B Robot Platform Engineer 新增 `robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary` safe alias：`onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`、`onboard/src/ros2_trashbot_behavior/test/test_operator_gateway_diagnostics.py`、`docs/interfaces/ros_runtime_contracts.md`。Robot summary 只接受 sanitized capability/summary/robot alias payload，保留 source capability `cloud_external_evidence_review_handoff` 和 upstream `cloud_external_evidence_review_decision`；继续保持 `software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`、`not true phone/browser proof` 和 `no OKR percentage lift`；拒绝/忽略 raw command/control、ACK/cursor mutation、production endpoint、signed URL、`/cmd_vel`、serial/UART/WAVE ROVER 和 success/completion claims。验证通过：`py_compile` exit 0；focused unittest 输出 `Ran 1 test in 0.020s OK`；required `rg` passed；scoped `git diff --check` passed。
+
+Task C Product closeout 创建 `tech-done.md`、`side2side_check.md`、`final.md`，并更新 `OKR.md` 与本进度日志。Closeout validation 通过：required `rg` passed；scoped `git diff --check -- sprints/2026.05.25_00-01_cloud-external-evidence-review-handoff-followup-escalation-status OKR.md docs/process/okr_progress_log.md` passed。
+
+本轮保留 `source=software_proof`、`software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`、`not true phone/browser proof`、`no OKR percentage lift`。PR #5 thread `PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`；本轮不作为 PR #5 resolution。No product action enables Start Delivery, Confirm Dropoff, Cancel, ACK/cursor mutation, material upload, GitHub mutation, diagnostics fetch, handoff mutation, review mutation, or robot control.
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰硬件桥、串口、WAVE ROVER、UART、HIL、2D LiDAR / ToF 或 vendor-source 材料；`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只证明 O5 external evidence review handoff follow-up escalation status safe metadata；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal result、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal、field task record 或同一 safe `evidence_ref` 上车实机复账；follow-up escalation status 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` 能只读展示 `cloud_external_evidence_review_handoff_followup_escalation_status`，并保持 Start Delivery / Confirm Dropoff / Cancel disabled。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice 或 true phone/browser acceptance；not true phone/browser proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 68% | `software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate` 只证明 Docker/local PC gate、Robot diagnostics safe alias 与 mobile static fixture/UI 能把 external-evidence review handoff 转成 follow-up escalation status metadata，并安全消费、可校验且 fail closed；本轮不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue connectivity、production worker/migration/cutover、多实例一致性、queue ordering、transaction isolation、backup/recovery、真实手机/browser、verified terminal result、Nav2/fixed-route、WAVE ROVER、HIL、route/elevator field pass 或 delivery success。 |
+
+本轮验证：Task A/B worker-scoped validation 已由对应 Engineer 报告通过。Product closeout required `rg` 和 scoped `git diff --check` 通过。Docs 同步已覆盖 `docs/product/remote_4g_mvp.md`、`docs/product/mobile_user_flow.md`、`docs/interfaces/ros_runtime_contracts.md`、`OKR.md`、`docs/process/okr_progress_log.md` 和本 sprint closeout docs。Product 未运行 broad tests、Docker build、真实手机/browser、public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、WAVE ROVER/UART、HIL、route/elevator field execution 或 delivery-success validation；本轮只记录 Docker/local software proof 和 closeout 证据。
+
+更新时间：2026-05-25 00:25 Asia/Shanghai。
+
 ## 2026-05-24 系列
 
 ### 2026-05-24 23-24｜cloud-external-evidence-review-handoff｜external evidence review handoff
