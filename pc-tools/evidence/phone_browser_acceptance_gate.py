@@ -34,6 +34,11 @@ OWNER_RESPONSE_BRIDGE_FIXTURE = (
     / "fixtures"
     / "robot_diagnostics_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge.json"
 )
+PR5_REVIEWER_ACK_INTAKE_FIXTURE = (
+    MOBILE_WEB_ROOT
+    / "fixtures"
+    / "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.json"
+)
 EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_field_trial_browser_proof_gate"
 COMPATIBLE_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_retest_browser_proof_gate"
 REFRESH_EVIDENCE_BOUNDARY = "software_proof_docker_mobile_current_pwa_browser_proof_refresh_gate"
@@ -65,13 +70,24 @@ OWNER_RESPONSE_BRIDGE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY = (
 OWNER_RESPONSE_BRIDGE_CURRENT_PANEL_BROWSER_PROOF_BOUNDARY = (
     "software_proof_docker_mobile_current_panel_browser_proof_refresh_owner_response_bridge_gate"
 )
+PR5_REVIEWER_ACK_INTAKE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY = (
+    "mobile_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake"
+)
+PR5_REVIEWER_ACK_INTAKE_CURRENT_PANEL_BROWSER_PROOF_BOUNDARY = (
+    "software_proof_docker_mobile_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake_gate"
+)
 CAPABILITY_FIXTURES = {
     OWNER_RESPONSE_BRIDGE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY: OWNER_RESPONSE_BRIDGE_FIXTURE,
+    PR5_REVIEWER_ACK_INTAKE_CURRENT_PANEL_BROWSER_PROOF_CAPABILITY: PR5_REVIEWER_ACK_INTAKE_FIXTURE,
 }
 FRESH_ARTIFACT_PREFIX = "mobile_pwa_fresh_browser_proof"
 DEFAULT_ARTIFACT_PREFIX = "mobile_current_pwa_field_trial_browser"
 ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF = "mobile_route_elevator_handoff_browser"
 VIEWPORTS = ((390, 844), (768, 900))
+DEFAULT_OUTPUT_DIR = (
+    Path("/tmp")
+    / "mobile_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake"
+)
 PRIMARY_BUTTON_IDS = ("startButton", "confirmButton", "cancelButton")
 SUPPORT_BUTTON_IDS = (
     "diagnosticsButton",
@@ -159,6 +175,11 @@ KEY_ELEMENT_IDS = (
     "verifiedTerminalResultMaterialOwnerResponseReviewDecisionTitle",
     "verifiedTerminalResultMaterialOwnerResponseReviewDecisionBoundary",
     "verifiedTerminalResultMaterialOwnerResponseReviewDecisionFlags",
+    "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeTitle",
+    "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeBoundary",
+    "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeFlags",
+    "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeThread",
+    "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeNotProven",
     "mobileDeviceEvidenceTitle",
     "mobileDeviceEvidenceSafeCopy",
     "mobileDeviceEvidenceBoundary",
@@ -281,6 +302,7 @@ CURRENT_PANEL_EXPECTATIONS = {
     "verifiedTerminalResultMaterialReviewHandoffTitle": "Terminal Result 材料复核交接",
     "verifiedTerminalResultMaterialOwnerResponseIntakeTitle": "Terminal Result Owner Response Intake",
     "verifiedTerminalResultMaterialOwnerResponseReviewDecisionTitle": "Terminal Result Owner Response Review Decision",
+    "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeTitle": "PR5 material reviewer ACK intake",
     "terminalActionTitle": "终端动作二次确认",
     "mobileDeviceEvidenceTitle": "手机设备证据采集",
     "mobileDeviceHandoffTitle": "真实手机验收交接会话",
@@ -327,6 +349,10 @@ CURRENT_BOUNDARY_EXPECTATIONS = {
     "verifiedTerminalResultMaterialOwnerResponseIntakeFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
     "verifiedTerminalResultMaterialOwnerResponseReviewDecisionBoundary": "software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate",
     "verifiedTerminalResultMaterialOwnerResponseReviewDecisionFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeBoundary": "software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate",
+    "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeFlags": "safe_to_control=false / delivery_success=false / primary_actions_enabled=false",
+    "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeThread": "PRRT_kwDOSWB9286CJ3tX",
+    "pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeNotProven": "true_phone_browser_proof_missing",
     "terminalActionBoundary": "software_proof_docker_mobile_terminal_action_confirmation_gate",
     "mobileDeviceEvidenceBoundary": "software_proof_docker_mobile_device_evidence_capture_gate",
     "mobileDeviceHandoffBoundary": "software_proof_docker_mobile_device_handoff_session_gate",
@@ -869,6 +895,7 @@ def viewport_script(config):
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   const capability = {capability_json};
   const ownerResponseBridgeRequired = capability === 'mobile_current_panel_browser_proof_refresh_owner_response_bridge';
+  const pr5ReviewerAckIntakeRequired = capability === 'mobile_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake';
   for (let i = 0; i < 100; i += 1) {{
     const bundle = document.getElementById('mobileBrowserSafeCopy');
     const bundleBoundary = document.getElementById('mobileBrowserBoundary');
@@ -887,6 +914,7 @@ def viewport_script(config):
     const latestFieldEvidenceAck = document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckIntakeBoundary');
     const latestFieldEvidenceFollowup = document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseReviewerAckFollowupEscalationStatusBoundary');
     const ownerResponseBridge = document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeBoundary');
+    const pr5ReviewerAckIntake = document.getElementById('pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeBoundary');
     const diag = document.getElementById('diagnosticsButton');
     const ack = document.getElementById('ackCopy');
     if (bundleBoundary && bundleBoundary.innerText.includes('software_proof_docker_mobile_browser_acceptance_bundle_gate') &&
@@ -906,6 +934,8 @@ def viewport_script(config):
         latestFieldEvidenceFollowup && latestFieldEvidenceFollowup.innerText.includes('software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate') &&
         (!ownerResponseBridgeRequired ||
           ownerResponseBridge?.innerText.includes('software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge_gate')) &&
+        (!pr5ReviewerAckIntakeRequired ||
+          pr5ReviewerAckIntake?.innerText.includes('software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate')) &&
         document.getElementById('verifiedTerminalResultMaterialOwnerResponseIntakeBoundary')?.innerText.includes('software_proof_docker_verified_terminal_result_material_owner_response_intake_gate') &&
         document.getElementById('verifiedTerminalResultMaterialOwnerResponseReviewDecisionBoundary')?.innerText.includes('software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate') &&
         diag && !diag.disabled && ack && ack.innerText.includes('不代表送达成功')) break;
@@ -1100,6 +1130,24 @@ def viewport_script(config):
         (document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeFlags')?.innerText || '')
           .includes('safe_to_control=false') &&
         (document.getElementById('fieldEvidenceRerunExecutionResultAcceptanceHandoffIntakeOwnerResponseIntakeNotProven')?.innerText || '')
+          .includes('true_phone_browser_proof_missing')
+      ),
+    pr5ReviewerAckIntakePanelFailClosed:
+      !pr5ReviewerAckIntakeRequired ||
+      (
+        (document.getElementById('pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeBoundary')?.innerText || '')
+          .includes('software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate') &&
+        (document.getElementById('pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeThread')?.innerText || '')
+          .includes('PRRT_kwDOSWB9286CJ3tX') &&
+        (document.getElementById('pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeThread')?.innerText || '')
+          .includes('hardware_material_pending') &&
+        (document.getElementById('pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeFlags')?.innerText || '')
+          .includes('delivery_success=false') &&
+        (document.getElementById('pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeFlags')?.innerText || '')
+          .includes('primary_actions_enabled=false') &&
+        (document.getElementById('pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeFlags')?.innerText || '')
+          .includes('safe_to_control=false') &&
+        (document.getElementById('pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeNotProven')?.innerText || '')
           .includes('true_phone_browser_proof_missing')
       ),
     terminalResultOwnerResponsePanelsFailClosed:
@@ -1307,6 +1355,7 @@ def judge_viewport(result, *, fresh_mode=False, service_worker_assertions=None, 
         "material_resolution_panels_fail_closed": bool(result.get("materialResolutionPanelsFailClosed")),
         "field_evidence_followup_panel_fail_closed": bool(result.get("fieldEvidenceFollowupPanelFailClosed")),
         "owner_response_bridge_panel_fail_closed": bool(result.get("ownerResponseBridgePanelFailClosed")),
+        "pr5_reviewer_ack_intake_panel_fail_closed": bool(result.get("pr5ReviewerAckIntakePanelFailClosed")),
         "terminal_result_owner_response_panels_fail_closed": bool(
             result.get("terminalResultOwnerResponsePanelsFailClosed")
         ),
@@ -1409,7 +1458,14 @@ def run_viewport(cdp, url, width, height, output_dir, config, service_worker_ass
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run mobile/web local browser proof gate.")
-    parser.add_argument("--output-dir", required=True, help="Directory for screenshots and JSON evidence.")
+    parser.add_argument(
+        "--output-dir",
+        default=str(DEFAULT_OUTPUT_DIR),
+        help=(
+            "Directory for screenshots and JSON evidence. Defaults to the current "
+            "PR #5 reviewer ACK intake browser-proof temporary evidence directory."
+        ),
+    )
     parser.add_argument("--browser", default="", help="Optional Chromium-family executable path.")
     parser.add_argument(
         "--fresh-profile",
@@ -1520,6 +1576,7 @@ def main():
                         and judgment["material_resolution_panels_fail_closed"]
                         and judgment["field_evidence_followup_panel_fail_closed"]
                         and judgment["owner_response_bridge_panel_fail_closed"]
+                        and judgment["pr5_reviewer_ack_intake_panel_fail_closed"]
                         and judgment["terminal_result_owner_response_panels_fail_closed"]
                         and judgment["pwa_install_prompt_evidence_visible"]
                         and judgment["real_device_retest_request_visible"]
@@ -1585,6 +1642,8 @@ def main():
                         f"{str(judgment['field_evidence_followup_panel_fail_closed']).lower()} "
                         f"owner_response_bridge_panel_fail_closed="
                         f"{str(judgment['owner_response_bridge_panel_fail_closed']).lower()} "
+                        f"pr5_reviewer_ack_intake_panel_fail_closed="
+                        f"{str(judgment['pr5_reviewer_ack_intake_panel_fail_closed']).lower()} "
                         f"terminal_result_owner_response_panels_fail_closed="
                         f"{str(judgment['terminal_result_owner_response_panels_fail_closed']).lower()} "
                         f"route_elevator_handoff_browser_proof={ROUTE_ELEVATOR_HANDOFF_BROWSER_PROOF} "

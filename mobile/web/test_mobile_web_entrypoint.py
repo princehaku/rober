@@ -7155,6 +7155,56 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
         self.assertIn("verified_terminal_result_material_owner_response_review_decision", doc)
         self.assertIn("not true phone/browser", doc)
 
+    def test_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake_contract(self):
+        gate = self.read_gate()
+        doc = DOC.read_text(encoding="utf-8")
+        fixture = json.loads(PR5_MANDATORY_SENSOR_MATERIAL_OWNER_RESPONSE_REVIEWER_ACK_INTAKE_FIXTURE.read_text(
+            encoding="utf-8",
+        ))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # 指定 capability 必须切到 PR #5 reviewer ACK intake fixture，并只断言只读 false-state。
+        self.assertIn("PR5_REVIEWER_ACK_INTAKE_FIXTURE", gate)
+        self.assertIn("mobile_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake", gate)
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake_gate",
+            gate,
+        )
+        self.assertIn(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.json",
+            gate,
+        )
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeTitle", gate)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeBoundary", gate)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeFlags", gate)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeThread", gate)
+        self.assertIn("pr5_reviewer_ack_intake_panel_fail_closed", gate)
+        self.assertIn("DEFAULT_OUTPUT_DIR", gate)
+
+        summary = fixture[
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"
+        ]
+        self.assertEqual(summary["thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(summary["proof_status"], "hardware_material_pending")
+        self.assertIs(summary["delivery_success"], False)
+        self.assertIs(summary["primary_actions_enabled"], False)
+        self.assertIs(summary["safe_to_control"], False)
+        self.assertIn("hardware_material_pending", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("safe_to_control=false", fixture_text)
+
+        # 产品文档必须同步声明它不是 true phone/browser proof、PR #5 resolved 或 delivery success。
+        self.assertIn("mobile_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake", doc)
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake_gate",
+            doc,
+        )
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", doc)
+        self.assertIn("hardware_material_pending", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("delivery success", doc)
+
 
 class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):

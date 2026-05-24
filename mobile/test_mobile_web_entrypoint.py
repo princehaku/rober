@@ -186,6 +186,41 @@ class MobileWebEntrypointTest(unittest.TestCase):
         self.assertIn("trashbot.mobile_pwa_install_prompt_evidence_export_copy.v1", script)
         self.assertIn("route_elevator_handoff_browser_proof", script)
 
+    def test_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake_is_fail_closed(self):
+        script = BROWSER_GATE.read_text(encoding="utf-8")
+        fixture_path = WEB_ROOT / "fixtures" / "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.json"
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+
+        # PR #5 reviewer ACK intake proof 必须使用 dedicated fixture，避免默认 status fixture 掩盖当前 panel。
+        self.assertIn("PR5_REVIEWER_ACK_INTAKE_FIXTURE", script)
+        self.assertIn("mobile_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake", script)
+        self.assertIn(
+            "software_proof_docker_mobile_current_panel_browser_proof_refresh_pr5_reviewer_ack_intake_gate",
+            script,
+        )
+        self.assertIn(
+            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake.json",
+            script,
+        )
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeTitle", script)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeBoundary", script)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeFlags", script)
+        self.assertIn("pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeThread", script)
+        self.assertIn("pr5_reviewer_ack_intake_panel_fail_closed", script)
+        self.assertIn("DEFAULT_OUTPUT_DIR", script)
+
+        summary = fixture["robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary"]
+        self.assertEqual(summary["thread_id"], "PRRT_kwDOSWB9286CJ3tX")
+        self.assertEqual(summary["proof_status"], "hardware_material_pending")
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertIn("hardware_material_pending", fixture_text)
+        self.assertIn("delivery_success=false", fixture_text)
+        self.assertIn("primary_actions_enabled=false", fixture_text)
+        self.assertIn("safe_to_control=false", fixture_text)
+
     def test_static_shell_files_exist_and_reference_phone_safe_schema(self):
         index = self.read("index.html")
         app = self.read("app.js")
