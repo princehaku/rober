@@ -45,6 +45,10 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake.json"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEW_DECISION_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision.json"
+)
 VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_intake.json"
 )
@@ -1216,6 +1220,173 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseInta
             "field pass",
             "ack payload",
             "cursor request",
+            "robot command",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, packet_text)
+
+
+class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecisionTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # review decision 只消费 Robot safe alias 和兼容 safe summary，不能新增复演、ACK/cursor、提交或控制路径。
+        self.assertIn(
+            "CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEW_DECISION_BOUNDARY",
+            app,
+        )
+        self.assertIn(
+            "safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecisionText",
+            app,
+        )
+        self.assertIn(
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecisionCandidate",
+            app,
+        )
+        self.assertIn(
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecisionFromStatus",
+            app,
+        )
+        self.assertIn(
+            "renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision",
+            app,
+        )
+        self.assertIn(
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary",
+            app,
+        )
+        self.assertIn(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary",
+            app,
+        )
+        self.assertIn(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision?.summary",
+            app,
+        )
+        for required in (
+            "review_decision",
+            "owner_response_status",
+            "safe_command_id",
+            "safe_evidence_ref",
+            "accepted_classifications",
+            "missing_classifications",
+            "rejected_classifications",
+            "unsafe_classifications",
+            "blocked_classifications",
+            "decision_reasons",
+            "next_required_evidence",
+            "not true phone/browser proof",
+            "no OKR percentage lift",
+            "not delivery success",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+        ):
+            self.assertIn(required, app + fixture_text)
+        self.assertNotRegex(
+            app,
+            r"cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision",
+            "cursorCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision",
+            "fetchCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecisionDiagnostics",
+            "uploadCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecisionMaterial",
+            "submitCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision",
+            "reviewCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision",
+            "replayCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision",
+            "resubmitCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision",
+            "githubCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision",
+            "commandCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecision",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        summary = fixture[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary"
+        ]
+        fallback = fixture[
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary"
+        ]
+        nested = fixture[
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision"
+        ]["summary"]
+        self.assertEqual(
+            summary["capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("blocked_hardware_material_pending_not_proven", summary["review_decision"])
+        self.assertIn("hardware_material_pending", summary["owner_response_status"])
+        self.assertEqual(fallback["primary_actions_enabled"], False)
+        self.assertIn("needs_verified_terminal_result_backfill_not_proven", fallback["review_decision"])
+        self.assertIn("blocked_missing_owner_response_intake_not_proven", nested["review_decision"])
+        self.assertEqual(nested["safe_to_control"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        for required in (
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision",
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_gate",
+            "hardware_material_pending",
+            "PRRT_kwDOSWB9286CJ3tX",
+            "review_decision=blocked_hardware_material_pending_not_proven",
+            "owner_response_status=hardware_material_pending",
+            "next_required_evidence=same_safe_evidence_ref_terminal_result_and_true_phone_browser_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not true phone/browser proof",
+            "no OKR percentage lift",
+            "not delivery success",
+        ):
+            self.assertIn(required, fixture_text + doc)
+
+        self.assertIn(
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary",
+            doc,
+        )
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        packet_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # fixture 只保留 review decision safe summary，不泄漏 raw 材料、路径、凭证、ACK/cursor 或控制授权。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw materials",
+            "raw owner response",
+            "command route",
+            "ack route",
+            "cursor route",
+            "owner response submission",
+            "github mutation",
+            "artifact fetch",
+            "material upload",
             "robot command",
             "control authorization",
             "delivery_success\": true",

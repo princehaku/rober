@@ -1,0 +1,142 @@
+{
+  "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary.v1",
+    "schema_version": 1,
+    "capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision",
+    "source_capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake",
+    "source_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_gate",
+    "source": "software_proof",
+    "review_decision": "review_decision=blocked_hardware_material_pending_not_proven",
+    "owner_response_status": "owner_response_status=hardware_material_pending",
+    "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_fixture_20260524_0001",
+    "accepted_classifications": [
+      "accepted=support_handoff_copy_received",
+      "accepted=safe_command_id_present",
+      "accepted=safe_evidence_ref_present"
+    ],
+    "missing_classifications": [
+      "missing=verified_terminal_delivery_result_under_same_safe_evidence_ref",
+      "missing=verified_dropoff_or_cancel_result_under_same_safe_evidence_ref",
+      "missing=true phone/browser proof",
+      "missing=real public HTTPS/TLS, 4G/SIM, OSS/CDN, production DB/queue evidence"
+    ],
+    "rejected_classifications": [
+      "rejected=delivery_success_claim_without_verified_terminal_result"
+    ],
+    "unsafe_classifications": [
+      "unsafe=ack_cursor_review_or_diagnostics_mutation_not_allowed"
+    ],
+    "blocked_classifications": [
+      "blocked=PRRT_kwDOSWB9286CJ3tX hardware_material_pending",
+      "blocked=owner_support_response_missing_verified_terminal_result"
+    ],
+    "decision_reasons": [
+      "decision_reason=owner_response_status_is_hardware_material_pending",
+      "decision_reason=verified_terminal_result_missing_under_same_safe_evidence_ref",
+      "decision_reason=true_phone_browser_proof_missing"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=verified terminal delivery result under the same safe evidence_ref",
+      "next_required_evidence=verified dropoff or cancel completion under the same safe evidence_ref",
+      "next_required_evidence=true phone/browser proof and real public HTTPS/TLS, 4G/SIM, OSS/CDN, production DB/queue evidence remain pending"
+    ],
+    "safe_copy": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision;command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_20260524_0001;evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_fixture_20260524_0001;review_decision=blocked_hardware_material_pending_not_proven;owner_response_status=hardware_material_pending;blocked=PRRT_kwDOSWB9286CJ3tX hardware_material_pending;next_required_evidence=same_safe_evidence_ref_terminal_result_and_true_phone_browser_proof;source=software_proof;not_proven;delivery_success=false;primary_actions_enabled=false;safe_to_control=false;not true phone/browser proof;no OKR percentage lift;not delivery success.",
+    "safe_phone_copy": "云命令生命周期支持交接 owner response review decision 只读可见；review decision 仍 blocked_hardware_material_pending_not_proven，缺同一 safe evidence_ref 的 verified terminal result。",
+    "recovery_hint": "等待 owner/support 提供同一 safe evidence_ref 的 verified terminal result；手机端不请求 ACK/cursor、review 变更、材料上传、代码托管变更、replay/resubmit、diagnostics mutation 或控制路径。",
+    "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_gate",
+    "proof_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "hardware_material_pending",
+      "PRRT_kwDOSWB9286CJ3tX",
+      "not true phone/browser proof",
+      "no OKR percentage lift",
+      "not delivery success",
+      "real_public_https_tls",
+      "real_4g_sim",
+      "oss_cdn_live_traffic",
+      "production_db_queue",
+      "verified_terminal_result",
+      "hil_pass"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary.v1",
+    "schema_version": 1,
+    "capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision",
+    "source": "software_proof",
+    "review_decision": "review_decision=needs_verified_terminal_result_backfill_not_proven",
+    "owner_response_status": "owner_response_status=hardware_material_pending",
+    "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_fixture_20260524_0001",
+    "accepted_classifications": [
+      "accepted=support_handoff_copy_received"
+    ],
+    "missing_classifications": [
+      "missing=verified_terminal_result_under_same_safe_evidence_ref"
+    ],
+    "rejected_classifications": [
+      "rejected=delivery_success_claim_without_verified_terminal_result"
+    ],
+    "unsafe_classifications": [
+      "unsafe=none"
+    ],
+    "blocked_classifications": [
+      "blocked=PRRT_kwDOSWB9286CJ3tX hardware_material_pending"
+    ],
+    "decision_reasons": [
+      "decision_reason=owner_response_status_is_hardware_material_pending"
+    ],
+    "next_required_evidence": [
+      "next_required_evidence=verified terminal delivery/dropoff/cancel result under same safe evidence_ref"
+    ],
+    "safe_copy": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision;not_proven;delivery_success=false;primary_actions_enabled=false;safe_to_control=false;not true phone/browser proof;no OKR percentage lift;not delivery success.",
+    "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "not true phone/browser proof",
+      "no OKR percentage lift",
+      "not delivery success"
+    ]
+  },
+  "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision": {
+    "summary": {
+      "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary.v1",
+      "capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision",
+      "review_decision": "review_decision=blocked_missing_owner_response_intake_not_proven",
+      "owner_response_status": "owner_response_status=missing_owner_response_intake",
+      "source": "software_proof",
+      "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_20260524_0001",
+      "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_fixture_20260524_0001",
+      "decision_reasons": [
+        "decision_reason=blocked_missing_owner_response_intake_not_proven"
+      ],
+      "missing_classifications": [
+        "missing=owner_response_intake_safe_summary"
+      ],
+      "safe_copy": "nested cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision safe_copy only;source=software_proof;not_proven;delivery_success=false;primary_actions_enabled=false;safe_to_control=false;not true phone/browser proof;no OKR percentage lift.",
+      "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

@@ -296,6 +296,30 @@ HIL, not PR #5 resolved, not delivery success, not true phone/browser proof,
 not public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production
 DB/queue, not worker/cutover, and no OKR percentage lift.
 
+Robot/API now also exposes the downstream owner-response review-decision
+summary for that same safe intake:
+
+```text
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision
+robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary
+```
+
+The review-decision evidence boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_gate`.
+It is derived only from the safe owner-response-intake fields, preserving the
+safe command id, safe evidence ref, `review_decision=blocked_not_proven`,
+review reasons, owner response status, next required evidence, proof boundary,
+source boundary, `not_proven`, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`.
+
+Unsupported, unsafe, or missing intake state must stay blocked/not_proven and
+must keep `delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`. The summary does not replay commands, resubmit
+commands, mutate ACK cursors, upload materials, fetch raw artifacts, trigger
+Nav2, touch WAVE ROVER/UART, authorize robot control, prove PR #5 resolved,
+prove delivery success, prove real cloud, provide not verified terminal result,
+or provide not true phone/browser proof.
+
 Robot/API also exposes the PR #5 mandatory-sensor owner-response review handoff
 as a phone-safe status/diagnostics alias when the backend has already provided
 the sanitized summary:

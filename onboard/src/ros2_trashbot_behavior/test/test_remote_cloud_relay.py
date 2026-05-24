@@ -550,6 +550,83 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, encoded)
 
+    def test_cloud_command_lifecycle_replay_acceptance_packet_owner_response_review_decision_is_safe(self):
+        status, status_payload = self.client.request("GET", "/api/status", token="")
+        diag_status, diagnostics_payload = self.client.request("GET", "/api/diagnostics", token="")
+        payload = status_payload[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary"
+        ]
+        encoded = json.dumps({"status": status_payload, "diagnostics": diagnostics_payload}, ensure_ascii=False)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(diag_status, 200)
+        self.assertEqual(
+            payload["capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision",
+        )
+        self.assertEqual(
+            payload["evidence_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_gate",
+        )
+        self.assertEqual(
+            payload["source_intake_evidence_boundary"],
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_gate",
+        )
+        self.assertEqual(payload["review_decision"], "blocked_not_proven")
+        self.assertEqual(
+            payload["owner_response_status"],
+            "pending_safe_owner_response_material_not_proven",
+        )
+        self.assertEqual(payload["safe_command_id"], "pending_same_safe_command_id")
+        self.assertEqual(payload["safe_evidence_ref"], "pending_same_safe_evidence_ref")
+        self.assertIn("owner_response_material_pending", payload["review_reasons"])
+        self.assertIn("verified_terminal_delivery_dropoff_or_cancel_result", payload["next_required_evidence"])
+        self.assertEqual(payload["source_boundary"], "safe_owner_response_intake_only")
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["primary_actions_enabled"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["ack_post_allowed"])
+        self.assertFalse(payload["cursor_updates_allowed"])
+        self.assertFalse(payload["command_replay_allowed"])
+        self.assertFalse(payload["command_resubmit_allowed"])
+        self.assertFalse(payload["material_upload_allowed"])
+        self.assertFalse(payload["review_action_allowed"])
+        self.assertFalse(payload["github_action_allowed"])
+        self.assertFalse(payload["robot_command_side_effects_allowed"])
+        self.assertFalse(payload["verified_terminal_result"])
+        self.assertFalse(payload["hil_pass"])
+        self.assertFalse(payload["pr5_resolved"])
+        self.assertEqual(
+            diagnostics_payload[
+                "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary"
+            ]["safe_evidence_ref"],
+            payload["safe_evidence_ref"],
+        )
+        self.assertIn("not verified terminal result", encoded)
+        self.assertIn("not true phone/browser proof", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        for forbidden in (
+            "phone-token",
+            "Authorization",
+            "Bearer",
+            "raw_path",
+            str(REPO_ROOT),
+            "/cmd_vel",
+            "ttyUSB",
+            "serial",
+            "baudrate",
+            "WAVE ROVER",
+            "traceback",
+            "complete artifact",
+            "checksum",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
     def test_pr5_mandatory_sensor_material_owner_response_review_handoff_alias_is_phone_safe(self):
         safe_summary = {
             "schema": "trashbot.robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary.v1",
