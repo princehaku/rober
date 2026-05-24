@@ -489,3 +489,19 @@ proof 边界：
 - 生产数据库、队列、多实例一致性、备份和灾备。
 - OSS/CDN 上传、STS、受限 AK、生命周期和 rotate。
 - Nav2/fixed-route、WAVE ROVER、真实硬件运动、HIL 和用户实机验收。
+
+## Cloud External Evidence Review Decision Gate
+
+`cloud_external_evidence_review_decision` 是 `trashbot.external_evidence_intake` 之后的本地安全复核层，证据边界是 `software_proof_docker_cloud_external_evidence_review_decision_gate`。它只消费 external evidence intake 的脱敏安全输出，生成 `accepted_external_evidence_not_proven`、`needs_external_evidence_backfill_not_proven`、`rejected_unsafe_external_evidence_not_proven`、`blocked_missing_external_evidence_intake_not_proven` 或 `external_evidence_ref_mismatch_not_proven` 五种确定状态，并显式列出 public ingress/TLS、OSS/CDN、production DB/queue、4G/SIM、worker/cutover、true phone/browser proof、verified terminal result 的材料族状态。
+
+PC 侧最小复核命令：
+
+```bash
+python3 pc-tools/evidence/cloud_external_evidence_review_decision.py \
+  --intake-json /tmp/trashbot_external_evidence_intake.json \
+  --expected-evidence-ref external_evidence_ref_20260524_0001 \
+  --output /tmp/trashbot_cloud_external_evidence_review_decision.json \
+  --summary-output /tmp/trashbot_cloud_external_evidence_review_decision_summary.json
+```
+
+输出 summary 只允许 safe command/evidence refs、material-family statuses、review decision、next required evidence、PR #5 `PRRT_kwDOSWB9286CJ3tX` / `hardware_material_pending` 上下文，以及 `source=software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`、`not true phone/browser proof`、`no OKR percentage lift`。它不得暴露 URL、credential-bearing endpoint、Authorization header、bearer token、OSS AK/SK、DB/queue URL、本地路径、响应体、traceback、ROS topic、`/cmd_vel`、serial/UART、WAVE ROVER、full artifact content、checksums、GitHub mutation 或 raw PR payload；也不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、verified terminal result、PR #5 resolution 或 delivery success。

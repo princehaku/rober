@@ -355,3 +355,9 @@ python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 | 本 sprint P5（当前） | 新增 `ros2_trashbot_cloud_relay` runtime；Docker/smoke 从 cloud-relay 入口启动，协议实现继续复用 onboard |
 | 下一个 sprint | TLS / 反向代理、生产 DB（PostgreSQL）、多实例一致性、灾备 backup 策略 |
 | 后续 | 真实 4G / 真实公网 / 真实 OSS / CDN 凭证、监控、告警 |
+
+## Cloud External Evidence Review Decision
+
+`cloud_external_evidence_review_decision` 复核 `trashbot.external_evidence_intake` 的脱敏输出，输出 schema 为 `trashbot.cloud_external_evidence_review_decision.v1`，summary schema 为 `trashbot.cloud_external_evidence_review_decision_summary.v1`，证据边界固定为 `software_proof_docker_cloud_external_evidence_review_decision_gate`。支持状态包括 `accepted_external_evidence_not_proven`、`needs_external_evidence_backfill_not_proven`、`rejected_unsafe_external_evidence_not_proven`、`blocked_missing_external_evidence_intake_not_proven` 和 `external_evidence_ref_mismatch_not_proven`。
+
+该复核只允许 safe command/evidence refs、material-family statuses、review decision、next required evidence、PR #5 `PRRT_kwDOSWB9286CJ3tX` / `hardware_material_pending` 上下文进入 mobile/Robot summary；必须保持 `source=software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`、`not true phone/browser proof`、`no OKR percentage lift`。它不证明 real external cloud proof、public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、verified terminal result、HIL、PR #5 resolution 或 delivery success。

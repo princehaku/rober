@@ -59,6 +59,8 @@ const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RES
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_COPY = "云命令生命周期支持交接 owner response reviewer ACK follow-up escalation status 只读可见；只展示 source review-handoff status、follow-up status、due status、owner/support/reviewer/escalation route、next required evidence 和 false-state flags，主操作保持禁用。";
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_BOUNDARY = "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_gate";
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_OWNER_RESPONSE_INTAKE_BRIDGE_COPY = "云命令生命周期 reviewer ACK follow-up bridge 只读可见；它只把 follow-up escalation status 接回 owner-response intake 主线，不创建新的 wrapper 或控制入口。";
+const CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_BOUNDARY = "software_proof_docker_cloud_external_evidence_review_decision_gate";
+const CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_COPY = "cloud_external_evidence_review_decision 只读可见；只展示 external evidence intake 的脱敏复核结论、材料族状态和下一步补证据，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_BOUNDARY = "software_proof_docker_verified_terminal_result_material_intake_gate";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_COPY = "verified terminal result material intake 只读可见；材料回填不等于 delivery success，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_verified_terminal_result_material_review_decision_gate";
@@ -367,6 +369,7 @@ const UNSAFE_CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_TEXT = /(authorization|bearer|tok
 const UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|command route|ack route|cursor route|robot\/internal|internal technical|password|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
 const UNSAFE_CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
+const UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|command route|ack route|cursor route|diagnostics fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|raw decision|review route|command route|ack route|cursor route|diagnostics fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_HANDOFF_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|raw terminal result|raw material|raw intake|raw evidence|raw owner|raw packet|raw callback|raw review|raw decision|raw handoff|review route|handoff route|command route|ack route|cursor route|diagnostics fetch|artifact fetch|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|robot\/internal|internal technical|password|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
@@ -664,6 +667,7 @@ let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponse
 let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewHandoff = null;
 let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus = null;
 let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridge = null;
+let latestCloudExternalEvidenceReviewDecision = null;
 let latestVerifiedTerminalResultMaterialIntake = null;
 let latestVerifiedTerminalResultMaterialReviewDecision = null;
 let latestVerifiedTerminalResultMaterialReviewHandoff = null;
@@ -50385,6 +50389,388 @@ function renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerRes
     summary.recovery_hint;
 }
 
+function safeCloudExternalEvidenceReviewDecisionText(value, fallback = "not_proven") {
+  // 外部证据复核面只展示短安全文本；任何 raw 端点、凭证、路径或控制词都回退。
+  const text = safeText(value, fallback);
+  if (UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_TEXT.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function cloudExternalEvidenceReviewDecisionCandidate(status, readiness, diagnostics) {
+  // 候选只来自后端/Robot 已脱敏 summary，不从手机端拉 raw artifact 或 diagnostics。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.cloud_external_evidence_review_decision?.summary ||
+    readiness?.cloud_external_evidence_review_decision?.summary ||
+    diagnostics?.cloud_external_evidence_review_decision?.summary ||
+    diagnosticsSummary.cloud_external_evidence_review_decision?.summary ||
+    nestedDiagnosticsSummary.cloud_external_evidence_review_decision?.summary ||
+    nestedDiagnosticsInnerSummary.cloud_external_evidence_review_decision?.summary ||
+    statusDiagnosticsSummary.cloud_external_evidence_review_decision?.summary;
+  return firstObject(
+    status?.robot_diagnostics_cloud_external_evidence_review_decision_summary,
+    readiness?.robot_diagnostics_cloud_external_evidence_review_decision_summary,
+    diagnostics?.robot_diagnostics_cloud_external_evidence_review_decision_summary,
+    diagnosticsReadiness.robot_diagnostics_cloud_external_evidence_review_decision_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_external_evidence_review_decision_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_cloud_external_evidence_review_decision_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_cloud_external_evidence_review_decision_summary,
+    statusDiagnosticsSummary.robot_diagnostics_cloud_external_evidence_review_decision_summary,
+    status?.cloud_external_evidence_review_decision_summary,
+    readiness?.cloud_external_evidence_review_decision_summary,
+    diagnostics?.cloud_external_evidence_review_decision_summary,
+    diagnosticsReadiness.cloud_external_evidence_review_decision_summary,
+    diagnosticsSummary.cloud_external_evidence_review_decision_summary,
+    nestedDiagnosticsSummary.cloud_external_evidence_review_decision_summary,
+    nestedDiagnosticsInnerSummary.cloud_external_evidence_review_decision_summary,
+    statusDiagnosticsSummary.cloud_external_evidence_review_decision_summary,
+    artifactSummary,
+  );
+}
+
+function cloudExternalEvidenceReviewDecisionList(value, fallback) {
+  // 数组和对象都转成短行；material family 只显示 name/status/safe_summary。
+  const items = Array.isArray(value) ? value : Object.entries(value || {});
+  const safeItems = items
+    .map((item) => {
+      if (Array.isArray(item)) {
+        const key = safeCloudExternalEvidenceReviewDecisionText(item[0], "");
+        const raw = item[1];
+        if (raw && typeof raw === "object") {
+          const status = safeCloudExternalEvidenceReviewDecisionText(raw.status || raw.material_status, "not_proven");
+          const summary = safeCloudExternalEvidenceReviewDecisionText(raw.safe_summary || raw.summary, "");
+          return summary ? `${key}=${status}: ${summary}` : `${key}=${status}`;
+        }
+        const detail = safeCloudExternalEvidenceReviewDecisionText(raw, "");
+        return key && detail ? `${key}=${detail}` : key || detail;
+      }
+      if (item && typeof item === "object") {
+        const label = safeCloudExternalEvidenceReviewDecisionText(
+          item.name || item.material || item.family || item.status || item.safe_summary,
+          "",
+        );
+        const detail = safeCloudExternalEvidenceReviewDecisionText(
+          item.status || item.reason || item.summary || item.safe_phone_copy,
+          "",
+        );
+        return label && detail ? `${label}: ${detail}` : label || detail;
+      }
+      return safeCloudExternalEvidenceReviewDecisionText(item, "");
+    })
+    .filter((item) => item && item !== "not_proven");
+  return safeItems.length ? safeItems.slice(0, 14) : [fallback];
+}
+
+function cloudExternalEvidenceReviewDecisionNotProvenList(value) {
+  // 复核决策只说明材料分类，不解除真实外部、手机、terminal result 或交付缺口。
+  const provided = notProvenList(value?.not_proven);
+  const required = [
+    "software_proof",
+    "not_proven",
+    "source=software_proof",
+    "trashbot.external_evidence_intake",
+    "safe_to_control=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "not_o5_external_proof",
+    "not_public_https_tls_proof",
+    "not_4g_sim_proof",
+    "not_oss_cdn_live_traffic",
+    "not_production_db_queue_proof",
+    "not_worker_cutover_proof",
+    "not_verified_terminal_result",
+    "not true phone/browser proof",
+    "no OKR percentage lift",
+  ];
+  return Array.from(new Set([...provided, ...required])).slice(0, 28);
+}
+
+function cloudExternalEvidenceReviewDecisionHasUnsafeRawFields(value) {
+  // summary 任意层级出现 raw/control/credential/success 语义时，整个 panel fail closed。
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const allowedSafetyKeys = new Set(["delivery_success", "primary_actions_enabled", "safe_to_control"]);
+  const stack = [value];
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current || typeof current !== "object") {
+      continue;
+    }
+    for (const [key, rawValue] of Object.entries(current)) {
+      if (key === "not_proven") {
+        continue;
+      }
+      if (!allowedSafetyKeys.has(key) &&
+        UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_TEXT.test(String(key))) {
+        return true;
+      }
+      if (rawValue && typeof rawValue === "object") {
+        stack.push(rawValue);
+      } else if (UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_TEXT.test(String(rawValue))) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function cloudExternalEvidenceReviewDecisionSafeCopyFromValue(value) {
+  // safe_copy 必须由后端明确提供；前端不从 raw material 或 artifact 自行拼装。
+  if (!value || !Object.prototype.hasOwnProperty.call(value, "safe_copy")) {
+    return null;
+  }
+  if (cloudExternalEvidenceReviewDecisionHasUnsafeRawFields(value)) {
+    return null;
+  }
+  const source = value.safe_copy;
+  if (typeof source === "string") {
+    const copyText = safeCloudExternalEvidenceReviewDecisionText(source, "");
+    return copyText ? { safe_copy_text: copyText } : null;
+  }
+  if (source && typeof source === "object") {
+    const safeCopy = {
+      review_decision: safeCloudExternalEvidenceReviewDecisionText(source.review_decision || source.status, ""),
+      safe_evidence_ref: safeCloudExternalEvidenceReviewDecisionText(source.safe_evidence_ref || source.evidence_ref, ""),
+      safe_command_ref: safeCloudExternalEvidenceReviewDecisionText(source.safe_command_ref || source.safe_command_id || source.command_ref, ""),
+      material_statuses: cloudExternalEvidenceReviewDecisionList(source.material_statuses, ""),
+      next_required_evidence: cloudExternalEvidenceReviewDecisionList(source.next_required_evidence, ""),
+      evidence_boundary: safeCloudExternalEvidenceReviewDecisionText(
+        source.evidence_boundary || source.proof_boundary,
+        "",
+      ),
+    };
+    const hasAnyValue = Object.values(safeCopy).some((item) => Array.isArray(item)
+      ? item.some(Boolean)
+      : Boolean(item));
+    return hasAnyValue ? safeCopy : null;
+  }
+  return null;
+}
+
+function cloudExternalEvidenceReviewDecisionFromStatus(status, readiness, diagnostics) {
+  const provided = cloudExternalEvidenceReviewDecisionCandidate(status, readiness, diagnostics) || {};
+  const unsafeRawFields = cloudExternalEvidenceReviewDecisionHasUnsafeRawFields(provided);
+  const safeCopyPayload = unsafeRawFields
+    ? null
+    : cloudExternalEvidenceReviewDecisionSafeCopyFromValue(provided);
+  const reviewDecision = unsafeRawFields
+    ? "rejected_unsafe_external_evidence_not_proven"
+    : safeCloudExternalEvidenceReviewDecisionText(
+      provided.review_decision || provided.decision || provided.status,
+      "blocked_missing_external_evidence_intake_not_proven",
+    );
+  return {
+    missing: !Object.keys(provided).length,
+    unsafe_raw_fields: unsafeRawFields,
+    schema: "trashbot.robot_diagnostics_cloud_external_evidence_review_decision_summary.v1",
+    capability: safeCloudExternalEvidenceReviewDecisionText(provided.capability, "cloud_external_evidence_review_decision"),
+    source_capability: safeCloudExternalEvidenceReviewDecisionText(provided.source_capability, "trashbot.external_evidence_intake"),
+    source: safeCloudExternalEvidenceReviewDecisionText(provided.source, "software_proof"),
+    review_decision: reviewDecision,
+    safe_evidence_ref: safeCloudExternalEvidenceReviewDecisionText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    safe_command_ref: safeCloudExternalEvidenceReviewDecisionText(
+      provided.safe_command_ref || provided.safe_command_id || provided.command_ref || provided.command_id,
+      "command_ref=not_proven",
+    ),
+    material_statuses: cloudExternalEvidenceReviewDecisionList(
+      provided.material_statuses,
+      "material_statuses=waiting_for_trashbot.external_evidence_intake_review",
+    ),
+    accepted_materials: cloudExternalEvidenceReviewDecisionList(
+      provided.accepted_materials || provided.accepted,
+      "accepted_materials=none_not_proven",
+    ),
+    missing_materials: cloudExternalEvidenceReviewDecisionList(
+      provided.missing_materials || provided.missing,
+      "missing_materials=external_evidence_review_pending",
+    ),
+    unsafe_materials: cloudExternalEvidenceReviewDecisionList(
+      provided.unsafe_materials || provided.unsafe,
+      "unsafe_materials=none",
+    ),
+    next_required_evidence: cloudExternalEvidenceReviewDecisionList(
+      provided.next_required_evidence || provided.next_evidence || provided.required_evidence,
+      "next_required_evidence=generate_trashbot.external_evidence_intake_safe_artifact_before_review_decision",
+    ),
+    pr5_context: cloudExternalEvidenceReviewDecisionList(
+      provided.pr5_review_context || provided.pr5_context,
+      "PRRT_kwDOSWB9286CJ3tX=hardware_material_pending",
+    ),
+    evidence_boundary: safeCloudExternalEvidenceReviewDecisionText(
+      provided.evidence_boundary || provided.proof_boundary,
+      CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_BOUNDARY,
+    ),
+    safe_copy_payload: safeCopyPayload,
+    safe_copy_status: safeCopyPayload ? "safe_copy_available" : "blocked copy unavailable",
+    safe_phone_copy: safeCloudExternalEvidenceReviewDecisionText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary,
+      CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_COPY,
+    ),
+    recovery_hint: safeCloudExternalEvidenceReviewDecisionText(
+      provided.recovery_hint || provided.retry_hint,
+      "等待同一 safe evidence_ref 的 cloud_external_evidence_review_decision；手机端只读展示，不提交控制动作。",
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / not true phone/browser proof / no OKR percentage lift",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: cloudExternalEvidenceReviewDecisionNotProvenList(provided),
+  };
+}
+
+function cloudExternalEvidenceReviewDecisionCopyPayload(summary) {
+  // copy payload 只复用后端 safe_copy；缺 safe_copy 或 unsafe summary 时保持不可复制。
+  const source = summary?.schema
+    ? summary
+    : cloudExternalEvidenceReviewDecisionFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  if (!source.safe_copy_payload) {
+    return null;
+  }
+  return {
+    schema: "trashbot.cloud_external_evidence_review_decision_copy.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    capability: "cloud_external_evidence_review_decision",
+    source_capability: "trashbot.external_evidence_intake",
+    review_decision: source.review_decision,
+    safe_evidence_ref: source.safe_evidence_ref,
+    safe_command_ref: source.safe_command_ref,
+    material_statuses: source.material_statuses,
+    accepted_materials: source.accepted_materials,
+    missing_materials: source.missing_materials,
+    unsafe_materials: source.unsafe_materials,
+    next_required_evidence: source.next_required_evidence,
+    pr5_context: source.pr5_context,
+    safe_copy: source.safe_copy_payload,
+    evidence_boundary: CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_BOUNDARY,
+    not_proven: source.not_proven,
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+  };
+}
+
+function ensureCloudExternalEvidenceReviewDecisionPanel() {
+  // panel 靠近 cloud readiness 区域，只展示外部证据复核，不创建任何控制入口。
+  let panel = $("cloudExternalEvidenceReviewDecisionPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridgeTitle")?.closest("section") ||
+    $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatusTitle")?.closest("section") ||
+    $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewHandoffTitle")?.closest("section") ||
+    $("cloudCommandLifecycleAuditExportTitle")?.closest("section") ||
+    $("cloudReadinessTitle")?.closest("section") ||
+    $("supportTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "cloudExternalEvidenceReviewDecisionPanel";
+  panel.className = "cloud-external-evidence-review-decision-panel";
+  panel.setAttribute("aria-labelledby", "cloudExternalEvidenceReviewDecisionTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="cloudExternalEvidenceReviewDecisionTitle">Cloud External Evidence Review Decision</h2>
+      <span id="cloudExternalEvidenceReviewDecisionBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="cloudExternalEvidenceReviewDecisionCopy" class="message">
+      等待 robot_diagnostics_cloud_external_evidence_review_decision_summary。
+    </p>
+    <dl class="cloud-external-evidence-review-decision-grid">
+      <div><dt>Review Decision</dt><dd id="cloudExternalEvidenceReviewDecisionStatus">blocked_missing_external_evidence_intake_not_proven</dd></div>
+      <div><dt>Source Capability</dt><dd id="cloudExternalEvidenceReviewDecisionSourceCapability">trashbot.external_evidence_intake</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="cloudExternalEvidenceReviewDecisionEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>Safe Command Ref</dt><dd id="cloudExternalEvidenceReviewDecisionCommandRef">command_ref=not_proven</dd></div>
+      <div><dt>Safe Copy</dt><dd id="cloudExternalEvidenceReviewDecisionCopyState">blocked copy unavailable</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="cloudExternalEvidenceReviewDecisionBoundary">software_proof_docker_cloud_external_evidence_review_decision_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="cloudExternalEvidenceReviewDecisionFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / not true phone/browser proof / no OKR percentage lift</dd></div>
+      <div><dt>not_proven</dt><dd id="cloudExternalEvidenceReviewDecisionNotProven">O5 external proof、true phone/browser proof、verified terminal result、delivery_success=false 和 no OKR percentage lift 边界未解除。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section><h3>Material Family Statuses</h3><ol id="cloudExternalEvidenceReviewDecisionMaterialStatuses" class="handoff-checklist"><li>等待 material family statuses。</li></ol></section>
+      <section><h3>Accepted Materials</h3><ol id="cloudExternalEvidenceReviewDecisionAcceptedMaterials" class="handoff-checklist"><li>等待 accepted external evidence classifications。</li></ol></section>
+      <section><h3>Missing Materials</h3><ol id="cloudExternalEvidenceReviewDecisionMissingMaterials" class="handoff-checklist"><li>等待 missing external evidence classifications。</li></ol></section>
+      <section><h3>Unsafe Materials</h3><ol id="cloudExternalEvidenceReviewDecisionUnsafeMaterials" class="handoff-checklist"><li>等待 unsafe external evidence classifications。</li></ol></section>
+      <section><h3>Next Required Evidence</h3><ol id="cloudExternalEvidenceReviewDecisionNextEvidence" class="handoff-checklist"><li>等待 next required evidence。</li></ol></section>
+      <section><h3>PR #5 Context</h3><ol id="cloudExternalEvidenceReviewDecisionPr5Context" class="handoff-checklist"><li>PRRT_kwDOSWB9286CJ3tX=hardware_material_pending。</li></ol></section>
+    </div>
+    <div class="bundle-copy-row">
+      <button id="copyCloudExternalEvidenceReviewDecisionButton" type="button" disabled>复制 external evidence review safe_copy</button>
+      <span id="cloudExternalEvidenceReviewDecisionCopyStatus" class="hint">blocked copy unavailable</span>
+    </div>
+    <pre id="cloudExternalEvidenceReviewDecisionSafeCopy" class="safe-copy" aria-label="cloud_external_evidence_review_decision safe_copy">blocked copy unavailable</pre>
+    <p id="cloudExternalEvidenceReviewDecisionHint" class="hint">
+      本 panel 只消费 robot_diagnostics_cloud_external_evidence_review_decision_summary / safe summary fallback；不读取 raw artifact、URL、credentials、response body、ROS topic、hardware details，不新增 ACK/cursor/upload/review/GitHub mutation/replay/resubmit/control 路径。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderCloudExternalEvidenceReviewDecision(status) {
+  const panel = ensureCloudExternalEvidenceReviewDecisionPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = cloudExternalEvidenceReviewDecisionFromStatus(status, readiness, latestDiagnostics);
+  latestCloudExternalEvidenceReviewDecision = summary;
+  const copyPayload = cloudExternalEvidenceReviewDecisionCopyPayload(summary);
+  const badge = $("cloudExternalEvidenceReviewDecisionBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 external evidence review" : "external evidence not_proven";
+  $("cloudExternalEvidenceReviewDecisionCopy").textContent = summary.safe_phone_copy;
+  $("cloudExternalEvidenceReviewDecisionStatus").textContent = `${summary.source} / ${summary.review_decision}`;
+  $("cloudExternalEvidenceReviewDecisionSourceCapability").textContent = summary.source_capability;
+  $("cloudExternalEvidenceReviewDecisionEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("cloudExternalEvidenceReviewDecisionCommandRef").textContent = summary.safe_command_ref;
+  $("cloudExternalEvidenceReviewDecisionCopyState").textContent = summary.safe_copy_status;
+  $("cloudExternalEvidenceReviewDecisionBoundary").textContent = summary.evidence_boundary;
+  $("cloudExternalEvidenceReviewDecisionFlags").textContent = summary.boundary_flags;
+  $("cloudExternalEvidenceReviewDecisionNotProven").textContent = summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewDecisionMaterialStatuses", summary.material_statuses);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewDecisionAcceptedMaterials", summary.accepted_materials);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewDecisionMissingMaterials", summary.missing_materials);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewDecisionUnsafeMaterials", summary.unsafe_materials);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewDecisionNextEvidence", summary.next_required_evidence);
+  renderFieldEvidenceRerunMaterialDispatchList("cloudExternalEvidenceReviewDecisionPr5Context", summary.pr5_context);
+  $("copyCloudExternalEvidenceReviewDecisionButton").disabled = !copyPayload;
+  $("cloudExternalEvidenceReviewDecisionSafeCopy").textContent = copyPayload
+    ? JSON.stringify(copyPayload, null, 2)
+    : "blocked copy unavailable";
+  $("cloudExternalEvidenceReviewDecisionCopyStatus").textContent = summary.safe_copy_status;
+  $("cloudExternalEvidenceReviewDecisionHint").textContent = summary.recovery_hint;
+}
+
 function verifiedTerminalResultMaterialIntakeCandidate(status, readiness, diagnostics) {
   // 只从 status/readiness/diagnostics 的 safe summary 取值；前端不拉 raw diagnostics、ACK/cursor 或 command route。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -59083,6 +59469,14 @@ function renderDiagnosticsSummary(payload) {
       ).bridge_status,
     ],
     [
+      "cloud_external_evidence_review_decision",
+      cloudExternalEvidenceReviewDecisionFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).review_decision,
+    ],
+    [
       "verified_terminal_result_material_intake",
       verifiedTerminalResultMaterialIntakeFromStatus(
         payload || {},
@@ -59374,6 +59768,7 @@ function renderOfflineFailure() {
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewHandoff({});
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus({});
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridge({});
+  renderCloudExternalEvidenceReviewDecision({});
   renderVerifiedTerminalResultMaterialIntake({});
   renderVerifiedTerminalResultMaterialReviewDecision({});
   renderVerifiedTerminalResultMaterialReviewHandoff({});
@@ -59580,6 +59975,7 @@ function renderStatus(status) {
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewHandoff(status);
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatus(status);
   renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckOwnerResponseIntakeBridge(status);
+  renderCloudExternalEvidenceReviewDecision(status);
   renderVerifiedTerminalResultMaterialIntake(status);
   renderVerifiedTerminalResultMaterialReviewDecision(status);
   renderVerifiedTerminalResultMaterialReviewHandoff(status);

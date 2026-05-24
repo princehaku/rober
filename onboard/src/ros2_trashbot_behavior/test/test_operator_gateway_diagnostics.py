@@ -193,6 +193,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics import (
     summarize_cloud_command_lifecycle_audit_export,
     summarize_cloud_command_lifecycle_replay_drill,
     summarize_cloud_command_lifecycle_replay_acceptance_packet,
+    summarize_cloud_external_evidence_review_decision,
     summarize_cloud_poll_backoff_rate_limit_guard,
     summarize_vision_manifest,
 )
@@ -31132,6 +31133,196 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("safe_to_control=false", summary["support_acceptance_copy"])
         for forbidden in ("Authorization", "Bearer", "token", "raw response", "/cmd_vel"):
             self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_external_evidence_review_decision_safe_alias_and_fail_closed(self):
+        safe_decision_summary = {
+            "schema": "trashbot.cloud_external_evidence_review_decision_summary.v1",
+            "source_schema": "trashbot.cloud_external_evidence_review_decision.v1",
+            "source_evidence_boundary": (
+                "software_proof_docker_cloud_external_evidence_review_decision_gate"
+            ),
+            "schema_version": 1,
+            "capability": "cloud_external_evidence_review_decision",
+            "status": "needs_external_evidence_backfill_not_proven",
+            "overall_status": "blocked",
+            "source": "software_proof",
+            "review_decision": {
+                "status": "needs_external_evidence_backfill_not_proven",
+                "reason": "safe external-evidence intake exists but real public materials are incomplete",
+            },
+            "upstream_source_schema": "trashbot.external_evidence_intake",
+            "upstream_source_evidence_boundary": (
+                "software_proof_docker_external_evidence_intake_gate"
+            ),
+            "source_external_evidence_intake_status": "blocked",
+            "safe_evidence_ref": "evidence://cloud-external-review-001",
+            "safe_command_id": "cmd-cloud-external-review-001",
+            "material_statuses": {
+                "public_ingress_tls": {
+                    "status": "missing",
+                    "safe_summary": "public ingress TLS material not supplied",
+                    "redaction_status": "redacted",
+                },
+                "oss_cdn": {
+                    "status": "redacted_summary_received",
+                    "safe_summary": "OSS CDN metadata summary received",
+                    "redaction_status": "redacted",
+                },
+            },
+            "accepted_materials": ["oss_cdn"],
+            "missing_materials": ["public_ingress_tls", "production_db_queue", "four_g_sim"],
+            "rejected_materials": [],
+            "unsafe_materials": [],
+            "decision_reasons": ["intake summary is safe but incomplete"],
+            "next_required_evidence": [
+                "real_public_https_tls_material",
+                "real_4g_or_sim_material",
+                "production_db_queue_material",
+            ],
+            "owner_handoff": ["owner keeps O5 external evidence pending"],
+            "operator_support_handoff": ["support reports blocked external evidence review"],
+            "reviewer_route": ["reviewer keeps PRRT_kwDOSWB9286CJ3tX context only"],
+            "safe_copy": (
+                "cloud_external_evidence_review_decision is metadata-only; "
+                "source=software_proof; not_proven; production_ready=false; "
+                "overall_status=blocked; external_evidence_complete=false; "
+                "delivery_success=false; primary_actions_enabled=false; "
+                "safe_to_control=false; not true phone/browser proof; "
+                "no OKR percentage lift; PR #5 PRRT_kwDOSWB9286CJ3tX "
+                "hardware_material_pending."
+            ),
+            "not_proven": ["real_public_https_tls", "real_4g_or_sim"],
+            "production_ready": False,
+            "external_evidence_complete": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "safe_to_control": False,
+            "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+            "pr5_material_state": "hardware_material_pending",
+            "pr5_resolution_claim": "not_pr5_resolution",
+        }
+        artifact = {
+            "schema": "trashbot.cloud_external_evidence_review_decision.v1",
+            "evidence_boundary": (
+                "software_proof_docker_cloud_external_evidence_review_decision_gate"
+            ),
+            "cloud_external_evidence_review_decision_summary": safe_decision_summary,
+        }
+        payload = self._base_build_payload(
+            {
+                "cloud_external_evidence_review_decision": artifact,
+                "diagnostics": {
+                    "cloud_external_evidence_review_decision": {
+                        "delivery_success": True,
+                        "raw_artifact": {"Authorization": "Bearer unsafe"},
+                    }
+                },
+            }
+        )
+        summary = payload[
+            "robot_diagnostics_cloud_external_evidence_review_decision_summary"
+        ]
+        nested = summarize_cloud_external_evidence_review_decision(
+            {
+                "status": {
+                    "robot_diagnostics_cloud_external_evidence_review_decision_summary": (
+                        safe_decision_summary
+                    )
+                }
+            }
+        )
+        raw_only = summarize_cloud_external_evidence_review_decision(
+            {
+                "schema": "trashbot.cloud_external_evidence_review_decision.v1",
+                "evidence_boundary": (
+                    "software_proof_docker_cloud_external_evidence_review_decision_gate"
+                ),
+            }
+        )
+        unsafe = summarize_cloud_external_evidence_review_decision(
+            dict(
+                safe_decision_summary,
+                safe_copy=(
+                    "external proof passed; delivery success; Start Delivery enabled; "
+                    "PR #5 resolved."
+                ),
+                production_ready=True,
+                external_evidence_complete=True,
+                delivery_success=True,
+                primary_actions_enabled=True,
+                safe_to_control=True,
+                pr5_resolved=True,
+                raw_source={"complete_json": {"/cmd_vel": "unsafe"}},
+            )
+        )
+
+        self.assertEqual(payload["cloud_external_evidence_review_decision"], summary)
+        self.assertEqual(payload["cloud_external_evidence_review_decision_summary"], summary)
+        self.assertNotIn("cloud_external_evidence_review_decision", payload["latest_status"])
+        self.assertEqual(
+            summary["schema"],
+            "trashbot.robot_diagnostics_cloud_external_evidence_review_decision_summary.v1",
+        )
+        self.assertEqual(
+            summary["source_schema"],
+            "trashbot.cloud_external_evidence_review_decision.v1",
+        )
+        self.assertEqual(
+            summary["upstream_source_schema"],
+            "trashbot.external_evidence_intake",
+        )
+        self.assertEqual(
+            summary["evidence_boundary"],
+            "software_proof_docker_cloud_external_evidence_review_decision_gate",
+        )
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["overall_status"], "blocked")
+        self.assertEqual(summary["status"], "needs_external_evidence_backfill_not_proven")
+        self.assertEqual(summary["source_external_evidence_intake_status"], "blocked")
+        self.assertEqual(
+            summary["safe_evidence_ref"],
+            "evidence://cloud-external-review-001",
+        )
+        self.assertEqual(summary["material_statuses"]["oss_cdn"]["status"], "redacted_summary_received")
+        self.assertIn("production_db_queue", summary["missing_materials"])
+        self.assertIn("real_public_https_tls_material", summary["next_required_evidence"])
+        self.assertFalse(summary["production_ready"])
+        self.assertFalse(summary["external_evidence_complete"])
+        self.assertFalse(summary["delivery_success"])
+        self.assertFalse(summary["primary_actions_enabled"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["robot_control_allowed"])
+        self.assertFalse(summary["github_mutation_allowed"])
+        self.assertFalse(summary["material_upload_allowed"])
+        self.assertEqual(nested["safe_command_id"], "cmd-cloud-external-review-001")
+        self.assertEqual(
+            raw_only["review_decision"]["status"],
+            "blocked_missing_external_evidence_intake_not_proven",
+        )
+        self.assertEqual(
+            unsafe["review_decision"]["status"],
+            "rejected_unsafe_external_evidence_not_proven",
+        )
+        encoded = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("raw_source", encoded)
+        self.assertNotIn("raw_artifact", encoded)
+        self.assertNotIn("complete_json", encoded)
+        self.assertNotIn("Authorization", encoded)
+        self.assertNotIn("Bearer", encoded)
+        self.assertNotIn("/cmd_vel", encoded)
+        self.assertNotIn("delivery_success=true", encoded)
+        self.assertNotIn("PR #5 resolved", encoded)
+        self.assertIn("source=software_proof", encoded)
+        self.assertIn("not_proven", encoded)
+        self.assertIn("production_ready=false", encoded)
+        self.assertIn("external_evidence_complete=false", encoded)
+        self.assertIn("delivery_success=false", encoded)
+        self.assertIn("primary_actions_enabled=false", encoded)
+        self.assertIn("safe_to_control=false", encoded)
+        self.assertIn("not true phone/browser proof", encoded)
+        self.assertIn("no OKR percentage lift", encoded)
+        self.assertIn("PRRT_kwDOSWB9286CJ3tX", encoded)
+        self.assertIn("hardware_material_pending", encoded)
 
     def test_diagnostics_payload_surfaces_cloud_cancel_pending_and_phone_readiness(self):
         class Gateway:

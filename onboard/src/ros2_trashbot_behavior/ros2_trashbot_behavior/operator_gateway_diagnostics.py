@@ -2325,6 +2325,44 @@ REAL_MATERIAL_FOLLOWUP_ESCALATION_STATUS_REQUIRED_NOT_PROVEN = (
     "primary_actions_enabled",
     "safe_to_control",
 )
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA = (
+    "trashbot.cloud_external_evidence_review_decision.v1"
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SOURCE_SUMMARY_SCHEMA = (
+    "trashbot.cloud_external_evidence_review_decision_summary.v1"
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA = (
+    "trashbot.robot_diagnostics_cloud_external_evidence_review_decision_summary.v1"
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_GATE = (
+    "software_proof_docker_cloud_external_evidence_review_decision_gate"
+)
+CLOUD_EXTERNAL_EVIDENCE_INTAKE_SCHEMA = "trashbot.external_evidence_intake"
+CLOUD_EXTERNAL_EVIDENCE_INTAKE_GATE = "software_proof_docker_external_evidence_intake_gate"
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_STATUSES = (
+    "accepted_external_evidence_not_proven",
+    "needs_external_evidence_backfill_not_proven",
+    "rejected_unsafe_external_evidence_not_proven",
+    "blocked_missing_external_evidence_intake_not_proven",
+    "external_evidence_ref_mismatch_not_proven",
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_NOT_PROVEN = (
+    "cloud_external_evidence_review_decision_only",
+    "source_external_evidence_intake_not_proven",
+    "production_ready",
+    "external_evidence_complete",
+    "real_public_https_tls",
+    "real_4g_or_sim",
+    "oss_cdn_live_traffic",
+    "production_db_queue",
+    "worker_cutover_or_migration",
+    "verified_terminal_result",
+    "true_phone_browser_proof",
+    "delivery_success",
+    "primary_actions_enabled",
+    "safe_to_control",
+    "okr_percentage_lift",
+)
 REAL_MATERIAL_MANIFEST_TEMPLATE_FIELDS = (
     "manifest_template",
     "template_groups",
@@ -2534,6 +2572,588 @@ def _cloud_guard_has_unsafe_material(value):
             or "primary actions enabled" in guarded
         )
     return False
+
+
+def _cloud_external_evidence_review_decision_copy():
+    # 这段固定文案是 Robot/API/mobile 的共同边界，避免任一上游缺字段时被误读成可控状态。
+    return (
+        "cloud_external_evidence_review_decision is metadata-only; "
+        "source=software_proof; not_proven; production_ready=false; "
+        "overall_status=blocked; external_evidence_complete=false; "
+        "delivery_success=false; primary_actions_enabled=false; "
+        "safe_to_control=false; not true phone/browser proof; "
+        "no OKR percentage lift; PR #5 PRRT_kwDOSWB9286CJ3tX "
+        "hardware_material_pending."
+    )
+
+
+def _default_cloud_external_evidence_review_decision_summary(
+    status="blocked_missing_external_evidence_intake_not_proven",
+    read_error="",
+):
+    # 缺 Task A 产物时也返回完整 false flags，前端和 Robot 不能把空对象当成已复核。
+    safe_copy = _cloud_external_evidence_review_decision_copy()
+    reason = read_error or (
+        "cloud_external_evidence_review_decision summary is not configured"
+    )
+    return {
+        "schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA,
+        "schema_version": 1,
+        "capability": "cloud_external_evidence_review_decision",
+        "source_schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA,
+        "source_evidence_boundary": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_GATE,
+        "upstream_source_schema": CLOUD_EXTERNAL_EVIDENCE_INTAKE_SCHEMA,
+        "upstream_source_evidence_boundary": CLOUD_EXTERNAL_EVIDENCE_INTAKE_GATE,
+        "evidence_boundary": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_GATE,
+        "configured": False,
+        "exists": False,
+        "status": status,
+        "overall_status": "blocked",
+        "source": EVIDENCE_SOURCE_SOFTWARE,
+        "review_decision": {
+            "status": status,
+            "verdict": "not_proven",
+            "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+            "reason": reason,
+        },
+        "source_external_evidence_intake_status": "",
+        "safe_evidence_ref": "",
+        "safe_command_id": "",
+        "material_statuses": {},
+        "accepted_materials": [],
+        "missing_materials": [],
+        "rejected_materials": [],
+        "unsafe_materials": [],
+        "decision_reasons": [],
+        "next_required_evidence": [],
+        "owner_handoff": [],
+        "operator_support_handoff": [],
+        "reviewer_route": [],
+        "safe_copy": safe_copy,
+        "safe_phone_copy": safe_copy,
+        "robot_diagnostics_summary": {"safe_copy": safe_copy, "status": status},
+        "pr5_thread_id": "PRRT_kwDOSWB9286CJ3tX",
+        "pr5_material_state": "hardware_material_pending",
+        "pr5_resolution_claim": "not_pr5_resolution",
+        "phone_browser_proof": "not true phone/browser proof",
+        "okr_progress_effect": "no OKR percentage lift",
+        "not_proven": list(CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_NOT_PROVEN),
+        "read_error": _redact_route_task_rehearsal_text(read_error),
+        "metadata_only": True,
+        "summary_required": True,
+        "production_ready": False,
+        "external_evidence_complete": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "true_phone_browser_proof": False,
+        "robot_control_allowed": False,
+        "ack_post_allowed": False,
+        "remote_ack_allowed": False,
+        "cursor_updates_allowed": False,
+        "cursor_mutation_allowed": False,
+        "github_mutation_allowed": False,
+        "raw_diagnostics_fetch_allowed": False,
+        "material_upload_allowed": False,
+        "replay_allowed": False,
+        "resubmit_allowed": False,
+        "nav2_triggered": False,
+        "hil_pass": False,
+        "delivery_result_verified": False,
+        "okr_percentage_lift": False,
+        "pr5_resolved": False,
+        "hardware_material_pending": True,
+    }
+
+
+def _cloud_external_evidence_review_decision_summary_fragment(value):
+    # 只接受 Task A 的清洗后 summary 或 Robot 自己的 alias；raw artifact 必须留在 PC gate。
+    if not isinstance(value, dict):
+        return {}
+    if str(value.get("schema") or "") in (
+        CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SOURCE_SUMMARY_SCHEMA,
+        CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA,
+    ):
+        return value
+    for key in (
+        "robot_diagnostics_cloud_external_evidence_review_decision_summary",
+        "cloud_external_evidence_review_decision_summary",
+        "cloud_external_evidence_review_decision",
+        "diagnostics_summary",
+        "robot_diagnostics_summary",
+        "robot_compatible_summary",
+        "summary",
+    ):
+        candidate = value.get(key)
+        nested = _cloud_external_evidence_review_decision_summary_fragment(candidate)
+        if nested:
+            return nested
+    for key in ("diagnostics", "status", "latest_status"):
+        nested = _cloud_external_evidence_review_decision_summary_fragment(value.get(key))
+        if nested:
+            return nested
+    return {}
+
+
+def _cloud_external_evidence_safe_list(value, limit=8):
+    # Robot diagnostics 只展示枚举化材料名；任何 raw/path/credential 字样直接丢弃。
+    items = []
+    for item in value if isinstance(value, list) else []:
+        text = _cloud_guard_safe_text(item, "")
+        lowered = text.lower()
+        if not text or any(
+            marker in lowered
+            for marker in (
+                "raw",
+                "credential",
+                "authorization",
+                "bearer",
+                "token",
+                "secret",
+                "url",
+                "endpoint",
+                "traceback",
+                "checksum",
+                "/cmd_vel",
+                "serial",
+                "uart",
+                "wave rover",
+            )
+        ):
+            continue
+        items.append(text)
+        if len(items) >= limit:
+            break
+    return items
+
+
+def _cloud_external_evidence_material_statuses(value):
+    # material_statuses 仅保留 family/status/safe_summary，避免把完整材料或外部端点带进 Robot。
+    source = value if isinstance(value, dict) else {}
+    result = {}
+    for name, item in source.items():
+        safe_name = _cloud_guard_safe_text(name, "")
+        if not safe_name:
+            continue
+        if isinstance(item, dict):
+            safe_item = {
+                "status": _cloud_guard_safe_text(item.get("status"), "missing"),
+                "safe_summary": _cloud_guard_safe_text(
+                    item.get("safe_summary") or item.get("summary"),
+                    "metadata-only material status",
+                ),
+                "redaction_status": _cloud_guard_safe_text(
+                    item.get("redaction_status"), "redacted"
+                ),
+            }
+        else:
+            safe_item = {"status": _cloud_guard_safe_text(item, "missing")}
+        if _cloud_external_evidence_review_decision_has_unsafe_fields(safe_item):
+            continue
+        result[safe_name[:80]] = safe_item
+    return result
+
+
+def _cloud_external_evidence_review_decision_has_unsafe_fields(value, key_path=""):
+    # 上游如果夹带原始 artifact、控制语义、凭证或成功声明，整份 alias 降级为 blocked。
+    unsafe_true_keys = {
+        "production_ready",
+        "external_evidence_complete",
+        "delivery_success",
+        "primary_actions_enabled",
+        "safe_to_control",
+        "true_phone_browser_proof",
+        "robot_control_allowed",
+        "ack_post_allowed",
+        "remote_ack_allowed",
+        "cursor_updates_allowed",
+        "cursor_mutation_allowed",
+        "github_mutation_allowed",
+        "raw_diagnostics_fetch_allowed",
+        "material_upload_allowed",
+        "replay_allowed",
+        "resubmit_allowed",
+        "nav2_triggered",
+        "hil_pass",
+        "delivery_result_verified",
+        "okr_percentage_lift",
+        "pr5_resolved",
+    }
+    unsafe_key_fragments = (
+        "authorization",
+        "bearer",
+        "token",
+        "credential",
+        "password",
+        "secret",
+        "access_key",
+        "oss_ak",
+        "oss_sk",
+        "db_url",
+        "database_url",
+        "queue_url",
+        "endpoint",
+        "raw_",
+        "rawartifact",
+        "complete_artifact",
+        "complete_json",
+        "traceback",
+        "local_path",
+        "checksum",
+        "ros_topic",
+        "cmd_vel",
+        "serial",
+        "uart",
+        "wave_rover",
+    )
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key or "").strip().lower()
+            if key_text == "not_proven":
+                continue
+            if key_text in unsafe_true_keys and item is False:
+                continue
+            if key_text == "hardware_material_pending" and item is True:
+                continue
+            if key_text in unsafe_true_keys and bool(item):
+                return True
+            if any(fragment in key_text for fragment in unsafe_key_fragments):
+                return True
+            if _cloud_external_evidence_review_decision_has_unsafe_fields(
+                item, f"{key_path}.{key_text}" if key_path else key_text
+            ):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(
+            _cloud_external_evidence_review_decision_has_unsafe_fields(item, key_path)
+            for item in value
+        )
+    if isinstance(value, str):
+        redacted = _redact_route_task_rehearsal_text(value)
+        lowered = redacted.lower()
+        guarded = lowered
+        for phrase in (
+            "not true phone/browser proof",
+            "no okr percentage lift",
+            "not_delivery_success",
+            "not delivery success",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "production_ready=false",
+            "external_evidence_complete=false",
+            "overall_status=blocked",
+            "not_proven",
+            "not proven",
+            "metadata-only",
+            "software_proof",
+            "hardware_material_pending",
+        ):
+            guarded = guarded.replace(phrase, "")
+        return any(
+            marker in guarded
+            for marker in (
+                "[redacted_auth_header]",
+                "bearer [redacted]",
+                "[redacted_url]",
+                "[redacted_traceback]",
+                "[redacted_local_path]",
+                "authorization",
+                "bearer",
+                "credential",
+                "token",
+                "secret",
+                "raw artifact",
+                "raw diagnostics",
+                "raw response",
+                "raw body",
+                "endpoint",
+                "url",
+                "traceback",
+                "checksum",
+                "/cmd_vel",
+                "ros topic",
+                "serial",
+                "uart",
+                "wave rover",
+                "hil pass",
+                "delivery success",
+                "production ready",
+                "external proof passed",
+                "true phone",
+                "true browser",
+                "control enabled",
+                "start delivery enabled",
+                "confirm dropoff enabled",
+                "cancel enabled",
+                "okr percentage lift",
+                "pr #5 resolved",
+                "thread resolved",
+            )
+        )
+    return False
+
+
+def _cloud_external_evidence_not_proven(summary_fragment):
+    values = list(CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_NOT_PROVEN)
+    for item in summary_fragment.get("not_proven", []):
+        text = _cloud_guard_safe_text(item, "")
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def summarize_cloud_external_evidence_review_decision(source):
+    """构建 cloud external evidence review decision 的只读 Robot diagnostics 摘要。"""
+    # 该 alias 只转发 Task A 的 safe review summary；Robot 端不读取原始材料也不触发云/机器人动作。
+    source_path = "" if isinstance(source, dict) else os.path.expanduser(str(source or ""))
+    summary = _default_cloud_external_evidence_review_decision_summary(
+        read_error="cloud_external_evidence_review_decision summary is not configured"
+    )
+    if isinstance(source, dict):
+        response = dict(source)
+    else:
+        if not source_path:
+            return summary
+        if not os.path.exists(source_path):
+            summary["read_error"] = "cloud_external_evidence_review_decision summary artifact missing"
+            summary["review_decision"]["reason"] = summary["read_error"]
+            return summary
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                response = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            safe_error = _redact_route_task_rehearsal_text(
+                f"failed reading cloud_external_evidence_review_decision summary: {exc}"
+            )
+            summary["read_error"] = safe_error
+            summary["review_decision"]["reason"] = safe_error
+            return summary
+    if not isinstance(response, dict):
+        summary["review_decision"]["reason"] = (
+            "cloud_external_evidence_review_decision JSON must be an object"
+        )
+        return summary
+
+    summary_fragment = _cloud_external_evidence_review_decision_summary_fragment(response)
+    if not summary_fragment:
+        summary["review_decision"]["reason"] = (
+            "cloud_external_evidence_review_decision input is missing sanitized summary"
+        )
+        return summary
+
+    decision_doc = (
+        summary_fragment.get("review_decision")
+        if isinstance(summary_fragment.get("review_decision"), dict)
+        else {}
+    )
+    status = _cloud_guard_safe_text(
+        decision_doc.get("status")
+        or summary_fragment.get("review_decision_status")
+        or summary_fragment.get("decision_status")
+        or summary_fragment.get("status"),
+        "blocked_missing_external_evidence_intake_not_proven",
+    )
+    if status not in CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_STATUSES:
+        status = "blocked_missing_external_evidence_intake_not_proven"
+
+    safe_copy = _cloud_guard_safe_text(
+        summary_fragment.get("safe_copy") or summary_fragment.get("safe_phone_copy"),
+        _cloud_external_evidence_review_decision_copy(),
+    )
+    required_copy = _cloud_external_evidence_review_decision_copy()
+    for marker in (
+        "source=software_proof",
+        "not_proven",
+        "production_ready=false",
+        "overall_status=blocked",
+        "external_evidence_complete=false",
+        "delivery_success=false",
+        "primary_actions_enabled=false",
+        "safe_to_control=false",
+        "not true phone/browser proof",
+        "no OKR percentage lift",
+        "PRRT_kwDOSWB9286CJ3tX",
+        "hardware_material_pending",
+    ):
+        if marker not in safe_copy:
+            safe_copy = required_copy
+            break
+
+    robot_summary = (
+        summary_fragment.get("robot_diagnostics_summary")
+        if isinstance(summary_fragment.get("robot_diagnostics_summary"), dict)
+        else summary_fragment.get("robot_compatible_summary")
+        if isinstance(summary_fragment.get("robot_compatible_summary"), dict)
+        else {}
+    )
+    material_statuses = _cloud_external_evidence_material_statuses(
+        summary_fragment.get("material_statuses")
+    )
+    summary.update(
+        {
+            "configured": True,
+            "exists": True,
+            "status": status,
+            "overall_status": "blocked",
+            "source": EVIDENCE_SOURCE_SOFTWARE,
+            "source_schema_version": summary_fragment.get("source_schema_version")
+            or summary_fragment.get("schema_version"),
+            "source_schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA,
+            "source_evidence_boundary": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_GATE,
+            "upstream_source_schema": _cloud_guard_safe_text(
+                summary_fragment.get("upstream_source_schema")
+                or summary_fragment.get("source_intake_schema"),
+                CLOUD_EXTERNAL_EVIDENCE_INTAKE_SCHEMA,
+            ),
+            "upstream_source_evidence_boundary": _cloud_guard_safe_text(
+                summary_fragment.get("upstream_source_evidence_boundary")
+                or summary_fragment.get("source_intake_evidence_boundary"),
+                CLOUD_EXTERNAL_EVIDENCE_INTAKE_GATE,
+            ),
+            "review_decision": {
+                "status": status,
+                "verdict": "not_proven",
+                "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                "reason": _cloud_guard_safe_text(
+                    decision_doc.get("reason") or summary_fragment.get("reason"),
+                    "cloud external evidence review decision remains software_proof only",
+                ),
+            },
+            "source_external_evidence_intake_status": _cloud_guard_safe_text(
+                summary_fragment.get("source_external_evidence_intake_status")
+                or summary_fragment.get("external_evidence_intake_status"),
+                "blocked_missing_external_evidence_intake_not_proven",
+            ),
+            "safe_evidence_ref": _safe_route_task_rehearsal_ref(
+                summary_fragment.get("safe_evidence_ref")
+                or summary_fragment.get("evidence_ref")
+                or response.get("safe_evidence_ref")
+                or response.get("evidence_ref")
+                or ""
+            ),
+            "safe_command_id": _cloud_guard_safe_text(
+                summary_fragment.get("safe_command_id")
+                or summary_fragment.get("command_id")
+                or response.get("safe_command_id")
+                or response.get("command_id"),
+                "",
+            ),
+            "material_statuses": material_statuses,
+            "accepted_materials": _cloud_external_evidence_safe_list(
+                summary_fragment.get("accepted_materials")
+                or summary_fragment.get("accepted_materials_summary")
+            ),
+            "missing_materials": _cloud_external_evidence_safe_list(
+                summary_fragment.get("missing_materials")
+                or summary_fragment.get("missing_materials_summary")
+            ),
+            "rejected_materials": _cloud_external_evidence_safe_list(
+                summary_fragment.get("rejected_materials")
+                or summary_fragment.get("rejected_materials_summary")
+            ),
+            "unsafe_materials": _cloud_external_evidence_safe_list(
+                summary_fragment.get("unsafe_materials")
+                or summary_fragment.get("unsafe_materials_summary")
+            ),
+            "decision_reasons": _cloud_external_evidence_safe_list(
+                summary_fragment.get("decision_reasons")
+            ),
+            "next_required_evidence": _cloud_external_evidence_safe_list(
+                summary_fragment.get("next_required_evidence")
+            ),
+            "owner_handoff": _cloud_external_evidence_safe_list(
+                summary_fragment.get("owner_handoff")
+            ),
+            "operator_support_handoff": _cloud_external_evidence_safe_list(
+                summary_fragment.get("operator_support_handoff")
+                or summary_fragment.get("support_handoff")
+            ),
+            "reviewer_route": _cloud_external_evidence_safe_list(
+                summary_fragment.get("reviewer_route")
+            ),
+            "safe_copy": safe_copy,
+            "safe_phone_copy": safe_copy,
+            "robot_diagnostics_summary": _safe_pc_route_debug_dict(robot_summary)
+            or {"safe_copy": safe_copy, "status": status},
+            "pr5_thread_id": _cloud_guard_safe_text(
+                summary_fragment.get("pr5_thread_id"), "PRRT_kwDOSWB9286CJ3tX"
+            ),
+            "pr5_material_state": _cloud_guard_safe_text(
+                summary_fragment.get("pr5_material_state"), "hardware_material_pending"
+            ),
+            "pr5_resolution_claim": _cloud_guard_safe_text(
+                summary_fragment.get("pr5_resolution_claim"), "not_pr5_resolution"
+            ),
+            "phone_browser_proof": "not true phone/browser proof",
+            "okr_progress_effect": "no OKR percentage lift",
+            "not_proven": _cloud_external_evidence_not_proven(summary_fragment),
+            "read_error": "",
+        }
+    )
+
+    required_safe_metadata = (
+        str(summary_fragment.get("schema") or "")
+        in (
+            CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SOURCE_SUMMARY_SCHEMA,
+            CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA,
+        ),
+        summary["source"] == EVIDENCE_SOURCE_SOFTWARE,
+        summary["overall_status"] == "blocked",
+        summary_fragment.get("production_ready") is False,
+        summary_fragment.get("external_evidence_complete") is False,
+        summary_fragment.get("delivery_success") is False,
+        summary_fragment.get("primary_actions_enabled") is False,
+        summary_fragment.get("safe_to_control") is False,
+        summary["pr5_thread_id"] == "PRRT_kwDOSWB9286CJ3tX",
+        summary["pr5_material_state"] == "hardware_material_pending",
+        summary["pr5_resolution_claim"] == "not_pr5_resolution",
+        summary["upstream_source_schema"] == CLOUD_EXTERNAL_EVIDENCE_INTAKE_SCHEMA,
+        summary["upstream_source_evidence_boundary"] == CLOUD_EXTERNAL_EVIDENCE_INTAKE_GATE,
+        bool(summary["next_required_evidence"]),
+    )
+    unsafe_payload = (
+        not all(required_safe_metadata)
+        or _real_material_evidence_ref_is_unsafe(summary["safe_evidence_ref"])
+        or _cloud_external_evidence_review_decision_has_unsafe_fields(response)
+        or _cloud_external_evidence_review_decision_has_unsafe_fields(summary_fragment)
+        or _cloud_external_evidence_review_decision_has_unsafe_fields(robot_summary)
+        or _cloud_external_evidence_review_decision_has_unsafe_fields(safe_copy)
+    )
+    if unsafe_payload:
+        blocked_copy = _cloud_external_evidence_review_decision_copy()
+        summary.update(
+            {
+                "status": "rejected_unsafe_external_evidence_not_proven",
+                "review_decision": {
+                    "status": "rejected_unsafe_external_evidence_not_proven",
+                    "verdict": "not_proven",
+                    "evidence_source": EVIDENCE_SOURCE_SOFTWARE,
+                    "reason": "cloud external evidence review decision summary contains unsafe fields or missing false-state metadata",
+                },
+                "safe_evidence_ref": "",
+                "safe_command_id": "",
+                "material_statuses": {},
+                "accepted_materials": [],
+                "missing_materials": [],
+                "rejected_materials": [],
+                "unsafe_materials": [],
+                "decision_reasons": [],
+                "next_required_evidence": [],
+                "owner_handoff": [],
+                "operator_support_handoff": [],
+                "reviewer_route": [],
+                "safe_copy": blocked_copy,
+                "safe_phone_copy": blocked_copy,
+                "robot_diagnostics_summary": {
+                    "safe_copy": blocked_copy,
+                    "safe_phone_copy": blocked_copy,
+                    "status": "blocked",
+                },
+            }
+        )
+    return summary
 
 
 def summarize_cloud_unreachable_malformed_response_guard(value):
@@ -88975,6 +89595,52 @@ def build_diagnostics_payload(
             )
         )
     )
+    cloud_external_evidence_review_decision_status_source = (
+        latest_status.get("robot_diagnostics_cloud_external_evidence_review_decision_summary")
+        if isinstance(
+            latest_status.get(
+                "robot_diagnostics_cloud_external_evidence_review_decision_summary"
+            ),
+            dict,
+        )
+        else latest_status.get("cloud_external_evidence_review_decision_summary")
+        if isinstance(
+            latest_status.get("cloud_external_evidence_review_decision_summary"),
+            dict,
+        )
+        else latest_status.get("cloud_external_evidence_review_decision")
+        if isinstance(latest_status.get("cloud_external_evidence_review_decision"), dict)
+        else diagnostics_source.get(
+            "robot_diagnostics_cloud_external_evidence_review_decision_summary"
+        )
+        if isinstance(
+            diagnostics_source.get(
+                "robot_diagnostics_cloud_external_evidence_review_decision_summary"
+            ),
+            dict,
+        )
+        else diagnostics_source.get("cloud_external_evidence_review_decision_summary")
+        if isinstance(
+            diagnostics_source.get("cloud_external_evidence_review_decision_summary"),
+            dict,
+        )
+        else diagnostics_source.get("cloud_external_evidence_review_decision")
+        if isinstance(
+            diagnostics_source.get("cloud_external_evidence_review_decision"),
+            dict,
+        )
+        else {}
+    )
+    cloud_external_evidence_review_decision_source = (
+        os.environ.get("TRASHBOT_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY", "")
+        or os.environ.get("TRASHBOT_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION", "")
+        or cloud_external_evidence_review_decision_status_source
+    )
+    cloud_external_evidence_review_decision_summary = (
+        summarize_cloud_external_evidence_review_decision(
+            cloud_external_evidence_review_decision_source
+        )
+    )
     task_terminal_field_material_intake_source = (
         _task_terminal_field_material_intake_source_from_payloads(
             latest_status,
@@ -95970,6 +96636,9 @@ def build_diagnostics_payload(
         "field_evidence_material_resolution_reviewer_ack_followup_escalation_status",
         "field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary",
         "robot_diagnostics_field_evidence_material_resolution_reviewer_ack_followup_escalation_status_summary",
+        "cloud_external_evidence_review_decision",
+        "cloud_external_evidence_review_decision_summary",
+        "robot_diagnostics_cloud_external_evidence_review_decision_summary",
     ):
         latest_status.pop(unsafe_latest_key, None)
     return status_payload(
@@ -96067,6 +96736,15 @@ def build_diagnostics_payload(
         ),
         robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary=(
             cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_owner_response_intake_bridge_summary
+        ),
+        cloud_external_evidence_review_decision=(
+            cloud_external_evidence_review_decision_summary
+        ),
+        cloud_external_evidence_review_decision_summary=(
+            cloud_external_evidence_review_decision_summary
+        ),
+        robot_diagnostics_cloud_external_evidence_review_decision_summary=(
+            cloud_external_evidence_review_decision_summary
         ),
         route_task_rehearsal=summarize_route_task_rehearsal_artifact(
             route_task_rehearsal_artifact_ref

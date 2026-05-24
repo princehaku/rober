@@ -1658,3 +1658,9 @@ phone web/app -> cloud API -> robot remote_bridge over outbound 4G HTTP polling 
 ```
 
 The local operator gateway remains a development and fallback entrypoint. The 4G MVP contract is documented in `docs/product/remote_4g_mvp.md`.
+
+## Cloud External Evidence Review Decision Panel
+
+`cloud_external_evidence_review_decision` 面板是 O5 external evidence intake 后的手机只读复核入口。手机端只消费 `robot_diagnostics_cloud_external_evidence_review_decision_summary` 或 status/readiness/diagnostics 中同结构 safe summary fallback；不读取 raw artifact、raw diagnostics、response body、raw PR payload，不新增 ACK/cursor、material upload、review mutation、GitHub mutation、replay/resubmit 或机器人控制路径。面板展示 safe command/evidence refs、material-family statuses、review decision、next required evidence、`trashbot.external_evidence_intake` source capability、PR #5 `PRRT_kwDOSWB9286CJ3tX` / `hardware_material_pending`、`software_proof_docker_cloud_external_evidence_review_decision_gate` 和 false-state flags。
+
+手机端支持并只展示五种 review decision：`accepted_external_evidence_not_proven`、`needs_external_evidence_backfill_not_proven`、`rejected_unsafe_external_evidence_not_proven`、`blocked_missing_external_evidence_intake_not_proven`、`external_evidence_ref_mismatch_not_proven`。Start Delivery、Confirm Dropoff、Cancel 继续 disabled；面板必须固定显示 `source=software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`、`not true phone/browser proof` 和 `no OKR percentage lift`。即使 decision 为 accepted，也只代表脱敏材料复核通过，不是真实 O5 external proof、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、verified terminal result、真实手机/browser、HIL、PR #5 resolution 或 delivery success。

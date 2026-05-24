@@ -1,0 +1,23 @@
+{
+  "schema": "trashbot.external_evidence_intake",
+  "schema_version": 1,
+  "evidence_boundary": "software_proof_docker_external_evidence_intake_gate",
+  "evidence_ref": "external_evidence_ref_20260524_0001",
+  "command_ref": "cloud_external_evidence_review_decision_fixture_command",
+  "source": "software_proof",
+  "redaction_status": "passed",
+  "production_ready": false,
+  "overall_status": "blocked",
+  "external_evidence_complete": false,
+  "material_statuses": [
+    {
+      "name": "public_ingress_tls",
+      "status": "accepted_not_proven",
+      "safe_summary": "public_ingress_tls contains https://example.invalid and Authorization: Bearer secret-token"
+    }
+  ],
+  "not_proven": [
+    "software_proof",
+    "not_proven"
+  ]
+}

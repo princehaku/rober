@@ -73,6 +73,9 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge.json"
 )
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_external_evidence_review_decision.json"
+)
 VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_intake.json"
 )
@@ -2546,6 +2549,136 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseRevi
             "reviewer ack submission",
             "robot command",
             "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, response_text)
+
+
+class CloudExternalEvidenceReviewDecisionMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_external_evidence_review_decision_panel_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # external evidence review-decision panel 只消费 safe summary，不新增控制、上传、ACK/cursor 或 GitHub mutation。
+        self.assertIn("CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_BOUNDARY", app)
+        self.assertIn("UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_TEXT", app)
+        self.assertIn("safeCloudExternalEvidenceReviewDecisionText", app)
+        self.assertIn("cloudExternalEvidenceReviewDecisionCandidate", app)
+        self.assertIn("cloudExternalEvidenceReviewDecisionFromStatus", app)
+        self.assertIn("renderCloudExternalEvidenceReviewDecision", app)
+        self.assertIn("robot_diagnostics_cloud_external_evidence_review_decision_summary", app)
+        self.assertIn("cloud_external_evidence_review_decision_summary", app)
+        self.assertIn("cloud_external_evidence_review_decision?.summary", app)
+        for required in (
+            "accepted_external_evidence_not_proven",
+            "needs_external_evidence_backfill_not_proven",
+            "rejected_unsafe_external_evidence_not_proven",
+            "blocked_missing_external_evidence_intake_not_proven",
+            "external_evidence_ref_mismatch_not_proven",
+            "trashbot.external_evidence_intake",
+            "material_statuses",
+            "safe_evidence_ref",
+            "safe_command_ref",
+            "next_required_evidence",
+            "PRRT_kwDOSWB9286CJ3tX",
+            "hardware_material_pending",
+            "source=software_proof",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not true phone/browser proof",
+            "no OKR percentage lift",
+        ):
+            self.assertIn(required, app + fixture_text + doc)
+        self.assertNotRegex(
+            app,
+            r"cloudExternalEvidenceReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackCloudExternalEvidenceReviewDecision",
+            "cursorCloudExternalEvidenceReviewDecision",
+            "fetchCloudExternalEvidenceReviewDecisionDiagnostics",
+            "fetchCloudExternalEvidenceReviewDecisionArtifact",
+            "uploadCloudExternalEvidenceReviewDecisionMaterial",
+            "submitCloudExternalEvidenceReviewDecision",
+            "reviewCloudExternalEvidenceReviewDecision",
+            "githubCloudExternalEvidenceReviewDecision",
+            "replayCloudExternalEvidenceReviewDecision",
+            "resubmitCloudExternalEvidenceReviewDecision",
+            "commandCloudExternalEvidenceReviewDecision",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        summary = fixture["robot_diagnostics_cloud_external_evidence_review_decision_summary"]
+        fallback = fixture["cloud_external_evidence_review_decision_summary"]
+        nested = fixture["cloud_external_evidence_review_decision"]["summary"]
+        self.assertEqual(summary["capability"], "cloud_external_evidence_review_decision")
+        self.assertEqual(summary["source_capability"], "trashbot.external_evidence_intake")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["review_decision"], "needs_external_evidence_backfill_not_proven")
+        self.assertIn("production_db_queue", summary["material_statuses"])
+        self.assertIn("hardware_material_pending", json.dumps(summary["pr5_review_context"]))
+        self.assertEqual(fallback["review_decision"], "external_evidence_ref_mismatch_not_proven")
+        self.assertEqual(nested["review_decision"], "blocked_missing_external_evidence_intake_not_proven")
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+
+        self.assertIn("cloud_external_evidence_review_decision", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not delivery success", doc)
+        self.assertIn("no OKR percentage lift", doc)
+
+    def test_cloud_external_evidence_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_FIXTURE.read_text(encoding="utf-8"))
+        response_text = json.dumps(
+            {
+                "robot": fixture["robot_diagnostics_cloud_external_evidence_review_decision_summary"],
+                "fallback": fixture["cloud_external_evidence_review_decision_summary"],
+                "nested": fixture["cloud_external_evidence_review_decision"]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留 redacted safe fields，不泄漏 URL、凭证、raw payload、路径或控制授权。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw artifact",
+            "raw pr payload",
+            "command route",
+            "ack route",
+            "cursor route",
+            "github mutation",
+            "artifact fetch",
+            "material upload",
+            "review mutation",
+            "robot command",
+            "control authorization",
+            "authorization",
+            "bearer",
+            "credential",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
             "delivery_success\": true",
             "primary_actions_enabled\": true",
             "safe_to_control\": true",

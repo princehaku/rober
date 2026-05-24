@@ -1,0 +1,39 @@
+{
+  "schema": "trashbot.external_evidence_intake",
+  "schema_version": 1,
+  "evidence_boundary": "software_proof_docker_external_evidence_intake_gate",
+  "evidence_ref": "external_evidence_ref_20260524_0001",
+  "command_ref": "cloud_external_evidence_review_decision_fixture_command",
+  "source": "software_proof",
+  "redaction_status": "passed",
+  "production_ready": false,
+  "overall_status": "blocked",
+  "external_evidence_complete": false,
+  "material_statuses": [
+    {
+      "name": "public_ingress_tls",
+      "status": "accepted_not_proven",
+      "safe_summary": "public_ingress_tls=safe_redacted_summary_not_proven"
+    },
+    {
+      "name": "oss_cdn",
+      "status": "accepted_not_proven",
+      "safe_summary": "oss_cdn=safe_redacted_summary_not_proven"
+    },
+    {
+      "name": "production_db_queue",
+      "status": "accepted_not_proven",
+      "safe_summary": "production_db_queue=safe_redacted_summary_not_proven"
+    },
+    {
+      "name": "four_g_sim",
+      "status": "accepted_not_proven",
+      "safe_summary": "four_g_sim=safe_redacted_summary_not_proven"
+    }
+  ],
+  "not_proven": [
+    "software_proof",
+    "not_proven",
+    "no OKR percentage lift"
+  ]
+}
