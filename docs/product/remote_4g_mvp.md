@@ -372,6 +372,44 @@ OSS/CDN live traffic, not production DB/queue, not worker/cutover, not HIL, not
 PR #5 resolved, not route/elevator field pass, not delivery success, and no OKR
 percentage lift.
 
+Robot/API now exposes the downstream reviewer ACK review-decision summary for
+that same safe reviewer ACK intake:
+
+```text
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision
+robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_summary
+```
+
+The reviewer ACK review-decision proof boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_gate`.
+It is derived only from the safe
+`cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake`
+fields. The summary preserves one safe `command_id`, one safe `evidence_ref`,
+the source ACK intake status, reviewer ACK review decision, owner/support/reviewer
+routing, decision reasons, next required evidence, proof boundary, source
+boundary, PR #5 review thread `PRRT_kwDOSWB9286CJ3tX`, and
+`pr5_material_status=hardware_material_pending`.
+
+Supported reviewer ACK review decisions are
+`reviewer_ack_accepted_for_support_review_not_proven`,
+`reviewer_ack_needs_reassignment_not_proven`,
+`reviewer_ack_missing_material_not_proven`,
+`reviewer_ack_evidence_ref_mismatch_not_proven`,
+`reviewer_ack_rejected_unsafe_not_proven`, and
+`blocked_missing_reviewer_ack_intake_not_proven`. Every state remains
+not_proven and keeps `delivery_success=false`, `primary_actions_enabled=false`,
+and `safe_to_control=false`.
+
+Unsupported, unsafe, or missing source ACK intake state must stay blocked or
+not_proven. The summary must not expose credentials, bearer tokens, signed URLs,
+raw paths, ROS topics, `/cmd_vel`, serial/UART, WAVE ROVER details, tracebacks,
+complete artifacts, checksums, success wording, ACK cursor changes, reviewer-ACK
+mutation, GitHub mutation, or true-state control flags. It remains not verified
+terminal result, not true phone/browser proof, not public HTTPS/TLS, not 4G/SIM,
+not OSS/CDN live traffic, not production DB/queue, not worker/cutover, not HIL,
+not PR #5 resolved, not route/elevator field pass, not delivery success, and no
+OKR percentage lift.
+
 Robot/API also exposes the PR #5 mandatory-sensor owner-response review handoff
 as a phone-safe status/diagnostics alias when the backend has already provided
 the sanitized summary:

@@ -57,6 +57,10 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake.json"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_DECISION_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision.json"
+)
 VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_intake.json"
 )
@@ -1754,6 +1758,200 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseRevi
             "material upload",
             "review mutation",
             "handoff mutation",
+            "robot command",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, response_text)
+
+
+class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecisionTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # cloud reviewer ACK review decision 只消费 safe summary；不能新增 review/ACK/cursor/handoff/owner-response 或控制路径。
+        self.assertIn(
+            "CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_DECISION_BOUNDARY",
+            app,
+        )
+        self.assertIn(
+            "safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecisionText",
+            app,
+        )
+        self.assertIn(
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecisionCandidate",
+            app,
+        )
+        self.assertIn(
+            "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecisionFromStatus",
+            app,
+        )
+        self.assertIn(
+            "renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecision",
+            app,
+        )
+        self.assertIn(
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_summary",
+            app,
+        )
+        self.assertIn(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_summary",
+            app,
+        )
+        self.assertIn(
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision?.summary",
+            app,
+        )
+        for required in (
+            "reviewer ACK review decision",
+            "source_ack_intake_status",
+            "safe_command_id",
+            "safe_evidence_ref",
+            "owner_routing",
+            "support_routing",
+            "reviewer_routing",
+            "decision_reasons",
+            "next_required_evidence",
+            "blocker_status",
+            "accepted_for_reviewer_ack_review_not_proven",
+            "reviewer_ack_review_needs_reassignment_not_proven",
+            "blocked_missing_source_reviewer_ack_intake_not_proven",
+            "reviewer_ack_review_rejected_unsafe_not_proven",
+            "PRRT_kwDOSWB9286CJ3tX unresolved",
+            "hardware_material_pending",
+            "source=software_proof",
+            "safe_to_control=false",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "not true phone/browser proof",
+            "not verified terminal result",
+            "no OKR percentage lift",
+        ):
+            self.assertIn(required, app + fixture_text + doc)
+        self.assertNotRegex(
+            app,
+            r"cloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecision.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "copyCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecisionButton",
+            "ackCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecision",
+            "cursorCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecision",
+            "fetchCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecisionDiagnostics",
+            "uploadCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecisionMaterial",
+            "submitCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecision",
+            "reviewCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecision",
+            "handoffCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecision",
+            "githubCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecision",
+            "commandCloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecision",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        summary = fixture[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_summary"
+        ]
+        fallback = fixture[
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_summary"
+        ]
+        nested = fixture[
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision"
+        ]["summary"]
+        self.assertEqual(
+            summary["capability"],
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision",
+        )
+        self.assertEqual(summary["safe_decision"], "accepted_for_reviewer_ack_review_not_proven")
+        self.assertEqual(fallback["safe_decision"], "reviewer_ack_review_needs_reassignment_not_proven")
+        self.assertEqual(nested["safe_decision"], "blocked_missing_source_reviewer_ack_intake_not_proven")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        for required in (
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision",
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_summary",
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_gate",
+            "source=software_proof",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "accepted_for_reviewer_ack_review_not_proven",
+            "reviewer_ack_review_needs_reassignment_not_proven",
+            "blocked_missing_source_reviewer_ack_intake_not_proven",
+            "owner_routing=cloud_owner_backfill_verified_terminal_result_safe_summary",
+            "support_routing=keep_PRRT_kwDOSWB9286CJ3tX_unresolved",
+            "reviewer_routing=prepare_reviewer_ack_review_handoff_not_proven",
+            "next_required_evidence=owner backfills verified terminal result safe summary under same safe evidence_ref",
+            "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_fixture_20260524_0001",
+            "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_20260524_0001",
+            "PRRT_kwDOSWB9286CJ3tX unresolved",
+            "hardware_material_pending",
+            "not true phone/browser proof",
+            "not verified terminal result",
+            "no OKR percentage lift",
+        ):
+            self.assertIn(required, fixture_text + doc)
+
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not true phone/browser proof", doc)
+        self.assertIn("not verified terminal result", doc)
+        self.assertIn("not HIL", doc)
+        self.assertIn("not delivery success", doc)
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_fixture_stays_phone_safe(self):
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_OWNER_RESPONSE_REVIEWER_ACK_REVIEW_DECISION_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        response_text = json.dumps(
+            {
+                "robot": fixture[
+                    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_summary"
+                ],
+                "fallback": fixture[
+                    "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_summary"
+                ],
+                "nested": fixture[
+                    "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision"
+                ]["summary"],
+            },
+            ensure_ascii=False,
+        ).lower()
+
+        # fixture 只保留 review-decision safe summary，不泄漏 raw 材料、路径、凭证、ACK/cursor 或控制授权。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw materials",
+            "raw owner response",
+            "command route",
+            "ack route",
+            "cursor route",
+            "owner response submission",
+            "github mutation",
+            "artifact fetch",
+            "material upload",
+            "review mutation",
+            "handoff mutation",
+            "reviewer ack submission",
             "robot command",
             "control authorization",
             "delivery_success\": true",
