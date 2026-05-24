@@ -41,6 +41,8 @@ const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_BOUNDARY = "software_proo
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_COPY = "云命令生命周期验收包只读可见；ACK 只代表 accepted/processing，terminal result 仍 pending，主操作保持禁用。";
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_BOUNDARY = "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate";
 const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_COPY = "云命令生命周期验收包手机导出面板只读可见；ACK 只代表 accepted/processing，terminal result 仍 pending，主操作保持禁用。";
+const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_BUNDLE_BOUNDARY = "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_gate";
+const CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_BUNDLE_COPY = "云命令生命周期支持交接包只读可见；只可复制/下载后端脱敏 safe copy，ACK 仍只是 accepted/processing，terminal result 仍 pending。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_BOUNDARY = "software_proof_docker_verified_terminal_result_material_intake_gate";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_COPY = "verified terminal result material intake 只读可见；材料回填不等于 delivery success，主操作保持禁用。";
 const VERIFIED_TERMINAL_RESULT_MATERIAL_REVIEW_DECISION_BOUNDARY = "software_proof_docker_verified_terminal_result_material_review_decision_gate";
@@ -632,6 +634,7 @@ let latestCloudCommandLifecycleAuditExport = null;
 let latestCloudCommandLifecycleReplayDrill = null;
 let latestCloudCommandLifecycleReplayAcceptancePacket = null;
 let latestCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel = null;
+let latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle = null;
 let latestVerifiedTerminalResultMaterialIntake = null;
 let latestVerifiedTerminalResultMaterialReviewDecision = null;
 let latestVerifiedTerminalResultMaterialReviewHandoff = null;
@@ -1734,6 +1737,17 @@ function safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(va
   // 手机导出面板复用验收包安全词表；额外拒绝 raw/export/replay 语义，避免把支持摘要变成控制或取证入口。
   const text = safeCloudCommandLifecycleReplayAcceptancePacketText(value, fallback);
   if (/(raw diagnostics|raw materials?|command routes?|ack routes?|cursor routes?|review routes?|github mutation|replay\/resubmit|resubmit route)/i.test(text)) {
+    return fallback;
+  }
+  return text;
+}
+
+function safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(value, fallback = "not_proven") {
+  // 支持交接包只能显示后端脱敏 copy；任何 raw 路由、ACK/cursor、复演重提或控制授权都保持 blocked。
+  const text = safeCloudCommandLifecycleReplayAcceptancePacketMobileExportPanelText(value, fallback);
+  if (
+    /(raw diagnostics|raw materials?|raw command|command routes?|ack routes?|cursor routes?|review routes?|material routes?|github mutation|replay\/resubmit|replay route|resubmit route|start delivery enabled|confirm dropoff enabled|cancel enabled|safe_to_control=true|delivery_success=true|primary_actions_enabled=true)/i.test(text)
+  ) {
     return fallback;
   }
   return text;
@@ -46476,6 +46490,311 @@ function renderCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel(stat
   $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelHint").textContent = summary.recovery_hint;
 }
 
+function cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCandidate(status, readiness, diagnostics) {
+  // 专用 support handoff summary 优先；fallback 只接受上一层 mobile export safe summary，不读取 raw diagnostics。
+  const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
+    ? diagnostics.phone_readiness
+    : {};
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object"
+    ? diagnostics.summary
+    : {};
+  const nestedDiagnosticsSummary = diagnostics && typeof diagnostics.diagnostics_summary === "object"
+    ? diagnostics.diagnostics_summary
+    : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object"
+    ? diagnostics.diagnostics
+    : {};
+  const nestedDiagnosticsInnerSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifactSummary = status?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle?.summary ||
+    readiness?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle?.summary ||
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle?.summary ||
+    diagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle?.summary ||
+    nestedDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle?.summary ||
+    nestedDiagnosticsInnerSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle?.summary ||
+    statusDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle?.summary;
+  return firstObject(
+    status?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    readiness?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    diagnostics?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    diagnosticsReadiness.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    nestedDiagnosticsInnerSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    statusDiagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    status?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    readiness?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    diagnosticsReadiness.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    diagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    nestedDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    nestedDiagnosticsInnerSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    statusDiagnosticsSummary.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary,
+    artifactSummary,
+    status?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    readiness?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    diagnostics?.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    status?.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    readiness?.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_summary,
+    status?.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel?.summary,
+    diagnostics?.cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel?.summary,
+  );
+}
+
+function cloudCommandLifecycleReplayAcceptancePacketSupportCopy(value) {
+  // 复制/下载只使用后端给出的 safe_copy / support_handoff_copy / sanitized support copy，不从 UI 文案合成。
+  const provided = value || {};
+  const source = provided.support_handoff_copy || provided.safe_copy || provided.sanitized_support_copy ||
+    provided.support_copy || provided.safe_support_copy;
+  const text = safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(source, "");
+  if (!text) {
+    return null;
+  }
+  return text;
+}
+
+function cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleFromStatus(status, readiness, diagnostics) {
+  const provided = cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCandidate(
+    status,
+    readiness,
+    diagnostics,
+  ) || {};
+  const supportCopy = cloudCommandLifecycleReplayAcceptancePacketSupportCopy(provided);
+  const sourceFlagsOk = provided.source === "software_proof" &&
+    provided.delivery_success === false &&
+    provided.primary_actions_enabled === false &&
+    provided.safe_to_control === false;
+  const copyAvailable = Boolean(supportCopy && sourceFlagsOk);
+  return {
+    missing: !Object.keys(provided).length,
+    schema: "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary.v1",
+    capability: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.capability,
+      "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle",
+    ),
+    source_capability: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.source_capability || provided.source_packet_capability || provided.capability,
+      "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel",
+    ),
+    source: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.source,
+      "software_proof",
+    ),
+    bundle_status: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.bundle_status || provided.support_handoff_status || provided.packet_status ||
+        provided.acceptance_packet_status || provided.status || provided.overall_status,
+      "blocked_missing_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_not_proven",
+    ),
+    safe_command_id: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.safe_command_id || provided.command_id,
+      "command_id=not_proven",
+    ),
+    safe_evidence_ref: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.safe_evidence_ref || provided.evidence_ref || provided.evidence_reference,
+      "evidence_ref=not_proven",
+    ),
+    ack_semantics: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.ack_semantics || provided.ack_status || provided.ack_summary,
+      "accepted_processing_only_not_delivery_success",
+    ),
+    terminal_result_status: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.terminal_result_status || provided.result_status || provided.verified_terminal_result_status,
+      "terminal_result_pending",
+    ),
+    owner_handoff: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.owner_handoff || provided.support_owner_handoff || provided.handoff_summary,
+      "owner_handoff=等待现场 owner 回填同一 safe evidence_ref 的 terminal result。",
+    ),
+    next_required_evidence: cloudCommandLifecycleReplayAcceptancePacketList(
+      provided.next_required_evidence || provided.required_evidence,
+      "需要同一 safe evidence_ref 的 verified terminal delivery/dropoff/cancel result、真实手机/browser、真实 4G/cloud 和外部材料。",
+    ),
+    redaction_status: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.redaction_status || provided.safe_redaction_status,
+      "blocked_unavailable",
+    ),
+    support_handoff_copy_status: copyAvailable ? "safe_copy_available" : "blocked copy unavailable",
+    support_handoff_copy: copyAvailable ? supportCopy : "blocked copy unavailable",
+    safe_phone_copy: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.safe_phone_copy || provided.phone_safe_copy || provided.safe_summary,
+      CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_BUNDLE_COPY,
+    ),
+    recovery_hint: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.recovery_hint || provided.retry_hint,
+      "等待同一 safe evidence_ref 的 verified terminal result；support handoff bundle 不请求 raw diagnostics、ACK/cursor、material/review、代码托管变更、复演重提或控制路径。",
+    ),
+    evidence_boundary: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.evidence_boundary || provided.proof_boundary,
+      CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_BUNDLE_BOUNDARY,
+    ),
+    source_boundary: safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText(
+      provided.source_boundary || provided.source_evidence_boundary || provided.source_proof_boundary,
+      CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_BOUNDARY,
+    ),
+    boundary_flags: "source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / not true phone/browser proof / no OKR percentage lift",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    not_proven: cloudCommandLifecycleReplayAcceptancePacketNotProvenList(provided).concat([
+      "not true phone/browser proof",
+      "no OKR percentage lift",
+    ]),
+  };
+}
+
+function cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyPayload(packagePayload) {
+  // 下载 JSON 只包装已通过 safe copy gate 的字段，不包含 raw diagnostics、ACK/cursor、review/material 或控制端点。
+  const source = packagePayload?.schema
+    ? packagePayload
+    : cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleFromStatus(
+      latestStatus || {},
+      readinessFromStatus(latestStatus || {}),
+      latestDiagnostics || {},
+    );
+  if (source.support_handoff_copy_status !== "safe_copy_available") {
+    return null;
+  }
+  return {
+    schema: "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_copy.v1",
+    schema_version: 1,
+    source: "mobile_web",
+    capability: source.capability,
+    source_capability: source.source_capability,
+    bundle_status: source.bundle_status,
+    safe_command_id: source.safe_command_id,
+    safe_evidence_ref: source.safe_evidence_ref,
+    ack_semantics: source.ack_semantics,
+    terminal_result_status: source.terminal_result_status,
+    owner_handoff: source.owner_handoff,
+    next_required_evidence: source.next_required_evidence,
+    redaction_status: source.redaction_status,
+    support_handoff_copy: source.support_handoff_copy,
+    boundary_flags: source.boundary_flags,
+    safe_phone_copy: source.safe_phone_copy,
+    evidence_boundary: CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_BUNDLE_BOUNDARY,
+    source_boundary: CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_BOUNDARY,
+    not_proven: source.not_proven,
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+  };
+}
+
+function ensureCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundlePanel() {
+  // support handoff bundle 放在 mobile export panel 后，提供复制/下载但不新增任何远程控制路径。
+  let panel = $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundlePanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("cloudCommandLifecycleReplayAcceptancePacketMobileExportPanelTitle")?.closest("section") ||
+    $("cloudCommandLifecycleReplayAcceptancePacketTitle")?.closest("section") ||
+    $("cloudCommandLifecycleReplayDrillTitle")?.closest("section") ||
+    $("cloudSupportHandoffSafeExportTitle")?.closest("section") ||
+    $("supportTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundlePanel";
+  panel.className = "cloud-command-lifecycle-replay-acceptance-packet-support-handoff-bundle-panel";
+  panel.setAttribute("aria-labelledby", "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleTitle">云命令验收包支持交接包</h2>
+      <span id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleBadge" class="gate-badge gate-blocked">not_proven</span>
+    </div>
+    <p id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopy" class="message">
+      等待 robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary。
+    </p>
+    <dl class="cloud-command-lifecycle-replay-acceptance-packet-support-handoff-bundle-grid">
+      <div><dt>Bundle Capability</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCapability">cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle</dd></div>
+      <div><dt>Bundle Status</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleStatus">blocked_missing_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_not_proven</dd></div>
+      <div><dt>Command ID</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCommandId">command_id=not_proven</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleEvidenceRef">evidence_ref=not_proven</dd></div>
+      <div><dt>ACK Semantics</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleAck">accepted_processing_only_not_delivery_success</dd></div>
+      <div><dt>Terminal Result</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleTerminalResult">terminal_result_pending</dd></div>
+      <div><dt>Owner Handoff</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleOwnerHandoff">owner_handoff=not_proven</dd></div>
+      <div><dt>Redaction</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleRedaction">blocked_unavailable</dd></div>
+      <div><dt>Support Copy</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyState">blocked copy unavailable</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleBoundary">software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_gate</dd></div>
+      <div><dt>Source Boundary</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleSourceBoundary">software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate</dd></div>
+      <div><dt>Boundary Flags</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleFlags">source=software_proof / not_proven / safe_to_control=false / delivery_success=false / primary_actions_enabled=false / not true phone/browser proof / no OKR percentage lift</dd></div>
+      <div><dt>not_proven</dt><dd id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleNotProven">真实公网、4G、OSS/CDN、DB/queue、真实手机/browser、terminal result、HIL 和 delivery_success=false 边界未解除。</dd></div>
+    </dl>
+    <div class="handoff-grid">
+      <section>
+        <h3>Next Required Evidence</h3>
+        <ol id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleNextEvidence" class="handoff-checklist">
+          <li>等待 next_required_evidence。</li>
+        </ol>
+      </section>
+    </div>
+    <div class="button-row">
+      <button id="copyCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleButton" type="button" disabled>复制支持交接包</button>
+      <button id="downloadCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleButton" type="button" disabled>下载支持交接包</button>
+    </div>
+    <p id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyStatus" class="hint">blocked copy unavailable</p>
+    <pre id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleSafeCopy" class="safe-copy" aria-label="cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle safe_copy">blocked copy unavailable</pre>
+    <p id="cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleHint" class="hint">
+      本 panel 只消费 safe_copy / support_handoff_copy / sanitized support copy；不会请求 raw diagnostics、raw materials、command routes、ACK/cursor routes、review/material/GitHub mutation routes、replay/resubmit routes 或任何控制路径。
+    </p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle(status) {
+  const panel = ensureCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundlePanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status);
+  const summary = cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleFromStatus(
+    status,
+    readiness,
+    latestDiagnostics,
+  );
+  latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle = summary;
+  const copyPayload = cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyPayload(summary);
+  const badge = $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.missing ? "gate-waiting" : "gate-blocked");
+  badge.textContent = summary.missing ? "等待 support handoff bundle 摘要" : "support handoff bundle not_proven";
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopy").textContent = summary.safe_phone_copy;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCapability").textContent = summary.capability;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleStatus").textContent = `${summary.source} / ${summary.bundle_status}`;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCommandId").textContent = summary.safe_command_id;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleEvidenceRef").textContent = summary.safe_evidence_ref;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleAck").textContent = summary.ack_semantics;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleTerminalResult").textContent = summary.terminal_result_status;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleOwnerHandoff").textContent = summary.owner_handoff;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleRedaction").textContent = summary.redaction_status;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyState").textContent = summary.support_handoff_copy_status;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleBoundary").textContent = summary.evidence_boundary;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleSourceBoundary").textContent = summary.source_boundary;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleFlags").textContent = summary.boundary_flags;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleNotProven").textContent = summary.not_proven.join("、");
+  renderFieldEvidenceRerunMaterialDispatchList(
+    "cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleNextEvidence",
+    summary.next_required_evidence,
+  );
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleSafeCopy").textContent = copyPayload
+    ? JSON.stringify(copyPayload, null, 2)
+    : "blocked copy unavailable";
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyStatus").textContent =
+    summary.support_handoff_copy_status;
+  $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleHint").textContent = summary.recovery_hint;
+  $("copyCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleButton").disabled = !copyPayload;
+  $("downloadCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleButton").disabled = !copyPayload;
+}
+
 function verifiedTerminalResultMaterialIntakeCandidate(status, readiness, diagnostics) {
   // 只从 status/readiness/diagnostics 的 safe summary 取值；前端不拉 raw diagnostics、ACK/cursor 或 command route。
   const diagnosticsReadiness = diagnostics && typeof diagnostics.phone_readiness === "object"
@@ -55094,6 +55413,14 @@ function renderDiagnosticsSummary(payload) {
       ).packet_status,
     ],
     [
+      "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle",
+      cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleFromStatus(
+        payload || {},
+        readiness,
+        latestDiagnostics || {},
+      ).bundle_status,
+    ],
+    [
       "verified_terminal_result_material_intake",
       verifiedTerminalResultMaterialIntakeFromStatus(
         payload || {},
@@ -55374,6 +55701,7 @@ function renderOfflineFailure() {
   renderCloudCommandLifecycleReplayDrill({});
   renderCloudCommandLifecycleReplayAcceptancePacket({});
   renderCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel({});
+  renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle({});
   renderVerifiedTerminalResultMaterialIntake({});
   renderVerifiedTerminalResultMaterialReviewDecision({});
   renderVerifiedTerminalResultMaterialReviewHandoff({});
@@ -55569,6 +55897,7 @@ function renderStatus(status) {
   renderCloudCommandLifecycleReplayDrill(status);
   renderCloudCommandLifecycleReplayAcceptancePacket(status);
   renderCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel(status);
+  renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle(status);
   renderVerifiedTerminalResultMaterialIntake(status);
   renderVerifiedTerminalResultMaterialReviewDecision(status);
   renderVerifiedTerminalResultMaterialReviewHandoff(status);
@@ -55923,6 +56252,7 @@ async function openDiagnostics() {
     renderCloudCommandLifecycleReplayDrill(latestStatus || {});
     renderCloudCommandLifecycleReplayAcceptancePacket(latestStatus || {});
     renderCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel(latestStatus || {});
+    renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle(latestStatus || {});
     renderVerifiedTerminalResultMaterialIntake(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewDecision(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewHandoff(latestStatus || {});
@@ -56013,6 +56343,7 @@ function wireEvents() {
   ensureCloudCommandLifecycleReplayDrillPanel();
   ensureCloudCommandLifecycleReplayAcceptancePacketPanel();
   ensureCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel();
+  ensureCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundlePanel();
   ensureVerifiedTerminalResultMaterialIntakePanel();
   ensureVerifiedTerminalResultMaterialReviewDecisionPanel();
   ensureHardwareBaselineSourceAlignmentPanel();
@@ -56075,6 +56406,7 @@ function wireEvents() {
   ensureMobileRealDeviceFieldTrialAcceptanceExecutionCallbackReviewHandoffPanel();
   ensureMobileRealDeviceFieldTrialAcceptanceExecutionHandoffIntakePanel();
   ensureMobileRealDeviceFieldTrialAcceptanceExecutionHandoffReviewDecisionPanel();
+  ensureCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundlePanel();
   $("copyCloudSupportHandoffSafeExportButton").addEventListener("click", async () => {
     const copyPayload = cloudSupportHandoffSafeExportCopyPayload(latestCloudSupportHandoffSafeExport || {});
     if (!copyPayload) {
@@ -56142,6 +56474,46 @@ function wireEvents() {
     downloadJsonPackage("cloud_command_lifecycle_audit_export_copy.json", payload);
     $("cloudCommandLifecycleAuditExportCopyStatus").textContent =
       "已导出 cloud command lifecycle audit whitelist-only JSON。";
+  });
+  $("copyCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleButton").addEventListener("click", async () => {
+    const copyPayload = cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyPayload(
+      latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle || {},
+    );
+    if (!copyPayload) {
+      $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyStatus").textContent =
+        "blocked copy unavailable";
+      $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleSafeCopy").textContent =
+        "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleSafeCopy").textContent = payload;
+    // 支持交接复制只使用后端 safe copy 白名单；失败时保留页面内手动复制，不触发 ACK/cursor 或控制路径。
+    try {
+      await navigator.clipboard.writeText(payload);
+      $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyStatus").textContent =
+        "已复制 cloud command lifecycle support handoff bundle。";
+    } catch (_error) {
+      $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyStatus").textContent =
+        "浏览器未授权剪贴板；请从下方文本框手动复制。";
+    }
+  });
+  $("downloadCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleButton").addEventListener("click", () => {
+    const copyPayload = cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyPayload(
+      latestCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle || {},
+    );
+    if (!copyPayload) {
+      $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyStatus").textContent =
+        "blocked copy unavailable";
+      $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleSafeCopy").textContent =
+        "blocked copy unavailable";
+      return;
+    }
+    const payload = JSON.stringify(copyPayload, null, 2);
+    $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleSafeCopy").textContent = payload;
+    downloadJsonPackage("cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_copy.json", payload);
+    $("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyStatus").textContent =
+      "已下载 cloud command lifecycle support handoff whitelist-only JSON。";
   });
   $("copyVerifiedTerminalResultMaterialIntakeButton").addEventListener("click", async () => {
     const copyPayload = verifiedTerminalResultMaterialIntakeCopyPayload(

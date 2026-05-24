@@ -1,0 +1,107 @@
+{
+  "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary.v1",
+    "schema_version": 1,
+    "capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle",
+    "source_capability": "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel",
+    "source_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate",
+    "source": "software_proof",
+    "bundle_status": "ready_for_support_handoff_not_proven",
+    "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_bundle_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_fixture_20260524_0001",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "terminal_result_status": "terminal_result_pending",
+    "owner_handoff": "owner_handoff=field owner must provide verified terminal delivery/dropoff/cancel result under the same safe evidence_ref before acceptance can move forward.",
+    "next_required_evidence": [
+      "next_required_evidence=verified terminal delivery result under the same safe evidence_ref",
+      "next_required_evidence=verified dropoff or cancel completion under the same safe evidence_ref",
+      "next_required_evidence=true phone/browser proof, real public HTTPS/TLS, 4G/SIM, OSS/CDN, and production DB/queue evidence remain pending"
+    ],
+    "redaction_status": "passed",
+    "support_handoff_copy": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle;command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_bundle_20260524_0001;evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_fixture_20260524_0001;ack_semantics=accepted_processing_only_not_delivery_success;terminal_result_status=terminal_result_pending;owner_handoff=pending_verified_terminal_result;next_required_evidence=same_safe_evidence_ref_terminal_result_and_true_phone_browser_proof;source=software_proof;not_proven;delivery_success=false;primary_actions_enabled=false;safe_to_control=false;not true phone/browser proof;no OKR percentage lift.",
+    "safe_copy": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle;accepted_processing_only_not_delivery_success;terminal_result_pending;owner_handoff;next_required_evidence;not_proven;delivery_success=false;primary_actions_enabled=false;safe_to_control=false;not true phone/browser proof;no OKR percentage lift.",
+    "safe_phone_copy": "云命令生命周期验收包支持交接包只读可见；只可复制/下载后端脱敏 safe copy，ACK 仍只是 accepted/processing，terminal result 仍 pending。",
+    "recovery_hint": "等待同一 safe evidence_ref 的 verified terminal result；手机端不请求未脱敏诊断、ACK/cursor、review、material、代码托管变更、复演重提或控制路径。",
+    "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_gate",
+    "proof_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_gate",
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "accepted_processing_only_not_delivery_success",
+      "terminal_result_pending",
+      "owner_handoff",
+      "next_required_evidence",
+      "not true phone/browser proof",
+      "no OKR percentage lift",
+      "real_public_https_tls",
+      "real_4g_sim",
+      "oss_cdn_live_traffic",
+      "production_db_queue",
+      "verified_terminal_result",
+      "hil_pass"
+    ],
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary": {
+    "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary.v1",
+    "schema_version": 1,
+    "capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle",
+    "source_capability": "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel",
+    "source": "software_proof",
+    "bundle_status": "ready_for_support_handoff_not_proven",
+    "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_bundle_20260524_0001",
+    "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_fixture_20260524_0001",
+    "ack_semantics": "accepted_processing_only_not_delivery_success",
+    "terminal_result_status": "terminal_result_pending",
+    "owner_handoff": "owner_handoff=field owner terminal-result material still pending.",
+    "next_required_evidence": [
+      "next_required_evidence=verified terminal delivery/dropoff/cancel result under same safe evidence_ref"
+    ],
+    "redaction_status": "passed",
+    "support_handoff_copy": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle;not_proven;delivery_success=false;primary_actions_enabled=false;safe_to_control=false;not true phone/browser proof;no OKR percentage lift.",
+    "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_gate",
+    "source_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_gate",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "not_proven": [
+      "software_proof",
+      "not_proven",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "not true phone/browser proof",
+      "no OKR percentage lift"
+    ]
+  },
+  "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle": {
+    "summary": {
+      "schema": "trashbot.cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary.v1",
+      "capability": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle",
+      "bundle_status": "ready_for_support_handoff_not_proven",
+      "source": "software_proof",
+      "safe_command_id": "command_id=cmd_lifecycle_replay_acceptance_packet_support_handoff_bundle_20260524_0001",
+      "safe_evidence_ref": "evidence_ref=cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_fixture_20260524_0001",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "terminal_result_status": "terminal_result_pending",
+      "owner_handoff": "owner_handoff=field owner terminal-result material still pending.",
+      "next_required_evidence": [
+        "next_required_evidence=verified terminal delivery/dropoff/cancel result under same safe evidence_ref"
+      ],
+      "redaction_status": "passed",
+      "support_handoff_copy": "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle;not_proven;delivery_success=false;primary_actions_enabled=false;safe_to_control=false;not true phone/browser proof;no OKR percentage lift.",
+      "evidence_boundary": "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_gate",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

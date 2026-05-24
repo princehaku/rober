@@ -241,6 +241,35 @@ not 4G/SIM, not OSS/CDN live traffic, not production DB/queue, not
 worker/cutover, not verified terminal result, not HIL, not WAVE ROVER/UART
 proof, not PR #5 resolution, and no OKR percentage lift.
 
+The same-origin `mobile/web` shell can now turn that mobile export panel into a
+read-only support handoff bundle:
+
+```text
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle
+cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary
+robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary
+```
+
+The support handoff bundle evidence boundary is
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_gate`.
+It preserves `accepted_processing_only_not_delivery_success`,
+`terminal_result_pending`, `owner_handoff`, `next_required_evidence`,
+`not_proven`, `delivery_success=false`, `primary_actions_enabled=false`,
+`safe_to_control=false`, `not true phone/browser proof`, and
+`no OKR percentage lift`. Copy/download is allowed only when the backend
+provides `safe_copy / support_handoff_copy / sanitized support copy`; missing
+or unsafe copy stays `blocked copy unavailable`, and the phone UI does not
+synthesize handoff text from raw fields.
+
+The bundle is read-only and redacted. It does not fetch raw diagnostics, raw
+materials, command routes, ACK/cursor routes, review routes, material routes,
+GitHub mutation routes, replay/resubmit routes, or any control path, and it
+does not enable Start Delivery, Confirm Dropoff, or Cancel. It is not delivery
+success, not true phone/browser proof, not public HTTPS/TLS, not 4G/SIM, not
+OSS/CDN live traffic, not production DB/queue, not worker/cutover, not verified
+terminal result, not HIL, not WAVE ROVER/UART proof, not PR #5 resolution, and
+no OKR percentage lift.
+
 The independent relay now also hosts the dependency-free `mobile/web/` PWA
 shell on the same origin:
 

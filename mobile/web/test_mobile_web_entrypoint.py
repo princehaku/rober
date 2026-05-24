@@ -37,6 +37,10 @@ CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_MOBILE_EXPORT_PANEL_FIXTURE = (
     WEB_ROOT / "fixtures" /
     "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel.json"
 )
+CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_BUNDLE_FIXTURE = (
+    WEB_ROOT / "fixtures" /
+    "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle.json"
+)
 VERIFIED_TERMINAL_RESULT_MATERIAL_INTAKE_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_verified_terminal_result_material_intake.json"
 )
@@ -868,6 +872,146 @@ class CloudCommandLifecycleReplayAcceptancePacketMobileExportPanelTest(unittest.
         packet_text = json.dumps(fixture, ensure_ascii=False).lower()
 
         # fixture 不包含 raw 诊断、材料、控制、凭证、路径或硬件细节；只保留 phone-safe 支持摘要。
+        for forbidden in (
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "raw materials",
+            "command route",
+            "ack route",
+            "cursor route",
+            "review route",
+            "material route",
+            "github mutation",
+            "replay route",
+            "resubmit route",
+            "complete artifact",
+            "checksum",
+            "credential",
+            "bearer",
+            "token",
+            "/users/",
+            "/private/",
+            "/tmp/",
+            "/ws/",
+            "serial",
+            "uart",
+            "wave rover",
+            "dropoff success",
+            "cancel completed",
+            "field pass",
+            "ack payload",
+            "cursor request",
+            "robot command",
+            "control authorization",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, packet_text)
+
+
+class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_is_read_only(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_BUNDLE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+        remote_doc = (REPO_ROOT / "docs" / "product" / "remote_4g_mvp.md").read_text(encoding="utf-8")
+
+        # support handoff bundle 只消费后端 safe copy，不新增 raw 诊断、ACK/cursor、review/material 或控制路径。
+        self.assertIn("CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_BUNDLE_BOUNDARY", app)
+        self.assertIn("safeCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleText", app)
+        self.assertIn("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCandidate", app)
+        self.assertIn("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleFromStatus", app)
+        self.assertIn("cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleCopyPayload", app)
+        self.assertIn("renderCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle", app)
+        self.assertIn("copyCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleButton", app)
+        self.assertIn("downloadCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleButton", app)
+        self.assertIn("support_handoff_copy", app)
+        self.assertIn("safe_copy", app)
+        self.assertIn("sanitized_support_copy", app)
+        self.assertIn("accepted_processing_only_not_delivery_success", app)
+        self.assertIn("terminal_result_pending", app)
+        self.assertIn("owner_handoff", app)
+        self.assertIn("next_required_evidence", app)
+        self.assertIn("not true phone/browser proof", app)
+        self.assertIn("no OKR percentage lift", app)
+        self.assertNotRegex(
+            app,
+            r"cloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+        for blocked_name in (
+            "ackCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle",
+            "cursorCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle",
+            "fetchCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleDiagnostics",
+            "fetchCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleMaterial",
+            "reviewCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle",
+            "replayCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle",
+            "resubmitCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle",
+            "githubCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle",
+            "commandCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundle",
+        ):
+            self.assertNotIn(blocked_name, app)
+
+        summary = fixture[
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary"
+        ]
+        fallback = fixture["cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary"]
+        nested = fixture["cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle"]["summary"]
+        self.assertEqual(summary["capability"], "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle")
+        self.assertEqual(summary["source_capability"], "cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel")
+        self.assertEqual(summary["source"], "software_proof")
+        self.assertEqual(summary["redaction_status"], "passed")
+        self.assertEqual(summary["ack_semantics"], "accepted_processing_only_not_delivery_success")
+        self.assertEqual(summary["terminal_result_status"], "terminal_result_pending")
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertIn("support_handoff_copy", summary)
+        self.assertEqual(fallback["safe_to_control"], False)
+        self.assertEqual(nested["primary_actions_enabled"], False)
+        for required in (
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle",
+            "software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_gate",
+            "accepted_processing_only_not_delivery_success",
+            "terminal_result_pending",
+            "owner_handoff",
+            "next_required_evidence",
+            "not_proven",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "not true phone/browser proof",
+            "no OKR percentage lift",
+        ):
+            self.assertIn(required, fixture_text + doc + remote_doc)
+
+        self.assertIn(
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_summary",
+            doc,
+        )
+        self.assertIn("safe_copy / support_handoff_copy / sanitized support copy", doc)
+        self.assertIn("Start Delivery、Confirm Dropoff、Cancel 继续 disabled", doc)
+        self.assertIn("not delivery success", remote_doc)
+
+    def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_fixture_stays_phone_safe(self):
+        fixture = json.loads(
+            CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_SUPPORT_HANDOFF_BUNDLE_FIXTURE.read_text(
+                encoding="utf-8"
+            )
+        )
+        packet_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # fixture 只保留脱敏支持交接 copy；不得包含 raw 路由、凭证、路径、硬件细节或成功/控制授权。
         for forbidden in (
             "/cmd_vel",
             "raw ros topic",
