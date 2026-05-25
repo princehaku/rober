@@ -431,6 +431,179 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, encoded)
 
+    def test_cloud_command_result_reconciliation_lifecycle_states_are_phone_safe(self):
+        status, receipt = self.client.request(
+            "POST",
+            "/api/commands/collect",
+            {
+                "robot_id": "trashbot-001",
+                "idempotency_key": "phone-result-queued-001",
+                "payload": {"target": "trash_station", "trash_type": 0},
+            },
+        )
+        self.assertEqual(status, 201)
+        command_id = receipt["command_id"]
+
+        status, payload = self.client.request(
+            "GET",
+            f"/api/commands/{command_id}/result?robot_id=trashbot-001",
+        )
+        encoded = json.dumps(payload, ensure_ascii=False)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["schema"], "trashbot.cloud_command_result_reconciliation.v1")
+        self.assertEqual(payload["capability"], "cloud_command_result_reconciliation")
+        self.assertEqual(
+            payload["evidence_boundary"],
+            "software_proof_docker_cloud_command_result_reconciliation_gate",
+        )
+        self.assertEqual(payload["command_state"], "queued")
+        self.assertEqual(payload["ack_state"], "none")
+        self.assertEqual(payload["result_state"], "queued")
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["primary_actions_enabled"])
+
+        self.client.request(
+            "POST",
+            "/robots/trashbot-001/status",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "delivering",
+                "message": "command envelope is being handled",
+                "updated_at": time.time(),
+            },
+        )
+        status, payload = self.client.request(
+            "GET",
+            f"/api/commands/{command_id}/result?robot_id=trashbot-001",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["command_state"], "processing")
+        self.assertEqual(payload["result_state"], "processing")
+        self.assertFalse(payload["delivery_success"])
+
+        self.client.request(
+            "POST",
+            f"/robots/trashbot-001/commands/{command_id}/ack",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "acked",
+                "message": "behavior accepted envelope",
+                "updated_at": time.time(),
+                "result": {"behavior": "submitted", "internal": "not a delivery proof"},
+            },
+        )
+        status, payload = self.client.request(
+            "GET",
+            f"/api/commands/{command_id}/result?robot_id=trashbot-001",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["command_state"], "terminal_result_pending")
+        self.assertEqual(payload["ack_state"], "acked")
+        self.assertEqual(payload["result_state"], "terminal_result_pending")
+        self.assertIn("not_delivery", payload["ack_semantics"])
+        self.assertFalse(payload["delivery_success"])
+
+        for forbidden in (
+            "phone-token",
+            "Authorization",
+            "Bearer",
+            "/cmd_vel",
+            "raw state path",
+            "DB",
+            "queue URL",
+            "ROS topic",
+            "serial",
+            "UART",
+            "WAVE ROVER",
+            "traceback",
+            "checksum",
+        ):
+            self.assertNotIn(forbidden, encoded)
+            self.assertNotIn(forbidden, json.dumps(payload, ensure_ascii=False))
+
+    def test_cloud_command_result_reconciliation_missing_and_expired_are_not_success(self):
+        status, payload = self.client.request(
+            "GET",
+            "/api/commands/not-present/result?robot_id=trashbot-001",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["command_state"], "missing_or_expired")
+        self.assertEqual(payload["result_state"], "missing_or_expired")
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["safe_to_control"])
+
+        status, receipt = self.client.request(
+            "POST",
+            "/api/commands/cancel",
+            {
+                "robot_id": "trashbot-001",
+                "command_id": "phone-result-expired-001",
+                "expires_at": time.time() - 1.0,
+                "payload": {"reason": "stale_user_intent"},
+            },
+        )
+        self.assertEqual(status, 201)
+        status, payload = self.client.request(
+            "GET",
+            f"/api/commands/{receipt['command_id']}/result?robot_id=trashbot-001",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["command_state"], "missing_or_expired")
+        self.assertEqual(payload["ack_state"], "none")
+        self.assertFalse(payload["primary_actions_enabled"])
+
+    def test_cloud_command_result_reconciliation_store_unavailable_is_same_schema(self):
+        class FailingStore:
+            def get_command_result_reconciliation(self, robot_id, command_id):
+                raise OSError("raw state path /cmd_vel Authorization Bearer hidden DB queue URL traceback checksum")
+
+            def state_store_writable(self):
+                return False
+
+        server = relay_module.ThreadingHTTPServer(
+            ("127.0.0.1", 0),
+            relay_module.make_handler(FailingStore(), "phone-token"),
+        )
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        client = RelayHttpClient(f"http://127.0.0.1:{server.server_address[1]}")
+        try:
+            status, payload = client.request(
+                "GET",
+                "/api/commands/phone-store-down/result?robot_id=trashbot-001",
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=1.0)
+
+        encoded = json.dumps(payload, ensure_ascii=False)
+        self.assertEqual(status, 503)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["schema"], "trashbot.cloud_command_result_reconciliation.v1")
+        self.assertEqual(payload["command_state"], "store_unavailable")
+        self.assertEqual(payload["ack_state"], "unavailable")
+        self.assertEqual(payload["result_state"], "store_unavailable")
+        self.assertFalse(payload["delivery_success"])
+        for forbidden in (
+            "phone-token",
+            "Authorization",
+            "Bearer",
+            "hidden",
+            "/cmd_vel",
+            "raw state path",
+            "DB",
+            "queue URL",
+            "ROS topic",
+            "serial",
+            "UART",
+            "WAVE ROVER",
+            "traceback",
+            "checksum",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
     def test_health_and_readiness_are_phone_safe(self):
         status, payload = self.client.request("GET", "/healthz", token="")
         self.assertEqual(status, 200)
@@ -5720,6 +5893,27 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
                 failed_checks["production_recovery"]["code"],
                 "production_recovery_artifact_failed",
             )
+
+
+def load_tests(loader, tests, pattern):
+    # sprint 验收命令会把 `A or B` 作为 `unittest -k` 参数；标准 unittest 不解析布尔 or。
+    # 这里仅为本模块测试加载做兼容，确保给定验收命令能稳定选中两组相关回归测试。
+    raw_patterns = [str(item).strip("*") for item in (getattr(loader, "testNamePatterns", None) or [])]
+    or_patterns = [item for item in raw_patterns if " or " in item]
+    if not or_patterns:
+        return tests
+
+    terms = []
+    for item in or_patterns:
+        terms.extend(part.strip() for part in item.split(" or ") if part.strip())
+    suite = unittest.TestSuite()
+    unfiltered_loader = unittest.TestLoader()
+    for case in (RemoteCloudRelayHttpTest, RemoteCloudRelayStoreTest, RemoteCloudRelayPreflightTest):
+        for name in unfiltered_loader.getTestCaseNames(case):
+            test_id = f"{__name__}.{case.__name__}.{name}"
+            if any(term in name or term in test_id for term in terms):
+                suite.addTest(case(name))
+    return suite
 
 
 if __name__ == "__main__":

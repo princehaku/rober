@@ -1,4 +1,5 @@
 import json
+import fnmatch
 import re
 import unittest
 from pathlib import Path
@@ -16,6 +17,9 @@ CLOUD_ACK_ACCEPTED_RESULT_PENDING_FIXTURE = (
 )
 CLOUD_PHONE_COMMAND_API_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_phone_command_api.json"
+)
+CLOUD_COMMAND_RESULT_RECONCILIATION_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_result_reconciliation.json"
 )
 CLOUD_TERMINAL_RESULT_VERIFICATION_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_terminal_result_verification_guard.json"
@@ -334,6 +338,43 @@ FIELD_EVIDENCE_MATERIAL_RESOLUTION_REVIEWER_ACK_FOLLOWUP_ESCALATION_STATUS_FIXTU
 )
 MOBILE_STATUS_FIXTURE = REPO_ROOT / "mobile" / "fixtures" / "mobile_web_status.fixture.json"
 DOC = REPO_ROOT / "docs" / "product" / "mobile_user_flow.md"
+
+
+def load_tests(loader, tests, pattern):
+    raw_patterns = getattr(loader, "testNamePatterns", None) or []
+    if not any(" or " in item for item in raw_patterns):
+        return tests
+
+    expanded_patterns = []
+    for item in raw_patterns:
+        expanded_patterns.extend(part.strip() for part in item.split(" or ") if part.strip())
+
+    # unittest -k 不解析布尔表达式；这里仅兼容本仓验收命令里的 "a or b" 子串筛选。
+    saved_patterns = loader.testNamePatterns
+    loader.testNamePatterns = None
+    full_suite = unittest.TestSuite(
+        loader.loadTestsFromTestCase(value)
+        for value in globals().values()
+        if isinstance(value, type) and issubclass(value, unittest.TestCase)
+    )
+    loader.testNamePatterns = saved_patterns
+
+    selected = unittest.TestSuite()
+
+    def add_matches(suite):
+        for test in suite:
+            if isinstance(test, unittest.TestSuite):
+                add_matches(test)
+                continue
+            test_id = test.id()
+            for item in expanded_patterns:
+                plain = item.strip("*")
+                if (plain and plain in test_id) or fnmatch.fnmatchcase(test_id, item):
+                    selected.addTest(test)
+                    break
+
+    add_matches(full_suite)
+    return selected
 
 
 class CloudSupportHandoffSafeExportMobileTest(unittest.TestCase):
@@ -5369,6 +5410,89 @@ class CloudPhoneCommandApiMobileTest(unittest.TestCase):
             "/ws/",
             "complete artifact",
             "checksum",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
+
+class CloudCommandResultReconciliationMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_command_result_reconciliation_query_is_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_COMMAND_RESULT_RECONCILIATION_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # command_id 查询只消费 safe lifecycle summary；刷新只走 status，不重放、不重复提交、不拉底层诊断。
+        self.assertIn("CLOUD_COMMAND_RESULT_RECONCILIATION_BOUNDARY", app)
+        self.assertIn("CLOUD_COMMAND_RESULT_RECONCILIATION_COPY", app)
+        self.assertIn("cloudCommandResultReconciliationPanel", app)
+        self.assertIn("cloudCommandResultReconciliationCommandId", app)
+        self.assertIn("refreshCloudCommandResultReconciliation", app)
+        self.assertIn("robot_diagnostics_cloud_command_result_reconciliation_summary", app)
+        self.assertIn("cloud_command_result_reconciliation_summaries", app)
+        self.assertIn("命令结果核对", app)
+        self.assertIn("刷新 lifecycle summary", app)
+        self.assertIn("不会重放、重复提交或拉取底层诊断", app)
+        self.assertIn("terminal ACK 只能说明命令生命周期结束", app)
+        self.assertNotRegex(
+            app,
+            r"cloudCommandResultReconciliation.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+
+        summary = fixture["robot_diagnostics_cloud_command_result_reconciliation_summary"]
+        summaries = fixture["cloud_command_result_reconciliation_summaries"]
+        self.assertEqual(summary["capability"], "cloud_command_result_reconciliation")
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertEqual(
+            {item["lifecycle_state"] for item in summaries},
+            {"queued", "processing", "terminal_result_pending", "unavailable"},
+        )
+        for required in (
+            "已入队，等待机器人处理；不是送达成功。",
+            "命令已接收/处理中；尚无真实 delivery/dropoff/cancel result。",
+            "命令已终态，但 verified terminal result 仍缺失；不是送达成功。",
+            "暂时无法确认命令状态；请等待或联系支持。",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "software_proof_docker_cloud_command_result_reconciliation_gate",
+        ):
+            self.assertIn(required, fixture_text + doc)
+
+    def test_cloud_command_result_reconciliation_fixture_stays_phone_safe(self):
+        fixture = json.loads(CLOUD_COMMAND_RESULT_RECONCILIATION_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # fixture 只能携带 safe lifecycle summary，不泄漏机器人内部入口、凭证、队列地址、路径或成功证明。
+        for forbidden in (
+            "/robots/",
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "raw diagnostics",
+            "authorization",
+            "bearer",
+            "token",
+            "serial",
+            "uart",
+            "wave rover",
+            "database url",
+            "queue url",
+            "/tmp/",
+            "/ws/",
+            "complete artifact",
+            "checksum",
+            "traceback",
             "delivery_success\": true",
             "primary_actions_enabled\": true",
             "safe_to_control\": true",

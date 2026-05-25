@@ -16,6 +16,7 @@ The real 4G product path is not phone-to-robot WiFi. A 4G robot should initiate 
 POST /api/commands/collect
 POST /api/commands/confirm-dropoff
 POST /api/commands/cancel
+GET  /api/commands/{command_id}/result?robot_id=<robot_id>
 POST /robots/{robot_id}/commands
 GET  /robots/{robot_id}/commands/next?last_ack_id=<id>
 POST /robots/{robot_id}/status
@@ -39,6 +40,30 @@ If the underlying command store is unavailable, the phone route returns a
 phone-safe `503 command_store_unavailable` error instead of a receipt, and the
 response must not expose state paths, credentials, ROS topics, serial/UART
 details, or WAVE ROVER fields.
+
+The same-origin result reconciliation route is:
+
+```text
+GET /api/commands/{command_id}/result?robot_id=<robot_id>
+```
+
+It is bearer-gated like the phone command POST routes, but it is read-only. It
+does not enqueue, replay, cancel, advance ACK cursors, mutate status, call ROS,
+or bypass the robot outbound polling contract. The response schema is
+`trashbot.cloud_command_result_reconciliation.v1`, capability is
+`cloud_command_result_reconciliation`, and evidence boundary is
+`software_proof_docker_cloud_command_result_reconciliation_gate`. It summarizes
+only the existing command store, latest safe status, and terminal ACK envelope
+into `queued`, `processing`, `terminal_result_pending`, `missing_or_expired`,
+or `store_unavailable`.
+
+Every result reconciliation response keeps `delivery_success=false`,
+`safe_to_control=false`, and `primary_actions_enabled=false`. A terminal ACK is
+reported as `terminal_result_pending`; it is not delivery success, not dropoff
+success, and not cancel success. The route returns `safe_copy` and
+`next_required_evidence` for the phone UI and must not expose Authorization,
+bearer token, raw state path, DB/queue URL, ROS topic, `/cmd_vel`, serial/UART,
+WAVE ROVER details, full artifacts, checksums, or tracebacks.
 
 The first implementation uses HTTP polling so it is testable without a real 4G SIM or cloud account. A future MQTT or WebSocket transport must preserve the same command/status/ack semantics.
 

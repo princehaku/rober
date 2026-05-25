@@ -71,6 +71,17 @@ For the 4G/cloud path, `mobile/web` now prefers the task-level `cloud_phone_comm
 
 The mobile receipt panel renders only the sanitized `cloud_phone_command_api` receipt. Its required user copy is: 已入队/等待机器人处理，不是送达成功. `ack_semantics=queued_not_delivery_success`, `delivery_success=false`, `primary_actions_enabled=false`, `safe_to_control=false`, and `evidence_boundary=software_proof_docker_cloud_phone_command_api_gate` must stay visible. A queued receipt is useful for support and duplicate-submit prevention, but it is not a delivery result, not dropoff completion, not cancel completion, not HIL, not true phone/browser proof, and not production DB/queue or 4G proof by itself.
 
+The mobile receipt area now has a read-only `cloud_command_result_reconciliation` query entry. The user can enter or reuse a safe `command_id` and tap "刷新 lifecycle summary" to re-render the same-source safe lifecycle summary already provided by Robot/status; the UI must not auto replay, auto resubmit, request raw diagnostics, request ACK/cursor routes, or expose raw `/robots/*`, ROS topics, `/cmd_vel`, serial/UART/WAVE ROVER details, credentials, DB/queue URLs, local paths, full artifacts, checksums, or tracebacks. This panel consumes `robot_diagnostics_cloud_command_result_reconciliation_summary`, `cloud_command_result_reconciliation_summary`, or `cloud_command_result_reconciliation_summaries`, and keeps `delivery_success=false`, `safe_to_control=false`, and `primary_actions_enabled=false`.
+
+Required Chinese copy for the reconciliation lifecycle states:
+
+- `queued`: 已入队，等待机器人处理；不是送达成功。
+- `processing`: 命令已接收/处理中；尚无真实 delivery/dropoff/cancel result。
+- `terminal_result_pending`: 命令已终态，但 verified terminal result 仍缺失；不是送达成功。
+- `unavailable` / store unavailable / missing summary: 暂时无法确认命令状态；请等待或联系支持。
+
+This is Docker/local `software_proof` only from `mobile/web/fixtures/robot_diagnostics_cloud_command_result_reconciliation.json` and `mobile/web/fixtures/robot_diagnostics_cloud_phone_command_api.json`. Terminal ACK is still only lifecycle evidence: without a verified terminal delivery/dropoff/cancel result under the same safe `command_id`, it is not delivery success, not dropoff completion, not cancel completion, not true phone/browser proof, not real 4G/cloud proof, not HIL, and not route/elevator field pass. Start Delivery、Confirm Dropoff、Cancel 继续 disabled.
+
 ## Mobile Web Entrypoint
 
 The standalone phone entrypoint now lives in `mobile/web/`:

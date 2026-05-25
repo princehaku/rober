@@ -61,6 +61,14 @@ CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_EVIDENCE_BOUNDARY = (
 CLOUD_PHONE_COMMAND_API_CAPABILITY = "cloud_phone_command_api"
 CLOUD_PHONE_COMMAND_API_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_phone_command_api_gate"
 CLOUD_PHONE_COMMAND_API_ACK_SEMANTICS = "queued_not_delivery_success"
+CLOUD_COMMAND_RESULT_RECONCILIATION_CAPABILITY = "cloud_command_result_reconciliation"
+CLOUD_COMMAND_RESULT_RECONCILIATION_SCHEMA = "trashbot.cloud_command_result_reconciliation.v1"
+CLOUD_COMMAND_RESULT_RECONCILIATION_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_command_result_reconciliation_gate"
+)
+CLOUD_COMMAND_RESULT_RECONCILIATION_ACK_SEMANTICS = (
+    "queue_ack_or_terminal_ack_not_delivery_dropoff_or_cancel_success"
+)
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -7241,6 +7249,82 @@ def phone_command_receipt(submit_payload):
     return safe_value(receipt)
 
 
+def _command_result_next_required_evidence(command_state):
+    # 每个 lifecycle 状态都给下一步证据，避免手机把“已排队/已 ACK”误解成完成。
+    if command_state == "queued":
+        return "wait_for_robot_outbound_polling_and_ack"
+    if command_state == "processing":
+        return "wait_for_terminal_ack_then_verified_task_status"
+    if command_state == "terminal_result_pending":
+        return "collect_verified_delivery_dropoff_or_cancel_result_evidence"
+    if command_state == "missing_or_expired":
+        return "resubmit_if_user_still_needs_the_task_after_checking_expiry"
+    if command_state == "store_unavailable":
+        return "restore_command_store_before_retrying_or_claiming_result"
+    return "continue_cloud_relay_reconciliation"
+
+
+def _command_result_safe_copy(command_state):
+    # 文案刻意重复“不是成功”，防止 UI 只显示状态词时造成控制语义漂移。
+    copies = {
+        "queued": "任务仍在云端队列中，等待机器人 outbound polling；这不是送达、投放或取消成功。",
+        "processing": "机器人可能已开始处理该任务，但还没有可验证终态；这不是送达、投放或取消成功。",
+        "terminal_result_pending": "云端已收到 terminal ACK envelope，但仍缺真实结果证据；这不是送达、投放或取消成功。",
+        "missing_or_expired": "云端找不到可用任务或任务已过期；这不是送达、投放或取消成功。",
+        "store_unavailable": "云端 command store 当前不可用，无法对账任务结果；这不是送达、投放或取消成功。",
+    }
+    return copies.get(command_state, copies["store_unavailable"])
+
+
+def _command_result_payload(robot_id, command_id, command_state, ack_state, result_state):
+    # 这里是 phone-safe reconciliation contract，不返回 raw command、ACK result、路径或队列后端细节。
+    return safe_value(
+        {
+            "ok": command_state != "store_unavailable",
+            "schema": CLOUD_COMMAND_RESULT_RECONCILIATION_SCHEMA,
+            "capability": CLOUD_COMMAND_RESULT_RECONCILIATION_CAPABILITY,
+            "evidence_boundary": CLOUD_COMMAND_RESULT_RECONCILIATION_EVIDENCE_BOUNDARY,
+            "robot_id": _robot_key(robot_id),
+            "command_id": str(command_id or "").strip(),
+            "command_state": command_state,
+            "ack_state": ack_state,
+            "result_state": result_state,
+            "ack_semantics": CLOUD_COMMAND_RESULT_RECONCILIATION_ACK_SEMANTICS,
+            "delivery_success": False,
+            "safe_to_control": False,
+            "primary_actions_enabled": False,
+            "next_required_evidence": _command_result_next_required_evidence(command_state),
+            "safe_copy": _command_result_safe_copy(command_state),
+        }
+    )
+
+
+def _derive_command_result_state(command, ack, status, *, now=None):
+    # relay 只拥有队列、最近 status 和 terminal ACK；真实 delivery/dropoff/cancel 仍需后续证据。
+    now = _now() if now is None else float(now)
+    if not isinstance(command, dict) or not str(command.get("id") or "").strip():
+        return "missing_or_expired", "none", "missing_or_expired"
+    if float(command.get("expires_at") or 0.0) < now:
+        return "missing_or_expired", "none", "missing_or_expired"
+    if isinstance(ack, dict) and str(ack.get("state") or "").strip() in TERMINAL_ACK_STATES:
+        return "terminal_result_pending", str(ack.get("state") or "").strip(), "terminal_result_pending"
+    status_state = str((status or {}).get("state") or "").strip().lower() if isinstance(status, dict) else ""
+    if status_state in {"processing", "delivering", "collecting", "executing", "navigating"}:
+        return "processing", "none", "processing"
+    return "queued", "none", "queued"
+
+
+def command_result_store_unavailable_payload(robot_id, command_id):
+    # store 不可用时也返回同一 schema，方便手机用相同 UI 分支显示 fail-closed 状态。
+    return _command_result_payload(
+        robot_id,
+        command_id,
+        "store_unavailable",
+        "unavailable",
+        "store_unavailable",
+    )
+
+
 def _normalize_status_remote_readiness(payload):
     # status 可携带给手机看的安全摘要，但不能让上游 true 值打开任何远程控制语义。
     remote_readiness = payload.get("remote_readiness") if isinstance(payload, dict) else None
@@ -7510,6 +7594,17 @@ class FileBackedRelayStore:
         if not ack:
             return 404, phone_error("not_found", "ack not found")
         return 200, {"ok": True, "ack": dict(ack)}
+
+    def get_command_result_reconciliation(self, robot_id, command_id):
+        command_key = str(command_id or "").strip()
+        with self._lock:
+            robot = self._robot_locked(robot_id)
+            command = robot["command_index"].get(command_key)
+            ack = robot["acks"].get(command_key)
+            status = robot.get("status") if isinstance(robot.get("status"), dict) else None
+        # 对账只读当前 proof store 快照；不推进 ACK cursor，也不触发 robot polling。
+        command_state, ack_state, result_state = _derive_command_result_state(command, ack, status)
+        return _command_result_payload(robot_id, command_key, command_state, ack_state, result_state)
 
 
 class SQLiteRelayStore:
@@ -7827,6 +7922,32 @@ class SQLiteRelayStore:
         if not row:
             return 404, phone_error("not_found", "ack not found")
         return 200, {"ok": True, "ack": json.loads(row["ack_json"])}
+
+    def get_command_result_reconciliation(self, robot_id, command_id):
+        robot_key = _robot_key(robot_id)
+        command_key = str(command_id or "").strip()
+        with self._lock:
+            self._ensure_ready()
+            with self._session() as connection:
+                # 查询只取最小字段，避免把 raw command payload 或 ACK result 暴露给手机。
+                command_row = connection.execute(
+                    "SELECT command_json FROM commands WHERE robot_id = ? AND command_id = ?",
+                    (robot_key, command_key),
+                ).fetchone()
+                ack_row = connection.execute(
+                    "SELECT ack_json FROM acks WHERE robot_id = ? AND command_id = ?",
+                    (robot_key, command_key),
+                ).fetchone()
+                status_row = connection.execute(
+                    "SELECT status_json FROM robots WHERE robot_id = ?",
+                    (robot_key,),
+                ).fetchone()
+        command = json.loads(command_row["command_json"]) if command_row else None
+        ack = json.loads(ack_row["ack_json"]) if ack_row else None
+        status = json.loads(status_row["status_json"]) if status_row and status_row["status_json"] else None
+        # SQLite proof store 同样只返回 lifecycle summary，不返回 DB 路径、SQL 或 queue URL。
+        command_state, ack_state, result_state = _derive_command_result_state(command, ack, status)
+        return _command_result_payload(robot_key, command_key, command_state, ack_state, result_state)
 
     def export_backup_data(self):
         # backup artifact 复用 normalized envelope，不导出 sqlite 文件路径或底层 WAL 细节。
@@ -11315,6 +11436,31 @@ def make_handler(store, bearer_token):
                 # diagnostics 给支持人员复现 blocked 状态，不能泄露 token、路径或 ROS/硬件细节。
                 self._send_json(200, cloud_hosted_mobile_web_diagnostics_payload(store))
                 return
+            if parsed.path.startswith("/api/commands/") and parsed.path.endswith("/result"):
+                # 结果对账是同源 phone API：只读 store summary，仍走 bearer gate，不绕过 robot outbound polling。
+                if not self._authorized():
+                    self._reject_auth()
+                    return
+                query = parse_qs(parsed.query)
+                robot_id = next(iter(query.get("robot_id", [])), "")
+                parts = [part for part in parsed.path.strip("/").split("/") if part]
+                command_id = unquote(parts[2]) if len(parts) == 4 and parts[:2] == ["api", "commands"] else ""
+                if not robot_id or not command_id:
+                    self._send_json(400, phone_error("bad_request", "robot_id and command_id are required"))
+                    return
+                try:
+                    self._send_json(200, store.get_command_result_reconciliation(robot_id, command_id))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, command_result_store_unavailable_payload(robot_id, command_id))
+                    return
+                except ValueError as exc:
+                    message = str(exc)
+                    if "state store" in message and "not ready" in message:
+                        self._send_json(503, command_result_store_unavailable_payload(robot_id, command_id))
+                        return
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
             if parsed.path == "/api/support/cloud-command-lifecycle-replay-acceptance-packet-export":
                 # support GET route 只构造安全 JSON，不读取或修改 command/status/ACK state。
                 self._send_json(

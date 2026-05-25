@@ -30,6 +30,36 @@
     "primary_actions_enabled": false,
     "safe_to_control": false
   },
+  "robot_diagnostics_cloud_command_result_reconciliation_summary": {
+    "schema": "trashbot.robot_diagnostics_cloud_command_result_reconciliation_summary.v1",
+    "capability": "cloud_command_result_reconciliation",
+    "safe_command_id": "cmd_mobile_web_start_001",
+    "lifecycle_state": "queued",
+    "lifecycle_status": "queued_waiting_robot",
+    "safe_phone_copy": "已入队，等待机器人处理；不是送达成功。",
+    "ack_semantics": "queued_not_delivery_success",
+    "terminal_result_status": "not_verified",
+    "recovery_hint": "等待机器人处理；不要重放或重复提交。",
+    "evidence_boundary": "software_proof_docker_cloud_command_result_reconciliation_gate",
+    "source": "software_proof",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false
+  },
+  "cloud_command_result_reconciliation_summaries": [
+    {
+      "capability": "cloud_command_result_reconciliation",
+      "safe_command_id": "cmd_mobile_web_start_001",
+      "lifecycle_state": "queued",
+      "safe_phone_copy": "已入队，等待机器人处理；不是送达成功。",
+      "ack_semantics": "queued_not_delivery_success",
+      "terminal_result_status": "not_verified",
+      "evidence_boundary": "software_proof_docker_cloud_command_result_reconciliation_gate",
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "safe_to_control": false
+    }
+  ],
   "phone_readiness": {
     "primary_state": "blocked",
     "next_action": "wait_for_robot_command_processing",

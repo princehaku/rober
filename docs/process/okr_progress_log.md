@@ -8,6 +8,28 @@
 
 ## 2026-05-26 系列
 
+### 2026-05-26 08-09｜cloud-command-result-reconciliation｜command lifecycle/result reconciliation
+
+本轮 `sprints/2026.05.26_08-09_cloud-command-result-reconciliation/` 执行 `cloud_command_result_reconciliation` epic closeout。用户价值是把上一轮 phone -> cloud command enqueue 之后的用户状态解释补齐：手机用户不再只能看到 queued receipt，而是能查询命令处于 queued、processing、terminal result pending、missing/expired 或 store unavailable，并且所有状态都明确不是 delivery success。本轮边界为 `software_proof_docker_cloud_command_result_reconciliation_gate`。
+
+Task A Robot Software Engineer 新增 `GET /api/commands/{command_id}/result?robot_id=<robot_id>`，schema `trashbot.cloud_command_result_reconciliation.v1`，capability `cloud_command_result_reconciliation`，覆盖 `queued`、`processing`、`terminal_result_pending`、`missing_or_expired`、`store_unavailable`，继续保留 `delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`。验证通过：目标测试输出 `Ran 7 tests ... OK`；scoped `git diff --check` passed。
+
+Task B User Touchpoint Full-Stack Engineer 新增 mobile/web 命令结果核对只读面板、fixture 和文档，覆盖 queued / processing / terminal_result_pending / unavailable 四类中文 copy；UI 不把 terminal ACK 写成送达/投放/取消成功，不自动重放、不 resubmit、不开放 control grant。验证通过：目标测试输出 `Ran 4 tests ... OK`；scoped `git diff --check` passed。
+
+Task C Product closeout 创建 `tech-done.md`、`side2side_check.md`、`final.md`，并更新 `OKR.md` 与本进度日志。Closeout validation 通过：closeout 三文件存在；required keyword grep 覆盖 `cloud_command_result_reconciliation`、`Objective 5`、`约 76%`、`software_proof_docker_cloud_command_result_reconciliation_gate` 和 `不证明公网 HTTPS/TLS`；scoped `git diff --check` passed。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰硬件桥、串口、WAVE ROVER、UART、HIL、2D LiDAR / ToF 或 vendor-source 材料；`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只证明 command lifecycle/result reconciliation software gate；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal result、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal 或 field task record；command result reconciliation 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` 能只读展示 command result reconciliation 四类中文状态，但仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice 或 true phone/browser acceptance。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 从约 72% 提升到约 76% | 本轮从单纯 command enqueue 推进到 lifecycle/result reconciliation，新增 phone-safe 查询 contract 和 mobile/web 只读核对面板。仍不证明公网 HTTPS/TLS、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、true phone/browser proof、HIL、Nav2/fixed-route、WAVE ROVER/UART 或 delivery success。 |
+
+本轮验证范围：Docker/local software proof 和 worker-scoped focused tests。Product 未运行 Docker/Humble build、真实公网、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、真实手机/browser、WAVE ROVER/UART、HIL、route/elevator field execution 或 delivery-success validation。
+
+更新时间：2026-05-26 05:47 Asia/Shanghai。
+
 ### 2026-05-26 00-01｜cloud-phone-command-api-mainline｜phone to cloud command enqueue mainline
 
 本轮 `sprints/2026.05.26_00-01_cloud-phone-command-api-mainline/` 执行 `cloud_phone_command_api_mainline` epic closeout。用户价值是把 Objective 5 从连续多轮只读 metadata wrapper 推进到真实可调用的 phone -> cloud command enqueue 主链路：手机/云端可以提交 `collect`、`confirm_dropoff`、`cancel` 三类任务级命令，relay 将其规范化后写入既有 command queue，robot 仍通过 `/robots/{robot_id}/commands/next` outbound polling 领取。追加 hardening 后，command store 不可用或写入失败时 relay fail closed，返回 `503 command_store_unavailable`，不返回 queued receipt。证据边界为 `software_proof_docker_cloud_phone_command_api_gate`。

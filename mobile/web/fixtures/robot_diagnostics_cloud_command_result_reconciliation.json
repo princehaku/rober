@@ -1,0 +1,109 @@
+{
+  "robot_id": "trashbot-alpha",
+  "state": "remote_degraded",
+  "capability": "cloud_command_result_reconciliation",
+  "remote_ready": false,
+  "cloud_reachable": true,
+  "primary_actions_enabled": false,
+  "safe_to_control": false,
+  "delivery_success": false,
+  "safe_phone_copy": "命令结果核对只展示同源 lifecycle summary；不是送达成功。",
+  "evidence_boundary": "software_proof_docker_cloud_command_result_reconciliation_gate",
+  "robot_diagnostics_cloud_command_result_reconciliation_summary": {
+    "schema": "trashbot.robot_diagnostics_cloud_command_result_reconciliation_summary.v1",
+    "capability": "cloud_command_result_reconciliation",
+    "safe_command_id": "cmd_reconcile_queued_001",
+    "lifecycle_state": "queued",
+    "lifecycle_status": "queued_waiting_robot",
+    "safe_phone_copy": "已入队，等待机器人处理；不是送达成功。",
+    "ack_semantics": "queued_not_delivery_success",
+    "terminal_result_status": "not_verified",
+    "recovery_hint": "等待机器人处理；不要自动重放或重复提交。",
+    "evidence_boundary": "software_proof_docker_cloud_command_result_reconciliation_gate",
+    "source": "software_proof",
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "safe_to_control": false
+  },
+  "cloud_command_result_reconciliation_summaries": [
+    {
+      "capability": "cloud_command_result_reconciliation",
+      "safe_command_id": "cmd_reconcile_queued_001",
+      "lifecycle_state": "queued",
+      "lifecycle_status": "queued_waiting_robot",
+      "safe_phone_copy": "已入队，等待机器人处理；不是送达成功。",
+      "ack_semantics": "queued_not_delivery_success",
+      "terminal_result_status": "not_verified",
+      "recovery_hint": "等待机器人处理；不要自动重放或重复提交。",
+      "evidence_boundary": "software_proof_docker_cloud_command_result_reconciliation_gate",
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "safe_to_control": false
+    },
+    {
+      "capability": "cloud_command_result_reconciliation",
+      "safe_command_id": "cmd_reconcile_processing_001",
+      "lifecycle_state": "processing",
+      "lifecycle_status": "accepted_processing",
+      "safe_phone_copy": "命令已接收/处理中；尚无真实 delivery/dropoff/cancel result。",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "terminal_result_status": "not_verified",
+      "recovery_hint": "等待真实 delivery/dropoff/cancel result；不要自动重放或重复提交。",
+      "evidence_boundary": "software_proof_docker_cloud_command_result_reconciliation_gate",
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "safe_to_control": false
+    },
+    {
+      "capability": "cloud_command_result_reconciliation",
+      "safe_command_id": "cmd_reconcile_terminal_pending_001",
+      "lifecycle_state": "terminal_result_pending",
+      "lifecycle_status": "terminal_ack_without_verified_result",
+      "safe_phone_copy": "命令已终态，但 verified terminal result 仍缺失；不是送达成功。",
+      "ack_semantics": "terminal_ack_not_delivery_success",
+      "terminal_result_status": "verified_terminal_result_missing",
+      "recovery_hint": "等待同一 command_id 的 verified terminal result；不要自动重放或重复提交。",
+      "evidence_boundary": "software_proof_docker_cloud_command_result_reconciliation_gate",
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "safe_to_control": false
+    },
+    {
+      "capability": "cloud_command_result_reconciliation",
+      "safe_command_id": "cmd_reconcile_unavailable_001",
+      "lifecycle_state": "unavailable",
+      "lifecycle_status": "store_unavailable",
+      "safe_phone_copy": "暂时无法确认命令状态；请等待或联系支持。",
+      "ack_semantics": "status_unavailable_not_delivery_success",
+      "terminal_result_status": "not_verified",
+      "recovery_hint": "等待云端摘要恢复；不要自动重放或重复提交。",
+      "evidence_boundary": "software_proof_docker_cloud_command_result_reconciliation_gate",
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "safe_to_control": false
+    }
+  ],
+  "phone_readiness": {
+    "primary_state": "blocked",
+    "next_action": "wait_for_verified_terminal_result_or_contact_support",
+    "support_level": "diagnostics_available",
+    "remote_readiness": {
+      "capability": "cloud_command_result_reconciliation",
+      "remote_ready": false,
+      "primary_actions_enabled": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "safe_phone_copy": "命令结果核对只读可见；主操作保持禁用。",
+      "ack_semantics": "accepted_processing_only_not_delivery_success",
+      "proof_boundary": "software_proof_docker_cloud_command_result_reconciliation_gate"
+    }
+  },
+  "action_permissions": {
+    "can_collect": false,
+    "can_confirm_dropoff": false,
+    "can_cancel": false
+  },
+  "can_collect": false,
+  "can_confirm_dropoff": false,
+  "can_cancel": false
+}

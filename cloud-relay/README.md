@@ -16,6 +16,7 @@
 - **phone-safe JSON API**：
   - 向手机 PWA 暴露 `trashbot.phone_readiness.v1`、`trashbot.command_safety.v1`、`trashbot.phone_offline_resume_readiness.v1` 等 schema 的 JSON
   - 向手机/PWA 暴露 bearer-gated 任务级提交入口：`POST /api/commands/collect`、`POST /api/commands/confirm-dropoff`、`POST /api/commands/cancel`
+  - 向手机/PWA 暴露 bearer-gated 只读结果对账入口：`GET /api/commands/{command_id}/result?robot_id=<robot_id>`
   - **schema 字段、值域、`evidence_boundary` 由本目录单一维护**，onboard / mobile 不发明
 - **健康检查 & 生产 preflight**：
   - `/healthz` / `/readyz` 容器存活与就绪探针
@@ -138,6 +139,7 @@ This shell and the same-origin static APIs do not require bearer auth because th
 POST /api/commands/collect
 POST /api/commands/confirm-dropoff
 POST /api/commands/cancel
+GET  /api/commands/{command_id}/result?robot_id=<robot_id>
 ```
 
 这些 POST route 必须带 `Authorization: Bearer <token>`。请求 body 包含
@@ -157,6 +159,24 @@ queued receipt。响应不得暴露 Authorization、token、raw state path、ROS
 `/cmd_vel`、serial/UART 或 WAVE ROVER 字段。机器人 polling
 `/robots/{robot_id}/commands/next`、status 和 ACK route 仍保持原有
 `trashbot.remote.v1` 语义。
+
+`GET /api/commands/{command_id}/result?robot_id=<robot_id>` 是同源、bearer-gated
+的 phone-safe 对账 route。它只读取既有 command store、最新 safe status 和
+terminal ACK envelope，返回 schema
+`trashbot.cloud_command_result_reconciliation.v1`、capability
+`cloud_command_result_reconciliation`、证据边界
+`software_proof_docker_cloud_command_result_reconciliation_gate`。`command_state`
+只会是 `queued`、`processing`、`terminal_result_pending`、
+`missing_or_expired` 或 `store_unavailable`；terminal ACK 仍被解释为
+`terminal_result_pending`，不是 delivery/dropoff/cancel success。
+
+该对账 route 不 enqueue、不 replay、不 cancel、不推进 ACK cursor、不修改 status、
+不触发 ROS/Nav2 或机器人控制，也不绕过 robot outbound polling。响应固定保留
+`delivery_success=false`、`safe_to_control=false`、
+`primary_actions_enabled=false`，并提供 `safe_copy` 与
+`next_required_evidence` 给手机 UI。响应不得暴露 Authorization、bearer token、
+raw state path、DB/queue URL、ROS topic、`/cmd_vel`、serial/UART、WAVE ROVER、
+完整 artifact、checksum 或 traceback。
 
 生成 cloud deployment readiness artifact：
 

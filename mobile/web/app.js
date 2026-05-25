@@ -297,6 +297,13 @@ const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
 const CLOUD_PHONE_COMMAND_API_BOUNDARY = "software_proof_docker_cloud_phone_command_api_gate";
 const CLOUD_PHONE_COMMAND_API_COPY = "云端命令已入队，等待机器人处理；这不是送达成功、投放完成或取消完成。";
+const CLOUD_COMMAND_RESULT_RECONCILIATION_BOUNDARY = "software_proof_docker_cloud_command_result_reconciliation_gate";
+const CLOUD_COMMAND_RESULT_RECONCILIATION_COPY = {
+  queued: "已入队，等待机器人处理；不是送达成功。",
+  processing: "命令已接收/处理中；尚无真实 delivery/dropoff/cancel result。",
+  terminal_result_pending: "命令已终态，但 verified terminal result 仍缺失；不是送达成功。",
+  unavailable: "暂时无法确认命令状态；请等待或联系支持。",
+};
 const DEVICE_EVIDENCE_SCHEMA = "trashbot.mobile_device_evidence_capture.v1";
 const DEVICE_EVIDENCE_PACKAGE_SCHEMA = "trashbot.mobile_device_evidence_package.v1";
 const DEVICE_HANDOFF_SESSION_SCHEMA = "trashbot.mobile_device_handoff_session.v1";
@@ -373,6 +380,7 @@ const REAL_DEVICE_FIELD_TRIAL_ACCEPTANCE_EXECUTION_HANDOFF_REVIEW_HANDOFF_SUMMAR
 const UNSAFE_BUNDLE_TEXT = /(authorization|bearer|token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential-bearing url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/ws\/|traceback|checksum|complete artifact|artifact|raw browser event|raw event|raw promise|complete ua|full ua|完整 ua|raw robot response|raw intake json|robot\/internal|internal technical)/i;
 const UNSAFE_CLOUD_SUPPORT_HANDOFF_SAFE_EXPORT_TEXT = /(authorization|bearer|token|github[_ -]?token|github action|gh workflow|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|robot\/internal|internal technical|password|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|delivery success|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
 const UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT = /(authorization|bearer|token|github[_ -]?token|oss\s*(ak|sk)|access[_-]?key|secret|root password|database url|db url|queue url|credential|signed url|raw ros topic|ros topic|\/cmd_vel|cmd_vel|serial|uart|ttyusb|ttyacm|baudrate|wave rover|\/users\/|\/private\/|\/tmp\/|\/ws\/|\/var\/|[a-z]:\\|traceback|checksum|raw artifact|complete artifact|raw json|raw diagnostics|raw status|raw response|raw command|command route|ack route|cursor route|robot\/internal|internal technical|password|ack payload|cursor request|retry request|replay request|resubmit request|robot command|control authorization|safe_to_control\s*=\s*true|delivery[_ ]success(?!\s*=\s*false)|dropoff success|cancel completed|primary_actions_enabled\s*=\s*true|hil_pass|field pass|public https passed|4g passed|oss live traffic passed|production db passed)/i;
+const UNSAFE_CLOUD_COMMAND_RESULT_RECONCILIATION_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
 const UNSAFE_CLOUD_COMMAND_LIFECYCLE_REPLAY_DRILL_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
 const UNSAFE_CLOUD_COMMAND_LIFECYCLE_REPLAY_ACCEPTANCE_PACKET_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
 const UNSAFE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_TEXT = UNSAFE_CLOUD_COMMAND_LIFECYCLE_AUDIT_EXPORT_TEXT;
@@ -582,6 +590,7 @@ let latestStatus = null;
 let latestDiagnostics = null;
 let latestActionFeedback = null;
 let latestCloudPhoneCommandReceipt = null;
+let latestCloudCommandResultReconciliation = null;
 let latestAcceptanceBundle = null;
 let latestDeviceEvidencePackage = null;
 let latestDeviceHandoffSession = null;
@@ -59039,6 +59048,209 @@ function renderCloudPhoneCommandReceipt(status) {
   $("cloudPhoneCommandReceiptRecovery").textContent = receipt.recoveryHint;
 }
 
+function safeCloudCommandResultReconciliationText(value, fallback = "not_proven") {
+  // lifecycle summary 只展示同源 safe contract；命中 raw route、凭证或成功语义时 fail closed。
+  const text = safeText(value, fallback);
+  return UNSAFE_CLOUD_COMMAND_RESULT_RECONCILIATION_TEXT.test(text) ? fallback : text;
+}
+
+function cloudCommandResultReconciliationCandidates(status, readiness, diagnostics) {
+  const diagnosticsReadiness = readinessFromStatus(diagnostics || {});
+  const diagnosticsSummary = diagnostics && typeof diagnostics.summary === "object" ? diagnostics.summary : {};
+  const nestedDiagnostics = diagnostics && typeof diagnostics.diagnostics === "object" ? diagnostics.diagnostics : {};
+  const nestedDiagnosticsSummary = nestedDiagnostics && typeof nestedDiagnostics.summary === "object"
+    ? nestedDiagnostics.summary
+    : {};
+  const statusDiagnostics = status && typeof status.diagnostics === "object" ? status.diagnostics : {};
+  const statusDiagnosticsSummary = statusDiagnostics && typeof statusDiagnostics.summary === "object"
+    ? statusDiagnostics.summary
+    : {};
+  const artifact = status?.cloud_command_result_reconciliation?.summary ||
+    readiness?.cloud_command_result_reconciliation?.summary ||
+    diagnostics?.cloud_command_result_reconciliation?.summary ||
+    diagnosticsSummary.cloud_command_result_reconciliation?.summary ||
+    nestedDiagnosticsSummary.cloud_command_result_reconciliation?.summary ||
+    statusDiagnosticsSummary.cloud_command_result_reconciliation?.summary;
+  const directCandidates = [
+    status?.robot_diagnostics_cloud_command_result_reconciliation_summary,
+    readiness?.robot_diagnostics_cloud_command_result_reconciliation_summary,
+    diagnostics?.robot_diagnostics_cloud_command_result_reconciliation_summary,
+    diagnosticsReadiness.robot_diagnostics_cloud_command_result_reconciliation_summary,
+    diagnosticsSummary.robot_diagnostics_cloud_command_result_reconciliation_summary,
+    nestedDiagnosticsSummary.robot_diagnostics_cloud_command_result_reconciliation_summary,
+    statusDiagnosticsSummary.robot_diagnostics_cloud_command_result_reconciliation_summary,
+    status?.cloud_command_result_reconciliation_summary,
+    readiness?.cloud_command_result_reconciliation_summary,
+    diagnostics?.cloud_command_result_reconciliation_summary,
+    diagnosticsReadiness.cloud_command_result_reconciliation_summary,
+    diagnosticsSummary.cloud_command_result_reconciliation_summary,
+    nestedDiagnosticsSummary.cloud_command_result_reconciliation_summary,
+    statusDiagnosticsSummary.cloud_command_result_reconciliation_summary,
+    artifact,
+  ];
+  const listCandidates = [
+    status?.robot_diagnostics_cloud_command_result_reconciliation_summaries,
+    readiness?.robot_diagnostics_cloud_command_result_reconciliation_summaries,
+    diagnostics?.robot_diagnostics_cloud_command_result_reconciliation_summaries,
+    diagnosticsSummary.robot_diagnostics_cloud_command_result_reconciliation_summaries,
+    status?.cloud_command_result_reconciliation_summaries,
+    readiness?.cloud_command_result_reconciliation_summaries,
+    diagnostics?.cloud_command_result_reconciliation_summaries,
+    diagnosticsSummary.cloud_command_result_reconciliation_summaries,
+    status?.cloud_command_result_reconciliation?.lifecycle_summaries,
+    readiness?.cloud_command_result_reconciliation?.lifecycle_summaries,
+    diagnostics?.cloud_command_result_reconciliation?.lifecycle_summaries,
+    diagnosticsSummary.cloud_command_result_reconciliation?.lifecycle_summaries,
+  ];
+  return [
+    ...directCandidates.filter((value) => value && typeof value === "object" && !Array.isArray(value)),
+    ...listCandidates.flatMap((value) => Array.isArray(value) ? value : [])
+      .filter((value) => value && typeof value === "object" && !Array.isArray(value)),
+  ];
+}
+
+function selectedCloudCommandResultReconciliation(status, readiness, diagnostics, commandId) {
+  const requestedId = safeCloudCommandResultReconciliationText(commandId, "");
+  const candidates = cloudCommandResultReconciliationCandidates(status, readiness, diagnostics);
+  return candidates.find((candidate) => {
+    const candidateId = safeCloudCommandResultReconciliationText(
+      candidate.safe_command_id || candidate.command_id,
+      "",
+    );
+    return requestedId && candidateId === requestedId;
+  }) || candidates[0] || null;
+}
+
+function normalizeCloudCommandResultReconciliation(value, requestedCommandId) {
+  // terminal ACK 只能说明命令生命周期结束；没有 verified terminal result 仍不能写成送达成功。
+  const requestedId = safeCloudCommandResultReconciliationText(requestedCommandId, "");
+  const state = safeCloudCommandResultReconciliationText(
+    value?.lifecycle_state || value?.command_state || value?.result_state || value?.degradation_state,
+    "unavailable",
+  );
+  const bucket = state.includes("queued") ? "queued"
+    : (state.includes("processing") || state.includes("accepted") ? "processing"
+      : (state.includes("terminal_result_pending") || state.includes("terminal") ? "terminal_result_pending" : "unavailable"));
+  const fallbackCopy = CLOUD_COMMAND_RESULT_RECONCILIATION_COPY[bucket] ||
+    CLOUD_COMMAND_RESULT_RECONCILIATION_COPY.unavailable;
+  return {
+    capability: safeCloudCommandResultReconciliationText(
+      value?.capability,
+      "cloud_command_result_reconciliation",
+    ),
+    commandId: safeCloudCommandResultReconciliationText(
+      value?.safe_command_id || value?.command_id || requestedId,
+      requestedId || "未提供",
+    ),
+    lifecycleState: bucket,
+    lifecycleStatus: safeCloudCommandResultReconciliationText(value?.lifecycle_status || state, state),
+    safePhoneCopy: safeCloudCommandResultReconciliationText(value?.safe_phone_copy || value?.summary, fallbackCopy),
+    ackSemantics: safeCloudCommandResultReconciliationText(
+      value?.ack_semantics,
+      bucket === "queued" ? "queued_not_delivery_success" : "accepted_processing_only_not_delivery_success",
+    ),
+    terminalResultStatus: safeCloudCommandResultReconciliationText(
+      value?.terminal_result_status || value?.verified_terminal_result_status,
+      bucket === "terminal_result_pending" ? "verified_terminal_result_missing" : "not_verified",
+    ),
+    recoveryHint: safeCloudCommandResultReconciliationText(
+      value?.recovery_hint || value?.retry_hint || value?.next_action,
+      bucket === "unavailable" ? CLOUD_COMMAND_RESULT_RECONCILIATION_COPY.unavailable : "等待同一 command_id 的 verified terminal result；不要重放或重复提交。",
+    ),
+    evidenceBoundary: safeCloudCommandResultReconciliationText(
+      value?.evidence_boundary || value?.proof_boundary,
+      CLOUD_COMMAND_RESULT_RECONCILIATION_BOUNDARY,
+    ),
+    deliverySuccess: false,
+    primaryActionsEnabled: false,
+    safeToControl: false,
+  };
+}
+
+function cloudCommandResultReconciliationFromStatus(status, readiness, diagnostics) {
+  const inputId = $("cloudCommandResultReconciliationCommandId")?.value ||
+    latestCloudPhoneCommandReceipt?.commandId ||
+    "";
+  const provided = selectedCloudCommandResultReconciliation(status, readiness, diagnostics, inputId);
+  return normalizeCloudCommandResultReconciliation(provided, inputId);
+}
+
+function ensureCloudCommandResultReconciliationPanel() {
+  // 查询入口只刷新安全状态摘要；不请求底层诊断、不 replay、不 resubmit。
+  let panel = $("cloudCommandResultReconciliationPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("cloudPhoneCommandReceiptPanel") ||
+    $("actionFeedbackStatusBadge")?.closest("section") ||
+    $("terminalActionPanel") ||
+    $("primaryJourneyTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "cloudCommandResultReconciliationPanel";
+  panel.className = "cloud-command-result-reconciliation-panel";
+  panel.setAttribute("aria-labelledby", "cloudCommandResultReconciliationTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="cloudCommandResultReconciliationTitle">命令结果核对</h2>
+      <span id="cloudCommandResultReconciliationBadge" class="gate-badge gate-blocked">等待查询</span>
+    </div>
+    <p id="cloudCommandResultReconciliationCopy" class="message">输入 Safe Command ID 后刷新同源 lifecycle summary；不会重放、重复提交或拉取底层诊断。</p>
+    <label for="cloudCommandResultReconciliationCommandId">Safe Command ID</label>
+    <input id="cloudCommandResultReconciliationCommandId" type="text" autocomplete="off" placeholder="cmd_mobile_web_start_001">
+    <button id="cloudCommandResultReconciliationRefreshButton" type="button">刷新 lifecycle summary</button>
+    <dl class="cloud-command-result-reconciliation-grid">
+      <div><dt>Capability</dt><dd id="cloudCommandResultReconciliationCapability">cloud_command_result_reconciliation</dd></div>
+      <div><dt>Lifecycle State</dt><dd id="cloudCommandResultReconciliationState">unavailable</dd></div>
+      <div><dt>Safe Command ID</dt><dd id="cloudCommandResultReconciliationSafeCommandId">未提供</dd></div>
+      <div><dt>ACK Semantics</dt><dd id="cloudCommandResultReconciliationAck">accepted_processing_only_not_delivery_success</dd></div>
+      <div><dt>Terminal Result</dt><dd id="cloudCommandResultReconciliationTerminal">not_verified</dd></div>
+      <div><dt>Control Boundary</dt><dd id="cloudCommandResultReconciliationControls">delivery_success=false / primary_actions_enabled=false / safe_to_control=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="cloudCommandResultReconciliationBoundary">software_proof_docker_cloud_command_result_reconciliation_gate</dd></div>
+    </dl>
+    <p id="cloudCommandResultReconciliationRecovery" class="hint">暂时无法确认命令状态；请等待或联系支持。</p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  $("cloudCommandResultReconciliationRefreshButton")?.addEventListener("click", refreshCloudCommandResultReconciliation);
+  return panel;
+}
+
+function renderCloudCommandResultReconciliation(status) {
+  const panel = ensureCloudCommandResultReconciliationPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status || {});
+  const summary = cloudCommandResultReconciliationFromStatus(status || {}, readiness, latestDiagnostics || {});
+  latestCloudCommandResultReconciliation = summary;
+  const input = $("cloudCommandResultReconciliationCommandId");
+  if (input && !input.value && summary.commandId !== "未提供") {
+    input.value = summary.commandId;
+  }
+  const badge = $("cloudCommandResultReconciliationBadge");
+  badge.className = "gate-badge";
+  badge.classList.add(summary.lifecycleState === "unavailable" ? "gate-blocked" : "gate-waiting");
+  badge.textContent = summary.lifecycleState === "unavailable" ? "无法确认" : "等待结果";
+  $("cloudCommandResultReconciliationCapability").textContent = summary.capability;
+  $("cloudCommandResultReconciliationCopy").textContent = summary.safePhoneCopy;
+  $("cloudCommandResultReconciliationState").textContent = summary.lifecycleStatus;
+  $("cloudCommandResultReconciliationSafeCommandId").textContent = summary.commandId;
+  $("cloudCommandResultReconciliationAck").textContent = summary.ackSemantics;
+  $("cloudCommandResultReconciliationTerminal").textContent = summary.terminalResultStatus;
+  $("cloudCommandResultReconciliationControls").textContent =
+    `delivery_success=${summary.deliverySuccess} / primary_actions_enabled=${summary.primaryActionsEnabled} / safe_to_control=${summary.safeToControl}`;
+  $("cloudCommandResultReconciliationBoundary").textContent = summary.evidenceBoundary;
+  $("cloudCommandResultReconciliationRecovery").textContent = summary.recoveryHint;
+}
+
+async function refreshCloudCommandResultReconciliation() {
+  // 手动刷新只重新读取现有 status safe summary，不自动重放、不 resubmit、不请求底层诊断。
+  await refreshStatus();
+  renderCloudCommandResultReconciliation(latestStatus || {});
+}
+
 function renderActionFeedback(status) {
   const readiness = readinessFromStatus(status);
   const feedback = actionFeedbackFromStatus(status, readiness) || latestActionFeedback;
@@ -60568,6 +60780,7 @@ function renderOfflineFailure() {
   }, "local");
   renderActionFeedback({});
   renderCloudPhoneCommandReceipt({});
+  renderCloudCommandResultReconciliation({});
   $("destinationSummary").textContent = "离线，无法确认目标垃圾站。";
   $("startBlockReason").textContent = "离线状态下 Start 安全关闭。";
   $("destinationGateBadge").textContent = "未确认目的地";
@@ -60791,6 +61004,7 @@ function renderStatus(status) {
   renderVoicePrompt(status);
   renderActionFeedback(status);
   renderCloudPhoneCommandReceipt(status);
+  renderCloudCommandResultReconciliation(status);
   renderOperationLog(status);
   renderSupport(status);
   renderTerminalActionPanel();
@@ -60921,6 +61135,7 @@ function setLocalActionFeedback(actionName, state, payload, overrides = {}) {
   renderRecoveryDecision(latestStatus || {});
   renderActionFeedback(latestStatus || {});
   renderCloudPhoneCommandReceipt(latestStatus || {});
+  renderCloudCommandResultReconciliation(latestStatus || {});
 }
 
 function renderTerminalActionPanel() {
@@ -61012,6 +61227,7 @@ async function postAction(actionName, clientReference) {
       }, "http_success");
       renderActionFeedback(latestStatus || {});
       renderCloudPhoneCommandReceipt(latestStatus || {});
+      renderCloudCommandResultReconciliation(latestStatus || {});
     }
     await refreshStatus();
   } catch (_error) {
@@ -61186,6 +61402,7 @@ async function openDiagnostics() {
     renderCloudExternalEvidenceReviewDecision(latestStatus || {});
     renderCloudExternalEvidenceReviewHandoff(latestStatus || {});
     renderCloudExternalEvidenceReviewHandoffFollowupEscalationStatus(latestStatus || {});
+    renderCloudCommandResultReconciliation(latestStatus || {});
     renderVerifiedTerminalResultMaterialIntake(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewDecision(latestStatus || {});
     renderVerifiedTerminalResultMaterialReviewHandoff(latestStatus || {});
@@ -61277,6 +61494,7 @@ function wireEvents() {
   ensureCloudCommandLifecycleReplayAcceptancePacketPanel();
   ensureCloudCommandLifecycleReplayAcceptancePacketMobileExportPanel();
   ensureCloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundlePanel();
+  ensureCloudCommandResultReconciliationPanel();
   ensureVerifiedTerminalResultMaterialIntakePanel();
   ensureVerifiedTerminalResultMaterialReviewDecisionPanel();
   ensureHardwareBaselineSourceAlignmentPanel();
