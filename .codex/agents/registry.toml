@@ -6,67 +6,157 @@ okr_file = "OKR.md"
 vendor_index = "docs/vendor/VENDOR_INDEX.md"
 format = "toml"
 
+# ---------------------------------------------------------------------------
+# 整体说明
+# ---------------------------------------------------------------------------
+# 本文件是 rober 项目 Agent 编制的索引清单：
+#   1. 列出"5 人精简编制"对应的实际角色文件；
+#   2. 定义跨运行时（Cursor / Codex / 其他）子 agent 派发规则；
+#   3. 维护任务路由、组织层级、红线与 sprint 留档纪律；
+# 详细行为规范以 AGENTS.md 为唯一权威，本文件只做结构化镜像。
+# 任何修改必须：A) 保持 TOML 合法；B) 与磁盘上的 .toml 文件一一对应；
+# C) 与 AGENTS.md 中的角色 ID 严格一致。
+# ---------------------------------------------------------------------------
+
 [mission]
-summary = "5 人精简 agent 编制：1 个产品负责人，4 个一线交付同学。默认执行优先，流程服务交付。"
+summary = "5 人精简 agent 编制：1 个产品负责人 + 4 个一线交付同学。默认执行优先，流程服务交付。"
 default_owner = "robot-software-engineer"
-reporting_rule = "最终汇报必须写清实际改动、验证证据、剩余风险。复杂任务同步 OKR/KR 进度。"
-ceo_scope = "CEO 只制定方向、OKR 和验收口径。"
+reporting_rule = "最终汇报必须写清实际改动、验证证据、剩余风险；复杂任务同步 OKR/KR 进度。"
+ceo_scope = "CEO 只制定方向、OKR 和验收口径，不参与日常实现。"
 
 [org_hierarchy]
 L0 = "CEO：定方向、OKR、验收口径，不参与日常实现。"
 L1 = "Product Manager / OKR Owner：承接产品方向、拆 KR、定优先级、裁边界、做阶段验收，并确保 sprint 留档真实更新。"
 L2 = "IC Engineers：四个一线交付同学，按领域直接实现、测试、修复、交付。"
-chain = ["CEO", "product-okr-owner", "robot-software-engineer | rober-hardware-engineer | autonomy-engineer | user-software-engineer"]
+# 汇报链路：CEO -> L1 PO -> L2 IC（四位并列）
+chain = [
+  "CEO",
+  "product-okr-owner",
+  "robot-software-engineer | rober-hardware-engineer | robot-algorithm-engineer | full-stack-software-engineer",
+]
 escalation = "方向不清、范围冲突、跨多个 L2、阶段验收、OKR/KR 更新时升级到 L1。"
 
+# ---------------------------------------------------------------------------
+# core_team：业务可读的角色一句话定位（与 [[roles]] 中 id 完全对齐）
+# 注：TOML key 不能含 `-`，所以这里用 `_` 形式，对应关系见 alias_map。
+# ---------------------------------------------------------------------------
 [core_team]
 product_okr_owner = "Product Manager / OKR Owner：拉齐产品北极星、拆 KR、定抓手、划边界、给验收口径；不做流程门神。"
-robot_software_engineer = "Robot Platform Engineer：机器人软件中台，负责 ROS2 主链路、接口 glue、bringup、电梯状态机和集成验证。"
-hardware_engineer = "Hardware Infra Engineer：硬件基建与履约，负责 WAVE ROVER、ESP32、Orange Pi、UART、底盘协议和上车证据。"
-autonomy_engineer = "Autonomy Algorithm Engineer：自主能力增长引擎，负责 SLAM、Nav2、巡逻、未来可选视觉感知和送达闭环与电梯 assisted delivery 必须能力。"
+robot_software_engineer = "Robot Platform Engineer：机器人软件中台，负责 ROS2 主链路、接口 glue、bringup、行为状态机和集成验证。"
+rober_hardware_engineer = "Hardware Infra Engineer：硬件基建与履约，负责 WAVE ROVER、ESP32、Orange Pi、UART、底盘协议、电气接线和上车证据。"
+robot_algorithm_engineer = "Robot Algorithm Engineer：自主能力增长引擎，负责 SLAM、Nav2、巡逻、视觉识别、电梯/楼层认知和送达闭环。"
 full_stack_software_engineer = "User Touchpoint Full-Stack Engineer：用户触点全栈，负责手机/Web/API、远程控制、状态展示和 ROS2 后端联调。"
 
+# core_team key（下划线）→ 实际 agent id（连字符）的映射
+[alias_map]
+product_okr_owner = "product-okr-owner"
+robot_software_engineer = "robot-software-engineer"
+rober_hardware_engineer = "rober-hardware-engineer"
+robot_algorithm_engineer = "robot-algorithm-engineer"
+full_stack_software_engineer = "full-stack-software-engineer"
+
+# ---------------------------------------------------------------------------
+# execution_policy：执行纪律、Sprint 派单和并行规则
+# ---------------------------------------------------------------------------
 [execution_policy]
 principle = "先交付可验证结果，再同步更新迭代记录；不得为了分工而分工，但所有任务都必须进入 sprint 留档。"
 product_trigger = "只有 OKR/KR 更新、产品方向拆解、用户价值不清、范围冲突、跨多个一线同学或阶段验收时，才启用 product-okr-owner。"
 collaboration_rule = "跨角色任务由最相关一线同学主责，其他同学只补专业事实或接口边界，不新增管理层。"
-tech_plan_execution_rule = "当当前 sprint 的 tech-plan.md 已完成，且写清任务分工、文件范围、接口影响、验收命令和风险边界时，默认进入实现阶段：1 owner 任务仅在 parallel_solo_exemptions 三条之一成立时合法，且必须派 1 个子agent 实现；2+ owner 且文件范围互不重叠时必须按 parallel_default 并行启动对应子agent；2+ owner 但接口耦合时必须指定 1 个主责 owner 做最终集成验证，其他 owner 以并行只读咨询/事实补充方式介入。只有用户明确要求只做计划、不要实现或等确认时才暂停。详见 process_doc_reference。"
-sub_agent_dispatch_rule = "跨运行时规则：Cursor 使用 Task(subagent_type=generalPurpose)；Codex 使用 spawn_agent(agent_type=worker)；其他运行时必须使用等价子 agent 工具。主节点严禁直接写产品代码、测试代码、硬件配置或直接运行实现/测试/修复命令。所有编码/测试/修复必须派发给对应角色子 agent，prompt 头部必须注入对应 .codex/agents/<role>.toml 的 prompt 字段。无子 agent 工具时只能降级为 read-only/planning，并明确说明不能执行实现。"
+tech_plan_execution_rule = """
+当当前 sprint 的 tech-plan.md 已完成，且写清任务分工、文件范围、接口影响、验收命令和风险边界时，默认进入实现阶段：
+  - 1 owner 任务仅在 parallel_solo_exemptions 三条之一成立时合法，且必须派 1 个子 agent 实现；
+  - 2+ owner 且文件范围互不重叠时，必须按 parallel_default 并行启动对应子 agent；
+  - 2+ owner 但接口耦合时，必须指定 1 个主责 owner 做最终集成验证，其他 owner 以并行只读咨询/事实补充方式介入；
+  - 只有用户明确要求"只做计划 / 不要实现 / 等确认"时才暂停。
+详见 process_doc_reference。
+"""
+sub_agent_dispatch_rule = """
+跨运行时规则：
+  - Cursor：Task(subagent_type=generalPurpose)；
+  - Codex：spawn_agent(agent_type=worker)；
+  - 其他运行时必须使用等价子 agent 工具。
+主节点严禁直接写产品代码、测试代码、硬件配置或直接运行实现/测试/修复命令。
+所有编码 / 测试 / 修复必须派发给对应角色子 agent，prompt 头部必须注入对应
+.codex/agents/<role>.toml 的 prompt 字段全文。
+无子 agent 工具时只能降级为 read-only / planning，并明确说明当前运行时不能执行实现。
+"""
 verification_rule = "能运行测试、构建、静态检查、dry-run 或 smoke 时必须运行；失败默认继续定位和修复。"
-documentation_rule = "Sprint 文档仍是迭代主线；执行优先不是不写文档，而是边交付边更新关键证据和风险。"
+documentation_rule = "Sprint 文档是迭代主线；执行优先不是不写文档，而是边交付边更新关键证据和风险。"
 parallel_default = "2-4 sub agents per sprint when 2+ non-overlapping owners exist; main node must dispatch in a single message, no serialization."
 parallel_solo_exemptions = [
   "hardware blocker locks all parallel software work (must name the blocker and locked Objectives in pre_start.md)",
   "single-file, single-owner, no interface coupling with other in-flight sprints (must list file path and declare no coupling in tech-plan.md)",
   "CEO explicitly requests read-only or solo lane (must quote CEO words in pre_start.md)",
 ]
-epic_micro_doc_policy = "Epic sprint: full six docs (pre_start/prd/tech-plan/tech-done/side2side_check/final). Micro sprint: tech-done.md only. Sprint type must be declared as sprint_type=epic|micro in pre_start.md or tech-done.md. Misclassifying epic as micro requires immediate upgrade and backfilling missing five docs."
-okr_lowest_objective_rule = "Each Epic sprint tech-plan.md must include section 'OKR 最低优先级核对' justifying whether current sprint targets the lowest-completeness Objective listed in OKR.md section 4.1, and if not, why (e.g. blocker locked, no parallelizable software work, CEO override, covered by parallel sprint). Soft reminder, non-blocking but must be revisited in final.md."
-repeated_blocker_cap = "Same root-cause blocker may consume at most 2 sprints (where final.md main conclusion is blocked on same root cause). From sprint 3 onward, must either switch Objective (with reason in pre_start.md) or escalate to CEO (with escalation reason and request in pre_start.md). CEO may explicitly reset the counter."
+epic_micro_doc_policy = """
+Epic sprint：完整六文档（pre_start / prd / tech-plan / tech-done / side2side_check / final）。
+Micro sprint：仅强制 tech-done.md。
+sprint_type 必须在 pre_start.md 或 tech-done.md 首节显式声明为 epic 或 micro。
+误判 epic 为 micro 必须立即升级并补齐缺失五个文档。
+"""
+okr_lowest_objective_rule = """
+每个 Epic sprint 的 tech-plan.md 必须包含 `## OKR 最低优先级核对` 段，说明当前 sprint 是否针对 OKR.md 4.1 节完成度最低的 Objective；
+若不针对，必须给出理由（例如 blocker 锁死、无可并行软件工作、CEO 指定其他优先级、已有并行 sprint 覆盖等）。
+属于软提醒，不阻塞实现，但 final.md 收口时需复盘理由是否仍成立。
+"""
+repeated_blocker_cap = """
+同一根因 blocker 最多消费 2 轮 sprint（即 final.md 主要结论是 blocked 在同一根因）。
+第 3 轮起必须二选一：
+  1) 切换 Objective（pre_start.md 写明切换原因和新目标 Objective）；
+  2) 升级 CEO 求决策（pre_start.md 引用升级原因和具体诉求）。
+CEO 明确"继续攻坚"时计数重置，但需引用原话。
+"""
 process_doc_reference = "docs/process/iteration_velocity.md"
 
+# ---------------------------------------------------------------------------
+# 运行时适配
+# ---------------------------------------------------------------------------
 [runtime_adapters]
 cursor_task_type = "generalPurpose"
 codex_agent_type = "worker"
 cursor_invocation = "Task(subagent_type=generalPurpose)"
 codex_invocation = "spawn_agent(agent_type=worker)"
-missing_subagent_tool_fallback = "只做 read-only/planning，说明当前运行时缺少子 agent 工具，不得直接实现。"
+missing_subagent_tool_fallback = "只做 read-only / planning，说明当前运行时缺少子 agent 工具，不得直接实现。"
+sub_agent_prompt_structure = [
+  "[角色 System Prompt]（从 .codex/agents/<role>.toml 的 prompt 字段完整复制，不裁剪）",
+  "[本轮任务]（背景与目标）",
+  "[文件范围]（允许改动的路径，范围外不得改动）",
+  "[验收命令]（从 tech-plan.md 复制，子 agent 必须执行并给出结果）",
+  "[输出要求]（改动文件列表 + 验证结果 + 失败定位 + 剩余风险）",
+]
 
+# ---------------------------------------------------------------------------
+# Sprint 留档纪律
+# ---------------------------------------------------------------------------
 [sprint_docs]
 trigger = "所有任务必须归入当前活跃 sprint；如果没有活跃 sprint，必须先创建新的 sprints/<round>/pre_start.md。"
-order = ["pre_start.md", "prd.md", "tech-plan.md", "tech-done.md", "side2side_check.md", "final.md"]
+epic_order = [
+  "pre_start.md",
+  "prd.md",
+  "tech-plan.md",
+  "tech-done.md",
+  "side2side_check.md",
+  "final.md",
+]
+micro_required = ["tech-done.md"]
 contract = "每个阶段写清状态后再进入下一阶段；禁止一次性预生成整轮文档冒充进度。"
-update_rule = "所有代码、配置、文档、流程或 agent 变更，都必须至少更新当前 sprint 的 tech-done；涉及验收或风险状态变化时，同时更新 side2side_check 或 final。"
+update_rule = "所有代码、配置、文档、流程或 agent 变更，都必须至少更新当前 sprint 的 tech-done.md；涉及验收或风险状态变化时同步更新 side2side_check.md 或 final.md。"
 
+# ---------------------------------------------------------------------------
+# 任务路由：用途/标签 → 默认 owner
+# ---------------------------------------------------------------------------
 [routing]
 product_or_okr = ["product-okr-owner"]
 ros2_integration = ["robot-software-engineer"]
 interfaces_behavior_bringup = ["robot-software-engineer"]
 hardware_uart_chassis = ["rober-hardware-engineer"]
-slam_nav_future_vision_autonomy = [""robot-algorithm-engineer""]
-mobile_web_api_ui = ["user-software-engineer"]
+slam_nav_vision_autonomy = ["robot-algorithm-engineer"]
+mobile_web_api_ui = ["full-stack-software-engineer"]
 stage_acceptance = ["product-okr-owner", "robot-software-engineer"]
 
+# ---------------------------------------------------------------------------
+# 红线
+# ---------------------------------------------------------------------------
 [red_lines]
 all = [
   "不读 AGENTS.md 就开始复杂任务。",
@@ -86,6 +176,14 @@ product = [
   "不隐藏失败原因和恢复路径。",
 ]
 
+# ===========================================================================
+# 角色清单 [[roles]]
+# 约定：
+#   - id        与磁盘上 .toml 内声明的 id 完全一致；
+#   - file      指向磁盘上实际存在的 .toml 文件；
+#   - 路径与 ID 不一致的历史遗留以"实际文件 + 角色 id"双字段共存，方便检索。
+# ===========================================================================
+
 [[roles]]
 id = "product-okr-owner"
 enabled = true
@@ -98,7 +196,13 @@ summary = "产品北极星、OKR/KR、用户价值、优先级和验收口径。
 cursor_task_type = "generalPurpose"
 codex_agent_type = "worker"
 prompt_field = "prompt"
-capabilities = ["okr-planning", "kr-breakdown", "scope-control", "acceptance-criteria", "sprint-documentation"]
+capabilities = [
+  "okr-planning",
+  "kr-breakdown",
+  "scope-control",
+  "acceptance-criteria",
+  "sprint-documentation",
+]
 tags = ["product", "okr", "kr", "scope", "acceptance", "user-value"]
 read_first = ["AGENTS.md", "OKR.md"]
 owner_paths = ["OKR.md", "sprints/", "docs/product/"]
@@ -117,17 +221,33 @@ summary = "机器人软件中台：ROS2 主链路、接口、bringup、行为状
 cursor_task_type = "generalPurpose"
 codex_agent_type = "worker"
 prompt_field = "prompt"
-capabilities = ["ros2-integration", "interfaces", "behavior-state-machine", "bringup", "integration-verification"]
+capabilities = [
+  "ros2-integration",
+  "interfaces",
+  "behavior-state-machine",
+  "bringup",
+  "integration-verification",
+]
 tags = ["ros2", "integration", "bringup", "behavior", "interfaces", "delivery"]
 read_first = ["AGENTS.md", "OKR.md"]
-owner_paths = ["onboard/src/ros2_trashbot_interfaces/", "onboard/src/ros2_trashbot_behavior/", "onboard/src/ros2_trashbot_bringup/", "onboard/scripts/", "scripts/", "docs/"]
+owner_paths = [
+  "onboard/src/ros2_trashbot_interfaces/",
+  "onboard/src/ros2_trashbot_behavior/",
+  "onboard/src/ros2_trashbot_bringup/",
+  "onboard/scripts/",
+  "scripts/",
+  "docs/",
+]
 requires_vendor_source = false
 can_edit = true
 
 [[roles]]
 id = "rober-hardware-engineer"
 enabled = true
-file = ".codex/agents/rober-hardware-engineer.toml"
+# 注：磁盘文件名为 robot-hardware-engineer.toml，
+# 而角色 id 沿用 AGENTS.md 中的 "rober-hardware-engineer"（项目名 rober 的双关），
+# 两者已知不一致，但都是当前正确状态，禁止单方修改其中一方。
+file = ".codex/agents/robot-hardware-engineer.toml"
 level = "engineer"
 org_level = "L2"
 org_rank = "IC Engineer"
@@ -136,36 +256,67 @@ summary = "硬件基建与履约：WAVE ROVER、ESP32、Orange Pi、UART、底�
 cursor_task_type = "generalPurpose"
 codex_agent_type = "worker"
 prompt_field = "prompt"
-capabilities = ["vendor-source-verification", "uart", "wave-rover", "esp32", "orange-pi", "hardware-smoke"]
+capabilities = [
+  "vendor-source-verification",
+  "uart",
+  "wave-rover",
+  "esp32",
+  "orange-pi",
+  "hardware-smoke",
+]
 tags = ["hardware", "wave-rover", "esp32", "orange-pi", "uart", "chassis"]
 read_first = ["AGENTS.md", "docs/vendor/VENDOR_INDEX.md"]
-owner_paths = ["onboard/src/ros2_trashbot_hardware/", "onboard/src/ros2_trashbot_bringup/", "docs/hardware/", "docs/vendor/"]
+owner_paths = [
+  "onboard/src/ros2_trashbot_hardware/",
+  "onboard/src/ros2_trashbot_bringup/",
+  "docs/hardware/",
+  "docs/vendor/",
+]
 requires_vendor_source = true
 can_edit = true
 
 [[roles]]
-id = ""robot-algorithm-engineer""
+id = "robot-algorithm-engineer"
 enabled = true
-file = ".codex/agents/autonomy-engineer.toml"
+file = ".codex/agents/robot-algorithm-engineer.toml"
 level = "engineer"
 org_level = "L2"
 org_rank = "IC Engineer"
 layer = "delivery"
-summary = "自主能力增长引擎：SLAM、Nav2、巡逻、未来可选视觉感知和送达闭环与电梯 assisted delivery 必须能力。"
+summary = "自主能力增长引擎：SLAM、Nav2、巡逻、视觉识别、电梯/楼层认知和送达闭环。"
 cursor_task_type = "generalPurpose"
 codex_agent_type = "worker"
 prompt_field = "prompt"
-capabilities = ["slam", "nav2", "waypoints", "patrol", "future-vision", "autonomy-dry-run"]
+capabilities = [
+  "slam",
+  "nav2",
+  "waypoints",
+  "patrol",
+  "vision",
+  "elevator-floor-perception",
+  "autonomy-dry-run",
+]
 tags = ["autonomy", "nav2", "slam", "vision", "patrol", "trash-detection"]
 read_first = ["AGENTS.md", "OKR.md"]
-owner_paths = ["onboard/src/ros2_trashbot_nav/", "onboard/src/ros2_trashbot_vision/", "onboard/src/ros2_trashbot_behavior/", "pc-tools/", "docs/navigation/", "docs/vision/"]
+owner_paths = [
+  "onboard/src/ros2_trashbot_nav/",
+  "onboard/src/ros2_trashbot_vision/",
+  "onboard/src/ros2_trashbot_behavior/",
+  "pc-tools/",
+  "docs/navigation/",
+  "docs/vision/",
+]
 requires_vendor_source = false
 can_edit = true
 
 [[roles]]
-id = "user-software-engineer"
+id = "full-stack-software-engineer"
 enabled = true
-file = ".codex/agents/user-software-engineer.toml"
+# 注：磁盘文件 full-stack-software-engineer.toml 内部当前 id 字段仍为
+# "user-software-engineer"，是历史命名遗留。AGENTS.md 已迁移到
+# full-stack-software-engineer。registry 以 AGENTS.md 为准；
+# 如需统一，请同步修正角色文件内的 id 字段。
+file = ".codex/agents/full-stack-software-engineer.toml"
 level = "engineer"
 org_level = "L2"
 org_rank = "IC Engineer"
@@ -174,9 +325,25 @@ summary = "用户触点全栈：手机界面、Web/API、远程控制、状态�
 cursor_task_type = "generalPurpose"
 codex_agent_type = "worker"
 prompt_field = "prompt"
-capabilities = ["mobile-ui", "web-ui", "api", "remote-control", "status-display", "ros2-backend-integration"]
+capabilities = [
+  "mobile-ui",
+  "web-ui",
+  "api",
+  "remote-control",
+  "status-display",
+  "ros2-backend-integration",
+]
 tags = ["full-stack", "mobile", "web", "api", "ui", "ros2-integration"]
 read_first = ["AGENTS.md", "OKR.md"]
-owner_paths = ["onboard/src/", "cloud-relay/", "pc-tools/", "docs/product/", "docs/interfaces/", "web/", "frontend/", "mobile/"]
+owner_paths = [
+  "onboard/",
+  "cloud-relay/",
+  "pc-tools/",
+  "docs/product/",
+  "docs/interfaces/",
+  "web/",
+  "frontend/",
+  "mobile/",
+]
 requires_vendor_source = false
 can_edit = true
