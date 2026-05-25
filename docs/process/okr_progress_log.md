@@ -6,6 +6,30 @@
 
 ---
 
+## 2026-05-26 系列
+
+### 2026-05-26 00-01｜cloud-phone-command-api-mainline｜phone to cloud command enqueue mainline
+
+本轮 `sprints/2026.05.26_00-01_cloud-phone-command-api-mainline/` 执行 `cloud_phone_command_api_mainline` epic closeout。用户价值是把 Objective 5 从连续多轮只读 metadata wrapper 推进到真实可调用的 phone -> cloud command enqueue 主链路：手机/云端可以提交 `collect`、`confirm_dropoff`、`cancel` 三类任务级命令，relay 将其规范化后写入既有 command queue，robot 仍通过 `/robots/{robot_id}/commands/next` outbound polling 领取。证据边界为 `software_proof_docker_cloud_phone_command_api_gate`。
+
+Task A Robot Software Engineer 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py`、`docs/product/remote_4g_mvp.md`、`docs/product/cloud_4g_infrastructure.md`、`cloud-relay/README.md`。新增 bearer-gated `POST /api/commands/collect`、`POST /api/commands/confirm-dropoff`、`POST /api/commands/cancel`，body 读取 `robot_id`、`command_id` 或 `idempotency_key`、任务 `payload`，规范化为既有 `collect` / `confirm_dropoff` / `cancel` 并复用 `store.submit_command()`。返回 receipt 保留 `capability=cloud_phone_command_api`、`software_proof_docker_cloud_phone_command_api_gate`、`queued_not_delivery_success`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。验证通过：`py_compile` passed；focused unittest 输出 `Ran 3 tests in 1.710s OK`；scoped `git diff --check` passed。
+
+Task B User Touchpoint Full-Stack Engineer 更新 `mobile/web/app.js`、`mobile/web/test_mobile_web_entrypoint.py`、`mobile/web/fixtures/robot_diagnostics_cloud_phone_command_api.json`、`docs/product/mobile_user_flow.md`。`mobile/web` 主动作 endpoint 切到 `/api/commands/collect`、`/api/commands/confirm-dropoff`、`/api/commands/cancel`，提交 `trashbot.cloud_phone_command_api_request.v1` envelope，并新增 receipt 展示，明确“已入队/等待机器人处理，不是送达成功”。验证通过：`node --check mobile/web/app.js` passed；focused unittest 输出 `Ran 2 tests in 0.048s OK`；scoped `git diff --check` passed。
+
+Task C Product closeout 创建 `tech-done.md`、`side2side_check.md`、`final.md`，并更新 `OKR.md` 与本进度日志。Combined validation 通过：Robot `py_compile`、Robot focused unittest、mobile `node --check`、mobile focused unittest、scoped `git diff --check` 均通过。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | 本轮不触碰硬件桥、串口、WAVE ROVER、UART、HIL、2D LiDAR / ToF 或 vendor-source 材料；`PRRT_kwDOSWB9286CJ3tX` remains unresolved / `hardware_material_pending`。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | 本轮只证明 command enqueue software mainline；没有真实 task record、真实电梯、dropoff/cancel completion、verified terminal result、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保守保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal 或 field task record；command enqueue 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | `mobile/web` 已接入任务级 `/api/commands/*` 和 queued receipt，但仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice 或 true phone/browser acceptance。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 从约 68% 提升到约 72% | 本轮新增真实可调用的 phone -> cloud command enqueue API 和 mobile endpoint 接入，明显区别于只读 evidence/review/handoff wrapper。仍不证明公网 HTTPS/TLS、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、production worker/cutover、多实例一致性、真实手机/browser、verified terminal result、Nav2/fixed-route、WAVE ROVER、HIL、route/elevator field pass 或 delivery success。 |
+
+本轮验证范围：Docker/local software proof 和 focused unit/static checks。Product 未运行 Docker/Humble build、真实公网、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、真实手机/browser、WAVE ROVER/UART、HIL、route/elevator field execution 或 delivery-success validation。
+
+更新时间：2026-05-26 00:58 Asia/Shanghai。
+
 ## 2026-05-25 系列
 
 ### 2026-05-25 00-01｜cloud-external-evidence-review-handoff-followup-escalation-status｜external evidence review handoff follow-up escalation status

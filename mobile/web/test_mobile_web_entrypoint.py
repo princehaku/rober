@@ -14,6 +14,9 @@ CLOUD_ACK_LOOKUP_PENDING_FIXTURE = (
 CLOUD_ACK_ACCEPTED_RESULT_PENDING_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_ack_accepted_result_pending_guard.json"
 )
+CLOUD_PHONE_COMMAND_API_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_phone_command_api.json"
+)
 CLOUD_TERMINAL_RESULT_VERIFICATION_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_terminal_result_verification_guard.json"
 )
@@ -5293,6 +5296,79 @@ class CloudAckLookupPendingStatusGuardMobileTest(unittest.TestCase):
             "traceback",
             "checksum",
             "complete artifact",
+            "delivery_success\": true",
+            "primary_actions_enabled\": true",
+            "safe_to_control\": true",
+        ):
+            self.assertNotIn(forbidden, fixture_text)
+
+
+class CloudPhoneCommandApiMobileTest(unittest.TestCase):
+    def read_web(self, name):
+        return (WEB_ROOT / name).read_text(encoding="utf-8")
+
+    def test_cloud_phone_command_api_submission_and_receipt_are_phone_safe(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_PHONE_COMMAND_API_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+        doc = DOC.read_text(encoding="utf-8")
+
+        # 手机端主动作必须走任务级云命令 API，并渲染 queued receipt，而不是暴露机器人内部接口。
+        self.assertIn('start: "/api/commands/collect"', app)
+        self.assertIn('confirm_dropoff: "/api/commands/confirm-dropoff"', app)
+        self.assertIn('cancel: "/api/commands/cancel"', app)
+        self.assertIn("CLOUD_PHONE_COMMAND_API_BOUNDARY", app)
+        self.assertIn("cloudPhoneCommandEnvelope", app)
+        self.assertIn("normalizeCloudPhoneCommandReceipt", app)
+        self.assertIn("renderCloudPhoneCommandReceipt", app)
+        self.assertIn("cloudPhoneCommandReceiptPanel", app)
+        self.assertIn("queued_not_delivery_success", app)
+        self.assertIn("已入队", app)
+        self.assertIn("不是送达成功", app)
+
+        # fixture 证明 receipt 只表达入队和等待处理，所有主操作/成功语义保持 false。
+        receipt = fixture["cloud_phone_command_receipt"]
+        self.assertEqual(receipt["capability"], "cloud_phone_command_api")
+        self.assertEqual(receipt["ack_semantics"], "queued_not_delivery_success")
+        self.assertEqual(receipt["delivery_success"], False)
+        self.assertEqual(receipt["primary_actions_enabled"], False)
+        self.assertEqual(receipt["safe_to_control"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        self.assertIn("software_proof_docker_cloud_phone_command_api_gate", fixture_text)
+        self.assertIn("等待机器人处理", fixture_text)
+
+        # 产品文档必须同步写清 API、receipt 和 false-state 边界。
+        self.assertIn("cloud_phone_command_api", doc)
+        self.assertIn("/api/commands/collect", doc)
+        self.assertIn("/api/commands/confirm-dropoff", doc)
+        self.assertIn("/api/commands/cancel", doc)
+        self.assertIn("queued_not_delivery_success", doc)
+        self.assertIn("已入队/等待机器人处理，不是送达成功", doc)
+
+    def test_cloud_phone_command_api_fixture_stays_desensitized(self):
+        fixture = json.loads(CLOUD_PHONE_COMMAND_API_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+
+        # 回执 fixture 不允许泄漏 raw 机器人入口、ROS/底盘细节、凭证、本地路径或完成证明。
+        for forbidden in (
+            "/robots/",
+            "/cmd_vel",
+            "raw ros topic",
+            "raw json",
+            "authorization",
+            "bearer",
+            "token",
+            "serial",
+            "uart",
+            "wave rover",
+            "database url",
+            "queue url",
+            "/tmp/",
+            "/ws/",
+            "complete artifact",
+            "checksum",
             "delivery_success\": true",
             "primary_actions_enabled\": true",
             "safe_to_control\": true",

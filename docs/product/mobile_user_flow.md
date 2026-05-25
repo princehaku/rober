@@ -67,6 +67,10 @@ The first operator gateway is intentionally small: an API-first local HTTP servi
 
 This is enough for a phone page or local browser control surface to complete a dry-run task and drive the manual dropoff confirmation service.
 
+For the 4G/cloud path, `mobile/web` now prefers the task-level `cloud_phone_command_api` endpoints: `POST /api/commands/collect`, `POST /api/commands/confirm-dropoff`, and `POST /api/commands/cancel`. The submitted body is a phone-safe cloud command envelope with `capability=cloud_phone_command_api`, `robot_id`, `command_type`, `command_id`, `idempotency_key`, `client_reference`, and a nested task payload. It must not expose raw `/robots/*`, ROS topics, `/cmd_vel`, serial/UART/WAVE ROVER details, credentials, tokens, local paths, full artifacts, or checksums.
+
+The mobile receipt panel renders only the sanitized `cloud_phone_command_api` receipt. Its required user copy is: 已入队/等待机器人处理，不是送达成功. `ack_semantics=queued_not_delivery_success`, `delivery_success=false`, `primary_actions_enabled=false`, `safe_to_control=false`, and `evidence_boundary=software_proof_docker_cloud_phone_command_api_gate` must stay visible. A queued receipt is useful for support and duplicate-submit prevention, but it is not a delivery result, not dropoff completion, not cancel completion, not HIL, not true phone/browser proof, and not production DB/queue or 4G proof by itself.
+
 ## Mobile Web Entrypoint
 
 The standalone phone entrypoint now lives in `mobile/web/`:

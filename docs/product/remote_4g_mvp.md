@@ -13,6 +13,9 @@ The real 4G product path is not phone-to-robot WiFi. A 4G robot should initiate 
 ## MVP Cloud API
 
 ```text
+POST /api/commands/collect
+POST /api/commands/confirm-dropoff
+POST /api/commands/cancel
 POST /robots/{robot_id}/commands
 GET  /robots/{robot_id}/commands/next?last_ack_id=<id>
 POST /robots/{robot_id}/status
@@ -20,6 +23,18 @@ GET  /robots/{robot_id}/status
 POST /robots/{robot_id}/commands/{command_id}/ack
 GET  /robots/{robot_id}/commands/{command_id}/ack
 ```
+
+The phone-facing command API is bearer-gated and task-level only. Each
+`POST /api/commands/*` body must include `robot_id`, may include
+`command_id` or `idempotency_key`, and may carry a task `payload`. The relay
+normalizes those requests into the existing `collect`, `confirm_dropoff`, or
+`cancel` command store shape, then returns a phone-safe receipt with
+`capability=cloud_phone_command_api`,
+`evidence_boundary=software_proof_docker_cloud_phone_command_api_gate`,
+`ack_semantics=queued_not_delivery_success`, `delivery_success=false`,
+`primary_actions_enabled=false`, and `safe_to_control=false`. Duplicate
+idempotency keys return the existing command id and duplicate info; a successful
+receipt still only means queued for robot polling, not delivery success.
 
 The first implementation uses HTTP polling so it is testable without a real 4G SIM or cloud account. A future MQTT or WebSocket transport must preserve the same command/status/ack semantics.
 

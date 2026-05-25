@@ -15,6 +15,7 @@
   - 接收 onboard 的 ack 回执（`/robots/{robot_id}/commands/{id}/ack`）
 - **phone-safe JSON API**：
   - 向手机 PWA 暴露 `trashbot.phone_readiness.v1`、`trashbot.command_safety.v1`、`trashbot.phone_offline_resume_readiness.v1` 等 schema 的 JSON
+  - 向手机/PWA 暴露 bearer-gated 任务级提交入口：`POST /api/commands/collect`、`POST /api/commands/confirm-dropoff`、`POST /api/commands/cancel`
   - **schema 字段、值域、`evidence_boundary` 由本目录单一维护**，onboard / mobile 不发明
 - **健康检查 & 生产 preflight**：
   - `/healthz` / `/readyz` 容器存活与就绪探针
@@ -128,6 +129,32 @@ API/probe/control routes stay ahead of static serving: `/api/*`, `/robots/*`, `/
 The same handler also exposes `GET /api/status` and `GET /api/diagnostics` for the hosted shell without bearer auth. These endpoints select `TRASHBOT_REMOTE_CLOUD_DEFAULT_ROBOT_ID` or `trashbot-001`, read the latest relay `/robots/{robot_id}/status` when available, then return a phone-safe copy plus a blocked `cloud_hosted_mobile_web_gate` summary. If latest status already contains an allow-listed safe `remote_readiness.degradation_state` (`auth_failed`, `cloud_poll_backoff`, `manual_takeover_required`, `command_pending`, `command_expired`, `command_duplicate_deduped`, `command_id_conflict`, `command_sequence_regression`, `cloud_unreachable`, or `malformed_response`), `/api/status` preserves that precise state instead of flattening it to only `status_present`. Missing or stale status returns `overall_status=blocked` / `state=status_missing|status_stale` instead of 404. Primary controls always fail closed: `source=software_proof`, `delivery_success=false`, `primary_actions_enabled=false`, `safe_to_control=false`, `can_collect=false`, `can_confirm_dropoff=false`, `can_cancel=false`, `phone_readiness.can_continue=false`, and `command_safety.actions.*.enabled=false`.
 
 This shell and the same-origin static APIs do not require bearer auth because they are read-only phone surfaces. Any command/status/ACK robot contract path still uses the existing `trashbot.remote.v1` contract and bearer gate. The static APIs must not expose tokens, Authorization headers, raw cloud payloads, raw ROS topics, `/cmd_vel`, serial devices, WAVE ROVER parameters, credentials, DB/queue URLs, local state paths, tracebacks, checksums, or complete artifacts.
+
+## Cloud phone command API
+
+手机/PWA 的真正任务提交入口现在由 independent relay 直接提供：
+
+```text
+POST /api/commands/collect
+POST /api/commands/confirm-dropoff
+POST /api/commands/cancel
+```
+
+这些 POST route 必须带 `Authorization: Bearer <token>`。请求 body 包含
+`robot_id`、可选 `command_id` 或 `idempotency_key`，以及任务 `payload`；relay
+会把它规范化成内部 command store 已支持的 `collect`、`confirm_dropoff` 或
+`cancel` 命令并复用 `submit_command()`。返回 receipt 固定携带
+`capability=cloud_phone_command_api`、
+`evidence_boundary=software_proof_docker_cloud_phone_command_api_gate`、
+`ack_semantics=queued_not_delivery_success`、`delivery_success=false`、
+`primary_actions_enabled=false`、`safe_to_control=false`、command id/type，以及
+`queue_sequence` 或 duplicate info。
+
+该 API 是任务级云端入队证明，不是底层运动控制入口，也不是送达证明。Bad
+action、bad body、bad `robot_id` 和 auth failed 都 fail closed；响应不得暴露
+Authorization、token、raw state path、ROS topic、`/cmd_vel`、serial/UART 或
+WAVE ROVER 字段。机器人 polling `/robots/{robot_id}/commands/next`、status 和
+ACK route 仍保持原有 `trashbot.remote.v1` 语义。
 
 生成 cloud deployment readiness artifact：
 

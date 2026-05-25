@@ -1,9 +1,9 @@
 const ENDPOINTS = {
   status: "/api/status",
   diagnostics: "/api/diagnostics",
-  start: "/api/collect",
-  confirm_dropoff: "/api/dropoff/confirm",
-  cancel: "/api/cancel",
+  start: "/api/commands/collect",
+  confirm_dropoff: "/api/commands/confirm-dropoff",
+  cancel: "/api/commands/cancel",
 };
 
 const ACTIONS = {
@@ -295,6 +295,8 @@ const WAVE_ROVER_HIL_PACKET_COLLECTION_DRILL_BOUNDARY = "software_proof_docker_w
 const TERMINAL_ACTION_BOUNDARY = "software_proof_docker_mobile_terminal_action_confirmation_gate";
 const ACK_PROCESSING_COPY = "ACK 只代表 accepted/processing evidence，不代表送达成功、投放完成或取消已落地。";
 const ACK_PROCESSING_ENUM = "accepted_processing_only_not_delivery_success";
+const CLOUD_PHONE_COMMAND_API_BOUNDARY = "software_proof_docker_cloud_phone_command_api_gate";
+const CLOUD_PHONE_COMMAND_API_COPY = "云端命令已入队，等待机器人处理；这不是送达成功、投放完成或取消完成。";
 const DEVICE_EVIDENCE_SCHEMA = "trashbot.mobile_device_evidence_capture.v1";
 const DEVICE_EVIDENCE_PACKAGE_SCHEMA = "trashbot.mobile_device_evidence_package.v1";
 const DEVICE_HANDOFF_SESSION_SCHEMA = "trashbot.mobile_device_handoff_session.v1";
@@ -579,6 +581,7 @@ const ELEVATOR_ACTION_PHASES = {
 let latestStatus = null;
 let latestDiagnostics = null;
 let latestActionFeedback = null;
+let latestCloudPhoneCommandReceipt = null;
 let latestAcceptanceBundle = null;
 let latestDeviceEvidencePackage = null;
 let latestDeviceHandoffSession = null;
@@ -58910,6 +58913,132 @@ function normalizeActionFeedback(value, source) {
   };
 }
 
+function safeRobotIdForCloudCommand(status) {
+  // robot_id 是云命令路由字段；缺失时使用保守占位，不读取本地路径、topic 或硬件细节。
+  const readiness = readinessFromStatus(status || {});
+  return safeText(
+    status?.robot_id || status?.robotId || readiness.robot_id || readiness.robotId,
+    "trashbot-default",
+  );
+}
+
+function normalizeCloudPhoneCommandReceipt(value, fallbackAction = "unknown") {
+  // receipt 只保留用户可读的入队/等待语义；不展示 token、raw route、ROS topic 或队列内部结构。
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const actionName = safeText(value.action || value.command || fallbackAction, fallbackAction);
+  const state = safeText(
+    value.submission_status || value.receipt_status || value.status || value.ack_state,
+    "queued",
+  );
+  return {
+    capability: safeText(value.capability, "cloud_phone_command_api"),
+    action: actionName,
+    actionCopy: safeText(value.action_copy || value.label, actionLabel(actionName)),
+    state,
+    commandId: safeText(value.safe_command_id || value.command_id || value.request_id, "未提供"),
+    robotId: safeText(value.robot_id || value.safe_robot_id, "未提供"),
+    clientReference: safeText(value.client_reference || value.idempotency_key, "未提供"),
+    ackSemantics: safeText(value.ack_semantics, "queued_not_delivery_success"),
+    safePhoneCopy: safeText(value.safe_phone_copy || value.summary, CLOUD_PHONE_COMMAND_API_COPY),
+    recoveryHint: safeText(value.recovery_hint || value.next_action || value.retry_hint, "等待机器人处理；长时间无更新时打开诊断或联系支持。"),
+    evidenceBoundary: safeText(value.evidence_boundary || value.proof_boundary, CLOUD_PHONE_COMMAND_API_BOUNDARY),
+    deliverySuccess: value.delivery_success === true ? false : false,
+    primaryActionsEnabled: value.primary_actions_enabled === true ? false : false,
+    safeToControl: value.safe_to_control === true ? false : false,
+  };
+}
+
+function cloudPhoneCommandReceiptFromStatus(status, readiness) {
+  // 后端可通过 status/readiness 回传上次 receipt；缺失时保留本地提交后的 receipt。
+  const candidates = [
+    status?.cloud_phone_command_receipt,
+    status?.mobile_action_receipt,
+    status?.phone_action_feedback,
+    readiness?.cloud_phone_command_receipt,
+    readiness?.mobile_action_receipt,
+    readiness?.phone_action_feedback,
+  ];
+  const provided = candidates.find((value) => value && typeof value === "object" &&
+    safeText(value.capability, "") === "cloud_phone_command_api");
+  return provided ? normalizeCloudPhoneCommandReceipt(provided, "unknown") : latestCloudPhoneCommandReceipt;
+}
+
+function ensureCloudPhoneCommandReceiptPanel() {
+  // 本轮只改 app.js，所以 receipt panel 用运行时注入；它只读展示回执，不新增控制按钮。
+  let panel = $("cloudPhoneCommandReceiptPanel");
+  if (panel) {
+    return panel;
+  }
+  const anchor = $("actionFeedbackStatusBadge")?.closest("section") ||
+    $("terminalActionPanel") ||
+    $("primaryJourneyTitle")?.closest("section");
+  if (!anchor || !anchor.parentElement) {
+    return null;
+  }
+  panel = document.createElement("section");
+  panel.id = "cloudPhoneCommandReceiptPanel";
+  panel.className = "cloud-phone-command-receipt-panel";
+  panel.setAttribute("aria-labelledby", "cloudPhoneCommandReceiptTitle");
+  panel.innerHTML = `
+    <div class="section-heading">
+      <h2 id="cloudPhoneCommandReceiptTitle">云端指令回执</h2>
+      <span id="cloudPhoneCommandReceiptBadge" class="gate-badge gate-blocked">等待回执</span>
+    </div>
+    <p id="cloudPhoneCommandReceiptCopy" class="message">提交 Start、Confirm 或 Cancel 后，这里只显示 cloud_phone_command_api 的 phone-safe receipt。</p>
+    <dl class="cloud-phone-command-receipt-grid">
+      <div><dt>Capability</dt><dd id="cloudPhoneCommandReceiptCapability">cloud_phone_command_api</dd></div>
+      <div><dt>动作 / 状态</dt><dd id="cloudPhoneCommandReceiptState">暂无提交</dd></div>
+      <div><dt>Safe Command ID</dt><dd id="cloudPhoneCommandReceiptCommandId">未提供</dd></div>
+      <div><dt>Robot ID</dt><dd id="cloudPhoneCommandReceiptRobotId">未提供</dd></div>
+      <div><dt>Client Reference</dt><dd id="cloudPhoneCommandReceiptClientReference">未提供</dd></div>
+      <div><dt>ACK Semantics</dt><dd id="cloudPhoneCommandReceiptAck">queued_not_delivery_success</dd></div>
+      <div><dt>Control Boundary</dt><dd id="cloudPhoneCommandReceiptControls">delivery_success=false / primary_actions_enabled=false / safe_to_control=false</dd></div>
+      <div><dt>Evidence Boundary</dt><dd id="cloudPhoneCommandReceiptBoundary">software_proof_docker_cloud_phone_command_api_gate</dd></div>
+    </dl>
+    <p id="cloudPhoneCommandReceiptRecovery" class="hint">入队只代表等待机器人处理；不是送达成功。</p>
+  `;
+  anchor.insertAdjacentElement("afterend", panel);
+  return panel;
+}
+
+function renderCloudPhoneCommandReceipt(status) {
+  const panel = ensureCloudPhoneCommandReceiptPanel();
+  if (!panel) {
+    return;
+  }
+  const readiness = readinessFromStatus(status || {});
+  const receipt = cloudPhoneCommandReceiptFromStatus(status || {}, readiness);
+  const badge = $("cloudPhoneCommandReceiptBadge");
+  if (!receipt) {
+    badge.className = "gate-badge gate-blocked";
+    badge.textContent = "等待回执";
+    $("cloudPhoneCommandReceiptCopy").textContent = "提交 Start、Confirm 或 Cancel 后，这里只显示 cloud_phone_command_api 的 phone-safe receipt。";
+    $("cloudPhoneCommandReceiptState").textContent = "暂无提交";
+    $("cloudPhoneCommandReceiptCommandId").textContent = "未提供";
+    $("cloudPhoneCommandReceiptRobotId").textContent = "未提供";
+    $("cloudPhoneCommandReceiptClientReference").textContent = "未提供";
+    $("cloudPhoneCommandReceiptAck").textContent = "queued_not_delivery_success";
+    $("cloudPhoneCommandReceiptRecovery").textContent = "入队只代表等待机器人处理；不是送达成功。";
+    return;
+  }
+  latestCloudPhoneCommandReceipt = receipt;
+  badge.className = "gate-badge gate-waiting";
+  badge.textContent = "已入队";
+  $("cloudPhoneCommandReceiptCapability").textContent = receipt.capability;
+  $("cloudPhoneCommandReceiptCopy").textContent = receipt.safePhoneCopy;
+  $("cloudPhoneCommandReceiptState").textContent = `${receipt.actionCopy} / ${receipt.state}`;
+  $("cloudPhoneCommandReceiptCommandId").textContent = receipt.commandId;
+  $("cloudPhoneCommandReceiptRobotId").textContent = receipt.robotId;
+  $("cloudPhoneCommandReceiptClientReference").textContent = receipt.clientReference;
+  $("cloudPhoneCommandReceiptAck").textContent = receipt.ackSemantics;
+  $("cloudPhoneCommandReceiptControls").textContent =
+    `delivery_success=${receipt.deliverySuccess} / primary_actions_enabled=${receipt.primaryActionsEnabled} / safe_to_control=${receipt.safeToControl}`;
+  $("cloudPhoneCommandReceiptBoundary").textContent = receipt.evidenceBoundary;
+  $("cloudPhoneCommandReceiptRecovery").textContent = receipt.recoveryHint;
+}
+
 function renderActionFeedback(status) {
   const readiness = readinessFromStatus(status);
   const feedback = actionFeedbackFromStatus(status, readiness) || latestActionFeedback;
@@ -60438,6 +60567,7 @@ function renderOfflineFailure() {
     evidence_boundary: ACTION_FEEDBACK_BOUNDARY,
   }, "local");
   renderActionFeedback({});
+  renderCloudPhoneCommandReceipt({});
   $("destinationSummary").textContent = "离线，无法确认目标垃圾站。";
   $("startBlockReason").textContent = "离线状态下 Start 安全关闭。";
   $("destinationGateBadge").textContent = "未确认目的地";
@@ -60660,6 +60790,7 @@ function renderStatus(status) {
   renderOfflineResume(status);
   renderVoicePrompt(status);
   renderActionFeedback(status);
+  renderCloudPhoneCommandReceipt(status);
   renderOperationLog(status);
   renderSupport(status);
   renderTerminalActionPanel();
@@ -60670,9 +60801,40 @@ function makeClientReference(actionName) {
   return `mobile_web_${actionName}_${Date.now()}`;
 }
 
+function commandTypeForAction(actionName) {
+  // UI 动作名映射到云端任务级 command_type，不暴露任何 ROS topic 或底盘控制细节。
+  if (actionName === "confirm_dropoff") {
+    return "confirm_dropoff";
+  }
+  return actionName === "cancel" ? "cancel" : "collect";
+}
+
+function cloudPhoneCommandEnvelope(actionName, clientReference, taskPayload) {
+  // cloud_phone_command_api envelope 是手机到云的任务请求；入队回执不是机器人终态。
+  return {
+    schema: "trashbot.cloud_phone_command_api_request.v1",
+    schema_version: 1,
+    capability: "cloud_phone_command_api",
+    source: "mobile_web",
+    robot_id: safeRobotIdForCloudCommand(latestStatus || {}),
+    command_type: commandTypeForAction(actionName),
+    command_id: clientReference,
+    idempotency_key: clientReference,
+    client_reference: clientReference,
+    client_timestamp: new Date().toISOString(),
+    payload: taskPayload,
+    safe_phone_copy: CLOUD_PHONE_COMMAND_API_COPY,
+    ack_semantics: "queued_not_delivery_success",
+    evidence_boundary: CLOUD_PHONE_COMMAND_API_BOUNDARY,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_to_control: false,
+  };
+}
+
 function buildStartPayload(clientReference) {
   // collect body 是手机确认 envelope，不是 ROS2 action result，也不证明送达成功。
-  return {
+  const taskPayload = {
     schema: "trashbot.mobile_task_start_confirmation.v1",
     schema_version: 1,
     source: "mobile_web",
@@ -60685,11 +60847,17 @@ function buildStartPayload(clientReference) {
     evidence_boundary: latestStartGate.evidenceBoundary,
     ack_semantics: "accepted_processing_only_not_delivery_success",
   };
+  return {
+    ...cloudPhoneCommandEnvelope("start", clientReference, taskPayload),
+    destination: taskPayload.destination,
+    target: taskPayload.target,
+    trash_loaded_confirmed: taskPayload.trash_loaded_confirmed,
+  };
 }
 
 function buildGenericActionPayload(actionName, clientReference) {
   // Confirm/Cancel 使用通用手机动作确认 envelope；ACK 仍只是接收/处理中证据。
-  return {
+  const taskPayload = {
     schema: "trashbot.mobile_action_confirmation.v1",
     schema_version: 1,
     source: "mobile_web",
@@ -60701,6 +60869,7 @@ function buildGenericActionPayload(actionName, clientReference) {
     ack_semantics: "accepted_processing_only_not_delivery_success",
     evidence_boundary: TERMINAL_ACTION_BOUNDARY,
   };
+  return cloudPhoneCommandEnvelope(actionName, clientReference, taskPayload);
 }
 
 function buildActionPayload(actionName, clientReference) {
@@ -60722,6 +60891,22 @@ function requestOptionsForAction(actionName, payload) {
 
 function setLocalActionFeedback(actionName, state, payload, overrides = {}) {
   // 本地反馈只描述手机提交层，不越权写成机器人已执行、已到站或已取消。
+  latestCloudPhoneCommandReceipt = normalizeCloudPhoneCommandReceipt({
+    capability: "cloud_phone_command_api",
+    action: actionName,
+    action_copy: actionLabel(actionName),
+    submission_status: state === "submitted" ? "queued_waiting_robot" : state,
+    safe_command_id: payload?.command_id,
+    robot_id: payload?.robot_id,
+    client_reference: payload?.client_reference,
+    ack_semantics: "queued_not_delivery_success",
+    safe_phone_copy: overrides.safe_phone_copy || CLOUD_PHONE_COMMAND_API_COPY,
+    recovery_hint: overrides.recovery_hint || "等待机器人处理；如长时间无 ACK，请打开诊断。",
+    evidence_boundary: CLOUD_PHONE_COMMAND_API_BOUNDARY,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    safe_to_control: false,
+  }, actionName);
   latestActionFeedback = normalizeActionFeedback({
     action: actionName,
     action_copy: actionLabel(actionName),
@@ -60735,6 +60920,7 @@ function setLocalActionFeedback(actionName, state, payload, overrides = {}) {
   }, "local");
   renderRecoveryDecision(latestStatus || {});
   renderActionFeedback(latestStatus || {});
+  renderCloudPhoneCommandReceipt(latestStatus || {});
 }
 
 function renderTerminalActionPanel() {
@@ -60799,6 +60985,20 @@ async function postAction(actionName, clientReference) {
   try {
     const responsePayload = await fetchJson(ENDPOINTS[actionName], requestOptionsForAction(actionName, payload));
     if (responsePayload && typeof responsePayload === "object") {
+      latestCloudPhoneCommandReceipt = normalizeCloudPhoneCommandReceipt({
+        ...responsePayload,
+        action: responsePayload.action || actionName,
+        action_copy: responsePayload.action_copy || action.label,
+        safe_command_id: responsePayload.safe_command_id || responsePayload.command_id || payload.command_id,
+        robot_id: responsePayload.robot_id || payload.robot_id,
+        client_reference: responsePayload.client_reference || payload.client_reference,
+        ack_semantics: responsePayload.ack_semantics || "queued_not_delivery_success",
+        safe_phone_copy: responsePayload.safe_phone_copy || CLOUD_PHONE_COMMAND_API_COPY,
+        evidence_boundary: responsePayload.evidence_boundary || CLOUD_PHONE_COMMAND_API_BOUNDARY,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        safe_to_control: false,
+      }, actionName);
       latestActionFeedback = normalizeActionFeedback({
         action: actionName,
         action_copy: action.label,
@@ -60811,6 +61011,7 @@ async function postAction(actionName, clientReference) {
         evidence_boundary: responsePayload.evidence_boundary || payload.evidence_boundary || ACTION_FEEDBACK_BOUNDARY,
       }, "http_success");
       renderActionFeedback(latestStatus || {});
+      renderCloudPhoneCommandReceipt(latestStatus || {});
     }
     await refreshStatus();
   } catch (_error) {

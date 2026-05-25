@@ -58,6 +58,9 @@ CLOUD_HOSTED_MOBILE_WEB_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_hosted_
 CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_hosted_mobile_web_degradation_passthrough_gate"
 )
+CLOUD_PHONE_COMMAND_API_CAPABILITY = "cloud_phone_command_api"
+CLOUD_PHONE_COMMAND_API_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_phone_command_api_gate"
+CLOUD_PHONE_COMMAND_API_ACK_SEMANTICS = "queued_not_delivery_success"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -7165,6 +7168,78 @@ def normalize_command(robot_id, payload, *, now=None):
     )
 
 
+def _phone_command_payload(body):
+    # 手机 API 允许前端传 payload，也允许把任务字段平铺在 body，减少 UI 绑定成本。
+    candidate = body.get("payload", {})
+    if isinstance(candidate, dict):
+        return dict(candidate)
+    raise ValueError("payload must be an object")
+
+
+def normalize_phone_command(action, body, *, now=None):
+    # /api/commands/* 是用户入口，必须在这里收敛成内部 command store 的既有合同。
+    now = _now() if now is None else float(now)
+    if not isinstance(body, dict):
+        raise ValueError("JSON body must be an object")
+    command_type = {
+        "collect": "collect",
+        "confirm-dropoff": "confirm_dropoff",
+        "cancel": "cancel",
+    }.get(str(action or "").strip())
+    if command_type not in COMMAND_TYPES:
+        raise ValueError("unsupported phone command action")
+
+    robot_id = _robot_key(body.get("robot_id"))
+    command_id = str(body.get("command_id") or body.get("idempotency_key") or "").strip()
+    command_payload = _phone_command_payload(body)
+    if "target" in body and "target" not in command_payload:
+        # collect 的目标常来自按钮上下文；平铺字段只进入任务 payload，不进入 receipt 顶层。
+        command_payload["target"] = body.get("target")
+    if "trash_type" in body and "trash_type" not in command_payload:
+        command_payload["trash_type"] = body.get("trash_type")
+    if "reason" in body and "reason" not in command_payload:
+        # cancel/confirm 的说明只作为行为层 payload，避免扩展新的 metadata wrapper。
+        command_payload["reason"] = body.get("reason")
+
+    command = {
+        "protocol_version": PROTOCOL_VERSION,
+        "id": command_id or f"phone-{command_type}-{int(now * 1000)}-{uuid.uuid4().hex[:8]}",
+        "type": command_type,
+        "expires_at": body.get("expires_at", now + 300.0),
+        "payload": command_payload,
+    }
+    return robot_id, command
+
+
+def phone_command_receipt(submit_payload):
+    # receipt 只证明入队；即使 store 返回 201，也绝不把它升级成送达或控制成功。
+    command = safe_value(submit_payload.get("command") if isinstance(submit_payload, dict) else {})
+    duplicate = bool(submit_payload.get("duplicate")) if isinstance(submit_payload, dict) else False
+    receipt = {
+        "ok": True,
+        "capability": CLOUD_PHONE_COMMAND_API_CAPABILITY,
+        "evidence_boundary": CLOUD_PHONE_COMMAND_API_EVIDENCE_BOUNDARY,
+        "ack_semantics": CLOUD_PHONE_COMMAND_API_ACK_SEMANTICS,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "safe_to_control": False,
+        "duplicate": duplicate,
+        "command_id": command.get("id"),
+        "command_type": command.get("type"),
+        "robot_id": command.get("robot_id"),
+        "safe_phone_copy": "任务已进入云端队列，等待机器人轮询处理；这不是送达成功。",
+    }
+    if submit_payload.get("queue_sequence") is not None:
+        # queue_sequence 只用于排队解释，不能作为执行完成或 ACK cursor 的替代。
+        receipt["queue_sequence"] = submit_payload.get("queue_sequence")
+    if duplicate:
+        receipt["duplicate_info"] = {
+            "state": "command_duplicate_deduped",
+            "safe_phone_copy": "同一个任务提交键已存在，本次返回已入队的任务。",
+        }
+    return safe_value(receipt)
+
+
 def _normalize_status_remote_readiness(payload):
     # status 可携带给手机看的安全摘要，但不能让上游 true 值打开任何远程控制语义。
     remote_readiness = payload.get("remote_readiness") if isinstance(payload, dict) else None
@@ -7351,12 +7426,31 @@ class FileBackedRelayStore:
             robot = self._robot_locked(robot_id)
             existing = robot["command_index"].get(command["id"])
             if existing:
-                return 200, {"ok": True, "command": dict(existing), "duplicate": True}
+                queue_sequence = next(
+                    (
+                        index + 1
+                        for index, queued in enumerate(robot["commands"])
+                        if queued.get("id") == command["id"]
+                    ),
+                    None,
+                )
+                return 200, {
+                    "ok": True,
+                    "command": dict(existing),
+                    "duplicate": True,
+                    "queue_sequence": queue_sequence,
+                }
             robot["commands"].append(command)
             robot["command_index"][command["id"]] = command
+            queue_sequence = len(robot["commands"])
             self._touch_locked(robot, "command_count")
             self._persist_locked()
-        return 201, {"ok": True, "command": dict(command), "duplicate": False}
+        return 201, {
+            "ok": True,
+            "command": dict(command),
+            "duplicate": False,
+            "queue_sequence": queue_sequence,
+        }
 
     def next_command(self, robot_id, last_ack_id=""):
         now = _now()
@@ -7553,11 +7647,32 @@ class SQLiteRelayStore:
             with self._session() as connection:
                 # 先查幂等键，保持 file store 和 HTTP response 的 duplicate 语义一致。
                 row = connection.execute(
-                    "SELECT command_json FROM commands WHERE robot_id = ? AND command_id = ?",
+                    """
+                    SELECT command_json,
+                           (
+                               SELECT COUNT(*)
+                               FROM commands AS before_command
+                               WHERE before_command.robot_id = commands.robot_id
+                                 AND (
+                                     before_command.created_at < commands.created_at
+                                     OR (
+                                         before_command.created_at = commands.created_at
+                                         AND before_command.command_id <= commands.command_id
+                                     )
+                                 )
+                           ) AS queue_sequence
+                    FROM commands
+                    WHERE robot_id = ? AND command_id = ?
+                    """,
                     (robot_key, command["id"]),
                 ).fetchone()
                 if row:
-                    return 200, {"ok": True, "command": json.loads(row["command_json"]), "duplicate": True}
+                    return 200, {
+                        "ok": True,
+                        "command": json.loads(row["command_json"]),
+                        "duplicate": True,
+                        "queue_sequence": int(row["queue_sequence"] or 0) or None,
+                    }
                 # command JSON 已在 normalize_command 内脱敏，SQLite 不额外保存原始请求体。
                 connection.execute(
                     """
@@ -7573,7 +7688,30 @@ class SQLiteRelayStore:
                     ),
                 )
                 self._touch(connection, robot_key, "command_count")
-        return 201, {"ok": True, "command": dict(command), "duplicate": False}
+                row = connection.execute(
+                    """
+                    SELECT COUNT(*) AS queue_sequence
+                    FROM commands
+                    WHERE robot_id = ?
+                      AND (
+                          created_at < ?
+                          OR (created_at = ? AND command_id <= ?)
+                      )
+                    """,
+                    (
+                        robot_key,
+                        float(command.get("created_at") or _now()),
+                        float(command.get("created_at") or _now()),
+                        command["id"],
+                    ),
+                ).fetchone()
+                queue_sequence = int(row["queue_sequence"] or 0) if row else None
+        return 201, {
+            "ok": True,
+            "command": dict(command),
+            "duplicate": False,
+            "queue_sequence": queue_sequence,
+        }
 
     def next_command(self, robot_id, last_ack_id=""):
         robot_key = _robot_key(robot_id)
@@ -11220,6 +11358,28 @@ def make_handler(store, bearer_token):
 
         def do_POST(self):
             parsed = urlparse(self.path)
+            if parsed.path.startswith("/api/commands/"):
+                # 用户入口先过 bearer gate；未授权请求只返回统一错误，不暴露 action 是否存在。
+                if not self._authorized():
+                    self._reject_auth()
+                    return
+                action = parsed.path.removeprefix("/api/commands/").strip("/")
+                try:
+                    body = parse_json_body(self)
+                except ValueError:
+                    self._send_json(400, phone_error("malformed_json", "request body was not valid JSON"))
+                    return
+                except TypeError as exc:
+                    self._send_json(400, phone_error("bad_request", str(exc)))
+                    return
+                try:
+                    robot_id, command = normalize_phone_command(action, body)
+                    status_code, payload = store.submit_command(robot_id, command)
+                    self._send_json(status_code, phone_command_receipt(payload))
+                    return
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", str(exc)))
+                    return
             route = _route(parsed.path)
             if not route:
                 self._send_json(404, phone_error("not_found", "path not found"))

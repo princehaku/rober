@@ -288,6 +288,105 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIsNone(payload["command"])
 
+    def test_cloud_phone_command_api_collect_receipt_and_robot_polling_contract(self):
+        status, payload = self.client.request(
+            "POST",
+            "/api/commands/collect",
+            {
+                "robot_id": "trashbot-001",
+                "idempotency_key": "phone-collect-001",
+                "payload": {"target": "trash_station", "trash_type": 0},
+            },
+        )
+        encoded = json.dumps(payload, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["capability"], "cloud_phone_command_api")
+        self.assertEqual(payload["evidence_boundary"], "software_proof_docker_cloud_phone_command_api_gate")
+        self.assertEqual(payload["ack_semantics"], "queued_not_delivery_success")
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["primary_actions_enabled"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["duplicate"])
+        self.assertEqual(payload["command_id"], "phone-collect-001")
+        self.assertEqual(payload["command_type"], "collect")
+        self.assertEqual(payload["queue_sequence"], 1)
+        for forbidden in ("phone-token", "Authorization", "Bearer", "/cmd_vel", "serial", "UART", "WAVE ROVER"):
+            self.assertNotIn(forbidden, encoded)
+
+        status, next_payload = self.client.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=")
+        self.assertEqual(status, 200)
+        self.assertEqual(next_payload["command"]["id"], "phone-collect-001")
+        self.assertEqual(next_payload["command"]["type"], "collect")
+        self.assertEqual(next_payload["command"]["payload"]["target"], "trash_station")
+
+    def test_cloud_phone_command_api_duplicate_confirm_and_cancel_receipts(self):
+        for path, command_id, expected_type in (
+            ("/api/commands/confirm-dropoff", "phone-confirm-001", "confirm_dropoff"),
+            ("/api/commands/cancel", "phone-cancel-001", "cancel"),
+        ):
+            body = {"robot_id": "trashbot-001", "command_id": command_id, "payload": {"reason": "phone_submit"}}
+            status, payload = self.client.request("POST", path, body)
+            self.assertEqual(status, 201, path)
+            self.assertEqual(payload["command_type"], expected_type)
+            self.assertFalse(payload["delivery_success"])
+
+            status, duplicate = self.client.request("POST", path, body)
+            self.assertEqual(status, 200, path)
+            self.assertTrue(duplicate["duplicate"])
+            self.assertEqual(duplicate["duplicate_info"]["state"], "command_duplicate_deduped")
+            self.assertEqual(duplicate["command_id"], command_id)
+
+    def test_cloud_phone_command_api_fails_closed_without_sensitive_leaks(self):
+        cases = (
+            (
+                "/api/commands/collect",
+                {"robot_id": "trashbot-001", "payload": {"target": "trash_station"}},
+                "",
+                401,
+                "auth_failed",
+            ),
+            (
+                "/api/commands/cmd_vel",
+                {"robot_id": "trashbot-001", "payload": {"target": "trash_station", "topic": "/cmd_vel"}},
+                None,
+                400,
+                "bad_request",
+            ),
+            (
+                "/api/commands/collect",
+                {"payload": {"target": "trash_station"}, "Authorization": "Bearer hidden"},
+                None,
+                400,
+                "bad_request",
+            ),
+            (
+                "/api/commands/collect",
+                {"robot_id": "trashbot-001", "payload": {}},
+                None,
+                400,
+                "bad_request",
+            ),
+        )
+        for path, body, token, expected_status, expected_code in cases:
+            status, payload = self.client.request("POST", path, body, token=token)
+            encoded = json.dumps(payload, ensure_ascii=False)
+            self.assertEqual(status, expected_status, path)
+            self.assertEqual(payload["error"]["code"], expected_code)
+            for forbidden in (
+                "phone-token",
+                "Authorization",
+                "Bearer",
+                "hidden",
+                "/cmd_vel",
+                "raw state path",
+                "ROS topic",
+                "serial",
+                "UART",
+                "WAVE ROVER",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
     def test_health_and_readiness_are_phone_safe(self):
         status, payload = self.client.request("GET", "/healthz", token="")
         self.assertEqual(status, 200)
