@@ -5,12 +5,14 @@ import ProofBoundaryPanel from "./components/ProofBoundaryPanel.vue";
 import ProofFlagStrip from "./components/ProofFlagStrip.vue";
 import RouteDebugPanel from "./components/RouteDebugPanel.vue";
 import TrainingLabelingPanel from "./components/TrainingLabelingPanel.vue";
+import WaveRoverMaterialCoveragePanel from "./components/WaveRoverMaterialCoveragePanel.vue";
 import WorkstationTabs from "./components/WorkstationTabs.vue";
 import type { WorkstationPanel } from "./components/WorkstationTabs.vue";
 import { loadWorkstationSnapshot } from "./client/workstationApi";
 import type { RouteDebugInputs } from "./client/workstationApi";
 import type {
   EvidenceToolsResponse,
+  HardwareMaterialsResponse,
   HealthResponse,
   ProofBoundaryResponse,
   RouteDebugSummaryResponse,
@@ -29,6 +31,7 @@ const error = ref("");
 const health = ref<HealthResponse | null>(null);
 const routeSummary = ref<RouteDebugSummaryResponse | null>(null);
 const evidenceTools = ref<EvidenceToolsResponse | null>(null);
+const hardwareMaterials = ref<HardwareMaterialsResponse | null>(null);
 const trainingLabeling = ref<TrainingLabelingResponse | null>(null);
 const proofBoundary = ref<ProofBoundaryResponse | null>(null);
 const routeInputs = ref<RouteDebugInputs>({
@@ -48,6 +51,7 @@ async function refresh(): Promise<void> {
     health.value = snapshot.health;
     routeSummary.value = snapshot.routeSummary;
     evidenceTools.value = snapshot.evidenceTools;
+    hardwareMaterials.value = snapshot.hardwareMaterials;
     trainingLabeling.value = snapshot.trainingLabeling;
     proofBoundary.value = snapshot.proofBoundary;
   } catch (err) {
@@ -94,6 +98,10 @@ onMounted(() => {
       @refresh="refresh"
     />
     <EvidenceToolsPanel v-else-if="activePanel === 'evidence'" :evidence-tools="evidenceTools" />
+    <WaveRoverMaterialCoveragePanel
+      v-else-if="activePanel === 'hardware'"
+      :hardware-materials="hardwareMaterials"
+    />
     <TrainingLabelingPanel v-else-if="activePanel === 'training'" :training-labeling="trainingLabeling" />
     <ProofBoundaryPanel v-else :proof-boundary="proofBoundary" />
   </main>

@@ -1,5 +1,6 @@
 import type {
   EvidenceToolsResponse,
+  HardwareMaterialsResponse,
   HealthResponse,
   ProofBoundaryResponse,
   RouteDebugSummaryResponse,
@@ -17,6 +18,7 @@ export interface WorkstationSnapshot {
   health: HealthResponse;
   routeSummary: RouteDebugSummaryResponse;
   evidenceTools: EvidenceToolsResponse;
+  hardwareMaterials: HardwareMaterialsResponse;
   trainingLabeling: TrainingLabelingResponse;
   proofBoundary: ProofBoundaryResponse;
 }
@@ -26,6 +28,7 @@ const API_ENDPOINTS = {
   health: "/api/health",
   routeDebugSummary: "/api/route/debug-summary",
   evidenceTools: "/api/tools/evidence",
+  hardwareMaterials: "/api/tools/hardware-materials",
   trainingLabeling: "/api/tools/training-labeling",
   proofBoundary: "/api/proof-boundary",
 } as const;
@@ -67,6 +70,11 @@ export async function getEvidenceTools(): Promise<EvidenceToolsResponse> {
   return loadJson<EvidenceToolsResponse>(API_ENDPOINTS.evidenceTools);
 }
 
+export async function getHardwareMaterials(): Promise<HardwareMaterialsResponse> {
+  // WAVE ROVER materials 只读扫描本地 fixture，不连接真实硬件或恢复 Python gate。
+  return loadJson<HardwareMaterialsResponse>(API_ENDPOINTS.hardwareMaterials);
+}
+
 export async function getTrainingLabeling(): Promise<TrainingLabelingResponse> {
   // Training/Labeling 当前是占位 API，必须保留 real_pipeline_connected=false。
   return loadJson<TrainingLabelingResponse>(API_ENDPOINTS.trainingLabeling);
@@ -79,10 +87,11 @@ export async function getProofBoundary(): Promise<ProofBoundaryResponse> {
 
 export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise<WorkstationSnapshot> {
   // 刷新同时拉取全部只读 API，避免分页面状态互相漂移。
-  const [health, routeSummary, evidenceTools, trainingLabeling, proofBoundary] = await Promise.all([
+  const [health, routeSummary, evidenceTools, hardwareMaterials, trainingLabeling, proofBoundary] = await Promise.all([
     getHealth(),
     getRouteDebugSummary(inputs),
     getEvidenceTools(),
+    getHardwareMaterials(),
     getTrainingLabeling(),
     getProofBoundary(),
   ]);
@@ -91,6 +100,7 @@ export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise
     health,
     routeSummary,
     evidenceTools,
+    hardwareMaterials,
     trainingLabeling,
     proofBoundary,
   };

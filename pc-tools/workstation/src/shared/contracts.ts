@@ -34,6 +34,50 @@ export interface EvidenceToolsResponse extends ProofFlags {
   assets: EvidenceFixtureRecord[];
 }
 
+export type HardwareMaterialStatus =
+  | "material_coverage_complete_software_proof_only"
+  | "material_coverage_partial_software_proof_only"
+  | "material_coverage_missing_software_proof_only";
+
+export interface HardwareMaterialItem {
+  id: string;
+  required_path: string;
+  description: string;
+}
+
+export interface HardwareMaterialGroup {
+  group: string;
+  fixture_relative_path: string;
+  present_materials: string[];
+  missing_materials: string[];
+  coverage_counts: {
+    present: number;
+    missing: number;
+    required: number;
+  };
+  status: HardwareMaterialStatus;
+}
+
+// WAVE ROVER material coverage 只证明本地材料文件是否齐备，不证明真实 HIL 或底盘可控。
+// Hardware 咨询给出的 not_proven token 固化在契约里，避免 UI 或 API 把 coverage 外推成 pass。
+export interface HardwareMaterialsResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.hardware_materials.v1";
+  fixture_root: string;
+  required_materials: HardwareMaterialItem[];
+  groups: HardwareMaterialGroup[];
+  coverage_summary: {
+    groups_total: number;
+    groups_complete: number;
+    groups_partial: number;
+    groups_missing: number;
+    required_per_group: number;
+  };
+  vendor_facts_bounded: string[];
+  fail_closed_tokens: string[];
+  not_proven_tokens: string[];
+  boundary_copy: string;
+}
+
 // Route Debug 入口由 Node JSON loader 承担，只读取本地 JSON 并生成 safe summary。
 // loader_capabilities 描述的是软件读取能力，不是 Nav2、串口或真实底盘状态。
 export interface RouteDebugSummaryResponse extends ProofFlags {
@@ -140,6 +184,7 @@ export const PROOF_FLAGS: ProofFlags = {
 export const API_ROUTES = [
   "/api/health",
   "/api/tools/evidence",
+  "/api/tools/hardware-materials",
   "/api/tools/training-labeling",
   "/api/route/debug-summary",
   "/api/proof-boundary",

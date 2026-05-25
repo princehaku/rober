@@ -16,6 +16,7 @@ pc-tools/workstation/
   src/server/index.ts                 # Express API 与静态 UI 托管入口
   src/server/catalog.ts               # Route Debug 响应聚合
   src/server/evidenceAssets.ts        # Evidence JSON fixture 索引
+  src/server/waveRoverMaterialCoverage.ts # WAVE ROVER material coverage 只读扫描
   src/server/proofBoundary.ts         # Health、Training/Labeling、Proof Boundary 契约
   src/server/paths.ts                 # 仓库内路径和安全展示路径
   src/server/routeDebugLoader.ts      # 本地 route/status/task/reconciliation JSON safe summary
@@ -46,8 +47,19 @@ pc-tools/workstation/
 
 - Route Debug：通过 Node Route JSON Loader 读取本地 status/task/reconciliation JSON，生成 safe summary。
 - Evidence Tools：索引 `pc-tools/evidence/fixtures/**/*.json`，展示 JSON fixture 资产分组。
+- Hardware Materials：`GET /api/tools/hardware-materials` 扫描 `pc-tools/evidence/fixtures/wave_rover_*` 下的 WAVE ROVER 材料组，识别 `feedback_T1001.log`、`odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`、`operator_hil_report` / `operator_hil_report.json` 的 present/missing coverage，并在 Vue 面板中展示缺口。
 - Training/Labeling：保留占位入口，明确未接真实训练或标注流水线。
 - Proof Boundary：集中展示软件证明能覆盖什么、不能覆盖什么，避免误读为真实硬件或交付证明。
+
+## WAVE ROVER Material Coverage 边界
+
+Hardware Materials 是 Node-native 只读入口，不恢复旧 Python evidence gate，不执行 ROS2、串口、HIL 或任何控制动作。它只统计本地 fixture 材料覆盖：
+
+- 顶层 API 固定继承 `source=software_proof`、`proof_status=not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`pc_only=true`。
+- 每个 `wave_rover_*` 材料组输出 `group`、`fixture_relative_path`、present/missing materials、coverage counts 和 material coverage status。
+- UI 文案必须明确 `coverage is not HIL pass`。文件齐备只说明材料 coverage，不说明 WAVE ROVER 上电、真实 UART 连通、轮向正确、反馈频率达标、IMU/battery 标定通过或真实 delivery success。
+- 允许展示的 bounded vendor facts 来自 `docs/vendor/VENDOR_INDEX.md` 指向的本地资料：UART newline-delimited JSON、`json.dumps(data)+'\n'` 写串口、`readline()` 读、ESP32 newline 后 `deserializeJson()`、`FEEDBACK_BASE_INFO=1001`、`T=1/T=13/T=130/T=131/T=142/T=143`、`T=1001` feedback 字段 `L/R/r/p/y/v`。
+- 必须保留的 fail-closed token 包括：`hil_pass=false`、`hardware_connected=false`、`serial_path_not_proven`、`baudrate_link_not_proven`、`wheel_direction_not_proven`、`cmd_ros_ctrl_not_proven_on_chassis`、`feedback_frequency_not_proven`、`imu_calibration_not_proven`、`battery_calibration_not_proven`、`delivery_success_not_proven`。
 
 ## Fail-Closed 契约
 

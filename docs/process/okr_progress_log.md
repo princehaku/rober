@@ -8,6 +8,24 @@
 
 ## 2026-05-26 系列
 
+### 2026-05-26 06-07｜pc-hardware-hil-material-coverage｜Hardware Materials coverage
+
+本轮 `sprints/2026.05.26_06-07_pc-hardware-hil-material-coverage/` 执行 PC hardware HIL material coverage closeout。Full-Stack 已在 `pc-tools/workstation` 新增 Node-native `GET /api/tools/hardware-materials` 和 Vue `Hardware Materials` tab/panel，扫描 `pc-tools/evidence/fixtures/wave_rover_*`，识别 `feedback_T1001.log`、`odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`、`operator_hil_report` / `.json` 五件套，并明确 `coverage is not HIL pass`。
+
+本轮保持 `source=software_proof`、`proof_status=not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`pc_only=true`。旧 Python gate 未恢复：`find pc-tools -path 'pc-tools/workstation/node_modules' -prune -o -type f -name '*.py' -print` 无输出。
+
+验证证据：因当前 WSL 的 `/mnt/c/Program Files/nodejs/npm` shim 不可用，worker 使用临时 Linux Node 24 (`/tmp/rober-node-v24.11.1-linux-x64`) 跑等价 npm 脚本；`npm run test` 2 test files passed / 11 tests passed，`npm run build` vite built successfully / 27 modules transformed，`npm run lint` exit 0，scoped `git diff --check` exit 0。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 从约 81% 小幅提升到约 83% | 材料 coverage 从散落 fixture 变成 PC 工作站可读、可复核、可补齐的清单；但本轮不证明真实 WAVE ROVER/UART/HIL/2D LiDAR/ToF/PR #5 resolved/delivery success。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保持约 99% | 本轮不改变 task_orchestrator、route/elevator runtime、dropoff/cancel completion、delivery result 或 `delivery_success=false` 边界。 |
+| Objective 3：可验证导航与固定路线 | 保持约 99% | 本轮不证明 Nav2/fixed-route runtime、路线采集、route completion signal 或现场 task record。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保持约 99% | PC 工具间接受益，但不是普通手机端验收、真实手机/browser 或 production app proof。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 保持约 76% | 本轮不涉及公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue 或 command lifecycle。 |
+
+更新时间：2026-05-26 06:50 Asia/Shanghai。
+
 ### 2026-05-26 08-09｜cloud-command-result-reconciliation｜command lifecycle/result reconciliation
 
 本轮 `sprints/2026.05.26_08-09_cloud-command-result-reconciliation/` 执行 `cloud_command_result_reconciliation` epic closeout。用户价值是把上一轮 phone -> cloud command enqueue 之后的用户状态解释补齐：手机用户不再只能看到 queued receipt，而是能查询命令处于 queued、processing、terminal result pending、missing/expired 或 store unavailable，并且所有状态都明确不是 delivery success。本轮边界为 `software_proof_docker_cloud_command_result_reconciliation_gate`。

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   buildEvidenceToolsResponse,
+  buildHardwareMaterialsResponse,
   buildHealth,
   buildProofBoundary,
   buildRouteDebugSummary,
@@ -120,6 +121,55 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.assets.some((asset) => asset.group === "wave_rover_hil_packet_intake")).toBe(true);
     expect(response.assets.every((asset) => asset.fixture_files.every((file) => file.endsWith(".json")))).toBe(true);
     expect(response.primary_actions_enabled).toBe(false);
+    expectNoLegacyPythonGateSemantics(response);
+  });
+
+  it("summarizes WAVE ROVER material coverage without HIL pass claims", async () => {
+    // Material coverage 扫描 log/jsonl/report 文件名，但所有顶层 proof flags 仍 fail-closed。
+    const response = await buildHardwareMaterialsResponse();
+
+    expect(response.schema).toBe("trashbot.pc_tools_workstation.hardware_materials.v1");
+    expect(response.fixture_root).toBe("pc-tools/evidence/fixtures");
+    expect(response.source).toBe("software_proof");
+    expect(response.proof_status).toBe("not_proven");
+    expect(response.safe_to_control).toBe(false);
+    expect(response.delivery_success).toBe(false);
+    expect(response.primary_actions_enabled).toBe(false);
+    expect(response.pc_only).toBe(true);
+    expect(response.required_materials.map((material) => material.id)).toEqual([
+      "feedback_T1001.log",
+      "odom_once.jsonl",
+      "imu_once.jsonl",
+      "battery_once.jsonl",
+      "operator_hil_report",
+    ]);
+    expect(response.groups.some((group) => group.group === "wave_rover_hil_packet_intake/pass")).toBe(true);
+    const intakePass = response.groups.find((group) => group.group === "wave_rover_hil_packet_intake/pass");
+    expect(intakePass?.present_materials).toContain("operator_hil_report");
+    expect(intakePass?.coverage_counts.present).toBe(5);
+    expect(intakePass?.status).toBe("material_coverage_complete_software_proof_only");
+    const replayPass = response.groups.find((group) => group.group === "wave_rover_feedback_replay/pass");
+    expect(replayPass?.missing_materials).toContain("operator_hil_report");
+    expect(replayPass?.status).toBe("material_coverage_partial_software_proof_only");
+    expect(response.fail_closed_tokens).toEqual(
+      expect.arrayContaining([
+        "hil_pass=false",
+        "hardware_connected=false",
+        "serial_path_not_proven",
+        "baudrate_link_not_proven",
+        "wheel_direction_not_proven",
+        "cmd_ros_ctrl_not_proven_on_chassis",
+        "feedback_frequency_not_proven",
+        "imu_calibration_not_proven",
+        "battery_calibration_not_proven",
+        "delivery_success_not_proven",
+      ]),
+    );
+    expect(response.vendor_facts_bounded).toContain("UART newline-delimited JSON");
+    expect(response.vendor_facts_bounded).toContain("T=1/T=13/T=130/T=131/T=142/T=143 command IDs");
+    expect(response.boundary_copy).toContain("coverage is not HIL pass");
+    expect(JSON.stringify(response)).not.toContain("HIL pass true");
+    expect(JSON.stringify(response)).not.toContain("/dev/tty");
     expectNoLegacyPythonGateSemantics(response);
   });
 

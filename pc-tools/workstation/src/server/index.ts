@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   buildEvidenceToolsResponse,
+  buildHardwareMaterialsResponse,
   buildHealth,
   buildProofBoundary,
   buildRouteDebugSummary,
@@ -26,6 +27,11 @@ app.get("/api/health", (_req, res) => {
 app.get("/api/tools/evidence", async (_req, res) => {
   // API 只读索引 JSON fixture，不执行任何外部脚本或现场链路。
   res.json(await buildEvidenceToolsResponse());
+});
+
+app.get("/api/tools/hardware-materials", async (_req, res) => {
+  // Hardware materials 只读扫描 WAVE ROVER fixture 文件名，不打开串口或执行 HIL。
+  res.json(await buildHardwareMaterialsResponse());
 });
 
 app.get("/api/tools/training-labeling", async (_req, res) => {
