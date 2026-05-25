@@ -58,6 +58,6 @@
 ## 对应责任 Engineer
 
 - `robot-software-engineer`：任务闭环与任务记录主链
-- `hardware-engineer`：WAVE ROVER HIL/运行证据与 hardware/proof 分界
+- `rober-hardware-engineer`：WAVE ROVER HIL/运行证据与 hardware/proof 分界
 - `autonomy-engineer`：固定路线 / navigation 的可复盘字段与状态对齐
 - `full-stack-software-engineer`：operator/status/diagnostics 的模拟/实机来源标注

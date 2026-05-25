@@ -38,7 +38,7 @@
 
 本轮为跨 owner Epic，计划完成后进入实现阶段，默认并行派发：
 
-- `hardware-engineer`：reply dispatch artifact / Markdown source-boundary semantics。
+- `rober-hardware-engineer`：reply dispatch artifact / Markdown source-boundary semantics。
 - `robot-software-engineer`：Robot diagnostics reply-dispatch safe alias。
 - `full-stack-software-engineer`：mobile/web 只读展示 reply-dispatch 状态。
 - `product-okr-owner`：验收口径、GitHub reply 文案边界、OKR closeout。

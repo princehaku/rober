@@ -32,7 +32,7 @@
 
 ## 5. 责任 Engineer 和实际结果
 
-- `hardware-engineer`：完成 `pc-tools/evidence/pr5_vendor_source_review_packet.py`、focused tests、interface doc、production hardware boundary doc 和 sprint evidence JSON/summary。验证 `test -f docs/vendor/VENDOR_INDEX.md`、`py_compile`、`Ran 5 tests ... OK`、required `rg` 和 scoped diff check passed。
+- `rober-hardware-engineer`：完成 `pc-tools/evidence/pr5_vendor_source_review_packet.py`、focused tests、interface doc、production hardware boundary doc 和 sprint evidence JSON/summary。验证 `test -f docs/vendor/VENDOR_INDEX.md`、`py_compile`、`Ran 5 tests ... OK`、required `rg` 和 scoped diff check passed。
 - `robot-software-engineer`：完成 `operator_gateway_diagnostics.py` safe alias、219-test diagnostics coverage 和 interface docs。验证 `py_compile`、`Ran 219 tests ... OK`、required `rg` 和 scoped diff check passed。
 - `full-stack-software-engineer`：完成 `mobile/web` read-only panel、fixture、147-test coverage、styles 和 product doc sync。验证 `Ran 147 tests in 0.906s OK`、`node --check mobile/web/app.js` exit 0、required `rg` 和 scoped diff check passed。
 - `product-okr-owner`：完成 OKR/progress log/closeout docs，复跑 scoped integration fences，stage/commit/push durable changes。

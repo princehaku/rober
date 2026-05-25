@@ -10,7 +10,7 @@ Run time: 2026-05-22 13:06 Asia/Shanghai
 - Evidence boundary: `software_proof_docker_wave_rover_hil_packet_collection_drill_gate`
 - Target objective: Objective 1, hardware protocol trusted base layer.
 - Product owner: `product-okr-owner`
-- Engineering owners: `hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
+- Engineering owners: `rober-hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
 
 ## User Value And Product North Star
 

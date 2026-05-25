@@ -110,7 +110,7 @@ git diff --check -- mobile/web docs/product/mobile_user_flow.md sprints/2026.05.
 
 ### Task C - Hardware Infra Engineer Read-only Consultation
 
-Role: `hardware-engineer`
+Role: `rober-hardware-engineer`
 
 Goal: prevent O1/HIL/PR #5 overclaim while Robot and Full-Stack implement O5 software-proof audit/export.
 

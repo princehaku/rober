@@ -54,7 +54,7 @@ sprint_type: epic
 
 | Owner | 责任 | 计划内文件范围 | 验收重点 |
 | --- | --- | --- | --- |
-| `hardware-engineer` | 主责 intake schema、采购/source/安装/接线/标定/HIL entry 材料字段和硬件文档边界 | 后续实施可改 `docs/product/production_hardware_boundary.md`、新增硬件 intake artifact/gate、必要 docs；本计划阶段不改 | `docs/vendor/VENDOR_INDEX.md` 只作为已有 vendor coverage，不冒充 LiDAR/ToF 来源 |
+| `rober-hardware-engineer` | 主责 intake schema、采购/source/安装/接线/标定/HIL entry 材料字段和硬件文档边界 | 后续实施可改 `docs/product/production_hardware_boundary.md`、新增硬件 intake artifact/gate、必要 docs；本计划阶段不改 | `docs/vendor/VENDOR_INDEX.md` 只作为已有 vendor coverage，不冒充 LiDAR/ToF 来源 |
 | `robot-software-engineer` | Robot diagnostics metadata-only consumer 和 fail-closed compatibility fence | 后续实施可改 diagnostics / remote bridge / ROS contract 相关文件；本计划阶段不改 | metadata-only 不触发控制、ACK、cursor、Nav2 或 HIL |
 | `autonomy-engineer` | SLAM/Nav2、电梯语义证据、ToF 近场 safety role 的 intake 消费边界 | 后续实施可改 pc-tools evidence gate、nav/vision/behavior docs/tests；本计划阶段不改 | ToF 不作为主建图输入；无材料不写 field pass |
 | `full-stack-software-engineer` | mobile/web phone-safe 只读 panel 和 copy/export whitelist | 后续实施可改 `mobile/web`、fixture、mobile docs/tests；本计划阶段不改 | 不解锁 Start / Confirm Dropoff / Cancel |

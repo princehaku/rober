@@ -34,7 +34,7 @@ The sprint converted the next human ACK after owner-response review handoff into
 - `autonomy-engineer`: PC ACK intake gate, tests, `pc-tools` docs, evidence contract docs.
 - `robot-software-engineer`: Robot diagnostics safe alias, tests, diagnostics docs.
 - `full-stack-software-engineer`: mobile/web read-only panel, fixture, tests, mobile flow docs.
-- `hardware-engineer`: read-only `docs/vendor/VENDOR_INDEX.md`, WAVE ROVER vendor refs, and PR #5 boundary consultation.
+- `rober-hardware-engineer`: read-only `docs/vendor/VENDOR_INDEX.md`, WAVE ROVER vendor refs, and PR #5 boundary consultation.
 - `product-okr-owner`: closeout docs, OKR snapshot, progress log, and no-lift decision.
 
 ## Validation

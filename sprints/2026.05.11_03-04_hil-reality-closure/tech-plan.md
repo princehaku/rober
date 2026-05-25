@@ -46,7 +46,7 @@ git diff --check -- \
   sprints/2026.05.11_03-04_hil-reality-closure
 ```
 
-### 2. `hardware-engineer`（并行）
+### 2. `rober-hardware-engineer`（并行）
 
 允许改动范围：
 

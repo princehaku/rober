@@ -4,7 +4,7 @@
 
 - 阶段：implementation completed。
 - 时间：2026-05-10 18:28 Asia/Shanghai。
-- Owner：`hardware-engineer`。
+- Owner：`rober-hardware-engineer`。
 - 范围：Objective 1 软件侧 hardware diagnostics proof helper/CLI；未做真实 UART/WAVE ROVER HIL。
 
 ## 已读 vendor 来源

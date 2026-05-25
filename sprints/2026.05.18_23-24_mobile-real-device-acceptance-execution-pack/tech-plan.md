@@ -92,7 +92,7 @@
 
 ### Owner D：Hardware Infra Engineer，只读事实补充
 
-- 角色：`hardware-engineer`
+- 角色：`rober-hardware-engineer`
 - 主责：只读核对 PR #5 2D LiDAR / ToF 与 vendor/source/materials 缺口。
 - 文件范围：只读 `docs/vendor/VENDOR_INDEX.md`、`docs/product/production_hardware_boundary.md`、`OKR.md`。
 - 输出要求：

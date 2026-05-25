@@ -22,10 +22,14 @@ try:
 except ImportError:  # pragma: no cover - tests use dependency injection.
     cv2 = None
 
-from ros2_trashbot_nav.route_utils import (
-    ROUTE_CONTRACT_VERSION,
+from ros2_trashbot_nav.elevator_assist import (
     build_elevator_assist_evidence,
     build_elevator_assist_status,
+)
+from ros2_trashbot_nav.route_contracts import (
+    ROUTE_CONTRACT_VERSION,
+)
+from ros2_trashbot_nav.route_parsers import (
     load_waypoints_from_simple_yaml,
     load_waypoints_from_csv,
     validate_route_yaml_data,
@@ -33,6 +37,10 @@ from ros2_trashbot_nav.route_utils import (
 from ros2_trashbot_nav.route_proof_summary import (
     build_route_proof_summary,
     summarize_checkpoints_from_visual_gate,
+)
+from ros2_trashbot_nav.visual_gate_runtime import (
+    OrbImageMatcher,
+    UnavailableImageMatcher,
 )
 
 
@@ -43,56 +51,6 @@ MISSING_LIVE_FRAME = "missing_live_frame"
 IMAGE_UNREADABLE = "image_unreadable"
 NO_DESCRIPTORS = "no_descriptors"
 INSUFFICIENT_MATCHES = "insufficient_matches"
-
-
-class OrbImageMatcher:
-    """Small OpenCV adapter kept separate so tests can stub match results."""
-
-    def __init__(self) -> None:
-        if cv2 is None:
-            raise RuntimeError("OpenCV is not available")
-        self.orb = cv2.ORB_create(600)
-        self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-
-    def _descriptors_for(self, image_path: Path) -> Tuple[Optional[Any], str]:
-        image = cv2.imread(str(image_path))
-        if image is None:
-            return None, IMAGE_UNREADABLE
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        keypoints, descriptors = self.orb.detectAndCompute(gray, None)
-        if descriptors is None or len(keypoints) == 0:
-            return None, NO_DESCRIPTORS
-        return descriptors, PASSED
-
-    def __call__(
-        self,
-        keyframe_path: Path,
-        live_frame_path: Path,
-        _threshold: int,
-    ) -> Tuple[str, int, str]:
-        key_descriptors, key_status = self._descriptors_for(keyframe_path)
-        if key_status != PASSED:
-            return key_status, 0, f"keyframe {key_status}: {keyframe_path}"
-        live_descriptors, live_status = self._descriptors_for(live_frame_path)
-        if live_status != PASSED:
-            return live_status, 0, f"live frame {live_status}: {live_frame_path}"
-        matches = self.matcher.match(key_descriptors, live_descriptors)
-        return PASSED, len(matches), "descriptors matched"
-
-
-class UnavailableImageMatcher:
-    """Matcher fallback that keeps proof JSON structured when OpenCV is absent."""
-
-    def __init__(self, reason: str) -> None:
-        self.reason = reason
-
-    def __call__(
-        self,
-        _keyframe_path: Path,
-        _live_frame_path: Path,
-        _threshold: int,
-    ) -> Tuple[str, int, str]:
-        return NO_DESCRIPTORS, 0, f"image matcher unavailable: {self.reason}"
 
 
 def _load_route(route_file: str) -> Tuple[List[Dict[str, Any]], Optional[str]]:

@@ -61,7 +61,7 @@ class WaveRoverHilPacketExecutionPackTest(unittest.TestCase):
                 "operator_hil_report",
             ],
             "owner_handoff": {
-                "hardware-engineer": "collect real HIL packet on a host with WAVE ROVER UART access",
+                "rober-hardware-engineer": "collect real HIL packet on a host with WAVE ROVER UART access",
                 "robot-software-engineer": "keep diagnostics read-only until review_decision changes with real evidence",
                 "full-stack-software-engineer": "keep mobile panel read-only and actions disabled",
             },

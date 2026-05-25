@@ -1,6 +1,6 @@
 # cloud-relay/ — 4G 云中转 / 公网部署单位
 
-本目录是 `ros_rbs` 的 **公网云中转服务部署单位**：把 onboard 上车机器人和手机用户在公网上撮合起来。部署入口独立于 onboard/mobile/pc-tools；当前协议实现仍复用 onboard behavior 包中的纯 Python relay 模块，避免复制第二套 `trashbot.remote.v1` 语义。
+本目录是 `rober` 的 **公网云中转服务部署单位**：把 onboard 上车机器人和手机用户在公网上撮合起来。部署入口独立于 onboard/mobile/pc-tools；当前协议实现仍复用 onboard behavior 包中的纯 Python relay 模块，避免复制第二套 `trashbot.remote.v1` 语义。
 
 > **当前状态（本轮）**：`cloud-relay/src/ros2_trashbot_cloud_relay/` 已提供 Python runtime 入口；Dockerfile / `docker-compose.yml` / `scripts/docker_smoke.sh` 均从该入口启动。镜像构建 **context 为仓库根 `..`**，只为复用 onboard behavior 里的唯一 relay 协议实现；证据边界仍是 Docker/local software proof。
 >

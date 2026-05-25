@@ -5,7 +5,7 @@
 - 阶段：Product/OKR acceptance completed。
 - 时间：2026-05-10 18:49 Asia/Shanghai。
 - Product Owner：`product-okr-owner`。
-- 实现主责：`hardware-engineer`。
+- 实现主责：`rober-hardware-engineer`。
 - 验收结论：通过软件侧验收；不等同于 WAVE ROVER HIL 或上车通过。
 
 ## 用户价值和产品北极星
@@ -53,8 +53,8 @@
 
 ## 对应责任 Engineer
 
-- 已完成实现和验证：`hardware-engineer`。
-- 后续 HIL/硬件证据主责：`hardware-engineer`。
+- 已完成实现和验证：`rober-hardware-engineer`。
+- 后续 HIL/硬件证据主责：`rober-hardware-engineer`。
 - 后续 operator diagnostics 消费主责：`full-stack-software-engineer`，需另开 sprint 或任务。
 
 ## 验证证据

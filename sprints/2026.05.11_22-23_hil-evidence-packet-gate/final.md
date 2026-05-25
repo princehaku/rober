@@ -3,7 +3,7 @@
 ## 收口结论
 
 - 时间：2026-05-11 22:15 Asia/Shanghai
-- Owner：`hardware-engineer`
+- Owner：`rober-hardware-engineer`
 - 结论：Docker-only HIL evidence packet gate ready；真实 `hil_pass` pending。
 - OKR 影响：O1 证据链更严格，但未新增真实硬件通过证据，不提升 O1 完成度。
 

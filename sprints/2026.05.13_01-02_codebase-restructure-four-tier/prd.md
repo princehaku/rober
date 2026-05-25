@@ -10,7 +10,7 @@
 
 ## 1. 背景与北极星对齐
 
-当前 `ros_rbs` monorepo 把上车 ROS2 代码、手机 Web UI、PC 开发工具、独立云中转服务全部混在 `src/` + `scripts/` + `docker/` 顶层目录里。`ros2_trashbot_behavior` 包内同时承载：
+当前 `rober` monorepo 把上车 ROS2 代码、手机 Web UI、PC 开发工具、独立云中转服务全部混在 `src/` + `scripts/` + `docker/` 顶层目录里。`ros2_trashbot_behavior` 包内同时承载：
 
 - 上车决策（`task_orchestrator.py`、`delivery_*.py`、`dropoff_*.py`、`task_record.py`）
 - 手机后端（`operator_gateway*.py` × 4）

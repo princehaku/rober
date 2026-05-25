@@ -1,4 +1,4 @@
-# ros_rbs - Autonomous Trash Collection Robot
+# rober - Autonomous Trash Collection Robot
 
 ROS2 自主导航扔垃圾小车项目。
 

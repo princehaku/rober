@@ -74,3 +74,13 @@ Depth sensing should not become a default hardware dependency until obstacle
 distance or docking accuracy is the measured delivery blocker. RT-DETR should
 remain a model benchmark option, not a product dependency, until compute and
 latency constraints are resolved.
+
+## 2026-05-25 Structure Refactor
+
+The perception proof path now has a narrower module boundary:
+
+- `vision_detection_models.py` owns the schema-level helpers: `trashbot.vision_samples.v1`, `vision_sample://`, ROI snapshots, detector parameter snapshots, sample context, and detection payload fields.
+- `trash_detector.py` remains the runtime adapter. It can still produce debug images and sample files, but the payload shape is delegated to the helper so future YOLO/OpenCV replacements reuse the same sample contract.
+- `vision_sample_manifest.py` stays ROS-free and should be used for post-run review before diagnostics surfaces a manifest reference.
+
+This refactor does not make the HSV detector production-ready. It only makes the sample/proof data easier to review, test, and replace while preserving the delivery MVP boundary: route navigation and dropoff evidence remain the primary task proof.

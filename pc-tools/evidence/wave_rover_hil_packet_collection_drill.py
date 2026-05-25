@@ -335,7 +335,7 @@ def _backfill_commands(evidence_ref: str) -> list[str]:
 def _owner_handoff() -> dict[str, str]:
     # handoff 明确谁补真实材料，同时保持 Robot/mobile 不获得控制授权。
     return {
-        "hardware-engineer": "collect the five real packet materials under one safe evidence_ref on the WAVE ROVER host",
+        "rober-hardware-engineer": "collect the five real packet materials under one safe evidence_ref on the WAVE ROVER host",
         "robot-software-engineer": "consume only sanitized collection-drill summary until real packet review changes state",
         "full-stack-software-engineer": "render read-only drill status and keep primary actions disabled",
     }

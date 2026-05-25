@@ -96,7 +96,7 @@ P1：
 
 - 主责：`full-stack-software-engineer`
 - 协作围栏：`robot-software-engineer`
-- 不参与本轮实现：`hardware-engineer`、`autonomy-engineer`
+- 不参与本轮实现：`rober-hardware-engineer`、`autonomy-engineer`
 
 ## 8. 风险、阻塞和证据链
 

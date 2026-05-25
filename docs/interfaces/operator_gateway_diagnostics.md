@@ -1,5 +1,29 @@
 # Operator Gateway Diagnostics
 
+## 2026-05-25 structure refactor boundary
+
+`operator_gateway_diagnostics.py` and `remote_cloud_relay.py` now keep the
+mobile/web diagnostics surface as a compatibility facade while the internal
+logic is split into named helpers for:
+
+- phone-safe lifecycle summary construction;
+- historical alias expansion for `/api/status` and `/api/diagnostics`;
+- cloud-hosted mobile web state normalization;
+- fail-closed cleanup of stale/raw diagnostic sibling fields before canonical
+  Robot diagnostics aliases are emitted.
+
+This is a structure-only refactor. The public endpoints, schema names and
+Robot-safe alias keys stay compatible. The required false-state boundary also
+stays unchanged: `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`.
+
+The refactor must not be interpreted as true phone/browser proof, public
+HTTPS/TLS proof, 4G/SIM proof, OSS/CDN live proof, HIL, route/elevator field
+pass, verified terminal delivery/dropoff/cancel result, or delivery success.
+Start Delivery, Confirm Dropoff and Cancel remain disabled unless a separate
+runtime control contract explicitly authorizes them.
+
 ## robot_diagnostics_cloud_command_lifecycle_audit_export_summary
 
 Robot/API exposes `cloud_command_lifecycle_audit_export`,

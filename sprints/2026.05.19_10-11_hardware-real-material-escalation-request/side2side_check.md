@@ -35,7 +35,7 @@ Run time: 2026-05-19 10:19 Asia/Shanghai。
 
 ## 5. 责任 Engineer 结果
 
-- hardware-engineer：完成 PC gate、tests、interface doc、production hardware boundary 同步。
+- rober-hardware-engineer：完成 PC gate、tests、interface doc、production hardware boundary 同步。
 - robot-software-engineer：完成 diagnostics safe alias、tests、interface doc 同步。
 - full-stack-software-engineer：完成 mobile/web panel、fixtures、targeted tests、mobile flow 文档同步。
 - product-okr-owner：完成 closeout 文档、OKR 4.1 和 `docs/process/okr_progress_log.md` 更新。

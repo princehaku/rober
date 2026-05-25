@@ -51,4 +51,4 @@
 1. `robot-software-engineer` 先用模拟事件做电梯子状态机 dry-run。
 2. `autonomy-engineer` 定义门开/目标楼层/驶出证据 schema 和样本采集计划。
 3. `full-stack-software-engineer` 把手机文案与 speaker prompt contract 接入现有 status/diagnostics。
-4. 进入真实硬件或安装前，由 `hardware-engineer` 重新查 `docs/vendor/VENDOR_INDEX.md` 并给出硬件事实依据。
+4. 进入真实硬件或安装前，由 `rober-hardware-engineer` 重新查 `docs/vendor/VENDOR_INDEX.md` 并给出硬件事实依据。

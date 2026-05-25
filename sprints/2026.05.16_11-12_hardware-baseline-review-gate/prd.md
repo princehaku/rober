@@ -71,7 +71,7 @@ GitHub PR #5 `Make elevator-assisted delivery mandatory; update agents, OKR and 
 
 ## 8. 对应责任 Engineer
 
-- `hardware-engineer`：主责硬件 baseline 文档修复、vendor/source attribution、BOM/采购待补证边界。
+- `rober-hardware-engineer`：主责硬件 baseline 文档修复、vendor/source attribution、BOM/采购待补证边界。
 - `robot-software-engineer`：负责 bringup/launch/diagnostics contract 与参数化 gate。
 - `autonomy-engineer`：负责 Nav2/SLAM、电梯语义证据、ToF safety responsibility split 的可执行 contract。
 - `full-stack-software-engineer`：负责 phone-safe 状态展示和 action gating 边界。

@@ -58,7 +58,7 @@
 - 本轮优先级：P0，原因是 Objective 5 的手机诊断入口缺口直接影响普通用户和现场支持能否理解视觉证据链异常。
 - 已完成责任 Engineer：`full-stack-software-engineer`。
 - 后续如要补真实手机截图，仍归 `full-stack-software-engineer`。
-- 后续如要补真实 camera/odom manifest 上车证据，需要 `autonomy-engineer` 和 `hardware-engineer` 参与，必要时由 `robot-software-engineer` 做 ROS2 主链路集成验收。
+- 后续如要补真实 camera/odom manifest 上车证据，需要 `autonomy-engineer` 和 `rober-hardware-engineer` 参与，必要时由 `robot-software-engineer` 做 ROS2 主链路集成验收。
 
 ## 风险、阻塞和证据链
 

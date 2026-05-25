@@ -122,7 +122,7 @@ git diff --check -- OKR.md docs/process/okr_progress_log.md sprints/2026.05.19_1
 
 - 只返回字段建议和风险；不得修改文件或运行实现/验收命令。
 
-### hardware-engineer
+### rober-hardware-engineer
 
 本轮不写文件。
 

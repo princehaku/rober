@@ -52,7 +52,7 @@ class WaveRoverHilPacketCollectionDrillTest(unittest.TestCase):
                 "write operator_hil_report",
             ],
             "owner_handoff": {
-                "hardware-engineer": "collect real packet materials",
+                "rober-hardware-engineer": "collect real packet materials",
                 "robot-software-engineer": "consume safe summaries",
                 "full-stack-software-engineer": "keep actions disabled",
             },

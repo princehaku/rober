@@ -1,6 +1,6 @@
 # onboard/ — Orange Pi 上车 ROS2 主链路
 
-本目录是 `ros_rbs` 的 **上车（on-vehicle）工作区**：Orange Pi Zero 3（Ubuntu 22.04 + ROS2 Humble）上跑的 ROS2 包、launch、Docker 与运维脚本均在此。
+本目录是 `rober` 的 **上车（on-vehicle）工作区**：Orange Pi Zero 3（Ubuntu 22.04 + ROS2 Humble）上跑的 ROS2 包、launch、Docker 与运维脚本均在此。
 
 ## 目录结构
 

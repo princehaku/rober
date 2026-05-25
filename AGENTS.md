@@ -1,4 +1,4 @@
-# ros_rbs - Autonomous Trash Collection Robot
+# rober - Autonomous Trash Collection Robot
 
 ROS2 自主自动驾驶扔垃圾小车项目。
 
@@ -12,13 +12,8 @@ AI coding / Agent 工作不允许凭记忆猜测硬件细节。涉及引脚、�
 
 ## 架构
 
-5 个包协同工作：
 
-- **ros2_trashbot_interfaces** - 自定义 msg/srv/action
-- **ros2_trashbot_nav** - Nav2 导航 + waypoint_manager + map_recorder
-- **ros2_trashbot_vision** - 未来可选摄像头感知/样本边界；当前 MVP 不默认发布散落垃圾 detector
-- **ros2_trashbot_behavior** - task_orchestrator 状态机 + action server
-- **ros2_trashbot_bringup** - 启动文件
+![architecture](docs/images/architecture.png)
 
 ## 工作流程
 
@@ -37,7 +32,7 @@ source install/setup.bash
 
 后续 AI coding / Agent 工作必须保持持续执行和完成前反思：
 
-- **持续执行**：除非用户明确要求只做计划、解释或代码审查，否则默认把任务推进到可交付状态，包括实现、必要验证、修复验证中发现的问题，以及最后总结。
+- **持续执行**：除非用户明确要求不走迭代，只做计划、升级、解释或代码审查，否则默认按OKR推进任务到可交付状态，包括实现、必要验证、修复验证中发现的问题，以及最后总结。
 - **完成前反思**：每次代码或文档改动后，必须自检需求是否真正满足，是否误改无关文件，是否留下未处理 TODO，是否存在测试、构建或硬件验证缺口。
 - **失败继续定位**：测试、构建或运行验证失败时，默认先阅读错误、定位根因、修复并重新验证；不能把第一轮失败直接作为最终结果交给用户。
 - **硬件相关二次确认**：凡涉及 WAVE ROVER、ESP32、Orange Pi、UART 设备、波特率、JSON 指令、速度映射、反馈协议、引脚、电压、固件或机械尺寸，必须再次查阅 `docs/vendor/VENDOR_INDEX.md` 及其指向的本地 vendor 文件，并在代码注释、提交说明或最终说明中明确采用的资料来源。
@@ -48,7 +43,7 @@ source install/setup.bash
 
 ## 本地环境记忆
 
-- 当前开发主机是 macOS，本项目目标仍是 ROS2 Humble；不要再按 WSL `Ubuntu-24.04` 或 Windows 路径设计本地流程。
+- 当前开发主机是 macOS，Windows WSL。所以优先用docker构建项目。
 - ROS2 Humble 构建验证优先使用 Mac 本地 Docker Desktop/Engine 的 Linux 容器挂载仓库到 `/ws` 后运行 `colcon build --symlink-install`。
 - 本项目已有本地 Docker/Humble 环境：`onboard/docker/humble/Dockerfile` 默认使用清华 Ubuntu APT、ROS2 APT、pip、rosdep/rosdistro 镜像源，适合 macOS + Docker Desktop/Engine。
 - 构建并验证工作区：`bash onboard/scripts/docker_humble_build.sh`。脚本会构建 `ros-rbs-humble:dev`，再在容器内清理 `build/ install/ log/` 并执行 `colcon build --symlink-install`（工作区挂载为 `onboard/` → 容器内 `/ws`）。
@@ -60,16 +55,16 @@ source install/setup.bash
 
 ## 执行优先与精简团队
 
-默认先交付可验证结果，再同步更新迭代记录。流程服务于执行，不得替代执行；但所有任务都必须进入 sprint 留档，不能口头收口。
+默认先交付代码和文档，再同步更新迭代记录。流程服务于执行，不得替代执行；但所有任务都必须进入 sprint 留档，不能口头收口。
 
 ### 5 人 agent 编制
 
 1 个产品负责人和 4 个编码和测试的技术同学：
 
 - **Product Manager / OKR Owner**：拉齐产品北极星，维护 `OKR.md`，拆 KR，定抓手、优先级、范围边界和验收口径。只在方向不清、用户价值不清、范围冲突、阶段收口时介入。
-- **Robot Platform Engineer** ：机器人软件中台，负责 ROS2 主链路、接口 glue、bringup、行为状态机、包间集成和最小验证。
-- **Hardware Infra Engineer**：硬件基建与履约，负责 WAVE ROVER、ESP32、Orange Pi、UART、底盘协议、电气接线和上车证据。
-- **Autonomy Algorithm Engineer**：自主能力增长引擎，负责 SLAM、Nav2、巡逻、定位、未来可选视觉感知、送达闭环。
+- **Robot Software Engineer** ：机器人软件，负责 ROS2 主链路、接口 glue、bringup、行为状态机、包间集成和最小验证。
+- **Hardware Infra Engineer**：硬件基建与履约，负责 WAVE ROVER、ESP32、Orange Pi、UART、底盘协议、电气接线和上车修正。
+- **Robot Algorithm Engineer**：算法工程师，负责视觉识别，自动驾驶，ROS。自主能力增长引擎，负责 SLAM、Nav2、巡逻、定位、电梯定位，楼层认知。
 - **User Touchpoint Full-Stack Engineer**：用户触点全栈，负责手机操作界面、Web/API、远程控制、状态展示、任务下发和 ROS2 后端联调。
 
 除 `Product Manager / OKR Owner` 外，不使用 Lead 角色。
@@ -77,9 +72,9 @@ source install/setup.bash
 编码、测试、修复和交付 必须由子agent
 "product-okr-owner"
 "robot-software-engineer"
-"hardware-engineer"
+"rober-hardware-engineer"
 "full-stack-software-engineer"
-"autonomy-engineer"
+""robot-algorithm-engineer""
 来完成，严禁主节点自己写产品代码、测试代码或硬件配置。
 
 ### 子 Agent 启动 SOP（主节点必读）
@@ -114,7 +109,7 @@ source install/setup.bash
 |---|---|---|---|---|
 | product-okr-owner | `generalPurpose` | `worker` | `.codex/agents/product-okr-owner.toml` 的 `prompt` 字段 | `OKR.md`、`sprints/`、`docs/product/` |
 | robot-software-engineer | `generalPurpose` | `worker` | `.codex/agents/robot-software-engineer.toml` 的 `prompt` 字段 | ROS2 主链路、接口、behavior、bringup、脚本和相关文档 |
-| hardware-engineer | `generalPurpose` | `worker` | `.codex/agents/hardware-engineer.toml` 的 `prompt` 字段 | 硬件驱动、bringup 硬件参数、硬件/vendor 文档 |
+| rober-hardware-engineer | `generalPurpose` | `worker` | `.codex/agents/rober-hardware-engineer.toml` 的 `prompt` 字段 | 硬件驱动、bringup 硬件参数、硬件/vendor 文档 |
 | autonomy-engineer | `generalPurpose` | `worker` | `.codex/agents/autonomy-engineer.toml` 的 `prompt` 字段 | nav、vision、behavior 自主能力和相关文档 |
 | full-stack-software-engineer | `generalPurpose` | `worker` | `.codex/agents/full-stack-software-engineer.toml` 的 `prompt` 字段 | 手机/Web/API/UI、接口文档和触点联调 |
 

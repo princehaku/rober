@@ -58,7 +58,7 @@
 - 明确 `PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `blocked_pending_real_materials`。
 - 明确本轮只证明 pending ACK status guard，不证明真实 4G、公网 HTTPS/TLS、production DB/queue、真实手机/browser、HIL 或 delivery success。
 
-### autonomy-engineer / hardware-engineer 只读咨询
+### autonomy-engineer / rober-hardware-engineer 只读咨询
 
 默认不改文件。仅在实现阶段需要确认边界时只读回答：
 

@@ -243,7 +243,7 @@ if [ "$skip_docker_build" = "1" ]; then
     echo "local_image_reuse=validated_runnable"
     echo "SKIP_DOCKER_BUILD=1: reusing local Docker image: $image"
 else
-    docker_diag_log="$(mktemp -t ros_rbs_humble_build.XXXXXX.log)"
+    docker_diag_log="$(mktemp -t rober_humble_build.XXXXXX.log)"
     set +e
     docker build \
         --progress="$build_progress" \

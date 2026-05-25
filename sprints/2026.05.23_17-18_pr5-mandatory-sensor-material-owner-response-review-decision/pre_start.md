@@ -8,7 +8,7 @@
 - Evidence boundary: `software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_decision_gate`
 - Start time: 2026-05-23 17:00 Asia/Shanghai
 - Product owner: `product-okr-owner`
-- Engineering owners: `hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
+- Engineering owners: `rober-hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
 
 ## User Value And Product North Star
 

@@ -4,7 +4,7 @@
 
 - 阶段：tech-done
 - 时间：2026-05-11 21:14 Asia/Shanghai
-- Owner：`hardware-engineer`
+- Owner：`rober-hardware-engineer`
 - 结论：Docker/Humble preflight 仍 blocked，但已可精确归因为 `registry mirror/proxy` 返回 HTML；HIL 仍因本机无真实串口设备保持 blocked，不声明 `hil_pass`。
 
 ## 已读 vendor 来源

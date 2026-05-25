@@ -91,7 +91,7 @@
 - `robot-software-engineer`：主责，负责行为 dry-run、task record、bringup 参数、集成验证和 `tech-done.md`。
 - `full-stack-software-engineer`：协作，负责 operator gateway/status/diagnostics 的状态契约和手机文案。
 - `autonomy-engineer`：协作，负责 dry-run evidence schema 和未来真实感知替换边界。
-- `hardware-engineer`：本轮不派实现；没有硬件改动。若后续触及 WAVE ROVER、ESP32、Orange Pi、UART、波特率、引脚、电压、固件或机械尺寸，必须先查 `docs/vendor/VENDOR_INDEX.md`。
+- `rober-hardware-engineer`：本轮不派实现；没有硬件改动。若后续触及 WAVE ROVER、ESP32、Orange Pi、UART、波特率、引脚、电压、固件或机械尺寸，必须先查 `docs/vendor/VENDOR_INDEX.md`。
 
 ## 风险和证据链
 

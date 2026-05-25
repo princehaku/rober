@@ -67,7 +67,7 @@
 | --- | --- | --- |
 | robot-software-engineer | `onboard/src/ros2_trashbot_behavior/**`、相关 Robot tests、`docs/interfaces/**`、`docs/product/elevator_assisted_delivery.md`、本 sprint `tech-done.md` 中自己的小节 | 生成/汇总 elevator post-run trace，接入 diagnostics safe summary，补 focused tests 和接口文档 |
 | full-stack-software-engineer | `mobile/web/**`、`mobile/fixtures/**`、`docs/product/mobile_user_flow.md`、本 sprint `tech-done.md` 中自己的小节 | 只读展示 post-run elevator trace，补 fixture 和前端验证 |
-| hardware-engineer | 只读 `docs/vendor/VENDOR_INDEX.md`、PR #5 相关硬件文档；如必须写，只能在 `tech-done.md` 记录只读核对结论 | 核对 PR #5 2D LiDAR / ToF 材料缺口仍独立，不改硬件配置 |
+| rober-hardware-engineer | 只读 `docs/vendor/VENDOR_INDEX.md`、PR #5 相关硬件文档；如必须写，只能在 `tech-done.md` 记录只读核对结论 | 核对 PR #5 2D LiDAR / ToF 材料缺口仍独立，不改硬件配置 |
 | product-okr-owner | `OKR.md`、`docs/process/okr_progress_log.md`、本 sprint `side2side_check.md` / `final.md`（实现完成后） | 验收边界和 OKR 收口；本规划阶段只写三份 planning docs |
 
 Robot 和 Full-Stack 文件范围互不重叠，进入实现时必须并行启动两个 worker；Hardware 可作为只读事实核对 worker，与实现并行。

@@ -38,7 +38,7 @@
 
 ## 本轮核心抓手
 
-本轮核心抓手是 Product 定义 sprint：把 O1 从“反复等待硬件”推进到“先把 HIL evidence packet 合规 gate 做出来”。实现阶段由 `hardware-engineer` 主责，`robot-software-engineer` 只在 gate 输出需要对接 task record 或 ROS topic sample 语义时做接口咨询，`autonomy-engineer` 只在 route replay crosscheck 入口需要事实补充时介入。
+本轮核心抓手是 Product 定义 sprint：把 O1 从“反复等待硬件”推进到“先把 HIL evidence packet 合规 gate 做出来”。实现阶段由 `rober-hardware-engineer` 主责，`robot-software-engineer` 只在 gate 输出需要对接 task record 或 ROS topic sample 语义时做接口咨询，`autonomy-engineer` 只在 route replay crosscheck 入口需要事实补充时介入。
 
 ## 做什么
 
@@ -60,13 +60,13 @@
 | --- | --- | --- |
 | P0 | Sprint 规划文档存在 | 三个文件均创建在 `sprints/2026.05.11_22-23_hil-evidence-packet-gate/`。 |
 | P0 | 证据边界清晰 | 文档明确 Docker-only 只能是 `software_proof` 或 `blocked`，真实 `hil_pass` 需要 WAVE ROVER/串口与完整 packet。 |
-| P1 | 实现 owner 明确 | `hardware-engineer` 主责 gate 实现和验证；其他 owner 仅按接口边界咨询。 |
+| P1 | 实现 owner 明确 | `rober-hardware-engineer` 主责 gate 实现和验证；其他 owner 仅按接口边界咨询。 |
 | P1 | O2/O3 支撑保留 | 文档明确同一 `evidence_ref` 后续接 `scripts/evidence_crosscheck.py` 与 task record/route replay。 |
 
 ## 对应责任 Engineer
 
 - `product-okr-owner`：本轮创建 sprint 规划文档并定义验收口径。
-- `hardware-engineer`：下一阶段主责实现 HIL evidence packet gate、Docker-only 判定和 `tech-done.md`。
+- `rober-hardware-engineer`：下一阶段主责实现 HIL evidence packet gate、Docker-only 判定和 `tech-done.md`。
 - `robot-software-engineer`：下一阶段只在 evidence metadata 与 task record/ROS topic sample contract 需要对齐时咨询。
 - `autonomy-engineer`：下一阶段只在 route replay crosscheck 接口需要事实补充时咨询。
 - `full-stack-software-engineer`：本轮不介入。

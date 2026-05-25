@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/ros_rbs.iml" filepath="$PROJECT_DIR$/.idea/ros_rbs.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/rober.iml" filepath="$PROJECT_DIR$/.idea/rober.iml" />
     </modules>
   </component>
 </project>

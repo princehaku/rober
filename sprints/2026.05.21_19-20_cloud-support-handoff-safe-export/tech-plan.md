@@ -143,7 +143,7 @@ rg -n "route completion|fixed-route|Nav2|elevator|delivery_success=false|not_pro
 
 ### Hardware Read-Only Worker
 
-Role id: `hardware-engineer`
+Role id: `rober-hardware-engineer`
 
 File range:
 
@@ -200,7 +200,7 @@ When implementation starts, dispatch these worker agents in parallel:
 - `robot-software-engineer` for Robot/API safe support export summary.
 - `full-stack-software-engineer` for mobile/web copy/export panel.
 - `autonomy-engineer` for read-only route/elevator/navigation non-claim review.
-- `hardware-engineer` for read-only PR #5/vendor-boundary review.
+- `rober-hardware-engineer` for read-only PR #5/vendor-boundary review.
 
 Each prompt must include role System Prompt, task, file range, acceptance commands, and output requirements. Workers are not alone in the codebase and must not revert others' edits.
 

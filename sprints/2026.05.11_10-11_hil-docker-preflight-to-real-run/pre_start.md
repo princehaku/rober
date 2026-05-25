@@ -4,7 +4,7 @@
 
 本轮主题：把 O1 的 `hil_pass` 阻塞从“本机无串口导致 blocked”推进到“docker preflight 可复验，真实硬件 run 一到位即可执行”。
 
-本轮只创建下一轮 sprint 入口文档，不修改 OKR、不把软件证据升级为实机通过。当前本机条件只有 docker，无真实 WAVE ROVER/ESP32/Orange Pi 串口设备；因此本轮目标是为下一位 `hardware-engineer` 建立可执行、可追责、可复跑的准入链路。
+本轮只创建下一轮 sprint 入口文档，不修改 OKR、不把软件证据升级为实机通过。当前本机条件只有 docker，无真实 WAVE ROVER/ESP32/Orange Pi 串口设备；因此本轮目标是为下一位 `rober-hardware-engineer` 建立可执行、可追责、可复跑的准入链路。
 
 ## 已读依据
 
@@ -47,7 +47,7 @@ CEO -> Product Manager / OKR Owner -> Engineers
 | 角色 | 本轮后续任务 |
 | --- | --- |
 | `product-okr-owner` | 锁定 O1 优先级、范围边界、验收口径和 sprint 入口文档 |
-| `hardware-engineer` | 下一阶段主责：在 docker 中完成 preflight，并在真实串口环境执行 WAVE ROVER move-test |
+| `rober-hardware-engineer` | 下一阶段主责：在 docker 中完成 preflight，并在真实串口环境执行 WAVE ROVER move-test |
 | `robot-software-engineer` | 只在真实 run 后补充 O2 task_record/evidence_ref 对账入口 |
 | `autonomy-engineer` | 只在真实 run 后补充 O3 fixed-route/status/replay 同 evidence_ref 对账 |
 | `full-stack-software-engineer` | 本轮无主任务；后续仅消费 `hil_pass`/blocked 状态用于用户可读诊断 |

@@ -124,7 +124,7 @@ git diff --check -- sprints/2026.05.17_07-08_cloud-worker-migration-rehearsal/te
 - Task A 与 Task B 文件范围互不重叠，下一阶段必须并行派发 `full-stack-software-engineer` 和 `robot-software-engineer`。
 - Task A 主责 cloud relay artifact / preflight，Task B 主责 robot metadata isolation fence。
 - Task C 只在 A/B 返回验证证据后执行 Product closeout。
-- 本轮不派 `hardware-engineer` 写文件，因为没有真实硬件材料；不派 `autonomy-engineer` 写文件，因为 route/elevator wrapper 已被上一轮明确停止。
+- 本轮不派 `rober-hardware-engineer` 写文件，因为没有真实硬件材料；不派 `autonomy-engineer` 写文件，因为 route/elevator wrapper 已被上一轮明确停止。
 
 ## 7. OKR 最低优先级核对
 

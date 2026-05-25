@@ -57,7 +57,7 @@
 | A2 | task record 包含 `error_code`、`final_state` 和 fixed route 结果路径 | `robot-software-engineer` | task record 测试 |
 | A3 | fixed route status reader 能识别 completed/failed/timeout | `autonomy-engineer` | behavior/nav 定向测试 |
 | A4 | Docker Humble build 已尝试并记录 exit code | `robot-software-engineer` | Docker build 日志摘要 |
-| A5 | HIL 准入清单 ready，实机验证 deferred | `hardware-engineer` | acceptance 文档/side2side |
+| A5 | HIL 准入清单 ready，实机验证 deferred | `rober-hardware-engineer` | acceptance 文档/side2side |
 | A6 | final 前 side2side 明确 closed/blocked/deferred，不用 partially mitigated 冒充完成 | `product-okr-owner` | `side2side_check.md` |
 
 ## 依赖与失败处理

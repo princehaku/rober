@@ -2483,7 +2483,7 @@ ROUTE_TASK_REHEARSAL_TEXT_REDACTIONS = (
     (re.compile(r"/dev/(ttyUSB|ttyACM|cu\.|tty\.)[A-Za-z0-9._-]*"), "/dev/[REDACTED_SERIAL]"),
     (re.compile(r"(?i)\b(baud|baudrate|baud_rate)\b\s*[:=]\s*\d+"), r"\1=[REDACTED_BAUD]"),
     (re.compile(r"(?i)Traceback \(most recent call last\):.*", re.DOTALL), "[REDACTED_TRACEBACK]"),
-    (re.compile(r"(?<![\w:])(?:~|/Users|/tmp|/var|/private|/ws|/home|/root)/[^\s,;}\\\"]+"), "[REDACTED_LOCAL_PATH]"),
+    (re.compile(r"(?<![\w:])(?:~|/Users|/tmp|/var|/private|/ws|/home|/root|/mnt/[A-Za-z])/[^\s,;}\\\"]+"), "[REDACTED_LOCAL_PATH]"),
 )
 
 
@@ -88433,6 +88433,17 @@ def summarize_vision_manifest(path, decision_index=None):
     return summary
 
 
+def _drop_safe_alias_inputs(latest_status, *keys, diagnostics_source=None):
+    # diagnostics builder 会重新生成 canonical safe alias；旧状态文件里的同名对象可能是 raw/source wrapper。
+    # 集中清理能让后续新增手机面板时复用同一条 fail-closed 规则，避免误把 not-proven 写成 proven。
+    if isinstance(latest_status, dict):
+        for key in keys:
+            latest_status.pop(key, None)
+    if isinstance(diagnostics_source, dict):
+        for key in keys:
+            diagnostics_source.pop(key, None)
+
+
 def build_diagnostics_payload(
     latest_status,
     *,
@@ -93280,47 +93291,38 @@ def build_diagnostics_payload(
         else {}
     )
     # phone-safe metadata 必须由 HTTP wrapper 重新生成；诊断 core 不转发状态文件里的旧对象。
-    latest_status.pop("phone_support_bundle", None)
-    latest_status.pop("cloud_support_handoff_safe_export", None)
-    latest_status.pop("cloud_support_handoff_safe_export_summary", None)
-    latest_status.pop("robot_diagnostics_cloud_support_handoff_safe_export_summary", None)
-    latest_status.pop("cloud_command_lifecycle_audit_export", None)
-    latest_status.pop("cloud_command_lifecycle_audit_export_summary", None)
-    latest_status.pop("robot_diagnostics_cloud_command_lifecycle_audit_export_summary", None)
-    latest_status.pop("cloud_command_lifecycle_replay_drill", None)
-    latest_status.pop("cloud_command_lifecycle_replay_drill_summary", None)
-    latest_status.pop("robot_diagnostics_cloud_command_lifecycle_replay_drill_summary", None)
-    latest_status.pop("cloud_command_lifecycle_replay_acceptance_packet", None)
-    latest_status.pop("cloud_command_lifecycle_replay_acceptance_packet_summary", None)
-    latest_status.pop(
+    _drop_safe_alias_inputs(
+        latest_status,
+        "phone_support_bundle",
+        "cloud_support_handoff_safe_export",
+        "cloud_support_handoff_safe_export_summary",
+        "robot_diagnostics_cloud_support_handoff_safe_export_summary",
+        "cloud_command_lifecycle_audit_export",
+        "cloud_command_lifecycle_audit_export_summary",
+        "robot_diagnostics_cloud_command_lifecycle_audit_export_summary",
+        "cloud_command_lifecycle_replay_drill",
+        "cloud_command_lifecycle_replay_drill_summary",
+        "robot_diagnostics_cloud_command_lifecycle_replay_drill_summary",
+        "cloud_command_lifecycle_replay_acceptance_packet",
+        "cloud_command_lifecycle_replay_acceptance_packet_summary",
         "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_summary",
-        None,
-    )
-    latest_status.pop("cloud_cancel_pending_command_safety_guard", None)
-    latest_status.pop("cloud_cancel_pending_command_safety_guard_summary", None)
-    latest_status.pop("robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary", None)
-    latest_status.pop("cloud_ack_lookup_pending_status_guard", None)
-    latest_status.pop("cloud_ack_lookup_pending_status_guard_summary", None)
-    latest_status.pop("robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary", None)
-    latest_status.pop("cloud_ack_accepted_result_pending_guard", None)
-    latest_status.pop("cloud_ack_accepted_result_pending_guard_summary", None)
-    latest_status.pop(
+        "cloud_cancel_pending_command_safety_guard",
+        "cloud_cancel_pending_command_safety_guard_summary",
+        "robot_diagnostics_cloud_cancel_pending_command_safety_guard_summary",
+        "cloud_ack_lookup_pending_status_guard",
+        "cloud_ack_lookup_pending_status_guard_summary",
+        "robot_diagnostics_cloud_ack_lookup_pending_status_guard_summary",
+        "cloud_ack_accepted_result_pending_guard",
+        "cloud_ack_accepted_result_pending_guard_summary",
         "robot_diagnostics_cloud_ack_accepted_result_pending_guard_summary",
-        None,
-    )
-    latest_status.pop("cloud_terminal_result_verification_guard", None)
-    latest_status.pop("cloud_terminal_result_verification_guard_summary", None)
-    latest_status.pop(
+        "cloud_terminal_result_verification_guard",
+        "cloud_terminal_result_verification_guard_summary",
         "robot_diagnostics_cloud_terminal_result_verification_guard_summary",
-        None,
-    )
-    latest_status.pop("voice_prompt_readiness", None)
-    latest_status.pop("phone_offline_resume_readiness", None)
-    latest_status.pop("cloud_unreachable_malformed_response_guard", None)
-    latest_status.pop("cloud_unreachable_malformed_response_guard_summary", None)
-    latest_status.pop(
+        "voice_prompt_readiness",
+        "phone_offline_resume_readiness",
+        "cloud_unreachable_malformed_response_guard",
+        "cloud_unreachable_malformed_response_guard_summary",
         "robot_diagnostics_cloud_unreachable_malformed_response_guard_summary",
-        None,
     )
     latest_status.pop("mobile_route_elevator_field_device_precheck", None)
     latest_status.pop("mobile_route_elevator_field_device_precheck_summary", None)

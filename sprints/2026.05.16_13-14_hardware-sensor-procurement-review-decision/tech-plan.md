@@ -69,7 +69,7 @@ evidence_boundary
 
 ### Task A - Hardware Review Decision Gate
 
-Owner：`hardware-engineer`
+Owner：`rober-hardware-engineer`
 
 文件范围：
 
@@ -215,7 +215,7 @@ git diff --check -- sprints/2026.05.16_13-14_hardware-sensor-procurement-review-
 
 implementation 阶段必须并行启动 3 个 Engineer worker：
 
-- `hardware-engineer`：Task A，主责 PC review decision gate。
+- `rober-hardware-engineer`：Task A，主责 PC review decision gate。
 - `robot-software-engineer`：Task B，主责 diagnostics metadata-only consumer。
 - `full-stack-software-engineer`：Task C，主责 mobile phone-safe panel。
 

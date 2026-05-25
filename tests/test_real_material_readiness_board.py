@@ -63,7 +63,7 @@ class RealMaterialReadinessBoardTest(unittest.TestCase):
         self.assertIn("docs/vendor/VENDOR_INDEX.md", encoded)
         self.assertIn("docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py", encoded)
         self.assertIn("docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h", encoded)
-        self.assertEqual(hardware_group["owner"], "hardware-engineer")
+        self.assertEqual(hardware_group["owner"], "rober-hardware-engineer")
         self.assertEqual(hardware_group["source"], "software_proof")
         self.assertEqual(hardware_group["status"], "not_proven")
         self.assertEqual(hardware_group["material_status"], "blocked_pending_real_materials")
@@ -76,7 +76,7 @@ class RealMaterialReadinessBoardTest(unittest.TestCase):
         encoded = json.dumps({"artifact": artifact, "summary": summary}, ensure_ascii=False)
         pr4_group = next(group for group in artifact["material_groups"] if group["group_id"] == "pr4_route_elevator")
 
-        self.assertEqual(pr4_group["owner"], "autonomy-engineer")
+        self.assertEqual(pr4_group["owner"], ""robot-algorithm-engineer"")
         self.assertEqual(pr4_group["group_status"], "blocked_missing_pr4_route_elevator_real_materials")
         self.assertEqual(pr4_group["blocking_reason"], "missing_real_route_elevator_field_materials")
         self.assertIn("Objective 2", pr4_group["source_refs"])

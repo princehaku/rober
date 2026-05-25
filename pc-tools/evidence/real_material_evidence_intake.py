@@ -73,7 +73,7 @@ MATERIAL_GROUPS: dict[str, dict[str, Any]] = {
     "o1_pr5_hardware": {
         "title": "Objective 1 / PR #5 hardware real material",
         "objective_ref": "Objective 1",
-        "owner_handoff": "hardware-engineer",
+        "owner_handoff": "rober-hardware-engineer",
         "required_items": (
             "2d_lidar_sku_source_receipt",
             "tof_sku_source_receipt",
@@ -86,7 +86,7 @@ MATERIAL_GROUPS: dict[str, dict[str, Any]] = {
     "pr4_route_elevator": {
         "title": "PR #4 route/elevator real material",
         "objective_ref": "PR #4 / Objective 2 / Objective 3",
-        "owner_handoff": "autonomy-engineer",
+        "owner_handoff": ""robot-algorithm-engineer"",
         "required_items": (
             "nav2_fixed_route_runtime_log",
             "route_completion_signal",

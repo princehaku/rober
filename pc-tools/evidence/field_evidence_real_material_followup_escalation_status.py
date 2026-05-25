@@ -392,7 +392,7 @@ def _owner_escalation_items(evidence_ref: str, missing_evidence: list[str], bloc
     # owner/SLA/next_action 拆成现场 owner 可直接执行的三组，不启用任何机器人动作。
     owner_specs = (
         (
-            "autonomy-engineer",
+            ""robot-algorithm-engineer"",
             "Autonomy Algorithm Engineer",
             "collect_route_elevator_runtime_materials_under_same_evidence_ref",
             missing_evidence,

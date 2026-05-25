@@ -50,7 +50,7 @@
       "due_status": "overdue_pending_real_materials",
       "escalation_level": "hardware_real_material_owner_followup_required",
       "evidence_boundary": "software_proof_docker_real_material_followup_escalation_status_gate",
-      "field_owner": "hardware-engineer",
+      "field_owner": "rober-hardware-engineer",
       "material_group": "o1_pr5_hardware",
       "next_required_evidence": [
         "mandatory sensor baseline citation to docs/vendor/VENDOR_INDEX.md and referenced local vendor files",
@@ -86,7 +86,7 @@
       "due_status": "overdue_pending_real_materials",
       "escalation_level": "field_owner_followup_required_before_route_elevator_claim",
       "evidence_boundary": "software_proof_docker_real_material_followup_escalation_status_gate",
-      "field_owner": "autonomy-engineer",
+      "field_owner": ""robot-algorithm-engineer"",
       "material_group": "pr4_route_elevator",
       "next_required_evidence": [
         "real Nav2 fixed-route runtime log",

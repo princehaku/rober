@@ -57,7 +57,7 @@
 
 ## 对应责任 Engineer
 
-- `hardware-engineer`：O1 证据入口、HIL 参数、反馈采样、硬件文档。
+- `rober-hardware-engineer`：O1 证据入口、HIL 参数、反馈采样、硬件文档。
 - `robot-software-engineer`：O2 任务状态机失败恢复与记录字段。
 - `autonomy-engineer`：O3 route 固定路线状态字段对齐。
 - `full-stack-software-engineer`：O1/O2/O3 证据源与复盘信息可视化。

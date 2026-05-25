@@ -81,7 +81,7 @@ class RouteTaskFieldRetestMaterialCallbackReviewDecisionTest(unittest.TestCase):
             "owner_acknowledgement": ack
             if ack is not None
             else {
-                "owner_id": "autonomy-engineer",
+                "owner_id": ""robot-algorithm-engineer"",
                 "material_callback_status": "material_callback_received_not_proven",
                 "safe_note": "sanitized callback packet ready for review",
                 "review_requested_at": "2026-05-18T00:00:00Z",
@@ -197,7 +197,7 @@ class RouteTaskFieldRetestMaterialCallbackReviewDecisionTest(unittest.TestCase):
                 json.dumps(
                     self._packet_payload(
                         owner_acknowledgement={
-                            "owner_id": "autonomy-engineer",
+                            "owner_id": ""robot-algorithm-engineer"",
                             "material_callback_status": "material_callback_received_not_proven",
                             "safe_note": "raw path /Users/m4/private.log /cmd_vel",
                             "review_requested_at": "2026-05-18T00:00:00Z",

@@ -1477,6 +1477,19 @@ Use the summary with these ownership rules:
 
 The procurement summary can be attached to route/elevator handoff material as context, not as a replacement for `nav2_fixed_route_runtime_log.json`, route status, task record, completion signal, door state, target-floor confirmation, or diagnostics mobile-safe summary. If any sensor material is missing, placeholder, cross-run, or outside the safe copy whitelist, keep the owner handoff blocked/not_proven and rerun the Hardware intake before Autonomy treats it as planning input.
 
+### 7.2 Route code structure after 2026-05-25 refactor
+
+The fixed-route autonomy code is now split by proof responsibility:
+
+- `route_contracts.py`: stable route data model, `fixed_route.v1`, checkpoint ids, failure codes, route replay JSONL payloads.
+- `route_parsers.py`: ROS-free CSV/YAML parsing and waypoint validation. Use this for CLI conversion, offline proof, and runtime route loading so bad route files fail the same way everywhere.
+- `route_proof_summary.py`: proof summary math only. It derives coverage rate, missing checkpoints, and first blocking reason.
+- `elevator_assist.py`: conservative elevator assisted-delivery evidence schema. Visual route proof may fill the schema, but it must not claim door state, target floor confirmation, or safe exit unless a future dedicated source provides that evidence.
+- `visual_gate_runtime.py`: OpenCV ORB matcher adapter. Tests and support scripts can replace it with a stub matcher without importing ROS2 or touching camera hardware.
+- `route_utils.py`: compatibility facade for older imports. New code should import from the narrower modules above.
+
+This split preserves the existing dry-run contract: fixed-route proof is still software proof unless it is paired with a real route runtime log, task record, completion signal, and field/elevator evidence under the same safe `evidence_ref`.
+
 ## 8. Delivery Action Modes
 
 The task orchestrator defaults to safe dry-run delivery:

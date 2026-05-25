@@ -1,6 +1,6 @@
-"""Offline WAVE ROVER hardware diagnostics proof builder.
+"""离线 WAVE ROVER 硬件诊断 proof 构建器。
 
-Vendor sources:
+厂商来源：
 - docs/vendor/VENDOR_INDEX.md
 - docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py
 - docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml
@@ -8,10 +8,9 @@ Vendor sources:
 - docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h
 - docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h
 
-This module deliberately stays offline: it does not open serial ports, create a
-ROS2 node, or publish/subscribe to topics. It reuses the protocol pure functions
-from esp32_bridge.py so the proof artifact follows the same command encoding and
-feedback parsing logic as the runtime driver.
+本模块刻意保持离线：不打开串口、不创建 ROS2 node、不发布或订阅 topic。
+它复用 runtime 同源的协议纯函数，让 proof artifact 和真实 driver 的命令编码、
+反馈解析逻辑保持一致。
 """
 
 from __future__ import annotations
@@ -22,12 +21,12 @@ import math
 from pathlib import Path
 from typing import Any
 
-from ros2_trashbot_hardware.esp32_bridge import (
+from ros2_trashbot_hardware.bridge_config import validate_startup_config
+from ros2_trashbot_hardware.wave_rover_feedback import parse_feedback_line
+from ros2_trashbot_hardware.wave_rover_protocol import (
     build_cmd_vel_command,
     build_startup_config_commands,
     encode_json_command,
-    parse_feedback_line,
-    validate_startup_config,
 )
 
 
@@ -69,11 +68,13 @@ ODOM_SOURCE = "ROS-side command integration until measured wheel odometry is val
 
 
 def _json_frame(command: dict[str, Any]) -> str:
-    """Expose the exact UART JSON line without opening a UART."""
+    """在不打开 UART 的前提下输出完整 JSON line。"""
+    # 离线 proof 必须复用 runtime 的编码函数，避免文档示例和真实发送帧分叉。
     return encode_json_command(command).decode("utf-8")
 
 
 def _merge_config(config: dict[str, Any] | None) -> dict[str, Any]:
+    # 先复制默认值再覆盖，保证输出 artifact 总是包含完整参数快照。
     merged = dict(DEFAULT_CONFIG)
     if config:
         merged.update(config)
@@ -102,6 +103,7 @@ def _coerce_float_config(config: dict[str, Any], key: str) -> float:
 
 def _validate_config(config: dict[str, Any]) -> dict[str, Any]:
     try:
+        # 命令行输入先统一强转类型，再走和 runtime 一致的启动参数校验。
         config["serial_baudrate"] = _coerce_int_config(config, "serial_baudrate")
         config["track_width_m"] = _coerce_float_config(config, "track_width_m")
         config["max_wheel_speed_mps"] = _coerce_float_config(config, "max_wheel_speed_mps")
@@ -123,6 +125,7 @@ def _validate_config(config: dict[str, Any]) -> dict[str, Any]:
 
 def _sample_to_line(feedback_sample: dict[str, Any] | str | bytes | None) -> tuple[Any, str | bytes]:
     if feedback_sample is None:
+        # 默认样本只是 parser contract proof，不代表真实 WAVE ROVER 已经上报。
         raw: Any = dict(DEFAULT_FEEDBACK_SAMPLE)
         return raw, _json_frame(raw)
     if isinstance(feedback_sample, dict):
@@ -132,6 +135,7 @@ def _sample_to_line(feedback_sample: dict[str, Any] | str | bytes | None) -> tup
 
 def _build_feedback_section(feedback_sample: dict[str, Any] | str | bytes | None) -> dict[str, Any]:
     raw, line = _sample_to_line(feedback_sample)
+    # 反馈解析函数只接受 T=1001，proof 因此不会把任意 JSON 包装成硬件反馈。
     parsed = parse_feedback_line(line)
     if parsed is None:
         return {
@@ -144,6 +148,7 @@ def _build_feedback_section(feedback_sample: dict[str, Any] | str | bytes | None
 
 
 def _build_cmd_vel_examples(config: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    # 同时输出 speed/T=1 和 ros/T=13，但 T=13 明确标为未验证路径。
     speed_forward = build_cmd_vel_command(
         linear_x=0.65,
         angular_z=0.0,
@@ -176,6 +181,7 @@ def _build_cmd_vel_examples(config: dict[str, Any]) -> dict[str, dict[str, Any]]
 
 
 def _risk_flags(config: dict[str, Any]) -> list[dict[str, str]]:
+    # 风险字段给下游 UI/文档消费，防止 software proof 被误读为 HIL pass。
     flags = [
         {
             "id": "hil_required",
@@ -210,6 +216,7 @@ def _risk_flags(config: dict[str, Any]) -> list[dict[str, str]]:
 
 
 def _hil_recipe(config: dict[str, Any]) -> dict[str, Any]:
+    # 履约 recipe 只给动作，不在离线 artifact 中声明真实串口或真实速度已通过。
     return {
         "purpose": "Run only on a prepared robot with wheels clear or a safe low-speed test area.",
         "vendor_basis": [
@@ -246,7 +253,8 @@ def build_hardware_diagnostics_proof(
     feedback_sample: dict[str, Any] | str | bytes | None = None,
     output_file: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Build an offline diagnostics proof artifact for the WAVE ROVER bridge."""
+    """构建 WAVE ROVER bridge 的离线 diagnostics proof artifact。"""
+    # 生成顺序固定：参数、反馈、命令、风险，便于 sprint 证据人工复核。
     proof_config = _merge_config(config)
     config_validation = _validate_config(proof_config)
     feedback = _build_feedback_section(feedback_sample)
@@ -280,6 +288,7 @@ def build_hardware_diagnostics_proof(
     }
 
     if output_file is not None:
+        # 输出文件是离线证据，不含 credential、真实串口原始日志或 HIL 成功断言。
         Path(output_file).write_text(json.dumps(proof, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     return proof
@@ -289,6 +298,7 @@ def _parse_feedback_sample(value: str | None) -> dict[str, Any] | str | None:
     if value is None:
         return None
     try:
+        # 能解析成 JSON 就按样本对象处理；否则保留原字符串，让 parser 给出失败边界。
         parsed = json.loads(value)
     except json.JSONDecodeError:
         return value
@@ -296,6 +306,7 @@ def _parse_feedback_sample(value: str | None) -> dict[str, Any] | str | None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # 命令行入口是 PC 侧 proof builder，不打开 UART；真实 HIL 仍要走 hardware smoke 流程。
     parser = argparse.ArgumentParser(description="Build offline WAVE ROVER hardware proof JSON.")
     parser.add_argument("--serial-port", default=DEFAULT_CONFIG["serial_port"])
     parser.add_argument("--serial-baudrate", type=int, default=DEFAULT_CONFIG["serial_baudrate"])

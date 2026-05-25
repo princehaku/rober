@@ -5,7 +5,7 @@
 - 阶段：prd
 - 时间：2026-05-11 21:00 Asia/Shanghai
 - 产品负责人：`product-okr-owner`
-- 目标 owner：`hardware-engineer`
+- 目标 owner：`rober-hardware-engineer`
 
 ## 背景和问题
 
@@ -36,7 +36,7 @@ CEO 明确本机只有 Docker、没有真实硬件。因此本轮不能要求真
 
 ## 本轮核心抓手
 
-主抓手是 O1 Docker/Humble preflight unblock。`hardware-engineer` 应从失败证据倒推最小工程改动：让脚本在 Docker registry 返回 HTML、metadata 解包失败、host cache 异常或代理问题时输出明确诊断建议，并尽量恢复 `ros-rbs-humble:dev` image build。
+主抓手是 O1 Docker/Humble preflight unblock。`rober-hardware-engineer` 应从失败证据倒推最小工程改动：让脚本在 Docker registry 返回 HTML、metadata 解包失败、host cache 异常或代理问题时输出明确诊断建议，并尽量恢复 `ros-rbs-humble:dev` image build。
 
 ## 做什么
 
@@ -73,7 +73,7 @@ CEO 明确本机只有 Docker、没有真实硬件。因此本轮不能要求真
 
 ## 对应责任 Engineer
 
-- `hardware-engineer`：主责实现、验证、修复和 `tech-done.md` 更新。
+- `rober-hardware-engineer`：主责实现、验证、修复和 `tech-done.md` 更新。
 - `robot-software-engineer`：如 ROS build contract 或脚本入口影响包构建语义，只做只读咨询或接口事实补充。
 
 ## 风险和阻塞

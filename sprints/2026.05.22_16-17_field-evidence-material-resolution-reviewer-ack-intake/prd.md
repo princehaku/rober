@@ -122,7 +122,7 @@ The expected lifecycle is:
 - `autonomy-engineer`: PC gate, artifact schema, classification tests, evidence contract docs.
 - `robot-software-engineer`: Robot diagnostics safe alias and diagnostics docs.
 - `full-stack-software-engineer`: mobile/web panel, fixture, tests, and mobile product docs.
-- `hardware-engineer`: read-only vendor/PR #5/material boundary consultation.
+- `rober-hardware-engineer`: read-only vendor/PR #5/material boundary consultation.
 - `product-okr-owner`: sprint closeout, OKR boundary, side-by-side acceptance, and no-lift decision.
 
 ## 8. Risks And Evidence Gaps

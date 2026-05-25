@@ -66,7 +66,7 @@
 - `full-stack-software-engineer`：主责 artifact/preflight/phone-safe diagnostics 实现与 docs/product 同步。
 - `robot-software-engineer`：主责 remote bridge compatibility fence，确保 credential rotate gate 不改变 ACK/cursor/action 触发边界。
 - `product-okr-owner`：主责验收口径、sprint 收口和 OKR 保守更新。
-- `hardware-engineer`：本轮不主责；没有真实硬件，不做 HIL 或 WAVE ROVER 结论。
+- `rober-hardware-engineer`：本轮不主责；没有真实硬件，不做 HIL 或 WAVE ROVER 结论。
 - `autonomy-engineer`：本轮不主责；没有 Nav2/fixed-route 实跑范围。
 
 ## 8. 风险、阻塞和证据链

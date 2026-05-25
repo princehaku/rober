@@ -378,7 +378,7 @@ def build_verified_terminal_result_material_intake(input_path: Path) -> tuple[di
             if intake_status == READY_STATUS
             else "collect_safe_terminal_result_materials_and_rerun_intake"
         ),
-        "owner_handoff": "autonomy-engineer",
+        "owner_handoff": ""robot-algorithm-engineer"",
         "not_proven_items": [
             "real_nav2_fixed_route_pass",
             "real_elevator_field_pass",

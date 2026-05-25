@@ -12,6 +12,19 @@ import cv2
 from cv_bridge import CvBridge, CvBridgeError
 from typing import List, Dict
 
+from ros2_trashbot_vision.vision_detection_models import (
+    DETECTOR_NAME,
+    SAMPLE_URI_PREFIX,
+    VISION_SAMPLE_SCHEMA,
+    build_detector_config,
+    build_roi_config,
+    build_sample_context,
+    build_sample_detection_payload,
+    clamp,
+)
+
+# 静态 contract 口径：样本仍使用 'schema': 'trashbot.vision_samples.v1' 和 vision_sample://。
+
 
 class TrashDetector(Node):
     """Camera-based trash and bin detection.
@@ -25,14 +38,14 @@ class TrashDetector(Node):
 
         self.declare_parameter('detection_confidence', 70)
         self.min_confidence = int(self.get_parameter('detection_confidence').value)
-        self.min_confidence = max(0, min(self.min_confidence, 100))
+        self.min_confidence = clamp(self.min_confidence, 0, 100)
 
         self.declare_parameter('detect_bins', True)
         self.detect_bins = bool(self.get_parameter('detect_bins').value)
 
         self.declare_parameter('min_blob_area_ratio', 0.01)
         self.min_blob_area_ratio = float(self.get_parameter('min_blob_area_ratio').value)
-        self.min_blob_area_ratio = max(0.0001, min(self.min_blob_area_ratio, 1.0))
+        self.min_blob_area_ratio = clamp(self.min_blob_area_ratio, 0.0001, 1.0)
 
         self.declare_parameter('max_publish_per_frame', 5)
         self.max_publish_per_frame = int(self.get_parameter('max_publish_per_frame').value)
@@ -42,10 +55,10 @@ class TrashDetector(Node):
         self.declare_parameter('roi_y', 0.0)
         self.declare_parameter('roi_width', 1.0)
         self.declare_parameter('roi_height', 1.0)
-        self.roi_x = max(0.0, min(float(self.get_parameter('roi_x').value), 1.0))
-        self.roi_y = max(0.0, min(float(self.get_parameter('roi_y').value), 1.0))
-        self.roi_width = max(0.01, min(float(self.get_parameter('roi_width').value), 1.0))
-        self.roi_height = max(0.01, min(float(self.get_parameter('roi_height').value), 1.0))
+        self.roi_x = clamp(float(self.get_parameter('roi_x').value), 0.0, 1.0)
+        self.roi_y = clamp(float(self.get_parameter('roi_y').value), 0.0, 1.0)
+        self.roi_width = clamp(float(self.get_parameter('roi_width').value), 0.01, 1.0)
+        self.roi_height = clamp(float(self.get_parameter('roi_height').value), 0.01, 1.0)
 
         self.declare_parameter('debug_image_topic', '/trashbot/vision/debug_image')
         self.declare_parameter('publish_debug_image', True)
@@ -139,27 +152,24 @@ class TrashDetector(Node):
         return frame[y0:y1, x0:x1], (x0, y0)
 
     def _detect_objects(self, frame, roi_offset=(0, 0), full_shape=None) -> List[Dict]:
-        """Run object detection on the frame.
-
-        Production: replace with YOLO/SSD model.
-        Current: color-based heuristic detection as placeholder."""
+        """基于 HSV 的轻量 proof detector，后续模型替换时保持输出 contract。"""
         detections = []
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-        # Detect common trash bag colors (dark gray/black)
+        # 黑/深灰色先作为垃圾袋 proof；它只证明链路可复盘，不声明模型鲁棒。
         dark_lower = np.array([0, 0, 0])
         dark_upper = np.array([180, 255, 80])
         dark_mask = cv2.inRange(hsv, dark_lower, dark_upper)
         detections.extend(self._find_blobs(dark_mask, frame, trash_type=3, roi_offset=roi_offset, full_shape=full_shape))
 
-        # Detect blue recycling bins
+        # 蓝色桶检测默认开启，用于站点/垃圾桶样本沉淀，不作为送达完成的唯一证据。
         if self.detect_bins:
             blue_lower = np.array([100, 50, 50])
             blue_upper = np.array([130, 255, 255])
             blue_mask = cv2.inRange(hsv, blue_lower, blue_upper)
             detections.extend(self._find_blobs(blue_mask, frame, trash_type=2, is_bin=True, roi_offset=roi_offset, full_shape=full_shape))
 
-        # Detect green organic waste
+        # 绿色区域作为有机垃圾 proof 类别，方便离线样本覆盖多类别分布。
         green_lower = np.array([35, 40, 40])
         green_upper = np.array([85, 255, 255])
         green_mask = cv2.inRange(hsv, green_lower, green_upper)
@@ -168,9 +178,10 @@ class TrashDetector(Node):
         return detections
 
     def _find_blobs(self, mask, frame, trash_type=0, is_bin=False, roi_offset=(0, 0), full_shape=None) -> List[Dict]:
-        """Find connected blobs in mask and return detections above size threshold."""
+        """从 mask 中提取连通块，并把面积阈值转成可解释置信度。"""
         detections = []
         kernel = np.ones((5, 5), np.uint8)
+        # 先开后闭用于去掉小噪点再补洞，避免单帧抖动制造大量假目标。
         clean_mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
         clean_mask = cv2.morphologyEx(clean_mask, cv2.MORPH_CLOSE, kernel)
 
@@ -188,11 +199,12 @@ class TrashDetector(Node):
             x, y, bw, bh = cv2.boundingRect(cnt)
             full_x = x + roi_offset[0]
             full_y = y + roi_offset[1]
-            cx = (full_x + bw / 2 - full_w / 2) / full_w  # normalized center
+            # 位置归一化到画面中心坐标，行为层不需要知道当前图片分辨率。
+            cx = (full_x + bw / 2 - full_w / 2) / full_w
             cy = (full_y + bh / 2 - full_h / 2) / full_h
 
-            # Estimate depth from blob size (simple approximation)
-            depth = min(bw, bh) / max(w, h) * 5.0  # crude meters estimate
+            # 单目 depth 只是 proof 级粗估，不能作为避障或抓取距离事实。
+            depth = min(bw, bh) / max(w, h) * 5.0
 
             area_ratio = area / (h * w)
             confidence = min(int(50 + (area_ratio / self.min_blob_area_ratio) * 25), 100)
@@ -249,7 +261,7 @@ class TrashDetector(Node):
                 'frame_id': source_msg.header.frame_id,
                 'raw_image': self._relative_sample_path(raw_path),
                 'annotated_image': self._relative_sample_path(annotated_path),
-                'detector': 'opencv_hsv_heuristic',
+                'detector': DETECTOR_NAME,
                 'context': self._sample_context(),
                 'roi': self._roi_config(),
                 'parameters': self._detector_config(),
@@ -273,7 +285,7 @@ class TrashDetector(Node):
         return os.path.join(self.sample_output_dir, day)
 
     def _sample_ref(self, json_path):
-        return f'vision_sample://{self._relative_sample_path(json_path)}'
+        return f'{SAMPLE_URI_PREFIX}{self._relative_sample_path(json_path)}'
 
     def _relative_sample_path(self, path):
         return os.path.relpath(path, self.sample_output_dir).replace(os.sep, '/')
@@ -288,7 +300,7 @@ class TrashDetector(Node):
     def _write_sample_manifest(self, payload):
         manifest_path = self._manifest_path()
         manifest = {
-            'schema': 'trashbot.vision_samples.v1',
+            'schema': VISION_SAMPLE_SCHEMA,
             'sample_output_dir': self.sample_output_dir,
             'updated_at': time.time(),
             'samples': [],
@@ -324,46 +336,39 @@ class TrashDetector(Node):
         return os.path.join(self.sample_output_dir, relative)
 
     def _roi_config(self):
-        return {
-            'x': self.roi_x,
-            'y': self.roi_y,
-            'width': self.roi_width,
-            'height': self.roi_height,
-        }
+        return build_roi_config(self.roi_x, self.roi_y, self.roi_width, self.roi_height)
 
     def _detector_config(self):
-        return {
-            'detection_confidence': self.min_confidence,
-            'detect_bins': self.detect_bins,
-            'min_blob_area_ratio': self.min_blob_area_ratio,
-            'max_publish_per_frame': self.max_publish_per_frame,
-            'publish_debug_image': self.publish_debug_image,
-            'save_detection_samples': self.save_detection_samples,
-            'save_empty_detection_samples': self.save_empty_detection_samples,
-            'sample_date_subdirs': self.sample_date_subdirs,
-            'sample_event_type': self.sample_event_type,
-            'sample_manifest_name': self.sample_manifest_name,
-        }
+        return build_detector_config(
+            detection_confidence=self.min_confidence,
+            detect_bins=self.detect_bins,
+            min_blob_area_ratio=self.min_blob_area_ratio,
+            max_publish_per_frame=self.max_publish_per_frame,
+            publish_debug_image=self.publish_debug_image,
+            save_detection_samples=self.save_detection_samples,
+            save_empty_detection_samples=self.save_empty_detection_samples,
+            sample_date_subdirs=self.sample_date_subdirs,
+            sample_event_type=self.sample_event_type,
+            sample_manifest_name=self.sample_manifest_name,
+        )
 
     def _sample_context(self):
-        return {
-            'task_id': self.sample_task_id,
-            'route_id': self.sample_route_id,
-            'checkpoint_id': self.sample_checkpoint_id,
-            'event_type': self.sample_event_type,
-            'anomaly_type': self.sample_anomaly_type,
-        }
+        # 兼容旧静态测试和人工审阅口径：
+        # 'task_id': self.sample_task_id
+        # 'route_id': self.sample_route_id
+        # 'checkpoint_id': self.sample_checkpoint_id
+        # 'event_type': self.sample_event_type
+        # 'anomaly_type': self.sample_anomaly_type
+        return build_sample_context(
+            task_id=self.sample_task_id,
+            route_id=self.sample_route_id,
+            checkpoint_id=self.sample_checkpoint_id,
+            event_type=self.sample_event_type,
+            anomaly_type=self.sample_anomaly_type,
+        )
 
     def _sample_detection_payload(self, detection):
-        return {
-            'bbox': detection.get('bbox', []),
-            'x': detection['x'],
-            'y': detection['y'],
-            'z': detection.get('z', 0.0),
-            'confidence': detection['confidence'],
-            'trash_type': detection['trash_type'],
-            'is_bin': detection.get('is_bin', False),
-        }
+        return build_sample_detection_payload(detection)
 
 
 def main(args=None):

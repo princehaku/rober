@@ -145,7 +145,7 @@ P2：
 
 ## 7. 对应责任 Engineer
 
-- 主责：`hardware-engineer`，负责 review decision gate、blocker 分类、next_required_evidence、owner_handoff、rerun_commands 和硬件/source/procurement/material boundary。
+- 主责：`rober-hardware-engineer`，负责 review decision gate、blocker 分类、next_required_evidence、owner_handoff、rerun_commands 和硬件/source/procurement/material boundary。
 - 协作：`robot-software-engineer`，负责 diagnostics metadata-only review summary consumer。
 - 协作：`full-stack-software-engineer`，负责 mobile phone-safe read-only review decision surface。
 - 收口：`product-okr-owner`，负责 sprint chain、OKR boundary、side-by-side check 和 final。

@@ -2336,7 +2336,7 @@ GitHub PR #5 thread state 同步记录：`PRRT_kwDOSWB9286CJ3tQ` 与 `PRRT_kwDOS
 
 | Objective | 当前进度判断 | 证据与缺口 |
 | --- | --- | --- |
-| Objective 1：硬件协议可信底盘 | 保持约 81% | `o1_pr5_hardware` follow-up group 输出 `field_owner=hardware-engineer`、`due_status=overdue_pending_real_materials`、blocked reason、next required evidence、escalation level 和 rerun command；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `blocked_pending_real_materials`。仍缺真实 WAVE ROVER/UART/HIL、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、operator HIL report、真实 2D LiDAR / ToF source/procurement/installation/wiring/power/calibration/HIL-entry。 |
+| Objective 1：硬件协议可信底盘 | 保持约 81% | `o1_pr5_hardware` follow-up group 输出 `field_owner=rober-hardware-engineer`、`due_status=overdue_pending_real_materials`、blocked reason、next required evidence、escalation level 和 rerun command；`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / `blocked_pending_real_materials`。仍缺真实 WAVE ROVER/UART/HIL、`feedback_T1001.log`、`/odom`、`/imu/data`、`/battery`、operator HIL report、真实 2D LiDAR / ToF source/procurement/installation/wiring/power/calibration/HIL-entry。 |
 | Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保守保持约 99% | `pr4_route_elevator` follow-up group 继续要求真实 Nav2/fixed-route runtime log、route completion signal、field task record、elevator door state、target floor confirmation、human assistance record、dropoff/cancel material 和 delivery_result；Autonomy 只读咨询确认不得用 pass/complete/success wording。本轮不证明真实 route/elevator field pass、delivery_success、dropoff/cancel completion 或 safe-to-control。 |
 | Objective 3：可验证导航与固定路线 | 保守保持约 99% | Follow-up status 把真实 Nav2/fixed-route runtime log、route completion signal、field task record、route/elevator field material、dropoff/cancel material 和 delivery_result 继续作为 required real materials；本轮没有真实路线采集、Nav2/fixed-route 实跑、route completion signal、现场 task_record 或同一 safe `evidence_ref` 上车实机复账。 |
 | Objective 4：手机用户体验与低成本量产边界 | 保守保持约 99% | mobile/web 只读“真实材料升级状态”panel 消费 Robot safe alias，展示四类材料缺口与 owner/due/escalation/rerun 状态；Start Delivery、Confirm Dropoff、Cancel gating 不变。仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true phone/browser acceptance 和现场手机验收材料。 |
@@ -3434,7 +3434,7 @@ Robot worker 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/o
 
 ### 2026-05-16 11-12｜hardware-baseline-review-gate｜O4 硬件基线评审闭环，手机体验与低成本量产边界由约 80% 上调到约 81%
 
-`sprints/2026.05.16_11-12_hardware-baseline-review-gate/` 完成 `software_proof_docker_hardware_baseline_review_gate`：Task A `hardware-engineer` 更新 `docs/product/production_hardware_boundary.md`，修复 PR #5 review 指出的 `Default Hardware Set` 与 `Navigation/Sensing Baseline` 矛盾，把 2D LiDAR / ToF 写为 Product Target / Procurement Validation Pending，保留 `hardware_material_pending`、`not_proven` 和非 Objective 5 external proof 口径。Task A 验证输出关键边界 `rg` 命中，`git diff --check -- docs/product/production_hardware_boundary.md` 通过。
+`sprints/2026.05.16_11-12_hardware-baseline-review-gate/` 完成 `software_proof_docker_hardware_baseline_review_gate`：Task A `rober-hardware-engineer` 更新 `docs/product/production_hardware_boundary.md`，修复 PR #5 review 指出的 `Default Hardware Set` 与 `Navigation/Sensing Baseline` 矛盾，把 2D LiDAR / ToF 写为 Product Target / Procurement Validation Pending，保留 `hardware_material_pending`、`not_proven` 和非 Objective 5 external proof 口径。Task A 验证输出关键边界 `rg` 命中，`git diff --check -- docs/product/production_hardware_boundary.md` 通过。
 
 Task C `autonomy-engineer` 新增 `pc-tools/evidence/hardware_baseline_review_gate.py` 与 `pc-tools/evidence/test_hardware_baseline_review_gate.py`，更新 `pc-tools/README.md` 与 `docs/navigation/fixed_route_workflow.md`。pc-tools gate 将 product hardware boundary 转成 `hardware_baseline_review` artifact/summary，输出 `software_proof_docker_hardware_baseline_review_gate`、`hardware_material_pending`、`not_proven`、`delivery_success=false` 和 `primary_actions_enabled=false`；传感器职责分层为 2D LiDAR 目标用于 SLAM/Nav2 主链，monocular 用于电梯门/楼层语义证据，ToF 用于近场 safety gate 且不是主建图输入。Task C 验证输出 `py_compile` passed、`test_hardware_baseline_review_gate.py` `Ran 4 tests ... OK`、CLI `--help` passed、required `rg` passed、scoped `git diff --check` passed。
 
@@ -4168,7 +4168,7 @@ Task B Robot 只补 compatibility fence 和 `docs/interfaces/ros_contracts.md`�
 | Objective 4：感知模块产品化 | 新增 KR6，要求电梯门开/关、目标楼层到达和可驶出证据进入感知 contract | 当前未新增 detector、模型或真实相机证据 |
 | Objective 5：手机体验与量产边界 | 下调到30% | 新增 KR6，要求手机/语音体验解释人工协助边界和失败原因 | 当前未新增 TTS/喇叭实现、真实手机验收或量产实物验证 |
 
-责任 Engineer：后续行为状态机由 `robot-software-engineer` 主责；电梯门/楼层/驶出感知证据由 `autonomy-engineer` 主责；手机状态与语音触点由 `full-stack-software-engineer` 主责；若涉及 WAVE ROVER、ESP32、Orange Pi、UART、电气或安装变更，必须由 `hardware-engineer` 先按 `docs/vendor/VENDOR_INDEX.md` 做事实确认。
+责任 Engineer：后续行为状态机由 `robot-software-engineer` 主责；电梯门/楼层/驶出感知证据由 `autonomy-engineer` 主责；手机状态与语音触点由 `full-stack-software-engineer` 主责；若涉及 WAVE ROVER、ESP32、Orange Pi、UART、电气或安装变更，必须由 `rober-hardware-engineer` 先按 `docs/vendor/VENDOR_INDEX.md` 做事实确认。
 
 ### 2026-05-11 00-31｜route-proof-coverage｜missing_checkpoints 归一化
 

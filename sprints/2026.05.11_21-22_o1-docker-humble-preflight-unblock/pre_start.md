@@ -37,14 +37,14 @@
 
 ## 本轮核心抓手
 
-1. 由 `hardware-engineer` 主责 Docker/Humble preflight 履约：优先修复或增强脚本和 Dockerfile 的可诊断路径。
-2. `robot-software-engineer` 只做脚本/ROS build contract 只读咨询；若文件范围保持简单，本轮由 `hardware-engineer` 单线闭环。
+1. 由 `rober-hardware-engineer` 主责 Docker/Humble preflight 履约：优先修复或增强脚本和 Dockerfile 的可诊断路径。
+2. `robot-software-engineer` 只做脚本/ROS build contract 只读咨询；若文件范围保持简单，本轮由 `rober-hardware-engineer` 单线闭环。
 3. 把所有结论按 `software_proof`、`blocked/preflight evidence`、真实 `hil_pass` 分开记录。
 
 ## 做什么
 
 - 创建本 sprint 的 `pre_start.md`、`prd.md`、`tech-plan.md`。
-- 下一阶段允许 `hardware-engineer` 针对 Docker/Humble preflight 的脚本、Dockerfile 和 HIL 文档做最小改动。
+- 下一阶段允许 `rober-hardware-engineer` 针对 Docker/Humble preflight 的脚本、Dockerfile 和 HIL 文档做最小改动。
 - 围栏验证：shell syntax、Docker image preflight 或精确失败记录、hardware smoke status、scoped diff check。
 
 ## 不做什么
@@ -66,7 +66,7 @@
 
 ## 对应责任 Engineer
 
-- 主责：`hardware-engineer`，负责 Docker/Humble preflight、HIL runbook/checklist、真实硬件边界。
+- 主责：`rober-hardware-engineer`，负责 Docker/Humble preflight、HIL runbook/checklist、真实硬件边界。
 - 咨询：`robot-software-engineer`，仅在 ROS build contract 或脚本入口语义不清时做只读接口咨询。
 - 不介入：`autonomy-engineer`、`full-stack-software-engineer`，本轮不扩展 Nav2/UI 功能。
 

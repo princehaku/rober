@@ -39,7 +39,7 @@ Objective 1 当前软件测试已经能覆盖硬件桥的 JSON 编码、速度�
 
 ## 本轮核心抓手
 
-由 `hardware-engineer` 在 `src/ros2_trashbot_hardware/` 中新增一个不打开串口、不启动 ROS2 node 的 diagnostics/proof 模块，复用 `esp32_bridge.py` 的纯函数：
+由 `rober-hardware-engineer` 在 `src/ros2_trashbot_hardware/` 中新增一个不打开串口、不启动 ROS2 node 的 diagnostics/proof 模块，复用 `esp32_bridge.py` 的纯函数：
 
 - `build_startup_config_commands()`
 - `build_cmd_vel_command()`
@@ -96,7 +96,7 @@ CLI 只生成 proof JSON，不直接发命令到硬件。
 
 ## 对应责任 Engineer
 
-- `hardware-engineer`：实现、测试、修复和 `tech-done.md`。
+- `rober-hardware-engineer`：实现、测试、修复和 `tech-done.md`。
 - Product Owner：本轮只完成 PRD/tech-plan；implementation 后验收 Objective 1 的证据链是否真实推进。
 
 ## 风险、阻塞和需要补齐的证据链

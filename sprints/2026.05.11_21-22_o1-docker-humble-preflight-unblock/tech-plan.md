@@ -4,8 +4,8 @@
 
 - 阶段：tech-plan
 - 时间：2026-05-11 21:00 Asia/Shanghai
-- 主责 owner：`hardware-engineer`
-- 协作方式：文件范围简单时由 `hardware-engineer` 单线闭环；`robot-software-engineer` 仅在 ROS build contract 或脚本入口语义不清时只读咨询。
+- 主责 owner：`rober-hardware-engineer`
+- 协作方式：文件范围简单时由 `rober-hardware-engineer` 单线闭环；`robot-software-engineer` 仅在 ROS build contract 或脚本入口语义不清时只读咨询。
 
 ## 目标
 
@@ -25,7 +25,7 @@
 
 ## 文件范围
 
-允许 `hardware-engineer` 在实现阶段修改：
+允许 `rober-hardware-engineer` 在实现阶段修改：
 
 - `scripts/docker_humble_build.sh`
 - `scripts/docker_humble_dev.sh`（仅必要时）
@@ -46,7 +46,7 @@
 
 ### Task 1：Docker/Humble preflight 诊断增强
 
-Owner：`hardware-engineer`
+Owner：`rober-hardware-engineer`
 
 工作内容：
 
@@ -70,7 +70,7 @@ SKIP_COLCON=1 bash scripts/docker_humble_build.sh
 
 ### Task 2：HIL runbook/checklist 边界同步
 
-Owner：`hardware-engineer`
+Owner：`rober-hardware-engineer`
 
 工作内容：
 
@@ -92,7 +92,7 @@ python3 scripts/hardware_smoke_wave_rover.py --status
 
 ### Task 3：Sprint 执行记录和收口
 
-Owner：`hardware-engineer`
+Owner：`rober-hardware-engineer`
 
 工作内容：
 

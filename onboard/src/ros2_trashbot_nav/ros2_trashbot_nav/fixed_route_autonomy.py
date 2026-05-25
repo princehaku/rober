@@ -12,7 +12,11 @@ from sensor_msgs.msg import Image
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 from geometry_msgs.msg import PoseStamped
 
-from ros2_trashbot_nav.route_utils import (
+from ros2_trashbot_nav.elevator_assist import (
+    build_elevator_assist_evidence,
+    build_elevator_assist_status,
+)
+from ros2_trashbot_nav.route_contracts import (
     ROUTE_CONTRACT_VERSION,
     FAILURE_CODE_CHECKPOINT_MISSING,
     FAILURE_CODE_NAVIGATION_ABORT,
@@ -24,8 +28,8 @@ from ros2_trashbot_nav.route_utils import (
     build_route_replay_artifact_path,
     build_route_replay_entry,
     build_route_id,
-    build_elevator_assist_evidence,
-    build_elevator_assist_status,
+)
+from ros2_trashbot_nav.route_parsers import (
     load_waypoints_from_csv,
     validate_route_yaml_data,
 )
@@ -393,9 +397,8 @@ class FixedRouteAutonomy(Node):
             gate_status=self.visual_gate_status,
             last_block_reason=self.failure_reason or self.last_error,
         )
-        # Fixed-route does not infer elevator semantics by default. The status
-        # carries a normalized placeholder so behavior/operator layers can write
-        # or display future dry-run evidence without depending on camera OCR.
+        # 固定路线 runtime 默认不推断电梯语义；这里落一个保守占位，
+        # 让行为层/诊断层可以提前接入 schema，但不会把视觉 gate 误当成楼层确认。
         elevator_evidence = build_elevator_assist_evidence(
             'door_closed_or_unknown',
             source='fixed_route_debug_status',

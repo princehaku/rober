@@ -5,7 +5,7 @@
 - 阶段：tech-plan completed，可进入 implementation。
 - 时间：2026-05-10 18:09 Asia/Shanghai。
 - 主责：Hardware Infra Engineer。
-- 执行方式：1 owner 单线闭环，必须由 `hardware-engineer` 子 agent 实现、验证并更新 `tech-done.md`。Coordinator/Product Owner 不直接写产品代码、测试代码或硬件配置。
+- 执行方式：1 owner 单线闭环，必须由 `rober-hardware-engineer` 子 agent 实现、验证并更新 `tech-done.md`。Coordinator/Product Owner 不直接写产品代码、测试代码或硬件配置。
 
 ## 文件范围
 
@@ -23,7 +23,7 @@ Hardware Engineer 可改：
 - `sprints/2026.05.10_18-19_hardware-diagnostics-proof/pre_start.md`
 - `sprints/2026.05.10_18-19_hardware-diagnostics-proof/prd.md`
 - `sprints/2026.05.10_17-18_visual-gate-proof/*`
-- `.codex/agents/hardware-engineer.toml`
+- `.codex/agents/rober-hardware-engineer.toml`
 - `src/ros2_trashbot_hardware/ros2_trashbot_hardware/esp32_bridge.py`
 - `src/ros2_trashbot_hardware/test/test_waveshare_json_bridge.py`
 - `scripts/hardware_smoke_wave_rover.py`
@@ -225,9 +225,9 @@ grep -n "文件范围\|验收命令\|接口影响\|风险\|主责" sprints/2026.
 
 ## 子 Agent 启动建议
 
-下阶段 implementation 应派发 1 个 `hardware-engineer` worker，prompt 必须包含：
+下阶段 implementation 应派发 1 个 `rober-hardware-engineer` worker，prompt 必须包含：
 
-- 角色 System Prompt：从 `.codex/agents/hardware-engineer.toml` 的 `prompt` 字段完整复制。
+- 角色 System Prompt：从 `.codex/agents/rober-hardware-engineer.toml` 的 `prompt` 字段完整复制。
 - 本轮任务：实现 hardware diagnostics proof helper/CLI，生成/验证 WAVE ROVER JSON 协议离线证据。
 - 文件范围：使用本 tech-plan 的“文件范围”。
 - 验收命令：使用本 tech-plan 的“验收命令”。

@@ -137,7 +137,7 @@ git diff --check -- mobile/web <mobile_test_files>
 
 ### Hardware Worker
 
-Role id: `hardware-engineer`
+Role id: `rober-hardware-engineer`
 
 File range:
 
@@ -193,7 +193,7 @@ When implementation starts, dispatch 4 parallel worker agents in one batch:
 - `autonomy-engineer`
 - `robot-software-engineer`
 - `full-stack-software-engineer`
-- `hardware-engineer` read-only consultation
+- `rober-hardware-engineer` read-only consultation
 
 Each prompt must include the role System Prompt, task, file range, acceptance commands, and output requirements. Workers are not alone in the codebase and must not revert others' edits.
 

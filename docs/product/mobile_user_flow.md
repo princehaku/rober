@@ -1676,3 +1676,17 @@ The local operator gateway remains a development and fallback entrypoint. The 4G
 `cloud_external_evidence_review_handoff_followup_escalation_status` 面板承接 `cloud_external_evidence_review_handoff`，把上一跳 handoff 转成只读 follow-up accountability 状态。手机端只消费 `robot_diagnostics_cloud_external_evidence_review_handoff_followup_escalation_status_summary` 或 `cloud_external_evidence_review_handoff_followup_escalation_status_summary`、nested `cloud_external_evidence_review_handoff_followup_escalation_status.summary`、status/readiness/diagnostics 中同结构 safe summary fallback；不读取 raw artifact、raw diagnostics、response body、raw PR payload，不新增 ACK/cursor、material upload、handoff route、review mutation、GitHub mutation、replay/resubmit 或机器人控制路径。面板展示 source handoff status、due status、blocked reason、owner action、support action、reviewer action、CEO escalation recommendation、next required evidence、PR #5 `PRRT_kwDOSWB9286CJ3tX` / `hardware_material_pending`、`software_proof_docker_cloud_external_evidence_review_handoff_followup_escalation_status_gate` 和 false-state flags。
 
 手机端支持并只展示五种 follow-up state：`pending_followup_not_proven`、`due_followup_not_proven`、`overdue_followup_not_proven`、`escalated_hardware_material_pending_not_proven`、`blocked_missing_external_evidence_review_handoff_not_proven`。Start Delivery、Confirm Dropoff、Cancel 继续 disabled；面板必须固定显示 `source=software_proof`、`software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`、`not true phone/browser proof` 和 `no OKR percentage lift`。即使 follow-up 为 escalated，也只代表 Docker/local follow-up escalation status 可见，不是真实 O5 external proof、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、verified terminal result、真实手机/browser、HIL、PR #5 resolution、route/elevator field pass 或 not delivery success。
+
+## 2026-05-25 operator gateway structure note
+
+本轮仅重构 `operator_gateway_diagnostics.py` 与 `remote_cloud_relay.py`
+内部职责边界：手机/Web 仍通过原有 `/api/status`、`/api/diagnostics` 和静态
+入口读取状态。云端托管手机壳继续只展示 phone-safe diagnostics summary，不把
+`not_proven`、`safe_to_control=false`、`delivery_success=false` 或
+`primary_actions_enabled=false` 改写成可操作状态。
+
+用户旅程收益是支持人员更容易定位“云中转状态、review handoff、PR #5 材料、
+follow-up escalation”属于哪一层 helper 生成；普通用户看到的主按钮授权、失败
+解释和恢复提示保持不变。该重构不是 true phone/browser proof，也不是真实公网
+HTTPS/TLS、4G/SIM、OSS/CDN live traffic、HIL、route/elevator field pass 或
+delivery success 证据。

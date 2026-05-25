@@ -4,7 +4,7 @@
 
 - 阶段：tech-done
 - 时间：2026-05-11 22:15 Asia/Shanghai
-- Owner：`hardware-engineer`
+- Owner：`rober-hardware-engineer`
 - 结论：Docker-only 文件层 HIL evidence packet gate 已就绪；本机没有真实 WAVE ROVER/串口，真实 `hil_pass` 仍 pending，O1 完成度不升级。
 
 ## 已读资料

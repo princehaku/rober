@@ -6,7 +6,7 @@
 - target capability: `pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake`
 - proof boundary: `software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate`
 - Product closeout owner: `product-okr-owner`
-- implementation owners: `hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
+- implementation owners: `rober-hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
 - OKR decision: no OKR percentage lift
 
 ## 结论

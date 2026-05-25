@@ -78,7 +78,7 @@ Fail-closed rules:
 
 | Owner | 允许改动范围 | 任务 |
 | --- | --- | --- |
-| hardware-engineer | `pc-tools/evidence/pr5_review_thread_closeout_gate.py`、`tests/test_pr5_review_thread_closeout_gate.py` 或现有 evidence test 位置、`docs/product/production_hardware_boundary.md` 的必要 gate 段落、`docs/interfaces/**` 的必要 contract 文档、本 sprint `tech-done.md` 中自己的小节 | 实现 gate、fixture / safe thread summary、focused test、summary artifact 和 docs contract |
+| rober-hardware-engineer | `pc-tools/evidence/pr5_review_thread_closeout_gate.py`、`tests/test_pr5_review_thread_closeout_gate.py` 或现有 evidence test 位置、`docs/product/production_hardware_boundary.md` 的必要 gate 段落、`docs/interfaces/**` 的必要 contract 文档、本 sprint `tech-done.md` 中自己的小节 | 实现 gate、fixture / safe thread summary、focused test、summary artifact 和 docs contract |
 | robot-software-engineer | `onboard/src/ros2_trashbot_behavior/**`、相关 Robot tests、`docs/interfaces/**` 的 diagnostics contract、本 sprint `tech-done.md` 中自己的小节 | 增加 `robot_diagnostics_pr5_review_thread_closeout_summary` safe alias，只读消费 summary |
 | full-stack-software-engineer | `mobile/web/**`、`mobile/fixtures/**`、`docs/product/mobile_user_flow.md`、本 sprint `tech-done.md` 中自己的小节 | 增加只读 PR #5 review closeout panel、fixture 和 targeted validation |
 | product-okr-owner | `OKR.md`、`docs/process/okr_progress_log.md`、本 sprint `side2side_check.md` / `final.md`（实现完成后） | 验收边界和 OKR closeout；本 planning 阶段只写三份 planning docs |

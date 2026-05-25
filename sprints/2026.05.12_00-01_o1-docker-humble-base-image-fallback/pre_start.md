@@ -7,7 +7,7 @@
 - Sprint 目录：`sprints/2026.05.12_00-01_o1-docker-humble-base-image-fallback/`
 - Product Owner：`product-okr-owner`
 - 工程主责：`robot-software-engineer`
-- 只读咨询：`hardware-engineer`，仅用于确认本轮不升级为真实 HIL 验收
+- 只读咨询：`rober-hardware-engineer`，仅用于确认本轮不升级为真实 HIL 验收
 
 ## 用户价值和产品北极星
 
@@ -55,7 +55,7 @@
 
 - 主责：`robot-software-engineer`
 - 允许改动：`scripts/docker_humble_build.sh`、`docker/humble/Dockerfile`、本 sprint 后续留档。
-- 咨询：`hardware-engineer` 只读确认 evidence 边界，不改硬件配置或 vendor 文档。
+- 咨询：`rober-hardware-engineer` 只读确认 evidence 边界，不改硬件配置或 vendor 文档。
 
 ## 需要创建或更新的 sprint 文档
 

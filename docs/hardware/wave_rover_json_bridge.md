@@ -90,6 +90,27 @@ right_mps = linear.x + angular.z * track_width_m / 2
 
 参数校验要求：`track_width_m > 0`、`max_wheel_speed_mps > 0`、`feedback_interval_ms >= 0`、`odom_publish_hz > 0`。
 
+## Code Structure
+
+本轮 hardware 包已按“协议纯函数 / 反馈解析 / 参数处理 / ROS glue / 兼容入口”拆分：
+
+- `ros2_trashbot_hardware/wave_rover_protocol.py`
+  - 负责 WAVE ROVER JSON command ID、newline-delimited UART frame 编码、`/cmd_vel` 到 `T=1` / `T=13` 的命令构造，以及 `T=143 -> T=142 -> T=131` 的启动配置帧。
+  - 只采用 `base_ctrl.py`、`json_cmd.h`、`uart_ctrl.h`、`movtion_module.h` 中已有的协议事实，不打开串口、不 import ROS2。
+- `ros2_trashbot_hardware/wave_rover_feedback.py`
+  - 负责 `T=1001` feedback parser 与 IMU degrees-to-radians 转换。
+  - `r/p/y` 角度单位来自 `IMU.cpp` 中 `57.3` multiplier；进入 ROS yaw 四元数前必须转为 radians。
+- `ros2_trashbot_hardware/bridge_config.py`
+  - 负责声明和校验 `serial_port`、`serial_baudrate`、`command_mode`、`track_width_m`、`max_wheel_speed_mps`、`feedback_interval_ms`、`odom_publish_hz`。
+  - `port` / `baudrate` 只保留兼容别名；Orange Pi 真实串口路径仍需现场确认。
+- `ros2_trashbot_hardware/esp32_bridge_node.py`
+  - 唯一负责打开 UART、订阅 `/cmd_vel`、发布 `/odom`、`/imu/data`、`/battery`、提供 stop/reset/beep service 的 ROS runtime 层。
+  - `/odom` 仍是 command integration；`/imu/data` 仍只发布 `T=1001.y` 对应 yaw；`/battery` 仍只发布 `T=1001.v` 电压。
+- `ros2_trashbot_hardware/esp32_bridge.py`
+  - 保留原 console script 和历史测试 import 入口，只 re-export 上述模块能力并启动 ROS lifecycle。
+
+这个拆分只提升代码结构和证据可读性，不新增 `source=hil_pass`。真实 WAVE ROVER、真实 UART、轮向、速度单位、反馈频率、IMU/Battery 对齐仍必须通过 HIL packet 与 operator report 补齐。
+
 ## Published ROS Contracts
 
 ### `/odom`

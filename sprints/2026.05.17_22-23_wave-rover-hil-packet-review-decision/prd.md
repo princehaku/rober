@@ -68,7 +68,7 @@ P1：
 
 ## 7. 对应责任 Engineer
 
-- hardware-engineer：PC review-decision gate / fixtures / tests / hardware doc。
+- rober-hardware-engineer：PC review-decision gate / fixtures / tests / hardware doc。
 - robot-software-engineer：Robot diagnostics metadata-only consumer / tests / ROS contract doc。
 - full-stack-software-engineer：mobile/web read-only panel / fixture / test / mobile product doc。
 - product-okr-owner：closeout docs / OKR / progress log。

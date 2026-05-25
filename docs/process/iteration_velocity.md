@@ -1,6 +1,6 @@
 # Iteration Velocity Fence — Epic/Micro 分层、并行规则、OKR 软提醒与 Blocker 红线
 
-本文件是 `ros_rbs` 迭代节奏与并行研发的总规则，对应 `AGENTS.md` 中的"并行启动强制规则 / Epic / Micro Sprint 分层 / OKR 最低优先级软提醒 / 同一 Blocker 重复消费红线 / Tech Plan 自动执行规则 / Sprint 留档原则"，以及 `.codex/agents/registry.toml` `[execution_policy]` 中的 `parallel_default / parallel_solo_exemptions / epic_micro_doc_policy / okr_lowest_objective_rule / repeated_blocker_cap / process_doc_reference` 字段。
+本文件是 `rober` 迭代节奏与并行研发的总规则，对应 `AGENTS.md` 中的"并行启动强制规则 / Epic / Micro Sprint 分层 / OKR 最低优先级软提醒 / 同一 Blocker 重复消费红线 / Tech Plan 自动执行规则 / Sprint 留档原则"，以及 `.codex/agents/registry.toml` `[execution_policy]` 中的 `parallel_default / parallel_solo_exemptions / epic_micro_doc_policy / okr_lowest_objective_rule / repeated_blocker_cap / process_doc_reference` 字段。
 
 引入时间：2026-05-12。生效范围：本文首次落地之后启动的所有 sprint；既有 sprint 不追溯。
 

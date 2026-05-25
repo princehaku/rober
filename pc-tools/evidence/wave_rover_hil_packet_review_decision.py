@@ -243,7 +243,7 @@ def _review_decision(load_issue: str, schema_status: str, issues: list[str], sou
 def _owner_handoff() -> dict[str, str]:
     # owner handoff 只描述补证动作，不包含串口或 /cmd_vel 操作。
     return {
-        "hardware-engineer": "collect real HIL packet on a host with WAVE ROVER UART access",
+        "rober-hardware-engineer": "collect real HIL packet on a host with WAVE ROVER UART access",
         "robot-software-engineer": "keep diagnostics read-only until review_decision changes with real evidence",
         "full-stack-software-engineer": "keep mobile panel read-only and actions disabled",
     }

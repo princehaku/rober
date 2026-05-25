@@ -50,7 +50,7 @@
 - `full-stack-software-engineer`：Task A，手机首屏与 package。
 - `robot-software-engineer`：Task B，Robot metadata-only fence。
 - `product-okr-owner`：Task C，验收、OKR 和 closeout。
-- `hardware-engineer`：本轮无实现任务；如触及硬件事实只能只读补证，不改硬件配置。
+- `rober-hardware-engineer`：本轮无实现任务；如触及硬件事实只能只读补证，不改硬件配置。
 - `autonomy-engineer`：本轮无实现任务；如触及 Nav2/fixed-route 事实只能只读补证。
 
 ## 风险、阻塞和需要补齐的证据链

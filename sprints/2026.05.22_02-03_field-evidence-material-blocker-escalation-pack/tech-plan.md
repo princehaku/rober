@@ -127,7 +127,7 @@ git diff --check -- mobile docs/product/mobile_user_flow.md sprints/2026.05.22_0
 
 ### Task D - Hardware Infra Engineer Read-only Consultation
 
-Role: `hardware-engineer`
+Role: `rober-hardware-engineer`
 
 Goal: confirm hardware/source boundaries for PR #5 material pending and prevent HIL or sensor material overclaim.
 

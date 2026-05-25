@@ -20,7 +20,7 @@
 
 ## 任务分工（Owner）
 
-### 1) hardware-engineer（主责 O1）
+### 1) rober-hardware-engineer（主责 O1）
 
 #### 文件范围
 

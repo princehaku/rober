@@ -96,6 +96,12 @@ The ESP32 feedback frame used by this contract is vendor `T=1001` with at least 
 ### Task Record Evidence Boundary
 
 `task_record.json` is a software evidence record for the behavior state machine.
+The behavior package now keeps common software contracts in small internal
+helpers: `delivery_contracts.py` owns `RobotState`, `NavigationResult`, and
+fixed-route progress field names; `delivery_elevator_assist.py` owns elevator
+assisted-delivery proof gates and artifact validation; `delivery_remote_status.py`
+owns remote bridge safe status filtering. These helpers do not create new ROS2
+topics, actions, services, command types, or success semantics.
 For fixed-route rehearsal, `task_record.evidence_ref`,
 `task_record.route_progress.evidence_ref`, and
 `task_record.nav_results[-1].evidence.route_progress.evidence_ref` must resolve

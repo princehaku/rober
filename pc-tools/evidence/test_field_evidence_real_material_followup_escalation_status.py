@@ -106,7 +106,7 @@ class FieldEvidenceRealMaterialFollowupEscalationStatusTest(unittest.TestCase):
             artifact["field_evidence_real_material_followup_escalation_status"],
             "escalated_for_field_owner_followup_not_proven",
         )
-        self.assertEqual(summary["owner_escalation_items"][0]["owner"], "autonomy-engineer")
+        self.assertEqual(summary["owner_escalation_items"][0]["owner"], ""robot-algorithm-engineer"")
         self.assertEqual(summary["owner_escalation_items"][0]["due_status"], "overdue_pending_real_route_elevator_field_materials")
         self.assertFalse(artifact["safe_to_control"])
         self.assertFalse(artifact["delivery_success"])

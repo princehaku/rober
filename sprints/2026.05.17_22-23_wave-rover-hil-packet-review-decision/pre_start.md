@@ -52,7 +52,7 @@ sprint_type: epic
 
 ## 5. Owner 与责任
 
-- hardware-engineer：新增 PC review-decision gate、fixtures、测试和硬件说明；必须读取 `docs/vendor/VENDOR_INDEX.md` 和 WAVE ROVER vendor 文件；只消费 intake artifact/summary，不打开串口，不探测 `/dev/*`。
+- rober-hardware-engineer：新增 PC review-decision gate、fixtures、测试和硬件说明；必须读取 `docs/vendor/VENDOR_INDEX.md` 和 WAVE ROVER vendor 文件；只消费 intake artifact/summary，不打开串口，不探测 `/dev/*`。
 - robot-software-engineer：新增 diagnostics metadata-only consumer，展示 review decision / next evidence / owner handoff；不改变 primary action，不启用任何机器人动作。
 - full-stack-software-engineer：在 `mobile/web` 增加只读 HIL packet review decision panel；Start Delivery、Confirm Dropoff、Cancel gating 不变。
 - product-okr-owner：实现后更新 `tech-done.md`、`side2side_check.md`、`final.md`、`OKR.md`、`docs/process/okr_progress_log.md`，保守记录 O1 软件证明进展和剩余真实证据缺口。

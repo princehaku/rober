@@ -84,7 +84,7 @@ Run time: 2026-05-23 04:05 Asia/Shanghai
 
 ## 责任 Engineer
 
-- `hardware-engineer`：PC gate + tests + docs/interfaces or docs/hardware/product boundary refs。
+- `rober-hardware-engineer`：PC gate + tests + docs/interfaces or docs/hardware/product boundary refs。
 - `robot-software-engineer`：Robot diagnostics safe alias + tests + runtime docs。
 - `full-stack-software-engineer`：`mobile/web` read-only panel + fixture + tests + mobile docs。
 - `product-okr-owner`：工程完成后的 `tech-done.md`、`side2side_check.md`、`final.md`、`OKR.md`、`docs/process/okr_progress_log.md`。

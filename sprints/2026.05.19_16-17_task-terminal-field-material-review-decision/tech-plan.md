@@ -141,7 +141,7 @@ rg -n "Objective 5|Objective 1|Objective 2|Objective 3|Objective 4|PR #4|PR #5|t
 git diff --check -- OKR.md docs/process/okr_progress_log.md sprints/2026.05.19_16-17_task-terminal-field-material-review-decision
 ```
 
-### hardware-engineer
+### rober-hardware-engineer
 
 本轮不写文件。
 

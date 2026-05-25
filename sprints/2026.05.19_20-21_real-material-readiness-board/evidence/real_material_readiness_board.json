@@ -66,7 +66,7 @@
         "PR #5 2D LiDAR / ToF SKU, source, receipt, install, wiring, power, calibration, and HIL-entry material"
       ],
       "objective_ref": "Objective 1",
-      "owner": "hardware-engineer",
+      "owner": "rober-hardware-engineer",
       "primary_actions_enabled": false,
       "proof_boundary": "routing_readiness_only_not_real_material_proof",
       "review_refs": [
@@ -125,7 +125,7 @@
         "field operator callback packet reviewed as accepted rather than synthetic fixture"
       ],
       "objective_ref": "PR #4",
-      "owner": "autonomy-engineer",
+      "owner": ""robot-algorithm-engineer"",
       "primary_actions_enabled": false,
       "proof_boundary": "routing_readiness_only_not_real_material_proof",
       "review_refs": [

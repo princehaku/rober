@@ -77,4 +77,4 @@ PY
 - `robot-software-engineer`：先做模拟事件驱动的电梯子状态 dry-run。
 - `autonomy-engineer`：先定义门开/目标楼层/驶出证据 schema 和样本采集计划。
 - `full-stack-software-engineer`：先把手机文案和 speaker prompt contract 接入 diagnostics/status。
-- `hardware-engineer`：仅在进入实机安装、电气或串口事项时做 vendor 资料确认。
+- `rober-hardware-engineer`：仅在进入实机安装、电气或串口事项时做 vendor 资料确认。

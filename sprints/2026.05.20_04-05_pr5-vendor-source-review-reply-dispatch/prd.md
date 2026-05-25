@@ -63,7 +63,7 @@
 
 ## 7. 对应责任 Engineer
 
-- `hardware-engineer`：reply-dispatch generator、artifact schema、Markdown safety scanner、source-boundary semantics。
+- `rober-hardware-engineer`：reply-dispatch generator、artifact schema、Markdown safety scanner、source-boundary semantics。
 - `robot-software-engineer`：Robot diagnostics safe alias、metadata-only interface docs、fail-closed tests。
 - `full-stack-software-engineer`：mobile/web read-only panel、fixture、中文 safe copy 和 no-control assertions。
 - `product-okr-owner`：GitHub reply wording boundary、OKR closeout、sprint 六文档后半段、progress log。

@@ -61,7 +61,7 @@ The board contains four required material groups:
 | group_id | Objective / review ref | Owner | Boundary |
 |---|---|---|---|
 | `o5_external` | `Objective 5` | `product-okr-owner` | Missing real external HTTPS/TLS, 4G/SIM, OSS/CDN live traffic, production DB/queue, worker/migration/cutover proof. |
-| `objective_1_pr5_hardware` | `Objective 1`, `PR #5`, `PRRT_kwDOSWB9286CJ3tX` | `hardware-engineer` | Missing real WAVE ROVER/UART/HIL packet and PR #5 2D LiDAR / ToF real materials. |
+| `objective_1_pr5_hardware` | `Objective 1`, `PR #5`, `PRRT_kwDOSWB9286CJ3tX` | `rober-hardware-engineer` | Missing real WAVE ROVER/UART/HIL packet and PR #5 2D LiDAR / ToF real materials. |
 | `pr4_route_elevator` | `PR #4`, `Objective 2`, `Objective 3` | `autonomy-engineer` | `group_status=blocked_missing_pr4_route_elevator_real_materials`; missing `real_elevator_door_state`, `target_floor_confirmation`, `human_assistance_record`, `nav2_fixed_route_runtime_log`, `field_task_record`, `route_completion_signal`, `dropoff_completion_material`, `cancel_completion_material`, and `delivery_result`. |
 | `objective_4_real_phone` | `Objective 4` | `full-stack-software-engineer` | Missing real phone browser/device/PWA/network/operator acceptance materials. |
 

@@ -1,6 +1,6 @@
 # mobile/ — 用户手机 PWA / 触点入口
 
-本目录是 `ros_rbs` 的 **用户手机端部署单位**：把机器人能力产品化成手机能操作、能看状态的入口。
+本目录是 `rober` 的 **用户手机端部署单位**：把机器人能力产品化成手机能操作、能看状态的入口。
 
 > 当前状态：sprint `2026.05.13_03-04_mobile-web-entrypoint-gate` 已新增 `mobile/web/` dependency-free PWA 静态入口。证据边界是 `software_proof_docker_mobile_web_entrypoint_gate`，不等于真实手机设备、production app、真实云、4G、OSS/CDN、HIL 或真实送达。
 >

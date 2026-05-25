@@ -100,7 +100,7 @@
 ## 对应责任 Engineer
 
 - 主责：`full-stack-software-engineer`。
-- 只读咨询：`hardware-engineer`，仅在需要解释上一轮 proof artifact 字段时介入。
+- 只读咨询：`rober-hardware-engineer`，仅在需要解释上一轮 proof artifact 字段时介入。
 - Product 收口：`product-okr-owner`。
 
 ## 风险、阻塞和需要补齐的证据链

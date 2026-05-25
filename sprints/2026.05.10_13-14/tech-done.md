@@ -36,7 +36,7 @@
 - `.codex/agents/registry.toml`
 - `.codex/agents/product-okr-owner.toml`
 - `.codex/agents/robot-software-engineer.toml`
-- `.codex/agents/hardware-engineer.toml`
+- `.codex/agents/rober-hardware-engineer.toml`
 - `.codex/agents/autonomy-engineer.toml`
 - `.codex/agents/full-stack-software-engineer.toml`
 

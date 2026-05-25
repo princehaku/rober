@@ -46,7 +46,7 @@ CEO -> Product Manager / OKR Owner -> Engineers
 | `product-okr-owner` | 本轮三份阶段文档完整化、验收口径排序与边界锁定（O1→O2→O3） |
 | `robot-software-engineer` | 在执行阶段同步确认 O2 任务失败/超时/取消与 task_record 对账范围 |
 | `autonomy-engineer` | 对齐 O3 `route_progress` 与 `evidence_ref` 对账规则，明确 software 与 hil gap |
-| `hardware-engineer` | 锁定 O1 `hil_pass` 缺口、样本字段与上机证据清单 |
+| `rober-hardware-engineer` | 锁定 O1 `hil_pass` 缺口、样本字段与上机证据清单 |
 | `full-stack-software-engineer` | 锁定手机/接口侧状态字段是否足够判定 final 状态 |
 
 ## P0/P1 风险

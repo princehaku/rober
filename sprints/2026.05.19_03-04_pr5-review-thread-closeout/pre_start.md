@@ -49,7 +49,7 @@ Run time: 2026-05-19 03:04 Asia/Shanghai
 | Owner | 责任 | 范围边界 |
 | --- | --- | --- |
 | product-okr-owner | 本 planning 文档、OKR 映射、验收口径、实现后 OKR 和 progress log 收口 | 本阶段只创建 `pre_start.md`、`prd.md`、`tech-plan.md` |
-| hardware-engineer | `pr5_review_thread_closeout_gate`、PR #5 thread summary / fixture、安全 evidence artifact、focused test | 不改硬件配置，不声明真实材料，不猜测 vendor 事实 |
+| rober-hardware-engineer | `pr5_review_thread_closeout_gate`、PR #5 thread summary / fixture、安全 evidence artifact、focused test | 不改硬件配置，不声明真实材料，不猜测 vendor 事实 |
 | robot-software-engineer | operator diagnostics 增加 `robot_diagnostics_pr5_review_thread_closeout_summary` safe alias | 只读消费 summary，不启用控制或 delivery action |
 | full-stack-software-engineer | mobile/web 增加只读 PR #5 review closeout panel 和 fixture | 不触发 Start/Confirm/Cancel，不主动拉取 diagnostics |
 | autonomy-engineer | 本轮不写代码；PR #4 route/elevator field evidence 保持后续独立缺口 | 不把 PR #5 closeout gate 写成 route/elevator pass |

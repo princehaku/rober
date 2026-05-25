@@ -86,7 +86,7 @@ P2：
 - 协同核对：`robot-software-engineer`
 - 计划与验收：`product-okr-owner`
 
-不需要 `hardware-engineer` 或 `autonomy-engineer` 改文件；PR #5 hardware material 和 route/elevator field pass 仍是外部证据缺口。
+不需要 `rober-hardware-engineer` 或 `autonomy-engineer` 改文件；PR #5 hardware material 和 route/elevator field pass 仍是外部证据缺口。
 
 ## 8. 风险、阻塞和需要补齐的证据链
 

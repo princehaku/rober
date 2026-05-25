@@ -168,7 +168,7 @@ def _required_group_specs() -> list[dict[str, Any]]:
         {
             "material_group": "o1_pr5_hardware",
             "objective_ref": "Objective 1 / PR #5",
-            "field_owner": "hardware-engineer",
+            "field_owner": "rober-hardware-engineer",
             "owner_handoff": "Hardware Infra Engineer",
             "due_status": DUE_STATUS,
             "blocked_reason": (
@@ -196,7 +196,7 @@ def _required_group_specs() -> list[dict[str, Any]]:
         {
             "material_group": "pr4_route_elevator",
             "objective_ref": "PR #4 / Objective 2 / Objective 3",
-            "field_owner": "autonomy-engineer",
+            "field_owner": ""robot-algorithm-engineer"",
             "owner_handoff": "Autonomy Algorithm Engineer",
             "due_status": DUE_STATUS,
             "blocked_reason": "PR #4 route/elevator remains missing real field material and cannot be inferred from Docker-only software proof.",

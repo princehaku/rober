@@ -5,7 +5,7 @@
 - 阶段：tech-plan
 - 时间：2026-05-12 00:01 Asia/Shanghai
 - 主责 owner：`robot-software-engineer`
-- 咨询 owner：`hardware-engineer` 只读咨询 HIL 边界
+- 咨询 owner：`rober-hardware-engineer` 只读咨询 HIL 边界
 - 计划状态：ready for engineering subagent execution
 
 ## 用户价值和产品北极星
@@ -36,7 +36,7 @@
 - `sprints/2026.05.12_00-01_o1-docker-humble-base-image-fallback/side2side_check.md`
 - `sprints/2026.05.12_00-01_o1-docker-humble-base-image-fallback/final.md`
 
-`hardware-engineer` 只读咨询允许读取：
+`rober-hardware-engineer` 只读咨询允许读取：
 
 - `sprints/2026.05.11_22-23_hil-evidence-packet-gate/final.md`
 - `sprints/2026.05.11_23-24_hil-packet-crosscheck-bridge/final.md`

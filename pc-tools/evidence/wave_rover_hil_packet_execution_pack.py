@@ -298,7 +298,7 @@ def _collection_sequence(evidence_ref: str) -> list[str]:
 def _owner_handoff() -> dict[str, str]:
     # handoff 只描述补证动作，不给机器人下发控制许可。
     return {
-        "hardware-engineer": "run real HIL collection on WAVE ROVER host and keep one evidence_ref across all packet files",
+        "rober-hardware-engineer": "run real HIL collection on WAVE ROVER host and keep one evidence_ref across all packet files",
         "robot-software-engineer": "consume only accepted review-decision summaries until real packet exists",
         "full-stack-software-engineer": "keep mobile execution pack read-only and actions disabled",
     }

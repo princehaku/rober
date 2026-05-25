@@ -6,7 +6,7 @@ sprint_type: epic
 
 本轮按 `tech-plan.md` 完成三条 Engineer 交付链，并由 Product 做 closeout。证据边界固定为 `software_proof_docker_wave_rover_feedback_replay_gate`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
 
-Task A - hardware-engineer：
+Task A - rober-hardware-engineer：
 
 - 新增 dependency-free PC gate：`pc-tools/evidence/wave_rover_feedback_replay_gate.py`。
 - 新增测试与 fixtures：`pc-tools/evidence/test_wave_rover_feedback_replay_gate.py`、`pc-tools/evidence/fixtures/wave_rover_feedback_replay/`。

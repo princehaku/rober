@@ -78,7 +78,7 @@ P1：
 - 主责：`robot-software-engineer`。负责行为状态机、任务记录、launch 参数集成和最终集成验证。
 - 协作：`full-stack-software-engineer`。负责 operator gateway/status/diagnostics 手机文案和 speaker prompt contract。
 - 协作：`autonomy-engineer`。负责电梯门、目标楼层、驶出条件的 dry-run 证据 schema；本轮不做真实识别。
-- 暂不介入：`hardware-engineer`。本轮不涉及 UART、引脚、电压、波特率、固件、机械安装或 WAVE ROVER 实机参数；后续进入硬件事项时必须先查 `docs/vendor/VENDOR_INDEX.md`。
+- 暂不介入：`rober-hardware-engineer`。本轮不涉及 UART、引脚、电压、波特率、固件、机械安装或 WAVE ROVER 实机参数；后续进入硬件事项时必须先查 `docs/vendor/VENDOR_INDEX.md`。
 
 ## 风险、阻塞和证据链缺口
 

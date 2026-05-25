@@ -199,7 +199,7 @@ git diff --check -- mobile/web docs/product/mobile_user_flow.md
 
 ### Task D: Hardware Boundary Consultation
 
-Owner: `hardware-engineer`
+Owner: `rober-hardware-engineer`
 
 Perform read-only consultation for vendor and PR #5 boundary language. If any implementation copy references WAVE ROVER, UART, 2D LiDAR, ToF, install, wiring, power, calibration, HIL, or PR #5 hardware material, consult `docs/vendor/VENDOR_INDEX.md` first and cite the local source boundary in the worker result.
 

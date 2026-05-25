@@ -5,7 +5,7 @@
 - 阶段：pre-start completed。
 - 时间：2026-05-10 18:09 Asia/Shanghai。
 - Product Owner：`product-okr-owner`。
-- 实现主责：`hardware-engineer`。
+- 实现主责：`rober-hardware-engineer`。
 - 任务类型：Objective 1 功能推进；测试只作为护栏。
 
 ## 上轮未完成项
@@ -13,7 +13,7 @@
 - 上一轮 `sprints/2026.05.10_17-18_visual-gate-proof/` 已完成 Objective 3/4 的 fixed-route visual gate 离线 proof artifact，并提交 `6fa4894 Add fixed route visual gate proof`。
 - OKR 当前快照约为：Objective 1 70%、Objective 2 74%、Objective 3 73%、Objective 4 70%、Objective 5 74%。
 - Objective 1 的主要缺口不是再补口头说明，而是把 WAVE ROVER JSON 协议、启动配置、反馈解析、参数边界和本地验证证据沉淀成无实机也能运行的 diagnostics/proof artifact，为后续 operator diagnostics 和 HIL 预留接口。
-- 本轮不选择真实 WAVE ROVER HIL，因为当前要求是无实机也能推进功能；如实现涉及协议字段、命令 ID、UART、波特率、速度单位或反馈字段，`hardware-engineer` 必须先读 `docs/vendor/VENDOR_INDEX.md` 及其指向的本地 vendor 文件。
+- 本轮不选择真实 WAVE ROVER HIL，因为当前要求是无实机也能推进功能；如实现涉及协议字段、命令 ID、UART、波特率、速度单位或反馈字段，`rober-hardware-engineer` 必须先读 `docs/vendor/VENDOR_INDEX.md` 及其指向的本地 vendor 文件。
 
 ## 本轮目标
 
@@ -41,7 +41,7 @@
 
 ## 本轮核心抓手
 
-由 `hardware-engineer` 在 `ros2_trashbot_hardware` 内新增一个 dependency-light diagnostics/proof helper/CLI，直接复用或调用现有 `esp32_bridge.py` 中的纯函数，输出结构化 JSON。它应该能被单测直接调用，也能作为 console script 运行。
+由 `rober-hardware-engineer` 在 `ros2_trashbot_hardware` 内新增一个 dependency-light diagnostics/proof helper/CLI，直接复用或调用现有 `esp32_bridge.py` 中的纯函数，输出结构化 JSON。它应该能被单测直接调用，也能作为 console script 运行。
 
 ## 做什么 / 不做什么
 
@@ -76,7 +76,7 @@ P1：
 
 ## Owner
 
-- 主责：`hardware-engineer`。
+- 主责：`rober-hardware-engineer`。
 - 协作：本轮不需要 Robot Platform、Autonomy 或 Full-Stack 改代码。
 - Product Owner：只负责本轮价值、范围、验收口径和 sprint planning；不写产品代码或测试代码。
 
@@ -92,5 +92,5 @@ P1：
 - 已创建：`sprints/2026.05.10_18-19_hardware-diagnostics-proof/pre_start.md`
 - 已创建：`sprints/2026.05.10_18-19_hardware-diagnostics-proof/prd.md`
 - 已创建：`sprints/2026.05.10_18-19_hardware-diagnostics-proof/tech-plan.md`
-- implementation 完成后必须由 `hardware-engineer` 更新：`sprints/2026.05.10_18-19_hardware-diagnostics-proof/tech-done.md`
+- implementation 完成后必须由 `rober-hardware-engineer` 更新：`sprints/2026.05.10_18-19_hardware-diagnostics-proof/tech-done.md`
 - 验收或复盘阶段再更新：`side2side_check.md`、`final.md`

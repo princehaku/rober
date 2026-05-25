@@ -43,7 +43,7 @@
 - `product-okr-owner` 负责 sprint 留档、验收口径、OKR closeout 和 evidence boundary：
   - 本轮 planning docs、后续 `tech-done.md`、`side2side_check.md`、`final.md`。
   - 后续 implementation 完成后再更新 `OKR.md` 和 `docs/process/okr_progress_log.md`。
-- `autonomy-engineer` 与 `hardware-engineer` 本轮不改文件；如实现阶段需要确认不影响 route/elevator 或 WAVE ROVER/HIL 证据边界，只做只读咨询。
+- `autonomy-engineer` 与 `rober-hardware-engineer` 本轮不改文件；如实现阶段需要确认不影响 route/elevator 或 WAVE ROVER/HIL 证据边界，只做只读咨询。
 
 ## 6. Blocker 和不做事项
 

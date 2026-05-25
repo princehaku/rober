@@ -36,3 +36,13 @@ on this topic.
 - `debug_image_topic`: annotated images from a future perception publisher.
 - `sample_manifest`: bounded manifest for route, station, or anomaly review samples.
 - `roi_x`, `roi_y`, `roi_width`, `roi_height`: optional normalized ROI parameters if the future publisher supports ROI-limited detection.
+
+## Code Structure
+
+Vision code now separates runtime ROS wiring from proof data helpers:
+
+- `trash_detector.py`: ROS2 adapter that subscribes to camera images, publishes `TrashStatus`, optionally publishes debug images, and writes samples.
+- `vision_detection_models.py`: ROS-free helper for detector name, sample schema, ROI config, detector parameter snapshots, sample context, and detection payload shape.
+- `vision_sample_manifest.py`: offline manifest checker and summary CLI. It remains the gate before diagnostics or humans trust a sample set.
+
+The current OpenCV HSV detector is a proof/data-capture helper, not a default delivery dependency. Behavior code must continue to treat `TrashStatus` as advisory unless a launch flag, representative data, and validation evidence explicitly promote a perception source.

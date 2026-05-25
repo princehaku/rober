@@ -5,7 +5,7 @@
 - 阶段：prd
 - 时间：2026-05-11 22:00 Asia/Shanghai
 - 产品负责人：`product-okr-owner`
-- 目标 owner：`hardware-engineer`
+- 目标 owner：`rober-hardware-engineer`
 - 产品决策：主线深入 O1；承认本机无真实硬件，不能把 move-test 重试当完成；本轮功能抓手改为 Docker-only HIL evidence packet gate。
 
 ## 背景和问题
@@ -39,7 +39,7 @@
 
 ## 本轮核心抓手
 
-核心抓手是定义并交付下一阶段的 engineering plan：`hardware-engineer` 实现一个 Docker-only 可运行的 HIL evidence packet gate。该 gate 不依赖当前机器有硬件，但必须严格防止假阳性 `hil_pass`。
+核心抓手是定义并交付下一阶段的 engineering plan：`rober-hardware-engineer` 实现一个 Docker-only 可运行的 HIL evidence packet gate。该 gate 不依赖当前机器有硬件，但必须严格防止假阳性 `hil_pass`。
 
 ## 做什么
 
@@ -85,7 +85,7 @@
 
 ## 对应责任 Engineer
 
-- `hardware-engineer`：主责实现 gate、fixtures、围栏验证和 `tech-done.md`。
+- `rober-hardware-engineer`：主责实现 gate、fixtures、围栏验证和 `tech-done.md`。
 - `robot-software-engineer`：仅在 gate 输出需要与 task record/result metadata 对齐时提供只读接口事实。
 - `autonomy-engineer`：仅在 route replay crosscheck 需要读取 gate 输出时提供只读接口事实。
 - `full-stack-software-engineer`：本轮不介入。

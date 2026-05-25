@@ -47,7 +47,7 @@ sprint_type: epic
 - `full-stack-software-engineer`：主责实现 cloud relay worker/migration rehearsal、artifact、preflight 和文档同步。
 - `robot-software-engineer`：主责 Robot compatibility fence，证明 rehearsal metadata 不触发 robot action、不推进 command cursor、不改变 ACK 语义。
 - `product-okr-owner`：主责阶段收口、OKR 保守更新、sprint 留档和边界复核。
-- `hardware-engineer`：本轮不改硬件文件；只在 final 中确认没有真实硬件证据被误写。
+- `rober-hardware-engineer`：本轮不改硬件文件；只在 final 中确认没有真实硬件证据被误写。
 - `autonomy-engineer`：本轮不改 route/elevator/导航文件；避免重复 O2/O3 wrapper。
 
 ## 7. 风险、阻塞和证据链缺口

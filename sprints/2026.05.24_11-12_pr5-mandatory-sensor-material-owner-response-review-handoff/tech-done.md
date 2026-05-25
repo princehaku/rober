@@ -6,7 +6,7 @@
 - target capability: `pr5_mandatory_sensor_material_owner_response_review_handoff`
 - proof boundary: `software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate`
 - Product owner: `product-okr-owner`
-- implementation owners: `hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
+- implementation owners: `rober-hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
 
 ## 用户价值和产品北极星
 
@@ -25,7 +25,7 @@
 
 | KR | Owner | 结果 |
 | --- | --- | --- |
-| KR-A Hardware PC handoff gate | `hardware-engineer` | 完成 `pr5_mandatory_sensor_material_owner_response_review_handoff` PC gate、targeted tests、README、hardware boundary 和 interface doc。 |
+| KR-A Hardware PC handoff gate | `rober-hardware-engineer` | 完成 `pr5_mandatory_sensor_material_owner_response_review_handoff` PC gate、targeted tests、README、hardware boundary 和 interface doc。 |
 | KR-B Robot diagnostics safe alias | `robot-software-engineer` | 完成 `robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary` safe alias，并嵌入 `/api/status`、`/api/diagnostics` phone-safe surface。 |
 | KR-C Full-Stack read-only panel | `full-stack-software-engineer` | 完成 `mobile/web` PR5 material handoff read-only panel、fixture、focused tests 和 mobile user flow doc。 |
 | KR-D Product closeout | `product-okr-owner` | 完成本文件、`side2side_check.md`、`final.md`、`OKR.md` 和 `docs/process/okr_progress_log.md` 收口。 |

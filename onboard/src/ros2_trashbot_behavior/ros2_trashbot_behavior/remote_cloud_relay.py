@@ -10155,6 +10155,138 @@ def _remote_readiness_passthrough(latest_status):
     return safe_remote_readiness, degradation_state
 
 
+def _first_dict_value(source, keys, default=None):
+    # 多个历史 alias 会同时存在；集中挑选 dict 可以避免在 status/diagnostics 两个入口复制三段 if 链。
+    if not isinstance(source, dict):
+        return default if default is not None else {}
+    for key in keys:
+        value = source.get(key)
+        if isinstance(value, dict):
+            return value
+    return default if default is not None else {}
+
+
+def _cloud_lifecycle_phone_safe_summaries(latest_status):
+    # 这些 summary 都是 phone-safe metadata；生成时始终保留 not_proven 和 disabled action 边界。
+    source_status = latest_status if isinstance(latest_status, dict) else {}
+    owner_response_intake = (
+        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_payload()
+    )
+    owner_response_review_decision = (
+        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_payload()
+    )
+    owner_response_review_handoff = (
+        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff_payload()
+    )
+    reviewer_ack_intake = (
+        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_payload()
+    )
+    reviewer_ack_review_decision = (
+        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_payload()
+    )
+    reviewer_ack_review_handoff = (
+        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_payload()
+    )
+    reviewer_ack_followup = (
+        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_payload(
+            source_review_handoff=(
+                _cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_followup_source(
+                    source_status
+                )
+                or reviewer_ack_review_handoff
+            )
+        )
+    )
+    bridge_source = _first_dict_value(
+        source_status,
+        (
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status",
+            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary",
+            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary",
+        ),
+        reviewer_ack_followup,
+    )
+    owner_response_bridge = (
+        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_payload(
+            source_followup_summary=bridge_source
+        )
+    )
+    return {
+        "owner_response_intake": owner_response_intake,
+        "owner_response_review_decision": owner_response_review_decision,
+        "owner_response_review_handoff": owner_response_review_handoff,
+        "reviewer_ack_intake": reviewer_ack_intake,
+        "reviewer_ack_review_decision": reviewer_ack_review_decision,
+        "reviewer_ack_review_handoff": reviewer_ack_review_handoff,
+        "reviewer_ack_followup": reviewer_ack_followup,
+        "owner_response_bridge": owner_response_bridge,
+        "pr5_review_handoff": _phone_safe_pr5_mandatory_sensor_review_handoff_summary(
+            source_status
+        ),
+        "pr5_reviewer_ack_intake": (
+            _phone_safe_pr5_mandatory_sensor_reviewer_ack_intake_summary(source_status)
+        ),
+    }
+
+
+def _cloud_lifecycle_status_aliases(summaries):
+    # 手机端和支持端历史上消费不同 key；兼容层统一展开，避免新增入口漏掉 safe alias。
+    return {
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake": summaries["owner_response_intake"],
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary": summaries["owner_response_intake"],
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision": summaries["owner_response_review_decision"],
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary": summaries["owner_response_review_decision"],
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff": summaries["owner_response_review_handoff"],
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff_summary": summaries["owner_response_review_handoff"],
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake": summaries["reviewer_ack_intake"],
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary": summaries["reviewer_ack_intake"],
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision": summaries["reviewer_ack_review_decision"],
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_summary": summaries["reviewer_ack_review_decision"],
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff": summaries["reviewer_ack_review_handoff"],
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary": summaries["reviewer_ack_review_handoff"],
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary": summaries["reviewer_ack_review_handoff"],
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status": summaries["reviewer_ack_followup"],
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": summaries["reviewer_ack_followup"],
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": summaries["reviewer_ack_followup"],
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge": summaries["owner_response_bridge"],
+        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": summaries["owner_response_bridge"],
+        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": summaries["owner_response_bridge"],
+        "pr5_mandatory_sensor_material_owner_response_review_handoff": summaries["pr5_review_handoff"],
+        "pr5_mandatory_sensor_material_owner_response_review_handoff_summary": summaries["pr5_review_handoff"],
+        "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary": summaries["pr5_review_handoff"],
+        "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake": summaries["pr5_reviewer_ack_intake"],
+        "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary": summaries["pr5_reviewer_ack_intake"],
+        "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary": summaries["pr5_reviewer_ack_intake"],
+    }
+
+
+def _cloud_hosted_mobile_web_state(status_code, latest_status, degradation_state):
+    # 状态归一化只决定文案，不改变控制授权；按钮关闭由 command_safety 和 false states 再次兜底。
+    if status_code == 200 and latest_status:
+        if degradation_state:
+            return (
+                degradation_state,
+                f"remote readiness degraded: {degradation_state}; cloud-hosted mobile web gate keeps actions disabled.",
+                "已读取 relay 安全降级状态；云端托管手机壳继续禁用主操作。",
+            )
+        return (
+            str(latest_status.get("state") or "status_present"),
+            "cloud-hosted mobile web gate keeps primary actions fail-closed.",
+            "已读取 relay 最近状态；云端托管手机壳仍保持主操作安全关闭。",
+        )
+    if latest_status:
+        return (
+            "status_stale",
+            "robot status is stale; cloud-hosted mobile web gate keeps actions disabled.",
+            "relay 中只有过期状态；请等待机器人重新上报。",
+        )
+    return (
+        "status_missing",
+        "robot has not posted status to relay yet.",
+        "relay 尚未收到机器人状态；请等待机器人上线或检查桥接。",
+    )
+
+
 def _default_pr5_mandatory_sensor_review_handoff_summary(status="blocked_missing_review_handoff_summary"):
     # relay 的 phone-safe surface 不能调用 PC gate；缺 backend sanitized summary 时只能输出 blocked alias。
     safe_copy = (
@@ -10671,94 +10803,11 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
     latest_status = store_payload.get("status") if isinstance(store_payload, dict) else None
     latest_status = safe_value(latest_status) if isinstance(latest_status, dict) else None
     remote_readiness, degradation_state = _remote_readiness_passthrough(latest_status or {})
-    owner_response_intake = (
-        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_payload()
+    summaries = _cloud_lifecycle_phone_safe_summaries(latest_status or {})
+    lifecycle_aliases = _cloud_lifecycle_status_aliases(summaries)
+    state, reason, safe_phone_copy = _cloud_hosted_mobile_web_state(
+        status_code, latest_status, degradation_state
     )
-    owner_response_review_decision = (
-        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_payload()
-    )
-    owner_response_review_handoff = (
-        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff_payload()
-    )
-    owner_response_reviewer_ack_intake = (
-        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_payload()
-    )
-    owner_response_reviewer_ack_review_decision = (
-        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_payload()
-    )
-    owner_response_reviewer_ack_review_handoff = (
-        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_payload()
-    )
-    owner_response_reviewer_ack_followup_escalation_status = (
-        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_payload(
-            source_review_handoff=(
-                _cloud_command_lifecycle_replay_acceptance_packet_reviewer_ack_followup_source(
-                    latest_status or {}
-                )
-                or owner_response_reviewer_ack_review_handoff
-            )
-        )
-    )
-    latest_status_for_reviewer_ack_bridge = latest_status or {}
-    owner_response_reviewer_ack_owner_response_intake_bridge_source = (
-        latest_status_for_reviewer_ack_bridge.get(
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status"
-        )
-        if isinstance(
-            latest_status_for_reviewer_ack_bridge.get(
-                "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status"
-            ),
-            dict,
-        )
-        else latest_status_for_reviewer_ack_bridge.get(
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
-        )
-        if isinstance(
-            latest_status_for_reviewer_ack_bridge.get(
-                "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
-            ),
-            dict,
-        )
-        else latest_status_for_reviewer_ack_bridge.get(
-            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
-        )
-        if isinstance(
-            latest_status_for_reviewer_ack_bridge.get(
-                "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary"
-            ),
-            dict,
-        )
-        else owner_response_reviewer_ack_followup_escalation_status
-    )
-    owner_response_reviewer_ack_owner_response_intake_bridge = (
-        build_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_payload(
-            source_followup_summary=owner_response_reviewer_ack_owner_response_intake_bridge_source
-        )
-    )
-    pr5_review_handoff = _phone_safe_pr5_mandatory_sensor_review_handoff_summary(
-        latest_status or {}
-    )
-    pr5_reviewer_ack_intake = (
-        _phone_safe_pr5_mandatory_sensor_reviewer_ack_intake_summary(
-            latest_status or {}
-        )
-    )
-    if status_code == 200 and latest_status:
-        state = degradation_state or str(latest_status.get("state") or "status_present")
-        reason = "cloud-hosted mobile web gate keeps primary actions fail-closed."
-        if degradation_state:
-            reason = f"remote readiness degraded: {degradation_state}; cloud-hosted mobile web gate keeps actions disabled."
-            safe_phone_copy = "已读取 relay 安全降级状态；云端托管手机壳继续禁用主操作。"
-        else:
-            safe_phone_copy = "已读取 relay 最近状态；云端托管手机壳仍保持主操作安全关闭。"
-    elif latest_status:
-        state = "status_stale"
-        reason = "robot status is stale; cloud-hosted mobile web gate keeps actions disabled."
-        safe_phone_copy = "relay 中只有过期状态；请等待机器人重新上报。"
-    else:
-        state = "status_missing"
-        reason = "robot has not posted status to relay yet."
-        safe_phone_copy = "relay 尚未收到机器人状态；请等待机器人上线或检查桥接。"
 
     command_safety = _fail_closed_command_safety(reason)
     phone_readiness = {
@@ -10773,79 +10822,6 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
         "support_level": "support_required",
         "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_EVIDENCE_BOUNDARY,
         "remote_readiness": remote_readiness,
-        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake": (
-            owner_response_intake
-        ),
-        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary": (
-            owner_response_intake
-        ),
-        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision": (
-            owner_response_review_decision
-        ),
-        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary": (
-            owner_response_review_decision
-        ),
-        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff": (
-            owner_response_review_handoff
-        ),
-        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff_summary": (
-            owner_response_review_handoff
-        ),
-        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake": (
-            owner_response_reviewer_ack_intake
-        ),
-        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary": (
-            owner_response_reviewer_ack_intake
-        ),
-        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision": (
-            owner_response_reviewer_ack_review_decision
-        ),
-        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_summary": (
-            owner_response_reviewer_ack_review_decision
-        ),
-        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff": (
-            owner_response_reviewer_ack_review_handoff
-        ),
-        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary": (
-            owner_response_reviewer_ack_review_handoff
-        ),
-        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary": (
-            owner_response_reviewer_ack_review_handoff
-        ),
-        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status": (
-            owner_response_reviewer_ack_followup_escalation_status
-        ),
-        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
-            owner_response_reviewer_ack_followup_escalation_status
-        ),
-        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
-            owner_response_reviewer_ack_followup_escalation_status
-        ),
-        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge": (
-            owner_response_reviewer_ack_owner_response_intake_bridge
-        ),
-        "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": (
-            owner_response_reviewer_ack_owner_response_intake_bridge
-        ),
-        "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": (
-            owner_response_reviewer_ack_owner_response_intake_bridge
-        ),
-        "pr5_mandatory_sensor_material_owner_response_review_handoff": pr5_review_handoff,
-        "pr5_mandatory_sensor_material_owner_response_review_handoff_summary": (
-            pr5_review_handoff
-        ),
-        "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary": (
-            pr5_review_handoff
-        ),
-        "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake": (
-            pr5_reviewer_ack_intake
-        ),
-        "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary": (
-            pr5_reviewer_ack_intake
-        ),
-        "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary": (
-            pr5_reviewer_ack_intake
-        ),
         "cloud_hosted_mobile_web_gate": {
             "overall_status": "blocked",
             "production_ready": False,
@@ -10866,6 +10842,7 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
         "command_safety": command_safety,
         "not_proven": list(CLOUD_HOSTED_MOBILE_WEB_NOT_PROVEN),
     }
+    phone_readiness.update(lifecycle_aliases)
     return safe_value(
         {
             "ok": True,
@@ -10886,81 +10863,7 @@ def cloud_hosted_mobile_web_status_payload(store, robot_id=None):
             "command_safety": command_safety,
             "phone_readiness": phone_readiness,
             "remote_readiness": remote_readiness,
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake": (
-                owner_response_intake
-            ),
-            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_summary": (
-                owner_response_intake
-            ),
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision": (
-                owner_response_review_decision
-            ),
-            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_summary": (
-                owner_response_review_decision
-            ),
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff": (
-                owner_response_review_handoff
-            ),
-            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff_summary": (
-                owner_response_review_handoff
-            ),
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake": (
-                owner_response_reviewer_ack_intake
-            ),
-            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_summary": (
-                owner_response_reviewer_ack_intake
-            ),
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision": (
-                owner_response_reviewer_ack_review_decision
-            ),
-            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_summary": (
-                owner_response_reviewer_ack_review_decision
-            ),
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff": (
-                owner_response_reviewer_ack_review_handoff
-            ),
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary": (
-                owner_response_reviewer_ack_review_handoff
-            ),
-            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_summary": (
-                owner_response_reviewer_ack_review_handoff
-            ),
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status": (
-                owner_response_reviewer_ack_followup_escalation_status
-            ),
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
-                owner_response_reviewer_ack_followup_escalation_status
-            ),
-            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_summary": (
-                owner_response_reviewer_ack_followup_escalation_status
-            ),
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge": (
-                owner_response_reviewer_ack_owner_response_intake_bridge
-            ),
-            "cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": (
-                owner_response_reviewer_ack_owner_response_intake_bridge
-            ),
-            "robot_diagnostics_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_owner_response_intake_bridge_summary": (
-                owner_response_reviewer_ack_owner_response_intake_bridge
-            ),
-            "pr5_mandatory_sensor_material_owner_response_review_handoff": (
-                pr5_review_handoff
-            ),
-            "pr5_mandatory_sensor_material_owner_response_review_handoff_summary": (
-                pr5_review_handoff
-            ),
-            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_review_handoff_summary": (
-                pr5_review_handoff
-            ),
-            "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake": (
-                pr5_reviewer_ack_intake
-            ),
-            "pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary": (
-                pr5_reviewer_ack_intake
-            ),
-            "robot_diagnostics_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_summary": (
-                pr5_reviewer_ack_intake
-            ),
+            **lifecycle_aliases,
             "safe_phone_copy": safe_phone_copy,
             "recovery_hint": phone_readiness["recovery_hint"],
             "evidence_boundary": CLOUD_HOSTED_MOBILE_WEB_DEGRADATION_PASSTHROUGH_EVIDENCE_BOUNDARY,

@@ -58,7 +58,7 @@
 
 - 已执行：`robot-software-engineer`
 - Product 验收：确认范围、OKR 映射、证据边界和 sprint 链路
-- 不需要介入：`hardware-engineer`、`autonomy-engineer`、`full-stack-software-engineer`
+- 不需要介入：`rober-hardware-engineer`、`autonomy-engineer`、`full-stack-software-engineer`
 
 ## 证据链和阻塞
 

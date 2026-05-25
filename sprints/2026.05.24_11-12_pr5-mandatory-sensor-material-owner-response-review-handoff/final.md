@@ -4,7 +4,7 @@
 - sprint: `2026.05.24_11-12_pr5-mandatory-sensor-material-owner-response-review-handoff`
 - closeout time: 2026-05-24 11:38 Asia/Shanghai
 - Product owner: `product-okr-owner`
-- implementation owners: `hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
+- implementation owners: `rober-hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
 - proof boundary: `software_proof_docker_pr5_mandatory_sensor_material_owner_response_review_handoff_gate`
 - final OKR decision: no OKR percentage lift
 

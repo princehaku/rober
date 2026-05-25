@@ -5,7 +5,7 @@
 - 阶段：final completed。
 - 时间：2026-05-10 18:49 Asia/Shanghai。
 - Product Owner：`product-okr-owner`。
-- 实现主责：`hardware-engineer`。
+- 实现主责：`rober-hardware-engineer`。
 - 收口结论：本 sprint 达成软件侧 Objective 1 证据推进；真实 HIL 和 Docker/Humble 仍是后续缺口。
 
 ## 用户价值和产品北极星
@@ -62,14 +62,14 @@
 
 ## 对应责任 Engineer
 
-- 本轮实现、测试、修复：`hardware-engineer`。
-- 后续真实 WAVE ROVER HIL：`hardware-engineer`。
+- 本轮实现、测试、修复：`rober-hardware-engineer`。
+- 后续真实 WAVE ROVER HIL：`rober-hardware-engineer`。
 - 后续 operator diagnostics 消费：`full-stack-software-engineer`。
 - 若 HIL 结果影响 launch 或 bringup 集成，由 `robot-software-engineer` 做 ROS2 主链路集成。
 
 ## 验证结果
 
-来自 `hardware-engineer` 的本轮证据：
+来自 `rober-hardware-engineer` 的本轮证据：
 
 - focused hardware diagnostics proof tests：10 tests OK。
 - `py_compile`：OK。
@@ -93,6 +93,6 @@ Product/OKR 收口验证：
 
 ## 后续建议
 
-1. 有车环境下由 `hardware-engineer` 跑 no-motion、low-speed `T=1`、`T=13` 专项 HIL recipe。
+1. 有车环境下由 `rober-hardware-engineer` 跑 no-motion、low-speed `T=1`、`T=13` 专项 HIL recipe。
 2. 补一次 Docker/Humble build，确认 console script 在目标构建环境可安装。
 3. 另开任务让 `full-stack-software-engineer` 将 proof artifact 接入 operator diagnostics，但不要在 HIL 前向普通用户展示“硬件已通过”。

@@ -57,7 +57,7 @@ class WaveRoverHilPacketIntakeTest(unittest.TestCase):
             json.dumps(
                 {
                     "evidence_ref": evidence_ref,
-                    "operator": "hardware-engineer",
+                    "operator": "rober-hardware-engineer",
                     "run_timestamp": "2026-05-17T21:22:00Z",
                     "robot_id": "trashbot-lab-unit",
                     "serial_visibility_statement": "synthetic packet only; no local device path captured",
@@ -172,7 +172,7 @@ class WaveRoverHilPacketIntakeTest(unittest.TestCase):
                 "\n".join(
                     [
                         "evidence_ref: hil-packet-md",
-                        "operator: hardware-engineer",
+                        "operator: rober-hardware-engineer",
                         "run_timestamp: 2026-05-17T21:22:00Z",
                         "robot_id: trashbot-lab-unit",
                         "serial_visibility_statement: synthetic packet only",

@@ -52,7 +52,7 @@ software_proof_docker_network_recovery_drill
 - `full-stack-software-engineer`：主责 relay 侧 network recovery drill、artifact、preflight 消费、diagnostics/phone-safe summary。
 - `robot-software-engineer`：主责 remote_bridge command/status/ack/cursor compatibility fence，确认失败时不推进 cursor、不触发本地 action。
 - `product-okr-owner`：维护本 sprint PRD、验收口径、证据边界和最终 OKR 更新建议。
-- `hardware-engineer`：本轮不参与执行；无真实硬件，不产生 HIL 证据。
+- `rober-hardware-engineer`：本轮不参与执行；无真实硬件，不产生 HIL 证据。
 - `autonomy-engineer`：本轮不参与执行；无真实 fixed-route/Nav2 实跑，不产生路线闭环证据。
 
 ## 初始优先级

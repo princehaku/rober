@@ -8,7 +8,7 @@ Run time: 2026-05-22 06:07 Asia/Shanghai
 - Sprint folder: `sprints/2026.05.22_06-07_field-evidence-material-resolution-intake/`
 - Mode: planning-only in this task; implementation must be dispatched later to parallel owner subagents.
 - Product owner: `product-okr-owner`
-- Planned implementation owners: `autonomy-engineer`, `robot-software-engineer`, `full-stack-software-engineer`, `hardware-engineer`
+- Planned implementation owners: `autonomy-engineer`, `robot-software-engineer`, `full-stack-software-engineer`, `rober-hardware-engineer`
 
 ## User Value And Product North Star
 

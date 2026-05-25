@@ -31,6 +31,10 @@ from ros2_trashbot_behavior.remote_bridge_protocol import (
     make_status,
     parse_bool,
 )
+from ros2_trashbot_behavior.delivery_remote_status import (
+    filter_safe_operator_status,
+    safe_state_text_value,
+)
 
 if "threading" not in globals():
     import threading
@@ -306,11 +310,7 @@ def _phone_safe_manual_takeover_status(robot_id, message=""):
 
 
 def _safe_state_text_value(value):
-    text = str(value)
-    lowered = text.lower()
-    if any(marker in lowered for marker in SENSITIVE_STATE_MARKERS):
-        return "[redacted]"
-    return text[:240]
+    return safe_state_text_value(value, SENSITIVE_STATE_MARKERS)
 
 
 def _phone_safe_pending_ack_status(robot_id, command_id, error):
@@ -978,16 +978,12 @@ class RemoteBridgeWorker:
         }
 
     def _safe_operator_status(self, operator_status):
-        safe_status = {}
-        for key in SAFE_OPERATOR_STATUS_KEYS:
-            if key not in operator_status:
-                continue
-            value = operator_status[key]
-            if isinstance(value, str):
-                safe_status[key] = self._safe_state_text(value)
-            elif isinstance(value, (bool, int, float)) or value is None:
-                safe_status[key] = value
-        return safe_status
+        # 过滤规则放在纯 helper 里，worker 只决定哪些状态要落盘或回传。
+        return filter_safe_operator_status(
+            operator_status,
+            SAFE_OPERATOR_STATUS_KEYS,
+            SENSITIVE_STATE_MARKERS,
+        )
 
     def _safe_state_text(self, value):
         return _safe_state_text_value(value)
@@ -1190,9 +1186,14 @@ class RemoteBridge(Node):
             collect_pending = self.collect_pending
         if goal_handle is None:
             if collect_pending:
-                payload = _phone_safe_cancel_pending_goal_acceptance_status(
+                # RemoteBridge 本地 backend 先返回 busy，保持 operator gateway 兼容；
+                # RemoteBridgeWorker 在 ACK 前会把这类 payload 收敛成 canonical cancel-pending 安全状态。
+                payload = make_status(
                     self.robot_id,
+                    "busy",
                     "collect goal is still pending; retry cancel after acceptance",
+                    degradation_state=CLOUD_CANCEL_PENDING_DEGRADATION_STATE,
+                    safe_phone_copy=CLOUD_CANCEL_PENDING_SAFE_PHONE_COPY,
                 )
                 self.last_status = payload
                 return 409, payload

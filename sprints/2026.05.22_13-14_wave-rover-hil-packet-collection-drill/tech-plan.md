@@ -61,7 +61,7 @@ These facts must not be expanded into unverified pinout, voltage, installed sens
 
 This is a 3-owner Epic sprint. When implementation starts, dispatch the following workers in parallel in one message:
 
-1. `hardware-engineer` owns PC gate, fixtures, hardware docs, and hardware-focused tests.
+1. `rober-hardware-engineer` owns PC gate, fixtures, hardware docs, and hardware-focused tests.
 2. `robot-software-engineer` owns diagnostics safe alias, Robot tests, and interface docs.
 3. `full-stack-software-engineer` owns `mobile/web` read-only panel, fixtures, mobile tests, and product mobile docs.
 
@@ -69,7 +69,7 @@ Autonomy is not assigned in this sprint because no Nav2, route, elevator, camera
 
 ## Task A: Hardware Collection Drill Gate
 
-**Owner:** `hardware-engineer`
+**Owner:** `rober-hardware-engineer`
 
 **Allowed files:**
 

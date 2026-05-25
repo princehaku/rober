@@ -60,7 +60,7 @@
 
 ## 7. 对应责任 Engineer
 
-- `hardware-engineer`：PC gate / artifact / hardware source semantics。
+- `rober-hardware-engineer`：PC gate / artifact / hardware source semantics。
 - `robot-software-engineer`：Robot diagnostics safe alias / interface docs。
 - `full-stack-software-engineer`：mobile/web read-only panel / fixture / product doc sync。
 - `product-okr-owner`：OKR closeout、review wording、sprint docs。

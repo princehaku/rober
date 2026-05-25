@@ -6,7 +6,7 @@
 - sprint_type: epic
 - 时间：2026-05-13 01:xx Asia/Shanghai
 - 主集成 Owner：robot-software-engineer（ROS2 主链路 + 集成验收）
-- 并行 Owner：full-stack-software-engineer / autonomy-engineer / hardware-engineer
+- 并行 Owner：full-stack-software-engineer / autonomy-engineer / rober-hardware-engineer
 - 留档 Owner：product-okr-owner
 - 证据边界：`structural_refactor_only`
 
@@ -33,7 +33,7 @@
                                 ┌──────────────────────────────────────┐
                                 │   Phase 3 ROS2 包整体迁到 onboard/    │
                                 │   Owner: robot-software-engineer 主责│
-                                │   配合: hardware-engineer            │
+                                │   配合: rober-hardware-engineer            │
                                 │   依赖: P1（不依赖 P2A/B/C，可同时）  │
                                 │   阻塞: P4, P5 必须等 P3 完成        │
                                 └──────────────────────────────────────┘

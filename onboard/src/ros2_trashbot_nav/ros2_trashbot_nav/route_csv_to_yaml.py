@@ -2,7 +2,7 @@ import os
 
 import rclpy
 from rclpy.node import Node
-from ros2_trashbot_nav.route_utils import load_waypoints_from_csv
+from ros2_trashbot_nav.route_parsers import load_waypoints_from_csv
 
 
 class RouteCsvToYaml(Node):
@@ -21,6 +21,7 @@ class RouteCsvToYaml(Node):
         if not os.path.exists(self.input_csv):
             self.get_logger().error(f'CSV not found: {self.input_csv}')
             return False
+        # CSV 解析统一走 route_parsers，避免 CLI 和 runtime 对同一列有两套理解。
         waypoints = load_waypoints_from_csv(self.input_csv, self.frame_id)
         import yaml
         output_dir = os.path.dirname(self.output_yaml)

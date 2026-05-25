@@ -1,6 +1,6 @@
 schema_version = 1
-project = "ros_rbs"
-title = "ros_rbs Agents 使用指南"
+project = "rober"
+title = "rober Agents 使用指南"
 entrypoint = "AGENTS.md"
 okr_file = "OKR.md"
 vendor_index = "docs/vendor/VENDOR_INDEX.md"
@@ -16,7 +16,7 @@ ceo_scope = "CEO 只制定方向、OKR 和验收口径。"
 L0 = "CEO：定方向、OKR、验收口径，不参与日常实现。"
 L1 = "Product Manager / OKR Owner：承接产品方向、拆 KR、定优先级、裁边界、做阶段验收，并确保 sprint 留档真实更新。"
 L2 = "IC Engineers：四个一线交付同学，按领域直接实现、测试、修复、交付。"
-chain = ["CEO", "product-okr-owner", "robot-software-engineer | hardware-engineer | autonomy-engineer | full-stack-software-engineer"]
+chain = ["CEO", "product-okr-owner", "robot-software-engineer | rober-hardware-engineer | autonomy-engineer | user-software-engineer"]
 escalation = "方向不清、范围冲突、跨多个 L2、阶段验收、OKR/KR 更新时升级到 L1。"
 
 [core_team]
@@ -62,9 +62,9 @@ update_rule = "所有代码、配置、文档、流程或 agent 变更，都必�
 product_or_okr = ["product-okr-owner"]
 ros2_integration = ["robot-software-engineer"]
 interfaces_behavior_bringup = ["robot-software-engineer"]
-hardware_uart_chassis = ["hardware-engineer"]
-slam_nav_future_vision_autonomy = ["autonomy-engineer"]
-mobile_web_api_ui = ["full-stack-software-engineer"]
+hardware_uart_chassis = ["rober-hardware-engineer"]
+slam_nav_future_vision_autonomy = [""robot-algorithm-engineer""]
+mobile_web_api_ui = ["user-software-engineer"]
 stage_acceptance = ["product-okr-owner", "robot-software-engineer"]
 
 [red_lines]
@@ -125,9 +125,9 @@ requires_vendor_source = false
 can_edit = true
 
 [[roles]]
-id = "hardware-engineer"
+id = "rober-hardware-engineer"
 enabled = true
-file = ".codex/agents/hardware-engineer.toml"
+file = ".codex/agents/rober-hardware-engineer.toml"
 level = "engineer"
 org_level = "L2"
 org_rank = "IC Engineer"
@@ -144,7 +144,7 @@ requires_vendor_source = true
 can_edit = true
 
 [[roles]]
-id = "autonomy-engineer"
+id = ""robot-algorithm-engineer""
 enabled = true
 file = ".codex/agents/autonomy-engineer.toml"
 level = "engineer"
@@ -163,9 +163,9 @@ requires_vendor_source = false
 can_edit = true
 
 [[roles]]
-id = "full-stack-software-engineer"
+id = "user-software-engineer"
 enabled = true
-file = ".codex/agents/full-stack-software-engineer.toml"
+file = ".codex/agents/user-software-engineer.toml"
 level = "engineer"
 org_level = "L2"
 org_rank = "IC Engineer"

@@ -9,7 +9,7 @@
 
 ## 本轮按角色跟踪结果
 
-### 1) `hardware-engineer`（O1）
+### 1) `rober-hardware-engineer`（O1）
 
 - 已交付证据链：
   - `scripts/hardware_smoke_wave_rover.py` 保留并输出 run-level `evidence_ref`，支持 `--evidence-ref` 显式覆盖。

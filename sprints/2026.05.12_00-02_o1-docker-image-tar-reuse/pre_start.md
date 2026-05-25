@@ -69,7 +69,7 @@ P2：执行留档必须写入当前 sprint 的 `tech-done.md`，后续阶段再�
 
 - 主责：`robot-software-engineer`
 - 咨询：Product Manager / OKR Owner 只验收范围、证据边界和 sprint 留档
-- 不需要：`hardware-engineer`，因为本轮不涉及真实串口、WAVE ROVER、电气、波特率或 vendor 参数
+- 不需要：`rober-hardware-engineer`，因为本轮不涉及真实串口、WAVE ROVER、电气、波特率或 vendor 参数
 - 不需要：`autonomy-engineer`、`full-stack-software-engineer`
 
 ## 风险、阻塞和证据链

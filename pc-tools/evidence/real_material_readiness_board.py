@@ -159,7 +159,7 @@ def _material_groups() -> list[dict[str, Any]]:
         _group(
             group_id="objective_1_pr5_hardware",
             title="Objective 1 / PR #5 hardware real-material readiness",
-            owner="hardware-engineer",
+            owner="rober-hardware-engineer",
             objective_ref="Objective 1",
             review_refs=["PR #5", PR5_REVIEW_THREAD_ID, "unresolved", BOARD_STATE],
             blocking_reason="missing_wave_rover_uart_hil_and_pr5_sensor_materials",
@@ -183,7 +183,7 @@ def _material_groups() -> list[dict[str, Any]]:
         _group(
             group_id="pr4_route_elevator",
             title="PR #4 route/elevator real-material readiness",
-            owner="autonomy-engineer",
+            owner=""robot-algorithm-engineer"",
             objective_ref="PR #4",
             review_refs=["PR #4", "route/elevator field material blocked"],
             blocking_reason="missing_real_route_elevator_field_materials",
