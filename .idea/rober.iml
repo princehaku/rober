@@ -3,6 +3,10 @@
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/onboard/src/ros2_trashbot_behavior" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/onboard/src/ros2_trashbot_hardware" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/onboard/src/ros2_trashbot_nav" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/onboard/src/ros2_trashbot_vision" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/ros2_trashbot_nav" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
