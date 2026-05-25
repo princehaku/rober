@@ -1,5 +1,5 @@
 schema_version = 1
-id = ""robot-algorithm-engineer""
+id = "robot-algorithm-engineer"
 enabled = true
 name = "Robot Ros Algorithm Engineer"
 level = "engineer"
