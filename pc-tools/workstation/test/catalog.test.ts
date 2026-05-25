@@ -117,7 +117,7 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.fixture_root).toBe("pc-tools/evidence/fixtures");
     expect(response.total_asset_groups).toBeGreaterThan(0);
     expect(response.total_json_fixtures).toBeGreaterThan(0);
-    expect(response.assets.some((asset) => asset.group === "wave_rover_feedback_replay")).toBe(true);
+    expect(response.assets.some((asset) => asset.group === "wave_rover_hil_packet_intake")).toBe(true);
     expect(response.assets.every((asset) => asset.fixture_files.every((file) => file.endsWith(".json")))).toBe(true);
     expect(response.primary_actions_enabled).toBe(false);
     expectNoLegacyPythonGateSemantics(response);

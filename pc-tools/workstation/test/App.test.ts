@@ -1,5 +1,5 @@
 import { flushPromises, mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App.vue";
 import { PROOF_FLAGS } from "../src/shared/contracts";
 
@@ -95,16 +95,28 @@ const fixtures: Record<string, unknown> = {
   },
 };
 
+function stubWorkstationFetch() {
+  // 测试桩允许 route debug 带 query，确保表单路径仍走同一个只读 API。
+  const mockedFetch = vi.fn(async (url: string) => {
+    const fixtureKey = url.startsWith("/api/route/debug-summary") ? "/api/route/debug-summary" : url;
+    return {
+      ok: true,
+      json: async () => fixtures[fixtureKey],
+    };
+  });
+  vi.stubGlobal("fetch", mockedFetch);
+  return mockedFetch;
+}
+
 describe("App", () => {
+  afterEach(() => {
+    // 清理全局 fetch，避免后续用例误用上一轮 API fixture。
+    vi.unstubAllGlobals();
+  });
+
   it("renders fail-closed Node route loader and evidence fixture index", async () => {
     // UI 测试只使用 API fixture，确保页面不自己发明机器人状态或旧执行入口。
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => ({
-        ok: true,
-        json: async () => fixtures[url],
-      })),
-    );
+    stubWorkstationFetch();
 
     const wrapper = mount(App);
     await flushPromises();
@@ -121,6 +133,28 @@ describe("App", () => {
     expect(wrapper.text()).not.toContain("route_debug_web.py");
     expect(wrapper.text()).not.toContain("python -m");
     expect(wrapper.text()).not.toContain("workstation_executes_python_gate");
+    expect(wrapper.text()).not.toContain("/cmd_vel");
+    expect(wrapper.text()).not.toContain("/dev/tty");
+  });
+
+  it("submits route inputs through the workstation API query contract", async () => {
+    // 组件只更新表单状态，query 拼接必须由 src/client/workstationApi.ts 集中完成。
+    const mockedFetch = stubWorkstationFetch();
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find("input").setValue("C:\\tmp\\status proof.json");
+    await wrapper.find("form.route-inputs").trigger("submit");
+    await flushPromises();
+
+    const routeCall = mockedFetch.mock.calls
+      .map(([url]) => String(url))
+      .find((url) => url.startsWith("/api/route/debug-summary?"));
+    expect(routeCall).toBeTruthy();
+    const parsed = new URL(routeCall ?? "", "http://workstation.local");
+    expect(parsed.searchParams.get("statusJson")).toBe("C:\\tmp\\status proof.json");
     expect(wrapper.text()).not.toContain("/cmd_vel");
     expect(wrapper.text()).not.toContain("/dev/tty");
   });
