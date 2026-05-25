@@ -35,6 +35,10 @@ normalizes those requests into the existing `collect`, `confirm_dropoff`, or
 `primary_actions_enabled=false`, and `safe_to_control=false`. Duplicate
 idempotency keys return the existing command id and duplicate info; a successful
 receipt still only means queued for robot polling, not delivery success.
+If the underlying command store is unavailable, the phone route returns a
+phone-safe `503 command_store_unavailable` error instead of a receipt, and the
+response must not expose state paths, credentials, ROS topics, serial/UART
+details, or WAVE ROVER fields.
 
 The first implementation uses HTTP polling so it is testable without a real 4G SIM or cloud account. A future MQTT or WebSocket transport must preserve the same command/status/ack semantics.
 

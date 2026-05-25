@@ -151,10 +151,12 @@ POST /api/commands/cancel
 `queue_sequence` 或 duplicate info。
 
 该 API 是任务级云端入队证明，不是底层运动控制入口，也不是送达证明。Bad
-action、bad body、bad `robot_id` 和 auth failed 都 fail closed；响应不得暴露
-Authorization、token、raw state path、ROS topic、`/cmd_vel`、serial/UART 或
-WAVE ROVER 字段。机器人 polling `/robots/{robot_id}/commands/next`、status 和
-ACK route 仍保持原有 `trashbot.remote.v1` 语义。
+action、bad body、bad `robot_id`、auth failed 和 command store unavailable 都
+fail closed；store 写入不可用时返回 `503 command_store_unavailable`，不得返回
+queued receipt。响应不得暴露 Authorization、token、raw state path、ROS topic、
+`/cmd_vel`、serial/UART 或 WAVE ROVER 字段。机器人 polling
+`/robots/{robot_id}/commands/next`、status 和 ACK route 仍保持原有
+`trashbot.remote.v1` 语义。
 
 生成 cloud deployment readiness artifact：
 

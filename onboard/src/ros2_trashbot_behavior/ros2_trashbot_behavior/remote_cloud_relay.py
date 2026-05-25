@@ -551,6 +551,7 @@ PHONE_COPY = {
     "external_evidence_intake_blocked": "外部证据 intake artifact 未通过校验，请重新生成脱敏材料后再试。",
     "cloud_worker_migration_rehearsal_blocked": "Cloud worker/migration 本地演练未通过，请重新生成 artifact 后再试。",
     "cloud_worker_cutover_drain_blocked": "Cloud worker cutover/drain 本地 gate 未通过，请重新生成 artifact 后再试。",
+    "command_store_unavailable": "云端任务队列暂不可用，请稍后重试或联系运维确认中转服务。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -11374,11 +11375,24 @@ def make_handler(store, bearer_token):
                     return
                 try:
                     robot_id, command = normalize_phone_command(action, body)
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", str(exc)))
+                    return
+                try:
                     status_code, payload = store.submit_command(robot_id, command)
                     self._send_json(status_code, phone_command_receipt(payload))
                     return
+                except (OSError, sqlite3.Error) as exc:
+                    # store 写入失败必须 fail closed：手机只能知道队列不可用，不能拿到路径/SQL/底层细节。
+                    self._send_json(503, phone_error("command_store_unavailable", _safe_error_reason(exc)))
+                    return
                 except ValueError as exc:
-                    self._send_json(400, phone_error("bad_request", str(exc)))
+                    message = str(exc)
+                    if "state store" in message and "not ready" in message:
+                        # SQLite/File proof store 未就绪属于服务能力缺失，不是用户请求成功或语法错误。
+                        self._send_json(503, phone_error("command_store_unavailable", message))
+                        return
+                    self._send_json(400, phone_error("bad_request", message))
                     return
             route = _route(parsed.path)
             if not route:

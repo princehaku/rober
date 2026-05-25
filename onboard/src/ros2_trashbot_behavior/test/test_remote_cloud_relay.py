@@ -387,6 +387,50 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             ):
                 self.assertNotIn(forbidden, encoded)
 
+    def test_cloud_phone_command_api_store_failure_returns_safe_503(self):
+        class FailingStore:
+            def submit_command(self, robot_id, payload):
+                raise OSError("raw state path /cmd_vel Authorization Bearer hidden")
+
+        server = relay_module.ThreadingHTTPServer(
+            ("127.0.0.1", 0),
+            relay_module.make_handler(FailingStore(), "phone-token"),
+        )
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        client = RelayHttpClient(f"http://127.0.0.1:{server.server_address[1]}")
+        try:
+            status, payload = client.request(
+                "POST",
+                "/api/commands/collect",
+                {
+                    "robot_id": "trashbot-001",
+                    "idempotency_key": "phone-store-failure-001",
+                    "payload": {"target": "trash_station"},
+                },
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=1.0)
+
+        encoded = json.dumps(payload, ensure_ascii=False)
+        self.assertEqual(status, 503)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["error"]["code"], "command_store_unavailable")
+        for forbidden in (
+            "phone-token",
+            "Authorization",
+            "Bearer",
+            "hidden",
+            "/cmd_vel",
+            "raw state path",
+            "serial",
+            "UART",
+            "WAVE ROVER",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
     def test_health_and_readiness_are_phone_safe(self):
         status, payload = self.client.request("GET", "/healthz", token="")
         self.assertEqual(status, 200)
