@@ -8,6 +8,8 @@ import type {
   O7LabelingQueueInspector,
   O7LabelingQueueInspectorLabelSample,
   O7RouteReplayInspector,
+  O7SafeCommandInspector,
+  O7SafeCommandInspectorCommandSample,
   O7VoiceAsrTtsInspector,
   O7VoiceAsrTtsInspectorAsrEvent,
   O7VoiceAsrTtsInspectorTranscriptSlot,
@@ -54,6 +56,9 @@ const CONTROL_CLAIM_PATTERNS = [
   /"primary_actions_enabled"\s*:\s*true/i,
   /"robot_control_executed"\s*:\s*true/i,
   /"command_dispatch_enabled"\s*:\s*true/i,
+  /"manual_control_enabled"\s*:\s*true/i,
+  /"navigate_goal_enabled"\s*:\s*true/i,
+  /"keyboard_control_enabled"\s*:\s*true/i,
 ];
 
 const REAL_API_CLAIM_PATTERNS = [
@@ -63,6 +68,7 @@ const REAL_API_CLAIM_PATTERNS = [
   /"real_voice_api_connected"\s*:\s*true/i,
   /"real_asr_tts_runtime_connected"\s*:\s*true/i,
   /"real_command_api_connected"\s*:\s*true/i,
+  /"real_robot_ack_connected"\s*:\s*true/i,
   /"asr_stream_connected"\s*:\s*true/i,
   /"tts_send_enabled"\s*:\s*true/i,
   /"speaker_dispatch_enabled"\s*:\s*true/i,
@@ -155,7 +161,12 @@ function fixedFalseFields(): O7CloudArchiveTasksResponse["fixed_false_fields"] {
     real_annotation_api_connected: false,
     real_voice_api_connected: false,
     real_command_api_connected: false,
+    real_robot_ack_connected: false,
     real_asr_tts_runtime_connected: false,
+    command_dispatch_enabled: false,
+    manual_control_enabled: false,
+    navigate_goal_enabled: false,
+    keyboard_control_enabled: false,
     asr_stream_connected: false,
     tts_send_enabled: false,
     speaker_dispatch_enabled: false,
@@ -164,6 +175,126 @@ function fixedFalseFields(): O7CloudArchiveTasksResponse["fixed_false_fields"] {
     primary_actions_enabled: false,
     pc_only: true,
     robot_control_executed: false,
+  };
+}
+
+function defaultCommandEvidenceGaps(value: unknown): string[] {
+  // KR6 gaps 必须同时保留 timeout/cancel/stop/recovery，避免 ACK 缺口被命令样本掩盖。
+  const fixtureGaps = safeTextList(value, SAMPLE_LIMIT * 2);
+  return Array.from(new Set([
+    ...fixtureGaps,
+    "real_command_api_not_connected",
+    "manual_turn_dispatch_not_proven",
+    "navigate_goal_dispatch_not_proven",
+    "robot_ack_timeout_trace_missing",
+    "cancel_ack_trace_missing",
+    "stop_ack_trace_missing",
+    "recovery_event_trace_missing",
+    "hil_or_hardware_safety_not_proven",
+  ]));
+}
+
+function emptySafeCommandInspector(
+  blockedReasons: string[],
+  selectedTaskId: string | null = null,
+): O7SafeCommandInspector {
+  // safe command inspector 失败时清空 command sample，并把所有真实控制字段保持 false。
+  return {
+    status: "blocked_not_proven",
+    selected_task_id: selectedTaskId,
+    command_session: {
+      command_session_id: "not_loaded",
+      source: "local_json_fixture",
+      evidence_ref: "not_loaded",
+      audit_refs: [],
+      status: "blocked_not_proven",
+    },
+    command_count: 0,
+    sample_commands: [],
+    manual_turn_envelope: {
+      sends_to_robot: false,
+      requested_direction: "not_loaded",
+      velocity_limited: true,
+      steering_limited: true,
+      evidence_ref: "missing_manual_turn_command_envelope_trace",
+      status: "blocked_not_proven",
+    },
+    navigate_goal_envelope: {
+      sends_to_robot: false,
+      goal_source: "not_loaded",
+      map_frame: "map",
+      x_m: null,
+      y_m: null,
+      yaw_rad: null,
+      evidence_ref: "missing_navigate_goal_command_envelope_trace",
+      status: "blocked_not_proven",
+    },
+    velocity_limits: {
+      max_linear_mps: null,
+      max_angular_radps: null,
+      source: "not_loaded",
+      hardware_verified: false,
+      status: "blocked_not_proven",
+    },
+    steering_limits: {
+      max_steering_angle_rad: null,
+      max_turn_rate_radps: null,
+      source: "not_loaded",
+      hardware_verified: false,
+      status: "blocked_not_proven",
+    },
+    map_goal_slot: {
+      map_frame: "map",
+      x_m: null,
+      y_m: null,
+      yaw_rad: null,
+      status: "blocked_not_proven",
+      evidence_ref: "missing_map_goal_selection_trace",
+    },
+    idempotency_key_requirement: {
+      required: true,
+      key_ref: "missing_idempotency_key_requirement",
+      header: "Idempotency-Key",
+      status: "blocked_not_proven",
+    },
+    confirmation_policy: {
+      manual_turn_requires_confirmation: true,
+      navigate_goal_requires_confirmation: true,
+      keyboard_control_requires_hold: true,
+      status: "blocked_not_proven",
+    },
+    robot_ack_blocked_summary: {
+      ack_status: "blocked_not_proven",
+      last_command_id: "not_loaded",
+      ack_ref: "missing_robot_command_ack",
+      timeout_ms: null,
+      cancel_ack_ref: "missing_robot_cancel_ack",
+      stop_ack_ref: "missing_robot_stop_ack",
+      recovery_ref: "missing_robot_recovery_event",
+      status: "blocked_not_proven",
+    },
+    evidence_gaps: defaultCommandEvidenceGaps(blockedReasons),
+    command_dispatch_enabled: false,
+    manual_control_enabled: false,
+    navigate_goal_enabled: false,
+    keyboard_control_enabled: false,
+    real_command_api_connected: false,
+    real_robot_ack_connected: false,
+    robot_control_executed: false,
+    safe_to_control: false,
+    primary_actions_enabled: false,
+    delivery_success: false,
+    blocked_reasons: blockedReasons,
+    not_proven: [
+      "real_o7_safe_command_api",
+      "real_manual_turn_control",
+      "real_navigate_goal_dispatch",
+      "real_keyboard_control",
+      "real_robot_command_ack",
+      "real_timeout_cancel_stop_recovery",
+      "real_hil_or_hardware_safety",
+      "delivery_success",
+    ],
   };
 }
 
@@ -360,6 +491,7 @@ function blockedResponse(
     route_replay_inspector: emptyRouteReplayInspector(blockedReasons),
     labeling_queue_inspector: emptyLabelingQueueInspector(blockedReasons),
     voice_asr_tts_inspector: emptyVoiceAsrTtsInspector(blockedReasons),
+    safe_command_inspector: emptySafeCommandInspector(blockedReasons),
     fixed_false_fields: fixedFalseFields(),
     blocked_reasons: blockedReasons,
     not_proven: [
@@ -761,6 +893,156 @@ function routeReplayInspectorFor(task: JsonObject | null): O7RouteReplayInspecto
   };
 }
 
+function sampleCommand(value: unknown, index: number): O7SafeCommandInspectorCommandSample {
+  // command sample 只保留 selector/debug 需要的白名单字段，不携带 payload 或执行结果。
+  const command = isObject(value) ? value : {};
+  return {
+    command_id: safeText(command.command_id ?? command.id ?? `command_${index + 1}`),
+    command_type: safeText(command.command_type ?? command.kind ?? command.type ?? "command_type_missing"),
+    status: safeText(command.status ?? command.command_status ?? "fixture_summary_only"),
+    envelope_ref: safeRef(command.envelope_ref ?? command.command_ref ?? command.evidence_ref),
+    idempotency_key_ref: safeRef(command.idempotency_key_ref ?? command.idempotency_ref),
+    evidence_ref: safeRef(command.evidence_ref ?? command.audit_ref),
+  };
+}
+
+function safeCommandInspectorFor(task: JsonObject | null): O7SafeCommandInspector {
+  if (!task) {
+    return emptySafeCommandInspector(["selected_task_missing"]);
+  }
+
+  const selectedTaskId = safeText(task.task_id || task.id || "task_id_missing");
+  const commands = listFromTask(task, "commands");
+  const commandSession = isObject(task.command_session) ? task.command_session : {};
+  const manualTurn = isObject(task.manual_turn_envelope) ? task.manual_turn_envelope : {};
+  const navigateGoal = isObject(task.navigate_goal_envelope) ? task.navigate_goal_envelope : {};
+  const velocityLimits = isObject(task.velocity_limits) ? task.velocity_limits : {};
+  const steeringLimits = isObject(task.steering_limits) ? task.steering_limits : {};
+  const mapGoalSlot = isObject(task.map_goal_slot) ? task.map_goal_slot : {};
+  const idempotency = isObject(task.idempotency_key_requirement) ? task.idempotency_key_requirement : {};
+  const confirmation = isObject(task.confirmation_policy) ? task.confirmation_policy : {};
+  const robotAck = isObject(task.robot_ack_status)
+    ? task.robot_ack_status
+    : isObject(task.command_ack)
+      ? task.command_ack
+      : {};
+  const mapFrame = safeText(mapGoalSlot.map_frame ?? navigateGoal.map_frame ?? task.map_frame ?? "map") || "map";
+  const blockedReasons = [
+    "real_command_api_not_connected",
+    "command_dispatch_disabled",
+    "manual_control_disabled",
+    "navigate_goal_disabled",
+    "keyboard_control_disabled",
+    "robot_ack_not_proven",
+    "hil_or_hardware_safety_not_proven",
+    "delivery_success_not_proven",
+  ];
+
+  if (commands.length === 0 && Object.keys(manualTurn).length === 0 && Object.keys(navigateGoal).length === 0) {
+    return emptySafeCommandInspector(["commands_and_command_envelopes_missing", ...blockedReasons], selectedTaskId);
+  }
+
+  return {
+    status: "fixture_command_ready",
+    selected_task_id: selectedTaskId,
+    command_session: {
+      command_session_id: safeText(commandSession.command_session_id ?? task.command_session_id ?? "not_provided"),
+      source: "local_json_fixture",
+      evidence_ref: safeRef(commandSession.evidence_ref ?? task.command_evidence_ref ?? task.evidence_ref),
+      audit_refs: safeRefList(commandSession.audit_refs ?? task.command_audit_refs ?? task.audit_refs, SAMPLE_LIMIT),
+      status: "fixture_summary_only",
+    },
+    command_count: commands.length,
+    sample_commands: commands.slice(0, SAMPLE_LIMIT).map(sampleCommand),
+    manual_turn_envelope: {
+      sends_to_robot: false,
+      requested_direction: safeText(manualTurn.requested_direction ?? manualTurn.direction ?? "not_provided"),
+      velocity_limited: true,
+      steering_limited: true,
+      evidence_ref: safeRef(manualTurn.evidence_ref) || "missing_manual_turn_command_envelope_trace",
+      status: Object.keys(manualTurn).length > 0 ? "fixture_summary_only" : "blocked_not_proven",
+    },
+    navigate_goal_envelope: {
+      sends_to_robot: false,
+      goal_source: safeText(navigateGoal.goal_source ?? "fixture_map_goal_slot") || "fixture_map_goal_slot",
+      map_frame: safeText(navigateGoal.map_frame ?? mapFrame) || "map",
+      x_m: safeNumber(navigateGoal.x_m ?? navigateGoal.x),
+      y_m: safeNumber(navigateGoal.y_m ?? navigateGoal.y),
+      yaw_rad: safeNumber(navigateGoal.yaw_rad ?? navigateGoal.yaw),
+      evidence_ref: safeRef(navigateGoal.evidence_ref) || "missing_navigate_goal_command_envelope_trace",
+      status: Object.keys(navigateGoal).length > 0 ? "fixture_summary_only" : "blocked_not_proven",
+    },
+    velocity_limits: {
+      max_linear_mps: safeNumber(velocityLimits.max_linear_mps),
+      max_angular_radps: safeNumber(velocityLimits.max_angular_radps),
+      source: safeText(velocityLimits.source ?? "local_json_fixture_not_hil") || "local_json_fixture_not_hil",
+      hardware_verified: false,
+      status: Object.keys(velocityLimits).length > 0 ? "fixture_limit_summary_only" : "blocked_not_proven",
+    },
+    steering_limits: {
+      max_steering_angle_rad: safeNumber(steeringLimits.max_steering_angle_rad),
+      max_turn_rate_radps: safeNumber(steeringLimits.max_turn_rate_radps),
+      source: safeText(steeringLimits.source ?? "local_json_fixture_not_hil") || "local_json_fixture_not_hil",
+      hardware_verified: false,
+      status: Object.keys(steeringLimits).length > 0 ? "fixture_limit_summary_only" : "blocked_not_proven",
+    },
+    map_goal_slot: {
+      map_frame: mapFrame,
+      x_m: safeNumber(mapGoalSlot.x_m ?? mapGoalSlot.x),
+      y_m: safeNumber(mapGoalSlot.y_m ?? mapGoalSlot.y),
+      yaw_rad: safeNumber(mapGoalSlot.yaw_rad ?? mapGoalSlot.yaw),
+      status: Object.keys(mapGoalSlot).length > 0 ? "fixture_slot_summary_only" : "blocked_not_proven",
+      evidence_ref: safeRef(mapGoalSlot.evidence_ref) || "missing_map_goal_selection_trace",
+    },
+    idempotency_key_requirement: {
+      required: true,
+      key_ref: safeRef(idempotency.key_ref ?? idempotency.evidence_ref) || "missing_idempotency_key_requirement",
+      header: "Idempotency-Key",
+      status: Object.keys(idempotency).length > 0 ? "fixture_requirement_summary_only" : "blocked_not_proven",
+    },
+    confirmation_policy: {
+      manual_turn_requires_confirmation: true,
+      navigate_goal_requires_confirmation: true,
+      keyboard_control_requires_hold: true,
+      status: safeText(confirmation.status ?? "fixture_policy_summary_only") === "blocked_not_proven"
+        ? "blocked_not_proven"
+        : "fixture_policy_summary_only",
+    },
+    robot_ack_blocked_summary: {
+      ack_status: "blocked_not_proven",
+      last_command_id: safeText(robotAck.last_command_id ?? "not_provided"),
+      ack_ref: safeRef(robotAck.ack_ref ?? robotAck.evidence_ref) || "missing_robot_command_ack",
+      timeout_ms: safeNumber(robotAck.timeout_ms),
+      cancel_ack_ref: safeRef(robotAck.cancel_ack_ref) || "missing_robot_cancel_ack",
+      stop_ack_ref: safeRef(robotAck.stop_ack_ref) || "missing_robot_stop_ack",
+      recovery_ref: safeRef(robotAck.recovery_ref) || "missing_robot_recovery_event",
+      status: "blocked_not_proven",
+    },
+    evidence_gaps: defaultCommandEvidenceGaps(task.command_evidence_gaps ?? task.evidence_gaps),
+    command_dispatch_enabled: false,
+    manual_control_enabled: false,
+    navigate_goal_enabled: false,
+    keyboard_control_enabled: false,
+    real_command_api_connected: false,
+    real_robot_ack_connected: false,
+    robot_control_executed: false,
+    safe_to_control: false,
+    primary_actions_enabled: false,
+    delivery_success: false,
+    blocked_reasons: blockedReasons,
+    not_proven: [
+      "real_o7_safe_command_api",
+      "real_manual_turn_control",
+      "real_navigate_goal_dispatch",
+      "real_keyboard_control",
+      "real_robot_command_ack",
+      "real_timeout_cancel_stop_recovery",
+      "real_hil_or_hardware_safety",
+      "delivery_success",
+    ],
+  };
+}
+
 function safeSummariesFor(task: JsonObject | null): O7CloudArchiveTaskSafeSummaries {
   if (!task) {
     return emptySummaries("blocked_not_proven");
@@ -890,6 +1172,7 @@ export async function buildO7CloudArchiveTasks(options: O7CloudArchiveTasksOptio
     route_replay_inspector: routeReplayInspectorFor(selected),
     labeling_queue_inspector: labelingQueueInspectorFor(selected),
     voice_asr_tts_inspector: voiceAsrTtsInspectorFor(selected),
+    safe_command_inspector: safeCommandInspectorFor(selected),
     fixed_false_fields: fixedFalseFields(),
     blocked_reasons: [
       "real_cloud_archive_not_connected",

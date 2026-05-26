@@ -664,6 +664,106 @@ export interface O7VoiceAsrTtsInspector {
   not_proven: string[];
 }
 
+export interface O7SafeCommandInspectorCommandSample {
+  command_id: string;
+  command_type: string;
+  status: string;
+  envelope_ref: string;
+  idempotency_key_ref: string;
+  evidence_ref: string;
+}
+
+// safe_command_inspector 是 O7-KR6 在 cloud archive selected task 上的只读检查视图。
+// 它复用本地 fixture 白名单字段，所有真实控制、键盘、ACK 和发送能力继续固定 false。
+export interface O7SafeCommandInspector {
+  status: "fixture_command_ready" | "blocked_not_proven";
+  selected_task_id: string | null;
+  command_session: {
+    command_session_id: string;
+    source: "local_json_fixture";
+    evidence_ref: string;
+    audit_refs: string[];
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  command_count: number;
+  sample_commands: O7SafeCommandInspectorCommandSample[];
+  manual_turn_envelope: {
+    sends_to_robot: false;
+    requested_direction: string;
+    velocity_limited: true;
+    steering_limited: true;
+    evidence_ref: string;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  navigate_goal_envelope: {
+    sends_to_robot: false;
+    goal_source: string;
+    map_frame: string;
+    x_m: number | null;
+    y_m: number | null;
+    yaw_rad: number | null;
+    evidence_ref: string;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  velocity_limits: {
+    max_linear_mps: number | null;
+    max_angular_radps: number | null;
+    source: string;
+    hardware_verified: false;
+    status: "fixture_limit_summary_only" | "blocked_not_proven";
+  };
+  steering_limits: {
+    max_steering_angle_rad: number | null;
+    max_turn_rate_radps: number | null;
+    source: string;
+    hardware_verified: false;
+    status: "fixture_limit_summary_only" | "blocked_not_proven";
+  };
+  map_goal_slot: {
+    map_frame: string;
+    x_m: number | null;
+    y_m: number | null;
+    yaw_rad: number | null;
+    status: "fixture_slot_summary_only" | "blocked_not_proven";
+    evidence_ref: string;
+  };
+  idempotency_key_requirement: {
+    required: true;
+    key_ref: string;
+    header: "Idempotency-Key";
+    status: "fixture_requirement_summary_only" | "blocked_not_proven";
+  };
+  confirmation_policy: {
+    manual_turn_requires_confirmation: true;
+    navigate_goal_requires_confirmation: true;
+    keyboard_control_requires_hold: true;
+    status: "fixture_policy_summary_only" | "blocked_not_proven";
+  };
+  robot_ack_blocked_summary: {
+    ack_status: "blocked_not_proven";
+    last_command_id: string;
+    ack_ref: string;
+    timeout_ms: number | null;
+    cancel_ack_ref: string;
+    stop_ack_ref: string;
+    recovery_ref: string;
+    status: "blocked_not_proven";
+  };
+  evidence_gaps: string[];
+  command_dispatch_enabled: false;
+  manual_control_enabled: false;
+  navigate_goal_enabled: false;
+  keyboard_control_enabled: false;
+  real_command_api_connected: false;
+  real_robot_ack_connected: false;
+  robot_control_executed: false;
+  safe_to_control: false;
+  primary_actions_enabled: false;
+  delivery_success: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 // Cloud archive task API 是 O7 的统一数据源雏形，但当前只读本地 fixture。
 // fixed false 字段覆盖 KR3/KR4/KR5/KR6，避免 UI 把 archive 摘要误读成真实云能力。
 export interface O7CloudArchiveTasksResponse extends ProofFlags {
@@ -705,13 +805,19 @@ export interface O7CloudArchiveTasksResponse extends ProofFlags {
   route_replay_inspector: O7RouteReplayInspector;
   labeling_queue_inspector: O7LabelingQueueInspector;
   voice_asr_tts_inspector: O7VoiceAsrTtsInspector;
+  safe_command_inspector: O7SafeCommandInspector;
   fixed_false_fields: {
     real_cloud_archive_connected: false;
     real_realtime_api_connected: false;
     real_annotation_api_connected: false;
     real_voice_api_connected: false;
     real_command_api_connected: false;
+    real_robot_ack_connected: false;
     real_asr_tts_runtime_connected: false;
+    command_dispatch_enabled: false;
+    manual_control_enabled: false;
+    navigate_goal_enabled: false;
+    keyboard_control_enabled: false;
     asr_stream_connected: false;
     tts_send_enabled: false;
     speaker_dispatch_enabled: false;

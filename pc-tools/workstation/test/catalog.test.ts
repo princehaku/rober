@@ -494,7 +494,74 @@ function sampleCloudArchiveFixture(evidenceRef: string) {
           dependency_ref: path.join(path.dirname(evidenceRef), "media-preflight.json"),
           gaps: ["audio_input_not_checked", "speaker_output_not_checked"],
         },
-        commands: [{ kind: "manual_turn" }, { command_type: "navigate_goal" }],
+        command_session: {
+          command_session_id: "archive-command-session-002",
+          evidence_ref: path.join(path.dirname(evidenceRef), "command-session.json"),
+          audit_refs: ["command-audit-001.json", path.join(path.dirname(evidenceRef), "command-audit-002.json")],
+        },
+        commands: [
+          {
+            command_id: "cmd-archive-001",
+            kind: "manual_turn",
+            status: "queued_fixture_only",
+            envelope_ref: path.join(path.dirname(evidenceRef), "manual-turn-envelope.json"),
+            idempotency_key_ref: "idem-manual-001.json",
+            evidence_ref: "command-manual-001.json",
+          },
+          {
+            command_id: "cmd-archive-002",
+            command_type: "navigate_goal",
+            status: "draft_fixture_only",
+            envelope_ref: "navigate-goal-envelope.json",
+            idempotency_key_ref: "idem-nav-001.json",
+            evidence_ref: path.join(path.dirname(evidenceRef), "command-nav-001.json"),
+          },
+        ],
+        manual_turn_envelope: {
+          requested_direction: "left",
+          evidence_ref: path.join(path.dirname(evidenceRef), "manual-turn-envelope.json"),
+        },
+        navigate_goal_envelope: {
+          goal_source: "fixture_map_goal_slot",
+          map_frame: "map",
+          x_m: 1.25,
+          y_m: -0.5,
+          yaw_rad: 1.57,
+          evidence_ref: "navigate-goal-envelope.json",
+        },
+        velocity_limits: {
+          max_linear_mps: 0.2,
+          max_angular_radps: 0.4,
+          source: "fixture_limit_not_hil",
+        },
+        steering_limits: {
+          max_steering_angle_rad: 0.35,
+          max_turn_rate_radps: 0.45,
+          source: "fixture_limit_not_hil",
+        },
+        map_goal_slot: {
+          map_frame: "map",
+          x_m: 1.25,
+          y_m: -0.5,
+          yaw_rad: 1.57,
+          evidence_ref: path.join(path.dirname(evidenceRef), "map-goal-slot.json"),
+        },
+        idempotency_key_requirement: {
+          key_ref: "idempotency-policy.json",
+        },
+        confirmation_policy: {
+          status: "fixture_policy_summary_only",
+        },
+        command_ack: {
+          ack_status: "blocked_not_proven",
+          last_command_id: "cmd-archive-002",
+          ack_ref: "ack-missing.json",
+          timeout_ms: 1500,
+          cancel_ack_ref: "cancel-missing.json",
+          stop_ack_ref: "stop-missing.json",
+          recovery_ref: "recovery-missing.json",
+        },
+        command_evidence_gaps: ["operator_confirmation_ui_not_connected"],
       },
     ],
   };
@@ -2070,7 +2137,12 @@ describe("workstation fail-closed API contracts", () => {
       real_annotation_api_connected: false,
       real_voice_api_connected: false,
       real_command_api_connected: false,
+      real_robot_ack_connected: false,
       real_asr_tts_runtime_connected: false,
+      command_dispatch_enabled: false,
+      manual_control_enabled: false,
+      navigate_goal_enabled: false,
+      keyboard_control_enabled: false,
       asr_stream_connected: false,
       tts_send_enabled: false,
       speaker_dispatch_enabled: false,
@@ -2293,6 +2365,115 @@ describe("workstation fail-closed API contracts", () => {
       real_command_api_connected: false,
       robot_control_executed: false,
     });
+    expect(response.safe_command_inspector).toMatchObject({
+      status: "fixture_command_ready",
+      selected_task_id: "task-archive-002",
+      command_count: 2,
+      command_dispatch_enabled: false,
+      manual_control_enabled: false,
+      navigate_goal_enabled: false,
+      keyboard_control_enabled: false,
+      real_command_api_connected: false,
+      real_robot_ack_connected: false,
+      robot_control_executed: false,
+      safe_to_control: false,
+      primary_actions_enabled: false,
+      delivery_success: false,
+    });
+    expect(response.safe_command_inspector.command_session).toEqual({
+      command_session_id: "archive-command-session-002",
+      source: "local_json_fixture",
+      evidence_ref: "file:command-session.json",
+      audit_refs: ["command-audit-001.json", "file:command-audit-002.json"],
+      status: "fixture_summary_only",
+    });
+    expect(response.safe_command_inspector.sample_commands).toEqual([
+      {
+        command_id: "cmd-archive-001",
+        command_type: "manual_turn",
+        status: "queued_fixture_only",
+        envelope_ref: "file:manual-turn-envelope.json",
+        idempotency_key_ref: "idem-manual-001.json",
+        evidence_ref: "command-manual-001.json",
+      },
+      {
+        command_id: "cmd-archive-002",
+        command_type: "navigate_goal",
+        status: "draft_fixture_only",
+        envelope_ref: "navigate-goal-envelope.json",
+        idempotency_key_ref: "idem-nav-001.json",
+        evidence_ref: "file:command-nav-001.json",
+      },
+    ]);
+    expect(response.safe_command_inspector.manual_turn_envelope).toEqual({
+      sends_to_robot: false,
+      requested_direction: "left",
+      velocity_limited: true,
+      steering_limited: true,
+      evidence_ref: "file:manual-turn-envelope.json",
+      status: "fixture_summary_only",
+    });
+    expect(response.safe_command_inspector.navigate_goal_envelope).toMatchObject({
+      sends_to_robot: false,
+      goal_source: "fixture_map_goal_slot",
+      map_frame: "map",
+      x_m: 1.25,
+      y_m: -0.5,
+      yaw_rad: 1.57,
+      evidence_ref: "navigate-goal-envelope.json",
+    });
+    expect(response.safe_command_inspector.velocity_limits).toEqual({
+      max_linear_mps: 0.2,
+      max_angular_radps: 0.4,
+      source: "fixture_limit_not_hil",
+      hardware_verified: false,
+      status: "fixture_limit_summary_only",
+    });
+    expect(response.safe_command_inspector.steering_limits).toEqual({
+      max_steering_angle_rad: 0.35,
+      max_turn_rate_radps: 0.45,
+      source: "fixture_limit_not_hil",
+      hardware_verified: false,
+      status: "fixture_limit_summary_only",
+    });
+    expect(response.safe_command_inspector.map_goal_slot).toEqual({
+      map_frame: "map",
+      x_m: 1.25,
+      y_m: -0.5,
+      yaw_rad: 1.57,
+      status: "fixture_slot_summary_only",
+      evidence_ref: "file:map-goal-slot.json",
+    });
+    expect(response.safe_command_inspector.idempotency_key_requirement).toEqual({
+      required: true,
+      key_ref: "idempotency-policy.json",
+      header: "Idempotency-Key",
+      status: "fixture_requirement_summary_only",
+    });
+    expect(response.safe_command_inspector.confirmation_policy).toEqual({
+      manual_turn_requires_confirmation: true,
+      navigate_goal_requires_confirmation: true,
+      keyboard_control_requires_hold: true,
+      status: "fixture_policy_summary_only",
+    });
+    expect(response.safe_command_inspector.robot_ack_blocked_summary).toEqual({
+      ack_status: "blocked_not_proven",
+      last_command_id: "cmd-archive-002",
+      ack_ref: "ack-missing.json",
+      timeout_ms: 1500,
+      cancel_ack_ref: "cancel-missing.json",
+      stop_ack_ref: "stop-missing.json",
+      recovery_ref: "recovery-missing.json",
+      status: "blocked_not_proven",
+    });
+    expect(response.safe_command_inspector.evidence_gaps).toEqual(expect.arrayContaining([
+      "operator_confirmation_ui_not_connected",
+      "robot_ack_timeout_trace_missing",
+      "cancel_ack_trace_missing",
+      "stop_ack_trace_missing",
+      "recovery_event_trace_missing",
+    ]));
+    expect(response.safe_command_inspector.not_proven).toContain("real_timeout_cancel_stop_recovery");
     expect(response.blocked_reasons).toContain("real_cloud_archive_not_connected");
     expect(response.blocked_reasons).toContain("robot_control_disabled");
     expect(response.not_proven).toContain("real_o7_cloud_archive_task_api");
@@ -2376,6 +2557,18 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.voice_asr_tts_inspector.real_voice_api_connected).toBe(false);
       expect(response.voice_asr_tts_inspector.real_asr_tts_runtime_connected).toBe(false);
       expect(response.voice_asr_tts_inspector.speaker_dispatch.sends_to_robot).toBe(false);
+      expect(response.safe_command_inspector.status).toBe("blocked_not_proven");
+      expect(response.safe_command_inspector.sample_commands).toEqual([]);
+      expect(response.safe_command_inspector.command_dispatch_enabled).toBe(false);
+      expect(response.safe_command_inspector.manual_control_enabled).toBe(false);
+      expect(response.safe_command_inspector.navigate_goal_enabled).toBe(false);
+      expect(response.safe_command_inspector.keyboard_control_enabled).toBe(false);
+      expect(response.safe_command_inspector.real_command_api_connected).toBe(false);
+      expect(response.safe_command_inspector.real_robot_ack_connected).toBe(false);
+      expect(response.safe_command_inspector.robot_control_executed).toBe(false);
+      expect(response.safe_command_inspector.safe_to_control).toBe(false);
+      expect(response.safe_command_inspector.primary_actions_enabled).toBe(false);
+      expect(response.safe_command_inspector.delivery_success).toBe(false);
       expect(response.safe_summaries.commands.robot_control_executed).toBe(false);
       expect(response.blocked_reasons.length).toBeGreaterThan(0);
       expectNoLegacyPythonGateSemantics(response);

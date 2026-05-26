@@ -1307,13 +1307,115 @@ const fixtures: Record<string, unknown> = {
       blocked_reasons: ["real_voice_api_not_connected", "tts_send_disabled"],
       not_proven: ["real_o7_voice_api", "real_speaker_dispatch_ack"],
     },
+    safe_command_inspector: {
+      status: "fixture_command_ready",
+      selected_task_id: "task_archive_002",
+      command_session: {
+        command_session_id: "archive_command_session_002",
+        source: "local_json_fixture",
+        evidence_ref: "command_session_002.json",
+        audit_refs: ["command_audit_001.json"],
+        status: "fixture_summary_only",
+      },
+      command_count: 1,
+      sample_commands: [
+        {
+          command_id: "command_archive_001",
+          command_type: "navigate_goal",
+          status: "draft_fixture_only",
+          envelope_ref: "navigate_goal_envelope.json",
+          idempotency_key_ref: "idempotency_key_001.json",
+          evidence_ref: "command_evidence_001.json",
+        },
+      ],
+      manual_turn_envelope: {
+        sends_to_robot: false,
+        requested_direction: "left",
+        velocity_limited: true,
+        steering_limited: true,
+        evidence_ref: "manual_turn_envelope.json",
+        status: "fixture_summary_only",
+      },
+      navigate_goal_envelope: {
+        sends_to_robot: false,
+        goal_source: "fixture_map_goal_slot",
+        map_frame: "map",
+        x_m: 1.25,
+        y_m: -0.5,
+        yaw_rad: 1.57,
+        evidence_ref: "navigate_goal_envelope.json",
+        status: "fixture_summary_only",
+      },
+      velocity_limits: {
+        max_linear_mps: 0.2,
+        max_angular_radps: 0.4,
+        source: "fixture_limit_not_hil",
+        hardware_verified: false,
+        status: "fixture_limit_summary_only",
+      },
+      steering_limits: {
+        max_steering_angle_rad: 0.35,
+        max_turn_rate_radps: 0.45,
+        source: "fixture_limit_not_hil",
+        hardware_verified: false,
+        status: "fixture_limit_summary_only",
+      },
+      map_goal_slot: {
+        map_frame: "map",
+        x_m: 1.25,
+        y_m: -0.5,
+        yaw_rad: 1.57,
+        status: "fixture_slot_summary_only",
+        evidence_ref: "map_goal_slot.json",
+      },
+      idempotency_key_requirement: {
+        required: true,
+        key_ref: "idempotency_policy.json",
+        header: "Idempotency-Key",
+        status: "fixture_requirement_summary_only",
+      },
+      confirmation_policy: {
+        manual_turn_requires_confirmation: true,
+        navigate_goal_requires_confirmation: true,
+        keyboard_control_requires_hold: true,
+        status: "fixture_policy_summary_only",
+      },
+      robot_ack_blocked_summary: {
+        ack_status: "blocked_not_proven",
+        last_command_id: "command_archive_001",
+        ack_ref: "missing_robot_command_ack",
+        timeout_ms: null,
+        cancel_ack_ref: "missing_robot_cancel_ack",
+        stop_ack_ref: "missing_robot_stop_ack",
+        recovery_ref: "missing_robot_recovery_event",
+        status: "blocked_not_proven",
+      },
+      evidence_gaps: ["robot_ack_timeout_trace_missing", "cancel_ack_trace_missing", "stop_ack_trace_missing", "recovery_event_trace_missing"],
+      command_dispatch_enabled: false,
+      manual_control_enabled: false,
+      navigate_goal_enabled: false,
+      keyboard_control_enabled: false,
+      real_command_api_connected: false,
+      real_robot_ack_connected: false,
+      robot_control_executed: false,
+      safe_to_control: false,
+      primary_actions_enabled: false,
+      delivery_success: false,
+      blocked_reasons: ["real_command_api_not_connected", "robot_ack_not_proven"],
+      not_proven: ["real_o7_safe_command_api", "real_robot_command_ack", "real_timeout_cancel_stop_recovery"],
+    },
     fixed_false_fields: {
       real_cloud_archive_connected: false,
       real_realtime_api_connected: false,
       real_annotation_api_connected: false,
       real_voice_api_connected: false,
       real_command_api_connected: false,
+      real_robot_ack_connected: false,
       real_asr_tts_runtime_connected: false,
+      command_dispatch_enabled: false,
+      manual_control_enabled: false,
+      navigate_goal_enabled: false,
+      keyboard_control_enabled: false,
       asr_stream_connected: false,
       tts_send_enabled: false,
       speaker_dispatch_enabled: false,
@@ -1681,6 +1783,17 @@ describe("App", () => {
     expect(wrapper.text()).toContain("audio_input_not_checked");
     expect(wrapper.text()).toContain("speaker_dispatch.sends_to_robot=false");
     expect(wrapper.text()).toContain("real_asr_tts_runtime_connected=false");
+    expect(wrapper.text()).toContain("Safe command inspector");
+    expect(wrapper.text()).toContain("archive_command_session_002");
+    expect(wrapper.text()).toContain("command_archive_001");
+    expect(wrapper.text()).toContain("manual_turn_envelope.json");
+    expect(wrapper.text()).toContain("navigate_goal_envelope.json");
+    expect(wrapper.text()).toContain("idempotency_policy.json");
+    expect(wrapper.text()).toContain("robot_ack_timeout_trace_missing");
+    expect(wrapper.text()).toContain("cancel_ack_trace_missing");
+    expect(wrapper.text()).toContain("stop_ack_trace_missing");
+    expect(wrapper.text()).toContain("recovery_event_trace_missing");
+    expect(wrapper.text()).toContain("keyboard_control_enabled=false");
     expect(wrapper.text()).toContain("arrived_at_elevator");
     expect(wrapper.text()).toContain("navigate_goal");
     expect(wrapper.text()).toContain("real_realtime_api_connected=false");

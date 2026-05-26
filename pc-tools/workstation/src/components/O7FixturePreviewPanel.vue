@@ -63,7 +63,12 @@ function archiveFalseFields(result: O7CloudArchiveTasksResponse | null): string[
     `real_annotation_api_connected=${String(fields?.real_annotation_api_connected ?? false)}`,
     `real_voice_api_connected=${String(fields?.real_voice_api_connected ?? false)}`,
     `real_command_api_connected=${String(fields?.real_command_api_connected ?? false)}`,
+    `real_robot_ack_connected=${String(fields?.real_robot_ack_connected ?? false)}`,
     `real_asr_tts_runtime_connected=${String(fields?.real_asr_tts_runtime_connected ?? false)}`,
+    `command_dispatch_enabled=${String(fields?.command_dispatch_enabled ?? false)}`,
+    `manual_control_enabled=${String(fields?.manual_control_enabled ?? false)}`,
+    `navigate_goal_enabled=${String(fields?.navigate_goal_enabled ?? false)}`,
+    `keyboard_control_enabled=${String(fields?.keyboard_control_enabled ?? false)}`,
     `asr_stream_connected=${String(fields?.asr_stream_connected ?? false)}`,
     `tts_send_enabled=${String(fields?.tts_send_enabled ?? false)}`,
     `speaker_dispatch_enabled=${String(fields?.speaker_dispatch_enabled ?? false)}`,
@@ -72,6 +77,23 @@ function archiveFalseFields(result: O7CloudArchiveTasksResponse | null): string[
     `primary_actions_enabled=${String(fields?.primary_actions_enabled ?? false)}`,
     `pc_only=${String(fields?.pc_only ?? true)}`,
     `robot_control_executed=${String(fields?.robot_control_executed ?? false)}`,
+  ];
+}
+
+function safeCommandFalseFields(result: O7CloudArchiveTasksResponse | null): string[] {
+  const inspector = result?.safe_command_inspector;
+  // KR6 inspector 只读展示 command envelope，所有发送、手控、键盘、ACK 和真实 API 字段必须保持 false。
+  return [
+    `command_dispatch_enabled=${String(inspector?.command_dispatch_enabled ?? false)}`,
+    `manual_control_enabled=${String(inspector?.manual_control_enabled ?? false)}`,
+    `navigate_goal_enabled=${String(inspector?.navigate_goal_enabled ?? false)}`,
+    `keyboard_control_enabled=${String(inspector?.keyboard_control_enabled ?? false)}`,
+    `real_command_api_connected=${String(inspector?.real_command_api_connected ?? false)}`,
+    `real_robot_ack_connected=${String(inspector?.real_robot_ack_connected ?? false)}`,
+    `robot_control_executed=${String(inspector?.robot_control_executed ?? false)}`,
+    `safe_to_control=${String(inspector?.safe_to_control ?? false)}`,
+    `primary_actions_enabled=${String(inspector?.primary_actions_enabled ?? false)}`,
+    `delivery_success=${String(inspector?.delivery_success ?? false)}`,
   ];
 }
 
@@ -653,6 +675,120 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <ul class="dense">
             <!-- 这些字段是 KR5 的真实链路关闸证据，UI 不能把 fixture 摘要升级成可发声能力。 -->
             <li v-for="field in voiceFalseFields(archiveResult)" :key="field">{{ field }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Safe command inspector</h3>
+      <dl class="kv compact-kv">
+        <dt>status</dt>
+        <dd>{{ archiveResult?.safe_command_inspector.status ?? "blocked_not_proven" }}</dd>
+        <dt>selected_task_id</dt>
+        <dd>{{ archiveResult?.safe_command_inspector.selected_task_id ?? "null" }}</dd>
+        <dt>command_count</dt>
+        <dd>{{ archiveResult?.safe_command_inspector.command_count ?? 0 }}</dd>
+        <dt>command_session</dt>
+        <dd><code>{{ jsonSummary(archiveResult?.safe_command_inspector.command_session) }}</code></dd>
+      </dl>
+
+      <h3>Sample commands</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>command_id</th>
+            <th>command_type</th>
+            <th>status</th>
+            <th>envelope_ref</th>
+            <th>idempotency_key_ref</th>
+            <th>evidence_ref</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="!archiveResult?.safe_command_inspector.sample_commands.length">
+            <td colspan="6">blocked_not_proven</td>
+          </tr>
+          <tr
+            v-for="command in archiveResult?.safe_command_inspector.sample_commands ?? []"
+            :key="`${command.command_id}:${command.command_type}:${command.evidence_ref}`"
+          >
+            <td>{{ command.command_id }}</td>
+            <td>{{ command.command_type }}</td>
+            <td>{{ command.status }}</td>
+            <td>{{ command.envelope_ref }}</td>
+            <td>{{ command.idempotency_key_ref }}</td>
+            <td>{{ command.evidence_ref }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Manual turn envelope</h3>
+          <dl class="kv compact-kv">
+            <dt>requested_direction</dt>
+            <dd>{{ archiveResult?.safe_command_inspector.manual_turn_envelope.requested_direction ?? "not_loaded" }}</dd>
+            <dt>sends_to_robot</dt>
+            <dd>{{ archiveResult?.safe_command_inspector.manual_turn_envelope.sends_to_robot ?? false }}</dd>
+            <dt>velocity_limited</dt>
+            <dd>{{ archiveResult?.safe_command_inspector.manual_turn_envelope.velocity_limited ?? true }}</dd>
+            <dt>steering_limited</dt>
+            <dd>{{ archiveResult?.safe_command_inspector.manual_turn_envelope.steering_limited ?? true }}</dd>
+            <dt>evidence_ref</dt>
+            <dd>
+              {{
+                archiveResult?.safe_command_inspector.manual_turn_envelope.evidence_ref ??
+                  "missing_manual_turn_command_envelope_trace"
+              }}
+            </dd>
+          </dl>
+          <h3>Navigate goal envelope</h3>
+          <dl class="kv compact-kv">
+            <dt>goal_source</dt>
+            <dd>{{ archiveResult?.safe_command_inspector.navigate_goal_envelope.goal_source ?? "not_loaded" }}</dd>
+            <dt>sends_to_robot</dt>
+            <dd>{{ archiveResult?.safe_command_inspector.navigate_goal_envelope.sends_to_robot ?? false }}</dd>
+            <dt>map_frame</dt>
+            <dd>{{ archiveResult?.safe_command_inspector.navigate_goal_envelope.map_frame ?? "map" }}</dd>
+            <dt>x/y/yaw</dt>
+            <dd>
+              x={{ archiveResult?.safe_command_inspector.navigate_goal_envelope.x_m ?? "null" }}
+              · y={{ archiveResult?.safe_command_inspector.navigate_goal_envelope.y_m ?? "null" }}
+              · yaw={{ archiveResult?.safe_command_inspector.navigate_goal_envelope.yaw_rad ?? "null" }}
+            </dd>
+            <dt>evidence_ref</dt>
+            <dd>
+              {{
+                archiveResult?.safe_command_inspector.navigate_goal_envelope.evidence_ref ??
+                  "missing_navigate_goal_command_envelope_trace"
+              }}
+            </dd>
+          </dl>
+        </div>
+        <div>
+          <h3>Limits and map goal slot</h3>
+          <dl class="kv compact-kv">
+            <dt>velocity_limits</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.safe_command_inspector.velocity_limits) }}</code></dd>
+            <dt>steering_limits</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.safe_command_inspector.steering_limits) }}</code></dd>
+            <dt>map_goal_slot</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.safe_command_inspector.map_goal_slot) }}</code></dd>
+          </dl>
+          <h3>Idempotency and confirmation</h3>
+          <dl class="kv compact-kv">
+            <dt>idempotency_key_requirement</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.safe_command_inspector.idempotency_key_requirement) }}</code></dd>
+            <dt>confirmation_policy</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.safe_command_inspector.confirmation_policy) }}</code></dd>
+            <dt>robot_ack_blocked_summary</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.safe_command_inspector.robot_ack_blocked_summary) }}</code></dd>
+            <dt>evidence_gaps</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.safe_command_inspector.evidence_gaps ?? []) }}</code></dd>
+          </dl>
+          <h3>Safe command false fields</h3>
+          <ul class="dense">
+            <!-- KR6 false fields 直接来自 inspector，UI 不能根据 command 样本生成控制入口。 -->
+            <li v-for="field in safeCommandFalseFields(archiveResult)" :key="field">{{ field }}</li>
           </ul>
         </div>
       </div>

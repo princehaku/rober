@@ -35,6 +35,7 @@
 - `route_replay_inspector`：KR3 只读逐帧检查视图，状态为 `fixture_inspector_ready | blocked_not_proven`
 - `labeling_queue_inspector`：KR4 只读标注队列检查视图，状态为 `fixture_labeling_ready | blocked_not_proven`
 - `voice_asr_tts_inspector`：KR5 只读 ASR/TTS 检查视图，状态为 `fixture_voice_ready | blocked_not_proven`
+- `safe_command_inspector`：KR6 只读手控/寻路检查视图，状态为 `fixture_command_ready | blocked_not_proven`
 - `fixed_false_fields`
 - `blocked_reasons`
 - `not_proven`
@@ -87,6 +88,30 @@
 - transcript、TTS text、gap 和 evidence/media 引用都必须脱敏；绝对路径只保留 basename。
 - selected task 没有 `asr_events[]` 且没有 `tts_draft(s)` 时，`voice_asr_tts_inspector.status=blocked_not_proven` 且样本为空。
 
+`safe_command_inspector` 只从 selected task 的本地 fixture 白名单字段生成，不连接真实 command API，不发送手控/寻路命令，不绑定键盘，不读取地图点击：
+
+- `selected_task_id`
+- `command_session.command_session_id/source/evidence_ref/audit_refs/status`
+- `command_count`
+- `sample_commands` 最多 5 条，每条只包含 `command_id`、`command_type`、`status`、脱敏 `envelope_ref`、脱敏 `idempotency_key_ref`、脱敏 `evidence_ref`
+- `manual_turn_envelope.sends_to_robot=false`、`requested_direction`、`velocity_limited=true`、`steering_limited=true`、脱敏 `evidence_ref`、`status`
+- `navigate_goal_envelope.sends_to_robot=false`、`goal_source`、`map_frame`、`x_m/y_m/yaw_rad`、脱敏 `evidence_ref`、`status`
+- `velocity_limits.max_linear_mps/max_angular_radps/source/hardware_verified=false/status`
+- `steering_limits.max_steering_angle_rad/max_turn_rate_radps/source/hardware_verified=false/status`
+- `map_goal_slot.map_frame/x_m/y_m/yaw_rad/status/evidence_ref`
+- `idempotency_key_requirement.required=true/header=Idempotency-Key/key_ref/status`
+- `confirmation_policy.manual_turn_requires_confirmation=true`、`navigate_goal_requires_confirmation=true`、`keyboard_control_requires_hold=true`、`status`
+- `robot_ack_blocked_summary.ack_status=blocked_not_proven`、`last_command_id`、`ack_ref`、`timeout_ms`、`cancel_ack_ref`、`stop_ack_ref`、`recovery_ref`、`status=blocked_not_proven`
+- `evidence_gaps` 必须保留 `robot_ack_timeout_trace_missing`、`cancel_ack_trace_missing`、`stop_ack_trace_missing`、`recovery_event_trace_missing`
+- 固定 `command_dispatch_enabled=false`、`manual_control_enabled=false`、`navigate_goal_enabled=false`、`keyboard_control_enabled=false`、`real_command_api_connected=false`、`real_robot_ack_connected=false`、`robot_control_executed=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`delivery_success=false`
+- 自带 `blocked_reasons` 和 `not_proven`
+
+兼容性规则：
+
+- selected task 可直接提供 task 级 `command_session`、`manual_turn_envelope`、`navigate_goal_envelope`、`velocity_limits`、`steering_limits`、`map_goal_slot`、`idempotency_key_requirement`、`confirmation_policy`、`robot_ack_status` 或 `command_ack`。
+- selected task 的 `commands[]` 只用于生成限量 sample，不透传 command payload，不触发任何发送、重放、取消、停止或恢复动作。
+- selected task 没有 `commands[]` 且没有 `manual_turn_envelope` / `navigate_goal_envelope` 时，`safe_command_inspector.status=blocked_not_proven` 且 `sample_commands=[]`。
+
 ## Fail-Closed Rules
 
 以下输入必须返回 `archive_status=blocked_not_proven`：
@@ -100,6 +125,7 @@
 - 声称 `safe_to_control=true`、`primary_actions_enabled=true`、`robot_control_executed=true` 或 command dispatch enabled
 - 声称真实 cloud/realtime/annotation/voice/command API connected
 - 声称 `real_asr_tts_runtime_connected=true`、`asr_stream_connected=true`、`tts_send_enabled=true` 或 `speaker_dispatch_enabled=true`
+- 声称 `manual_control_enabled=true`、`navigate_goal_enabled=true`、`keyboard_control_enabled=true` 或 `real_robot_ack_connected=true`
 
 ## UI Boundary
 
@@ -113,6 +139,8 @@ UI 同时展示 `labeling_queue_inspector` 的 selected task、review item count
 
 UI 同时展示 `voice_asr_tts_inspector` 的 selected task、voice session、ASR event sample、latest partial/final、TTS draft summary、speaker dispatch summary、media preflight dependency 和语音相关 false fields。该区域只用于 operator 检查 archive fixture 是否具备 O7-KR5 ASR/TTS 调试数据形状，不提供 Send、Speak、Play、Dispatch、Control、Stop、Cancel、Recovery、Submit、Export 或等价动作入口。
 
+UI 同时展示 `safe_command_inspector` 的 command session、sample commands、manual turn envelope、navigate goal envelope、velocity/steering limits、map goal slot、idempotency key requirement、confirmation policy、robot ACK blocked summary、evidence gaps 和 KR6 false fields。该区域只用于 operator 检查 archive fixture 是否具备 O7-KR6 手控/寻路契约数据形状，不提供 Send、Run、Control、Play、Submit、Export、Stop、Cancel、Recovery、Navigate、Dispatch、Speak 或等价动作入口。
+
 ## O7 Impact
 
-本接口推动 O7 的方式是建立统一数据源雏形：KR3 可以消费 trajectory/events，KR4 可以消费 labels，KR5 可以消费 voice，KR6 可以消费 command envelope 摘要。但它仍是 software proof，不提升真实 O7 完成度，不证明真实云端、机器人、语音、标注或控制能力。
+本接口推动 O7 的方式是建立统一数据源雏形：KR3 可以消费 trajectory/events，KR4 可以消费 labels，KR5 可以消费 voice，KR6 可以消费 selected task 级 command envelope 和 ACK 缺口检查视图。但它仍是 software proof，不提升真实 O7 完成度，不证明真实云端、机器人、语音、标注或控制能力。
