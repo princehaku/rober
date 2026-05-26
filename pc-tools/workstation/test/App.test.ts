@@ -2024,16 +2024,16 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/cloud-archive/tasks");
 
     const inputs = wrapper.findAll("input");
-    expect(inputs).toHaveLength(13);
+    expect(inputs).toHaveLength(18);
     await inputs[0]!.setValue("http://127.0.0.1:8088");
     await inputs[1]!.setValue("http://127.0.0.1:8088");
     await inputs[2]!.setValue("http://127.0.0.1:8088");
     await inputs[3]!.setValue("fixtures/archive.json");
-    await inputs[8]!.setValue("fixtures/realtime.json");
-    await inputs[9]!.setValue("fixtures/route.json");
-    await inputs[10]!.setValue("fixtures/labeling.json");
-    await inputs[11]!.setValue("fixtures/voice.json");
-    await inputs[12]!.setValue("fixtures/safe-command.json");
+    await inputs[13]!.setValue("fixtures/realtime.json");
+    await inputs[14]!.setValue("fixtures/route.json");
+    await inputs[15]!.setValue("fixtures/labeling.json");
+    await inputs[16]!.setValue("fixtures/voice.json");
+    await inputs[17]!.setValue("fixtures/safe-command.json");
 
     await wrapper.findAll("button").find((button) => button.text() === "Load previews acceptance guard")?.trigger("click");
     await flushPromises();
@@ -2313,6 +2313,50 @@ describe("App", () => {
     expect(wrapper.text()).toContain("keyboard_control_enabled=false");
     expect(wrapper.text()).toContain("manual_turn_envelope.sends_to_robot=false");
     expect(wrapper.text()).toContain("navigate_goal_envelope.sends_to_robot=false");
+
+    expect(wrapper.text()).toContain("Local safe command draft editor");
+    expect(wrapper.text()).toContain("local_browser_memory_only");
+    expect(wrapper.text()).toContain("local_safe_command_draft_valid");
+    expect(wrapper.text()).toContain("confirmation_required");
+    expect(wrapper.text()).toContain("command_dispatch_enabled");
+    expect(wrapper.text()).toContain("cloud_write_executed");
+
+    const callsBeforeLocalSafeCommandDraftEdit = mockedFetch.mock.calls.length;
+    await wrapper.find("input[aria-label=\"Local safe command manual direction\"]").setValue("sideways");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("blocked_manual_direction_not_allowed");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalSafeCommandDraftEdit);
+
+    await wrapper.find("input[aria-label=\"Local safe command idempotency draft ref\"]").setValue("");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("blocked_idempotency_key_missing");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalSafeCommandDraftEdit);
+
+    await wrapper.find("input[aria-label=\"Local safe command idempotency draft ref\"]").setValue("draft-ref-custom");
+    await wrapper.find("select[aria-label=\"Local safe command mode\"]").setValue("navigate_goal");
+    await wrapper.find("input[aria-label=\"Local safe command target x\"]").setValue("abc");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("blocked_invalid_navigate_goal");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalSafeCommandDraftEdit);
+
+    await wrapper.find("input[aria-label=\"Local safe command target x\"]").setValue("1.25");
+    await wrapper.find("input[aria-label=\"Local safe command target y\"]").setValue("-0.5");
+    await wrapper.find("input[aria-label=\"Local safe command target yaw\"]").setValue("1.57");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("local_safe_command_draft_valid");
+    expect(wrapper.text()).toContain("x=1.25; y=-0.5; yaw=1.57");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalSafeCommandDraftEdit);
+
+    await wrapper.findAll("button").find((button) => button.text() === "Reset command draft")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("idempotency_key_000.json");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalSafeCommandDraftEdit);
+
+    await wrapper.find("input[aria-label=\"Local safe command idempotency draft ref\"]").setValue("draft-ref-custom");
+    await inputs[3]!.setValue("fixtures/archive-third.json");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).not.toContain("draft-ref-custom");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalSafeCommandDraftEdit);
 
     const callsBeforeSafeCommandCursor = mockedFetch.mock.calls.length;
     await wrapper.findAll("button").find((button) => button.text() === "Next command")?.trigger("click");

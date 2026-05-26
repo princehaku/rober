@@ -52,6 +52,15 @@ interface LocalTtsDraft {
   language: string;
 }
 
+interface LocalSafeCommandDraft {
+  commandMode: "manual_turn" | "navigate_goal";
+  manualDirection: string;
+  targetX: string;
+  targetY: string;
+  targetYaw: string;
+  idempotencyDraftRef: string;
+}
+
 const previewConfigs: PreviewConfig[] = [
   // 五个入口均为 PC-only fixture preview，不映射成机器人动作。
   { id: "realtimeElevator", title: "Realtime/Elevator", expectedSchema: "trashbot.o7.realtime_elevator_preview.v1" },
@@ -99,6 +108,7 @@ const localAnnotationDrafts = ref<Record<string, LocalAnnotationDraft>>({});
 const localTtsDraft = ref<LocalTtsDraft | null>(null);
 const voiceAsrEventCursor = ref(0);
 const safeCommandCursor = ref(0);
+const localSafeCommandDraft = ref<LocalSafeCommandDraft | null>(null);
 
 function asRecord(result: O7FixturePreviewResult | undefined): Record<string, unknown> {
   // Vue template 需要统一读取 union 字段；这里只做只读投影，不改响应内容。
@@ -524,6 +534,113 @@ const safeCommandReviewPanelStatus = computed(() =>
   safeCommandReviewBlockedReason.value ? "blocked_not_proven" : "local_fixture_safe_command_review_ready",
 );
 
+const safeCommandDraftEditorBlockedReason = computed(() => {
+  const inspector = archiveResult.value?.safe_command_inspector;
+  // 草稿编辑器比 review cursor 更严格：两类 envelope 都要存在，避免 operator 在缺上下文时形成伪 payload。
+  if (safeCommandReviewBlockedReason.value) {
+    return safeCommandReviewBlockedReason.value;
+  }
+  if (
+    !inspector ||
+    inspector.manual_turn_envelope.status !== "fixture_summary_only" ||
+    inspector.navigate_goal_envelope.status !== "fixture_summary_only"
+  ) {
+    return "safe_command_manual_or_navigate_context_missing";
+  }
+  return "";
+});
+
+const safeCommandDraftInputsEnabled = computed(() => safeCommandDraftEditorBlockedReason.value === "");
+
+function defaultLocalSafeCommandDraft(): LocalSafeCommandDraft {
+  const inspector = archiveResult.value?.safe_command_inspector;
+  const commandMode =
+    currentSafeCommandSample.value?.command_type === "navigate_goal" ? "navigate_goal" : "manual_turn";
+  // 默认值只来自当前 safe_command_inspector 摘要；缺上下文时保持空值并由校验 fail-closed。
+  if (!safeCommandDraftInputsEnabled.value || !inspector) {
+    return {
+      commandMode,
+      manualDirection: "",
+      targetX: "",
+      targetY: "",
+      targetYaw: "",
+      idempotencyDraftRef: "",
+    };
+  }
+  const targetX = inspector.navigate_goal_envelope.x_m ?? inspector.map_goal_slot.x_m;
+  const targetY = inspector.navigate_goal_envelope.y_m ?? inspector.map_goal_slot.y_m;
+  const targetYaw = inspector.navigate_goal_envelope.yaw_rad ?? inspector.map_goal_slot.yaw_rad;
+  return {
+    commandMode,
+    manualDirection: inspector.manual_turn_envelope.requested_direction,
+    targetX: targetX === null ? "" : String(targetX),
+    targetY: targetY === null ? "" : String(targetY),
+    targetYaw: targetYaw === null ? "" : String(targetYaw),
+    idempotencyDraftRef:
+      currentSafeCommandSample.value?.idempotency_key_ref || inspector.idempotency_key_requirement.key_ref,
+  };
+}
+
+const currentLocalSafeCommandDraft = computed<LocalSafeCommandDraft>(
+  () => localSafeCommandDraft.value ?? defaultLocalSafeCommandDraft(),
+);
+
+const safeCommandAllowedManualDirections = computed(() => {
+  const requestedDirection = archiveResult.value?.safe_command_inspector.manual_turn_envelope.requested_direction ?? "";
+  // 固定安全集合外加当前 fixture 请求方向；这样能审阅历史 fixture，又不会接受任意输入。
+  return Array.from(new Set(["left", "right", "forward", "backward", "stop", requestedDirection].filter(Boolean)));
+});
+
+function finiteDraftNumber(value: string): number | null {
+  const parsed = Number(value);
+  // 输入框值以字符串保存，便于把空值、非数字和 NaN 分别挡在本地校验层。
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+const localSafeCommandTargetSummary = computed(() => {
+  const x = finiteDraftNumber(currentLocalSafeCommandDraft.value.targetX);
+  const y = finiteDraftNumber(currentLocalSafeCommandDraft.value.targetY);
+  const yaw = finiteDraftNumber(currentLocalSafeCommandDraft.value.targetYaw);
+  // target summary 只描述当前浏览器草稿，不构造可发送的 navigate payload。
+  if (x === null || y === null || yaw === null) {
+    return "target_summary=blocked_invalid_navigate_goal";
+  }
+  return `x=${x}; y=${y}; yaw=${yaw}; map_frame=${archiveResult.value?.safe_command_inspector.navigate_goal_envelope.map_frame ?? "map"}`;
+});
+
+const localSafeCommandDraftValidationStatus = computed(() => {
+  if (!safeCommandDraftInputsEnabled.value) {
+    return "blocked_not_proven";
+  }
+  if (!currentLocalSafeCommandDraft.value.idempotencyDraftRef.trim()) {
+    return "blocked_idempotency_key_missing";
+  }
+  if (currentLocalSafeCommandDraft.value.commandMode === "manual_turn") {
+    const direction = currentLocalSafeCommandDraft.value.manualDirection.trim();
+    if (!direction || !safeCommandAllowedManualDirections.value.includes(direction)) {
+      return "blocked_manual_direction_not_allowed";
+    }
+    return "local_safe_command_draft_valid";
+  }
+  if (
+    finiteDraftNumber(currentLocalSafeCommandDraft.value.targetX) === null ||
+    finiteDraftNumber(currentLocalSafeCommandDraft.value.targetY) === null ||
+    finiteDraftNumber(currentLocalSafeCommandDraft.value.targetYaw) === null
+  ) {
+    return "blocked_invalid_navigate_goal";
+  }
+  return "local_safe_command_draft_valid";
+});
+
+const localSafeCommandDraftStatus = computed(() => {
+  if (!safeCommandDraftInputsEnabled.value) {
+    return "blocked_not_proven";
+  }
+  return localSafeCommandDraftValidationStatus.value === "local_safe_command_draft_valid"
+    ? "local_safe_command_draft_ready"
+    : "local_safe_command_draft_blocked";
+});
+
 const currentRouteReplayFrame = computed(() => {
   // cursor 是数组下标，不发送给后端；frame_index 保持使用 archive fixture 的原始字段。
   if (!routeReplayNavigationEnabled.value) {
@@ -743,6 +860,11 @@ function resetLocalTtsDraft(): void {
   localTtsDraft.value = null;
 }
 
+function resetLocalSafeCommandDraft(): void {
+  // reset 只丢弃浏览器内存覆盖值，重新显示当前 archive 的 fixture 默认草稿。
+  localSafeCommandDraft.value = null;
+}
+
 function resetSafeCommandCursor(): void {
   clampSafeCommandCursor(0);
 }
@@ -768,6 +890,41 @@ function setLocalTtsVoiceProfile(event: Event): void {
 
 function setLocalTtsLanguage(event: Event): void {
   writeLocalTtsDraft({ language: (event.target as HTMLInputElement).value });
+}
+
+function writeLocalSafeCommandDraft(patch: Partial<LocalSafeCommandDraft>): void {
+  if (!safeCommandDraftInputsEnabled.value) {
+    return;
+  }
+  // 编辑仅更新浏览器内存，不调用 API、不写云端、不派发手控或寻路命令。
+  localSafeCommandDraft.value = {
+    ...currentLocalSafeCommandDraft.value,
+    ...patch,
+  };
+}
+
+function setLocalSafeCommandMode(event: Event): void {
+  writeLocalSafeCommandDraft({ commandMode: (event.target as HTMLSelectElement).value as LocalSafeCommandDraft["commandMode"] });
+}
+
+function setLocalSafeCommandDirection(event: Event): void {
+  writeLocalSafeCommandDraft({ manualDirection: (event.target as HTMLInputElement).value });
+}
+
+function setLocalSafeCommandTargetX(event: Event): void {
+  writeLocalSafeCommandDraft({ targetX: (event.target as HTMLInputElement).value });
+}
+
+function setLocalSafeCommandTargetY(event: Event): void {
+  writeLocalSafeCommandDraft({ targetY: (event.target as HTMLInputElement).value });
+}
+
+function setLocalSafeCommandTargetYaw(event: Event): void {
+  writeLocalSafeCommandDraft({ targetYaw: (event.target as HTMLInputElement).value });
+}
+
+function setLocalSafeCommandIdempotencyDraftRef(event: Event): void {
+  writeLocalSafeCommandDraft({ idempotencyDraftRef: (event.target as HTMLInputElement).value });
 }
 
 function previousRouteReplayFrame(): void {
@@ -837,6 +994,7 @@ async function loadArchiveTasks(): Promise<void> {
     resetVoiceAsrEventCursor();
     resetLocalTtsDraft();
     resetSafeCommandCursor();
+    resetLocalSafeCommandDraft();
   } catch (err) {
     archiveError.value = err instanceof Error ? err.message : "cloud_archive_task_api_unavailable_not_proven";
   } finally {
@@ -852,8 +1010,9 @@ watch(localDraftItemKey, () => {
 });
 
 watch(archiveJson, () => {
-  // operator 切换 archive path 时立即清理本地 TTS 覆盖值，避免旧任务草稿留在新路径上下文里。
+  // operator 切换 archive path 时立即清理本地覆盖值，避免旧任务草稿留在新路径上下文里。
   resetLocalTtsDraft();
+  resetLocalSafeCommandDraft();
 });
 
 async function loadCloudOperatorConsoleProbe(): Promise<void> {
@@ -2269,6 +2428,127 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           @click="resetSafeCommandCursor"
         >
           Reset command cursor
+        </button>
+      </div>
+
+      <h3>Local safe command draft editor</h3>
+      <div class="notice" role="note">
+        local_browser_memory_only · confirmation_required=true · command_dispatch_enabled=false ·
+        manual_control_enabled=false · navigate_goal_enabled=false · keyboard_control_enabled=false ·
+        safe_to_control=false
+      </div>
+      <dl class="kv compact-kv">
+        <dt>draft status</dt>
+        <dd>{{ localSafeCommandDraftStatus }}</dd>
+        <dt>blocked_reason</dt>
+        <dd>{{ safeCommandDraftEditorBlockedReason || "none_local_fixture_only" }}</dd>
+        <dt>command mode</dt>
+        <dd>{{ currentLocalSafeCommandDraft.commandMode }}</dd>
+        <dt>validation status</dt>
+        <dd>{{ localSafeCommandDraftValidationStatus }}</dd>
+        <dt>manual direction</dt>
+        <dd>{{ currentLocalSafeCommandDraft.manualDirection || "blocked_not_proven" }}</dd>
+        <dt>allowed directions</dt>
+        <dd><code>{{ jsonSummary(safeCommandAllowedManualDirections) }}</code></dd>
+        <dt>target summary</dt>
+        <dd>{{ localSafeCommandTargetSummary }}</dd>
+        <dt>idempotency draft/ref</dt>
+        <dd>{{ currentLocalSafeCommandDraft.idempotencyDraftRef || "blocked_not_proven" }}</dd>
+        <dt>confirmation_required</dt>
+        <dd>true</dd>
+        <dt>command_dispatch_enabled</dt>
+        <dd>false</dd>
+        <dt>manual_control_enabled</dt>
+        <dd>false</dd>
+        <dt>navigate_goal_enabled</dt>
+        <dd>false</dd>
+        <dt>keyboard_control_enabled</dt>
+        <dd>false</dd>
+        <dt>real_command_api_connected</dt>
+        <dd>false</dd>
+        <dt>real_robot_ack_connected</dt>
+        <dd>false</dd>
+        <dt>robot_control_executed</dt>
+        <dd>false</dd>
+        <dt>safe_to_control</dt>
+        <dd>false</dd>
+        <dt>cloud_write_executed</dt>
+        <dd>false</dd>
+      </dl>
+      <div class="two-col snapshot-grid">
+        <div>
+          <label class="single-input">
+            <span>Command mode</span>
+            <select
+              :value="currentLocalSafeCommandDraft.commandMode"
+              aria-label="Local safe command mode"
+              :disabled="!safeCommandDraftInputsEnabled"
+              @change="setLocalSafeCommandMode"
+            >
+              <option value="manual_turn">manual_turn</option>
+              <option value="navigate_goal">navigate_goal</option>
+            </select>
+          </label>
+          <label class="single-input">
+            <span>Manual direction</span>
+            <input
+              :value="currentLocalSafeCommandDraft.manualDirection"
+              aria-label="Local safe command manual direction"
+              :disabled="!safeCommandDraftInputsEnabled"
+              @input="setLocalSafeCommandDirection"
+            >
+          </label>
+          <label class="single-input">
+            <span>Idempotency key note / draft ref</span>
+            <input
+              :value="currentLocalSafeCommandDraft.idempotencyDraftRef"
+              aria-label="Local safe command idempotency draft ref"
+              :disabled="!safeCommandDraftInputsEnabled"
+              @input="setLocalSafeCommandIdempotencyDraftRef"
+            >
+          </label>
+        </div>
+        <div>
+          <label class="single-input">
+            <span>Target x</span>
+            <input
+              :value="currentLocalSafeCommandDraft.targetX"
+              aria-label="Local safe command target x"
+              :disabled="!safeCommandDraftInputsEnabled"
+              inputmode="decimal"
+              @input="setLocalSafeCommandTargetX"
+            >
+          </label>
+          <label class="single-input">
+            <span>Target y</span>
+            <input
+              :value="currentLocalSafeCommandDraft.targetY"
+              aria-label="Local safe command target y"
+              :disabled="!safeCommandDraftInputsEnabled"
+              inputmode="decimal"
+              @input="setLocalSafeCommandTargetY"
+            >
+          </label>
+          <label class="single-input">
+            <span>Target yaw</span>
+            <input
+              :value="currentLocalSafeCommandDraft.targetYaw"
+              aria-label="Local safe command target yaw"
+              :disabled="!safeCommandDraftInputsEnabled"
+              inputmode="decimal"
+              @input="setLocalSafeCommandTargetYaw"
+            >
+          </label>
+        </div>
+      </div>
+      <div class="route-inputs">
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!safeCommandDraftInputsEnabled"
+          @click="resetLocalSafeCommandDraft"
+        >
+          Reset command draft
         </button>
       </div>
 
