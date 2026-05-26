@@ -98,6 +98,17 @@ function archiveNotProven(): string[] {
   return archiveResult.value?.not_proven ?? ["archive_not_loaded_and_real_cloud_archive_not_proven"];
 }
 
+function inspectorCursorFields(result: O7CloudArchiveTasksResponse | null): string[] {
+  const cursor = result?.route_replay_inspector.cursor_initial_state;
+  // cursor 来自后端固定 false 初始态，UI 只展示，不提供逐帧驱动入口。
+  return [
+    `playing=${String(cursor?.playing ?? false)}`,
+    `safe_to_play=${String(cursor?.safe_to_play ?? false)}`,
+    `speed=${String(cursor?.speed ?? 0)}`,
+    `frame_index=${String(cursor?.frame_index ?? "null")}`,
+  ];
+}
+
 async function loadArchiveTasks(): Promise<void> {
   // 只有 operator 点击按钮才读取本地 archive 路径；页面加载不会自动触碰文件系统。
   archiveLoading.value = true;
@@ -242,7 +253,7 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
     <div class="section-head">
       <div>
         <h2>O7 Fixture Previews</h2>
-        <p class="eyebrow">PC-only local JSON preview. No robot command, playback, submit, export, cancel or recovery action.</p>
+        <p class="eyebrow">PC-only local JSON preview. Read-only evidence shaping; robot dispatch stays disabled.</p>
       </div>
       <span class="pill danger">source=software_proof · proof_status=not_proven</span>
     </div>
@@ -342,6 +353,93 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           </tr>
         </tbody>
       </table>
+
+      <h3>Route replay inspector</h3>
+      <dl class="kv compact-kv">
+        <dt>status</dt>
+        <dd>{{ archiveResult?.route_replay_inspector.status ?? "blocked_not_proven" }}</dd>
+        <dt>selected_task_id</dt>
+        <dd>{{ archiveResult?.route_replay_inspector.selected_task_id ?? "null" }}</dd>
+        <dt>map_frame</dt>
+        <dd>{{ archiveResult?.route_replay_inspector.map_frame ?? "" }}</dd>
+        <dt>frame_count</dt>
+        <dd>{{ archiveResult?.route_replay_inspector.frame_count ?? 0 }}</dd>
+      </dl>
+
+      <h3>Sample frames</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>frame_index</th>
+            <th>timestamp_ms</th>
+            <th>x_m</th>
+            <th>y_m</th>
+            <th>yaw_rad</th>
+            <th>speed_mps</th>
+            <th>state</th>
+            <th>evidence_ref</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="!archiveResult?.route_replay_inspector.sample_frames.length">
+            <td colspan="8">blocked_not_proven</td>
+          </tr>
+          <tr v-for="frame in archiveResult?.route_replay_inspector.sample_frames ?? []" :key="frame.frame_index">
+            <td>{{ frame.frame_index }}</td>
+            <td>{{ frame.timestamp_ms ?? "null" }}</td>
+            <td>{{ frame.x_m ?? "null" }}</td>
+            <td>{{ frame.y_m ?? "null" }}</td>
+            <td>{{ frame.yaw_rad ?? "null" }}</td>
+            <td>{{ frame.speed_mps ?? "null" }}</td>
+            <td>{{ frame.state }}</td>
+            <td>{{ frame.evidence_ref }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Event timeline</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>event_type</th>
+                <th>state</th>
+                <th>timestamp_ms</th>
+                <th>evidence_ref</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!archiveResult?.route_replay_inspector.event_timeline.length">
+                <td colspan="4">blocked_not_proven</td>
+              </tr>
+              <tr
+                v-for="event in archiveResult?.route_replay_inspector.event_timeline ?? []"
+                :key="`${event.event_type}:${event.state}:${event.timestamp_ms}`"
+              >
+                <td>{{ event.event_type }}</td>
+                <td>{{ event.state }}</td>
+                <td>{{ event.timestamp_ms ?? "null" }}</td>
+                <td>{{ event.evidence_ref }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3>Keyframe refs</h3>
+          <ul class="dense">
+            <li v-for="refValue in archiveResult?.route_replay_inspector.keyframe_refs ?? []" :key="refValue">
+              {{ refValue }}
+            </li>
+            <li v-if="!archiveResult?.route_replay_inspector.keyframe_refs.length">blocked_not_proven</li>
+          </ul>
+          <h3>Cursor initial state</h3>
+          <ul class="dense">
+            <!-- cursor 字段必须保持后端给出的初始 false 状态，不能在前端生成可操作状态。 -->
+            <li v-for="field in inspectorCursorFields(archiveResult)" :key="field">{{ field }}</li>
+          </ul>
+        </div>
+      </div>
 
       <div class="two-col snapshot-grid">
         <div>

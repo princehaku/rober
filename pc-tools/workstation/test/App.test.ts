@@ -1132,6 +1132,51 @@ const fixtures: Record<string, unknown> = {
         status: "fixture_summary_only",
       },
     },
+    route_replay_inspector: {
+      status: "fixture_inspector_ready",
+      selected_task_id: "task_archive_002",
+      map_frame: "map",
+      frame_count: 3,
+      sample_frames: [
+        {
+          frame_index: 0,
+          timestamp_ms: 2000,
+          x_m: 1.25,
+          y_m: -0.5,
+          yaw_rad: 1.57,
+          speed_mps: 0.12,
+          state: "departed",
+          evidence_ref: "frame_ref_000",
+        },
+        {
+          frame_index: 1,
+          timestamp_ms: 2100,
+          x_m: 1.35,
+          y_m: -0.45,
+          yaw_rad: 1.6,
+          speed_mps: 0.13,
+          state: "arrived_at_elevator",
+          evidence_ref: "frame_ref_001",
+        },
+      ],
+      event_timeline: [
+        {
+          event_type: "arrived_at_elevator",
+          state: "door_open_wait",
+          timestamp_ms: 2150,
+          evidence_ref: "event_ref_001",
+        },
+      ],
+      keyframe_refs: ["keyframe_ref_001", "keyframe_ref_002"],
+      cursor_initial_state: {
+        playing: false,
+        safe_to_play: false,
+        speed: 0,
+        frame_index: 0,
+      },
+      blocked_reasons: ["real_cloud_archive_not_connected", "safe_route_playback_not_enabled"],
+      not_proven: ["real_o7_history_route_replay", "safe_route_playback"],
+    },
     fixed_false_fields: {
       real_cloud_archive_connected: false,
       real_realtime_api_connected: false,
@@ -1481,6 +1526,11 @@ describe("App", () => {
     expect(wrapper.text()).toContain("trashbot.o7.cloud_archive_tasks.v1");
     expect(wrapper.text()).toContain("task_archive_002");
     expect(wrapper.text()).toContain("needs_review_fixture_only");
+    expect(wrapper.text()).toContain("fixture_inspector_ready");
+    expect(wrapper.text()).toContain("frame_ref_000");
+    expect(wrapper.text()).toContain("keyframe_ref_001");
+    expect(wrapper.text()).toContain("playing=false");
+    expect(wrapper.text()).toContain("safe_to_play=false");
     expect(wrapper.text()).toContain("arrived_at_elevator");
     expect(wrapper.text()).toContain("navigate_goal");
     expect(wrapper.text()).toContain("real_realtime_api_connected=false");
@@ -1499,6 +1549,8 @@ describe("App", () => {
     expect(wrapper.text()).toContain("real_o7_voice_api");
     expect(wrapper.text()).toContain("real_hil_safety");
     expect(wrapper.text()).not.toContain("/cmd_vel");
-    expect(wrapper.text()).not.toMatch(/\bSend\b|\bRun\b|\bSubmit\b|\bControl\b|\bPlay\b|\bExport\b/);
+    expect(wrapper.text()).not.toMatch(
+      /\bSend\b|\bRun\b|\bSubmit\b|\bControl\b|\bPlay\b|\bPause\b|\bExport\b|\bStop\b|\bCancel\b|\bRecovery\b/,
+    );
   });
 });

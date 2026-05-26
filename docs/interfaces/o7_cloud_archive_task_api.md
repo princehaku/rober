@@ -32,9 +32,19 @@
 - `selected_task`
 - `latest_task`
 - `safe_summaries.trajectory/events/labels/voice/commands`
+- `route_replay_inspector`：KR3 只读逐帧检查视图，状态为 `fixture_inspector_ready | blocked_not_proven`
 - `fixed_false_fields`
 - `blocked_reasons`
 - `not_proven`
+
+`route_replay_inspector` 只从 selected task 的本地 fixture 白名单字段生成，不透传完整原始 payload：
+
+- `selected_task_id`、`map_frame`、`frame_count`
+- `sample_frames` 最多 5 帧，每帧包含 `frame_index`、`timestamp_ms`、`x_m`、`y_m`、`yaw_rad`、`speed_mps`、`state`、脱敏 `evidence_ref`
+- `event_timeline` 最多 5 条，每条包含 `event_type`、`state`、`timestamp_ms`、脱敏 `evidence_ref`
+- `keyframe_refs` 最多 5 条，引用只保留安全 basename
+- `cursor_initial_state.playing=false`、`safe_to_play=false`、`speed=0`、`frame_index` 为首个 sample frame 或 `null`
+- 自带 `blocked_reasons` 和 `not_proven`
 
 ## Fail-Closed Rules
 
@@ -54,6 +64,8 @@
 `O7 Previews` tab 的 `Cloud Archive Tasks` 区块默认不读取本地路径。只有点击 `Load archive tasks` 才调用该 GET query。
 
 UI 只展示任务列表、最近任务、selected task、安全摘要、fixed false fields、blocked reasons 和 not proven。不得提供播放、提交、导出、发送、控制、停止、取消或恢复类动作按钮。
+
+UI 同时展示 `route_replay_inspector` 的 selected task、map frame、frame count、sample frames 表格、event timeline、keyframe refs 和 cursor 初始 false 字段。该区域只用于 operator 检查历史路线 fixture 是否具备逐帧位置、速度和状态转移槽位，不提供任何逐帧驱动或机器人动作入口。
 
 ## O7 Impact
 

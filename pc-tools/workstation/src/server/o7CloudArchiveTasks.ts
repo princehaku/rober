@@ -5,6 +5,7 @@ import type {
   O7CloudArchiveTaskSafeSummaries,
   O7CloudArchiveTasksResponse,
   O7CloudArchiveTaskSummary,
+  O7RouteReplayInspector,
 } from "../shared/contracts";
 
 type JsonObject = Record<string, unknown>;
@@ -153,6 +154,35 @@ function fixedFalseFields(): O7CloudArchiveTasksResponse["fixed_false_fields"] {
   };
 }
 
+function emptyRouteReplayInspector(
+  blockedReasons: string[],
+  selectedTaskId: string | null = null,
+): O7RouteReplayInspector {
+  // inspector 失败时也返回完整只读结构，前端不用根据缺字段自行补安全状态。
+  return {
+    status: "blocked_not_proven",
+    selected_task_id: selectedTaskId,
+    map_frame: "",
+    frame_count: 0,
+    sample_frames: [],
+    event_timeline: [],
+    keyframe_refs: [],
+    cursor_initial_state: {
+      playing: false,
+      safe_to_play: false,
+      speed: 0,
+      frame_index: null,
+    },
+    blocked_reasons: blockedReasons,
+    not_proven: [
+      "real_o7_history_route_replay",
+      "real_o7_cloud_archive_task_api",
+      "safe_route_playback",
+      "real_robot_control",
+    ],
+  };
+}
+
 function emptySummaries(status: "fixture_summary_only" | "blocked_not_proven"): O7CloudArchiveTaskSafeSummaries {
   // 空摘要也显式带 false 字段，避免前端根据缺字段自行推断。
   return {
@@ -169,6 +199,7 @@ function blockedResponse(
   failureReason: string,
   archivePath = "",
 ): O7CloudArchiveTasksResponse {
+  const blockedReasons = [failureReason];
   // 失败也返回完整 schema，调用方不用靠 HTTP 500 或缺字段判断安全边界。
   return {
     schema: "trashbot.o7.cloud_archive_tasks.v1",
@@ -196,8 +227,9 @@ function blockedResponse(
     selected_task: null,
     latest_task: null,
     safe_summaries: emptySummaries("blocked_not_proven"),
+    route_replay_inspector: emptyRouteReplayInspector(blockedReasons),
     fixed_false_fields: fixedFalseFields(),
-    blocked_reasons: [failureReason],
+    blocked_reasons: blockedReasons,
     not_proven: [
       "real_o7_cloud_archive_task_api",
       "real_o7_realtime_api",
@@ -245,6 +277,80 @@ function sampleRefs(values: unknown[]): string[] {
     const item = isObject(value) ? value : {};
     return safeRef(item.evidence_ref ?? item.frame_ref ?? item.keyframe_ref);
   }).filter(Boolean);
+}
+
+function nestedObject(value: unknown): JsonObject {
+  // trajectory frame 常把 pose/velocity 放在子对象里；非对象按空对象处理来保持 fail-soft 摘要。
+  return isObject(value) ? value : {};
+}
+
+function frameNumber(frame: JsonObject, key: string, nested: JsonObject): number | null {
+  // 只接受有限 number，字符串数值不会被提升，避免 fixture 文本注入成真实轨迹坐标。
+  return safeNumber(frame[key]) ?? safeNumber(nested[key]);
+}
+
+function routeReplayInspectorFor(task: JsonObject | null): O7RouteReplayInspector {
+  if (!task) {
+    return emptyRouteReplayInspector(["selected_task_missing"]);
+  }
+
+  const selectedTaskId = safeText(task.task_id || task.id || "task_id_missing");
+  const trajectory = listFromTask(task, "trajectory_frames");
+  const events = [...listFromTask(task, "events"), ...listFromTask(task, "state_transitions")];
+  const sampleFrames = trajectory.slice(0, SAMPLE_LIMIT).map((value, index) => {
+    const frame = isObject(value) ? value : {};
+    const pose = nestedObject(frame.pose);
+    const velocity = nestedObject(frame.velocity);
+    const frameIndex = safeNumber(frame.frame_index) ?? index;
+    return {
+      frame_index: frameIndex,
+      timestamp_ms: safeNumber(frame.timestamp_ms),
+      x_m: frameNumber(frame, "x_m", pose) ?? safeNumber(pose.x),
+      y_m: frameNumber(frame, "y_m", pose) ?? safeNumber(pose.y),
+      yaw_rad: frameNumber(frame, "yaw_rad", pose),
+      speed_mps: safeNumber(frame.speed_mps) ?? safeNumber(frame.linear_mps) ?? safeNumber(velocity.speed_mps) ?? safeNumber(velocity.linear_mps),
+      state: safeText(frame.state || frame.task_state || "state_missing"),
+      evidence_ref: safeRef(frame.evidence_ref ?? frame.frame_ref ?? frame.keyframe_ref),
+    };
+  });
+  const keyframeRefs = listFromTask(task, "keyframe_refs").slice(0, SAMPLE_LIMIT).map((value) => (
+    isObject(value) ? safeRef(value.evidence_ref ?? value.keyframe_ref ?? value.frame_ref) : safeRef(value)
+  )).filter(Boolean);
+
+  return {
+    status: trajectory.length > 0 ? "fixture_inspector_ready" : "blocked_not_proven",
+    selected_task_id: selectedTaskId,
+    map_frame: safeText(task.map_frame || "map"),
+    frame_count: trajectory.length,
+    sample_frames: sampleFrames,
+    event_timeline: events.slice(0, SAMPLE_LIMIT).map((value) => {
+      const event = isObject(value) ? value : {};
+      return {
+        event_type: safeText(event.event_type || event.type || "event_type_missing"),
+        state: safeText(event.state || event.to || event.to_state || "state_missing"),
+        timestamp_ms: safeNumber(event.timestamp_ms),
+        evidence_ref: safeRef(event.evidence_ref ?? event.event_ref),
+      };
+    }),
+    keyframe_refs: keyframeRefs,
+    cursor_initial_state: {
+      playing: false,
+      safe_to_play: false,
+      speed: 0,
+      frame_index: sampleFrames[0]?.frame_index ?? null,
+    },
+    blocked_reasons: [
+      "real_cloud_archive_not_connected",
+      "safe_route_playback_not_enabled",
+      "robot_control_disabled",
+    ],
+    not_proven: [
+      "real_o7_history_route_replay",
+      "real_o7_cloud_archive_task_api",
+      "safe_route_playback",
+      "real_robot_control",
+    ],
+  };
 }
 
 function safeSummariesFor(task: JsonObject | null): O7CloudArchiveTaskSafeSummaries {
@@ -373,6 +479,7 @@ export async function buildO7CloudArchiveTasks(options: O7CloudArchiveTasksOptio
     selected_task: selected ? taskSummary(selected) : null,
     latest_task: latest ? taskSummary(latest) : null,
     safe_summaries: safeSummariesFor(selected),
+    route_replay_inspector: routeReplayInspectorFor(selected),
     fixed_false_fields: fixedFalseFields(),
     blocked_reasons: [
       "real_cloud_archive_not_connected",

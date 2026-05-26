@@ -357,8 +357,43 @@ function sampleCloudArchiveFixture(evidenceRef: string) {
         started_at_ms: 2000,
         updated_at_ms: 2600,
         evidence_ref: evidenceRef,
-        trajectory_frames: [{ evidence_ref: "frame-101.jpg" }],
-        events: [{ event_type: "arrived_at_elevator" }],
+        map_frame: "map",
+        trajectory_frames: [
+          {
+            frame_index: 10,
+            timestamp_ms: 2100,
+            pose: { x_m: 1.25, y_m: -0.5, yaw_rad: 1.57 },
+            velocity: { linear_mps: 0.12 },
+            state: "departed",
+            evidence_ref: path.join(path.dirname(evidenceRef), "frame-101.jpg"),
+          },
+          {
+            frame_index: 11,
+            timestamp_ms: 2200,
+            x_m: 1.35,
+            y_m: -0.45,
+            yaw_rad: 1.6,
+            speed_mps: 0.13,
+            state: "elevator_wait",
+            evidence_ref: "frame-102.jpg",
+          },
+          { frame_index: 12, timestamp_ms: 2300, x_m: 1.4, y_m: -0.4, yaw_rad: 1.62, speed_mps: 0.1, state: "sample_3", evidence_ref: "frame-103.jpg" },
+          { frame_index: 13, timestamp_ms: 2400, x_m: 1.5, y_m: -0.3, yaw_rad: 1.7, speed_mps: 0.09, state: "sample_4", evidence_ref: "frame-104.jpg" },
+          { frame_index: 14, timestamp_ms: 2500, x_m: 1.6, y_m: -0.2, yaw_rad: 1.8, speed_mps: 0.08, state: "sample_5", evidence_ref: "frame-105.jpg" },
+          { frame_index: 15, timestamp_ms: 2600, x_m: 1.7, y_m: -0.1, yaw_rad: 1.9, speed_mps: 0.07, state: "sample_not_returned", evidence_ref: "frame-106.jpg" },
+        ],
+        events: [
+          { event_type: "arrived_at_elevator", timestamp_ms: 2250, evidence_ref: path.join(path.dirname(evidenceRef), "event-001.json") },
+          { state: "door_open_wait", timestamp_ms: 2350, evidence_ref: "event-002.json" },
+        ],
+        keyframe_refs: [
+          path.join(path.dirname(evidenceRef), "keyframe-001.jpg"),
+          "keyframe-002.jpg",
+          "keyframe-003.jpg",
+          "keyframe-004.jpg",
+          "keyframe-005.jpg",
+          "keyframe-not-returned.jpg",
+        ],
         labels: [{ type: "elevator_door_state" }, { label_type: "obstacle_type" }],
         asr_events: [{ event_type: "final" }, { event_type: "partial" }],
         tts_drafts: [{ text: "draft one" }, { text: "draft two" }],
@@ -1955,11 +1990,59 @@ describe("workstation fail-closed API contracts", () => {
     });
     expect(response.latest_task?.task_id).toBe("task-archive-002");
     expect(response.safe_summaries.trajectory).toEqual({
-      frame_count: 1,
-      sample_refs: ["frame-101.jpg"],
+      frame_count: 6,
+      sample_refs: ["file:frame-101.jpg", "frame-102.jpg", "frame-103.jpg", "frame-104.jpg", "frame-105.jpg"],
       status: "fixture_summary_only",
     });
-    expect(response.safe_summaries.events.sample_types).toEqual(["arrived_at_elevator"]);
+    expect(response.safe_summaries.events.sample_types).toEqual(["arrived_at_elevator", "door_open_wait"]);
+    expect(response.route_replay_inspector).toMatchObject({
+      status: "fixture_inspector_ready",
+      selected_task_id: "task-archive-002",
+      map_frame: "map",
+      frame_count: 6,
+      cursor_initial_state: {
+        playing: false,
+        safe_to_play: false,
+        speed: 0,
+        frame_index: 10,
+      },
+    });
+    expect(response.route_replay_inspector.sample_frames).toHaveLength(5);
+    expect(response.route_replay_inspector.sample_frames[0]).toEqual({
+      frame_index: 10,
+      timestamp_ms: 2100,
+      x_m: 1.25,
+      y_m: -0.5,
+      yaw_rad: 1.57,
+      speed_mps: 0.12,
+      state: "departed",
+      evidence_ref: "file:frame-101.jpg",
+    });
+    expect(response.route_replay_inspector.sample_frames[4]?.frame_index).toBe(14);
+    expect(response.route_replay_inspector.sample_frames).not.toContainEqual(
+      expect.objectContaining({ frame_index: 15 }),
+    );
+    expect(response.route_replay_inspector.event_timeline).toEqual([
+      {
+        event_type: "arrived_at_elevator",
+        state: "state_missing",
+        timestamp_ms: 2250,
+        evidence_ref: "file:event-001.json",
+      },
+      {
+        event_type: "event_type_missing",
+        state: "door_open_wait",
+        timestamp_ms: 2350,
+        evidence_ref: "event-002.json",
+      },
+    ]);
+    expect(response.route_replay_inspector.keyframe_refs).toEqual([
+      "file:keyframe-001.jpg",
+      "keyframe-002.jpg",
+      "keyframe-003.jpg",
+      "keyframe-004.jpg",
+      "keyframe-005.jpg",
+    ]);
     expect(response.safe_summaries.labels).toMatchObject({
       label_count: 2,
       sample_types: ["elevator_door_state", "obstacle_type"],
@@ -2033,6 +2116,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.real_command_api_connected).toBe(false);
       expect(response.robot_control_executed).toBe(false);
       expect(response.task_list.tasks).toEqual([]);
+      expect(response.route_replay_inspector.status).toBe("blocked_not_proven");
+      expect(response.route_replay_inspector.sample_frames).toEqual([]);
+      expect(response.route_replay_inspector.event_timeline).toEqual([]);
+      expect(response.route_replay_inspector.keyframe_refs).toEqual([]);
+      expect(response.route_replay_inspector.cursor_initial_state).toEqual({
+        playing: false,
+        safe_to_play: false,
+        speed: 0,
+        frame_index: null,
+      });
       expect(response.safe_summaries.commands.robot_control_executed).toBe(false);
       expect(response.blocked_reasons.length).toBeGreaterThan(0);
       expectNoLegacyPythonGateSemantics(response);

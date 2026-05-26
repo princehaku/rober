@@ -514,6 +514,42 @@ export interface O7CloudArchiveTaskSafeSummaries {
   };
 }
 
+export interface O7RouteReplayInspectorFrame {
+  frame_index: number;
+  timestamp_ms: number | null;
+  x_m: number | null;
+  y_m: number | null;
+  yaw_rad: number | null;
+  speed_mps: number | null;
+  state: string;
+  evidence_ref: string;
+}
+
+export interface O7RouteReplayInspectorEvent {
+  event_type: string;
+  state: string;
+  timestamp_ms: number | null;
+  evidence_ref: string;
+}
+
+export interface O7RouteReplayInspector {
+  status: "fixture_inspector_ready" | "blocked_not_proven";
+  selected_task_id: string | null;
+  map_frame: string;
+  frame_count: number;
+  sample_frames: O7RouteReplayInspectorFrame[];
+  event_timeline: O7RouteReplayInspectorEvent[];
+  keyframe_refs: string[];
+  cursor_initial_state: {
+    playing: false;
+    safe_to_play: false;
+    speed: 0;
+    frame_index: number | null;
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 // Cloud archive task API 是 O7 的统一数据源雏形，但当前只读本地 fixture。
 // fixed false 字段覆盖 KR3/KR4/KR5/KR6，避免 UI 把 archive 摘要误读成真实云能力。
 export interface O7CloudArchiveTasksResponse extends ProofFlags {
@@ -552,6 +588,7 @@ export interface O7CloudArchiveTasksResponse extends ProofFlags {
   selected_task: O7CloudArchiveTaskSummary | null;
   latest_task: O7CloudArchiveTaskSummary | null;
   safe_summaries: O7CloudArchiveTaskSafeSummaries;
+  route_replay_inspector: O7RouteReplayInspector;
   fixed_false_fields: {
     real_cloud_archive_connected: false;
     real_realtime_api_connected: false;
