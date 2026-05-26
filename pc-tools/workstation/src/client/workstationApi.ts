@@ -1,8 +1,13 @@
 import type {
   EvidenceToolsResponse,
   HardwareMaterialsResponse,
+  O7LabelingPreviewResponse,
   HealthResponse,
   O7OperatorConsoleResponse,
+  O7RealtimeElevatorPreviewResponse,
+  O7RouteReplayPreviewResponse,
+  O7SafeCommandPreviewResponse,
+  O7VoicePreviewResponse,
   ProofBoundaryResponse,
   RouteDebugSummaryResponse,
   TrainingLabelingResponse,
@@ -25,6 +30,24 @@ export interface WorkstationSnapshot {
   proofBoundary: ProofBoundaryResponse;
 }
 
+export type O7FixturePreviewKind = "realtimeElevator" | "routeReplay" | "labeling" | "voice" | "safeCommand";
+
+export interface O7FixturePreviewInputs {
+  realtimeElevator: string;
+  routeReplay: string;
+  labeling: string;
+  voice: string;
+  safeCommand: string;
+}
+
+export interface O7FixturePreviewResponses {
+  realtimeElevator: O7RealtimeElevatorPreviewResponse;
+  routeReplay: O7RouteReplayPreviewResponse;
+  labeling: O7LabelingPreviewResponse;
+  voice: O7VoicePreviewResponse;
+  safeCommand: O7SafeCommandPreviewResponse;
+}
+
 // client 层集中维护 API 路径，避免组件散落字符串后破坏契约。
 const API_ENDPOINTS = {
   health: "/api/health",
@@ -33,6 +56,11 @@ const API_ENDPOINTS = {
   hardwareMaterials: "/api/hardware/wave-rover/material-coverage",
   trainingLabeling: "/api/tools/training-labeling",
   o7OperatorConsole: "/api/o7/operator-console",
+  o7RealtimeElevatorPreview: "/api/o7/realtime-elevator-preview",
+  o7RouteReplayPreview: "/api/o7/route-replay-preview",
+  o7LabelingPreview: "/api/o7/labeling-preview",
+  o7VoicePreview: "/api/o7/voice-preview",
+  o7SafeCommandPreview: "/api/o7/safe-command-preview",
   proofBoundary: "/api/proof-boundary",
 } as const;
 
@@ -56,6 +84,17 @@ function routeDebugUrl(inputs: RouteDebugInputs): string {
   });
   const query = params.toString();
   return query ? `${API_ENDPOINTS.routeDebugSummary}?${query}` : API_ENDPOINTS.routeDebugSummary;
+}
+
+function previewUrl(endpoint: string, fixtureJson: string): string {
+  // 空路径不拼 query，让后端返回 not_provided，而不是由前端伪造 not_loaded。
+  const trimmed = fixtureJson.trim();
+  if (!trimmed) {
+    return endpoint;
+  }
+  const params = new URLSearchParams();
+  params.set("fixtureJson", trimmed);
+  return `${endpoint}?${params.toString()}`;
 }
 
 export async function getHealth(): Promise<HealthResponse> {
@@ -91,6 +130,50 @@ export async function getProofBoundary(): Promise<ProofBoundaryResponse> {
 export async function getO7OperatorConsole(): Promise<O7OperatorConsoleResponse> {
   // O7 console 必须由后端契约驱动，前端不自行拼接 KR 状态或控制能力。
   return loadJson<O7OperatorConsoleResponse>(API_ENDPOINTS.o7OperatorConsole);
+}
+
+export async function getO7RealtimeElevatorPreview(fixtureJson: string): Promise<O7RealtimeElevatorPreviewResponse> {
+  // preview 只读本地 JSON 摘要；路径拼接集中在 client，组件不能散落 API URL。
+  return loadJson<O7RealtimeElevatorPreviewResponse>(previewUrl(API_ENDPOINTS.o7RealtimeElevatorPreview, fixtureJson));
+}
+
+export async function getO7RouteReplayPreview(fixtureJson: string): Promise<O7RouteReplayPreviewResponse> {
+  // Route replay preview 不提供播放入口，只消费后端 fail-closed 摘要。
+  return loadJson<O7RouteReplayPreviewResponse>(previewUrl(API_ENDPOINTS.o7RouteReplayPreview, fixtureJson));
+}
+
+export async function getO7LabelingPreview(fixtureJson: string): Promise<O7LabelingPreviewResponse> {
+  // Labeling preview 不提交、不回滚、不导出，只读取 fixture summary。
+  return loadJson<O7LabelingPreviewResponse>(previewUrl(API_ENDPOINTS.o7LabelingPreview, fixtureJson));
+}
+
+export async function getO7VoicePreview(fixtureJson: string): Promise<O7VoicePreviewResponse> {
+  // Voice preview 不监听、不发送 TTS、不播放，只展示本地 fixture 摘要。
+  return loadJson<O7VoicePreviewResponse>(previewUrl(API_ENDPOINTS.o7VoicePreview, fixtureJson));
+}
+
+export async function getO7SafeCommandPreview(fixtureJson: string): Promise<O7SafeCommandPreviewResponse> {
+  // Safe command preview 不连接 command API 或 robot ACK，所有控制字段必须保持 false。
+  return loadJson<O7SafeCommandPreviewResponse>(previewUrl(API_ENDPOINTS.o7SafeCommandPreview, fixtureJson));
+}
+
+export async function loadO7FixturePreview(
+  kind: O7FixturePreviewKind,
+  fixtureJson: string,
+): Promise<O7FixturePreviewResponses[O7FixturePreviewKind]> {
+  // switch 让五个 API 的路由集中收口，后续改 endpoint 不需要碰展示组件。
+  switch (kind) {
+    case "realtimeElevator":
+      return getO7RealtimeElevatorPreview(fixtureJson);
+    case "routeReplay":
+      return getO7RouteReplayPreview(fixtureJson);
+    case "labeling":
+      return getO7LabelingPreview(fixtureJson);
+    case "voice":
+      return getO7VoicePreview(fixtureJson);
+    case "safeCommand":
+      return getO7SafeCommandPreview(fixtureJson);
+  }
 }
 
 export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise<WorkstationSnapshot> {

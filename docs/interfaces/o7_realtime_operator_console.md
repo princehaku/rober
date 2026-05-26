@@ -14,7 +14,7 @@
 - PC labeling fixture preview API：`GET /api/o7/labeling-preview?fixtureJson=<local-json>`
 - PC voice fixture preview API：`GET /api/o7/voice-preview?fixtureJson=<local-json>`
 - PC safe command fixture preview API：`GET /api/o7/safe-command-preview?fixtureJson=<local-json>`
-- PC UI：`pc-tools/workstation` 的 `O7 Console` tab
+- PC UI：`pc-tools/workstation` 的 `O7 Console` tab 和独立 `O7 Previews` tab
 - Board media preflight source contract：`docs/interfaces/o7_board_media_preflight.md`
 
 ## Fail-Closed Fields
@@ -50,6 +50,32 @@
 - `safe_command_snapshot.real_robot_ack_connected=false`
 
 PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE ROVER、Nav2、TTS 或手控命令。
+
+## PC O7 Previews Tab
+
+`O7 Previews` 是五个 fixture preview API 的只读 UI 入口，与 `O7 Console` 分开。页面提供五个本地 fixture JSON 路径输入框和五个 `Load ... preview` 按钮：
+
+- `Load Realtime/Elevator preview`
+- `Load Route Replay preview`
+- `Load Labeling preview`
+- `Load Voice preview`
+- `Load Safe Command preview`
+
+这些按钮只触发对应 `GET /api/o7/*-preview?fixtureJson=<local-json>`，不是机器人动作。UI 不得提供 send、run、submit、control、play、export、方向键、地图点击、stop、cancel 或 recovery 按钮。页面默认不自动读取任何本地路径；未加载时显示 `not_loaded` 和 `fixture_json_not_provided`，空路径点击后由后端以 `input_status.status=not_provided` fail-closed。
+
+每个 preview card 必须展示：
+
+- `schema`
+- `preview_status`
+- `input_status.status`
+- `input_status.failure_reason`
+- `source_fixture_schema`
+- 核心固定 false 字段，例如 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`，以及各 preview 自己的真实链路 false 字段
+- 限量安全摘要字段
+- `blocked_reasons`
+- `not_proven`
+
+该 tab 的页面级边界必须保留：五个 preview 都不能证明真实 realtime API、ROS2 `/tf`、云归档、annotation API、voice API、safe command API、robot ACK、HIL/硬件安全或 delivery success，也不得提升 O7 百分比。
 
 ## Realtime/Elevator Fixture Preview
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import EvidenceToolsPanel from "./components/EvidenceToolsPanel.vue";
+import O7FixturePreviewPanel from "./components/O7FixturePreviewPanel.vue";
 import O7OperatorConsolePanel from "./components/O7OperatorConsolePanel.vue";
 import ProofBoundaryPanel from "./components/ProofBoundaryPanel.vue";
 import ProofFlagStrip from "./components/ProofFlagStrip.vue";
@@ -102,6 +103,7 @@ onMounted(() => {
       @refresh="refresh"
     />
     <O7OperatorConsolePanel v-else-if="activePanel === 'o7'" :operator-console="o7OperatorConsole" />
+    <O7FixturePreviewPanel v-else-if="activePanel === 'o7Previews'" />
     <EvidenceToolsPanel v-else-if="activePanel === 'evidence'" :evidence-tools="evidenceTools" />
     <WaveRoverMaterialCoveragePanel
       v-else-if="activePanel === 'hardware'"

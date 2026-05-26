@@ -882,6 +882,188 @@ const fixtures: Record<string, unknown> = {
     recovery_paths: ["Connect O6 cloud archive and realtime stream before replacing draft values."],
     ...PROOF_FLAGS,
   },
+  "/api/o7/realtime-elevator-preview": {
+    schema: "trashbot.o7.realtime_elevator_preview.v1",
+    schema_version: 1,
+    preview_status: "fixture_preview_ready",
+    input_status: { fixture_json: "fixtures/realtime.json", status: "loaded", failure_reason: "" },
+    source_fixture_schema: "trashbot.o7.realtime_elevator_fixture.v1",
+    real_realtime_api_connected: false,
+    real_ros2_tf_connected: false,
+    real_elevator_state_chain_connected: false,
+    latency_lt_2s_proven: false,
+    robot_control_executed: false,
+    session: {
+      session_id: "fixture_session",
+      source: "local_json_fixture",
+      evidence_ref: "fixture_evidence",
+      audit_refs: ["audit_realtime"],
+      status: "fixture_summary_only",
+    },
+    map_summary: { map_ref: "map_fixture", map_frame: "map", source: "local_json_fixture", status: "fixture_summary_only" },
+    robot_pose_summary: { x_m: 1.2, y_m: 2.4, yaw_rad: 0.3, pose_source: "fixture", status: "fixture_summary_only" },
+    pose_freshness_summary: { timestamp_ms: 1000, age_ms: 5000, latency_lt_2s_proven: false, status: "fixture_summary_only" },
+    route_membership_summary: {
+      route_id: "route_a",
+      requested_status: "fixture_requested",
+      requested_on_route: "true_rejected_to_false",
+      requested_in_elevator_zone: "true_rejected_to_false",
+      on_route: false,
+      in_elevator_zone: false,
+      status: "blocked_not_proven",
+    },
+    elevator_state_chain_summary: {
+      current_state: "waiting",
+      sample_limit: 5,
+      count: 1,
+      sample: [{ state: "waiting", status: "fixture_only", timestamp_ms: 1000, evidence_ref: "elevator_state_ref" }],
+      status: "fixture_summary_only",
+    },
+    current_floor_evidence_summary: { floor_label: "1F", confidence: 0.5, evidence_ref: "floor_ref", status: "fixture_summary_only" },
+    target_floor_summary: { floor_label: "2F", confirmation_status: "not_proven", evidence_ref: "target_ref", status: "fixture_summary_only" },
+    human_takeover_summary: {
+      required: true,
+      reason: "fixture_only_not_proven",
+      operator_action: "observe_only",
+      evidence_ref: "takeover_ref",
+      status: "blocked_not_proven",
+    },
+    evidence_refs: {
+      fixture_ref: "fixture_ref",
+      session_evidence_ref: "fixture_evidence",
+      audit_refs: ["audit_realtime"],
+      elevator_state_refs: ["elevator_state_ref"],
+      floor_evidence_ref: "floor_ref",
+      target_floor_evidence_ref: "target_ref",
+      human_takeover_evidence_ref: "takeover_ref",
+    },
+    blocked_reasons: ["real_realtime_api_not_connected", "ros2_tf_not_proven"],
+    not_proven: ["real_o7_realtime_cloud_stream", "real_o7_ros2_tf_forwarding", "delivery_success"],
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/route-replay-preview": {
+    schema: "trashbot.o7.route_replay_preview.v1",
+    schema_version: 1,
+    preview_status: "fixture_preview_ready",
+    input_status: { fixture_json: "fixtures/route.json", status: "loaded", failure_reason: "" },
+    source_fixture_schema: "trashbot.o7.route_replay_fixture.v1",
+    real_cloud_archive_connected: false,
+    robot_control_executed: false,
+    task: { task_id: "task_fixture", robot_id: "robot_fixture", route_id: "route_fixture", evidence_ref: "task_ref" },
+    route_metadata: { map_frame: "map", frame_schema: "fixture_trajectory_frame_summary_v1", source: "local_json_fixture" },
+    trajectory: {
+      frame_count: 1,
+      sample_frames: [
+        {
+          frame_index: 0,
+          timestamp_ms: 1000,
+          pose: { x_m: 0, y_m: 0, yaw_rad: 0 },
+          velocity: { linear_mps: 0, angular_radps: 0 },
+          state: "idle",
+          evidence_ref: "frame_ref",
+        },
+      ],
+      status: "fixture_summary_only",
+    },
+    playback_cursor_initial_state: { frame_index: 0, timestamp_ms: 1000, playing: false, speed: 0, safe_to_play: false, status: "preview_cursor_only" },
+    keyframes: { count: 1, sample_refs: ["keyframe_ref"], status: "fixture_refs_only" },
+    evidence_refs: { fixture_ref: "fixture_ref", task_evidence_ref: "task_ref", keyframe_refs: ["keyframe_ref"] },
+    state_transitions: { count: 1, sample: [{ from: "idle", to: "waiting", timestamp_ms: 1000, evidence_ref: "transition_ref" }], gaps: [], status: "fixture_summary_only" },
+    blocked_reasons: ["real_cloud_archive_not_connected"],
+    not_proven: ["real_o7_route_replay_archive", "real_o7_trajectory_playback", "delivery_success"],
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/labeling-preview": {
+    schema: "trashbot.o7.labeling_preview.v1",
+    schema_version: 1,
+    preview_status: "fixture_preview_ready",
+    input_status: { fixture_json: "fixtures/labeling.json", status: "loaded", failure_reason: "" },
+    source_fixture_schema: "trashbot.o7.labeling_fixture.v1",
+    real_annotation_api_connected: false,
+    submit_enabled: false,
+    rollback_enabled: false,
+    dataset_export_available: false,
+    robot_control_executed: false,
+    queue: { queue_id: "queue_fixture", source: "local_json_fixture", review_item_count: 1, status: "fixture_summary_only" },
+    review_items: {
+      sample_limit: 3,
+      sample: [{ item_id: "item_1", task_id: "task_1", frame_id: "frame_1", media_ref: "media_ref", evidence_ref: "item_ref", current_labels: { count: 0, sample: [] } }],
+      status: "fixture_summary_only",
+    },
+    label_schema: { schema_ref: "schema_ref", version: "v1", required_fields: ["label_type"], allowed_fields: ["value"], status: "fixture_schema_summary_only" },
+    allowed_label_types: ["elevator_door_state"],
+    draft_labels: { count: 1, sample: [{ item_id: "item_1", label_type: "floor_label", value: "2F", status: "draft", evidence_ref: "draft_ref" }], autosave_available: false, status: "fixture_draft_slots_only" },
+    dataset_export: { status: "fixture_gap_summary_only", export_ref: "export_missing", supported_formats: ["jsonl"], gaps: ["real_export_not_connected"] },
+    evidence_refs: { fixture_ref: "fixture_ref", queue_evidence_ref: "queue_ref", item_evidence_refs: ["item_ref"] },
+    blocked_reasons: ["real_annotation_api_not_connected"],
+    not_proven: ["real_o7_annotation_submit", "real_o7_dataset_export", "delivery_success"],
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/voice-preview": {
+    schema: "trashbot.o7.voice_preview.v1",
+    schema_version: 1,
+    preview_status: "fixture_preview_ready",
+    input_status: { fixture_json: "fixtures/voice.json", status: "loaded", failure_reason: "" },
+    source_fixture_schema: "trashbot.o7.voice_fixture.v1",
+    real_voice_api_connected: false,
+    real_asr_tts_runtime_connected: false,
+    asr_stream_connected: false,
+    tts_send_enabled: false,
+    speaker_dispatch_enabled: false,
+    robot_control_executed: false,
+    voice_session: { session_id: "voice_fixture", source: "local_json_fixture", evidence_ref: "voice_ref", audit_refs: ["voice_audit"], status: "fixture_summary_only" },
+    asr_events: {
+      event_count: 1,
+      sample_limit: 3,
+      sample: [{ event_type: "partial", timestamp_ms: 1000, transcript: "fixture transcript", confidence: 0.5, evidence_ref: "asr_ref" }],
+      latest_partial: { text: "fixture", timestamp_ms: 1000, confidence: 0.5, evidence_ref: "partial_ref", status: "fixture_summary_only" },
+      latest_final: { text: "", timestamp_ms: null, confidence: null, evidence_ref: "final_ref", status: "empty_not_proven" },
+      status: "fixture_summary_only",
+    },
+    tts_draft_summary: { text: "hello", text_length: 5, voice_profile: "fixture_voice", language: "zh-CN", confirmation_required: true, status: "fixture_draft_only" },
+    speaker_dispatch_summary: { sends_to_robot: false, speaker_dispatch_enabled: false, ack_status: "blocked_not_proven", speaker_ack_ref: "ack_ref", failure_event_ref: "failure_ref", failure_refs: ["failure_ref"], status: "blocked_not_proven" },
+    media_preflight_dependency: { required: true, source_schema: "trashbot.o7_board_media_preflight.v1", status: "blocked", dependency_ref: "board_media_preflight_summary", gaps: ["media_smoke_missing"] },
+    evidence_refs: { fixture_ref: "fixture_ref", session_evidence_ref: "voice_ref", asr_event_refs: ["asr_ref"], tts_evidence_ref: "tts_ref", audit_refs: ["voice_audit"] },
+    blocked_reasons: ["real_voice_api_not_connected"],
+    not_proven: ["real_o7_voice_api", "real_o7_asr_tts_runtime", "delivery_success"],
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/safe-command-preview": {
+    schema: "trashbot.o7.safe_command_preview.v1",
+    schema_version: 1,
+    preview_status: "fixture_preview_ready",
+    input_status: { fixture_json: "fixtures/safe-command.json", status: "loaded", failure_reason: "" },
+    source_fixture_schema: "trashbot.o7.safe_command_fixture.v1",
+    command_dispatch_enabled: false,
+    manual_control_enabled: false,
+    navigate_goal_enabled: false,
+    keyboard_control_enabled: false,
+    real_command_api_connected: false,
+    real_robot_ack_connected: false,
+    robot_control_executed: false,
+    command_session: { command_session_id: "command_fixture", source: "local_json_fixture", evidence_ref: "command_ref", audit_refs: ["command_audit"], status: "fixture_summary_only" },
+    manual_turn_envelope_summary: { sends_to_robot: false, requested_direction: "left", velocity_limited: true, steering_limited: true, evidence_ref: "manual_ref", status: "fixture_summary_only" },
+    navigate_goal_envelope_summary: { sends_to_robot: false, goal_source: "fixture", map_frame: "map", x_m: 1, y_m: 2, yaw_rad: 0, evidence_ref: "goal_ref", status: "fixture_summary_only" },
+    velocity_limits: { max_linear_mps: 0.1, max_angular_radps: 0.2, source: "fixture", hardware_verified: false, status: "fixture_limit_summary_only" },
+    steering_limits: { max_steering_angle_rad: 0.3, max_turn_rate_radps: 0.2, source: "fixture", hardware_verified: false, status: "fixture_limit_summary_only" },
+    map_goal_slot: { map_frame: "map", x_m: 1, y_m: 2, yaw_rad: 0, status: "fixture_slot_summary_only", evidence_ref: "slot_ref" },
+    idempotency_key_requirement: { required: true, key_ref: "key_ref", header: "Idempotency-Key", status: "fixture_requirement_summary_only" },
+    confirmation_policy: { manual_turn_requires_confirmation: true, navigate_goal_requires_confirmation: true, keyboard_control_requires_hold: true, status: "fixture_policy_summary_only" },
+    robot_ack_summary: { ack_status: "blocked_not_proven", last_command_id: "command_fixture", ack_ref: "ack_ref", timeout_ms: null, cancel_ack_ref: "cancel_ref", stop_ack_ref: "stop_ref", recovery_ref: "recovery_ref", status: "blocked_not_proven" },
+    evidence_gaps: ["real_robot_ack_missing", "hil_safety_missing"],
+    evidence_refs: {
+      fixture_ref: "fixture_ref",
+      session_evidence_ref: "command_ref",
+      ack_ref: "ack_ref",
+      cancel_ack_ref: "cancel_ref",
+      stop_ack_ref: "stop_ref",
+      recovery_ref: "recovery_ref",
+      audit_refs: ["command_audit"],
+    },
+    blocked_reasons: ["real_command_api_not_connected", "real_robot_ack_not_connected"],
+    not_proven: ["real_o7_safe_command_api", "real_robot_command_ack", "real_hil_safety"],
+    ...PROOF_FLAGS,
+  },
   "/api/proof-boundary": {
     schema: "trashbot.pc_tools_workstation.proof_boundary.v2",
     can_prove: ["Node/Vue workstation can index local JSON fixtures under pc-tools/evidence/fixtures"],
@@ -899,7 +1081,19 @@ const fixtures: Record<string, unknown> = {
 function stubWorkstationFetch() {
   // 测试桩允许 route debug 带 query，确保表单路径仍走同一个只读 API。
   const mockedFetch = vi.fn(async (url: string) => {
-    const fixtureKey = url.startsWith("/api/route/debug-summary") ? "/api/route/debug-summary" : url;
+    const fixtureKey = url.startsWith("/api/route/debug-summary")
+      ? "/api/route/debug-summary"
+      : url.startsWith("/api/o7/realtime-elevator-preview")
+        ? "/api/o7/realtime-elevator-preview"
+        : url.startsWith("/api/o7/route-replay-preview")
+          ? "/api/o7/route-replay-preview"
+          : url.startsWith("/api/o7/labeling-preview")
+            ? "/api/o7/labeling-preview"
+            : url.startsWith("/api/o7/voice-preview")
+              ? "/api/o7/voice-preview"
+              : url.startsWith("/api/o7/safe-command-preview")
+                ? "/api/o7/safe-command-preview"
+                : url;
     return {
       ok: true,
       json: async () => fixtures[fixtureKey],
@@ -1140,5 +1334,68 @@ describe("App", () => {
     expect(wrapper.text()).not.toMatch(/manual controltrue/i);
     expect(wrapper.text()).not.toMatch(/navigate goaltrue/i);
     expect(wrapper.text()).not.toMatch(/keyboard controltrue/i);
+  });
+
+  it("loads O7 fixture previews through PC-only read-only API clients", async () => {
+    // O7 Previews tab 不自动读本地路径；operator 必须显式点击 Load preview。
+    const mockedFetch = stubWorkstationFetch();
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.findAll("button").find((button) => button.text() === "O7 Previews")?.trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain("O7 Fixture Previews");
+    expect(wrapper.text()).toContain("fixture_json_not_provided");
+    expect(wrapper.text()).toContain("real realtime API");
+    expect(wrapper.text()).toContain("robot ACK");
+    expect(wrapper.text()).toContain("HIL/hardware safety");
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/realtime-elevator-preview");
+
+    const inputs = wrapper.findAll("input");
+    expect(inputs).toHaveLength(5);
+    await inputs[0]!.setValue("fixtures/realtime.json");
+    await inputs[1]!.setValue("fixtures/route.json");
+    await inputs[2]!.setValue("fixtures/labeling.json");
+    await inputs[3]!.setValue("fixtures/voice.json");
+    await inputs[4]!.setValue("fixtures/safe-command.json");
+
+    for (const label of [
+      "Load Realtime/Elevator preview",
+      "Load Route Replay preview",
+      "Load Labeling preview",
+      "Load Voice preview",
+      "Load Safe Command preview",
+    ]) {
+      await wrapper.findAll("button").find((button) => button.text() === label)?.trigger("click");
+      await flushPromises();
+    }
+
+    const previewCalls = mockedFetch.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/o7/"));
+    expect(previewCalls).toContain("/api/o7/realtime-elevator-preview?fixtureJson=fixtures%2Frealtime.json");
+    expect(previewCalls).toContain("/api/o7/route-replay-preview?fixtureJson=fixtures%2Froute.json");
+    expect(previewCalls).toContain("/api/o7/labeling-preview?fixtureJson=fixtures%2Flabeling.json");
+    expect(previewCalls).toContain("/api/o7/voice-preview?fixtureJson=fixtures%2Fvoice.json");
+    expect(previewCalls).toContain("/api/o7/safe-command-preview?fixtureJson=fixtures%2Fsafe-command.json");
+    expect(wrapper.text()).toContain("trashbot.o7.realtime_elevator_preview.v1");
+    expect(wrapper.text()).toContain("trashbot.o7.route_replay_preview.v1");
+    expect(wrapper.text()).toContain("trashbot.o7.labeling_preview.v1");
+    expect(wrapper.text()).toContain("trashbot.o7.voice_preview.v1");
+    expect(wrapper.text()).toContain("trashbot.o7.safe_command_preview.v1");
+    expect(wrapper.text()).toContain("real_realtime_api_connected=false");
+    expect(wrapper.text()).toContain("real_ros2_tf_connected=false");
+    expect(wrapper.text()).toContain("real_cloud_archive_connected=false");
+    expect(wrapper.text()).toContain("submit_enabled=false");
+    expect(wrapper.text()).toContain("tts_send_enabled=false");
+    expect(wrapper.text()).toContain("command_dispatch_enabled=false");
+    expect(wrapper.text()).toContain("real_robot_ack_connected=false");
+    expect(wrapper.text()).toContain("real_o7_realtime_cloud_stream");
+    expect(wrapper.text()).toContain("real_o7_annotation_submit");
+    expect(wrapper.text()).toContain("real_o7_voice_api");
+    expect(wrapper.text()).toContain("real_hil_safety");
+    expect(wrapper.text()).not.toContain("/cmd_vel");
+    expect(wrapper.text()).not.toMatch(/\bSend\b|\bRun\b|\bSubmit\b|\bControl\b|\bPlay\b|\bExport\b/);
   });
 });
