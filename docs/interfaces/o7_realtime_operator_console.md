@@ -12,6 +12,8 @@
 - PC API：`GET /api/o7/operator-console`
 - PC acceptance guard：`GET /api/o7/operator-console/acceptance`
 - PC cloud operator console probe API：`GET /api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>`
+- Cloud relay archive tasks contract：`GET /api/o7/cloud-archive/tasks`
+- PC cloud archive tasks probe API：`GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>`
 - PC realtime/elevator fixture preview API：`GET /api/o7/realtime-elevator-preview?fixtureJson=<local-json>`
 - PC fixture preview API：`GET /api/o7/route-replay-preview?fixtureJson=<local-json>`
 - PC labeling fixture preview API：`GET /api/o7/labeling-preview?fixtureJson=<local-json>`
@@ -61,6 +63,9 @@
 - `cloud_archive_tasks.fixed_false_fields.tts_send_enabled=false`
 - `cloud_archive_tasks.fixed_false_fields.speaker_dispatch_enabled=false`
 - `cloud_archive_tasks.real_command_api_connected=false`
+- `cloud_archive_tasks.playback_available=false`
+- `cloud_archive_tasks.submit_enabled=false`
+- `cloud_archive_tasks.real_robot_ack_connected=false`
 
 PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE ROVER、Nav2、TTS 或手控命令。
 
@@ -92,6 +97,8 @@ PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE 
 
 同一 tab 还包含 `Cloud operator console probe` 区块，用于从 PC-only fixture 往真实 cloud relay HTTP runtime 迈一步。该区块只有一个 base URL 输入和 `Probe cloud operator console` 按钮；默认不自动探测。按钮只触发 PC 后端 `GET /api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>`，再由 Node 后端拉取远端 `/api/o7/operator-console`。允许的 base URL 仅限 `http://127.0.0.1`、`http://localhost`、`http://[::1]` 回环地址；未提供、非 HTTP、非回环、带 credentials/query/hash、fetch 失败、schema 错误、返回体非 object 或危险字段为 true 都 fail-closed。UI 只展示 probe status、source base URL、remote schema、cloud API status、operator mode、KR ids、关键 false fields、blocked reasons 和 not proven；不提供 Bearer 输入框，不连接公网云或生产云，不发送命令，不读取硬件，不证明 4G、机器人在线或 O7 完成。
 
+同一 tab 还包含 `Cloud archive tasks probe` 区块，用于探测 cloud relay HTTP runtime 暴露的 `/api/o7/cloud-archive/tasks` 只读 contract。该区块只有一个 base URL 输入和 `Probe cloud archive tasks` 按钮；默认不自动探测。按钮只触发 PC 后端 `GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>`，再由 Node 后端拉取远端 `/api/o7/cloud-archive/tasks`。允许的 base URL 仅限本机 HTTP 回环地址；未提供、非 HTTP、非回环、带 credentials/query/hash、fetch 失败、schema 错误、返回体非 object 或危险字段为 true 都 fail-closed。UI 只展示 probe status、source base URL、remote schema、archive status、task count、selected/latest、四个 inspector 状态、dangerous true fields、关键 false fields、blocked reasons 和 not proven；不提供 Bearer 输入框，不连接公网云或生产云，不读取真实 archive store，不发送命令，不读取硬件，不证明真实路线回放、真实标注提交、真实 ASR/TTS、真实手控/寻路或 O7 完成。
+
 同一 tab 还包含 `Cloud Archive Tasks` 区块，用于 O7 KR3/KR4/KR5/KR6 共享历史任务数据源雏形。该区块只有一个本地 archive fixture 路径输入和 `Load archive tasks` 按钮；默认不自动读取路径。按钮只触发 `GET /api/o7/cloud-archive/tasks?archiveJson=<local-json>`，UI 只展示 task list、selected/latest task、trajectory/event/label/voice/command safe summaries、KR3 route replay inspector、KR4 labeling queue inspector、KR5 voice ASR/TTS inspector、fixed false fields、blocked reasons 和 not proven，不提供播放、提交、导出、发送、控制、停止、取消或恢复类动作。
 
 ## PC Cloud Operator Console Probe Contract
@@ -119,6 +126,8 @@ PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE 
 API：
 
 - `GET /api/o7/cloud-archive/tasks?archiveJson=<local-json>`
+
+cloud relay runtime 也公开同路径不带 `archiveJson` 的只读 contract。该 contract 当前不接真实 store，必须返回 `archive_status=blocked_not_proven`、`task_list.total_tasks=0`、`selected_task=null`、`latest_task=null`，并固定 `real_cloud_archive_connected=false`、`playback_available=false`、`submit_enabled=false`、`command_dispatch_enabled=false`、`tts_send_enabled=false`、`robot_control_executed=false`。
 
 支持的输入 schema：
 

@@ -1,6 +1,7 @@
 import type {
   EvidenceToolsResponse,
   HardwareMaterialsResponse,
+  O7CloudArchiveTasksProbeResponse,
   O7CloudArchiveTasksResponse,
   O7CloudOperatorConsoleProbeResponse,
   O7LabelingPreviewResponse,
@@ -59,6 +60,7 @@ const API_ENDPOINTS = {
   trainingLabeling: "/api/tools/training-labeling",
   o7OperatorConsole: "/api/o7/operator-console",
   o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
+  o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
   o7RealtimeElevatorPreview: "/api/o7/realtime-elevator-preview",
   o7RouteReplayPreview: "/api/o7/route-replay-preview",
   o7LabelingPreview: "/api/o7/labeling-preview",
@@ -122,6 +124,16 @@ function cloudOperatorConsoleProbeUrl(baseUrl: string): string {
   return `${API_ENDPOINTS.o7CloudOperatorConsoleProbe}?${params.toString()}`;
 }
 
+function cloudArchiveTasksProbeUrl(baseUrl: string): string {
+  // archive probe 与 operator-console probe 共用本机回环约束，实际 SSRF 防护仍由后端执行。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  return `${API_ENDPOINTS.o7CloudArchiveTasksProbe}?${params.toString()}`;
+}
+
 export async function getHealth(): Promise<HealthResponse> {
   // health 只证明工作站 API 在线，不代表机器人或云端在线。
   return loadJson<HealthResponse>(API_ENDPOINTS.health);
@@ -160,6 +172,11 @@ export async function getO7OperatorConsole(): Promise<O7OperatorConsoleResponse>
 export async function getO7CloudOperatorConsoleProbe(baseUrl: string): Promise<O7CloudOperatorConsoleProbeResponse> {
   // 前端不直连 cloud relay；只调用本机 Node probe API，避免浏览器绕过后端安全检查。
   return loadJson<O7CloudOperatorConsoleProbeResponse>(cloudOperatorConsoleProbeUrl(baseUrl));
+}
+
+export async function getO7CloudArchiveTasksProbe(baseUrl: string): Promise<O7CloudArchiveTasksProbeResponse> {
+  // 前端不直连 relay；PC 后端负责只读拉取本机 /api/o7/cloud-archive/tasks 并扫描危险字段。
+  return loadJson<O7CloudArchiveTasksProbeResponse>(cloudArchiveTasksProbeUrl(baseUrl));
 }
 
 export async function getO7RealtimeElevatorPreview(fixtureJson: string): Promise<O7RealtimeElevatorPreviewResponse> {

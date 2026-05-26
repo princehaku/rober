@@ -238,6 +238,34 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual([view["id"] for view in body["kr_views"]], [f"O7-KR{index}" for index in range(1, 7)])
         self.assertIn("real_o7_realtime_cloud_stream", body["not_proven"])
 
+    def test_o7_cloud_archive_tasks_endpoint_is_public_readonly_and_fail_closed(self):
+        status, body = self.client.request("GET", "/api/o7/cloud-archive/tasks", token="")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(body["schema"], "trashbot.o7.cloud_archive_tasks.v1")
+        self.assertEqual(body["archive_status"], "blocked_not_proven")
+        self.assertFalse(body["real_cloud_archive_connected"])
+        self.assertFalse(body["real_realtime_api_connected"])
+        self.assertFalse(body["real_annotation_api_connected"])
+        self.assertFalse(body["real_voice_api_connected"])
+        self.assertFalse(body["real_command_api_connected"])
+        self.assertFalse(body["real_robot_ack_connected"])
+        self.assertFalse(body["playback_available"])
+        self.assertFalse(body["submit_enabled"])
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["primary_actions_enabled"])
+        self.assertFalse(body["robot_control_executed"])
+        self.assertEqual(body["task_list"]["total_tasks"], 0)
+        self.assertEqual(body["task_list"]["tasks"], [])
+        self.assertIsNone(body["selected_task"])
+        self.assertEqual(body["route_replay_inspector"]["status"], "blocked_not_proven")
+        self.assertFalse(body["route_replay_inspector"]["cursor_initial_state"]["safe_to_play"])
+        self.assertFalse(body["labeling_queue_inspector"]["submit_enabled"])
+        self.assertFalse(body["voice_asr_tts_inspector"]["tts_send_enabled"])
+        self.assertFalse(body["safe_command_inspector"]["command_dispatch_enabled"])
+        self.assertIn("real_cloud_archive_store_not_connected", body["blocked_reasons"])
+        self.assertIn("real_o7_cloud_archive_task_api", body["not_proven"])
+
     def command(self, command_id="cmd-0001", **extra):
         payload = {
             "protocol_version": PROTOCOL_VERSION,

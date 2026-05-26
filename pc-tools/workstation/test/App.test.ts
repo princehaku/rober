@@ -914,6 +914,43 @@ const fixtures: Record<string, unknown> = {
     reads_hardware: false,
     ...PROOF_FLAGS,
   },
+  "/api/o7/cloud-archive/tasks-probe": {
+    schema: "trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1",
+    probe_status: "loaded_fail_closed_contract",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o7/cloud-archive/tasks",
+    remote_schema: "trashbot.o7.cloud_archive_tasks.v1",
+    archive_status: "blocked_not_proven",
+    task_count: 0,
+    selected_task_id: null,
+    latest_task_id: null,
+    inspector_statuses: {
+      route_replay: "blocked_not_proven",
+      labeling_queue: "blocked_not_proven",
+      voice_asr_tts: "blocked_not_proven",
+      safe_command: "blocked_not_proven",
+    },
+    key_false_fields: [
+      "real_cloud_archive_connected=false",
+      "playback_available=false",
+      "submit_enabled=false",
+      "tts_send_enabled=false",
+      "command_dispatch_enabled=false",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "robot_control_executed=false",
+    ],
+    dangerous_true_fields: [],
+    blocked_reasons: ["real_cloud_archive_store_not_connected", "robot_control_disabled"],
+    not_proven: ["real_o7_cloud_archive_task_api", "real_o7_trajectory_playback"],
+    fail_closed_reason: "none_remote_contract_is_still_blocked_not_proven",
+    local_loopback_only: true,
+    connects_cloud_production: false,
+    sends_commands: false,
+    reads_hardware: false,
+    ...PROOF_FLAGS,
+  },
   "/api/o7/realtime-elevator-preview": {
     schema: "trashbot.o7.realtime_elevator_preview.v1",
     schema_version: 1,
@@ -1490,7 +1527,9 @@ function stubWorkstationFetch() {
               ? "/api/o7/voice-preview"
               : url.startsWith("/api/o7/safe-command-preview")
                 ? "/api/o7/safe-command-preview"
-                : url.startsWith("/api/o7/cloud-archive/tasks")
+                : url.startsWith("/api/o7/cloud-archive/tasks-probe")
+                  ? "/api/o7/cloud-archive/tasks-probe"
+                  : url.startsWith("/api/o7/cloud-archive/tasks")
                   ? "/api/o7/cloud-archive/tasks"
                   : url.startsWith("/api/o7/cloud-operator-console-probe")
                     ? "/api/o7/cloud-operator-console-probe"
@@ -1750,10 +1789,12 @@ describe("App", () => {
 
     expect(wrapper.text()).toContain("O7 Fixture Previews");
     expect(wrapper.text()).toContain("Cloud operator console probe");
+    expect(wrapper.text()).toContain("Cloud archive tasks probe");
     expect(wrapper.text()).toContain("Cloud Archive Tasks");
     expect(wrapper.text()).toContain("fixture_json_not_provided");
     expect(wrapper.text()).toContain("archive_json_not_provided");
     expect(wrapper.text()).toContain("cloud_operator_console_probe_not_loaded");
+    expect(wrapper.text()).toContain("cloud_archive_tasks_probe_not_loaded");
     expect(wrapper.text()).toContain("real realtime API");
     expect(wrapper.text()).toContain("robot ACK");
     expect(wrapper.text()).toContain("HIL/hardware safety");
@@ -1761,16 +1802,20 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/cloud-archive/tasks");
 
     const inputs = wrapper.findAll("input");
-    expect(inputs).toHaveLength(7);
+    expect(inputs).toHaveLength(8);
     await inputs[0]!.setValue("http://127.0.0.1:8088");
-    await inputs[1]!.setValue("fixtures/archive.json");
-    await inputs[2]!.setValue("fixtures/realtime.json");
-    await inputs[3]!.setValue("fixtures/route.json");
-    await inputs[4]!.setValue("fixtures/labeling.json");
-    await inputs[5]!.setValue("fixtures/voice.json");
-    await inputs[6]!.setValue("fixtures/safe-command.json");
+    await inputs[1]!.setValue("http://127.0.0.1:8088");
+    await inputs[2]!.setValue("fixtures/archive.json");
+    await inputs[3]!.setValue("fixtures/realtime.json");
+    await inputs[4]!.setValue("fixtures/route.json");
+    await inputs[5]!.setValue("fixtures/labeling.json");
+    await inputs[6]!.setValue("fixtures/voice.json");
+    await inputs[7]!.setValue("fixtures/safe-command.json");
 
     await wrapper.findAll("button").find((button) => button.text() === "Probe cloud operator console")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "Probe cloud archive tasks")?.trigger("click");
     await flushPromises();
 
     await wrapper.findAll("button").find((button) => button.text() === "Load archive tasks")?.trigger("click");
@@ -1789,6 +1834,7 @@ describe("App", () => {
 
     const previewCalls = mockedFetch.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/o7/"));
     expect(previewCalls).toContain("/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
+    expect(previewCalls).toContain("/api/o7/cloud-archive/tasks-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/cloud-archive/tasks?archiveJson=fixtures%2Farchive.json");
     expect(previewCalls).toContain("/api/o7/realtime-elevator-preview?fixtureJson=fixtures%2Frealtime.json");
     expect(previewCalls).toContain("/api/o7/route-replay-preview?fixtureJson=fixtures%2Froute.json");
@@ -1802,8 +1848,11 @@ describe("App", () => {
     expect(wrapper.text()).toContain("trashbot.o7.safe_command_preview.v1");
     expect(wrapper.text()).toContain("trashbot.o7.cloud_archive_tasks.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1");
     expect(wrapper.text()).toContain("loaded_fail_closed_contract");
     expect(wrapper.text()).toContain("none_remote_contract_is_still_observe_only");
+    expect(wrapper.text()).toContain("none_remote_contract_is_still_blocked_not_proven");
+    expect(wrapper.text()).toContain("Dangerous true fields");
     expect(wrapper.text()).toContain("local loopback only");
     expect(wrapper.text()).toContain("task_archive_002");
     expect(wrapper.text()).toContain("needs_review_fixture_only");

@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { getO7CloudArchiveTasks, getO7CloudOperatorConsoleProbe, loadO7FixturePreview } from "../client/workstationApi";
+import {
+  getO7CloudArchiveTasks,
+  getO7CloudArchiveTasksProbe,
+  getO7CloudOperatorConsoleProbe,
+  loadO7FixturePreview,
+} from "../client/workstationApi";
 import type { O7FixturePreviewInputs, O7FixturePreviewKind, O7FixturePreviewResponses } from "../client/workstationApi";
-import type { O7CloudArchiveTasksResponse, O7CloudOperatorConsoleProbeResponse } from "../shared/contracts";
+import type {
+  O7CloudArchiveTasksProbeResponse,
+  O7CloudArchiveTasksResponse,
+  O7CloudOperatorConsoleProbeResponse,
+} from "../shared/contracts";
 
 type O7FixturePreviewResult = O7FixturePreviewResponses[O7FixturePreviewKind];
 
@@ -38,6 +47,10 @@ const archiveJson = ref("");
 const archiveResult = ref<O7CloudArchiveTasksResponse | null>(null);
 const archiveError = ref("");
 const archiveLoading = ref(false);
+const cloudArchiveProbeBaseUrl = ref("http://127.0.0.1:8088");
+const cloudArchiveProbeResult = ref<O7CloudArchiveTasksProbeResponse | null>(null);
+const cloudArchiveProbeError = ref("");
+const cloudArchiveProbeLoading = ref(false);
 const cloudProbeBaseUrl = ref("http://127.0.0.1:8088");
 const cloudProbeResult = ref<O7CloudOperatorConsoleProbeResponse | null>(null);
 const cloudProbeError = ref("");
@@ -162,6 +175,14 @@ function cloudProbeNotProven(): string[] {
   return cloudProbeResult.value?.not_proven ?? ["cloud_operator_console_probe_not_proven"];
 }
 
+function cloudArchiveProbeBlockedReasons(): string[] {
+  return cloudArchiveProbeResult.value?.blocked_reasons ?? ["cloud_archive_tasks_probe_not_loaded"];
+}
+
+function cloudArchiveProbeNotProven(): string[] {
+  return cloudArchiveProbeResult.value?.not_proven ?? ["cloud_archive_tasks_probe_not_proven"];
+}
+
 function inspectorCursorFields(result: O7CloudArchiveTasksResponse | null): string[] {
   const cursor = result?.route_replay_inspector.cursor_initial_state;
   // cursor 来自后端固定 false 初始态，UI 只展示，不提供逐帧驱动入口。
@@ -196,6 +217,19 @@ async function loadCloudOperatorConsoleProbe(): Promise<void> {
     cloudProbeError.value = err instanceof Error ? err.message : "cloud_operator_console_probe_api_unavailable_not_proven";
   } finally {
     cloudProbeLoading.value = false;
+  }
+}
+
+async function loadCloudArchiveTasksProbe(): Promise<void> {
+  // 这里只触发 PC 后端回环 probe；浏览器不直连 relay，也不读取本地 archive fixture。
+  cloudArchiveProbeLoading.value = true;
+  cloudArchiveProbeError.value = "";
+  try {
+    cloudArchiveProbeResult.value = await getO7CloudArchiveTasksProbe(cloudArchiveProbeBaseUrl.value);
+  } catch (err) {
+    cloudArchiveProbeError.value = err instanceof Error ? err.message : "cloud_archive_tasks_probe_api_unavailable_not_proven";
+  } finally {
+    cloudArchiveProbeLoading.value = false;
   }
 }
 
@@ -405,6 +439,84 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <h3>Not proven</h3>
           <ul class="dense">
             <li v-for="item in cloudProbeNotProven()" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <div>
+          <h3>Cloud archive tasks probe</h3>
+          <p class="eyebrow">Read-only local loopback HTTP contract proof for /api/o7/cloud-archive/tasks.</p>
+        </div>
+        <span class="pill danger">{{ cloudArchiveProbeResult?.probe_status ?? "not_loaded" }}</span>
+      </div>
+
+      <label class="single-input">
+        <span>Cloud relay base URL</span>
+        <input
+          v-model="cloudArchiveProbeBaseUrl"
+          aria-label="Cloud archive tasks probe base URL"
+          placeholder="http://127.0.0.1:8088"
+        >
+      </label>
+      <button class="secondary" type="button" @click="loadCloudArchiveTasksProbe">
+        {{ cloudArchiveProbeLoading ? "Loading archive probe" : "Probe cloud archive tasks" }}
+      </button>
+
+      <div v-if="cloudArchiveProbeError" class="notice" role="alert">
+        Cloud archive tasks probe API unavailable: {{ cloudArchiveProbeError }}. primary_actions_enabled=false.
+      </div>
+
+      <dl class="kv compact-kv">
+        <dt>schema</dt>
+        <dd>{{ cloudArchiveProbeResult?.schema ?? "trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1" }}</dd>
+        <dt>source base URL</dt>
+        <dd>{{ cloudArchiveProbeResult?.source_base_url ?? "not_loaded" }}</dd>
+        <dt>remote schema</dt>
+        <dd>{{ cloudArchiveProbeResult?.remote_schema ?? "not_loaded" }}</dd>
+        <dt>archive status</dt>
+        <dd>{{ cloudArchiveProbeResult?.archive_status ?? "not_loaded" }}</dd>
+        <dt>task count</dt>
+        <dd>{{ cloudArchiveProbeResult?.task_count ?? 0 }}</dd>
+        <dt>selected/latest</dt>
+        <dd>{{ cloudArchiveProbeResult?.selected_task_id ?? "null" }} / {{ cloudArchiveProbeResult?.latest_task_id ?? "null" }}</dd>
+        <dt>fail closed reason</dt>
+        <dd>{{ cloudArchiveProbeResult?.fail_closed_reason ?? "probe_not_loaded" }}</dd>
+        <dt>local loopback only</dt>
+        <dd>{{ cloudArchiveProbeResult?.local_loopback_only ?? true }}</dd>
+      </dl>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Inspector statuses</h3>
+          <ul class="dense">
+            <!-- inspector 状态来自远端只读 contract，不包含样本帧、标注文本或命令 payload。 -->
+            <li>route_replay={{ cloudArchiveProbeResult?.inspector_statuses.route_replay ?? "blocked_not_proven" }}</li>
+            <li>labeling_queue={{ cloudArchiveProbeResult?.inspector_statuses.labeling_queue ?? "blocked_not_proven" }}</li>
+            <li>voice_asr_tts={{ cloudArchiveProbeResult?.inspector_statuses.voice_asr_tts ?? "blocked_not_proven" }}</li>
+            <li>safe_command={{ cloudArchiveProbeResult?.inspector_statuses.safe_command ?? "blocked_not_proven" }}</li>
+          </ul>
+          <h3>Dangerous true fields</h3>
+          <ul class="dense">
+            <li v-for="field in cloudArchiveProbeResult?.dangerous_true_fields ?? []" :key="field">{{ field }}</li>
+            <li v-if="!cloudArchiveProbeResult?.dangerous_true_fields.length">none</li>
+          </ul>
+          <h3>Key false fields</h3>
+          <ul class="dense">
+            <li v-for="field in cloudArchiveProbeResult?.key_false_fields ?? []" :key="field">{{ field }}</li>
+            <li v-if="!cloudArchiveProbeResult?.key_false_fields.length">not_loaded</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Blocked reasons</h3>
+          <ul class="dense">
+            <li v-for="reason in cloudArchiveProbeBlockedReasons()" :key="reason">{{ reason }}</li>
+          </ul>
+          <h3>Not proven</h3>
+          <ul class="dense">
+            <li v-for="item in cloudArchiveProbeNotProven()" :key="item">{{ item }}</li>
           </ul>
         </div>
       </div>

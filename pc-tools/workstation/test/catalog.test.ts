@@ -4,6 +4,7 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import {
+  buildO7CloudArchiveTasksProbe,
   buildO7CloudArchiveTasks,
   buildO7CloudOperatorConsoleProbe,
   buildEvidenceToolsResponse,
@@ -2748,6 +2749,43 @@ describe("workstation fail-closed API contracts", () => {
     }
 
     const blocked = await buildO7CloudOperatorConsoleProbe("https://example.com");
+    expect(blocked.probe_status).toBe("fail_closed");
+    expect(blocked.fail_closed_reason).toBe("baseUrl_protocol_not_allowed");
+    expect(blocked.safe_to_control).toBe(false);
+    expect(blocked.primary_actions_enabled).toBe(false);
+  });
+
+  it("O7 cloud archive tasks probe only accepts loopback and keeps dangerous fields closed", async () => {
+    // probe 只拉本机 HTTP contract，不接受公网 URL，也不把 archive contract 解读成可回放/可标注/可控制。
+    const server = await listen(createWorkstationApp());
+    try {
+      const probe = await buildO7CloudArchiveTasksProbe(server.baseUrl);
+
+      expect(probe.schema).toBe("trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1");
+      expect(probe.probe_status).toBe("loaded_fail_closed_contract");
+      expect(probe.source_base_url).toBe(server.baseUrl);
+      expect(probe.remote_schema).toBe("trashbot.o7.cloud_archive_tasks.v1");
+      expect(probe.archive_status).toBe("blocked_not_proven");
+      expect(probe.task_count).toBe(0);
+      expect(probe.selected_task_id).toBeNull();
+      expect(probe.latest_task_id).toBeNull();
+      expect(probe.inspector_statuses.route_replay).toBe("blocked_not_proven");
+      expect(probe.key_false_fields).toEqual(expect.arrayContaining([
+        "real_cloud_archive_connected=false",
+        "playback_available=false",
+        "submit_enabled=false",
+        "tts_send_enabled=false",
+        "command_dispatch_enabled=false",
+      ]));
+      expect(probe.dangerous_true_fields).toEqual([]);
+      expect(probe.sends_commands).toBe(false);
+      expect(probe.connects_cloud_production).toBe(false);
+      expect(probe.reads_hardware).toBe(false);
+    } finally {
+      await server.close();
+    }
+
+    const blocked = await buildO7CloudArchiveTasksProbe("https://example.com");
     expect(blocked.probe_status).toBe("fail_closed");
     expect(blocked.fail_closed_reason).toBe("baseUrl_protocol_not_allowed");
     expect(blocked.safe_to_control).toBe(false);

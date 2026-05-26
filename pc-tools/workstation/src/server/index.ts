@@ -6,6 +6,7 @@ import {
   buildHardwareMaterialsResponse,
   buildHealth,
   buildO7CloudArchiveTasks,
+  buildO7CloudArchiveTasksProbe,
   buildO7CloudOperatorConsoleProbe,
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
@@ -86,6 +87,11 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/cloud-operator-console-probe", async (req, res) => {
     // Cloud probe 只允许后端探测本机回环 HTTP contract，不能变成外网或生产云代理。
     res.json(await buildO7CloudOperatorConsoleProbe(queryString(req.query.baseUrl)));
+  });
+
+  workstationApp.get("/api/o7/cloud-archive/tasks-probe", async (req, res) => {
+    // Archive tasks probe 只拉取本机回环 cloud relay contract，不读取远程 URL、不发送任何控制动作。
+    res.json(await buildO7CloudArchiveTasksProbe(queryString(req.query.baseUrl)));
   });
 
   workstationApp.get("/api/o7/realtime-elevator-preview", async (req, res) => {

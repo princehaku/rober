@@ -6,6 +6,10 @@
 
 该接口不连接 O6 真实云归档，不连接 realtime、annotation、voice 或 command API，不读取 ROS2 graph，不打开串口，不发送 TTS、手控、寻路或任何机器人命令。
 
+`remote_cloud_relay.py` 同时暴露 `GET /api/o7/cloud-archive/tasks` 的 cloud relay HTTP 只读 contract。该 cloud relay 版本不要求 bearer，不读取真实 archive store，当前固定返回 `archive_status=blocked_not_proven`、空任务列表、`real_cloud_archive_connected=false`、`playback_available=false`、`submit_enabled=false` 和所有控制/语音/标注危险字段 false。它只是让 PC 从本地 fixture 迈向 cloud relay HTTP contract 的 schema proof，不等于真实云 archive。
+
+PC 端新增 `GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>`。该 probe 只允许 `http://127.0.0.1`、`http://localhost`、`http://[::1]`，由 Node 后端拉取远端 `/api/o7/cloud-archive/tasks`，检查 schema、task count、selected/latest、inspector 状态、危险 true 字段、blocked/not_proven。它不接受远程 URL、不带 bearer、不连接公网云、不读取硬件、不发送命令。
+
 ## Response Contract
 
 固定字段：
@@ -23,6 +27,7 @@
 - `real_voice_api_connected=false`
 - `real_command_api_connected=false`
 - `robot_control_executed=false`
+- cloud relay contract 还必须固定 `playback_available=false`、`submit_enabled=false`、`real_robot_ack_connected=false`、`real_asr_tts_runtime_connected=false`
 
 核心摘要：
 
@@ -131,6 +136,8 @@
 
 `O7 Previews` tab 的 `Cloud Archive Tasks` 区块默认不读取本地路径。只有点击 `Load archive tasks` 才调用该 GET query。
 
+同一 tab 的 `Cloud archive tasks probe` 区块默认只填本机回环示例 URL，不自动发起请求。点击 `Probe cloud archive tasks` 后才调用 PC 后端 probe API；浏览器不直接访问 relay。UI 展示 probe status、source base URL、remote schema、archive status、task count、selected/latest、四个 inspector 状态、dangerous true fields、关键 false fields、blocked reasons 和 not proven。
+
 UI 只展示任务列表、最近任务、selected task、安全摘要、fixed false fields、blocked reasons 和 not proven。不得提供播放、提交、导出、发送、控制、停止、取消或恢复类动作按钮。
 
 UI 同时展示 `route_replay_inspector` 的 selected task、map frame、frame count、sample frames 表格、event timeline、keyframe refs 和 cursor 初始 false 字段。该区域只用于 operator 检查历史路线 fixture 是否具备逐帧位置、速度和状态转移槽位，不提供任何逐帧驱动或机器人动作入口。
@@ -143,4 +150,4 @@ UI 同时展示 `safe_command_inspector` 的 command session、sample commands�
 
 ## O7 Impact
 
-本接口推动 O7 的方式是建立统一数据源雏形：KR3 可以消费 trajectory/events，KR4 可以消费 labels，KR5 可以消费 voice，KR6 可以消费 selected task 级 command envelope 和 ACK 缺口检查视图。但它仍是 software proof，不提升真实 O7 完成度，不证明真实云端、机器人、语音、标注或控制能力。
+本接口推动 O7 的方式是建立统一数据源雏形：KR3 可以消费 trajectory/events，KR4 可以消费 labels，KR5 可以消费 voice，KR6 可以消费 selected task 级 command envelope 和 ACK 缺口检查视图。cloud relay HTTP 只读 contract 只证明 endpoint shape 可由 relay 暴露；它仍是 software proof，不提升真实 O7 完成度，不证明真实云端、机器人、语音、标注、路线回放或控制能力。

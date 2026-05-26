@@ -1621,6 +1621,33 @@ export interface O7CloudOperatorConsoleProbeResponse extends ProofFlags {
   reads_hardware: false;
 }
 
+export interface O7CloudArchiveTasksProbeResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1";
+  probe_status: "loaded_fail_closed_contract" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o7/cloud-archive/tasks";
+  remote_schema: string;
+  archive_status: string;
+  task_count: number;
+  selected_task_id: string | null;
+  latest_task_id: string | null;
+  inspector_statuses: {
+    route_replay: string;
+    labeling_queue: string;
+    voice_asr_tts: string;
+    safe_command: string;
+  };
+  key_false_fields: string[];
+  dangerous_true_fields: string[];
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+  connects_cloud_production: false;
+  sends_commands: false;
+  reads_hardware: false;
+}
+
 // Health 只证明 Node API 存活，不证明机器人在线。
 export interface HealthResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.health.v1";
@@ -1652,6 +1679,7 @@ export const API_ROUTES = [
   "/api/o7/operator-console",
   "/api/o7/operator-console/acceptance",
   "/api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>",
+  "/api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>",
   "/api/o7/realtime-elevator-preview?fixtureJson=<local-json>",
   "/api/o7/route-replay-preview?fixtureJson=<local-json>",
   "/api/o7/labeling-preview?fixtureJson=<local-json>",
@@ -1677,6 +1705,7 @@ export const NOT_PROVEN_ITEMS = [
   "real_o7_route_replay_archive",
   "real_o7_route_replay_fixture_preview_archive",
   "real_o7_cloud_archive_task_api",
+  "real_o7_cloud_archive_tasks_http_probe_production_cloud",
   "real_o7_trajectory_playback",
   "real_o7_labeling_review_queue",
   "real_o7_labeling_fixture_preview_annotation_api",
