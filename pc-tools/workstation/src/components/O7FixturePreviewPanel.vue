@@ -915,6 +915,14 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             <li>voice_asr_tts={{ cloudArchiveProbeResult?.inspector_statuses.voice_asr_tts ?? "blocked_not_proven" }}</li>
             <li>safe_command={{ cloudArchiveProbeResult?.inspector_statuses.safe_command ?? "blocked_not_proven" }}</li>
           </ul>
+          <h3>Inspector summaries</h3>
+          <ul class="dense">
+            <!-- summary 由 PC 后端白名单字段生成，保持播放、提交、TTS 和命令派发全关闭。 -->
+            <li>route_replay_summary={{ cloudArchiveProbeResult?.route_replay_summary ?? "status=blocked_not_loaded; playback_available=false" }}</li>
+            <li>labeling_queue_summary={{ cloudArchiveProbeResult?.labeling_queue_summary ?? "status=blocked_not_loaded; submit_enabled=false" }}</li>
+            <li>voice_asr_tts_summary={{ cloudArchiveProbeResult?.voice_asr_tts_summary ?? "status=blocked_not_loaded; tts_send_enabled=false" }}</li>
+            <li>safe_command_summary={{ cloudArchiveProbeResult?.safe_command_summary ?? "status=blocked_not_loaded; command_dispatch_enabled=false; robot_control_executed=false" }}</li>
+          </ul>
           <h3>Dangerous true fields</h3>
           <ul class="dense">
             <li v-for="field in cloudArchiveProbeResult?.dangerous_true_fields ?? []" :key="field">{{ field }}</li>

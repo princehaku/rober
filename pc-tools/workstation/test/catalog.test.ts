@@ -613,6 +613,31 @@ function listenJson(payload: unknown): Promise<{ baseUrl: string; close: () => P
   });
 }
 
+function listenCloudArchive(payload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  // cloud archive probe 测试用本机 HTTP 服务，只返回给定 contract，不连接 relay、云或机器人。
+  const server = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    if (req.url === "/api/o7/cloud-archive/tasks") {
+      res.end(JSON.stringify(payload));
+      return;
+    }
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not_found" }));
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
 function sampleRealtimeElevatorFixture(evidenceRef: string) {
   // realtime/elevator fixture 只表达 PC 预览槽位，不模拟真实实时 API、ROS2 /tf 或电梯状态链。
   return {
@@ -2873,6 +2898,90 @@ describe("workstation fail-closed API contracts", () => {
     expect(blocked.fail_closed_reason).toBe("baseUrl_protocol_not_allowed");
     expect(blocked.safe_to_control).toBe(false);
     expect(blocked.primary_actions_enabled).toBe(false);
+  });
+
+  it("O7 cloud archive tasks probe extracts fixture-backed inspector summaries without opening actions", async () => {
+    // probe 摘要只读白名单字段，既能看到 KR3-KR6 数据形状，也保持全部操作入口关闭。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-archive-probe-summary-"));
+    const archivePath = path.join(root, "archive-probe.json");
+    await writeFile(archivePath, JSON.stringify(sampleCloudArchiveFixture(path.join(root, "task-archive-002.json"))), "utf8");
+    const archive = await buildO7CloudArchiveTasks({ archiveJson: archivePath });
+    const server = await listenCloudArchive(archive);
+
+    try {
+      const probe = await buildO7CloudArchiveTasksProbe(server.baseUrl);
+
+      expect(probe.probe_status).toBe("loaded_fail_closed_contract");
+      expect(probe.task_count).toBe(2);
+      expect(probe.selected_task_id).toBe("task-archive-002");
+      expect(probe.inspector_statuses).toMatchObject({
+        route_replay: "fixture_inspector_ready",
+        labeling_queue: "fixture_labeling_ready",
+        voice_asr_tts: "fixture_voice_ready",
+        safe_command: "fixture_command_ready",
+      });
+      expect(probe.route_replay_summary).toContain("frame_count=6");
+      expect(probe.route_replay_summary).toContain("sample_refs=[file:frame-101.jpg,frame-102.jpg,frame-103.jpg]");
+      expect(probe.route_replay_summary).toContain("first_frame=departed:file:frame-101.jpg");
+      expect(probe.route_replay_summary).toContain("playback_available=false");
+      expect(probe.labeling_queue_summary).toContain("review_item_count=6");
+      expect(probe.labeling_queue_summary).toContain("label_schema=file:label-schema.json@fixture-v2");
+      expect(probe.labeling_queue_summary).toContain("allowed_label_types=[elevator_door_state,floor_label,obstacle_type,trash_type,blocked_reason]");
+      expect(probe.labeling_queue_summary).toContain("submit_enabled=false");
+      expect(probe.voice_asr_tts_summary).toContain("asr_event_count=6");
+      expect(probe.voice_asr_tts_summary).toContain("tts_draft_count=2");
+      expect(probe.voice_asr_tts_summary).toContain("tts_text_length=34");
+      expect(probe.voice_asr_tts_summary).toContain("tts_send_enabled=false");
+      expect(probe.safe_command_summary).toContain("command_count=2");
+      expect(probe.safe_command_summary).toContain("manual=fixture_summary_only");
+      expect(probe.safe_command_summary).toContain("navigate=fixture_summary_only");
+      expect(probe.safe_command_summary).toContain("ack=blocked_not_proven");
+      expect(probe.safe_command_summary).toContain("command_dispatch_enabled=false");
+      expect(probe.safe_command_summary).toContain("robot_control_executed=false");
+      expect(JSON.stringify(probe)).not.toContain(root);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("O7 cloud archive tasks probe still fails closed when fixture-backed response exposes a dangerous true", async () => {
+    // 任一远端危险开关为 true 时，即便 summary 可提取，也必须整体 fail_closed。
+    const server = await listenCloudArchive({
+      schema: "trashbot.o7.cloud_archive_tasks.v1",
+      archive_status: "fixture_summary_ready",
+      task_list: { total_tasks: 1 },
+      selected_task: { task_id: "unsafe-task" },
+      latest_task: { task_id: "unsafe-task" },
+      safe_summaries: {
+        trajectory: { frame_count: 1, sample_refs: ["frame-unsafe.jpg"], status: "fixture_summary_only" },
+      },
+      route_replay_inspector: {
+        status: "fixture_inspector_ready",
+        frame_count: 1,
+        sample_frames: [{ state: "unsafe", evidence_ref: "frame-unsafe.jpg" }],
+        playback_available: true,
+      },
+      labeling_queue_inspector: { status: "blocked_not_proven", submit_enabled: false },
+      voice_asr_tts_inspector: { status: "blocked_not_proven", tts_send_enabled: false },
+      safe_command_inspector: { status: "blocked_not_proven", command_dispatch_enabled: false, robot_control_executed: false },
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+    });
+
+    try {
+      const probe = await buildO7CloudArchiveTasksProbe(server.baseUrl);
+
+      expect(probe.probe_status).toBe("fail_closed");
+      expect(probe.fail_closed_reason).toBe("remote_dangerous_true_field");
+      expect(probe.dangerous_true_fields).toContain("route_replay_inspector.playback_available");
+      expect(probe.blocked_reasons).toContain("dangerous_true:route_replay_inspector.playback_available");
+      expect(probe.safe_to_control).toBe(false);
+      expect(probe.primary_actions_enabled).toBe(false);
+      expect(probe.route_replay_summary).toContain("playback_available=false");
+    } finally {
+      await server.close();
+    }
   });
 
   it("O7 realtime elevator probe only accepts loopback and keeps realtime elevator fields closed", async () => {

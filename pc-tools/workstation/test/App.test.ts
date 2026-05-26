@@ -1057,6 +1057,10 @@ const fixtures: Record<string, unknown> = {
       voice_asr_tts: "blocked_not_proven",
       safe_command: "blocked_not_proven",
     },
+    route_replay_summary: "status=fixture_inspector_ready; frame_count=2; sample_refs=[frame_ref_000,frame_ref_001]; first_frame=departed:frame_ref_000; playback_available=false",
+    labeling_queue_summary: "status=fixture_labeling_ready; review_item_count=2; label_schema=label_schema_ref@fixture-v1; allowed_label_types=[floor_label,obstacle_type]; submit_enabled=false",
+    voice_asr_tts_summary: "status=fixture_voice_ready; asr_event_count=2; tts_draft_count=1; tts_text_length=14; tts_send_enabled=false",
+    safe_command_summary: "status=fixture_command_ready; command_count=2; manual=fixture_summary_only; navigate=fixture_summary_only; ack=blocked_not_proven; command_dispatch_enabled=false; robot_control_executed=false",
     key_false_fields: [
       "real_cloud_archive_connected=false",
       "playback_available=false",
@@ -2088,6 +2092,16 @@ describe("App", () => {
     expect(wrapper.text()).toContain("none_remote_contract_is_still_observe_only");
     expect(wrapper.text()).toContain("none_remote_contract_is_still_blocked_not_proven");
     expect(wrapper.text()).toContain("Dangerous true fields");
+    expect(wrapper.text()).toContain("Inspector summaries");
+    expect(wrapper.text()).toContain("route_replay_summary=status=fixture_inspector_ready; frame_count=2");
+    expect(wrapper.text()).toContain("playback_available=false");
+    expect(wrapper.text()).toContain("labeling_queue_summary=status=fixture_labeling_ready; review_item_count=2");
+    expect(wrapper.text()).toContain("submit_enabled=false");
+    expect(wrapper.text()).toContain("voice_asr_tts_summary=status=fixture_voice_ready; asr_event_count=2");
+    expect(wrapper.text()).toContain("tts_send_enabled=false");
+    expect(wrapper.text()).toContain("safe_command_summary=status=fixture_command_ready; command_count=2");
+    expect(wrapper.text()).toContain("command_dispatch_enabled=false");
+    expect(wrapper.text()).toContain("robot_control_executed=false");
     expect(wrapper.text()).toContain("local loopback only");
     expect(wrapper.text()).toContain("robot pose");
     expect(wrapper.text()).toContain("x_m=1.25");

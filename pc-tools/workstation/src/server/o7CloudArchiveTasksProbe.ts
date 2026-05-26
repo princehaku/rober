@@ -53,6 +53,10 @@ function failClosed(
       voice_asr_tts: "blocked_not_proven",
       safe_command: "blocked_not_proven",
     },
+    route_replay_summary: extras.route_replay_summary ?? "status=blocked_not_loaded; frame_count=0; sample_refs=[]; playback_available=false",
+    labeling_queue_summary: extras.labeling_queue_summary ?? "status=blocked_not_loaded; review_item_count=0; label_schema=not_loaded; submit_enabled=false",
+    voice_asr_tts_summary: extras.voice_asr_tts_summary ?? "status=blocked_not_loaded; asr_event_count=0; tts_draft_count=0; tts_send_enabled=false",
+    safe_command_summary: extras.safe_command_summary ?? "status=blocked_not_loaded; command_count=0; manual=blocked_not_loaded; navigate=blocked_not_loaded; ack=blocked_not_loaded; command_dispatch_enabled=false; robot_control_executed=false",
     key_false_fields: extras.key_false_fields ?? defaultFalseFields(),
     dangerous_true_fields: extras.dangerous_true_fields ?? [],
     blocked_reasons: extras.blocked_reasons ?? [reason],
@@ -99,6 +103,23 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 function stringArray(value: unknown): string[] {
   // 只展示远端已经脱敏的 blocked/not_proven 文本，坏类型收敛为空数组。
   return Array.isArray(value) ? value.map(String) : [];
+}
+
+function limitedStringArray(value: unknown, limit = 3): string[] {
+  // probe 摘要只需要看数据形状，数组全部限量，避免把远端 payload 原样透传给 UI。
+  return stringArray(value).slice(0, limit).map((item) => item.replace(/\s+/g, " ").slice(0, 96));
+}
+
+function numberField(record: Record<string, unknown> | null, key: string): number {
+  // 数量字段只接受 number；字符串数字不自动提升，避免坏 contract 被误读为有效统计。
+  const value = record?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function stringField(record: Record<string, unknown> | null, key: string, fallback: string): string {
+  // 摘要字段统一收敛成短文本，防止远端塞入对象或长文本污染 operator 视图。
+  const value = record?.[key];
+  return typeof value === "string" ? value.replace(/\s+/g, " ").slice(0, 96) : fallback;
 }
 
 function scanDangerousTrueFields(value: unknown, path = ""): string[] {
@@ -176,6 +197,61 @@ function inspectorStatuses(remote: Record<string, unknown>): O7CloudArchiveTasks
   };
 }
 
+function inspectorSummaries(remote: Record<string, unknown>): Pick<
+  O7CloudArchiveTasksProbeResponse,
+  "route_replay_summary" | "labeling_queue_summary" | "voice_asr_tts_summary" | "safe_command_summary"
+> {
+  const safeSummaries = asRecord(remote.safe_summaries);
+  const trajectory = asRecord(safeSummaries?.trajectory);
+  const labels = asRecord(safeSummaries?.labels);
+  const voiceSummary = asRecord(safeSummaries?.voice);
+  const commandSummary = asRecord(safeSummaries?.commands);
+  const route = asRecord(remote.route_replay_inspector);
+  const labeling = asRecord(remote.labeling_queue_inspector);
+  const voice = asRecord(remote.voice_asr_tts_inspector);
+  const safeCommand = asRecord(remote.safe_command_inspector);
+  const labelSchema = asRecord(labeling?.label_schema);
+  const ttsDraft = asRecord(voice?.tts_draft);
+  const manual = asRecord(safeCommand?.manual_turn_envelope);
+  const navigate = asRecord(safeCommand?.navigate_goal_envelope);
+  const ack = asRecord(safeCommand?.robot_ack_blocked_summary);
+  const firstFrame = asRecord(Array.isArray(route?.sample_frames) ? route.sample_frames[0] : null);
+
+  // 四个 summary 只由远端 safe_summaries 和 inspector 白名单字段拼接，不能透传完整 JSON。
+  return {
+    route_replay_summary: [
+      `status=${stringField(route, "status", "blocked_not_proven")}`,
+      `frame_count=${numberField(route, "frame_count") || numberField(trajectory, "frame_count")}`,
+      `sample_refs=[${limitedStringArray(trajectory?.sample_refs).join(",")}]`,
+      `first_frame=${stringField(firstFrame, "state", "not_loaded")}:${stringField(firstFrame, "evidence_ref", "not_loaded")}`,
+      "playback_available=false",
+    ].join("; "),
+    labeling_queue_summary: [
+      `status=${stringField(labeling, "status", "blocked_not_proven")}`,
+      `review_item_count=${numberField(labeling, "review_item_count") || numberField(labels, "label_count")}`,
+      `label_schema=${stringField(labelSchema, "schema_ref", "not_loaded")}@${stringField(labelSchema, "version", "not_loaded")}`,
+      `allowed_label_types=[${limitedStringArray(labeling?.allowed_label_types, 5).join(",")}]`,
+      "submit_enabled=false",
+    ].join("; "),
+    voice_asr_tts_summary: [
+      `status=${stringField(voice, "status", "blocked_not_proven")}`,
+      `asr_event_count=${numberField(voice, "asr_event_count") || numberField(voiceSummary, "asr_event_count")}`,
+      `tts_draft_count=${numberField(voiceSummary, "tts_draft_count")}`,
+      `tts_text_length=${numberField(ttsDraft, "text_length")}`,
+      "tts_send_enabled=false",
+    ].join("; "),
+    safe_command_summary: [
+      `status=${stringField(safeCommand, "status", "blocked_not_proven")}`,
+      `command_count=${numberField(safeCommand, "command_count") || numberField(commandSummary, "command_count")}`,
+      `manual=${stringField(manual, "status", "blocked_not_proven")}`,
+      `navigate=${stringField(navigate, "status", "blocked_not_proven")}`,
+      `ack=${stringField(ack, "ack_status", "blocked_not_proven")}`,
+      "command_dispatch_enabled=false",
+      "robot_control_executed=false",
+    ].join("; "),
+  };
+}
+
 export async function buildO7CloudArchiveTasksProbe(baseUrl: string): Promise<O7CloudArchiveTasksProbeResponse> {
   const normalized = normalizeLoopbackBaseUrl(baseUrl);
   if (!normalized.ok) {
@@ -198,6 +274,7 @@ export async function buildO7CloudArchiveTasksProbe(baseUrl: string): Promise<O7
     const falseFields = keyFalseFields(remote);
     const dangerous = scanDangerousTrueFields(remote);
     const taskList = asRecord(remote.task_list);
+    const summaries = inspectorSummaries(remote);
     if (remoteSchema !== EXPECTED_SCHEMA) {
       return failClosed("remote_schema_mismatch", normalized.normalized, { remote_schema: remoteSchema, key_false_fields: falseFields });
     }
@@ -209,6 +286,7 @@ export async function buildO7CloudArchiveTasksProbe(baseUrl: string): Promise<O7
         selected_task_id: taskId(remote.selected_task),
         latest_task_id: taskId(remote.latest_task),
         inspector_statuses: inspectorStatuses(remote),
+        ...summaries,
         key_false_fields: falseFields,
         dangerous_true_fields: dangerous,
         blocked_reasons: dangerous.map((field) => `dangerous_true:${field}`),
@@ -225,6 +303,7 @@ export async function buildO7CloudArchiveTasksProbe(baseUrl: string): Promise<O7
       selected_task_id: taskId(remote.selected_task),
       latest_task_id: taskId(remote.latest_task),
       inspector_statuses: inspectorStatuses(remote),
+      ...summaries,
       key_false_fields: falseFields,
       dangerous_true_fields: [],
       blocked_reasons: stringArray(remote.blocked_reasons),

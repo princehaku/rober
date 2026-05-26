@@ -1637,6 +1637,10 @@ export interface O7CloudArchiveTasksProbeResponse extends ProofFlags {
     voice_asr_tts: string;
     safe_command: string;
   };
+  route_replay_summary: string;
+  labeling_queue_summary: string;
+  voice_asr_tts_summary: string;
+  safe_command_summary: string;
   key_false_fields: string[];
   dangerous_true_fields: string[];
   blocked_reasons: string[];
