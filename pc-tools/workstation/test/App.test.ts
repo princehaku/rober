@@ -2011,6 +2011,8 @@ describe("App", () => {
     expect(wrapper.findAll("button").find((button) => button.text() === "Next item")?.attributes("disabled")).toBeDefined();
     expect(wrapper.text()).toContain("Local voice ASR/TTS monitor panel");
     expect(wrapper.findAll("button").find((button) => button.text() === "Next ASR event")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.text()).toContain("Local TTS draft editor");
+    expect(wrapper.find("textarea[aria-label=\"Local TTS draft text\"]").attributes("disabled")).toBeDefined();
     expect(wrapper.text()).toContain("Local safe command review panel");
     expect(wrapper.findAll("button").find((button) => button.text() === "Next command")?.attributes("disabled")).toBeDefined();
     expect(wrapper.text()).toContain("real realtime API");
@@ -2022,16 +2024,16 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/cloud-archive/tasks");
 
     const inputs = wrapper.findAll("input");
-    expect(inputs).toHaveLength(11);
+    expect(inputs).toHaveLength(13);
     await inputs[0]!.setValue("http://127.0.0.1:8088");
     await inputs[1]!.setValue("http://127.0.0.1:8088");
     await inputs[2]!.setValue("http://127.0.0.1:8088");
     await inputs[3]!.setValue("fixtures/archive.json");
-    await inputs[6]!.setValue("fixtures/realtime.json");
-    await inputs[7]!.setValue("fixtures/route.json");
-    await inputs[8]!.setValue("fixtures/labeling.json");
-    await inputs[9]!.setValue("fixtures/voice.json");
-    await inputs[10]!.setValue("fixtures/safe-command.json");
+    await inputs[8]!.setValue("fixtures/realtime.json");
+    await inputs[9]!.setValue("fixtures/route.json");
+    await inputs[10]!.setValue("fixtures/labeling.json");
+    await inputs[11]!.setValue("fixtures/voice.json");
+    await inputs[12]!.setValue("fixtures/safe-command.json");
 
     await wrapper.findAll("button").find((button) => button.text() === "Load previews acceptance guard")?.trigger("click");
     await flushPromises();
@@ -2221,10 +2223,62 @@ describe("App", () => {
     expect(wrapper.text()).toContain("我会等待人工确认后再播报。");
     expect(wrapper.text()).toContain("tts_draft.confirmation_required");
     expect(wrapper.text()).toContain("confirmation_required");
+    expect(wrapper.text()).toContain("Local TTS draft editor");
+    expect(wrapper.text()).toContain("browser_memory_only");
+    expect(wrapper.text()).toContain("local_tts_draft_ready");
+    expect(wrapper.text()).toContain("local_tts_draft_valid");
+    expect(wrapper.text()).toContain("latest_final_chars=");
+    expect(wrapper.text()).toContain("draft text length");
+    expect(wrapper.text()).toContain("playback_availablefalse");
+    expect(wrapper.text()).toContain("cloud_write_executedfalse");
+    expect(wrapper.find("textarea[aria-label=\"Local TTS draft text\"]").attributes("disabled")).toBeUndefined();
     expect(wrapper.text()).toContain("speaker_ack_missing.json");
     expect(wrapper.text()).toContain("audio_input_not_checked");
     expect(wrapper.text()).toContain("speaker_dispatch.sends_to_robot=false");
     expect(wrapper.text()).toContain("real_asr_tts_runtime_connected=false");
+
+    const callsBeforeLocalTtsDraftEdit = mockedFetch.mock.calls.length;
+    await wrapper.find("textarea[aria-label=\"Local TTS draft text\"]").setValue("请乘客确认后我再播报。");
+    await wrapper.find("input[aria-label=\"Local TTS voice profile\"]").setValue("operator-soft");
+    await wrapper.find("input[aria-label=\"Local TTS language\"]").setValue("zh-CN");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("operator-soft");
+    expect(wrapper.text()).toContain("local_tts_draft_valid");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalTtsDraftEdit);
+
+    await inputs[3]!.setValue("fixtures/archive-other.json");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("operator-default");
+    expect(wrapper.text()).not.toContain("operator-soft");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalTtsDraftEdit);
+
+    await wrapper.find("textarea[aria-label=\"Local TTS draft text\"]").setValue("");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("blocked_tts_text_empty");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalTtsDraftEdit);
+
+    await wrapper.find("textarea[aria-label=\"Local TTS draft text\"]").setValue("请".repeat(121));
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("blocked_tts_text_too_long");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalTtsDraftEdit);
+
+    await wrapper.find("textarea[aria-label=\"Local TTS draft text\"]").setValue("请确认我再播报。");
+    await wrapper.find("input[aria-label=\"Local TTS voice profile\"]").setValue("");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("blocked_voice_profile_empty");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalTtsDraftEdit);
+
+    await wrapper.find("input[aria-label=\"Local TTS voice profile\"]").setValue("operator-soft");
+    await wrapper.find("input[aria-label=\"Local TTS language\"]").setValue("");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("blocked_language_empty");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalTtsDraftEdit);
+
+    await wrapper.findAll("button").find((button) => button.text() === "Reset TTS draft")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("operator-default");
+    expect(wrapper.text()).toContain("local_tts_draft_valid");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalTtsDraftEdit);
 
     const callsBeforeVoiceCursor = mockedFetch.mock.calls.length;
     await wrapper.findAll("button").find((button) => button.text() === "Next ASR event")?.trigger("click");

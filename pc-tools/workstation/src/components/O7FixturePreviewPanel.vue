@@ -46,6 +46,12 @@ interface LocalAnnotationDraft {
   note: string;
 }
 
+interface LocalTtsDraft {
+  text: string;
+  voiceProfile: string;
+  language: string;
+}
+
 const previewConfigs: PreviewConfig[] = [
   // 五个入口均为 PC-only fixture preview，不映射成机器人动作。
   { id: "realtimeElevator", title: "Realtime/Elevator", expectedSchema: "trashbot.o7.realtime_elevator_preview.v1" },
@@ -90,6 +96,7 @@ const previewsAcceptanceLoading = ref(false);
 const routeReplayCursor = ref(0);
 const labelingReviewCursor = ref(0);
 const localAnnotationDrafts = ref<Record<string, LocalAnnotationDraft>>({});
+const localTtsDraft = ref<LocalTtsDraft | null>(null);
 const voiceAsrEventCursor = ref(0);
 const safeCommandCursor = ref(0);
 
@@ -420,6 +427,73 @@ const voiceMonitorBlockedReason = computed(() => {
 
 const voiceAsrNavigationEnabled = computed(() => voiceMonitorBlockedReason.value === "" && voiceAsrEvents.value.length > 0);
 const voiceMonitorPanelStatus = computed(() => (voiceMonitorBlockedReason.value ? "blocked_not_proven" : "local_fixture_voice_monitor_ready"));
+const localTtsDraftInputsEnabled = computed(() => voiceMonitorBlockedReason.value === "");
+
+function defaultLocalTtsDraft(): LocalTtsDraft {
+  const inspector = archiveResult.value?.voice_asr_tts_inspector;
+  // 默认值只来自当前 archive fixture 摘要；缺少 ready 上下文时保持空值并由校验 fail-closed。
+  if (!localTtsDraftInputsEnabled.value || !inspector) {
+    return { text: "", voiceProfile: "", language: "" };
+  }
+  return {
+    text: inspector.tts_draft.text,
+    voiceProfile: inspector.tts_draft.voice_profile,
+    language: inspector.tts_draft.language,
+  };
+}
+
+const currentLocalTtsDraft = computed<LocalTtsDraft>(() => localTtsDraft.value ?? defaultLocalTtsDraft());
+
+const localTtsSourceTranscriptSummary = computed(() => {
+  const inspector = archiveResult.value?.voice_asr_tts_inspector;
+  // 摘要优先 final，再退到 partial/current sample；它只是本地上下文提示，不生成可发送 payload。
+  if (!localTtsDraftInputsEnabled.value || !inspector) {
+    return "blocked_not_proven";
+  }
+  const finalText = inspector.latest_final.text.trim();
+  if (finalText) {
+    return `latest_final_chars=${finalText.length}; text=${finalText.slice(0, 80)}`;
+  }
+  const partialText = inspector.latest_partial.text.trim();
+  if (partialText) {
+    return `latest_partial_chars=${partialText.length}; text=${partialText.slice(0, 80)}`;
+  }
+  const currentTranscript = currentVoiceAsrEvent.value?.transcript.trim() ?? "";
+  if (currentTranscript) {
+    return `current_asr_event_chars=${currentTranscript.length}; text=${currentTranscript.slice(0, 80)}`;
+  }
+  return "blocked_not_proven";
+});
+
+const localTtsDraftTextLength = computed(() => currentLocalTtsDraft.value.text.trim().length);
+
+const localTtsDraftValidationStatus = computed(() => {
+  if (!localTtsDraftInputsEnabled.value) {
+    return "blocked_not_proven";
+  }
+  if (!currentLocalTtsDraft.value.text.trim()) {
+    return "blocked_tts_text_empty";
+  }
+  if (localTtsDraftTextLength.value > 120) {
+    return "blocked_tts_text_too_long";
+  }
+  if (!currentLocalTtsDraft.value.voiceProfile.trim()) {
+    return "blocked_voice_profile_empty";
+  }
+  if (!currentLocalTtsDraft.value.language.trim()) {
+    return "blocked_language_empty";
+  }
+  return "local_tts_draft_valid";
+});
+
+const localTtsDraftStatus = computed(() => {
+  if (!localTtsDraftInputsEnabled.value) {
+    return "blocked_not_proven";
+  }
+  return localTtsDraftValidationStatus.value === "local_tts_draft_valid"
+    ? "local_tts_draft_ready"
+    : "local_tts_draft_blocked";
+});
 
 const safeCommandReviewBlockedReason = computed(() => {
   const inspector = archiveResult.value?.safe_command_inspector;
@@ -664,8 +738,36 @@ function resetVoiceAsrEventCursor(): void {
   clampVoiceAsrEventCursor(0);
 }
 
+function resetLocalTtsDraft(): void {
+  // reset 只丢弃浏览器内存覆盖值，重新显示当前 fixture 的只读默认草稿。
+  localTtsDraft.value = null;
+}
+
 function resetSafeCommandCursor(): void {
   clampSafeCommandCursor(0);
+}
+
+function writeLocalTtsDraft(patch: Partial<LocalTtsDraft>): void {
+  if (!localTtsDraftInputsEnabled.value) {
+    return;
+  }
+  // 编辑仅更新当前浏览器内存，不调用 API、不播放、不派发喇叭。
+  localTtsDraft.value = {
+    ...currentLocalTtsDraft.value,
+    ...patch,
+  };
+}
+
+function setLocalTtsDraftText(event: Event): void {
+  writeLocalTtsDraft({ text: (event.target as HTMLTextAreaElement).value });
+}
+
+function setLocalTtsVoiceProfile(event: Event): void {
+  writeLocalTtsDraft({ voiceProfile: (event.target as HTMLInputElement).value });
+}
+
+function setLocalTtsLanguage(event: Event): void {
+  writeLocalTtsDraft({ language: (event.target as HTMLInputElement).value });
 }
 
 function previousRouteReplayFrame(): void {
@@ -733,6 +835,7 @@ async function loadArchiveTasks(): Promise<void> {
     resetLabelingReviewCursor();
     localAnnotationDrafts.value = {};
     resetVoiceAsrEventCursor();
+    resetLocalTtsDraft();
     resetSafeCommandCursor();
   } catch (err) {
     archiveError.value = err instanceof Error ? err.message : "cloud_archive_task_api_unavailable_not_proven";
@@ -746,6 +849,11 @@ watch(localDraftItemKey, () => {
   if (localDraftItemKey.value && !localAnnotationDrafts.value[localDraftItemKey.value]) {
     writeCurrentLocalAnnotationDraft(defaultLocalAnnotationDraft());
   }
+});
+
+watch(archiveJson, () => {
+  // operator 切换 archive path 时立即清理本地 TTS 覆盖值，避免旧任务草稿留在新路径上下文里。
+  resetLocalTtsDraft();
 });
 
 async function loadCloudOperatorConsoleProbe(): Promise<void> {
@@ -1928,6 +2036,90 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             <dd>{{ archiveResult?.voice_asr_tts_inspector.tts_draft.status ?? "blocked_not_proven" }}</dd>
           </dl>
         </div>
+      </div>
+
+      <h3>Local TTS draft editor</h3>
+      <div class="notice" role="note">
+        browser_memory_only · confirmation_required=true · tts_send_enabled=false · playback_available=false ·
+        speaker_dispatch_enabled=false · real_voice_api_connected=false · real_asr_tts_runtime_connected=false ·
+        speaker_dispatch.sends_to_robot=false · cloud_write_executed=false
+      </div>
+      <dl class="kv compact-kv">
+        <dt>draft status</dt>
+        <dd>{{ localTtsDraftStatus }}</dd>
+        <dt>source transcript summary</dt>
+        <dd>{{ localTtsSourceTranscriptSummary }}</dd>
+        <dt>draft text length</dt>
+        <dd>{{ localTtsDraftTextLength }}</dd>
+        <dt>voice profile</dt>
+        <dd>{{ currentLocalTtsDraft.voiceProfile || "blocked_not_proven" }}</dd>
+        <dt>language</dt>
+        <dd>{{ currentLocalTtsDraft.language || "blocked_not_proven" }}</dd>
+        <dt>validation status</dt>
+        <dd>{{ localTtsDraftValidationStatus }}</dd>
+        <dt>blocked reason</dt>
+        <dd>{{ voiceMonitorBlockedReason || "none_local_memory_only" }}</dd>
+        <dt>confirmation_required</dt>
+        <dd>true</dd>
+        <dt>tts_send_enabled</dt>
+        <dd>false</dd>
+        <dt>playback_available</dt>
+        <dd>false</dd>
+        <dt>speaker_dispatch_enabled</dt>
+        <dd>false</dd>
+        <dt>real_voice_api_connected</dt>
+        <dd>false</dd>
+        <dt>real_asr_tts_runtime_connected</dt>
+        <dd>false</dd>
+        <dt>speaker_dispatch.sends_to_robot</dt>
+        <dd>false</dd>
+        <dt>cloud_write_executed</dt>
+        <dd>false</dd>
+      </dl>
+      <label class="single-input">
+        <span>Draft text</span>
+        <textarea
+          aria-label="Local TTS draft text"
+          :value="currentLocalTtsDraft.text"
+          :disabled="!localTtsDraftInputsEnabled"
+          rows="3"
+          maxlength="160"
+          placeholder="1..120 chars, local browser memory only"
+          @input="setLocalTtsDraftText"
+        />
+      </label>
+      <div class="two-col snapshot-grid">
+        <label class="single-input">
+          <span>Voice profile</span>
+          <input
+            aria-label="Local TTS voice profile"
+            :value="currentLocalTtsDraft.voiceProfile"
+            :disabled="!localTtsDraftInputsEnabled"
+            placeholder="voice profile from fixture"
+            @input="setLocalTtsVoiceProfile"
+          >
+        </label>
+        <label class="single-input">
+          <span>Language</span>
+          <input
+            aria-label="Local TTS language"
+            :value="currentLocalTtsDraft.language"
+            :disabled="!localTtsDraftInputsEnabled"
+            placeholder="language from fixture"
+            @input="setLocalTtsLanguage"
+          >
+        </label>
+      </div>
+      <div class="route-inputs">
+        <!-- reset 只清除本地覆盖值，不新增发送、播放、保存或云写入口。 -->
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!localTtsDraftInputsEnabled"
+          @click="resetLocalTtsDraft"
+        >
+          Reset TTS draft
+        </button>
       </div>
 
       <h3>ASR event sample</h3>
