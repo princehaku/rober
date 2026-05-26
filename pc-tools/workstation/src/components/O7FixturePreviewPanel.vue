@@ -40,6 +40,16 @@ interface RouteReplayMinimapPoint extends RouteReplayTrajectoryPoint {
   svg_y: number;
 }
 
+interface RealtimePosePreview {
+  x_m: number;
+  y_m: number;
+  yaw_rad: number;
+  svg_x: number;
+  svg_y: number;
+  heading_x: number;
+  heading_y: number;
+}
+
 interface LocalAnnotationDraft {
   labelType: string;
   confidence: string;
@@ -302,6 +312,54 @@ function isFiniteNumber(value: unknown): value is number {
   // 轨迹小地图只接受真实 finite number；null、NaN 和字符串都不能进入 SVG 归一化。
   return typeof value === "number" && Number.isFinite(value);
 }
+
+function parseSummaryNumber(summary: string, key: string): number | null {
+  const match = summary.match(new RegExp(`(?:^|[,\\s])${key}=(-?\\d+(?:\\.\\d+)?)`));
+  const parsed = match ? Number(match[1]) : Number.NaN;
+  // probe summary 是安全字符串而不是结构化 pose；任何缺失或非 finite 值都不能画 marker。
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function clampSvgCoordinate(value: number): number {
+  // 固定 map frame 只做浏览器端预览，极端坐标压在边界内，避免 SVG 视口被数据撑坏。
+  return Math.min(Math.max(value, 12), 88);
+}
+
+function buildRealtimePosePreview(summary: string): RealtimePosePreview | null {
+  const x = parseSummaryNumber(summary, "x_m");
+  const y = parseSummaryNumber(summary, "y_m");
+  const yaw = parseSummaryNumber(summary, "yaw_rad");
+  // 三个字段缺一不可；否则明确 blocked，不能把未知 pose 画成中心点。
+  if (x === null || y === null || yaw === null) {
+    return null;
+  }
+  const svgX = clampSvgCoordinate(50 + x * 14);
+  const svgY = clampSvgCoordinate(50 - y * 14);
+  const headingX = clampSvgCoordinate(svgX + Math.cos(yaw) * 12);
+  const headingY = clampSvgCoordinate(svgY - Math.sin(yaw) * 12);
+  return { x_m: x, y_m: y, yaw_rad: yaw, svg_x: svgX, svg_y: svgY, heading_x: headingX, heading_y: headingY };
+}
+
+const realtimePosePreview = computed<RealtimePosePreview | null>(() =>
+  buildRealtimePosePreview(realtimeElevatorProbeResult.value?.robot_pose_summary ?? ""),
+);
+
+const realtimeMapVisualizationStatus = computed(() =>
+  realtimePosePreview.value ? "readonly_probe_summary_pose_ready" : "blocked_pose_coordinate_unavailable",
+);
+
+const realtimePoseMarkerStatus = computed(() => {
+  const pose = realtimePosePreview.value;
+  // marker 状态只回显已解析的安全摘要字段，不引用真实 /tf 或地图 artifact。
+  if (!pose) {
+    return "blocked_pose_coordinate_unavailable";
+  }
+  return `x_m=${pose.x_m}; y_m=${pose.y_m}; yaw_rad=${pose.yaw_rad}`;
+});
+
+const realtimeElevatorTimelineSamples = computed(() =>
+  (realtimeElevatorProbeResult.value?.elevator_state_samples_summary ?? []).slice(0, 5),
+);
 
 const routeReplayTrajectoryPoints = computed<RouteReplayTrajectoryPoint[]>(() =>
   routeReplayFrames.value
@@ -1520,6 +1578,115 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <ul class="dense">
             <li v-for="item in realtimeElevatorProbeNotProven()" :key="item">{{ item }}</li>
           </ul>
+        </div>
+      </div>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Realtime map pose preview</h3>
+          <div class="notice" role="note">
+            readonly_probe_summary_svg_only · no_real_map_loaded · no_ros2_tf_read · no_realtime_api_from_browser ·
+            safe_to_control=false
+          </div>
+          <svg
+            aria-label="Realtime map pose preview"
+            role="img"
+            viewBox="0 0 100 100"
+            width="100%"
+            height="220"
+            preserveAspectRatio="xMidYMid meet"
+            style="display: block; width: 100%; min-height: 220px; border: 1px solid #d7dee6; border-radius: 6px; background: #f7f9fb;"
+          >
+            <!-- SVG 只由 robot_pose_summary 字符串派生，不能回退到真实地图、/tf 或默认中心 marker。 -->
+            <rect x="10" y="10" width="80" height="80" fill="#ffffff" stroke="#d7dee6" stroke-width="0.8" />
+            <line x1="10" y1="50" x2="90" y2="50" stroke="#d7dee6" stroke-width="0.5" />
+            <line x1="50" y1="10" x2="50" y2="90" stroke="#d7dee6" stroke-width="0.5" />
+            <text x="12" y="18" fill="#5f6b7a" font-size="4">map frame</text>
+            <g v-if="realtimePosePreview">
+              <!-- heading 只表示 fixture/probe 摘要 yaw，不代表真实机器人朝向或可控制状态。 -->
+              <line
+                :x1="realtimePosePreview.svg_x"
+                :y1="realtimePosePreview.svg_y"
+                :x2="realtimePosePreview.heading_x"
+                :y2="realtimePosePreview.heading_y"
+                stroke="#9a3412"
+                stroke-width="2.8"
+                stroke-linecap="round"
+              />
+              <circle
+                :cx="realtimePosePreview.svg_x"
+                :cy="realtimePosePreview.svg_y"
+                r="4.5"
+                fill="#315f8a"
+                stroke="#ffffff"
+                stroke-width="1.5"
+              />
+            </g>
+            <text
+              v-else
+              x="50"
+              y="50"
+              text-anchor="middle"
+              dominant-baseline="middle"
+              fill="#8a1f1f"
+              font-size="5"
+            >
+              blocked_pose_coordinate_unavailable
+            </text>
+          </svg>
+        </div>
+        <div>
+          <h3>Pose safety fields</h3>
+          <dl class="kv compact-kv">
+            <dt>map_visualization_status</dt>
+            <dd>{{ realtimeMapVisualizationStatus }}</dd>
+            <dt>pose_marker</dt>
+            <dd>{{ realtimePoseMarkerStatus }}</dd>
+            <dt>map_frame/ref</dt>
+            <dd>
+              {{ realtimeElevatorProbeResult?.map_frame_summary ?? "not_loaded" }} /
+              {{ realtimeElevatorProbeResult?.map_ref_summary ?? "not_loaded" }}
+            </dd>
+            <dt>latency_lt_2s_proven</dt>
+            <dd>false</dd>
+            <dt>real_ros2_tf_connected</dt>
+            <dd>false</dd>
+            <dt>real_realtime_api_connected</dt>
+            <dd>false</dd>
+            <dt>safe_to_control</dt>
+            <dd>false</dd>
+            <dt>robot_control_executed</dt>
+            <dd>false</dd>
+          </dl>
+        </div>
+      </div>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Elevator state timeline preview</h3>
+          <div class="notice" role="note">
+            readonly_probe_summary_timeline_only · no_elevator_device_read · no_auto_refresh · safe_to_control=false
+          </div>
+          <ol class="dense">
+            <!-- timeline 只展示 probe 已限量摘要的前 5 条，不能推断完整电梯状态链已接通。 -->
+            <li v-for="(sample, index) in realtimeElevatorTimelineSamples" :key="`${index}:${sample}`">
+              sample_index={{ index }} · {{ sample }}
+            </li>
+            <li v-if="!realtimeElevatorTimelineSamples.length">blocked_not_proven</li>
+          </ol>
+        </div>
+        <div>
+          <h3>Timeline safety fields</h3>
+          <dl class="kv compact-kv">
+            <dt>real_elevator_state_chain_connected</dt>
+            <dd>false</dd>
+            <dt>floor_recognition_proven</dt>
+            <dd>false</dd>
+            <dt>human_takeover_proven</dt>
+            <dd>false</dd>
+            <dt>safe_to_control</dt>
+            <dd>false</dd>
+          </dl>
         </div>
       </div>
     </article>
