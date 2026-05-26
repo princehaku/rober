@@ -2118,6 +2118,12 @@ describe("App", () => {
     expect(wrapper.text()).toContain("Local route replay player");
     expect(wrapper.text()).toContain("local_fixture_cursor_only");
     expect(wrapper.text()).toContain("local_fixture_cursor_ready");
+    expect(wrapper.text()).toContain("Route replay trajectory minimap");
+    expect(wrapper.find('svg[aria-label="Route replay trajectory minimap"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain("readonly_fixture_trajectory_ready");
+    expect(wrapper.text()).toContain("trajectory_points");
+    expect(wrapper.text()).toContain("current_marker");
+    expect(wrapper.text()).toContain("frame_index=0");
     expect(wrapper.text()).toContain("1 / 2");
     expect(wrapper.text()).toContain("frame_ref_000");
     expect(wrapper.text()).toContain("keyframe_ref_001");
@@ -2129,6 +2135,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.text()).toContain("2 / 2");
     expect(wrapper.text()).toContain("frame_ref_001");
+    expect(wrapper.text()).toContain("frame_index=1");
     await wrapper.findAll("button").find((button) => button.text() === "Reset cursor")?.trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.text()).toContain("1 / 2");

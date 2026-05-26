@@ -28,6 +28,18 @@ interface PreviewConfig {
   expectedSchema: string;
 }
 
+interface RouteReplayTrajectoryPoint {
+  frame_index: number;
+  cursor_index: number;
+  x_m: number;
+  y_m: number;
+}
+
+interface RouteReplayMinimapPoint extends RouteReplayTrajectoryPoint {
+  svg_x: number;
+  svg_y: number;
+}
+
 const previewConfigs: PreviewConfig[] = [
   // 五个入口均为 PC-only fixture preview，不映射成机器人动作。
   { id: "realtimeElevator", title: "Realtime/Elevator", expectedSchema: "trashbot.o7.realtime_elevator_preview.v1" },
@@ -261,6 +273,81 @@ const routeReplayFrames = computed(() => archiveResult.value?.route_replay_inspe
 const labelingReviewItems = computed(() => archiveResult.value?.labeling_queue_inspector.sample_review_items ?? []);
 const voiceAsrEvents = computed(() => archiveResult.value?.voice_asr_tts_inspector.sample_asr_events ?? []);
 const safeCommandSamples = computed(() => archiveResult.value?.safe_command_inspector.sample_commands ?? []);
+
+function isFiniteNumber(value: unknown): value is number {
+  // 轨迹小地图只接受真实 finite number；null、NaN 和字符串都不能进入 SVG 归一化。
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+const routeReplayTrajectoryPoints = computed<RouteReplayTrajectoryPoint[]>(() =>
+  routeReplayFrames.value
+    .map((frame, cursorIndex) => ({ frame, cursorIndex }))
+    .filter(({ frame }) => isFiniteNumber(frame.x_m) && isFiniteNumber(frame.y_m))
+    .map(({ frame, cursorIndex }) => ({
+      frame_index: frame.frame_index,
+      cursor_index: cursorIndex,
+      x_m: Number(frame.x_m),
+      y_m: Number(frame.y_m),
+    })),
+);
+
+function normalizeRouteReplayPoint(
+  point: RouteReplayTrajectoryPoint,
+  bounds: { minX: number; maxX: number; minY: number; maxY: number },
+): RouteReplayMinimapPoint {
+  const width = bounds.maxX - bounds.minX;
+  const height = bounds.maxY - bounds.minY;
+  // 单点、水平线和垂直线用中心线兜底，避免除以 0 后产生 NaN 或误导性 marker。
+  const svgX = width === 0 ? 50 : 10 + ((point.x_m - bounds.minX) / width) * 80;
+  const svgY = height === 0 ? 50 : 90 - ((point.y_m - bounds.minY) / height) * 80;
+  return { ...point, svg_x: svgX, svg_y: svgY };
+}
+
+const routeReplayMinimapPoints = computed<RouteReplayMinimapPoint[]>(() => {
+  const points = routeReplayTrajectoryPoints.value;
+  if (!points.length) {
+    return [];
+  }
+  const xs = points.map((point) => point.x_m);
+  const ys = points.map((point) => point.y_m);
+  const bounds = {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
+  // 所有 SVG 坐标都限制在固定 viewBox 内，保证响应式布局不因数据极端值抖动。
+  return points.map((point) => normalizeRouteReplayPoint(point, bounds));
+});
+
+const routeReplayMinimapPolyline = computed(() =>
+  routeReplayMinimapPoints.value.map((point) => `${point.svg_x.toFixed(2)},${point.svg_y.toFixed(2)}`).join(" "),
+);
+
+const currentRouteReplayMinimapMarker = computed<RouteReplayMinimapPoint | null>(() => {
+  const frame = routeReplayFrames.value[routeReplayCursor.value] ?? null;
+  // 当前帧没有有效坐标时不画 marker，避免把未知位置显示成轨迹上的确定点。
+  if (!frame || !isFiniteNumber(frame.x_m) || !isFiniteNumber(frame.y_m)) {
+    return null;
+  }
+  return routeReplayMinimapPoints.value.find((point) => point.cursor_index === routeReplayCursor.value) ?? null;
+});
+
+const routeReplayMinimapStatus = computed(() => {
+  // 少于两个有效点不能构成轨迹检查能力，只能作为未证明状态展示。
+  if (routeReplayTrajectoryPoints.value.length < 2) {
+    return "blocked_not_proven";
+  }
+  return "readonly_fixture_trajectory_ready";
+});
+
+const routeReplayCurrentMarkerStatus = computed(() => {
+  // marker 与现有 routeReplayCursor 绑定；当前 sample 坐标无效时必须显式 unknown。
+  if (!currentRouteReplayMinimapMarker.value) {
+    return "blocked_unknown_current_frame_coordinate";
+  }
+  return `frame_index=${currentRouteReplayMinimapMarker.value.frame_index}`;
+});
 
 const routeReplayBlockedReason = computed(() => {
   const archive = archiveResult.value as (O7CloudArchiveTasksResponse & { playback_available?: boolean }) | null;
@@ -1216,6 +1303,96 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           @input="setRouteReplayCursorFromInput"
         >
       </label>
+
+      <h3>Route replay trajectory minimap</h3>
+      <div class="notice" role="note">
+        readonly_fixture_svg_only · no_real_map_loaded · no_robot_motion_claim · safe_to_control=false ·
+        playback_available=false · robot_control_executed=false
+      </div>
+      <div class="two-col snapshot-grid">
+        <div>
+          <svg
+            aria-label="Route replay trajectory minimap"
+            role="img"
+            viewBox="0 0 100 100"
+            width="100%"
+            height="220"
+            preserveAspectRatio="xMidYMid meet"
+            style="display: block; width: 100%; min-height: 220px; border: 1px solid #d7dee6; border-radius: 6px; background: #f7f9fb;"
+          >
+            <!-- SVG 只消费 sample_frames 的 x_m/y_m，固定 viewBox 防止极端坐标改变布局。 -->
+            <rect x="10" y="10" width="80" height="80" fill="#ffffff" stroke="#d7dee6" stroke-width="0.8" />
+            <line x1="10" y1="50" x2="90" y2="50" stroke="#d7dee6" stroke-width="0.4" />
+            <line x1="50" y1="10" x2="50" y2="90" stroke="#d7dee6" stroke-width="0.4" />
+            <polyline
+              v-if="routeReplayMinimapStatus === 'readonly_fixture_trajectory_ready'"
+              :points="routeReplayMinimapPolyline"
+              fill="none"
+              stroke="#315f8a"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle
+              v-for="point in routeReplayMinimapPoints"
+              :key="`${point.cursor_index}:${point.frame_index}`"
+              :cx="point.svg_x"
+              :cy="point.svg_y"
+              r="1.8"
+              fill="#5f6b7a"
+            />
+            <circle
+              v-if="routeReplayMinimapStatus === 'readonly_fixture_trajectory_ready' && currentRouteReplayMinimapMarker"
+              :cx="currentRouteReplayMinimapMarker.svg_x"
+              :cy="currentRouteReplayMinimapMarker.svg_y"
+              r="4"
+              fill="#9a3412"
+              stroke="#ffffff"
+              stroke-width="1.4"
+            />
+            <text
+              v-if="routeReplayMinimapStatus !== 'readonly_fixture_trajectory_ready'"
+              x="50"
+              y="50"
+              text-anchor="middle"
+              dominant-baseline="middle"
+              fill="#8a1f1f"
+              font-size="6"
+            >
+              blocked_not_proven
+            </text>
+            <text
+              v-else-if="!currentRouteReplayMinimapMarker"
+              x="50"
+              y="50"
+              text-anchor="middle"
+              dominant-baseline="middle"
+              fill="#8a1f1f"
+              font-size="5"
+            >
+              current_marker_unknown
+            </text>
+          </svg>
+        </div>
+        <div>
+          <dl class="kv compact-kv">
+            <dt>minimap_status</dt>
+            <dd>{{ routeReplayMinimapStatus }}</dd>
+            <dt>trajectory_points</dt>
+            <dd>{{ routeReplayTrajectoryPoints.length }}</dd>
+            <dt>map_frame</dt>
+            <dd>{{ archiveResult?.route_replay_inspector.map_frame ?? "blocked_not_proven" }}</dd>
+            <dt>current_marker</dt>
+            <dd>{{ routeReplayCurrentMarkerStatus }}</dd>
+            <dt>safe_to_control</dt>
+            <dd>false</dd>
+            <dt>playback_available</dt>
+            <dd>false</dd>
+            <dt>robot_control_executed</dt>
+            <dd>false</dd>
+          </dl>
+        </div>
+      </div>
 
       <h3>Sample frames</h3>
       <table>
