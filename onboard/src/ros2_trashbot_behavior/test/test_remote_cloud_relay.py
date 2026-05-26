@@ -266,6 +266,229 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertIn("real_cloud_archive_store_not_connected", body["blocked_reasons"])
         self.assertIn("real_o7_cloud_archive_task_api", body["not_proven"])
 
+    def test_o7_cloud_archive_tasks_endpoint_reads_safe_env_fixture_summary_only(self):
+        fixture_path = pathlib.Path(self.tmp.name) / "o7_archive_fixture.json"
+        fixture_path.write_text(
+            json.dumps(
+                {
+                    "schema": "trashbot.o7.cloud_archive_fixture.v1",
+                    "tasks": [
+                        {
+                            "task_id": "task-o7-001",
+                            "robot_id": "trashbot-001",
+                            "status": "fixture_recorded",
+                            "started_at": "2026-05-27T09:00:00+08:00",
+                            "selected": True,
+                            "map_frame": "map",
+                            "trajectory": [
+                                {
+                                    "frame_index": 0,
+                                    "timestamp_ms": 1000,
+                                    "pose": {"x_m": 1.2, "y_m": 2.3, "yaw_rad": 0.4},
+                                    "velocity": {"speed_mps": 0.2},
+                                    "state": "patrol",
+                                    "evidence_ref": "frames/frame-0001.jpg",
+                                }
+                            ],
+                            "events": [
+                                {
+                                    "event_type": "elevator_wait",
+                                    "state": "waiting",
+                                    "timestamp_ms": 1100,
+                                    "evidence_ref": "events/event-0001.json",
+                                }
+                            ],
+                            "keyframe_refs": ["keyframes/keyframe-0001.jpg"],
+                            "labels": [
+                                {
+                                    "label_type": "elevator_door",
+                                    "value": "open",
+                                    "status": "fixture_review",
+                                    "evidence_ref": "labels/label-0001.json",
+                                }
+                            ],
+                            "label_schema": {
+                                "schema_ref": "label-schema.json",
+                                "version": "v1",
+                                "allowed_fields": ["label_type", "value"],
+                            },
+                            "allowed_label_types": ["elevator_door", "obstacle"],
+                            "asr_events": [
+                                {
+                                    "event_type": "final",
+                                    "timestamp_ms": 1200,
+                                    "transcript": "到达电梯口",
+                                    "confidence": 0.91,
+                                    "evidence_ref": "voice/asr-0001.json",
+                                }
+                            ],
+                            "tts_draft": {"text": "请帮我按电梯", "voice_profile": "default", "language": "zh-CN"},
+                            "commands": [
+                                {
+                                    "command_id": "cmd-fixture-001",
+                                    "command_type": "navigate_goal",
+                                    "status": "fixture_review",
+                                    "evidence_ref": "commands/cmd-0001.json",
+                                }
+                            ],
+                            "manual_turn_envelope": {
+                                "requested_direction": "left",
+                                "evidence_ref": "commands/manual-0001.json",
+                            },
+                            "navigate_goal_envelope": {
+                                "goal_source": "operator_map_click",
+                                "map_frame": "map",
+                                "x_m": 3.0,
+                                "y_m": 4.0,
+                                "yaw_rad": 1.57,
+                                "evidence_ref": "commands/nav-0001.json",
+                            },
+                        },
+                        {
+                            "task_id": "task-o7-002",
+                            "robot_id": "trashbot-001",
+                            "status": "fixture_recorded",
+                            "started_at": "2026-05-27T09:10:00+08:00",
+                        },
+                    ],
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+
+        with mock.patch.dict(os.environ, {"TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON": str(fixture_path)}):
+            status, body = self.client.request("GET", "/api/o7/cloud-archive/tasks", token="")
+
+        encoded = json.dumps(body, ensure_ascii=False)
+        self.assertEqual(status, 200)
+        self.assertEqual(body["archive_status"], "fixture_summary_ready")
+        self.assertTrue(body["cloud_runtime_fixture_connected"])
+        self.assertFalse(body["real_cloud_archive_connected"])
+        self.assertFalse(body["playback_available"])
+        self.assertFalse(body["submit_enabled"])
+        self.assertFalse(body["tts_send_enabled"])
+        self.assertFalse(body["command_dispatch_enabled"])
+        self.assertFalse(body["manual_control_enabled"])
+        self.assertFalse(body["navigate_goal_enabled"])
+        self.assertFalse(body["robot_control_executed"])
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["delivery_success"])
+        self.assertFalse(body["primary_actions_enabled"])
+        self.assertEqual(body["task_list"]["total_tasks"], 2)
+        self.assertEqual(body["selected_task"]["task_id"], "task-o7-001")
+        self.assertEqual(body["latest_task"]["task_id"], "task-o7-002")
+        self.assertEqual(body["safe_summaries"]["trajectory"]["frame_count"], 1)
+        self.assertEqual(body["safe_summaries"]["labels"]["label_count"], 1)
+        self.assertEqual(body["safe_summaries"]["voice"]["asr_event_count"], 1)
+        self.assertEqual(body["safe_summaries"]["commands"]["command_count"], 1)
+        self.assertEqual(body["route_replay_inspector"]["status"], "fixture_inspector_ready")
+        self.assertEqual(body["route_replay_inspector"]["sample_frames"][0]["x_m"], 1.2)
+        self.assertEqual(body["route_replay_inspector"]["event_timeline"][0]["event_type"], "elevator_wait")
+        self.assertEqual(body["route_replay_inspector"]["keyframe_refs"], ["keyframe-0001.jpg"])
+        self.assertEqual(body["labeling_queue_inspector"]["status"], "fixture_labeling_ready")
+        self.assertEqual(body["voice_asr_tts_inspector"]["status"], "fixture_voice_ready")
+        self.assertEqual(body["safe_command_inspector"]["status"], "fixture_command_ready")
+        for forbidden in ("Authorization", "Bearer", "/cmd_vel", "baudrate", "traceback"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_o7_cloud_archive_tasks_endpoint_sanitizes_malformed_numeric_fixture(self):
+        fixture_path = pathlib.Path(self.tmp.name) / "malformed_numeric_o7_archive_fixture.json"
+        fixture_path.write_text(
+            json.dumps(
+                {
+                    "schema": "trashbot.o7.cloud_archive_fixture.v1",
+                    "tasks": [
+                        {
+                            "task_id": "task-o7-numeric",
+                            "selected": True,
+                            "trajectory": [
+                                {
+                                    "frame_index": "bad",
+                                    "timestamp_ms": "not-a-number",
+                                    "x_m": "nan",
+                                    "y_m": "2.5",
+                                    "yaw_rad": "inf",
+                                    "speed_mps": {"bad": "shape"},
+                                    "state": "patrol",
+                                    "evidence_ref": "frames/frame-numeric.jpg",
+                                }
+                            ],
+                            "navigate_goal_envelope": {
+                                "goal_source": "operator_map_click",
+                                "map_frame": "map",
+                                "x_m": "bad",
+                                "y_m": "4.25",
+                                "yaw_rad": "inf",
+                                "evidence_ref": "commands/nav-numeric.json",
+                            },
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with mock.patch.dict(os.environ, {"TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON": str(fixture_path)}):
+            status, body = self.client.request("GET", "/api/o7/cloud-archive/tasks", token="")
+
+        frame = body["route_replay_inspector"]["sample_frames"][0]
+        navigate = body["safe_command_inspector"]["navigate_goal_envelope"]
+        map_goal = body["safe_command_inspector"]["map_goal_slot"]
+        self.assertEqual(status, 200)
+        self.assertEqual(body["archive_status"], "fixture_summary_ready")
+        self.assertEqual(frame["frame_index"], 0)
+        self.assertIsNone(frame["timestamp_ms"])
+        self.assertIsNone(frame["x_m"])
+        self.assertEqual(frame["y_m"], 2.5)
+        self.assertIsNone(frame["yaw_rad"])
+        self.assertIsNone(frame["speed_mps"])
+        self.assertIsNone(navigate["x_m"])
+        self.assertEqual(navigate["y_m"], 4.25)
+        self.assertIsNone(navigate["yaw_rad"])
+        self.assertIsNone(map_goal["x_m"])
+        self.assertEqual(map_goal["y_m"], 4.25)
+        self.assertIsNone(map_goal["yaw_rad"])
+        self.assertFalse(body["real_cloud_archive_connected"])
+        self.assertFalse(body["playback_available"])
+        self.assertFalse(body["submit_enabled"])
+        self.assertFalse(body["tts_send_enabled"])
+        self.assertFalse(body["command_dispatch_enabled"])
+        self.assertFalse(body["manual_control_enabled"])
+        self.assertFalse(body["navigate_goal_enabled"])
+        self.assertFalse(body["robot_control_executed"])
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["delivery_success"])
+        self.assertFalse(body["primary_actions_enabled"])
+
+    def test_o7_cloud_archive_tasks_endpoint_blocks_unsafe_env_fixture(self):
+        fixture_path = pathlib.Path(self.tmp.name) / "unsafe_o7_archive_fixture.json"
+        fixture_path.write_text(
+            json.dumps(
+                {
+                    "schema": "trashbot.o7.cloud_archive_fixture.v1",
+                    "tasks": [
+                        {
+                            "task_id": "task-o7-unsafe",
+                            "trajectory": [{"evidence_ref": "Authorization: Bearer leaked-token"}],
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with mock.patch.dict(os.environ, {"TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON": str(fixture_path)}):
+            status, body = self.client.request("GET", "/api/o7/cloud-archive/tasks", token="")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(body["archive_status"], "blocked_not_proven")
+        self.assertEqual(body["input_status"]["failure_reason"], "unsafe_fixture_claim")
+        self.assertFalse(body.get("cloud_runtime_fixture_connected", False))
+        self.assertFalse(body["real_cloud_archive_connected"])
+        self.assertEqual(body["task_list"]["total_tasks"], 0)
+        self.assertEqual(body["task_list"]["tasks"], [])
+
     def test_o7_realtime_elevator_snapshot_endpoint_is_public_readonly_and_fail_closed(self):
         status, body = self.client.request("GET", "/api/o7/realtime-elevator/snapshot", token="")
 

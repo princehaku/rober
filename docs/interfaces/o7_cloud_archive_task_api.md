@@ -6,7 +6,7 @@
 
 该接口不连接 O6 真实云归档，不连接 realtime、annotation、voice 或 command API，不读取 ROS2 graph，不打开串口，不发送 TTS、手控、寻路或任何机器人命令。
 
-`remote_cloud_relay.py` 同时暴露 `GET /api/o7/cloud-archive/tasks` 的 cloud relay HTTP 只读 contract。该 cloud relay 版本不要求 bearer，不读取真实 archive store，当前固定返回 `archive_status=blocked_not_proven`、空任务列表、`real_cloud_archive_connected=false`、`playback_available=false`、`submit_enabled=false` 和所有控制/语音/标注危险字段 false。它只是让 PC 从本地 fixture 迈向 cloud relay HTTP contract 的 schema proof，不等于真实云 archive。
+`remote_cloud_relay.py` 同时暴露 `GET /api/o7/cloud-archive/tasks` 的 cloud relay HTTP 只读 contract。该 cloud relay 版本不要求 bearer，不接受 query path，不读取真实 archive store；只有 relay runtime 显式配置 `TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON=/path/to/safe-fixture.json` 时，才会读取本机 `trashbot.o7.cloud_archive_fixture.v1` fixture 并生成只读摘要。未配置、读取失败、坏 JSON、schema 不符或检测到危险声明时，仍返回 `archive_status=blocked_not_proven`、空任务列表、`real_cloud_archive_connected=false`、`playback_available=false`、`submit_enabled=false` 和所有控制/语音/标注危险字段 false。它只是让 PC 从本地 fixture 迈向 cloud relay HTTP runtime fixture source 的 schema proof，不等于真实云 archive。
 
 PC 端新增 `GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>`。该 probe 只允许 `http://127.0.0.1`、`http://localhost`、`http://[::1]`，由 Node 后端拉取远端 `/api/o7/cloud-archive/tasks`，检查 schema、task count、selected/latest、inspector 状态、危险 true 字段、blocked/not_proven。它不接受远程 URL、不带 bearer、不连接公网云、不读取硬件、不发送命令。
 
@@ -28,10 +28,12 @@ PC 端新增 `GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>
 - `real_command_api_connected=false`
 - `robot_control_executed=false`
 - cloud relay contract 还必须固定 `playback_available=false`、`submit_enabled=false`、`real_robot_ack_connected=false`、`real_asr_tts_runtime_connected=false`
+- cloud relay fixture 模式可额外返回 `cloud_runtime_fixture_connected=true`，只表示本地 fixture 文件被 relay runtime 成功摘要；不得解释为 `real_cloud_archive_connected=true`
 
 核心摘要：
 
 - `archive_status=fixture_archive_ready | blocked_not_proven`
+- cloud relay fixture 模式使用 `archive_status=fixture_summary_ready | blocked_not_proven`
 - `input_status.archive_json/status/failure_reason`
 - `task_list.total_tasks/tasks[]`
 - `selected_task`
@@ -122,10 +124,12 @@ PC 端新增 `GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>
 以下输入必须返回 `archive_status=blocked_not_proven`：
 
 - 空 `archiveJson`
+- cloud relay 未设置 `TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON`
+- cloud relay request query 中携带任意 path；relay 端必须忽略 query，只读 env path
 - 文件缺失或读取失败
 - 坏 JSON 或顶层非 object
 - `schema` 不是 `trashbot.o7.cloud_archive_fixture.v1`
-- 包含凭证、串口、`/cmd_vel`、traceback 或本机绝对路径等 unsafe copy
+- 包含凭证、`Authorization`、`Bearer`、token、串口、`baudrate`、`/cmd_vel`、traceback 或本机绝对路径等 unsafe copy
 - 声称 delivery/dropoff/cloud archive success/ready/connected
 - 声称 `safe_to_control=true`、`primary_actions_enabled=true`、`robot_control_executed=true` 或 command dispatch enabled
 - 声称真实 cloud/realtime/annotation/voice/command API connected
@@ -135,6 +139,8 @@ PC 端新增 `GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>
 ## UI Boundary
 
 `O7 Previews` tab 的 `Cloud Archive Tasks` 区块默认不读取本地路径。只有点击 `Load archive tasks` 才调用该 GET query。
+
+Cloud relay runtime 的 `GET /api/o7/cloud-archive/tasks` 不支持 `archiveJson` query。需要让 PC probe 看到非空摘要时，运维或本地 reviewer 必须在启动 relay 前设置 `TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON` 指向 relay 机器上的脱敏 fixture。该模式仍固定 `playback_available=false`、`submit_enabled=false`、`tts_send_enabled=false`、`command_dispatch_enabled=false`、`manual_control_enabled=false`、`navigate_goal_enabled=false`、`robot_control_executed=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
 
 同一 tab 的 `Cloud archive tasks probe` 区块默认只填本机回环示例 URL，不自动发起请求。点击 `Probe cloud archive tasks` 后才调用 PC 后端 probe API；浏览器不直接访问 relay。UI 展示 probe status、source base URL、remote schema、archive status、task count、selected/latest、四个 inspector 状态、dangerous true fields、关键 false fields、blocked reasons 和 not proven。
 
@@ -158,4 +164,4 @@ UI 同时展示 `safe_command_inspector` 的 command session、sample commands�
 
 ## O7 Impact
 
-本接口推动 O7 的方式是建立统一数据源雏形：KR3 可以消费 trajectory/events，KR4 可以消费 labels，KR5 可以消费 voice，KR6 可以消费 selected task 级 command envelope 和 ACK 缺口检查视图。cloud relay HTTP 只读 contract 只证明 endpoint shape 可由 relay 暴露；它仍是 software proof，不提升真实 O7 完成度，不证明真实云端、机器人、语音、标注、路线回放或控制能力。
+本接口推动 O7 的方式是建立统一数据源雏形：KR3 可以消费 trajectory/events，KR4 可以消费 labels，KR5 可以消费 voice，KR6 可以消费 selected task 级 command envelope 和 ACK 缺口检查视图。cloud relay HTTP fixture-backed 只读 contract 只证明 endpoint shape 可由 relay runtime 从显式本地 fixture 暴露；它仍是 software proof，不提升真实 O7 完成度，不证明真实生产云 archive、RTC/视频、真实标注提交、真实 ASR/TTS runtime、真实手控/寻路、机器人 ACK 或硬件 HIL。

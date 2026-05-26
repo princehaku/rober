@@ -12,7 +12,7 @@
 - PC API：`GET /api/o7/operator-console`
 - PC acceptance guard：`GET /api/o7/operator-console/acceptance`
 - PC cloud operator console probe API：`GET /api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>`
-- Cloud relay archive tasks contract：`GET /api/o7/cloud-archive/tasks`
+- Cloud relay archive tasks contract：`GET /api/o7/cloud-archive/tasks`，可选 `TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON` 指向 relay 本机脱敏 fixture；不接受 query 任意路径
 - PC cloud archive tasks probe API：`GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>`
 - Cloud relay realtime/elevator snapshot contract：`GET /api/o7/realtime-elevator/snapshot`
 - PC realtime/elevator cloud probe API：`GET /api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>`
@@ -24,6 +24,8 @@
 - PC cloud archive task fixture API：`GET /api/o7/cloud-archive/tasks?archiveJson=<local-json>`
 - PC UI：`pc-tools/workstation` 的 `O7 Console` tab 和独立 `O7 Previews` tab
 - Board media preflight source contract：`docs/interfaces/o7_board_media_preflight.md`
+
+Cloud relay archive tasks contract 现在可以由 relay runtime 上的本地 fixture 生成非空只读摘要：启动前设置 `TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON` 指向 `trashbot.o7.cloud_archive_fixture.v1` JSON。handler 不读取 query path；未配置、不安全或读取失败时仍返回空 `blocked_not_proven`。即使 fixture 摘要可用，也必须保持 `real_cloud_archive_connected=false`、`playback_available=false`、`submit_enabled=false`、`tts_send_enabled=false`、`command_dispatch_enabled=false`、`manual_control_enabled=false`、`navigate_goal_enabled=false`、`robot_control_executed=false`、`safe_to_control=false`、`delivery_success=false` 和 `primary_actions_enabled=false`。
 
 ## Fail-Closed Fields
 

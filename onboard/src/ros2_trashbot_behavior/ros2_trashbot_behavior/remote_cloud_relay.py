@@ -2,6 +2,7 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 import os
 import pathlib
 import socket
@@ -83,6 +84,8 @@ O7_LABELING_QUEUE_SNAPSHOT_SCHEMA = "trashbot.o7.labeling_queue_snapshot.v1"
 O7_VOICE_ASR_TTS_SNAPSHOT_SCHEMA = "trashbot.o7.voice_asr_tts_snapshot.v1"
 O7_SAFE_COMMAND_SNAPSHOT_SCHEMA = "trashbot.o7.safe_command_snapshot.v1"
 O7_CLOUD_ARCHIVE_TASKS_SCHEMA = "trashbot.o7.cloud_archive_tasks.v1"
+O7_CLOUD_ARCHIVE_FIXTURE_SCHEMA = "trashbot.o7.cloud_archive_fixture.v1"
+O7_CLOUD_ARCHIVE_TASKS_ENV = "TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON"
 O7_REALTIME_ELEVATOR_SNAPSHOT_SCHEMA = "trashbot.o7.realtime_elevator_snapshot.v1"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -11878,8 +11881,8 @@ def build_o7_operator_console_contract():
     }
 
 
-def build_o7_cloud_archive_tasks_contract():
-    """返回云中继只读 archive tasks contract；当前没有真实归档 store，必须 fail closed。"""
+def _build_o7_cloud_archive_tasks_empty_contract(failure_reason="real_cloud_archive_store_not_connected"):
+    """返回云中继 archive tasks 空 contract；所有失败路径都复用它来 fail closed。"""
 
     # 这个 endpoint 是 O6/O7 之间的 HTTP contract proof，不读取 store、不连接 OSS/DB、不下发控制。
     # 所有危险能力固定 false，让 PC probe 可以验证 schema，同时不能把它解释成真实云归档可用。
@@ -11929,7 +11932,7 @@ def build_o7_cloud_archive_tasks_contract():
         "input_status": {
             "archive_json": "",
             "status": "not_provided",
-            "failure_reason": "real_cloud_archive_store_not_connected",
+            "failure_reason": failure_reason,
         },
         "source_fixture_schema": "not_loaded",
         "real_cloud_archive_connected": False,
@@ -12190,6 +12193,532 @@ def build_o7_cloud_archive_tasks_contract():
     }
 
 
+def _o7_archive_safe_ref(value):
+    """fixture 可能来自不同机器，引用只保留 basename，避免泄露本机绝对路径或 URL。"""
+
+    text = _safe_text(value or "")
+    if not text or text == "[redacted]":
+        return text
+    return pathlib.PurePath(text.replace("\\", "/")).name[:160]
+
+
+def _o7_archive_safe_text(value, limit=160):
+    """对 operator 可见文本做短摘要，防止 fixture 把 token、URL 或堆栈混进 UI。"""
+
+    text = _safe_text(value or "")
+    if text == "[redacted]":
+        return text
+    return text[:limit]
+
+
+def _o7_archive_list(value):
+    """schema 处于 fixture 阶段，数组字段缺失时统一按空数组处理，避免 HTTP handler 抛 500。"""
+
+    return value if isinstance(value, list) else []
+
+
+def _o7_archive_dict(value):
+    """只接受 object 型子结构，其他类型直接丢弃，保证输出始终是白名单摘要。"""
+
+    return value if isinstance(value, dict) else {}
+
+
+def _o7_archive_safe_number(value, default=None):
+    """fixture 数值不可信；只允许有限数字进入合同，其他值统一安全降级。"""
+
+    if isinstance(value, bool) or value is None:
+        return default
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    if not math.isfinite(number):
+        return default
+    return number
+
+
+def _o7_archive_safe_int(value, default):
+    """frame index 影响 PC cursor，坏值用当前 sample index，避免 malformed fixture 触发 500。"""
+
+    number = _o7_archive_safe_number(value, None)
+    if number is None:
+        return default
+    return int(number)
+
+
+def _o7_archive_bool_danger_key(key):
+    lowered = str(key).lower()
+    return lowered in {
+        "safe_to_control",
+        "primary_actions_enabled",
+        "robot_control_executed",
+        "delivery_success",
+        "playback_available",
+        "submit_enabled",
+        "tts_send_enabled",
+        "command_dispatch_enabled",
+        "manual_control_enabled",
+        "navigate_goal_enabled",
+        "keyboard_control_enabled",
+        "real_cloud_archive_connected",
+        "real_realtime_api_connected",
+        "real_annotation_api_connected",
+        "real_voice_api_connected",
+        "real_command_api_connected",
+        "real_robot_ack_connected",
+        "real_asr_tts_runtime_connected",
+        "hardware_verified",
+    }
+
+
+def _o7_archive_fixture_has_unsafe_claim(value):
+    """递归拒绝危险 fixture，而不是尝试修正，避免把控制/成功声明误展示成事实。"""
+
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if _o7_archive_bool_danger_key(key) and item is True:
+                return True
+            key_text = str(key).lower()
+            if "control" in key_text and item is True:
+                return True
+            if "real_api" in key_text or key_text in {"success", "control_success"}:
+                return True
+            if _o7_archive_fixture_has_unsafe_claim(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_o7_archive_fixture_has_unsafe_claim(item) for item in value)
+    if isinstance(value, str):
+        lowered = value.lower()
+        blocked_markers = (
+            "authorization",
+            "bearer",
+            "token",
+            "/cmd_vel",
+            "cmd_vel",
+            "serial",
+            "baudrate",
+            "traceback",
+            "real_api",
+            "safe_to_control=true",
+            "primary_actions_enabled=true",
+            "robot_control_executed=true",
+            "delivery_success=true",
+            "cloud archive success",
+            "cloud archive ready",
+            "dropoff success",
+            "control success",
+            "control ready",
+            "control enabled",
+            "real api",
+            "hardware verified",
+            "hil pass",
+        )
+        return any(marker in lowered for marker in blocked_markers)
+    return False
+
+
+def _o7_archive_load_fixture(archive_json):
+    """只读取显式 env path；坏 JSON、schema 不符或危险声明都返回失败原因。"""
+
+    if not archive_json:
+        return None, "not_provided"
+    try:
+        fixture_path = pathlib.Path(archive_json).expanduser()
+        if not fixture_path.is_file():
+            return None, "fixture_file_not_found"
+        raw = fixture_path.read_text(encoding="utf-8")
+        if len(raw.encode("utf-8")) > 512 * 1024:
+            return None, "fixture_too_large"
+        if _o7_archive_fixture_has_unsafe_claim(raw):
+            return None, "unsafe_fixture_claim"
+        payload = json.loads(raw)
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None, "fixture_read_or_json_failed"
+    if not isinstance(payload, dict):
+        return None, "fixture_top_level_not_object"
+    if payload.get("schema") != O7_CLOUD_ARCHIVE_FIXTURE_SCHEMA:
+        return None, "unsupported_fixture_schema"
+    if _o7_archive_fixture_has_unsafe_claim(payload):
+        return None, "unsafe_fixture_claim"
+    return payload, ""
+
+
+def _o7_archive_task_id(task, index):
+    return _o7_archive_safe_text(task.get("task_id") or task.get("id") or f"fixture-task-{index + 1}", 80)
+
+
+def _o7_archive_task_summary(task, index):
+    task_id = _o7_archive_task_id(task, index)
+    return {
+        "task_id": task_id,
+        "robot_id": _o7_archive_safe_text(task.get("robot_id") or "fixture_robot", 80),
+        "status": _o7_archive_safe_text(task.get("status") or "fixture_summary_only", 80),
+        "started_at": _o7_archive_safe_text(task.get("started_at") or task.get("timestamp") or "", 80),
+        "ended_at": _o7_archive_safe_text(task.get("ended_at") or "", 80),
+        "evidence_ref": _o7_archive_safe_ref(task.get("evidence_ref") or task.get("task_ref") or task_id),
+    }
+
+
+def _o7_archive_selected_task(tasks):
+    """优先选显式 selected，其次选第一条；latest 用最后一条，便于 probe 看到非空列表。"""
+
+    for index, task in enumerate(tasks):
+        if _o7_archive_dict(task).get("selected") is True:
+            return index, _o7_archive_dict(task)
+    return (0, _o7_archive_dict(tasks[0])) if tasks else (None, {})
+
+
+def _o7_archive_route_inspector(task, task_id):
+    trajectory = _o7_archive_list(task.get("trajectory") or task.get("trajectory_frames"))
+    events = _o7_archive_list(task.get("events") or task.get("event_timeline"))
+    keyframes = _o7_archive_list(task.get("keyframes") or task.get("keyframe_refs"))
+    sample_frames = []
+    for index, frame in enumerate(trajectory[:5]):
+        frame = _o7_archive_dict(frame)
+        pose = _o7_archive_dict(frame.get("pose"))
+        velocity = _o7_archive_dict(frame.get("velocity"))
+        sample_frames.append(
+            {
+                "frame_index": _o7_archive_safe_int(frame.get("frame_index"), index),
+                "timestamp_ms": _o7_archive_safe_number(frame.get("timestamp_ms")),
+                "x_m": _o7_archive_safe_number(frame.get("x_m", pose.get("x_m"))),
+                "y_m": _o7_archive_safe_number(frame.get("y_m", pose.get("y_m"))),
+                "yaw_rad": _o7_archive_safe_number(frame.get("yaw_rad", pose.get("yaw_rad"))),
+                "speed_mps": _o7_archive_safe_number(frame.get("speed_mps", velocity.get("speed_mps"))),
+                "state": _o7_archive_safe_text(frame.get("state") or "", 80),
+                "evidence_ref": _o7_archive_safe_ref(frame.get("evidence_ref") or frame.get("frame_ref") or ""),
+            }
+        )
+    event_timeline = []
+    for event in events[:5]:
+        event = _o7_archive_dict(event)
+        event_timeline.append(
+            {
+                "event_type": _o7_archive_safe_text(event.get("event_type") or event.get("type") or "", 80),
+                "state": _o7_archive_safe_text(event.get("state") or "", 80),
+                "timestamp_ms": _o7_archive_safe_number(event.get("timestamp_ms")),
+                "evidence_ref": _o7_archive_safe_ref(event.get("evidence_ref") or ""),
+            }
+        )
+    return {
+        "status": "fixture_inspector_ready" if sample_frames else "blocked_not_proven",
+        "selected_task_id": task_id,
+        "map_frame": _o7_archive_safe_text(task.get("map_frame") or "map", 40),
+        "frame_count": len(trajectory),
+        "sample_frames": sample_frames,
+        "event_timeline": event_timeline,
+        "keyframe_refs": [_o7_archive_safe_ref(item.get("evidence_ref") if isinstance(item, dict) else item) for item in keyframes[:5]],
+        "cursor_initial_state": {
+            "playing": False,
+            "safe_to_play": False,
+            "speed": 0,
+            "frame_index": sample_frames[0]["frame_index"] if sample_frames else None,
+        },
+        "playback_available": False,
+        "blocked_reasons": ["fixture_summary_only_no_playback", "real_cloud_archive_store_not_connected"],
+        "not_proven": ["real_o7_history_route_replay", "real_o7_trajectory_playback"],
+    }
+
+
+def _o7_archive_labeling_inspector(task, task_id):
+    labels = _o7_archive_list(task.get("labels"))
+    review_items = _o7_archive_list(task.get("review_items"))
+    if not review_items and labels:
+        review_items = [{"item_id": f"label-{index + 1}", "current_labels": [label]} for index, label in enumerate(labels)]
+    sample_items = []
+    for index, item in enumerate(review_items[:5]):
+        item = _o7_archive_dict(item)
+        item_labels = _o7_archive_list(item.get("current_labels") or item.get("labels"))
+        label_sample = []
+        for label in item_labels[:3]:
+            label = _o7_archive_dict(label)
+            label_sample.append(
+                {
+                    "label_type": _o7_archive_safe_text(label.get("label_type") or label.get("type") or "", 80),
+                    "value": _o7_archive_safe_text(label.get("value") or "", 120),
+                    "status": _o7_archive_safe_text(label.get("status") or "fixture_summary_only", 80),
+                    "evidence_ref": _o7_archive_safe_ref(label.get("evidence_ref") or ""),
+                }
+            )
+        sample_items.append(
+            {
+                "item_id": _o7_archive_safe_text(item.get("item_id") or f"review-{index + 1}", 80),
+                "task_id": task_id,
+                "frame_id": _o7_archive_safe_text(item.get("frame_id") or "", 80),
+                "media_ref": _o7_archive_safe_ref(item.get("media_ref") or ""),
+                "evidence_ref": _o7_archive_safe_ref(item.get("evidence_ref") or ""),
+                "current_labels": {"count": len(item_labels), "sample": label_sample},
+            }
+        )
+    label_schema = _o7_archive_dict(task.get("label_schema"))
+    allowed_types = _o7_archive_list(task.get("allowed_label_types") or label_schema.get("allowed_label_types"))
+    return {
+        "status": "fixture_labeling_ready" if sample_items else "blocked_not_proven",
+        "selected_task_id": task_id,
+        "review_item_count": len(review_items),
+        "sample_review_items": sample_items,
+        "label_schema": {
+            "schema_ref": _o7_archive_safe_ref(label_schema.get("schema_ref") or "fixture_label_schema"),
+            "version": _o7_archive_safe_text(label_schema.get("version") or "fixture_summary_only", 40),
+            "required_fields": [_o7_archive_safe_text(item, 60) for item in _o7_archive_list(label_schema.get("required_fields"))[:5]],
+            "allowed_fields": [_o7_archive_safe_text(item, 60) for item in _o7_archive_list(label_schema.get("allowed_fields"))[:5]],
+        },
+        "allowed_label_types": [_o7_archive_safe_text(item, 60) for item in allowed_types[:5]],
+        "draft_labels": {"count": len(labels), "sample": sample_items[:5], "autosave_available": False},
+        "dataset_export": {
+            "available": False,
+            "status": "fixture_summary_only",
+            "export_ref": _o7_archive_safe_ref(task.get("dataset_export_ref") or ""),
+            "supported_formats": [],
+            "gaps": ["real_dataset_export_not_connected"],
+        },
+        "submit_enabled": False,
+        "rollback_enabled": False,
+        "dataset_export_available": False,
+        "real_annotation_api_connected": False,
+        "blocked_reasons": ["real_annotation_api_not_connected"],
+        "not_proven": ["real_o7_annotation_submit", "real_o7_dataset_export"],
+    }
+
+
+def _o7_archive_voice_inspector(task, task_id):
+    asr_events = _o7_archive_list(task.get("asr_events") or task.get("voice_events"))
+    tts_drafts = _o7_archive_list(task.get("tts_drafts"))
+    if not tts_drafts and isinstance(task.get("tts_draft"), dict):
+        tts_drafts = [task.get("tts_draft")]
+    sample_asr = []
+    latest_partial = {}
+    latest_final = {}
+    for event in asr_events[:5]:
+        event = _o7_archive_dict(event)
+        safe_event = {
+            "event_type": _o7_archive_safe_text(event.get("event_type") or event.get("type") or "", 80),
+            "timestamp_ms": event.get("timestamp_ms"),
+            "transcript": _o7_archive_safe_text(event.get("transcript") or event.get("text") or "", 160),
+            "confidence": event.get("confidence"),
+            "evidence_ref": _o7_archive_safe_ref(event.get("evidence_ref") or ""),
+        }
+        sample_asr.append(safe_event)
+        if safe_event["event_type"] == "partial":
+            latest_partial = safe_event
+        if safe_event["event_type"] == "final":
+            latest_final = safe_event
+    draft = _o7_archive_dict(tts_drafts[0]) if tts_drafts else {}
+    return {
+        "status": "fixture_voice_ready" if sample_asr or draft else "blocked_not_proven",
+        "selected_task_id": task_id,
+        "voice_session": {
+            "session_id": _o7_archive_safe_text(task.get("voice_session_id") or "fixture_voice_session", 80),
+            "source": "cloud_relay_fixture_file",
+            "evidence_ref": _o7_archive_safe_ref(task.get("voice_evidence_ref") or ""),
+            "audit_refs": [],
+            "status": "fixture_summary_only",
+        },
+        "asr_event_count": len(asr_events),
+        "sample_asr_events": sample_asr,
+        "latest_partial": latest_partial or {"text": "", "timestamp_ms": None, "confidence": None, "evidence_ref": "not_loaded", "status": "blocked_not_proven"},
+        "latest_final": latest_final or {"text": "", "timestamp_ms": None, "confidence": None, "evidence_ref": "not_loaded", "status": "blocked_not_proven"},
+        "tts_draft": {
+            "text": _o7_archive_safe_text(draft.get("text") or "", 160),
+            "text_length": len(str(draft.get("text") or "")),
+            "voice_profile": _o7_archive_safe_text(draft.get("voice_profile") or task.get("voice_profile") or "fixture_voice", 80),
+            "language": _o7_archive_safe_text(draft.get("language") or "zh-CN", 40),
+            "confirmation_required": True,
+            "status": "fixture_summary_only" if draft else "blocked_not_proven",
+        },
+        "speaker_dispatch": {
+            "sends_to_robot": False,
+            "speaker_dispatch_enabled": False,
+            "ack_status": "blocked_not_proven",
+            "speaker_ack_ref": "missing_speaker_dispatch_ack",
+            "failure_event_ref": "missing_speaker_failure_event",
+            "failure_refs": [],
+            "status": "blocked_not_proven",
+        },
+        "media_preflight_dependency": {
+            "required": True,
+            "source_schema": O7_BOARD_MEDIA_PREFLIGHT_SCHEMA,
+            "status": "blocked",
+            "dependency_ref": "board_media_preflight_summary",
+            "gaps": ["real_board_media_preflight_not_connected"],
+        },
+        "asr_stream_connected": False,
+        "tts_send_enabled": False,
+        "speaker_dispatch_enabled": False,
+        "real_voice_api_connected": False,
+        "real_asr_tts_runtime_connected": False,
+        "blocked_reasons": ["real_voice_api_not_connected"],
+        "not_proven": ["real_asr_stream", "real_tts_playback", "real_speaker_ack"],
+    }
+
+
+def _o7_archive_command_inspector(task, task_id):
+    commands = _o7_archive_list(task.get("commands"))
+    sample_commands = []
+    for index, command in enumerate(commands[:5]):
+        command = _o7_archive_dict(command)
+        sample_commands.append(
+            {
+                "command_id": _o7_archive_safe_text(command.get("command_id") or command.get("id") or f"command-{index + 1}", 80),
+                "command_type": _o7_archive_safe_text(command.get("command_type") or command.get("type") or "fixture_command", 80),
+                "status": _o7_archive_safe_text(command.get("status") or "fixture_summary_only", 80),
+                "envelope_ref": _o7_archive_safe_ref(command.get("envelope_ref") or ""),
+                "idempotency_key_ref": _o7_archive_safe_ref(command.get("idempotency_key_ref") or ""),
+                "evidence_ref": _o7_archive_safe_ref(command.get("evidence_ref") or ""),
+            }
+        )
+    manual = _o7_archive_dict(task.get("manual_turn_envelope"))
+    navigate = _o7_archive_dict(task.get("navigate_goal_envelope"))
+    return {
+        "status": "fixture_command_ready" if sample_commands or manual or navigate else "blocked_not_proven",
+        "selected_task_id": task_id,
+        "command_session": {
+            "command_session_id": _o7_archive_safe_text(task.get("command_session_id") or "fixture_command_session", 80),
+            "source": "cloud_relay_fixture_file",
+            "evidence_ref": _o7_archive_safe_ref(task.get("command_evidence_ref") or ""),
+            "audit_refs": [],
+            "status": "fixture_summary_only",
+        },
+        "command_count": len(commands),
+        "sample_commands": sample_commands,
+        "manual_turn_envelope": {
+            "sends_to_robot": False,
+            "requested_direction": _o7_archive_safe_text(manual.get("requested_direction") or "fixture_manual_turn", 80),
+            "velocity_limited": True,
+            "steering_limited": True,
+            "evidence_ref": _o7_archive_safe_ref(manual.get("evidence_ref") or ""),
+            "status": "fixture_summary_only" if manual else "blocked_not_proven",
+        },
+        "navigate_goal_envelope": {
+            "sends_to_robot": False,
+            "goal_source": _o7_archive_safe_text(navigate.get("goal_source") or "fixture_goal", 80),
+            "map_frame": _o7_archive_safe_text(navigate.get("map_frame") or "map", 40),
+            "x_m": _o7_archive_safe_number(navigate.get("x_m")),
+            "y_m": _o7_archive_safe_number(navigate.get("y_m")),
+            "yaw_rad": _o7_archive_safe_number(navigate.get("yaw_rad")),
+            "evidence_ref": _o7_archive_safe_ref(navigate.get("evidence_ref") or ""),
+            "status": "fixture_summary_only" if navigate else "blocked_not_proven",
+        },
+        "velocity_limits": {"max_linear_mps": None, "max_angular_radps": None, "source": "fixture_summary_only", "hardware_verified": False, "status": "blocked_not_proven"},
+        "steering_limits": {"max_steering_angle_rad": None, "max_turn_rate_radps": None, "source": "fixture_summary_only", "hardware_verified": False, "status": "blocked_not_proven"},
+        "map_goal_slot": {
+            "map_frame": "map",
+            "x_m": _o7_archive_safe_number(navigate.get("x_m")),
+            "y_m": _o7_archive_safe_number(navigate.get("y_m")),
+            "yaw_rad": _o7_archive_safe_number(navigate.get("yaw_rad")),
+            "status": "fixture_summary_only" if navigate else "blocked_not_proven",
+            "evidence_ref": _o7_archive_safe_ref(navigate.get("evidence_ref") or ""),
+        },
+        "idempotency_key_requirement": {"required": True, "key_ref": "fixture_idempotency_required", "header": "Idempotency-Key", "status": "fixture_summary_only"},
+        "confirmation_policy": {"manual_turn_requires_confirmation": True, "navigate_goal_requires_confirmation": True, "keyboard_control_requires_hold": True, "status": "fixture_summary_only"},
+        "robot_ack_blocked_summary": {"ack_status": "blocked_not_proven", "last_command_id": sample_commands[0]["command_id"] if sample_commands else "not_loaded", "ack_ref": "missing_robot_command_ack", "timeout_ms": None, "cancel_ack_ref": "missing_robot_cancel_ack", "stop_ack_ref": "missing_robot_stop_ack", "recovery_ref": "missing_robot_recovery_event", "status": "blocked_not_proven"},
+        "evidence_gaps": ["robot_ack_timeout_trace_missing", "cancel_ack_trace_missing", "stop_ack_trace_missing", "recovery_event_trace_missing", "hil_or_hardware_safety_not_proven"],
+        "command_dispatch_enabled": False,
+        "manual_control_enabled": False,
+        "navigate_goal_enabled": False,
+        "keyboard_control_enabled": False,
+        "real_command_api_connected": False,
+        "real_robot_ack_connected": False,
+        "robot_control_executed": False,
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+        "delivery_success": False,
+        "blocked_reasons": ["safe_command_api_not_connected", "robot_ack_not_proven"],
+        "not_proven": ["real_manual_turn_control", "real_navigate_goal_dispatch", "real_robot_command_ack"],
+    }
+
+
+def build_o7_cloud_archive_tasks_contract(archive_json=""):
+    """返回 O7 archive tasks contract；仅 env 指向的本地安全 fixture 可生成只读摘要。"""
+
+    payload = _build_o7_cloud_archive_tasks_empty_contract()
+    # PC probe 会直接扫顶层危险字段；这里把 fixed false 提升到顶层，防止后续摘要覆盖安全边界。
+    payload.update(payload["fixed_false_fields"])
+    fixture, failure_reason = _o7_archive_load_fixture(archive_json)
+    if failure_reason:
+        payload["input_status"] = {
+            "archive_json": "env_not_configured" if not archive_json else "env_configured_path",
+            "status": "not_loaded" if archive_json else "not_provided",
+            "failure_reason": failure_reason,
+        }
+        return payload
+    tasks = [_o7_archive_dict(task) for task in _o7_archive_list(fixture.get("tasks"))]
+    task_summaries = [_o7_archive_task_summary(task, index) for index, task in enumerate(tasks)]
+    selected_index, selected_task_raw = _o7_archive_selected_task(tasks)
+    selected_summary = task_summaries[selected_index] if selected_index is not None and task_summaries else None
+    latest_summary = task_summaries[-1] if task_summaries else None
+    selected_task_id = selected_summary["task_id"] if selected_summary else None
+    route = _o7_archive_route_inspector(selected_task_raw, selected_task_id) if selected_summary else payload["route_replay_inspector"]
+    labeling = _o7_archive_labeling_inspector(selected_task_raw, selected_task_id) if selected_summary else payload["labeling_queue_inspector"]
+    voice = _o7_archive_voice_inspector(selected_task_raw, selected_task_id) if selected_summary else payload["voice_asr_tts_inspector"]
+    commands = _o7_archive_command_inspector(selected_task_raw, selected_task_id) if selected_summary else payload["safe_command_inspector"]
+    payload.update(
+        {
+            "archive_status": "fixture_summary_ready" if task_summaries else "blocked_not_proven",
+            "input_status": {
+                "archive_json": "env_configured_path",
+                "status": "loaded" if task_summaries else "loaded_empty",
+                "failure_reason": "",
+            },
+            "source_fixture_schema": O7_CLOUD_ARCHIVE_FIXTURE_SCHEMA,
+            "cloud_runtime_fixture_connected": bool(task_summaries),
+            "task_list": {
+                "source": "cloud_relay_runtime_fixture_file",
+                "total_tasks": len(task_summaries),
+                "tasks": task_summaries,
+                "status": "fixture_summary_ready" if task_summaries else "blocked_not_proven",
+            },
+            "selected_task": selected_summary,
+            "latest_task": latest_summary,
+            "route_replay_inspector": route,
+            "labeling_queue_inspector": labeling,
+            "voice_asr_tts_inspector": voice,
+            "safe_command_inspector": commands,
+            "safe_summaries": {
+                "trajectory": {
+                    "frame_count": route["frame_count"],
+                    "sample_refs": [frame["evidence_ref"] for frame in route["sample_frames"]],
+                    "status": route["status"],
+                },
+                "events": {
+                    "event_count": len(route["event_timeline"]),
+                    "sample_types": [event["event_type"] for event in route["event_timeline"]],
+                    "status": "fixture_summary_ready" if route["event_timeline"] else "blocked_not_proven",
+                },
+                "labels": {
+                    "label_count": labeling["review_item_count"],
+                    "sample_types": labeling["allowed_label_types"],
+                    "real_annotation_api_connected": False,
+                    "status": labeling["status"],
+                },
+                "voice": {
+                    "asr_event_count": voice["asr_event_count"],
+                    "tts_draft_count": 1 if voice["tts_draft"]["text"] else 0,
+                    "real_voice_api_connected": False,
+                    "status": voice["status"],
+                },
+                "commands": {
+                    "command_count": commands["command_count"],
+                    "sample_kinds": [command["command_type"] for command in commands["sample_commands"]],
+                    "real_command_api_connected": False,
+                    "robot_control_executed": False,
+                    "status": commands["status"],
+                },
+            },
+            "blocked_reasons": [
+                "fixture_summary_only_not_real_cloud_archive",
+                "real_realtime_api_not_connected",
+                "real_annotation_api_not_connected",
+                "real_voice_api_not_connected",
+                "real_command_api_not_connected",
+                "robot_control_disabled",
+            ],
+        }
+    )
+    return payload
+
+
 def build_o7_realtime_elevator_snapshot_contract():
     """返回 O7 realtime/elevator 只读 snapshot；当前不连接真实实时、/tf 或电梯链路。"""
 
@@ -12384,8 +12913,9 @@ def make_handler(store, bearer_token):
                 self._send_json(200, build_o7_operator_console_contract())
                 return
             if parsed.path == "/api/o7/cloud-archive/tasks":
-                # O7 archive tasks 是只读 contract proof，不走 bearer，也不读取真实归档或执行控制。
-                self._send_json(200, build_o7_cloud_archive_tasks_contract())
+                # O7 archive tasks 只读取显式 env 配置的本地 fixture；query path 被刻意忽略，避免任意读文件。
+                archive_json = os.environ.get(O7_CLOUD_ARCHIVE_TASKS_ENV, "")
+                self._send_json(200, build_o7_cloud_archive_tasks_contract(archive_json))
                 return
             if parsed.path == "/api/o7/realtime-elevator/snapshot":
                 # O7 realtime/elevator snapshot 是 KR1/KR2 的只读 contract proof，不读 ROS2 /tf 或电梯设备。
