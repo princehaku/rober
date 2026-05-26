@@ -11,6 +11,7 @@
 - PC acceptance guard：`GET /api/o7/operator-console/acceptance`
 - PC fixture preview API：`GET /api/o7/route-replay-preview?fixtureJson=<local-json>`
 - PC labeling fixture preview API：`GET /api/o7/labeling-preview?fixtureJson=<local-json>`
+- PC voice fixture preview API：`GET /api/o7/voice-preview?fixtureJson=<local-json>`
 - PC UI：`pc-tools/workstation` 的 `O7 Console` tab
 - Board media preflight source contract：`docs/interfaces/o7_board_media_preflight.md`
 
@@ -368,6 +369,58 @@ Guard 必须自动复核：
 `next_required_evidence` 是后续 O6/O7/板端联调清单，不是 PC 已经查询云端或播放音频的证据；至少包含 voice ASR/TTS cloud API contract、带 partial/final events 的 ASR stream connection trace、含 voice profile 的 TTS draft payload schema、TTS command ACK/audit log sample、speaker dispatch ACK 或 failure event sample、board media preflight audio input/output pass，以及无底盘运动的 RTC media smoke。
 
 PC Console 展示该 snapshot 不等于真实语音监听、真实文本识别、真实 TTS 下发、真实 speaker ACK、真实音频设备、真实 RTC 或真实控制完成；UI 不得提供 TTS 输入框、发送按钮或绕过云端的本地音频访问。
+
+## Voice Fixture Preview
+
+`trashbot.o7.voice_preview.v1` 是 O7-KR5 的 PC-only 本地 fixture 预览契约。它比 `voice_asr_tts_snapshot` 前进一步：允许 reviewer 通过 query path 指定一个本地安全 JSON fixture，并由 Node adapter 生成 ASR/TTS 的安全摘要。但它仍不是 voice cloud API、不是 ASR/TTS runtime、不是音频设备 smoke、不是 TTS 发送或喇叭播放，也不代表 speaker ACK 成功。
+
+API：
+
+- `GET /api/o7/voice-preview?fixtureJson=<local-json>`
+
+支持的输入 schema：
+
+- `schema=trashbot.o7.voice_fixture.v1`
+- 可选字段：`session_id`、`asr_events[]`、`tts_draft`、`voice_profile`、`speaker_ack`、`media_preflight`、`audit_refs[]`、`evidence_ref`
+
+固定 fail-closed 字段：
+
+- `source=software_proof`
+- `proof_status=not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `pc_only=true`
+- `real_voice_api_connected=false`
+- `real_asr_tts_runtime_connected=false`
+- `asr_stream_connected=false`
+- `tts_send_enabled=false`
+- `speaker_dispatch_enabled=false`
+- `robot_control_executed=false`
+
+输出只保留安全摘要：
+
+- `voice_session`：`session_id`、固定 `source=local_json_fixture`、脱敏后的 `evidence_ref` 和限量 `audit_refs`
+- `asr_events`：`event_count`、最多 3 个 event sample、latest partial slot 和 latest final slot。event sample 只包含 `event_type=partial|final`、`timestamp_ms`、脱敏 transcript、`confidence` 和 `evidence_ref`
+- `tts_draft_summary`：脱敏 text、`text_length`、`voice_profile`、`language`、`confirmation_required=true`
+- `speaker_dispatch_summary`：固定 `sends_to_robot=false`、`speaker_dispatch_enabled=false`、`ack_status`、`speaker_ack_ref`、`failure_event_ref` 和限量 `failure_refs`
+- `media_preflight_dependency`：固定依赖 `board_media_preflight_summary`，仅列出 blocked/gaps，不升级为设备通过
+- `evidence_refs`：fixture、session、ASR event、TTS draft 和 audit refs 的安全引用
+
+Adapter 必须拒绝并返回 `preview_status=blocked_not_proven`：
+
+- query 未提供、文件缺失、读取失败、坏 JSON、顶层不是 object
+- `schema` 不是 `trashbot.o7.voice_fixture.v1`
+- fixture 内含凭证、串口、`/cmd_vel`、traceback 或其他 unsafe copy
+- fixture 声称 `delivery_success=true` 或 ASR/TTS/voice success
+- fixture 声称 `safe_to_control=true`、`primary_actions_enabled=true`、`robot_control_executed=true` 或 command dispatch enabled
+- fixture 声称 `asr_stream_connected=true` 或 ASR stream connected/live/ready
+- fixture 声称 `tts_send_enabled=true` 或 TTS send available/ready/enabled
+- fixture 声称 `speaker_dispatch_enabled=true` 或 speaker dispatch available/ready/enabled
+- fixture 声称 `real_voice_api_connected=true`、`real_asr_tts_runtime_connected=true` 或真实 voice/runtime ready
+- fixture 声称 speaker ACK success、played、delivered、acked 或 OK
+
+该接口的 `fixture_preview_ready` 只表示本地语音 JSON 被压缩成安全摘要；它不提升 O7 完成度，不证明真实 ASR event stream、真实 partial/final transcript、真实 TTS send/playback、真实 speaker ACK/failure event、真实 media preflight、真实 RTC、真实云端 voice API、真实机器人控制或真实 delivery success。UI 不得基于该接口提供发送、播放、恢复、控制、下发或云端语音成功文案。
 
 ## Safe Command Snapshot
 

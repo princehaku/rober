@@ -10,6 +10,7 @@ import {
   buildO7OperatorConsoleResponse,
   buildO7LabelingPreview,
   buildO7RouteReplayPreview,
+  buildO7VoicePreview,
   buildProofBoundary,
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
@@ -201,6 +202,66 @@ function sampleLabelingFixture(evidenceRef: string) {
       supported_formats: ["coco", "jsonl"],
       gaps: ["operator_review_not_complete"],
     },
+  };
+}
+
+function sampleVoiceFixture(evidenceRef: string) {
+  // voice fixture 只表达本地 ASR/TTS 槽位和缺口，不模拟真实语音 API、播放或 ACK 成功。
+  return {
+    schema: "trashbot.o7.voice_fixture.v1",
+    session_id: "voice-session-001",
+    evidence_ref: evidenceRef,
+    asr_events: [
+      {
+        event_type: "partial",
+        timestamp_ms: 1000,
+        transcript: "去三楼",
+        confidence: 0.61,
+        evidence_ref: path.join(path.dirname(evidenceRef), "asr-partial-001.json"),
+      },
+      {
+        event_type: "partial",
+        timestamp_ms: 1200,
+        transcript: "去三楼电梯口",
+        confidence: 0.72,
+        evidence_ref: "asr-partial-002.json",
+      },
+      {
+        event_type: "final",
+        timestamp_ms: 1500,
+        transcript: "请去三楼电梯口",
+        confidence: 0.88,
+        evidence_ref: "asr-final-001.json",
+      },
+      {
+        event_type: "partial",
+        timestamp_ms: 1700,
+        transcript: "下一句不会进入 sample",
+        confidence: 0.55,
+        evidence_ref: "asr-partial-003.json",
+      },
+    ],
+    tts_draft: {
+      text: "我会等待人工确认后再播报。",
+      language: "zh-CN",
+      voice_profile: "operator-default",
+      evidence_ref: path.join(path.dirname(evidenceRef), "tts-draft.json"),
+    },
+    voice_profile: {
+      name: "fallback-profile",
+      language: "zh-CN",
+    },
+    speaker_ack: {
+      ack_status: "not_proven",
+      speaker_ack_ref: "speaker-ack-missing.json",
+      failure_event_ref: "speaker-failure-missing.json",
+      failure_refs: ["speaker-timeout.json", path.join(path.dirname(evidenceRef), "speaker-device-missing.json")],
+    },
+    media_preflight: {
+      status: "blocked",
+      gaps: ["audio_input_not_checked"],
+    },
+    audit_refs: ["voice-audit-001.json", path.join(path.dirname(evidenceRef), "voice-audit-002.json")],
   };
 }
 
@@ -1016,6 +1077,185 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.queue.review_item_count).toBe(0);
       expect(response.review_items.sample).toEqual([]);
       expect(response.draft_labels.autosave_available).toBe(false);
+      expect(response.blocked_reasons.length).toBeGreaterThan(0);
+      expectNoLegacyPythonGateSemantics(response);
+    }
+  });
+
+  it("O7 voice preview summarizes a safe local fixture without ASR TTS speaker or control claims", async () => {
+    // voice preview 前进一步只展示 ASR/TTS 摘要，真实语音 API、喇叭播放和 ACK 仍关闭。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-voice-"));
+    const evidenceRef = path.join(root, "voice-evidence.json");
+    const fixturePath = path.join(root, "voice-fixture.json");
+    await writeFile(fixturePath, JSON.stringify(sampleVoiceFixture(evidenceRef)), "utf8");
+
+    const response = await buildO7VoicePreview({ fixtureJson: fixturePath });
+    const payload = JSON.stringify(response);
+
+    expect(response.schema).toBe("trashbot.o7.voice_preview.v1");
+    expect(response.preview_status).toBe("fixture_preview_ready");
+    expect(response.input_status.status).toBe("loaded");
+    expect(response.input_status.fixture_json).toBe("file:voice-fixture.json");
+    expect(response.source).toBe("software_proof");
+    expect(response.proof_status).toBe("not_proven");
+    expect(response.safe_to_control).toBe(false);
+    expect(response.delivery_success).toBe(false);
+    expect(response.primary_actions_enabled).toBe(false);
+    expect(response.pc_only).toBe(true);
+    expect(response.real_voice_api_connected).toBe(false);
+    expect(response.real_asr_tts_runtime_connected).toBe(false);
+    expect(response.asr_stream_connected).toBe(false);
+    expect(response.tts_send_enabled).toBe(false);
+    expect(response.speaker_dispatch_enabled).toBe(false);
+    expect(response.robot_control_executed).toBe(false);
+    expect(response.source_fixture_schema).toBe("trashbot.o7.voice_fixture.v1");
+    expect(response.voice_session).toEqual({
+      session_id: "voice-session-001",
+      source: "local_json_fixture",
+      evidence_ref: "file:voice-evidence.json",
+      audit_refs: ["voice-audit-001.json", "file:voice-audit-002.json"],
+      status: "fixture_summary_only",
+    });
+    expect(response.asr_events.event_count).toBe(4);
+    expect(response.asr_events.sample_limit).toBe(3);
+    expect(response.asr_events.sample).toHaveLength(3);
+    expect(response.asr_events.sample[0]).toEqual({
+      event_type: "partial",
+      timestamp_ms: 1000,
+      transcript: "去三楼",
+      confidence: 0.61,
+      evidence_ref: "file:asr-partial-001.json",
+    });
+    expect(response.asr_events.latest_partial).toMatchObject({
+      text: "下一句不会进入 sample",
+      timestamp_ms: 1700,
+      confidence: 0.55,
+      evidence_ref: "asr-partial-003.json",
+      status: "fixture_summary_only",
+    });
+    expect(response.asr_events.latest_final).toMatchObject({
+      text: "请去三楼电梯口",
+      timestamp_ms: 1500,
+      confidence: 0.88,
+      evidence_ref: "asr-final-001.json",
+      status: "fixture_summary_only",
+    });
+    expect(response.tts_draft_summary).toEqual({
+      text: "我会等待人工确认后再播报。",
+      text_length: 13,
+      voice_profile: "operator-default",
+      language: "zh-CN",
+      confirmation_required: true,
+      status: "fixture_draft_only",
+    });
+    expect(response.speaker_dispatch_summary).toMatchObject({
+      sends_to_robot: false,
+      speaker_dispatch_enabled: false,
+      ack_status: "not_proven",
+      speaker_ack_ref: "speaker-ack-missing.json",
+      failure_event_ref: "speaker-failure-missing.json",
+      failure_refs: ["speaker-timeout.json", "file:speaker-device-missing.json"],
+      status: "blocked_not_proven",
+    });
+    expect(response.media_preflight_dependency).toMatchObject({
+      required: true,
+      source_schema: "trashbot.o7_board_media_preflight.v1",
+      status: "blocked",
+      dependency_ref: "board_media_preflight_summary",
+    });
+    expect(response.media_preflight_dependency.gaps).toEqual(
+      expect.arrayContaining(["audio_input_not_checked", "real_audio_playback_not_proven"]),
+    );
+    expect(response.evidence_refs.fixture_ref).toBe("file:voice-fixture.json");
+    expect(response.evidence_refs.session_evidence_ref).toBe("file:voice-evidence.json");
+    expect(response.evidence_refs.asr_event_refs).toEqual([
+      "file:asr-partial-001.json",
+      "asr-partial-002.json",
+      "asr-final-001.json",
+      "asr-partial-003.json",
+    ]);
+    expect(response.evidence_refs.tts_evidence_ref).toBe("file:tts-draft.json");
+    expect(response.blocked_reasons).toContain("tts_send_disabled");
+    expect(response.not_proven).toContain("real_asr_stream");
+    expect(response.not_proven).toContain("real_speaker_dispatch_ack");
+    expect(payload).not.toContain(root);
+    expect(payload).not.toContain("/cmd_vel");
+    expect(payload).not.toContain("/dev/ttyUSB");
+    expect(payload).not.toContain("asr_stream_connected=true");
+    expect(payload).not.toContain("tts_send_enabled=true");
+    expect(payload).not.toContain("speaker_dispatch_enabled=true");
+    expect(payload).not.toContain("real_voice_api_connected=true");
+    expect(payload).not.toContain("real_asr_tts_runtime_connected=true");
+    expectNoLegacyPythonGateSemantics(response);
+  });
+
+  it("O7 voice preview fails closed for missing bad unsupported unsafe and voice availability claims", async () => {
+    // 本地 fixture 不能自证 ASR 连接、TTS 可发送、喇叭可调度、真实 runtime 或 ACK 成功。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-voice-blocked-"));
+    const badJsonPath = path.join(root, "bad.json");
+    const unsupportedPath = path.join(root, "unsupported.json");
+    const unsafePath = path.join(root, "unsafe.json");
+    const successPath = path.join(root, "success.json");
+    const controlPath = path.join(root, "control.json");
+    const asrPath = path.join(root, "asr.json");
+    const ttsPath = path.join(root, "tts.json");
+    const speakerPath = path.join(root, "speaker.json");
+    const realVoicePath = path.join(root, "real-voice.json");
+    const ackSuccessPath = path.join(root, "ack-success.json");
+    await writeFile(badJsonPath, "{bad", "utf8");
+    await writeFile(unsupportedPath, JSON.stringify({ schema: "trashbot.other.v1" }), "utf8");
+    await writeFile(unsafePath, JSON.stringify({ ...sampleVoiceFixture("safe-ref"), evidence_ref: "/dev/ttyUSB0" }), "utf8");
+    await writeFile(successPath, JSON.stringify({ ...sampleVoiceFixture("safe-ref"), note: "voice success completed" }), "utf8");
+    await writeFile(controlPath, JSON.stringify({ ...sampleVoiceFixture("safe-ref"), safe_to_control: true }), "utf8");
+    await writeFile(asrPath, JSON.stringify({ ...sampleVoiceFixture("safe-ref"), asr_stream_connected: true }), "utf8");
+    await writeFile(ttsPath, JSON.stringify({ ...sampleVoiceFixture("safe-ref"), tts_send_enabled: true }), "utf8");
+    await writeFile(speakerPath, JSON.stringify({ ...sampleVoiceFixture("safe-ref"), speaker_dispatch_enabled: true }), "utf8");
+    await writeFile(realVoicePath, JSON.stringify({ ...sampleVoiceFixture("safe-ref"), real_voice_api_connected: true }), "utf8");
+    await writeFile(
+      ackSuccessPath,
+      JSON.stringify({ ...sampleVoiceFixture("safe-ref"), speaker_ack: { ack_status: "success" } }),
+      "utf8",
+    );
+
+    const missing = await buildO7VoicePreview({ fixtureJson: path.join(root, "missing.json") });
+    const badJson = await buildO7VoicePreview({ fixtureJson: badJsonPath });
+    const unsupported = await buildO7VoicePreview({ fixtureJson: unsupportedPath });
+    const unsafe = await buildO7VoicePreview({ fixtureJson: unsafePath });
+    const success = await buildO7VoicePreview({ fixtureJson: successPath });
+    const control = await buildO7VoicePreview({ fixtureJson: controlPath });
+    const asr = await buildO7VoicePreview({ fixtureJson: asrPath });
+    const tts = await buildO7VoicePreview({ fixtureJson: ttsPath });
+    const speaker = await buildO7VoicePreview({ fixtureJson: speakerPath });
+    const realVoice = await buildO7VoicePreview({ fixtureJson: realVoicePath });
+    const ackSuccess = await buildO7VoicePreview({ fixtureJson: ackSuccessPath });
+
+    expect(missing.input_status.status).toBe("missing");
+    expect(badJson.input_status.status).toBe("bad_json");
+    expect(unsupported.input_status.status).toBe("unsupported_schema");
+    expect(unsafe.input_status.status).toBe("unsafe_copy");
+    expect(success.input_status.status).toBe("success_claim");
+    expect(control.input_status.status).toBe("control_claim");
+    expect(asr.input_status.status).toBe("asr_connected_claim");
+    expect(tts.input_status.status).toBe("tts_send_claim");
+    expect(speaker.input_status.status).toBe("speaker_dispatch_claim");
+    expect(realVoice.input_status.status).toBe("real_voice_claim");
+    expect(ackSuccess.input_status.status).toBe("speaker_ack_success_claim");
+    for (const response of [missing, badJson, unsupported, unsafe, success, control, asr, tts, speaker, realVoice, ackSuccess]) {
+      expect(response.schema).toBe("trashbot.o7.voice_preview.v1");
+      expect(response.preview_status).toBe("blocked_not_proven");
+      expect(response.safe_to_control).toBe(false);
+      expect(response.delivery_success).toBe(false);
+      expect(response.primary_actions_enabled).toBe(false);
+      expect(response.real_voice_api_connected).toBe(false);
+      expect(response.real_asr_tts_runtime_connected).toBe(false);
+      expect(response.asr_stream_connected).toBe(false);
+      expect(response.tts_send_enabled).toBe(false);
+      expect(response.speaker_dispatch_enabled).toBe(false);
+      expect(response.robot_control_executed).toBe(false);
+      expect(response.asr_events.event_count).toBe(0);
+      expect(response.tts_draft_summary.confirmation_required).toBe(true);
+      expect(response.speaker_dispatch_summary.sends_to_robot).toBe(false);
+      expect(response.media_preflight_dependency.status).toBe("blocked");
       expect(response.blocked_reasons.length).toBeGreaterThan(0);
       expectNoLegacyPythonGateSemantics(response);
     }

@@ -687,6 +687,105 @@ export interface O7LabelingPreviewResponse extends ProofFlags {
   not_proven: string[];
 }
 
+export interface O7VoicePreviewAsrEventSample {
+  event_type: "partial" | "final";
+  timestamp_ms: number | null;
+  transcript: string;
+  confidence: number | null;
+  evidence_ref: string;
+}
+
+export interface O7VoicePreviewTranscriptSlot {
+  text: string;
+  timestamp_ms: number | null;
+  confidence: number | null;
+  evidence_ref: string;
+  status: "fixture_summary_only" | "empty_not_proven" | "blocked_not_proven";
+}
+
+// Voice fixture preview 是 O7-KR5 的 PC-only 本地 JSON 摘要，不连接语音 API、不发送 TTS。
+// 这些额外 false 开关把“可读 fixture”和“真实 ASR/TTS runtime”强制分离。
+export interface O7VoicePreviewResponse extends ProofFlags {
+  schema: "trashbot.o7.voice_preview.v1";
+  schema_version: 1;
+  preview_status: "fixture_preview_ready" | "blocked_not_proven";
+  input_status: {
+    fixture_json: string;
+    status:
+      | "loaded"
+      | "not_provided"
+      | "missing"
+      | "read_error"
+      | "bad_json"
+      | "not_object"
+      | "unsupported_schema"
+      | "unsafe_copy"
+      | "success_claim"
+      | "control_claim"
+      | "asr_connected_claim"
+      | "tts_send_claim"
+      | "speaker_dispatch_claim"
+      | "real_voice_claim"
+      | "speaker_ack_success_claim";
+    failure_reason: string;
+  };
+  source_fixture_schema: "trashbot.o7.voice_fixture.v1" | "not_loaded";
+  real_voice_api_connected: false;
+  real_asr_tts_runtime_connected: false;
+  asr_stream_connected: false;
+  tts_send_enabled: false;
+  speaker_dispatch_enabled: false;
+  robot_control_executed: false;
+  voice_session: {
+    session_id: string;
+    source: "local_json_fixture";
+    evidence_ref: string;
+    audit_refs: string[];
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  asr_events: {
+    event_count: number;
+    sample_limit: 3;
+    sample: O7VoicePreviewAsrEventSample[];
+    latest_partial: O7VoicePreviewTranscriptSlot;
+    latest_final: O7VoicePreviewTranscriptSlot;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  tts_draft_summary: {
+    text: string;
+    text_length: number;
+    voice_profile: string;
+    language: string;
+    confirmation_required: true;
+    status: "fixture_draft_only" | "blocked_not_proven";
+  };
+  speaker_dispatch_summary: {
+    sends_to_robot: false;
+    speaker_dispatch_enabled: false;
+    ack_status: string;
+    speaker_ack_ref: string;
+    failure_event_ref: string;
+    failure_refs: string[];
+    status: "blocked_not_proven";
+  };
+  media_preflight_dependency: {
+    required: true;
+    source_schema: "trashbot.o7_board_media_preflight.v1";
+    status: string;
+    dependency_ref: "board_media_preflight_summary";
+    gaps: string[];
+  };
+  evidence_refs: {
+    fixture_ref: string;
+    session_evidence_ref: string;
+    asr_event_refs: string[];
+    tts_evidence_ref: string;
+    audit_refs: string[];
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 // 标注队列 snapshot 只定义 O7-KR4 的字段槽位；提交、回滚和导出必须显式关闭。
 // allowed_label_types 是未来云端 schema 的占位清单，不代表真实 annotation API 已返回。
 export interface O7LabelingQueueSnapshot {
