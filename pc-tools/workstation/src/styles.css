@@ -280,6 +280,13 @@ th {
   margin: 16px 0;
 }
 
+.preflight-panel {
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  margin: 16px 0;
+  padding: 14px;
+}
+
 .compact-section {
   margin-bottom: 14px;
 }

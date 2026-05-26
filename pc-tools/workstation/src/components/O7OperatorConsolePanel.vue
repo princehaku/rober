@@ -29,6 +29,52 @@ defineProps<{
       <dd>{{ operatorConsole?.manual_control_policy.success_claim_allowed ?? false }}</dd>
     </dl>
 
+    <article class="preflight-panel">
+      <div class="section-head compact-head">
+        <!-- 板端媒体摘要来自 API；缺省值也保持 blocked，避免页面加载失败时显示可用。 -->
+        <h3>Board media preflight</h3>
+        <span class="pill danger">{{ operatorConsole?.board_media_preflight_state ?? "blocked" }}</span>
+      </div>
+      <dl class="kv compact-kv">
+        <!-- schema 和 required 字段让 operator 明确这是 O7 KR5 的前置证据缺口。 -->
+        <dt>schema</dt>
+        <dd>{{ operatorConsole?.board_media_preflight_schema ?? "trashbot.o7_board_media_preflight.v1" }}</dd>
+        <dt>required</dt>
+        <dd>{{ operatorConsole?.board_media_preflight_required ?? true }}</dd>
+        <dt>safe_to_control</dt>
+        <dd>{{ operatorConsole?.board_media_preflight_summary.safe_to_control ?? false }}</dd>
+        <dt>primary_actions_enabled</dt>
+        <dd>{{ operatorConsole?.board_media_preflight_summary.primary_actions_enabled ?? false }}</dd>
+        <dt>device_probe_attempted</dt>
+        <dd>{{ operatorConsole?.board_media_preflight_summary.device_probe_attempted ?? false }}</dd>
+      </dl>
+      <div class="two-col">
+        <div>
+          <h3>Blocked reasons</h3>
+          <ul class="dense">
+            <!-- blocked reasons 指向板端媒体缺口，不代表 PC 已经探测硬件。 -->
+            <li v-for="reason in operatorConsole?.board_media_preflight_summary.blocked_reasons" :key="reason">
+              {{ reason }}
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h3>Not proven</h3>
+          <ul class="dense">
+            <!-- not_proven 覆盖 RTC、摄像头、音频、ASR/TTS 和上车 smoke。 -->
+            <li v-for="item in operatorConsole?.board_media_preflight_summary.not_proven" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Next evidence</h3>
+      <ul class="dense">
+        <!-- next evidence 是后续上车验收清单，不触发 PC 本地设备访问。 -->
+        <li v-for="item in operatorConsole?.board_media_preflight_summary.next_required_evidence" :key="item">
+          {{ item }}
+        </li>
+      </ul>
+    </article>
+
     <div class="kr-grid">
       <!-- 六个 KR 逐项展示，所有字段都来自后端契约。 -->
       <article v-for="kr in operatorConsole?.kr_views" :key="kr.id">

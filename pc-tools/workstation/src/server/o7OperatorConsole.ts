@@ -1,5 +1,9 @@
 import { PROOF_FLAGS } from "../shared/contracts";
-import type { O7OperatorConsoleResponse, O7OperatorKrView } from "../shared/contracts";
+import type {
+  O7BoardMediaPreflightSummary,
+  O7OperatorConsoleResponse,
+  O7OperatorKrView,
+} from "../shared/contracts";
 
 const CONTRACT_SOURCE = "cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py" as const;
 
@@ -66,9 +70,51 @@ const KR_VIEWS: O7OperatorKrView[] = [
   },
 ];
 
+const BOARD_MEDIA_PREFLIGHT_SUMMARY: O7BoardMediaPreflightSummary = {
+  schema: "trashbot.o7_board_media_preflight.v1",
+  schema_version: 1,
+  evidence_boundary: "software_proof_o7_board_media_preflight_contract",
+  source: "operator_media_preflight",
+  overall_state: "blocked",
+  safe_to_control: false,
+  primary_actions_enabled: false,
+  device_probe_allowed: false,
+  device_probe_attempted: false,
+  software_proof_only: true,
+  blocked_reasons: [
+    "board_media_preflight_not_collected_by_pc",
+    "rtc_signaling_stun_turn_not_proven",
+    "camera_video_source_not_proven",
+    "audio_input_output_not_proven",
+    "asr_tts_runtime_not_proven",
+  ],
+  not_proven: [
+    "real_rtc_session",
+    "real_camera_video_source",
+    "real_audio_capture",
+    "real_audio_playback",
+    "real_asr_stream",
+    "real_tts_playback",
+    "orange_pi_media_runtime",
+    "on_robot_media_smoke",
+  ],
+  next_required_evidence: [
+    "resolve_blocked_preflight_items",
+    "orange_pi_camera_device_enumeration",
+    "orange_pi_audio_input_output_enumeration",
+    "rtc_signaling_stun_turn_trace",
+    "camera_frame_evidence_with_timestamp",
+    "asr_partial_and_final_transcript_trace",
+    "tts_audio_playback_trace",
+    "cpu_encoding_budget_trace",
+    "on_robot_media_smoke_with_no_chassis_motion",
+  ],
+};
+
 export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
   // 这里与 cloud-relay helper 固定同一 schema；PC 只消费契约快照，不连接小车。
   // 六个 KR 都保留 draft/blocked/not_proven，避免 UI 把占位面板外推成真实 O7 能力。
+  // 板端媒体 preflight 暂用静态 fail-closed 摘要，直到 cloud 提供真实板端 JSON。
   return {
     schema: "trashbot.o7.operator_console.v1",
     ...PROOF_FLAGS,
@@ -78,6 +124,10 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
     robot_connection: "not_connected_by_pc",
     realtime_stream_status: "blocked_not_proven",
     operator_mode: "observe_only",
+    board_media_preflight_required: true,
+    board_media_preflight_schema: "trashbot.o7_board_media_preflight.v1",
+    board_media_preflight_state: "blocked",
+    board_media_preflight_summary: BOARD_MEDIA_PREFLIGHT_SUMMARY,
     manual_control_policy: {
       pc_direct_robot_connection: false,
       cloud_mediated_only: true,
@@ -121,6 +171,7 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
       "robot_ack_timeout_recovery_not_proven",
       "real_map_pose_stream_not_proven",
       "real_voice_stream_not_proven",
+      "board_media_preflight_blocked",
       "manual_or_navigation_dispatch_disabled",
     ],
     not_proven: [
@@ -130,11 +181,18 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
       "real_route_replay_archive",
       "real_annotation_submit_api",
       "real_asr_tts_runtime",
+      "real_rtc_session",
+      "real_camera_video_source",
+      "real_audio_capture",
+      "real_audio_playback",
+      "real_tts_playback",
+      "on_robot_media_smoke",
       "real_operator_safe_command_dispatch",
       "delivery_success",
     ],
     recovery_paths: [
       "Connect O6 cloud archive and realtime stream before replacing draft values.",
+      "Collect board media preflight JSON and on-robot media smoke before interpreting KR5 fields.",
       "Ask Robot Software for robot-side ACK, timeout, cancel, and stop evidence before enabling commands.",
       "Ask Hardware for HIL/safety evidence before treating manual control as safe.",
     ],

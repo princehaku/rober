@@ -30,6 +30,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import *  # noqa: F401,F403
 from ros2_trashbot_behavior.remote_cloud_relay import main as _behavior_main
 
 O7_OPERATOR_CONSOLE_SCHEMA = "trashbot.o7.operator_console.v1"
+O7_BOARD_MEDIA_PREFLIGHT_SCHEMA = "trashbot.o7_board_media_preflight.v1"
 
 
 def build_o7_operator_console_contract() -> dict[str, Any]:
@@ -37,6 +38,48 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
 
     # 该契约故意只描述 draft/blocked/not_proven，避免 PC 端推断真实在线或可控制。
     # 后续接入真实 cloud API 时，必须先补 ACK、超时、取消和恢复路径证据。
+    # 媒体 preflight 摘要也保持静态 fail-closed，不导入板端包、不探测真实设备。
+    board_media_preflight_summary = {
+        "schema": O7_BOARD_MEDIA_PREFLIGHT_SCHEMA,
+        "schema_version": 1,
+        "evidence_boundary": "software_proof_o7_board_media_preflight_contract",
+        "source": "operator_media_preflight",
+        "overall_state": "blocked",
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+        "device_probe_allowed": False,
+        "device_probe_attempted": False,
+        "software_proof_only": True,
+        "blocked_reasons": [
+            "board_media_preflight_not_collected_by_pc",
+            "rtc_signaling_stun_turn_not_proven",
+            "camera_video_source_not_proven",
+            "audio_input_output_not_proven",
+            "asr_tts_runtime_not_proven",
+        ],
+        "not_proven": [
+            "real_rtc_session",
+            "real_camera_video_source",
+            "real_audio_capture",
+            "real_audio_playback",
+            "real_asr_stream",
+            "real_tts_playback",
+            "orange_pi_media_runtime",
+            "on_robot_media_smoke",
+        ],
+        "next_required_evidence": [
+            "resolve_blocked_preflight_items",
+            "orange_pi_camera_device_enumeration",
+            "orange_pi_audio_input_output_enumeration",
+            "rtc_signaling_stun_turn_trace",
+            "camera_frame_evidence_with_timestamp",
+            "asr_partial_and_final_transcript_trace",
+            "tts_audio_playback_trace",
+            "cpu_encoding_budget_trace",
+            "on_robot_media_smoke_with_no_chassis_motion",
+        ],
+    }
+
     return {
         "schema": O7_OPERATOR_CONSOLE_SCHEMA,
         "source": "software_proof",
@@ -51,6 +94,10 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
         "robot_connection": "not_connected_by_pc",
         "realtime_stream_status": "blocked_not_proven",
         "operator_mode": "observe_only",
+        "board_media_preflight_required": True,
+        "board_media_preflight_schema": O7_BOARD_MEDIA_PREFLIGHT_SCHEMA,
+        "board_media_preflight_state": "blocked",
+        "board_media_preflight_summary": board_media_preflight_summary,
         "manual_control_policy": {
             "pc_direct_robot_connection": False,
             "cloud_mediated_only": True,
@@ -70,13 +117,22 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             "cloud_realtime_api_draft",
             "pc_must_not_direct_connect_robot",
             "robot_ack_timeout_recovery_not_proven",
+            "board_media_preflight_blocked",
             "manual_or_navigation_dispatch_disabled",
         ],
         "not_proven": [
             "real_o7_realtime_cloud_stream",
+            "real_rtc_session",
+            "real_camera_video_source",
+            "real_audio_capture",
+            "real_audio_playback",
+            "real_asr_stream",
+            "real_tts_playback",
+            "on_robot_media_smoke",
             "real_o7_operator_command_dispatch",
             "delivery_success",
         ],
+        "next_required_evidence": board_media_preflight_summary["next_required_evidence"],
     }
 
 

@@ -9,6 +9,7 @@
 - cloud helper：`cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py::build_o7_operator_console_contract()`
 - PC API：`GET /api/o7/operator-console`
 - PC UI：`pc-tools/workstation` 的 `O7 Console` tab
+- Board media preflight source contract：`docs/interfaces/o7_board_media_preflight.md`
 
 ## Fail-Closed Fields
 
@@ -23,8 +24,33 @@
 - `cloud_api_status=draft_blocked_not_proven`
 - `robot_connection=not_connected_by_pc`
 - `operator_mode=observe_only`
+- `board_media_preflight_required=true`
+- `board_media_preflight_schema=trashbot.o7_board_media_preflight.v1`
+- `board_media_preflight_state=blocked`
 
 PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE ROVER、Nav2、TTS 或手控命令。
+
+## Board Media Preflight
+
+`board_media_preflight_summary` 是 O7 Console 对板端 media preflight 缺口的只读展示。当前 PC API 使用静态 fail-closed summary，让 operator 能在 Console 中看到 KR5 之前必须补齐的 RTC、摄像头、音频、ASR/TTS 和上车 smoke 证据。
+
+该 summary 必须保持：
+
+- `schema=trashbot.o7_board_media_preflight.v1`
+- `overall_state=blocked`
+- `safe_to_control=false`
+- `primary_actions_enabled=false`
+- `device_probe_allowed=false`
+- `device_probe_attempted=false`
+- `software_proof_only=true`
+
+`blocked_reasons` 至少表达 PC 尚未采集板端 media preflight、RTC signaling/STUN/TURN 未证明、摄像头视频源未证明、音频输入输出未证明、ASR/TTS runtime 未证明。
+
+`not_proven` 至少覆盖 `real_rtc_session`、`real_camera_video_source`、`real_audio_capture`、`real_audio_playback`、`real_asr_stream`、`real_tts_playback`、`orange_pi_media_runtime`、`on_robot_media_smoke`。
+
+`next_required_evidence` 必须指向下一步真实证据，包括 Orange Pi 摄像头枚举、音频输入输出枚举、RTC signaling/STUN/TURN trace、带时间戳 camera frame、ASR partial/final transcript、TTS playback trace、CPU encoding budget 和无底盘运动的 on-robot media smoke。
+
+PC Console 展示该 summary 不等于真实 RTC、真实摄像头、真实音频、真实 ASR/TTS 或真实控制完成；它不能替代上车 smoke。
 
 ## KR Views
 

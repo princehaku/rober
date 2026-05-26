@@ -384,6 +384,35 @@ const fixtures: Record<string, unknown> = {
     robot_connection: "not_connected_by_pc",
     realtime_stream_status: "blocked_not_proven",
     operator_mode: "observe_only",
+    board_media_preflight_required: true,
+    board_media_preflight_schema: "trashbot.o7_board_media_preflight.v1",
+    board_media_preflight_state: "blocked",
+    board_media_preflight_summary: {
+      schema: "trashbot.o7_board_media_preflight.v1",
+      schema_version: 1,
+      evidence_boundary: "software_proof_o7_board_media_preflight_contract",
+      source: "operator_media_preflight",
+      overall_state: "blocked",
+      safe_to_control: false,
+      primary_actions_enabled: false,
+      device_probe_allowed: false,
+      device_probe_attempted: false,
+      software_proof_only: true,
+      blocked_reasons: ["board_media_preflight_not_collected_by_pc", "rtc_signaling_stun_turn_not_proven"],
+      not_proven: [
+        "real_rtc_session",
+        "real_camera_video_source",
+        "real_audio_capture",
+        "real_audio_playback",
+        "real_asr_stream",
+        "real_tts_playback",
+      ],
+      next_required_evidence: [
+        "orange_pi_camera_device_enumeration",
+        "rtc_signaling_stun_turn_trace",
+        "on_robot_media_smoke_with_no_chassis_motion",
+      ],
+    },
     manual_control_policy: {
       pc_direct_robot_connection: false,
       cloud_mediated_only: true,
@@ -623,6 +652,14 @@ describe("App", () => {
     expect(wrapper.text()).toContain("cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py");
     expect(wrapper.text()).toContain("observe_only");
     expect(wrapper.text()).toContain("not_connected_by_pc");
+    expect(wrapper.text()).toContain("Board media preflight");
+    expect(wrapper.text()).toContain("trashbot.o7_board_media_preflight.v1");
+    expect(wrapper.text()).toContain("safe_to_controlfalse");
+    expect(wrapper.text()).toContain("primary_actions_enabledfalse");
+    expect(wrapper.text()).toContain("device_probe_attemptedfalse");
+    expect(wrapper.text()).toContain("real_camera_video_source");
+    expect(wrapper.text()).toContain("real_tts_playback");
+    expect(wrapper.text()).toContain("on_robot_media_smoke_with_no_chassis_motion");
     expect(wrapper.text()).toContain("O7-KR1");
     expect(wrapper.text()).toContain("O7-KR6");
     expect(wrapper.text()).toContain("operator.safe_command_preview.v1");
@@ -630,5 +667,7 @@ describe("App", () => {
     expect(wrapper.text()).toContain("pc_must_not_direct_connect_robot");
     expect(wrapper.text()).not.toContain("/cmd_vel");
     expect(wrapper.findAll("button").map((button) => button.text())).not.toContain("Manual turn envelope");
+    expect(wrapper.text()).not.toMatch(/ready[_ ]?to[_ ]?control/i);
+    expect(wrapper.text()).not.toMatch(/success[_ ]?claim[_ ]?allowed true/i);
   });
 });

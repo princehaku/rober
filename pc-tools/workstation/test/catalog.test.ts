@@ -431,6 +431,26 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.manual_control_policy.pc_direct_robot_connection).toBe(false);
     expect(response.manual_control_policy.cloud_mediated_only).toBe(true);
     expect(response.manual_control_policy.command_dispatch_enabled).toBe(false);
+    expect(response.board_media_preflight_required).toBe(true);
+    expect(response.board_media_preflight_schema).toBe("trashbot.o7_board_media_preflight.v1");
+    expect(response.board_media_preflight_state).toBe("blocked");
+    expect(response.board_media_preflight_summary.safe_to_control).toBe(false);
+    expect(response.board_media_preflight_summary.primary_actions_enabled).toBe(false);
+    expect(response.board_media_preflight_summary.device_probe_attempted).toBe(false);
+    expect(response.board_media_preflight_summary.blocked_reasons).toContain("board_media_preflight_not_collected_by_pc");
+    expect(response.board_media_preflight_summary.not_proven).toEqual(
+      expect.arrayContaining([
+        "real_rtc_session",
+        "real_camera_video_source",
+        "real_audio_capture",
+        "real_audio_playback",
+        "real_asr_stream",
+        "real_tts_playback",
+      ]),
+    );
+    expect(response.board_media_preflight_summary.next_required_evidence).toContain(
+      "on_robot_media_smoke_with_no_chassis_motion",
+    );
     expect(response.kr_views.map((kr) => kr.id)).toEqual(["O7-KR1", "O7-KR2", "O7-KR3", "O7-KR4", "O7-KR5", "O7-KR6"]);
     expect(response.kr_views.every((kr) => ["draft", "blocked", "not_proven"].includes(kr.status))).toBe(true);
     expect(response.command_previews.every((command) => command.sends_to_robot === false)).toBe(true);
@@ -440,6 +460,9 @@ describe("workstation fail-closed API contracts", () => {
     expect(JSON.stringify(response)).not.toContain("delivery_success=true");
     expect(JSON.stringify(response)).not.toContain("success_claim_allowed=true");
     expect(JSON.stringify(response)).not.toContain("command_dispatch_enabled=true");
+    expect(JSON.stringify(response)).not.toContain("/cmd_vel");
+    expect(JSON.stringify(response)).not.toContain("/dev/ttyUSB");
+    expect(JSON.stringify(response)).not.toMatch(/ready[_ ]?to[_ ]?control/i);
     expectNoLegacyPythonGateSemantics(response);
   });
 });
