@@ -23,6 +23,7 @@ POST /robots/{robot_id}/status
 GET  /robots/{robot_id}/status
 POST /robots/{robot_id}/commands/{command_id}/ack
 GET  /robots/{robot_id}/commands/{command_id}/ack
+POST /robots/{robot_id}/commands/{command_id}/terminal-result
 ```
 
 The phone-facing command API is bearer-gated and task-level only. Each
@@ -50,20 +51,45 @@ GET /api/commands/{command_id}/result?robot_id=<robot_id>
 It is bearer-gated like the phone command POST routes, but it is read-only. It
 does not enqueue, replay, cancel, advance ACK cursors, mutate status, call ROS,
 or bypass the robot outbound polling contract. The response schema is
-`trashbot.cloud_command_result_reconciliation.v1`, capability is
+`trashbot.cloud_command_result_reconciliation.v2`, capability is
 `cloud_command_result_reconciliation`, and evidence boundary is
 `software_proof_docker_cloud_command_result_reconciliation_gate`. It summarizes
-only the existing command store, latest safe status, and terminal ACK envelope
-into `queued`, `processing`, `terminal_result_pending`, `missing_or_expired`,
-or `store_unavailable`.
+only the existing command store, latest safe status, terminal ACK envelope, and
+persisted robot/relay terminal result into `queued`, `processing`,
+`terminal_result_pending`, `terminal_result_recorded`, `missing_or_expired`, or
+`store_unavailable`.
 
 Every result reconciliation response keeps `delivery_success=false`,
 `safe_to_control=false`, and `primary_actions_enabled=false`. A terminal ACK is
-reported as `terminal_result_pending`; it is not delivery success, not dropoff
-success, and not cancel success. The route returns `safe_copy` and
+reported as `terminal_result_pending` until the robot-facing terminal result
+write path persists a result for the same `robot_id + command_id`; ACK alone is
+not delivery success, not dropoff success, and not cancel success. The route returns `safe_copy` and
 `next_required_evidence` for the phone UI and must not expose Authorization,
 bearer token, raw state path, DB/queue URL, ROS topic, `/cmd_vel`, serial/UART,
 WAVE ROVER details, full artifacts, checksums, or tracebacks.
+
+The robot-facing terminal result write path is:
+
+```text
+POST /robots/{robot_id}/commands/{command_id}/terminal-result
+```
+
+It accepts `schema=trashbot.cloud_command_terminal_result.v1` and writes the
+phone-safe terminal result into the same command store abstraction used by the
+phone command API. The write must first find an existing command for the exact
+`robot_id + command_id`; it cannot create an orphan result, and a mismatched
+body is rejected. File-backed and SQLite-backed proof stores both persist the
+result. Reposting the identical terminal result is idempotent; reposting a
+different terminal result returns `terminal_result_conflict` and preserves the
+first result. Querying the result route after a persisted write returns
+`terminal_result_recorded` with `terminal_result_type`, `task_terminal_state`,
+`result_code`, safe refs, `safe_copy`, and `next_required_evidence`.
+
+This is still a software terminal result only. Every terminal result response
+keeps `delivery_success=false`, `safe_to_control=false`,
+`primary_actions_enabled=false`, and `real_world_delivery_proven=false`; it
+does not prove field delivery, HIL, route execution, production cloud, or real
+phone/browser proof.
 
 The first implementation uses HTTP polling so it is testable without a real 4G SIM or cloud account. A future MQTT or WebSocket transport must preserve the same command/status/ack semantics.
 

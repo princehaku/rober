@@ -301,7 +301,11 @@ const CLOUD_COMMAND_RESULT_RECONCILIATION_BOUNDARY = "software_proof_docker_clou
 const CLOUD_COMMAND_RESULT_RECONCILIATION_COPY = {
   queued: "已入队，等待机器人处理；不是送达成功。",
   processing: "命令已接收/处理中；尚无真实 delivery/dropoff/cancel result。",
+  terminal_result_recorded: "命令已返回终态结果，但这只是 software proof；仍不是送达成功。",
   terminal_result_pending: "命令已终态，但 verified terminal result 仍缺失；不是送达成功。",
+  terminal_result_conflict: "终态结果与已记录摘要冲突；请联系支持复核同一 command_id。",
+  terminal_result_missing: "没有找到这条命令的终态结果；请等待机器人上报或联系支持。",
+  store_unavailable: "云端结果存储暂时不可用；请稍后刷新或联系支持。",
   unavailable: "暂时无法确认命令状态；请等待或联系支持。",
 };
 const DEVICE_EVIDENCE_SCHEMA = "trashbot.mobile_device_evidence_capture.v1";
@@ -59125,14 +59129,43 @@ function normalizeCloudCommandResultReconciliation(value, requestedCommandId) {
   // terminal ACK 只能说明命令生命周期结束；没有 verified terminal result 仍不能写成送达成功。
   const requestedId = safeCloudCommandResultReconciliationText(requestedCommandId, "");
   const state = safeCloudCommandResultReconciliationText(
-    value?.lifecycle_state || value?.command_state || value?.result_state || value?.degradation_state,
+    value?.terminal_result_status ||
+      value?.lifecycle_state ||
+      value?.command_state ||
+      value?.result_state ||
+      value?.degradation_state,
     "unavailable",
   );
-  const bucket = state.includes("queued") ? "queued"
-    : (state.includes("processing") || state.includes("accepted") ? "processing"
-      : (state.includes("terminal_result_pending") || state.includes("terminal") ? "terminal_result_pending" : "unavailable"));
+  let bucket = "unavailable";
+  if (state.includes("terminal_result_recorded") || state.includes("recorded")) {
+    bucket = "terminal_result_recorded";
+  } else if (state.includes("terminal_result_conflict") || state.includes("conflict")) {
+    bucket = "terminal_result_conflict";
+  } else if (state.includes("store_unavailable")) {
+    bucket = "store_unavailable";
+  } else if (state.includes("terminal_result_missing") || state.includes("missing_or_expired") || state.includes("missing")) {
+    bucket = "terminal_result_missing";
+  } else if (state.includes("queued")) {
+    bucket = "queued";
+  } else if (state.includes("processing") || state.includes("accepted")) {
+    bucket = "processing";
+  } else if (state.includes("terminal_result_pending") || state.includes("terminal")) {
+    bucket = "terminal_result_pending";
+  }
   const fallbackCopy = CLOUD_COMMAND_RESULT_RECONCILIATION_COPY[bucket] ||
     CLOUD_COMMAND_RESULT_RECONCILIATION_COPY.unavailable;
+  const resultType = safeCloudCommandResultReconciliationText(
+    value?.terminal_result_type || value?.result_type,
+    bucket === "terminal_result_recorded" ? "delivery_terminal" : "not_recorded",
+  );
+  const resultCode = safeCloudCommandResultReconciliationText(
+    value?.result_code,
+    bucket === "terminal_result_recorded" ? "task_terminal_recorded_software_proof" : "not_available",
+  );
+  const errorCode = safeCloudCommandResultReconciliationText(
+    value?.error_code,
+    bucket === "terminal_result_conflict" ? "terminal_result_conflict" : "none",
+  );
   return {
     capability: safeCloudCommandResultReconciliationText(
       value?.capability,
@@ -59151,11 +59184,28 @@ function normalizeCloudCommandResultReconciliation(value, requestedCommandId) {
     ),
     terminalResultStatus: safeCloudCommandResultReconciliationText(
       value?.terminal_result_status || value?.verified_terminal_result_status,
-      bucket === "terminal_result_pending" ? "verified_terminal_result_missing" : "not_verified",
+      bucket === "terminal_result_recorded" ? "terminal_result_recorded"
+        : (bucket === "terminal_result_pending" ? "terminal_result_pending"
+          : (bucket === "terminal_result_conflict" ? "terminal_result_conflict"
+            : (bucket === "terminal_result_missing" ? "terminal_result_missing"
+              : (bucket === "store_unavailable" ? "store_unavailable" : "not_verified")))),
+    ),
+    terminalResultType: resultType,
+    resultCode,
+    errorCode,
+    safeEvidenceRef: safeCloudCommandResultReconciliationText(
+      value?.safe_evidence_ref || value?.evidence_ref,
+      "evidence_ref=not_provided",
+    ),
+    nextRequiredEvidence: safeCloudCommandResultReconciliationText(
+      value?.next_required_evidence,
+      "next_required_evidence=真实 field/HIL/送达材料、同一 safe evidence_ref、真实手机/browser proof。",
     ),
     recoveryHint: safeCloudCommandResultReconciliationText(
       value?.recovery_hint || value?.retry_hint || value?.next_action,
-      bucket === "unavailable" ? CLOUD_COMMAND_RESULT_RECONCILIATION_COPY.unavailable : "等待同一 command_id 的 verified terminal result；不要重放或重复提交。",
+      (bucket === "unavailable" || bucket === "store_unavailable" || bucket === "terminal_result_missing")
+        ? fallbackCopy
+        : "等待同一 command_id 的真实现场材料；不要重放、重复提交或请求 ACK cursor。",
     ),
     evidenceBoundary: safeCloudCommandResultReconciliationText(
       value?.evidence_boundary || value?.proof_boundary,
@@ -59207,6 +59257,11 @@ function ensureCloudCommandResultReconciliationPanel() {
       <div><dt>Safe Command ID</dt><dd id="cloudCommandResultReconciliationSafeCommandId">未提供</dd></div>
       <div><dt>ACK Semantics</dt><dd id="cloudCommandResultReconciliationAck">accepted_processing_only_not_delivery_success</dd></div>
       <div><dt>Terminal Result</dt><dd id="cloudCommandResultReconciliationTerminal">not_verified</dd></div>
+      <div><dt>Result Type</dt><dd id="cloudCommandResultReconciliationResultType">not_recorded</dd></div>
+      <div><dt>Result Code</dt><dd id="cloudCommandResultReconciliationResultCode">not_available</dd></div>
+      <div><dt>Error Code</dt><dd id="cloudCommandResultReconciliationErrorCode">none</dd></div>
+      <div><dt>Safe Evidence Ref</dt><dd id="cloudCommandResultReconciliationEvidenceRef">evidence_ref=not_provided</dd></div>
+      <div><dt>Next Required Evidence</dt><dd id="cloudCommandResultReconciliationNextEvidence">真实 field/HIL/送达材料</dd></div>
       <div><dt>Control Boundary</dt><dd id="cloudCommandResultReconciliationControls">delivery_success=false / primary_actions_enabled=false / safe_to_control=false</dd></div>
       <div><dt>Evidence Boundary</dt><dd id="cloudCommandResultReconciliationBoundary">software_proof_docker_cloud_command_result_reconciliation_gate</dd></div>
     </dl>
@@ -59232,13 +59287,20 @@ function renderCloudCommandResultReconciliation(status) {
   const badge = $("cloudCommandResultReconciliationBadge");
   badge.className = "gate-badge";
   badge.classList.add(summary.lifecycleState === "unavailable" ? "gate-blocked" : "gate-waiting");
-  badge.textContent = summary.lifecycleState === "unavailable" ? "无法确认" : "等待结果";
+  badge.textContent = summary.lifecycleState === "terminal_result_recorded"
+    ? "已记录终态"
+    : (summary.lifecycleState === "unavailable" ? "无法确认" : "等待结果");
   $("cloudCommandResultReconciliationCapability").textContent = summary.capability;
   $("cloudCommandResultReconciliationCopy").textContent = summary.safePhoneCopy;
   $("cloudCommandResultReconciliationState").textContent = summary.lifecycleStatus;
   $("cloudCommandResultReconciliationSafeCommandId").textContent = summary.commandId;
   $("cloudCommandResultReconciliationAck").textContent = summary.ackSemantics;
   $("cloudCommandResultReconciliationTerminal").textContent = summary.terminalResultStatus;
+  $("cloudCommandResultReconciliationResultType").textContent = summary.terminalResultType;
+  $("cloudCommandResultReconciliationResultCode").textContent = summary.resultCode;
+  $("cloudCommandResultReconciliationErrorCode").textContent = summary.errorCode;
+  $("cloudCommandResultReconciliationEvidenceRef").textContent = summary.safeEvidenceRef;
+  $("cloudCommandResultReconciliationNextEvidence").textContent = summary.nextRequiredEvidence;
   $("cloudCommandResultReconciliationControls").textContent =
     `delivery_success=${summary.deliverySuccess} / primary_actions_enabled=${summary.primaryActionsEnabled} / safe_to_control=${summary.safeToControl}`;
   $("cloudCommandResultReconciliationBoundary").textContent = summary.evidenceBoundary;

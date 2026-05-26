@@ -21,6 +21,9 @@ CLOUD_PHONE_COMMAND_API_FIXTURE = (
 CLOUD_COMMAND_RESULT_RECONCILIATION_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_result_reconciliation.json"
 )
+CLOUD_COMMAND_TERMINAL_RESULT_FIXTURE = (
+    WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_command_terminal_result.json"
+)
 CLOUD_TERMINAL_RESULT_VERIFICATION_FIXTURE = (
     WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_terminal_result_verification_guard.json"
 )
@@ -5433,12 +5436,18 @@ class CloudCommandResultReconciliationMobileTest(unittest.TestCase):
         self.assertIn("cloudCommandResultReconciliationPanel", app)
         self.assertIn("cloudCommandResultReconciliationCommandId", app)
         self.assertIn("refreshCloudCommandResultReconciliation", app)
+        self.assertIn("cloudCommandResultReconciliationResultType", app)
+        self.assertIn("cloudCommandResultReconciliationResultCode", app)
+        self.assertIn("cloudCommandResultReconciliationErrorCode", app)
+        self.assertIn("cloudCommandResultReconciliationEvidenceRef", app)
+        self.assertIn("cloudCommandResultReconciliationNextEvidence", app)
         self.assertIn("robot_diagnostics_cloud_command_result_reconciliation_summary", app)
         self.assertIn("cloud_command_result_reconciliation_summaries", app)
         self.assertIn("命令结果核对", app)
         self.assertIn("刷新 lifecycle summary", app)
         self.assertIn("不会重放、重复提交或拉取底层诊断", app)
         self.assertIn("terminal ACK 只能说明命令生命周期结束", app)
+        self.assertIn("命令已返回终态结果，但这只是 software proof；仍不是送达成功。", app)
         self.assertNotRegex(
             app,
             r"cloudCommandResultReconciliation.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
@@ -5455,13 +5464,27 @@ class CloudCommandResultReconciliationMobileTest(unittest.TestCase):
         self.assertEqual(fixture["can_cancel"], False)
         self.assertEqual(
             {item["lifecycle_state"] for item in summaries},
-            {"queued", "processing", "terminal_result_pending", "unavailable"},
+            {
+                "queued",
+                "processing",
+                "terminal_result_recorded",
+                "terminal_result_pending",
+                "terminal_result_conflict",
+                "terminal_result_missing",
+                "store_unavailable",
+            },
         )
         for required in (
             "已入队，等待机器人处理；不是送达成功。",
             "命令已接收/处理中；尚无真实 delivery/dropoff/cancel result。",
+            "命令已返回终态结果，但这只是 software proof；仍不是送达成功。",
             "命令已终态，但 verified terminal result 仍缺失；不是送达成功。",
-            "暂时无法确认命令状态；请等待或联系支持。",
+            "终态结果与已记录摘要冲突；请联系支持复核同一 command_id。",
+            "没有找到这条命令的终态结果；请等待机器人上报或联系支持。",
+            "云端结果存储暂时不可用；请稍后刷新或联系支持。",
+            "task_terminal_recorded_software_proof",
+            "cloud_command_terminal_result_fixture_20260526_0001",
+            "next_required_evidence",
             "delivery_success=false",
             "primary_actions_enabled=false",
             "safe_to_control=false",
@@ -5469,9 +5492,63 @@ class CloudCommandResultReconciliationMobileTest(unittest.TestCase):
         ):
             self.assertIn(required, fixture_text + doc)
 
+    def test_cloud_command_terminal_result_recorded_panel_is_fail_closed(self):
+        app = self.read_web("app.js")
+        fixture = json.loads(CLOUD_COMMAND_TERMINAL_RESULT_FIXTURE.read_text(encoding="utf-8"))
+        fixture_text = json.dumps(fixture, ensure_ascii=False)
+        doc = DOC.read_text(encoding="utf-8")
+
+        # recorded 复用 command result reconciliation 查询入口，只新增只读结果字段，不新增控制或 raw 诊断。
+        self.assertIn("terminal_result_recorded", app)
+        self.assertIn("已记录终态", app)
+        self.assertIn("Result Type", app)
+        self.assertIn("Result Code", app)
+        self.assertIn("Error Code", app)
+        self.assertIn("Safe Evidence Ref", app)
+        self.assertIn("Next Required Evidence", app)
+        self.assertNotRegex(
+            app,
+            r"cloudCommandResultReconciliation.*fetchJson\(ENDPOINTS\.(start|confirm_dropoff|cancel|diagnostics)",
+        )
+
+        summary = fixture["robot_diagnostics_cloud_command_result_reconciliation_summary"]
+        fallback = fixture["cloud_command_result_reconciliation_summary"]
+        nested = fixture["cloud_command_result_reconciliation"]["summary"]
+        self.assertEqual(summary["terminal_result_status"], "terminal_result_recorded")
+        self.assertEqual(summary["terminal_result_type"], "delivery_terminal")
+        self.assertEqual(summary["result_code"], "task_terminal_recorded_software_proof")
+        self.assertEqual(summary["error_code"], "none")
+        self.assertIn("cmd_terminal_result_20260526_0001", summary["safe_command_id"])
+        self.assertIn("cloud_command_terminal_result_fixture_20260526_0001", summary["safe_evidence_ref"])
+        self.assertIn("真实 field/HIL/送达材料", summary["next_required_evidence"])
+        self.assertEqual(summary["delivery_success"], False)
+        self.assertEqual(summary["safe_to_control"], False)
+        self.assertEqual(summary["primary_actions_enabled"], False)
+        self.assertEqual(summary["real_world_delivery_proven"], False)
+        self.assertEqual(fallback["delivery_success"], False)
+        self.assertEqual(nested["primary_actions_enabled"], False)
+        self.assertEqual(fixture["can_collect"], False)
+        self.assertEqual(fixture["can_confirm_dropoff"], False)
+        self.assertEqual(fixture["can_cancel"], False)
+        for required in (
+            "terminal_result_recorded",
+            "delivery_terminal",
+            "task_terminal_recorded_software_proof",
+            "error_code",
+            "safe_evidence_ref",
+            "next_required_evidence",
+            "delivery_success=false",
+            "primary_actions_enabled=false",
+            "safe_to_control=false",
+            "Start Delivery、Confirm Dropoff、Cancel 继续 disabled",
+        ):
+            self.assertIn(required, fixture_text + doc)
+
     def test_cloud_command_result_reconciliation_fixture_stays_phone_safe(self):
-        fixture = json.loads(CLOUD_COMMAND_RESULT_RECONCILIATION_FIXTURE.read_text(encoding="utf-8"))
-        fixture_text = json.dumps(fixture, ensure_ascii=False).lower()
+        fixtures = [
+            json.loads(CLOUD_COMMAND_RESULT_RECONCILIATION_FIXTURE.read_text(encoding="utf-8")),
+            json.loads(CLOUD_COMMAND_TERMINAL_RESULT_FIXTURE.read_text(encoding="utf-8")),
+        ]
 
         # fixture 只能携带 safe lifecycle summary，不泄漏机器人内部入口、凭证、队列地址、路径或成功证明。
         for forbidden in (
@@ -5497,7 +5574,8 @@ class CloudCommandResultReconciliationMobileTest(unittest.TestCase):
             "primary_actions_enabled\": true",
             "safe_to_control\": true",
         ):
-            self.assertNotIn(forbidden, fixture_text)
+            for fixture in fixtures:
+                self.assertNotIn(forbidden, json.dumps(fixture, ensure_ascii=False).lower())
 
 
 class CloudAuthFailureStatusGuardMobileTest(unittest.TestCase):

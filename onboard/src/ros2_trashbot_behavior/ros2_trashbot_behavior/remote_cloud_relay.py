@@ -62,12 +62,17 @@ CLOUD_PHONE_COMMAND_API_CAPABILITY = "cloud_phone_command_api"
 CLOUD_PHONE_COMMAND_API_EVIDENCE_BOUNDARY = "software_proof_docker_cloud_phone_command_api_gate"
 CLOUD_PHONE_COMMAND_API_ACK_SEMANTICS = "queued_not_delivery_success"
 CLOUD_COMMAND_RESULT_RECONCILIATION_CAPABILITY = "cloud_command_result_reconciliation"
-CLOUD_COMMAND_RESULT_RECONCILIATION_SCHEMA = "trashbot.cloud_command_result_reconciliation.v1"
+CLOUD_COMMAND_RESULT_RECONCILIATION_SCHEMA = "trashbot.cloud_command_result_reconciliation.v2"
 CLOUD_COMMAND_RESULT_RECONCILIATION_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_command_result_reconciliation_gate"
 )
 CLOUD_COMMAND_RESULT_RECONCILIATION_ACK_SEMANTICS = (
     "queue_ack_or_terminal_ack_not_delivery_dropoff_or_cancel_success"
+)
+CLOUD_COMMAND_TERMINAL_RESULT_CAPABILITY = "cloud_command_terminal_result"
+CLOUD_COMMAND_TERMINAL_RESULT_SCHEMA = "trashbot.cloud_command_terminal_result.v1"
+CLOUD_COMMAND_TERMINAL_RESULT_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_command_terminal_result_gate"
 )
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -560,6 +565,8 @@ PHONE_COPY = {
     "cloud_worker_migration_rehearsal_blocked": "Cloud worker/migration 本地演练未通过，请重新生成 artifact 后再试。",
     "cloud_worker_cutover_drain_blocked": "Cloud worker cutover/drain 本地 gate 未通过，请重新生成 artifact 后再试。",
     "command_store_unavailable": "云端任务队列暂不可用，请稍后重试或联系运维确认中转服务。",
+    "terminal_result_conflict": "小车已上报过不同终态结果，请联系支持人员对账。",
+    "terminal_result_missing": "没有找到可绑定的云端任务，不能写入终态结果。",
 }
 
 # proof 文件会被用作证据，默认删除凭证、低层机器人控制和硬件配置字段。
@@ -7249,8 +7256,134 @@ def phone_command_receipt(submit_payload):
     return safe_value(receipt)
 
 
+def normalize_terminal_result(robot_id, command_id, payload):
+    # 终态结果必须绑定既有 command；这里只做合同归一化，不创建孤儿结果。
+    if not isinstance(payload, dict):
+        raise ValueError("JSON body must be an object")
+    robot_key = _robot_key(robot_id)
+    command_key = str(command_id or "").strip()
+    if not command_key:
+        raise ValueError("command_id is required")
+    body_robot_id = str(payload.get("robot_id") or robot_key).strip()
+    body_command_id = str(payload.get("command_id") or command_key).strip()
+    if body_robot_id != robot_key or body_command_id != command_key:
+        raise ValueError("robot_id and command_id must match route")
+    schema = str(payload.get("schema") or CLOUD_COMMAND_TERMINAL_RESULT_SCHEMA).strip()
+    schema_version = int(payload.get("schema_version") or 1)
+    if schema != CLOUD_COMMAND_TERMINAL_RESULT_SCHEMA or schema_version != 1:
+        raise ValueError("terminal result schema must be trashbot.cloud_command_terminal_result.v1")
+    terminal_type = str(payload.get("terminal_result_type") or "").strip()
+    if terminal_type not in {
+        "delivery_terminal",
+        "dropoff_terminal",
+        "cancel_terminal",
+        "failure_terminal",
+        "timeout_terminal",
+        "rejected_terminal",
+    }:
+        raise ValueError("terminal_result_type is unsupported")
+    task_terminal_state = str(
+        payload.get("task_terminal_state") or payload.get("terminal_result_state") or ""
+    ).strip()
+    if not task_terminal_state:
+        raise ValueError("terminal_result_state is required")
+    result_code = str(payload.get("result_code") or "").strip()
+    if not result_code:
+        raise ValueError("result_code is required")
+    # 写入 store 前先脱敏，避免 artifact、traceback、路径或底层控制词被持久化后再扩散到手机。
+    return safe_value(
+        {
+            "schema": CLOUD_COMMAND_TERMINAL_RESULT_SCHEMA,
+            "schema_version": 1,
+            "robot_id": robot_key,
+            "command_id": command_key,
+            "terminal_result_type": terminal_type,
+            "task_terminal_state": task_terminal_state,
+            "result_code": result_code,
+            "error_code": str(payload.get("error_code") or "").strip(),
+            "task_record_ref": str(payload.get("task_record_ref") or "").strip(),
+            "evidence_ref": str(payload.get("evidence_ref") or "").strip(),
+            "completed_at": str(payload.get("completed_at") or "").strip(),
+            "source": str(payload.get("source") or "robot_remote_bridge").strip(),
+            "delivery_success": False,
+            "safe_to_control": False,
+            "primary_actions_enabled": False,
+            "real_world_delivery_proven": False,
+        }
+    )
+
+
+def _terminal_result_fingerprint(terminal_result):
+    # 幂等比较只看业务终态，不看首次写入时间，支持 robot retry 重放同一结果。
+    return _sha256_checksum(safe_value(terminal_result))
+
+
+def _terminal_result_next_required_evidence(result_state):
+    # 软件终态仍不是现场证据；recorded 之后继续要求 field/HIL/送达材料闭环。
+    if result_state == "terminal_result_recorded":
+        return "collect_field_hil_delivery_or_dropoff_evidence_before_claiming_success"
+    if result_state == "terminal_result_conflict":
+        return "support_reconcile_existing_terminal_result_before_retry"
+    if result_state == "terminal_result_missing":
+        return "submit_or_restore_matching_command_before_terminal_result"
+    if result_state == "store_unavailable":
+        return "restore_command_store_before_retrying_or_claiming_result"
+    return "collect_verified_delivery_dropoff_or_cancel_result_evidence"
+
+
+def _terminal_result_safe_copy(result_state):
+    # 文案必须把 ACK、软件终态和真实送达分开，避免手机端误开主操作。
+    copies = {
+        "terminal_result_recorded": "小车已上报软件终态结果；这仍不是现场送达、投放或取消成功证明。",
+        "terminal_result_conflict": "小车已存在不同终态结果，本次写入未覆盖旧结果；请支持人员对账。",
+        "terminal_result_missing": "没有找到同一小车和命令的云端任务，终态结果未写入。",
+        "store_unavailable": "云端 command store 当前不可用，无法写入或读取终态结果。",
+    }
+    return copies.get(result_state, copies["terminal_result_missing"])
+
+
+def _terminal_result_response_payload(robot_id, command_id, result_state, terminal_result=None, *, duplicate=False):
+    # 该响应给 robot/relay 和 phone 共用，固定 fail-closed，不把软件终态升级成真实控制许可。
+    terminal_result = safe_value(terminal_result if isinstance(terminal_result, dict) else {})
+    return safe_value(
+        {
+            "ok": result_state == "terminal_result_recorded",
+            "schema": CLOUD_COMMAND_TERMINAL_RESULT_SCHEMA,
+            "capability": CLOUD_COMMAND_TERMINAL_RESULT_CAPABILITY,
+            "evidence_boundary": CLOUD_COMMAND_TERMINAL_RESULT_EVIDENCE_BOUNDARY,
+            "robot_id": _robot_key(robot_id),
+            "command_id": str(command_id or "").strip(),
+            "terminal_result_state": result_state,
+            "duplicate": bool(duplicate),
+            "terminal_result_type": terminal_result.get("terminal_result_type", ""),
+            "task_terminal_state": terminal_result.get("task_terminal_state", ""),
+            "result_code": terminal_result.get("result_code", ""),
+            "error_code": terminal_result.get("error_code", ""),
+            "task_record_ref": terminal_result.get("task_record_ref", ""),
+            "evidence_ref": terminal_result.get("evidence_ref", ""),
+            "delivery_success": False,
+            "safe_to_control": False,
+            "primary_actions_enabled": False,
+            "real_world_delivery_proven": False,
+            "safe_copy": _terminal_result_safe_copy(result_state),
+            "next_required_evidence": _terminal_result_next_required_evidence(result_state),
+        }
+    )
+
+
+def terminal_result_store_unavailable_payload(robot_id, command_id):
+    # 写入口失败也保持 terminal result schema，手机/robot 只看到可恢复状态，不看到路径或异常栈。
+    return _terminal_result_response_payload(
+        robot_id,
+        command_id,
+        "store_unavailable",
+    )
+
+
 def _command_result_next_required_evidence(command_state):
     # 每个 lifecycle 状态都给下一步证据，避免手机把“已排队/已 ACK”误解成完成。
+    if command_state == "terminal_result_recorded":
+        return "collect_field_hil_delivery_or_dropoff_evidence_before_claiming_success"
     if command_state == "queued":
         return "wait_for_robot_outbound_polling_and_ack"
     if command_state == "processing":
@@ -7267,6 +7400,7 @@ def _command_result_next_required_evidence(command_state):
 def _command_result_safe_copy(command_state):
     # 文案刻意重复“不是成功”，防止 UI 只显示状态词时造成控制语义漂移。
     copies = {
+        "terminal_result_recorded": "云端已记录机器人上报的软件终态结果；这仍不是现场送达、投放或取消成功证明。",
         "queued": "任务仍在云端队列中，等待机器人 outbound polling；这不是送达、投放或取消成功。",
         "processing": "机器人可能已开始处理该任务，但还没有可验证终态；这不是送达、投放或取消成功。",
         "terminal_result_pending": "云端已收到 terminal ACK envelope，但仍缺真实结果证据；这不是送达、投放或取消成功。",
@@ -7276,8 +7410,9 @@ def _command_result_safe_copy(command_state):
     return copies.get(command_state, copies["store_unavailable"])
 
 
-def _command_result_payload(robot_id, command_id, command_state, ack_state, result_state):
+def _command_result_payload(robot_id, command_id, command_state, ack_state, result_state, terminal_result=None):
     # 这里是 phone-safe reconciliation contract，不返回 raw command、ACK result、路径或队列后端细节。
+    terminal_result = safe_value(terminal_result if isinstance(terminal_result, dict) else {})
     return safe_value(
         {
             "ok": command_state != "store_unavailable",
@@ -7289,21 +7424,33 @@ def _command_result_payload(robot_id, command_id, command_state, ack_state, resu
             "command_state": command_state,
             "ack_state": ack_state,
             "result_state": result_state,
+            "terminal_result": terminal_result,
+            "terminal_result_type": terminal_result.get("terminal_result_type", ""),
+            "task_terminal_state": terminal_result.get("task_terminal_state", ""),
+            "result_code": terminal_result.get("result_code", ""),
+            "error_code": terminal_result.get("error_code", ""),
+            "task_record_ref": terminal_result.get("task_record_ref", ""),
+            "evidence_ref": terminal_result.get("evidence_ref", ""),
             "ack_semantics": CLOUD_COMMAND_RESULT_RECONCILIATION_ACK_SEMANTICS,
             "delivery_success": False,
             "safe_to_control": False,
             "primary_actions_enabled": False,
+            "real_world_delivery_proven": False,
             "next_required_evidence": _command_result_next_required_evidence(command_state),
             "safe_copy": _command_result_safe_copy(command_state),
         }
     )
 
 
-def _derive_command_result_state(command, ack, status, *, now=None):
+def _derive_command_result_state(command, ack, status, terminal_result=None, *, now=None):
     # relay 只拥有队列、最近 status 和 terminal ACK；真实 delivery/dropoff/cancel 仍需后续证据。
     now = _now() if now is None else float(now)
     if not isinstance(command, dict) or not str(command.get("id") or "").strip():
         return "missing_or_expired", "none", "missing_or_expired"
+    if isinstance(terminal_result, dict) and terminal_result.get("result_code"):
+        # 已持久化的终态结果优先于 command expiry；否则用户过期后反而查不到已上报终态。
+        ack_state = str(ack.get("state") or "").strip() if isinstance(ack, dict) else "none"
+        return "terminal_result_recorded", ack_state or "none", "terminal_result_recorded"
     if float(command.get("expires_at") or 0.0) < now:
         return "missing_or_expired", "none", "missing_or_expired"
     if isinstance(ack, dict) and str(ack.get("state") or "").strip() in TERMINAL_ACK_STATES:
@@ -7412,6 +7559,7 @@ class FileBackedRelayStore:
                 "command_index": {},
                 "status": None,
                 "acks": {},
+                "terminal_results": {},
                 "stats": {"created_at": _now(), "updated_at": _now()},
             },
         )
@@ -7434,6 +7582,11 @@ class FileBackedRelayStore:
                 continue
             commands = robot_payload.get("commands") if isinstance(robot_payload.get("commands"), list) else []
             acks = robot_payload.get("acks") if isinstance(robot_payload.get("acks"), dict) else {}
+            terminal_results = (
+                robot_payload.get("terminal_results")
+                if isinstance(robot_payload.get("terminal_results"), dict)
+                else {}
+            )
             status = robot_payload.get("status") if isinstance(robot_payload.get("status"), dict) else None
             safe_commands = [
                 dict(command)
@@ -7449,6 +7602,11 @@ class FileBackedRelayStore:
                     for command_id, ack in acks.items()
                     if isinstance(ack, dict)
                 },
+                "terminal_results": {
+                    str(command_id): dict(result)
+                    for command_id, result in terminal_results.items()
+                    if isinstance(result, dict)
+                },
                 "stats": safe_value(robot_payload.get("stats") if isinstance(robot_payload.get("stats"), dict) else {}),
             }
 
@@ -7463,6 +7621,7 @@ class FileBackedRelayStore:
                 "commands": robot.get("commands", []),
                 "status": robot.get("status"),
                 "acks": robot.get("acks", {}),
+                "terminal_results": robot.get("terminal_results", {}),
                 "stats": robot.get("stats", {}),
             }
         payload = {
@@ -7595,16 +7754,69 @@ class FileBackedRelayStore:
             return 404, phone_error("not_found", "ack not found")
         return 200, {"ok": True, "ack": dict(ack)}
 
+    def post_terminal_result(self, robot_id, command_id, payload):
+        result = normalize_terminal_result(robot_id, command_id, payload)
+        command_key = result["command_id"]
+        with self._lock:
+            robot = self._robot_locked(robot_id)
+            command = robot["command_index"].get(command_key)
+            if not isinstance(command, dict):
+                # terminal result 不能反向创建 command，否则 phone 无法对账 queue/ACK/result 同一主链路。
+                return 404, _terminal_result_response_payload(robot_id, command_key, "terminal_result_missing")
+            existing = robot["terminal_results"].get(command_key)
+            if existing:
+                existing_result = dict(existing.get("result") if isinstance(existing.get("result"), dict) else existing)
+                if _terminal_result_fingerprint(existing_result) == _terminal_result_fingerprint(result):
+                    return 200, _terminal_result_response_payload(
+                        robot_id,
+                        command_key,
+                        "terminal_result_recorded",
+                        existing_result,
+                        duplicate=True,
+                    )
+                # 冲突只返回脱敏摘要，绝不覆盖旧结果，避免 robot retry 或异常上报破坏可追溯性。
+                return 409, _terminal_result_response_payload(
+                    robot_id,
+                    command_key,
+                    "terminal_result_conflict",
+                    existing_result,
+                )
+            robot["terminal_results"][command_key] = {
+                "result": result,
+                "fingerprint": _terminal_result_fingerprint(result),
+                "recorded_at": _now(),
+            }
+            self._touch_locked(robot, "terminal_result_count")
+            self._persist_locked()
+        return 201, _terminal_result_response_payload(
+            robot_id,
+            command_key,
+            "terminal_result_recorded",
+            result,
+            duplicate=False,
+        )
+
     def get_command_result_reconciliation(self, robot_id, command_id):
         command_key = str(command_id or "").strip()
         with self._lock:
             robot = self._robot_locked(robot_id)
             command = robot["command_index"].get(command_key)
             ack = robot["acks"].get(command_key)
+            terminal_result_record = robot["terminal_results"].get(command_key)
             status = robot.get("status") if isinstance(robot.get("status"), dict) else None
+        terminal_result = None
+        if isinstance(terminal_result_record, dict):
+            terminal_result = terminal_result_record.get("result")
         # 对账只读当前 proof store 快照；不推进 ACK cursor，也不触发 robot polling。
-        command_state, ack_state, result_state = _derive_command_result_state(command, ack, status)
-        return _command_result_payload(robot_id, command_key, command_state, ack_state, result_state)
+        command_state, ack_state, result_state = _derive_command_result_state(command, ack, status, terminal_result)
+        return _command_result_payload(
+            robot_id,
+            command_key,
+            command_state,
+            ack_state,
+            result_state,
+            terminal_result,
+        )
 
 
 class SQLiteRelayStore:
@@ -7681,6 +7893,20 @@ class SQLiteRelayStore:
                     ack_json TEXT NOT NULL,
                     updated_at REAL NOT NULL,
                     PRIMARY KEY (robot_id, command_id)
+                )
+                """
+            )
+            # terminal_results 是 ACK 之后的独立软件终态主路径；它仍不代表真实现场送达成功。
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS terminal_results (
+                    robot_id TEXT NOT NULL,
+                    command_id TEXT NOT NULL,
+                    result_json TEXT NOT NULL,
+                    fingerprint TEXT NOT NULL,
+                    recorded_at REAL NOT NULL,
+                    PRIMARY KEY (robot_id, command_id),
+                    FOREIGN KEY (robot_id, command_id) REFERENCES commands(robot_id, command_id)
                 )
                 """
             )
@@ -7923,6 +8149,72 @@ class SQLiteRelayStore:
             return 404, phone_error("not_found", "ack not found")
         return 200, {"ok": True, "ack": json.loads(row["ack_json"])}
 
+    def post_terminal_result(self, robot_id, command_id, payload):
+        result = normalize_terminal_result(robot_id, command_id, payload)
+        robot_key = result["robot_id"]
+        command_key = result["command_id"]
+        fingerprint = _terminal_result_fingerprint(result)
+        with self._lock:
+            self._ensure_ready()
+            with self._session() as connection:
+                # 先确认 command 主记录存在，防止 terminal result 变成无法给手机对账的孤儿记录。
+                command_row = connection.execute(
+                    "SELECT 1 FROM commands WHERE robot_id = ? AND command_id = ?",
+                    (robot_key, command_key),
+                ).fetchone()
+                if not command_row:
+                    return 404, _terminal_result_response_payload(
+                        robot_key,
+                        command_key,
+                        "terminal_result_missing",
+                    )
+                existing_row = connection.execute(
+                    """
+                    SELECT result_json, fingerprint
+                    FROM terminal_results
+                    WHERE robot_id = ? AND command_id = ?
+                    """,
+                    (robot_key, command_key),
+                ).fetchone()
+                if existing_row:
+                    existing_result = json.loads(existing_row["result_json"])
+                    if str(existing_row["fingerprint"] or "") == fingerprint:
+                        return 200, _terminal_result_response_payload(
+                            robot_key,
+                            command_key,
+                            "terminal_result_recorded",
+                            existing_result,
+                            duplicate=True,
+                        )
+                    # SQLite 路径同样不覆盖冲突结果，保证 file/sqlite 两种 proof store 语义一致。
+                    return 409, _terminal_result_response_payload(
+                        robot_key,
+                        command_key,
+                        "terminal_result_conflict",
+                        existing_result,
+                    )
+                connection.execute(
+                    """
+                    INSERT INTO terminal_results (robot_id, command_id, result_json, fingerprint, recorded_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        robot_key,
+                        command_key,
+                        json.dumps(result, ensure_ascii=False, sort_keys=True),
+                        fingerprint,
+                        _now(),
+                    ),
+                )
+                self._touch(connection, robot_key, "terminal_result_count")
+        return 201, _terminal_result_response_payload(
+            robot_key,
+            command_key,
+            "terminal_result_recorded",
+            result,
+            duplicate=False,
+        )
+
     def get_command_result_reconciliation(self, robot_id, command_id):
         robot_key = _robot_key(robot_id)
         command_key = str(command_id or "").strip()
@@ -7942,12 +8234,29 @@ class SQLiteRelayStore:
                     "SELECT status_json FROM robots WHERE robot_id = ?",
                     (robot_key,),
                 ).fetchone()
+                terminal_result_row = connection.execute(
+                    "SELECT result_json FROM terminal_results WHERE robot_id = ? AND command_id = ?",
+                    (robot_key, command_key),
+                ).fetchone()
         command = json.loads(command_row["command_json"]) if command_row else None
         ack = json.loads(ack_row["ack_json"]) if ack_row else None
         status = json.loads(status_row["status_json"]) if status_row and status_row["status_json"] else None
+        terminal_result = json.loads(terminal_result_row["result_json"]) if terminal_result_row else None
         # SQLite proof store 同样只返回 lifecycle summary，不返回 DB 路径、SQL 或 queue URL。
-        command_state, ack_state, result_state = _derive_command_result_state(command, ack, status)
-        return _command_result_payload(robot_key, command_key, command_state, ack_state, result_state)
+        command_state, ack_state, result_state = _derive_command_result_state(
+            command,
+            ack,
+            status,
+            terminal_result,
+        )
+        return _command_result_payload(
+            robot_key,
+            command_key,
+            command_state,
+            ack_state,
+            result_state,
+            terminal_result,
+        )
 
     def export_backup_data(self):
         # backup artifact 复用 normalized envelope，不导出 sqlite 文件路径或底层 WAL 细节。
@@ -10320,6 +10629,8 @@ def _route(path):
         return "status", robot_id, ""
     if len(parts) == 5 and parts[2] == "commands" and parts[4] == "ack":
         return "ack", robot_id, parts[3]
+    if len(parts) == 5 and parts[2] == "commands" and parts[4] == "terminal-result":
+        return "terminal_result", robot_id, parts[3]
     return None
 
 
@@ -11567,7 +11878,21 @@ def make_handler(store, bearer_token):
                 if route_name == "ack":
                     self._send_json(200, store.post_ack(robot_id, command_id, body))
                     return
+                if route_name == "terminal_result":
+                    # terminal result 是 robot-facing 写主路径，但仍只写软件证明，不打开控制或送达成功。
+                    status_code, payload = store.post_terminal_result(robot_id, command_id, body)
+                    self._send_json(status_code, payload)
+                    return
+            except (OSError, sqlite3.Error) as exc:
+                if route_name == "terminal_result":
+                    self._send_json(503, terminal_result_store_unavailable_payload(robot_id, command_id))
+                    return
+                self._send_json(503, phone_error("command_store_unavailable", _safe_error_reason(exc)))
+                return
             except ValueError as exc:
+                if route_name == "terminal_result" and "state store" in str(exc) and "not ready" in str(exc):
+                    self._send_json(503, terminal_result_store_unavailable_payload(robot_id, command_id))
+                    return
                 self._send_json(400, phone_error("bad_request", str(exc)))
                 return
             self._send_json(405, phone_error("bad_request", "method is not supported for this path"))

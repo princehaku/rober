@@ -77,8 +77,11 @@ Required Chinese copy for the reconciliation lifecycle states:
 
 - `queued`: 已入队，等待机器人处理；不是送达成功。
 - `processing`: 命令已接收/处理中；尚无真实 delivery/dropoff/cancel result。
+- `terminal_result_recorded`: 命令已返回终态结果；手机端在现有 `cloud_command_result_reconciliation` 面板展示 result type、result code、error code、safe command_id、safe evidence_ref 和 next_required_evidence。该状态只是 `software_proof_docker_cloud_command_terminal_result_gate`，必须继续显示 `delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`，Start Delivery、Confirm Dropoff、Cancel 继续 disabled，并提示下一步仍需真实 field/HIL/送达材料。
 - `terminal_result_pending`: 命令已终态，但 verified terminal result 仍缺失；不是送达成功。
-- `unavailable` / store unavailable / missing summary: 暂时无法确认命令状态；请等待或联系支持。
+- `terminal_result_conflict`: 同一 command_id 的终态结果与已记录摘要冲突；手机端只显示普通中文冲突解释、safe command_id 和 safe evidence_ref，不自动 replay、不 resubmit、不请求 ACK cursor。
+- `terminal_result_missing`: 没有找到这条命令的终态结果；继续等待机器人上报或联系支持，不把 missing 写成失败完成。
+- `store_unavailable`: 云端结果存储暂时不可用；请稍后刷新或联系支持，不拉 raw diagnostics，不暴露 raw `/robots/*`、ROS topic、`/cmd_vel`、serial/UART/WAVE ROVER、token、Authorization、DB/queue URL、raw state path、完整 artifact、checksum 或 traceback。
 
 This is Docker/local `software_proof` only from `mobile/web/fixtures/robot_diagnostics_cloud_command_result_reconciliation.json` and `mobile/web/fixtures/robot_diagnostics_cloud_phone_command_api.json`. Terminal ACK is still only lifecycle evidence: without a verified terminal delivery/dropoff/cancel result under the same safe `command_id`, it is not delivery success, not dropoff completion, not cancel completion, not true phone/browser proof, not real 4G/cloud proof, not HIL, and not route/elevator field pass. Start Delivery、Confirm Dropoff、Cancel 继续 disabled.
 

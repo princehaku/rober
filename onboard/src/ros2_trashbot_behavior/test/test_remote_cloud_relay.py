@@ -230,6 +230,26 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         payload.update(extra)
         return payload
 
+    def terminal_result(self, command_id="phone-terminal-001", **extra):
+        payload = {
+            "schema": "trashbot.cloud_command_terminal_result.v1",
+            "schema_version": 1,
+            "robot_id": "trashbot-001",
+            "command_id": command_id,
+            "terminal_result_type": "delivery_terminal",
+            "terminal_result_state": "completed",
+            "result_code": "task_terminal_completed",
+            "error_code": "",
+            "task_record_ref": "safe_task_record_ref",
+            "evidence_ref": "safe_evidence_ref",
+            "completed_at": "2026-05-26T07:08:00+08:00",
+            "source": "robot_remote_bridge",
+            "delivery_success": False,
+            "real_world_delivery_proven": False,
+        }
+        payload.update(extra)
+        return payload
+
     def test_command_status_ack_contract_and_idempotency(self):
         status, payload = self.client.request("POST", "/robots/trashbot-001/commands", self.command())
         self.assertEqual(status, 201)
@@ -450,7 +470,7 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         )
         encoded = json.dumps(payload, ensure_ascii=False)
         self.assertEqual(status, 200)
-        self.assertEqual(payload["schema"], "trashbot.cloud_command_result_reconciliation.v1")
+        self.assertEqual(payload["schema"], "trashbot.cloud_command_result_reconciliation.v2")
         self.assertEqual(payload["capability"], "cloud_command_result_reconciliation")
         self.assertEqual(
             payload["evidence_boundary"],
@@ -581,11 +601,219 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         encoded = json.dumps(payload, ensure_ascii=False)
         self.assertEqual(status, 503)
         self.assertFalse(payload["ok"])
-        self.assertEqual(payload["schema"], "trashbot.cloud_command_result_reconciliation.v1")
+        self.assertEqual(payload["schema"], "trashbot.cloud_command_result_reconciliation.v2")
         self.assertEqual(payload["command_state"], "store_unavailable")
         self.assertEqual(payload["ack_state"], "unavailable")
         self.assertEqual(payload["result_state"], "store_unavailable")
         self.assertFalse(payload["delivery_success"])
+        for forbidden in (
+            "phone-token",
+            "Authorization",
+            "Bearer",
+            "hidden",
+            "/cmd_vel",
+            "raw state path",
+            "DB",
+            "queue URL",
+            "ROS topic",
+            "serial",
+            "UART",
+            "WAVE ROVER",
+            "traceback",
+            "checksum",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_command_terminal_result_file_store_recorded_pending_idempotent_conflict_and_missing(self):
+        status, receipt = self.client.request(
+            "POST",
+            "/api/commands/collect",
+            {
+                "robot_id": "trashbot-001",
+                "idempotency_key": "phone-terminal-001",
+                "payload": {"target": "trash_station", "trash_type": 0},
+            },
+        )
+        self.assertEqual(status, 201)
+        command_id = receipt["command_id"]
+
+        self.client.request(
+            "POST",
+            f"/robots/trashbot-001/commands/{command_id}/ack",
+            {
+                "protocol_version": PROTOCOL_VERSION,
+                "state": "acked",
+                "message": "envelope terminal ack only",
+                "updated_at": time.time(),
+                "result": {"delivery_success": False},
+            },
+        )
+        status, pending = self.client.request(
+            "GET",
+            f"/api/commands/{command_id}/result?robot_id=trashbot-001",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(pending["result_state"], "terminal_result_pending")
+        self.assertFalse(pending["delivery_success"])
+
+        status, recorded = self.client.request(
+            "POST",
+            f"/robots/trashbot-001/commands/{command_id}/terminal-result",
+            self.terminal_result(command_id),
+        )
+        encoded = json.dumps(recorded, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertEqual(recorded["schema"], "trashbot.cloud_command_terminal_result.v1")
+        self.assertEqual(recorded["capability"], "cloud_command_terminal_result")
+        self.assertEqual(recorded["terminal_result_state"], "terminal_result_recorded")
+        self.assertEqual(recorded["terminal_result_type"], "delivery_terminal")
+        self.assertEqual(recorded["result_code"], "task_terminal_completed")
+        self.assertFalse(recorded["delivery_success"])
+        self.assertFalse(recorded["safe_to_control"])
+        self.assertFalse(recorded["primary_actions_enabled"])
+        self.assertFalse(recorded["real_world_delivery_proven"])
+
+        status, reconciliation = self.client.request(
+            "GET",
+            f"/api/commands/{command_id}/result?robot_id=trashbot-001",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(reconciliation["schema"], "trashbot.cloud_command_result_reconciliation.v2")
+        self.assertEqual(reconciliation["command_state"], "terminal_result_recorded")
+        self.assertEqual(reconciliation["result_state"], "terminal_result_recorded")
+        self.assertEqual(reconciliation["terminal_result_type"], "delivery_terminal")
+        self.assertEqual(reconciliation["result_code"], "task_terminal_completed")
+        self.assertFalse(reconciliation["delivery_success"])
+        self.assertFalse(reconciliation["safe_to_control"])
+        self.assertFalse(reconciliation["primary_actions_enabled"])
+        self.assertFalse(reconciliation["real_world_delivery_proven"])
+
+        reloaded = FileBackedRelayStore(self.state_path)
+        persisted = reloaded.get_command_result_reconciliation("trashbot-001", command_id)
+        self.assertEqual(persisted["result_state"], "terminal_result_recorded")
+        self.assertEqual(persisted["result_code"], "task_terminal_completed")
+
+        status, duplicate = self.client.request(
+            "POST",
+            f"/robots/trashbot-001/commands/{command_id}/terminal-result",
+            self.terminal_result(command_id),
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(duplicate["duplicate"])
+        self.assertEqual(duplicate["terminal_result_state"], "terminal_result_recorded")
+
+        status, conflict = self.client.request(
+            "POST",
+            f"/robots/trashbot-001/commands/{command_id}/terminal-result",
+            self.terminal_result(command_id, result_code="task_terminal_failed", error_code="safe_error_code"),
+        )
+        self.assertEqual(status, 409)
+        self.assertEqual(conflict["terminal_result_state"], "terminal_result_conflict")
+        self.assertEqual(conflict["result_code"], "task_terminal_completed")
+
+        status, missing = self.client.request(
+            "POST",
+            "/robots/trashbot-001/commands/not-present/terminal-result",
+            self.terminal_result("not-present"),
+        )
+        self.assertEqual(status, 404)
+        self.assertEqual(missing["terminal_result_state"], "terminal_result_missing")
+        self.assertFalse(missing["delivery_success"])
+
+        for payload in (recorded, reconciliation, duplicate, conflict, missing):
+            encoded = json.dumps(payload, ensure_ascii=False)
+            self.assertFalse(payload["delivery_success"])
+            self.assertFalse(payload["safe_to_control"])
+            self.assertFalse(payload["primary_actions_enabled"])
+            for forbidden in (
+                "phone-token",
+                "Authorization",
+                "Bearer",
+                "/cmd_vel",
+                "raw state path",
+                "DB",
+                "queue URL",
+                "ROS topic",
+                "serial",
+                "UART",
+                "WAVE ROVER",
+                "traceback",
+                "checksum",
+            ):
+                self.assertNotIn(forbidden, encoded)
+        self.assertNotIn("checksum", encoded)
+
+    def test_cloud_command_terminal_result_sqlite_store_persists_recorded(self):
+        sqlite_path = pathlib.Path(self.tmp.name) / "terminal_result.sqlite"
+        server = build_server("127.0.0.1", 0, sqlite_path, "phone-token", state_backend="sqlite")
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        client = RelayHttpClient(f"http://127.0.0.1:{server.server_address[1]}")
+        try:
+            status, receipt = client.request(
+                "POST",
+                "/api/commands/confirm-dropoff",
+                {
+                    "robot_id": "trashbot-001",
+                    "command_id": "sqlite-terminal-001",
+                    "payload": {"reason": "dropoff_confirmed_by_robot"},
+                },
+            )
+            self.assertEqual(status, 201)
+            status, recorded = client.request(
+                "POST",
+                "/robots/trashbot-001/commands/sqlite-terminal-001/terminal-result",
+                self.terminal_result(
+                    receipt["command_id"],
+                    terminal_result_type="dropoff_terminal",
+                    result_code="dropoff_terminal_completed",
+                ),
+            )
+            self.assertEqual(status, 201)
+            self.assertEqual(recorded["terminal_result_state"], "terminal_result_recorded")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=1.0)
+
+        reloaded = SQLiteRelayStore(sqlite_path)
+        reconciliation = reloaded.get_command_result_reconciliation("trashbot-001", "sqlite-terminal-001")
+        self.assertEqual(reconciliation["result_state"], "terminal_result_recorded")
+        self.assertEqual(reconciliation["terminal_result_type"], "dropoff_terminal")
+        self.assertEqual(reconciliation["result_code"], "dropoff_terminal_completed")
+        self.assertFalse(reconciliation["delivery_success"])
+
+    def test_cloud_command_terminal_result_store_unavailable_is_phone_safe(self):
+        class FailingStore:
+            def post_terminal_result(self, robot_id, command_id, payload):
+                raise OSError("raw state path /cmd_vel Authorization Bearer hidden DB queue URL traceback checksum")
+
+        server = relay_module.ThreadingHTTPServer(
+            ("127.0.0.1", 0),
+            relay_module.make_handler(FailingStore(), "phone-token"),
+        )
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        client = RelayHttpClient(f"http://127.0.0.1:{server.server_address[1]}")
+        try:
+            status, payload = client.request(
+                "POST",
+                "/robots/trashbot-001/commands/store-down/terminal-result",
+                self.terminal_result("store-down"),
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=1.0)
+
+        encoded = json.dumps(payload, ensure_ascii=False)
+        self.assertEqual(status, 503)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["schema"], "trashbot.cloud_command_terminal_result.v1")
+        self.assertEqual(payload["terminal_result_state"], "store_unavailable")
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["primary_actions_enabled"])
         for forbidden in (
             "phone-token",
             "Authorization",

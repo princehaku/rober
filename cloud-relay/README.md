@@ -140,6 +140,7 @@ POST /api/commands/collect
 POST /api/commands/confirm-dropoff
 POST /api/commands/cancel
 GET  /api/commands/{command_id}/result?robot_id=<robot_id>
+POST /robots/{robot_id}/commands/{command_id}/terminal-result
 ```
 
 这些 POST route 必须带 `Authorization: Bearer <token>`。请求 body 包含
@@ -162,13 +163,14 @@ queued receipt。响应不得暴露 Authorization、token、raw state path、ROS
 
 `GET /api/commands/{command_id}/result?robot_id=<robot_id>` 是同源、bearer-gated
 的 phone-safe 对账 route。它只读取既有 command store、最新 safe status 和
-terminal ACK envelope，返回 schema
-`trashbot.cloud_command_result_reconciliation.v1`、capability
+terminal ACK envelope，以及 robot/relay 写入并持久化的 terminal result，返回 schema
+`trashbot.cloud_command_result_reconciliation.v2`、capability
 `cloud_command_result_reconciliation`、证据边界
 `software_proof_docker_cloud_command_result_reconciliation_gate`。`command_state`
 只会是 `queued`、`processing`、`terminal_result_pending`、
-`missing_or_expired` 或 `store_unavailable`；terminal ACK 仍被解释为
-`terminal_result_pending`，不是 delivery/dropoff/cancel success。
+`terminal_result_recorded`、`missing_or_expired` 或 `store_unavailable`；terminal
+ACK 但没有 terminal result 仍被解释为 `terminal_result_pending`，不是
+delivery/dropoff/cancel success。
 
 该对账 route 不 enqueue、不 replay、不 cancel、不推进 ACK cursor、不修改 status、
 不触发 ROS/Nav2 或机器人控制，也不绕过 robot outbound polling。响应固定保留
@@ -177,6 +179,20 @@ terminal ACK envelope，返回 schema
 `next_required_evidence` 给手机 UI。响应不得暴露 Authorization、bearer token、
 raw state path、DB/queue URL、ROS topic、`/cmd_vel`、serial/UART、WAVE ROVER、
 完整 artifact、checksum 或 traceback。
+
+Robot-facing terminal result 写入口是
+`POST /robots/{robot_id}/commands/{command_id}/terminal-result`。请求 body 使用
+`schema=trashbot.cloud_command_terminal_result.v1`，并携带
+`terminal_result_type`、`terminal_result_state`、`result_code`、可选
+`error_code`、`task_record_ref`、`evidence_ref` 和 `completed_at`。relay 写入前
+必须确认同一 `robot_id + command_id` 的 command 已存在；不存在或路径/body
+不匹配时返回 phone-safe missing/bad request，不能创建孤儿 terminal result。
+file-backed 与 SQLite-backed proof store 都会持久化该 terminal result；重复写入同一
+结果返回幂等 `terminal_result_recorded`，不同结果返回
+`terminal_result_conflict` 且不覆盖旧结果。该写入口仍固定
+`delivery_success=false`、`safe_to_control=false`、
+`primary_actions_enabled=false`、`real_world_delivery_proven=false`；它只证明
+Docker/local software terminal result 主路径，不证明真实现场送达。
 
 生成 cloud deployment readiness artifact：
 

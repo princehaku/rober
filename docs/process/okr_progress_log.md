@@ -8,6 +8,28 @@
 
 ## 2026-05-26 系列
 
+### 2026-05-26 07-08｜cloud-command-terminal-result-mainline｜terminal result mainline
+
+本轮 `sprints/2026.05.26_07-08_cloud-command-terminal-result-mainline/` 执行 `cloud_command_terminal_result` epic closeout。用户价值是把上一轮 command result reconciliation 的 `terminal_result_pending` 推进到真实主链路：robot/relay 可以按同一 `robot_id + command_id` 写入 terminal result，store 持久化，query 返回 `terminal_result_recorded`，mobile/web 在“命令结果核对”面板展示终态结果，同时继续 fail-closed，不把 software proof 误写成 delivery success。本轮边界为 `software_proof_docker_cloud_command_terminal_result_gate`。
+
+Task A Robot Software Engineer 更新 `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py`、`onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py`、`cloud-relay/README.md`、`docs/product/remote_4g_mvp.md` 和 `docs/product/cloud_4g_infrastructure.md`。新增 `POST /robots/{robot_id}/commands/{command_id}/terminal-result`，新增 `trashbot.cloud_command_terminal_result.v1` / `cloud_command_terminal_result`，query schema 升级为 `trashbot.cloud_command_result_reconciliation.v2`；file-backed 和 SQLite-backed store 均持久化 terminal result；query 返回 `terminal_result_recorded`；ACK-only 仍 `terminal_result_pending`；conflict、missing、store_unavailable 均 fail-closed。验证通过：`py_compile` exit 0；focused unittest 输出 `Ran 10 tests in 7.167s OK`；scoped diff-check exit 0。
+
+Task B User Touchpoint Full-Stack Engineer 更新 `mobile/web/app.js`、`mobile/web/test_mobile_web_entrypoint.py`、`mobile/web/fixtures/robot_diagnostics_cloud_command_result_reconciliation.json`、新增 `mobile/web/fixtures/robot_diagnostics_cloud_command_terminal_result.json`，并更新 `docs/product/mobile_user_flow.md`。现有“命令结果核对”面板展示 `terminal_result_recorded`，包括 result type/code、error code、safe `command_id`、safe `evidence_ref` 和 `next_required_evidence`；pending、conflict、missing、store_unavailable 均有中文 fail-closed copy；主操作不因 recorded 自动启用。验证通过：`node --check mobile/web/app.js` passed；focused unittest 输出 `Ran 5 tests OK`；scoped diff-check passed。
+
+Task C Product closeout 创建 `tech-done.md`、`side2side_check.md`、`final.md`，并更新 `OKR.md` 与本进度日志。Closeout validation 通过：closeout 三文件存在；required keyword `rg` 覆盖 `cloud_command_terminal_result`、`terminal_result_recorded`、`Objective 5`、`约 80%`、`software_proof_docker_cloud_command_terminal_result_gate` 和 `不证明公网 HTTPS/TLS`；scoped `git diff --check` passed。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 83% | 本轮不触碰硬件桥、串口、WAVE ROVER、UART、HIL、2D LiDAR / ToF 或 vendor-source 材料；上一轮 PC hardware materials coverage 证据仍有效。 |
+| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 保持约 99% | 本轮只证明 command terminal result software gate；没有真实 task record、真实电梯、dropoff/cancel field completion、delivery result 或 `delivery_success=true`。 |
+| Objective 3：可验证导航与固定路线 | 保持约 99% | 本轮没有真实路线采集、Nav2/fixed-route runtime log、route completion signal 或 field task record；command terminal result 不代表 Nav2/fixed-route proof。 |
+| Objective 4：手机用户体验与低成本量产边界 | 保持约 99% | `mobile/web` 能只读展示 terminal result recorded 终态，但仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice 或 true phone/browser acceptance。 |
+| Objective 5：云中转 + OSS/CDN 数据通路产品化 | 从约 76% 提升到约 80% | 本轮从 result reconciliation pending 推进到 `cloud_command_terminal_result` API/store/query/UI 主链路，新增 phone-safe terminal result recorded 查询和 mobile/web 只读展示。仍不证明公网 HTTPS/TLS、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、true phone/browser proof、HIL、Nav2/fixed-route、WAVE ROVER/UART 或 delivery success。 |
+
+本轮验证范围：Docker/local software proof 和 worker-scoped focused tests。Product 未运行 Docker/Humble build、真实公网、真实 4G/SIM、OSS/CDN live traffic、production DB/queue、真实手机/browser、WAVE ROVER/UART、HIL、route/elevator field execution 或 delivery-success validation。
+
+更新时间：2026-05-26 07:57 Asia/Shanghai。
+
 ### 2026-05-26 06-07｜pc-hardware-hil-material-coverage｜Hardware Materials coverage
 
 本轮 `sprints/2026.05.26_06-07_pc-hardware-hil-material-coverage/` 执行 PC hardware HIL material coverage closeout。Full-Stack 已在 `pc-tools/workstation` 新增 Node-native `GET /api/tools/hardware-materials` 和 Vue `Hardware Materials` tab/panel，扫描 `pc-tools/evidence/fixtures/wave_rover_*`，识别 `feedback_T1001.log`、`odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`、`operator_hil_report` / `.json` 五件套，并明确 `coverage is not HIL pass`。
