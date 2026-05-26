@@ -12,6 +12,7 @@ import type {
   O7CloudArchiveTasksProbeResponse,
   O7CloudArchiveTasksResponse,
   O7LabelingQueueInspectorReviewItem,
+  O7VoiceAsrTtsInspectorAsrEvent,
   O7CloudOperatorConsoleProbeResponse,
   O7RealtimeElevatorProbeResponse,
 } from "../shared/contracts";
@@ -64,6 +65,7 @@ const cloudProbeError = ref("");
 const cloudProbeLoading = ref(false);
 const routeReplayCursor = ref(0);
 const labelingReviewCursor = ref(0);
+const voiceAsrEventCursor = ref(0);
 
 function asRecord(result: O7FixturePreviewResult | undefined): Record<string, unknown> {
   // Vue template 需要统一读取 union 字段；这里只做只读投影，不改响应内容。
@@ -213,6 +215,7 @@ function inspectorCursorFields(result: O7CloudArchiveTasksResponse | null): stri
 
 const routeReplayFrames = computed(() => archiveResult.value?.route_replay_inspector.sample_frames ?? []);
 const labelingReviewItems = computed(() => archiveResult.value?.labeling_queue_inspector.sample_review_items ?? []);
+const voiceAsrEvents = computed(() => archiveResult.value?.voice_asr_tts_inspector.sample_asr_events ?? []);
 
 const routeReplayBlockedReason = computed(() => {
   const archive = archiveResult.value as (O7CloudArchiveTasksResponse & { playback_available?: boolean }) | null;
@@ -257,6 +260,28 @@ const labelingReviewBlockedReason = computed(() => {
 
 const labelingReviewNavigationEnabled = computed(() => labelingReviewBlockedReason.value === "");
 
+const voiceMonitorBlockedReason = computed(() => {
+  const inspector = archiveResult.value?.voice_asr_tts_inspector;
+  const draft = inspector?.tts_draft;
+  // 语音 monitor 只读本地 fixture；缺 archive、缺 selected task、缺样本或 inspector blocked 都必须 fail-closed。
+  if (!archiveResult.value) {
+    return "archive_not_loaded";
+  }
+  if (!inspector?.selected_task_id) {
+    return "selected_task_missing";
+  }
+  if (!voiceAsrEvents.value.length && !draft?.text && !draft?.text_length) {
+    return "voice_fixture_sample_and_tts_draft_missing";
+  }
+  if (inspector.status !== "fixture_voice_ready") {
+    return "voice_asr_tts_inspector_blocked_not_proven";
+  }
+  return "";
+});
+
+const voiceAsrNavigationEnabled = computed(() => voiceMonitorBlockedReason.value === "" && voiceAsrEvents.value.length > 0);
+const voiceMonitorPanelStatus = computed(() => (voiceMonitorBlockedReason.value ? "blocked_not_proven" : "local_fixture_voice_monitor_ready"));
+
 const currentRouteReplayFrame = computed(() => {
   // cursor 是数组下标，不发送给后端；frame_index 保持使用 archive fixture 的原始字段。
   if (!routeReplayNavigationEnabled.value) {
@@ -291,6 +316,23 @@ function labelingReviewCursorDisplay(): string {
   return `${labelingReviewCursor.value + 1} / ${labelingReviewItems.value.length}`;
 }
 
+const currentVoiceAsrEvent = computed<O7VoiceAsrTtsInspectorAsrEvent | null>(() => {
+  // cursor 只用于 operator 聚焦 ASR 样本，不能解释为真实 stream offset 或云端订阅状态。
+  if (!voiceAsrNavigationEnabled.value) {
+    return null;
+  }
+  return voiceAsrEvents.value[voiceAsrEventCursor.value] ?? voiceAsrEvents.value[0] ?? null;
+});
+
+function voiceAsrCursorDisplay(): string {
+  const event = currentVoiceAsrEvent.value;
+  // blocked 时保留 sample 数，方便 operator 判断是未加载还是 fixture 缺 ASR 样本。
+  if (!event) {
+    return `blocked_not_proven / ${voiceAsrEvents.value.length}`;
+  }
+  return `${voiceAsrEventCursor.value + 1} / ${voiceAsrEvents.value.length}`;
+}
+
 function clampRouteReplayCursor(index: number): void {
   const maxIndex = Math.max(routeReplayFrames.value.length - 1, 0);
   // 所有 navigation 都只改浏览器内存里的数组下标，避免误变成真实回放命令。
@@ -303,12 +345,22 @@ function clampLabelingReviewCursor(index: number): void {
   labelingReviewCursor.value = Math.min(Math.max(index, 0), maxIndex);
 }
 
+function clampVoiceAsrEventCursor(index: number): void {
+  const maxIndex = Math.max(voiceAsrEvents.value.length - 1, 0);
+  // ASR navigation 是本地数组浏览，不连接 ASR stream，也不会触发 TTS 或喇叭派发。
+  voiceAsrEventCursor.value = Math.min(Math.max(index, 0), maxIndex);
+}
+
 function resetRouteReplayCursor(): void {
   clampRouteReplayCursor(0);
 }
 
 function resetLabelingReviewCursor(): void {
   clampLabelingReviewCursor(0);
+}
+
+function resetVoiceAsrEventCursor(): void {
+  clampVoiceAsrEventCursor(0);
 }
 
 function previousRouteReplayFrame(): void {
@@ -323,6 +375,12 @@ function previousLabelingReviewItem(): void {
   }
 }
 
+function previousVoiceAsrEvent(): void {
+  if (voiceAsrNavigationEnabled.value) {
+    clampVoiceAsrEventCursor(voiceAsrEventCursor.value - 1);
+  }
+}
+
 function nextRouteReplayFrame(): void {
   if (routeReplayNavigationEnabled.value) {
     clampRouteReplayCursor(routeReplayCursor.value + 1);
@@ -332,6 +390,12 @@ function nextRouteReplayFrame(): void {
 function nextLabelingReviewItem(): void {
   if (labelingReviewNavigationEnabled.value) {
     clampLabelingReviewCursor(labelingReviewCursor.value + 1);
+  }
+}
+
+function nextVoiceAsrEvent(): void {
+  if (voiceAsrNavigationEnabled.value) {
+    clampVoiceAsrEventCursor(voiceAsrEventCursor.value + 1);
   }
 }
 
@@ -350,6 +414,7 @@ async function loadArchiveTasks(): Promise<void> {
     archiveResult.value = await getO7CloudArchiveTasks(archiveJson.value);
     resetRouteReplayCursor();
     resetLabelingReviewCursor();
+    resetVoiceAsrEventCursor();
   } catch (err) {
     archiveError.value = err instanceof Error ? err.message : "cloud_archive_task_api_unavailable_not_proven";
   } finally {
@@ -1181,6 +1246,99 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
         <dt>voice_session</dt>
         <dd><code>{{ jsonSummary(archiveResult?.voice_asr_tts_inspector.voice_session) }}</code></dd>
       </dl>
+
+      <h3>Local voice ASR/TTS monitor panel</h3>
+      <div class="notice" role="note">
+        local_fixture_voice_monitor_only · asr_stream_connected=false · tts_send_enabled=false ·
+        speaker_dispatch_enabled=false · real_voice_api_connected=false ·
+        real_asr_tts_runtime_connected=false · speaker_dispatch.sends_to_robot=false
+      </div>
+      <dl class="kv compact-kv">
+        <dt>panel_status</dt>
+        <dd>{{ voiceMonitorPanelStatus }}</dd>
+        <dt>blocked_reason</dt>
+        <dd>{{ voiceMonitorBlockedReason || "none_local_fixture_only" }}</dd>
+        <dt>current ASR event</dt>
+        <dd>{{ voiceAsrCursorDisplay() }}</dd>
+        <dt>event_type</dt>
+        <dd>{{ currentVoiceAsrEvent?.event_type ?? "blocked_not_proven" }}</dd>
+        <dt>timestamp_ms</dt>
+        <dd>{{ currentVoiceAsrEvent?.timestamp_ms ?? "null" }}</dd>
+        <dt>transcript</dt>
+        <dd>{{ currentVoiceAsrEvent?.transcript ?? "blocked_not_proven" }}</dd>
+        <dt>confidence</dt>
+        <dd>{{ currentVoiceAsrEvent?.confidence ?? "null" }}</dd>
+        <dt>evidence_ref</dt>
+        <dd>{{ currentVoiceAsrEvent?.evidence_ref ?? "blocked_not_proven" }}</dd>
+      </dl>
+      <div class="route-inputs">
+        <!-- 这些按钮只改变本地 ASR event cursor，不连接真实 ASR，也不会发送、播放或派发 TTS。 -->
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!voiceAsrNavigationEnabled || voiceAsrEventCursor <= 0"
+          @click="previousVoiceAsrEvent"
+        >
+          Previous ASR event
+        </button>
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!voiceAsrNavigationEnabled || voiceAsrEventCursor >= voiceAsrEvents.length - 1"
+          @click="nextVoiceAsrEvent"
+        >
+          Next ASR event
+        </button>
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!voiceAsrNavigationEnabled"
+          @click="resetVoiceAsrEventCursor"
+        >
+          Reset ASR cursor
+        </button>
+      </div>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Partial/final comparison</h3>
+          <dl class="kv compact-kv">
+            <dt>latest_partial.text</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.latest_partial.text ?? "" }}</dd>
+            <dt>latest_partial.timestamp_ms</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.latest_partial.timestamp_ms ?? "null" }}</dd>
+            <dt>latest_partial.confidence</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.latest_partial.confidence ?? "null" }}</dd>
+            <dt>latest_partial.evidence_ref</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.latest_partial.evidence_ref ?? "blocked_not_proven" }}</dd>
+            <dt>latest_final.text</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.latest_final.text ?? "" }}</dd>
+            <dt>latest_final.timestamp_ms</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.latest_final.timestamp_ms ?? "null" }}</dd>
+            <dt>latest_final.confidence</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.latest_final.confidence ?? "null" }}</dd>
+            <dt>latest_final.evidence_ref</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.latest_final.evidence_ref ?? "blocked_not_proven" }}</dd>
+          </dl>
+        </div>
+        <div>
+          <h3>Readonly TTS draft review</h3>
+          <dl class="kv compact-kv">
+            <dt>tts_draft.text</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.tts_draft.text ?? "" }}</dd>
+            <dt>tts_draft.text_length</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.tts_draft.text_length ?? 0 }}</dd>
+            <dt>tts_draft.voice_profile</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.tts_draft.voice_profile ?? "not_loaded" }}</dd>
+            <dt>tts_draft.language</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.tts_draft.language ?? "not_loaded" }}</dd>
+            <dt>tts_draft.confirmation_required</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.tts_draft.confirmation_required ?? true }}</dd>
+            <dt>tts_draft.status</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.tts_draft.status ?? "blocked_not_proven" }}</dd>
+          </dl>
+        </div>
+      </div>
 
       <h3>ASR event sample</h3>
       <table>

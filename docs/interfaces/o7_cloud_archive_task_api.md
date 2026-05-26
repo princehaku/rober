@@ -150,6 +150,8 @@ PC UI 在该区域提供本地 labeling review panel：加载 archive 后默认�
 
 UI 同时展示 `voice_asr_tts_inspector` 的 selected task、voice session、ASR event sample、latest partial/final、TTS draft summary、speaker dispatch summary、media preflight dependency 和语音相关 false fields。该区域只用于 operator 检查 archive fixture 是否具备 O7-KR5 ASR/TTS 调试数据形状，不提供 Send、Speak、Play、Dispatch、Control、Stop、Cancel、Recovery、Submit、Export 或等价动作入口。
 
+PC UI 在该区域提供本地 voice ASR/TTS monitor panel：加载 archive 后默认聚焦第一条 `sample_asr_events`，`Previous ASR event`、`Next ASR event` 和 `Reset ASR cursor` 只改变浏览器内存中的 ASR event cursor，不调用任何 API，不写后端状态，不连接真实 ASR stream，不发送 TTS，不播放音频，不调度喇叭。panel 展示当前 ASR event 的 `event_type`、`timestamp_ms`、`transcript`、`confidence`、`evidence_ref`，并在同一区块展示 `latest_partial`/`latest_final` 对比和只读 `tts_draft` 审核摘要；`tts_draft.confirmation_required=true` 必须保持可见。当 archive 未加载、selected task 缺失、ASR events 为空且 TTS draft 为空，或 `voice_asr_tts_inspector.status!=fixture_voice_ready` 时，panel 必须显示 `blocked_not_proven` 并禁用 ASR navigation。该 panel 不等于真实 ASR stream、真实 TTS send/playback、speaker ACK、音频设备、云端 voice API 或 O7-KR5 完成。
+
 UI 同时展示 `safe_command_inspector` 的 command session、sample commands、manual turn envelope、navigate goal envelope、velocity/steering limits、map goal slot、idempotency key requirement、confirmation policy、robot ACK blocked summary、evidence gaps 和 KR6 false fields。该区域只用于 operator 检查 archive fixture 是否具备 O7-KR6 手控/寻路契约数据形状，不提供 Send、Run、Control、Play、Submit、Export、Stop、Cancel、Recovery、Navigate、Dispatch、Speak 或等价动作入口。
 
 ## O7 Impact
