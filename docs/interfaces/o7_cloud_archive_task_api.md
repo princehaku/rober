@@ -138,6 +138,8 @@ PC 端新增 `GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>
 
 同一 tab 的 `Cloud archive tasks probe` 区块默认只填本机回环示例 URL，不自动发起请求。点击 `Probe cloud archive tasks` 后才调用 PC 后端 probe API；浏览器不直接访问 relay。UI 展示 probe status、source base URL、remote schema、archive status、task count、selected/latest、四个 inspector 状态、dangerous true fields、关键 false fields、blocked reasons 和 not proven。
 
+Safe command inspector 区域提供 PC-only 本地 safe command review panel。加载 archive fixture 后，UI 默认聚焦第一条 `safe_command_inspector.sample_commands`，`Previous command`、`Next command`、`Reset command cursor` 只改变浏览器本地 cursor，不调用 API、不写后端、不发送命令、不绑定键盘、不连接真实 command API。panel 展示当前 command 的 `command_id`、`command_type`、`status`、`envelope_ref`、`idempotency_key_ref`、`evidence_ref`，并同屏展示 manual turn envelope、navigate goal envelope、idempotency key requirement、confirmation policy、robot ACK blocked summary 和 evidence gaps。未加载 archive、无 selected task、command sample 与 manual/navigate envelope 同时缺失或 inspector blocked 时显示 `blocked_not_proven` 并禁用 command navigation。它不等于真实手控、真实寻路下发、真实 robot ACK、真实 stop/cancel/recovery 或硬件安全。
+
 UI 只展示任务列表、最近任务、selected task、安全摘要、fixed false fields、blocked reasons 和 not proven。不得提供自动播放、提交、导出、发送、控制、停止、取消或恢复类动作按钮。
 
 UI 同时展示 `route_replay_inspector` 的 selected task、map frame、frame count、sample frames 表格、event timeline、keyframe refs 和 cursor 初始 false 字段。该区域只用于 operator 检查历史路线 fixture 是否具备逐帧位置、速度和状态转移槽位。

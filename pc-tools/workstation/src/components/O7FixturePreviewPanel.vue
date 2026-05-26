@@ -12,6 +12,7 @@ import type {
   O7CloudArchiveTasksProbeResponse,
   O7CloudArchiveTasksResponse,
   O7LabelingQueueInspectorReviewItem,
+  O7SafeCommandInspectorCommandSample,
   O7VoiceAsrTtsInspectorAsrEvent,
   O7CloudOperatorConsoleProbeResponse,
   O7RealtimeElevatorProbeResponse,
@@ -66,6 +67,7 @@ const cloudProbeLoading = ref(false);
 const routeReplayCursor = ref(0);
 const labelingReviewCursor = ref(0);
 const voiceAsrEventCursor = ref(0);
+const safeCommandCursor = ref(0);
 
 function asRecord(result: O7FixturePreviewResult | undefined): Record<string, unknown> {
   // Vue template 需要统一读取 union 字段；这里只做只读投影，不改响应内容。
@@ -122,6 +124,8 @@ function safeCommandFalseFields(result: O7CloudArchiveTasksResponse | null): str
     `safe_to_control=${String(inspector?.safe_to_control ?? false)}`,
     `primary_actions_enabled=${String(inspector?.primary_actions_enabled ?? false)}`,
     `delivery_success=${String(inspector?.delivery_success ?? false)}`,
+    `manual_turn_envelope.sends_to_robot=${String(inspector?.manual_turn_envelope.sends_to_robot ?? false)}`,
+    `navigate_goal_envelope.sends_to_robot=${String(inspector?.navigate_goal_envelope.sends_to_robot ?? false)}`,
   ];
 }
 
@@ -216,6 +220,7 @@ function inspectorCursorFields(result: O7CloudArchiveTasksResponse | null): stri
 const routeReplayFrames = computed(() => archiveResult.value?.route_replay_inspector.sample_frames ?? []);
 const labelingReviewItems = computed(() => archiveResult.value?.labeling_queue_inspector.sample_review_items ?? []);
 const voiceAsrEvents = computed(() => archiveResult.value?.voice_asr_tts_inspector.sample_asr_events ?? []);
+const safeCommandSamples = computed(() => archiveResult.value?.safe_command_inspector.sample_commands ?? []);
 
 const routeReplayBlockedReason = computed(() => {
   const archive = archiveResult.value as (O7CloudArchiveTasksResponse & { playback_available?: boolean }) | null;
@@ -282,6 +287,35 @@ const voiceMonitorBlockedReason = computed(() => {
 const voiceAsrNavigationEnabled = computed(() => voiceMonitorBlockedReason.value === "" && voiceAsrEvents.value.length > 0);
 const voiceMonitorPanelStatus = computed(() => (voiceMonitorBlockedReason.value ? "blocked_not_proven" : "local_fixture_voice_monitor_ready"));
 
+const safeCommandReviewBlockedReason = computed(() => {
+  const inspector = archiveResult.value?.safe_command_inspector;
+  // KR6 review panel 只审阅本地 fixture 摘要；缺 archive、task、样本或 inspector blocked 都不能进入可浏览状态。
+  if (!archiveResult.value) {
+    return "archive_not_loaded";
+  }
+  if (!inspector?.selected_task_id) {
+    return "selected_task_missing";
+  }
+  if (
+    !safeCommandSamples.value.length &&
+    inspector.manual_turn_envelope.status !== "fixture_summary_only" &&
+    inspector.navigate_goal_envelope.status !== "fixture_summary_only"
+  ) {
+    return "command_samples_and_envelopes_missing";
+  }
+  if (inspector.status !== "fixture_command_ready") {
+    return "safe_command_inspector_blocked_not_proven";
+  }
+  return "";
+});
+
+const safeCommandNavigationEnabled = computed(
+  () => safeCommandReviewBlockedReason.value === "" && safeCommandSamples.value.length > 0,
+);
+const safeCommandReviewPanelStatus = computed(() =>
+  safeCommandReviewBlockedReason.value ? "blocked_not_proven" : "local_fixture_safe_command_review_ready",
+);
+
 const currentRouteReplayFrame = computed(() => {
   // cursor 是数组下标，不发送给后端；frame_index 保持使用 archive fixture 的原始字段。
   if (!routeReplayNavigationEnabled.value) {
@@ -324,6 +358,14 @@ const currentVoiceAsrEvent = computed<O7VoiceAsrTtsInspectorAsrEvent | null>(() 
   return voiceAsrEvents.value[voiceAsrEventCursor.value] ?? voiceAsrEvents.value[0] ?? null;
 });
 
+const currentSafeCommandSample = computed<O7SafeCommandInspectorCommandSample | null>(() => {
+  // command cursor 只用于本地审阅 sample，不会映射成 dispatch、手控、寻路或 ACK 查询。
+  if (!safeCommandNavigationEnabled.value) {
+    return null;
+  }
+  return safeCommandSamples.value[safeCommandCursor.value] ?? safeCommandSamples.value[0] ?? null;
+});
+
 function voiceAsrCursorDisplay(): string {
   const event = currentVoiceAsrEvent.value;
   // blocked 时保留 sample 数，方便 operator 判断是未加载还是 fixture 缺 ASR 样本。
@@ -331,6 +373,15 @@ function voiceAsrCursorDisplay(): string {
     return `blocked_not_proven / ${voiceAsrEvents.value.length}`;
   }
   return `${voiceAsrEventCursor.value + 1} / ${voiceAsrEvents.value.length}`;
+}
+
+function safeCommandCursorDisplay(): string {
+  const command = currentSafeCommandSample.value;
+  // blocked 时保留 command sample 数，方便区分未加载、fixture 缺样本和 inspector blocked。
+  if (!command) {
+    return `blocked_not_proven / ${safeCommandSamples.value.length}`;
+  }
+  return `${safeCommandCursor.value + 1} / ${safeCommandSamples.value.length}`;
 }
 
 function clampRouteReplayCursor(index: number): void {
@@ -351,6 +402,12 @@ function clampVoiceAsrEventCursor(index: number): void {
   voiceAsrEventCursor.value = Math.min(Math.max(index, 0), maxIndex);
 }
 
+function clampSafeCommandCursor(index: number): void {
+  const maxIndex = Math.max(safeCommandSamples.value.length - 1, 0);
+  // command navigation 只改变浏览器内存下标，不写后端、不发送命令、不绑定键盘。
+  safeCommandCursor.value = Math.min(Math.max(index, 0), maxIndex);
+}
+
 function resetRouteReplayCursor(): void {
   clampRouteReplayCursor(0);
 }
@@ -361,6 +418,10 @@ function resetLabelingReviewCursor(): void {
 
 function resetVoiceAsrEventCursor(): void {
   clampVoiceAsrEventCursor(0);
+}
+
+function resetSafeCommandCursor(): void {
+  clampSafeCommandCursor(0);
 }
 
 function previousRouteReplayFrame(): void {
@@ -378,6 +439,12 @@ function previousLabelingReviewItem(): void {
 function previousVoiceAsrEvent(): void {
   if (voiceAsrNavigationEnabled.value) {
     clampVoiceAsrEventCursor(voiceAsrEventCursor.value - 1);
+  }
+}
+
+function previousSafeCommand(): void {
+  if (safeCommandNavigationEnabled.value) {
+    clampSafeCommandCursor(safeCommandCursor.value - 1);
   }
 }
 
@@ -399,6 +466,12 @@ function nextVoiceAsrEvent(): void {
   }
 }
 
+function nextSafeCommand(): void {
+  if (safeCommandNavigationEnabled.value) {
+    clampSafeCommandCursor(safeCommandCursor.value + 1);
+  }
+}
+
 function setRouteReplayCursorFromInput(event: Event): void {
   const target = event.target as HTMLInputElement;
   if (routeReplayNavigationEnabled.value) {
@@ -415,6 +488,7 @@ async function loadArchiveTasks(): Promise<void> {
     resetRouteReplayCursor();
     resetLabelingReviewCursor();
     resetVoiceAsrEventCursor();
+    resetSafeCommandCursor();
   } catch (err) {
     archiveError.value = err instanceof Error ? err.message : "cloud_archive_task_api_unavailable_not_proven";
   } finally {
@@ -1435,6 +1509,60 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
         <dt>command_session</dt>
         <dd><code>{{ jsonSummary(archiveResult?.safe_command_inspector.command_session) }}</code></dd>
       </dl>
+
+      <h3>Local safe command review panel</h3>
+      <div class="notice" role="note">
+        local_fixture_command_cursor_only · command_dispatch_enabled=false · manual_control_enabled=false ·
+        navigate_goal_enabled=false · keyboard_control_enabled=false · safe_to_control=false · delivery_success=false ·
+        primary_actions_enabled=false
+      </div>
+      <dl class="kv compact-kv">
+        <dt>panel_status</dt>
+        <dd>{{ safeCommandReviewPanelStatus }}</dd>
+        <dt>blocked_reason</dt>
+        <dd>{{ safeCommandReviewBlockedReason || "none_local_fixture_only" }}</dd>
+        <dt>current command</dt>
+        <dd>{{ safeCommandCursorDisplay() }}</dd>
+        <dt>command_id</dt>
+        <dd>{{ currentSafeCommandSample?.command_id ?? "blocked_not_proven" }}</dd>
+        <dt>command_type</dt>
+        <dd>{{ currentSafeCommandSample?.command_type ?? "blocked_not_proven" }}</dd>
+        <dt>status</dt>
+        <dd>{{ currentSafeCommandSample?.status ?? "blocked_not_proven" }}</dd>
+        <dt>envelope_ref</dt>
+        <dd>{{ currentSafeCommandSample?.envelope_ref ?? "blocked_not_proven" }}</dd>
+        <dt>idempotency_key_ref</dt>
+        <dd>{{ currentSafeCommandSample?.idempotency_key_ref ?? "blocked_not_proven" }}</dd>
+        <dt>evidence_ref</dt>
+        <dd>{{ currentSafeCommandSample?.evidence_ref ?? "blocked_not_proven" }}</dd>
+      </dl>
+      <div class="route-inputs">
+        <!-- 这些按钮只改变本地 command cursor，不调用 API、不写后端、不发送机器人命令。 -->
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!safeCommandNavigationEnabled || safeCommandCursor <= 0"
+          @click="previousSafeCommand"
+        >
+          Previous command
+        </button>
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!safeCommandNavigationEnabled || safeCommandCursor >= safeCommandSamples.length - 1"
+          @click="nextSafeCommand"
+        >
+          Next command
+        </button>
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!safeCommandNavigationEnabled"
+          @click="resetSafeCommandCursor"
+        >
+          Reset command cursor
+        </button>
+      </div>
 
       <h3>Sample commands</h3>
       <table>

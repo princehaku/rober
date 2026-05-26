@@ -1194,8 +1194,8 @@ const fixtures: Record<string, unknown> = {
       labels: { label_count: 2, sample_types: ["floor_label"], real_annotation_api_connected: false, status: "fixture_summary_only" },
       voice: { asr_event_count: 1, tts_draft_count: 1, real_voice_api_connected: false, status: "fixture_summary_only" },
       commands: {
-        command_count: 1,
-        sample_kinds: ["navigate_goal"],
+        command_count: 2,
+        sample_kinds: ["manual_turn", "navigate_goal"],
         real_command_api_connected: false,
         robot_control_executed: false,
         status: "fixture_summary_only",
@@ -1404,8 +1404,16 @@ const fixtures: Record<string, unknown> = {
         audit_refs: ["command_audit_001.json"],
         status: "fixture_summary_only",
       },
-      command_count: 1,
+      command_count: 2,
       sample_commands: [
+        {
+          command_id: "command_archive_000",
+          command_type: "manual_turn",
+          status: "draft_fixture_only",
+          envelope_ref: "manual_turn_envelope.json",
+          idempotency_key_ref: "idempotency_key_000.json",
+          evidence_ref: "command_evidence_000.json",
+        },
         {
           command_id: "command_archive_001",
           command_type: "navigate_goal",
@@ -1862,6 +1870,8 @@ describe("App", () => {
     expect(wrapper.findAll("button").find((button) => button.text() === "Next item")?.attributes("disabled")).toBeDefined();
     expect(wrapper.text()).toContain("Local voice ASR/TTS monitor panel");
     expect(wrapper.findAll("button").find((button) => button.text() === "Next ASR event")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.text()).toContain("Local safe command review panel");
+    expect(wrapper.findAll("button").find((button) => button.text() === "Next command")?.attributes("disabled")).toBeDefined();
     expect(wrapper.text()).toContain("real realtime API");
     expect(wrapper.text()).toContain("robot ACK");
     expect(wrapper.text()).toContain("HIL/hardware safety");
@@ -2014,7 +2024,12 @@ describe("App", () => {
     expect(wrapper.text()).toContain("real_asr_tts_runtime_connected=false");
     expect(wrapper.text()).toContain("speaker_dispatch.sends_to_robot=false");
     expect(wrapper.text()).toContain("Safe command inspector");
+    expect(wrapper.text()).toContain("Local safe command review panel");
+    expect(wrapper.text()).toContain("local_fixture_command_cursor_only");
+    expect(wrapper.text()).toContain("local_fixture_safe_command_review_ready");
     expect(wrapper.text()).toContain("archive_command_session_002");
+    expect(wrapper.text()).toContain("1 / 2");
+    expect(wrapper.text()).toContain("command_archive_000");
     expect(wrapper.text()).toContain("command_archive_001");
     expect(wrapper.text()).toContain("manual_turn_envelope.json");
     expect(wrapper.text()).toContain("navigate_goal_envelope.json");
@@ -2024,6 +2039,20 @@ describe("App", () => {
     expect(wrapper.text()).toContain("stop_ack_trace_missing");
     expect(wrapper.text()).toContain("recovery_event_trace_missing");
     expect(wrapper.text()).toContain("keyboard_control_enabled=false");
+    expect(wrapper.text()).toContain("manual_turn_envelope.sends_to_robot=false");
+    expect(wrapper.text()).toContain("navigate_goal_envelope.sends_to_robot=false");
+
+    const callsBeforeSafeCommandCursor = mockedFetch.mock.calls.length;
+    await wrapper.findAll("button").find((button) => button.text() === "Next command")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("2 / 2");
+    expect(wrapper.text()).toContain("command_evidence_001.json");
+    await wrapper.findAll("button").find((button) => button.text() === "Reset command cursor")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("1 / 2");
+    expect(wrapper.text()).toContain("command_evidence_000.json");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafeCommandCursor);
+
     expect(wrapper.text()).toContain("arrived_at_elevator");
     expect(wrapper.text()).toContain("navigate_goal");
     expect(wrapper.text()).toContain("real_realtime_api_connected=false");
