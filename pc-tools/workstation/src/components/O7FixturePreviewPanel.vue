@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import {
   getO7CloudArchiveTasks,
   getO7CloudArchiveTasksProbe,
@@ -38,6 +38,12 @@ interface RouteReplayTrajectoryPoint {
 interface RouteReplayMinimapPoint extends RouteReplayTrajectoryPoint {
   svg_x: number;
   svg_y: number;
+}
+
+interface LocalAnnotationDraft {
+  labelType: string;
+  confidence: string;
+  note: string;
 }
 
 const previewConfigs: PreviewConfig[] = [
@@ -83,6 +89,7 @@ const previewsAcceptanceError = ref("");
 const previewsAcceptanceLoading = ref(false);
 const routeReplayCursor = ref(0);
 const labelingReviewCursor = ref(0);
+const localAnnotationDrafts = ref<Record<string, LocalAnnotationDraft>>({});
 const voiceAsrEventCursor = ref(0);
 const safeCommandCursor = ref(0);
 
@@ -468,6 +475,116 @@ const currentLabelingReviewItem = computed<O7LabelingQueueInspectorReviewItem | 
   return labelingReviewItems.value[labelingReviewCursor.value] ?? labelingReviewItems.value[0] ?? null;
 });
 
+const localDraftAllowedLabelTypes = computed(() => archiveResult.value?.labeling_queue_inspector.allowed_label_types ?? []);
+
+const localDraftItemKey = computed(() => {
+  const item = currentLabelingReviewItem.value;
+  // 草稿按 item_id 隔离，避免 operator 切换 cursor 后看到上一条 review item 的内存草稿。
+  return item ? `${item.task_id}:${item.item_id}` : "";
+});
+
+function emptyLocalAnnotationDraft(): LocalAnnotationDraft {
+  // confidence 用字符串保存，确保 "abc"、空值和 NaN 都能被校验状态准确暴露。
+  return { labelType: "", confidence: "0.5", note: "" };
+}
+
+function defaultLocalAnnotationDraft(): LocalAnnotationDraft {
+  // 默认 label type 取当前 fixture 允许列表第一项；列表为空时保持空值并 fail-closed。
+  return { ...emptyLocalAnnotationDraft(), labelType: localDraftAllowedLabelTypes.value[0] ?? "" };
+}
+
+const currentLocalAnnotationDraft = computed<LocalAnnotationDraft>(() => {
+  const key = localDraftItemKey.value;
+  if (!key) {
+    return emptyLocalAnnotationDraft();
+  }
+  return localAnnotationDrafts.value[key] ?? defaultLocalAnnotationDraft();
+});
+
+const localDraftEditorBlockedReason = computed(() => {
+  // editor 只在 labeling review panel 已证明有本地 sample item 且 allowed label types 非空时开放输入。
+  if (labelingReviewBlockedReason.value) {
+    return labelingReviewBlockedReason.value;
+  }
+  if (!localDraftAllowedLabelTypes.value.length) {
+    return "allowed_label_types_missing";
+  }
+  return "";
+});
+
+const localDraftInputsEnabled = computed(() => localDraftEditorBlockedReason.value === "");
+
+const localDraftValidationStatus = computed(() => {
+  if (!localDraftInputsEnabled.value) {
+    return "blocked_not_proven";
+  }
+  if (!localDraftAllowedLabelTypes.value.includes(currentLocalAnnotationDraft.value.labelType)) {
+    return "blocked_label_type_not_allowed";
+  }
+  const confidence = Number(currentLocalAnnotationDraft.value.confidence);
+  if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
+    return "blocked_invalid_confidence";
+  }
+  return "local_memory_draft_valid";
+});
+
+const localDraftStatus = computed(() => {
+  if (!localDraftInputsEnabled.value) {
+    return "blocked_not_proven";
+  }
+  return localDraftValidationStatus.value === "local_memory_draft_valid"
+    ? "local_memory_draft_ready"
+    : "local_memory_draft_blocked";
+});
+
+const localDraftNoteSummary = computed(() => {
+  const note = currentLocalAnnotationDraft.value.note.trim();
+  // 只展示长度和短摘要，不把本地 operator 输入解释为可提交 annotation payload。
+  if (!note) {
+    return "note_chars=0; metadata_summary=empty_local_memory_only";
+  }
+  return `note_chars=${note.length}; metadata_summary=${note.slice(0, 80)}`;
+});
+
+function writeCurrentLocalAnnotationDraft(patch: Partial<LocalAnnotationDraft>): void {
+  const key = localDraftItemKey.value;
+  if (!key) {
+    return;
+  }
+  // 每次写入只更新当前 item 的内存槽位，不调用 API、不写后端、不触发 autosave。
+  localAnnotationDrafts.value = {
+    ...localAnnotationDrafts.value,
+    [key]: {
+      ...currentLocalAnnotationDraft.value,
+      ...patch,
+    },
+  };
+}
+
+function setLocalDraftLabelType(event: Event): void {
+  writeCurrentLocalAnnotationDraft({ labelType: (event.target as HTMLSelectElement).value });
+}
+
+function setLocalDraftConfidence(event: Event): void {
+  writeCurrentLocalAnnotationDraft({ confidence: (event.target as HTMLInputElement).value });
+}
+
+function setLocalDraftNote(event: Event): void {
+  writeCurrentLocalAnnotationDraft({ note: (event.target as HTMLTextAreaElement).value });
+}
+
+function resetLocalAnnotationDraft(): void {
+  const key = localDraftItemKey.value;
+  if (!key) {
+    return;
+  }
+  // Reset draft 只重置当前 item 的浏览器内存，不影响其他 item，也不创建云端副作用。
+  localAnnotationDrafts.value = {
+    ...localAnnotationDrafts.value,
+    [key]: defaultLocalAnnotationDraft(),
+  };
+}
+
 function labelingReviewCursorDisplay(): string {
   const item = currentLabelingReviewItem.value;
   // blocked 时保留 sample 数，方便 operator 区分“未加载”和“已加载但不可浏览”。
@@ -614,6 +731,7 @@ async function loadArchiveTasks(): Promise<void> {
     archiveResult.value = await getO7CloudArchiveTasks(archiveJson.value);
     resetRouteReplayCursor();
     resetLabelingReviewCursor();
+    localAnnotationDrafts.value = {};
     resetVoiceAsrEventCursor();
     resetSafeCommandCursor();
   } catch (err) {
@@ -622,6 +740,13 @@ async function loadArchiveTasks(): Promise<void> {
     archiveLoading.value = false;
   }
 }
+
+watch(localDraftItemKey, () => {
+  // item cursor 改变时不复用上一条 item 的草稿；新 item 通过独立 key 读取自己的内存槽位。
+  if (localDraftItemKey.value && !localAnnotationDrafts.value[localDraftItemKey.value]) {
+    writeCurrentLocalAnnotationDraft(defaultLocalAnnotationDraft());
+  }
+});
 
 async function loadCloudOperatorConsoleProbe(): Promise<void> {
   // 这里只触发 PC 后端 GET probe；浏览器不直接访问 relay，也不创建任何机器人动作。
@@ -1536,6 +1661,87 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           @click="resetLabelingReviewCursor"
         >
           Reset item
+        </button>
+      </div>
+
+      <h3>Local draft annotation editor</h3>
+      <div class="notice" role="note">
+        browser_memory_only · submit_enabled=false · autosave_available=false ·
+        real_annotation_api_connected=false · dataset_export_available=false · cloud_write_executed=false
+      </div>
+      <dl class="kv compact-kv">
+        <dt>current item</dt>
+        <dd>{{ currentLabelingReviewItem?.item_id ?? "blocked_not_proven" }}</dd>
+        <dt>draft status</dt>
+        <dd>{{ localDraftStatus }}</dd>
+        <dt>selected label type</dt>
+        <dd>{{ currentLocalAnnotationDraft.labelType || "blocked_not_proven" }}</dd>
+        <dt>confidence</dt>
+        <dd>{{ currentLocalAnnotationDraft.confidence }}</dd>
+        <dt>note/metadata summary</dt>
+        <dd>{{ localDraftNoteSummary }}</dd>
+        <dt>validation status</dt>
+        <dd>{{ localDraftValidationStatus }}</dd>
+        <dt>blocked reason</dt>
+        <dd>{{ localDraftEditorBlockedReason || "none_local_memory_only" }}</dd>
+        <dt>submit_enabled</dt>
+        <dd>false</dd>
+        <dt>autosave_available</dt>
+        <dd>false</dd>
+        <dt>real_annotation_api_connected</dt>
+        <dd>false</dd>
+        <dt>dataset_export_available</dt>
+        <dd>false</dd>
+        <dt>cloud_write_executed</dt>
+        <dd>false</dd>
+      </dl>
+      <div class="two-col snapshot-grid">
+        <label class="single-input">
+          <span>Selected label type</span>
+          <select
+            aria-label="Local draft annotation label type"
+            :value="currentLocalAnnotationDraft.labelType"
+            :disabled="!localDraftInputsEnabled"
+            @change="setLocalDraftLabelType"
+          >
+            <!-- label type 严格来自 allowed_label_types；列表为空时整个 editor fail-closed。 -->
+            <option v-for="labelType in localDraftAllowedLabelTypes" :key="labelType" :value="labelType">
+              {{ labelType }}
+            </option>
+          </select>
+        </label>
+        <label class="single-input">
+          <span>Confidence</span>
+          <input
+            aria-label="Local draft annotation confidence"
+            :value="currentLocalAnnotationDraft.confidence"
+            :disabled="!localDraftInputsEnabled"
+            inputmode="decimal"
+            placeholder="0..1"
+            @input="setLocalDraftConfidence"
+          >
+        </label>
+      </div>
+      <label class="single-input">
+        <span>Note</span>
+        <textarea
+          aria-label="Local draft annotation note"
+          :value="currentLocalAnnotationDraft.note"
+          :disabled="!localDraftInputsEnabled"
+          rows="3"
+          placeholder="local note only; no API call"
+          @input="setLocalDraftNote"
+        />
+      </label>
+      <div class="route-inputs">
+        <!-- reset 只清当前 item 的内存草稿，不新增保存、提交或导出入口。 -->
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!localDraftInputsEnabled"
+          @click="resetLocalAnnotationDraft"
+        >
+          Reset draft
         </button>
       </div>
 

@@ -2022,16 +2022,16 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/cloud-archive/tasks");
 
     const inputs = wrapper.findAll("input");
-    expect(inputs).toHaveLength(10);
+    expect(inputs).toHaveLength(11);
     await inputs[0]!.setValue("http://127.0.0.1:8088");
     await inputs[1]!.setValue("http://127.0.0.1:8088");
     await inputs[2]!.setValue("http://127.0.0.1:8088");
     await inputs[3]!.setValue("fixtures/archive.json");
-    await inputs[5]!.setValue("fixtures/realtime.json");
-    await inputs[6]!.setValue("fixtures/route.json");
-    await inputs[7]!.setValue("fixtures/labeling.json");
-    await inputs[8]!.setValue("fixtures/voice.json");
-    await inputs[9]!.setValue("fixtures/safe-command.json");
+    await inputs[6]!.setValue("fixtures/realtime.json");
+    await inputs[7]!.setValue("fixtures/route.json");
+    await inputs[8]!.setValue("fixtures/labeling.json");
+    await inputs[9]!.setValue("fixtures/voice.json");
+    await inputs[10]!.setValue("fixtures/safe-command.json");
 
     await wrapper.findAll("button").find((button) => button.text() === "Load previews acceptance guard")?.trigger("click");
     await flushPromises();
@@ -2165,6 +2165,46 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.text()).toContain("1 / 2");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLabelingCursor);
+    expect(wrapper.text()).toContain("Local draft annotation editor");
+    expect(wrapper.text()).toContain("browser_memory_only");
+    expect(wrapper.text()).toContain("local_memory_draft_ready");
+    expect(wrapper.text()).toContain("local_memory_draft_valid");
+    expect(wrapper.text()).toContain("autosave_availablefalse");
+    expect(wrapper.text()).toContain("cloud_write_executedfalse");
+
+    const callsBeforeLocalDraftEdit = mockedFetch.mock.calls.length;
+    await wrapper.find('select[aria-label="Local draft annotation label type"]').setValue("obstacle_type");
+    await wrapper.find('input[aria-label="Local draft annotation confidence"]').setValue("0.72");
+    await wrapper.find('textarea[aria-label="Local draft annotation note"]').setValue("local draft note for review item 001");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("obstacle_type");
+    expect(wrapper.text()).toContain("0.72");
+    expect(wrapper.text()).toContain("note_chars=36");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalDraftEdit);
+
+    await wrapper.find('input[aria-label="Local draft annotation confidence"]').setValue("1.25");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("blocked_invalid_confidence");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalDraftEdit);
+
+    await wrapper.findAll("button").find((button) => button.text() === "Next item")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("2 / 2");
+    expect(wrapper.text()).toContain("review_item_002");
+    expect(wrapper.text()).toContain("0.5");
+    expect(wrapper.text()).not.toContain("local draft note for review item 001");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalDraftEdit);
+
+    await wrapper.findAll("button").find((button) => button.text() === "Reset draft")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("local_memory_draft_valid");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalDraftEdit);
+
+    await wrapper.findAll("button").find((button) => button.text() === "Reset item")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("1 / 2");
+    expect(wrapper.text()).toContain("blocked_invalid_confidence");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalDraftEdit);
     expect(wrapper.text()).toContain("floor_label");
     expect(wrapper.text()).toContain("draft_label_001.json");
     expect(wrapper.text()).toContain("operator_review_not_complete");
