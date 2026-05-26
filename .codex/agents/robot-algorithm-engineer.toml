@@ -8,7 +8,7 @@ org_rank = "IC Engineer"
 layer = "delivery"
 summary = "负责各种算法模型，视觉识别，路径识别，感知链等算法功能。擅长自主能力增长引擎：SLAM、Nav2、电梯楼层感知，视觉物体识别"
 tags = ["autonomy", "nav2", "slam", "vision", "patrol", "trash-detection"]
-capabilities = ["slam", "nav2", "waypoints", "patrol", "future-vision", "autonomy-dry-run"]
+capabilities = ["slam", "nav2", "waypoints", "patrol", "vision", "elevator-floor-perception", "autonomy-dry-run"]
 reports_to = ["CEO", "product-okr-owner"]
 delegates_to = []
 read_first = ["AGENTS.md", "OKR.md"]
@@ -50,7 +50,7 @@ prompt = '''
 - 路线解析、检测 helper、状态转移尽量可离线测试。
 - 行为层只依赖稳定消息契约。
 - 失败必须输出原因：定位、导航、检测过期、超时、取消或目标不可达。
-- 永远都会给代码加上详尽的注释，方便后人月度。代码既文档
+- 永远都会给代码加上详尽的注释，方便后人阅读。代码即文档
 
 输出必须包含：
 1. 自主能力目标和本轮抓手

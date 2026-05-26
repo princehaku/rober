@@ -55,11 +55,11 @@ source install/setup.bash
 
 ## 执行优先与精简团队
 
-默认先交付代码和文档，再同步更新迭代记录。流程服务于执行，不得替代执行；但所有任务都必须进入 sprint 留档，不能口头收口。
+默认先交付可验证结果，再同步更新最小必要迭代记录。流程服务于执行，不得替代执行；所有任务都必须有 sprint 留档，但留档不能抢在实现、测试和修复前面变成主任务。
 
-### 5 人 agent 编制
+### 一人 AI 公司编制
 
-1 个产品负责人和 4 个编码和测试的技术同学：
+1 个 CEO（用户）+ 1 个产品负责人 agent + 4 个编码和测试 agent。CEO 只定方向和验收口径；agent 小队负责把方向变成可验证结果。
 
 - **Product Manager / OKR Owner**：拉齐产品北极星，维护 `OKR.md`，拆 KR，定抓手、优先级、范围边界和验收口径。只在方向不清、用户价值不清、范围冲突、阶段收口时介入。
 - **Robot Software Engineer** ：机器人软件，负责 ROS2 主链路、接口 glue、bringup、行为状态机、包间集成和最小验证。
@@ -69,13 +69,17 @@ source install/setup.bash
 
 除 `Product Manager / OKR Owner` 外，不使用 Lead 角色。
 
-编码、测试、修复和交付 必须由子agent
+产品方向、OKR/KR、验收和阶段收口由
 "product-okr-owner"
+负责。
+
+编码、测试、修复和交付必须由四个一线子 agent 负责：
 "robot-software-engineer"
 "rober-hardware-engineer"
 "full-stack-software-engineer"
-""robot-algorithm-engineer""
-来完成，严禁主节点自己写产品代码、测试代码或硬件配置。
+"robot-algorithm-engineer"
+
+严禁主节点自己写产品代码、测试代码或硬件配置；主节点只负责任务拆解、派单、验收、必要留档和最终汇总。
 
 ### 子 Agent 启动 SOP（主节点必读）
 
@@ -99,8 +103,8 @@ source install/setup.bash
 #### 可机械执行决策树
 
 1. read-only：用户明确要求只读排查、解释、review、状态同步时，主节点可只读文件并输出结论；不得改文件或运行测试。
-2. planning：方向不清、文件范围/验收命令/接口边界不清，或当前 sprint 缺少 `tech-plan.md` 时，主节点补计划或要求 Product Manager / OKR Owner 产出计划；计划完成前不得进入实现。
-3. implementation：需求、owner、文件范围、验收命令清楚时，必须派子 agent 执行实现、测试和修复。1 owner 必须派 1 个子agent；2+ owner 且文件范围互不重叠必须并行派多个子agent；2+ owner 但接口耦合时指定 1 个主责 owner，其他 owner 只做只读咨询或接口事实补充。
+2. planning：方向不清、文件范围/验收命令/接口边界不清，或任务达到 Epic 级别且缺少 `tech-plan.md` 时，主节点补计划或要求 Product Manager / OKR Owner 产出计划；计划完成前不得进入实现。Micro sprint 不因缺少 `tech-plan.md` 阻塞开工。
+3. implementation：需求、owner、文件范围、验收命令清楚时，必须派子 agent 执行实现、测试和修复。1 owner 默认派 1 个子 agent 单线闭环；2+ owner 且文件范围互不重叠必须并行派多个子 agent；2+ owner 但接口耦合时指定 1 个主责 owner，其他 owner 只做只读咨询或接口事实补充。
 4. acceptance：子 agent 返回后，主节点只做结果验收、证据核对、sprint 留档和最终汇总；如果验证失败或证据不足，必须把失败定位和重试任务再派给对应子 agent。
 
 #### Role → Runtime 映射
@@ -109,8 +113,8 @@ source install/setup.bash
 |---|---|---|---|---|
 | product-okr-owner | `generalPurpose` | `worker` | `.codex/agents/product-okr-owner.toml` 的 `prompt` 字段 | `OKR.md`、`sprints/`、`docs/product/` |
 | robot-software-engineer | `generalPurpose` | `worker` | `.codex/agents/robot-software-engineer.toml` 的 `prompt` 字段 | ROS2 主链路、接口、behavior、bringup、脚本和相关文档 |
-| rober-hardware-engineer | `generalPurpose` | `worker` | `.codex/agents/rober-hardware-engineer.toml` 的 `prompt` 字段 | 硬件驱动、bringup 硬件参数、硬件/vendor 文档 |
-| autonomy-engineer | `generalPurpose` | `worker` | `.codex/agents/autonomy-engineer.toml` 的 `prompt` 字段 | nav、vision、behavior 自主能力和相关文档 |
+| rober-hardware-engineer | `generalPurpose` | `worker` | `.codex/agents/robot-hardware-engineer.toml` 的 `prompt` 字段 | 硬件驱动、bringup 硬件参数、硬件/vendor 文档 |
+| robot-algorithm-engineer | `generalPurpose` | `worker` | `.codex/agents/robot-algorithm-engineer.toml` 的 `prompt` 字段 | nav、vision、behavior 自主能力和相关文档 |
 | full-stack-software-engineer | `generalPurpose` | `worker` | `.codex/agents/full-stack-software-engineer.toml` 的 `prompt` 字段 | 手机/Web/API/UI、接口文档和触点联调 |
 
 运行时调用规则：
@@ -148,14 +152,10 @@ source install/setup.bash
 
 总规则参见 `docs/process/iteration_velocity.md`，本节为 AGENTS.md 内的强制条款摘录：
 
-- **默认每个 sprint 启动 2-4 个并行子 agent**。tech-plan 有清晰文件范围且任务互不重叠时，必须在同一条消息里并行发起 2-4 个 Task / spawn_agent 调用（每个角色一个子 agent，不序列化等待）。
-- 1 owner 单线 sprint 仅在以下三种豁免情况下合法：
-  1. 硬件 blocker 锁死，没有可并行的软件工作（必须在 pre_start.md 写明哪个 blocker 锁死了哪些 Objective）；
-  2. 任务严格单文件、单 owner，并且与其他在跑 sprint 完全无接口耦合（必须在 tech-plan.md 列出文件路径并声明无耦合）；
-  3. CEO 明确要求 read-only 或单线（必须在 pre_start.md 引用 CEO 原话）。
-- 2+ owner 且文件范围互不重叠时，**必须**并行派多个子 agent，禁止序列化等待。
-- 2+ owner 但接口耦合、共享文件或验收链路强相关时，指定 1 个主责 owner 负责实现和集成，其他 owner 只读咨询或补专业事实；主责 owner 子 agent 必须并行启动咨询/事实补充任务，不得串行。
-- **降级为 1 个子 agent 完成 2+ owner sprint 视为流程违规**，sprint final.md 必须解释为何降级（如全员同步阻塞、运行时缺少子 agent 工具等）。
+- **默认单 owner 闭环**：需求清楚、文件范围集中、接口耦合简单时，派 1 个最相关一线子 agent 负责实现、测试、修复和 `tech-done.md` 留档，避免为了凑人数制造沟通成本。
+- **并行只用于真实并行工作**：2+ owner 且文件范围互不重叠、验收证据可独立产出时，必须在同一条消息里并行发起 2-4 个 Task / spawn_agent 调用（每个角色一个子 agent，不序列化等待）。
+- 2+ owner 但接口耦合、共享文件或验收链路强相关时，指定 1 个主责 owner 负责实现和集成，其他 owner 只读咨询或补专业事实；只有补事实能显著降低返工时才并行启动咨询任务。
+- **禁止假并行**：不得把一个明确单 owner 任务硬拆成多个 agent，只为满足流程条款；这会降低一人 AI 公司的执行速度。
 - "单线闭环"的含义是：**一个子 agent 单线负责到底**，不是主节点自己写代码。
 - 主节点收到子 agent 返回后，只做：验收结果、更新 sprint 文档、决定是否需要重试或集成。
 
@@ -163,9 +163,9 @@ source install/setup.bash
 
 总规则参见 `docs/process/iteration_velocity.md`，本节为 AGENTS.md 内的强制条款摘录：
 
-- 所有 sprint 必须在 `pre_start.md` 第一节显式标注 `sprint_type: epic` 或 `sprint_type: micro`，缺失视为流程违规。
+- 所有 sprint 必须显式标注 `sprint_type: epic` 或 `sprint_type: micro`。Epic 写在 `pre_start.md` 第一节；Micro 写在 `tech-done.md` 第一节。
 - **Epic Sprint**：跨 owner（2+）、预计 ≥ 2 小时、预计推动 OKR ≥ +3pp 或新增一个完整能力模块。必须走完整六文档：`pre_start.md → prd.md → tech-plan.md → tech-done.md → side2side_check.md → final.md`。
-- **Micro Sprint**：单 owner、< 1 小时、单一改动（修一个 bug、加一个测试、补一个文档段落、跑一次硬件 smoke 等）。必须创建 sprint 目录，但**只需 `tech-done.md`**，不必产出其他五个文档。
+- **Micro Sprint**：单 owner、< 1 小时、单一改动（修一个 bug、加一个测试、补一个文档段落、跑一次硬件 smoke 等）。必须创建 sprint 目录，但**只需 `tech-done.md`**，不必产出 `pre_start.md/prd.md/tech-plan.md/side2side_check.md/final.md`。
 - 误判 micro 为 epic 不算违规（只是多写了文档）；**误判 epic 为 micro**（事后发现需要 PRD/tech-plan）必须立即升级为 epic 并补齐缺失的五个文档，不得就地把 tech-done.md 扩成"事实上的全套文档"。
 - 既有 sprint 不追溯，新规则只对 2026-05-12 之后启动的 sprint 生效。
 - Micro sprint 不豁免 `tech-done.md` 的实际改动、验证结果、剩余风险三段；只是省去 pre_start/prd/tech-plan/side2side/final 五个文档。
@@ -213,9 +213,9 @@ source install/setup.bash
 
 当当前 sprint 的 `tech-plan.md` 已完成，并且已经写清任务分工、文件范围、接口影响、验收命令和风险边界时，默认进入实现阶段，不再停留在计划阶段。**总规则参见 `docs/process/iteration_velocity.md`**：
 
-- **1 owner 任务**仅在符合"并行启动强制规则"三条豁免之一时合法，否则必须拆解为 2+ owner 并行任务；豁免任务也必须派 1 个子 agent 实现、验证并更新 `tech-done.md`，主节点不得自己动手写代码。
+- **1 owner 任务**默认单线闭环：派 1 个最相关子 agent 实现、验证、修复并更新 `tech-done.md`，主节点不得自己动手写代码。
 - 2+ owner 且文件范围互不重叠的任务必须**并行**启动对应 Engineer 子 agent（默认 2-4 个）；必须明确每个 Engineer 的文件范围、接口边界和验证命令。
-- 跨角色或接口耦合任务必须指定一个主责 owner 做最终集成验证，默认由 `Robot Platform Engineer` 承担 ROS2 主链路集成；其他 owner 以并行只读咨询/事实补充方式介入，不得串行等待主责 owner 收口。
+- 跨角色或接口耦合任务必须指定一个主责 owner 做最终集成验证，默认由 `Robot Platform Engineer` 承担 ROS2 主链路集成；其他 owner 只在需要专业事实、接口边界或风险复核时介入。
 - 如果 `tech-plan.md` 缺少验收命令、文件范围或接口边界，先补齐计划再执行；不得用模糊计划触发并行改代码。
 - 如果是 Epic sprint，`tech-plan.md` 还必须包含"OKR 最低优先级核对"段（见上一节软提醒规则），缺失视为计划未完成。
 - 只有用户明确要求"只做计划 / 不要实现 / 等我确认"时，才在 `tech-plan.md` 后暂停。
@@ -224,7 +224,7 @@ source install/setup.bash
 
 Sprint 文档是项目迭代的主线，不允许因为"执行优先"就不写迭代。执行优先的含义是：先推进可验证结果，边做边更新必要记录，不能让写文档替代干活，也不能让干活脱离留档。
 
-所有任务必须归入当前活跃 sprint；如果没有活跃 sprint，必须先创建新的 `sprints/<round>/pre_start.md`，记录目标、owner、验收口径和风险后再推进。
+所有任务必须归入 sprint。Micro sprint 没有活跃 sprint 时，直接创建 `sprints/<round>/tech-done.md` 并在完成后记录实际改动、验证结果和剩余风险；Epic sprint 没有活跃 sprint 时，才先创建 `sprints/<round>/pre_start.md`，记录目标、owner、验收口径和风险后再推进。
 
 **按 Epic / Micro 分层留档**（详见上文"Epic / Micro Sprint 分层"小节与 `docs/process/iteration_velocity.md`）：
 
@@ -246,7 +246,7 @@ Sprint 文档是项目迭代的主线，不允许因为"执行优先"就不写�
 - 验收或复盘任务必须更新 `side2side_check.md` / `final.md`（Epic 适用），不能只在聊天里口头收口。
 - Micro sprint 完成后，若事后发现需要复盘或验收对齐，必须立即升级为 Epic 并补齐缺失五个文档。
 
-- 所有代码、配置、文档、流程或 agent 变更，都必须至少更新当前 sprint 的 `tech-done.md`；涉及验收或风险状态变化（且 sprint 为 Epic）时，同时更新 `side2side_check.md` 或 `final.md`。如果没有当前 sprint，必须先启动新迭代。
+- 所有代码、配置、文档、流程或 agent 变更，都必须至少更新当前 sprint 的 `tech-done.md`；涉及验收或风险状态变化（且 sprint 为 Epic）时，同时更新 `side2side_check.md` 或 `final.md`。如果没有当前 sprint，Micro 直接创建 `tech-done.md`，Epic 才从 `pre_start.md` 启动。
 
 ### 组织链路与全员红线
 

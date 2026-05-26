@@ -32,7 +32,7 @@ L2 = "IC Engineers：四个一线交付同学，按领域直接实现、测试�
 chain = [
   "CEO",
   "product-okr-owner",
-  "robot-software-engineer | rober-hardware-engineer | robot-algorithm-engineer | full-stack-software-engineer",
+  "robot-software-engineer | robot-hardware-engineer | robot-algorithm-engineer | full-stack-software-engineer",
 ]
 escalation = "方向不清、范围冲突、跨多个 L2、阶段验收、OKR/KR 更新时升级到 L1。"
 
@@ -51,7 +51,7 @@ full_stack_software_engineer = "User Touchpoint Full-Stack Engineer：用户触�
 [alias_map]
 product_okr_owner = "product-okr-owner"
 robot_software_engineer = "robot-software-engineer"
-rober_hardware_engineer = "rober-hardware-engineer"
+rober_hardware_engineer = "robot-hardware-engineer"
 robot_algorithm_engineer = "robot-algorithm-engineer"
 full_stack_software_engineer = "full-stack-software-engineer"
 
@@ -149,7 +149,7 @@ update_rule = "所有代码、配置、文档、流程或 agent 变更，都必�
 product_or_okr = ["product-okr-owner"]
 ros2_integration = ["robot-software-engineer"]
 interfaces_behavior_bringup = ["robot-software-engineer"]
-hardware_uart_chassis = ["rober-hardware-engineer"]
+hardware_uart_chassis = ["robot-hardware-engineer"]
 slam_nav_vision_autonomy = ["robot-algorithm-engineer"]
 mobile_web_api_ui = ["full-stack-software-engineer"]
 stage_acceptance = ["product-okr-owner", "robot-software-engineer"]
@@ -198,12 +198,14 @@ codex_agent_type = "worker"
 prompt_field = "prompt"
 capabilities = [
   "okr-planning",
+  "okr-direction-review",
   "kr-breakdown",
+  "kr-completion-archive",
   "scope-control",
   "acceptance-criteria",
   "sprint-documentation",
 ]
-tags = ["product", "okr", "kr", "scope", "acceptance", "user-value"]
+tags = ["product", "okr", "kr", "scope", "acceptance", "user-value", "okr-direction", "kr-history"]
 read_first = ["AGENTS.md", "OKR.md"]
 owner_paths = ["OKR.md", "sprints/", "docs/product/"]
 requires_vendor_source = false
@@ -242,10 +244,10 @@ requires_vendor_source = false
 can_edit = true
 
 [[roles]]
-id = "rober-hardware-engineer"
+id = "robot-hardware-engineer"
 enabled = true
 # 注：磁盘文件名为 robot-hardware-engineer.toml，
-# 而角色 id 沿用 AGENTS.md 中的 "rober-hardware-engineer"（项目名 rober 的双关），
+# 而角色 id 沿用 AGENTS.md 中的 "robot-hardware-engineer"（项目名 rober 的双关），
 # 两者已知不一致，但都是当前正确状态，禁止单方修改其中一方。
 file = ".codex/agents/robot-hardware-engineer.toml"
 level = "engineer"
