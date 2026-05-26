@@ -138,9 +138,11 @@ PC 端新增 `GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>
 
 同一 tab 的 `Cloud archive tasks probe` 区块默认只填本机回环示例 URL，不自动发起请求。点击 `Probe cloud archive tasks` 后才调用 PC 后端 probe API；浏览器不直接访问 relay。UI 展示 probe status、source base URL、remote schema、archive status、task count、selected/latest、四个 inspector 状态、dangerous true fields、关键 false fields、blocked reasons 和 not proven。
 
-UI 只展示任务列表、最近任务、selected task、安全摘要、fixed false fields、blocked reasons 和 not proven。不得提供播放、提交、导出、发送、控制、停止、取消或恢复类动作按钮。
+UI 只展示任务列表、最近任务、selected task、安全摘要、fixed false fields、blocked reasons 和 not proven。不得提供自动播放、提交、导出、发送、控制、停止、取消或恢复类动作按钮。
 
-UI 同时展示 `route_replay_inspector` 的 selected task、map frame、frame count、sample frames 表格、event timeline、keyframe refs 和 cursor 初始 false 字段。该区域只用于 operator 检查历史路线 fixture 是否具备逐帧位置、速度和状态转移槽位，不提供任何逐帧驱动或机器人动作入口。
+UI 同时展示 `route_replay_inspector` 的 selected task、map frame、frame count、sample frames 表格、event timeline、keyframe refs 和 cursor 初始 false 字段。该区域只用于 operator 检查历史路线 fixture 是否具备逐帧位置、速度和状态转移槽位。
+
+PC UI 在该区域提供本地 route replay player：`Previous frame`、`Next frame`、`Reset cursor` 和可选 range cursor 只改变浏览器内存中的 sample frame 下标，不调用任何 API，不写后端状态，不发送机器人命令，也不代表真实云历史路线回放。player 展示当前 cursor index、sample frame 总数、`timestamp_ms`、`x_m/y_m/yaw_rad`、`speed_mps`、`state` 和 `evidence_ref`。当 archive 未加载、没有 selected task、没有 sample frames、`route_replay_inspector.status!=fixture_inspector_ready`，或响应显式给出 `playback_available=false` 时，player 必须显示 `blocked_not_proven` 并禁用 frame navigation。即使本地 cursor 可浏览，也必须继续展示 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`cursor_initial_state.safe_to_play=false`、`real_cloud_archive_connected=false` 和 `robot_control_executed=false`。
 
 UI 同时展示 `labeling_queue_inspector` 的 selected task、review item count、sample review items、label schema、allowed label types、draft labels、dataset export gaps 和标注相关 false fields。该区域只用于 operator 检查 archive fixture 是否具备 O7-KR4 标注队列数据形状，不提供提交、回滚、导出、发送、控制、播放、停止、取消或恢复类动作入口。
 

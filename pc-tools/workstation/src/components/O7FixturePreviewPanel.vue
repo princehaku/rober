@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import {
   getO7CloudArchiveTasks,
   getO7CloudArchiveTasksProbe,
@@ -61,6 +61,7 @@ const cloudProbeBaseUrl = ref("http://127.0.0.1:8088");
 const cloudProbeResult = ref<O7CloudOperatorConsoleProbeResponse | null>(null);
 const cloudProbeError = ref("");
 const cloudProbeLoading = ref(false);
+const routeReplayCursor = ref(0);
 
 function asRecord(result: O7FixturePreviewResult | undefined): Record<string, unknown> {
   // Vue template 需要统一读取 union 字段；这里只做只读投影，不改响应内容。
@@ -208,12 +209,84 @@ function inspectorCursorFields(result: O7CloudArchiveTasksResponse | null): stri
   ];
 }
 
+const routeReplayFrames = computed(() => archiveResult.value?.route_replay_inspector.sample_frames ?? []);
+
+const routeReplayBlockedReason = computed(() => {
+  const archive = archiveResult.value as (O7CloudArchiveTasksResponse & { playback_available?: boolean }) | null;
+  // 逐帧浏览只绑定本地 sample_frames；未加载、无 selected task、显式 playback=false 都必须关闸。
+  if (!archive) {
+    return "archive_not_loaded";
+  }
+  if (!archive.route_replay_inspector.selected_task_id) {
+    return "selected_task_missing";
+  }
+  if (!routeReplayFrames.value.length) {
+    return "sample_frames_missing";
+  }
+  if (archive.playback_available === false) {
+    return "playback_available_false";
+  }
+  if (archive.route_replay_inspector.status !== "fixture_inspector_ready") {
+    return "route_replay_inspector_blocked_not_proven";
+  }
+  return "";
+});
+
+const routeReplayNavigationEnabled = computed(() => routeReplayBlockedReason.value === "");
+
+const currentRouteReplayFrame = computed(() => {
+  // cursor 是数组下标，不发送给后端；frame_index 保持使用 archive fixture 的原始字段。
+  if (!routeReplayNavigationEnabled.value) {
+    return null;
+  }
+  return routeReplayFrames.value[routeReplayCursor.value] ?? routeReplayFrames.value[0] ?? null;
+});
+
+function routeReplayCursorDisplay(): string {
+  const frame = currentRouteReplayFrame.value;
+  // blocked 时也显示总 sample 数，方便 operator 区分未加载和已加载但不可浏览。
+  if (!frame) {
+    return `blocked_not_proven / ${routeReplayFrames.value.length}`;
+  }
+  return `${routeReplayCursor.value + 1} / ${routeReplayFrames.value.length}`;
+}
+
+function clampRouteReplayCursor(index: number): void {
+  const maxIndex = Math.max(routeReplayFrames.value.length - 1, 0);
+  // 所有 navigation 都只改浏览器内存里的数组下标，避免误变成真实回放命令。
+  routeReplayCursor.value = Math.min(Math.max(index, 0), maxIndex);
+}
+
+function resetRouteReplayCursor(): void {
+  clampRouteReplayCursor(0);
+}
+
+function previousRouteReplayFrame(): void {
+  if (routeReplayNavigationEnabled.value) {
+    clampRouteReplayCursor(routeReplayCursor.value - 1);
+  }
+}
+
+function nextRouteReplayFrame(): void {
+  if (routeReplayNavigationEnabled.value) {
+    clampRouteReplayCursor(routeReplayCursor.value + 1);
+  }
+}
+
+function setRouteReplayCursorFromInput(event: Event): void {
+  const target = event.target as HTMLInputElement;
+  if (routeReplayNavigationEnabled.value) {
+    clampRouteReplayCursor(Number(target.value));
+  }
+}
+
 async function loadArchiveTasks(): Promise<void> {
   // 只有 operator 点击按钮才读取本地 archive 路径；页面加载不会自动触碰文件系统。
   archiveLoading.value = true;
   archiveError.value = "";
   try {
     archiveResult.value = await getO7CloudArchiveTasks(archiveJson.value);
+    resetRouteReplayCursor();
   } catch (err) {
     archiveError.value = err instanceof Error ? err.message : "cloud_archive_task_api_unavailable_not_proven";
   } finally {
@@ -739,6 +812,75 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
         <dt>frame_count</dt>
         <dd>{{ archiveResult?.route_replay_inspector.frame_count ?? 0 }}</dd>
       </dl>
+
+      <h3>Local route replay player</h3>
+      <div class="notice" role="note">
+        local_fixture_cursor_only · sends_to_robot=false · safe_to_control=false · delivery_success=false ·
+        primary_actions_enabled=false · cursor_initial_state.safe_to_play=false
+      </div>
+      <dl class="kv compact-kv">
+        <dt>cursor_status</dt>
+        <dd>{{ routeReplayNavigationEnabled ? "local_fixture_cursor_ready" : "blocked_not_proven" }}</dd>
+        <dt>blocked_reason</dt>
+        <dd>{{ routeReplayBlockedReason || "none_local_fixture_only" }}</dd>
+        <dt>current frame</dt>
+        <dd>{{ routeReplayCursorDisplay() }}</dd>
+        <dt>frame_index</dt>
+        <dd>{{ currentRouteReplayFrame?.frame_index ?? "blocked_not_proven" }}</dd>
+        <dt>timestamp_ms</dt>
+        <dd>{{ currentRouteReplayFrame?.timestamp_ms ?? "null" }}</dd>
+        <dt>pose</dt>
+        <dd>
+          x={{ currentRouteReplayFrame?.x_m ?? "null" }},
+          y={{ currentRouteReplayFrame?.y_m ?? "null" }},
+          yaw={{ currentRouteReplayFrame?.yaw_rad ?? "null" }}
+        </dd>
+        <dt>velocity</dt>
+        <dd>{{ currentRouteReplayFrame?.speed_mps ?? "null" }} mps</dd>
+        <dt>state</dt>
+        <dd>{{ currentRouteReplayFrame?.state ?? "blocked_not_proven" }}</dd>
+        <dt>evidence_ref</dt>
+        <dd>{{ currentRouteReplayFrame?.evidence_ref ?? "blocked_not_proven" }}</dd>
+      </dl>
+      <div class="route-inputs">
+        <!-- 这些按钮只改变本地数组下标，不调用 API，也不代表真实云回放或机器人运动。 -->
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!routeReplayNavigationEnabled || routeReplayCursor <= 0"
+          @click="previousRouteReplayFrame"
+        >
+          Previous frame
+        </button>
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!routeReplayNavigationEnabled || routeReplayCursor >= routeReplayFrames.length - 1"
+          @click="nextRouteReplayFrame"
+        >
+          Next frame
+        </button>
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!routeReplayNavigationEnabled"
+          @click="resetRouteReplayCursor"
+        >
+          Reset cursor
+        </button>
+      </div>
+      <label class="single-input">
+        <span>Frame cursor</span>
+        <input
+          aria-label="Local route replay frame cursor"
+          type="range"
+          min="0"
+          :max="Math.max(routeReplayFrames.length - 1, 0)"
+          :value="routeReplayCursor"
+          :disabled="!routeReplayNavigationEnabled"
+          @input="setRouteReplayCursorFromInput"
+        >
+      </label>
 
       <h3>Sample frames</h3>
       <table>

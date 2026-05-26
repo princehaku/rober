@@ -1848,16 +1848,16 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/cloud-archive/tasks");
 
     const inputs = wrapper.findAll("input");
-    expect(inputs).toHaveLength(9);
+    expect(inputs).toHaveLength(10);
     await inputs[0]!.setValue("http://127.0.0.1:8088");
     await inputs[1]!.setValue("http://127.0.0.1:8088");
     await inputs[2]!.setValue("http://127.0.0.1:8088");
     await inputs[3]!.setValue("fixtures/archive.json");
-    await inputs[4]!.setValue("fixtures/realtime.json");
-    await inputs[5]!.setValue("fixtures/route.json");
-    await inputs[6]!.setValue("fixtures/labeling.json");
-    await inputs[7]!.setValue("fixtures/voice.json");
-    await inputs[8]!.setValue("fixtures/safe-command.json");
+    await inputs[5]!.setValue("fixtures/realtime.json");
+    await inputs[6]!.setValue("fixtures/route.json");
+    await inputs[7]!.setValue("fixtures/labeling.json");
+    await inputs[8]!.setValue("fixtures/voice.json");
+    await inputs[9]!.setValue("fixtures/safe-command.json");
 
     await wrapper.findAll("button").find((button) => button.text() === "Probe cloud operator console")?.trigger("click");
     await flushPromises();
@@ -1912,10 +1912,24 @@ describe("App", () => {
     expect(wrapper.text()).toContain("task_archive_002");
     expect(wrapper.text()).toContain("needs_review_fixture_only");
     expect(wrapper.text()).toContain("fixture_inspector_ready");
+    expect(wrapper.text()).toContain("Local route replay player");
+    expect(wrapper.text()).toContain("local_fixture_cursor_only");
+    expect(wrapper.text()).toContain("local_fixture_cursor_ready");
+    expect(wrapper.text()).toContain("1 / 2");
     expect(wrapper.text()).toContain("frame_ref_000");
     expect(wrapper.text()).toContain("keyframe_ref_001");
     expect(wrapper.text()).toContain("playing=false");
     expect(wrapper.text()).toContain("safe_to_play=false");
+
+    const callsBeforeLocalCursor = mockedFetch.mock.calls.length;
+    await wrapper.findAll("button").find((button) => button.text() === "Next frame")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("2 / 2");
+    expect(wrapper.text()).toContain("frame_ref_001");
+    await wrapper.findAll("button").find((button) => button.text() === "Reset cursor")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("1 / 2");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalCursor);
     expect(wrapper.text()).toContain("Labeling queue inspector");
     expect(wrapper.text()).toContain("review_item_001");
     expect(wrapper.text()).toContain("frame_media_001.jpg");

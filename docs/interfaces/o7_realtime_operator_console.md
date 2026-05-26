@@ -333,6 +333,8 @@ Adapter 必须拒绝并返回 `preview_status=blocked_not_proven`：
 
 该接口的 `fixture_preview_ready` 只表示本地 JSON 被压缩成安全摘要；它不提升 O7 完成度，不证明真实历史任务列表、真实轨迹 API、真实关键帧归档、真实状态转移时间线、真实云端归档、真实 playback cursor、真实机器人控制或真实 delivery success。
 
+O7 Previews 的 `Cloud Archive Tasks` 区块基于 `route_replay_inspector.sample_frames` 提供 PC-only 本地 route replay player。它只允许 operator 用 `Previous frame`、`Next frame`、`Reset cursor` 和 range cursor 检查已加载 fixture 的 timestamp、pose、velocity、state 与 evidence ref；这些控件只修改浏览器本地 cursor，不调用 `/api/o7/*`，不改变后端状态，不发送机器人命令。当 archive 未加载、selected task 缺失、sample frames 为空、inspector blocked，或响应显式 `playback_available=false` 时，UI 必须显示 `blocked_not_proven` 并禁用 frame navigation。该 player 不等于真实云历史路线回放、真实地图叠加、真实机器人运动、真实控制或 O7-KR3 完成。
+
 ## Labeling Fixture Preview
 
 `trashbot.o7.labeling_preview.v1` 是 O7-KR4 的 PC-only 本地 fixture 预览契约。它比 `labeling_queue_snapshot` 前进一步：允许 reviewer 通过 query path 指定一个本地安全 JSON fixture，并由 Node adapter 生成待标注队列和导出缺口摘要。但它仍不是 O6 annotation API、不是云端 review queue 查询、不是真实标注提交/回滚，也不代表训练集导出可用。
