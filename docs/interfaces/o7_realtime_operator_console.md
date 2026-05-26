@@ -30,6 +30,55 @@
 
 PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE ROVER、Nav2、TTS 或手控命令。
 
+## Realtime Map Snapshot
+
+`realtime_map_snapshot` 是 O7-KR1 的 fail-closed 字段契约。它让 PC Console 明确显示 map/pose 所需字段，但当前仍是 `software_proof` 和 `blocked_not_proven`，不能解释为真实 ROS2 `/tf`、真实地图、真实路线成员关系或刷新延迟小于 2 秒。
+
+固定字段：
+
+- `schema=trashbot.o7.realtime_map_snapshot.v1`
+- `source=software_proof`
+- `snapshot_status=blocked_not_proven`
+- `safe_to_control=false`
+- `primary_actions_enabled=false`
+- `map_ref.value=not_connected`
+- `map_ref.status=not_proven`
+- `map_frame.value=map`
+- `map_frame.status=contract_placeholder_not_tf`
+- `robot_pose.x_m/y_m/yaw_rad=null`
+- `robot_pose.pose_source=not_connected`
+- `pose_freshness.age_ms=null`
+- `pose_freshness.latency_lt_2s_proven=false`
+- `route_membership.on_route=false`
+- `route_membership.in_elevator_zone=false`
+- `route_membership.status=not_proven`
+
+`blocked_reasons` 必须至少包含 cloud realtime API 仍是 draft、ROS2 `/tf` forwarding 未证明、map artifact 未连接、机器人位置延迟小于 2 秒未证明。`not_proven` 必须覆盖真实 `/tf`、真实地图 artifact、真实机器人位姿、真实 route membership、真实 elevator zone membership 和 `robot_position_latency_lt_2s`。
+
+## Elevator State Snapshot
+
+`elevator_state_snapshot` 是 O7-KR2 的 fail-closed 字段契约。它让 PC Console 显示电梯状态链、当前楼层证据、目标楼层确认和人工接管原因的槽位，但当前不证明真实电梯门状态、楼层识别、到达楼层、状态链回放或人工接管事实。
+
+固定字段：
+
+- `schema=trashbot.o7.elevator_state_snapshot.v1`
+- `source=software_proof`
+- `snapshot_status=blocked_not_proven`
+- `safe_to_control=false`
+- `primary_actions_enabled=false`
+- `state_chain[0].state=not_connected`
+- `state_chain[0].status=not_proven`
+- `current_state=not_connected`
+- `current_floor_evidence.floor_label=not_connected`
+- `current_floor_evidence.confidence=null`
+- `current_floor_evidence.status=not_proven`
+- `target_floor.floor_label=not_connected`
+- `target_floor.confirmation_status=not_proven`
+- `human_takeover.required=true`
+- `human_takeover.reason=real_elevator_state_chain_not_proven`
+
+`blocked_reasons` 必须至少包含 elevator event archive 未连接、真实电梯门状态未证明、楼层识别未证明、人工接管原因未从 task record 回填。`not_proven` 必须覆盖真实电梯状态链、真实当前楼层、真实目标楼层确认、真实电梯到达和真实人工接管原因。
+
 ## Board Media Preflight
 
 `board_media_preflight_summary` 是 O7 Console 对板端 media preflight 缺口的只读展示。当前 PC API 使用静态 fail-closed summary，让 operator 能在 Console 中看到 KR5 之前必须补齐的 RTC、摄像头、音频、ASR/TTS 和上车 smoke 证据。

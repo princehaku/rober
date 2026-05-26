@@ -29,6 +29,110 @@ defineProps<{
       <dd>{{ operatorConsole?.manual_control_policy.success_claim_allowed ?? false }}</dd>
     </dl>
 
+    <div class="two-col snapshot-grid">
+      <article class="snapshot-panel">
+        <div class="section-head compact-head">
+          <!-- 地图 snapshot 是 cloud 契约占位，不读取 /tf，也不证明刷新延迟。 -->
+          <h3>Realtime map snapshot</h3>
+          <span class="pill danger">{{ operatorConsole?.realtime_map_snapshot.snapshot_status ?? "blocked_not_proven" }}</span>
+        </div>
+        <dl class="kv compact-kv">
+          <dt>schema</dt>
+          <dd>{{ operatorConsole?.realtime_map_snapshot.schema ?? "trashbot.o7.realtime_map_snapshot.v1" }}</dd>
+          <dt>map_ref</dt>
+          <dd>{{ operatorConsole?.realtime_map_snapshot.map_ref.value ?? "not_connected" }}</dd>
+          <dt>map frame</dt>
+          <dd>
+            {{ operatorConsole?.realtime_map_snapshot.map_frame.value ?? "map" }}
+            · {{ operatorConsole?.realtime_map_snapshot.map_frame.status ?? "contract_placeholder_not_tf" }}
+          </dd>
+          <dt>pose</dt>
+          <dd>
+            x={{ operatorConsole?.realtime_map_snapshot.robot_pose.x_m ?? "null" }},
+            y={{ operatorConsole?.realtime_map_snapshot.robot_pose.y_m ?? "null" }},
+            yaw={{ operatorConsole?.realtime_map_snapshot.robot_pose.yaw_rad ?? "null" }}
+          </dd>
+          <dt>pose freshness</dt>
+          <dd>
+            age_ms={{ operatorConsole?.realtime_map_snapshot.pose_freshness.age_ms ?? "null" }}
+            · latency_lt_2s_proven={{
+              operatorConsole?.realtime_map_snapshot.pose_freshness.latency_lt_2s_proven ?? false
+            }}
+          </dd>
+          <dt>route membership</dt>
+          <dd>
+            route={{ operatorConsole?.realtime_map_snapshot.route_membership.route_id ?? "not_connected" }}
+            · on_route={{ operatorConsole?.realtime_map_snapshot.route_membership.on_route ?? false }}
+            · in_elevator_zone={{
+              operatorConsole?.realtime_map_snapshot.route_membership.in_elevator_zone ?? false
+            }}
+          </dd>
+          <dt>safe_to_control</dt>
+          <dd>{{ operatorConsole?.realtime_map_snapshot.safe_to_control ?? false }}</dd>
+        </dl>
+        <h3>Blocked by</h3>
+        <ul class="dense">
+          <!-- blocked reasons 明确缺 cloud stream、map artifact 和 /tf forwarding。 -->
+          <li v-for="reason in operatorConsole?.realtime_map_snapshot.blocked_reasons" :key="reason">
+            {{ reason }}
+          </li>
+        </ul>
+      </article>
+
+      <article class="snapshot-panel">
+        <div class="section-head compact-head">
+          <!-- 电梯 snapshot 只展示状态链槽位，不能解释为真实电梯在线。 -->
+          <h3>Elevator state snapshot</h3>
+          <span class="pill danger">{{
+            operatorConsole?.elevator_state_snapshot.snapshot_status ?? "blocked_not_proven"
+          }}</span>
+        </div>
+        <dl class="kv compact-kv">
+          <dt>schema</dt>
+          <dd>{{ operatorConsole?.elevator_state_snapshot.schema ?? "trashbot.o7.elevator_state_snapshot.v1" }}</dd>
+          <dt>current state</dt>
+          <dd>{{ operatorConsole?.elevator_state_snapshot.current_state ?? "not_connected" }}</dd>
+          <dt>state chain</dt>
+          <dd>
+            {{
+              operatorConsole?.elevator_state_snapshot.state_chain
+                .map((state) => `${state.state}:${state.status}`)
+                .join(" -> ") ?? "not_connected:not_proven"
+            }}
+          </dd>
+          <dt>floor evidence</dt>
+          <dd>
+            {{ operatorConsole?.elevator_state_snapshot.current_floor_evidence.floor_label ?? "not_connected" }}
+            · confidence={{
+              operatorConsole?.elevator_state_snapshot.current_floor_evidence.confidence ?? "null"
+            }}
+          </dd>
+          <dt>target floor</dt>
+          <dd>
+            {{ operatorConsole?.elevator_state_snapshot.target_floor.floor_label ?? "not_connected" }}
+            · {{ operatorConsole?.elevator_state_snapshot.target_floor.confirmation_status ?? "not_proven" }}
+          </dd>
+          <dt>human takeover</dt>
+          <dd>
+            required={{ operatorConsole?.elevator_state_snapshot.human_takeover.required ?? true }}
+            · reason={{
+              operatorConsole?.elevator_state_snapshot.human_takeover.reason ??
+                "real_elevator_state_chain_not_proven"
+            }}
+          </dd>
+          <dt>primary actions</dt>
+          <dd>{{ operatorConsole?.elevator_state_snapshot.primary_actions_enabled ?? false }}</dd>
+        </dl>
+        <h3>Blocked by</h3>
+        <ul class="dense">
+          <!-- blocked reasons 保留楼层识别和人工接管原因缺口。 -->
+          <li v-for="reason in operatorConsole?.elevator_state_snapshot.blocked_reasons" :key="reason">
+            {{ reason }}
+          </li>
+        </ul>
+      </article>
+    </div>
+
     <article class="preflight-panel">
       <div class="section-head compact-head">
         <!-- 板端媒体摘要来自 API；缺省值也保持 blocked，避免页面加载失败时显示可用。 -->

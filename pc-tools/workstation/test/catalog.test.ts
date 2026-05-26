@@ -451,6 +451,24 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.board_media_preflight_summary.next_required_evidence).toContain(
       "on_robot_media_smoke_with_no_chassis_motion",
     );
+    expect(response.realtime_map_snapshot.schema).toBe("trashbot.o7.realtime_map_snapshot.v1");
+    expect(response.realtime_map_snapshot.snapshot_status).toBe("blocked_not_proven");
+    expect(response.realtime_map_snapshot.map_ref.status).toBe("not_proven");
+    expect(response.realtime_map_snapshot.map_frame.status).toBe("contract_placeholder_not_tf");
+    expect(response.realtime_map_snapshot.pose_freshness.latency_lt_2s_proven).toBe(false);
+    expect(response.realtime_map_snapshot.route_membership.on_route).toBe(false);
+    expect(response.realtime_map_snapshot.route_membership.in_elevator_zone).toBe(false);
+    expect(response.realtime_map_snapshot.blocked_reasons).toContain("ros2_tf_forwarding_not_proven");
+    expect(response.realtime_map_snapshot.not_proven).toContain("robot_position_latency_lt_2s");
+    expect(response.elevator_state_snapshot.schema).toBe("trashbot.o7.elevator_state_snapshot.v1");
+    expect(response.elevator_state_snapshot.snapshot_status).toBe("blocked_not_proven");
+    expect(response.elevator_state_snapshot.current_state).toBe("not_connected");
+    expect(response.elevator_state_snapshot.current_floor_evidence.status).toBe("not_proven");
+    expect(response.elevator_state_snapshot.target_floor.confirmation_status).toBe("not_proven");
+    expect(response.elevator_state_snapshot.human_takeover.required).toBe(true);
+    expect(response.elevator_state_snapshot.human_takeover.reason).toBe("real_elevator_state_chain_not_proven");
+    expect(response.elevator_state_snapshot.blocked_reasons).toContain("floor_recognition_not_proven");
+    expect(response.elevator_state_snapshot.not_proven).toContain("real_human_takeover_reason");
     expect(response.kr_views.map((kr) => kr.id)).toEqual(["O7-KR1", "O7-KR2", "O7-KR3", "O7-KR4", "O7-KR5", "O7-KR6"]);
     expect(response.kr_views.every((kr) => ["draft", "blocked", "not_proven"].includes(kr.status))).toBe(true);
     expect(response.command_previews.every((command) => command.sends_to_robot === false)).toBe(true);

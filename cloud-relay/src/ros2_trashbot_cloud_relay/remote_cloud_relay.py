@@ -31,6 +31,8 @@ from ros2_trashbot_behavior.remote_cloud_relay import main as _behavior_main
 
 O7_OPERATOR_CONSOLE_SCHEMA = "trashbot.o7.operator_console.v1"
 O7_BOARD_MEDIA_PREFLIGHT_SCHEMA = "trashbot.o7_board_media_preflight.v1"
+O7_REALTIME_MAP_SNAPSHOT_SCHEMA = "trashbot.o7.realtime_map_snapshot.v1"
+O7_ELEVATOR_STATE_SNAPSHOT_SCHEMA = "trashbot.o7.elevator_state_snapshot.v1"
 
 
 def build_o7_operator_console_contract() -> dict[str, Any]:
@@ -79,6 +81,104 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             "on_robot_media_smoke_with_no_chassis_motion",
         ],
     }
+    # 该 snapshot 只冻结 PC 需要显示的字段名，不采集 /tf、不读地图文件、不承诺 <2s。
+    realtime_map_snapshot = {
+        "schema": O7_REALTIME_MAP_SNAPSHOT_SCHEMA,
+        "schema_version": 1,
+        "source": "software_proof",
+        "snapshot_status": "blocked_not_proven",
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+        "map_ref": {
+            "value": "not_connected",
+            "status": "not_proven",
+            "evidence_ref": "missing_cloud_realtime_map_ref",
+        },
+        "map_frame": {
+            "value": "map",
+            "status": "contract_placeholder_not_tf",
+            "frame_source": "cloud_contract_draft",
+        },
+        "robot_pose": {
+            "x_m": None,
+            "y_m": None,
+            "yaw_rad": None,
+            "pose_source": "not_connected",
+            "status": "not_proven",
+        },
+        "pose_freshness": {
+            "last_update_ms": None,
+            "age_ms": None,
+            "latency_lt_2s_proven": False,
+            "status": "blocked_no_realtime_stream",
+        },
+        "route_membership": {
+            "route_id": "not_connected",
+            "on_route": False,
+            "in_elevator_zone": False,
+            "status": "not_proven",
+            "reason": "cloud_realtime_map_pose_stream_not_connected",
+        },
+        "blocked_reasons": [
+            "cloud_realtime_api_draft",
+            "ros2_tf_forwarding_not_proven",
+            "map_artifact_not_connected",
+            "robot_position_latency_lt_2s_not_proven",
+        ],
+        "not_proven": [
+            "real_ros2_tf",
+            "real_map_artifact",
+            "real_robot_pose",
+            "real_route_membership",
+            "real_elevator_zone_membership",
+            "robot_position_latency_lt_2s",
+        ],
+    }
+    # 电梯 snapshot 只提供状态链/楼层证据/接管原因的展示槽位，不证明真实电梯事件。
+    elevator_state_snapshot = {
+        "schema": O7_ELEVATOR_STATE_SNAPSHOT_SCHEMA,
+        "schema_version": 1,
+        "source": "software_proof",
+        "snapshot_status": "blocked_not_proven",
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+        "state_chain": [
+            {
+                "state": "not_connected",
+                "status": "not_proven",
+                "evidence_ref": "missing_cloud_elevator_state_chain",
+            }
+        ],
+        "current_state": "not_connected",
+        "current_floor_evidence": {
+            "floor_label": "not_connected",
+            "confidence": None,
+            "evidence_ref": "missing_floor_evidence",
+            "status": "not_proven",
+        },
+        "target_floor": {
+            "floor_label": "not_connected",
+            "confirmation_status": "not_proven",
+        },
+        "human_takeover": {
+            "required": True,
+            "reason": "real_elevator_state_chain_not_proven",
+            "operator_action": "keep_observe_only_until_cloud_archive_and_field_evidence_exist",
+        },
+        "blocked_reasons": [
+            "elevator_event_archive_not_connected",
+            "real_elevator_door_state_not_proven",
+            "floor_recognition_not_proven",
+            "human_takeover_reason_not_backfilled_from_task_record",
+        ],
+        "not_proven": [
+            "real_elevator_state_chain",
+            "real_current_floor",
+            "real_target_floor_confirmation",
+            "real_elevator_arrival",
+            "real_human_takeover_reason",
+        ],
+    }
 
     return {
         "schema": O7_OPERATOR_CONSOLE_SCHEMA,
@@ -98,6 +198,8 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
         "board_media_preflight_schema": O7_BOARD_MEDIA_PREFLIGHT_SCHEMA,
         "board_media_preflight_state": "blocked",
         "board_media_preflight_summary": board_media_preflight_summary,
+        "realtime_map_snapshot": realtime_map_snapshot,
+        "elevator_state_snapshot": elevator_state_snapshot,
         "manual_control_policy": {
             "pc_direct_robot_connection": False,
             "cloud_mediated_only": True,
@@ -118,6 +220,8 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             "pc_must_not_direct_connect_robot",
             "robot_ack_timeout_recovery_not_proven",
             "board_media_preflight_blocked",
+            "realtime_map_snapshot_blocked",
+            "elevator_state_snapshot_blocked",
             "manual_or_navigation_dispatch_disabled",
         ],
         "not_proven": [

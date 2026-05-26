@@ -1,8 +1,10 @@
 import { PROOF_FLAGS } from "../shared/contracts";
 import type {
   O7BoardMediaPreflightSummary,
+  O7ElevatorStateSnapshot,
   O7OperatorConsoleResponse,
   O7OperatorKrView,
+  O7RealtimeMapSnapshot,
 } from "../shared/contracts";
 
 const CONTRACT_SOURCE = "cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py" as const;
@@ -111,10 +113,109 @@ const BOARD_MEDIA_PREFLIGHT_SUMMARY: O7BoardMediaPreflightSummary = {
   ],
 };
 
+const REALTIME_MAP_SNAPSHOT: O7RealtimeMapSnapshot = {
+  schema: "trashbot.o7.realtime_map_snapshot.v1",
+  schema_version: 1,
+  source: "software_proof",
+  snapshot_status: "blocked_not_proven",
+  safe_to_control: false,
+  primary_actions_enabled: false,
+  map_ref: {
+    value: "not_connected",
+    status: "not_proven",
+    evidence_ref: "missing_cloud_realtime_map_ref",
+  },
+  map_frame: {
+    value: "map",
+    status: "contract_placeholder_not_tf",
+    frame_source: "cloud_contract_draft",
+  },
+  robot_pose: {
+    x_m: null,
+    y_m: null,
+    yaw_rad: null,
+    pose_source: "not_connected",
+    status: "not_proven",
+  },
+  pose_freshness: {
+    last_update_ms: null,
+    age_ms: null,
+    latency_lt_2s_proven: false,
+    status: "blocked_no_realtime_stream",
+  },
+  route_membership: {
+    route_id: "not_connected",
+    on_route: false,
+    in_elevator_zone: false,
+    status: "not_proven",
+    reason: "cloud_realtime_map_pose_stream_not_connected",
+  },
+  blocked_reasons: [
+    "cloud_realtime_api_draft",
+    "ros2_tf_forwarding_not_proven",
+    "map_artifact_not_connected",
+    "robot_position_latency_lt_2s_not_proven",
+  ],
+  not_proven: [
+    "real_ros2_tf",
+    "real_map_artifact",
+    "real_robot_pose",
+    "real_route_membership",
+    "real_elevator_zone_membership",
+    "robot_position_latency_lt_2s",
+  ],
+};
+
+const ELEVATOR_STATE_SNAPSHOT: O7ElevatorStateSnapshot = {
+  schema: "trashbot.o7.elevator_state_snapshot.v1",
+  schema_version: 1,
+  source: "software_proof",
+  snapshot_status: "blocked_not_proven",
+  safe_to_control: false,
+  primary_actions_enabled: false,
+  state_chain: [
+    {
+      state: "not_connected",
+      status: "not_proven",
+      evidence_ref: "missing_cloud_elevator_state_chain",
+    },
+  ],
+  current_state: "not_connected",
+  current_floor_evidence: {
+    floor_label: "not_connected",
+    confidence: null,
+    evidence_ref: "missing_floor_evidence",
+    status: "not_proven",
+  },
+  target_floor: {
+    floor_label: "not_connected",
+    confirmation_status: "not_proven",
+  },
+  human_takeover: {
+    required: true,
+    reason: "real_elevator_state_chain_not_proven",
+    operator_action: "keep_observe_only_until_cloud_archive_and_field_evidence_exist",
+  },
+  blocked_reasons: [
+    "elevator_event_archive_not_connected",
+    "real_elevator_door_state_not_proven",
+    "floor_recognition_not_proven",
+    "human_takeover_reason_not_backfilled_from_task_record",
+  ],
+  not_proven: [
+    "real_elevator_state_chain",
+    "real_current_floor",
+    "real_target_floor_confirmation",
+    "real_elevator_arrival",
+    "real_human_takeover_reason",
+  ],
+};
+
 export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
   // 这里与 cloud-relay helper 固定同一 schema；PC 只消费契约快照，不连接小车。
   // 六个 KR 都保留 draft/blocked/not_proven，避免 UI 把占位面板外推成真实 O7 能力。
   // 板端媒体 preflight 暂用静态 fail-closed 摘要，直到 cloud 提供真实板端 JSON。
+  // 地图和电梯 snapshot 只让 operator 看见字段契约，不能被前端解释为 ROS2 实时流。
   return {
     schema: "trashbot.o7.operator_console.v1",
     ...PROOF_FLAGS,
@@ -128,6 +229,8 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
     board_media_preflight_schema: "trashbot.o7_board_media_preflight.v1",
     board_media_preflight_state: "blocked",
     board_media_preflight_summary: BOARD_MEDIA_PREFLIGHT_SUMMARY,
+    realtime_map_snapshot: REALTIME_MAP_SNAPSHOT,
+    elevator_state_snapshot: ELEVATOR_STATE_SNAPSHOT,
     manual_control_policy: {
       pc_direct_robot_connection: false,
       cloud_mediated_only: true,
@@ -170,6 +273,8 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
       "pc_must_not_direct_connect_robot",
       "robot_ack_timeout_recovery_not_proven",
       "real_map_pose_stream_not_proven",
+      "realtime_map_snapshot_blocked",
+      "elevator_state_snapshot_blocked",
       "real_voice_stream_not_proven",
       "board_media_preflight_blocked",
       "manual_or_navigation_dispatch_disabled",

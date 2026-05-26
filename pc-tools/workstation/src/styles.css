@@ -287,6 +287,16 @@ th {
   padding: 14px;
 }
 
+.snapshot-grid {
+  margin: 16px 0;
+}
+
+.snapshot-panel {
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  padding: 14px;
+}
+
 .compact-section {
   margin-bottom: 14px;
 }

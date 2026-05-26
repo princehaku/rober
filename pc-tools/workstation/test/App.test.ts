@@ -413,6 +413,79 @@ const fixtures: Record<string, unknown> = {
         "on_robot_media_smoke_with_no_chassis_motion",
       ],
     },
+    realtime_map_snapshot: {
+      schema: "trashbot.o7.realtime_map_snapshot.v1",
+      schema_version: 1,
+      source: "software_proof",
+      snapshot_status: "blocked_not_proven",
+      safe_to_control: false,
+      primary_actions_enabled: false,
+      map_ref: {
+        value: "not_connected",
+        status: "not_proven",
+        evidence_ref: "missing_cloud_realtime_map_ref",
+      },
+      map_frame: {
+        value: "map",
+        status: "contract_placeholder_not_tf",
+        frame_source: "cloud_contract_draft",
+      },
+      robot_pose: {
+        x_m: null,
+        y_m: null,
+        yaw_rad: null,
+        pose_source: "not_connected",
+        status: "not_proven",
+      },
+      pose_freshness: {
+        last_update_ms: null,
+        age_ms: null,
+        latency_lt_2s_proven: false,
+        status: "blocked_no_realtime_stream",
+      },
+      route_membership: {
+        route_id: "not_connected",
+        on_route: false,
+        in_elevator_zone: false,
+        status: "not_proven",
+        reason: "cloud_realtime_map_pose_stream_not_connected",
+      },
+      blocked_reasons: ["cloud_realtime_api_draft", "ros2_tf_forwarding_not_proven"],
+      not_proven: ["real_ros2_tf", "real_robot_pose", "robot_position_latency_lt_2s"],
+    },
+    elevator_state_snapshot: {
+      schema: "trashbot.o7.elevator_state_snapshot.v1",
+      schema_version: 1,
+      source: "software_proof",
+      snapshot_status: "blocked_not_proven",
+      safe_to_control: false,
+      primary_actions_enabled: false,
+      state_chain: [
+        {
+          state: "not_connected",
+          status: "not_proven",
+          evidence_ref: "missing_cloud_elevator_state_chain",
+        },
+      ],
+      current_state: "not_connected",
+      current_floor_evidence: {
+        floor_label: "not_connected",
+        confidence: null,
+        evidence_ref: "missing_floor_evidence",
+        status: "not_proven",
+      },
+      target_floor: {
+        floor_label: "not_connected",
+        confirmation_status: "not_proven",
+      },
+      human_takeover: {
+        required: true,
+        reason: "real_elevator_state_chain_not_proven",
+        operator_action: "keep_observe_only_until_cloud_archive_and_field_evidence_exist",
+      },
+      blocked_reasons: ["elevator_event_archive_not_connected", "floor_recognition_not_proven"],
+      not_proven: ["real_elevator_state_chain", "real_human_takeover_reason"],
+    },
     manual_control_policy: {
       pc_direct_robot_connection: false,
       cloud_mediated_only: true,
@@ -660,6 +733,16 @@ describe("App", () => {
     expect(wrapper.text()).toContain("real_camera_video_source");
     expect(wrapper.text()).toContain("real_tts_playback");
     expect(wrapper.text()).toContain("on_robot_media_smoke_with_no_chassis_motion");
+    expect(wrapper.text()).toContain("Realtime map snapshot");
+    expect(wrapper.text()).toContain("trashbot.o7.realtime_map_snapshot.v1");
+    expect(wrapper.text()).toContain("contract_placeholder_not_tf");
+    expect(wrapper.text()).toContain("latency_lt_2s_proven=false");
+    expect(wrapper.text()).toContain("ros2_tf_forwarding_not_proven");
+    expect(wrapper.text()).toContain("Elevator state snapshot");
+    expect(wrapper.text()).toContain("trashbot.o7.elevator_state_snapshot.v1");
+    expect(wrapper.text()).toContain("not_connected:not_proven");
+    expect(wrapper.text()).toContain("real_elevator_state_chain_not_proven");
+    expect(wrapper.text()).toContain("floor_recognition_not_proven");
     expect(wrapper.text()).toContain("O7-KR1");
     expect(wrapper.text()).toContain("O7-KR6");
     expect(wrapper.text()).toContain("operator.safe_command_preview.v1");

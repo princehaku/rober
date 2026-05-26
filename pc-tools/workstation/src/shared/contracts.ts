@@ -273,6 +273,79 @@ export interface O7BoardMediaPreflightSummary {
   next_required_evidence: string[];
 }
 
+export interface O7RealtimeMapSnapshot {
+  schema: "trashbot.o7.realtime_map_snapshot.v1";
+  schema_version: 1;
+  source: "software_proof";
+  snapshot_status: "blocked_not_proven";
+  safe_to_control: false;
+  primary_actions_enabled: false;
+  map_ref: {
+    value: string;
+    status: "not_proven";
+    evidence_ref: string;
+  };
+  map_frame: {
+    value: "map";
+    status: "contract_placeholder_not_tf";
+    frame_source: "cloud_contract_draft";
+  };
+  robot_pose: {
+    x_m: null;
+    y_m: null;
+    yaw_rad: null;
+    pose_source: "not_connected";
+    status: "not_proven";
+  };
+  pose_freshness: {
+    last_update_ms: null;
+    age_ms: null;
+    latency_lt_2s_proven: false;
+    status: "blocked_no_realtime_stream";
+  };
+  route_membership: {
+    route_id: string;
+    on_route: false;
+    in_elevator_zone: false;
+    status: "not_proven";
+    reason: string;
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
+export interface O7ElevatorStateSnapshot {
+  schema: "trashbot.o7.elevator_state_snapshot.v1";
+  schema_version: 1;
+  source: "software_proof";
+  snapshot_status: "blocked_not_proven";
+  safe_to_control: false;
+  primary_actions_enabled: false;
+  state_chain: Array<{
+    state: string;
+    status: "not_proven";
+    evidence_ref: string;
+  }>;
+  current_state: string;
+  current_floor_evidence: {
+    floor_label: string;
+    confidence: null;
+    evidence_ref: string;
+    status: "not_proven";
+  };
+  target_floor: {
+    floor_label: string;
+    confirmation_status: "not_proven";
+  };
+  human_takeover: {
+    required: true;
+    reason: string;
+    operator_action: string;
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 // O7 Operator Console 是 cloud-contract driven 的最小视图，不能由前端伪造机器人事实。
 // command_previews 只表达将来安全 API 的 envelope，不代表按钮会发送真实控制。
 export interface O7OperatorConsoleResponse extends ProofFlags {
@@ -287,6 +360,8 @@ export interface O7OperatorConsoleResponse extends ProofFlags {
   board_media_preflight_schema: "trashbot.o7_board_media_preflight.v1";
   board_media_preflight_state: "blocked";
   board_media_preflight_summary: O7BoardMediaPreflightSummary;
+  realtime_map_snapshot: O7RealtimeMapSnapshot;
+  elevator_state_snapshot: O7ElevatorStateSnapshot;
   manual_control_policy: {
     pc_direct_robot_connection: false;
     cloud_mediated_only: true;
