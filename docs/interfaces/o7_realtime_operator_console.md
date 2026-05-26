@@ -6,9 +6,12 @@
 
 当前实现位置：
 
-- cloud helper：`cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py::build_o7_operator_console_contract()`
+- cloud runtime HTTP handler：`onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py::make_handler()`
+- cloud contract builder：`onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py::build_o7_operator_console_contract()`
+- cloud wrapper re-export：`cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py`
 - PC API：`GET /api/o7/operator-console`
 - PC acceptance guard：`GET /api/o7/operator-console/acceptance`
+- PC cloud operator console probe API：`GET /api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>`
 - PC realtime/elevator fixture preview API：`GET /api/o7/realtime-elevator-preview?fixtureJson=<local-json>`
 - PC fixture preview API：`GET /api/o7/route-replay-preview?fixtureJson=<local-json>`
 - PC labeling fixture preview API：`GET /api/o7/labeling-preview?fixtureJson=<local-json>`
@@ -87,7 +90,27 @@ PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE 
 
 该 tab 的页面级边界必须保留：五个 preview 都不能证明真实 realtime API、ROS2 `/tf`、云归档、annotation API、voice API、safe command API、robot ACK、HIL/硬件安全或 delivery success，也不得提升 O7 百分比。
 
+同一 tab 还包含 `Cloud operator console probe` 区块，用于从 PC-only fixture 往真实 cloud relay HTTP runtime 迈一步。该区块只有一个 base URL 输入和 `Probe cloud operator console` 按钮；默认不自动探测。按钮只触发 PC 后端 `GET /api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>`，再由 Node 后端拉取远端 `/api/o7/operator-console`。允许的 base URL 仅限 `http://127.0.0.1`、`http://localhost`、`http://[::1]` 回环地址；未提供、非 HTTP、非回环、带 credentials/query/hash、fetch 失败、schema 错误、返回体非 object 或危险字段为 true 都 fail-closed。UI 只展示 probe status、source base URL、remote schema、cloud API status、operator mode、KR ids、关键 false fields、blocked reasons 和 not proven；不提供 Bearer 输入框，不连接公网云或生产云，不发送命令，不读取硬件，不证明 4G、机器人在线或 O7 完成。
+
 同一 tab 还包含 `Cloud Archive Tasks` 区块，用于 O7 KR3/KR4/KR5/KR6 共享历史任务数据源雏形。该区块只有一个本地 archive fixture 路径输入和 `Load archive tasks` 按钮；默认不自动读取路径。按钮只触发 `GET /api/o7/cloud-archive/tasks?archiveJson=<local-json>`，UI 只展示 task list、selected/latest task、trajectory/event/label/voice/command safe summaries、KR3 route replay inspector、KR4 labeling queue inspector、KR5 voice ASR/TTS inspector、fixed false fields、blocked reasons 和 not proven，不提供播放、提交、导出、发送、控制、停止、取消或恢复类动作。
+
+## PC Cloud Operator Console Probe Contract
+
+`trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1` 是 PC 后端对 cloud relay 本机回环 HTTP endpoint 的只读探测摘要。它证明的是 `python -m ros2_trashbot_cloud_relay.remote_cloud_relay` 所跑 HTTP server 可以暴露 `trashbot.o7.operator_console.v1` fail-closed contract；它不证明公网 HTTPS/TLS、4G、生产云、机器人在线、ROS2、硬件或 O7 任一真实能力完成。
+
+关键字段：
+
+- `probe_status`：`loaded_fail_closed_contract` 或 `fail_closed`。
+- `source_base_url`：operator 输入并通过回环校验后的 base URL。
+- `remote_endpoint`：固定 `/api/o7/operator-console`。
+- `remote_schema`：远端响应 schema，必须为 `trashbot.o7.operator_console.v1` 才可进入 loaded 状态。
+- `cloud_api_status` / `operator_mode`：来自远端 contract，当前应为 `draft_blocked_not_proven` / `observe_only`。
+- `kr_ids`：远端 O7 KR id 列表，仅用于显示 contract 覆盖面。
+- `key_false_fields`：PC 后端提取的关键 false 字段，至少覆盖 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`command_dispatch_enabled=false`、`manual_control_enabled=false`、`navigate_goal_enabled=false`、`keyboard_control_enabled=false`、`real_command_api_connected=false`、`real_robot_ack_connected=false`、`tts_send_enabled=false`、`submit_enabled=false`、`playback_available=false`。
+- `blocked_reasons` / `not_proven`：来自远端或本地 fail-closed 原因。
+- `local_loopback_only=true`、`connects_cloud_production=false`、`sends_commands=false`、`reads_hardware=false`。
+
+危险字段扫描必须递归覆盖控制、语音、标注、路线回放和真实 API 连接字段。只要远端任一常见危险字段为 true，probe 必须返回 `probe_status=fail_closed`，并在 `blocked_reasons` 中标出 `dangerous_true:<path>`。
 
 ## Cloud Archive Tasks Fixture API
 

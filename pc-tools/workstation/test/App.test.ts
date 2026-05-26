@@ -882,6 +882,38 @@ const fixtures: Record<string, unknown> = {
     recovery_paths: ["Connect O6 cloud archive and realtime stream before replacing draft values."],
     ...PROOF_FLAGS,
   },
+  "/api/o7/cloud-operator-console-probe": {
+    schema: "trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1",
+    probe_status: "loaded_fail_closed_contract",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o7/operator-console",
+    remote_schema: "trashbot.o7.operator_console.v1",
+    cloud_api_status: "draft_blocked_not_proven",
+    operator_mode: "observe_only",
+    kr_ids: ["O7-KR1", "O7-KR2", "O7-KR3", "O7-KR4", "O7-KR5", "O7-KR6"],
+    key_false_fields: [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "command_dispatch_enabled=false",
+      "manual_control_enabled=false",
+      "navigate_goal_enabled=false",
+      "keyboard_control_enabled=false",
+      "real_command_api_connected=false",
+      "real_robot_ack_connected=false",
+      "tts_send_enabled=false",
+      "submit_enabled=false",
+      "playback_available=false",
+    ],
+    blocked_reasons: ["cloud_realtime_api_draft", "manual_or_navigation_dispatch_disabled"],
+    not_proven: ["real_o7_realtime_cloud_stream", "real_robot_command_ack"],
+    fail_closed_reason: "none_remote_contract_is_still_observe_only",
+    local_loopback_only: true,
+    connects_cloud_production: false,
+    sends_commands: false,
+    reads_hardware: false,
+    ...PROOF_FLAGS,
+  },
   "/api/o7/realtime-elevator-preview": {
     schema: "trashbot.o7.realtime_elevator_preview.v1",
     schema_version: 1,
@@ -1460,7 +1492,9 @@ function stubWorkstationFetch() {
                 ? "/api/o7/safe-command-preview"
                 : url.startsWith("/api/o7/cloud-archive/tasks")
                   ? "/api/o7/cloud-archive/tasks"
-                  : url;
+                  : url.startsWith("/api/o7/cloud-operator-console-probe")
+                    ? "/api/o7/cloud-operator-console-probe"
+                    : url;
     return {
       ok: true,
       json: async () => fixtures[fixtureKey],
@@ -1715,9 +1749,11 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain("O7 Fixture Previews");
+    expect(wrapper.text()).toContain("Cloud operator console probe");
     expect(wrapper.text()).toContain("Cloud Archive Tasks");
     expect(wrapper.text()).toContain("fixture_json_not_provided");
     expect(wrapper.text()).toContain("archive_json_not_provided");
+    expect(wrapper.text()).toContain("cloud_operator_console_probe_not_loaded");
     expect(wrapper.text()).toContain("real realtime API");
     expect(wrapper.text()).toContain("robot ACK");
     expect(wrapper.text()).toContain("HIL/hardware safety");
@@ -1725,13 +1761,17 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/cloud-archive/tasks");
 
     const inputs = wrapper.findAll("input");
-    expect(inputs).toHaveLength(6);
-    await inputs[0]!.setValue("fixtures/archive.json");
-    await inputs[1]!.setValue("fixtures/realtime.json");
-    await inputs[2]!.setValue("fixtures/route.json");
-    await inputs[3]!.setValue("fixtures/labeling.json");
-    await inputs[4]!.setValue("fixtures/voice.json");
-    await inputs[5]!.setValue("fixtures/safe-command.json");
+    expect(inputs).toHaveLength(7);
+    await inputs[0]!.setValue("http://127.0.0.1:8088");
+    await inputs[1]!.setValue("fixtures/archive.json");
+    await inputs[2]!.setValue("fixtures/realtime.json");
+    await inputs[3]!.setValue("fixtures/route.json");
+    await inputs[4]!.setValue("fixtures/labeling.json");
+    await inputs[5]!.setValue("fixtures/voice.json");
+    await inputs[6]!.setValue("fixtures/safe-command.json");
+
+    await wrapper.findAll("button").find((button) => button.text() === "Probe cloud operator console")?.trigger("click");
+    await flushPromises();
 
     await wrapper.findAll("button").find((button) => button.text() === "Load archive tasks")?.trigger("click");
     await flushPromises();
@@ -1748,6 +1788,7 @@ describe("App", () => {
     }
 
     const previewCalls = mockedFetch.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/o7/"));
+    expect(previewCalls).toContain("/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/cloud-archive/tasks?archiveJson=fixtures%2Farchive.json");
     expect(previewCalls).toContain("/api/o7/realtime-elevator-preview?fixtureJson=fixtures%2Frealtime.json");
     expect(previewCalls).toContain("/api/o7/route-replay-preview?fixtureJson=fixtures%2Froute.json");
@@ -1760,6 +1801,10 @@ describe("App", () => {
     expect(wrapper.text()).toContain("trashbot.o7.voice_preview.v1");
     expect(wrapper.text()).toContain("trashbot.o7.safe_command_preview.v1");
     expect(wrapper.text()).toContain("trashbot.o7.cloud_archive_tasks.v1");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1");
+    expect(wrapper.text()).toContain("loaded_fail_closed_contract");
+    expect(wrapper.text()).toContain("none_remote_contract_is_still_observe_only");
+    expect(wrapper.text()).toContain("local loopback only");
     expect(wrapper.text()).toContain("task_archive_002");
     expect(wrapper.text()).toContain("needs_review_fixture_only");
     expect(wrapper.text()).toContain("fixture_inspector_ready");

@@ -219,6 +219,25 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.thread.join(timeout=1.0)
         self.tmp.cleanup()
 
+    def test_o7_operator_console_endpoint_is_public_readonly_and_fail_closed(self):
+        status, body = self.client.request("GET", "/api/o7/operator-console", token="")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(body["schema"], "trashbot.o7.operator_console.v1")
+        self.assertEqual(body["cloud_api_status"], "draft_blocked_not_proven")
+        self.assertEqual(body["operator_mode"], "observe_only")
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["delivery_success"])
+        self.assertFalse(body["primary_actions_enabled"])
+        self.assertFalse(body["manual_control_policy"]["command_dispatch_enabled"])
+        self.assertFalse(body["safe_command_snapshot"]["manual_control_enabled"])
+        self.assertFalse(body["safe_command_snapshot"]["navigate_goal_enabled"])
+        self.assertFalse(body["voice_asr_tts_snapshot"]["tts_send_enabled"])
+        self.assertFalse(body["labeling_queue_snapshot"]["submit_enabled"])
+        self.assertFalse(body["route_replay_snapshot"]["playback_available"])
+        self.assertEqual([view["id"] for view in body["kr_views"]], [f"O7-KR{index}" for index in range(1, 7)])
+        self.assertIn("real_o7_realtime_cloud_stream", body["not_proven"])
+
     def command(self, command_id="cmd-0001", **extra):
         payload = {
             "protocol_version": PROTOCOL_VERSION,

@@ -1602,6 +1602,25 @@ export interface O7OperatorConsoleAcceptanceResponse extends ProofFlags {
   remaining_gaps: string[];
 }
 
+export interface O7CloudOperatorConsoleProbeResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1";
+  probe_status: "loaded_fail_closed_contract" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o7/operator-console";
+  remote_schema: string;
+  cloud_api_status: string;
+  operator_mode: string;
+  kr_ids: string[];
+  key_false_fields: string[];
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+  connects_cloud_production: false;
+  sends_commands: false;
+  reads_hardware: false;
+}
+
 // Health 只证明 Node API 存活，不证明机器人在线。
 export interface HealthResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.health.v1";
@@ -1632,6 +1651,7 @@ export const API_ROUTES = [
   "/api/route/debug-summary",
   "/api/o7/operator-console",
   "/api/o7/operator-console/acceptance",
+  "/api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>",
   "/api/o7/realtime-elevator-preview?fixtureJson=<local-json>",
   "/api/o7/route-replay-preview?fixtureJson=<local-json>",
   "/api/o7/labeling-preview?fixtureJson=<local-json>",

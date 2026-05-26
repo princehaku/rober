@@ -6,6 +6,7 @@ import {
   buildHardwareMaterialsResponse,
   buildHealth,
   buildO7CloudArchiveTasks,
+  buildO7CloudOperatorConsoleProbe,
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
   buildO7LabelingPreview,
@@ -80,6 +81,11 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/operator-console/acceptance", (_req, res) => {
     // Acceptance guard 只复核 O7 console 响应，不读取硬件、不发命令、不连接云端生产。
     res.json(buildO7OperatorConsoleAcceptanceResponse());
+  });
+
+  workstationApp.get("/api/o7/cloud-operator-console-probe", async (req, res) => {
+    // Cloud probe 只允许后端探测本机回环 HTTP contract，不能变成外网或生产云代理。
+    res.json(await buildO7CloudOperatorConsoleProbe(queryString(req.query.baseUrl)));
   });
 
   workstationApp.get("/api/o7/realtime-elevator-preview", async (req, res) => {

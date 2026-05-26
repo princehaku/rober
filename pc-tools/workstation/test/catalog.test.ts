@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   buildO7CloudArchiveTasks,
+  buildO7CloudOperatorConsoleProbe,
   buildEvidenceToolsResponse,
   buildHardwareMaterialsResponse,
   buildHealth,
@@ -2723,5 +2724,33 @@ describe("workstation fail-closed API contracts", () => {
     expect(JSON.stringify(acceptance)).not.toMatch(/ready[_ -]?to[_ -]?control/i);
     expect(JSON.stringify(acceptance)).not.toContain("delivery_success=true");
     expect(JSON.stringify(acceptance)).not.toContain("command_dispatch_enabled=true");
+  });
+
+  it("O7 cloud operator console probe only accepts loopback and keeps dangerous fields closed", async () => {
+    // probe 通过真实 PC 后端拉本机 operator-console，验证 SSRF 围栏和 fail-closed 扫描。
+    const server = await listen(createWorkstationApp());
+    try {
+      const probe = await buildO7CloudOperatorConsoleProbe(server.baseUrl);
+
+      expect(probe.schema).toBe("trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1");
+      expect(probe.probe_status).toBe("loaded_fail_closed_contract");
+      expect(probe.source_base_url).toBe(server.baseUrl);
+      expect(probe.remote_schema).toBe("trashbot.o7.operator_console.v1");
+      expect(probe.cloud_api_status).toBe("draft_blocked_not_proven");
+      expect(probe.operator_mode).toBe("observe_only");
+      expect(probe.kr_ids).toEqual(["O7-KR1", "O7-KR2", "O7-KR3", "O7-KR4", "O7-KR5", "O7-KR6"]);
+      expect(probe.key_false_fields).toEqual(expect.arrayContaining(["safe_to_control=false", "delivery_success=false"]));
+      expect(probe.sends_commands).toBe(false);
+      expect(probe.connects_cloud_production).toBe(false);
+      expect(probe.reads_hardware).toBe(false);
+    } finally {
+      await server.close();
+    }
+
+    const blocked = await buildO7CloudOperatorConsoleProbe("https://example.com");
+    expect(blocked.probe_status).toBe("fail_closed");
+    expect(blocked.fail_closed_reason).toBe("baseUrl_protocol_not_allowed");
+    expect(blocked.safe_to_control).toBe(false);
+    expect(blocked.primary_actions_enabled).toBe(false);
   });
 });

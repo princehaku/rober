@@ -74,6 +74,14 @@ CLOUD_COMMAND_TERMINAL_RESULT_SCHEMA = "trashbot.cloud_command_terminal_result.v
 CLOUD_COMMAND_TERMINAL_RESULT_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_command_terminal_result_gate"
 )
+O7_OPERATOR_CONSOLE_SCHEMA = "trashbot.o7.operator_console.v1"
+O7_BOARD_MEDIA_PREFLIGHT_SCHEMA = "trashbot.o7_board_media_preflight.v1"
+O7_REALTIME_MAP_SNAPSHOT_SCHEMA = "trashbot.o7.realtime_map_snapshot.v1"
+O7_ELEVATOR_STATE_SNAPSHOT_SCHEMA = "trashbot.o7.elevator_state_snapshot.v1"
+O7_ROUTE_REPLAY_SNAPSHOT_SCHEMA = "trashbot.o7.route_replay_snapshot.v1"
+O7_LABELING_QUEUE_SNAPSHOT_SCHEMA = "trashbot.o7.labeling_queue_snapshot.v1"
+O7_VOICE_ASR_TTS_SNAPSHOT_SCHEMA = "trashbot.o7.voice_asr_tts_snapshot.v1"
+O7_SAFE_COMMAND_SNAPSHOT_SCHEMA = "trashbot.o7.safe_command_snapshot.v1"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -11658,6 +11666,216 @@ def _bearer_header(headers):
     return value[len(prefix):].strip()
 
 
+def build_o7_operator_console_contract():
+    """返回云端 runtime 直接暴露的 O7 operator console fail-closed 契约。"""
+
+    # 这个 contract 是本地 HTTP contract proof：不读取 store、不连 ROS2、不探测硬件。
+    # 字段保留 PC UI 需要的 KR、状态和危险开关，所有真实能力都固定关闭。
+    kr_views = [
+        {
+            "id": "O7-KR1",
+            "title": "实时地图与机器人位置",
+            "status": "blocked",
+            "cloud_contract": "realtime.map_pose.v1",
+            "pc_surface": "Map/Pose panel",
+            "current_view": ["map_ref=not_connected", "pose=not_proven"],
+            "blocked_by": ["cloud realtime stream not connected", "ROS2 /tf forwarding not proven"],
+            "next_required_contract": "Cloud pose snapshot with map frame and freshness timestamp.",
+        },
+        {
+            "id": "O7-KR2",
+            "title": "电梯状态展示",
+            "status": "blocked",
+            "cloud_contract": "realtime.elevator_state.v1",
+            "pc_surface": "Elevator state panel",
+            "current_view": ["state_chain=not_connected", "floor_evidence=not_proven"],
+            "blocked_by": ["elevator event archive not connected", "real elevator evidence not proven"],
+            "next_required_contract": "Cloud elevator state chain with floor evidence refs.",
+        },
+        {
+            "id": "O7-KR3",
+            "title": "历史路线回放",
+            "status": "draft",
+            "cloud_contract": "history.route_replay.v1",
+            "pc_surface": "Route replay panel",
+            "current_view": ["task_selector=blocked", "trajectory_frames=not_proven"],
+            "blocked_by": ["cloud task archive query not connected", "trajectory frame schema pending"],
+            "next_required_contract": "Cloud task list, trajectory frames, and state transitions.",
+        },
+        {
+            "id": "O7-KR4",
+            "title": "数据标注/打标界面",
+            "status": "draft",
+            "cloud_contract": "labeling.review_queue.v1",
+            "pc_surface": "Labeling queue panel",
+            "current_view": ["queue=blocked", "submit=false"],
+            "blocked_by": ["annotation API not connected", "training dataset export not proven"],
+            "next_required_contract": "Cloud review queue, label schema, submit/rollback audit trail.",
+        },
+        {
+            "id": "O7-KR5",
+            "title": "实时 ASR 监听 + TTS 发言控制",
+            "status": "blocked",
+            "cloud_contract": "voice.asr_tts_operator.v1",
+            "pc_surface": "Voice monitor panel",
+            "current_view": ["asr_stream=false", "tts_send=false"],
+            "blocked_by": ["ASR event stream not connected", "TTS command ACK contract pending"],
+            "next_required_contract": "Cloud ASR events and TTS draft ACK without direct robot control.",
+        },
+        {
+            "id": "O7-KR6",
+            "title": "手动转向控制 + 自动寻路下发",
+            "status": "blocked",
+            "cloud_contract": "operator.safe_command_preview.v1",
+            "pc_surface": "Safe command preview panel",
+            "current_view": ["manual_control=false", "navigate_goal=false", "ack=not_proven"],
+            "blocked_by": ["safe command dispatch disabled", "robot-side ACK and recovery path not proven"],
+            "next_required_contract": "Idempotent safe command API with confirmation, ACK, timeout, and recovery.",
+        },
+    ]
+    # 六个 snapshot 只给 PC 显示缺口，不填真实机器人位置、任务、语音或命令数据。
+    snapshots = {
+        "board_media_preflight_summary": {
+            "schema": O7_BOARD_MEDIA_PREFLIGHT_SCHEMA,
+            "schema_version": 1,
+            "overall_state": "blocked",
+            "safe_to_control": False,
+            "primary_actions_enabled": False,
+            "device_probe_allowed": False,
+            "device_probe_attempted": False,
+            "blocked_reasons": [
+                "rtc_signaling_stun_turn_not_proven",
+                "camera_video_source_not_proven",
+                "audio_input_output_not_proven",
+            ],
+            "not_proven": ["real_rtc_session", "real_camera_video_source", "real_asr_stream"],
+        },
+        "realtime_map_snapshot": {
+            "schema": O7_REALTIME_MAP_SNAPSHOT_SCHEMA,
+            "snapshot_status": "blocked_not_proven",
+            "safe_to_control": False,
+            "primary_actions_enabled": False,
+            "pose_freshness": {"latency_lt_2s_proven": False, "age_ms": None},
+            "route_membership": {"on_route": False, "in_elevator_zone": False, "route_id": "not_connected"},
+            "blocked_reasons": ["cloud_realtime_api_draft", "ros2_tf_forwarding_not_proven"],
+            "not_proven": ["real_ros2_tf", "real_map_artifact", "real_robot_pose"],
+        },
+        "elevator_state_snapshot": {
+            "schema": O7_ELEVATOR_STATE_SNAPSHOT_SCHEMA,
+            "snapshot_status": "blocked_not_proven",
+            "safe_to_control": False,
+            "primary_actions_enabled": False,
+            "current_state": "not_connected",
+            "current_floor_evidence": {"floor_label": "not_connected", "status": "not_proven"},
+            "blocked_reasons": ["elevator_event_archive_not_connected", "floor_recognition_not_proven"],
+            "not_proven": ["real_elevator_state_chain", "real_current_floor"],
+        },
+        "route_replay_snapshot": {
+            "schema": O7_ROUTE_REPLAY_SNAPSHOT_SCHEMA,
+            "snapshot_status": "blocked_not_proven",
+            "safe_to_control": False,
+            "primary_actions_enabled": False,
+            "playback_available": False,
+            "real_archive_connected": False,
+            "blocked_reasons": ["o6_cloud_task_archive_not_connected", "trajectory_frames_not_available"],
+            "not_proven": ["real_history_task_list", "real_trajectory_frames"],
+        },
+        "labeling_queue_snapshot": {
+            "schema": O7_LABELING_QUEUE_SNAPSHOT_SCHEMA,
+            "snapshot_status": "blocked_not_proven",
+            "safe_to_control": False,
+            "primary_actions_enabled": False,
+            "real_annotation_api_connected": False,
+            "submit_enabled": False,
+            "rollback_enabled": False,
+            "blocked_reasons": ["o6_annotation_api_not_connected", "real_labeling_review_queue_not_proven"],
+            "not_proven": ["real_annotation_submit", "real_training_dataset_export"],
+        },
+        "voice_asr_tts_snapshot": {
+            "schema": O7_VOICE_ASR_TTS_SNAPSHOT_SCHEMA,
+            "snapshot_status": "blocked_not_proven",
+            "safe_to_control": False,
+            "primary_actions_enabled": False,
+            "real_voice_api_connected": False,
+            "asr_stream_connected": False,
+            "tts_send_enabled": False,
+            "speaker_dispatch_enabled": False,
+            "blocked_reasons": ["voice_api_not_connected", "asr_tts_runtime_not_proven"],
+            "not_proven": ["real_asr_stream", "real_tts_playback", "real_speaker_ack"],
+        },
+        "safe_command_snapshot": {
+            "schema": O7_SAFE_COMMAND_SNAPSHOT_SCHEMA,
+            "snapshot_status": "blocked_not_proven",
+            "safe_to_control": False,
+            "primary_actions_enabled": False,
+            "command_dispatch_enabled": False,
+            "manual_control_enabled": False,
+            "navigate_goal_enabled": False,
+            "keyboard_control_enabled": False,
+            "real_command_api_connected": False,
+            "real_robot_ack_connected": False,
+            "blocked_reasons": ["safe_command_api_not_connected", "robot_ack_timeout_recovery_not_proven"],
+            "not_proven": ["real_manual_turn_control", "real_navigate_goal_dispatch", "real_robot_command_ack"],
+        },
+    }
+    return {
+        "schema": O7_OPERATOR_CONSOLE_SCHEMA,
+        "source": "software_proof",
+        "proof_status": "not_proven",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "pc_only": True,
+        "contract_source": "onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py",
+        "workstation_endpoint": "/api/o7/operator-console",
+        "cloud_api_status": "draft_blocked_not_proven",
+        "robot_connection": "not_connected_by_pc",
+        "realtime_stream_status": "blocked_not_proven",
+        "operator_mode": "observe_only",
+        "board_media_preflight_required": True,
+        "board_media_preflight_schema": O7_BOARD_MEDIA_PREFLIGHT_SCHEMA,
+        "board_media_preflight_state": "blocked",
+        **snapshots,
+        "manual_control_policy": {
+            "pc_direct_robot_connection": False,
+            "cloud_mediated_only": True,
+            "command_dispatch_enabled": False,
+            "manual_control_enabled": False,
+            "navigate_goal_enabled": False,
+            "keyboard_control_enabled": False,
+            "real_command_api_connected": False,
+            "real_robot_ack_connected": False,
+            "success_claim_allowed": False,
+        },
+        "kr_contracts": [view["cloud_contract"] for view in kr_views],
+        "kr_views": kr_views,
+        "blocked_reasons": [
+            "cloud_realtime_api_draft",
+            "pc_must_not_direct_connect_robot",
+            "robot_ack_timeout_recovery_not_proven",
+            "o6_cloud_task_archive_not_connected",
+            "o6_annotation_api_not_connected",
+            "voice_api_not_connected",
+            "manual_or_navigation_dispatch_disabled",
+        ],
+        "not_proven": [
+            "real_o7_realtime_cloud_stream",
+            "real_route_replay_archive",
+            "real_labeling_review_queue",
+            "real_voice_api_connected",
+            "real_manual_turn_control",
+            "real_robot_command_ack",
+            "delivery_success",
+        ],
+        "next_required_evidence": [
+            "local_http_contract_probe",
+            "real_cloud_api_schema_review",
+            "o6_cloud_task_archive_query_contract",
+            "safe_command_ack_timeout_cancel_recovery_contract",
+        ],
+    }
+
+
 def parse_json_body(handler):
     try:
         length = int(handler.headers.get("Content-Length") or 0)
@@ -11746,6 +11964,10 @@ def make_handler(store, bearer_token):
             if parsed.path == "/api/diagnostics":
                 # diagnostics 给支持人员复现 blocked 状态，不能泄露 token、路径或 ROS/硬件细节。
                 self._send_json(200, cloud_hosted_mobile_web_diagnostics_payload(store))
+                return
+            if parsed.path == "/api/o7/operator-console":
+                # O7 operator console 是只读 contract proof，不走 bearer，也不读取 ROS2/硬件/生产云。
+                self._send_json(200, build_o7_operator_console_contract())
                 return
             if parsed.path.startswith("/api/commands/") and parsed.path.endswith("/result"):
                 # 结果对账是同源 phone API：只读 store summary，仍走 bearer gate，不绕过 robot outbound polling。

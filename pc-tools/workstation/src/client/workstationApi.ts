@@ -2,6 +2,7 @@ import type {
   EvidenceToolsResponse,
   HardwareMaterialsResponse,
   O7CloudArchiveTasksResponse,
+  O7CloudOperatorConsoleProbeResponse,
   O7LabelingPreviewResponse,
   HealthResponse,
   O7OperatorConsoleResponse,
@@ -57,6 +58,7 @@ const API_ENDPOINTS = {
   hardwareMaterials: "/api/hardware/wave-rover/material-coverage",
   trainingLabeling: "/api/tools/training-labeling",
   o7OperatorConsole: "/api/o7/operator-console",
+  o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
   o7RealtimeElevatorPreview: "/api/o7/realtime-elevator-preview",
   o7RouteReplayPreview: "/api/o7/route-replay-preview",
   o7LabelingPreview: "/api/o7/labeling-preview",
@@ -110,6 +112,16 @@ function cloudArchiveTasksUrl(archiveJson: string): string {
   return `${API_ENDPOINTS.o7CloudArchiveTasks}?${params.toString()}`;
 }
 
+function cloudOperatorConsoleProbeUrl(baseUrl: string): string {
+  // probe 只把 operator 输入交给 PC 后端；SSRF 和 schema 风险由后端统一 fail-closed。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  return `${API_ENDPOINTS.o7CloudOperatorConsoleProbe}?${params.toString()}`;
+}
+
 export async function getHealth(): Promise<HealthResponse> {
   // health 只证明工作站 API 在线，不代表机器人或云端在线。
   return loadJson<HealthResponse>(API_ENDPOINTS.health);
@@ -143,6 +155,11 @@ export async function getProofBoundary(): Promise<ProofBoundaryResponse> {
 export async function getO7OperatorConsole(): Promise<O7OperatorConsoleResponse> {
   // O7 console 必须由后端契约驱动，前端不自行拼接 KR 状态或控制能力。
   return loadJson<O7OperatorConsoleResponse>(API_ENDPOINTS.o7OperatorConsole);
+}
+
+export async function getO7CloudOperatorConsoleProbe(baseUrl: string): Promise<O7CloudOperatorConsoleProbeResponse> {
+  // 前端不直连 cloud relay；只调用本机 Node probe API，避免浏览器绕过后端安全检查。
+  return loadJson<O7CloudOperatorConsoleProbeResponse>(cloudOperatorConsoleProbeUrl(baseUrl));
 }
 
 export async function getO7RealtimeElevatorPreview(fixtureJson: string): Promise<O7RealtimeElevatorPreviewResponse> {

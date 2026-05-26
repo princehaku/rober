@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { getO7CloudArchiveTasks, loadO7FixturePreview } from "../client/workstationApi";
+import { getO7CloudArchiveTasks, getO7CloudOperatorConsoleProbe, loadO7FixturePreview } from "../client/workstationApi";
 import type { O7FixturePreviewInputs, O7FixturePreviewKind, O7FixturePreviewResponses } from "../client/workstationApi";
-import type { O7CloudArchiveTasksResponse } from "../shared/contracts";
+import type { O7CloudArchiveTasksResponse, O7CloudOperatorConsoleProbeResponse } from "../shared/contracts";
 
 type O7FixturePreviewResult = O7FixturePreviewResponses[O7FixturePreviewKind];
 
@@ -38,6 +38,10 @@ const archiveJson = ref("");
 const archiveResult = ref<O7CloudArchiveTasksResponse | null>(null);
 const archiveError = ref("");
 const archiveLoading = ref(false);
+const cloudProbeBaseUrl = ref("http://127.0.0.1:8088");
+const cloudProbeResult = ref<O7CloudOperatorConsoleProbeResponse | null>(null);
+const cloudProbeError = ref("");
+const cloudProbeLoading = ref(false);
 
 function asRecord(result: O7FixturePreviewResult | undefined): Record<string, unknown> {
   // Vue template 需要统一读取 union 字段；这里只做只读投影，不改响应内容。
@@ -150,6 +154,14 @@ function archiveNotProven(): string[] {
   return archiveResult.value?.not_proven ?? ["archive_not_loaded_and_real_cloud_archive_not_proven"];
 }
 
+function cloudProbeBlockedReasons(): string[] {
+  return cloudProbeResult.value?.blocked_reasons ?? ["cloud_operator_console_probe_not_loaded"];
+}
+
+function cloudProbeNotProven(): string[] {
+  return cloudProbeResult.value?.not_proven ?? ["cloud_operator_console_probe_not_proven"];
+}
+
 function inspectorCursorFields(result: O7CloudArchiveTasksResponse | null): string[] {
   const cursor = result?.route_replay_inspector.cursor_initial_state;
   // cursor 来自后端固定 false 初始态，UI 只展示，不提供逐帧驱动入口。
@@ -171,6 +183,19 @@ async function loadArchiveTasks(): Promise<void> {
     archiveError.value = err instanceof Error ? err.message : "cloud_archive_task_api_unavailable_not_proven";
   } finally {
     archiveLoading.value = false;
+  }
+}
+
+async function loadCloudOperatorConsoleProbe(): Promise<void> {
+  // 这里只触发 PC 后端 GET probe；浏览器不直接访问 relay，也不创建任何机器人动作。
+  cloudProbeLoading.value = true;
+  cloudProbeError.value = "";
+  try {
+    cloudProbeResult.value = await getO7CloudOperatorConsoleProbe(cloudProbeBaseUrl.value);
+  } catch (err) {
+    cloudProbeError.value = err instanceof Error ? err.message : "cloud_operator_console_probe_api_unavailable_not_proven";
+  } finally {
+    cloudProbeLoading.value = false;
   }
 }
 
@@ -314,6 +339,76 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
       These previews do not prove real realtime API, ROS2 /tf, cloud archive, annotation API, voice API, safe
       command API, robot ACK, HIL/hardware safety or delivery success.
     </div>
+
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <div>
+          <h3>Cloud operator console probe</h3>
+          <p class="eyebrow">Read-only local loopback HTTP contract proof for /api/o7/operator-console.</p>
+        </div>
+        <span class="pill danger">{{ cloudProbeResult?.probe_status ?? "not_loaded" }}</span>
+      </div>
+
+      <label class="single-input">
+        <span>Cloud relay base URL</span>
+        <input
+          v-model="cloudProbeBaseUrl"
+          aria-label="Cloud operator console probe base URL"
+          placeholder="http://127.0.0.1:8088"
+        >
+      </label>
+      <button class="secondary" type="button" @click="loadCloudOperatorConsoleProbe">
+        {{ cloudProbeLoading ? "Loading probe" : "Probe cloud operator console" }}
+      </button>
+
+      <div v-if="cloudProbeError" class="notice" role="alert">
+        Cloud operator console probe API unavailable: {{ cloudProbeError }}. primary_actions_enabled=false.
+      </div>
+
+      <dl class="kv compact-kv">
+        <dt>schema</dt>
+        <dd>{{ cloudProbeResult?.schema ?? "trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1" }}</dd>
+        <dt>source base URL</dt>
+        <dd>{{ cloudProbeResult?.source_base_url ?? "not_loaded" }}</dd>
+        <dt>remote schema</dt>
+        <dd>{{ cloudProbeResult?.remote_schema ?? "not_loaded" }}</dd>
+        <dt>cloud API status</dt>
+        <dd>{{ cloudProbeResult?.cloud_api_status ?? "not_loaded" }}</dd>
+        <dt>operator mode</dt>
+        <dd>{{ cloudProbeResult?.operator_mode ?? "observe_only" }}</dd>
+        <dt>fail closed reason</dt>
+        <dd>{{ cloudProbeResult?.fail_closed_reason ?? "probe_not_loaded" }}</dd>
+        <dt>local loopback only</dt>
+        <dd>{{ cloudProbeResult?.local_loopback_only ?? true }}</dd>
+      </dl>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>KR ids</h3>
+          <ul class="dense">
+            <!-- KR ids 只来自远端 fail-closed contract，不代表真实 O7 能力可用。 -->
+            <li v-for="krId in cloudProbeResult?.kr_ids ?? []" :key="krId">{{ krId }}</li>
+            <li v-if="!cloudProbeResult?.kr_ids.length">not_loaded</li>
+          </ul>
+          <h3>Key false fields</h3>
+          <ul class="dense">
+            <!-- false 字段由 PC 后端扫描远端响应生成，危险字段 true 会整体 fail closed。 -->
+            <li v-for="field in cloudProbeResult?.key_false_fields ?? []" :key="field">{{ field }}</li>
+            <li v-if="!cloudProbeResult?.key_false_fields.length">not_loaded</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Blocked reasons</h3>
+          <ul class="dense">
+            <li v-for="reason in cloudProbeBlockedReasons()" :key="reason">{{ reason }}</li>
+          </ul>
+          <h3>Not proven</h3>
+          <ul class="dense">
+            <li v-for="item in cloudProbeNotProven()" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+      </div>
+    </article>
 
     <article class="snapshot-panel">
       <div class="section-head compact-head">

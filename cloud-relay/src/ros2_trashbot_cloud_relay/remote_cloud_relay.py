@@ -27,6 +27,9 @@ from typing import Any
 # 复用原模块的全部公共符号，测试和后续工具仍可按需从这个入口导入 helper。
 # noqa 必须保留，因为 wrapper 的职责就是重新导出，而不是在这里重复实现协议。
 from ros2_trashbot_behavior.remote_cloud_relay import *  # noqa: F401,F403
+from ros2_trashbot_behavior.remote_cloud_relay import (
+    build_o7_operator_console_contract as _behavior_build_o7_operator_console_contract,
+)
 from ros2_trashbot_behavior.remote_cloud_relay import main as _behavior_main
 
 O7_OPERATOR_CONSOLE_SCHEMA = "trashbot.o7.operator_console.v1"
@@ -695,6 +698,9 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             + safe_command_snapshot["next_required_evidence"]
         ),
     }
+
+
+build_o7_operator_console_contract = _behavior_build_o7_operator_console_contract
 
 
 def main(argv=None):
