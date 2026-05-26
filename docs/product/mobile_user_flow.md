@@ -83,6 +83,8 @@ Required Chinese copy for the reconciliation lifecycle states:
 - `terminal_result_missing`: 没有找到这条命令的终态结果；继续等待机器人上报或联系支持，不把 missing 写成失败完成。
 - `store_unavailable`: 云端结果存储暂时不可用；请稍后刷新或联系支持，不拉 raw diagnostics，不暴露 raw `/robots/*`、ROS topic、`/cmd_vel`、serial/UART/WAVE ROVER、token、Authorization、DB/queue URL、raw state path、完整 artifact、checksum 或 traceback。
 
+The UI classifies the reconciliation row by `lifecycle_state` first, then falls back to `terminal_result_status` only when the lifecycle state is absent. This keeps `terminal_result_pending` visible when the terminal status says `verified_terminal_result_missing`; the row still shows result type/code, error code, safe evidence ref, and next required evidence, with Start Delivery、Confirm Dropoff、Cancel disabled.
+
 This is Docker/local `software_proof` only from `mobile/web/fixtures/robot_diagnostics_cloud_command_result_reconciliation.json` and `mobile/web/fixtures/robot_diagnostics_cloud_phone_command_api.json`. Terminal ACK is still only lifecycle evidence: without a verified terminal delivery/dropoff/cancel result under the same safe `command_id`, it is not delivery success, not dropoff completion, not cancel completion, not true phone/browser proof, not real 4G/cloud proof, not HIL, and not route/elevator field pass. Start Delivery、Confirm Dropoff、Cancel 继续 disabled.
 
 ## Mobile Web Entrypoint

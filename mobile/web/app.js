@@ -59128,14 +59128,18 @@ function selectedCloudCommandResultReconciliation(status, readiness, diagnostics
 function normalizeCloudCommandResultReconciliation(value, requestedCommandId) {
   // terminal ACK 只能说明命令生命周期结束；没有 verified terminal result 仍不能写成送达成功。
   const requestedId = safeCloudCommandResultReconciliationText(requestedCommandId, "");
-  const state = safeCloudCommandResultReconciliationText(
-    value?.terminal_result_status ||
-      value?.lifecycle_state ||
+  const lifecycleState = safeCloudCommandResultReconciliationText(
+    value?.lifecycle_state ||
       value?.command_state ||
       value?.result_state ||
       value?.degradation_state,
     "unavailable",
   );
+  const terminalState = safeCloudCommandResultReconciliationText(
+    value?.terminal_result_status || value?.verified_terminal_result_status,
+    "",
+  );
+  const state = lifecycleState !== "unavailable" ? lifecycleState : (terminalState || "unavailable");
   let bucket = "unavailable";
   if (state.includes("terminal_result_recorded") || state.includes("recorded")) {
     bucket = "terminal_result_recorded";
@@ -59176,14 +59180,14 @@ function normalizeCloudCommandResultReconciliation(value, requestedCommandId) {
       requestedId || "未提供",
     ),
     lifecycleState: bucket,
-    lifecycleStatus: safeCloudCommandResultReconciliationText(value?.lifecycle_status || state, state),
+    lifecycleStatus: safeCloudCommandResultReconciliationText(value?.lifecycle_status || lifecycleState, state),
     safePhoneCopy: safeCloudCommandResultReconciliationText(value?.safe_phone_copy || value?.summary, fallbackCopy),
     ackSemantics: safeCloudCommandResultReconciliationText(
       value?.ack_semantics,
       bucket === "queued" ? "queued_not_delivery_success" : "accepted_processing_only_not_delivery_success",
     ),
     terminalResultStatus: safeCloudCommandResultReconciliationText(
-      value?.terminal_result_status || value?.verified_terminal_result_status,
+      terminalState,
       bucket === "terminal_result_recorded" ? "terminal_result_recorded"
         : (bucket === "terminal_result_pending" ? "terminal_result_pending"
           : (bucket === "terminal_result_conflict" ? "terminal_result_conflict"

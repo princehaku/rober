@@ -5441,6 +5441,8 @@ class CloudCommandResultReconciliationMobileTest(unittest.TestCase):
         self.assertIn("cloudCommandResultReconciliationErrorCode", app)
         self.assertIn("cloudCommandResultReconciliationEvidenceRef", app)
         self.assertIn("cloudCommandResultReconciliationNextEvidence", app)
+        self.assertIn("value?.lifecycle_state ||", app)
+        self.assertIn("value?.terminal_result_status || value?.verified_terminal_result_status", app)
         self.assertIn("robot_diagnostics_cloud_command_result_reconciliation_summary", app)
         self.assertIn("cloud_command_result_reconciliation_summaries", app)
         self.assertIn("命令结果核对", app)
@@ -5474,6 +5476,31 @@ class CloudCommandResultReconciliationMobileTest(unittest.TestCase):
                 "store_unavailable",
             },
         )
+        by_state = {item["lifecycle_state"]: item for item in summaries}
+        for state in (
+            "terminal_result_recorded",
+            "terminal_result_pending",
+            "terminal_result_conflict",
+            "terminal_result_missing",
+            "store_unavailable",
+        ):
+            item = by_state[state]
+            self.assertIn("terminal_result_type", item)
+            self.assertIn("result_code", item)
+            self.assertIn("error_code", item)
+            self.assertIn("safe_evidence_ref", item)
+            self.assertIn("next_required_evidence", item)
+            self.assertEqual(item["delivery_success"], False)
+            self.assertEqual(item["primary_actions_enabled"], False)
+            self.assertEqual(item["safe_to_control"], False)
+        self.assertEqual(
+            by_state["terminal_result_pending"]["terminal_result_status"],
+            "verified_terminal_result_missing",
+        )
+        self.assertEqual(
+            by_state["terminal_result_pending"]["error_code"],
+            "verified_terminal_result_missing",
+        )
         for required in (
             "已入队，等待机器人处理；不是送达成功。",
             "命令已接收/处理中；尚无真实 delivery/dropoff/cancel result。",
@@ -5484,6 +5511,7 @@ class CloudCommandResultReconciliationMobileTest(unittest.TestCase):
             "云端结果存储暂时不可用；请稍后刷新或联系支持。",
             "task_terminal_recorded_software_proof",
             "cloud_command_terminal_result_fixture_20260526_0001",
+            "verified_terminal_result_missing",
             "next_required_evidence",
             "delivery_success=false",
             "primary_actions_enabled=false",
