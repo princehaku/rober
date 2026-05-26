@@ -1,7 +1,8 @@
 import { PROOF_FLAGS } from "../shared/contracts";
 import type { RouteDebugSummaryResponse } from "../shared/contracts";
 export { buildEvidenceToolsResponse } from "./evidenceAssets";
-export { buildHealth, buildProofBoundary, buildTrainingLabelingResponse } from "./proofBoundary";
+export { buildTrainingLabelingResponse } from "./datasetAssets";
+export { buildHealth, buildProofBoundary } from "./proofBoundary";
 export { buildHardwareMaterialsResponse } from "./waveRoverMaterialCoverage";
 import { displayRoot, ROUTE_ROOT } from "./paths";
 import { buildLoadedRouteConsoleSummary, type RouteDebugLoadOptions } from "./routeDebugLoader";

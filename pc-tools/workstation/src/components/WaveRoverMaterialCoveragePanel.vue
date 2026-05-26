@@ -24,7 +24,7 @@ defineProps<{
       </div>
       <div>
         <strong>{{ hardwareMaterials?.coverage_summary.groups_complete ?? 0 }}</strong>
-        <span>complete coverage</span>
+        <span>complete file/material coverage</span>
       </div>
       <div>
         <strong>{{ hardwareMaterials?.coverage_summary.groups_partial ?? 0 }}</strong>
@@ -35,11 +35,11 @@ defineProps<{
         <span>missing coverage</span>
       </div>
       <div>
-        <strong>false</strong>
+        <strong>{{ hardwareMaterials?.safe_to_control ?? false }}</strong>
         <span>safe_to_control</span>
       </div>
       <div>
-        <strong>false</strong>
+        <strong>{{ hardwareMaterials?.delivery_success ?? false }}</strong>
         <span>delivery_success</span>
       </div>
     </div>
@@ -74,6 +74,15 @@ defineProps<{
 
     <div class="two-col">
       <article>
+        <h3>Vendor sources</h3>
+        <ul class="dense">
+          <!-- 来源列表来自 API，UI 只显示本地 vendor 文件和 fact ids，不补充硬件推断。 -->
+          <li v-for="source in hardwareMaterials?.vendor_sources" :key="source.path">
+            {{ source.path }} - {{ source.fact_ids.join(", ") }}
+          </li>
+        </ul>
+      </article>
+      <article>
         <h3>Required materials</h3>
         <ul class="dense">
           <li v-for="material in hardwareMaterials?.required_materials" :key="material.id">
@@ -94,8 +103,42 @@ defineProps<{
         </ul>
       </article>
       <article>
+        <h3>Serial reference</h3>
+        <dl class="kv">
+          <dt>vendor_rpi_default_device</dt>
+          <dd>{{ hardwareMaterials?.serial_reference.vendor_rpi_default_device }}</dd>
+          <dt>vendor_rpi_alternate_device</dt>
+          <dd>{{ hardwareMaterials?.serial_reference.vendor_rpi_alternate_device }}</dd>
+          <dt>baudrate</dt>
+          <dd>{{ hardwareMaterials?.serial_reference.baudrate }}</dd>
+          <dt>orange_pi_device_status</dt>
+          <dd>{{ hardwareMaterials?.serial_reference.orange_pi_device_status }}</dd>
+        </dl>
+      </article>
+      <article>
+        <h3>Command facts</h3>
+        <ul class="dense">
+          <li v-for="fact in hardwareMaterials?.command_facts" :key="fact.t">
+            T={{ fact.t }} {{ fact.name }} source={{ fact.source_path }} hardware_verified={{ fact.hardware_verified }}
+          </li>
+        </ul>
+      </article>
+      <article>
+        <h3>Feedback schema</h3>
+        <dl class="kv">
+          <dt>T1001 base_fields</dt>
+          <dd>{{ hardwareMaterials?.feedback_schema.T1001.base_fields.join("/") }}</dd>
+          <dt>module_conditional_fields</dt>
+          <dd>{{ hardwareMaterials?.feedback_schema.T1001.module_conditional_fields.join("; ") }}</dd>
+          <dt>source_path</dt>
+          <dd>{{ hardwareMaterials?.feedback_schema.T1001.source_path }}</dd>
+        </dl>
+      </article>
+      <article>
         <h3>API flags</h3>
         <dl class="kv">
+          <dt>hardware_claim_level</dt>
+          <dd>{{ hardwareMaterials?.hardware_claim_level ?? "software_material_coverage" }}</dd>
           <dt>source</dt>
           <dd>{{ hardwareMaterials?.source ?? "software_proof" }}</dd>
           <dt>proof_status</dt>

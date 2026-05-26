@@ -84,7 +84,7 @@ function sampleReconciliation(evidenceRef: string) {
   };
 }
 
-function expectNoLegacyPythonGateSemantics(value: unknown) {
+function expectNoLegacyPythonGateSemantics(value: unknown, allowVendorSerialReference = false) {
   // 这些字符串代表旧 Python gate 执行入口，Node/Vue 工作站响应中不应再出现。
   const payload = JSON.stringify(value);
   expect(payload).not.toContain("route_debug_web.py");
@@ -94,7 +94,11 @@ function expectNoLegacyPythonGateSemantics(value: unknown) {
   expect(payload).not.toContain("route_gate");
   expect(payload).not.toContain("workstation_executes_python_gate");
   expect(payload).not.toContain("/cmd_vel");
-  expect(payload).not.toContain("/dev/tty");
+  if (!allowVendorSerialReference) {
+    expect(payload).not.toContain("/dev/tty");
+  }
+  expect(payload).not.toContain("/dev/ttyUSB");
+  expect(payload).not.toContain("/dev/ttyACM");
 }
 
 describe("workstation fail-closed API contracts", () => {
@@ -136,6 +140,38 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.delivery_success).toBe(false);
     expect(response.primary_actions_enabled).toBe(false);
     expect(response.pc_only).toBe(true);
+    expect(response.hardware_claim_level).toBe("software_material_coverage");
+    expect(response.vendor_sources).toEqual(
+      expect.arrayContaining([
+        { path: "docs/vendor/VENDOR_INDEX.md", fact_ids: expect.arrayContaining(["vendor_index_source_of_truth"]) },
+        { path: "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py", fact_ids: expect.arrayContaining(["json_line_send"]) },
+        { path: "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml", fact_ids: expect.arrayContaining(["cmd_config_movement_ids"]) },
+        { path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h", fact_ids: expect.arrayContaining(["cmd_id_definitions"]) },
+        { path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h", fact_ids: expect.arrayContaining(["newline_json_dispatch"]) },
+        { path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h", fact_ids: expect.arrayContaining(["t1001_feedback_fields"]) },
+      ]),
+    );
+    expect(response.serial_reference).toEqual({
+      vendor_rpi_default_device: "/dev/ttyAMA0",
+      vendor_rpi_alternate_device: "/dev/serial0",
+      baudrate: 115200,
+      orange_pi_device_status: "not_proven",
+    });
+    expect(response.command_facts).toEqual(
+      expect.arrayContaining([
+        { t: 1, name: "CMD_SPEED_CTRL", source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h", hardware_verified: false },
+        { t: 11, name: "CMD_PWM_INPUT", source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h", hardware_verified: false },
+        { t: 13, name: "CMD_ROS_CTRL", source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h", hardware_verified: false },
+        { t: 130, name: "CMD_BASE_FEEDBACK", source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h", hardware_verified: false },
+        { t: 131, name: "CMD_BASE_FEEDBACK_FLOW", source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h", hardware_verified: false },
+        { t: 142, name: "CMD_FEEDBACK_FLOW_INTERVAL", source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h", hardware_verified: false },
+        { t: 143, name: "CMD_UART_ECHO_MODE", source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h", hardware_verified: false },
+      ]),
+    );
+    expect(response.command_facts.every((fact) => fact.hardware_verified === false)).toBe(true);
+    expect(response.feedback_schema.T1001.base_fields).toEqual(["L", "R", "r", "p", "y", "v"]);
+    expect(response.feedback_schema.T1001.module_conditional_fields.join(" ")).toContain("moduleType=1");
+    expect(response.feedback_schema.T1001.source_path).toBe("docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h");
     expect(response.required_materials.map((material) => material.id)).toEqual([
       "feedback_T1001.log",
       "odom_once.jsonl",
@@ -148,6 +184,7 @@ describe("workstation fail-closed API contracts", () => {
     expect(intakePass?.present_materials).toContain("operator_hil_report");
     expect(intakePass?.coverage_counts.present).toBe(5);
     expect(intakePass?.status).toBe("material_coverage_complete_software_proof_only");
+    expect(response.proof_status).toBe("not_proven");
     const replayPass = response.groups.find((group) => group.group === "wave_rover_feedback_replay/pass");
     expect(replayPass?.missing_materials).toContain("operator_hil_report");
     expect(replayPass?.status).toBe("material_coverage_partial_software_proof_only");
@@ -166,11 +203,15 @@ describe("workstation fail-closed API contracts", () => {
       ]),
     );
     expect(response.vendor_facts_bounded).toContain("UART newline-delimited JSON");
-    expect(response.vendor_facts_bounded).toContain("T=1/T=13/T=130/T=131/T=142/T=143 command IDs");
+    expect(response.vendor_facts_bounded).toContain("json_cmd.h defines T=1/T=11/T=13/T=130/T=131/T=142/T=143 command IDs");
+    expect(response.vendor_facts_bounded).toContain("ugv_advance.h baseInfoFeedback() assembles T=1001 fields L/R/r/p/y/v");
     expect(response.boundary_copy).toContain("coverage is not HIL pass");
+    expect(JSON.stringify(response)).not.toContain("hardware_connected=true");
+    expect(JSON.stringify(response)).not.toContain("hil_pass=true");
+    expect(JSON.stringify(response)).not.toContain("hil_verified");
+    expect(JSON.stringify(response)).not.toMatch(/hardware connected|ready to control/i);
     expect(JSON.stringify(response)).not.toContain("HIL pass true");
-    expect(JSON.stringify(response)).not.toContain("/dev/tty");
-    expectNoLegacyPythonGateSemantics(response);
+    expectNoLegacyPythonGateSemantics(response, true);
   });
 
   it("route debug summary uses Node JSON loader and fails closed without input", async () => {
@@ -275,15 +316,84 @@ describe("workstation fail-closed API contracts", () => {
     expectNoLegacyPythonGateSemantics(successResponse);
   });
 
+  it("training and labeling empty workspaces fail closed", async () => {
+    // 空目录必须展示 empty_not_connected，不能伪造成可训练或可标注。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-empty-assets-"));
+    const trainingRoot = path.join(root, "training");
+    const labelingRoot = path.join(root, "labeling");
+    await mkdir(trainingRoot);
+    await mkdir(labelingRoot);
+
+    const training = await buildTrainingLabelingResponse({ trainingRoot, labelingRoot });
+
+    expect(training.schema).toBe("trashbot.pc_tools_workstation.training_labeling.v2");
+    expect(training.real_pipeline_connected).toBe(false);
+    expect(training.proof_status).toBe("not_proven");
+    expect(training.primary_actions_enabled).toBe(false);
+    expect(training.workspaces).toHaveLength(2);
+    expect(training.workspaces.every((workspace) => workspace.status === "empty_not_connected")).toBe(true);
+    expect(training.workspaces.every((workspace) => workspace.asset_counts.total_assets === 0)).toBe(true);
+    expect(training.missing_requirements).toEqual(
+      expect.arrayContaining(["asset_files", "manifest_candidate", "image_files", "annotation_files", "real_pipeline_connection"]),
+    );
+    expectNoLegacyPythonGateSemantics(training);
+  });
+
+  it("training and labeling fixture inventory counts manifests images and annotations", async () => {
+    // 临时 fixture 只验证本地资产扫描计数，不读取内容、不写输出、不接真实流水线。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-assets-"));
+    const trainingRoot = path.join(root, "training");
+    const labelingRoot = path.join(root, "labeling");
+    await mkdir(path.join(trainingRoot, "images"), { recursive: true });
+    await mkdir(path.join(labelingRoot, "labels"), { recursive: true });
+    await writeFile(path.join(trainingRoot, "dataset_manifest.yaml"), "name: sample\n", "utf8");
+    await writeFile(path.join(trainingRoot, "images", "frame001.jpg"), "", "utf8");
+    await writeFile(path.join(trainingRoot, "labels.json"), "[]", "utf8");
+    await writeFile(path.join(trainingRoot, "legacy.py"), "print('ignored')\n", "utf8");
+    await writeFile(path.join(labelingRoot, "annotations.jsonl"), "{}\n", "utf8");
+    await writeFile(path.join(labelingRoot, "labels", "frame001.txt"), "0 0.5 0.5 0.1 0.1\n", "utf8");
+    await writeFile(path.join(labelingRoot, "frame001.png"), "", "utf8");
+
+    const response = await buildTrainingLabelingResponse({ trainingRoot, labelingRoot });
+    const dataset = response.workspaces.find((workspace) => workspace.name === "dataset");
+    const labeling = response.workspaces.find((workspace) => workspace.name === "labeling");
+
+    expect(dataset?.status).toBe("assets_present_not_connected");
+    expect(dataset?.asset_counts).toMatchObject({
+      total_assets: 3,
+      structured_files: 2,
+      manifest_candidates: 2,
+      images: 1,
+      annotations: 1,
+      ignored_python_files: 1,
+    });
+    expect(labeling?.status).toBe("assets_present_not_connected");
+    expect(labeling?.asset_counts).toMatchObject({
+      total_assets: 3,
+      structured_files: 1,
+      manifest_candidates: 1,
+      images: 1,
+      annotations: 2,
+      ignored_python_files: 0,
+    });
+    expect(response.real_pipeline_connected).toBe(false);
+    expect(response.primary_actions_enabled).toBe(false);
+    expect(JSON.stringify(response)).not.toContain("legacy.py");
+    expectNoLegacyPythonGateSemantics(response);
+  });
+
   it("training and proof boundary do not claim real pipelines", async () => {
-    // 占位入口必须明确未接真实训练/标注流水线。
+    // 资产入口必须明确未接真实训练/标注流水线。
     const training = await buildTrainingLabelingResponse();
     const boundary = buildProofBoundary();
 
-    expect(training.entries.every((entry) => entry.real_pipeline_connected === false)).toBe(true);
+    expect(training.real_pipeline_connected).toBe(false);
+    expect(training.workspaces.every((workspace) => workspace.real_pipeline_connected === false)).toBe(true);
+    expect(training.workspaces.every((workspace) => workspace.status.endsWith("_not_connected"))).toBe(true);
     expect(boundary.not_proven).toContain("real_training_or_labeling_pipeline");
     expect(boundary.control_policy.workstation_executes_control).toBe(false);
     expect(boundary.control_policy.route_loader_mode).toBe("local_json_readonly");
+    expectNoLegacyPythonGateSemantics(training);
     expectNoLegacyPythonGateSemantics(boundary);
   });
 });

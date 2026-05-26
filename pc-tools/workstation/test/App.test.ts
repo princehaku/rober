@@ -1,6 +1,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App.vue";
+import TrainingLabelingPanel from "../src/components/TrainingLabelingPanel.vue";
 import { PROOF_FLAGS } from "../src/shared/contracts";
 
 const fixtures: Record<string, unknown> = {
@@ -79,6 +80,90 @@ const fixtures: Record<string, unknown> = {
   "/api/tools/hardware-materials": {
     schema: "trashbot.pc_tools_workstation.hardware_materials.v1",
     fixture_root: "pc-tools/evidence/fixtures",
+    vendor_sources: [
+      {
+        path: "docs/vendor/VENDOR_INDEX.md",
+        fact_ids: ["vendor_index_source_of_truth", "orange_pi_uart_not_proven", "hardware_boundary"],
+      },
+      {
+        path: "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+        fact_ids: ["rpi_default_serial_example", "json_line_send", "readline_receive"],
+      },
+      {
+        path: "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+        fact_ids: ["cmd_config_movement_ids", "feedback_interval_config_reference"],
+      },
+      {
+        path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        fact_ids: ["cmd_id_definitions", "feedback_base_info_id"],
+      },
+      {
+        path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+        fact_ids: ["newline_json_dispatch", "command_handler_dispatch"],
+      },
+      {
+        path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h",
+        fact_ids: ["t1001_feedback_fields", "module_type_conditional_fields"],
+      },
+    ],
+    hardware_claim_level: "software_material_coverage",
+    serial_reference: {
+      vendor_rpi_default_device: "/dev/ttyAMA0",
+      vendor_rpi_alternate_device: "/dev/serial0",
+      baudrate: 115200,
+      orange_pi_device_status: "not_proven",
+    },
+    command_facts: [
+      {
+        t: 1,
+        name: "CMD_SPEED_CTRL",
+        source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        hardware_verified: false,
+      },
+      {
+        t: 11,
+        name: "CMD_PWM_INPUT",
+        source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        hardware_verified: false,
+      },
+      {
+        t: 13,
+        name: "CMD_ROS_CTRL",
+        source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        hardware_verified: false,
+      },
+      {
+        t: 130,
+        name: "CMD_BASE_FEEDBACK",
+        source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        hardware_verified: false,
+      },
+      {
+        t: 131,
+        name: "CMD_BASE_FEEDBACK_FLOW",
+        source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        hardware_verified: false,
+      },
+      {
+        t: 142,
+        name: "CMD_FEEDBACK_FLOW_INTERVAL",
+        source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        hardware_verified: false,
+      },
+      {
+        t: 143,
+        name: "CMD_UART_ECHO_MODE",
+        source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        hardware_verified: false,
+      },
+    ],
+    feedback_schema: {
+      T1001: {
+        base_fields: ["L", "R", "r", "p", "y", "v"],
+        module_conditional_fields: ["moduleType=1 adds x/z/b/s/e/t and overwrites y with arm lastY"],
+        source_path: "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h",
+      },
+    },
     required_materials: [
       {
         id: "feedback_T1001.log",
@@ -140,7 +225,8 @@ const fixtures: Record<string, unknown> = {
     vendor_facts_bounded: [
       "UART newline-delimited JSON",
       "FEEDBACK_BASE_INFO=1001",
-      "T=1/T=13/T=130/T=131/T=142/T=143 command IDs",
+      "json_cmd.h defines T=1/T=11/T=13/T=130/T=131/T=142/T=143 command IDs",
+      "ugv_advance.h baseInfoFeedback() assembles T=1001 fields L/R/r/p/y/v",
     ],
     fail_closed_tokens: [
       "hil_pass=false",
@@ -166,12 +252,88 @@ const fixtures: Record<string, unknown> = {
       "battery_calibration_not_proven",
       "delivery_success_not_proven",
     ],
-    boundary_copy: "coverage is not HIL pass; material coverage is software_proof/not_proven and keeps safe_to_control=false.",
+    boundary_copy:
+      "coverage is not HIL pass; complete material coverage is still software_proof/not_proven and keeps hardware_connected=false.",
     ...PROOF_FLAGS,
   },
   "/api/tools/training-labeling": {
-    schema: "trashbot.pc_tools_workstation.training_labeling.v1",
-    entries: [{ name: "training", path: "pc-tools/training", status: "placeholder_not_connected", real_pipeline_connected: false }],
+    schema: "trashbot.pc_tools_workstation.training_labeling.v2",
+    roots: { dataset: "pc-tools/training", labeling: "pc-tools/labeling" },
+    real_pipeline_connected: false,
+    workspaces: [
+      {
+        name: "dataset",
+        root: "pc-tools/training",
+        status: "empty_not_connected",
+        real_pipeline_connected: false,
+        asset_counts: {
+          total_assets: 0,
+          structured_files: 0,
+          manifest_candidates: 0,
+          images: 0,
+          annotations: 0,
+          ignored_python_files: 0,
+        },
+        manifest_candidates: [],
+        image_files: [],
+        annotation_files: [],
+        missing_requirements: [
+          "asset_files",
+          "manifest_candidate",
+          "image_files",
+          "annotation_files",
+          "real_pipeline_connection",
+        ],
+        next_actions: [
+          "Place dataset or annotation assets under this workspace for read-only inventory.",
+          "Add a manifest candidate and paired images/annotations before readiness can improve.",
+          "Keep real_pipeline_connected=false until a backend asset contract exists.",
+        ],
+      },
+      {
+        name: "labeling",
+        root: "pc-tools/labeling",
+        status: "empty_not_connected",
+        real_pipeline_connected: false,
+        asset_counts: {
+          total_assets: 0,
+          structured_files: 0,
+          manifest_candidates: 0,
+          images: 0,
+          annotations: 0,
+          ignored_python_files: 0,
+        },
+        manifest_candidates: [],
+        image_files: [],
+        annotation_files: [],
+        missing_requirements: [
+          "asset_files",
+          "manifest_candidate",
+          "image_files",
+          "annotation_files",
+          "real_pipeline_connection",
+        ],
+        next_actions: [
+          "Place dataset or annotation assets under this workspace for read-only inventory.",
+          "Add a manifest candidate and paired images/annotations before readiness can improve.",
+          "Keep real_pipeline_connected=false until a backend asset contract exists.",
+        ],
+      },
+    ],
+    missing_requirements: [
+      "asset_files",
+      "manifest_candidate",
+      "image_files",
+      "annotation_files",
+      "real_pipeline_connection",
+    ],
+    next_actions: [
+      "Place dataset or annotation assets under this workspace for read-only inventory.",
+      "Add a manifest candidate and paired images/annotations before readiness can improve.",
+      "Keep real_pipeline_connected=false until a backend asset contract exists.",
+    ],
+    boundary_copy:
+      "Dataset and labeling inventory is read-only software proof; it does not run pipelines, transfer data, write files, or prove a real pipeline.",
     ...PROOF_FLAGS,
   },
   "/api/proof-boundary": {
@@ -271,7 +433,38 @@ describe("App", () => {
     expect(wrapper.text()).toContain("hil_pass=false");
     expect(wrapper.text()).toContain("serial_path_not_proven");
     expect(wrapper.text()).toContain("UART newline-delimited JSON");
+    expect(wrapper.text()).toContain("complete file/material coverage");
+    expect(wrapper.text()).toContain("docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h");
+    expect(wrapper.text()).toContain("vendor_rpi_default_device");
+    expect(wrapper.text()).toContain("/dev/ttyAMA0");
+    expect(wrapper.text()).toContain("orange_pi_device_status");
+    expect(wrapper.text()).toContain("CMD_ROS_CTRL");
+    expect(wrapper.text()).toContain("hardware_verified=false");
+    expect(wrapper.text()).toContain("moduleType=1");
     expect(wrapper.text()).toContain("primary_actions_enabled");
+    expect(wrapper.text()).not.toContain("/cmd_vel");
+    expect(wrapper.text()).not.toContain("/dev/ttyUSB");
+    expect(wrapper.text()).not.toMatch(/hardware connected|ready to control/i);
+    expect(wrapper.text()).not.toContain("hil_pass=true");
+  });
+
+  it("renders dataset inventory without pipeline control semantics", () => {
+    // Training/Labeling 面板只展示 API 清单；这里直接挂组件，避免其它 tab 的硬件参考干扰边界检查。
+    const wrapper = mount(TrainingLabelingPanel, {
+      props: {
+        trainingLabeling: fixtures["/api/tools/training-labeling"] as never,
+      },
+    });
+    const text = wrapper.text().toLowerCase();
+
+    expect(wrapper.text()).toContain("Dataset/Labeling Assets");
+    expect(wrapper.text()).toContain("empty_not_connected");
+    expect(wrapper.text()).toContain("real_pipeline_connected");
+    expect(wrapper.text()).toContain("primary_actions_enabled");
+    expect(wrapper.findAll("button")).toHaveLength(0);
+    expect(text).not.toContain("start ");
+    expect(text).not.toContain("upload");
+    expect(text).not.toContain("execute");
     expect(wrapper.text()).not.toContain("/cmd_vel");
     expect(wrapper.text()).not.toContain("/dev/tty");
   });

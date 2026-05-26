@@ -58,11 +58,43 @@ export interface HardwareMaterialGroup {
   status: HardwareMaterialStatus;
 }
 
+export interface HardwareVendorSource {
+  path: string;
+  fact_ids: ReadonlyArray<string>;
+}
+
+export interface HardwareSerialReference {
+  vendor_rpi_default_device: "/dev/ttyAMA0";
+  vendor_rpi_alternate_device: "/dev/serial0";
+  baudrate: 115200;
+  orange_pi_device_status: "not_proven";
+}
+
+export interface HardwareCommandFact {
+  t: 1 | 11 | 13 | 130 | 131 | 142 | 143;
+  name: string;
+  source_path: string;
+  hardware_verified: false;
+}
+
+export interface HardwareFeedbackSchema {
+  T1001: {
+    base_fields: ReadonlyArray<"L" | "R" | "r" | "p" | "y" | "v">;
+    module_conditional_fields: ReadonlyArray<string>;
+    source_path: string;
+  };
+}
+
 // WAVE ROVER material coverage 只证明本地材料文件是否齐备，不证明真实 HIL 或底盘可控。
 // Hardware 咨询给出的 not_proven token 固化在契约里，避免 UI 或 API 把 coverage 外推成 pass。
 export interface HardwareMaterialsResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.hardware_materials.v1";
   fixture_root: string;
+  vendor_sources: ReadonlyArray<HardwareVendorSource>;
+  hardware_claim_level: "software_material_coverage";
+  serial_reference: HardwareSerialReference;
+  command_facts: ReadonlyArray<HardwareCommandFact>;
+  feedback_schema: HardwareFeedbackSchema;
   required_materials: HardwareMaterialItem[];
   groups: HardwareMaterialGroup[];
   coverage_summary: {
@@ -136,15 +168,47 @@ export interface RouteDebugSummaryResponse extends ProofFlags {
   };
 }
 
-// Training/Labeling 仍是占位入口，不能被 UI 文案升级成真实流水线。
+export type DatasetAssetReadiness =
+  | "empty_not_connected"
+  | "assets_present_not_connected"
+  | "missing_manifest_not_connected"
+  | "missing_images_not_connected"
+  | "missing_annotations_not_connected";
+
+export interface DatasetAssetCounts {
+  total_assets: number;
+  structured_files: number;
+  manifest_candidates: number;
+  images: number;
+  annotations: number;
+  ignored_python_files: number;
+}
+
+export interface DatasetWorkspaceScan {
+  name: "dataset" | "labeling";
+  root: string;
+  status: DatasetAssetReadiness;
+  real_pipeline_connected: false;
+  asset_counts: DatasetAssetCounts;
+  manifest_candidates: string[];
+  image_files: string[];
+  annotation_files: string[];
+  missing_requirements: string[];
+  next_actions: string[];
+}
+
+// Training/Labeling 只读扫描本地数据集和标注资产，不执行训练、上传或写文件。
 export interface TrainingLabelingResponse extends ProofFlags {
-  schema: "trashbot.pc_tools_workstation.training_labeling.v1";
-  entries: Array<{
-    name: string;
-    path: string;
-    status: "placeholder_not_connected";
-    real_pipeline_connected: false;
-  }>;
+  schema: "trashbot.pc_tools_workstation.training_labeling.v2";
+  roots: {
+    dataset: string;
+    labeling: string;
+  };
+  real_pipeline_connected: false;
+  workspaces: DatasetWorkspaceScan[];
+  missing_requirements: string[];
+  next_actions: string[];
+  boundary_copy: string;
 }
 
 // Proof Boundary 是跨页面解释源，明确 Node/Vue 当前能证明和不能证明的范围。

@@ -15,6 +15,7 @@ pc-tools/workstation/
   src/components/*.vue                # Route/Evidence/Training/Proof 页面组件
   src/server/index.ts                 # Express API 与静态 UI 托管入口
   src/server/catalog.ts               # Route Debug 响应聚合
+  src/server/datasetAssets.ts         # Training/Labeling 本地资产只读清单
   src/server/evidenceAssets.ts        # Evidence JSON fixture 索引
   src/server/waveRoverMaterialCoverage.ts # WAVE ROVER material coverage 只读扫描
   src/server/proofBoundary.ts         # Health、Training/Labeling、Proof Boundary 契约
@@ -38,7 +39,8 @@ pc-tools/workstation/
 - `index.ts` 只挂载本地 PC API 和构建后的静态 UI，不挂载 ROS2、串口、控制或云端生产客户端。
 - `catalog.ts` 只保留 Route Debug summary 聚合。
 - `evidenceAssets.ts` 只索引 `pc-tools/evidence/fixtures/**/*.json`，不扫描或执行 `.py`。
-- `proofBoundary.ts` 集中输出 health、训练/标注占位和 proof boundary。
+- `datasetAssets.ts` 只读扫描 `pc-tools/training/` 和 `pc-tools/labeling/` 的本地数据集/标注资产，不执行训练、不上传数据、不写文件。
+- `proofBoundary.ts` 集中输出 health 和 proof boundary。
 - `routeDebugLoader.ts` 只读本地 JSON 并生成 safe summary；坏 JSON、缺文件、成功声明、控制声明、敏感复制和 evidence_ref 错配均 fail-closed。
 
 `pc-tools/evidence/fixtures/**` 是 Evidence Tools 的 JSON fixture 来源。`pc-tools/route/` 只保留说明；Route Debug 的实际读取能力在 `pc-tools/workstation/src/server/routeDebugLoader.ts`。
@@ -47,9 +49,22 @@ pc-tools/workstation/
 
 - Route Debug：通过 Node Route JSON Loader 读取本地 status/task/reconciliation JSON，生成 safe summary。
 - Evidence Tools：索引 `pc-tools/evidence/fixtures/**/*.json`，展示 JSON fixture 资产分组。
-- Hardware Materials：`GET /api/tools/hardware-materials` 扫描 `pc-tools/evidence/fixtures/wave_rover_*` 下的 WAVE ROVER 材料组，识别 `feedback_T1001.log`、`odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`、`operator_hil_report` / `operator_hil_report.json` 的 present/missing coverage，并在 Vue 面板中展示缺口。
-- Training/Labeling：保留占位入口，明确未接真实训练或标注流水线。
+- Hardware Materials：`GET /api/tools/hardware-materials` 扫描 `pc-tools/evidence/fixtures/wave_rover_*` 下的 WAVE ROVER 材料组，识别 `feedback_T1001.log`、项目侧 `odom_once.jsonl`、项目侧 `imu_once.jsonl`、项目侧 `battery_once.jsonl`、`operator_hil_report` / `operator_hil_report.json` 的 present/missing coverage，并在 Vue 面板中展示缺口、vendor source、串口参考、命令事实和反馈字段边界。
+- Training/Labeling：`GET /api/tools/training-labeling` 扫描 `pc-tools/training/` 和 `pc-tools/labeling/` 下的非 Python 资产，返回两个工作区的 roots、asset counts、manifest candidates、image/annotation counts、readiness、missing requirements 和 next actions；仍明确未接真实训练或标注流水线。
 - Proof Boundary：集中展示软件证明能覆盖什么、不能覆盖什么，避免误读为真实硬件或交付证明。
+
+## Training/Labeling Asset Inventory 边界
+
+Training/Labeling 是 Node-native 本地资产清单入口，不是训练入口、标注服务入口或数据上传入口。
+
+- 顶层 API 固定继承 `source=software_proof`、`proof_status=not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`pc_only=true`。
+- 顶层 API 固定输出 `real_pipeline_connected=false`。
+- `roots.dataset=pc-tools/training`，`roots.labeling=pc-tools/labeling`。
+- 每个 workspace 输出 `status`、`asset_counts`、`manifest_candidates`、`image_files`、`annotation_files`、`missing_requirements`、`next_actions`。
+- 空目录必须输出 `empty_not_connected`，不得被 UI 或 API 文案解释为可训练、可标注或 ready。
+- 只扫描非 Python 资产：`.json`、`.jsonl`、`.yaml`、`.yml`、常见图片扩展和常见标注扩展；`.py` 只计入 `ignored_python_files`，不进入资产列表。
+- manifest candidate 只是人工检查入口，不代表数据集 schema 已通过，也不代表训练配置存在。
+- UI 只显示资产 readiness、缺口和人工 next actions；不得提供 start、upload、execute 或任何真实 pipeline 控件。
 
 ## WAVE ROVER Material Coverage 边界
 
@@ -57,8 +72,15 @@ Hardware Materials 是 Node-native 只读入口，不恢复旧 Python evidence g
 
 - 顶层 API 固定继承 `source=software_proof`、`proof_status=not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`pc_only=true`。
 - 每个 `wave_rover_*` 材料组输出 `group`、`fixture_relative_path`、present/missing materials、coverage counts 和 material coverage status。
+- 顶层 API 固定输出 `hardware_claim_level=software_material_coverage`，不得出现 `hil_verified` 或等价字段。
+- `vendor_sources` 使用 `{ path, fact_ids }` 结构，当前来源包括 `docs/vendor/VENDOR_INDEX.md`、`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`、`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`、`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`、`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`。
 - UI 文案必须明确 `coverage is not HIL pass`。文件齐备只说明材料 coverage，不说明 WAVE ROVER 上电、真实 UART 连通、轮向正确、反馈频率达标、IMU/battery 标定通过或真实 delivery success。
-- 允许展示的 bounded vendor facts 来自 `docs/vendor/VENDOR_INDEX.md` 指向的本地资料：UART newline-delimited JSON、`json.dumps(data)+'\n'` 写串口、`readline()` 读、ESP32 newline 后 `deserializeJson()`、`FEEDBACK_BASE_INFO=1001`、`T=1/T=13/T=130/T=131/T=142/T=143`、`T=1001` feedback 字段 `L/R/r/p/y/v`。
+- UI 里的 coverage label 使用 `complete file/material coverage`，不得把 complete coverage 简写成 HIL pass 或 ready to control。
+- 允许展示的 bounded vendor facts 来自 `docs/vendor/VENDOR_INDEX.md` 指向的本地资料：UART newline-delimited JSON、`base_ctrl.py` 通过 `json.dumps(data)+"\n"` 发送并使用 `readline()` 接收、ESP32 `serialCtrl()` 收到 `\n` 后 `deserializeJson()` 并分发命令、Raspberry Pi vendor 示例默认 `/dev/ttyAMA0` 与 `115200` 且另有 `/dev/serial0` 注释、Orange Pi 串口路径未证明、`FEEDBACK_BASE_INFO=1001`、`T=1/T=11/T=13/T=130/T=131/T=142/T=143` 命令 ID、`ugv_advance.h` 中 `baseInfoFeedback()` 组装 `T=1001` 基础字段 `L/R/r/p/y/v`。
+- `serial_reference` 只表达 vendor Raspberry Pi 示例：`vendor_rpi_default_device=/dev/ttyAMA0`、`vendor_rpi_alternate_device=/dev/serial0`、`baudrate=115200`、`orange_pi_device_status=not_proven`。不得声明 Orange Pi 使用这些路径，也不得声明波特率链路已验证。
+- `command_facts` 只说明 vendor firmware 定义了 `T=1`、`T=11`、`T=13`、`T=130`、`T=131`、`T=142`、`T=143`，所有条目固定 `hardware_verified=false`。`T=13 CMD_ROS_CTRL` 不得被描述为已在当前底盘可用。
+- `feedback_schema.T1001` 的 `base_fields` 为 `L/R/r/p/y/v`，来源为 `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`。当 `moduleType=1` 时反馈字段可能变化，且 `y` 会被机械臂 `lastY` 覆盖，UI/API 必须保留该条件说明。
+- `odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl` 是项目侧 evidence material，不得写成 vendor 原生输出。
 - 必须保留的 fail-closed token 包括：`hil_pass=false`、`hardware_connected=false`、`serial_path_not_proven`、`baudrate_link_not_proven`、`wheel_direction_not_proven`、`cmd_ros_ctrl_not_proven_on_chassis`、`feedback_frequency_not_proven`、`imu_calibration_not_proven`、`battery_calibration_not_proven`、`delivery_success_not_proven`。
 
 ## Fail-Closed 契约

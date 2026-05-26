@@ -1,5 +1,213 @@
 # Operator Gateway Diagnostics
 
+## 2026-05-26 elevator field-run diagnostics modularization
+
+`operator_gateway_diagnostics.py` remains the public compatibility facade for
+existing imports and `/api/status` / `/api/diagnostics` payload keys. The
+elevator field-run material validation, review decision, and execution pack
+schema/gate constants, default blocked summaries, `not_proven` helpers,
+source contract helpers, same-`evidence_ref` guard, and summarize functions
+now live in the internal `operator_gateway_diagnostics_elevator_field_run.py`
+module.
+
+This split is structure-only. It does not change schema names, alias keys,
+safe copy text, false-state fields, `not_proven` content, source/boundary
+validation, unsafe-field blocking, or command/action availability. Existing
+tests and callers may continue importing
+`summarize_elevator_field_run_material_validation`,
+`summarize_elevator_field_run_review`, and
+`summarize_elevator_field_run_execution_pack` from
+`operator_gateway_diagnostics.py`.
+
+The elevator field-run summaries remain metadata-only software proof. They
+must keep real elevator operation, real elevator door state, floor
+confirmation, real Nav2/fixed-route execution, WAVE ROVER motion, real
+serial/UART feedback, HIL, ACK/cursor/persistence or terminal ACK,
+dropoff/cancel completion, delivery success, production readiness, and
+Objective 5 external proof as missing or not_proven unless a separate real
+runtime evidence contract supplies those proofs.
+
+## 2026-05-26 route terminal diagnostics modularization
+
+`operator_gateway_diagnostics.py` remains the public compatibility facade for
+existing imports and `/api/status` / `/api/diagnostics` payload keys. The route
+task terminal completion rehearsal and route task terminal review decision
+schema/gate constants, default blocked summaries, `not_proven` helpers,
+source/evidence-ref validation helpers, and summarize functions now live in the
+internal `operator_gateway_diagnostics_route_terminal.py` module.
+
+This split is structure-only. It does not change schema names, alias keys,
+safe copy text, false-state fields, `not_proven` content, source/boundary
+validation, same-`evidence_ref` checks, or command/action availability.
+Existing tests and callers may continue importing
+`summarize_route_task_terminal_completion_rehearsal` and
+`summarize_route_task_terminal_review_decision` from
+`operator_gateway_diagnostics.py`.
+
+The route terminal summaries remain metadata-only software proof. They must
+keep collect/dropoff/cancel control, remote ACK, cursor/persistence updates,
+terminal ACK, real Nav2/fixed-route execution, real route collection,
+route/elevator field pass, WAVE ROVER motion, real serial/UART feedback, HIL,
+dropoff/cancel completion, delivery success, production readiness, and
+Objective 5 external proof as missing or not_proven unless a separate real
+runtime evidence contract supplies those proofs.
+
+## 2026-05-26 route field-run diagnostics modularization
+
+`operator_gateway_diagnostics.py` remains the public compatibility facade for
+existing imports and `/api/status` / `/api/diagnostics` payload keys. The route
+task field-run readiness, intake/crosscheck, review console, and execution pack
+schema/gate constants, default blocked summaries, `not_proven` helpers,
+unsafe/copy guards, and summarize functions now live in the internal
+`operator_gateway_diagnostics_route_field_run.py` module.
+
+This split is structure-only. It does not change schema names, alias keys,
+safe copy text, false-state fields, `not_proven` content, or command/action
+availability. Existing tests and callers may continue importing
+`summarize_route_task_field_run_readiness`,
+`summarize_route_task_field_run_intake`,
+`summarize_route_task_field_run_review`, and
+`summarize_route_task_field_run_execution_pack` from
+`operator_gateway_diagnostics.py`.
+
+The route field-run summaries remain metadata-only software proof. They must
+keep route/elevator field pass, real Nav2/fixed-route execution, WAVE ROVER
+motion, real serial/UART feedback, HIL, ACK/cursor/persistence/terminal ACK,
+dropoff/cancel completion, delivery success, production readiness, and
+Objective 5 external proof as missing or not_proven unless a separate real
+runtime evidence contract supplies those proofs.
+
+## 2026-05-26 route field-run artifact diagnostics modularization
+
+`operator_gateway_diagnostics.py` remains the public compatibility facade for
+existing imports and `/api/status` / `/api/diagnostics` payload keys. The route
+task field-run reconciliation, console, evidence kit, material bundle, and
+material validation schema/gate constants, default blocked summaries,
+`not_proven` helpers, source contract helpers, unsafe/copy guards, and summarize
+functions now live in the internal
+`operator_gateway_diagnostics_route_field_artifacts.py` module.
+
+This split is structure-only. It does not change schema names, alias keys,
+safe copy text, false-state fields, `not_proven` content, source/boundary
+validation, or command/action availability. Existing tests and callers may
+continue importing `summarize_route_task_field_run_reconciliation`,
+`summarize_route_task_field_run_console`,
+`summarize_route_task_field_run_evidence_kit`,
+`summarize_route_task_field_run_material_bundle`, and
+`summarize_route_task_field_run_material_validation` from
+`operator_gateway_diagnostics.py`.
+
+The route field artifact summaries remain metadata-only software proof. They
+must keep real route/elevator field pass, real Nav2/fixed-route execution,
+WAVE ROVER motion, real serial/UART feedback, HIL, ACK/cursor/persistence or
+terminal ACK, dropoff/cancel completion, delivery success, production
+readiness, and Objective 5 external proof as missing or not_proven unless a
+separate real runtime evidence contract supplies those proofs.
+
+## 2026-05-26 task terminal diagnostics modularization
+
+`operator_gateway_diagnostics.py` remains the public compatibility facade for
+existing imports and `/api/status` / `/api/diagnostics` payload keys. The task
+terminal completion mainline, field material intake, and field material review
+decision schema/gate constants, default blocked summaries, `not_proven`
+helpers, source-fragment selection helpers, and summarize functions now live in
+the internal `operator_gateway_diagnostics_task_terminal.py` module.
+
+This split is structure-only. It does not change schema names, alias keys,
+safe copy text, false-state fields, `not_proven` content, or command/action
+availability. Existing tests and callers may continue importing
+`summarize_task_terminal_completion_mainline`,
+`summarize_task_terminal_field_material_intake`, and
+`summarize_task_terminal_field_material_review_decision` from
+`operator_gateway_diagnostics.py`.
+
+The task terminal summaries remain metadata-only software proof. They must keep
+`delivery_success=false`, `primary_actions_enabled=false`, `safe_to_control=false`
+where present, `hil_pass=false`, and all collect/dropoff/cancel/ACK/cursor/Nav2
+trigger fields disabled. The refactor must not be treated as real task record
+proof, dropoff completion, cancel completion, route/elevator field pass, HIL,
+WAVE ROVER motion proof, external Objective 5 proof, or delivery success.
+
+## 2026-05-26 cloud guard diagnostics modularization
+
+`operator_gateway_diagnostics.py` remains the public compatibility facade for
+existing imports and `/api/status` / `/api/diagnostics` payload keys. The cloud
+guard summary builders for unreachable or malformed cloud responses, poll
+backoff/rate limit, ACK lookup pending, ACK accepted with result pending,
+terminal-result verification, cancel-pending command safety, and support
+handoff safe export now live in the internal
+`operator_gateway_diagnostics_cloud_guards.py` module.
+
+This split is structure-only. It does not change schema names, alias keys,
+safe phone copy, `not_proven` content, false-state fields, remote readiness
+fallbacks, or command/action availability. Existing tests and callers may
+continue importing the cloud guard constants and summarize functions from
+`operator_gateway_diagnostics.py`.
+
+The cloud guards remain metadata-only software proof. They must keep
+`remote_ready=false`, `safe_to_control=false`, `delivery_success=false`, and
+`primary_actions_enabled=false`, and they must not convert unreachable cloud
+state, ACK pending state, terminal-result pending state, cancel pending state,
+or support handoff material into delivery success, HIL proof, WAVE ROVER proof,
+route/elevator field pass, production readiness, or permission to mutate ACK,
+cursor, queue, persistence, replay/resubmit, Nav2, or robot commands.
+
+## 2026-05-26 cloud external evidence diagnostics modularization
+
+`operator_gateway_diagnostics.py` remains the public compatibility facade for
+existing imports and `/api/status` / `/api/diagnostics` payload keys. The cloud
+external evidence review decision, review handoff, and handoff follow-up
+escalation status summary builders now live in the internal
+`operator_gateway_diagnostics_cloud_external_evidence.py` module.
+
+This split is structure-only. It does not change schema names, alias keys,
+safe copy text, `not_proven` content, false-state fields, or command/action
+availability. Existing tests may continue importing
+`summarize_cloud_external_evidence_review_decision`,
+`summarize_cloud_external_evidence_review_handoff`, and
+`summarize_cloud_external_evidence_review_handoff_followup_escalation_status`
+from `operator_gateway_diagnostics.py`.
+
+The external evidence module continues to sanitize only phone-safe metadata:
+safe `command_id`, safe `evidence_ref`, material status summaries, owner/support
+handoff routes, reviewer routes, next required evidence, and safe copy. Raw
+artifacts, credentials, URLs, local paths, tracebacks, ROS topics, `/cmd_vel`,
+serial/UART details, WAVE ROVER details, checksums, production endpoint claims,
+GitHub mutation claims, success/control wording, or true phone/browser proof
+claims must still fail closed as blocked/not_proven.
+
+The required boundary remains `source=software_proof`, `not_proven`,
+`safe_to_control=false`, `delivery_success=false`,
+`primary_actions_enabled=false`, `production_ready=false`,
+`external_evidence_complete=false`, `hardware_material_pending`, and
+`no OKR percentage lift`. This refactor must not be treated as production
+ready, delivery/dropoff/cancel success, HIL, WAVE ROVER proof, route/elevator
+field pass, true phone/browser proof, OSS/CDN live proof, PR #5 resolution, or
+external evidence completion.
+
+## 2026-05-26 cloud lifecycle diagnostics modularization
+
+`operator_gateway_diagnostics.py` remains the public compatibility facade for
+existing imports and `/api/status` / `/api/diagnostics` payload keys. The
+cloud command lifecycle audit/export, replay drill, and replay acceptance
+packet summary builders now live in the internal
+`operator_gateway_diagnostics_cloud_lifecycle.py` module.
+
+This split is structure-only. It does not change schema names, alias keys,
+false-state fields, safe phone copy, `not_proven` content, or command/action
+availability. These summaries continue to be metadata-only software proof:
+`source=software_proof`, `not_proven`, `safe_to_control=false`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
+The lifecycle module sanitizes lifecycle timeline rows, command/evidence refs,
+copy text, replay drill fields, owner handoff fields, and acceptance packet
+fields before they return through the facade. It must still reject or redact
+raw cloud bodies, credentials, URLs, local paths, tracebacks, ROS topics,
+`/cmd_vel`, serial/UART details, WAVE ROVER details, cursor/ACK payloads,
+checksums, complete artifacts, or success/control wording. The refactor must
+not be treated as external cloud proof, true phone/browser proof, HIL, route
+execution, verified terminal result, PR #5 resolution, or delivery success.
+
 ## 2026-05-25 structure refactor boundary
 
 `operator_gateway_diagnostics.py` and `remote_cloud_relay.py` now keep the
@@ -558,6 +766,47 @@ WAVE ROVER, HIL, material collection, production readiness, dropoff/cancel
 completion, or delivery success. It also does not prove real WAVE ROVER/UART,
 real 2D LiDAR / ToF, real PR #4 route/elevator field pass, real phone/browser
 validation, Objective 5 external proof, or any hardware/HIL result.
+
+## cloud worker metadata-only summaries
+
+Robot diagnostics exposes two cloud worker rehearsal summaries through the
+existing `operator_gateway_diagnostics.py` public import path:
+`summarize_cloud_worker_migration_rehearsal(path)` and
+`summarize_cloud_worker_cutover_drain(path)`. Their internal implementation
+lives in `operator_gateway_diagnostics_cloud_worker.py` so the diagnostics
+facade can stay smaller without changing `/api/status` or `/api/diagnostics`
+payload semantics.
+
+- Migration rehearsal source schema:
+  `trashbot.cloud_worker_migration_rehearsal.v1`
+- Migration rehearsal summary schema:
+  `trashbot.cloud_worker_migration_rehearsal_summary.v1`
+- Migration rehearsal evidence boundary:
+  `software_proof_docker_cloud_worker_migration_rehearsal_gate`
+- Cutover drain source schema:
+  `trashbot.cloud_worker_cutover_drain.v1`
+- Cutover drain summary schema:
+  `trashbot.cloud_worker_cutover_drain_summary.v1`
+- Cutover drain evidence boundary:
+  `software_proof_docker_cloud_worker_cutover_drain_gate`
+
+Both summaries are metadata-only and read-only. They may expose sanitized
+status fields, source schema/boundary metadata, safe artifact refs, retry
+hints, safe copy, `not_proven`, `production_ready=false`,
+`delivery_success=false`, and `primary_actions_enabled=false`.
+
+Missing files, unreadable JSON, unsupported schema or boundary, credentials,
+raw database/queue URLs, local serial paths, ROS command topics, WAVE ROVER
+details, success wording, `delivery_success=true`,
+`production_ready=true`, or `primary_actions_enabled=true` must fail closed as
+missing/read_error/unsupported/unsafe_copy and keep all action flags false.
+
+These summaries do not prove a real cloud worker migration, production
+cutover, production DB/queue, ACK completion, cursor persistence, public cloud
+availability, 4G/SIM path, HIL pass, robot command side effects, route/elevator
+field pass, or delivery success. They must not enable Start Delivery, Confirm
+Dropoff, Cancel, ACK, cursor updates, persistence updates, replay, resubmit,
+Nav2, WAVE ROVER, or any real robot control.
 
 ## robot_diagnostics_real_material_readiness_board_summary
 

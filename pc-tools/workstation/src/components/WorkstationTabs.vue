@@ -8,7 +8,7 @@ const panels: Array<{ id: WorkstationPanel; label: string }> = [
   { id: "route", label: "Route Debug" },
   { id: "evidence", label: "Evidence Tools" },
   { id: "hardware", label: "Hardware Materials" },
-  { id: "training", label: "Training/Labeling" },
+  { id: "training", label: "Data Assets" },
   { id: "boundary", label: "Proof Boundary" },
 ];
 </script>

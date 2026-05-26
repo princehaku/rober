@@ -39183,7 +39183,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             "overall_status": "not_proven",
             "safe_evidence_ref": "field-real-material-followup-status-001",
             "material_group": "route_elevator_field_evidence",
-            "field_owner": ""robot-algorithm-engineer"",
+            "field_owner": "robot-algorithm-engineer",
             "due_status": "overdue",
             "blocked_reason": "blocked_pending_real_field_materials",
             "next_required_evidence": [
@@ -39199,7 +39199,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             "material_groups": [
                 {
                     "material_group": "route_elevator_field_evidence",
-                    "field_owner": ""robot-algorithm-engineer"",
+                    "field_owner": "robot-algorithm-engineer",
                     "due_status": "overdue",
                     "blocked_reason": "blocked_pending_real_field_materials",
                     "next_required_evidence": [
@@ -39386,7 +39386,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(summary["status"], "not_proven")
         self.assertEqual(summary["due_status"], "overdue")
         self.assertEqual(summary["blocked_reason"], "blocked_pending_real_field_materials")
-        self.assertEqual(summary["material_groups"][0]["field_owner"], ""robot-algorithm-engineer"")
+        self.assertEqual(summary["material_groups"][0]["field_owner"], "robot-algorithm-engineer")
         self.assertIn("PRRT_kwDOSWB9286CJ3tX", summary["not_proven"])
         self.assertIn("3269642220", summary["not_proven"])
         self.assertFalse(summary["delivery_success"])
@@ -39442,7 +39442,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             "overall_status": "not_proven",
             "safe_evidence_ref": "field-real-material-owner-ack-001",
             "material_group": "route_elevator_field_evidence",
-            "field_owner": ""robot-algorithm-engineer"",
+            "field_owner": "robot-algorithm-engineer",
             "acknowledged_by": "field-owner-a",
             "acknowledged_at": "2026-05-21T21:30:00+08:00",
             "owner_ack_status": {
@@ -39622,7 +39622,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         )
         self.assertEqual(summary["source"], "software_proof")
         self.assertEqual(summary["status"], "not_proven")
-        self.assertEqual(summary["field_owner"], ""robot-algorithm-engineer"")
+        self.assertEqual(summary["field_owner"], "robot-algorithm-engineer")
         self.assertEqual(summary["acknowledged_by"], "field-owner-a")
         self.assertEqual(summary["owner_ack_status"]["status"], "not_proven")
         self.assertIn("PRRT_kwDOSWB9286CJ3tX", summary["not_proven"])

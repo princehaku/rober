@@ -4,23 +4,7 @@ import {
   PROOF_FLAGS,
   WORKSTATION_VERSION,
 } from "../shared/contracts";
-import type { HealthResponse, ProofBoundaryResponse, TrainingLabelingResponse } from "../shared/contracts";
-
-export async function buildTrainingLabelingResponse(): Promise<TrainingLabelingResponse> {
-  // Training/Labeling 仍未接真实流水线，页面只能显示占位状态。
-  const entries = ["training", "labeling"].map((name) => ({
-    name,
-    path: `pc-tools/${name}`,
-    status: "placeholder_not_connected" as const,
-    real_pipeline_connected: false as const,
-  }));
-
-  return {
-    schema: "trashbot.pc_tools_workstation.training_labeling.v1",
-    ...PROOF_FLAGS,
-    entries,
-  };
-}
+import type { HealthResponse, ProofBoundaryResponse } from "../shared/contracts";
 
 export function buildProofBoundary(): ProofBoundaryResponse {
   // Proof Boundary 把 Node/Vue 可证明的软件形状与真实机器人能力明确分开。
