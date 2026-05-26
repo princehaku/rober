@@ -12,6 +12,7 @@
 - PC fixture preview API：`GET /api/o7/route-replay-preview?fixtureJson=<local-json>`
 - PC labeling fixture preview API：`GET /api/o7/labeling-preview?fixtureJson=<local-json>`
 - PC voice fixture preview API：`GET /api/o7/voice-preview?fixtureJson=<local-json>`
+- PC safe command fixture preview API：`GET /api/o7/safe-command-preview?fixtureJson=<local-json>`
 - PC UI：`pc-tools/workstation` 的 `O7 Console` tab
 - Board media preflight source contract：`docs/interfaces/o7_board_media_preflight.md`
 
@@ -421,6 +422,66 @@ Adapter 必须拒绝并返回 `preview_status=blocked_not_proven`：
 - fixture 声称 speaker ACK success、played、delivered、acked 或 OK
 
 该接口的 `fixture_preview_ready` 只表示本地语音 JSON 被压缩成安全摘要；它不提升 O7 完成度，不证明真实 ASR event stream、真实 partial/final transcript、真实 TTS send/playback、真实 speaker ACK/failure event、真实 media preflight、真实 RTC、真实云端 voice API、真实机器人控制或真实 delivery success。UI 不得基于该接口提供发送、播放、恢复、控制、下发或云端语音成功文案。
+
+## Safe Command Fixture Preview
+
+`trashbot.o7.safe_command_preview.v1` 是 O7-KR6 的 PC-only 本地 fixture 预览契约。它比 `safe_command_snapshot` 前进一步：允许 reviewer 通过 query path 指定一个本地安全 JSON fixture，并由 Node adapter 生成手控/寻路命令 envelope 的安全摘要。但它仍不是 command cloud API、不是 robot ACK、不是 Nav2 goal dispatch、不是键盘控制、不是 stop/cancel/recovery 链路，也不代表速度/转向限制经过 HIL 或硬件验证。
+
+API：
+
+- `GET /api/o7/safe-command-preview?fixtureJson=<local-json>`
+
+支持的输入 schema：
+
+- `schema=trashbot.o7.safe_command_fixture.v1`
+- 可选字段：`command_session_id`、`manual_turn_envelope`、`navigate_goal_envelope`、`velocity_limits`、`steering_limits`、`map_goal_slot`、`idempotency_key_requirement`、`confirmation_policy`、`robot_ack_status`、`evidence_gaps`、`audit_refs[]`、`evidence_ref`
+
+固定 fail-closed 字段：
+
+- `source=software_proof`
+- `proof_status=not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `pc_only=true`
+- `command_dispatch_enabled=false`
+- `manual_control_enabled=false`
+- `navigate_goal_enabled=false`
+- `keyboard_control_enabled=false`
+- `real_command_api_connected=false`
+- `real_robot_ack_connected=false`
+- `robot_control_executed=false`
+
+输出只保留安全摘要：
+
+- `command_session`：`command_session_id`、固定 `source=local_json_fixture`、脱敏后的 `evidence_ref` 和限量 `audit_refs`
+- `manual_turn_envelope_summary`：固定 `sends_to_robot=false`，只保留脱敏 `requested_direction`、`velocity_limited=true`、`steering_limited=true` 和 `evidence_ref`
+- `navigate_goal_envelope_summary`：固定 `sends_to_robot=false`，只保留 `goal_source`、`map_frame`、`x_m`、`y_m`、`yaw_rad` 和 `evidence_ref`
+- `velocity_limits` 与 `steering_limits`：只保留数值摘要、source 和 `hardware_verified=false`，不得解释为真实安全边界
+- `map_goal_slot`：只保留 map frame、x/y/yaw 和 evidence ref，不允许 UI 转成地图点击下发
+- `idempotency_key_requirement`：固定 `required=true`、`header=Idempotency-Key`，只展示 fixture 中的 key/policy 引用
+- `confirmation_policy`：固定手控确认、寻路确认和键盘 hold 要求为 true
+- `robot_ack_summary`：固定 `ack_status=blocked_not_proven`，只展示 last command id、ACK/timeout/cancel/stop/recovery refs
+- `evidence_gaps` 与 `evidence_refs`：列出 timeout、cancel、stop、recovery、HIL/硬件安全等缺口和安全引用
+
+Adapter 必须拒绝并返回 `preview_status=blocked_not_proven`：
+
+- query 未提供、文件缺失、读取失败、坏 JSON、顶层不是 object
+- `schema` 不是 `trashbot.o7.safe_command_fixture.v1`
+- fixture 内含凭证、串口、`/cmd_vel`、traceback 或其他 unsafe copy
+- fixture 声称 `delivery_success=true` 或 command/navigate success
+- fixture 声称 `safe_to_control=true` 或 `primary_actions_enabled=true`
+- fixture 声称 `command_dispatch_enabled=true`
+- fixture 声称 `manual_control_enabled=true`
+- fixture 声称 `navigate_goal_enabled=true`
+- fixture 声称 `keyboard_control_enabled=true`
+- fixture 声称 `real_command_api_connected=true`
+- fixture 声称 `real_robot_ack_connected=true`
+- fixture 声称 `robot_control_executed=true`
+- fixture 声称 robot ACK success/pass/OK/delivered/acked
+- fixture 声称 HIL pass、HIL verified、hardware verified 或 hardware pass
+
+该接口的 `fixture_preview_ready` 只表示本地 safe-command JSON 被压缩成安全摘要；它不提升 O7 完成度，不证明真实 command API、真实手控、真实速度控制、真实转向限制、真实键盘控制、真实自动寻路、真实 robot ACK、真实 timeout/cancel/stop/recovery、真实 HIL/硬件安全或真实 delivery success。UI 不得基于该接口提供方向键、地图点击、stop、cancel、recovery、发送、恢复、控制、下发或云端命令成功文案。
 
 ## Safe Command Snapshot
 

@@ -349,6 +349,129 @@ export interface O7SafeCommandSnapshot {
   next_required_evidence: string[];
 }
 
+export interface O7SafeCommandPreviewRefSet {
+  fixture_ref: string;
+  session_evidence_ref: string;
+  ack_ref: string;
+  cancel_ack_ref: string;
+  stop_ack_ref: string;
+  recovery_ref: string;
+  audit_refs: string[];
+}
+
+// Safe command preview 是 O7-KR6 的 PC-only 本地 fixture adapter，不是控制 API。
+// 它只把手控/寻路 envelope 压成安全摘要，所有真实发送、ACK 和键盘控制都固定关闭。
+export interface O7SafeCommandPreviewResponse extends ProofFlags {
+  schema: "trashbot.o7.safe_command_preview.v1";
+  schema_version: 1;
+  preview_status: "fixture_preview_ready" | "blocked_not_proven";
+  input_status: {
+    fixture_json: string;
+    status:
+      | "loaded"
+      | "not_provided"
+      | "missing"
+      | "read_error"
+      | "bad_json"
+      | "not_object"
+      | "unsupported_schema"
+      | "unsafe_copy"
+      | "success_claim"
+      | "control_claim"
+      | "dispatch_enabled_claim"
+      | "manual_enabled_claim"
+      | "navigate_enabled_claim"
+      | "keyboard_enabled_claim"
+      | "real_command_api_claim"
+      | "real_robot_ack_claim"
+      | "robot_control_executed_claim"
+      | "ack_success_claim"
+      | "hardware_verified_claim";
+    failure_reason: string;
+  };
+  source_fixture_schema: "trashbot.o7.safe_command_fixture.v1" | "not_loaded";
+  command_dispatch_enabled: false;
+  manual_control_enabled: false;
+  navigate_goal_enabled: false;
+  keyboard_control_enabled: false;
+  real_command_api_connected: false;
+  real_robot_ack_connected: false;
+  robot_control_executed: false;
+  command_session: {
+    command_session_id: string;
+    source: "local_json_fixture";
+    evidence_ref: string;
+    audit_refs: string[];
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  manual_turn_envelope_summary: {
+    sends_to_robot: false;
+    requested_direction: string;
+    velocity_limited: true;
+    steering_limited: true;
+    evidence_ref: string;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  navigate_goal_envelope_summary: {
+    sends_to_robot: false;
+    goal_source: string;
+    map_frame: string;
+    x_m: number | null;
+    y_m: number | null;
+    yaw_rad: number | null;
+    evidence_ref: string;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  velocity_limits: {
+    max_linear_mps: number | null;
+    max_angular_radps: number | null;
+    source: string;
+    hardware_verified: false;
+    status: "fixture_limit_summary_only" | "blocked_not_proven";
+  };
+  steering_limits: {
+    max_steering_angle_rad: number | null;
+    max_turn_rate_radps: number | null;
+    source: string;
+    hardware_verified: false;
+    status: "fixture_limit_summary_only" | "blocked_not_proven";
+  };
+  map_goal_slot: {
+    map_frame: string;
+    x_m: number | null;
+    y_m: number | null;
+    yaw_rad: number | null;
+    status: "fixture_slot_summary_only" | "blocked_not_proven";
+    evidence_ref: string;
+  };
+  idempotency_key_requirement: {
+    required: true;
+    key_ref: string;
+    header: "Idempotency-Key";
+    status: "fixture_requirement_summary_only" | "blocked_not_proven";
+  };
+  confirmation_policy: {
+    manual_turn_requires_confirmation: true;
+    navigate_goal_requires_confirmation: true;
+    keyboard_control_requires_hold: true;
+    status: "fixture_policy_summary_only" | "blocked_not_proven";
+  };
+  robot_ack_summary: {
+    ack_status: "blocked_not_proven";
+    last_command_id: string;
+    ack_ref: string;
+    timeout_ms: number | null;
+    cancel_ack_ref: string;
+    stop_ack_ref: string;
+    recovery_ref: string;
+    status: "blocked_not_proven";
+  };
+  evidence_gaps: string[];
+  evidence_refs: O7SafeCommandPreviewRefSet;
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 // 板端媒体 preflight 是上车 smoke 之前的缺口摘要；PC 只能展示，不能把它升级成运行态。
 export interface O7BoardMediaPreflightSummary {
   schema: "trashbot.o7_board_media_preflight.v1";
@@ -1034,6 +1157,8 @@ export const API_ROUTES = [
   "/api/o7/operator-console/acceptance",
   "/api/o7/route-replay-preview?fixtureJson=<local-json>",
   "/api/o7/labeling-preview?fixtureJson=<local-json>",
+  "/api/o7/voice-preview?fixtureJson=<local-json>",
+  "/api/o7/safe-command-preview?fixtureJson=<local-json>",
   "/api/proof-boundary",
 ] as const;
 
@@ -1056,6 +1181,7 @@ export const NOT_PROVEN_ITEMS = [
   "real_o7_dataset_export",
   "real_o7_voice_api",
   "real_o7_asr_tts_runtime",
+  "real_o7_safe_command_fixture_preview_dispatch",
   "real_o7_operator_command_dispatch",
   "delivery_success",
 ] as const;

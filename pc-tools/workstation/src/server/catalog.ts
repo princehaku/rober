@@ -9,6 +9,7 @@ export { buildO7OperatorConsoleAcceptanceResponse } from "./o7OperatorConsoleAcc
 export { buildO7RouteReplayPreview } from "./o7RouteReplayPreview";
 export { buildO7LabelingPreview } from "./o7LabelingPreview";
 export { buildO7VoicePreview } from "./o7VoicePreview";
+export { buildO7SafeCommandPreview } from "./o7SafeCommandPreview";
 import { displayRoot, ROUTE_ROOT } from "./paths";
 import { buildLoadedRouteConsoleSummary, type RouteDebugLoadOptions } from "./routeDebugLoader";
 

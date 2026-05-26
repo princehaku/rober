@@ -10,6 +10,7 @@ import {
   buildO7OperatorConsoleResponse,
   buildO7LabelingPreview,
   buildO7RouteReplayPreview,
+  buildO7SafeCommandPreview,
   buildO7VoicePreview,
   buildProofBoundary,
   buildRouteDebugSummary,
@@ -262,6 +263,61 @@ function sampleVoiceFixture(evidenceRef: string) {
       gaps: ["audio_input_not_checked"],
     },
     audit_refs: ["voice-audit-001.json", path.join(path.dirname(evidenceRef), "voice-audit-002.json")],
+  };
+}
+
+function sampleSafeCommandFixture(evidenceRef: string) {
+  // safe command fixture 只表达手控/寻路 envelope 槽位，不模拟真实 command API 或机器人 ACK。
+  return {
+    schema: "trashbot.o7.safe_command_fixture.v1",
+    command_session_id: "safe-command-session-001",
+    evidence_ref: evidenceRef,
+    manual_turn_envelope: {
+      requested_direction: "left",
+      evidence_ref: path.join(path.dirname(evidenceRef), "manual-turn-envelope.json"),
+    },
+    navigate_goal_envelope: {
+      goal_source: "fixture_map_goal_slot",
+      map_frame: "map",
+      x_m: 1.25,
+      y_m: -0.5,
+      yaw_rad: 1.57,
+      evidence_ref: "navigate-goal-envelope.json",
+    },
+    velocity_limits: {
+      max_linear_mps: 0.2,
+      max_angular_radps: 0.4,
+      source: "fixture_limit_not_hil",
+    },
+    steering_limits: {
+      max_steering_angle_rad: 0.35,
+      max_turn_rate_radps: 0.45,
+      source: "fixture_limit_not_hil",
+    },
+    map_goal_slot: {
+      map_frame: "map",
+      x_m: 1.25,
+      y_m: -0.5,
+      yaw_rad: 1.57,
+      evidence_ref: path.join(path.dirname(evidenceRef), "map-goal-slot.json"),
+    },
+    idempotency_key_requirement: {
+      key_ref: "idempotency-policy.json",
+    },
+    confirmation_policy: {
+      status: "fixture_policy_summary_only",
+    },
+    robot_ack_status: {
+      ack_status: "blocked_not_proven",
+      last_command_id: "cmd-preview-001",
+      ack_ref: "ack-missing.json",
+      timeout_ms: 1500,
+      cancel_ack_ref: "cancel-missing.json",
+      stop_ack_ref: "stop-missing.json",
+      recovery_ref: "recovery-missing.json",
+    },
+    evidence_gaps: ["operator_confirmation_ui_not_connected"],
+    audit_refs: ["safe-command-audit-001.json", path.join(path.dirname(evidenceRef), "safe-command-audit-002.json")],
   };
 }
 
@@ -1256,6 +1312,233 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.tts_draft_summary.confirmation_required).toBe(true);
       expect(response.speaker_dispatch_summary.sends_to_robot).toBe(false);
       expect(response.media_preflight_dependency.status).toBe("blocked");
+      expect(response.blocked_reasons.length).toBeGreaterThan(0);
+      expectNoLegacyPythonGateSemantics(response);
+    }
+  });
+
+  it("O7 safe command preview summarizes a safe local fixture without dispatch ack or control claims", async () => {
+    // safe command preview 只展示手控/寻路 envelope 摘要，真实发送、ACK、键盘控制和 HIL 都关闭。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-safe-command-"));
+    const evidenceRef = path.join(root, "safe-command-evidence.json");
+    const fixturePath = path.join(root, "safe-command-fixture.json");
+    await writeFile(fixturePath, JSON.stringify(sampleSafeCommandFixture(evidenceRef)), "utf8");
+
+    const response = await buildO7SafeCommandPreview({ fixtureJson: fixturePath });
+    const payload = JSON.stringify(response);
+
+    expect(response.schema).toBe("trashbot.o7.safe_command_preview.v1");
+    expect(response.preview_status).toBe("fixture_preview_ready");
+    expect(response.input_status.status).toBe("loaded");
+    expect(response.input_status.fixture_json).toBe("file:safe-command-fixture.json");
+    expect(response.source).toBe("software_proof");
+    expect(response.proof_status).toBe("not_proven");
+    expect(response.safe_to_control).toBe(false);
+    expect(response.delivery_success).toBe(false);
+    expect(response.primary_actions_enabled).toBe(false);
+    expect(response.pc_only).toBe(true);
+    expect(response.command_dispatch_enabled).toBe(false);
+    expect(response.manual_control_enabled).toBe(false);
+    expect(response.navigate_goal_enabled).toBe(false);
+    expect(response.keyboard_control_enabled).toBe(false);
+    expect(response.real_command_api_connected).toBe(false);
+    expect(response.real_robot_ack_connected).toBe(false);
+    expect(response.robot_control_executed).toBe(false);
+    expect(response.source_fixture_schema).toBe("trashbot.o7.safe_command_fixture.v1");
+    expect(response.command_session).toEqual({
+      command_session_id: "safe-command-session-001",
+      source: "local_json_fixture",
+      evidence_ref: "file:safe-command-evidence.json",
+      audit_refs: ["safe-command-audit-001.json", "file:safe-command-audit-002.json"],
+      status: "fixture_summary_only",
+    });
+    expect(response.manual_turn_envelope_summary).toEqual({
+      sends_to_robot: false,
+      requested_direction: "left",
+      velocity_limited: true,
+      steering_limited: true,
+      evidence_ref: "file:manual-turn-envelope.json",
+      status: "fixture_summary_only",
+    });
+    expect(response.navigate_goal_envelope_summary).toEqual({
+      sends_to_robot: false,
+      goal_source: "fixture_map_goal_slot",
+      map_frame: "map",
+      x_m: 1.25,
+      y_m: -0.5,
+      yaw_rad: 1.57,
+      evidence_ref: "navigate-goal-envelope.json",
+      status: "fixture_summary_only",
+    });
+    expect(response.velocity_limits).toEqual({
+      max_linear_mps: 0.2,
+      max_angular_radps: 0.4,
+      source: "fixture_limit_not_hil",
+      hardware_verified: false,
+      status: "fixture_limit_summary_only",
+    });
+    expect(response.steering_limits).toMatchObject({
+      max_steering_angle_rad: 0.35,
+      max_turn_rate_radps: 0.45,
+      hardware_verified: false,
+      status: "fixture_limit_summary_only",
+    });
+    expect(response.map_goal_slot).toEqual({
+      map_frame: "map",
+      x_m: 1.25,
+      y_m: -0.5,
+      yaw_rad: 1.57,
+      status: "fixture_slot_summary_only",
+      evidence_ref: "file:map-goal-slot.json",
+    });
+    expect(response.idempotency_key_requirement).toEqual({
+      required: true,
+      key_ref: "idempotency-policy.json",
+      header: "Idempotency-Key",
+      status: "fixture_requirement_summary_only",
+    });
+    expect(response.confirmation_policy.manual_turn_requires_confirmation).toBe(true);
+    expect(response.confirmation_policy.navigate_goal_requires_confirmation).toBe(true);
+    expect(response.confirmation_policy.keyboard_control_requires_hold).toBe(true);
+    expect(response.robot_ack_summary).toEqual({
+      ack_status: "blocked_not_proven",
+      last_command_id: "cmd-preview-001",
+      ack_ref: "ack-missing.json",
+      timeout_ms: 1500,
+      cancel_ack_ref: "cancel-missing.json",
+      stop_ack_ref: "stop-missing.json",
+      recovery_ref: "recovery-missing.json",
+      status: "blocked_not_proven",
+    });
+    expect(response.evidence_gaps).toEqual(
+      expect.arrayContaining([
+        "operator_confirmation_ui_not_connected",
+        "robot_ack_timeout_trace_missing",
+        "cancel_ack_trace_missing",
+        "stop_ack_trace_missing",
+        "recovery_event_trace_missing",
+      ]),
+    );
+    expect(response.evidence_refs.fixture_ref).toBe("file:safe-command-fixture.json");
+    expect(response.evidence_refs.session_evidence_ref).toBe("file:safe-command-evidence.json");
+    expect(response.evidence_refs.ack_ref).toBe("ack-missing.json");
+    expect(response.blocked_reasons).toContain("command_dispatch_disabled");
+    expect(response.not_proven).toContain("real_robot_command_ack");
+    expect(response.not_proven).toContain("real_velocity_limit_hil");
+    expect(payload).not.toContain(root);
+    expect(payload).not.toContain("/cmd_vel");
+    expect(payload).not.toContain("/dev/ttyUSB");
+    expect(payload).not.toContain("command_dispatch_enabled=true");
+    expect(payload).not.toContain("manual_control_enabled=true");
+    expect(payload).not.toContain("navigate_goal_enabled=true");
+    expect(payload).not.toContain("keyboard_control_enabled=true");
+    expect(payload).not.toContain("real_command_api_connected=true");
+    expect(payload).not.toContain("real_robot_ack_connected=true");
+    expectNoLegacyPythonGateSemantics(response);
+  });
+
+  it("O7 safe command preview fails closed for unsafe control dispatch ack and hardware claims", async () => {
+    // 本地 safe command fixture 不能自证控制开关、真实 ACK、执行成功或 HIL/硬件验证。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-safe-command-blocked-"));
+    const badJsonPath = path.join(root, "bad.json");
+    const unsupportedPath = path.join(root, "unsupported.json");
+    const unsafePath = path.join(root, "unsafe.json");
+    const successPath = path.join(root, "success.json");
+    const controlPath = path.join(root, "control.json");
+    const dispatchPath = path.join(root, "dispatch.json");
+    const manualPath = path.join(root, "manual.json");
+    const navigatePath = path.join(root, "navigate.json");
+    const keyboardPath = path.join(root, "keyboard.json");
+    const realApiPath = path.join(root, "real-api.json");
+    const realAckPath = path.join(root, "real-ack.json");
+    const executedPath = path.join(root, "executed.json");
+    const ackSuccessPath = path.join(root, "ack-success.json");
+    const hardwarePath = path.join(root, "hardware.json");
+    await writeFile(badJsonPath, "{bad", "utf8");
+    await writeFile(unsupportedPath, JSON.stringify({ schema: "trashbot.other.v1" }), "utf8");
+    await writeFile(unsafePath, JSON.stringify({ ...sampleSafeCommandFixture("safe-ref"), evidence_ref: "/dev/ttyUSB0" }), "utf8");
+    await writeFile(successPath, JSON.stringify({ ...sampleSafeCommandFixture("safe-ref"), note: "command success completed" }), "utf8");
+    await writeFile(controlPath, JSON.stringify({ ...sampleSafeCommandFixture("safe-ref"), safe_to_control: true }), "utf8");
+    await writeFile(dispatchPath, JSON.stringify({ ...sampleSafeCommandFixture("safe-ref"), command_dispatch_enabled: true }), "utf8");
+    await writeFile(manualPath, JSON.stringify({ ...sampleSafeCommandFixture("safe-ref"), manual_control_enabled: true }), "utf8");
+    await writeFile(navigatePath, JSON.stringify({ ...sampleSafeCommandFixture("safe-ref"), navigate_goal_enabled: true }), "utf8");
+    await writeFile(keyboardPath, JSON.stringify({ ...sampleSafeCommandFixture("safe-ref"), keyboard_control_enabled: true }), "utf8");
+    await writeFile(realApiPath, JSON.stringify({ ...sampleSafeCommandFixture("safe-ref"), real_command_api_connected: true }), "utf8");
+    await writeFile(realAckPath, JSON.stringify({ ...sampleSafeCommandFixture("safe-ref"), real_robot_ack_connected: true }), "utf8");
+    await writeFile(executedPath, JSON.stringify({ ...sampleSafeCommandFixture("safe-ref"), robot_control_executed: true }), "utf8");
+    await writeFile(
+      ackSuccessPath,
+      JSON.stringify({ ...sampleSafeCommandFixture("safe-ref"), robot_ack_status: { ack_status: "success" } }),
+      "utf8",
+    );
+    await writeFile(hardwarePath, JSON.stringify({ ...sampleSafeCommandFixture("safe-ref"), hardware_verified: true }), "utf8");
+
+    const missing = await buildO7SafeCommandPreview({ fixtureJson: path.join(root, "missing.json") });
+    const badJson = await buildO7SafeCommandPreview({ fixtureJson: badJsonPath });
+    const unsupported = await buildO7SafeCommandPreview({ fixtureJson: unsupportedPath });
+    const unsafe = await buildO7SafeCommandPreview({ fixtureJson: unsafePath });
+    const success = await buildO7SafeCommandPreview({ fixtureJson: successPath });
+    const control = await buildO7SafeCommandPreview({ fixtureJson: controlPath });
+    const dispatch = await buildO7SafeCommandPreview({ fixtureJson: dispatchPath });
+    const manual = await buildO7SafeCommandPreview({ fixtureJson: manualPath });
+    const navigate = await buildO7SafeCommandPreview({ fixtureJson: navigatePath });
+    const keyboard = await buildO7SafeCommandPreview({ fixtureJson: keyboardPath });
+    const realApi = await buildO7SafeCommandPreview({ fixtureJson: realApiPath });
+    const realAck = await buildO7SafeCommandPreview({ fixtureJson: realAckPath });
+    const executed = await buildO7SafeCommandPreview({ fixtureJson: executedPath });
+    const ackSuccess = await buildO7SafeCommandPreview({ fixtureJson: ackSuccessPath });
+    const hardware = await buildO7SafeCommandPreview({ fixtureJson: hardwarePath });
+
+    expect(missing.input_status.status).toBe("missing");
+    expect(badJson.input_status.status).toBe("bad_json");
+    expect(unsupported.input_status.status).toBe("unsupported_schema");
+    expect(unsafe.input_status.status).toBe("unsafe_copy");
+    expect(success.input_status.status).toBe("success_claim");
+    expect(control.input_status.status).toBe("control_claim");
+    expect(dispatch.input_status.status).toBe("dispatch_enabled_claim");
+    expect(manual.input_status.status).toBe("manual_enabled_claim");
+    expect(navigate.input_status.status).toBe("navigate_enabled_claim");
+    expect(keyboard.input_status.status).toBe("keyboard_enabled_claim");
+    expect(realApi.input_status.status).toBe("real_command_api_claim");
+    expect(realAck.input_status.status).toBe("real_robot_ack_claim");
+    expect(executed.input_status.status).toBe("robot_control_executed_claim");
+    expect(ackSuccess.input_status.status).toBe("ack_success_claim");
+    expect(hardware.input_status.status).toBe("hardware_verified_claim");
+    for (const response of [
+      missing,
+      badJson,
+      unsupported,
+      unsafe,
+      success,
+      control,
+      dispatch,
+      manual,
+      navigate,
+      keyboard,
+      realApi,
+      realAck,
+      executed,
+      ackSuccess,
+      hardware,
+    ]) {
+      expect(response.schema).toBe("trashbot.o7.safe_command_preview.v1");
+      expect(response.preview_status).toBe("blocked_not_proven");
+      expect(response.safe_to_control).toBe(false);
+      expect(response.delivery_success).toBe(false);
+      expect(response.primary_actions_enabled).toBe(false);
+      expect(response.command_dispatch_enabled).toBe(false);
+      expect(response.manual_control_enabled).toBe(false);
+      expect(response.navigate_goal_enabled).toBe(false);
+      expect(response.keyboard_control_enabled).toBe(false);
+      expect(response.real_command_api_connected).toBe(false);
+      expect(response.real_robot_ack_connected).toBe(false);
+      expect(response.robot_control_executed).toBe(false);
+      expect(response.manual_turn_envelope_summary.sends_to_robot).toBe(false);
+      expect(response.navigate_goal_envelope_summary.sends_to_robot).toBe(false);
+      expect(response.velocity_limits.hardware_verified).toBe(false);
+      expect(response.steering_limits.hardware_verified).toBe(false);
+      expect(response.robot_ack_summary.ack_status).toBe("blocked_not_proven");
+      expect(response.confirmation_policy.manual_turn_requires_confirmation).toBe(true);
       expect(response.blocked_reasons.length).toBeGreaterThan(0);
       expectNoLegacyPythonGateSemantics(response);
     }

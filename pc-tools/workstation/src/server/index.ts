@@ -9,6 +9,7 @@ import {
   buildO7OperatorConsoleResponse,
   buildO7LabelingPreview,
   buildO7RouteReplayPreview,
+  buildO7SafeCommandPreview,
   buildO7VoicePreview,
   buildProofBoundary,
   buildRouteDebugSummary,
@@ -90,6 +91,11 @@ app.get("/api/o7/labeling-preview", async (req, res) => {
 app.get("/api/o7/voice-preview", async (req, res) => {
   // Voice preview 只读取本地 ASR/TTS fixture 摘要，不连接语音 API、不发送 TTS、不播放音频。
   res.json(await buildO7VoicePreview({ fixtureJson: queryString(req.query.fixtureJson) }));
+});
+
+app.get("/api/o7/safe-command-preview", async (req, res) => {
+  // Safe command preview 只读取本地命令 envelope fixture，不连接云端、ROS2、Nav2 或硬件。
+  res.json(await buildO7SafeCommandPreview({ fixtureJson: queryString(req.query.fixtureJson) }));
 });
 
 app.get("/api/proof-boundary", (_req, res) => {
