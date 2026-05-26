@@ -8,6 +8,7 @@ import {
   buildHealth,
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
+  buildO7RouteReplayPreview,
   buildProofBoundary,
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
@@ -83,6 +84,60 @@ function sampleReconciliation(evidenceRef: string) {
     },
     delivery_success: false,
     primary_actions_enabled: false,
+  };
+}
+
+function sampleRouteReplayFixture(evidenceRef: string) {
+  // route replay fixture 只模拟本地安全 JSON，不代表 O6 云归档或真实机器人运动。
+  return {
+    schema: "trashbot.o7.route_replay_fixture.v1",
+    task_id: "task-fixture-001",
+    robot_id: "robot-fixture-01",
+    route_id: "route-alpha",
+    map_frame: "map",
+    evidence_ref: evidenceRef,
+    trajectory_frames: [
+      {
+        frame_index: 0,
+        timestamp_ms: 1000,
+        pose: { x_m: 1.1, y_m: 2.2, yaw_rad: 0.1 },
+        velocity: { linear_mps: 0.2, angular_radps: 0.01 },
+        state: "departed",
+        evidence_ref: path.join(path.dirname(evidenceRef), "frame-000.jpg"),
+      },
+      {
+        frame_index: 1,
+        timestamp_ms: 1100,
+        pose: { x_m: 1.2, y_m: 2.3, yaw_rad: 0.2 },
+        velocity: { linear_mps: 0.3, angular_radps: 0.02 },
+        state: "en_route",
+        evidence_ref: "frame-001.jpg",
+      },
+      {
+        frame_index: 2,
+        timestamp_ms: 1200,
+        pose: { x_m: 1.3, y_m: 2.4, yaw_rad: 0.3 },
+        velocity: { linear_mps: 0.4, angular_radps: 0.03 },
+        state: "observe",
+        evidence_ref: "frame-002.jpg",
+      },
+      {
+        frame_index: 3,
+        timestamp_ms: 1300,
+        pose: { x_m: 1.4, y_m: 2.5, yaw_rad: 0.4 },
+        velocity: { linear_mps: 0.5, angular_radps: 0.04 },
+        state: "extra_sample_not_returned",
+        evidence_ref: "frame-003.jpg",
+      },
+    ],
+    keyframe_refs: [
+      path.join(path.dirname(evidenceRef), "keyframe-000.jpg"),
+      "keyframe-001.jpg",
+    ],
+    state_transitions: [
+      { from: "queued", to: "departed", timestamp_ms: 900, evidence_ref: "transition-queued.json" },
+      { from_state: "departed", to_state: "en_route", timestamp_ms: 1000, evidence_ref: "transition-en-route.json" },
+    ],
   };
 }
 
@@ -634,6 +689,116 @@ describe("workstation fail-closed API contracts", () => {
     expect(JSON.stringify(response)).not.toContain("/dev/ttyUSB");
     expect(JSON.stringify(response)).not.toMatch(/ready[_ ]?to[_ ]?control/i);
     expectNoLegacyPythonGateSemantics(response);
+  });
+
+  it("O7 route replay preview summarizes a safe local fixture without control or success claims", async () => {
+    // preview adapter 前进一步只消费本地 fixture 摘要，不连接云端、不播放、不控制机器人。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-replay-"));
+    const evidenceRef = path.join(root, "task-evidence.json");
+    const fixturePath = path.join(root, "fixture.json");
+    await writeFile(fixturePath, JSON.stringify(sampleRouteReplayFixture(evidenceRef)), "utf8");
+
+    const response = await buildO7RouteReplayPreview({ fixtureJson: fixturePath });
+    const payload = JSON.stringify(response);
+
+    expect(response.schema).toBe("trashbot.o7.route_replay_preview.v1");
+    expect(response.preview_status).toBe("fixture_preview_ready");
+    expect(response.input_status.status).toBe("loaded");
+    expect(response.input_status.fixture_json).toBe("file:fixture.json");
+    expect(response.source).toBe("software_proof");
+    expect(response.safe_to_control).toBe(false);
+    expect(response.delivery_success).toBe(false);
+    expect(response.primary_actions_enabled).toBe(false);
+    expect(response.real_cloud_archive_connected).toBe(false);
+    expect(response.robot_control_executed).toBe(false);
+    expect(response.task).toMatchObject({
+      task_id: "task-fixture-001",
+      robot_id: "robot-fixture-01",
+      route_id: "route-alpha",
+      evidence_ref: "file:task-evidence.json",
+    });
+    expect(response.route_metadata.map_frame).toBe("map");
+    expect(response.route_metadata.source).toBe("local_json_fixture");
+    expect(response.trajectory.frame_count).toBe(4);
+    expect(response.trajectory.sample_frames).toHaveLength(3);
+    expect(response.trajectory.sample_frames[0]).toEqual({
+      frame_index: 0,
+      timestamp_ms: 1000,
+      pose: { x_m: 1.1, y_m: 2.2, yaw_rad: 0.1 },
+      velocity: { linear_mps: 0.2, angular_radps: 0.01 },
+      state: "departed",
+      evidence_ref: "file:frame-000.jpg",
+    });
+    expect(response.playback_cursor_initial_state).toEqual({
+      frame_index: 0,
+      timestamp_ms: 1000,
+      playing: false,
+      speed: 0,
+      safe_to_play: false,
+      status: "preview_cursor_only",
+    });
+    expect(response.keyframes.count).toBe(2);
+    expect(response.keyframes.sample_refs).toEqual(["file:keyframe-000.jpg", "keyframe-001.jpg"]);
+    expect(response.evidence_refs.fixture_ref).toBe("file:fixture.json");
+    expect(response.evidence_refs.task_evidence_ref).toBe("file:task-evidence.json");
+    expect(response.state_transitions.count).toBe(2);
+    expect(response.state_transitions.sample).toEqual([
+      { from: "queued", to: "departed", timestamp_ms: 900, evidence_ref: "transition-queued.json" },
+      { from: "departed", to: "en_route", timestamp_ms: 1000, evidence_ref: "transition-en-route.json" },
+    ]);
+    expect(response.state_transitions.gaps).toEqual(
+      expect.arrayContaining(["not_o6_cloud_archive", "not_real_route_playback", "robot_control_disabled"]),
+    );
+    expect(response.not_proven).toContain("real_route_replay_playback");
+    expect(response.not_proven).toContain("delivery_success");
+    expect(payload).not.toContain(root);
+    expect(payload).not.toContain("/cmd_vel");
+    expect(payload).not.toContain("/dev/ttyUSB");
+    expect(payload).not.toContain("safe_to_control=true");
+    expect(payload).not.toContain("delivery_success=true");
+    expectNoLegacyPythonGateSemantics(response);
+  });
+
+  it("O7 route replay preview fails closed for missing bad unsupported unsafe success and control fixtures", async () => {
+    // 所有不可信输入都返回同一 schema 和固定 false 开关，避免 UI 猜测可回放。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-replay-blocked-"));
+    const badJsonPath = path.join(root, "bad.json");
+    const unsupportedPath = path.join(root, "unsupported.json");
+    const unsafePath = path.join(root, "unsafe.json");
+    const successPath = path.join(root, "success.json");
+    const controlPath = path.join(root, "control.json");
+    await writeFile(badJsonPath, "{bad", "utf8");
+    await writeFile(unsupportedPath, JSON.stringify({ schema: "trashbot.other.v1" }), "utf8");
+    await writeFile(unsafePath, JSON.stringify({ ...sampleRouteReplayFixture("safe-ref"), evidence_ref: "/dev/ttyUSB0" }), "utf8");
+    await writeFile(successPath, JSON.stringify({ ...sampleRouteReplayFixture("safe-ref"), note: "delivery success completed" }), "utf8");
+    await writeFile(controlPath, JSON.stringify({ ...sampleRouteReplayFixture("safe-ref"), safe_to_control: true }), "utf8");
+
+    const missing = await buildO7RouteReplayPreview({ fixtureJson: path.join(root, "missing.json") });
+    const badJson = await buildO7RouteReplayPreview({ fixtureJson: badJsonPath });
+    const unsupported = await buildO7RouteReplayPreview({ fixtureJson: unsupportedPath });
+    const unsafe = await buildO7RouteReplayPreview({ fixtureJson: unsafePath });
+    const success = await buildO7RouteReplayPreview({ fixtureJson: successPath });
+    const control = await buildO7RouteReplayPreview({ fixtureJson: controlPath });
+
+    expect(missing.input_status.status).toBe("missing");
+    expect(badJson.input_status.status).toBe("bad_json");
+    expect(unsupported.input_status.status).toBe("unsupported_schema");
+    expect(unsafe.input_status.status).toBe("unsafe_copy");
+    expect(success.input_status.status).toBe("success_claim");
+    expect(control.input_status.status).toBe("control_claim");
+    for (const response of [missing, badJson, unsupported, unsafe, success, control]) {
+      expect(response.schema).toBe("trashbot.o7.route_replay_preview.v1");
+      expect(response.preview_status).toBe("blocked_not_proven");
+      expect(response.safe_to_control).toBe(false);
+      expect(response.delivery_success).toBe(false);
+      expect(response.primary_actions_enabled).toBe(false);
+      expect(response.real_cloud_archive_connected).toBe(false);
+      expect(response.robot_control_executed).toBe(false);
+      expect(response.trajectory.frame_count).toBe(0);
+      expect(response.playback_cursor_initial_state.safe_to_play).toBe(false);
+      expect(response.blocked_reasons.length).toBeGreaterThan(0);
+      expectNoLegacyPythonGateSemantics(response);
+    }
   });
 
   it("O7 operator console acceptance guard summarizes fail-closed snapshots", () => {

@@ -6,6 +6,7 @@ export { buildHealth, buildProofBoundary } from "./proofBoundary";
 export { buildHardwareMaterialsResponse } from "./waveRoverMaterialCoverage";
 export { buildO7OperatorConsoleResponse } from "./o7OperatorConsole";
 export { buildO7OperatorConsoleAcceptanceResponse } from "./o7OperatorConsoleAcceptance";
+export { buildO7RouteReplayPreview } from "./o7RouteReplayPreview";
 import { displayRoot, ROUTE_ROOT } from "./paths";
 import { buildLoadedRouteConsoleSummary, type RouteDebugLoadOptions } from "./routeDebugLoader";
 

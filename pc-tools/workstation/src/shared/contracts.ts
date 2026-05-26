@@ -503,6 +503,97 @@ export interface O7RouteReplaySnapshot {
   next_required_evidence: string[];
 }
 
+export interface O7RouteReplayPreviewFrame {
+  frame_index: number | null;
+  timestamp_ms: number | null;
+  pose: {
+    x_m: number | null;
+    y_m: number | null;
+    yaw_rad: number | null;
+  };
+  velocity: {
+    linear_mps: number | null;
+    angular_radps: number | null;
+  };
+  state: string;
+  evidence_ref: string;
+}
+
+export interface O7RouteReplayPreviewTransition {
+  from: string;
+  to: string;
+  timestamp_ms: number | null;
+  evidence_ref: string;
+}
+
+// Fixture preview 是 O7-KR3 的 PC-only 本地 JSON 预览，不是 O6 云归档或真实回放。
+// 顶层开关额外固定 real_cloud_archive_connected=false 和 robot_control_executed=false。
+export interface O7RouteReplayPreviewResponse extends ProofFlags {
+  schema: "trashbot.o7.route_replay_preview.v1";
+  schema_version: 1;
+  preview_status: "fixture_preview_ready" | "blocked_not_proven";
+  input_status: {
+    fixture_json: string;
+    status:
+      | "loaded"
+      | "not_provided"
+      | "missing"
+      | "read_error"
+      | "bad_json"
+      | "not_object"
+      | "unsupported_schema"
+      | "unsafe_copy"
+      | "success_claim"
+      | "control_claim";
+    failure_reason: string;
+  };
+  source_fixture_schema: "trashbot.o7.route_replay_fixture.v1" | "not_loaded";
+  real_cloud_archive_connected: false;
+  robot_control_executed: false;
+  task: {
+    task_id: string;
+    robot_id: string;
+    route_id: string;
+    evidence_ref: string;
+  };
+  route_metadata: {
+    map_frame: string;
+    frame_schema: "fixture_trajectory_frame_summary_v1";
+    source: "local_json_fixture";
+  };
+  trajectory: {
+    frame_count: number;
+    sample_frames: O7RouteReplayPreviewFrame[];
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  playback_cursor_initial_state: {
+    frame_index: 0 | null;
+    timestamp_ms: number | null;
+    playing: false;
+    speed: 0;
+    safe_to_play: false;
+    status: "preview_cursor_only" | "blocked_not_proven";
+  };
+  keyframes: {
+    count: number;
+    sample_refs: string[];
+    status: "fixture_refs_only" | "blocked_not_proven";
+  };
+  evidence_refs: {
+    fixture_ref: string;
+    task_evidence_ref: string;
+    keyframe_refs: string[];
+  };
+  state_transitions: {
+    count: number;
+    sample: O7RouteReplayPreviewTransition[];
+    gaps: string[];
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 // 标注队列 snapshot 只定义 O7-KR4 的字段槽位；提交、回滚和导出必须显式关闭。
 // allowed_label_types 是未来云端 schema 的占位清单，不代表真实 annotation API 已返回。
 export interface O7LabelingQueueSnapshot {
@@ -749,6 +840,7 @@ export const API_ROUTES = [
   "/api/route/debug-summary",
   "/api/o7/operator-console",
   "/api/o7/operator-console/acceptance",
+  "/api/o7/route-replay-preview?fixtureJson=<local-json>",
   "/api/proof-boundary",
 ] as const;
 
@@ -763,6 +855,7 @@ export const NOT_PROVEN_ITEMS = [
   "real_training_or_labeling_pipeline",
   "real_o7_realtime_cloud_stream",
   "real_o7_route_replay_archive",
+  "real_o7_route_replay_fixture_preview_archive",
   "real_o7_trajectory_playback",
   "real_o7_labeling_review_queue",
   "real_o7_annotation_submit",

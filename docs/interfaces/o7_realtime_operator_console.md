@@ -9,6 +9,7 @@
 - cloud helper：`cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py::build_o7_operator_console_contract()`
 - PC API：`GET /api/o7/operator-console`
 - PC acceptance guard：`GET /api/o7/operator-console/acceptance`
+- PC fixture preview API：`GET /api/o7/route-replay-preview?fixtureJson=<local-json>`
 - PC UI：`pc-tools/workstation` 的 `O7 Console` tab
 - Board media preflight source contract：`docs/interfaces/o7_board_media_preflight.md`
 
@@ -45,6 +46,53 @@
 - `safe_command_snapshot.real_robot_ack_connected=false`
 
 PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE ROVER、Nav2、TTS 或手控命令。
+
+## Route Replay Fixture Preview
+
+`trashbot.o7.route_replay_preview.v1` 是 O7-KR3 的 PC-only 本地 fixture 预览契约。它比 `route_replay_snapshot` 前进一步：允许 reviewer 通过 query path 指定一个本地安全 JSON fixture，并由 Node adapter 生成可消费的数据摘要。但它仍不是 O6 cloud archive、不是云端历史任务查询、不是真实逐帧回放，也不代表机器人运动或投放成功。
+
+API：
+
+- `GET /api/o7/route-replay-preview?fixtureJson=<local-json>`
+
+支持的输入 schema：
+
+- `schema=trashbot.o7.route_replay_fixture.v1`
+- 可选字段：`task_id`、`robot_id`、`route_id`、`map_frame`、`trajectory_frames[]`、`keyframe_refs[]`、`state_transitions[]`、`evidence_ref`
+
+固定 fail-closed 字段：
+
+- `source=software_proof`
+- `proof_status=not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `pc_only=true`
+- `real_cloud_archive_connected=false`
+- `robot_control_executed=false`
+- `playback_cursor_initial_state.playing=false`
+- `playback_cursor_initial_state.speed=0`
+- `playback_cursor_initial_state.safe_to_play=false`
+
+输出只保留安全摘要：
+
+- `task`：`task_id`、`robot_id`、`route_id` 和脱敏后的 `evidence_ref`
+- `route_metadata`：`map_frame`、固定 `frame_schema=fixture_trajectory_frame_summary_v1`、`source=local_json_fixture`
+- `trajectory`：`frame_count` 和最多 3 个 `sample_frames`
+- `playback_cursor_initial_state`：只读初始游标，不允许播放或下发
+- `keyframes`：`count` 和限量 `sample_refs`
+- `evidence_refs`：fixture/task/keyframe 的安全引用
+- `state_transitions`：`count`、限量 `sample` 和 `gaps`
+
+Adapter 必须拒绝并返回 `preview_status=blocked_not_proven`：
+
+- query 未提供、文件缺失、读取失败、坏 JSON、顶层不是 object
+- `schema` 不是 `trashbot.o7.route_replay_fixture.v1`
+- fixture 内含绝对路径、凭证、串口、`/cmd_vel`、traceback 或其他 unsafe copy
+- fixture 声称 `delivery_success=true`、`playback_available=true`、delivery/dropoff/route replay success
+- fixture 声称 `safe_to_control=true`、`primary_actions_enabled=true`、`robot_control_executed=true` 或 command dispatch enabled
+
+该接口的 `fixture_preview_ready` 只表示本地 JSON 被压缩成安全摘要；它不提升 O7 完成度，不证明真实历史任务列表、真实轨迹 API、真实关键帧归档、真实状态转移时间线、真实云端归档、真实 playback cursor、真实机器人控制或真实 delivery success。
 
 ## Acceptance Guard
 

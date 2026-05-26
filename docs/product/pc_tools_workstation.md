@@ -19,6 +19,7 @@ pc-tools/workstation/
   src/server/evidenceAssets.ts        # Evidence JSON fixture 索引
   src/server/o7OperatorConsoleAcceptance.ts # O7 Console fail-closed acceptance guard
   src/server/o7OperatorConsole.ts     # O7 cloud-contract driven operator console draft
+  src/server/o7RouteReplayPreview.ts  # O7-KR3 本地 fixture route replay 预览摘要
   src/server/waveRoverMaterialCoverage.ts # WAVE ROVER material coverage 只读扫描
   src/server/proofBoundary.ts         # Health、Training/Labeling、Proof Boundary 契约
   src/server/paths.ts                 # 仓库内路径和安全展示路径
@@ -44,6 +45,7 @@ pc-tools/workstation/
 - `datasetAssets.ts` 只读扫描 `pc-tools/training/` 和 `pc-tools/labeling/` 的本地数据集/标注资产，不执行训练、不上传数据、不写文件。
 - `proofBoundary.ts` 集中输出 health 和 proof boundary。
 - `routeDebugLoader.ts` 只读本地 JSON 并生成 safe summary；坏 JSON、缺文件、成功声明、控制声明、敏感复制和 evidence_ref 错配均 fail-closed。
+- `o7RouteReplayPreview.ts` 只读 query 指定的本地 `trashbot.o7.route_replay_fixture.v1` JSON，并生成 `trashbot.o7.route_replay_preview.v1` 安全摘要；坏 JSON、缺文件、unsupported schema、unsafe copy、success/control claim 均 fail-closed。
 
 `pc-tools/evidence/fixtures/**` 是 Evidence Tools 的 JSON fixture 来源。`pc-tools/route/` 只保留说明；Route Debug 的实际读取能力在 `pc-tools/workstation/src/server/routeDebugLoader.ts`。
 
@@ -55,6 +57,7 @@ pc-tools/workstation/
 - Training/Labeling：`GET /api/tools/training-labeling` 扫描 `pc-tools/training/` 和 `pc-tools/labeling/` 下的非 Python 资产，返回两个工作区的 roots、asset counts、manifest candidates、image/annotation counts、readiness、missing requirements 和 next actions；仍明确未接真实训练或标注流水线。
 - O7 Operator Console：`GET /api/o7/operator-console` 返回 `trashbot.o7.operator_console.v1` cloud-contract draft，展示 O7 六个 KR 的最小视图：实时地图/机器人位置、电梯状态、历史路线回放、数据标注、ASR/TTS、手控/寻路。该入口的 `contract_source` 指向 `cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py`，状态固定为 `draft_blocked_not_proven` / `observe_only`，PC 不直连小车，不发送命令，不声明真实成功。O7 Console 现在同时展示 `realtime_map_snapshot`、`elevator_state_snapshot`、`route_replay_snapshot`、`labeling_queue_snapshot`、`voice_asr_tts_snapshot`、`safe_command_snapshot` 和 `board_media_preflight_summary`，让 operator 看到 map_ref、map frame、pose freshness、route membership、电梯状态链、楼层证据、人工接管原因、历史回放 task selector、selected task、trajectory frame count/sample、playback cursor/status、keyframe/evidence refs、state transition gaps、标注 review queue、selected item、label schema、allowed label types、draft labels、submit/rollback audit、dataset export 缺口、ASR stream status、partial/final transcript 槽位、TTS draft/voice profile、speaker dispatch/ACK/audit 缺口、手动转向 envelope、velocity/steering limits、navigate goal envelope、map goal slot、cloud command endpoint、idempotency key、confirmation policy、robot ACK status、timeout/cancel/stop/recovery evidence gaps 以及板端 RTC/摄像头/音频/ASR/TTS/on-robot media smoke 缺口，但仍不能替代真实上车 smoke、真实 ROS2 `/tf`、真实地图、真实电梯、真实历史任务归档、真实逐帧回放、真实标注队列、真实标注提交/回滚、真实训练集导出、真实 ASR 输入流、真实 TTS 播放、真实 speaker ACK、真实云端 voice API、真实 safe command API、真实 robot ACK、真实手控/键盘/寻路、真实 cancel/stop/recovery、真实底盘安全或 <2s 延迟证明。
 - O7 Operator Console Acceptance：`GET /api/o7/operator-console/acceptance` 从 `buildO7OperatorConsoleResponse()` 生成 `trashbot.o7.operator_console_acceptance.v1` 只读验收摘要，自动检查六个 KR snapshot schema、关键 fail-closed 字段、command/voice/labeling/route replay 禁用入口和危险外推 marker。该入口不读取硬件、不发送命令、不连接云端生产，也不在 UI 中呈现为真实 O7 能力。
+- O7 Route Replay Fixture Preview：`GET /api/o7/route-replay-preview?fixtureJson=<local-json>` 读取用户显式指定的本地安全 JSON fixture，支持 `trashbot.o7.route_replay_fixture.v1`，并返回 `trashbot.o7.route_replay_preview.v1`。该入口只输出 task/route metadata、trajectory frame count、限量 sample frames、playback cursor initial state、keyframe/evidence refs、state transition count/gaps；固定 `source=software_proof`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`real_cloud_archive_connected=false`、`robot_control_executed=false`。坏 JSON、缺文件、unsupported schema、unsafe copy、success/control claim 均 fail-closed。它不是 O6 cloud archive，不是云端历史任务查询，不提供播放按钮，不读取 ROS graph，不发命令，不读取硬件。
 - Proof Boundary：集中展示软件证明能覆盖什么、不能覆盖什么，避免误读为真实硬件或交付证明。
 
 ## O7 Operator Console 边界
@@ -97,6 +100,8 @@ O7 Operator Console 是云端契约驱动的最小运营视图，不是实时控
 - PC 端展示 board media preflight 缺口只说明 operator 能看见下一步证据清单，不证明真实 RTC、真实摄像头、真实音频、真实 ASR/TTS 或真实控制完成。
 - PC 端展示 realtime/elevator snapshot 只说明 operator 能看见 O7-KR1/KR2 的字段槽位，不证明实时流接通、真实地图定位、真实电梯状态或历史电梯状态链回放。
 - PC 端展示 route replay snapshot 只说明 operator 能看见 O7-KR3 的字段槽位，不证明 O6 cloud archive、历史任务列表、轨迹 API、关键帧 evidence refs、状态转移时间线或真实逐帧回放已经可用。
+- `GET /api/o7/route-replay-preview?fixtureJson=<local-json>` 只说明 PC 能把本地 fixture 压成安全摘要。即使返回 `preview_status=fixture_preview_ready`，也不证明 O6 cloud archive 接通、真实历史任务存在、真实轨迹可播放、真实关键帧归档存在、真实状态转移时间线完整、真实机器人运动或真实 delivery success。
+- route replay fixture preview 的输入只允许 `trashbot.o7.route_replay_fixture.v1`。输出不复制绝对路径、凭证、串口、`/cmd_vel` 或完整原始 frame payload；仅保留限量 sample frames、限量 keyframe refs 和限量 state transition sample。`playback_cursor_initial_state.safe_to_play=false`，UI 不得基于该接口提供播放、恢复、控制、下发或云端归档成功文案。
 - PC 端展示 labeling queue snapshot 只说明 operator 能看见 O7-KR4 的字段槽位，不证明 O6 annotation API、真实 review queue、真实截图/帧、真实提交、真实回滚、真实审计日志或训练集导出已经可用。
 - PC 端展示 voice ASR/TTS snapshot 只说明 operator 能看见 O7-KR5 的字段槽位，不证明真实语音监听、真实 ASR partial/final、真实 TTS 发送/播放、真实 speaker ACK、真实音频设备、真实 RTC 或真实云端 voice API 已经可用。
 - PC 端展示 safe command snapshot 只说明 operator 能看见 O7-KR6 的字段槽位，不证明真实手动转向、真实速度控制、真实转向控制、真实键盘控制、真实自动寻路下发、真实 robot ACK、真实 timeout/cancel/stop/recovery 或真实底盘安全已经可用。
