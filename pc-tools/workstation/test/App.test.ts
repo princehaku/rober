@@ -1128,6 +1128,11 @@ describe("App", () => {
     expect(wrapper.text()).not.toContain("/cmd_vel");
     expect(wrapper.findAll("button").map((button) => button.text())).not.toContain("Manual turn envelope");
     expect(wrapper.text()).not.toMatch(/ready[_ ]?to[_ ]?control/i);
+    expect(wrapper.text()).not.toMatch(/success[_ -]?claim[_ -]?allowed=true/i);
+    expect(wrapper.text()).not.toMatch(/\bpass=true\b/i);
+    expect(wrapper.text()).not.toMatch(/\bpassed=true\b/i);
+    expect(wrapper.text()).not.toContain("/dev/ttyUSB");
+    expect(wrapper.text()).not.toContain("/dev/ttyACM");
     expect(wrapper.text()).not.toMatch(/success[_ ]?claim[_ ]?allowed true/i);
     expect(wrapper.text()).not.toMatch(/submit enabledtrue/i);
     expect(wrapper.text()).not.toMatch(/rollback enabledtrue/i);

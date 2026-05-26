@@ -6,6 +6,7 @@ import {
   buildEvidenceToolsResponse,
   buildHardwareMaterialsResponse,
   buildHealth,
+  buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
   buildProofBoundary,
   buildRouteDebugSummary,
@@ -633,5 +634,72 @@ describe("workstation fail-closed API contracts", () => {
     expect(JSON.stringify(response)).not.toContain("/dev/ttyUSB");
     expect(JSON.stringify(response)).not.toMatch(/ready[_ ]?to[_ ]?control/i);
     expectNoLegacyPythonGateSemantics(response);
+  });
+
+  it("O7 operator console acceptance guard summarizes fail-closed snapshots", () => {
+    // Acceptance guard 从 source builder 派生，复核六个 KR snapshot 和禁用入口仍然关闸。
+    const acceptance = buildO7OperatorConsoleAcceptanceResponse();
+
+    expect(acceptance.schema).toBe("trashbot.o7.operator_console_acceptance.v1");
+    expect(acceptance.source_response_schema).toBe("trashbot.o7.operator_console.v1");
+    expect(acceptance.source_endpoint).toBe("/api/o7/operator-console");
+    expect(acceptance.guard_endpoint).toBe("/api/o7/operator-console/acceptance");
+    expect(acceptance.evidence_boundary).toBe("software_proof_o7_operator_console_acceptance_guard");
+    expect(acceptance.safe_to_control).toBe(false);
+    expect(acceptance.primary_actions_enabled).toBe(false);
+    expect(acceptance.delivery_success).toBe(false);
+    expect(acceptance.reads_hardware).toBe(false);
+    expect(acceptance.sends_commands).toBe(false);
+    expect(acceptance.connects_cloud_production).toBe(false);
+    expect(acceptance.six_kr_snapshots_present).toBe(true);
+    expect(acceptance.snapshot_schema_keys).toEqual([
+      "board_media_preflight_summary",
+      "realtime_map_snapshot",
+      "elevator_state_snapshot",
+      "route_replay_snapshot",
+      "labeling_queue_snapshot",
+      "voice_asr_tts_snapshot",
+      "safe_command_snapshot",
+    ]);
+    expect(Object.values(acceptance.snapshot_schemas)).toEqual(
+      expect.arrayContaining([
+        "trashbot.o7_board_media_preflight.v1",
+        "trashbot.o7.realtime_map_snapshot.v1",
+        "trashbot.o7.elevator_state_snapshot.v1",
+        "trashbot.o7.route_replay_snapshot.v1",
+        "trashbot.o7.labeling_queue_snapshot.v1",
+        "trashbot.o7.voice_asr_tts_snapshot.v1",
+        "trashbot.o7.safe_command_snapshot.v1",
+      ]),
+    );
+    expect(acceptance.fail_closed_checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "top_level_safe_to_control", actual: false }),
+        expect.objectContaining({ id: "top_level_primary_actions_enabled", actual: false }),
+        expect.objectContaining({ id: "top_level_delivery_success", actual: false }),
+      ]),
+    );
+    expect(acceptance.disabled_entry_checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "safe_command_command_dispatch_enabled", actual: false }),
+        expect.objectContaining({ id: "safe_command_manual_control_enabled", actual: false }),
+        expect.objectContaining({ id: "safe_command_navigate_goal_enabled", actual: false }),
+        expect.objectContaining({ id: "safe_command_keyboard_control_enabled", actual: false }),
+        expect.objectContaining({ id: "voice_tts_send_enabled", actual: false }),
+        expect.objectContaining({ id: "labeling_submit_enabled", actual: false }),
+        expect.objectContaining({ id: "route_replay_playback_available", actual: false }),
+      ]),
+    );
+    expect(acceptance.dangerous_marker_scan.markers_absent).toBe(true);
+    expect(acceptance.dangerous_marker_scan.matched_marker_ids).toEqual([]);
+    expect(acceptance.acceptance_verdict).toBe("blocked_not_proven_guard_ok");
+    expect(acceptance.not_real_capability_proof).toBe(true);
+    expect(acceptance.remaining_gaps).toContain("real_safe_command_dispatch_not_proven");
+    expect(JSON.stringify(acceptance)).not.toContain("/cmd_vel");
+    expect(JSON.stringify(acceptance)).not.toContain("/dev/ttyUSB");
+    expect(JSON.stringify(acceptance)).not.toContain("/dev/ttyACM");
+    expect(JSON.stringify(acceptance)).not.toMatch(/ready[_ -]?to[_ -]?control/i);
+    expect(JSON.stringify(acceptance)).not.toContain("delivery_success=true");
+    expect(JSON.stringify(acceptance)).not.toContain("command_dispatch_enabled=true");
   });
 });

@@ -677,6 +677,48 @@ export interface O7OperatorConsoleResponse extends ProofFlags {
   recovery_paths: string[];
 }
 
+export type O7OperatorConsoleSnapshotKey =
+  | "board_media_preflight_summary"
+  | "realtime_map_snapshot"
+  | "elevator_state_snapshot"
+  | "route_replay_snapshot"
+  | "labeling_queue_snapshot"
+  | "voice_asr_tts_snapshot"
+  | "safe_command_snapshot";
+
+export interface O7OperatorConsoleAcceptanceCheck {
+  id: string;
+  status: "blocked_not_proven";
+  expected: false | string[];
+  actual: false | string[];
+}
+
+// Acceptance guard 只从 O7 console 响应派生只读验收摘要，不连接云端、硬件或 ROS2。
+// 它验证六个 KR 对应的快照和 fail-closed 开关仍在，而不是证明 O7 真实能力完成。
+export interface O7OperatorConsoleAcceptanceResponse extends ProofFlags {
+  schema: "trashbot.o7.operator_console_acceptance.v1";
+  source_response_schema: "trashbot.o7.operator_console.v1";
+  source_endpoint: "/api/o7/operator-console";
+  guard_endpoint: "/api/o7/operator-console/acceptance";
+  evidence_boundary: "software_proof_o7_operator_console_acceptance_guard";
+  reads_hardware: false;
+  sends_commands: false;
+  connects_cloud_production: false;
+  six_kr_snapshots_present: true;
+  snapshot_schema_keys: O7OperatorConsoleSnapshotKey[];
+  snapshot_schemas: Record<O7OperatorConsoleSnapshotKey, string>;
+  fail_closed_checks: O7OperatorConsoleAcceptanceCheck[];
+  disabled_entry_checks: O7OperatorConsoleAcceptanceCheck[];
+  dangerous_marker_scan: {
+    checked_marker_ids: string[];
+    matched_marker_ids: [];
+    markers_absent: true;
+  };
+  acceptance_verdict: "blocked_not_proven_guard_ok";
+  not_real_capability_proof: true;
+  remaining_gaps: string[];
+}
+
 // Health 只证明 Node API 存活，不证明机器人在线。
 export interface HealthResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.health.v1";
@@ -706,6 +748,7 @@ export const API_ROUTES = [
   "/api/tools/training-labeling",
   "/api/route/debug-summary",
   "/api/o7/operator-console",
+  "/api/o7/operator-console/acceptance",
   "/api/proof-boundary",
 ] as const;
 

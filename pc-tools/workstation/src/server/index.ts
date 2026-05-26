@@ -5,6 +5,7 @@ import {
   buildEvidenceToolsResponse,
   buildHardwareMaterialsResponse,
   buildHealth,
+  buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
   buildProofBoundary,
   buildRouteDebugSummary,
@@ -66,6 +67,11 @@ app.get("/api/route/debug-summary", async (req, res) => {
 app.get("/api/o7/operator-console", (_req, res) => {
   // O7 console 只返回 cloud contract draft，不连接机器人、不发送控制命令。
   res.json(buildO7OperatorConsoleResponse());
+});
+
+app.get("/api/o7/operator-console/acceptance", (_req, res) => {
+  // Acceptance guard 只复核 O7 console 响应，不读取硬件、不发命令、不连接云端生产。
+  res.json(buildO7OperatorConsoleAcceptanceResponse());
 });
 
 app.get("/api/proof-boundary", (_req, res) => {

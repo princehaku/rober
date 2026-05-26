@@ -17,6 +17,7 @@ pc-tools/workstation/
   src/server/catalog.ts               # Route Debug 响应聚合
   src/server/datasetAssets.ts         # Training/Labeling 本地资产只读清单
   src/server/evidenceAssets.ts        # Evidence JSON fixture 索引
+  src/server/o7OperatorConsoleAcceptance.ts # O7 Console fail-closed acceptance guard
   src/server/o7OperatorConsole.ts     # O7 cloud-contract driven operator console draft
   src/server/waveRoverMaterialCoverage.ts # WAVE ROVER material coverage 只读扫描
   src/server/proofBoundary.ts         # Health、Training/Labeling、Proof Boundary 契约
@@ -53,6 +54,7 @@ pc-tools/workstation/
 - Hardware Materials：`GET /api/hardware/wave-rover/material-coverage` 扫描 `pc-tools/evidence/fixtures/wave_rover_*` 下的 WAVE ROVER 材料组，识别 `feedback_T1001.log`、项目侧 `odom_once.jsonl`、项目侧 `imu_once.jsonl`、项目侧 `battery_once.jsonl`、`operator_hil_report` / `operator_hil_report.json` 的 present/missing coverage，并在 Vue 面板中展示 `fixture_groups`、`gaps`、vendor source、串口参考、命令事实和 `not_proven_boundaries`。兼容旧路径 `GET /api/tools/hardware-materials`，但新 UI 入口使用前者。
 - Training/Labeling：`GET /api/tools/training-labeling` 扫描 `pc-tools/training/` 和 `pc-tools/labeling/` 下的非 Python 资产，返回两个工作区的 roots、asset counts、manifest candidates、image/annotation counts、readiness、missing requirements 和 next actions；仍明确未接真实训练或标注流水线。
 - O7 Operator Console：`GET /api/o7/operator-console` 返回 `trashbot.o7.operator_console.v1` cloud-contract draft，展示 O7 六个 KR 的最小视图：实时地图/机器人位置、电梯状态、历史路线回放、数据标注、ASR/TTS、手控/寻路。该入口的 `contract_source` 指向 `cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py`，状态固定为 `draft_blocked_not_proven` / `observe_only`，PC 不直连小车，不发送命令，不声明真实成功。O7 Console 现在同时展示 `realtime_map_snapshot`、`elevator_state_snapshot`、`route_replay_snapshot`、`labeling_queue_snapshot`、`voice_asr_tts_snapshot`、`safe_command_snapshot` 和 `board_media_preflight_summary`，让 operator 看到 map_ref、map frame、pose freshness、route membership、电梯状态链、楼层证据、人工接管原因、历史回放 task selector、selected task、trajectory frame count/sample、playback cursor/status、keyframe/evidence refs、state transition gaps、标注 review queue、selected item、label schema、allowed label types、draft labels、submit/rollback audit、dataset export 缺口、ASR stream status、partial/final transcript 槽位、TTS draft/voice profile、speaker dispatch/ACK/audit 缺口、手动转向 envelope、velocity/steering limits、navigate goal envelope、map goal slot、cloud command endpoint、idempotency key、confirmation policy、robot ACK status、timeout/cancel/stop/recovery evidence gaps 以及板端 RTC/摄像头/音频/ASR/TTS/on-robot media smoke 缺口，但仍不能替代真实上车 smoke、真实 ROS2 `/tf`、真实地图、真实电梯、真实历史任务归档、真实逐帧回放、真实标注队列、真实标注提交/回滚、真实训练集导出、真实 ASR 输入流、真实 TTS 播放、真实 speaker ACK、真实云端 voice API、真实 safe command API、真实 robot ACK、真实手控/键盘/寻路、真实 cancel/stop/recovery、真实底盘安全或 <2s 延迟证明。
+- O7 Operator Console Acceptance：`GET /api/o7/operator-console/acceptance` 从 `buildO7OperatorConsoleResponse()` 生成 `trashbot.o7.operator_console_acceptance.v1` 只读验收摘要，自动检查六个 KR snapshot schema、关键 fail-closed 字段、command/voice/labeling/route replay 禁用入口和危险外推 marker。该入口不读取硬件、不发送命令、不连接云端生产，也不在 UI 中呈现为真实 O7 能力。
 - Proof Boundary：集中展示软件证明能覆盖什么、不能覆盖什么，避免误读为真实硬件或交付证明。
 
 ## O7 Operator Console 边界
@@ -98,6 +100,7 @@ O7 Operator Console 是云端契约驱动的最小运营视图，不是实时控
 - PC 端展示 labeling queue snapshot 只说明 operator 能看见 O7-KR4 的字段槽位，不证明 O6 annotation API、真实 review queue、真实截图/帧、真实提交、真实回滚、真实审计日志或训练集导出已经可用。
 - PC 端展示 voice ASR/TTS snapshot 只说明 operator 能看见 O7-KR5 的字段槽位，不证明真实语音监听、真实 ASR partial/final、真实 TTS 发送/播放、真实 speaker ACK、真实音频设备、真实 RTC 或真实云端 voice API 已经可用。
 - PC 端展示 safe command snapshot 只说明 operator 能看见 O7-KR6 的字段槽位，不证明真实手动转向、真实速度控制、真实转向控制、真实键盘控制、真实自动寻路下发、真实 robot ACK、真实 timeout/cancel/stop/recovery 或真实底盘安全已经可用。
+- `GET /api/o7/operator-console/acceptance` 是 O7 Console 的 acceptance guard。它必须保持 `reads_hardware=false`、`sends_commands=false`、`connects_cloud_production=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`not_real_capability_proof=true`，并复核 `command_dispatch_enabled=false`、`manual_control_enabled=false`、`navigate_goal_enabled=false`、`keyboard_control_enabled=false`、`tts_send_enabled=false`、`submit_enabled=false`、`playback_available=false`。该 guard 的 `blocked_not_proven_guard_ok` 只说明 fail-closed 契约未漂移，不证明 O7 任一真实能力完成。
 
 ## Training/Labeling Asset Inventory 边界
 

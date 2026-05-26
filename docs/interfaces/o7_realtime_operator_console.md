@@ -8,6 +8,7 @@
 
 - cloud helper：`cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py::build_o7_operator_console_contract()`
 - PC API：`GET /api/o7/operator-console`
+- PC acceptance guard：`GET /api/o7/operator-console/acceptance`
 - PC UI：`pc-tools/workstation` 的 `O7 Console` tab
 - Board media preflight source contract：`docs/interfaces/o7_board_media_preflight.md`
 
@@ -44,6 +45,37 @@
 - `safe_command_snapshot.real_robot_ack_connected=false`
 
 PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE ROVER、Nav2、TTS 或手控命令。
+
+## Acceptance Guard
+
+`trashbot.o7.operator_console_acceptance.v1` 是从 `buildO7OperatorConsoleResponse()` 派生的只读验收摘要，用于防止 O7 Console 的 fail-closed 契约在后续修改中漂移。它不是新的实机能力，不读取硬件、不发送命令、不连接云端生产，也不提升 O7 完成度。
+
+固定边界：
+
+- `source_response_schema=trashbot.o7.operator_console.v1`
+- `source_endpoint=/api/o7/operator-console`
+- `guard_endpoint=/api/o7/operator-console/acceptance`
+- `evidence_boundary=software_proof_o7_operator_console_acceptance_guard`
+- `reads_hardware=false`
+- `sends_commands=false`
+- `connects_cloud_production=false`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `not_real_capability_proof=true`
+
+Guard 必须自动复核：
+
+- O7-KR1 到 O7-KR6 对应的六个 snapshot schema 均存在：`realtime_map_snapshot`、`elevator_state_snapshot`、`route_replay_snapshot`、`labeling_queue_snapshot`、`voice_asr_tts_snapshot`、`safe_command_snapshot`。
+- `board_media_preflight_summary` 作为 KR5 前置缺口 summary 仍存在，且保持 `safe_to_control=false`、`primary_actions_enabled=false`。
+- 顶层 `safe_to_control=false`、`primary_actions_enabled=false`、`delivery_success=false`。
+- `manual_control_policy` 与 `safe_command_snapshot` 的 `command_dispatch_enabled=false`、`manual_control_enabled=false`、`navigate_goal_enabled=false`、`keyboard_control_enabled=false`。
+- `voice_asr_tts_snapshot.tts_send_enabled=false`。
+- `labeling_queue_snapshot.submit_enabled=false`。
+- `route_replay_snapshot.playback_available=false`。
+- 序列化后的 source response 不出现 `/cmd_vel`、USB/ACM 串口设备、ready-to-control 文案、`delivery_success=true`、`success_claim_allowed=true` 或 `pass=true` 类危险外推。
+
+`acceptance_verdict=blocked_not_proven_guard_ok` 只表示上述 guard 条件仍保持，不表示真实 RTC/视频、ASR/TTS、地图、电梯、回放、标注、手控、寻路、robot ACK、cancel/stop/recovery 或底盘安全已经完成。
 
 ## Realtime Map Snapshot
 
