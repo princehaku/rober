@@ -5,6 +5,7 @@ import type {
   O7OperatorConsoleResponse,
   O7OperatorKrView,
   O7RealtimeMapSnapshot,
+  O7RouteReplaySnapshot,
 } from "../shared/contracts";
 
 const CONTRACT_SOURCE = "cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py" as const;
@@ -211,11 +212,100 @@ const ELEVATOR_STATE_SNAPSHOT: O7ElevatorStateSnapshot = {
   ],
 };
 
+const ROUTE_REPLAY_SNAPSHOT: O7RouteReplaySnapshot = {
+  schema: "trashbot.o7.route_replay_snapshot.v1",
+  schema_version: 1,
+  source: "software_proof",
+  snapshot_status: "blocked_not_proven",
+  safe_to_control: false,
+  primary_actions_enabled: false,
+  playback_available: false,
+  real_archive_connected: false,
+  task_selector: {
+    source_contract: "history.route_replay.v1",
+    status: "blocked_no_cloud_task_archive",
+    available_task_count: 0,
+    selected_task_id: "not_connected",
+    task_list_ref: "missing_o6_cloud_task_archive",
+    selection_required: true,
+  },
+  selected_task: {
+    task_id: "not_connected",
+    robot_id: "not_connected",
+    route_id: "not_connected",
+    started_at_ms: null,
+    completed_at_ms: null,
+    status: "not_proven",
+    evidence_ref: "missing_selected_task_record",
+  },
+  trajectory: {
+    frame_count: 0,
+    sample_frames: [],
+    frame_schema: "pending_cloud_trajectory_frame_v1",
+    map_frame: "not_connected",
+    status: "blocked_no_trajectory_api",
+  },
+  playback_cursor: {
+    frame_index: null,
+    timestamp_ms: null,
+    playing: false,
+    speed: 0,
+    status: "blocked_not_available",
+  },
+  keyframes: {
+    count: 0,
+    sample_refs: [],
+    status: "blocked_no_keyframe_archive",
+  },
+  evidence_refs: {
+    task_archive: "missing_o6_cloud_task_archive",
+    trajectory_api: "missing_trajectory_api",
+    keyframe_archive: "missing_keyframe_archive",
+    state_transition_archive: "missing_state_transition_archive",
+  },
+  state_transitions: {
+    count: 0,
+    sample: [],
+    status: "blocked_no_state_transition_archive",
+    gaps: [
+      "cloud_task_archive_not_connected",
+      "trajectory_frame_schema_not_backfilled",
+      "keyframe_evidence_refs_not_backfilled",
+      "state_transition_timeline_not_backfilled",
+    ],
+  },
+  blocked_reasons: [
+    "o6_cloud_task_archive_not_connected",
+    "history_route_replay_api_draft",
+    "trajectory_frames_not_available",
+    "keyframe_evidence_refs_not_available",
+    "state_transitions_not_available",
+  ],
+  not_proven: [
+    "real_history_task_list",
+    "real_selected_task",
+    "real_trajectory_frames",
+    "real_route_playback_cursor",
+    "real_keyframe_evidence_refs",
+    "real_state_transition_timeline",
+    "cloud_archive_query_latency",
+  ],
+  next_required_evidence: [
+    "o6_cloud_task_archive_query_contract",
+    "history_route_replay_task_list_fixture",
+    "trajectory_frame_schema_with_map_frame_and_timestamp",
+    "keyframe_evidence_ref_archive_sample",
+    "state_transition_timeline_archive_sample",
+    "pc_playback_cursor_bound_to_cloud_frames_without_robot_control",
+  ],
+};
+
 export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
   // 这里与 cloud-relay helper 固定同一 schema；PC 只消费契约快照，不连接小车。
   // 六个 KR 都保留 draft/blocked/not_proven，避免 UI 把占位面板外推成真实 O7 能力。
   // 板端媒体 preflight 暂用静态 fail-closed 摘要，直到 cloud 提供真实板端 JSON。
   // 地图和电梯 snapshot 只让 operator 看见字段契约，不能被前端解释为 ROS2 实时流。
+  // 路线回放 snapshot 只锁定 O6 归档 API 的对接字段，当前不能渲染为可播放历史任务。
   return {
     schema: "trashbot.o7.operator_console.v1",
     ...PROOF_FLAGS,
@@ -231,6 +321,7 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
     board_media_preflight_summary: BOARD_MEDIA_PREFLIGHT_SUMMARY,
     realtime_map_snapshot: REALTIME_MAP_SNAPSHOT,
     elevator_state_snapshot: ELEVATOR_STATE_SNAPSHOT,
+    route_replay_snapshot: ROUTE_REPLAY_SNAPSHOT,
     manual_control_policy: {
       pc_direct_robot_connection: false,
       cloud_mediated_only: true,
@@ -275,6 +366,8 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
       "real_map_pose_stream_not_proven",
       "realtime_map_snapshot_blocked",
       "elevator_state_snapshot_blocked",
+      "route_replay_snapshot_blocked",
+      "o6_cloud_task_archive_not_connected",
       "real_voice_stream_not_proven",
       "board_media_preflight_blocked",
       "manual_or_navigation_dispatch_disabled",
@@ -284,6 +377,9 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
       "real_robot_position_latency_lt_2s",
       "real_elevator_state_chain",
       "real_route_replay_archive",
+      "real_route_replay_task_selector",
+      "real_route_replay_trajectory_frames",
+      "real_route_replay_state_transitions",
       "real_annotation_submit_api",
       "real_asr_tts_runtime",
       "real_rtc_session",

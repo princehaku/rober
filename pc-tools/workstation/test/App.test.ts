@@ -486,6 +486,71 @@ const fixtures: Record<string, unknown> = {
       blocked_reasons: ["elevator_event_archive_not_connected", "floor_recognition_not_proven"],
       not_proven: ["real_elevator_state_chain", "real_human_takeover_reason"],
     },
+    route_replay_snapshot: {
+      schema: "trashbot.o7.route_replay_snapshot.v1",
+      schema_version: 1,
+      source: "software_proof",
+      snapshot_status: "blocked_not_proven",
+      safe_to_control: false,
+      primary_actions_enabled: false,
+      playback_available: false,
+      real_archive_connected: false,
+      task_selector: {
+        source_contract: "history.route_replay.v1",
+        status: "blocked_no_cloud_task_archive",
+        available_task_count: 0,
+        selected_task_id: "not_connected",
+        task_list_ref: "missing_o6_cloud_task_archive",
+        selection_required: true,
+      },
+      selected_task: {
+        task_id: "not_connected",
+        robot_id: "not_connected",
+        route_id: "not_connected",
+        started_at_ms: null,
+        completed_at_ms: null,
+        status: "not_proven",
+        evidence_ref: "missing_selected_task_record",
+      },
+      trajectory: {
+        frame_count: 0,
+        sample_frames: [],
+        frame_schema: "pending_cloud_trajectory_frame_v1",
+        map_frame: "not_connected",
+        status: "blocked_no_trajectory_api",
+      },
+      playback_cursor: {
+        frame_index: null,
+        timestamp_ms: null,
+        playing: false,
+        speed: 0,
+        status: "blocked_not_available",
+      },
+      keyframes: {
+        count: 0,
+        sample_refs: [],
+        status: "blocked_no_keyframe_archive",
+      },
+      evidence_refs: {
+        task_archive: "missing_o6_cloud_task_archive",
+        trajectory_api: "missing_trajectory_api",
+        keyframe_archive: "missing_keyframe_archive",
+        state_transition_archive: "missing_state_transition_archive",
+      },
+      state_transitions: {
+        count: 0,
+        sample: [],
+        status: "blocked_no_state_transition_archive",
+        gaps: ["cloud_task_archive_not_connected", "state_transition_timeline_not_backfilled"],
+      },
+      blocked_reasons: ["o6_cloud_task_archive_not_connected", "trajectory_frames_not_available"],
+      not_proven: ["real_history_task_list", "real_trajectory_frames", "real_state_transition_timeline"],
+      next_required_evidence: [
+        "o6_cloud_task_archive_query_contract",
+        "trajectory_frame_schema_with_map_frame_and_timestamp",
+        "pc_playback_cursor_bound_to_cloud_frames_without_robot_control",
+      ],
+    },
     manual_control_policy: {
       pc_direct_robot_connection: false,
       cloud_mediated_only: true,
@@ -743,6 +808,14 @@ describe("App", () => {
     expect(wrapper.text()).toContain("not_connected:not_proven");
     expect(wrapper.text()).toContain("real_elevator_state_chain_not_proven");
     expect(wrapper.text()).toContain("floor_recognition_not_proven");
+    expect(wrapper.text()).toContain("Route replay snapshot");
+    expect(wrapper.text()).toContain("trashbot.o7.route_replay_snapshot.v1");
+    expect(wrapper.text()).toContain("blocked_no_cloud_task_archive");
+    expect(wrapper.text()).toContain("frame_count=0");
+    expect(wrapper.text()).toContain("blocked_not_available");
+    expect(wrapper.text()).toContain("missing_keyframe_archive");
+    expect(wrapper.text()).toContain("state_transition_timeline_not_backfilled");
+    expect(wrapper.text()).toContain("o6_cloud_task_archive_query_contract");
     expect(wrapper.text()).toContain("O7-KR1");
     expect(wrapper.text()).toContain("O7-KR6");
     expect(wrapper.text()).toContain("operator.safe_command_preview.v1");

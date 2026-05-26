@@ -133,6 +133,104 @@ defineProps<{
       </article>
     </div>
 
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <!-- 路线回放 snapshot 只展示 O6 归档对接字段，不能把 playback_available=false 渲染成播放器。 -->
+        <h3>Route replay snapshot</h3>
+        <span class="pill danger">{{
+          operatorConsole?.route_replay_snapshot.snapshot_status ?? "blocked_not_proven"
+        }}</span>
+      </div>
+      <div class="two-col">
+        <dl class="kv compact-kv">
+          <!-- task selector 固定无真实任务列表，避免 operator 误以为可选择历史任务。 -->
+          <dt>schema</dt>
+          <dd>{{ operatorConsole?.route_replay_snapshot.schema ?? "trashbot.o7.route_replay_snapshot.v1" }}</dd>
+          <dt>task selector</dt>
+          <dd>
+            {{ operatorConsole?.route_replay_snapshot.task_selector.status ?? "blocked_no_cloud_task_archive" }}
+            · count={{ operatorConsole?.route_replay_snapshot.task_selector.available_task_count ?? 0 }}
+          </dd>
+          <dt>selected task</dt>
+          <dd>
+            {{ operatorConsole?.route_replay_snapshot.selected_task.task_id ?? "not_connected" }}
+            · evidence={{
+              operatorConsole?.route_replay_snapshot.selected_task.evidence_ref ?? "missing_selected_task_record"
+            }}
+          </dd>
+          <dt>trajectory</dt>
+          <dd>
+            frame_count={{ operatorConsole?.route_replay_snapshot.trajectory.frame_count ?? 0 }}
+            · sample_frames={{
+              operatorConsole?.route_replay_snapshot.trajectory.sample_frames.length ?? 0
+            }}
+            · {{ operatorConsole?.route_replay_snapshot.trajectory.status ?? "blocked_no_trajectory_api" }}
+          </dd>
+          <dt>playback cursor</dt>
+          <dd>
+            frame={{ operatorConsole?.route_replay_snapshot.playback_cursor.frame_index ?? "null" }}
+            · ts={{ operatorConsole?.route_replay_snapshot.playback_cursor.timestamp_ms ?? "null" }}
+            · {{ operatorConsole?.route_replay_snapshot.playback_cursor.status ?? "blocked_not_available" }}
+          </dd>
+          <dt>playback available</dt>
+          <dd>{{ operatorConsole?.route_replay_snapshot.playback_available ?? false }}</dd>
+          <dt>real archive</dt>
+          <dd>{{ operatorConsole?.route_replay_snapshot.real_archive_connected ?? false }}</dd>
+        </dl>
+        <dl class="kv compact-kv">
+          <!-- keyframe/evidence refs 当前都是 missing token，只给未来真实 archive 留槽。 -->
+          <dt>keyframes</dt>
+          <dd>
+            count={{ operatorConsole?.route_replay_snapshot.keyframes.count ?? 0 }}
+            · refs={{ operatorConsole?.route_replay_snapshot.keyframes.sample_refs.length ?? 0 }}
+            · {{ operatorConsole?.route_replay_snapshot.keyframes.status ?? "blocked_no_keyframe_archive" }}
+          </dd>
+          <dt>task archive ref</dt>
+          <dd>{{ operatorConsole?.route_replay_snapshot.evidence_refs.task_archive ?? "missing_o6_cloud_task_archive" }}</dd>
+          <dt>trajectory ref</dt>
+          <dd>{{ operatorConsole?.route_replay_snapshot.evidence_refs.trajectory_api ?? "missing_trajectory_api" }}</dd>
+          <dt>keyframe ref</dt>
+          <dd>{{ operatorConsole?.route_replay_snapshot.evidence_refs.keyframe_archive ?? "missing_keyframe_archive" }}</dd>
+          <dt>transition ref</dt>
+          <dd>
+            {{
+              operatorConsole?.route_replay_snapshot.evidence_refs.state_transition_archive ??
+                "missing_state_transition_archive"
+            }}
+          </dd>
+          <dt>state transitions</dt>
+          <dd>
+            count={{ operatorConsole?.route_replay_snapshot.state_transitions.count ?? 0 }}
+            · sample={{ operatorConsole?.route_replay_snapshot.state_transitions.sample.length ?? 0 }}
+            · {{
+              operatorConsole?.route_replay_snapshot.state_transitions.status ??
+                "blocked_no_state_transition_archive"
+            }}
+          </dd>
+        </dl>
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>State transition gaps</h3>
+          <ul class="dense">
+            <!-- gaps 是后续归档字段缺口，不代表 PC 已经查询过真实任务。 -->
+            <li v-for="gap in operatorConsole?.route_replay_snapshot.state_transitions.gaps" :key="gap">
+              {{ gap }}
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h3>Next evidence</h3>
+          <ul class="dense">
+            <!-- next evidence 指向 O6 cloud archive/trajectory API，对当前页面仍是只读缺口。 -->
+            <li v-for="item in operatorConsole?.route_replay_snapshot.next_required_evidence" :key="item">
+              {{ item }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
     <article class="preflight-panel">
       <div class="section-head compact-head">
         <!-- 板端媒体摘要来自 API；缺省值也保持 blocked，避免页面加载失败时显示可用。 -->

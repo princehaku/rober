@@ -346,6 +346,70 @@ export interface O7ElevatorStateSnapshot {
   not_proven: string[];
 }
 
+// 历史路线回放 snapshot 只定义 O7-KR3 需要的字段槽位，不能被 UI 当作真实归档。
+// playback_available 和 real_archive_connected 固定 false，是为了让未来接 O6 API 前保持关闸。
+export interface O7RouteReplaySnapshot {
+  schema: "trashbot.o7.route_replay_snapshot.v1";
+  schema_version: 1;
+  source: "software_proof";
+  snapshot_status: "blocked_not_proven";
+  safe_to_control: false;
+  primary_actions_enabled: false;
+  playback_available: false;
+  real_archive_connected: false;
+  task_selector: {
+    source_contract: "history.route_replay.v1";
+    status: "blocked_no_cloud_task_archive";
+    available_task_count: 0;
+    selected_task_id: "not_connected";
+    task_list_ref: "missing_o6_cloud_task_archive";
+    selection_required: true;
+  };
+  selected_task: {
+    task_id: "not_connected";
+    robot_id: "not_connected";
+    route_id: "not_connected";
+    started_at_ms: null;
+    completed_at_ms: null;
+    status: "not_proven";
+    evidence_ref: "missing_selected_task_record";
+  };
+  trajectory: {
+    frame_count: 0;
+    sample_frames: [];
+    frame_schema: "pending_cloud_trajectory_frame_v1";
+    map_frame: "not_connected";
+    status: "blocked_no_trajectory_api";
+  };
+  playback_cursor: {
+    frame_index: null;
+    timestamp_ms: null;
+    playing: false;
+    speed: 0;
+    status: "blocked_not_available";
+  };
+  keyframes: {
+    count: 0;
+    sample_refs: [];
+    status: "blocked_no_keyframe_archive";
+  };
+  evidence_refs: {
+    task_archive: "missing_o6_cloud_task_archive";
+    trajectory_api: "missing_trajectory_api";
+    keyframe_archive: "missing_keyframe_archive";
+    state_transition_archive: "missing_state_transition_archive";
+  };
+  state_transitions: {
+    count: 0;
+    sample: [];
+    status: "blocked_no_state_transition_archive";
+    gaps: string[];
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+  next_required_evidence: string[];
+}
+
 // O7 Operator Console 是 cloud-contract driven 的最小视图，不能由前端伪造机器人事实。
 // command_previews 只表达将来安全 API 的 envelope，不代表按钮会发送真实控制。
 export interface O7OperatorConsoleResponse extends ProofFlags {
@@ -362,6 +426,7 @@ export interface O7OperatorConsoleResponse extends ProofFlags {
   board_media_preflight_summary: O7BoardMediaPreflightSummary;
   realtime_map_snapshot: O7RealtimeMapSnapshot;
   elevator_state_snapshot: O7ElevatorStateSnapshot;
+  route_replay_snapshot: O7RouteReplaySnapshot;
   manual_control_policy: {
     pc_direct_robot_connection: false;
     cloud_mediated_only: true;
@@ -418,6 +483,8 @@ export const NOT_PROVEN_ITEMS = [
   "real_phone_or_cloud_delivery",
   "real_training_or_labeling_pipeline",
   "real_o7_realtime_cloud_stream",
+  "real_o7_route_replay_archive",
+  "real_o7_trajectory_playback",
   "real_o7_operator_command_dispatch",
   "delivery_success",
 ] as const;
