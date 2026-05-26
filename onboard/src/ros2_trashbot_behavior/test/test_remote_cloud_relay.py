@@ -490,12 +490,14 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(body["task_list"]["tasks"], [])
 
     def test_o7_realtime_elevator_snapshot_endpoint_is_public_readonly_and_fail_closed(self):
-        status, body = self.client.request("GET", "/api/o7/realtime-elevator/snapshot", token="")
+        with mock.patch.dict(os.environ, {"TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON": ""}):
+            status, body = self.client.request("GET", "/api/o7/realtime-elevator/snapshot", token="")
 
         self.assertEqual(status, 200)
         self.assertEqual(body["schema"], "trashbot.o7.realtime_elevator_snapshot.v1")
         self.assertEqual(body["realtime_status"], "blocked_not_proven")
         self.assertEqual(body["snapshot_status"], "blocked_not_proven")
+        self.assertFalse(body["cloud_runtime_fixture_connected"])
         self.assertFalse(body["real_realtime_api_connected"])
         self.assertFalse(body["real_ros2_tf_connected"])
         self.assertFalse(body["latency_lt_2s_proven"])
@@ -512,6 +514,176 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertIsNone(body["robot_pose"])
         self.assertEqual(body["elevator_state_chain"]["samples"], [])
         self.assertIn("real_o7_realtime_cloud_stream", body["not_proven"])
+
+    def test_o7_realtime_elevator_snapshot_endpoint_reads_safe_env_fixture_summary_only(self):
+        fixture_path = pathlib.Path(self.tmp.name) / "o7_realtime_elevator_fixture.json"
+        fixture_path.write_text(
+            json.dumps(
+                {
+                    "schema": "trashbot.o7.realtime_elevator_fixture.v1",
+                    "map_ref": {
+                        "id": "map-fixture-001",
+                        "uri": "maps/office-floor.yaml",
+                        "evidence_ref": "evidence/map-summary.json",
+                    },
+                    "map_frame": "map",
+                    "robot_pose": {
+                        "x_m": 1.25,
+                        "y_m": 2.5,
+                        "yaw_rad": 0.75,
+                        "timestamp_ms": 1000,
+                        "pose_source": "fixture_pose",
+                        "evidence_ref": "pose/pose-001.json",
+                    },
+                    "pose_freshness": {
+                        "timestamp_ms": 1000,
+                        "age_ms": 350,
+                        "evidence_ref": "pose/freshness-001.json",
+                    },
+                    "route_membership": {
+                        "route_id": "route-fixture-001",
+                        "status": "fixture_route_summary",
+                        "evidence_ref": "route/membership-001.json",
+                    },
+                    "elevator_state_chain": [
+                        {
+                            "state": "waiting_for_elevator",
+                            "status": "fixture_state",
+                            "timestamp_ms": 1100,
+                            "evidence_ref": "elevator/state-001.json",
+                        },
+                        {
+                            "state": "inside_elevator",
+                            "status": "fixture_state",
+                            "timestamp_ms": 1200,
+                            "evidence_ref": "elevator/state-002.json",
+                        },
+                    ],
+                    "current_floor_evidence": {
+                        "floor_label": "F1",
+                        "confidence": 0.82,
+                        "status": "fixture_floor",
+                        "evidence_ref": "floor/current-001.json",
+                    },
+                    "human_takeover": {
+                        "reason": "fixture_operator_assist_required",
+                        "operator_action": "observe_only",
+                        "status": "fixture_takeover",
+                        "evidence_ref": "takeover/takeover-001.json",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with mock.patch.dict(os.environ, {"TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON": str(fixture_path)}):
+            status, body = self.client.request("GET", "/api/o7/realtime-elevator/snapshot", token="")
+
+        encoded = json.dumps(body, ensure_ascii=False)
+        self.assertEqual(status, 200)
+        self.assertEqual(body["snapshot_status"], "fixture_summary_ready")
+        self.assertTrue(body["cloud_runtime_fixture_connected"])
+        self.assertEqual(body["source_fixture_schema"], "trashbot.o7.realtime_elevator_fixture.v1")
+        self.assertEqual(body["map_ref"]["id"], "map-fixture-001")
+        self.assertEqual(body["map_frame"]["frame_id"], "map")
+        self.assertEqual(body["robot_pose"]["x_m"], 1.25)
+        self.assertEqual(body["robot_pose"]["y_m"], 2.5)
+        self.assertEqual(body["robot_pose"]["yaw_rad"], 0.75)
+        self.assertEqual(body["pose_freshness"]["timestamp_ms"], 1000.0)
+        self.assertEqual(body["pose_freshness"]["age_ms"], 350.0)
+        self.assertEqual(body["route_membership"]["route_id"], "route-fixture-001")
+        self.assertEqual(body["elevator_state_chain"]["sample_count"], 2)
+        self.assertEqual(body["elevator_state_chain"]["samples"][0]["state"], "waiting_for_elevator")
+        self.assertEqual(body["current_floor_evidence"]["floor_label"], "F1")
+        self.assertEqual(body["current_floor_evidence"]["confidence"], 0.82)
+        self.assertEqual(body["human_takeover"]["reason"], "fixture_operator_assist_required")
+        self.assertFalse(body["real_realtime_api_connected"])
+        self.assertFalse(body["real_ros2_tf_connected"])
+        self.assertFalse(body["latency_lt_2s_proven"])
+        self.assertFalse(body["route_membership"]["on_route"])
+        self.assertFalse(body["route_membership"]["in_elevator_zone"])
+        self.assertFalse(body["real_elevator_state_chain_connected"])
+        self.assertFalse(body["floor_recognition_proven"])
+        self.assertFalse(body["human_takeover_proven"])
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["delivery_success"])
+        self.assertFalse(body["primary_actions_enabled"])
+        self.assertFalse(body["robot_control_executed"])
+        for forbidden in ("Authorization", "Bearer", "/cmd_vel", "baudrate", "traceback"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_o7_realtime_elevator_snapshot_endpoint_blocks_unsafe_env_fixture(self):
+        fixture_path = pathlib.Path(self.tmp.name) / "unsafe_o7_realtime_elevator_fixture.json"
+        fixture_path.write_text(
+            json.dumps(
+                {
+                    "schema": "trashbot.o7.realtime_elevator_fixture.v1",
+                    "route_membership": {"route_id": "unsafe-route", "on_route": True},
+                    "robot_pose": {"evidence_ref": "Authorization: Bearer leaked-token"},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with mock.patch.dict(os.environ, {"TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON": str(fixture_path)}):
+            status, body = self.client.request("GET", "/api/o7/realtime-elevator/snapshot", token="")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(body["snapshot_status"], "blocked_not_proven")
+        self.assertEqual(body["input_status"]["failure_reason"], "unsafe_fixture_claim")
+        self.assertFalse(body["cloud_runtime_fixture_connected"])
+        self.assertIsNone(body["robot_pose"])
+        self.assertEqual(body["elevator_state_chain"]["samples"], [])
+        self.assertFalse(body["route_membership"]["on_route"])
+        self.assertFalse(body["route_membership"]["in_elevator_zone"])
+
+    def test_o7_realtime_elevator_snapshot_endpoint_sanitizes_malformed_numeric_fixture(self):
+        fixture_path = pathlib.Path(self.tmp.name) / "malformed_numeric_o7_realtime_elevator_fixture.json"
+        fixture_path.write_text(
+            json.dumps(
+                {
+                    "schema": "trashbot.o7.realtime_elevator_fixture.v1",
+                    "robot_pose": {
+                        "x_m": "nan",
+                        "y_m": "2.25",
+                        "yaw_rad": "inf",
+                        "timestamp_ms": "not-a-number",
+                    },
+                    "pose_freshness": {"timestamp_ms": "bad", "age_ms": "425"},
+                    "elevator_state_chain": [
+                        {"state": "waiting", "timestamp_ms": "bad"},
+                    ],
+                    "current_floor_evidence": {"floor_label": "F2", "confidence": "nan"},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with mock.patch.dict(os.environ, {"TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON": str(fixture_path)}):
+            status, body = self.client.request("GET", "/api/o7/realtime-elevator/snapshot", token="")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(body["snapshot_status"], "fixture_summary_ready")
+        self.assertIsNone(body["robot_pose"]["x_m"])
+        self.assertEqual(body["robot_pose"]["y_m"], 2.25)
+        self.assertIsNone(body["robot_pose"]["yaw_rad"])
+        self.assertIsNone(body["robot_pose"]["timestamp_ms"])
+        self.assertIsNone(body["pose_freshness"]["timestamp_ms"])
+        self.assertEqual(body["pose_freshness"]["age_ms"], 425.0)
+        self.assertIsNone(body["elevator_state_chain"]["samples"][0]["timestamp_ms"])
+        self.assertIsNone(body["current_floor_evidence"]["confidence"])
+        self.assertFalse(body["real_realtime_api_connected"])
+        self.assertFalse(body["real_ros2_tf_connected"])
+        self.assertFalse(body["latency_lt_2s_proven"])
+        self.assertFalse(body["route_membership"]["on_route"])
+        self.assertFalse(body["route_membership"]["in_elevator_zone"])
+        self.assertFalse(body["real_elevator_state_chain_connected"])
+        self.assertFalse(body["floor_recognition_proven"])
+        self.assertFalse(body["human_takeover_proven"])
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["delivery_success"])
+        self.assertFalse(body["primary_actions_enabled"])
+        self.assertFalse(body["robot_control_executed"])
 
     def command(self, command_id="cmd-0001", **extra):
         payload = {

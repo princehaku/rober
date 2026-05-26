@@ -87,6 +87,8 @@ O7_CLOUD_ARCHIVE_TASKS_SCHEMA = "trashbot.o7.cloud_archive_tasks.v1"
 O7_CLOUD_ARCHIVE_FIXTURE_SCHEMA = "trashbot.o7.cloud_archive_fixture.v1"
 O7_CLOUD_ARCHIVE_TASKS_ENV = "TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON"
 O7_REALTIME_ELEVATOR_SNAPSHOT_SCHEMA = "trashbot.o7.realtime_elevator_snapshot.v1"
+O7_REALTIME_ELEVATOR_FIXTURE_SCHEMA = "trashbot.o7.realtime_elevator_fixture.v1"
+O7_REALTIME_ELEVATOR_SNAPSHOT_ENV = "TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -12719,8 +12721,10 @@ def build_o7_cloud_archive_tasks_contract(archive_json=""):
     return payload
 
 
-def build_o7_realtime_elevator_snapshot_contract():
-    """返回 O7 realtime/elevator 只读 snapshot；当前不连接真实实时、/tf 或电梯链路。"""
+def _build_o7_realtime_elevator_snapshot_empty_contract(
+    failure_reason="real_realtime_api_not_connected",
+):
+    """返回 O7 realtime/elevator 空合同；fixture 失败也复用它，保证 HTTP 不抛 500。"""
 
     # 这个 contract 只为 PC probe 提供独立 HTTP schema proof，不读取 ROS2 graph、地图文件或硬件。
     # 所有会被误读成真实 KR1/KR2 进展的字段都固定 false，让下游 UI 只能显示 blocked_not_proven。
@@ -12745,6 +12749,13 @@ def build_o7_realtime_elevator_snapshot_contract():
         "primary_actions_enabled": False,
         "pc_only": True,
         "robot_control_executed": False,
+        "cloud_runtime_fixture_connected": False,
+        "input_status": {
+            "snapshot_json": "env_not_configured",
+            "status": "not_provided",
+            "failure_reason": failure_reason,
+        },
+        "source_fixture_schema": "not_loaded",
         "real_realtime_api_connected": False,
         "real_ros2_tf_connected": False,
         "latency_lt_2s_proven": False,
@@ -12817,6 +12828,284 @@ def build_o7_realtime_elevator_snapshot_contract():
             "delivery_success",
         ],
     }
+
+
+def _o7_realtime_bool_danger_key(key):
+    lowered = str(key).lower()
+    return lowered in {
+        "safe_to_control",
+        "primary_actions_enabled",
+        "robot_control_executed",
+        "delivery_success",
+        "real_realtime_api_connected",
+        "real_ros2_tf_connected",
+        "latency_lt_2s_proven",
+        "real_elevator_state_chain_connected",
+        "floor_recognition_proven",
+        "human_takeover_proven",
+        "on_route",
+        "in_elevator_zone",
+        "control_enabled",
+        "success",
+    }
+
+
+def _o7_realtime_fixture_has_unsafe_claim(value):
+    """递归拒绝会把 fixture 误读成真实 KR1/KR2 成功的声明。"""
+
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if _o7_realtime_bool_danger_key(key) and item is True:
+                return True
+            key_text = str(key).lower()
+            if ("control" in key_text or "success" in key_text) and item is True:
+                return True
+            if "real_api" in key_text or "real_tf" in key_text:
+                return True
+            if _o7_realtime_fixture_has_unsafe_claim(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_o7_realtime_fixture_has_unsafe_claim(item) for item in value)
+    if isinstance(value, str):
+        lowered = value.lower()
+        blocked_markers = (
+            "authorization",
+            "bearer",
+            "token",
+            "/cmd_vel",
+            "cmd_vel",
+            "serial",
+            "baudrate",
+            "traceback",
+            "success",
+            "control enabled",
+            "control success",
+            "real api",
+            "real tf",
+            "latency_lt_2s_proven=true",
+            "latency < 2s proven",
+            "realtime ready",
+            "realtime live",
+            "on_route=true",
+            "in_elevator_zone=true",
+            "route membership true",
+            "elevator proven",
+            "elevator connected",
+            "elevator ready",
+            "elevator live",
+            "floor_recognition_proven=true",
+            "floor recognition proven",
+            "human_takeover_proven=true",
+            "human takeover proven",
+            "hardware verified",
+            "hil pass",
+        )
+        return any(marker in lowered for marker in blocked_markers)
+    return False
+
+
+def _o7_realtime_load_fixture(fixture_json):
+    """只读取 relay runtime env 指向的本机 fixture；任何异常都降级为 blocked。"""
+
+    if not fixture_json:
+        return None, "not_provided"
+    try:
+        fixture_path = pathlib.Path(fixture_json).expanduser()
+        if not fixture_path.is_file():
+            return None, "fixture_file_not_found"
+        raw = fixture_path.read_text(encoding="utf-8")
+        if len(raw.encode("utf-8")) > 512 * 1024:
+            return None, "fixture_too_large"
+        if _o7_realtime_fixture_has_unsafe_claim(raw):
+            return None, "unsafe_fixture_claim"
+        payload = json.loads(raw)
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None, "fixture_read_or_json_failed"
+    if not isinstance(payload, dict):
+        return None, "fixture_top_level_not_object"
+    if payload.get("schema") != O7_REALTIME_ELEVATOR_FIXTURE_SCHEMA:
+        return None, "unsupported_fixture_schema"
+    if _o7_realtime_fixture_has_unsafe_claim(payload):
+        return None, "unsafe_fixture_claim"
+    return payload, ""
+
+
+def _o7_realtime_map_ref(value):
+    """map ref 只做展示摘要；路径按 basename 保留，避免泄露 relay 本机目录。"""
+
+    if isinstance(value, dict):
+        return {
+            "id": _o7_archive_safe_text(value.get("id") or value.get("map_id") or "fixture_map", 80),
+            "uri": _o7_archive_safe_ref(value.get("uri") or value.get("path") or ""),
+            "status": _o7_archive_safe_text(value.get("status") or "fixture_summary_only", 80),
+            "evidence_ref": _o7_archive_safe_ref(value.get("evidence_ref") or ""),
+        }
+    text = _o7_archive_safe_text(value or "fixture_map", 80)
+    return {
+        "id": text,
+        "uri": _o7_archive_safe_ref(value or ""),
+        "status": "fixture_summary_only",
+        "evidence_ref": "",
+    }
+
+
+def _o7_realtime_map_frame(value):
+    """兼容字符串或 object 形态，输出仍标记为 fixture，不声称来自 /tf。"""
+
+    if isinstance(value, dict):
+        frame_id = value.get("frame_id") or value.get("value") or "map"
+        evidence_ref = value.get("evidence_ref") or ""
+    else:
+        frame_id = value or "map"
+        evidence_ref = ""
+    return {
+        "frame_id": _o7_archive_safe_text(frame_id, 40),
+        "source": "cloud_relay_runtime_fixture_file",
+        "status": "fixture_summary_only",
+        "evidence_ref": _o7_archive_safe_ref(evidence_ref),
+    }
+
+
+def _o7_realtime_robot_pose(value):
+    """位姿数值必须有限；坏数值用 None，避免 malformed fixture 变成 500。"""
+
+    pose = _o7_archive_dict(value)
+    if not pose:
+        return None
+    return {
+        "x_m": _o7_archive_safe_number(pose.get("x_m", pose.get("x"))),
+        "y_m": _o7_archive_safe_number(pose.get("y_m", pose.get("y"))),
+        "yaw_rad": _o7_archive_safe_number(pose.get("yaw_rad", pose.get("yaw"))),
+        "pose_source": _o7_archive_safe_text(pose.get("pose_source") or "fixture_pose", 80),
+        "timestamp_ms": _o7_archive_safe_number(pose.get("timestamp_ms")),
+        "evidence_ref": _o7_archive_safe_ref(pose.get("evidence_ref") or ""),
+    }
+
+
+def _o7_realtime_pose_freshness(value):
+    freshness = _o7_archive_dict(value)
+    return {
+        "timestamp_ms": _o7_archive_safe_number(freshness.get("timestamp_ms")),
+        "age_ms": _o7_archive_safe_number(freshness.get("age_ms")),
+        "latency_lt_2s_proven": False,
+        "status": "fixture_summary_only" if freshness else "blocked_not_proven",
+        "evidence_ref": _o7_archive_safe_ref(freshness.get("evidence_ref") or ""),
+    }
+
+
+def _o7_realtime_route_membership(value):
+    membership = _o7_archive_dict(value)
+    return {
+        "route_id": _o7_archive_safe_text(membership.get("route_id") or "fixture_route", 80),
+        "on_route": False,
+        "in_elevator_zone": False,
+        "requested_on_route": _o7_archive_safe_text(membership.get("requested_on_route") or "", 40),
+        "requested_in_elevator_zone": _o7_archive_safe_text(membership.get("requested_in_elevator_zone") or "", 40),
+        "status": _o7_archive_safe_text(membership.get("status") or "fixture_summary_only", 80),
+        "evidence_ref": _o7_archive_safe_ref(membership.get("evidence_ref") or ""),
+    }
+
+
+def _o7_realtime_elevator_state_chain(value):
+    """电梯状态链只保留最多 5 条样本；connected/proven 字段始终为 false。"""
+
+    if isinstance(value, dict):
+        samples_raw = _o7_archive_list(value.get("samples") or value.get("state_chain"))
+        chain_status = value.get("status") or "fixture_summary_only"
+        current_state = value.get("current_state")
+        evidence_ref = value.get("evidence_ref") or ""
+    else:
+        samples_raw = _o7_archive_list(value)
+        chain_status = "fixture_summary_only"
+        current_state = None
+        evidence_ref = ""
+    samples = []
+    for sample in samples_raw[:5]:
+        sample = _o7_archive_dict(sample)
+        samples.append(
+            {
+                "state": _o7_archive_safe_text(sample.get("state") or sample.get("event_type") or "", 80),
+                "status": _o7_archive_safe_text(sample.get("status") or "fixture_summary_only", 80),
+                "timestamp_ms": _o7_archive_safe_number(sample.get("timestamp_ms")),
+                "evidence_ref": _o7_archive_safe_ref(sample.get("evidence_ref") or ""),
+            }
+        )
+    return {
+        "status": _o7_archive_safe_text(chain_status, 80) if samples else "blocked_not_proven",
+        "current_state": _o7_archive_safe_text(current_state or (samples[-1]["state"] if samples else "not_connected"), 80),
+        "sample_count": len(samples_raw),
+        "samples": samples,
+        "evidence_ref": _o7_archive_safe_ref(evidence_ref),
+    }
+
+
+def _o7_realtime_floor_evidence(value):
+    floor = _o7_archive_dict(value)
+    return {
+        "floor_label": _o7_archive_safe_text(floor.get("floor_label") or floor.get("floor") or "fixture_floor", 80),
+        "confidence": _o7_archive_safe_number(floor.get("confidence")),
+        "floor_recognition_proven": False,
+        "status": _o7_archive_safe_text(floor.get("status") or "fixture_summary_only", 80),
+        "evidence_ref": _o7_archive_safe_ref(floor.get("evidence_ref") or ""),
+    }
+
+
+def _o7_realtime_human_takeover(value):
+    takeover = _o7_archive_dict(value)
+    return {
+        "required": True,
+        "human_takeover_proven": False,
+        "reason": _o7_archive_safe_text(takeover.get("reason") or "fixture_takeover_summary_only", 120),
+        "operator_action": _o7_archive_safe_text(takeover.get("operator_action") or "observe_only", 120),
+        "status": _o7_archive_safe_text(takeover.get("status") or "fixture_summary_only", 80),
+        "evidence_ref": _o7_archive_safe_ref(takeover.get("evidence_ref") or ""),
+    }
+
+
+def build_o7_realtime_elevator_snapshot_contract(fixture_json=""):
+    """返回 O7 realtime/elevator 合同；env fixture 仅生成只读摘要，不连接真实链路。"""
+
+    payload = _build_o7_realtime_elevator_snapshot_empty_contract()
+    fixture, failure_reason = _o7_realtime_load_fixture(fixture_json)
+    if failure_reason:
+        payload["input_status"] = {
+            "snapshot_json": "env_not_configured" if not fixture_json else "env_configured_path",
+            "status": "not_loaded" if fixture_json else "not_provided",
+            "failure_reason": failure_reason,
+        }
+        return payload
+    state_chain = _o7_realtime_elevator_state_chain(fixture.get("elevator_state_chain"))
+    payload.update(
+        {
+            "snapshot_status": "fixture_summary_ready",
+            "input_status": {
+                "snapshot_json": "env_configured_path",
+                "status": "loaded",
+                "failure_reason": "",
+            },
+            "source_fixture_schema": O7_REALTIME_ELEVATOR_FIXTURE_SCHEMA,
+            "cloud_runtime_fixture_connected": True,
+            "map_ref": _o7_realtime_map_ref(fixture.get("map_ref")),
+            "map_frame": _o7_realtime_map_frame(fixture.get("map_frame")),
+            "robot_pose": _o7_realtime_robot_pose(fixture.get("robot_pose")),
+            "pose_freshness": _o7_realtime_pose_freshness(fixture.get("pose_freshness")),
+            "route_membership": _o7_realtime_route_membership(fixture.get("route_membership")),
+            "elevator_state_chain": state_chain,
+            "current_floor_evidence": _o7_realtime_floor_evidence(fixture.get("current_floor_evidence")),
+            "human_takeover": _o7_realtime_human_takeover(fixture.get("human_takeover")),
+            "blocked_reasons": [
+                "fixture_summary_only_not_real_realtime",
+                "ros2_tf_forwarding_not_proven",
+                "route_membership_forced_false",
+                "real_elevator_state_chain_not_connected",
+                "floor_recognition_not_proven",
+                "human_takeover_not_proven",
+                "robot_control_disabled",
+            ],
+        }
+    )
+    return payload
 
 
 def parse_json_body(handler):
@@ -12918,8 +13207,9 @@ def make_handler(store, bearer_token):
                 self._send_json(200, build_o7_cloud_archive_tasks_contract(archive_json))
                 return
             if parsed.path == "/api/o7/realtime-elevator/snapshot":
-                # O7 realtime/elevator snapshot 是 KR1/KR2 的只读 contract proof，不读 ROS2 /tf 或电梯设备。
-                self._send_json(200, build_o7_realtime_elevator_snapshot_contract())
+                # O7 realtime/elevator 只读取显式 env 配置的本机 fixture；query path 被刻意忽略。
+                snapshot_json = os.environ.get(O7_REALTIME_ELEVATOR_SNAPSHOT_ENV, "")
+                self._send_json(200, build_o7_realtime_elevator_snapshot_contract(snapshot_json))
                 return
             if parsed.path.startswith("/api/commands/") and parsed.path.endswith("/result"):
                 # 结果对账是同源 phone API：只读 store summary，仍走 bearer gate，不绕过 robot outbound polling。

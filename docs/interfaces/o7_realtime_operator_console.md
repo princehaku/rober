@@ -27,6 +27,8 @@
 
 Cloud relay archive tasks contract 现在可以由 relay runtime 上的本地 fixture 生成非空只读摘要：启动前设置 `TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON` 指向 `trashbot.o7.cloud_archive_fixture.v1` JSON。handler 不读取 query path；未配置、不安全或读取失败时仍返回空 `blocked_not_proven`。即使 fixture 摘要可用，也必须保持 `real_cloud_archive_connected=false`、`playback_available=false`、`submit_enabled=false`、`tts_send_enabled=false`、`command_dispatch_enabled=false`、`manual_control_enabled=false`、`navigate_goal_enabled=false`、`robot_control_executed=false`、`safe_to_control=false`、`delivery_success=false` 和 `primary_actions_enabled=false`。
 
+Cloud relay realtime/elevator snapshot contract 也支持 relay runtime 本机 fixture 摘要：启动前设置 `TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON` 指向 `trashbot.o7.realtime_elevator_fixture.v1` JSON。handler 只读该 env 路径，不接受 query 任意路径；未配置、不安全、schema 不符或坏 JSON 时仍返回空 `blocked_not_proven`。fixture 只允许生成 `map_ref`、`map_frame`、`robot_pose`、`pose_freshness`、`route_membership`、`elevator_state_chain.samples`、`current_floor_evidence`、`human_takeover` 等白名单摘要，并可标记 `cloud_runtime_fixture_connected=true`。它不得被解释为真实 realtime API：`real_realtime_api_connected=false`、`real_ros2_tf_connected=false`、`latency_lt_2s_proven=false`、`route_membership.on_route=false`、`route_membership.in_elevator_zone=false`、`real_elevator_state_chain_connected=false`、`floor_recognition_proven=false`、`human_takeover_proven=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`robot_control_executed=false` 必须保持。
+
 ## Fail-Closed Fields
 
 所有响应必须包含并保持：
@@ -122,7 +124,7 @@ PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE 
 
 ## Cloud Realtime/Elevator Snapshot Contract
 
-`trashbot.o7.realtime_elevator_snapshot.v1` 是 cloud relay runtime 为 O7-KR1/KR2 暴露的安全只读 snapshot contract。它只证明 HTTP endpoint 和字段形状存在，不连接真实 ROS2 `/tf`、真实地图、实时流、电梯设备、硬件或生产云。
+`trashbot.o7.realtime_elevator_snapshot.v1` 是 cloud relay runtime 为 O7-KR1/KR2 暴露的安全只读 snapshot contract。默认未配置 fixture 时，它只证明 HTTP endpoint 和字段形状存在，不连接真实 ROS2 `/tf`、真实地图、实时流、电梯设备、硬件或生产云。配置 `TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON=/path/to/safe-fixture.json` 后，relay 可以从本机 `trashbot.o7.realtime_elevator_fixture.v1` fixture 生成非空只读摘要，供 PC `realtime-elevator-probe` 检查 map/pose/elevator/floor/takeover 形状。
 
 API：
 
@@ -145,6 +147,17 @@ relay 响应必须 fail-closed：
 - `delivery_success=false`
 - `primary_actions_enabled=false`
 - `robot_control_executed=false`
+
+runtime fixture adapter 必须拒绝并返回空 blocked contract：
+
+- env 未配置、文件缺失、读取失败、坏 JSON、顶层不是 object
+- `schema` 不是 `trashbot.o7.realtime_elevator_fixture.v1`
+- fixture 内含 `token` / `Authorization` / `Bearer`、`/cmd_vel`、串口/baudrate、traceback
+- fixture 声称 success/control、真实 realtime API、真实 ROS2 `/tf`、`latency_lt_2s_proven=true`
+- fixture 声称 `route_membership.on_route=true`、`route_membership.in_elevator_zone=true`
+- fixture 声称真实电梯状态链 connected/ready/live、楼层识别 proven/pass、人工接管 proven/pass
+
+fixture 中 timestamp、age、x/y/yaw、confidence 等数值字段必须只接受有限数字；非数值、`NaN`、`Infinity` 或错误类型统一输出 `null`，不能导致 HTTP 500。
 
 最小展示槽位包括 `map_ref`、`map_frame`、`robot_pose=null`、`pose_freshness`、`route_membership`、`elevator_state_chain.samples=[]`、`current_floor_evidence`、`human_takeover`、`blocked_reasons` 和 `not_proven`。PC probe 会递归扫描上述危险字段，任一危险字段为 true 时返回 `probe_status=fail_closed` 和 `dangerous_true:<path>`。
 
