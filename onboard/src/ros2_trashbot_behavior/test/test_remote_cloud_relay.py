@@ -266,6 +266,30 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertIn("real_cloud_archive_store_not_connected", body["blocked_reasons"])
         self.assertIn("real_o7_cloud_archive_task_api", body["not_proven"])
 
+    def test_o7_realtime_elevator_snapshot_endpoint_is_public_readonly_and_fail_closed(self):
+        status, body = self.client.request("GET", "/api/o7/realtime-elevator/snapshot", token="")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(body["schema"], "trashbot.o7.realtime_elevator_snapshot.v1")
+        self.assertEqual(body["realtime_status"], "blocked_not_proven")
+        self.assertEqual(body["snapshot_status"], "blocked_not_proven")
+        self.assertFalse(body["real_realtime_api_connected"])
+        self.assertFalse(body["real_ros2_tf_connected"])
+        self.assertFalse(body["latency_lt_2s_proven"])
+        self.assertFalse(body["route_membership"]["on_route"])
+        self.assertFalse(body["route_membership"]["in_elevator_zone"])
+        self.assertFalse(body["real_elevator_state_chain_connected"])
+        self.assertFalse(body["floor_recognition_proven"])
+        self.assertFalse(body["human_takeover_proven"])
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["delivery_success"])
+        self.assertFalse(body["primary_actions_enabled"])
+        self.assertFalse(body["robot_control_executed"])
+        self.assertEqual(body["map_frame"]["frame_id"], "map")
+        self.assertIsNone(body["robot_pose"])
+        self.assertEqual(body["elevator_state_chain"]["samples"], [])
+        self.assertIn("real_o7_realtime_cloud_stream", body["not_proven"])
+
     def command(self, command_id="cmd-0001", **extra):
         payload = {
             "protocol_version": PROTOCOL_VERSION,

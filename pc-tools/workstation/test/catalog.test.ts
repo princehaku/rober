@@ -7,6 +7,7 @@ import {
   buildO7CloudArchiveTasksProbe,
   buildO7CloudArchiveTasks,
   buildO7CloudOperatorConsoleProbe,
+  buildO7RealtimeElevatorProbe,
   buildEvidenceToolsResponse,
   buildHardwareMaterialsResponse,
   buildHealth,
@@ -572,6 +573,31 @@ function sampleCloudArchiveFixture(evidenceRef: string) {
 function listen(app: ReturnType<typeof createWorkstationApp>): Promise<{ baseUrl: string; close: () => Promise<void> }> {
   // HTTP endpoint 测试用真实 Express app，但只监听随机本地端口，不连接任何外部服务。
   const server = http.createServer(app);
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
+function listenJson(payload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  // probe 测试用最小本机 JSON 服务模拟 relay snapshot，不连接外网或真实机器人。
+  const server = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    if (req.url === "/api/o7/realtime-elevator/snapshot") {
+      res.end(JSON.stringify(payload));
+      return;
+    }
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not_found" }));
+  });
   return new Promise((resolve) => {
     server.listen(0, "127.0.0.1", () => {
       const address = server.address();
@@ -2786,6 +2812,86 @@ describe("workstation fail-closed API contracts", () => {
     }
 
     const blocked = await buildO7CloudArchiveTasksProbe("https://example.com");
+    expect(blocked.probe_status).toBe("fail_closed");
+    expect(blocked.fail_closed_reason).toBe("baseUrl_protocol_not_allowed");
+    expect(blocked.safe_to_control).toBe(false);
+    expect(blocked.primary_actions_enabled).toBe(false);
+  });
+
+  it("O7 realtime elevator probe only accepts loopback and keeps realtime elevator fields closed", async () => {
+    // probe 只拉本机 snapshot contract，并把 map/pose/elevator 摘要保持在 fail-closed 诊断层。
+    const server = await listenJson({
+      schema: "trashbot.o7.realtime_elevator_snapshot.v1",
+      realtime_status: "blocked_not_proven",
+      snapshot_status: "blocked_not_proven",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      real_realtime_api_connected: false,
+      real_ros2_tf_connected: false,
+      latency_lt_2s_proven: false,
+      real_elevator_state_chain_connected: false,
+      floor_recognition_proven: false,
+      human_takeover_proven: false,
+      map_ref: { id: "not_connected", status: "blocked_not_proven", evidence_ref: "missing_real_map_artifact" },
+      map_frame: { frame_id: "map", source: "contract_placeholder_not_tf", status: "blocked_not_proven" },
+      robot_pose: null,
+      pose_freshness: { age_ms: null, latency_lt_2s_proven: false, status: "blocked_not_proven" },
+      route_membership: { route_id: "not_connected", on_route: false, in_elevator_zone: false, status: "blocked_not_proven" },
+      elevator_state_chain: { current_state: "not_connected", sample_count: 0, samples: [], status: "blocked_not_proven" },
+      current_floor_evidence: {
+        floor_label: "not_connected",
+        confidence: null,
+        floor_recognition_proven: false,
+        status: "blocked_not_proven",
+      },
+      human_takeover: {
+        required: true,
+        human_takeover_proven: false,
+        reason: "real_elevator_state_chain_not_proven",
+        status: "blocked_not_proven",
+      },
+      blocked_reasons: ["real_realtime_api_not_connected", "ros2_tf_forwarding_not_proven"],
+      not_proven: ["real_o7_realtime_cloud_stream", "real_current_floor_recognition"],
+    });
+    try {
+      const probe = await buildO7RealtimeElevatorProbe(server.baseUrl);
+
+      expect(probe.schema).toBe("trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v1");
+      expect(probe.probe_status).toBe("loaded_fail_closed_contract");
+      expect(probe.source_base_url).toBe(server.baseUrl);
+      expect(probe.remote_schema).toBe("trashbot.o7.realtime_elevator_snapshot.v1");
+      expect(probe.realtime_status).toBe("blocked_not_proven");
+      expect(probe.snapshot_status).toBe("blocked_not_proven");
+      expect(probe.map_frame_summary).toContain("frame_id=map");
+      expect(probe.pose_freshness_summary).toContain("latency_lt_2s_proven=false");
+      expect(probe.route_membership_false_fields).toEqual([
+        "route_membership.on_route=false",
+        "route_membership.in_elevator_zone=false",
+      ]);
+      expect(probe.elevator_status).toContain("current_state=not_connected");
+      expect(probe.current_floor_evidence_summary).toContain("floor_recognition_proven=false");
+      expect(probe.human_takeover_summary).toContain("human_takeover_proven=false");
+      expect(probe.key_false_fields).toEqual(expect.arrayContaining([
+        "real_realtime_api_connected=false",
+        "real_ros2_tf_connected=false",
+        "route_membership.on_route=false",
+        "route_membership.in_elevator_zone=false",
+        "safe_to_control=false",
+      ]));
+      expect(probe.dangerous_true_fields).toEqual([]);
+      expect(probe.sends_commands).toBe(false);
+      expect(probe.connects_cloud_production).toBe(false);
+      expect(probe.reads_hardware).toBe(false);
+    } finally {
+      await server.close();
+    }
+
+    const blocked = await buildO7RealtimeElevatorProbe("https://example.com");
     expect(blocked.probe_status).toBe("fail_closed");
     expect(blocked.fail_closed_reason).toBe("baseUrl_protocol_not_allowed");
     expect(blocked.safe_to_control).toBe(false);

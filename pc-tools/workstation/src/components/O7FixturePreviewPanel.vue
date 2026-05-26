@@ -4,6 +4,7 @@ import {
   getO7CloudArchiveTasks,
   getO7CloudArchiveTasksProbe,
   getO7CloudOperatorConsoleProbe,
+  getO7RealtimeElevatorProbe,
   loadO7FixturePreview,
 } from "../client/workstationApi";
 import type { O7FixturePreviewInputs, O7FixturePreviewKind, O7FixturePreviewResponses } from "../client/workstationApi";
@@ -11,6 +12,7 @@ import type {
   O7CloudArchiveTasksProbeResponse,
   O7CloudArchiveTasksResponse,
   O7CloudOperatorConsoleProbeResponse,
+  O7RealtimeElevatorProbeResponse,
 } from "../shared/contracts";
 
 type O7FixturePreviewResult = O7FixturePreviewResponses[O7FixturePreviewKind];
@@ -51,6 +53,10 @@ const cloudArchiveProbeBaseUrl = ref("http://127.0.0.1:8088");
 const cloudArchiveProbeResult = ref<O7CloudArchiveTasksProbeResponse | null>(null);
 const cloudArchiveProbeError = ref("");
 const cloudArchiveProbeLoading = ref(false);
+const realtimeElevatorProbeBaseUrl = ref("http://127.0.0.1:8088");
+const realtimeElevatorProbeResult = ref<O7RealtimeElevatorProbeResponse | null>(null);
+const realtimeElevatorProbeError = ref("");
+const realtimeElevatorProbeLoading = ref(false);
 const cloudProbeBaseUrl = ref("http://127.0.0.1:8088");
 const cloudProbeResult = ref<O7CloudOperatorConsoleProbeResponse | null>(null);
 const cloudProbeError = ref("");
@@ -183,6 +189,14 @@ function cloudArchiveProbeNotProven(): string[] {
   return cloudArchiveProbeResult.value?.not_proven ?? ["cloud_archive_tasks_probe_not_proven"];
 }
 
+function realtimeElevatorProbeBlockedReasons(): string[] {
+  return realtimeElevatorProbeResult.value?.blocked_reasons ?? ["realtime_elevator_probe_not_loaded"];
+}
+
+function realtimeElevatorProbeNotProven(): string[] {
+  return realtimeElevatorProbeResult.value?.not_proven ?? ["realtime_elevator_probe_not_proven"];
+}
+
 function inspectorCursorFields(result: O7CloudArchiveTasksResponse | null): string[] {
   const cursor = result?.route_replay_inspector.cursor_initial_state;
   // cursor 来自后端固定 false 初始态，UI 只展示，不提供逐帧驱动入口。
@@ -230,6 +244,19 @@ async function loadCloudArchiveTasksProbe(): Promise<void> {
     cloudArchiveProbeError.value = err instanceof Error ? err.message : "cloud_archive_tasks_probe_api_unavailable_not_proven";
   } finally {
     cloudArchiveProbeLoading.value = false;
+  }
+}
+
+async function loadRealtimeElevatorProbe(): Promise<void> {
+  // 这里只触发 PC 后端回环 snapshot probe；浏览器不访问 relay，也不读取 ROS2 /tf 或地图文件。
+  realtimeElevatorProbeLoading.value = true;
+  realtimeElevatorProbeError.value = "";
+  try {
+    realtimeElevatorProbeResult.value = await getO7RealtimeElevatorProbe(realtimeElevatorProbeBaseUrl.value);
+  } catch (err) {
+    realtimeElevatorProbeError.value = err instanceof Error ? err.message : "realtime_elevator_probe_api_unavailable_not_proven";
+  } finally {
+    realtimeElevatorProbeLoading.value = false;
   }
 }
 
@@ -517,6 +544,94 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <h3>Not proven</h3>
           <ul class="dense">
             <li v-for="item in cloudArchiveProbeNotProven()" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <div>
+          <h3>Realtime/elevator cloud probe</h3>
+          <p class="eyebrow">Read-only local loopback HTTP contract proof for /api/o7/realtime-elevator/snapshot.</p>
+        </div>
+        <span class="pill danger">{{ realtimeElevatorProbeResult?.probe_status ?? "not_loaded" }}</span>
+      </div>
+
+      <label class="single-input">
+        <span>Cloud relay base URL</span>
+        <input
+          v-model="realtimeElevatorProbeBaseUrl"
+          aria-label="Realtime elevator cloud probe base URL"
+          placeholder="http://127.0.0.1:8088"
+        >
+      </label>
+      <button class="secondary" type="button" @click="loadRealtimeElevatorProbe">
+        {{ realtimeElevatorProbeLoading ? "Loading realtime/elevator probe" : "Probe realtime/elevator snapshot" }}
+      </button>
+
+      <div v-if="realtimeElevatorProbeError" class="notice" role="alert">
+        Realtime/elevator probe API unavailable: {{ realtimeElevatorProbeError }}. primary_actions_enabled=false.
+      </div>
+
+      <dl class="kv compact-kv">
+        <dt>schema</dt>
+        <dd>{{ realtimeElevatorProbeResult?.schema ?? "trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v1" }}</dd>
+        <dt>source base URL</dt>
+        <dd>{{ realtimeElevatorProbeResult?.source_base_url ?? "not_loaded" }}</dd>
+        <dt>remote schema</dt>
+        <dd>{{ realtimeElevatorProbeResult?.remote_schema ?? "not_loaded" }}</dd>
+        <dt>realtime status</dt>
+        <dd>{{ realtimeElevatorProbeResult?.realtime_status ?? "not_loaded" }}</dd>
+        <dt>snapshot status</dt>
+        <dd>{{ realtimeElevatorProbeResult?.snapshot_status ?? "not_loaded" }}</dd>
+        <dt>map ref</dt>
+        <dd>{{ realtimeElevatorProbeResult?.map_ref_summary ?? "not_loaded" }}</dd>
+        <dt>map frame</dt>
+        <dd>{{ realtimeElevatorProbeResult?.map_frame_summary ?? "not_loaded" }}</dd>
+        <dt>pose freshness</dt>
+        <dd>{{ realtimeElevatorProbeResult?.pose_freshness_summary ?? "blocked_not_proven" }}</dd>
+        <dt>elevator status</dt>
+        <dd>{{ realtimeElevatorProbeResult?.elevator_status ?? "blocked_not_proven" }}</dd>
+        <dt>current floor evidence</dt>
+        <dd>{{ realtimeElevatorProbeResult?.current_floor_evidence_summary ?? "blocked_not_proven" }}</dd>
+        <dt>human takeover</dt>
+        <dd>{{ realtimeElevatorProbeResult?.human_takeover_summary ?? "blocked_not_proven" }}</dd>
+        <dt>fail closed reason</dt>
+        <dd>{{ realtimeElevatorProbeResult?.fail_closed_reason ?? "probe_not_loaded" }}</dd>
+        <dt>local loopback only</dt>
+        <dd>{{ realtimeElevatorProbeResult?.local_loopback_only ?? true }}</dd>
+      </dl>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Route membership false fields</h3>
+          <ul class="dense">
+            <!-- 路线与电梯区域成员关系由后端扫描远端 snapshot 后固定展示 false。 -->
+            <li v-for="field in realtimeElevatorProbeResult?.route_membership_false_fields ?? []" :key="field">
+              {{ field }}
+            </li>
+            <li v-if="!realtimeElevatorProbeResult?.route_membership_false_fields.length">not_loaded</li>
+          </ul>
+          <h3>Dangerous true fields</h3>
+          <ul class="dense">
+            <li v-for="field in realtimeElevatorProbeResult?.dangerous_true_fields ?? []" :key="field">{{ field }}</li>
+            <li v-if="!realtimeElevatorProbeResult?.dangerous_true_fields.length">none</li>
+          </ul>
+          <h3>Key false fields</h3>
+          <ul class="dense">
+            <li v-for="field in realtimeElevatorProbeResult?.key_false_fields ?? []" :key="field">{{ field }}</li>
+            <li v-if="!realtimeElevatorProbeResult?.key_false_fields.length">not_loaded</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Blocked reasons</h3>
+          <ul class="dense">
+            <li v-for="reason in realtimeElevatorProbeBlockedReasons()" :key="reason">{{ reason }}</li>
+          </ul>
+          <h3>Not proven</h3>
+          <ul class="dense">
+            <li v-for="item in realtimeElevatorProbeNotProven()" :key="item">{{ item }}</li>
           </ul>
         </div>
       </div>

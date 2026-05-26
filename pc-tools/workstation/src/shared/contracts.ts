@@ -1648,6 +1648,32 @@ export interface O7CloudArchiveTasksProbeResponse extends ProofFlags {
   reads_hardware: false;
 }
 
+export interface O7RealtimeElevatorProbeResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v1";
+  probe_status: "loaded_fail_closed_contract" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o7/realtime-elevator/snapshot";
+  remote_schema: string;
+  realtime_status: string;
+  snapshot_status: string;
+  map_ref_summary: string;
+  map_frame_summary: string;
+  pose_freshness_summary: string;
+  route_membership_false_fields: string[];
+  elevator_status: string;
+  current_floor_evidence_summary: string;
+  human_takeover_summary: string;
+  key_false_fields: string[];
+  dangerous_true_fields: string[];
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+  connects_cloud_production: false;
+  sends_commands: false;
+  reads_hardware: false;
+}
+
 // Health 只证明 Node API 存活，不证明机器人在线。
 export interface HealthResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.health.v1";

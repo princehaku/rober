@@ -11,6 +11,7 @@ import {
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
   buildO7LabelingPreview,
+  buildO7RealtimeElevatorProbe,
   buildO7RealtimeElevatorPreview,
   buildO7RouteReplayPreview,
   buildO7SafeCommandPreview,
@@ -92,6 +93,11 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/cloud-archive/tasks-probe", async (req, res) => {
     // Archive tasks probe 只拉取本机回环 cloud relay contract，不读取远程 URL、不发送任何控制动作。
     res.json(await buildO7CloudArchiveTasksProbe(queryString(req.query.baseUrl)));
+  });
+
+  workstationApp.get("/api/o7/realtime-elevator-probe", async (req, res) => {
+    // Realtime/elevator probe 只拉取本机回环 snapshot contract，不读取 ROS2 /tf、地图或电梯设备。
+    res.json(await buildO7RealtimeElevatorProbe(queryString(req.query.baseUrl)));
   });
 
   workstationApp.get("/api/o7/realtime-elevator-preview", async (req, res) => {

@@ -83,6 +83,7 @@ O7_LABELING_QUEUE_SNAPSHOT_SCHEMA = "trashbot.o7.labeling_queue_snapshot.v1"
 O7_VOICE_ASR_TTS_SNAPSHOT_SCHEMA = "trashbot.o7.voice_asr_tts_snapshot.v1"
 O7_SAFE_COMMAND_SNAPSHOT_SCHEMA = "trashbot.o7.safe_command_snapshot.v1"
 O7_CLOUD_ARCHIVE_TASKS_SCHEMA = "trashbot.o7.cloud_archive_tasks.v1"
+O7_REALTIME_ELEVATOR_SNAPSHOT_SCHEMA = "trashbot.o7.realtime_elevator_snapshot.v1"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -12189,6 +12190,106 @@ def build_o7_cloud_archive_tasks_contract():
     }
 
 
+def build_o7_realtime_elevator_snapshot_contract():
+    """返回 O7 realtime/elevator 只读 snapshot；当前不连接真实实时、/tf 或电梯链路。"""
+
+    # 这个 contract 只为 PC probe 提供独立 HTTP schema proof，不读取 ROS2 graph、地图文件或硬件。
+    # 所有会被误读成真实 KR1/KR2 进展的字段都固定 false，让下游 UI 只能显示 blocked_not_proven。
+    route_membership = {
+        "route_id": "not_connected",
+        "on_route": False,
+        "in_elevator_zone": False,
+        "status": "blocked_not_proven",
+        "evidence_ref": "missing_route_membership_trace",
+    }
+    return {
+        "schema": O7_REALTIME_ELEVATOR_SNAPSHOT_SCHEMA,
+        "schema_version": 1,
+        "source": "software_proof",
+        "proof_status": "not_proven",
+        "contract_source": "onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py",
+        "workstation_probe_endpoint": "/api/o7/realtime-elevator-probe",
+        "realtime_status": "blocked_not_proven",
+        "snapshot_status": "blocked_not_proven",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "pc_only": True,
+        "robot_control_executed": False,
+        "real_realtime_api_connected": False,
+        "real_ros2_tf_connected": False,
+        "latency_lt_2s_proven": False,
+        "real_elevator_state_chain_connected": False,
+        "floor_recognition_proven": False,
+        "human_takeover_proven": False,
+        "map_ref": {
+            "id": "not_connected",
+            "uri": "",
+            "status": "blocked_not_proven",
+            "evidence_ref": "missing_real_map_artifact",
+        },
+        "map_frame": {
+            "frame_id": "map",
+            "source": "contract_placeholder_not_tf",
+            "status": "blocked_not_proven",
+        },
+        "robot_pose": None,
+        "pose_freshness": {
+            "timestamp_ms": None,
+            "age_ms": None,
+            "latency_lt_2s_proven": False,
+            "status": "blocked_not_proven",
+            "evidence_ref": "missing_pose_freshness_trace",
+        },
+        "route_membership": route_membership,
+        "elevator_state_chain": {
+            "status": "blocked_not_proven",
+            "current_state": "not_connected",
+            "sample_count": 0,
+            "samples": [],
+            "evidence_ref": "missing_elevator_state_chain",
+        },
+        "current_floor_evidence": {
+            "floor_label": "not_connected",
+            "confidence": None,
+            "floor_recognition_proven": False,
+            "status": "blocked_not_proven",
+            "evidence_ref": "missing_current_floor_evidence",
+        },
+        "human_takeover": {
+            "required": True,
+            "human_takeover_proven": False,
+            "reason": "real_elevator_state_chain_not_proven",
+            "operator_action": "keep_observe_only_until_real_floor_and_state_chain_exist",
+            "status": "blocked_not_proven",
+            "evidence_ref": "missing_human_takeover_trace",
+        },
+        "blocked_reasons": [
+            "real_realtime_api_not_connected",
+            "ros2_tf_forwarding_not_proven",
+            "robot_position_latency_lt_2s_not_proven",
+            "route_membership_forced_false",
+            "real_elevator_state_chain_not_connected",
+            "floor_recognition_not_proven",
+            "human_takeover_not_proven",
+            "robot_control_disabled",
+        ],
+        "not_proven": [
+            "real_o7_realtime_cloud_stream",
+            "real_ros2_tf_forwarding",
+            "real_map_artifact",
+            "real_robot_pose",
+            "robot_position_latency_lt_2s",
+            "real_route_membership",
+            "real_elevator_zone_membership",
+            "real_elevator_state_chain",
+            "real_current_floor_recognition",
+            "real_human_takeover_reason",
+            "delivery_success",
+        ],
+    }
+
+
 def parse_json_body(handler):
     try:
         length = int(handler.headers.get("Content-Length") or 0)
@@ -12285,6 +12386,10 @@ def make_handler(store, bearer_token):
             if parsed.path == "/api/o7/cloud-archive/tasks":
                 # O7 archive tasks 是只读 contract proof，不走 bearer，也不读取真实归档或执行控制。
                 self._send_json(200, build_o7_cloud_archive_tasks_contract())
+                return
+            if parsed.path == "/api/o7/realtime-elevator/snapshot":
+                # O7 realtime/elevator snapshot 是 KR1/KR2 的只读 contract proof，不读 ROS2 /tf 或电梯设备。
+                self._send_json(200, build_o7_realtime_elevator_snapshot_contract())
                 return
             if parsed.path.startswith("/api/commands/") and parsed.path.endswith("/result"):
                 # 结果对账是同源 phone API：只读 store summary，仍走 bearer gate，不绕过 robot outbound polling。
