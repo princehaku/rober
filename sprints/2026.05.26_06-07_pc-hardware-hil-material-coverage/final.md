@@ -18,13 +18,15 @@
 
 ## 3. 验证结果
 
-Worker 已验证：
+Worker 已验证。系统默认 Node `v18.19.1` 不满足 Vite 7 要求，初次 build 失败于 `crypto.hash is not a function`；最终使用 Codex bundled Node `v24.16.0` / npm `11.13.0` 完成验收：
 
-- `PATH=/tmp/rober-node-v24.11.1-linux-x64/bin:$PATH npm run test`：2 test files passed，11 tests passed。
-- `PATH=/tmp/rober-node-v24.11.1-linux-x64/bin:$PATH npm run build`：vite built successfully，27 modules transformed。
-- `PATH=/tmp/rober-node-v24.11.1-linux-x64/bin:$PATH npm run lint`：exit 0。
-- `git diff --check -- pc-tools/workstation docs/product/pc_tools_workstation.md docs/hardware/wave_rover_feedback_replay_gate.md sprints/2026.05.26_06-07_pc-hardware-hil-material-coverage`：exit 0。
+- `node --version`：`v24.16.0`。
+- `npm --version`：`11.13.0`。
+- `cd pc-tools/workstation && timeout 120s npm run build`：vite built successfully，27 modules transformed。
+- `cd pc-tools/workstation && timeout 120s npm run test`：2 test files passed，14 tests passed。
+- `cd pc-tools/workstation && timeout 120s npm run lint`：exit 0。
 - `find pc-tools -path 'pc-tools/workstation/node_modules' -prune -o -type f -name '*.py' -print`：无输出。
+- `git diff --check -- pc-tools/workstation docs/product/pc_tools_workstation.md pc-tools/evidence/README.md sprints/2026.05.26_06-07_pc-hardware-hil-material-coverage`：无输出。
 
 Product closeout 已验证 sprint closeout 文件、OKR/log 关键词和 scoped whitespace。
 

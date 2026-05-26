@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { PROOF_FLAGS } from "../shared/contracts";
 import type {
+  HardwareMaterialGap,
   HardwareMaterialGroup,
   HardwareMaterialItem,
   HardwareMaterialStatus,
@@ -81,6 +82,15 @@ const FAIL_CLOSED_TOKENS = [
   "imu_calibration_not_proven",
   "battery_calibration_not_proven",
   "delivery_success_not_proven",
+];
+
+const NOT_PROVEN_BOUNDARIES = [
+  "real_wave_rover_power_on_not_proven",
+  "real_uart_link_not_proven",
+  "real_hil_pass_not_proven",
+  "lidar_tof_material_not_proven",
+  "delivery_success_not_proven",
+  "pr5_resolved_not_proven",
 ];
 
 const VENDOR_FACTS_BOUNDED = [
@@ -202,6 +212,18 @@ async function buildGroup(absDir: string): Promise<HardwareMaterialGroup> {
   };
 }
 
+function buildGaps(groups: HardwareMaterialGroup[]): HardwareMaterialGap[] {
+  // gaps 是给硬件同学补材料的清单；它只引用缺失文件名，不生成任何验收通过判断。
+  return groups.flatMap((group) =>
+    group.missing_materials.map((missingMaterial) => ({
+      group: group.group,
+      fixture_relative_path: group.fixture_relative_path,
+      missing_material: missingMaterial,
+      recovery_hint: `补齐 ${missingMaterial} 后仍需人工复核，coverage 也不会升级为 HIL pass。`,
+    })),
+  );
+}
+
 export async function buildHardwareMaterialsResponse(): Promise<HardwareMaterialsResponse> {
   // 响应只做 Node 只读扫描；不打开串口、不执行 ROS2、不读取真实反馈，也不恢复旧 Python gate。
   const materialDirs = await waveRoverFixtureDirs();
@@ -219,6 +241,7 @@ export async function buildHardwareMaterialsResponse(): Promise<HardwareMaterial
     command_facts: COMMAND_FACTS,
     feedback_schema: FEEDBACK_SCHEMA,
     required_materials: REQUIRED_MATERIALS,
+    fixture_groups: groups,
     groups,
     coverage_summary: {
       groups_total: groups.length,
@@ -228,9 +251,11 @@ export async function buildHardwareMaterialsResponse(): Promise<HardwareMaterial
       required_per_group: REQUIRED_MATERIALS.length,
     },
     vendor_facts_bounded: VENDOR_FACTS_BOUNDED,
+    gaps: buildGaps(groups),
     fail_closed_tokens: FAIL_CLOSED_TOKENS,
     not_proven_tokens: FAIL_CLOSED_TOKENS,
+    not_proven_boundaries: NOT_PROVEN_BOUNDARIES,
     boundary_copy:
-      "coverage is not HIL pass; complete material coverage is still software_proof/not_proven and keeps hardware_connected=false.",
+      "coverage is not HIL pass; complete material coverage is still software_proof/not_proven and keeps hardware_connected=false, safe_to_control=false, delivery_success=false.",
   };
 }

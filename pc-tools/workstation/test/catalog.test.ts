@@ -179,15 +179,33 @@ describe("workstation fail-closed API contracts", () => {
       "battery_once.jsonl",
       "operator_hil_report",
     ]);
-    expect(response.groups.some((group) => group.group === "wave_rover_hil_packet_intake/pass")).toBe(true);
-    const intakePass = response.groups.find((group) => group.group === "wave_rover_hil_packet_intake/pass");
+    expect(response.fixture_groups).toEqual(response.groups);
+    expect(response.fixture_groups.some((group) => group.group === "wave_rover_hil_packet_intake/pass")).toBe(true);
+    const intakePass = response.fixture_groups.find((group) => group.group === "wave_rover_hil_packet_intake/pass");
     expect(intakePass?.present_materials).toContain("operator_hil_report");
     expect(intakePass?.coverage_counts.present).toBe(5);
     expect(intakePass?.status).toBe("material_coverage_complete_software_proof_only");
     expect(response.proof_status).toBe("not_proven");
-    const replayPass = response.groups.find((group) => group.group === "wave_rover_feedback_replay/pass");
+    const replayPass = response.fixture_groups.find((group) => group.group === "wave_rover_feedback_replay/pass");
     expect(replayPass?.missing_materials).toContain("operator_hil_report");
     expect(replayPass?.status).toBe("material_coverage_partial_software_proof_only");
+    expect(response.gaps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          group: "wave_rover_feedback_replay/pass",
+          missing_material: "operator_hil_report",
+        }),
+      ]),
+    );
+    expect(response.not_proven_boundaries).toEqual(
+      expect.arrayContaining([
+        "real_wave_rover_power_on_not_proven",
+        "real_uart_link_not_proven",
+        "real_hil_pass_not_proven",
+        "lidar_tof_material_not_proven",
+        "delivery_success_not_proven",
+      ]),
+    );
     expect(response.fail_closed_tokens).toEqual(
       expect.arrayContaining([
         "hil_pass=false",

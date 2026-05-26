@@ -9,6 +9,16 @@
 
 ## 2. 实际改动
 
+Task B Full-Stack worker 2026-05-26 23:07 Asia/Shanghai 增量补齐：
+
+- `pc-tools/workstation/src/shared/contracts.ts`：扩展 WAVE ROVER material coverage contract，新增 `fixture_groups`、`gaps`、`not_proven_boundaries`，并把主 API 路由登记为 `/api/hardware/wave-rover/material-coverage`。
+- `pc-tools/workstation/src/server/waveRoverMaterialCoverage.ts`：补齐 Node-native gap scanner 和 not_proven boundary 输出；仍只扫描 `pc-tools/evidence/fixtures/wave_rover_*`，不执行 Python、不打开串口、不运行 HIL。
+- `pc-tools/workstation/src/server/index.ts`：新增 `GET /api/hardware/wave-rover/material-coverage`，保留 `GET /api/tools/hardware-materials` 兼容旧 UI/API 调用。
+- `pc-tools/workstation/src/client/workstationApi.ts`：前端切换到新的 material coverage API 路径。
+- `pc-tools/workstation/src/components/WaveRoverMaterialCoveragePanel.vue`、`pc-tools/workstation/src/styles.css`：UI 展示 coverage gaps、fixture group 和 `not_proven` 边界，继续禁止任何 Start/Control/Run HIL/Connect Serial/Mark Passed 类动作。
+- `pc-tools/workstation/test/catalog.test.ts`、`pc-tools/workstation/test/App.test.ts`：覆盖 scanner contract、API fail-closed flags、UI 文案、缺口和 not_proven boundary。
+- `docs/product/pc_tools_workstation.md`、`pc-tools/evidence/README.md`：同步 Node-native coverage contract、五件套材料要求、execution pack/review decision 只能作为辅助上下文。
+
 Full-Stack worker 已完成并验证：
 
 - `pc-tools/workstation` 新增 Node-native Hardware Materials 入口：`GET /api/tools/hardware-materials`。
@@ -33,40 +43,45 @@ Product closeout 本轮新增/更新：
 
 ## 3. 验证结果
 
-Full-Stack worker 验证通过：
+Full-Stack worker 验证通过。第一次使用系统 Node `v18.19.1` 运行 build 时失败，原因是 Vite 7 要求 Node `20.19+` 或 `22.12+`，报错为 `crypto.hash is not a function`；随后改用 Codex bundled Node `v24.16.0` / npm `11.13.0` 复跑验收通过：
 
 ```bash
-PATH=/tmp/rober-node-v24.11.1-linux-x64/bin:$PATH npm run test
-# 2 test files passed, 11 tests passed
+export PATH="/mnt/c/Users/haku/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH"
+node --version
+# v24.16.0
+npm --version
+# 11.13.0
 ```
 
 ```bash
-PATH=/tmp/rober-node-v24.11.1-linux-x64/bin:$PATH npm run build
+cd pc-tools/workstation && timeout 120s npm run build
 # vite built successfully, 27 modules transformed
 ```
 
 ```bash
-PATH=/tmp/rober-node-v24.11.1-linux-x64/bin:$PATH npm run lint
-# exit 0
+cd pc-tools/workstation && timeout 120s npm run test
+# Test Files 2 passed (2), Tests 14 passed (14)
 ```
 
 ```bash
-git diff --check -- pc-tools/workstation docs/product/pc_tools_workstation.md docs/hardware/wave_rover_feedback_replay_gate.md sprints/2026.05.26_06-07_pc-hardware-hil-material-coverage
-# exit 0
+cd pc-tools/workstation && timeout 120s npm run lint
+# eslint . exited 0
 ```
-
-旧 Python gate 未恢复：
 
 ```bash
 find pc-tools -path 'pc-tools/workstation/node_modules' -prune -o -type f -name '*.py' -print
 # no output
 ```
 
+```bash
+git diff --check -- pc-tools/workstation docs/product/pc_tools_workstation.md pc-tools/evidence/README.md sprints/2026.05.26_06-07_pc-hardware-hil-material-coverage
+# no output
+```
+
 环境说明：
 
-- 当前 WSL 的 `/mnt/c/Program Files/nodejs/npm` shim 不可用。
-- Worker 使用临时 Linux Node 24：`/tmp/rober-node-v24.11.1-linux-x64` 跑等价 npm 脚本。
-- Worker 补齐了 `node_modules` 中缺失的 Linux Rollup/esbuild optional native 包；该改动位于 ignored `node_modules`，不纳入提交。
+- 当前默认 `node` 为 `v18.19.1`，不能满足 Vite 7 build gate。
+- 本轮最终验收使用 Codex bundled Node `v24.16.0`，该路径只影响验证环境，不改仓库脚本。
 
 ## 4. 需求满足自检
 
@@ -85,4 +100,4 @@ find pc-tools -path 'pc-tools/workstation/node_modules' -prune -o -type f -name 
 - 不证明 2D LiDAR / ToF SKU、采购、安装、接线、电源或标定。
 - 不证明 PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved。
 - 不证明真实 Nav2/fixed-route、电梯现场、投放、dropoff/cancel completion、delivery result 或 `delivery_success=true`。
-- Product closeout 未重新运行 npm build/test/lint；本文件记录并核对 Full-Stack worker 已提供的验证证据。
+- Product closeout 已核对 worker 验证证据；Node/Vue build/test/lint 的执行边界是 Codex bundled Node `v24.16.0`，不是当前默认系统 Node `v18.19.1`。

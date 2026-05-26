@@ -274,6 +274,10 @@ th {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.compact-section {
+  margin-bottom: 14px;
+}
+
 .two-col article {
   border: 1px solid #d7dee6;
   border-radius: 6px;

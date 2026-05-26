@@ -36,7 +36,7 @@ Task C Product closeout 创建 `tech-done.md`、`side2side_check.md`、`final.md
 
 本轮保持 `source=software_proof`、`proof_status=not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`pc_only=true`。旧 Python gate 未恢复：`find pc-tools -path 'pc-tools/workstation/node_modules' -prune -o -type f -name '*.py' -print` 无输出。
 
-验证证据：因当前 WSL 的 `/mnt/c/Program Files/nodejs/npm` shim 不可用，worker 使用临时 Linux Node 24 (`/tmp/rober-node-v24.11.1-linux-x64`) 跑等价 npm 脚本；`npm run test` 2 test files passed / 11 tests passed，`npm run build` vite built successfully / 27 modules transformed，`npm run lint` exit 0，scoped `git diff --check` exit 0。
+验证证据：第一次使用系统默认 Node `v18.19.1` 跑 build 失败，原因是 Vite 7 要求 Node `20.19+` 或 `22.12+`，报错为 `crypto.hash is not a function`；最终使用 Codex bundled Node `v24.16.0` / npm `11.13.0` 完成验收。`npm run build` passed（vite built successfully / 27 modules transformed），`npm run test` passed（2 test files / 14 tests），`npm run lint` passed；`find pc-tools -path 'pc-tools/workstation/node_modules' -prune -o -type f -name '*.py' -print` 无输出；scoped `git diff --check` 无输出。
 
 | Objective | 当前进度判断 | 证据与缺口 |
 | --- | --- | --- |

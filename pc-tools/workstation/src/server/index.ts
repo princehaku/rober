@@ -34,6 +34,11 @@ app.get("/api/tools/hardware-materials", async (_req, res) => {
   res.json(await buildHardwareMaterialsResponse());
 });
 
+app.get("/api/hardware/wave-rover/material-coverage", async (_req, res) => {
+  // 新路径按本轮 tech-plan 命名；响应与旧 tools 路径一致，便于 UI 和 reviewer 复核。
+  res.json(await buildHardwareMaterialsResponse());
+});
+
 app.get("/api/tools/training-labeling", async (_req, res) => {
   // 训练/标注第一阶段是占位入口，必须显式声明未接真实流水线。
   res.json(await buildTrainingLabelingResponse());

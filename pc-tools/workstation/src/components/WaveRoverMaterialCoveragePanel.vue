@@ -48,6 +48,27 @@ defineProps<{
       {{ hardwareMaterials?.boundary_copy ?? "coverage is not HIL pass; material coverage is not_proven." }}
     </p>
 
+    <div class="two-col compact-section">
+      <article>
+        <h3>Coverage gaps</h3>
+        <ul class="dense">
+          <!-- gaps 来自 Node scanner，作为补材料清单，不作为通过或失败按钮。 -->
+          <li v-for="gap in hardwareMaterials?.gaps" :key="`${gap.fixture_relative_path}:${gap.missing_material}`">
+            {{ gap.group }} - missing {{ gap.missing_material }} - {{ gap.recovery_hint }}
+          </li>
+          <li v-if="hardwareMaterials && hardwareMaterials.gaps.length === 0">
+            no local file gaps; not_proven boundaries still apply
+          </li>
+        </ul>
+      </article>
+      <article>
+        <h3>not_proven boundaries</h3>
+        <ul class="dense">
+          <li v-for="boundary in hardwareMaterials?.not_proven_boundaries" :key="boundary">{{ boundary }}</li>
+        </ul>
+      </article>
+    </div>
+
     <table>
       <thead>
         <tr>
@@ -61,7 +82,7 @@ defineProps<{
       </thead>
       <tbody>
         <!-- 每行来自 API scanner；UI 不自行推断 pass/fail。 -->
-        <tr v-for="group in hardwareMaterials?.groups" :key="group.fixture_relative_path">
+        <tr v-for="group in hardwareMaterials?.fixture_groups" :key="group.fixture_relative_path">
           <td>{{ group.group }}</td>
           <td>{{ group.fixture_relative_path }}</td>
           <td>{{ group.coverage_counts.present }}/{{ group.coverage_counts.required }}</td>

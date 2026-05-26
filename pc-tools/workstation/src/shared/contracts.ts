@@ -58,6 +58,13 @@ export interface HardwareMaterialGroup {
   status: HardwareMaterialStatus;
 }
 
+export interface HardwareMaterialGap {
+  group: string;
+  fixture_relative_path: string;
+  missing_material: string;
+  recovery_hint: string;
+}
+
 export interface HardwareVendorSource {
   path: string;
   fact_ids: ReadonlyArray<string>;
@@ -96,6 +103,7 @@ export interface HardwareMaterialsResponse extends ProofFlags {
   command_facts: ReadonlyArray<HardwareCommandFact>;
   feedback_schema: HardwareFeedbackSchema;
   required_materials: HardwareMaterialItem[];
+  fixture_groups: HardwareMaterialGroup[];
   groups: HardwareMaterialGroup[];
   coverage_summary: {
     groups_total: number;
@@ -105,8 +113,10 @@ export interface HardwareMaterialsResponse extends ProofFlags {
     required_per_group: number;
   };
   vendor_facts_bounded: string[];
+  gaps: HardwareMaterialGap[];
   fail_closed_tokens: string[];
   not_proven_tokens: string[];
+  not_proven_boundaries: string[];
   boundary_copy: string;
 }
 
@@ -248,6 +258,7 @@ export const PROOF_FLAGS: ProofFlags = {
 export const API_ROUTES = [
   "/api/health",
   "/api/tools/evidence",
+  "/api/hardware/wave-rover/material-coverage",
   "/api/tools/hardware-materials",
   "/api/tools/training-labeling",
   "/api/route/debug-summary",

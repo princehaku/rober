@@ -28,7 +28,7 @@ const API_ENDPOINTS = {
   health: "/api/health",
   routeDebugSummary: "/api/route/debug-summary",
   evidenceTools: "/api/tools/evidence",
-  hardwareMaterials: "/api/tools/hardware-materials",
+  hardwareMaterials: "/api/hardware/wave-rover/material-coverage",
   trainingLabeling: "/api/tools/training-labeling",
   proofBoundary: "/api/proof-boundary",
 } as const;

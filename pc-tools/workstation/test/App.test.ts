@@ -77,7 +77,7 @@ const fixtures: Record<string, unknown> = {
     ],
     ...PROOF_FLAGS,
   },
-  "/api/tools/hardware-materials": {
+  "/api/hardware/wave-rover/material-coverage": {
     schema: "trashbot.pc_tools_workstation.hardware_materials.v1",
     fixture_root: "pc-tools/evidence/fixtures",
     vendor_sources: [
@@ -191,6 +191,30 @@ const fixtures: Record<string, unknown> = {
         description: "Operator HIL report material; file presence is not HIL pass.",
       },
     ],
+    fixture_groups: [
+      {
+        group: "wave_rover_hil_packet_intake/pass",
+        fixture_relative_path: "pc-tools/evidence/fixtures/wave_rover_hil_packet_intake/pass",
+        present_materials: [
+          "feedback_T1001.log",
+          "odom_once.jsonl",
+          "imu_once.jsonl",
+          "battery_once.jsonl",
+          "operator_hil_report",
+        ],
+        missing_materials: [],
+        coverage_counts: { present: 5, missing: 0, required: 5 },
+        status: "material_coverage_complete_software_proof_only",
+      },
+      {
+        group: "wave_rover_feedback_replay/pass",
+        fixture_relative_path: "pc-tools/evidence/fixtures/wave_rover_feedback_replay/pass",
+        present_materials: ["feedback_T1001.log", "odom_once.jsonl", "imu_once.jsonl", "battery_once.jsonl"],
+        missing_materials: ["operator_hil_report"],
+        coverage_counts: { present: 4, missing: 1, required: 5 },
+        status: "material_coverage_partial_software_proof_only",
+      },
+    ],
     groups: [
       {
         group: "wave_rover_hil_packet_intake/pass",
@@ -228,6 +252,14 @@ const fixtures: Record<string, unknown> = {
       "json_cmd.h defines T=1/T=11/T=13/T=130/T=131/T=142/T=143 command IDs",
       "ugv_advance.h baseInfoFeedback() assembles T=1001 fields L/R/r/p/y/v",
     ],
+    gaps: [
+      {
+        group: "wave_rover_feedback_replay/pass",
+        fixture_relative_path: "pc-tools/evidence/fixtures/wave_rover_feedback_replay/pass",
+        missing_material: "operator_hil_report",
+        recovery_hint: "补齐 operator_hil_report 后仍需人工复核，coverage 也不会升级为 HIL pass。",
+      },
+    ],
     fail_closed_tokens: [
       "hil_pass=false",
       "hardware_connected=false",
@@ -252,8 +284,16 @@ const fixtures: Record<string, unknown> = {
       "battery_calibration_not_proven",
       "delivery_success_not_proven",
     ],
+    not_proven_boundaries: [
+      "real_wave_rover_power_on_not_proven",
+      "real_uart_link_not_proven",
+      "real_hil_pass_not_proven",
+      "lidar_tof_material_not_proven",
+      "delivery_success_not_proven",
+      "pr5_resolved_not_proven",
+    ],
     boundary_copy:
-      "coverage is not HIL pass; complete material coverage is still software_proof/not_proven and keeps hardware_connected=false.",
+      "coverage is not HIL pass; complete material coverage is still software_proof/not_proven and keeps hardware_connected=false, safe_to_control=false, delivery_success=false.",
     ...PROOF_FLAGS,
   },
   "/api/tools/training-labeling": {
@@ -432,6 +472,11 @@ describe("App", () => {
     expect(wrapper.text()).toContain("operator_hil_report");
     expect(wrapper.text()).toContain("hil_pass=false");
     expect(wrapper.text()).toContain("serial_path_not_proven");
+    expect(wrapper.text()).toContain("Coverage gaps");
+    expect(wrapper.text()).toContain("missing operator_hil_report");
+    expect(wrapper.text()).toContain("not_proven boundaries");
+    expect(wrapper.text()).toContain("real_uart_link_not_proven");
+    expect(wrapper.text()).toContain("lidar_tof_material_not_proven");
     expect(wrapper.text()).toContain("UART newline-delimited JSON");
     expect(wrapper.text()).toContain("complete file/material coverage");
     expect(wrapper.text()).toContain("docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h");
