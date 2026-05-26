@@ -2,231 +2,210 @@
 
 ## 1. 北极星
 
-把 `rober` 做成一台面向普通手机用户的低成本 ROS2 自主垃圾投递机器人：用户把垃圾交给小车后，小车沿固定路线出发，把垃圾送到垃圾站/垃圾桶点位，必要时跨楼层进出电梯，再安全返回或等待下一次任务，而不是一次性 demo，也不是依赖机械臂到处捡垃圾的机器人。
+把 `rober` 做成一台面向普通手机用户的低成本 ROS2 自主垃圾投递机器人：用户把垃圾交给小车后，小车沿固定路线出发，把垃圾送到垃圾站/垃圾桶点位，必要时跨楼层进出电梯，再安全返回或等待下一次任务。不是一次性 demo，不依赖机械臂捡垃圾。
 
-当前项目已经具备 6 个核心包的雏形：
+当前项目核心包：
 
 - `ros2_trashbot_interfaces`：msg/srv/action 契约层。
 - `ros2_trashbot_hardware`：Orange Pi 到 WAVE ROVER ESP32 下位机的串口桥。
 - `ros2_trashbot_nav`：Nav2、航点、地图、固定路线、关键帧调试。
 - `ros2_trashbot_behavior`：任务编排、送达/投放 action。
 
-项目的核心不是继续堆节点，而是把“能跑”升级为“可验证地可靠交付垃圾”：协议可信、固定路线可靠、任务可恢复、用户交互足够简单、数据可复盘、硬件假设可追溯。
+项目的核心是把"能跑"升级为"可验证地可靠交付垃圾"：协议可信、固定路线可靠、任务可恢复、用户交互足够简单、数据可复盘、云端可运营。
+
+---
 
 ## 2. 战略定位
 
 1. **目标用户是不会电脑和硬件的普通人**
    - 用户默认只有手机，不要求会 SSH、ROS2、串口、地图文件或硬件调试。
-   - 产品体验必须围绕手机端的一键发车、状态查看、异常提示、人工接管和售后诊断设计。
-   - 语音、喇叭和简单灯光/提示音用于降低使用门槛：提示“请放入垃圾”“准备出发”“已到垃圾站”“需要人工处理”等关键状态。
+   - 产品体验围绕手机端一键发车、状态查看、异常提示、人工接管和售后诊断设计。
+   - 语音、喇叭和简单灯光/提示音降低使用门槛。
 
-2. **核心任务是“送垃圾”，不是“捡垃圾”**
-   - MVP 任务闭环是：用户放入垃圾 -> 手机/语音确认 -> 小车出发 -> 到达垃圾站/垃圾桶点位 -> 完成投放/提醒人工取走 -> 返回或待命。
-   - 当前预算和机构条件下不承诺机械臂抓取、地面散落垃圾拾取、复杂分类分拣。
-   - 摄像头优先用于路线辅助、站点识别、障碍/异常记录和远程查看；垃圾检测能力作为后续增强，不作为核心价值前提。
+2. **核心任务是"送垃圾"，不是"捡垃圾"**
+   - MVP 闭环：用户放入垃圾 → 手机/语音确认 → 小车出发 → 到达垃圾站点位 → 完成投放/提醒人工取走 → 返回或待命。
+   - 当前预算和条件下不承诺机械臂抓取、地面散落垃圾拾取、复杂分类分拣。
+   - 摄像头优先用于路线辅助、站点识别、障碍/异常记录和远程查看。
 
 3. **预算有限，必须按量产约束做取舍**
-   - 默认硬件边界是：小车底盘、上位板、随身 WiFi、摄像头、麦克风、喇叭，不把昂贵传感器、机械臂、深度相机、多板卡作为默认方案。
-   - 所有新增能力必须回答三个问题：是否降低普通用户使用难度、是否提高送达成功率、是否适合低成本量产。
-   - 硬件事实来源采用 `docs/vendor/VENDOR_INDEX.md`；本文仅写产品战略，不新增引脚、电压、串口设备名、波特率或机械尺寸假设。
+   - 默认硬件边界：小车底盘、Orange Pi 上位板、随身 WiFi、摄像头、麦克风、喇叭。
+   - 新增能力必须回答：是否降低用户使用难度、是否提高送达成功率、是否适合低成本量产。
+   - 硬件事实来源：`docs/vendor/VENDOR_INDEX.md`。本文仅写产品战略，不新增引脚/电压/波特率假设。
+
+---
 
 ## 3. 设计原则
 
 1. **硬件事实必须本地可追溯**
-   - 涉及 WAVE ROVER、Orange Pi、UART、波特率、JSON 指令、速度映射、反馈协议、引脚、电压、固件和机械尺寸时，以 `docs/vendor/VENDOR_INDEX.md` 及其指向资料为准。
-   - 当前底盘通信应按 WAVE ROVER 官方 UART newline-delimited JSON 处理，不再继续扩展旧二进制协议假设。
+   - WAVE ROVER、Orange Pi、UART、波特率、JSON 指令、速度映射、反馈协议、引脚、电压、固件和机械尺寸，以 `docs/vendor/VENDOR_INDEX.md` 及其指向资料为准。
+   - 底盘通信按 WAVE ROVER 官方 UART newline-delimited JSON 处理，下位机不改动。
 
 2. **ROS2 接口稳定，内部实现可替换**
-   - 上层继续面向 `/cmd_vel`、`/odom`、`/imu/data`、`/battery`、`/trashbot/patrol`、`/trashbot/collect_trash` 等 ROS2 接口。
-   - 底层硬件桥、视觉模型、导航实现可以迭代，但不能随意破坏接口契约。
+   - 上层面向 `/cmd_vel`、`/odom`、`/imu/data`、`/battery`、`/trashbot/patrol`、`/trashbot/collect_trash` 等接口。
+   - 底层硬件桥、视觉模型、导航实现可以迭代，不随意破坏接口契约。
 
 3. **先送达闭环，再智能**
-   - 第一优先级是用户交付垃圾、装载确认、固定路线导航、到站投放/提醒、返回/待命的完整闭环。
-   - 复杂模型、动态规划、自动识别散落垃圾、多机器人协同都必须建立在稳定送达闭环和可观测数据之上。
+   - 第一优先级是完整送达闭环。复杂模型、动态规划、多机协同建立在稳定送达和可观测数据之上。
 
-4. **每个关键行为都要可观测、可回放、可解释**
-   - 任务状态、导航目标、检测结果、失败原因、硬件反馈都要能落日志或状态文件。
-   - 路线、关键帧、检测样本和失败案例要形成持续改进数据集。
+4. **每个关键行为要可观测、可回放、可解释**
+   - 任务状态、导航目标、检测结果、失败原因、硬件反馈都落日志或状态文件。
+   - 路线、关键帧、检测样本和失败案例形成持续改进数据集，上传云端存档。
 
-5. **文档同步更新与工程质量**
-   - 任何功能开发、修复或架构调整，必须同步更新 `docs/` 目录下的相关文档。文档必须始终反映项目的最新状态。
-   - 采用中文注释规范：代码中的所有技术注释必须使用**中文**，且注释比例必须**超过 20%**，以确保代码的可读性和可维护性；新增模块默认要求接口参数化与可扩展配置，禁止把硬件型号、阈值和状态分支写死在单一路径。
-
-6. **默认安全、低速、可停**
+5. **默认安全、低速、可停**
    - 任何自主行为必须有停止路径、超时策略、失败恢复策略。
    - 未经硬件验证的能力只能以参数关闭或 dry-run 形式存在。
 
 6. **量产优先，少硬件、少配置、少售后**
-   - 任何功能默认要考虑批量装机、远程诊断、参数模板、用户误操作和售后成本。
-   - 能用软件流程、固定路线、手机交互和语音提示解决的问题，不优先增加昂贵硬件。
+   - 功能默认考虑批量装机、远程诊断、参数模板、用户误操作和售后成本。
 
 7. **电梯识别是必须实现的 assisted delivery**
-   - 跨楼层送垃圾是 MVP 必须能力：小车看门、进门、语音求助按键、判断目标楼层、开门后驶出，必须进入主 `task_orchestrator` 状态机，不再作为可选 H2 分支默认关闭。
-   - 实机完成度需要在受控场景中按"文档/合同 → 软件 dry-run → 受控实景"三层验收逐步推进；OKR 写明必须并不等于已完成实机闭环。
-   - 小车不按电梯按钮，不改造电梯，不新增机械臂或电梯控制硬件；人工协助（请旁人按目标楼层）仍是产品流程边界。
-   - 能力归属在 Orange Pi/ROS2 上位机的行为、感知和语音编排，ESP32/WAVE ROVER 下位机只保持底盘执行与反馈职责。
+   - 跨楼层送垃圾是 MVP 必须能力：小车看门、进门、语音求助按键、判断目标楼层、开门后驶出，进入主 `task_orchestrator` 状态机。
+   - 按"文档/合同 → 软件 dry-run → 受控实景"三层验收推进，写明必须不等于已完成实机。
+   - 小车不按电梯按钮，不改造电梯，人工协助按目标楼层是产品边界。
 
-5. **数据通路走云端中转，不走手机直连 WiFi**
-   - 正式 4G 链路：手机 web/app → 云端 API → 小车 `remote_bridge` outbound polling → ROS2 behavior。
-   - 云端服务端基线：4C 8G 无 GPU，公网入口，仅作命令/状态/ACK 控制面中转；详见 `docs/product/cloud_4g_infrastructure.md`。
-   - 图片大对象通过阿里云 OSS（bucket `bytegallop`）+ CDN（`https://cdn.bytegallop.com/rober/`）流转，云中转节点不承担大文件带宽。
-   - 控制面任何时候都不暴露 `/cmd_vel`、不接受 inbound 直连小车。敏感凭证（OSS AK/SK、bearer token）只走 `.env`/环境变量，不进入仓库。
+8. **数据通路：Orange Pi → 隧道 → 云中转（核心后端）**
+   - 上位机 Orange Pi 通过安全隧道（如 frp/ngrok/WireGuard）接入公网云中转，不依赖手机直连 WiFi。
+   - 云中转是核心后端：命令/状态/ACK 控制面中转、任务记录与事件存档、模型推理与数据打标、OSS 大对象存储。
+   - 控制面不暴露 `/cmd_vel`、不接受 inbound 直连小车。凭证只走 `.env`/环境变量，不进入仓库。
 
-6. **手机端是普通用户唯一入口**
-   - 必须美观、能直接使用、不依赖命令行/SSH/ROS2 知识。4G 场景下走云端中转，手机和小车不要求处于同一 WiFi。本地 `operator_gateway` 仅作 fallback 调试入口，正式手机入口必须满足美观与可用性验收口径。
-   - 能实时看到ros2的路径更佳
+9. **手机端是普通用户唯一操作入口**
+   - 美观、能直接使用、不依赖命令行/SSH/ROS2 知识。4G 场景走云端中转。
+   - 实时可见机器人位置、任务状态、电梯状态，支持一键发车和人工接管。
 
-6. **PC端是ros2 打标 路径学习 展示 训练 用的**
-   - 能看到每一轮的进展，debug，数据
-   - 清晰美观
-   - 能实时看到ros2的路径更佳
+10. **PC 端是运营调试与数据训练平台**
+    - 实时可见 ROS2 路径、地图、机器人位置、电梯状态、楼层信息。
+    - 历史路线回放、数据标注/打标、模型训练数据管理。
+    - 实时 ASR 监听、TTS 发言操作、手动转向控制、自动寻路下发。
+    - 与云端后端数据层对接，不绕过云端直连小车。
 
-## 4. 2026 H1 OKR
+---
+
+## 4. 2026 H1 OKR（当前推进中）
 
 ### Objective 1：打通官方硬件协议，建立可信底盘控制层
 
-**目标说明**：让 Orange Pi 通过 ROS2 以官方 WAVE ROVER UART JSON 协议稳定控制底盘，并发布最小可用状态反馈。
+**当前进度：约 83%** | 主要缺口：真实 WAVE ROVER 上车实测（UART 链路、串口路径、轮速方向、IMU/battery 标定、HIL 准入）和 PR #5 2D LiDAR / ToF 硬件材料。
 
 **Key Results**
 
-- KR1：`ros2_trashbot_hardware` 默认使用 UTF-8 JSON + `\n` 与 ESP32 通信，启动时配置 echo、反馈间隔和反馈流。
-- KR2：`/cmd_vel` 默认映射到 `T=1` 左右轮速度命令，`T=13` ROS 控制模式只通过参数启用，并标注需要硬件验证。
-- KR3：解析 `T=1001` 底盘反馈，发布 `/imu/data` 和 `/battery`，并明确 `/odom` 是临时命令积分还是实测里程计。
+- KR1：`ros2_trashbot_hardware` 默认使用 UTF-8 JSON + `\n` 与 ESP32 通信，配置 echo、反馈间隔和反馈流。
+- KR2：`/cmd_vel` 默认映射到 `T=1` 左右轮速度命令，`T=13` 只通过参数启用。
+- KR3：解析 `T=1001` 底盘反馈，发布 `/imu/data` 和 `/battery`，明确 `/odom` 是命令积分还是实测里程计。
 - KR4：硬件桥协议单元测试覆盖 JSON 编码、速度映射、反馈解析、坏数据容错。
-- KR5：launch 参数暴露 `serial_port`、`serial_baudrate`、`command_mode`、`track_width_m`、`max_wheel_speed_mps`，不硬编码 Orange Pi 实际设备名。
+- KR5：launch 参数暴露 `serial_port`、`serial_baudrate`、`command_mode`、`track_width_m`、`max_wheel_speed_mps`，不硬编码设备名。
 
-### Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环
+---
 
-**目标说明**：能完成“用户已把垃圾交给小车”之后的送达任务，并把电梯 assisted delivery 作为必须实现能力进入主链：确认装载、自动识别电梯和电梯的进出、自动导航到垃圾站、投放或提醒人工取走、失败后恢复。
+### Objective 5：云中转控制面产品化（原 O5/O6）
 
-**Key Results**
-
-- KR1：`task_orchestrator` 状态机覆盖 `IDLE -> LOADED -> DELIVERING -> DROPOFF -> RETURNING -> IDLE/ERROR` 的真实转换。
-- KR2：送达 action 使用 garbage station waypoint/fixed route 输入，不再使用固定 `waypoints_total = 5` 占位逻辑。
-- KR3：装载确认支持手机按钮、语音/麦克风触发或本地参数模拟；在没有可靠传感器前，不把“自动判断是否装了垃圾”写成强依赖。
-- KR4：投放失败、导航失败、未找到垃圾站/垃圾桶点位、超时取消都返回明确 action result 和 error message。
-- KR5：每次任务产出可复盘记录：起止时间、目标、状态转移、失败原因、导航结果、检测快照引用。
-- KR6：行为状态机必须覆盖 elevator assisted delivery 完整状态链：等待电梯开门 → 进入电梯 → 语音请求"你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯," → 等待目标楼层 → 目标楼层开门后驶出 → 继续送达；失败、超时、未确认目标楼层、未开门必须返回明确 action result + error code，并触发人工接管。MVP 写明必须并不等于已完成受控实景验证，仍需按三层验收推进。
-- KR7：跨楼层任务默认启用电梯状态链（非 feature flag 默认关闭），并在 task record/diagnostics 中落盘门状态、楼层证据、人工接管原因和可回放 evidence_ref；若降级关闭必须给出明确告警与恢复建议。
-
-### Objective 3：建立可验证导航与固定路线能力
-
-**目标说明**：让学习路线、固定路线、自主往返垃圾站和关键帧调试形成一条清晰可重复的工程流程。
+**当前进度：约 80%** | 主要缺口：真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、OSS/CDN live traffic、真实手机/browser 证据。
 
 **Key Results**
 
-- KR1：`learn.launch.py` 能稳定完成 SLAM/人工驾驶/航点或 route 数据采集流程。
-- KR2：`route_data_recorder`、`route_csv_to_yaml`、`fixed_route_autonomy` 的输入输出格式在文档中固化，并有静态/单元测试覆盖。
-- KR3：fixed route dry-run 能在无 Nav2/无硬件环境下验证路线读取、关键帧匹配和状态输出。
-- KR4：自主模式能选择 Nav2 waypoint 送达或 fixed route 送达，两者参数边界清晰。
-- KR5：PC的关键帧调试页面能展示当前位置、目标点、匹配状态、失败原因和最近一次任务状态。
+- KR1：云中转服务端最小契约（commands/status/ack）按 `trashbot.remote.v1` 实现：HTTPS、outbound polling 优先，幂等键 + bearer token 鉴权，不暴露 `/cmd_vel`、不接受 inbound 直连。
+- KR2：服务端基线规格写入 `docs/product/cloud_4g_infrastructure.md`（4C 8G 无 GPU、SSH 端口、防火墙策略、容量边界）。
+- KR3：OSS 写入策略明确：bucket `bytegallop`，region `oss-cn-hangzhou`，对象前缀 `rober/<robot_id>/<date>/<task_id>/`；小车侧写入使用 STS 临时凭证或受限 AK。
+- KR4：CDN base URL `https://cdn.bytegallop.com/rober/` 只作公开只读视图入口；私有数据走 API 网关 + bearer。
+- KR5：凭证管理 contract：`.env` 不入仓库，服务端/CI/上车均通过环境变量注入；密钥泄露有 rotate 流程。
+- KR6：4G 中断、OSS 写失败、CDN 不可达三类失败必须 graceful degradation，任务不丢，远程诊断能区分"网络问题"与"机器人问题"。
 
-### Objective 4：建立手机用户体验与低成本量产边界
+---
 
-**目标说明**：让不会电脑和硬件的用户可以用手机完成核心任务，同时把硬件方案控制在低成本、可批量装配、可售后诊断的范围内。手机端目标口径是地图优先：首屏展示可理解的楼层/区域/站点地图、机器人当前位置、顶部电量/连接/状态提醒和一个明确主按钮；普通用户通过全屋/选区/划区类似的区域化入口选择路线巡航或送垃圾主任务，而不是接触 ROS、raw JSON、topic、串口或调试页面。
+### Objective 6：云端核心后端——数据存档、模型推理与打标平台
 
-**Key Results**
+**当前进度：0%** | 这是新 Objective，基于新架构需求。
 
-- KR1：定义手机端最小流程：打开手机端 -> 地图首屏查看机器人当前位置、电量、连接和状态提醒 -> 选择楼层/区域/站点或确认垃圾站 -> 确认已放入垃圾 -> 通过一键主按钮发起路线巡航/送垃圾主任务 -> 查看状态 -> 处理异常。
-- KR2：定义语音/喇叭提示词和状态触发点，覆盖待装载、准备出发、行驶中、到达、失败、需要人工接管。
-- KR3：形成量产硬件约束表，默认只包含小车底盘、上位板、随身 WiFi、摄像头、麦克风、喇叭；新增硬件必须有成本、装配、维护和软件收益说明。
-- KR4：建立远程诊断最小数据包：软件版本、地图/路线版本、楼层/区域/站点版本、最近任务状态、失败原因、关键日志、摄像头快照引用。
-- KR5：形成用户验收标准：普通用户不接触命令行、不插线调试、不理解 ROS2、不阅读 raw JSON，也能通过地图优先首屏、一键主按钮和普通中文状态说明完成一次送垃圾任务并知道失败时该怎么做。
-- KR6 ：跨楼层 trash delivery 的手机/语音体验必须落地：用户只选择目标楼层和垃圾站，小车在电梯内主动求助按键，失败时能在手机端解释"未开门、未确认目标楼层、需要人工接管"；手机端不暴露 raw JSON 或 ROS topic 名。
-- KR7 ：手机端 UI **美观且能直接使用**：视觉系统统一（配色 token、字号、间距、卡片、按钮态）、主操作主路径 ≤ 3 步、文案中文优先、iPhone/Android 主流尺寸适配、最小可点击区域 ≥ 44pt、首屏可交互 < 3 秒。地图优先首屏必须支持多区域/楼层/站点可视化、机器人当前位置、顶部电量/连接/状态提醒、底部全屋/选区/划区类似模式切换和一个一键主按钮；基站类功能只映射为站点/垃圾站/回充/待命，不照抄扫地机品牌或清洁功能。当前可用流程与 readiness gate 口径见 `docs/product/mobile_user_flow.md`；本地 phone-first HTML 仍是 fallback 调试入口，正式手机端必须另行完成真实手机浏览器/设备验收。
-- KR8：默认导航/感知硬件约束固化为“单目摄像头 + 2D LiDAR + ToF 安全环（可先 2 路后扩 4 路）”：2D LiDAR 负责 SLAM/Nav2 主链，单目负责电梯门/楼层语义证据，ToF 负责近场防撞；不把 ToF 当主建图输入。
-- KR9：电梯 assisted delivery 作为必须实现能力写入工程扩展约束：状态机、感知 contract、手机状态展示均需预留参数化扩展点（传感器数量、阈值、状态枚举可配置），避免写死单机型/单传感器实现。
-
-### Objective 5 云中转 + OSS/CDN 数据通路产品化
-
-**目标说明**：让小车通过 云端中转完成手机用户控制与数据回传，不依赖手机和小车处于同一 WiFi。图片/快照/任务记录类大对象通过阿里云 OSS + CDN 沉淀，云中转节点只承担轻量 JSON 控制
+**目标说明**：把云中转从轻量控制面升级为核心后端：持久化存档任务记录和感知事件，提供模型推理和数据打标能力，作为 PC 端/手机端的统一数据源。
 
 **Key Results**
 
-- KR1：云中转服务端最小契约（commands/status/ack）按 `trashbot.remote.v1` 实现：HTTPS、outbound polling 优先，幂等键 + bearer token 鉴权，不暴露 `/cmd_vel`、不接受 inbound 直连小车。
-- KR2：服务端基线规格写入 `docs/product/cloud_4g_infrastructure.md`，包含 4C 8G 无 GPU、SSH 端口、网络方向、防火墙策略、容量边界、运维与产品流量分离。
-- KR3：OSS 写入策略明确：bucket `bytegallop`，region `oss-cn-hangzhou`，对象前缀 `rober/<robot_id>/<date>/<task_id>/`；小车侧写入使用 STS 临时凭证或受限 AK，主 AK 不直放小车；超期对象可回收。
-- KR4：CDN base URL `https://cdn.bytegallop.com/rober/` 只作为公开只读视图入口，diagnostics 引用以 URL 形式给出，不在小车本地暴露密钥；CDN 不承担私有任务数据，私有数据走云端 API 网关 + bearer。
-- KR5：凭证管理 contract：`.env` 不入仓库，`.env.example` 仅占位；服务端、CI、上车机器人均通过环境变量注入；密钥泄露有 rotate 流程。任何 tracked 文件不得包含真实 `OSS_ACCESS_KEY_SECRET`、bearer token 或 root 密码。
-- KR6：4G 中断、OSS 写失败、CDN 不可达三类失败必须有 graceful degradation：本地 operator gateway fallback 可用，状态可恢复，任务不丢；远程诊断能区分"网络问题"与"机器人问题"。
+- KR1：Orange Pi 上位机通过安全隧道（frp/WireGuard/ngrok 任选，参数可配）接入公网，隧道断线后自动重连，云端能感知在线/离线状态。
+- KR2：任务记录和感知事件（路线帧、关键帧、检测结果、电梯门状态、楼层证据、失败原因）持久化存档到云端数据库，支持按 `robot_id / task_id / date` 查询。
+- KR3：摄像头帧/快照等大对象通过 OSS 存档，云端数据库只保留对象引用（`evidence_ref`），不直接存大文件。
+- KR4：云端提供数据打标/标注 API：接受标注任务（路线帧标注、电梯楼层标注、障碍物标注），支持 PC 端提交和查询标注结果。
+- KR5：模型推理接口（电梯门开/关、楼层识别）可在云端调用，推理结果写入事件存档，不要求 GPU 上线即可用（优先 CPU 轻量模型或调用外部推理 API）。
+- KR6：REST API（或 WebSocket）供 PC 端和手机端消费：历史任务列表、任务详情、轨迹数据、事件流、标注状态。
+
+---
+
+### Objective 7：PC 端运营调试与数据训练平台
+
+**当前进度：0%** | 这是新 Objective，PC 端从"简单关键帧调试页"升级为完整的运营/调试/数据平台。
+
+**目标说明**：PC 端面向开发者和运营人员，提供实时监控、历史回放、数据标注、手动控制和语音调试能力，与云端数据层对接，不绕过云端直连小车。
+
+**Key Results**
+
+- KR1：**实时地图与机器人位置**——PC 端展示当前地图、机器人实时位置（基于 ROS2 `/tf` 或云端转发位置），可见是否在路线上、是否进入电梯区域，刷新延迟 < 2 秒。
+- KR2：**电梯状态展示**——实时展示电梯状态（等待/进入/运行中/到达楼层/驶出），当前楼层证据，人工接管原因；历史任务可回放电梯完整状态链。
+- KR3：**历史路线回放**——从云端拉取历史任务的轨迹数据，在地图上逐帧回放，可查看每一帧的位置、速度、关键帧截图和状态转移。
+- KR4：**数据标注/打标界面**——展示待标注的路线帧、关键帧、检测截图，支持标注电梯门状态、楼层信息、障碍物类型；标注结果提交云端，可导出训练数据集。
+- KR5：**实时 ASR 监听 + TTS 发言控制**——PC 端可实时查看小车当前 ASR 输入流；可手动下发 TTS 文本，小车喇叭播报；支持测试电梯语音场景。
+- KR6：**手动转向控制 + 自动寻路下发**——PC 端通过云端 API 发送方向键/速度控制命令（走云端，不直连），支持键盘/界面操作；可选择地图上的目标点下发自动寻路任务。
+
+---
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-05-26 07:57 Asia/Shanghai。最新 sprint：`2026.05.26_07-08_cloud-command-terminal-result-mainline`。详细历史见 `docs/process/okr_progress_log.md`。
+更新时间：2026-05-26。
 
-| Objective | 当前进度 | 本轮证据与边界 | 主要缺口 |
-| --- | --- | --- | --- |
-| Objective 1：硬件协议可信底盘 | 约 83% | 本轮 `cloud_command_terminal_result` 不触碰硬件桥、串口、WAVE ROVER、UART、HIL、2D LiDAR / ToF 或 vendor-source 材料；上一轮 PC hardware materials coverage 证据仍有效。Objective 1 保持约 83%。 | 仍需真实 WAVE ROVER powered bench、真实 UART link、serial path、baudrate link、wheel direction、feedback frequency、IMU/battery calibration、真实 2D LiDAR / ToF SKU/source/receipt、采购、安装、接线、电源、标定、同一 safe `evidence_ref` captures、operator HIL report reviewer acceptance 和 PR #5 resolution。本轮不证明真实 WAVE ROVER/UART/HIL/2D LiDAR/ToF/PR #5 resolved/delivery success。 |
-| Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环 | 约 99% | 本轮只证明 cloud command terminal result software gate；没有改变 task_orchestrator、route/elevator runtime、dropoff/cancel field completion、delivery result 或 real field execution。Objective 2 保守保持约 99%。 | 仍缺真实 field rerun、真实电梯、真实喇叭/TTS、真实 Nav2/fixed-route 运行、真实 route completion signal、真实现场 task record、真实门状态、真实楼层确认、人工协助现场记录、真实送达、失败恢复实测、真实 dropoff/cancel completion、真实 cancel completion、delivery result 和 delivery success；本轮不是 route/elevator field pass。 |
-| Objective 3：可验证导航与固定路线 | 约 99% | 本轮没有改变路线、Nav2、fixed-route、PC keyframe runtime 或 route completion signal；`cloud_command_terminal_result` 只处理 command terminal result 主链路。Objective 3 保守保持约 99%。 | 仍缺真实路线采集、Nav2 waypoint/fixed-route 实跑、关键帧实景证据、真实 route completion signal、真实现场 task record、真实 Nav2/fixed-route runtime log、真实电梯材料、真实 dropoff/cancel completion 和同一 safe `evidence_ref` 上车实机复账；本轮 gate 不证明 Nav2/fixed-route runtime pass 或路线/电梯 field pass。 |
-| Objective 4：手机用户体验与低成本量产边界 | 约 99% | 本轮 Full-Stack 在现有“命令结果核对”面板展示 `terminal_result_recorded`，包括 result type/code、error code、safe command/evidence 和 `next_required_evidence`，但仍不是普通手机设备验收。Objective 4 保守保持约 99%，not true phone/browser proof。 | 仍缺真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice、true_phone_browser_evidence、真实 route/elevator field pass、真实 Nav2/fixed-route、真实 dropoff/cancel completion、真实 cancel completion、delivery success、O5 external proof、WAVE ROVER、HIL 和量产实物验收；本轮不是 true phone/browser proof。 |
-| Objective 5：云中转 + OSS/CDN 数据通路产品化（历史 O6） | 约 80% | 本轮从 `cloud_command_result_reconciliation` 的 `terminal_result_pending` 推进到 `cloud_command_terminal_result` mainline：Robot 新增 `POST /robots/{robot_id}/commands/{command_id}/terminal-result`，schema `trashbot.cloud_command_terminal_result.v1` / capability `cloud_command_terminal_result`；query schema 升级为 `trashbot.cloud_command_result_reconciliation.v2`；file-backed 和 SQLite-backed store 持久化 terminal result；query 返回 `terminal_result_recorded`；ACK-only 仍 `terminal_result_pending`；conflict/missing/store_unavailable fail-closed；mobile/web 展示 recorded 终态且不启用主操作。证据边界为 `software_proof_docker_cloud_command_terminal_result_gate`，Objective 5 从约 76% 小幅提升到约 80%。 | 仍没有真实公网 HTTPS/TLS、真实 4G/SIM、真实手机设备/browser、production app、真实 PWA prompt/userChoice、OSS/CDN live traffic、真实 production DB/queue connectivity、真实 production worker/migration/cutover、多实例一致性、真实 production queue ordering、transaction isolation、backup/recovery、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达；PR #4 route/elevator field materials 和 PR #5 2D LiDAR / ToF hardware materials 仍是独立缺口，`PRRT_kwDOSWB9286CJ3tX` 仍 unresolved / hardware_material_pending；software terminal result 仍不是 delivery/dropoff/cancel success。 |
+| Objective | 进度 | 主要缺口 |
+| --- | --- | --- |
+| O1：硬件协议可信底盘 | ~83% | 真实 WAVE ROVER 上车实测、UART 链路、HIL 准入、PR #5 2D LiDAR/ToF 硬件材料 |
+| O5：云中转控制面 | ~80% | 真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收 |
+| O6：云端核心后端 | 0% | 新 Objective，隧道接入、数据存档、打标 API、模型推理接口 |
+| O7：PC 端运营调试平台 | 0% | 新 Objective，实时地图、电梯状态、历史回放、标注界面、ASR/TTS、手控/寻路 |
 
+**已归档 Objective（软件侧完成，等待真实现场验证）：**
 
-## 5. OKR完成路线
+| Objective | 软件侧进度 | 归档原因 |
+| --- | --- | --- |
+| O2：可送垃圾任务 + 电梯 assisted delivery | 软件完成 ~99% | 状态机、行为链、电梯状态链、任务记录软件侧全部完成；等待真实路线/电梯/现场跑通后升回当前 |
+| O3：可验证导航与固定路线 | 软件完成 ~99% | learn.launch/fixed_route/Nav2 dry-run 全部完成；等待真实路线采集、Nav2 实跑、关键帧实景证据 |
+| O4：手机用户体验与量产边界 | 软件完成 ~99% | 手机 UI、地图首屏、任务下发、状态展示软件侧全部完成；等待真实 iPhone/Android 设备验收和真实送达 |
 
-### 阶段 A：工程闭环稳定化
+> 归档 KR 详情见 `docs/process/okr_progress_log.md`。真实现场材料到位后重新激活对应 Objective。
 
-- 完成官方 JSON 底盘桥硬件实测，确认 `T=1` 与 `T=13` 的实际运动表现。
-- 明确 `/odom` 来源：短期命令积分，中期轮速/编码器融合，长期与 Nav2/SLAM/IMU 融合。
-- 引入 launch 参数配置文件，减少命令行长参数和硬编码默认值。
-- 为每个包建立最小 CI：导入检查、静态测试、核心单元测试。
+---
 
-### 阶段 B：任务自治能力
+## 5. 当前最高优先级
 
-- 行为层引入任务队列：装载确认任务、送达任务、投放/提醒任务、返回任务。
-- 增加恢复策略：导航失败重试、目标过期丢弃、连续失败降级、人工接管。
-- 增加运行状态 topic 或 JSON 状态文件，供 debug web 和日志系统消费。
-- 将 action feedback 从“进度数字”升级为可读状态机事件。
+按完成度从低到高排序：
 
-### 阶段 C：数据闭环与模型升级
+1. **O6（0%）**：建立隧道接入链路 → 任务/事件存档 → 打标 API → 模型推理接口。这是 PC 端和新手机端能力的数据基础。
+2. **O7（0%）**：PC 端实时地图 + 电梯状态 → 历史路线回放 → 数据标注界面 → ASR/TTS 调试 → 手控/寻路。
+3. **O5（~80%）**：把已有命令/状态/ACK 控制面接到真实部署链路：公网 HTTPS、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收。
+4. **O1（~83%）**：真实 WAVE ROVER 上车，UART 实测，PR #5 硬件材料到位后提升。
 
-- 把送达过程中的关键帧、站点识别结果、异常/失败案例沉淀为数据集。
-- 使用固定路线场景先训练/验证轻量目标检测模型。
-- 建立离线回放工具：输入 route/keyframes/detections，复现行为层决策。
-- 引入指标面板：站点识别准确率、异常记录覆盖率、平均送达耗时、任务成功率。
+> O6 是 O7 的数据前提，建议先单线闭环 O6 最小 MVP（隧道 + 存档 + 查询 API），再并行推进 O7 和 O5 真实部署。
 
-### 阶段 D：产品化与安全边界
+---
 
-- 增加急停、限速、低电压处理、通信丢失停车、近障停车。
-- 明确支持场景：封闭区域、低速、固定路线、可控光照；不承诺开放道路或复杂人群环境。
-- 梳理安装文档：Orange Pi 系统、串口权限、ROS2 环境、WAVE ROVER 固件、摄像头、地图路径。
-- 形成上车验收清单和回归测试清单。
+## 6. OKR 完成路线
 
-### 阶段 E：电梯 assisted delivery 必须能力落地
+### 近期（O6 MVP）
 
-- 在楼宇内定义可控测试路线：出发点 -> 电梯厅 -> 进入电梯 -> 人工协助按目标楼层 -> 目标楼层驶出 -> 垃圾站/垃圾桶点位。
-- 行为层增加电梯子状态，并进入默认主链路；跨楼层任务默认启用电梯流程，受控场景持续验证与收敛。
-- 感知层先验证电梯门开/关、目标楼层到达和可驶出证据，不把楼层识别写成无证据的全自动能力。
-- 语音层由 Orange Pi/ROS2 编排，进入电梯后播放：“你好,好心人,.我要去1楼扔垃圾,请帮我按一下电梯,”。
-- 人工协助是产品边界：小车不按按钮，不改造电梯，不默认新增机械臂或电梯控制硬件。
+- 确定隧道方案（frp/WireGuard/ngrok），Orange Pi → 云端稳定连通，断线自动重连。
+- 云端建任务/事件存档表，小车侧完成后 POST 到云端，PC/手机可查询。
+- 大对象走 OSS，云端只存引用。
+- 提供最小 REST API：任务列表、任务详情、轨迹数据。
 
-## 6. 当前最高优先级
+### 近期（O7 MVP）
 
-- 当前最新 sprint 为 `cloud_command_terminal_result`，证据边界是 `software_proof_docker_cloud_command_terminal_result_gate`；它证明当前 repo 已从 phone -> cloud command enqueue 与 result reconciliation 推进到按同一 `robot_id + command_id` 写入、持久化、查询和展示 terminal result，覆盖 `terminal_result_recorded`、ACK-only `terminal_result_pending`、conflict、missing、store_unavailable，并由 mobile/web 用中文 fail-closed copy 解释这些状态。它仍保持 `delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`，不代表真实送达、真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、HIL、WAVE ROVER/UART、route/elevator field pass、PR #5 resolved 或 true phone/browser proof。
-- 下一轮按 `OKR.md` 4.1 重新排序。当前数值最低完成度仍是 Objective 5（约 80%）。O5 下一步应优先把 command API、result reconciliation 和 terminal result 接到真实部署链路：公网 HTTPS/TLS、真实 4G/SIM、production DB/queue connectivity、production worker/cutover、OSS/CDN live traffic、真实手机/browser 证据，或把 terminal result 连接到真实 field task record / verified terminal delivery/dropoff/cancel result。若外部材料仍不可用，后续 Docker/local 工作必须继续围绕 production queue cutover、多实例一致性、transaction isolation、backup/recovery、真实 command lifecycle replay 和生产迁移演练，不再重复只读 review/handoff/escalation wrapper。
-- 当前下一低项 Objective 1（约 83%）仍需要真实材料才可提高完成度：PR #5 material owner-response intake/review-decision/review-handoff、`pr5_mandatory_sensor_source_alignment`、`pr5_mandatory_sensor_material_followup_escalation_status`、`wave_rover_hil_packet_collection_drill`、`hardware_sensor_hil_entry_callback_*`、`real_material_*` 和 `hardware_real_material_escalation_request` 只把材料缺口转成 source-alignment、follow-up escalation、owner-response intake/review-decision/review-handoff、可执行回填/复核/升级请求或采集演练；要提高 O1，仍需获取真实 2D LiDAR / ToF SKU/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry，或带 `software_proof_docker_wave_rover_hil_packet_collection_drill_gate` 到真实 WAVE ROVER 环境采集同一 safe `evidence_ref` 的 `feedback_T1001.log`、`odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl` 和 `operator_hil_report` 后再回填 intake -> review decision -> review handoff -> execution pack / collection drill / callback-intake / callback-review-decision / callback-review-handoff 链路。
-- PR #5 GitHub thread state 已按本轮 closeout evidence 保留：`PRRT_kwDOSWB9286CJ3tX` 仍 `unresolved` / `is_resolved=false` / `hardware_material_pending`。本轮 `cloud_external_evidence_review_handoff_followup_escalation_status` 只把既有 external-evidence handoff safe summary 推进到 Docker/local follow-up escalation status software proof；PR #7 has no review threads and does not resolve it，不得在真实 2D LiDAR / ToF materials 到位或 reviewer 实际 resolve 前关闭 thread 或写成 O1 进度提升。
-- 若 O5 外部材料和 O1 真实硬件材料都不可用，下一轮优先要求现场 owner 提供 Objective 2/O3/O4 的真实材料：同一 safe `evidence_ref` 的真实 task record、真实 dropoff/cancel completion 材料、真实 Nav2/fixed-route runtime log、route completion signal、真实电梯门状态、真实楼层确认、人工协助记录、delivery result、真实 route/elevator field pass 和真实手机/browser 证据。本轮 `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_owner_response_intake_bridge`、`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status`、`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff`、`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision`、`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake`、`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff`、`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_decision`、`field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake` 和相关 Robot/mobile summaries 只能作为后续真实材料采集、ACK pending 诊断、source bridge 或 support handoff 的 software-proof 入口，不得写成真实手机通过、真实 PWA prompt/user choice、真实 route/elevator field pass、HIL、真实投放、external proof、真实 cancel completion 或 delivery success。
-- 也可补 Objective 4 的真实 iPhone/Android device behavior、production app、真实 PWA prompt/userChoice，或 PR #5 的真实 2D LiDAR / ToF SKU/vendor/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry 材料。不得把 `mobile_real_device_field_trial_acceptance_execution_handoff_review_handoff`、`mobile_real_device_field_trial_acceptance_execution_handoff_review_decision`、`mobile_real_device_field_trial_acceptance_execution_handoff_intake`、`mobile_real_device_field_trial_acceptance_execution_callback_review_handoff`、`mobile_real_device_field_trial_acceptance_execution_callback_review_decision`、`ready_for_field_owner_material_backfill_rerun_not_proven`、`ready_for_field_evidence_material_review_handoff_not_proven`、`ready_for_material_review_not_proven`、`current_step=elevator:<phase>` feedback、`elevator_field_evidence_trace_material_backfill_review_handoff`、`elevator_field_evidence_trace_material_backfill_review_decision`、`elevator_field_evidence_trace_material_backfill_intake`、`elevator_field_evidence_trace_callback_review_handoff`、`elevator_field_evidence_trace_callback_review_decision`、`elevator_field_evidence_trace_callback_intake`、diagnostics/mobile summary、ACK、completion signal 或 route/elevator same-evidence-ref 对齐写成真实手机通过、真实 route/elevator field pass、HIL、真实投放或 delivery success。
+- PC 端接入云端 API，展示历史任务列表和轨迹回放。
+- 实时地图接入 ROS2 位置数据（通过云端转发或本地直连调试）。
+- 基本标注界面：拉取待标注帧，提交标注结果。
 
-## 7. 整体风险与待办
+### 中期
 
-- 当前仍缺真实手机设备、真实 iPhone/Android device behavior、production app、真实 PWA prompt/user choice 现场验收、真实云/4G、production DB/queue、production worker/migration/cutover、OSS/CDN live traffic、真实 2D LiDAR / ToF SKU/vendor/source/receipt/procurement/installation/wiring/power/calibration/HIL-entry 材料、Nav2/fixed-route、真实 route completion signal、真实 task record、真实路线采集、真实电梯门状态、真实楼层确认、真实人工协助记录、WAVE ROVER、真实串口/UART、HIL、同一 `evidence_ref` 的上车实机复账、真实 cancel completed、真实 dropoff completion、delivery result 和真实 delivery 证据。
-- 本轮 `verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status` / `software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把 terminal-result material owner response reviewer ACK review-handoff safe metadata 转成 follow-up escalation status metadata，并保留 `source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 real terminal result、O5 external proof、true phone/browser proof、public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、route/elevator field pass、Nav2/fixed-route runtime pass、HIL、WAVE ROVER/UART proof、LiDAR/ToF installed proof、PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved 或 delivery success。Do not repeat another local-only metadata wrapper as OKR progress。
-- 本轮 `verified_terminal_result_material_owner_response_reviewer_ack_review_handoff` / `software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把 terminal-result material owner response reviewer ACK review-decision safe metadata 转成 reviewer ACK review-handoff metadata，并保留 `source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 real terminal result、O5 external proof、true phone/browser proof、public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、route/elevator field pass、Nav2/fixed-route runtime pass、HIL、WAVE ROVER/UART proof、LiDAR/ToF installed proof、PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved 或 delivery success。
-- 本轮 `verified_terminal_result_material_owner_response_reviewer_ack_review_decision` / `software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把 terminal-result material owner response reviewer ACK intake safe metadata 转成 reviewer ACK review-decision metadata，并保留 `source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 real terminal result、O5 external proof、true phone/browser proof、public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、route/elevator field pass、Nav2/fixed-route runtime pass、HIL、WAVE ROVER/UART proof、LiDAR/ToF installed proof、PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved 或 delivery success。
-- 本轮 `verified_terminal_result_material_owner_response_reviewer_ack_intake` / `software_proof_docker_verified_terminal_result_material_owner_response_reviewer_ack_intake_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把 terminal-result material owner response review-handoff safe metadata 转成 reviewer ACK intake metadata，并保留 `source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 real terminal result、O5 external proof、true phone/browser proof、public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、route/elevator field pass、Nav2/fixed-route runtime pass、HIL、WAVE ROVER/UART proof、LiDAR/ToF installed proof、PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved 或 delivery success。
-- 本轮 `verified_terminal_result_material_owner_response_review_decision` / `software_proof_docker_verified_terminal_result_material_owner_response_review_decision_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把 terminal-result material owner response intake safe metadata 转成 accepted/missing/rejected/unsafe/blocked review-decision 状态，并保留 `source=software_proof`、`software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 real terminal result、O5 external proof、true phone/browser proof、public HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、worker/cutover、route/elevator field pass、Nav2/fixed-route runtime pass、HIL、WAVE ROVER/UART proof、LiDAR/ToF installed proof、PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved 或 delivery success。
-- 本轮 `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake` / `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_intake_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把现场 owner response intake safe metadata 转成 accepted/missing/rejected/blocked 状态，并保留 `source=software_proof`、`software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 true phone/browser proof、route/elevator field pass、Nav2/fixed-route runtime pass、verified terminal result、dropoff/cancel completion、delivery result、delivery success、O5 external proof、O1 HIL、WAVE ROVER/UART proof、LiDAR/ToF installed proof 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved。
-- 本轮 `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff` / `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_review_handoff_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把现场 owner response review decision safe metadata 转成 owner/support/reviewer review handoff，并保留 `source=software_proof`、`software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 true phone/browser proof、route/elevator field pass、Nav2/fixed-route runtime pass、verified terminal result、dropoff/cancel completion、delivery result、delivery success、O5 external proof、O1 HIL、WAVE ROVER/UART proof、LiDAR/ToF installed proof 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved。
-- 本轮 `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake` / `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_intake_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把现场 reviewer ACK packet 转成 reviewer ACK intake metadata，并保留 `source=software_proof`、`software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 true phone/browser proof、route/elevator field pass、Nav2/fixed-route runtime pass、verified terminal result、dropoff/cancel completion、delivery result、delivery success、O5 external proof、O1 HIL、WAVE ROVER/UART proof、LiDAR/ToF installed proof 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved。
-- 本轮 `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision` / `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_decision_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把现场 reviewer ACK intake safe metadata 转成 reviewer ACK review-decision metadata，并保留 `source=software_proof`、`software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 true phone/browser proof、route/elevator field pass、Nav2/fixed-route runtime pass、verified terminal result、dropoff/cancel completion、delivery result、delivery success、O5 external proof、O1 HIL、WAVE ROVER/UART proof、LiDAR/ToF installed proof 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved。
-- 本轮 `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff` / `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_review_handoff_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把现场 reviewer ACK review-decision safe metadata 转成 reviewer ACK review-handoff metadata，并保留 `source=software_proof`、`software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 true phone/browser proof、route/elevator field pass、Nav2/fixed-route runtime pass、verified terminal result、dropoff/cancel completion、delivery result、delivery success、O5 external proof、O1 HIL、WAVE ROVER/UART proof、LiDAR/ToF installed proof 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved。
-- 本轮 `field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status` / `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_owner_response_reviewer_ack_followup_escalation_status_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把现场 reviewer ACK review-handoff safe metadata 转成 pending/overdue/escalated/blocked/ready follow-up escalation status，并保留 `source=software_proof`、`software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。`ready_for_real_material_reviewer_followup_not_proven` 只表示可进入真实材料 follow-up，不表示 field pass。它不证明 true phone/browser proof、route/elevator field pass、Nav2/fixed-route runtime pass、verified terminal result、dropoff/cancel completion、delivery result、delivery success、O5 external proof、O1 HIL、WAVE ROVER/UART proof、LiDAR/ToF installed proof 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved。
-- 本轮 `field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff` / `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_handoff_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把 acceptance handoff intake review decision safe metadata 转成 owner/support/reviewer review handoff，并保留 `source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 true phone/browser proof、route/elevator field pass、Nav2/fixed-route runtime pass、verified terminal result、dropoff/cancel completion、delivery success、O5 external proof、O1 HIL、WAVE ROVER/UART proof 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved。
-- 本轮 `field_evidence_rerun_execution_result_acceptance_handoff_intake_review_decision` / `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_review_decision_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把 acceptance handoff intake safe metadata 转成 field owner / support review decision，并保留 `source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 true phone/browser proof、route/elevator field pass、Nav2/fixed-route runtime pass、verified terminal result、dropoff/cancel completion、delivery success、O5 external proof、O1 HIL 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved。
-- 本轮 `field_evidence_rerun_execution_result_acceptance_handoff_intake` / `software_proof_docker_field_evidence_rerun_execution_result_acceptance_handoff_intake_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把 acceptance review handoff safe metadata 转成 field owner / support acknowledgement intake，并保留 `source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 true phone/browser proof、route/elevator field pass、Nav2/fixed-route runtime pass、verified terminal result、dropoff/cancel completion、delivery success、O5 external proof、O1 HIL 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved。
-- 本轮 `field_evidence_rerun_execution_result_acceptance_review_handoff` / `software_proof_docker_field_evidence_rerun_execution_result_acceptance_review_handoff_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把 acceptance review-decision safe metadata 转成 field owner / support / reviewer handoff，并保留 `source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明 true phone/browser proof、route/elevator field pass、Nav2/fixed-route runtime pass、verified terminal result、dropoff/cancel completion、delivery success、O5 external proof、O1 HIL 或 PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved。
-- 本轮 `field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge` / `software_proof_docker_field_evidence_material_resolution_reviewer_ack_owner_response_intake_bridge_gate` 只能证明当前 repo 的 PC gate、Robot diagnostics safe alias 和 `mobile/web` read-only panel 能把 reviewer ACK follow-up escalation source 安全接入 owner response intake，并保留 `source=software_proof`、`not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。它不证明真实公网 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、production DB/queue、production worker/cutover、真实手机/browser、真实 PWA prompt/userChoice、HIL、真实 WAVE ROVER/UART、真实 `/odom`、`/imu/data`、`/battery`、真实 2D LiDAR/ToF、真实电梯、真实 Nav2/fixed-route、真实 route/elevator field pass、真实投放、O5 external proof、PR #5 `PRRT_kwDOSWB9286CJ3tX` resolved、真实 cancel completion、dropoff completion、verified terminal delivery/dropoff/cancel result 或真实交付；this is not true phone/browser proof and not delivery success。
-- 历史 `hardware_sensor_hil_entry_callback_review_decision` / `robot_diagnostics_hardware_sensor_hil_entry_callback_review_decision_summary` / mobile-web “传感器 HIL 回调复核决策”panel、`cloud_auth_failure_status_guard`、`software_proof_docker_cloud_auth_failure_status_guard`、`auth_failed_not_delivery_success`、`field_evidence_rerun_execution_pack` / `robot_diagnostics_field_evidence_rerun_execution_pack_summary` / mobile-web “现场证据复跑执行包”panel、前置 `field_evidence_rerun_queue` / `robot_diagnostics_field_evidence_rerun_queue_summary` / mobile-web “现场证据复跑队列”panel、前置 `field_evidence_rerun_handoff_intake` / `robot_diagnostics_field_evidence_rerun_handoff_intake_summary` / mobile-web “现场证据复跑交接回执”panel、`field_evidence_rerun_callback_review_handoff` / `robot_diagnostics_field_evidence_rerun_callback_review_handoff_summary` / mobile-web “现场证据复跑复核交接”panel、`field_evidence_rerun_callback_review_decision` / `robot_diagnostics_field_evidence_rerun_callback_review_decision_summary` / mobile-web “现场证据复跑回执复核”panel、上一轮 `field_evidence_rerun_callback_intake` / `robot_diagnostics_field_evidence_rerun_callback_intake_summary` / mobile-web “现场证据复跑回执入口”panel、历史 `field_evidence_rerun_material_dispatch` / `robot_diagnostics_field_evidence_rerun_material_dispatch_summary` / mobile-web “现场证据复跑材料派发”panel、历史 `mobile_real_device_field_trial_acceptance_execution_handoff_review_handoff` / `robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_handoff_review_handoff_summary` / mobile-web “现场验收交接复核交接”panel、历史 `mobile_real_device_field_trial_acceptance_execution_handoff_review_decision` / `robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_handoff_review_decision_summary` / mobile-web “现场验收交接复核决策”panel、历史 `mobile_real_device_field_trial_acceptance_execution_handoff_intake` / `robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_handoff_intake_summary` / mobile-web “现场验收交接回执”panel、`real_material_followup_escalation_status` / `robot_diagnostics_real_material_followup_escalation_status_summary` / mobile-web “真实材料升级状态”、`real_material_manifest_template` / Robot `real_material_manifest_template` safe alias / mobile-web manifest template groups、`real_material_evidence_intake` / `robot_diagnostics_real_material_evidence_intake_summary`、mobile/web “真实材料回填入口”、历史 `real_material_readiness_board` / `robot_diagnostics_real_material_readiness_board_summary`、mobile/web “真实材料就绪看板”、历史 `mobile_real_device_field_trial_acceptance_execution_callback_review_handoff` / `robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_review_handoff_summary`、mobile/web “现场验收回调交接”panel、历史 `mobile_real_device_field_trial_acceptance_execution_callback_review_decision` / `robot_diagnostics_mobile_real_device_field_trial_acceptance_execution_callback_review_decision_summary`、mobile/web “现场真实手机验收执行回调复核决策”panel、历史 `task_terminal_field_material_intake` / `robot_diagnostics_task_terminal_field_material_intake_summary`、mobile/web “现场材料回填入口”panel、`hardware_real_material_escalation_request` / `robot_diagnostics_hardware_real_material_escalation_request_summary`、mobile/web “硬件真实材料升级请求”panel、`elevator_field_evidence_trace_material_backfill_review_handoff` / `robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_handoff_summary`、`elevator_field_evidence_trace_material_backfill_review_decision` / `robot_diagnostics_elevator_field_evidence_trace_material_backfill_review_decision_summary`、`elevator_field_evidence_trace_material_backfill_intake` / `robot_diagnostics_elevator_field_evidence_trace_material_backfill_intake_summary`、`elevator_field_evidence_trace_callback_review_handoff` / `robot_diagnostics_elevator_field_evidence_trace_callback_review_handoff_summary`、`elevator_field_evidence_trace_callback_review_decision` / `robot_diagnostics_elevator_field_evidence_trace_callback_review_decision_summary`、`elevator_field_evidence_trace_callback_intake` / `robot_diagnostics_elevator_field_evidence_trace_callback_intake_summary`、`elevator_action_feedback_trace` / `robot_diagnostics_elevator_action_feedback_trace_summary`、历史 route/elevator material/review/handoff/diagnostics/mobile summary、ACK、completion signal、browser proof、handoff artifact/summary、`cloud_worker_*`、`hardware_*`、`wave_rover_*` 等产物均只能证明当前 repo 的本地 `software_proof` / metadata-only fail-closed 能力，且必须保留 `not_proven`、`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false`。它们不证明真实手机、真实 2D LiDAR、真实 ToF、真实电梯、真实 Nav2/fixed-route、HIL、真实投放或真实交付。
+- 模型推理上云（电梯门开/关、楼层识别）；推理结果写入存档。
+- PC 端电梯状态实时展示，ASR/TTS 调试界面。
+- PC 端手控和自动寻路下发（走云端 API）。
+- O5 接入真实部署（production DB/queue/OSS/CDN）。
+
+### 后期（真实现场验证，激活归档 Objective）
+
+- 真实 WAVE ROVER 上车实测，O1 闭环。
+- 真实路线采集 + Nav2/固定路线实跑，激活 O3。
+- 真实电梯场景验证，激活 O2。
+- 真实手机/browser 验收，激活 O4。
