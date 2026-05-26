@@ -1,4 +1,3 @@
-schema_version = 1
 project = "rober"
 title = "rober Agents 使用指南"
 entrypoint = "AGENTS.md"
@@ -9,6 +8,7 @@ format = "toml"
 # ---------------------------------------------------------------------------
 # 整体说明
 # ---------------------------------------------------------------------------
+# 本文件位于 `.codex/registry.toml`（勿放在 `.codex/agents/`，否则 Codex 会当作 agent role 解析失败）。
 # 本文件是 rober 项目 Agent 编制的索引清单：
 #   1. 列出"5 人精简编制"对应的实际角色文件；
 #   2. 定义跨运行时（Cursor / Codex / 其他）子 agent 派发规则；
@@ -77,7 +77,7 @@ sub_agent_dispatch_rule = """
   - 其他运行时必须使用等价子 agent 工具。
 主节点严禁直接写产品代码、测试代码、硬件配置或直接运行实现/测试/修复命令。
 所有编码 / 测试 / 修复必须派发给对应角色子 agent，prompt 头部必须注入对应
-.codex/agents/<role>.toml 的 prompt 字段全文。
+.codex/agents/<role>.toml 的 developer_instructions 字段全文。
 无子 agent 工具时只能降级为 read-only / planning，并明确说明当前运行时不能执行实现。
 """
 verification_rule = "能运行测试、构建、静态检查、dry-run 或 smoke 时必须运行；失败默认继续定位和修复。"
@@ -118,7 +118,7 @@ cursor_invocation = "Task(subagent_type=generalPurpose)"
 codex_invocation = "spawn_agent(agent_type=worker)"
 missing_subagent_tool_fallback = "只做 read-only / planning，说明当前运行时缺少子 agent 工具，不得直接实现。"
 sub_agent_prompt_structure = [
-  "[角色 System Prompt]（从 .codex/agents/<role>.toml 的 prompt 字段完整复制，不裁剪）",
+  "[角色 System Prompt]（从 .codex/agents/<role>.toml 的 developer_instructions 字段完整复制，不裁剪）",
   "[本轮任务]（背景与目标）",
   "[文件范围]（允许改动的路径，范围外不得改动）",
   "[验收命令]（从 tech-plan.md 复制，子 agent 必须执行并给出结果）",
@@ -195,7 +195,7 @@ layer = "direction"
 summary = "产品北极星、OKR/KR、用户价值、优先级和验收口径。"
 cursor_task_type = "generalPurpose"
 codex_agent_type = "worker"
-prompt_field = "prompt"
+prompt_field = "developer_instructions"
 capabilities = [
   "okr-planning",
   "okr-direction-review",
@@ -222,7 +222,7 @@ layer = "delivery"
 summary = "机器人软件中台：ROS2 主链路、接口、bringup、行为状态机和集成验证。"
 cursor_task_type = "generalPurpose"
 codex_agent_type = "worker"
-prompt_field = "prompt"
+prompt_field = "developer_instructions"
 capabilities = [
   "ros2-integration",
   "interfaces",
@@ -257,7 +257,7 @@ layer = "delivery"
 summary = "硬件基建与履约：WAVE ROVER、ESP32、Orange Pi、UART、底盘协议和上车证据。"
 cursor_task_type = "generalPurpose"
 codex_agent_type = "worker"
-prompt_field = "prompt"
+prompt_field = "developer_instructions"
 capabilities = [
   "vendor-source-verification",
   "uart",
@@ -288,7 +288,7 @@ layer = "delivery"
 summary = "自主能力增长引擎：SLAM、Nav2、巡逻、视觉识别、电梯/楼层认知和送达闭环。"
 cursor_task_type = "generalPurpose"
 codex_agent_type = "worker"
-prompt_field = "prompt"
+prompt_field = "developer_instructions"
 capabilities = [
   "slam",
   "nav2",
@@ -326,7 +326,7 @@ layer = "delivery"
 summary = "用户触点全栈：手机界面、Web/API、远程控制、状态展示和 ROS2 后端联调。"
 cursor_task_type = "generalPurpose"
 codex_agent_type = "worker"
-prompt_field = "prompt"
+prompt_field = "developer_instructions"
 capabilities = [
   "mobile-ui",
   "web-ui",

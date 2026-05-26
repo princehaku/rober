@@ -1,6 +1,6 @@
 # Iteration Velocity Fence — Epic/Micro 分层、并行规则、OKR 软提醒与 Blocker 红线
 
-本文件是 `rober` 迭代节奏与并行研发的总规则，对应 `AGENTS.md` 中的"并行启动强制规则 / Epic / Micro Sprint 分层 / OKR 最低优先级软提醒 / 同一 Blocker 重复消费红线 / Tech Plan 自动执行规则 / Sprint 留档原则"，以及 `.codex/agents/registry.toml` `[execution_policy]` 中的 `parallel_default / parallel_solo_exemptions / epic_micro_doc_policy / okr_lowest_objective_rule / repeated_blocker_cap / process_doc_reference` 字段。
+本文件是 `rober` 迭代节奏与并行研发的总规则，对应 `AGENTS.md` 中的"并行启动强制规则 / Epic / Micro Sprint 分层 / OKR 最低优先级软提醒 / 同一 Blocker 重复消费红线 / Tech Plan 自动执行规则 / Sprint 留档原则"，以及 `.codex/registry.toml` `[execution_policy]` 中的 `parallel_default / parallel_solo_exemptions / epic_micro_doc_policy / okr_lowest_objective_rule / repeated_blocker_cap / process_doc_reference` 字段。
 
 引入时间：2026-05-12。生效范围：本文首次落地之后启动的所有 sprint；既有 sprint 不追溯。
 
@@ -8,7 +8,7 @@
 
 > 引用 `sprints/2026.05.12_23-24_iteration-velocity-fence-tuning/pre_start.md` 的诊断证据。
 
-主节点在引入本文前对 `OKR.md`、`AGENTS.md`、`.codex/agents/registry.toml` 和近 60 个 sprint 留档做了只读复盘，得出以下结论：
+主节点在引入本文前对 `OKR.md`、`AGENTS.md`、`.codex/registry.toml` 和近 60 个 sprint 留档做了只读复盘，得出以下结论：
 
 1. **迭代节奏过快但单轮产出过小**：05-10 当天产出 17 个 sprint，05-11 产出 13 个，05-12 已经 4 个，绝大多数 30-60 分钟。OKR 近 10 个进度快照大量写"无新增，仅护栏"或"+1pp"。
 2. **真实硬件实测几乎没碰**：连续多轮 Docker preflight 卡在同一 `registry mirror/proxy returns text/html` 根因；HIL 系列在 `/tmp` synthetic fixture 上反复验证 bridge 逻辑，没有真实串口 / WAVE ROVER 证据。
@@ -162,12 +162,12 @@ Epic sprint 的 tech-plan.md 推荐使用以下模板：
 
 ## 6. 与既有规则的关系
 
-本文是 `AGENTS.md` 与 `.codex/agents/registry.toml` 的**总规则补充**，**不取代**任何既有规则：
+本文是 `AGENTS.md` 与 `.codex/registry.toml` 的**总规则补充**，**不取代**任何既有规则：
 
 - **AGENTS.md 红线（含"全员红线"和"硬件红线"）继续有效**：必须先读 AGENTS.md、硬件相关查 `docs/vendor/VENDOR_INDEX.md`、给验证证据、失败定位修复、按迭代推进。
 - **子 Agent 启动 SOP 与 Role → Runtime 映射继续有效**：主节点依然只负责读文件、拆任务、派子 agent、验收、留档；编码 / 测试 / 修复一律由子 agent 完成。
 - **Sprint 留档原则继续有效**，本文仅增加 Epic / Micro 分层：Epic 走完整六文档，Micro 仅 tech-done.md。
-- **`.codex/agents/registry.toml` `[execution_policy]` 字段是机器可读契约**，本文是人类可读说明；两者矛盾时以本文 + AGENTS.md 表述为准，但务必同步修订 registry.toml。
+- **`.codex/registry.toml` `[execution_policy]` 字段是机器可读契约**，本文是人类可读说明；两者矛盾时以本文 + AGENTS.md 表述为准，但务必同步修订 registry.toml。
 - **OKR.md 是产品方向与完成度的唯一权威**；本文的"最低 Objective 软提醒"是流程引导，不修改任何 Objective / KR / 完成度数字。
 
 ### 6.1 引用一致性
@@ -175,7 +175,7 @@ Epic sprint 的 tech-plan.md 推荐使用以下模板：
 修改本文规则时必须同步更新：
 
 - `AGENTS.md`：并行启动强制规则、Epic / Micro Sprint 分层、OKR 最低优先级软提醒、同一 Blocker 重复消费红线、Tech Plan 自动执行规则、Sprint 留档原则共六个小节。
-- `.codex/agents/registry.toml`：`[execution_policy]` 表里 `tech_plan_execution_rule`、`parallel_default`、`parallel_solo_exemptions`、`epic_micro_doc_policy`、`okr_lowest_objective_rule`、`repeated_blocker_cap`、`process_doc_reference` 七个字段。
+- `.codex/registry.toml`：`[execution_policy]` 表里 `tech_plan_execution_rule`、`parallel_default`、`parallel_solo_exemptions`、`epic_micro_doc_policy`、`okr_lowest_objective_rule`、`repeated_blocker_cap`、`process_doc_reference` 七个字段。
 - `OKR.md` 4.1 节末尾追加的"最低 Objective 软提醒规则"短段（只引用本文，不引入完成度数字、不修改既有快照）。
 
 ### 6.2 自指风险与首个示范用例

@@ -111,11 +111,11 @@ source install/setup.bash
 
 | 业务角色 | Cursor Task subagent_type | Codex agent_type | 读取 prompt 来源 | 可改范围 |
 |---|---|---|---|---|
-| product-okr-owner | `generalPurpose` | `worker` | `.codex/agents/product-okr-owner.toml` 的 `prompt` 字段 | `OKR.md`、`sprints/`、`docs/product/` |
-| robot-software-engineer | `generalPurpose` | `worker` | `.codex/agents/robot-software-engineer.toml` 的 `prompt` 字段 | ROS2 主链路、接口、behavior、bringup、脚本和相关文档 |
-| rober-hardware-engineer | `generalPurpose` | `worker` | `.codex/agents/robot-hardware-engineer.toml` 的 `prompt` 字段 | 硬件驱动、bringup 硬件参数、硬件/vendor 文档 |
-| robot-algorithm-engineer | `generalPurpose` | `worker` | `.codex/agents/robot-algorithm-engineer.toml` 的 `prompt` 字段 | nav、vision、behavior 自主能力和相关文档 |
-| full-stack-software-engineer | `generalPurpose` | `worker` | `.codex/agents/full-stack-software-engineer.toml` 的 `prompt` 字段 | 手机/Web/API/UI、接口文档和触点联调 |
+| product-okr-owner | `generalPurpose` | `product-okr-owner` 或 `worker` | `.codex/agents/product-okr-owner.toml` 的 `developer_instructions` 字段 | `OKR.md`、`sprints/`、`docs/product/` |
+| robot-software-engineer | `generalPurpose` | `robot-software-engineer` 或 `worker` | `.codex/agents/robot-software-engineer.toml` 的 `developer_instructions` 字段 | ROS2 主链路、接口、behavior、bringup、脚本和相关文档 |
+| rober-hardware-engineer | `generalPurpose` | `robot-hardware-engineer` 或 `worker` | `.codex/agents/robot-hardware-engineer.toml` 的 `developer_instructions` 字段 | 硬件驱动、bringup 硬件参数、硬件/vendor 文档 |
+| robot-algorithm-engineer | `generalPurpose` | `robot-algorithm-engineer` 或 `worker` | `.codex/agents/robot-algorithm-engineer.toml` 的 `developer_instructions` 字段 | nav、vision、behavior 自主能力和相关文档 |
+| full-stack-software-engineer | `generalPurpose` | `full-stack-software-engineer` 或 `worker` | `.codex/agents/full-stack-software-engineer.toml` 的 `developer_instructions` 字段 | 手机/Web/API/UI、接口文档和触点联调 |
 
 运行时调用规则：
 
@@ -129,7 +129,7 @@ source install/setup.bash
 
 ```
 [角色 System Prompt]
-（从对应 .codex/agents/<role>.toml 的 prompt 字段完整复制，不裁剪）
+（从对应 .codex/agents/<role>.toml 的 developer_instructions 字段完整复制，不裁剪）
 
 [本轮任务]
 （清晰描述这次要做什么，包括背景和目标）
