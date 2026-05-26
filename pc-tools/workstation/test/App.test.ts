@@ -1269,6 +1269,24 @@ const fixtures: Record<string, unknown> = {
             ],
           },
         },
+        {
+          item_id: "review_item_002",
+          task_id: "task_archive_002",
+          frame_id: "frame_002",
+          media_ref: "frame_media_002.jpg",
+          evidence_ref: "review_item_002.json",
+          current_labels: {
+            count: 1,
+            sample: [
+              {
+                label_type: "elevator_door_state",
+                value: "open",
+                status: "fixture_existing",
+                evidence_ref: "label_door_002.json",
+              },
+            ],
+          },
+        },
       ],
       label_schema: {
         schema_ref: "label_schema_v1.json",
@@ -1840,6 +1858,8 @@ describe("App", () => {
     expect(wrapper.text()).toContain("cloud_operator_console_probe_not_loaded");
     expect(wrapper.text()).toContain("cloud_archive_tasks_probe_not_loaded");
     expect(wrapper.text()).toContain("realtime_elevator_probe_not_loaded");
+    expect(wrapper.text()).toContain("Local labeling review panel");
+    expect(wrapper.findAll("button").find((button) => button.text() === "Next item")?.attributes("disabled")).toBeDefined();
     expect(wrapper.text()).toContain("real realtime API");
     expect(wrapper.text()).toContain("robot ACK");
     expect(wrapper.text()).toContain("HIL/hardware safety");
@@ -1931,8 +1951,30 @@ describe("App", () => {
     expect(wrapper.text()).toContain("1 / 2");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalCursor);
     expect(wrapper.text()).toContain("Labeling queue inspector");
+    expect(wrapper.text()).toContain("Local labeling review panel");
+    expect(wrapper.text()).toContain("local_fixture_item_cursor_only");
+    expect(wrapper.text()).toContain("local_fixture_item_cursor_ready");
+    expect(wrapper.text()).toContain("submit_enabled=false");
+    expect(wrapper.text()).toContain("rollback_enabled=false");
+    expect(wrapper.text()).toContain("dataset_export_available=false");
+    expect(wrapper.text()).toContain("real_annotation_api_connected=false");
+    expect(wrapper.text()).toContain("draft_labels.autosave_available=false");
+    expect(wrapper.text()).toContain("1 / 2");
+    expect(wrapper.findAll("button").find((button) => button.text() === "Next item")?.attributes("disabled")).toBeUndefined();
     expect(wrapper.text()).toContain("review_item_001");
     expect(wrapper.text()).toContain("frame_media_001.jpg");
+    expect(wrapper.text()).not.toContain("review_item_002frame_002");
+
+    const callsBeforeLabelingCursor = mockedFetch.mock.calls.length;
+    await wrapper.findAll("button").find((button) => button.text() === "Next item")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("2 / 2");
+    expect(wrapper.text()).toContain("review_item_002");
+    expect(wrapper.text()).toContain("frame_media_002.jpg");
+    await wrapper.findAll("button").find((button) => button.text() === "Reset item")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain("1 / 2");
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLabelingCursor);
     expect(wrapper.text()).toContain("floor_label");
     expect(wrapper.text()).toContain("draft_label_001.json");
     expect(wrapper.text()).toContain("operator_review_not_complete");

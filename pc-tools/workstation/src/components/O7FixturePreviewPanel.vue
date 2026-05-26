@@ -11,6 +11,7 @@ import type { O7FixturePreviewInputs, O7FixturePreviewKind, O7FixturePreviewResp
 import type {
   O7CloudArchiveTasksProbeResponse,
   O7CloudArchiveTasksResponse,
+  O7LabelingQueueInspectorReviewItem,
   O7CloudOperatorConsoleProbeResponse,
   O7RealtimeElevatorProbeResponse,
 } from "../shared/contracts";
@@ -62,6 +63,7 @@ const cloudProbeResult = ref<O7CloudOperatorConsoleProbeResponse | null>(null);
 const cloudProbeError = ref("");
 const cloudProbeLoading = ref(false);
 const routeReplayCursor = ref(0);
+const labelingReviewCursor = ref(0);
 
 function asRecord(result: O7FixturePreviewResult | undefined): Record<string, unknown> {
   // Vue template 需要统一读取 union 字段；这里只做只读投影，不改响应内容。
@@ -210,6 +212,7 @@ function inspectorCursorFields(result: O7CloudArchiveTasksResponse | null): stri
 }
 
 const routeReplayFrames = computed(() => archiveResult.value?.route_replay_inspector.sample_frames ?? []);
+const labelingReviewItems = computed(() => archiveResult.value?.labeling_queue_inspector.sample_review_items ?? []);
 
 const routeReplayBlockedReason = computed(() => {
   const archive = archiveResult.value as (O7CloudArchiveTasksResponse & { playback_available?: boolean }) | null;
@@ -234,6 +237,26 @@ const routeReplayBlockedReason = computed(() => {
 
 const routeReplayNavigationEnabled = computed(() => routeReplayBlockedReason.value === "");
 
+const labelingReviewBlockedReason = computed(() => {
+  const inspector = archiveResult.value?.labeling_queue_inspector;
+  // 标注 review panel 只绑定本地 archive fixture；任何缺口都回到 blocked_not_proven。
+  if (!archiveResult.value) {
+    return "archive_not_loaded";
+  }
+  if (!inspector?.selected_task_id) {
+    return "selected_task_missing";
+  }
+  if (!labelingReviewItems.value.length) {
+    return "sample_review_items_missing";
+  }
+  if (inspector.status !== "fixture_labeling_ready") {
+    return "labeling_queue_inspector_blocked_not_proven";
+  }
+  return "";
+});
+
+const labelingReviewNavigationEnabled = computed(() => labelingReviewBlockedReason.value === "");
+
 const currentRouteReplayFrame = computed(() => {
   // cursor 是数组下标，不发送给后端；frame_index 保持使用 archive fixture 的原始字段。
   if (!routeReplayNavigationEnabled.value) {
@@ -251,14 +274,41 @@ function routeReplayCursorDisplay(): string {
   return `${routeReplayCursor.value + 1} / ${routeReplayFrames.value.length}`;
 }
 
+const currentLabelingReviewItem = computed<O7LabelingQueueInspectorReviewItem | null>(() => {
+  // cursor 只用于本地聚焦 sample item，不能被解释为 selected task 或真实云端队列状态。
+  if (!labelingReviewNavigationEnabled.value) {
+    return null;
+  }
+  return labelingReviewItems.value[labelingReviewCursor.value] ?? labelingReviewItems.value[0] ?? null;
+});
+
+function labelingReviewCursorDisplay(): string {
+  const item = currentLabelingReviewItem.value;
+  // blocked 时保留 sample 数，方便 operator 区分“未加载”和“已加载但不可浏览”。
+  if (!item) {
+    return `blocked_not_proven / ${labelingReviewItems.value.length}`;
+  }
+  return `${labelingReviewCursor.value + 1} / ${labelingReviewItems.value.length}`;
+}
+
 function clampRouteReplayCursor(index: number): void {
   const maxIndex = Math.max(routeReplayFrames.value.length - 1, 0);
   // 所有 navigation 都只改浏览器内存里的数组下标，避免误变成真实回放命令。
   routeReplayCursor.value = Math.min(Math.max(index, 0), maxIndex);
 }
 
+function clampLabelingReviewCursor(index: number): void {
+  const maxIndex = Math.max(labelingReviewItems.value.length - 1, 0);
+  // 标注浏览 cursor 不能落库、不能 autosave，只允许在当前浏览器会话内换焦点。
+  labelingReviewCursor.value = Math.min(Math.max(index, 0), maxIndex);
+}
+
 function resetRouteReplayCursor(): void {
   clampRouteReplayCursor(0);
+}
+
+function resetLabelingReviewCursor(): void {
+  clampLabelingReviewCursor(0);
 }
 
 function previousRouteReplayFrame(): void {
@@ -267,9 +317,21 @@ function previousRouteReplayFrame(): void {
   }
 }
 
+function previousLabelingReviewItem(): void {
+  if (labelingReviewNavigationEnabled.value) {
+    clampLabelingReviewCursor(labelingReviewCursor.value - 1);
+  }
+}
+
 function nextRouteReplayFrame(): void {
   if (routeReplayNavigationEnabled.value) {
     clampRouteReplayCursor(routeReplayCursor.value + 1);
+  }
+}
+
+function nextLabelingReviewItem(): void {
+  if (labelingReviewNavigationEnabled.value) {
+    clampLabelingReviewCursor(labelingReviewCursor.value + 1);
   }
 }
 
@@ -287,6 +349,7 @@ async function loadArchiveTasks(): Promise<void> {
   try {
     archiveResult.value = await getO7CloudArchiveTasks(archiveJson.value);
     resetRouteReplayCursor();
+    resetLabelingReviewCursor();
   } catch (err) {
     archiveError.value = err instanceof Error ? err.message : "cloud_archive_task_api_unavailable_not_proven";
   } finally {
@@ -966,6 +1029,66 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
         <dt>review_item_count</dt>
         <dd>{{ archiveResult?.labeling_queue_inspector.review_item_count ?? 0 }}</dd>
       </dl>
+
+      <h3>Local labeling review panel</h3>
+      <div class="notice" role="note">
+        local_fixture_item_cursor_only · submit_enabled=false · rollback_enabled=false ·
+        dataset_export_available=false · real_annotation_api_connected=false ·
+        draft_labels.autosave_available=false
+      </div>
+      <dl class="kv compact-kv">
+        <dt>cursor_status</dt>
+        <dd>{{ labelingReviewNavigationEnabled ? "local_fixture_item_cursor_ready" : "blocked_not_proven" }}</dd>
+        <dt>blocked_reason</dt>
+        <dd>{{ labelingReviewBlockedReason || "none_local_fixture_only" }}</dd>
+        <dt>current item</dt>
+        <dd>{{ labelingReviewCursorDisplay() }}</dd>
+        <dt>item_id</dt>
+        <dd>{{ currentLabelingReviewItem?.item_id ?? "blocked_not_proven" }}</dd>
+        <dt>frame_id</dt>
+        <dd>{{ currentLabelingReviewItem?.frame_id ?? "blocked_not_proven" }}</dd>
+        <dt>media_ref</dt>
+        <dd>{{ currentLabelingReviewItem?.media_ref ?? "blocked_not_proven" }}</dd>
+        <dt>evidence_ref</dt>
+        <dd>{{ currentLabelingReviewItem?.evidence_ref ?? "blocked_not_proven" }}</dd>
+        <dt>current label count</dt>
+        <dd>{{ currentLabelingReviewItem?.current_labels.count ?? 0 }}</dd>
+        <dt>current label sample</dt>
+        <dd><code>{{ jsonSummary(currentLabelingReviewItem?.current_labels.sample ?? []) }}</code></dd>
+        <dt>draft label sample</dt>
+        <dd><code>{{ jsonSummary(archiveResult?.labeling_queue_inspector.draft_labels.sample ?? []) }}</code></dd>
+        <dt>allowed label types</dt>
+        <dd><code>{{ jsonSummary(archiveResult?.labeling_queue_inspector.allowed_label_types ?? []) }}</code></dd>
+        <dt>label schema</dt>
+        <dd><code>{{ jsonSummary(archiveResult?.labeling_queue_inspector.label_schema) }}</code></dd>
+      </dl>
+      <div class="route-inputs">
+        <!-- 这些按钮只改变本地 item cursor，不调用 API，也不会提交、回滚或导出任何标注数据。 -->
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!labelingReviewNavigationEnabled || labelingReviewCursor <= 0"
+          @click="previousLabelingReviewItem"
+        >
+          Previous item
+        </button>
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!labelingReviewNavigationEnabled || labelingReviewCursor >= labelingReviewItems.length - 1"
+          @click="nextLabelingReviewItem"
+        >
+          Next item
+        </button>
+        <button
+          class="secondary"
+          type="button"
+          :disabled="!labelingReviewNavigationEnabled"
+          @click="resetLabelingReviewCursor"
+        >
+          Reset item
+        </button>
+      </div>
 
       <h3>Sample review items</h3>
       <table>
