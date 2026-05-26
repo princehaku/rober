@@ -410,6 +410,77 @@ export interface O7RouteReplaySnapshot {
   next_required_evidence: string[];
 }
 
+// 标注队列 snapshot 只定义 O7-KR4 的字段槽位；提交、回滚和导出必须显式关闭。
+// allowed_label_types 是未来云端 schema 的占位清单，不代表真实 annotation API 已返回。
+export interface O7LabelingQueueSnapshot {
+  schema: "trashbot.o7.labeling_queue_snapshot.v1";
+  schema_version: 1;
+  source: "software_proof";
+  snapshot_status: "blocked_not_proven";
+  safe_to_control: false;
+  primary_actions_enabled: false;
+  submit_enabled: false;
+  rollback_enabled: false;
+  real_annotation_api_connected: false;
+  dataset_export_available: false;
+  review_queue: {
+    source_contract: "labeling.review_queue.v1";
+    status: "blocked_no_annotation_api";
+    available_item_count: 0;
+    assigned_operator: "not_connected";
+    queue_ref: "missing_o6_annotation_review_queue";
+    selection_required: true;
+  };
+  selected_item: {
+    item_id: "not_connected";
+    task_id: "not_connected";
+    frame_id: "not_connected";
+    media_ref: "missing_review_item_media_ref";
+    evidence_ref: "missing_selected_labeling_item_record";
+    status: "not_proven";
+  };
+  label_schema: {
+    schema_ref: "missing_label_schema";
+    version: "not_connected";
+    status: "blocked_no_label_schema_api";
+    required_fields: [];
+  };
+  allowed_label_types: Array<{
+    type: "elevator_door_state" | "floor_label" | "obstacle_type";
+    status: "contract_placeholder_not_api";
+    values: string[];
+  }>;
+  draft_labels: {
+    count: 0;
+    items: [];
+    status: "blocked_no_selected_item";
+    autosave_available: false;
+  };
+  submit_audit: {
+    status: "blocked_not_available";
+    endpoint: "POST /api/o6/annotations (future, disabled)";
+    last_submit_id: "not_connected";
+    idempotency_key_required: true;
+    audit_ref: "missing_submit_audit_log";
+  };
+  rollback_audit: {
+    status: "blocked_not_available";
+    endpoint: "POST /api/o6/annotations/rollback (future, disabled)";
+    last_rollback_id: "not_connected";
+    requires_reason: true;
+    audit_ref: "missing_rollback_audit_log";
+  };
+  dataset_export: {
+    status: "blocked_not_available";
+    export_ref: "missing_training_dataset_export";
+    supported_formats: [];
+    gaps: string[];
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+  next_required_evidence: string[];
+}
+
 // O7 Operator Console 是 cloud-contract driven 的最小视图，不能由前端伪造机器人事实。
 // command_previews 只表达将来安全 API 的 envelope，不代表按钮会发送真实控制。
 export interface O7OperatorConsoleResponse extends ProofFlags {
@@ -427,6 +498,7 @@ export interface O7OperatorConsoleResponse extends ProofFlags {
   realtime_map_snapshot: O7RealtimeMapSnapshot;
   elevator_state_snapshot: O7ElevatorStateSnapshot;
   route_replay_snapshot: O7RouteReplaySnapshot;
+  labeling_queue_snapshot: O7LabelingQueueSnapshot;
   manual_control_policy: {
     pc_direct_robot_connection: false;
     cloud_mediated_only: true;
@@ -485,6 +557,9 @@ export const NOT_PROVEN_ITEMS = [
   "real_o7_realtime_cloud_stream",
   "real_o7_route_replay_archive",
   "real_o7_trajectory_playback",
+  "real_o7_labeling_review_queue",
+  "real_o7_annotation_submit",
+  "real_o7_dataset_export",
   "real_o7_operator_command_dispatch",
   "delivery_success",
 ] as const;

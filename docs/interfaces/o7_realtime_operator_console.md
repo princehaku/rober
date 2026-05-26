@@ -27,6 +27,10 @@
 - `board_media_preflight_required=true`
 - `board_media_preflight_schema=trashbot.o7_board_media_preflight.v1`
 - `board_media_preflight_state=blocked`
+- `labeling_queue_snapshot.submit_enabled=false`
+- `labeling_queue_snapshot.rollback_enabled=false`
+- `labeling_queue_snapshot.real_annotation_api_connected=false`
+- `labeling_queue_snapshot.dataset_export_available=false`
 
 PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE ROVER、Nav2、TTS 或手控命令。
 
@@ -124,6 +128,53 @@ PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE 
 
 `next_required_evidence` 是后续 O6/O7 对接清单，不是 PC 已经查询云端的证据；至少包含 O6 cloud task archive query contract、历史任务列表 fixture、含 map frame 和 timestamp 的 trajectory frame schema、keyframe evidence ref archive sample、state transition timeline archive sample，以及 PC playback cursor 与 cloud frames 绑定且不触发机器人控制的证明。
 
+## Labeling Queue Snapshot
+
+`labeling_queue_snapshot` 是 O7-KR4 的 fail-closed 字段契约。它让 PC Console 明确显示 review queue、selected item、label schema、allowed label types、draft labels、submit/rollback audit、dataset export gaps 和 next required evidence，但当前仍是 `software_proof` 和 `blocked_not_proven`，不能解释为真实标注队列、真实截图/帧、真实提交、真实回滚、真实训练集导出或 O6 annotation API 已经完成。
+
+固定字段：
+
+- `schema=trashbot.o7.labeling_queue_snapshot.v1`
+- `source=software_proof`
+- `snapshot_status=blocked_not_proven`
+- `safe_to_control=false`
+- `primary_actions_enabled=false`
+- `submit_enabled=false`
+- `rollback_enabled=false`
+- `real_annotation_api_connected=false`
+- `dataset_export_available=false`
+- `review_queue.source_contract=labeling.review_queue.v1`
+- `review_queue.status=blocked_no_annotation_api`
+- `review_queue.available_item_count=0`
+- `review_queue.assigned_operator=not_connected`
+- `review_queue.queue_ref=missing_o6_annotation_review_queue`
+- `selected_item.item_id/task_id/frame_id=not_connected`
+- `selected_item.media_ref=missing_review_item_media_ref`
+- `selected_item.evidence_ref=missing_selected_labeling_item_record`
+- `selected_item.status=not_proven`
+- `label_schema.schema_ref=missing_label_schema`
+- `label_schema.version=not_connected`
+- `label_schema.status=blocked_no_label_schema_api`
+- `label_schema.required_fields=[]`
+- `allowed_label_types[].status=contract_placeholder_not_api`
+- `draft_labels.count=0`
+- `draft_labels.items=[]`
+- `draft_labels.status=blocked_no_selected_item`
+- `draft_labels.autosave_available=false`
+- `submit_audit.status=blocked_not_available`
+- `submit_audit.endpoint=POST /api/o6/annotations (future, disabled)`
+- `submit_audit.audit_ref=missing_submit_audit_log`
+- `rollback_audit.status=blocked_not_available`
+- `rollback_audit.endpoint=POST /api/o6/annotations/rollback (future, disabled)`
+- `rollback_audit.audit_ref=missing_rollback_audit_log`
+- `dataset_export.status=blocked_not_available`
+- `dataset_export.export_ref=missing_training_dataset_export`
+- `dataset_export.supported_formats=[]`
+
+`dataset_export.gaps` 必须至少包含 O6 annotation API 未连接、accepted label schema 未证明、reviewed items 不可用、dataset manifest export 不可用和 training split policy 未定义。`blocked_reasons` 必须至少包含 O6 annotation API 未连接、labeling review queue API 仍是 draft、label schema 不可用、selected review item 不可用、submit audit 不可用、rollback audit 不可用和 training dataset export 不可用。`not_proven` 必须覆盖真实标注队列、真实 selected item、真实 frame/screenshot media、真实 label schema、真实 cloud allowed label types、真实 draft label autosave、真实 annotation submit、真实 annotation rollback 和真实 training dataset export。
+
+`next_required_evidence` 是后续 O6/O7 对接清单，不是 PC 已经查询云端的证据；至少包含 O6 annotation review queue query contract、label schema fixture with allowed types、selected review item with media evidence ref、draft label payload schema、submit annotation audit log sample、rollback annotation audit log sample、dataset export manifest contract，以及 PC labeling panel 与 cloud API 绑定且不触发机器人控制的证明。
+
 ## Board Media Preflight
 
 `board_media_preflight_summary` 是 O7 Console 对板端 media preflight 缺口的只读展示。当前 PC API 使用静态 fail-closed summary，让 operator 能在 Console 中看到 KR5 之前必须补齐的 RTC、摄像头、音频、ASR/TTS 和上车 smoke 证据。
@@ -186,7 +237,7 @@ PC Console 展示该 summary 不等于真实 RTC、真实摄像头、真实音�
 - 真实电梯状态链或楼层识别
 - 真实历史任务列表、历史轨迹归档或逐帧回放
 - 真实关键帧截图、真实 evidence refs 或真实状态转移时间线
-- 真实标注提交或训练集导出
+- 真实标注队列、真实截图/帧、真实标注提交、真实回滚或训练集导出
 - 真实 ASR/TTS runtime
 - 真实手动转向、速度控制或自动寻路下发
 - 真实送达、投放或硬件安全

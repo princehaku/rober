@@ -492,17 +492,54 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.route_replay_snapshot.blocked_reasons).toContain("o6_cloud_task_archive_not_connected");
     expect(response.route_replay_snapshot.not_proven).toContain("real_trajectory_frames");
     expect(response.route_replay_snapshot.next_required_evidence).toContain("o6_cloud_task_archive_query_contract");
+    expect(response.labeling_queue_snapshot.schema).toBe("trashbot.o7.labeling_queue_snapshot.v1");
+    expect(response.labeling_queue_snapshot.source).toBe("software_proof");
+    expect(response.labeling_queue_snapshot.snapshot_status).toBe("blocked_not_proven");
+    expect(response.labeling_queue_snapshot.safe_to_control).toBe(false);
+    expect(response.labeling_queue_snapshot.primary_actions_enabled).toBe(false);
+    expect(response.labeling_queue_snapshot.submit_enabled).toBe(false);
+    expect(response.labeling_queue_snapshot.rollback_enabled).toBe(false);
+    expect(response.labeling_queue_snapshot.real_annotation_api_connected).toBe(false);
+    expect(response.labeling_queue_snapshot.dataset_export_available).toBe(false);
+    expect(response.labeling_queue_snapshot.review_queue.source_contract).toBe("labeling.review_queue.v1");
+    expect(response.labeling_queue_snapshot.review_queue.status).toBe("blocked_no_annotation_api");
+    expect(response.labeling_queue_snapshot.review_queue.available_item_count).toBe(0);
+    expect(response.labeling_queue_snapshot.selected_item.media_ref).toBe("missing_review_item_media_ref");
+    expect(response.labeling_queue_snapshot.selected_item.status).toBe("not_proven");
+    expect(response.labeling_queue_snapshot.label_schema.status).toBe("blocked_no_label_schema_api");
+    expect(response.labeling_queue_snapshot.allowed_label_types.map((labelType) => labelType.type)).toEqual([
+      "elevator_door_state",
+      "floor_label",
+      "obstacle_type",
+    ]);
+    expect(response.labeling_queue_snapshot.draft_labels.count).toBe(0);
+    expect(response.labeling_queue_snapshot.draft_labels.autosave_available).toBe(false);
+    expect(response.labeling_queue_snapshot.submit_audit.audit_ref).toBe("missing_submit_audit_log");
+    expect(response.labeling_queue_snapshot.rollback_audit.audit_ref).toBe("missing_rollback_audit_log");
+    expect(response.labeling_queue_snapshot.dataset_export.export_ref).toBe("missing_training_dataset_export");
+    expect(response.labeling_queue_snapshot.dataset_export.gaps).toContain("dataset_manifest_export_not_available");
+    expect(response.labeling_queue_snapshot.blocked_reasons).toContain("o6_annotation_api_not_connected");
+    expect(response.labeling_queue_snapshot.not_proven).toContain("real_training_dataset_export");
+    expect(response.labeling_queue_snapshot.next_required_evidence).toContain("dataset_export_manifest_contract");
     expect(response.kr_views.map((kr) => kr.id)).toEqual(["O7-KR1", "O7-KR2", "O7-KR3", "O7-KR4", "O7-KR5", "O7-KR6"]);
     expect(response.kr_views.every((kr) => ["draft", "blocked", "not_proven"].includes(kr.status))).toBe(true);
     expect(response.command_previews.every((command) => command.sends_to_robot === false)).toBe(true);
     expect(response.command_previews.every((command) => command.requires_confirmation === true)).toBe(true);
     expect(response.blocked_reasons).toContain("pc_must_not_direct_connect_robot");
     expect(response.blocked_reasons).toContain("route_replay_snapshot_blocked");
+    expect(response.blocked_reasons).toContain("labeling_queue_snapshot_blocked");
+    expect(response.blocked_reasons).toContain("o6_annotation_api_not_connected");
     expect(response.not_proven).toContain("real_operator_safe_command_dispatch");
     expect(response.not_proven).toContain("real_route_replay_trajectory_frames");
+    expect(response.not_proven).toContain("real_annotation_rollback");
+    expect(response.not_proven).toContain("real_training_dataset_export");
     expect(JSON.stringify(response)).not.toContain("delivery_success=true");
     expect(JSON.stringify(response)).not.toContain("playback_available=true");
     expect(JSON.stringify(response)).not.toContain("real_archive_connected=true");
+    expect(JSON.stringify(response)).not.toContain("submit_enabled=true");
+    expect(JSON.stringify(response)).not.toContain("rollback_enabled=true");
+    expect(JSON.stringify(response)).not.toContain("real_annotation_api_connected=true");
+    expect(JSON.stringify(response)).not.toContain("dataset_export_available=true");
     expect(JSON.stringify(response)).not.toContain("success_claim_allowed=true");
     expect(JSON.stringify(response)).not.toContain("command_dispatch_enabled=true");
     expect(JSON.stringify(response)).not.toContain("/cmd_vel");

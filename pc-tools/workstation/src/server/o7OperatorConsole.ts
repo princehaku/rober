@@ -2,6 +2,7 @@ import { PROOF_FLAGS } from "../shared/contracts";
 import type {
   O7BoardMediaPreflightSummary,
   O7ElevatorStateSnapshot,
+  O7LabelingQueueSnapshot,
   O7OperatorConsoleResponse,
   O7OperatorKrView,
   O7RealtimeMapSnapshot,
@@ -300,12 +301,127 @@ const ROUTE_REPLAY_SNAPSHOT: O7RouteReplaySnapshot = {
   ],
 };
 
+const LABELING_QUEUE_SNAPSHOT: O7LabelingQueueSnapshot = {
+  schema: "trashbot.o7.labeling_queue_snapshot.v1",
+  schema_version: 1,
+  source: "software_proof",
+  snapshot_status: "blocked_not_proven",
+  safe_to_control: false,
+  primary_actions_enabled: false,
+  submit_enabled: false,
+  rollback_enabled: false,
+  real_annotation_api_connected: false,
+  dataset_export_available: false,
+  review_queue: {
+    source_contract: "labeling.review_queue.v1",
+    status: "blocked_no_annotation_api",
+    available_item_count: 0,
+    assigned_operator: "not_connected",
+    queue_ref: "missing_o6_annotation_review_queue",
+    selection_required: true,
+  },
+  selected_item: {
+    item_id: "not_connected",
+    task_id: "not_connected",
+    frame_id: "not_connected",
+    media_ref: "missing_review_item_media_ref",
+    evidence_ref: "missing_selected_labeling_item_record",
+    status: "not_proven",
+  },
+  label_schema: {
+    schema_ref: "missing_label_schema",
+    version: "not_connected",
+    status: "blocked_no_label_schema_api",
+    required_fields: [],
+  },
+  allowed_label_types: [
+    {
+      type: "elevator_door_state",
+      status: "contract_placeholder_not_api",
+      values: ["open", "closed", "unknown"],
+    },
+    {
+      type: "floor_label",
+      status: "contract_placeholder_not_api",
+      values: [],
+    },
+    {
+      type: "obstacle_type",
+      status: "contract_placeholder_not_api",
+      values: ["none", "person", "cart", "trash_bag", "unknown"],
+    },
+  ],
+  draft_labels: {
+    count: 0,
+    items: [],
+    status: "blocked_no_selected_item",
+    autosave_available: false,
+  },
+  submit_audit: {
+    status: "blocked_not_available",
+    endpoint: "POST /api/o6/annotations (future, disabled)",
+    last_submit_id: "not_connected",
+    idempotency_key_required: true,
+    audit_ref: "missing_submit_audit_log",
+  },
+  rollback_audit: {
+    status: "blocked_not_available",
+    endpoint: "POST /api/o6/annotations/rollback (future, disabled)",
+    last_rollback_id: "not_connected",
+    requires_reason: true,
+    audit_ref: "missing_rollback_audit_log",
+  },
+  dataset_export: {
+    status: "blocked_not_available",
+    export_ref: "missing_training_dataset_export",
+    supported_formats: [],
+    gaps: [
+      "o6_annotation_api_not_connected",
+      "accepted_label_schema_not_proven",
+      "reviewed_items_not_available",
+      "dataset_manifest_export_not_available",
+      "training_split_policy_not_defined",
+    ],
+  },
+  blocked_reasons: [
+    "o6_annotation_api_not_connected",
+    "labeling_review_queue_api_draft",
+    "label_schema_not_available",
+    "selected_review_item_not_available",
+    "submit_audit_not_available",
+    "rollback_audit_not_available",
+    "training_dataset_export_not_available",
+  ],
+  not_proven: [
+    "real_labeling_review_queue",
+    "real_selected_labeling_item",
+    "real_frame_or_screenshot_media",
+    "real_label_schema",
+    "real_allowed_label_types_from_cloud",
+    "real_draft_label_autosave",
+    "real_annotation_submit",
+    "real_annotation_rollback",
+    "real_training_dataset_export",
+  ],
+  next_required_evidence: [
+    "o6_annotation_review_queue_query_contract",
+    "label_schema_fixture_with_allowed_types",
+    "selected_review_item_with_media_evidence_ref",
+    "draft_label_payload_schema",
+    "submit_annotation_audit_log_sample",
+    "rollback_annotation_audit_log_sample",
+    "dataset_export_manifest_contract",
+    "pc_labeling_panel_bound_to_cloud_api_without_robot_control",
+  ],
+};
+
 export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
   // 这里与 cloud-relay helper 固定同一 schema；PC 只消费契约快照，不连接小车。
   // 六个 KR 都保留 draft/blocked/not_proven，避免 UI 把占位面板外推成真实 O7 能力。
   // 板端媒体 preflight 暂用静态 fail-closed 摘要，直到 cloud 提供真实板端 JSON。
   // 地图和电梯 snapshot 只让 operator 看见字段契约，不能被前端解释为 ROS2 实时流。
   // 路线回放 snapshot 只锁定 O6 归档 API 的对接字段，当前不能渲染为可播放历史任务。
+  // 标注队列 snapshot 只锁定 O6 annotation/export 对接字段，提交和回滚固定 fail-closed。
   return {
     schema: "trashbot.o7.operator_console.v1",
     ...PROOF_FLAGS,
@@ -322,6 +438,7 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
     realtime_map_snapshot: REALTIME_MAP_SNAPSHOT,
     elevator_state_snapshot: ELEVATOR_STATE_SNAPSHOT,
     route_replay_snapshot: ROUTE_REPLAY_SNAPSHOT,
+    labeling_queue_snapshot: LABELING_QUEUE_SNAPSHOT,
     manual_control_policy: {
       pc_direct_robot_connection: false,
       cloud_mediated_only: true,
@@ -367,7 +484,9 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
       "realtime_map_snapshot_blocked",
       "elevator_state_snapshot_blocked",
       "route_replay_snapshot_blocked",
+      "labeling_queue_snapshot_blocked",
       "o6_cloud_task_archive_not_connected",
+      "o6_annotation_api_not_connected",
       "real_voice_stream_not_proven",
       "board_media_preflight_blocked",
       "manual_or_navigation_dispatch_disabled",
@@ -380,7 +499,11 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
       "real_route_replay_task_selector",
       "real_route_replay_trajectory_frames",
       "real_route_replay_state_transitions",
+      "real_labeling_review_queue",
+      "real_selected_labeling_item",
       "real_annotation_submit_api",
+      "real_annotation_rollback",
+      "real_training_dataset_export",
       "real_asr_tts_runtime",
       "real_rtc_session",
       "real_camera_video_source",
@@ -393,6 +516,7 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
     ],
     recovery_paths: [
       "Connect O6 cloud archive and realtime stream before replacing draft values.",
+      "Connect O6 annotation API, submit audit, rollback audit, and dataset export before enabling labeling actions.",
       "Collect board media preflight JSON and on-robot media smoke before interpreting KR5 fields.",
       "Ask Robot Software for robot-side ACK, timeout, cancel, and stop evidence before enabling commands.",
       "Ask Hardware for HIL/safety evidence before treating manual control as safe.",

@@ -231,6 +231,103 @@ defineProps<{
       </div>
     </article>
 
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <!-- 标注队列 snapshot 只展示 O6 annotation API 的缺口，不提供提交或回滚按钮。 -->
+        <h3>Labeling queue snapshot</h3>
+        <span class="pill danger">{{
+          operatorConsole?.labeling_queue_snapshot.snapshot_status ?? "blocked_not_proven"
+        }}</span>
+      </div>
+      <div class="two-col">
+        <dl class="kv compact-kv">
+          <!-- queue 和 selected item 固定未连接，避免把占位 media_ref 当作真实截图。 -->
+          <dt>schema</dt>
+          <dd>{{ operatorConsole?.labeling_queue_snapshot.schema ?? "trashbot.o7.labeling_queue_snapshot.v1" }}</dd>
+          <dt>review queue</dt>
+          <dd>
+            {{ operatorConsole?.labeling_queue_snapshot.review_queue.status ?? "blocked_no_annotation_api" }}
+            · count={{ operatorConsole?.labeling_queue_snapshot.review_queue.available_item_count ?? 0 }}
+          </dd>
+          <dt>selected item</dt>
+          <dd>
+            {{ operatorConsole?.labeling_queue_snapshot.selected_item.item_id ?? "not_connected" }}
+            · media={{ operatorConsole?.labeling_queue_snapshot.selected_item.media_ref ?? "missing_review_item_media_ref" }}
+          </dd>
+          <dt>label schema</dt>
+          <dd>
+            {{ operatorConsole?.labeling_queue_snapshot.label_schema.schema_ref ?? "missing_label_schema" }}
+            · {{ operatorConsole?.labeling_queue_snapshot.label_schema.status ?? "blocked_no_label_schema_api" }}
+          </dd>
+          <dt>draft labels</dt>
+          <dd>
+            count={{ operatorConsole?.labeling_queue_snapshot.draft_labels.count ?? 0 }}
+            · {{ operatorConsole?.labeling_queue_snapshot.draft_labels.status ?? "blocked_no_selected_item" }}
+          </dd>
+          <dt>submit enabled</dt>
+          <dd>{{ operatorConsole?.labeling_queue_snapshot.submit_enabled ?? false }}</dd>
+          <dt>rollback enabled</dt>
+          <dd>{{ operatorConsole?.labeling_queue_snapshot.rollback_enabled ?? false }}</dd>
+        </dl>
+        <dl class="kv compact-kv">
+          <!-- 提交、回滚和导出字段只展示 future disabled endpoint 与 audit 缺口。 -->
+          <dt>annotation API</dt>
+          <dd>{{ operatorConsole?.labeling_queue_snapshot.real_annotation_api_connected ?? false }}</dd>
+          <dt>submit audit</dt>
+          <dd>
+            {{ operatorConsole?.labeling_queue_snapshot.submit_audit.status ?? "blocked_not_available" }}
+            · {{ operatorConsole?.labeling_queue_snapshot.submit_audit.audit_ref ?? "missing_submit_audit_log" }}
+          </dd>
+          <dt>rollback audit</dt>
+          <dd>
+            {{ operatorConsole?.labeling_queue_snapshot.rollback_audit.status ?? "blocked_not_available" }}
+            · {{ operatorConsole?.labeling_queue_snapshot.rollback_audit.audit_ref ?? "missing_rollback_audit_log" }}
+          </dd>
+          <dt>dataset export</dt>
+          <dd>
+            available={{ operatorConsole?.labeling_queue_snapshot.dataset_export_available ?? false }}
+            · {{ operatorConsole?.labeling_queue_snapshot.dataset_export.status ?? "blocked_not_available" }}
+          </dd>
+          <dt>export ref</dt>
+          <dd>
+            {{
+              operatorConsole?.labeling_queue_snapshot.dataset_export.export_ref ??
+                "missing_training_dataset_export"
+            }}
+          </dd>
+        </dl>
+      </div>
+      <div class="three-col">
+        <div>
+          <h3>Allowed label types</h3>
+          <ul class="dense">
+            <!-- allowed types 是契约占位，status 保持 not_api，不能当作云端 schema 返回。 -->
+            <li v-for="labelType in operatorConsole?.labeling_queue_snapshot.allowed_label_types" :key="labelType.type">
+              {{ labelType.type }} · {{ labelType.status }} · values={{ labelType.values.length }}
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h3>Dataset export gaps</h3>
+          <ul class="dense">
+            <!-- gaps 明确训练集导出尚未接通，不渲染任何导出入口。 -->
+            <li v-for="gap in operatorConsole?.labeling_queue_snapshot.dataset_export.gaps" :key="gap">
+              {{ gap }}
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h3>Next evidence</h3>
+          <ul class="dense">
+            <!-- next evidence 指向 O6 annotation API 和 dataset export 后续证据。 -->
+            <li v-for="item in operatorConsole?.labeling_queue_snapshot.next_required_evidence" :key="item">
+              {{ item }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
     <article class="preflight-panel">
       <div class="section-head compact-head">
         <!-- 板端媒体摘要来自 API；缺省值也保持 blocked，避免页面加载失败时显示可用。 -->

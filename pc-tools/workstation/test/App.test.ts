@@ -551,6 +551,74 @@ const fixtures: Record<string, unknown> = {
         "pc_playback_cursor_bound_to_cloud_frames_without_robot_control",
       ],
     },
+    labeling_queue_snapshot: {
+      schema: "trashbot.o7.labeling_queue_snapshot.v1",
+      schema_version: 1,
+      source: "software_proof",
+      snapshot_status: "blocked_not_proven",
+      safe_to_control: false,
+      primary_actions_enabled: false,
+      submit_enabled: false,
+      rollback_enabled: false,
+      real_annotation_api_connected: false,
+      dataset_export_available: false,
+      review_queue: {
+        source_contract: "labeling.review_queue.v1",
+        status: "blocked_no_annotation_api",
+        available_item_count: 0,
+        assigned_operator: "not_connected",
+        queue_ref: "missing_o6_annotation_review_queue",
+        selection_required: true,
+      },
+      selected_item: {
+        item_id: "not_connected",
+        task_id: "not_connected",
+        frame_id: "not_connected",
+        media_ref: "missing_review_item_media_ref",
+        evidence_ref: "missing_selected_labeling_item_record",
+        status: "not_proven",
+      },
+      label_schema: {
+        schema_ref: "missing_label_schema",
+        version: "not_connected",
+        status: "blocked_no_label_schema_api",
+        required_fields: [],
+      },
+      allowed_label_types: [
+        { type: "elevator_door_state", status: "contract_placeholder_not_api", values: ["open", "closed", "unknown"] },
+        { type: "floor_label", status: "contract_placeholder_not_api", values: [] },
+        { type: "obstacle_type", status: "contract_placeholder_not_api", values: ["none", "person", "unknown"] },
+      ],
+      draft_labels: {
+        count: 0,
+        items: [],
+        status: "blocked_no_selected_item",
+        autosave_available: false,
+      },
+      submit_audit: {
+        status: "blocked_not_available",
+        endpoint: "POST /api/o6/annotations (future, disabled)",
+        last_submit_id: "not_connected",
+        idempotency_key_required: true,
+        audit_ref: "missing_submit_audit_log",
+      },
+      rollback_audit: {
+        status: "blocked_not_available",
+        endpoint: "POST /api/o6/annotations/rollback (future, disabled)",
+        last_rollback_id: "not_connected",
+        requires_reason: true,
+        audit_ref: "missing_rollback_audit_log",
+      },
+      dataset_export: {
+        status: "blocked_not_available",
+        export_ref: "missing_training_dataset_export",
+        supported_formats: [],
+        gaps: ["o6_annotation_api_not_connected", "dataset_manifest_export_not_available"],
+      },
+      blocked_reasons: ["o6_annotation_api_not_connected", "label_schema_not_available"],
+      not_proven: ["real_labeling_review_queue", "real_annotation_submit", "real_training_dataset_export"],
+      next_required_evidence: ["o6_annotation_review_queue_query_contract", "dataset_export_manifest_contract"],
+    },
     manual_control_policy: {
       pc_direct_robot_connection: false,
       cloud_mediated_only: true,
@@ -632,7 +700,12 @@ const fixtures: Record<string, unknown> = {
       },
     ],
     blocked_reasons: ["pc_must_not_direct_connect_robot", "manual_or_navigation_dispatch_disabled"],
-    not_proven: ["real_o7_realtime_cloud_stream", "real_operator_safe_command_dispatch", "delivery_success"],
+    not_proven: [
+      "real_o7_realtime_cloud_stream",
+      "real_annotation_submit_api",
+      "real_operator_safe_command_dispatch",
+      "delivery_success",
+    ],
     recovery_paths: ["Connect O6 cloud archive and realtime stream before replacing draft values."],
     ...PROOF_FLAGS,
   },
@@ -816,6 +889,21 @@ describe("App", () => {
     expect(wrapper.text()).toContain("missing_keyframe_archive");
     expect(wrapper.text()).toContain("state_transition_timeline_not_backfilled");
     expect(wrapper.text()).toContain("o6_cloud_task_archive_query_contract");
+    expect(wrapper.text()).toContain("Labeling queue snapshot");
+    expect(wrapper.text()).toContain("trashbot.o7.labeling_queue_snapshot.v1");
+    expect(wrapper.text()).toContain("blocked_no_annotation_api");
+    expect(wrapper.text()).toContain("missing_review_item_media_ref");
+    expect(wrapper.text()).toContain("blocked_no_label_schema_api");
+    expect(wrapper.text()).toContain("submit enabledfalse");
+    expect(wrapper.text()).toContain("rollback enabledfalse");
+    expect(wrapper.text()).toContain("annotation APIfalse");
+    expect(wrapper.text()).toContain("missing_submit_audit_log");
+    expect(wrapper.text()).toContain("missing_rollback_audit_log");
+    expect(wrapper.text()).toContain("available=false");
+    expect(wrapper.text()).toContain("missing_training_dataset_export");
+    expect(wrapper.text()).toContain("dataset_manifest_export_not_available");
+    expect(wrapper.text()).toContain("o6_annotation_review_queue_query_contract");
+    expect(wrapper.text()).toContain("dataset_export_manifest_contract");
     expect(wrapper.text()).toContain("O7-KR1");
     expect(wrapper.text()).toContain("O7-KR6");
     expect(wrapper.text()).toContain("operator.safe_command_preview.v1");
@@ -825,5 +913,7 @@ describe("App", () => {
     expect(wrapper.findAll("button").map((button) => button.text())).not.toContain("Manual turn envelope");
     expect(wrapper.text()).not.toMatch(/ready[_ ]?to[_ ]?control/i);
     expect(wrapper.text()).not.toMatch(/success[_ ]?claim[_ ]?allowed true/i);
+    expect(wrapper.text()).not.toMatch(/submit enabledtrue/i);
+    expect(wrapper.text()).not.toMatch(/rollback enabledtrue/i);
   });
 });

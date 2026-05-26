@@ -34,6 +34,7 @@ O7_BOARD_MEDIA_PREFLIGHT_SCHEMA = "trashbot.o7_board_media_preflight.v1"
 O7_REALTIME_MAP_SNAPSHOT_SCHEMA = "trashbot.o7.realtime_map_snapshot.v1"
 O7_ELEVATOR_STATE_SNAPSHOT_SCHEMA = "trashbot.o7.elevator_state_snapshot.v1"
 O7_ROUTE_REPLAY_SNAPSHOT_SCHEMA = "trashbot.o7.route_replay_snapshot.v1"
+O7_LABELING_QUEUE_SNAPSHOT_SCHEMA = "trashbot.o7.labeling_queue_snapshot.v1"
 
 
 def build_o7_operator_console_contract() -> dict[str, Any]:
@@ -268,6 +269,120 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             "pc_playback_cursor_bound_to_cloud_frames_without_robot_control",
         ],
     }
+    # 标注队列 snapshot 只冻结 O7-KR4 的云端字段，不声明真实 O6 annotation API 已连接。
+    labeling_queue_snapshot = {
+        "schema": O7_LABELING_QUEUE_SNAPSHOT_SCHEMA,
+        "schema_version": 1,
+        "source": "software_proof",
+        "snapshot_status": "blocked_not_proven",
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+        "submit_enabled": False,
+        "rollback_enabled": False,
+        "real_annotation_api_connected": False,
+        "dataset_export_available": False,
+        "review_queue": {
+            "source_contract": "labeling.review_queue.v1",
+            "status": "blocked_no_annotation_api",
+            "available_item_count": 0,
+            "assigned_operator": "not_connected",
+            "queue_ref": "missing_o6_annotation_review_queue",
+            "selection_required": True,
+        },
+        "selected_item": {
+            "item_id": "not_connected",
+            "task_id": "not_connected",
+            "frame_id": "not_connected",
+            "media_ref": "missing_review_item_media_ref",
+            "evidence_ref": "missing_selected_labeling_item_record",
+            "status": "not_proven",
+        },
+        "label_schema": {
+            "schema_ref": "missing_label_schema",
+            "version": "not_connected",
+            "status": "blocked_no_label_schema_api",
+            "required_fields": [],
+        },
+        "allowed_label_types": [
+            {
+                "type": "elevator_door_state",
+                "status": "contract_placeholder_not_api",
+                "values": ["open", "closed", "unknown"],
+            },
+            {
+                "type": "floor_label",
+                "status": "contract_placeholder_not_api",
+                "values": [],
+            },
+            {
+                "type": "obstacle_type",
+                "status": "contract_placeholder_not_api",
+                "values": ["none", "person", "cart", "trash_bag", "unknown"],
+            },
+        ],
+        "draft_labels": {
+            "count": 0,
+            "items": [],
+            "status": "blocked_no_selected_item",
+            "autosave_available": False,
+        },
+        "submit_audit": {
+            "status": "blocked_not_available",
+            "endpoint": "POST /api/o6/annotations (future, disabled)",
+            "last_submit_id": "not_connected",
+            "idempotency_key_required": True,
+            "audit_ref": "missing_submit_audit_log",
+        },
+        "rollback_audit": {
+            "status": "blocked_not_available",
+            "endpoint": "POST /api/o6/annotations/rollback (future, disabled)",
+            "last_rollback_id": "not_connected",
+            "requires_reason": True,
+            "audit_ref": "missing_rollback_audit_log",
+        },
+        "dataset_export": {
+            "status": "blocked_not_available",
+            "export_ref": "missing_training_dataset_export",
+            "supported_formats": [],
+            "gaps": [
+                "o6_annotation_api_not_connected",
+                "accepted_label_schema_not_proven",
+                "reviewed_items_not_available",
+                "dataset_manifest_export_not_available",
+                "training_split_policy_not_defined",
+            ],
+        },
+        "blocked_reasons": [
+            "o6_annotation_api_not_connected",
+            "labeling_review_queue_api_draft",
+            "label_schema_not_available",
+            "selected_review_item_not_available",
+            "submit_audit_not_available",
+            "rollback_audit_not_available",
+            "training_dataset_export_not_available",
+        ],
+        "not_proven": [
+            "real_labeling_review_queue",
+            "real_selected_labeling_item",
+            "real_frame_or_screenshot_media",
+            "real_label_schema",
+            "real_allowed_label_types_from_cloud",
+            "real_draft_label_autosave",
+            "real_annotation_submit",
+            "real_annotation_rollback",
+            "real_training_dataset_export",
+        ],
+        "next_required_evidence": [
+            "o6_annotation_review_queue_query_contract",
+            "label_schema_fixture_with_allowed_types",
+            "selected_review_item_with_media_evidence_ref",
+            "draft_label_payload_schema",
+            "submit_annotation_audit_log_sample",
+            "rollback_annotation_audit_log_sample",
+            "dataset_export_manifest_contract",
+            "pc_labeling_panel_bound_to_cloud_api_without_robot_control",
+        ],
+    }
 
     return {
         "schema": O7_OPERATOR_CONSOLE_SCHEMA,
@@ -290,6 +405,7 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
         "realtime_map_snapshot": realtime_map_snapshot,
         "elevator_state_snapshot": elevator_state_snapshot,
         "route_replay_snapshot": route_replay_snapshot,
+        "labeling_queue_snapshot": labeling_queue_snapshot,
         "manual_control_policy": {
             "pc_direct_robot_connection": False,
             "cloud_mediated_only": True,
@@ -313,7 +429,9 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             "realtime_map_snapshot_blocked",
             "elevator_state_snapshot_blocked",
             "route_replay_snapshot_blocked",
+            "labeling_queue_snapshot_blocked",
             "o6_cloud_task_archive_not_connected",
+            "o6_annotation_api_not_connected",
             "manual_or_navigation_dispatch_disabled",
         ],
         "not_proven": [
@@ -322,6 +440,11 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             "real_route_replay_task_selector",
             "real_route_replay_trajectory_frames",
             "real_route_replay_state_transitions",
+            "real_labeling_review_queue",
+            "real_selected_labeling_item",
+            "real_annotation_submit",
+            "real_annotation_rollback",
+            "real_training_dataset_export",
             "real_rtc_session",
             "real_camera_video_source",
             "real_audio_capture",
@@ -335,6 +458,7 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
         "next_required_evidence": (
             board_media_preflight_summary["next_required_evidence"]
             + route_replay_snapshot["next_required_evidence"]
+            + labeling_queue_snapshot["next_required_evidence"]
         ),
     }
 

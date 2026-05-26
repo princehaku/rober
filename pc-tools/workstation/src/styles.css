@@ -79,6 +79,7 @@ h3 {
 .tabs,
 .metrics,
 .two-col,
+.three-col,
 .kr-grid,
 .route-inputs {
   display: grid;
@@ -275,6 +276,11 @@ th {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.three-col {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
 .kr-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 16px 0;
@@ -323,6 +329,7 @@ th {
     .tabs,
     .metrics,
     .two-col,
+    .three-col,
     .kr-grid,
     .route-inputs {
     grid-template-columns: 1fr;
