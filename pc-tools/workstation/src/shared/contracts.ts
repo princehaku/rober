@@ -594,6 +594,99 @@ export interface O7RouteReplayPreviewResponse extends ProofFlags {
   not_proven: string[];
 }
 
+export interface O7LabelingPreviewLabelSummary {
+  label_type: string;
+  value: string;
+  status: string;
+  evidence_ref: string;
+}
+
+export interface O7LabelingPreviewItemSample {
+  item_id: string;
+  task_id: string;
+  frame_id: string;
+  media_ref: string;
+  evidence_ref: string;
+  current_labels: {
+    count: number;
+    sample: O7LabelingPreviewLabelSummary[];
+  };
+}
+
+export interface O7LabelingPreviewDraftSample extends O7LabelingPreviewLabelSummary {
+  item_id: string;
+}
+
+// Labeling preview 是 O7-KR4 的 PC-only 本地 fixture adapter，不是标注 API。
+// submit/rollback/export 和真实 annotation API 全部固定 false，避免 UI 误开动作。
+export interface O7LabelingPreviewResponse extends ProofFlags {
+  schema: "trashbot.o7.labeling_preview.v1";
+  schema_version: 1;
+  preview_status: "fixture_preview_ready" | "blocked_not_proven";
+  input_status: {
+    fixture_json: string;
+    status:
+      | "loaded"
+      | "not_provided"
+      | "missing"
+      | "read_error"
+      | "bad_json"
+      | "not_object"
+      | "unsupported_schema"
+      | "unsafe_copy"
+      | "success_claim"
+      | "control_claim"
+      | "submit_claim"
+      | "rollback_claim"
+      | "export_claim";
+    failure_reason: string;
+  };
+  source_fixture_schema: "trashbot.o7.labeling_fixture.v1" | "not_loaded";
+  real_annotation_api_connected: false;
+  submit_enabled: false;
+  rollback_enabled: false;
+  dataset_export_available: false;
+  robot_control_executed: false;
+  queue: {
+    queue_id: string;
+    source: "local_json_fixture";
+    review_item_count: number;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  review_items: {
+    sample_limit: 3;
+    sample: O7LabelingPreviewItemSample[];
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  label_schema: {
+    schema_ref: string;
+    version: string;
+    required_fields: string[];
+    allowed_fields: string[];
+    status: "fixture_schema_summary_only" | "blocked_not_proven";
+  };
+  allowed_label_types: string[];
+  draft_labels: {
+    count: number;
+    sample: O7LabelingPreviewDraftSample[];
+    autosave_available: false;
+    status: "fixture_draft_slots_only" | "blocked_not_proven";
+  };
+  dataset_export: {
+    status: "blocked_not_available" | "fixture_gap_summary_only";
+    export_ref: string;
+    supported_formats: string[];
+    gaps: string[];
+  };
+  evidence_refs: {
+    fixture_ref: string;
+    queue_evidence_ref: string;
+    item_evidence_refs: string[];
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 // 标注队列 snapshot 只定义 O7-KR4 的字段槽位；提交、回滚和导出必须显式关闭。
 // allowed_label_types 是未来云端 schema 的占位清单，不代表真实 annotation API 已返回。
 export interface O7LabelingQueueSnapshot {
@@ -841,6 +934,7 @@ export const API_ROUTES = [
   "/api/o7/operator-console",
   "/api/o7/operator-console/acceptance",
   "/api/o7/route-replay-preview?fixtureJson=<local-json>",
+  "/api/o7/labeling-preview?fixtureJson=<local-json>",
   "/api/proof-boundary",
 ] as const;
 
@@ -858,6 +952,7 @@ export const NOT_PROVEN_ITEMS = [
   "real_o7_route_replay_fixture_preview_archive",
   "real_o7_trajectory_playback",
   "real_o7_labeling_review_queue",
+  "real_o7_labeling_fixture_preview_annotation_api",
   "real_o7_annotation_submit",
   "real_o7_dataset_export",
   "real_o7_voice_api",

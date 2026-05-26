@@ -7,6 +7,7 @@ import {
   buildHealth,
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
+  buildO7LabelingPreview,
   buildO7RouteReplayPreview,
   buildProofBoundary,
   buildRouteDebugSummary,
@@ -78,6 +79,11 @@ app.get("/api/o7/operator-console/acceptance", (_req, res) => {
 app.get("/api/o7/route-replay-preview", async (req, res) => {
   // Route replay preview 只读取 query 指定的本地 JSON fixture，并固定关闭云归档和控制声明。
   res.json(await buildO7RouteReplayPreview({ fixtureJson: queryString(req.query.fixtureJson) }));
+});
+
+app.get("/api/o7/labeling-preview", async (req, res) => {
+  // Labeling preview 只读取本地 fixture 摘要，提交、回滚、导出和机器人控制全部关闭。
+  res.json(await buildO7LabelingPreview({ fixtureJson: queryString(req.query.fixtureJson) }));
 });
 
 app.get("/api/proof-boundary", (_req, res) => {

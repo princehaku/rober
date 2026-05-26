@@ -8,6 +8,7 @@ import {
   buildHealth,
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
+  buildO7LabelingPreview,
   buildO7RouteReplayPreview,
   buildProofBoundary,
   buildRouteDebugSummary,
@@ -138,6 +139,68 @@ function sampleRouteReplayFixture(evidenceRef: string) {
       { from: "queued", to: "departed", timestamp_ms: 900, evidence_ref: "transition-queued.json" },
       { from_state: "departed", to_state: "en_route", timestamp_ms: 1000, evidence_ref: "transition-en-route.json" },
     ],
+  };
+}
+
+function sampleLabelingFixture(evidenceRef: string) {
+  // labeling fixture 只表达待标注队列和导出缺口，不模拟真实提交或训练集导出。
+  return {
+    schema: "trashbot.o7.labeling_fixture.v1",
+    queue_id: "queue-fixture-001",
+    evidence_ref: evidenceRef,
+    review_items: [
+      {
+        item_id: "item-001",
+        task_id: "task-001",
+        frame_id: "frame-001",
+        media_ref: path.join(path.dirname(evidenceRef), "frame-001.jpg"),
+        evidence_ref: path.join(path.dirname(evidenceRef), "item-001.json"),
+        current_labels: [
+          { label_type: "elevator_door_state", value: "open", status: "fixture_existing", evidence_ref: "label-001.json" },
+        ],
+      },
+      {
+        item_id: "item-002",
+        task_id: "task-001",
+        frame_id: "frame-002",
+        media_ref: "frame-002.jpg",
+        evidence_ref: "item-002.json",
+        current_labels: [],
+      },
+      {
+        item_id: "item-003",
+        task_id: "task-002",
+        frame_id: "frame-003",
+        media_ref: "frame-003.jpg",
+        evidence_ref: "item-003.json",
+        current_labels: [{ type: "obstacle_type", label: "box", status: "fixture_existing" }],
+      },
+      {
+        item_id: "item-004",
+        task_id: "task-002",
+        frame_id: "frame-004",
+        media_ref: "frame-004.jpg",
+        evidence_ref: "item-004.json",
+        current_labels: [],
+      },
+    ],
+    label_schema: {
+      schema_ref: "label-schema-o7-kr4.json",
+      version: "fixture-v1",
+      required_fields: ["label_type", "value", "evidence_ref"],
+      allowed_fields: ["label_type", "value", "confidence", "notes", "evidence_ref"],
+    },
+    allowed_label_types: ["elevator_door_state", "floor_label", "obstacle_type"],
+    draft_labels: [
+      { item_id: "item-001", label_type: "floor_label", value: "F3", status: "draft_slot", evidence_ref: "draft-001.json" },
+      { item_id: "item-002", label_type: "obstacle_type", value: "cart", status: "draft_slot", evidence_ref: "draft-002.json" },
+    ],
+    dataset_export: {
+      status: "blocked_not_available",
+      export_ref: "dataset-export-missing.json",
+      supported_formats: ["coco", "jsonl"],
+      gaps: ["operator_review_not_complete"],
+    },
   };
 }
 
@@ -796,6 +859,163 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.robot_control_executed).toBe(false);
       expect(response.trajectory.frame_count).toBe(0);
       expect(response.playback_cursor_initial_state.safe_to_play).toBe(false);
+      expect(response.blocked_reasons.length).toBeGreaterThan(0);
+      expectNoLegacyPythonGateSemantics(response);
+    }
+  });
+
+  it("O7 labeling preview summarizes a safe local fixture without submit rollback export or control claims", async () => {
+    // labeling preview 前进一步只展示待标注数据摘要，真实 annotation API 和导出仍关闭。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-labeling-"));
+    const evidenceRef = path.join(root, "queue-evidence.json");
+    const fixturePath = path.join(root, "labeling-fixture.json");
+    await writeFile(fixturePath, JSON.stringify(sampleLabelingFixture(evidenceRef)), "utf8");
+
+    const response = await buildO7LabelingPreview({ fixtureJson: fixturePath });
+    const payload = JSON.stringify(response);
+
+    expect(response.schema).toBe("trashbot.o7.labeling_preview.v1");
+    expect(response.preview_status).toBe("fixture_preview_ready");
+    expect(response.input_status.status).toBe("loaded");
+    expect(response.input_status.fixture_json).toBe("file:labeling-fixture.json");
+    expect(response.source).toBe("software_proof");
+    expect(response.proof_status).toBe("not_proven");
+    expect(response.safe_to_control).toBe(false);
+    expect(response.delivery_success).toBe(false);
+    expect(response.primary_actions_enabled).toBe(false);
+    expect(response.pc_only).toBe(true);
+    expect(response.real_annotation_api_connected).toBe(false);
+    expect(response.submit_enabled).toBe(false);
+    expect(response.rollback_enabled).toBe(false);
+    expect(response.dataset_export_available).toBe(false);
+    expect(response.robot_control_executed).toBe(false);
+    expect(response.source_fixture_schema).toBe("trashbot.o7.labeling_fixture.v1");
+    expect(response.queue).toEqual({
+      queue_id: "queue-fixture-001",
+      source: "local_json_fixture",
+      review_item_count: 4,
+      status: "fixture_summary_only",
+    });
+    expect(response.review_items.sample_limit).toBe(3);
+    expect(response.review_items.sample).toHaveLength(3);
+    expect(response.review_items.sample[0]).toEqual({
+      item_id: "item-001",
+      task_id: "task-001",
+      frame_id: "frame-001",
+      media_ref: "file:frame-001.jpg",
+      evidence_ref: "file:item-001.json",
+      current_labels: {
+        count: 1,
+        sample: [
+          {
+            label_type: "elevator_door_state",
+            value: "open",
+            status: "fixture_existing",
+            evidence_ref: "label-001.json",
+          },
+        ],
+      },
+    });
+    expect(response.label_schema).toMatchObject({
+      schema_ref: "label-schema-o7-kr4.json",
+      version: "fixture-v1",
+      required_fields: ["label_type", "value", "evidence_ref"],
+      allowed_fields: ["label_type", "value", "confidence", "notes", "evidence_ref"],
+      status: "fixture_schema_summary_only",
+    });
+    expect(response.allowed_label_types).toEqual(["elevator_door_state", "floor_label", "obstacle_type"]);
+    expect(response.draft_labels.count).toBe(2);
+    expect(response.draft_labels.autosave_available).toBe(false);
+    expect(response.draft_labels.sample[0]).toEqual({
+      item_id: "item-001",
+      label_type: "floor_label",
+      value: "F3",
+      status: "draft_slot",
+      evidence_ref: "draft-001.json",
+    });
+    expect(response.dataset_export.status).toBe("fixture_gap_summary_only");
+    expect(response.dataset_export.export_ref).toBe("dataset-export-missing.json");
+    expect(response.dataset_export.supported_formats).toEqual(["coco", "jsonl"]);
+    expect(response.dataset_export.gaps).toEqual(
+      expect.arrayContaining([
+        "operator_review_not_complete",
+        "real_annotation_api_not_connected",
+        "dataset_manifest_export_not_available",
+      ]),
+    );
+    expect(response.evidence_refs.fixture_ref).toBe("file:labeling-fixture.json");
+    expect(response.evidence_refs.queue_evidence_ref).toBe("file:queue-evidence.json");
+    expect(response.evidence_refs.item_evidence_refs).toEqual([
+      "file:item-001.json",
+      "item-002.json",
+      "item-003.json",
+      "item-004.json",
+    ]);
+    expect(response.blocked_reasons).toContain("dataset_export_disabled");
+    expect(response.not_proven).toContain("real_annotation_submit");
+    expect(response.not_proven).toContain("real_training_dataset_export");
+    expect(payload).not.toContain(root);
+    expect(payload).not.toContain("/cmd_vel");
+    expect(payload).not.toContain("/dev/ttyUSB");
+    expect(payload).not.toContain("submit_enabled=true");
+    expect(payload).not.toContain("rollback_enabled=true");
+    expect(payload).not.toContain("dataset_export_available=true");
+    expectNoLegacyPythonGateSemantics(response);
+  });
+
+  it("O7 labeling preview fails closed for missing bad unsupported unsafe and action availability claims", async () => {
+    // 标注 fixture 不能自证提交、回滚、导出或控制可用，所有危险输入统一 blocked。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-labeling-blocked-"));
+    const badJsonPath = path.join(root, "bad.json");
+    const unsupportedPath = path.join(root, "unsupported.json");
+    const unsafePath = path.join(root, "unsafe.json");
+    const successPath = path.join(root, "success.json");
+    const controlPath = path.join(root, "control.json");
+    const submitPath = path.join(root, "submit.json");
+    const rollbackPath = path.join(root, "rollback.json");
+    const exportPath = path.join(root, "export.json");
+    await writeFile(badJsonPath, "{bad", "utf8");
+    await writeFile(unsupportedPath, JSON.stringify({ schema: "trashbot.other.v1" }), "utf8");
+    await writeFile(unsafePath, JSON.stringify({ ...sampleLabelingFixture("safe-ref"), evidence_ref: "/dev/ttyUSB0" }), "utf8");
+    await writeFile(successPath, JSON.stringify({ ...sampleLabelingFixture("safe-ref"), note: "labeling success completed" }), "utf8");
+    await writeFile(controlPath, JSON.stringify({ ...sampleLabelingFixture("safe-ref"), safe_to_control: true }), "utf8");
+    await writeFile(submitPath, JSON.stringify({ ...sampleLabelingFixture("safe-ref"), submit_enabled: true }), "utf8");
+    await writeFile(rollbackPath, JSON.stringify({ ...sampleLabelingFixture("safe-ref"), rollback_enabled: true }), "utf8");
+    await writeFile(exportPath, JSON.stringify({ ...sampleLabelingFixture("safe-ref"), dataset_export_available: true }), "utf8");
+
+    const missing = await buildO7LabelingPreview({ fixtureJson: path.join(root, "missing.json") });
+    const badJson = await buildO7LabelingPreview({ fixtureJson: badJsonPath });
+    const unsupported = await buildO7LabelingPreview({ fixtureJson: unsupportedPath });
+    const unsafe = await buildO7LabelingPreview({ fixtureJson: unsafePath });
+    const success = await buildO7LabelingPreview({ fixtureJson: successPath });
+    const control = await buildO7LabelingPreview({ fixtureJson: controlPath });
+    const submit = await buildO7LabelingPreview({ fixtureJson: submitPath });
+    const rollback = await buildO7LabelingPreview({ fixtureJson: rollbackPath });
+    const datasetExport = await buildO7LabelingPreview({ fixtureJson: exportPath });
+
+    expect(missing.input_status.status).toBe("missing");
+    expect(badJson.input_status.status).toBe("bad_json");
+    expect(unsupported.input_status.status).toBe("unsupported_schema");
+    expect(unsafe.input_status.status).toBe("unsafe_copy");
+    expect(success.input_status.status).toBe("success_claim");
+    expect(control.input_status.status).toBe("control_claim");
+    expect(submit.input_status.status).toBe("submit_claim");
+    expect(rollback.input_status.status).toBe("rollback_claim");
+    expect(datasetExport.input_status.status).toBe("export_claim");
+    for (const response of [missing, badJson, unsupported, unsafe, success, control, submit, rollback, datasetExport]) {
+      expect(response.schema).toBe("trashbot.o7.labeling_preview.v1");
+      expect(response.preview_status).toBe("blocked_not_proven");
+      expect(response.safe_to_control).toBe(false);
+      expect(response.delivery_success).toBe(false);
+      expect(response.primary_actions_enabled).toBe(false);
+      expect(response.real_annotation_api_connected).toBe(false);
+      expect(response.submit_enabled).toBe(false);
+      expect(response.rollback_enabled).toBe(false);
+      expect(response.dataset_export_available).toBe(false);
+      expect(response.robot_control_executed).toBe(false);
+      expect(response.queue.review_item_count).toBe(0);
+      expect(response.review_items.sample).toEqual([]);
+      expect(response.draft_labels.autosave_available).toBe(false);
       expect(response.blocked_reasons.length).toBeGreaterThan(0);
       expectNoLegacyPythonGateSemantics(response);
     }

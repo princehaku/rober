@@ -10,6 +10,7 @@
 - PC API：`GET /api/o7/operator-console`
 - PC acceptance guard：`GET /api/o7/operator-console/acceptance`
 - PC fixture preview API：`GET /api/o7/route-replay-preview?fixtureJson=<local-json>`
+- PC labeling fixture preview API：`GET /api/o7/labeling-preview?fixtureJson=<local-json>`
 - PC UI：`pc-tools/workstation` 的 `O7 Console` tab
 - Board media preflight source contract：`docs/interfaces/o7_board_media_preflight.md`
 
@@ -93,6 +94,56 @@ Adapter 必须拒绝并返回 `preview_status=blocked_not_proven`：
 - fixture 声称 `safe_to_control=true`、`primary_actions_enabled=true`、`robot_control_executed=true` 或 command dispatch enabled
 
 该接口的 `fixture_preview_ready` 只表示本地 JSON 被压缩成安全摘要；它不提升 O7 完成度，不证明真实历史任务列表、真实轨迹 API、真实关键帧归档、真实状态转移时间线、真实云端归档、真实 playback cursor、真实机器人控制或真实 delivery success。
+
+## Labeling Fixture Preview
+
+`trashbot.o7.labeling_preview.v1` 是 O7-KR4 的 PC-only 本地 fixture 预览契约。它比 `labeling_queue_snapshot` 前进一步：允许 reviewer 通过 query path 指定一个本地安全 JSON fixture，并由 Node adapter 生成待标注队列和导出缺口摘要。但它仍不是 O6 annotation API、不是云端 review queue 查询、不是真实标注提交/回滚，也不代表训练集导出可用。
+
+API：
+
+- `GET /api/o7/labeling-preview?fixtureJson=<local-json>`
+
+支持的输入 schema：
+
+- `schema=trashbot.o7.labeling_fixture.v1`
+- 可选字段：`queue_id`、`review_items[]`、`label_schema`、`allowed_label_types[]`、`draft_labels[]`、`dataset_export`、`evidence_ref`
+
+固定 fail-closed 字段：
+
+- `source=software_proof`
+- `proof_status=not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `pc_only=true`
+- `real_annotation_api_connected=false`
+- `submit_enabled=false`
+- `rollback_enabled=false`
+- `dataset_export_available=false`
+- `robot_control_executed=false`
+
+输出只保留安全摘要：
+
+- `queue`：`queue_id`、`review_item_count`、固定 `source=local_json_fixture`
+- `review_items`：最多 3 个 item sample，只包含 `item_id`、`task_id`、`frame_id`、`media_ref`、`evidence_ref` 和 `current_labels` 摘要
+- `label_schema`：`schema_ref`、`version`、限量 `required_fields` 和 `allowed_fields`
+- `allowed_label_types`：限量字符串列表
+- `draft_labels`：`count`、最多 3 个 draft sample，且 `autosave_available=false`
+- `dataset_export`：`status`、`export_ref`、限量 `supported_formats` 和 `gaps`
+- `evidence_refs`：fixture、queue 和限量 item evidence 安全引用
+
+Adapter 必须拒绝并返回 `preview_status=blocked_not_proven`：
+
+- query 未提供、文件缺失、读取失败、坏 JSON、顶层不是 object
+- `schema` 不是 `trashbot.o7.labeling_fixture.v1`
+- fixture 内含凭证、串口、`/cmd_vel`、traceback 或其他 unsafe copy
+- fixture 声称 `delivery_success=true`、labeling/annotation success
+- fixture 声称 `safe_to_control=true`、`primary_actions_enabled=true`、`robot_control_executed=true` 或 command dispatch enabled
+- fixture 声称 `submit_enabled=true`、submit available/ready/success
+- fixture 声称 `rollback_enabled=true`、rollback available/ready/success
+- fixture 声称 `dataset_export_available=true`、dataset export available/ready/success
+
+该接口的 `fixture_preview_ready` 只表示本地 JSON 被压缩成安全摘要；它不提升 O7 完成度，不证明真实标注队列、真实媒体可访问、真实 label schema API、真实 draft autosave、真实 annotation submit、真实 annotation rollback、真实 dataset export 或真实 delivery success。UI 不得基于该接口提供 submit、rollback、export、恢复、控制或云端标注成功文案。
 
 ## Acceptance Guard
 
