@@ -481,6 +481,70 @@ export interface O7LabelingQueueSnapshot {
   next_required_evidence: string[];
 }
 
+// Voice ASR/TTS snapshot 只给 O7-KR5 留出可审计字段，所有发送和真实运行态都保持关闭。
+// draft/ack 字段分开，是为了后续接云端 voice API 时仍能 fail-closed 地展示确认链。
+export interface O7VoiceAsrTtsSnapshot {
+  schema: "trashbot.o7.voice_asr_tts_snapshot.v1";
+  schema_version: 1;
+  source: "software_proof";
+  snapshot_status: "blocked_not_proven";
+  safe_to_control: false;
+  primary_actions_enabled: false;
+  asr_stream_connected: false;
+  tts_send_enabled: false;
+  speaker_dispatch_enabled: false;
+  real_voice_api_connected: false;
+  real_asr_tts_runtime_connected: false;
+  media_preflight_dependency: {
+    required: true;
+    source_schema: "trashbot.o7_board_media_preflight.v1";
+    status: "blocked";
+    dependency_ref: "board_media_preflight_summary";
+  };
+  asr_stream: {
+    source_contract: "voice.asr_tts_operator.v1";
+    status: "blocked_no_voice_api";
+    connection_state: "not_connected";
+    last_event_at_ms: null;
+    partial_slot: {
+      text: "";
+      status: "empty_not_connected";
+      evidence_ref: "missing_asr_partial_transcript_trace";
+    };
+    final_slot: {
+      text: "";
+      status: "empty_not_connected";
+      evidence_ref: "missing_asr_final_transcript_trace";
+    };
+  };
+  tts_draft: {
+    text: "";
+    status: "draft_disabled";
+    max_chars: 0;
+    language: "zh-CN";
+    voice_profile: "not_connected";
+    confirmation_required: true;
+  };
+  speaker_dispatch: {
+    status: "blocked_not_available";
+    endpoint: "POST /api/o7/operator/voice/tts (future, disabled)";
+    sends_to_robot: false;
+    idempotency_key_required: true;
+    timeout_ms: null;
+    recovery_path: string;
+  };
+  command_ack_audit: {
+    ack_status: "blocked_no_ack_contract";
+    last_command_id: "not_connected";
+    audit_ref: "missing_voice_command_audit_log";
+    speaker_ack_ref: "missing_speaker_dispatch_ack";
+    failure_event_ref: "missing_speaker_failure_event";
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+  next_required_evidence: string[];
+}
+
 // O7 Operator Console 是 cloud-contract driven 的最小视图，不能由前端伪造机器人事实。
 // command_previews 只表达将来安全 API 的 envelope，不代表按钮会发送真实控制。
 export interface O7OperatorConsoleResponse extends ProofFlags {
@@ -499,6 +563,7 @@ export interface O7OperatorConsoleResponse extends ProofFlags {
   elevator_state_snapshot: O7ElevatorStateSnapshot;
   route_replay_snapshot: O7RouteReplaySnapshot;
   labeling_queue_snapshot: O7LabelingQueueSnapshot;
+  voice_asr_tts_snapshot: O7VoiceAsrTtsSnapshot;
   manual_control_policy: {
     pc_direct_robot_connection: false;
     cloud_mediated_only: true;
@@ -560,6 +625,8 @@ export const NOT_PROVEN_ITEMS = [
   "real_o7_labeling_review_queue",
   "real_o7_annotation_submit",
   "real_o7_dataset_export",
+  "real_o7_voice_api",
+  "real_o7_asr_tts_runtime",
   "real_o7_operator_command_dispatch",
   "delivery_success",
 ] as const;

@@ -35,6 +35,7 @@ O7_REALTIME_MAP_SNAPSHOT_SCHEMA = "trashbot.o7.realtime_map_snapshot.v1"
 O7_ELEVATOR_STATE_SNAPSHOT_SCHEMA = "trashbot.o7.elevator_state_snapshot.v1"
 O7_ROUTE_REPLAY_SNAPSHOT_SCHEMA = "trashbot.o7.route_replay_snapshot.v1"
 O7_LABELING_QUEUE_SNAPSHOT_SCHEMA = "trashbot.o7.labeling_queue_snapshot.v1"
+O7_VOICE_ASR_TTS_SNAPSHOT_SCHEMA = "trashbot.o7.voice_asr_tts_snapshot.v1"
 
 
 def build_o7_operator_console_contract() -> dict[str, Any]:
@@ -383,6 +384,97 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             "pc_labeling_panel_bound_to_cloud_api_without_robot_control",
         ],
     }
+    # 语音 snapshot 只冻结 O7-KR5 字段，不连接 ASR/TTS runtime、不发送 TTS、不读取音频设备。
+    voice_asr_tts_snapshot = {
+        "schema": O7_VOICE_ASR_TTS_SNAPSHOT_SCHEMA,
+        "schema_version": 1,
+        "source": "software_proof",
+        "snapshot_status": "blocked_not_proven",
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+        "asr_stream_connected": False,
+        "tts_send_enabled": False,
+        "speaker_dispatch_enabled": False,
+        "real_voice_api_connected": False,
+        "real_asr_tts_runtime_connected": False,
+        "media_preflight_dependency": {
+            "required": True,
+            "source_schema": O7_BOARD_MEDIA_PREFLIGHT_SCHEMA,
+            "status": "blocked",
+            "dependency_ref": "board_media_preflight_summary",
+        },
+        "asr_stream": {
+            "source_contract": "voice.asr_tts_operator.v1",
+            "status": "blocked_no_voice_api",
+            "connection_state": "not_connected",
+            "last_event_at_ms": None,
+            "partial_slot": {
+                "text": "",
+                "status": "empty_not_connected",
+                "evidence_ref": "missing_asr_partial_transcript_trace",
+            },
+            "final_slot": {
+                "text": "",
+                "status": "empty_not_connected",
+                "evidence_ref": "missing_asr_final_transcript_trace",
+            },
+        },
+        "tts_draft": {
+            "text": "",
+            "status": "draft_disabled",
+            "max_chars": 0,
+            "language": "zh-CN",
+            "voice_profile": "not_connected",
+            "confirmation_required": True,
+        },
+        "speaker_dispatch": {
+            "status": "blocked_not_available",
+            "endpoint": "POST /api/o7/operator/voice/tts (future, disabled)",
+            "sends_to_robot": False,
+            "idempotency_key_required": True,
+            "timeout_ms": None,
+            "recovery_path": (
+                "Keep observe_only mode until cloud voice ACK, speaker ACK, "
+                "failure event, and board media smoke exist."
+            ),
+        },
+        "command_ack_audit": {
+            "ack_status": "blocked_no_ack_contract",
+            "last_command_id": "not_connected",
+            "audit_ref": "missing_voice_command_audit_log",
+            "speaker_ack_ref": "missing_speaker_dispatch_ack",
+            "failure_event_ref": "missing_speaker_failure_event",
+        },
+        "blocked_reasons": [
+            "voice_api_not_connected",
+            "asr_event_stream_not_connected",
+            "tts_command_ack_contract_pending",
+            "speaker_dispatch_ack_not_proven",
+            "board_media_preflight_blocked",
+            "real_asr_tts_runtime_not_connected",
+        ],
+        "not_proven": [
+            "real_voice_api_connected",
+            "real_asr_stream",
+            "real_asr_partial_transcript",
+            "real_asr_final_transcript",
+            "real_tts_draft_send",
+            "real_tts_playback",
+            "real_speaker_dispatch_ack",
+            "real_audio_device",
+            "real_rtc_session",
+            "real_asr_tts_runtime_connected",
+        ],
+        "next_required_evidence": [
+            "voice_asr_tts_cloud_api_contract",
+            "asr_stream_connection_trace_with_partial_and_final_events",
+            "tts_draft_payload_schema_with_voice_profile",
+            "tts_command_ack_and_audit_log_sample",
+            "speaker_dispatch_ack_or_failure_event_sample",
+            "board_media_preflight_audio_input_output_pass",
+            "rtc_media_smoke_with_no_chassis_motion",
+        ],
+    }
 
     return {
         "schema": O7_OPERATOR_CONSOLE_SCHEMA,
@@ -406,6 +498,7 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
         "elevator_state_snapshot": elevator_state_snapshot,
         "route_replay_snapshot": route_replay_snapshot,
         "labeling_queue_snapshot": labeling_queue_snapshot,
+        "voice_asr_tts_snapshot": voice_asr_tts_snapshot,
         "manual_control_policy": {
             "pc_direct_robot_connection": False,
             "cloud_mediated_only": True,
@@ -430,8 +523,10 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             "elevator_state_snapshot_blocked",
             "route_replay_snapshot_blocked",
             "labeling_queue_snapshot_blocked",
+            "voice_asr_tts_snapshot_blocked",
             "o6_cloud_task_archive_not_connected",
             "o6_annotation_api_not_connected",
+            "voice_api_not_connected",
             "manual_or_navigation_dispatch_disabled",
         ],
         "not_proven": [
@@ -445,6 +540,10 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             "real_annotation_submit",
             "real_annotation_rollback",
             "real_training_dataset_export",
+            "real_voice_api_connected",
+            "real_asr_stream",
+            "real_asr_partial_transcript",
+            "real_asr_final_transcript",
             "real_rtc_session",
             "real_camera_video_source",
             "real_audio_capture",
@@ -459,6 +558,7 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             board_media_preflight_summary["next_required_evidence"]
             + route_replay_snapshot["next_required_evidence"]
             + labeling_queue_snapshot["next_required_evidence"]
+            + voice_asr_tts_snapshot["next_required_evidence"]
         ),
     }
 

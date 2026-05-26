@@ -7,6 +7,7 @@ import type {
   O7OperatorKrView,
   O7RealtimeMapSnapshot,
   O7RouteReplaySnapshot,
+  O7VoiceAsrTtsSnapshot,
 } from "../shared/contracts";
 
 const CONTRACT_SOURCE = "cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py" as const;
@@ -415,6 +416,94 @@ const LABELING_QUEUE_SNAPSHOT: O7LabelingQueueSnapshot = {
   ],
 };
 
+const VOICE_ASR_TTS_SNAPSHOT: O7VoiceAsrTtsSnapshot = {
+  schema: "trashbot.o7.voice_asr_tts_snapshot.v1",
+  schema_version: 1,
+  source: "software_proof",
+  snapshot_status: "blocked_not_proven",
+  safe_to_control: false,
+  primary_actions_enabled: false,
+  asr_stream_connected: false,
+  tts_send_enabled: false,
+  speaker_dispatch_enabled: false,
+  real_voice_api_connected: false,
+  real_asr_tts_runtime_connected: false,
+  media_preflight_dependency: {
+    required: true,
+    source_schema: "trashbot.o7_board_media_preflight.v1",
+    status: "blocked",
+    dependency_ref: "board_media_preflight_summary",
+  },
+  asr_stream: {
+    source_contract: "voice.asr_tts_operator.v1",
+    status: "blocked_no_voice_api",
+    connection_state: "not_connected",
+    last_event_at_ms: null,
+    partial_slot: {
+      text: "",
+      status: "empty_not_connected",
+      evidence_ref: "missing_asr_partial_transcript_trace",
+    },
+    final_slot: {
+      text: "",
+      status: "empty_not_connected",
+      evidence_ref: "missing_asr_final_transcript_trace",
+    },
+  },
+  tts_draft: {
+    text: "",
+    status: "draft_disabled",
+    max_chars: 0,
+    language: "zh-CN",
+    voice_profile: "not_connected",
+    confirmation_required: true,
+  },
+  speaker_dispatch: {
+    status: "blocked_not_available",
+    endpoint: "POST /api/o7/operator/voice/tts (future, disabled)",
+    sends_to_robot: false,
+    idempotency_key_required: true,
+    timeout_ms: null,
+    recovery_path: "Keep observe_only mode until cloud voice ACK, speaker ACK, failure event, and board media smoke exist.",
+  },
+  command_ack_audit: {
+    ack_status: "blocked_no_ack_contract",
+    last_command_id: "not_connected",
+    audit_ref: "missing_voice_command_audit_log",
+    speaker_ack_ref: "missing_speaker_dispatch_ack",
+    failure_event_ref: "missing_speaker_failure_event",
+  },
+  blocked_reasons: [
+    "voice_api_not_connected",
+    "asr_event_stream_not_connected",
+    "tts_command_ack_contract_pending",
+    "speaker_dispatch_ack_not_proven",
+    "board_media_preflight_blocked",
+    "real_asr_tts_runtime_not_connected",
+  ],
+  not_proven: [
+    "real_voice_api_connected",
+    "real_asr_stream",
+    "real_asr_partial_transcript",
+    "real_asr_final_transcript",
+    "real_tts_draft_send",
+    "real_tts_playback",
+    "real_speaker_dispatch_ack",
+    "real_audio_device",
+    "real_rtc_session",
+    "real_asr_tts_runtime_connected",
+  ],
+  next_required_evidence: [
+    "voice_asr_tts_cloud_api_contract",
+    "asr_stream_connection_trace_with_partial_and_final_events",
+    "tts_draft_payload_schema_with_voice_profile",
+    "tts_command_ack_and_audit_log_sample",
+    "speaker_dispatch_ack_or_failure_event_sample",
+    "board_media_preflight_audio_input_output_pass",
+    "rtc_media_smoke_with_no_chassis_motion",
+  ],
+};
+
 export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
   // 这里与 cloud-relay helper 固定同一 schema；PC 只消费契约快照，不连接小车。
   // 六个 KR 都保留 draft/blocked/not_proven，避免 UI 把占位面板外推成真实 O7 能力。
@@ -422,6 +511,7 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
   // 地图和电梯 snapshot 只让 operator 看见字段契约，不能被前端解释为 ROS2 实时流。
   // 路线回放 snapshot 只锁定 O6 归档 API 的对接字段，当前不能渲染为可播放历史任务。
   // 标注队列 snapshot 只锁定 O6 annotation/export 对接字段，提交和回滚固定 fail-closed。
+  // 语音 snapshot 只锁定 ASR/TTS 字段槽位，发送、播放、ACK 和真实 runtime 全部关闭。
   return {
     schema: "trashbot.o7.operator_console.v1",
     ...PROOF_FLAGS,
@@ -439,6 +529,7 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
     elevator_state_snapshot: ELEVATOR_STATE_SNAPSHOT,
     route_replay_snapshot: ROUTE_REPLAY_SNAPSHOT,
     labeling_queue_snapshot: LABELING_QUEUE_SNAPSHOT,
+    voice_asr_tts_snapshot: VOICE_ASR_TTS_SNAPSHOT,
     manual_control_policy: {
       pc_direct_robot_connection: false,
       cloud_mediated_only: true,
@@ -485,8 +576,10 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
       "elevator_state_snapshot_blocked",
       "route_replay_snapshot_blocked",
       "labeling_queue_snapshot_blocked",
+      "voice_asr_tts_snapshot_blocked",
       "o6_cloud_task_archive_not_connected",
       "o6_annotation_api_not_connected",
+      "voice_api_not_connected",
       "real_voice_stream_not_proven",
       "board_media_preflight_blocked",
       "manual_or_navigation_dispatch_disabled",
@@ -504,7 +597,12 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
       "real_annotation_submit_api",
       "real_annotation_rollback",
       "real_training_dataset_export",
+      "real_voice_api_connected",
+      "real_asr_stream",
+      "real_asr_partial_transcript",
+      "real_asr_final_transcript",
       "real_asr_tts_runtime",
+      "real_speaker_dispatch_ack",
       "real_rtc_session",
       "real_camera_video_source",
       "real_audio_capture",
@@ -518,6 +616,7 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
       "Connect O6 cloud archive and realtime stream before replacing draft values.",
       "Connect O6 annotation API, submit audit, rollback audit, and dataset export before enabling labeling actions.",
       "Collect board media preflight JSON and on-robot media smoke before interpreting KR5 fields.",
+      "Connect voice API, ASR transcript stream, TTS ACK audit, and speaker failure events before enabling TTS send.",
       "Ask Robot Software for robot-side ACK, timeout, cancel, and stop evidence before enabling commands.",
       "Ask Hardware for HIL/safety evidence before treating manual control as safe.",
     ],

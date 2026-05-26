@@ -521,6 +521,34 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.labeling_queue_snapshot.blocked_reasons).toContain("o6_annotation_api_not_connected");
     expect(response.labeling_queue_snapshot.not_proven).toContain("real_training_dataset_export");
     expect(response.labeling_queue_snapshot.next_required_evidence).toContain("dataset_export_manifest_contract");
+    expect(response.voice_asr_tts_snapshot.schema).toBe("trashbot.o7.voice_asr_tts_snapshot.v1");
+    expect(response.voice_asr_tts_snapshot.source).toBe("software_proof");
+    expect(response.voice_asr_tts_snapshot.snapshot_status).toBe("blocked_not_proven");
+    expect(response.voice_asr_tts_snapshot.safe_to_control).toBe(false);
+    expect(response.voice_asr_tts_snapshot.primary_actions_enabled).toBe(false);
+    expect(response.voice_asr_tts_snapshot.asr_stream_connected).toBe(false);
+    expect(response.voice_asr_tts_snapshot.tts_send_enabled).toBe(false);
+    expect(response.voice_asr_tts_snapshot.speaker_dispatch_enabled).toBe(false);
+    expect(response.voice_asr_tts_snapshot.real_voice_api_connected).toBe(false);
+    expect(response.voice_asr_tts_snapshot.real_asr_tts_runtime_connected).toBe(false);
+    expect(response.voice_asr_tts_snapshot.media_preflight_dependency.status).toBe("blocked");
+    expect(response.voice_asr_tts_snapshot.asr_stream.status).toBe("blocked_no_voice_api");
+    expect(response.voice_asr_tts_snapshot.asr_stream.partial_slot.evidence_ref).toBe(
+      "missing_asr_partial_transcript_trace",
+    );
+    expect(response.voice_asr_tts_snapshot.asr_stream.final_slot.evidence_ref).toBe(
+      "missing_asr_final_transcript_trace",
+    );
+    expect(response.voice_asr_tts_snapshot.tts_draft.status).toBe("draft_disabled");
+    expect(response.voice_asr_tts_snapshot.tts_draft.voice_profile).toBe("not_connected");
+    expect(response.voice_asr_tts_snapshot.speaker_dispatch.sends_to_robot).toBe(false);
+    expect(response.voice_asr_tts_snapshot.command_ack_audit.ack_status).toBe("blocked_no_ack_contract");
+    expect(response.voice_asr_tts_snapshot.command_ack_audit.audit_ref).toBe("missing_voice_command_audit_log");
+    expect(response.voice_asr_tts_snapshot.command_ack_audit.speaker_ack_ref).toBe("missing_speaker_dispatch_ack");
+    expect(response.voice_asr_tts_snapshot.blocked_reasons).toContain("voice_api_not_connected");
+    expect(response.voice_asr_tts_snapshot.not_proven).toContain("real_asr_partial_transcript");
+    expect(response.voice_asr_tts_snapshot.not_proven).toContain("real_speaker_dispatch_ack");
+    expect(response.voice_asr_tts_snapshot.next_required_evidence).toContain("voice_asr_tts_cloud_api_contract");
     expect(response.kr_views.map((kr) => kr.id)).toEqual(["O7-KR1", "O7-KR2", "O7-KR3", "O7-KR4", "O7-KR5", "O7-KR6"]);
     expect(response.kr_views.every((kr) => ["draft", "blocked", "not_proven"].includes(kr.status))).toBe(true);
     expect(response.command_previews.every((command) => command.sends_to_robot === false)).toBe(true);
@@ -528,7 +556,10 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.blocked_reasons).toContain("pc_must_not_direct_connect_robot");
     expect(response.blocked_reasons).toContain("route_replay_snapshot_blocked");
     expect(response.blocked_reasons).toContain("labeling_queue_snapshot_blocked");
+    expect(response.blocked_reasons).toContain("voice_asr_tts_snapshot_blocked");
     expect(response.blocked_reasons).toContain("o6_annotation_api_not_connected");
+    expect(response.not_proven).toContain("real_voice_api_connected");
+    expect(response.not_proven).toContain("real_asr_partial_transcript");
     expect(response.not_proven).toContain("real_operator_safe_command_dispatch");
     expect(response.not_proven).toContain("real_route_replay_trajectory_frames");
     expect(response.not_proven).toContain("real_annotation_rollback");
@@ -540,6 +571,11 @@ describe("workstation fail-closed API contracts", () => {
     expect(JSON.stringify(response)).not.toContain("rollback_enabled=true");
     expect(JSON.stringify(response)).not.toContain("real_annotation_api_connected=true");
     expect(JSON.stringify(response)).not.toContain("dataset_export_available=true");
+    expect(JSON.stringify(response)).not.toContain("asr_stream_connected=true");
+    expect(JSON.stringify(response)).not.toContain("tts_send_enabled=true");
+    expect(JSON.stringify(response)).not.toContain("speaker_dispatch_enabled=true");
+    expect(JSON.stringify(response)).not.toContain("real_voice_api_connected=true");
+    expect(JSON.stringify(response)).not.toContain("real_asr_tts_runtime_connected=true");
     expect(JSON.stringify(response)).not.toContain("success_claim_allowed=true");
     expect(JSON.stringify(response)).not.toContain("command_dispatch_enabled=true");
     expect(JSON.stringify(response)).not.toContain("/cmd_vel");

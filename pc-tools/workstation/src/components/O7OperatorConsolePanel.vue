@@ -328,6 +328,134 @@ defineProps<{
       </div>
     </article>
 
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <!-- 语音 snapshot 只展示 ASR/TTS 契约槽位，不能渲染成监听或发送控件。 -->
+        <h3>Voice ASR/TTS snapshot</h3>
+        <span class="pill danger">{{
+          operatorConsole?.voice_asr_tts_snapshot.snapshot_status ?? "blocked_not_proven"
+        }}</span>
+      </div>
+      <div class="two-col">
+        <dl class="kv compact-kv">
+          <!-- 顶层开关全部来自 API，缺省也保持关闭，避免页面错误时显示可发送。 -->
+          <dt>schema</dt>
+          <dd>{{ operatorConsole?.voice_asr_tts_snapshot.schema ?? "trashbot.o7.voice_asr_tts_snapshot.v1" }}</dd>
+          <dt>ASR stream</dt>
+          <dd>
+            connected={{ operatorConsole?.voice_asr_tts_snapshot.asr_stream_connected ?? false }}
+            · {{ operatorConsole?.voice_asr_tts_snapshot.asr_stream.status ?? "blocked_no_voice_api" }}
+          </dd>
+          <dt>ASR state</dt>
+          <dd>
+            {{ operatorConsole?.voice_asr_tts_snapshot.asr_stream.connection_state ?? "not_connected" }}
+            · last_event_ms={{
+              operatorConsole?.voice_asr_tts_snapshot.asr_stream.last_event_at_ms ?? "null"
+            }}
+          </dd>
+          <dt>partial transcript</dt>
+          <dd>
+            {{
+              operatorConsole?.voice_asr_tts_snapshot.asr_stream.partial_slot.text || "empty_not_connected"
+            }}
+            · {{
+              operatorConsole?.voice_asr_tts_snapshot.asr_stream.partial_slot.evidence_ref ??
+                "missing_asr_partial_transcript_trace"
+            }}
+          </dd>
+          <dt>final transcript</dt>
+          <dd>
+            {{
+              operatorConsole?.voice_asr_tts_snapshot.asr_stream.final_slot.text || "empty_not_connected"
+            }}
+            · {{
+              operatorConsole?.voice_asr_tts_snapshot.asr_stream.final_slot.evidence_ref ??
+                "missing_asr_final_transcript_trace"
+            }}
+          </dd>
+          <dt>voice API</dt>
+          <dd>{{ operatorConsole?.voice_asr_tts_snapshot.real_voice_api_connected ?? false }}</dd>
+          <dt>runtime</dt>
+          <dd>{{ operatorConsole?.voice_asr_tts_snapshot.real_asr_tts_runtime_connected ?? false }}</dd>
+        </dl>
+        <dl class="kv compact-kv">
+          <!-- TTS draft 只保留文本和音色字段名，不提供输入框或发送按钮。 -->
+          <dt>TTS draft</dt>
+          <dd>
+            {{ operatorConsole?.voice_asr_tts_snapshot.tts_draft.status ?? "draft_disabled" }}
+            · text="{{
+              operatorConsole?.voice_asr_tts_snapshot.tts_draft.text || ""
+            }}"
+          </dd>
+          <dt>voice profile</dt>
+          <dd>
+            {{ operatorConsole?.voice_asr_tts_snapshot.tts_draft.voice_profile ?? "not_connected" }}
+            · {{ operatorConsole?.voice_asr_tts_snapshot.tts_draft.language ?? "zh-CN" }}
+          </dd>
+          <dt>TTS send enabled</dt>
+          <dd>{{ operatorConsole?.voice_asr_tts_snapshot.tts_send_enabled ?? false }}</dd>
+          <dt>speaker dispatch</dt>
+          <dd>
+            enabled={{ operatorConsole?.voice_asr_tts_snapshot.speaker_dispatch_enabled ?? false }}
+            · {{ operatorConsole?.voice_asr_tts_snapshot.speaker_dispatch.status ?? "blocked_not_available" }}
+          </dd>
+          <dt>command ACK</dt>
+          <dd>
+            {{
+              operatorConsole?.voice_asr_tts_snapshot.command_ack_audit.ack_status ??
+                "blocked_no_ack_contract"
+            }}
+            · {{
+              operatorConsole?.voice_asr_tts_snapshot.command_ack_audit.audit_ref ??
+                "missing_voice_command_audit_log"
+            }}
+          </dd>
+          <dt>speaker ACK</dt>
+          <dd>
+            {{
+              operatorConsole?.voice_asr_tts_snapshot.command_ack_audit.speaker_ack_ref ??
+                "missing_speaker_dispatch_ack"
+            }}
+          </dd>
+          <dt>media dependency</dt>
+          <dd>
+            {{
+              operatorConsole?.voice_asr_tts_snapshot.media_preflight_dependency.source_schema ??
+                "trashbot.o7_board_media_preflight.v1"
+            }}
+            · {{ operatorConsole?.voice_asr_tts_snapshot.media_preflight_dependency.status ?? "blocked" }}
+          </dd>
+        </dl>
+      </div>
+      <div class="three-col">
+        <div>
+          <h3>Blocked by</h3>
+          <ul class="dense">
+            <!-- blocked reasons 说明缺 voice API、ACK、speaker 和 board media 证据。 -->
+            <li v-for="reason in operatorConsole?.voice_asr_tts_snapshot.blocked_reasons" :key="reason">
+              {{ reason }}
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h3>Not proven</h3>
+          <ul class="dense">
+            <!-- not_proven 必须覆盖真实 ASR、TTS、speaker ACK、音频设备和 RTC。 -->
+            <li v-for="item in operatorConsole?.voice_asr_tts_snapshot.not_proven" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Next evidence</h3>
+          <ul class="dense">
+            <!-- next evidence 是后续 O6/O7/板端联调清单，不触发任何语音发送。 -->
+            <li v-for="item in operatorConsole?.voice_asr_tts_snapshot.next_required_evidence" :key="item">
+              {{ item }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
     <article class="preflight-panel">
       <div class="section-head compact-head">
         <!-- 板端媒体摘要来自 API；缺省值也保持 blocked，避免页面加载失败时显示可用。 -->

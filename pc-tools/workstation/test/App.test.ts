@@ -619,6 +619,71 @@ const fixtures: Record<string, unknown> = {
       not_proven: ["real_labeling_review_queue", "real_annotation_submit", "real_training_dataset_export"],
       next_required_evidence: ["o6_annotation_review_queue_query_contract", "dataset_export_manifest_contract"],
     },
+    voice_asr_tts_snapshot: {
+      schema: "trashbot.o7.voice_asr_tts_snapshot.v1",
+      schema_version: 1,
+      source: "software_proof",
+      snapshot_status: "blocked_not_proven",
+      safe_to_control: false,
+      primary_actions_enabled: false,
+      asr_stream_connected: false,
+      tts_send_enabled: false,
+      speaker_dispatch_enabled: false,
+      real_voice_api_connected: false,
+      real_asr_tts_runtime_connected: false,
+      media_preflight_dependency: {
+        required: true,
+        source_schema: "trashbot.o7_board_media_preflight.v1",
+        status: "blocked",
+        dependency_ref: "board_media_preflight_summary",
+      },
+      asr_stream: {
+        source_contract: "voice.asr_tts_operator.v1",
+        status: "blocked_no_voice_api",
+        connection_state: "not_connected",
+        last_event_at_ms: null,
+        partial_slot: {
+          text: "",
+          status: "empty_not_connected",
+          evidence_ref: "missing_asr_partial_transcript_trace",
+        },
+        final_slot: {
+          text: "",
+          status: "empty_not_connected",
+          evidence_ref: "missing_asr_final_transcript_trace",
+        },
+      },
+      tts_draft: {
+        text: "",
+        status: "draft_disabled",
+        max_chars: 0,
+        language: "zh-CN",
+        voice_profile: "not_connected",
+        confirmation_required: true,
+      },
+      speaker_dispatch: {
+        status: "blocked_not_available",
+        endpoint: "POST /api/o7/operator/voice/tts (future, disabled)",
+        sends_to_robot: false,
+        idempotency_key_required: true,
+        timeout_ms: null,
+        recovery_path: "Keep observe_only mode until voice evidence exists.",
+      },
+      command_ack_audit: {
+        ack_status: "blocked_no_ack_contract",
+        last_command_id: "not_connected",
+        audit_ref: "missing_voice_command_audit_log",
+        speaker_ack_ref: "missing_speaker_dispatch_ack",
+        failure_event_ref: "missing_speaker_failure_event",
+      },
+      blocked_reasons: ["voice_api_not_connected", "asr_event_stream_not_connected", "speaker_dispatch_ack_not_proven"],
+      not_proven: ["real_asr_stream", "real_asr_partial_transcript", "real_tts_playback", "real_speaker_dispatch_ack"],
+      next_required_evidence: [
+        "voice_asr_tts_cloud_api_contract",
+        "asr_stream_connection_trace_with_partial_and_final_events",
+        "tts_command_ack_and_audit_log_sample",
+      ],
+    },
     manual_control_policy: {
       pc_direct_robot_connection: false,
       cloud_mediated_only: true,
@@ -703,6 +768,8 @@ const fixtures: Record<string, unknown> = {
     not_proven: [
       "real_o7_realtime_cloud_stream",
       "real_annotation_submit_api",
+      "real_voice_api_connected",
+      "real_asr_stream",
       "real_operator_safe_command_dispatch",
       "delivery_success",
     ],
@@ -904,6 +971,22 @@ describe("App", () => {
     expect(wrapper.text()).toContain("dataset_manifest_export_not_available");
     expect(wrapper.text()).toContain("o6_annotation_review_queue_query_contract");
     expect(wrapper.text()).toContain("dataset_export_manifest_contract");
+    expect(wrapper.text()).toContain("Voice ASR/TTS snapshot");
+    expect(wrapper.text()).toContain("trashbot.o7.voice_asr_tts_snapshot.v1");
+    expect(wrapper.text()).toContain("connected=false");
+    expect(wrapper.text()).toContain("blocked_no_voice_api");
+    expect(wrapper.text()).toContain("missing_asr_partial_transcript_trace");
+    expect(wrapper.text()).toContain("missing_asr_final_transcript_trace");
+    expect(wrapper.text()).toContain("draft_disabled");
+    expect(wrapper.text()).toContain("not_connected");
+    expect(wrapper.text()).toContain("TTS send enabledfalse");
+    expect(wrapper.text()).toContain("enabled=false");
+    expect(wrapper.text()).toContain("blocked_no_ack_contract");
+    expect(wrapper.text()).toContain("missing_voice_command_audit_log");
+    expect(wrapper.text()).toContain("missing_speaker_dispatch_ack");
+    expect(wrapper.text()).toContain("voice_api_not_connected");
+    expect(wrapper.text()).toContain("real_speaker_dispatch_ack");
+    expect(wrapper.text()).toContain("voice_asr_tts_cloud_api_contract");
     expect(wrapper.text()).toContain("O7-KR1");
     expect(wrapper.text()).toContain("O7-KR6");
     expect(wrapper.text()).toContain("operator.safe_command_preview.v1");
@@ -915,5 +998,6 @@ describe("App", () => {
     expect(wrapper.text()).not.toMatch(/success[_ ]?claim[_ ]?allowed true/i);
     expect(wrapper.text()).not.toMatch(/submit enabledtrue/i);
     expect(wrapper.text()).not.toMatch(/rollback enabledtrue/i);
+    expect(wrapper.text()).not.toMatch(/tts send enabledtrue/i);
   });
 });

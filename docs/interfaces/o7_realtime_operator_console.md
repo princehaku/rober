@@ -31,6 +31,11 @@
 - `labeling_queue_snapshot.rollback_enabled=false`
 - `labeling_queue_snapshot.real_annotation_api_connected=false`
 - `labeling_queue_snapshot.dataset_export_available=false`
+- `voice_asr_tts_snapshot.asr_stream_connected=false`
+- `voice_asr_tts_snapshot.tts_send_enabled=false`
+- `voice_asr_tts_snapshot.speaker_dispatch_enabled=false`
+- `voice_asr_tts_snapshot.real_voice_api_connected=false`
+- `voice_asr_tts_snapshot.real_asr_tts_runtime_connected=false`
 
 PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE ROVER、Nav2、TTS 或手控命令。
 
@@ -174,6 +179,58 @@ PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE 
 `dataset_export.gaps` 必须至少包含 O6 annotation API 未连接、accepted label schema 未证明、reviewed items 不可用、dataset manifest export 不可用和 training split policy 未定义。`blocked_reasons` 必须至少包含 O6 annotation API 未连接、labeling review queue API 仍是 draft、label schema 不可用、selected review item 不可用、submit audit 不可用、rollback audit 不可用和 training dataset export 不可用。`not_proven` 必须覆盖真实标注队列、真实 selected item、真实 frame/screenshot media、真实 label schema、真实 cloud allowed label types、真实 draft label autosave、真实 annotation submit、真实 annotation rollback 和真实 training dataset export。
 
 `next_required_evidence` 是后续 O6/O7 对接清单，不是 PC 已经查询云端的证据；至少包含 O6 annotation review queue query contract、label schema fixture with allowed types、selected review item with media evidence ref、draft label payload schema、submit annotation audit log sample、rollback annotation audit log sample、dataset export manifest contract，以及 PC labeling panel 与 cloud API 绑定且不触发机器人控制的证明。
+
+## Voice ASR/TTS Snapshot
+
+`voice_asr_tts_snapshot` 是 O7-KR5 的 fail-closed 字段契约。它让 PC Console 明确显示 ASR stream status、latest partial/final transcript 槽位、TTS draft text、voice profile、speaker dispatch status、command ACK/audit、media preflight dependency 和 next required evidence，但当前仍是 `software_proof` 和 `blocked_not_proven`，不能解释为真实 ASR 输入流、真实 transcript、真实 TTS 播放、真实 speaker ACK、真实音频设备、真实 RTC 或云端 voice API 已完成。
+
+固定字段：
+
+- `schema=trashbot.o7.voice_asr_tts_snapshot.v1`
+- `source=software_proof`
+- `snapshot_status=blocked_not_proven`
+- `safe_to_control=false`
+- `primary_actions_enabled=false`
+- `asr_stream_connected=false`
+- `tts_send_enabled=false`
+- `speaker_dispatch_enabled=false`
+- `real_voice_api_connected=false`
+- `real_asr_tts_runtime_connected=false`
+- `media_preflight_dependency.required=true`
+- `media_preflight_dependency.source_schema=trashbot.o7_board_media_preflight.v1`
+- `media_preflight_dependency.status=blocked`
+- `asr_stream.source_contract=voice.asr_tts_operator.v1`
+- `asr_stream.status=blocked_no_voice_api`
+- `asr_stream.connection_state=not_connected`
+- `asr_stream.last_event_at_ms=null`
+- `asr_stream.partial_slot.text=""`
+- `asr_stream.partial_slot.status=empty_not_connected`
+- `asr_stream.partial_slot.evidence_ref=missing_asr_partial_transcript_trace`
+- `asr_stream.final_slot.text=""`
+- `asr_stream.final_slot.status=empty_not_connected`
+- `asr_stream.final_slot.evidence_ref=missing_asr_final_transcript_trace`
+- `tts_draft.text=""`
+- `tts_draft.status=draft_disabled`
+- `tts_draft.max_chars=0`
+- `tts_draft.language=zh-CN`
+- `tts_draft.voice_profile=not_connected`
+- `tts_draft.confirmation_required=true`
+- `speaker_dispatch.status=blocked_not_available`
+- `speaker_dispatch.endpoint=POST /api/o7/operator/voice/tts (future, disabled)`
+- `speaker_dispatch.sends_to_robot=false`
+- `speaker_dispatch.idempotency_key_required=true`
+- `speaker_dispatch.timeout_ms=null`
+- `command_ack_audit.ack_status=blocked_no_ack_contract`
+- `command_ack_audit.last_command_id=not_connected`
+- `command_ack_audit.audit_ref=missing_voice_command_audit_log`
+- `command_ack_audit.speaker_ack_ref=missing_speaker_dispatch_ack`
+- `command_ack_audit.failure_event_ref=missing_speaker_failure_event`
+
+`blocked_reasons` 必须至少包含 voice API 未连接、ASR event stream 未连接、TTS command ACK contract pending、speaker dispatch ACK 未证明、board media preflight blocked 和真实 ASR/TTS runtime 未连接。`not_proven` 必须覆盖真实 voice API、真实 ASR stream、真实 ASR partial/final transcript、真实 TTS draft send、真实 TTS playback、真实 speaker dispatch ACK、真实音频设备、真实 RTC 和真实 ASR/TTS runtime。
+
+`next_required_evidence` 是后续 O6/O7/板端联调清单，不是 PC 已经查询云端或播放音频的证据；至少包含 voice ASR/TTS cloud API contract、带 partial/final events 的 ASR stream connection trace、含 voice profile 的 TTS draft payload schema、TTS command ACK/audit log sample、speaker dispatch ACK 或 failure event sample、board media preflight audio input/output pass，以及无底盘运动的 RTC media smoke。
+
+PC Console 展示该 snapshot 不等于真实语音监听、真实文本识别、真实 TTS 下发、真实 speaker ACK、真实音频设备、真实 RTC 或真实控制完成；UI 不得提供 TTS 输入框、发送按钮或绕过云端的本地音频访问。
 
 ## Board Media Preflight
 
