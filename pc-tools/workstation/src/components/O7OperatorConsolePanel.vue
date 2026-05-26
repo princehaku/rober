@@ -456,6 +456,175 @@ defineProps<{
       </div>
     </article>
 
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <!-- 安全命令 snapshot 只展示 O7-KR6 契约槽位，不能渲染成手控或寻路入口。 -->
+        <h3>Safe command snapshot</h3>
+        <span class="pill danger">{{
+          operatorConsole?.safe_command_snapshot.snapshot_status ?? "blocked_not_proven"
+        }}</span>
+      </div>
+      <div class="two-col">
+        <dl class="kv compact-kv">
+          <!-- 顶层开关全部来自 API，缺省也保持关闭，避免加载失败时误显示可控。 -->
+          <dt>schema</dt>
+          <dd>{{ operatorConsole?.safe_command_snapshot.schema ?? "trashbot.o7.safe_command_snapshot.v1" }}</dd>
+          <dt>command dispatch</dt>
+          <dd>{{ operatorConsole?.safe_command_snapshot.command_dispatch_enabled ?? false }}</dd>
+          <dt>manual control</dt>
+          <dd>{{ operatorConsole?.safe_command_snapshot.manual_control_enabled ?? false }}</dd>
+          <dt>navigate goal</dt>
+          <dd>{{ operatorConsole?.safe_command_snapshot.navigate_goal_enabled ?? false }}</dd>
+          <dt>keyboard control</dt>
+          <dd>{{ operatorConsole?.safe_command_snapshot.keyboard_control_enabled ?? false }}</dd>
+          <dt>command API</dt>
+          <dd>{{ operatorConsole?.safe_command_snapshot.real_command_api_connected ?? false }}</dd>
+          <dt>robot ACK</dt>
+          <dd>{{ operatorConsole?.safe_command_snapshot.real_robot_ack_connected ?? false }}</dd>
+        </dl>
+        <dl class="kv compact-kv">
+          <!-- 手动转向 envelope 只显示输入槽和限速状态，不绑定键盘或点击动作。 -->
+          <dt>manual envelope</dt>
+          <dd>
+            {{ operatorConsole?.safe_command_snapshot.manual_turn_envelope.status ?? "blocked_not_proven" }}
+            · sends_to_robot={{
+              operatorConsole?.safe_command_snapshot.manual_turn_envelope.sends_to_robot ?? false
+            }}
+          </dd>
+          <dt>manual slots</dt>
+          <dd>
+            {{
+              operatorConsole?.safe_command_snapshot.manual_turn_envelope.accepted_input_slots.join(", ") ??
+                "ui_turn_left, ui_turn_right, keyboard_arrow_keys_disabled"
+            }}
+          </dd>
+          <dt>velocity limits</dt>
+          <dd>
+            linear={{ operatorConsole?.safe_command_snapshot.velocity_limits.max_linear_mps ?? "null" }}
+            · angular={{ operatorConsole?.safe_command_snapshot.velocity_limits.max_angular_radps ?? "null" }}
+            · {{ operatorConsole?.safe_command_snapshot.velocity_limits.status ?? "blocked_no_robot_hil_limits" }}
+          </dd>
+          <dt>steering limits</dt>
+          <dd>
+            angle={{ operatorConsole?.safe_command_snapshot.steering_limits.max_steering_angle_rad ?? "null" }}
+            · turn_rate={{ operatorConsole?.safe_command_snapshot.steering_limits.max_turn_rate_radps ?? "null" }}
+            · {{ operatorConsole?.safe_command_snapshot.steering_limits.status ?? "blocked_no_robot_hil_limits" }}
+          </dd>
+          <dt>navigate envelope</dt>
+          <dd>
+            {{ operatorConsole?.safe_command_snapshot.navigate_goal_envelope.status ?? "blocked_not_proven" }}
+            · {{ operatorConsole?.safe_command_snapshot.navigate_goal_envelope.goal_source ?? "map_click_disabled" }}
+          </dd>
+          <dt>map goal slot</dt>
+          <dd>
+            frame={{ operatorConsole?.safe_command_snapshot.map_goal_slot.map_frame ?? "map" }}
+            · x={{ operatorConsole?.safe_command_snapshot.map_goal_slot.x_m ?? "null" }}
+            · y={{ operatorConsole?.safe_command_snapshot.map_goal_slot.y_m ?? "null" }}
+            · yaw={{ operatorConsole?.safe_command_snapshot.map_goal_slot.yaw_rad ?? "null" }}
+          </dd>
+        </dl>
+      </div>
+      <div class="two-col">
+        <dl class="kv compact-kv">
+          <!-- endpoint 和幂等键只是未来云端 API contract，status 保持 future_disabled。 -->
+          <dt>manual endpoint</dt>
+          <dd>
+            {{
+              operatorConsole?.safe_command_snapshot.cloud_command_endpoint.manual_turn ??
+                "POST /api/o7/operator/commands/manual-turn (future, disabled)"
+            }}
+          </dd>
+          <dt>navigate endpoint</dt>
+          <dd>
+            {{
+              operatorConsole?.safe_command_snapshot.cloud_command_endpoint.navigate_goal ??
+                "POST /api/o7/operator/commands/navigate-goal (future, disabled)"
+            }}
+          </dd>
+          <dt>endpoint status</dt>
+          <dd>{{ operatorConsole?.safe_command_snapshot.cloud_command_endpoint.status ?? "future_disabled" }}</dd>
+          <dt>idempotency key</dt>
+          <dd>
+            required={{ operatorConsole?.safe_command_snapshot.idempotency_key_requirement.required ?? true }}
+            · {{ operatorConsole?.safe_command_snapshot.idempotency_key_requirement.header ?? "Idempotency-Key" }}
+            · {{
+              operatorConsole?.safe_command_snapshot.idempotency_key_requirement.status ??
+                "required_not_connected"
+            }}
+          </dd>
+          <dt>confirmation</dt>
+          <dd>
+            manual={{
+              operatorConsole?.safe_command_snapshot.confirmation_policy.manual_turn_requires_confirmation ?? true
+            }}
+            · navigate={{
+              operatorConsole?.safe_command_snapshot.confirmation_policy.navigate_goal_requires_confirmation ?? true
+            }}
+            · {{ operatorConsole?.safe_command_snapshot.confirmation_policy.status ?? "blocked_no_confirmation_ui" }}
+          </dd>
+        </dl>
+        <dl class="kv compact-kv">
+          <!-- ACK/timeout/cancel/stop/recovery 当前都是缺口，不代表 robot-side 已接入。 -->
+          <dt>ACK status</dt>
+          <dd>
+            {{
+              operatorConsole?.safe_command_snapshot.robot_ack_status.ack_status ??
+                "blocked_no_robot_ack_contract"
+            }}
+            · {{
+              operatorConsole?.safe_command_snapshot.robot_ack_status.ack_ref ??
+                "missing_robot_command_ack"
+            }}
+          </dd>
+          <dt>timeout</dt>
+          <dd>
+            ms={{ operatorConsole?.safe_command_snapshot.robot_ack_status.timeout_ms ?? "null" }}
+            · {{ operatorConsole?.safe_command_snapshot.evidence_gaps.timeout ?? "missing_command_timeout_policy_and_trace" }}
+          </dd>
+          <dt>cancel gap</dt>
+          <dd>{{ operatorConsole?.safe_command_snapshot.evidence_gaps.cancel ?? "missing_cancel_command_ack_trace" }}</dd>
+          <dt>stop gap</dt>
+          <dd>{{ operatorConsole?.safe_command_snapshot.evidence_gaps.stop ?? "missing_stop_command_ack_trace" }}</dd>
+          <dt>recovery gap</dt>
+          <dd>{{ operatorConsole?.safe_command_snapshot.evidence_gaps.recovery ?? "missing_robot_recovery_event_trace" }}</dd>
+          <dt>recovery ref</dt>
+          <dd>
+            {{
+              operatorConsole?.safe_command_snapshot.robot_ack_status.recovery_ref ??
+                "missing_robot_recovery_event"
+            }}
+          </dd>
+        </dl>
+      </div>
+      <div class="three-col">
+        <div>
+          <h3>Blocked by</h3>
+          <ul class="dense">
+            <!-- blocked reasons 明确 KR6 缺真实 command API、HIL 限制和 robot ACK/recovery 证据。 -->
+            <li v-for="reason in operatorConsole?.safe_command_snapshot.blocked_reasons" :key="reason">
+              {{ reason }}
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h3>Not proven</h3>
+          <ul class="dense">
+            <!-- not_proven 覆盖真实手控、速度、转向、键盘、寻路、ACK 和底盘安全。 -->
+            <li v-for="item in operatorConsole?.safe_command_snapshot.not_proven" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Next evidence</h3>
+          <ul class="dense">
+            <!-- next evidence 是后续 cloud/robot/hardware 联调清单，不触发任何命令发送。 -->
+            <li v-for="item in operatorConsole?.safe_command_snapshot.next_required_evidence" :key="item">
+              {{ item }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
     <article class="preflight-panel">
       <div class="section-head compact-head">
         <!-- 板端媒体摘要来自 API；缺省值也保持 blocked，避免页面加载失败时显示可用。 -->

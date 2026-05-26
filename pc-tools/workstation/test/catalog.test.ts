@@ -549,6 +549,49 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.voice_asr_tts_snapshot.not_proven).toContain("real_asr_partial_transcript");
     expect(response.voice_asr_tts_snapshot.not_proven).toContain("real_speaker_dispatch_ack");
     expect(response.voice_asr_tts_snapshot.next_required_evidence).toContain("voice_asr_tts_cloud_api_contract");
+    expect(response.safe_command_snapshot.schema).toBe("trashbot.o7.safe_command_snapshot.v1");
+    expect(response.safe_command_snapshot.source).toBe("software_proof");
+    expect(response.safe_command_snapshot.snapshot_status).toBe("blocked_not_proven");
+    expect(response.safe_command_snapshot.safe_to_control).toBe(false);
+    expect(response.safe_command_snapshot.primary_actions_enabled).toBe(false);
+    expect(response.safe_command_snapshot.command_dispatch_enabled).toBe(false);
+    expect(response.safe_command_snapshot.manual_control_enabled).toBe(false);
+    expect(response.safe_command_snapshot.navigate_goal_enabled).toBe(false);
+    expect(response.safe_command_snapshot.keyboard_control_enabled).toBe(false);
+    expect(response.safe_command_snapshot.real_command_api_connected).toBe(false);
+    expect(response.safe_command_snapshot.real_robot_ack_connected).toBe(false);
+    expect(response.safe_command_snapshot.manual_turn_envelope.sends_to_robot).toBe(false);
+    expect(response.safe_command_snapshot.manual_turn_envelope.accepted_input_slots).toContain(
+      "keyboard_arrow_keys_disabled",
+    );
+    expect(response.safe_command_snapshot.velocity_limits.hardware_verified).toBe(false);
+    expect(response.safe_command_snapshot.velocity_limits.status).toBe("blocked_no_robot_hil_limits");
+    expect(response.safe_command_snapshot.steering_limits.hardware_verified).toBe(false);
+    expect(response.safe_command_snapshot.navigate_goal_envelope.goal_source).toBe("map_click_disabled");
+    expect(response.safe_command_snapshot.map_goal_slot.status).toBe("empty_not_connected");
+    expect(response.safe_command_snapshot.cloud_command_endpoint.status).toBe("future_disabled");
+    expect(response.safe_command_snapshot.cloud_command_endpoint.sends_to_robot).toBe(false);
+    expect(response.safe_command_snapshot.idempotency_key_requirement.required).toBe(true);
+    expect(response.safe_command_snapshot.idempotency_key_requirement.header).toBe("Idempotency-Key");
+    expect(response.safe_command_snapshot.confirmation_policy.manual_turn_requires_confirmation).toBe(true);
+    expect(response.safe_command_snapshot.confirmation_policy.navigate_goal_requires_confirmation).toBe(true);
+    expect(response.safe_command_snapshot.robot_ack_status.ack_status).toBe("blocked_no_robot_ack_contract");
+    expect(response.safe_command_snapshot.robot_ack_status.ack_ref).toBe("missing_robot_command_ack");
+    expect(response.safe_command_snapshot.evidence_gaps.timeout).toBe("missing_command_timeout_policy_and_trace");
+    expect(response.safe_command_snapshot.evidence_gaps.cancel).toBe("missing_cancel_command_ack_trace");
+    expect(response.safe_command_snapshot.evidence_gaps.stop).toBe("missing_stop_command_ack_trace");
+    expect(response.safe_command_snapshot.evidence_gaps.recovery).toBe("missing_robot_recovery_event_trace");
+    expect(response.safe_command_snapshot.blocked_reasons).toContain("safe_command_api_not_connected");
+    expect(response.safe_command_snapshot.blocked_reasons).toContain(
+      "robot_ack_timeout_cancel_stop_recovery_not_proven",
+    );
+    expect(response.safe_command_snapshot.not_proven).toContain("real_manual_turn_control");
+    expect(response.safe_command_snapshot.not_proven).toContain("real_navigate_goal_dispatch");
+    expect(response.safe_command_snapshot.not_proven).toContain("real_timeout_cancel_stop_recovery");
+    expect(response.safe_command_snapshot.next_required_evidence).toContain(
+      "cloud_safe_command_api_contract_with_bearer_auth",
+    );
+    expect(response.safe_command_snapshot.next_required_evidence).toContain("cancel_stop_recovery_ack_trace");
     expect(response.kr_views.map((kr) => kr.id)).toEqual(["O7-KR1", "O7-KR2", "O7-KR3", "O7-KR4", "O7-KR5", "O7-KR6"]);
     expect(response.kr_views.every((kr) => ["draft", "blocked", "not_proven"].includes(kr.status))).toBe(true);
     expect(response.command_previews.every((command) => command.sends_to_robot === false)).toBe(true);
@@ -557,9 +600,12 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.blocked_reasons).toContain("route_replay_snapshot_blocked");
     expect(response.blocked_reasons).toContain("labeling_queue_snapshot_blocked");
     expect(response.blocked_reasons).toContain("voice_asr_tts_snapshot_blocked");
+    expect(response.blocked_reasons).toContain("safe_command_snapshot_blocked");
     expect(response.blocked_reasons).toContain("o6_annotation_api_not_connected");
     expect(response.not_proven).toContain("real_voice_api_connected");
     expect(response.not_proven).toContain("real_asr_partial_transcript");
+    expect(response.not_proven).toContain("real_keyboard_control");
+    expect(response.not_proven).toContain("real_robot_command_ack");
     expect(response.not_proven).toContain("real_operator_safe_command_dispatch");
     expect(response.not_proven).toContain("real_route_replay_trajectory_frames");
     expect(response.not_proven).toContain("real_annotation_rollback");
@@ -576,6 +622,11 @@ describe("workstation fail-closed API contracts", () => {
     expect(JSON.stringify(response)).not.toContain("speaker_dispatch_enabled=true");
     expect(JSON.stringify(response)).not.toContain("real_voice_api_connected=true");
     expect(JSON.stringify(response)).not.toContain("real_asr_tts_runtime_connected=true");
+    expect(JSON.stringify(response)).not.toContain("manual_control_enabled=true");
+    expect(JSON.stringify(response)).not.toContain("navigate_goal_enabled=true");
+    expect(JSON.stringify(response)).not.toContain("keyboard_control_enabled=true");
+    expect(JSON.stringify(response)).not.toContain("real_command_api_connected=true");
+    expect(JSON.stringify(response)).not.toContain("real_robot_ack_connected=true");
     expect(JSON.stringify(response)).not.toContain("success_claim_allowed=true");
     expect(JSON.stringify(response)).not.toContain("command_dispatch_enabled=true");
     expect(JSON.stringify(response)).not.toContain("/cmd_vel");

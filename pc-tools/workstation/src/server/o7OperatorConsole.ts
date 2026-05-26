@@ -7,6 +7,7 @@ import type {
   O7OperatorKrView,
   O7RealtimeMapSnapshot,
   O7RouteReplaySnapshot,
+  O7SafeCommandSnapshot,
   O7VoiceAsrTtsSnapshot,
 } from "../shared/contracts";
 
@@ -504,6 +505,123 @@ const VOICE_ASR_TTS_SNAPSHOT: O7VoiceAsrTtsSnapshot = {
   ],
 };
 
+const SAFE_COMMAND_SNAPSHOT: O7SafeCommandSnapshot = {
+  schema: "trashbot.o7.safe_command_snapshot.v1",
+  schema_version: 1,
+  source: "software_proof",
+  snapshot_status: "blocked_not_proven",
+  safe_to_control: false,
+  primary_actions_enabled: false,
+  command_dispatch_enabled: false,
+  manual_control_enabled: false,
+  navigate_goal_enabled: false,
+  keyboard_control_enabled: false,
+  real_command_api_connected: false,
+  real_robot_ack_connected: false,
+  manual_turn_envelope: {
+    source_contract: "operator.safe_command_preview.v1",
+    status: "blocked_not_proven",
+    sends_to_robot: false,
+    accepted_input_slots: ["ui_turn_left", "ui_turn_right", "keyboard_arrow_keys_disabled"],
+    requested_direction: "not_connected",
+    velocity_limited: true,
+    steering_limited: true,
+    evidence_ref: "missing_manual_turn_command_envelope_trace",
+  },
+  velocity_limits: {
+    max_linear_mps: null,
+    max_angular_radps: null,
+    source: "not_connected",
+    status: "blocked_no_robot_hil_limits",
+    hardware_verified: false,
+  },
+  steering_limits: {
+    max_steering_angle_rad: null,
+    max_turn_rate_radps: null,
+    source: "not_connected",
+    status: "blocked_no_robot_hil_limits",
+    hardware_verified: false,
+  },
+  navigate_goal_envelope: {
+    source_contract: "operator.safe_command_preview.v1",
+    status: "blocked_not_proven",
+    sends_to_robot: false,
+    goal_source: "map_click_disabled",
+    requires_map_goal_slot: true,
+    evidence_ref: "missing_navigate_goal_command_envelope_trace",
+  },
+  map_goal_slot: {
+    map_frame: "map",
+    x_m: null,
+    y_m: null,
+    yaw_rad: null,
+    status: "empty_not_connected",
+    evidence_ref: "missing_map_goal_selection_trace",
+  },
+  cloud_command_endpoint: {
+    manual_turn: "POST /api/o7/operator/commands/manual-turn (future, disabled)",
+    navigate_goal: "POST /api/o7/operator/commands/navigate-goal (future, disabled)",
+    status: "future_disabled",
+    sends_to_robot: false,
+  },
+  idempotency_key_requirement: {
+    required: true,
+    header: "Idempotency-Key",
+    status: "required_not_connected",
+    replay_policy: "reject_duplicate_future_contract",
+  },
+  confirmation_policy: {
+    manual_turn_requires_confirmation: true,
+    navigate_goal_requires_confirmation: true,
+    keyboard_control_requires_hold: true,
+    status: "blocked_no_confirmation_ui",
+  },
+  robot_ack_status: {
+    ack_status: "blocked_no_robot_ack_contract",
+    last_command_id: "not_connected",
+    ack_ref: "missing_robot_command_ack",
+    timeout_ms: null,
+    cancel_ack_ref: "missing_robot_cancel_ack",
+    stop_ack_ref: "missing_robot_stop_ack",
+    recovery_ref: "missing_robot_recovery_event",
+  },
+  evidence_gaps: {
+    timeout: "missing_command_timeout_policy_and_trace",
+    cancel: "missing_cancel_command_ack_trace",
+    stop: "missing_stop_command_ack_trace",
+    recovery: "missing_robot_recovery_event_trace",
+  },
+  blocked_reasons: [
+    "safe_command_api_not_connected",
+    "manual_turn_command_dispatch_disabled",
+    "navigate_goal_dispatch_disabled",
+    "keyboard_control_disabled",
+    "velocity_and_steering_limits_not_hil_verified",
+    "robot_ack_timeout_cancel_stop_recovery_not_proven",
+  ],
+  not_proven: [
+    "real_manual_turn_control",
+    "real_velocity_control",
+    "real_steering_control",
+    "real_keyboard_control",
+    "real_navigate_goal_dispatch",
+    "real_cloud_command_api_connected",
+    "real_robot_command_ack",
+    "real_timeout_cancel_stop_recovery",
+    "real_chassis_safety",
+  ],
+  next_required_evidence: [
+    "cloud_safe_command_api_contract_with_bearer_auth",
+    "idempotency_key_replay_rejection_trace",
+    "manual_turn_payload_schema_with_velocity_and_steering_limits",
+    "navigate_goal_payload_schema_with_map_frame_and_goal_slot",
+    "operator_confirmation_ui_policy_trace",
+    "robot_command_ack_timeout_trace",
+    "cancel_stop_recovery_ack_trace",
+    "hardware_hil_or_controlled_field_safety_evidence",
+  ],
+};
+
 export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
   // 这里与 cloud-relay helper 固定同一 schema；PC 只消费契约快照，不连接小车。
   // 六个 KR 都保留 draft/blocked/not_proven，避免 UI 把占位面板外推成真实 O7 能力。
@@ -512,6 +630,7 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
   // 路线回放 snapshot 只锁定 O6 归档 API 的对接字段，当前不能渲染为可播放历史任务。
   // 标注队列 snapshot 只锁定 O6 annotation/export 对接字段，提交和回滚固定 fail-closed。
   // 语音 snapshot 只锁定 ASR/TTS 字段槽位，发送、播放、ACK 和真实 runtime 全部关闭。
+  // 安全命令 snapshot 只锁定 O7-KR6 字段槽位，手控、键盘、寻路和 ACK 全部关闭。
   return {
     schema: "trashbot.o7.operator_console.v1",
     ...PROOF_FLAGS,
@@ -530,10 +649,16 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
     route_replay_snapshot: ROUTE_REPLAY_SNAPSHOT,
     labeling_queue_snapshot: LABELING_QUEUE_SNAPSHOT,
     voice_asr_tts_snapshot: VOICE_ASR_TTS_SNAPSHOT,
+    safe_command_snapshot: SAFE_COMMAND_SNAPSHOT,
     manual_control_policy: {
       pc_direct_robot_connection: false,
       cloud_mediated_only: true,
       command_dispatch_enabled: false,
+      manual_control_enabled: false,
+      navigate_goal_enabled: false,
+      keyboard_control_enabled: false,
+      real_command_api_connected: false,
+      real_robot_ack_connected: false,
       confirmation_required_before_future_dispatch: true,
       success_claim_allowed: false,
     },
@@ -577,6 +702,7 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
       "route_replay_snapshot_blocked",
       "labeling_queue_snapshot_blocked",
       "voice_asr_tts_snapshot_blocked",
+      "safe_command_snapshot_blocked",
       "o6_cloud_task_archive_not_connected",
       "o6_annotation_api_not_connected",
       "voice_api_not_connected",
@@ -609,6 +735,13 @@ export function buildO7OperatorConsoleResponse(): O7OperatorConsoleResponse {
       "real_audio_playback",
       "real_tts_playback",
       "on_robot_media_smoke",
+      "real_manual_turn_control",
+      "real_velocity_control",
+      "real_steering_control",
+      "real_keyboard_control",
+      "real_navigate_goal_dispatch",
+      "real_robot_command_ack",
+      "real_timeout_cancel_stop_recovery",
       "real_operator_safe_command_dispatch",
       "delivery_success",
     ],

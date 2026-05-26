@@ -256,6 +256,99 @@ export interface O7OperatorActionPreview {
   recovery_path: string;
 }
 
+// Safe command snapshot 是 O7-KR6 的只读安全命令契约，不能被 UI 解释成真实控制能力。
+// 顶层 enabled 字段全部固定 false，是为了给未来云端 command API 留槽时仍然 fail-closed。
+export interface O7SafeCommandSnapshot {
+  schema: "trashbot.o7.safe_command_snapshot.v1";
+  schema_version: 1;
+  source: "software_proof";
+  snapshot_status: "blocked_not_proven";
+  safe_to_control: false;
+  primary_actions_enabled: false;
+  command_dispatch_enabled: false;
+  manual_control_enabled: false;
+  navigate_goal_enabled: false;
+  keyboard_control_enabled: false;
+  real_command_api_connected: false;
+  real_robot_ack_connected: false;
+  manual_turn_envelope: {
+    source_contract: "operator.safe_command_preview.v1";
+    status: "blocked_not_proven";
+    sends_to_robot: false;
+    accepted_input_slots: string[];
+    requested_direction: "not_connected";
+    velocity_limited: true;
+    steering_limited: true;
+    evidence_ref: "missing_manual_turn_command_envelope_trace";
+  };
+  velocity_limits: {
+    max_linear_mps: null;
+    max_angular_radps: null;
+    source: "not_connected";
+    status: "blocked_no_robot_hil_limits";
+    hardware_verified: false;
+  };
+  steering_limits: {
+    max_steering_angle_rad: null;
+    max_turn_rate_radps: null;
+    source: "not_connected";
+    status: "blocked_no_robot_hil_limits";
+    hardware_verified: false;
+  };
+  navigate_goal_envelope: {
+    source_contract: "operator.safe_command_preview.v1";
+    status: "blocked_not_proven";
+    sends_to_robot: false;
+    goal_source: "map_click_disabled";
+    requires_map_goal_slot: true;
+    evidence_ref: "missing_navigate_goal_command_envelope_trace";
+  };
+  map_goal_slot: {
+    map_frame: "map";
+    x_m: null;
+    y_m: null;
+    yaw_rad: null;
+    status: "empty_not_connected";
+    evidence_ref: "missing_map_goal_selection_trace";
+  };
+  cloud_command_endpoint: {
+    manual_turn: "POST /api/o7/operator/commands/manual-turn (future, disabled)";
+    navigate_goal: "POST /api/o7/operator/commands/navigate-goal (future, disabled)";
+    status: "future_disabled";
+    sends_to_robot: false;
+  };
+  idempotency_key_requirement: {
+    required: true;
+    header: "Idempotency-Key";
+    status: "required_not_connected";
+    replay_policy: "reject_duplicate_future_contract";
+  };
+  confirmation_policy: {
+    manual_turn_requires_confirmation: true;
+    navigate_goal_requires_confirmation: true;
+    keyboard_control_requires_hold: true;
+    status: "blocked_no_confirmation_ui";
+  };
+  robot_ack_status: {
+    ack_status: "blocked_no_robot_ack_contract";
+    last_command_id: "not_connected";
+    ack_ref: "missing_robot_command_ack";
+    timeout_ms: null;
+    cancel_ack_ref: "missing_robot_cancel_ack";
+    stop_ack_ref: "missing_robot_stop_ack";
+    recovery_ref: "missing_robot_recovery_event";
+  };
+  evidence_gaps: {
+    timeout: "missing_command_timeout_policy_and_trace";
+    cancel: "missing_cancel_command_ack_trace";
+    stop: "missing_stop_command_ack_trace";
+    recovery: "missing_robot_recovery_event_trace";
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+  next_required_evidence: string[];
+}
+
 // 板端媒体 preflight 是上车 smoke 之前的缺口摘要；PC 只能展示，不能把它升级成运行态。
 export interface O7BoardMediaPreflightSummary {
   schema: "trashbot.o7_board_media_preflight.v1";
@@ -564,10 +657,16 @@ export interface O7OperatorConsoleResponse extends ProofFlags {
   route_replay_snapshot: O7RouteReplaySnapshot;
   labeling_queue_snapshot: O7LabelingQueueSnapshot;
   voice_asr_tts_snapshot: O7VoiceAsrTtsSnapshot;
+  safe_command_snapshot: O7SafeCommandSnapshot;
   manual_control_policy: {
     pc_direct_robot_connection: false;
     cloud_mediated_only: true;
     command_dispatch_enabled: false;
+    manual_control_enabled: false;
+    navigate_goal_enabled: false;
+    keyboard_control_enabled: false;
+    real_command_api_connected: false;
+    real_robot_ack_connected: false;
     confirmation_required_before_future_dispatch: true;
     success_claim_allowed: false;
   };

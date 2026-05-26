@@ -36,6 +36,7 @@ O7_ELEVATOR_STATE_SNAPSHOT_SCHEMA = "trashbot.o7.elevator_state_snapshot.v1"
 O7_ROUTE_REPLAY_SNAPSHOT_SCHEMA = "trashbot.o7.route_replay_snapshot.v1"
 O7_LABELING_QUEUE_SNAPSHOT_SCHEMA = "trashbot.o7.labeling_queue_snapshot.v1"
 O7_VOICE_ASR_TTS_SNAPSHOT_SCHEMA = "trashbot.o7.voice_asr_tts_snapshot.v1"
+O7_SAFE_COMMAND_SNAPSHOT_SCHEMA = "trashbot.o7.safe_command_snapshot.v1"
 
 
 def build_o7_operator_console_contract() -> dict[str, Any]:
@@ -475,6 +476,124 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             "rtc_media_smoke_with_no_chassis_motion",
         ],
     }
+    # 安全命令 snapshot 只冻结 O7-KR6 的手控/寻路 envelope，不连接云端命令 API。
+    # 所有 dispatch、键盘、导航和 robot ACK 字段固定关闭，防止 PC UI 误变成控制台。
+    safe_command_snapshot = {
+        "schema": O7_SAFE_COMMAND_SNAPSHOT_SCHEMA,
+        "schema_version": 1,
+        "source": "software_proof",
+        "snapshot_status": "blocked_not_proven",
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+        "command_dispatch_enabled": False,
+        "manual_control_enabled": False,
+        "navigate_goal_enabled": False,
+        "keyboard_control_enabled": False,
+        "real_command_api_connected": False,
+        "real_robot_ack_connected": False,
+        "manual_turn_envelope": {
+            "source_contract": "operator.safe_command_preview.v1",
+            "status": "blocked_not_proven",
+            "sends_to_robot": False,
+            "accepted_input_slots": ["ui_turn_left", "ui_turn_right", "keyboard_arrow_keys_disabled"],
+            "requested_direction": "not_connected",
+            "velocity_limited": True,
+            "steering_limited": True,
+            "evidence_ref": "missing_manual_turn_command_envelope_trace",
+        },
+        "velocity_limits": {
+            "max_linear_mps": None,
+            "max_angular_radps": None,
+            "source": "not_connected",
+            "status": "blocked_no_robot_hil_limits",
+            "hardware_verified": False,
+        },
+        "steering_limits": {
+            "max_steering_angle_rad": None,
+            "max_turn_rate_radps": None,
+            "source": "not_connected",
+            "status": "blocked_no_robot_hil_limits",
+            "hardware_verified": False,
+        },
+        "navigate_goal_envelope": {
+            "source_contract": "operator.safe_command_preview.v1",
+            "status": "blocked_not_proven",
+            "sends_to_robot": False,
+            "goal_source": "map_click_disabled",
+            "requires_map_goal_slot": True,
+            "evidence_ref": "missing_navigate_goal_command_envelope_trace",
+        },
+        "map_goal_slot": {
+            "map_frame": "map",
+            "x_m": None,
+            "y_m": None,
+            "yaw_rad": None,
+            "status": "empty_not_connected",
+            "evidence_ref": "missing_map_goal_selection_trace",
+        },
+        "cloud_command_endpoint": {
+            "manual_turn": "POST /api/o7/operator/commands/manual-turn (future, disabled)",
+            "navigate_goal": "POST /api/o7/operator/commands/navigate-goal (future, disabled)",
+            "status": "future_disabled",
+            "sends_to_robot": False,
+        },
+        "idempotency_key_requirement": {
+            "required": True,
+            "header": "Idempotency-Key",
+            "status": "required_not_connected",
+            "replay_policy": "reject_duplicate_future_contract",
+        },
+        "confirmation_policy": {
+            "manual_turn_requires_confirmation": True,
+            "navigate_goal_requires_confirmation": True,
+            "keyboard_control_requires_hold": True,
+            "status": "blocked_no_confirmation_ui",
+        },
+        "robot_ack_status": {
+            "ack_status": "blocked_no_robot_ack_contract",
+            "last_command_id": "not_connected",
+            "ack_ref": "missing_robot_command_ack",
+            "timeout_ms": None,
+            "cancel_ack_ref": "missing_robot_cancel_ack",
+            "stop_ack_ref": "missing_robot_stop_ack",
+            "recovery_ref": "missing_robot_recovery_event",
+        },
+        "evidence_gaps": {
+            "timeout": "missing_command_timeout_policy_and_trace",
+            "cancel": "missing_cancel_command_ack_trace",
+            "stop": "missing_stop_command_ack_trace",
+            "recovery": "missing_robot_recovery_event_trace",
+        },
+        "blocked_reasons": [
+            "safe_command_api_not_connected",
+            "manual_turn_command_dispatch_disabled",
+            "navigate_goal_dispatch_disabled",
+            "keyboard_control_disabled",
+            "velocity_and_steering_limits_not_hil_verified",
+            "robot_ack_timeout_cancel_stop_recovery_not_proven",
+        ],
+        "not_proven": [
+            "real_manual_turn_control",
+            "real_velocity_control",
+            "real_steering_control",
+            "real_keyboard_control",
+            "real_navigate_goal_dispatch",
+            "real_cloud_command_api_connected",
+            "real_robot_command_ack",
+            "real_timeout_cancel_stop_recovery",
+            "real_chassis_safety",
+        ],
+        "next_required_evidence": [
+            "cloud_safe_command_api_contract_with_bearer_auth",
+            "idempotency_key_replay_rejection_trace",
+            "manual_turn_payload_schema_with_velocity_and_steering_limits",
+            "navigate_goal_payload_schema_with_map_frame_and_goal_slot",
+            "operator_confirmation_ui_policy_trace",
+            "robot_command_ack_timeout_trace",
+            "cancel_stop_recovery_ack_trace",
+            "hardware_hil_or_controlled_field_safety_evidence",
+        ],
+    }
 
     return {
         "schema": O7_OPERATOR_CONSOLE_SCHEMA,
@@ -499,10 +618,16 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
         "route_replay_snapshot": route_replay_snapshot,
         "labeling_queue_snapshot": labeling_queue_snapshot,
         "voice_asr_tts_snapshot": voice_asr_tts_snapshot,
+        "safe_command_snapshot": safe_command_snapshot,
         "manual_control_policy": {
             "pc_direct_robot_connection": False,
             "cloud_mediated_only": True,
             "command_dispatch_enabled": False,
+            "manual_control_enabled": False,
+            "navigate_goal_enabled": False,
+            "keyboard_control_enabled": False,
+            "real_command_api_connected": False,
+            "real_robot_ack_connected": False,
             "confirmation_required_before_future_dispatch": True,
             "success_claim_allowed": False,
         },
@@ -524,6 +649,7 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             "route_replay_snapshot_blocked",
             "labeling_queue_snapshot_blocked",
             "voice_asr_tts_snapshot_blocked",
+            "safe_command_snapshot_blocked",
             "o6_cloud_task_archive_not_connected",
             "o6_annotation_api_not_connected",
             "voice_api_not_connected",
@@ -551,6 +677,13 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             "real_asr_stream",
             "real_tts_playback",
             "on_robot_media_smoke",
+            "real_manual_turn_control",
+            "real_velocity_control",
+            "real_steering_control",
+            "real_keyboard_control",
+            "real_navigate_goal_dispatch",
+            "real_robot_command_ack",
+            "real_timeout_cancel_stop_recovery",
             "real_o7_operator_command_dispatch",
             "delivery_success",
         ],
@@ -559,6 +692,7 @@ def build_o7_operator_console_contract() -> dict[str, Any]:
             + route_replay_snapshot["next_required_evidence"]
             + labeling_queue_snapshot["next_required_evidence"]
             + voice_asr_tts_snapshot["next_required_evidence"]
+            + safe_command_snapshot["next_required_evidence"]
         ),
     }
 

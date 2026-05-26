@@ -684,10 +684,116 @@ const fixtures: Record<string, unknown> = {
         "tts_command_ack_and_audit_log_sample",
       ],
     },
+    safe_command_snapshot: {
+      schema: "trashbot.o7.safe_command_snapshot.v1",
+      schema_version: 1,
+      source: "software_proof",
+      snapshot_status: "blocked_not_proven",
+      safe_to_control: false,
+      primary_actions_enabled: false,
+      command_dispatch_enabled: false,
+      manual_control_enabled: false,
+      navigate_goal_enabled: false,
+      keyboard_control_enabled: false,
+      real_command_api_connected: false,
+      real_robot_ack_connected: false,
+      manual_turn_envelope: {
+        source_contract: "operator.safe_command_preview.v1",
+        status: "blocked_not_proven",
+        sends_to_robot: false,
+        accepted_input_slots: ["ui_turn_left", "ui_turn_right", "keyboard_arrow_keys_disabled"],
+        requested_direction: "not_connected",
+        velocity_limited: true,
+        steering_limited: true,
+        evidence_ref: "missing_manual_turn_command_envelope_trace",
+      },
+      velocity_limits: {
+        max_linear_mps: null,
+        max_angular_radps: null,
+        source: "not_connected",
+        status: "blocked_no_robot_hil_limits",
+        hardware_verified: false,
+      },
+      steering_limits: {
+        max_steering_angle_rad: null,
+        max_turn_rate_radps: null,
+        source: "not_connected",
+        status: "blocked_no_robot_hil_limits",
+        hardware_verified: false,
+      },
+      navigate_goal_envelope: {
+        source_contract: "operator.safe_command_preview.v1",
+        status: "blocked_not_proven",
+        sends_to_robot: false,
+        goal_source: "map_click_disabled",
+        requires_map_goal_slot: true,
+        evidence_ref: "missing_navigate_goal_command_envelope_trace",
+      },
+      map_goal_slot: {
+        map_frame: "map",
+        x_m: null,
+        y_m: null,
+        yaw_rad: null,
+        status: "empty_not_connected",
+        evidence_ref: "missing_map_goal_selection_trace",
+      },
+      cloud_command_endpoint: {
+        manual_turn: "POST /api/o7/operator/commands/manual-turn (future, disabled)",
+        navigate_goal: "POST /api/o7/operator/commands/navigate-goal (future, disabled)",
+        status: "future_disabled",
+        sends_to_robot: false,
+      },
+      idempotency_key_requirement: {
+        required: true,
+        header: "Idempotency-Key",
+        status: "required_not_connected",
+        replay_policy: "reject_duplicate_future_contract",
+      },
+      confirmation_policy: {
+        manual_turn_requires_confirmation: true,
+        navigate_goal_requires_confirmation: true,
+        keyboard_control_requires_hold: true,
+        status: "blocked_no_confirmation_ui",
+      },
+      robot_ack_status: {
+        ack_status: "blocked_no_robot_ack_contract",
+        last_command_id: "not_connected",
+        ack_ref: "missing_robot_command_ack",
+        timeout_ms: null,
+        cancel_ack_ref: "missing_robot_cancel_ack",
+        stop_ack_ref: "missing_robot_stop_ack",
+        recovery_ref: "missing_robot_recovery_event",
+      },
+      evidence_gaps: {
+        timeout: "missing_command_timeout_policy_and_trace",
+        cancel: "missing_cancel_command_ack_trace",
+        stop: "missing_stop_command_ack_trace",
+        recovery: "missing_robot_recovery_event_trace",
+      },
+      blocked_reasons: ["safe_command_api_not_connected", "robot_ack_timeout_cancel_stop_recovery_not_proven"],
+      not_proven: [
+        "real_manual_turn_control",
+        "real_velocity_control",
+        "real_keyboard_control",
+        "real_navigate_goal_dispatch",
+        "real_robot_command_ack",
+        "real_timeout_cancel_stop_recovery",
+      ],
+      next_required_evidence: [
+        "cloud_safe_command_api_contract_with_bearer_auth",
+        "idempotency_key_replay_rejection_trace",
+        "cancel_stop_recovery_ack_trace",
+      ],
+    },
     manual_control_policy: {
       pc_direct_robot_connection: false,
       cloud_mediated_only: true,
       command_dispatch_enabled: false,
+      manual_control_enabled: false,
+      navigate_goal_enabled: false,
+      keyboard_control_enabled: false,
+      real_command_api_connected: false,
+      real_robot_ack_connected: false,
       confirmation_required_before_future_dispatch: true,
       success_claim_allowed: false,
     },
@@ -987,6 +1093,33 @@ describe("App", () => {
     expect(wrapper.text()).toContain("voice_api_not_connected");
     expect(wrapper.text()).toContain("real_speaker_dispatch_ack");
     expect(wrapper.text()).toContain("voice_asr_tts_cloud_api_contract");
+    expect(wrapper.text()).toContain("Safe command snapshot");
+    expect(wrapper.text()).toContain("trashbot.o7.safe_command_snapshot.v1");
+    expect(wrapper.text()).toContain("command dispatchfalse");
+    expect(wrapper.text()).toContain("manual controlfalse");
+    expect(wrapper.text()).toContain("navigate goalfalse");
+    expect(wrapper.text()).toContain("keyboard controlfalse");
+    expect(wrapper.text()).toContain("command APIfalse");
+    expect(wrapper.text()).toContain("robot ACKfalse");
+    expect(wrapper.text()).toContain("keyboard_arrow_keys_disabled");
+    expect(wrapper.text()).toContain("blocked_no_robot_hil_limits");
+    expect(wrapper.text()).toContain("map_click_disabled");
+    expect(wrapper.text()).toContain("empty_not_connected");
+    expect(wrapper.text()).toContain("future_disabled");
+    expect(wrapper.text()).toContain("Idempotency-Key");
+    expect(wrapper.text()).toContain("required_not_connected");
+    expect(wrapper.text()).toContain("blocked_no_confirmation_ui");
+    expect(wrapper.text()).toContain("blocked_no_robot_ack_contract");
+    expect(wrapper.text()).toContain("missing_robot_command_ack");
+    expect(wrapper.text()).toContain("missing_command_timeout_policy_and_trace");
+    expect(wrapper.text()).toContain("missing_cancel_command_ack_trace");
+    expect(wrapper.text()).toContain("missing_stop_command_ack_trace");
+    expect(wrapper.text()).toContain("missing_robot_recovery_event_trace");
+    expect(wrapper.text()).toContain("safe_command_api_not_connected");
+    expect(wrapper.text()).toContain("real_manual_turn_control");
+    expect(wrapper.text()).toContain("real_navigate_goal_dispatch");
+    expect(wrapper.text()).toContain("cloud_safe_command_api_contract_with_bearer_auth");
+    expect(wrapper.text()).toContain("cancel_stop_recovery_ack_trace");
     expect(wrapper.text()).toContain("O7-KR1");
     expect(wrapper.text()).toContain("O7-KR6");
     expect(wrapper.text()).toContain("operator.safe_command_preview.v1");
@@ -999,5 +1132,8 @@ describe("App", () => {
     expect(wrapper.text()).not.toMatch(/submit enabledtrue/i);
     expect(wrapper.text()).not.toMatch(/rollback enabledtrue/i);
     expect(wrapper.text()).not.toMatch(/tts send enabledtrue/i);
+    expect(wrapper.text()).not.toMatch(/manual controltrue/i);
+    expect(wrapper.text()).not.toMatch(/navigate goaltrue/i);
+    expect(wrapper.text()).not.toMatch(/keyboard controltrue/i);
   });
 });

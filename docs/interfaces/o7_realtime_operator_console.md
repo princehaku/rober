@@ -36,6 +36,12 @@
 - `voice_asr_tts_snapshot.speaker_dispatch_enabled=false`
 - `voice_asr_tts_snapshot.real_voice_api_connected=false`
 - `voice_asr_tts_snapshot.real_asr_tts_runtime_connected=false`
+- `safe_command_snapshot.command_dispatch_enabled=false`
+- `safe_command_snapshot.manual_control_enabled=false`
+- `safe_command_snapshot.navigate_goal_enabled=false`
+- `safe_command_snapshot.keyboard_control_enabled=false`
+- `safe_command_snapshot.real_command_api_connected=false`
+- `safe_command_snapshot.real_robot_ack_connected=false`
 
 PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE ROVER、Nav2、TTS 或手控命令。
 
@@ -231,6 +237,76 @@ PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE 
 `next_required_evidence` 是后续 O6/O7/板端联调清单，不是 PC 已经查询云端或播放音频的证据；至少包含 voice ASR/TTS cloud API contract、带 partial/final events 的 ASR stream connection trace、含 voice profile 的 TTS draft payload schema、TTS command ACK/audit log sample、speaker dispatch ACK 或 failure event sample、board media preflight audio input/output pass，以及无底盘运动的 RTC media smoke。
 
 PC Console 展示该 snapshot 不等于真实语音监听、真实文本识别、真实 TTS 下发、真实 speaker ACK、真实音频设备、真实 RTC 或真实控制完成；UI 不得提供 TTS 输入框、发送按钮或绕过云端的本地音频访问。
+
+## Safe Command Snapshot
+
+`safe_command_snapshot` 是 O7-KR6 的 fail-closed 字段契约。它让 PC Console 明确显示手动转向、速度/转向限制、自动寻路目标、地图 goal slot、云端命令 endpoint、幂等键、确认策略、robot ACK、timeout/cancel/stop/recovery 缺口和 next required evidence，但当前仍是 `software_proof` 和 `blocked_not_proven`，不能解释为真实手控、真实速度控制、真实自动寻路、真实键盘操作、真实 ACK、真实 cancel/stop/recovery 或底盘安全已经完成。
+
+固定字段：
+
+- `schema=trashbot.o7.safe_command_snapshot.v1`
+- `source=software_proof`
+- `snapshot_status=blocked_not_proven`
+- `safe_to_control=false`
+- `primary_actions_enabled=false`
+- `command_dispatch_enabled=false`
+- `manual_control_enabled=false`
+- `navigate_goal_enabled=false`
+- `keyboard_control_enabled=false`
+- `real_command_api_connected=false`
+- `real_robot_ack_connected=false`
+- `manual_turn_envelope.source_contract=operator.safe_command_preview.v1`
+- `manual_turn_envelope.status=blocked_not_proven`
+- `manual_turn_envelope.sends_to_robot=false`
+- `manual_turn_envelope.accepted_input_slots` 必须包含 `keyboard_arrow_keys_disabled`
+- `manual_turn_envelope.requested_direction=not_connected`
+- `manual_turn_envelope.velocity_limited=true`
+- `manual_turn_envelope.steering_limited=true`
+- `manual_turn_envelope.evidence_ref=missing_manual_turn_command_envelope_trace`
+- `velocity_limits.max_linear_mps/max_angular_radps=null`
+- `velocity_limits.status=blocked_no_robot_hil_limits`
+- `velocity_limits.hardware_verified=false`
+- `steering_limits.max_steering_angle_rad/max_turn_rate_radps=null`
+- `steering_limits.status=blocked_no_robot_hil_limits`
+- `steering_limits.hardware_verified=false`
+- `navigate_goal_envelope.status=blocked_not_proven`
+- `navigate_goal_envelope.sends_to_robot=false`
+- `navigate_goal_envelope.goal_source=map_click_disabled`
+- `navigate_goal_envelope.requires_map_goal_slot=true`
+- `navigate_goal_envelope.evidence_ref=missing_navigate_goal_command_envelope_trace`
+- `map_goal_slot.map_frame=map`
+- `map_goal_slot.x_m/y_m/yaw_rad=null`
+- `map_goal_slot.status=empty_not_connected`
+- `map_goal_slot.evidence_ref=missing_map_goal_selection_trace`
+- `cloud_command_endpoint.manual_turn=POST /api/o7/operator/commands/manual-turn (future, disabled)`
+- `cloud_command_endpoint.navigate_goal=POST /api/o7/operator/commands/navigate-goal (future, disabled)`
+- `cloud_command_endpoint.status=future_disabled`
+- `cloud_command_endpoint.sends_to_robot=false`
+- `idempotency_key_requirement.required=true`
+- `idempotency_key_requirement.header=Idempotency-Key`
+- `idempotency_key_requirement.status=required_not_connected`
+- `idempotency_key_requirement.replay_policy=reject_duplicate_future_contract`
+- `confirmation_policy.manual_turn_requires_confirmation=true`
+- `confirmation_policy.navigate_goal_requires_confirmation=true`
+- `confirmation_policy.keyboard_control_requires_hold=true`
+- `confirmation_policy.status=blocked_no_confirmation_ui`
+- `robot_ack_status.ack_status=blocked_no_robot_ack_contract`
+- `robot_ack_status.last_command_id=not_connected`
+- `robot_ack_status.ack_ref=missing_robot_command_ack`
+- `robot_ack_status.timeout_ms=null`
+- `robot_ack_status.cancel_ack_ref=missing_robot_cancel_ack`
+- `robot_ack_status.stop_ack_ref=missing_robot_stop_ack`
+- `robot_ack_status.recovery_ref=missing_robot_recovery_event`
+- `evidence_gaps.timeout=missing_command_timeout_policy_and_trace`
+- `evidence_gaps.cancel=missing_cancel_command_ack_trace`
+- `evidence_gaps.stop=missing_stop_command_ack_trace`
+- `evidence_gaps.recovery=missing_robot_recovery_event_trace`
+
+`blocked_reasons` 必须至少包含 safe command API 未连接、manual turn dispatch 关闭、navigate goal dispatch 关闭、keyboard control 关闭、速度/转向限制未 HIL 验证、robot ACK timeout/cancel/stop/recovery 未证明。`not_proven` 必须覆盖真实手控、真实速度控制、真实转向控制、真实键盘控制、真实自动寻路下发、真实云端 command API、真实 robot ACK、真实 timeout/cancel/stop/recovery 和真实底盘安全。
+
+`next_required_evidence` 是后续 O5/O7/Robot/Hardware 联调清单，不是 PC 已经调用云端或小车的证据；至少包含 cloud safe command API contract with bearer auth、idempotency key replay rejection trace、manual turn payload schema with velocity and steering limits、navigate goal payload schema with map frame and goal slot、operator confirmation UI policy trace、robot command ACK timeout trace、cancel/stop/recovery ACK trace，以及 Hardware HIL 或受控现场安全证据。
+
+PC Console 展示该 snapshot 不等于真实手动转向、真实速度控制、真实转向控制、真实键盘控制、真实自动寻路、真实 robot ACK、真实 cancel/stop/recovery 或真实底盘安全完成；UI 不得提供方向键按钮、键盘绑定、地图点击下发或绕过云端的本地 ROS2/Nav2/WAVE ROVER 控制入口。
 
 ## Board Media Preflight
 
