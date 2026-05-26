@@ -38,6 +38,11 @@ cd /mnt/e/rober && git diff --check -- onboard/src/ros2_trashbot_behavior/ros2_t
 # 通过，无输出
 ```
 
+```bash
+cd /mnt/e/rober && git diff --cached --check -- onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics_elevator_field_run.py docs/interfaces/operator_gateway_diagnostics.md sprints/2026.05.26_17-18_operator-gateway-elevator-field-run-modularization/tech-done.md
+# 通过，无输出
+```
+
 ## 剩余风险
 
 - 本轮未改电梯硬件、UART、底盘、WAVE ROVER、PR5、现场运行或 vendor 资料；
