@@ -34,6 +34,7 @@
 - `safe_summaries.trajectory/events/labels/voice/commands`
 - `route_replay_inspector`：KR3 只读逐帧检查视图，状态为 `fixture_inspector_ready | blocked_not_proven`
 - `labeling_queue_inspector`：KR4 只读标注队列检查视图，状态为 `fixture_labeling_ready | blocked_not_proven`
+- `voice_asr_tts_inspector`：KR5 只读 ASR/TTS 检查视图，状态为 `fixture_voice_ready | blocked_not_proven`
 - `fixed_false_fields`
 - `blocked_reasons`
 - `not_proven`
@@ -65,6 +66,27 @@
 - selected task 只有 `labels[]` 时，adapter 会把每条 label 派生成最小 review item 和 draft label 摘要，保证 KR4 UI 能检查 item/media/label type/value/evidence_ref，而不是只看到 label count。
 - selected task 没有 `review_items[]` 且没有 `labels[]` 时，`labeling_queue_inspector.status=blocked_not_proven` 且样本为空。
 
+`voice_asr_tts_inspector` 只从 selected task 的本地 fixture 白名单字段生成，不连接真实 ASR/TTS runtime，不发送 TTS，不调度喇叭：
+
+- `selected_task_id`
+- `voice_session.session_id/source/evidence_ref/audit_refs/status`
+- `asr_event_count`
+- `sample_asr_events` 最多 5 条，每条包含 `event_type`、`timestamp_ms`、脱敏 `transcript`、`confidence`、脱敏 `evidence_ref`
+- `latest_partial` 和 `latest_final`，每个槽位包含 `text`、`timestamp_ms`、`confidence`、`evidence_ref`、`status`
+- `tts_draft.text/text_length/voice_profile/language/confirmation_required/status`，`text` 是脱敏后的安全文本摘要，不代表已发送
+- `speaker_dispatch.sends_to_robot=false`、`speaker_dispatch_enabled=false`、`ack_status`、`speaker_ack_ref`、`failure_event_ref`、最多 5 条 `failure_refs`
+- `media_preflight_dependency.required=true/source_schema/status/dependency_ref/gaps`
+- 固定 `asr_stream_connected=false`、`tts_send_enabled=false`、`speaker_dispatch_enabled=false`、`real_voice_api_connected=false`、`real_asr_tts_runtime_connected=false`
+- 自带 `blocked_reasons` 和 `not_proven`
+
+兼容性规则：
+
+- selected task 内有 `asr_events[]` 时，adapter 从完整事件列表计算 latest partial/final，但 sample 最多只返回 5 条。
+- selected task 支持 `tts_drafts[]`，也兼容旧式 `tts_draft` 单对象；`voice_profile` 可来自 draft 或 task 级 `voice_profile`。
+- `voice_session`、`speaker_ack`、`media_preflight` 均为可选对象，缺失时仍返回 fail-closed 缺口字段。
+- transcript、TTS text、gap 和 evidence/media 引用都必须脱敏；绝对路径只保留 basename。
+- selected task 没有 `asr_events[]` 且没有 `tts_draft(s)` 时，`voice_asr_tts_inspector.status=blocked_not_proven` 且样本为空。
+
 ## Fail-Closed Rules
 
 以下输入必须返回 `archive_status=blocked_not_proven`：
@@ -77,6 +99,7 @@
 - 声称 delivery/dropoff/cloud archive success/ready/connected
 - 声称 `safe_to_control=true`、`primary_actions_enabled=true`、`robot_control_executed=true` 或 command dispatch enabled
 - 声称真实 cloud/realtime/annotation/voice/command API connected
+- 声称 `real_asr_tts_runtime_connected=true`、`asr_stream_connected=true`、`tts_send_enabled=true` 或 `speaker_dispatch_enabled=true`
 
 ## UI Boundary
 
@@ -87,6 +110,8 @@ UI 只展示任务列表、最近任务、selected task、安全摘要、fixed f
 UI 同时展示 `route_replay_inspector` 的 selected task、map frame、frame count、sample frames 表格、event timeline、keyframe refs 和 cursor 初始 false 字段。该区域只用于 operator 检查历史路线 fixture 是否具备逐帧位置、速度和状态转移槽位，不提供任何逐帧驱动或机器人动作入口。
 
 UI 同时展示 `labeling_queue_inspector` 的 selected task、review item count、sample review items、label schema、allowed label types、draft labels、dataset export gaps 和标注相关 false fields。该区域只用于 operator 检查 archive fixture 是否具备 O7-KR4 标注队列数据形状，不提供提交、回滚、导出、发送、控制、播放、停止、取消或恢复类动作入口。
+
+UI 同时展示 `voice_asr_tts_inspector` 的 selected task、voice session、ASR event sample、latest partial/final、TTS draft summary、speaker dispatch summary、media preflight dependency 和语音相关 false fields。该区域只用于 operator 检查 archive fixture 是否具备 O7-KR5 ASR/TTS 调试数据形状，不提供 Send、Speak、Play、Dispatch、Control、Stop、Cancel、Recovery、Submit、Export 或等价动作入口。
 
 ## O7 Impact
 

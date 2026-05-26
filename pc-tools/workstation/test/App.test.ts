@@ -1234,12 +1234,89 @@ const fixtures: Record<string, unknown> = {
       blocked_reasons: ["real_annotation_api_not_connected", "annotation_submit_disabled"],
       not_proven: ["real_o7_annotation_api", "real_o7_annotation_submit"],
     },
+    voice_asr_tts_inspector: {
+      status: "fixture_voice_ready",
+      selected_task_id: "task_archive_002",
+      voice_session: {
+        session_id: "voice_session_archive_002",
+        source: "local_json_fixture",
+        evidence_ref: "voice_session_002.json",
+        audit_refs: ["voice_audit_001.json"],
+        status: "fixture_summary_only",
+      },
+      asr_event_count: 2,
+      sample_asr_events: [
+        {
+          event_type: "partial",
+          timestamp_ms: 2300,
+          transcript: "请去三楼",
+          confidence: 0.62,
+          evidence_ref: "asr_partial_001.json",
+        },
+        {
+          event_type: "final",
+          timestamp_ms: 2400,
+          transcript: "请去三楼电梯口",
+          confidence: 0.9,
+          evidence_ref: "asr_final_001.json",
+        },
+      ],
+      latest_partial: {
+        text: "请去三楼",
+        timestamp_ms: 2300,
+        confidence: 0.62,
+        evidence_ref: "asr_partial_001.json",
+        status: "fixture_summary_only",
+      },
+      latest_final: {
+        text: "请去三楼电梯口",
+        timestamp_ms: 2400,
+        confidence: 0.9,
+        evidence_ref: "asr_final_001.json",
+        status: "fixture_summary_only",
+      },
+      tts_draft: {
+        text: "我会等待人工确认后再播报。",
+        text_length: 13,
+        voice_profile: "operator-default",
+        language: "zh-CN",
+        confirmation_required: true,
+        status: "fixture_draft_only",
+      },
+      speaker_dispatch: {
+        sends_to_robot: false,
+        speaker_dispatch_enabled: false,
+        ack_status: "not_proven",
+        speaker_ack_ref: "speaker_ack_missing.json",
+        failure_event_ref: "speaker_failure_missing.json",
+        failure_refs: ["speaker_gap_001.json"],
+        status: "blocked_not_proven",
+      },
+      media_preflight_dependency: {
+        required: true,
+        source_schema: "trashbot.o7_board_media_preflight.v1",
+        status: "blocked",
+        dependency_ref: "board_media_preflight_summary",
+        gaps: ["audio_input_not_checked", "speaker_output_not_checked"],
+      },
+      asr_stream_connected: false,
+      tts_send_enabled: false,
+      speaker_dispatch_enabled: false,
+      real_voice_api_connected: false,
+      real_asr_tts_runtime_connected: false,
+      blocked_reasons: ["real_voice_api_not_connected", "tts_send_disabled"],
+      not_proven: ["real_o7_voice_api", "real_speaker_dispatch_ack"],
+    },
     fixed_false_fields: {
       real_cloud_archive_connected: false,
       real_realtime_api_connected: false,
       real_annotation_api_connected: false,
       real_voice_api_connected: false,
       real_command_api_connected: false,
+      real_asr_tts_runtime_connected: false,
+      asr_stream_connected: false,
+      tts_send_enabled: false,
+      speaker_dispatch_enabled: false,
       safe_to_control: false,
       delivery_success: false,
       primary_actions_enabled: false,
@@ -1596,6 +1673,14 @@ describe("App", () => {
     expect(wrapper.text()).toContain("operator_review_not_complete");
     expect(wrapper.text()).toContain("draft_labels.autosave_available=false");
     expect(wrapper.text()).toContain("dataset_export.available=false");
+    expect(wrapper.text()).toContain("Voice ASR/TTS inspector");
+    expect(wrapper.text()).toContain("ASR event sample");
+    expect(wrapper.text()).toContain("请去三楼电梯口");
+    expect(wrapper.text()).toContain("我会等待人工确认后再播报。");
+    expect(wrapper.text()).toContain("speaker_ack_missing.json");
+    expect(wrapper.text()).toContain("audio_input_not_checked");
+    expect(wrapper.text()).toContain("speaker_dispatch.sends_to_robot=false");
+    expect(wrapper.text()).toContain("real_asr_tts_runtime_connected=false");
     expect(wrapper.text()).toContain("arrived_at_elevator");
     expect(wrapper.text()).toContain("navigate_goal");
     expect(wrapper.text()).toContain("real_realtime_api_connected=false");
@@ -1615,7 +1700,7 @@ describe("App", () => {
     expect(wrapper.text()).toContain("real_hil_safety");
     expect(wrapper.text()).not.toContain("/cmd_vel");
     expect(wrapper.text()).not.toMatch(
-      /\bSend\b|\bRun\b|\bSubmit\b|\bControl\b|\bPlay\b|\bPause\b|\bExport\b|\bStop\b|\bCancel\b|\bRecovery\b/,
+      /\bSend\b|\bSpeak\b|\bDispatch\b|\bRun\b|\bSubmit\b|\bControl\b|\bPlay\b|\bPause\b|\bExport\b|\bStop\b|\bCancel\b|\bRecovery\b/,
     );
   });
 });

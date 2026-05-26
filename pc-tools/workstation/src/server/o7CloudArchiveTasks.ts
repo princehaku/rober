@@ -8,6 +8,9 @@ import type {
   O7LabelingQueueInspector,
   O7LabelingQueueInspectorLabelSample,
   O7RouteReplayInspector,
+  O7VoiceAsrTtsInspector,
+  O7VoiceAsrTtsInspectorAsrEvent,
+  O7VoiceAsrTtsInspectorTranscriptSlot,
 } from "../shared/contracts";
 
 type JsonObject = Record<string, unknown>;
@@ -58,7 +61,11 @@ const REAL_API_CLAIM_PATTERNS = [
   /"real_realtime_api_connected"\s*:\s*true/i,
   /"real_annotation_api_connected"\s*:\s*true/i,
   /"real_voice_api_connected"\s*:\s*true/i,
+  /"real_asr_tts_runtime_connected"\s*:\s*true/i,
   /"real_command_api_connected"\s*:\s*true/i,
+  /"asr_stream_connected"\s*:\s*true/i,
+  /"tts_send_enabled"\s*:\s*true/i,
+  /"speaker_dispatch_enabled"\s*:\s*true/i,
 ];
 
 const SENSITIVE_PATTERNS: Array<[RegExp, string]> = [
@@ -148,11 +155,89 @@ function fixedFalseFields(): O7CloudArchiveTasksResponse["fixed_false_fields"] {
     real_annotation_api_connected: false,
     real_voice_api_connected: false,
     real_command_api_connected: false,
+    real_asr_tts_runtime_connected: false,
+    asr_stream_connected: false,
+    tts_send_enabled: false,
+    speaker_dispatch_enabled: false,
     safe_to_control: false,
     delivery_success: false,
     primary_actions_enabled: false,
     pc_only: true,
     robot_control_executed: false,
+  };
+}
+
+function voiceBlockedSlot(type: "partial" | "final", status: "empty_not_proven" | "blocked_not_proven"): O7VoiceAsrTtsInspectorTranscriptSlot {
+  // ASR 槽位缺失时也返回固定 evidence_ref，避免 UI 自行补一个看似真实的 transcript。
+  return {
+    text: "",
+    timestamp_ms: null,
+    confidence: null,
+    evidence_ref: type === "partial" ? "missing_asr_partial_transcript_trace" : "missing_asr_final_transcript_trace",
+    status,
+  };
+}
+
+function emptyVoiceAsrTtsInspector(
+  blockedReasons: string[],
+  selectedTaskId: string | null = null,
+): O7VoiceAsrTtsInspector {
+  // 语音 inspector 失败时清空样本，并固定 ASR/TTS/speaker/runtime 全部 false。
+  return {
+    status: "blocked_not_proven",
+    selected_task_id: selectedTaskId,
+    voice_session: {
+      session_id: "not_loaded",
+      source: "local_json_fixture",
+      evidence_ref: "not_loaded",
+      audit_refs: [],
+      status: "blocked_not_proven",
+    },
+    asr_event_count: 0,
+    sample_asr_events: [],
+    latest_partial: voiceBlockedSlot("partial", "blocked_not_proven"),
+    latest_final: voiceBlockedSlot("final", "blocked_not_proven"),
+    tts_draft: {
+      text: "",
+      text_length: 0,
+      voice_profile: "not_loaded",
+      language: "not_loaded",
+      confirmation_required: true,
+      status: "blocked_not_proven",
+    },
+    speaker_dispatch: {
+      sends_to_robot: false,
+      speaker_dispatch_enabled: false,
+      ack_status: "blocked_not_proven",
+      speaker_ack_ref: "missing_speaker_dispatch_ack",
+      failure_event_ref: "missing_speaker_failure_event",
+      failure_refs: [],
+      status: "blocked_not_proven",
+    },
+    media_preflight_dependency: {
+      required: true,
+      source_schema: "trashbot.o7_board_media_preflight.v1",
+      status: "blocked",
+      dependency_ref: "board_media_preflight_summary",
+      gaps: blockedReasons,
+    },
+    asr_stream_connected: false,
+    tts_send_enabled: false,
+    speaker_dispatch_enabled: false,
+    real_voice_api_connected: false,
+    real_asr_tts_runtime_connected: false,
+    blocked_reasons: blockedReasons,
+    not_proven: [
+      "real_o7_voice_api",
+      "real_o7_asr_tts_runtime",
+      "real_asr_stream",
+      "real_asr_partial_transcript",
+      "real_asr_final_transcript",
+      "real_tts_send",
+      "real_tts_playback",
+      "real_speaker_dispatch_ack",
+      "real_audio_device",
+    ],
   };
 }
 
@@ -274,6 +359,7 @@ function blockedResponse(
     safe_summaries: emptySummaries("blocked_not_proven"),
     route_replay_inspector: emptyRouteReplayInspector(blockedReasons),
     labeling_queue_inspector: emptyLabelingQueueInspector(blockedReasons),
+    voice_asr_tts_inspector: emptyVoiceAsrTtsInspector(blockedReasons),
     fixed_false_fields: fixedFalseFields(),
     blocked_reasons: blockedReasons,
     not_proven: [
@@ -356,6 +442,161 @@ function labelsFromItem(item: JsonObject): unknown[] {
     return current.labels;
   }
   return listFromTask(item, "labels");
+}
+
+function safeRefList(value: unknown, limit: number): string[] {
+  // 引用数组统一限量和 basename 化，防止 archive fixture 被当成文件列表导出接口。
+  return Array.isArray(value) ? value.slice(0, limit).map((item) => safeRef(item)).filter(Boolean) : [];
+}
+
+function safeTextList(value: unknown, limit: number): string[] {
+  // gaps 是用户可见问题列表，只展示短数组和脱敏文本。
+  return Array.isArray(value) ? value.slice(0, limit).map((item) => safeText(item)).filter(Boolean) : [];
+}
+
+function sampleAsrEvent(value: unknown): O7VoiceAsrTtsInspectorAsrEvent {
+  // ASR sample 只保留可复核的白名单字段，不透传音频、设备或原始 payload。
+  const event = isObject(value) ? value : {};
+  return {
+    event_type: safeText(event.event_type ?? event.type ?? "event_type_missing"),
+    timestamp_ms: safeNumber(event.timestamp_ms ?? event.t_ms),
+    transcript: safeText(event.transcript ?? event.text),
+    confidence: safeNumber(event.confidence),
+    evidence_ref: safeRef(event.evidence_ref ?? event.event_ref),
+  };
+}
+
+function eventKind(event: O7VoiceAsrTtsInspectorAsrEvent): "partial" | "final" {
+  // 只有明确 final 才进入 final slot，其他 ASR 类型都按 partial 槽位检查。
+  return event.event_type.toLowerCase() === "final" ? "final" : "partial";
+}
+
+function latestVoiceSlot(
+  events: O7VoiceAsrTtsInspectorAsrEvent[],
+  type: "partial" | "final",
+): O7VoiceAsrTtsInspectorTranscriptSlot {
+  // latest 从已脱敏事件中计算，避免回读原始 transcript。
+  const latest = [...events].reverse().find((event) => eventKind(event) === type);
+  if (!latest) {
+    return voiceBlockedSlot(type, "empty_not_proven");
+  }
+  return {
+    text: latest.transcript,
+    timestamp_ms: latest.timestamp_ms,
+    confidence: latest.confidence,
+    evidence_ref: latest.evidence_ref,
+    status: "fixture_summary_only",
+  };
+}
+
+function firstTtsDraft(task: JsonObject): JsonObject {
+  // 新 archive 使用 tts_drafts[]，旧 fixture 可能只有 tts_draft 单对象；两者都只读摘要。
+  const drafts = listFromTask(task, "tts_drafts").filter(isObject);
+  if (drafts.length > 0) {
+    return drafts[0] ?? {};
+  }
+  return isObject(task.tts_draft) ? task.tts_draft : {};
+}
+
+function mediaPreflightGaps(value: unknown): string[] {
+  // media preflight 是 KR5 的前置依赖；即使 fixture 给出状态，也继续补上真实设备缺口。
+  const media = isObject(value) ? value : {};
+  const fixtureGaps = safeTextList(media.gaps, SAMPLE_LIMIT);
+  return Array.from(new Set([
+    ...fixtureGaps,
+    "board_media_preflight_not_collected_by_pc",
+    "real_audio_input_not_proven",
+    "real_audio_playback_not_proven",
+    "rtc_media_smoke_not_proven",
+  ]));
+}
+
+function voiceAsrTtsInspectorFor(task: JsonObject | null): O7VoiceAsrTtsInspector {
+  if (!task) {
+    return emptyVoiceAsrTtsInspector(["selected_task_missing"]);
+  }
+
+  const selectedTaskId = safeText(task.task_id || task.id || "task_id_missing");
+  const asrEventsRaw = listFromTask(task, "asr_events");
+  const asrEvents = asrEventsRaw.map(sampleAsrEvent);
+  const ttsDraft = firstTtsDraft(task);
+  const voiceProfile = isObject(task.voice_profile) ? task.voice_profile : {};
+  const voiceSession = isObject(task.voice_session) ? task.voice_session : {};
+  const speakerAck = isObject(task.speaker_ack) ? task.speaker_ack : {};
+  const mediaPreflight = isObject(task.media_preflight) ? task.media_preflight : {};
+  const ttsText = safeText(ttsDraft.text ?? ttsDraft.transcript ?? "");
+  const summaryText = ttsText.length > 120 ? `${ttsText.slice(0, 120)}...` : ttsText;
+  const blockedReasons = [
+    "real_voice_api_not_connected",
+    "asr_stream_not_connected",
+    "tts_send_disabled",
+    "speaker_dispatch_disabled",
+    "speaker_ack_not_proven",
+    "board_media_preflight_dependency_not_proven",
+  ];
+
+  if (asrEventsRaw.length === 0 && Object.keys(ttsDraft).length === 0) {
+    return emptyVoiceAsrTtsInspector(["voice_asr_events_and_tts_draft_missing", ...blockedReasons], selectedTaskId);
+  }
+
+  return {
+    status: "fixture_voice_ready",
+    selected_task_id: selectedTaskId,
+    voice_session: {
+      session_id: safeText(voiceSession.session_id ?? task.voice_session_id ?? task.session_id ?? "not_provided"),
+      source: "local_json_fixture",
+      evidence_ref: safeRef(voiceSession.evidence_ref ?? task.voice_evidence_ref ?? task.evidence_ref),
+      audit_refs: safeRefList(voiceSession.audit_refs ?? task.voice_audit_refs ?? task.audit_refs, SAMPLE_LIMIT),
+      status: "fixture_summary_only",
+    },
+    asr_event_count: asrEventsRaw.length,
+    sample_asr_events: asrEvents.slice(0, SAMPLE_LIMIT),
+    latest_partial: latestVoiceSlot(asrEvents, "partial"),
+    latest_final: latestVoiceSlot(asrEvents, "final"),
+    tts_draft: {
+      text: summaryText,
+      text_length: ttsText.length,
+      voice_profile: safeText(ttsDraft.voice_profile ?? voiceProfile.name ?? voiceProfile.profile ?? "not_provided"),
+      language: safeText(ttsDraft.language ?? voiceProfile.language ?? "zh-CN") || "zh-CN",
+      confirmation_required: true,
+      status: Object.keys(ttsDraft).length > 0 ? "fixture_draft_only" : "blocked_not_proven",
+    },
+    speaker_dispatch: {
+      sends_to_robot: false,
+      speaker_dispatch_enabled: false,
+      ack_status: safeText(speakerAck.ack_status ?? speakerAck.status ?? "blocked_not_proven") || "blocked_not_proven",
+      speaker_ack_ref: safeRef(speakerAck.speaker_ack_ref ?? speakerAck.evidence_ref) || "missing_speaker_dispatch_ack",
+      failure_event_ref: safeRef(speakerAck.failure_event_ref) || "missing_speaker_failure_event",
+      failure_refs: safeRefList(speakerAck.failure_refs, SAMPLE_LIMIT),
+      status: "blocked_not_proven",
+    },
+    media_preflight_dependency: {
+      required: true,
+      source_schema: "trashbot.o7_board_media_preflight.v1",
+      status: safeText(mediaPreflight.status ?? "blocked") || "blocked",
+      dependency_ref: safeRef(mediaPreflight.dependency_ref) || "board_media_preflight_summary",
+      gaps: mediaPreflightGaps(mediaPreflight),
+    },
+    asr_stream_connected: false,
+    tts_send_enabled: false,
+    speaker_dispatch_enabled: false,
+    real_voice_api_connected: false,
+    real_asr_tts_runtime_connected: false,
+    blocked_reasons: blockedReasons,
+    not_proven: [
+      "real_o7_voice_api",
+      "real_o7_asr_tts_runtime",
+      "real_asr_stream",
+      "real_asr_partial_transcript",
+      "real_asr_final_transcript",
+      "real_tts_send",
+      "real_tts_playback",
+      "real_speaker_dispatch_ack",
+      "real_speaker_failure_event",
+      "real_audio_device",
+      "real_rtc_session",
+    ],
+  };
 }
 
 function inferAllowedLabelTypes(labels: unknown[]): string[] {
@@ -648,6 +889,7 @@ export async function buildO7CloudArchiveTasks(options: O7CloudArchiveTasksOptio
     safe_summaries: safeSummariesFor(selected),
     route_replay_inspector: routeReplayInspectorFor(selected),
     labeling_queue_inspector: labelingQueueInspectorFor(selected),
+    voice_asr_tts_inspector: voiceAsrTtsInspectorFor(selected),
     fixed_false_fields: fixedFalseFields(),
     blocked_reasons: [
       "real_cloud_archive_not_connected",

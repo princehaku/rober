@@ -447,8 +447,53 @@ function sampleCloudArchiveFixture(evidenceRef: string) {
           supported_formats: ["jsonl", "coco", "yolo", "csv", "parquet", "extra_not_returned"],
           gaps: ["real_annotation_api_not_connected", "operator_review_not_complete", "training_split_not_defined", "extra_not_returned"],
         },
-        asr_events: [{ event_type: "final" }, { event_type: "partial" }],
-        tts_drafts: [{ text: "draft one" }, { text: "draft two" }],
+        voice_session: {
+          session_id: "voice-session-archive-002",
+          evidence_ref: path.join(path.dirname(evidenceRef), "voice-session.json"),
+          audit_refs: ["voice-audit-001.json", path.join(path.dirname(evidenceRef), "voice-audit-002.json")],
+        },
+        asr_events: [
+          {
+            event_type: "partial",
+            timestamp_ms: 2310,
+            transcript: "请去 /tmp/private/raw-audio.wav",
+            confidence: 0.51,
+            evidence_ref: path.join(path.dirname(evidenceRef), "asr-partial-001.json"),
+          },
+          { event_type: "partial", timestamp_ms: 2320, transcript: "请去三楼", confidence: 0.64, evidence_ref: "asr-partial-002.json" },
+          { event_type: "final", timestamp_ms: 2330, transcript: "请去三楼电梯口", confidence: 0.88, evidence_ref: "asr-final-001.json" },
+          { event_type: "partial", timestamp_ms: 2340, transcript: "等待人工确认", confidence: 0.7, evidence_ref: "asr-partial-003.json" },
+          { event_type: "noise", timestamp_ms: 2350, transcript: "环境音", confidence: 0.2, evidence_ref: "asr-noise-001.json" },
+          { event_type: "partial", timestamp_ms: 2360, transcript: "不会进入 sample", confidence: 0.55, evidence_ref: "asr-not-returned.json" },
+        ],
+        tts_drafts: [
+          {
+            text: "我会等待人工确认后再播报 /tmp/private/tts.txt",
+            language: "zh-CN",
+            voice_profile: "operator-default",
+            evidence_ref: path.join(path.dirname(evidenceRef), "tts-draft-001.json"),
+          },
+          { text: "draft two" },
+        ],
+        voice_profile: { name: "fallback-profile", language: "zh-CN" },
+        speaker_ack: {
+          ack_status: "not_proven",
+          speaker_ack_ref: "speaker-ack-missing.json",
+          failure_event_ref: path.join(path.dirname(evidenceRef), "speaker-failure.json"),
+          failure_refs: [
+            "speaker-timeout.json",
+            path.join(path.dirname(evidenceRef), "speaker-device-missing.json"),
+            "speaker-gap-003.json",
+            "speaker-gap-004.json",
+            "speaker-gap-005.json",
+            "speaker-gap-not-returned.json",
+          ],
+        },
+        media_preflight: {
+          status: "blocked",
+          dependency_ref: path.join(path.dirname(evidenceRef), "media-preflight.json"),
+          gaps: ["audio_input_not_checked", "speaker_output_not_checked"],
+        },
         commands: [{ kind: "manual_turn" }, { command_type: "navigate_goal" }],
       },
     ],
@@ -2025,6 +2070,10 @@ describe("workstation fail-closed API contracts", () => {
       real_annotation_api_connected: false,
       real_voice_api_connected: false,
       real_command_api_connected: false,
+      real_asr_tts_runtime_connected: false,
+      asr_stream_connected: false,
+      tts_send_enabled: false,
+      speaker_dispatch_enabled: false,
       safe_to_control: false,
       delivery_success: false,
       primary_actions_enabled: false,
@@ -2160,10 +2209,84 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.labeling_queue_inspector.blocked_reasons).toContain("annotation_submit_disabled");
     expect(response.labeling_queue_inspector.not_proven).toContain("real_o7_annotation_submit");
     expect(response.safe_summaries.voice).toMatchObject({
-      asr_event_count: 2,
+      asr_event_count: 6,
       tts_draft_count: 2,
       real_voice_api_connected: false,
     });
+    expect(response.voice_asr_tts_inspector).toMatchObject({
+      status: "fixture_voice_ready",
+      selected_task_id: "task-archive-002",
+      asr_event_count: 6,
+      asr_stream_connected: false,
+      tts_send_enabled: false,
+      speaker_dispatch_enabled: false,
+      real_voice_api_connected: false,
+      real_asr_tts_runtime_connected: false,
+    });
+    expect(response.voice_asr_tts_inspector.voice_session).toEqual({
+      session_id: "voice-session-archive-002",
+      source: "local_json_fixture",
+      evidence_ref: "file:voice-session.json",
+      audit_refs: ["voice-audit-001.json", "file:voice-audit-002.json"],
+      status: "fixture_summary_only",
+    });
+    expect(response.voice_asr_tts_inspector.sample_asr_events).toHaveLength(5);
+    expect(response.voice_asr_tts_inspector.sample_asr_events[0]).toEqual({
+      event_type: "partial",
+      timestamp_ms: 2310,
+      transcript: "请去 [REDACTED_LOCAL_PATH]",
+      confidence: 0.51,
+      evidence_ref: "file:asr-partial-001.json",
+    });
+    expect(response.voice_asr_tts_inspector.sample_asr_events.map((event) => event.evidence_ref)).not.toContain(
+      "asr-not-returned.json",
+    );
+    expect(response.voice_asr_tts_inspector.latest_partial).toEqual({
+      text: "不会进入 sample",
+      timestamp_ms: 2360,
+      confidence: 0.55,
+      evidence_ref: "asr-not-returned.json",
+      status: "fixture_summary_only",
+    });
+    expect(response.voice_asr_tts_inspector.latest_final).toEqual({
+      text: "请去三楼电梯口",
+      timestamp_ms: 2330,
+      confidence: 0.88,
+      evidence_ref: "asr-final-001.json",
+      status: "fixture_summary_only",
+    });
+    expect(response.voice_asr_tts_inspector.tts_draft).toEqual({
+      text: "我会等待人工确认后再播报 [REDACTED_LOCAL_PATH]",
+      text_length: 34,
+      voice_profile: "operator-default",
+      language: "zh-CN",
+      confirmation_required: true,
+      status: "fixture_draft_only",
+    });
+    expect(response.voice_asr_tts_inspector.speaker_dispatch).toEqual({
+      sends_to_robot: false,
+      speaker_dispatch_enabled: false,
+      ack_status: "not_proven",
+      speaker_ack_ref: "speaker-ack-missing.json",
+      failure_event_ref: "file:speaker-failure.json",
+      failure_refs: [
+        "speaker-timeout.json",
+        "file:speaker-device-missing.json",
+        "speaker-gap-003.json",
+        "speaker-gap-004.json",
+        "speaker-gap-005.json",
+      ],
+      status: "blocked_not_proven",
+    });
+    expect(response.voice_asr_tts_inspector.media_preflight_dependency).toMatchObject({
+      required: true,
+      source_schema: "trashbot.o7_board_media_preflight.v1",
+      status: "blocked",
+      dependency_ref: "file:media-preflight.json",
+      gaps: expect.arrayContaining(["audio_input_not_checked", "real_audio_input_not_proven"]),
+    });
+    expect(response.voice_asr_tts_inspector.blocked_reasons).toContain("tts_send_disabled");
+    expect(response.voice_asr_tts_inspector.not_proven).toContain("real_speaker_dispatch_ack");
     expect(response.safe_summaries.commands).toMatchObject({
       command_count: 2,
       sample_kinds: ["manual_turn", "navigate_goal"],
@@ -2244,6 +2367,15 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.labeling_queue_inspector.rollback_enabled).toBe(false);
       expect(response.labeling_queue_inspector.dataset_export_available).toBe(false);
       expect(response.labeling_queue_inspector.real_annotation_api_connected).toBe(false);
+      expect(response.voice_asr_tts_inspector.status).toBe("blocked_not_proven");
+      expect(response.voice_asr_tts_inspector.sample_asr_events).toEqual([]);
+      expect(response.voice_asr_tts_inspector.asr_event_count).toBe(0);
+      expect(response.voice_asr_tts_inspector.asr_stream_connected).toBe(false);
+      expect(response.voice_asr_tts_inspector.tts_send_enabled).toBe(false);
+      expect(response.voice_asr_tts_inspector.speaker_dispatch_enabled).toBe(false);
+      expect(response.voice_asr_tts_inspector.real_voice_api_connected).toBe(false);
+      expect(response.voice_asr_tts_inspector.real_asr_tts_runtime_connected).toBe(false);
+      expect(response.voice_asr_tts_inspector.speaker_dispatch.sends_to_robot).toBe(false);
       expect(response.safe_summaries.commands.robot_control_executed).toBe(false);
       expect(response.blocked_reasons.length).toBeGreaterThan(0);
       expectNoLegacyPythonGateSemantics(response);
@@ -2274,6 +2406,8 @@ describe("workstation fail-closed API contracts", () => {
             },
             { type: "obstacle_type", label: "cart", status: "fixture_existing", evidence_ref: "label-b.json" },
           ],
+          asr_events: [{ type: "final", text: "到达电梯口", timestamp_ms: 100, confidence: 0.8 }],
+          tts_draft: { text: "单对象草稿只读摘要", voice_profile: "single-profile", language: "zh-CN" },
         },
       ],
     }), "utf8");
@@ -2298,6 +2432,9 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.labeling_queue_inspector.allowed_label_types).toEqual(["floor_label", "obstacle_type"]);
     expect(response.labeling_queue_inspector.draft_labels.count).toBe(2);
     expect(response.labeling_queue_inspector.draft_labels.autosave_available).toBe(false);
+    expect(response.voice_asr_tts_inspector.status).toBe("fixture_voice_ready");
+    expect(response.voice_asr_tts_inspector.tts_draft.voice_profile).toBe("single-profile");
+    expect(response.voice_asr_tts_inspector.latest_final.text).toBe("到达电梯口");
     expect(JSON.stringify(response)).not.toContain(root);
   });
 

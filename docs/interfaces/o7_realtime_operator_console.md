@@ -53,6 +53,10 @@
 - `cloud_archive_tasks.real_realtime_api_connected=false`
 - `cloud_archive_tasks.real_annotation_api_connected=false`
 - `cloud_archive_tasks.real_voice_api_connected=false`
+- `cloud_archive_tasks.fixed_false_fields.real_asr_tts_runtime_connected=false`
+- `cloud_archive_tasks.fixed_false_fields.asr_stream_connected=false`
+- `cloud_archive_tasks.fixed_false_fields.tts_send_enabled=false`
+- `cloud_archive_tasks.fixed_false_fields.speaker_dispatch_enabled=false`
 - `cloud_archive_tasks.real_command_api_connected=false`
 
 PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE ROVER、Nav2、TTS 或手控命令。
@@ -83,7 +87,7 @@ PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE 
 
 该 tab 的页面级边界必须保留：五个 preview 都不能证明真实 realtime API、ROS2 `/tf`、云归档、annotation API、voice API、safe command API、robot ACK、HIL/硬件安全或 delivery success，也不得提升 O7 百分比。
 
-同一 tab 还包含 `Cloud Archive Tasks` 区块，用于 O7 KR3/KR4/KR5/KR6 共享历史任务数据源雏形。该区块只有一个本地 archive fixture 路径输入和 `Load archive tasks` 按钮；默认不自动读取路径。按钮只触发 `GET /api/o7/cloud-archive/tasks?archiveJson=<local-json>`，UI 只展示 task list、selected/latest task、trajectory/event/label/voice/command safe summaries、KR3 route replay inspector、KR4 labeling queue inspector、fixed false fields、blocked reasons 和 not proven，不提供播放、提交、导出、发送、控制、停止、取消或恢复类动作。
+同一 tab 还包含 `Cloud Archive Tasks` 区块，用于 O7 KR3/KR4/KR5/KR6 共享历史任务数据源雏形。该区块只有一个本地 archive fixture 路径输入和 `Load archive tasks` 按钮；默认不自动读取路径。按钮只触发 `GET /api/o7/cloud-archive/tasks?archiveJson=<local-json>`，UI 只展示 task list、selected/latest task、trajectory/event/label/voice/command safe summaries、KR3 route replay inspector、KR4 labeling queue inspector、KR5 voice ASR/TTS inspector、fixed false fields、blocked reasons 和 not proven，不提供播放、提交、导出、发送、控制、停止、取消或恢复类动作。
 
 ## Cloud Archive Tasks Fixture API
 
@@ -97,7 +101,7 @@ API：
 
 - `schema=trashbot.o7.cloud_archive_fixture.v1`
 - 顶层可选 `selected_task_id`
-- `tasks[]` 可包含 `task_id`、`robot_id`、`route_id`、`status`、`started_at_ms`、`updated_at_ms`、`evidence_ref`、`trajectory_frames[]`、`events[]`、`labels[]`、`review_items[]`、`label_schema`、`allowed_label_types[]`、`draft_labels[]`、`dataset_export`、`asr_events[]`、`tts_drafts[]`、`commands[]`
+- `tasks[]` 可包含 `task_id`、`robot_id`、`route_id`、`status`、`started_at_ms`、`updated_at_ms`、`evidence_ref`、`trajectory_frames[]`、`events[]`、`labels[]`、`review_items[]`、`label_schema`、`allowed_label_types[]`、`draft_labels[]`、`dataset_export`、`voice_session`、`asr_events[]`、`tts_drafts[]`、`tts_draft`、`voice_profile`、`speaker_ack`、`media_preflight`、`commands[]`
 
 固定 fail-closed 字段：
 
@@ -111,6 +115,10 @@ API：
 - `real_realtime_api_connected=false`
 - `real_annotation_api_connected=false`
 - `real_voice_api_connected=false`
+- `real_asr_tts_runtime_connected=false`
+- `asr_stream_connected=false`
+- `tts_send_enabled=false`
+- `speaker_dispatch_enabled=false`
 - `real_command_api_connected=false`
 - `robot_control_executed=false`
 
@@ -126,12 +134,15 @@ API：
 - `safe_summaries.commands`：command count、限量 command kind，且 `real_command_api_connected=false`、`robot_control_executed=false`
 - `route_replay_inspector`：selected task 的 KR3 只读逐帧检查视图，包含 `selected_task_id`、`map_frame`、`frame_count`、最多 5 条 `sample_frames`、最多 5 条 `event_timeline`、最多 5 条 `keyframe_refs`、固定 false 的 `cursor_initial_state`、`blocked_reasons` 和 `not_proven`
 - `labeling_queue_inspector`：selected task 的 KR4 只读标注队列检查视图，包含 `selected_task_id`、`review_item_count`、最多 5 条 `sample_review_items`、`label_schema`、最多 5 条 `allowed_label_types`、`draft_labels`、`dataset_export`、固定 false 的 `submit_enabled` / `rollback_enabled` / `dataset_export_available` / `real_annotation_api_connected`、`blocked_reasons` 和 `not_proven`
+- `voice_asr_tts_inspector`：selected task 的 KR5 只读 ASR/TTS 检查视图，包含 `selected_task_id`、`voice_session`、`asr_event_count`、最多 5 条 `sample_asr_events`、`latest_partial`、`latest_final`、`tts_draft` 安全文本摘要、`speaker_dispatch` 缺口、`media_preflight_dependency`、固定 false 的 `asr_stream_connected` / `tts_send_enabled` / `speaker_dispatch_enabled` / `real_voice_api_connected` / `real_asr_tts_runtime_connected`、`blocked_reasons` 和 `not_proven`
 - `fixed_false_fields`：集中复核所有真实连接、控制和成功字段均为 false
 - `blocked_reasons` 与 `not_proven`
 
 `route_replay_inspector.sample_frames[]` 每帧只保留 `frame_index`、`timestamp_ms`、`x_m`、`y_m`、`yaw_rad`、`speed_mps`、`state` 和安全 `evidence_ref`。`event_timeline[]` 每条只保留 `event_type`、`state`、`timestamp_ms` 和安全 `evidence_ref`。所有绝对路径和本机路径引用都必须退化为 basename；非 number 坐标或时间戳不得被提升成真实数值。
 
 `labeling_queue_inspector.sample_review_items[]` 每条只保留 `item_id`、`task_id`、`frame_id`、安全 `media_ref`、安全 `evidence_ref`、`current_labels.count` 和最多 3 条 current label sample。label sample 只保留 `label_type`、`value`、`status` 和安全 `evidence_ref`。`label_schema.required_fields`、`label_schema.allowed_fields`、`allowed_label_types`、`draft_labels.sample`、`dataset_export.supported_formats`、`dataset_export.gaps` 均限量最多 5 条。若 selected task 只有 `labels[]` 而没有 `review_items[]`，adapter 必须派生最小 review item 和 draft label 摘要，保证 KR4 UI 能看到可检查 item/media/label 形状。
+
+`voice_asr_tts_inspector.sample_asr_events[]` 每条只保留 `event_type`、`timestamp_ms`、脱敏 `transcript`、`confidence` 和安全 `evidence_ref`。`latest_partial`/`latest_final` 从完整 ASR 事件列表派生，但不回传完整原始事件流。`tts_draft` 兼容 `tts_drafts[]` 和 `tts_draft` 单对象，文本只作为脱敏摘要保留，`confirmation_required=true` 且不会发送。`speaker_dispatch.failure_refs` 最多 5 条，`sends_to_robot=false`、`speaker_dispatch_enabled=false` 固定不变。`media_preflight_dependency` 必须保留 `trashbot.o7_board_media_preflight.v1` 依赖缺口。
 
 Adapter 必须拒绝并返回 `archive_status=blocked_not_proven`：
 
@@ -141,8 +152,9 @@ Adapter 必须拒绝并返回 `archive_status=blocked_not_proven`：
 - fixture 声称 `delivery_success=true`、delivery/dropoff/cloud archive success/ready/connected
 - fixture 声称 `safe_to_control=true`、`primary_actions_enabled=true`、`robot_control_executed=true` 或 command dispatch enabled
 - fixture 声称 `real_cloud_archive_connected=true`、`real_realtime_api_connected=true`、`real_annotation_api_connected=true`、`real_voice_api_connected=true` 或 `real_command_api_connected=true`
+- fixture 声称 `real_asr_tts_runtime_connected=true`、`asr_stream_connected=true`、`tts_send_enabled=true` 或 `speaker_dispatch_enabled=true`
 
-该接口的 `fixture_archive_ready` 只表示本地 archive JSON 被压缩成安全摘要；`route_replay_inspector.status=fixture_inspector_ready` 也只表示 selected task 的本地轨迹 fixture 可被限量查看；`labeling_queue_inspector.status=fixture_labeling_ready` 只表示 selected task 的本地标注队列 fixture 可被限量查看。它不证明 O6 cloud archive、真实历史任务列表、真实轨迹回放、真实标注 API、真实标注提交/回滚、真实训练集导出、真实语音 API、真实 command API、真实 robot ACK、真实机器人运动或真实 delivery success。
+该接口的 `fixture_archive_ready` 只表示本地 archive JSON 被压缩成安全摘要；`route_replay_inspector.status=fixture_inspector_ready` 也只表示 selected task 的本地轨迹 fixture 可被限量查看；`labeling_queue_inspector.status=fixture_labeling_ready` 只表示 selected task 的本地标注队列 fixture 可被限量查看；`voice_asr_tts_inspector.status=fixture_voice_ready` 只表示 selected task 的本地语音 fixture 可被限量查看。它不证明 O6 cloud archive、真实历史任务列表、真实轨迹回放、真实标注 API、真实标注提交/回滚、真实训练集导出、真实语音 API、真实 ASR/TTS runtime、真实 speaker ACK、真实 command API、真实 robot ACK、真实机器人运动或真实 delivery success。
 
 ## Realtime/Elevator Fixture Preview
 

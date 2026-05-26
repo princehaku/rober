@@ -601,6 +601,69 @@ export interface O7LabelingQueueInspector {
   not_proven: string[];
 }
 
+export interface O7VoiceAsrTtsInspectorAsrEvent {
+  event_type: string;
+  timestamp_ms: number | null;
+  transcript: string;
+  confidence: number | null;
+  evidence_ref: string;
+}
+
+export interface O7VoiceAsrTtsInspectorTranscriptSlot {
+  text: string;
+  timestamp_ms: number | null;
+  confidence: number | null;
+  evidence_ref: string;
+  status: "fixture_summary_only" | "empty_not_proven" | "blocked_not_proven";
+}
+
+export interface O7VoiceAsrTtsInspector {
+  status: "fixture_voice_ready" | "blocked_not_proven";
+  selected_task_id: string | null;
+  voice_session: {
+    session_id: string;
+    source: "local_json_fixture";
+    evidence_ref: string;
+    audit_refs: string[];
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  asr_event_count: number;
+  sample_asr_events: O7VoiceAsrTtsInspectorAsrEvent[];
+  latest_partial: O7VoiceAsrTtsInspectorTranscriptSlot;
+  latest_final: O7VoiceAsrTtsInspectorTranscriptSlot;
+  tts_draft: {
+    text: string;
+    text_length: number;
+    voice_profile: string;
+    language: string;
+    confirmation_required: true;
+    status: "fixture_draft_only" | "blocked_not_proven";
+  };
+  speaker_dispatch: {
+    sends_to_robot: false;
+    speaker_dispatch_enabled: false;
+    ack_status: string;
+    speaker_ack_ref: string;
+    failure_event_ref: string;
+    failure_refs: string[];
+    status: "blocked_not_proven";
+  };
+  media_preflight_dependency: {
+    required: true;
+    source_schema: "trashbot.o7_board_media_preflight.v1";
+    status: string;
+    dependency_ref: string;
+    gaps: string[];
+  };
+  asr_stream_connected: false;
+  tts_send_enabled: false;
+  speaker_dispatch_enabled: false;
+  real_voice_api_connected: false;
+  real_asr_tts_runtime_connected: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 // Cloud archive task API 是 O7 的统一数据源雏形，但当前只读本地 fixture。
 // fixed false 字段覆盖 KR3/KR4/KR5/KR6，避免 UI 把 archive 摘要误读成真实云能力。
 export interface O7CloudArchiveTasksResponse extends ProofFlags {
@@ -641,12 +704,17 @@ export interface O7CloudArchiveTasksResponse extends ProofFlags {
   safe_summaries: O7CloudArchiveTaskSafeSummaries;
   route_replay_inspector: O7RouteReplayInspector;
   labeling_queue_inspector: O7LabelingQueueInspector;
+  voice_asr_tts_inspector: O7VoiceAsrTtsInspector;
   fixed_false_fields: {
     real_cloud_archive_connected: false;
     real_realtime_api_connected: false;
     real_annotation_api_connected: false;
     real_voice_api_connected: false;
     real_command_api_connected: false;
+    real_asr_tts_runtime_connected: false;
+    asr_stream_connected: false;
+    tts_send_enabled: false;
+    speaker_dispatch_enabled: false;
     safe_to_control: false;
     delivery_success: false;
     primary_actions_enabled: false;

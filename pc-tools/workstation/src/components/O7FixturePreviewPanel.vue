@@ -63,6 +63,10 @@ function archiveFalseFields(result: O7CloudArchiveTasksResponse | null): string[
     `real_annotation_api_connected=${String(fields?.real_annotation_api_connected ?? false)}`,
     `real_voice_api_connected=${String(fields?.real_voice_api_connected ?? false)}`,
     `real_command_api_connected=${String(fields?.real_command_api_connected ?? false)}`,
+    `real_asr_tts_runtime_connected=${String(fields?.real_asr_tts_runtime_connected ?? false)}`,
+    `asr_stream_connected=${String(fields?.asr_stream_connected ?? false)}`,
+    `tts_send_enabled=${String(fields?.tts_send_enabled ?? false)}`,
+    `speaker_dispatch_enabled=${String(fields?.speaker_dispatch_enabled ?? false)}`,
     `safe_to_control=${String(fields?.safe_to_control ?? false)}`,
     `delivery_success=${String(fields?.delivery_success ?? false)}`,
     `primary_actions_enabled=${String(fields?.primary_actions_enabled ?? false)}`,
@@ -81,6 +85,19 @@ function labelingFalseFields(result: O7CloudArchiveTasksResponse | null): string
     `real_annotation_api_connected=${String(inspector?.real_annotation_api_connected ?? false)}`,
     `draft_labels.autosave_available=${String(inspector?.draft_labels.autosave_available ?? false)}`,
     `dataset_export.available=${String(inspector?.dataset_export.available ?? false)}`,
+  ];
+}
+
+function voiceFalseFields(result: O7CloudArchiveTasksResponse | null): string[] {
+  const inspector = result?.voice_asr_tts_inspector;
+  // KR5 语音检查只展示 archive 摘要，ASR stream、TTS 和喇叭链路都必须继续关闭。
+  return [
+    `asr_stream_connected=${String(inspector?.asr_stream_connected ?? false)}`,
+    `tts_send_enabled=${String(inspector?.tts_send_enabled ?? false)}`,
+    `speaker_dispatch_enabled=${String(inspector?.speaker_dispatch_enabled ?? false)}`,
+    `real_voice_api_connected=${String(inspector?.real_voice_api_connected ?? false)}`,
+    `real_asr_tts_runtime_connected=${String(inspector?.real_asr_tts_runtime_connected ?? false)}`,
+    `speaker_dispatch.sends_to_robot=${String(inspector?.speaker_dispatch.sends_to_robot ?? false)}`,
   ];
 }
 
@@ -540,6 +557,102 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <ul class="dense">
             <!-- 标注危险字段集中展示 false，避免只读检查视图被理解成可写标注界面。 -->
             <li v-for="field in labelingFalseFields(archiveResult)" :key="field">{{ field }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Voice ASR/TTS inspector</h3>
+      <dl class="kv compact-kv">
+        <dt>status</dt>
+        <dd>{{ archiveResult?.voice_asr_tts_inspector.status ?? "blocked_not_proven" }}</dd>
+        <dt>selected_task_id</dt>
+        <dd>{{ archiveResult?.voice_asr_tts_inspector.selected_task_id ?? "null" }}</dd>
+        <dt>asr_event_count</dt>
+        <dd>{{ archiveResult?.voice_asr_tts_inspector.asr_event_count ?? 0 }}</dd>
+        <dt>voice_session</dt>
+        <dd><code>{{ jsonSummary(archiveResult?.voice_asr_tts_inspector.voice_session) }}</code></dd>
+      </dl>
+
+      <h3>ASR event sample</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>event_type</th>
+            <th>timestamp_ms</th>
+            <th>transcript</th>
+            <th>confidence</th>
+            <th>evidence_ref</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="!archiveResult?.voice_asr_tts_inspector.sample_asr_events.length">
+            <td colspan="5">blocked_not_proven</td>
+          </tr>
+          <tr
+            v-for="event in archiveResult?.voice_asr_tts_inspector.sample_asr_events ?? []"
+            :key="`${event.event_type}:${event.timestamp_ms}:${event.evidence_ref}`"
+          >
+            <td>{{ event.event_type }}</td>
+            <td>{{ event.timestamp_ms ?? "null" }}</td>
+            <td>{{ event.transcript }}</td>
+            <td>{{ event.confidence ?? "null" }}</td>
+            <td>{{ event.evidence_ref }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Latest transcript slots</h3>
+          <dl class="kv compact-kv">
+            <dt>latest_partial</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.voice_asr_tts_inspector.latest_partial) }}</code></dd>
+            <dt>latest_final</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.voice_asr_tts_inspector.latest_final) }}</code></dd>
+          </dl>
+          <h3>TTS draft summary</h3>
+          <dl class="kv compact-kv">
+            <dt>text</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.tts_draft.text ?? "" }}</dd>
+            <dt>text_length</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.tts_draft.text_length ?? 0 }}</dd>
+            <dt>voice_profile</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.tts_draft.voice_profile ?? "not_loaded" }}</dd>
+            <dt>language</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.tts_draft.language ?? "not_loaded" }}</dd>
+            <dt>confirmation_required</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.tts_draft.confirmation_required ?? true }}</dd>
+          </dl>
+        </div>
+        <div>
+          <h3>speaker_dispatch summary</h3>
+          <dl class="kv compact-kv">
+            <dt>ack_status</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.speaker_dispatch.ack_status ?? "blocked_not_proven" }}</dd>
+            <dt>speaker_ack_ref</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.speaker_dispatch.speaker_ack_ref ?? "missing_speaker_dispatch_ack" }}</dd>
+            <dt>failure_event_ref</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.speaker_dispatch.failure_event_ref ?? "missing_speaker_failure_event" }}</dd>
+            <dt>failure_refs</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.voice_asr_tts_inspector.speaker_dispatch.failure_refs ?? []) }}</code></dd>
+          </dl>
+          <h3>media_preflight dependency</h3>
+          <dl class="kv compact-kv">
+            <dt>required</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.media_preflight_dependency.required ?? true }}</dd>
+            <dt>source_schema</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.media_preflight_dependency.source_schema ?? "trashbot.o7_board_media_preflight.v1" }}</dd>
+            <dt>status</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.media_preflight_dependency.status ?? "blocked" }}</dd>
+            <dt>dependency_ref</dt>
+            <dd>{{ archiveResult?.voice_asr_tts_inspector.media_preflight_dependency.dependency_ref ?? "board_media_preflight_summary" }}</dd>
+            <dt>gaps</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.voice_asr_tts_inspector.media_preflight_dependency.gaps ?? []) }}</code></dd>
+          </dl>
+          <h3>Voice false fields</h3>
+          <ul class="dense">
+            <!-- 这些字段是 KR5 的真实链路关闸证据，UI 不能把 fixture 摘要升级成可发声能力。 -->
+            <li v-for="field in voiceFalseFields(archiveResult)" :key="field">{{ field }}</li>
           </ul>
         </div>
       </div>
