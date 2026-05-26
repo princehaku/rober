@@ -32,7 +32,7 @@
 ## 5. Owner 和责任边界
 
 - `product-okr-owner`：本轮计划、验收口径、证据边界和后续 closeout wording；本 planning-only 任务只创建 `pre_start.md`、`prd.md`、`tech-plan.md`。
-- `rober-hardware-engineer`：后续核验 reply 引用的 vendor/source boundary，确认 `hardware_material_pending`、`software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false` 仍成立。
+- `robot-hardware-engineer`：后续核验 reply 引用的 vendor/source boundary，确认 `hardware_material_pending`、`software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false` 仍成立。
 - GitHub 执行者：后续实际发布 GitHub reply，并返回 reply URL、comment id 或 review-thread 证据。该角色只处理 GitHub 操作，不扩展硬件结论。
 - `robot-software-engineer`、`full-stack-software-engineer`、`autonomy-engineer`：本轮默认不改代码；如 GitHub 发布结果需要 downstream 展示或 field-material handoff，另开后续任务。
 

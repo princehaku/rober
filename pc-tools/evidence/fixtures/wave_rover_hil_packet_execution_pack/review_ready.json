@@ -37,7 +37,7 @@
   "overall_status": "not_proven",
   "owner_handoff": {
     "full-stack-software-engineer": "keep mobile panel read-only and actions disabled",
-    "rober-hardware-engineer": "collect real HIL packet on a host with WAVE ROVER UART access",
+    "robot-hardware-engineer": "collect real HIL packet on a host with WAVE ROVER UART access",
     "robot-software-engineer": "keep diagnostics read-only until review_decision changes with real evidence"
   },
   "primary_actions_enabled": false,

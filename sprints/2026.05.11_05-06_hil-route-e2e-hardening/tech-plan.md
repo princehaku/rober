@@ -9,7 +9,7 @@
 
 ## 任务分工与验收边界
 
-### 1. `rober-hardware-engineer`（主责：O1）
+### 1. `robot-hardware-engineer`（主责：O1）
 
 - 改动文件范围：
   - `scripts/hardware_smoke_wave_rover.py`

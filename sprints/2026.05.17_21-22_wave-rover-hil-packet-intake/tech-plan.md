@@ -87,9 +87,9 @@ PC gate summary 至少包含：
 
 ## 4. Team Plan
 
-### Task A - rober-hardware-engineer - PC HIL packet intake gate
+### Task A - robot-hardware-engineer - PC HIL packet intake gate
 
-Owner：rober-hardware-engineer。
+Owner：robot-hardware-engineer。
 
 Files allowed for implementation sprint:
 
@@ -205,7 +205,7 @@ git diff --check -- OKR.md docs/process/okr_progress_log.md sprints/2026.05.17_2
 
 This sprint is cross-owner and must launch 3 implementation workers in parallel after planning:
 
-- rober-hardware-engineer owns PC gate, fixtures, tests, and hardware doc.
+- robot-hardware-engineer owns PC gate, fixtures, tests, and hardware doc.
 - robot-software-engineer owns diagnostics consumer, tests, and ROS contract doc.
 - full-stack-software-engineer owns mobile/web read-only panel, fixture/test, and product doc.
 
@@ -246,6 +246,6 @@ Product planning docs must pass:
 
 ```bash
 test -f sprints/2026.05.17_21-22_wave-rover-hil-packet-intake/pre_start.md && test -f sprints/2026.05.17_21-22_wave-rover-hil-packet-intake/prd.md && test -f sprints/2026.05.17_21-22_wave-rover-hil-packet-intake/tech-plan.md
-rg -n "sprint_type: epic|OKR 最低优先级核对|Objective 5|Objective 1|PR #4|PR #5|software_proof_docker_wave_rover_hil_packet_intake_gate|not_proven|delivery_success=false|primary_actions_enabled=false|rober-hardware-engineer|robot-software-engineer|full-stack-software-engineer" sprints/2026.05.17_21-22_wave-rover-hil-packet-intake
+rg -n "sprint_type: epic|OKR 最低优先级核对|Objective 5|Objective 1|PR #4|PR #5|software_proof_docker_wave_rover_hil_packet_intake_gate|not_proven|delivery_success=false|primary_actions_enabled=false|robot-hardware-engineer|robot-software-engineer|full-stack-software-engineer" sprints/2026.05.17_21-22_wave-rover-hil-packet-intake
 git diff --check -- sprints/2026.05.17_21-22_wave-rover-hil-packet-intake
 ```

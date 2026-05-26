@@ -38,7 +38,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile \
   src/ros2_trashbot_behavior/ros2_trashbot_behavior/delivery_state_machine.py
 ```
 
-### 2. `rober-hardware-engineer`
+### 2. `robot-hardware-engineer`
 
 允许改动路径：
 

@@ -685,7 +685,7 @@
       "next_required_evidence=all required material summaries"
     ],
     "owner_handoff": {
-      "rober-hardware-engineer": "collect real HIL packet on a host with physical access and publish sanitized summary",
+      "robot-hardware-engineer": "collect real HIL packet on a host with physical access and publish sanitized summary",
       "robot-software-engineer": "keep diagnostics read-only until real review materials change the decision",
       "full-stack-software-engineer": "keep mobile panel read-only and primary actions unchanged"
     },
@@ -756,7 +756,7 @@
       "collection_sequence=keep mobile panel read-only until real review changes"
     ],
     "owner_handoff": {
-      "rober-hardware-engineer": "collect real packet materials and publish sanitized execution-pack summary",
+      "robot-hardware-engineer": "collect real packet materials and publish sanitized execution-pack summary",
       "robot-software-engineer": "consume only summary metadata in diagnostics",
       "full-stack-software-engineer": "display execution-pack handoff without changing primary actions"
     },
@@ -836,7 +836,7 @@
       "backfill_rerun_commands=rerun Robot diagnostics summary after drill summary exists"
     ],
     "owner_handoff": {
-      "rober-hardware-engineer": "collect material summaries and preserve the safe evidence_ref",
+      "robot-hardware-engineer": "collect material summaries and preserve the safe evidence_ref",
       "robot-software-engineer": "publish Robot diagnostics summary without control grant",
       "full-stack-software-engineer": "display collection drill summary read-only"
     },

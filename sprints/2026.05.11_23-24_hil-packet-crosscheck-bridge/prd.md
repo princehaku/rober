@@ -88,7 +88,7 @@
 ## 对应责任 Engineer
 
 - `robot-software-engineer`：主责实现 `scripts/evidence_crosscheck.py` HIL gate input、fixtures、targeted 验证和 `tech-done.md`。
-- `rober-hardware-engineer`：只读确认 `scripts/hil_evidence_packet_gate.py` 输出字段，包括 `status`、`evidence_ref`、`blocked_reason` 和失败项语义。
+- `robot-hardware-engineer`：只读确认 `scripts/hil_evidence_packet_gate.py` 输出字段，包括 `status`、`evidence_ref`、`blocked_reason` 和失败项语义。
 - `autonomy-engineer`：只读确认 fixed-route replay/status 字段不被破坏。
 - `full-stack-software-engineer`：本轮不介入。
 

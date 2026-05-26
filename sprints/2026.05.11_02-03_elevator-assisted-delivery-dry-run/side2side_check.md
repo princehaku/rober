@@ -60,7 +60,7 @@ P1/P2 仍未完成：真实受控路线、真实电梯、真实相机/TTS/HIL �
 - `robot-software-engineer`：行为 dry-run、task record、launch 默认关闭、主责验证。
 - `full-stack-software-engineer`：operator status/diagnostics、手机文案、speaker prompt contract。
 - `autonomy-engineer`：elevator dry-run evidence schema 和 visual gate 保守证据输出。
-- `rober-hardware-engineer`：本轮未介入；没有硬件事实变更。
+- `robot-hardware-engineer`：本轮未介入；没有硬件事实变更。
 
 ## 风险、阻塞和证据链缺口
 

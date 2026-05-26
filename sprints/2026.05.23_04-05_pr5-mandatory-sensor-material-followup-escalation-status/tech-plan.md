@@ -89,7 +89,7 @@ Forbidden exposure:
 
 ### Task A: Hardware PC Gate + Tests + Boundary Docs
 
-Role id: `rober-hardware-engineer`
+Role id: `robot-hardware-engineer`
 
 Files:
 

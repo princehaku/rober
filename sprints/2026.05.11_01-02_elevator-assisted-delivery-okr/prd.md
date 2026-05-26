@@ -66,7 +66,7 @@
   - `robot-software-engineer` 负责行为状态机和任务记录。
   - `autonomy-engineer` 负责门开/目标楼层/驶出证据。
   - `full-stack-software-engineer` 负责手机状态、diagnostics、语音提示 contract。
-  - `rober-hardware-engineer` 仅在涉及硬件事实和安装时介入。
+  - `robot-hardware-engineer` 仅在涉及硬件事实和安装时介入。
 
 ## 风险、阻塞和需要补齐的证据链
 

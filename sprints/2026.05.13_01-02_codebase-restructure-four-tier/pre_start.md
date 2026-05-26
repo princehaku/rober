@@ -6,7 +6,7 @@
 - sprint_type: **epic**（跨 4 个部署面 / 6 个 ROS2 包 / 数十文件 git mv / build & test pipeline 重建）
 - 时间：2026-05-13 01:xx Asia/Shanghai
 - 主集成 Owner：`product-okr-owner`（sprint 收口）+ `robot-software-engineer`（ROS2 主链路集成）
-- 并行 Owner：`full-stack-software-engineer`、`autonomy-engineer`、`rober-hardware-engineer`
+- 并行 Owner：`full-stack-software-engineer`、`autonomy-engineer`、`robot-hardware-engineer`
 - 证据边界：`structural_refactor_only`（不声明任何 OKR 完成度变化）
 
 ## 上一轮未完成项与阻塞
@@ -43,7 +43,7 @@ CEO 决策（AskQuestion 5 题）：
 | robot-software-engineer | P3 / 集成验收 | onboard/ ROS2 包整体目录迁移、setup.py / package.xml / CMakeLists 路径修正、bringup launch 路径修正、`colcon build --symlink-install` 重建、smoke tests |
 | full-stack-software-engineer | P1B / P2 / P5 | cloud-relay/ 拆分（含 `remote_cloud_relay.py` 与 docker/compose）、mobile/ 脚手架、operator_gateway 整体搬到 cloud-relay 并改造为 HTTP client 模式 |
 | autonomy-engineer | P4 | pc-tools/ 工具搬迁（`route_debug_web.py`、`route_csv_to_yaml.py`、`evidence_crosscheck.py`、`phone_browser_acceptance_gate.py`）、新建 labeling GUI 占位 |
-| rober-hardware-engineer | P3 配套 | onboard/scripts/hardware_smoke_wave_rover.py、onboard/docker/humble 路径修正、`docs/vendor/VENDOR_INDEX.md` 引用更新 |
+| robot-hardware-engineer | P3 配套 | onboard/scripts/hardware_smoke_wave_rover.py、onboard/docker/humble 路径修正、`docs/vendor/VENDOR_INDEX.md` 引用更新 |
 | product-okr-owner | sprint 留档 | sprint 6 文档、OKR.md §6 引用更新、迁移完成后的 README/AGENTS.md 同步 |
 
 完整 phase 划分、并行边界、依赖关系、风险等级、验收命令见 `tech-plan.md`。

@@ -6,7 +6,7 @@
 - sprint_id: `2026.05.26_06-07_pc-hardware-hil-material-coverage`
 - 执行模式：2 个并行子 agent + Product closeout
 - 主责实现：`full-stack-software-engineer`
-- 事实咨询：`rober-hardware-engineer`
+- 事实咨询：`robot-hardware-engineer`
 - Product 收口：`product-okr-owner`
 
 本计划完成后默认进入实现阶段。主节点不得直接写产品代码、测试代码、硬件配置或运行实现测试；必须派发对应 worker。
@@ -83,7 +83,7 @@ UI 入口：
 
 ### Task A：Hardware 只读事实咨询
 
-Owner：`rober-hardware-engineer`
+Owner：`robot-hardware-engineer`
 
 输入：
 

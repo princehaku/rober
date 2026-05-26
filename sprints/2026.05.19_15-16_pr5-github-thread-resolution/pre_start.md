@@ -25,7 +25,7 @@ Apply the existing repo-local PR #5 closeout evidence to GitHub review-thread st
 
 | Owner | Scope | Boundary |
 | --- | --- | --- |
-| rober-hardware-engineer | Re-run PR #5 closeout evidence gate and inspect vendor/source boundary | No hardware config changes, no SKU guesses, no HIL claims |
+| robot-hardware-engineer | Re-run PR #5 closeout evidence gate and inspect vendor/source boundary | No hardware config changes, no SKU guesses, no HIL claims |
 | product-okr-owner | Update sprint closeout, `OKR.md`, and progress log after GitHub thread action | No OKR percentage increase without real materials |
 | main session | Resolve GitHub threads that match `ready_to_close_on_mainline_docs` | Do not resolve `blocked_pending_real_materials` thread |
 

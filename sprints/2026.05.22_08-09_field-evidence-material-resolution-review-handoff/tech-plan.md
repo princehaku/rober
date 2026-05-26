@@ -101,7 +101,7 @@ Acceptance commands should include `node --check mobile/web/app.js`, fixture JSO
 
 ### Task D: Hardware Boundary Consultation
 
-Owner: `rober-hardware-engineer`
+Owner: `robot-hardware-engineer`
 
 Confirm whether the handoff references hardware or PR #5 material. If yes, read `docs/vendor/VENDOR_INDEX.md` and the pointed local vendor files before giving boundary text. The expected result is no hardware configuration change and no claim that PR #5 `PRRT_kwDOSWB9286CJ3tX` is resolved.
 

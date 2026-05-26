@@ -5,7 +5,7 @@
 - target capability: `pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake`
 - proof boundary: `software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate`
 - Product owner: `product-okr-owner`
-- implementation owners: `rober-hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
+- implementation owners: `robot-hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
 
 ## 1. 用户价值和产品北极星
 
@@ -27,7 +27,7 @@
 
 | KR | Owner | 用户价值 | 验收口径 |
 | --- | --- | --- | --- |
-| KR-A Hardware reviewer ACK intake gate | `rober-hardware-engineer` | reviewer ACK 状态能从上一轮 handoff 被安全接入和分类。 | PC gate 输出 artifact/summary，包含 `PRRT_kwDOSWB9286CJ3tX`、`hardware_material_pending`、proof boundary、next evidence 和 false-state flags；focused unit tests pass。 |
+| KR-A Hardware reviewer ACK intake gate | `robot-hardware-engineer` | reviewer ACK 状态能从上一轮 handoff 被安全接入和分类。 | PC gate 输出 artifact/summary，包含 `PRRT_kwDOSWB9286CJ3tX`、`hardware_material_pending`、proof boundary、next evidence 和 false-state flags；focused unit tests pass。 |
 | KR-B Robot diagnostics safe alias | `robot-software-engineer` | Robot/API 只暴露可给手机和 support 使用的安全摘要。 | `/api/status`、`/api/diagnostics` 或既有 relay safe surface 能提供 read-only safe alias；无 raw UART、serial、credential、ROS control topic、GitHub mutation 或 robot command side effects。 |
 | KR-C Full-Stack read-only panel | `full-stack-software-engineer` | 普通手机用户和 support 能看到 reviewer ACK intake 状态，但不能误操作。 | `mobile/web` first-screen panel 展示 ack status、thread、pending materials、next evidence 和 safe copy；Start Delivery / Confirm Dropoff / Cancel 保持 disabled。 |
 | KR-D Product closeout | `product-okr-owner` | sprint 证据可复账，OKR 不被软件证明虚增。 | `tech-done.md`、`side2side_check.md`、`final.md`、`OKR.md`、`docs/process/okr_progress_log.md` 保守更新；明确 no OKR percentage lift。 |
@@ -78,7 +78,7 @@ P2：
 
 ## 7. 对应责任 Engineer
 
-- `rober-hardware-engineer`：主责 PC gate 和硬件材料 evidence contract；涉及 vendor/source attribution 时必须先读 `docs/vendor/VENDOR_INDEX.md` 及其指向文件。
+- `robot-hardware-engineer`：主责 PC gate 和硬件材料 evidence contract；涉及 vendor/source attribution 时必须先读 `docs/vendor/VENDOR_INDEX.md` 及其指向文件。
 - `robot-software-engineer`：主责 Robot diagnostics safe alias、remote relay/status surface 和 ROS/API 文档边界。
 - `full-stack-software-engineer`：主责 `mobile/web` 只读 panel、fixture、focused tests 和手机流程文档。
 - `product-okr-owner`：只负责验收、closeout、OKR snapshot 和 progress log，不写产品代码。

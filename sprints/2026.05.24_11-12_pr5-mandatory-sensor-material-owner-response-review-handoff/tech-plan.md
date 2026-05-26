@@ -36,7 +36,7 @@ Product 只做验收和 closeout，不提前更新 `OKR.md` 或 `docs/process/ok
 
 ### Task A - Hardware PC handoff gate
 
-- owner: `rober-hardware-engineer`
+- owner: `robot-hardware-engineer`
 - priority: P0
 - responsibility: 创建 PC handoff gate，把 owner-response review-decision safe artifact/summary 转成 review-handoff safe artifact/summary。
 - allowed files:

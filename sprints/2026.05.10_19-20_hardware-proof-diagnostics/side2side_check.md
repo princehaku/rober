@@ -69,7 +69,7 @@
 - 下一轮建议主责：
   - `robot-software-engineer`：为 `operator_gateway.py` 接入 `hardware_proof_ref` ROS 参数或配置入口，并做 bringup 集成验证。
   - `full-stack-software-engineer`：补 operator 页面/网关参数接线后的 HTTP 回归。
-  - `rober-hardware-engineer`：后续真实 WAVE ROVER HIL、UART、轮向、IMU、电池、反馈频率证据采集。
+  - `robot-hardware-engineer`：后续真实 WAVE ROVER HIL、UART、轮向、IMU、电池、反馈频率证据采集。
 
 ## 风险、阻塞和需要补齐的证据链
 

@@ -58,7 +58,7 @@ Hardware worker 已验证本 reply 只能作为：
 ## 8. 责任 Engineer
 
 - Product closeout：`product-okr-owner`
-- Hardware safety evidence：`rober-hardware-engineer`
+- Hardware safety evidence：`robot-hardware-engineer`
 - GitHub publication：主会话 / GitHub 执行者
 - 本轮未派 `robot-software-engineer`、`full-stack-software-engineer`、`autonomy-engineer` 做代码或配置改动，因为文件范围限定为 product closeout。
 

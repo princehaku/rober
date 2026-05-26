@@ -96,7 +96,7 @@ Implementation acceptance for later workers:
 - `full-stack-software-engineer`: PC gate and mobile read-only panel.
 - `robot-software-engineer`: Robot diagnostics safe alias and status/diagnostics integration.
 - `product-okr-owner`: sprint record, Product acceptance, OKR/progress-log closeout.
-- `rober-hardware-engineer`: no implementation owner in this sprint unless real PR #5 hardware materials appear; if materials appear, Hardware must verify them against `docs/vendor/VENDOR_INDEX.md` and referenced local vendor files before any hardware claim.
+- `robot-hardware-engineer`: no implementation owner in this sprint unless real PR #5 hardware materials appear; if materials appear, Hardware must verify them against `docs/vendor/VENDOR_INDEX.md` and referenced local vendor files before any hardware claim.
 - `autonomy-engineer`: no implementation owner in this sprint unless route/elevator/Nav2/fixed-route evidence appears; if it appears, Autonomy must keep field evidence separate from software proof.
 
 ## 8. 风险、阻塞和需要补齐的证据链

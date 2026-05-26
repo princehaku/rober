@@ -4,8 +4,8 @@
 
 - 阶段：tech-plan
 - 时间：2026-05-11 22:00 Asia/Shanghai
-- 主责 owner：`rober-hardware-engineer`
-- 协作方式：`rober-hardware-engineer` 单线闭环实现；`robot-software-engineer` 和 `autonomy-engineer` 只在 `evidence_ref` 对接事实不清时做只读咨询。
+- 主责 owner：`robot-hardware-engineer`
+- 协作方式：`robot-hardware-engineer` 单线闭环实现；`robot-software-engineer` 和 `autonomy-engineer` 只在 `evidence_ref` 对接事实不清时做只读咨询。
 
 ## 目标
 
@@ -27,7 +27,7 @@
 
 ## 实现阶段文件范围
 
-建议允许 `rober-hardware-engineer` 修改：
+建议允许 `robot-hardware-engineer` 修改：
 
 - `scripts/hardware_smoke_wave_rover.py`（若现有 smoke 脚本最适合承载 gate）
 - `scripts/hil_evidence_packet_gate.py`（若拆成独立 gate 更清晰）
@@ -48,7 +48,7 @@
 
 ### Task 1：定义 packet gate contract
 
-Owner：`rober-hardware-engineer`
+Owner：`robot-hardware-engineer`
 
 工作内容：
 
@@ -73,7 +73,7 @@ python3 scripts/hil_evidence_packet_gate.py --help
 
 ### Task 2：实现 Docker-only blocked/software proof fixture
 
-Owner：`rober-hardware-engineer`
+Owner：`robot-hardware-engineer`
 
 工作内容：
 
@@ -92,7 +92,7 @@ python3 scripts/hil_evidence_packet_gate.py --packet-dir <blocked_or_fixture_pac
 
 ### Task 3：实现 `hil_pass` 严格门槛
 
-Owner：`rober-hardware-engineer`
+Owner：`robot-hardware-engineer`
 
 工作内容：
 
@@ -113,7 +113,7 @@ python3 scripts/hil_evidence_packet_gate.py --packet-dir <fixture_packet_dir>
 
 ### Task 4：保留 O2/O3 crosscheck 接口
 
-Owner：`rober-hardware-engineer`
+Owner：`robot-hardware-engineer`
 
 咨询：`robot-software-engineer`、`autonomy-engineer`
 
@@ -133,7 +133,7 @@ python3 -m py_compile scripts/evidence_crosscheck.py
 
 ### Task 5：Sprint 执行记录和收口
 
-Owner：`rober-hardware-engineer`
+Owner：`robot-hardware-engineer`
 
 工作内容：
 

@@ -6,7 +6,7 @@ sprint_type: epic
 
 本轮按 `tech-plan.md` 的 A/B/C/D 分工完成。Product closeout 只做整体验收、OKR 更新和留档；未修改 PC gate、Robot diagnostics、mobile/web 产品代码或测试代码。
 
-### Task A - rober-hardware-engineer
+### Task A - robot-hardware-engineer
 
 - 新增 `pc-tools/evidence/wave_rover_hil_packet_review_decision.py`。
 - 新增 `pc-tools/evidence/test_wave_rover_hil_packet_review_decision.py`。

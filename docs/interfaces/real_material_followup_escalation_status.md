@@ -81,7 +81,7 @@ Each group includes:
 | material_group | Objective / review ref | Owner handoff | Follow-up boundary |
 |---|---|---|---|
 | `o5_external` | `Objective 5` | `product-okr-owner` | Missing real public HTTPS/TLS, 4G/SIM, OSS/CDN live traffic, production DB/queue, worker migration/cutover, and external proof. |
-| `o1_pr5_hardware` | `Objective 1`, `PR #5`, `PRRT_kwDOSWB9286CJ3tX` | `rober-hardware-engineer` | `blocked_pending_real_materials`; missing mandatory sensor baseline citation to `docs/vendor/VENDOR_INDEX.md` and real 2D LiDAR / ToF / WAVE ROVER UART/HIL material. |
+| `o1_pr5_hardware` | `Objective 1`, `PR #5`, `PRRT_kwDOSWB9286CJ3tX` | `robot-hardware-engineer` | `blocked_pending_real_materials`; missing mandatory sensor baseline citation to `docs/vendor/VENDOR_INDEX.md` and real 2D LiDAR / ToF / WAVE ROVER UART/HIL material. |
 | `pr4_route_elevator` | `PR #4`, `Objective 2`, `Objective 3` | `autonomy-engineer` | Missing real Nav2/fixed-route runtime log, route completion signal, field task record, elevator door state, target floor confirmation, human assistance record, dropoff/cancel material, and `delivery_result`. |
 | `o4_real_phone` | `Objective 4` | `full-stack-software-engineer` | Missing real phone browser/device/PWA/user-choice acceptance material. |
 

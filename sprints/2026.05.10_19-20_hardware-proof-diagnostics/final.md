@@ -69,7 +69,7 @@
 - 下一轮建议：
   - `robot-software-engineer` 主责 `operator_gateway.py` 的 `hardware_proof_ref` 参数入口和 bringup 接线。
   - `full-stack-software-engineer` 负责 API/UI 回归。
-  - `rober-hardware-engineer` 负责真实 WAVE ROVER HIL 证据采集。
+  - `robot-hardware-engineer` 负责真实 WAVE ROVER HIL 证据采集。
 
 ## 风险、阻塞和需要补齐的证据链
 

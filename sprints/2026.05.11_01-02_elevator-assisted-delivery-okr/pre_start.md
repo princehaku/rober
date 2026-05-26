@@ -24,7 +24,7 @@ CEO 要求把“进出电梯”纳入 OKR：小车识别电梯是否开门，进
   - `robot-software-engineer`：行为状态机。
   - `autonomy-engineer`：电梯门/楼层/驶出感知证据。
   - `full-stack-software-engineer`：手机状态与语音提示。
-  - `rober-hardware-engineer`：仅在涉及硬件事实、安装、电气或串口时介入。
+  - `robot-hardware-engineer`：仅在涉及硬件事实、安装、电气或串口时介入。
 
 ## 范围
 

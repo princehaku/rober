@@ -76,7 +76,7 @@ PR #5 的硬件 source/material review 已进入一个很窄的可执行缺口�
 ## 8. 对应责任 Engineer
 
 - 主责 Product：`product-okr-owner`，负责本 PRD、验收口径和后续 closeout。
-- 核验主责：`rober-hardware-engineer`，负责 vendor/source reply 内容核验。
+- 核验主责：`robot-hardware-engineer`，负责 vendor/source reply 内容核验。
 - 发布执行：主会话或 GitHub 执行者，负责实际 GitHub reply publication。
 - 暂不派发：`robot-software-engineer`、`full-stack-software-engineer`、`autonomy-engineer`，除非发布后需要新增 downstream 展示或 field-material handoff。
 

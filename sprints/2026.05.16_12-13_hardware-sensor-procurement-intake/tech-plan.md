@@ -32,19 +32,19 @@
 
 | Owner | 文件范围 | 职责 |
 | --- | --- | --- |
-| `rober-hardware-engineer` | `pc-tools/evidence/hardware_sensor_procurement_intake_gate.py`、`pc-tools/evidence/test_hardware_sensor_procurement_intake_gate.py`、`docs/product/production_hardware_boundary.md`、必要 README/docs | 定义 intake artifact、fail-closed validation、hardware/source/procurement 字段 |
+| `robot-hardware-engineer` | `pc-tools/evidence/hardware_sensor_procurement_intake_gate.py`、`pc-tools/evidence/test_hardware_sensor_procurement_intake_gate.py`、`docs/product/production_hardware_boundary.md`、必要 README/docs | 定义 intake artifact、fail-closed validation、hardware/source/procurement 字段 |
 | `autonomy-engineer` | `pc-tools/README.md`、`docs/navigation/fixed_route_workflow.md` 或相关 evidence docs | 对齐 2D LiDAR / ToF / monocular responsibility split，不把 ToF 写成主建图输入 |
 | `robot-software-engineer` | `onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics.py`、相关 tests、`docs/interfaces/ros_contracts.md` | Robot diagnostics metadata-only consumer 和 compatibility fence |
 | `full-stack-software-engineer` | `mobile/web/index.html`、`mobile/web/app.js`、`mobile/web/styles.css`、fixture/tests、`docs/product/mobile_user_flow.md` | 手机只读 panel、phone-safe copy/export whitelist |
 | `product-okr-owner` | `sprints/2026.05.16_12-13_hardware-sensor-procurement-intake/*`、实施完成后 `OKR.md`、`docs/process/okr_progress_log.md` | sprint 收口、OKR 更新和证据边界 |
 
-如果实施阶段接口强耦合，`rober-hardware-engineer` 主责 intake source-of-truth，`robot-software-engineer` 主责最终 diagnostics compatibility，其他 owner 并行补专业事实；禁止主节点自己写产品代码、测试代码或硬件配置。
+如果实施阶段接口强耦合，`robot-hardware-engineer` 主责 intake source-of-truth，`robot-software-engineer` 主责最终 diagnostics compatibility，其他 owner 并行补专业事实；禁止主节点自己写产品代码、测试代码或硬件配置。
 
 ## 4. Team 并行执行计划
 
 ### Task A - Hardware Sensor Procurement Intake Gate
 
-Owner：`rober-hardware-engineer`
+Owner：`robot-hardware-engineer`
 
 目标：
 

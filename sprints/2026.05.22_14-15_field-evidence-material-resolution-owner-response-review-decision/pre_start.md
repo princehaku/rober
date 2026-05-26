@@ -10,7 +10,7 @@ Run time: 2026-05-22 14:03 Asia/Shanghai
 - Evidence boundary: `software_proof_docker_field_evidence_material_resolution_owner_response_review_decision_gate`
 - Product owner: `product-okr-owner`
 - Parallel implementation owners for the next execution phase: `autonomy-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
-- Hardware consultation owner: `rober-hardware-engineer`
+- Hardware consultation owner: `robot-hardware-engineer`
 - Expected OKR movement: no OKR percentage lift
 
 ## Evidence Read Before Start

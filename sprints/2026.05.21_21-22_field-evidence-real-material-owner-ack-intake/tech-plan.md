@@ -116,7 +116,7 @@ git diff --check -- mobile/web/app.js mobile/web/styles.css mobile/web/test_mobi
 
 ## Workstream D: Hardware Boundary Consultation
 
-Owner: `rober-hardware-engineer`
+Owner: `robot-hardware-engineer`
 
 Allowed files:
 

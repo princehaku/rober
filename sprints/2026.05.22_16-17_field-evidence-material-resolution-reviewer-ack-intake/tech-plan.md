@@ -200,7 +200,7 @@ git diff --check -- mobile/web/app.js mobile/web/styles.css mobile/web/test_mobi
 
 ### Task D: Hardware Read-Only PR / Vendor Boundary Consultation
 
-**Owner:** `rober-hardware-engineer`
+**Owner:** `robot-hardware-engineer`
 
 **Responsibility:** Confirm hardware and PR #5 boundaries without writing product code, tests, launch params, or hardware config.
 

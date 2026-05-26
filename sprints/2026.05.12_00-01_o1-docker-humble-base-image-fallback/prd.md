@@ -66,7 +66,7 @@ P2：
 ## 对应责任 Engineer
 
 - `robot-software-engineer`：实现 Docker/Humble build path、运行围栏验证、更新 `tech-done.md`。
-- `rober-hardware-engineer`：只读咨询 HIL 边界，确认本轮不需要读取 vendor 细节或修改硬件参数。
+- `robot-hardware-engineer`：只读咨询 HIL 边界，确认本轮不需要读取 vendor 细节或修改硬件参数。
 
 ## 风险、阻塞和证据链
 

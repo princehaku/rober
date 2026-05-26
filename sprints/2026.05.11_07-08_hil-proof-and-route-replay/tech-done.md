@@ -9,7 +9,7 @@
 
 ## 本轮实际变更与执行结果
 
-### O1 `rober-hardware-engineer`
+### O1 `robot-hardware-engineer`
 
 - 约束文件保持原样读取并核对：`docs/acceptance/hil_runbook.md`、`docs/acceptance/robot_bringup_checklist.md`、`docs/acceptance/wave_rover_hil_evidence.md`。
 - 未新增/修改产品代码，仅执行验收命令确认当前阻塞：

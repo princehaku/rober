@@ -39,7 +39,7 @@
 
 ## 本轮核心抓手
 
-本轮核心抓手是把 HIL gate 和 O2/O3 crosscheck 之间的产品验收口径固化下来：`hil_pass + same evidence_ref` 才是 real-run aligned；其余状态只能是 blocked/software proof。实现阶段由 `robot-software-engineer` 主责修改 `scripts/evidence_crosscheck.py`，`rober-hardware-engineer` 只读确认 `hil_evidence_packet_gate.py` 输出 contract，`autonomy-engineer` 只读确认 fixed-route replay 字段不被破坏。
+本轮核心抓手是把 HIL gate 和 O2/O3 crosscheck 之间的产品验收口径固化下来：`hil_pass + same evidence_ref` 才是 real-run aligned；其余状态只能是 blocked/software proof。实现阶段由 `robot-software-engineer` 主责修改 `scripts/evidence_crosscheck.py`，`robot-hardware-engineer` 只读确认 `hil_evidence_packet_gate.py` 输出 contract，`autonomy-engineer` 只读确认 fixed-route replay 字段不被破坏。
 
 ## 做什么
 
@@ -70,7 +70,7 @@
 
 - `product-okr-owner`：本轮创建 sprint 规划文档并定义产品验收口径。
 - `robot-software-engineer`：下一阶段主责把 HIL gate output 接入 `scripts/evidence_crosscheck.py` 并运行围栏验证。
-- `rober-hardware-engineer`：下一阶段只读确认 `scripts/hil_evidence_packet_gate.py` 输出 contract 和 status/evidence_ref 字段语义。
+- `robot-hardware-engineer`：下一阶段只读确认 `scripts/hil_evidence_packet_gate.py` 输出 contract 和 status/evidence_ref 字段语义。
 - `autonomy-engineer`：下一阶段只读确认 fixed-route replay/status 字段对齐不被破坏。
 - `full-stack-software-engineer`：本轮不介入。
 

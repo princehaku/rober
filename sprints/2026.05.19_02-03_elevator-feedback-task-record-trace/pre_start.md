@@ -39,7 +39,7 @@ Run time: 2026-05-19 02:03 Asia/Shanghai
 | product-okr-owner | 本规划文档、OKR 映射、验收口径和风险边界 | 只创建 `pre_start.md`、`prd.md`、`tech-plan.md`；不预生成 `tech-done.md` / `side2side_check.md` / `final.md` |
 | robot-software-engineer | task_record trace contract、diagnostics safe summary、最小验证 | 只做 metadata-only / software-proof trace，不声明真实 field pass |
 | full-stack-software-engineer | mobile/web post-run trace 只读展示、fixture、前端验证 | 不改变 primary action gating，不把 trace 作为 command 或 delivery result |
-| rober-hardware-engineer | 只读确认 PR #5 硬件材料缺口保持独立 | 不在本轮改硬件配置，不用 software proof 覆盖 2D LiDAR / ToF 材料 |
+| robot-hardware-engineer | 只读确认 PR #5 硬件材料缺口保持独立 | 不在本轮改硬件配置，不用 software proof 覆盖 2D LiDAR / ToF 材料 |
 
 ## Blocker 扫描
 

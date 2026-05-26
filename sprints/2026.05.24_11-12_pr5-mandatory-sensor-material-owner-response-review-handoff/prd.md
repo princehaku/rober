@@ -77,7 +77,7 @@ P2：
 
 ## 对应责任 Engineer
 
-- `rober-hardware-engineer`：PC handoff gate、fixture、targeted unit tests、hardware boundary docs。
+- `robot-hardware-engineer`：PC handoff gate、fixture、targeted unit tests、hardware boundary docs。
 - `robot-software-engineer`：Robot diagnostics safe alias、status/diagnostics exposure、targeted Robot tests、runtime contract docs。
 - `full-stack-software-engineer`：read-only mobile panel、fixture、targeted mobile tests、mobile user flow docs。
 - `product-okr-owner`：验收口径、side2side/final、OKR/progress closeout；本规划阶段不更新 `OKR.md`。

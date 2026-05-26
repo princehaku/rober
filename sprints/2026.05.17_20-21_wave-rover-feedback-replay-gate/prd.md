@@ -60,7 +60,7 @@ sprint_type: epic
 
 ## 5. 需要做什么
 
-### Task A - rober-hardware-engineer
+### Task A - robot-hardware-engineer
 
 职责：实现 PC evidence gate 和 fixtures。
 

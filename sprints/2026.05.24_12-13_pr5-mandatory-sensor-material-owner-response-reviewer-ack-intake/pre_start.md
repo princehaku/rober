@@ -4,7 +4,7 @@
 - sprint: `2026.05.24_12-13_pr5-mandatory-sensor-material-owner-response-reviewer-ack-intake`
 - planning time: 2026-05-24 12:08 Asia/Shanghai
 - Product owner: `product-okr-owner`
-- implementation owners: `rober-hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
+- implementation owners: `robot-hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
 - target capability: `pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake`
 - proof boundary: `software_proof_docker_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_gate`
 - OKR decision expectation: no OKR percentage lift
@@ -48,7 +48,7 @@
 
 | Track | Owner | 核心抓手 |
 | --- | --- | --- |
-| Hardware PC gate | `rober-hardware-engineer` | 从上一轮 owner-response review handoff summary 生成 reviewer ACK intake artifact/summary，分类 reviewer ACK missing/accepted/reassignment/blocked，并保留真实材料缺口。 |
+| Hardware PC gate | `robot-hardware-engineer` | 从上一轮 owner-response review handoff summary 生成 reviewer ACK intake artifact/summary，分类 reviewer ACK missing/accepted/reassignment/blocked，并保留真实材料缺口。 |
 | Robot diagnostics safe alias | `robot-software-engineer` | 将 reviewer ACK intake summary 暴露为 read-only diagnostics safe alias，并接入 `/api/status`、`/api/diagnostics` 或现有 remote relay safe surface。 |
 | Full-Stack mobile read-only panel | `full-stack-software-engineer` | 在 `mobile/web` first-screen 增加只读 reviewer ACK intake panel，展示 PR #5 thread、ack status、next evidence 和 false-state flags；主操作继续 disabled。 |
 

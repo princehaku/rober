@@ -82,7 +82,7 @@
 ## 对应责任 Engineer
 
 - 主责：
-  - `rober-hardware-engineer`（O1）
+  - `robot-hardware-engineer`（O1）
   - `robot-software-engineer`（O2）
   - `autonomy-engineer`（O3）
 - 同步：`full-stack-software-engineer`（仅同步消费，不承担主线闭环）

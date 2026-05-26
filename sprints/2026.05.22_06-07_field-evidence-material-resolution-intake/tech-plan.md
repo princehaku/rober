@@ -160,7 +160,7 @@ git diff --check -- mobile/web/app.js mobile/web/index.html mobile/web/styles.cs
 
 ### Worker D: Hardware Vendor / PR #5 Boundary Consultation
 
-**Owner:** `rober-hardware-engineer`
+**Owner:** `robot-hardware-engineer`
 
 **Files allowed:**
 

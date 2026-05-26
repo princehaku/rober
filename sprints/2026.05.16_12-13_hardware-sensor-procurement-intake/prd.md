@@ -123,7 +123,7 @@ P2：
 
 ## 7. 责任 Engineer
 
-- 主责：`rober-hardware-engineer`，负责 intake artifact 字段和硬件/source/procurement/material boundary。
+- 主责：`robot-hardware-engineer`，负责 intake artifact 字段和硬件/source/procurement/material boundary。
 - 协作：`robot-software-engineer`，负责 diagnostics metadata-only consumer。
 - 协作：`autonomy-engineer`，负责 2D LiDAR / ToF / monocular responsibility split 和 PC evidence gate。
 - 协作：`full-stack-software-engineer`，负责 mobile phone-safe read-only surface。

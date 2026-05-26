@@ -98,7 +98,7 @@ Implementation acceptance for later workers:
 - `robot-software-engineer`: Task B Robot diagnostics safe alias and status/diagnostics integration.
 - `full-stack-software-engineer`: Task C mobile/web read-only panel, fixture, tests, and mobile flow docs.
 - `product-okr-owner`: Task D closeout after implementation evidence: sprint records, Product acceptance, `OKR.md`, and progress-log.
-- `rober-hardware-engineer`: no implementation owner in this sprint unless real PR #5 hardware materials appear; if materials appear, Hardware must verify them against `docs/vendor/VENDOR_INDEX.md` and referenced local vendor files before any hardware claim.
+- `robot-hardware-engineer`: no implementation owner in this sprint unless real PR #5 hardware materials appear; if materials appear, Hardware must verify them against `docs/vendor/VENDOR_INDEX.md` and referenced local vendor files before any hardware claim.
 
 ## 8. 风险、阻塞和需要补齐的证据链
 

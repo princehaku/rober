@@ -89,7 +89,7 @@ Owner：`product-okr-owner`
 - `robot-software-engineer`：ROS2 remote bridge/protocol fence、接口合同。
 - `product-okr-owner`：OKR/KR 映射、阶段验收、sprint closeout。
 
-本轮不需要 `rober-hardware-engineer` 或 `autonomy-engineer` 修改文件，因为不触碰 WAVE ROVER、UART、Orange Pi、Nav2、fixed route、HIL 或真实硬件配置。
+本轮不需要 `robot-hardware-engineer` 或 `autonomy-engineer` 修改文件，因为不触碰 WAVE ROVER、UART、Orange Pi、Nav2、fixed route、HIL 或真实硬件配置。
 
 ## 8. 风险、阻塞和证据链
 

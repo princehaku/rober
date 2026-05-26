@@ -42,7 +42,7 @@
 - `docs/process/okr_progress_log.md`
 - 任何代码、测试、硬件配置或 mobile/web 文件
 
-### rober-hardware-engineer
+### robot-hardware-engineer
 
 后续核验允许只读检查：
 
@@ -77,7 +77,7 @@
 
 本 sprint 是 Epic，但本 planning-only 任务只创建三份计划文档。进入执行阶段后：
 
-- 并行启动 `rober-hardware-engineer` 做只读 vendor/source reply 核验。
+- 并行启动 `robot-hardware-engineer` 做只读 vendor/source reply 核验。
 - 主会话或 GitHub 执行者并行准备 GitHub thread 定位与发布动作，但必须等 Hardware 核验通过后发布。
 - Product closeout 等待两个证据：Hardware 核验结果和 GitHub publication evidence。
 

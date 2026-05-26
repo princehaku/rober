@@ -60,7 +60,7 @@
         "PR #5 2D LiDAR / ToF SKU, source, receipt, install, wiring, power, calibration, and HIL-entry material"
       ],
       "objective_ref": "Objective 1",
-      "owner": "rober-hardware-engineer",
+      "owner": "robot-hardware-engineer",
       "primary_actions_enabled": false,
       "review_refs": [
         "PR #5",

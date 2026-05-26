@@ -26,7 +26,7 @@
   "overall_status": "not_proven",
   "owner_handoff": {
     "full-stack-software-engineer": "keep mobile execution pack read-only and actions disabled",
-    "rober-hardware-engineer": "run real HIL collection on WAVE ROVER host and keep one evidence_ref across all packet files",
+    "robot-hardware-engineer": "run real HIL collection on WAVE ROVER host and keep one evidence_ref across all packet files",
     "robot-software-engineer": "consume only accepted review-decision summaries until real packet exists"
   },
   "primary_actions_enabled": false,

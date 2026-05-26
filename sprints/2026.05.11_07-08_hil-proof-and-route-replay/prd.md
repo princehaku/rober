@@ -57,6 +57,6 @@
 
 ## 对应主责
 
-- `rober-hardware-engineer`（O1）
+- `robot-hardware-engineer`（O1）
 - `autonomy-engineer`（O3）
 - `robot-software-engineer`（O2 维持复盘一致性，不新增功能）

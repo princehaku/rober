@@ -25,7 +25,7 @@ sprint_type: epic
 ## 2. PR / Review Evidence
 
 - PR #5 P1 review thread：默认硬件集合与 mandatory `monocular + 2D LiDAR + ToF` baseline 未对齐；本轮不能用 WAVE ROVER execution pack 替代真实 sensor baseline/source 材料。
-- PR #5 P2 review thread：mandatory sensor assumptions 缺 `docs/vendor/` 来源；rober-hardware-engineer 必须引用 `docs/vendor/VENDOR_INDEX.md` 和 WAVE ROVER vendor 文件。
+- PR #5 P2 review thread：mandatory sensor assumptions 缺 `docs/vendor/` 来源；robot-hardware-engineer 必须引用 `docs/vendor/VENDOR_INDEX.md` 和 WAVE ROVER vendor 文件。
 - PR #4 / PR #5 共同主题：elevator assisted delivery 和硬件 baseline 已是必达产品边界；但当前缺真实电梯、真实 route/elevator field materials、真实 2D LiDAR / ToF source、采购、安装、接线、电源、标定和 HIL-entry 材料。
 - `sprints/2026.05.17_22-23_wave-rover-hil-packet-review-decision/final.md` 未完成风险：仍缺真实 WAVE ROVER、真实 UART、真实串口日志、真实 `feedback_T1001.log`、真实 `/odom`、真实 `/imu/data`、真实 `/battery` 和同一 `evidence_ref` 的上车实机复账。
 
@@ -86,7 +86,7 @@ PC gate summary 至少包含：
     "rerun packet intake and review decision gates"
   ],
   "owner_handoff": {
-    "rober-hardware-engineer": "run real HIL collection on WAVE ROVER host",
+    "robot-hardware-engineer": "run real HIL collection on WAVE ROVER host",
     "robot-software-engineer": "consume only accepted review-decision summaries until real packet exists",
     "full-stack-software-engineer": "keep mobile execution pack read-only and actions disabled"
   },
@@ -109,9 +109,9 @@ PC gate summary 至少包含：
 
 ## 5. Team Plan
 
-### Task A - rober-hardware-engineer - PC HIL packet execution-pack gate
+### Task A - robot-hardware-engineer - PC HIL packet execution-pack gate
 
-Owner：rober-hardware-engineer。
+Owner：robot-hardware-engineer。
 
 Files allowed for implementation sprint:
 
@@ -227,7 +227,7 @@ git diff --check -- OKR.md docs/process/okr_progress_log.md sprints/2026.05.17_2
 
 This sprint is cross-owner and must launch 3 implementation workers in parallel after planning:
 
-- rober-hardware-engineer owns PC execution-pack gate, fixtures, tests, and hardware doc.
+- robot-hardware-engineer owns PC execution-pack gate, fixtures, tests, and hardware doc.
 - robot-software-engineer owns diagnostics consumer, tests, and ROS contract doc.
 - full-stack-software-engineer owns mobile/web read-only panel, fixture/test, and product doc.
 

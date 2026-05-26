@@ -82,7 +82,7 @@
 - 必须包含 `software_proof`、`not_proven`、`delivery_success=false`、`primary_actions_enabled=false`。
 - 必须显式提到 Objective 5、Objective 1、PR #5、PR #4。
 - 必须显式说明本轮不是 HIL，不证明真实 2D LiDAR / ToF，不提高 O5。
-- 必须由 `rober-hardware-engineer`、`robot-software-engineer`、`full-stack-software-engineer` 并行交付，Product closeout 收口。
+- 必须由 `robot-hardware-engineer`、`robot-software-engineer`、`full-stack-software-engineer` 并行交付，Product closeout 收口。
 
 ## 7. 风险、阻塞和证据链
 

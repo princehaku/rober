@@ -60,7 +60,7 @@ GitHub PR #4 已合并，标题为 `Add elevator-assisted delivery capability to
 | full-stack-software-engineer | 主责 mobile/web 只读“现场材料回填入口”panel；显示缺材料和下一步证据，保持所有 primary action gating 不变。 |
 | product-okr-owner | 主责实现后 `tech-done.md`、`side2side_check.md`、`final.md`、`OKR.md`、`docs/process/okr_progress_log.md` 保守收口。 |
 | autonomy-engineer | 只读咨询 route/elevator/Nav2 evidence fields，确认不与 Objective 3 证据语义冲突。 |
-| rober-hardware-engineer | 本轮不写文件；不新增硬件参数或 vendor detail。 |
+| robot-hardware-engineer | 本轮不写文件；不新增硬件参数或 vendor detail。 |
 
 ## 8. 范围边界
 

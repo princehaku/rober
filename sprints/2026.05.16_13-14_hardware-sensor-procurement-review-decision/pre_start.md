@@ -63,7 +63,7 @@ sprint_type: epic
 
 | Owner | 责任 | 计划内文件范围 | 验收重点 |
 | --- | --- | --- | --- |
-| `rober-hardware-engineer` | 主责 procurement review decision gate、blocker 分类、next_required_evidence、owner_handoff 和硬件材料边界 | 后续实施可改 `pc-tools/evidence/*hardware_sensor_procurement_review_decision*`、硬件/产品边界 docs；本计划阶段不改 | 缺真实材料时必须 fail closed；`docs/vendor/VENDOR_INDEX.md` 不能冒充 LiDAR/ToF source proof |
+| `robot-hardware-engineer` | 主责 procurement review decision gate、blocker 分类、next_required_evidence、owner_handoff 和硬件材料边界 | 后续实施可改 `pc-tools/evidence/*hardware_sensor_procurement_review_decision*`、硬件/产品边界 docs；本计划阶段不改 | 缺真实材料时必须 fail closed；`docs/vendor/VENDOR_INDEX.md` 不能冒充 LiDAR/ToF source proof |
 | `robot-software-engineer` | Robot diagnostics metadata-only review summary consumer | 后续实施可改 diagnostics / ROS contract 相关文件；本计划阶段不改 | unsupported/missing summary fail closed；不触发控制路径 |
 | `full-stack-software-engineer` | mobile/web phone-safe 只读 review decision panel | 后续实施可改 `mobile/web`、fixtures、mobile docs/tests；本计划阶段不改 | 不暴露 raw artifact / ROS / serial / credential；不解锁 Start / Confirm Dropoff / Cancel |
 | `product-okr-owner` | sprint 链路、OKR 边界、PR #5 证据引用、closeout 验收 | 本计划阶段只改 `pre_start.md`、`prd.md`、`tech-plan.md`；实施完成后可收口 sprint 和 OKR | 不把计划文档或 software proof 写成真实采购、HIL、field pass、delivery success 或 O5 proof |

@@ -26,7 +26,7 @@
 | 导航/fixed route | `autonomy-engineer` | 验证 status reader 识别 completed、failed、timeout |
 | 接口契约 | `robot-software-engineer` | 确认 `TrashCollection.action` result/feedback 字段仍兼容 |
 | Bringup | `robot-software-engineer` | 运行 Docker Humble build；失败则记录 P0 blocked 根因 |
-| 硬件准入 | `rober-hardware-engineer` | 复核 `docs/vendor/VENDOR_INDEX.md` 和 HIL checklist，实机验证 deferred |
+| 硬件准入 | `robot-hardware-engineer` | 复核 `docs/vendor/VENDOR_INDEX.md` 和 HIL checklist，实机验证 deferred |
 | 手机/远程消费者 | `full-stack-software-engineer` | 确认终态字段可被手机/远程消费 |
 | 阶段收口 | `product-okr-owner` | 对照 OKR/KR、P0 状态和剩余风险 |
 

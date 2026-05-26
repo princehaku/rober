@@ -52,7 +52,7 @@ sprint_type: epic
 - Task A `full-stack-software-engineer`：cloud relay / onboard relay 的 CLI、env、artifact、preflight、Docker smoke 和 cloud docs。
 - Task B `robot-software-engineer`：Robot diagnostics metadata-only consumption / fence，接口文档同步，确保 fail closed。
 - Task C `product-okr-owner`：A/B 返回后更新 `tech-done.md`、`side2side_check.md`、`final.md`、`OKR.md` 和 `docs/process/okr_progress_log.md`。
-- `rober-hardware-engineer`：本轮不改硬件文件；PR #5 真实硬件材料保持风险项，不继续 wrapper。
+- `robot-hardware-engineer`：本轮不改硬件文件；PR #5 真实硬件材料保持风险项，不继续 wrapper。
 - `autonomy-engineer`：本轮不改 route/elevator/导航文件；PR #4 现场材料保持风险项，不继续 O2/O3 wrapper。
 
 ## 7. 风险、阻塞和证据链缺口

@@ -49,7 +49,7 @@
 
 ## 下一步动作
 
-1. `rober-hardware-engineer`：先完成 HIL 级 smoke 与反馈采样证据，补齐“source = hil_pass”链路。
+1. `robot-hardware-engineer`：先完成 HIL 级 smoke 与反馈采样证据，补齐“source = hil_pass”链路。
 2. `robot-software-engineer`：补齐 mission 主链失败恢复、`elevator_assist` 默认关闭且不影响主线的 task record。
 3. `autonomy-engineer`：将 fixed-route 与状态证据字段对齐为可复盘（检查点/目标点/返回索引）。
 4. `full-stack-software-engineer`：operator/diagnostics 增加“sim/hil/simulated来源标签”和最新任务 evidence_ref。

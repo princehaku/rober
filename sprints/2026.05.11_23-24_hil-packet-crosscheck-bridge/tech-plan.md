@@ -5,7 +5,7 @@
 - 阶段：tech-plan
 - 时间：2026-05-11 23:00 Asia/Shanghai
 - 主责 owner：`robot-software-engineer`
-- 协作方式：`robot-software-engineer` 单线闭环实现；`rober-hardware-engineer` 只读确认 HIL gate output contract；`autonomy-engineer` 只读确认 fixed-route status/replay 字段。
+- 协作方式：`robot-software-engineer` 单线闭环实现；`robot-hardware-engineer` 只读确认 HIL gate output contract；`autonomy-engineer` 只读确认 fixed-route status/replay 字段。
 
 ## 目标
 
@@ -50,7 +50,7 @@
 
 Owner：`robot-software-engineer`
 
-只读咨询：`rober-hardware-engineer`
+只读咨询：`robot-hardware-engineer`
 
 工作内容：
 

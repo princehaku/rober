@@ -58,7 +58,7 @@
 
 ## 6. Owner
 
-- `rober-hardware-engineer`：主责 vendor/source review packet gate。
+- `robot-hardware-engineer`：主责 vendor/source review packet gate。
 - `robot-software-engineer`：主责 diagnostics metadata-only safe alias。
 - `full-stack-software-engineer`：主责 mobile/web 只读 review packet panel。
 - `product-okr-owner`：主责 sprint closeout、OKR 边界、review evidence language。

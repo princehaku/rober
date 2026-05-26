@@ -26,7 +26,7 @@ sprint_type: epic
 ## 2. PR / Review Evidence
 
 - PR #5 P1 review thread：默认硬件集合与 mandatory `monocular + 2D LiDAR + ToF` baseline 未对齐；本轮不能用 HIL packet review decision 替代真实 baseline/source 对齐。
-- PR #5 P2 review thread：mandatory sensor assumptions 缺 `docs/vendor/` 来源；后续 rober-hardware-engineer 必须引用 `docs/vendor/VENDOR_INDEX.md` 和 vendor 文件，不能凭记忆写 WAVE ROVER、UART、反馈协议或传感器假设。
+- PR #5 P2 review thread：mandatory sensor assumptions 缺 `docs/vendor/` 来源；后续 robot-hardware-engineer 必须引用 `docs/vendor/VENDOR_INDEX.md` 和 vendor 文件，不能凭记忆写 WAVE ROVER、UART、反馈协议或传感器假设。
 - PR #4 / PR #5 共同主题：elevator assisted delivery 和硬件 baseline 已是必达产品边界；但当前缺真实电梯、真实 route/elevator field materials、真实 2D LiDAR / ToF source、采购、安装、接线、电源、标定和 HIL-entry 材料。
 - `sprints/2026.05.17_20-21_wave-rover-feedback-replay-gate/final.md` 未完成风险：仍缺真实 WAVE ROVER、真实 UART、真实 feedback log、真实 topic snapshots 和同一 `evidence_ref` 的 packet。
 - `sprints/2026.05.17_21-22_wave-rover-hil-packet-intake/final.md` 未完成风险：仍缺真实 HIL，不得声明 `hil_pass`；仍缺真实 WAVE ROVER、真实 UART、真实 `/odom`、真实 `/imu/data`、真实 `/battery`、真实 route/elevator field pass、真实手机/browser、Objective 5 external proof 或 delivery success。
@@ -89,7 +89,7 @@ PC gate summary 至少包含：
     "operator_hil_report"
   ],
   "owner_handoff": {
-    "rober-hardware-engineer": "collect real HIL packet on a host with WAVE ROVER UART access",
+    "robot-hardware-engineer": "collect real HIL packet on a host with WAVE ROVER UART access",
     "robot-software-engineer": "keep diagnostics read-only until review_decision changes with real evidence",
     "full-stack-software-engineer": "keep mobile panel read-only and actions disabled"
   },
@@ -111,9 +111,9 @@ PC gate summary 至少包含：
 
 ## 5. Team Plan
 
-### Task A - rober-hardware-engineer - PC HIL packet review decision gate
+### Task A - robot-hardware-engineer - PC HIL packet review decision gate
 
-Owner：rober-hardware-engineer。
+Owner：robot-hardware-engineer。
 
 Files allowed for implementation sprint:
 
@@ -230,7 +230,7 @@ git diff --check -- OKR.md docs/process/okr_progress_log.md sprints/2026.05.17_2
 
 This sprint is cross-owner and must launch 3 implementation workers in parallel after planning:
 
-- rober-hardware-engineer owns PC review-decision gate, fixtures, tests, and hardware doc.
+- robot-hardware-engineer owns PC review-decision gate, fixtures, tests, and hardware doc.
 - robot-software-engineer owns diagnostics consumer, tests, and ROS contract doc.
 - full-stack-software-engineer owns mobile/web read-only panel, fixture/test, and product doc.
 
@@ -271,6 +271,6 @@ Product planning docs must pass:
 
 ```bash
 test -f sprints/2026.05.17_22-23_wave-rover-hil-packet-review-decision/pre_start.md && test -f sprints/2026.05.17_22-23_wave-rover-hil-packet-review-decision/prd.md && test -f sprints/2026.05.17_22-23_wave-rover-hil-packet-review-decision/tech-plan.md
-rg -n "sprint_type: epic|OKR 最低优先级核对|Objective 5|Objective 1|PR #4|PR #5|software_proof_docker_wave_rover_hil_packet_review_decision_gate|not_proven|delivery_success=false|primary_actions_enabled=false|rober-hardware-engineer|robot-software-engineer|full-stack-software-engineer" sprints/2026.05.17_22-23_wave-rover-hil-packet-review-decision
+rg -n "sprint_type: epic|OKR 最低优先级核对|Objective 5|Objective 1|PR #4|PR #5|software_proof_docker_wave_rover_hil_packet_review_decision_gate|not_proven|delivery_success=false|primary_actions_enabled=false|robot-hardware-engineer|robot-software-engineer|full-stack-software-engineer" sprints/2026.05.17_22-23_wave-rover-hil-packet-review-decision
 git diff --check -- sprints/2026.05.17_22-23_wave-rover-hil-packet-review-decision
 ```

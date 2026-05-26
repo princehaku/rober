@@ -114,7 +114,7 @@ scoped git diff --check:
 
 4. O1/O2/O3 必须回到真实上车证据链。
    - 证据依据：当前 OKR 快照、04-05 final、05-06 tech-done 都没有真实串口、WAVE ROVER feedback、Nav2/fixed-route 实跑、同一 `evidence_ref` 复盘或 HIL。
-   - Owner：`rober-hardware-engineer`、`autonomy-engineer`、`robot-software-engineer`。
+   - Owner：`robot-hardware-engineer`、`autonomy-engineer`、`robot-software-engineer`。
 
 ## 风险、阻塞和需要补齐的证据链
 

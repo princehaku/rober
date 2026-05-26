@@ -23,7 +23,7 @@
 
 ## 3. 角色分工和文件范围
 
-### rober-hardware-engineer
+### robot-hardware-engineer
 
 允许改动：
 
@@ -135,7 +135,7 @@ git diff --check -- OKR.md docs/process/okr_progress_log.md sprints/2026.05.19_1
 
 本 sprint 是 Epic，跨 Hardware、Robot、Full-Stack、Product 四个 owner。实现阶段必须并行启动 3 个 IC worker：
 
-- `rober-hardware-engineer`
+- `robot-hardware-engineer`
 - `robot-software-engineer`
 - `full-stack-software-engineer`
 
@@ -161,6 +161,6 @@ Product Owner 启动文档完成后必须运行：
 
 ```bash
 test -f sprints/2026.05.19_10-11_hardware-real-material-escalation-request/pre_start.md && test -f sprints/2026.05.19_10-11_hardware-real-material-escalation-request/prd.md && test -f sprints/2026.05.19_10-11_hardware-real-material-escalation-request/tech-plan.md
-rg -n "sprint_type: epic|OKR 最低优先级核对|Objective 5|Objective 1|PR #5|PR #4|hardware_real_material_escalation_request|software_proof|not_proven|delivery_success=false|primary_actions_enabled=false|rober-hardware-engineer|robot-software-engineer|full-stack-software-engineer" sprints/2026.05.19_10-11_hardware-real-material-escalation-request
+rg -n "sprint_type: epic|OKR 最低优先级核对|Objective 5|Objective 1|PR #5|PR #4|hardware_real_material_escalation_request|software_proof|not_proven|delivery_success=false|primary_actions_enabled=false|robot-hardware-engineer|robot-software-engineer|full-stack-software-engineer" sprints/2026.05.19_10-11_hardware-real-material-escalation-request
 git diff --check -- sprints/2026.05.19_10-11_hardware-real-material-escalation-request
 ```

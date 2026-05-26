@@ -49,7 +49,7 @@ Objective 1 约 81% 是下一低项，仍缺真实 WAVE ROVER/UART/HIL 和 PR #5
 
 | Owner | 责任 |
 | --- | --- |
-| rober-hardware-engineer | 主责 PC gate、真实材料字段、vendor/source 边界和硬件证据请求；必须引用 `docs/vendor/VENDOR_INDEX.md`。 |
+| robot-hardware-engineer | 主责 PC gate、真实材料字段、vendor/source 边界和硬件证据请求；必须引用 `docs/vendor/VENDOR_INDEX.md`。 |
 | robot-software-engineer | 主责 `operator_gateway_diagnostics.py` safe alias 和 diagnostics contract，保证只读、fail-closed。 |
 | full-stack-software-engineer | 主责 mobile/web 只读 panel、fixtures、targeted tests 和 `docs/product/mobile_user_flow.md` 同步。 |
 | product-okr-owner | 主责 sprint closeout、OKR evidence boundary、docs/process progress log 和最终 `OKR.md` 进展更新。 |

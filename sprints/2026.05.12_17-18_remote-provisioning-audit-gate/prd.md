@@ -112,7 +112,7 @@ P1：
 - 兼容围栏：`robot-software-engineer`
 - 验收和 OKR 收口：`product-okr-owner`
 
-本轮不需要 `rober-hardware-engineer` 或 `autonomy-engineer`，因为不涉及硬件、WAVE ROVER、UART、Nav2、fixed-route 或视觉实机能力。
+本轮不需要 `robot-hardware-engineer` 或 `autonomy-engineer`，因为不涉及硬件、WAVE ROVER、UART、Nav2、fixed-route 或视觉实机能力。
 
 ## 8. 风险、阻塞和需要补齐的证据链
 

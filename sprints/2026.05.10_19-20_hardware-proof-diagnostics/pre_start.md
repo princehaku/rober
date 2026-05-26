@@ -79,7 +79,7 @@
 ## 对应责任 Engineer
 
 - 实现、测试、修复、`tech-done.md`：`full-stack-software-engineer`。
-- 如 proof 字段解释需要硬件事实补充，可只读咨询 `rober-hardware-engineer`；本轮不让 hardware owner 改代码。
+- 如 proof 字段解释需要硬件事实补充，可只读咨询 `robot-hardware-engineer`；本轮不让 hardware owner 改代码。
 - Product/OKR Owner 在实现后负责验收口径检查、`side2side_check.md`、`final.md` 和必要的 OKR 收口。
 
 ## 风险、阻塞和证据链缺口

@@ -104,7 +104,7 @@ P1 验收：
 - 主责：`full-stack-software-engineer`
 - 兼容性主责：`robot-software-engineer`
 - 产品验收：`product-okr-owner`
-- 不参与本轮实现：`rober-hardware-engineer`、`autonomy-engineer`
+- 不参与本轮实现：`robot-hardware-engineer`、`autonomy-engineer`
 
 ## 风险、阻塞和证据链
 

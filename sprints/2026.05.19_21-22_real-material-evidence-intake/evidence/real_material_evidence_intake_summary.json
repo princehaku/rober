@@ -46,7 +46,7 @@
       ],
       "next_action": "collect_pr5_sensor_and_wave_rover_uart_hil_materials",
       "not_proven": true,
-      "owner_handoff": "rober-hardware-engineer",
+      "owner_handoff": "robot-hardware-engineer",
       "primary_actions_enabled": false,
       "rejected_items": [],
       "safe_evidence_ref": "sample-real-material-evidence-2026-05-19",

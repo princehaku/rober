@@ -55,7 +55,7 @@ PR #4 route/elevator field materials 已被多轮消耗并触发重复 blocker �
 | full-stack-software-engineer | 主责 mobile/web 展示 terminal action mainline 状态；保持 Start Delivery、Confirm Dropoff、Cancel gating 不扩大。 |
 | product-okr-owner | 主责 sprint docs、OKR、progress log 和 closeout；确保边界不被写成真实 dropoff/cancel completion。 |
 | autonomy-engineer | 只读咨询 route/fixed-route/task evidence 字段边界，不写文件。 |
-| rober-hardware-engineer | 本轮不写文件；不涉及 WAVE ROVER、UART、引脚、电压、传感器或 vendor detail 改动。 |
+| robot-hardware-engineer | 本轮不写文件；不涉及 WAVE ROVER、UART、引脚、电压、传感器或 vendor detail 改动。 |
 
 ## 7. 范围边界
 

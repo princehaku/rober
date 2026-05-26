@@ -85,7 +85,7 @@ P1:
 
 ## 对应责任 Engineer
 
-- A. `rober-hardware-engineer`：PC gate + tests + `docs/interfaces/` 或 hardware/product boundary refs。
+- A. `robot-hardware-engineer`：PC gate + tests + `docs/interfaces/` 或 hardware/product boundary refs。
 - B. `robot-software-engineer`：Robot diagnostics safe alias + focused diagnostics tests + `docs/interfaces/ros_runtime_contracts.md`。
 - C. `full-stack-software-engineer`：`mobile/web` read-only panel + fixture + focused mobile tests + `docs/product/mobile_user_flow.md`。
 - D. `product-okr-owner`：A/B/C 完成后的 sprint closeout、OKR/progress narrative 更新和证据边界复核。

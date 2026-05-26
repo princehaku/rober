@@ -68,7 +68,7 @@ P1：
 - `robot-software-engineer`：diagnostics metadata-only summary、接口文档和隔离测试。
 - `full-stack-software-engineer`：mobile/web 只读面板、fixture、entrypoint 测试和产品文档。
 - `product-okr-owner`：收口文档、OKR 口径和证据边界。
-- `rober-hardware-engineer`：本轮不主责；若后续执行阶段触及 WAVE ROVER、UART、串口、波特率、引脚、电压或机械安装，必须先读 `docs/vendor/VENDOR_INDEX.md` 及其指向资料。
+- `robot-hardware-engineer`：本轮不主责；若后续执行阶段触及 WAVE ROVER、UART、串口、波特率、引脚、电压或机械安装，必须先读 `docs/vendor/VENDOR_INDEX.md` 及其指向资料。
 
 ## 8. 风险、阻塞和证据链
 

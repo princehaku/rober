@@ -57,7 +57,7 @@ Manifest template schema:
 | material_group | Objective / review ref | Owner handoff | Required material items |
 |---|---|---|---|
 | `o5_external` | `Objective 5` | `product-okr-owner` | `public_https_tls`, `4g_sim`, `oss_cdn_live_traffic`, `production_db_queue`, `worker_migration_cutover`, `external_proof` |
-| `o1_pr5_hardware` | `Objective 1`, `PR #5`, `PRRT_kwDOSWB9286CJ3tX` | `rober-hardware-engineer` | `2d_lidar_sku_source_receipt`, `tof_sku_source_receipt`, `procurement_install_wiring_power_calibration`, `hil_entry`, `wave_rover_uart_hil_packet` |
+| `o1_pr5_hardware` | `Objective 1`, `PR #5`, `PRRT_kwDOSWB9286CJ3tX` | `robot-hardware-engineer` | `2d_lidar_sku_source_receipt`, `tof_sku_source_receipt`, `procurement_install_wiring_power_calibration`, `hil_entry`, `wave_rover_uart_hil_packet` |
 | `pr4_route_elevator` | `PR #4`, `Objective 2`, `Objective 3` | `autonomy-engineer` | `nav2_fixed_route_runtime_log`, `route_completion_signal`, `field_task_record`, `elevator_door_state`, `target_floor_confirmation`, `human_assistance_record`, `dropoff_cancel_material`, `delivery_result` |
 | `o4_real_phone` | `Objective 4` | `full-stack-software-engineer` | `real_phone_browser_session`, `production_app`, `pwa_prompt_user_choice`, `true_phone_browser_acceptance` |
 

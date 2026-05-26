@@ -45,7 +45,7 @@
 | P0 | 行为层 action execution result tests 仍 open | `robot-software-engineer` | 覆盖 success、navigation_failed、timed_out、canceled 的终态字段 |
 | P0 | fixed route delivery 结果路径与文档一致性仍 open | `autonomy-engineer` | 用 fixed-route status reader、dry-run status 和文档命令对齐 |
 | P0 | Docker Humble build 上轮 blocked | `robot-software-engineer` | 本轮作为 P0 重跑；不可用则记录阻塞根因 |
-| P0 | HIL 缺少实机证据 | `rober-hardware-engineer` | 本轮只关闭准入清单，不声明实机通过 |
+| P0 | HIL 缺少实机证据 | `robot-hardware-engineer` | 本轮只关闭准入清单，不声明实机通过 |
 | P1 | 手机/远程消费者需要机器可判定终态 | `full-stack-software-engineer` | 保持 `final_state`、`error_code`、`error_message` 可消费 |
 
 ## 本轮组织链路
@@ -58,7 +58,7 @@ CEO -> Product Manager / OKR Owner -> Engineers。
 | Engineer | `robot-software-engineer` | action result、状态机、task record、Docker Humble build P0 |
 | Engineer | `autonomy-engineer` | fixed route delivery dry-run 结果路径 |
 | Engineer | `full-stack-software-engineer` | 手机/远程终态字段契约 |
-| Engineer | `rober-hardware-engineer` | HIL 准入清单和 vendor 来源边界 |
+| Engineer | `robot-hardware-engineer` | HIL 准入清单和 vendor 来源边界 |
 
 ## P0 风险
 
@@ -67,7 +67,7 @@ CEO -> Product Manager / OKR Owner -> Engineers。
 | action result 不能机器判定 success/failure/timeout/cancel | `robot-software-engineer` | 结果字段和 task record 测试通过 |
 | fixed route delivery 只停留在文档，没有离线结果路径证据 | `autonomy-engineer` | dry-run/status reader 测试通过 |
 | Docker Humble build 不能证明接口/action/msg 生成 | `robot-software-engineer` | Docker build 通过；或 P0 blocked 记录根因 |
-| HIL 准入资料不完整却宣称硬件完成 | `rober-hardware-engineer` | HIL checklist ready，实机验证明确 deferred |
+| HIL 准入资料不完整却宣称硬件完成 | `robot-hardware-engineer` | HIL checklist ready，实机验证明确 deferred |
 | P0 未清零就 final | `product-okr-owner` | `side2side_check.md` 明确区分 closed、blocked、deferred |
 
 ## 本文件 Gate

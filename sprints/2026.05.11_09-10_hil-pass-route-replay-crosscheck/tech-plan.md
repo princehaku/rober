@@ -19,7 +19,7 @@
 
 ### O1（第一优先）：硬件与实机闭环边界
 
-- Owner：`rober-hardware-engineer`
+- Owner：`robot-hardware-engineer`
 - 任务边界：
   - 在 `prd.md`/`pre_start.md` 明确 hil-pass 与软件证据边界后，给出下一轮“硬件可复验”最小清单。
   - 不生成新的 HIL 样本文件，只做文档与下一步执行准入定义。

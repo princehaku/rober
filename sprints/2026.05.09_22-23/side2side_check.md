@@ -75,7 +75,7 @@ HIL 本轮状态：
 | interfaces 包本地 smoke 缺少契约覆盖 | `robot-software-engineer` | interfaces 静态契约测试进入 `bash scripts/run_smoke_tests.sh` | closed |
 | 手机/远程对失败任务一级状态不一致 | `full-stack-software-engineer` | remote bridge 行为测试 | closed |
 | Docker Humble build 不能证明接口/action/msg 生成 | `robot-software-engineer` | Docker build 通过 | blocked: `docker` command not found |
-| HIL 准入资料不完整却宣称硬件完成 | `rober-hardware-engineer` | 准入清单 ready，实机 deferred | closed for documentation boundary only |
+| HIL 准入资料不完整却宣称硬件完成 | `robot-hardware-engineer` | 准入清单 ready，实机 deferred | closed for documentation boundary only |
 | P0 未清零就 final | `product-okr-owner` | 本表全部 closed | open because Docker P0 blocked |
 
 ## 本阶段结论

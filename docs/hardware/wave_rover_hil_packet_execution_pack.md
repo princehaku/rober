@@ -77,7 +77,7 @@
 
 `collection_sequence` 固定为先确认真实硬件环境，再按同一 `evidence_ref` 采集 `feedback_T1001.log`、`odom_once.jsonl`、`imu_once.jsonl`、`battery_once.jsonl`，最后写 `operator_hil_report` 并重跑 intake 与 review decision gates。
 
-`owner_handoff` 固定把真实采集交给 rober-hardware-engineer，Robot 只读消费 review-decision summary，Full-stack 保持 mobile execution pack 只读且 `primary_actions_enabled=false`。
+`owner_handoff` 固定把真实采集交给 robot-hardware-engineer，Robot 只读消费 review-decision summary，Full-stack 保持 mobile execution pack 只读且 `primary_actions_enabled=false`。
 
 ## Fail-closed rules
 

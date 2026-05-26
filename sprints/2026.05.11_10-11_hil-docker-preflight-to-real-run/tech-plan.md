@@ -5,7 +5,7 @@
 - 前置文档：`prd.md`
 - 当前阶段：`tech-plan.md`
 - 本阶段完成条件：下一阶段 owner、文件范围、接口影响、验收命令和风险边界清晰。
-- 下一阶段：由 `rober-hardware-engineer` 执行 `tech-done.md`，记录 docker preflight 与真实硬件 run 结果。
+- 下一阶段：由 `robot-hardware-engineer` 执行 `tech-done.md`，记录 docker preflight 与真实硬件 run 结果。
 
 ## 总体技术方案
 
@@ -24,7 +24,7 @@
 
 ### P0：Docker preflight
 
-- Owner：`rober-hardware-engineer`
+- Owner：`robot-hardware-engineer`
 - 文件范围：
   - 允许读取：`scripts/docker_humble_build.sh`、`scripts/docker_humble_dev.sh`、`scripts/hardware_smoke_wave_rover.py`、`docs/vendor/VENDOR_INDEX.md`、`docs/acceptance/*`
   - 允许更新：当前 sprint 后续 `tech-done.md`
@@ -39,7 +39,7 @@
 
 ### P0：真实串口 real run
 
-- Owner：`rober-hardware-engineer`
+- Owner：`robot-hardware-engineer`
 - 前置条件：
   - 宿主机能看到真实串口设备，例如通过 `ls -l <real_serial_device>` 确认。
   - docker 通过 `EXTRA_DOCKER_ARGS="--device=<real_serial_device>"` 或等价方式映射串口设备。
@@ -76,7 +76,7 @@
 | --- | --- | --- |
 | 文档存在 | `test -f sprints/2026.05.11_10-11_hil-docker-preflight-to-real-run/pre_start.md && test -f sprints/2026.05.11_10-11_hil-docker-preflight-to-real-run/prd.md && test -f sprints/2026.05.11_10-11_hil-docker-preflight-to-real-run/tech-plan.md` | 退出码 0 |
 
-## 后续建议命令（由 `rober-hardware-engineer` 执行，不作为本阶段验收）
+## 后续建议命令（由 `robot-hardware-engineer` 执行，不作为本阶段验收）
 
 ```bash
 bash scripts/docker_humble_build.sh
@@ -111,4 +111,4 @@ python3 scripts/hardware_smoke_wave_rover.py \
 ## 本文件 Gate
 
 - `tech-plan.md` 已明确 owner、范围、接口影响、验收命令与风险边界。
-- 允许后续由 `rober-hardware-engineer` 进入执行阶段并更新 `tech-done.md`。
+- 允许后续由 `robot-hardware-engineer` 进入执行阶段并更新 `tech-done.md`。

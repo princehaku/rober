@@ -22316,7 +22316,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                         "rejected_required_materials": ["placeholder odom_once.jsonl"],
                         "next_required_evidence": ["same evidence_ref HIL packet"],
                         "owner_handoff": {
-                            "rober-hardware-engineer": "collect real HIL packet on a host with WAVE ROVER UART access",
+                            "robot-hardware-engineer": "collect real HIL packet on a host with WAVE ROVER UART access",
                             "robot-software-engineer": "keep diagnostics read-only",
                         },
                         "rerun_commands": [
@@ -22384,7 +22384,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("real feedback_T1001.log", summary["missing_required_materials"])
         self.assertIn("placeholder odom_once.jsonl", summary["rejected_required_materials"])
         self.assertIn("same evidence_ref HIL packet", summary["next_required_evidence"])
-        self.assertIn("rober-hardware-engineer", summary["owner_handoff"])
+        self.assertIn("robot-hardware-engineer", summary["owner_handoff"])
         self.assertIn("wave_rover_hil_packet_review_decision.py", summary["rerun_commands"][1])
         self.assertIn("real_wave_rover", summary["not_proven"])
         self.assertEqual(
@@ -22439,7 +22439,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                         "missing_required_materials": ["real feedback_T1001.log"],
                         "rejected_required_materials": [],
                         "next_required_evidence": ["real WAVE ROVER HIL packet"],
-                        "owner_handoff": {"rober-hardware-engineer": "collect real HIL packet"},
+                        "owner_handoff": {"robot-hardware-engineer": "collect real HIL packet"},
                         "rerun_commands": [
                             "python3 pc-tools/evidence/wave_rover_hil_packet_review_decision.py --intake-summary <summary.json>"
                         ],
@@ -22620,7 +22620,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                             "rerun review decision before any HIL claim",
                         ],
                         "owner_handoff": {
-                            "rober-hardware-engineer": "collect real packet on WAVE ROVER host",
+                            "robot-hardware-engineer": "collect real packet on WAVE ROVER host",
                             "robot-software-engineer": "keep diagnostics metadata-only",
                         },
                         "rerun_commands": [
@@ -22684,7 +22684,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         )
         self.assertEqual(summary["required_material_templates"][0]["id"], "feedback_T1001")
         self.assertIn("collect sanitized feedback_T1001 log", summary["collection_sequence"])
-        self.assertIn("rober-hardware-engineer", summary["owner_handoff"])
+        self.assertIn("robot-hardware-engineer", summary["owner_handoff"])
         self.assertIn("wave_rover_hil_packet_execution_pack.py", summary["rerun_commands"][0])
         self.assertIn("real_wave_rover", summary["not_proven"])
         self.assertIn("delivery_success", summary["not_proven"])
@@ -22741,7 +22741,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                         },
                         "required_material_templates": [{"id": "operator_hil_report"}],
                         "collection_sequence": ["collect real packet materials"],
-                        "owner_handoff": {"rober-hardware-engineer": "collect real packet"},
+                        "owner_handoff": {"robot-hardware-engineer": "collect real packet"},
                         "rerun_commands": [
                             "python3 pc-tools/evidence/wave_rover_hil_packet_execution_pack.py --once-json"
                         ],
@@ -22790,7 +22790,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                             },
                             "required_material_templates": [{"id": "feedback_T1001"}],
                             "collection_sequence": ["collect feedback"],
-                            "owner_handoff": {"rober-hardware-engineer": "collect real packet"},
+                            "owner_handoff": {"robot-hardware-engineer": "collect real packet"},
                             "rerun_commands": ["python3 pc-tools/evidence/wave_rover_hil_packet_execution_pack.py"],
                             "not_proven": ["real_wave_rover"],
                             "delivery_success": False,
@@ -22905,7 +22905,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                             "python3 pc-tools/evidence/wave_rover_hil_packet_collection_drill.py --summary <summary.json>",
                         ],
                         "owner_handoff": {
-                            "rober-hardware-engineer": "collect packet materials on the robot host",
+                            "robot-hardware-engineer": "collect packet materials on the robot host",
                             "robot-software-engineer": "publish diagnostics safe alias only",
                         },
                         "blocked_reasons": ["real_hil_material_missing"],
@@ -22987,7 +22987,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("confirm same safe evidence_ref before collection", summary["preflight_checklist"])
         self.assertIn("collect sanitized feedback_T1001 log", summary["collection_sequence"])
         self.assertIn("wave_rover_hil_packet_collection_drill.py", summary["backfill_commands"][0])
-        self.assertIn("rober-hardware-engineer", summary["owner_handoff"])
+        self.assertIn("robot-hardware-engineer", summary["owner_handoff"])
         self.assertIn("real_hil_material_missing", summary["blocked_reasons"])
         self.assertIn("real_wave_rover", summary["not_proven"])
         self.assertIn("safe_to_control", summary["not_proven"])
@@ -23051,7 +23051,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                         "backfill_commands": [
                             "python3 pc-tools/evidence/wave_rover_hil_packet_collection_drill.py --once-json"
                         ],
-                        "owner_handoff": {"rober-hardware-engineer": "collect packet materials"},
+                        "owner_handoff": {"robot-hardware-engineer": "collect packet materials"},
                         "blocked_reasons": ["real_uart_missing"],
                         "not_proven": ["real_wave_rover", "hil_pass", "delivery_success"],
                         "delivery_success": False,
@@ -26757,7 +26757,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                         "next_required_evidence": [
                             "Wait for sanitized Hardware reply-dispatch review and real material packet."
                         ],
-                        "owner_handoff": ["rober-hardware-engineer"],
+                        "owner_handoff": ["robot-hardware-engineer"],
                         "safe_copy": (
                             "PR #5 vendor/source review reply dispatch is metadata-only; "
                             "software_proof; not_proven; hardware_material_pending; "
@@ -26949,7 +26949,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                             "sanitized 2D LiDAR source packet",
                             "sanitized ToF source packet",
                         ],
-                        "owner_handoff": ["rober-hardware-engineer"],
+                        "owner_handoff": ["robot-hardware-engineer"],
                         "false_states": {
                             "hardware_material_pending": True,
                             "not_proven": True,
@@ -27016,7 +27016,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertIn("docs/vendor/VENDOR_INDEX.md", summary["source_boundary"])
         self.assertIn("real_2d_lidar_source_material", summary["missing_materials"])
         self.assertIn("sanitized 2D LiDAR source packet", summary["next_required_evidence"])
-        self.assertEqual(summary["owner_handoff"], ["rober-hardware-engineer"])
+        self.assertEqual(summary["owner_handoff"], ["robot-hardware-engineer"])
         self.assertTrue(summary["false_states"]["hardware_material_pending"])
         self.assertTrue(summary["false_states"]["not_proven"])
         self.assertFalse(summary["false_states"]["safe_to_control"])
@@ -28768,7 +28768,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                                 "primary_actions_enabled=false; safe_to_control=false."
                             ),
                             "material_ref_hint": "Use safe evidence_ref labels only.",
-                            "owner_handoff": ["rober-hardware-engineer"],
+                            "owner_handoff": ["robot-hardware-engineer"],
                             "objective_ref": "O1",
                             "next_action": "Collect sanitized packet summary for Robot review.",
                             "same_evidence_ref_required": True,
@@ -29011,7 +29011,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                         "overall_status": "not_proven",
                         "safe_evidence_ref": "evidence://real-material-followup-status-1",
                         "material_group": "o1_pr5_hardware",
-                        "field_owner": "rober-hardware-engineer",
+                        "field_owner": "robot-hardware-engineer",
                         "due_status": "overdue",
                         "blocked_reason": "blocked_pending_real_materials",
                         "next_required_evidence": [
@@ -29032,7 +29032,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
                         "material_groups": [
                             {
                                 "material_group": "o1_pr5_hardware",
-                                "field_owner": "rober-hardware-engineer",
+                                "field_owner": "robot-hardware-engineer",
                                 "due_status": "overdue",
                                 "blocked_reason": "blocked_pending_real_materials",
                                 "next_required_evidence": [
@@ -29108,7 +29108,7 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
         self.assertEqual(summary["due_status"], "overdue")
         self.assertEqual(summary["blocked_reason"], "blocked_pending_real_materials")
         self.assertIn("real 2D LiDAR / ToF source citation", summary["not_proven"])
-        self.assertEqual(summary["material_groups"][0]["field_owner"], "rober-hardware-engineer")
+        self.assertEqual(summary["material_groups"][0]["field_owner"], "robot-hardware-engineer")
         self.assertEqual(summary["escalation_level"], "ceo_decision_needed")
         self.assertIn("software_proof", json.dumps(summary["rerun_status_summary"]))
         self.assertIn("delivery_success=false", summary["robot_diagnostics_summary"]["safe_copy"])

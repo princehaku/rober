@@ -32,7 +32,7 @@
 
 | Owner | 责任 | 可改文件范围 | 不可越界 |
 | --- | --- | --- | --- |
-| `rober-hardware-engineer` | 主责硬件 baseline 文档修复，统一默认硬件集与 mandatory baseline，补清 vendor/source attribution 边界 | `docs/product/production_hardware_boundary.md`、必要时 `docs/vendor/` 只读引用或补新增本地采购资料文档 | 不写产品代码，不声明 LiDAR/ToF 已实测 |
+| `robot-hardware-engineer` | 主责硬件 baseline 文档修复，统一默认硬件集与 mandatory baseline，补清 vendor/source attribution 边界 | `docs/product/production_hardware_boundary.md`、必要时 `docs/vendor/` 只读引用或补新增本地采购资料文档 | 不写产品代码，不声明 LiDAR/ToF 已实测 |
 | `robot-software-engineer` | 检查 bringup/launch/diagnostics contract，确保传感器数量、frame id、阈值、设备路径参数化 | ROS2 bringup、diagnostics、hardware config 相关文件和对应 docs | 不硬编码未证明设备路径或通道数 |
 | `autonomy-engineer` | 检查 Nav2/SLAM、电梯语义证据、ToF 近场安全 responsibility split | nav、vision、behavior 自主能力 contract 和相关 docs | 不把 ToF 写成主建图输入，不宣称 field pass |
 | `full-stack-software-engineer` | 检查手机端是否需要只读展示硬件基线缺口和 `not_proven` 状态 | `mobile/web`、operator gateway API docs、phone-safe copy docs | 不解锁 Start / Confirm Dropoff / Cancel |
@@ -44,7 +44,7 @@
 
 ### Task A - Hardware Baseline Document Gate
 
-Owner：`rober-hardware-engineer`
+Owner：`robot-hardware-engineer`
 
 目标：
 
@@ -149,7 +149,7 @@ git diff --check -- docs/product/production_hardware_boundary.md sprints/2026.05
 
 下一步进入 implementation 时，必须由子 agent 执行：
 
-- 并行启动 `rober-hardware-engineer` 和 `robot-software-engineer`。
+- 并行启动 `robot-hardware-engineer` 和 `robot-software-engineer`。
 - 如 Hardware 修复牵涉 Nav2/SLAM/电梯感知 contract，同时并行启动 `autonomy-engineer` 做只读/轻量 contract 补充。
 - 如需要 phone-safe 状态展示或 copy，启动 `full-stack-software-engineer`，并保持 Start / Confirm / Cancel fail-closed。
 - Product 只做验收、sprint 文档链路和 OKR 更新，不替 Engineer 写实现。

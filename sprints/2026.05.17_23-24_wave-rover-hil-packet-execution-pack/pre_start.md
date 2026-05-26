@@ -19,7 +19,7 @@ sprint_type: epic
 
 ## 3. 本轮 Owner
 
-- rober-hardware-engineer：新增 PC execution-pack gate、fixture、测试和硬件文档；必须读取 vendor index 与 WAVE ROVER vendor 文件。
+- robot-hardware-engineer：新增 PC execution-pack gate、fixture、测试和硬件文档；必须读取 vendor index 与 WAVE ROVER vendor 文件。
 - robot-software-engineer：新增 diagnostics metadata-only consumer、测试和 ROS contract 文档。
 - full-stack-software-engineer：新增 mobile/web 只读 execution-pack panel、fixture/test 和产品流程文档。
 - product-okr-owner：验收收口、OKR 更新、progress log 和本 sprint closeout。

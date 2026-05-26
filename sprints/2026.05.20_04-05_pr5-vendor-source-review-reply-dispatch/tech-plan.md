@@ -25,7 +25,7 @@
 
 ## 2. Owner / 文件范围
 
-### rober-hardware-engineer
+### robot-hardware-engineer
 
 主责：reply-dispatch generator、artifact schema、Markdown safety scanner 和 source-boundary semantics。
 
@@ -102,7 +102,7 @@
 
 本 sprint 是 4 owner Epic，文件范围互不重叠，必须并行启动 4 个 worker：
 
-- `rober-hardware-engineer`：实现 reply-dispatch generator、Markdown artifact 和 focused tests。
+- `robot-hardware-engineer`：实现 reply-dispatch generator、Markdown artifact 和 focused tests。
 - `robot-software-engineer`：并行实现 diagnostics alias，可先使用计划中的 summary fixture；若 Hardware schema 有字段差异，alias 层兼容。
 - `full-stack-software-engineer`：并行实现 mobile fixture + panel，消费 Robot alias shape。
 - `product-okr-owner`：并行准备 closeout checklist、OKR/progress wording 和 GitHub reply 安全验收项。

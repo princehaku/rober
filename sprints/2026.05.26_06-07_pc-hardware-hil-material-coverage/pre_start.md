@@ -9,7 +9,7 @@
 - 当前阶段：planning
 - 产品负责人：`product-okr-owner`
 - 实现主责：`full-stack-software-engineer`
-- 硬件事实咨询：`rober-hardware-engineer`
+- 硬件事实咨询：`robot-hardware-engineer`
 
 本轮不做产品代码、测试代码、硬件配置或 `OKR.md` 改动。Product 只创建 `pre_start.md`、`prd.md`、`tech-plan.md`，为后续 Engineer 并行执行提供清晰范围、验收命令和证据边界。
 
@@ -51,7 +51,7 @@
 | --- | --- | --- |
 | `product-okr-owner` | 本轮 sprint 启动、PRD、tech-plan、后续 closeout/OKR/sprint 文档 | 只改 sprint 文档；实现完成后再更新 `tech-done.md` / `side2side_check.md` / `final.md` / `OKR.md` |
 | `full-stack-software-engineer` | 实现 Node-native scanner/API/UI/tests/docs | 修改 `pc-tools/workstation/**`、必要时更新 `pc-tools/evidence/README.md` 和 `docs/product/pc_tools_workstation.md` |
-| `rober-hardware-engineer` | 只读确认 required materials 和 vendor/source 事实边界 | 读取 `docs/vendor/VENDOR_INDEX.md` 及指向资料，返回材料清单建议；不改硬件配置 |
+| `robot-hardware-engineer` | 只读确认 required materials 和 vendor/source 事实边界 | 读取 `docs/vendor/VENDOR_INDEX.md` 及指向资料，返回材料清单建议；不改硬件配置 |
 
 ## 6. 风险、阻塞和证据链缺口
 

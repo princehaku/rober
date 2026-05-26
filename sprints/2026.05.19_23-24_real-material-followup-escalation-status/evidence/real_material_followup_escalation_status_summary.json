@@ -50,7 +50,7 @@
       "due_status": "overdue_pending_real_materials",
       "escalation_level": "hardware_real_material_owner_followup_required",
       "evidence_boundary": "software_proof_docker_real_material_followup_escalation_status_gate",
-      "field_owner": "rober-hardware-engineer",
+      "field_owner": "robot-hardware-engineer",
       "material_group": "o1_pr5_hardware",
       "next_required_evidence": [
         "mandatory sensor baseline citation to docs/vendor/VENDOR_INDEX.md and referenced local vendor files",

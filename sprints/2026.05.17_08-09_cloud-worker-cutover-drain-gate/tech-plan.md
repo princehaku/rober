@@ -129,7 +129,7 @@ git diff --check -- sprints/2026.05.17_08-09_cloud-worker-cutover-drain-gate/tec
 - Task A 与 Task B 文件范围互不重叠，下一阶段必须并行派发 `full-stack-software-engineer` 和 `robot-software-engineer`。
 - Task A 主责 cloud relay cutover drain artifact / preflight / Docker smoke，Task B 主责 robot metadata isolation fence。
 - Task C 只在 A/B 返回验证证据后执行 Product closeout。
-- 本轮不派 `rober-hardware-engineer` 写文件，因为 PR #5 真实硬件材料不可得且硬件 blocker 已多轮消费。
+- 本轮不派 `robot-hardware-engineer` 写文件，因为 PR #5 真实硬件材料不可得且硬件 blocker 已多轮消费。
 - 本轮不派 `autonomy-engineer` 写文件，因为 `06-07_route-task-field-retest-evidence-dispatch/final.md` 已要求没有真实现场材料时不要继续堆 O2/O3 wrapper。
 
 ## 7. OKR 最低优先级核对

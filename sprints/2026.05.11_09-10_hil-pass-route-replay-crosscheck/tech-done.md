@@ -4,7 +4,7 @@
 
 - 阶段：tech-done review-ready（blocked by hil_pass）
 - 时间：2026-05-11 16:47 Asia/Shanghai
-- Owner：`rober-hardware-engineer`
+- Owner：`robot-hardware-engineer`
 - 范围：O1 WAVE ROVER 真实串口 move-test 上车前准入与 evidence_ref 闭环准备
 
 ## O1→O2→O3 序列审定

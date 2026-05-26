@@ -95,7 +95,7 @@ P1 验收：
 ## 8. 对应责任 Engineer
 
 - 主责实现：`full-stack-software-engineer`，使用 `.codex/agents/full-stack-software-engineer.toml` 的 prompt。
-- 硬件事实咨询：`rober-hardware-engineer`，使用 `.codex/agents/rober-hardware-engineer.toml` 的 prompt，先读 `docs/vendor/VENDOR_INDEX.md` 及必要 vendor 文件。
+- 硬件事实咨询：`robot-hardware-engineer`，使用 `.codex/agents/robot-hardware-engineer.toml` 的 prompt，先读 `docs/vendor/VENDOR_INDEX.md` 及必要 vendor 文件。
 - 产品收口：`product-okr-owner`，实现完成后检查 PRD/验收/OKR/sprint 文档链路。
 
 ## 9. 风险、阻塞和需要补齐的证据链

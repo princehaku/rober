@@ -6,7 +6,7 @@
 - Sprint folder: `sprints/2026.05.23_16-17_pr5-mandatory-sensor-material-owner-response-intake/`
 - Start time: 2026-05-23 16:03 Asia/Shanghai
 - Product owner: `product-okr-owner`
-- Primary implementation owners: `rober-hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
+- Primary implementation owners: `robot-hardware-engineer`, `robot-software-engineer`, `full-stack-software-engineer`
 - Product closeout owner: `product-okr-owner`
 - Capability: `pr5_mandatory_sensor_material_owner_response_intake`
 - Evidence boundary: `software_proof_docker_pr5_mandatory_sensor_material_owner_response_intake_gate`

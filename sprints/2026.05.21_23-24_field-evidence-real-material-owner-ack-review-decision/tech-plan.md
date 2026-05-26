@@ -152,7 +152,7 @@ git diff --check -- mobile docs/product/mobile_user_flow.md
 
 ### Hardware Infra Engineer
 
-Role id: `rober-hardware-engineer`
+Role id: `robot-hardware-engineer`
 
 Goal: perform read-only vendor / PR #5 boundary consultation.
 

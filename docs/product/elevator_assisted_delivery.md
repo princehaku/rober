@@ -239,4 +239,4 @@ artifact 使用 `schema=trashbot.field_evidence_material_blocker_escalation_pack
 - `robot-software-engineer`：电梯子状态机、任务结果、失败路径、task record。
 - `autonomy-engineer`：电梯门、目标楼层、驶出条件的感知 contract 和证据采集。
 - `full-stack-software-engineer`：手机状态、diagnostics、speaker prompt/TTS contract。
-- `rober-hardware-engineer`：仅在后续涉及真实硬件、电气、UART、安装或 WAVE ROVER/Orange Pi 事实时介入，并必须先查 `docs/vendor/VENDOR_INDEX.md`。
+- `robot-hardware-engineer`：仅在后续涉及真实硬件、电气、UART、安装或 WAVE ROVER/Orange Pi 事实时介入，并必须先查 `docs/vendor/VENDOR_INDEX.md`。

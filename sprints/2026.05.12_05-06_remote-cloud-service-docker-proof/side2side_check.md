@@ -97,7 +97,7 @@ scoped git diff --check:
 
 4. O1/O2/O3 暂不从本轮软件 proof 获得完成度。
    - 证据依据：当前 OKR 快照、04-05 final、05-06 tech-done 都明确没有真实 WAVE ROVER、真实 Nav2/fixed-route、同一 `evidence_ref` route replay 或 HIL；本轮 Task C 只是 `Ran 37 tests in 17.884s OK` 的本地软件围栏。
-   - 责任 Engineer：`rober-hardware-engineer`、`autonomy-engineer`、`robot-software-engineer`。
+   - 责任 Engineer：`robot-hardware-engineer`、`autonomy-engineer`、`robot-software-engineer`。
    - 验收口径：必须有真实串口/HIL evidence packet 和同一 evidence_ref 的 route/task 复盘，才能提升实机相关 OKR。
 
 ## 风险、阻塞和需要补齐的证据链

@@ -31,7 +31,7 @@
   - `prd.md`
   - `tech-plan.md`
 - 明确 docker preflight 与 real run 的证据边界。
-- 明确 `rober-hardware-engineer` 为下一阶段主责，`robot-software-engineer`/`autonomy-engineer` 只在真实 run 后做同 evidence_ref 对账。
+- 明确 `robot-hardware-engineer` 为下一阶段主责，`robot-software-engineer`/`autonomy-engineer` 只在真实 run 后做同 evidence_ref 对账。
 - 明确真实硬件 absent 时的状态：O1 继续 blocked，O2/O3 继续 software proof。
 - 引用硬件事实来源：`docs/vendor/VENDOR_INDEX.md`。其中串口、波特率、JSON 指令和 Orange Pi 设备名判断不得凭记忆推断。
 
@@ -81,7 +81,7 @@
 
 | 失败 | 判定 | 处理 |
 | --- | --- | --- |
-| docker 镜像或依赖不可用 | preflight blocked | 由 `rober-hardware-engineer` 修复容器/依赖链路，不能进入 real run |
+| docker 镜像或依赖不可用 | preflight blocked | 由 `robot-hardware-engineer` 修复容器/依赖链路，不能进入 real run |
 | 宿主机无真实串口设备 | real run blocked | 保持 O1 blocked，记录 `ls -l <device>` 与容器设备映射结果 |
 | 串口打开成功但无 `T=1001` 反馈 | real run partial/failed | 保留 serial log，依据 vendor JSON/feedback 资料定位协议或固件问题 |
 | 只生成占位 evidence 文件 | 不通过 | 必须明确为 blocked artifact，不能作为 `hil_pass` |

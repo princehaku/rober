@@ -76,9 +76,9 @@ PC gate summary 至少包含：
 
 ## 4. Team Plan
 
-### Task A - rober-hardware-engineer - PC replay gate
+### Task A - robot-hardware-engineer - PC replay gate
 
-Owner：rober-hardware-engineer。
+Owner：robot-hardware-engineer。
 
 Files allowed for implementation sprint:
 
@@ -191,7 +191,7 @@ git diff --check -- OKR.md docs/process/okr_progress_log.md sprints/2026.05.17_2
 
 This sprint is cross-owner and should launch 3 implementation workers in parallel after planning:
 
-- rober-hardware-engineer owns PC gate and fixture.
+- robot-hardware-engineer owns PC gate and fixture.
 - robot-software-engineer owns diagnostics consumer.
 - full-stack-software-engineer owns mobile/web read-only panel.
 
@@ -231,6 +231,6 @@ Product planning docs must pass:
 
 ```bash
 test -f sprints/2026.05.17_20-21_wave-rover-feedback-replay-gate/pre_start.md && test -f sprints/2026.05.17_20-21_wave-rover-feedback-replay-gate/prd.md && test -f sprints/2026.05.17_20-21_wave-rover-feedback-replay-gate/tech-plan.md
-rg -n "sprint_type: epic|OKR 最低优先级核对|Objective 5|Objective 1|PR #4|PR #5|software_proof_docker_wave_rover_feedback_replay_gate|not_proven|delivery_success=false|primary_actions_enabled=false|rober-hardware-engineer|robot-software-engineer|full-stack-software-engineer" sprints/2026.05.17_20-21_wave-rover-feedback-replay-gate
+rg -n "sprint_type: epic|OKR 最低优先级核对|Objective 5|Objective 1|PR #4|PR #5|software_proof_docker_wave_rover_feedback_replay_gate|not_proven|delivery_success=false|primary_actions_enabled=false|robot-hardware-engineer|robot-software-engineer|full-stack-software-engineer" sprints/2026.05.17_20-21_wave-rover-feedback-replay-gate
 git diff --check -- sprints/2026.05.17_20-21_wave-rover-feedback-replay-gate
 ```

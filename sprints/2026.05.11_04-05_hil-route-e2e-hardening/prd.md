@@ -59,6 +59,6 @@
 ## 对应责任 Engineer
 
 - `robot-software-engineer`
-- `rober-hardware-engineer`
+- `robot-hardware-engineer`
 - `autonomy-engineer`
 - `full-stack-software-engineer`

@@ -56,7 +56,7 @@
 - `robot-software-engineer`：主责完成 Robot targeted `Ran 29 tests ... OK`，py_compile 和 scoped diff check 通过。
 - `full-stack-software-engineer`：协作完成 Full-stack targeted `Ran 53 tests ... OK`，py_compile 和 scoped diff check 通过。
 - `autonomy-engineer`：协作完成 Autonomy targeted `Ran 19 tests ... OK`，py_compile 和 scoped diff check 通过。
-- `rober-hardware-engineer`：本轮无硬件改动，无需记录硬件成果。
+- `robot-hardware-engineer`：本轮无硬件改动，无需记录硬件成果。
 
 ## 风险、阻塞和证据链
 

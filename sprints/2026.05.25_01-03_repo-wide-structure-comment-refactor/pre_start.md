@@ -14,7 +14,7 @@ sprint_type: epic
 ## Owner 与并行策略
 
 - `robot-software-engineer`：ROS2 behavior 主链路和 action/bridge 兼容入口重构。
-- `rober-hardware-engineer`：hardware 包目录化和 vendor-source 注释/文档对齐。
+- `robot-hardware-engineer`：hardware 包目录化和 vendor-source 注释/文档对齐。
 - `autonomy-engineer`：nav/vision 包路线、视觉 proof 与 helper 目录化。
 - `full-stack-software-engineer`：operator gateway、diagnostics、cloud relay、mobile/web 触点结构化。
 

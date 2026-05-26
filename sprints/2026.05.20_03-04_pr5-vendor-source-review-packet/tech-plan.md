@@ -23,7 +23,7 @@
 
 ## 2. Owner / 文件范围
 
-### rober-hardware-engineer
+### robot-hardware-engineer
 
 主责：PC gate、artifact schema、source boundary semantics 和 focused tests。
 
@@ -99,7 +99,7 @@
 
 本 sprint 是 4 owner Epic，文件范围互不重叠，必须并行启动 4 个 worker：
 
-- `rober-hardware-engineer`：先实现 PC gate 和 artifact。
+- `robot-hardware-engineer`：先实现 PC gate 和 artifact。
 - `robot-software-engineer`：并行实现 diagnostics alias，可使用计划中的 summary fixture；若 Hardware schema 有字段差异，集成时调整。
 - `full-stack-software-engineer`：并行实现 mobile fixture + panel，消费 Robot alias shape。
 - `product-okr-owner`：并行准备 closeout checklist，等待三位 Engineer 结果后更新 OKR/progress/final。

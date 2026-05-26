@@ -96,7 +96,7 @@ O5 只作为 O6 的用户入口支撑。
 | `full-stack-software-engineer` | mock cloud API、最小 phone-safe command/status/ack 入口、API contract 测试 |
 | `robot-software-engineer` | remote bridge outbound polling、behavior-level mock adapter、bridge command validation 与 ack/status loop |
 | `product-okr-owner` | 验收口径、OKR 边界、sprint 留档收口 |
-| `rober-hardware-engineer` | 本轮不实现；仅当有人试图引入真实硬件细节时做 vendor 事实核对 |
+| `robot-hardware-engineer` | 本轮不实现；仅当有人试图引入真实硬件细节时做 vendor 事实核对 |
 | `autonomy-engineer` | 本轮不实现；不新增 route/Nav2 主线任务 |
 
 ## 优先级

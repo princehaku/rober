@@ -41,7 +41,7 @@ sprint_type: epic
 ## 5. 本轮需要做什么
 
 - Product Owner：完成本 sprint planning docs，明确 O5 stop rule、PR #4/#5 evidence、O1 抓手、owner 分工和验收口径。
-- rober-hardware-engineer：负责 PC evidence gate 与 fixture，必须复读 `docs/vendor/VENDOR_INDEX.md` 及 WAVE ROVER vendor 本地文件，不允许凭记忆猜测 `T=1001` 字段、feedback flow 或 interval 语义。
+- robot-hardware-engineer：负责 PC evidence gate 与 fixture，必须复读 `docs/vendor/VENDOR_INDEX.md` 及 WAVE ROVER vendor 本地文件，不允许凭记忆猜测 `T=1001` 字段、feedback flow 或 interval 语义。
 - robot-software-engineer：负责 Robot diagnostics metadata-only consumer，把 replay summary 只读纳入 diagnostics，不启用 primary action。
 - full-stack-software-engineer：负责 mobile/web 只读摘要 panel，只展示 safe evidence fields，Start / Confirm Dropoff / Cancel gating 不变。
 - product-okr-owner：实现后负责 `tech-done.md`、`side2side_check.md`、`final.md`、`OKR.md` 与 `docs/process/okr_progress_log.md` 收口；除非真实硬件材料出现，否则 Objective 1 只能按工具 readiness 谨慎表述，不能写成 HIL pass。

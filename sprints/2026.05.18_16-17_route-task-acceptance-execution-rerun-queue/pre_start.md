@@ -71,7 +71,7 @@ P1:
 - `robot-software-engineer`: 主责 operator diagnostics safe alias、metadata-only fence、diagnostics tests、ROS/diagnostics docs 同步。
 - `full-stack-software-engineer`: 主责 mobile/web 只读 panel、fixture/tests、手机用户流程 docs 同步。
 - `product-okr-owner`: 主责计划、PRD、验收口径、OKR 映射、最终 sprint closeout 和 OKR 边界更新。
-- `rober-hardware-engineer`: 本轮只读咨询。除非后续触碰 WAVE ROVER、UART、2D LiDAR、ToF、电气、接线或真实硬件材料，否则不改硬件配置；若触碰，必须先读 `docs/vendor/VENDOR_INDEX.md`。
+- `robot-hardware-engineer`: 本轮只读咨询。除非后续触碰 WAVE ROVER、UART、2D LiDAR、ToF、电气、接线或真实硬件材料，否则不改硬件配置；若触碰，必须先读 `docs/vendor/VENDOR_INDEX.md`。
 
 ## 8. 风险、阻塞和证据链缺口
 
