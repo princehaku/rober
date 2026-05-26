@@ -33,6 +33,7 @@
 - `latest_task`
 - `safe_summaries.trajectory/events/labels/voice/commands`
 - `route_replay_inspector`：KR3 只读逐帧检查视图，状态为 `fixture_inspector_ready | blocked_not_proven`
+- `labeling_queue_inspector`：KR4 只读标注队列检查视图，状态为 `fixture_labeling_ready | blocked_not_proven`
 - `fixed_false_fields`
 - `blocked_reasons`
 - `not_proven`
@@ -45,6 +46,24 @@
 - `keyframe_refs` 最多 5 条，引用只保留安全 basename
 - `cursor_initial_state.playing=false`、`safe_to_play=false`、`speed=0`、`frame_index` 为首个 sample frame 或 `null`
 - 自带 `blocked_reasons` 和 `not_proven`
+
+`labeling_queue_inspector` 只从 selected task 的本地 fixture 白名单字段生成，不透传完整原始 payload：
+
+- `selected_task_id`、`review_item_count`
+- `sample_review_items` 最多 5 条，每条包含 `item_id`、`task_id`、`frame_id`、脱敏 `media_ref`、脱敏 `evidence_ref`、`current_labels.count` 和最多 3 条 label sample
+- label sample 只包含 `label_type`、`value`、`status`、脱敏 `evidence_ref`
+- `label_schema.schema_ref/version/required_fields/allowed_fields`，其中字段列表最多 5 个
+- `allowed_label_types` 最多 5 条
+- `draft_labels.count/sample/autosave_available=false`，draft sample 最多 5 条
+- `dataset_export.available=false`、`status=blocked_not_available | fixture_summary_only`、脱敏 `export_ref`、最多 5 个 `supported_formats`、最多 5 个 `gaps`
+- `submit_enabled=false`、`rollback_enabled=false`、`dataset_export_available=false`、`real_annotation_api_connected=false`
+- 自带 `blocked_reasons` 和 `not_proven`
+
+兼容性规则：
+
+- selected task 内有 `review_items[]` 时，以 `review_items[]` 生成 `sample_review_items`，并从每个 item 的 `current_labels[]` 或 `labels[]` 生成当前 label sample。
+- selected task 只有 `labels[]` 时，adapter 会把每条 label 派生成最小 review item 和 draft label 摘要，保证 KR4 UI 能检查 item/media/label type/value/evidence_ref，而不是只看到 label count。
+- selected task 没有 `review_items[]` 且没有 `labels[]` 时，`labeling_queue_inspector.status=blocked_not_proven` 且样本为空。
 
 ## Fail-Closed Rules
 
@@ -66,6 +85,8 @@
 UI 只展示任务列表、最近任务、selected task、安全摘要、fixed false fields、blocked reasons 和 not proven。不得提供播放、提交、导出、发送、控制、停止、取消或恢复类动作按钮。
 
 UI 同时展示 `route_replay_inspector` 的 selected task、map frame、frame count、sample frames 表格、event timeline、keyframe refs 和 cursor 初始 false 字段。该区域只用于 operator 检查历史路线 fixture 是否具备逐帧位置、速度和状态转移槽位，不提供任何逐帧驱动或机器人动作入口。
+
+UI 同时展示 `labeling_queue_inspector` 的 selected task、review item count、sample review items、label schema、allowed label types、draft labels、dataset export gaps 和标注相关 false fields。该区域只用于 operator 检查 archive fixture 是否具备 O7-KR4 标注队列数据形状，不提供提交、回滚、导出、发送、控制、播放、停止、取消或恢复类动作入口。
 
 ## O7 Impact
 

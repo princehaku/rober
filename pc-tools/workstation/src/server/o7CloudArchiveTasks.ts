@@ -5,6 +5,8 @@ import type {
   O7CloudArchiveTaskSafeSummaries,
   O7CloudArchiveTasksResponse,
   O7CloudArchiveTaskSummary,
+  O7LabelingQueueInspector,
+  O7LabelingQueueInspectorLabelSample,
   O7RouteReplayInspector,
 } from "../shared/contracts";
 
@@ -183,6 +185,49 @@ function emptyRouteReplayInspector(
   };
 }
 
+function emptyLabelingQueueInspector(
+  blockedReasons: string[],
+  selectedTaskId: string | null = null,
+): O7LabelingQueueInspector {
+  // 标注 inspector 失败时必须清空样本，并固定所有提交、回滚、导出和真实 API 字段为 false。
+  return {
+    status: "blocked_not_proven",
+    selected_task_id: selectedTaskId,
+    review_item_count: 0,
+    sample_review_items: [],
+    label_schema: {
+      schema_ref: "",
+      version: "",
+      required_fields: [],
+      allowed_fields: [],
+    },
+    allowed_label_types: [],
+    draft_labels: {
+      count: 0,
+      sample: [],
+      autosave_available: false,
+    },
+    dataset_export: {
+      available: false,
+      status: "blocked_not_available",
+      export_ref: "",
+      supported_formats: [],
+      gaps: blockedReasons,
+    },
+    submit_enabled: false,
+    rollback_enabled: false,
+    dataset_export_available: false,
+    real_annotation_api_connected: false,
+    blocked_reasons: blockedReasons,
+    not_proven: [
+      "real_o7_annotation_api",
+      "real_o7_annotation_submit",
+      "real_o7_annotation_rollback",
+      "real_o7_dataset_export",
+    ],
+  };
+}
+
 function emptySummaries(status: "fixture_summary_only" | "blocked_not_proven"): O7CloudArchiveTaskSafeSummaries {
   // 空摘要也显式带 false 字段，避免前端根据缺字段自行推断。
   return {
@@ -228,6 +273,7 @@ function blockedResponse(
     latest_task: null,
     safe_summaries: emptySummaries("blocked_not_proven"),
     route_replay_inspector: emptyRouteReplayInspector(blockedReasons),
+    labeling_queue_inspector: emptyLabelingQueueInspector(blockedReasons),
     fixed_false_fields: fixedFalseFields(),
     blocked_reasons: blockedReasons,
     not_proven: [
@@ -279,9 +325,130 @@ function sampleRefs(values: unknown[]): string[] {
   }).filter(Boolean);
 }
 
+function fieldList(value: unknown): string[] {
+  // schema 字段列表只展示字符串形式并限量，避免把复杂约束对象原样搬到 UI。
+  return Array.isArray(value) ? value.slice(0, SAMPLE_LIMIT).map(safeText).filter(Boolean) : [];
+}
+
 function nestedObject(value: unknown): JsonObject {
   // trajectory frame 常把 pose/velocity 放在子对象里；非对象按空对象处理来保持 fail-soft 摘要。
   return isObject(value) ? value : {};
+}
+
+function labelSample(value: unknown): O7LabelingQueueInspectorLabelSample {
+  // 兼容 label_type/value 和 type/label 两种常见 fixture 形状，输出统一只读 sample。
+  const label = isObject(value) ? value : {};
+  return {
+    label_type: safeText(label.label_type || label.type || "label_type_missing"),
+    value: safeText(label.value || label.label || "value_missing"),
+    status: safeText(label.status || "fixture_summary_only"),
+    evidence_ref: safeRef(label.evidence_ref ?? label.label_ref),
+  };
+}
+
+function labelsFromItem(item: JsonObject): unknown[] {
+  // review item 里可能叫 current_labels，也可能沿用 labels；非数组一律视为空。
+  const current = item.current_labels;
+  if (Array.isArray(current)) {
+    return current;
+  }
+  if (isObject(current) && Array.isArray(current.labels)) {
+    return current.labels;
+  }
+  return listFromTask(item, "labels");
+}
+
+function inferAllowedLabelTypes(labels: unknown[]): string[] {
+  // 没有显式 allowed_label_types 时，从 label sample 反推一个只读检查列表。
+  return [...new Set(labels.map((label) => labelSample(label).label_type).filter((labelType) => labelType !== "label_type_missing"))]
+    .slice(0, SAMPLE_LIMIT);
+}
+
+function labelingQueueInspectorFor(task: JsonObject | null): O7LabelingQueueInspector {
+  if (!task) {
+    return emptyLabelingQueueInspector(["selected_task_missing"]);
+  }
+
+  const selectedTaskId = safeText(task.task_id || task.id || "task_id_missing");
+  const reviewItems = listFromTask(task, "review_items").filter(isObject);
+  const labels = listFromTask(task, "labels");
+  const hasReviewItems = reviewItems.length > 0;
+  const sourceItems: JsonObject[] = hasReviewItems
+    ? reviewItems
+    : labels.map((label) => ({
+      item_id: isObject(label) ? label.item_id : undefined,
+      task_id: selectedTaskId,
+      frame_id: isObject(label) ? label.frame_id : undefined,
+      media_ref: isObject(label) ? label.media_ref : undefined,
+      evidence_ref: isObject(label) ? label.evidence_ref : undefined,
+      current_labels: [label],
+    }));
+  const draftValues = listFromTask(task, "draft_labels");
+  const draftSource = draftValues.length > 0 ? draftValues : labels;
+  const schema = isObject(task.label_schema) ? task.label_schema : {};
+  const datasetExport = isObject(task.dataset_export) ? task.dataset_export : {};
+  const allowedTypes = fieldList(task.allowed_label_types);
+  const blockedReasons = [
+    "real_annotation_api_not_connected",
+    "annotation_submit_disabled",
+    "annotation_rollback_disabled",
+    "dataset_export_disabled",
+  ];
+
+  if (sourceItems.length === 0 && labels.length === 0) {
+    return emptyLabelingQueueInspector(["labeling_review_items_missing", ...blockedReasons], selectedTaskId);
+  }
+
+  return {
+    status: "fixture_labeling_ready",
+    selected_task_id: selectedTaskId,
+    review_item_count: sourceItems.length,
+    sample_review_items: sourceItems.slice(0, SAMPLE_LIMIT).map((value, index) => {
+      const item = isObject(value) ? value : {};
+      const currentLabels = labelsFromItem(item);
+      return {
+        item_id: safeText(item.item_id || `label_item_${index + 1}`),
+        task_id: safeText(item.task_id || selectedTaskId),
+        frame_id: safeText(item.frame_id || `frame_${index + 1}`),
+        media_ref: safeRef(item.media_ref ?? item.frame_ref),
+        evidence_ref: safeRef(item.evidence_ref ?? item.item_ref),
+        current_labels: {
+          count: currentLabels.length,
+          sample: currentLabels.slice(0, 3).map(labelSample),
+        },
+      };
+    }),
+    label_schema: {
+      schema_ref: safeRef(schema.schema_ref ?? schema.evidence_ref),
+      version: safeText(schema.version || ""),
+      required_fields: fieldList(schema.required_fields),
+      allowed_fields: fieldList(schema.allowed_fields),
+    },
+    allowed_label_types: (allowedTypes.length > 0 ? allowedTypes : inferAllowedLabelTypes(labels)).slice(0, SAMPLE_LIMIT),
+    draft_labels: {
+      count: draftSource.length,
+      sample: draftSource.slice(0, SAMPLE_LIMIT).map(labelSample),
+      autosave_available: false,
+    },
+    dataset_export: {
+      available: false,
+      status: Object.keys(datasetExport).length > 0 ? "fixture_summary_only" : "blocked_not_available",
+      export_ref: safeRef(datasetExport.export_ref ?? datasetExport.evidence_ref),
+      supported_formats: fieldList(datasetExport.supported_formats),
+      gaps: fieldList(datasetExport.gaps).length > 0 ? fieldList(datasetExport.gaps) : ["real_dataset_export_api_not_connected"],
+    },
+    submit_enabled: false,
+    rollback_enabled: false,
+    dataset_export_available: false,
+    real_annotation_api_connected: false,
+    blocked_reasons: blockedReasons,
+    not_proven: [
+      "real_o7_annotation_api",
+      "real_o7_annotation_submit",
+      "real_o7_annotation_rollback",
+      "real_o7_dataset_export",
+    ],
+  };
 }
 
 function frameNumber(frame: JsonObject, key: string, nested: JsonObject): number | null {
@@ -480,6 +647,7 @@ export async function buildO7CloudArchiveTasks(options: O7CloudArchiveTasksOptio
     latest_task: latest ? taskSummary(latest) : null,
     safe_summaries: safeSummariesFor(selected),
     route_replay_inspector: routeReplayInspectorFor(selected),
+    labeling_queue_inspector: labelingQueueInspectorFor(selected),
     fixed_false_fields: fixedFalseFields(),
     blocked_reasons: [
       "real_cloud_archive_not_connected",

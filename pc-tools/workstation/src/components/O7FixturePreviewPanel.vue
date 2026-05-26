@@ -71,6 +71,19 @@ function archiveFalseFields(result: O7CloudArchiveTasksResponse | null): string[
   ];
 }
 
+function labelingFalseFields(result: O7CloudArchiveTasksResponse | null): string[] {
+  const inspector = result?.labeling_queue_inspector;
+  // 标注队列来自 archive fixture，但提交、回滚、导出和真实标注 API 必须继续由后端固定为 false。
+  return [
+    `submit_enabled=${String(inspector?.submit_enabled ?? false)}`,
+    `rollback_enabled=${String(inspector?.rollback_enabled ?? false)}`,
+    `dataset_export_available=${String(inspector?.dataset_export_available ?? false)}`,
+    `real_annotation_api_connected=${String(inspector?.real_annotation_api_connected ?? false)}`,
+    `draft_labels.autosave_available=${String(inspector?.draft_labels.autosave_available ?? false)}`,
+    `dataset_export.available=${String(inspector?.dataset_export.available ?? false)}`,
+  ];
+}
+
 function inputStatus(result: O7FixturePreviewResult | undefined): string {
   const status = asRecord(result).input_status as { status?: string } | undefined;
   // 未点击 load 前保持 not_loaded，空路径加载后由后端返回 not_provided。
@@ -437,6 +450,96 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <ul class="dense">
             <!-- cursor 字段必须保持后端给出的初始 false 状态，不能在前端生成可操作状态。 -->
             <li v-for="field in inspectorCursorFields(archiveResult)" :key="field">{{ field }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Labeling queue inspector</h3>
+      <dl class="kv compact-kv">
+        <dt>status</dt>
+        <dd>{{ archiveResult?.labeling_queue_inspector.status ?? "blocked_not_proven" }}</dd>
+        <dt>selected_task_id</dt>
+        <dd>{{ archiveResult?.labeling_queue_inspector.selected_task_id ?? "null" }}</dd>
+        <dt>review_item_count</dt>
+        <dd>{{ archiveResult?.labeling_queue_inspector.review_item_count ?? 0 }}</dd>
+      </dl>
+
+      <h3>Sample review items</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>item_id</th>
+            <th>task_id</th>
+            <th>frame_id</th>
+            <th>media_ref</th>
+            <th>evidence_ref</th>
+            <th>current_labels</th>
+            <th>label_sample</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="!archiveResult?.labeling_queue_inspector.sample_review_items.length">
+            <td colspan="7">blocked_not_proven</td>
+          </tr>
+          <tr
+            v-for="item in archiveResult?.labeling_queue_inspector.sample_review_items ?? []"
+            :key="item.item_id"
+          >
+            <td>{{ item.item_id }}</td>
+            <td>{{ item.task_id }}</td>
+            <td>{{ item.frame_id }}</td>
+            <td>{{ item.media_ref }}</td>
+            <td>{{ item.evidence_ref }}</td>
+            <td>{{ item.current_labels.count }}</td>
+            <td><code>{{ jsonSummary(item.current_labels.sample) }}</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Label schema</h3>
+          <dl class="kv compact-kv">
+            <dt>schema_ref</dt>
+            <dd>{{ archiveResult?.labeling_queue_inspector.label_schema.schema_ref ?? "" }}</dd>
+            <dt>version</dt>
+            <dd>{{ archiveResult?.labeling_queue_inspector.label_schema.version ?? "" }}</dd>
+            <dt>required_fields</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.labeling_queue_inspector.label_schema.required_fields ?? []) }}</code></dd>
+            <dt>allowed_fields</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.labeling_queue_inspector.label_schema.allowed_fields ?? []) }}</code></dd>
+          </dl>
+          <h3>Allowed label types</h3>
+          <ul class="dense">
+            <li v-for="labelType in archiveResult?.labeling_queue_inspector.allowed_label_types ?? []" :key="labelType">
+              {{ labelType }}
+            </li>
+            <li v-if="!archiveResult?.labeling_queue_inspector.allowed_label_types.length">blocked_not_proven</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Draft labels</h3>
+          <dl class="kv compact-kv">
+            <dt>count</dt>
+            <dd>{{ archiveResult?.labeling_queue_inspector.draft_labels.count ?? 0 }}</dd>
+            <dt>sample</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.labeling_queue_inspector.draft_labels.sample ?? []) }}</code></dd>
+          </dl>
+          <h3>Dataset gaps</h3>
+          <dl class="kv compact-kv">
+            <dt>status</dt>
+            <dd>{{ archiveResult?.labeling_queue_inspector.dataset_export.status ?? "blocked_not_available" }}</dd>
+            <dt>export_ref</dt>
+            <dd>{{ archiveResult?.labeling_queue_inspector.dataset_export.export_ref ?? "" }}</dd>
+            <dt>supported_formats</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.labeling_queue_inspector.dataset_export.supported_formats ?? []) }}</code></dd>
+            <dt>gaps</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.labeling_queue_inspector.dataset_export.gaps ?? []) }}</code></dd>
+          </dl>
+          <h3>Labeling false fields</h3>
+          <ul class="dense">
+            <!-- 标注危险字段集中展示 false，避免只读检查视图被理解成可写标注界面。 -->
+            <li v-for="field in labelingFalseFields(archiveResult)" :key="field">{{ field }}</li>
           </ul>
         </div>
       </div>

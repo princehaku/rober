@@ -394,7 +394,59 @@ function sampleCloudArchiveFixture(evidenceRef: string) {
           "keyframe-005.jpg",
           "keyframe-not-returned.jpg",
         ],
-        labels: [{ type: "elevator_door_state" }, { label_type: "obstacle_type" }],
+        labels: [
+          {
+            item_id: "label-item-001",
+            frame_id: "frame-101",
+            media_ref: path.join(path.dirname(evidenceRef), "frame-101.jpg"),
+            label_type: "floor_label",
+            value: "F3",
+            status: "fixture_existing",
+            evidence_ref: path.join(path.dirname(evidenceRef), "label-001.json"),
+          },
+          { type: "obstacle_type", label: "box", status: "fixture_existing", evidence_ref: "label-002.json" },
+        ],
+        review_items: [
+          {
+            item_id: "review-001",
+            task_id: "task-archive-002",
+            frame_id: "frame-101",
+            media_ref: path.join(path.dirname(evidenceRef), "frame-101.jpg"),
+            evidence_ref: path.join(path.dirname(evidenceRef), "review-001.json"),
+            current_labels: [
+              { label_type: "elevator_door_state", value: "open", status: "fixture_existing", evidence_ref: "label-door.json" },
+              { label_type: "floor_label", value: "F3", status: "fixture_existing", evidence_ref: "label-floor.json" },
+              { label_type: "obstacle_type", value: "none", status: "fixture_existing", evidence_ref: "label-obstacle.json" },
+              { label_type: "extra_not_returned", value: "ignored", status: "fixture_existing", evidence_ref: "label-extra.json" },
+            ],
+          },
+          { item_id: "review-002", task_id: "task-archive-002", frame_id: "frame-102", media_ref: "frame-102.jpg", evidence_ref: "review-002.json", current_labels: [] },
+          { item_id: "review-003", task_id: "task-archive-002", frame_id: "frame-103", media_ref: "frame-103.jpg", evidence_ref: "review-003.json", current_labels: [] },
+          { item_id: "review-004", task_id: "task-archive-002", frame_id: "frame-104", media_ref: "frame-104.jpg", evidence_ref: "review-004.json", current_labels: [] },
+          { item_id: "review-005", task_id: "task-archive-002", frame_id: "frame-105", media_ref: "frame-105.jpg", evidence_ref: "review-005.json", current_labels: [] },
+          { item_id: "review-not-returned", task_id: "task-archive-002", frame_id: "frame-106", media_ref: "frame-106.jpg", evidence_ref: "review-006.json", current_labels: [] },
+        ],
+        label_schema: {
+          schema_ref: path.join(path.dirname(evidenceRef), "label-schema.json"),
+          version: "fixture-v2",
+          required_fields: ["label_type", "value", "evidence_ref", "status", "reviewer", "extra_not_returned"],
+          allowed_fields: ["label_type", "value", "confidence", "notes", "evidence_ref", "extra_not_returned"],
+        },
+        allowed_label_types: ["elevator_door_state", "floor_label", "obstacle_type", "trash_type", "blocked_reason", "extra_not_returned"],
+        draft_labels: [
+          { label_type: "floor_label", value: "F3", status: "draft_fixture", evidence_ref: path.join(path.dirname(evidenceRef), "draft-001.json") },
+          { label_type: "obstacle_type", value: "cart", status: "draft_fixture", evidence_ref: "draft-002.json" },
+          { label_type: "trash_type", value: "paper", status: "draft_fixture", evidence_ref: "draft-003.json" },
+          { label_type: "blocked_reason", value: "blurred", status: "draft_fixture", evidence_ref: "draft-004.json" },
+          { label_type: "elevator_door_state", value: "closed", status: "draft_fixture", evidence_ref: "draft-005.json" },
+          { label_type: "extra_not_returned", value: "ignored", status: "draft_fixture", evidence_ref: "draft-006.json" },
+        ],
+        dataset_export: {
+          status: "blocked_not_available",
+          export_ref: path.join(path.dirname(evidenceRef), "dataset-export.json"),
+          supported_formats: ["jsonl", "coco", "yolo", "csv", "parquet", "extra_not_returned"],
+          gaps: ["real_annotation_api_not_connected", "operator_review_not_complete", "training_split_not_defined", "extra_not_returned"],
+        },
         asr_events: [{ event_type: "final" }, { event_type: "partial" }],
         tts_drafts: [{ text: "draft one" }, { text: "draft two" }],
         commands: [{ kind: "manual_turn" }, { command_type: "navigate_goal" }],
@@ -2045,9 +2097,68 @@ describe("workstation fail-closed API contracts", () => {
     ]);
     expect(response.safe_summaries.labels).toMatchObject({
       label_count: 2,
-      sample_types: ["elevator_door_state", "obstacle_type"],
+      sample_types: ["floor_label", "obstacle_type"],
       real_annotation_api_connected: false,
     });
+    expect(response.labeling_queue_inspector).toMatchObject({
+      status: "fixture_labeling_ready",
+      selected_task_id: "task-archive-002",
+      review_item_count: 6,
+      submit_enabled: false,
+      rollback_enabled: false,
+      dataset_export_available: false,
+      real_annotation_api_connected: false,
+    });
+    expect(response.labeling_queue_inspector.sample_review_items).toHaveLength(5);
+    expect(response.labeling_queue_inspector.sample_review_items[0]).toEqual({
+      item_id: "review-001",
+      task_id: "task-archive-002",
+      frame_id: "frame-101",
+      media_ref: "file:frame-101.jpg",
+      evidence_ref: "file:review-001.json",
+      current_labels: {
+        count: 4,
+        sample: [
+          { label_type: "elevator_door_state", value: "open", status: "fixture_existing", evidence_ref: "label-door.json" },
+          { label_type: "floor_label", value: "F3", status: "fixture_existing", evidence_ref: "label-floor.json" },
+          { label_type: "obstacle_type", value: "none", status: "fixture_existing", evidence_ref: "label-obstacle.json" },
+        ],
+      },
+    });
+    expect(response.labeling_queue_inspector.sample_review_items.map((item) => item.item_id)).not.toContain("review-not-returned");
+    expect(response.labeling_queue_inspector.label_schema).toEqual({
+      schema_ref: "file:label-schema.json",
+      version: "fixture-v2",
+      required_fields: ["label_type", "value", "evidence_ref", "status", "reviewer"],
+      allowed_fields: ["label_type", "value", "confidence", "notes", "evidence_ref"],
+    });
+    expect(response.labeling_queue_inspector.allowed_label_types).toEqual([
+      "elevator_door_state",
+      "floor_label",
+      "obstacle_type",
+      "trash_type",
+      "blocked_reason",
+    ]);
+    expect(response.labeling_queue_inspector.draft_labels).toMatchObject({
+      count: 6,
+      autosave_available: false,
+    });
+    expect(response.labeling_queue_inspector.draft_labels.sample).toHaveLength(5);
+    expect(response.labeling_queue_inspector.draft_labels.sample[0]).toEqual({
+      label_type: "floor_label",
+      value: "F3",
+      status: "draft_fixture",
+      evidence_ref: "file:draft-001.json",
+    });
+    expect(response.labeling_queue_inspector.dataset_export).toEqual({
+      available: false,
+      status: "fixture_summary_only",
+      export_ref: "file:dataset-export.json",
+      supported_formats: ["jsonl", "coco", "yolo", "csv", "parquet"],
+      gaps: ["real_annotation_api_not_connected", "operator_review_not_complete", "training_split_not_defined", "extra_not_returned"],
+    });
+    expect(response.labeling_queue_inspector.blocked_reasons).toContain("annotation_submit_disabled");
+    expect(response.labeling_queue_inspector.not_proven).toContain("real_o7_annotation_submit");
     expect(response.safe_summaries.voice).toMatchObject({
       asr_event_count: 2,
       tts_draft_count: 2,
@@ -2126,10 +2237,68 @@ describe("workstation fail-closed API contracts", () => {
         speed: 0,
         frame_index: null,
       });
+      expect(response.labeling_queue_inspector.status).toBe("blocked_not_proven");
+      expect(response.labeling_queue_inspector.sample_review_items).toEqual([]);
+      expect(response.labeling_queue_inspector.draft_labels.sample).toEqual([]);
+      expect(response.labeling_queue_inspector.submit_enabled).toBe(false);
+      expect(response.labeling_queue_inspector.rollback_enabled).toBe(false);
+      expect(response.labeling_queue_inspector.dataset_export_available).toBe(false);
+      expect(response.labeling_queue_inspector.real_annotation_api_connected).toBe(false);
       expect(response.safe_summaries.commands.robot_control_executed).toBe(false);
       expect(response.blocked_reasons.length).toBeGreaterThan(0);
       expectNoLegacyPythonGateSemantics(response);
     }
+  });
+
+  it("O7 cloud archive tasks derives minimal labeling queue from labels only", async () => {
+    // 旧 archive 只有 labels[] 时也要给 KR4 一个可检查 item/draft 摘要，而不是只返回 label count。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-cloud-labels-only-"));
+    const archivePath = path.join(root, "archive-labels-only.json");
+    await writeFile(archivePath, JSON.stringify({
+      schema: "trashbot.o7.cloud_archive_fixture.v1",
+      selected_task_id: "task-labels-only",
+      tasks: [
+        {
+          task_id: "task-labels-only",
+          robot_id: "robot-fixture-01",
+          route_id: "route-labels",
+          status: "labels_only_fixture",
+          labels: [
+            {
+              frame_id: "frame-a",
+              media_ref: path.join(root, "frame-a.jpg"),
+              label_type: "floor_label",
+              value: "F2",
+              status: "fixture_existing",
+              evidence_ref: path.join(root, "label-a.json"),
+            },
+            { type: "obstacle_type", label: "cart", status: "fixture_existing", evidence_ref: "label-b.json" },
+          ],
+        },
+      ],
+    }), "utf8");
+
+    const response = await buildO7CloudArchiveTasks({ archiveJson: archivePath });
+
+    expect(response.labeling_queue_inspector.status).toBe("fixture_labeling_ready");
+    expect(response.labeling_queue_inspector.review_item_count).toBe(2);
+    expect(response.labeling_queue_inspector.sample_review_items[0]).toMatchObject({
+      item_id: "label_item_1",
+      task_id: "task-labels-only",
+      frame_id: "frame-a",
+      media_ref: "file:frame-a.jpg",
+      evidence_ref: "file:label-a.json",
+      current_labels: {
+        count: 1,
+        sample: [
+          { label_type: "floor_label", value: "F2", status: "fixture_existing", evidence_ref: "file:label-a.json" },
+        ],
+      },
+    });
+    expect(response.labeling_queue_inspector.allowed_label_types).toEqual(["floor_label", "obstacle_type"]);
+    expect(response.labeling_queue_inspector.draft_labels.count).toBe(2);
+    expect(response.labeling_queue_inspector.draft_labels.autosave_available).toBe(false);
+    expect(JSON.stringify(response)).not.toContain(root);
   });
 
   it("O7 cloud archive tasks endpoint returns read-only local fixture summary", async () => {

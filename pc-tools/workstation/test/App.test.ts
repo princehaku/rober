@@ -1177,6 +1177,63 @@ const fixtures: Record<string, unknown> = {
       blocked_reasons: ["real_cloud_archive_not_connected", "safe_route_playback_not_enabled"],
       not_proven: ["real_o7_history_route_replay", "safe_route_playback"],
     },
+    labeling_queue_inspector: {
+      status: "fixture_labeling_ready",
+      selected_task_id: "task_archive_002",
+      review_item_count: 2,
+      sample_review_items: [
+        {
+          item_id: "review_item_001",
+          task_id: "task_archive_002",
+          frame_id: "frame_001",
+          media_ref: "frame_media_001.jpg",
+          evidence_ref: "review_item_001.json",
+          current_labels: {
+            count: 1,
+            sample: [
+              {
+                label_type: "floor_label",
+                value: "F3",
+                status: "fixture_existing",
+                evidence_ref: "label_floor_001.json",
+              },
+            ],
+          },
+        },
+      ],
+      label_schema: {
+        schema_ref: "label_schema_v1.json",
+        version: "fixture-v1",
+        required_fields: ["label_type", "value", "evidence_ref"],
+        allowed_fields: ["label_type", "value", "confidence", "notes", "evidence_ref"],
+      },
+      allowed_label_types: ["floor_label", "elevator_door_state", "obstacle_type"],
+      draft_labels: {
+        count: 1,
+        sample: [
+          {
+            label_type: "obstacle_type",
+            value: "cart",
+            status: "draft_fixture",
+            evidence_ref: "draft_label_001.json",
+          },
+        ],
+        autosave_available: false,
+      },
+      dataset_export: {
+        available: false,
+        status: "fixture_summary_only",
+        export_ref: "dataset_export_fixture.json",
+        supported_formats: ["jsonl", "coco"],
+        gaps: ["real_annotation_api_not_connected", "operator_review_not_complete"],
+      },
+      submit_enabled: false,
+      rollback_enabled: false,
+      dataset_export_available: false,
+      real_annotation_api_connected: false,
+      blocked_reasons: ["real_annotation_api_not_connected", "annotation_submit_disabled"],
+      not_proven: ["real_o7_annotation_api", "real_o7_annotation_submit"],
+    },
     fixed_false_fields: {
       real_cloud_archive_connected: false,
       real_realtime_api_connected: false,
@@ -1531,6 +1588,14 @@ describe("App", () => {
     expect(wrapper.text()).toContain("keyframe_ref_001");
     expect(wrapper.text()).toContain("playing=false");
     expect(wrapper.text()).toContain("safe_to_play=false");
+    expect(wrapper.text()).toContain("Labeling queue inspector");
+    expect(wrapper.text()).toContain("review_item_001");
+    expect(wrapper.text()).toContain("frame_media_001.jpg");
+    expect(wrapper.text()).toContain("floor_label");
+    expect(wrapper.text()).toContain("draft_label_001.json");
+    expect(wrapper.text()).toContain("operator_review_not_complete");
+    expect(wrapper.text()).toContain("draft_labels.autosave_available=false");
+    expect(wrapper.text()).toContain("dataset_export.available=false");
     expect(wrapper.text()).toContain("arrived_at_elevator");
     expect(wrapper.text()).toContain("navigate_goal");
     expect(wrapper.text()).toContain("real_realtime_api_connected=false");

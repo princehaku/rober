@@ -550,6 +550,57 @@ export interface O7RouteReplayInspector {
   not_proven: string[];
 }
 
+export interface O7LabelingQueueInspectorLabelSample {
+  label_type: string;
+  value: string;
+  status: string;
+  evidence_ref: string;
+}
+
+export interface O7LabelingQueueInspectorReviewItem {
+  item_id: string;
+  task_id: string;
+  frame_id: string;
+  media_ref: string;
+  evidence_ref: string;
+  current_labels: {
+    count: number;
+    sample: O7LabelingQueueInspectorLabelSample[];
+  };
+}
+
+export interface O7LabelingQueueInspector {
+  status: "fixture_labeling_ready" | "blocked_not_proven";
+  selected_task_id: string | null;
+  review_item_count: number;
+  sample_review_items: O7LabelingQueueInspectorReviewItem[];
+  label_schema: {
+    schema_ref: string;
+    version: string;
+    required_fields: string[];
+    allowed_fields: string[];
+  };
+  allowed_label_types: string[];
+  draft_labels: {
+    count: number;
+    sample: O7LabelingQueueInspectorLabelSample[];
+    autosave_available: false;
+  };
+  dataset_export: {
+    available: false;
+    status: "blocked_not_available" | "fixture_summary_only";
+    export_ref: string;
+    supported_formats: string[];
+    gaps: string[];
+  };
+  submit_enabled: false;
+  rollback_enabled: false;
+  dataset_export_available: false;
+  real_annotation_api_connected: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 // Cloud archive task API 是 O7 的统一数据源雏形，但当前只读本地 fixture。
 // fixed false 字段覆盖 KR3/KR4/KR5/KR6，避免 UI 把 archive 摘要误读成真实云能力。
 export interface O7CloudArchiveTasksResponse extends ProofFlags {
@@ -589,6 +640,7 @@ export interface O7CloudArchiveTasksResponse extends ProofFlags {
   latest_task: O7CloudArchiveTaskSummary | null;
   safe_summaries: O7CloudArchiveTaskSafeSummaries;
   route_replay_inspector: O7RouteReplayInspector;
+  labeling_queue_inspector: O7LabelingQueueInspector;
   fixed_false_fields: {
     real_cloud_archive_connected: false;
     real_realtime_api_connected: false;
