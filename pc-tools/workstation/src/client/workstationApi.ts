@@ -1,6 +1,7 @@
 import type {
   EvidenceToolsResponse,
   HardwareMaterialsResponse,
+  O7CloudArchiveTasksResponse,
   O7LabelingPreviewResponse,
   HealthResponse,
   O7OperatorConsoleResponse,
@@ -61,6 +62,7 @@ const API_ENDPOINTS = {
   o7LabelingPreview: "/api/o7/labeling-preview",
   o7VoicePreview: "/api/o7/voice-preview",
   o7SafeCommandPreview: "/api/o7/safe-command-preview",
+  o7CloudArchiveTasks: "/api/o7/cloud-archive/tasks",
   proofBoundary: "/api/proof-boundary",
 } as const;
 
@@ -95,6 +97,17 @@ function previewUrl(endpoint: string, fixtureJson: string): string {
   const params = new URLSearchParams();
   params.set("fixtureJson", trimmed);
   return `${endpoint}?${params.toString()}`;
+}
+
+function cloudArchiveTasksUrl(archiveJson: string): string {
+  // archive 路径只在 operator 点击后拼入 query，页面加载不会自动读取本机文件。
+  const trimmed = archiveJson.trim();
+  if (!trimmed) {
+    return API_ENDPOINTS.o7CloudArchiveTasks;
+  }
+  const params = new URLSearchParams();
+  params.set("archiveJson", trimmed);
+  return `${API_ENDPOINTS.o7CloudArchiveTasks}?${params.toString()}`;
 }
 
 export async function getHealth(): Promise<HealthResponse> {
@@ -155,6 +168,11 @@ export async function getO7VoicePreview(fixtureJson: string): Promise<O7VoicePre
 export async function getO7SafeCommandPreview(fixtureJson: string): Promise<O7SafeCommandPreviewResponse> {
   // Safe command preview 不连接 command API 或 robot ACK，所有控制字段必须保持 false。
   return loadJson<O7SafeCommandPreviewResponse>(previewUrl(API_ENDPOINTS.o7SafeCommandPreview, fixtureJson));
+}
+
+export async function getO7CloudArchiveTasks(archiveJson: string): Promise<O7CloudArchiveTasksResponse> {
+  // Cloud archive task API 只读本地 fixture，不连接 O6 云归档、实时、标注、语音或命令 API。
+  return loadJson<O7CloudArchiveTasksResponse>(cloudArchiveTasksUrl(archiveJson));
 }
 
 export async function loadO7FixturePreview(

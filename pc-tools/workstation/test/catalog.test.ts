@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import {
+  buildO7CloudArchiveTasks,
   buildEvidenceToolsResponse,
   buildHardwareMaterialsResponse,
   buildHealth,
@@ -17,6 +19,7 @@ import {
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
+import { createWorkstationApp } from "../src/server/index";
 
 function sampleStatus(evidenceRef: string) {
   // 样例只提供 Node loader 生成 safe summary 所需字段，不模拟真实 Nav2 或现场成功。
@@ -320,6 +323,66 @@ function sampleSafeCommandFixture(evidenceRef: string) {
     evidence_gaps: ["operator_confirmation_ui_not_connected"],
     audit_refs: ["safe-command-audit-001.json", path.join(path.dirname(evidenceRef), "safe-command-audit-002.json")],
   };
+}
+
+function sampleCloudArchiveFixture(evidenceRef: string) {
+  // cloud archive fixture 汇总 KR3-KR6 数据槽位，但仍只是本地只读 software proof。
+  return {
+    schema: "trashbot.o7.cloud_archive_fixture.v1",
+    selected_task_id: "task-archive-002",
+    tasks: [
+      {
+        task_id: "task-archive-001",
+        robot_id: "robot-fixture-01",
+        route_id: "route-alpha",
+        status: "archived_fixture_only",
+        started_at_ms: 1000,
+        updated_at_ms: 1500,
+        evidence_ref: path.join(path.dirname(evidenceRef), "task-archive-001.json"),
+        trajectory_frames: [
+          { evidence_ref: path.join(path.dirname(evidenceRef), "frame-001.jpg") },
+          { evidence_ref: "frame-002.jpg" },
+        ],
+        events: [{ event_type: "departed" }, { state: "elevator_wait" }],
+        labels: [{ label_type: "floor_label" }],
+        asr_events: [{ event_type: "partial" }],
+        tts_drafts: [{ text: "fixture" }],
+        commands: [{ command_type: "navigate_goal" }],
+      },
+      {
+        task_id: "task-archive-002",
+        robot_id: "robot-fixture-01",
+        route_id: "route-beta",
+        status: "needs_review_fixture_only",
+        started_at_ms: 2000,
+        updated_at_ms: 2600,
+        evidence_ref: evidenceRef,
+        trajectory_frames: [{ evidence_ref: "frame-101.jpg" }],
+        events: [{ event_type: "arrived_at_elevator" }],
+        labels: [{ type: "elevator_door_state" }, { label_type: "obstacle_type" }],
+        asr_events: [{ event_type: "final" }, { event_type: "partial" }],
+        tts_drafts: [{ text: "draft one" }, { text: "draft two" }],
+        commands: [{ kind: "manual_turn" }, { command_type: "navigate_goal" }],
+      },
+    ],
+  };
+}
+
+function listen(app: ReturnType<typeof createWorkstationApp>): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  // HTTP endpoint 测试用真实 Express app，但只监听随机本地端口，不连接任何外部服务。
+  const server = http.createServer(app);
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
 }
 
 function sampleRealtimeElevatorFixture(evidenceRef: string) {
@@ -1839,6 +1902,167 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.confirmation_policy.manual_turn_requires_confirmation).toBe(true);
       expect(response.blocked_reasons.length).toBeGreaterThan(0);
       expectNoLegacyPythonGateSemantics(response);
+    }
+  });
+
+  it("O7 cloud archive tasks summarizes local archive fixture without real API or control claims", async () => {
+    // archive task API 是 KR3-KR6 的统一数据源雏形，不是 O6 真实云归档连接。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-cloud-archive-"));
+    const evidenceRef = path.join(root, "task-archive-002.json");
+    const archivePath = path.join(root, "archive.json");
+    await writeFile(archivePath, JSON.stringify(sampleCloudArchiveFixture(evidenceRef)), "utf8");
+
+    const response = await buildO7CloudArchiveTasks({ archiveJson: archivePath });
+    const payload = JSON.stringify(response);
+
+    expect(response.schema).toBe("trashbot.o7.cloud_archive_tasks.v1");
+    expect(response.archive_status).toBe("fixture_archive_ready");
+    expect(response.input_status.status).toBe("loaded");
+    expect(response.input_status.archive_json).toBe("file:archive.json");
+    expect(response.source_fixture_schema).toBe("trashbot.o7.cloud_archive_fixture.v1");
+    expect(response.source).toBe("software_proof");
+    expect(response.proof_status).toBe("not_proven");
+    expect(response.safe_to_control).toBe(false);
+    expect(response.delivery_success).toBe(false);
+    expect(response.primary_actions_enabled).toBe(false);
+    expect(response.pc_only).toBe(true);
+    expect(response.real_cloud_archive_connected).toBe(false);
+    expect(response.real_realtime_api_connected).toBe(false);
+    expect(response.real_annotation_api_connected).toBe(false);
+    expect(response.real_voice_api_connected).toBe(false);
+    expect(response.real_command_api_connected).toBe(false);
+    expect(response.robot_control_executed).toBe(false);
+    expect(response.fixed_false_fields).toEqual({
+      real_cloud_archive_connected: false,
+      real_realtime_api_connected: false,
+      real_annotation_api_connected: false,
+      real_voice_api_connected: false,
+      real_command_api_connected: false,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+    });
+    expect(response.task_list.total_tasks).toBe(2);
+    expect(response.task_list.tasks.map((task) => task.task_id)).toEqual(["task-archive-001", "task-archive-002"]);
+    expect(response.selected_task).toMatchObject({
+      task_id: "task-archive-002",
+      robot_id: "robot-fixture-01",
+      route_id: "route-beta",
+      status: "needs_review_fixture_only",
+      evidence_ref: "file:task-archive-002.json",
+    });
+    expect(response.latest_task?.task_id).toBe("task-archive-002");
+    expect(response.safe_summaries.trajectory).toEqual({
+      frame_count: 1,
+      sample_refs: ["frame-101.jpg"],
+      status: "fixture_summary_only",
+    });
+    expect(response.safe_summaries.events.sample_types).toEqual(["arrived_at_elevator"]);
+    expect(response.safe_summaries.labels).toMatchObject({
+      label_count: 2,
+      sample_types: ["elevator_door_state", "obstacle_type"],
+      real_annotation_api_connected: false,
+    });
+    expect(response.safe_summaries.voice).toMatchObject({
+      asr_event_count: 2,
+      tts_draft_count: 2,
+      real_voice_api_connected: false,
+    });
+    expect(response.safe_summaries.commands).toMatchObject({
+      command_count: 2,
+      sample_kinds: ["manual_turn", "navigate_goal"],
+      real_command_api_connected: false,
+      robot_control_executed: false,
+    });
+    expect(response.blocked_reasons).toContain("real_cloud_archive_not_connected");
+    expect(response.blocked_reasons).toContain("robot_control_disabled");
+    expect(response.not_proven).toContain("real_o7_cloud_archive_task_api");
+    expect(response.not_proven).toContain("real_o7_command_api");
+    expect(payload).not.toContain(root);
+    expect(payload).not.toContain("/cmd_vel");
+    expect(payload).not.toContain("/dev/ttyUSB");
+    expect(payload).not.toContain("real_cloud_archive_connected=true");
+    expect(payload).not.toContain("delivery_success=true");
+    expectNoLegacyPythonGateSemantics(response);
+  });
+
+  it("O7 cloud archive tasks fails closed for missing bad unsupported unsafe real API success and control claims", async () => {
+    // archive fixture 不能自证云端、实时、标注、语音、命令 API 或真实控制已经接通。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-cloud-archive-blocked-"));
+    const badJsonPath = path.join(root, "bad.json");
+    const unsupportedPath = path.join(root, "unsupported.json");
+    const unsafePath = path.join(root, "unsafe.json");
+    const successPath = path.join(root, "success.json");
+    const controlPath = path.join(root, "control.json");
+    const realApiPath = path.join(root, "real-api.json");
+    const fixture = sampleCloudArchiveFixture("safe-ref");
+    await writeFile(badJsonPath, "{bad", "utf8");
+    await writeFile(unsupportedPath, JSON.stringify({ schema: "trashbot.other.v1" }), "utf8");
+    await writeFile(unsafePath, JSON.stringify({ ...fixture, evidence_ref: "/dev/ttyUSB0" }), "utf8");
+    await writeFile(successPath, JSON.stringify({ ...fixture, note: "cloud archive connected and delivery success completed" }), "utf8");
+    await writeFile(controlPath, JSON.stringify({ ...fixture, safe_to_control: true }), "utf8");
+    await writeFile(realApiPath, JSON.stringify({ ...fixture, real_cloud_archive_connected: true }), "utf8");
+
+    const missing = await buildO7CloudArchiveTasks({ archiveJson: path.join(root, "missing.json") });
+    const badJson = await buildO7CloudArchiveTasks({ archiveJson: badJsonPath });
+    const unsupported = await buildO7CloudArchiveTasks({ archiveJson: unsupportedPath });
+    const unsafe = await buildO7CloudArchiveTasks({ archiveJson: unsafePath });
+    const success = await buildO7CloudArchiveTasks({ archiveJson: successPath });
+    const control = await buildO7CloudArchiveTasks({ archiveJson: controlPath });
+    const realApi = await buildO7CloudArchiveTasks({ archiveJson: realApiPath });
+
+    expect(missing.input_status.status).toBe("missing");
+    expect(badJson.input_status.status).toBe("bad_json");
+    expect(unsupported.input_status.status).toBe("unsupported_schema");
+    expect(unsafe.input_status.status).toBe("unsafe_copy");
+    expect(success.input_status.status).toBe("success_claim");
+    expect(control.input_status.status).toBe("control_claim");
+    expect(realApi.input_status.status).toBe("real_api_claim");
+    for (const response of [missing, badJson, unsupported, unsafe, success, control, realApi]) {
+      expect(response.schema).toBe("trashbot.o7.cloud_archive_tasks.v1");
+      expect(response.archive_status).toBe("blocked_not_proven");
+      expect(response.safe_to_control).toBe(false);
+      expect(response.delivery_success).toBe(false);
+      expect(response.primary_actions_enabled).toBe(false);
+      expect(response.real_cloud_archive_connected).toBe(false);
+      expect(response.real_realtime_api_connected).toBe(false);
+      expect(response.real_annotation_api_connected).toBe(false);
+      expect(response.real_voice_api_connected).toBe(false);
+      expect(response.real_command_api_connected).toBe(false);
+      expect(response.robot_control_executed).toBe(false);
+      expect(response.task_list.tasks).toEqual([]);
+      expect(response.safe_summaries.commands.robot_control_executed).toBe(false);
+      expect(response.blocked_reasons.length).toBeGreaterThan(0);
+      expectNoLegacyPythonGateSemantics(response);
+    }
+  });
+
+  it("O7 cloud archive tasks endpoint returns read-only local fixture summary", async () => {
+    // endpoint 通过 Express 路由验证 query 参数，不启动生产云端或任何控制链路。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-cloud-archive-http-"));
+    const archivePath = path.join(root, "archive-http.json");
+    await writeFile(archivePath, JSON.stringify(sampleCloudArchiveFixture(path.join(root, "task-archive-002.json"))), "utf8");
+    const server = await listen(createWorkstationApp());
+
+    try {
+      const url = new URL("/api/o7/cloud-archive/tasks", server.baseUrl);
+      url.searchParams.set("archiveJson", archivePath);
+      const response = await fetch(url);
+      const body = (await response.json()) as Awaited<ReturnType<typeof buildO7CloudArchiveTasks>>;
+
+      expect(response.status).toBe(200);
+      expect(body.schema).toBe("trashbot.o7.cloud_archive_tasks.v1");
+      expect(body.input_status.status).toBe("loaded");
+      expect(body.selected_task?.task_id).toBe("task-archive-002");
+      expect(body.real_cloud_archive_connected).toBe(false);
+      expect(body.real_annotation_api_connected).toBe(false);
+      expect(body.real_voice_api_connected).toBe(false);
+      expect(body.real_command_api_connected).toBe(false);
+      expect(body.robot_control_executed).toBe(false);
+    } finally {
+      await server.close();
     }
   });
 

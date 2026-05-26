@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { loadO7FixturePreview } from "../client/workstationApi";
+import { getO7CloudArchiveTasks, loadO7FixturePreview } from "../client/workstationApi";
 import type { O7FixturePreviewInputs, O7FixturePreviewKind, O7FixturePreviewResponses } from "../client/workstationApi";
+import type { O7CloudArchiveTasksResponse } from "../shared/contracts";
 
 type O7FixturePreviewResult = O7FixturePreviewResponses[O7FixturePreviewKind];
 
@@ -33,6 +34,10 @@ const inputs = ref<O7FixturePreviewInputs>({
 const results = ref<Partial<O7FixturePreviewResponses>>({});
 const errors = ref<Partial<Record<O7FixturePreviewKind, string>>>({});
 const loading = ref<Partial<Record<O7FixturePreviewKind, boolean>>>({});
+const archiveJson = ref("");
+const archiveResult = ref<O7CloudArchiveTasksResponse | null>(null);
+const archiveError = ref("");
+const archiveLoading = ref(false);
 
 function asRecord(result: O7FixturePreviewResult | undefined): Record<string, unknown> {
   // Vue template 需要统一读取 union 字段；这里只做只读投影，不改响应内容。
@@ -47,6 +52,23 @@ function asStringArray(value: unknown): string[] {
 function jsonSummary(value: unknown): string {
   // 摘要只展示后端已经脱敏的安全字段，不读取或展开原始 fixture。
   return JSON.stringify(value ?? "not_loaded", null, 2);
+}
+
+function archiveFalseFields(result: O7CloudArchiveTasksResponse | null): string[] {
+  const fields = result?.fixed_false_fields;
+  // archive 入口聚合 KR3-KR6 的危险开关，必须在 UI 中集中展示为 false。
+  return [
+    `real_cloud_archive_connected=${String(fields?.real_cloud_archive_connected ?? false)}`,
+    `real_realtime_api_connected=${String(fields?.real_realtime_api_connected ?? false)}`,
+    `real_annotation_api_connected=${String(fields?.real_annotation_api_connected ?? false)}`,
+    `real_voice_api_connected=${String(fields?.real_voice_api_connected ?? false)}`,
+    `real_command_api_connected=${String(fields?.real_command_api_connected ?? false)}`,
+    `safe_to_control=${String(fields?.safe_to_control ?? false)}`,
+    `delivery_success=${String(fields?.delivery_success ?? false)}`,
+    `primary_actions_enabled=${String(fields?.primary_actions_enabled ?? false)}`,
+    `pc_only=${String(fields?.pc_only ?? true)}`,
+    `robot_control_executed=${String(fields?.robot_control_executed ?? false)}`,
+  ];
 }
 
 function inputStatus(result: O7FixturePreviewResult | undefined): string {
@@ -66,6 +88,27 @@ function blockedReasons(result: O7FixturePreviewResult | undefined): string[] {
 
 function notProven(result: O7FixturePreviewResult | undefined): string[] {
   return asStringArray(asRecord(result).not_proven);
+}
+
+function archiveBlockedReasons(): string[] {
+  return archiveResult.value?.blocked_reasons ?? ["archive_json_not_provided"];
+}
+
+function archiveNotProven(): string[] {
+  return archiveResult.value?.not_proven ?? ["archive_not_loaded_and_real_cloud_archive_not_proven"];
+}
+
+async function loadArchiveTasks(): Promise<void> {
+  // 只有 operator 点击按钮才读取本地 archive 路径；页面加载不会自动触碰文件系统。
+  archiveLoading.value = true;
+  archiveError.value = "";
+  try {
+    archiveResult.value = await getO7CloudArchiveTasks(archiveJson.value);
+  } catch (err) {
+    archiveError.value = err instanceof Error ? err.message : "cloud_archive_task_api_unavailable_not_proven";
+  } finally {
+    archiveLoading.value = false;
+  }
 }
 
 function coreFalseFields(kind: O7FixturePreviewKind, result: O7FixturePreviewResult | undefined): string[] {
@@ -208,6 +251,113 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
       These previews do not prove real realtime API, ROS2 /tf, cloud archive, annotation API, voice API, safe
       command API, robot ACK, HIL/hardware safety or delivery success.
     </div>
+
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <div>
+          <h3>Cloud Archive Tasks</h3>
+          <p class="eyebrow">Read-only local archive fixture for KR3/KR4/KR5/KR6 data source shaping.</p>
+        </div>
+        <span class="pill danger">{{ archiveResult?.archive_status ?? "not_loaded" }}</span>
+      </div>
+
+      <label class="single-input">
+        <span>Archive fixture JSON</span>
+        <input
+          v-model="archiveJson"
+          aria-label="Cloud archive fixture JSON path"
+          placeholder="local archive fixture path, optional"
+        >
+      </label>
+      <button class="secondary" type="button" @click="loadArchiveTasks">
+        {{ archiveLoading ? "Loading archive tasks" : "Load archive tasks" }}
+      </button>
+
+      <div v-if="archiveError" class="notice" role="alert">
+        Cloud archive task API unavailable: {{ archiveError }}. primary_actions_enabled=false.
+      </div>
+
+      <dl class="kv compact-kv">
+        <dt>schema</dt>
+        <dd>{{ archiveResult?.schema ?? "trashbot.o7.cloud_archive_tasks.v1" }}</dd>
+        <dt>archive_status</dt>
+        <dd>{{ archiveResult?.archive_status ?? "not_loaded" }}</dd>
+        <dt>input status</dt>
+        <dd>{{ archiveResult?.input_status.status ?? "not_loaded" }}</dd>
+        <dt>failure reason</dt>
+        <dd>{{ archiveResult?.input_status.failure_reason ?? "archive_json_not_provided" }}</dd>
+        <dt>source fixture schema</dt>
+        <dd>{{ archiveResult?.source_fixture_schema ?? "not_loaded" }}</dd>
+      </dl>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Task list</h3>
+          <dl class="kv compact-kv">
+            <dt>total_tasks</dt>
+            <dd>{{ archiveResult?.task_list.total_tasks ?? 0 }}</dd>
+            <dt>selected_task</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.selected_task) }}</code></dd>
+            <dt>latest_task</dt>
+            <dd><code>{{ jsonSummary(archiveResult?.latest_task) }}</code></dd>
+          </dl>
+        </div>
+        <div>
+          <h3>Core false fields</h3>
+          <ul class="dense">
+            <!-- archive fixed false 字段直接来自后端，避免 UI 自行拼接真实能力状态。 -->
+            <li v-for="field in archiveFalseFields(archiveResult)" :key="field">{{ field }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Safe summaries</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>field</th>
+            <th>safe summary</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>trajectory</td>
+            <td><code>{{ jsonSummary(archiveResult?.safe_summaries.trajectory) }}</code></td>
+          </tr>
+          <tr>
+            <td>events</td>
+            <td><code>{{ jsonSummary(archiveResult?.safe_summaries.events) }}</code></td>
+          </tr>
+          <tr>
+            <td>labels</td>
+            <td><code>{{ jsonSummary(archiveResult?.safe_summaries.labels) }}</code></td>
+          </tr>
+          <tr>
+            <td>voice</td>
+            <td><code>{{ jsonSummary(archiveResult?.safe_summaries.voice) }}</code></td>
+          </tr>
+          <tr>
+            <td>commands</td>
+            <td><code>{{ jsonSummary(archiveResult?.safe_summaries.commands) }}</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Blocked reasons</h3>
+          <ul class="dense">
+            <li v-for="reason in archiveBlockedReasons()" :key="reason">{{ reason }}</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Not proven</h3>
+          <ul class="dense">
+            <li v-for="item in archiveNotProven()" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+      </div>
+    </article>
 
     <div class="route-inputs">
       <label v-for="config in previewConfigs" :key="config.id">

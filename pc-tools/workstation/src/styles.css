@@ -171,6 +171,30 @@ h3 {
   font: inherit;
 }
 
+.single-input {
+  display: block;
+  max-width: 620px;
+  margin-bottom: 10px;
+}
+
+.single-input span {
+  display: block;
+  margin-bottom: 5px;
+  color: #5f6b7a;
+  font-size: 12px;
+}
+
+.single-input input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #bdc7d3;
+  border-radius: 6px;
+  padding: 0 9px;
+  background: #ffffff;
+  color: #17202a;
+  font: inherit;
+}
+
 .section-head {
   display: flex;
   align-items: center;

@@ -472,6 +472,102 @@ export interface O7SafeCommandPreviewResponse extends ProofFlags {
   not_proven: string[];
 }
 
+export interface O7CloudArchiveTaskSummary {
+  task_id: string;
+  robot_id: string;
+  route_id: string;
+  status: string;
+  started_at_ms: number | null;
+  updated_at_ms: number | null;
+  evidence_ref: string;
+}
+
+export interface O7CloudArchiveTaskSafeSummaries {
+  trajectory: {
+    frame_count: number;
+    sample_refs: string[];
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  events: {
+    event_count: number;
+    sample_types: string[];
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  labels: {
+    label_count: number;
+    sample_types: string[];
+    real_annotation_api_connected: false;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  voice: {
+    asr_event_count: number;
+    tts_draft_count: number;
+    real_voice_api_connected: false;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  commands: {
+    command_count: number;
+    sample_kinds: string[];
+    real_command_api_connected: false;
+    robot_control_executed: false;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+}
+
+// Cloud archive task API 是 O7 的统一数据源雏形，但当前只读本地 fixture。
+// fixed false 字段覆盖 KR3/KR4/KR5/KR6，避免 UI 把 archive 摘要误读成真实云能力。
+export interface O7CloudArchiveTasksResponse extends ProofFlags {
+  schema: "trashbot.o7.cloud_archive_tasks.v1";
+  schema_version: 1;
+  archive_status: "fixture_archive_ready" | "blocked_not_proven";
+  input_status: {
+    archive_json: string;
+    status:
+      | "loaded"
+      | "not_provided"
+      | "missing"
+      | "read_error"
+      | "bad_json"
+      | "not_object"
+      | "unsupported_schema"
+      | "unsafe_copy"
+      | "success_claim"
+      | "control_claim"
+      | "real_api_claim";
+    failure_reason: string;
+  };
+  source_fixture_schema: "trashbot.o7.cloud_archive_fixture.v1" | "not_loaded";
+  real_cloud_archive_connected: false;
+  real_realtime_api_connected: false;
+  real_annotation_api_connected: false;
+  real_voice_api_connected: false;
+  real_command_api_connected: false;
+  robot_control_executed: false;
+  task_list: {
+    source: "local_json_fixture";
+    total_tasks: number;
+    tasks: O7CloudArchiveTaskSummary[];
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  selected_task: O7CloudArchiveTaskSummary | null;
+  latest_task: O7CloudArchiveTaskSummary | null;
+  safe_summaries: O7CloudArchiveTaskSafeSummaries;
+  fixed_false_fields: {
+    real_cloud_archive_connected: false;
+    real_realtime_api_connected: false;
+    real_annotation_api_connected: false;
+    real_voice_api_connected: false;
+    real_command_api_connected: false;
+    safe_to_control: false;
+    delivery_success: false;
+    primary_actions_enabled: false;
+    pc_only: true;
+    robot_control_executed: false;
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 // 板端媒体 preflight 是上车 smoke 之前的缺口摘要；PC 只能展示，不能把它升级成运行态。
 export interface O7BoardMediaPreflightSummary {
   schema: "trashbot.o7_board_media_preflight.v1";
@@ -1278,6 +1374,7 @@ export const API_ROUTES = [
   "/api/o7/labeling-preview?fixtureJson=<local-json>",
   "/api/o7/voice-preview?fixtureJson=<local-json>",
   "/api/o7/safe-command-preview?fixtureJson=<local-json>",
+  "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
   "/api/proof-boundary",
 ] as const;
 
@@ -1296,6 +1393,7 @@ export const NOT_PROVEN_ITEMS = [
   "real_o7_elevator_state_chain",
   "real_o7_route_replay_archive",
   "real_o7_route_replay_fixture_preview_archive",
+  "real_o7_cloud_archive_task_api",
   "real_o7_trajectory_playback",
   "real_o7_labeling_review_queue",
   "real_o7_labeling_fixture_preview_annotation_api",

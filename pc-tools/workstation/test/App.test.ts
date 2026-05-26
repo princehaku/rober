@@ -1064,6 +1064,90 @@ const fixtures: Record<string, unknown> = {
     not_proven: ["real_o7_safe_command_api", "real_robot_command_ack", "real_hil_safety"],
     ...PROOF_FLAGS,
   },
+  "/api/o7/cloud-archive/tasks": {
+    schema: "trashbot.o7.cloud_archive_tasks.v1",
+    schema_version: 1,
+    archive_status: "fixture_archive_ready",
+    input_status: { archive_json: "fixtures/archive.json", status: "loaded", failure_reason: "" },
+    source_fixture_schema: "trashbot.o7.cloud_archive_fixture.v1",
+    real_cloud_archive_connected: false,
+    real_realtime_api_connected: false,
+    real_annotation_api_connected: false,
+    real_voice_api_connected: false,
+    real_command_api_connected: false,
+    robot_control_executed: false,
+    task_list: {
+      source: "local_json_fixture",
+      total_tasks: 2,
+      tasks: [
+        {
+          task_id: "task_archive_001",
+          robot_id: "robot_fixture",
+          route_id: "route_fixture",
+          status: "archived_fixture_only",
+          started_at_ms: 1000,
+          updated_at_ms: 1500,
+          evidence_ref: "task_ref_001",
+        },
+        {
+          task_id: "task_archive_002",
+          robot_id: "robot_fixture",
+          route_id: "route_fixture",
+          status: "needs_review_fixture_only",
+          started_at_ms: 2000,
+          updated_at_ms: 2600,
+          evidence_ref: "task_ref_002",
+        },
+      ],
+      status: "fixture_summary_only",
+    },
+    selected_task: {
+      task_id: "task_archive_002",
+      robot_id: "robot_fixture",
+      route_id: "route_fixture",
+      status: "needs_review_fixture_only",
+      started_at_ms: 2000,
+      updated_at_ms: 2600,
+      evidence_ref: "task_ref_002",
+    },
+    latest_task: {
+      task_id: "task_archive_002",
+      robot_id: "robot_fixture",
+      route_id: "route_fixture",
+      status: "needs_review_fixture_only",
+      started_at_ms: 2000,
+      updated_at_ms: 2600,
+      evidence_ref: "task_ref_002",
+    },
+    safe_summaries: {
+      trajectory: { frame_count: 3, sample_refs: ["frame_ref"], status: "fixture_summary_only" },
+      events: { event_count: 2, sample_types: ["arrived_at_elevator"], status: "fixture_summary_only" },
+      labels: { label_count: 2, sample_types: ["floor_label"], real_annotation_api_connected: false, status: "fixture_summary_only" },
+      voice: { asr_event_count: 1, tts_draft_count: 1, real_voice_api_connected: false, status: "fixture_summary_only" },
+      commands: {
+        command_count: 1,
+        sample_kinds: ["navigate_goal"],
+        real_command_api_connected: false,
+        robot_control_executed: false,
+        status: "fixture_summary_only",
+      },
+    },
+    fixed_false_fields: {
+      real_cloud_archive_connected: false,
+      real_realtime_api_connected: false,
+      real_annotation_api_connected: false,
+      real_voice_api_connected: false,
+      real_command_api_connected: false,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+    },
+    blocked_reasons: ["real_cloud_archive_not_connected", "robot_control_disabled"],
+    not_proven: ["real_o7_cloud_archive_task_api", "real_o7_command_api", "delivery_success"],
+    ...PROOF_FLAGS,
+  },
   "/api/proof-boundary": {
     schema: "trashbot.pc_tools_workstation.proof_boundary.v2",
     can_prove: ["Node/Vue workstation can index local JSON fixtures under pc-tools/evidence/fixtures"],
@@ -1093,7 +1177,9 @@ function stubWorkstationFetch() {
               ? "/api/o7/voice-preview"
               : url.startsWith("/api/o7/safe-command-preview")
                 ? "/api/o7/safe-command-preview"
-                : url;
+                : url.startsWith("/api/o7/cloud-archive/tasks")
+                  ? "/api/o7/cloud-archive/tasks"
+                  : url;
     return {
       ok: true,
       json: async () => fixtures[fixtureKey],
@@ -1348,19 +1434,26 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain("O7 Fixture Previews");
+    expect(wrapper.text()).toContain("Cloud Archive Tasks");
     expect(wrapper.text()).toContain("fixture_json_not_provided");
+    expect(wrapper.text()).toContain("archive_json_not_provided");
     expect(wrapper.text()).toContain("real realtime API");
     expect(wrapper.text()).toContain("robot ACK");
     expect(wrapper.text()).toContain("HIL/hardware safety");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/realtime-elevator-preview");
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/cloud-archive/tasks");
 
     const inputs = wrapper.findAll("input");
-    expect(inputs).toHaveLength(5);
-    await inputs[0]!.setValue("fixtures/realtime.json");
-    await inputs[1]!.setValue("fixtures/route.json");
-    await inputs[2]!.setValue("fixtures/labeling.json");
-    await inputs[3]!.setValue("fixtures/voice.json");
-    await inputs[4]!.setValue("fixtures/safe-command.json");
+    expect(inputs).toHaveLength(6);
+    await inputs[0]!.setValue("fixtures/archive.json");
+    await inputs[1]!.setValue("fixtures/realtime.json");
+    await inputs[2]!.setValue("fixtures/route.json");
+    await inputs[3]!.setValue("fixtures/labeling.json");
+    await inputs[4]!.setValue("fixtures/voice.json");
+    await inputs[5]!.setValue("fixtures/safe-command.json");
+
+    await wrapper.findAll("button").find((button) => button.text() === "Load archive tasks")?.trigger("click");
+    await flushPromises();
 
     for (const label of [
       "Load Realtime/Elevator preview",
@@ -1374,6 +1467,7 @@ describe("App", () => {
     }
 
     const previewCalls = mockedFetch.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/o7/"));
+    expect(previewCalls).toContain("/api/o7/cloud-archive/tasks?archiveJson=fixtures%2Farchive.json");
     expect(previewCalls).toContain("/api/o7/realtime-elevator-preview?fixtureJson=fixtures%2Frealtime.json");
     expect(previewCalls).toContain("/api/o7/route-replay-preview?fixtureJson=fixtures%2Froute.json");
     expect(previewCalls).toContain("/api/o7/labeling-preview?fixtureJson=fixtures%2Flabeling.json");
@@ -1384,9 +1478,18 @@ describe("App", () => {
     expect(wrapper.text()).toContain("trashbot.o7.labeling_preview.v1");
     expect(wrapper.text()).toContain("trashbot.o7.voice_preview.v1");
     expect(wrapper.text()).toContain("trashbot.o7.safe_command_preview.v1");
+    expect(wrapper.text()).toContain("trashbot.o7.cloud_archive_tasks.v1");
+    expect(wrapper.text()).toContain("task_archive_002");
+    expect(wrapper.text()).toContain("needs_review_fixture_only");
+    expect(wrapper.text()).toContain("arrived_at_elevator");
+    expect(wrapper.text()).toContain("navigate_goal");
     expect(wrapper.text()).toContain("real_realtime_api_connected=false");
     expect(wrapper.text()).toContain("real_ros2_tf_connected=false");
     expect(wrapper.text()).toContain("real_cloud_archive_connected=false");
+    expect(wrapper.text()).toContain("real_annotation_api_connected=false");
+    expect(wrapper.text()).toContain("real_voice_api_connected=false");
+    expect(wrapper.text()).toContain("real_command_api_connected=false");
+    expect(wrapper.text()).toContain("robot_control_executed=false");
     expect(wrapper.text()).toContain("submit_enabled=false");
     expect(wrapper.text()).toContain("tts_send_enabled=false");
     expect(wrapper.text()).toContain("command_dispatch_enabled=false");
