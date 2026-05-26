@@ -5,6 +5,7 @@ import {
   buildEvidenceToolsResponse,
   buildHardwareMaterialsResponse,
   buildHealth,
+  buildO7OperatorConsoleResponse,
   buildProofBoundary,
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
@@ -60,6 +61,11 @@ app.get("/api/route/debug-summary", async (req, res) => {
       elevatorRouteReconciliation: queryString(req.query.elevatorRouteReconciliation),
     }),
   );
+});
+
+app.get("/api/o7/operator-console", (_req, res) => {
+  // O7 console 只返回 cloud contract draft，不连接机器人、不发送控制命令。
+  res.json(buildO7OperatorConsoleResponse());
 });
 
 app.get("/api/proof-boundary", (_req, res) => {

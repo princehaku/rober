@@ -14,6 +14,7 @@ export function buildProofBoundary(): ProofBoundaryResponse {
     can_prove: [
       "Node/Vue workstation can index local JSON fixtures under pc-tools/evidence/fixtures",
       "Node Route JSON Loader can read local status/task/reconciliation JSON into a safe summary",
+      "O7 Operator Console can render cloud-contract draft surfaces with command dispatch disabled",
       "UI/API expose fail-closed software proof fields",
     ],
     not_proven: [...NOT_PROVEN_ITEMS],

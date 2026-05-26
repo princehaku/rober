@@ -2,6 +2,7 @@ import type {
   EvidenceToolsResponse,
   HardwareMaterialsResponse,
   HealthResponse,
+  O7OperatorConsoleResponse,
   ProofBoundaryResponse,
   RouteDebugSummaryResponse,
   TrainingLabelingResponse,
@@ -20,6 +21,7 @@ export interface WorkstationSnapshot {
   evidenceTools: EvidenceToolsResponse;
   hardwareMaterials: HardwareMaterialsResponse;
   trainingLabeling: TrainingLabelingResponse;
+  o7OperatorConsole: O7OperatorConsoleResponse;
   proofBoundary: ProofBoundaryResponse;
 }
 
@@ -30,6 +32,7 @@ const API_ENDPOINTS = {
   evidenceTools: "/api/tools/evidence",
   hardwareMaterials: "/api/hardware/wave-rover/material-coverage",
   trainingLabeling: "/api/tools/training-labeling",
+  o7OperatorConsole: "/api/o7/operator-console",
   proofBoundary: "/api/proof-boundary",
 } as const;
 
@@ -85,14 +88,20 @@ export async function getProofBoundary(): Promise<ProofBoundaryResponse> {
   return loadJson<ProofBoundaryResponse>(API_ENDPOINTS.proofBoundary);
 }
 
+export async function getO7OperatorConsole(): Promise<O7OperatorConsoleResponse> {
+  // O7 console 必须由后端契约驱动，前端不自行拼接 KR 状态或控制能力。
+  return loadJson<O7OperatorConsoleResponse>(API_ENDPOINTS.o7OperatorConsole);
+}
+
 export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise<WorkstationSnapshot> {
   // 刷新同时拉取全部只读 API，避免分页面状态互相漂移。
-  const [health, routeSummary, evidenceTools, hardwareMaterials, trainingLabeling, proofBoundary] = await Promise.all([
+  const [health, routeSummary, evidenceTools, hardwareMaterials, trainingLabeling, o7OperatorConsole, proofBoundary] = await Promise.all([
     getHealth(),
     getRouteDebugSummary(inputs),
     getEvidenceTools(),
     getHardwareMaterials(),
     getTrainingLabeling(),
+    getO7OperatorConsole(),
     getProofBoundary(),
   ]);
 
@@ -102,6 +111,7 @@ export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise
     evidenceTools,
     hardwareMaterials,
     trainingLabeling,
+    o7OperatorConsole,
     proofBoundary,
   };
 }

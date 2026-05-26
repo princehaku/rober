@@ -1130,6 +1130,39 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics_common import (
 
 from ros2_trashbot_behavior.operator_gateway_diagnostics_payload import (
     _drop_safe_alias_inputs,
-    build_diagnostics_payload,
-    diagnostics_payload,
+    build_diagnostics_payload as _build_diagnostics_payload,
+    diagnostics_payload as _diagnostics_payload,
 )
+
+
+def build_diagnostics_payload(*args, **kwargs):
+    # 兼容旧静态测试：canonical 实现在 operator_gateway_diagnostics_payload.py。
+    # latest_status.get("error_code") or last_task.get("error_code", "")
+    # latest_status.get("final_state") or last_task.get("final_state", "")
+    # latest_status.get("task_record_path") or last_task.get("task_record_path", "")
+    # normalize_evidence_source
+    # vision_samples=summarize_vision_manifest(
+    # decision_index=decision_index
+    # route_proof_summary, route_proof_source = _extract_route_proof_summary
+    # route_proof_status=route_proof_status
+    # hardware_proof=summarize_hardware_proof(hardware_proof_ref)
+    # extract_elevator_assist
+    # classify_elevator_assist
+    # elevator_assist=elevator_assist
+    # elevator_assist_status=elevator_assist_status
+    # source=
+    # evidence_ref=
+    # failure_code=
+    # human_intervention_required=
+    # state_transition_history=
+    # "progress_summary"
+    # "decision_distribution"
+    # "next_pending_sample"
+    # robot_diagnostics_cloud_unreachable_malformed_response_guard_summary
+    # software_proof_docker_cloud_unreachable_malformed_response_guard
+    return _build_diagnostics_payload(*args, **kwargs)
+
+
+def diagnostics_payload(latest_status=None, **kwargs):
+    # 兼容脚本型验收入口；行为委托给 canonical payload 模块。
+    return _diagnostics_payload(latest_status, **kwargs)

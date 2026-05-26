@@ -15,6 +15,12 @@ pc-tools/workstation/
 - `route/`：保留 fixed-route 调试说明；实际读取能力在 `workstation/src/server/routeDebugLoader.ts`。
 - `training/`、`labeling/`：保留占位目录和后续工作入口，不代表真实训练或标注流水线已接入。
 
+## O7 Operator Console
+
+`workstation/` 现在包含 O7 Operator Console tab。该 tab 只消费 `GET /api/o7/operator-console` 返回的 `trashbot.o7.operator_console.v1` 契约，展示 O7 六个 KR 的 draft/blocked/not_proven 状态：实时地图/机器人位置、电梯状态、历史路线回放、数据标注、ASR/TTS、手控/寻路。
+
+O7 tab 的 cloud 契约来源是 `cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py` 中的 `build_o7_operator_console_contract()`。PC 端保持 `operator_mode=observe_only`、`command_dispatch_enabled=false`、`sends_to_robot=false`，不直连小车、不发送真实控制、不声明真实实时流或成功。
+
 ## 旧 Python 移除状态
 
 CEO 最新要求已将 `pc-tools` 下旧 Python 脚本、Python helper 和 Python 测试入口移除。`pc-tools` 不再保留 `.py` 作为产品入口、gate 入口或测试入口。

@@ -6,6 +6,31 @@
 
 ---
 
+## 2026-05-27 系列
+
+### 2026-05-27 01-02｜o7-rtc-realtime-foundation｜O7 RTC realtime foundation
+
+本轮 `sprints/2026.05.27_01-02_o7-rtc-realtime-foundation/` 执行 O7 RTC realtime foundation epic closeout。触发问题是 CEO 追问“视频 RTC 不需要机器上协议打通吗？板子上的代码够了？”产品结论是：需要机器上协议、设备、云端信令和 PC 消费链路打通；vendor WAVE ROVER Raspberry Pi app 只能作为 WebRTC/TTS/视频参考，不能证明 rober Orange Pi + ROS2 + cloud + PC 已打通。
+
+Task A Hardware 新增 `docs/interfaces/o7_realtime_hardware_sources.md`，读取 `docs/vendor/VENDOR_INDEX.md` 及其指向的 Waveshare `ugv_rpi` 本地资料，确认 `aiortc`、`/offer`、`/video_feed`、`audio_ctrl.py`、`Picamera2`、`cv2.VideoCapture(0)`、`config.yaml` 等只是 Raspberry Pi 上位机参考。它不证明 Orange Pi 摄像头、音频、ALSA card、UART 设备、CPU 编码、STUN/TURN、云端信令或 rober PC 平台已完成。
+
+Task B Robot 新增 board-side O7 realtime status contract：`operator_realtime_status.py` 生产 `o7_board_realtime_status`，`/api/status` 和 `/api/diagnostics` 暴露 `o7_board_realtime_status` / `board_realtime_status`，覆盖 RTC/video/ASR/TTS/manual-control/nav-goal readiness，同时固定 `software_proof_only`、`not_proven`、`safe_to_control=false`、`primary_actions_enabled=false`。验证通过：`Ran 394 tests ... OK`。
+
+Task C Full-Stack 新增 cloud/PC O7 operator console contract：cloud-relay 提供 `build_o7_operator_console_contract()`，PC workstation 新增 `GET /api/o7/operator-console` 和 `O7 Console` tab，展示 O7 六个 KR 的 draft/blocked/not_proven 视图。Node build/test/lint 通过，PC workstation tests 输出 `16 passed`。
+
+Product closeout 更新本 sprint `tech-done.md`、`side2side_check.md`、`final.md`，并保守更新 `OKR.md` 与本进度日志。O7 从 0% 调整到约 5%，只代表 O7 realtime board/cloud/PC 契约和 PC software proof 起步完成；不代表真实 RTC、真实 ASR/TTS、真实手控/寻路、真实实时地图、真实电梯状态、真实历史回放、真实标注服务、真实云端生产链路或上车验证完成。O6 保持 0%，因为本轮只做 O7 所需 contract，不建立云端数据存档、打标 API 或模型推理平台。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 83% | 本轮引用 vendor 资料校正 O7 RTC 边界，但不触碰硬件桥、串口、WAVE ROVER 上车、UART 链路、HIL 或 2D LiDAR / ToF 材料。 |
+| Objective 5：云中转控制面 | 保持约 80% | cloud-relay 新增 O7 contract helper，但不是公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic 或真实手机/browser 验收。 |
+| Objective 6：云端核心后端 | 保持 0% | 本轮不提供任务/事件持久化、OSS evidence_ref 数据层、打标 API、模型推理接口或查询 API。 |
+| Objective 7：PC 端运营调试平台 | 从 0% 提升到约 5% | 已建立 O7 board realtime status、cloud operator console contract 和 PC O7 Console software proof，能清楚表达六个 KR 的入口、阻塞原因和下一步证据。仍不证明真实 RTC/视频、真实 ASR/TTS、真实手控/寻路、真实地图/电梯/回放/标注数据流或上车链路。 |
+
+本轮验证范围：工程子 agent 报告的 Hardware vendor-source grep/diff-check、Robot focused tests（`Ran 394 tests ... OK`）、Full-Stack Node build/test/lint 和 PC tests（`16 passed`），以及 Product closeout required `rg` / scoped `git diff --check`。Product 未运行 Docker/Humble build、真实 Orange Pi、真实 WAVE ROVER/UART、真实摄像头、真实麦克风/喇叭、真实 RTC、STUN/TURN、公网 HTTPS、4G/SIM、production DB/queue、真实 PC browser 画面、真实手控/Nav2 或 HIL。
+
+更新时间：2026-05-27 01:20 Asia/Shanghai。
+
 ## 2026-05-26 系列
 
 ### 2026-05-26 07-08｜cloud-command-terminal-result-mainline｜terminal result mainline

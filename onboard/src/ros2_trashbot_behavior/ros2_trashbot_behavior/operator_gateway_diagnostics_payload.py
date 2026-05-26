@@ -1129,6 +1129,7 @@ from ros2_trashbot_behavior.operator_gateway_diagnostics_common import (
     safe_int,
     summarize_hardware_proof,
 )
+from ros2_trashbot_behavior.operator_realtime_status import build_o7_board_realtime_status
 
 
 
@@ -8351,6 +8352,9 @@ def build_diagnostics_payload(
         ),
         elevator_assist=elevator_assist,
         elevator_assist_status=elevator_assist_status,
+        # diagnostics 与 status 共用同一份 fail-closed 摘要，避免消费者看到两套 O7 口径。
+        o7_board_realtime_status=build_o7_board_realtime_status(latest_status),
+        board_realtime_status=build_o7_board_realtime_status(latest_status),
         hardware_proof=summarize_hardware_proof(hardware_proof_ref),
         oss_cdn_manifest=build_phone_oss_cdn_manifest_summary(oss_cdn_manifest_artifact_ref),
         network_recovery_drill=build_phone_network_recovery_summary(

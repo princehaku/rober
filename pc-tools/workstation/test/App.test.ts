@@ -376,6 +376,99 @@ const fixtures: Record<string, unknown> = {
       "Dataset and labeling inventory is read-only software proof; it does not run pipelines, transfer data, write files, or prove a real pipeline.",
     ...PROOF_FLAGS,
   },
+  "/api/o7/operator-console": {
+    schema: "trashbot.o7.operator_console.v1",
+    contract_source: "cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py",
+    workstation_endpoint: "/api/o7/operator-console",
+    cloud_api_status: "draft_blocked_not_proven",
+    robot_connection: "not_connected_by_pc",
+    realtime_stream_status: "blocked_not_proven",
+    operator_mode: "observe_only",
+    manual_control_policy: {
+      pc_direct_robot_connection: false,
+      cloud_mediated_only: true,
+      command_dispatch_enabled: false,
+      confirmation_required_before_future_dispatch: true,
+      success_claim_allowed: false,
+    },
+    kr_views: [
+      {
+        id: "O7-KR1",
+        title: "实时地图与机器人位置",
+        status: "blocked",
+        cloud_contract: "realtime.map_pose.v1",
+        pc_surface: "Map/Pose panel",
+        current_view: ["pose=not_proven"],
+        blocked_by: ["cloud realtime stream not connected"],
+        next_required_contract: "Cloud must expose robot pose snapshots.",
+      },
+      {
+        id: "O7-KR2",
+        title: "电梯状态展示",
+        status: "blocked",
+        cloud_contract: "realtime.elevator_state.v1",
+        pc_surface: "Elevator state panel",
+        current_view: ["floor_evidence=not_proven"],
+        blocked_by: ["elevator event archive not connected"],
+        next_required_contract: "Cloud must expose elevator state chain.",
+      },
+      {
+        id: "O7-KR3",
+        title: "历史路线回放",
+        status: "draft",
+        cloud_contract: "history.route_replay.v1",
+        pc_surface: "Route replay panel",
+        current_view: ["playback=blocked"],
+        blocked_by: ["cloud task archive query not connected"],
+        next_required_contract: "Cloud must expose trajectory frames.",
+      },
+      {
+        id: "O7-KR4",
+        title: "数据标注/打标界面",
+        status: "draft",
+        cloud_contract: "labeling.review_queue.v1",
+        pc_surface: "Labeling queue panel",
+        current_view: ["submit=blocked"],
+        blocked_by: ["annotation API not connected"],
+        next_required_contract: "Cloud must expose label schema.",
+      },
+      {
+        id: "O7-KR5",
+        title: "实时 ASR 监听 + TTS 发言控制",
+        status: "blocked",
+        cloud_contract: "voice.asr_tts_operator.v1",
+        pc_surface: "Voice monitor panel",
+        current_view: ["asr_stream=blocked"],
+        blocked_by: ["ASR event stream not connected"],
+        next_required_contract: "Cloud must expose ASR transcript events.",
+      },
+      {
+        id: "O7-KR6",
+        title: "手动转向控制 + 自动寻路下发",
+        status: "blocked",
+        cloud_contract: "operator.safe_command_preview.v1",
+        pc_surface: "Safe command preview panel",
+        current_view: ["manual_control=blocked"],
+        blocked_by: ["safe command dispatch disabled"],
+        next_required_contract: "Cloud must expose safe command API.",
+      },
+    ],
+    command_previews: [
+      {
+        id: "manual_turn_preview",
+        label: "Manual turn envelope",
+        status: "blocked_not_proven",
+        requires_confirmation: true,
+        sends_to_robot: false,
+        cloud_endpoint: "POST /api/o7/operator/commands/manual-turn (future, disabled)",
+        recovery_path: "Require ACK before enabling.",
+      },
+    ],
+    blocked_reasons: ["pc_must_not_direct_connect_robot", "manual_or_navigation_dispatch_disabled"],
+    not_proven: ["real_o7_realtime_cloud_stream", "real_operator_safe_command_dispatch", "delivery_success"],
+    recovery_paths: ["Connect O6 cloud archive and realtime stream before replacing draft values."],
+    ...PROOF_FLAGS,
+  },
   "/api/proof-boundary": {
     schema: "trashbot.pc_tools_workstation.proof_boundary.v2",
     can_prove: ["Node/Vue workstation can index local JSON fixtures under pc-tools/evidence/fixtures"],
@@ -512,5 +605,30 @@ describe("App", () => {
     expect(text).not.toContain("execute");
     expect(wrapper.text()).not.toContain("/cmd_vel");
     expect(wrapper.text()).not.toContain("/dev/tty");
+  });
+
+  it("renders O7 operator console as cloud-contract observe-only surface", async () => {
+    // O7 tab 必须展示六个 KR 的契约缺口，不能出现真实控制按钮或成功外推。
+    stubWorkstationFetch();
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.findAll("button").find((button) => button.text() === "O7 Console")?.trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain("O7 Operator Console");
+    expect(wrapper.text()).toContain("draft_blocked_not_proven");
+    expect(wrapper.text()).toContain("cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py");
+    expect(wrapper.text()).toContain("observe_only");
+    expect(wrapper.text()).toContain("not_connected_by_pc");
+    expect(wrapper.text()).toContain("O7-KR1");
+    expect(wrapper.text()).toContain("O7-KR6");
+    expect(wrapper.text()).toContain("operator.safe_command_preview.v1");
+    expect(wrapper.text()).toContain("sends_to_robot=false");
+    expect(wrapper.text()).toContain("pc_must_not_direct_connect_robot");
+    expect(wrapper.text()).not.toContain("/cmd_vel");
+    expect(wrapper.findAll("button").map((button) => button.text())).not.toContain("Manual turn envelope");
   });
 });

@@ -17,6 +17,7 @@ pc-tools/workstation/
   src/server/catalog.ts               # Route Debug 响应聚合
   src/server/datasetAssets.ts         # Training/Labeling 本地资产只读清单
   src/server/evidenceAssets.ts        # Evidence JSON fixture 索引
+  src/server/o7OperatorConsole.ts     # O7 cloud-contract driven operator console draft
   src/server/waveRoverMaterialCoverage.ts # WAVE ROVER material coverage 只读扫描
   src/server/proofBoundary.ts         # Health、Training/Labeling、Proof Boundary 契约
   src/server/paths.ts                 # 仓库内路径和安全展示路径
@@ -51,7 +52,20 @@ pc-tools/workstation/
 - Evidence Tools：索引 `pc-tools/evidence/fixtures/**/*.json`，展示 JSON fixture 资产分组。
 - Hardware Materials：`GET /api/hardware/wave-rover/material-coverage` 扫描 `pc-tools/evidence/fixtures/wave_rover_*` 下的 WAVE ROVER 材料组，识别 `feedback_T1001.log`、项目侧 `odom_once.jsonl`、项目侧 `imu_once.jsonl`、项目侧 `battery_once.jsonl`、`operator_hil_report` / `operator_hil_report.json` 的 present/missing coverage，并在 Vue 面板中展示 `fixture_groups`、`gaps`、vendor source、串口参考、命令事实和 `not_proven_boundaries`。兼容旧路径 `GET /api/tools/hardware-materials`，但新 UI 入口使用前者。
 - Training/Labeling：`GET /api/tools/training-labeling` 扫描 `pc-tools/training/` 和 `pc-tools/labeling/` 下的非 Python 资产，返回两个工作区的 roots、asset counts、manifest candidates、image/annotation counts、readiness、missing requirements 和 next actions；仍明确未接真实训练或标注流水线。
+- O7 Operator Console：`GET /api/o7/operator-console` 返回 `trashbot.o7.operator_console.v1` cloud-contract draft，展示 O7 六个 KR 的最小视图：实时地图/机器人位置、电梯状态、历史路线回放、数据标注、ASR/TTS、手控/寻路。该入口的 `contract_source` 指向 `cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py`，状态固定为 `draft_blocked_not_proven` / `observe_only`，PC 不直连小车，不发送命令，不声明真实成功。
 - Proof Boundary：集中展示软件证明能覆盖什么、不能覆盖什么，避免误读为真实硬件或交付证明。
+
+## O7 Operator Console 边界
+
+O7 Operator Console 是云端契约驱动的最小运营视图，不是实时控制台。它把 O7 六个 KR 的目标界面先落到 PC 工作站中，便于 O6/O7 后续对齐 API 字段和验收缺口。
+
+- 顶层 API 固定继承 `source=software_proof`、`proof_status=not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`pc_only=true`。
+- `cloud_api_status=draft_blocked_not_proven`，`robot_connection=not_connected_by_pc`，`operator_mode=observe_only`。
+- `manual_control_policy.command_dispatch_enabled=false`，`pc_direct_robot_connection=false`，`cloud_mediated_only=true`，`confirmation_required_before_future_dispatch=true`。
+- `kr_views` 必须包含 `O7-KR1` 到 `O7-KR6` 六项，状态只能是 `draft`、`blocked` 或 `not_proven`。
+- `command_previews` 只展示未来 safe API envelope，所有条目固定 `sends_to_robot=false`，不得渲染成按钮或键盘控制。
+- O7-KR1 需要后续 cloud realtime map/pose stream；O7-KR2 需要电梯状态链和楼层证据；O7-KR3 需要任务归档和轨迹帧；O7-KR4 需要打标队列和提交审计；O7-KR5 需要 ASR 事件流和 TTS ACK；O7-KR6 需要幂等 command API、robot ACK、超时、取消和恢复路径。
+- PC 端不得绕过云端读取 ROS2、串口、Nav2 runtime 或 WAVE ROVER 状态；任何真实运动或语音播报必须等待 Robot/Hardware 提供安全验收材料。
 
 ## Training/Labeling Asset Inventory 边界
 
@@ -108,6 +122,7 @@ Hardware Materials 是 Node-native 只读入口，不恢复旧 Python evidence g
 - 真实手机/browser proof
 - 4G、云端、OSS/CDN 生产链路
 - 真实训练、真实标注、真实投放或真实交付成功
+- O7 实时地图/机器人位置、电梯状态链、历史路线回放、标注提交、ASR/TTS runtime、手控或寻路 dispatch
 
 UI 不提供 Start、Confirm、Cancel、Dropoff、Collect 或任何真实控制入口。
 

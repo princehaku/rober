@@ -1,11 +1,12 @@
 <script setup lang="ts">
-export type WorkstationPanel = "route" | "evidence" | "hardware" | "training" | "boundary";
+export type WorkstationPanel = "route" | "o7" | "evidence" | "hardware" | "training" | "boundary";
 
 const activePanel = defineModel<WorkstationPanel>({ required: true });
 
 const panels: Array<{ id: WorkstationPanel; label: string }> = [
-  // 四个入口对应工作站只读能力，不增加任何控制台式主动作。
+  // 所有入口对应工作站只读能力，不增加任何控制台式主动作。
   { id: "route", label: "Route Debug" },
+  { id: "o7", label: "O7 Console" },
   { id: "evidence", label: "Evidence Tools" },
   { id: "hardware", label: "Hardware Materials" },
   { id: "training", label: "Data Assets" },

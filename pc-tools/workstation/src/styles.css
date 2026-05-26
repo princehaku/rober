@@ -79,6 +79,7 @@ h3 {
 .tabs,
 .metrics,
 .two-col,
+.kr-grid,
 .route-inputs {
   display: grid;
   gap: 10px;
@@ -114,7 +115,7 @@ h3 {
 }
 
 .tabs {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   margin: 10px 0 12px;
 }
 
@@ -274,11 +275,17 @@ th {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.kr-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 16px 0;
+}
+
 .compact-section {
   margin-bottom: 14px;
 }
 
-.two-col article {
+.two-col article,
+.kr-grid article {
   border: 1px solid #d7dee6;
   border-radius: 6px;
   padding: 14px;
@@ -296,10 +303,11 @@ th {
   }
 
   .status-strip,
-  .tabs,
-  .metrics,
-  .two-col,
-  .route-inputs {
+    .tabs,
+    .metrics,
+    .two-col,
+    .kr-grid,
+    .route-inputs {
     grid-template-columns: 1fr;
   }
 

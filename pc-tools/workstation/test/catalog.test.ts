@@ -6,6 +6,7 @@ import {
   buildEvidenceToolsResponse,
   buildHardwareMaterialsResponse,
   buildHealth,
+  buildO7OperatorConsoleResponse,
   buildProofBoundary,
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
@@ -413,5 +414,32 @@ describe("workstation fail-closed API contracts", () => {
     expect(boundary.control_policy.route_loader_mode).toBe("local_json_readonly");
     expectNoLegacyPythonGateSemantics(training);
     expectNoLegacyPythonGateSemantics(boundary);
+  });
+
+  it("O7 operator console exposes six cloud-contract driven KR views without dispatch", () => {
+    // O7 console 只证明契约视图可渲染，不证明实时流、语音、手控或寻路可用。
+    const response = buildO7OperatorConsoleResponse();
+
+    expect(response.schema).toBe("trashbot.o7.operator_console.v1");
+    expect(response.contract_source).toBe("cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py");
+    expect(response.cloud_api_status).toBe("draft_blocked_not_proven");
+    expect(response.operator_mode).toBe("observe_only");
+    expect(response.robot_connection).toBe("not_connected_by_pc");
+    expect(response.safe_to_control).toBe(false);
+    expect(response.delivery_success).toBe(false);
+    expect(response.primary_actions_enabled).toBe(false);
+    expect(response.manual_control_policy.pc_direct_robot_connection).toBe(false);
+    expect(response.manual_control_policy.cloud_mediated_only).toBe(true);
+    expect(response.manual_control_policy.command_dispatch_enabled).toBe(false);
+    expect(response.kr_views.map((kr) => kr.id)).toEqual(["O7-KR1", "O7-KR2", "O7-KR3", "O7-KR4", "O7-KR5", "O7-KR6"]);
+    expect(response.kr_views.every((kr) => ["draft", "blocked", "not_proven"].includes(kr.status))).toBe(true);
+    expect(response.command_previews.every((command) => command.sends_to_robot === false)).toBe(true);
+    expect(response.command_previews.every((command) => command.requires_confirmation === true)).toBe(true);
+    expect(response.blocked_reasons).toContain("pc_must_not_direct_connect_robot");
+    expect(response.not_proven).toContain("real_operator_safe_command_dispatch");
+    expect(JSON.stringify(response)).not.toContain("delivery_success=true");
+    expect(JSON.stringify(response)).not.toContain("success_claim_allowed=true");
+    expect(JSON.stringify(response)).not.toContain("command_dispatch_enabled=true");
+    expectNoLegacyPythonGateSemantics(response);
   });
 });

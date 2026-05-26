@@ -229,6 +229,29 @@ class OperatorGatewayDiagnosticsTest(unittest.TestCase):
             operator_status_file="/tmp/status.json",
         )
 
+    def test_diagnostics_payload_includes_o7_realtime_status_aliases(self):
+        payload = self._base_build_payload(
+            {
+                "state": "waiting_for_trash",
+                "o7_board_realtime_status": {
+                    "media_agent_state": "software_contract_ready",
+                    "asr_stream_state": "software_contract_ready",
+                    "manual_control_policy": {"enabled": True, "safe_to_control": True},
+                    "nav_goal_policy": {"enabled": True, "safe_to_control": True},
+                },
+            }
+        )
+
+        status = payload["o7_board_realtime_status"]
+        self.assertEqual(payload["board_realtime_status"], status)
+        self.assertEqual(status["schema"], "trashbot.o7_board_realtime_status.v1")
+        self.assertEqual(status["asr_stream_state"], "software_contract_ready")
+        self.assertFalse(status["manual_control_policy"]["enabled"])
+        self.assertFalse(status["nav_goal_policy"]["safe_to_control"])
+        self.assertTrue(status["software_proof_only"])
+        self.assertIn("real_tts_playback", status["not_proven"])
+        self.assertIn("tts_audio_playback_trace", status["next_required_evidence"])
+
     def test_route_proof_summary_passthrough_and_ready_state(self):
         route_proof_summary = {
             "coverage_rate": 1.0,

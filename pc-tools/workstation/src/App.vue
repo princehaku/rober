@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import EvidenceToolsPanel from "./components/EvidenceToolsPanel.vue";
+import O7OperatorConsolePanel from "./components/O7OperatorConsolePanel.vue";
 import ProofBoundaryPanel from "./components/ProofBoundaryPanel.vue";
 import ProofFlagStrip from "./components/ProofFlagStrip.vue";
 import RouteDebugPanel from "./components/RouteDebugPanel.vue";
@@ -14,6 +15,7 @@ import type {
   EvidenceToolsResponse,
   HardwareMaterialsResponse,
   HealthResponse,
+  O7OperatorConsoleResponse,
   ProofBoundaryResponse,
   RouteDebugSummaryResponse,
   TrainingLabelingResponse,
@@ -33,6 +35,7 @@ const routeSummary = ref<RouteDebugSummaryResponse | null>(null);
 const evidenceTools = ref<EvidenceToolsResponse | null>(null);
 const hardwareMaterials = ref<HardwareMaterialsResponse | null>(null);
 const trainingLabeling = ref<TrainingLabelingResponse | null>(null);
+const o7OperatorConsole = ref<O7OperatorConsoleResponse | null>(null);
 const proofBoundary = ref<ProofBoundaryResponse | null>(null);
 const routeInputs = ref<RouteDebugInputs>({
   // 输入框保存用户本机路径；这些值只拼到 query，不作为 safe summary 展示。
@@ -53,6 +56,7 @@ async function refresh(): Promise<void> {
     evidenceTools.value = snapshot.evidenceTools;
     hardwareMaterials.value = snapshot.hardwareMaterials;
     trainingLabeling.value = snapshot.trainingLabeling;
+    o7OperatorConsole.value = snapshot.o7OperatorConsole;
     proofBoundary.value = snapshot.proofBoundary;
   } catch (err) {
     // API 不可用时保持 fail-closed；不显示任何成功或可控制状态。
@@ -97,6 +101,7 @@ onMounted(() => {
       :route-summary="routeSummary"
       @refresh="refresh"
     />
+    <O7OperatorConsolePanel v-else-if="activePanel === 'o7'" :operator-console="o7OperatorConsole" />
     <EvidenceToolsPanel v-else-if="activePanel === 'evidence'" :evidence-tools="evidenceTools" />
     <WaveRoverMaterialCoveragePanel
       v-else-if="activePanel === 'hardware'"

@@ -1,4 +1,5 @@
 export type ProofStatus = "not_proven";
+export type OperatorKrStatus = "draft" | "blocked" | "not_proven";
 
 // 工作站只证明本地 Node/Vue 软件入口可用，不证明机器人、ROS2、硬件或现场任务成功。
 // 这些字段集中在共享契约里，是为了让 API、UI、测试共用同一个 fail-closed 底座。
@@ -234,6 +235,51 @@ export interface ProofBoundaryResponse extends ProofFlags {
   };
 }
 
+export interface O7OperatorKrView {
+  id: "O7-KR1" | "O7-KR2" | "O7-KR3" | "O7-KR4" | "O7-KR5" | "O7-KR6";
+  title: string;
+  status: OperatorKrStatus;
+  cloud_contract: string;
+  pc_surface: string;
+  current_view: string[];
+  blocked_by: string[];
+  next_required_contract: string;
+}
+
+export interface O7OperatorActionPreview {
+  id: string;
+  label: string;
+  status: "blocked_not_proven";
+  requires_confirmation: true;
+  sends_to_robot: false;
+  cloud_endpoint: string;
+  recovery_path: string;
+}
+
+// O7 Operator Console 是 cloud-contract driven 的最小视图，不能由前端伪造机器人事实。
+// command_previews 只表达将来安全 API 的 envelope，不代表按钮会发送真实控制。
+export interface O7OperatorConsoleResponse extends ProofFlags {
+  schema: "trashbot.o7.operator_console.v1";
+  contract_source: "cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py";
+  workstation_endpoint: "/api/o7/operator-console";
+  cloud_api_status: "draft_blocked_not_proven";
+  robot_connection: "not_connected_by_pc";
+  realtime_stream_status: "blocked_not_proven";
+  operator_mode: "observe_only";
+  manual_control_policy: {
+    pc_direct_robot_connection: false;
+    cloud_mediated_only: true;
+    command_dispatch_enabled: false;
+    confirmation_required_before_future_dispatch: true;
+    success_claim_allowed: false;
+  };
+  kr_views: O7OperatorKrView[];
+  command_previews: O7OperatorActionPreview[];
+  blocked_reasons: string[];
+  not_proven: string[];
+  recovery_paths: string[];
+}
+
 // Health 只证明 Node API 存活，不证明机器人在线。
 export interface HealthResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.health.v1";
@@ -262,6 +308,7 @@ export const API_ROUTES = [
   "/api/tools/hardware-materials",
   "/api/tools/training-labeling",
   "/api/route/debug-summary",
+  "/api/o7/operator-console",
   "/api/proof-boundary",
 ] as const;
 
@@ -274,5 +321,7 @@ export const NOT_PROVEN_ITEMS = [
   "real_wave_rover_uart_feedback",
   "real_phone_or_cloud_delivery",
   "real_training_or_labeling_pipeline",
+  "real_o7_realtime_cloud_stream",
+  "real_o7_operator_command_dispatch",
   "delivery_success",
 ] as const;

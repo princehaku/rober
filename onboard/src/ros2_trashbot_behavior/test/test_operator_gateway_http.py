@@ -47,6 +47,10 @@ from ros2_trashbot_behavior.operator_gateway_http import (
     operator_prompt_for_state,
     status_payload,
 )
+from ros2_trashbot_behavior.operator_realtime_status import (
+    O7_BOARD_REALTIME_STATUS_SCHEMA,
+    build_o7_board_realtime_status,
+)
 from ros2_trashbot_behavior.remote_cloud_relay import (
     create_credential_rotation_artifact,
     create_network_recovery_artifact,
@@ -710,6 +714,52 @@ class OperatorGatewayHttpTest(unittest.TestCase):
                 self.assertEqual(payload["phone_copy"], expected["phone_copy"])
                 self.assertEqual(payload["speaker_prompt"], expected["speaker_prompt"])
                 self.assertEqual(payload["elevator_assist"]["state"], "disabled")
+
+    def test_status_payload_exposes_o7_realtime_contract_fail_closed(self):
+        payload = status_payload(
+            "waiting_for_trash",
+            o7_board_realtime_status={
+                "video_source_state": "software_contract_ready",
+                "manual_control_policy": {
+                    "state": "software_contract_ready",
+                    "enabled": True,
+                    "safe_to_control": True,
+                    "accepted_commands": ["turn_left"],
+                },
+                "nav_goal_policy": {
+                    "state": "software_contract_ready",
+                    "enabled": True,
+                    "safe_to_control": True,
+                    "accepted_commands": ["go_to_pose"],
+                },
+            },
+        )
+
+        status = payload["o7_board_realtime_status"]
+        self.assertEqual(status["schema"], O7_BOARD_REALTIME_STATUS_SCHEMA)
+        self.assertEqual(status["media_agent_state"], "software_contract_ready")
+        self.assertEqual(status["video_source_state"], "software_contract_ready")
+        self.assertFalse(status["manual_control_policy"]["enabled"])
+        self.assertFalse(status["manual_control_policy"]["safe_to_control"])
+        self.assertEqual(status["manual_control_policy"]["accepted_commands"], [])
+        self.assertFalse(status["nav_goal_policy"]["enabled"])
+        self.assertFalse(status["nav_goal_policy"]["safe_to_control"])
+        self.assertIn("real_rtc_session", status["not_proven"])
+        self.assertIn("manual_control_hil_with_safe_stop", status["next_required_evidence"])
+
+    def test_o7_realtime_helper_rejects_unknown_ready_claims(self):
+        status = build_o7_board_realtime_status(
+            {
+                "board_realtime_status": {
+                    "asr_stream_state": "real_stream_ready",
+                    "tts_playback_state": "hil_pass",
+                }
+            }
+        )
+
+        self.assertEqual(status["asr_stream_state"], "not_proven")
+        self.assertEqual(status["tts_playback_state"], "not_proven")
+        self.assertFalse(status["primary_actions_enabled"])
 
     def test_status_payload_exposes_elevator_assist_copy_without_breaking_state_contract(self):
         payload = status_payload(

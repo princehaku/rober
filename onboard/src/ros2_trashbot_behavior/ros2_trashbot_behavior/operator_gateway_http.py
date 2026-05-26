@@ -25,6 +25,7 @@ from ros2_trashbot_behavior.remote_bridge_protocol import (
     MANUAL_TAKEOVER_SAFE_PHONE_COPY,
     parse_bool,
 )
+from ros2_trashbot_behavior.operator_realtime_status import build_o7_board_realtime_status
 
 
 API_VERSION = "slice2.operator.v1"
@@ -3460,6 +3461,10 @@ def status_payload(state, message="", **extra):
         state=state,
         message=message,
     )
+    realtime_status_source = extra.pop("o7_board_realtime_status", None)
+    if realtime_status_source is None:
+        realtime_status_source = extra.pop("board_realtime_status", None)
+    media_preflight_source = extra.pop("o7_board_media_preflight", None)
     prompt = operator_prompt_for_state(state, elevator_assist=elevator_assist)
     payload = {
         "api_version": API_VERSION,
@@ -3468,6 +3473,13 @@ def status_payload(state, message="", **extra):
         "phone_copy": prompt["phone_copy"],
         "speaker_prompt": prompt["speaker_prompt"],
         "elevator_assist": elevator_assist,
+        # O7 realtime status 是只读 readiness contract；这里生成不触发 RTC、音频或底盘控制。
+        "o7_board_realtime_status": build_o7_board_realtime_status(
+            {
+                "o7_board_realtime_status": realtime_status_source,
+                "o7_board_media_preflight": media_preflight_source,
+            }
+        ),
         "updated_at": time.time(),
     }
     payload.update(extra)
