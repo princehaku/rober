@@ -649,6 +649,124 @@ export interface O7RouteReplayPreviewTransition {
   evidence_ref: string;
 }
 
+export interface O7RealtimeElevatorPreviewStateSample {
+  state: string;
+  status: string;
+  timestamp_ms: number | null;
+  evidence_ref: string;
+}
+
+// Realtime/Elevator preview 是 O7-KR1/KR2 的 PC-only 本地 fixture adapter。
+// 它只把 map/pose/elevator 槽位压成安全摘要，不连接云端实时流、ROS2 /tf 或电梯设备。
+export interface O7RealtimeElevatorPreviewResponse extends ProofFlags {
+  schema: "trashbot.o7.realtime_elevator_preview.v1";
+  schema_version: 1;
+  preview_status: "fixture_preview_ready" | "blocked_not_proven";
+  input_status: {
+    fixture_json: string;
+    status:
+      | "loaded"
+      | "not_provided"
+      | "missing"
+      | "read_error"
+      | "bad_json"
+      | "not_object"
+      | "unsupported_schema"
+      | "unsafe_copy"
+      | "success_claim"
+      | "control_claim"
+      | "real_realtime_api_claim"
+      | "ros2_tf_connected_claim"
+      | "latency_lt_2s_claim"
+      | "route_membership_true_claim"
+      | "in_elevator_zone_true_claim"
+      | "real_elevator_state_claim"
+      | "elevator_arrival_claim"
+      | "floor_recognition_proven_claim"
+      | "human_takeover_proven_claim"
+      | "robot_control_executed_claim";
+    failure_reason: string;
+  };
+  source_fixture_schema: "trashbot.o7.realtime_elevator_fixture.v1" | "not_loaded";
+  real_realtime_api_connected: false;
+  real_ros2_tf_connected: false;
+  real_elevator_state_chain_connected: false;
+  latency_lt_2s_proven: false;
+  robot_control_executed: false;
+  session: {
+    session_id: string;
+    source: "local_json_fixture";
+    evidence_ref: string;
+    audit_refs: string[];
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  map_summary: {
+    map_ref: string;
+    map_frame: string;
+    source: "local_json_fixture";
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  robot_pose_summary: {
+    x_m: number | null;
+    y_m: number | null;
+    yaw_rad: number | null;
+    pose_source: string;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  pose_freshness_summary: {
+    timestamp_ms: number | null;
+    age_ms: number | null;
+    latency_lt_2s_proven: false;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  route_membership_summary: {
+    route_id: string;
+    requested_status: string;
+    requested_on_route: string;
+    requested_in_elevator_zone: string;
+    on_route: false;
+    in_elevator_zone: false;
+    status: "blocked_not_proven";
+  };
+  elevator_state_chain_summary: {
+    current_state: string;
+    sample_limit: 5;
+    count: number;
+    sample: O7RealtimeElevatorPreviewStateSample[];
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  current_floor_evidence_summary: {
+    floor_label: string;
+    confidence: number | null;
+    evidence_ref: string;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  target_floor_summary: {
+    floor_label: string;
+    confirmation_status: string;
+    evidence_ref: string;
+    status: "fixture_summary_only" | "blocked_not_proven";
+  };
+  human_takeover_summary: {
+    required: true;
+    reason: string;
+    operator_action: string;
+    evidence_ref: string;
+    status: "blocked_not_proven";
+  };
+  evidence_refs: {
+    fixture_ref: string;
+    session_evidence_ref: string;
+    audit_refs: string[];
+    elevator_state_refs: string[];
+    floor_evidence_ref: string;
+    target_floor_evidence_ref: string;
+    human_takeover_evidence_ref: string;
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 // Fixture preview 是 O7-KR3 的 PC-only 本地 JSON 预览，不是 O6 云归档或真实回放。
 // 顶层开关额外固定 real_cloud_archive_connected=false 和 robot_control_executed=false。
 export interface O7RouteReplayPreviewResponse extends ProofFlags {
@@ -1155,6 +1273,7 @@ export const API_ROUTES = [
   "/api/route/debug-summary",
   "/api/o7/operator-console",
   "/api/o7/operator-console/acceptance",
+  "/api/o7/realtime-elevator-preview?fixtureJson=<local-json>",
   "/api/o7/route-replay-preview?fixtureJson=<local-json>",
   "/api/o7/labeling-preview?fixtureJson=<local-json>",
   "/api/o7/voice-preview?fixtureJson=<local-json>",
@@ -1172,6 +1291,9 @@ export const NOT_PROVEN_ITEMS = [
   "real_phone_or_cloud_delivery",
   "real_training_or_labeling_pipeline",
   "real_o7_realtime_cloud_stream",
+  "real_o7_realtime_elevator_fixture_preview_runtime",
+  "real_o7_ros2_tf_forwarding",
+  "real_o7_elevator_state_chain",
   "real_o7_route_replay_archive",
   "real_o7_route_replay_fixture_preview_archive",
   "real_o7_trajectory_playback",

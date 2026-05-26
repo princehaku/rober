@@ -8,6 +8,7 @@ import {
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
   buildO7LabelingPreview,
+  buildO7RealtimeElevatorPreview,
   buildO7RouteReplayPreview,
   buildO7SafeCommandPreview,
   buildO7VoicePreview,
@@ -76,6 +77,11 @@ app.get("/api/o7/operator-console", (_req, res) => {
 app.get("/api/o7/operator-console/acceptance", (_req, res) => {
   // Acceptance guard 只复核 O7 console 响应，不读取硬件、不发命令、不连接云端生产。
   res.json(buildO7OperatorConsoleAcceptanceResponse());
+});
+
+app.get("/api/o7/realtime-elevator-preview", async (req, res) => {
+  // Realtime/elevator preview 只读取本地 fixture 摘要，不连接云端实时流、ROS2 /tf 或电梯设备。
+  res.json(await buildO7RealtimeElevatorPreview({ fixtureJson: queryString(req.query.fixtureJson) }));
 });
 
 app.get("/api/o7/route-replay-preview", async (req, res) => {

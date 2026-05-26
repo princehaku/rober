@@ -9,6 +9,7 @@
 - cloud helper：`cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py::build_o7_operator_console_contract()`
 - PC API：`GET /api/o7/operator-console`
 - PC acceptance guard：`GET /api/o7/operator-console/acceptance`
+- PC realtime/elevator fixture preview API：`GET /api/o7/realtime-elevator-preview?fixtureJson=<local-json>`
 - PC fixture preview API：`GET /api/o7/route-replay-preview?fixtureJson=<local-json>`
 - PC labeling fixture preview API：`GET /api/o7/labeling-preview?fixtureJson=<local-json>`
 - PC voice fixture preview API：`GET /api/o7/voice-preview?fixtureJson=<local-json>`
@@ -49,6 +50,61 @@
 - `safe_command_snapshot.real_robot_ack_connected=false`
 
 PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE ROVER、Nav2、TTS 或手控命令。
+
+## Realtime/Elevator Fixture Preview
+
+`trashbot.o7.realtime_elevator_preview.v1` 是 O7-KR1/KR2 的 PC-only 本地 fixture 预览契约。它允许 reviewer 通过 query path 指定一个本地安全 JSON fixture，并由 Node adapter 生成实时地图/机器人位置和电梯状态摘要。但它仍不是云端 realtime API、不是 ROS2 `/tf` forwarding、不是真实电梯状态链，也不代表刷新延迟小于 2 秒、路线成员关系、电梯到达、楼层识别或人工接管已证明。
+
+API：
+
+- `GET /api/o7/realtime-elevator-preview?fixtureJson=<local-json>`
+
+支持的输入 schema：
+
+- `schema=trashbot.o7.realtime_elevator_fixture.v1`
+- 可选字段：`session_id`、`map_ref`、`map_frame`、`robot_pose`、`pose_freshness`、`route_membership`、`elevator_state_chain[]`、`current_floor_evidence`、`target_floor`、`human_takeover`、`audit_refs[]`、`evidence_ref`
+
+固定 fail-closed 字段：
+
+- `source=software_proof`
+- `proof_status=not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `pc_only=true`
+- `real_realtime_api_connected=false`
+- `real_ros2_tf_connected=false`
+- `real_elevator_state_chain_connected=false`
+- `latency_lt_2s_proven=false`
+- `robot_control_executed=false`
+- `route_membership_summary.on_route=false`
+- `route_membership_summary.in_elevator_zone=false`
+- `human_takeover_summary.required=true`
+
+输出只保留安全摘要：
+
+- `session`：`session_id`、固定 `source=local_json_fixture`、脱敏后的 `evidence_ref` 和限量 `audit_refs`
+- `map_summary`：`map_ref`、`map_frame`、固定 `source=local_json_fixture`
+- `robot_pose_summary`：`x_m`、`y_m`、`yaw_rad`、`pose_source`，仅表示 fixture 槽位
+- `pose_freshness_summary`：`timestamp_ms`、`age_ms`，但 `latency_lt_2s_proven=false`
+- `route_membership_summary`：fixture 的 `route_id`、`status`、`on_route`、`in_elevator_zone` 只作为 requested 文本；输出证明值固定 false
+- `elevator_state_chain_summary`：`current_state`、`count` 和最多 5 个 `state/status/timestamp_ms/evidence_ref` sample
+- `current_floor_evidence_summary`、`target_floor_summary`、`human_takeover_summary`
+- `evidence_refs`、`blocked_reasons`、`not_proven`
+
+Adapter 必须拒绝并返回 `preview_status=blocked_not_proven`：
+
+- query 未提供、文件缺失、读取失败、坏 JSON、顶层不是 object
+- `schema` 不是 `trashbot.o7.realtime_elevator_fixture.v1`
+- fixture 内含凭证、串口、`/cmd_vel`、traceback 或其他 unsafe copy
+- fixture 声称 `delivery_success=true`、proof pass、realtime ready/live 或 operator console success
+- fixture 声称 `safe_to_control=true`、`primary_actions_enabled=true` 或 command dispatch enabled
+- fixture 声称真实 realtime API 已连接、ROS2 `/tf` 已连接、`latency_lt_2s_proven=true`
+- fixture 声称 `on_route=true`、`in_elevator_zone=true`
+- fixture 声称真实电梯状态链 connected/ready/live、电梯到达/pass、楼层识别 proven/pass、人工接管 proven/pass
+- fixture 声称 `robot_control_executed=true`
+
+该接口的 `fixture_preview_ready` 只表示本地 JSON 被压缩成安全摘要；它不提升 O7 完成度，不证明真实地图 artifact、真实机器人位姿、真实 `/tf`、真实 <2s 延迟、真实路线成员、真实电梯区域、真实电梯状态链、真实当前楼层、真实目标楼层确认、真实人工接管或真实机器人控制。UI 不得基于该接口提供实时控制、路线通过、电梯到达、楼层识别成功、人工接管已完成或 delivery success 文案。
 
 ## Route Replay Fixture Preview
 

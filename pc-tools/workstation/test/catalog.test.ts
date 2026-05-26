@@ -9,6 +9,7 @@ import {
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
   buildO7LabelingPreview,
+  buildO7RealtimeElevatorPreview,
   buildO7RouteReplayPreview,
   buildO7SafeCommandPreview,
   buildO7VoicePreview,
@@ -318,6 +319,87 @@ function sampleSafeCommandFixture(evidenceRef: string) {
     },
     evidence_gaps: ["operator_confirmation_ui_not_connected"],
     audit_refs: ["safe-command-audit-001.json", path.join(path.dirname(evidenceRef), "safe-command-audit-002.json")],
+  };
+}
+
+function sampleRealtimeElevatorFixture(evidenceRef: string) {
+  // realtime/elevator fixture 只表达 PC 预览槽位，不模拟真实实时 API、ROS2 /tf 或电梯状态链。
+  return {
+    schema: "trashbot.o7.realtime_elevator_fixture.v1",
+    session_id: "realtime-elevator-session-001",
+    map_ref: path.join(path.dirname(evidenceRef), "map-alpha.yaml"),
+    map_frame: "map",
+    robot_pose: {
+      x_m: 1.25,
+      y_m: -0.75,
+      yaw_rad: 1.57,
+      pose_source: "fixture_pose_slot_not_tf",
+    },
+    pose_freshness: {
+      timestamp_ms: 2000,
+      age_ms: 350,
+    },
+    route_membership: {
+      route_id: "route-alpha",
+      on_route: false,
+      in_elevator_zone: false,
+      status: "fixture_request_only",
+    },
+    elevator_state_chain: [
+      {
+        state: "waiting",
+        status: "fixture_summary_only",
+        timestamp_ms: 1000,
+        evidence_ref: path.join(path.dirname(evidenceRef), "elevator-waiting.json"),
+      },
+      {
+        state: "entering",
+        status: "fixture_summary_only",
+        timestamp_ms: 1400,
+        evidence_ref: "elevator-entering.json",
+      },
+      {
+        state: "moving",
+        status: "fixture_summary_only",
+        timestamp_ms: 1800,
+        evidence_ref: "elevator-moving.json",
+      },
+      {
+        state: "exiting",
+        status: "fixture_summary_only",
+        timestamp_ms: 2200,
+        evidence_ref: "elevator-exiting.json",
+      },
+      {
+        state: "handoff",
+        status: "fixture_summary_only",
+        timestamp_ms: 2600,
+        evidence_ref: "elevator-handoff.json",
+      },
+      {
+        state: "extra_sample_not_returned",
+        status: "fixture_summary_only",
+        timestamp_ms: 3000,
+        evidence_ref: "elevator-extra.json",
+      },
+    ],
+    current_floor_evidence: {
+      floor_label: "F2",
+      confidence: 0.62,
+      evidence_ref: path.join(path.dirname(evidenceRef), "current-floor.json"),
+    },
+    target_floor: {
+      floor_label: "F3",
+      confirmation_status: "operator_selected_not_proven",
+      evidence_ref: "target-floor.json",
+    },
+    human_takeover: {
+      reason: "fixture_requires_operator_review",
+      operator_action: "confirm_target_floor_before_real_dispatch",
+      evidence_ref: "human-takeover.json",
+    },
+    evidence_ref: evidenceRef,
+    audit_refs: ["realtime-audit-001.json", path.join(path.dirname(evidenceRef), "realtime-audit-002.json")],
   };
 }
 
@@ -869,6 +951,222 @@ describe("workstation fail-closed API contracts", () => {
     expect(JSON.stringify(response)).not.toContain("/dev/ttyUSB");
     expect(JSON.stringify(response)).not.toMatch(/ready[_ ]?to[_ ]?control/i);
     expectNoLegacyPythonGateSemantics(response);
+  });
+
+  it("O7 realtime elevator preview summarizes a safe local fixture without realtime tf elevator or control claims", async () => {
+    // KR1/KR2 preview 只把本地 map/pose/elevator 槽位压成摘要，真实实时链路仍全部关闭。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-realtime-elevator-"));
+    const evidenceRef = path.join(root, "realtime-elevator-evidence.json");
+    const fixturePath = path.join(root, "realtime-elevator-fixture.json");
+    await writeFile(fixturePath, JSON.stringify(sampleRealtimeElevatorFixture(evidenceRef)), "utf8");
+
+    const response = await buildO7RealtimeElevatorPreview({ fixtureJson: fixturePath });
+    const payload = JSON.stringify(response);
+
+    expect(response.schema).toBe("trashbot.o7.realtime_elevator_preview.v1");
+    expect(response.preview_status).toBe("fixture_preview_ready");
+    expect(response.input_status.status).toBe("loaded");
+    expect(response.input_status.fixture_json).toBe("file:realtime-elevator-fixture.json");
+    expect(response.source).toBe("software_proof");
+    expect(response.proof_status).toBe("not_proven");
+    expect(response.safe_to_control).toBe(false);
+    expect(response.delivery_success).toBe(false);
+    expect(response.primary_actions_enabled).toBe(false);
+    expect(response.pc_only).toBe(true);
+    expect(response.real_realtime_api_connected).toBe(false);
+    expect(response.real_ros2_tf_connected).toBe(false);
+    expect(response.real_elevator_state_chain_connected).toBe(false);
+    expect(response.latency_lt_2s_proven).toBe(false);
+    expect(response.robot_control_executed).toBe(false);
+    expect(response.source_fixture_schema).toBe("trashbot.o7.realtime_elevator_fixture.v1");
+    expect(response.session).toEqual({
+      session_id: "realtime-elevator-session-001",
+      source: "local_json_fixture",
+      evidence_ref: "file:realtime-elevator-evidence.json",
+      audit_refs: ["realtime-audit-001.json", "file:realtime-audit-002.json"],
+      status: "fixture_summary_only",
+    });
+    expect(response.map_summary).toEqual({
+      map_ref: "file:map-alpha.yaml",
+      map_frame: "map",
+      source: "local_json_fixture",
+      status: "fixture_summary_only",
+    });
+    expect(response.robot_pose_summary).toEqual({
+      x_m: 1.25,
+      y_m: -0.75,
+      yaw_rad: 1.57,
+      pose_source: "fixture_pose_slot_not_tf",
+      status: "fixture_summary_only",
+    });
+    expect(response.pose_freshness_summary).toEqual({
+      timestamp_ms: 2000,
+      age_ms: 350,
+      latency_lt_2s_proven: false,
+      status: "fixture_summary_only",
+    });
+    expect(response.route_membership_summary).toMatchObject({
+      route_id: "route-alpha",
+      requested_status: "fixture_request_only",
+      requested_on_route: "requested_false_not_proven",
+      requested_in_elevator_zone: "requested_false_not_proven",
+      on_route: false,
+      in_elevator_zone: false,
+      status: "blocked_not_proven",
+    });
+    expect(response.elevator_state_chain_summary.count).toBe(6);
+    expect(response.elevator_state_chain_summary.sample_limit).toBe(5);
+    expect(response.elevator_state_chain_summary.sample).toHaveLength(5);
+    expect(response.elevator_state_chain_summary.sample[0]).toEqual({
+      state: "waiting",
+      status: "fixture_summary_only",
+      timestamp_ms: 1000,
+      evidence_ref: "file:elevator-waiting.json",
+    });
+    expect(response.current_floor_evidence_summary).toEqual({
+      floor_label: "F2",
+      confidence: 0.62,
+      evidence_ref: "file:current-floor.json",
+      status: "fixture_summary_only",
+    });
+    expect(response.target_floor_summary).toEqual({
+      floor_label: "F3",
+      confirmation_status: "operator_selected_not_proven",
+      evidence_ref: "target-floor.json",
+      status: "fixture_summary_only",
+    });
+    expect(response.human_takeover_summary).toEqual({
+      required: true,
+      reason: "fixture_requires_operator_review",
+      operator_action: "confirm_target_floor_before_real_dispatch",
+      evidence_ref: "human-takeover.json",
+      status: "blocked_not_proven",
+    });
+    expect(response.evidence_refs.elevator_state_refs).toEqual([
+      "file:elevator-waiting.json",
+      "elevator-entering.json",
+      "elevator-moving.json",
+      "elevator-exiting.json",
+      "elevator-handoff.json",
+      "elevator-extra.json",
+    ]);
+    expect(response.blocked_reasons).toContain("real_realtime_api_not_connected");
+    expect(response.blocked_reasons).toContain("route_membership_forced_false");
+    expect(response.blocked_reasons).toContain("real_elevator_state_chain_not_connected");
+    expect(response.not_proven).toContain("real_ros2_tf_forwarding");
+    expect(response.not_proven).toContain("real_current_floor_recognition");
+    expect(payload).not.toContain(root);
+    expect(payload).not.toContain("/cmd_vel");
+    expect(payload).not.toContain("/dev/ttyUSB");
+    expect(payload).not.toContain("real_realtime_api_connected=true");
+    expect(payload).not.toContain("real_ros2_tf_connected=true");
+    expect(payload).not.toContain("latency_lt_2s_proven=true");
+    expect(payload).not.toContain("on_route=true");
+    expectNoLegacyPythonGateSemantics(response);
+  });
+
+  it("O7 realtime elevator preview fails closed for missing bad unsupported unsafe and real capability claims", async () => {
+    // KR1/KR2 fixture 不能自证实时连接、/tf、低延迟、路线成员、电梯到达、楼层或人工接管通过。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-realtime-elevator-blocked-"));
+    const badJsonPath = path.join(root, "bad.json");
+    const unsupportedPath = path.join(root, "unsupported.json");
+    const unsafePath = path.join(root, "unsafe.json");
+    const successPath = path.join(root, "success.json");
+    const controlPath = path.join(root, "control.json");
+    const realtimePath = path.join(root, "realtime.json");
+    const tfPath = path.join(root, "tf.json");
+    const latencyPath = path.join(root, "latency.json");
+    const routePath = path.join(root, "route.json");
+    const elevatorZonePath = path.join(root, "elevator-zone.json");
+    const elevatorStatePath = path.join(root, "elevator-state.json");
+    const arrivalPath = path.join(root, "arrival.json");
+    const floorPath = path.join(root, "floor.json");
+    const takeoverPath = path.join(root, "takeover.json");
+    const robotControlPath = path.join(root, "robot-control.json");
+    const fixture = sampleRealtimeElevatorFixture("safe-ref");
+    await writeFile(badJsonPath, "{bad", "utf8");
+    await writeFile(unsupportedPath, JSON.stringify({ schema: "trashbot.other.v1" }), "utf8");
+    await writeFile(unsafePath, JSON.stringify({ ...fixture, evidence_ref: "/dev/ttyUSB0" }), "utf8");
+    await writeFile(successPath, JSON.stringify({ ...fixture, note: "delivery success completed" }), "utf8");
+    await writeFile(controlPath, JSON.stringify({ ...fixture, safe_to_control: true }), "utf8");
+    await writeFile(realtimePath, JSON.stringify({ ...fixture, real_realtime_api_connected: true }), "utf8");
+    await writeFile(tfPath, JSON.stringify({ ...fixture, real_ros2_tf_connected: true }), "utf8");
+    await writeFile(latencyPath, JSON.stringify({ ...fixture, latency_lt_2s_proven: true }), "utf8");
+    await writeFile(routePath, JSON.stringify({ ...fixture, route_membership: { on_route: true } }), "utf8");
+    await writeFile(elevatorZonePath, JSON.stringify({ ...fixture, route_membership: { in_elevator_zone: true } }), "utf8");
+    await writeFile(elevatorStatePath, JSON.stringify({ ...fixture, real_elevator_state_chain_connected: true }), "utf8");
+    await writeFile(arrivalPath, JSON.stringify({ ...fixture, elevator_arrival_proven: true }), "utf8");
+    await writeFile(floorPath, JSON.stringify({ ...fixture, floor_recognition_proven: true }), "utf8");
+    await writeFile(takeoverPath, JSON.stringify({ ...fixture, human_takeover_proven: true }), "utf8");
+    await writeFile(robotControlPath, JSON.stringify({ ...fixture, robot_control_executed: true }), "utf8");
+
+    const missing = await buildO7RealtimeElevatorPreview({ fixtureJson: path.join(root, "missing.json") });
+    const badJson = await buildO7RealtimeElevatorPreview({ fixtureJson: badJsonPath });
+    const unsupported = await buildO7RealtimeElevatorPreview({ fixtureJson: unsupportedPath });
+    const unsafe = await buildO7RealtimeElevatorPreview({ fixtureJson: unsafePath });
+    const success = await buildO7RealtimeElevatorPreview({ fixtureJson: successPath });
+    const control = await buildO7RealtimeElevatorPreview({ fixtureJson: controlPath });
+    const realtime = await buildO7RealtimeElevatorPreview({ fixtureJson: realtimePath });
+    const tf = await buildO7RealtimeElevatorPreview({ fixtureJson: tfPath });
+    const latency = await buildO7RealtimeElevatorPreview({ fixtureJson: latencyPath });
+    const route = await buildO7RealtimeElevatorPreview({ fixtureJson: routePath });
+    const elevatorZone = await buildO7RealtimeElevatorPreview({ fixtureJson: elevatorZonePath });
+    const elevatorState = await buildO7RealtimeElevatorPreview({ fixtureJson: elevatorStatePath });
+    const arrival = await buildO7RealtimeElevatorPreview({ fixtureJson: arrivalPath });
+    const floor = await buildO7RealtimeElevatorPreview({ fixtureJson: floorPath });
+    const takeover = await buildO7RealtimeElevatorPreview({ fixtureJson: takeoverPath });
+    const robotControl = await buildO7RealtimeElevatorPreview({ fixtureJson: robotControlPath });
+
+    expect(missing.input_status.status).toBe("missing");
+    expect(badJson.input_status.status).toBe("bad_json");
+    expect(unsupported.input_status.status).toBe("unsupported_schema");
+    expect(unsafe.input_status.status).toBe("unsafe_copy");
+    expect(success.input_status.status).toBe("success_claim");
+    expect(control.input_status.status).toBe("control_claim");
+    expect(realtime.input_status.status).toBe("real_realtime_api_claim");
+    expect(tf.input_status.status).toBe("ros2_tf_connected_claim");
+    expect(latency.input_status.status).toBe("latency_lt_2s_claim");
+    expect(route.input_status.status).toBe("route_membership_true_claim");
+    expect(elevatorZone.input_status.status).toBe("in_elevator_zone_true_claim");
+    expect(elevatorState.input_status.status).toBe("real_elevator_state_claim");
+    expect(arrival.input_status.status).toBe("elevator_arrival_claim");
+    expect(floor.input_status.status).toBe("floor_recognition_proven_claim");
+    expect(takeover.input_status.status).toBe("human_takeover_proven_claim");
+    expect(robotControl.input_status.status).toBe("robot_control_executed_claim");
+    for (const response of [
+      missing,
+      badJson,
+      unsupported,
+      unsafe,
+      success,
+      control,
+      realtime,
+      tf,
+      latency,
+      route,
+      elevatorZone,
+      elevatorState,
+      arrival,
+      floor,
+      takeover,
+      robotControl,
+    ]) {
+      expect(response.schema).toBe("trashbot.o7.realtime_elevator_preview.v1");
+      expect(response.preview_status).toBe("blocked_not_proven");
+      expect(response.safe_to_control).toBe(false);
+      expect(response.delivery_success).toBe(false);
+      expect(response.primary_actions_enabled).toBe(false);
+      expect(response.real_realtime_api_connected).toBe(false);
+      expect(response.real_ros2_tf_connected).toBe(false);
+      expect(response.real_elevator_state_chain_connected).toBe(false);
+      expect(response.latency_lt_2s_proven).toBe(false);
+      expect(response.robot_control_executed).toBe(false);
+      expect(response.route_membership_summary.on_route).toBe(false);
+      expect(response.route_membership_summary.in_elevator_zone).toBe(false);
+      expect(response.elevator_state_chain_summary.sample).toEqual([]);
+      expect(response.blocked_reasons.length).toBeGreaterThan(0);
+      expectNoLegacyPythonGateSemantics(response);
+    }
   });
 
   it("O7 route replay preview summarizes a safe local fixture without control or success claims", async () => {
