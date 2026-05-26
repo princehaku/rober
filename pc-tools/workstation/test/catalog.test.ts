@@ -2896,10 +2896,29 @@ describe("workstation fail-closed API contracts", () => {
       human_takeover_proven: false,
       map_ref: { id: "not_connected", status: "blocked_not_proven", evidence_ref: "missing_real_map_artifact" },
       map_frame: { frame_id: "map", source: "contract_placeholder_not_tf", status: "blocked_not_proven" },
-      robot_pose: null,
+      robot_pose: {
+        x_m: 1.25,
+        y_m: -0.75,
+        yaw_rad: 1.57,
+        pose_source: "fixture_pose_slot_not_tf",
+        timestamp_ms: 2000,
+        evidence_ref: "pose-slot.json",
+      },
       pose_freshness: { age_ms: null, latency_lt_2s_proven: false, status: "blocked_not_proven" },
       route_membership: { route_id: "not_connected", on_route: false, in_elevator_zone: false, status: "blocked_not_proven" },
-      elevator_state_chain: { current_state: "not_connected", sample_count: 0, samples: [], status: "blocked_not_proven" },
+      elevator_state_chain: {
+        current_state: "waiting_operator",
+        sample_count: 6,
+        samples: [
+          { state: "waiting_operator", status: "fixture_summary_only", timestamp_ms: 2000, evidence_ref: "state-001.json" },
+          { state: "door_open_observed", status: "fixture_summary_only", timestamp_ms: 2100, evidence_ref: "state-002.json" },
+          { state: "entering_elevator", status: "fixture_summary_only", timestamp_ms: 2200, evidence_ref: "state-003.json" },
+          { state: "riding", status: "fixture_summary_only", timestamp_ms: 2300, evidence_ref: "state-004.json" },
+          { state: "exiting_elevator", status: "fixture_summary_only", timestamp_ms: 2400, evidence_ref: "state-005.json" },
+          { state: "extra_not_returned", status: "fixture_summary_only", timestamp_ms: 2500, evidence_ref: "state-006.json" },
+        ],
+        status: "blocked_not_proven",
+      },
       current_floor_evidence: {
         floor_label: "not_connected",
         confidence: null,
@@ -2925,12 +2944,25 @@ describe("workstation fail-closed API contracts", () => {
       expect(probe.realtime_status).toBe("blocked_not_proven");
       expect(probe.snapshot_status).toBe("blocked_not_proven");
       expect(probe.map_frame_summary).toContain("frame_id=map");
+      expect(probe.robot_pose_summary).toContain("x_m=1.25");
+      expect(probe.robot_pose_summary).toContain("y_m=-0.75");
+      expect(probe.robot_pose_summary).toContain("yaw_rad=1.57");
+      expect(probe.robot_pose_summary).toContain("pose_source=fixture_pose_slot_not_tf");
+      expect(probe.robot_pose_summary).toContain("timestamp_ms=2000");
+      expect(probe.robot_pose_summary).toContain("evidence_ref=pose-slot.json");
+      expect(probe.robot_pose_summary).toContain("real_ros2_tf_connected=false");
       expect(probe.pose_freshness_summary).toContain("latency_lt_2s_proven=false");
       expect(probe.route_membership_false_fields).toEqual([
         "route_membership.on_route=false",
         "route_membership.in_elevator_zone=false",
       ]);
-      expect(probe.elevator_status).toContain("current_state=not_connected");
+      expect(probe.elevator_status).toContain("current_state=waiting_operator");
+      expect(probe.elevator_status).toContain("sample_count=6");
+      expect(probe.elevator_state_samples_summary).toHaveLength(5);
+      expect(probe.elevator_state_samples_summary[0]).toContain("state=waiting_operator");
+      expect(probe.elevator_state_samples_summary[0]).toContain("timestamp_ms=2000");
+      expect(probe.elevator_state_samples_summary[0]).toContain("evidence_ref=state-001.json");
+      expect(probe.elevator_state_samples_summary.join("\n")).not.toContain("extra_not_returned");
       expect(probe.current_floor_evidence_summary).toContain("floor_recognition_proven=false");
       expect(probe.human_takeover_summary).toContain("human_takeover_proven=false");
       expect(probe.key_false_fields).toEqual(expect.arrayContaining([
@@ -2953,5 +2985,39 @@ describe("workstation fail-closed API contracts", () => {
     expect(blocked.fail_closed_reason).toBe("baseUrl_protocol_not_allowed");
     expect(blocked.safe_to_control).toBe(false);
     expect(blocked.primary_actions_enabled).toBe(false);
+    expect(blocked.robot_pose_summary).toContain("real_ros2_tf_connected=false");
+    expect(blocked.elevator_state_samples_summary).toEqual([]);
+
+    const dangerousServer = await listenJson({
+      schema: "trashbot.o7.realtime_elevator_snapshot.v1",
+      real_ros2_tf_connected: true,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      map_frame: { frame_id: "map", source: "contract_placeholder_not_tf", status: "blocked_not_proven" },
+      robot_pose: { x_m: 1, y_m: 2, yaw_rad: 3, pose_source: "unsafe_remote_claim", timestamp_ms: 4 },
+      elevator_state_chain: {
+        current_state: "unsafe_tf_claim",
+        sample_count: 1,
+        samples: [{ state: "unsafe_tf_claim", status: "blocked_not_proven", timestamp_ms: 4, evidence_ref: "unsafe.json" }],
+        status: "blocked_not_proven",
+      },
+      blocked_reasons: [],
+      not_proven: [],
+    });
+    try {
+      const dangerous = await buildO7RealtimeElevatorProbe(dangerousServer.baseUrl);
+
+      expect(dangerous.probe_status).toBe("fail_closed");
+      expect(dangerous.fail_closed_reason).toBe("remote_dangerous_true_field");
+      expect(dangerous.dangerous_true_fields).toContain("real_ros2_tf_connected");
+      expect(dangerous.robot_pose_summary).toContain("x_m=1");
+      expect(dangerous.robot_pose_summary).toContain("real_ros2_tf_connected=false");
+      expect(dangerous.elevator_state_samples_summary).toHaveLength(1);
+      expect(dangerous.safe_to_control).toBe(false);
+      expect(dangerous.primary_actions_enabled).toBe(false);
+    } finally {
+      await dangerousServer.close();
+    }
   });
 });

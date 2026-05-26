@@ -1658,9 +1658,11 @@ export interface O7RealtimeElevatorProbeResponse extends ProofFlags {
   snapshot_status: string;
   map_ref_summary: string;
   map_frame_summary: string;
+  robot_pose_summary: string;
   pose_freshness_summary: string;
   route_membership_false_fields: string[];
   elevator_status: string;
+  elevator_state_samples_summary: string[];
   current_floor_evidence_summary: string;
   human_takeover_summary: string;
   key_false_fields: string[];

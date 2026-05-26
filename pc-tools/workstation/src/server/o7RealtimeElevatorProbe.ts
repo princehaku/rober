@@ -4,6 +4,7 @@ import type { O7RealtimeElevatorProbeResponse } from "../shared/contracts";
 const EXPECTED_SCHEMA = "trashbot.o7.realtime_elevator_snapshot.v1";
 const PROBE_SCHEMA = "trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v1";
 const REMOTE_ENDPOINT = "/api/o7/realtime-elevator/snapshot" as const;
+const ELEVATOR_SAMPLE_LIMIT = 5;
 
 const DANGEROUS_TRUE_FIELDS = new Set([
   "safe_to_control",
@@ -55,12 +56,14 @@ function failClosed(
     snapshot_status: extras.snapshot_status ?? "not_loaded",
     map_ref_summary: extras.map_ref_summary ?? "not_loaded",
     map_frame_summary: extras.map_frame_summary ?? "not_loaded",
+    robot_pose_summary: extras.robot_pose_summary ?? "x_m=not_loaded, y_m=not_loaded, yaw_rad=not_loaded, pose_source=not_loaded, timestamp_ms=not_loaded, evidence_ref=not_loaded, real_ros2_tf_connected=false",
     pose_freshness_summary: extras.pose_freshness_summary ?? "blocked_not_proven",
     route_membership_false_fields: extras.route_membership_false_fields ?? [
       "route_membership.on_route=false",
       "route_membership.in_elevator_zone=false",
     ],
     elevator_status: extras.elevator_status ?? "blocked_not_proven",
+    elevator_state_samples_summary: extras.elevator_state_samples_summary ?? [],
     current_floor_evidence_summary: extras.current_floor_evidence_summary ?? "blocked_not_proven",
     human_takeover_summary: extras.human_takeover_summary ?? "blocked_not_proven",
     key_false_fields: extras.key_false_fields ?? defaultFalseFields(),
@@ -160,6 +163,47 @@ function summary(record: Record<string, unknown> | null, keys: string[]): string
   return keys.map((key) => `${key}=${String(record[key] ?? "not_loaded")}`).join(", ");
 }
 
+function scalarSummary(record: Record<string, unknown>, key: string, fallback = "not_loaded"): string {
+  // 只允许标量值进入摘要，object/array 会被压成 fallback，防止透传远端嵌套 payload。
+  const value = record[key];
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
+    return String(value ?? fallback);
+  }
+  return fallback;
+}
+
+function robotPoseSummary(remote: Record<string, unknown>): string {
+  // 位姿摘要明确保留 real_ros2_tf_connected=false，fixture 位姿不能被 UI 解释成真实 /tf。
+  const pose = asRecord(remote.robot_pose);
+  if (!pose) {
+    return "x_m=not_loaded, y_m=not_loaded, yaw_rad=not_loaded, pose_source=not_loaded, timestamp_ms=not_loaded, evidence_ref=not_loaded, real_ros2_tf_connected=false";
+  }
+  return [
+    `x_m=${scalarSummary(pose, "x_m")}`,
+    `y_m=${scalarSummary(pose, "y_m")}`,
+    `yaw_rad=${scalarSummary(pose, "yaw_rad")}`,
+    `pose_source=${scalarSummary(pose, "pose_source", scalarSummary(pose, "source"))}`,
+    `timestamp_ms=${scalarSummary(pose, "timestamp_ms")}`,
+    `evidence_ref=${scalarSummary(pose, "evidence_ref")}`,
+    `real_ros2_tf_connected=false`,
+  ].join(", ");
+}
+
+function elevatorStateSamplesSummary(elevator: Record<string, unknown> | null): string[] {
+  // 状态链 sample 只保留 state/status/timestamp/evidence_ref，最多 5 条，不展开完整 remote JSON。
+  const samples = Array.isArray(elevator?.samples) ? elevator.samples : [];
+  return samples.slice(0, ELEVATOR_SAMPLE_LIMIT).map((sample, index) => {
+    const record = asRecord(sample) ?? {};
+    return [
+      `#${index + 1}`,
+      `state=${scalarSummary(record, "state", scalarSummary(record, "current_state"))}`,
+      `status=${scalarSummary(record, "status")}`,
+      `timestamp_ms=${scalarSummary(record, "timestamp_ms", scalarSummary(record, "t_ms"))}`,
+      `evidence_ref=${scalarSummary(record, "evidence_ref")}`,
+    ].join(", ");
+  });
+}
+
 export async function buildO7RealtimeElevatorProbe(baseUrl: string): Promise<O7RealtimeElevatorProbeResponse> {
   const normalized = normalizeLoopbackBaseUrl(baseUrl);
   if (!normalized.ok) {
@@ -191,12 +235,14 @@ export async function buildO7RealtimeElevatorProbe(baseUrl: string): Promise<O7R
       snapshot_status: String(remote.snapshot_status ?? "not_loaded"),
       map_ref_summary: summary(asRecord(remote.map_ref), ["id", "status", "evidence_ref"]),
       map_frame_summary: summary(asRecord(remote.map_frame), ["frame_id", "source", "status"]),
+      robot_pose_summary: robotPoseSummary(remote),
       pose_freshness_summary: summary(asRecord(remote.pose_freshness), ["age_ms", "latency_lt_2s_proven", "status"]),
       route_membership_false_fields: [
         `route_membership.on_route=${String(boolField(route, "on_route"))}`,
         `route_membership.in_elevator_zone=${String(boolField(route, "in_elevator_zone"))}`,
       ],
       elevator_status: summary(elevator, ["current_state", "sample_count", "status"]),
+      elevator_state_samples_summary: elevatorStateSamplesSummary(elevator),
       current_floor_evidence_summary: summary(floor, ["floor_label", "confidence", "floor_recognition_proven", "status"]),
       human_takeover_summary: summary(humanTakeover, ["required", "human_takeover_proven", "reason", "status"]),
       key_false_fields: falseFields,
@@ -221,9 +267,11 @@ export async function buildO7RealtimeElevatorProbe(baseUrl: string): Promise<O7R
       snapshot_status: String(remote.snapshot_status ?? "blocked_not_proven"),
       map_ref_summary: extras.map_ref_summary ?? "not_loaded",
       map_frame_summary: extras.map_frame_summary ?? "not_loaded",
+      robot_pose_summary: extras.robot_pose_summary ?? robotPoseSummary(remote),
       pose_freshness_summary: extras.pose_freshness_summary ?? "blocked_not_proven",
       route_membership_false_fields: extras.route_membership_false_fields ?? [],
       elevator_status: extras.elevator_status ?? "blocked_not_proven",
+      elevator_state_samples_summary: extras.elevator_state_samples_summary ?? [],
       current_floor_evidence_summary: extras.current_floor_evidence_summary ?? "blocked_not_proven",
       human_takeover_summary: extras.human_takeover_summary ?? "blocked_not_proven",
       key_false_fields: falseFields,

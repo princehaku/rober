@@ -116,7 +116,7 @@ PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE 
 
 同一 tab 还包含 `Cloud archive tasks probe` 区块，用于探测 cloud relay HTTP runtime 暴露的 `/api/o7/cloud-archive/tasks` 只读 contract。该区块只有一个 base URL 输入和 `Probe cloud archive tasks` 按钮；默认不自动探测。按钮只触发 PC 后端 `GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>`，再由 Node 后端拉取远端 `/api/o7/cloud-archive/tasks`。允许的 base URL 仅限本机 HTTP 回环地址；未提供、非 HTTP、非回环、带 credentials/query/hash、fetch 失败、schema 错误、返回体非 object 或危险字段为 true 都 fail-closed。UI 只展示 probe status、source base URL、remote schema、archive status、task count、selected/latest、四个 inspector 状态、dangerous true fields、关键 false fields、blocked reasons 和 not proven；不提供 Bearer 输入框，不连接公网云或生产云，不读取真实 archive store，不发送命令，不读取硬件，不证明真实路线回放、真实标注提交、真实 ASR/TTS、真实手控/寻路或 O7 完成。
 
-同一 tab 还包含 `Realtime/elevator cloud probe` 区块，用于探测 cloud relay HTTP runtime 暴露的 `/api/o7/realtime-elevator/snapshot` 只读 contract。该区块只有一个 base URL 输入和 `Probe realtime/elevator snapshot` 按钮；默认不自动探测。按钮只触发 PC 后端 `GET /api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>`，再由 Node 后端拉取远端 `/api/o7/realtime-elevator/snapshot`。允许的 base URL 仅限本机 HTTP 回环地址；未提供、非 HTTP、非回环、带 credentials/query/hash、fetch 失败、schema 错误、返回体非 object 或危险字段为 true 都 fail-closed。UI 只展示 probe status、source base URL、remote schema、realtime/snapshot status、map ref、map frame、pose freshness、route membership false fields、elevator status、current floor evidence、human takeover、dangerous true fields、关键 false fields、blocked reasons 和 not proven；不提供 Bearer 输入框，不连接公网云或生产云，不读取 ROS2 `/tf`、真实地图、真实电梯状态链或硬件，不发送命令，不证明 <2s 延迟、真实楼层识别、真实人工接管或 O7 完成。
+同一 tab 还包含 `Realtime/elevator cloud probe` 区块，用于探测 cloud relay HTTP runtime 暴露的 `/api/o7/realtime-elevator/snapshot` 只读 contract。该区块只有一个 base URL 输入和 `Probe realtime/elevator snapshot` 按钮；默认不自动探测。按钮只触发 PC 后端 `GET /api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>`，再由 Node 后端拉取远端 `/api/o7/realtime-elevator/snapshot`。允许的 base URL 仅限本机 HTTP 回环地址；未提供、非 HTTP、非回环、带 credentials/query/hash、fetch 失败、schema 错误、返回体非 object 或危险字段为 true 都 fail-closed。UI 只展示 probe status、source base URL、remote schema、realtime/snapshot status、map ref、map frame、`robot_pose_summary`、pose freshness、route membership false fields、elevator status、`elevator_state_samples_summary`、current floor evidence、human takeover、dangerous true fields、关键 false fields、blocked reasons 和 not proven；不提供 Bearer 输入框，不连接公网云或生产云，不读取 ROS2 `/tf`、真实地图、真实电梯状态链或硬件，不发送命令，不证明 <2s 延迟、真实楼层识别、真实人工接管或 O7 完成。
 
 同一 tab 还包含 `Cloud Archive Tasks` 区块，用于 O7 KR3/KR4/KR5/KR6 共享历史任务数据源雏形。该区块只有一个本地 archive fixture 路径输入和 `Load archive tasks` 按钮；默认不自动读取路径。按钮只触发 `GET /api/o7/cloud-archive/tasks?archiveJson=<local-json>`，UI 只展示 task list、selected/latest task、trajectory/event/label/voice/command safe summaries、KR3 route replay inspector、KR4 labeling queue inspector、KR5 voice ASR/TTS inspector、KR6 safe command inspector、fixed false fields、blocked reasons 和 not proven，不提供播放、提交、导出、发送、控制、停止、取消或恢复类动作。KR6 safe command review panel 默认聚焦第一条 command sample，`Previous command`、`Next command`、`Reset command cursor` 只改浏览器本地 cursor；未加载 archive、无 selected task、command sample 与 manual/navigate envelope 同时缺失或 inspector blocked 时显示 `blocked_not_proven`，不连接真实 command API、真实手控、真实寻路、真实 robot ACK、真实 stop/cancel/recovery 或硬件安全链路。
 
@@ -159,7 +159,14 @@ runtime fixture adapter 必须拒绝并返回空 blocked contract：
 
 fixture 中 timestamp、age、x/y/yaw、confidence 等数值字段必须只接受有限数字；非数值、`NaN`、`Infinity` 或错误类型统一输出 `null`，不能导致 HTTP 500。
 
-最小展示槽位包括 `map_ref`、`map_frame`、`robot_pose=null`、`pose_freshness`、`route_membership`、`elevator_state_chain.samples=[]`、`current_floor_evidence`、`human_takeover`、`blocked_reasons` 和 `not_proven`。PC probe 会递归扫描上述危险字段，任一危险字段为 true 时返回 `probe_status=fail_closed` 和 `dangerous_true:<path>`。
+最小展示槽位包括 `map_ref`、`map_frame`、`robot_pose`、`pose_freshness`、`route_membership`、`elevator_state_chain.samples[]`、`current_floor_evidence`、`human_takeover`、`blocked_reasons` 和 `not_proven`。PC probe 会递归扫描上述危险字段，任一危险字段为 true 时返回 `probe_status=fail_closed` 和 `dangerous_true:<path>`。
+
+PC probe 的 `trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v1` 响应新增两个一等摘要：
+
+- `robot_pose_summary`：只读字符串，白名单展示 `x_m`、`y_m`、`yaw_rad`、`pose_source`、`timestamp_ms`、`evidence_ref`，并固定包含 `real_ros2_tf_connected=false`。即使 cloud relay fixture 返回非空位姿，也只能表示 relay snapshot 的脱敏槽位，不证明真实 ROS2 `/tf` 或真实机器人实时位置。
+- `elevator_state_samples_summary`：只读字符串数组，最多 5 条，每条只展示 `state`、`status`、`timestamp_ms`、`evidence_ref`。它不透传完整远端 JSON，也不证明真实电梯状态链 connected/live。
+
+上述两个字段与 `map_ref_summary`、`map_frame_summary`、`pose_freshness_summary`、`route_membership_false_fields`、`elevator_status`、`current_floor_evidence_summary`、`human_takeover_summary` 和 `key_false_fields` 一起展示。远端任何危险字段为 true 时仍然 `probe_status=fail_closed`，并保持 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`sends_commands=false`、`reads_hardware=false`。
 
 ## PC Cloud Operator Console Probe Contract
 

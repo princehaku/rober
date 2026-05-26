@@ -1673,9 +1673,15 @@ const fixtures: Record<string, unknown> = {
     snapshot_status: "blocked_not_proven",
     map_ref_summary: "id=not_connected, status=blocked_not_proven, evidence_ref=missing_real_map_artifact",
     map_frame_summary: "frame_id=map, source=contract_placeholder_not_tf, status=blocked_not_proven",
+    robot_pose_summary:
+      "x_m=1.25, y_m=-0.75, yaw_rad=1.57, pose_source=fixture_pose_slot_not_tf, timestamp_ms=2000, evidence_ref=pose-slot.json, real_ros2_tf_connected=false",
     pose_freshness_summary: "age_ms=not_loaded, latency_lt_2s_proven=false, status=blocked_not_proven",
     route_membership_false_fields: ["route_membership.on_route=false", "route_membership.in_elevator_zone=false"],
-    elevator_status: "current_state=not_connected, sample_count=0, status=blocked_not_proven",
+    elevator_status: "current_state=waiting_operator, sample_count=6, status=blocked_not_proven",
+    elevator_state_samples_summary: [
+      "#1, state=waiting_operator, status=fixture_summary_only, timestamp_ms=2000, evidence_ref=state-001.json",
+      "#2, state=door_open_observed, status=fixture_summary_only, timestamp_ms=2100, evidence_ref=state-002.json",
+    ],
     current_floor_evidence_summary:
       "floor_label=not_connected, confidence=not_loaded, floor_recognition_proven=false, status=blocked_not_proven",
     human_takeover_summary:
@@ -2083,6 +2089,13 @@ describe("App", () => {
     expect(wrapper.text()).toContain("none_remote_contract_is_still_blocked_not_proven");
     expect(wrapper.text()).toContain("Dangerous true fields");
     expect(wrapper.text()).toContain("local loopback only");
+    expect(wrapper.text()).toContain("robot pose");
+    expect(wrapper.text()).toContain("x_m=1.25");
+    expect(wrapper.text()).toContain("pose_source=fixture_pose_slot_not_tf");
+    expect(wrapper.text()).toContain("real_ros2_tf_connected=false");
+    expect(wrapper.text()).toContain("Elevator state samples");
+    expect(wrapper.text()).toContain("state=waiting_operator");
+    expect(wrapper.text()).toContain("evidence_ref=state-001.json");
     expect(wrapper.text()).toContain("Route membership false fields");
     expect(wrapper.text()).toContain("route_membership.in_elevator_zone=false");
     expect(wrapper.text()).toContain("task_archive_002");

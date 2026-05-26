@@ -979,6 +979,8 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
         <dd>{{ realtimeElevatorProbeResult?.map_ref_summary ?? "not_loaded" }}</dd>
         <dt>map frame</dt>
         <dd>{{ realtimeElevatorProbeResult?.map_frame_summary ?? "not_loaded" }}</dd>
+        <dt>robot pose</dt>
+        <dd>{{ realtimeElevatorProbeResult?.robot_pose_summary ?? "blocked_not_proven" }}</dd>
         <dt>pose freshness</dt>
         <dd>{{ realtimeElevatorProbeResult?.pose_freshness_summary ?? "blocked_not_proven" }}</dd>
         <dt>elevator status</dt>
@@ -1015,6 +1017,14 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           </ul>
         </div>
         <div>
+          <h3>Elevator state samples</h3>
+          <ul class="dense">
+            <!-- 后端已经限量并白名单化 sample，UI 只负责展示摘要，不提供播放或控制入口。 -->
+            <li v-for="sample in realtimeElevatorProbeResult?.elevator_state_samples_summary ?? []" :key="sample">
+              {{ sample }}
+            </li>
+            <li v-if="!realtimeElevatorProbeResult?.elevator_state_samples_summary.length">not_loaded</li>
+          </ul>
           <h3>Blocked reasons</h3>
           <ul class="dense">
             <li v-for="reason in realtimeElevatorProbeBlockedReasons()" :key="reason">{{ reason }}</li>
