@@ -882,6 +882,133 @@ const fixtures: Record<string, unknown> = {
     recovery_paths: ["Connect O6 cloud archive and realtime stream before replacing draft values."],
     ...PROOF_FLAGS,
   },
+  "/api/o7/previews/acceptance": {
+    schema: "trashbot.o7.previews_acceptance.v1",
+    ...PROOF_FLAGS,
+    guard_endpoint: "/api/o7/previews/acceptance",
+    evidence_boundary: "software_proof_o7_previews_acceptance_guard",
+    acceptance_verdict: "blocked_not_proven_guard_ok",
+    not_real_capability_proof: true,
+    reads_hardware: false,
+    sends_commands: false,
+    connects_cloud_production: false,
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    covered_surface_ids: [
+      "cloud_operator_console_probe",
+      "cloud_archive_tasks_probe",
+      "realtime_elevator_probe",
+      "route_replay_player",
+      "labeling_review_panel",
+      "voice_monitor_panel",
+      "safe_command_review_panel",
+    ],
+    surfaces: [
+      {
+        id: "cloud_operator_console_probe",
+        source_endpoint: "/api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>",
+        ui_surface: "Cloud operator console probe",
+        evidence_boundary: "local_http_contract_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["production_cloud_probe_forbidden"],
+        not_proven: ["real_robot_status_or_ack"],
+      },
+      {
+        id: "cloud_archive_tasks_probe",
+        source_endpoint: "/api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>",
+        ui_surface: "Cloud archive tasks probe",
+        evidence_boundary: "local_http_contract_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["production_archive_store_forbidden"],
+        not_proven: ["real_route_replay_archive"],
+      },
+      {
+        id: "realtime_elevator_probe",
+        source_endpoint: "/api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>",
+        ui_surface: "Realtime/elevator cloud probe",
+        evidence_boundary: "local_http_contract_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["production_realtime_stream_forbidden"],
+        not_proven: ["real_rtc_video"],
+      },
+      {
+        id: "route_replay_player",
+        source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+        ui_surface: "Local route replay player",
+        evidence_boundary: "local_fixture_cursor_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["local_cursor_only"],
+        not_proven: ["real_robot_motion"],
+      },
+      {
+        id: "labeling_review_panel",
+        source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+        ui_surface: "Local labeling review panel",
+        evidence_boundary: "local_fixture_cursor_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["submit_enabled_false"],
+        not_proven: ["real_annotation_api"],
+      },
+      {
+        id: "voice_monitor_panel",
+        source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+        ui_surface: "Local voice ASR/TTS monitor panel",
+        evidence_boundary: "local_fixture_cursor_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["tts_send_enabled_false"],
+        not_proven: ["real_asr_tts_runtime"],
+      },
+      {
+        id: "safe_command_review_panel",
+        source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+        ui_surface: "Local safe command review panel",
+        evidence_boundary: "local_fixture_cursor_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["command_dispatch_enabled_false"],
+        not_proven: ["real_robot_ack"],
+      },
+    ],
+    fail_closed_checks: [],
+    fixed_false_fields: {
+      reads_hardware: false,
+      sends_commands: false,
+      connects_cloud_production: false,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      playback_available: false,
+      submit_enabled: false,
+      tts_send_enabled: false,
+      command_dispatch_enabled: false,
+      manual_control_enabled: false,
+      navigate_goal_enabled: false,
+      keyboard_control_enabled: false,
+      robot_control_executed: false,
+      real_realtime_api_connected: false,
+      real_ros2_tf_connected: false,
+      real_cloud_archive_connected: false,
+      real_annotation_api_connected: false,
+      real_voice_api_connected: false,
+      real_command_api_connected: false,
+      real_robot_ack_connected: false,
+      real_asr_tts_runtime_connected: false,
+      real_cloud_operator_console_connected: false,
+      manual_turn_sends_to_robot: false,
+      navigate_goal_sends_to_robot: false,
+    },
+    blocked: ["production_cloud_connection_blocked_by_design", "robot_command_dispatch_blocked_by_design"],
+    not_proven: ["real_rtc_video_connected", "real_manual_control_or_navigate_goal", "real_hardware_hil"],
+    software_proof_only: ["local_loopback_http_contract_shapes", "local_browser_cursor_panels"],
+    remaining_real_capability_gaps: ["connect_real_rtc_video_and_realtime_pose_stream"],
+  },
   "/api/o7/cloud-operator-console-probe": {
     schema: "trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1",
     probe_status: "loaded_fail_closed_contract",
@@ -1594,15 +1721,17 @@ function stubWorkstationFetch() {
               ? "/api/o7/voice-preview"
               : url.startsWith("/api/o7/safe-command-preview")
                 ? "/api/o7/safe-command-preview"
-                : url.startsWith("/api/o7/cloud-archive/tasks-probe")
-                  ? "/api/o7/cloud-archive/tasks-probe"
-                  : url.startsWith("/api/o7/cloud-archive/tasks")
-                ? "/api/o7/cloud-archive/tasks"
-                : url.startsWith("/api/o7/cloud-operator-console-probe")
-                  ? "/api/o7/cloud-operator-console-probe"
-                  : url.startsWith("/api/o7/realtime-elevator-probe")
-                    ? "/api/o7/realtime-elevator-probe"
-                    : url;
+                : url.startsWith("/api/o7/previews/acceptance")
+                  ? "/api/o7/previews/acceptance"
+                  : url.startsWith("/api/o7/cloud-archive/tasks-probe")
+                    ? "/api/o7/cloud-archive/tasks-probe"
+                    : url.startsWith("/api/o7/cloud-archive/tasks")
+                      ? "/api/o7/cloud-archive/tasks"
+                      : url.startsWith("/api/o7/cloud-operator-console-probe")
+                        ? "/api/o7/cloud-operator-console-probe"
+                        : url.startsWith("/api/o7/realtime-elevator-probe")
+                          ? "/api/o7/realtime-elevator-probe"
+                          : url;
     return {
       ok: true,
       json: async () => fixtures[fixtureKey],
@@ -1857,6 +1986,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain("O7 Fixture Previews");
+    expect(wrapper.text()).toContain("O7 previews acceptance guard");
+    expect(wrapper.text()).toContain("o7_previews_acceptance_guard_not_loaded");
     expect(wrapper.text()).toContain("Cloud operator console probe");
     expect(wrapper.text()).toContain("Cloud archive tasks probe");
     expect(wrapper.text()).toContain("Realtime/elevator cloud probe");
@@ -1876,6 +2007,7 @@ describe("App", () => {
     expect(wrapper.text()).toContain("robot ACK");
     expect(wrapper.text()).toContain("HIL/hardware safety");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/realtime-elevator-preview");
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/previews/acceptance");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/realtime-elevator-probe");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/cloud-archive/tasks");
 
@@ -1890,6 +2022,9 @@ describe("App", () => {
     await inputs[7]!.setValue("fixtures/labeling.json");
     await inputs[8]!.setValue("fixtures/voice.json");
     await inputs[9]!.setValue("fixtures/safe-command.json");
+
+    await wrapper.findAll("button").find((button) => button.text() === "Load previews acceptance guard")?.trigger("click");
+    await flushPromises();
 
     await wrapper.findAll("button").find((button) => button.text() === "Probe cloud operator console")?.trigger("click");
     await flushPromises();
@@ -1915,6 +2050,7 @@ describe("App", () => {
     }
 
     const previewCalls = mockedFetch.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/o7/"));
+    expect(previewCalls).toContain("/api/o7/previews/acceptance");
     expect(previewCalls).toContain("/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/cloud-archive/tasks-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/realtime-elevator-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
@@ -1933,6 +2069,14 @@ describe("App", () => {
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v1");
+    expect(wrapper.text()).toContain("trashbot.o7.previews_acceptance.v1");
+    expect(wrapper.text()).toContain("software_proof_o7_previews_acceptance_guard");
+    expect(wrapper.text()).toContain("cloud_operator_console_probe");
+    expect(wrapper.text()).toContain("route_replay_player");
+    expect(wrapper.text()).toContain("voice_monitor_panel");
+    expect(wrapper.text()).toContain("local_loopback_http_contract_shapes");
+    expect(wrapper.text()).toContain("production_cloud_connection_blocked_by_design");
+    expect(wrapper.text()).toContain("real_rtc_video_connected");
     expect(wrapper.text()).toContain("trashbot.o7.realtime_elevator_snapshot.v1");
     expect(wrapper.text()).toContain("loaded_fail_closed_contract");
     expect(wrapper.text()).toContain("none_remote_contract_is_still_observe_only");

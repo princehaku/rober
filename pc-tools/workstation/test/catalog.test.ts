@@ -13,6 +13,7 @@ import {
   buildHealth,
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
+  buildO7PreviewsAcceptanceResponse,
   buildO7LabelingPreview,
   buildO7RealtimeElevatorPreview,
   buildO7RouteReplayPreview,
@@ -2751,6 +2752,62 @@ describe("workstation fail-closed API contracts", () => {
     expect(JSON.stringify(acceptance)).not.toMatch(/ready[_ -]?to[_ -]?control/i);
     expect(JSON.stringify(acceptance)).not.toContain("delivery_success=true");
     expect(JSON.stringify(acceptance)).not.toContain("command_dispatch_enabled=true");
+  });
+
+  it("O7 previews acceptance guard summarizes PC-only preview readiness boundaries", async () => {
+    // Previews guard 不读取 fixture、不探测云端；这里只验证静态合同与 Express 路由保持一致。
+    const acceptance = buildO7PreviewsAcceptanceResponse();
+
+    expect(acceptance.schema).toBe("trashbot.o7.previews_acceptance.v1");
+    expect(acceptance.guard_endpoint).toBe("/api/o7/previews/acceptance");
+    expect(acceptance.evidence_boundary).toBe("software_proof_o7_previews_acceptance_guard");
+    expect(acceptance.acceptance_verdict).toBe("blocked_not_proven_guard_ok");
+    expect(acceptance.not_real_capability_proof).toBe(true);
+    expect(acceptance.reads_hardware).toBe(false);
+    expect(acceptance.sends_commands).toBe(false);
+    expect(acceptance.connects_cloud_production).toBe(false);
+    expect(acceptance.safe_to_control).toBe(false);
+    expect(acceptance.delivery_success).toBe(false);
+    expect(acceptance.primary_actions_enabled).toBe(false);
+    expect(acceptance.covered_surface_ids).toEqual([
+      "cloud_operator_console_probe",
+      "cloud_archive_tasks_probe",
+      "realtime_elevator_probe",
+      "route_replay_player",
+      "labeling_review_panel",
+      "voice_monitor_panel",
+      "safe_command_review_panel",
+    ]);
+    expect(acceptance.fixed_false_fields).toMatchObject({
+      playback_available: false,
+      submit_enabled: false,
+      tts_send_enabled: false,
+      command_dispatch_enabled: false,
+      manual_control_enabled: false,
+      navigate_goal_enabled: false,
+      keyboard_control_enabled: false,
+      robot_control_executed: false,
+      real_realtime_api_connected: false,
+      real_cloud_archive_connected: false,
+      real_robot_ack_connected: false,
+    });
+    expect(acceptance.fail_closed_checks.every((check) => check.actual === false)).toBe(true);
+    expect(acceptance.not_proven).toEqual(
+      expect.arrayContaining(["real_rtc_video_connected", "real_manual_control_or_navigate_goal", "real_hardware_hil"]),
+    );
+
+    const server = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(new URL("/api/o7/previews/acceptance", server.baseUrl));
+      const body = (await response.json()) as ReturnType<typeof buildO7PreviewsAcceptanceResponse>;
+
+      expect(response.status).toBe(200);
+      expect(body.schema).toBe("trashbot.o7.previews_acceptance.v1");
+      expect(body.covered_surface_ids).toEqual(acceptance.covered_surface_ids);
+      expect(body.fixed_false_fields.command_dispatch_enabled).toBe(false);
+    } finally {
+      await server.close();
+    }
   });
 
   it("O7 cloud operator console probe only accepts loopback and keeps dangerous fields closed", async () => {

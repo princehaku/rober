@@ -4,6 +4,7 @@ import {
   getO7CloudArchiveTasks,
   getO7CloudArchiveTasksProbe,
   getO7CloudOperatorConsoleProbe,
+  getO7PreviewsAcceptance,
   getO7RealtimeElevatorProbe,
   loadO7FixturePreview,
 } from "../client/workstationApi";
@@ -12,6 +13,7 @@ import type {
   O7CloudArchiveTasksProbeResponse,
   O7CloudArchiveTasksResponse,
   O7LabelingQueueInspectorReviewItem,
+  O7PreviewsAcceptanceResponse,
   O7SafeCommandInspectorCommandSample,
   O7VoiceAsrTtsInspectorAsrEvent,
   O7CloudOperatorConsoleProbeResponse,
@@ -64,6 +66,9 @@ const cloudProbeBaseUrl = ref("http://127.0.0.1:8088");
 const cloudProbeResult = ref<O7CloudOperatorConsoleProbeResponse | null>(null);
 const cloudProbeError = ref("");
 const cloudProbeLoading = ref(false);
+const previewsAcceptanceResult = ref<O7PreviewsAcceptanceResponse | null>(null);
+const previewsAcceptanceError = ref("");
+const previewsAcceptanceLoading = ref(false);
 const routeReplayCursor = ref(0);
 const labelingReviewCursor = ref(0);
 const voiceAsrEventCursor = ref(0);
@@ -204,6 +209,41 @@ function realtimeElevatorProbeBlockedReasons(): string[] {
 
 function realtimeElevatorProbeNotProven(): string[] {
   return realtimeElevatorProbeResult.value?.not_proven ?? ["realtime_elevator_probe_not_proven"];
+}
+
+function previewsAcceptanceBlocked(): string[] {
+  return previewsAcceptanceResult.value?.blocked ?? ["o7_previews_acceptance_guard_not_loaded"];
+}
+
+function previewsAcceptanceNotProven(): string[] {
+  return previewsAcceptanceResult.value?.not_proven ?? ["real_rtc_video_control_ack_hil_not_proven"];
+}
+
+function previewsAcceptanceFalseFields(): string[] {
+  const fields = previewsAcceptanceResult.value?.fixed_false_fields;
+  // Guard 字段必须来自后端摘要；未加载时也按 false 展示，避免空白被误读为可用。
+  return [
+    `reads_hardware=${String(fields?.reads_hardware ?? false)}`,
+    `sends_commands=${String(fields?.sends_commands ?? false)}`,
+    `connects_cloud_production=${String(fields?.connects_cloud_production ?? false)}`,
+    `safe_to_control=${String(fields?.safe_to_control ?? false)}`,
+    `delivery_success=${String(fields?.delivery_success ?? false)}`,
+    `primary_actions_enabled=${String(fields?.primary_actions_enabled ?? false)}`,
+    `playback_available=${String(fields?.playback_available ?? false)}`,
+    `submit_enabled=${String(fields?.submit_enabled ?? false)}`,
+    `tts_send_enabled=${String(fields?.tts_send_enabled ?? false)}`,
+    `command_dispatch_enabled=${String(fields?.command_dispatch_enabled ?? false)}`,
+    `manual_control_enabled=${String(fields?.manual_control_enabled ?? false)}`,
+    `navigate_goal_enabled=${String(fields?.navigate_goal_enabled ?? false)}`,
+    `keyboard_control_enabled=${String(fields?.keyboard_control_enabled ?? false)}`,
+    `robot_control_executed=${String(fields?.robot_control_executed ?? false)}`,
+    `real_realtime_api_connected=${String(fields?.real_realtime_api_connected ?? false)}`,
+    `real_cloud_archive_connected=${String(fields?.real_cloud_archive_connected ?? false)}`,
+    `real_annotation_api_connected=${String(fields?.real_annotation_api_connected ?? false)}`,
+    `real_voice_api_connected=${String(fields?.real_voice_api_connected ?? false)}`,
+    `real_command_api_connected=${String(fields?.real_command_api_connected ?? false)}`,
+    `real_robot_ack_connected=${String(fields?.real_robot_ack_connected ?? false)}`,
+  ];
 }
 
 function inspectorCursorFields(result: O7CloudArchiveTasksResponse | null): string[] {
@@ -535,6 +575,19 @@ async function loadRealtimeElevatorProbe(): Promise<void> {
   }
 }
 
+async function loadPreviewsAcceptance(): Promise<void> {
+  // 该按钮只加载本地 guard 摘要，不会间接执行 probe、读取 fixture、连接云端或发命令。
+  previewsAcceptanceLoading.value = true;
+  previewsAcceptanceError.value = "";
+  try {
+    previewsAcceptanceResult.value = await getO7PreviewsAcceptance();
+  } catch (err) {
+    previewsAcceptanceError.value = err instanceof Error ? err.message : "o7_previews_acceptance_guard_unavailable";
+  } finally {
+    previewsAcceptanceLoading.value = false;
+  }
+}
+
 function coreFalseFields(kind: O7FixturePreviewKind, result: O7FixturePreviewResult | undefined): string[] {
   const record = asRecord(result);
   // 这些字段是 operator 最容易误读成“已接通/可操作”的核心开关，必须显式展示 false。
@@ -675,6 +728,68 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
       These previews do not prove real realtime API, ROS2 /tf, cloud archive, annotation API, voice API, safe
       command API, robot ACK, HIL/hardware safety or delivery success.
     </div>
+
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <div>
+          <h3>O7 previews acceptance guard</h3>
+          <p class="eyebrow">Read-only readiness summary for local/HTTP O7 Preview software proof boundaries.</p>
+        </div>
+        <span class="pill danger">{{ previewsAcceptanceResult?.acceptance_verdict ?? "not_loaded" }}</span>
+      </div>
+
+      <button class="secondary" type="button" @click="loadPreviewsAcceptance">
+        {{ previewsAcceptanceLoading ? "Loading previews guard" : "Load previews acceptance guard" }}
+      </button>
+
+      <div v-if="previewsAcceptanceError" class="notice" role="alert">
+        O7 previews acceptance guard unavailable: {{ previewsAcceptanceError }}. safe_to_control=false.
+      </div>
+
+      <dl class="kv compact-kv">
+        <dt>schema</dt>
+        <dd>{{ previewsAcceptanceResult?.schema ?? "trashbot.o7.previews_acceptance.v1" }}</dd>
+        <dt>guard endpoint</dt>
+        <dd>{{ previewsAcceptanceResult?.guard_endpoint ?? "/api/o7/previews/acceptance" }}</dd>
+        <dt>evidence boundary</dt>
+        <dd>{{ previewsAcceptanceResult?.evidence_boundary ?? "software_proof_o7_previews_acceptance_guard" }}</dd>
+        <dt>not real capability proof</dt>
+        <dd>{{ previewsAcceptanceResult?.not_real_capability_proof ?? true }}</dd>
+      </dl>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Covered surfaces</h3>
+          <ul class="dense">
+            <!-- surface id 由后端 guard 返回，UI 只展示覆盖面，不推断 O7 完成度。 -->
+            <li v-for="surface in previewsAcceptanceResult?.surfaces ?? []" :key="surface.id">
+              {{ surface.id }} · {{ surface.evidence_boundary }} · {{ surface.acceptance_status }}
+            </li>
+            <li v-if="!previewsAcceptanceResult?.surfaces.length">not_loaded</li>
+          </ul>
+          <h3>Safety invariants</h3>
+          <ul class="dense">
+            <!-- 固定 false 字段集中展示，提醒 operator 这些面板仍不能控制机器人。 -->
+            <li v-for="field in previewsAcceptanceFalseFields()" :key="field">{{ field }}</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Blocked</h3>
+          <ul class="dense">
+            <li v-for="reason in previewsAcceptanceBlocked()" :key="reason">{{ reason }}</li>
+          </ul>
+          <h3>Not proven</h3>
+          <ul class="dense">
+            <li v-for="item in previewsAcceptanceNotProven()" :key="item">{{ item }}</li>
+          </ul>
+          <h3>Software proof only</h3>
+          <ul class="dense">
+            <li v-for="item in previewsAcceptanceResult?.software_proof_only ?? []" :key="item">{{ item }}</li>
+            <li v-if="!previewsAcceptanceResult?.software_proof_only.length">not_loaded</li>
+          </ul>
+        </div>
+      </div>
+    </article>
 
     <article class="snapshot-panel">
       <div class="section-head compact-head">

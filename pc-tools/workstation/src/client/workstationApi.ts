@@ -7,6 +7,7 @@ import type {
   O7LabelingPreviewResponse,
   HealthResponse,
   O7OperatorConsoleResponse,
+  O7PreviewsAcceptanceResponse,
   O7RealtimeElevatorProbeResponse,
   O7RealtimeElevatorPreviewResponse,
   O7RouteReplayPreviewResponse,
@@ -60,6 +61,7 @@ const API_ENDPOINTS = {
   hardwareMaterials: "/api/hardware/wave-rover/material-coverage",
   trainingLabeling: "/api/tools/training-labeling",
   o7OperatorConsole: "/api/o7/operator-console",
+  o7PreviewsAcceptance: "/api/o7/previews/acceptance",
   o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
   o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
   o7RealtimeElevatorProbe: "/api/o7/realtime-elevator-probe",
@@ -179,6 +181,11 @@ export async function getProofBoundary(): Promise<ProofBoundaryResponse> {
 export async function getO7OperatorConsole(): Promise<O7OperatorConsoleResponse> {
   // O7 console 必须由后端契约驱动，前端不自行拼接 KR 状态或控制能力。
   return loadJson<O7OperatorConsoleResponse>(API_ENDPOINTS.o7OperatorConsole);
+}
+
+export async function getO7PreviewsAcceptance(): Promise<O7PreviewsAcceptanceResponse> {
+  // O7 Previews guard 只读取本机摘要 endpoint，不触发 probe、fixture 读取或真实控制链路。
+  return loadJson<O7PreviewsAcceptanceResponse>(API_ENDPOINTS.o7PreviewsAcceptance);
 }
 
 export async function getO7CloudOperatorConsoleProbe(baseUrl: string): Promise<O7CloudOperatorConsoleProbeResponse> {

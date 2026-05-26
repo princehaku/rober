@@ -10,6 +10,7 @@ import {
   buildO7CloudOperatorConsoleProbe,
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
+  buildO7PreviewsAcceptanceResponse,
   buildO7LabelingPreview,
   buildO7RealtimeElevatorProbe,
   buildO7RealtimeElevatorPreview,
@@ -83,6 +84,11 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/operator-console/acceptance", (_req, res) => {
     // Acceptance guard 只复核 O7 console 响应，不读取硬件、不发命令、不连接云端生产。
     res.json(buildO7OperatorConsoleAcceptanceResponse());
+  });
+
+  workstationApp.get("/api/o7/previews/acceptance", (_req, res) => {
+    // Previews guard 汇总本地/HTTP 预览证据边界，不读取 fixture、不探测云端、不触发控制。
+    res.json(buildO7PreviewsAcceptanceResponse());
   });
 
   workstationApp.get("/api/o7/cloud-operator-console-probe", async (req, res) => {

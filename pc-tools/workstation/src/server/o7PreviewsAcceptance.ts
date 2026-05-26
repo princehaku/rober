@@ -1,0 +1,183 @@
+import { PROOF_FLAGS } from "../shared/contracts";
+import type {
+  O7PreviewsAcceptanceCheck,
+  O7PreviewsAcceptanceResponse,
+  O7PreviewsAcceptanceSurface,
+  O7PreviewsAcceptanceSurfaceId,
+} from "../shared/contracts";
+
+const SURFACES: O7PreviewsAcceptanceSurface[] = [
+  {
+    id: "cloud_operator_console_probe",
+    source_endpoint: "/api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>",
+    ui_surface: "Cloud operator console probe",
+    evidence_boundary: "local_http_contract_only",
+    software_proof_available: true,
+    acceptance_status: "blocked_not_proven",
+    blocked_reasons: ["production_cloud_probe_forbidden", "robot_online_not_proven"],
+    not_proven: ["real_public_https_tls", "real_4g_path", "real_robot_status_or_ack"],
+  },
+  {
+    id: "cloud_archive_tasks_probe",
+    source_endpoint: "/api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>",
+    ui_surface: "Cloud archive tasks probe",
+    evidence_boundary: "local_http_contract_only",
+    software_proof_available: true,
+    acceptance_status: "blocked_not_proven",
+    blocked_reasons: ["production_archive_store_forbidden", "real_task_archive_not_connected"],
+    not_proven: ["real_o6_cloud_archive", "real_route_replay_archive", "real_annotation_voice_command_api"],
+  },
+  {
+    id: "realtime_elevator_probe",
+    source_endpoint: "/api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>",
+    ui_surface: "Realtime/elevator cloud probe",
+    evidence_boundary: "local_http_contract_only",
+    software_proof_available: true,
+    acceptance_status: "blocked_not_proven",
+    blocked_reasons: ["production_realtime_stream_forbidden", "ros2_tf_not_connected"],
+    not_proven: ["real_rtc_video", "real_realtime_map_pose", "real_elevator_state_chain", "latency_lt_2s"],
+  },
+  {
+    id: "route_replay_player",
+    source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+    ui_surface: "Local route replay player",
+    evidence_boundary: "local_fixture_cursor_only",
+    software_proof_available: true,
+    acceptance_status: "blocked_not_proven",
+    blocked_reasons: ["local_cursor_only", "playback_available_false"],
+    not_proven: ["real_cloud_route_replay", "real_map_overlay", "real_robot_motion"],
+  },
+  {
+    id: "labeling_review_panel",
+    source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+    ui_surface: "Local labeling review panel",
+    evidence_boundary: "local_fixture_cursor_only",
+    software_proof_available: true,
+    acceptance_status: "blocked_not_proven",
+    blocked_reasons: ["local_review_cursor_only", "submit_enabled_false"],
+    not_proven: ["real_annotation_api", "real_label_submit", "real_dataset_export"],
+  },
+  {
+    id: "voice_monitor_panel",
+    source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+    ui_surface: "Local voice ASR/TTS monitor panel",
+    evidence_boundary: "local_fixture_cursor_only",
+    software_proof_available: true,
+    acceptance_status: "blocked_not_proven",
+    blocked_reasons: ["local_asr_tts_fixture_only", "tts_send_enabled_false"],
+    not_proven: ["real_asr_tts_runtime", "real_tts_playback", "real_speaker_ack", "real_rtc_audio"],
+  },
+  {
+    id: "safe_command_review_panel",
+    source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+    ui_surface: "Local safe command review panel",
+    evidence_boundary: "local_fixture_cursor_only",
+    software_proof_available: true,
+    acceptance_status: "blocked_not_proven",
+    blocked_reasons: ["local_command_review_only", "command_dispatch_enabled_false"],
+    not_proven: ["real_manual_control", "real_navigate_goal", "real_keyboard_control", "real_robot_ack"],
+  },
+];
+
+const FIXED_FALSE_FIELDS: O7PreviewsAcceptanceResponse["fixed_false_fields"] = {
+  reads_hardware: false,
+  sends_commands: false,
+  connects_cloud_production: false,
+  safe_to_control: false,
+  delivery_success: false,
+  primary_actions_enabled: false,
+  playback_available: false,
+  submit_enabled: false,
+  tts_send_enabled: false,
+  command_dispatch_enabled: false,
+  manual_control_enabled: false,
+  navigate_goal_enabled: false,
+  keyboard_control_enabled: false,
+  robot_control_executed: false,
+  real_realtime_api_connected: false,
+  real_ros2_tf_connected: false,
+  real_cloud_archive_connected: false,
+  real_annotation_api_connected: false,
+  real_voice_api_connected: false,
+  real_command_api_connected: false,
+  real_robot_ack_connected: false,
+  real_asr_tts_runtime_connected: false,
+  real_cloud_operator_console_connected: false,
+  manual_turn_sends_to_robot: false,
+  navigate_goal_sends_to_robot: false,
+};
+
+function makeFalseChecks(fields: O7PreviewsAcceptanceResponse["fixed_false_fields"]): O7PreviewsAcceptanceCheck[] {
+  // guard 直接从固定 false 字段生成检查项，避免 UI 再维护一份安全不变量。
+  return Object.entries(fields).map(([id, actual]) => ({
+    id,
+    expected: false,
+    actual,
+    status: "blocked_not_proven",
+  }));
+}
+
+function assertAllFalse(checks: O7PreviewsAcceptanceCheck[]): void {
+  // 如果未来有人把任一危险能力打开，endpoint 必须抛错并让测试失败。
+  const drifted = checks.filter((check) => check.actual !== false);
+  if (drifted.length > 0) {
+    throw new Error(`o7_previews_acceptance_guard_fail_closed_drift:${drifted.map((check) => check.id).join(",")}`);
+  }
+}
+
+export function buildO7PreviewsAcceptanceResponse(): O7PreviewsAcceptanceResponse {
+  // Previews guard 只汇总已存在的合同面，不读取 fixture 路径、不探测 HTTP、不连接生产云。
+  const failClosedChecks = makeFalseChecks(FIXED_FALSE_FIELDS);
+  assertAllFalse(failClosedChecks);
+
+  return {
+    schema: "trashbot.o7.previews_acceptance.v1",
+    ...PROOF_FLAGS,
+    guard_endpoint: "/api/o7/previews/acceptance",
+    evidence_boundary: "software_proof_o7_previews_acceptance_guard",
+    acceptance_verdict: "blocked_not_proven_guard_ok",
+    not_real_capability_proof: true,
+    reads_hardware: false,
+    sends_commands: false,
+    connects_cloud_production: false,
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    covered_surface_ids: SURFACES.map((surface): O7PreviewsAcceptanceSurfaceId => surface.id),
+    surfaces: SURFACES,
+    fail_closed_checks: failClosedChecks,
+    fixed_false_fields: FIXED_FALSE_FIELDS,
+    blocked: [
+      "production_cloud_connection_blocked_by_design",
+      "hardware_and_ros2_reads_blocked_by_design",
+      "robot_command_dispatch_blocked_by_design",
+      "o7_completion_uplift_blocked_without_real_rtc_video_control_ack_hil",
+    ],
+    not_proven: [
+      "real_rtc_video_connected",
+      "real_realtime_map_pose_connected",
+      "real_elevator_state_connected",
+      "real_cloud_archive_connected",
+      "real_route_replay_playback",
+      "real_annotation_submit",
+      "real_asr_tts_runtime_connected",
+      "real_tts_send_or_speaker_ack",
+      "real_manual_control_or_navigate_goal",
+      "real_robot_ack_connected",
+      "real_hardware_hil",
+    ],
+    software_proof_only: [
+      "local_loopback_http_contract_shapes",
+      "local_fixture_archive_summary",
+      "local_browser_cursor_panels",
+      "fixed_false_safety_invariants",
+    ],
+    remaining_real_capability_gaps: [
+      "connect_real_rtc_video_and_realtime_pose_stream",
+      "connect_o6_cloud_archive_and_route_replay_api",
+      "connect_annotation_api_with_submit_audit",
+      "connect_voice_asr_tts_runtime_with_speaker_ack",
+      "connect_safe_command_api_with_robot_ack_and_hil_safety",
+    ],
+  };
+}

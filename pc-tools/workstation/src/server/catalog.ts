@@ -6,6 +6,7 @@ export { buildHealth, buildProofBoundary } from "./proofBoundary";
 export { buildHardwareMaterialsResponse } from "./waveRoverMaterialCoverage";
 export { buildO7OperatorConsoleResponse } from "./o7OperatorConsole";
 export { buildO7OperatorConsoleAcceptanceResponse } from "./o7OperatorConsoleAcceptance";
+export { buildO7PreviewsAcceptanceResponse } from "./o7PreviewsAcceptance";
 export { buildO7CloudOperatorConsoleProbe } from "./o7CloudOperatorConsoleProbe";
 export { buildO7CloudArchiveTasksProbe } from "./o7CloudArchiveTasksProbe";
 export { buildO7RealtimeElevatorProbe } from "./o7RealtimeElevatorProbe";

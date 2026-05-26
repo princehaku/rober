@@ -1674,6 +1674,83 @@ export interface O7RealtimeElevatorProbeResponse extends ProofFlags {
   reads_hardware: false;
 }
 
+export type O7PreviewsAcceptanceSurfaceId =
+  | "cloud_operator_console_probe"
+  | "cloud_archive_tasks_probe"
+  | "realtime_elevator_probe"
+  | "route_replay_player"
+  | "labeling_review_panel"
+  | "voice_monitor_panel"
+  | "safe_command_review_panel";
+
+export interface O7PreviewsAcceptanceSurface {
+  id: O7PreviewsAcceptanceSurfaceId;
+  source_endpoint: string;
+  ui_surface: string;
+  evidence_boundary: "software_proof_only" | "local_http_contract_only" | "local_fixture_cursor_only";
+  software_proof_available: true;
+  acceptance_status: "blocked_not_proven";
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
+export interface O7PreviewsAcceptanceCheck {
+  id: string;
+  expected: false;
+  actual: false;
+  status: "blocked_not_proven";
+}
+
+// Previews acceptance guard 汇总 O7 Previews 已有的本地/HTTP 合同证据。
+// 它只服务 CEO/operator 验收边界，不读取 fixture、硬件、ROS2 或生产云。
+export interface O7PreviewsAcceptanceResponse extends ProofFlags {
+  schema: "trashbot.o7.previews_acceptance.v1";
+  guard_endpoint: "/api/o7/previews/acceptance";
+  evidence_boundary: "software_proof_o7_previews_acceptance_guard";
+  acceptance_verdict: "blocked_not_proven_guard_ok";
+  not_real_capability_proof: true;
+  reads_hardware: false;
+  sends_commands: false;
+  connects_cloud_production: false;
+  safe_to_control: false;
+  delivery_success: false;
+  primary_actions_enabled: false;
+  covered_surface_ids: O7PreviewsAcceptanceSurfaceId[];
+  surfaces: O7PreviewsAcceptanceSurface[];
+  fail_closed_checks: O7PreviewsAcceptanceCheck[];
+  fixed_false_fields: {
+    reads_hardware: false;
+    sends_commands: false;
+    connects_cloud_production: false;
+    safe_to_control: false;
+    delivery_success: false;
+    primary_actions_enabled: false;
+    playback_available: false;
+    submit_enabled: false;
+    tts_send_enabled: false;
+    command_dispatch_enabled: false;
+    manual_control_enabled: false;
+    navigate_goal_enabled: false;
+    keyboard_control_enabled: false;
+    robot_control_executed: false;
+    real_realtime_api_connected: false;
+    real_ros2_tf_connected: false;
+    real_cloud_archive_connected: false;
+    real_annotation_api_connected: false;
+    real_voice_api_connected: false;
+    real_command_api_connected: false;
+    real_robot_ack_connected: false;
+    real_asr_tts_runtime_connected: false;
+    real_cloud_operator_console_connected: false;
+    manual_turn_sends_to_robot: false;
+    navigate_goal_sends_to_robot: false;
+  };
+  blocked: string[];
+  not_proven: string[];
+  software_proof_only: string[];
+  remaining_real_capability_gaps: string[];
+}
+
 // Health 只证明 Node API 存活，不证明机器人在线。
 export interface HealthResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.health.v1";
@@ -1704,6 +1781,7 @@ export const API_ROUTES = [
   "/api/route/debug-summary",
   "/api/o7/operator-console",
   "/api/o7/operator-console/acceptance",
+  "/api/o7/previews/acceptance",
   "/api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>",
   "/api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>",
   "/api/o7/realtime-elevator-preview?fixtureJson=<local-json>",
