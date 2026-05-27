@@ -900,9 +900,15 @@ const fixtures: Record<string, unknown> = {
       "cloud_archive_tasks_probe",
       "realtime_elevator_probe",
       "route_replay_player",
+      "realtime_map_pose_preview",
+      "elevator_state_timeline_preview",
+      "route_replay_trajectory_minimap",
       "labeling_review_panel",
+      "local_draft_annotation_editor",
       "voice_monitor_panel",
+      "local_tts_draft_editor",
       "safe_command_review_panel",
+      "local_safe_command_draft_editor",
     ],
     surfaces: [
       {
@@ -946,6 +952,36 @@ const fixtures: Record<string, unknown> = {
         not_proven: ["real_robot_motion"],
       },
       {
+        id: "realtime_map_pose_preview",
+        source_endpoint: "/api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>",
+        ui_surface: "Realtime map pose preview",
+        evidence_boundary: "local_http_contract_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["real_ros2_tf_connected_false"],
+        not_proven: ["real_realtime_map_pose"],
+      },
+      {
+        id: "elevator_state_timeline_preview",
+        source_endpoint: "/api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>",
+        ui_surface: "Elevator state timeline preview",
+        evidence_boundary: "local_http_contract_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["real_elevator_state_chain_connected_false"],
+        not_proven: ["real_elevator_state_chain"],
+      },
+      {
+        id: "route_replay_trajectory_minimap",
+        source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+        ui_surface: "Route replay trajectory minimap",
+        evidence_boundary: "local_fixture_cursor_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["playback_available_false"],
+        not_proven: ["real_map_overlay"],
+      },
+      {
         id: "labeling_review_panel",
         source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
         ui_surface: "Local labeling review panel",
@@ -954,6 +990,16 @@ const fixtures: Record<string, unknown> = {
         acceptance_status: "blocked_not_proven",
         blocked_reasons: ["submit_enabled_false"],
         not_proven: ["real_annotation_api"],
+      },
+      {
+        id: "local_draft_annotation_editor",
+        source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+        ui_surface: "Local draft annotation editor",
+        evidence_boundary: "local_fixture_cursor_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["submit_enabled_false", "real_annotation_api_connected_false"],
+        not_proven: ["real_draft_autosave"],
       },
       {
         id: "voice_monitor_panel",
@@ -966,6 +1012,16 @@ const fixtures: Record<string, unknown> = {
         not_proven: ["real_asr_tts_runtime"],
       },
       {
+        id: "local_tts_draft_editor",
+        source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+        ui_surface: "Local TTS draft editor",
+        evidence_boundary: "local_fixture_cursor_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["tts_send_enabled_false", "real_voice_api_connected_false"],
+        not_proven: ["real_tts_send"],
+      },
+      {
         id: "safe_command_review_panel",
         source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
         ui_surface: "Local safe command review panel",
@@ -974,6 +1030,16 @@ const fixtures: Record<string, unknown> = {
         acceptance_status: "blocked_not_proven",
         blocked_reasons: ["command_dispatch_enabled_false"],
         not_proven: ["real_robot_ack"],
+      },
+      {
+        id: "local_safe_command_draft_editor",
+        source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+        ui_surface: "Local safe command draft editor",
+        evidence_boundary: "local_fixture_cursor_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["command_dispatch_enabled_false", "robot_control_executed_false"],
+        not_proven: ["real_manual_control", "real_robot_ack"],
       },
     ],
     fail_closed_checks: [],
@@ -2085,7 +2151,16 @@ describe("App", () => {
     expect(wrapper.text()).toContain("software_proof_o7_previews_acceptance_guard");
     expect(wrapper.text()).toContain("cloud_operator_console_probe");
     expect(wrapper.text()).toContain("route_replay_player");
+    expect(wrapper.text()).toContain("realtime_map_pose_preview");
+    expect(wrapper.text()).toContain("elevator_state_timeline_preview");
+    expect(wrapper.text()).toContain("route_replay_trajectory_minimap");
+    expect(wrapper.text()).toContain("local_draft_annotation_editor");
     expect(wrapper.text()).toContain("voice_monitor_panel");
+    expect(wrapper.text()).toContain("local_tts_draft_editor");
+    expect(wrapper.text()).toContain("local_safe_command_draft_editor");
+    expect(wrapper.text()).toContain("Realtime map pose preview");
+    expect(wrapper.text()).toContain("Elevator state timeline preview");
+    expect(wrapper.text()).toContain("Route replay trajectory minimap");
     expect(wrapper.text()).toContain("local_loopback_http_contract_shapes");
     expect(wrapper.text()).toContain("production_cloud_connection_blocked_by_design");
     expect(wrapper.text()).toContain("real_rtc_video_connected");

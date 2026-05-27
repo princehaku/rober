@@ -1685,9 +1685,15 @@ export type O7PreviewsAcceptanceSurfaceId =
   | "cloud_archive_tasks_probe"
   | "realtime_elevator_probe"
   | "route_replay_player"
+  | "realtime_map_pose_preview"
+  | "elevator_state_timeline_preview"
+  | "route_replay_trajectory_minimap"
   | "labeling_review_panel"
+  | "local_draft_annotation_editor"
   | "voice_monitor_panel"
-  | "safe_command_review_panel";
+  | "local_tts_draft_editor"
+  | "safe_command_review_panel"
+  | "local_safe_command_draft_editor";
 
 export interface O7PreviewsAcceptanceSurface {
   id: O7PreviewsAcceptanceSurfaceId;

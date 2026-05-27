@@ -2799,10 +2799,62 @@ describe("workstation fail-closed API contracts", () => {
       "cloud_archive_tasks_probe",
       "realtime_elevator_probe",
       "route_replay_player",
+      "realtime_map_pose_preview",
+      "elevator_state_timeline_preview",
+      "route_replay_trajectory_minimap",
       "labeling_review_panel",
+      "local_draft_annotation_editor",
       "voice_monitor_panel",
+      "local_tts_draft_editor",
       "safe_command_review_panel",
+      "local_safe_command_draft_editor",
     ]);
+    expect(acceptance.surfaces).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "realtime_map_pose_preview",
+          evidence_boundary: "local_http_contract_only",
+          acceptance_status: "blocked_not_proven",
+          blocked_reasons: expect.arrayContaining(["real_ros2_tf_connected_false"]),
+          not_proven: expect.arrayContaining(["real_realtime_map_pose"]),
+        }),
+        expect.objectContaining({
+          id: "elevator_state_timeline_preview",
+          evidence_boundary: "local_http_contract_only",
+          acceptance_status: "blocked_not_proven",
+          blocked_reasons: expect.arrayContaining(["real_elevator_state_chain_connected_false"]),
+          not_proven: expect.arrayContaining(["real_elevator_state_chain"]),
+        }),
+        expect.objectContaining({
+          id: "route_replay_trajectory_minimap",
+          evidence_boundary: "local_fixture_cursor_only",
+          acceptance_status: "blocked_not_proven",
+          blocked_reasons: expect.arrayContaining(["playback_available_false"]),
+          not_proven: expect.arrayContaining(["real_map_overlay"]),
+        }),
+        expect.objectContaining({
+          id: "local_draft_annotation_editor",
+          evidence_boundary: "local_fixture_cursor_only",
+          acceptance_status: "blocked_not_proven",
+          blocked_reasons: expect.arrayContaining(["submit_enabled_false", "real_annotation_api_connected_false"]),
+          not_proven: expect.arrayContaining(["real_draft_autosave"]),
+        }),
+        expect.objectContaining({
+          id: "local_tts_draft_editor",
+          evidence_boundary: "local_fixture_cursor_only",
+          acceptance_status: "blocked_not_proven",
+          blocked_reasons: expect.arrayContaining(["tts_send_enabled_false", "real_voice_api_connected_false"]),
+          not_proven: expect.arrayContaining(["real_tts_send"]),
+        }),
+        expect.objectContaining({
+          id: "local_safe_command_draft_editor",
+          evidence_boundary: "local_fixture_cursor_only",
+          acceptance_status: "blocked_not_proven",
+          blocked_reasons: expect.arrayContaining(["command_dispatch_enabled_false", "robot_control_executed_false"]),
+          not_proven: expect.arrayContaining(["real_robot_ack"]),
+        }),
+      ]),
+    );
     expect(acceptance.fixed_false_fields).toMatchObject({
       playback_available: false,
       submit_enabled: false,
