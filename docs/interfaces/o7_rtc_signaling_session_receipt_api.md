@@ -6,6 +6,8 @@
 
 该 endpoint 不创建 WebRTC session、不生成 answer、不处理 ICE、不连接媒体、不读取硬件、不发送控制、不写 command store、不证明视频、实时 pose 或 ROS2 `/tf` 已通。
 
+`GET /api/o7/rtc-signaling/contract` 会把该入口声明为 `receipt_only_implemented`，并把 `session_identity` 声明为 `receipt_only_validated`。这两个状态只覆盖本页描述的 bearer-gated 收件和字段校验，不代表真实 RTC session、answer、ICE 或媒体能力已经实现。
+
 ## Auth 策略
 
 该入口接收 `offer.sdp` payload，因此默认走 bearer gate，与 `/api/commands/*` 一样检查 `Authorization: Bearer <token>`。如果 relay 启动时 expected token 为空，则本地开发和测试环境仍可不带 bearer 访问。

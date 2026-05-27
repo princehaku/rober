@@ -10,7 +10,7 @@
 POST /api/o7/rtc/signaling/sessions
 ```
 
-该入口只返回 `trashbot.o7.rtc_signaling_session_receipt.v1` fail-closed receipt，详见 `docs/interfaces/o7_rtc_signaling_session_receipt_api.md`。它不创建 WebRTC session、不生成 answer、不处理 ICE、不连接媒体、不读取硬件、不下发控制。
+该入口只返回 `trashbot.o7.rtc_signaling_session_receipt.v1` fail-closed receipt，详见 `docs/interfaces/o7_rtc_signaling_session_receipt_api.md`。因此合同里的 `signaling_endpoint.status=receipt_only_implemented`、`session_identity.status=receipt_only_validated` 只表示 HTTP 收件和最小身份字段校验已经存在；它不创建 WebRTC session、不生成 answer、不处理 ICE、不连接媒体、不读取硬件、不下发控制。
 
 ## Fail-Closed 字段
 
@@ -36,9 +36,9 @@ POST /api/o7/rtc/signaling/sessions
 
 `protocol_surfaces` 保持稳定 JSON 字段，供 PC 和后续板端实现逐项 probe：
 
-- `signaling_endpoint`：signaling session receipt-only 入口、HTTP 方法、路径模板和必填字段。
-- `session_identity`：`session_id` 与 `idempotency_key` 必填，重放必须返回相同 receipt 或显式 conflict。
-- `offer_answer`：未来 WebRTC offer/answer SDP 字段位置；当前 contract endpoint 禁止携带真实 SDP。
+- `signaling_endpoint`：signaling session receipt-only 入口、HTTP 方法、路径模板和必填字段；当前状态为 `receipt_only_implemented`。
+- `session_identity`：`session_id` 与 `idempotency_key` 必填，receipt 入口会校验字段存在；当前状态为 `receipt_only_validated`，但不创建真实 session。
+- `offer_answer`：未来 WebRTC offer/answer SDP 字段位置；当前状态为 `offer_receipt_only_answer_disabled`，只接收 offer 摘要，answer 仍禁用。
 - `ice_candidates`：未来 trickle ICE candidate 字段和 timeout 语义。
 - `media_tracks`：video 必选、audio 可选；当前 `received=false` 且 codec 未协商。
 - `pose_realtime_events`：未来实时 pose event schema，并要求 ROS2 `/tf` bridge 证据。
@@ -50,4 +50,4 @@ POST /api/o7/rtc/signaling/sessions
 
 ## 边界
 
-该 API 是 O7 RTC/实时地图接入前置合同，不是 live endpoints manifest 的替代品，也不是真实连通性证明。真实打通仍需要独立证据：机器人侧 signaling client trace、offer/answer exchange trace、ICE selected pair trace、带时间戳首帧视频、pose event stream trace、ROS2 `/tf` bridge trace，以及超时和认证失败 trace。
+该 API 是 O7 RTC/实时地图接入前置合同，不是 live endpoints manifest 的替代品，也不是真实连通性证明。当前 `blocked_reasons` 不再包含 endpoint 未实现，而是明确阻塞在 receipt-only、真实 RTC session 未创建、answer disabled、ICE/media/pose/ROS2 `/tf` 未证明。真实打通仍需要独立证据：机器人侧 signaling client trace、offer/answer exchange trace、ICE selected pair trace、带时间戳首帧视频、pose event stream trace、ROS2 `/tf` bridge trace，以及超时和认证失败 trace。

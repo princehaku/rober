@@ -10,6 +10,9 @@ sprint_type: micro
 - receipt 只校验 JSON object、`robot_id`、`client_id`、`session_id`、`idempotency_key`、`offer.sdp`，只返回字段长度和短哈希摘要，不回显 SDP、token/auth/url 或 raw offer。
 - receipt 固定 `blocked_not_created` 和所有 RTC、媒体、ROS2 `/tf`、硬件、控制、送达能力为 false；不触碰 command store。
 - 更新 O7 RTC signaling contract 文档、session receipt 文档和 cloud-relay README。
+- 本轮 relay consistency fix 将 `GET /api/o7/rtc-signaling/contract` 的合同状态同步到 receipt-only 现实：`signaling_endpoint.status=receipt_only_implemented`、`session_identity.status=receipt_only_validated`、`offer_answer.status=offer_receipt_only_answer_disabled`。
+- `blocked_reasons` 不再声明 endpoint 未实现，改为 `rtc_signaling_receipt_only`、`real_rtc_session_not_created`、`webrtc_answer_disabled` 与 ICE/media/pose/ROS2 `/tf` 未证明；ICE、media、pose、elevator 仍保持未实现/未证明口径。
+- 单测新增合同状态和 blocked reason 断言，防止后续回退到 endpoint 未实现或误宣称真实 RTC 能力。
 
 ## 验证结果
 
@@ -19,7 +22,7 @@ sprint_type: micro
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=onboard/src/ros2_trashbot_behavior python3 -m unittest onboard/src/ros2_trashbot_behavior/test/test_remote_cloud_relay.py
 ......................................................................................................................
 ----------------------------------------------------------------------
-Ran 118 tests in 38.773s
+Ran 118 tests in 38.945s
 
 OK
 
