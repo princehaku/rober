@@ -16,12 +16,27 @@ The PC UI may display only the probe response safe strings:
 - `map_frame_summary`
 - `robot_pose_summary`
 - `pose_freshness_summary`
+- `probe_observed_at_ms`
+- `remote_pose_timestamp_ms`
+- `remote_pose_age_ms`
+- `freshness_gate_status`
+- `latency_lt_2s_proven`
 - `elevator_status`
 - `elevator_state_samples_summary`
 - `current_floor_evidence_summary`
 - `human_takeover_summary`
 
 `robot_pose_summary` may be parsed in the browser only for `x_m`, `y_m`, and `yaw_rad` when the string contains tokens such as `x_m=1.25, y_m=-0.75, yaw_rad=1.57`. If parsing fails, the UI must show `blocked_pose_coordinate_unavailable` and must not draw a marker.
+
+The freshness gate fields are PC-only observation metadata:
+
+- `probe_observed_at_ms` is the workstation backend time when the probe response was summarized.
+- `remote_pose_timestamp_ms` is copied only from numeric `robot_pose.timestamp_ms`; otherwise it is `null`.
+- `remote_pose_age_ms` is copied from numeric `pose_freshness.age_ms` when available, or derived as `probe_observed_at_ms - remote_pose_timestamp_ms`; otherwise it is `null`.
+- `freshness_gate_status` is a fail-closed status string for the PC probe gate.
+- `latency_lt_2s_proven` is always `false`.
+
+These fields do not prove real ROS2 `/tf`, a real realtime API, real auto-refresh, or <2s latency. Even when `remote_pose_age_ms` is below 2000, the proof boundary remains `proof_status=not_proven`.
 
 ## Visualization Contract
 

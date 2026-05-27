@@ -1762,6 +1762,11 @@ const fixtures: Record<string, unknown> = {
     robot_pose_summary:
       "x_m=1.25, y_m=-0.75, yaw_rad=1.57, pose_source=fixture_pose_slot_not_tf, timestamp_ms=2000, evidence_ref=pose-slot.json, real_ros2_tf_connected=false",
     pose_freshness_summary: "age_ms=not_loaded, latency_lt_2s_proven=false, status=blocked_not_proven",
+    probe_observed_at_ms: 7000,
+    remote_pose_timestamp_ms: 2000,
+    remote_pose_age_ms: 5000,
+    freshness_gate_status: "pc_only_freshness_observed_not_latency_proof:blocked_not_proven",
+    latency_lt_2s_proven: false,
     route_membership_false_fields: ["route_membership.on_route=false", "route_membership.in_elevator_zone=false"],
     elevator_status: "current_state=waiting_operator, sample_count=6, status=blocked_not_proven",
     elevator_state_samples_summary: [
@@ -2513,6 +2518,14 @@ describe("App", () => {
     expect(wrapper.text()).toContain("x_m=1.25");
     expect(wrapper.text()).toContain("pose_source=fixture_pose_slot_not_tf");
     expect(wrapper.text()).toContain("real_ros2_tf_connected=false");
+    expect(wrapper.text()).toContain("probe observed at ms");
+    expect(wrapper.text()).toContain("remote pose timestamp ms");
+    expect(wrapper.text()).toContain("remote pose age ms");
+    expect(wrapper.text()).toContain("freshness gate status");
+    expect(wrapper.text()).toContain("pc_only_freshness_observed_not_latency_proof:blocked_not_proven");
+    expect(wrapper.text()).toContain("remote_pose_timestamp_ms");
+    expect(wrapper.text()).toContain("remote_pose_age_ms");
+    expect(wrapper.text()).toContain("freshness_gate_status");
     expect(wrapper.text()).toContain("Realtime map pose preview");
     expect(wrapper.find('svg[aria-label="Realtime map pose preview"]').exists()).toBe(true);
     expect(wrapper.text()).toContain("readonly_probe_summary_pose_ready");

@@ -3361,6 +3361,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(probe.robot_pose_summary).toContain("evidence_ref=pose-slot.json");
       expect(probe.robot_pose_summary).toContain("real_ros2_tf_connected=false");
       expect(probe.pose_freshness_summary).toContain("latency_lt_2s_proven=false");
+      expect(probe.probe_observed_at_ms).toEqual(expect.any(Number));
+      expect(probe.remote_pose_timestamp_ms).toBe(2000);
+      expect(probe.remote_pose_age_ms).toEqual(expect.any(Number));
+      expect(probe.freshness_gate_status).toBe("pc_only_freshness_observed_not_latency_proof:blocked_not_proven");
+      expect(probe.latency_lt_2s_proven).toBe(false);
       expect(probe.route_membership_false_fields).toEqual([
         "route_membership.on_route=false",
         "route_membership.in_elevator_zone=false",

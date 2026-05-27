@@ -1870,6 +1870,16 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
         <dd>{{ realtimeElevatorProbeResult?.robot_pose_summary ?? "blocked_not_proven" }}</dd>
         <dt>pose freshness</dt>
         <dd>{{ realtimeElevatorProbeResult?.pose_freshness_summary ?? "blocked_not_proven" }}</dd>
+        <dt>probe observed at ms</dt>
+        <dd>{{ realtimeElevatorProbeResult?.probe_observed_at_ms ?? "not_loaded" }}</dd>
+        <dt>remote pose timestamp ms</dt>
+        <dd>{{ realtimeElevatorProbeResult?.remote_pose_timestamp_ms ?? "not_loaded" }}</dd>
+        <dt>remote pose age ms</dt>
+        <dd>{{ realtimeElevatorProbeResult?.remote_pose_age_ms ?? "not_loaded" }}</dd>
+        <dt>freshness gate status</dt>
+        <dd>{{ realtimeElevatorProbeResult?.freshness_gate_status ?? "blocked_not_proven" }}</dd>
+        <dt>latency_lt_2s_proven</dt>
+        <dd>{{ realtimeElevatorProbeResult?.latency_lt_2s_proven ?? false }}</dd>
         <dt>elevator status</dt>
         <dd>{{ realtimeElevatorProbeResult?.elevator_status ?? "blocked_not_proven" }}</dd>
         <dt>current floor evidence</dt>
@@ -1991,6 +2001,14 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             </dd>
             <dt>latency_lt_2s_proven</dt>
             <dd>false</dd>
+            <dt>probe_observed_at_ms</dt>
+            <dd>{{ realtimeElevatorProbeResult?.probe_observed_at_ms ?? "not_loaded" }}</dd>
+            <dt>remote_pose_timestamp_ms</dt>
+            <dd>{{ realtimeElevatorProbeResult?.remote_pose_timestamp_ms ?? "not_loaded" }}</dd>
+            <dt>remote_pose_age_ms</dt>
+            <dd>{{ realtimeElevatorProbeResult?.remote_pose_age_ms ?? "not_loaded" }}</dd>
+            <dt>freshness_gate_status</dt>
+            <dd>{{ realtimeElevatorProbeResult?.freshness_gate_status ?? "blocked_not_proven" }}</dd>
             <dt>real_ros2_tf_connected</dt>
             <dd>false</dd>
             <dt>real_realtime_api_connected</dt>

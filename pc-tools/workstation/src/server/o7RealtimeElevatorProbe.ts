@@ -6,6 +6,14 @@ const PROBE_SCHEMA = "trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v
 const REMOTE_ENDPOINT = "/api/o7/realtime-elevator/snapshot" as const;
 const ELEVATOR_SAMPLE_LIMIT = 5;
 
+interface FreshnessGateFields {
+  probe_observed_at_ms: number;
+  remote_pose_timestamp_ms: number | null;
+  remote_pose_age_ms: number | null;
+  freshness_gate_status: string;
+  latency_lt_2s_proven: false;
+}
+
 const DANGEROUS_TRUE_FIELDS = new Set([
   "safe_to_control",
   "delivery_success",
@@ -45,6 +53,7 @@ function failClosed(
   baseUrl: string,
   extras: Partial<O7RealtimeElevatorProbeResponse> = {},
 ): O7RealtimeElevatorProbeResponse {
+  const freshness = freshnessGateFields(null, reason);
   // probe 失败时仍返回完整结构，UI 只能展示 blocked，而不能推断实时地图或电梯已接通。
   return {
     schema: PROBE_SCHEMA,
@@ -58,6 +67,11 @@ function failClosed(
     map_frame_summary: extras.map_frame_summary ?? "not_loaded",
     robot_pose_summary: extras.robot_pose_summary ?? "x_m=not_loaded, y_m=not_loaded, yaw_rad=not_loaded, pose_source=not_loaded, timestamp_ms=not_loaded, evidence_ref=not_loaded, real_ros2_tf_connected=false",
     pose_freshness_summary: extras.pose_freshness_summary ?? "blocked_not_proven",
+    probe_observed_at_ms: extras.probe_observed_at_ms ?? freshness.probe_observed_at_ms,
+    remote_pose_timestamp_ms: extras.remote_pose_timestamp_ms ?? freshness.remote_pose_timestamp_ms,
+    remote_pose_age_ms: extras.remote_pose_age_ms ?? freshness.remote_pose_age_ms,
+    freshness_gate_status: extras.freshness_gate_status ?? freshness.freshness_gate_status,
+    latency_lt_2s_proven: false,
     route_membership_false_fields: extras.route_membership_false_fields ?? [
       "route_membership.on_route=false",
       "route_membership.in_elevator_zone=false",
@@ -172,6 +186,35 @@ function scalarSummary(record: Record<string, unknown>, key: string, fallback = 
   return fallback;
 }
 
+function finiteNumber(record: Record<string, unknown> | null, key: string): number | null {
+  // freshness gate 只接受 JSON number；字符串时间戳不能被悄悄升级为低延迟证据。
+  const value = record?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function freshnessGateFields(remote: Record<string, unknown> | null, failReason = ""): FreshnessGateFields {
+  const observedAtMs = Date.now();
+  const pose = asRecord(remote?.robot_pose);
+  const freshness = asRecord(remote?.pose_freshness);
+  const timestampMs = finiteNumber(pose, "timestamp_ms");
+  const ageFromRemote = finiteNumber(freshness, "age_ms");
+  const ageFromTimestamp = timestampMs === null ? null : Math.max(0, observedAtMs - timestampMs);
+  const ageMs = ageFromRemote ?? ageFromTimestamp;
+  const remoteStatus = freshness ? scalarSummary(freshness, "status", "blocked_not_proven") : "blocked_not_proven";
+  const gateStatus =
+    failReason ||
+    (ageMs === null
+      ? "blocked_pose_freshness_unavailable"
+      : `pc_only_freshness_observed_not_latency_proof:${remoteStatus}`);
+  return {
+    probe_observed_at_ms: observedAtMs,
+    remote_pose_timestamp_ms: timestampMs,
+    remote_pose_age_ms: ageMs,
+    freshness_gate_status: gateStatus,
+    latency_lt_2s_proven: false,
+  };
+}
+
 function robotPoseSummary(remote: Record<string, unknown>): string {
   // 位姿摘要明确保留 real_ros2_tf_connected=false，fixture 位姿不能被 UI 解释成真实 /tf。
   const pose = asRecord(remote.robot_pose);
@@ -225,6 +268,7 @@ export async function buildO7RealtimeElevatorProbe(baseUrl: string): Promise<O7R
     const remoteSchema = String(remote.schema ?? "not_loaded");
     const falseFields = keyFalseFields(remote);
     const dangerous = scanDangerousTrueFields(remote);
+    const freshness = freshnessGateFields(remote);
     const route = asRecord(remote.route_membership);
     const elevator = asRecord(remote.elevator_state_chain);
     const floor = asRecord(remote.current_floor_evidence);
@@ -237,6 +281,11 @@ export async function buildO7RealtimeElevatorProbe(baseUrl: string): Promise<O7R
       map_frame_summary: summary(asRecord(remote.map_frame), ["frame_id", "source", "status"]),
       robot_pose_summary: robotPoseSummary(remote),
       pose_freshness_summary: summary(asRecord(remote.pose_freshness), ["age_ms", "latency_lt_2s_proven", "status"]),
+      probe_observed_at_ms: freshness.probe_observed_at_ms,
+      remote_pose_timestamp_ms: freshness.remote_pose_timestamp_ms,
+      remote_pose_age_ms: freshness.remote_pose_age_ms,
+      freshness_gate_status: freshness.freshness_gate_status,
+      latency_lt_2s_proven: false,
       route_membership_false_fields: [
         `route_membership.on_route=${String(boolField(route, "on_route"))}`,
         `route_membership.in_elevator_zone=${String(boolField(route, "in_elevator_zone"))}`,
@@ -269,6 +318,11 @@ export async function buildO7RealtimeElevatorProbe(baseUrl: string): Promise<O7R
       map_frame_summary: extras.map_frame_summary ?? "not_loaded",
       robot_pose_summary: extras.robot_pose_summary ?? robotPoseSummary(remote),
       pose_freshness_summary: extras.pose_freshness_summary ?? "blocked_not_proven",
+      probe_observed_at_ms: extras.probe_observed_at_ms ?? freshness.probe_observed_at_ms,
+      remote_pose_timestamp_ms: extras.remote_pose_timestamp_ms ?? freshness.remote_pose_timestamp_ms,
+      remote_pose_age_ms: extras.remote_pose_age_ms ?? freshness.remote_pose_age_ms,
+      freshness_gate_status: extras.freshness_gate_status ?? freshness.freshness_gate_status,
+      latency_lt_2s_proven: false,
       route_membership_false_fields: extras.route_membership_false_fields ?? [],
       elevator_status: extras.elevator_status ?? "blocked_not_proven",
       elevator_state_samples_summary: extras.elevator_state_samples_summary ?? [],
