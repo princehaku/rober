@@ -16,6 +16,7 @@ import {
   buildO7RealtimeElevatorProbe,
   buildO7RealtimeElevatorPreview,
   buildO7RouteReplayPreview,
+  buildO7RtcSignalingContractProbe,
   buildO7SafeCommandPreview,
   buildO7VoicePreview,
   buildProofBoundary,
@@ -110,6 +111,11 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/realtime-elevator-probe", async (req, res) => {
     // Realtime/elevator probe 只拉取本机回环 snapshot contract，不读取 ROS2 /tf、地图或电梯设备。
     res.json(await buildO7RealtimeElevatorProbe(queryString(req.query.baseUrl)));
+  });
+
+  workstationApp.get("/api/o7/rtc-signaling-contract-probe", async (req, res) => {
+    // RTC signaling contract probe 只拉取本机回环协议清单，不创建 WebRTC session、视频或 ROS2 /tf 连接。
+    res.json(await buildO7RtcSignalingContractProbe(queryString(req.query.baseUrl)));
   });
 
   workstationApp.get("/api/o7/realtime-elevator-preview", async (req, res) => {

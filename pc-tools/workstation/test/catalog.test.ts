@@ -9,6 +9,7 @@ import {
   buildO7LiveEndpointsManifest,
   buildO7CloudOperatorConsoleProbe,
   buildO7RealtimeElevatorProbe,
+  buildO7RtcSignalingContractProbe,
   buildEvidenceToolsResponse,
   buildHardwareMaterialsResponse,
   buildHealth,
@@ -619,6 +620,31 @@ function listenCloudArchive(payload: unknown): Promise<{ baseUrl: string; close:
   const server = http.createServer((req, res) => {
     res.setHeader("Content-Type", "application/json");
     if (req.url === "/api/o7/cloud-archive/tasks") {
+      res.end(JSON.stringify(payload));
+      return;
+    }
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not_found" }));
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
+function listenRtcContract(payload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  // RTC contract probe 测试只模拟本机 relay 合同入口，不创建 WebRTC、视频或 ROS2 /tf 连接。
+  const server = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    if (req.url === "/api/o7/rtc-signaling/contract") {
       res.end(JSON.stringify(payload));
       return;
     }
@@ -2798,6 +2824,7 @@ describe("workstation fail-closed API contracts", () => {
     expect(acceptance.covered_surface_ids).toEqual([
       "cloud_operator_console_probe",
       "cloud_archive_tasks_probe",
+      "rtc_signaling_contract_probe",
       "realtime_elevator_probe",
       "route_replay_player",
       "realtime_map_pose_preview",
@@ -2812,6 +2839,25 @@ describe("workstation fail-closed API contracts", () => {
     ]);
     expect(acceptance.surfaces).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          id: "rtc_signaling_contract_probe",
+          source_endpoint: "/api/o7/rtc-signaling-contract-probe?baseUrl=<local-loopback-url>",
+          ui_surface: "RTC signaling contract probe",
+          evidence_boundary: "local_http_contract_only",
+          acceptance_status: "blocked_not_proven",
+          blocked_reasons: expect.arrayContaining([
+            "real_rtc_signaling_session_not_created",
+            "webrtc_media_transport_not_connected",
+            "ros2_tf_not_connected",
+          ]),
+          not_proven: expect.arrayContaining([
+            "real_rtc_signaling_session",
+            "real_webrtc_media_transport",
+            "real_rtc_video",
+            "real_realtime_pose_stream",
+            "real_ros2_tf",
+          ]),
+        }),
         expect.objectContaining({
           id: "realtime_map_pose_preview",
           evidence_boundary: "local_http_contract_only",
@@ -2872,6 +2918,9 @@ describe("workstation fail-closed API contracts", () => {
     expect(acceptance.fail_closed_checks.every((check) => check.actual === false)).toBe(true);
     expect(acceptance.not_proven).toEqual(
       expect.arrayContaining(["real_rtc_video_connected", "real_manual_control_or_navigate_goal", "real_hardware_hil"]),
+    );
+    expect(acceptance.remaining_real_capability_gaps).toEqual(
+      expect.arrayContaining(["rtc_signaling_contract_probe_does_not_prove_real_rtc_video_or_media_transport"]),
     );
 
     const server = await listen(createWorkstationApp());
@@ -3108,6 +3157,130 @@ describe("workstation fail-closed API contracts", () => {
       expect(probe.route_replay_summary).toContain("playback_available=false");
     } finally {
       await server.close();
+    }
+  });
+
+  it("O7 RTC signaling contract probe only accepts loopback and keeps RTC fields closed", async () => {
+    // probe 只拉本机 HTTP 合同入口，不能把协议清单解读成 WebRTC、视频或 ROS2 /tf 已打通。
+    const server = await listenRtcContract({
+      schema: "trashbot.o7.rtc_signaling_contract.v1",
+      schema_version: 1,
+      source: "software_proof",
+      proof_status: "not_proven",
+      endpoint: "/api/o7/rtc-signaling/contract",
+      contract_status: "static_fail_closed_contract",
+      network_probe_executed: false,
+      webrtc_session_created: false,
+      media_transport_connected: false,
+      video_track_received: false,
+      realtime_pose_stream_connected: false,
+      real_ros2_tf_connected: false,
+      safe_to_control: false,
+      sends_commands: false,
+      reads_hardware: false,
+      robot_control_executed: false,
+      delivery_success: false,
+      protocol_surfaces: {
+        signaling_endpoint: { required: true, method: "POST", path_template: "/api/o7/rtc/signaling/sessions" },
+        session_identity: { required: true, session_id_required: true, idempotency_key_required: true },
+        offer_answer: { required: true, forbidden_in_this_endpoint: true },
+        ice_candidates: { required: true, timeout_semantics_required: true },
+        media_tracks: { required: true, video: { required: true, received: false }, audio: { required: false, received: false } },
+        pose_realtime_events: { required: true, event_schema: "trashbot.o7.realtime_pose_event.v1" },
+        elevator_realtime_events: { required: true, event_schema: "trashbot.o7.elevator_realtime_event.v1" },
+        credential_handling: {
+          required: true,
+          credential_transport_policy: "bearer_header_redacted",
+          credential_values_exposed: false,
+        },
+        observability_evidence_refs: {
+          required: true,
+          required_refs: ["signaling_trace_ref", "ice_connectivity_trace_ref", "first_video_frame_ref"],
+        },
+        failure_timeout_semantics: { required: true, required_states: ["signaling_timeout", "ice_failed"] },
+        forbidden_actions: {
+          command_dispatch: false,
+          manual_control: false,
+          navigate_goal: false,
+          keyboard_control: false,
+          hardware_probe: false,
+          network_probe_from_contract_endpoint: false,
+        },
+      },
+      blocked_reasons: ["rtc_signaling_endpoint_not_implemented", "video_track_not_received"],
+      not_proven: ["real_rtc_signaling_session", "real_webrtc_media_transport", "real_ros2_tf_connected"],
+      next_required_evidence: ["robot_side_signaling_client_trace", "pose_event_stream_trace", "ros2_tf_bridge_trace"],
+    });
+
+    try {
+      const probe = await buildO7RtcSignalingContractProbe(server.baseUrl);
+
+      expect(probe.schema).toBe("trashbot.pc_tools_workstation.o7_rtc_signaling_contract_probe.v1");
+      expect(probe.probe_status).toBe("loaded_fail_closed_contract");
+      expect(probe.source_base_url).toBe(server.baseUrl);
+      expect(probe.remote_schema).toBe("trashbot.o7.rtc_signaling_contract.v1");
+      expect(probe.contract_status).toBe("static_fail_closed_contract");
+      expect(probe.key_false_fields).toEqual(expect.arrayContaining([
+        "network_probe_executed=false",
+        "webrtc_session_created=false",
+        "video_track_received=false",
+        "real_ros2_tf_connected=false",
+        "sends_commands=false",
+        "reads_hardware=false",
+      ]));
+      expect(probe.protocol_surface_keys).toEqual(expect.arrayContaining([
+        "credential_handling",
+        "media_tracks",
+        "offer_answer",
+        "pose_realtime_events",
+        "signaling_endpoint",
+      ]));
+      expect(probe.required_evidence_refs).toEqual(expect.arrayContaining([
+        "signaling_trace_ref",
+        "first_video_frame_ref",
+        "robot_side_signaling_client_trace",
+        "ros2_tf_bridge_trace",
+      ]));
+      expect(probe.dangerous_true_fields).toEqual([]);
+      expect(probe.network_probe_executed).toBe(false);
+      expect(probe.sends_commands).toBe(false);
+      expect(probe.connects_cloud_production).toBe(false);
+      expect(probe.reads_hardware).toBe(false);
+      expect(JSON.stringify(probe)).not.toContain("bearer_header_redacted");
+    } finally {
+      await server.close();
+    }
+
+    const blocked = await buildO7RtcSignalingContractProbe("http://example.com");
+    expect(blocked.probe_status).toBe("fail_closed");
+    expect(blocked.fail_closed_reason).toBe("baseUrl_must_be_local_loopback");
+    expect(blocked.network_probe_executed).toBe(false);
+    expect(blocked.safe_to_control).toBe(false);
+
+    const dangerousServer = await listenRtcContract({
+      schema: "trashbot.o7.rtc_signaling_contract.v1",
+      contract_status: "unsafe_contract",
+      network_probe_executed: true,
+      protocol_surfaces: {
+        forbidden_actions: { command_dispatch: true },
+      },
+      blocked_reasons: [],
+      not_proven: [],
+    });
+    try {
+      const dangerous = await buildO7RtcSignalingContractProbe(dangerousServer.baseUrl);
+
+      expect(dangerous.probe_status).toBe("fail_closed");
+      expect(dangerous.fail_closed_reason).toBe("remote_dangerous_true_field");
+      expect(dangerous.dangerous_true_fields).toEqual(expect.arrayContaining([
+        "network_probe_executed",
+        "protocol_surfaces.forbidden_actions.command_dispatch",
+      ]));
+      expect(dangerous.blocked_reasons).toContain("dangerous_true:network_probe_executed");
+      expect(dangerous.safe_to_control).toBe(false);
+      expect(dangerous.sends_commands).toBe(false);
+    } finally {
+      await dangerousServer.close();
     }
   });
 

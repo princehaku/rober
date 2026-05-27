@@ -898,6 +898,7 @@ const fixtures: Record<string, unknown> = {
     covered_surface_ids: [
       "cloud_operator_console_probe",
       "cloud_archive_tasks_probe",
+      "rtc_signaling_contract_probe",
       "realtime_elevator_probe",
       "route_replay_player",
       "realtime_map_pose_preview",
@@ -930,6 +931,16 @@ const fixtures: Record<string, unknown> = {
         acceptance_status: "blocked_not_proven",
         blocked_reasons: ["production_archive_store_forbidden"],
         not_proven: ["real_route_replay_archive"],
+      },
+      {
+        id: "rtc_signaling_contract_probe",
+        source_endpoint: "/api/o7/rtc-signaling-contract-probe?baseUrl=<local-loopback-url>",
+        ui_surface: "RTC signaling contract probe",
+        evidence_boundary: "local_http_contract_only",
+        software_proof_available: true,
+        acceptance_status: "blocked_not_proven",
+        blocked_reasons: ["local_http_contract_probe_only", "webrtc_media_transport_not_connected"],
+        not_proven: ["real_rtc_signaling_session", "real_webrtc_media_transport", "real_rtc_video", "real_ros2_tf"],
       },
       {
         id: "realtime_elevator_probe",
@@ -1074,6 +1085,7 @@ const fixtures: Record<string, unknown> = {
     not_proven: ["real_rtc_video_connected", "real_manual_control_or_navigate_goal", "real_hardware_hil"],
     software_proof_only: ["local_loopback_http_contract_shapes", "local_browser_cursor_panels"],
     remaining_real_capability_gaps: [
+      "rtc_signaling_contract_probe_does_not_prove_real_rtc_video_or_media_transport",
       "connect_real_rtc_video_and_realtime_pose_stream",
       "connect_real_route_replay_archive",
       "connect_real_annotation_voice_command_apis",
@@ -1784,6 +1796,56 @@ const fixtures: Record<string, unknown> = {
     reads_hardware: false,
     ...PROOF_FLAGS,
   },
+  "/api/o7/rtc-signaling-contract-probe": {
+    schema: "trashbot.pc_tools_workstation.o7_rtc_signaling_contract_probe.v1",
+    probe_status: "loaded_fail_closed_contract",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o7/rtc-signaling/contract",
+    remote_schema: "trashbot.o7.rtc_signaling_contract.v1",
+    contract_status: "static_fail_closed_contract",
+    key_false_fields: [
+      "network_probe_executed=false",
+      "webrtc_session_created=false",
+      "media_transport_connected=false",
+      "video_track_received=false",
+      "realtime_pose_stream_connected=false",
+      "real_ros2_tf_connected=false",
+      "safe_to_control=false",
+      "sends_commands=false",
+      "reads_hardware=false",
+      "robot_control_executed=false",
+      "delivery_success=false",
+    ],
+    protocol_surface_keys: [
+      "credential_handling",
+      "elevator_realtime_events",
+      "failure_timeout_semantics",
+      "ice_candidates",
+      "media_tracks",
+      "observability_evidence_refs",
+      "offer_answer",
+      "pose_realtime_events",
+      "session_identity",
+      "signaling_endpoint",
+    ],
+    required_evidence_refs: [
+      "signaling_trace_ref",
+      "ice_connectivity_trace_ref",
+      "first_video_frame_ref",
+      "robot_side_signaling_client_trace",
+      "ros2_tf_bridge_trace",
+    ],
+    blocked_reasons: ["rtc_signaling_endpoint_not_implemented", "video_track_not_received"],
+    not_proven: ["real_rtc_signaling_session", "real_webrtc_media_transport", "real_ros2_tf_connected"],
+    dangerous_true_fields: [],
+    fail_closed_reason: "none_remote_contract_is_still_static_fail_closed",
+    local_loopback_only: true,
+    network_probe_executed: false,
+    connects_cloud_production: false,
+    sends_commands: false,
+    reads_hardware: false,
+    ...PROOF_FLAGS,
+  },
   "/api/o7/live-endpoints/manifest": {
     schema: "trashbot.o7.live_endpoints_manifest.v1",
     schema_version: 1,
@@ -1982,9 +2044,11 @@ function stubWorkstationFetch() {
                         ? "/api/o7/cloud-archive/tasks"
                         : url.startsWith("/api/o7/cloud-operator-console-probe")
                           ? "/api/o7/cloud-operator-console-probe"
-                          : url.startsWith("/api/o7/realtime-elevator-probe")
-                            ? "/api/o7/realtime-elevator-probe"
-                            : url;
+                          : url.startsWith("/api/o7/rtc-signaling-contract-probe")
+                            ? "/api/o7/rtc-signaling-contract-probe"
+                            : url.startsWith("/api/o7/realtime-elevator-probe")
+                              ? "/api/o7/realtime-elevator-probe"
+                              : url;
     return {
       ok: true,
       json: async () => fixtures[fixtureKey],
@@ -2257,12 +2321,14 @@ describe("App", () => {
     expect(wrapper.text()).toContain("o7_previews_acceptance_guard_not_loaded");
     expect(wrapper.text()).toContain("Cloud operator console probe");
     expect(wrapper.text()).toContain("Cloud archive tasks probe");
+    expect(wrapper.text()).toContain("RTC signaling contract probe");
     expect(wrapper.text()).toContain("Realtime/elevator cloud probe");
     expect(wrapper.text()).toContain("Cloud Archive Tasks");
     expect(wrapper.text()).toContain("fixture_json_not_provided");
     expect(wrapper.text()).toContain("archive_json_not_provided");
     expect(wrapper.text()).toContain("cloud_operator_console_probe_not_loaded");
     expect(wrapper.text()).toContain("cloud_archive_tasks_probe_not_loaded");
+    expect(wrapper.text()).toContain("rtc_signaling_contract_probe_not_loaded");
     expect(wrapper.text()).toContain("realtime_elevator_probe_not_loaded");
     expect(wrapper.text()).toContain("Local labeling review panel");
     expect(wrapper.findAll("button").find((button) => button.text() === "Next item")?.attributes("disabled")).toBeDefined();
@@ -2279,19 +2345,21 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/previews/acceptance");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/live-endpoints/manifest");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/realtime-elevator-probe");
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/rtc-signaling-contract-probe");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/cloud-archive/tasks");
 
     const inputs = wrapper.findAll("input");
-    expect(inputs).toHaveLength(18);
+    expect(inputs).toHaveLength(19);
     await inputs[0]!.setValue("http://127.0.0.1:8088");
     await inputs[1]!.setValue("http://127.0.0.1:8088");
     await inputs[2]!.setValue("http://127.0.0.1:8088");
-    await inputs[3]!.setValue("fixtures/archive.json");
-    await inputs[13]!.setValue("fixtures/realtime.json");
-    await inputs[14]!.setValue("fixtures/route.json");
-    await inputs[15]!.setValue("fixtures/labeling.json");
-    await inputs[16]!.setValue("fixtures/voice.json");
-    await inputs[17]!.setValue("fixtures/safe-command.json");
+    await inputs[3]!.setValue("http://127.0.0.1:8088");
+    await inputs[4]!.setValue("fixtures/archive.json");
+    await inputs[14]!.setValue("fixtures/realtime.json");
+    await inputs[15]!.setValue("fixtures/route.json");
+    await inputs[16]!.setValue("fixtures/labeling.json");
+    await inputs[17]!.setValue("fixtures/voice.json");
+    await inputs[18]!.setValue("fixtures/safe-command.json");
 
     const callsBeforeManifest = mockedFetch.mock.calls.length;
     await wrapper.findAll("button").find((button) => button.text() === "Load live endpoints manifest")?.trigger("click");
@@ -2307,6 +2375,9 @@ describe("App", () => {
     await flushPromises();
 
     await wrapper.findAll("button").find((button) => button.text() === "Probe cloud archive tasks")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "Probe RTC signaling contract")?.trigger("click");
     await flushPromises();
 
     await wrapper.findAll("button").find((button) => button.text() === "Probe realtime/elevator snapshot")?.trigger("click");
@@ -2331,6 +2402,7 @@ describe("App", () => {
     expect(previewCalls).toContain("/api/o7/previews/acceptance");
     expect(previewCalls).toContain("/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/cloud-archive/tasks-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
+    expect(previewCalls).toContain("/api/o7/rtc-signaling-contract-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/realtime-elevator-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/cloud-archive/tasks?archiveJson=fixtures%2Farchive.json");
     expect(previewCalls).toContain("/api/o7/realtime-elevator-preview?fixtureJson=fixtures%2Frealtime.json");
@@ -2346,7 +2418,12 @@ describe("App", () => {
     expect(wrapper.text()).toContain("trashbot.o7.cloud_archive_tasks.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_rtc_signaling_contract_probe.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v1");
+    expect(wrapper.text()).toContain("trashbot.o7.rtc_signaling_contract.v1");
+    expect(wrapper.text()).toContain("static_fail_closed_contract");
+    expect(wrapper.text()).toContain("webrtc_session_created=false");
+    expect(wrapper.text()).toContain("first_video_frame_ref");
     expect(wrapper.text()).toContain("trashbot.o7.previews_acceptance.v1");
     expect(wrapper.text()).toContain("trashbot.o7.live_endpoints_manifest.v1");
     expect(wrapper.text()).toContain("readiness_manifest_ready");
@@ -2392,6 +2469,7 @@ describe("App", () => {
     expect(wrapper.text()).toContain("ready_for_real_operation=false");
     expect(wrapper.text()).toContain("production_realtime_stream_forbidden");
     expect(wrapper.text()).toContain("real_realtime_map_pose");
+    expect(wrapper.text()).toContain("rtc_signaling_contract_probe_does_not_prove_real_rtc_video_or_media_transport");
     expect(wrapper.text()).toContain("connect_real_rtc_video_and_realtime_pose_stream");
     expect(wrapper.text()).toContain("connect_real_route_replay_archive");
     expect(wrapper.text()).toContain("connect_real_annotation_voice_command_apis");
@@ -2400,6 +2478,7 @@ describe("App", () => {
     expect(wrapper.text()).toContain("connects_cloud_production=false");
     expect(wrapper.text()).toContain("robot_control_executed=false");
     expect(wrapper.text()).toContain("cloud_operator_console_probe");
+    expect(wrapper.text()).toContain("rtc_signaling_contract_probe");
     expect(wrapper.text()).toContain("route_replay_player");
     expect(wrapper.text()).toContain("realtime_map_pose_preview");
     expect(wrapper.text()).toContain("elevator_state_timeline_preview");
@@ -2586,7 +2665,7 @@ describe("App", () => {
     expect(wrapper.text()).toContain("local_tts_draft_valid");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalTtsDraftEdit);
 
-    await inputs[3]!.setValue("fixtures/archive-other.json");
+    await inputs[4]!.setValue("fixtures/archive-other.json");
     await wrapper.vm.$nextTick();
     expect(wrapper.text()).toContain("operator-default");
     expect(wrapper.text()).not.toContain("operator-soft");
@@ -2693,7 +2772,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalSafeCommandDraftEdit);
 
     await wrapper.find("input[aria-label=\"Local safe command idempotency draft ref\"]").setValue("draft-ref-custom");
-    await inputs[3]!.setValue("fixtures/archive-third.json");
+    await inputs[4]!.setValue("fixtures/archive-third.json");
     await wrapper.vm.$nextTick();
     expect(wrapper.text()).not.toContain("draft-ref-custom");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalSafeCommandDraftEdit);

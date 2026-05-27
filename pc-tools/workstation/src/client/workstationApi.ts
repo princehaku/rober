@@ -12,6 +12,7 @@ import type {
   O7RealtimeElevatorProbeResponse,
   O7RealtimeElevatorPreviewResponse,
   O7RouteReplayPreviewResponse,
+  O7RtcSignalingContractProbeResponse,
   O7SafeCommandPreviewResponse,
   O7VoicePreviewResponse,
   ProofBoundaryResponse,
@@ -67,6 +68,7 @@ const API_ENDPOINTS = {
   o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
   o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
   o7RealtimeElevatorProbe: "/api/o7/realtime-elevator-probe",
+  o7RtcSignalingContractProbe: "/api/o7/rtc-signaling-contract-probe",
   o7RealtimeElevatorPreview: "/api/o7/realtime-elevator-preview",
   o7RouteReplayPreview: "/api/o7/route-replay-preview",
   o7LabelingPreview: "/api/o7/labeling-preview",
@@ -150,6 +152,16 @@ function realtimeElevatorProbeUrl(baseUrl: string): string {
   return `${API_ENDPOINTS.o7RealtimeElevatorProbe}?${params.toString()}`;
 }
 
+function rtcSignalingContractProbeUrl(baseUrl: string): string {
+  // RTC contract probe 只把本机 relay base URL 交给后端，浏览器不创建 WebRTC 或携带 token。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  return `${API_ENDPOINTS.o7RtcSignalingContractProbe}?${params.toString()}`;
+}
+
 export async function getHealth(): Promise<HealthResponse> {
   // health 只证明工作站 API 在线，不代表机器人或云端在线。
   return loadJson<HealthResponse>(API_ENDPOINTS.health);
@@ -208,6 +220,11 @@ export async function getO7CloudArchiveTasksProbe(baseUrl: string): Promise<O7Cl
 export async function getO7RealtimeElevatorProbe(baseUrl: string): Promise<O7RealtimeElevatorProbeResponse> {
   // 前端不直连 relay；PC 后端负责 loopback-only 拉取 snapshot 并扫描 KR1/KR2 危险字段。
   return loadJson<O7RealtimeElevatorProbeResponse>(realtimeElevatorProbeUrl(baseUrl));
+}
+
+export async function getO7RtcSignalingContractProbe(baseUrl: string): Promise<O7RtcSignalingContractProbeResponse> {
+  // 前端不直连 relay、不发 bearer；PC 后端只拉取 fail-closed RTC signaling/media 合同。
+  return loadJson<O7RtcSignalingContractProbeResponse>(rtcSignalingContractProbeUrl(baseUrl));
 }
 
 export async function getO7RealtimeElevatorPreview(fixtureJson: string): Promise<O7RealtimeElevatorPreviewResponse> {

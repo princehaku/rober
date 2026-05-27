@@ -7,6 +7,7 @@ import {
   getO7LiveEndpointsManifest,
   getO7PreviewsAcceptance,
   getO7RealtimeElevatorProbe,
+  getO7RtcSignalingContractProbe,
   loadO7FixturePreview,
 } from "../client/workstationApi";
 import type { O7FixturePreviewInputs, O7FixturePreviewKind, O7FixturePreviewResponses } from "../client/workstationApi";
@@ -22,6 +23,7 @@ import type {
   O7VoiceAsrTtsInspectorAsrEvent,
   O7CloudOperatorConsoleProbeResponse,
   O7RealtimeElevatorProbeResponse,
+  O7RtcSignalingContractProbeResponse,
 } from "../shared/contracts";
 
 type O7FixturePreviewResult = O7FixturePreviewResponses[O7FixturePreviewKind];
@@ -158,6 +160,10 @@ const realtimeElevatorProbeBaseUrl = ref("http://127.0.0.1:8088");
 const realtimeElevatorProbeResult = ref<O7RealtimeElevatorProbeResponse | null>(null);
 const realtimeElevatorProbeError = ref("");
 const realtimeElevatorProbeLoading = ref(false);
+const rtcSignalingContractProbeBaseUrl = ref("http://127.0.0.1:8088");
+const rtcSignalingContractProbeResult = ref<O7RtcSignalingContractProbeResponse | null>(null);
+const rtcSignalingContractProbeError = ref("");
+const rtcSignalingContractProbeLoading = ref(false);
 const cloudProbeBaseUrl = ref("http://127.0.0.1:8088");
 const cloudProbeResult = ref<O7CloudOperatorConsoleProbeResponse | null>(null);
 const cloudProbeError = ref("");
@@ -311,6 +317,14 @@ function realtimeElevatorProbeBlockedReasons(): string[] {
 
 function realtimeElevatorProbeNotProven(): string[] {
   return realtimeElevatorProbeResult.value?.not_proven ?? ["realtime_elevator_probe_not_proven"];
+}
+
+function rtcSignalingContractProbeBlockedReasons(): string[] {
+  return rtcSignalingContractProbeResult.value?.blocked_reasons ?? ["rtc_signaling_contract_probe_not_loaded"];
+}
+
+function rtcSignalingContractProbeNotProven(): string[] {
+  return rtcSignalingContractProbeResult.value?.not_proven ?? ["rtc_signaling_contract_probe_not_proven"];
 }
 
 function previewsAcceptanceBlocked(): string[] {
@@ -1244,6 +1258,19 @@ async function loadRealtimeElevatorProbe(): Promise<void> {
   }
 }
 
+async function loadRtcSignalingContractProbe(): Promise<void> {
+  // 这里只触发 PC 后端回环 contract probe；浏览器不创建 WebRTC、视频 track 或 ROS2 /tf 连接。
+  rtcSignalingContractProbeLoading.value = true;
+  rtcSignalingContractProbeError.value = "";
+  try {
+    rtcSignalingContractProbeResult.value = await getO7RtcSignalingContractProbe(rtcSignalingContractProbeBaseUrl.value);
+  } catch (err) {
+    rtcSignalingContractProbeError.value = err instanceof Error ? err.message : "rtc_signaling_contract_probe_api_unavailable_not_proven";
+  } finally {
+    rtcSignalingContractProbeLoading.value = false;
+  }
+}
+
 async function loadPreviewsAcceptance(): Promise<void> {
   // 该按钮只加载本地 guard 摘要，不会间接执行 probe、读取 fixture、连接云端或发命令。
   previewsAcceptanceLoading.value = true;
@@ -1474,6 +1501,89 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <h3>Blocked reasons</h3>
           <ul class="dense">
             <li v-for="reason in liveEndpointsManifestResult?.blocked_reasons ?? ['not_loaded']" :key="reason">{{ reason }}</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <div>
+          <h3>RTC signaling contract probe</h3>
+          <p class="eyebrow">Read-only local loopback HTTP contract proof for /api/o7/rtc-signaling/contract.</p>
+        </div>
+        <span class="pill danger">{{ rtcSignalingContractProbeResult?.probe_status ?? "not_loaded" }}</span>
+      </div>
+
+      <label class="single-input">
+        <span>Cloud relay base URL</span>
+        <input
+          v-model="rtcSignalingContractProbeBaseUrl"
+          aria-label="RTC signaling contract probe base URL"
+          placeholder="http://127.0.0.1:8088"
+        >
+      </label>
+      <button class="secondary" type="button" @click="loadRtcSignalingContractProbe">
+        {{ rtcSignalingContractProbeLoading ? "Loading RTC contract probe" : "Probe RTC signaling contract" }}
+      </button>
+
+      <div v-if="rtcSignalingContractProbeError" class="notice" role="alert">
+        RTC signaling contract probe API unavailable: {{ rtcSignalingContractProbeError }}.
+        network_probe_executed=false.
+      </div>
+
+      <dl class="kv compact-kv">
+        <dt>schema</dt>
+        <dd>{{ rtcSignalingContractProbeResult?.schema ?? "trashbot.pc_tools_workstation.o7_rtc_signaling_contract_probe.v1" }}</dd>
+        <dt>source base URL</dt>
+        <dd>{{ rtcSignalingContractProbeResult?.source_base_url ?? "not_loaded" }}</dd>
+        <dt>remote schema</dt>
+        <dd>{{ rtcSignalingContractProbeResult?.remote_schema ?? "not_loaded" }}</dd>
+        <dt>contract status</dt>
+        <dd>{{ rtcSignalingContractProbeResult?.contract_status ?? "not_loaded" }}</dd>
+        <dt>fail closed reason</dt>
+        <dd>{{ rtcSignalingContractProbeResult?.fail_closed_reason ?? "probe_not_loaded" }}</dd>
+        <dt>local loopback only</dt>
+        <dd>{{ rtcSignalingContractProbeResult?.local_loopback_only ?? true }}</dd>
+        <dt>network probe executed</dt>
+        <dd>{{ rtcSignalingContractProbeResult?.network_probe_executed ?? false }}</dd>
+      </dl>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Protocol surface keys</h3>
+          <ul class="dense">
+            <!-- 只展示 protocol_surfaces 的 key，不透传 signaling、credential 或未来 URL payload。 -->
+            <li v-for="key in rtcSignalingContractProbeResult?.protocol_surface_keys ?? []" :key="key">{{ key }}</li>
+            <li v-if="!rtcSignalingContractProbeResult?.protocol_surface_keys.length">not_loaded</li>
+          </ul>
+          <h3>Core false fields</h3>
+          <ul class="dense">
+            <!-- PC probe 是 HTTP contract probe，固定不执行真实 RTC/WebRTC/video/ROS2 /tf 探测。 -->
+            <li v-for="field in rtcSignalingContractProbeResult?.key_false_fields ?? []" :key="field">{{ field }}</li>
+            <li v-if="!rtcSignalingContractProbeResult?.key_false_fields.length">not_loaded</li>
+          </ul>
+          <h3>Dangerous true fields</h3>
+          <ul class="dense">
+            <li v-for="field in rtcSignalingContractProbeResult?.dangerous_true_fields ?? []" :key="field">{{ field }}</li>
+            <li v-if="!rtcSignalingContractProbeResult?.dangerous_true_fields.length">none</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Required evidence refs</h3>
+          <ul class="dense">
+            <li v-for="refName in rtcSignalingContractProbeResult?.required_evidence_refs ?? []" :key="refName">
+              {{ refName }}
+            </li>
+            <li v-if="!rtcSignalingContractProbeResult?.required_evidence_refs.length">not_loaded</li>
+          </ul>
+          <h3>Blocked reasons</h3>
+          <ul class="dense">
+            <li v-for="reason in rtcSignalingContractProbeBlockedReasons()" :key="reason">{{ reason }}</li>
+          </ul>
+          <h3>Not proven</h3>
+          <ul class="dense">
+            <li v-for="item in rtcSignalingContractProbeNotProven()" :key="item">{{ item }}</li>
           </ul>
         </div>
       </div>

@@ -1747,9 +1747,31 @@ export interface O7RealtimeElevatorProbeResponse extends ProofFlags {
   reads_hardware: false;
 }
 
+export interface O7RtcSignalingContractProbeResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_rtc_signaling_contract_probe.v1";
+  probe_status: "loaded_fail_closed_contract" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o7/rtc-signaling/contract";
+  remote_schema: string;
+  contract_status: string;
+  key_false_fields: string[];
+  protocol_surface_keys: string[];
+  required_evidence_refs: string[];
+  blocked_reasons: string[];
+  not_proven: string[];
+  dangerous_true_fields: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+  network_probe_executed: false;
+  connects_cloud_production: false;
+  sends_commands: false;
+  reads_hardware: false;
+}
+
 export type O7PreviewsAcceptanceSurfaceId =
   | "cloud_operator_console_probe"
   | "cloud_archive_tasks_probe"
+  | "rtc_signaling_contract_probe"
   | "realtime_elevator_probe"
   | "route_replay_player"
   | "realtime_map_pose_preview"
@@ -1864,6 +1886,8 @@ export const API_ROUTES = [
   "/api/o7/live-endpoints/manifest",
   "/api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>",
   "/api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>",
+  "/api/o7/rtc-signaling-contract-probe?baseUrl=<local-loopback-url>",
+  "/api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>",
   "/api/o7/realtime-elevator-preview?fixtureJson=<local-json>",
   "/api/o7/route-replay-preview?fixtureJson=<local-json>",
   "/api/o7/labeling-preview?fixtureJson=<local-json>",

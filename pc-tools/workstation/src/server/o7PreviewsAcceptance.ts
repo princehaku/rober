@@ -28,6 +28,28 @@ const SURFACES: O7PreviewsAcceptanceSurface[] = [
     not_proven: ["real_o6_cloud_archive", "real_route_replay_archive", "real_annotation_voice_command_api"],
   },
   {
+    id: "rtc_signaling_contract_probe",
+    source_endpoint: "/api/o7/rtc-signaling-contract-probe?baseUrl=<local-loopback-url>",
+    ui_surface: "RTC signaling contract probe",
+    evidence_boundary: "local_http_contract_only",
+    software_proof_available: true,
+    acceptance_status: "blocked_not_proven",
+    blocked_reasons: [
+      "local_http_contract_probe_only",
+      "real_rtc_signaling_session_not_created",
+      "webrtc_media_transport_not_connected",
+      "ros2_tf_not_connected",
+    ],
+    not_proven: [
+      "real_rtc_signaling_session",
+      "real_webrtc_offer_answer",
+      "real_webrtc_media_transport",
+      "real_rtc_video",
+      "real_realtime_pose_stream",
+      "real_ros2_tf",
+    ],
+  },
+  {
     id: "realtime_elevator_probe",
     source_endpoint: "/api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>",
     ui_surface: "Realtime/elevator cloud probe",
@@ -252,6 +274,7 @@ export function buildO7PreviewsAcceptanceResponse(): O7PreviewsAcceptanceRespons
       "fixed_false_safety_invariants",
     ],
     remaining_real_capability_gaps: [
+      "rtc_signaling_contract_probe_does_not_prove_real_rtc_video_or_media_transport",
       "connect_real_rtc_video_and_realtime_pose_stream",
       "connect_o6_cloud_archive_and_route_replay_api",
       "connect_annotation_api_with_submit_audit",
