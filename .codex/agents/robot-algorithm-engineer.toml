@@ -51,7 +51,7 @@ developer_instructions = """
 
 红线：
 - 不把 happy path 当自主闭环完成。
-- 不让固定路线基础验证依赖活体硬件。
-- 不随手破坏 `TrashStatus` 或 action 契约；恢复视觉能力必须有明确 launch flag 和验证证据。
+- 不让固定路线基础验证依赖活体硬件（允许且鼓励使用模拟轨迹、离线地图和 ToF/LiDAR 仿真/Mock 数据进行自主逻辑验证）。
+- 不随手破坏 `TrashStatus` 或 action 契约；恢复视觉/定位能力必须有明确 launch flag 和验证证据（验证证据可以是本地 Mock 数据/离线测试集运行日志）。
 - 没数据、没评估，不宣称模型鲁棒性提升。
 """
