@@ -3,6 +3,10 @@ from ros2_trashbot_behavior.operator_media_preflight import build_o7_board_media
 
 O7_BOARD_REALTIME_STATUS_SCHEMA = "trashbot.o7_board_realtime_status.v1"
 O7_BOARD_REALTIME_STATUS_BOUNDARY = "software_proof_o7_board_realtime_status_contract"
+O7_REALTIME_ELEVATOR_SNAPSHOT_SCHEMA = "trashbot.o7.realtime_elevator_snapshot.v1"
+O7_REALTIME_ELEVATOR_SNAPSHOT_BOUNDARY = (
+    "software_proof_operator_gateway_runtime_pose_snapshot"
+)
 
 
 O7_BOARD_REALTIME_UNSAFE_TEXT_MARKERS = (
@@ -66,6 +70,17 @@ O7_BOARD_REALTIME_POLICY_FIELDS = (
 )
 
 
+def _safe_number(value):
+    # 位姿来自 ROS runtime，但 HTTP contract 仍要防御 NaN/Infinity 或测试替身脏输入。
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if number != number or number in (float("inf"), float("-inf")):
+        return None
+    return number
+
+
 def _safe_string(value, default):
     # 状态字段会被 cloud-relay/PC 直接展示，统一去空白避免脏输入扩散。
     text = str(value or "").strip()
@@ -94,6 +109,200 @@ def _safe_media_text(value, default=""):
     if any(marker in lower for marker in O7_BOARD_REALTIME_UNSAFE_TEXT_MARKERS):
         return "redacted_unsafe_input"
     return text[:160]
+
+
+def _operator_pose_timestamp_ms(robot_pose):
+    # operator_gateway 现有 updated_at 是秒级 runtime 时间；O7 snapshot 对外统一毫秒。
+    timestamp_sec = _safe_number(robot_pose.get("updated_at"))
+    if timestamp_sec is None:
+        return None
+    return timestamp_sec * 1000.0
+
+
+def _operator_runtime_robot_pose(robot_pose):
+    # 只把 /amcl_pose 的位置摘要暴露给 O7，不把它提升为 /tf 或自动驾驶通过证据。
+    robot_pose = robot_pose if isinstance(robot_pose, dict) else {}
+    x_m = _safe_number(robot_pose.get("x_m", robot_pose.get("x")))
+    y_m = _safe_number(robot_pose.get("y_m", robot_pose.get("y")))
+    yaw_rad = _safe_number(robot_pose.get("yaw_rad", robot_pose.get("yaw")))
+    timestamp_ms = _operator_pose_timestamp_ms(robot_pose)
+    if x_m is None or y_m is None or yaw_rad is None or timestamp_ms is None:
+        return None
+    return {
+        "x_m": x_m,
+        "y_m": y_m,
+        "yaw_rad": yaw_rad,
+        "timestamp_ms": timestamp_ms,
+        "pose_source": "operator_gateway_pose_topic",
+        "evidence_ref": "operator_gateway:/amcl_pose",
+    }
+
+
+def _operator_pose_freshness(robot_pose, now_ms):
+    # age_ms 是单次 HTTP 观测的当前年龄；没有连续刷新证据时不能证明 <2s。
+    timestamp_ms = _operator_pose_timestamp_ms(robot_pose if isinstance(robot_pose, dict) else {})
+    age_ms = None
+    if timestamp_ms is not None and now_ms is not None:
+        age_ms = max(0.0, float(now_ms) - timestamp_ms)
+    return {
+        "timestamp_ms": timestamp_ms,
+        "age_ms": age_ms,
+        "latency_lt_2s_proven": False,
+        "status": "operator_gateway_pose_observed" if timestamp_ms is not None else "blocked_not_proven",
+        "evidence_ref": "operator_gateway:/amcl_pose" if timestamp_ms is not None else "missing_pose_freshness_trace",
+    }
+
+
+def _o7_realtime_elevator_empty_snapshot():
+    # 无 runtime pose 时保持 fail-closed，避免 PC 把空 snapshot 当成真实 O7-KR1 进展。
+    route_membership = {
+        "route_id": "not_connected",
+        "on_route": False,
+        "in_elevator_zone": False,
+        "status": "blocked_not_proven",
+        "evidence_ref": "missing_route_membership_trace",
+    }
+    return {
+        "schema": O7_REALTIME_ELEVATOR_SNAPSHOT_SCHEMA,
+        "schema_version": 1,
+        "source": "operator_gateway_runtime",
+        "proof_status": "not_proven",
+        "evidence_boundary": O7_REALTIME_ELEVATOR_SNAPSHOT_BOUNDARY,
+        "contract_source": "onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_http.py",
+        "workstation_probe_endpoint": "/api/o7/realtime-elevator-probe",
+        "realtime_status": "blocked_not_proven",
+        "snapshot_status": "blocked_not_proven",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "pc_only": False,
+        "robot_control_executed": False,
+        "cloud_runtime_fixture_connected": False,
+        "real_realtime_api_connected": False,
+        "real_ros2_tf_connected": False,
+        "local_ros_pose_topic_connected": False,
+        "latency_lt_2s_proven": False,
+        "real_elevator_state_chain_connected": False,
+        "floor_recognition_proven": False,
+        "human_takeover_proven": False,
+        "map_ref": {
+            "id": "not_connected",
+            "uri": "",
+            "status": "blocked_not_proven",
+            "evidence_ref": "missing_real_map_artifact",
+        },
+        "map_frame": {
+            "frame_id": "map",
+            "source": "operator_gateway_pose_frame_not_tf",
+            "status": "blocked_not_proven",
+        },
+        "robot_pose": None,
+        "pose_freshness": {
+            "timestamp_ms": None,
+            "age_ms": None,
+            "latency_lt_2s_proven": False,
+            "status": "blocked_not_proven",
+            "evidence_ref": "missing_pose_freshness_trace",
+        },
+        "route_membership": route_membership,
+        "elevator_state_chain": {
+            "status": "blocked_not_proven",
+            "current_state": "not_connected",
+            "sample_count": 0,
+            "samples": [],
+            "evidence_ref": "missing_elevator_state_chain",
+        },
+        "current_floor_evidence": {
+            "floor_label": "not_connected",
+            "confidence": None,
+            "floor_recognition_proven": False,
+            "status": "blocked_not_proven",
+            "evidence_ref": "missing_current_floor_evidence",
+        },
+        "human_takeover": {
+            "required": True,
+            "human_takeover_proven": False,
+            "reason": "real_elevator_state_chain_not_proven",
+            "operator_action": "keep_observe_only_until_real_floor_and_state_chain_exist",
+            "status": "blocked_not_proven",
+            "evidence_ref": "missing_human_takeover_trace",
+        },
+        "blocked_reasons": [
+            "operator_gateway_pose_not_observed",
+            "real_realtime_api_not_connected",
+            "ros2_tf_forwarding_not_proven",
+            "robot_position_latency_lt_2s_not_proven",
+            "route_membership_forced_false",
+            "real_elevator_state_chain_not_connected",
+            "floor_recognition_not_proven",
+            "human_takeover_not_proven",
+            "robot_control_disabled",
+        ],
+        "not_proven": [
+            "real_o7_realtime_cloud_stream",
+            "real_ros2_tf_forwarding",
+            "real_map_artifact",
+            "real_robot_pose",
+            "robot_position_latency_lt_2s",
+            "real_route_membership",
+            "real_elevator_zone_membership",
+            "real_elevator_state_chain",
+            "real_current_floor_recognition",
+            "real_human_takeover_reason",
+            "delivery_success",
+        ],
+    }
+
+
+def build_o7_realtime_elevator_snapshot_from_operator_status(latest_status=None, *, now_ms=None):
+    """用 operator_gateway 当前 robot_pose 生成 O7 runtime pose snapshot；不打开控制链路。"""
+    latest_status = latest_status if isinstance(latest_status, dict) else {}
+    payload = _o7_realtime_elevator_empty_snapshot()
+    robot_pose_source = latest_status.get("robot_pose") or latest_status.get("robot_location")
+    runtime_pose = _operator_runtime_robot_pose(robot_pose_source)
+    if runtime_pose is None:
+        return payload
+    frame_id = _safe_media_text(
+        (robot_pose_source if isinstance(robot_pose_source, dict) else {}).get("frame_id"),
+        default="map",
+    )
+    payload.update(
+        {
+            "realtime_status": "operator_gateway_pose_observed",
+            "snapshot_status": "operator_gateway_pose_observed",
+            "local_ros_pose_topic_connected": True,
+            "map_frame": {
+                "frame_id": frame_id,
+                "source": "operator_gateway_pose_topic_not_tf",
+                "status": "operator_gateway_pose_observed",
+            },
+            "robot_pose": runtime_pose,
+            "pose_freshness": _operator_pose_freshness(robot_pose_source, now_ms),
+            "blocked_reasons": [
+                "real_realtime_api_not_connected",
+                "ros2_tf_forwarding_not_proven",
+                "robot_position_latency_lt_2s_not_proven",
+                "route_membership_forced_false",
+                "real_elevator_state_chain_not_connected",
+                "floor_recognition_not_proven",
+                "human_takeover_not_proven",
+                "robot_control_disabled",
+            ],
+            "not_proven": [
+                "real_o7_realtime_cloud_stream",
+                "real_ros2_tf_forwarding",
+                "real_map_artifact",
+                "robot_position_latency_lt_2s",
+                "real_route_membership",
+                "real_elevator_zone_membership",
+                "real_elevator_state_chain",
+                "real_current_floor_recognition",
+                "real_human_takeover_reason",
+                "delivery_success",
+            ],
+        }
+    )
+    return payload
 
 
 def _sanitize_media_source_value(value):

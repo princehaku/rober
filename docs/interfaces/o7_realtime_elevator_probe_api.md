@@ -1,12 +1,13 @@
 # O7 Realtime/Elevator Probe API
 
-`pc-tools/workstation` exposes `GET /api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>` as a PC-only, read-only probe for the relay endpoint `/api/o7/realtime-elevator/snapshot`.
+`pc-tools/workstation` exposes `GET /api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>` as a PC-only, read-only probe for the relay or board operator gateway endpoint `/api/o7/realtime-elevator/snapshot`.
 
 ## Boundary
 
 - Allowed `baseUrl` values are local HTTP loopback only: `http://127.0.0.1`, `http://localhost`, or `http://[::1]`.
 - The browser calls the PC workstation backend; the browser does not directly fetch relay, ROS2, `/tf`, map files, elevator devices, hardware, RTC, video, or control APIs.
 - The response is `trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v1` and remains `source=software_proof`, `proof_status=not_proven`, `safe_to_control=false`, `delivery_success=false`, `primary_actions_enabled=false`, `pc_only=true`.
+- When `baseUrl` points at board `operator_gateway_http.py`, the remote snapshot may contain `snapshot_status=operator_gateway_pose_observed`, `local_ros_pose_topic_connected=true`, and `robot_pose.pose_source=operator_gateway_pose_topic`. This means only that the board-side operator gateway has observed `/amcl_pose`; it does not prove cloud production, ROS2 `/tf`, real map artifact, elevator state, route membership, hardware control, or <2s continuous latency.
 
 ## Safe Summary Fields
 

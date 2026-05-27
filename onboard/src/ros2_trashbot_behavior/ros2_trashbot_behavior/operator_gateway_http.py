@@ -25,7 +25,10 @@ from ros2_trashbot_behavior.remote_bridge_protocol import (
     MANUAL_TAKEOVER_SAFE_PHONE_COPY,
     parse_bool,
 )
-from ros2_trashbot_behavior.operator_realtime_status import build_o7_board_realtime_status
+from ros2_trashbot_behavior.operator_realtime_status import (
+    build_o7_board_realtime_status,
+    build_o7_realtime_elevator_snapshot_from_operator_status,
+)
 
 
 API_VERSION = "slice2.operator.v1"
@@ -5714,6 +5717,14 @@ def make_handler(gateway):
                 return
             if path == "/api/status":
                 self._send_json(200, _status_with_phone_readiness(gateway, mock_cloud))
+                return
+            if path == "/api/o7/realtime-elevator/snapshot":
+                # O7 runtime pose snapshot 只读 operator_gateway 状态，不连接云端或控制链路。
+                snapshot = build_o7_realtime_elevator_snapshot_from_operator_status(
+                    gateway.snapshot(),
+                    now_ms=time.time() * 1000.0,
+                )
+                self._send_json(200, snapshot)
                 return
             if path == "/api/diagnostics":
                 self._send_json(200, _diagnostics_with_phone_task_flow(gateway, mock_cloud))

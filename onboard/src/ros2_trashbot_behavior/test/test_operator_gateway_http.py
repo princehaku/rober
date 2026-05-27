@@ -518,6 +518,7 @@ class OperatorGatewayHttpTest(unittest.TestCase):
         self.assertEqual(payload["phone_readiness"]["phone_offline_resume_readiness"], offline_resume)
         self.assertEqual(offline_resume["connection_state"], "status_stale")
         self.assertFalse(offline_resume["can_resume"])
+
         self.assertFalse(offline_resume["primary_actions_enabled"])
         self.assertTrue(offline_resume["support_entry_enabled"])
         self.assertEqual(offline_resume["next_action"], "continue_local_or_wait_remote_status")
@@ -705,6 +706,64 @@ class OperatorGatewayHttpTest(unittest.TestCase):
             "artifact",
         ):
             self.assertNotIn(forbidden, encoded_voice_prompt)
+
+    def test_o7_realtime_elevator_snapshot_uses_runtime_robot_pose_fail_closed(self):
+        # updated_at 采用当前时间附近，验证 endpoint 会按请求时间计算 age_ms。
+        self.gateway.snapshot_payload["robot_pose"]["updated_at"] = time.time() - 1.0
+
+        status, payload = self.request("GET", "/api/o7/realtime-elevator/snapshot")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["schema"], "trashbot.o7.realtime_elevator_snapshot.v1")
+        self.assertEqual(payload["snapshot_status"], "operator_gateway_pose_observed")
+        self.assertEqual(payload["realtime_status"], "operator_gateway_pose_observed")
+        self.assertTrue(payload["local_ros_pose_topic_connected"])
+        self.assertFalse(payload["real_realtime_api_connected"])
+        self.assertFalse(payload["real_ros2_tf_connected"])
+        self.assertFalse(payload["latency_lt_2s_proven"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["primary_actions_enabled"])
+        self.assertFalse(payload["robot_control_executed"])
+        robot_pose = payload["robot_pose"]
+        self.assertEqual(robot_pose["x_m"], 1.25)
+        self.assertEqual(robot_pose["y_m"], -0.5)
+        self.assertEqual(robot_pose["yaw_rad"], 0.75)
+        self.assertEqual(robot_pose["pose_source"], "operator_gateway_pose_topic")
+        self.assertEqual(robot_pose["evidence_ref"], "operator_gateway:/amcl_pose")
+        self.assertIsInstance(robot_pose["timestamp_ms"], float)
+        freshness = payload["pose_freshness"]
+        self.assertGreaterEqual(freshness["age_ms"], 0.0)
+        self.assertLess(freshness["age_ms"], 10000.0)
+        self.assertFalse(freshness["latency_lt_2s_proven"])
+        self.assertEqual(freshness["status"], "operator_gateway_pose_observed")
+        self.assertFalse(payload["route_membership"]["on_route"])
+        self.assertFalse(payload["route_membership"]["in_elevator_zone"])
+        self.assertEqual(payload["elevator_state_chain"]["status"], "blocked_not_proven")
+        self.assertIn("real_ros2_tf_forwarding", payload["not_proven"])
+        self.assertNotIn("real_robot_pose", payload["not_proven"])
+
+    def test_o7_realtime_elevator_snapshot_without_pose_stays_blocked(self):
+        # 没有 /amcl_pose 样本时必须保持空位姿和 blocked_not_proven。
+        self.gateway.snapshot_payload["robot_pose"] = None
+        self.gateway.snapshot_payload["robot_location"] = None
+
+        status, payload = self.request("GET", "/api/o7/realtime-elevator/snapshot")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["schema"], "trashbot.o7.realtime_elevator_snapshot.v1")
+        self.assertEqual(payload["snapshot_status"], "blocked_not_proven")
+        self.assertFalse(payload["local_ros_pose_topic_connected"])
+        self.assertFalse(payload["real_ros2_tf_connected"])
+        self.assertIsNone(payload["robot_pose"])
+        self.assertIsNone(payload["pose_freshness"]["age_ms"])
+        self.assertFalse(payload["pose_freshness"]["latency_lt_2s_proven"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["primary_actions_enabled"])
+        self.assertFalse(payload["robot_control_executed"])
+        self.assertIn("operator_gateway_pose_not_observed", payload["blocked_reasons"])
+        self.assertIn("real_robot_pose", payload["not_proven"])
 
     def test_status_payload_exposes_phone_and_speaker_copy_for_documented_states(self):
         for state, expected in OPERATOR_PROMPTS.items():

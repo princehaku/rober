@@ -15,6 +15,7 @@
 - Cloud relay archive tasks contract：`GET /api/o7/cloud-archive/tasks`，可选 `TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON` 指向 relay 本机脱敏 fixture；不接受 query 任意路径
 - PC cloud archive tasks probe API：`GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>`
 - Cloud relay realtime/elevator snapshot contract：`GET /api/o7/realtime-elevator/snapshot`
+- Board operator gateway realtime/elevator snapshot：本机 `operator_gateway_http.py` 也暴露 `GET /api/o7/realtime-elevator/snapshot`，用 `operator_gateway.snapshot().robot_pose` 生成 runtime pose 摘要；它只证明本地 `/amcl_pose` 已被 operator gateway 观测，不证明 cloud production、ROS2 `/tf`、真实地图、电梯状态链或 <2s 连续刷新。
 - PC realtime/elevator cloud probe API：`GET /api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>`
 - PC realtime/elevator fixture preview API：`GET /api/o7/realtime-elevator-preview?fixtureJson=<local-json>`
 - PC fixture preview API：`GET /api/o7/route-replay-preview?fixtureJson=<local-json>`
@@ -28,6 +29,8 @@
 Cloud relay archive tasks contract 现在可以由 relay runtime 上的本地 fixture 生成非空只读摘要：启动前设置 `TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON` 指向 `trashbot.o7.cloud_archive_fixture.v1` JSON。handler 不读取 query path；未配置、不安全或读取失败时仍返回空 `blocked_not_proven`。即使 fixture 摘要可用，也必须保持 `real_cloud_archive_connected=false`、`playback_available=false`、`submit_enabled=false`、`tts_send_enabled=false`、`command_dispatch_enabled=false`、`manual_control_enabled=false`、`navigate_goal_enabled=false`、`robot_control_executed=false`、`safe_to_control=false`、`delivery_success=false` 和 `primary_actions_enabled=false`。
 
 Cloud relay realtime/elevator snapshot contract 也支持 relay runtime 本机 fixture 摘要：启动前设置 `TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON` 指向 `trashbot.o7.realtime_elevator_fixture.v1` JSON。handler 只读该 env 路径，不接受 query 任意路径；未配置、不安全、schema 不符或坏 JSON 时仍返回空 `blocked_not_proven`。fixture 只允许生成 `map_ref`、`map_frame`、`robot_pose`、`pose_freshness`、`route_membership`、`elevator_state_chain.samples`、`current_floor_evidence`、`human_takeover` 等白名单摘要，并可标记 `cloud_runtime_fixture_connected=true`。它不得被解释为真实 realtime API：`real_realtime_api_connected=false`、`real_ros2_tf_connected=false`、`latency_lt_2s_proven=false`、`route_membership.on_route=false`、`route_membership.in_elevator_zone=false`、`real_elevator_state_chain_connected=false`、`floor_recognition_proven=false`、`human_takeover_proven=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`robot_control_executed=false` 必须保持。
+
+Board operator gateway realtime/elevator snapshot contract 复用同一 schema `trashbot.o7.realtime_elevator_snapshot.v1`，但 source 为 `operator_gateway_runtime`。当 `operator_gateway` 已通过默认 `/amcl_pose` 维护 `robot_pose` 时，board endpoint 允许返回 `snapshot_status=operator_gateway_pose_observed`、`local_ros_pose_topic_connected=true`，并在 `robot_pose` 中提供 `x_m`、`y_m`、`yaw_rad`、`timestamp_ms`、`pose_source=operator_gateway_pose_topic`、`evidence_ref=operator_gateway:/amcl_pose`。`pose_freshness.age_ms` 只按本次 HTTP 请求时间与 `robot_pose.updated_at` 计算；没有连续刷新验收证据时 `latency_lt_2s_proven=false` 必须保持。无 pose 或 malformed pose 时必须回到 `blocked_not_proven`，且 `robot_pose=null`。
 
 ## Fail-Closed Fields
 
@@ -76,6 +79,7 @@ Cloud relay realtime/elevator snapshot contract 也支持 relay runtime 本机 f
 - `realtime_elevator_snapshot.snapshot_status=blocked_not_proven`
 - `realtime_elevator_snapshot.real_realtime_api_connected=false`
 - `realtime_elevator_snapshot.real_ros2_tf_connected=false`
+- `realtime_elevator_snapshot.local_ros_pose_topic_connected` 仅可表示 board operator gateway 观测到 `/amcl_pose`，不得替代 `/tf` 或 cloud realtime connected
 - `realtime_elevator_snapshot.latency_lt_2s_proven=false`
 - `realtime_elevator_snapshot.route_membership.on_route=false`
 - `realtime_elevator_snapshot.route_membership.in_elevator_zone=false`
