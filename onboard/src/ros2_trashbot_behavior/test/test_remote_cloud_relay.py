@@ -307,6 +307,138 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertNotIn("token_transport", payload)
         self.assertNotIn("token_values_exposed", payload)
 
+    def test_o7_rtc_signaling_session_receipt_is_bearer_gated_and_fail_closed(self):
+        status, unauthorized = self.client.request(
+            "POST",
+            "/api/o7/rtc/signaling/sessions",
+            {
+                "robot_id": "trashbot-001",
+                "client_id": "pc-console",
+                "session_id": "rtc-session-001",
+                "idempotency_key": "rtc-session-001-create",
+                "offer": {"type": "offer", "sdp": "v=0\r\na=sendrecv\r\n"},
+            },
+            token="",
+        )
+        self.assertEqual(status, 401)
+        self.assertEqual(unauthorized["error"]["code"], "auth_failed")
+
+        offer_sdp = (
+            "v=0\r\n"
+            "a=ice-ufrag:Authorization Bearer leaked-token\r\n"
+            "a=candidate:1 1 UDP 1 192.0.2.10 3478 typ host https://turn.example.test\r\n"
+        )
+        status, body = self.client.request(
+            "POST",
+            "/api/o7/rtc/signaling/sessions",
+            {
+                "robot_id": "trashbot-001",
+                "client_id": "pc-console",
+                "session_id": "rtc-session-001",
+                "idempotency_key": "rtc-session-001-create",
+                "offer": {"type": "offer", "sdp": offer_sdp},
+                "auth": "Bearer body-credential",
+                "turn_url": "https://turn.example.test/secret",
+            },
+        )
+        encoded = json.dumps(body, ensure_ascii=False)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(body["schema"], "trashbot.o7.rtc_signaling_session_receipt.v1")
+        self.assertEqual(body["source"], "software_proof")
+        self.assertEqual(body["proof_status"], "not_proven")
+        self.assertEqual(body["session_status"], "blocked_not_created")
+        self.assertTrue(body["validated_contract_fields"])
+        self.assertFalse(body["webrtc_session_created"])
+        self.assertFalse(body["answer_created"])
+        self.assertFalse(body["ice_candidates_processed"])
+        self.assertFalse(body["media_transport_connected"])
+        self.assertFalse(body["video_track_received"])
+        self.assertFalse(body["realtime_pose_stream_connected"])
+        self.assertFalse(body["real_ros2_tf_connected"])
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["sends_commands"])
+        self.assertFalse(body["reads_hardware"])
+        self.assertFalse(body["robot_control_executed"])
+        self.assertFalse(body["delivery_success"])
+        self.assertEqual(body["field_summaries"]["offer"]["sdp_length"], len(offer_sdp))
+        self.assertTrue(body["field_summaries"]["offer"]["sdp_sha256_prefix"])
+        for forbidden in (
+            offer_sdp,
+            "Authorization",
+            "Bearer",
+            "leaked-token",
+            "https://turn.example.test",
+            "body-credential",
+            "turn_url",
+            "/cmd_vel",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+        status, next_payload = self.client.request("GET", "/robots/trashbot-001/commands/next?last_ack_id=")
+        self.assertEqual(status, 200)
+        self.assertIsNone(next_payload["command"])
+
+    def test_o7_rtc_signaling_session_receipt_missing_fields_returns_structured_400(self):
+        status, body = self.client.request(
+            "POST",
+            "/api/o7/rtc/signaling/sessions",
+            {
+                "robot_id": "trashbot-001",
+                "client_id": "pc-console",
+                "session_id": "rtc-session-001",
+                "offer": {},
+            },
+        )
+
+        self.assertEqual(status, 400)
+        self.assertEqual(body["schema"], "trashbot.o7.rtc_signaling_session_receipt.v1")
+        self.assertFalse(body["validated_contract_fields"])
+        self.assertEqual(body["session_status"], "blocked_not_created")
+        self.assertIn("idempotency_key", body["missing_fields"])
+        self.assertIn("offer.sdp", body["missing_fields"])
+        self.assertFalse(body["webrtc_session_created"])
+        self.assertFalse(body["answer_created"])
+        self.assertFalse(body["sends_commands"])
+        self.assertFalse(body["reads_hardware"])
+
+    def test_o7_rtc_signaling_session_bad_json_uses_existing_malformed_json(self):
+        status, body = self.client.request(
+            "POST",
+            "/api/o7/rtc/signaling/sessions",
+            raw_body=b"{bad-json",
+        )
+
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "malformed_json")
+        self.assertNotIn("Traceback", json.dumps(body, ensure_ascii=False))
+
+    def test_o7_rtc_signaling_session_local_empty_token_allows_probe(self):
+        server = build_server("127.0.0.1", 0, pathlib.Path(self.tmp.name) / "open_relay_state.json", "")
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        client = RelayHttpClient(f"http://127.0.0.1:{server.server_address[1]}", token="")
+        try:
+            status, body = client.request(
+                "POST",
+                "/api/o7/rtc/signaling/sessions",
+                {
+                    "robot_id": "trashbot-001",
+                    "client_id": "pc-console",
+                    "session_id": "rtc-session-open",
+                    "idempotency_key": "rtc-session-open-create",
+                    "offer": {"sdp": "v=0\r\n"},
+                },
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=1.0)
+
+        self.assertEqual(status, 200)
+        self.assertTrue(body["validated_contract_fields"])
+        self.assertFalse(body["webrtc_session_created"])
+
     def test_o7_cloud_archive_tasks_endpoint_is_public_readonly_and_fail_closed(self):
         status, body = self.client.request("GET", "/api/o7/cloud-archive/tasks", token="")
 

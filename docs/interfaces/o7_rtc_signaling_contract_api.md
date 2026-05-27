@@ -4,6 +4,14 @@
 
 `GET /api/o7/rtc-signaling/contract` 是机器人/云 relay 侧的只读协议入口清单，schema 固定为 `trashbot.o7.rtc_signaling_contract.v1`。它用于让 PC 后续 probe 知道板端 RTC 与实时地图接入还缺哪些协议面，不代表 WebRTC、视频、音频、ROS2 `/tf`、实时 pose 或机器人控制已经跑通。
 
+本合同声明的 session 写入口已经存在为受限收件 endpoint：
+
+```text
+POST /api/o7/rtc/signaling/sessions
+```
+
+该入口只返回 `trashbot.o7.rtc_signaling_session_receipt.v1` fail-closed receipt，详见 `docs/interfaces/o7_rtc_signaling_session_receipt_api.md`。它不创建 WebRTC session、不生成 answer、不处理 ICE、不连接媒体、不读取硬件、不下发控制。
+
 ## Fail-Closed 字段
 
 响应必须固定：
@@ -28,7 +36,7 @@
 
 `protocol_surfaces` 保持稳定 JSON 字段，供 PC 和后续板端实现逐项 probe：
 
-- `signaling_endpoint`：未来 signaling session 创建入口、HTTP 方法、路径模板和必填字段。
+- `signaling_endpoint`：signaling session receipt-only 入口、HTTP 方法、路径模板和必填字段。
 - `session_identity`：`session_id` 与 `idempotency_key` 必填，重放必须返回相同 receipt 或显式 conflict。
 - `offer_answer`：未来 WebRTC offer/answer SDP 字段位置；当前 contract endpoint 禁止携带真实 SDP。
 - `ice_candidates`：未来 trickle ICE candidate 字段和 timeout 语义。

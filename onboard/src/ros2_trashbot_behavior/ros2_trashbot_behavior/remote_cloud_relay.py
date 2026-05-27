@@ -90,6 +90,7 @@ O7_REALTIME_ELEVATOR_SNAPSHOT_SCHEMA = "trashbot.o7.realtime_elevator_snapshot.v
 O7_REALTIME_ELEVATOR_FIXTURE_SCHEMA = "trashbot.o7.realtime_elevator_fixture.v1"
 O7_REALTIME_ELEVATOR_SNAPSHOT_ENV = "TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON"
 O7_RTC_SIGNALING_CONTRACT_SCHEMA = "trashbot.o7.rtc_signaling_contract.v1"
+O7_RTC_SIGNALING_SESSION_RECEIPT_SCHEMA = "trashbot.o7.rtc_signaling_session_receipt.v1"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -12034,6 +12035,111 @@ def build_o7_rtc_signaling_contract():
     }
 
 
+def _o7_receipt_field_summary(value):
+    # receipt 只需要证明“客户端给了字段”，不能把 session/idempotency 原文写回响应或日志。
+    text = str(value or "").strip()
+    return {
+        "present": bool(text),
+        "length": len(text),
+        "sha256_prefix": hashlib.sha256(text.encode("utf-8")).hexdigest()[:16] if text else "",
+    }
+
+
+def _o7_offer_sdp_summary(offer):
+    # SDP 可能携带 ICE 地址、凭证或内部拓扑；这里只保留长度和摘要，绝不回显原文。
+    if not isinstance(offer, dict):
+        return {"offer_object_present": False, "sdp_present": False, "sdp_length": 0, "sdp_sha256_prefix": ""}
+    sdp_text = str(offer.get("sdp") or "")
+    return {
+        "offer_object_present": True,
+        "sdp_present": bool(sdp_text.strip()),
+        "sdp_length": len(sdp_text),
+        "sdp_sha256_prefix": hashlib.sha256(sdp_text.encode("utf-8")).hexdigest()[:16] if sdp_text else "",
+    }
+
+
+def build_o7_rtc_signaling_session_receipt(body):
+    """校验 RTC signaling session 入参并返回 fail-closed receipt，不创建真实 RTC 会话。"""
+
+    # 写入口虽然当前只收件，但会接收 offer payload；因此响应保持最小摘要并固定所有真实能力为 false。
+    body_is_object = isinstance(body, dict)
+    payload = body if body_is_object else {}
+    offer = payload.get("offer") if body_is_object else None
+    missing_fields = []
+    for field_name in ("robot_id", "client_id", "session_id", "idempotency_key"):
+        if not str(payload.get(field_name) or "").strip():
+            missing_fields.append(field_name)
+    if not isinstance(offer, dict):
+        missing_fields.append("offer")
+    elif not str(offer.get("sdp") or "").strip():
+        missing_fields.append("offer.sdp")
+
+    # validated_contract_fields 只是字段形状校验结果，不表示 signaling、ICE、媒体或 ROS2 已连通。
+    validated = body_is_object and not missing_fields
+    fixed_false_fields = {
+        "webrtc_session_created": False,
+        "answer_created": False,
+        "ice_candidates_processed": False,
+        "media_transport_connected": False,
+        "video_track_received": False,
+        "realtime_pose_stream_connected": False,
+        "real_ros2_tf_connected": False,
+        "safe_to_control": False,
+        "sends_commands": False,
+        "reads_hardware": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+    }
+    return {
+        "schema": O7_RTC_SIGNALING_SESSION_RECEIPT_SCHEMA,
+        "schema_version": 1,
+        "source": "software_proof",
+        "proof_status": "not_proven",
+        "endpoint": "/api/o7/rtc/signaling/sessions",
+        "session_status": "blocked_not_created",
+        "validated_contract_fields": bool(validated),
+        **fixed_false_fields,
+        "body_object_present": body_is_object,
+        "required_fields": ["robot_id", "client_id", "session_id", "idempotency_key", "offer.sdp"],
+        "missing_fields": missing_fields,
+        "field_summaries": {
+            "robot_id": _o7_receipt_field_summary(payload.get("robot_id")),
+            "client_id": _o7_receipt_field_summary(payload.get("client_id")),
+            "session_id": _o7_receipt_field_summary(payload.get("session_id")),
+            "idempotency_key": _o7_receipt_field_summary(payload.get("idempotency_key")),
+            "offer": _o7_offer_sdp_summary(offer),
+        },
+        "redaction_policy": "no_raw_sdp_no_credentials_no_endpoint_values",
+        "blocked_reasons": [
+            "rtc_signaling_receipt_only",
+            "webrtc_session_creation_disabled",
+            "answer_generation_disabled",
+            "ice_processing_disabled",
+            "media_transport_disabled",
+            "ros2_tf_bridge_not_connected",
+            "robot_control_disabled",
+        ],
+        "not_proven": [
+            "real_rtc_signaling_session",
+            "real_offer_answer_exchange",
+            "real_ice_connectivity",
+            "real_webrtc_media_transport",
+            "real_camera_video_track",
+            "real_o7_realtime_pose_events",
+            "real_ros2_tf_connected",
+            "delivery_success",
+        ],
+        "next_required_evidence": [
+            "authorized_session_create_trace_without_raw_sdp",
+            "offer_answer_exchange_trace",
+            "ice_candidate_pair_selected_trace",
+            "timestamped_first_video_frame_ref",
+            "pose_event_stream_trace",
+            "ros2_tf_bridge_trace",
+        ],
+    }
+
+
 def _build_o7_cloud_archive_tasks_empty_contract(failure_reason="real_cloud_archive_store_not_connected"):
     """返回云中继 archive tasks 空 contract；所有失败路径都复用它来 fail closed。"""
 
@@ -13435,6 +13541,24 @@ def make_handler(store, bearer_token):
 
         def do_POST(self):
             parsed = urlparse(self.path)
+            if parsed.path == "/api/o7/rtc/signaling/sessions":
+                # 该写入口接收 offer payload，因此即使不创建 RTC session，也必须先走 bearer gate。
+                if not self._authorized():
+                    self._reject_auth()
+                    return
+                try:
+                    body = parse_json_body(self)
+                except ValueError:
+                    self._send_json(400, phone_error("malformed_json", "request body was not valid JSON"))
+                    return
+                except TypeError:
+                    # 非 object JSON 也返回结构化 receipt，便于 PC probe 统一读取 fail-closed 字段。
+                    self._send_json(400, build_o7_rtc_signaling_session_receipt(None))
+                    return
+                payload = build_o7_rtc_signaling_session_receipt(body)
+                status_code = 200 if payload["validated_contract_fields"] else 400
+                self._send_json(status_code, payload)
+                return
             if parsed.path.startswith("/api/commands/"):
                 # 用户入口先过 bearer gate；未授权请求只返回统一错误，不暴露 action 是否存在。
                 if not self._authorized():
