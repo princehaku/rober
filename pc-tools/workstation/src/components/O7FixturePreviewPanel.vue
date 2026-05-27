@@ -4,6 +4,7 @@ import {
   getO7CloudArchiveTasks,
   getO7CloudArchiveTasksProbe,
   getO7CloudOperatorConsoleProbe,
+  getO7LiveEndpointsManifest,
   getO7PreviewsAcceptance,
   getO7RealtimeElevatorProbe,
   loadO7FixturePreview,
@@ -13,6 +14,7 @@ import type {
   O7CloudArchiveTasksProbeResponse,
   O7CloudArchiveTasksResponse,
   O7LabelingQueueInspectorReviewItem,
+  O7LiveEndpointsManifestResponse,
   O7PreviewsAcceptanceResponse,
   O7PreviewsAcceptanceSurface,
   O7PreviewsAcceptanceSurfaceId,
@@ -163,6 +165,9 @@ const cloudProbeLoading = ref(false);
 const previewsAcceptanceResult = ref<O7PreviewsAcceptanceResponse | null>(null);
 const previewsAcceptanceError = ref("");
 const previewsAcceptanceLoading = ref(false);
+const liveEndpointsManifestResult = ref<O7LiveEndpointsManifestResponse | null>(null);
+const liveEndpointsManifestError = ref("");
+const liveEndpointsManifestLoading = ref(false);
 const routeReplayCursor = ref(0);
 const labelingReviewCursor = ref(0);
 const localAnnotationDrafts = ref<Record<string, LocalAnnotationDraft>>({});
@@ -378,6 +383,45 @@ function previewsAcceptanceKeyFalseFields(): string[] {
     `connects_cloud_production=${String(fields?.connects_cloud_production ?? false)}`,
     `robot_control_executed=${String(fields?.robot_control_executed ?? false)}`,
   ];
+}
+
+function liveEndpointsManifestStatusCounts(): string[] {
+  const summary = liveEndpointsManifestResult.value?.summary;
+  // 未加载时也按全量 not_configured 展示，避免 operator 把空白理解为已配置。
+  return [
+    `configured=${String(summary?.configured ?? 0)}`,
+    `not_configured=${String(summary?.not_configured ?? 6)}`,
+    `blocked=${String(summary?.blocked ?? 0)}`,
+    `token_present=${String(summary?.token_present ?? 0)}`,
+    `token_absent=${String(summary?.token_absent ?? 6)}`,
+  ];
+}
+
+function liveEndpointsManifestSafetyFlags(): string[] {
+  const manifest = liveEndpointsManifestResult.value;
+  // 这些全局开关是 manifest 的安全边界，不随 URL/token 配置而改变。
+  return [
+    `network_probe_executed=${String(manifest?.network_probe_executed ?? false)}`,
+    `sends_commands=${String(manifest?.sends_commands ?? false)}`,
+    `safe_to_control=${String(manifest?.safe_to_control ?? false)}`,
+    `connects_cloud_production=${String(manifest?.connects_cloud_production ?? false)}`,
+    `robot_control_executed=${String(manifest?.robot_control_executed ?? false)}`,
+    `reads_hardware=${String(manifest?.reads_hardware ?? false)}`,
+    `token_values_exposed=${String(manifest?.token_values_exposed ?? false)}`,
+    `url_query_hash_credentials_exposed=${String(manifest?.url_query_hash_credentials_exposed ?? false)}`,
+  ];
+}
+
+function liveEndpointCapabilities() {
+  return liveEndpointsManifestResult.value?.capabilities ?? [];
+}
+
+function liveEndpointsRequiredEvidence(): string[] {
+  return liveEndpointsManifestResult.value?.required_live_evidence ?? ["not_loaded"];
+}
+
+function liveEndpointsRemainingGaps(): string[] {
+  return liveEndpointsManifestResult.value?.remaining_real_capability_gaps ?? ["not_loaded"];
 }
 
 function inspectorCursorFields(result: O7CloudArchiveTasksResponse | null): string[] {
@@ -1213,6 +1257,19 @@ async function loadPreviewsAcceptance(): Promise<void> {
   }
 }
 
+async function loadLiveEndpointsManifest(): Promise<void> {
+  // 该按钮只加载 env readiness manifest；后端不会 ping URL、连接生产、发命令或读取硬件。
+  liveEndpointsManifestLoading.value = true;
+  liveEndpointsManifestError.value = "";
+  try {
+    liveEndpointsManifestResult.value = await getO7LiveEndpointsManifest();
+  } catch (err) {
+    liveEndpointsManifestError.value = err instanceof Error ? err.message : "o7_live_endpoints_manifest_unavailable";
+  } finally {
+    liveEndpointsManifestLoading.value = false;
+  }
+}
+
 function coreFalseFields(kind: O7FixturePreviewKind, result: O7FixturePreviewResult | undefined): string[] {
   const record = asRecord(result);
   // 这些字段是 operator 最容易误读成“已接通/可操作”的核心开关，必须显式展示 false。
@@ -1353,6 +1410,74 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
       These previews do not prove real realtime API, ROS2 /tf, cloud archive, annotation API, voice API, safe
       command API, robot ACK, HIL/hardware safety or delivery success.
     </div>
+
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <div>
+          <h3>O7 live endpoints manifest</h3>
+          <p class="eyebrow">Manual env readiness manifest. No ping, no connect, no command dispatch.</p>
+        </div>
+        <span class="pill danger">{{ liveEndpointsManifestResult?.manifest_status ?? "not_loaded" }}</span>
+      </div>
+
+      <button class="secondary" type="button" @click="loadLiveEndpointsManifest">
+        {{ liveEndpointsManifestLoading ? "Loading live endpoints manifest" : "Load live endpoints manifest" }}
+      </button>
+
+      <div v-if="liveEndpointsManifestError" class="notice" role="alert">
+        O7 live endpoints manifest unavailable: {{ liveEndpointsManifestError }}. network_probe_executed=false.
+      </div>
+
+      <dl class="kv compact-kv">
+        <dt>schema</dt>
+        <dd>{{ liveEndpointsManifestResult?.schema ?? "trashbot.o7.live_endpoints_manifest.v1" }}</dd>
+        <dt>endpoint</dt>
+        <dd>{{ liveEndpointsManifestResult?.endpoint ?? "/api/o7/live-endpoints/manifest" }}</dd>
+        <dt>env only</dt>
+        <dd>{{ liveEndpointsManifestResult?.env_only ?? true }}</dd>
+        <dt>proof status</dt>
+        <dd>{{ liveEndpointsManifestResult?.proof_status ?? "not_proven" }}</dd>
+      </dl>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Readiness counts</h3>
+          <ul class="dense">
+            <li v-for="field in liveEndpointsManifestStatusCounts()" :key="field">{{ field }}</li>
+          </ul>
+          <h3>Endpoint readiness</h3>
+          <ul class="dense">
+            <!-- capability 状态只来自后端 env 脱敏摘要；URL 不展示 query/hash/credentials，token 只展示 present/absent。 -->
+            <li v-for="capability in liveEndpointCapabilities()" :key="capability.id">
+              {{ capability.kr_ids.join("+") }} {{ capability.id }} · status={{ capability.status }} · url={{
+                capability.url.display_url
+              }} · token={{ capability.token.status }} · missing={{ capability.missing.join(", ") || "none" }} · blocked={{
+                capability.blocked_reasons.join(", ") || "none"
+              }}
+            </li>
+            <li v-if="!liveEndpointCapabilities().length">not_loaded</li>
+          </ul>
+          <h3>Global safety flags</h3>
+          <ul class="dense">
+            <li v-for="field in liveEndpointsManifestSafetyFlags()" :key="field">{{ field }}</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Required live evidence</h3>
+          <ul class="dense">
+            <li v-for="item in liveEndpointsRequiredEvidence()" :key="item">{{ item }}</li>
+          </ul>
+          <h3>Remaining real capability gaps</h3>
+          <ul class="dense">
+            <li v-for="gap in liveEndpointsRemainingGaps()" :key="gap">{{ gap }}</li>
+          </ul>
+          <h3>Blocked reasons</h3>
+          <ul class="dense">
+            <li v-for="reason in liveEndpointsManifestResult?.blocked_reasons ?? ['not_loaded']" :key="reason">{{ reason }}</li>
+          </ul>
+        </div>
+      </div>
+    </article>
 
     <article class="snapshot-panel">
       <div class="section-head compact-head">

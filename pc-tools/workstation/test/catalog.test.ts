@@ -6,6 +6,7 @@ import path from "node:path";
 import {
   buildO7CloudArchiveTasksProbe,
   buildO7CloudArchiveTasks,
+  buildO7LiveEndpointsManifest,
   buildO7CloudOperatorConsoleProbe,
   buildO7RealtimeElevatorProbe,
   buildEvidenceToolsResponse,
@@ -2882,6 +2883,80 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.schema).toBe("trashbot.o7.previews_acceptance.v1");
       expect(body.covered_surface_ids).toEqual(acceptance.covered_surface_ids);
       expect(body.fixed_false_fields.command_dispatch_enabled).toBe(false);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("O7 live endpoints manifest reads env only and redacts URLs and tokens", async () => {
+    // manifest 只读取环境变量并输出脱敏 readiness，不探测网络、不暴露 token 值。
+    const empty = buildO7LiveEndpointsManifest({});
+
+    expect(empty.schema).toBe("trashbot.o7.live_endpoints_manifest.v1");
+    expect(empty.endpoint).toBe("/api/o7/live-endpoints/manifest");
+    expect(empty.env_only).toBe(true);
+    expect(empty.network_probe_executed).toBe(false);
+    expect(empty.sends_commands).toBe(false);
+    expect(empty.safe_to_control).toBe(false);
+    expect(empty.connects_cloud_production).toBe(false);
+    expect(empty.robot_control_executed).toBe(false);
+    expect(empty.reads_hardware).toBe(false);
+    expect(empty.token_values_exposed).toBe(false);
+    expect(empty.url_query_hash_credentials_exposed).toBe(false);
+    expect(empty.summary).toMatchObject({ configured: 0, not_configured: 6, blocked: 0, token_present: 0, token_absent: 6 });
+    expect(empty.capabilities.every((capability) => capability.status === "not_configured")).toBe(true);
+    expect(empty.capabilities.every((capability) => capability.proof_status === "not_proven")).toBe(true);
+    expect(empty.capabilities.map((capability) => capability.id)).toEqual([
+      "rtc_realtime_pose_elevator",
+      "cloud_archive",
+      "route_replay_source",
+      "annotation_submit_api",
+      "voice_asr_tts_api",
+      "safe_command_api",
+    ]);
+    expect(JSON.stringify(empty)).not.toContain("secret");
+
+    const configured = buildO7LiveEndpointsManifest({
+      O7_RTC_REALTIME_URL: "wss://relay.example.test/o7/realtime",
+      O7_RTC_REALTIME_TOKEN: "secret-rtc-token",
+      O7_CLOUD_ARCHIVE_URL: "https://archive.example.test/api/o7/tasks",
+      O7_CLOUD_ARCHIVE_TOKEN: "secret-archive-token",
+      O7_ROUTE_REPLAY_URL: "https://user:pass@replay.example.test/api?token=leak#frag",
+      O7_ANNOTATION_API_URL: "https://annotation.example.test/api/o7/labels?token=leak",
+      O7_VOICE_API_URL: "ftp://voice.example.test/api",
+      O7_SAFE_COMMAND_API_URL: "https://command.example.test/api/o7/commands",
+    });
+
+    expect(configured.summary).toMatchObject({ configured: 3, not_configured: 0, blocked: 3, token_present: 2, token_absent: 4 });
+    expect(configured.capabilities[0]?.url.display_url).toBe("wss://relay.example.test/o7/realtime");
+    expect(configured.capabilities[0]?.token.status).toBe("present");
+    expect(configured.capabilities[0]?.url.display_url).not.toContain("secret-rtc-token");
+    expect(configured.capabilities[2]?.status).toBe("blocked");
+    expect(configured.capabilities[2]?.url.display_url).toBe("blocked_unsafe_url");
+    expect(configured.capabilities[2]?.blocked_reasons).toContain(
+      "O7_ROUTE_REPLAY_URL:url_must_not_include_credentials_query_or_hash",
+    );
+    expect(configured.capabilities[3]?.blocked_reasons).toContain(
+      "O7_ANNOTATION_API_URL:url_must_not_include_credentials_query_or_hash",
+    );
+    expect(configured.capabilities[4]?.blocked_reasons).toContain("O7_VOICE_API_URL:protocol_not_allowed");
+    expect(JSON.stringify(configured)).not.toContain("secret-rtc-token");
+    expect(JSON.stringify(configured)).not.toContain("user:pass");
+    expect(JSON.stringify(configured)).not.toContain("token=leak");
+    expect(configured.required_live_evidence).toEqual(expect.arrayContaining(["rtc_signaling_trace", "idempotent_command_api_trace"]));
+    expect(configured.remaining_real_capability_gaps).toEqual(
+      expect.arrayContaining(["real_rtc_video_connected", "real_robot_ack_connected"]),
+    );
+
+    const server = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(new URL("/api/o7/live-endpoints/manifest", server.baseUrl));
+      const body = (await response.json()) as ReturnType<typeof buildO7LiveEndpointsManifest>;
+
+      expect(response.status).toBe(200);
+      expect(body.schema).toBe("trashbot.o7.live_endpoints_manifest.v1");
+      expect(body.network_probe_executed).toBe(false);
+      expect(body.sends_commands).toBe(false);
     } finally {
       await server.close();
     }

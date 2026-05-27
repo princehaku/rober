@@ -1,5 +1,72 @@
 export type ProofStatus = "not_proven";
 export type OperatorKrStatus = "draft" | "blocked" | "not_proven";
+export type O7LiveEndpointStatus = "configured" | "not_configured" | "blocked";
+export type O7LiveEndpointTokenStatus = "present" | "absent";
+
+export interface O7LiveEndpointUrlSummary {
+  configured: boolean;
+  display_url: string;
+  protocol: string;
+  host: string;
+  path: string;
+  unsafe_reason: string;
+}
+
+export interface O7LiveEndpointCapability {
+  id:
+    | "rtc_realtime_pose_elevator"
+    | "cloud_archive"
+    | "route_replay_source"
+    | "annotation_submit_api"
+    | "voice_asr_tts_api"
+    | "safe_command_api";
+  kr_ids: Array<"O7-KR1" | "O7-KR2" | "O7-KR3" | "O7-KR4" | "O7-KR5" | "O7-KR6">;
+  title: string;
+  env: {
+    url: string;
+    token: string;
+  };
+  status: O7LiveEndpointStatus;
+  proof_status: ProofStatus;
+  url: O7LiveEndpointUrlSummary;
+  token: {
+    env: string;
+    status: O7LiveEndpointTokenStatus;
+  };
+  missing: string[];
+  blocked_reasons: string[];
+  required_live_evidence: string[];
+  remaining_real_capability_gaps: string[];
+}
+
+// O7 live endpoints manifest 只读取环境变量并做安全摘要，不探测网络、不连接云端、不暴露 token。
+export interface O7LiveEndpointsManifestResponse extends ProofFlags {
+  schema: "trashbot.o7.live_endpoints_manifest.v1";
+  schema_version: 1;
+  manifest_status: "readiness_manifest_ready";
+  endpoint: "/api/o7/live-endpoints/manifest";
+  env_only: true;
+  network_probe_executed: false;
+  sends_commands: false;
+  safe_to_control: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  reads_hardware: false;
+  token_values_exposed: false;
+  url_query_hash_credentials_exposed: false;
+  capabilities: O7LiveEndpointCapability[];
+  summary: {
+    configured: number;
+    not_configured: number;
+    blocked: number;
+    token_present: number;
+    token_absent: number;
+  };
+  required_live_evidence: string[];
+  remaining_real_capability_gaps: string[];
+  blocked_reasons: string[];
+  not_proven: string[];
+}
 
 // 工作站只证明本地 Node/Vue 软件入口可用，不证明机器人、ROS2、硬件或现场任务成功。
 // 这些字段集中在共享契约里，是为了让 API、UI、测试共用同一个 fail-closed 底座。
@@ -1794,6 +1861,7 @@ export const API_ROUTES = [
   "/api/o7/operator-console",
   "/api/o7/operator-console/acceptance",
   "/api/o7/previews/acceptance",
+  "/api/o7/live-endpoints/manifest",
   "/api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>",
   "/api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>",
   "/api/o7/realtime-elevator-preview?fixtureJson=<local-json>",

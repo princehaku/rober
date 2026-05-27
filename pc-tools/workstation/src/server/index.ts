@@ -7,6 +7,7 @@ import {
   buildHealth,
   buildO7CloudArchiveTasks,
   buildO7CloudArchiveTasksProbe,
+  buildO7LiveEndpointsManifest,
   buildO7CloudOperatorConsoleProbe,
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
@@ -89,6 +90,11 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/previews/acceptance", (_req, res) => {
     // Previews guard 汇总本地/HTTP 预览证据边界，不读取 fixture、不探测云端、不触发控制。
     res.json(buildO7PreviewsAcceptanceResponse());
+  });
+
+  workstationApp.get("/api/o7/live-endpoints/manifest", (_req, res) => {
+    // Live endpoints manifest 只读取 env 配置并脱敏，不执行 ping/connect/send 或硬件读取。
+    res.json(buildO7LiveEndpointsManifest());
   });
 
   workstationApp.get("/api/o7/cloud-operator-console-probe", async (req, res) => {

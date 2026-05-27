@@ -1784,6 +1784,177 @@ const fixtures: Record<string, unknown> = {
     reads_hardware: false,
     ...PROOF_FLAGS,
   },
+  "/api/o7/live-endpoints/manifest": {
+    schema: "trashbot.o7.live_endpoints_manifest.v1",
+    schema_version: 1,
+    ...PROOF_FLAGS,
+    manifest_status: "readiness_manifest_ready",
+    endpoint: "/api/o7/live-endpoints/manifest",
+    env_only: true,
+    network_probe_executed: false,
+    sends_commands: false,
+    safe_to_control: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    reads_hardware: false,
+    token_values_exposed: false,
+    url_query_hash_credentials_exposed: false,
+    summary: {
+      configured: 1,
+      not_configured: 4,
+      blocked: 1,
+      token_present: 1,
+      token_absent: 5,
+    },
+    capabilities: [
+      {
+        id: "rtc_realtime_pose_elevator",
+        kr_ids: ["O7-KR1", "O7-KR2"],
+        title: "RTC/realtime pose/elevator state API",
+        env: { url: "O7_RTC_REALTIME_URL", token: "O7_RTC_REALTIME_TOKEN" },
+        status: "configured",
+        proof_status: "not_proven",
+        url: {
+          configured: true,
+          display_url: "wss://relay.example.test/o7/realtime",
+          protocol: "wss",
+          host: "relay.example.test",
+          path: "/o7/realtime",
+          unsafe_reason: "",
+        },
+        token: { env: "O7_RTC_REALTIME_TOKEN", status: "present" },
+        missing: [],
+        blocked_reasons: [],
+        required_live_evidence: ["rtc_signaling_trace", "realtime_pose_latency_trace"],
+        remaining_real_capability_gaps: ["real_rtc_video_connected", "real_ros2_tf_forwarding"],
+      },
+      {
+        id: "cloud_archive",
+        kr_ids: ["O7-KR3"],
+        title: "Cloud archive API",
+        env: { url: "O7_CLOUD_ARCHIVE_URL", token: "O7_CLOUD_ARCHIVE_TOKEN" },
+        status: "not_configured",
+        proof_status: "not_proven",
+        url: {
+          configured: false,
+          display_url: "not_configured",
+          protocol: "",
+          host: "",
+          path: "",
+          unsafe_reason: "",
+        },
+        token: { env: "O7_CLOUD_ARCHIVE_TOKEN", status: "absent" },
+        missing: ["url", "token"],
+        blocked_reasons: [],
+        required_live_evidence: ["cloud_archive_task_query_trace"],
+        remaining_real_capability_gaps: ["real_cloud_archive_connected"],
+      },
+      {
+        id: "route_replay_source",
+        kr_ids: ["O7-KR3"],
+        title: "Route replay data source API",
+        env: { url: "O7_ROUTE_REPLAY_URL", token: "O7_ROUTE_REPLAY_TOKEN" },
+        status: "blocked",
+        proof_status: "not_proven",
+        url: {
+          configured: false,
+          display_url: "blocked_unsafe_url",
+          protocol: "https",
+          host: "replay.example.test",
+          path: "/api",
+          unsafe_reason: "url_must_not_include_credentials_query_or_hash",
+        },
+        token: { env: "O7_ROUTE_REPLAY_TOKEN", status: "absent" },
+        missing: ["token"],
+        blocked_reasons: ["O7_ROUTE_REPLAY_URL:url_must_not_include_credentials_query_or_hash"],
+        required_live_evidence: ["route_replay_frame_page_trace"],
+        remaining_real_capability_gaps: ["real_route_replay_frames"],
+      },
+      {
+        id: "annotation_submit_api",
+        kr_ids: ["O7-KR4"],
+        title: "Annotation submit API",
+        env: { url: "O7_ANNOTATION_API_URL", token: "O7_ANNOTATION_API_TOKEN" },
+        status: "not_configured",
+        proof_status: "not_proven",
+        url: {
+          configured: false,
+          display_url: "not_configured",
+          protocol: "",
+          host: "",
+          path: "",
+          unsafe_reason: "",
+        },
+        token: { env: "O7_ANNOTATION_API_TOKEN", status: "absent" },
+        missing: ["url", "token"],
+        blocked_reasons: [],
+        required_live_evidence: ["annotation_submit_audit_trace"],
+        remaining_real_capability_gaps: ["real_annotation_submit"],
+      },
+      {
+        id: "voice_asr_tts_api",
+        kr_ids: ["O7-KR5"],
+        title: "Voice ASR/TTS API",
+        env: { url: "O7_VOICE_API_URL", token: "O7_VOICE_API_TOKEN" },
+        status: "not_configured",
+        proof_status: "not_proven",
+        url: {
+          configured: false,
+          display_url: "not_configured",
+          protocol: "",
+          host: "",
+          path: "",
+          unsafe_reason: "",
+        },
+        token: { env: "O7_VOICE_API_TOKEN", status: "absent" },
+        missing: ["url", "token"],
+        blocked_reasons: [],
+        required_live_evidence: ["asr_stream_partial_final_trace"],
+        remaining_real_capability_gaps: ["real_voice_api_connected"],
+      },
+      {
+        id: "safe_command_api",
+        kr_ids: ["O7-KR6"],
+        title: "Safe command API",
+        env: { url: "O7_SAFE_COMMAND_API_URL", token: "O7_SAFE_COMMAND_TOKEN" },
+        status: "not_configured",
+        proof_status: "not_proven",
+        url: {
+          configured: false,
+          display_url: "not_configured",
+          protocol: "",
+          host: "",
+          path: "",
+          unsafe_reason: "",
+        },
+        token: { env: "O7_SAFE_COMMAND_TOKEN", status: "absent" },
+        missing: ["url", "token"],
+        blocked_reasons: [],
+        required_live_evidence: ["idempotent_command_api_trace"],
+        remaining_real_capability_gaps: ["real_robot_ack_connected"],
+      },
+    ],
+    required_live_evidence: [
+      "rtc_signaling_trace",
+      "realtime_pose_latency_trace",
+      "cloud_archive_task_query_trace",
+      "route_replay_frame_page_trace",
+      "annotation_submit_audit_trace",
+      "asr_stream_partial_final_trace",
+      "idempotent_command_api_trace",
+    ],
+    remaining_real_capability_gaps: [
+      "real_rtc_video_connected",
+      "real_ros2_tf_forwarding",
+      "real_cloud_archive_connected",
+      "real_route_replay_frames",
+      "real_annotation_submit",
+      "real_voice_api_connected",
+      "real_robot_ack_connected",
+    ],
+    blocked_reasons: ["O7_ROUTE_REPLAY_URL:url_must_not_include_credentials_query_or_hash"],
+    not_proven: ["real_rtc_video_connected", "real_robot_ack_connected"],
+  },
 };
 
 function stubWorkstationFetch() {
@@ -1803,15 +1974,17 @@ function stubWorkstationFetch() {
                 ? "/api/o7/safe-command-preview"
                 : url.startsWith("/api/o7/previews/acceptance")
                   ? "/api/o7/previews/acceptance"
-                  : url.startsWith("/api/o7/cloud-archive/tasks-probe")
-                    ? "/api/o7/cloud-archive/tasks-probe"
-                    : url.startsWith("/api/o7/cloud-archive/tasks")
-                      ? "/api/o7/cloud-archive/tasks"
-                      : url.startsWith("/api/o7/cloud-operator-console-probe")
-                        ? "/api/o7/cloud-operator-console-probe"
-                        : url.startsWith("/api/o7/realtime-elevator-probe")
-                          ? "/api/o7/realtime-elevator-probe"
-                          : url;
+                  : url.startsWith("/api/o7/live-endpoints/manifest")
+                    ? "/api/o7/live-endpoints/manifest"
+                    : url.startsWith("/api/o7/cloud-archive/tasks-probe")
+                      ? "/api/o7/cloud-archive/tasks-probe"
+                      : url.startsWith("/api/o7/cloud-archive/tasks")
+                        ? "/api/o7/cloud-archive/tasks"
+                        : url.startsWith("/api/o7/cloud-operator-console-probe")
+                          ? "/api/o7/cloud-operator-console-probe"
+                          : url.startsWith("/api/o7/realtime-elevator-probe")
+                            ? "/api/o7/realtime-elevator-probe"
+                            : url;
     return {
       ok: true,
       json: async () => fixtures[fixtureKey],
@@ -2068,6 +2241,8 @@ describe("App", () => {
     expect(wrapper.text()).toContain("O7 Fixture Previews");
     expect(wrapper.text()).toContain("O7 previews acceptance guard");
     expect(wrapper.text()).toContain("O7 real capability gap summary");
+    expect(wrapper.text()).toContain("O7 live endpoints manifest");
+    expect(wrapper.text()).toContain("network_probe_executed=false");
     expect(wrapper.text()).toContain("O7-KR1 realtime map/pose");
     expect(wrapper.text()).toContain("O7-KR6 command");
     expect(wrapper.text()).toContain("matched surface count=0");
@@ -2102,6 +2277,7 @@ describe("App", () => {
     expect(wrapper.text()).toContain("HIL/hardware safety");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/realtime-elevator-preview");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/previews/acceptance");
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/live-endpoints/manifest");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/realtime-elevator-probe");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/cloud-archive/tasks");
 
@@ -2116,6 +2292,11 @@ describe("App", () => {
     await inputs[15]!.setValue("fixtures/labeling.json");
     await inputs[16]!.setValue("fixtures/voice.json");
     await inputs[17]!.setValue("fixtures/safe-command.json");
+
+    const callsBeforeManifest = mockedFetch.mock.calls.length;
+    await wrapper.findAll("button").find((button) => button.text() === "Load live endpoints manifest")?.trigger("click");
+    await flushPromises();
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeManifest + 1);
 
     const callsBeforeAcceptanceGuard = mockedFetch.mock.calls.length;
     await wrapper.findAll("button").find((button) => button.text() === "Load previews acceptance guard")?.trigger("click");
@@ -2146,6 +2327,7 @@ describe("App", () => {
     }
 
     const previewCalls = mockedFetch.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/o7/"));
+    expect(previewCalls).toContain("/api/o7/live-endpoints/manifest");
     expect(previewCalls).toContain("/api/o7/previews/acceptance");
     expect(previewCalls).toContain("/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/cloud-archive/tasks-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
@@ -2166,6 +2348,21 @@ describe("App", () => {
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v1");
     expect(wrapper.text()).toContain("trashbot.o7.previews_acceptance.v1");
+    expect(wrapper.text()).toContain("trashbot.o7.live_endpoints_manifest.v1");
+    expect(wrapper.text()).toContain("readiness_manifest_ready");
+    expect(wrapper.text()).toContain("configured=1");
+    expect(wrapper.text()).toContain("blocked=1");
+    expect(wrapper.text()).toContain("token_present=1");
+    expect(wrapper.text()).toContain("O7-KR1+O7-KR2 rtc_realtime_pose_elevator · status=configured");
+    expect(wrapper.text()).toContain("wss://relay.example.test/o7/realtime");
+    expect(wrapper.text()).toContain("token=present");
+    expect(wrapper.text()).toContain("O7-KR3 route_replay_source · status=blocked");
+    expect(wrapper.text()).toContain("blocked_unsafe_url");
+    expect(wrapper.text()).toContain("O7_ROUTE_REPLAY_URL:url_must_not_include_credentials_query_or_hash");
+    expect(wrapper.text()).toContain("token_values_exposed=false");
+    expect(wrapper.text()).toContain("url_query_hash_credentials_exposed=false");
+    expect(wrapper.text()).toContain("idempotent_command_api_trace");
+    expect(wrapper.text()).toContain("real_robot_ack_connected");
     expect(wrapper.text()).toContain("software_proof_o7_previews_acceptance_guard");
     expect(wrapper.text()).toContain("O7 real capability gap summary");
     expect(wrapper.text()).toContain("O7-KR1 realtime map/pose");

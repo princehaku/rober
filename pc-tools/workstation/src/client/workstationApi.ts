@@ -5,6 +5,7 @@ import type {
   O7CloudArchiveTasksResponse,
   O7CloudOperatorConsoleProbeResponse,
   O7LabelingPreviewResponse,
+  O7LiveEndpointsManifestResponse,
   HealthResponse,
   O7OperatorConsoleResponse,
   O7PreviewsAcceptanceResponse,
@@ -62,6 +63,7 @@ const API_ENDPOINTS = {
   trainingLabeling: "/api/tools/training-labeling",
   o7OperatorConsole: "/api/o7/operator-console",
   o7PreviewsAcceptance: "/api/o7/previews/acceptance",
+  o7LiveEndpointsManifest: "/api/o7/live-endpoints/manifest",
   o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
   o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
   o7RealtimeElevatorProbe: "/api/o7/realtime-elevator-probe",
@@ -186,6 +188,11 @@ export async function getO7OperatorConsole(): Promise<O7OperatorConsoleResponse>
 export async function getO7PreviewsAcceptance(): Promise<O7PreviewsAcceptanceResponse> {
   // O7 Previews guard 只读取本机摘要 endpoint，不触发 probe、fixture 读取或真实控制链路。
   return loadJson<O7PreviewsAcceptanceResponse>(API_ENDPOINTS.o7PreviewsAcceptance);
+}
+
+export async function getO7LiveEndpointsManifest(): Promise<O7LiveEndpointsManifestResponse> {
+  // manifest 只读取后端 env 脱敏摘要；它不是 ping/connect/test command。
+  return loadJson<O7LiveEndpointsManifestResponse>(API_ENDPOINTS.o7LiveEndpointsManifest);
 }
 
 export async function getO7CloudOperatorConsoleProbe(baseUrl: string): Promise<O7CloudOperatorConsoleProbeResponse> {
