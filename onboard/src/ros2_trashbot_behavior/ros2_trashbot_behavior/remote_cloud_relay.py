@@ -89,6 +89,7 @@ O7_CLOUD_ARCHIVE_TASKS_ENV = "TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON"
 O7_REALTIME_ELEVATOR_SNAPSHOT_SCHEMA = "trashbot.o7.realtime_elevator_snapshot.v1"
 O7_REALTIME_ELEVATOR_FIXTURE_SCHEMA = "trashbot.o7.realtime_elevator_fixture.v1"
 O7_REALTIME_ELEVATOR_SNAPSHOT_ENV = "TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON"
+O7_RTC_SIGNALING_CONTRACT_SCHEMA = "trashbot.o7.rtc_signaling_contract.v1"
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -609,6 +610,11 @@ SENSITIVE_KEYS = {
 PHONE_SAFE_KEY_EXCEPTIONS = {
     "bearer_rotation_status",
 }
+PHONE_SAFE_FALSE_ONLY_KEYS = {
+    # 固定 false 的能力边界字段需要保留给 PC probe，但任何 true 值都必须被脱敏过滤掉。
+    "hardware_probe",
+    "reads_hardware",
+}
 
 # cloud-relay 只托管 dependency-free PWA 壳；控制面路径必须在 handler 中优先返回。
 MOBILE_WEB_STATIC_FILES = {
@@ -733,6 +739,10 @@ def safe_value(value):
         for key, item in value.items():
             key_text = str(key)
             key_lc = key_text.lower()
+            if key_lc in PHONE_SAFE_FALSE_ONLY_KEYS:
+                if item is False:
+                    safe[key_text] = False
+                continue
             if key_lc not in PHONE_SAFE_KEY_EXCEPTIONS and any(marker in key_lc for marker in SENSITIVE_KEYS):
                 continue
             safe[key_text] = safe_value(item)
@@ -11883,6 +11893,147 @@ def build_o7_operator_console_contract():
     }
 
 
+def build_o7_rtc_signaling_contract():
+    """返回 O7 RTC signaling/media 的只读接入合同，默认拒绝一切真实能力声明。"""
+
+    # 这个合同故意不读取 env、不探测网络、不创建 WebRTC session。
+    # 它只给 PC probe 和后续板端实现一个稳定字段清单，避免把“有入口”误读成“已打通”。
+    fixed_false_fields = {
+        "network_probe_executed": False,
+        "webrtc_session_created": False,
+        "media_transport_connected": False,
+        "video_track_received": False,
+        "realtime_pose_stream_connected": False,
+        "real_ros2_tf_connected": False,
+        "safe_to_control": False,
+        "sends_commands": False,
+        "reads_hardware": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+    }
+    return {
+        "schema": O7_RTC_SIGNALING_CONTRACT_SCHEMA,
+        "schema_version": 1,
+        "source": "software_proof",
+        "proof_status": "not_proven",
+        "endpoint": "/api/o7/rtc-signaling/contract",
+        "contract_status": "static_fail_closed_contract",
+        "description": "Protocol entry checklist only; no live RTC, media, ROS2 /tf, or robot control proof.",
+        **fixed_false_fields,
+        "protocol_surfaces": {
+            "signaling_endpoint": {
+                "required": True,
+                "method": "POST",
+                "path_template": "/api/o7/rtc/signaling/sessions",
+                "status": "future_not_implemented",
+                "required_fields": ["robot_id", "client_id", "session_id", "idempotency_key"],
+            },
+            "session_identity": {
+                "required": True,
+                "session_id_required": True,
+                "idempotency_key_required": True,
+                "status": "future_not_implemented",
+                "replay_policy": "same idempotency key must return same receipt or explicit conflict",
+            },
+            "offer_answer": {
+                "required": True,
+                "offer_sdp_field": "offer.sdp",
+                "answer_sdp_field": "answer.sdp",
+                "status": "future_not_implemented",
+                "forbidden_in_this_endpoint": True,
+            },
+            "ice_candidates": {
+                "required": True,
+                "trickle_ice_required": True,
+                "candidate_field": "candidate",
+                "status": "future_not_implemented",
+                "timeout_semantics_required": True,
+            },
+            "media_tracks": {
+                "required": True,
+                "video": {"required": True, "received": False, "codec_status": "not_negotiated"},
+                "audio": {"required": False, "received": False, "codec_status": "not_negotiated"},
+                "status": "future_not_implemented",
+            },
+            "pose_realtime_events": {
+                "required": True,
+                "event_schema": "trashbot.o7.realtime_pose_event.v1",
+                "status": "future_not_implemented",
+                "requires_ros2_tf_bridge": True,
+            },
+            "elevator_realtime_events": {
+                "required": True,
+                "event_schema": "trashbot.o7.elevator_realtime_event.v1",
+                "status": "future_not_implemented",
+                "requires_floor_evidence_ref": True,
+            },
+            "credential_handling": {
+                "required": True,
+                "credential_transport_policy": "bearer_header_redacted",
+                "credential_values_exposed": False,
+                "status": "future_not_implemented",
+            },
+            "observability_evidence_refs": {
+                "required": True,
+                "required_refs": [
+                    "signaling_trace_ref",
+                    "ice_connectivity_trace_ref",
+                    "first_video_frame_ref",
+                    "pose_event_trace_ref",
+                    "ros2_tf_bridge_trace_ref",
+                ],
+                "status": "future_not_implemented",
+            },
+            "failure_timeout_semantics": {
+                "required": True,
+                "required_states": [
+                    "signaling_timeout",
+                    "ice_failed",
+                    "media_timeout",
+                    "pose_stream_timeout",
+                    "auth_failed",
+                    "session_conflict",
+                ],
+                "status": "future_not_implemented",
+            },
+            "forbidden_actions": {
+                "command_dispatch": False,
+                "manual_control": False,
+                "navigate_goal": False,
+                "keyboard_control": False,
+                "hardware_probe": False,
+                "network_probe_from_contract_endpoint": False,
+            },
+        },
+        "blocked_reasons": [
+            "rtc_signaling_endpoint_not_implemented",
+            "webrtc_offer_answer_not_proven",
+            "ice_connectivity_not_proven",
+            "video_track_not_received",
+            "realtime_pose_stream_not_connected",
+            "ros2_tf_bridge_not_connected",
+        ],
+        "not_proven": [
+            "real_rtc_signaling_session",
+            "real_webrtc_media_transport",
+            "real_camera_video_track",
+            "real_audio_track",
+            "real_o7_realtime_pose_events",
+            "real_ros2_tf_connected",
+            "delivery_success",
+        ],
+        "next_required_evidence": [
+            "robot_side_signaling_client_trace",
+            "offer_answer_exchange_trace",
+            "ice_candidate_pair_selected_trace",
+            "timestamped_first_video_frame_ref",
+            "pose_event_stream_trace",
+            "ros2_tf_bridge_trace",
+            "timeout_and_auth_failure_trace",
+        ],
+    }
+
+
 def _build_o7_cloud_archive_tasks_empty_contract(failure_reason="real_cloud_archive_store_not_connected"):
     """返回云中继 archive tasks 空 contract；所有失败路径都复用它来 fail closed。"""
 
@@ -13200,6 +13351,10 @@ def make_handler(store, bearer_token):
             if parsed.path == "/api/o7/operator-console":
                 # O7 operator console 是只读 contract proof，不走 bearer，也不读取 ROS2/硬件/生产云。
                 self._send_json(200, build_o7_operator_console_contract())
+                return
+            if parsed.path == "/api/o7/rtc-signaling/contract":
+                # RTC 合同端点只返回静态协议清单；不能读取 env token、探测网络或启动媒体链路。
+                self._send_json(200, build_o7_rtc_signaling_contract())
                 return
             if parsed.path == "/api/o7/cloud-archive/tasks":
                 # O7 archive tasks 只读取显式 env 配置的本地 fixture；query path 被刻意忽略，避免任意读文件。

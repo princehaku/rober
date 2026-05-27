@@ -238,6 +238,75 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual([view["id"] for view in body["kr_views"]], [f"O7-KR{index}" for index in range(1, 7)])
         self.assertIn("real_o7_realtime_cloud_stream", body["not_proven"])
 
+    def test_o7_rtc_signaling_contract_endpoint_is_static_readonly_and_fail_closed(self):
+        with mock.patch.dict(
+            os.environ,
+            {
+                "O7_RTC_REALTIME_TOKEN": "Bearer should-never-leak",
+                "TRASHBOT_O7_RTC_SIGNALING_URL": "https://rtc.example.test/signaling",
+            },
+        ):
+            status, body = self.client.request("GET", "/api/o7/rtc-signaling/contract", token="")
+
+        encoded = json.dumps(body, ensure_ascii=False)
+        self.assertEqual(status, 200)
+        self.assertEqual(body["schema"], "trashbot.o7.rtc_signaling_contract.v1")
+        self.assertEqual(body["source"], "software_proof")
+        self.assertEqual(body["proof_status"], "not_proven")
+        self.assertEqual(body["contract_status"], "static_fail_closed_contract")
+        self.assertFalse(body["network_probe_executed"])
+        self.assertFalse(body["webrtc_session_created"])
+        self.assertFalse(body["media_transport_connected"])
+        self.assertFalse(body["video_track_received"])
+        self.assertFalse(body["realtime_pose_stream_connected"])
+        self.assertFalse(body["real_ros2_tf_connected"])
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["sends_commands"])
+        self.assertFalse(body["reads_hardware"])
+        self.assertFalse(body["robot_control_executed"])
+        self.assertFalse(body["delivery_success"])
+        surfaces = body["protocol_surfaces"]
+        self.assertEqual(surfaces["signaling_endpoint"]["path_template"], "/api/o7/rtc/signaling/sessions")
+        self.assertTrue(surfaces["session_identity"]["idempotency_key_required"])
+        self.assertEqual(surfaces["offer_answer"]["status"], "future_not_implemented")
+        self.assertTrue(surfaces["ice_candidates"]["trickle_ice_required"])
+        self.assertFalse(surfaces["media_tracks"]["video"]["received"])
+        self.assertFalse(surfaces["media_tracks"]["audio"]["received"])
+        self.assertTrue(surfaces["pose_realtime_events"]["requires_ros2_tf_bridge"])
+        self.assertFalse(surfaces["credential_handling"]["credential_values_exposed"])
+        self.assertEqual(surfaces["credential_handling"]["credential_transport_policy"], "bearer_header_redacted")
+        self.assertIn("first_video_frame_ref", surfaces["observability_evidence_refs"]["required_refs"])
+        self.assertIn("media_timeout", surfaces["failure_timeout_semantics"]["required_states"])
+        self.assertFalse(surfaces["forbidden_actions"]["command_dispatch"])
+        self.assertFalse(surfaces["forbidden_actions"]["hardware_probe"])
+        self.assertIn("real_webrtc_media_transport", body["not_proven"])
+        self.assertIn("ros2_tf_bridge_trace", body["next_required_evidence"])
+        for forbidden in ("should-never-leak", "Authorization: Bearer should-never-leak", "/cmd_vel", "ttyUSB"):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_o7_rtc_contract_sensitive_false_keys_do_not_allow_true_values(self):
+        payload = relay_module.safe_value(
+            {
+                "reads_hardware": True,
+                "hardware_probe": True,
+                "safe_false": {
+                    "reads_hardware": False,
+                    "hardware_probe": False,
+                },
+                "auth_token_handling": {"token_values_exposed": False},
+                "token_transport": "bearer_header_redacted",
+                "token_values_exposed": False,
+            }
+        )
+
+        self.assertNotIn("reads_hardware", payload)
+        self.assertNotIn("hardware_probe", payload)
+        self.assertFalse(payload["safe_false"]["reads_hardware"])
+        self.assertFalse(payload["safe_false"]["hardware_probe"])
+        self.assertNotIn("auth_token_handling", payload)
+        self.assertNotIn("token_transport", payload)
+        self.assertNotIn("token_values_exposed", payload)
+
     def test_o7_cloud_archive_tasks_endpoint_is_public_readonly_and_fail_closed(self):
         status, body = self.client.request("GET", "/api/o7/cloud-archive/tasks", token="")
 
