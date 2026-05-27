@@ -94,6 +94,14 @@ pc-tools/workstation/
 
 O7 Operator Console 是云端契约驱动的最小运营视图，不是实时控制台。它把 O7 六个 KR 的目标界面先落到 PC 工作站中，便于 O6/O7 后续对齐 API 字段和验收缺口。
 
+2026-05-28 起，`O7 Console` 是 workstation 默认首屏，并加入固定 demo mode。页面顶部是面向运营调试的高密度 console：状态栏、O7 六区概览、轨迹/地图 demo、关键帧/标注样本、ASR/TTS stub、手控/寻路 stub 和下方完整 fail-closed 证据区。该改造不是 landing page，不提供营销 hero，也不新增真实控制按钮。
+
+- Demo API：`GET /api/o7/demo/archive`
+- Demo fixture：`pc-tools/workstation/fixtures/o7/demo_archive.json`
+- Demo 来源：`trashbot.o7.cloud_archive_fixture.v1` 本地脱敏 archive，复用 `GET /api/o7/cloud-archive/tasks` 的 adapter。
+- Demo 覆盖：非空任务列表、历史路线回放帧、关键帧 refs、数据标注样本、推理/label 摘要、ASR partial/final stub、TTS draft、manual turn stub、navigate goal stub。
+- Demo 边界：仍固定 `source=software_proof`、`proof_status=not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`robot_control_executed=false`、`real_*_connected=false`、`command_dispatch_enabled=false`、`tts_send_enabled=false`、`submit_enabled=false`。即使 demo 非空，也只证明 UI/API 能消费本地 fixture，不证明真实地图、真实电梯、真实云 archive、真实 ASR/TTS、真实手控/Nav2、真实 robot ACK 或上车完成。
+
 - 顶层 API 固定继承 `source=software_proof`、`proof_status=not_proven`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`pc_only=true`。
 - `cloud_api_status=draft_blocked_not_proven`，`robot_connection=not_connected_by_pc`，`operator_mode=observe_only`。
 - `manual_control_policy.command_dispatch_enabled=false`，`pc_direct_robot_connection=false`，`cloud_mediated_only=true`，`confirmation_required_before_future_dispatch=true`。

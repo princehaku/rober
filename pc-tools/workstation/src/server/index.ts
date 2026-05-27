@@ -6,6 +6,7 @@ import {
   buildHardwareMaterialsResponse,
   buildHealth,
   buildO7CloudArchiveTasks,
+  buildO7DemoArchive,
   buildO7CloudArchiveTasksProbe,
   buildO7LiveEndpointsManifest,
   buildO7CloudOperatorConsoleProbe,
@@ -146,6 +147,11 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/cloud-archive/tasks", async (req, res) => {
     // Cloud archive tasks 只读取用户指定的本地 archive fixture，不连接 O6 云端或真实 API。
     res.json(await buildO7CloudArchiveTasks({ archiveJson: queryString(req.query.archiveJson) }));
+  });
+
+  workstationApp.get("/api/o7/demo/archive", async (_req, res) => {
+    // Demo archive 只读取仓库内固定 fixture，让 O7 首屏可验证非空数据且不能被 query 越权。
+    res.json(await buildO7DemoArchive());
   });
 
   workstationApp.get("/api/proof-boundary", (_req, res) => {

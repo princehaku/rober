@@ -1,13 +1,192 @@
 <script setup lang="ts">
-import type { O7OperatorConsoleResponse } from "../shared/contracts";
+import { computed, onMounted, ref } from "vue";
+import { getO7DemoArchive } from "../client/workstationApi";
+import type { O7CloudArchiveTasksResponse, O7OperatorConsoleResponse } from "../shared/contracts";
 
 defineProps<{
   operatorConsole: O7OperatorConsoleResponse | null;
 }>();
+
+const demoArchive = ref<O7CloudArchiveTasksResponse | null>(null);
+const demoError = ref("");
+const demoLoading = ref(true);
+
+const demoTask = computed(() => demoArchive.value?.selected_task ?? demoArchive.value?.latest_task ?? null);
+const routeFrames = computed(() => demoArchive.value?.route_replay_inspector.sample_frames ?? []);
+const reviewItems = computed(() => demoArchive.value?.labeling_queue_inspector.sample_review_items ?? []);
+const asrSamples = computed(() => demoArchive.value?.voice_asr_tts_inspector.sample_asr_events ?? []);
+const commandSamples = computed(() => demoArchive.value?.safe_command_inspector.sample_commands ?? []);
+
+async function loadDemoArchive(): Promise<void> {
+  // demo 加载失败只影响演示数据区，真实控制和全局 proof flags 不会因此打开。
+  demoLoading.value = true;
+  demoError.value = "";
+  try {
+    demoArchive.value = await getO7DemoArchive();
+  } catch (error) {
+    // O7 首屏必须 fail-closed；异常显示为 not_proven，不能回退到前端自造数据。
+    demoError.value = error instanceof Error ? error.message : "demo_archive_unavailable_not_proven";
+  } finally {
+    demoLoading.value = false;
+  }
+}
+
+onMounted(() => {
+  // 首屏自动加载固定 demo fixture，方便 operator 直接看到非空轨迹/标注/语音/命令 stub。
+  void loadDemoArchive();
+});
 </script>
 
 <template>
   <section class="workspace">
+    <div class="o7-console-frame">
+      <div class="o7-command-bar">
+        <div>
+          <!-- 首屏标题直接面向 operator，不使用营销 hero。 -->
+          <p class="eyebrow">O7 Console · demo mode</p>
+          <h2>运营调试台</h2>
+        </div>
+        <div class="o7-status-rail" aria-label="O7 fail-closed status">
+          <span>not_proven</span>
+          <span>safe_to_control=false</span>
+          <span>robot_control_executed=false</span>
+        </div>
+      </div>
+
+      <div class="o7-overview-strip">
+        <div>
+          <!-- 六区概览用紧凑指标帮助扫读，所有数值来自只读 API 或固定 false。 -->
+          <strong>{{ demoArchive?.task_list.total_tasks ?? 0 }}</strong>
+          <span>历史任务</span>
+        </div>
+        <div>
+          <strong>{{ demoArchive?.route_replay_inspector.frame_count ?? 0 }}</strong>
+          <span>历史路线回放帧</span>
+        </div>
+        <div>
+          <strong>{{ reviewItems.length }}</strong>
+          <span>数据标注样本</span>
+        </div>
+        <div>
+          <strong>{{ asrSamples.length }}</strong>
+          <span>ASR/TTS stub</span>
+        </div>
+        <div>
+          <strong>{{ commandSamples.length }}</strong>
+          <span>手控/寻路 stub</span>
+        </div>
+        <div>
+          <strong>{{ operatorConsole?.elevator_state_snapshot.current_state ?? "not_connected" }}</strong>
+          <span>电梯状态</span>
+        </div>
+      </div>
+
+      <div v-if="demoError" class="notice" role="alert">
+        demo archive unavailable: {{ demoError }} · not_proven · safe_to_control=false
+      </div>
+
+      <div class="o7-ops-grid">
+        <article class="o7-map-board">
+          <div class="section-head compact-head">
+            <!-- 轨迹是 demo archive 的本地 fixture 摘要，不是实时地图或 ROS2 /tf。 -->
+            <h3>实时地图 / 历史路线回放</h3>
+            <span class="pill danger">{{ demoArchive?.archive_status ?? "blocked_not_proven" }}</span>
+          </div>
+          <div class="mini-map" aria-label="O7 demo trajectory map">
+            <div
+              v-for="frame in routeFrames"
+              :key="`${frame.frame_index}-${frame.evidence_ref}`"
+              class="map-point"
+              :style="{
+                left: `${Math.min(88, Math.max(8, 12 + (frame.x_m ?? 0) * 28))}%`,
+                top: `${Math.min(82, Math.max(12, 48 - (frame.y_m ?? 0) * 30))}%`,
+              }"
+              :title="`${frame.state} #${frame.frame_index}`"
+            />
+            <div class="elevator-zone">电梯状态: not_proven</div>
+            <div class="route-line" />
+          </div>
+          <dl class="kv compact-kv">
+            <dt>selected task</dt>
+            <dd>{{ demoTask?.task_id ?? "not_loaded" }} · {{ demoTask?.status ?? "not_proven" }}</dd>
+            <dt>route</dt>
+            <dd>{{ demoTask?.route_id ?? "not_loaded" }} · map={{ demoArchive?.route_replay_inspector.map_frame ?? "map" }}</dd>
+            <dt>cursor</dt>
+            <dd>
+              frame={{ demoArchive?.route_replay_inspector.cursor_initial_state.frame_index ?? "null" }}
+              · safe_to_play={{ demoArchive?.route_replay_inspector.cursor_initial_state.safe_to_play ?? false }}
+            </dd>
+          </dl>
+        </article>
+
+        <article class="o7-side-board">
+          <div class="section-head compact-head">
+            <!-- 这里展示 O7 六区，不提供发送、提交、播放或控制动作。 -->
+            <h3>O7 六区概览</h3>
+            <button class="secondary compact-button" type="button" @click="loadDemoArchive">刷新 demo</button>
+          </div>
+          <div class="o7-zone-list">
+            <span>实时地图 · {{ operatorConsole?.realtime_map_snapshot.snapshot_status ?? "blocked_not_proven" }}</span>
+            <span>电梯状态 · {{ operatorConsole?.elevator_state_snapshot.snapshot_status ?? "blocked_not_proven" }}</span>
+            <span>历史路线回放 · frames={{ demoArchive?.route_replay_inspector.frame_count ?? 0 }}</span>
+            <span>数据标注 · items={{ demoArchive?.labeling_queue_inspector.review_item_count ?? 0 }}</span>
+            <span>ASR/TTS · events={{ demoArchive?.voice_asr_tts_inspector.asr_event_count ?? 0 }}</span>
+            <span>手控/寻路 · dispatch={{ demoArchive?.safe_command_inspector.command_dispatch_enabled ?? false }}</span>
+          </div>
+          <dl class="kv compact-kv">
+            <dt>demo path</dt>
+            <dd>pc-tools/workstation/fixtures/o7/demo_archive.json</dd>
+            <dt>loading</dt>
+            <dd>{{ demoLoading }}</dd>
+            <dt>fixed false</dt>
+            <dd>
+              safe_to_control={{ demoArchive?.fixed_false_fields.safe_to_control ?? false }}
+              · robot_control_executed={{ demoArchive?.fixed_false_fields.robot_control_executed ?? false }}
+            </dd>
+          </dl>
+        </article>
+
+        <article class="o7-feed-board">
+          <h3>关键帧 / 标注 / 推理</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>frame</th>
+                <th>media</th>
+                <th>labels</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- 标注样本只读展示，submit_enabled=false 固定关闭。 -->
+              <tr v-for="item in reviewItems" :key="item.item_id">
+                <td>{{ item.frame_id }}</td>
+                <td>{{ item.media_ref }}</td>
+                <td>{{ item.current_labels.sample.map((label) => `${label.label_type}:${label.value}`).join(", ") || "draft_needed" }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="o7-feed-board">
+          <h3>ASR / TTS / 控制审计</h3>
+          <div class="o7-transcript">
+            <!-- ASR/TTS stub 只展示 transcript 和 draft，不能触发录音、播报或喇叭调度。 -->
+            <p v-for="event in asrSamples" :key="`${event.timestamp_ms}-${event.evidence_ref}`">
+              <span>{{ event.event_type }}</span>{{ event.transcript }}
+            </p>
+          </div>
+          <dl class="kv compact-kv">
+            <dt>TTS</dt>
+            <dd>{{ demoArchive?.voice_asr_tts_inspector.tts_draft.text || "not_loaded" }}</dd>
+            <dt>手控</dt>
+            <dd>{{ demoArchive?.safe_command_inspector.manual_turn_envelope.requested_direction ?? "not_loaded" }}</dd>
+            <dt>寻路</dt>
+            <dd>{{ demoArchive?.safe_command_inspector.navigate_goal_envelope.goal_source ?? "not_loaded" }}</dd>
+          </dl>
+        </article>
+      </div>
+    </div>
+
     <div class="section-head">
       <!-- 顶部状态直接来自 API，提醒 operator 当前只是契约视图。 -->
       <h2>O7 Operator Console</h2>

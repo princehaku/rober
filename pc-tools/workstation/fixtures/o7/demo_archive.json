@@ -1,0 +1,161 @@
+{
+  "schema": "trashbot.o7.cloud_archive_fixture.v1",
+  "selected_task_id": "demo-o7-task-002",
+  "tasks": [
+    {
+      "task_id": "demo-o7-task-001",
+      "robot_id": "rober-demo-01",
+      "route_id": "lobby-elevator-trash-bin",
+      "status": "archived_fixture_only",
+      "started_at_ms": 1779955200000,
+      "updated_at_ms": 1779955260000,
+      "evidence_ref": "demo-task-001.json",
+      "trajectory_frames": [
+        { "frame_index": 0, "timestamp_ms": 1779955200000, "x_m": 0.1, "y_m": 0.2, "yaw_rad": 0, "speed_mps": 0.05, "state": "queued", "evidence_ref": "demo-frame-000.jpg" },
+        { "frame_index": 1, "timestamp_ms": 1779955210000, "x_m": 0.4, "y_m": 0.3, "yaw_rad": 0.1, "speed_mps": 0.08, "state": "departed", "evidence_ref": "demo-frame-001.jpg" }
+      ],
+      "events": [
+        { "event_type": "queued", "timestamp_ms": 1779955200000, "evidence_ref": "demo-event-queued.json" },
+        { "event_type": "departed", "timestamp_ms": 1779955210000, "evidence_ref": "demo-event-departed.json" }
+      ],
+      "labels": [{ "label_type": "floor_label", "value": "F1", "status": "fixture_existing", "evidence_ref": "demo-label-f1.json" }],
+      "asr_events": [{ "event_type": "partial", "timestamp_ms": 1779955215000, "transcript": "开始巡检", "confidence": 0.62, "evidence_ref": "demo-asr-001.json" }],
+      "tts_drafts": [{ "text": "已进入只读演示模式。", "language": "zh-CN", "voice_profile": "operator-demo", "evidence_ref": "demo-tts-001.json" }],
+      "commands": [{ "command_type": "navigate_goal", "status": "draft_fixture_only", "evidence_ref": "demo-command-nav-001.json" }]
+    },
+    {
+      "task_id": "demo-o7-task-002",
+      "robot_id": "rober-demo-01",
+      "route_id": "lobby-elevator-trash-bin",
+      "status": "needs_review_fixture_only",
+      "started_at_ms": 1779955300000,
+      "updated_at_ms": 1779955385000,
+      "evidence_ref": "demo-task-002.json",
+      "map_frame": "map",
+      "trajectory_frames": [
+        { "frame_index": 10, "timestamp_ms": 1779955300000, "pose": { "x_m": 1.2, "y_m": -0.4, "yaw_rad": 1.57 }, "velocity": { "linear_mps": 0.12, "angular_radps": 0.02 }, "state": "departed", "evidence_ref": "demo-route-frame-010.jpg" },
+        { "frame_index": 11, "timestamp_ms": 1779955310000, "x_m": 1.35, "y_m": -0.38, "yaw_rad": 1.58, "speed_mps": 0.11, "state": "approach_elevator", "evidence_ref": "demo-route-frame-011.jpg" },
+        { "frame_index": 12, "timestamp_ms": 1779955320000, "x_m": 1.44, "y_m": -0.35, "yaw_rad": 1.61, "speed_mps": 0.08, "state": "door_open_wait", "evidence_ref": "demo-route-frame-012.jpg" },
+        { "frame_index": 13, "timestamp_ms": 1779955330000, "x_m": 1.52, "y_m": -0.3, "yaw_rad": 1.64, "speed_mps": 0.06, "state": "elevator_boarding_observe", "evidence_ref": "demo-route-frame-013.jpg" },
+        { "frame_index": 14, "timestamp_ms": 1779955340000, "x_m": 1.65, "y_m": -0.18, "yaw_rad": 1.7, "speed_mps": 0.05, "state": "target_floor_wait", "evidence_ref": "demo-route-frame-014.jpg" },
+        { "frame_index": 15, "timestamp_ms": 1779955350000, "x_m": 1.82, "y_m": -0.05, "yaw_rad": 1.78, "speed_mps": 0.04, "state": "operator_review", "evidence_ref": "demo-route-frame-015.jpg" }
+      ],
+      "events": [
+        { "event_type": "arrived_at_elevator", "timestamp_ms": 1779955315000, "evidence_ref": "demo-event-arrived-elevator.json" },
+        { "state": "door_open_wait", "timestamp_ms": 1779955320000, "evidence_ref": "demo-event-door-open-wait.json" },
+        { "event_type": "floor_evidence_stub", "state": "target_floor_wait", "timestamp_ms": 1779955340000, "evidence_ref": "demo-event-floor-evidence.json" }
+      ],
+      "keyframe_refs": [
+        "demo-keyframe-lobby.jpg",
+        "demo-keyframe-elevator-door.jpg",
+        "demo-keyframe-inside-elevator.jpg",
+        "demo-keyframe-target-floor.jpg",
+        "demo-keyframe-trash-bin-zone.jpg"
+      ],
+      "labels": [
+        { "label_type": "floor_label", "value": "F3", "status": "fixture_existing", "evidence_ref": "demo-label-floor-f3.json" },
+        { "label_type": "elevator_door_state", "value": "open", "status": "fixture_existing", "evidence_ref": "demo-label-door-open.json" }
+      ],
+      "review_items": [
+        { "item_id": "demo-review-001", "task_id": "demo-o7-task-002", "frame_id": "frame-012", "media_ref": "demo-route-frame-012.jpg", "evidence_ref": "demo-review-001.json", "current_labels": [{ "label_type": "elevator_door_state", "value": "open", "status": "fixture_existing", "evidence_ref": "demo-label-door-open.json" }] },
+        { "item_id": "demo-review-002", "task_id": "demo-o7-task-002", "frame_id": "frame-014", "media_ref": "demo-route-frame-014.jpg", "evidence_ref": "demo-review-002.json", "current_labels": [{ "label_type": "floor_label", "value": "F3", "status": "fixture_existing", "evidence_ref": "demo-label-floor-f3.json" }] },
+        { "item_id": "demo-review-003", "task_id": "demo-o7-task-002", "frame_id": "frame-015", "media_ref": "demo-route-frame-015.jpg", "evidence_ref": "demo-review-003.json", "current_labels": [{ "label_type": "obstacle_type", "value": "none", "status": "fixture_existing", "evidence_ref": "demo-label-obstacle-none.json" }] }
+      ],
+      "label_schema": {
+        "schema_ref": "demo-o7-label-schema.json",
+        "version": "demo-v1",
+        "required_fields": ["label_type", "value", "evidence_ref", "status", "reviewer"],
+        "allowed_fields": ["label_type", "value", "confidence", "notes", "evidence_ref"]
+      },
+      "allowed_label_types": ["elevator_door_state", "floor_label", "obstacle_type", "trash_type", "blocked_reason"],
+      "draft_labels": [
+        { "label_type": "floor_label", "value": "F3", "status": "draft_fixture", "evidence_ref": "demo-draft-floor.json" },
+        { "label_type": "obstacle_type", "value": "none", "status": "draft_fixture", "evidence_ref": "demo-draft-obstacle.json" }
+      ],
+      "dataset_export": {
+        "status": "blocked_not_available",
+        "export_ref": "demo-dataset-export.json",
+        "supported_formats": ["jsonl", "coco", "yolo"],
+        "gaps": ["real_annotation_api_not_connected", "operator_review_not_complete", "training_split_not_defined"]
+      },
+      "voice_session": {
+        "session_id": "demo-voice-session-002",
+        "evidence_ref": "demo-voice-session.json",
+        "audit_refs": ["demo-voice-audit-001.json", "demo-voice-audit-002.json"]
+      },
+      "asr_events": [
+        { "event_type": "partial", "timestamp_ms": 1779955312000, "transcript": "去三楼", "confidence": 0.61, "evidence_ref": "demo-asr-partial-001.json" },
+        { "event_type": "partial", "timestamp_ms": 1779955318000, "transcript": "去三楼电梯口", "confidence": 0.74, "evidence_ref": "demo-asr-partial-002.json" },
+        { "event_type": "final", "timestamp_ms": 1779955325000, "transcript": "请去三楼电梯口", "confidence": 0.88, "evidence_ref": "demo-asr-final-001.json" }
+      ],
+      "tts_drafts": [
+        { "text": "我会等待人工确认后再播报。", "language": "zh-CN", "voice_profile": "operator-default", "evidence_ref": "demo-tts-draft-001.json" }
+      ],
+      "speaker_ack": {
+        "ack_status": "not_proven",
+        "speaker_ack_ref": "missing_speaker_dispatch_ack",
+        "failure_event_ref": "demo-speaker-failure-event.json",
+        "failure_refs": ["demo-speaker-timeout.json", "demo-speaker-device-missing.json"]
+      },
+      "media_preflight": {
+        "status": "blocked",
+        "dependency_ref": "demo-media-preflight.json",
+        "gaps": ["audio_input_not_checked", "speaker_output_not_checked", "real_audio_input_not_proven"]
+      },
+      "command_session": {
+        "command_session_id": "demo-command-session-002",
+        "evidence_ref": "demo-command-session.json",
+        "audit_refs": ["demo-command-audit-001.json"]
+      },
+      "commands": [
+        { "command_id": "demo-cmd-001", "kind": "manual_turn", "status": "queued_fixture_only", "envelope_ref": "demo-manual-turn-envelope.json", "idempotency_key_ref": "demo-idem-manual.json", "evidence_ref": "demo-command-manual.json" },
+        { "command_id": "demo-cmd-002", "command_type": "navigate_goal", "status": "draft_fixture_only", "envelope_ref": "demo-navigate-goal-envelope.json", "idempotency_key_ref": "demo-idem-nav.json", "evidence_ref": "demo-command-nav.json" }
+      ],
+      "manual_turn_envelope": {
+        "requested_direction": "left",
+        "evidence_ref": "demo-manual-turn-envelope.json"
+      },
+      "navigate_goal_envelope": {
+        "goal_source": "fixture_map_goal_slot",
+        "map_frame": "map",
+        "x_m": 1.82,
+        "y_m": -0.05,
+        "yaw_rad": 1.78,
+        "evidence_ref": "demo-navigate-goal-envelope.json"
+      },
+      "velocity_limits": {
+        "max_linear_mps": 0.2,
+        "max_angular_radps": 0.4,
+        "source": "fixture_limit_not_hil"
+      },
+      "steering_limits": {
+        "max_steering_angle_rad": 0.35,
+        "max_turn_rate_radps": 0.45,
+        "source": "fixture_limit_not_hil"
+      },
+      "map_goal_slot": {
+        "map_frame": "map",
+        "x_m": 1.82,
+        "y_m": -0.05,
+        "yaw_rad": 1.78,
+        "evidence_ref": "demo-map-goal-slot.json"
+      },
+      "idempotency_key_requirement": {
+        "key_ref": "demo-idempotency-policy.json"
+      },
+      "confirmation_policy": {
+        "status": "fixture_policy_summary_only"
+      },
+      "command_ack": {
+        "ack_status": "blocked_not_proven",
+        "last_command_id": "demo-cmd-002",
+        "ack_ref": "missing_robot_command_ack",
+        "timeout_ms": 1500,
+        "cancel_ack_ref": "missing_cancel_command_ack",
+        "stop_ack_ref": "missing_stop_command_ack",
+        "recovery_ref": "missing_robot_recovery_event"
+      },
+      "command_evidence_gaps": ["operator_confirmation_ui_not_connected", "robot_ack_timeout_trace_missing"]
+    }
+  ]
+}

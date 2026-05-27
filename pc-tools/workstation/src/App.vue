@@ -23,8 +23,8 @@ import type {
 } from "./shared/contracts";
 
 // App 只组合全局状态和布局，不再承载各页面的展示细节。
-// activePanel 是本地导航状态，不参与证明链路。
-const activePanel = ref<WorkstationPanel>("route");
+// O7 是当前最低优先级目标，本轮默认首屏直接进入运营调试 console。
+const activePanel = ref<WorkstationPanel>("o7");
 // loading 只说明 API 请求中，不说明任何旧 gate 正在执行。
 const loading = ref(true);
 // error 展示 API 不可用原因，并继续保持主动作关闭。

@@ -75,6 +75,7 @@ const API_ENDPOINTS = {
   o7VoicePreview: "/api/o7/voice-preview",
   o7SafeCommandPreview: "/api/o7/safe-command-preview",
   o7CloudArchiveTasks: "/api/o7/cloud-archive/tasks",
+  o7DemoArchive: "/api/o7/demo/archive",
   proofBoundary: "/api/proof-boundary",
 } as const;
 
@@ -255,6 +256,11 @@ export async function getO7SafeCommandPreview(fixtureJson: string): Promise<O7Sa
 export async function getO7CloudArchiveTasks(archiveJson: string): Promise<O7CloudArchiveTasksResponse> {
   // Cloud archive task API 只读本地 fixture，不连接 O6 云归档、实时、标注、语音或命令 API。
   return loadJson<O7CloudArchiveTasksResponse>(cloudArchiveTasksUrl(archiveJson));
+}
+
+export async function getO7DemoArchive(): Promise<O7CloudArchiveTasksResponse> {
+  // Demo archive 使用固定仓库 fixture，方便首屏 smoke；真实控制字段仍由后端固定 false。
+  return loadJson<O7CloudArchiveTasksResponse>(API_ENDPOINTS.o7DemoArchive);
 }
 
 export async function loadO7FixturePreview(

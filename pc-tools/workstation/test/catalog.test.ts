@@ -6,6 +6,7 @@ import path from "node:path";
 import {
   buildO7CloudArchiveTasksProbe,
   buildO7CloudArchiveTasks,
+  buildO7DemoArchive,
   buildO7LiveEndpointsManifest,
   buildO7CloudOperatorConsoleProbe,
   buildO7RealtimeElevatorProbe,
@@ -3002,6 +3003,29 @@ describe("workstation fail-closed API contracts", () => {
     } finally {
       await server.close();
     }
+  });
+
+  it("O7 demo archive endpoint consumes bundled demo data without opening safety fields", async () => {
+    // demo archive 是 O7 首屏演示数据源，只能证明 UI/API 能消费非空 fixture。
+    const demo = await buildO7DemoArchive();
+
+    expect(demo.schema).toBe("trashbot.o7.cloud_archive_tasks.v1");
+    expect(demo.archive_status).toBe("fixture_archive_ready");
+    expect(demo.input_status.status).toBe("loaded");
+    expect(demo.input_status.archive_json).toBe("file:demo_archive.json");
+    expect(demo.task_list.total_tasks).toBeGreaterThan(0);
+    expect(demo.selected_task?.task_id).toBe("demo-o7-task-002");
+    expect(demo.route_replay_inspector.sample_frames.length).toBeGreaterThan(0);
+    expect(demo.labeling_queue_inspector.sample_review_items.length).toBeGreaterThan(0);
+    expect(demo.voice_asr_tts_inspector.sample_asr_events.length).toBeGreaterThan(0);
+    expect(demo.safe_command_inspector.sample_commands.length).toBeGreaterThan(0);
+    expect(demo.safe_to_control).toBe(false);
+    expect(demo.delivery_success).toBe(false);
+    expect(demo.primary_actions_enabled).toBe(false);
+    expect(demo.fixed_false_fields.safe_to_control).toBe(false);
+    expect(demo.fixed_false_fields.robot_control_executed).toBe(false);
+    expect(demo.safe_command_inspector.command_dispatch_enabled).toBe(false);
+    expect(demo.safe_command_inspector.robot_control_executed).toBe(false);
   });
 
   it("O7 operator console acceptance guard summarizes fail-closed snapshots", () => {

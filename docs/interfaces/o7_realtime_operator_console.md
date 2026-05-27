@@ -23,8 +23,15 @@
 - PC voice fixture preview API：`GET /api/o7/voice-preview?fixtureJson=<local-json>`
 - PC safe command fixture preview API：`GET /api/o7/safe-command-preview?fixtureJson=<local-json>`
 - PC cloud archive task fixture API：`GET /api/o7/cloud-archive/tasks?archiveJson=<local-json>`
+- PC bundled demo archive API：`GET /api/o7/demo/archive`
 - PC UI：`pc-tools/workstation` 的 `O7 Console` tab 和独立 `O7 Previews` tab
 - Board media preflight source contract：`docs/interfaces/o7_board_media_preflight.md`
+
+## PC O7 Console Demo Mode
+
+`GET /api/o7/demo/archive` 是 workstation 首屏固定 demo 数据入口。它不接受 query path，只读取 `pc-tools/workstation/fixtures/o7/demo_archive.json`，并复用 `trashbot.o7.cloud_archive_tasks.v1` adapter 输出安全摘要。UI 用该响应填充 O7 Console 顶部的运营调试台：历史路线回放帧、关键帧 refs、数据标注样本、ASR/TTS stub、manual turn stub 和 navigate goal stub。
+
+该 demo 的目的只是让 PC operator console 在无真实硬件、无真实云端、无真实 ASR/TTS 和无真实机器人 ACK 时可做视觉/交互 smoke。响应必须保持 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`robot_control_executed=false`、`command_dispatch_enabled=false`、`manual_control_enabled=false`、`navigate_goal_enabled=false`、`keyboard_control_enabled=false`、`tts_send_enabled=false`、`submit_enabled=false`、`real_cloud_archive_connected=false`、`real_realtime_api_connected=false`、`real_annotation_api_connected=false`、`real_voice_api_connected=false`、`real_command_api_connected=false`、`real_robot_ack_connected=false` 和 `real_asr_tts_runtime_connected=false`。
 
 Cloud relay archive tasks contract 现在可以由 relay runtime 上的本地 fixture 生成非空只读摘要：启动前设置 `TRASHBOT_O7_CLOUD_ARCHIVE_TASKS_JSON` 指向 `trashbot.o7.cloud_archive_fixture.v1` JSON。handler 不读取 query path；未配置、不安全或读取失败时仍返回空 `blocked_not_proven`。即使 fixture 摘要可用，也必须保持 `real_cloud_archive_connected=false`、`playback_available=false`、`submit_enabled=false`、`tts_send_enabled=false`、`command_dispatch_enabled=false`、`manual_control_enabled=false`、`navigate_goal_enabled=false`、`robot_control_executed=false`、`safe_to_control=false`、`delivery_success=false` 和 `primary_actions_enabled=false`。
 
