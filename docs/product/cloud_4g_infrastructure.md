@@ -54,6 +54,12 @@ O6 的真实产品目标是让手机通过云端 API 控制小车，小车通过
 
 本轮 `2026.05.26_07-08_cloud-command-terminal-result-mainline` 在 independent relay 上新增 robot-facing terminal result 主路径：`POST /robots/{robot_id}/commands/{command_id}/terminal-result`。写入 schema 为 `trashbot.cloud_command_terminal_result.v1`，capability 为 `cloud_command_terminal_result`，证据边界为 `software_proof_docker_cloud_command_terminal_result_gate`；query schema 升级为 `trashbot.cloud_command_result_reconciliation.v2`。写入前必须确认同一 `robot_id + command_id` 的 command 已存在，且 body 与路径匹配；不存在时返回 `terminal_result_missing`，不同结果重复写入返回 `terminal_result_conflict` 且不覆盖，完全相同结果重复写入返回幂等 `terminal_result_recorded`。file-backed 和 SQLite-backed proof store 都持久化 terminal result，随后 `GET /api/commands/{command_id}/result?robot_id=<robot_id>` 可返回 `terminal_result_recorded`、`terminal_result_type`、`task_terminal_state`、`result_code` 和 safe refs。ACK terminal 但没有 terminal result 时仍保持 `terminal_result_pending`。所有响应继续固定 `delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`real_world_delivery_proven=false`；不得暴露 Authorization、bearer token、raw state path、DB/queue URL、ROS topic、`/cmd_vel`、serial/UART、WAVE ROVER、完整 artifact、checksum 或 traceback。该能力只证明 Docker/local software terminal result 主路径，不证明公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、HIL、Nav2/fixed-route 或真实送达。
 
+本轮 `2026.05.27_46-50_okr-90-software-acceleration` 的 Task A 在 cloud-relay runtime 上新增 O6 cloud archive core 最小 API，schema 为 `trashbot.archive.v1`、`trashbot.annotation.v1` 和 `trashbot.inference.v1`。新增路由包括 `POST/GET /api/o6/archive/tasks`、`GET /api/o6/archive/tasks/{task_id}`、`POST/GET /api/o6/archive/events`、`POST/GET /api/o6/annotations`、`POST/GET /api/o6/inference`。这些路由复用 cloud-relay bearer gate，并通过 wrapper 给现有 HTTP handler 增加 `/api/o6/*` 前置分支；`trashbot.remote.v1` commands/status/ack 主路径不改。持久层默认使用 `TRASHBOT_O6_ARCHIVE_STATE` 指定的单机 JSON proof store，未指定时放在 `TRASHBOT_REMOTE_CLOUD_STATE` 同目录的 `*.o6_archive.json`。所有响应固定携带 `source=software_proof`、`proof_status=not_proven`、`evidence_boundary=software_proof_o6_cloud_archive_core`、`production_ready=false`、`production_db_connected=false` 和 `not_proven_production_db`；这只证明本地/Docker API 与数据模型 shape，不证明 production DB/queue、真实 OSS 上传、STS、CDN live traffic、真实推理 runtime、真实云、真实 4G/SIM 或 HIL。
+
+本轮 `2026.05.28_00-04_mock-okr-90-acceptance` 的 Task B 增加 Objective 5 `90%+ mock/software completion` 证据：`cloud-relay/tests/test_o5_mock_control_plane.py` 启动本地 HTTP relay，使用环境变量注入 bearer token，占位 SQLite/file proof store 验证 `trashbot.remote.v1` commands/status/ack；同时复用 network recovery drill、production store/queue artifact 和 OSS/CDN manifest artifact，证明 mock 4G 中断、mock DB/queue 与 mock OSS/CDN graceful degradation 均能 fail-closed。该证据仍保持 `real material not_proven`：真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser、production worker/cutover 和真实送达均未被本地 mock 证明。
+
+同一 sprint 的 Task C 增加 Objective 6 `90%+ mock/software completion` 证据：`cloud-relay/tests/test_archive_core.py` 现在覆盖 O6 archive task/event/annotation/inference/query，本地 HTTP bearer gate，以及机器人侧 board event publisher、offline algorithm evidence feed、cloud archive core 的 schema 兼容。O6 runtime state 优先通过 `TRASHBOT_O6_ARCHIVE_STATE` 指向 `/tmp` 或测试临时目录；没有 env 时跟随 `TRASHBOT_REMOTE_CLOUD_STATE` 同目录，最后才 fallback 到系统临时目录下的 `o6_cloud_archive_state.json`，不得在仓库根目录生成该文件。该证据仍保持 `real material not_proven`：真实安全隧道、production DB/queue、真实 OSS upload、真实推理 runtime、live O6 API、真实云和真实 4G/SIM 均未被本地 mock 证明。
+
 ## 云端基线规格
 
 目标服务端基线：
@@ -452,6 +458,19 @@ python3 -m ros2_trashbot_cloud_relay.remote_cloud_relay --preflight
 ```
 
 Artifact 必须包含 `schema=trashbot.external_evidence_intake`、`schema_version=1`、`evidence_boundary=software_proof_docker_external_evidence_intake_gate`、四类 `material_statuses`、`production_ready=false`、`overall_status=blocked`、`external_evidence_complete=false`、`redaction_status`、`not_proven` 和 checksum。Preflight 可通过环境变量或 `--external-evidence-intake-artifact` 消费该 artifact；有效时只新增 `external_evidence_intake=pass` check，并把本地证据边界推进到 `software_proof_docker_external_evidence_intake_gate`。它不得保存或输出 URL、credential-bearing endpoint、Authorization header、bearer token、OSS AK/SK、DB/queue URL、本地路径、响应体、traceback、串口、WAVE ROVER 参数、ROS topic 或 `/cmd_vel`。
+
+## O5 90% Real Material Boundary
+
+O5 达到 90% 以上不能依赖 Docker/local、SQLite、manifest、mock HTTP 或 synthetic intake。真实材料清单和判断规则见 `docs/interfaces/o1_o5_90_evidence_boundary.md`。最小材料族必须覆盖：
+
+- 公网 HTTPS/TLS：真实公网域名、TLS、DNS、公网入口、`/healthz`、`/readyz`、`/preflightz` 的脱敏探测结果。
+- 真实 4G/SIM：机器人通过蜂窝网络 outbound polling 云端的记录，含中断/恢复摘要。
+- production DB/queue：生产连接、迁移、worker、ordering、transaction、backup/recovery 的脱敏探测结果。
+- production worker/cutover：真实 worker drain/cutover 对 command/status/ack envelope 生效的证据。
+- OSS/CDN live traffic：bucket `bytegallop`、region `oss-cn-hangzhou`、prefix `rober/<robot_id>/<date>/<task_id>/` 的真实上传，以及 `https://cdn.bytegallop.com/rober/` 的真实 CDN 回源/读取。
+- 真实手机/browser：真实用户入口访问公网云端并完成 command/status/ack 只读或任务级操作证据。
+
+这些材料进入仓库前必须先脱敏。`.env`、真实密钥、Authorization header、bearer token、OSS AK/SK、签名 URL、DB/queue URL、证书私钥、cookie、root password、完整响应体和 trace 不得入仓库。缺任一材料族时，O5 仍必须保持 `not_proven` 或 `blocked_pending_real_material`，不能声明 `production_ready=true`、真实 `OSS/CDN live traffic` 或真实 `4G` 通过。
 
 ## Cloud Worker Migration Rehearsal Gate
 

@@ -2712,6 +2712,271 @@ describe("workstation fail-closed API contracts", () => {
     expect(JSON.stringify(response)).not.toContain(root);
   });
 
+  it("O7 cloud archive tasks consumes O6 archive schema without enabling real controls", async () => {
+    // O6 archive.v1 是 Task A 数据源形态；PC 只做本地只读摘要，不把它解释成生产云端接通。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o6-archive-to-o7-"));
+    const archivePath = path.join(root, "o6-archive.json");
+    await writeFile(archivePath, JSON.stringify({
+      schema: "trashbot.archive.v1",
+      tasks: [
+        {
+          robot_id: "robot-o6-01",
+          task_id: "task-o6-001",
+          created_at: "2026-05-27T00:00:00Z",
+          date: "2026-05-27",
+          status: "needs_review",
+          source: "software_proof",
+          proof_status: "not_proven",
+          evidence_ref: path.join(root, "task-o6-001.json"),
+        },
+      ],
+      events: [
+        {
+          robot_id: "robot-o6-01",
+          task_id: "task-o6-001",
+          event_id: "event-route-001",
+          event_type: "route_frame",
+          created_at: "2026-05-27T00:00:01Z",
+          source: "software_proof",
+          proof_status: "not_proven",
+          evidence_ref: path.join(root, "frame-001.json"),
+          payload: {
+            frame_index: 1,
+            timestamp_ms: 1000,
+            pose: { x_m: 1.5, y_m: 2.5, yaw_rad: 0.3 },
+            velocity: { linear_mps: 0.12 },
+            state: "route_frame",
+            evidence_ref: path.join(root, "frame-001.jpg"),
+          },
+        },
+        {
+          robot_id: "robot-o6-01",
+          task_id: "task-o6-001",
+          event_id: "event-keyframe-001",
+          event_type: "keyframe",
+          created_at: "2026-05-27T00:00:02Z",
+          source: "software_proof",
+          proof_status: "not_proven",
+          evidence_ref: path.join(root, "keyframe-001.jpg"),
+          payload: { state: "keyframe", evidence_ref: path.join(root, "keyframe-001.jpg") },
+        },
+        {
+          robot_id: "robot-o6-01",
+          task_id: "task-o6-001",
+          event_id: "event-asr-partial-001",
+          event_type: "asr_transcript",
+          created_at: "2026-05-27T00:00:03Z",
+          source: "software_proof",
+          proof_status: "not_proven",
+          evidence_ref: path.join(root, "asr-partial-001.json"),
+          payload: {
+            event_type: "partial",
+            timestamp_ms: 3000,
+            transcript: "请等待",
+            confidence: 0.52,
+            evidence_ref: path.join(root, "asr-partial-001.json"),
+          },
+        },
+        {
+          robot_id: "robot-o6-01",
+          task_id: "task-o6-001",
+          event_id: "event-asr-final-001",
+          event_type: "asr_transcript",
+          created_at: "2026-05-27T00:00:04Z",
+          source: "software_proof",
+          proof_status: "not_proven",
+          evidence_ref: path.join(root, "asr-final-001.json"),
+          payload: {
+            event_type: "final",
+            timestamp_ms: 4000,
+            transcript: "请帮我按三楼",
+            confidence: 0.86,
+            evidence_ref: path.join(root, "asr-final-001.json"),
+          },
+        },
+        {
+          robot_id: "robot-o6-01",
+          task_id: "task-o6-001",
+          event_id: "event-tts-draft-001",
+          event_type: "tts_draft",
+          created_at: "2026-05-27T00:00:05Z",
+          source: "software_proof",
+          proof_status: "not_proven",
+          evidence_ref: path.join(root, "tts-draft-001.json"),
+          payload: {
+            text: "请帮我按三楼，我会等待人工确认。",
+            voice_profile: "mock-operator-default",
+            language: "zh-CN",
+            evidence_ref: path.join(root, "tts-draft-001.json"),
+          },
+        },
+        {
+          robot_id: "robot-o6-01",
+          task_id: "task-o6-001",
+          event_id: "event-command-manual-001",
+          event_type: "safe_command_stub",
+          created_at: "2026-05-27T00:00:06Z",
+          source: "software_proof",
+          proof_status: "not_proven",
+          evidence_ref: path.join(root, "manual-command-001.json"),
+          payload: {
+            command_id: "mock-manual-turn-001",
+            command_type: "manual_turn",
+            status: "draft_fixture_only",
+            requested_direction: "left",
+            envelope_ref: path.join(root, "manual-envelope.json"),
+            idempotency_key_ref: path.join(root, "manual-idempotency.json"),
+            evidence_ref: path.join(root, "manual-command-001.json"),
+          },
+        },
+        {
+          robot_id: "robot-o6-01",
+          task_id: "task-o6-001",
+          event_id: "event-command-nav-001",
+          event_type: "safe_command_stub",
+          created_at: "2026-05-27T00:00:07Z",
+          source: "software_proof",
+          proof_status: "not_proven",
+          evidence_ref: path.join(root, "nav-command-001.json"),
+          payload: {
+            command_id: "mock-navigate-goal-001",
+            command_type: "navigate_goal",
+            status: "draft_fixture_only",
+            goal_source: "fixture_map_goal_slot",
+            map_frame: "map",
+            x_m: 1.5,
+            y_m: 2.5,
+            yaw_rad: 0.3,
+            envelope_ref: path.join(root, "nav-envelope.json"),
+            idempotency_key_ref: path.join(root, "nav-idempotency.json"),
+            evidence_ref: path.join(root, "nav-command-001.json"),
+          },
+        },
+      ],
+      annotations: [
+        {
+          annotation_id: "annotation-001",
+          robot_id: "robot-o6-01",
+          task_id: "task-o6-001",
+          item_id: "frame-001",
+          label_type: "floor_label",
+          label_value: "F3",
+          annotation_status: "draft",
+          evidence_ref: path.join(root, "annotation-001.json"),
+        },
+      ],
+      inferences: [
+        {
+          inference_id: "inference-001",
+          robot_id: "robot-o6-01",
+          task_id: "task-o6-001",
+          inference_type: "elevator_door_state",
+          inference_status: "not_proven",
+          model_ref: "cpu-fixture",
+          result: { state: "open" },
+          evidence_ref: path.join(root, "inference-001.json"),
+        },
+      ],
+    }), "utf8");
+
+    const response = await buildO7CloudArchiveTasks({ archiveJson: archivePath });
+    const payload = JSON.stringify(response);
+
+    expect(response.input_status.status).toBe("loaded");
+    expect(response.source_fixture_schema).toBe("trashbot.archive.v1");
+    expect(response.selected_task?.task_id).toBe("task-o6-001");
+    expect(response.route_replay_inspector.status).toBe("fixture_inspector_ready");
+    expect(response.route_replay_inspector.frame_count).toBe(1);
+    expect(response.route_replay_inspector.sample_frames[0]).toMatchObject({
+      frame_index: 1,
+      x_m: 1.5,
+      y_m: 2.5,
+      yaw_rad: 0.3,
+      speed_mps: 0.12,
+      state: "route_frame",
+      evidence_ref: "file:frame-001.jpg",
+    });
+    expect(response.route_replay_inspector.event_timeline.map((event) => event.event_type)).toContain("route_frame");
+    expect(response.route_replay_inspector.keyframe_refs).toContain("file:keyframe-001.jpg");
+    expect(response.labeling_queue_inspector.status).toBe("fixture_labeling_ready");
+    expect(response.labeling_queue_inspector.allowed_label_types).toEqual([
+      "elevator_door_state",
+      "floor_label",
+      "obstacle_type",
+      "inference_result",
+    ]);
+    expect(response.labeling_queue_inspector.draft_labels.sample).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label_type: "floor_label", value: "F3" }),
+      expect.objectContaining({ label_type: "elevator_door_state", value: "open" }),
+    ]));
+    expect(response.voice_asr_tts_inspector.status).toBe("fixture_voice_ready");
+    expect(response.voice_asr_tts_inspector.sample_asr_events).toEqual([
+      {
+        event_type: "partial",
+        timestamp_ms: 3000,
+        transcript: "请等待",
+        confidence: 0.52,
+        evidence_ref: "file:asr-partial-001.json",
+      },
+      {
+        event_type: "final",
+        timestamp_ms: 4000,
+        transcript: "请帮我按三楼",
+        confidence: 0.86,
+        evidence_ref: "file:asr-final-001.json",
+      },
+    ]);
+    expect(response.voice_asr_tts_inspector.tts_draft).toMatchObject({
+      text: "请帮我按三楼，我会等待人工确认。",
+      voice_profile: "mock-operator-default",
+      language: "zh-CN",
+      confirmation_required: true,
+    });
+    expect(response.voice_asr_tts_inspector.asr_stream_connected).toBe(false);
+    expect(response.voice_asr_tts_inspector.tts_send_enabled).toBe(false);
+    expect(response.voice_asr_tts_inspector.real_asr_tts_runtime_connected).toBe(false);
+    expect(response.safe_command_inspector.status).toBe("fixture_command_ready");
+    expect(response.safe_command_inspector.sample_commands).toEqual([
+      {
+        command_id: "mock-manual-turn-001",
+        command_type: "manual_turn",
+        status: "draft_fixture_only",
+        envelope_ref: "file:manual-envelope.json",
+        idempotency_key_ref: "file:manual-idempotency.json",
+        evidence_ref: "file:manual-command-001.json",
+      },
+      {
+        command_id: "mock-navigate-goal-001",
+        command_type: "navigate_goal",
+        status: "draft_fixture_only",
+        envelope_ref: "file:nav-envelope.json",
+        idempotency_key_ref: "file:nav-idempotency.json",
+        evidence_ref: "file:nav-command-001.json",
+      },
+    ]);
+    expect(response.safe_command_inspector.manual_turn_envelope).toMatchObject({
+      sends_to_robot: false,
+      requested_direction: "left",
+      evidence_ref: "file:manual-envelope.json",
+    });
+    expect(response.safe_command_inspector.navigate_goal_envelope).toMatchObject({
+      sends_to_robot: false,
+      x_m: 1.5,
+      y_m: 2.5,
+      yaw_rad: 0.3,
+      evidence_ref: "file:nav-envelope.json",
+    });
+    expect(response.safe_command_inspector.command_dispatch_enabled).toBe(false);
+    expect(response.safe_command_inspector.manual_control_enabled).toBe(false);
+    expect(response.safe_command_inspector.navigate_goal_enabled).toBe(false);
+    expect(response.safe_command_inspector.real_robot_ack_connected).toBe(false);
+    expect(response.real_cloud_archive_connected).toBe(false);
+    expect(response.fixed_false_fields.safe_to_control).toBe(false);
+    expect(response.fixed_false_fields.robot_control_executed).toBe(false);
+    expect(payload).not.toContain(root);
+    expectNoLegacyPythonGateSemantics(response);
+  });
+
   it("O7 cloud archive tasks endpoint returns read-only local fixture summary", async () => {
     // endpoint 通过 Express 路由验证 query 参数，不启动生产云端或任何控制链路。
     const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-cloud-archive-http-"));

@@ -65,6 +65,14 @@ DEFAULT_FEEDBACK_SAMPLE = {
 }
 
 ODOM_SOURCE = "ROS-side command integration until measured wheel odometry is validated"
+MOCK_COMPLETION_OBJECTIVE = "Objective 1"
+MOCK_COMPLETION_STATUS = "90%+ mock/software completion"
+REAL_MATERIAL_NOT_PROVEN = [
+    "real WAVE ROVER",
+    "real UART/HIL",
+    "real Orange Pi serial device",
+    "real IMU/battery calibration",
+]
 
 
 def _json_frame(command: dict[str, Any]) -> str:
@@ -145,6 +153,44 @@ def _build_feedback_section(feedback_sample: dict[str, Any] | str | bytes | None
             "detail": "Sample did not parse as vendor T=1001 base feedback.",
         }
     return {"raw": raw, "parsed": parsed, "status": "parsed"}
+
+
+def _build_virtual_hil_packet(
+    config: dict[str, Any],
+    startup_commands: list[dict[str, Any]],
+    cmd_vel_examples: dict[str, dict[str, Any]],
+    feedback: dict[str, Any],
+) -> dict[str, Any]:
+    """生成虚拟 HIL 包，证明软件链路但不声明真实硬件通过。"""
+    # 这个 packet 专门给 OKR mock 口径消费，字段名刻意包含 mock/not_proven，避免误升真实材料。
+    return {
+        "source": "mock_virtual_hil_packet",
+        "objective": MOCK_COMPLETION_OBJECTIVE,
+        "mock_completion": MOCK_COMPLETION_STATUS,
+        "software_proof": True,
+        "real_material_status": "not_proven",
+        "vendor_basis": list(VENDOR_SOURCES),
+        "serial_config": {
+            "serial_port": config["serial_port"],
+            "serial_baudrate": config["serial_baudrate"],
+            "device_status": "mock_only_not_opened",
+        },
+        "covered_paths": [
+            "UTF-8 JSON newline UART frame encoding",
+            "T=1 wheel command mapping",
+            "T=1001 feedback parse",
+            "/imu/data yaw publish payload",
+            "/battery voltage publish payload",
+            "bad frame tolerance",
+            "startup parameter boundary checks",
+        ],
+        "startup_uart_frames": [entry["uart_frame"] for entry in startup_commands],
+        "cmd_vel_uart_frames": {
+            name: example["uart_frame"] for name, example in cmd_vel_examples.items()
+        },
+        "feedback_sample": feedback,
+        "not_proven": list(REAL_MATERIAL_NOT_PROVEN),
+    }
 
 
 def _build_cmd_vel_examples(config: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -273,16 +319,28 @@ def build_hardware_diagnostics_proof(
         if feedback["status"] == "feedback_parse_failed":
             status = "feedback_parse_failed"
 
+    virtual_hil_packet = _build_virtual_hil_packet(
+        proof_config,
+        startup_commands,
+        cmd_vel_examples,
+        feedback,
+    )
+
     proof = {
         "source": PROOF_SOURCE,
         "status": status,
+        "objective": MOCK_COMPLETION_OBJECTIVE,
+        "mock_completion": MOCK_COMPLETION_STATUS,
+        "real_material_status": "not_proven",
         "vendor_sources": list(VENDOR_SOURCES),
         "config": proof_config,
         "config_validation": config_validation,
         "startup_commands": startup_commands,
         "cmd_vel_examples": cmd_vel_examples,
         "feedback_sample": feedback,
+        "virtual_hil_packet": virtual_hil_packet,
         "assumptions": ASSUMPTIONS,
+        "not_proven": list(REAL_MATERIAL_NOT_PROVEN),
         "risk_flags": _risk_flags(proof_config),
         "hil_recipe": _hil_recipe(proof_config),
     }

@@ -84,3 +84,17 @@ The perception proof path now has a narrower module boundary:
 - `vision_sample_manifest.py` stays ROS-free and should be used for post-run review before diagnostics surfaces a manifest reference.
 
 This refactor does not make the HSV detector production-ready. It only makes the sample/proof data easier to review, test, and replace while preserving the delivery MVP boundary: route navigation and dropoff evidence remain the primary task proof.
+
+## O6/O7 Offline Evidence Feed Boundary
+
+`ros2_trashbot_nav.algorithm_evidence_feed` can generate a local `trashbot.archive.v1` bundle for O6/O7 schema proof. The vision-related records include:
+
+- one keyframe sample for an elevator door candidate;
+- one floor-label candidate;
+- one obstacle bounding-box label sample;
+- draft `trashbot.annotation.v1` labels for `elevator_door_state`, `floor_label`, and `obstacle_type`;
+- `trashbot.inference.v1` rule-stub outputs for elevator door and floor recognition.
+
+These samples are mock/offline data only. They do not come from a real camera, real route, real elevator, real labeled dataset, or production model. Use them to verify archive/event/annotation/inference field shape and O7 labeling/replay consumption, not to claim detector accuracy or model robustness.
+
+Task C in `2026.05.28_00-04_mock-okr-90-acceptance` uses the same offline feed as Objective 6 `90%+ mock/software completion` evidence: the keyframe, floor-label, obstacle annotation, and inference-stub records are accepted by the O6 archive core alongside robot-side board events. This confirms schema compatibility only. Real camera capture, real OSS upload, production DB/queue, real inference runtime, live O6 API, detector accuracy, and model robustness remain `not_proven`.

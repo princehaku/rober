@@ -8,6 +8,8 @@ pc-tools/evidence/fixtures/
 
 旧 Python evidence gate 和 Python 测试文件已移除。Evidence Tools 页面不再扫描 `.py`，而是由 Node API 递归索引 `fixtures/**/*.json`，按 fixture 一级目录生成资产分组。
 
+兼容例外：`pc-tools/evidence/evidence_crosscheck.py` 保留为 `onboard/src/ros2_trashbot_behavior/test/test_task_record.py` 的最小 shim。它只核对 `status.route_progress`、`task_record.route_progress`、`task_record.evidence_ref` 与 `--evidence-ref` 的一致性，并可写出 `trashbot.route_task_rehearsal_artifact` software proof artifact；不执行旧 Python gate、不读取硬件、不连接 ROS2、不声明 HIL 或 delivery success。
+
 ## JSON Fixture 语义
 
 JSON fixture 是脱敏软件证明材料或测试样例。fixture 可读只表示工作站能索引并解析本地 JSON，不表示真实现场材料齐全，也不表示 HIL、手机、云端、ROS2、Nav2、WAVE ROVER 或交付成功通过。
@@ -48,4 +50,10 @@ Evidence fixture 索引由工作站测试覆盖：
 cd pc-tools/workstation && npm run test
 ```
 
-旧 Python gate 命令不再作为 `pc-tools` 验收入口。
+兼容 shim 语法检查：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile pc-tools/evidence/evidence_crosscheck.py
+```
+
+旧 Python gate 命令不再作为 `pc-tools` 产品验收入口；上述 shim 只为跨包测试兼容保留。

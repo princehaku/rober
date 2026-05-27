@@ -196,6 +196,64 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             },
         )
 
+    def test_feedback_packet_publishes_imu_yaw_and_battery_voltage(self):
+        bridge = _bridge_module()
+
+        class Header:
+            pass
+
+        class Orientation:
+            pass
+
+        class RichImu:
+            def __init__(self):
+                # 测试只验证 bridge 填写的字段，避免依赖完整 ROS2 message runtime。
+                self.header = Header()
+                self.orientation = Orientation()
+
+        class RichBatteryState:
+            def __init__(self):
+                # 模拟消息只保留运行时实际赋值的最小字段。
+                self.header = Header()
+
+        class FakeStamp:
+            def to_msg(self):
+                return "mock_stamp"
+
+        class FakeClock:
+            def now(self):
+                return FakeStamp()
+
+        class FakePublisher:
+            def __init__(self):
+                self.messages = []
+
+            def publish(self, message):
+                # 记录发布对象，证明 T=1001 parser 的输出进入 ROS topic 发布路径。
+                self.messages.append(message)
+
+        method_globals = bridge.ESP32Bridge._publish_feedback.__globals__
+        method_globals["Imu"] = RichImu
+        method_globals["BatteryState"] = RichBatteryState
+        node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+        node.get_clock = lambda: FakeClock()
+        node.imu_pub = FakePublisher()
+        node.battery_pub = FakePublisher()
+
+        node._publish_feedback({"yaw": 90.0, "voltage": 11.7})
+
+        self.assertEqual(len(node.imu_pub.messages), 1)
+        self.assertEqual(len(node.battery_pub.messages), 1)
+        imu = node.imu_pub.messages[0]
+        battery = node.battery_pub.messages[0]
+        self.assertEqual(imu.header.stamp, "mock_stamp")
+        self.assertEqual(imu.header.frame_id, "imu_link")
+        self.assertAlmostEqual(imu.orientation.z, 0.7071067811865475)
+        self.assertAlmostEqual(imu.orientation.w, 0.7071067811865476)
+        self.assertEqual(battery.header.stamp, "mock_stamp")
+        self.assertEqual(battery.voltage, 11.7)
+        self.assertTrue(battery.present)
+
     def test_feedback_parser_ignores_bad_or_unknown_lines(self):
         bridge = _bridge_module()
 

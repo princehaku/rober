@@ -64,12 +64,16 @@ class HardwareDiagnosticsProofTest(unittest.TestCase):
         proof = proof_module.build_hardware_diagnostics_proof()
 
         self.assertEqual(proof["status"], "software_proof_ready")
+        self.assertEqual(proof["objective"], "Objective 1")
+        self.assertEqual(proof["mock_completion"], "90%+ mock/software completion")
+        self.assertEqual(proof["real_material_status"], "not_proven")
         for key in (
             "vendor_sources",
             "config",
             "startup_commands",
             "cmd_vel_examples",
             "feedback_sample",
+            "virtual_hil_packet",
             "risk_flags",
             "hil_recipe",
         ):
@@ -78,6 +82,30 @@ class HardwareDiagnosticsProofTest(unittest.TestCase):
         self.assertEqual(proof["config"]["command_mode"], "speed")
         self.assertEqual(proof["feedback_sample"]["status"], "parsed")
         self.assertEqual(proof["feedback_sample"]["parsed"]["voltage"], 11.7)
+        self.assertIn("real WAVE ROVER", proof["not_proven"])
+
+    def test_virtual_hil_packet_marks_o1_mock_coverage_and_real_material_gaps(self):
+        proof_module = _proof_module()
+
+        proof = proof_module.build_hardware_diagnostics_proof()
+        packet = proof["virtual_hil_packet"]
+
+        self.assertEqual(packet["source"], "mock_virtual_hil_packet")
+        self.assertEqual(packet["objective"], "Objective 1")
+        self.assertEqual(packet["mock_completion"], "90%+ mock/software completion")
+        self.assertEqual(packet["real_material_status"], "not_proven")
+        self.assertIn("docs/vendor/VENDOR_INDEX.md", packet["vendor_basis"])
+        self.assertEqual(packet["serial_config"]["device_status"], "mock_only_not_opened")
+        self.assertIn("UTF-8 JSON newline UART frame encoding", packet["covered_paths"])
+        self.assertIn("T=1 wheel command mapping", packet["covered_paths"])
+        self.assertIn("/imu/data yaw publish payload", packet["covered_paths"])
+        self.assertIn("/battery voltage publish payload", packet["covered_paths"])
+        self.assertIn("bad frame tolerance", packet["covered_paths"])
+        self.assertEqual(packet["feedback_sample"]["status"], "parsed")
+        self.assertEqual(json.loads(packet["cmd_vel_uart_frames"]["speed_mode_forward"]), {"T": 1, "L": 0.5, "R": 0.5})
+        self.assertTrue(packet["cmd_vel_uart_frames"]["speed_mode_forward"].endswith("\n"))
+        self.assertIn("real UART/HIL", packet["not_proven"])
+        self.assertIn("real Orange Pi serial device", packet["not_proven"])
 
     def test_startup_commands_include_vendor_echo_interval_and_feedback_flow(self):
         proof_module = _proof_module()

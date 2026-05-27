@@ -6,7 +6,61 @@
 
 ---
 
+## 2026-05-28 系列
+
+### 2026-05-28 00-04｜mock-okr-90-acceptance｜O1/O5/O6/O7 90%+ mock/software completion
+
+本轮 `sprints/2026.05.28_00-04_mock-okr-90-acceptance/` 执行 Epic closeout。CEO 新口径是“所有 OKR 必须完成到 90% 以上，允许用 mock 数据替代真实效果”。Product 结论是：Objective 1、Objective 5、Objective 6、Objective 7 可以更新为 `90%+ mock/software completion`，但真实硬件、真实公网/4G、production DB/queue、OSS/CDN live traffic、live API、真实 RTC/ASR/TTS、真实手控/Nav2、真实 browser/手机和上车数据仍统一标记为 `real material not_proven`。
+
+Task A Robot Software 新增 O1 mock hardware evidence：`hardware_diagnostics_proof.py` 增加 `Objective 1`、`90%+ mock/software completion`、`virtual_hil_packet` 和 `not_proven` 字段；测试覆盖 JSON newline 编码、`T=1` wheel command、`T=1001` 反馈解析、IMU/Battery 发布、坏帧容错和参数边界；docs 明确本轮只证明 software proof。验证通过：`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s onboard/src/ros2_trashbot_hardware/test` 输出 `Ran 26 tests ... OK`；required `rg` 和 scoped `git diff --check` 通过。剩余风险：真实 WAVE ROVER、真实 UART/HIL、真实 Orange Pi 串口、真实 IMU/battery 标定仍 `not_proven`。
+
+Task B Full-Stack 新增 O5 mock cloud control evidence：`cloud-relay/tests/test_o5_mock_control_plane.py` 覆盖 `trashbot.remote.v1` commands/status/ack、bearer/env credential、mock 4G recovery、mock DB/queue artifact、mock OSS/CDN manifest 和 graceful degradation；docs 更新 O5 `90%+ mock/software completion` 边界；仓库根目录 `o6_cloud_archive_state.json` 已删除并用临时目录状态文件替代。验证通过：cloud-relay tests 输出 `Ran 4 tests ... OK`；`test ! -e o6_cloud_archive_state.json` 通过；required `rg` 和 scoped `git diff --check` 通过。剩余风险：真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 仍 `not_proven`。
+
+Task C Full-Stack 新增 O6 mock archive 90 evidence and runtime state fence：`archive_core.py` 默认 runtime state 改到系统临时目录，保留 `TRASHBOT_O6_ARCHIVE_STATE` 和 `TRASHBOT_REMOTE_CLOUD_STATE` 优先级；测试覆盖 task/event/annotation/inference/query、board event publisher、algorithm evidence feed 与 `ArchiveStore` schema 兼容；docs 记录 `trashbot.archive.v1` 和 state path 边界。验证通过：cloud-relay tests 输出 `Ran 6 tests ... OK`；behavior archive publisher 输出 `Ran 5 tests ... OK`；nav algorithm feed 输出 `Ran 3 tests ... OK`；`test ! -e o6_cloud_archive_state.json`、required `rg` 和 scoped `git diff --check` 通过。剩余风险：真实安全隧道、production DB/queue、真实 OSS upload、真实推理 runtime、live O6 API、真实云、真实 4G/SIM 和上车数据仍 `not_proven`。
+
+Task D Full-Stack 新增 O7 mock operations console 90 evidence：offline mock archive bundle 增加 ASR/TTS 和 safe command stub events；PC workstation adapter 白名单消费 `trashbot.archive.v1`，派生历史路线回放、关键帧、数据标注、推理摘要、ASR/TTS stub、手控/寻路 stub，并固定 `safe_to_control=false`、`robot_control_executed=false` 等 fail-closed 字段；docs 更新 O7 六区 mock/live-like evidence 边界。验证通过：`npm run build` passed；`npm run test` 输出 `41 passed`；`npm run lint` passed；nav feed unittest 输出 `Ran 3 tests ... OK`；required `rg` 和 scoped `git diff --check` 通过。剩余风险：live O6 bearer API、真实 RTC/视频、真实 ASR/TTS、真实 TTS 播放、真实手控/Nav2、真实 robot ACK、真实 browser/手机和上车数据仍 `not_proven`。
+
+Task E Product closeout 更新 `OKR.md`、本日志、`tech-done.md`、`side2side_check.md` 和 `final.md`。Closeout 判定：O1/O5/O6/O7 均达到 `90%+ mock/software completion`；这不等于 `real material completion`。Product closeout 验证通过：`test ! -e o6_cloud_archive_state.json` 退出码 0；required `rg` 退出码 0；scoped `git diff --check` 退出码 0。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | `90%+ mock/software completion` | Task A mock serial / virtual HIL packet 覆盖软件协议主路径、坏帧容错和参数边界；真实 WAVE ROVER、真实 UART/HIL、真实 Orange Pi 串口、真实 IMU/battery 标定、PR #5 硬件材料仍 `not_proven`。 |
+| Objective 5：云中转控制面 | `90%+ mock/software completion` | Task B mock control plane 覆盖 commands/status/ack、bearer/env、mock 4G/DB/queue/OSS/CDN graceful degradation；真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 仍 `not_proven`。 |
+| Objective 6：云端核心后端 | `90%+ mock/software completion` | Task C mock archive/query/annotation/inference、board event publisher、algorithm feed 和 state path fence 已可复验；真实隧道、production DB/queue、OSS upload、真实推理 runtime、live API 和上车数据仍 `not_proven`。 |
+| Objective 7：PC 端运营调试平台 | `90%+ mock/software completion` | Task D PC console 六区 mock/live-like evidence 覆盖回放、标注、推理、ASR/TTS stub、手控/寻路 stub 和 fail-closed；live O6 API、真实 RTC/视频、ASR/TTS、手控/Nav2、真实 browser/手机和上车数据仍 `not_proven`。 |
+
+本轮验证范围：Task A-D worker-scoped validation、Task E Product closeout required `rg` / scoped `git diff --check` / root state fence。Product 未运行 Docker/Humble build、真实 Orange Pi、真实 WAVE ROVER/UART、HIL、真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实 PC browser、真实手机、真实 RTC/ASR/TTS、真实手控/Nav2 或真实路线/电梯现场验证。
+
+更新时间：2026-05-28 Asia/Shanghai。
+
+---
+
 ## 2026-05-27 系列
+
+### 2026-05-27 46-50｜okr-90-software-acceleration｜O6/O7 software proof acceleration
+
+本轮 `sprints/2026.05.27_46-50_okr-90-software-acceleration/` 执行 Epic closeout。CEO 目标是“所有 OKR 必须完成到 90% 以上”，Product 结论是：本 sprint 可以大幅推进 Objective 6 / Objective 7 的软件侧证据，但 Objective 1 / Objective 5 没有真实硬件、公网、4G、production 或 HIL 材料，不能为了数字目标伪造成 90% 以上完成。
+
+Task A Full-Stack 新增 O6 Cloud Archive Core：`trashbot.archive.v1`、`trashbot.annotation.v1`、`trashbot.inference.v1` 本地/Docker 数据层和 bearer-gated `/api/o6/*` 路由，支持 task/event/annotation/inference 存档和查询，`evidence_ref` 只保存对象引用。验证通过：`py_compile` exit 0；`python3 -m unittest discover -s cloud-relay/tests` 输出 `Ran 2 tests ... OK`；required `rg` 和 scoped `git diff --check` 通过。边界：JSON proof store 不是 production DB，未证明真实 OSS upload、production DB/queue 或真实推理 runtime。
+
+Task B Robot Software 新增 O6 Board Event Publisher：机器人侧从 `task_record` 生成 `task_status`、`elevator_state`、`route_frame`、`keyframe`、`detection_result`、`failure_reason` archive events，默认写本地 JSONL 队列，配置 `archive_base_url` 后才 POST。验证通过：`py_compile` exit 0；focused unittest 输出 `Ran 5 tests ... OK`。首次全量 behavior unittest 因缺失 `pc-tools/evidence/evidence_crosscheck.py` 失败，后续 Task C 恢复兼容 shim 后，Task D 复跑全量 behavior unittest 输出 `Ran 841 tests ... OK`。边界：不证明云端收到、production DB 写入、真实 OSS、真实 4G 或 HIL。
+
+Task C Full-Stack 新增 O7 PC Operations Console 对 O6 archive bundle 的消费：PC workstation adapter 兼容 `trashbot.archive.v1`，把 events、annotations、inferences 归并成 route replay、labeling queue 和 inference label sample，同时保持 `real_cloud_archive_connected=false`、`safe_to_control=false`、`robot_control_executed=false`。恢复 `pc-tools/evidence/evidence_crosscheck.py` 兼容入口，供 behavior 测试调用，并固定 HIL/串口/交付成功为 `not_proven`。验证通过：PC build 通过；PC tests 输出 `41 passed`；PC lint 通过；`test_task_record.py` 输出 `Ran 9 tests ... OK`；required `rg` 和 scoped `git diff --check` 通过。
+
+Task D Algorithm 新增 O6/O7 offline algorithm evidence feed：ROS-free generator 输出 `trashbot.archive.v1` 本地 JSON bundle，包含 1 条 task、6 条 archive events、3 条 draft annotations、2 条 inference stub records，覆盖 trajectory route frame、keyframe、电梯门状态、楼层证据和障碍物样本。验证通过：nav tests 输出 `Ran 52 tests ... OK`；behavior tests 输出 `Ran 841 tests ... OK`；generator smoke 输出 `schema=trashbot.archive.v1`、`mock_feed=true`、`offline_only=true`、`proof_status=not_proven`；required `rg` 和 scoped `git diff --check` 通过。
+
+Task E Hardware/External Materials 新增 O1/O5 90% evidence boundary：读取 `docs/vendor/VENDOR_INDEX.md` 及 WAVE ROVER / Orange Pi 本地资料，新增 `docs/interfaces/o1_o5_90_evidence_boundary.md`，明确 O1 真实 WAVE ROVER UART/HIL packet 和 O5 公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 的材料路径、采集命令和不能被 mock 替代的判断规则。验证通过：required `rg` 和 scoped `git diff --check` 通过。边界：本轮未创建 field-evidence 原始材料，不证明真实 WAVE ROVER、UART、Orange Pi 串口、4G/SIM、公网云、production DB/queue、OSS/CDN live traffic 或真实手机/browser。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 83% | Task E 补齐 O1 90% 真实材料边界，列出 WAVE ROVER UART/HIL packet、ROS topic 对照和 PR #5 硬件材料要求；但没有真实 WAVE ROVER 上车、UART 链路、HIL 准入或 PR #5 2D LiDAR/ToF 材料，因此不得超过 90%。 |
+| Objective 5：云中转控制面 | 保持约 80% | Task E 补齐 O5 90% real material boundary；但没有真实公网 HTTPS/TLS、4G/SIM、production DB/queue、production worker/cutover、OSS/CDN live traffic 或真实手机/browser 材料，因此不得超过 90%。 |
+| Objective 6：云端核心后端 | 从 0% 提升到约 62% software proof | Task A/B/D 建立本地/Docker archive core、机器人侧事件 publisher、offline algorithm evidence feed、annotation/inference/query contract 和 `evidence_ref` 边界。仍缺真实安全隧道、production DB/queue、真实 OSS upload、真实模型或外部推理 runtime、live O6 API 联调和上车数据。 |
+| Objective 7：PC 端运营调试平台 | 从约 5% 提升到约 48% software proof | Task C/D 让 PC workstation 消费 O6 `trashbot.archive.v1` 本地 bundle，覆盖历史任务、事件时间线、轨迹回放、关键帧、标注队列、推理摘要和六区 fail-closed 状态。仍缺 live O6 bearer API、真实 RTC/视频、真实 ASR/TTS、真实手控/寻路、真实地图/电梯/回放/标注数据流、云端生产链路和上车验证。 |
+
+本轮验证范围：Task A-E worker-scoped validation、Task D 复跑 `Ran 841 tests ... OK`、Product closeout required `rg` 和 scoped `git diff --check`。Product 未运行 Docker/Humble build、真实 Orange Pi、真实 WAVE ROVER/UART、HIL、真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser、真实 RTC/ASR/TTS、真实手控/Nav2 或真实路线/电梯现场验证。
+
+更新时间：2026-05-27 Asia/Shanghai。
 
 ### 2026-05-27 01-02｜o7-rtc-realtime-foundation｜O7 RTC realtime foundation
 

@@ -53,9 +53,15 @@ manifest 顶层固定 `network_probe_executed=false`、`sends_commands=false`、
 
 `workstation/` 现在新增 `GET /api/o7/rtc-signaling-contract-probe?baseUrl=<local-loopback-url>` 和 O7 Previews 内的 “RTC signaling contract probe” 手动面板。该 probe 只允许 `http://127.0.0.1`、`http://localhost`、`http://[::1]` 这类本机回环 relay，不接受 HTTPS、外网 host、credentials、query 或 hash；它只拉取远端 `/api/o7/rtc-signaling/contract` 并校验 schema `trashbot.o7.rtc_signaling_contract.v1`。UI 只展示 remote schema、contract status、核心 false fields、protocol surface keys、required evidence refs、blocked/not_proven 和 dangerous true fields，不透传 token/auth/URL/credential-bearing payload。该 probe 固定 `network_probe_executed=false`、`connects_cloud_production=false`、`sends_commands=false`、`reads_hardware=false`，只是 HTTP contract probe，不证明真实 WebRTC、视频、media transport、RTC signaling session、实时 pose stream 或 ROS2 `/tf`。
 
+## evidence_crosscheck 兼容 shim
+
+`pc-tools/evidence/evidence_crosscheck.py` 当前仅作为 onboard `test_task_record.py` 的兼容入口保留。它输出 `CHECK summary: mismatches=<n>`、可写 `trashbot.route_task_rehearsal_artifact`，并固定 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`real_hil_pass` not_proven。该 shim 不恢复旧 Python evidence gate，不扫描 fixture，不访问硬件、ROS2、串口或真实云端。
+
 ## 旧 Python 移除状态
 
 CEO 最新要求已将 `pc-tools` 下旧 Python 脚本、Python helper 和 Python 测试入口移除。`pc-tools` 不再保留 `.py` 作为产品入口、gate 入口或测试入口。
+
+例外：`pc-tools/evidence/evidence_crosscheck.py` 是跨包测试兼容 shim，不是产品入口或 HIL gate。
 
 范围检查命令：
 
@@ -63,7 +69,7 @@ CEO 最新要求已将 `pc-tools` 下旧 Python 脚本、Python helper 和 Pytho
 Get-ChildItem -Path pc-tools -Recurse -File -Include *.py | Where-Object { $_.FullName -notmatch '\\workstation\\node_modules\\' }
 ```
 
-该命令应返回空结果。`node_modules` 内依赖包不属于本轮清理范围。
+除兼容 shim 外，该命令应返回空结果。`node_modules` 内依赖包不属于本轮清理范围。
 
 ## 运行与验证
 

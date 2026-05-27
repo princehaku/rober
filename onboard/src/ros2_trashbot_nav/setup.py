@@ -32,6 +32,7 @@ setup(
             'keyframe_camera_sim = ros2_trashbot_nav.keyframe_camera_sim:main',
             'route_debug_web = ros2_trashbot_nav.route_debug_web:main',
             'visual_gate_proof = ros2_trashbot_nav.visual_gate_proof:main',
+            'algorithm_evidence_feed = ros2_trashbot_nav.algorithm_evidence_feed:main',
         ],
     },
 )

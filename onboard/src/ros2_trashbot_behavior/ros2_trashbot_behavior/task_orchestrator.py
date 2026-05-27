@@ -17,6 +17,7 @@ from ros2_trashbot_interfaces.srv import RecordWaypoint
 
 from ros2_trashbot_behavior.delivery_navigation import find_waypoint_pose, load_waypoint_file
 from ros2_trashbot_behavior.delivery_state_machine import DeliveryStateMachine
+from ros2_trashbot_behavior.archive_event_publisher import publish_task_record_archive_events
 from ros2_trashbot_behavior.delivery_contracts import (
     FIXED_ROUTE_PROGRESS_FIELDS,
     NavigationResult,
@@ -68,6 +69,11 @@ class TaskOrchestrator(Node):
         self.declare_parameter("elevator_assist_target_floor", "1")
         self.declare_parameter("elevator_assist_dry_run_failure", "")
         self.declare_parameter("elevator_assist_evidence_file", "")
+        self.declare_parameter("o6_archive_events_enabled", True)
+        self.declare_parameter("o6_archive_robot_id", "trashbot-dev")
+        self.declare_parameter("o6_archive_queue_file", "")
+        self.declare_parameter("o6_archive_base_url", "")
+        self.declare_parameter("o6_archive_bearer_token_env", "TRASHBOT_O6_ARCHIVE_TOKEN")
         self.task_record_dir = os.path.expanduser(self.get_parameter("task_record_dir").value)
         self.delivery_target = str(self.get_parameter("delivery_target").value)
         self.delivery_mode = str(self.get_parameter("delivery_mode").value).lower()
@@ -92,6 +98,15 @@ class TaskOrchestrator(Node):
         self.elevator_assist_evidence_file = os.path.expanduser(
             str(self.get_parameter("elevator_assist_evidence_file").value).strip()
         )
+        self.o6_archive_events_enabled = bool(self.get_parameter("o6_archive_events_enabled").value)
+        self.o6_archive_robot_id = str(self.get_parameter("o6_archive_robot_id").value).strip()
+        self.o6_archive_queue_file = os.path.expanduser(
+            str(self.get_parameter("o6_archive_queue_file").value).strip()
+        )
+        self.o6_archive_base_url = str(self.get_parameter("o6_archive_base_url").value).strip()
+        self.o6_archive_bearer_token_env = str(
+            self.get_parameter("o6_archive_bearer_token_env").value
+        ).strip()
         if self.delivery_dry_run:
             self.delivery_mode = "dry_run"
         self.navigator = None
@@ -615,7 +630,7 @@ class TaskOrchestrator(Node):
         )
         # write_task_record 会基于这些终态字段生成 terminal completion rehearsal 摘要。
         # 这里仍固定传 software_proof 上下文，避免 dry-run/dropoff timeout/cancel 被误读成真实完成。
-        return write_task_record(
+        record_path = write_task_record(
             self.task_record_dir,
             task_id,
             machine,
@@ -640,6 +655,34 @@ class TaskOrchestrator(Node):
             failure_code=failure_code,
             human_intervention_required=human_intervention_required,
         )
+        self._publish_o6_archive_events(record_path)
+        return record_path
+
+    def _publish_o6_archive_events(self, record_path):
+        if not getattr(self, "o6_archive_events_enabled", True):
+            return None
+        queue_file = getattr(self, "o6_archive_queue_file", "")
+        if not queue_file:
+            queue_file = os.path.join(self.task_record_dir, "o6_archive_events.jsonl")
+        token_env = getattr(self, "o6_archive_bearer_token_env", "TRASHBOT_O6_ARCHIVE_TOKEN")
+        try:
+            result = publish_task_record_archive_events(
+                record_path,
+                robot_id=getattr(self, "o6_archive_robot_id", "trashbot-dev") or "trashbot-dev",
+                queue_path=queue_file,
+                archive_base_url=getattr(self, "o6_archive_base_url", ""),
+                bearer_token=os.environ.get(token_env, "") if token_env else "",
+            )
+            self.get_logger().info(
+                "O6 archive events prepared: "
+                f"{result['event_count']} event(s), queued={result['queued_count']}, "
+                f"sent={result['sent_count']}, queue={result['queue_path']}"
+            )
+            return result
+        except Exception as exc:
+            # archive 上报是旁路证据链，失败时只记录原因，不能覆盖任务本身的 action result。
+            self.get_logger().warn(f"O6 archive event publish skipped: {exc}")
+            return None
 
     def _cancel_collection(
         self,

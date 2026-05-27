@@ -24,6 +24,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from ros2_trashbot_cloud_relay.archive_core import install_o6_archive_routes
+import ros2_trashbot_behavior.remote_cloud_relay as _behavior_relay
+
 # 复用原模块的全部公共符号，测试和后续工具仍可按需从这个入口导入 helper。
 # noqa 必须保留，因为 wrapper 的职责就是重新导出，而不是在这里重复实现协议。
 from ros2_trashbot_behavior.remote_cloud_relay import *  # noqa: F401,F403
@@ -704,9 +707,11 @@ build_o7_operator_console_contract = _behavior_build_o7_operator_console_contrac
 
 
 def main(argv=None):
-    """运行原 relay main，保持 ACK、phone-safe redaction 和 preflight 语义一致。"""
+    """运行原 relay main，并在 HTTP runtime 上安装 O6 归档路由。"""
 
-    # cloud-relay 只改变部署入口，不改变 robot bridge 已经依赖的参数和返回码。
+    # O6 路由通过 monkey patch 加在 handler 外层，remote.v1 的 store/ACK 代码仍是唯一来源。
+    # 这样新增 archive/annotation/inference API 不会破坏 commands/status/ack contract。
+    install_o6_archive_routes(_behavior_relay)
     return _behavior_main(argv)
 
 

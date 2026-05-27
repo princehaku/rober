@@ -23,6 +23,29 @@
   - `run_20260511T093000Z_ttyUSB0_hil_pass_speed0p050_dur0p30` 因 `/dev/ttyUSB0` 不存在未能完成 `T=143/142/131` 与 `T=1001` 采样
   - `run_20260511T063559Z_-dev-ttyUSB0_hil_pass_speed0p050_dur0p30` required command set executed; `--move-test` blocked at serial open and未产出 run packet 文件
 
+## Objective 1 Mock 90 Evidence
+
+本轮 sprint `sprints/2026.05.28_00-04_mock-okr-90-acceptance` 的 Task A 只声明 `Objective 1` 达到 `90%+ mock/software completion`。证据来自 `ros2_trashbot_hardware.hardware_diagnostics_proof` 和 `onboard/src/ros2_trashbot_hardware/test` 的离线测试，状态为 `source=software_proof` 与 `source=mock_virtual_hil_packet`。
+
+已覆盖的软件证据：
+
+- UTF-8 JSON newline 编码：`encode_json_command()` 输出单行 JSON 并以 `\n` 结束。
+- `T=1` wheel command：默认 `command_mode=speed` 将 `/cmd_vel` 转为 `{"T":1,"L":...,"R":...}`，并对轮速做 `[-1,1]` 边界夹紧。
+- 反馈解析：`parse_feedback_line()` 只接受 `T=1001` 且字段齐全、数值有限的 `L/R/r/p/y/v`。
+- IMU/Battery 发布：fake ROS publisher 测试验证 `T=1001.y` 转 yaw 四元数发布到 `/imu/data`，`T=1001.v` 发布到 `/battery.voltage`。
+- 坏帧容错：非 JSON、未知 `T`、缺字段、非数值、`NaN/Infinity` 均被丢弃，不发布为硬件状态。
+- 参数边界：`command_mode`、`track_width_m`、`max_wheel_speed_mps`、`feedback_interval_ms`、`odom_publish_hz` 均有启动前校验。
+
+仍为 `not_proven`：
+
+- 真实 WAVE ROVER 已连接。
+- 真实 UART/HIL 已通过。
+- 真实 Orange Pi 串口路径、权限和波特率已确认。
+- 真实轮向、速度单位、反馈频率、IMU/battery 标定已通过。
+- `T=13` 真实 ROS 模式可作为默认控制路径。
+
+因此，本节只能支撑 `90%+ mock/software completion`，不能替代 `source=hil_pass`。真实硬件集成前仍必须重新查阅 `docs/vendor/VENDOR_INDEX.md` 及其指向的 vendor 文件。
+
 ## UART Framing
 
 官方 WAVE ROVER ESP32 固件使用一行 JSON（UTF-8）并以 `\n` 结束。

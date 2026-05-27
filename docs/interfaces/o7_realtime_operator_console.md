@@ -247,6 +247,8 @@ cloud relay runtime 也公开同路径不带 `archiveJson` 的只读 contract。
 
 `voice_asr_tts_inspector.sample_asr_events[]` 每条只保留 `event_type`、`timestamp_ms`、脱敏 `transcript`、`confidence` 和安全 `evidence_ref`。`latest_partial`/`latest_final` 从完整 ASR 事件列表派生，但不回传完整原始事件流。`tts_draft` 兼容 `tts_drafts[]` 和 `tts_draft` 单对象，文本只作为脱敏摘要保留，`confirmation_required=true` 且不会发送。`speaker_dispatch.failure_refs` 最多 5 条，`sends_to_robot=false`、`speaker_dispatch_enabled=false` 固定不变。`media_preflight_dependency` 必须保留 `trashbot.o7_board_media_preflight.v1` 依赖缺口。
 
+当输入是 O6 `trashbot.archive.v1` bundle 时，PC adapter 只做白名单派生：`route_frame` event 进入轨迹，`keyframe` event 进入 keyframe refs，`annotations` / `inferences` 进入标注/推理摘要，`asr_transcript` / `tts_draft` event 进入 ASR/TTS stub，`safe_command_stub` event 进入手控/寻路 stub。该派生只支持 Objective 7 `90%+ mock/software completion` 证据，不连接 O6 live bearer API，不发送 TTS，不提交标注，不执行真实手控/Nav2，`safe_to_control=false`、`tts_send_enabled=false`、`command_dispatch_enabled=false`、`robot_control_executed=false` 必须保持。
+
 Adapter 必须拒绝并返回 `archive_status=blocked_not_proven`：
 
 - query 未提供、文件缺失、读取失败、坏 JSON、顶层不是 object

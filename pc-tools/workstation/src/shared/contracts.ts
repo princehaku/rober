@@ -853,7 +853,7 @@ export interface O7CloudArchiveTasksResponse extends ProofFlags {
       | "real_api_claim";
     failure_reason: string;
   };
-  source_fixture_schema: "trashbot.o7.cloud_archive_fixture.v1" | "not_loaded";
+  source_fixture_schema: "trashbot.o7.cloud_archive_fixture.v1" | "trashbot.archive.v1" | "not_loaded";
   real_cloud_archive_connected: false;
   real_realtime_api_connected: false;
   real_annotation_api_connected: false;

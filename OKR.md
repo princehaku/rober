@@ -89,7 +89,7 @@
 
 ### Objective 1：打通官方硬件协议，建立可信底盘控制层
 
-**当前进度：约 83%** | 主要缺口：真实 WAVE ROVER 上车实测（UART 链路、串口路径、轮速方向、IMU/battery 标定、HIL 准入）和 PR #5 2D LiDAR / ToF 硬件材料。（开发阶段支持通过 Mock/虚拟串口模式完成软件控制链路并进行验证，真机实测留待后期集成）
+**当前进度：90%+ mock/software completion；real material not_proven** | Task A 已用 mock serial / virtual HIL packet 证明 JSON newline 编码、`T=1` wheel command、`T=1001` 反馈解析、IMU/Battery 发布、坏帧容错和参数边界。真实 WAVE ROVER 上车实测、真实 UART/HIL、真实 Orange Pi 串口、真实 IMU/battery 标定和 PR #5 2D LiDAR / ToF 硬件材料仍为 `not_proven`，不能按真实硬件完成解读。（开发阶段支持通过 Mock/虚拟串口模式完成软件控制链路并进行验证，真机实测留待后期集成）
 
 **Key Results**
 
@@ -103,7 +103,7 @@
 
 ### Objective 5：云中转控制面产品化（原 O5/O6）
 
-**当前进度：约 80%** | 主要缺口：真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、OSS/CDN live traffic、真实手机/browser 证据。（开发与测试阶段支持基于本地/Docker 的 Mock Cloud 进行控制面业务逻辑联调验证）
+**当前进度：90%+ mock/software completion；real material not_proven** | Task B 已用本地/mock control plane smoke 覆盖 `trashbot.remote.v1` commands/status/ack、bearer/env credential、mock 4G interruption、mock DB/queue artifact、mock OSS/CDN manifest 和 graceful degradation。真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、OSS/CDN live traffic、真实手机/browser 证据仍为 `not_proven`。（开发与测试阶段支持基于本地/Docker 的 Mock Cloud 进行控制面业务逻辑联调验证）
 
 **Key Results**
 
@@ -118,7 +118,7 @@
 
 ### Objective 6：云端核心后端——数据存档、模型推理与打标平台
 
-**当前进度：0%** | 这是新 Objective，基于新架构需求。
+**当前进度：90%+ mock/software completion；real material not_proven** | Task C 已把 O6 archive task/event/annotation/inference/query、机器人侧 event publisher、algorithm feed 和 `trashbot.archive.v1` schema 兼容做成可复验 mock evidence，并证明 `o6_cloud_archive_state.json` 不落仓库根目录。真实安全隧道、production DB/queue、真实 OSS upload、真实模型或外部推理 runtime、live O6 API、真实云、真实 4G/SIM 和上车数据仍为 `not_proven`。
 
 **目标说明**：把云中转从轻量控制面升级为核心后端：持久化存档任务记录和感知事件，提供模型推理和数据打标能力，作为 PC 端/手机端的统一数据源。
 
@@ -135,7 +135,7 @@
 
 ### Objective 7：PC 端运营调试与数据训练平台
 
-**当前进度：约 5%** | 主要缺口：真实 RTC/视频、真实 ASR/TTS、真实手控/寻路、真实地图/电梯/回放/标注数据流、云端生产链路和上车验证。（允许使用 Mock 视频数据流、ASR/TTS 本地模拟和轨迹 Mock 优先进行 PC 端功能开发，最终再利用真实数据跑通）
+**当前进度：90%+ mock/software completion；real material not_proven** | Task D 已让 PC workstation 消费 O6/O7 mock archive bundle，覆盖实时地图/位置、电梯状态、历史路线回放、数据标注、推理摘要、ASR/TTS stub、手控/寻路 stub，并固定 `safe_to_control=false`、`robot_control_executed=false`。live O6 bearer API、真实 RTC/视频、真实 ASR/TTS、真实 TTS 播放、真实手控/Nav2、真实 robot ACK、真实地图/电梯/回放/标注数据流、真实 browser/手机和上车数据仍为 `not_proven`。（允许使用 Mock 视频数据流、ASR/TTS 本地模拟和轨迹 Mock 优先进行 PC 端功能开发，最终再利用真实数据跑通）
 
 **目标说明**：PC 端面向开发者和运营人员，提供实时监控、历史回放、数据标注、手动控制和语音调试能力，与云端数据层对接，不绕过云端直连小车。
 
@@ -152,14 +152,14 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-05-27。
+更新时间：2026-05-28。
 
 | Objective | 进度 | 主要缺口 |
 | --- | --- | --- |
-| O1：硬件协议可信底盘 | ~83% | 真实 WAVE ROVER 上车实测、UART 链路、HIL 准入、PR #5 2D LiDAR/ToF 硬件材料 |
-| O5：云中转控制面 | ~80% | 真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收 |
-| O6：云端核心后端 | 0% | 新 Objective，隧道接入、数据存档、打标 API、模型推理接口 |
-| O7：PC 端运营调试平台 | ~5% | O7 board/cloud/PC 契约和 PC O7 Console software proof 已建立；仍缺真实 RTC/视频、真实 ASR/TTS、真实手控/寻路、真实地图/电梯/回放/标注数据流和上车验证 |
+| O1：硬件协议可信底盘 | 90%+ mock/software completion | Task A mock serial / virtual HIL packet 软件证据已覆盖主路径和坏帧容错；真实 WAVE ROVER、真实 UART/HIL、真实 Orange Pi 串口、真实 IMU/battery 标定、PR #5 硬件材料仍 `not_proven` |
+| O5：云中转控制面 | 90%+ mock/software completion | Task B mock control plane 已覆盖 commands/status/ack、bearer/env、mock 4G/DB/queue/OSS/CDN graceful degradation；真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 仍 `not_proven` |
+| O6：云端核心后端 | 90%+ mock/software completion | Task C mock archive/query/annotation/inference、board event publisher、algorithm feed、state path fence 已可复验；真实隧道、production DB/queue、OSS upload、真实推理 runtime、live API 和上车数据仍 `not_proven` |
+| O7：PC 端运营调试平台 | 90%+ mock/software completion | Task D PC console 六区 mock/live-like evidence 已覆盖回放、标注、推理、ASR/TTS stub、手控/寻路 stub 和 fail-closed；live O6 API、真实 RTC/视频、ASR/TTS、手控/Nav2、真实 browser/手机和上车数据仍 `not_proven` |
 
 **已归档 Objective（软件侧完成，等待真实现场验证）：**
 
@@ -177,12 +177,12 @@
 
 按完成度从低到高排序：
 
-1. **O6（0%）**：建立隧道接入链路 → 任务/事件存档 → 打标 API → 模型推理接口。这是 PC 端和新手机端能力的数据基础。
-2. **O7（~5%）**：在现有 O7 board/cloud/PC 契约基础上，补真实 RTC/视频、ASR/TTS、实时地图、电梯状态、回放、标注、手控/寻路的可执行链路和上车证据。
-3. **O5（~80%）**：把已有命令/状态/ACK 控制面接到真实部署链路：公网 HTTPS、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收。
-4. **O1（~83%）**：真实 WAVE ROVER 上车，UART 实测，PR #5 硬件材料到位后提升。
+1. **O7（90%+ mock/software completion；real material not_proven）**：优先把 mock bundle 消费推进到 live O6 bearer API、真实 RTC/视频、ASR/TTS、真实手控/Nav2 和真实 browser/手机验收。
+2. **O6（90%+ mock/software completion；real material not_proven）**：优先把本地 archive core 推进到真实隧道、production DB/queue、OSS upload、真实推理 runtime、live API 和上车数据。
+3. **O5（90%+ mock/software completion；real material not_proven）**：按 `docs/interfaces/o1_o5_90_evidence_boundary.md` 采集公网 HTTPS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 材料。
+4. **O1（90%+ mock/software completion；real material not_proven）**：按 `docs/interfaces/o1_o5_90_evidence_boundary.md` 采集真实 WAVE ROVER UART/HIL packet、ROS topic 对照和 PR #5 硬件材料。
 
-> O6 是 O7 的数据前提，建议先单线闭环 O6 最小 MVP（隧道 + 存档 + 查询 API），再并行推进 O7 和 O5 真实部署。
+> 当前 90%+ 只代表 mock/software completion。真实材料未完成时，任何 Objective 都不得表述为真实硬件、真实生产云、真实 4G、真实 OSS/CDN、真实 PC/手机或真实上车完成。
 
 ---
 

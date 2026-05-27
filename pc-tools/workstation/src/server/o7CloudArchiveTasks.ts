@@ -22,6 +22,7 @@ export interface O7CloudArchiveTasksOptions {
 }
 
 const SUPPORTED_SCHEMA = "trashbot.o7.cloud_archive_fixture.v1" as const;
+const SUPPORTED_O6_SCHEMA = "trashbot.archive.v1" as const;
 const TASK_LIMIT = 20;
 const SAMPLE_LIMIT = 5;
 
@@ -524,6 +525,180 @@ function listFromTask(task: JsonObject, key: string): unknown[] {
   // archive fixture 允许按任务内嵌数组给出数据；非数组一律按空处理。
   const value = task[key];
   return Array.isArray(value) ? value : [];
+}
+
+function safeTaskId(value: unknown): string {
+  // O6 task/event/annotation/inference 通过 task_id 关联；缺失时保留 missing token，不能猜测归属。
+  const task = isObject(value) ? value : {};
+  return safeText(task.task_id || task.id || "task_id_missing");
+}
+
+function recordsForTask(records: unknown[], taskId: string): JsonObject[] {
+  // 只把同 task_id 的 O6 记录合并进 PC 摘要，避免跨任务事件污染 selected task。
+  return records.filter(isObject).filter((record) => safeTaskId(record) === taskId);
+}
+
+function normalizeO6InferenceRecord(record: JsonObject): JsonObject {
+  // O6 inference result 映射成 label sample，供 PC 同屏查看推理结果，仍不代表真实模型在线。
+  const result = isObject(record.result) ? record.result : {};
+  return {
+    label_type: safeText(record.inference_type || "inference_result"),
+    value: safeText(result.value ?? result.label ?? result.state ?? record.inference_status ?? "value_missing"),
+    status: safeText(record.inference_status || "inference_fixture_only"),
+    evidence_ref: record.evidence_ref,
+  };
+}
+
+function normalizeO6AnnotationRecord(record: JsonObject): JsonObject {
+  // O6 annotation 记录转成现有 labeling inspector 可消费的 label sample，提交能力仍固定 false。
+  return {
+    item_id: record.item_id,
+    frame_id: record.frame_id,
+    media_ref: record.media_ref,
+    label_type: record.label_type,
+    value: record.label_value ?? record.value,
+    status: record.annotation_status ?? "annotation_fixture_only",
+    evidence_ref: record.evidence_ref,
+  };
+}
+
+function eventPayloadsByType(events: JsonObject[], eventTypes: string[]): JsonObject[] {
+  // O6 archive 只把事件作为通用 timeline 保存；PC 端按白名单 event_type 派生 O7 本地检查输入。
+  const allowed = new Set(eventTypes);
+  return events
+    .filter((event) => allowed.has(safeText(event.event_type)))
+    .map((event) => {
+      const payload = nestedObject(event.payload);
+      return {
+        ...payload,
+        timestamp_ms: safeNumber(payload.timestamp_ms) ?? safeNumber(event.timestamp_ms),
+        evidence_ref: payload.evidence_ref ?? event.evidence_ref,
+      };
+    });
+}
+
+function normalizeO6AsrEvent(payload: JsonObject): JsonObject {
+  // ASR event 只进入只读 transcript 槽位；连接状态仍由 fixed false 字段控制。
+  return {
+    event_type: safeText(payload.event_type ?? payload.type ?? "partial"),
+    timestamp_ms: safeNumber(payload.timestamp_ms),
+    transcript: payload.transcript ?? payload.text,
+    confidence: safeNumber(payload.confidence),
+    evidence_ref: payload.evidence_ref,
+  };
+}
+
+function normalizeO6TtsDraft(payload: JsonObject): JsonObject {
+  // TTS draft 是 operator 审核文本，不是发送请求；后续 UI 仍不会渲染发送按钮。
+  return {
+    text: payload.text ?? payload.transcript,
+    voice_profile: safeText(payload.voice_profile ?? "mock-operator-default"),
+    language: safeText(payload.language ?? "zh-CN"),
+    evidence_ref: payload.evidence_ref,
+  };
+}
+
+function normalizeO6CommandStub(payload: JsonObject): JsonObject {
+  // safe command stub 只保留 envelope selector 字段，禁止把 payload 升级为真实控制。
+  return {
+    command_id: safeText(payload.command_id ?? payload.id ?? "command_id_missing"),
+    command_type: safeText(payload.command_type ?? payload.kind ?? payload.type ?? "command_type_missing"),
+    status: safeText(payload.status ?? "draft_fixture_only"),
+    envelope_ref: payload.envelope_ref ?? payload.evidence_ref,
+    idempotency_key_ref: payload.idempotency_key_ref,
+    evidence_ref: payload.evidence_ref,
+  };
+}
+
+function normalizeO6Task(task: JsonObject, allEvents: unknown[], allAnnotations: unknown[], allInferences: unknown[]): JsonObject {
+  const taskId = safeTaskId(task);
+  const events = recordsForTask(allEvents, taskId);
+  const annotations = recordsForTask(allAnnotations, taskId).map(normalizeO6AnnotationRecord);
+  const inferences = recordsForTask(allInferences, taskId).map(normalizeO6InferenceRecord);
+  const asrEventPayloads = eventPayloadsByType(events, ["asr_transcript", "asr_event"]);
+  const ttsDraftPayloads = eventPayloadsByType(events, ["tts_draft"]);
+  const commandPayloads = eventPayloadsByType(events, ["safe_command_stub", "manual_turn_stub", "navigate_goal_stub"]);
+  const manualTurnPayload = commandPayloads.find((payload) => safeText(payload.command_type) === "manual_turn") ?? {};
+  const navigateGoalPayload = commandPayloads.find((payload) => safeText(payload.command_type) === "navigate_goal") ?? {};
+  const routeFrames = events
+    .filter((event) => safeText(event.event_type) === "route_frame")
+    .map((event) => nestedObject(event.payload))
+    .filter((payload) => safeText(payload.frame_index ?? payload.state ?? payload.evidence_ref).trim());
+  const keyframeRefs = events
+    .filter((event) => safeText(event.event_type).includes("keyframe"))
+    .map((event) => event.evidence_ref);
+
+  // O6 archive.v1 是真实后续 API 的软件 proof 形态；这里仅做只读字段适配，不提升 connected 状态。
+  return {
+    ...task,
+    task_id: taskId,
+    started_at_ms: safeNumber(task.started_at_ms ?? task.created_at_ms),
+    updated_at_ms: safeNumber(task.updated_at_ms ?? task.completed_at_ms),
+    trajectory_frames: routeFrames.length > 0 ? routeFrames : listFromTask(task, "trajectory_frames"),
+    events: events.length > 0 ? events : listFromTask(task, "events"),
+    keyframe_refs: keyframeRefs.length > 0 ? keyframeRefs : listFromTask(task, "keyframe_refs"),
+    review_items: listFromTask(task, "review_items"),
+    labels: [...listFromTask(task, "labels"), ...annotations, ...inferences],
+    asr_events: asrEventPayloads.map(normalizeO6AsrEvent),
+    tts_drafts: ttsDraftPayloads.map(normalizeO6TtsDraft),
+    voice_session: {
+      session_id: safeText(task.voice_session_id ?? `${taskId}-mock-voice-session`),
+      evidence_ref: task.evidence_ref,
+      audit_refs: [],
+    },
+    commands: commandPayloads.map(normalizeO6CommandStub),
+    command_session: {
+      command_session_id: safeText(task.command_session_id ?? `${taskId}-mock-command-session`),
+      evidence_ref: task.evidence_ref,
+      audit_refs: [],
+    },
+    manual_turn_envelope: Object.keys(manualTurnPayload).length > 0 ? {
+      requested_direction: manualTurnPayload.requested_direction,
+      evidence_ref: manualTurnPayload.envelope_ref ?? manualTurnPayload.evidence_ref,
+    } : undefined,
+    navigate_goal_envelope: Object.keys(navigateGoalPayload).length > 0 ? {
+      goal_source: navigateGoalPayload.goal_source ?? "fixture_map_goal_slot",
+      map_frame: navigateGoalPayload.map_frame ?? task.map_frame,
+      x_m: navigateGoalPayload.x_m,
+      y_m: navigateGoalPayload.y_m,
+      yaw_rad: navigateGoalPayload.yaw_rad,
+      evidence_ref: navigateGoalPayload.envelope_ref ?? navigateGoalPayload.evidence_ref,
+    } : undefined,
+    map_goal_slot: Object.keys(navigateGoalPayload).length > 0 ? {
+      map_frame: navigateGoalPayload.map_frame ?? task.map_frame,
+      x_m: navigateGoalPayload.x_m,
+      y_m: navigateGoalPayload.y_m,
+      yaw_rad: navigateGoalPayload.yaw_rad,
+      evidence_ref: navigateGoalPayload.evidence_ref,
+    } : undefined,
+    allowed_label_types: Array.from(new Set([
+      ...fieldList(task.allowed_label_types),
+      "elevator_door_state",
+      "floor_label",
+      "obstacle_type",
+      "inference_result",
+    ])),
+  };
+}
+
+function normalizeArchivePayload(parsed: JsonObject): { schema: typeof SUPPORTED_SCHEMA | typeof SUPPORTED_O6_SCHEMA; tasks: JsonObject[] } | null {
+  if (parsed.schema === SUPPORTED_SCHEMA) {
+    return {
+      schema: SUPPORTED_SCHEMA,
+      tasks: (Array.isArray(parsed.tasks) ? parsed.tasks : []).filter(isObject),
+    };
+  }
+  if (parsed.schema === SUPPORTED_O6_SCHEMA) {
+    const tasks = (Array.isArray(parsed.tasks) ? parsed.tasks : []).filter(isObject);
+    const events = Array.isArray(parsed.events) ? parsed.events : [];
+    const annotations = Array.isArray(parsed.annotations) ? parsed.annotations : [];
+    const inferences = Array.isArray(parsed.inferences) ? parsed.inferences : [];
+    return {
+      schema: SUPPORTED_O6_SCHEMA,
+      tasks: tasks.map((task) => normalizeO6Task(task, events, annotations, inferences)),
+    };
+  }
+  return null;
 }
 
 function sampleTypes(values: unknown[], keys: string[]): string[] {
@@ -1122,7 +1297,8 @@ export async function buildO7CloudArchiveTasks(options: O7CloudArchiveTasksOptio
   if (!isObject(parsed)) {
     return blockedResponse("not_object", "archive_json_not_object", archiveJson);
   }
-  if (parsed.schema !== SUPPORTED_SCHEMA) {
+  const normalized = normalizeArchivePayload(parsed);
+  if (!normalized) {
     return blockedResponse("unsupported_schema", "archive_json_unsupported_schema", archiveJson);
   }
   if (hasForbiddenCopy(parsed)) {
@@ -1138,7 +1314,7 @@ export async function buildO7CloudArchiveTasks(options: O7CloudArchiveTasksOptio
     return blockedResponse("real_api_claim", "archive_json_real_api_claim", archiveJson);
   }
 
-  const taskObjects = (Array.isArray(parsed.tasks) ? parsed.tasks : []).filter(isObject);
+  const taskObjects = normalized.tasks;
   const selectedId = safeText(parsed.selected_task_id);
   const selected = taskObjects.find((task) => safeText(task.task_id || task.id) === selectedId) ?? latestTask(taskObjects);
   const latest = latestTask(taskObjects);
@@ -1153,7 +1329,7 @@ export async function buildO7CloudArchiveTasks(options: O7CloudArchiveTasksOptio
       status: "loaded",
       failure_reason: "",
     },
-    source_fixture_schema: SUPPORTED_SCHEMA,
+    source_fixture_schema: normalized.schema,
     real_cloud_archive_connected: false,
     real_realtime_api_connected: false,
     real_annotation_api_connected: false,

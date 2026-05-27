@@ -2,7 +2,7 @@
 
 ## Scope
 
-`GET /api/o7/cloud-archive/tasks?archiveJson=<local-json>` 是 `pc-tools/workstation` 的 PC-only read-only 本地 fixture 入口。它读取 operator 显式指定的 `trashbot.o7.cloud_archive_fixture.v1` JSON，把任务列表和 KR3/KR4/KR5/KR6 相关数据压成安全摘要。
+`GET /api/o7/cloud-archive/tasks?archiveJson=<local-json>` 是 `pc-tools/workstation` 的 PC-only read-only 本地 fixture/O6 bundle 入口。它读取 operator 显式指定的 `trashbot.o7.cloud_archive_fixture.v1` 或 Task A/O6 `trashbot.archive.v1` JSON，把任务列表和 KR3/KR4/KR5/KR6 相关数据压成安全摘要。
 
 该接口不连接 O6 真实云归档，不连接 realtime、annotation、voice 或 command API，不读取 ROS2 graph，不打开串口，不发送 TTS、手控、寻路或任何机器人命令。
 
@@ -35,6 +35,7 @@ PC 端新增 `GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>
 - `archive_status=fixture_archive_ready | blocked_not_proven`
 - cloud relay fixture 模式使用 `archive_status=fixture_summary_ready | blocked_not_proven`
 - `input_status.archive_json/status/failure_reason`
+- `source_fixture_schema=trashbot.o7.cloud_archive_fixture.v1 | trashbot.archive.v1 | not_loaded`
 - `task_list.total_tasks/tasks[]`
 - `selected_task`
 - `latest_task`
@@ -46,6 +47,17 @@ PC 端新增 `GET /api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>
 - `fixed_false_fields`
 - `blocked_reasons`
 - `not_proven`
+
+O6 `trashbot.archive.v1` 兼容规则：
+
+- `source_fixture_schema=trashbot.archive.v1` 只表示 PC adapter 已按 Task A schema 读取本地 JSON，不表示真实 O6 云 API 在线。
+- 顶层 `tasks[]` 是任务列表；顶层 `events[]`、`annotations[]`、`inferences[]` 只按同一 `task_id` 归并到 selected task 的只读摘要。
+- `event_type=route_frame` 的 `events[].payload` 可生成 `route_replay_inspector.sample_frames`；`event_type` 包含 `keyframe` 的记录可生成 `keyframe_refs`；完整 event payload 不透传。
+- `annotations[]` 与 `inferences[]` 会转成 labeling inspector 的 label sample/draft sample，供 PC 同屏检查标注与推理结果；`submit_enabled=false`、`dataset_export_available=false`、`real_annotation_api_connected=false`、真实模型 runtime 仍 not_proven。
+- `event_type=asr_transcript` / `tts_draft` 只会转成 `voice_asr_tts_inspector` 的 stub 摘要；`asr_stream_connected=false`、`tts_send_enabled=false`、`speaker_dispatch_enabled=false`、真实 ASR/TTS runtime 仍 not_proven。
+- `event_type=safe_command_stub` 只会转成 `safe_command_inspector` 的手控/寻路 stub 摘要；`command_dispatch_enabled=false`、`manual_control_enabled=false`、`navigate_goal_enabled=false`、`real_robot_ack_connected=false`、`robot_control_executed=false` 必须保持。
+- 所有真实连接、播放、提交、TTS、手控、寻路、ACK 和 success 字段继续固定 false。
+- `ros2_trashbot_nav.algorithm_evidence_feed` 生成的 archive 只作为 mock/offline input。O7 可消费其中的 trajectory route frame、keyframe、elevator door/floor evidence、obstacle annotation、inference stub、ASR/TTS stub 和 safe-command stub 形状，但必须继续展示 `real_cloud_archive_connected=false`、`playback_available=false`、`submit_enabled=false`、`tts_send_enabled=false`、`command_dispatch_enabled=false`、`safe_to_control=false`、`robot_control_executed=false` 和 `not_proven`。
 
 `route_replay_inspector` 只从 selected task 的本地 fixture 白名单字段生成，不透传完整原始 payload：
 

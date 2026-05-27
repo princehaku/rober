@@ -22,6 +22,7 @@ setup(
             'task_orchestrator = ros2_trashbot_behavior.task_orchestrator:main',
             'operator_gateway = ros2_trashbot_behavior.operator_gateway:main',
             'remote_bridge = ros2_trashbot_behavior.remote_bridge:main',
+            'o6_board_event_publisher = ros2_trashbot_behavior.archive_event_publisher:main',
             'legacy_trash_collection_server = ros2_trashbot_behavior.trash_collection_server:main',
         ],
     },

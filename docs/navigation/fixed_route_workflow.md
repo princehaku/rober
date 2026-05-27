@@ -138,6 +138,29 @@ ros2 launch ros2_trashbot_bringup autonomous.launch.py \
 
 When `enable_visual_gate:=true`, dry-run preflights keyframe coverage for the full route before first checkpoint. A route with missing/unreadable/descriptorless keyframes stays in `waiting_visual_gate` and exposes missing/invalid checkpoint lists in `keyframe_preflight`.
 
+## 3.5 O6/O7 Offline Algorithm Evidence Feed
+
+`ros2_trashbot_nav.algorithm_evidence_feed` provides an offline/mock generator for O6/O7 data plumbing. It emits a local `trashbot.archive.v1` JSON bundle with route trajectory frames, a route keyframe, elevator door/floor evidence, an obstacle label sample, draft annotations, and lightweight inference-stub results.
+
+Generate a local bundle without ROS2 daemon, Nav2, camera, cloud, OSS, elevator, or hardware:
+
+```bash
+python3 -m ros2_trashbot_nav.algorithm_evidence_feed \
+  --output /tmp/trashbot_algorithm_archive.json \
+  --robot-id trashbot-dev \
+  --task-id offline-algorithm-evidence-001
+```
+
+The generated archive is intended for:
+
+- O6 archive schema compatibility checks (`trashbot.archive.v1`, `evidence_ref`, `software_proof`, `not_proven`).
+- O7 route replay / labeling queue local consumption via the existing archive JSON adapter.
+- Offline review of field names before real route/elevator/model data exists.
+
+The generated archive is not field proof. All generated records keep `mock_feed=true`, `offline_only=true`, `source=software_proof`, `proof_status=not_proven`, and `evidence_boundary=software_proof_o6_o7_algorithm_evidence_feed`. It does not prove a real route, real elevator door state, real floor recognition, real obstacle detection, real model robustness, real OSS upload, real O6 cloud connectivity, or O7 playback/submit capability.
+
+Task C in `2026.05.28_00-04_mock-okr-90-acceptance` additionally verifies the generated bundle can be inserted into the O6 cloud archive core together with board-side `archive_event_publisher` events under the same `robot_id/task_id`. This is Objective 6 `90%+ mock/software completion` evidence for schema compatibility only; production DB/queue, real OSS upload, live O6 API, real model runtime, real route execution, and real elevator/floor evidence remain `not_proven`.
+
 ## 4. Debug Status Contract (O3 目标面)
 
 `fixed_route_autonomy` writes JSON status to `debug_status_file`:
