@@ -1073,7 +1073,11 @@ const fixtures: Record<string, unknown> = {
     blocked: ["production_cloud_connection_blocked_by_design", "robot_command_dispatch_blocked_by_design"],
     not_proven: ["real_rtc_video_connected", "real_manual_control_or_navigate_goal", "real_hardware_hil"],
     software_proof_only: ["local_loopback_http_contract_shapes", "local_browser_cursor_panels"],
-    remaining_real_capability_gaps: ["connect_real_rtc_video_and_realtime_pose_stream"],
+    remaining_real_capability_gaps: [
+      "connect_real_rtc_video_and_realtime_pose_stream",
+      "connect_real_route_replay_archive",
+      "connect_real_annotation_voice_command_apis",
+    ],
   },
   "/api/o7/cloud-operator-console-probe": {
     schema: "trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1",
@@ -2063,6 +2067,18 @@ describe("App", () => {
 
     expect(wrapper.text()).toContain("O7 Fixture Previews");
     expect(wrapper.text()).toContain("O7 previews acceptance guard");
+    expect(wrapper.text()).toContain("O7 real capability gap summary");
+    expect(wrapper.text()).toContain("O7-KR1 realtime map/pose");
+    expect(wrapper.text()).toContain("O7-KR6 command");
+    expect(wrapper.text()).toContain("matched surface count=0");
+    expect(wrapper.text()).toContain("ready_for_real_operation=false");
+    expect(wrapper.text()).toContain("Remaining real capability gaps");
+    expect(wrapper.text()).toContain("not_loaded");
+    expect(wrapper.text()).toContain("Key guard false fields");
+    expect(wrapper.text()).toContain("safe_to_control=false");
+    expect(wrapper.text()).toContain("sends_commands=false");
+    expect(wrapper.text()).toContain("connects_cloud_production=false");
+    expect(wrapper.text()).toContain("robot_control_executed=false");
     expect(wrapper.text()).toContain("o7_previews_acceptance_guard_not_loaded");
     expect(wrapper.text()).toContain("Cloud operator console probe");
     expect(wrapper.text()).toContain("Cloud archive tasks probe");
@@ -2101,8 +2117,10 @@ describe("App", () => {
     await inputs[16]!.setValue("fixtures/voice.json");
     await inputs[17]!.setValue("fixtures/safe-command.json");
 
+    const callsBeforeAcceptanceGuard = mockedFetch.mock.calls.length;
     await wrapper.findAll("button").find((button) => button.text() === "Load previews acceptance guard")?.trigger("click");
     await flushPromises();
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeAcceptanceGuard + 1);
 
     await wrapper.findAll("button").find((button) => button.text() === "Probe cloud operator console")?.trigger("click");
     await flushPromises();
@@ -2149,6 +2167,41 @@ describe("App", () => {
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v1");
     expect(wrapper.text()).toContain("trashbot.o7.previews_acceptance.v1");
     expect(wrapper.text()).toContain("software_proof_o7_previews_acceptance_guard");
+    expect(wrapper.text()).toContain("O7 real capability gap summary");
+    expect(wrapper.text()).toContain("O7-KR1 realtime map/pose");
+    expect(wrapper.text()).toContain("O7-KR2 elevator state");
+    expect(wrapper.text()).toContain("O7-KR3 route replay");
+    expect(wrapper.text()).toContain("O7-KR4 labeling");
+    expect(wrapper.text()).toContain("O7-KR5 ASR/TTS");
+    expect(wrapper.text()).toContain("O7-KR6 command");
+    expect(wrapper.text()).toContain(
+      "O7-KR1 realtime map/pose · matched surface count=2 · surfaces=realtime_elevator_probe, realtime_map_pose_preview",
+    );
+    expect(wrapper.text()).toContain(
+      "O7-KR2 elevator state · matched surface count=2 · surfaces=realtime_elevator_probe, elevator_state_timeline_preview",
+    );
+    expect(wrapper.text()).toContain(
+      "O7-KR3 route replay · matched surface count=2 · surfaces=route_replay_player, route_replay_trajectory_minimap",
+    );
+    expect(wrapper.text()).toContain(
+      "O7-KR4 labeling · matched surface count=2 · surfaces=labeling_review_panel, local_draft_annotation_editor",
+    );
+    expect(wrapper.text()).toContain(
+      "O7-KR5 ASR/TTS · matched surface count=2 · surfaces=voice_monitor_panel, local_tts_draft_editor",
+    );
+    expect(wrapper.text()).toContain(
+      "O7-KR6 command · matched surface count=2 · surfaces=safe_command_review_panel, local_safe_command_draft_editor",
+    );
+    expect(wrapper.text()).toContain("ready_for_real_operation=false");
+    expect(wrapper.text()).toContain("production_realtime_stream_forbidden");
+    expect(wrapper.text()).toContain("real_realtime_map_pose");
+    expect(wrapper.text()).toContain("connect_real_rtc_video_and_realtime_pose_stream");
+    expect(wrapper.text()).toContain("connect_real_route_replay_archive");
+    expect(wrapper.text()).toContain("connect_real_annotation_voice_command_apis");
+    expect(wrapper.text()).toContain("safe_to_control=false");
+    expect(wrapper.text()).toContain("sends_commands=false");
+    expect(wrapper.text()).toContain("connects_cloud_production=false");
+    expect(wrapper.text()).toContain("robot_control_executed=false");
     expect(wrapper.text()).toContain("cloud_operator_console_probe");
     expect(wrapper.text()).toContain("route_replay_player");
     expect(wrapper.text()).toContain("realtime_map_pose_preview");

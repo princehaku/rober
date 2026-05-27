@@ -14,6 +14,8 @@ import type {
   O7CloudArchiveTasksResponse,
   O7LabelingQueueInspectorReviewItem,
   O7PreviewsAcceptanceResponse,
+  O7PreviewsAcceptanceSurface,
+  O7PreviewsAcceptanceSurfaceId,
   O7SafeCommandInspectorCommandSample,
   O7VoiceAsrTtsInspectorAsrEvent,
   O7CloudOperatorConsoleProbeResponse,
@@ -71,6 +73,22 @@ interface LocalSafeCommandDraft {
   idempotencyDraftRef: string;
 }
 
+interface O7ReadinessGapGroupConfig {
+  krId: string;
+  krName: string;
+  surfaceIds: O7PreviewsAcceptanceSurfaceId[];
+}
+
+interface O7ReadinessGapGroup {
+  krId: string;
+  krName: string;
+  matchedSurfaceCount: number;
+  surfaceIds: string[];
+  blockedReasons: string[];
+  notProven: string[];
+  readyForRealOperation: false;
+}
+
 const previewConfigs: PreviewConfig[] = [
   // 五个入口均为 PC-only fixture preview，不映射成机器人动作。
   { id: "realtimeElevator", title: "Realtime/Elevator", expectedSchema: "trashbot.o7.realtime_elevator_preview.v1" },
@@ -78,6 +96,39 @@ const previewConfigs: PreviewConfig[] = [
   { id: "labeling", title: "Labeling", expectedSchema: "trashbot.o7.labeling_preview.v1" },
   { id: "voice", title: "Voice", expectedSchema: "trashbot.o7.voice_preview.v1" },
   { id: "safeCommand", title: "Safe Command", expectedSchema: "trashbot.o7.safe_command_preview.v1" },
+];
+
+const o7ReadinessGapGroups: O7ReadinessGapGroupConfig[] = [
+  {
+    krId: "O7-KR1",
+    krName: "realtime map/pose",
+    surfaceIds: ["realtime_elevator_probe", "realtime_map_pose_preview"],
+  },
+  {
+    krId: "O7-KR2",
+    krName: "elevator state",
+    surfaceIds: ["realtime_elevator_probe", "elevator_state_timeline_preview"],
+  },
+  {
+    krId: "O7-KR3",
+    krName: "route replay",
+    surfaceIds: ["route_replay_player", "route_replay_trajectory_minimap"],
+  },
+  {
+    krId: "O7-KR4",
+    krName: "labeling",
+    surfaceIds: ["labeling_review_panel", "local_draft_annotation_editor"],
+  },
+  {
+    krId: "O7-KR5",
+    krName: "ASR/TTS",
+    surfaceIds: ["voice_monitor_panel", "local_tts_draft_editor"],
+  },
+  {
+    krId: "O7-KR6",
+    krName: "command",
+    surfaceIds: ["safe_command_review_panel", "local_safe_command_draft_editor"],
+  },
 ];
 
 // 默认不加载任何本地路径，避免页面打开时读取 operator 工作站文件。
@@ -289,6 +340,43 @@ function previewsAcceptanceFalseFields(): string[] {
     `real_voice_api_connected=${String(fields?.real_voice_api_connected ?? false)}`,
     `real_command_api_connected=${String(fields?.real_command_api_connected ?? false)}`,
     `real_robot_ack_connected=${String(fields?.real_robot_ack_connected ?? false)}`,
+  ];
+}
+
+function summarizeO7GapGroup(config: O7ReadinessGapGroupConfig): O7ReadinessGapGroup {
+  const surfaces = previewsAcceptanceResult.value?.surfaces ?? [];
+  // KR 分组只消费 guard 已返回的 surfaces；未加载时 matched=0，不能推断 ready。
+  const matched = surfaces.filter((surface: O7PreviewsAcceptanceSurface) => config.surfaceIds.includes(surface.id));
+  const blockedReasons = matched.flatMap((surface) => surface.blocked_reasons);
+  const notProvenItems = matched.flatMap((surface) => surface.not_proven);
+  return {
+    krId: config.krId,
+    krName: config.krName,
+    matchedSurfaceCount: matched.length,
+    surfaceIds: config.surfaceIds,
+    blockedReasons: blockedReasons.length > 0 ? blockedReasons : ["not_loaded"],
+    notProven: notProvenItems.length > 0 ? notProvenItems : ["not_loaded"],
+    readyForRealOperation: false,
+  };
+}
+
+const previewsAcceptanceGapSummary = computed(() =>
+  // 这里保持纯前端派生，避免为了 readiness summary 增加后端 API 或 fixture 读取。
+  o7ReadinessGapGroups.map((config) => summarizeO7GapGroup(config)),
+);
+
+function previewsAcceptanceRemainingGaps(): string[] {
+  return previewsAcceptanceResult.value?.remaining_real_capability_gaps ?? ["not_loaded"];
+}
+
+function previewsAcceptanceKeyFalseFields(): string[] {
+  const fields = previewsAcceptanceResult.value?.fixed_false_fields;
+  // Operator 最容易误判的关键 guard 字段在 gap summary 内再展示一次。
+  return [
+    `safe_to_control=${String(fields?.safe_to_control ?? false)}`,
+    `sends_commands=${String(fields?.sends_commands ?? false)}`,
+    `connects_cloud_production=${String(fields?.connects_cloud_production ?? false)}`,
+    `robot_control_executed=${String(fields?.robot_control_executed ?? false)}`,
   ];
 }
 
@@ -1296,6 +1384,25 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
 
       <div class="two-col snapshot-grid">
         <div>
+          <h3>O7 real capability gap summary</h3>
+          <ul class="dense">
+            <!-- 每个 KR 的 readiness 只来自 acceptance guard surfaces；未加载 guard 时保持 not_loaded。 -->
+            <li v-for="group in previewsAcceptanceGapSummary" :key="group.krId">
+              {{ group.krId }} {{ group.krName }} · matched surface count={{ group.matchedSurfaceCount }} · surfaces={{
+                group.surfaceIds.join(", ")
+              }} · ready_for_real_operation={{ group.readyForRealOperation }} · blocked={{
+                group.blockedReasons.join(", ")
+              }} · not_proven={{ group.notProven.join(", ") }}
+            </li>
+          </ul>
+          <h3>Remaining real capability gaps</h3>
+          <ul class="dense">
+            <li v-for="gap in previewsAcceptanceRemainingGaps()" :key="gap">{{ gap }}</li>
+          </ul>
+          <h3>Key guard false fields</h3>
+          <ul class="dense">
+            <li v-for="field in previewsAcceptanceKeyFalseFields()" :key="field">{{ field }}</li>
+          </ul>
           <h3>Covered surfaces</h3>
           <ul class="dense">
             <!-- surface id 由后端 guard 返回，UI 只展示覆盖面，不推断 O7 完成度。 -->
