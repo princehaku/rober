@@ -97,10 +97,22 @@ onMounted(() => {
         · ice={{ cameraSmoke?.browser_smoke.ice_connection_state ?? "null" }}
         · signaling={{ cameraSmoke?.browser_smoke.signaling_state ?? "null" }}
       </dd>
+      <dt>browser failure</dt>
+      <dd>
+        category={{ cameraSmoke?.browser_smoke.failure_category ?? "not_loaded" }}
+        · offer={{ cameraSmoke?.browser_smoke.offer_http_status ?? "null" }}
+        · remote_peers={{ cameraSmoke?.browser_smoke.remote_active_peer_connections ?? "null" }}
+      </dd>
+      <dt>browser cleanup</dt>
+      <dd>
+        peer={{ cameraSmoke?.browser_smoke.server_peer_id ?? "null" }}
+        · close={{ cameraSmoke?.browser_smoke.server_peer_close_status ?? "not_loaded" }}
+        · ready={{ cameraSmoke?.browser_smoke.final_ready_state ?? "null" }}
+      </dd>
       <dt>browser errors</dt>
       <dd>
-        console={{ cameraSmoke?.browser_smoke.console_errors.length ?? 0 }}
-        · page={{ cameraSmoke?.browser_smoke.page_errors.length ?? 0 }}
+        console={{ cameraSmoke?.browser_smoke.console_error_count ?? 0 }}
+        · page={{ cameraSmoke?.browser_smoke.page_error_count ?? 0 }}
         · reason={{ cameraSmoke?.browser_smoke.blocked_reason ?? "not_loaded" }}
       </dd>
       <dt>browser report</dt>

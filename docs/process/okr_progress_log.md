@@ -8,6 +8,25 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 05-06｜o7-browser-playback-real-proof｜O7 browser smoke resource release and first-frame blocker
+
+本轮 `sprints/2026.06.01_05-06_o7-browser-playback-real-proof/` 执行 Micro closeout。目标是延续上一轮 same-LAN browser playback smoke，把 O7 从“脚本入口存在但 Playwright/Chromium 缺失”推进到真实可运行、可归因的浏览器验证。
+
+Full-Stack 侧把 `playwright` 固化为 `pc-tools/workstation` devDependency，并增强 `npm run o7:browser-smoke` 输出：`failure_category`、`remote_health_status`、`remote_active_peer_connections`、`offer_http_status`、短稳态字段、console/page error count、`server_peer_id` 和 `server_peer_close_status`。PC API/UI 只读消费显式 smoke JSON，仍不自动 POST `/offer`、不创建 WebRTC session、不发送控制。
+
+Robot Software 侧修复 `onboard/scripts/local_webrtc_camera_smoke.py` 的 peer 释放：`/peers/{peer_id}/close`、连接状态清理、offer 异常和 shutdown 都统一显式 stop 本地 video track，再关闭 `RTCPeerConnection`。修复前，浏览器 close 后 `fuser -v /dev/video0` 仍显示 smoke 进程占用，后续 self-test 失败为 `offer_failed camera_open_failed:0`；修复后远端 self-test 输出 `status=ok`、`answer_received=true`、`connection_state=connected`、`first_frame_received=true`、640x480，`server_peer_close.closed=true`、`server_peer_close.stopped_tracks=["video"]`、`active_peer_connections=0`，且 close 后 `fuser -v /dev/video0` 无占用输出。
+
+PC 真实 browser smoke 仍未通过：`browser_available=true`、`playwright_available=true`、`start_clicked=true`、`remote_health_status=ready`、`remote_active_peer_connections=0`、`offer_http_status=200`、`ice_connection_state=connected`、`signaling_state=stable`、`server_peer_close_status=200:closed`，但 `first_frame_received=false`、`video_width/video_height=null`、`failure_category=first_frame_timeout`。新增 `/health.media_diagnostics` 显示该 browser peer `camera_opened=true`、`local_sdp_has_video=true`、`remote_sdp_has_video=true`、`track_stopped=true`，但 `frames_read=0`，说明 aiortc 没有开始拉取 `CameraTrack.recv()`。Product 判断这是一轮有效推进和 blocker 收敛，但没有真实 PC browser 首帧，因此 O7 不上调。
+
+验证范围：`python3 -m py_compile onboard/scripts/local_webrtc_camera_smoke.py` 通过；`python3 -m unittest onboard/scripts/test_local_webrtc_camera_smoke.py` 输出 `Ran 2 tests ... OK`；远端 Orange Pi self-test 首帧通过；PC browser smoke 复现 `first_frame_timeout`；`npm run test` 输出 `2 passed (2)` / `45 passed (45)`；`npm run build` 通过；`npm run lint` 通过；scoped `git diff --check` 通过。未运行云 relay、公网 RTC、TURN、鉴权、真实 ASR/TTS、真实手控/Nav2、真实 robot ACK、真实手机或真实上车任务闭环。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 7：PC 端运营调试平台 | 保持约 92% | 本轮修复板端 peer/camera resource release，并把 browser smoke 从依赖缺失/409/FD 残留推进到明确 `first_frame_timeout`，且定位到 browser peer 服务端 `frames_read=0`。仍缺真实 PC/browser 首帧、首帧耗时、视频尺寸、稳定性和后续公网 RTC/云 relay。 |
+| Objective 1 / 5 / 6 | 保持原进度 | 本轮不触碰 WAVE ROVER/UART/HIL、公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、live O6 API 或上车数据。 |
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 00-01｜local-webrtc-camera｜O7 LAN-only WebRTC Camera Smoke
 
 本轮 `sprints/2026.06.01_00-01_local-webrtc-camera/` 执行 Micro closeout。用户价值是把 O7 里“真实 RTC/视频”从纯 mock/contract 往板端真实摄像头链路推进一步，让开发者和运营调试链路先拿到 LAN-only、只读、可机器复验的视频 smoke，而不是继续停留在 PC console mock bundle 或 vendor Raspberry Pi 参考代码。

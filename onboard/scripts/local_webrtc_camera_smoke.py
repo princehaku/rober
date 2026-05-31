@@ -32,6 +32,17 @@ DEFAULT_FPS = 15
 IMPORTS = ("aiohttp", "aiortc", "cv2", "av")
 
 
+def now_ms() -> int:
+    """统一用毫秒时间戳做诊断，方便 PC/browser smoke 对齐时间线。"""
+    return int(time.time() * 1000)
+
+
+def log_event(event: str, **fields: Any) -> None:
+    """服务端日志必须结构化且立即 flush，远端 nohup 日志才能定位媒体首帧缺失。"""
+    payload = {"event": event, "ts_ms": now_ms(), **fields}
+    print(json.dumps(payload, ensure_ascii=False, sort_keys=True), flush=True)
+
+
 def import_state() -> dict[str, bool]:
     """用 find_spec 做轻量探测，缺依赖时仍可启动降级诊断页。"""
     return {name: importlib.util.find_spec(name) is not None for name in IMPORTS}
@@ -105,6 +116,42 @@ def http_json(url: str, timeout_s: float, method: str = "GET", payload: dict[str
         return {"ok": False, "error": type(exc).__name__, "detail": str(exc)}
 
 
+def stop_peer_local_tracks(pc: Any) -> dict[str, Any]:
+    """显式停止本端发送 track，避免只关 PeerConnection 时摄像头 FD 残留。"""
+    stopped: list[str] = []
+    errors: list[dict[str, str]] = []
+    for sender in getattr(pc, "getSenders", lambda: [])():
+        track = getattr(sender, "track", None)
+        if track is None:
+            continue
+        try:
+            # aiortc 的 close 不等价于业务资源释放；这里先停 track 再关连接。
+            track.stop()
+            stopped.append(getattr(track, "kind", type(track).__name__))
+        except Exception as exc:  # noqa: BLE001 - 清理路径要继续释放其他 track。
+            errors.append({"track": repr(track), "error": type(exc).__name__, "detail": str(exc)})
+    return {"stopped_tracks": stopped, "track_stop_errors": errors}
+
+
+async def close_peer_connection(peer_id: str, pc: Any, pcs: dict[str, Any] | None = None) -> dict[str, Any]:
+    """统一 peer 清理顺序：先移出 active 表，再停本地 track，最后关闭连接。"""
+    if pcs is not None:
+        # 先 pop 可避免连接状态回调重入时重复清理同一个 peer。
+        pcs.pop(peer_id, None)
+    cleanup = stop_peer_local_tracks(pc)
+    close_error: dict[str, str] | None = None
+    try:
+        await pc.close()
+    except Exception as exc:  # noqa: BLE001 - close 失败也要把 stop 证据返回给调用方。
+        close_error = {"error": type(exc).__name__, "detail": str(exc)}
+    return {
+        "peer_id": peer_id,
+        "stopped_tracks": cleanup["stopped_tracks"],
+        "track_stop_errors": cleanup["track_stop_errors"],
+        "close_error": close_error,
+    }
+
+
 def build_health(port: int, video_source: str) -> dict[str, Any]:
     """健康输出明确写 safe_to_control=false，避免被误接入控制链路。"""
     state = import_state()
@@ -173,6 +220,7 @@ def html_page(port: int, video_source: str) -> str:
     <video id="video" autoplay playsinline controls muted></video>
     <div>
       <button id="start">Start WebRTC video</button>
+      <button id="stop">Stop WebRTC video</button>
       <button id="health">Refresh health/devices</button>
     </div>
     <pre id="status">{health}</pre>
@@ -180,8 +228,34 @@ def html_page(port: int, video_source: str) -> str:
   <script>
     const video = document.getElementById('video');
     const statusBox = document.getElementById('status');
+    let pc = null;
+    let serverPeerId = null;
     function show(value) {{
       statusBox.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+    }}
+    function closeServerPeer(reason) {{
+      if (!serverPeerId) return;
+      const url = `/peers/${{serverPeerId}}/close`;
+      const body = JSON.stringify({{ reason }});
+      // 页面关闭时 fetch 可能被浏览器取消，sendBeacon/keepalive 是释放板端摄像头的兜底。
+      if (navigator.sendBeacon) {{
+        navigator.sendBeacon(url, new Blob([body], {{ type: 'application/json' }}));
+      }} else {{
+        fetch(url, {{ method: 'POST', headers: {{ 'Content-Type': 'application/json' }}, body, keepalive: true }}).catch(() => null);
+      }}
+      serverPeerId = null;
+    }}
+    async function stop(reason = 'manual_stop') {{
+      closeServerPeer(reason);
+      if (pc) {{
+        // 浏览器本地也要停 transceiver/track，避免下一次点击复用旧状态。
+        pc.getSenders().forEach(sender => sender.track && sender.track.stop());
+        pc.getReceivers().forEach(receiver => receiver.track && receiver.track.stop());
+        pc.close();
+        pc = null;
+      }}
+      video.srcObject = null;
+      await refresh();
     }}
     async function refresh() {{
       const [health, devices] = await Promise.all([
@@ -191,9 +265,14 @@ def html_page(port: int, video_source: str) -> str:
       show({{ health, devices }});
     }}
     async function start() {{
-      const pc = new RTCPeerConnection({{ iceServers: [] }});
+      await stop('restart_before_new_offer');
+      pc = new RTCPeerConnection({{ iceServers: [] }});
       pc.addTransceiver('video', {{ direction: 'recvonly' }});
-      pc.ontrack = event => {{ video.srcObject = event.streams[0]; }};
+      pc.ontrack = event => {{
+        // aiortc addTrack 可能触发 streamless track；Chrome 收到 track 但 srcObject 为空时 readyState 会一直是 0。
+        video.srcObject = event.streams && event.streams[0] ? event.streams[0] : new MediaStream([event.track]);
+        video.play().catch(error => show({{ videoPlayError: String(error), serverPeerId }}));
+      }};
       pc.onconnectionstatechange = () => show({{ connectionState: pc.connectionState }});
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -204,11 +283,15 @@ def html_page(port: int, video_source: str) -> str:
       }});
       const payload = await response.json();
       if (!response.ok) throw new Error(JSON.stringify(payload));
+      serverPeerId = payload.peer_id || null;
       await pc.setRemoteDescription(payload);
-      show({{ connectionState: pc.connectionState, answerType: payload.type }});
+      show({{ connectionState: pc.connectionState, answerType: payload.type, serverPeerId }});
     }}
     document.getElementById('start').onclick = () => start().catch(err => show(String(err)));
+    document.getElementById('stop').onclick = () => stop().catch(err => show(String(err)));
     document.getElementById('health').onclick = () => refresh().catch(err => show(String(err)));
+    window.addEventListener('pagehide', () => closeServerPeer('pagehide'));
+    window.addEventListener('beforeunload', () => closeServerPeer('beforeunload'));
     refresh().catch(err => show(String(err)));
   </script>
 </body>
@@ -384,33 +467,79 @@ async def aiohttp_server(args: argparse.Namespace) -> None:
     import cv2
 
     pcs: dict[str, RTCPeerConnection] = {}
+    peer_stats: dict[str, dict[str, Any]] = {}
+    closed_peer_stats: dict[str, Any] | None = None
+    started_at_ms = now_ms()
 
     class CameraTrack(VideoStreamTrack):
         """每个 peer 单独持有摄像头，第一版限制单连接来降低设备占用风险。"""
 
-        def __init__(self) -> None:
+        def __init__(self, peer_id: str, stats: dict[str, Any]) -> None:
             super().__init__()
+            self.peer_id = peer_id
+            self.stats = stats
+            self._stopped = False
             source: int | str = int(args.video_source) if str(args.video_source).isdigit() else args.video_source
             self.cap = cv2.VideoCapture(source)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
             self.cap.set(cv2.CAP_PROP_FPS, args.fps)
             if not self.cap.isOpened():
+                self.stats["last_error"] = f"camera_open_failed:{args.video_source}"
+                self.stats["last_error_ts_ms"] = now_ms()
                 raise RuntimeError(f"camera_open_failed:{args.video_source}")
+            self.stats.update(
+                {
+                    "camera_opened": True,
+                    "capture_backend": self.cap.getBackendName() if hasattr(self.cap, "getBackendName") else None,
+                    "configured_width": args.width,
+                    "configured_height": args.height,
+                    "configured_fps": args.fps,
+                    "actual_width": self.cap.get(cv2.CAP_PROP_FRAME_WIDTH),
+                    "actual_height": self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
+                    "actual_fps": self.cap.get(cv2.CAP_PROP_FPS),
+                }
+            )
+            log_event("camera_track_opened", peer_id=self.peer_id, stats=self.stats)
 
         async def recv(self) -> av.VideoFrame:
             pts, time_base = await self.next_timestamp()
             ok, frame = await asyncio.to_thread(self.cap.read)
             if not ok or frame is None:
+                self.stats["camera_read_failures"] += 1
+                self.stats["last_error"] = "camera_frame_read_failed"
+                self.stats["last_error_ts_ms"] = now_ms()
+                log_event("camera_frame_read_failed", peer_id=self.peer_id, failures=self.stats["camera_read_failures"])
                 raise MediaStreamError("camera_frame_read_failed")
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             video_frame = av.VideoFrame.from_ndarray(rgb, format="rgb24")
             video_frame.pts = pts
             video_frame.time_base = time_base
+            self.stats["frames_read"] += 1
+            self.stats["last_frame_ts_ms"] = now_ms()
+            self.stats["last_frame_width"] = getattr(video_frame, "width", None)
+            self.stats["last_frame_height"] = getattr(video_frame, "height", None)
+            self.stats["last_frame_pts"] = pts
+            if self.stats["frames_read"] <= 3 or self.stats["frames_read"] % max(args.fps, 1) == 0:
+                # 前几帧和每秒采样写日志，避免 30s 首帧失败时日志仍是空的。
+                log_event(
+                    "camera_frame_encoded",
+                    peer_id=self.peer_id,
+                    frames_read=self.stats["frames_read"],
+                    width=self.stats["last_frame_width"],
+                    height=self.stats["last_frame_height"],
+                )
             return video_frame
 
         def stop(self) -> None:
+            if self._stopped:
+                return
+            self._stopped = True
+            self.stats["track_stopped"] = True
+            self.stats["track_stopped_ts_ms"] = now_ms()
+            # OpenCV 摄像头句柄必须显式 release，给连续 browser/self-test 留出设备。
             self.cap.release()
+            log_event("camera_track_stopped", peer_id=self.peer_id, stats=self.stats)
             super().stop()
 
     async def index(_: web.Request) -> web.Response:
@@ -419,6 +548,17 @@ async def aiohttp_server(args: argparse.Namespace) -> None:
     async def health(_: web.Request) -> web.Response:
         payload = build_health(args.port, args.video_source)
         payload["active_peer_connections"] = len(pcs)
+        payload["active_peer_ids"] = sorted(pcs.keys())
+        payload["media_diagnostics"] = {
+            "server_started_at_ms": started_at_ms,
+            "server_uptime_ms": now_ms() - started_at_ms,
+            "active_peers": peer_stats,
+            "last_closed_peer": closed_peer_stats,
+        }
+        payload["peer_cleanup"] = {
+            "close_one": "/peers/{peer_id}/close",
+            "reason": "health exposes peer ids only for LAN smoke cleanup after browser/test aborts",
+        }
         return web.json_response(payload)
 
     async def devices(_: web.Request) -> web.Response:
@@ -433,36 +573,95 @@ async def aiohttp_server(args: argparse.Namespace) -> None:
         pc = RTCPeerConnection(configuration=None)
         peer_id = uuid.uuid4().hex
         pcs[peer_id] = pc
+        stats: dict[str, Any] = {
+            "peer_id": peer_id,
+            "created_ts_ms": now_ms(),
+            "frames_read": 0,
+            "camera_read_failures": 0,
+            "camera_opened": False,
+            "track_stopped": False,
+            "connection_state": pc.connectionState,
+            "ice_connection_state": pc.iceConnectionState,
+            "ice_gathering_state": pc.iceGatheringState,
+            "signaling_state": pc.signalingState,
+            "remote_sdp_type": params.get("type"),
+            "remote_sdp_has_video": "m=video" in params.get("sdp", ""),
+        }
+        peer_stats[peer_id] = stats
+        log_event("offer_received", peer_id=peer_id, remote_sdp_has_video=stats["remote_sdp_has_video"])
 
         @pc.on("connectionstatechange")
         async def on_connectionstatechange() -> None:
+            nonlocal closed_peer_stats
+            stats["connection_state"] = pc.connectionState
+            stats["connection_state_ts_ms"] = now_ms()
+            log_event("peer_connection_state", peer_id=peer_id, state=pc.connectionState)
             if pc.connectionState in ("failed", "closed", "disconnected"):
-                await pc.close()
-                pcs.pop(peer_id, None)
+                if peer_id not in pcs and peer_id not in peer_stats:
+                    # 主动 close 已经完成记录时，aiortc 仍可能再触发 closed 回调；这里避免覆盖有效统计。
+                    return
+                cleanup = await close_peer_connection(peer_id, pc, pcs)
+                final_stats = peer_stats.pop(peer_id, {})
+                closed_peer_stats = {"cleanup": cleanup, "stats": final_stats, "closed_ts_ms": now_ms()}
+                log_event("peer_auto_closed", peer_id=peer_id, cleanup=cleanup, stats=final_stats)
 
+        @pc.on("iceconnectionstatechange")
+        async def on_iceconnectionstatechange() -> None:
+            stats["ice_connection_state"] = pc.iceConnectionState
+            stats["ice_connection_state_ts_ms"] = now_ms()
+            log_event("peer_ice_connection_state", peer_id=peer_id, state=pc.iceConnectionState)
+
+        @pc.on("icegatheringstatechange")
+        async def on_icegatheringstatechange() -> None:
+            stats["ice_gathering_state"] = pc.iceGatheringState
+            stats["ice_gathering_state_ts_ms"] = now_ms()
+
+        @pc.on("signalingstatechange")
+        async def on_signalingstatechange() -> None:
+            stats["signaling_state"] = pc.signalingState
+            stats["signaling_state_ts_ms"] = now_ms()
+
+        track: CameraTrack | None = None
         try:
-            pc.addTrack(CameraTrack())
+            track = CameraTrack(peer_id, stats)
+            pc.addTrack(track)
             await pc.setRemoteDescription(RTCSessionDescription(sdp=params["sdp"], type=params["type"]))
             answer = await pc.createAnswer()
             await pc.setLocalDescription(answer)
         except Exception as exc:
-            await pc.close()
-            pcs.pop(peer_id, None)
+            stats["last_error"] = str(exc)
+            stats["last_error_ts_ms"] = now_ms()
+            if track is not None:
+                # 如果 addTrack 前后异常，手里直接持有的 track 也要兜底释放。
+                track.stop()
+            await close_peer_connection(peer_id, pc, pcs)
+            log_event("offer_failed", peer_id=peer_id, error=type(exc).__name__, detail=str(exc))
             return web.json_response({"error": "offer_failed", "detail": str(exc)}, status=500)
+        stats["local_sdp_has_video"] = "m=video" in pc.localDescription.sdp
+        stats["local_sdp_type"] = pc.localDescription.type
+        log_event("offer_answered", peer_id=peer_id, local_sdp_has_video=stats["local_sdp_has_video"])
         return web.json_response({"sdp": pc.localDescription.sdp, "type": pc.localDescription.type, "peer_id": peer_id})
 
     async def close_peer(request: web.Request) -> web.Response:
+        nonlocal closed_peer_stats
         peer_id = request.match_info["peer_id"]
         pc = pcs.pop(peer_id, None)
         if pc is None:
             return web.json_response({"closed": False, "reason": "peer_not_found", "peer_id": peer_id}, status=404)
         # 只关闭调用方拿到的 peer_id，避免自检误杀正在人工查看的浏览器连接。
-        await pc.close()
-        return web.json_response({"closed": True, "peer_id": peer_id, "active_peer_connections": len(pcs)})
+        stats = peer_stats.pop(peer_id, {})
+        cleanup = await close_peer_connection(peer_id, pc, pcs)
+        closed_peer_stats = {"cleanup": cleanup, "stats": stats, "closed_ts_ms": now_ms()}
+        log_event("peer_closed", peer_id=peer_id, cleanup=cleanup, stats=stats)
+        return web.json_response({"closed": True, **cleanup, "stats": stats, "active_peer_connections": len(pcs)})
 
     async def on_shutdown(_: web.Application) -> None:
-        await asyncio.gather(*(pc.close() for pc in list(pcs.values())), return_exceptions=True)
+        await asyncio.gather(
+            *(close_peer_connection(peer_id, pc, pcs) for peer_id, pc in list(pcs.items())),
+            return_exceptions=True,
+        )
         pcs.clear()
+        peer_stats.clear()
 
     app = web.Application()
     app.on_shutdown.append(on_shutdown)
@@ -475,7 +674,7 @@ async def aiohttp_server(args: argparse.Namespace) -> None:
     await runner.setup()
     site = web.TCPSite(runner, args.host, args.port)
     await site.start()
-    print(json.dumps({"event": "aiohttp_server_started", "health": build_health(args.port, args.video_source)}))
+    log_event("aiohttp_server_started", health=build_health(args.port, args.video_source))
     while True:
         await asyncio.sleep(3600)
 
