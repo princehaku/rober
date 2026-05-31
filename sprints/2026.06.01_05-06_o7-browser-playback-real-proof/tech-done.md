@@ -77,7 +77,7 @@ ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://192.168.1.11:8088/ ROBER_O7_BROWSER_SM
 }
 ```
 
-板端 `/health.media_diagnostics.last_closed_peer` 对这轮 browser smoke 的服务端侧摘要为：`camera_opened=true`、`local_sdp_has_video=true`、`remote_sdp_has_video=true`、`actual_width=640`、`actual_height=480`、`actual_fps=22`、`frames_read=0`、`track_stopped=true`。结论：本轮已解决 Playwright 依赖、远端 stale peer、摄像头 FD 残留和连续 self-test 问题；真实 PC Chromium browser 仍未拿到 `<video>` 首帧，剩余 blocker 从“服务端占用/资源释放”推进为“浏览器媒体首帧超时，且服务端该浏览器 peer 未开始读取 video frame”。
+板端 `/health.media_diagnostics` 对这轮 browser smoke 的服务端侧摘要为：self-test 路径可连续编码 640x480 帧，`camera_read_failures=0`，并且 close 返回 `server_peer_close_status=200:closed`、`active_peer_connections=0`；但最新真实 browser peer 的 `last_closed_peer.stats.frames_read=0`。结论：本轮已解决 Playwright 依赖、远端 stale peer、摄像头 FD 残留和连续 self-test 问题；真实 PC Chromium browser 仍未拿到 `<video>` 首帧，剩余 blocker 从“远端 409 / server peer cleanup”推进为“浏览器会话为什么没有触发服务端 `CameraTrack.recv()`，以及后续 WebRTC stats、transceiver/sender negotiation、track 接收、`<video>` 绑定或解码链路”。
 
 ### Guardrails
 
@@ -94,7 +94,8 @@ ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://192.168.1.11:8088/ ROBER_O7_BROWSER_SM
 - 当前失败不再是 Playwright/Chromium 缺失：`browser_available=true`、`playwright_available=true`。
 - 当前失败不再是远端 409 或 active peer：预检 `remote_active_peer_connections=0`，`offer_http_status=200`。
 - 当前失败不再是板端摄像头完全不可用：远端 self-test 已证明 `first_frame_received=true`、640x480，并且 close 后释放 video track。
-- 当前 blocker 是 PC Chromium/headless 真实页面在 ICE connected / signaling stable 后 `<video>` 仍没有到 `readyState>=2`，分类为 `first_frame_timeout`；板端 `media_diagnostics` 同时显示该 browser peer `frames_read=0`，说明 aiortc 没有开始拉取 `CameraTrack.recv()`。下一步需要围绕 transceiver direction / sender negotiation / Chromium headless media pipeline / RTP codec 兼容性继续定位。
+- 当前 browser peer 的 `media_diagnostics.last_closed_peer.stats.frames_read=0`，说明真实浏览器会话还没有触发服务端 `CameraTrack.recv()`；不能把 server/camera 侧彻底排除。
+- 当前 blocker 是 PC Chromium/headless 真实页面在 ICE connected / signaling stable 后 `<video>` 仍没有到 `readyState>=2`，分类为 `first_frame_timeout`。下一步需要围绕浏览器 WebRTC stats、transceiver/sender negotiation、track 接收、`<video>` 绑定/解码、Chromium headless media pipeline 和 RTP/codec 兼容性继续定位。
 
 ## 剩余风险
 
