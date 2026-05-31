@@ -296,3 +296,10 @@ timeout 8s ssh -o BatchMode=yes -o ConnectTimeout=3 -o ServerAliveInterval=2 -o 
 - 新增 O7 Console 首屏 `O7LocalCameraSmokePanel`，展示 remote schema/status、host、video source、设备数、依赖状态、fail-closed 边界和 LAN page link；未新增 start/stop/control/offer 按钮。
 - 安全边界固定 `safe_to_control=false`、`robot_control_executed=false`、`sends_commands=false`、`cloud_relay=false`、`offer_executed=false`、`webrtc_session_created=false`。该 PC endpoint 不证明 browser 首帧、真实公网 RTC、ROS2 `/tf`、云 relay 或 O7 完成。
 - 验证：`npm run test` 通过，2 files / 44 tests passed；`npm run build` 通过，Vite built 33 modules；`npm run lint` 通过，无错误输出；scoped `git diff --check` 通过，无输出。
+
+## Product closeout 追加: O7 Local WebRTC evidence
+
+- 用户价值：本轮把 Objective 7 的真实 RTC/视频材料从“PC mock + contract”推进到两个可复验触点：远端 Orange Pi LAN-only WebRTC camera smoke 已有 answer/首帧/连续 self-test peer cleanup；PC workstation 已能只读看到板端 `/health` + `/devices` 状态。它让开发者和运营调试人员更早发现摄像头依赖、设备枚举和只读状态问题，但仍不是普通用户可用的公网视频体验。
+- 验收结论：接受本轮 O7 局部进展。Robot Software 证据显示 `/offer` answer 增加 `peer_id`，新增 `POST /peers/{peer_id}/close` 后，远端 `root@192.168.1.11 -p 37878` 连续两轮 self-test 均 `status=ok`、`first_frame_received=true`、640x480，且 `server_peer_close.closed=true`、`active_peer_connections_after=0`。Full-Stack 证据显示 `GET /api/o7/local-webrtc-camera` 和 UI 卡片只消费 `/health` + `/devices`，不 POST `/offer`、不创建 WebRTC session、不发送控制；`npm run test` 2 files / 44 tests passed，`npm run build` 33 modules transformed，`npm run lint` exit 0，scoped diff-check exit 0。
+- OKR 影响：`OKR.md` 继续保持 O7 为 `约 92% software + LAN camera smoke evidence；product real material not_complete`。本轮只新增 O7 LAN camera smoke answer、`first_frame_received=true`、连续自检 peer-cleanup 和 PC health/devices 状态可见证据；不把 O7 标成真实完成，不调整 O1/O5/O6。
+- 剩余风险：真实同 WiFi 浏览器播放、首帧时间、延迟、ICE 状态、浏览器控制台、长期帧率/CPU/温度、弱网恢复、云 relay、公网 RTC、TURN、鉴权、真实 ASR/TTS、手控/Nav2、真实 robot ACK、真实地图/电梯/回放/标注数据流、真实手机和上车任务闭环仍为 `not_proven`。本轮没有启动 ROS2/Nav2/UART/WAVE ROVER/控制链路，安全边界继续要求 `safe_to_control=false`。
