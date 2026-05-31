@@ -12,6 +12,7 @@ export { buildO7CloudOperatorConsoleProbe } from "./o7CloudOperatorConsoleProbe"
 export { buildO7CloudArchiveTasksProbe } from "./o7CloudArchiveTasksProbe";
 export { buildO7RealtimeElevatorProbe } from "./o7RealtimeElevatorProbe";
 export { buildO7RtcSignalingContractProbe } from "./o7RtcSignalingContractProbe";
+export { buildO7LocalWebrtcCamera } from "./o7LocalWebrtcCamera";
 export { buildO7RealtimeElevatorPreview } from "./o7RealtimeElevatorPreview";
 export { buildO7RouteReplayPreview } from "./o7RouteReplayPreview";
 export { buildO7LabelingPreview } from "./o7LabelingPreview";

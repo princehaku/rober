@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { getO7DemoArchive } from "../client/workstationApi";
+import O7LocalCameraSmokePanel from "./O7LocalCameraSmokePanel.vue";
 import type { O7CloudArchiveTasksResponse, O7OperatorConsoleResponse } from "../shared/contracts";
 
 defineProps<{
@@ -145,6 +146,8 @@ onMounted(() => {
             </dd>
           </dl>
         </article>
+
+        <O7LocalCameraSmokePanel />
 
         <article class="o7-feed-board">
           <h3>关键帧 / 标注 / 推理</h3>

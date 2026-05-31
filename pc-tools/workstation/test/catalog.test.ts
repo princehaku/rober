@@ -9,6 +9,7 @@ import {
   buildO7DemoArchive,
   buildO7LiveEndpointsManifest,
   buildO7CloudOperatorConsoleProbe,
+  buildO7LocalWebrtcCamera,
   buildO7RealtimeElevatorProbe,
   buildO7RtcSignalingContractProbe,
   buildEvidenceToolsResponse,
@@ -647,6 +648,35 @@ function listenRtcContract(payload: unknown): Promise<{ baseUrl: string; close: 
     res.setHeader("Content-Type", "application/json");
     if (req.url === "/api/o7/rtc-signaling/contract") {
       res.end(JSON.stringify(payload));
+      return;
+    }
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not_found" }));
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
+function listenLocalCameraSmoke(healthPayload: unknown, devicesPayload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  // local camera smoke 测试只模拟 /health 和 /devices；不会触发 /offer 或真实摄像头读取。
+  const server = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    if (req.url === "/health") {
+      res.end(JSON.stringify(healthPayload));
+      return;
+    }
+    if (req.url === "/devices") {
+      res.end(JSON.stringify(devicesPayload));
       return;
     }
     res.statusCode = 404;
@@ -3295,6 +3325,98 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.schema).toBe("trashbot.o7.live_endpoints_manifest.v1");
       expect(body.network_probe_executed).toBe(false);
       expect(body.sends_commands).toBe(false);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("O7 local WebRTC camera API fails closed when base URL is not configured", async () => {
+    // 未配置 env 时不能主动打默认 LAN IP；页面只显示可配置缺口和固定安全边界。
+    const status = await buildO7LocalWebrtcCamera({ env: {} });
+
+    expect(status.schema).toBe("trashbot.pc_tools_workstation.o7_local_webrtc_camera.v1");
+    expect(status.endpoint).toBe("/api/o7/local-webrtc-camera");
+    expect(status.status).toBe("not_configured");
+    expect(status.base_url).toBe("http://192.168.1.11:8088");
+    expect(status.base_url_source).toBe("dev_default_unconfigured");
+    expect(status.health_get_executed).toBe(false);
+    expect(status.devices_get_executed).toBe(false);
+    expect(status.offer_executed).toBe(false);
+    expect(status.webrtc_session_created).toBe(false);
+    expect(status.safe_to_control).toBe(false);
+    expect(status.sends_commands).toBe(false);
+    expect(status.cloud_relay).toBe(false);
+    expect(status.robot_control_executed).toBe(false);
+
+    const server = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(new URL("/api/o7/local-webrtc-camera", server.baseUrl));
+      const body = (await response.json()) as Awaited<ReturnType<typeof buildO7LocalWebrtcCamera>>;
+
+      expect(response.status).toBe(200);
+      expect(body.status).toBe("not_configured");
+      expect(body.fixed_false_fields).toMatchObject({
+        safe_to_control: false,
+        robot_control_executed: false,
+        sends_commands: false,
+        cloud_relay: false,
+      });
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("O7 local WebRTC camera API consumes ready health and devices without creating RTC session", async () => {
+    // ready fixture 只证明 PC 后端能消费 /health + /devices；/offer 和浏览器首帧仍未执行。
+    const server = await listenLocalCameraSmoke(
+      {
+        schema: "trashbot.local_webrtc_camera_smoke.v1",
+        status: "ready",
+        host: "orange-pi-zero3",
+        video_source: "0",
+        imports: {
+          aiohttp: true,
+          aiortc: true,
+          cv2: true,
+          av: true,
+        },
+        lan_only: true,
+        cloud_relay: false,
+        sends_commands: false,
+        safe_to_control: false,
+        robot_control_executed: false,
+      },
+      {
+        schema: "trashbot.local_webrtc_camera_devices.v1",
+        devices: [
+          { path: "/dev/video0", readable: true },
+          { path: "/dev/video1", readable: false },
+        ],
+      },
+    );
+
+    try {
+      const status = await buildO7LocalWebrtcCamera({
+        env: { ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL: server.baseUrl },
+      });
+
+      expect(status.status).toBe("ready");
+      expect(status.base_url_source).toBe("env");
+      expect(status.host).toBe("orange-pi-zero3");
+      expect(status.remote_schemas.health).toBe("trashbot.local_webrtc_camera_smoke.v1");
+      expect(status.remote_schemas.devices).toBe("trashbot.local_webrtc_camera_devices.v1");
+      expect(status.health_status).toBe("ready");
+      expect(status.video_source).toBe("0");
+      expect(status.device_count).toBe(2);
+      expect(status.dependency_summary).toEqual(["aiohttp=ok", "aiortc=ok", "cv2=ok", "av=ok"]);
+      expect(status.health_get_executed).toBe(true);
+      expect(status.devices_get_executed).toBe(true);
+      expect(status.offer_executed).toBe(false);
+      expect(status.webrtc_session_created).toBe(false);
+      expect(status.safe_to_control).toBe(false);
+      expect(status.robot_control_executed).toBe(false);
+      expect(status.sends_commands).toBe(false);
+      expect(status.cloud_relay).toBe(false);
     } finally {
       await server.close();
     }

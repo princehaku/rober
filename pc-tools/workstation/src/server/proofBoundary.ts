@@ -15,6 +15,7 @@ export function buildProofBoundary(): ProofBoundaryResponse {
       "Node/Vue workstation can index local JSON fixtures under pc-tools/evidence/fixtures",
       "Node Route JSON Loader can read local status/task/reconciliation JSON into a safe summary",
       "O7 Operator Console can render cloud-contract draft surfaces with command dispatch disabled",
+      "O7 Local WebRTC Camera card can consume LAN smoke /health and /devices without creating a WebRTC session",
       "UI/API expose fail-closed software proof fields",
     ],
     not_proven: [...NOT_PROVEN_ITEMS],

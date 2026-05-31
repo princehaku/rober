@@ -2029,6 +2029,51 @@ const fixtures: Record<string, unknown> = {
     reads_hardware: false,
     ...PROOF_FLAGS,
   },
+  "/api/o7/local-webrtc-camera": {
+    schema: "trashbot.pc_tools_workstation.o7_local_webrtc_camera.v1",
+    endpoint: "/api/o7/local-webrtc-camera",
+    remote_self_test_schema: "trashbot.local_webrtc_camera_offer_self_test.v1",
+    status: "ready",
+    base_url: "http://192.168.1.11:8088",
+    base_url_source: "env",
+    camera_page_url: "http://192.168.1.11:8088",
+    host: "orange-pi-zero3",
+    health_http_status: 200,
+    devices_http_status: 200,
+    remote_schemas: {
+      health: "trashbot.local_webrtc_camera_smoke.v1",
+      devices: "trashbot.local_webrtc_camera_devices.v1",
+    },
+    health_status: "ready",
+    video_source: "0",
+    device_count: 1,
+    dependency_statuses: {
+      aiohttp: "ok",
+      aiortc: "ok",
+      cv2: "ok",
+      av: "ok",
+    },
+    dependency_summary: ["aiohttp=ok", "aiortc=ok", "cv2=ok", "av=ok"],
+    blocked_reasons: [],
+    not_proven: ["webrtc_offer_answer_not_executed_by_workstation", "first_frame_received_not_proven"],
+    fail_closed_reason: "none_health_devices_loaded_offer_not_executed",
+    health_get_executed: true,
+    devices_get_executed: true,
+    offer_executed: false,
+    webrtc_session_created: false,
+    sends_commands: false,
+    cloud_relay: false,
+    robot_control_executed: false,
+    fixed_false_fields: {
+      safe_to_control: false,
+      robot_control_executed: false,
+      sends_commands: false,
+      cloud_relay: false,
+      offer_executed: false,
+      webrtc_session_created: false,
+    },
+    ...PROOF_FLAGS,
+  },
   "/api/o7/live-endpoints/manifest": {
     schema: "trashbot.o7.live_endpoints_manifest.v1",
     schema_version: 1,
@@ -2233,7 +2278,9 @@ function stubWorkstationFetch() {
                             ? "/api/o7/rtc-signaling-contract-probe"
                             : url.startsWith("/api/o7/realtime-elevator-probe")
                               ? "/api/o7/realtime-elevator-probe"
-                              : url;
+                              : url.startsWith("/api/o7/local-webrtc-camera")
+                                ? "/api/o7/local-webrtc-camera"
+                                : url;
     return {
       ok: true,
       json: async () => fixtures[fixtureKey],
@@ -2379,6 +2426,12 @@ describe("App", () => {
     expect(wrapper.text()).toContain("数据标注");
     expect(wrapper.text()).toContain("ASR/TTS");
     expect(wrapper.text()).toContain("手控/寻路");
+    expect(wrapper.text()).toContain("LAN 摄像头 smoke 状态");
+    expect(wrapper.text()).toContain("trashbot.local_webrtc_camera_offer_self_test.v1");
+    expect(wrapper.text()).toContain("orange-pi-zero3");
+    expect(wrapper.text()).toContain("aiohttp=ok");
+    expect(wrapper.text()).toContain("offer_executed=false");
+    expect(wrapper.text()).toContain("cloud_relay=false");
     expect(wrapper.text()).toContain("robot_control_executed=false");
     expect(wrapper.text()).toContain("draft_blocked_not_proven");
     expect(wrapper.text()).toContain("cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py");

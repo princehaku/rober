@@ -24,6 +24,7 @@
 - PC safe command fixture preview API：`GET /api/o7/safe-command-preview?fixtureJson=<local-json>`
 - PC cloud archive task fixture API：`GET /api/o7/cloud-archive/tasks?archiveJson=<local-json>`
 - PC bundled demo archive API：`GET /api/o7/demo/archive`
+- PC local WebRTC camera status API：`GET /api/o7/local-webrtc-camera`
 - PC UI：`pc-tools/workstation` 的 `O7 Console` tab 和独立 `O7 Previews` tab
 - Board media preflight source contract：`docs/interfaces/o7_board_media_preflight.md`
 
@@ -96,6 +97,54 @@ Board operator gateway realtime/elevator snapshot contract 复用同一 schema `
 - `realtime_elevator_snapshot.robot_control_executed=false`
 
 PC 不直连机器人，不读取 ROS2 graph，不打开串口，不发送 WAVE ROVER、Nav2、TTS 或手控命令。
+
+## PC Local WebRTC Camera Status
+
+`trashbot.pc_tools_workstation.o7_local_webrtc_camera.v1` 是 PC workstation 对板端 LAN-only WebRTC camera smoke 的只读状态契约。它的目标是让 operator 在 O7 页面看到 camera smoke 是否配置、health 是否可读、设备枚举是否可读，以及可以手动打开的 LAN page link；它不是 WebRTC signaling client，也不是浏览器播放验收。
+
+API：
+
+- PC endpoint：`GET /api/o7/local-webrtc-camera`
+- 配置 env：`ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL`
+- 板端来源：`onboard/scripts/local_webrtc_camera_smoke.py` 的 `/health`、`/devices` 和 `/` 页面
+
+默认未配置 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL` 时，endpoint 必须 fail-closed：
+
+- `status=not_configured`
+- `proof_status=not_proven`
+- `safe_to_control=false`
+- `sends_commands=false`
+- `robot_control_executed=false`
+- `webrtc_session_created=false`
+- `offer_post_executed=false`
+- `first_frame_proven=false`
+- `health_get_executed=false`
+- `devices_get_executed=false`
+
+未配置时不得主动探测 `192.168.1.11`、`localhost:8088` 或任何默认 LAN IP/端口；只能提示 operator 配置 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL`。
+
+配置 env 后，PC 后端只允许执行：
+
+- `GET <baseUrl>/health`
+- `GET <baseUrl>/devices`
+
+禁止行为：
+
+- 不 POST `<baseUrl>/offer`
+- 不调用 `/peers/{peer_id}/close`
+- 不创建 `RTCPeerConnection`
+- 不等待或声明 `first_frame_received=true`
+- 不启动/停止板端 smoke 服务
+- 不启动 ROS2、Nav2、UART、WAVE ROVER 或任何控制链路
+- 不发送 TTS、手控、寻路、stop、cancel、recovery 或其他机器人控制命令
+
+UI 卡片只能展示状态、依赖/设备摘要、blocked/not_proven 原因和 LAN page link。LAN page link 只是 operator 手动打开板端页面的只读入口；UI 不提供 start、stop、control、offer self-test、WebRTC session 创建或摄像头设备探测按钮。
+
+证明边界：
+
+- PC endpoint 只能证明 PC 后端可读取板端 `/health` 和 `/devices` 的 JSON 摘要。
+- 真实浏览器播放、offer/answer、`connection_state=connected`、`first_frame_received=true`、连续 self-test 后 peer 清理为 0，仍必须由 `onboard/scripts/local_webrtc_camera_smoke.py --self-test-url ...` 或远端 SSH 命令证明。
+- 即使 PC endpoint 返回 `status=ready`，也不能解释成公网 RTC、TURN、云 relay、浏览器播放、持续帧率、低延迟、ROS2 图像链路、真实 ASR/TTS 或 O7 完成。
 
 ## PC O7 Previews Tab
 
@@ -897,3 +946,9 @@ PC Console 展示该 summary 不等于真实 RTC、真实摄像头、真实音�
 ## 2026-05-28 Demo Archive Dev Endpoint
 
 开发态 Vite 5173 通过 `vite.config.ts` 的 `rober-workstation-api-dev` middleware 直接复用 Express handler，所以 `GET http://127.0.0.1:5173/api/o7/demo/archive` 必须稳定返回 200 JSON；该行为只是解决 dev server 与 API 分离导致的本地 500/代理失败，不改变生产静态托管或独立 `npm run api` 的接口语义。响应仍必须保持 `safe_to_control=false`、`robot_control_executed=false`、`command_dispatch_enabled=false`，并继续标记真实云端、ROS2、Nav2、ASR/TTS、机器人 ACK 和控制链路为 `not_proven`。
+
+## 2026-06-01 Local WebRTC Camera Status
+
+PC workstation 新增 `GET /api/o7/local-webrtc-camera`，schema 为 `trashbot.pc_tools_workstation.o7_local_webrtc_camera.v1`。该接口只消费 Orange Pi LAN-only camera smoke 的 HTTP 诊断面：配置 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL` 后，PC 后端短超时 GET `/health` 和 `/devices`；未配置时返回 `status=not_configured`，展示开发默认 `http://192.168.1.11:8088/` 供 operator 复制，但不主动探测。
+
+响应必须保持 `safe_to_control=false`、`robot_control_executed=false`、`sends_commands=false`、`cloud_relay=false`、`offer_executed=false`、`webrtc_session_created=false`。UI 只展示 remote schema/status、host、video source、设备数、依赖状态、blocked reason 和 LAN page link；不得新增 start、stop、control、offer self-test、WebRTC session 创建或底盘相关按钮。该接口只让真实摄像头 smoke 的 `/health`、`/devices` 状态可见，不证明浏览器首帧、真实公网 RTC、真实 ROS2 `/tf`、真实云 relay 或 O7 完成。

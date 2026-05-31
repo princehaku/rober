@@ -5,6 +5,7 @@ import type {
   O7CloudArchiveTasksResponse,
   O7CloudOperatorConsoleProbeResponse,
   O7LabelingPreviewResponse,
+  O7LocalWebrtcCameraResponse,
   O7LiveEndpointsManifestResponse,
   HealthResponse,
   O7OperatorConsoleResponse,
@@ -69,6 +70,7 @@ const API_ENDPOINTS = {
   o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
   o7RealtimeElevatorProbe: "/api/o7/realtime-elevator-probe",
   o7RtcSignalingContractProbe: "/api/o7/rtc-signaling-contract-probe",
+  o7LocalWebrtcCamera: "/api/o7/local-webrtc-camera",
   o7RealtimeElevatorPreview: "/api/o7/realtime-elevator-preview",
   o7RouteReplayPreview: "/api/o7/route-replay-preview",
   o7LabelingPreview: "/api/o7/labeling-preview",
@@ -226,6 +228,11 @@ export async function getO7RealtimeElevatorProbe(baseUrl: string): Promise<O7Rea
 export async function getO7RtcSignalingContractProbe(baseUrl: string): Promise<O7RtcSignalingContractProbeResponse> {
   // 前端不直连 relay、不发 bearer；PC 后端只拉取 fail-closed RTC signaling/media 合同。
   return loadJson<O7RtcSignalingContractProbeResponse>(rtcSignalingContractProbeUrl(baseUrl));
+}
+
+export async function getO7LocalWebrtcCamera(): Promise<O7LocalWebrtcCameraResponse> {
+  // Local camera smoke 只能从 PC 后端读取 /health 和 /devices 摘要，浏览器不直接探测 LAN 服务。
+  return loadJson<O7LocalWebrtcCameraResponse>(API_ENDPOINTS.o7LocalWebrtcCamera);
 }
 
 export async function getO7RealtimeElevatorPreview(fixtureJson: string): Promise<O7RealtimeElevatorPreviewResponse> {

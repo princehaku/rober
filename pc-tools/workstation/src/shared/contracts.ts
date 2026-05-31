@@ -1773,6 +1773,48 @@ export interface O7RtcSignalingContractProbeResponse extends ProofFlags {
   reads_hardware: false;
 }
 
+export type O7LocalWebrtcCameraStatus = "not_configured" | "ready" | "degraded" | "fail_closed";
+
+export interface O7LocalWebrtcCameraResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_local_webrtc_camera.v1";
+  endpoint: "/api/o7/local-webrtc-camera";
+  remote_self_test_schema: "trashbot.local_webrtc_camera_offer_self_test.v1";
+  status: O7LocalWebrtcCameraStatus;
+  base_url: string;
+  base_url_source: "env" | "dev_default_unconfigured";
+  camera_page_url: string;
+  host: string;
+  health_http_status: number | null;
+  devices_http_status: number | null;
+  remote_schemas: {
+    health: string;
+    devices: string;
+  };
+  health_status: string;
+  video_source: string;
+  device_count: number;
+  dependency_statuses: Record<string, "ok" | "missing" | "unknown">;
+  dependency_summary: string[];
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  health_get_executed: boolean;
+  devices_get_executed: boolean;
+  offer_executed: false;
+  webrtc_session_created: false;
+  sends_commands: false;
+  cloud_relay: false;
+  robot_control_executed: false;
+  fixed_false_fields: {
+    safe_to_control: false;
+    robot_control_executed: false;
+    sends_commands: false;
+    cloud_relay: false;
+    offer_executed: false;
+    webrtc_session_created: false;
+  };
+}
+
 export type O7PreviewsAcceptanceSurfaceId =
   | "cloud_operator_console_probe"
   | "cloud_archive_tasks_probe"
@@ -1893,6 +1935,7 @@ export const API_ROUTES = [
   "/api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>",
   "/api/o7/rtc-signaling-contract-probe?baseUrl=<local-loopback-url>",
   "/api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>",
+  "/api/o7/local-webrtc-camera",
   "/api/o7/realtime-elevator-preview?fixtureJson=<local-json>",
   "/api/o7/route-replay-preview?fixtureJson=<local-json>",
   "/api/o7/labeling-preview?fixtureJson=<local-json>",
@@ -1912,6 +1955,8 @@ export const NOT_PROVEN_ITEMS = [
   "real_phone_or_cloud_delivery",
   "real_training_or_labeling_pipeline",
   "real_o7_realtime_cloud_stream",
+  "real_o7_local_webrtc_browser_first_frame",
+  "real_o7_local_webrtc_offer_executed_by_workstation",
   "real_o7_realtime_elevator_fixture_preview_runtime",
   "real_o7_ros2_tf_forwarding",
   "real_o7_elevator_state_chain",

@@ -15,6 +15,7 @@ import {
   buildO7PreviewsAcceptanceResponse,
   buildO7LabelingPreview,
   buildO7RealtimeElevatorProbe,
+  buildO7LocalWebrtcCamera,
   buildO7RealtimeElevatorPreview,
   buildO7RouteReplayPreview,
   buildO7RtcSignalingContractProbe,
@@ -117,6 +118,11 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/rtc-signaling-contract-probe", async (req, res) => {
     // RTC signaling contract probe 只拉取本机回环协议清单，不创建 WebRTC session、视频或 ROS2 /tf 连接。
     res.json(await buildO7RtcSignalingContractProbe(queryString(req.query.baseUrl)));
+  });
+
+  workstationApp.get("/api/o7/local-webrtc-camera", async (_req, res) => {
+    // Local camera smoke 只读 LAN /health 和 /devices，不调用 /offer，也不创建 WebRTC 或控制入口。
+    res.json(await buildO7LocalWebrtcCamera());
   });
 
   workstationApp.get("/api/o7/realtime-elevator-preview", async (req, res) => {

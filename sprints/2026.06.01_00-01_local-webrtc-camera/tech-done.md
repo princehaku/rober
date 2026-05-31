@@ -191,6 +191,48 @@ timeout 20s ssh -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=3 -o
 
 说明：该证据把上轮“HTTP 页面/health/devices 可访问”推进到机器可读 `/offer` answer、WebRTC connected 和真实摄像头首帧读取。命令只访问本机 HTTP/WebRTC smoke，没有启动 ROS2/Nav2/UART/WAVE ROVER，没有发送机器人控制命令。
 
+2026-06-01 03:15 CST 追加复验发现并修复连续自检问题：
+
+- 复现：连续两次运行远端 `python3 onboard/scripts/local_webrtc_camera_smoke.py --self-test-url http://127.0.0.1:8088 --self-test-timeout 8`，第一次 `status=ok` 且 `first_frame_received=true`，随后 `/health` 显示 `active_peer_connections=1`；第二次被 `/offer` 拒绝，返回 `offer_http_status=409`、`error=camera_in_use`。
+- 根因：WebRTC 客户端 `pc.close()` 不会自动通过 HTTP signaling 通知服务端释放 peer；服务端单连接保护仍看到上一轮 peer，导致机器自检不能立刻重复运行。
+- 修复：`/offer` answer 追加 `peer_id`，新增 `POST /peers/{peer_id}/close` 只关闭本次自检 peer；自检客户端收到首帧并关闭本地 `RTCPeerConnection` 后，会显式调用该 endpoint，避免误杀其他浏览器连接。
+
+本轮修复后的本地 guardrail：
+
+```bash
+python3 -m py_compile onboard/scripts/local_webrtc_camera_smoke.py
+bash -n onboard/scripts/local_webrtc_camera_smoke.sh
+git diff --check -- onboard/scripts/local_webrtc_camera_smoke.py onboard/scripts/local_webrtc_camera_smoke.sh docs/interfaces/o7_local_webrtc_camera_smoke.md onboard/README.md sprints/2026.06.01_00-01_local-webrtc-camera/tech-done.md
+```
+
+结果：均通过，无输出。
+
+本轮修复后已同步脚本到远端 `/root/rober/` 并重启 LAN-only smoke 服务；未启动 ROS2、Nav2、UART、WAVE ROVER 或任何控制链路。重启后短窗口内 2 秒检查曾出现进程已启动但 8088 尚未监听，等待 3 秒后确认 ready：
+
+```text
+ps: python3 /root/rober/onboard/scripts/local_webrtc_camera_smoke.py --host 0.0.0.0 --port 8088 --video-source 0 --width 640 --height 480 --fps 15
+ss: LISTEN 0 128 0.0.0.0:8088 users:(("python3",pid=8737,fd=6))
+/health: status=ready, imports aiohttp/aiortc/cv2/av=true, safe_to_control=false, sends_commands=false, robot_control_executed=false, active_peer_connections=0
+```
+
+远端 `/devices` 复验：
+
+```text
+/dev/video0 exists/readable/writable=true
+/dev/video1 exists/readable/writable=true
+/dev/video2 exists/readable/writable=true
+v4l2: USB Composite Device: DV20 USB -> /dev/video0 /dev/video1 /dev/media0
+```
+
+远端连续两轮 offer-level 自检复验：
+
+```text
+self-test-1: status=ok, offer_http_status=200, connection_state=connected, first_frame_received=true, first_frame=640x480, server_peer_close.closed=true, active_peer_connections_after=0
+self-test-2: status=ok, offer_http_status=200, connection_state=connected, first_frame_received=true, first_frame=640x480, server_peer_close.closed=true, active_peer_connections_after=0
+```
+
+说明：该结果证明 `camera_in_use` 连续自检回归已修复，且自检结束后服务端 peer 能清理到 0。
+
 访问 URL：
 
 ```text
@@ -215,11 +257,13 @@ timeout 8s ssh -o BatchMode=yes -o ConnectTimeout=3 -o ServerAliveInterval=2 -o 
 - 初始阻塞为缺少 `aiortc` 和 `av`；已通过 Ubuntu arm64 APT 系统包解决。
 - 第一次启动确认失败的根因是 `pkill -f local_webrtc_camera_smoke.py` 匹配当前 SSH shell 命令行并中断会话；第二次不使用 `pkill` 后服务已启动并可访问。
 - 本轮已补自动 POST WebRTC offer 的自检客户端；远端 Orange Pi 已验证 answer、connected 和 640x480 首帧。浏览器播放体验、持续帧率和弱网恢复仍未覆盖。
+- 2026-06-01 03:15 CST 复验发现连续自检第二轮 `camera_in_use`；根因是服务端 peer 未收到客户端关闭信令，已通过 `peer_id` + 指定 peer close endpoint 修复并用连续两轮远端自检验证。
 
 ## 剩余风险
 
 - 真实同 WiFi 浏览器播放、首帧时间、延迟、ICE 状态、浏览器控制台错误仍未覆盖；新增自检可先补机器级 answer/首帧证据。
 - 摄像头可能被 ROS2 感知、录制或其他进程独占；当前 smoke 第一版限制单 peer，但未实现跨进程共享采集。
+- 服务启动后 `aiortc/OpenCV` 初始化可能需要超过 2 秒才开始监听；短启动脚本仍适合作为服务入口，但自动化复验应以 `/health` ready 为准，不应只用固定 2 秒 sleep 判定失败。
 - Orange Pi CPU/温度/长期帧率未做压测；当前只验证短时服务和 OpenCV 单帧读取。
 - 本轮明确不覆盖公网访问、STUN/TURN、云 relay、鉴权、弱网恢复。
 - 本轮没有启动底盘、UART、WAVE ROVER、Nav2、ROS2 launch 或 HIL；底盘安全保持未触碰状态。
@@ -239,3 +283,16 @@ timeout 8s ssh -o BatchMode=yes -o ConnectTimeout=3 -o ServerAliveInterval=2 -o 
 - 核心抓手和下一步：优先补真实同 WiFi 浏览器播放、首帧时间、延迟、ICE 状态、浏览器控制台和短时稳定性，再决定云 relay/公网 RTC/TURN/鉴权路线。
 - 优先级、验收口径和 owner：P0 由 Full-Stack 继续负责浏览器播放与 PC/手机入口；Hardware 只在摄像头供电、设备权限或独占问题出现时介入；Autonomy 只在需要与 ROS2 视觉/导航共享 `/dev/video0` 时介入。
 - 风险和证据链缺口：不证明真实浏览器播放体验、长期帧率/延迟/CPU/温度、云 relay、公网 RTC、TURN、鉴权、ASR/TTS、手控/Nav2、真实 robot ACK 或真实上车任务闭环；本轮没有启动底盘、UART、WAVE ROVER、Nav2、ROS2 launch 或 HIL。
+
+## PC endpoint documentation sync
+
+- 追加记录 PC workstation `GET /api/o7/local-webrtc-camera` 只读 endpoint 和 UI card 边界：默认未配置 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL` 时 fail-closed / `not_configured`，不主动探测默认 LAN IP；配置 env 后只 GET 板端 `/health` 和 `/devices`，不 POST `/offer`、不创建 WebRTC session、不发送控制命令。
+- PC UI 卡片只展示状态和 LAN page link，不提供 start/stop/control。真实浏览器播放、first frame 和 offer-level self-test 仍由板端脚本或远端命令证明，不由 PC endpoint 证明。
+- 主会话已复验 PC workstation `npm run build`、`npm run test`、`npm run lint` 通过，远端连续两轮 self-test 通过；本次只补文档同步，不改产品代码。
+
+## Full-Stack closeout: PC workstation O7 Local Camera Smoke
+
+- 新增 PC workstation 只读 API `GET /api/o7/local-webrtc-camera`。默认未配置 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL` 时返回 `status=not_configured`，展示开发默认 `http://192.168.1.11:8088/` 但不主动探测；配置后只短超时 GET `/health` 和 `/devices`。
+- 新增 O7 Console 首屏 `O7LocalCameraSmokePanel`，展示 remote schema/status、host、video source、设备数、依赖状态、fail-closed 边界和 LAN page link；未新增 start/stop/control/offer 按钮。
+- 安全边界固定 `safe_to_control=false`、`robot_control_executed=false`、`sends_commands=false`、`cloud_relay=false`、`offer_executed=false`、`webrtc_session_created=false`。该 PC endpoint 不证明 browser 首帧、真实公网 RTC、ROS2 `/tf`、云 relay 或 O7 完成。
+- 验证：`npm run test` 通过，2 files / 44 tests passed；`npm run build` 通过，Vite built 33 modules；`npm run lint` 通过，无错误输出；scoped `git diff --check` 通过，无输出。
