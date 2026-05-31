@@ -233,6 +233,20 @@ def html_page(port: int, video_source: str) -> str:
     function show(value) {{
       statusBox.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
     }}
+    function waitForIceGatheringComplete(peer) {{
+      if (peer.iceGatheringState === 'complete') return Promise.resolve();
+      // smoke 服务没有 trickle ICE 信令，offer 必须带完整候选，避免 answer 成功但 RTP 不启动。
+      return new Promise(resolve => {{
+        const done = () => {{
+          if (peer.iceGatheringState === 'complete') {{
+            peer.removeEventListener('icegatheringstatechange', done);
+            resolve();
+          }}
+        }};
+        peer.addEventListener('icegatheringstatechange', done);
+        setTimeout(resolve, 2500);
+      }});
+    }}
     function closeServerPeer(reason) {{
       if (!serverPeerId) return;
       const url = `/peers/${{serverPeerId}}/close`;
@@ -276,6 +290,7 @@ def html_page(port: int, video_source: str) -> str:
       pc.onconnectionstatechange = () => show({{ connectionState: pc.connectionState }});
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      await waitForIceGatheringComplete(pc);
       const response = await fetch('/offer', {{
         method: 'POST',
         headers: {{ 'Content-Type': 'application/json' }},
@@ -385,6 +400,20 @@ async def self_test_client(args: argparse.Namespace) -> int:
         pc.addTransceiver("video", direction="recvonly")
         offer = await pc.createOffer()
         await pc.setLocalDescription(offer)
+        if pc.iceGatheringState != "complete":
+            # aiortc 这里同样没有 trickle 信令；等候选收齐后再 POST，和真实浏览器路径保持一致。
+            gather_done = asyncio.Event()
+
+            @pc.on("icegatheringstatechange")
+            async def on_icegatheringstatechange() -> None:
+                if pc.iceGatheringState == "complete":
+                    gather_done.set()
+
+            try:
+                await asyncio.wait_for(gather_done.wait(), timeout=min(args.self_test_timeout, 2.5))
+            except asyncio.TimeoutError:
+                result["client_ice_gathering_timeout"] = True
+        result["client_ice_gathering_state"] = pc.iceGatheringState
         async with ClientSession(timeout=ClientTimeout(total=args.self_test_timeout)) as session:
             async with session.post(
                 f"{base_url}/offer",
@@ -586,6 +615,16 @@ async def aiohttp_server(args: argparse.Namespace) -> None:
             "signaling_state": pc.signalingState,
             "remote_sdp_type": params.get("type"),
             "remote_sdp_has_video": "m=video" in params.get("sdp", ""),
+            "remote_sdp_video_direction": next(
+                (
+                    line
+                    for line in params.get("sdp", "").splitlines()
+                    if line in ("a=sendrecv", "a=sendonly", "a=recvonly", "a=inactive")
+                ),
+                None,
+            ),
+            "remote_sdp_candidate_count": params.get("sdp", "").count("a=candidate:"),
+            "remote_sdp_end_of_candidates": "a=end-of-candidates" in params.get("sdp", ""),
         }
         peer_stats[peer_id] = stats
         log_event("offer_received", peer_id=peer_id, remote_sdp_has_video=stats["remote_sdp_has_video"])

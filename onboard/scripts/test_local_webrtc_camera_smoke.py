@@ -94,6 +94,15 @@ class LocalWebrtcCameraSmokeCleanupTest(unittest.TestCase):
         self.assertIn("new MediaStream([event.track])", page)
         self.assertIn("video.play().catch", page)
 
+    def test_browser_page_waits_ice_gathering_before_offer(self) -> None:
+        """无 trickle 信令时，浏览器必须等 ICE candidate 收齐再 POST /offer。"""
+        module = load_smoke_module()
+        page = module.html_page(8088, "0")
+
+        self.assertIn("waitForIceGatheringComplete", page)
+        self.assertIn("iceGatheringState === 'complete'", page)
+        self.assertIn("await waitForIceGatheringComplete(pc)", page)
+
 
 if __name__ == "__main__":
     unittest.main()

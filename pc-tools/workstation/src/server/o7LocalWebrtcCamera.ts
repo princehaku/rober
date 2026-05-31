@@ -59,6 +59,13 @@ function defaultBrowserSmoke(reason: string, baseUrl: string): O7BrowserPlayback
     final_ready_state: null,
     stable_video_width: null,
     stable_video_height: null,
+    ontrack_count: 0,
+    receiver_track_states: [],
+    transceiver_directions: [],
+    inbound_video_stats: [],
+    selected_candidate_pair: null,
+    peer_state_timeline: [],
+    post_smoke_remote_health: null,
     console_error_count: 0,
     page_error_count: 0,
     server_peer_id: null,
@@ -78,6 +85,11 @@ function defaultBrowserSmoke(reason: string, baseUrl: string): O7BrowserPlayback
 function stringArray(value: unknown): string[] {
   // 外部 JSON 只接受字符串数组，避免 UI 展示复杂对象或泄露异常 payload。
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 20) : [];
+}
+
+function recordArray(value: unknown): Array<Record<string, unknown>> {
+  // stats 诊断只接受 object 数组并截断，避免把浏览器原始大对象完整塞进 API 响应。
+  return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => Boolean(asRecord(item))).slice(0, 20) : [];
 }
 
 function browserSmokeFromRecord(record: Record<string, unknown>, fallbackBaseUrl: string, reportPath: string): O7BrowserPlaybackSmokeSummary {
@@ -114,6 +126,13 @@ function browserSmokeFromRecord(record: Record<string, unknown>, fallbackBaseUrl
     final_ready_state: typeof record.final_ready_state === "number" ? record.final_ready_state : null,
     stable_video_width: typeof record.stable_video_width === "number" ? record.stable_video_width : null,
     stable_video_height: typeof record.stable_video_height === "number" ? record.stable_video_height : null,
+    ontrack_count: typeof record.ontrack_count === "number" ? record.ontrack_count : 0,
+    receiver_track_states: recordArray(record.receiver_track_states),
+    transceiver_directions: recordArray(record.transceiver_directions),
+    inbound_video_stats: recordArray(record.inbound_video_stats),
+    selected_candidate_pair: asRecord(record.selected_candidate_pair),
+    peer_state_timeline: recordArray(record.peer_state_timeline),
+    post_smoke_remote_health: asRecord(record.post_smoke_remote_health),
     console_error_count: typeof record.console_error_count === "number" ? record.console_error_count : stringArray(record.console_errors).length,
     page_error_count: typeof record.page_error_count === "number" ? record.page_error_count : stringArray(record.page_errors).length,
     server_peer_id: typeof record.server_peer_id === "string" ? record.server_peer_id : null,

@@ -55,6 +55,13 @@ function baseResult(baseUrl, blockedReason) {
     final_ready_state: null,
     stable_video_width: null,
     stable_video_height: null,
+    ontrack_count: 0,
+    receiver_track_states: [],
+    transceiver_directions: [],
+    inbound_video_stats: [],
+    selected_candidate_pair: null,
+    peer_state_timeline: [],
+    post_smoke_remote_health: null,
     console_error_count: 0,
     page_error_count: 0,
     server_peer_id: null,
@@ -131,6 +138,12 @@ function classifyFailure({ error, result, consoleErrors, pageErrors }) {
     return "remote_409";
   }
   if (/Timeout|waiting for function/i.test(message) && result.start_clicked) {
+    if (result.ontrack_count > 0 && result.inbound_video_stats.some((item) => item.packetsReceived > 0 || item.framesDecoded > 0)) {
+      return "video_element_decode_timeout";
+    }
+    if (result.ontrack_count > 0) {
+      return "track_received_no_rtp";
+    }
     return "first_frame_timeout";
   }
   if (pageErrors.length > 0 || consoleErrors.some((line) => line.startsWith("error:"))) {
@@ -140,6 +153,95 @@ function classifyFailure({ error, result, consoleErrors, pageErrors }) {
     return "ice_browser";
   }
   return "browser_smoke_failed";
+}
+
+async function collectPageState(page) {
+  // 诊断字段只从浏览器 peer/video/stats 读取，不改变页面状态或触发新的 /offer。
+  return await page
+    .evaluate(async () => {
+      const peer = window.__roberLastPeer;
+      const video = document.querySelector("video");
+      const offerPayload = window.__roberOfferPayloads?.[window.__roberOfferPayloads.length - 1];
+      const offerResponse = window.__roberOfferResponses?.[window.__roberOfferResponses.length - 1];
+      const transceiverDirections = peer
+        ? peer.getTransceivers().map((item) => ({
+            mid: item.mid,
+            direction: item.direction,
+            currentDirection: item.currentDirection,
+            receiverTrackState: item.receiver?.track?.readyState || null,
+            receiverTrackMuted: item.receiver?.track?.muted ?? null,
+          }))
+        : [];
+      const receiverTrackStates = peer
+        ? peer.getReceivers().map((receiver) => ({
+            kind: receiver.track?.kind || null,
+            id: receiver.track?.id || null,
+            readyState: receiver.track?.readyState || null,
+            muted: receiver.track?.muted ?? null,
+          }))
+        : [];
+      const stats = peer ? Array.from((await peer.getStats()).values()) : [];
+      const inboundVideoStats = stats
+        .filter((item) => item.type === "inbound-rtp" && item.kind === "video")
+        .map((item) => ({
+          id: item.id,
+          packetsReceived: item.packetsReceived ?? null,
+          bytesReceived: item.bytesReceived ?? null,
+          framesDecoded: item.framesDecoded ?? null,
+          framesReceived: item.framesReceived ?? null,
+          framesDropped: item.framesDropped ?? null,
+          keyFramesDecoded: item.keyFramesDecoded ?? null,
+          jitter: item.jitter ?? null,
+        }));
+      const selectedCandidatePair = stats.find((item) => item.type === "candidate-pair" && item.selected);
+      return {
+        videoWidth: video?.videoWidth || null,
+        videoHeight: video?.videoHeight || null,
+        readyState: video?.readyState ?? null,
+        connectionState: peer?.connectionState || null,
+        iceConnectionState: peer?.iceConnectionState || null,
+        iceGatheringState: peer?.iceGatheringState || null,
+        signalingState: peer?.signalingState || null,
+        peerId: typeof offerPayload?.peer_id === "string" ? offerPayload.peer_id : null,
+        offerResponse: offerResponse || null,
+        ontrackCount: window.__roberOnTrackEvents?.length || 0,
+        receiverTrackStates,
+        transceiverDirections,
+        inboundVideoStats,
+        selectedCandidatePair: selectedCandidatePair
+          ? {
+              id: selectedCandidatePair.id,
+              state: selectedCandidatePair.state || null,
+              nominated: selectedCandidatePair.nominated ?? null,
+              packetsSent: selectedCandidatePair.packetsSent ?? null,
+              packetsReceived: selectedCandidatePair.packetsReceived ?? null,
+              bytesSent: selectedCandidatePair.bytesSent ?? null,
+              bytesReceived: selectedCandidatePair.bytesReceived ?? null,
+              currentRoundTripTime: selectedCandidatePair.currentRoundTripTime ?? null,
+            }
+          : null,
+        peerStateTimeline: window.__roberPeerStates || [],
+      };
+    })
+    .catch(() => ({}));
+}
+
+function applyPageState(result, pageState) {
+  result.final_ready_state = typeof pageState.readyState === "number" ? pageState.readyState : null;
+  result.stable_video_width = typeof pageState.videoWidth === "number" ? pageState.videoWidth : null;
+  result.stable_video_height = typeof pageState.videoHeight === "number" ? pageState.videoHeight : null;
+  result.connection_state = pageState.connectionState || null;
+  result.ice_connection_state = pageState.iceConnectionState || null;
+  result.ice_gathering_state = pageState.iceGatheringState || null;
+  result.signaling_state = pageState.signalingState || null;
+  result.server_peer_id = pageState.peerId || null;
+  result.ontrack_count = typeof pageState.ontrackCount === "number" ? pageState.ontrackCount : 0;
+  result.receiver_track_states = Array.isArray(pageState.receiverTrackStates) ? pageState.receiverTrackStates.slice(0, 5) : [];
+  result.transceiver_directions = Array.isArray(pageState.transceiverDirections) ? pageState.transceiverDirections.slice(0, 5) : [];
+  result.inbound_video_stats = Array.isArray(pageState.inboundVideoStats) ? pageState.inboundVideoStats.slice(0, 5) : [];
+  result.selected_candidate_pair = pageState.selectedCandidatePair || null;
+  result.peer_state_timeline = Array.isArray(pageState.peerStateTimeline) ? pageState.peerStateTimeline.slice(-20) : [];
+  Object.assign(result, summarizeOfferResponse(pageState.offerResponse));
 }
 
 async function run() {
@@ -201,6 +303,7 @@ async function run() {
       window.__roberPeerStates = [];
       window.__roberOfferPayloads = [];
       window.__roberOfferResponses = [];
+      window.__roberOnTrackEvents = [];
       const nativeFetch = window.fetch.bind(window);
       window.fetch = async (...args) => {
         const response = await nativeFetch(...args);
@@ -243,6 +346,16 @@ async function run() {
           ["connectionstatechange", "iceconnectionstatechange", "icegatheringstatechange", "signalingstatechange"].forEach((eventName) => {
             this.addEventListener(eventName, update);
           });
+          this.addEventListener("track", (event) => {
+            window.__roberOnTrackEvents.push({
+              kind: event.track?.kind || null,
+              id: event.track?.id || null,
+              readyState: event.track?.readyState || null,
+              muted: event.track?.muted ?? null,
+              streamCount: event.streams?.length || 0,
+              at: Date.now(),
+            });
+          });
           update();
         }
       };
@@ -261,23 +374,7 @@ async function run() {
       { timeout: timeoutMs },
     );
 
-    const videoState = await page.evaluate(() => {
-      const video = document.querySelector("video");
-      const peer = window.__roberLastPeer;
-      const offerPayload = window.__roberOfferPayloads?.[window.__roberOfferPayloads.length - 1];
-      const offerResponse = window.__roberOfferResponses?.[window.__roberOfferResponses.length - 1];
-      return {
-        videoWidth: video?.videoWidth || null,
-        videoHeight: video?.videoHeight || null,
-        readyState: video?.readyState ?? null,
-        connectionState: peer?.connectionState || null,
-        iceConnectionState: peer?.iceConnectionState || null,
-        iceGatheringState: peer?.iceGatheringState || null,
-        signalingState: peer?.signalingState || null,
-        peerId: typeof offerPayload?.peer_id === "string" ? offerPayload.peer_id : null,
-        offerResponse: offerResponse || null,
-      };
-    });
+    const videoState = await collectPageState(page);
 
     result.status = "ok";
     result.failure_category = "none";
@@ -289,48 +386,15 @@ async function run() {
     result.final_ready_state = videoState.readyState;
     result.stable_video_width = videoState.videoWidth;
     result.stable_video_height = videoState.videoHeight;
-    result.connection_state = videoState.connectionState;
-    result.ice_connection_state = videoState.iceConnectionState;
-    result.ice_gathering_state = videoState.iceGatheringState;
-    result.signaling_state = videoState.signalingState;
-    result.server_peer_id = videoState.peerId;
-    Object.assign(result, summarizeOfferResponse(videoState.offerResponse));
+    applyPageState(result, videoState);
     result.blocked_reason = "none";
   } catch (error) {
-    const peerState = page
-      ? await page
-          .evaluate(() => {
-            const peer = window.__roberLastPeer;
-            const video = document.querySelector("video");
-            const offerPayload = window.__roberOfferPayloads?.[window.__roberOfferPayloads.length - 1];
-            const offerResponse = window.__roberOfferResponses?.[window.__roberOfferResponses.length - 1];
-            return {
-              connectionState: peer?.connectionState || null,
-              iceConnectionState: peer?.iceConnectionState || null,
-              iceGatheringState: peer?.iceGatheringState || null,
-              signalingState: peer?.signalingState || null,
-              readyState: video?.readyState ?? null,
-              videoWidth: video?.videoWidth || null,
-              videoHeight: video?.videoHeight || null,
-              peerId: typeof offerPayload?.peer_id === "string" ? offerPayload.peer_id : null,
-              offerResponse: offerResponse || null,
-            };
-          })
-          .catch(() => ({}))
-      : {};
+    const peerState = page ? await collectPageState(page) : {};
     result.status = "failed";
     result.blocked_reason = error instanceof Error ? error.message : "browser_smoke_failed";
-    Object.assign(result, summarizeOfferResponse(peerState.offerResponse));
+    applyPageState(result, peerState);
     result.failure_category = classifyFailure({ error, result, consoleErrors, pageErrors });
     result.observation_window_ms = Date.now() - startedAt;
-    result.final_ready_state = typeof peerState.readyState === "number" ? peerState.readyState : null;
-    result.stable_video_width = typeof peerState.videoWidth === "number" ? peerState.videoWidth : null;
-    result.stable_video_height = typeof peerState.videoHeight === "number" ? peerState.videoHeight : null;
-    result.connection_state = peerState.connectionState || null;
-    result.ice_connection_state = peerState.iceConnectionState || null;
-    result.ice_gathering_state = peerState.iceGatheringState || null;
-    result.signaling_state = peerState.signalingState || null;
-    result.server_peer_id = peerState.peerId || null;
   } finally {
     if (page && result.server_peer_id) {
       // 浏览器关闭不会通知 HTTP signaling，显式 close 可以让下一轮 smoke 不被单 peer 保护挡住。
@@ -345,6 +409,7 @@ async function run() {
     if (browser) {
       await browser.close().catch(() => undefined);
     }
+    result.post_smoke_remote_health = await loadRemoteHealth(baseUrl);
   }
 
   result.console_errors = consoleErrors;

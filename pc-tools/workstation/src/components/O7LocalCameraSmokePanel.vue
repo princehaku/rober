@@ -27,6 +27,19 @@ const browserSmokeCopy = computed(() => {
   ].join(" · ");
 });
 
+const browserStatsCopy = computed(() => {
+  // stats 是 smoke 脚本采集的只读浏览器证据，UI 只压缩展示定位线索。
+  const smoke = cameraSmoke.value?.browser_smoke;
+  const inbound = smoke?.inbound_video_stats?.[0];
+  const pair = smoke?.selected_candidate_pair;
+  return [
+    `ontrack=${smoke?.ontrack_count ?? 0}`,
+    `packets=${inbound?.packetsReceived ?? "null"}`,
+    `frames_decoded=${inbound?.framesDecoded ?? "null"}`,
+    `pair=${pair?.state ?? "null"}`,
+  ].join(" · ");
+});
+
 async function refreshCameraSmoke(): Promise<void> {
   // 刷新只读状态，不启动 /offer、不打开摄像头、不创建 WebRTC peer。
   cameraLoading.value = true;
@@ -109,6 +122,8 @@ onMounted(() => {
         · close={{ cameraSmoke?.browser_smoke.server_peer_close_status ?? "not_loaded" }}
         · ready={{ cameraSmoke?.browser_smoke.final_ready_state ?? "null" }}
       </dd>
+      <dt>browser stats</dt>
+      <dd>{{ browserStatsCopy }}</dd>
       <dt>browser errors</dt>
       <dd>
         console={{ cameraSmoke?.browser_smoke.console_error_count ?? 0 }}

@@ -1803,6 +1803,13 @@ export interface O7BrowserPlaybackSmokeSummary {
   final_ready_state: number | null;
   stable_video_width: number | null;
   stable_video_height: number | null;
+  ontrack_count: number;
+  receiver_track_states: Array<Record<string, unknown>>;
+  transceiver_directions: Array<Record<string, unknown>>;
+  inbound_video_stats: Array<Record<string, unknown>>;
+  selected_candidate_pair: Record<string, unknown> | null;
+  peer_state_timeline: Array<Record<string, unknown>>;
+  post_smoke_remote_health: Record<string, unknown> | null;
   console_error_count: number;
   page_error_count: number;
   server_peer_id: string | null;

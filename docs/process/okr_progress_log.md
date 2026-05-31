@@ -8,6 +8,25 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 07-08｜o7-browser-ice-gathering-stats｜O7 same-LAN Chromium browser first-frame proof
+
+本轮 `sprints/2026.06.01_07-08_o7-browser-ice-gathering-stats/` 执行 Micro closeout。目标是收敛上一轮 PC Chromium/browser `first_frame_timeout` 和远端 browser peer `frames_read=0`，把 O7 从“browser first frame not proven”推进到“same-LAN Chromium browser playback first-frame proven”。
+
+Full-Stack 侧在无 trickle 信令的 HTTP `/offer` 模式下，让页面和 self-test 客户端等待 `iceGatheringState=complete` 后再提交 offer；browser smoke 增加 `ontrack_count`、receiver/transceiver 摘要、inbound RTP stats、候选对摘要、peer 状态时间线和结束后远端 health 摘要；PC API/UI 继续只读消费显式 smoke JSON，仍不自动 POST `/offer`、不创建 WebRTC session、不发送控制。Hardware 只读 review 确认远端 8088 ready、依赖 true、`/dev/video0` 未被占用，安全 false 字段保持不变；本轮未触碰 ROS2/Nav2/UART/WAVE ROVER。
+
+关键证据来自 `pc-tools/workstation/.workstation-runtime/o7-browser-playback-smoke.json`：`status=ok`、`first_frame_received=true`、`video_width=640`、`video_height=480`、`first_frame_ms=2281`、`connection_state=connected`、`ice_connection_state=connected`、`ice_gathering_state=complete`、`signaling_state=stable`、`ontrack_count=1`、`inbound_video_stats[0].packetsReceived=2`、`framesDecoded=1`、`server_peer_close_status=200:closed`、`post_smoke_remote_health.activePeerConnections=0`。Full-Stack 验证通过：py_compile OK、unittest 4 OK、remote self-test OK、browser smoke OK、npm test 45 OK、npm lint OK、npm build OK、git diff --check OK。
+
+Product closeout 判定：Objective 7 可从约 92% 上调到约 94%。方向判断为**继续**，不替换、不暂停；本轮真实关闭的是“same-LAN Chromium browser playback first-frame proven + browser stats 可见 + peer cleanup”缺口。仍不证明公网 RTC、TURN、云 relay、鉴权、长期帧率/延迟/CPU/温度、真实用户浏览器/手机体验、ASR/TTS、手控/Nav2、真实 robot ACK 或上车任务闭环。下一优先级是短时稳定性与产品入口安全边界，而不是重复消费 `first_frame_timeout`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 7：PC 端运营调试平台 | 从约 92% 调整到约 94% | 本轮 browser smoke 已证明同 LAN Chromium `<video>` 首帧：640x480、首帧 2281ms、ICE connected/complete、ontrack=1、inbound packets=2、framesDecoded=1，且 close 后 `activePeerConnections=0`。仍缺公网 RTC、TURN、云 relay、鉴权、长期帧率/延迟/CPU/温度、真实用户浏览器/手机体验、ASR/TTS、手控/Nav2、真实 robot ACK 和上车任务闭环。 |
+| Objective 1 / 5 / 6 | 保持原进度 | 本轮不触碰 WAVE ROVER/UART/HIL、ROS2/Nav2、真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、live O6 API 或上车数据。 |
+
+本轮没有已完成 KR 需要移入历史归档区；O7 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4.1/5/6 节和 `sprints/2026.06.01_07-08_o7-browser-ice-gathering-stats/tech-done.md` 的 Product closeout 段，剩余风险见上表。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 05-06｜o7-browser-playback-real-proof｜O7 browser smoke resource release and first-frame blocker
 
 本轮 `sprints/2026.06.01_05-06_o7-browser-playback-real-proof/` 执行 Micro closeout。目标是延续上一轮 same-LAN browser playback smoke，把 O7 从“脚本入口存在但 Playwright/Chromium 缺失”推进到真实可运行、可归因的浏览器验证。

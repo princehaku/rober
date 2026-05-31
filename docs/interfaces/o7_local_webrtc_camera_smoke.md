@@ -63,6 +63,7 @@ ROBER_WEBRTC_SELF_TEST_URL=http://127.0.0.1:8088 ROBER_WEBRTC_SELF_TEST_TIMEOUT=
 自检输出单行 JSON，schema 为 `trashbot.local_webrtc_camera_offer_self_test.v1`。关键字段：
 
 - `status=ok`：`/health` 可达、`/offer` 返回 answer，且 `first_frame_received=true`。
+- `client_ice_gathering_state=complete`：自检客户端在无 trickle 信令下已等待 ICE candidate 收齐再 POST `/offer`；若出现 `client_ice_gathering_timeout=true`，只能证明 answer 尝试，不应外推为稳定浏览器播放。
 - `peer_id` + `server_peer_close.closed=true`：自检已经释放本次服务端 peer，后续自检可立刻重复运行。
 - `server_peer_close.stopped_tracks=["video"]`：服务端关闭 peer 时已显式停止本地 `CameraTrack`，OpenCV 摄像头句柄应随之 release。
 - `status=degraded` + `reason=webrtc_client_dependency_missing`：客户端缺 `aiohttp` 或 `aiortc`，只能确认 HTTP 诊断，不能确认 offer/answer。
@@ -97,6 +98,10 @@ pc-tools/workstation/.workstation-runtime/o7-browser-playback-smoke.json
 - `video_width` / `video_height`：浏览器 `<video>` 解码后的尺寸。
 - `first_frame_ms`：从页面启动到首帧可见的耗时。
 - `connection_state` / `ice_connection_state` / `ice_gathering_state` / `signaling_state`：浏览器侧 WebRTC 状态。
+- `ontrack_count` / `receiver_track_states` / `transceiver_directions`：浏览器是否收到 video track，以及 recvonly/currentDirection 是否符合预期。
+- `inbound_video_stats` / `selected_candidate_pair`：浏览器 `getStats()` 的入站 RTP 和候选对摘要；用于区分“有 track 但无 RTP”、“有 RTP 但 video 未解码/未播放”和 ICE 层失败。
+- `peer_state_timeline`：浏览器 peer 状态最后若干次变化，便于对齐服务端 `/health.media_diagnostics`。
+- `post_smoke_remote_health`：browser smoke 结束后再次只读 `/health`，用于确认服务端 peer 是否已释放。
 - `console_errors` / `page_errors`：浏览器控制台和页面异常摘要。
 - `blocked_reason`：缺 Playwright、缺 Chromium、页面不可达、按钮不可点、首帧超时或其他失败根因。
 - `failure_category`：机器可读失败分类，当前用于区分 `dependency`、`remote_409`、`first_frame_timeout`、`ice_browser`、`page_console_error`、`browser_smoke_failed` 或 `none`。
@@ -142,6 +147,8 @@ ROBER_O7_BROWSER_SMOKE_REQUIRE_FRAME=1 ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http:/
 - `/peers/{peer_id}/close` 返回 200 但 `fuser -v /dev/video0` 仍显示 smoke 进程：说明本地 track 没有释放或仍有读取线程占用，不能继续跑 browser smoke，应先看 close JSON 里的 `stopped_tracks` / `track_stop_errors` 和服务端日志。
 - 浏览器标签页刷新/关闭后仍出现 `active_peer_connections=1`：新版页面会在 Stop、`pagehide`、`beforeunload` 时对 answer 返回的 `peer_id` 调用 `/peers/{peer_id}/close`；若远端仍运行旧脚本或浏览器被强杀导致 close 请求未到达，可用 `/health.active_peer_ids` 定位残留 peer，必要时重启 8088 smoke 服务后重跑。
 - 浏览器 smoke `failure_category=first_frame_timeout`：页面已显式点击并等待 `<video>`，但超时未到 `readyState>=2` 且尺寸仍为空；优先结合 ICE 状态、页面错误、服务端日志、CPU/温度和摄像头帧率继续定位。
+- 浏览器 smoke `failure_category=track_received_no_rtp`：页面收到 video track，但 `inbound_video_stats` 没有 packets/decoded frame，优先查 RTP 是否从 aiortc sender 启动、codec/RTCP/候选路径是否正常。
+- 浏览器 smoke `failure_category=video_element_decode_timeout`：浏览器已有入站 RTP 或 decoded frame，但 `<video>` 没有进入 `readyState>=2`，优先查 headless Chromium 解码、autoplay/play promise、video 绑定和页面脚本。
 - 浏览器 smoke ICE connected 但 `<video>` `readyState=0`：新版页面会在 `event.streams[0]` 为空时用 `new MediaStream([event.track])` 兜底绑定 streamless track，并主动调用 `video.play()`。若 server `frames_read` 增长但浏览器仍无首帧，下一步重点查 Chrome 编解码/自动播放/页面脚本错误；若 `frames_read=0`，重点查 server 摄像头读取链路。
 - 浏览器页面有 answer 但无画面：需要查看 `/tmp/rober-local-webrtc-camera.log`，并补真实浏览器控制台、ICE 状态、CPU/温度和摄像头帧率证据。
 - `npm run o7:browser-smoke` 返回 `playwright_dependency_missing_use_npx_p_playwright_or_install_browser_runtime`：当前 PC workstation Node 环境缺浏览器自动化依赖，本轮只能保留 fail-closed JSON，不能证明真实浏览器播放。
