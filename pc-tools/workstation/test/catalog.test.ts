@@ -3366,6 +3366,60 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("O7 local WebRTC camera API reads browser smoke JSON without creating workstation RTC session", async () => {
+    // browser smoke JSON 是显式脚本证据；PC API 只能摘要读取，并重新压住所有控制相关字段。
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o7-browser-smoke-"));
+    const smokePath = path.join(tempDir, "smoke.json");
+    await writeFile(
+      smokePath,
+      JSON.stringify({
+        schema: "trashbot.o7.local_webrtc_browser_playback_smoke.v1",
+        status: "ok",
+        base_url: "http://192.168.1.11:8088/",
+        page_url: "http://192.168.1.11:8088/",
+        executed_at: "2026-06-01T04:20:00.000Z",
+        browser_engine: "chromium",
+        browser_available: true,
+        playwright_available: true,
+        start_clicked: true,
+        first_frame_received: true,
+        video_width: 640,
+        video_height: 480,
+        first_frame_ms: 1200,
+        connection_state: "connected",
+        ice_connection_state: "connected",
+        ice_gathering_state: "complete",
+        signaling_state: "stable",
+        console_errors: [],
+        page_errors: [],
+        blocked_reason: "none",
+        safe_to_control: true,
+        sends_commands: true,
+        robot_control_executed: true,
+        offer_executed_by_browser: true,
+        workstation_api_offer_executed: true,
+      }),
+      "utf8",
+    );
+
+    const status = await buildO7LocalWebrtcCamera({
+      env: { ROBER_O7_BROWSER_SMOKE_RESULT_JSON: smokePath },
+    });
+
+    expect(status.status).toBe("not_configured");
+    expect(status.health_get_executed).toBe(false);
+    expect(status.devices_get_executed).toBe(false);
+    expect(status.offer_executed).toBe(false);
+    expect(status.webrtc_session_created).toBe(false);
+    expect(status.browser_smoke.status).toBe("ok");
+    expect(status.browser_smoke.first_frame_received).toBe(true);
+    expect(status.browser_smoke.offer_executed_by_browser).toBe(true);
+    expect(status.browser_smoke.safe_to_control).toBe(false);
+    expect(status.browser_smoke.sends_commands).toBe(false);
+    expect(status.browser_smoke.robot_control_executed).toBe(false);
+    expect(status.browser_smoke.workstation_api_offer_executed).toBe(false);
+  });
+
   it("O7 local WebRTC camera API consumes ready health and devices without creating RTC session", async () => {
     // ready fixture 只证明 PC 后端能消费 /health + /devices；/offer 和浏览器首帧仍未执行。
     const server = await listenLocalCameraSmoke(

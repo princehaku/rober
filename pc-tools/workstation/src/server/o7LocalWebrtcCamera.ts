@@ -1,9 +1,14 @@
 import { PROOF_FLAGS } from "../shared/contracts";
-import type { O7LocalWebrtcCameraResponse } from "../shared/contracts";
+import type { O7BrowserPlaybackSmokeSummary, O7LocalWebrtcCameraResponse } from "../shared/contracts";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { displayRoot, WORKSTATION_RUNTIME_ROOT } from "./paths";
 
 const ENDPOINT = "/api/o7/local-webrtc-camera" as const;
 const DEFAULT_CAMERA_BASE_URL = "http://192.168.1.11:8088";
 const REMOTE_SELF_TEST_SCHEMA = "trashbot.local_webrtc_camera_offer_self_test.v1" as const;
+const BROWSER_SMOKE_SCHEMA = "trashbot.o7.local_webrtc_browser_playback_smoke.v1" as const;
+const DEFAULT_BROWSER_SMOKE_RESULT = path.join(WORKSTATION_RUNTIME_ROOT, "o7-browser-playback-smoke.json");
 const REQUEST_TIMEOUT_MS = 1500;
 
 const SAFETY_FIELDS = [
@@ -24,7 +29,99 @@ interface JsonResult {
   reason: string;
 }
 
-function responseBase(reason: string, baseUrl = DEFAULT_CAMERA_BASE_URL): O7LocalWebrtcCameraResponse {
+function defaultBrowserSmoke(reason: string, baseUrl: string): O7BrowserPlaybackSmokeSummary {
+  // PC API 不运行浏览器 smoke；没有显式脚本证据时只能展示 not_run，不能推断首帧成功。
+  return {
+    schema: BROWSER_SMOKE_SCHEMA,
+    status: "not_run",
+    base_url: baseUrl,
+    page_url: baseUrl,
+    executed_at: "not_run",
+    browser_engine: "not_run",
+    browser_available: false,
+    playwright_available: false,
+    start_clicked: false,
+    first_frame_received: false,
+    video_width: null,
+    video_height: null,
+    first_frame_ms: null,
+    connection_state: null,
+    ice_connection_state: null,
+    ice_gathering_state: null,
+    signaling_state: null,
+    console_errors: [],
+    page_errors: [],
+    blocked_reason: reason,
+    report_path: displayRoot(DEFAULT_BROWSER_SMOKE_RESULT),
+    safe_to_control: false,
+    sends_commands: false,
+    robot_control_executed: false,
+    offer_executed_by_browser: false,
+    workstation_api_offer_executed: false,
+  };
+}
+
+function stringArray(value: unknown): string[] {
+  // 外部 JSON 只接受字符串数组，避免 UI 展示复杂对象或泄露异常 payload。
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 20) : [];
+}
+
+function browserSmokeFromRecord(record: Record<string, unknown>, fallbackBaseUrl: string, reportPath: string): O7BrowserPlaybackSmokeSummary {
+  // browser smoke 是脚本产物；PC API 只做白名单字段摘要，并重新固定控制相关字段为 false。
+  const firstFrame = record.first_frame_received === true;
+  const status = ["ok", "degraded", "failed", "fail_closed"].includes(String(record.status))
+    ? (String(record.status) as O7BrowserPlaybackSmokeSummary["status"])
+    : "fail_closed";
+  return {
+    schema: String(record.schema ?? BROWSER_SMOKE_SCHEMA),
+    status,
+    base_url: String(record.base_url ?? fallbackBaseUrl),
+    page_url: String(record.page_url ?? record.base_url ?? fallbackBaseUrl),
+    executed_at: String(record.executed_at ?? "unknown"),
+    browser_engine: String(record.browser_engine ?? "unknown"),
+    browser_available: record.browser_available === true,
+    playwright_available: record.playwright_available === true,
+    start_clicked: record.start_clicked === true,
+    first_frame_received: firstFrame,
+    video_width: typeof record.video_width === "number" ? record.video_width : null,
+    video_height: typeof record.video_height === "number" ? record.video_height : null,
+    first_frame_ms: typeof record.first_frame_ms === "number" ? record.first_frame_ms : null,
+    connection_state: typeof record.connection_state === "string" ? record.connection_state : null,
+    ice_connection_state: typeof record.ice_connection_state === "string" ? record.ice_connection_state : null,
+    ice_gathering_state: typeof record.ice_gathering_state === "string" ? record.ice_gathering_state : null,
+    signaling_state: typeof record.signaling_state === "string" ? record.signaling_state : null,
+    console_errors: stringArray(record.console_errors),
+    page_errors: stringArray(record.page_errors),
+    blocked_reason: String(record.blocked_reason ?? (firstFrame ? "none" : "first_frame_not_proven")),
+    report_path: displayRoot(reportPath),
+    safe_to_control: false,
+    sends_commands: false,
+    robot_control_executed: false,
+    offer_executed_by_browser: record.offer_executed_by_browser === true,
+    workstation_api_offer_executed: false,
+  };
+}
+
+async function readBrowserSmoke(env: NodeJS.ProcessEnv, baseUrl: string): Promise<O7BrowserPlaybackSmokeSummary> {
+  const configuredPath = env.ROBER_O7_BROWSER_SMOKE_RESULT_JSON?.trim();
+  const resultPath = configuredPath ? path.resolve(configuredPath) : DEFAULT_BROWSER_SMOKE_RESULT;
+  try {
+    const parsed = JSON.parse(await fs.readFile(resultPath, "utf8")) as unknown;
+    const record = asRecord(parsed);
+    if (!record || record.schema !== BROWSER_SMOKE_SCHEMA) {
+      return { ...defaultBrowserSmoke("browser_smoke_result_schema_invalid", baseUrl), status: "fail_closed", report_path: displayRoot(resultPath) };
+    }
+    return browserSmokeFromRecord(record, baseUrl, resultPath);
+  } catch {
+    return { ...defaultBrowserSmoke("browser_smoke_result_not_found_run_explicit_script", baseUrl), report_path: displayRoot(resultPath) };
+  }
+}
+
+function responseBase(
+  reason: string,
+  baseUrl = DEFAULT_CAMERA_BASE_URL,
+  browserSmoke = defaultBrowserSmoke("browser_smoke_result_not_loaded", baseUrl),
+): O7LocalWebrtcCameraResponse {
   // 基础响应先固定所有危险能力为 false，后续 ready/degraded 也只能追加只读诊断字段。
   return {
     schema: "trashbot.pc_tools_workstation.o7_local_webrtc_camera.v1",
@@ -46,6 +143,7 @@ function responseBase(reason: string, baseUrl = DEFAULT_CAMERA_BASE_URL): O7Loca
     device_count: 0,
     dependency_statuses: {},
     dependency_summary: [],
+    browser_smoke: browserSmoke,
     blocked_reasons: [reason],
     not_proven: [
       "real_browser_video_playback_not_proven",
@@ -155,9 +253,10 @@ export async function buildO7LocalWebrtcCamera(options: LocalCameraOptions = {})
   const env = options.env ?? process.env;
   const configuredBaseUrl = env.ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL ?? "";
   if (!configuredBaseUrl.trim()) {
+    const browserSmoke = await readBrowserSmoke(env, DEFAULT_CAMERA_BASE_URL);
     // 未配置时展示开发默认地址但不主动探测，避免把固定 LAN IP 不可达变成页面启动失败。
     return {
-      ...responseBase("base_url_not_configured", DEFAULT_CAMERA_BASE_URL),
+      ...responseBase("base_url_not_configured", DEFAULT_CAMERA_BASE_URL, browserSmoke),
       status: "not_configured",
       fail_closed_reason: "base_url_not_configured",
       blocked_reasons: ["set_ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL_to_lan_smoke_base_url"],
@@ -166,12 +265,14 @@ export async function buildO7LocalWebrtcCamera(options: LocalCameraOptions = {})
 
   const normalized = normalizeBaseUrl(configuredBaseUrl);
   if (!normalized.ok) {
+    const browserSmoke = await readBrowserSmoke(env, "blocked_unsafe_url");
     return {
-      ...responseBase(normalized.reason, "blocked_unsafe_url"),
+      ...responseBase(normalized.reason, "blocked_unsafe_url", browserSmoke),
       base_url_source: "env",
     };
   }
 
+  const browserSmoke = await readBrowserSmoke(env, normalized.normalized);
   const [health, devices] = await Promise.all([
     fetchJson(`${normalized.normalized}/health`),
     fetchJson(`${normalized.normalized}/devices`),
@@ -190,7 +291,7 @@ export async function buildO7LocalWebrtcCamera(options: LocalCameraOptions = {})
 
   if (blockedReasons.length > 0) {
     return {
-      ...responseBase(blockedReasons[0] ?? "remote_fetch_failed", normalized.normalized),
+      ...responseBase(blockedReasons[0] ?? "remote_fetch_failed", normalized.normalized, browserSmoke),
       base_url_source: "env",
       host: String(healthJson?.host ?? new URL(normalized.normalized).host),
       health_http_status: health.status,
@@ -211,7 +312,7 @@ export async function buildO7LocalWebrtcCamera(options: LocalCameraOptions = {})
   }
 
   return {
-    ...responseBase("none_remote_health_devices_loaded", normalized.normalized),
+    ...responseBase("none_remote_health_devices_loaded", normalized.normalized, browserSmoke),
     status: healthStatus === "ready" ? "ready" : "degraded",
     base_url_source: "env",
     host: String(healthJson?.host ?? new URL(normalized.normalized).host),

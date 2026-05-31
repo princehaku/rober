@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "api": "tsx src/server/index.ts",
+    "o7:browser-smoke": "node scripts/o7-browser-playback-smoke.mjs",
     "build": "tsc -p tsconfig.app.json && vite build && tsc -p tsconfig.server.json",
     "test": "vitest run",
     "lint": "eslint ."

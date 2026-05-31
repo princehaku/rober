@@ -75,6 +75,43 @@ ROBER_WEBRTC_SELF_TEST_URL=http://127.0.0.1:8088 ROBER_WEBRTC_SELF_TEST_TIMEOUT=
 ROBER_WEBRTC_REQUIRE_FRAME=1 ROBER_WEBRTC_SELF_TEST_URL=http://127.0.0.1:8088 bash onboard/scripts/local_webrtc_camera_smoke.sh
 ```
 
+## 同 LAN 浏览器播放 smoke
+
+PC workstation 现在新增显式浏览器播放 smoke：
+
+```bash
+cd pc-tools/workstation
+ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://192.168.1.11:8088/ npm run o7:browser-smoke
+```
+
+该命令只打开 LAN smoke 页面，点击页面里的 `Start WebRTC video`，等待真实浏览器 `<video>` 收到首帧，并输出机器可读 JSON。默认结果写入：
+
+```text
+pc-tools/workstation/.workstation-runtime/o7-browser-playback-smoke.json
+```
+
+输出 schema 为 `trashbot.o7.local_webrtc_browser_playback_smoke.v1`。关键字段：
+
+- `status=ok` 且 `first_frame_received=true`：真实浏览器已收到首帧。
+- `video_width` / `video_height`：浏览器 `<video>` 解码后的尺寸。
+- `first_frame_ms`：从页面启动到首帧可见的耗时。
+- `connection_state` / `ice_connection_state` / `ice_gathering_state` / `signaling_state`：浏览器侧 WebRTC 状态。
+- `console_errors` / `page_errors`：浏览器控制台和页面异常摘要。
+- `blocked_reason`：缺 Playwright、缺 Chromium、页面不可达、按钮不可点、首帧超时或其他失败根因。
+
+浏览器 smoke 是显式命令，不由 PC API 自动触发。缺 Playwright/Chromium 或远端不可达时必须输出 `degraded/failed/fail_closed`，不能把依赖缺失或连接失败冒充成首帧通过。需要强制首帧作为验收门时可设置：
+
+```bash
+ROBER_O7_BROWSER_SMOKE_REQUIRE_FRAME=1 ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://192.168.1.11:8088/ npm run o7:browser-smoke
+```
+
+安全边界保持不变：
+
+- 只读视频播放验证。
+- 不发送机器人控制。
+- 不启动 ROS2/Nav2/UART/WAVE ROVER。
+- 不进入公网 RTC、TURN、鉴权或云 relay。
+
 ## 常见失败定位
 
 - `/devices` 为空：摄像头未枚举、驱动未加载、USB/CSI 连接或权限问题。
@@ -83,3 +120,4 @@ ROBER_WEBRTC_REQUIRE_FRAME=1 ROBER_WEBRTC_SELF_TEST_URL=http://127.0.0.1:8088 ba
 - 自检返回 `offer_rejected` 且服务端 detail 为 `camera_open_failed:<source>`：同上，优先确认 `ROBER_CAMERA_SOURCE` 和摄像头占用。
 - 自检返回 `first_frame_not_received`：answer/ICE 和首帧之间失败，需要结合 `/tmp/rober-local-webrtc-camera.log`、CPU/温度、摄像头帧率和同 LAN 网络继续定位。
 - 浏览器页面有 answer 但无画面：需要查看 `/tmp/rober-local-webrtc-camera.log`，并补真实浏览器控制台、ICE 状态、CPU/温度和摄像头帧率证据。
+- `npm run o7:browser-smoke` 返回 `playwright_dependency_missing_use_npx_p_playwright_or_install_browser_runtime`：当前 PC workstation Node 环境缺浏览器自动化依赖，本轮只能保留 fail-closed JSON，不能证明真实浏览器播放。

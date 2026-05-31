@@ -13,6 +13,20 @@ const dependencyCopy = computed(() => {
   return summary.length ? summary.join(" · ") : "not_loaded";
 });
 
+const browserSmokeCopy = computed(() => {
+  // 浏览器 smoke 来自显式脚本产物；UI 只能展示证据摘要，不能触发 /offer。
+  const smoke = cameraSmoke.value?.browser_smoke;
+  if (!smoke) {
+    return "not_loaded";
+  }
+  return [
+    `executed_at=${smoke.executed_at}`,
+    `first_frame=${smoke.first_frame_received}`,
+    `size=${smoke.video_width ?? "null"}x${smoke.video_height ?? "null"}`,
+    `first_frame_ms=${smoke.first_frame_ms ?? "null"}`,
+  ].join(" · ");
+});
+
 async function refreshCameraSmoke(): Promise<void> {
   // 刷新只读状态，不启动 /offer、不打开摄像头、不创建 WebRTC peer。
   cameraLoading.value = true;
@@ -72,6 +86,25 @@ onMounted(() => {
         offer_executed={{ cameraSmoke?.offer_executed ?? false }}
         · webrtc_session_created={{ cameraSmoke?.webrtc_session_created ?? false }}
       </dd>
+      <dt>browser smoke</dt>
+      <dd>
+        {{ cameraSmoke?.browser_smoke.status ?? "not_loaded" }}
+        · {{ browserSmokeCopy }}
+      </dd>
+      <dt>browser ICE</dt>
+      <dd>
+        connection={{ cameraSmoke?.browser_smoke.connection_state ?? "null" }}
+        · ice={{ cameraSmoke?.browser_smoke.ice_connection_state ?? "null" }}
+        · signaling={{ cameraSmoke?.browser_smoke.signaling_state ?? "null" }}
+      </dd>
+      <dt>browser errors</dt>
+      <dd>
+        console={{ cameraSmoke?.browser_smoke.console_errors.length ?? 0 }}
+        · page={{ cameraSmoke?.browser_smoke.page_errors.length ?? 0 }}
+        · reason={{ cameraSmoke?.browser_smoke.blocked_reason ?? "not_loaded" }}
+      </dd>
+      <dt>browser report</dt>
+      <dd>{{ cameraSmoke?.browser_smoke.report_path ?? "not_loaded" }}</dd>
       <dt>LAN page</dt>
       <dd>
         <a :href="cameraSmoke?.camera_page_url ?? 'http://192.168.1.11:8088/'" target="_blank" rel="noreferrer">

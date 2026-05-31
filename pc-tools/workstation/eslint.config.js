@@ -11,6 +11,15 @@ export default [
   ...tseslint.configs.recommended,
   ...vue.configs["flat/recommended"],
   {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+  },
+  {
     files: ["**/*.{ts,vue}"],
     languageOptions: {
       parserOptions: {

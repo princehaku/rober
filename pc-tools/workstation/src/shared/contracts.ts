@@ -1775,6 +1775,35 @@ export interface O7RtcSignalingContractProbeResponse extends ProofFlags {
 
 export type O7LocalWebrtcCameraStatus = "not_configured" | "ready" | "degraded" | "fail_closed";
 
+export interface O7BrowserPlaybackSmokeSummary {
+  schema: "trashbot.o7.local_webrtc_browser_playback_smoke.v1" | string;
+  status: "not_run" | "ok" | "degraded" | "failed" | "fail_closed";
+  base_url: string;
+  page_url: string;
+  executed_at: string;
+  browser_engine: string;
+  browser_available: boolean;
+  playwright_available: boolean;
+  start_clicked: boolean;
+  first_frame_received: boolean;
+  video_width: number | null;
+  video_height: number | null;
+  first_frame_ms: number | null;
+  connection_state: string | null;
+  ice_connection_state: string | null;
+  ice_gathering_state: string | null;
+  signaling_state: string | null;
+  console_errors: string[];
+  page_errors: string[];
+  blocked_reason: string;
+  report_path: string;
+  safe_to_control: false;
+  sends_commands: false;
+  robot_control_executed: false;
+  offer_executed_by_browser: boolean;
+  workstation_api_offer_executed: false;
+}
+
 export interface O7LocalWebrtcCameraResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.o7_local_webrtc_camera.v1";
   endpoint: "/api/o7/local-webrtc-camera";
@@ -1795,6 +1824,7 @@ export interface O7LocalWebrtcCameraResponse extends ProofFlags {
   device_count: number;
   dependency_statuses: Record<string, "ok" | "missing" | "unknown">;
   dependency_summary: string[];
+  browser_smoke: O7BrowserPlaybackSmokeSummary;
   blocked_reasons: string[];
   not_proven: string[];
   fail_closed_reason: string;

@@ -2,6 +2,8 @@ import path from "node:path";
 
 // 路径模块集中管理仓库根和 pc-tools 目录，避免 server 各层各自推断。
 export const REPO_ROOT = path.resolve(process.cwd(), "../..");
+export const WORKSTATION_ROOT = path.join(REPO_ROOT, "pc-tools", "workstation");
+export const WORKSTATION_RUNTIME_ROOT = path.join(WORKSTATION_ROOT, ".workstation-runtime");
 export const EVIDENCE_ROOT = path.join(REPO_ROOT, "pc-tools", "evidence");
 export const EVIDENCE_FIXTURE_ROOT = path.join(EVIDENCE_ROOT, "fixtures");
 export const ROUTE_ROOT = path.join(REPO_ROOT, "pc-tools", "route");
