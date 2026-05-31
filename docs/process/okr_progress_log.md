@@ -6,6 +6,29 @@
 
 ---
 
+## 2026-06-01 系列
+
+### 2026-06-01 00-01｜local-webrtc-camera｜O7 LAN-only WebRTC Camera Smoke
+
+本轮 `sprints/2026.06.01_00-01_local-webrtc-camera/` 执行 Micro closeout。用户价值是把 O7 里“真实 RTC/视频”从纯 mock/contract 往板端真实摄像头链路推进一步，让开发者和运营调试链路先拿到 LAN-only、只读、可机器复验的视频 smoke，而不是继续停留在 PC console mock bundle 或 vendor Raspberry Pi 参考代码。
+
+Full-Stack 新增 `--self-test-url` 机器可读 recvonly offer-level 自检；同步到远端 Orange Pi `ssh root@192.168.1.11 -p 37878` 后运行通过。关键证据：目标主机 `op-z3-b6.home`、aarch64、`/dev/video0/1/2` 存在；依赖 `aiohttp/aiortc/av/cv2` 均可导入；`/health` 中 `lan_only=true`、`turn_required=false`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`；自检向 `/offer` 发 recvonly SDP 后返回 answer，`connection_state=connected`、`first_frame_received=true`、首帧 640x480。Hardware 只读复核确认 vendor 边界正确：本轮只借鉴 Waveshare Raspberry Pi app 的 `aiortc`、`/offer`、摄像头 smoke 参考形态，不把它当成 rober Orange Pi、云 relay 或完整 PC/手机产品链路已完成。
+
+Product closeout 判定：Objective 7 可从 `90%+ mock/software completion` 小幅调整为 `约 92% software + LAN camera smoke evidence`。方向判断为**继续**，不替换、不暂停；本轮证据真实关闭的是“Orange Pi LAN-only WebRTC 摄像头机器级 smoke”缺口，不关闭真实浏览器播放体验、长期帧率/延迟/CPU/温度、云 relay、公网 RTC、TURN、鉴权、ASR/TTS、手控/Nav2、真实 robot ACK 或真实上车任务闭环。O1/O5/O6 不因本轮调整百分比。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 7：PC 端运营调试平台 | 从 `90%+ mock/software completion` 调整到约 92% | 已新增远端 Orange Pi LAN-only WebRTC camera smoke 证据：`/offer` answer、`connection_state=connected`、`first_frame_received=true`、首帧 640x480，且安全字段保持 false。仍缺真实浏览器播放、持续帧率/延迟/CPU/温度、云 relay、公网 RTC/TURN/鉴权、真实 ASR/TTS、真实手控/Nav2、真实 robot ACK、真实手机和真实上车任务闭环。 |
+| Objective 1 / 5 / 6 | 保持原进度 | 本轮没有启动底盘、UART、WAVE ROVER、Nav2、ROS2 launch 或 HIL；没有证明公网云、4G/SIM、production DB/queue、OSS/CDN live traffic、live O6 API 或上车数据。 |
+
+本轮验证范围：Product 采用 `tech-done.md` 中的 Full-Stack 自检输出与 Hardware 只读复核事实作为证据；Product closeout 只运行文档 grep 和 scoped `git diff --check`。未运行产品代码、脚本、硬件配置变更、真实浏览器播放、长期压测、云 relay、公网 RTC、TURN、鉴权、ASR/TTS、手控/Nav2、真实 robot ACK、WAVE ROVER/UART/HIL 或 ROS2 launch。
+
+本轮没有已完成 KR 需要移入历史归档区；O7 KR 仍保留在当前推进区。历史记录位置为本节和 `sprints/2026.06.01_00-01_local-webrtc-camera/tech-done.md` 的 Product closeout 段，剩余风险见上表。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
+---
+
 ## 2026-05-28 系列
 
 ### 2026-05-28 00-04｜mock-okr-90-acceptance｜O1/O5/O6/O7 90%+ mock/software completion

@@ -244,17 +244,25 @@ if [ "$skip_docker_build" = "1" ]; then
     echo "SKIP_DOCKER_BUILD=1: reusing local Docker image: $image"
 else
     docker_diag_log="$(mktemp -t rober_humble_build.XXXXXX.log)"
+    build_args=(
+        --build-arg "ROS_HUMBLE_BASE_IMAGE=$base_image"
+        --build-arg "UBUNTU_APT_MIRROR=$ubuntu_apt_mirror"
+        --build-arg "ROS_APT_MIRROR=$ros_apt_mirror"
+        --build-arg "PIP_INDEX_URL=$pip_index_url"
+        --build-arg "ROSDEP_SOURCE_MIRROR=$rosdep_source_mirror"
+        --build-arg "ROSDISTRO_INDEX_URL=$rosdistro_index_url"
+        -t "$image"
+        "$repo_root/docker/humble"
+    )
+    if docker build --help 2>/dev/null | grep -q -- '--progress'; then
+        # 上位机可能只有 legacy docker build；能力探测避免把 BuildKit 参数硬塞给旧 CLI。
+        build_args=(--progress="$build_progress" "${build_args[@]}")
+    else
+        # 保留可读日志，方便区分“降级构建”与真正的 Docker/ROS 构建失败。
+        echo "docker_build_progress_arg=unsupported_legacy_builder"
+    fi
     set +e
-    docker build \
-        --progress="$build_progress" \
-        --build-arg "ROS_HUMBLE_BASE_IMAGE=$base_image" \
-        --build-arg "UBUNTU_APT_MIRROR=$ubuntu_apt_mirror" \
-        --build-arg "ROS_APT_MIRROR=$ros_apt_mirror" \
-        --build-arg "PIP_INDEX_URL=$pip_index_url" \
-        --build-arg "ROSDEP_SOURCE_MIRROR=$rosdep_source_mirror" \
-        --build-arg "ROSDISTRO_INDEX_URL=$rosdistro_index_url" \
-        -t "$image" \
-        "$repo_root/docker/humble" 2>&1 | tee "$docker_diag_log"
+    docker build "${build_args[@]}" 2>&1 | tee "$docker_diag_log"
     build_rc=${PIPESTATUS[0]}
     set -e
     if [ "$build_rc" -ne 0 ]; then

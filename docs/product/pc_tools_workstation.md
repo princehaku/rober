@@ -232,3 +232,6 @@ Get-ChildItem -Path pc-tools -Recurse -File -Include *.py | Where-Object { $_.Fu
 ```
 
 该检查应返回空结果。上述验证只证明 PC 工作站软件链路，不证明真实机器人、真实硬件、真实手机、真实云链路或真实交付成功。
+## 2026-05-28 Dev API Boundary
+
+本地开发态 `npm run dev` 使用 `vite.config.ts` 中的 `rober-workstation-api-dev` middleware，把 Express `/api/*` handler 直接挂到 `http://127.0.0.1:5173`。因此 O7 demo archive smoke 可以直接请求 `GET /api/o7/demo/archive`，不要求 operator 同时启动独立 8787 API 进程。该路径仍是 PC-only software proof：只读仓库 fixture，固定 `safe_to_control=false`、`robot_control_executed=false`、`command_dispatch_enabled=false`，不提升任何真实云端、ROS2、Nav2、语音或机器人控制能力。

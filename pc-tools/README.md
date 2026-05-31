@@ -97,3 +97,6 @@ cd pc-tools/workstation && npm run lint
 - `pc_only=true`
 
 即使本地 JSON 读取成功，工作站也不得声明真实 Nav2/fixed-route runtime pass、真实 HIL、真实 WAVE ROVER feedback、真实手机验收、dropoff/cancel completion 或 delivery success。
+## 2026-05-28 Dev API Boundary
+
+开发态 `npm run dev` 现在在 Vite 5173 进程内挂载同一套 Express `/api/*` handler；`GET http://127.0.0.1:5173/api/o7/demo/archive` 不再依赖另起 8787 API 进程。该 dev middleware 只复用本地 PC API，不连接真实云端、ROS2、Nav2、ASR/TTS、串口或机器人 ACK，响应仍必须保持 `safe_to_control=false`、`robot_control_executed=false`、`command_dispatch_enabled=false`。

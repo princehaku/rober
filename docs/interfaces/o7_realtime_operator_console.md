@@ -894,3 +894,6 @@ PC Console 展示该 summary 不等于真实 RTC、真实摄像头、真实音�
 - 真实 ASR/TTS runtime
 - 真实手动转向、速度控制或自动寻路下发
 - 真实送达、投放或硬件安全
+## 2026-05-28 Demo Archive Dev Endpoint
+
+开发态 Vite 5173 通过 `vite.config.ts` 的 `rober-workstation-api-dev` middleware 直接复用 Express handler，所以 `GET http://127.0.0.1:5173/api/o7/demo/archive` 必须稳定返回 200 JSON；该行为只是解决 dev server 与 API 分离导致的本地 500/代理失败，不改变生产静态托管或独立 `npm run api` 的接口语义。响应仍必须保持 `safe_to_control=false`、`robot_control_executed=false`、`command_dispatch_enabled=false`，并继续标记真实云端、ROS2、Nav2、ASR/TTS、机器人 ACK 和控制链路为 `not_proven`。

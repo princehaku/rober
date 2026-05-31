@@ -28,3 +28,22 @@ sprint_type: micro
 
 - 当前仍是 PC-only 本地 demo/software proof；真实 O6 bearer API、真实 RTC/视频、真实 ASR/TTS、真实手控/Nav2、真实 robot ACK、真实 browser/手机和上车数据仍为 `not_proven`。
 - demo 轨迹地图是本地 fixture 的视觉 smoke，不证明真实 ROS2 `/tf`、真实地图定位或 <2s 刷新延迟。
+## 2026-05-28 500 修复追加
+
+### 实际改动
+
+- 修复 `GET http://127.0.0.1:5173/api/o7/demo/archive` 在只启动 Vite dev server 时依赖 8787 代理而返回 500/代理失败的问题。
+- `pc-tools/workstation/vite.config.ts` 新增 `rober-workstation-api-dev` middleware，开发态直接复用 Express `createWorkstationApp()` 的 `/api/*` handler，非 API 请求继续交给 Vite。
+- 同步更新 `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`、`docs/interfaces/o7_realtime_operator_console.md`，说明 5173 dev API 与 fail-closed 边界。
+
+### 验证结果
+
+- `cd pc-tools/workstation && npm run build`：通过，`31 modules transformed`，`built in 963ms`。
+- `cd pc-tools/workstation && npm run test`：通过，`Test Files 2 passed (2)`，`Tests 42 passed (42)`。
+- `cd pc-tools/workstation && npm run lint`：通过，无 lint error 输出。
+- Vite dev smoke：启动 `npm run dev -- --host 127.0.0.1 --port 5173 --strictPort` 后请求 `GET /api/o7/demo/archive` 返回 `status_code=200`、`schema=trashbot.o7.cloud_archive_tasks.v1`、`archive_status=fixture_archive_ready`、`selected_task_id=demo-o7-task-002`、`task_count=2`、`safe_to_control=False`、`robot_control_executed=False`、`command_dispatch_enabled=False`；验证后已清理 5173 后台进程。
+
+### 剩余风险
+
+- 当前修复仅覆盖 workstation Vite dev 与本地 Express API 合流，不证明真实 O6 bearer API、真实 RTC/视频、真实 ASR/TTS、真实手控/Nav2、真实 robot ACK、真实 browser/手机或上车数据。
+- 5173 dev middleware 复用 Express handler；后续新增 `/api/*` 时仍需保持 fail-closed 字段和文档同步。

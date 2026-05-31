@@ -135,7 +135,7 @@
 
 ### Objective 7：PC 端运营调试与数据训练平台
 
-**当前进度：90%+ mock/software completion；real material not_proven** | Task D 已让 PC workstation 消费 O6/O7 mock archive bundle，覆盖实时地图/位置、电梯状态、历史路线回放、数据标注、推理摘要、ASR/TTS stub、手控/寻路 stub，并固定 `safe_to_control=false`、`robot_control_executed=false`。live O6 bearer API、真实 RTC/视频、真实 ASR/TTS、真实 TTS 播放、真实手控/Nav2、真实 robot ACK、真实地图/电梯/回放/标注数据流、真实 browser/手机和上车数据仍为 `not_proven`。（允许使用 Mock 视频数据流、ASR/TTS 本地模拟和轨迹 Mock 优先进行 PC 端功能开发，最终再利用真实数据跑通）
+**当前进度：约 92% software + LAN camera smoke evidence；product real material not_complete** | Task D 已让 PC workstation 消费 O6/O7 mock archive bundle，覆盖实时地图/位置、电梯状态、历史路线回放、数据标注、推理摘要、ASR/TTS stub、手控/寻路 stub，并固定 `safe_to_control=false`、`robot_control_executed=false`。`2026.06.01_00-01_local-webrtc-camera` 进一步在远端 Orange Pi `op-z3-b6.home` 上证明 LAN-only WebRTC camera smoke：`/offer` 返回 answer、`connection_state=connected`、`first_frame_received=true`、首帧 640x480，且 `/health` 保持 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`。这只关闭 O7 的“板端 LAN 摄像头 WebRTC 机器级 smoke”缺口；真实浏览器播放体验、长期帧率/延迟/CPU/温度、云 relay、公网 RTC、TURN、鉴权、真实 ASR/TTS、真实 TTS 播放、真实手控/Nav2、真实 robot ACK、真实地图/电梯/回放/标注数据流、真实手机和上车任务闭环仍为 `not_proven`。
 
 **目标说明**：PC 端面向开发者和运营人员，提供实时监控、历史回放、数据标注、手动控制和语音调试能力，与云端数据层对接，不绕过云端直连小车。
 
@@ -152,14 +152,14 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-05-28。
+更新时间：2026-06-01。
 
 | Objective | 进度 | 主要缺口 |
 | --- | --- | --- |
 | O1：硬件协议可信底盘 | 90%+ mock/software completion | Task A mock serial / virtual HIL packet 软件证据已覆盖主路径和坏帧容错；真实 WAVE ROVER、真实 UART/HIL、真实 Orange Pi 串口、真实 IMU/battery 标定、PR #5 硬件材料仍 `not_proven` |
 | O5：云中转控制面 | 90%+ mock/software completion | Task B mock control plane 已覆盖 commands/status/ack、bearer/env、mock 4G/DB/queue/OSS/CDN graceful degradation；真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 仍 `not_proven` |
 | O6：云端核心后端 | 90%+ mock/software completion | Task C mock archive/query/annotation/inference、board event publisher、algorithm feed、state path fence 已可复验；真实隧道、production DB/queue、OSS upload、真实推理 runtime、live API 和上车数据仍 `not_proven` |
-| O7：PC 端运营调试平台 | 90%+ mock/software completion | Task D PC console 六区 mock/live-like evidence 已覆盖回放、标注、推理、ASR/TTS stub、手控/寻路 stub 和 fail-closed；live O6 API、真实 RTC/视频、ASR/TTS、手控/Nav2、真实 browser/手机和上车数据仍 `not_proven` |
+| O7：PC 端运营调试平台 | 约 92% software + LAN camera smoke evidence | PC console 六区 mock/live-like evidence 已覆盖回放、标注、推理、ASR/TTS stub、手控/寻路 stub 和 fail-closed；LAN-only WebRTC camera smoke 已在远端 Orange Pi 证明 `/offer` answer、connected 和 640x480 first_frame；真实浏览器播放、长期性能、云 relay/公网 RTC/TURN/鉴权、ASR/TTS、手控/Nav2、真实 robot ACK、真实手机和上车任务闭环仍 `not_proven` |
 
 **已归档 Objective（软件侧完成，等待真实现场验证）：**
 
@@ -177,7 +177,7 @@
 
 按完成度从低到高排序：
 
-1. **O7（90%+ mock/software completion；real material not_proven）**：优先把 mock bundle 消费推进到 live O6 bearer API、真实 RTC/视频、ASR/TTS、真实手控/Nav2 和真实 browser/手机验收。
+1. **O7（约 92% software + LAN camera smoke evidence；product real material not_complete）**：下一步优先补真实同 WiFi 浏览器播放、首帧时间、延迟、ICE 状态、浏览器控制台和短时稳定性；再决定是否进入云 relay/公网 RTC/TURN/鉴权，避免把 LAN-only smoke 误读成普通用户视频能力。
 2. **O6（90%+ mock/software completion；real material not_proven）**：优先把本地 archive core 推进到真实隧道、production DB/queue、OSS upload、真实推理 runtime、live API 和上车数据。
 3. **O5（90%+ mock/software completion；real material not_proven）**：按 `docs/interfaces/o1_o5_90_evidence_boundary.md` 采集公网 HTTPS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 材料。
 4. **O1（90%+ mock/software completion；real material not_proven）**：按 `docs/interfaces/o1_o5_90_evidence_boundary.md` 采集真实 WAVE ROVER UART/HIL packet、ROS topic 对照和 PR #5 硬件材料。
@@ -199,6 +199,7 @@
 
 - PC 端接入云端 API，展示历史任务列表和轨迹回放。
 - 实时地图接入 ROS2 位置数据（通过云端转发或本地直连调试）。
+- LAN-only WebRTC camera smoke 已完成机器级 `/offer` answer、connected 和 640x480 first_frame；下一步补浏览器播放体验和稳定性证据。
 - 基本标注界面：拉取待标注帧，提交标注结果。
 
 ### 中期
