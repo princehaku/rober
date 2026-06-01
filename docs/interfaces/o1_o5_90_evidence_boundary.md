@@ -39,6 +39,8 @@ Objective 1 超过 90% 不能只依赖 mock、虚拟串口、Docker build 或 sy
 - `IMU_ctrl.h` 的 IMU 输出字段包括 `r,p,y,ax,ay,az,gx,gy,gz,mx,my,mz,temp`；`battery_ctrl.h` 使用 INA219 并计算 `loadVoltage_V`、`busVoltage_V`、`current_mA`、`power_mW`，但项目 `/battery` 是否只发布电压仍以 ROS bridge 和 HIL 对齐为准。
 - `movtion_module.h` 中 `mm_settings()` 给 `mainType=1/2/3` 设置不同 `WHEEL_D`、`ONE_CIRCLE_PLUSES`、`TRACK_WIDTH` 和 `SET_MOTOR_DIR`。WAVE ROVER 实车的 `mainType`、轮距、轮向和编码器行为不能从照片推断。
 
+2026-06-01 23-24 的最新 O1 probe 已解除上一轮远端 SSH `No route to host` blocker，并通过 `ssh root@192.168.1.11 -p 37878` 在上位机上运行 stdin probe。结果证明 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00` 可打开、`pyserial.available=true`、显式 `--request-base-feedback` 可发送 vendor `{"T":130}\n` 且 `write_error=null`；5 秒和 15 秒读取窗口均为 `read_line_count=0`、`parsed_json_count=0`、`observed_feedback_types=[]`。该状态只能归类为 `serial_open_t130_feedback_request_observed_without_t1001`，仍不满足下面的真实 `T=1001` HIL packet 要求，也不能替代 `feedback_T1001.log`、ROS `/imu/data`、`/battery` 或 `/odom` 同源材料。
+
 O1 必需真实材料路径约定：
 
 ```text
@@ -123,10 +125,16 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s cloud-relay/tests
 - `cloud-relay/scripts/o5_o6_external_live_probe.py` 是同一 schema 的 Python stdlib
   runner，额外输出 `runner=python_stdlib`，用于 Orange Pi / 上位机缺 Node.js 时采集
   同类 fail-closed 软件证据。它可通过 `python3 -s - --once-json < script.py` 的 stdin
-  形态运行，仍只 GET O5/O6 health 和可选 PC aggregate，不 POST、不访问 `/robots/*`、
-  不读取硬件、不回显 bearer；任何 `safe_to_control`、`sends_commands`、
+  形态运行，并支持 `--output /safe/runtime/o5-o6-external-live-probe.json` 把同一份
+  脱敏 JSON 落盘给 PC workstation 读取；仍只 GET O5/O6 health 和可选 PC aggregate，
+  不 POST、不访问 `/robots/*`、不读取硬件、不回显 bearer；任何 `safe_to_control`、`sends_commands`、
   `robot_control_executed`、`reads_hardware`、`delivery_success` 等危险 true 字段都会
   被分类为 contract drift。
+- `GET /api/o5-o6/external-probe-artifact` 是 PC workstation 运维摘要入口，只读取
+  `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 或 `.workstation-runtime/o5-o6-external-live-probe.json`
+  中的最近 probe artifact，并产品化展示 `probe_status`、endpoint reachability、
+  blocked reasons、fail-closed safety fields 和更新时间。它不执行 probe、不发网络请求、
+  不访问 `/robots/*`、不读取硬件、不回显 bearer/token/raw URL/artifact path/traceback。
 
 Objective 5 在该 mock 口径下可以记录为 `90%+ mock/software completion; real material not_proven`。不得把该状态写成真实公网、真实 4G、production DB/queue、OSS/CDN live traffic、真实手机/browser 或真实送达完成。
 

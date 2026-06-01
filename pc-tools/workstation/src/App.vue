@@ -16,6 +16,7 @@ import type {
   EvidenceToolsResponse,
   HardwareMaterialsResponse,
   HealthResponse,
+  O5O6ExternalProbeArtifactResponse,
   O7OperatorConsoleResponse,
   ProofBoundaryResponse,
   RouteDebugSummaryResponse,
@@ -36,6 +37,7 @@ const routeSummary = ref<RouteDebugSummaryResponse | null>(null);
 const evidenceTools = ref<EvidenceToolsResponse | null>(null);
 const hardwareMaterials = ref<HardwareMaterialsResponse | null>(null);
 const trainingLabeling = ref<TrainingLabelingResponse | null>(null);
+const o5O6ExternalProbeArtifact = ref<O5O6ExternalProbeArtifactResponse | null>(null);
 const o7OperatorConsole = ref<O7OperatorConsoleResponse | null>(null);
 const proofBoundary = ref<ProofBoundaryResponse | null>(null);
 const routeInputs = ref<RouteDebugInputs>({
@@ -57,6 +59,7 @@ async function refresh(): Promise<void> {
     evidenceTools.value = snapshot.evidenceTools;
     hardwareMaterials.value = snapshot.hardwareMaterials;
     trainingLabeling.value = snapshot.trainingLabeling;
+    o5O6ExternalProbeArtifact.value = snapshot.o5O6ExternalProbeArtifact;
     o7OperatorConsole.value = snapshot.o7OperatorConsole;
     proofBoundary.value = snapshot.proofBoundary;
   } catch (err) {
@@ -102,7 +105,75 @@ onMounted(() => {
       :route-summary="routeSummary"
       @refresh="refresh"
     />
-    <O7OperatorConsolePanel v-else-if="activePanel === 'o7'" :operator-console="o7OperatorConsole" />
+    <template v-else-if="activePanel === 'o7'">
+      <section class="probe-artifact-panel" aria-label="O5 O6 external probe artifact">
+        <div class="section-head compact-head">
+          <div>
+            <!-- 该卡片只显示后端脱敏摘要，不展示 artifact path、raw URL 或 token。 -->
+            <p class="eyebrow">O5/O6 external live probe · latest artifact</p>
+            <h2>External Probe Artifact</h2>
+          </div>
+          <span class="pill danger">{{ o5O6ExternalProbeArtifact?.probe_status ?? "not_loaded" }}</span>
+        </div>
+        <dl class="kv compact-kv">
+          <!-- updated_at 来自 artifact executed_at 或文件 mtime 脱敏值，便于运维判断是否 stale。 -->
+          <dt>artifact</dt>
+          <dd>
+            {{ o5O6ExternalProbeArtifact?.artifact_status ?? "missing" }}
+            · source={{ o5O6ExternalProbeArtifact?.artifact_source ?? "workstation_runtime" }}
+            · updated={{ o5O6ExternalProbeArtifact?.updated_at ?? "null" }}
+          </dd>
+          <dt>runner</dt>
+          <dd>{{ o5O6ExternalProbeArtifact?.runner ?? "not_loaded" }} · {{ o5O6ExternalProbeArtifact?.viewpoint ?? "not_loaded" }}</dd>
+          <dt>reachability</dt>
+          <dd>
+            reachable={{ o5O6ExternalProbeArtifact?.summary.reachable_count ?? 0 }}/{{
+              o5O6ExternalProbeArtifact?.summary.endpoint_count ?? 0
+            }}
+            · schema={{ o5O6ExternalProbeArtifact?.summary.schema_matched_count ?? 0 }}
+            · fail_closed={{ o5O6ExternalProbeArtifact?.summary.fail_closed_count ?? 0 }}
+          </dd>
+          <dt>safety</dt>
+          <dd>
+            no_post={{ o5O6ExternalProbeArtifact?.safety_policy.no_post ?? true }}
+            · no_robot_control={{ o5O6ExternalProbeArtifact?.safety_policy.no_robot_control ?? true }}
+            · no_hardware_read={{ o5O6ExternalProbeArtifact?.safety_policy.no_hardware_read ?? true }}
+          </dd>
+          <dt>redaction</dt>
+          <dd>
+            credentials_redacted={{ o5O6ExternalProbeArtifact?.credentials_redacted ?? true }}
+            · token_exposed={{ o5O6ExternalProbeArtifact?.token_exposed ?? false }}
+            · raw_url_exposed={{ o5O6ExternalProbeArtifact?.raw_url_exposed ?? false }}
+            · artifact_path_exposed={{ o5O6ExternalProbeArtifact?.artifact_path_exposed ?? false }}
+          </dd>
+        </dl>
+
+        <div class="probe-endpoint-grid">
+          <article
+            v-for="endpoint in o5O6ExternalProbeArtifact?.endpoints ?? []"
+            :key="endpoint.name"
+            class="probe-endpoint-card"
+          >
+            <!-- endpoint 名和固定路径来自 probe allowlist；不会显示 raw base URL。 -->
+            <strong>{{ endpoint.name }}</strong>
+            <span>{{ endpoint.endpoint }}</span>
+            <span>reachable={{ endpoint.reachable }} · http={{ endpoint.http_status ?? "null" }}</span>
+            <span>{{ endpoint.contract_status }} · {{ endpoint.failure_category }}</span>
+            <span v-if="endpoint.blocked_reasons.length">
+              blocked={{ endpoint.blocked_reasons.join(", ") }}
+            </span>
+          </article>
+        </div>
+
+        <ul class="dense">
+          <!-- blocked reasons 是 probe 的产品化恢复提示，已由后端截断和脱敏。 -->
+          <li v-for="reason in o5O6ExternalProbeArtifact?.blocked_reasons ?? []" :key="reason">
+            {{ reason }}
+          </li>
+        </ul>
+      </section>
+      <O7OperatorConsolePanel :operator-console="o7OperatorConsole" />
+    </template>
     <O7FixturePreviewPanel v-else-if="activePanel === 'o7Previews'" />
     <EvidenceToolsPanel v-else-if="activePanel === 'evidence'" :evidence-tools="evidenceTools" />
     <WaveRoverMaterialCoveragePanel

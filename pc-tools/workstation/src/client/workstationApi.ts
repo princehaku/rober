@@ -4,6 +4,7 @@ import type {
   O7CloudArchiveTasksProbeResponse,
   O7CloudArchiveTasksResponse,
   O7CloudOperatorConsoleProbeResponse,
+  O5O6ExternalProbeArtifactResponse,
   O7LabelingPreviewResponse,
   O7LocalWebrtcCameraResponse,
   O7LiveEndpointsManifestResponse,
@@ -34,6 +35,7 @@ export interface WorkstationSnapshot {
   evidenceTools: EvidenceToolsResponse;
   hardwareMaterials: HardwareMaterialsResponse;
   trainingLabeling: TrainingLabelingResponse;
+  o5O6ExternalProbeArtifact: O5O6ExternalProbeArtifactResponse;
   o7OperatorConsole: O7OperatorConsoleResponse;
   proofBoundary: ProofBoundaryResponse;
 }
@@ -68,6 +70,7 @@ const API_ENDPOINTS = {
   o7LiveEndpointsManifest: "/api/o7/live-endpoints/manifest",
   o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
   o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
+  o5O6ExternalProbeArtifact: "/api/o5-o6/external-probe-artifact",
   o7RealtimeElevatorProbe: "/api/o7/realtime-elevator-probe",
   o7RtcSignalingContractProbe: "/api/o7/rtc-signaling-contract-probe",
   o7LocalWebrtcCamera: "/api/o7/local-webrtc-camera",
@@ -220,6 +223,11 @@ export async function getO7CloudArchiveTasksProbe(baseUrl: string): Promise<O7Cl
   return loadJson<O7CloudArchiveTasksProbeResponse>(cloudArchiveTasksProbeUrl(baseUrl));
 }
 
+export async function getO5O6ExternalProbeArtifact(): Promise<O5O6ExternalProbeArtifactResponse> {
+  // 最近 probe artifact 由 PC 后端读取和脱敏；浏览器不接触 artifact 路径或 raw base URL。
+  return loadJson<O5O6ExternalProbeArtifactResponse>(API_ENDPOINTS.o5O6ExternalProbeArtifact);
+}
+
 export async function getO7RealtimeElevatorProbe(baseUrl: string): Promise<O7RealtimeElevatorProbeResponse> {
   // 前端不直连 relay；PC 后端负责 loopback-only 拉取 snapshot 并扫描 KR1/KR2 危险字段。
   return loadJson<O7RealtimeElevatorProbeResponse>(realtimeElevatorProbeUrl(baseUrl));
@@ -291,12 +299,22 @@ export async function loadO7FixturePreview(
 
 export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise<WorkstationSnapshot> {
   // 刷新同时拉取全部只读 API，避免分页面状态互相漂移。
-  const [health, routeSummary, evidenceTools, hardwareMaterials, trainingLabeling, o7OperatorConsole, proofBoundary] = await Promise.all([
+  const [
+    health,
+    routeSummary,
+    evidenceTools,
+    hardwareMaterials,
+    trainingLabeling,
+    o5O6ExternalProbeArtifact,
+    o7OperatorConsole,
+    proofBoundary,
+  ] = await Promise.all([
     getHealth(),
     getRouteDebugSummary(inputs),
     getEvidenceTools(),
     getHardwareMaterials(),
     getTrainingLabeling(),
+    getO5O6ExternalProbeArtifact(),
     getO7OperatorConsole(),
     getProofBoundary(),
   ]);
@@ -307,6 +325,7 @@ export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise
     evidenceTools,
     hardwareMaterials,
     trainingLabeling,
+    o5O6ExternalProbeArtifact,
     o7OperatorConsole,
     proofBoundary,
   };

@@ -8,6 +8,29 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 23-24｜o1-t130-feedback-real-probe + o5-o6-external-probe-artifact-ui｜O1 blocker 收敛与 O5/O6 运维可见面
+
+本轮按 team 并行推进低完成度 Objective。Hardware Infra 负责 O1 真实远端 T=130/T=1001 证据链；Full-Stack 负责 O5/O6 external live probe artifact 的 PC workstation 可见面。两个任务均为 Micro closeout。
+
+O1 侧用户价值是把上一轮 `remote_network_unreachable` blocker 往真实串口反馈证据链推进。Hardware Infra 使用用户提供的 `ssh root@192.168.1.11 -p 37878` 入口执行现有 stdin probe：远端 Python 可运行，`pyserial.available=true`，`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00` 可打开，显式 `--request-base-feedback` 可发送 vendor `{"T":130}\n` 且 `write_error=null`。5 秒和 15 秒读取窗口均无串口行返回：`read_line_count=0`、`parsed_json_count=0`、`observed_feedback_types=[]`。本轮未发送 `T=1`、`T=13`、`T=131`、`cmd_vel` 或任何运动命令。
+
+O5/O6 侧用户价值是把 external probe 从 SSH/stdout 材料推进到 PC workstation 运维可见面。Full-Stack 给 `cloud-relay/scripts/o5_o6_external_live_probe.py` 增加 `--output`，让同一份脱敏 `trashbot.o5_o6.external_live_probe.v1` JSON 可落盘；PC workstation 新增只读 `GET /api/o5-o6/external-probe-artifact` 和 O7 Console 摘要，显示 `probe_status`、runner、endpoint reachability、blocked reasons、fail-closed safety fields 和更新时间。该入口不执行 probe、不发网络请求、不访问 `/robots/*`、不读取硬件、不回显 bearer/token/raw URL/artifact path/traceback。
+
+验证证据：O1 `py_compile` 通过、focused unittest 7 OK、远端 5 秒/15 秒 no-motion probe 均可打开串口并写入一次 T=130 但未读到行、scoped diff check 通过。O5/O6 `python3 -m py_compile cloud-relay/scripts/o5_o6_external_live_probe.py` 通过；`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest cloud-relay/tests/test_o5_o6_external_live_probe.py` 输出 `Ran 5 tests ... OK`；PC `npm run build` 通过；`npm run test` 输出 `Test Files 2 passed (2)` / `Tests 53 passed (53)`；`npm run lint` 无输出通过；scoped `git diff --check` 通过。
+
+Product closeout 判定：Objective 1 保持约 93%，方向为继续；本轮关闭的是 SSH 网络层 blocker，把失败点收敛为 `serial_open_t130_feedback_request_observed_without_t1001`，但真实 `T=1001`、HIL packet 和底盘可控仍未证明。Objective 5 与 Objective 6 从约 93% 保守调整到约 94%，方向为继续；本轮关闭的是 external probe artifact 的运维可见面和 fail-closed UI/API 消费缺口，不证明真实公网、真实 4G、production DB/queue、OSS/CDN、真实 phone/browser、上车数据、robot ACK 或 delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 93% | 远端 SSH 可达、串口可打开、显式 T=130 写入成功；5 秒和 15 秒均无 `T=1001` 或任何串口行。下一步是现场核对供电/连接/TXRX/串口占用/firmware 分支并采集真实 `feedback_T1001.log`。 |
+| Objective 5：云中转控制面 | 从约 93% 调整到约 94% | Python external probe 可 `--output` 落盘，PC workstation 可读取并脱敏展示最近 artifact。真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser 仍 `not_proven`。 |
+| Objective 6：云端核心后端 | 从约 93% 调整到约 94% | O6 archive health 的 external probe 结果可进入 PC 运维摘要。真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、真实云、真实 4G/SIM、真实 phone/browser 和上车数据仍 `not_proven`。 |
+| Objective 7 | 保持约 95% | 本轮只复用 O7 Console 作为运维展示面，不推进 WebRTC 长稳态、弱网、TURN、真实用户浏览器/手机、ASR/TTS、手控/Nav2 或完整上车任务闭环。 |
+
+本轮没有已完成 KR 进入真实材料历史归档区；O1/O5/O6 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节、`sprints/2026.06.01_23-24_o1-t130-feedback-real-probe/tech-done.md` 和 `sprints/2026.06.01_23-24_o5-o6-external-probe-artifact-ui/tech-done.md`。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 21-22｜o5-o6-python-external-probe｜O5/O6 Python stdlib external probe runner
 
 本轮 `sprints/2026.06.01_21-22_o5-o6-python-external-probe/` 执行 Micro closeout。用户价值是把 O5/O6 external live probe 从 Node-only 工具补成上位机可直接执行的 Python 3 标准库 runner，避免 Orange Pi 缺 Node.js 时无法从上位机视角采集 O5 readiness、O6 archive 和 PC aggregate health 的 fail-closed 证据。

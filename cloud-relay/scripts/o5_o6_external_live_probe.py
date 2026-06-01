@@ -114,6 +114,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--pc-base-url", default="", help="PC workstation API base URL")
     parser.add_argument("--cloud-base-url", default="", help="cloud-relay API base URL")
     parser.add_argument("--timeout-ms", type=int, default=2500, help="HTTP timeout in milliseconds")
+    parser.add_argument("--output", default="", help="optional JSON artifact output path")
     return parser.parse_args(argv)
 
 
@@ -419,7 +420,14 @@ def run_probe(args: argparse.Namespace) -> dict:
 
 def main(argv: list[str]) -> int:
     # stdout 永远输出一个 JSON object，方便 ssh 失败以外的场景被自动化收集。
-    result = run_probe(parse_args(argv))
+    args = parse_args(argv)
+    result = run_probe(args)
+    if args.output:
+        # 可选落盘只写同一份脱敏 JSON；目录由调用方显式指定，脚本不猜测仓库位置。
+        os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
+        with open(args.output, "w", encoding="utf-8") as handle:
+            json.dump(result, handle, ensure_ascii=False, separators=(",", ":"))
+            handle.write("\n")
     sys.stdout.write(json.dumps(result, ensure_ascii=False, separators=(",", ":")) + "\n")
     # exit 2 代表配置/网络/contract 仍 blocked；stdout 始终可机器读取。
     return 0 if result["probe_status"] == "observed_fail_closed_contract" else 2

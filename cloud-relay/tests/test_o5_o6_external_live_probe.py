@@ -1,6 +1,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -201,6 +202,22 @@ class O5O6PythonExternalLiveProbeTest(unittest.TestCase):
         credentialed = probe.normalize_base_url("http://user:pass@example.com/api")
         self.assertFalse(credentialed["ok"])
         self.assertEqual(credentialed["reason"], "base_url_must_not_include_credentials_query_or_hash")
+
+    def test_cli_output_writes_same_sanitized_artifact(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "o5-o6-external-live-probe.json"
+            with mock.patch.dict("os.environ", {}, clear=True):
+                exit_code = probe.main(["--once-json", "--output", str(output)])
+
+            # 输出文件用于 PC workstation 消费；内容仍是 fail-closed 脱敏 schema。
+            self.assertEqual(exit_code, 2)
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(payload["schema"], "trashbot.o5_o6.external_live_probe.v1")
+            self.assertEqual(payload["probe_status"], "fail_closed")
+            self.assertFalse(payload["safe_to_control"])
+            self.assertFalse(payload["sends_commands"])
+            self.assertFalse(payload["reads_hardware"])
+            self.assertNotIn("Bearer", json.dumps(payload))
 
 
 if __name__ == "__main__":

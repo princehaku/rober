@@ -9,6 +9,7 @@ import {
   buildO7DemoArchive,
   buildO7LiveEndpointsManifest,
   buildO5O6CloudRelayHealth,
+  buildO5O6ExternalProbeArtifact,
   buildO7CloudOperatorConsoleProbe,
   buildO7LocalWebrtcCamera,
   buildO7RealtimeElevatorProbe,
@@ -1495,6 +1496,108 @@ describe("workstation fail-closed API contracts", () => {
       await pcServer.close();
       await relay.close();
     }
+  });
+
+  it("O5/O6 external probe artifact API reads a sanitized latest artifact", async () => {
+    // artifact API 只读 JSON 文件并脱敏摘要；不会回显 env 路径、base URL 或 bearer。
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o5o6-artifact-"));
+    const artifactPath = path.join(tempDir, "probe.json");
+    await writeFile(
+      artifactPath,
+      JSON.stringify({
+        schema: "trashbot.o5_o6.external_live_probe.v1",
+        runner: "python_stdlib",
+        executed_at: "2026-06-01T15:30:00Z",
+        probe_status: "fail_closed",
+        viewpoint: "external_or_upper_computer_readonly",
+        pc_base_url: "http://127.0.0.1:5173",
+        cloud_base_url: "http://127.0.0.1:8787",
+        token_status: "present",
+        credentials_redacted: true,
+        endpoints: [
+          {
+            name: "o5_readiness",
+            endpoint: "/api/o5/readiness/health",
+            reachable: false,
+            http_status: null,
+            schema: "not_loaded",
+            schema_status: "not_loaded",
+            contract_status: "fail_closed",
+            failure_category: "network_or_service_unreachable",
+            blocked_reasons: ["network_or_service_unreachable"],
+            dangerous_true_fields: [],
+            sensitive_markers: [],
+          },
+          {
+            name: "pc_aggregate",
+            endpoint: "/api/o5-o6/cloud-relay-health?baseUrl=http%3A%2F%2F127.0.0.1%3A8787",
+            reachable: false,
+            http_status: null,
+            schema: "not_loaded",
+            schema_status: "not_loaded",
+            contract_status: "fail_closed",
+            failure_category: "network_or_service_unreachable",
+            blocked_reasons: ["network_or_service_unreachable"],
+            dangerous_true_fields: [],
+            sensitive_markers: [],
+          },
+        ],
+        summary: {
+          endpoint_count: 3,
+          reachable_count: 0,
+          schema_matched_count: 0,
+          fail_closed_count: 3,
+          safe_to_control: false,
+          sends_commands: false,
+          robot_control_executed: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          reads_hardware: false,
+        },
+        safety_policy: {
+          method_allowlist: ["GET"],
+          endpoint_allowlist: ["/api/o5/readiness/health", "/api/o6/archive/health", "/api/o5-o6/cloud-relay-health"],
+          forbidden_paths: ["/robots/*", "/cmd_vel"],
+          no_post: true,
+          no_robot_control: true,
+          no_hardware_read: true,
+        },
+        key_false_fields: ["safe_to_control=false", "sends_commands=false", "reads_hardware=false"],
+        blocked_reasons: ["network_or_service_unreachable"],
+        not_proven: ["real_4g_sim_not_proven"],
+        safe_to_control: false,
+        sends_commands: false,
+        reads_hardware: false,
+        robot_control_executed: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+      }),
+      "utf8",
+    );
+
+    const response = await buildO5O6ExternalProbeArtifact({
+      env: { ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT: artifactPath },
+    });
+
+    expect(response.schema).toBe("trashbot.pc_tools_workstation.o5_o6_external_probe_artifact.v1");
+    expect(response.artifact_status).toBe("loaded");
+    expect(response.artifact_source).toBe("env_configured");
+    expect(response.updated_at).toBe("2026-06-01T15:30:00Z");
+    expect(response.probe_status).toBe("fail_closed");
+    expect(response.runner).toBe("python_stdlib");
+    expect(response.summary.endpoint_count).toBe(3);
+    expect(response.summary.safe_to_control).toBe(false);
+    expect(response.safety_policy.no_post).toBe(true);
+    expect(response.safety_policy.no_hardware_read).toBe(true);
+    expect(response.endpoints[0]?.failure_category).toBe("network_or_service_unreachable");
+    expect(response.endpoints[1]?.endpoint).toBe("/api/o5-o6/cloud-relay-health");
+    expect(response.artifact_path_exposed).toBe(false);
+    expect(response.raw_url_exposed).toBe(false);
+    expect(response.token_exposed).toBe(false);
+    expect(JSON.stringify(response)).not.toContain(artifactPath);
+    expect(JSON.stringify(response)).not.toContain("127.0.0.1:8787");
+    expect(JSON.stringify(response)).not.toContain("baseUrl=");
+    expect(JSON.stringify(response)).not.toContain("http%3A%2F%2F");
   });
 
   it("O5/O6 external live probe fails closed when configured services are unreachable", async () => {

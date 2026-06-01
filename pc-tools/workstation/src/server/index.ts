@@ -9,6 +9,7 @@ import {
   buildO7DemoArchive,
   buildO7CloudArchiveTasksProbe,
   buildO5O6CloudRelayHealth,
+  buildO5O6ExternalProbeArtifact,
   buildO7LiveEndpointsManifest,
   buildO7CloudOperatorConsoleProbe,
   buildO7OperatorConsoleAcceptanceResponse,
@@ -116,6 +117,11 @@ export function createWorkstationApp(): express.Express {
     res.json(await buildO5O6CloudRelayHealth({
       baseUrl: queryString(req.query.baseUrl),
     }));
+  });
+
+  workstationApp.get("/api/o5-o6/external-probe-artifact", async (_req, res) => {
+    // 最近一次 external probe artifact 只做本地只读摘要；不执行探针、不联网、不回显路径或 URL。
+    res.json(await buildO5O6ExternalProbeArtifact());
   });
 
   workstationApp.get("/api/o7/realtime-elevator-probe", async (req, res) => {

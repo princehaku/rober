@@ -111,3 +111,23 @@ ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s 
 ```
 
 本轮结果为 SSH 层失败：`ssh: connect to host 192.168.1.11 port 37878: No route to host`。因此本轮未触达远端 Python、未打开 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`、未发送 `{"T":130}\n`、未读取到 `T=1001` 或其他 feedback 类型。该结果只能作为 `remote_network_unreachable` blocker 证据，不得写成串口反馈失败、WAVE ROVER 无反馈或 HIL pass。
+
+`2026.06.01_23-24_o1-t130-feedback-real-probe` 使用用户提供的同一入口重新采集：
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --request-base-feedback --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 5' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
+本轮远端可达，远端 Python 成功运行，`pyserial.available=true`，`serial_opened=true`，`feedback_request.sent=true`，`write_error=null`。该命令只发送一次 vendor `{"T":130}\n`，仍保持 `safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`delivery_success=false`，且 `blocked_commands_not_sent` 继续包含 `T=1`、`T=13`、`T=131` 和 `cmd_vel`。
+
+5 秒窗口结果为：`read_line_count=0`、`parsed_json_count=0`、`invalid_json_count=0`、`observed_feedback_types=[]`、`raw_line_preview=[]`、`error=null`。因此本轮已证明 SSH 网络 blocker 解除、上位机能打开目标串口并完成一次显式非运动 T=130 写入，但仍未读到真实 `T=1001` feedback。
+
+随后按现有参数把读取窗口延长到 15 秒复测：
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --request-base-feedback --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 15' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
+15 秒窗口结果仍为：`serial_opened=true`、`feedback_request.sent=true`、`write_error=null`、`read_line_count=0`、`parsed_json_count=0`、`observed_feedback_types=[]`、`error=null`。本轮共执行两次显式 `--request-base-feedback` probe，每次只发送一次 vendor `T=130`；未发送任何 `T=1`、`T=13`、`T=131`、`cmd_vel` 或其他运动命令。
+
+当前结论只能写成 `serial_open_t130_feedback_request_observed_without_t1001`。它不是 HIL pass，不证明 WAVE ROVER 无反馈，也不证明底盘可控；下一步应在现场核对下位机供电/连接、串口方向、是否被其他进程占用、ESP32 firmware 是否加载 WAVE ROVER `CMD_BASE_FEEDBACK` 分支，并在必要时用 vendor 工具链或串口终端做人工交叉验证。

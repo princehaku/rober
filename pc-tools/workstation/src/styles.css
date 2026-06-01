@@ -138,6 +138,33 @@ h3 {
   padding: 18px;
 }
 
+.probe-artifact-panel {
+  margin-bottom: 12px;
+  border: 1px solid #ccd5de;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.probe-endpoint-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.probe-endpoint-card {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  padding: 10px;
+  background: #f7f9fb;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
 .route-inputs {
   grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   align-items: end;

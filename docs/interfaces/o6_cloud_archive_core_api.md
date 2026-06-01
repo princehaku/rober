@@ -112,7 +112,7 @@ stdlib runner，输出同一 schema 并额外标记 `runner=python_stdlib`。它
 `argparse/json/urllib` 等标准库，适合 Orange Pi 上位机缺 Node.js 时通过 stdin 运行：
 
 ```bash
-ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json' < cloud-relay/scripts/o5_o6_external_live_probe.py
+ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --output /safe/runtime/o5-o6-external-live-probe.json' < cloud-relay/scripts/o5_o6_external_live_probe.py
 ```
 
 该 runner 仍只 GET O5 readiness、O6 archive 和可选 PC aggregate health；bearer
@@ -124,6 +124,17 @@ schema mismatch、敏感 marker、控制/生产 true flag 或 PC aggregate 不�
 `delivery_success=false`。它不读取 task detail，不写 archive store，不触发
 annotation/inference，不上传 OSS，不连接 production DB/queue，不证明真实云、
 真实 4G/SIM、真实 phone/browser、上车数据或 delivery success。
+
+PC workstation 额外提供 `GET /api/o5-o6/external-probe-artifact`，用于运维读取
+最近一次 external live probe artifact 的脱敏摘要。读取顺序是
+`ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 指向的安全落盘文件，或
+`.workstation-runtime/o5-o6-external-live-probe.json`。响应 schema 为
+`trashbot.pc_tools_workstation.o5_o6_external_probe_artifact.v1`，只展示
+`probe_status`、runner、`updated_at`、endpoint reachability、schema match
+计数、blocked reasons、`no_post` / `no_robot_control` / `no_hardware_read` 和
+固定 false safety fields。该 API 不执行 probe、不发网络请求、不访问
+`/robots/*`、不读取硬件、不回显 bearer/token、raw base URL、artifact path 或
+traceback；缺文件、坏 JSON、schema mismatch 或 unsafe true field 均 fail closed。
 
 ## Required Fields
 

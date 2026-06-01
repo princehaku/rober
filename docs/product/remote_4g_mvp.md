@@ -19,6 +19,7 @@ POST /api/commands/cancel
 GET  /api/commands/{command_id}/result?robot_id=<robot_id>
 GET  /api/o5/readiness/health
 GET  /api/o5-o6/cloud-relay-health   # PC workstation only, read-only health aggregation
+GET  /api/o5-o6/external-probe-artifact # PC workstation only, read-only latest probe artifact summary
 CLI  pc-tools/workstation/scripts/o5-o6-external-live-probe.mjs
 CLI  cloud-relay/scripts/o5_o6_external_live_probe.py
 POST /robots/{robot_id}/commands
@@ -67,17 +68,27 @@ external live probe boundary implemented with Python 3 stdlib only. It is kept
 under `cloud-relay/` so the Orange Pi / upper-computer path does not depend on
 Node.js and does not add Python assets under `pc-tools`. It emits the same
 `trashbot.o5_o6.external_live_probe.v1` schema with `runner=python_stdlib`, accepts
-`--pc-base-url`, `--cloud-base-url`, `--timeout-ms`, and `--once-json`, and can be
-run over stdin:
+`--pc-base-url`, `--cloud-base-url`, `--timeout-ms`, `--output`, and
+`--once-json`, and can be run over stdin:
 
 ```bash
-ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json' < cloud-relay/scripts/o5_o6_external_live_probe.py
+ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --output /safe/runtime/o5-o6-external-live-probe.json' < cloud-relay/scripts/o5_o6_external_live_probe.py
 ```
 
 Missing URL/token, unreachable SSH/network, 401/503, bad JSON, schema mismatch,
 unsafe true flags, or sensitive markers remain structured fail-closed evidence.
 No Python runner output may be interpreted as public cloud, 4G, production
 DB/queue, OSS/CDN, phone/browser, robot ACK, hardware read, or delivery success.
+
+`GET /api/o5-o6/external-probe-artifact` is the PC workstation operator view for
+the most recent external probe artifact. The backend reads only
+`ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` or
+`.workstation-runtime/o5-o6-external-live-probe.json`, then returns a sanitized
+summary: `probe_status`, runner, updated timestamp, endpoint reachability,
+schema match counts, blocked reasons, and fail-closed safety fields. It never
+runs the probe, never sends network requests, never accesses `/robots/*`, never
+reads hardware, and never exposes bearer values, raw base URLs, local artifact
+paths, or tracebacks.
 
 The phone-facing command API is bearer-gated and task-level only. Each
 `POST /api/commands/*` body must include `robot_id`, may include

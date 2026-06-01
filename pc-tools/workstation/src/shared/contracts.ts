@@ -1761,6 +1761,64 @@ export interface O5O6CloudRelayHealthResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export interface O5O6ExternalProbeArtifactEndpointSummary {
+  name: string;
+  endpoint: string;
+  reachable: boolean;
+  http_status: number | null;
+  schema: string;
+  schema_status: string;
+  contract_status: string;
+  failure_category: string;
+  blocked_reasons: string[];
+  dangerous_true_fields: string[];
+  sensitive_markers: string[];
+}
+
+// 最近一次 O5/O6 external live probe artifact 只进入 PC 运维摘要，不回显 artifact 路径、base URL、token 或 traceback。
+export interface O5O6ExternalProbeArtifactResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o5_o6_external_probe_artifact.v1";
+  artifact_status: "loaded" | "missing" | "bad_json" | "unsupported_schema" | "unsafe_artifact";
+  artifact_source: "env_configured" | "workstation_runtime" | "not_configured";
+  artifact_path_exposed: false;
+  raw_url_exposed: false;
+  token_exposed: false;
+  traceback_exposed: false;
+  updated_at: string | null;
+  probe_status: string;
+  runner: string;
+  viewpoint: string;
+  token_status: "present" | "absent";
+  credentials_redacted: boolean;
+  summary: {
+    endpoint_count: number;
+    reachable_count: number;
+    schema_matched_count: number;
+    fail_closed_count: number;
+    safe_to_control: false;
+    sends_commands: false;
+    robot_control_executed: false;
+    delivery_success: false;
+    primary_actions_enabled: false;
+    reads_hardware: false;
+  };
+  endpoints: O5O6ExternalProbeArtifactEndpointSummary[];
+  safety_policy: {
+    method_allowlist: string[];
+    endpoint_allowlist: string[];
+    forbidden_paths: string[];
+    no_post: boolean;
+    no_robot_control: boolean;
+    no_hardware_read: boolean;
+  };
+  key_false_fields: string[];
+  blocked_reasons: string[];
+  not_proven: string[];
+  sends_commands: false;
+  reads_hardware: false;
+  robot_control_executed: false;
+}
+
 export interface O7CloudArchiveTasksProbeResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1";
   probe_status: "loaded_fail_closed_contract" | "fail_closed";

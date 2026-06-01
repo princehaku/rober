@@ -376,6 +376,83 @@ const fixtures: Record<string, unknown> = {
       "Dataset and labeling inventory is read-only software proof; it does not run pipelines, transfer data, write files, or prove a real pipeline.",
     ...PROOF_FLAGS,
   },
+  "/api/o5-o6/external-probe-artifact": {
+    schema: "trashbot.pc_tools_workstation.o5_o6_external_probe_artifact.v1",
+    artifact_status: "loaded",
+    artifact_source: "workstation_runtime",
+    artifact_path_exposed: false,
+    raw_url_exposed: false,
+    token_exposed: false,
+    traceback_exposed: false,
+    updated_at: "2026-06-01T15:30:00Z",
+    probe_status: "fail_closed",
+    runner: "python_stdlib",
+    viewpoint: "external_or_upper_computer_readonly",
+    token_status: "absent",
+    credentials_redacted: true,
+    summary: {
+      endpoint_count: 3,
+      reachable_count: 1,
+      schema_matched_count: 1,
+      fail_closed_count: 2,
+      safe_to_control: false,
+      sends_commands: false,
+      robot_control_executed: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      reads_hardware: false,
+    },
+    endpoints: [
+      {
+        name: "o5_readiness",
+        endpoint: "/api/o5/readiness/health",
+        reachable: false,
+        http_status: null,
+        schema: "not_loaded",
+        schema_status: "not_loaded",
+        contract_status: "fail_closed",
+        failure_category: "network_or_service_unreachable",
+        blocked_reasons: ["network_or_service_unreachable"],
+        dangerous_true_fields: [],
+        sensitive_markers: [],
+      },
+      {
+        name: "o6_archive",
+        endpoint: "/api/o6/archive/health",
+        reachable: true,
+        http_status: 200,
+        schema: "trashbot.o6.archive_health.v1",
+        schema_status: "matched",
+        contract_status: "observed_fail_closed_contract",
+        failure_category: "none",
+        blocked_reasons: [],
+        dangerous_true_fields: [],
+        sensitive_markers: [],
+      },
+    ],
+    safety_policy: {
+      method_allowlist: ["GET"],
+      endpoint_allowlist: ["/api/o5/readiness/health", "/api/o6/archive/health", "/api/o5-o6/cloud-relay-health"],
+      forbidden_paths: ["/robots/*", "/cmd_vel"],
+      no_post: true,
+      no_robot_control: true,
+      no_hardware_read: true,
+    },
+    key_false_fields: [
+      "safe_to_control=false",
+      "sends_commands=false",
+      "robot_control_executed=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "reads_hardware=false",
+    ],
+    blocked_reasons: ["network_or_service_unreachable", "pc_base_url_not_configured"],
+    not_proven: ["real_public_https_tls_not_proven", "real_4g_sim_not_proven", "delivery_success_not_proven"],
+    sends_commands: false,
+    reads_hardware: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  },
   "/api/o7/operator-console": {
     schema: "trashbot.o7.operator_console.v1",
     contract_source: "cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py",
@@ -2498,6 +2575,17 @@ describe("App", () => {
 
     expect(wrapper.text()).toContain("O7 Operator Console");
     expect(wrapper.text()).toContain("运营调试台");
+    expect(wrapper.text()).toContain("External Probe Artifact");
+    expect(wrapper.text()).toContain("python_stdlib");
+    expect(wrapper.text()).toContain("updated=2026-06-01T15:30:00Z");
+    expect(wrapper.text()).toContain("reachable=1/3");
+    expect(wrapper.text()).toContain("no_post=true");
+    expect(wrapper.text()).toContain("no_hardware_read=true");
+    expect(wrapper.text()).toContain("token_exposed=false");
+    expect(wrapper.text()).toContain("raw_url_exposed=false");
+    expect(wrapper.text()).toContain("artifact_path_exposed=false");
+    expect(wrapper.text()).toContain("o5_readiness");
+    expect(wrapper.text()).toContain("network_or_service_unreachable");
     expect(wrapper.text()).toContain("pc-tools/workstation/fixtures/o7/demo_archive.json");
     expect(wrapper.text()).toContain("demo-o7-task-002");
     expect(wrapper.text()).toContain("实时地图 / 历史路线回放");
@@ -3148,6 +3236,8 @@ describe("App", () => {
     expect(wrapper.text()).toContain("real_o7_voice_api");
     expect(wrapper.text()).toContain("real_hil_safety");
     expect(wrapper.text()).not.toContain("/cmd_vel");
+    expect(wrapper.text()).not.toContain("Bearer");
+    expect(JSON.stringify(fixtures["/api/o5-o6/external-probe-artifact"])).not.toContain("http://127.0.0.1");
     expect(wrapper.text()).not.toMatch(
       /\bSend\b|\bSpeak\b|\bDispatch\b|\bRun\b|\bSubmit\b|\bControl\b|\bPlay\b|\bPause\b|\bExport\b|\bStop\b|\bCancel\b|\bRecovery\b/,
     );
