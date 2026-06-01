@@ -4,8 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import datetime
+import hashlib
 import json
 import os
+import socket
+import ssl
 import sys
 import time
 import urllib.error
@@ -169,7 +173,174 @@ def normalize_base_url(raw: str) -> dict:
     path = parsed.path.rstrip("/")
     # 保留 path 前缀是为了支持 relay 挂在反向代理子路径下的部署形态。
     normalized = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, path, "", "")).rstrip("/")
-    return {"ok": True, "reason": "ok", "display_url": normalized, "normalized": normalized}
+    # display_url 只表达配置形态，不回显 raw host 或 path，避免 artifact 成为公网/内网拓扑清单。
+    display_url = f"{parsed.scheme}://{host_status(parsed.hostname or '')}"
+    if parsed.port:
+        display_url = f"{display_url}:port_configured"
+    if path:
+        display_url = f"{display_url}/path_configured"
+    return {"ok": True, "reason": "ok", "display_url": display_url, "normalized": normalized, "parsed": parsed}
+
+
+def host_status(hostname: str) -> str:
+    # host 只用于分类，不原样输出；IP、localhost 和公网域名分别给 operator 不同判断入口。
+    text = (hostname or "").strip().lower()
+    if not text:
+        return "missing"
+    if text in ("localhost", "::1"):
+        return "loopback"
+    if text.startswith("127.") or text == "0:0:0:0:0:0:0:1":
+        return "loopback"
+    if text.startswith("10.") or text.startswith("192.168."):
+        return "private_lan"
+    if text.startswith("172."):
+        parts = text.split(".")
+        if len(parts) > 1 and parts[1].isdigit() and 16 <= int(parts[1]) <= 31:
+            return "private_lan"
+    # 这里不做 DNS 解析，避免为分类额外发起网络访问。
+    return "redacted_public_or_custom_host"
+
+
+def redacted_hostname(hostname: str) -> str:
+    # host 可能暴露公网域名或内网拓扑，因此只输出短 hash，便于多次证据比对。
+    text = (hostname or "").strip().lower()
+    if not text:
+        return "not_configured"
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+    return f"sha256:{digest}"
+
+
+def parse_cert_time(value: object) -> datetime.datetime | None:
+    # Python ssl.getpeercert() 使用固定英文时间格式；解析失败时不抛出到主流程。
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return datetime.datetime.strptime(value, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=datetime.timezone.utc)
+    except ValueError:
+        return None
+
+
+def summarize_name_tuple(value: object) -> dict:
+    # subject/issuer 只保留字段是否存在和条目数，不回显完整 DN 或组织名。
+    fields: dict[str, int] = {}
+    if isinstance(value, tuple):
+        for group in value:
+            if not isinstance(group, tuple):
+                continue
+            for item in group:
+                if isinstance(item, tuple) and len(item) >= 2:
+                    key = str(item[0])
+                    fields[key] = fields.get(key, 0) + 1
+    return {
+        "field_count": sum(fields.values()),
+        "common_name_status": "present" if fields.get("commonName") else "absent",
+        "organization_status": "present" if fields.get("organizationName") else "absent",
+        "country_status": "present" if fields.get("countryName") else "absent",
+    }
+
+
+def summarize_certificate(cert: object, now: datetime.datetime | None = None) -> dict:
+    # 证书摘要只表达有效期和安全计数，不输出 raw subject、issuer 或 SAN 域名。
+    record = cert if isinstance(cert, dict) else {}
+    not_before = record.get("notBefore")
+    not_after = record.get("notAfter")
+    parsed_not_after = parse_cert_time(not_after)
+    now_utc = now or datetime.datetime.now(datetime.timezone.utc)
+    san_entries = record.get("subjectAltName") if isinstance(record.get("subjectAltName"), tuple) else ()
+    san_dns_count = sum(1 for item in san_entries if isinstance(item, tuple) and item[:1] == ("DNS",))
+    san_ip_count = sum(1 for item in san_entries if isinstance(item, tuple) and item[:1] == ("IP Address",))
+    expiry_days = None
+    if parsed_not_after:
+        # 用整天数便于 operator 判断证书是否快过期；负数表示已经过期。
+        expiry_days = int((parsed_not_after - now_utc).total_seconds() // 86400)
+    return {
+        "not_before": safe_text(not_before, "not_available") if isinstance(not_before, str) else "not_available",
+        "not_after": safe_text(not_after, "not_available") if isinstance(not_after, str) else "not_available",
+        "certificate_expiry_days": expiry_days,
+        "issuer_summary": summarize_name_tuple(record.get("issuer")),
+        "subject_summary": summarize_name_tuple(record.get("subject")),
+        "subject_alt_name_summary": {
+            "dns_name_count": san_dns_count,
+            "ip_address_count": san_ip_count,
+        },
+    }
+
+
+def classify_tls_error(exc: BaseException) -> str:
+    # TLS 错误只输出粗分类，不把 OpenSSL 异常文本或 hostname 写入 artifact。
+    if isinstance(exc, ssl.SSLCertVerificationError):
+        code = getattr(exc, "verify_code", None)
+        if code == 10:
+            return "certificate_expired"
+        if code in (18, 19, 20, 21):
+            return "self_signed_or_untrusted"
+        text = str(getattr(exc, "verify_message", "")).lower()
+        if "hostname" in text:
+            return "hostname_mismatch"
+        return "certificate_verify_failed"
+    if isinstance(exc, ssl.SSLError):
+        return "tls_handshake_failed"
+    if isinstance(exc, (TimeoutError, socket.timeout)):
+        return "network_timeout"
+    if isinstance(exc, OSError):
+        return "network_or_service_unreachable"
+    return "tls_observation_failed"
+
+
+def collect_tls_evidence(url_status: dict, timeout_s: float) -> dict:
+    # TLS evidence 是外部材料摘要，不改变任何 safety false 字段，也不触发 HTTP POST。
+    if not url_status["ok"]:
+        return {
+            "tls_status": "not_configured" if url_status["reason"] == "base_url_not_configured" else "blocked",
+            "scheme": "not_configured",
+            "hostname_redacted": "not_configured",
+            "host_status": url_status["reason"],
+            "port": None,
+            "tls_observed": False,
+            "tls_version": "not_observed",
+            "cipher_status": "not_observed",
+            "cipher_bits": None,
+            "certificate": summarize_certificate({}),
+            "verification_error": url_status["reason"],
+        }
+    parsed = url_status.get("parsed")
+    scheme = parsed.scheme if parsed else "unknown"
+    hostname = parsed.hostname if parsed else ""
+    port = parsed.port or (443 if scheme == "https" else 80)
+    base = {
+        "scheme": scheme,
+        "hostname_redacted": redacted_hostname(hostname or ""),
+        "host_status": host_status(hostname or ""),
+        "port": port,
+        "tls_observed": False,
+        "tls_version": "not_observed",
+        "cipher_status": "not_observed",
+        "cipher_bits": None,
+        "certificate": summarize_certificate({}),
+        "verification_error": "not_applicable",
+    }
+    if scheme != "https":
+        # HTTP 明确属于 not_applicable，不把没有 TLS 误报成失败。
+        return {"tls_status": "not_applicable", **base}
+    try:
+        context = ssl.create_default_context()
+        # create_connection 只连 cloud base host:port，不访问 path，也不发送 HTTP 请求。
+        with socket.create_connection((hostname, port), timeout=timeout_s) as raw_socket:
+            with context.wrap_socket(raw_socket, server_hostname=hostname) as tls_socket:
+                cipher = tls_socket.cipher() or ("unknown", "unknown", None)
+                return {
+                    "tls_status": "observed",
+                    **base,
+                    "tls_observed": True,
+                    "tls_version": safe_text(tls_socket.version(), "unknown"),
+                    "cipher_status": "present" if cipher[0] != "unknown" else "unknown",
+                    "cipher_bits": cipher[2] if isinstance(cipher[2], int) else None,
+                    "certificate": summarize_certificate(tls_socket.getpeercert()),
+                    "verification_error": "none",
+                }
+    except BaseException as exc:
+        # TLS 观察失败仍必须保留 JSON shape，避免现场网络问题变成 traceback。
+        return {"tls_status": "blocked", **base, "verification_error": classify_tls_error(exc)}
 
 
 def safe_text(value: object, fallback: str = "unknown") -> str:
@@ -235,9 +406,10 @@ def scan_sensitive_markers(value: object, prefix: str = "") -> list[str]:
 
 def endpoint_base(name: str, endpoint: str, expected_schema: str, url_status: dict) -> dict:
     # 每个 endpoint 先从 fail-closed baseline 开始，只有完整通过扫描才升级为 observed。
+    endpoint_display = endpoint.split("?", 1)[0]
     return {
         "name": name,
-        "endpoint": endpoint,
+        "endpoint": endpoint_display,
         "expected_schema": expected_schema,
         "reachable": False,
         "http_status": None,
@@ -327,10 +499,15 @@ def summarize_endpoint(name: str, endpoint: str, expected_schema: str, url_statu
     return summary
 
 
-def final_status(endpoints: list[dict]) -> dict:
+def final_status(endpoints: list[dict], tls_evidence: dict | None = None) -> dict:
     # 全部 endpoint 都符合 schema 和安全扫描时，仍只是 observed fail-closed contract。
     blocked = [reason for item in endpoints for reason in item["blocked_reasons"]]
+    if tls_evidence and tls_evidence.get("tls_status") == "blocked":
+        # HTTPS TLS 观察失败代表真实外部 HTTPS 材料仍缺口，整体必须继续 fail closed。
+        blocked.append(f"tls_blocked:{tls_evidence.get('verification_error', 'unknown')}")
     if endpoints and all(item["contract_status"] == "observed_fail_closed_contract" for item in endpoints):
+        if blocked:
+            return {"probe_status": "fail_closed", "blocked_reasons": blocked}
         # observed_fail_closed_contract 只证明只读 health contract 可观测，不提升真实材料结论。
         return {"probe_status": "observed_fail_closed_contract", "blocked_reasons": []}
     # 只要任一 endpoint blocked，整体 probe 必须 fail_closed，方便自动化用 exit code 判断。
@@ -352,6 +529,7 @@ def run_probe(args: argparse.Namespace) -> dict:
         pc_endpoint = f"{PC_AGGREGATE_ENDPOINT}?baseUrl={urllib.parse.quote(cloud_url['normalized'], safe='')}"
     # PC aggregate 不转发 direct cloud bearer，避免一个探针把云端凭证交给 workstation。
     pc_result = fetch_json(pc_url["normalized"], pc_endpoint, "", config["timeout_s"]) if pc_url["ok"] else None
+    tls_evidence = collect_tls_evidence(cloud_url, config["timeout_s"])
 
     # endpoint 顺序固定为 O5/O6/PC，便于日志 diff 和人工复核。
     endpoints = [
@@ -359,7 +537,7 @@ def run_probe(args: argparse.Namespace) -> dict:
         summarize_endpoint("o6_archive", O6_ENDPOINT, EXPECTED_SCHEMAS["o6_archive"], cloud_url, direct_o6),
         summarize_endpoint("pc_aggregate", pc_endpoint, EXPECTED_SCHEMAS["pc_aggregate"], pc_url, pc_result),
     ]
-    status = final_status(endpoints)
+    status = final_status(endpoints, tls_evidence)
     return {
         # 顶层 schema/runner/viewpoint 是 evidence consumer 的稳定索引字段。
         "schema": SCHEMA,
@@ -372,6 +550,7 @@ def run_probe(args: argparse.Namespace) -> dict:
         "cloud_base_url": cloud_url["display_url"],
         "token_status": "present" if config["token"] else "absent",
         "credentials_redacted": True,
+        "tls_evidence": tls_evidence,
         "endpoints": endpoints,
         "summary": {
             # summary 只聚合安全计数，避免上层 UI 解析每个 endpoint 才能判断 blocked 状态。

@@ -1775,6 +1775,40 @@ export interface O5O6ExternalProbeArtifactEndpointSummary {
   sensitive_markers: string[];
 }
 
+export interface O5O6ExternalProbeArtifactTlsEvidenceSummary {
+  tls_status: "observed" | "not_applicable" | "not_configured" | "blocked" | string;
+  scheme: string;
+  hostname_redacted: string;
+  host_status: string;
+  port: number | null;
+  tls_observed: boolean;
+  tls_version: string;
+  cipher_status: string;
+  cipher_bits: number | null;
+  certificate: {
+    not_before: string;
+    not_after: string;
+    certificate_expiry_days: number | null;
+    issuer_summary: {
+      field_count: number;
+      common_name_status: string;
+      organization_status: string;
+      country_status: string;
+    };
+    subject_summary: {
+      field_count: number;
+      common_name_status: string;
+      organization_status: string;
+      country_status: string;
+    };
+    subject_alt_name_summary: {
+      dns_name_count: number;
+      ip_address_count: number;
+    };
+  };
+  verification_error: string;
+}
+
 // 最近一次 O5/O6 external live probe artifact 只进入 PC 运维摘要，不回显 artifact 路径、base URL、token 或 traceback。
 export interface O5O6ExternalProbeArtifactResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.o5_o6_external_probe_artifact.v1";
@@ -1802,6 +1836,7 @@ export interface O5O6ExternalProbeArtifactResponse extends ProofFlags {
     primary_actions_enabled: false;
     reads_hardware: false;
   };
+  tls_evidence: O5O6ExternalProbeArtifactTlsEvidenceSummary;
   endpoints: O5O6ExternalProbeArtifactEndpointSummary[];
   safety_policy: {
     method_allowlist: string[];

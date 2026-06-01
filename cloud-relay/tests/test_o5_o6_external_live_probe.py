@@ -91,6 +91,8 @@ class O5O6PythonExternalLiveProbeTest(unittest.TestCase):
         self.assertFalse(result["reads_hardware"])
         self.assertFalse(result["robot_control_executed"])
         self.assertFalse(result["delivery_success"])
+        self.assertEqual(result["tls_evidence"]["tls_status"], "not_configured")
+        self.assertFalse(result["tls_evidence"]["tls_observed"])
         self.assertEqual([item["failure_category"] for item in result["endpoints"]], ["base_url_not_configured"] * 3)
         self.assertNotIn("Bearer", json.dumps(result))
 
@@ -145,11 +147,80 @@ class O5O6PythonExternalLiveProbeTest(unittest.TestCase):
         self.assertEqual(result["token_status"], "present")
         self.assertEqual(result["summary"]["reachable_count"], 3)
         self.assertEqual(result["summary"]["schema_matched_count"], 3)
+        self.assertEqual(result["tls_evidence"]["tls_status"], "not_applicable")
+        self.assertEqual(result["tls_evidence"]["scheme"], "http")
         self.assertEqual({item["contract_status"] for item in result["endpoints"]}, {"observed_fail_closed_contract"})
         self.assertTrue(all(item["method"] == "GET" for item in cloud.requests + pc.requests))
         self.assertTrue(all(item["authorization"] == "Bearer secret-token" for item in cloud.requests))
         self.assertTrue(all(item["authorization"] is None for item in pc.requests))
         self.assertNotIn("secret-token", json.dumps(result))
+
+    def test_https_cloud_url_adds_sanitized_tls_evidence(self):
+        # HTTPS 证据通过 mock 注入，避免单测访问真实公网或依赖现场证书。
+        tls_evidence = {
+            "tls_status": "observed",
+            "scheme": "https",
+            "hostname_redacted": "sha256:abcdef123456",
+            "host_status": "redacted_public_or_custom_host",
+            "port": 443,
+            "tls_observed": True,
+            "tls_version": "TLSv1.3",
+            "cipher_status": "present",
+            "cipher_bits": 256,
+            "certificate": {
+                "not_before": "Jan 01 00:00:00 2026 GMT",
+                "not_after": "Jan 01 00:00:00 2027 GMT",
+                "certificate_expiry_days": 200,
+                "issuer_summary": {"field_count": 2, "common_name_status": "present"},
+                "subject_summary": {"field_count": 2, "common_name_status": "present"},
+                "subject_alt_name_summary": {"dns_name_count": 2, "ip_address_count": 0},
+            },
+            "verification_error": "none",
+        }
+        with ProbeServer(
+            {
+                "/api/o5/readiness/health": (200, {"schema": "trashbot.o5.readiness_health.v1"}),
+                "/api/o6/archive/health": (200, {"schema": "trashbot.o6.archive_health.v1"}),
+            }
+        ) as cloud:
+            cloud_base = "https://cloud.example.test"
+            pc_path = f"/api/o5-o6/cloud-relay-health?baseUrl={probe.urllib.parse.quote(cloud_base, safe='')}"
+            with ProbeServer({pc_path: (200, {"schema": "trashbot.pc_tools_workstation.o5_o6_cloud_relay_health.v1"})}) as pc:
+                with mock.patch.object(probe, "fetch_json") as fetch_json:
+                    fetch_json.side_effect = [
+                        {"ok": True, "status": 200, "body": {"schema": "trashbot.o5.readiness_health.v1"}, "bad_json": False},
+                        {"ok": True, "status": 200, "body": {"schema": "trashbot.o6.archive_health.v1"}, "bad_json": False},
+                        {"ok": True, "status": 200, "body": {"schema": "trashbot.pc_tools_workstation.o5_o6_cloud_relay_health.v1"}, "bad_json": False},
+                    ]
+                    with mock.patch.object(probe, "collect_tls_evidence", return_value=tls_evidence):
+                        result = probe.run_probe(_args(pc_base_url=pc.base_url, cloud_base_url=cloud_base))
+
+        # TLS 摘要进入统一 artifact，但 host 和证书 DN 仍只保留脱敏/计数信息。
+        self.assertEqual(result["probe_status"], "observed_fail_closed_contract")
+        self.assertEqual(result["tls_evidence"]["tls_status"], "observed")
+        self.assertEqual(result["tls_evidence"]["hostname_redacted"], "sha256:abcdef123456")
+        self.assertEqual(result["tls_evidence"]["certificate"]["subject_alt_name_summary"]["dns_name_count"], 2)
+        self.assertNotIn("cloud.example.test", json.dumps(result))
+
+    def test_certificate_summary_bounds_subject_and_expiry(self):
+        cert = {
+            "notBefore": "Jan 01 00:00:00 2026 GMT",
+            "notAfter": "Jan 11 00:00:00 2026 GMT",
+            "issuer": ((("commonName", "Issuer CA"),), (("organizationName", "Issuer Org"),)),
+            "subject": ((("commonName", "cloud.example.test"),),),
+            "subjectAltName": (("DNS", "cloud.example.test"), ("DNS", "api.example.test")),
+        }
+        summary = probe.summarize_certificate(
+            cert,
+            now=probe.datetime.datetime(2026, 1, 1, tzinfo=probe.datetime.timezone.utc),
+        )
+
+        # 证书摘要只保留有效期、字段存在状态和 SAN 数量，不输出完整 subject/issuer 值。
+        self.assertEqual(summary["certificate_expiry_days"], 10)
+        self.assertEqual(summary["issuer_summary"]["common_name_status"], "present")
+        self.assertEqual(summary["subject_summary"]["common_name_status"], "present")
+        self.assertEqual(summary["subject_alt_name_summary"]["dns_name_count"], 2)
+        self.assertNotIn("cloud.example.test", json.dumps(summary))
 
     def test_http_bad_json_schema_sensitive_and_dangerous_flags_are_classified(self):
         with ProbeServer(

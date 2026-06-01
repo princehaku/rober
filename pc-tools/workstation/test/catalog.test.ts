@@ -1514,6 +1514,39 @@ describe("workstation fail-closed API contracts", () => {
         cloud_base_url: "http://127.0.0.1:8787",
         token_status: "present",
         credentials_redacted: true,
+        tls_evidence: {
+          tls_status: "observed",
+          scheme: "https",
+          hostname_redacted: "sha256:abcdef123456",
+          host_status: "redacted_public_or_custom_host",
+          port: 443,
+          tls_observed: true,
+          tls_version: "TLSv1.3",
+          cipher_status: "present",
+          cipher_bits: 256,
+          certificate: {
+            not_before: "Jan 01 00:00:00 2026 GMT",
+            not_after: "Jan 01 00:00:00 2027 GMT",
+            certificate_expiry_days: 200,
+            issuer_summary: {
+              field_count: 2,
+              common_name_status: "present",
+              organization_status: "present",
+              country_status: "absent",
+            },
+            subject_summary: {
+              field_count: 2,
+              common_name_status: "present",
+              organization_status: "absent",
+              country_status: "absent",
+            },
+            subject_alt_name_summary: {
+              dns_name_count: 2,
+              ip_address_count: 0,
+            },
+          },
+          verification_error: "none",
+        },
         endpoints: [
           {
             name: "o5_readiness",
@@ -1587,6 +1620,12 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.runner).toBe("python_stdlib");
     expect(response.summary.endpoint_count).toBe(3);
     expect(response.summary.safe_to_control).toBe(false);
+    expect(response.tls_evidence.tls_status).toBe("observed");
+    expect(response.tls_evidence.hostname_redacted).toBe("sha256:abcdef123456");
+    expect(response.tls_evidence.tls_observed).toBe(true);
+    expect(response.tls_evidence.certificate.certificate_expiry_days).toBe(200);
+    expect(response.tls_evidence.certificate.subject_alt_name_summary.dns_name_count).toBe(2);
+    expect(response.tls_evidence.verification_error).toBe("none");
     expect(response.safety_policy.no_post).toBe(true);
     expect(response.safety_policy.no_hardware_read).toBe(true);
     expect(response.endpoints[0]?.failure_category).toBe("network_or_service_unreachable");
@@ -1596,6 +1635,7 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.token_exposed).toBe(false);
     expect(JSON.stringify(response)).not.toContain(artifactPath);
     expect(JSON.stringify(response)).not.toContain("127.0.0.1:8787");
+    expect(JSON.stringify(response)).not.toContain("cloud.example");
     expect(JSON.stringify(response)).not.toContain("baseUrl=");
     expect(JSON.stringify(response)).not.toContain("http%3A%2F%2F");
   });

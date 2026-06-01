@@ -79,16 +79,29 @@ Missing URL/token, unreachable SSH/network, 401/503, bad JSON, schema mismatch,
 unsafe true flags, or sensitive markers remain structured fail-closed evidence.
 No Python runner output may be interpreted as public cloud, 4G, production
 DB/queue, OSS/CDN, phone/browser, robot ACK, hardware read, or delivery success.
+When `--cloud-base-url` / `ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL` is an
+`https://` URL, the Python stdlib runner also records a bounded
+`tls_evidence` summary before returning the same probe artifact. The summary
+contains only scheme, redacted hostname hash, host class, port, TLS observed
+status, bounded TLS version/cipher metadata, certificate validity dates,
+certificate expiry days, issuer/subject field presence counts, SAN counts, and
+verification error classification. It does not output the raw hostname, raw
+base URL, certificate DN values, bearer token, traceback, private key path, or
+any control endpoint. `http://` cloud URLs return `tls_status=not_applicable`;
+missing URLs return `tls_status=not_configured`; invalid or failed TLS
+observation returns `tls_status=blocked` and keeps the whole probe fail-closed.
 
 `GET /api/o5-o6/external-probe-artifact` is the PC workstation operator view for
 the most recent external probe artifact. The backend reads only
 `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` or
 `.workstation-runtime/o5-o6-external-live-probe.json`, then returns a sanitized
 summary: `probe_status`, runner, updated timestamp, endpoint reachability,
-schema match counts, blocked reasons, and fail-closed safety fields. It never
-runs the probe, never sends network requests, never accesses `/robots/*`, never
-reads hardware, and never exposes bearer values, raw base URLs, local artifact
-paths, or tracebacks.
+schema match counts, blocked reasons, `tls_evidence`, and fail-closed safety
+fields. The TLS evidence shown by this API is still a redacted summary: host is
+hash-only, issuer/subject are field-count summaries, and certificate SANs are
+counts only. It never runs the probe, never sends network requests, never
+accesses `/robots/*`, never reads hardware, and never exposes bearer values,
+raw base URLs, local artifact paths, certificate raw names, or tracebacks.
 
 The phone-facing command API is bearer-gated and task-level only. Each
 `POST /api/commands/*` body must include `robot_id`, may include

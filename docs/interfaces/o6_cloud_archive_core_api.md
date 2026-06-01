@@ -125,16 +125,31 @@ schema mismatch、敏感 marker、控制/生产 true flag 或 PC aggregate 不�
 annotation/inference，不上传 OSS，不连接 production DB/queue，不证明真实云、
 真实 4G/SIM、真实 phone/browser、上车数据或 delivery success。
 
+当 cloud base URL 使用 `https://` 时，Python stdlib runner 会额外输出
+`tls_evidence`。该字段只用于 O5/O6 外部 HTTPS 观测材料捕获，不改变 archive
+health 的只读边界，也不把探针升级为 production ready。字段包括：
+`tls_status`、`scheme`、`hostname_redacted`、`host_status`、`port`、
+`tls_observed`、`tls_version`、`cipher_status`、`cipher_bits`、
+`certificate.not_before`、`certificate.not_after`、
+`certificate.certificate_expiry_days`、issuer/subject 字段存在摘要、SAN DNS/IP
+计数和 `verification_error` 分类。raw host、raw base URL、完整 issuer/subject
+DN、SAN 域名列表、token、Authorization、traceback、私钥路径和 artifact path
+不得进入输出。`http://` 时 `tls_status=not_applicable`；未配置 URL 时
+`tls_status=not_configured`；URL 被拦截或 TLS/证书握手失败时
+`tls_status=blocked`，整体 probe 继续 fail closed。
+
 PC workstation 额外提供 `GET /api/o5-o6/external-probe-artifact`，用于运维读取
 最近一次 external live probe artifact 的脱敏摘要。读取顺序是
 `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 指向的安全落盘文件，或
 `.workstation-runtime/o5-o6-external-live-probe.json`。响应 schema 为
 `trashbot.pc_tools_workstation.o5_o6_external_probe_artifact.v1`，只展示
 `probe_status`、runner、`updated_at`、endpoint reachability、schema match
-计数、blocked reasons、`no_post` / `no_robot_control` / `no_hardware_read` 和
-固定 false safety fields。该 API 不执行 probe、不发网络请求、不访问
-`/robots/*`、不读取硬件、不回显 bearer/token、raw base URL、artifact path 或
-traceback；缺文件、坏 JSON、schema mismatch 或 unsafe true field 均 fail closed。
+计数、blocked reasons、`tls_evidence`、`no_post` / `no_robot_control` /
+`no_hardware_read` 和固定 false safety fields。PC API 只转发 TLS 观测摘要：
+host 为 hash-only，issuer/subject 为字段计数，SAN 为数量统计，verification
+error 为分类枚举；不展示 raw URL、raw host、证书 DN 原文、token、artifact path
+或 traceback。该 API 不执行 probe、不发网络请求、不访问 `/robots/*`、不读取
+硬件；缺文件、坏 JSON、schema mismatch 或 unsafe true field 均 fail closed。
 
 ## Required Fields
 

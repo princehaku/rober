@@ -8,6 +8,27 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 05-06｜o5-o6-tls-evidence-summary｜O5/O6 TLS evidence summary visible in PC workstation
+
+本轮 Micro closeout 的用户价值是把 O5/O6 external probe 从“artifact 可见”继续推进到“HTTPS cloud base URL 下的 TLS evidence summary 可采集、可脱敏、可在 PC workstation 查看”。这提高了云端/运维排障证据质量，但不把它包装成真实生产云、真实 4G、真实 TLS 链路或真实手机体验完成。
+
+协调者先尝试 O1 远端 SSH：`ssh -o BatchMode=yes -o ConnectTimeout=5 -p 37878 root@192.168.1.11 'hostname; date; python3 --version'`，结果 `ssh: connect to host 192.168.1.11 port 37878: No route to host`。根据同一 blocker 重复消费红线，本轮不继续消费 O1 SSH/T1001 blocker，切到不依赖该远端链路的 O5/O6。
+
+Full-stack 已完成 O5/O6 external live probe TLS evidence summary：Python stdlib runner 在 HTTPS cloud base URL 时采集脱敏 TLS 摘要；PC workstation artifact API 和 shared contract 消费并展示 TLS summary contract。安全边界保持只读、GET-only、no POST、no `/robots/*`、no hardware read、no raw host/base URL/token/cert DN/traceback/artifact path；不证明 production ready、4G、DB/queue、OSS/CDN、phone/browser、delivery success。
+
+验证证据：`python3 -m py_compile cloud-relay/scripts/o5_o6_external_live_probe.py` 通过；`PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior:onboard/src/ros2_trashbot_nav python3 -m unittest cloud-relay/tests/test_o5_o6_external_live_probe.py` 输出 `Ran 7 tests in 3.990s`，`OK`；`cd pc-tools/workstation && npm run test -- --runInBand` 失败于 Vitest `Unknown option --runInBand`，定位为验收命令参数兼容问题；改跑仓库标准 `npm run test` 后 2 files / 53 tests passed；`npm run build` 通过；`npm run lint` 通过；scoped `git diff --check` 通过。
+
+Product closeout 判定：Objective 1 保持约 93%，方向为继续，但本轮不重复消费 `No route to host` / T1001 blocker。Objective 5 和 Objective 6 从约 94% 保守调整到约 95% `software + external probe TLS evidence summary visible in PC workstation`，方向为继续；Objective 7 保持约 95%。本轮关闭的是 TLS evidence summary 的采集、脱敏和 PC 运维可见面缺口，不证明真实生产 TLS 验收、真实公网 HTTPS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser、robot ACK、delivery success 或完整上车任务闭环。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 93% | SSH 再次 `No route to host`，本轮停止重复消费该 blocker。真实 `T=1001`、UART/HIL、底盘可控、LiDAR `/scan`、ROS Humble runtime、TF、Nav2/SLAM 仍 `not_proven`。 |
+| Objective 5：云中转控制面 | 从约 94% 调整到约 95% | HTTPS cloud base URL 下的 TLS evidence summary 已可由 Python runner 脱敏采集，并在 PC workstation artifact API/contract 展示；真实生产 TLS 验收、真实公网 HTTPS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser 仍 `not_proven`。 |
+| Objective 6：云端核心后端 | 从约 94% 调整到约 95% | O6 archive endpoint 相关 TLS evidence summary 已进入 PC workstation 可见证据链；真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、真实云、真实 4G/SIM、真实 phone/browser、真实生产 TLS 验收和上车数据仍 `not_proven`。 |
+| Objective 7 | 保持约 95% | 本轮只复用 PC workstation/O7 Console 展示面，不推进 WebRTC 长稳态、弱网、TURN、真实用户浏览器/手机、ASR/TTS、手控/Nav2 或完整上车任务闭环。 |
+
+本轮没有已完成 KR 进入真实材料历史归档区；O5/O6 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节和 `sprints/2026.06.02_05-06_o5-o6-tls-evidence-summary/tech-done.md`。
+
 ### 2026-06-02 01-04｜lidar-start-command + o1-t1001-diagnostic-contract｜O1 LiDAR start path and WAVE ROVER feedback diagnostics
 
 本轮 hourly OKR iteration 针对当前最低 Objective 1。用户价值是把 O1 从“LiDAR skeleton / WAVE ROVER feedback prose blocker”推进到两个可复验的软件抓手：LiDAR driver 具备真实串口启动/停止 runtime 路径；WAVE ROVER feedback probe 对 `T=1001` 结果输出稳定机器合同，方便后续现场排障和 automation 路由。

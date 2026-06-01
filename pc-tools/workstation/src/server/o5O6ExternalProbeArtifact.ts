@@ -4,6 +4,7 @@ import { PROOF_FLAGS } from "../shared/contracts";
 import type {
   O5O6ExternalProbeArtifactEndpointSummary,
   O5O6ExternalProbeArtifactResponse,
+  O5O6ExternalProbeArtifactTlsEvidenceSummary,
 } from "../shared/contracts";
 import { WORKSTATION_RUNTIME_ROOT } from "./paths";
 
@@ -42,6 +43,90 @@ function safeStringArray(value: unknown, limit = 8): string[] {
     return [];
   }
   return value.map((item) => safeText(item, "unknown")).slice(0, limit);
+}
+
+function safeNumber(value: unknown): number | null {
+  // TLS 端口、cipher bits 和证书天数只接受有限 number，避免字符串注入展示层。
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function tlsSummaryDefault(status = "not_configured"): O5O6ExternalProbeArtifactTlsEvidenceSummary {
+  // 缺 TLS artifact 时仍返回固定 shape，让 UI 不需要猜字段是否存在。
+  return {
+    tls_status: status,
+    scheme: "not_configured",
+    hostname_redacted: "not_configured",
+    host_status: "not_configured",
+    port: null,
+    tls_observed: false,
+    tls_version: "not_observed",
+    cipher_status: "not_observed",
+    cipher_bits: null,
+    certificate: {
+      not_before: "not_available",
+      not_after: "not_available",
+      certificate_expiry_days: null,
+      issuer_summary: {
+        field_count: 0,
+        common_name_status: "absent",
+        organization_status: "absent",
+        country_status: "absent",
+      },
+      subject_summary: {
+        field_count: 0,
+        common_name_status: "absent",
+        organization_status: "absent",
+        country_status: "absent",
+      },
+      subject_alt_name_summary: {
+        dns_name_count: 0,
+        ip_address_count: 0,
+      },
+    },
+    verification_error: "not_configured",
+  };
+}
+
+function safeNameSummary(value: unknown): O5O6ExternalProbeArtifactTlsEvidenceSummary["certificate"]["issuer_summary"] {
+  const record = asRecord(value) ?? {};
+  return {
+    field_count: safeNumber(record.field_count) ?? 0,
+    common_name_status: safeText(record.common_name_status, "absent"),
+    organization_status: safeText(record.organization_status, "absent"),
+    country_status: safeText(record.country_status, "absent"),
+  };
+}
+
+function summarizeTlsEvidence(value: unknown): O5O6ExternalProbeArtifactTlsEvidenceSummary {
+  const record = asRecord(value);
+  if (!record) {
+    return tlsSummaryDefault();
+  }
+  const certificate = asRecord(record.certificate) ?? {};
+  const san = asRecord(certificate.subject_alt_name_summary) ?? {};
+  return {
+    tls_status: safeText(record.tls_status, "blocked"),
+    scheme: safeText(record.scheme, "unknown"),
+    hostname_redacted: safeText(record.hostname_redacted, "redacted_sensitive_value"),
+    host_status: safeText(record.host_status, "unknown"),
+    port: safeNumber(record.port),
+    tls_observed: record.tls_observed === true,
+    tls_version: safeText(record.tls_version, "not_observed"),
+    cipher_status: safeText(record.cipher_status, "not_observed"),
+    cipher_bits: safeNumber(record.cipher_bits),
+    certificate: {
+      not_before: safeText(certificate.not_before, "not_available"),
+      not_after: safeText(certificate.not_after, "not_available"),
+      certificate_expiry_days: safeNumber(certificate.certificate_expiry_days),
+      issuer_summary: safeNameSummary(certificate.issuer_summary),
+      subject_summary: safeNameSummary(certificate.subject_summary),
+      subject_alt_name_summary: {
+        dns_name_count: safeNumber(san.dns_name_count) ?? 0,
+        ip_address_count: safeNumber(san.ip_address_count) ?? 0,
+      },
+    },
+    verification_error: safeText(record.verification_error, "unknown"),
+  };
 }
 
 function safeEndpointPath(value: unknown): string {
@@ -104,6 +189,7 @@ function failClosed(
       primary_actions_enabled: false,
       reads_hardware: false,
     },
+    tls_evidence: tlsSummaryDefault(status === "missing" ? "not_configured" : "blocked"),
     endpoints: [],
     safety_policy: FIXED_SAFETY_POLICY,
     key_false_fields: [
@@ -210,6 +296,7 @@ export async function buildO5O6ExternalProbeArtifact(
       primary_actions_enabled: false,
       reads_hardware: false,
     },
+    tls_evidence: summarizeTlsEvidence(artifact.tls_evidence),
     endpoints: Array.isArray(artifact.endpoints) ? artifact.endpoints.map(summarizeEndpoint).slice(0, 5) : [],
     safety_policy: FIXED_SAFETY_POLICY,
     key_false_fields: safeStringArray(artifact.key_false_fields, 10),
