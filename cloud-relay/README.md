@@ -17,6 +17,8 @@
 > **O6 archive live health**：`GET /api/o6/archive/health` 已实现为 bearer-gated 只读探测入口，返回 `trashbot.o6.archive_health.v1` / `capability=o6_archive_live_health`。它汇总本地 JSON proof store 的 task/event/annotation/inference 计数和脱敏 `latest_task_ref`，状态只可能是 `empty`、`ready` 或 `store_unavailable`。坏 JSON 或不可读 store 返回 503，payload 不回显 state path、traceback、token 或本机路径。该入口固定 `storage_backend=json_file_proof`、`production_ready=false`、`production_db_connected=false`、`real_oss_upload=false`、`real_inference_model_runtime=false`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`；它只证明 live API 可观测性，不证明 production DB/queue、真实 OSS upload、真实推理 runtime、真实云、真实 4G/SIM 或上车数据。
 >
 > **O5 readiness live health**：`GET /api/o5/readiness/health` 已实现为 bearer-gated 只读探测入口，返回 `trashbot.o5.readiness_health.v1` / `capability=o5_readiness_live_health`。它复用 `production_preflight_payload()` 的缺口语义，但只输出固定 schema、枚举化 readiness items、blocked/warning/pass 计数、当前 `evidence_boundary`、真实材料缺口和 `next_required_evidence`。响应固定 `production_ready=false`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`；未授权返回 401。该入口不得回显 bearer token、Authorization、URL、DB/queue URL、本地路径、完整 artifact、checksum、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 字段。它只把 O5 从 mock/software proof 推进到可部署 live observability，不证明真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 或生产就绪。
+>
+> **O5/O6 Python stdlib external live probe**：`cloud-relay/scripts/o5_o6_external_live_probe.py` 是上位机可直接执行的无 Node 依赖只读探针，输出同一 `trashbot.o5_o6.external_live_probe.v1` schema，并标记 `runner=python_stdlib`。它只 GET O5 readiness、O6 archive 和可选 PC aggregate health；bearer 只从环境变量读取，输出只包含 `token_status`。缺 URL、网络不可达、401/503、坏 JSON、schema mismatch、危险 true 字段或敏感 marker 都结构化为 `probe_status=fail_closed`，并固定 `safe_to_control=false`、`sends_commands=false`、`reads_hardware=false`、`robot_control_executed=false`、`delivery_success=false`。它适合通过 `ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json' < cloud-relay/scripts/o5_o6_external_live_probe.py` 收集 fail-closed 软件证据，但不证明公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser、机器人 ACK 或 delivery success。
 
 ## 用途（What lives here）
 
@@ -52,7 +54,7 @@
 | `cloud-relay/src/` | Python runtime 入口 | `ros2_trashbot_cloud_relay.remote_cloud_relay` 包装 onboard relay 实现，保持协议单一来源 |
 | `cloud-relay/docker/` | Dockerfile | 复制 cloud-relay 入口、onboard 纯 Python relay 模块和 `mobile/web/` 静态壳，不拉入 ROS2/Humble 构建链路 |
 | `cloud-relay/test/` | 单测 + 集成测试 | 后续可迁入 cloud relay 专属测试；当前仍复用 onboard compatibility fence |
-| `cloud-relay/scripts/` | 部署脚本 | `cloud-relay/scripts/docker_smoke.sh` 以 cloud-relay runtime 为主入口 |
+| `cloud-relay/scripts/` | 部署与外部只读探测脚本 | `cloud-relay/scripts/docker_smoke.sh` 以 cloud-relay runtime 为主入口；`o5_o6_external_live_probe.py` 提供 Python stdlib O5/O6 external live probe |
 | `cloud-relay/docker-compose.yml` | compose 入口（公网 8088 端口） | 在 `cloud-relay/` 下执行，使用仓库根 context 复用唯一协议实现 |
 
 ## 部署目标（Deployment target）

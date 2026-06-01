@@ -120,6 +120,13 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s cloud-relay/tests
   bearer；网络不通或服务未配置时也只形成 fail-closed 软件证据。该脚本不能替代下面的
   公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic 或真实
   phone/browser 材料。
+- `cloud-relay/scripts/o5_o6_external_live_probe.py` 是同一 schema 的 Python stdlib
+  runner，额外输出 `runner=python_stdlib`，用于 Orange Pi / 上位机缺 Node.js 时采集
+  同类 fail-closed 软件证据。它可通过 `python3 -s - --once-json < script.py` 的 stdin
+  形态运行，仍只 GET O5/O6 health 和可选 PC aggregate，不 POST、不访问 `/robots/*`、
+  不读取硬件、不回显 bearer；任何 `safe_to_control`、`sends_commands`、
+  `robot_control_executed`、`reads_hardware`、`delivery_success` 等危险 true 字段都会
+  被分类为 contract drift。
 
 Objective 5 在该 mock 口径下可以记录为 `90%+ mock/software completion; real material not_proven`。不得把该状态写成真实公网、真实 4G、production DB/queue、OSS/CDN live traffic、真实手机/browser 或真实送达完成。
 

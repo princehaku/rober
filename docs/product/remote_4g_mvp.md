@@ -20,6 +20,7 @@ GET  /api/commands/{command_id}/result?robot_id=<robot_id>
 GET  /api/o5/readiness/health
 GET  /api/o5-o6/cloud-relay-health   # PC workstation only, read-only health aggregation
 CLI  pc-tools/workstation/scripts/o5-o6-external-live-probe.mjs
+CLI  cloud-relay/scripts/o5_o6_external_live_probe.py
 POST /robots/{robot_id}/commands
 GET  /robots/{robot_id}/commands/next?last_ack_id=<id>
 POST /robots/{robot_id}/status
@@ -60,6 +61,23 @@ fail, the probe still writes a stable fail-closed JSON with
 it does not prove public HTTPS/TLS, real 4G/SIM, production DB/queue,
 production workers, real OSS/CDN traffic, real phone/browser, robot ACK, or
 delivery success.
+
+`cloud-relay/scripts/o5_o6_external_live_probe.py` is the same read-only O5/O6
+external live probe boundary implemented with Python 3 stdlib only. It is kept
+under `cloud-relay/` so the Orange Pi / upper-computer path does not depend on
+Node.js and does not add Python assets under `pc-tools`. It emits the same
+`trashbot.o5_o6.external_live_probe.v1` schema with `runner=python_stdlib`, accepts
+`--pc-base-url`, `--cloud-base-url`, `--timeout-ms`, and `--once-json`, and can be
+run over stdin:
+
+```bash
+ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json' < cloud-relay/scripts/o5_o6_external_live_probe.py
+```
+
+Missing URL/token, unreachable SSH/network, 401/503, bad JSON, schema mismatch,
+unsafe true flags, or sensitive markers remain structured fail-closed evidence.
+No Python runner output may be interpreted as public cloud, 4G, production
+DB/queue, OSS/CDN, phone/browser, robot ACK, hardware read, or delivery success.
 
 The phone-facing command API is bearer-gated and task-level only. Each
 `POST /api/commands/*` body must include `robot_id`, may include

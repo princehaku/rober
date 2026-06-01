@@ -107,6 +107,24 @@ mismatch、敏感 marker、控制/生产 true flag 或 PC aggregate 不可达时
 入口和 fail-closed 证据，不证明真实云、真实 4G/SIM、production DB/queue、真实
 OSS upload、真实推理 runtime、真实 phone/browser、上车数据或 delivery success。
 
+`cloud-relay/scripts/o5_o6_external_live_probe.py` 是同一证据入口的 Python 3
+stdlib runner，输出同一 schema 并额外标记 `runner=python_stdlib`。它只依赖
+`argparse/json/urllib` 等标准库，适合 Orange Pi 上位机缺 Node.js 时通过 stdin 运行：
+
+```bash
+ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json' < cloud-relay/scripts/o5_o6_external_live_probe.py
+```
+
+该 runner 仍只 GET O5 readiness、O6 archive 和可选 PC aggregate health；bearer
+只从 `TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN` 或 `ROBER_CLOUD_RELAY_BEARER_TOKEN`
+读取，输出只包含 `token_status`。缺 URL、网络不可达、HTTP 非 2xx、坏 JSON、
+schema mismatch、敏感 marker、控制/生产 true flag 或 PC aggregate 不可达都会
+落成 `probe_status=fail_closed`，并保持 `safe_to_control=false`、
+`sends_commands=false`、`robot_control_executed=false`、`reads_hardware=false`、
+`delivery_success=false`。它不读取 task detail，不写 archive store，不触发
+annotation/inference，不上传 OSS，不连接 production DB/queue，不证明真实云、
+真实 4G/SIM、真实 phone/browser、上车数据或 delivery success。
+
 ## Required Fields
 
 任务记录最小字段：

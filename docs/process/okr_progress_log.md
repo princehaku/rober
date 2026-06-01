@@ -8,6 +8,26 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 21-22｜o5-o6-python-external-probe｜O5/O6 Python stdlib external probe runner
+
+本轮 `sprints/2026.06.01_21-22_o5-o6-python-external-probe/` 执行 Micro closeout。用户价值是把 O5/O6 external live probe 从 Node-only 工具补成上位机可直接执行的 Python 3 标准库 runner，避免 Orange Pi 缺 Node.js 时无法从上位机视角采集 O5 readiness、O6 archive 和 PC aggregate health 的 fail-closed 证据。
+
+Full-Stack 已新增 `cloud-relay/scripts/o5_o6_external_live_probe.py` 和 focused unittest。脚本输出 `trashbot.o5_o6.external_live_probe.v1`，标记 `runner=python_stdlib`，只发固定 GET：`/api/o5/readiness/health`、`/api/o6/archive/health`、可选 PC aggregate `/api/o5-o6/cloud-relay-health?baseUrl=...`；bearer 只从环境变量读取，输出只记录 `token_status`。安全边界固定为 no-control、no-POST、no-`/robots/*`、no-`/cmd_vel`、no-hardware-read、credential-redacted 和 fail-closed schema。
+
+验证证据来自本轮 `tech-done.md`：`python3 -m py_compile cloud-relay/scripts/o5_o6_external_live_probe.py` 通过；`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest cloud-relay/tests/test_o5_o6_external_live_probe.py` 输出 `Ran 4 tests ... OK`；本地未配置 probe 返回 `probe_status=fail_closed`、3 个 endpoint 均 `base_url_not_configured` 且安全字段全 false；新增脚本中文技术注释比例约 `29.6%`。用户恢复 `root@192.168.1.11:37878` 上位机供电后，远端 SSH 已连上且 `python3 -s - --once-json` 已执行脚本，返回 exit 2 的结构化 fail-closed JSON，当前阻塞从旧的网络/供电不可达推进为远端未配置 `pc_base_url` / `cloud_base_url`。
+
+Product closeout 判定：Objective 5 和 Objective 6 保持约 93%，方向判断为**继续**，不替换、不暂停；本轮真实关闭的是“上位机缺 Node.js 时仍可执行 O5/O6 external live probe runner + 远端 stdin Python 执行路径可达”的软件缺口。由于远端仍未配置 O5/O6/PC base URL，本轮不证明 endpoint 正向可达，也不证明真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、真实 OSS upload、OSS/CDN live traffic、真实模型/外部推理 runtime、真实云、真实 phone/browser、上车数据、robot ACK 或 delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 5：云中转控制面 | 保持约 93% | Python stdlib runner 已补齐上位机无 Node 情况下的外部只读 probe 执行能力；远端 Python 已可执行，当前缺口是 base URL / bearer 配置与真实外部材料。真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、worker/cutover、OSS/CDN live traffic、真实 phone/browser 仍 `not_proven`。 |
+| Objective 6：云端核心后端 | 保持约 93% | O6 archive health 可被同一 Python runner 从上位机视角纳入 fail-closed 证据；真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、真实云、真实 4G/SIM、真实 phone/browser 和上车数据仍 `not_proven`。 |
+| Objective 1 / 7 | 保持原进度 | 本轮不触碰 WAVE ROVER/UART/HIL、LiDAR/Nav2/SLAM、PC/browser RTC 长稳态、真实机器人控制或完整上车任务闭环。 |
+
+本轮没有已完成 KR 需要移入历史归档区；O5/O6 KR 仍保留在当前推进区。下一步是给远端设置 `ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL` / `ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL` / `ROBER_CLOUD_RELAY_BASE_URL` 和 bearer 环境变量，再采集正向 endpoint 可达性。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节和 `sprints/2026.06.01_21-22_o5-o6-python-external-probe/tech-done.md`。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 20-21｜o1-t130-feedback-observation｜O1 T=130 observation blocked by remote_network_unreachable
 
 本轮 `sprints/2026.06.01_20-21_o1-t130-feedback-observation/` 执行 Micro closeout。用户价值是把上一轮新增的显式 `--request-base-feedback` 入口继续推向真实上车观察：在不发送运动命令的前提下，请求 WAVE ROVER vendor `CMD_BASE_FEEDBACK` / `{"T":130}\n`，尝试拿到真实 `T=1001` feedback，从而判断 O1 是否可以从软件入口推进到真实串口反馈证据。
