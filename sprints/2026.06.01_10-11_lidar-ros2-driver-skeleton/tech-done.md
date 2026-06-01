@@ -65,8 +65,8 @@ PYTHONDONTWRITEBYTECODE=1 bash onboard/scripts/run_smoke_tests.sh
 # hardware: Ran 31 tests OK
 # nav: Ran 52 tests OK
 # bringup: Ran 11 tests OK
-# behavior: Ran 841 tests in 509.862s OK
-# vision: Ran 13 tests in 0.743s OK
+# behavior: Ran 841 tests in 550.341s OK
+# vision: Ran 13 tests in 0.838s OK
 # 观察到 Python ResourceWarning: unclosed socket，但 unittest exit 0。
 
 docker --version
