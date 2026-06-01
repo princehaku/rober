@@ -108,9 +108,9 @@ python3 -m unittest discover -s <ros2_lidar_package_path> -p 'test_*.py'
 ## Stage 2 ROS2 Closed-loop Status
 
 - Hardware Infra Engineer 已完成参考资料入库和事实边界声明。
-- Robot Platform Engineer 已把 ROS2 LiDAR 软件闭环收敛在 `ros2_trashbot_nav`，避免在 `ros2_trashbot_hardware` 重复放置 LiDAR driver/parser。
-- 新增 ROS2 console script：`ros2_trashbot_nav/lidar_driver`。
-- 新增纯软件 parser：`ros2_trashbot_nav.lidar_packets`，按 `0xAA 0x55` 帧头和 `LSN` 长度解析 vendor packet。
+- Robot Platform Engineer 已把 ROS2 LiDAR 软件闭环收敛在 `ros2_trashbot_hardware`，因为当前 LiDAR 入口是传感器硬件接入和串口 reader，不在 `ros2_trashbot_nav` 放置重复 driver/parser。
+- 新增 ROS2 console script：`ros2_trashbot_hardware/lidar_driver`。
+- 新增纯软件 parser：`ros2_trashbot_hardware.lidar_packets`，按 `0xAA 0x55` 帧头和 `LSN` 长度解析 vendor packet。
 - 默认输出：`sensor_msgs/msg/LaserScan` 到 `/scan`，frame 为 `laser_frame`。
 - 可选输出：`std_msgs/msg/UInt8MultiArray` 到 `/lidar/raw_packet`。
 - `bringup.launch.py` 新增 `lidar_enabled`，默认 `false`；本轮不改 `learn.launch.py` 或 `autonomous.launch.py`。
@@ -123,5 +123,5 @@ python3 -m unittest discover -s <ros2_lidar_package_path> -p 'test_*.py'
 
 - 已覆盖 packet parser 单测：LSN 长度、mock packet、坏包错误、mock hex 参数。
 - 已覆盖 driver stub 单测：LaserScan-shaped 字段转换、launch 风格 bool 字符串、串口流分包。
-- 已覆盖 launch static contract：`bringup.launch.py` 的 LiDAR 参数、默认关闭、nav 包节点、TF 节点和 `base_link -> laser_frame` contract。
+- 已覆盖 launch static contract：`bringup.launch.py` 的 LiDAR 参数、默认关闭、hardware 包节点、TF 节点和 `base_link -> laser_frame` contract。
 - 真实硬件 run 前必须再次查阅 `docs/vendor/VENDOR_INDEX.md` 和本文件，并把 `serial_port`、`serial_baudrate`、`frame_id`、scan topic、TF、实测命令输出写入 sprint 证据。

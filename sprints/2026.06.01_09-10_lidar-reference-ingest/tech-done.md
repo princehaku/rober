@@ -86,7 +86,7 @@ lidar reference docs ok
 
 - 已读来源：`AGENTS.md`、`OKR.md`、`docs/vendor/VENDOR_INDEX.md`、`docs/vendor/lidar_ros/SOURCE.md`、`README.md`、`plot.py`、ROS1 `scripts/lidar_driver.py`、C++ parser、`launch/lidar_vi.xml`。
 - 确认事实：上游是 ROS1/catkin reference；LiDAR 软件参考参数为 `/dev/ttyUSB0`、`150000` baud、`0xAA 0x55` header、按 `LSN` 计算长度、`/lidar/raw_packet` raw topic、LaserScan 输出和 `laser_frame`。这些仍是 `source=software_reference`，不是 HIL。
-- 本轮曾在允许路径补齐 `ros2_trashbot_hardware` LiDAR parser/driver/test、`bringup.launch.py` gated node 和 range/timing 参数，并通过 focused tests；但随后工作区发生并发/外部改动，当前 LiDAR 源码/测试不在 `ros2_trashbot_hardware`，而在范围外 `ros2_trashbot_nav` 未跟踪文件中。按本轮文件范围，不继续搬动或回滚范围外内容。
+- 后续 `2026.06.01_10-11_lidar-ros2-driver-skeleton` 已把 LiDAR parser/driver/test 收敛到 `ros2_trashbot_hardware`，`bringup.launch.py` gated node 也指向 `ros2_trashbot_hardware/lidar_driver`；`ros2_trashbot_nav` 只消费 `/scan`、TF 和 SLAM/Nav2 结果，不承载重复 driver/parser。
 - 已通过验证：`python3 -m unittest discover -s onboard/src/ros2_trashbot_hardware/test -p 'test_lidar_*.py'` 曾返回 `Ran 7 tests OK`；`python3 -m unittest discover -s onboard/src/ros2_trashbot_bringup/test -p 'test_launch_contract_static.py'` 返回 `Ran 11 tests OK`；`python3 -m py_compile ...lidar_packets.py ...lidar_driver.py ...bringup.launch.py` 通过；`git diff --check` 通过。
 - Smoke 结果：任务指定的 `scripts/run_smoke_tests.sh` 不存在；实际存在的是 `onboard/scripts/run_smoke_tests.sh`。运行 `PYTHONDONTWRITEBYTECODE=1 bash onboard/scripts/run_smoke_tests.sh` 通过：interfaces 6 OK、hardware 26 OK、nav 52 OK、bringup 11 OK、behavior 841 OK、vision 13 OK。
 - Docker 结果：`docker --version` 失败，当前 WSL 发行版没有 Docker CLI / Docker Desktop WSL integration，未运行 `bash onboard/scripts/docker_humble_build.sh`。

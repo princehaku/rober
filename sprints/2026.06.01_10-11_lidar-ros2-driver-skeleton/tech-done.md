@@ -19,6 +19,14 @@ sprint_type: micro
 - LiDAR 参数已按 mock/serial 可配置方向推进，支持保留 `serial_port`、`serial_baudrate`、`frame_id`、raw packet topic 和 scan output 的后续切换入口。
 - Product closeout 本轮只更新 `OKR.md`、`docs/process/okr_progress_log.md` 和本 `tech-done.md`，不改代码、launch、vendor 文件或硬件文档。
 
+## 2026-06-01 12:42 CST 一致性修正
+
+- 修正 `docs/hardware/lidar_ros_reference.md` Stage 2 口径：LiDAR driver/parser 归属 `ros2_trashbot_hardware`，不再写成 `ros2_trashbot_nav`。
+- 新增 `docs/interfaces/lidar_ros2_closed_loop.md`，固定 Driver executable 为 `ros2_trashbot_hardware lidar_driver`，Parser module 为 `ros2_trashbot_hardware.lidar_packets`。
+- 复核 `bringup.launch.py` gated LiDAR node：已指向 `package='ros2_trashbot_hardware'` 和 `executable='lidar_driver'`，不需要迁移代码。
+- 复核 OKR：当前 O1 已写 `ros2_trashbot_hardware` LiDAR skeleton，未发现需要改成 nav 或从 nav 改回 hardware 的 OKR 漂移。
+- 路径纠偏：请求中的 `sprints/2026.06.01_10-11_lidar-ros2-closed-loop/tech-done.md` 当前不存在；本轮按仓库实际 sprint `sprints/2026.06.01_10-11_lidar-ros2-driver-skeleton/tech-done.md` 留档。
+
 ## 已采用证据
 
 - 上一轮 reference ingest：`docs/vendor/lidar_ros/`、`docs/vendor/VENDOR_INDEX.md`、`docs/hardware/lidar_ros_reference.md` 和 `sprints/2026.06.01_09-10_lidar-reference-ingest/tech-done.md`。
@@ -39,6 +47,38 @@ grep -n "LiDAR\|lidar\|source=software_reference\|not_proven" OKR.md docs/proces
 ```
 
 结果将在本文件提交前由 Product closeout 执行并以最终回复为准。
+
+本轮一致性修正追加验证：
+
+```bash
+python3 -m unittest discover -s onboard/src/ros2_trashbot_hardware/test -p 'test_lidar*.py'
+# Ran 5 tests in 0.000s; OK
+
+python3 -m unittest discover -s onboard/src/ros2_trashbot_bringup/test -p 'test_launch_contract_static.py'
+# Ran 11 tests in 0.078s; OK
+
+python3 -m compileall -q onboard/src/ros2_trashbot_hardware onboard/src/ros2_trashbot_bringup
+# exit 0
+
+PYTHONDONTWRITEBYTECODE=1 bash onboard/scripts/run_smoke_tests.sh
+# interfaces: Ran 6 tests OK
+# hardware: Ran 31 tests OK
+# nav: Ran 52 tests OK
+# bringup: Ran 11 tests OK
+# behavior: Ran 841 tests in 509.862s OK
+# vision: Ran 13 tests in 0.743s OK
+# 观察到 Python ResourceWarning: unclosed socket，但 unittest exit 0。
+
+docker --version
+# The command 'docker' could not be found in this WSL 2 distro.
+# Docker Humble build 未运行；原因是当前 WSL 发行版没有可用 docker CLI / Docker Desktop WSL integration。
+
+LiDAR nav-package drift grep
+# exit 1，无匹配；未发现 LiDAR driver/parser 仍指向 nav 包。
+
+git diff --check -- docs/hardware/lidar_ros_reference.md docs/interfaces/lidar_ros2_closed_loop.md sprints/2026.06.01_09-10_lidar-reference-ingest/tech-done.md sprints/2026.06.01_10-11_lidar-ros2-driver-skeleton/tech-done.md
+# exit 0
+```
 
 ## KR 拆解、更新或历史归档
 
@@ -77,6 +117,7 @@ grep -n "LiDAR\|lidar\|source=software_reference\|not_proven" OKR.md docs/proces
 - `laser_frame` 到 `base_link` 的 TF 未实测，Nav2/SLAM 尚未消费真实 `/scan`。
 - 参考 README 提到无角度修正，真实导航前仍需评估角度误差。
 - 本轮不证明 WAVE ROVER、TF、Nav2/SLAM、真实 LiDAR HIL、真实现场路线或 PR #5 完成。
+- Docker/Humble build 在本 WSL 环境未运行，因为 `docker` 命令不可用；这不影响本轮 Python/静态 contract 验证结论，但仍不等于容器内 ROS2 build 证据。
 
 ## 完成前反思
 
