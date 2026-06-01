@@ -12,7 +12,7 @@
 
 本轮 `sprints/2026.06.01_17-18_o5-o6-cloud-relay-health/` 执行 Micro closeout。用户价值是让 PC workstation / 运营调试入口能用一个只读 `GET /api/o5-o6/cloud-relay-health` 同时观察 O5 readiness health 与 O6 archive health，减少 phone/support/operator 在 O5/O6 之间切换接口排障的成本；同时继续禁止把聚合健康探针包装成生产云、真实 4G、真实手机或真实机器人控制能力。
 
-Full-Stack 已实现并验证 PC workstation 后端聚合 probe。边界固定为：只允许 loopback/private LAN `baseUrl`，bearer 只从 env 读取，固定 fail-closed false fields，不发控制、不 POST、不碰 `/robots/*`，不写真实凭证，不修改 UI/硬件/vendor。验证证据来自本轮 `tech-done.md`：`cd pc-tools/workstation && npm run build` 通过；`npm run test` 2 files / 49 tests 通过；`npm run lint` 通过；scoped `git diff --check` 通过。首轮 build/test 失败已定位并修复：strict TypeScript tuple/unused helper/fallback 问题，以及 sensitive-key regex 误匹配 `task_count`。
+Full-Stack 已实现并验证 PC workstation 后端聚合 probe。边界固定为：只允许 loopback/private LAN `baseUrl`，bearer 只从 env 读取，固定 fail-closed false fields，不发控制、不 POST、不碰 `/robots/*`，不写真实凭证，不修改 UI/硬件/vendor；该 probe 会 fail-closed 阻断上游 health payload 的 `reads_hardware=true` / `connects_cloud_production=true` 声明，不把它透传成产品能力。验证证据来自本轮 `tech-done.md`：`cd pc-tools/workstation && npm run build` 通过；`npm run test` 2 files / 50 tests 通过；`npm run lint` 通过；scoped `git diff --check` 通过。首轮 build/test 失败已定位并修复：strict TypeScript tuple/unused helper/fallback 问题，以及 sensitive-key regex 误匹配 `task_count`。
 
 Product closeout 判定：Objective 5 和 Objective 6 从约 91% 保守调整到约 92% `software + PC aggregated live-health probe`。方向判断为**继续**，不替换、不暂停；本轮真实关闭的是“PC 运营侧 O5/O6 聚合健康视图 + private/loopback/env-bearer/fail-closed 安全边界可复验”缺口。仍不证明真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、真实 OSS upload、OSS/CDN live traffic、真实模型/外部推理 runtime、external live probe、真实云、真实 phone/browser、上车数据、robot ACK 或 delivery success。
 
