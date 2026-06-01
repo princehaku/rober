@@ -8,6 +8,23 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 19-20｜o1-feedback-request-probe｜O1 Feedback Request entry ready; remote not reached
+
+本轮 `sprints/2026.06.01_19-20_o1-feedback-request-probe/` 执行 Micro closeout。用户价值是把 O1 从“被动 read-only 打开串口但没有反馈行”推进到“有一个显式、可审计、非运动的 base feedback request 入口”，让下一次真实上车串口验证可以只请求 vendor feedback，而不是为了拿反馈去冒险发送运动命令。
+
+Hardware Infra 已保持默认 read-only probe 不变，新增显式 `--request-base-feedback` 后只发送一次 vendor `CMD_BASE_FEEDBACK` / `{"T":130}\n`；输出新增 `sends_motion_commands=false` 与 `feedback_request` 结构化字段。本地验证证据来自本轮 `tech-done.md`：`python3 -m py_compile onboard/scripts/o1_wave_rover_serial_feedback_probe.py` 通过；focused unittest 输出 `Ran 7 tests ... OK`；scoped `git diff --check` 通过；中文技术注释比例 script `22.4%`、test `22.3%`。远端显式反馈请求 probe 尝试连接 `ssh root@192.168.1.11 -p 37878`，失败为 `No route to host`，因此未触达远端串口，未发送远端 `T=130`，未观察到 `T=1001`。
+
+Product closeout 判定：Objective 1 保持约 93%，只把口径更新为 `software_reference + upper-computer serial-open observed + feedback request entry ready; remote not reached; T=1001 not_proven`。方向判断为**继续**，不替换、不暂停；本轮真实关闭的是“显式 `T=130` feedback request 软件入口 + 默认不写串口 + 不发运动命令的回归证据”缺口。由于远端网络不可达，不能上调百分比，不能写成 HIL pass、真实反馈通过、底盘可控、真实 UART/HIL 或送达完成。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 93% | Feedback Request entry ready：显式 `--request-base-feedback` 本地测试证明只发送一次 vendor `T=130`，默认 read-only 保持不写串口，`sends_motion_commands=false` 和 `feedback_request` contract 已覆盖。远端 SSH `No route to host`，真实串口未触达，真实 `T=1001` feedback、真实底盘控制、真实 UART/HIL、HIL pass、真实 LiDAR `/scan`、ROS Humble runtime、TF、Nav2/SLAM、PR #5 硬件材料仍 `not_proven`。 |
+| Objective 5 / 6 / 7 | 保持原进度 | 本轮不触碰公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、O6 archive production path、PC/browser RTC 长稳态、真实手机/browser、真实机器人控制或完整上车任务闭环。 |
+
+本轮没有已完成 KR 需要移入历史归档区；O1 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节和 `sprints/2026.06.01_19-20_o1-feedback-request-probe/tech-done.md`，剩余风险见上表。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 18-19｜o5-o6-external-live-probe｜O5/O6 external live probe entry
 
 本轮 `sprints/2026.06.01_18-19_o5-o6-external-live-probe/` 执行 Micro closeout。用户价值是让运营可以从 Orange Pi 或外部主机用一个只读脚本验证 O5 readiness、O6 archive、PC aggregate health 的可达性、schema、安全边界和失败分类，而不是只能在 PC workstation 后端内部观察聚合 endpoint。

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""安全读取 WAVE ROVER 串口已有反馈行，默认不发送任何控制或查询命令。"""
+"""安全读取 WAVE ROVER 串口反馈，默认不发送，显式参数才请求一次 T=130。"""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from typing import Any
 
 
 # 安全边界说明：本文件是材料采集脚本，不是控制脚本。
-# 安全边界说明：允许的串口动作只有 open、readline、close。
-# 安全边界说明：禁止 write，因为任何 JSON 写入都可能改变下位机状态。
+# 安全边界说明：默认串口动作只有 open、readline、close。
+# 安全边界说明：只有显式 --request-base-feedback 才允许写一次 T=130。
 # 安全边界说明：禁止 flush/reset buffer，因为丢弃输入也会影响证据完整性。
 # 安全边界说明：禁止自动发送 T=130，避免主动查询被误读成 read-only。
 # 安全边界说明：禁止 T=131，避免打开或关闭底盘反馈流。
@@ -25,7 +25,9 @@ from typing import Any
 # 安全边界说明：read_line_count=0 只证明窗口内无现成行，不证明无反馈能力。
 # 安全边界说明：parsed_json_count>0 只证明读到了 JSON，不证明反馈语义正确。
 # 安全边界说明：observed_feedback_types 只按 T 字段归类，不做单位标定判断。
-# 安全边界说明：safe_to_control 必须永久默认为 false，除非换成另一个脚本。
+# 安全边界说明：safe_to_control 必须永久为 false，T=130 也不代表可控制。
+# 安全边界说明：sends_motion_commands 必须永久为 false，本脚本不碰运动。
+# 安全边界说明：sends_commands 只表示是否发过显式 T=130 查询。
 # 安全边界说明：delivery_success 必须永久为 false，本脚本不参与送达任务。
 # 安全边界说明：pyserial 缺失必须输出 JSON blocker，不能让 SSH 采集中断。
 # 安全边界说明：串口权限失败必须输出 JSON error，不能改权限绕过边界。
@@ -39,7 +41,7 @@ from typing import Any
 # 安全边界说明：真实 HIL 需要另行采集请求/反馈/停止/标定证据。
 # 安全边界说明：本轮目标是把 upper-computer readiness 推进到串口材料。
 # 安全边界说明：本轮不能把 serial-open 成功写成底盘可控或 HIL pass。
-# 安全边界说明：后续若要主动 T=130，必须另开 sprint 并默认关闭。
+# 安全边界说明：T=130 查询必须由人工显式加参数，且只能发送一次。
 # 安全边界说明：所有 blocked command 都只进入 JSON 列表，不进入发送队列。
 # 安全边界说明：串口打开失败不能触发 fallback 控制命令。
 # 安全边界说明：读取窗口结束后必须关闭句柄，避免影响人工 HIL。
@@ -54,6 +56,9 @@ SCHEMA_VERSION = "trashbot.o1.wave_rover_serial_feedback_probe.v1"
 DEFAULT_BAUDRATE = 115200
 # 默认窗口短，是为了只观察已有反馈，不把本脚本变成长时间占用串口的服务。
 DEFAULT_READ_TIMEOUT_S = 2.0
+
+# T=130 来自 vendor CMD_BASE_FEEDBACK；它是本脚本唯一允许的写入命令。
+BASE_FEEDBACK_REQUEST_COMMAND = {"T": 130}
 
 # vendor_sources 只列本轮实际依赖的硬件事实入口，不代表已经完成 HIL。
 VENDOR_SOURCES = (
@@ -73,10 +78,6 @@ BLOCKED_COMMANDS_NOT_SENT = (
     {
         "command": {"T": 13},
         "reason": "ROS velocity command; firmware behavior requires separate HIL",
-    },
-    {
-        "command": {"T": 130},
-        "reason": "base feedback request; optional query deliberately disabled this sprint",
     },
     {
         "command": {"T": 131},
@@ -103,16 +104,26 @@ def _load_pyserial() -> tuple[bool, Any | None, str | None]:
     return True, serial, None
 
 
-def _base_payload(port: str, baudrate: int, read_timeout_s: float, argv: list[str]) -> dict[str, Any]:
+def _base_payload(
+    port: str,
+    baudrate: int,
+    read_timeout_s: float,
+    request_base_feedback: bool,
+    argv: list[str],
+) -> dict[str, Any]:
     """生成所有环境共享的 fail-closed 字段，避免错误路径漏掉安全口径。"""
+    mode = "serial_open_t130_request_once" if request_base_feedback else "serial_open_read_only_once"
     return {
         "schema": SCHEMA_VERSION,
         "version": 1,
         "generated_at": _utc_now(),
         "vendor_sources": list(VENDOR_SOURCES),
-        "evidence_boundary": "serial_open_read_only_not_hil",
+        "evidence_boundary": "serial_open_t130_feedback_request_not_hil"
+        if request_base_feedback
+        else "serial_open_read_only_not_hil",
         "safe_to_control": False,
-        "sends_commands": False,
+        "sends_commands": bool(request_base_feedback),
+        "sends_motion_commands": False,
         "robot_control_executed": False,
         "delivery_success": False,
         "port": port,
@@ -126,11 +137,18 @@ def _base_payload(port: str, baudrate: int, read_timeout_s: float, argv: list[st
         "invalid_json_count": 0,
         "observed_feedback_types": [],
         "error": None,
+        "feedback_request": {
+            "enabled": bool(request_base_feedback),
+            "sent": False,
+            "command": BASE_FEEDBACK_REQUEST_COMMAND,
+            "command_source": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h CMD_BASE_FEEDBACK",
+            "write_error": None,
+        },
         "blocked_commands_not_sent": list(BLOCKED_COMMANDS_NOT_SENT),
         "raw_line_preview": [],
         "source": {
             "probe": "o1_wave_rover_serial_feedback_probe",
-            "mode": "serial_open_read_only_once",
+            "mode": mode,
             "argv": argv,
         },
     }
@@ -153,16 +171,23 @@ def _feedback_type(parsed: Any) -> str:
     return "json_without_T"
 
 
+def _write_base_feedback_request(serial_obj: Any) -> None:
+    """只发送 vendor T=130 查询；集中封装可以防止未来误混入运动字段。"""
+    encoded = (json.dumps(BASE_FEEDBACK_REQUEST_COMMAND, separators=(",", ":")) + "\n").encode("utf-8")
+    serial_obj.write(encoded)
+
+
 def run_probe(
     port: str,
     baudrate: int,
     read_timeout_s: float,
+    request_base_feedback: bool = False,
     argv: list[str] | None = None,
     serial_module: Any | None = None,
     serial_import_error: str | None = None,
 ) -> dict[str, Any]:
     """打开串口后只读已有行；函数注入 serial_module 是为了证明单测不会写串口。"""
-    payload = _base_payload(port, baudrate, read_timeout_s, argv or [])
+    payload = _base_payload(port, baudrate, read_timeout_s, request_base_feedback, argv or [])
     if serial_module is None:
         available, serial_module, import_error = _load_pyserial()
     else:
@@ -183,9 +208,17 @@ def run_probe(
     serial_timeout = min(0.2, max(0.01, read_timeout_s))
 
     try:
-        # 这里只 open/read/close；没有 write、flush、reset buffer 或状态变更命令。
+        # 默认只 open/read/close；显式请求时只允许写一次 vendor T=130。
         serial_obj = serial_module.Serial(port=port, baudrate=baudrate, timeout=serial_timeout)
         payload["serial_opened"] = True
+        if request_base_feedback:
+            try:
+                # 这是唯一允许的写入点；T=130 不带速度、转向或 feedback-flow 状态。
+                _write_base_feedback_request(serial_obj)
+                payload["feedback_request"]["sent"] = True
+            except Exception as exc:
+                # 写入失败仍继续读窗口，便于判断设备是否有被动反馈或错误回显。
+                payload["feedback_request"]["write_error"] = _json_error(exc.__class__.__name__, str(exc))
         while time.monotonic() < deadline:
             raw = serial_obj.readline()
             if not raw:
@@ -223,6 +256,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     # --once-json 保持和上一轮 readiness probe 一致，适合 SSH stdin 采集。
     parser.add_argument("--once-json", action="store_true", help="print one JSON payload and exit")
+    parser.add_argument(
+        "--request-base-feedback",
+        action="store_true",
+        help="send exactly one vendor CMD_BASE_FEEDBACK request (T=130) before reading",
+    )
     # port 必须由调用方选择，避免把 Raspberry Pi reference 当 Orange Pi 默认值。
     parser.add_argument("--port", required=True, help="serial device to open read-only")
     parser.add_argument("--baudrate", type=int, default=DEFAULT_BAUDRATE, help="serial baudrate")
@@ -238,6 +276,7 @@ def main(argv: list[str] | None = None) -> int:
         port=args.port,
         baudrate=args.baudrate,
         read_timeout_s=args.read_timeout_s,
+        request_base_feedback=args.request_base_feedback,
         argv=effective_argv,
     )
     print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))

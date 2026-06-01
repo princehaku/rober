@@ -14,7 +14,7 @@ from unittest import mock
 # 测试边界说明：测试覆盖 open 失败，保证缺设备也不会破坏 fail-closed。
 # 测试边界说明：测试覆盖坏 JSON 行，保证真实串口噪声不会中断采集。
 # 测试边界说明：测试覆盖 T=1001/T=1002 分类，但不验证单位和标定。
-# 测试边界说明：测试覆盖 blocked commands，防止未来误加 T=130 查询。
+# 测试边界说明：测试覆盖默认不写串口，显式参数才允许 T=130 查询。
 # 测试边界说明：测试覆盖 cmd_vel 文案，防止误导人工执行 ROS 控制。
 # 测试边界说明：测试覆盖 CLI stdout JSON，匹配 SSH stdin 运行方式。
 # 测试边界说明：测试保持脚本单文件加载，不要求 onboard/scripts 变包。
@@ -25,7 +25,7 @@ from unittest import mock
 # 测试边界说明：测试不尝试 monkeypatch time，真实超时窗口保持很短。
 # 测试边界说明：测试的 fake 行只用于 contract，不代表真实 WAVE ROVER 输出。
 # 测试边界说明：测试目标是防回归，不替代远端串口打开证据。
-# 测试边界说明：如果后续新增主动查询，必须新增默认关闭和不写串口测试。
+# 测试边界说明：主动查询只允许 T=130 一次，不能混入速度或转向字段。
 # 测试边界说明：如果后续接入 HIL，本文件仍只应覆盖 read-only probe。
 # 测试边界说明：任何新增断言都不能要求真实硬件存在。
 # 测试边界说明：错误类型保留原异常类名，方便 sprint 文档定位。
@@ -104,8 +104,10 @@ class O1WaveRoverSerialFeedbackProbeTest(unittest.TestCase):
         self.assertIn("docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py", payload["vendor_sources"])
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["sends_commands"])
+        self.assertFalse(payload["sends_motion_commands"])
         self.assertFalse(payload["robot_control_executed"])
         self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["feedback_request"]["enabled"])
 
     def test_probe_reads_existing_lines_and_never_writes_serial(self):
         # fake 串口提供两条 JSON 和一条坏行，用来覆盖解析与坏帧容错。
@@ -157,8 +159,8 @@ class O1WaveRoverSerialFeedbackProbeTest(unittest.TestCase):
         self.assertFalse(payload["robot_control_executed"])
         self.assertFalse(payload["delivery_success"])
 
-    def test_blocked_commands_include_feedback_query_and_motion_paths(self):
-        # T=130 也保持默认不发送，避免本轮 read-only 被升级成查询动作。
+    def test_blocked_commands_include_motion_paths_but_not_t130(self):
+        # T=130 是唯一显式允许的非运动请求，不能继续列在 blocked 列表里。
         probe = _load_probe_module()
         payload = probe.run_probe("/dev/fake", 115200, 0.01, argv=[], serial_module=FakeSerialModule)
         blocked = payload["blocked_commands_not_sent"]
@@ -169,9 +171,30 @@ class O1WaveRoverSerialFeedbackProbeTest(unittest.TestCase):
         }
         blocked_names = {item["command"] for item in blocked if isinstance(item["command"], str)}
 
-        self.assertEqual(blocked_ids, {1, 13, 130, 131})
+        self.assertEqual(blocked_ids, {1, 13, 131})
         self.assertIn("cmd_vel", blocked_names)
         self.assertEqual(FakeSerial.write_calls, [])
+
+    def test_explicit_feedback_request_writes_only_t130_once(self):
+        # 显式请求路径只允许发送 vendor CMD_BASE_FEEDBACK，不能发送运动控制字段。
+        probe = _load_probe_module()
+        payload = probe.run_probe(
+            "/dev/fake",
+            115200,
+            0.05,
+            request_base_feedback=True,
+            argv=["--request-base-feedback"],
+            serial_module=FakeSerialModule,
+        )
+
+        self.assertEqual(FakeSerial.write_calls, [b'{"T":130}\n'])
+        self.assertTrue(payload["sends_commands"])
+        self.assertFalse(payload["sends_motion_commands"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertTrue(payload["feedback_request"]["enabled"])
+        self.assertTrue(payload["feedback_request"]["sent"])
+        self.assertEqual(payload["feedback_request"]["command"], {"T": 130})
+        self.assertEqual(payload["evidence_boundary"], "serial_open_t130_feedback_request_not_hil")
 
     def test_cli_prints_once_json(self):
         # CLI 路径验证 stdout JSON，保持远端 stdin 运行方式可用。
@@ -179,13 +202,14 @@ class O1WaveRoverSerialFeedbackProbeTest(unittest.TestCase):
         stdout = io.StringIO()
         with mock.patch.object(probe, "_load_pyserial", return_value=(False, None, "No module named serial")):
             with mock.patch("sys.stdout", stdout):
-                result = probe.main(["--once-json", "--port", "/dev/fake"])
+                result = probe.main(["--once-json", "--port", "/dev/fake", "--request-base-feedback"])
 
         payload = json.loads(stdout.getvalue())
         self.assertEqual(result, 0)
         self.assertEqual(payload["port"], "/dev/fake")
         self.assertEqual(payload["baudrate"], 115200)
         self.assertEqual(payload["error"]["type"], "pyserial_unavailable")
+        self.assertTrue(payload["feedback_request"]["enabled"])
 
 
 if __name__ == "__main__":

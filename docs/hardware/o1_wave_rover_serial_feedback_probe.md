@@ -2,14 +2,16 @@
 
 ## 目标
 
-`onboard/scripts/o1_wave_rover_serial_feedback_probe.py` 是 O1 的串口打开和反馈只读探测入口。它只按调用方指定的 `--port` 和 `--baudrate` 打开串口，在短窗口内读取已经存在的行，尝试解析 JSON，并输出结构化结果。
+`onboard/scripts/o1_wave_rover_serial_feedback_probe.py` 是 O1 的串口打开和反馈探测入口。默认模式只按调用方指定的 `--port` 和 `--baudrate` 打开串口，在短窗口内读取已经存在的行，尝试解析 JSON，并输出结构化结果。
 
-本 probe 不发送 `T=1`、`T=13`、`T=130`、`T=131`、`cmd_vel` 或任何运动/控制/反馈请求命令。`T=130` 虽然是 vendor firmware 中的 base feedback request，本轮仍默认不启用，也没有 CLI 开关，避免把 read-only 远端材料升级成主动查询。
+本 probe 默认不发送任何串口写入。只有调用方显式传入 `--request-base-feedback` 时，才允许发送一次 vendor `CMD_BASE_FEEDBACK` / `{"T":130}`，随后短时间读取反馈。该请求不带速度、转向、PWM、ROS velocity 或 feedback-flow 状态字段。
+
+本 probe 永远不发送 `T=1`、`T=13`、`T=131`、`cmd_vel` 或任何会驱动底盘运动的命令。`T=130` 虽然会产生一次串口写入，但证据边界仍是 `serial_open_t130_feedback_request_not_hil`，不能写成底盘可控或 HIL pass。
 
 固定 fail-closed 字段：
 
 - `safe_to_control=false`
-- `sends_commands=false`
+- `sends_motion_commands=false`
 - `robot_control_executed=false`
 - `delivery_success=false`
 
@@ -27,8 +29,8 @@
 
 - WAVE ROVER 上位机 reference 使用 UART、UTF-8 JSON、每行一个 JSON 对象并以 `\n` 结束。
 - vendor Raspberry Pi reference 使用 `/dev/ttyAMA0`、`115200`；Orange Pi Zero 3 的真实串口路径必须在目标机确认，不能硬编码 Raspberry Pi 路径。
-- `T=1` 是左右轮速度命令，`T=13` 是 ROS velocity 命令，`T=131` 会改变 feedback flow 状态；本轮全部列为 `blocked_commands_not_sent`。
-- `T=130` 是 base feedback request，但本轮真实远端实测目标是 serial-open/read-only，所以仍不发送。
+- `T=1` 是左右轮速度命令，`T=13` 是 ROS velocity 命令，`T=131` 会改变 feedback flow 状态；本 probe 全部列为 `blocked_commands_not_sent`。
+- `T=130` 是 base feedback request，在本轮只允许通过 `--request-base-feedback` 显式发送一次；默认模式仍不发送。
 
 ## 运行命令
 
@@ -44,6 +46,12 @@ python3 onboard/scripts/o1_wave_rover_serial_feedback_probe.py --once-json --por
 ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 2' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
 ```
 
+远端非运动反馈请求运行，只发送一次 `T=130`：
+
+```bash
+ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --request-base-feedback --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 2' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
 若 by-id 不存在：
 
 ```bash
@@ -56,9 +64,10 @@ ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/ttyACM0 --b
 
 - `schema=trashbot.o1.wave_rover_serial_feedback_probe.v1`
 - `vendor_sources[]` 固定列出本轮 vendor 来源
-- `evidence_boundary=serial_open_read_only_not_hil`
+- `evidence_boundary=serial_open_read_only_not_hil` 或 `serial_open_t130_feedback_request_not_hil`
 - `safe_to_control=false`
-- `sends_commands=false`
+- `sends_commands`：只表示是否显式发送过 `T=130`
+- `sends_motion_commands=false`
 - `robot_control_executed=false`
 - `delivery_success=false`
 - `port`、`baudrate`、`baudrate_source`
@@ -69,6 +78,7 @@ ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/ttyACM0 --b
 - `invalid_json_count`
 - `observed_feedback_types`
 - `error`
+- `feedback_request.enabled/sent/command/write_error`
 - `blocked_commands_not_sent`
 
 ## 证据边界
@@ -78,10 +88,11 @@ ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/ttyACM0 --b
 - 远端 Python 能运行脚本。
 - pyserial 是否可用。
 - 指定串口是否能被打开。
-- 在没有主动发送任何命令的前提下，短时间内是否读到已有行。
+- 在默认只读模式下，短时间内是否读到已有行。
+- 在显式 `--request-base-feedback` 模式下，一次 `T=130` 后短时间内是否读到反馈。
 - 已有行是否能被解析为 JSON，以及 JSON 中出现了哪些 `T` 类型。
 
-即使读到 `T=1001` 或其他反馈类型，也只能记为 `serial_open_read_only_material_observed`。还不能证明：
+即使读到 `T=1001` 或其他反馈类型，也只能记为 `serial_open_t130_feedback_material_observed` 或 `serial_open_read_only_material_observed`。还不能证明：
 
 - 当前串口必然就是 WAVE ROVER ESP32。
 - 底盘可安全控制。
