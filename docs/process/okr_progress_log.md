@@ -8,6 +8,27 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 15-16｜o1-upper-computer-readiness-probe｜O1 upper-computer readiness observed
+
+本轮 `sprints/2026.06.01_15-16_o1-upper-computer-readiness-probe/` 执行 Micro closeout。用户价值是把 O1 从纯 software_reference / mock skeleton 往真实上位机环境可观测推进一步：先安全知道 Orange Pi/上位机当前是否具备 ROS Humble、pyserial 和候选串口条件，再决定后续 UART/HIL、LiDAR `/scan`、Nav2/SLAM 实机验证怎么排，而不是直接发送 WAVE ROVER 控制命令冒险。
+
+Hardware Infra 已新增只读 `trashbot.o1.upper_computer_readiness.v1` probe，并通过远端 SSH `root@192.168.1.11 -p 37878` 做安全快照。关键边界固定为 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`；本轮只枚举串口候选，不打开串口，不 import/open pyserial，不发送 `T=1`、`T=13`、`T=131` 或 `/cmd_vel`，不启动 ROS2 控制链路。
+
+远端观察证据：Linux `aarch64`、kernel `6.1.31-sun50iw9`、Python `3.10.12`；`pyserial.available=false`；`/opt/ros/humble/setup.bash` 不存在，`ROS_DISTRO` 为空；stdin 执行时 repo root 未发现；串口候选只读枚举到 `/dev/ttyACM0`、`/dev/serial`、`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`、`/dev/serial/by-path/platform-5311400.usb-usb-0:1:1.0`。本轮原 SSH stdin 命令写法曾失败为 `python3: can't open file '/root/--once-json'`，后用等价 `python3 -s - --once-json` 成功采集；该失败不是 SSH 连通性失败，也不是 probe 行为失败。
+
+验证证据：`python3 -m py_compile onboard/scripts/o1_upper_computer_readiness_probe.py` 通过；`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_hardware/test/test_o1_upper_computer_readiness_probe.py` 输出 `Ran 6 tests ... OK`；本地 `--once-json` 通过；远端 stdin 采集成功；scoped `git diff --check` 通过；中文技术注释比例检查满足 `>20%`。
+
+Product closeout 判定：Objective 1 从 `约 91% software_reference + mock skeleton` 保守调整到 `约 92% software_reference + upper-computer readiness observed`。方向判断为**继续**，不替换、不暂停；本轮真实关闭的是“O1 只读上位机 readiness 采集入口 + 一次远端 fail-closed 环境快照”缺口。仍不证明真实 WAVE ROVER UART/HIL、真实 `T=1001` feedback、真实 Orange Pi 串口打开、真实 LiDAR `/scan`、ROS Humble runtime、pyserial、Nav2/SLAM、真实底盘控制或完整送达闭环，不能写成 HIL pass。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 从约 91% 调整到约 92% | 已新增 O1 upper-computer readiness probe，并对真实上位机入口完成只读 SSH 快照；确认 fail-closed 字段、串口候选、pyserial 缺失和 ROS Humble runtime 缺失可观测。真实 WAVE ROVER UART/HIL、真实 `T=1001` feedback、真实串口打开、真实 LiDAR `/scan`、ROS Humble runtime、pyserial、TF、Nav2/SLAM 和 150000 上车稳定性仍 `not_proven`，不是 HIL pass。 |
+| Objective 5 / 6 / 7 | 保持原进度 | 本轮不触碰云中转 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、O6 archive production path、PC/browser RTC 稳定性、真实手机/browser 或上车任务闭环。 |
+
+本轮没有已完成 KR 需要移入历史归档区；O1 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节和 `sprints/2026.06.01_15-16_o1-upper-computer-readiness-probe/tech-done.md`，剩余风险见上表。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 14-15｜o5-readiness-live-health｜O5 readiness live health software proof
 
 本轮 `sprints/2026.06.01_14-15_o5-readiness-live-health/` 执行 Micro closeout。用户价值是让 phone/support/external probe 能用一个 bearer-gated live readiness/status endpoint 查看 O5 当前 readiness 缺口，而不是只能依赖离线 preflight 或聊天结论，同时不把 readiness 摘要误包装成生产云、真实 4G 或真实手机能力。
