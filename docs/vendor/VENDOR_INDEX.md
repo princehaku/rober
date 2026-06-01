@@ -208,6 +208,66 @@ Other useful command groups:
 - Any wiring or power decision must cite the Orange Pi schematic/manual and the
   WAVE ROVER mechanical/electrical references.
 
+## LiDAR Reference: sudreamcarver/lidar_ros
+
+Directory: `docs/vendor/lidar_ros/`
+
+### Files
+
+- `SOURCE.md`
+  - Snapshot provenance for the upstream GitHub repository.
+  - Current snapshot: `https://github.com/sudreamcarver/lidar_ros` at commit
+    `a88fcec0a207e0a2765fb4542ffbc8b1913f60ee`, retrieved
+    `2026-06-01T01:46:25Z`.
+- `README.md`
+  - Upstream description of the拆机 YDLIDAR test program, packet structure,
+    parsing formulas, and ROS topic architecture.
+- `plot.py`
+  - Standalone Python serial plotting reference using `/dev/ttyUSB0` at
+    `150000` baud and `0xAA 0x55` packet synchronization.
+- `src/lidar_pkg/package.xml`
+  - ROS1 catkin package metadata. Package name is `lidar_pkg`; declared
+    dependencies include `roscpp`, `rospy`, `sensor_msgs`, `serial`, and
+    `boost`.
+- `src/lidar_pkg/launch/lidar_vi.xml`
+  - ROS1 launch reference for the Python raw-packet reader and C++ parser.
+- `src/lidar_pkg/scripts/lidar_driver.py`
+  - Python raw serial reader. Publishes `/lidar/raw_packet`
+    (`std_msgs/UInt8MultiArray`) after syncing on `0xAA 0x55`.
+- `src/lidar_pkg/src/lidar_driver.cpp`
+  - C++ packet parser. Subscribes `/lidar/raw_packet` and publishes
+    `sensor_msgs/LaserScan` on the private `scan` topic under node namespace.
+- `src/lidar_pkg/rviz/lidar_config.rviz`
+  - ROS1 RViz reference. Fixed frame is `laser_frame`; displayed topic is
+    `/lidar_parser_node/scan`.
+
+### Verified Reference Facts
+
+- This upstream package is ROS1/catkin, not ROS2/ament.
+- The upstream README states the LiDAR is a拆机 YDLIDAR using non-standard
+  `150000` baud.
+- The Python reader default is `PORT='/dev/ttyUSB0'` and `BAUDRATE=150000`.
+- Packet sync header is `0xAA 0x55`; packet length is derived from `LSN`.
+- The raw packet topic is `/lidar/raw_packet`
+  (`std_msgs/UInt8MultiArray`).
+- The parser publishes `sensor_msgs/LaserScan`; default `frame_id` is
+  `laser_frame`.
+- The ROS1 launch sets parser `frame_id=laser_frame`.
+- RViz references `/lidar_parser_node/scan`; code advertises private `scan`,
+  so the ROS1 effective topic depends on the node namespace/name.
+
+### Agent Rules
+
+- Do not copy this package directly into `onboard/` as production ROS2 code.
+  Port the protocol and topic behavior into an ROS2 Humble package explicitly.
+- Keep LiDAR serial port, baud rate, `frame_id`, raw topic, scan topic, and
+  range/scan timing parameters configurable in ROS2 launch/config.
+- Confirm the robot's real LiDAR USB path on target hardware before using
+  `/dev/ttyUSB0` as a default.
+- Treat `150000` baud, `0xAA 0x55` packet sync, `/lidar/raw_packet`, and
+  `laser_frame` as software reference facts until a real hardware run records
+  `source=hil_pass`.
+
 ## Complete Material Coverage
 
 The local vendor tree currently covers:
@@ -219,6 +279,8 @@ The local vendor tree currently covers:
 - WAVE ROVER factory flash tool, binary images, and flashing documentation.
 - Waveshare Raspberry Pi upper-computer app, tutorials, web UI, CV models,
   install scripts, media, and configuration.
+- LiDAR ROS1 reference snapshot from `sudreamcarver/lidar_ros`, including
+  packet parsing, serial reader, ROS1 launch, and RViz reference.
 
 For generated UI assets, placeholder media, fonts, audio clips, and duplicated
 build artifacts, use them only as vendor app reference. They are not project

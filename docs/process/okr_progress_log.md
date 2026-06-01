@@ -8,6 +8,25 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 10-11｜lidar-ros2-driver-skeleton｜O1 LiDAR software_reference + mock skeleton
+
+本轮 `sprints/2026.06.01_10-11_lidar-ros2-driver-skeleton/` 执行 Micro closeout。用户价值是把 LiDAR 从 reference ingest 推进到 ROS2 软件骨架和默认关闭的 bringup 接入点，为后续真实串口 `/scan`、TF、SLAM/Nav2 验收留出清晰接口，同时不把 software reference 写成 HIL pass。
+
+Engineering 已完成 `ros2_trashbot_hardware` LiDAR skeleton 和 `bringup.launch.py` gated node，默认 `lidar_enabled=false`；mock/serial 参数可配置。Hardware Infra 只读复核确认 `150000` baud、`0xAA 0x55`、`LSN`、`/lidar/raw_packet`、`laser_frame`、LaserScan output 均为 `source=software_reference`，不是 `source=hil_pass`。
+
+验证证据：`python3 -m unittest discover -s onboard/src/ros2_trashbot_hardware/test -p 'test_lidar*.py'` 输出 `Ran 7 OK`；`python3 -m unittest discover -s onboard/src/ros2_trashbot_bringup/test -p 'test_launch_contract_static.py'` 输出 `Ran 11 OK`；`PYTHONDONTWRITEBYTECODE=1 bash onboard/scripts/run_smoke_tests.sh` 通过，interfaces 6 OK、hardware 33 OK、nav 52 OK、bringup 11 OK、behavior 841 OK、vision 13 OK；scoped `git diff --check` 通过。
+
+Product closeout 判定：Objective 1 从 `90%+ mock/software completion` 保守调整为 `约 91% software_reference + mock skeleton`。方向判断为**继续**，不替换、不暂停；本轮真实关闭的是“LiDAR reference + ROS2 skeleton + gated launch 默认关闭 + 软件验证”缺口。仍不证明真实 LiDAR、真实串口、真实 Orange Pi USB 设备、TF、Nav2/SLAM、150000 上车稳定性、WAVE ROVER/HIL 或 PR #5 完成。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 从 `90%+ mock/software completion` 调整到约 91% | LiDAR reference ingest + ROS2 skeleton 形成 `source=software_reference` 软件链路，focused LiDAR unittest、bringup contract test 和 smoke tests 已通过；真实 LiDAR、真实 UART/HIL、真实 `/scan`、TF、Nav2/SLAM、150000 波特率稳定性和 PR #5 硬件材料仍 `not_proven`。 |
+| Objective 5 / 6 / 7 | 保持原进度 | 本轮不触碰公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、live O6 API、PC/browser RTC 稳定性或上车任务闭环。 |
+
+本轮没有已完成 KR 需要移入历史归档区；LiDAR 仍保留在 O1 当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5/6 节和 `sprints/2026.06.01_10-11_lidar-ros2-driver-skeleton/tech-done.md`，剩余风险见上表。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 08-09｜o7-browser-stability-metrics｜O7 same-LAN Chromium browser 30s short-stability metrics
 
 本轮 `sprints/2026.06.01_08-09_o7-browser-stability-metrics/` 执行 Micro closeout。目标是延续上一轮 same-LAN Chromium browser first-frame proof，把 O7 从“首帧可见 + browser stats 可见 + peer cleanup”推进到“30s 短稳态可观测 + 远端系统/媒体稳定性指标可读”。

@@ -132,6 +132,82 @@ def generate_launch_description():
         'remote_request_timeout_sec', default_value='5.0',
         description='Remote bridge HTTP request timeout in seconds')
 
+    lidar_enabled_arg = DeclareLaunchArgument(
+        'lidar_enabled', default_value='false',
+        description='Start ROS2 LiDAR driver; default false avoids blocking bringup without serial hardware')
+
+    lidar_serial_port_arg = DeclareLaunchArgument(
+        'lidar_serial_port', default_value='/dev/ttyUSB0',
+        description='LiDAR serial device placeholder from local vendor reference; confirm on robot')
+
+    lidar_serial_baudrate_arg = DeclareLaunchArgument(
+        'lidar_serial_baudrate', default_value='150000',
+        description='LiDAR baud rate from docs/vendor/lidar_ros reference')
+
+    lidar_frame_id_arg = DeclareLaunchArgument(
+        'lidar_frame_id', default_value='laser_frame',
+        description='LiDAR frame id; must match measured base_link static TF on hardware')
+
+    lidar_scan_topic_arg = DeclareLaunchArgument(
+        'lidar_scan_topic', default_value='/scan',
+        description='LaserScan topic consumed by Nav2/SLAM')
+
+    lidar_raw_packet_topic_arg = DeclareLaunchArgument(
+        'lidar_raw_packet_topic', default_value='/lidar/raw_packet',
+        description='Optional raw LiDAR packet topic')
+
+    lidar_publish_raw_packets_arg = DeclareLaunchArgument(
+        'lidar_publish_raw_packets', default_value='false',
+        description='Publish raw 0xAA55 packets for diagnostics')
+
+    lidar_range_min_arg = DeclareLaunchArgument(
+        'lidar_range_min', default_value='0.05',
+        description='LiDAR LaserScan range_min in meters; tune after real point cloud validation')
+
+    lidar_range_max_arg = DeclareLaunchArgument(
+        'lidar_range_max', default_value='8.0',
+        description='LiDAR LaserScan range_max in meters; tune after real point cloud validation')
+
+    lidar_scan_time_arg = DeclareLaunchArgument(
+        'lidar_scan_time', default_value='0.1',
+        description='LiDAR LaserScan scan_time placeholder in seconds; measure on real hardware')
+
+    lidar_time_increment_arg = DeclareLaunchArgument(
+        'lidar_time_increment', default_value='0.0001',
+        description='LiDAR LaserScan time_increment placeholder in seconds; measure on real hardware')
+
+    lidar_tf_x_arg = DeclareLaunchArgument(
+        'lidar_tf_x', default_value='0.0',
+        description='Placeholder LiDAR x offset from base_link in meters; measure on real robot')
+
+    lidar_tf_y_arg = DeclareLaunchArgument(
+        'lidar_tf_y', default_value='0.0',
+        description='Placeholder LiDAR y offset from base_link in meters; measure on real robot')
+
+    lidar_tf_z_arg = DeclareLaunchArgument(
+        'lidar_tf_z', default_value='0.0',
+        description='Placeholder LiDAR z offset from base_link in meters; measure on real robot')
+
+    lidar_tf_roll_arg = DeclareLaunchArgument(
+        'lidar_tf_roll', default_value='0.0',
+        description='Placeholder LiDAR roll from base_link in radians; measure on real robot')
+
+    lidar_tf_pitch_arg = DeclareLaunchArgument(
+        'lidar_tf_pitch', default_value='0.0',
+        description='Placeholder LiDAR pitch from base_link in radians; measure on real robot')
+
+    lidar_tf_yaw_arg = DeclareLaunchArgument(
+        'lidar_tf_yaw', default_value='0.0',
+        description='Placeholder LiDAR yaw from base_link in radians; measure on real robot')
+
+    lidar_mock_packets_arg = DeclareLaunchArgument(
+        'lidar_mock_packets', default_value='',
+        description='Pipe-separated hex packets for software-only LiDAR verification')
+
+    lidar_mock_scan_arg = DeclareLaunchArgument(
+        'lidar_mock_scan', default_value='false',
+        description='Publish built-in mock scan packet; software proof only')
+
     use_sim_time = LaunchConfiguration('use_sim_time')
     serial_port = LaunchConfiguration('serial_port')
     serial_baudrate = LaunchConfiguration('serial_baudrate')
@@ -163,7 +239,27 @@ def generate_launch_description():
     remote_auth_token = LaunchConfiguration('remote_auth_token')
     remote_poll_interval_sec = LaunchConfiguration('remote_poll_interval_sec')
     remote_request_timeout_sec = LaunchConfiguration('remote_request_timeout_sec')
+    lidar_enabled = LaunchConfiguration('lidar_enabled')
+    lidar_serial_port = LaunchConfiguration('lidar_serial_port')
+    lidar_serial_baudrate = LaunchConfiguration('lidar_serial_baudrate')
+    lidar_frame_id = LaunchConfiguration('lidar_frame_id')
+    lidar_scan_topic = LaunchConfiguration('lidar_scan_topic')
+    lidar_raw_packet_topic = LaunchConfiguration('lidar_raw_packet_topic')
+    lidar_publish_raw_packets = LaunchConfiguration('lidar_publish_raw_packets')
+    lidar_range_min = LaunchConfiguration('lidar_range_min')
+    lidar_range_max = LaunchConfiguration('lidar_range_max')
+    lidar_scan_time = LaunchConfiguration('lidar_scan_time')
+    lidar_time_increment = LaunchConfiguration('lidar_time_increment')
+    lidar_tf_x = LaunchConfiguration('lidar_tf_x')
+    lidar_tf_y = LaunchConfiguration('lidar_tf_y')
+    lidar_tf_z = LaunchConfiguration('lidar_tf_z')
+    lidar_tf_roll = LaunchConfiguration('lidar_tf_roll')
+    lidar_tf_pitch = LaunchConfiguration('lidar_tf_pitch')
+    lidar_tf_yaw = LaunchConfiguration('lidar_tf_yaw')
+    lidar_mock_packets = LaunchConfiguration('lidar_mock_packets')
+    lidar_mock_scan = LaunchConfiguration('lidar_mock_scan')
     remote_bridge_condition = IfCondition(remote_bridge)
+    lidar_condition = IfCondition(lidar_enabled)
 
     nodes = [
         # --- Hardware Bridge (ESP32 <-> ROS2) ---
@@ -180,6 +276,48 @@ def generate_launch_description():
                 'track_width_m': track_width_m,
                 'max_wheel_speed_mps': max_wheel_speed_mps,
             }],
+        ),
+
+        # --- LiDAR 闭环：默认关闭，避免无串口开发环境阻塞整车 bringup ---
+        Node(
+            package='ros2_trashbot_nav',
+            executable='lidar_driver',
+            name='lidar_driver',
+            output='screen',
+            condition=lidar_condition,
+            parameters=[{
+                'serial_port': lidar_serial_port,
+                'serial_baudrate': lidar_serial_baudrate,
+                'frame_id': lidar_frame_id,
+                'scan_topic': lidar_scan_topic,
+                'raw_packet_topic': lidar_raw_packet_topic,
+                'publish_raw_packets': lidar_publish_raw_packets,
+                'range_min': lidar_range_min,
+                'range_max': lidar_range_max,
+                'scan_time': lidar_scan_time,
+                'time_increment': lidar_time_increment,
+                'mock_packets': lidar_mock_packets,
+                'mock_scan': lidar_mock_scan,
+            }],
+        ),
+
+        # --- LiDAR 占位 TF：默认全零只是软件闭环占位，真实上车必须测量安装位姿 ---
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='base_link_to_laser_frame',
+            output='screen',
+            condition=lidar_condition,
+            arguments=[
+                '--x', lidar_tf_x,
+                '--y', lidar_tf_y,
+                '--z', lidar_tf_z,
+                '--roll', lidar_tf_roll,
+                '--pitch', lidar_tf_pitch,
+                '--yaw', lidar_tf_yaw,
+                '--frame-id', 'base_link',
+                '--child-frame-id', lidar_frame_id,
+            ],
         ),
 
         # --- Navigation ---
@@ -296,5 +434,24 @@ def generate_launch_description():
         remote_auth_token_arg,
         remote_poll_interval_sec_arg,
         remote_request_timeout_sec_arg,
+        lidar_enabled_arg,
+        lidar_serial_port_arg,
+        lidar_serial_baudrate_arg,
+        lidar_frame_id_arg,
+        lidar_scan_topic_arg,
+        lidar_raw_packet_topic_arg,
+        lidar_publish_raw_packets_arg,
+        lidar_range_min_arg,
+        lidar_range_max_arg,
+        lidar_scan_time_arg,
+        lidar_time_increment_arg,
+        lidar_tf_x_arg,
+        lidar_tf_y_arg,
+        lidar_tf_z_arg,
+        lidar_tf_roll_arg,
+        lidar_tf_pitch_arg,
+        lidar_tf_yaw_arg,
+        lidar_mock_packets_arg,
+        lidar_mock_scan_arg,
         *nodes,
     ])

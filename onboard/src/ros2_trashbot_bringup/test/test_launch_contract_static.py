@@ -102,7 +102,8 @@ class LaunchContractStaticTest(unittest.TestCase):
                     source.index("# Patrol scheduler" if launch_name == "autonomous.launch.py" else "Node(\n            package='ros2_trashbot_behavior',\n            executable='operator_gateway'")
                 ]
 
-                self.assertIn("'elevator_assist_enabled', default_value='false'", source)
+                if launch_name == "bringup.launch.py":
+                    self.assertIn("'elevator_assist_enabled', default_value='false'", source)
                 self.assertIn("'elevator_assist_mode', default_value='dry_run'", source)
                 self.assertIn("'elevator_assist_target_floor', default_value='1'", source)
                 self.assertIn("'elevator_assist_dry_run_failure', default_value=''", source)
@@ -228,6 +229,65 @@ class LaunchContractStaticTest(unittest.TestCase):
                 self.assertIn("'serial_baudrate': serial_baudrate", hardware_block)
                 self.assertNotIn("'port': serial_port", hardware_block)
                 self.assertNotIn("'baudrate': serial_baudrate", hardware_block)
+
+    def test_bringup_can_start_lidar_and_static_tf_only_when_enabled(self):
+        for launch_name in ("bringup.launch.py",):
+            with self.subTest(launch_name=launch_name):
+                source = read_launch(launch_name)
+                ast.parse(source)
+                node_start = source.rfind("Node(", 0, source.index("executable='lidar_driver'"))
+                node_end = source.index("\n        ),", source.index("executable='lidar_driver'"))
+                lidar_node = source[node_start:node_end]
+                lidar_block = node_block(source, "lidar_driver")
+                tf_node_start = source.rfind("Node(", 0, source.index("executable='static_transform_publisher'"))
+                tf_node_end = source.index("\n        ),", source.index("executable='static_transform_publisher'"))
+                tf_node = source[tf_node_start:tf_node_end]
+                tf_block = node_block(source, "static_transform_publisher")
+
+                for argument in (
+                    "'lidar_enabled'",
+                    "'lidar_serial_port'",
+                    "'lidar_serial_baudrate'",
+                    "'lidar_frame_id'",
+                    "'lidar_scan_topic'",
+                    "'lidar_raw_packet_topic'",
+                    "'lidar_publish_raw_packets'",
+                    "'lidar_range_min'",
+                    "'lidar_range_max'",
+                    "'lidar_scan_time'",
+                    "'lidar_time_increment'",
+                    "'lidar_tf_x'",
+                    "'lidar_tf_y'",
+                    "'lidar_tf_z'",
+                    "'lidar_tf_roll'",
+                    "'lidar_tf_pitch'",
+                    "'lidar_tf_yaw'",
+                    "'lidar_mock_packets'",
+                    "'lidar_mock_scan'",
+                ):
+                    self.assertIn(argument, source)
+
+                self.assertIn("'lidar_enabled', default_value='false'", source)
+                self.assertIn("package='ros2_trashbot_nav'", lidar_node)
+                self.assertNotIn("package='ros2_trashbot_hardware'", lidar_node)
+                self.assertIn("executable='lidar_driver'", lidar_node)
+                self.assertIn("condition=lidar_condition", lidar_block)
+                self.assertIn("'serial_port': lidar_serial_port", lidar_block)
+                self.assertIn("'serial_baudrate': lidar_serial_baudrate", lidar_block)
+                self.assertIn("'frame_id': lidar_frame_id", lidar_block)
+                self.assertIn("'scan_topic': lidar_scan_topic", lidar_block)
+                self.assertIn("'raw_packet_topic': lidar_raw_packet_topic", lidar_block)
+                self.assertIn("'publish_raw_packets': lidar_publish_raw_packets", lidar_block)
+                self.assertIn("'range_min': lidar_range_min", lidar_block)
+                self.assertIn("'range_max': lidar_range_max", lidar_block)
+                self.assertIn("'scan_time': lidar_scan_time", lidar_block)
+                self.assertIn("'time_increment': lidar_time_increment", lidar_block)
+                self.assertIn("'mock_packets': lidar_mock_packets", lidar_block)
+                self.assertIn("'mock_scan': lidar_mock_scan", lidar_block)
+                self.assertIn("package='tf2_ros'", tf_node)
+                self.assertIn("condition=lidar_condition", tf_block)
+                self.assertIn("'--frame-id', 'base_link'", tf_block)
+                self.assertIn("'--child-frame-id', lidar_frame_id", tf_block)
 
 
 if __name__ == "__main__":
