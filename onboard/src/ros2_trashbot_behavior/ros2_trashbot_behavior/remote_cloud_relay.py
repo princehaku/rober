@@ -75,6 +75,8 @@ CLOUD_COMMAND_TERMINAL_RESULT_SCHEMA = "trashbot.cloud_command_terminal_result.v
 CLOUD_COMMAND_TERMINAL_RESULT_EVIDENCE_BOUNDARY = (
     "software_proof_docker_cloud_command_terminal_result_gate"
 )
+O5_READINESS_HEALTH_SCHEMA = "trashbot.o5.readiness_health.v1"
+O5_READINESS_HEALTH_CAPABILITY = "o5_readiness_live_health"
 O7_OPERATOR_CONSOLE_SCHEMA = "trashbot.o7.operator_console.v1"
 O7_BOARD_MEDIA_PREFLIGHT_SCHEMA = "trashbot.o7_board_media_preflight.v1"
 O7_REALTIME_MAP_SNAPSHOT_SCHEMA = "trashbot.o7.realtime_map_snapshot.v1"
@@ -7160,6 +7162,138 @@ def production_preflight_payload(env=None):
     return safe_value(payload)
 
 
+def _o5_readiness_health_forbidden_markers(payload):
+    # readiness endpoint 会被手机、支持和外部探针消费，所以比通用 safe_value 再多做一层整包禁词检查。
+    encoded = json.dumps(safe_value(payload), ensure_ascii=False).lower()
+    forbidden = (
+        "authorization",
+        "bearer ",
+        "token",
+        "://",
+        "/cmd_vel",
+        "cmd_vel",
+        "serial",
+        "uart",
+        "wave rover",
+        "wave_rover",
+        "checksum",
+        "traceback",
+        "ros topic",
+        "ros_topic",
+        "/tmp/",
+        "\\tmp\\",
+        "complete_artifact",
+        "raw_cloud_payload",
+    )
+    return [marker for marker in forbidden if marker in encoded]
+
+
+def o5_readiness_health_payload(env=None):
+    """把 O5 preflight 事实收敛成 live readiness 摘要；它只暴露缺口，不声明生产就绪。"""
+    preflight = production_preflight_payload(env)
+    checks = preflight.get("checks") if isinstance(preflight, dict) else []
+    if not isinstance(checks, list):
+        checks = []
+    status_counts = {
+        "blocked": sum(1 for check in checks if isinstance(check, dict) and check.get("status") == "blocked"),
+        "warning": sum(1 for check in checks if isinstance(check, dict) and check.get("status") == "warning"),
+        "pass": sum(1 for check in checks if isinstance(check, dict) and check.get("status") == "pass"),
+    }
+    # 只保留枚举化 check 头部，避免把 preflight details、env 名、artifact 摘要或本地路径透出给外部探针。
+    readiness_items = [
+        {
+            "name": str(check.get("name") or "unknown"),
+            "status": _safe_enum(str(check.get("status") or "blocked"), {"blocked", "warning", "pass"}, "blocked"),
+            "code": str(check.get("code") or "unknown"),
+        }
+        for check in checks
+        if isinstance(check, dict)
+    ]
+    real_material_gaps = [
+        str(item)
+        for item in preflight.get("not_proven", [])
+        if str(item)
+        in {
+            "real_cloud",
+            "real_https_tls",
+            "real_4g_sim",
+            "https_tls_public_ingress",
+            "production_db_or_queue",
+            "production_queue_ordering",
+            "multi_instance_consistency",
+            "production_transaction_isolation",
+            "production_backup_policy",
+            "real_disaster_recovery",
+            "real_oss_upload",
+            "cdn_origin_fetch",
+            "delivery_success",
+            "nav2_or_fixed_route_delivery",
+            "oss_cdn_live_probe_gate",
+            "cloud_external_probe_bundle",
+            "cloud_db_queue_external_probe_bundle",
+            "cloud_public_ingress_tls_external_proof",
+            "cloud_db_queue_config_external_proof",
+        }
+    ]
+    next_required_evidence = [
+        "external_https_tls_probe",
+        "real_4g_sim_robot_polling",
+        "production_db_queue_connectivity_probe",
+        "oss_cdn_live_traffic_probe",
+        "real_phone_or_support_browser_probe",
+        "robot_ack_terminal_result_field_evidence",
+    ]
+    payload = {
+        "ok": True,
+        "schema": O5_READINESS_HEALTH_SCHEMA,
+        "capability": O5_READINESS_HEALTH_CAPABILITY,
+        "service": "remote_cloud_relay",
+        "protocol_version": PROTOCOL_VERSION,
+        "source": "production_preflight_payload",
+        "overall_status": "blocked",
+        "production_ready": False,
+        "safe_to_control": False,
+        "sends_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "evidence_boundary": str(preflight.get("evidence_boundary") or PREFLIGHT_EVIDENCE_BOUNDARY),
+        "current_evidence_boundary": str(preflight.get("evidence_boundary") or PREFLIGHT_EVIDENCE_BOUNDARY),
+        "status_counts": status_counts,
+        "blocked_count": status_counts["blocked"],
+        "warning_count": status_counts["warning"],
+        "pass_count": status_counts["pass"],
+        "real_material_gaps": real_material_gaps,
+        "not_proven": real_material_gaps,
+        "next_required_evidence": next_required_evidence,
+        "readiness_items": readiness_items,
+        "safe_summary": "O5 当前提供 bearer-gated live readiness 观测；真实公网、4G、生产存储和现场控制材料仍未证明。",
+    }
+    forbidden = _o5_readiness_health_forbidden_markers(payload)
+    if forbidden:
+        # fail closed 比删除字段更安全；这类错误说明新增字段可能把底层细节带给手机/support。
+        return {
+            "ok": False,
+            "schema": O5_READINESS_HEALTH_SCHEMA,
+            "capability": O5_READINESS_HEALTH_CAPABILITY,
+            "overall_status": "blocked",
+            "production_ready": False,
+            "safe_to_control": False,
+            "sends_commands": False,
+            "robot_control_executed": False,
+            "delivery_success": False,
+            "evidence_boundary": PREFLIGHT_EVIDENCE_BOUNDARY,
+            "status_counts": {"blocked": 1, "warning": 0, "pass": 0},
+            "blocked_count": 1,
+            "warning_count": 0,
+            "pass_count": 0,
+            "real_material_gaps": ["readiness_redaction_failed"],
+            "not_proven": ["readiness_redaction_failed"],
+            "next_required_evidence": ["fix_readiness_redaction_before_external_probe"],
+            "safe_summary": "O5 readiness 输出脱敏自检失败，已拒绝返回详细材料。",
+        }
+    return safe_value(payload)
+
+
 def _timestamp(value, field_name):
     try:
         timestamp = float(value)
@@ -13446,6 +13580,13 @@ def make_handler(store, bearer_token):
                 # preflightz 是旁路 gate，不需要读取或修改 command/status/ack 主路径。
                 payload = production_preflight_payload()
                 self._send_json(200 if payload.get("production_ready") else 503, payload)
+                return
+            if parsed.path == "/api/o5/readiness/health":
+                # O5 live readiness 给 phone/support/external probe 用，必须鉴权且只返回脱敏缺口摘要。
+                if not self._authorized():
+                    self._reject_auth()
+                    return
+                self._send_json(200, o5_readiness_health_payload())
                 return
             if parsed.path == "/api/status":
                 # 手机静态壳的同源状态 API 不要求 bearer；它只输出脱敏 blocked 摘要。

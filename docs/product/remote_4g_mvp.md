@@ -17,6 +17,7 @@ POST /api/commands/collect
 POST /api/commands/confirm-dropoff
 POST /api/commands/cancel
 GET  /api/commands/{command_id}/result?robot_id=<robot_id>
+GET  /api/o5/readiness/health
 POST /robots/{robot_id}/commands
 GET  /robots/{robot_id}/commands/next?last_ack_id=<id>
 POST /robots/{robot_id}/status
@@ -2440,6 +2441,31 @@ Raw artifacts, credentials, local paths, raw robot responses, ROS topics,
 mutation hints, GitHub mutation hints, robot command hints, and success/control
 claims must fail closed.
 Start Delivery, Confirm Dropoff, or Cancel semantics.
+
+## O5 Readiness Live Health
+
+`GET /api/o5/readiness/health` is the bearer-gated live readiness/status endpoint
+for phone, support, and external deployment probes. It reuses
+`production_preflight_payload()` as the source of O5 truth, but it does not
+expose the full preflight payload. The response schema is
+`trashbot.o5.readiness_health.v1`, capability is `o5_readiness_live_health`,
+and the body contains only fixed false-state flags, blocked/warning/pass counts,
+the current evidence boundary, enumerated readiness item heads, real material
+gaps, and `next_required_evidence`.
+
+The endpoint must keep `production_ready=false`, `safe_to_control=false`,
+`sends_commands=false`, `robot_control_executed=false`, and
+`delivery_success=false`. Missing or invalid bearer auth returns 401. It is a
+live observability step for O5, not a command path, not a production readiness
+claim, and not proof of real public HTTPS/TLS, real 4G/SIM, production
+DB/queue, OSS/CDN live traffic, real phone/browser, HIL, route execution, or
+delivery success.
+
+The response must not echo bearer tokens, Authorization headers, URLs, DB/queue
+URLs, local paths, complete artifacts, checksums, ROS topics, `/cmd_vel`,
+serial/UART details, or WAVE ROVER fields. UI and support tooling should render
+the endpoint as "blocked with next evidence needed" until real external
+materials are collected.
 
 ## Safety Rules
 

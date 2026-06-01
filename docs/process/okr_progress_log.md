@@ -8,6 +8,25 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 14-15｜o5-readiness-live-health｜O5 readiness live health software proof
+
+本轮 `sprints/2026.06.01_14-15_o5-readiness-live-health/` 执行 Micro closeout。用户价值是让 phone/support/external probe 能用一个 bearer-gated live readiness/status endpoint 查看 O5 当前 readiness 缺口，而不是只能依赖离线 preflight 或聊天结论，同时不把 readiness 摘要误包装成生产云、真实 4G 或真实手机能力。
+
+Full-Stack 已新增 `GET /api/o5/readiness/health`，schema 固定为 `trashbot.o5.readiness_health.v1`，capability 固定为 `o5_readiness_live_health`。该 endpoint 复用 `production_preflight_payload()`，但只输出脱敏 readiness 缺口摘要、计数、evidence boundary 和 next required evidence；固定 `production_ready=false`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`，不向 phone/support/external probe 回显 token、Authorization、本地路径、完整 artifact、checksum、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 字段。
+
+验证证据：`python3 -m py_compile onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py` 通过；`PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior python3 -m unittest cloud-relay/tests/test_o5_mock_control_plane.py` 输出 `Ran 3 tests ... OK`；scoped `git diff --check` 通过。
+
+Product closeout 判定：Objective 5 从 `90%+ mock/software completion` 保守调整到 `约 91% software + readiness live health proof`。方向判断为**继续**，不替换、不暂停；本轮真实关闭的是“O5 readiness live health/status observability + 脱敏/fail-closed 缺口摘要可复验”缺口。仍不证明真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、OSS/CDN live traffic 或真实手机/browser。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 5：云中转控制面 | 从 `90%+ mock/software completion` 调整到约 91% | O5 readiness live health endpoint 已提供 bearer-gated `GET /api/o5/readiness/health`、`trashbot.o5.readiness_health.v1` schema、`o5_readiness_live_health` capability、脱敏 readiness 缺口摘要和固定 fail-closed 控制字段；py_compile、O5 control plane unittest 3 OK、scoped diff-check 通过。仍缺真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、OSS/CDN live traffic 和真实手机/browser。 |
+| Objective 1 / 6 / 7 | 保持原进度 | 本轮不触碰 WAVE ROVER/UART/HIL、LiDAR/Nav2/SLAM、O6 archive production DB/queue/OSS/inference、PC/browser RTC 稳定性或上车任务闭环；只因排序口径把 O5 纳入约 91% 梯队。 |
+
+本轮没有已完成 KR 需要移入历史归档区；O5 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节和 `sprints/2026.06.01_14-15_o5-readiness-live-health/tech-done.md`，剩余风险见上表。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 13-14｜o6-archive-live-health｜O6 archive live health software proof
 
 本轮 `sprints/2026.06.01_13-14_o6-archive-live-health/` 执行 Micro closeout。用户价值是让 PC、手机和运维后续能用同一个 bearer-gated live health endpoint 判断 O6 archive API 是否在线、是否已有 proof 数据、是否因本地 proof store 损坏而不可用，同时不把 software proof 误包装成生产云能力。

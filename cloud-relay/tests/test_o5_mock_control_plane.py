@@ -168,6 +168,65 @@ class Objective5MockControlPlaneTest(unittest.TestCase):
             self.assertIn("oss_cdn_live_probe_gate", preflight["not_proven"])
             self.assertIn("production_db_or_queue", preflight["not_proven"])
 
+    def test_o5_readiness_health_is_bearer_gated_and_phone_safe(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            token = "o5-readiness-health-token"
+            server = relay.build_server("127.0.0.1", 0, f"{tmpdir}/remote.sqlite", token, state_backend="sqlite")
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            base_url = f"http://127.0.0.1:{server.server_port}"
+            health_url = f"{base_url}/api/o5/readiness/health"
+            try:
+                # readiness health 是 support/phone/external probe 入口；缺 bearer 必须 fail closed。
+                with self.assertRaises(urllib.error.HTTPError) as exc:
+                    _request_json(health_url)
+                self.assertEqual(exc.exception.code, 401)
+
+                payload = _request_json(health_url, token=token)
+                # schema/capability 固定，方便 phone/support 在不解析 preflight 全量细节时做稳定展示。
+                self.assertEqual(payload["schema"], "trashbot.o5.readiness_health.v1")
+                self.assertEqual(payload["capability"], "o5_readiness_live_health")
+                self.assertEqual(payload["overall_status"], "blocked")
+
+                # 这些字段是 O5 当前安全边界：只观测 readiness，不声明生产可控或真实送达。
+                self.assertFalse(payload["production_ready"])
+                self.assertFalse(payload["safe_to_control"])
+                self.assertFalse(payload["sends_commands"])
+                self.assertFalse(payload["robot_control_executed"])
+                self.assertFalse(payload["delivery_success"])
+
+                # readiness endpoint 复用 preflight 缺口口径，但只返回枚举和计数，不返回完整 artifact/details。
+                self.assertGreater(payload["blocked_count"], 0)
+                self.assertEqual(payload["blocked_count"], payload["status_counts"]["blocked"])
+                self.assertIn("real_https_tls", payload["real_material_gaps"])
+                self.assertIn("real_4g_sim", payload["real_material_gaps"])
+                self.assertIn("production_db_or_queue", payload["real_material_gaps"])
+                self.assertIn("external_https_tls_probe", payload["next_required_evidence"])
+                self.assertTrue(payload["readiness_items"])
+
+                encoded = json.dumps(payload, ensure_ascii=False)
+                forbidden = [
+                    token,
+                    "Authorization",
+                    "Bearer ",
+                    "://",
+                    "/cmd_vel",
+                    "serial",
+                    "UART",
+                    "WAVE ROVER",
+                    "checksum",
+                    "TRASHBOT_REMOTE_CLOUD",
+                    tmpdir,
+                ]
+                for marker in forbidden:
+                    # 响应面向外部部署探测，不能泄露凭证、URL、本地路径、硬件或底层控制细节。
+                    self.assertNotIn(marker, encoded)
+            finally:
+                # 关闭测试 server，避免 readiness 线程影响后续 unittest 进程退出。
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
 
 if __name__ == "__main__":
     unittest.main()

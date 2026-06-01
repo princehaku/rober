@@ -104,7 +104,7 @@
 
 ### Objective 5：云中转控制面产品化（原 O5/O6）
 
-**当前进度：90%+ mock/software completion；real material not_proven** | Task B 已用本地/mock control plane smoke 覆盖 `trashbot.remote.v1` commands/status/ack、bearer/env credential、mock 4G interruption、mock DB/queue artifact、mock OSS/CDN manifest 和 graceful degradation。真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、OSS/CDN live traffic、真实手机/browser 证据仍为 `not_proven`。（开发与测试阶段支持基于本地/Docker 的 Mock Cloud 进行控制面业务逻辑联调验证）
+**当前进度：约 91% software + readiness live health proof；real material not_proven** | Task B 已用本地/mock control plane smoke 覆盖 `trashbot.remote.v1` commands/status/ack、bearer/env credential、mock 4G interruption、mock DB/queue artifact、mock OSS/CDN manifest 和 graceful degradation。`2026.06.01_14-15_o5-readiness-live-health` 新增 bearer-gated `GET /api/o5/readiness/health`，schema 固定为 `trashbot.o5.readiness_health.v1`，capability 固定为 `o5_readiness_live_health`，复用 `production_preflight_payload()` 但只输出脱敏 readiness 缺口摘要，并固定 `production_ready=false`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`。验证证据为 `py_compile` 通过、`cloud-relay/tests/test_o5_mock_control_plane.py` 输出 `Ran 3 tests ... OK`、scoped diff-check 通过。真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、OSS/CDN live traffic、真实手机/browser 证据仍为 `not_proven`。（开发与测试阶段支持基于本地/Docker 的 Mock Cloud 进行控制面业务逻辑联调验证）
 
 **Key Results**
 
@@ -158,7 +158,7 @@
 | Objective | 进度 | 主要缺口 |
 | --- | --- | --- |
 | O1：硬件协议可信底盘 | 约 91% software_reference + mock skeleton | Task A mock serial / virtual HIL packet 软件证据已覆盖主路径和坏帧容错；LiDAR reference ingest + ROS2 skeleton 已覆盖 `150000` baud、`0xAA 0x55`、`LSN`、`/lidar/raw_packet`、`laser_frame`、LaserScan output 的 `source=software_reference` 和默认关闭 gated launch；真实 WAVE ROVER、真实 LiDAR、真实 UART/HIL、真实 Orange Pi 串口、真实 IMU/battery 标定、TF、Nav2/SLAM、150000 上车稳定性、PR #5 硬件材料仍 `not_proven` |
-| O5：云中转控制面 | 90%+ mock/software completion | Task B mock control plane 已覆盖 commands/status/ack、bearer/env、mock 4G/DB/queue/OSS/CDN graceful degradation；真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 仍 `not_proven` |
+| O5：云中转控制面 | 约 91% software + readiness live health proof | Task B mock control plane 已覆盖 commands/status/ack、bearer/env、mock 4G/DB/queue/OSS/CDN graceful degradation；O5 readiness live health endpoint 已提供 bearer-gated `GET /api/o5/readiness/health`、`trashbot.o5.readiness_health.v1` schema、`o5_readiness_live_health` capability、脱敏 readiness 缺口摘要和 fail-closed 字段；真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 仍 `not_proven` |
 | O6：云端核心后端 | 约 91% software + archive live health proof | Task C mock archive/query/annotation/inference、board event publisher、algorithm feed、state path fence 已可复验；O6 archive live health endpoint 已提供 bearer-gated `GET /api/o6/archive/health`、`trashbot.o6.archive_health.v1` schema、`o6_archive_live_health` capability、`empty` / `ready` / `store_unavailable` 状态和脱敏/fail-closed 字段；真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、external live probe、真实云、真实 4G/SIM 和上车数据仍 `not_proven` |
 | O7：PC 端运营调试平台 | 约 95% software + same-LAN Chromium browser 30s short-stability observed | PC console 六区 mock/live-like evidence 已覆盖回放、标注、推理、ASR/TTS stub、手控/寻路 stub 和 fail-closed；LAN-only WebRTC camera smoke 已证明 `/offer` answer、connected、`first_frame_received=true`、640x480 first frame 和 peer cleanup；PC Chromium/browser smoke 已从 `first_frame_timeout` 推进为首帧 OK，再进一步完成 30s smoke against `http://192.168.1.11:8088/`：`first_frame_ms=2044`、`stability_summary.status=observed`、`sample_count=6`、`estimated_fps=13.9`、`temperature_celsius=46.394`、`active_frames_read=352`、`active_camera_read_failures=0`、`post_close_active_peer_connections=0`；PC endpoint 只读展示 `/health` + `/devices` 和显式 smoke JSON，不自动发 `/offer` 或控制；3-5 分钟、弱网、TURN、公网云 relay、鉴权、真实用户浏览器/手机、ASR/TTS、手控/Nav2、真实 robot ACK 和完整上车任务闭环仍 `not_proven` |
 
@@ -178,9 +178,9 @@
 
 按完成度从低到高排序：
 
-1. **O5（90%+ mock/software completion；real material not_proven）**：当前完成度最低。按 `docs/interfaces/o1_o5_90_evidence_boundary.md` 采集公网 HTTPS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 材料。
-2. **O1（约 91% software_reference + mock skeleton；real material not_proven）**：与 O6 并列约 91%。下一步不要把 LiDAR skeleton 当成上车完成；先按 `docs/hardware/lidar_ros_reference.md` 和 `docs/interfaces/o1_o5_90_evidence_boundary.md` 补真实 WAVE ROVER UART/HIL packet、真实 LiDAR 串口 `/scan`、TF、Nav2/SLAM 订阅、150000 波特率稳定性和 PR #5 硬件材料。
-3. **O6（约 91% software + archive live health proof；real material not_proven）**：与 O1 并列约 91%。本轮只关闭本地/Docker O6 archive live health observability；下一步优先把 archive core 推进到真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、external live probe、真实云、真实 4G/SIM 和上车数据。
+1. **O1（约 91% software_reference + mock skeleton；real material not_proven）**：与 O5/O6 并列约 91%。下一步不要把 LiDAR skeleton 当成上车完成；先按 `docs/hardware/lidar_ros_reference.md` 和 `docs/interfaces/o1_o5_90_evidence_boundary.md` 补真实 WAVE ROVER UART/HIL packet、真实 LiDAR 串口 `/scan`、TF、Nav2/SLAM 订阅、150000 波特率稳定性和 PR #5 硬件材料。
+2. **O5（约 91% software + readiness live health proof；real material not_proven）**：与 O1/O6 并列约 91%。本轮只关闭 O5 readiness live health/status 可观测缺口；下一步仍按 `docs/interfaces/o1_o5_90_evidence_boundary.md` 采集真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 材料。
+3. **O6（约 91% software + archive live health proof；real material not_proven）**：与 O1/O5 并列约 91%。本轮只关闭本地/Docker O6 archive live health observability；下一步优先把 archive core 推进到真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、external live probe、真实云、真实 4G/SIM 和上车数据。
 4. **O7（约 95% software + same-LAN Chromium browser 30s short-stability observed；product real material not_complete）**：下一步不要继续消费已关闭的 `first_frame_timeout` blocker，也不要把 30s same-LAN smoke 误读成真实产品视频能力；应把 30s 短稳态扩展到 3-5 分钟帧率/延迟/CPU/温度曲线、浏览器控制台、断开重连、camera release 与失败分类；随后再设计真实产品播放入口的安全确认、鉴权和会话生命周期。云 relay/公网 RTC/TURN/鉴权、真实用户浏览器/手机体验和长期性能仍未证明。
 
 > 当前 90%+ 只代表 mock/software completion。真实材料未完成时，任何 Objective 都不得表述为真实硬件、真实生产云、真实 4G、真实 OSS/CDN、真实 PC/手机或真实上车完成。

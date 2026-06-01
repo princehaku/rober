@@ -15,6 +15,8 @@
 > **O7 RTC signaling session receipt**：`POST /api/o7/rtc/signaling/sessions` 已实现为 bearer-gated 收件入口；如果 relay expected token 为空，本地测试仍可无 bearer 访问。它只校验 JSON object、`robot_id`、`client_id`、`session_id`、`idempotency_key`、`offer.sdp`，并返回 `trashbot.o7.rtc_signaling_session_receipt.v1`。响应只包含字段存在性、长度和短摘要，不回显 SDP、token/auth/url、TURN/STUN credential 或 raw offer。字段完整返回 200，缺字段返回结构化 400 receipt，坏 JSON 继续返回 `malformed_json`。固定 `source=software_proof`、`proof_status=not_proven`、`session_status=blocked_not_created`、`webrtc_session_created=false`、`answer_created=false`、`ice_candidates_processed=false`、`media_transport_connected=false`、`video_track_received=false`、`realtime_pose_stream_connected=false`、`real_ros2_tf_connected=false`、`safe_to_control=false`、`sends_commands=false`、`reads_hardware=false`、`robot_control_executed=false`、`delivery_success=false`，且不写 command store、不读硬件、不下发控制。
 >
 > **O6 archive live health**：`GET /api/o6/archive/health` 已实现为 bearer-gated 只读探测入口，返回 `trashbot.o6.archive_health.v1` / `capability=o6_archive_live_health`。它汇总本地 JSON proof store 的 task/event/annotation/inference 计数和脱敏 `latest_task_ref`，状态只可能是 `empty`、`ready` 或 `store_unavailable`。坏 JSON 或不可读 store 返回 503，payload 不回显 state path、traceback、token 或本机路径。该入口固定 `storage_backend=json_file_proof`、`production_ready=false`、`production_db_connected=false`、`real_oss_upload=false`、`real_inference_model_runtime=false`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`；它只证明 live API 可观测性，不证明 production DB/queue、真实 OSS upload、真实推理 runtime、真实云、真实 4G/SIM 或上车数据。
+>
+> **O5 readiness live health**：`GET /api/o5/readiness/health` 已实现为 bearer-gated 只读探测入口，返回 `trashbot.o5.readiness_health.v1` / `capability=o5_readiness_live_health`。它复用 `production_preflight_payload()` 的缺口语义，但只输出固定 schema、枚举化 readiness items、blocked/warning/pass 计数、当前 `evidence_boundary`、真实材料缺口和 `next_required_evidence`。响应固定 `production_ready=false`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`；未授权返回 401。该入口不得回显 bearer token、Authorization、URL、DB/queue URL、本地路径、完整 artifact、checksum、ROS topic、`/cmd_vel`、serial/UART 或 WAVE ROVER 字段。它只把 O5 从 mock/software proof 推进到可部署 live observability，不证明真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 或生产就绪。
 
 ## 用途（What lives here）
 
@@ -31,6 +33,7 @@
 - **健康检查 & 生产 preflight**：
   - `/healthz` / `/readyz` 容器存活与就绪探针
   - `/preflightz` 生产就绪检查（HTTPS、OSS 凭证、DR backup 等还没就位时会显式 503）
+  - `/api/o5/readiness/health` bearer-gated O5 live readiness/status 探测，复用 preflight 语义但只返回脱敏缺口摘要；固定 `production_ready=false`、`safe_to_control=false`、`sends_commands=false`
   - `trashbot.cloud_deployment_readiness` artifact，汇总公网入口、TLS、healthcheck、凭证、state backend、生产 DB/queue、OSS/CDN、4G/SIM 和 runbook/smoke 缺口；证据边界固定为 `software_proof_docker_cloud_deployment_readiness_gate`
   - `trashbot.cloud_external_probe_bundle` artifact，用 base URL 探测 `/healthz`、`/readyz`、`/preflightz` 并只记录 endpoint path、HTTP 状态、JSON 合同和脱敏状态；证据边界固定为 `software_proof_docker_cloud_external_probe_bundle_gate`，`production_ready=false` 必须保持
   - `trashbot.cloud_public_ingress_tls_gate` artifact，区分完全缺公网入口/TLS/反向代理配置与配置包存在但缺真实外部 HTTPS、DNS、反向代理、防火墙实证；证据边界固定为 `software_proof_docker_cloud_public_ingress_tls_gate`，`overall_status=blocked` 必须保持
