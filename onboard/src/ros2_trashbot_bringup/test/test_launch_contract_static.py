@@ -268,8 +268,8 @@ class LaunchContractStaticTest(unittest.TestCase):
                     self.assertIn(argument, source)
 
                 self.assertIn("'lidar_enabled', default_value='false'", source)
-                self.assertIn("package='ros2_trashbot_nav'", lidar_node)
-                self.assertNotIn("package='ros2_trashbot_hardware'", lidar_node)
+                self.assertIn("package='ros2_trashbot_hardware'", lidar_node)
+                self.assertNotIn("package='ros2_trashbot_nav'", lidar_node)
                 self.assertIn("executable='lidar_driver'", lidar_node)
                 self.assertIn("condition=lidar_condition", lidar_block)
                 self.assertIn("'serial_port': lidar_serial_port", lidar_block)

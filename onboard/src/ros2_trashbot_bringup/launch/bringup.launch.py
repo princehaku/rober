@@ -280,7 +280,7 @@ def generate_launch_description():
 
         # --- LiDAR 闭环：默认关闭，避免无串口开发环境阻塞整车 bringup ---
         Node(
-            package='ros2_trashbot_nav',
+            package='ros2_trashbot_hardware',
             executable='lidar_driver',
             name='lidar_driver',
             output='screen',
