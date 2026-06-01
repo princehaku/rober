@@ -51,7 +51,7 @@ python3 onboard/scripts/o1_upper_computer_readiness_probe.py --once-json --outpu
 通过用户提供的上位机 SSH 入口以 stdin 方式执行：
 
 ```bash
-ssh -p 37878 root@192.168.1.11 'python3 -s -- --once-json' < onboard/scripts/o1_upper_computer_readiness_probe.py
+ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json' < onboard/scripts/o1_upper_computer_readiness_probe.py
 ```
 
 ## 输出 contract
@@ -70,10 +70,13 @@ ssh -p 37878 root@192.168.1.11 'python3 -s -- --once-json' < onboard/scripts/o1_
 - `lidar_reference_readiness.status=software_reference_not_hil`
 - `lidar_reference_readiness.source_of_truth=docs/vendor/lidar_pkg_ros2-main/`
 - `lidar_reference_readiness.historical_protocol_reference=docs/vendor/lidar_ros/`
+- `lidar_runtime_readiness.status` 只根据 ROS2 Humble setup、pyserial、repo/workspace 和 LiDAR 串口候选判断是否允许人工进入 no-motion LiDAR smoke
+- `lidar_runtime_readiness.blockers[]` 给出机器可读 blocker code，例如 `ros2_humble_setup_missing`、`pyserial_missing`、`workspace_not_found`、`lidar_serial_candidate_missing`
+- `lidar_runtime_readiness.commands_if_ready[]` 只包含 ROS2 LiDAR driver 与 `/scan`、`/lidar/raw_packet` 只读观察命令；它们不发送 WAVE ROVER 底盘运动命令，也不写 `/cmd_vel`
 - `wave_rover_readiness.status=not_ready_for_control`
 - `next_safe_commands[]` 只包含编译、单测和只读 probe 命令
 
-## 本轮远端观察
+## 历史远端观察
 
 `2026.06.01_15-16_o1-upper-computer-readiness-probe` 使用：
 
@@ -104,6 +107,34 @@ ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json' < onboard/scripts/o1_u
 - 串口候选只枚举不打开：`/dev/ttyACM0`、`/dev/serial`、`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`、`/dev/serial/by-path/platform-5311400.usb-usb-0:1:1.0`
 
 仓库不保存远端原始 artifact。
+
+## 本轮远端观察
+
+`2026.06.02_06-07_o1-lidar-upper-runtime-readiness` 使用用户指定的只读 SSH readiness probe：
+
+```bash
+timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json' < onboard/scripts/o1_upper_computer_readiness_probe.py
+```
+
+结果：
+
+```text
+ssh: connect to host 192.168.1.11 port 37878: No route to host
+```
+
+结论：
+
+- 本轮没有进入上位机，因此未采集到新的远端 JSON artifact。
+- 未确认当前小时的 ROS2 Humble runtime、workspace、pyserial 或 LiDAR 串口状态。
+- 未运行 LiDAR driver，也未采到真实 ROS2 `/scan` 或 `/lidar/raw_packet`。
+- 因为 SSH 是网络层不可达，本轮新增 `lidar_runtime_readiness` gate，让下一轮一旦 SSH 恢复即可直接看到是否满足 no-motion LiDAR smoke 前置条件。
+
+下一轮 SSH 恢复后的最小路径：
+
+1. 先重跑同一条 readiness probe，检查 `lidar_runtime_readiness.status`。
+2. 若状态是 `blocked_by_readiness`，按 `blockers[].code` 逐项补齐 ROS2 Humble、pyserial、workspace 或 LiDAR 串口候选。
+3. 只有状态是 `ready_for_no_motion_lidar_smoke` 时，才按 `commands_if_ready[]` 人工尝试 LiDAR driver 和 `/scan` 观察。
+4. 全程不得发送 `T=1`、`T=13`、`T=131`、`/cmd_vel` 或任何底盘运动命令。
 
 ## Not Proven
 

@@ -150,3 +150,35 @@ ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s 
 ```
 
 两条命令均在 SSH 网络层失败：`ssh: connect to host 192.168.1.11 port 37878: No route to host`。因此本轮没有触达远端 Python、没有打开串口、没有发送 `T=130`、没有读取到 `T=1001`。本轮可交付只限于本地 probe 诊断合同和回归测试；O1 仍只能推进为“诊断合同更清楚 + 远端现象更可复验”，不是 HIL pass。
+
+`2026.06.02_06-07_o1-wave-rover-t1001-live-retry` 使用用户提供的同一 SSH 入口复采，目标是确认显式 `T=130` 后是否至少能读到一帧真实 `T=1001`。本轮先执行只读 probe：
+
+```bash
+timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 2' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
+只读命令失败在 SSH 网络层：`ssh: connect to host 192.168.1.11 port 37878: No route to host`。因此本命令没有触达远端 Python、没有打开串口、没有读取串口行。
+
+随后按验收要求执行显式非运动 feedback request：
+
+```bash
+timeout 35 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --request-base-feedback --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 12' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
+该命令同样失败在 SSH 网络层：`ssh: connect to host 192.168.1.11 port 37878: No route to host`。因此本轮没有发送 `{"T":130}\n`，没有发送 `T=1`、`T=13`、`T=131`、`cmd_vel` 或任何运动命令，也没有采到真实 `T=1001`。
+
+本轮机器可读结论：
+
+- `remote_probe_status=ssh_no_route_to_host`
+- `safe_to_control=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `t130_request_reached_serial=false`
+- `t1001_observed=false`
+- `evidence_boundary=remote_network_unreachable_not_serial_feedback_result`
+
+下一步现场检查材料：
+
+1. 先在与上位机同网段的机器上确认 `192.168.1.11:37878` 可路由、上位机已开机、SSH 端口映射仍然存在。
+2. SSH 恢复后先运行只读 probe，确认 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00` 是否仍存在并指向预期 `ttyACM*`。
+3. 只读 probe 能触达后，再运行一次显式 `--request-base-feedback`；若仍为 `read_line_count=0`，按 `next_required_checks[]` 现场核对下位机供电/固件、TX/RX 交叉、目标端口是否为 WAVE ROVER ESP32、串口占用和 vendor terminal 交叉验证。

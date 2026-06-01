@@ -8,6 +8,14 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 06-07｜o1-wave-rover-t1001-live-retry + o1-lidar-upper-runtime-readiness｜O1 remote network still blocked
+
+本轮 06-07 O1 复测继续聚焦最低 Objective 1。WAVE ROVER T1001 live retry 两次 SSH 到 `root@192.168.1.11 -p 37878` 均失败为 `No route to host`，结论为 `remote_network_unreachable`：未触达远端 Python，未打开串口，未发送 `T=130`，未采到真实 `T=1001`。LiDAR upper runtime readiness 侧新增 `lidar_runtime_readiness` gate 和下一轮 runbook，但远端 readiness probe 同样 `No route to host`，未采到真实 ROS2 `/scan` 或 LiDAR runtime。
+
+协调者补跑本地验证通过：upper readiness 9 tests OK、LiDAR driver stub 8 tests OK、WAVE feedback probe 9 tests OK、py_compile OK、scoped diff-check OK。Product closeout 判定：Objective 1 保持约 93%，不提升百分比；方向继续。下一步先恢复 `root@192.168.1.11:37878` SSH/路由可达性，再重复 fail-closed WAVE `--request-base-feedback` 和 LiDAR readiness probe。真实 `T=1001`、真实 LiDAR `/scan`、UART/HIL、底盘控制、ROS Humble runtime、TF、Nav2/SLAM 仍 `not_proven`。
+
+历史记录位置为本节、`OKR.md` 第 4/4.1/5 节、`sprints/2026.06.02_06-07_o1-wave-rover-t1001-live-retry/tech-done.md` 和 `sprints/2026.06.02_06-07_o1-lidar-upper-runtime-readiness/tech-done.md`。
+
 ### 2026-06-02 05-06｜o5-o6-tls-evidence-summary｜O5/O6 TLS evidence summary visible in PC workstation
 
 本轮 Micro closeout 的用户价值是把 O5/O6 external probe 从“artifact 可见”继续推进到“HTTPS cloud base URL 下的 TLS evidence summary 可采集、可脱敏、可在 PC workstation 查看”。这提高了云端/运维排障证据质量，但不把它包装成真实生产云、真实 4G、真实 TLS 链路或真实手机体验完成。

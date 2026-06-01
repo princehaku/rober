@@ -88,6 +88,65 @@ class O1UpperComputerReadinessProbeTest(unittest.TestCase):
         # 真实 target baud 稳定性必须留在 not_proven，不能被 reference 覆盖。
         self.assertIn("150000 baud stability on target hardware", lidar["not_proven"])
 
+    def test_lidar_runtime_readiness_blocks_until_runtime_prereqs_exist(self):
+        # 这个 gate 是给现场跑 /scan 前看的，缺条件时必须机器可读地 blocked。
+        probe = _load_probe_module()
+        serial_summary = probe.summarize_serial_candidates(globber=lambda pattern: [])
+
+        readiness = probe.build_lidar_runtime_readiness(
+            serial_summary=serial_summary,
+            pyserial_available=False,
+            humble_setup_exists=False,
+            repo_root=None,
+        )
+
+        self.assertEqual(readiness["status"], "blocked_by_readiness")
+        self.assertFalse(readiness["sends_base_motion_commands"])
+        self.assertFalse(readiness["sends_cmd_vel"])
+        self.assertFalse(readiness["writes_wave_rover_uart"])
+        self.assertFalse(readiness["probe_ran_driver"])
+        self.assertEqual(readiness["candidate_ports"], [])
+        self.assertEqual(readiness["selected_candidate_hint"], "<lidar_serial_port>")
+        blocker_codes = {item["code"] for item in readiness["blockers"]}
+        self.assertEqual(
+            blocker_codes,
+            {
+                "ros2_humble_setup_missing",
+                "pyserial_missing",
+                "workspace_not_found",
+                "lidar_serial_candidate_missing",
+            },
+        )
+
+    def test_lidar_runtime_readiness_allows_only_no_motion_lidar_smoke_when_ready(self):
+        # ready 只代表可以人工尝试 LiDAR /scan，不代表 HIL 或底盘控制许可。
+        probe = _load_probe_module()
+
+        def fake_glob(pattern):
+            return {
+                "/dev/ttyACM*": ["/dev/ttyACM0"],
+                "/dev/serial/by-id/*": ["/dev/serial/by-id/usb-STC_STC_USB_Serial-if00"],
+            }.get(pattern, [])
+
+        serial_summary = probe.summarize_serial_candidates(globber=fake_glob)
+        readiness = probe.build_lidar_runtime_readiness(
+            serial_summary=serial_summary,
+            pyserial_available=True,
+            humble_setup_exists=True,
+            repo_root=Path("/opt/rober"),
+        )
+
+        self.assertEqual(readiness["status"], "ready_for_no_motion_lidar_smoke")
+        self.assertEqual(readiness["blockers"], [])
+        self.assertIn("/dev/serial/by-id/usb-STC_STC_USB_Serial-if00", readiness["candidate_ports"])
+        self.assertIn("/dev/ttyACM0", readiness["candidate_ports"])
+        joined = "\n".join(readiness["commands_if_ready"])
+        self.assertIn("ros2 run ros2_trashbot_hardware lidar_driver", joined)
+        self.assertIn("ros2 topic echo --once /scan", joined)
+        # smoke 命令可以启动 LiDAR 串口，但不能包含底盘控制或 cmd_vel。
+        for forbidden in ('"T":1', '"T":13', "cmd_vel", "wave_rover"):
+            self.assertNotIn(forbidden, joined)
+
     def test_pyserial_detection_fails_closed_for_stub_or_broken_spec(self):
         # 远端 stdin 运行可能遇到半初始化 serial stub；probe 不能因此丢 JSON。
         probe = _load_probe_module()

@@ -115,6 +115,11 @@ Runtime contract:
 6. Node shutdown writes `A5 00 A5 65 A5 65` best-effort, then closes serial;
    stop-write failure must not prevent close, and physical stop still requires
    robot observation.
+7. `o1_upper_computer_readiness_probe.py` now emits
+   `lidar_runtime_readiness` as a no-motion smoke gate. It only marks
+   `ready_for_no_motion_lidar_smoke` when ROS2 Humble setup exists, pyserial is
+   importable, a rober workspace is visible, and a `/dev/lidar` / STC / ttyACM
+   LiDAR candidate is listed by the read-only probe.
 
 ## Launch Parameters
 
@@ -157,6 +162,7 @@ python3 -m compileall -q onboard/src/ros2_trashbot_hardware onboard/src/ros2_tra
 Real robot no-motion smoke:
 
 ```bash
+timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json' < onboard/scripts/o1_upper_computer_readiness_probe.py
 source /opt/ros/humble/setup.bash
 source install/setup.bash
 ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 lidar_frame_id:=laser_frame lidar_publish_raw_packets:=true
@@ -187,4 +193,6 @@ ros2 run tf2_ros tf2_echo base_link laser_frame
 - 历史 `docs/vendor/lidar_ros/` 已保留，只作为 ROS1/protocol reference。
 - 项目 ROS2 driver 已实现用户手动确认可启动电机的 `A5 60` start command。
 - Fake serial tests 证明 driver 发送 start/stop bytes、mock 路径不碰串口、split packet 可重同步、启动写失败会 close、停止写失败仍会 close。
+- `2026.06.02_06-07_o1-lidar-upper-runtime-readiness` 远端只读 SSH readiness probe 未进入上位机，错误为 `No route to host`；因此本轮没有采到真实 `/scan` 或 LiDAR runtime 证据。
+- 下一轮必须先恢复 SSH 可达性并检查 `lidar_runtime_readiness.status`；只有它为 `ready_for_no_motion_lidar_smoke` 时，才允许继续执行不含底盘运动命令的 LiDAR driver 与 `/scan` 观察。
 - 真实 `/scan` 连续输出、raw packet 质量、TF、SLAM/Nav2 消费和长时间稳定性仍未证明。

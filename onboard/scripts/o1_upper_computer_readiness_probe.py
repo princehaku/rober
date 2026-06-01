@@ -26,6 +26,8 @@ SERIAL_CANDIDATE_PATTERNS = (
     "/dev/serial/by-id/*",
     "/dev/serial/by-path/*",
 )
+# LiDAR 候选只用于 readiness 判断；真正打开哪个设备必须由现场 smoke 显式选择。
+LIDAR_CANDIDATE_MARKERS = ("lidar", "STC", "stc", "ttyACM")
 # vendor source 固定写入 JSON，方便后续 HIL 证据审查能回到本地资料。
 VENDOR_SOURCES = (
     "docs/vendor/VENDOR_INDEX.md",
@@ -86,6 +88,96 @@ def _is_pyserial_available() -> bool:
         return False
 
 
+def _flatten_serial_paths(serial_summary: dict) -> list[str]:
+    """把按 pattern 分组的串口候选摊平，方便后续 readiness 规则复用。"""
+    paths: list[str] = []
+    # readiness JSON 允许未来扩展字段，所以这里按 dict 防御式读取。
+    for item in serial_summary.get("by_pattern", {}).values():
+        paths.extend(str(path) for path in item.get("paths", []))
+    # 去重后排序，保证 artifact diff 稳定，便于 hourly automation 比较漂移。
+    return sorted(set(paths))
+
+
+def _lidar_candidate_paths(serial_summary: dict) -> list[str]:
+    """基于路径名字推导 LiDAR 候选，不打开设备也不读取 USB 属性。"""
+    candidates = []
+    for path in _flatten_serial_paths(serial_summary):
+        # /dev/lidar 是 vendor udev 目标；STC/ttyACM 是当前现场观察到的候选线索。
+        if any(marker in path for marker in LIDAR_CANDIDATE_MARKERS):
+            candidates.append(path)
+    return sorted(set(candidates))
+
+
+def build_lidar_runtime_readiness(
+    *,
+    serial_summary: dict,
+    pyserial_available: bool,
+    humble_setup_exists: bool,
+    repo_root: Path | None,
+) -> dict:
+    """给现场同学一个机器可读的 no-motion LiDAR smoke gate。"""
+    lidar_candidates = _lidar_candidate_paths(serial_summary)
+    blockers: list[dict[str, str]] = []
+    # ROS2 runtime 是 /scan 证据的硬前置；缺它只能做脚本级 readiness。
+    if not humble_setup_exists:
+        blockers.append(
+            {
+                "code": "ros2_humble_setup_missing",
+                "detail": "/opt/ros/humble/setup.bash not found; cannot run ros2 topic or driver smoke",
+            }
+        )
+    # pyserial 缺失时 Python driver 无法打开 LiDAR 串口，必须先补依赖。
+    if not pyserial_available:
+        blockers.append(
+            {
+                "code": "pyserial_missing",
+                "detail": "python module 'serial' is unavailable; install pyserial before driver smoke",
+            }
+        )
+    # 没有 repo/workspace 时无法 source install 或运行项目 driver。
+    if repo_root is None:
+        blockers.append(
+            {
+                "code": "workspace_not_found",
+                "detail": "rober checkout with onboard/ was not detected from probe cwd or script path",
+            }
+        )
+    # 没有候选路径时不能盲开 /dev/ttyUSB0，避免打开错误设备。
+    if not lidar_candidates:
+        blockers.append(
+            {
+                "code": "lidar_serial_candidate_missing",
+                "detail": "no /dev/lidar, STC by-id, or ttyACM candidate was listed by the read-only probe",
+            }
+        )
+
+    candidate_port = lidar_candidates[0] if lidar_candidates else "<lidar_serial_port>"
+    workspace = str(repo_root / "onboard") if repo_root else "<rober>/onboard"
+    return {
+        "status": "ready_for_no_motion_lidar_smoke" if not blockers else "blocked_by_readiness",
+        # 该 smoke 只允许触发 LiDAR 电机/串口读取，不允许触碰 WAVE ROVER 底盘控制。
+        "sends_base_motion_commands": False,
+        "sends_cmd_vel": False,
+        "writes_wave_rover_uart": False,
+        "opens_lidar_serial_when_run_manually": True,
+        "probe_ran_driver": False,
+        "candidate_ports": lidar_candidates,
+        "selected_candidate_hint": candidate_port,
+        "blockers": blockers,
+        "commands_if_ready": [
+            "source /opt/ros/humble/setup.bash",
+            f"source {workspace}/install/setup.bash",
+            (
+                "ros2 run ros2_trashbot_hardware lidar_driver --ros-args "
+                f"-p serial_port:={candidate_port} -p serial_baudrate:=150000 "
+                "-p frame_id:=laser_frame -p publish_raw_packets:=true"
+            ),
+            "timeout 10 ros2 topic echo --once /scan",
+            "timeout 10 ros2 topic echo --once /lidar/raw_packet",
+        ],
+    }
+
+
 def build_probe_payload(
     globber: Callable[[str], Iterable[str]] = glob.glob,
     now: datetime | None = None,
@@ -99,6 +191,9 @@ def build_probe_payload(
     script_path = Path(__file__).resolve() if "__file__" in globals() else current_cwd
     repo_root = _find_repo_root(script_path.parent) or _find_repo_root(current_cwd)
     onboard_path = repo_root / "onboard" if repo_root else current_cwd / "onboard"
+    serial_summary = summarize_serial_candidates(globber=globber)
+    pyserial_available = _is_pyserial_available()
+    humble_setup_hint = _path_hint(Path("/opt/ros/humble/setup.bash"))
 
     # WAVE ROVER 控制命令只进入禁止列表，不会被发送到串口或 ROS2。
     blocked_commands = [
@@ -160,16 +255,16 @@ def build_probe_payload(
             "python_version": platform.python_version(),
         },
         # 串口只做 glob 摘要；是否是 WAVE ROVER 或 LiDAR 必须后续 HIL 证明。
-        "serial_candidates": summarize_serial_candidates(globber=globber),
+        "serial_candidates": serial_summary,
         # pyserial 只检查 import spec，不 import Serial，也不触发任何设备访问。
         "pyserial": {
-            "available": _is_pyserial_available(),
+            "available": pyserial_available,
             "module_name": "serial",
             "opened": False,
         },
         # ROS 环境只检查 setup 文件存在性，不 source shell，也不启动节点。
         "ros_env_hints": {
-            "humble_setup_bash": _path_hint(Path("/opt/ros/humble/setup.bash")),
+            "humble_setup_bash": humble_setup_hint,
             "ROS_DISTRO": os.environ.get("ROS_DISTRO", ""),
         },
         # repo_hints 帮助判断远端是否已有代码 checkout；stdin 采集允许 repo_root=None。
@@ -202,6 +297,13 @@ def build_probe_payload(
                 "TF/Nav2/SLAM consumption with real sensor data",
             ],
         },
+        # 该字段把“能不能试 /scan”变成机器可读 gate，避免 SSH/ROS 缺口只停留在口头报告。
+        "lidar_runtime_readiness": build_lidar_runtime_readiness(
+            serial_summary=serial_summary,
+            pyserial_available=pyserial_available,
+            humble_setup_exists=humble_setup_hint["exists"],
+            repo_root=repo_root,
+        ),
         # WAVE ROVER readiness 刻意保持 not_ready_for_control，避免被 launch 默认误用。
         "wave_rover_readiness": {
             "status": "not_ready_for_control",
