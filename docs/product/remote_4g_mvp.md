@@ -19,6 +19,7 @@ POST /api/commands/cancel
 GET  /api/commands/{command_id}/result?robot_id=<robot_id>
 GET  /api/o5/readiness/health
 GET  /api/o5-o6/cloud-relay-health   # PC workstation only, read-only health aggregation
+CLI  pc-tools/workstation/scripts/o5-o6-external-live-probe.mjs
 POST /robots/{robot_id}/commands
 GET  /robots/{robot_id}/commands/next?last_ack_id=<id>
 POST /robots/{robot_id}/status
@@ -37,6 +38,28 @@ hardware-read or production-cloud true flags, unsafe control true flags, or
 sensitive markers. It is not production cloud proof, not real 4G/SIM proof, not
 production DB/queue proof, not real OSS/CDN proof, not phone/browser proof, and
 not delivery success.
+
+`pc-tools/workstation/scripts/o5-o6-external-live-probe.mjs` is the external /
+upper-computer read-only evidence entrypoint for the same O5/O6 surfaces. It
+emits `schema=trashbot.o5_o6.external_live_probe.v1` and checks three fixed GET
+paths only: cloud-relay `GET /api/o5/readiness/health`, cloud-relay
+`GET /api/o6/archive/health`, and PC workstation
+`GET /api/o5-o6/cloud-relay-health`. Base URLs come from
+`ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL`,
+`ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL` / `ROBER_CLOUD_RELAY_BASE_URL`, or
+CLI URL flags. Bearer is read only from `TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN` or
+`ROBER_CLOUD_RELAY_BEARER_TOKEN`, and output contains only `token_status`.
+
+The external probe never sends `POST`, never accesses `/robots/*`, never calls
+`/cmd_vel`, never reads or writes hardware, and never exposes bearer values. If
+PC workstation, cloud-relay, SSH, DNS, network, schema, JSON, or contract checks
+fail, the probe still writes a stable fail-closed JSON with
+`safe_to_control=false`, `sends_commands=false`,
+`robot_control_executed=false`, `reads_hardware=false`, and
+`delivery_success=false`. This entrypoint is software/operations evidence only;
+it does not prove public HTTPS/TLS, real 4G/SIM, production DB/queue,
+production workers, real OSS/CDN traffic, real phone/browser, robot ACK, or
+delivery success.
 
 The phone-facing command API is bearer-gated and task-level only. Each
 `POST /api/commands/*` body must include `robot_id`, may include

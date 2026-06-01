@@ -113,6 +113,13 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s cloud-relay/tests
 - mock DB/queue 只使用 file/SQLite proof store 和 production store/queue artifact，证明 envelope、排序和 fail-closed 摘要形态，不证明 production DB/queue 已连接。
 - mock OSS/CDN 只证明 bucket/region/prefix/CDN URL 的对象引用规则和 preflight 消费；真实 OSS upload、STS issuance、CDN origin fetch 和 CDN live traffic 继续 `not_proven`。
 - preflight 在缺真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 时必须保持 `production_ready=false` 或 blocked/warning，不允许显示真实生产 ready。
+- `pc-tools/workstation/scripts/o5-o6-external-live-probe.mjs` 可作为外部/上位机视角
+  的只读 live probe 入口，输出 `trashbot.o5_o6.external_live_probe.v1` 并检查 O5
+  readiness、O6 archive 和 PC aggregate health 的可达性、schema、安全 false 字段和
+  fail-closed 分类。它只发固定 GET，不 POST、不访问 `/robots/*`、不读取硬件、不回显
+  bearer；网络不通或服务未配置时也只形成 fail-closed 软件证据。该脚本不能替代下面的
+  公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic 或真实
+  phone/browser 材料。
 
 Objective 5 在该 mock 口径下可以记录为 `90%+ mock/software completion; real material not_proven`。不得把该状态写成真实公网、真实 4G、production DB/queue、OSS/CDN live traffic、真实手机/browser 或真实送达完成。
 

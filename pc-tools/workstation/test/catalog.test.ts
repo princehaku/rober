@@ -29,6 +29,35 @@ import {
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
 import { createWorkstationApp } from "../src/server/index";
+// @ts-expect-error JS CLI script intentionally stays runnable by plain node.
+import { runExternalLiveProbe as runExternalLiveProbeJs } from "../scripts/o5-o6-external-live-probe.mjs";
+
+type ExternalProbeResponse = {
+  schema: "trashbot.o5_o6.external_live_probe.v1";
+  probe_status: "observed_fail_closed_contract" | "fail_closed";
+  token_status: "present" | "absent";
+  endpoints: Array<{ name: string; contract_status: string }>;
+  summary: {
+    endpoint_count: number;
+    reachable_count: number;
+    schema_matched_count: number;
+    safe_to_control: false;
+    sends_commands: false;
+    robot_control_executed: false;
+    reads_hardware: false;
+  };
+  safety_policy: {
+    method_allowlist: string[];
+    forbidden_paths: string[];
+  };
+  blocked_reasons: string[];
+  safe_to_control: false;
+  sends_commands: false;
+  robot_control_executed: false;
+  reads_hardware: false;
+};
+
+const runExternalLiveProbe = runExternalLiveProbeJs as (options: Record<string, unknown>) => Promise<ExternalProbeResponse>;
 
 function sampleStatus(evidenceRef: string) {
   // 样例只提供 Node loader 生成 safe summary 所需字段，不模拟真实 Nav2 或现场成功。
@@ -713,6 +742,36 @@ function listenO5O6BadJsonRelay(): Promise<{ baseUrl: string; close: () => Promi
   });
 }
 
+function listenWorkstationApp(env: NodeJS.ProcessEnv): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  // 测试 PC aggregate 需要环境 token；这里只在 server 生命周期内临时覆盖并在 close 时恢复。
+  const previous = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]]));
+  for (const [key, value] of Object.entries(env)) {
+    process.env[key] = value;
+  }
+  const server = http.createServer(createWorkstationApp());
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => {
+            for (const key of Object.keys(env)) {
+              if (previous[key] === undefined) {
+                delete process.env[key];
+              } else {
+                process.env[key] = previous[key];
+              }
+            }
+            return error ? closeReject(error) : closeResolve();
+          });
+        }),
+      });
+    });
+  });
+}
+
 function listenRtcContract(payload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
   // RTC contract probe 测试只模拟本机 relay 合同入口，不创建 WebRTC、视频或 ROS2 /tf 连接。
   const server = http.createServer((req, res) => {
@@ -1375,6 +1434,86 @@ describe("workstation fail-closed API contracts", () => {
     } finally {
       await relay.close();
     }
+  });
+
+  it("O5/O6 external live probe observes O5, O6, and PC aggregate without credentials or control", async () => {
+    // 外部 probe 从上位机/外部主机视角只发 GET，并把 token 状态脱敏为 present/absent。
+    const relay = await listenO5O6HealthRelay({
+      token: "fixture-token",
+      o5: {
+        schema: "trashbot.o5.readiness_health.v1",
+        capability: "o5_readiness_live_health",
+        overall_status: "blocked",
+        blocked_count: 1,
+        warning_count: 1,
+        pass_count: 3,
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+        delivery_success: false,
+      },
+      o6: {
+        schema: "trashbot.o6.archive_health.v1",
+        capability: "o6_archive_live_health",
+        archive_api_status: "empty",
+        task_count: 0,
+        event_count: 0,
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+        delivery_success: false,
+      },
+    });
+    const pcServer = await listenWorkstationApp({
+      TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN: "fixture-token",
+    });
+
+    try {
+      const response = await runExternalLiveProbe({
+        pcBaseUrl: pcServer.baseUrl,
+        cloudBaseUrl: relay.baseUrl,
+        env: { TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN: "fixture-token" },
+      });
+
+      expect(response.schema).toBe("trashbot.o5_o6.external_live_probe.v1");
+      expect(response.probe_status).toBe("observed_fail_closed_contract");
+      expect(response.token_status).toBe("present");
+      expect(response.summary.endpoint_count).toBe(3);
+      expect(response.summary.reachable_count).toBe(3);
+      expect(response.summary.schema_matched_count).toBe(3);
+      expect(response.safety_policy.method_allowlist).toEqual(["GET"]);
+      expect(response.safety_policy.forbidden_paths).toEqual(["/robots/*", "/cmd_vel"]);
+      expect(response.summary.safe_to_control).toBe(false);
+      expect(response.summary.sends_commands).toBe(false);
+      expect(response.summary.robot_control_executed).toBe(false);
+      expect(response.summary.reads_hardware).toBe(false);
+      expect(response.endpoints.map((item) => item.name)).toEqual(["o5_readiness", "o6_archive", "pc_aggregate"]);
+      expect(response.endpoints.every((item) => item.contract_status === "observed_fail_closed_contract")).toBe(true);
+      expect(JSON.stringify(response)).not.toContain("fixture-token");
+      expect(JSON.stringify(response)).not.toContain("Authorization");
+    } finally {
+      await pcServer.close();
+      await relay.close();
+    }
+  });
+
+  it("O5/O6 external live probe fails closed when configured services are unreachable", async () => {
+    // 网络不通也要留下稳定 schema，不能因为探测失败就丢失 no-control 字段。
+    const response = await runExternalLiveProbe({
+      pcBaseUrl: "http://127.0.0.1:9",
+      cloudBaseUrl: "http://127.0.0.1:9",
+      env: {},
+      timeoutMs: 200,
+    });
+
+    expect(response.probe_status).toBe("fail_closed");
+    expect(response.summary.reachable_count).toBe(0);
+    expect(response.blocked_reasons).toEqual(expect.arrayContaining(["network_or_service_unreachable"]));
+    expect(response.token_status).toBe("absent");
+    expect(response.safe_to_control).toBe(false);
+    expect(response.sends_commands).toBe(false);
+    expect(response.robot_control_executed).toBe(false);
+    expect(response.reads_hardware).toBe(false);
   });
 
   it("O7 operator console exposes six cloud-contract driven KR views without dispatch", () => {

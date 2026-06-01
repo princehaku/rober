@@ -87,6 +87,26 @@ annotation/inference、不上传 OSS、不连接 production DB/queue、不发送
 fail closed，并保持 `production_ready=false`、`safe_to_control=false`、
 `sends_commands=false`、`robot_control_executed=false` 和 `delivery_success=false`。
 
+### External / Upper-Computer Live Probe
+
+`pc-tools/workstation/scripts/o5-o6-external-live-probe.mjs` 是 O6 与 O5 共用的
+外部/上位机只读证据入口。脚本输出
+`schema=trashbot.o5_o6.external_live_probe.v1`，从外部主机视角同时验证：
+
+- cloud-relay `GET /api/o5/readiness/health`；
+- cloud-relay `GET /api/o6/archive/health`；
+- PC workstation `GET /api/o5-o6/cloud-relay-health` 聚合视图。
+
+O6 archive 侧仍只允许读取 health 摘要，不读取 task detail，不写 archive store，
+不触发 annotation/inference，不上传 OSS，不连接 production DB/queue。脚本的 bearer
+只来自环境变量，输出只记录 `token_status`；网络不通、HTTP 非 2xx、坏 JSON、schema
+mismatch、敏感 marker、控制/生产 true flag 或 PC aggregate 不可达时统一落成
+`probe_status=fail_closed` 和稳定 endpoint failure 分类。脚本固定
+`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、
+`reads_hardware=false`、`delivery_success=false`，因此只能作为 external live probe
+入口和 fail-closed 证据，不证明真实云、真实 4G/SIM、production DB/queue、真实
+OSS upload、真实推理 runtime、真实 phone/browser、上车数据或 delivery success。
+
 ## Required Fields
 
 任务记录最小字段：

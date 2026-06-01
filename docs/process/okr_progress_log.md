@@ -8,6 +8,26 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 18-19｜o5-o6-external-live-probe｜O5/O6 external live probe entry
+
+本轮 `sprints/2026.06.01_18-19_o5-o6-external-live-probe/` 执行 Micro closeout。用户价值是让运营可以从 Orange Pi 或外部主机用一个只读脚本验证 O5 readiness、O6 archive、PC aggregate health 的可达性、schema、安全边界和失败分类，而不是只能在 PC workstation 后端内部观察聚合 endpoint。
+
+Full-Stack 已新增 `pc-tools/workstation/scripts/o5-o6-external-live-probe.mjs` 和 `npm run o5o6:external-probe`。脚本输出 `schema=trashbot.o5_o6.external_live_probe.v1`，只发固定 GET：cloud-relay `GET /api/o5/readiness/health`、cloud-relay `GET /api/o6/archive/health`、PC workstation `GET /api/o5-o6/cloud-relay-health`；bearer 只从环境变量读取，输出只记录 `token_status`。安全边界固定为 no-control、no-POST、no-`/robots/*`、no-`/cmd_vel`、no-hardware-read、credential-redacted 和 fail-closed schema。
+
+验证证据来自本轮 `tech-done.md`：`node --check pc-tools/workstation/scripts/o5-o6-external-live-probe.mjs` 通过；`cd pc-tools/workstation && npm run test` 输出 2 files / 52 tests passed；`npm run build` 通过；`npm run lint` 通过；本地未配置 probe 返回 `probe_status=fail_closed`、3 个 endpoint 均 `base_url_not_configured` 且安全字段全 false；远端 SSH `root@192.168.1.11 -p 37878` 只读探测超时，未执行远端脚本，作为网络/SSH 不可达缺口记录；scoped `git diff --check` 通过。开发中首轮 `vitest --runInBand` 因 Vitest 不支持该 Jest 选项失败，已改回仓库标准 `npm run test`；首轮外部 probe 测试还发现 PC aggregate 的安全 `token_status/token_envs` 元数据被误判为敏感 marker，已修正 scanner 只放行配置名/状态，不放行真实 token 值。
+
+Product closeout 判定：Objective 5 和 Objective 6 从约 92% 保守调整到约 93% `software + external live probe entry`。方向判断为**继续**，不替换、不暂停；本轮真实关闭的是“外部/上位机视角 O5/O6/PC aggregate live probe 入口 + 稳定 schema + fail-closed 失败分类 + credential redaction”缺口。仍不证明真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、真实 OSS upload、OSS/CDN live traffic、真实模型/外部推理 runtime、真实云、真实 phone/browser、上车数据、robot ACK 或 delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 5：云中转控制面 | 从约 92% 调整到约 93% | 外部/上位机 probe 入口已能只读检查 O5 readiness、O6 archive 和 PC aggregate health，并在未配置或网络不可达时输出结构化 fail-closed 证据。真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、worker/cutover、OSS/CDN live traffic、真实 phone/browser 仍 `not_proven`。 |
+| Objective 6：云端核心后端 | 从约 92% 调整到约 93% | O6 archive health 已进入 external live probe schema，与 O5 readiness 和 PC aggregate 一起具备外部主机可采集的可达性/schema/失败分类证据入口。真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、真实云、真实 4G/SIM、真实 phone/browser 和上车数据仍 `not_proven`。 |
+| Objective 1 / 7 | 保持原进度 | 本轮不触碰 WAVE ROVER/UART/HIL、LiDAR/Nav2/SLAM、PC/browser RTC 长稳态、真实机器人控制或完整上车任务闭环。 |
+
+本轮没有已完成 KR 需要移入历史归档区；O5/O6 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节和 `sprints/2026.06.01_18-19_o5-o6-external-live-probe/tech-done.md`，剩余风险见上表。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 17-18｜o5-o6-cloud-relay-health｜O5/O6 PC aggregated live-health probe
 
 本轮 `sprints/2026.06.01_17-18_o5-o6-cloud-relay-health/` 执行 Micro closeout。用户价值是让 PC workstation / 运营调试入口能用一个只读 `GET /api/o5-o6/cloud-relay-health` 同时观察 O5 readiness health 与 O6 archive health，减少 phone/support/operator 在 O5/O6 之间切换接口排障的成本；同时继续禁止把聚合健康探针包装成生产云、真实 4G、真实手机或真实机器人控制能力。
