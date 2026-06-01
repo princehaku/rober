@@ -6,7 +6,13 @@
 - Parser module: `ros2_trashbot_hardware.lidar_packets`
 - Launch owners: `ros2_trashbot_bringup/launch/bringup.launch.py` and `ros2_trashbot_bringup/launch/learn.launch.py`
 
-LiDAR 当前作为传感器硬件接入和串口 reader 管理，因此 driver/parser 归属 `ros2_trashbot_hardware`。`ros2_trashbot_nav` 后续只消费 `/scan`、TF 和 SLAM/Nav2 结果，不放置重复 LiDAR driver 或 packet parser。
+LiDAR 当前作为传感器硬件接入和串口 reader 管理，因此 driver/parser 归属
+`ros2_trashbot_hardware`。`ros2_trashbot_nav` 后续只消费 `/scan`、TF 和
+SLAM/Nav2 结果，不放置重复 LiDAR driver 或 packet parser。
+
+当前 ROS2/STC vendor 来源是 `docs/vendor/lidar_pkg_ros2-main/`。历史
+`docs/vendor/lidar_ros/` 保留为 ROS1/protocol reference，用于对比老 packet
+parser 和 topic 形态，不作为当前 ROS2 driver source of truth。
 
 ## Launch Contract
 
@@ -17,26 +23,38 @@ LiDAR 当前作为传感器硬件接入和串口 reader 管理，因此 driver/p
 - `learn.launch.py` 的参数名与 `bringup.launch.py` 对齐，真机建图 smoke 可以直接复用同一套 LiDAR/TF CLI 覆盖参数。
 - `learn.launch.py` 只在显式 `lidar_enabled:=true` 时暴露 `/scan` 和 `laser_frame`，避免无雷达或未测 TF 时让 SLAM 学习阶段误消费占位输入。
 
+## Driver Runtime Contract
+
+- `mock_scan=true`：使用内置 mock packet 发布 `/scan`，不打开串口，不发送 LiDAR 启动命令。
+- `mock_packets` 非空：按 `|` 分隔的 hex packet 回放 `/scan`，不打开串口，不发送 LiDAR 启动命令。
+- `mock_scan=false` 且 `mock_packets` 为空：进入真实串口模式，打开 `serial_port`、`serial_baudrate`，发送 `A5 60` 启动命令，然后读取 bytes，经 `find_packets` 和 `scan_dict_from_packet` 转为 `sensor_msgs/msg/LaserScan`；若启动命令写入失败，driver 会先关闭刚打开的句柄再抛出错误。
+- `publish_raw_packets=true`：每个完整 packet 同步发布到 `raw_packet_topic`，类型为 `std_msgs/msg/UInt8MultiArray`，用于真机 bringup 时保留 parser 前的原始证据。
+- 节点销毁时会 best-effort 写入 `A5 00 A5 65 A5 65` 并关闭串口；停止写入失败不能阻止 close，该动作也不能替代真实电机停转观察。
+- 用户手动 Python 串口测试已确认 `/dev/ttyACM0`、`150000` baud、`A5 60` 可启动 STC USB Serial LiDAR 电机；launch 仍要求上车时显式传入真实设备路径。
+
 ## Evidence Boundary
 
-- Vendor source: `docs/vendor/VENDOR_INDEX.md` and `docs/vendor/lidar_ros/`.
-- Current evidence level: `source=software_reference`.
-- Hardware status: real LiDAR, real USB path, real Orange Pi serial permission, TF measurement, Nav2/SLAM consumption, and `150000` baud stability are `not_proven`.
-- Mock status: `lidar_mock_scan` and `lidar_mock_packets` can prove software conversion only; they are not HIL and cannot be marked `source=hil_pass`.
+- Vendor source: `docs/vendor/VENDOR_INDEX.md`, `docs/vendor/lidar_pkg_ros2-main/`, and historical comparison snapshot `docs/vendor/lidar_ros/`.
+- Current evidence level: `source=software_reference + user_manual_serial_observed_start`.
+- Hardware status: real `/scan` continuity, real Orange Pi container/device permission, TF measurement, Nav2/SLAM consumption, raw packet quality, stop command physical effect, and `150000` long-run stability are `not_proven`.
+- Mock status: `lidar_mock_scan` and `lidar_mock_packets` can prove software conversion and no-serial safety only; they are not HIL and cannot be marked `source=hil_pass`.
 
 ## Verification Commands
 
 ```bash
-python3 -m unittest discover -s onboard/src/ros2_trashbot_hardware/test -p 'test_lidar*.py'
-python3 -m unittest discover -s onboard/src/ros2_trashbot_bringup/test -p 'test_launch_contract_static.py'
-python3 -m compileall -q onboard/src/ros2_trashbot_hardware onboard/src/ros2_trashbot_bringup
-PYTHONDONTWRITEBYTECODE=1 bash onboard/scripts/run_smoke_tests.sh
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s onboard/src/ros2_trashbot_hardware/test -p 'test_lidar*.py'
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_hardware/test/test_o1_wave_rover_serial_feedback_probe.py
+python3 -m compileall -q onboard/src/ros2_trashbot_hardware onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s onboard/src/ros2_trashbot_bringup/test -p 'test_launch_contract_static.py'
 ```
 
 真机建图 smoke 的推荐入口：
 
 ```bash
-ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=<real_lidar_device> lidar_serial_baudrate:=150000 lidar_frame_id:=laser_frame
+ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 lidar_frame_id:=laser_frame lidar_publish_raw_packets:=true
 ```
 
-真实上车前必须补充 `ros2 topic echo --once /scan`、`ros2 topic hz /scan`、`tf2_echo base_link laser_frame` 和 SLAM/Nav2 订阅证据。Robot Software 静态验证只能证明 launch contract 可复用，不能声明真机 LiDAR、真实 TF 或建图质量已通过。
+真实上车前必须补充 `ros2 topic echo --once /scan`、`ros2 topic hz /scan`、
+`ros2 topic echo --once /lidar/raw_packet`、`tf2_echo base_link laser_frame` 和
+SLAM/Nav2 订阅证据。Robot Software 静态验证只能证明 launch contract 可复用，
+不能声明真机 LiDAR、真实 TF 或建图质量已通过。

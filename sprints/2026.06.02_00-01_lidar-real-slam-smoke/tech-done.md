@@ -62,7 +62,11 @@ op-z3-b6.home
 Docker version 27.3.1, build ce12230
 ```
 
-结论：未发现 `/dev/ttyUSB0`；唯一 by-id 是 `usb-STC_STC_USB_Serial-if00`，只能归因于 STC USB Serial，不能作为 LiDAR。`command -v ros2` 和 `command -v colcon` 无输出，宿主机 ROS2/colcon 不在 PATH。
+结论（2026-06-02 已纠偏）：未发现 `/dev/ttyUSB0`；唯一 by-id 是
+`usb-STC_STC_USB_Serial-if00`。后续用户手动串口测试已证明该 STC USB Serial
+设备在 `/dev/ttyACM0`、`150000` baud 下写入 `A5 60` 会启动 LiDAR 电机，因此
+它应按当前 LiDAR 设备候选处理，而不是排除为非 LiDAR。`command -v ros2` 和
+`command -v colcon` 无输出，宿主机 ROS2/colcon 不在 PATH。
 
 2. 远端 `learn.launch.py` 和 install/src 状态：
 

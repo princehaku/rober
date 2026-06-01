@@ -17,16 +17,16 @@ micro
 - `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
 - `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`
 - `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`
-- `docs/vendor/lidar_ros/README.md`
-- `docs/vendor/lidar_ros/plot.py`
-- `docs/vendor/lidar_ros/src/lidar_pkg/scripts/lidar_driver.py`
-- `docs/vendor/lidar_ros/src/lidar_pkg/src/lidar_driver.cpp`
+- `docs/vendor/lidar_pkg_ros2-main/README.md`
+- `docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp`
+- `docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml`
+- `docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules`
 
 ## 已证实的硬件结论
 
 - WAVE ROVER vendor reference 是 UART + UTF-8 newline-delimited JSON；Raspberry Pi reference 路径 `/dev/ttyAMA0`、baud `115200` 不能直接当 Orange Pi 真实路径。
 - `T=1`、`T=13`、`T=131` 都可能改变底盘或反馈流状态，本轮 probe 只列入 `blocked_commands_not_sent`，未发送。
-- LiDAR `150000` baud、`0xAA 0x55`、`/lidar/raw_packet`、`laser_frame` 仍是 vendor/software reference，不是 HIL。
+- LiDAR `150000` baud、`A5 60` 启动命令、`0xAA 0x55`、`/scan`、`/lidar/raw_packet` 仍是 vendor/software reference 加用户手动启动观察，不是 HIL。
 
 ## 验证结果
 

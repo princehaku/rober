@@ -33,6 +33,10 @@ from unittest import mock
 # 测试边界说明：vendor source 断言防止资料链被后续重构删掉。
 # 测试边界说明：串口打开成功不代表 safe_to_control 可以变为 true。
 # 测试边界说明：读取不到行也必须视为有效材料，而不是测试失败。
+# 测试边界说明：设备清单只读枚举 ttyACM/ttyUSB/by-id，不依赖 lsof/fuser。
+# 测试边界说明：root_cause_hints 用于定位，不把提示写成硬件事实定论。
+# 测试边界说明：t1001_feedback_status 是 automation 可读取的稳定状态字段。
+# 测试边界说明：next_required_checks 用稳定字符串暴露下一步现场检查项。
 # 直接加载脚本，保持 probe 可通过 SSH stdin 单文件运行，不要求改成包。
 SCRIPT = Path(__file__).resolve().parents[3] / "scripts" / "o1_wave_rover_serial_feedback_probe.py"
 
@@ -81,6 +85,17 @@ class FakeSerialModule:
     Serial = FakeSerial
 
 
+class EmptySerial(FakeSerial):
+    def __init__(self, port, baudrate, timeout):
+        # 空串口用于模拟 T=130 写入后仍没有任何反馈行的真实 blocker。
+        super().__init__(port, baudrate, timeout)
+        self.lines = []
+
+
+class FakeEmptySerialModule:
+    Serial = EmptySerial
+
+
 class O1WaveRoverSerialFeedbackProbeTest(unittest.TestCase):
     def setUp(self):
         # 每个测试重置假串口全局记录，避免跨测试污染写入断言。
@@ -108,6 +123,9 @@ class O1WaveRoverSerialFeedbackProbeTest(unittest.TestCase):
         self.assertFalse(payload["robot_control_executed"])
         self.assertFalse(payload["delivery_success"])
         self.assertFalse(payload["feedback_request"]["enabled"])
+        self.assertIn("target_port", payload["device_inventory"])
+        self.assertIn("target_port_missing", payload["root_cause_hints"])
+        self.assertEqual(payload["t1001_feedback_status"], "observed")
 
     def test_probe_reads_existing_lines_and_never_writes_serial(self):
         # fake 串口提供两条 JSON 和一条坏行，用来覆盖解析与坏帧容错。
@@ -126,6 +144,10 @@ class O1WaveRoverSerialFeedbackProbeTest(unittest.TestCase):
         self.assertEqual(payload["parsed_json_count"], 2)
         self.assertEqual(payload["invalid_json_count"], 1)
         self.assertEqual(payload["observed_feedback_types"], ["T=1001", "T=1002"])
+        self.assertIn("t1001_observed", payload["root_cause_hints"])
+        self.assertEqual(payload["t1001_feedback_status"], "observed")
+        self.assertEqual(payload["next_required_checks"], [])
+        self.assertIn("invalid_json_seen_check_baudrate_or_line_framing", payload["root_cause_hints"])
         self.assertEqual(FakeSerial.write_calls, [])
         self.assertTrue(FakeSerial.instances[0].closed)
 
@@ -140,6 +162,9 @@ class O1WaveRoverSerialFeedbackProbeTest(unittest.TestCase):
         self.assertEqual(payload["error"]["type"], "pyserial_unavailable")
         self.assertEqual(payload["read_line_count"], 0)
         self.assertEqual(payload["parsed_json_count"], 0)
+        self.assertIn("pyserial_missing", payload["root_cause_hints"])
+        self.assertEqual(payload["t1001_feedback_status"], "pyserial_unavailable")
+        self.assertEqual(payload["next_required_checks"], ["install_pyserial_on_upper_computer"])
 
     def test_missing_port_error_stays_fail_closed(self):
         # open 失败是常见本地 dry-run 结果，也必须保留完整安全字段。
@@ -158,6 +183,10 @@ class O1WaveRoverSerialFeedbackProbeTest(unittest.TestCase):
         self.assertFalse(payload["sends_commands"])
         self.assertFalse(payload["robot_control_executed"])
         self.assertFalse(payload["delivery_success"])
+        self.assertIn("serial_open_failed", payload["root_cause_hints"])
+        self.assertEqual(payload["t1001_feedback_status"], "serial_not_opened")
+        self.assertIn("verify_target_port_is_wave_rover_esp32", payload["next_required_checks"])
+        self.assertIn("check_serial_owner_process", payload["next_required_checks"])
 
     def test_blocked_commands_include_motion_paths_but_not_t130(self):
         # T=130 是唯一显式允许的非运动请求，不能继续列在 blocked 列表里。
@@ -196,6 +225,59 @@ class O1WaveRoverSerialFeedbackProbeTest(unittest.TestCase):
         self.assertEqual(payload["feedback_request"]["command"], {"T": 130})
         self.assertEqual(payload["evidence_boundary"], "serial_open_t130_feedback_request_not_hil")
 
+    def test_default_without_request_and_without_lines_reports_not_requested(self):
+        # 默认模式没有发 T=130 时，无反馈不能写成 after_t130 blocker。
+        probe = _load_probe_module()
+        payload = probe.run_probe(
+            "/dev/fake",
+            115200,
+            0.02,
+            argv=[],
+            serial_module=FakeEmptySerialModule,
+        )
+
+        self.assertTrue(payload["serial_opened"])
+        self.assertFalse(payload["feedback_request"]["enabled"])
+        self.assertFalse(payload["feedback_request"]["sent"])
+        self.assertEqual(payload["read_line_count"], 0)
+        self.assertEqual(payload["t1001_feedback_status"], "not_requested")
+        self.assertIn("use_vendor_terminal_cross_check_t130", payload["next_required_checks"])
+        self.assertIn("verify_target_port_is_wave_rover_esp32", payload["next_required_checks"])
+
+    def test_t130_request_without_lines_reports_wiring_or_wrong_port_hint(self):
+        # 这一类 hint 是本轮 O1 的关键：不再只输出 read_line_count=0。
+        probe = _load_probe_module()
+        payload = probe.run_probe(
+            "/dev/fake",
+            115200,
+            0.02,
+            request_base_feedback=True,
+            argv=["--request-base-feedback"],
+            serial_module=FakeEmptySerialModule,
+        )
+
+        self.assertTrue(payload["serial_opened"])
+        self.assertTrue(payload["feedback_request"]["sent"])
+        self.assertEqual(payload["read_line_count"], 0)
+        self.assertEqual(payload["parsed_json_count"], 0)
+        self.assertIn(
+            "no_serial_lines_after_t130_check_wiring_firmware_or_wrong_port",
+            payload["root_cause_hints"],
+        )
+        self.assertEqual(payload["t1001_feedback_status"], "not_observed_after_t130")
+        self.assertEqual(
+            payload["next_required_checks"],
+            [
+                "verify_esp32_power_and_firmware",
+                "verify_uart_tx_rx_crossed",
+                "verify_target_port_is_wave_rover_esp32",
+                "check_serial_owner_process",
+                "use_vendor_terminal_cross_check_t130",
+                "verify_wave_rover_cmd_base_feedback_firmware_branch",
+            ],
+        )
+        self.assertFalse(payload["sends_motion_commands"])
+
     def test_cli_prints_once_json(self):
         # CLI 路径验证 stdout JSON，保持远端 stdin 运行方式可用。
         probe = _load_probe_module()
@@ -210,6 +292,7 @@ class O1WaveRoverSerialFeedbackProbeTest(unittest.TestCase):
         self.assertEqual(payload["baudrate"], 115200)
         self.assertEqual(payload["error"]["type"], "pyserial_unavailable")
         self.assertTrue(payload["feedback_request"]["enabled"])
+        self.assertEqual(payload["t1001_feedback_status"], "pyserial_unavailable")
 
 
 if __name__ == "__main__":

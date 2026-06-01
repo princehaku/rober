@@ -6,6 +6,27 @@
 
 ---
 
+## 2026-06-02 系列
+
+### 2026-06-02 01-04｜lidar-start-command + o1-t1001-diagnostic-contract｜O1 LiDAR start path and WAVE ROVER feedback diagnostics
+
+本轮 hourly OKR iteration 针对当前最低 Objective 1。用户价值是把 O1 从“LiDAR skeleton / WAVE ROVER feedback prose blocker”推进到两个可复验的软件抓手：LiDAR driver 具备真实串口启动/停止 runtime 路径；WAVE ROVER feedback probe 对 `T=1001` 结果输出稳定机器合同，方便后续现场排障和 automation 路由。
+
+LiDAR 侧完成范围修正和双快照口径：`docs/vendor/lidar_pkg_ros2-main/` 是当前 ROS2/STC source of truth；历史 `docs/vendor/lidar_ros/` 保留为 ROS1/protocol comparison，不删除、不作为当前 driver source of truth。`ros2_trashbot_hardware/lidar_driver.py` 新增 `LidarRuntimeConfig`、`LidarSerialSession`、`A5 60` start command、`A5 00 A5 65 A5 65` best-effort stop sequence、serial packet resync、raw packet publish path，以及 startup write failure close / stop write failure close 的防护。mock paths 继续不打开串口、不发送启动命令。
+
+WAVE ROVER 侧新增 probe 诊断合同：`o1_wave_rover_serial_feedback_probe.py` 输出 `t1001_feedback_status` 和 `next_required_checks[]`，覆盖 `observed`、`not_observed_after_t130`、`not_requested`、`serial_not_opened`、`pyserial_unavailable` 等机器可读状态，同时保留 `safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`delivery_success=false`。Upper-computer readiness probe 同步强化为当前 ROS2 LiDAR source-of-truth + 历史 protocol reference 双口径，并让半初始化或异常 `serial` import spec fail-closed 为 `pyserial.available=false`，避免 readiness JSON 在远端/测试 stub 下崩溃。本轮远端 SSH 再次在网络层失败为 `No route to host`，因此没有触达远端 Python、没有打开串口、没有发送 `T=130`、没有读取到 `T=1001`；不能把本轮写成 HIL pass。
+
+验证证据：`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s onboard/src/ros2_trashbot_hardware/test -p 'test_lidar*.py'` 输出 `Ran 11 tests ... OK`；`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_hardware/test/test_o1_wave_rover_serial_feedback_probe.py` 输出 `Ran 9 tests ... OK`；`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s onboard/src/ros2_trashbot_hardware/test -p 'test_o1_upper_computer_readiness_probe.py'` 输出 `Ran 7 tests ... OK`；`python3 -m compileall -q onboard/src/ros2_trashbot_hardware onboard/scripts/o1_wave_rover_serial_feedback_probe.py` 通过；`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s onboard/src/ros2_trashbot_bringup/test -p 'test_launch_contract_static.py'` 输出 `Ran 11 tests ... OK`；完整 `PYTHONDONTWRITEBYTECODE=1 bash onboard/scripts/run_smoke_tests.sh` 复验通过，interfaces 6 OK、hardware 53 OK、nav 52 OK、bringup 11 OK、behavior 841 OK、vision 13 OK；scoped `git diff --check` 通过。
+
+Product closeout 判定：Objective 1 保持约 93%，方向判断为**继续**。本轮关闭的是 LiDAR start/stop runtime 软件路径、mock no-serial safety、串口失败关闭防护、WAVE ROVER `T=1001` 诊断合同和文档证据链漂移，不证明真实 LiDAR `/scan`、真实 raw packet 质量、真实 TF、SLAM/Nav2 消费、真实 WAVE ROVER `T=1001` feedback、底盘可控、UART/HIL 或 delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 93% | LiDAR ROS2 driver 已有 `A5 60` start path、best-effort stop、fake serial 回归和双快照文档口径；WAVE ROVER feedback probe 已有 `t1001_feedback_status` / `next_required_checks[]`。真实 `/scan`、raw packet、TF、SLAM/Nav2、真实 `T=1001`、底盘控制、HIL 和 150000 长稳仍 `not_proven`。 |
+| Objective 5 / 6 / 7 | 保持原进度 | 本轮不触碰公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、O6 production archive、PC/browser RTC 长稳态、真实手机/browser 或完整上车任务闭环。 |
+
+本轮没有已完成 KR 移入真实材料历史归档区；O1 KR 仍在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节、`sprints/2026.06.02_01-02_lidar-start-command/tech-done.md`、`sprints/2026.06.02_03-04_o1-t1001-diagnostic-contract/tech-done.md` 和 `sprints/2026.06.02_04-05_o1-readiness-probe-hardening/tech-done.md`。
+
 ## 2026-06-01 系列
 
 ### 2026-06-01 23-24｜o1-t130-feedback-real-probe + o5-o6-external-probe-artifact-ui｜O1 blocker 收敛与 O5/O6 运维可见面

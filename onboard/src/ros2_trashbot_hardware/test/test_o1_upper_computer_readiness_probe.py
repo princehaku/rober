@@ -1,8 +1,10 @@
 import importlib.util
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 # 测试文件跨包读取脚本，是为了保持 probe dependency-free 而不改包结构。
@@ -31,6 +33,10 @@ class O1UpperComputerReadinessProbeTest(unittest.TestCase):
         # vendor_sources 必须覆盖 WAVE ROVER 和 LiDAR 两条证据链入口。
         self.assertIn("docs/vendor/VENDOR_INDEX.md", payload["vendor_sources"])
         self.assertIn("docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py", payload["vendor_sources"])
+        self.assertIn("docs/vendor/lidar_pkg_ros2-main/README.md", payload["vendor_sources"])
+        self.assertIn("docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp", payload["vendor_sources"])
+        self.assertIn("docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml", payload["vendor_sources"])
+        self.assertIn("docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules", payload["vendor_sources"])
         self.assertIn("docs/vendor/lidar_ros/README.md", payload["vendor_sources"])
         self.assertEqual(payload["source"]["mode"], "read_only_once")
         # 四个字段是 O1/O5/O6/O7 通用安全口径，必须全部为 false。
@@ -59,17 +65,50 @@ class O1UpperComputerReadinessProbeTest(unittest.TestCase):
         self.assertEqual(summary["by_pattern"]["/dev/ttyAMA*"]["count"], 2)
 
     def test_lidar_reference_readiness_is_not_hil(self):
-        # LiDAR 150000 只来自 vendor reference，必须防止被写成实测通过。
+        # LiDAR 150000 只来自 ROS2 vendor reference，必须防止被写成实测通过。
         probe = _load_probe_module()
         # 不需要真实 LiDAR；本测试只锁住 software_reference_not_hil 文案。
         payload = probe.build_probe_payload(globber=lambda pattern: [])
         lidar = payload["lidar_reference_readiness"]
 
         self.assertEqual(lidar["status"], "software_reference_not_hil")
+        self.assertEqual(lidar["source_of_truth"], "docs/vendor/lidar_pkg_ros2-main/")
+        self.assertEqual(lidar["historical_protocol_reference"], "docs/vendor/lidar_ros/")
         self.assertEqual(lidar["reference_baudrate"], 150000)
+        self.assertEqual(lidar["reference_start_command_hex"], "A5 60")
+        self.assertEqual(lidar["reference_stop_command_hex"], "A5 00 A5 65 A5 65")
         self.assertEqual(lidar["reference_header"], "0xAA 0x55")
+        self.assertEqual(lidar["reference_config_port_name"], "/dev/lidar")
+        self.assertEqual(lidar["reference_scan_topic"], "/scan")
+        self.assertEqual(lidar["reference_frame_id"], "laser")
+        self.assertEqual(lidar["project_frame_id_override_allowed"], "laser_frame")
+        self.assertEqual(lidar["reference_udev"]["idVendor"], "34bf")
+        self.assertEqual(lidar["reference_udev"]["idProduct"], "ff0a")
+        self.assertEqual(lidar["reference_udev"]["symlink"], "lidar")
         # 真实 target baud 稳定性必须留在 not_proven，不能被 reference 覆盖。
         self.assertIn("150000 baud stability on target hardware", lidar["not_proven"])
+
+    def test_pyserial_detection_fails_closed_for_stub_or_broken_spec(self):
+        # 远端 stdin 运行可能遇到半初始化 serial stub；probe 不能因此丢 JSON。
+        probe = _load_probe_module()
+        original_serial = sys.modules.get("serial")
+
+        try:
+            # __spec__ 为 None 时 find_spec 会抛 ValueError，必须按不可用处理。
+            stub_serial = type(sys)("serial")
+            stub_serial.__spec__ = None
+            sys.modules["serial"] = stub_serial
+            self.assertFalse(probe._is_pyserial_available())
+
+            # 某些测试 stub 或 import hook 可能直接异常，同样必须 fail-closed。
+            with mock.patch.object(probe.importlib.util, "find_spec", side_effect=RuntimeError("broken spec")):
+                self.assertFalse(probe._is_pyserial_available())
+        finally:
+            # 恢复 sys.modules，避免污染同进程里后续测试的 import 视图。
+            if original_serial is None:
+                sys.modules.pop("serial", None)
+            else:
+                sys.modules["serial"] = original_serial
 
     def test_wave_rover_blocks_control_commands_and_hil_claims(self):
         # 控制类命令只允许出现在 blocked 列表中，不能由 probe 发送。

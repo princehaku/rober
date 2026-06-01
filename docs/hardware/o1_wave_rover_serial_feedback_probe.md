@@ -77,6 +77,8 @@ ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/ttyACM0 --b
 - `parsed_json_count`
 - `invalid_json_count`
 - `observed_feedback_types`
+- `t1001_feedback_status`：稳定机器字段，取值包括 `observed`、`not_observed_after_t130`、`not_requested`、`serial_not_opened`、`pyserial_unavailable`
+- `next_required_checks[]`：稳定下一步检查项，例如 `verify_esp32_power_and_firmware`、`verify_uart_tx_rx_crossed`、`verify_target_port_is_wave_rover_esp32`、`check_serial_owner_process`、`use_vendor_terminal_cross_check_t130`
 - `error`
 - `feedback_request.enabled/sent/command/write_error`
 - `blocked_commands_not_sent`
@@ -131,3 +133,20 @@ ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s 
 15 秒窗口结果仍为：`serial_opened=true`、`feedback_request.sent=true`、`write_error=null`、`read_line_count=0`、`parsed_json_count=0`、`observed_feedback_types=[]`、`error=null`。本轮共执行两次显式 `--request-base-feedback` probe，每次只发送一次 vendor `T=130`；未发送任何 `T=1`、`T=13`、`T=131`、`cmd_vel` 或其他运动命令。
 
 当前结论只能写成 `serial_open_t130_feedback_request_observed_without_t1001`。它不是 HIL pass，不证明 WAVE ROVER 无反馈，也不证明底盘可控；下一步应在现场核对下位机供电/连接、串口方向、是否被其他进程占用、ESP32 firmware 是否加载 WAVE ROVER `CMD_BASE_FEEDBACK` 分支，并在必要时用 vendor 工具链或串口终端做人工交叉验证。
+
+`2026.06.02_03-04_o1-t1001-diagnostic-contract` 将 probe 输出升级为机器可读诊断合同。新增字段不改变安全边界：
+
+- `t1001_feedback_status=observed`：窗口内已读到 `T=1001`。
+- `t1001_feedback_status=not_requested`：默认只读模式没有发送 `T=130`，不能把无反馈写成 after-T130 失败。
+- `t1001_feedback_status=not_observed_after_t130`：显式发送一次 `T=130` 后仍未读到 `T=1001`；下一步检查项必须回到 vendor/现场边界。
+- `t1001_feedback_status=serial_not_opened`：目标串口未打开，优先核对目标端口和占用。
+- `t1001_feedback_status=pyserial_unavailable`：远端 Python 缺 pyserial，优先补运行依赖。
+
+同轮远端 SSH 采集再次使用指定入口：
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 2' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --request-base-feedback --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 8' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
+两条命令均在 SSH 网络层失败：`ssh: connect to host 192.168.1.11 port 37878: No route to host`。因此本轮没有触达远端 Python、没有打开串口、没有发送 `T=130`、没有读取到 `T=1001`。本轮可交付只限于本地 probe 诊断合同和回归测试；O1 仍只能推进为“诊断合同更清楚 + 远端现象更可复验”，不是 HIL pass。

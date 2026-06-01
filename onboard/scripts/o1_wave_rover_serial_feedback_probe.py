@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -50,6 +52,10 @@ from typing import Any
 # 安全边界说明：JSON 解析失败计数保留，便于判断波特率或接线问题。
 # 安全边界说明：本脚本不推断电压、引脚或线序，相关结论必须回到 vendor 文档。
 # 安全边界说明：远端安装 pyserial 只属于运行依赖补齐，不属于 ROS 环境改造。
+# 安全边界说明：设备清单只用 stat/glob/readlink 类只读动作，不调用 lsof/fuser。
+# 安全边界说明：root_cause_hints 是定位提示，不把未验证硬件写成定论。
+# 安全边界说明：t1001_feedback_status 是机器合同，不能靠读 prose 判断结果。
+# 安全边界说明：next_required_checks 只列下一步检查项，不替代现场 HIL 结论。
 # schema 固定后，远端只读材料可以被人工或脚本稳定比对。
 SCHEMA_VERSION = "trashbot.o1.wave_rover_serial_feedback_probe.v1"
 # 115200 来自 vendor Raspberry Pi reference；Orange Pi 设备名仍必须上机确认。
@@ -67,6 +73,14 @@ VENDOR_SOURCES = (
     "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+)
+
+# 只枚举串口相关候选，避免 probe 扫描无关设备或产生隐私噪声。
+DEVICE_CANDIDATE_GLOBS = (
+    "/dev/ttyACM*",
+    "/dev/ttyUSB*",
+    "/dev/serial/by-id/*",
+    "/dev/serial/by-path/*",
 )
 
 # 禁止列表显式进入输出，防止远端材料被误解为可以开始控制底盘。
@@ -88,6 +102,15 @@ BLOCKED_COMMANDS_NOT_SENT = (
         "reason": "ROS motion command path is outside this probe boundary",
     },
 )
+
+# 检查项命名保持稳定，后续 automation 可以直接按字符串路由工单。
+NEXT_CHECK_INSTALL_PYSERIAL = "install_pyserial_on_upper_computer"
+NEXT_CHECK_SERIAL_OWNER = "check_serial_owner_process"
+NEXT_CHECK_VERIFY_POWER_FIRMWARE = "verify_esp32_power_and_firmware"
+NEXT_CHECK_VERIFY_UART_CROSSED = "verify_uart_tx_rx_crossed"
+NEXT_CHECK_VERIFY_TARGET_PORT = "verify_target_port_is_wave_rover_esp32"
+NEXT_CHECK_VENDOR_TERMINAL_T130 = "use_vendor_terminal_cross_check_t130"
+NEXT_CHECK_FIRMWARE_BRANCH = "verify_wave_rover_cmd_base_feedback_firmware_branch"
 
 
 def _utc_now() -> str:
@@ -131,6 +154,10 @@ def _base_payload(
         "baudrate_source": "vendor Raspberry Pi reference 115200; Orange Pi port is caller-selected",
         "read_timeout_s": read_timeout_s,
         "pyserial": {"available": False, "module_name": "serial", "error": None},
+        "device_inventory": _collect_device_inventory(port),
+        "root_cause_hints": [],
+        "t1001_feedback_status": "not_requested" if not request_base_feedback else "not_observed_after_t130",
+        "next_required_checks": [],
         "serial_opened": False,
         "read_line_count": 0,
         "parsed_json_count": 0,
@@ -159,6 +186,64 @@ def _json_error(error_type: str, message: str) -> dict[str, str]:
     return {"type": error_type, "message": message}
 
 
+def _describe_device(path: str) -> dict[str, Any]:
+    """只读描述设备节点；符号链接坏掉也要能输出，而不是中断 probe。"""
+    entry: dict[str, Any] = {
+        "path": path,
+        "lexists": False,
+        "exists": False,
+        "is_symlink": False,
+        "realpath": None,
+        "realpath_exists": False,
+        "mode_octal": None,
+        "uid": None,
+        "gid": None,
+        "error": None,
+    }
+    try:
+        entry["lexists"] = os.path.lexists(path)
+        entry["exists"] = os.path.exists(path)
+        entry["is_symlink"] = os.path.islink(path)
+        if entry["lexists"]:
+            # realpath 让 by-id -> ttyACM/ttyUSB 的关系在远端 JSON 中直接可见。
+            realpath = os.path.realpath(path)
+            entry["realpath"] = realpath
+            entry["realpath_exists"] = os.path.exists(realpath)
+            stat_result = os.stat(path)
+            entry["mode_octal"] = oct(stat_result.st_mode & 0o7777)
+            entry["uid"] = stat_result.st_uid
+            entry["gid"] = stat_result.st_gid
+    except Exception as exc:
+        entry["error"] = _json_error(exc.__class__.__name__, str(exc))
+    return entry
+
+
+def _collect_device_inventory(target_port: str) -> dict[str, Any]:
+    """收集目标端口和常见候选串口，帮助区分端口缺失、错口和 by-id 链接问题。"""
+    candidate_paths: set[str] = set()
+    glob_counts: dict[str, int] = {}
+    glob_errors: dict[str, dict[str, str]] = {}
+    for pattern in DEVICE_CANDIDATE_GLOBS:
+        try:
+            matches = sorted(glob.glob(pattern))
+            glob_counts[pattern] = len(matches)
+            candidate_paths.update(matches)
+        except Exception as exc:
+            # glob 理论上很少失败，但远端环境异常时也不应影响串口安全边界。
+            glob_counts[pattern] = 0
+            glob_errors[pattern] = _json_error(exc.__class__.__name__, str(exc))
+
+    candidate_paths.add(target_port)
+    candidates = [_describe_device(path) for path in sorted(candidate_paths)]
+    return {
+        "target_port": _describe_device(target_port),
+        "candidate_globs": list(DEVICE_CANDIDATE_GLOBS),
+        "candidate_glob_counts": glob_counts,
+        "candidate_glob_errors": glob_errors,
+        "candidate_ports": candidates,
+    }
+
+
 def _decode_line(raw: bytes) -> str:
     """串口反馈可能夹杂坏字节，replace 能保留证据而不中断读取窗口。"""
     return raw.decode("utf-8", errors="replace").strip()
@@ -169,6 +254,96 @@ def _feedback_type(parsed: Any) -> str:
     if isinstance(parsed, dict) and "T" in parsed:
         return f"T={parsed['T']}"
     return "json_without_T"
+
+
+def _apply_root_cause_hints(payload: dict[str, Any]) -> None:
+    """把 probe 结果折成稳定 hints，便于 automation 不再只重复 read_line_count=0。"""
+    hints: list[str] = []
+    target_port = payload.get("device_inventory", {}).get("target_port", {})
+    error = payload.get("error")
+    observed_types = set(payload.get("observed_feedback_types", []))
+    feedback_request = payload.get("feedback_request", {})
+
+    if not target_port.get("exists"):
+        hints.append("target_port_missing")
+    if not payload.get("pyserial", {}).get("available"):
+        hints.append("pyserial_missing")
+    if error and error.get("type") != "pyserial_unavailable" and not payload.get("serial_opened"):
+        hints.append("serial_open_failed")
+    if feedback_request.get("write_error"):
+        hints.append("t130_write_failed")
+    if "T=1001" in observed_types:
+        hints.append("t1001_observed")
+    elif payload.get("parsed_json_count", 0) > 0:
+        hints.append("json_seen_without_t1001_check_target_port_or_firmware")
+    if payload.get("invalid_json_count", 0) > 0:
+        hints.append("invalid_json_seen_check_baudrate_or_line_framing")
+    if (
+        feedback_request.get("enabled")
+        and feedback_request.get("sent")
+        and payload.get("serial_opened")
+        and payload.get("read_line_count") == 0
+        and error is None
+    ):
+        hints.append("no_serial_lines_after_t130_check_wiring_firmware_or_wrong_port")
+    elif (
+        not feedback_request.get("enabled")
+        and payload.get("serial_opened")
+        and payload.get("read_line_count") == 0
+        and error is None
+    ):
+        hints.append("no_serial_lines_read_only_maybe_feedback_not_streaming")
+
+    payload["root_cause_hints"] = hints or ["probe_completed_without_specific_hint"]
+
+
+def _apply_t1001_diagnostic_contract(payload: dict[str, Any]) -> None:
+    """生成稳定诊断合同，避免 automation 只能二次解析 root_cause_hints。"""
+    checks: list[str] = []
+    observed_types = set(payload.get("observed_feedback_types", []))
+    feedback_request = payload.get("feedback_request", {})
+    error = payload.get("error")
+
+    if "T=1001" in observed_types:
+        payload["t1001_feedback_status"] = "observed"
+        payload["next_required_checks"] = []
+        return
+
+    if not payload.get("pyserial", {}).get("available"):
+        payload["t1001_feedback_status"] = "pyserial_unavailable"
+        payload["next_required_checks"] = [NEXT_CHECK_INSTALL_PYSERIAL]
+        return
+
+    if not payload.get("serial_opened"):
+        payload["t1001_feedback_status"] = "serial_not_opened"
+        checks.extend([NEXT_CHECK_VERIFY_TARGET_PORT, NEXT_CHECK_SERIAL_OWNER])
+        payload["next_required_checks"] = checks
+        return
+
+    if not feedback_request.get("enabled"):
+        payload["t1001_feedback_status"] = "not_requested"
+        checks.extend([NEXT_CHECK_VENDOR_TERMINAL_T130, NEXT_CHECK_VERIFY_TARGET_PORT])
+        payload["next_required_checks"] = checks
+        return
+
+    if feedback_request.get("write_error") or error:
+        payload["t1001_feedback_status"] = "not_observed_after_t130"
+        checks.extend([NEXT_CHECK_SERIAL_OWNER, NEXT_CHECK_VERIFY_TARGET_PORT])
+        payload["next_required_checks"] = checks
+        return
+
+    payload["t1001_feedback_status"] = "not_observed_after_t130"
+    checks.extend(
+        [
+            NEXT_CHECK_VERIFY_POWER_FIRMWARE,
+            NEXT_CHECK_VERIFY_UART_CROSSED,
+            NEXT_CHECK_VERIFY_TARGET_PORT,
+            NEXT_CHECK_SERIAL_OWNER,
+            NEXT_CHECK_VENDOR_TERMINAL_T130,
+            NEXT_CHECK_FIRMWARE_BRANCH,
+        ]
+    )
+    payload["next_required_checks"] = checks
 
 
 def _write_base_feedback_request(serial_obj: Any) -> None:
@@ -199,6 +374,8 @@ def run_probe(
     if not available:
         # pyserial 缺失是环境 blocker，不应该让远端 stdin 采集直接异常退出。
         payload["error"] = _json_error("pyserial_unavailable", import_error or "pyserial is not importable")
+        _apply_root_cause_hints(payload)
+        _apply_t1001_diagnostic_contract(payload)
         return payload
 
     serial_obj = None
@@ -249,6 +426,8 @@ def run_probe(
                 payload["close_error"] = _json_error(exc.__class__.__name__, str(exc))
 
     payload["observed_feedback_types"] = sorted(observed_types)
+    _apply_root_cause_hints(payload)
+    _apply_t1001_diagnostic_contract(payload)
     return payload
 
 

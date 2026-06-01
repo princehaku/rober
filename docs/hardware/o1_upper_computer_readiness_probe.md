@@ -20,18 +20,19 @@
 - `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
 - `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`
 - `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`
-- `docs/vendor/lidar_ros/SOURCE.md`
-- `docs/vendor/lidar_ros/README.md`
-- `docs/vendor/lidar_ros/plot.py`
-- `docs/vendor/lidar_ros/src/lidar_pkg/scripts/lidar_driver.py`
-- `docs/vendor/lidar_ros/src/lidar_pkg/src/lidar_driver.cpp`
+- `docs/vendor/lidar_pkg_ros2-main/README.md`
+- `docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp`
+- `docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml`
+- `docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules`
+- `docs/vendor/lidar_ros/README.md`（仅历史 ROS1/protocol comparison，不作为当前 ROS2 source-of-truth）
 
 已证实的软件 reference 边界：
 
 - WAVE ROVER 上位机参考使用 UART、UTF-8 JSON、每行一个 JSON 对象并以 `\n` 结束。
 - vendor Raspberry Pi reference 提到 `/dev/ttyAMA0`、`115200`；Orange Pi 实际设备名必须上机确认，不能直接继承 Raspberry Pi 路径。
 - WAVE ROVER `T=1`、`T=13`、`T=131` 都属于会改变底盘或反馈流状态的命令，本 probe 只把它们列为 `blocked_commands_not_sent`，不发送。
-- LiDAR reference 来自 ROS1/catkin snapshot，`150000` baud、`0xAA 0x55`、`/lidar/raw_packet`、`laser_frame` 只代表 `software_reference_not_hil`，不等于真实 LiDAR 已跑通。
+- LiDAR 当前 source-of-truth 是 `docs/vendor/lidar_pkg_ros2-main/` ROS2 snapshot；历史 `docs/vendor/lidar_ros/` 只保留 ROS1/protocol comparison。
+- ROS2 LiDAR reference 固定记录 `150000` baud、`A5 60` 启动命令、`A5 00 A5 65 A5 65` 停止序列、`0xAA 0x55` 包头、默认 `port_name="/dev/lidar"`、udev `idVendor=34bf`/`idProduct=ff0a`/symlink `lidar`、`/scan` 和可选 `/lidar/raw_packet`。这些只代表 `software_reference_not_hil` 加用户手动启动观察，不等于真实 ROS2 `/scan`、TF 或 SLAM 已跑通。
 
 ## 运行命令
 
@@ -64,8 +65,11 @@ ssh -p 37878 root@192.168.1.11 'python3 -s -- --once-json' < onboard/scripts/o1_
 - `host` 只包含 hostname、OS、kernel、machine、Python version，不包含完整网卡 MAC/IP 列表
 - `serial_candidates` 只枚举 `/dev/ttyUSB*`、`/dev/ttyAMA*`、`/dev/ttyACM*`、`/dev/serial*`、`/dev/serial/by-id/*`、`/dev/serial/by-path/*`，不打开设备
 - `pyserial.available` 只通过 import spec 判断，不 import 并打开串口
+- 半初始化/stub `serial` 模块或异常 import spec 会被按 `pyserial.available=false` 处理，保证 JSON artifact fail-closed 输出
 - `ros_env_hints.humble_setup_bash.exists` 只检查 `/opt/ros/humble/setup.bash`
 - `lidar_reference_readiness.status=software_reference_not_hil`
+- `lidar_reference_readiness.source_of_truth=docs/vendor/lidar_pkg_ros2-main/`
+- `lidar_reference_readiness.historical_protocol_reference=docs/vendor/lidar_ros/`
 - `wave_rover_readiness.status=not_ready_for_control`
 - `next_safe_commands[]` 只包含编译、单测和只读 probe 命令
 

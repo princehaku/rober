@@ -29,7 +29,7 @@ sprint_type: micro
 
 ## 已采用证据
 
-- 上一轮 reference ingest：`docs/vendor/lidar_ros/`、`docs/vendor/VENDOR_INDEX.md`、`docs/hardware/lidar_ros_reference.md` 和 `sprints/2026.06.01_09-10_lidar-reference-ingest/tech-done.md`。
+- 上一轮 reference ingest：`docs/vendor/lidar_pkg_ros2-main/`、`docs/vendor/VENDOR_INDEX.md`、`docs/hardware/lidar_ros_reference.md` 和 `sprints/2026.06.01_09-10_lidar-reference-ingest/tech-done.md`。
 - Hardware Infra 只读复核结论：`150000` baud、`0xAA 0x55`、`LSN`、`/lidar/raw_packet`、`laser_frame`、LaserScan output 都是 `source=software_reference`，不是 `source=hil_pass`。
 - Coordinator verification passed：
   - `python3 -m unittest discover -s onboard/src/ros2_trashbot_hardware/test -p 'test_lidar*.py'`：`Ran 7 OK`

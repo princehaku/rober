@@ -33,6 +33,10 @@ VENDOR_SOURCES = (
     "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/vendor/lidar_pkg_ros2-main/README.md",
+    "docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp",
+    "docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml",
+    "docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules",
     "docs/vendor/lidar_ros/SOURCE.md",
     "docs/vendor/lidar_ros/README.md",
     "docs/vendor/lidar_ros/plot.py",
@@ -71,6 +75,15 @@ def _path_hint(path: Path) -> dict:
     """只返回存在性与路径提示，不读取凭证类文件内容。"""
     # exists/is_dir 足够判断环境 readiness，不需要读取目标文件内容。
     return {"path": str(path), "exists": path.exists(), "is_dir": path.is_dir()}
+
+
+def _is_pyserial_available() -> bool:
+    """安全检测 pyserial；测试 stub 的 __spec__ 异常也按不可用处理。"""
+    try:
+        return importlib.util.find_spec("serial") is not None
+    except Exception:
+        # readiness probe 必须 fail-closed，不能因为半初始化模块让整份 JSON 崩掉。
+        return False
 
 
 def build_probe_payload(
@@ -150,7 +163,7 @@ def build_probe_payload(
         "serial_candidates": summarize_serial_candidates(globber=globber),
         # pyserial 只检查 import spec，不 import Serial，也不触发任何设备访问。
         "pyserial": {
-            "available": importlib.util.find_spec("serial") is not None,
+            "available": _is_pyserial_available(),
             "module_name": "serial",
             "opened": False,
         },
@@ -166,13 +179,21 @@ def build_probe_payload(
             "onboard": _path_hint(onboard_path),
             "script_path": str(script_path),
         },
-        # LiDAR reference 只来自 vendor ROS1 snapshot，真实 ROS2 /scan 仍需单独验收。
+        # LiDAR 当前以 ROS2/STC vendor snapshot 为准；ROS1 snapshot 只保留协议对照价值。
         "lidar_reference_readiness": {
             "status": "software_reference_not_hil",
+            "source_of_truth": "docs/vendor/lidar_pkg_ros2-main/",
+            "historical_protocol_reference": "docs/vendor/lidar_ros/",
             "reference_baudrate": 150000,
+            "reference_start_command_hex": "A5 60",
+            "reference_stop_command_hex": "A5 00 A5 65 A5 65",
             "reference_header": "0xAA 0x55",
+            "reference_config_port_name": "/dev/lidar",
             "reference_raw_topic": "/lidar/raw_packet",
-            "reference_frame_id": "laser_frame",
+            "reference_scan_topic": "/scan",
+            "reference_frame_id": "laser",
+            "project_frame_id_override_allowed": "laser_frame",
+            "reference_udev": {"idVendor": "34bf", "idProduct": "ff0a", "symlink": "lidar"},
             "not_proven": [
                 "real LiDAR USB path on this upper computer",
                 # 150000 是 vendor reference，真实 USB-UART 是否稳定必须另跑。
