@@ -8,6 +8,23 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 20-21｜o1-t130-feedback-observation｜O1 T=130 observation blocked by remote_network_unreachable
+
+本轮 `sprints/2026.06.01_20-21_o1-t130-feedback-observation/` 执行 Micro closeout。用户价值是把上一轮新增的显式 `--request-base-feedback` 入口继续推向真实上车观察：在不发送运动命令的前提下，请求 WAVE ROVER vendor `CMD_BASE_FEEDBACK` / `{"T":130}\n`，尝试拿到真实 `T=1001` feedback，从而判断 O1 是否可以从软件入口推进到真实串口反馈证据。
+
+Hardware Infra 已更新 `docs/hardware/o1_wave_rover_serial_feedback_probe.md` 并创建本轮 `tech-done.md`。本地验证证据来自本轮 `tech-done.md`：`python3 -m py_compile onboard/scripts/o1_wave_rover_serial_feedback_probe.py` 通过；focused unittest 输出 `Ran 7 tests ... OK`；scoped diff check 通过。远端命令 `ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --request-base-feedback --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 2' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py` 失败为 `ssh: connect to host 192.168.1.11 port 37878: No route to host`，exit 255。
+
+Product closeout 判定：Objective 1 保持约 93%，方向判断为**继续**，不替换、不暂停；本轮真实结论是 `T=130 observation blocked by remote_network_unreachable`。由于 SSH 层失败，未触达远端 Python，未打开 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`，未发送 `{"T":130}\n`，未读到 `T=1001`，因此 O1 不能上调，真实底盘反馈仍为 `T=1001 not_proven`。本轮没有关闭 KR，也没有已完成 KR 需要移入历史归档区。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 93% | 本地 py_compile、focused unittest 7 OK、scoped diff check 均通过；远端观察失败定位为 `remote_network_unreachable`，不是 pyserial、串口、WAVE ROVER 协议或波特率层结论。真实 `T=1001` feedback、真实底盘控制、真实 UART/HIL、HIL pass、真实 LiDAR `/scan`、ROS Humble runtime、TF、Nav2/SLAM 和 PR #5 硬件材料仍 `not_proven`。 |
+| Objective 5 / 6 / 7 | 保持原进度 | 本轮不触碰公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、O6 archive production path、PC/browser RTC 长稳态、真实手机/browser、真实机器人控制或完整上车任务闭环。 |
+
+本轮核心抓手是先恢复开发机到 `192.168.1.11:37878` 的网络/路由可达性，再重复同一条显式 `--request-base-feedback` SSH 命令。若 SSH 可达但 pyserial 缺失，记录 `pyserial_unavailable`；若串口可打开但无反馈，保留 probe JSON 的 `serial_opened`、`feedback_request.sent`、`read_line_count` 和 `observed_feedback_types` 后再判断底盘电源、线缆或 read window。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节和 `sprints/2026.06.01_20-21_o1-t130-feedback-observation/tech-done.md`，剩余风险见上表。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 19-20｜o1-feedback-request-probe｜O1 Feedback Request entry ready; remote not reached
 
 本轮 `sprints/2026.06.01_19-20_o1-feedback-request-probe/` 执行 Micro closeout。用户价值是把 O1 从“被动 read-only 打开串口但没有反馈行”推进到“有一个显式、可审计、非运动的 base feedback request 入口”，让下一次真实上车串口验证可以只请求 vendor feedback，而不是为了拿反馈去冒险发送运动命令。

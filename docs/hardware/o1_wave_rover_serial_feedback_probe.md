@@ -103,3 +103,11 @@ ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/ttyACM0 --b
 ## 本轮远端观察
 
 `2026.06.01_16-17_o1-wave-rover-serial-feedback-probe` 按 stdin 方式在 `root@192.168.1.11:37878` 运行。结果记录在对应 sprint 的 `tech-done.md` 中；仓库不保存远端原始 artifact。
+
+`2026.06.01_20-21_o1-t130-feedback-observation` 继续使用同一 SSH 入口尝试一次显式 `--request-base-feedback` 采集：
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --request-base-feedback --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 2' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
+本轮结果为 SSH 层失败：`ssh: connect to host 192.168.1.11 port 37878: No route to host`。因此本轮未触达远端 Python、未打开 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`、未发送 `{"T":130}\n`、未读取到 `T=1001` 或其他 feedback 类型。该结果只能作为 `remote_network_unreachable` blocker 证据，不得写成串口反馈失败、WAVE ROVER 无反馈或 HIL pass。
