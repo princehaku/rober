@@ -11,6 +11,8 @@
 - 验收 PC workstation 新增 `GET /api/o5-o6/external-probe-artifact`，该 API 只读取本地 artifact 摘要，不执行 probe、不联网、不访问 `/robots/*`、不读取硬件、不回显 token/raw URL/path/traceback。
 - 验收 O7 Console 中新增 External Probe Artifact 展示，展示最近一次 probe 的 `probe_status`、runner、endpoint reachability、blocked reasons 和 fail-closed safety fields。
 - 最小修复 `pc-tools/workstation/test/App.test.ts` 中过宽的泄漏断言：O7 Previews 页本身会展示既有 loopback 只读探针 URL，因此把 `http://127.0.0.1` 不泄漏断言收窄到 `/api/o5-o6/external-probe-artifact` fixture/contract。
+- 2026-06-02 00:21 CST 复核时追加收紧 PC artifact API：endpoint 摘要只展示固定 allowlist path，剥离 `?baseUrl=...` query，避免编码后的 raw URL 进入 O7 Console；同时把 PC API 自身的 `no_post`、`no_robot_control`、`no_hardware_read` 策略固定为 true，不再透传 artifact 内部声明。
+- 追加 `pc-tools/workstation/test/catalog.test.ts` 覆盖 PC aggregate endpoint 携带编码 `baseUrl` 时不回显 `baseUrl=`、`http%3A%2F%2F` 或 raw host。
 - 未修改 `OKR.md`，未覆盖 hardware agent 的 O1 文档/sprint 改动，未新增真实控制、POST、`/robots/*` 访问、硬件读取或 ACK 写入路径。
 
 ## 验证结果
@@ -18,13 +20,13 @@
 1. `python3 -m py_compile cloud-relay/scripts/o5_o6_external_live_probe.py`
    - 结果: 通过，退出码 0。
 2. `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest cloud-relay/tests/test_o5_o6_external_live_probe.py`
-   - 结果: 通过，`Ran 5 tests in 2.999s`，`OK`。
+   - 结果: 通过，复跑为 `Ran 5 tests in 3.026s`，`OK`。
    - 说明: unittest 期间脚本 stdout 输出一次缺 URL/token 的结构化 `probe_status=fail_closed` JSON，属于测试覆盖的一部分，不代表真实云或真实 4G 已接通。
 3. `cd pc-tools/workstation && npm run build`
-   - 结果: 通过，Vite 输出 `dist/index.html`、`dist/assets/index-*.css`、`dist/assets/index-*.js`，退出码 0。
+   - 结果: 通过，Vite 输出 `dist/index.html`、`dist/assets/index-RjWv-c7_.css`、`dist/assets/index-DHOyjc_j.js`，退出码 0。
 4. `cd pc-tools/workstation && npm run test`
    - 首轮结果: 失败，`test/App.test.ts` 的 O7 Previews 用例要求页面全文不包含 `http://127.0.0.1`，但该页既有 O7 只读 probe 明确展示 loopback base URL。
-   - 修复后结果: 通过，`Test Files 2 passed (2)`，`Tests 53 passed (53)`。
+   - 修复后结果: 通过，复跑为 `Test Files 2 passed (2)`，`Tests 53 passed (53)`。
 5. `cd pc-tools/workstation && npm run lint`
    - 结果: 通过，退出码 0，无 ESLint 输出。
 6. scoped `git diff --check`
