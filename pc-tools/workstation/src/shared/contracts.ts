@@ -1775,6 +1775,36 @@ export interface O7RtcSignalingContractProbeResponse extends ProofFlags {
 
 export type O7LocalWebrtcCameraStatus = "not_configured" | "ready" | "degraded" | "fail_closed";
 
+export interface O7BrowserPlaybackStabilitySummary {
+  status: "not_observed" | "observed";
+  observation_window_ms: number;
+  sample_interval_ms: number | null;
+  sample_count: number;
+  first_packets_received: number | null;
+  last_packets_received: number | null;
+  first_frames_decoded: number | null;
+  last_frames_decoded: number | null;
+  first_frames_received: number | null;
+  last_frames_received: number | null;
+  estimated_fps: number | null;
+  estimated_packet_rate: number | null;
+  video_size_stable: "stable" | "changed" | "not_available";
+  stable_video_width: number | null;
+  stable_video_height: number | null;
+  connection_remained_connected: "connected" | "changed" | "not_available";
+  ice_remained_connected: "connected" | "changed" | "not_available";
+  console_errors_added: number;
+  page_errors_added: number;
+  remote_health_samples: number;
+  remote_health_statuses: string[];
+  remote_active_peer_connections_first: number | null;
+  remote_active_peer_connections_last: number | null;
+  remote_system_metrics: Record<string, unknown> | "not_available";
+  remote_stability_metrics: Record<string, unknown> | "not_available";
+  post_close_active_peer_connections: number | null;
+  remote_active_peer_cleaned: "cleaned" | "not_cleaned" | "not_available";
+}
+
 export interface O7BrowserPlaybackSmokeSummary {
   schema: "trashbot.o7.local_webrtc_browser_playback_smoke.v1" | string;
   status: "not_run" | "ok" | "degraded" | "failed" | "fail_closed";
@@ -1810,6 +1840,7 @@ export interface O7BrowserPlaybackSmokeSummary {
   selected_candidate_pair: Record<string, unknown> | null;
   peer_state_timeline: Array<Record<string, unknown>>;
   post_smoke_remote_health: Record<string, unknown> | null;
+  stability_summary: O7BrowserPlaybackStabilitySummary;
   console_error_count: number;
   page_error_count: number;
   server_peer_id: string | null;

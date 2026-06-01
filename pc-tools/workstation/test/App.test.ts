@@ -2072,6 +2072,56 @@ const fixtures: Record<string, unknown> = {
       ice_connection_state: "connected",
       ice_gathering_state: "complete",
       signaling_state: "stable",
+      failure_category: "none",
+      remote_health_status: "ready",
+      remote_active_peer_connections: 1,
+      offer_http_status: 200,
+      offer_error_reason: null,
+      offer_error_detail: null,
+      observation_window_ms: 30000,
+      final_ready_state: 4,
+      stable_video_width: 640,
+      stable_video_height: 480,
+      ontrack_count: 1,
+      receiver_track_states: [],
+      transceiver_directions: [],
+      inbound_video_stats: [{ packetsReceived: 92, framesDecoded: 90 }],
+      selected_candidate_pair: { state: "succeeded" },
+      peer_state_timeline: [],
+      post_smoke_remote_health: { status: "ready", activePeerConnections: 0 },
+      stability_summary: {
+        status: "observed",
+        observation_window_ms: 30000,
+        sample_interval_ms: 5000,
+        sample_count: 7,
+        first_packets_received: 2,
+        last_packets_received: 92,
+        first_frames_decoded: 1,
+        last_frames_decoded: 90,
+        first_frames_received: 1,
+        last_frames_received: 90,
+        estimated_fps: 2.97,
+        estimated_packet_rate: 3,
+        video_size_stable: "stable",
+        stable_video_width: 640,
+        stable_video_height: 480,
+        connection_remained_connected: "connected",
+        ice_remained_connected: "connected",
+        console_errors_added: 0,
+        page_errors_added: 0,
+        remote_health_samples: 7,
+        remote_health_statuses: ["ready"],
+        remote_active_peer_connections_first: 1,
+        remote_active_peer_connections_last: 1,
+        remote_system_metrics: "not_available",
+        remote_stability_metrics: "not_available",
+        post_close_active_peer_connections: 0,
+        remote_active_peer_cleaned: "cleaned",
+      },
+      console_error_count: 0,
+      page_error_count: 0,
+      server_peer_id: "peer-test",
+      server_peer_close_status: "200:closed",
       console_errors: [],
       page_errors: [],
       blocked_reason: "none",
@@ -2460,6 +2510,10 @@ describe("App", () => {
     expect(wrapper.text()).toContain("aiohttp=ok");
     expect(wrapper.text()).toContain("offer_executed=false");
     expect(wrapper.text()).toContain("cloud_relay=false");
+    expect(wrapper.text()).toContain("window_ms=30000");
+    expect(wrapper.text()).toContain("fps=2.97");
+    expect(wrapper.text()).toContain("system_metrics=not_available");
+    expect(wrapper.text()).toContain("cleanup=cleaned");
     expect(wrapper.text()).toContain("robot_control_executed=false");
     expect(wrapper.text()).toContain("draft_blocked_not_proven");
     expect(wrapper.text()).toContain("cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py");

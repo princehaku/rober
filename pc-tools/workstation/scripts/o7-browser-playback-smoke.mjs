@@ -62,6 +62,7 @@ function baseResult(baseUrl, blockedReason) {
     selected_candidate_pair: null,
     peer_state_timeline: [],
     post_smoke_remote_health: null,
+    stability_summary: defaultStabilitySummary(),
     console_error_count: 0,
     page_error_count: 0,
     server_peer_id: null,
@@ -74,6 +75,38 @@ function baseResult(baseUrl, blockedReason) {
     robot_control_executed: false,
     offer_executed_by_browser: false,
     workstation_api_offer_executed: false,
+  };
+}
+
+function defaultStabilitySummary() {
+  return {
+    status: "not_observed",
+    observation_window_ms: 0,
+    sample_interval_ms: null,
+    sample_count: 0,
+    first_packets_received: null,
+    last_packets_received: null,
+    first_frames_decoded: null,
+    last_frames_decoded: null,
+    first_frames_received: null,
+    last_frames_received: null,
+    estimated_fps: null,
+    estimated_packet_rate: null,
+    video_size_stable: "not_available",
+    stable_video_width: null,
+    stable_video_height: null,
+    connection_remained_connected: "not_available",
+    ice_remained_connected: "not_available",
+    console_errors_added: 0,
+    page_errors_added: 0,
+    remote_health_samples: 0,
+    remote_health_statuses: [],
+    remote_active_peer_connections_first: null,
+    remote_active_peer_connections_last: null,
+    remote_system_metrics: "not_available",
+    remote_stability_metrics: "not_available",
+    post_close_active_peer_connections: null,
+    remote_active_peer_cleaned: "not_available",
   };
 }
 
@@ -96,13 +129,36 @@ async function loadRemoteHealth(baseUrl) {
       status: typeof payload.status === "string" ? payload.status : `http_${response.status}`,
       activePeerConnections:
         typeof payload.active_peer_connections === "number" ? payload.active_peer_connections : null,
+      systemMetrics: sanitizeMetricRecord(payload.system_metrics),
+      stabilityMetrics: sanitizeMetricRecord(payload.stability_metrics),
     };
   } catch {
     return {
       status: "remote_health_unreachable",
       activePeerConnections: null,
+      systemMetrics: "not_available",
+      stabilityMetrics: "not_available",
     };
   }
+}
+
+function sanitizeMetricRecord(value) {
+  // Robot Software 可以逐步加 system/stability 指标；脚本只透传简单白名单值，缺字段不算失败。
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return "not_available";
+  }
+  const safe = {};
+  for (const [key, item] of Object.entries(value).slice(0, 24)) {
+    if (!/^[a-zA-Z0-9_]+$/.test(key)) {
+      continue;
+    }
+    if (typeof item === "number" && Number.isFinite(item)) {
+      safe[key] = item;
+    } else if (typeof item === "boolean" || typeof item === "string") {
+      safe[key] = String(item).slice(0, 120);
+    }
+  }
+  return Object.keys(safe).length ? safe : "not_available";
 }
 
 async function loadPlaywright() {
@@ -244,9 +300,128 @@ function applyPageState(result, pageState) {
   Object.assign(result, summarizeOfferResponse(pageState.offerResponse));
 }
 
+function firstInboundVideo(pageState) {
+  const stats = Array.isArray(pageState.inboundVideoStats) ? pageState.inboundVideoStats : [];
+  return stats.find((item) => item && typeof item === "object") || {};
+}
+
+function metricDelta(first, last, field) {
+  const left = firstInboundVideo(first)[field];
+  const right = firstInboundVideo(last)[field];
+  if (typeof left !== "number" || typeof right !== "number") {
+    return { first: null, last: null, delta: null };
+  }
+  return { first: left, last: right, delta: Math.max(0, right - left) };
+}
+
+function sizeIsStable(samples) {
+  const sizes = samples
+    .map((sample) => ({
+      width: typeof sample.pageState.videoWidth === "number" ? sample.pageState.videoWidth : null,
+      height: typeof sample.pageState.videoHeight === "number" ? sample.pageState.videoHeight : null,
+    }))
+    .filter((item) => item.width && item.height);
+  if (sizes.length === 0) {
+    return { status: "not_available", width: null, height: null };
+  }
+  const first = sizes[0];
+  const stable = sizes.every((item) => item.width === first.width && item.height === first.height);
+  return { status: stable ? "stable" : "changed", width: first.width, height: first.height };
+}
+
+function allStatesConnected(samples, field) {
+  const values = samples.map((sample) => sample.pageState[field]).filter((value) => typeof value === "string");
+  if (values.length === 0) {
+    return "not_available";
+  }
+  return values.every((value) => value === "connected" || value === "completed") ? "connected" : "changed";
+}
+
+function latestAvailableMetric(samples, field) {
+  for (const sample of [...samples].reverse()) {
+    const metric = sample.remoteHealth?.[field];
+    if (metric && metric !== "not_available") {
+      return metric;
+    }
+  }
+  return "not_available";
+}
+
+function buildStabilitySummary({ samples, windowMs, intervalMs, consoleErrorBaseline, pageErrorBaseline, consoleErrors, pageErrors }) {
+  // stability_summary 是 3-5 分钟证据的机器摘要；窗口为 0 时保持 not_observed，不伪造稳定结论。
+  if (!windowMs || samples.length === 0) {
+    return {
+      ...defaultStabilitySummary(),
+      observation_window_ms: windowMs,
+      sample_interval_ms: intervalMs,
+      console_errors_added: Math.max(0, consoleErrors.length - consoleErrorBaseline),
+      page_errors_added: Math.max(0, pageErrors.length - pageErrorBaseline),
+    };
+  }
+  const first = samples[0].pageState;
+  const last = samples[samples.length - 1].pageState;
+  const packets = metricDelta(first, last, "packetsReceived");
+  const framesDecoded = metricDelta(first, last, "framesDecoded");
+  const framesReceived = metricDelta(first, last, "framesReceived");
+  const seconds = Math.max(1, (samples[samples.length - 1].at - samples[0].at) / 1000);
+  const size = sizeIsStable(samples);
+  const remoteSamples = samples.map((sample) => sample.remoteHealth).filter(Boolean);
+  const remoteStatuses = [...new Set(remoteSamples.map((item) => item.status).filter(Boolean))].slice(0, 12);
+  return {
+    status: "observed",
+    observation_window_ms: windowMs,
+    sample_interval_ms: intervalMs,
+    sample_count: samples.length,
+    first_packets_received: packets.first,
+    last_packets_received: packets.last,
+    first_frames_decoded: framesDecoded.first,
+    last_frames_decoded: framesDecoded.last,
+    first_frames_received: framesReceived.first,
+    last_frames_received: framesReceived.last,
+    estimated_fps: framesDecoded.delta === null ? null : Number((framesDecoded.delta / seconds).toFixed(2)),
+    estimated_packet_rate: packets.delta === null ? null : Number((packets.delta / seconds).toFixed(2)),
+    video_size_stable: size.status,
+    stable_video_width: size.width,
+    stable_video_height: size.height,
+    connection_remained_connected: allStatesConnected(samples, "connectionState"),
+    ice_remained_connected: allStatesConnected(samples, "iceConnectionState"),
+    console_errors_added: Math.max(0, consoleErrors.length - consoleErrorBaseline),
+    page_errors_added: Math.max(0, pageErrors.length - pageErrorBaseline),
+    remote_health_samples: remoteSamples.length,
+    remote_health_statuses: remoteStatuses,
+    remote_active_peer_connections_first: remoteSamples[0]?.activePeerConnections ?? null,
+    remote_active_peer_connections_last: remoteSamples[remoteSamples.length - 1]?.activePeerConnections ?? null,
+    remote_system_metrics: latestAvailableMetric(samples, "systemMetrics"),
+    remote_stability_metrics: latestAvailableMetric(samples, "stabilityMetrics"),
+    post_close_active_peer_connections: null,
+    remote_active_peer_cleaned: "not_available",
+  };
+}
+
+async function collectStabilitySamples({ page, baseUrl, windowMs, intervalMs }) {
+  // 采样发生在首帧之后，目的只是观察现有 browser session，不新建 offer 或控制动作。
+  if (!windowMs) {
+    return [];
+  }
+  const samples = [];
+  const deadline = Date.now() + windowMs;
+  do {
+    const [pageState, remoteHealth] = await Promise.all([collectPageState(page), loadRemoteHealth(baseUrl)]);
+    samples.push({ at: Date.now(), pageState, remoteHealth });
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, Math.min(intervalMs, remaining)));
+  } while (Date.now() <= deadline);
+  return samples;
+}
+
 async function run() {
   const outputPath = path.resolve(process.env.ROBER_O7_BROWSER_SMOKE_OUTPUT || defaultOutput);
   const timeoutMs = Number(process.env.ROBER_O7_BROWSER_SMOKE_TIMEOUT_MS || 12000);
+  const stabilityMs = Math.max(0, Number(process.env.ROBER_O7_BROWSER_SMOKE_STABILITY_MS || 0) || 0);
+  const sampleIntervalMs = Math.max(1000, Number(process.env.ROBER_O7_BROWSER_SMOKE_SAMPLE_INTERVAL_MS || 5000) || 5000);
   let baseUrl = DEFAULT_BASE_URL;
   try {
     baseUrl = normalizeBaseUrl(process.env.ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL || process.env.ROBER_O7_BROWSER_SMOKE_BASE_URL || DEFAULT_BASE_URL);
@@ -375,18 +550,39 @@ async function run() {
     );
 
     const videoState = await collectPageState(page);
+    const firstFrameMs = Date.now() - startedAt;
+    const consoleErrorBaseline = consoleErrors.length;
+    const pageErrorBaseline = pageErrors.length;
+    const stabilitySamples = await collectStabilitySamples({
+      page,
+      baseUrl,
+      windowMs: stabilityMs,
+      intervalMs: sampleIntervalMs,
+    });
 
     result.status = "ok";
     result.failure_category = "none";
     result.first_frame_received = true;
     result.video_width = videoState.videoWidth;
     result.video_height = videoState.videoHeight;
-    result.first_frame_ms = Date.now() - startedAt;
-    result.observation_window_ms = Math.min(1000, timeoutMs);
+    result.first_frame_ms = firstFrameMs;
+    result.observation_window_ms = stabilityMs || Math.min(1000, timeoutMs);
     result.final_ready_state = videoState.readyState;
     result.stable_video_width = videoState.videoWidth;
     result.stable_video_height = videoState.videoHeight;
     applyPageState(result, videoState);
+    if (stabilitySamples.length > 0) {
+      applyPageState(result, stabilitySamples[stabilitySamples.length - 1].pageState);
+    }
+    result.stability_summary = buildStabilitySummary({
+      samples: stabilitySamples,
+      windowMs: stabilityMs,
+      intervalMs: sampleIntervalMs,
+      consoleErrorBaseline,
+      pageErrorBaseline,
+      consoleErrors,
+      pageErrors,
+    });
     result.blocked_reason = "none";
   } catch (error) {
     const peerState = page ? await collectPageState(page) : {};
@@ -410,6 +606,15 @@ async function run() {
       await browser.close().catch(() => undefined);
     }
     result.post_smoke_remote_health = await loadRemoteHealth(baseUrl);
+    if (result.stability_summary) {
+      result.stability_summary.post_close_active_peer_connections = result.post_smoke_remote_health.activePeerConnections;
+      result.stability_summary.remote_active_peer_cleaned =
+        typeof result.post_smoke_remote_health.activePeerConnections === "number"
+          ? result.post_smoke_remote_health.activePeerConnections === 0
+            ? "cleaned"
+            : "not_cleaned"
+          : "not_available";
+    }
   }
 
   result.console_errors = consoleErrors;

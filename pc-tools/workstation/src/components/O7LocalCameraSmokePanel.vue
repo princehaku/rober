@@ -40,6 +40,31 @@ const browserStatsCopy = computed(() => {
   ].join(" · ");
 });
 
+const browserStabilityCopy = computed(() => {
+  // stability 仍来自 operator 显式 smoke JSON，前端只展示证据，不自动播放摄像头。
+  const stability = cameraSmoke.value?.browser_smoke.stability_summary;
+  if (!stability) {
+    return "not_loaded";
+  }
+  return [
+    `status=${stability.status}`,
+    `window_ms=${stability.observation_window_ms}`,
+    `samples=${stability.sample_count}`,
+    `fps=${stability.estimated_fps ?? "null"}`,
+    `packet_rate=${stability.estimated_packet_rate ?? "null"}`,
+  ].join(" · ");
+});
+
+const browserResourceCopy = computed(() => {
+  // CPU/温度来自远端 /health 可选字段，缺失时显示 not_available 而不是判失败。
+  const stability = cameraSmoke.value?.browser_smoke.stability_summary;
+  return [
+    `system_metrics=${stability?.remote_system_metrics === "not_available" ? "not_available" : "available"}`,
+    `stability_metrics=${stability?.remote_stability_metrics === "not_available" ? "not_available" : "available"}`,
+    `cleanup=${stability?.remote_active_peer_cleaned ?? "not_available"}`,
+  ].join(" · ");
+});
+
 async function refreshCameraSmoke(): Promise<void> {
   // 刷新只读状态，不启动 /offer、不打开摄像头、不创建 WebRTC peer。
   cameraLoading.value = true;
@@ -124,10 +149,22 @@ onMounted(() => {
       </dd>
       <dt>browser stats</dt>
       <dd>{{ browserStatsCopy }}</dd>
+      <dt>stability</dt>
+      <dd>{{ browserStabilityCopy }}</dd>
+      <dt>resource metrics</dt>
+      <dd>{{ browserResourceCopy }}</dd>
+      <dt>stability health</dt>
+      <dd>
+        size={{ cameraSmoke?.browser_smoke.stability_summary.video_size_stable ?? "not_available" }}
+        · connection={{ cameraSmoke?.browser_smoke.stability_summary.connection_remained_connected ?? "not_available" }}
+        · ice={{ cameraSmoke?.browser_smoke.stability_summary.ice_remained_connected ?? "not_available" }}
+      </dd>
       <dt>browser errors</dt>
       <dd>
         console={{ cameraSmoke?.browser_smoke.console_error_count ?? 0 }}
         · page={{ cameraSmoke?.browser_smoke.page_error_count ?? 0 }}
+        · stability_console_delta={{ cameraSmoke?.browser_smoke.stability_summary.console_errors_added ?? 0 }}
+        · stability_page_delta={{ cameraSmoke?.browser_smoke.stability_summary.page_errors_added ?? 0 }}
         · reason={{ cameraSmoke?.browser_smoke.blocked_reason ?? "not_loaded" }}
       </dd>
       <dt>browser report</dt>

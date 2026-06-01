@@ -1,5 +1,5 @@
 import { PROOF_FLAGS } from "../shared/contracts";
-import type { O7BrowserPlaybackSmokeSummary, O7LocalWebrtcCameraResponse } from "../shared/contracts";
+import type { O7BrowserPlaybackSmokeSummary, O7BrowserPlaybackStabilitySummary, O7LocalWebrtcCameraResponse } from "../shared/contracts";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { displayRoot, WORKSTATION_RUNTIME_ROOT } from "./paths";
@@ -66,6 +66,7 @@ function defaultBrowserSmoke(reason: string, baseUrl: string): O7BrowserPlayback
     selected_candidate_pair: null,
     peer_state_timeline: [],
     post_smoke_remote_health: null,
+    stability_summary: defaultStabilitySummary(),
     console_error_count: 0,
     page_error_count: 0,
     server_peer_id: null,
@@ -82,6 +83,39 @@ function defaultBrowserSmoke(reason: string, baseUrl: string): O7BrowserPlayback
   };
 }
 
+function defaultStabilitySummary(): O7BrowserPlaybackStabilitySummary {
+  // stability 只接受显式 browser smoke 产物；没有产物时必须保持 not_observed。
+  return {
+    status: "not_observed",
+    observation_window_ms: 0,
+    sample_interval_ms: null,
+    sample_count: 0,
+    first_packets_received: null,
+    last_packets_received: null,
+    first_frames_decoded: null,
+    last_frames_decoded: null,
+    first_frames_received: null,
+    last_frames_received: null,
+    estimated_fps: null,
+    estimated_packet_rate: null,
+    video_size_stable: "not_available",
+    stable_video_width: null,
+    stable_video_height: null,
+    connection_remained_connected: "not_available",
+    ice_remained_connected: "not_available",
+    console_errors_added: 0,
+    page_errors_added: 0,
+    remote_health_samples: 0,
+    remote_health_statuses: [],
+    remote_active_peer_connections_first: null,
+    remote_active_peer_connections_last: null,
+    remote_system_metrics: "not_available",
+    remote_stability_metrics: "not_available",
+    post_close_active_peer_connections: null,
+    remote_active_peer_cleaned: "not_available",
+  };
+}
+
 function stringArray(value: unknown): string[] {
   // 外部 JSON 只接受字符串数组，避免 UI 展示复杂对象或泄露异常 payload。
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 20) : [];
@@ -90,6 +124,64 @@ function stringArray(value: unknown): string[] {
 function recordArray(value: unknown): Array<Record<string, unknown>> {
   // stats 诊断只接受 object 数组并截断，避免把浏览器原始大对象完整塞进 API 响应。
   return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => Boolean(asRecord(item))).slice(0, 20) : [];
+}
+
+function metricRecordOrUnavailable(value: unknown): Record<string, unknown> | "not_available" {
+  // 远端 health 的指标字段是可选增量合同；只允许 object 或 not_available 两种展示形态。
+  const record = asRecord(value);
+  return record ? Object.fromEntries(Object.entries(record).slice(0, 24)) : "not_available";
+}
+
+function stabilityFromRecord(value: unknown): O7BrowserPlaybackStabilitySummary {
+  // PC API 对显式 smoke JSON 做白名单摘要，避免把任意脚本输出当成 UI 合同。
+  const record = asRecord(value);
+  if (!record) {
+    return defaultStabilitySummary();
+  }
+  const status = record.status === "observed" ? "observed" : "not_observed";
+  const videoSizeStable = ["stable", "changed", "not_available"].includes(String(record.video_size_stable))
+    ? (String(record.video_size_stable) as O7BrowserPlaybackStabilitySummary["video_size_stable"])
+    : "not_available";
+  const connectionRemainedConnected = ["connected", "changed", "not_available"].includes(String(record.connection_remained_connected))
+    ? (String(record.connection_remained_connected) as O7BrowserPlaybackStabilitySummary["connection_remained_connected"])
+    : "not_available";
+  const iceRemainedConnected = ["connected", "changed", "not_available"].includes(String(record.ice_remained_connected))
+    ? (String(record.ice_remained_connected) as O7BrowserPlaybackStabilitySummary["ice_remained_connected"])
+    : "not_available";
+  const remoteActivePeerCleaned = ["cleaned", "not_cleaned", "not_available"].includes(String(record.remote_active_peer_cleaned))
+    ? (String(record.remote_active_peer_cleaned) as O7BrowserPlaybackStabilitySummary["remote_active_peer_cleaned"])
+    : "not_available";
+  return {
+    status,
+    observation_window_ms: typeof record.observation_window_ms === "number" ? record.observation_window_ms : 0,
+    sample_interval_ms: typeof record.sample_interval_ms === "number" ? record.sample_interval_ms : null,
+    sample_count: typeof record.sample_count === "number" ? record.sample_count : 0,
+    first_packets_received: typeof record.first_packets_received === "number" ? record.first_packets_received : null,
+    last_packets_received: typeof record.last_packets_received === "number" ? record.last_packets_received : null,
+    first_frames_decoded: typeof record.first_frames_decoded === "number" ? record.first_frames_decoded : null,
+    last_frames_decoded: typeof record.last_frames_decoded === "number" ? record.last_frames_decoded : null,
+    first_frames_received: typeof record.first_frames_received === "number" ? record.first_frames_received : null,
+    last_frames_received: typeof record.last_frames_received === "number" ? record.last_frames_received : null,
+    estimated_fps: typeof record.estimated_fps === "number" ? record.estimated_fps : null,
+    estimated_packet_rate: typeof record.estimated_packet_rate === "number" ? record.estimated_packet_rate : null,
+    video_size_stable: videoSizeStable,
+    stable_video_width: typeof record.stable_video_width === "number" ? record.stable_video_width : null,
+    stable_video_height: typeof record.stable_video_height === "number" ? record.stable_video_height : null,
+    connection_remained_connected: connectionRemainedConnected,
+    ice_remained_connected: iceRemainedConnected,
+    console_errors_added: typeof record.console_errors_added === "number" ? record.console_errors_added : 0,
+    page_errors_added: typeof record.page_errors_added === "number" ? record.page_errors_added : 0,
+    remote_health_samples: typeof record.remote_health_samples === "number" ? record.remote_health_samples : 0,
+    remote_health_statuses: stringArray(record.remote_health_statuses),
+    remote_active_peer_connections_first:
+      typeof record.remote_active_peer_connections_first === "number" ? record.remote_active_peer_connections_first : null,
+    remote_active_peer_connections_last:
+      typeof record.remote_active_peer_connections_last === "number" ? record.remote_active_peer_connections_last : null,
+    remote_system_metrics: metricRecordOrUnavailable(record.remote_system_metrics),
+    remote_stability_metrics: metricRecordOrUnavailable(record.remote_stability_metrics),
+    post_close_active_peer_connections: typeof record.post_close_active_peer_connections === "number" ? record.post_close_active_peer_connections : null,
+    remote_active_peer_cleaned: remoteActivePeerCleaned,
+  };
 }
 
 function browserSmokeFromRecord(record: Record<string, unknown>, fallbackBaseUrl: string, reportPath: string): O7BrowserPlaybackSmokeSummary {
@@ -133,6 +225,7 @@ function browserSmokeFromRecord(record: Record<string, unknown>, fallbackBaseUrl
     selected_candidate_pair: asRecord(record.selected_candidate_pair),
     peer_state_timeline: recordArray(record.peer_state_timeline),
     post_smoke_remote_health: asRecord(record.post_smoke_remote_health),
+    stability_summary: stabilityFromRecord(record.stability_summary),
     console_error_count: typeof record.console_error_count === "number" ? record.console_error_count : stringArray(record.console_errors).length,
     page_error_count: typeof record.page_error_count === "number" ? record.page_error_count : stringArray(record.page_errors).length,
     server_peer_id: typeof record.server_peer_id === "string" ? record.server_peer_id : null,

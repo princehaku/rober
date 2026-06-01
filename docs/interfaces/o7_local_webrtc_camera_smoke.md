@@ -7,7 +7,7 @@
 它不是云 relay、不是公网 RTC、不是 TURN 方案，也不发送机器人控制命令。服务固定暴露：
 
 - `GET /`：本地调试页面，浏览器只创建 recvonly video transceiver。
-- `GET /health`：Python 版本、依赖状态、端口、安全边界；aiortc 服务模式下还会输出 `active_peer_connections`、`active_peer_ids`、`media_diagnostics` 和 `peer_cleanup`，用于定位 409 残留 peer 与媒体首帧缺失。
+- `GET /health`：Python 版本、依赖状态、端口、安全边界；同时输出 PC 摘要层可直接消费的扁平 `system_metrics` / `stability_metrics`，以及只读详细 `system_diagnostics`（采样时间、进程 uptime、CPU/load、内存、温度）和 aiortc 服务模式下的 `active_peer_connections`、`active_peer_ids`、`media_stability_summary`、`media_diagnostics`、`peer_cleanup`，用于定位 409 残留 peer、短时稳定性和媒体首帧缺失。
 - `GET /devices`：`/dev/video*` 和可选 `v4l2-ctl --list-devices` 摘要。
 - `POST /offer`：浏览器 SDP offer -> aiortc answer。缺 `aiohttp/aiortc/cv2/av` 或摄像头打不开时返回清晰 JSON 错误。
 - `POST /peers/{peer_id}/close`：只释放 `/offer` answer 返回的指定 peer，用于机器自检、浏览器 Stop、页面刷新/关闭后主动清理服务端连接，避免下一轮自检或 browser smoke 被单连接保护误判为 `camera_in_use`。
@@ -31,6 +31,7 @@ Waveshare vendor Raspberry Pi app 只能证明 vendor 参考实现里存在 `aio
 - 不启动底盘、UART、WAVE ROVER、Nav2、ROS2 launch 或任何运动控制。
 - 默认不使用公网 STUN/TURN；`RTCPeerConnection` 页面侧设置 `iceServers: []`。
 - 第一版限制单个 peer，降低摄像头独占和 CPU 压力。
+- `/health.system_metrics`、`/health.stability_metrics`、`/health.system_diagnostics` 和 `/health.media_stability_summary` 只作 O7 短时稳定性证据采样；它们不会触发 `/offer`、不会打开摄像头、不会发送 `/cmd_vel`、不会启动 ROS2/Nav2/UART/WAVE ROVER，也不会作为自动控制输入。
 
 ## 启动
 
@@ -135,6 +136,30 @@ ROBER_O7_BROWSER_SMOKE_REQUIRE_FRAME=1 ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http:/
 `/health.media_diagnostics.active_peers.<peer_id>.frames_read` 表示服务端 `CameraTrack` 已从 OpenCV 读取并交给 aiortc 的帧数。浏览器无首帧时若该值持续增长，优先怀疑浏览器 `<video>` 绑定、解码或前端播放路径；若一直为 0，则优先查 server 摄像头读取链路。
 
 `last_frame_ts_ms`、`last_frame_width`、`last_frame_height` 是最近一帧时间与尺寸；`camera_read_failures` 和 `last_error` 是摄像头读取失败计数与最近错误。`media_diagnostics.last_closed_peer.stats` 保留最近关闭 peer 的最终媒体统计，可和 browser smoke 的 `server_peer_close_status=200:closed` 一起判断 close 前 server 是否真的读到过帧。
+
+## 短时稳定性健康采样字段
+
+PC browser smoke 在 3-5 分钟播放期间可以轮询 `GET /health`，把同 LAN 首帧证据扩展为 FPS、延迟、CPU、内存、温度和 camera release 证据。新增字段是只读诊断面，不是控制面：
+
+- `system_metrics.process_uptime_s`：PC 摘要层直接消费的进程 uptime。
+- `system_metrics.load_1m`：可用时输出 1 分钟 load；不可用时输出 `load_unavailable_reason`。
+- `system_metrics.process_rss_bytes`：可用时输出进程 RSS；不可用时输出 `memory_unavailable_reason`。
+- `system_metrics.temperature_celsius`：可用时输出第一路温度样本；不可用时输出 `temperature_unavailable_reason`。
+- `stability_metrics.active_peer_count`：当前 active peer 数，和 `active_peer_connections` 保持同义兼容。
+- `stability_metrics.active_frames_read` / `active_camera_read_failures`：当前 active peer 读帧与失败总数。
+- `stability_metrics.last_closed_frames_read` / `last_closed_fps_estimate` / `last_closed_camera_read_failures` / `last_closed_track_stopped`：最近关闭 peer 的最终帧数、估算 FPS、读帧失败数和 track 是否 stop，便于 browser smoke 结束后判断 camera release。
+- `system_diagnostics.sample.wall_time_ms`：墙钟毫秒时间戳，用于和浏览器 JSON、服务端日志对齐。
+- `system_diagnostics.sample.monotonic_s`：进程内 monotonic 采样时间，避免系统时间跳变影响短时趋势。
+- `system_diagnostics.sample.process_started_wall_time_ms` / `process_uptime_s`：smoke 服务启动时间和进程 uptime。
+- `system_diagnostics.cpu.load_average`：`os.getloadavg()` 的 1/5/15 分钟 load；系统不支持时返回 `{ "available": false, "reason": "os_getloadavg_unavailable" }`。
+- `system_diagnostics.cpu.process_cpu_percent` / `system_cpu_percent`：安装 `psutil` 时输出非阻塞 CPU 百分比；缺 `psutil` 或运行时异常时返回结构化 `not_available`，`/health` 不失败。
+- `system_diagnostics.memory`：优先用 `psutil` 输出进程 RSS/VMS 和系统内存；缺 `psutil` 时尽量退回 `/proc/self/status` 的进程 RSS；两者都不可用时返回 `not_available`。
+- `system_diagnostics.temperature.samples[]`：从 `/sys/class/thermal/thermal_zone*/temp` 和 `/sys/class/hwmon/hwmon*/temp*_input` 读取摄氏温度；没有温度文件时返回 `{ "available": false, "reason": "temperature_files_not_found" }`。
+- `media_stability_summary.active_peers.<peer_id>`：对当前 peer 的 `frames_read`、`camera_read_failures`、`last_frame_age_ms`、最近帧尺寸、连接状态和估算 `fps_estimate` 做稳定摘要。
+- `media_stability_summary.totals.active_frames_read` / `active_camera_read_failures`：当前 active peer 的读帧与失败总数，方便 PC 轮询端快速画趋势。
+- `media_stability_summary.last_closed_peer`：最近关闭 peer 的清理结果和最终媒体摘要，用于确认 browser smoke 结束后 camera release 是否发生。
+
+所有缺失指标都必须 fail-open 为结构化诊断字段，不能把缺温度文件、缺 `psutil`、裁剪系统 `/proc` 权限差异升级为 HTTP 500。短时稳定性验收仍需结合 browser 侧 `getStats()`、`first_frame_ms`、console/page errors 和 close 后 `/health.active_peer_connections=0` 一起判断。
 
 ## 常见失败定位
 

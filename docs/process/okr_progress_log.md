@@ -8,6 +8,27 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 08-09｜o7-browser-stability-metrics｜O7 same-LAN Chromium browser 30s short-stability metrics
+
+本轮 `sprints/2026.06.01_08-09_o7-browser-stability-metrics/` 执行 Micro closeout。目标是延续上一轮 same-LAN Chromium browser first-frame proof，把 O7 从“首帧可见 + browser stats 可见 + peer cleanup”推进到“30s 短稳态可观测 + 远端系统/媒体稳定性指标可读”。
+
+Engineering 已完成板端 `GET /health` 增加 `system_diagnostics`、`media_stability_summary`，并补兼容扁平 `system_metrics` / `stability_metrics`；PC browser smoke 支持 `ROBER_O7_BROWSER_SMOKE_STABILITY_MS`，首帧后采样 WebRTC stats 与远端 `/health`。PC workstation 仍只读消费显式 browser-smoke JSON，不自动 POST `/offer`、不创建 WebRTC session、不发送控制；安全边界继续保持 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`。
+
+关键证据来自真实 30s smoke against `http://192.168.1.11:8088/`：`status=ok`、`first_frame_received=true`、`first_frame_ms=2044`、`stability_summary.status=observed`、`sample_count=6`、`estimated_fps=13.9`、`remote_system_metrics.process_uptime_s=370.036`、`load_1m=1.35009765625`、`process_rss_bytes=141357056`、`temperature_celsius=46.394`、`remote_stability_metrics.active_peer_count=1`、`active_frames_read=352`、`active_camera_read_failures=0`、`remote_active_peer_cleaned=cleaned`、`post_close_active_peer_connections=0`。补充 evidence：`post_smoke_remote_health.activePeerConnections=0`、`stabilityMetrics.last_closed_fps_estimate=13.301`、`last_closed_camera_read_failures=0`。
+
+验证通过：Robot py_compile、Robot unittest 6 OK、Robot diff-check；PC npm test 2 files/45 OK、lint OK、build OK、PC diff-check；真实 30s smoke OK。
+
+Product closeout 判定：Objective 7 可从约 94% 上调到约 95%。方向判断为**继续**，不替换、不暂停；本轮真实关闭的是“same-LAN Chromium 30s 短稳态 + 远端 CPU/温度/帧读数 + peer cleanup 可观测”缺口。仍不证明 3-5 分钟、弱网、TURN、公网云 relay、鉴权、真实用户浏览器/手机、ASR/TTS、手控/Nav2、真实 robot ACK 或完整上车任务闭环。下一优先级是把 30s 扩到 3-5 分钟稳定性、断开重连、失败分类和产品入口安全边界。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 7：PC 端运营调试平台 | 从约 94% 调整到约 95% | 本轮 browser smoke 已证明同 LAN Chromium 30s 短稳态：首帧 2044ms、`stability_summary.status=observed`、`sample_count=6`、`estimated_fps=13.9`、远端 `temperature_celsius=46.394`、`active_frames_read=352`、`active_camera_read_failures=0`，且 close 后 `post_close_active_peer_connections=0`。仍缺 3-5 分钟、弱网、TURN、公网云 relay、鉴权、真实用户浏览器/手机、ASR/TTS、手控/Nav2、真实 robot ACK 和完整上车任务闭环。 |
+| Objective 1 / 5 / 6 | 保持原进度 | 本轮不触碰 WAVE ROVER/UART/HIL、ROS2/Nav2、真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、live O6 API 或上车数据。 |
+
+本轮没有已完成 KR 需要移入历史归档区；O7 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4.1/5/6 节和 `sprints/2026.06.01_08-09_o7-browser-stability-metrics/tech-done.md`，剩余风险见上表。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 07-08｜o7-browser-ice-gathering-stats｜O7 same-LAN Chromium browser first-frame proof
 
 本轮 `sprints/2026.06.01_07-08_o7-browser-ice-gathering-stats/` 执行 Micro closeout。目标是收敛上一轮 PC Chromium/browser `first_frame_timeout` 和远端 browser peer `frames_read=0`，把 O7 从“browser first frame not proven”推进到“same-LAN Chromium browser playback first-frame proven”。

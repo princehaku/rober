@@ -3390,6 +3390,35 @@ describe("workstation fail-closed API contracts", () => {
         ice_connection_state: "connected",
         ice_gathering_state: "complete",
         signaling_state: "stable",
+        stability_summary: {
+          status: "observed",
+          observation_window_ms: 30000,
+          sample_interval_ms: 5000,
+          sample_count: 7,
+          first_packets_received: 2,
+          last_packets_received: 62,
+          first_frames_decoded: 1,
+          last_frames_decoded: 61,
+          first_frames_received: 1,
+          last_frames_received: 61,
+          estimated_fps: 2,
+          estimated_packet_rate: 2,
+          video_size_stable: "stable",
+          stable_video_width: 640,
+          stable_video_height: 480,
+          connection_remained_connected: "connected",
+          ice_remained_connected: "connected",
+          console_errors_added: 0,
+          page_errors_added: 0,
+          remote_health_samples: 7,
+          remote_health_statuses: ["ready"],
+          remote_active_peer_connections_first: 1,
+          remote_active_peer_connections_last: 1,
+          remote_system_metrics: { cpu_percent: 23.5, temperature_c: 54.2 },
+          remote_stability_metrics: { camera_read_failures: 0 },
+          post_close_active_peer_connections: 0,
+          remote_active_peer_cleaned: "cleaned",
+        },
         console_errors: [],
         page_errors: [],
         blocked_reason: "none",
@@ -3418,6 +3447,10 @@ describe("workstation fail-closed API contracts", () => {
     expect(status.browser_smoke.sends_commands).toBe(false);
     expect(status.browser_smoke.robot_control_executed).toBe(false);
     expect(status.browser_smoke.workstation_api_offer_executed).toBe(false);
+    expect(status.browser_smoke.stability_summary.status).toBe("observed");
+    expect(status.browser_smoke.stability_summary.estimated_fps).toBe(2);
+    expect(status.browser_smoke.stability_summary.remote_system_metrics).toMatchObject({ cpu_percent: 23.5 });
+    expect(status.browser_smoke.stability_summary.remote_active_peer_cleaned).toBe("cleaned");
   });
 
   it("O7 local WebRTC camera API consumes ready health and devices without creating RTC session", async () => {
