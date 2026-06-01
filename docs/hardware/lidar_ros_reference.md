@@ -75,6 +75,7 @@ source /opt/ros/humble/setup.bash
 colcon build --symlink-install
 source install/setup.bash
 ros2 launch ros2_trashbot_bringup bringup.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyUSB0 lidar_serial_baudrate:=150000 lidar_frame_id:=laser_frame
+ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyUSB0 lidar_serial_baudrate:=150000 lidar_frame_id:=laser_frame
 ros2 topic list | grep -E '(^/scan$|/lidar/raw_packet)'
 ros2 topic echo --once /scan
 ros2 topic hz /scan
@@ -113,9 +114,10 @@ python3 -m unittest discover -s <ros2_lidar_package_path> -p 'test_*.py'
 - 新增纯软件 parser：`ros2_trashbot_hardware.lidar_packets`，按 `0xAA 0x55` 帧头和 `LSN` 长度解析 vendor packet。
 - 默认输出：`sensor_msgs/msg/LaserScan` 到 `/scan`，frame 为 `laser_frame`。
 - 可选输出：`std_msgs/msg/UInt8MultiArray` 到 `/lidar/raw_packet`。
-- `bringup.launch.py` 新增 `lidar_enabled`，默认 `false`；本轮不改 `learn.launch.py` 或 `autonomous.launch.py`。
-- `bringup.launch.py` 在 `lidar_enabled:=true` 时启动 `tf2_ros static_transform_publisher`，发布 `base_link -> laser_frame` 占位 TF。
+- `bringup.launch.py` 和 `learn.launch.py` 均新增 `lidar_enabled`，默认 `false`；`autonomous.launch.py` 暂不接入本轮真机建图入口。
+- `bringup.launch.py` 和 `learn.launch.py` 在 `lidar_enabled:=true` 时启动 `tf2_ros static_transform_publisher`，发布 `base_link -> laser_frame` 占位 TF。
 - `bringup.launch.py` 暴露 `lidar_range_min`、`lidar_range_max`、`lidar_scan_time`、`lidar_time_increment`，避免把未实测的 LaserScan 范围和时序写死。
+- `learn.launch.py` 使用与 `bringup.launch.py` 对齐的 LiDAR 参数名：`lidar_serial_port`、`lidar_serial_baudrate`、`lidar_frame_id`、`lidar_scan_topic`、`lidar_raw_packet_topic`、`lidar_publish_raw_packets`、range/timing、TF offset 和 mock 参数。这样真机建图 smoke 可以复用同一套 CLI 覆盖项，不需要为学习阶段再维护一套名字。
 - TF 的 `lidar_tf_x/y/z/roll/pitch/yaw` 默认全零，只是软件闭环占位；真实导航前必须用实测安装位姿覆盖。
 - mock 边界：支持 `lidar_mock_scan:=true` 或 `lidar_mock_packets:=<hex>` 做软件闭环验证；该证据不能替代真实串口/HIL。
 
@@ -123,5 +125,6 @@ python3 -m unittest discover -s <ros2_lidar_package_path> -p 'test_*.py'
 
 - 已覆盖 packet parser 单测：LSN 长度、mock packet、坏包错误、mock hex 参数。
 - 已覆盖 driver stub 单测：LaserScan-shaped 字段转换、launch 风格 bool 字符串、串口流分包。
-- 已覆盖 launch static contract：`bringup.launch.py` 的 LiDAR 参数、默认关闭、hardware 包节点、TF 节点和 `base_link -> laser_frame` contract。
+- 已覆盖 launch static contract：`bringup.launch.py` 和 `learn.launch.py` 的 LiDAR 参数、默认关闭、hardware 包节点、TF 节点和 `base_link -> laser_frame` contract。
+- 本轮 Robot Software 只做静态 launch contract 与软件闭环约束，不运行底盘运动命令，也不声明真机 LiDAR 已通过。
 - 真实硬件 run 前必须再次查阅 `docs/vendor/VENDOR_INDEX.md` 和本文件，并把 `serial_port`、`serial_baudrate`、`frame_id`、scan topic、TF、实测命令输出写入 sprint 证据。

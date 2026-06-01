@@ -230,8 +230,8 @@ class LaunchContractStaticTest(unittest.TestCase):
                 self.assertNotIn("'port': serial_port", hardware_block)
                 self.assertNotIn("'baudrate': serial_baudrate", hardware_block)
 
-    def test_bringup_can_start_lidar_and_static_tf_only_when_enabled(self):
-        for launch_name in ("bringup.launch.py",):
+    def test_launches_can_start_lidar_and_static_tf_only_when_enabled(self):
+        for launch_name in ("bringup.launch.py", "learn.launch.py"):
             with self.subTest(launch_name=launch_name):
                 source = read_launch(launch_name)
                 ast.parse(source)
@@ -288,6 +288,14 @@ class LaunchContractStaticTest(unittest.TestCase):
                 self.assertIn("condition=lidar_condition", tf_block)
                 self.assertIn("'--frame-id', 'base_link'", tf_block)
                 self.assertIn("'--child-frame-id', lidar_frame_id", tf_block)
+
+                if launch_name == "learn.launch.py":
+                    slam_block = node_block(source, "async_slam_toolbox_node")
+                    self.assertIn("'mode': 'mapping'", slam_block)
+                    self.assertLess(
+                        source.index("executable='lidar_driver'"),
+                        source.index("executable='async_slam_toolbox_node'"),
+                    )
 
 
 if __name__ == "__main__":
