@@ -11,6 +11,7 @@ O6 cloud archive core 在 `cloud-relay` runtime 上新增 bearer-gated REST API�
 - `trashbot.archive.v1`：任务、事件、任务详情和事件查询。
 - `trashbot.annotation.v1`：PC/运营端提交和查询标注结果。
 - `trashbot.inference.v1`：云端或外部推理结果记录，并同步写入事件时间线。
+- `trashbot.o6.archive_health.v1`：O6 archive live health 只读探测结果。
 
 所有响应必须包含：
 
@@ -24,6 +25,8 @@ O6 cloud archive core 在 `cloud-relay` runtime 上新增 bearer-gated REST API�
 ## Endpoints
 
 ```text
+GET  /api/o6/archive/health
+
 POST /api/o6/archive/tasks
 GET  /api/o6/archive/tasks?robot_id=<id>&task_id=<id>&date=<yyyy-mm-dd>&status=<status>
 GET  /api/o6/archive/tasks/{task_id}?robot_id=<id>
@@ -39,6 +42,32 @@ GET  /api/o6/inference?robot_id=<id>&task_id=<id>&inference_status=<status>
 ```
 
 所有 `/api/o6/*` 路由复用 cloud-relay bearer gate。未授权返回 401；坏 JSON 或缺少必填字段返回 400；缺失任务详情返回 404。
+
+## Archive Live Health
+
+`GET /api/o6/archive/health` 是 PC/手机/运维后续探测 O6 archive API 是否可用的稳定入口。它只读本地 proof store，不发送命令、不写 robot command store、不读取硬件、不执行 OSS upload 或模型推理。
+
+响应固定包含：
+
+- `schema=trashbot.o6.archive_health.v1`
+- `capability=o6_archive_live_health`
+- `archive_api_status=empty|ready|store_unavailable`
+- `task_count`、`event_count`、`annotation_count`、`inference_count`
+- `latest_task_ref`：仅包含 `robot_id`、`task_id`、`date`、`status`、`updated_at` 和 `evidence_ref_summary`
+- `storage_backend=json_file_proof`
+- `production_ready=false`
+- `production_db_connected=false`
+- `real_oss_upload=false`
+- `real_inference_model_runtime=false`
+- `safe_to_control=false`
+- `sends_commands=false`
+- `robot_control_executed=false`
+- `delivery_success=false`
+- `not_proven` 和 `next_required_evidence`
+
+`latest_task_ref.evidence_ref_summary` 只输出 `present`、`kind`、`uri_scheme`、`source`、`proof_status`、`checksum_present`。它不得回显本地文件路径、完整 OSS key、token、Authorization、DB/queue URL 或 traceback。
+
+如果 archive store JSON 损坏、schema 错误或不可读，health route 返回 HTTP 503，`archive_api_status=store_unavailable`，`error=archive_store_unavailable`，并保持 `redaction_status=passed`。503 payload 不包含 state path、异常类型、traceback 或本机目录。
 
 ## Required Fields
 

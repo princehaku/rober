@@ -19,6 +19,7 @@ ARCHIVE_SCHEMA = "trashbot.archive.v1"
 ANNOTATION_SCHEMA = "trashbot.annotation.v1"
 INFERENCE_SCHEMA = "trashbot.inference.v1"
 ARCHIVE_STORE_SCHEMA = "trashbot.o6.archive_store.v1"
+ARCHIVE_HEALTH_SCHEMA = "trashbot.o6.archive_health.v1"
 ARCHIVE_EVIDENCE_BOUNDARY = "software_proof_o6_cloud_archive_core"
 PRODUCTION_DB_GAP = "not_proven_production_db"
 # 默认落系统临时目录，避免本地 smoke 在仓库根目录遗留 runtime state。
@@ -71,6 +72,65 @@ def base_markers() -> dict:
         "not_proven": [PRODUCTION_DB_GAP, "real_oss_upload", "real_inference_model_runtime"],
         "production_ready": False,
         "production_db_connected": False,
+    }
+
+
+def archive_live_health_markers() -> dict:
+    """健康检查固定 fail-closed 标记，避免 PC/手机误解为可控或生产就绪。"""
+
+    return {
+        **base_markers(),
+        "schema": ARCHIVE_HEALTH_SCHEMA,
+        "capability": "o6_archive_live_health",
+        "storage_backend": "json_file_proof",
+        "production_ready": False,
+        "production_db_connected": False,
+        "real_oss_upload": False,
+        "real_inference_model_runtime": False,
+        "safe_to_control": False,
+        "sends_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "not_proven": [
+            PRODUCTION_DB_GAP,
+            "production_db_queue",
+            "real_oss_upload",
+            "real_inference_model_runtime",
+            "live_api_external_probe",
+            "real_cloud",
+            "real_4g_sim",
+            "real_onboard_data",
+        ],
+        "next_required_evidence": [
+            "production DB/queue connection and migration proof",
+            "real OSS upload with restricted credential proof",
+            "real inference model runtime proof",
+            "external live API probe over deployed endpoint",
+            "real cloud deployment evidence",
+            "real 4G/SIM network evidence",
+            "onboard robot archive data evidence",
+        ],
+    }
+
+
+def summarize_evidence_ref(value: object) -> dict:
+    """只输出证据引用的安全摘要，不回显本地路径、URL、token 或完整对象 key。"""
+
+    ref = normalize_evidence_ref(value)
+    uri = safe_text(ref.get("uri"))
+    if "://" in uri:
+        scheme = uri.split("://", 1)[0][:24]
+    elif uri:
+        scheme = "opaque_ref"
+    else:
+        scheme = ""
+    return {
+        "present": bool(uri),
+        "kind": safe_text(ref.get("kind"), "oss_object_ref"),
+        "uri_scheme": scheme,
+        "source": safe_text(ref.get("source"), "software_proof"),
+        "proof_status": safe_text(ref.get("proof_status"), "not_proven"),
+        "checksum_present": bool(safe_text(ref.get("checksum"))),
     }
 
 
@@ -154,6 +214,44 @@ class ArchiveStore:
             if self._matches(task, filters, ("robot_id", "task_id", "date", "status"))
         ]
         return {"ok": True, "schema": ARCHIVE_SCHEMA, **base_markers(), "tasks": tasks, "count": len(tasks)}
+
+    def live_health(self) -> tuple[int, dict]:
+        """给运维/PC/手机提供只读探测入口，不读取或暴露本地 state 路径。"""
+
+        try:
+            data = self._load()
+        except Exception:
+            # health route 只承认 store 不可用，不把 traceback/path/schema 细节交给外部。
+            return 503, {
+                "ok": False,
+                **archive_live_health_markers(),
+                "archive_api_status": "store_unavailable",
+                "task_count": 0,
+                "event_count": 0,
+                "annotation_count": 0,
+                "inference_count": 0,
+                "latest_task_ref": None,
+                "error": "archive_store_unavailable",
+                "redaction_status": "passed",
+            }
+
+        tasks = data.get("tasks") if isinstance(data.get("tasks"), list) else []
+        events = data.get("events") if isinstance(data.get("events"), list) else []
+        annotations = data.get("annotations") if isinstance(data.get("annotations"), list) else []
+        inferences = data.get("inferences") if isinstance(data.get("inferences"), list) else []
+        latest_task = self._latest_task(tasks)
+        payload = {
+            "ok": True,
+            **archive_live_health_markers(),
+            "archive_api_status": "ready" if tasks or events or annotations or inferences else "empty",
+            "task_count": len(tasks),
+            "event_count": len(events),
+            "annotation_count": len(annotations),
+            "inference_count": len(inferences),
+            "latest_task_ref": self._safe_task_ref(latest_task) if latest_task else None,
+            "redaction_status": "passed",
+        }
+        return 200, payload
 
     def get_task(self, robot_id: str, task_id: str) -> tuple[int, dict]:
         data = self._load()
@@ -322,6 +420,23 @@ class ArchiveStore:
                 return False
         return True
 
+    def _latest_task(self, tasks: list[dict]) -> dict | None:
+        # updated_at 是 archive store 内的排序锚点，缺失时降级为空串保证稳定。
+        if not tasks:
+            return None
+        return max(tasks, key=lambda task: safe_text(task.get("updated_at")))
+
+    def _safe_task_ref(self, task: dict) -> dict:
+        # latest_task_ref 只给 UI/探针做定位，不输出 summary、路径或完整证据 URL。
+        return {
+            "robot_id": safe_text(task.get("robot_id")),
+            "task_id": safe_text(task.get("task_id")),
+            "date": safe_text(task.get("date")),
+            "status": safe_text(task.get("status")),
+            "updated_at": safe_text(task.get("updated_at")),
+            "evidence_ref_summary": summarize_evidence_ref(task.get("evidence_ref")),
+        }
+
 
 def archive_state_path(remote_state_path: str | None = None) -> str:
     """解析 O6 state 路径；无显式配置时不允许落到仓库根目录。"""
@@ -398,6 +513,10 @@ def handle_o6_get(handler, store: ArchiveStore) -> None:
         handler._reject_auth()
         return
     filters = query_filters(parsed)
+    if parsed.path == "/api/o6/archive/health":
+        status_code, payload = store.live_health()
+        handler._send_json(status_code, payload)
+        return
     if parsed.path == "/api/o6/archive/tasks":
         handler._send_json(200, store.list_tasks(filters))
         return

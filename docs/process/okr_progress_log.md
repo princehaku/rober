@@ -8,6 +8,25 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 13-14｜o6-archive-live-health｜O6 archive live health software proof
+
+本轮 `sprints/2026.06.01_13-14_o6-archive-live-health/` 执行 Micro closeout。用户价值是让 PC、手机和运维后续能用同一个 bearer-gated live health endpoint 判断 O6 archive API 是否在线、是否已有 proof 数据、是否因本地 proof store 损坏而不可用，同时不把 software proof 误包装成生产云能力。
+
+Full-Stack 已新增 `GET /api/o6/archive/health`，schema 固定为 `trashbot.o6.archive_health.v1`，capability 固定为 `o6_archive_live_health`。该 endpoint 复用 `/api/o6/*` bearer gate，返回 `empty` / `ready` / `store_unavailable`，只汇总 O6 archive proof store 计数和脱敏 `latest_task_ref`，不返回本地 state path、完整 evidence URI、token、traceback 或 DB/queue URL；固定边界继续保留 `storage_backend=json_file_proof`、`production_ready=false`、`production_db_connected=false`、`real_oss_upload=false`、`real_inference_model_runtime=false`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`。
+
+验证证据：`python3 -m py_compile cloud-relay/src/ros2_trashbot_cloud_relay/archive_core.py` 通过；`PYTHONPATH=cloud-relay/src:onboard/src/ros2_trashbot_behavior:onboard/src/ros2_trashbot_nav python3 -m unittest cloud-relay/tests/test_archive_core.py` 输出 `Ran 7 tests ... OK`；scoped `git diff --check` 通过。`unittest -k "archive_health or o6_routes"` 在当前环境匹配 0 个测试并退出 5，已按计划 fallback 全文件通过。
+
+Product closeout 判定：Objective 6 从 `90%+ mock/software completion` 保守调整到 `约 91% software + archive live health proof`。方向判断为**继续**，不替换、不暂停；本轮真实关闭的是“O6 local/Docker archive live health observability + 脱敏/fail-closed 状态可复验”缺口。仍不证明 production DB/queue、真实 OSS upload、真实推理 runtime、external live probe、真实云、真实 4G/SIM 或真实上车数据。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 6：云端核心后端 | 从 `90%+ mock/software completion` 调整到约 91% | O6 archive live health endpoint 已提供 bearer-gated `GET /api/o6/archive/health`、`trashbot.o6.archive_health.v1` schema、`o6_archive_live_health` capability、`empty` / `ready` / `store_unavailable` 状态、脱敏 latest task ref 和 fail-closed 控制字段；py_compile、archive_core 全文件 unittest 7 OK、scoped diff-check 通过。仍缺 production DB/queue、真实 OSS upload、真实推理 runtime、external live probe、真实云、真实 4G/SIM 和上车数据。 |
+| Objective 1 / 5 / 7 | 保持原进度 | 本轮不触碰 WAVE ROVER/UART/HIL、LiDAR/Nav2/SLAM、公网 HTTPS/TLS、真实 4G/SIM、OSS/CDN live traffic、PC/browser RTC 稳定性或上车任务闭环。 |
+
+本轮没有已完成 KR 需要移入历史归档区；O6 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节和 `sprints/2026.06.01_13-14_o6-archive-live-health/tech-done.md`，剩余风险见上表。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 10-11｜lidar-ros2-driver-skeleton｜O1 LiDAR software_reference + mock skeleton
 
 本轮 `sprints/2026.06.01_10-11_lidar-ros2-driver-skeleton/` 执行 Micro closeout。用户价值是把 LiDAR 从 reference ingest 推进到 ROS2 软件骨架和默认关闭的 bringup 接入点，为后续真实串口 `/scan`、TF、SLAM/Nav2 验收留出清晰接口，同时不把 software reference 写成 HIL pass。

@@ -15,6 +15,7 @@ sys.path.insert(0, str(REPO_ROOT / "onboard" / "src" / "ros2_trashbot_nav"))
 
 from ros2_trashbot_cloud_relay.archive_core import (
     ANNOTATION_SCHEMA,
+    ARCHIVE_HEALTH_SCHEMA,
     ARCHIVE_SCHEMA,
     INFERENCE_SCHEMA,
     ArchiveStore,
@@ -190,6 +191,170 @@ class O6HttpRoutePatchTest(unittest.TestCase):
 
                 health = json.loads(urllib.request.urlopen(f"{base_url}/healthz", timeout=5).read().decode("utf-8"))
                 self.assertEqual(health["protocol_version"], "trashbot.remote.v1")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+                if previous_archive_state is None:
+                    os.environ.pop("TRASHBOT_O6_ARCHIVE_STATE", None)
+                else:
+                    os.environ["TRASHBOT_O6_ARCHIVE_STATE"] = previous_archive_state
+
+    def test_archive_health_requires_bearer_and_reports_empty_without_control(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            previous_archive_state = os.environ.get("TRASHBOT_O6_ARCHIVE_STATE")
+            os.environ["TRASHBOT_O6_ARCHIVE_STATE"] = f"{tmpdir}/o6_archive.json"
+            install_o6_archive_routes(behavior_relay)
+            server = behavior_relay.build_server(
+                "127.0.0.1",
+                0,
+                f"{tmpdir}/remote.json",
+                "token-health",
+                state_backend="file",
+            )
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            base_url = f"http://127.0.0.1:{server.server_port}"
+            try:
+                with self.assertRaises(urllib.error.HTTPError) as exc:
+                    urllib.request.urlopen(f"{base_url}/api/o6/archive/health", timeout=5)
+                self.assertEqual(exc.exception.code, 401)
+
+                # 空 store 也必须返回可观测 payload，但不能打开任何控制或送达语义。
+                request = urllib.request.Request(
+                    f"{base_url}/api/o6/archive/health",
+                    headers={"Authorization": "Bearer token-health"},
+                )
+                payload = json.loads(urllib.request.urlopen(request, timeout=5).read().decode("utf-8"))
+                self.assertEqual(payload["schema"], ARCHIVE_HEALTH_SCHEMA)
+                self.assertEqual(payload["capability"], "o6_archive_live_health")
+                self.assertEqual(payload["archive_api_status"], "empty")
+                self.assertEqual(payload["task_count"], 0)
+                self.assertIsNone(payload["latest_task_ref"])
+                self.assertFalse(payload["safe_to_control"])
+                self.assertFalse(payload["sends_commands"])
+                self.assertFalse(payload["robot_control_executed"])
+                self.assertFalse(payload["delivery_success"])
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+                if previous_archive_state is None:
+                    os.environ.pop("TRASHBOT_O6_ARCHIVE_STATE", None)
+                else:
+                    os.environ["TRASHBOT_O6_ARCHIVE_STATE"] = previous_archive_state
+
+    def test_archive_health_reports_ready_with_redacted_latest_task_ref(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            previous_archive_state = os.environ.get("TRASHBOT_O6_ARCHIVE_STATE")
+            os.environ["TRASHBOT_O6_ARCHIVE_STATE"] = f"{tmpdir}/o6_archive.json"
+            install_o6_archive_routes(behavior_relay)
+            server = behavior_relay.build_server(
+                "127.0.0.1",
+                0,
+                f"{tmpdir}/remote.json",
+                "token-ready",
+                state_backend="file",
+            )
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            base_url = f"http://127.0.0.1:{server.server_port}"
+            try:
+                # 先通过正式 O6 archive API 写入记录，证明 health 只观察同一个 proof store。
+                headers = {"Content-Type": "application/json", "Authorization": "Bearer token-ready"}
+                task_request = urllib.request.Request(
+                    f"{base_url}/api/o6/archive/tasks",
+                    data=json.dumps(
+                        {
+                            "robot_id": "robot-safe",
+                            "task_id": "task-safe",
+                            "date": "2026-06-01",
+                            "status": "recorded",
+                            "evidence_ref": {
+                                "uri": "/tmp/private/o6/archive/frame.jpg",
+                                "kind": "local_path_should_not_leak",
+                            },
+                        }
+                    ).encode("utf-8"),
+                    headers=headers,
+                    method="POST",
+                )
+                urllib.request.urlopen(task_request, timeout=5).read()
+                event_request = urllib.request.Request(
+                    f"{base_url}/api/o6/archive/events",
+                    data=json.dumps(
+                        {"robot_id": "robot-safe", "task_id": "task-safe", "event_type": "route_frame"}
+                    ).encode("utf-8"),
+                    headers=headers,
+                    method="POST",
+                )
+                urllib.request.urlopen(event_request, timeout=5).read()
+
+                health_request = urllib.request.Request(
+                    f"{base_url}/api/o6/archive/health",
+                    headers={"Authorization": "Bearer token-ready"},
+                )
+                payload_text = urllib.request.urlopen(health_request, timeout=5).read().decode("utf-8")
+                payload = json.loads(payload_text)
+
+                self.assertEqual(payload["archive_api_status"], "ready")
+                self.assertEqual(payload["task_count"], 1)
+                self.assertEqual(payload["event_count"], 1)
+                latest = payload["latest_task_ref"]
+                self.assertEqual(latest["robot_id"], "robot-safe")
+                self.assertEqual(latest["task_id"], "task-safe")
+                self.assertEqual(latest["date"], "2026-06-01")
+                self.assertEqual(latest["status"], "recorded")
+                self.assertTrue(latest["evidence_ref_summary"]["present"])
+                self.assertNotIn("/tmp/private", payload_text)
+                self.assertNotIn("frame.jpg", payload_text)
+                self.assertFalse(payload["production_db_connected"])
+                self.assertFalse(payload["real_oss_upload"])
+                self.assertIn("live_api_external_probe", payload["not_proven"])
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+                if previous_archive_state is None:
+                    os.environ.pop("TRASHBOT_O6_ARCHIVE_STATE", None)
+                else:
+                    os.environ["TRASHBOT_O6_ARCHIVE_STATE"] = previous_archive_state
+
+    def test_archive_health_reports_store_unavailable_without_path_or_traceback(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            previous_archive_state = os.environ.get("TRASHBOT_O6_ARCHIVE_STATE")
+            state_path = f"{tmpdir}/o6_archive.json"
+            os.environ["TRASHBOT_O6_ARCHIVE_STATE"] = state_path
+            Path(state_path).write_text("{bad json", encoding="utf-8")
+            install_o6_archive_routes(behavior_relay)
+            server = behavior_relay.build_server(
+                "127.0.0.1",
+                0,
+                f"{tmpdir}/remote.json",
+                "token-bad-store",
+                state_backend="file",
+            )
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            base_url = f"http://127.0.0.1:{server.server_port}"
+            try:
+                request = urllib.request.Request(
+                    f"{base_url}/api/o6/archive/health",
+                    headers={"Authorization": "Bearer token-bad-store"},
+                )
+                with self.assertRaises(urllib.error.HTTPError) as exc:
+                    urllib.request.urlopen(request, timeout=5)
+                self.assertEqual(exc.exception.code, 503)
+                payload_text = exc.exception.read().decode("utf-8")
+                payload = json.loads(payload_text)
+                self.assertEqual(payload["archive_api_status"], "store_unavailable")
+                self.assertEqual(payload["error"], "archive_store_unavailable")
+                self.assertEqual(payload["redaction_status"], "passed")
+                self.assertNotIn(tmpdir, payload_text)
+                self.assertNotIn("Traceback", payload_text)
+                self.assertNotIn("JSONDecodeError", payload_text)
+                self.assertFalse(payload["safe_to_control"])
+                self.assertFalse(payload["sends_commands"])
             finally:
                 server.shutdown()
                 server.server_close()
