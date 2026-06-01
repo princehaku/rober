@@ -1,0 +1,94 @@
+# O1 WAVE ROVER Serial Feedback Probe
+
+## 目标
+
+`onboard/scripts/o1_wave_rover_serial_feedback_probe.py` 是 O1 的串口打开和反馈只读探测入口。它只按调用方指定的 `--port` 和 `--baudrate` 打开串口，在短窗口内读取已经存在的行，尝试解析 JSON，并输出结构化结果。
+
+本 probe 不发送 `T=1`、`T=13`、`T=130`、`T=131`、`cmd_vel` 或任何运动/控制/反馈请求命令。`T=130` 虽然是 vendor firmware 中的 base feedback request，本轮仍默认不启用，也没有 CLI 开关，避免把 read-only 远端材料升级成主动查询。
+
+固定 fail-closed 字段：
+
+- `safe_to_control=false`
+- `sends_commands=false`
+- `robot_control_executed=false`
+- `delivery_success=false`
+
+## Vendor 来源
+
+本轮已读并采用的本地资料：
+
+- `docs/vendor/VENDOR_INDEX.md`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`
+
+已证实的资料结论：
+
+- WAVE ROVER 上位机 reference 使用 UART、UTF-8 JSON、每行一个 JSON 对象并以 `\n` 结束。
+- vendor Raspberry Pi reference 使用 `/dev/ttyAMA0`、`115200`；Orange Pi Zero 3 的真实串口路径必须在目标机确认，不能硬编码 Raspberry Pi 路径。
+- `T=1` 是左右轮速度命令，`T=13` 是 ROS velocity 命令，`T=131` 会改变 feedback flow 状态；本轮全部列为 `blocked_commands_not_sent`。
+- `T=130` 是 base feedback request，但本轮真实远端实测目标是 serial-open/read-only，所以仍不发送。
+
+## 运行命令
+
+本地 dry-run 缺失串口验证：
+
+```bash
+python3 onboard/scripts/o1_wave_rover_serial_feedback_probe.py --once-json --port /dev/definitely-missing-rober-probe
+```
+
+远端只读运行，优先使用 by-id 设备；若不存在则使用 `/dev/ttyACM0`：
+
+```bash
+ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 2' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
+若 by-id 不存在：
+
+```bash
+ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/ttyACM0 --baudrate 115200 --read-timeout-s 2' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
+## 输出 contract
+
+关键字段：
+
+- `schema=trashbot.o1.wave_rover_serial_feedback_probe.v1`
+- `vendor_sources[]` 固定列出本轮 vendor 来源
+- `evidence_boundary=serial_open_read_only_not_hil`
+- `safe_to_control=false`
+- `sends_commands=false`
+- `robot_control_executed=false`
+- `delivery_success=false`
+- `port`、`baudrate`、`baudrate_source`
+- `pyserial.available`、`pyserial.error`
+- `serial_opened`
+- `read_line_count`
+- `parsed_json_count`
+- `invalid_json_count`
+- `observed_feedback_types`
+- `error`
+- `blocked_commands_not_sent`
+
+## 证据边界
+
+这不是 HIL pass，也不是底盘控制通过。通过本 probe 最多只能说明：
+
+- 远端 Python 能运行脚本。
+- pyserial 是否可用。
+- 指定串口是否能被打开。
+- 在没有主动发送任何命令的前提下，短时间内是否读到已有行。
+- 已有行是否能被解析为 JSON，以及 JSON 中出现了哪些 `T` 类型。
+
+即使读到 `T=1001` 或其他反馈类型，也只能记为 `serial_open_read_only_material_observed`。还不能证明：
+
+- 当前串口必然就是 WAVE ROVER ESP32。
+- 底盘可安全控制。
+- `T=13` 在当前固件和底盘上可用。
+- IMU、battery、odom 单位和标定已经正确。
+- Nav2、SLAM 或完整送达闭环已经准备好。
+
+## 本轮远端观察
+
+`2026.06.01_16-17_o1-wave-rover-serial-feedback-probe` 按 stdin 方式在 `root@192.168.1.11:37878` 运行。结果记录在对应 sprint 的 `tech-done.md` 中；仓库不保存远端原始 artifact。

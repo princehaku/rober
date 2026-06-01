@@ -8,6 +8,23 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 16-17｜o1-wave-rover-serial-feedback-probe｜O1 serial-open observed; feedback not_proven
+
+本轮 `sprints/2026.06.01_16-17_o1-wave-rover-serial-feedback-probe/` 执行 Micro closeout。用户价值是把 O1 从“只读上位机 readiness + 串口候选存在”推进到“目标/疑似 WAVE ROVER 串口路径可 read-only open”，同时继续禁止把没有反馈的串口打开误写成 HIL pass、底盘控制通过或完整硬件闭环。
+
+Hardware Infra 已新增 `trashbot.o1.wave_rover_serial_feedback_probe.v1` probe、focused unittest 和硬件说明文档。验证观察：`py_compile` passed；unit test 输出 `Ran 6 tests ... OK`；本地 missing-port probe 返回 fail-closed JSON 且 `error` 为 `SerialException`；远端串口枚举显示 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00` 存在并指向 `/dev/ttyACM0`；远端 read-only probe 返回 `pyserial.available=true`、`serial_opened=true`、`read_line_count=0`、`parsed_json_count=0`、`observed_feedback_types=[]`、`error=null`；`git diff --check` passed；中文技术注释比例为 script `21.0%`、test `20.8%`。
+
+Product closeout 判定：Objective 1 从约 92% 保守调整到约 93% `software_reference + upper-computer serial-open observed; feedback not_proven`。方向判断为**继续**，不替换、不暂停；本轮真实关闭的是“pyserial 可用 + by-id 串口路径可 open + read-only probe fail-closed 可复验”缺口。仍不证明真实 WAVE ROVER feedback/T=1001、真实底盘控制、真实 UART/HIL、真实 LiDAR `/scan`、ROS Humble runtime、真实 IMU/battery 标定、TF、Nav2/SLAM、150000 上车稳定性、PR #5 硬件材料或完整送达闭环。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 从约 92% 调整到约 93% | 远端 by-id 路径 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00 -> /dev/ttyACM0` 已 read-only open，`pyserial.available=true`、`serial_opened=true`。但 `read_line_count=0`、`parsed_json_count=0`、`observed_feedback_types=[]`，因此真实 WAVE ROVER feedback/T=1001、真实底盘控制和 HIL pass 仍 `not_proven`。 |
+| Objective 5 / 6 / 7 | 保持原进度 | 本轮不触碰公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、O6 archive production path、PC/browser RTC 稳定性、真实手机/browser 或上车任务闭环。 |
+
+本轮没有已完成 KR 需要移入历史归档区；O1 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节和 `sprints/2026.06.01_16-17_o1-wave-rover-serial-feedback-probe/tech-done.md`，剩余风险见上表。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 15-16｜o1-upper-computer-readiness-probe｜O1 upper-computer readiness observed
 
 本轮 `sprints/2026.06.01_15-16_o1-upper-computer-readiness-probe/` 执行 Micro closeout。用户价值是把 O1 从纯 software_reference / mock skeleton 往真实上位机环境可观测推进一步：先安全知道 Orange Pi/上位机当前是否具备 ROS Humble、pyserial 和候选串口条件，再决定后续 UART/HIL、LiDAR `/scan`、Nav2/SLAM 实机验证怎么排，而不是直接发送 WAVE ROVER 控制命令冒险。
