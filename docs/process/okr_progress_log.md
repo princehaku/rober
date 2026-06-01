@@ -8,6 +8,24 @@
 
 ## 2026-06-01 系列
 
+### 2026-06-01 17-18｜o5-o6-cloud-relay-health｜O5/O6 PC aggregated live-health probe
+
+本轮 `sprints/2026.06.01_17-18_o5-o6-cloud-relay-health/` 执行 Micro closeout。用户价值是让 PC workstation / 运营调试入口能用一个只读 `GET /api/o5-o6/cloud-relay-health` 同时观察 O5 readiness health 与 O6 archive health，减少 phone/support/operator 在 O5/O6 之间切换接口排障的成本；同时继续禁止把聚合健康探针包装成生产云、真实 4G、真实手机或真实机器人控制能力。
+
+Full-Stack 已实现并验证 PC workstation 后端聚合 probe。边界固定为：只允许 loopback/private LAN `baseUrl`，bearer 只从 env 读取，固定 fail-closed false fields，不发控制、不 POST、不碰 `/robots/*`，不写真实凭证，不修改 UI/硬件/vendor。验证证据来自本轮 `tech-done.md`：`cd pc-tools/workstation && npm run build` 通过；`npm run test` 2 files / 49 tests 通过；`npm run lint` 通过；scoped `git diff --check` 通过。首轮 build/test 失败已定位并修复：strict TypeScript tuple/unused helper/fallback 问题，以及 sensitive-key regex 误匹配 `task_count`。
+
+Product closeout 判定：Objective 5 和 Objective 6 从约 91% 保守调整到约 92% `software + PC aggregated live-health probe`。方向判断为**继续**，不替换、不暂停；本轮真实关闭的是“PC 运营侧 O5/O6 聚合健康视图 + private/loopback/env-bearer/fail-closed 安全边界可复验”缺口。仍不证明真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、真实 OSS upload、OSS/CDN live traffic、真实模型/外部推理 runtime、external live probe、真实云、真实 phone/browser、上车数据、robot ACK 或 delivery success。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 5：云中转控制面 | 从约 91% 调整到约 92% | PC workstation `GET /api/o5-o6/cloud-relay-health` 已聚合 O5 readiness health，且只读、private/loopback、env bearer、fail-closed。真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、OSS/CDN live traffic、真实 phone/browser 仍 `not_proven`。 |
+| Objective 6：云端核心后端 | 从约 91% 调整到约 92% | PC workstation `GET /api/o5-o6/cloud-relay-health` 已聚合 O6 archive health，让 archive proof 可进入运营侧单点健康视图。真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、external live probe、真实云、真实 4G/SIM、真实 phone/browser 和上车数据仍 `not_proven`。 |
+| Objective 1 / 7 | 保持原进度 | 本轮不触碰 WAVE ROVER/UART/HIL、LiDAR/Nav2/SLAM、PC/browser RTC 长稳态、真实机器人控制或完整上车任务闭环。 |
+
+本轮没有已完成 KR 需要移入历史归档区；O5/O6 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节和 `sprints/2026.06.01_17-18_o5-o6-cloud-relay-health/tech-done.md`，剩余风险见上表。
+
+更新时间：2026-06-01 Asia/Shanghai。
+
 ### 2026-06-01 16-17｜o1-wave-rover-serial-feedback-probe｜O1 serial-open observed; feedback not_proven
 
 本轮 `sprints/2026.06.01_16-17_o1-wave-rover-serial-feedback-probe/` 执行 Micro closeout。用户价值是把 O1 从“只读上位机 readiness + 串口候选存在”推进到“目标/疑似 WAVE ROVER 串口路径可 read-only open”，同时继续禁止把没有反馈的串口打开误写成 HIL pass、底盘控制通过或完整硬件闭环。

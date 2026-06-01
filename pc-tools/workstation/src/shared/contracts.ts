@@ -1688,6 +1688,79 @@ export interface O7CloudOperatorConsoleProbeResponse extends ProofFlags {
   reads_hardware: false;
 }
 
+export type O5O6CloudRelayProbeStatus =
+  | "loaded_fail_closed_contract"
+  | "partial_fail_closed_contract"
+  | "not_configured"
+  | "blocked_disallowed_base_url"
+  | "blocked";
+
+export interface O5O6CloudRelayHealthObjectiveSummary {
+  objective: "O5" | "O6";
+  remote_endpoint: "/api/o5/readiness/health" | "/api/o6/archive/health";
+  remote_schema: string;
+  http_status: number | null;
+  capability: string;
+  status: string;
+  production_ready: false;
+  safe_to_control: false;
+  sends_commands: false;
+  robot_control_executed: false;
+  delivery_success: false;
+  blocked_count: number;
+  warning_count: number;
+  pass_count: number;
+  blocked_or_warning_count: number;
+  next_required_evidence: string[];
+  blocked_reasons: string[];
+  not_proven: string[];
+  phone_safe_summary: string;
+}
+
+// O5/O6 cloud relay health 是 PC 后端只读聚合探测，不是云端生产连接证明。
+// 它只允许本机或显式 allowlist URL，并且永远不把 token、URL 凭证或远端原始 payload 透传给 UI。
+export interface O5O6CloudRelayHealthResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o5_o6_cloud_relay_health.v1";
+  probe_status: O5O6CloudRelayProbeStatus;
+  source_base_url: string;
+  base_url_source: "query" | "env" | "not_configured";
+  token_status: "present" | "absent";
+  remote_endpoints: ["/api/o5/readiness/health", "/api/o6/archive/health"];
+  o5: O5O6CloudRelayHealthObjectiveSummary;
+  o6: O5O6CloudRelayHealthObjectiveSummary;
+  summary: {
+    loaded_count: number;
+    blocked_count: number;
+    warning_count: number;
+    pass_count: number;
+    blocked_or_warning_count: number;
+    production_ready: false;
+    archive_api_status: string;
+    safe_to_control: false;
+    sends_commands: false;
+    robot_control_executed: false;
+    delivery_success: false;
+    primary_actions_enabled: false;
+  };
+  config_policy: {
+    default_public_probe: false;
+    local_loopback_allowed: true;
+    private_lan_allowed: true;
+    base_url_env: "ROBER_CLOUD_RELAY_BASE_URL";
+    token_envs: ["TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN", "ROBER_CLOUD_RELAY_BEARER_TOKEN"];
+  };
+  key_false_fields: string[];
+  dangerous_true_fields: string[];
+  redaction_status: "passed" | "blocked";
+  fail_closed_reason: string;
+  blocked_reasons: string[];
+  not_proven: string[];
+  connects_cloud_production: false;
+  sends_commands: false;
+  reads_hardware: false;
+  robot_control_executed: false;
+}
+
 export interface O7CloudArchiveTasksProbeResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1";
   probe_status: "loaded_fail_closed_contract" | "fail_closed";
@@ -2013,6 +2086,7 @@ export const API_ROUTES = [
   "/api/o7/operator-console/acceptance",
   "/api/o7/previews/acceptance",
   "/api/o7/live-endpoints/manifest",
+  "/api/o5-o6/cloud-relay-health?baseUrl=<local-or-allowed-url>",
   "/api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>",
   "/api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>",
   "/api/o7/rtc-signaling-contract-probe?baseUrl=<local-loopback-url>",

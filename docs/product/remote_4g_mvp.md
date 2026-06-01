@@ -18,6 +18,7 @@ POST /api/commands/confirm-dropoff
 POST /api/commands/cancel
 GET  /api/commands/{command_id}/result?robot_id=<robot_id>
 GET  /api/o5/readiness/health
+GET  /api/o5-o6/cloud-relay-health   # PC workstation only, read-only health aggregation
 POST /robots/{robot_id}/commands
 GET  /robots/{robot_id}/commands/next?last_ack_id=<id>
 POST /robots/{robot_id}/status
@@ -26,6 +27,16 @@ POST /robots/{robot_id}/commands/{command_id}/ack
 GET  /robots/{robot_id}/commands/{command_id}/ack
 POST /robots/{robot_id}/commands/{command_id}/terminal-result
 ```
+
+`GET /api/o5-o6/cloud-relay-health` is a PC workstation only read-only
+aggregation probe. It accepts only a private/loopback cloud-relay base URL,
+uses bearer credentials from environment variables only, and only sends GET
+requests to the fixed O5/O6 health endpoints. The route fails closed for
+missing config, disallowed public URLs, upstream contract drift, upstream
+hardware-read or production-cloud true flags, unsafe control true flags, or
+sensitive markers. It is not production cloud proof, not real 4G/SIM proof, not
+production DB/queue proof, not real OSS/CDN proof, not phone/browser proof, and
+not delivery success.
 
 The phone-facing command API is bearer-gated and task-level only. Each
 `POST /api/commands/*` body must include `robot_id`, may include

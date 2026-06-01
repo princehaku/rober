@@ -69,6 +69,24 @@ GET  /api/o6/inference?robot_id=<id>&task_id=<id>&inference_status=<status>
 
 如果 archive store JSON 损坏、schema 错误或不可读，health route 返回 HTTP 503，`archive_api_status=store_unavailable`，`error=archive_store_unavailable`，并保持 `redaction_status=passed`。503 payload 不包含 state path、异常类型、traceback 或本机目录。
 
+### PC Workstation Aggregated Health Probe
+
+PC workstation 侧的 `GET /api/o5-o6/cloud-relay-health` 只把 O5
+`/api/o5/readiness/health` 和 O6 `/api/o6/archive/health` 汇总成一个本机
+operator 视图。它从 query 或 `ROBER_CLOUD_RELAY_BASE_URL` 读取 private /
+loopback base URL，bearer 只从 `TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN` 或
+`ROBER_CLOUD_RELAY_BEARER_TOKEN` 环境变量读取，不从 URL、query 或浏览器输入读取
+token。
+
+该 PC endpoint 对 O6 的读取边界和上面的 Archive Live Health 一致：只 GET
+`/api/o6/archive/health`，只展示 schema、capability、`archive_api_status`、
+计数和 `next_required_evidence` 摘要，不读取任务详情、不写 archive store、不触发
+annotation/inference、不上传 OSS、不连接 production DB/queue、不发送 robot command。
+任何 O6 schema mismatch、HTTP 非 2xx、坏 JSON、敏感字段、`reads_hardware=true`、
+`connects_cloud_production=true` 或控制/生产相关 true flag 都必须让聚合响应
+fail closed，并保持 `production_ready=false`、`safe_to_control=false`、
+`sends_commands=false`、`robot_control_executed=false` 和 `delivery_success=false`。
+
 ## Required Fields
 
 任务记录最小字段：

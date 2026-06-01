@@ -8,6 +8,7 @@ import {
   buildO7CloudArchiveTasks,
   buildO7DemoArchive,
   buildO7CloudArchiveTasksProbe,
+  buildO5O6CloudRelayHealth,
   buildO7LiveEndpointsManifest,
   buildO7CloudOperatorConsoleProbe,
   buildO7OperatorConsoleAcceptanceResponse,
@@ -108,6 +109,13 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/cloud-archive/tasks-probe", async (req, res) => {
     // Archive tasks probe 只拉取本机回环 cloud relay contract，不读取远程 URL、不发送任何控制动作。
     res.json(await buildO7CloudArchiveTasksProbe(queryString(req.query.baseUrl)));
+  });
+
+  workstationApp.get("/api/o5-o6/cloud-relay-health", async (req, res) => {
+    // O5/O6 health probe 只 GET 两个固定只读 health endpoint；不访问 /robots/*、不 POST、不控制机器人。
+    res.json(await buildO5O6CloudRelayHealth({
+      baseUrl: queryString(req.query.baseUrl),
+    }));
   });
 
   workstationApp.get("/api/o7/realtime-elevator-probe", async (req, res) => {

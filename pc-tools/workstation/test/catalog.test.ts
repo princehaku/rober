@@ -8,6 +8,7 @@ import {
   buildO7CloudArchiveTasks,
   buildO7DemoArchive,
   buildO7LiveEndpointsManifest,
+  buildO5O6CloudRelayHealth,
   buildO7CloudOperatorConsoleProbe,
   buildO7LocalWebrtcCamera,
   buildO7RealtimeElevatorProbe,
@@ -642,6 +643,76 @@ function listenCloudArchive(payload: unknown): Promise<{ baseUrl: string; close:
   });
 }
 
+function listenO5O6HealthRelay(payloads: {
+  token?: string;
+  o5: unknown;
+  o6: unknown;
+  o6Status?: number;
+}): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  // O5/O6 health relay 测试服务只接受 bearer-gated GET，不实现 /robots/* 或任何 POST。
+  const server = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    if (req.method !== "GET") {
+      res.statusCode = 405;
+      res.end(JSON.stringify({ error: "method_not_allowed" }));
+      return;
+    }
+    if (payloads.token && req.headers.authorization !== `Bearer ${payloads.token}`) {
+      res.statusCode = 401;
+      res.end(JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
+    if (req.url === "/api/o5/readiness/health") {
+      res.end(JSON.stringify(payloads.o5));
+      return;
+    }
+    if (req.url === "/api/o6/archive/health") {
+      res.statusCode = payloads.o6Status ?? 200;
+      res.end(JSON.stringify(payloads.o6));
+      return;
+    }
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not_found" }));
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
+function listenO5O6BadJsonRelay(): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  // bad JSON 服务用于证明上游 contract 坏掉时 PC 后端不会半开安全字段。
+  const server = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    if (req.url === "/api/o5/readiness/health" || req.url === "/api/o6/archive/health") {
+      res.end("{not-json");
+      return;
+    }
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not_found" }));
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
 function listenRtcContract(payload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
   // RTC contract probe 测试只模拟本机 relay 合同入口，不创建 WebRTC、视频或 ROS2 /tf 连接。
   const server = http.createServer((req, res) => {
@@ -1106,6 +1177,204 @@ describe("workstation fail-closed API contracts", () => {
     expect(boundary.control_policy.route_loader_mode).toBe("local_json_readonly");
     expectNoLegacyPythonGateSemantics(training);
     expectNoLegacyPythonGateSemantics(boundary);
+  });
+
+  it("O5/O6 cloud relay health fails closed when base URL is not configured", async () => {
+    // 缺 baseUrl 时不能主动探测默认公网；token 也只报告存在性，不回显值。
+    const response = await buildO5O6CloudRelayHealth({
+      env: { TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN: "secret-token" },
+    });
+
+    expect(response.schema).toBe("trashbot.pc_tools_workstation.o5_o6_cloud_relay_health.v1");
+    expect(response.probe_status).toBe("not_configured");
+    expect(response.fail_closed_reason).toBe("baseUrl_not_configured");
+    expect(response.source_base_url).toBe("not_configured");
+    expect(response.token_status).toBe("present");
+    expect(response.summary.safe_to_control).toBe(false);
+    expect(response.summary.sends_commands).toBe(false);
+    expect(response.summary.robot_control_executed).toBe(false);
+    expect(JSON.stringify(response)).not.toContain("secret-token");
+  });
+
+  it("O5/O6 cloud relay health blocks public URLs without probing them", async () => {
+    // SSRF 围栏只允许 loopback/private LAN；公网 URL 不回显、不联网。
+    const response = await buildO5O6CloudRelayHealth({
+      baseUrl: "https://example.com",
+      env: { ROBER_CLOUD_RELAY_BEARER_TOKEN: "secret-token" },
+    });
+
+    expect(response.probe_status).toBe("blocked_disallowed_base_url");
+    expect(response.fail_closed_reason).toBe("blocked_disallowed_base_url");
+    expect(response.source_base_url).toBe("blocked_disallowed_base_url");
+    expect(response.config_policy.default_public_probe).toBe(false);
+    expect(response.config_policy.private_lan_allowed).toBe(true);
+    expect(response.safe_to_control).toBe(false);
+    expect(response.robot_control_executed).toBe(false);
+    expect(JSON.stringify(response)).not.toContain("example.com");
+    expect(JSON.stringify(response)).not.toContain("secret-token");
+  });
+
+  it("O5/O6 cloud relay health summarizes mock local relay without enabling control", async () => {
+    // mock relay 只提供两个 health GET；PC 后端聚合白名单字段并保持所有动作关闭。
+    const relay = await listenO5O6HealthRelay({
+      token: "fixture-token",
+      o5: {
+        schema: "trashbot.o5.readiness_health.v1",
+        capability: "o5_readiness_live_health",
+        overall_status: "blocked",
+        blocked_count: 2,
+        warning_count: 1,
+        pass_count: 4,
+        real_material_gaps: ["real_4g_not_proven", "production_db_queue_not_proven"],
+        next_required_evidence: ["real_public_https_probe"],
+        not_proven: ["real_public_cloud", "real_4g"],
+        safe_summary: "O5 readiness loaded; control remains disabled.",
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+        delivery_success: false,
+      },
+      o6: {
+        schema: "trashbot.o6.archive_health.v1",
+        capability: "o6_archive_live_health",
+        archive_api_status: "ready",
+        task_count: 3,
+        event_count: 7,
+        next_required_evidence: ["production_db_queue_probe"],
+        not_proven: ["real_oss_upload", "real_inference_model_runtime"],
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+        delivery_success: false,
+      },
+    });
+
+    try {
+      const response = await buildO5O6CloudRelayHealth({
+        baseUrl: relay.baseUrl,
+        env: { TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN: "fixture-token" },
+      });
+
+      expect(response.probe_status).toBe("loaded_fail_closed_contract");
+      expect(response.source_base_url).toBe(relay.baseUrl);
+      expect(response.base_url_source).toBe("query");
+      expect(response.token_status).toBe("present");
+      expect(response.remote_endpoints).toEqual(["/api/o5/readiness/health", "/api/o6/archive/health"]);
+      expect(response.o5.http_status).toBe(200);
+      expect(response.o5.remote_schema).toBe("trashbot.o5.readiness_health.v1");
+      expect(response.o5.capability).toBe("o5_readiness_live_health");
+      expect(response.o5.status).toBe("blocked");
+      expect(response.o6.remote_schema).toBe("trashbot.o6.archive_health.v1");
+      expect(response.o6.capability).toBe("o6_archive_live_health");
+      expect(response.o6.status).toBe("ready");
+      expect(response.summary.loaded_count).toBe(2);
+      expect(response.summary.blocked_count).toBe(2);
+      expect(response.summary.pass_count).toBe(5);
+      expect(response.safe_to_control).toBe(false);
+      expect(response.sends_commands).toBe(false);
+      expect(response.robot_control_executed).toBe(false);
+      expect(response.summary.primary_actions_enabled).toBe(false);
+      expect(response.connects_cloud_production).toBe(false);
+      expect(response.reads_hardware).toBe(false);
+      expect(JSON.stringify(response)).not.toContain("fixture-token");
+      expect(JSON.stringify(response)).not.toContain("Authorization");
+    } finally {
+      await relay.close();
+    }
+  });
+
+  it("O5/O6 cloud relay health fails closed for upstream unavailable or bad JSON", async () => {
+    // HTTP 错误和坏 JSON 都不能被解释成 readiness pass。
+    const unavailable = await listenO5O6HealthRelay({
+      o5: {
+        schema: "trashbot.o5.readiness_health.v1",
+        capability: "o5_readiness_live_health",
+        overall_status: "blocked",
+        blocked_count: 1,
+        warning_count: 0,
+        pass_count: 1,
+        safe_to_control: false,
+      },
+      o6Status: 503,
+      o6: {
+        schema: "trashbot.o6.archive_health.v1",
+        capability: "o6_archive_live_health",
+        archive_api_status: "store_unavailable",
+        safe_to_control: false,
+      },
+    });
+
+    try {
+      const response = await buildO5O6CloudRelayHealth({ baseUrl: unavailable.baseUrl, env: {} });
+
+      expect(response.probe_status).toBe("partial_fail_closed_contract");
+      expect(response.fail_closed_reason).toBe("remote_http_status_o5_200_o6_503");
+      expect(response.blocked_reasons).toContain("remote_http_status_o5_200_o6_503");
+      expect(response.token_status).toBe("absent");
+      expect(response.safe_to_control).toBe(false);
+      expect(response.robot_control_executed).toBe(false);
+    } finally {
+      await unavailable.close();
+    }
+
+    const badJson = await listenO5O6BadJsonRelay();
+    try {
+      const response = await buildO5O6CloudRelayHealth({ baseUrl: badJson.baseUrl, env: {} });
+
+      expect(response.probe_status).toBe("blocked");
+      expect(response.fail_closed_reason).toBe("remote_bad_json");
+      expect(response.blocked_reasons).toEqual(expect.arrayContaining(["remote_bad_json", "remote_schema_mismatch"]));
+      expect(response.o5.remote_schema).toBe("not_loaded");
+      expect(response.o6.remote_schema).toBe("not_loaded");
+      expect(response.summary.loaded_count).toBe(0);
+      expect(response.summary.primary_actions_enabled).toBe(false);
+      expect(response.safe_to_control).toBe(false);
+    } finally {
+      await badJson.close();
+    }
+  });
+
+  it("O5/O6 cloud relay health fails closed for hardware reads, production cloud, or sensitive markers", async () => {
+    // 上游 health 一旦暴露硬件读取、生产连接或敏感字段，PC 聚合层只返回 marker，不透传原文。
+    const relay = await listenO5O6HealthRelay({
+      o5: {
+        schema: "trashbot.o5.readiness_health.v1",
+        capability: "o5_readiness_live_health",
+        overall_status: "blocked",
+        blocked_count: 1,
+        warning_count: 0,
+        pass_count: 1,
+        reads_hardware: true,
+        safe_to_control: false,
+      },
+      o6: {
+        schema: "trashbot.o6.archive_health.v1",
+        capability: "o6_archive_live_health",
+        archive_api_status: "ready",
+        task_count: 1,
+        connects_cloud_production: true,
+        state_path: "/tmp/private/archive-store.json",
+      },
+    });
+
+    try {
+      const response = await buildO5O6CloudRelayHealth({ baseUrl: relay.baseUrl, env: {} });
+
+      expect(response.probe_status).toBe("partial_fail_closed_contract");
+      expect(response.fail_closed_reason).toBe("dangerous_true:o5.reads_hardware");
+      expect(response.dangerous_true_fields).toEqual(expect.arrayContaining([
+        "o5.reads_hardware",
+        "o6.connects_cloud_production",
+      ]));
+      expect(response.redaction_status).toBe("blocked");
+      expect(response.blocked_reasons).toContain("sensitive_marker:o6.state_path");
+      expect(response.safe_to_control).toBe(false);
+      expect(response.reads_hardware).toBe(false);
+      expect(response.connects_cloud_production).toBe(false);
+      expect(JSON.stringify(response)).not.toContain("/tmp/private/archive-store.json");
+    } finally {
+      await relay.close();
+    }
   });
 
   it("O7 operator console exposes six cloud-contract driven KR views without dispatch", () => {
