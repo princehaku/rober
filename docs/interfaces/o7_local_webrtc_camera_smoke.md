@@ -36,7 +36,7 @@ Waveshare vendor Raspberry Pi app 只能证明 vendor 参考实现里存在 `aio
 ## 启动
 
 ```bash
-PORT=8088 ROBER_CAMERA_SOURCE=0 bash onboard/scripts/local_webrtc_camera_smoke.sh
+PORT=8088 ROBER_CAMERA_SOURCE=/dev/video1 bash onboard/scripts/local_webrtc_camera_smoke.sh
 ```
 
 同网段浏览器访问：
@@ -46,6 +46,8 @@ http://<orange-pi-lan-ip>:8088/
 ```
 
 若依赖缺失但 `python3` 可用，脚本仍会启动诊断服务；此时 `/health` 和 `/devices` 可访问，`/offer` 会返回 `webrtc_dependency_missing`，不能把它当作 WebRTC 播放成功。
+
+当前 Orange Pi Zero 3 远端实测中，`/dev/video0` 是 `cedrus` platform Video Memory-to-Memory codec，不是 capture 摄像头；`/dev/video2` 是 DV20 metadata 节点，也不能作为视频源。真实 USB 摄像头为 `/dev/video1`，`uvcvideo` driver、Video Capture capability，OpenCV `VideoCapture('/dev/video1', CAP_V4L2)` 可打开并读取 640x480 帧。脚本默认 `ROBER_CAMERA_SOURCE=auto` 时会逐个 `/dev/video*` 打开并读取首帧，跳过打不开或不可读的节点；现场稳定运行仍推荐显式设置 `ROBER_CAMERA_SOURCE=/dev/video1`。
 
 ## 机器可读 offer-level 自检
 
@@ -176,11 +178,11 @@ PC browser smoke 在 3-5 分钟播放期间可以轮询 `GET /health`，把同 L
 
 - `/devices` 为空：摄像头未枚举、驱动未加载、USB/CSI 连接或权限问题。
 - `/offer` 返回 `webrtc_dependency_missing`：缺 `aiohttp`、`aiortc`、`opencv-python` 或 `av`。
-- `/offer` 返回 `camera_open_failed`：设备路径错误、摄像头被其他进程占用、权限不足或 OpenCV backend 不支持。
+- `/offer` 返回 `camera_open_failed`：设备路径错误、摄像头被其他进程占用、权限不足或 OpenCV backend 不支持。Orange Pi 上如果 `ROBER_CAMERA_SOURCE=0` 选到 `/dev/video0` 的 cedrus codec，会出现 `camera_open_failed:0`；应改用 `/dev/video1` 或使用默认 `auto` guardrail。
 - 自检返回 `offer_rejected` 且服务端 detail 为 `camera_open_failed:<source>`：同上，优先确认 `ROBER_CAMERA_SOURCE` 和摄像头占用。
 - 自检返回 `first_frame_not_received`：answer/ICE 和首帧之间失败，需要结合 `/tmp/rober-local-webrtc-camera.log`、CPU/温度、摄像头帧率和同 LAN 网络继续定位。
 - 浏览器 smoke `failure_category=remote_409`、`offer_http_status=409` 或控制台出现 `409 (Conflict)`，且 `/health.active_peer_connections=1`：服务端单 peer 保护已被现有浏览器或未关闭自检占用，本轮不能证明真实浏览器首帧；先调用 `/peers/{peer_id}/close`、刷新服务端或确认人工观看会话，再重新执行一次显式 browser smoke。
-- `/peers/{peer_id}/close` 返回 200 但 `fuser -v /dev/video0` 仍显示 smoke 进程：说明本地 track 没有释放或仍有读取线程占用，不能继续跑 browser smoke，应先看 close JSON 里的 `stopped_tracks` / `track_stop_errors` 和服务端日志。
+- `/peers/{peer_id}/close` 返回 200 但 `fuser -v /dev/video1` 仍显示 smoke 进程：说明本地 track 没有释放或仍有读取线程占用，不能继续跑 browser smoke，应先看 close JSON 里的 `stopped_tracks` / `track_stop_errors` 和服务端日志。
 - 浏览器标签页刷新/关闭后仍出现 `active_peer_connections=1`：新版页面会在 Stop、`pagehide`、`beforeunload` 时对 answer 返回的 `peer_id` 调用 `/peers/{peer_id}/close`；若远端仍运行旧脚本或浏览器被强杀导致 close 请求未到达，可用 `/health.active_peer_ids` 定位残留 peer，必要时重启 8088 smoke 服务后重跑。
 - 浏览器 smoke `failure_category=first_frame_timeout`：页面已显式点击并等待 `<video>`，但超时未到 `readyState>=2` 且尺寸仍为空；优先结合 ICE 状态、页面错误、服务端日志、CPU/温度和摄像头帧率继续定位。
 - 浏览器 smoke `failure_category=track_received_no_rtp`：页面收到 video track，但 `inbound_video_stats` 没有 packets/decoded frame，优先查 RTP 是否从 aiortc sender 启动、codec/RTCP/候选路径是否正常。

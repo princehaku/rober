@@ -57,8 +57,79 @@ class FakePeerConnection:
         self.close_calls += 1
 
 
+class FakeCapture:
+    """fake OpenCV capture 用于证明 auto source 会跳过不可读的视频节点。"""
+
+    def __init__(self, source, outcomes) -> None:
+        self.source = source
+        self.outcomes = outcomes
+        self.released = False
+
+    def isOpened(self) -> bool:
+        return bool(self.outcomes.get(self.source, {}).get("opened"))
+
+    def read(self):
+        outcome = self.outcomes.get(self.source, {})
+        if not outcome.get("read_ok"):
+            return False, None
+        return True, object()
+
+    def set(self, *_args) -> bool:
+        return True
+
+    def getBackendName(self) -> str:
+        return "FAKE"
+
+    def release(self) -> None:
+        self.released = True
+
+
+class FakeCv2:
+    """fake cv2 只提供 auto source 选择需要的 VideoCapture 和常量。"""
+
+    CAP_V4L2 = 200
+    CAP_PROP_FRAME_WIDTH = 3
+    CAP_PROP_FRAME_HEIGHT = 4
+    CAP_PROP_FPS = 5
+
+    def __init__(self, outcomes) -> None:
+        self.outcomes = outcomes
+        self.opened_sources = []
+
+    def VideoCapture(self, source, *_args):  # noqa: N802 - 模拟 OpenCV API 名称。
+        self.opened_sources.append(source)
+        return FakeCapture(source, self.outcomes)
+
+
 class LocalWebrtcCameraSmokeCleanupTest(unittest.TestCase):
     """资源释放测试必须可用 unittest 直接跑，贴合 sprint 验收命令。"""
+
+    def test_auto_camera_source_selects_first_readable_video_node(self) -> None:
+        """默认 auto 必须跳过 cedrus 等不可读节点，选择能读首帧的真实摄像头。"""
+        module = load_smoke_module()
+        fake_cv2 = FakeCv2(
+            {
+                "/dev/video0": {"opened": False, "read_ok": False},
+                "/dev/video1": {"opened": True, "read_ok": True},
+            }
+        )
+
+        source, diagnostics = module.resolve_camera_source(
+            "auto",
+            fake_cv2,
+            ["/dev/video0", "/dev/video1"],
+            width=640,
+            height=480,
+            fps=15,
+        )
+
+        self.assertEqual(source, "/dev/video1")
+        self.assertEqual(fake_cv2.opened_sources, ["/dev/video0", "/dev/video1"])
+        self.assertEqual(diagnostics["mode"], "auto")
+        self.assertEqual(diagnostics["selected_source"], "/dev/video1")
+        self.assertEqual(diagnostics["attempts"][0]["source"], "/dev/video0")
+        self.assertFalse(diagnostics["attempts"][0]["opened"])
+        self.assertTrue(diagnostics["attempts"][1]["read_ok"])
 
     def test_health_fail_open_without_psutil_or_temperature_files(self) -> None:
         """缺 psutil/温度 sysfs 时，/health 仍必须返回结构化诊断而不是抛异常。"""

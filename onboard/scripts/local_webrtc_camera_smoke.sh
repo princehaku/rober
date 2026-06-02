@@ -5,7 +5,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PORT="${PORT:-8088}"
 HOST="${HOST:-0.0.0.0}"
-VIDEO_SOURCE="${ROBER_CAMERA_SOURCE:-0}"
+# 默认 auto 会跳过 Orange Pi 的 cedrus/metadata 等不可读节点；现场稳定后可显式设 /dev/video1。
+VIDEO_SOURCE="${ROBER_CAMERA_SOURCE:-auto}"
 WIDTH="${WIDTH:-640}"
 HEIGHT="${HEIGHT:-480}"
 FPS="${FPS:-15}"

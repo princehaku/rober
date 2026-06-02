@@ -26,6 +26,7 @@ from typing import Any
 
 APP_NAME = "rober-local-webrtc-camera-smoke"
 DEFAULT_PORT = 8088
+DEFAULT_VIDEO_SOURCE = "auto"
 DEFAULT_WIDTH = 640
 DEFAULT_HEIGHT = 480
 DEFAULT_FPS = 15
@@ -275,6 +276,85 @@ def list_video_devices() -> list[dict[str, Any]]:
     return devices
 
 
+def normalize_video_source(video_source: str) -> int | str:
+    """显式 source 保持兼容：数字走 OpenCV index，路径/URL 按字符串传给后端。"""
+    source = str(video_source).strip()
+    return int(source) if source.isdigit() else source
+
+
+def open_video_capture(cv2_module: Any, source: int | str) -> Any:
+    """Linux video 节点显式走 V4L2 backend，避免 OpenCV 后端自动探测漂移。"""
+    if hasattr(cv2_module, "CAP_V4L2") and (isinstance(source, int) or str(source).startswith("/dev/video")):
+        return cv2_module.VideoCapture(source, cv2_module.CAP_V4L2)
+    return cv2_module.VideoCapture(source)
+
+
+def resolve_camera_source(
+    video_source: str,
+    cv2_module: Any,
+    video_device_paths: list[str] | None = None,
+    *,
+    width: int,
+    height: int,
+    fps: int,
+) -> tuple[int | str | None, dict[str, Any]]:
+    """auto 模式逐个读首帧，避免 Orange Pi 平台视频节点被误当成 USB 摄像头。"""
+    requested = str(video_source).strip()
+    if requested.lower() not in ("", "auto", "autodetect"):
+        selected = normalize_video_source(requested)
+        return selected, {
+            "mode": "explicit",
+            "requested_source": requested,
+            "selected_source": selected,
+            "attempts": [],
+        }
+
+    candidates = video_device_paths if video_device_paths is not None else [item["path"] for item in list_video_devices()]
+    diagnostics: dict[str, Any] = {
+        "mode": "auto",
+        "requested_source": requested or "auto",
+        "candidate_sources": list(candidates),
+        "selected_source": None,
+        "attempts": [],
+    }
+    for candidate in candidates:
+        attempt: dict[str, Any] = {
+            "source": candidate,
+            "opened": False,
+            "read_ok": False,
+            "backend": None,
+            "frame_shape": None,
+            "error": None,
+        }
+        cap = None
+        try:
+            # 选择阶段必须真实 read 一帧；只 isOpened 在某些 v4l2 节点上会误判。
+            cap = open_video_capture(cv2_module, candidate)
+            cap.set(cv2_module.CAP_PROP_FRAME_WIDTH, width)
+            cap.set(cv2_module.CAP_PROP_FRAME_HEIGHT, height)
+            cap.set(cv2_module.CAP_PROP_FPS, fps)
+            attempt["opened"] = bool(cap.isOpened())
+            if attempt["opened"] and hasattr(cap, "getBackendName"):
+                attempt["backend"] = cap.getBackendName()
+            if attempt["opened"]:
+                ok, frame = cap.read()
+                attempt["read_ok"] = bool(ok and frame is not None)
+                shape = getattr(frame, "shape", None)
+                if shape is not None:
+                    attempt["frame_shape"] = list(shape)
+        except Exception as exc:  # noqa: BLE001 - 诊断路径要记录候选失败而不是中断整个选择。
+            attempt["error"] = f"{type(exc).__name__}:{exc}"
+        finally:
+            if cap is not None:
+                cap.release()
+        diagnostics["attempts"].append(attempt)
+        if attempt["opened"] and attempt["read_ok"]:
+            diagnostics["selected_source"] = candidate
+            return candidate, diagnostics
+    diagnostics["failure_reason"] = "no_candidate_opened_and_read_first_frame"
+    return None, diagnostics
+
+
 def run_short_command(args: list[str], timeout_s: float = 2.0) -> dict[str, Any]:
     """外部探测都加短超时，避免异常板端命令把 smoke 卡死。"""
     try:
@@ -378,6 +458,7 @@ def build_health(port: int, video_source: str) -> dict[str, Any]:
         "python": sys.version.split()[0],
         "port": port,
         "video_source": video_source,
+        "video_source_mode": "auto" if str(video_source).strip().lower() in ("", "auto", "autodetect") else "explicit",
         "imports": state,
         "lan_only": True,
         "cloud_relay": False,
@@ -537,7 +618,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
-    parser.add_argument("--video-source", default=os.getenv("ROBER_CAMERA_SOURCE", "0"))
+    parser.add_argument("--video-source", default=os.getenv("ROBER_CAMERA_SOURCE", DEFAULT_VIDEO_SOURCE))
     parser.add_argument("--width", type=int, default=DEFAULT_WIDTH)
     parser.add_argument("--height", type=int, default=DEFAULT_HEIGHT)
     parser.add_argument("--fps", type=int, default=DEFAULT_FPS)
@@ -727,8 +808,19 @@ async def aiohttp_server(args: argparse.Namespace) -> None:
             self.peer_id = peer_id
             self.stats = stats
             self._stopped = False
-            source: int | str = int(args.video_source) if str(args.video_source).isdigit() else args.video_source
-            self.cap = cv2.VideoCapture(source)
+            source, source_selection = resolve_camera_source(
+                args.video_source,
+                cv2,
+                width=args.width,
+                height=args.height,
+                fps=args.fps,
+            )
+            self.stats["source_selection"] = source_selection
+            if source is None:
+                self.stats["last_error"] = f"camera_auto_source_failed:{args.video_source}"
+                self.stats["last_error_ts_ms"] = now_ms()
+                raise RuntimeError(f"camera_auto_source_failed:{args.video_source}")
+            self.cap = open_video_capture(cv2, source)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
             self.cap.set(cv2.CAP_PROP_FPS, args.fps)
@@ -739,6 +831,7 @@ async def aiohttp_server(args: argparse.Namespace) -> None:
             self.stats.update(
                 {
                     "camera_opened": True,
+                    "resolved_video_source": source,
                     "capture_backend": self.cap.getBackendName() if hasattr(self.cap, "getBackendName") else None,
                     "configured_width": args.width,
                     "configured_height": args.height,

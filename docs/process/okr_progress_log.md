@@ -8,6 +8,20 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 20-21｜o7-camera-offer-recovery｜Same-LAN 180s browser material accepted
+
+本轮 Micro closeout 基于 `sprints/2026.06.02_20-21_o7-camera-offer-recovery/tech-done.md`。本轮遵守 repeated-blocker rule：O1 仍是最低 Objective，约 93%，但当前 blocker `target_port_identity_possible_lidar_or_other_stc_before_more_T130` 需要现场物理拔插/追线确认，不能继续盲发 `T=130`。因此本轮切到 O7，关闭上一轮 `camera_service_ready_but_first_frame_timeout_offer_http_500`。
+
+Hardware 只读确认 root cause：`ROBER_CAMERA_SOURCE=0` 选中 `/dev/video0` cedrus platform Video Memory-to-Memory codec，不是 capture 摄像头；真实 USB camera 是 `/dev/video1`，driver `uvcvideo`，`Video Capture`，OpenCV `VideoCapture('/dev/video1', CAP_V4L2)` 可打开并读取 640x480 首帧；`/dev/video2` 是 metadata 节点。无占用、权限或 Python import 问题。
+
+Full-Stack 修正本地 WebRTC camera smoke：`local_webrtc_camera_smoke.py` 默认 source 改为 `auto`，auto 逐个 `/dev/video*` 通过 V4L2 打开并读取首帧，跳过不可读节点；shell 默认 `ROBER_CAMERA_SOURCE=auto`；测试覆盖 auto 跳过 `/dev/video0` 并选择 `/dev/video1`；相关 docs 已同步更新。部署并以 `ROBER_CAMERA_SOURCE=/dev/video1` 重启后，远端 `/health` 为 `status=ready video_source=/dev/video1 active_peer_connections=0`。
+
+真实材料结果：30s browser smoke 为 `status=ok`、`offer_http_status=200`、`first_frame_received=true`、`video_width=640`、`video_height=480`、`first_frame_ms=2315`、`estimated_fps=13.93`、`server_peer_close_status=200:closed`、`post_close_active_peer_connections=0`。180s long-stability 为 `status=ok`、`observation_window_ms=180000`、`first_frame_received=true`、`first_frame_ms=1928`、`estimated_fps=13.92`、`framesDecoded=2507`、`console_errors_added=0`、`page_errors_added=0`、`post_close_active_peer_connections=0`。
+
+验证证据：verification worker 本地 `py_compile` 通过；unittest 输出 `Ran 7 tests ... OK`；`npm run o7:camera-service-readiness -- --dry-run` 通过且无 network/ssh/post/webrtc/artifact flags；`npm run test` 2 files / 63 tests；`npm run build` 35 modules transformed / built；`npm run lint` 通过；scoped diff-check 通过。安全边界：verification worker 未触碰 WAVE ROVER、serial、`T=130/T=1/T=13/T=131`、`cmd_vel`、ROS2/Nav2 或 robot control；Full-Stack remote actions 只复制/重启 camera smoke service，并通过 O7 browser collector POST `/offer`。
+
+Product closeout 判定：Objective 7 从约 96% `blocked real-material failure classification` 上调为约 97% `same-LAN 180s real browser material accepted + camera source guardrail ready`，方向为继续。Objective 1 保持约 93%；Objective 5 / 6 保持约 96%。本轮没有已完成 KR 进入历史归档区，O7 KR 仍在当前推进区，因为 cloud relay/TURN/auth/phone/browser production path、systemd persistence、弱网、ASR/TTS、手控/Nav2、robot ACK 和完整上车任务闭环仍 `not_proven`。
+
 ### 2026-06-02 18-19｜o7-camera-service-start-and-long-stability｜Camera service ready, browser first frame still blocked
 
 本轮 Micro closeout 基于 `sprints/2026.06.02_18-19_o7-camera-service-start-and-long-stability/tech-done.md`。本轮遵守 O1 重复 blocker 红线：O1 仍是最低 Objective，但当前 `target_port_identity_possible_lidar_or_other_stc_before_more_T130` 必须现场物理追线/插拔确认，不能继续盲发 `T=130`。因此本轮切到 O7 的真实材料缺口，先关闭上一轮 `remote_script_present_but_service_inactive`。
