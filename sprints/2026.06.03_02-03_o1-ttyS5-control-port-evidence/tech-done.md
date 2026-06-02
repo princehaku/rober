@@ -33,7 +33,7 @@ micro
 - `docs/interfaces/o7_realtime_hardware_sources.md`：补充 Hardware owner 复核口径、vendor 源码证据、`ttyS5` 证据边界和短时点动/急停门槛。
 - `docs/hardware/o1_wave_rover_serial_feedback_probe.md`：新增 2026-06-03 `/dev/ttyS5` 控制口证据分层、不能外推项和下一步 HIL 门槛。
 - `docs/interfaces/o1_o5_90_evidence_boundary.md`：补充 `ttyS5_control_port_observed_not_hil` 边界，明确仍不满足 O1 HIL packet 条件。
-- `OKR.md`：把 O1 当前口径更新为 `ttyS5 control write observed + low-speed T=1 field response observed; T=1001/ACK/HIL not_proven`，Product closeout 从约 93% 保守上调到约 94.5%。
+- `OKR.md`：把 O1 当前口径更新为 `ttyS5 control write observed + low-speed T=1 field response observed; T=1001/ACK/HIL not_proven`，但因 `T=1001/ACK/HIL` 仍未证明，Product closeout 保持约 93%。
 - `docs/process/okr_progress_log.md`：新增本轮 Micro closeout 记录。
 - `sprints/2026.06.03_02-03_o1-ttyS5-control-port-evidence/tech-done.md`：新增本文件。
 
@@ -83,6 +83,6 @@ git diff --check -- docs/interfaces/o7_realtime_hardware_sources.md docs/hardwar
 
 - OKR 映射：Objective 1。
 - 方向判断：继续。
-- 进度口径：从约 93% 保守上调到约 94.5%，理由是 `/dev/ttyS5 @115200` 已有 CEO 现场 control write observed 和低速 `T=1` 响应事实。
+- 进度口径：保持约 93%，理由是 `/dev/ttyS5 @115200` 已有 CEO 现场 control write observed 和低速 `T=1` 响应事实，但 `T=1001/ACK/HIL` 仍未证明，不能提升为 HIL 或闭环控制完成。
 - 验收边界：该证据只证明 `ttyS5 control write observed`，不证明 `T=1001` feedback、robot ACK、HIL packet、真实 `/imu/data`、`/battery`、`/odom`、ROS `/cmd_vel` 接入、自动停车/急停产品化或 delivery success。
 - 下一轮优先级：围绕 `/dev/ttyS5` 做短时点动安全门槛、自动停车、速度/时长参数化、operator 日志、人工急停和 `T=1001`/ACK 采集。

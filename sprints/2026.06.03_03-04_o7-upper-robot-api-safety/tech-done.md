@@ -31,7 +31,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/scripts/test_upper_robot_a
 ```text
 ....
 ----------------------------------------------------------------------
-Ran 4 tests in 0.803s
+Ran 5 tests in 0.803s
 
 OK
 ```

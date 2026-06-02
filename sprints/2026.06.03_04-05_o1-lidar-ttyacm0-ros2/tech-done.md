@@ -20,6 +20,13 @@ sprint_type: micro
   - `docs/interfaces/o7_upper_robot_api.md`
   - `docs/interfaces/o7_realtime_hardware_sources.md`
   - `docs/interfaces/o7_live_operator_panel.md`
+- PC 首屏同步：
+  - `pc-tools/workstation/src/server/o7LiveOperatorPanel.ts`
+  - `pc-tools/workstation/src/server/index.ts`
+  - `pc-tools/workstation/src/shared/contracts.ts`
+  - `pc-tools/workstation/test/App.test.ts`
+  - `pc-tools/workstation/test/catalog.test.ts`
+  - `GET /api/o7/live-operator-panel` 现在只读消费 `ROBER_UPPER_API_BASE_URL/api/status`，展示 8787 ready、camera ready、LiDAR `/dev/ttyACM0` 和 base `/dev/ttyS5`，仍保持控制 fail-closed。
 
 ## Adopted Sources
 
@@ -48,6 +55,17 @@ PYTHONDONTWRITEBYTECODE=1 python3 onboard/scripts/test_upper_robot_api.py
 
 python3 -m compileall -q onboard/src/ros2_trashbot_hardware onboard/src/ros2_trashbot_bringup onboard/scripts/upper_robot_api.py onboard/scripts/test_upper_robot_api.py
 # passed, no output
+
+cd pc-tools/workstation && npm run test -- test/App.test.ts
+# Test Files 1 passed (1)
+# Tests 6 passed (6)
+
+cd pc-tools/workstation && npx vitest run test/catalog.test.ts -t "O7 live operator panel"
+# Test Files 1 passed (1)
+# Tests 1 passed, 62 skipped
+
+cd pc-tools/workstation && npm run build
+# tsc + vite build passed
 ```
 
 上位机部署与只读验证：
@@ -84,6 +102,24 @@ curl -fsS http://192.168.1.11:8787/api/status
   - `ros2.raw_packet_topic="/lidar/raw_packet"`
   - `scan_status="not_proven"`
 - `/api/status` 同时返回 camera ready、base `/dev/ttyS5 @115200` 和 radar `/dev/ttyACM0 @150000`。
+
+PC 本机验证：
+
+```bash
+TMPDIR=/tmp ROBER_UPPER_API_BASE_URL=http://192.168.1.11:8787 npm run dev -- --host 127.0.0.1 --port 5173
+curl -fsS http://127.0.0.1:5173/api/o7/live-operator-panel
+curl -fsS http://127.0.0.1:5173/api/o7/local-webrtc-camera
+```
+
+关键结果：
+
+- 本机 `http://127.0.0.1:5173/` dev server ready。
+- `live-operator-panel.ssh.workstation_api_8787_status="ready"`。
+- `live-operator-panel.lidar_radar.dev_lidar="/dev/ttyACM0"`。
+- `live-operator-panel.lidar_radar.stc_by_id="resolved_to_ttyACM0"`。
+- `live-operator-panel.camera.health_status="ready"`。
+- `live-operator-panel.control.base_boundary.observed_write_device="/dev/ttyS5"`。
+- `local-webrtc-camera.base_url="http://192.168.1.11:8787"`，说明 PC 已通过统一 API 读取 camera proxy。
 
 ## Remaining Risks
 
