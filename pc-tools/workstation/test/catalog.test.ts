@@ -36,7 +36,7 @@ import { runExternalLiveProbe as runExternalLiveProbeJs } from "../scripts/o5-o6
 // @ts-expect-error JS CLI script intentionally stays runnable by plain node.
 import { buildCollectorPlan, buildDryRunResult } from "../scripts/o7-browser-long-stability-collector.mjs";
 // @ts-expect-error JS CLI script intentionally stays runnable by plain node.
-import { buildCollectorPlan as buildCameraReadinessCollectorPlan, buildDryRunResult as buildCameraReadinessDryRunResult } from "../scripts/o7-camera-service-readiness-collector.mjs";
+import { buildCollectorPlan as buildCameraReadinessCollectorPlan, buildDryRunResult as buildCameraReadinessDryRunResult, deriveReadiness } from "../scripts/o7-camera-service-readiness-collector.mjs";
 
 type ExternalProbeResponse = {
   schema: "trashbot.o5_o6.external_live_probe.v1";
@@ -1855,6 +1855,32 @@ describe("workstation fail-closed API contracts", () => {
       service_unit_hint_present: null,
       remote_script_present: null,
     });
+  });
+
+  it("O7 camera service readiness accepts operator-started script process without systemd unit", () => {
+    // operator-run 启动脚本是本轮恢复路径；缺 systemd unit 只能作为生产化风险，不能阻塞 180s 采集入口。
+    const readiness = deriveReadiness({
+      http_probe: {
+        health: { status: "reachable", error_category: null },
+        devices: { status: "reachable", error_category: null },
+      },
+      ssh_probe: {
+        status: "reachable",
+        camera_port_listening: true,
+        process_hint_present: true,
+        service_unit_hint_present: false,
+        remote_script_present: true,
+      },
+    });
+
+    expect(readiness).toMatchObject({
+      ready_for_long_stability: true,
+      action_category: "ready_for_long_stability",
+      service_unit_missing_or_inactive: true,
+      safe_start_command_hint: null,
+      blocked_reasons: [],
+    });
+    expect(readiness.next_action).toContain("Run npm run o7:browser-long-stability");
   });
 
   it("real-material acceptance queue surfaces O7 browser collector failure reason", async () => {

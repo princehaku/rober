@@ -8,6 +8,20 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 18-19｜o7-camera-service-start-and-long-stability｜Camera service ready, browser first frame still blocked
+
+本轮 Micro closeout 基于 `sprints/2026.06.02_18-19_o7-camera-service-start-and-long-stability/tech-done.md`。本轮遵守 O1 重复 blocker 红线：O1 仍是最低 Objective，但当前 `target_port_identity_possible_lidar_or_other_stc_before_more_T130` 必须现场物理追线/插拔确认，不能继续盲发 `T=130`。因此本轮切到 O7 的真实材料缺口，先关闭上一轮 `remote_script_present_but_service_inactive`。
+
+Full-Stack 收窄修正 `pc-tools/workstation/scripts/o7-camera-service-readiness-collector.mjs`：operator-run 直接启动远端 `local_webrtc_camera_smoke.py` 时，只要 HTTP `/health` 与 `/devices` 可达、SSH 可达、8088 正在监听、camera/WebRTC 进程线索存在、远端脚本存在，即可进入 `ready_for_long_stability=true`；缺 systemd unit 仍保留为 `service_unit_missing_or_inactive=true` 的生产化风险，但不再阻塞 180s 采集。同步测试覆盖 operator-run 无 systemd unit 的 readiness 判定，并更新 `docs/product/pc_tools_workstation.md` 与 `docs/interfaces/real_material_acceptance_queue.md`。
+
+真实 readiness 结果：`.workstation-runtime/o7-camera-service-readiness.json` 为 `status=ready_for_long_stability`，`/health` 与 `/devices` 均 HTTP 200，SSH 可达，监听摘要显示 `python3` 监听 `0.0.0.0:8088`，进程为 `python3 /root/rober/onboard/scripts/local_webrtc_camera_smoke.py --host 0.0.0.0 --port 8088 ...`。安全字段保持 `post_executed=false`、`webrtc_session_created=false`、`offer_executed=false`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`。
+
+随后实际运行 browser long-stability collector，`.workstation-runtime/o7-browser-playback-smoke.json` 结果为 `status=failed`、`failure_category=first_frame_timeout`、`remote_health_status=ready`、`start_clicked=true`、`offer_executed_by_browser=true`、`offer_http_status=500`、`first_frame_received=false`、`observation_window_ms=30605`、`stability_summary.status=not_observed`。这说明 blocker 已从“服务未启动/未监听”推进为 `camera_service_ready_but_first_frame_timeout_offer_http_500`，但未拿到真实 180s/3-5min 材料。
+
+Product closeout 判定：Objective 7 保持约 96%，不上调。Objective 1 保持约 93%；Objective 5 / 6 保持约 96%。下一步应定位板端 camera source、权限、占用、驱动状态或 `/offer` 服务端异常，修复后重跑 180s collector；不要把 readiness ready、operator-run 进程或 30s 历史材料解释为真实长期视频能力完成。
+
+验证证据：`npm run o7:camera-service-readiness -- --dry-run` 通过；真实 readiness 通过并写入 ready artifact；真实 browser long-stability 运行但失败于 first frame timeout / offer HTTP 500；后续 test/build/lint/diff-check 结果见 sprint tech-done 与本轮 git commit。
+
 ### 2026-06-02 17-18｜o1-usb-serial-inventory｜O1 只读 USB/串口 inventory probe
 
 本轮继续推进当前最低 Objective 1，但不提升真实 HIL 完成度。新增 `onboard/scripts/o1_usb_serial_inventory_probe.py`，schema 固定为 `trashbot.o1.usb_serial_inventory.v1`，只枚举 `/dev/ttyUSB*`、`/dev/ttyACM*`、`/dev/serial/by-id/*`、`/dev/serial/by-path/*` 和 `/dev/lidar`，并读取 tty 上游 sysfs USB 小文本；不 import/use pyserial、不打开串口、不发送 `T=130/T=131/T=1/T=13/cmd_vel`。输出固定 `safe_to_control=false`、`sends_commands=false`、`opens_serial_devices=false`、`robot_control_executed=false`、`delivery_success=false`，并提供 `inventory_summary`、`identity_risks` 和 `recommended_physical_checks`，要求现场分别拔插 LiDAR 与底盘控制器，对比 alias/realpath 变化后再决定是否运行显式 feedback probe。

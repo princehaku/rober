@@ -416,6 +416,9 @@ function summarizeSshProbe(probe) {
 
 function deriveActionCategory(ssh, unique) {
   // action_category 是 operator 下一步机器分类；它只基于只读 HTTP/SSH 证据，不启动远端服务。
+  if (unique.length === 0) {
+    return "ready_for_long_stability";
+  }
   if (ssh.status === "unreachable") {
     return "ssh_unreachable";
   }
@@ -434,7 +437,7 @@ function deriveActionCategory(ssh, unique) {
   if (unique.includes("http_connection_refused") || unique.includes("port_not_listening")) {
     return "service_not_listening_on_8088";
   }
-  return unique.length === 0 ? "ready_for_long_stability" : "readiness_blocked";
+  return "readiness_blocked";
 }
 
 function safeStartCommandHint(actionCategory, ssh) {
@@ -445,11 +448,18 @@ function safeStartCommandHint(actionCategory, ssh) {
   return null;
 }
 
-function deriveReadiness(result) {
+export function deriveReadiness(result) {
   const blocked = [];
   const health = result.http_probe.health;
   const devices = result.http_probe.devices;
   const ssh = result.ssh_probe;
+  const operatorStartedProcessHealthy =
+    health.status === "reachable" &&
+    devices.status === "reachable" &&
+    ssh.status === "reachable" &&
+    ssh.camera_port_listening === true &&
+    ssh.process_hint_present === true &&
+    ssh.remote_script_present === true;
 
   if (health.status !== "reachable") {
     blocked.push(health.error_category === "http_connection_refused" ? "http_connection_refused" : "http_health_unreachable");
@@ -466,7 +476,7 @@ function deriveReadiness(result) {
   if (ssh.process_hint_present === false) {
     blocked.push("process_hint_missing");
   }
-  if (ssh.service_unit_hint_present === false) {
+  if (ssh.service_unit_hint_present === false && !operatorStartedProcessHealthy) {
     blocked.push("service_unit_missing_or_inactive");
   }
   if (ssh.remote_script_present === false) {
@@ -483,7 +493,7 @@ function deriveReadiness(result) {
     ssh_unreachable: ssh.status === "unreachable",
     port_not_listening: unique.includes("port_not_listening"),
     process_hint_missing: unique.includes("process_hint_missing"),
-    service_unit_missing_or_inactive: unique.includes("service_unit_missing_or_inactive"),
+    service_unit_missing_or_inactive: ssh.service_unit_hint_present === false,
     remote_script_missing: unique.includes("remote_script_missing"),
     action_category: actionCategory,
     safe_start_command_hint: safeStartCommandHint(actionCategory, ssh),
