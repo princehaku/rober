@@ -471,9 +471,50 @@ const fixtures: Record<string, unknown> = {
         collection_runbook: {
           goal: "O5: collect production HTTPS external probe material for /api/o5/readiness/health",
           suggested_commands: [
-            "cd pc-tools/workstation && ROBER_PC_BASE_URL=http://127.0.0.1:8787 ROBER_CLOUD_BASE_URL=https://<production-cloud-base> ROBER_O5_O6_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
+            "cd pc-tools/workstation && ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://127.0.0.1:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
+            "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://<pc-workstation-host>:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json --output .workstation-runtime/o5-o6-external-live-probe.json",
           ],
-          required_env: ["ROBER_PC_BASE_URL", "ROBER_CLOUD_BASE_URL", "ROBER_O5_O6_BEARER_TOKEN"],
+          collection_paths: [
+            {
+              id: "pc_node_npm",
+              title: "PC workstation Node collector",
+              runtime: "node",
+              host_role: "pc_workstation",
+              command:
+                "cd pc-tools/workstation && ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://127.0.0.1:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
+              required_env: [
+                "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",
+                "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL",
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN",
+              ],
+              required_artifact: ".workstation-runtime/o5-o6-external-live-probe.json or ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT",
+              artifact_write_mode: "writes_output_file",
+              success_criteria: ["tls_evidence.tls_status=observed and tls_observed=true"],
+              safety_notes: ["Node collector only sends fixed allowlisted GET requests."],
+            },
+            {
+              id: "upper_computer_python_stdlib",
+              title: "Upper-computer Python stdlib collector",
+              runtime: "python_stdlib",
+              host_role: "upper_computer",
+              command:
+                "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://<pc-workstation-host>:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json --output .workstation-runtime/o5-o6-external-live-probe.json",
+              required_env: [
+                "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",
+                "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL",
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN",
+              ],
+              required_artifact: ".workstation-runtime/o5-o6-external-live-probe.json copied back or exposed via ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT",
+              artifact_write_mode: "stdout_json_optional_output",
+              success_criteria: ["tls_evidence.tls_status=observed and tls_observed=true"],
+              safety_notes: ["Python collector uses stdlib only so it can run on the Orange Pi upper computer without npm."],
+            },
+          ],
+          required_env: [
+            "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",
+            "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL",
+            "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN",
+          ],
           required_artifacts: [".workstation-runtime/o5-o6-external-live-probe.json or ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT"],
           expected_output: "trashbot.o5_o6.external_live_probe.v1 JSON with TLS evidence and endpoint summaries",
           success_criteria: ["tls_evidence.tls_status=observed and tls_observed=true"],
@@ -507,9 +548,50 @@ const fixtures: Record<string, unknown> = {
         collection_runbook: {
           goal: "O6: collect production HTTPS external probe material for /api/o6/archive/health",
           suggested_commands: [
-            "cd pc-tools/workstation && ROBER_PC_BASE_URL=http://127.0.0.1:8787 ROBER_CLOUD_BASE_URL=https://<production-cloud-base> ROBER_O5_O6_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
+            "cd pc-tools/workstation && ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://127.0.0.1:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
+            "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://<pc-workstation-host>:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json --output .workstation-runtime/o5-o6-external-live-probe.json",
           ],
-          required_env: ["ROBER_PC_BASE_URL", "ROBER_CLOUD_BASE_URL", "ROBER_O5_O6_BEARER_TOKEN"],
+          collection_paths: [
+            {
+              id: "pc_node_npm",
+              title: "PC workstation Node collector",
+              runtime: "node",
+              host_role: "pc_workstation",
+              command:
+                "cd pc-tools/workstation && ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://127.0.0.1:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
+              required_env: [
+                "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",
+                "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL",
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN",
+              ],
+              required_artifact: ".workstation-runtime/o5-o6-external-live-probe.json or ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT",
+              artifact_write_mode: "writes_output_file",
+              success_criteria: ["/api/o6/archive/health reachable=true and schema_status=matched"],
+              safety_notes: ["Node collector must not POST, access robots_path_forbidden, read hardware, or send robot commands."],
+            },
+            {
+              id: "upper_computer_python_stdlib",
+              title: "Upper-computer Python stdlib collector",
+              runtime: "python_stdlib",
+              host_role: "upper_computer",
+              command:
+                "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://<pc-workstation-host>:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json --output .workstation-runtime/o5-o6-external-live-probe.json",
+              required_env: [
+                "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",
+                "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL",
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN",
+              ],
+              required_artifact: ".workstation-runtime/o5-o6-external-live-probe.json copied back or exposed via ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT",
+              artifact_write_mode: "stdout_json_optional_output",
+              success_criteria: ["/api/o6/archive/health reachable=true and schema_status=matched"],
+              safety_notes: ["Python collector is GET-only, fail-closed, and must not POST or access robots_path_forbidden."],
+            },
+          ],
+          required_env: [
+            "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",
+            "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL",
+            "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN",
+          ],
           required_artifacts: [".workstation-runtime/o5-o6-external-live-probe.json or ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT"],
           expected_output: "trashbot.o5_o6.external_live_probe.v1 JSON with TLS evidence and endpoint summaries",
           success_criteria: ["/api/o6/archive/health reachable=true and schema_status=matched"],
@@ -545,6 +627,7 @@ const fixtures: Record<string, unknown> = {
           suggested_commands: [
             "cd pc-tools/workstation && ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://<board-lan-host>:8088 npm run o7:browser-long-stability",
           ],
+          collection_paths: [],
           required_env: ["ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL"],
           required_artifacts: [".workstation-runtime/o7-browser-playback-smoke.json or ROBER_O7_BROWSER_SMOKE_RESULT_JSON"],
           expected_output: "trashbot.o7.local_webrtc_browser_playback_smoke.v1 JSON with first frame and stability_summary",
@@ -2570,20 +2653,20 @@ function stubWorkstationFetch() {
                   : url.startsWith("/api/o7/live-endpoints/manifest")
                     ? "/api/o7/live-endpoints/manifest"
                     : url.startsWith("/api/o7/cloud-archive/tasks-probe")
-                      ? "/api/o7/cloud-archive/tasks-probe"
-                      : url.startsWith("/api/o7/cloud-archive/tasks")
-                        ? "/api/o7/cloud-archive/tasks"
-                        : url.startsWith("/api/o7/cloud-operator-console-probe")
-                          ? "/api/o7/cloud-operator-console-probe"
-                          : url.startsWith("/api/o7/rtc-signaling-contract-probe")
-                            ? "/api/o7/rtc-signaling-contract-probe"
-                            : url.startsWith("/api/o7/realtime-elevator-probe")
-                              ? "/api/o7/realtime-elevator-probe"
-                              : url.startsWith("/api/o7/local-webrtc-camera")
-                                ? "/api/o7/local-webrtc-camera"
-                                : url.startsWith("/api/real-material/acceptance")
-                                  ? "/api/real-material/acceptance"
-                                : url;
+                        ? "/api/o7/cloud-archive/tasks-probe"
+                        : url.startsWith("/api/o7/cloud-archive/tasks")
+                          ? "/api/o7/cloud-archive/tasks"
+                          : url.startsWith("/api/o7/cloud-operator-console-probe")
+                            ? "/api/o7/cloud-operator-console-probe"
+                            : url.startsWith("/api/o7/rtc-signaling-contract-probe")
+                              ? "/api/o7/rtc-signaling-contract-probe"
+                              : url.startsWith("/api/o7/realtime-elevator-probe")
+                                ? "/api/o7/realtime-elevator-probe"
+                                : url.startsWith("/api/o7/local-webrtc-camera")
+                                  ? "/api/o7/local-webrtc-camera"
+                                  : url.startsWith("/api/real-material/acceptance")
+                                    ? "/api/real-material/acceptance"
+                                  : url;
     return {
       ok: true,
       json: async () => fixtures[fixtureKey],
@@ -2735,6 +2818,12 @@ describe("App", () => {
     expect(wrapper.text()).toContain("freshness=stale");
     expect(wrapper.text()).toContain("freshness=fresh");
     expect(wrapper.text()).toContain("runbook=O7: collect 180s+ same-LAN browser playback stability material");
+    expect(wrapper.text()).toContain("path=pc_node_npm");
+    expect(wrapper.text()).toContain("path=upper_computer_python_stdlib");
+    expect(wrapper.text()).toContain("runtime=python_stdlib");
+    expect(wrapper.text()).toContain("host=upper_computer");
+    expect(wrapper.text()).toContain("ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL");
+    expect(wrapper.text()).toContain("cloud-relay/scripts/o5_o6_external_live_probe.py --once-json");
     expect(wrapper.text()).toContain("npm run o7:browser-long-stability");
     expect(wrapper.text()).toContain("stability_summary.observation_window_ms >= 180000");
     expect(wrapper.text()).toContain("External Probe Artifact");

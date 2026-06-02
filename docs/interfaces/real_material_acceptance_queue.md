@@ -81,7 +81,17 @@
   - `mtime` / `age_seconds` / `stale_after_seconds` 用于 operator 判断材料是否过期。
 - `collection_runbook`：operator 可读采集 runbook，不会由 API 自动执行。
   - `goal`：采集目标。
-  - `suggested_commands[]`：安全 recipe / 脚本入口说明。
+  - `suggested_commands[]`：兼容旧 UI 的安全 recipe / 脚本入口摘要。
+  - `collection_paths[]`：结构化采集路径列表；O5/O6 item 会列出 PC Node 与上位机 Python 两条入口，O7 item 仍沿用 `suggested_commands[]`。
+    - `id=pc_node_npm | upper_computer_python_stdlib`
+    - `runtime=node | python_stdlib`
+    - `host_role=pc_workstation | upper_computer`
+    - `command`：人工执行命令；API 不执行该命令。
+    - `required_env[]`：该路径需要的环境变量。
+    - `required_artifact`：该路径的 artifact 落盘或回传方式。
+    - `artifact_write_mode=writes_output_file | stdout_json_optional_output`
+    - `success_criteria[]`：该路径的成功门槛。
+    - `safety_notes[]`：该路径的 no POST / no `/robots/*` / no hardware read / no robot command 边界。
   - `required_env[]`：需要准备的环境变量。
   - `required_artifacts[]`：期望落盘或通过 env 指向的 artifact。
   - `expected_output`：期望输出 schema。
@@ -135,7 +145,45 @@ Runbook 是 recipe，不是执行结果。API 返回 runbook 时仍必须保持�
 - 不读取硬件。
 - 不发送控制。
 
-O5/O6 runbook 指向现有 `npm run o5o6:external-probe`，要求 operator 准备 `ROBER_PC_BASE_URL`、`ROBER_CLOUD_BASE_URL` 和 `ROBER_O5_O6_BEARER_TOKEN`，并把输出落到 `.workstation-runtime/o5-o6-external-live-probe.json` 或通过 `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 指向。
+O5/O6 runbook 必须同时暴露两条采集路径，避免真实材料采集只依赖 PC Node/npm 环境：
+
+1. `pc_node_npm`
+   - 运行位置：PC workstation。
+   - runtime：Node。
+   - 命令入口：
+     `cd pc-tools/workstation && ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://127.0.0.1:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json`
+   - 所需 env：
+     `ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL`、
+     `ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL` 或 `ROBER_CLOUD_RELAY_BASE_URL`、
+     `TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN` 或 `ROBER_CLOUD_RELAY_BEARER_TOKEN`。
+   - artifact：`.workstation-runtime/o5-o6-external-live-probe.json`，或由 `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 指向。
+
+2. `upper_computer_python_stdlib`
+   - 运行位置：上位机（Orange Pi / Ubuntu 环境），适合没有 npm/node_modules 的现场采集。
+   - runtime：Python stdlib only。
+   - 命令入口：
+     `ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://<pc-workstation-host>:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json --output .workstation-runtime/o5-o6-external-live-probe.json`
+   - 所需 env：
+     `ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL`、
+     `ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL` 或 `ROBER_CLOUD_RELAY_BASE_URL`、
+     `TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN` 或 `ROBER_CLOUD_RELAY_BEARER_TOKEN`。
+   - artifact：脚本 stdout 输出 `trashbot.o5_o6.external_live_probe.v1` JSON；传 `--output` 时写入 JSON 文件。operator 可把该文件复制回 PC workstation `.workstation-runtime/o5-o6-external-live-probe.json`，或用 `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 指向实际路径。
+
+两条 O5/O6 路径的共同成功门槛：
+
+- `tls_evidence.tls_status=observed` 且 `tls_observed=true`。
+- O5 `/api/o5/readiness/health` 或 O6 `/api/o6/archive/health` 对应 endpoint `reachable=true` 且 `schema_status=matched`。
+- `contract_status=observed_fail_closed_contract` 或 `pass`。
+- `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`reads_hardware=false` 固定不变。
+
+两条 O5/O6 路径的共同安全边界：
+
+- 只发送固定 allowlist GET。
+- 不 POST。
+- 不访问 `/robots/*`。
+- 不访问 `/cmd_vel`。
+- 不读取串口、ROS2、Nav2、摄像头设备、WAVE ROVER 或任何硬件。
+- 不发送机器人控制命令。
 
 O7 runbook 现在先指向 `npm run o7:camera-service-readiness`，再指向 `npm run o7:browser-long-stability`。当上一份 browser smoke artifact 已经显示 `ERR_CONNECTION_REFUSED` / `remote_health_unreachable` 时，queue 的 `next_action` 必须优先提示 readiness collector，先确认板端 HTTP/WebRTC camera 服务是否监听、SSH 是否可达、端口/进程线索是否存在，再重跑 180s 长稳态。
 

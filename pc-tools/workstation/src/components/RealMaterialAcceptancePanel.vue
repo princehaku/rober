@@ -70,7 +70,16 @@ const queueItems = computed(() => {
         <span>reason={{ item.blocking_reason }}</span>
         <span>next={{ item.next_action }}</span>
         <span>runbook={{ item.collection_runbook.goal }}</span>
-        <span>cmd={{ item.collection_runbook.suggested_commands[0] }}</span>
+        <div class="runbook-path-list">
+          <!-- collection_paths 是后端白名单 recipe；UI 只展示，不提供执行按钮。 -->
+          <span v-for="path in item.collection_runbook.collection_paths" :key="path.id">
+            path={{ path.id }} · runtime={{ path.runtime }} · host={{ path.host_role }} · artifact={{ path.required_artifact }}
+            · env={{ path.required_env.join(" + ") }} · cmd={{ path.command }}
+          </span>
+        </div>
+        <span v-if="item.collection_runbook.collection_paths.length === 0">
+          cmd={{ item.collection_runbook.suggested_commands.join(" | ") }}
+        </span>
         <span>success={{ item.collection_runbook.success_criteria.join(" | ") }}</span>
         <span>boundary={{ item.proof_boundary }}</span>
       </article>

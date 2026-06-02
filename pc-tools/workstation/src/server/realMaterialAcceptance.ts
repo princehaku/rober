@@ -168,25 +168,73 @@ function o5o6NextAction(objective: "O5" | "O6", status: RealMaterialAcceptanceSt
   if (status === "accepted") {
     return `${objective}: keep artifact as real-material evidence and wait for OKR owner review`;
   }
-  return `${objective}: run the existing O5/O6 external probe against production HTTPS and place its JSON artifact in workstation runtime`;
+  return `${objective}: run either PC Node or upper-computer Python stdlib O5/O6 external probe against production HTTPS and place its JSON artifact in workstation runtime`;
 }
 
 function o5o6Runbook(objective: "O5" | "O6"): RealMaterialCollectionRunbook {
   const endpoint = objective === "O5" ? "/api/o5/readiness/health" : "/api/o6/archive/health";
+  const sharedSuccessCriteria = [
+    "tls_evidence.tls_status=observed and tls_observed=true",
+    `${endpoint} reachable=true and schema_status=matched`,
+    "contract_status is observed_fail_closed_contract or pass",
+    "safe_to_control=false and robot_control_executed=false remain fixed",
+  ];
   return {
     goal: `${objective}: collect production HTTPS external probe material for ${endpoint}`,
     suggested_commands: [
-      "cd pc-tools/workstation && ROBER_PC_BASE_URL=http://127.0.0.1:8787 ROBER_CLOUD_BASE_URL=https://<production-cloud-base> ROBER_O5_O6_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
+      "cd pc-tools/workstation && ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://127.0.0.1:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
+      "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://<pc-workstation-host>:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json --output .workstation-runtime/o5-o6-external-live-probe.json",
     ],
-    required_env: ["ROBER_PC_BASE_URL", "ROBER_CLOUD_BASE_URL", "ROBER_O5_O6_BEARER_TOKEN"],
+    collection_paths: [
+      {
+        id: "pc_node_npm",
+        title: "PC workstation Node collector",
+        runtime: "node",
+        host_role: "pc_workstation",
+        command:
+          "cd pc-tools/workstation && ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://127.0.0.1:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
+        required_env: [
+          "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",
+          "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL",
+          "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN",
+        ],
+        required_artifact: ".workstation-runtime/o5-o6-external-live-probe.json or ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT",
+        artifact_write_mode: "writes_output_file",
+        success_criteria: sharedSuccessCriteria,
+        safety_notes: [
+          "Node collector only sends fixed allowlisted GET requests.",
+          "Node collector must not POST, access robots_path_forbidden, read hardware, or send robot commands.",
+        ],
+      },
+      {
+        id: "upper_computer_python_stdlib",
+        title: "Upper-computer Python stdlib collector",
+        runtime: "python_stdlib",
+        host_role: "upper_computer",
+        command:
+          "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://<pc-workstation-host>:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json --output .workstation-runtime/o5-o6-external-live-probe.json",
+        required_env: [
+          "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",
+          "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL",
+          "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN",
+        ],
+        required_artifact: ".workstation-runtime/o5-o6-external-live-probe.json copied back or exposed via ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT",
+        artifact_write_mode: "stdout_json_optional_output",
+        success_criteria: sharedSuccessCriteria,
+        safety_notes: [
+          "Python collector uses stdlib only so it can run on the Orange Pi upper computer without npm.",
+          "Python collector is GET-only, fail-closed, and must not POST, access robots_path_forbidden, read hardware, or send robot commands.",
+        ],
+      },
+    ],
+    required_env: [
+      "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",
+      "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL",
+      "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN",
+    ],
     required_artifacts: [".workstation-runtime/o5-o6-external-live-probe.json or ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT"],
     expected_output: "trashbot.o5_o6.external_live_probe.v1 JSON with TLS evidence and endpoint summaries",
-    success_criteria: [
-      "tls_evidence.tls_status=observed and tls_observed=true",
-      `${endpoint} reachable=true and schema_status=matched`,
-      "contract_status is observed_fail_closed_contract or pass",
-      "safe_to_control=false and robot_control_executed=false remain fixed",
-    ],
+    success_criteria: sharedSuccessCriteria,
     failure_handling: [
       "If artifact is missing, run the command manually from a prepared workstation shell.",
       "If TLS is blocked, fix HTTPS certificate, DNS, or reverse proxy before re-running.",
@@ -206,6 +254,7 @@ function o7Runbook(): RealMaterialCollectionRunbook {
       "cd pc-tools/workstation && ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://<board-lan-host>:8088 npm run o7:camera-service-readiness",
       "cd pc-tools/workstation && ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://<board-lan-host>:8088 npm run o7:browser-long-stability",
     ],
+    collection_paths: [],
     required_env: ["ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL", "optional ROBER_O7_CAMERA_SERVICE_SSH_TARGET", "optional ROBER_O7_CAMERA_SERVICE_SSH_PORT"],
     required_artifacts: [
       ".workstation-runtime/o7-camera-service-readiness.json",

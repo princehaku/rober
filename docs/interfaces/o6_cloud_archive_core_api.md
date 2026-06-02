@@ -151,6 +151,14 @@ error 为分类枚举；不展示 raw URL、raw host、证书 DN 原文、token�
 或 traceback。该 API 不执行 probe、不发网络请求、不访问 `/robots/*`、不读取
 硬件；缺文件、坏 JSON、schema mismatch 或 unsafe true field 均 fail closed。
 
+`GET /api/real-material/acceptance` 会把同一份 O5/O6 artifact 转成 operator
+queue，并在 `collection_runbook.collection_paths[]` 同时列出
+`pc_node_npm` 与 `upper_computer_python_stdlib` 两条采集路径。两条路径输出同一
+`trashbot.o5_o6.external_live_probe.v1` schema；上位机 Python 路径可通过
+`--once-json` stdout 或 `--output` 文件落盘，再复制回 PC workstation runtime 或由
+`ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 指向。该 queue 仍只读已有 artifact，不执行
+probe、不 POST、不访问 `/robots/*`、不读取硬件。
+
 ## Required Fields
 
 任务记录最小字段：

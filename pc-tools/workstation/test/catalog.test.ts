@@ -1785,6 +1785,22 @@ describe("workstation fail-closed API contracts", () => {
     ]);
     expect(response.items[0]?.collection_runbook.goal).toContain("O5: collect production HTTPS external probe material");
     expect(response.items[0]?.collection_runbook.suggested_commands[0]).toContain("npm run o5o6:external-probe");
+    expect(response.items[0]?.collection_runbook.suggested_commands[1]).toContain("python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json");
+    expect(response.items[0]?.collection_runbook.collection_paths.map((pathItem) => pathItem.id)).toEqual([
+      "pc_node_npm",
+      "upper_computer_python_stdlib",
+    ]);
+    expect(response.items[0]?.collection_runbook.collection_paths[1]).toMatchObject({
+      runtime: "python_stdlib",
+      host_role: "upper_computer",
+      artifact_write_mode: "stdout_json_optional_output",
+    });
+    expect(response.items[0]?.collection_runbook.collection_paths[1]?.required_env).toContain(
+      "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL",
+    );
+    expect(response.items[0]?.collection_runbook.collection_paths[1]?.success_criteria).toContain(
+      "/api/o5/readiness/health reachable=true and schema_status=matched",
+    );
     expect(response.items[2]?.collection_runbook.suggested_commands[0]).toContain("npm run o7:camera-service-readiness");
     expect(response.items[2]?.collection_runbook.suggested_commands[1]).toContain("npm run o7:browser-long-stability");
     expect(response.items[2]?.collection_runbook.success_criteria).toContain("stability_summary.observation_window_ms >= 180000");
@@ -5043,4 +5059,5 @@ describe("workstation fail-closed API contracts", () => {
       await dangerousServer.close();
     }
   });
+
 });

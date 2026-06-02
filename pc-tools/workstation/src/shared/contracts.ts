@@ -2163,9 +2163,23 @@ export type RealMaterialAcceptanceItemId =
   | "o6_archive_external_probe"
   | "o7_browser_long_stability";
 
+export interface RealMaterialCollectionPath {
+  id: "pc_node_npm" | "upper_computer_python_stdlib";
+  title: string;
+  runtime: "node" | "python_stdlib";
+  host_role: "pc_workstation" | "upper_computer";
+  command: string;
+  required_env: string[];
+  required_artifact: string;
+  artifact_write_mode: "writes_output_file" | "stdout_json_optional_output";
+  success_criteria: string[];
+  safety_notes: string[];
+}
+
 export interface RealMaterialCollectionRunbook {
   goal: string;
   suggested_commands: string[];
+  collection_paths: RealMaterialCollectionPath[];
   required_env: string[];
   required_artifacts: string[];
   expected_output: string;
