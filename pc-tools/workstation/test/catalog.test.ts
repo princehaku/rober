@@ -1751,6 +1751,7 @@ describe("workstation fail-closed API contracts", () => {
       env: {
         ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT: externalPath,
         ROBER_O7_BROWSER_SMOKE_RESULT_JSON: smokePath,
+        ROBER_O7_CAMERA_SERVICE_READINESS_ARTIFACT: path.join(tempDir, "missing-readiness.json"),
       },
     });
 
@@ -1846,6 +1847,14 @@ describe("workstation fail-closed API contracts", () => {
     expect(dryRun.planned_http_gets).toEqual(["http://192.168.1.11:8088/health", "http://192.168.1.11:8088/devices"]);
     expect(dryRun.planned_ssh_readonly_checks).toContain("ss_or_netstat_listening_summary");
     expect(dryRun.readiness.ready_for_long_stability).toBe(false);
+    expect(dryRun.readiness.action_category).toBe("not_observed");
+    expect(dryRun.readiness.safe_start_command_hint).toBeNull();
+    expect(dryRun.ssh_probe).toMatchObject({
+      unit_summary: [],
+      script_summary: [],
+      service_unit_hint_present: null,
+      remote_script_present: null,
+    });
   });
 
   it("real-material acceptance queue surfaces O7 browser collector failure reason", async () => {
@@ -1879,6 +1888,7 @@ describe("workstation fail-closed API contracts", () => {
       env: {
         ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT: path.join(tempDir, "missing-external.json"),
         ROBER_O7_BROWSER_SMOKE_RESULT_JSON: smokePath,
+        ROBER_O7_CAMERA_SERVICE_READINESS_ARTIFACT: path.join(tempDir, "missing-readiness.json"),
       },
     });
     const o7Item = response.items.find((item) => item.id === "o7_browser_long_stability");
@@ -1893,6 +1903,87 @@ describe("workstation fail-closed API contracts", () => {
     expect(o7Item?.safe_to_control).toBe(false);
     expect(response.execution_policy.network_probe_executed).toBe(false);
     expect(JSON.stringify(response)).not.toContain("192.168.1.11");
+  });
+
+  it("real-material acceptance queue consumes O7 camera readiness artifact action category", async () => {
+    // readiness artifact 是 operator 已显式采集的只读诊断；queue 只消费它，不自动 SSH 或启动服务。
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-real-material-o7-readiness-"));
+    const smokePath = path.join(tempDir, "browser-smoke-failed.json");
+    const readinessPath = path.join(tempDir, "camera-service-readiness.json");
+    await writeFile(
+      smokePath,
+      JSON.stringify({
+        schema: "trashbot.o7.local_webrtc_browser_playback_smoke.v1",
+        status: "failed",
+        executed_at: "2026-06-02T08:13:50.252Z",
+        failure_category: "browser_smoke_failed",
+        blocked_reason: "page.goto: net::ERR_CONNECTION_REFUSED at http://192.168.1.11:8088/",
+        remote_health_status: "remote_health_unreachable",
+        first_frame_received: false,
+        stability_summary: { status: "not_observed", observation_window_ms: 0 },
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+      }),
+      "utf8",
+    );
+    await writeFile(
+      readinessPath,
+      JSON.stringify({
+        schema: "trashbot.o7.camera_service_readiness.v1",
+        status: "blocked",
+        executed_at: "2026-06-02T08:13:50.252Z",
+        ssh_probe: {
+          status: "reachable",
+          camera_port_listening: false,
+          process_hint_present: false,
+          service_unit_hint_present: false,
+          remote_script_present: true,
+        },
+        readiness: {
+          ready_for_long_stability: false,
+          action_category: "remote_script_present_but_service_inactive",
+          safe_start_command_hint:
+            "ssh root@192.168.1.11 -p 37878 'cd /root/rober && HOST=0.0.0.0 PORT=8088 bash onboard/scripts/local_webrtc_camera_smoke.sh'",
+          blocked_reasons: [
+            "http_health_unreachable",
+            "http_devices_unreachable",
+            "port_not_listening",
+            "process_hint_missing",
+            "service_unit_missing_or_inactive",
+          ],
+        },
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+      }),
+      "utf8",
+    );
+
+    const response = await buildRealMaterialAcceptance({
+      env: {
+        ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT: path.join(tempDir, "missing-external.json"),
+        ROBER_O7_BROWSER_SMOKE_RESULT_JSON: smokePath,
+        ROBER_O7_CAMERA_SERVICE_READINESS_ARTIFACT: readinessPath,
+      },
+    });
+    const o7Item = response.items.find((item) => item.id === "o7_browser_long_stability");
+
+    expect(o7Item?.blocking_reason).toBe(
+      "browser_smoke_failed__net_err_connection_refused__remote_health_unreachable__remote_script_present_but_service_inactive",
+    );
+    expect(o7Item?.next_action).toContain("board script exists but 8088 is not listening");
+    expect(o7Item?.o7_camera_service_readiness).toMatchObject({
+      artifact_status: "loaded",
+      readiness_status: "blocked",
+      action_category: "remote_script_present_but_service_inactive",
+      ready_for_long_stability: false,
+    });
+    expect(o7Item?.o7_camera_service_readiness?.blocked_reasons).toContain("service_unit_missing_or_inactive");
+    expect(o7Item?.o7_camera_service_readiness?.artifact_freshness.source).toBe("env_configured");
+    expect(o7Item?.safe_to_control).toBe(false);
+    expect(response.execution_policy.network_probe_executed).toBe(false);
+    expect(response.execution_policy.webrtc_session_created).toBe(false);
   });
 
   it("O7 long-stability collector rejects unsafe parameter shapes", () => {
@@ -1918,6 +2009,7 @@ describe("workstation fail-closed API contracts", () => {
       env: {
         ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT: path.join(tempDir, "missing-external.json"),
         ROBER_O7_BROWSER_SMOKE_RESULT_JSON: path.join(tempDir, "missing-smoke.json"),
+        ROBER_O7_CAMERA_SERVICE_READINESS_ARTIFACT: path.join(tempDir, "missing-readiness.json"),
       },
     });
 

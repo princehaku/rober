@@ -8,6 +8,18 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 16-17｜o7-camera-service-recovery-readiness｜Camera service blocker classified to recovery action
+
+本轮 Micro closeout 基于 `sprints/2026.06.02_16-17_o7-camera-service-recovery-readiness/tech-done.md`。本轮遵守 O1 重复 blocker 红线：O1 仍是最低 Objective，但当前 `target_port_identity_possible_lidar_or_other_stc_before_more_T130` 必须现场物理追线/插拔确认，不能继续盲发 `T=130`。因此本轮切到 O7 的非阻塞真实材料缺口，把 8088 camera/WebRTC service readiness 从泛化连接拒绝推进到可执行恢复分类。
+
+Full-Stack 扩展 `pc-tools/workstation/scripts/o7-camera-service-readiness-collector.mjs`：只读 SSH 诊断除监听端口和进程摘要外，新增 camera/WebRTC 相关 systemd/unit 摘要、远端脚本摘要、`service_unit_hint_present`、`remote_script_present`、`readiness.action_category` 和脱敏 `safe_start_command_hint`。`pc-tools/workstation/src/server/realMaterialAcceptance.ts` 现在只读消费 `.workstation-runtime/o7-camera-service-readiness.json` 或 `ROBER_O7_CAMERA_SERVICE_READINESS_ARTIFACT` 指向的 artifact，在 O7 item 内输出脱敏 `o7_camera_service_readiness` 摘要；API 不执行 probe、不联网、不 SSH、不 POST `/offer`、不创建 WebRTC session、不发送控制。文档同步更新在 `docs/product/pc_tools_workstation.md` 和 `docs/interfaces/real_material_acceptance_queue.md`。
+
+真实 readiness 结果：`cd pc-tools/workstation && npm run o7:camera-service-readiness` 按 contract exit 1 并写入 blocked artifact。HTTP `/health` 和 `/devices` 均 `unreachable`；SSH 到上位机可达；监听摘要没有 8088；进程摘要没有 camera/WebRTC 进程；systemd/unit 摘要为空；远端脚本摘要存在 `/root/rober/onboard/scripts/local_webrtc_camera_smoke.sh` 和 `.py`。因此分类为 `readiness.action_category=remote_script_present_but_service_inactive`，blocked reasons 为 `http_health_unreachable`、`http_devices_unreachable`、`port_not_listening`、`process_hint_missing`、`service_unit_missing_or_inactive`。安全字段保持 `post_executed=false`、`webrtc_session_created=false`、`offer_executed=false`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`。
+
+Product closeout 判定：Objective 7 保持约 96%，不上调。价值是把 O7 recovery next action 从“确认 8088 服务”细化为“远端脚本存在但服务未启动/未监听，operator 应人工启动或安装 `local_webrtc_camera_smoke` 服务后重跑 readiness”。真实 180s/3-5min browser long-stability artifact、真实手机/browser、公网 relay/TURN/鉴权、ASR/TTS、手控/Nav2、robot ACK 和完整上车任务闭环仍 `not_proven`。Objective 1 保持约 93%；Objective 5 / 6 保持约 96%。
+
+验证证据：`npm run o7:camera-service-readiness -- --dry-run` exit 0；真实 readiness exit 1 但按 contract 产出 blocked artifact；`npm run test` 2 files / 62 tests passed；`npm run build` 通过，Vite 输出 `35 modules transformed`；`npm run lint` 通过；scoped `git diff --check` 通过。
+
 ### 2026-06-02 15-16｜o1-port-identity-remote-evidence｜Remote STC/LiDAR identity risk observed
 
 本轮 Micro closeout 基于 `sprints/2026.06.02_15-16_o1-port-identity-remote-evidence/tech-done.md`。Hardware Infra 按 O1 当前最低优先级，在 no-motion/fail-closed 边界内，把上一轮新增的 `onboard/scripts/o1_wave_rover_port_identity_probe.py` 真正在远端上位机 `root@192.168.1.11:37878` 上通过 stdin Python 执行。该 probe 只做 `glob/readlink/stat/sysfs` 文本读取，不打开 `/dev/*` 串口，不发送 `T=130`、`T=131`、`T=1`、`T=13`、`cmd_vel` 或任何运动命令。

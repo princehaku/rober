@@ -2184,6 +2184,16 @@ export interface RealMaterialArtifactFreshness {
   stale_after_seconds: number | null;
 }
 
+export interface O7CameraServiceReadinessArtifactSummary {
+  artifact_status: "loaded" | "missing" | "bad_json";
+  readiness_status: string;
+  action_category: string;
+  ready_for_long_stability: boolean;
+  blocked_reasons: string[];
+  safe_start_command_hint: string | null;
+  artifact_freshness: RealMaterialArtifactFreshness;
+}
+
 export interface RealMaterialAcceptanceItem {
   id: RealMaterialAcceptanceItemId;
   objective: "O5" | "O6" | "O7";
@@ -2195,6 +2205,7 @@ export interface RealMaterialAcceptanceItem {
   next_action: string;
   collection_runbook: RealMaterialCollectionRunbook;
   artifact_freshness: RealMaterialArtifactFreshness;
+  o7_camera_service_readiness?: O7CameraServiceReadinessArtifactSummary;
   proof_boundary: string;
   observed_at: string | null;
   safe_to_control: false;

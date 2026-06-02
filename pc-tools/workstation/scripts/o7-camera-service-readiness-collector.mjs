@@ -166,8 +166,12 @@ function baseResult(plan, status, blockedReasons) {
       uname: null,
       listening_summary: [],
       process_summary: [],
+      unit_summary: [],
+      script_summary: [],
       camera_port_listening: null,
       process_hint_present: null,
+      service_unit_hint_present: null,
+      remote_script_present: null,
     },
     readiness: {
       ready_for_long_stability: false,
@@ -176,6 +180,10 @@ function baseResult(plan, status, blockedReasons) {
       ssh_unreachable: false,
       port_not_listening: false,
       process_hint_missing: false,
+      service_unit_missing_or_inactive: false,
+      remote_script_missing: false,
+      action_category: "not_observed",
+      safe_start_command_hint: null,
       blocked_reasons: blockedReasons,
       next_action:
         "Run this readiness collector until HTTP health, SSH, listening port, and process hints are observed before o7:browser-long-stability.",
@@ -295,6 +303,10 @@ function buildReadonlySshCommand() {
     "(ss -lntp 2>/dev/null || netstat -lntp 2>/dev/null || true) | head -80",
     "printf '__PROCESS__\\n'",
     "ps -eo pid,comm,args 2>/dev/null | grep -Ei 'webrtc|camera|uvicorn|node|python|8088' | grep -v grep | head -40 || true",
+    "printf '__UNITS__\\n'",
+    "systemctl list-units --type=service --all --no-pager 2>/dev/null | grep -Ei 'camera|webrtc|rtc|video' | head -40 || true",
+    "printf '__SCRIPTS__\\n'",
+    "find /root/rober/onboard/scripts /home /opt /usr/local -maxdepth 4 -type f \\( -iname '*webrtc*' -o -iname '*camera*' -o -iname '*rtc*' \\) 2>/dev/null | head -40 || true",
   ].join("; ");
 }
 
@@ -374,21 +386,63 @@ async function runSshProbe(plan) {
 function summarizeSshProbe(probe) {
   const listen = parseSection(probe.stdout, "LISTEN");
   const processes = parseSection(probe.stdout, "PROCESS");
+  const units = parseSection(probe.stdout, "UNITS");
+  const scripts = parseSection(probe.stdout, "SCRIPTS");
   const uname = parseSection(probe.stdout, "UNAME")[0] ?? null;
   const listeningSummary = listen.filter((line) => /:8088\b|LISTEN|tcp/i.test(line)).slice(0, 20);
   const processSummary = processes.slice(0, 20);
   const cameraPortListening = probe.status === "reachable" ? listeningSummary.some((line) => /:8088\b/.test(line)) : null;
+  const serviceProcessPattern = /local_webrtc_camera_smoke|webrtc|camera.*smoke|uvicorn.*8088|aiohttp.*8088|node.*8088|python.*8088/i;
   const processHintPresent =
-    probe.status === "reachable" ? processSummary.some((line) => /webrtc|camera|uvicorn|node|python|8088/i.test(line)) : null;
+    probe.status === "reachable" ? processSummary.some((line) => serviceProcessPattern.test(line)) : null;
+  const serviceUnitHintPresent =
+    probe.status === "reachable" ? units.some((line) => /camera|webrtc|rtc|video/i.test(line) && !/smartcard/i.test(line)) : null;
+  const remoteScriptPresent =
+    probe.status === "reachable" ? scripts.some((line) => /local_webrtc_camera_smoke\.(sh|py)$/i.test(line)) : null;
   return {
     status: probe.status,
     error_category: probe.error_category,
     uname,
     listening_summary: listeningSummary,
     process_summary: processSummary,
+    unit_summary: units.filter((line) => !/smartcard/i.test(line)).slice(0, 20),
+    script_summary: scripts.slice(0, 20),
     camera_port_listening: cameraPortListening,
     process_hint_present: processHintPresent,
+    service_unit_hint_present: serviceUnitHintPresent,
+    remote_script_present: remoteScriptPresent,
   };
+}
+
+function deriveActionCategory(ssh, unique) {
+  // action_category 是 operator 下一步机器分类；它只基于只读 HTTP/SSH 证据，不启动远端服务。
+  if (ssh.status === "unreachable") {
+    return "ssh_unreachable";
+  }
+  if (ssh.process_hint_present === true && ssh.camera_port_listening === false) {
+    return "service_process_present_but_port_closed";
+  }
+  if (ssh.service_unit_hint_present === false && ssh.remote_script_present === true) {
+    return "remote_script_present_but_service_inactive";
+  }
+  if (ssh.service_unit_hint_present === false) {
+    return "service_unit_missing_or_inactive";
+  }
+  if (ssh.remote_script_present === false) {
+    return "remote_script_missing";
+  }
+  if (unique.includes("http_connection_refused") || unique.includes("port_not_listening")) {
+    return "service_not_listening_on_8088";
+  }
+  return unique.length === 0 ? "ready_for_long_stability" : "readiness_blocked";
+}
+
+function safeStartCommandHint(actionCategory, ssh) {
+  // 这里只给人工可复制的安全启动线索，不通过 collector 自动执行，避免把诊断工具变成后台部署器。
+  if (actionCategory === "remote_script_present_but_service_inactive" && ssh.remote_script_present === true) {
+    return "ssh <board-lan-host> -p <ssh-port> 'cd <rober-worktree> && HOST=0.0.0.0 PORT=8088 bash onboard/scripts/local_webrtc_camera_smoke.sh'";
+  }
+  return null;
 }
 
 function deriveReadiness(result) {
@@ -412,9 +466,16 @@ function deriveReadiness(result) {
   if (ssh.process_hint_present === false) {
     blocked.push("process_hint_missing");
   }
+  if (ssh.service_unit_hint_present === false) {
+    blocked.push("service_unit_missing_or_inactive");
+  }
+  if (ssh.remote_script_present === false) {
+    blocked.push("remote_script_missing");
+  }
 
   const unique = [...new Set(blocked)];
   const ready = unique.length === 0 && health.status === "reachable" && devices.status === "reachable" && ssh.status === "reachable";
+  const actionCategory = deriveActionCategory(ssh, unique);
   return {
     ready_for_long_stability: ready,
     http_health_unreachable: health.status !== "reachable",
@@ -422,9 +483,15 @@ function deriveReadiness(result) {
     ssh_unreachable: ssh.status === "unreachable",
     port_not_listening: unique.includes("port_not_listening"),
     process_hint_missing: unique.includes("process_hint_missing"),
+    service_unit_missing_or_inactive: unique.includes("service_unit_missing_or_inactive"),
+    remote_script_missing: unique.includes("remote_script_missing"),
+    action_category: actionCategory,
+    safe_start_command_hint: safeStartCommandHint(actionCategory, ssh),
     blocked_reasons: ready ? [] : unique,
     next_action: ready
       ? "Run npm run o7:browser-long-stability and keep the generated browser smoke artifact for OKR review."
+      : actionCategory === "remote_script_present_but_service_inactive"
+        ? "Board SSH is reachable and the local WebRTC camera script exists, but no 8088 listener or service unit is active; start the script/service manually, then rerun readiness."
       : "Fix board HTTP/WebRTC camera service readiness first; do not blindly re-run the 180s browser stability collector.",
   };
 }

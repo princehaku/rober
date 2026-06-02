@@ -6,6 +6,7 @@ import type {
   O5O6ExternalProbeArtifactEndpointSummary,
   O5O6ExternalProbeArtifactResponse,
   RealMaterialCollectionRunbook,
+  O7CameraServiceReadinessArtifactSummary,
   RealMaterialAcceptanceItem,
   RealMaterialAcceptanceResponse,
   RealMaterialAcceptanceStatus,
@@ -15,8 +16,10 @@ import { buildO5O6ExternalProbeArtifact } from "./o5O6ExternalProbeArtifact";
 
 const DEFAULT_BROWSER_SMOKE_RESULT = path.join(WORKSTATION_RUNTIME_ROOT, "o7-browser-playback-smoke.json");
 const DEFAULT_EXTERNAL_PROBE_RESULT = path.join(WORKSTATION_RUNTIME_ROOT, "o5-o6-external-live-probe.json");
+const DEFAULT_CAMERA_SERVICE_READINESS_RESULT = path.join(WORKSTATION_RUNTIME_ROOT, "o7-camera-service-readiness.json");
 const BROWSER_SMOKE_ENV = "ROBER_O7_BROWSER_SMOKE_RESULT_JSON";
 const EXTERNAL_PROBE_ENV = "ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT";
+const CAMERA_SERVICE_READINESS_ENV = "ROBER_O7_CAMERA_SERVICE_READINESS_ARTIFACT";
 const LONG_STABILITY_REQUIRED_WINDOW_MS = 180000;
 const ARTIFACT_STALE_AFTER_SECONDS = 24 * 60 * 60;
 
@@ -35,9 +38,35 @@ function firstReason(reasons: string[], fallback: string): string {
   return reasons.find((reason) => reason.length > 0) ?? fallback;
 }
 
+function safeReasonToken(value: unknown, fallback: string): string {
+  // readiness artifact 可能来自旧脚本或手工拷贝；这里只保留机器 token，不回显 traceback、URL、绝对路径或 SSH 目标。
+  const text = safeText(value, fallback)
+    .replace(/https?:\/\/\S+/gi, "url_redacted")
+    .replace(/\b\d{1,3}(?:\.\d{1,3}){3}\b/g, "ip_redacted")
+    .replace(/\b[\w.-]+@[\w.-]+\b/g, "ssh_target_redacted")
+    .replace(/(?:\/[\w.-]+){2,}/g, "path_redacted");
+  return text
+    .toLowerCase()
+    .replace(/traceback.*$/i, "traceback_redacted")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 96) || fallback;
+}
+
+function safeCameraStartCommandHint(actionCategory: string, value: unknown): string | null {
+  // safe_start_command_hint 是人工恢复提示；API 只输出固定模板，绝不透传 artifact 里的真实 SSH/IP/路径。
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+  if (actionCategory === "remote_script_present_but_service_inactive") {
+    return "ssh <board-lan-host> -p <ssh-port> 'cd <rober-worktree> && HOST=0.0.0.0 PORT=8088 bash onboard/scripts/local_webrtc_camera_smoke.sh'";
+  }
+  return null;
+}
+
 function artifactLocation(
   env: NodeJS.ProcessEnv,
-  envName: typeof EXTERNAL_PROBE_ENV | typeof BROWSER_SMOKE_ENV,
+  envName: string,
   defaultPath: string,
 ): { artifactPath: string; artifactRef: string; source: RealMaterialArtifactFreshness["source"] } {
   // 响应不能泄露真实路径；artifact_ref 只说明 operator 应看 env 还是默认 runtime 文件名。
@@ -54,7 +83,7 @@ function artifactLocation(
 
 async function artifactFreshness(
   env: NodeJS.ProcessEnv,
-  envName: typeof EXTERNAL_PROBE_ENV | typeof BROWSER_SMOKE_ENV,
+  envName: string,
   defaultPath: string,
 ): Promise<RealMaterialArtifactFreshness> {
   const checkedAt = new Date().toISOString();
@@ -225,6 +254,46 @@ async function readBrowserSmokeArtifact(env: NodeJS.ProcessEnv): Promise<{
   }
 }
 
+async function readO7CameraServiceReadinessArtifact(
+  env: NodeJS.ProcessEnv,
+  freshness: RealMaterialArtifactFreshness,
+): Promise<O7CameraServiceReadinessArtifactSummary> {
+  const artifactPath = (env[CAMERA_SERVICE_READINESS_ENV] ?? "").trim() || DEFAULT_CAMERA_SERVICE_READINESS_RESULT;
+  try {
+    // 只读取 operator 已生成的 readiness artifact；不执行 SSH/HTTP probe，也不补跑 collector。
+    const raw = await fs.readFile(artifactPath, "utf8");
+    const record = asRecord(JSON.parse(raw));
+    const readiness = asRecord(record?.readiness);
+    const actionCategory = safeReasonToken(readiness?.action_category, "not_observed");
+    const blockedReasons = Array.isArray(readiness?.blocked_reasons)
+      ? readiness.blocked_reasons
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => safeReasonToken(item, "readiness_blocked"))
+          .slice(0, 12)
+      : [];
+    return {
+      artifact_status: record ? "loaded" : "bad_json",
+      readiness_status: safeReasonToken(record?.status, "unknown"),
+      action_category: actionCategory,
+      ready_for_long_stability: readiness?.ready_for_long_stability === true,
+      blocked_reasons: blockedReasons,
+      safe_start_command_hint: safeCameraStartCommandHint(actionCategory, readiness?.safe_start_command_hint),
+      artifact_freshness: freshness,
+    };
+  } catch (error) {
+    const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code) : "";
+    return {
+      artifact_status: code === "ENOENT" ? "missing" : "bad_json",
+      readiness_status: "not_observed",
+      action_category: "camera_service_artifact_missing",
+      ready_for_long_stability: false,
+      blocked_reasons: [code === "ENOENT" ? "camera_service_artifact_missing" : "camera_service_artifact_bad_json"],
+      safe_start_command_hint: null,
+      artifact_freshness: freshness,
+    };
+  }
+}
+
 function o7Status(record: Record<string, unknown> | null): RealMaterialAcceptanceStatus {
   // O7 长稳态要消费显式 smoke JSON 的 stability_summary，不能由 UI 或健康接口推断。
   if (!record || record.status === "not_run") {
@@ -327,10 +396,23 @@ function o7NeedsReadinessFirst(blockingReason: string): boolean {
   );
 }
 
-function o7NextAction(status: RealMaterialAcceptanceStatus, blockingReason: string): string {
+function o7NextAction(
+  status: RealMaterialAcceptanceStatus,
+  blockingReason: string,
+  readiness: O7CameraServiceReadinessArtifactSummary,
+): string {
   // API 仍只返回 operator recipe；不会自动执行 readiness collector、SSH、HTTP probe 或 browser smoke。
   if (status === "accepted") {
     return "O7: keep 180s+ browser smoke artifact and wait for OKR owner review";
+  }
+  if (readiness.action_category === "remote_script_present_but_service_inactive") {
+    return "O7: board script exists but 8088 is not listening; manually start local_webrtc_camera_smoke.sh or install a service, then rerun readiness";
+  }
+  if (readiness.action_category === "service_process_present_but_port_closed") {
+    return "O7: camera/WebRTC process hint exists but 8088 is closed; inspect process bind address, port, and logs before rerunning long stability";
+  }
+  if (readiness.action_category === "remote_script_missing") {
+    return "O7: camera service script is missing on the board; sync onboard/scripts/local_webrtc_camera_smoke.* before retrying readiness";
   }
   if (o7NeedsReadinessFirst(blockingReason)) {
     return "O7: run o7:camera-service-readiness to verify board HTTP/WebRTC service listening and SSH process hints, then re-run o7:browser-long-stability";
@@ -350,12 +432,14 @@ export async function buildRealMaterialAcceptance(
   options: { env?: NodeJS.ProcessEnv } = {},
 ): Promise<RealMaterialAcceptanceResponse> {
   const env = options.env ?? process.env;
-  const [externalArtifact, browserSmoke, externalFreshness, browserFreshness] = await Promise.all([
+  const [externalArtifact, browserSmoke, externalFreshness, browserFreshness, cameraReadinessFreshness] = await Promise.all([
     buildO5O6ExternalProbeArtifact({ env }),
     readBrowserSmokeArtifact(env),
     artifactFreshness(env, EXTERNAL_PROBE_ENV, DEFAULT_EXTERNAL_PROBE_RESULT),
     artifactFreshness(env, BROWSER_SMOKE_ENV, DEFAULT_BROWSER_SMOKE_RESULT),
+    artifactFreshness(env, CAMERA_SERVICE_READINESS_ENV, DEFAULT_CAMERA_SERVICE_READINESS_RESULT),
   ]);
+  const cameraReadiness = await readO7CameraServiceReadinessArtifact(env, cameraReadinessFreshness);
   const o5Endpoint = findEndpoint(externalArtifact, "/api/o5/readiness/health");
   const o6Endpoint = findEndpoint(externalArtifact, "/api/o6/archive/health");
   const o5StatusValue = o5o6Status(externalArtifact, o5Endpoint);
@@ -404,10 +488,14 @@ export async function buildRealMaterialAcceptance(
       status: o7StatusValue,
       source_endpoint: "/api/o7/local-webrtc-camera",
       source_artifact_status: browserSmoke.artifact_status,
-      blocking_reason: o7BlockingReason,
-      next_action: o7NextAction(o7StatusValue, o7BlockingReason),
+      blocking_reason:
+        cameraReadiness.artifact_status === "loaded" && cameraReadiness.action_category !== "ready_for_long_stability"
+          ? `${o7BlockingReason}__${cameraReadiness.action_category}`
+          : o7BlockingReason,
+      next_action: o7NextAction(o7StatusValue, o7BlockingReason, cameraReadiness),
       collection_runbook: o7Runbook(),
       artifact_freshness: browserFreshness,
+      o7_camera_service_readiness: cameraReadiness,
       proof_boundary: "existing_browser_smoke_json_long_stability_summary_only",
       observed_at: browserSmoke.observed_at,
       safe_to_control: false,
