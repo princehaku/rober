@@ -8,6 +8,18 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 15-16｜o1-port-identity-remote-evidence｜Remote STC/LiDAR identity risk observed
+
+本轮 Micro closeout 基于 `sprints/2026.06.02_15-16_o1-port-identity-remote-evidence/tech-done.md`。Hardware Infra 按 O1 当前最低优先级，在 no-motion/fail-closed 边界内，把上一轮新增的 `onboard/scripts/o1_wave_rover_port_identity_probe.py` 真正在远端上位机 `root@192.168.1.11:37878` 上通过 stdin Python 执行。该 probe 只做 `glob/readlink/stat/sysfs` 文本读取，不打开 `/dev/*` 串口，不发送 `T=130`、`T=131`、`T=1`、`T=13`、`cmd_vel` 或任何运动命令。
+
+本轮已读 vendor 来源：`AGENTS.md`、`OKR.md`、`docs/vendor/VENDOR_INDEX.md`、`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`、`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`、`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`、`docs/vendor/lidar_pkg_ros2-main/README.md`、`docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules`。复核结论：WAVE ROVER vendor 仍只证明 UART newline JSON、`CMD_BASE_FEEDBACK=130`、`FEEDBACK_BASE_INFO=1001`；LiDAR 当前 ROS2 vendor 资料明确用 `/dev/ttyUSB*` 或 `/dev/ttyACM*` 插拔对比确认雷达设备，且 `99-lidar.rules` 把 `idVendor=34bf`、`idProduct=ff0a` 的 STC USB Serial 映射为 `/dev/lidar`。
+
+远端 JSON 结果为 `schema=trashbot.o1.wave_rover_port_identity_probe.v1`、`identity_assessment.status=possible_lidar_or_other_stc`、`possible_role=possible_lidar_or_other_stc_not_wave_rover_proven`、`risk_flags=["stc_or_ttyacm_is_not_unique","lidar_clue_present"]`。目标端口 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00` 存在并解析到 `/dev/ttyACM0`；同一 realpath 还包括 `/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0` 和 `/dev/ttyACM0`。sysfs 证据为 `idVendor=34bf`、`idProduct=ff0a`、`manufacturer=STC`、`product=STC USB Serial`，接口层 `uevent` 包含 `DRIVER=cdc_acm`、`PRODUCT=34bf/ff0a/100`、`INTERFACE=2/2/1`。这些字段与 LiDAR vendor udev 规则完全一致，因此不能把该端口写成 WAVE ROVER ESP32 已确认。
+
+Product closeout 判定：Objective 1 保持约 93%，口径更新为 `software_reference + upper-computer serial-open observed + T=130 request observed + port identity remote STC/LiDAR risk observed; T=1001 not_proven`。本轮真实价值是把目标 by-id 端口身份风险从“待采集”推进为“远端材料强命中 STC/LiDAR 错口风险”，并把下一步从继续盲发 `T=130` 收敛为物理追线、分别插拔 LiDAR 与底盘控制器、核对 `/dev/lidar`/by-id/by-path 是否同指 `/dev/ttyACM0`。真实 `T=1001` feedback、真实 UART/HIL、真实底盘控制、真实 LiDAR `/scan`、ROS Humble runtime、TF、Nav2/SLAM、150000 长稳、PR #5 硬件材料和 delivery success 仍为 `not_proven`。
+
+验证证据：远端命令 `timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00' < onboard/scripts/o1_wave_rover_port_identity_probe.py` exit 0；scoped `git diff --check` 通过。由于 probe 输出字段已满足本轮验收，没有修改 probe 或测试。
+
 ### 2026-06-02 14-15｜o1-wave-rover-port-identity｜No-motion port identity readiness ready
 
 本轮 Micro closeout 基于 `sprints/2026.06.02_14-15_o1-wave-rover-port-identity/tech-done.md`。Hardware Infra 针对 O1 当前最低完成度和上一轮 `serial_open_t130_no_feedback_after_request` 的剩余风险，新增 `onboard/scripts/o1_wave_rover_port_identity_probe.py`：它只做 `glob/readlink/stat/sysfs` 文本读取，不打开 `/dev/*` 串口，不写串口，不发送 `T=130`、`T=131`、`T=1`、`T=13`、`cmd_vel` 或任何运动命令。
