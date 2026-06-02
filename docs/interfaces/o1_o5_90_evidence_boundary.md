@@ -43,6 +43,8 @@ Objective 1 超过 90% 不能只依赖 mock、虚拟串口、Docker build 或 sy
 
 2026-06-02 14-15 新增的 `onboard/scripts/o1_wave_rover_port_identity_probe.py` 只用于 HIL 前的端口身份 readiness。它只执行 `glob/readlink/stat/sysfs` 文本读取，不打开 `/dev/*` 串口、不发送 `T=130/T=131/T=1/T=13/cmd_vel`，并固定 `safe_to_control=false`、`sends_commands=false`、`opens_serial_devices=false`、`robot_control_executed=false`、`delivery_success=false`。它可以把目标端口 realpath、by-id/by-path 线索、sysfs USB/tty 描述、STC/LiDAR 风险和下一步检查项输出为机器 JSON；但它只能给出 `port_missing`、`possible_lidar_or_other_stc`、`identity_insufficient`、`possible_wave_rover_esp32` 这类保守分类，不能把端口身份写成已验证的 WAVE ROVER ESP32，也不能替代真实 `T=1001`、HIL packet 或现场物理追线。
 
+2026-06-02 17-18 新增的 `onboard/scripts/o1_usb_serial_inventory_probe.py` 进一步把现场 USB/串口 inventory 做成只读机器合同。它枚举 `/dev/ttyUSB*`、`/dev/ttyACM*`、`/dev/serial/by-id/*`、`/dev/serial/by-path/*` 和 `/dev/lidar`，读取 tty 上游 sysfs USB 文本，并输出 `trashbot.o1.usb_serial_inventory.v1`。该 schema 固定 `safe_to_control=false`、`sends_commands=false`、`opens_serial_devices=false`、`robot_control_executed=false`、`delivery_success=false`，且 `blocked_commands_not_sent` 包含 `T=130`、`T=131`、`T=1`、`T=13` 和 `cmd_vel`。它的有效用途是让现场先保存 baseline，再分别拔插 LiDAR 与 WAVE ROVER ESP32/底盘控制器，对比哪些 by-id/by-path/`/dev/lidar`/realpath 改变；它不能替代端口物理追线、不能证明 WAVE ROVER 身份、不能证明真实 `T=1001` 或 HIL packet。
+
 O1 必需真实材料路径约定：
 
 ```text

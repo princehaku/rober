@@ -123,6 +123,39 @@ timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 - 出现 `/dev/lidar`、`lidar/laser` 文本或 LiDAR udev vendor/product 时，写 `possible_lidar_or_other_stc`，优先暴露错口风险。
 - 只有出现 ESP32/Waveshare/WAVE ROVER 这类文本线索且没有 LiDAR/STC 风险时，才允许写 `possible_wave_rover_esp32`，仍不能写成 proven。
 
+## USB/串口 inventory probe
+
+`onboard/scripts/o1_usb_serial_inventory_probe.py` 是 2026-06-02 17-18 新增的 O1 只读 inventory probe。它用于现场在同一上位机上枚举 `/dev/ttyUSB*`、`/dev/ttyACM*`、`/dev/serial/by-id/*`、`/dev/serial/by-path/*` 和 `/dev/lidar`，并读取对应 tty 上游 sysfs USB 小文本，帮助分别插拔 LiDAR 与 WAVE ROVER ESP32/底盘控制器后对比 alias/realpath 变化。
+
+本 probe 不 import/use pyserial，不打开任何 `/dev/*` 串口，不发送 `T=130`、`T=131`、`T=1`、`T=13` 或 `cmd_vel`。输出 schema 固定为 `trashbot.o1.usb_serial_inventory.v1`，安全字段固定：
+
+- `safe_to_control=false`
+- `sends_commands=false`
+- `opens_serial_devices=false`
+- `robot_control_executed=false`
+- `delivery_success=false`
+
+运行示例：
+
+```bash
+python3 onboard/scripts/o1_usb_serial_inventory_probe.py --once-json --pretty
+```
+
+远端只读运行示例：
+
+```bash
+timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json' < onboard/scripts/o1_usb_serial_inventory_probe.py
+```
+
+关键输出字段：
+
+- `inventory_summary.realpath_to_aliases`：按 realpath 聚合同一设备的 `/dev/tty*`、by-id、by-path 和 `/dev/lidar` alias。
+- `inventory_summary.stc_or_ttyacm_realpaths`：出现 STC、`34bf:ff0a` 或 ttyACM 线索的 realpath；这只是错口风险，不是底盘身份结论。
+- `identity_risks[]`：机器可读风险，如 `possible_lidar_or_other_stc`、`stc_or_ttyacm_is_not_unique`、`possible_base_controller_not_proven`、`no_serial_candidates_visible`。
+- `recommended_physical_checks[]`：现场 SOP，要求先保存 baseline inventory，再分别拔 LiDAR 与底盘控制器，对比哪些 alias/realpath 改变，最后物理追线确认后才允许运行显式 feedback probe。
+
+分类口径必须保守：STC `34bf:ff0a` 已与当前 LiDAR vendor `99-lidar.rules` 一致，因此出现该线索时只允许提示 `possible_lidar_or_other_stc` 或 `stc_or_ttyacm_is_not_unique` 风险，不得继续把 `/dev/ttyACM0` 当成 WAVE ROVER ESP32 默认控制端口，也不得继续盲发 `T=130`。
+
 ## 证据边界
 
 这不是 HIL pass，也不是底盘控制通过。通过本 probe 最多只能说明：
@@ -145,6 +178,14 @@ timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 ## 本轮远端观察
 
 `2026.06.01_16-17_o1-wave-rover-serial-feedback-probe` 按 stdin 方式在 `root@192.168.1.11:37878` 运行。结果记录在对应 sprint 的 `tech-done.md` 中；仓库不保存远端原始 artifact。
+
+`2026.06.02_17-18_o1-usb-serial-inventory` 使用同一 SSH 入口只读运行 inventory probe：
+
+```bash
+timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json' < onboard/scripts/o1_usb_serial_inventory_probe.py
+```
+
+远端命令 exit 0，输出 `schema=trashbot.o1.usb_serial_inventory.v1`，安全字段保持 `safe_to_control=false`、`sends_commands=false`、`opens_serial_devices=false`、`robot_control_executed=false`、`delivery_success=false`。远端 inventory 只看到 3 个候选路径：`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`、`/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0`、`/dev/ttyACM0`，全部指向 `/dev/ttyACM0`；`/dev/lidar` 和 `/dev/ttyUSB*` 未命中。sysfs 继续显示 `idVendor=34bf`、`idProduct=ff0a`、`manufacturer=STC`、`product=STC USB Serial`、`DRIVER=cdc_acm`、`PRODUCT=34bf/ff0a/100`。机器风险为 `identity_risks[0].risk_id=possible_lidar_or_other_stc`、`severity=high`，推荐检查为先拔 LiDAR 后重跑 inventory 并比较 alias/realpath 变化。该材料仍不能证明目标端口是 WAVE ROVER ESP32，不能继续盲发 `T=130`。
 
 `2026.06.01_20-21_o1-t130-feedback-observation` 继续使用同一 SSH 入口尝试一次显式 `--request-base-feedback` 采集：
 

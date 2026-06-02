@@ -8,6 +8,16 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 17-18｜o1-usb-serial-inventory｜O1 只读 USB/串口 inventory probe
+
+本轮继续推进当前最低 Objective 1，但不提升真实 HIL 完成度。新增 `onboard/scripts/o1_usb_serial_inventory_probe.py`，schema 固定为 `trashbot.o1.usb_serial_inventory.v1`，只枚举 `/dev/ttyUSB*`、`/dev/ttyACM*`、`/dev/serial/by-id/*`、`/dev/serial/by-path/*` 和 `/dev/lidar`，并读取 tty 上游 sysfs USB 小文本；不 import/use pyserial、不打开串口、不发送 `T=130/T=131/T=1/T=13/cmd_vel`。输出固定 `safe_to_control=false`、`sends_commands=false`、`opens_serial_devices=false`、`robot_control_executed=false`、`delivery_success=false`，并提供 `inventory_summary`、`identity_risks` 和 `recommended_physical_checks`，要求现场分别拔插 LiDAR 与底盘控制器，对比 alias/realpath 变化后再决定是否运行显式 feedback probe。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件控制层 | 约 93% software_reference + read-only inventory probe；T=1001/HIL 仍 not_proven | 本轮把 STC `34bf:ff0a` 与 LiDAR udev 同源风险产品化为只读 inventory 和插拔 SOP；本地 py_compile、unittest 和 diff check 通过。远端 SSH 若可达仅运行该只读 probe，不打开串口或发命令。真实 WAVE ROVER 身份、真实 UART/HIL、真实 `T=1001`、底盘控制、LiDAR `/scan`、TF/Nav2/SLAM 仍未证明。 |
+
+验证与远端采集摘要见 `sprints/2026.06.02_17-18_o1-usb-serial-inventory/tech-done.md`。
+
 ### 2026-06-02 16-17｜o7-camera-service-recovery-readiness｜Camera service blocker classified to recovery action
 
 本轮 Micro closeout 基于 `sprints/2026.06.02_16-17_o7-camera-service-recovery-readiness/tech-done.md`。本轮遵守 O1 重复 blocker 红线：O1 仍是最低 Objective，但当前 `target_port_identity_possible_lidar_or_other_stc_before_more_T130` 必须现场物理追线/插拔确认，不能继续盲发 `T=130`。因此本轮切到 O7 的非阻塞真实材料缺口，把 8088 camera/WebRTC service readiness 从泛化连接拒绝推进到可执行恢复分类。
