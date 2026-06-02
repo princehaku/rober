@@ -36,6 +36,35 @@ O7 的用户价值是让运营人员可以在 PC workstation 上验证真实视�
 
 ## 验证结果
 
+### Full-stack 复验（2026-06-02 19:12-19:14 CST）
+
+本轮只复验 O7 readiness / long-stability 收口事实，不自动 SSH 启动服务，不 POST `/offer`，不创建 WebRTC session，不触碰 O1 串口、WAVE ROVER、T=130/T=1/T=13/T=131、`cmd_vel` 或硬件配置。
+
+```text
+cd pc-tools/workstation && npm run o7:camera-service-readiness -- --dry-run
+exit=0
+status=dry_run
+network_probe_executed=false
+ssh_probe_executed=false
+post_executed=false
+webrtc_session_created=false
+offer_executed=false
+artifact_written=false
+blocked_reasons=["dry_run_no_network_no_ssh_no_post_no_webrtc_no_artifact"]
+
+cd pc-tools/workstation && npm run test -- catalog.test.ts
+exit=0
+Test Files 1 passed (1)
+Tests 57 passed (57)
+
+cd pc-tools/workstation && npm run build
+exit=0
+vite built dist/index.html and bundled assets successfully
+
+cd pc-tools/workstation && npm run lint
+exit=0
+```
+
 ### Camera service readiness artifact
 
 证据文件：`.workstation-runtime/o7-camera-service-readiness.json`。
