@@ -24,3 +24,10 @@ micro
 - 8787 上位机 Robot API 的真实远端监听、真实 radar `/scan`、真实 `T=1001` feedback、robot ACK 和真实手控仍未证明。
 - PC 首屏允许 camera WebRTC media preview offer/close，但该路径只属于摄像头媒体信令，不是底盘控制。
 - 本轮未修改 `onboard/`、`OKR.md` 或 OKR 进度日志。
+
+## Product closeout / OKR verdict
+
+- O1 保持约 93%：本轮 PC 只展示 `/dev/ttyS5 @115200`、`T=1001 not_observed_after_t130` 和 manual control fail-closed，不证明真实 ACK、HIL、`/odom`、`/imu/data` 或 `/battery`。
+- O5 保持约 96%，O6 保持约 96%：本轮不涉及生产云、真实 4G/SIM、production DB/queue、OSS/CDN live traffic 或真实 phone/browser 材料。
+- O7 上调到约 98%：理由是 8088 systemd + PC Live Operator + unified upper API software safety ready。
+- PC 没有 POST `/api/base/manual`；唯一 POST 是 camera WebRTC media preview `/api/o7/local-webrtc-camera/offer`，该路径不是底盘控制。Production path、real control、ACK、HIL 和完整 delivery success 均仍 `not_proven`。

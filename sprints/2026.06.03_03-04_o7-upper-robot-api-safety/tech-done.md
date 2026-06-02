@@ -80,3 +80,10 @@ error: required file missing: /root/rober/onboard/systemd/trashbot-upper-robot-a
 - 本轮没有打开真实 `/dev/ttyS5`，没有 SSH，没有发送真实 WAVE ROVER JSON、`cmd_vel` 或运动命令。
 - 本轮没有读取 `T=1001`，不证明 robot ACK、HIL pass、真实 `/odom`、真实 `/imu/data`、真实 `/battery` 或 delivery success。
 - 真实上车仍需现场低速点动、人工急停、stop 写入失败演练、`T=130 -> T=1001` 反馈和 operator report。
+
+## Product closeout / OKR verdict
+
+- O1 保持约 93%：`/dev/ttyS5 @115200` 和低速 `T=1,L=0.08,R=0.08` 是既有现场事实，本轮 8787 upper API 只补软件 guardrail；`T=1001`、ACK、HIL、真实 `/odom`、`/imu/data`、`/battery` 仍 `not_proven`。
+- O5 保持约 96%，O6 保持约 96%：本轮不涉及生产云、真实 4G/SIM、production DB/queue、OSS/CDN live traffic 或真实 phone/browser 材料。
+- O7 上调到约 98%：理由是 8088 systemd + PC Live Operator + unified upper API software safety ready。
+- Production path、real control、ACK、HIL 和完整 delivery success 均仍 `not_proven`。
