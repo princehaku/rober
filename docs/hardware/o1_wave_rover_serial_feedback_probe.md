@@ -400,3 +400,54 @@ timeout 35 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 - accepted manual pulse 必须低速、限时、自动停车；返回中必须保留方向写入结果、stop 写入结果和串口失败原因。
 - `/api/base/stop` 的 `robot_control_executed` 只反映 stop JSON 写入是否成功；HTTP handler 成功不等于底盘已执行。
 - 所有响应继续保留 `feedback_ack.t1001_observed=false`，因为本轮没有读取 `T=1001`，不能声明 ACK、HIL、真实 `/odom`、真实 `/imu/data`、真实 `/battery` 或 delivery success。
+
+## 2026-06-03 `/dev/ttyS5` Safe Pulse Acceptance Runner
+
+`onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py` 是 O1 的短时点动验收 runner，用于以后现场有人看护时，围绕已经确认的 Orange Pi `/dev/ttyS5 @115200` 控制路径采集短 pulse、auto-stop、ACK/`T=1001` 边界材料。
+
+默认模式是 dry-run / read-only：
+
+```bash
+python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py --dry-run --once-json
+```
+
+默认行为只会读取 8787 上位 API 的 `GET /api/status`，或通过 `--status-json <path>` 消费本地已有 status JSON。默认不会调用 `/api/base/manual`，不会调用 `/api/base/stop`，不会打开 `/dev/ttyS5`，不会发送 `T=1/T=13/T=130/T=131`，不会发送 `/cmd_vel`。
+
+输出 contract：
+
+- `schema=trashbot.o1.ttyS5_safe_pulse_acceptance.v1`
+- `evidence_boundary=api_status_dry_run_not_hil`
+- `safe_to_control=false`
+- `sends_commands=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `delivery_success=false`
+- `status_summary.camera/radar/base`
+- `status_summary.base.port=/dev/ttyS5`（若 8787 status 返回该字段）
+- `status_summary.base.baudrate=115200`（若 8787 status 返回该字段）
+- `t1001_feedback_status=observed/not_observed/unknown`
+- `blocked_commands_not_sent[]`
+
+执行模式必须同时传入两个显式参数：
+
+```bash
+python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
+  --base-url http://192.168.1.11:8787 \
+  --execute-motion \
+  --confirm-physical-clearance \
+  --direction forward \
+  --speed 0.05 \
+  --duration-ms 250 \
+  --once-json \
+  --output /safe/runtime/o1-ttyS5-safe-pulse-acceptance.json
+```
+
+执行边界：
+
+- runner 不直连串口，只通过 8787 `/api/base/manual` 调用现有 guardrail。
+- runner 本地再次限制 `speed <= 0.08`、`duration_ms <= 350`，然后由 8787 API 进行第二层限幅。
+- `/api/base/manual` 返回后，runner 会再调用一次 `/api/base/stop`，作为独立 stop evidence。
+- `--output` 使用临时文件 + `os.replace()` 原子写入，避免现场采集中断留下半写 artifact。
+- 即使执行模式返回 `manual_command_executed=true`，在没有 `T=1001` 或等价 ACK 前仍只能写 `api_manual_short_pulse_with_extra_stop_not_hil`，不能声明 `safe_to_control=true`、HIL pass、真实 `/odom`、真实 `/imu/data`、真实 `/battery` 或 delivery success。
+
+本轮没有执行远端 `/api/base/manual` 或 `/api/base/stop`；本 prompt 未授权无人看护真实运动。

@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+"""O1 /dev/ttyS5 safe pulse runner 的 fake HTTP 单元测试。"""
+
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import o1_ttyS5_safe_pulse_acceptance as runner  # noqa: E402
+
+
+STATUS_PAYLOAD = {
+    "schema": "trashbot.upper_robot_api.v1.status",
+    "camera": {"http_status": 200, "status": "ready", "video_source": "camera0"},
+    "radar": {"scan_status": "not_proven", "observed_lidar_port": "/dev/ttyACM0", "baudrate": 150000},
+    "base": {
+        "port": "/dev/ttyS5",
+        "baudrate": 115200,
+        "write_control_available": True,
+        "safe_to_control": False,
+        "feedback_ack": {
+            "t1001_observed": False,
+            "robot_ack_connected": False,
+            "reason": "T=1001 not observed",
+        },
+    },
+}
+
+# 测试边界说明：所有测试只使用 fake HTTP，不访问真实 8787。
+# 测试边界说明：默认 dry-run 必须只 GET status，不能 POST manual。
+# 测试边界说明：单独 `--execute-motion` 不能授权运动，必须双确认。
+# 测试边界说明：执行路径测试只验证 payload 形态，不发送真实运动。
+# 测试边界说明：fake HTTP 记录 method/path/body，用于断言 API guardrail。
+# 测试边界说明：速度上限必须在 runner 层先收紧到 0.08。
+# 测试边界说明：时长上限必须在 runner 层先收紧到 350ms。
+# 测试边界说明：manual 后必须追加 stop，形成独立 stop evidence。
+# 测试边界说明：status-json 模式不能访问网络，避免重复触达远端。
+# 测试边界说明：atomic output 测试只写临时目录，不污染现场 artifact。
+# 测试边界说明：所有结果必须保持 safe_to_control=false。
+# 测试边界说明：T=1001 未观察到时必须保持 not_observed/unknown。
+# 测试边界说明：测试不 import pyserial，也不打开 `/dev/ttyS5`。
+# 测试边界说明：测试不构造 ROS `/cmd_vel`，runner 也不应接触 ROS。
+# 测试边界说明：HTTP 结果由 fake 返回，避免环境偶然在线影响断言。
+# 测试边界说明：schema 字段是下游 PC/OKR 消费的机器合同。
+# 测试边界说明：执行模式即使 fake 成功，也不代表真实 HIL pass。
+# 测试边界说明：测试关注安全护栏，不覆盖真实现场运动物理效果。
+# 测试边界说明：本文件的中文注释记录测试为什么不能碰硬件。
+# 测试边界说明：未来新增真实远端验证必须另建现场 runbook。
+# 测试边界说明：任何失败都应先看 fake 调用序列定位根因。
+# 测试边界说明：这些断言防止后续维护把默认路径改成 POST。
+# 测试边界说明：这些断言防止后续维护移除额外 stop evidence。
+# 测试边界说明：这些断言防止 status artifact 被误写成可控制。
+# 测试边界说明：fake 成功只证明 runner 逻辑，不证明 WAVE ROVER 真实响应。
+# 测试边界说明：真实执行必须由现场材料补充，不能由单测替代。
+# 测试边界说明：显式 dry-run 比 execute/confirm 优先级更高，必须阻断 POST。
+
+
+class SafePulseAcceptanceTest(unittest.TestCase):
+    def test_default_dry_run_reads_status_without_motion_post(self) -> None:
+        calls: list[tuple[str, str, dict[str, object] | None]] = []
+
+        def fake_http(method: str, base_url: str, path: str, timeout_s: float, payload: dict[str, object] | None = None) -> dict[str, object]:
+            # fake HTTP 记录 method/path，证明默认路径不会 POST 运动接口。
+            calls.append((method, path, payload))
+            return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": STATUS_PAYLOAD, "error": None}
+
+        with mock.patch.object(runner, "http_json", side_effect=fake_http):
+            args = runner.parse_args(["--dry-run", "--once-json"])
+            result = runner.run_acceptance(args)
+
+        self.assertEqual(calls, [("GET", "/api/status", None)])
+        self.assertFalse(result["sends_commands"])
+        self.assertFalse(result["sends_motion_commands"])
+        self.assertFalse(result["robot_control_executed"])
+        self.assertEqual(result["status_summary"]["base"]["port"], "/dev/ttyS5")
+        self.assertEqual(result["status_summary"]["base"]["baudrate"], 115200)
+        self.assertEqual(result["t1001_feedback_status"], "not_observed")
+
+    def test_execute_requires_both_confirmation_flags(self) -> None:
+        calls: list[str] = []
+
+        def fake_http(method: str, base_url: str, path: str, timeout_s: float, payload: dict[str, object] | None = None) -> dict[str, object]:
+            calls.append(path)
+            return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": STATUS_PAYLOAD, "error": None}
+
+        with mock.patch.object(runner, "http_json", side_effect=fake_http):
+            args = runner.parse_args(["--execute-motion", "--once-json"])
+            result = runner.run_acceptance(args)
+
+        self.assertEqual(calls, ["/api/status"])
+        self.assertFalse(result["execution_gate"]["authorized"])
+        self.assertFalse(result["sends_commands"])
+        self.assertIsNone(result["manual_request"])
+
+    def test_explicit_dry_run_blocks_execute_even_with_confirmation_flags(self) -> None:
+        calls: list[tuple[str, str, dict[str, object] | None]] = []
+
+        def fake_http(method: str, base_url: str, path: str, timeout_s: float, payload: dict[str, object] | None = None) -> dict[str, object]:
+            # dry-run 是最高优先级安全闸；这里记录调用序列防止后续误 POST。
+            calls.append((method, path, payload))
+            return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": STATUS_PAYLOAD, "error": None}
+
+        with mock.patch.object(runner, "http_json", side_effect=fake_http):
+            args = runner.parse_args(["--dry-run", "--execute-motion", "--confirm-physical-clearance", "--once-json"])
+            result = runner.run_acceptance(args)
+
+        self.assertEqual(calls, [("GET", "/api/status", None)])
+        self.assertFalse(result["execution_gate"]["authorized"])
+        self.assertTrue(result["execution_gate"]["dry_run"])
+        self.assertIn("dry-run blocks execution", result["execution_gate"]["reason"])
+        self.assertFalse(result["sends_commands"])
+        self.assertFalse(result["sends_motion_commands"])
+        self.assertFalse(result["robot_control_executed"])
+        self.assertIsNone(result["manual_request"])
+        self.assertIsNone(result["stop_request"])
+
+    def test_execute_mode_clamps_speed_duration_posts_manual_and_stop(self) -> None:
+        calls: list[tuple[str, str, dict[str, object] | None]] = []
+
+        def fake_http(method: str, base_url: str, path: str, timeout_s: float, payload: dict[str, object] | None = None) -> dict[str, object]:
+            calls.append((method, path, payload))
+            if path == "/api/status":
+                return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": STATUS_PAYLOAD, "error": None}
+            if path == "/api/base/manual":
+                return {
+                    "ok": True,
+                    "http_status": 200,
+                    "elapsed_ms": 2.0,
+                    "json": {
+                        "accepted": True,
+                        "manual_command_executed": True,
+                        "auto_stop_attempted": True,
+                        "auto_stop_executed": True,
+                        "feedback_ack": {"t1001_observed": False, "robot_ack_connected": False},
+                    },
+                    "error": None,
+                }
+            return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": {"robot_control_executed": True}, "error": None}
+
+        with mock.patch.object(runner, "http_json", side_effect=fake_http):
+            args = runner.parse_args(
+                [
+                    "--execute-motion",
+                    "--confirm-physical-clearance",
+                    "--direction",
+                    "forward",
+                    "--speed",
+                    "9.0",
+                    "--duration-ms",
+                    "9999",
+                ]
+            )
+            result = runner.run_acceptance(args)
+
+        self.assertEqual(calls[0], ("GET", "/api/status", None))
+        self.assertEqual(calls[1], ("POST", "/api/base/manual", {"direction": "forward", "speed": runner.MAX_SPEED, "duration_ms": runner.MAX_DURATION_MS}))
+        self.assertEqual(calls[2], ("POST", "/api/base/stop", {}))
+        self.assertTrue(result["sends_commands"])
+        self.assertTrue(result["sends_motion_commands"])
+        self.assertTrue(result["robot_control_executed"])
+        self.assertFalse(result["safe_to_control"])
+        self.assertEqual(result["stop_request"]["path"], "/api/base/stop")
+
+    def test_status_json_file_and_atomic_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            status_path = Path(temp_dir) / "status.json"
+            output_path = Path(temp_dir) / "artifact.json"
+            status_path.write_text(json.dumps(STATUS_PAYLOAD), encoding="utf-8")
+            args = runner.parse_args(["--status-json", str(status_path), "--output", str(output_path), "--once-json"])
+
+            with mock.patch.object(runner, "http_json") as fake_http:
+                result = runner.run_acceptance(args)
+                runner.write_output_atomic(str(output_path), result)
+
+            fake_http.assert_not_called()
+            written = json.loads(output_path.read_text(encoding="utf-8"))
+            self.assertEqual(written["schema"], runner.SCHEMA)
+            self.assertEqual(written["status_request"]["source"], "local_status_json")
+            self.assertEqual(written["status_summary"]["base"]["port"], "/dev/ttyS5")
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -214,3 +214,40 @@ O1/O5 任一项如果缺少上述真实材料，只能写 `not_proven` 或 `bloc
 - 它也不能替代 O5 的公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic 或真实 phone/browser 材料。
 
 允许记录的状态只能是 `upper_robot_api_hardware_safety_software_guardrail_ready`；不得据此声明 `hil_pass`、`safe_to_control=true`、`robot_ack_connected=true`、`delivery_success=true` 或 O1/O5 真实 90% 证据完成。
+
+## 2026-06-03 O1 Safe Pulse Runner 不提升 90% 证据
+
+`onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py` 把 O1 下一步现场短时点动验收做成机器 runner。它的价值是把 `/dev/ttyS5 @115200` 的后续现场动作限制在 8787 API guardrail 内，并输出固定 schema 的一次性 JSON artifact。
+
+默认 dry-run：
+
+```bash
+python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py --dry-run --once-json
+```
+
+默认 dry-run 最多证明：
+
+- runner 能启动并输出 `trashbot.o1.ttyS5_safe_pulse_acceptance.v1`。
+- runner 能读取 8787 `GET /api/status`，或在服务不可达时输出 fail-closed 网络 blocker。
+- runner 能汇总 camera/radar/base 状态、base device、baudrate、`T=1001`/ACK 边界和 `safe_to_control=false`。
+- runner 默认不发送运动命令、不打开串口、不请求 `T=130`、不访问 ROS `/cmd_vel`。
+
+执行模式即使未来由现场 operator 明确使用：
+
+```bash
+python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
+  --base-url http://192.168.1.11:8787 \
+  --execute-motion \
+  --confirm-physical-clearance \
+  --speed 0.05 \
+  --duration-ms 250 \
+  --once-json
+```
+
+也仍然只是 `api_manual_short_pulse_with_extra_stop_not_hil`，原因是：
+
+- 它只通过 8787 `/api/base/manual` 和 `/api/base/stop`，不采集串口原始 `T=1001`。
+- 它可以证明 manual response、auto-stop 和额外 stop evidence 的 API 材料形态。
+- 它不能替代 O1 90% 要求的同源 HIL packet、至少两帧真实 `T=1001`、ROS `/imu/data`、`/battery`、`/odom` 和 operator HIL report。
+
+因此本 runner 当前状态只能记录为 `ready_for_real_short_pulse_collection_not_hil`。本轮没有远端运动 POST，没有真实 WAVE ROVER JSON 运动写入，没有 HIL pass。

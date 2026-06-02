@@ -8,6 +8,18 @@
 
 ## 2026-06-03 系列
 
+### 2026-06-03 05-06｜O1 ttyS5 safe pulse acceptance runner｜Product closeout
+
+本轮 Product/OKR 收口基于 `sprints/2026.06.03_05-06_o1-ttyS5-safe-pulse-acceptance/tech-done.md`。用户价值是把 O1 从“upper API guardrail ready”推进到“safe pulse acceptance runner ready / watched execution pending”：现场点动不再依赖临时命令，而是有一个默认 dry-run/read-only、双确认执行、速度/时长限幅、stop evidence 和机器可读 schema 的验收 runner。
+
+Hardware worker 新增 `onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py` 和测试。runner 默认只读取 8787 `/api/status` 或 `--status-json`，输出 `trashbot.o1.ttyS5_safe_pulse_acceptance.v1`；只有同时传入 `--execute-motion --confirm-physical-clearance` 才会经 8787 `/api/base/manual` 执行低速短 pulse；runner 不直接打开串口。验证证据为 `py_compile` pass、5 focused tests pass、dry-run JSON valid 且 fail-closed、diff-check pass。
+
+安全边界必须保留：本轮没有发送任何运动命令，没有 POST `/api/base/manual` 或 stop，没有打开 `/dev/ttyS5`，没有发送 `T=1/T=13/T=130/T=131` 或 `/cmd_vel`。因此本轮不证明真实短 pulse、auto-stop 现场材料、ACK、`T=1001`、真实 `/odom`、`/imu/data`、`/battery`、HIL packet 或 delivery success。
+
+Product closeout 判定：Objective 1 保持约 93%，口径从 `upper API guardrail ready` 更新为 `safe pulse acceptance runner ready / watched execution pending`，方向判断为继续。该 runner 是受控现场执行前置，不是 HIL 完成证据。当前最高优先级下一步必须指向 watched field pulse execution + ACK/`T=1001` capture：现场看护、物理净空、人工急停、经 8787 `/api/base/manual` 做低速短 pulse、自动 stop 复位、采集 status/manual/stop 与 ACK 或 `T=1001` 同源证据。
+
+Objective 5、Objective 6、Objective 7 本轮未推进，分别保持约 96%、约 96%、约 98%。本轮没有已完成 KR 进入历史归档区；O1 KR 仍在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节和 `sprints/2026.06.03_05-06_o1-ttyS5-safe-pulse-acceptance/tech-done.md`。剩余风险：真实短 pulse、auto-stop 现场材料、ACK/`T=1001`、HIL、真实 ROS topic、急停现场演练和完整 delivery success 仍 `not_proven`。
+
 ### 2026-06-03 03-04｜O7 upper robot API safety + PC Live Operator｜Product closeout
 
 本轮 Product/OKR 收口覆盖两个 Micro sprint：`sprints/2026.06.03_03-04_o7-upper-robot-api-safety/tech-done.md` 和 `sprints/2026.06.03_03-04_o7-pc-live-operator-upper-api/tech-done.md`。用户价值是把 O7 从“PC 本地 fail-closed 面板 + camera/systemd 证据”推进到“8787 统一上位机 Robot API 软件安全边界 + PC Live Operator 首屏可见”，同时守住 O1 真实底盘闭环未证明的边界。

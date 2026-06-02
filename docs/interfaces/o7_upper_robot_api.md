@@ -200,3 +200,45 @@ PC 页面验证：
 - `active_peer_connections=0`
 - `active_peer_ids=[]`
 - `last_closed_frames_read=631`
+
+## O1 Safe Pulse Acceptance Runner
+
+脚本：
+
+- `onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py`
+
+用途：
+
+- 为 O1 现场短时点动验收生成一次性 JSON artifact。
+- 默认只读 `GET /api/status`，汇总 camera/radar/base 状态、base `/dev/ttyS5`、`115200`、`T=1001`/ACK 边界和 fail-closed 安全字段。
+- 只有同时传入 `--execute-motion --confirm-physical-clearance` 时才允许 POST `/api/base/manual`。
+- 执行模式使用 runner 侧 `speed <= 0.08`、`duration_ms <= 350` 的更严格上限，再交给 8787 API 自身的低速/限时/auto-stop guardrail。
+- 执行模式在 manual response 后会追加 POST `/api/base/stop`，记录独立 stop evidence。
+- runner 不打开串口、不绕过 8787 API、不发送 ROS `/cmd_vel`。
+
+默认 dry-run：
+
+```bash
+python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py --dry-run --once-json
+```
+
+现场有人看护且 CEO 明确授权真实短 pulse 后，才允许使用：
+
+```bash
+python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
+  --base-url http://192.168.1.11:8787 \
+  --execute-motion \
+  --confirm-physical-clearance \
+  --direction forward \
+  --speed 0.05 \
+  --duration-ms 250 \
+  --once-json \
+  --output /safe/runtime/o1-ttyS5-safe-pulse-acceptance.json
+```
+
+证据边界：
+
+- 默认 dry-run：`api_status_dry_run_not_hil`
+- 执行模式：`api_manual_short_pulse_with_extra_stop_not_hil`
+- 没有 `T=1001` 或等价 ACK 前，runner 输出必须保持 `safe_to_control=false`、`delivery_success=false`。
+- 本轮未执行真实 `/api/base/manual`，未发送任何运动 POST。
