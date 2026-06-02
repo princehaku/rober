@@ -9,10 +9,92 @@ import {
 } from "../src/server/o7LocalWebrtcCamera";
 import { PROOF_FLAGS } from "../src/shared/contracts";
 
-const liveOperatorFixture = buildO7LiveOperatorPanel();
+const liveOperatorFixture = {
+  schema: "trashbot.o7.live_operator_panel.v1",
+  endpoint: "/api/o7/live-operator-panel",
+  ...PROOF_FLAGS,
+  ssh: {
+    host: "192.168.1.11",
+    port: 37878,
+    reachable: true,
+    workstation_api_8787_status: "ready",
+  },
+  lidar_radar: {
+    dev_lidar: "/dev/ttyACM0",
+    stc_by_id: "resolved_to_ttyACM0",
+    scan_status: "not_proven",
+    pointcloud_fabricated: false,
+    source_facts: [
+      "/dev/ttyACM0 is reported by upper robot API as the LiDAR serial device",
+      "150000 baud, start a5 60, stop a5 00 a5 65 a5 65",
+      "ROS2 /scan continuity has not been observed",
+      "T=1001 WAVE ROVER feedback has not been observed",
+    ],
+    blocked_reasons: ["base_serial_identity_not_proven", "t1001_feedback_not_observed", "robot_ack_not_connected"],
+  },
+  camera: {
+    base_url: "http://192.168.1.11:8088/",
+    health_status: "ready",
+    video_source: "auto",
+    devices_summary: [
+      "set ROBER_UPPER_API_BASE_URL=http://192.168.1.11:8787 on the PC dev server",
+      "GET /api/o7/local-webrtc-camera and /api/o7/live-operator-panel read the unified upper API",
+      "the user console may POST /api/o7/local-webrtc-camera/offer for camera media preview only",
+      "/dev/video1 USB camera was previously observed as the usable capture source",
+    ],
+    offer_auto_post_enabled: false,
+    lan_page_url: "http://192.168.1.11:8088/",
+  },
+  control: {
+    visible_directions: ["forward", "back", "left", "right", "stop"],
+    speed: {
+      default_value: 0.2,
+      min: 0,
+      max: 0.5,
+      step: 0.05,
+      unit: "m/s",
+    },
+    command_dispatch_enabled: false,
+    sends_commands: false,
+    robot_ack_connected: false,
+    blocked_reasons: ["base_serial_identity_not_proven", "t1001_feedback_not_observed", "robot_ack_not_connected"],
+    base_boundary: {
+      observed_write_device: "/dev/ttyS5",
+      baudrate: 115200,
+      vendor_command_id: "T=1",
+      feedback_request_id: "T=130",
+      required_feedback_id: "T=1001",
+      t1001_feedback_status: "not_observed_after_t130",
+      manual_control_status: "fail_closed_display_only",
+      forbidden_endpoint: "/api/base/manual",
+      post_base_manual_enabled: false,
+    },
+  },
+  fixed_false_flags: {
+    safe_to_control: false,
+    sends_commands: false,
+    robot_control_executed: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+  },
+  safe_to_control: false,
+  sends_commands: false,
+  robot_control_executed: false,
+  delivery_success: false,
+  primary_actions_enabled: false,
+  blocked_reasons: ["base_serial_identity_not_proven", "t1001_feedback_not_observed", "robot_ack_not_connected"],
+  not_proven: [
+    "real_lidar_scan",
+    "real_wave_rover_uart_feedback",
+    "real_robot_ack",
+    "real_manual_control_dispatch",
+    "delivery_success",
+  ],
+};
 
-type LiveOperatorWithBaseBoundary = ReturnType<typeof buildO7LiveOperatorPanel> & {
-  control: ReturnType<typeof buildO7LiveOperatorPanel>["control"] & {
+type LiveOperatorResponse = Awaited<ReturnType<typeof buildO7LiveOperatorPanel>>;
+type LiveOperatorWithBaseBoundary = LiveOperatorResponse & {
+  control: LiveOperatorResponse["control"] & {
     base_boundary: {
       observed_write_device: string;
       baudrate: number;
@@ -234,7 +316,7 @@ describe("O7 live operator first screen", () => {
     expect(text).toContain("地图");
     expect(text).toContain("操控");
     expect(text).toContain("状态");
-    expect(text).toContain("8787 API not_listening_observed");
+    expect(text).toContain("8787 API ready");
     expect(text).toContain("摄像头8088 ready");
     expect(text).toContain("当前没有真实 LiDAR `/scan` 证据");
     expect(text).toContain("/dev/ttyS5 @ 115200");
