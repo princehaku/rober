@@ -2072,6 +2072,64 @@ export interface O7LocalWebrtcCameraResponse extends ProofFlags {
   };
 }
 
+export type O7LiveOperatorDirection = "forward" | "back" | "left" | "right" | "stop";
+export type O7LiveOperatorCameraHealthStatus = "not_listening_observed";
+
+export interface O7LiveOperatorPanelResponse extends ProofFlags {
+  schema: "trashbot.o7.live_operator_panel.v1";
+  endpoint: "/api/o7/live-operator-panel";
+  ssh: {
+    host: "192.168.1.11";
+    port: 37878;
+    reachable: true;
+    workstation_api_8787_status: "not_listening_observed";
+  };
+  lidar_radar: {
+    dev_lidar: "missing";
+    stc_by_id: "unresolved";
+    scan_status: "not_proven";
+    pointcloud_fabricated: false;
+    source_facts: string[];
+    blocked_reasons: string[];
+  };
+  camera: {
+    base_url: "http://192.168.1.11:8088/";
+    health_status: O7LiveOperatorCameraHealthStatus;
+    video_source: "/dev/video1";
+    devices_summary: string[];
+    offer_auto_post_enabled: false;
+    lan_page_url: string;
+  };
+  control: {
+    visible_directions: O7LiveOperatorDirection[];
+    speed: {
+      default_value: number;
+      min: number;
+      max: number;
+      step: number;
+      unit: "m/s";
+    };
+    command_dispatch_enabled: false;
+    sends_commands: false;
+    robot_ack_connected: false;
+    blocked_reasons: string[];
+  };
+  fixed_false_flags: {
+    safe_to_control: false;
+    sends_commands: false;
+    robot_control_executed: false;
+    delivery_success: false;
+    primary_actions_enabled: false;
+  };
+  safe_to_control: false;
+  sends_commands: false;
+  robot_control_executed: false;
+  delivery_success: false;
+  primary_actions_enabled: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 export type O7PreviewsAcceptanceSurfaceId =
   | "cloud_operator_console_probe"
   | "cloud_archive_tasks_probe"
@@ -2293,6 +2351,7 @@ export const API_ROUTES = [
   "/api/o7/rtc-signaling-contract-probe?baseUrl=<local-loopback-url>",
   "/api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>",
   "/api/o7/local-webrtc-camera",
+  "/api/o7/live-operator-panel",
   "/api/o7/realtime-elevator-preview?fixtureJson=<local-json>",
   "/api/o7/route-replay-preview?fixtureJson=<local-json>",
   "/api/o7/labeling-preview?fixtureJson=<local-json>",

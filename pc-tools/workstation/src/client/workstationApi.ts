@@ -9,6 +9,7 @@ import type {
   O7LabelingPreviewResponse,
   O7LocalWebrtcCameraResponse,
   O7LiveEndpointsManifestResponse,
+  O7LiveOperatorPanelResponse,
   HealthResponse,
   O7OperatorConsoleResponse,
   O7PreviewsAcceptanceResponse,
@@ -38,6 +39,7 @@ export interface WorkstationSnapshot {
   trainingLabeling: TrainingLabelingResponse;
   o5O6ExternalProbeArtifact: O5O6ExternalProbeArtifactResponse;
   realMaterialAcceptance: RealMaterialAcceptanceResponse;
+  o7LiveOperatorPanel: O7LiveOperatorPanelResponse;
   o7OperatorConsole: O7OperatorConsoleResponse;
   proofBoundary: ProofBoundaryResponse;
 }
@@ -70,6 +72,7 @@ const API_ENDPOINTS = {
   o7OperatorConsole: "/api/o7/operator-console",
   o7PreviewsAcceptance: "/api/o7/previews/acceptance",
   o7LiveEndpointsManifest: "/api/o7/live-endpoints/manifest",
+  o7LiveOperatorPanel: "/api/o7/live-operator-panel",
   o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
   o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
   o5O6ExternalProbeArtifact: "/api/o5-o6/external-probe-artifact",
@@ -216,6 +219,11 @@ export async function getO7LiveEndpointsManifest(): Promise<O7LiveEndpointsManif
   return loadJson<O7LiveEndpointsManifestResponse>(API_ENDPOINTS.o7LiveEndpointsManifest);
 }
 
+export async function getO7LiveOperatorPanel(): Promise<O7LiveOperatorPanelResponse> {
+  // Live Operator 只读后端 fail-closed contract；按钮状态不能由 UI 自己发明。
+  return loadJson<O7LiveOperatorPanelResponse>(API_ENDPOINTS.o7LiveOperatorPanel);
+}
+
 export async function getO7CloudOperatorConsoleProbe(baseUrl: string): Promise<O7CloudOperatorConsoleProbeResponse> {
   // 前端不直连 cloud relay；只调用本机 Node probe API，避免浏览器绕过后端安全检查。
   return loadJson<O7CloudOperatorConsoleProbeResponse>(cloudOperatorConsoleProbeUrl(baseUrl));
@@ -315,6 +323,7 @@ export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise
     trainingLabeling,
     o5O6ExternalProbeArtifact,
     realMaterialAcceptance,
+    o7LiveOperatorPanel,
     o7OperatorConsole,
     proofBoundary,
   ] = await Promise.all([
@@ -325,6 +334,7 @@ export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise
     getTrainingLabeling(),
     getO5O6ExternalProbeArtifact(),
     getRealMaterialAcceptance(),
+    getO7LiveOperatorPanel(),
     getO7OperatorConsole(),
     getProofBoundary(),
   ]);
@@ -337,6 +347,7 @@ export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise
     trainingLabeling,
     o5O6ExternalProbeArtifact,
     realMaterialAcceptance,
+    o7LiveOperatorPanel,
     o7OperatorConsole,
     proofBoundary,
   };

@@ -146,6 +146,84 @@ h3 {
   padding: 16px;
 }
 
+.live-operator-panel {
+  min-height: 0;
+  margin-bottom: 12px;
+}
+
+.live-operator-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr 1fr;
+  gap: 12px;
+}
+
+.live-tile {
+  min-width: 0;
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  padding: 12px;
+  background: #f7f9fb;
+  overflow-wrap: anywhere;
+}
+
+.camera-preview {
+  display: grid;
+  gap: 6px;
+  min-height: 92px;
+  margin-bottom: 12px;
+  border: 1px dashed #aeb9c6;
+  border-radius: 6px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.camera-preview span {
+  color: #5f6b7a;
+  font-size: 12px;
+}
+
+.speed-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.speed-row label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.speed-row span,
+.speed-row output {
+  color: #5f6b7a;
+  font-size: 12px;
+}
+
+.direction-pad {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.direction-pad button:last-child {
+  grid-column: 1 / -1;
+}
+
+.blocked-copy {
+  min-height: 36px;
+  margin-bottom: 10px;
+  border: 1px solid #e0b4a0;
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 13px;
+}
+
 .probe-endpoint-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -539,6 +617,7 @@ th {
   .status-strip,
     .tabs,
     .metrics,
+    .live-operator-grid,
     .o7-command-bar,
     .o7-overview-strip,
     .o7-ops-grid,

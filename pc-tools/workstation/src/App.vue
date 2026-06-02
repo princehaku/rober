@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue";
 import EvidenceToolsPanel from "./components/EvidenceToolsPanel.vue";
 import O7FixturePreviewPanel from "./components/O7FixturePreviewPanel.vue";
+import O7LiveOperatorPanel from "./components/O7LiveOperatorPanel.vue";
 import O7OperatorConsolePanel from "./components/O7OperatorConsolePanel.vue";
 import ProofBoundaryPanel from "./components/ProofBoundaryPanel.vue";
 import ProofFlagStrip from "./components/ProofFlagStrip.vue";
@@ -18,6 +19,7 @@ import type {
   HardwareMaterialsResponse,
   HealthResponse,
   O5O6ExternalProbeArtifactResponse,
+  O7LiveOperatorPanelResponse,
   O7OperatorConsoleResponse,
   ProofBoundaryResponse,
   RealMaterialAcceptanceResponse,
@@ -41,6 +43,7 @@ const hardwareMaterials = ref<HardwareMaterialsResponse | null>(null);
 const trainingLabeling = ref<TrainingLabelingResponse | null>(null);
 const o5O6ExternalProbeArtifact = ref<O5O6ExternalProbeArtifactResponse | null>(null);
 const realMaterialAcceptance = ref<RealMaterialAcceptanceResponse | null>(null);
+const o7LiveOperatorPanel = ref<O7LiveOperatorPanelResponse | null>(null);
 const o7OperatorConsole = ref<O7OperatorConsoleResponse | null>(null);
 const proofBoundary = ref<ProofBoundaryResponse | null>(null);
 const routeInputs = ref<RouteDebugInputs>({
@@ -64,6 +67,7 @@ async function refresh(): Promise<void> {
     trainingLabeling.value = snapshot.trainingLabeling;
     o5O6ExternalProbeArtifact.value = snapshot.o5O6ExternalProbeArtifact;
     realMaterialAcceptance.value = snapshot.realMaterialAcceptance;
+    o7LiveOperatorPanel.value = snapshot.o7LiveOperatorPanel;
     o7OperatorConsole.value = snapshot.o7OperatorConsole;
     proofBoundary.value = snapshot.proofBoundary;
   } catch (err) {
@@ -110,6 +114,7 @@ onMounted(() => {
       @refresh="refresh"
     />
     <template v-else-if="activePanel === 'o7'">
+      <O7LiveOperatorPanel :live-operator-panel="o7LiveOperatorPanel" />
       <RealMaterialAcceptancePanel :real-material-acceptance="realMaterialAcceptance" />
       <section class="probe-artifact-panel" aria-label="O5 O6 external probe artifact">
         <div class="section-head compact-head">

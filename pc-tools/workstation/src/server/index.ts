@@ -12,6 +12,7 @@ import {
   buildO5O6ExternalProbeArtifact,
   buildRealMaterialAcceptance,
   buildO7LiveEndpointsManifest,
+  buildO7LiveOperatorPanel,
   buildO7CloudOperatorConsoleProbe,
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
@@ -101,6 +102,11 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/live-endpoints/manifest", (_req, res) => {
     // Live endpoints manifest 只读取 env 配置并脱敏，不执行 ping/connect/send 或硬件读取。
     res.json(buildO7LiveEndpointsManifest());
+  });
+
+  workstationApp.get("/api/o7/live-operator-panel", (_req, res) => {
+    // Live operator panel 只暴露已观测上位机事实和 blocked control shape，不连接底盘或发送命令。
+    res.json(buildO7LiveOperatorPanel());
   });
 
   workstationApp.get("/api/o7/cloud-operator-console-probe", async (req, res) => {

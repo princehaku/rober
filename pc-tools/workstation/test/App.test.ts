@@ -675,6 +675,79 @@ const fixtures: Record<string, unknown> = {
     not_proven: ["real_robot_control_not_executed", "real_4g_sim_not_proven"],
     ...PROOF_FLAGS,
   },
+  "/api/o7/live-operator-panel": {
+    schema: "trashbot.o7.live_operator_panel.v1",
+    endpoint: "/api/o7/live-operator-panel",
+    ssh: {
+      host: "192.168.1.11",
+      port: 37878,
+      reachable: true,
+      workstation_api_8787_status: "not_listening_observed",
+    },
+    lidar_radar: {
+      dev_lidar: "missing",
+      stc_by_id: "unresolved",
+      scan_status: "not_proven",
+      pointcloud_fabricated: false,
+      source_facts: [
+        "remote /dev/lidar not listed",
+        "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00 points to ttyACM0 but identity is not proven as base",
+        "T=1001 WAVE ROVER feedback has not been observed",
+      ],
+      blocked_reasons: [
+        "base_serial_identity_not_proven",
+        "t1001_feedback_not_observed",
+        "robot_ack_not_connected",
+      ],
+    },
+    camera: {
+      base_url: "http://192.168.1.11:8088/",
+      health_status: "not_listening_observed",
+      video_source: "/dev/video1",
+      devices_summary: [
+        "final readonly SSH check observed 127.0.0.1:8088 connection refused",
+        "/dev/video1 USB camera was previously observed as usable capture source",
+        "/dev/video0 cedrus codec is not the USB camera source",
+        "/dev/video2 metadata node is not the display source",
+      ],
+      offer_auto_post_enabled: false,
+      lan_page_url: "http://192.168.1.11:8088/",
+    },
+    control: {
+      visible_directions: ["forward", "back", "left", "right", "stop"],
+      speed: { default_value: 0.2, min: 0, max: 0.5, step: 0.05, unit: "m/s" },
+      command_dispatch_enabled: false,
+      sends_commands: false,
+      robot_ack_connected: false,
+      blocked_reasons: [
+        "base_serial_identity_not_proven",
+        "t1001_feedback_not_observed",
+        "robot_ack_not_connected",
+      ],
+    },
+    fixed_false_flags: {
+      safe_to_control: false,
+      sends_commands: false,
+      robot_control_executed: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+    },
+    sends_commands: false,
+    robot_control_executed: false,
+    blocked_reasons: [
+      "base_serial_identity_not_proven",
+      "t1001_feedback_not_observed",
+      "robot_ack_not_connected",
+    ],
+    not_proven: [
+      "real_lidar_scan",
+      "real_wave_rover_uart_feedback",
+      "real_robot_ack",
+      "real_manual_control_dispatch",
+      "delivery_success",
+    ],
+    ...PROOF_FLAGS,
+  },
   "/api/o7/operator-console": {
     schema: "trashbot.o7.operator_console.v1",
     contract_source: "cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py",
@@ -2651,8 +2724,10 @@ function stubWorkstationFetch() {
                 : url.startsWith("/api/o7/previews/acceptance")
                   ? "/api/o7/previews/acceptance"
                   : url.startsWith("/api/o7/live-endpoints/manifest")
-                    ? "/api/o7/live-endpoints/manifest"
-                    : url.startsWith("/api/o7/cloud-archive/tasks-probe")
+                  ? "/api/o7/live-endpoints/manifest"
+                    : url.startsWith("/api/o7/live-operator-panel")
+                      ? "/api/o7/live-operator-panel"
+                      : url.startsWith("/api/o7/cloud-archive/tasks-probe")
                         ? "/api/o7/cloud-archive/tasks-probe"
                         : url.startsWith("/api/o7/cloud-archive/tasks")
                           ? "/api/o7/cloud-archive/tasks"
@@ -2805,6 +2880,10 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain("O7 Operator Console");
+    expect(wrapper.text()).toContain("PC Live Operator");
+    expect(wrapper.text()).toContain("LiDAR / Radar Signal");
+    expect(wrapper.text()).toContain("Forward");
+    expect(wrapper.text()).toContain("Stop");
     expect(wrapper.text()).toContain("运营调试台");
     expect(wrapper.text()).toContain("真实材料验收队列");
     expect(wrapper.text()).toContain("accepted=1 · needs_long_run=1 · not_observed=0 · blocked=1");
@@ -3493,7 +3572,37 @@ describe("App", () => {
     expect(wrapper.text()).not.toContain("Bearer");
     expect(JSON.stringify(fixtures["/api/o5-o6/external-probe-artifact"])).not.toContain("http://127.0.0.1");
     expect(wrapper.text()).not.toMatch(
-      /\bSend\b|\bSpeak\b|\bDispatch\b|\bRun\b|\bSubmit\b|\bControl\b|\bPlay\b|\bPause\b|\bExport\b|\bStop\b|\bCancel\b|\bRecovery\b/,
+      /\bSend\b|\bSpeak\b|\bDispatch\b|\bRun\b|\bSubmit\b|\bPlay\b|\bPause\b|\bExport\b|\bCancel\b|\bRecovery\b/,
     );
+  });
+
+  it("renders O7 live operator controls and keeps button clicks blocked without control fetch", async () => {
+    // 方向按钮是可视化接管入口，但在 robot ACK 和底盘身份未证明前只能显示 blocked 文案。
+    const mockedFetch = stubWorkstationFetch();
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.findAll("button").find((button) => button.text() === "O7 Console")?.trigger("click");
+    await wrapper.vm.$nextTick();
+
+    const callsBeforeClick = mockedFetch.mock.calls.length;
+    expect(wrapper.text()).toContain("PC Live Operator");
+    expect(wrapper.text()).toContain("LiDAR / Radar Signal");
+    expect(wrapper.text()).toContain("not_listening_observed");
+    expect(wrapper.text()).toContain("/dev/video1");
+    expect(wrapper.text()).toContain("dispatch=false");
+    expect(wrapper.text()).toContain("robot_ack_connected=false");
+
+    await wrapper.findAll("button").find((button) => button.text() === "Forward")?.trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeClick);
+    expect(wrapper.text()).toContain("Forward blocked: base_serial_identity_not_proven");
+    expect(wrapper.text()).toContain("t1001_feedback_not_observed");
+    expect(wrapper.text()).toContain("robot_ack_not_connected");
+    expect(wrapper.text()).toContain("sends_commands=false");
+    expect(wrapper.text()).not.toContain("/cmd_vel");
   });
 });
