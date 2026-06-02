@@ -41,6 +41,8 @@ Objective 1 超过 90% 不能只依赖 mock、虚拟串口、Docker build 或 sy
 
 2026-06-02 13-14 的最新 O1 probe 已确认远端 SSH 从上一轮 `No route to host` 恢复，并通过 `ssh root@192.168.1.11 -p 37878` 在上位机上运行 stdin probe。结果证明远端 Python 可运行、`pyserial.available=true`、`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00` 存在并指向 `/dev/ttyACM0`、只读 serial probe 可打开目标端口；显式 `--request-base-feedback` 只发送一次 vendor `{"T":130}\n`，且 `feedback_request.write_error=null`。但 12 秒读取窗口仍为 `read_line_count=0`、`parsed_json_count=0`、`observed_feedback_types=[]`，`t1001_feedback_status=not_observed_after_t130`。该状态只能归类为 `serial_open_t130_no_feedback_after_request`，仍不满足下面的真实 `T=1001` HIL packet 要求，也不能替代 `feedback_T1001.log`、ROS `/imu/data`、`/battery` 或 `/odom` 同源材料。
 
+2026-06-02 14-15 新增的 `onboard/scripts/o1_wave_rover_port_identity_probe.py` 只用于 HIL 前的端口身份 readiness。它只执行 `glob/readlink/stat/sysfs` 文本读取，不打开 `/dev/*` 串口、不发送 `T=130/T=131/T=1/T=13/cmd_vel`，并固定 `safe_to_control=false`、`sends_commands=false`、`opens_serial_devices=false`、`robot_control_executed=false`、`delivery_success=false`。它可以把目标端口 realpath、by-id/by-path 线索、sysfs USB/tty 描述、STC/LiDAR 风险和下一步检查项输出为机器 JSON；但它只能给出 `port_missing`、`possible_lidar_or_other_stc`、`identity_insufficient`、`possible_wave_rover_esp32` 这类保守分类，不能把端口身份写成已验证的 WAVE ROVER ESP32，也不能替代真实 `T=1001`、HIL packet 或现场物理追线。
+
 O1 必需真实材料路径约定：
 
 ```text

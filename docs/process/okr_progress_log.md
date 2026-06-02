@@ -8,6 +8,16 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 14-15｜o1-wave-rover-port-identity｜No-motion port identity readiness ready
+
+本轮 Micro closeout 基于 `sprints/2026.06.02_14-15_o1-wave-rover-port-identity/tech-done.md`。Hardware Infra 针对 O1 当前最低完成度和上一轮 `serial_open_t130_no_feedback_after_request` 的剩余风险，新增 `onboard/scripts/o1_wave_rover_port_identity_probe.py`：它只做 `glob/readlink/stat/sysfs` 文本读取，不打开 `/dev/*` 串口，不写串口，不发送 `T=130`、`T=131`、`T=1`、`T=13`、`cmd_vel` 或任何运动命令。
+
+本轮 probe 输出 `trashbot.o1.wave_rover_port_identity_probe.v1`，固定 `safe_to_control=false`、`sends_commands=false`、`opens_serial_devices=false`、`robot_control_executed=false`、`delivery_success=false`。它能机器可读地返回目标端口 `realpath`、同一 realpath 的 by-id/by-path/ttyACM/ttyUSB/`/dev/lidar` 线索、sysfs USB/tty 描述、候选端口风险和下一步检查项，并保守分类为 `port_missing`、`possible_lidar_or_other_stc`、`identity_insufficient` 或 `possible_wave_rover_esp32`。其中 STC/ttyACM 只作为风险线索，因为当前 LiDAR vendor README 同样要求通过 `/dev/ttyUSB*` 或 `/dev/ttyACM*` 插拔对比确认雷达设备，LiDAR udev 规则也会产生 `/dev/lidar`。
+
+Product closeout 判定：Objective 1 保持约 93%，口径更新为 `software_reference + upper-computer serial-open observed + T=130 request observed + port identity readiness ready; T=1001 not_proven`。本轮关闭的是“目标端口身份风险不可机器判读”的自动化缺口，不证明目标端口就是 WAVE ROVER ESP32，不证明真实 `T=1001`，不证明 UART/HIL、底盘控制、真实 LiDAR `/scan`、ROS Humble runtime、TF、Nav2/SLAM 或 delivery success。远端 SSH 只作为可选材料；本轮按用户要求不等待远端采集。
+
+验证证据：`python3 -m py_compile onboard/scripts/o1_wave_rover_port_identity_probe.py` 通过；`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_hardware/test/test_o1_wave_rover_port_identity_probe.py` 输出 `Ran 6 tests ... OK`；scoped `git diff --check` 通过。
+
 ### 2026-06-02 13-14｜o1-t1001-live-recovery｜SSH recovered, T=130 write observed, T=1001 still not proven
 
 本轮 Micro closeout 基于 `sprints/2026.06.02_13-14_o1-t1001-live-recovery/tech-done.md`。Hardware Infra 按 O1 当前最低优先级，在 fail-closed/no-motion 边界内复采 WAVE ROVER `T=1001` 材料。vendor 复核结论保持不变：`json_cmd.h` 定义 `CMD_BASE_FEEDBACK=130` 与 `FEEDBACK_BASE_INFO=1001`，`uart_ctrl.h` 的 `CMD_BASE_FEEDBACK` 分支调用 `baseInfoFeedback()`，`ugv_advance.h` 的 `baseInfoFeedback()` 通过 `Serial.println` 输出 `T=1001`、`L/R/r/p/y/v` 等字段。

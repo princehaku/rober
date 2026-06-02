@@ -83,6 +83,46 @@ ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/ttyACM0 --b
 - `feedback_request.enabled/sent/command/write_error`
 - `blocked_commands_not_sent`
 
+## 端口身份 readiness probe
+
+`onboard/scripts/o1_wave_rover_port_identity_probe.py` 是本轮新增的 no-motion 端口身份 readiness probe。它解决的是上一轮留下的端口身份风险：`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00 -> /dev/ttyACM0` 可打开并不等于该端口一定是 WAVE ROVER ESP32；vendor LiDAR README 也要求通过 `/dev/ttyUSB*` 或 `/dev/ttyACM*` 插拔对比确认雷达设备，vendor LiDAR udev 规则还会把 `idVendor=34bf`、`idProduct=ff0a` 映射为 `/dev/lidar`。
+
+该 probe 默认只执行 `glob`、`readlink`、`stat` 和 `/sys/class/tty/<name>/device` 上游 sysfs 小文本读取。它不 import pyserial、不打开 `/dev/*` 串口、不写串口、不发送 `T=130`、`T=131`、`T=1`、`T=13` 或 `cmd_vel`。输出固定 fail-closed 字段：
+
+- `safe_to_control=false`
+- `sends_commands=false`
+- `opens_serial_devices=false`
+- `robot_control_executed=false`
+- `delivery_success=false`
+
+运行示例：
+
+```bash
+python3 onboard/scripts/o1_wave_rover_port_identity_probe.py --once-json --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00
+```
+
+远端只读运行示例：
+
+```bash
+timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00' < onboard/scripts/o1_wave_rover_port_identity_probe.py
+```
+
+关键输出字段：
+
+- `target.realpath`：目标端口 realpath，例如 by-id 指向 `/dev/ttyACM0`。这只是路径证据，不是设备身份定论。
+- `serial_candidates.related_to_target_realpath[]`：同一 realpath 的 by-id、by-path、ttyACM/ttyUSB 和 `/dev/lidar` 线索。
+- `sysfs_usb_tty_description`：从 sysfs 读取的 USB/tty 文本，如 `idVendor`、`idProduct`、`manufacturer`、`product`、`serial`、`interface`、`uevent`。
+- `identity_assessment.status`：稳定机器分类，取值包括 `port_missing`、`possible_wave_rover_esp32`、`possible_lidar_or_other_stc`、`identity_insufficient`。
+- `identity_assessment.risk_flags[]`：例如 `stc_or_ttyacm_is_not_unique`、`lidar_clue_present`、`no_distinctive_usb_identity_clue`。
+- `identity_assessment.next_required_checks[]`：现场下一步检查项，重点是分别拔插 LiDAR 和 base controller 对比 by-id/by-path、物理追线、确认 `/dev/lidar` 或 LiDAR udev 是否指向同一 realpath。
+
+分类口径必须保守：
+
+- 端口缺失只能写 `port_missing`，下一步先恢复 USB/UART 可见性。
+- 只看到 STC、ttyACM 或 by-id 指向时，默认仍是 `identity_insufficient`，因为 LiDAR 参考也可能使用 ttyACM/ttyUSB。
+- 出现 `/dev/lidar`、`lidar/laser` 文本或 LiDAR udev vendor/product 时，写 `possible_lidar_or_other_stc`，优先暴露错口风险。
+- 只有出现 ESP32/Waveshare/WAVE ROVER 这类文本线索且没有 LiDAR/STC 风险时，才允许写 `possible_wave_rover_esp32`，仍不能写成 proven。
+
 ## 证据边界
 
 这不是 HIL pass，也不是底盘控制通过。通过本 probe 最多只能说明：
