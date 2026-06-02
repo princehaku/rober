@@ -39,7 +39,7 @@ Objective 1 超过 90% 不能只依赖 mock、虚拟串口、Docker build 或 sy
 - `IMU_ctrl.h` 的 IMU 输出字段包括 `r,p,y,ax,ay,az,gx,gy,gz,mx,my,mz,temp`；`battery_ctrl.h` 使用 INA219 并计算 `loadVoltage_V`、`busVoltage_V`、`current_mA`、`power_mW`，但项目 `/battery` 是否只发布电压仍以 ROS bridge 和 HIL 对齐为准。
 - `movtion_module.h` 中 `mm_settings()` 给 `mainType=1/2/3` 设置不同 `WHEEL_D`、`ONE_CIRCLE_PLUSES`、`TRACK_WIDTH` 和 `SET_MOTOR_DIR`。WAVE ROVER 实车的 `mainType`、轮距、轮向和编码器行为不能从照片推断。
 
-2026-06-01 23-24 的最新 O1 probe 已解除上一轮远端 SSH `No route to host` blocker，并通过 `ssh root@192.168.1.11 -p 37878` 在上位机上运行 stdin probe。结果证明 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00` 可打开、`pyserial.available=true`、显式 `--request-base-feedback` 可发送 vendor `{"T":130}\n` 且 `write_error=null`；5 秒和 15 秒读取窗口均为 `read_line_count=0`、`parsed_json_count=0`、`observed_feedback_types=[]`。该状态只能归类为 `serial_open_t130_feedback_request_observed_without_t1001`，仍不满足下面的真实 `T=1001` HIL packet 要求，也不能替代 `feedback_T1001.log`、ROS `/imu/data`、`/battery` 或 `/odom` 同源材料。
+2026-06-02 13-14 的最新 O1 probe 已确认远端 SSH 从上一轮 `No route to host` 恢复，并通过 `ssh root@192.168.1.11 -p 37878` 在上位机上运行 stdin probe。结果证明远端 Python 可运行、`pyserial.available=true`、`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00` 存在并指向 `/dev/ttyACM0`、只读 serial probe 可打开目标端口；显式 `--request-base-feedback` 只发送一次 vendor `{"T":130}\n`，且 `feedback_request.write_error=null`。但 12 秒读取窗口仍为 `read_line_count=0`、`parsed_json_count=0`、`observed_feedback_types=[]`，`t1001_feedback_status=not_observed_after_t130`。该状态只能归类为 `serial_open_t130_no_feedback_after_request`，仍不满足下面的真实 `T=1001` HIL packet 要求，也不能替代 `feedback_T1001.log`、ROS `/imu/data`、`/battery` 或 `/odom` 同源材料。
 
 O1 必需真实材料路径约定：
 

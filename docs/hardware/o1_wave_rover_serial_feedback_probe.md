@@ -220,3 +220,48 @@ ssh: connect to host 192.168.1.11 port 37878: No route to host
 - `evidence_boundary=remote_network_unreachable_not_serial_feedback_result`
 
 这是第三次同类 `remote_network_unreachable` / `ssh_no_route_to_host` blocker 消费：`2026.06.01_20-21`、`2026.06.02_06-07`、`2026.06.02_07-08` 均未触达远端 Python。按项目 blocker 红线，不能继续把同一 SSH/路由不可达问题当成 O1 完成材料；下一轮必须切换到不依赖该 blocker 的 Objective，或由 CEO 现场处理/决策，先恢复 `192.168.1.11:37878` 可路由与 SSH 映射后再继续采集 `T=1001`。
+
+`2026.06.02_13-14_o1-t1001-live-recovery` 按用户恢复后的同一 SSH 入口执行 fail-closed 复采。本轮没有发送 `T=1`、`T=13`、`T=131`、`cmd_vel` 或任何运动命令，只按显式参数发送一次 vendor `{"T":130}\n`。
+
+远端只读 upper readiness：
+
+```bash
+timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json' < onboard/scripts/o1_upper_computer_readiness_probe.py
+```
+
+结果证明 SSH 已恢复，远端主机为 `op-z3-b6.home`，Linux `aarch64`，Python `3.10.12`，`pyserial.available=true`。只读枚举发现 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`、`/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0` 和 `/dev/ttyACM0`，readiness probe 仍固定 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`，且不打开串口、不写 `/dev/*`。
+
+远端只读 serial probe：
+
+```bash
+timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 2' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
+结果为 `serial_opened=true`，目标 by-id 端口存在并指向 `/dev/ttyACM0`，但只读 2 秒窗口 `read_line_count=0`、`parsed_json_count=0`、`observed_feedback_types=[]`，`feedback_request.enabled=false`、`feedback_request.sent=false`，因此 `t1001_feedback_status=not_requested`。该结果只能说明目标端口可打开且默认无被动串口行，不能写成 WAVE ROVER 无反馈或 HIL pass。
+
+远端显式非运动 `T=130` request：
+
+```bash
+timeout 35 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --request-base-feedback --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 12' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
+结果为 `serial_opened=true`、`feedback_request.enabled=true`、`feedback_request.sent=true`、`feedback_request.write_error=null`、`safe_to_control=false`、`sends_commands=true`、`sends_motion_commands=false`、`robot_control_executed=false`、`delivery_success=false`。12 秒读取窗口仍为 `read_line_count=0`、`parsed_json_count=0`、`invalid_json_count=0`、`observed_feedback_types=[]`、`raw_line_preview=[]`、`error=null`，机器状态为 `t1001_feedback_status=not_observed_after_t130`。
+
+本轮结论：
+
+- `remote_probe_status=ssh_recovered`
+- `serial_opened=true`
+- `t130_request_reached_serial=true`
+- `t130_write_error=null`
+- `t1001_observed=false`
+- `t1001_feedback_status=not_observed_after_t130`
+- `evidence_boundary=serial_open_t130_feedback_request_not_hil`
+
+下一步现场检查必须按 probe 输出的 `next_required_checks[]` 执行：
+
+1. `verify_esp32_power_and_firmware`：确认 WAVE ROVER ESP32 下位机供电、运行固件和 vendor `CMD_BASE_FEEDBACK` 分支。
+2. `verify_uart_tx_rx_crossed`：确认上位机到下位机 UART TX/RX 交叉和线缆可靠。
+3. `verify_target_port_is_wave_rover_esp32`：确认 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00` 不是 LiDAR、其他 STC 设备或错误 USB 串口。
+4. `check_serial_owner_process`：确认没有 vendor app、systemd service 或其他进程占用同一串口。
+5. `use_vendor_terminal_cross_check_t130`：用 vendor terminal 或最小串口终端人工交叉发送 `{"T":130}` 并观察原始行。
+6. `verify_wave_rover_cmd_base_feedback_firmware_branch`：确认当前烧录固件包含 `uart_ctrl.h` 的 `CMD_BASE_FEEDBACK` 到 `baseInfoFeedback()` 路径。

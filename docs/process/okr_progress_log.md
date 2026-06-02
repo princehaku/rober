@@ -8,6 +8,18 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 13-14｜o1-t1001-live-recovery｜SSH recovered, T=130 write observed, T=1001 still not proven
+
+本轮 Micro closeout 基于 `sprints/2026.06.02_13-14_o1-t1001-live-recovery/tech-done.md`。Hardware Infra 按 O1 当前最低优先级，在 fail-closed/no-motion 边界内复采 WAVE ROVER `T=1001` 材料。vendor 复核结论保持不变：`json_cmd.h` 定义 `CMD_BASE_FEEDBACK=130` 与 `FEEDBACK_BASE_INFO=1001`，`uart_ctrl.h` 的 `CMD_BASE_FEEDBACK` 分支调用 `baseInfoFeedback()`，`ugv_advance.h` 的 `baseInfoFeedback()` 通过 `Serial.println` 输出 `T=1001`、`L/R/r/p/y/v` 等字段。
+
+本轮远端 readiness 使用 `root@192.168.1.11:37878` 成功返回，证明上一轮 `remote_network_unreachable` / `ssh_no_route_to_host` blocker 已恢复。远端为 `op-z3-b6.home`、Linux aarch64、Python 3.10.12，`pyserial.available=true`，枚举到 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00` 和 `/dev/ttyACM0`。远端只读 serial probe 可打开目标 by-id 端口，且该端口指向 `/dev/ttyACM0`，但 2 秒只读窗口 `read_line_count=0`、`observed_feedback_types=[]`、`t1001_feedback_status=not_requested`。
+
+随后按显式 `--request-base-feedback` 执行一次非运动 `T=130` probe。结果为 `serial_opened=true`、`feedback_request.sent=true`、`feedback_request.write_error=null`、`sends_commands=true`、`sends_motion_commands=false`、`safe_to_control=false`、`robot_control_executed=false`、`delivery_success=false`；12 秒读取窗口仍为 `read_line_count=0`、`parsed_json_count=0`、`invalid_json_count=0`、`observed_feedback_types=[]`、`raw_line_preview=[]`、`error=null`，`t1001_feedback_status=not_observed_after_t130`。本轮未发送 `T=1`、`T=13`、`T=131`、`cmd_vel` 或任何运动命令。
+
+Product closeout 判定：Objective 1 保持约 93%，不提升百分比。价值是把失败点从 SSH/路由不可达收敛为 `serial_open_t130_no_feedback_after_request`；仍没有观察到真实 `T=1001`，不能写成 HIL pass、底盘可控、真实 UART/HIL、真实 `/imu/data`、真实 `/battery`、真实 `/odom` 或 delivery success。下一步现场检查按 `next_required_checks[]` 执行：确认 ESP32 供电/固件、UART TX/RX 交叉、目标 by-id 端口是否真为 WAVE ROVER ESP32、串口占用、vendor terminal `T=130` 交叉验证，以及当前固件是否包含 `CMD_BASE_FEEDBACK -> baseInfoFeedback()` 分支。
+
+验证证据：`python3 -m py_compile onboard/scripts/o1_upper_computer_readiness_probe.py onboard/scripts/o1_wave_rover_serial_feedback_probe.py` 通过；focused unittest 输出 `Ran 18 tests ... OK`；远端 readiness/只读 serial/T=130 probe 均完成并保持 fail-closed 安全字段。剩余验证为 scoped `git diff --check`。
+
 ### 2026-06-02 11-12｜o7-long-stability-real-material｜O7 collector blocked with real-material failure classification
 
 本轮 Micro closeout 基于 `sprints/2026.06.02_11-12_o7-long-stability-real-material/tech-done.md`。Full-Stack 实际运行 `cd pc-tools/workstation && npm run o7:browser-long-stability`，默认 URL 为 `http://192.168.1.11:8088/`，并生成 `pc-tools/workstation/.workstation-runtime/o7-browser-playback-smoke.json`。artifact 结果为 `blocked` / `status=failed`：`failure_category=browser_smoke_failed`、`remote_health_status=remote_health_unreachable`、`blocked_reason=page.goto: net::ERR_CONNECTION_REFUSED`、`start_clicked=false`、`offer_executed_by_browser=false`、`first_frame_received=false`、`stability_summary.status=not_observed`、`stability_summary.observation_window_ms=0`、`server_peer_close_status=not_attempted`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`。
