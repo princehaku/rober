@@ -8,6 +8,16 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 11-12｜o7-long-stability-real-material｜O7 collector blocked with real-material failure classification
+
+本轮 Micro closeout 基于 `sprints/2026.06.02_11-12_o7-long-stability-real-material/tech-done.md`。Full-Stack 实际运行 `cd pc-tools/workstation && npm run o7:browser-long-stability`，默认 URL 为 `http://192.168.1.11:8088/`，并生成 `pc-tools/workstation/.workstation-runtime/o7-browser-playback-smoke.json`。artifact 结果为 `blocked` / `status=failed`：`failure_category=browser_smoke_failed`、`remote_health_status=remote_health_unreachable`、`blocked_reason=page.goto: net::ERR_CONNECTION_REFUSED`、`start_clicked=false`、`offer_executed_by_browser=false`、`first_frame_received=false`、`stability_summary.status=not_observed`、`stability_summary.observation_window_ms=0`、`server_peer_close_status=not_attempted`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`。
+
+本轮没有消费 O1 SSH blocker，未 SSH `root@192.168.1.11 -p 37878`，未触碰 WAVE ROVER、LiDAR、ROS2 或 hardware 文件。Full-Stack 做的窄功能修正是让 `GET /api/real-material/acceptance` 的 O7 item 在 failed / fail_closed / degraded browser artifact 时，`blocking_reason` 优先暴露脱敏机器原因 `browser_smoke_failed__net_err_connection_refused__remote_health_unreachable`，避免退化为 `first_frame_not_received`。同步文档为 `docs/interfaces/real_material_acceptance_queue.md` 与 `docs/product/pc_tools_workstation.md`。
+
+Product closeout 判定：Objective 7 保持约 96%，口径更新为 `software collector entry + blocked real-material failure classification`。本轮证明 collector 可真实运行、blocked artifact 可落盘、acceptance queue 可把真实连接拒绝暴露为可操作机器原因；但真实 180s/3-5min browser long-stability artifact 仍为 `not_proven`，不能写成 production done、真实产品视频能力完成或真实上车闭环。Objective 1 保持约 93%，Objective 5 / 6 保持约 96%。
+
+验证证据来自本轮收口：真实 collector 已运行但 blocked；dry-run 通过且固定 no-network/no-POST/no-WebRTC/no-control flags；`npm run test` 2 files / 60 tests passed；`npm run build` 通过，Vite 输出 `35 modules transformed`；`npm run lint` 首次因 `no-control-regex` 失败，修复后通过；scoped `git diff --check` 通过。剩余风险：需先恢复或确认板端 HTTP/WebRTC camera 服务监听、端口、网络可达性和 camera server 日志，再重跑 180s/3-5min collector；弱网、TURN、公网云 relay、鉴权、真实用户浏览器/手机、ASR/TTS、手控/Nav2、真实 robot ACK 和完整上车任务闭环仍 `not_proven`。
+
 ### 2026-06-02 10-11｜o7-long-stability-collector｜O7 180s collector entry visible
 
 本轮 Micro closeout 基于 `sprints/2026.06.02_10-11_o7-long-stability-collector/tech-done.md`。Full-Stack 新增 `pc-tools/workstation` 的 `npm run o7:browser-long-stability` operator-run 入口，默认委托既有 `scripts/o7-browser-playback-smoke.mjs`，把稳定性窗口提升到 `>=180000ms`，并输出到 `.workstation-runtime/o7-browser-playback-smoke.json`。该入口让 O7 真实材料采集从“UI runbook 要求 operator 手记原始 smoke env”推进到“明确命令入口”。

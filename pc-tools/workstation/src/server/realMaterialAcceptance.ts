@@ -242,6 +242,42 @@ function o7Status(record: Record<string, unknown> | null): RealMaterialAcceptanc
   return "blocked";
 }
 
+function normalizeO7FailureToken(value: unknown): string {
+  // browser smoke 的 blocked_reason 可能带 Playwright 调用栈和 URL；这里只提取 operator 真正需要的根因 token。
+  // ANSI escape 用运行时字符构造，避免 regex literal 被 lint 判定为控制字符。
+  const ansiEscapePattern = new RegExp(`${String.fromCharCode(27)}\\[[0-?]*[ -/]*[@-~]`, "g");
+  const text = safeText(value, "").replace(ansiEscapePattern, "");
+  if (/ERR_CONNECTION_REFUSED/i.test(text)) {
+    return "net_err_connection_refused";
+  }
+  if (/ERR_CONNECTION_TIMED_OUT|Timeout/i.test(text)) {
+    return "timeout";
+  }
+  if (/ERR_NAME_NOT_RESOLVED/i.test(text)) {
+    return "dns_not_resolved";
+  }
+  if (/ERR_ADDRESS_UNREACHABLE|ERR_NETWORK_CHANGED/i.test(text)) {
+    return "network_unreachable";
+  }
+  return text
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, "url_redacted")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+}
+
+function o7ObservedFailureReason(record: Record<string, unknown>): string | null {
+  // 失败 artifact 已经有更准确的分类时，优先传给验收队列，避免退化成笼统 first_frame_not_received。
+  if (!["failed", "fail_closed", "degraded"].includes(String(record.status))) {
+    return null;
+  }
+  const failureCategory = normalizeO7FailureToken(record.failure_category) || String(record.status);
+  const detail = normalizeO7FailureToken(record.blocked_reason);
+  const remoteHealth = normalizeO7FailureToken(record.remote_health_status);
+  return [failureCategory, detail, remoteHealth].filter(Boolean).join("__");
+}
+
 function o7Reason(record: Record<string, unknown> | null, artifactStatus: string, status: RealMaterialAcceptanceStatus): string {
   // O7 reason 对齐已有 long-stability guard 的机器语义。
   if (status === "accepted") {
@@ -254,6 +290,10 @@ function o7Reason(record: Record<string, unknown> | null, artifactStatus: string
   const observedWindowMs = typeof stability?.observation_window_ms === "number" ? stability.observation_window_ms : 0;
   if (status === "needs_long_run") {
     return "observation_window_below_180000ms";
+  }
+  const observedFailureReason = o7ObservedFailureReason(record);
+  if (observedFailureReason) {
+    return observedFailureReason;
   }
   if (record.first_frame_received !== true) {
     return "first_frame_not_received";

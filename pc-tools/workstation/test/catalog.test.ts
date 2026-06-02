@@ -1818,6 +1818,51 @@ describe("workstation fail-closed API contracts", () => {
     expect(dryRun.planned_command).toBe("npm run o7:browser-smoke");
   });
 
+  it("real-material acceptance queue surfaces O7 browser collector failure reason", async () => {
+    // 真实采集失败时，队列要告诉 operator 是网络/服务问题，而不是退化成泛泛的首帧失败。
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-real-material-o7-failed-"));
+    const smokePath = path.join(tempDir, "browser-smoke-failed.json");
+    await writeFile(
+      smokePath,
+      JSON.stringify({
+        schema: "trashbot.o7.local_webrtc_browser_playback_smoke.v1",
+        status: "failed",
+        executed_at: "2026-06-02T03:11:35.163Z",
+        failure_category: "browser_smoke_failed",
+        blocked_reason: "page.goto: net::ERR_CONNECTION_REFUSED at http://192.168.1.11:8088/",
+        remote_health_status: "remote_health_unreachable",
+        start_clicked: false,
+        offer_executed_by_browser: false,
+        first_frame_received: false,
+        stability_summary: {
+          status: "not_observed",
+          observation_window_ms: 0,
+        },
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+      }),
+      "utf8",
+    );
+
+    const response = await buildRealMaterialAcceptance({
+      env: {
+        ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT: path.join(tempDir, "missing-external.json"),
+        ROBER_O7_BROWSER_SMOKE_RESULT_JSON: smokePath,
+      },
+    });
+    const o7Item = response.items.find((item) => item.id === "o7_browser_long_stability");
+
+    expect(o7Item?.status).toBe("blocked");
+    expect(o7Item?.blocking_reason).toBe(
+      "browser_smoke_failed__net_err_connection_refused__remote_health_unreachable",
+    );
+    expect(o7Item?.next_action).toContain("run o7:browser-long-stability");
+    expect(o7Item?.safe_to_control).toBe(false);
+    expect(response.execution_policy.network_probe_executed).toBe(false);
+    expect(JSON.stringify(response)).not.toContain("192.168.1.11");
+  });
+
   it("O7 long-stability collector rejects unsafe parameter shapes", () => {
     // 参数错误在 collector 层 fail closed，避免把不安全 URL 或非整数窗口传给真实 browser smoke。
     expect(() =>

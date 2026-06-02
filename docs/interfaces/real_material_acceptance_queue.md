@@ -110,7 +110,7 @@ O7 item：
 - `accepted`：browser smoke JSON 已加载，`status=ok`、`first_frame_received=true`，`stability_summary.status=observed`，观察窗口 `>=180000ms`，连接/ICE 持续 connected，视频尺寸 stable，console/page error 增量为 0，且 post-close peer cleanup 为 0 / cleaned。
 - `needs_long_run`：除观察窗口 `<180000ms` 外，其余 O7 长稳态条件满足。30s browser artifact 必须落入该状态，不能冒充 accepted。
 - `not_observed`：browser smoke artifact 缺失、坏 JSON、未运行，或没有 stability observation。
-- `blocked`：artifact 已观察到但首帧、连接、ICE、视频尺寸、错误增量或 peer cleanup 任一关键条件失败。
+- `blocked`：artifact 已观察到但首帧、连接、ICE、视频尺寸、错误增量或 peer cleanup 任一关键条件失败。若 browser smoke artifact 已有 `status=failed|fail_closed|degraded`，`blocking_reason` 必须优先暴露脱敏后的 `failure_category`、关键失败 token 和 `remote_health_status`，例如 `browser_smoke_failed__net_err_connection_refused__remote_health_unreachable`；不得退化成笼统的 `first_frame_not_received`。
 
 ## Artifact Freshness Semantics
 
@@ -138,6 +138,8 @@ Runbook 是 recipe，不是执行结果。API 返回 runbook 时仍必须保持�
 O5/O6 runbook 指向现有 `npm run o5o6:external-probe`，要求 operator 准备 `ROBER_PC_BASE_URL`、`ROBER_CLOUD_BASE_URL` 和 `ROBER_O5_O6_BEARER_TOKEN`，并把输出落到 `.workstation-runtime/o5-o6-external-live-probe.json` 或通过 `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 指向。
 
 O7 runbook 指向 `npm run o7:browser-long-stability`，要求 operator 准备 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL`。该入口默认委托现有 `scripts/o7-browser-playback-smoke.mjs`，并把 `ROBER_O7_BROWSER_SMOKE_STABILITY_MS` 强制提升到 `>=180000`，输出落到 `.workstation-runtime/o7-browser-playback-smoke.json` 或通过 `ROBER_O7_BROWSER_SMOKE_RESULT_JSON` 指向。
+
+2026-06-02 11-12 真实采集记录：默认 `http://192.168.1.11:8088/` 运行 `npm run o7:browser-long-stability` 时，browser smoke artifact 为 `status=failed`，`failure_category=browser_smoke_failed`，`remote_health_status=remote_health_unreachable`，`start_clicked=false`，`offer_executed_by_browser=false`，`first_frame_received=false`，`stability_summary.status=not_observed`，`server_peer_close_status=not_attempted`；脱敏后 queue 的 O7 `blocking_reason` 应显示 `browser_smoke_failed__net_err_connection_refused__remote_health_unreachable`。该结果说明板端 HTTP/WebRTC 服务当前拒绝连接或未监听，不是 180s 稳定性窗口失败；本轮未创建 WebRTC session、未 POST `/offer`、未拿到首帧。
 
 本地无相机或只想校验命令入口时，可运行：
 
