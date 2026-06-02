@@ -80,6 +80,9 @@ VENDOR_SOURCES = (
 # 安全边界说明：额外 stop 成功也不能替代物理急停按钮或断电路径。
 # 安全边界说明：现场 artifact 必须和 operator 记录一起审查，不能单看脚本。
 # 安全边界说明：任何 `T=1001` 结论都必须保持来源字段，避免混用历史材料。
+# 安全边界说明：执行后必须再读一次 status，避免只看 manual 响应误判 ACK。
+# 安全边界说明：acceptance_verdict 是机器合同，不让下游从 prose 猜结论。
+# 安全边界说明：status/manual/stop 任一步失败都必须 fail-closed。
 
 # 默认模式必须显式列出禁止动作，避免 dry-run artifact 被误读成可控。
 BLOCKED_COMMANDS_NOT_SENT = (
@@ -215,6 +218,44 @@ def t1001_status(summary: dict[str, Any]) -> str:
     return "unknown"
 
 
+def http_result_ok(result: Any) -> bool:
+    """HTTP 结果只接受显式 ok=true，避免错误 JSON 被当成功。"""
+    return isinstance(result, dict) and result.get("ok") is True
+
+
+def ack_observed_in_response(result: Any) -> bool:
+    """manual 响应里的 ACK 只能作为辅助线索，最终仍要看 post status。"""
+    if not isinstance(result, dict):
+        return False
+    body = result.get("json")
+    if not isinstance(body, dict):
+        return False
+    ack = body.get("feedback_ack")
+    if not isinstance(ack, dict):
+        return False
+    return bool(ack.get("t1001_observed") is True or ack.get("robot_ack_connected") is True)
+
+
+def make_verdict(
+    status: str,
+    *,
+    reason: str,
+    failed_step: str | None = None,
+    t1001_or_ack_observed: bool = False,
+) -> dict[str, Any]:
+    """统一生成 fail-closed verdict，避免各分支拼出不一致安全字段。"""
+    fail_closed = status == "blocked_before_motion" or failed_step is not None
+    return {
+        "status": status,
+        "safe_to_control": False,
+        "hil_pass": False,
+        "fail_closed": fail_closed,
+        "failed_step": failed_step,
+        "t1001_or_ack_observed": bool(t1001_or_ack_observed),
+        "reason": reason,
+    }
+
+
 def build_payload(args: argparse.Namespace) -> dict[str, Any]:
     """生成基础 payload；执行路径会在此基础上补 manual/stop evidence。"""
     speed = clamp_float(float(args.speed), 0.0, MAX_SPEED)
@@ -259,6 +300,10 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         "manual_response": None,
         "stop_request": None,
         "stop_evidence": None,
+        "post_status_request": None,
+        "post_status_summary": None,
+        "post_t1001_feedback_status": "unknown",
+        "acceptance_verdict": None,
         "blocked_commands_not_sent": list(BLOCKED_COMMANDS_NOT_SENT),
         "next_required_checks": [
             "run_on_orange_pi_same_lan_status_dry_run",
@@ -273,6 +318,7 @@ def run_acceptance(args: argparse.Namespace) -> dict[str, Any]:
     """执行一次验收采集；默认路径只读，执行路径必须双确认。"""
     payload = build_payload(args)
     status_payload: dict[str, Any] | None = None
+    status_failed = False
     try:
         if args.status_json:
             status_payload = read_status_from_file(args.status_json)
@@ -281,16 +327,42 @@ def run_acceptance(args: argparse.Namespace) -> dict[str, Any]:
             status_result = http_json("GET", args.base_url, "/api/status", args.http_timeout_s)
             payload["status_request"] = status_result
             status_payload = status_result.get("json") if status_result.get("ok") else None
+            status_failed = not http_result_ok(status_result)
         payload["status_summary"] = summarize_status(status_payload)
         payload["t1001_feedback_status"] = t1001_status(payload["status_summary"])
     except Exception as exc:  # noqa: BLE001 - status 解析失败也要继续输出 JSON。
+        status_failed = True
         payload["error"] = compact_error(exc)
         payload["status_summary"] = summarize_status(None)
 
     if args.execute_motion and str(args.direction).strip().lower() not in ALLOWED_DIRECTIONS:
         payload["error"] = {"type": "invalid_direction", "message": f"direction must be one of {sorted(ALLOWED_DIRECTIONS)}"}
+        payload["acceptance_verdict"] = make_verdict(
+            "blocked_before_motion",
+            failed_step="argument_validation",
+            reason="invalid direction blocked before any motion POST",
+        )
+        return payload
+    if status_failed and payload["execution_gate"]["authorized"]:
+        payload["acceptance_verdict"] = make_verdict(
+            "blocked_before_motion",
+            failed_step="status_request",
+            reason="initial status read failed; motion POST blocked fail-closed",
+        )
         return payload
     if not payload["execution_gate"]["authorized"]:
+        if status_failed:
+            payload["acceptance_verdict"] = make_verdict(
+                "blocked_before_motion",
+                failed_step="status_request",
+                reason="dry-run/status read failed; no motion POST was authorized",
+            )
+        else:
+            payload["acceptance_verdict"] = make_verdict(
+                "dry_run_only",
+                reason="execution was not authorized; only status evidence was collected",
+                t1001_or_ack_observed=payload["t1001_feedback_status"] == "observed",
+            )
         return payload
 
     manual_body = {
@@ -312,6 +384,46 @@ def run_acceptance(args: argparse.Namespace) -> dict[str, Any]:
     stop_result = http_json("POST", args.base_url, "/api/base/stop", args.http_timeout_s, {})
     payload["stop_request"] = {"method": "POST", "path": "/api/base/stop", "reason": "extra fail-closed stop evidence after manual pulse"}
     payload["stop_evidence"] = stop_result
+    post_status_result = http_json("GET", args.base_url, "/api/status", args.http_timeout_s)
+    post_status_payload = post_status_result.get("json") if post_status_result.get("ok") else None
+    payload["post_status_request"] = post_status_result
+    payload["post_status_summary"] = summarize_status(post_status_payload)
+    payload["post_t1001_feedback_status"] = t1001_status(payload["post_status_summary"])
+
+    t1001_or_ack = payload["post_t1001_feedback_status"] == "observed" or ack_observed_in_response(manual_result)
+    if not http_result_ok(manual_result):
+        payload["acceptance_verdict"] = make_verdict(
+            "motion_posted_without_ack",
+            failed_step="manual_request",
+            reason="manual POST failed or was rejected; extra stop and post-status evidence were still attempted",
+            t1001_or_ack_observed=t1001_or_ack,
+        )
+    elif not http_result_ok(stop_result):
+        payload["acceptance_verdict"] = make_verdict(
+            "motion_posted_without_ack",
+            failed_step="stop_request",
+            reason="manual POST returned ok but extra stop failed; keep fail-closed",
+            t1001_or_ack_observed=t1001_or_ack,
+        )
+    elif not http_result_ok(post_status_result):
+        payload["acceptance_verdict"] = make_verdict(
+            "motion_posted_without_ack",
+            failed_step="post_status_request",
+            reason="manual and stop were attempted but post status read failed; ACK cannot be proven",
+            t1001_or_ack_observed=t1001_or_ack,
+        )
+    elif t1001_or_ack:
+        payload["acceptance_verdict"] = make_verdict(
+            "motion_posted_with_t1001",
+            reason="manual/stop completed and post-status or manual response reported T=1001/ACK; HIL packet still not complete",
+            t1001_or_ack_observed=True,
+        )
+    else:
+        payload["acceptance_verdict"] = make_verdict(
+            "motion_posted_without_ack",
+            reason="manual/stop completed but post-status did not report T=1001 or ACK",
+            t1001_or_ack_observed=False,
+        )
     return payload
 
 

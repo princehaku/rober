@@ -35,6 +35,18 @@ STATUS_PAYLOAD = {
     },
 }
 
+STATUS_WITH_T1001 = {
+    **STATUS_PAYLOAD,
+    "base": {
+        **STATUS_PAYLOAD["base"],
+        "feedback_ack": {
+            "t1001_observed": True,
+            "robot_ack_connected": True,
+            "reason": "T=1001 observed after watched pulse",
+        },
+    },
+}
+
 # 测试边界说明：所有测试只使用 fake HTTP，不访问真实 8787。
 # 测试边界说明：默认 dry-run 必须只 GET status，不能 POST manual。
 # 测试边界说明：单独 `--execute-motion` 不能授权运动，必须双确认。
@@ -62,6 +74,9 @@ STATUS_PAYLOAD = {
 # 测试边界说明：fake 成功只证明 runner 逻辑，不证明 WAVE ROVER 真实响应。
 # 测试边界说明：真实执行必须由现场材料补充，不能由单测替代。
 # 测试边界说明：显式 dry-run 比 execute/confirm 优先级更高，必须阻断 POST。
+# 测试边界说明：执行后必须再 GET status，避免 manual 响应替代 ACK。
+# 测试边界说明：acceptance_verdict 必须机器可读，供 OKR 收口自动消费。
+# 测试边界说明：status/manual/stop 任一步失败都要 fail-closed。
 
 
 class SafePulseAcceptanceTest(unittest.TestCase):
@@ -84,6 +99,8 @@ class SafePulseAcceptanceTest(unittest.TestCase):
         self.assertEqual(result["status_summary"]["base"]["port"], "/dev/ttyS5")
         self.assertEqual(result["status_summary"]["base"]["baudrate"], 115200)
         self.assertEqual(result["t1001_feedback_status"], "not_observed")
+        self.assertEqual(result["acceptance_verdict"]["status"], "dry_run_only")
+        self.assertFalse(result["acceptance_verdict"]["safe_to_control"])
 
     def test_execute_requires_both_confirmation_flags(self) -> None:
         calls: list[str] = []
@@ -100,6 +117,7 @@ class SafePulseAcceptanceTest(unittest.TestCase):
         self.assertFalse(result["execution_gate"]["authorized"])
         self.assertFalse(result["sends_commands"])
         self.assertIsNone(result["manual_request"])
+        self.assertEqual(result["acceptance_verdict"]["status"], "dry_run_only")
 
     def test_explicit_dry_run_blocks_execute_even_with_confirmation_flags(self) -> None:
         calls: list[tuple[str, str, dict[str, object] | None]] = []
@@ -122,6 +140,7 @@ class SafePulseAcceptanceTest(unittest.TestCase):
         self.assertFalse(result["robot_control_executed"])
         self.assertIsNone(result["manual_request"])
         self.assertIsNone(result["stop_request"])
+        self.assertEqual(result["acceptance_verdict"]["status"], "dry_run_only")
 
     def test_execute_mode_clamps_speed_duration_posts_manual_and_stop(self) -> None:
         calls: list[tuple[str, str, dict[str, object] | None]] = []
@@ -164,11 +183,85 @@ class SafePulseAcceptanceTest(unittest.TestCase):
         self.assertEqual(calls[0], ("GET", "/api/status", None))
         self.assertEqual(calls[1], ("POST", "/api/base/manual", {"direction": "forward", "speed": runner.MAX_SPEED, "duration_ms": runner.MAX_DURATION_MS}))
         self.assertEqual(calls[2], ("POST", "/api/base/stop", {}))
+        self.assertEqual(calls[3], ("GET", "/api/status", None))
         self.assertTrue(result["sends_commands"])
         self.assertTrue(result["sends_motion_commands"])
         self.assertTrue(result["robot_control_executed"])
         self.assertFalse(result["safe_to_control"])
         self.assertEqual(result["stop_request"]["path"], "/api/base/stop")
+        self.assertEqual(result["post_t1001_feedback_status"], "not_observed")
+        self.assertEqual(result["acceptance_verdict"]["status"], "motion_posted_without_ack")
+        self.assertFalse(result["acceptance_verdict"]["safe_to_control"])
+        self.assertFalse(result["acceptance_verdict"]["hil_pass"])
+
+    def test_execute_mode_reports_post_status_t1001_without_hil_pass(self) -> None:
+        calls: list[str] = []
+
+        def fake_http(method: str, base_url: str, path: str, timeout_s: float, payload: dict[str, object] | None = None) -> dict[str, object]:
+            # 第二次 status 才返回 T=1001，模拟 watched pulse 后 API 观察到 ACK。
+            calls.append(path)
+            if path == "/api/status" and len([p for p in calls if p == "/api/status"]) == 2:
+                return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": STATUS_WITH_T1001, "error": None}
+            if path == "/api/status":
+                return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": STATUS_PAYLOAD, "error": None}
+            return {
+                "ok": True,
+                "http_status": 200,
+                "elapsed_ms": 1.0,
+                "json": {"manual_command_executed": path == "/api/base/manual", "robot_control_executed": path == "/api/base/stop"},
+                "error": None,
+            }
+
+        with mock.patch.object(runner, "http_json", side_effect=fake_http):
+            args = runner.parse_args(["--execute-motion", "--confirm-physical-clearance"])
+            result = runner.run_acceptance(args)
+
+        self.assertEqual(calls, ["/api/status", "/api/base/manual", "/api/base/stop", "/api/status"])
+        self.assertEqual(result["post_t1001_feedback_status"], "observed")
+        self.assertEqual(result["acceptance_verdict"]["status"], "motion_posted_with_t1001")
+        self.assertTrue(result["acceptance_verdict"]["t1001_or_ack_observed"])
+        self.assertFalse(result["acceptance_verdict"]["safe_to_control"])
+        self.assertFalse(result["acceptance_verdict"]["hil_pass"])
+
+    def test_execute_mode_blocks_before_motion_when_initial_status_fails(self) -> None:
+        calls: list[tuple[str, str]] = []
+
+        def fake_http(method: str, base_url: str, path: str, timeout_s: float, payload: dict[str, object] | None = None) -> dict[str, object]:
+            # 初始 status 不通时不能为了推进而 POST manual。
+            calls.append((method, path))
+            return {"ok": False, "http_status": None, "elapsed_ms": 3.0, "json": None, "error": {"type": "TimeoutError", "message": "timeout"}}
+
+        with mock.patch.object(runner, "http_json", side_effect=fake_http):
+            args = runner.parse_args(["--execute-motion", "--confirm-physical-clearance"])
+            result = runner.run_acceptance(args)
+
+        self.assertEqual(calls, [("GET", "/api/status")])
+        self.assertIsNone(result["manual_request"])
+        self.assertEqual(result["acceptance_verdict"]["status"], "blocked_before_motion")
+        self.assertEqual(result["acceptance_verdict"]["failed_step"], "status_request")
+        self.assertTrue(result["acceptance_verdict"]["fail_closed"])
+
+    def test_execute_mode_keeps_fail_closed_when_stop_fails(self) -> None:
+        calls: list[str] = []
+
+        def fake_http(method: str, base_url: str, path: str, timeout_s: float, payload: dict[str, object] | None = None) -> dict[str, object]:
+            # stop 失败时仍会追加 post-status，但 verdict 不能写成通过。
+            calls.append(path)
+            if path == "/api/status":
+                return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": STATUS_PAYLOAD, "error": None}
+            if path == "/api/base/manual":
+                return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": {"manual_command_executed": True}, "error": None}
+            return {"ok": False, "http_status": 500, "elapsed_ms": 1.0, "json": {"error": "stop failed"}, "error": {"type": "HTTPError", "message": "500"}}
+
+        with mock.patch.object(runner, "http_json", side_effect=fake_http):
+            args = runner.parse_args(["--execute-motion", "--confirm-physical-clearance"])
+            result = runner.run_acceptance(args)
+
+        self.assertEqual(calls, ["/api/status", "/api/base/manual", "/api/base/stop", "/api/status"])
+        self.assertEqual(result["acceptance_verdict"]["status"], "motion_posted_without_ack")
+        self.assertEqual(result["acceptance_verdict"]["failed_step"], "stop_request")
+        self.assertTrue(result["acceptance_verdict"]["fail_closed"])
+        self.assertFalse(result["acceptance_verdict"]["safe_to_control"])
 
     def test_status_json_file_and_atomic_output(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -186,6 +279,7 @@ class SafePulseAcceptanceTest(unittest.TestCase):
             self.assertEqual(written["schema"], runner.SCHEMA)
             self.assertEqual(written["status_request"]["source"], "local_status_json")
             self.assertEqual(written["status_summary"]["base"]["port"], "/dev/ttyS5")
+            self.assertEqual(written["acceptance_verdict"]["status"], "dry_run_only")
 
 
 if __name__ == "__main__":

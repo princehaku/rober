@@ -214,6 +214,8 @@ PC 页面验证：
 - 只有同时传入 `--execute-motion --confirm-physical-clearance` 时才允许 POST `/api/base/manual`。
 - 执行模式使用 runner 侧 `speed <= 0.08`、`duration_ms <= 350` 的更严格上限，再交给 8787 API 自身的低速/限时/auto-stop guardrail。
 - 执行模式在 manual response 后会追加 POST `/api/base/stop`，记录独立 stop evidence。
+- 执行模式在 manual + extra stop 后会自动再读一次 `GET /api/status`，记录 `post_status_request`、`post_status_summary` 和 `post_t1001_feedback_status`，避免只凭 manual HTTP 200 或 stop HTTP 200 判断 ACK。
+- 输出 `acceptance_verdict` 作为机器可读收口字段，状态包括 `dry_run_only`、`blocked_before_motion`、`motion_posted_without_ack`、`motion_posted_with_t1001`；其中任一步失败都必须带 `failed_step` 并保持 fail-closed。
 - runner 不打开串口、不绕过 8787 API、不发送 ROS `/cmd_vel`。
 
 默认 dry-run：
@@ -240,5 +242,6 @@ python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
 
 - 默认 dry-run：`api_status_dry_run_not_hil`
 - 执行模式：`api_manual_short_pulse_with_extra_stop_not_hil`
-- 没有 `T=1001` 或等价 ACK 前，runner 输出必须保持 `safe_to_control=false`、`delivery_success=false`。
+- 没有 `T=1001` 或等价 ACK 前，`acceptance_verdict.status` 必须是 `motion_posted_without_ack` 或更保守状态，runner 输出必须保持 `safe_to_control=false`、`delivery_success=false`。
+- 即使 `acceptance_verdict.status=motion_posted_with_t1001`，也只代表 8787 status/manual response 中出现 ACK 线索；仍不是 HIL pass，不能替代同源 `feedback_T1001.log`、ROS `/odom`、`/imu/data`、`/battery` 和 operator report。
 - 本轮未执行真实 `/api/base/manual`，未发送任何运动 POST。

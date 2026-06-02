@@ -222,6 +222,26 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 4. 在没有 `T=1001` 或等价 ACK 前，PC/ROS 控制入口必须 fail-closed，不得把 UI 按钮或 `/cmd_vel` 直接接到底盘。
 5. 后续 HIL packet 必须同源包含命令日志、停车日志、至少两帧 `T=1001`、ROS `/imu/data`、`/battery` 和 `/odom` 边界说明。
 
+## 2026-06-03 O1 safe pulse post-status acceptance
+
+`onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py` 当前只通过 8787 上位 API 采集短 pulse 验收材料，不新增真实串口直连，不 import/use pyserial，不发送 `T=130`、`T=131` 或 ROS `/cmd_vel`。
+
+执行模式的证据顺序固定为：
+
+1. `GET /api/status`：读取 camera/radar/base 摘要，若失败则 `blocked_before_motion`，不 POST manual。
+2. `POST /api/base/manual`：只在 `--execute-motion --confirm-physical-clearance` 且非 `--dry-run` 时触发。
+3. `POST /api/base/stop`：manual 后追加一次 stop evidence；失败也要保留。
+4. `GET /api/status`：manual + extra stop 后再采一次，形成 `post_status_request`、`post_status_summary`、`post_t1001_feedback_status`。
+
+新增机器字段：
+
+- `acceptance_verdict.status=dry_run_only`：未授权运动，仅采集 status。
+- `acceptance_verdict.status=blocked_before_motion`：初始 status 或参数校验失败，运动 POST 被阻断。
+- `acceptance_verdict.status=motion_posted_without_ack`：manual 已尝试，但缺 `T=1001`/ACK，或 manual/stop/post-status 任一步失败。
+- `acceptance_verdict.status=motion_posted_with_t1001`：manual/stop 后的 post-status 或 manual response 出现 `T=1001`/ACK 线索；仍不是 HIL pass。
+
+所有 verdict 都固定 `safe_to_control=false`、`hil_pass=false`。缺 `T=1001`/ACK 时不得写成 `safe_to_control=true`；出现 `T=1001`/ACK 时也只能作为 HIL packet 前置材料，仍需同源 `feedback_T1001.log`、ROS `/odom`、`/imu/data`、`/battery` 和 operator report。
+
 `2026.06.01_20-21_o1-t130-feedback-observation` 继续使用同一 SSH 入口尝试一次显式 `--request-base-feedback` 采集：
 
 ```bash
