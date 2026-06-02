@@ -5170,6 +5170,17 @@ Task B Robot 只补 compatibility fence 和 `docs/interfaces/ros_contracts.md`�
 
 ## 录入规则与边界
 
+### 2026-06-03 06-07｜O1 safe pulse readiness｜远端 8787 只读确认
+
+本轮 hourly OKR iteration 继续优先 O1。Hardware owner 只读确认远端 `ssh root@192.168.1.11 -p 37878` 上 `trashbot-upper-robot-api.service` 已 `enabled/active/running`，8787 监听中，进程参数为 `--base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12`。`GET /api/status` 返回 camera ready、radar `/dev/ttyACM0`、base `/dev/ttyS5 @115200`、`write_control_available=true`、`t1001_observed=false`、`robot_ack_connected=false`。本地 `onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py` 对远端 8787 运行 `--dry-run --once-json --output /tmp/rober_o1_artifacts/o1_safe_pulse_dry_run_2026-06-03T0511.json`，artifact 固定 `manual_request=null`、`stop_request=null`、`sends_commands=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`safe_to_control=false`，并列出 `T=1/T=13/T=130/T=131/cmd_vel` 均未发送。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 仍约 93%，新增 remote 8787 read-only observed，不上调 HIL | 本轮证明 8787 远端服务、listener、status API 和 O1 runner dry-run artifact 可用；没有 POST `/api/base/manual` 或 `/api/base/stop`，没有打开 `/dev/ttyS5`，没有发送运动命令、`T=1/T=13/T=130/T=131` 或 `/cmd_vel`。`T=1001`、ACK、真实 `/odom`、`/imu/data`、`/battery`、自动停车真实演练、急停路径和 HIL packet 仍 `not_proven`。 |
+| Objective 7：PC 端运营调试平台 | 事实侧补强但本轮不调 O7 | 8787 service active/listening 是 O7 upper API 的真实运行事实，但本轮目标和文档更新只按 O1 watched field pulse 前置证据收口。 |
+
+本轮验证：`python3 -m py_compile onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py onboard/scripts/upper_robot_api.py` 通过；`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/scripts/test_o1_ttyS5_safe_pulse_acceptance.py onboard/scripts/test_upper_robot_api.py` 10 tests OK；远端只读 `ss/systemctl/ps/curl GET` 通过；scoped `git diff --check` 通过。因无人现场确认物理净空/急停，本轮明确 `BLOCKED_ON_PHYSICAL_CLEARANCE`，不执行真实 pulse。
+
 - 本日志只是 `OKR.md` 第 4.1 节迁移历史，不修改任何 Objective/KR 文字、不修改任何 Objective % 数字。
 - 每次新增 sprint 进度后，由对应 Engineer 子 agent 在结束 sprint 时把 `tech-done.md` / `final.md` 的进度摘要追加到本文件顶部对应日期段。
 - 若一个 sprint 同时影响多个 Objective，按"主受益 Objective"归档，不重复粘贴。
