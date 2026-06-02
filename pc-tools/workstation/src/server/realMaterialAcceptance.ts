@@ -172,25 +172,35 @@ function o5o6Runbook(objective: "O5" | "O6"): RealMaterialCollectionRunbook {
 
 function o7Runbook(): RealMaterialCollectionRunbook {
   return {
-    goal: "O7: collect 180s+ same-LAN browser playback stability material",
+    goal: "O7: diagnose board camera readiness, then collect 180s+ same-LAN browser playback stability material",
     suggested_commands: [
+      "cd pc-tools/workstation && ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://<board-lan-host>:8088 npm run o7:camera-service-readiness",
       "cd pc-tools/workstation && ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://<board-lan-host>:8088 npm run o7:browser-long-stability",
     ],
-    required_env: ["ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL"],
-    required_artifacts: [".workstation-runtime/o7-browser-playback-smoke.json or ROBER_O7_BROWSER_SMOKE_RESULT_JSON"],
-    expected_output: "trashbot.o7.local_webrtc_browser_playback_smoke.v1 JSON with first frame and stability_summary",
+    required_env: ["ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL", "optional ROBER_O7_CAMERA_SERVICE_SSH_TARGET", "optional ROBER_O7_CAMERA_SERVICE_SSH_PORT"],
+    required_artifacts: [
+      ".workstation-runtime/o7-camera-service-readiness.json",
+      ".workstation-runtime/o7-browser-playback-smoke.json or ROBER_O7_BROWSER_SMOKE_RESULT_JSON",
+    ],
+    expected_output: "readiness JSON first, then trashbot.o7.local_webrtc_browser_playback_smoke.v1 JSON with first frame and stability_summary",
     success_criteria: [
+      "camera readiness artifact has ready_for_long_stability=true before retrying 180s browser smoke",
       "status=ok and first_frame_received=true",
       "stability_summary.observation_window_ms >= 180000",
       "connection and ICE remain connected, video size stays stable, and console/page error deltas are 0",
       "post-close active peer count is 0 and remote_active_peer_cleaned=cleaned",
     ],
     failure_handling: [
-      "If artifact is missing, run npm run o7:browser-long-stability after confirming the board camera URL.",
+      "If artifact is missing, run npm run o7:camera-service-readiness before the long-stability collector.",
+      "If browser artifact reports connection refused or remote health unreachable, run npm run o7:camera-service-readiness and inspect HTTP / SSH readiness first.",
+      "If readiness reports http_connection_refused, start or restart the board HTTP/WebRTC camera service before re-running long stability.",
+      "If readiness reports ssh_unreachable, fix board LAN/SSH routing or port 37878 before using SSH process/port hints.",
+      "If readiness reports port_not_listening or process_hint_missing, inspect the board camera service process rather than extending the browser observation window.",
       "If status is needs_long_run, re-run npm run o7:browser-long-stability; it defaults the stability window to 180000ms or higher.",
-      "If first frame or ICE fails, inspect browser console, LAN reachability, and board camera health logs.",
+      "If first frame or ICE fails after readiness is healthy, inspect browser console and board camera health logs.",
     ],
     safety_notes: [
+      "Readiness collector only performs explicit read-only GET /health, GET /devices, and optional read-only SSH process/port summaries.",
       "This recipe creates a browser media session only when the operator runs it explicitly.",
       "The acceptance API only reads the JSON artifact and never sends /offer or robot control commands.",
     ],
@@ -307,6 +317,27 @@ function o7Reason(record: Record<string, unknown> | null, artifactStatus: string
   return "browser_long_stability_health_check_failed";
 }
 
+function o7NeedsReadinessFirst(blockingReason: string): boolean {
+  // connection refused / remote health unreachable 说明板端服务可能没监听，继续拉长浏览器窗口没有意义。
+  return (
+    blockingReason.includes("net_err_connection_refused") ||
+    blockingReason.includes("remote_health_unreachable") ||
+    blockingReason.includes("http_connection_refused") ||
+    blockingReason.includes("http_health_unreachable")
+  );
+}
+
+function o7NextAction(status: RealMaterialAcceptanceStatus, blockingReason: string): string {
+  // API 仍只返回 operator recipe；不会自动执行 readiness collector、SSH、HTTP probe 或 browser smoke。
+  if (status === "accepted") {
+    return "O7: keep 180s+ browser smoke artifact and wait for OKR owner review";
+  }
+  if (o7NeedsReadinessFirst(blockingReason)) {
+    return "O7: run o7:camera-service-readiness to verify board HTTP/WebRTC service listening and SSH process hints, then re-run o7:browser-long-stability";
+  }
+  return "O7: run o7:browser-long-stability to collect at least 180000ms and place its JSON artifact in workstation runtime";
+}
+
 function summarize(statuses: RealMaterialAcceptanceStatus[]): Record<RealMaterialAcceptanceStatus, number> {
   // summary 固定包含四个状态，UI 可以稳定展示空队列。
   return statuses.reduce(
@@ -330,6 +361,7 @@ export async function buildRealMaterialAcceptance(
   const o5StatusValue = o5o6Status(externalArtifact, o5Endpoint);
   const o6StatusValue = o5o6Status(externalArtifact, o6Endpoint);
   const o7StatusValue = o7Status(browserSmoke.record);
+  const o7BlockingReason = o7Reason(browserSmoke.record, browserSmoke.artifact_status, o7StatusValue);
   const items: RealMaterialAcceptanceItem[] = [
     {
       id: "o5_tls_external_probe",
@@ -372,11 +404,8 @@ export async function buildRealMaterialAcceptance(
       status: o7StatusValue,
       source_endpoint: "/api/o7/local-webrtc-camera",
       source_artifact_status: browserSmoke.artifact_status,
-      blocking_reason: o7Reason(browserSmoke.record, browserSmoke.artifact_status, o7StatusValue),
-      next_action:
-        o7StatusValue === "accepted"
-          ? "O7: keep 180s+ browser smoke artifact and wait for OKR owner review"
-          : "O7: run o7:browser-long-stability to collect at least 180000ms and place its JSON artifact in workstation runtime",
+      blocking_reason: o7BlockingReason,
+      next_action: o7NextAction(o7StatusValue, o7BlockingReason),
       collection_runbook: o7Runbook(),
       artifact_freshness: browserFreshness,
       proof_boundary: "existing_browser_smoke_json_long_stability_summary_only",

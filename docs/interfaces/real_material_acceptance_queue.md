@@ -137,17 +137,37 @@ Runbook 是 recipe，不是执行结果。API 返回 runbook 时仍必须保持�
 
 O5/O6 runbook 指向现有 `npm run o5o6:external-probe`，要求 operator 准备 `ROBER_PC_BASE_URL`、`ROBER_CLOUD_BASE_URL` 和 `ROBER_O5_O6_BEARER_TOKEN`，并把输出落到 `.workstation-runtime/o5-o6-external-live-probe.json` 或通过 `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 指向。
 
-O7 runbook 指向 `npm run o7:browser-long-stability`，要求 operator 准备 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL`。该入口默认委托现有 `scripts/o7-browser-playback-smoke.mjs`，并把 `ROBER_O7_BROWSER_SMOKE_STABILITY_MS` 强制提升到 `>=180000`，输出落到 `.workstation-runtime/o7-browser-playback-smoke.json` 或通过 `ROBER_O7_BROWSER_SMOKE_RESULT_JSON` 指向。
+O7 runbook 现在先指向 `npm run o7:camera-service-readiness`，再指向 `npm run o7:browser-long-stability`。当上一份 browser smoke artifact 已经显示 `ERR_CONNECTION_REFUSED` / `remote_health_unreachable` 时，queue 的 `next_action` 必须优先提示 readiness collector，先确认板端 HTTP/WebRTC camera 服务是否监听、SSH 是否可达、端口/进程线索是否存在，再重跑 180s 长稳态。
+
+`npm run o7:camera-service-readiness` 默认检查：
+
+- HTTP GET `http://192.168.1.11:8088/health`
+- HTTP GET `http://192.168.1.11:8088/devices`
+- SSH `root@192.168.1.11 -p 37878` 上的只读诊断：`uname`、`ss`/`netstat` 监听摘要、camera/WebRTC 相关进程摘要
+
+可通过 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL` / `--base-url`、`ROBER_O7_CAMERA_SERVICE_SSH_TARGET` / `--ssh-target`、`ROBER_O7_CAMERA_SERVICE_SSH_PORT` / `--ssh-port` 覆盖目标；输出 artifact 默认为 `.workstation-runtime/o7-camera-service-readiness.json`，schema 为 `trashbot.o7.camera_service_readiness.v1`。该 collector 不 POST `/offer`、不创建 WebRTC session、不读取串口/底盘/ROS2 控制、不发送机器人控制命令。
+
+readiness artifact 的关键分类字段包括：
+
+- `readiness.http_health_unreachable`
+- `readiness.http_connection_refused`
+- `readiness.ssh_unreachable`
+- `readiness.port_not_listening`
+- `readiness.process_hint_missing`
+- `readiness.ready_for_long_stability`
+
+只有 `ready_for_long_stability=true` 后，operator 才应继续运行 `npm run o7:browser-long-stability`。长稳态入口仍要求 operator 准备 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL`，默认委托现有 `scripts/o7-browser-playback-smoke.mjs`，并把 `ROBER_O7_BROWSER_SMOKE_STABILITY_MS` 强制提升到 `>=180000`，输出落到 `.workstation-runtime/o7-browser-playback-smoke.json` 或通过 `ROBER_O7_BROWSER_SMOKE_RESULT_JSON` 指向。
 
 2026-06-02 11-12 真实采集记录：默认 `http://192.168.1.11:8088/` 运行 `npm run o7:browser-long-stability` 时，browser smoke artifact 为 `status=failed`，`failure_category=browser_smoke_failed`，`remote_health_status=remote_health_unreachable`，`start_clicked=false`，`offer_executed_by_browser=false`，`first_frame_received=false`，`stability_summary.status=not_observed`，`server_peer_close_status=not_attempted`；脱敏后 queue 的 O7 `blocking_reason` 应显示 `browser_smoke_failed__net_err_connection_refused__remote_health_unreachable`。该结果说明板端 HTTP/WebRTC 服务当前拒绝连接或未监听，不是 180s 稳定性窗口失败；本轮未创建 WebRTC session、未 POST `/offer`、未拿到首帧。
 
 本地无相机或只想校验命令入口时，可运行：
 
 ```bash
+cd pc-tools/workstation && npm run o7:camera-service-readiness -- --dry-run
 cd pc-tools/workstation && npm run o7:browser-long-stability -- --dry-run
 ```
 
-dry-run 只输出 `trashbot.o7.browser_long_stability_collector.v1` 机器可读 JSON，固定 `network_probe_executed=false`、`post_executed=false`、`webrtc_session_created=false`、`artifact_written=false` 和控制安全字段；它不联网、不 POST `/offer`、不创建 WebRTC session、不写 artifact，因此不能作为 O7 180s 真实材料。
+readiness dry-run 只输出 `trashbot.o7.camera_service_readiness.v1` 机器可读 JSON，固定 `network_probe_executed=false`、`ssh_probe_executed=false`、`post_executed=false`、`webrtc_session_created=false`、`offer_executed=false`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`，且不写 artifact。long-stability dry-run 只输出 `trashbot.o7.browser_long_stability_collector.v1` 机器可读 JSON，固定 `network_probe_executed=false`、`post_executed=false`、`webrtc_session_created=false`、`artifact_written=false` 和控制安全字段；它不联网、不 POST `/offer`、不创建 WebRTC session、不写 artifact，因此不能作为 O7 180s 真实材料。
 
 ## UI Contract
 

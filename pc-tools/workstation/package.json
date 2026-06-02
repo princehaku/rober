@@ -8,6 +8,7 @@
     "api": "tsx src/server/index.ts",
     "o7:browser-smoke": "node scripts/o7-browser-playback-smoke.mjs",
     "o7:browser-long-stability": "node scripts/o7-browser-long-stability-collector.mjs",
+    "o7:camera-service-readiness": "node scripts/o7-camera-service-readiness-collector.mjs",
     "o5o6:external-probe": "node scripts/o5-o6-external-live-probe.mjs",
     "build": "tsc -p tsconfig.app.json && vite build && tsc -p tsconfig.server.json",
     "test": "vitest run",

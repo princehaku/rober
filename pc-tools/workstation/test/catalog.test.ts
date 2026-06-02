@@ -35,6 +35,8 @@ import { createWorkstationApp } from "../src/server/index";
 import { runExternalLiveProbe as runExternalLiveProbeJs } from "../scripts/o5-o6-external-live-probe.mjs";
 // @ts-expect-error JS CLI script intentionally stays runnable by plain node.
 import { buildCollectorPlan, buildDryRunResult } from "../scripts/o7-browser-long-stability-collector.mjs";
+// @ts-expect-error JS CLI script intentionally stays runnable by plain node.
+import { buildCollectorPlan as buildCameraReadinessCollectorPlan, buildDryRunResult as buildCameraReadinessDryRunResult } from "../scripts/o7-camera-service-readiness-collector.mjs";
 
 type ExternalProbeResponse = {
   schema: "trashbot.o5_o6.external_live_probe.v1";
@@ -1782,7 +1784,8 @@ describe("workstation fail-closed API contracts", () => {
     ]);
     expect(response.items[0]?.collection_runbook.goal).toContain("O5: collect production HTTPS external probe material");
     expect(response.items[0]?.collection_runbook.suggested_commands[0]).toContain("npm run o5o6:external-probe");
-    expect(response.items[2]?.collection_runbook.suggested_commands[0]).toContain("npm run o7:browser-long-stability");
+    expect(response.items[2]?.collection_runbook.suggested_commands[0]).toContain("npm run o7:camera-service-readiness");
+    expect(response.items[2]?.collection_runbook.suggested_commands[1]).toContain("npm run o7:browser-long-stability");
     expect(response.items[2]?.collection_runbook.success_criteria).toContain("stability_summary.observation_window_ms >= 180000");
     expect(response.next_actions).toEqual([
       "O7: run o7:browser-long-stability to collect at least 180000ms and place its JSON artifact in workstation runtime",
@@ -1816,6 +1819,33 @@ describe("workstation fail-closed API contracts", () => {
     });
     expect(dryRun.stability_ms).toBe(180000);
     expect(dryRun.planned_command).toBe("npm run o7:browser-smoke");
+  });
+
+  it("O7 camera service readiness collector dry-run is fail-closed and avoids artifacts", () => {
+    // readiness dry-run 是 operator 命令护栏；不能联网、不能 SSH、不能 POST /offer，也不能写 artifact。
+    const plan = buildCameraReadinessCollectorPlan({
+      argv: ["--dry-run", "--base-url", "http://192.168.1.11:8088", "--ssh-target", "root@192.168.1.11", "--ssh-port", "37878"],
+      env: {} as NodeJS.ProcessEnv,
+    });
+    const dryRun = buildCameraReadinessDryRunResult(plan);
+
+    expect(dryRun).toMatchObject({
+      schema: "trashbot.o7.camera_service_readiness.v1",
+      status: "dry_run",
+      dry_run: true,
+      artifact_written: false,
+      network_probe_executed: false,
+      ssh_probe_executed: false,
+      post_executed: false,
+      webrtc_session_created: false,
+      offer_executed: false,
+      safe_to_control: false,
+      sends_commands: false,
+      robot_control_executed: false,
+    });
+    expect(dryRun.planned_http_gets).toEqual(["http://192.168.1.11:8088/health", "http://192.168.1.11:8088/devices"]);
+    expect(dryRun.planned_ssh_readonly_checks).toContain("ss_or_netstat_listening_summary");
+    expect(dryRun.readiness.ready_for_long_stability).toBe(false);
   });
 
   it("real-material acceptance queue surfaces O7 browser collector failure reason", async () => {
@@ -1857,7 +1887,9 @@ describe("workstation fail-closed API contracts", () => {
     expect(o7Item?.blocking_reason).toBe(
       "browser_smoke_failed__net_err_connection_refused__remote_health_unreachable",
     );
-    expect(o7Item?.next_action).toContain("run o7:browser-long-stability");
+    expect(o7Item?.next_action).toContain("run o7:camera-service-readiness");
+    expect(o7Item?.next_action).toContain("then re-run o7:browser-long-stability");
+    expect(o7Item?.collection_runbook.failure_handling.join(" ")).toContain("connection refused");
     expect(o7Item?.safe_to_control).toBe(false);
     expect(response.execution_policy.network_probe_executed).toBe(false);
     expect(JSON.stringify(response)).not.toContain("192.168.1.11");
