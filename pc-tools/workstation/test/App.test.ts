@@ -539,17 +539,19 @@ const fixtures: Record<string, unknown> = {
         source_endpoint: "/api/o7/local-webrtc-camera",
         source_artifact_status: "loaded",
         blocking_reason: "observation_window_below_180000ms",
-        next_action: "O7: run the existing browser playback smoke for at least 180000ms and place its JSON artifact in workstation runtime",
+        next_action: "O7: run o7:browser-long-stability to collect at least 180000ms and place its JSON artifact in workstation runtime",
         collection_runbook: {
           goal: "O7: collect 180s+ same-LAN browser playback stability material",
           suggested_commands: [
-            "cd pc-tools/workstation && ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://<board-lan-host>:8088 ROBER_O7_BROWSER_SMOKE_STABILITY_MS=180000 npm run o7:browser-smoke",
+            "cd pc-tools/workstation && ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://<board-lan-host>:8088 npm run o7:browser-long-stability",
           ],
-          required_env: ["ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL", "ROBER_O7_BROWSER_SMOKE_STABILITY_MS=180000"],
+          required_env: ["ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL"],
           required_artifacts: [".workstation-runtime/o7-browser-playback-smoke.json or ROBER_O7_BROWSER_SMOKE_RESULT_JSON"],
           expected_output: "trashbot.o7.local_webrtc_browser_playback_smoke.v1 JSON with first frame and stability_summary",
           success_criteria: ["stability_summary.observation_window_ms >= 180000"],
-          failure_handling: ["If status is needs_long_run, re-run with ROBER_O7_BROWSER_SMOKE_STABILITY_MS=180000 or higher."],
+          failure_handling: [
+            "If status is needs_long_run, re-run npm run o7:browser-long-stability; it defaults the stability window to 180000ms or higher.",
+          ],
           safety_notes: ["The acceptance API only reads the JSON artifact and never sends /offer or robot control commands."],
         },
         artifact_freshness: {
@@ -585,7 +587,7 @@ const fixtures: Record<string, unknown> = {
     },
     next_actions: [
       "O5: run the existing O5/O6 external probe against production HTTPS and place its JSON artifact in workstation runtime",
-      "O7: run the existing browser playback smoke for at least 180000ms and place its JSON artifact in workstation runtime",
+      "O7: run o7:browser-long-stability to collect at least 180000ms and place its JSON artifact in workstation runtime",
     ],
     not_proven: ["real_robot_control_not_executed", "real_4g_sim_not_proven"],
     ...PROOF_FLAGS,
@@ -2729,11 +2731,11 @@ describe("App", () => {
     expect(wrapper.text()).toContain("network_probe=false");
     expect(wrapper.text()).toContain("robots_path=false");
     expect(wrapper.text()).toContain("existing_browser_smoke_json_long_stability_summary_only");
-    expect(wrapper.text()).toContain("O7: run the existing browser playback smoke for at least 180000ms");
+    expect(wrapper.text()).toContain("O7: run o7:browser-long-stability to collect at least 180000ms");
     expect(wrapper.text()).toContain("freshness=stale");
     expect(wrapper.text()).toContain("freshness=fresh");
     expect(wrapper.text()).toContain("runbook=O7: collect 180s+ same-LAN browser playback stability material");
-    expect(wrapper.text()).toContain("npm run o7:browser-smoke");
+    expect(wrapper.text()).toContain("npm run o7:browser-long-stability");
     expect(wrapper.text()).toContain("stability_summary.observation_window_ms >= 180000");
     expect(wrapper.text()).toContain("External Probe Artifact");
     expect(wrapper.text()).toContain("python_stdlib");

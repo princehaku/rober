@@ -137,7 +137,15 @@ Runbook 是 recipe，不是执行结果。API 返回 runbook 时仍必须保持�
 
 O5/O6 runbook 指向现有 `npm run o5o6:external-probe`，要求 operator 准备 `ROBER_PC_BASE_URL`、`ROBER_CLOUD_BASE_URL` 和 `ROBER_O5_O6_BEARER_TOKEN`，并把输出落到 `.workstation-runtime/o5-o6-external-live-probe.json` 或通过 `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 指向。
 
-O7 runbook 指向现有 `npm run o7:browser-smoke`，要求 operator 准备 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL`，设置 `ROBER_O7_BROWSER_SMOKE_STABILITY_MS=180000`，并把输出落到 `.workstation-runtime/o7-browser-playback-smoke.json` 或通过 `ROBER_O7_BROWSER_SMOKE_RESULT_JSON` 指向。
+O7 runbook 指向 `npm run o7:browser-long-stability`，要求 operator 准备 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL`。该入口默认委托现有 `scripts/o7-browser-playback-smoke.mjs`，并把 `ROBER_O7_BROWSER_SMOKE_STABILITY_MS` 强制提升到 `>=180000`，输出落到 `.workstation-runtime/o7-browser-playback-smoke.json` 或通过 `ROBER_O7_BROWSER_SMOKE_RESULT_JSON` 指向。
+
+本地无相机或只想校验命令入口时，可运行：
+
+```bash
+cd pc-tools/workstation && npm run o7:browser-long-stability -- --dry-run
+```
+
+dry-run 只输出 `trashbot.o7.browser_long_stability_collector.v1` 机器可读 JSON，固定 `network_probe_executed=false`、`post_executed=false`、`webrtc_session_created=false`、`artifact_written=false` 和控制安全字段；它不联网、不 POST `/offer`、不创建 WebRTC session、不写 artifact，因此不能作为 O7 180s 真实材料。
 
 ## UI Contract
 

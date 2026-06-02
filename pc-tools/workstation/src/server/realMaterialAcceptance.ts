@@ -174,9 +174,9 @@ function o7Runbook(): RealMaterialCollectionRunbook {
   return {
     goal: "O7: collect 180s+ same-LAN browser playback stability material",
     suggested_commands: [
-      "cd pc-tools/workstation && ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://<board-lan-host>:8088 ROBER_O7_BROWSER_SMOKE_STABILITY_MS=180000 npm run o7:browser-smoke",
+      "cd pc-tools/workstation && ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://<board-lan-host>:8088 npm run o7:browser-long-stability",
     ],
-    required_env: ["ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL", "ROBER_O7_BROWSER_SMOKE_STABILITY_MS=180000"],
+    required_env: ["ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL"],
     required_artifacts: [".workstation-runtime/o7-browser-playback-smoke.json or ROBER_O7_BROWSER_SMOKE_RESULT_JSON"],
     expected_output: "trashbot.o7.local_webrtc_browser_playback_smoke.v1 JSON with first frame and stability_summary",
     success_criteria: [
@@ -186,8 +186,8 @@ function o7Runbook(): RealMaterialCollectionRunbook {
       "post-close active peer count is 0 and remote_active_peer_cleaned=cleaned",
     ],
     failure_handling: [
-      "If artifact is missing, run the browser smoke manually after confirming the board camera URL.",
-      "If status is needs_long_run, re-run with ROBER_O7_BROWSER_SMOKE_STABILITY_MS=180000 or higher.",
+      "If artifact is missing, run npm run o7:browser-long-stability after confirming the board camera URL.",
+      "If status is needs_long_run, re-run npm run o7:browser-long-stability; it defaults the stability window to 180000ms or higher.",
       "If first frame or ICE fails, inspect browser console, LAN reachability, and board camera health logs.",
     ],
     safety_notes: [
@@ -336,7 +336,7 @@ export async function buildRealMaterialAcceptance(
       next_action:
         o7StatusValue === "accepted"
           ? "O7: keep 180s+ browser smoke artifact and wait for OKR owner review"
-          : "O7: run the existing browser playback smoke for at least 180000ms and place its JSON artifact in workstation runtime",
+          : "O7: run o7:browser-long-stability to collect at least 180000ms and place its JSON artifact in workstation runtime",
       collection_runbook: o7Runbook(),
       artifact_freshness: browserFreshness,
       proof_boundary: "existing_browser_smoke_json_long_stability_summary_only",

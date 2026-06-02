@@ -33,6 +33,8 @@ import {
 import { createWorkstationApp } from "../src/server/index";
 // @ts-expect-error JS CLI script intentionally stays runnable by plain node.
 import { runExternalLiveProbe as runExternalLiveProbeJs } from "../scripts/o5-o6-external-live-probe.mjs";
+// @ts-expect-error JS CLI script intentionally stays runnable by plain node.
+import { buildCollectorPlan, buildDryRunResult } from "../scripts/o7-browser-long-stability-collector.mjs";
 
 type ExternalProbeResponse = {
   schema: "trashbot.o5_o6.external_live_probe.v1";
@@ -1780,14 +1782,56 @@ describe("workstation fail-closed API contracts", () => {
     ]);
     expect(response.items[0]?.collection_runbook.goal).toContain("O5: collect production HTTPS external probe material");
     expect(response.items[0]?.collection_runbook.suggested_commands[0]).toContain("npm run o5o6:external-probe");
-    expect(response.items[2]?.collection_runbook.suggested_commands[0]).toContain("npm run o7:browser-smoke");
+    expect(response.items[2]?.collection_runbook.suggested_commands[0]).toContain("npm run o7:browser-long-stability");
     expect(response.items[2]?.collection_runbook.success_criteria).toContain("stability_summary.observation_window_ms >= 180000");
     expect(response.next_actions).toEqual([
-      "O7: run the existing browser playback smoke for at least 180000ms and place its JSON artifact in workstation runtime",
+      "O7: run o7:browser-long-stability to collect at least 180000ms and place its JSON artifact in workstation runtime",
     ]);
     expect(JSON.stringify(response)).not.toContain(externalPath);
     expect(JSON.stringify(response)).not.toContain(smokePath);
     expect(JSON.stringify(response)).not.toContain("/robots/");
+  });
+
+  it("O7 long-stability collector dry-run is fail-closed and machine readable", () => {
+    // dry-run 是本地护栏：只验证命令入口和参数规划，不联网、不 POST、不写 artifact。
+    const plan = buildCollectorPlan({
+      argv: ["--dry-run", "--stability-ms", "30000", "--output", "/tmp/o7-browser-playback-smoke.json"],
+      env: { ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL: "http://192.168.1.11:8088" } as NodeJS.ProcessEnv,
+    });
+    const dryRun = buildDryRunResult(plan);
+
+    expect(plan.effectiveStabilityMs).toBe(180000);
+    expect(dryRun).toMatchObject({
+      schema: "trashbot.o7.browser_long_stability_collector.v1",
+      status: "dry_run",
+      dry_run: true,
+      artifact_written: false,
+      network_probe_executed: false,
+      post_executed: false,
+      webrtc_session_created: false,
+      offer_executed_by_browser: false,
+      safe_to_control: false,
+      sends_commands: false,
+      robot_control_executed: false,
+    });
+    expect(dryRun.stability_ms).toBe(180000);
+    expect(dryRun.planned_command).toBe("npm run o7:browser-smoke");
+  });
+
+  it("O7 long-stability collector rejects unsafe parameter shapes", () => {
+    // 参数错误在 collector 层 fail closed，避免把不安全 URL 或非整数窗口传给真实 browser smoke。
+    expect(() =>
+      buildCollectorPlan({
+        argv: ["--dry-run", "--base-url", "https://example.com", "--stability-ms", "180000"],
+        env: {},
+      }),
+    ).toThrow("base_url_protocol_not_allowed");
+    expect(() =>
+      buildCollectorPlan({
+        argv: ["--dry-run", "--stability-ms", "180000abc"],
+        env: {},
+      }),
+    ).toThrow("stability_ms_must_be_integer_ms");
   });
 
   it("real-material acceptance queue fails closed when artifacts are missing", async () => {

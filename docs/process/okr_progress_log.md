@@ -8,6 +8,16 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 10-11｜o7-long-stability-collector｜O7 180s collector entry visible
+
+本轮 Micro closeout 基于 `sprints/2026.06.02_10-11_o7-long-stability-collector/tech-done.md`。Full-Stack 新增 `pc-tools/workstation` 的 `npm run o7:browser-long-stability` operator-run 入口，默认委托既有 `scripts/o7-browser-playback-smoke.mjs`，把稳定性窗口提升到 `>=180000ms`，并输出到 `.workstation-runtime/o7-browser-playback-smoke.json`。该入口让 O7 真实材料采集从“UI runbook 要求 operator 手记原始 smoke env”推进到“明确命令入口”。
+
+本轮同时新增 `--dry-run` 机器可读护栏，schema 为 `trashbot.o7.browser_long_stability_collector.v1`，固定 `artifact_written=false`、`network_probe_executed=false`、`post_executed=false`、`webrtc_session_created=false`、`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`。`GET /api/real-material/acceptance` 的 O7 runbook 和 next action 已指向新 collector；API 本身仍只读消费已有 artifact，不自动执行 collector、不联网、不 POST `/offer`、不创建 WebRTC session、不发送控制。
+
+Product closeout 判定：Objective 7 保持约 96%，但口径从 `software guardrail` 更新为 `software collector entry + same-LAN Chromium browser 30s short-stability observed`。本轮提高的是采集入口可执行性和 fail-closed 护栏，不产生真实 180s/3-5min browser artifact。Objective 1 保持约 93%，本轮没有继续消费 `remote_network_unreachable` / `ssh_no_route_to_host` blocker；Objective 5 / 6 保持约 96%。
+
+验证证据来自本轮收口：`cd pc-tools/workstation && npm run o7:browser-long-stability -- --dry-run` 通过，输出 `status=dry_run`、`stability_ms=180000` 和所有控制/网络执行 flags 为 false；`npm run test`、`npm run build`、`npm run lint` 与 scoped `git diff --check` 通过。剩余风险：真实 O7 长稳态仍需要 operator 在同 LAN camera 可达时运行 collector，并由 artifact 的 `stability_summary.observation_window_ms >= 180000`、连接/ICE/video/cleanup 条件共同验收；弱网、TURN、公网云 relay、鉴权、真实用户浏览器/手机、ASR/TTS、手控/Nav2、真实 robot ACK 和完整上车任务闭环仍 `not_proven`。
+
 ### 2026-06-02 09-10｜real-material-runbook｜O5/O6/O7 material runbook and freshness visible
 
 本轮 Micro closeout 基于 `sprints/2026.06.02_09-10_real-material-runbook/tech-done.md`。Full-Stack 已扩展只读 `GET /api/real-material/acceptance`，每条 O5/O6/O7 queue item 新增 `artifact_freshness` 和 `collection_runbook`：operator 可见 artifact mtime/age/fresh/stale/missing，并能看到手动采集目标、建议命令、必需 env/artifact、期望输出、成功判定、失败处理和安全说明。该 API 只返回 recipe 与只读 `stat` 摘要，不执行采集命令。
