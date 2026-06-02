@@ -97,3 +97,23 @@ git diff --check -- onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py onboard/sc
 - `acceptance_verdict.status=motion_posted_with_t1001` 仍不是 HIL pass，只能作为 HIL packet 前置材料。
 - 真实 HIL 仍缺至少两帧同源 `T=1001`、ROS `/odom`、`/imu/data`、`/battery`、operator report、急停/停车路径证据。
 - 下一步必须在现场人工看护、物理净空、急停/断电路径可用时，再由 operator 明确授权执行短 pulse，并保存同源 artifact；缺 ACK 时仍保持 `safe_to_control=false`。
+
+## Product closeout / OKR verdict
+
+用户价值：本轮把 O1 的受控短 pulse 验收从“可以发 manual/stop”推进到“执行前 status、manual、stop、执行后 post-status 和 verdict 同源归档”，降低现场人工看护执行时漏采 ACK/`T=1001` 或误判安全状态的风险。产品北极星仍是普通手机用户可用的垃圾投递机器人；O1 的价值不是单次点动，而是底盘控制证据可被现场安全、PC/ROS 状态和后续 HIL 验收复用。
+
+OKR 映射和方向判断：Objective 1 继续，仍是当前最低 Objective，进度保持约 93%，不上调 HIL。`post_status_request`、`post_status_summary`、`post_t1001_feedback_status` 和 `acceptance_verdict` 是 watched execution 前置材料，不是 HIL pass、不是 `safe_to_control=true`、不是真实 ROS `/cmd_vel` 接入，也不是 delivery success。
+
+KR 拆解和历史归档：本轮增强 O1 KR3/KR4/KR5 的验收证据合同和 fail-closed 逻辑，但没有完成真实反馈/ACK KR，因此没有 KR 进入完成历史归档。历史记录位置为本文件、`OKR.md` 第 4/4.1/5 节，以及可选追加的 `docs/process/okr_progress_log.md`。
+
+本轮核心抓手：把下一轮现场短 pulse 的验收口径固定为 `GET status -> POST manual -> POST stop -> GET post-status`，并用 `acceptance_verdict` 区分 `dry_run_only`、`blocked_before_motion`、`motion_posted_without_ack`、`motion_posted_with_t1001`。初始 status 失败必须阻断 motion；manual/stop/post-status 任一步失败必须 fail-closed。
+
+需要做什么：下一轮由 Hardware Infra Engineer 在现场人工看护、物理净空、急停/断电路径可用时，明确授权后经 8787 `/api/base/manual` 执行低速短 pulse，并保存同源 artifact；若缺 ACK 或 `T=1001`，仍保持 `safe_to_control=false` 并记录为 feedback not_proven。
+
+优先级和验收口径：P0 继续 O1 watched field pulse execution + ACK/`T=1001` capture。可接受证据至少包括 status/manual/stop/post-status 同源 artifact、自动 stop 或人工 stop 复位证据、operator report、急停路径说明，以及 ACK 或 `T=1001` 观察结论；没有这些证据不得写 HIL pass。
+
+对应责任 Engineer：Hardware Infra Engineer 主责下一轮现场短 pulse 与反馈采集；Robot Software Engineer 只在需要把真实反馈接入 ROS `/odom`、`/imu/data`、`/battery` 或 `/cmd_vel` 验证时介入。
+
+风险、阻塞和证据链缺口：本轮未发送运动命令，未 POST 远端 `/api/base/manual` 或 stop，未打开 `/dev/ttyS5`，未发送 `T=1/T=13/T=130/T=131/cmd_vel`。真实 `T=1001`、ACK、HIL packet、真实 ROS topic、自动停车/急停现场演练和完整 delivery success 仍 `not_proven`。
+
+需要创建或更新的 sprint 文档：本 micro sprint 已更新 `tech-done.md`；本轮不需要补 epic 六文档。OKR 收口同步更新 `OKR.md`，并可在 `docs/process/okr_progress_log.md` 追加历史摘要以保持 OKR 主体可读。

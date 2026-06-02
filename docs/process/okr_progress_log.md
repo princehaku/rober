@@ -8,6 +8,16 @@
 
 ## 2026-06-03 系列
 
+### 2026-06-03 07-08｜O1 safe pulse post-status verdict｜Product closeout
+
+本轮 Product/OKR 收口基于 `sprints/2026.06.03_07-08_o1-safe-pulse-post-status/tech-done.md` 和 Hardware Infra Engineer 已提交的 `b361377 Enhance O1 safe pulse post-status verdict`。用户价值是把 O1 的受控短 pulse 验收从“manual/stop 可执行”推进到“执行前 status、manual、stop、执行后 post-status 和 verdict 同源归档”，避免下一轮现场看护执行时漏采 ACK/`T=1001` 或误把 dry-run/失败状态包装成安全控制完成。产品北极星仍是普通手机用户可用的垃圾投递机器人；O1 的价值不是单次点动，而是可信底盘控制证据能被现场安全、PC/ROS 状态和后续 HIL 验收复用。
+
+Hardware Infra 本轮让 `onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py` 执行模式按 `GET status -> POST manual -> POST stop -> GET post-status` 采集证据，新增 `post_status_request`、`post_status_summary`、`post_t1001_feedback_status` 和 `acceptance_verdict`。`acceptance_verdict` 区分 `dry_run_only`、`blocked_before_motion`、`motion_posted_without_ack`、`motion_posted_with_t1001`；初始 status 失败会阻断 motion，manual/stop/post-status 任一步失败都会 fail-closed。验证证据为 py_compile OK、8 tests OK、dry-run JSON OK、diff-check OK；本机 `127.0.0.1:8787` 不可达时 dry-run artifact 得到 `acceptance_verdict.status=blocked_before_motion`。
+
+Product closeout 判定：Objective 1 继续，仍保持约 93%，不上调 HIL。原因是本轮没有发送运动命令，没有 POST 远端 `/api/base/manual` 或 `/api/base/stop`，没有打开 `/dev/ttyS5`，没有发送 `T=1/T=13/T=130/T=131/cmd_vel`；`post_status_*` 和 `acceptance_verdict` 是 watched execution 前置合同，不是 HIL pass、不是 `safe_to_control=true`、不是真实 ROS `/cmd_vel` 接入，也不是 delivery success。
+
+OKR/KR 影响：本轮增强 O1 KR3/KR4/KR5 的验收证据合同和 fail-closed 逻辑，但真实反馈/ACK KR 没有完成，因此没有 KR 进入历史完成归档。O1 仍是当前最高优先级；下一轮 P0 必须是 watched field pulse execution + ACK/`T=1001` capture：现场看护、物理净空、人工急停/断电路径可用，经 8787 `/api/base/manual` 做低速短 pulse，并采集 status/manual/stop/post-status、ACK 或 `T=1001`、日志与安全复位证据。剩余风险为真实 `T=1001`、ACK、HIL packet、真实 `/odom`、`/imu/data`、`/battery`、自动停车/急停现场演练和完整 delivery success 仍 `not_proven`。
+
 ### 2026-06-03 06-07｜O1 safe pulse readiness boundary｜Product routing
 
 本轮 Product/OKR 路由基于 `sprints/2026.06.03_06-07_o1-safe-pulse-readiness/tech-done.md`。用户价值是把当前最低 Objective 1 的下一步限定为安全可验收的前置证据，而不是让 hourly automation 在只有 SSH/服务状态的情况下无条件发运动命令。产品北极星仍是普通手机用户可用的垃圾投递机器人；O1 的价值不是点动本身，而是底盘控制证据能被现场安全、同源日志、PC/ROS 后续链路复用。Hardware Infra 本轮补到的真实材料是远端 `trashbot-upper-robot-api.service` 已 `enabled/active/running`、8787 正在监听、`GET /api/status` 可读，base 指向 `/dev/ttyS5 @115200`，并且本地 runner 通过远端 8787 dry-run 产出 `api_status_dry_run_not_hil` artifact。
