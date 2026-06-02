@@ -232,6 +232,10 @@ python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py --dry-run --once-json
 - runner 能汇总 camera/radar/base 状态、base device、baudrate、`T=1001`/ACK 边界和 `safe_to_control=false`。
 - runner 默认不发送运动命令、不打开串口、不请求 `T=130`、不访问 ROS `/cmd_vel`。
 
+2026-06-03 06-07 已完成一次远端只读确认：`ssh root@192.168.1.11 -p 37878` 上 `trashbot-upper-robot-api.service` 为 enabled/active/running，8787 listener 存在，`GET /api/status` 返回 camera ready、radar `/dev/ttyACM0`、base `/dev/ttyS5 @115200`、`write_control_available=true`、`t1001_observed=false`、`robot_ack_connected=false`。随后本地 runner 对 `http://192.168.1.11:8787` 执行 `--dry-run --once-json --output /tmp/rober_o1_artifacts/o1_safe_pulse_dry_run_2026-06-03T0511.json`，artifact 固定 `manual_request=null`、`stop_request=null`、`sends_commands=false`、`sends_motion_commands=false`、`robot_control_executed=false`，并在 `blocked_commands_not_sent` 中列明 `T=1/T=13/T=130/T=131/cmd_vel` 均未发送。
+
+该 06-07 材料只能把状态提升为 `remote_8787_read_only_observed_not_hil`，不能提升为 `hil_pass`。原因是本轮没有现场物理净空确认、没有 POST `/api/base/manual`、没有 POST `/api/base/stop`、没有打开 `/dev/ttyS5`、没有发送任何 WAVE ROVER JSON 运动命令、没有采集 `T=1001` 原始反馈，也没有 ROS `/odom`、`/imu/data`、`/battery` 同源材料。
+
 执行模式即使未来由现场 operator 明确使用：
 
 ```bash
