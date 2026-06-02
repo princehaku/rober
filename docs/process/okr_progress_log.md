@@ -8,6 +8,16 @@
 
 ## 2026-06-03 系列
 
+### 2026-06-03 06-07｜O1 safe pulse readiness boundary｜Product routing
+
+本轮 Product/OKR 路由基于 `sprints/2026.06.03_06-07_o1-safe-pulse-readiness/tech-done.md`。用户价值是把当前最低 Objective 1 的下一步限定为安全可验收的前置证据，而不是让 hourly automation 在只有 SSH/服务状态的情况下无条件发运动命令。产品北极星仍是普通手机用户可用的垃圾投递机器人；O1 的价值不是点动本身，而是底盘控制证据能被现场安全、同源日志、PC/ROS 后续链路复用。Hardware Infra 本轮补到的真实材料是远端 `trashbot-upper-robot-api.service` 已 `enabled/active/running`、8787 正在监听、`GET /api/status` 可读，base 指向 `/dev/ttyS5 @115200`，并且本地 runner 通过远端 8787 dry-run 产出 `api_status_dry_run_not_hil` artifact。
+
+方向判断：Objective 1 继续，但本轮优先 `safe pulse readiness`，在没有现场看护、物理净空和人工急停条件时暂停无人运动命令。Hardware Infra 已采集 8787 `/api/status`、safe pulse runner dry-run JSON、artifact 时间戳、`execution_gate`、`safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`t1001_feedback_status=not_observed` 等非运动材料；这些材料只能让 O1 前置能力更扎实，不能提高 O1 百分比。
+
+Product 验收边界：仅 SSH 可达、8787 listening、`/api/status` 200、runner dry-run、PC 面板显示、camera `/offer`、8088 camera ready 或文档更新，都不能写成 HIL pass、闭环控制、真实 `/odom`、`/imu/data`、`/battery` 或 delivery success。O1 可讨论上调的最低门槛是现场看护 + 物理净空 + 人工急停可用，经 8787 `/api/base/manual` 执行低速短 pulse，自动 stop 或人工 stop 复位成功，并采集 status/manual/stop 与 ACK 或 `T=1001` 的同源证据；若没有反馈，只能记录为 motion observed / feedback not_proven。
+
+OKR 进度建议：Objective 1 暂保持约 93%，理由是本轮产品边界和 readiness evidence 没有真实 watched pulse、ACK 或 `T=1001`；Objective 5 保持约 96%，Objective 6 保持约 96%，Objective 7 保持约 98%。如果 Hardware Infra 返回“现场安全条件不足且 O1 无新增非运动证据可采”，下一轮可切到 O5/O6 real material artifact freshness 或 O7 production-path evidence，但也必须坚持真实材料口径，不因 runbook/状态面重复涨分。本轮没有已完成 KR 进入历史归档区；O1 KR3 仍在当前推进区，剩余风险为真实 pulse、安全复位、ACK/`T=1001`、HIL、真实 ROS topic 和完整 delivery success 仍 `not_proven`。
+
 ### 2026-06-03 05-06｜O1 ttyS5 safe pulse acceptance runner｜Product closeout
 
 本轮 Product/OKR 收口基于 `sprints/2026.06.03_05-06_o1-ttyS5-safe-pulse-acceptance/tech-done.md`。用户价值是把 O1 从“upper API guardrail ready”推进到“safe pulse acceptance runner ready / watched execution pending”：现场点动不再依赖临时命令，而是有一个默认 dry-run/read-only、双确认执行、速度/时长限幅、stop evidence 和机器可读 schema 的验收 runner。
