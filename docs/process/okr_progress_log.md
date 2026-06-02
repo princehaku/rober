@@ -8,6 +8,22 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 07-08｜o1-wave-rover-t1001-live-retry + o7-browser-long-stability-acceptance｜Product closeout
+
+本轮 product closeout 同时收口两个 Micro sprint：O1 继续尝试在 fail-closed/no-motion 边界内复采 WAVE ROVER `T=1001`，O7 补齐 PC workstation 对 30s 与 3-5 分钟 browser smoke 证据的产品验收分层。用户价值分别是避免把网络不可达包装成硬件进展，以及避免把 30s 短稳态冒充 180s/3-5min 长稳态。
+
+O1 证据来自 `sprints/2026.06.02_07-08_o1-wave-rover-t1001-live-retry/tech-done.md`：probe 单元测试 9 OK、`py_compile` 通过、scoped diff-check 通过；两条远端 SSH probe 均失败为 `ssh: connect to host 192.168.1.11 port 37878: No route to host`。本轮未触达远端 Python，未打开串口，未发送 `{"T":130}\n`，未观察到真实 `T=1001`。这是第三次同类 `remote_network_unreachable` / `ssh_no_route_to_host` blocker 消费，Product closeout 判定 O1 保持约 93%，方向判断为**调整执行路径**：下一轮不得继续消费同一 blocker，必须切换 Objective，或升级 CEO 现场处理/决策上位机供电、同网段路由、SSH 端口映射、WiFi/4G/VPN 和现场网络策略。真实 WAVE ROVER `T=1001`、UART/HIL、底盘控制、真实 LiDAR `/scan`、ROS Humble runtime、TF、Nav2/SLAM 和完整送达闭环仍 `not_proven`。
+
+O7 证据来自 `sprints/2026.06.02_07-08_o7-browser-long-stability-acceptance/tech-done.md`：PC workstation 新增 `browser_smoke.long_stability_acceptance`，30s artifact 输出 `needs_long_run`，健康 180s artifact 才输出 `accepted`，失败条件输出 `failed`，无 artifact 输出 `not_observed`；UI 新增 `3-5min acceptance` 展示。验证通过：`npm run test` 2 files / 55 tests passed，`npm run build` 通过，`npm run lint` 通过，scoped diff-check 通过。Product closeout 判定 O7 从约 95% 小幅调整到约 96% `software guardrail`，方向判断为**继续**；本轮关闭的是软件护栏/合同消费层缺口，不产生真实 180s/3-5min browser artifact，不证明真实公网、TURN、手机、控制、ROS2/Nav2、robot ACK 或完整上车任务。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 93% | 单测、py_compile、diff-check 通过，但两条 SSH probe 均 `No route to host`；未触达远端 Python、未打开串口、未发送 `T=130`、未观察真实 `T=1001`。第三次同类 blocker 后，下一轮必须切换 Objective 或升级 CEO 现场处理/决策。 |
+| Objective 7：PC 端运营调试平台 | 从约 95% 调整到约 96% software guardrail | 30s/180s/failed/not_observed 四类 long-stability acceptance 合同和 UI 展示已可复验；真实 180s/3-5min artifact still not_proven，不能写成真实长稳态完成。 |
+| Objective 5 / 6 | 保持约 95% | 本轮不触碰真实生产 TLS、公网 HTTPS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser、真实云或上车数据。 |
+
+本轮没有已完成 KR 进入真实材料历史归档区；O1/O7 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节、`sprints/2026.06.02_07-08_o1-wave-rover-t1001-live-retry/tech-done.md` 和 `sprints/2026.06.02_07-08_o7-browser-long-stability-acceptance/tech-done.md`。剩余风险：O1 不能再无意识重复消费 `remote_network_unreachable`；O7 需要真实 operator 运行 180s/3-5min browser smoke 并产出 artifact 后，才可讨论真实长稳态材料。
+
 ### 2026-06-02 06-07｜o1-wave-rover-t1001-live-retry + o1-lidar-upper-runtime-readiness｜O1 remote network still blocked
 
 本轮 06-07 O1 复测继续聚焦最低 Objective 1。WAVE ROVER T1001 live retry 两次 SSH 到 `root@192.168.1.11 -p 37878` 均失败为 `No route to host`，结论为 `remote_network_unreachable`：未触达远端 Python，未打开串口，未发送 `T=130`，未采到真实 `T=1001`。LiDAR upper runtime readiness 侧新增 `lidar_runtime_readiness` gate 和下一轮 runbook，但远端 readiness probe 同样 `No route to host`，未采到真实 ROS2 `/scan` 或 LiDAR runtime。

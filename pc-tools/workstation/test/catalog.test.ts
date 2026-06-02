@@ -3883,7 +3883,10 @@ describe("workstation fail-closed API contracts", () => {
 
   it("O7 local WebRTC camera API fails closed when base URL is not configured", async () => {
     // 未配置 env 时不能主动打默认 LAN IP；页面只显示可配置缺口和固定安全边界。
-    const status = await buildO7LocalWebrtcCamera({ env: {} });
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o7-browser-smoke-missing-"));
+    const missingSmokePath = path.join(tempDir, "missing-smoke.json");
+    const env = { ROBER_O7_BROWSER_SMOKE_RESULT_JSON: missingSmokePath };
+    const status = await buildO7LocalWebrtcCamera({ env });
 
     expect(status.schema).toBe("trashbot.pc_tools_workstation.o7_local_webrtc_camera.v1");
     expect(status.endpoint).toBe("/api/o7/local-webrtc-camera");
@@ -3898,7 +3901,18 @@ describe("workstation fail-closed API contracts", () => {
     expect(status.sends_commands).toBe(false);
     expect(status.cloud_relay).toBe(false);
     expect(status.robot_control_executed).toBe(false);
+    expect(status.browser_smoke.long_stability_acceptance).toMatchObject({
+      status: "not_observed",
+      required_window_ms: 180000,
+      observed_window_ms: 0,
+      safe_to_control: false,
+    });
+    expect(status.browser_smoke.long_stability_acceptance.blocked_reasons).toContain(
+      "browser_smoke_result_not_found_run_explicit_script",
+    );
 
+    const previousSmokePath = process.env.ROBER_O7_BROWSER_SMOKE_RESULT_JSON;
+    process.env.ROBER_O7_BROWSER_SMOKE_RESULT_JSON = missingSmokePath;
     const server = await listen(createWorkstationApp());
     try {
       const response = await fetch(new URL("/api/o7/local-webrtc-camera", server.baseUrl));
@@ -3914,6 +3928,12 @@ describe("workstation fail-closed API contracts", () => {
       });
     } finally {
       await server.close();
+      // 还原进程 env，避免同文件后续测试继承这个缺失 artifact 路径。
+      if (previousSmokePath === undefined) {
+        delete process.env.ROBER_O7_BROWSER_SMOKE_RESULT_JSON;
+      } else {
+        process.env.ROBER_O7_BROWSER_SMOKE_RESULT_JSON = previousSmokePath;
+      }
     }
   });
 
@@ -4002,6 +4022,134 @@ describe("workstation fail-closed API contracts", () => {
     expect(status.browser_smoke.stability_summary.estimated_fps).toBe(2);
     expect(status.browser_smoke.stability_summary.remote_system_metrics).toMatchObject({ cpu_percent: 23.5 });
     expect(status.browser_smoke.stability_summary.remote_active_peer_cleaned).toBe("cleaned");
+    expect(status.browser_smoke.long_stability_acceptance).toMatchObject({
+      status: "needs_long_run",
+      required_window_ms: 180000,
+      observed_window_ms: 30000,
+      safe_to_control: false,
+    });
+    expect(status.browser_smoke.long_stability_acceptance.blocked_reasons).toEqual(["observation_window_below_180000ms"]);
+  });
+
+  it("O7 local WebRTC camera API accepts only healthy 180s browser stability artifact", async () => {
+    // O7 长稳态验收必须明确看到 180000ms 以上、ICE/连接持续、视频尺寸稳定、错误增量为 0 和 close 后清理。
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o7-browser-long-smoke-"));
+    const smokePath = path.join(tempDir, "smoke.json");
+    await writeFile(
+      smokePath,
+      JSON.stringify({
+        schema: "trashbot.o7.local_webrtc_browser_playback_smoke.v1",
+        status: "ok",
+        base_url: "http://192.168.1.11:8088/",
+        page_url: "http://192.168.1.11:8088/",
+        executed_at: "2026-06-02T07:30:00.000Z",
+        browser_engine: "chromium",
+        browser_available: true,
+        playwright_available: true,
+        start_clicked: true,
+        first_frame_received: true,
+        video_width: 640,
+        video_height: 480,
+        first_frame_ms: 1200,
+        connection_state: "connected",
+        ice_connection_state: "connected",
+        ice_gathering_state: "complete",
+        signaling_state: "stable",
+        stability_summary: {
+          status: "observed",
+          observation_window_ms: 180000,
+          sample_interval_ms: 5000,
+          sample_count: 37,
+          first_packets_received: 2,
+          last_packets_received: 5402,
+          first_frames_decoded: 1,
+          last_frames_decoded: 5400,
+          first_frames_received: 1,
+          last_frames_received: 5400,
+          estimated_fps: 30,
+          estimated_packet_rate: 30,
+          video_size_stable: "stable",
+          stable_video_width: 640,
+          stable_video_height: 480,
+          connection_remained_connected: "connected",
+          ice_remained_connected: "connected",
+          console_errors_added: 0,
+          page_errors_added: 0,
+          remote_health_samples: 37,
+          remote_health_statuses: ["ready"],
+          remote_active_peer_connections_first: 1,
+          remote_active_peer_connections_last: 1,
+          remote_system_metrics: { cpu_percent: 21.1, temperature_c: 47.2 },
+          remote_stability_metrics: { active_camera_read_failures: 0 },
+          post_close_active_peer_connections: 0,
+          remote_active_peer_cleaned: "cleaned",
+        },
+        console_errors: [],
+        page_errors: [],
+        blocked_reason: "none",
+        offer_executed_by_browser: true,
+      }),
+      "utf8",
+    );
+
+    const status = await buildO7LocalWebrtcCamera({
+      env: { ROBER_O7_BROWSER_SMOKE_RESULT_JSON: smokePath },
+    });
+
+    expect(status.browser_smoke.long_stability_acceptance).toEqual({
+      status: "accepted",
+      required_window_ms: 180000,
+      observed_window_ms: 180000,
+      blocked_reasons: [],
+      safe_to_control: false,
+    });
+  });
+
+  it("O7 local WebRTC camera API fails 180s artifact when peer cleanup is incomplete", async () => {
+    // cleanup 必须同时看到远端 peer cleaned 和 post-close active peer 为 0，避免半清理残留被误判为长稳态通过。
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o7-browser-cleanup-fail-"));
+    const smokePath = path.join(tempDir, "smoke.json");
+    await writeFile(
+      smokePath,
+      JSON.stringify({
+        schema: "trashbot.o7.local_webrtc_browser_playback_smoke.v1",
+        status: "ok",
+        first_frame_received: true,
+        connection_state: "connected",
+        ice_connection_state: "connected",
+        stability_summary: {
+          status: "observed",
+          observation_window_ms: 180000,
+          sample_interval_ms: 5000,
+          sample_count: 37,
+          video_size_stable: "stable",
+          connection_remained_connected: "connected",
+          ice_remained_connected: "connected",
+          console_errors_added: 0,
+          page_errors_added: 0,
+          post_close_active_peer_connections: 1,
+          remote_active_peer_cleaned: "not_cleaned",
+        },
+        console_errors: [],
+        page_errors: [],
+      }),
+      "utf8",
+    );
+
+    const status = await buildO7LocalWebrtcCamera({
+      env: { ROBER_O7_BROWSER_SMOKE_RESULT_JSON: smokePath },
+    });
+
+    expect(status.browser_smoke.long_stability_acceptance).toMatchObject({
+      status: "failed",
+      required_window_ms: 180000,
+      observed_window_ms: 180000,
+      safe_to_control: false,
+    });
+    expect(status.browser_smoke.long_stability_acceptance.blocked_reasons).toEqual([
+      "post_close_active_peer_connections_not_zero",
+      "remote_active_peer_not_cleaned",
+    ]);
   });
 
   it("O7 local WebRTC camera API consumes ready health and devices without creating RTC session", async () => {

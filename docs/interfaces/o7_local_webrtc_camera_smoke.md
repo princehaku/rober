@@ -112,6 +112,17 @@ pc-tools/workstation/.workstation-runtime/o7-browser-playback-smoke.json
 - `server_peer_id` / `server_peer_close_status`：页面 `/offer` 成功返回 peer id 时，脚本会尝试调用 `/peers/{peer_id}/close` 释放本次浏览器 peer；若 `/offer` 被 409 拒绝则 peer id 为空，需先处理服务端已有 active peer。
 - `safe_to_control=false` / `sends_commands=false` / `robot_control_executed=false` / `workstation_api_offer_executed=false`：即使 browser smoke 显式点击页面触发 `/offer`，PC API/UI 仍不能自动发 offer、不能创建控制入口、不能发送机器人控制。
 
+PC workstation 消费该 artifact 时会在 `browser_smoke.long_stability_acceptance` 里派生 3-5 分钟长稳态验收摘要。该字段不是脚本重新执行结果，也不会触发 `/offer`：
+
+- `status=not_observed`：没有显式 smoke artifact，或 `stability_summary.status` 不是 `observed`。
+- `status=needs_long_run`：首帧、ICE、连接、视频尺寸、错误增量和 close cleanup 都满足，但 `stability_summary.observation_window_ms < 180000`；当前 30s 证据只能落入此类。
+- `status=accepted`：`observation_window_ms >= 180000`、`sample_count > 0`、连接和 ICE 持续 connected、视频尺寸稳定、console/page error delta 为 0，且同时看到 `remote_active_peer_cleaned=cleaned` 与 `post_close_active_peer_connections=0`。
+- `status=failed`：artifact 已观察到稳定性窗口，但首帧、连接、ICE、视频尺寸、错误增量、样本数、`remote_active_peer_cleaned=cleaned` 或 `post_close_active_peer_connections=0` 任一关键条件失败。
+- `required_window_ms`：当前固定 `180000`，对应 O7 3-5 分钟验收下限。
+- `observed_window_ms`：来自 `stability_summary.observation_window_ms`。
+- `blocked_reasons[]`：机器可读缺口，例如 `observation_window_below_180000ms`、`connection_not_continuously_connected`、`ice_not_continuously_connected`、`video_size_not_stable`、`console_errors_added`、`page_errors_added`、`post_close_active_peer_connections_not_zero`、`remote_active_peer_not_cleaned`。
+- `safe_to_control=false`：长稳态通过也不开放控制，只表示当前 artifact 具备 O7 长稳态视频证据下限。
+
 浏览器 smoke 是显式命令，不由 PC API 自动触发。缺 Playwright/Chromium 或远端不可达时必须输出 `degraded/failed/fail_closed`，不能把依赖缺失或连接失败冒充成首帧通过。需要强制首帧作为验收门时可设置：
 
 ```bash

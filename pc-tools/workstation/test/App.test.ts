@@ -2195,6 +2195,13 @@ const fixtures: Record<string, unknown> = {
         post_close_active_peer_connections: 0,
         remote_active_peer_cleaned: "cleaned",
       },
+      long_stability_acceptance: {
+        status: "needs_long_run",
+        required_window_ms: 180000,
+        observed_window_ms: 30000,
+        blocked_reasons: ["observation_window_below_180000ms"],
+        safe_to_control: false,
+      },
       console_error_count: 0,
       page_error_count: 0,
       server_peer_id: "peer-test",
@@ -2600,6 +2607,9 @@ describe("App", () => {
     expect(wrapper.text()).toContain("cloud_relay=false");
     expect(wrapper.text()).toContain("window_ms=30000");
     expect(wrapper.text()).toContain("fps=2.97");
+    expect(wrapper.text()).toContain("3-5min acceptance");
+    expect(wrapper.text()).toContain("status=needs_long_run");
+    expect(wrapper.text()).toContain("required_ms=180000");
     expect(wrapper.text()).toContain("system_metrics=not_available");
     expect(wrapper.text()).toContain("cleanup=cleaned");
     expect(wrapper.text()).toContain("robot_control_executed=false");

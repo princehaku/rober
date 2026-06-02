@@ -65,6 +65,20 @@ const browserResourceCopy = computed(() => {
   ].join(" · ");
 });
 
+const longStabilityAcceptanceCopy = computed(() => {
+  // 长稳态验收由后端消费 artifact 后给出，UI 只显示 3-5min 证据是否足够。
+  const acceptance = cameraSmoke.value?.browser_smoke.long_stability_acceptance;
+  if (!acceptance) {
+    return "not_loaded";
+  }
+  return [
+    `status=${acceptance.status}`,
+    `observed_ms=${acceptance.observed_window_ms}`,
+    `required_ms=${acceptance.required_window_ms}`,
+    `safe_to_control=${acceptance.safe_to_control}`,
+  ].join(" · ");
+});
+
 async function refreshCameraSmoke(): Promise<void> {
   // 刷新只读状态，不启动 /offer、不打开摄像头、不创建 WebRTC peer。
   cameraLoading.value = true;
@@ -151,6 +165,8 @@ onMounted(() => {
       <dd>{{ browserStatsCopy }}</dd>
       <dt>stability</dt>
       <dd>{{ browserStabilityCopy }}</dd>
+      <dt>3-5min acceptance</dt>
+      <dd>{{ longStabilityAcceptanceCopy }}</dd>
       <dt>resource metrics</dt>
       <dd>{{ browserResourceCopy }}</dd>
       <dt>stability health</dt>

@@ -182,3 +182,41 @@ timeout 35 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 1. 先在与上位机同网段的机器上确认 `192.168.1.11:37878` 可路由、上位机已开机、SSH 端口映射仍然存在。
 2. SSH 恢复后先运行只读 probe，确认 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00` 是否仍存在并指向预期 `ttyACM*`。
 3. 只读 probe 能触达后，再运行一次显式 `--request-base-feedback`；若仍为 `read_line_count=0`，按 `next_required_checks[]` 现场核对下位机供电/固件、TX/RX 交叉、目标端口是否为 WAVE ROVER ESP32、串口占用和 vendor terminal 交叉验证。
+
+`2026.06.02_07-08_o1-wave-rover-t1001-live-retry` 再次按 O1 最低完成度执行复采。vendor 复核结论保持不变：`json_cmd.h` 定义 `CMD_BASE_FEEDBACK=130` 与 `FEEDBACK_BASE_INFO=1001`，`uart_ctrl.h` 中 `CMD_BASE_FEEDBACK` 分支调用 `baseInfoFeedback()`，`ugv_advance.h` 中 `baseInfoFeedback()` 输出 `T=FEEDBACK_BASE_INFO`、左右轮反馈、IMU roll/pitch/yaw、电压和可选模块字段。因此本轮仍只允许显式发送一次 vendor `{"T":130}\n`，严禁发送 `T=1`、`T=13`、`T=131`、`cmd_vel` 或任何运动命令。
+
+本轮只读 probe：
+
+```bash
+timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 2' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
+结果仍失败在 SSH 网络层：
+
+```text
+ssh: connect to host 192.168.1.11 port 37878: No route to host
+```
+
+本轮显式非运动 feedback request：
+
+```bash
+timeout 35 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --request-base-feedback --port /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 --baudrate 115200 --read-timeout-s 12' < onboard/scripts/o1_wave_rover_serial_feedback_probe.py
+```
+
+结果同样失败在 SSH 网络层：
+
+```text
+ssh: connect to host 192.168.1.11 port 37878: No route to host
+```
+
+因此本轮没有触达远端 Python、没有打开 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`、没有发送 `{"T":130}\n`、没有读取到任何串口行，也没有观察到真实 `T=1001`。安全边界保持：
+
+- `safe_to_control=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `delivery_success=false`
+- `t130_request_reached_serial=false`
+- `t1001_observed=false`
+- `evidence_boundary=remote_network_unreachable_not_serial_feedback_result`
+
+这是第三次同类 `remote_network_unreachable` / `ssh_no_route_to_host` blocker 消费：`2026.06.01_20-21`、`2026.06.02_06-07`、`2026.06.02_07-08` 均未触达远端 Python。按项目 blocker 红线，不能继续把同一 SSH/路由不可达问题当成 O1 完成材料；下一轮必须切换到不依赖该 blocker 的 Objective，或由 CEO 现场处理/决策，先恢复 `192.168.1.11:37878` 可路由与 SSH 映射后再继续采集 `T=1001`。

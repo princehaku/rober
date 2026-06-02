@@ -1,5 +1,10 @@
 import { PROOF_FLAGS } from "../shared/contracts";
-import type { O7BrowserPlaybackSmokeSummary, O7BrowserPlaybackStabilitySummary, O7LocalWebrtcCameraResponse } from "../shared/contracts";
+import type {
+  O7BrowserPlaybackSmokeSummary,
+  O7BrowserPlaybackStabilitySummary,
+  O7LocalWebrtcCameraResponse,
+  O7LongStabilityAcceptanceSummary,
+} from "../shared/contracts";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { displayRoot, WORKSTATION_RUNTIME_ROOT } from "./paths";
@@ -10,6 +15,7 @@ const REMOTE_SELF_TEST_SCHEMA = "trashbot.local_webrtc_camera_offer_self_test.v1
 const BROWSER_SMOKE_SCHEMA = "trashbot.o7.local_webrtc_browser_playback_smoke.v1" as const;
 const DEFAULT_BROWSER_SMOKE_RESULT = path.join(WORKSTATION_RUNTIME_ROOT, "o7-browser-playback-smoke.json");
 const REQUEST_TIMEOUT_MS = 1500;
+const LONG_STABILITY_REQUIRED_WINDOW_MS = 180000;
 
 const SAFETY_FIELDS = [
   "safe_to_control",
@@ -67,6 +73,7 @@ function defaultBrowserSmoke(reason: string, baseUrl: string): O7BrowserPlayback
     peer_state_timeline: [],
     post_smoke_remote_health: null,
     stability_summary: defaultStabilitySummary(),
+    long_stability_acceptance: defaultLongStabilityAcceptance(reason),
     console_error_count: 0,
     page_error_count: 0,
     server_peer_id: null,
@@ -116,6 +123,17 @@ function defaultStabilitySummary(): O7BrowserPlaybackStabilitySummary {
   };
 }
 
+function defaultLongStabilityAcceptance(blockedReason: string): O7LongStabilityAcceptanceSummary {
+  // 长稳态验收必须由显式 artifact 支撑；默认只表达缺口，避免把 30s smoke 外推成 3-5min 通过。
+  return {
+    status: "not_observed",
+    required_window_ms: LONG_STABILITY_REQUIRED_WINDOW_MS,
+    observed_window_ms: 0,
+    blocked_reasons: [blockedReason],
+    safe_to_control: false,
+  };
+}
+
 function stringArray(value: unknown): string[] {
   // 外部 JSON 只接受字符串数组，避免 UI 展示复杂对象或泄露异常 payload。
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 20) : [];
@@ -130,6 +148,57 @@ function metricRecordOrUnavailable(value: unknown): Record<string, unknown> | "n
   // 远端 health 的指标字段是可选增量合同；只允许 object 或 not_available 两种展示形态。
   const record = asRecord(value);
   return record ? Object.fromEntries(Object.entries(record).slice(0, 24)) : "not_available";
+}
+
+function activePeerCountFromHealth(value: Record<string, unknown> | null): number | null {
+  // 兼容远端 health 的 snake_case 与 camelCase，判定 post-close cleanup 时只接受数字。
+  const activePeerConnections = value?.active_peer_connections ?? value?.activePeerConnections;
+  return typeof activePeerConnections === "number" ? activePeerConnections : null;
+}
+
+function longStabilityAcceptanceFromSmoke(
+  record: Record<string, unknown>,
+  stability: O7BrowserPlaybackStabilitySummary,
+): O7LongStabilityAcceptanceSummary {
+  // 该函数只做 artifact 消费层验收，不发 /offer、不补采样、不创建任何 WebRTC session。
+  const observedWindowMs = stability.observation_window_ms;
+  const postCloseHealth = asRecord(record.post_smoke_remote_health);
+  const postCloseActivePeers = stability.post_close_active_peer_connections ?? activePeerCountFromHealth(postCloseHealth);
+  const postClosePeerCountCleaned = postCloseActivePeers === 0;
+  const remoteActivePeerCleaned = stability.remote_active_peer_cleaned === "cleaned";
+  const blockedReasons = [
+    ...(["ok"].includes(String(record.status)) ? [] : [`browser_smoke_status_${String(record.status ?? "unknown")}`]),
+    ...(record.first_frame_received === true ? [] : ["first_frame_not_received"]),
+    ...(stability.status === "observed" ? [] : ["stability_summary_not_observed"]),
+    ...(stability.sample_count > 0 ? [] : ["stability_sample_count_zero"]),
+    ...(observedWindowMs >= LONG_STABILITY_REQUIRED_WINDOW_MS ? [] : ["observation_window_below_180000ms"]),
+    ...(stability.connection_remained_connected === "connected" ? [] : ["connection_not_continuously_connected"]),
+    ...(stability.ice_remained_connected === "connected" ? [] : ["ice_not_continuously_connected"]),
+    ...(stability.video_size_stable === "stable" ? [] : ["video_size_not_stable"]),
+    ...(stability.console_errors_added === 0 ? [] : ["console_errors_added"]),
+    ...(stability.page_errors_added === 0 ? [] : ["page_errors_added"]),
+    ...(postClosePeerCountCleaned ? [] : ["post_close_active_peer_connections_not_zero"]),
+    ...(remoteActivePeerCleaned ? [] : ["remote_active_peer_not_cleaned"]),
+  ];
+
+  if (record.status === "not_run" || stability.status === "not_observed") {
+    return {
+      status: "not_observed",
+      required_window_ms: LONG_STABILITY_REQUIRED_WINDOW_MS,
+      observed_window_ms: observedWindowMs,
+      blocked_reasons: blockedReasons.length ? blockedReasons : ["long_stability_artifact_not_observed"],
+      safe_to_control: false,
+    };
+  }
+
+  const onlyWindowTooShort = blockedReasons.length === 1 && blockedReasons[0] === "observation_window_below_180000ms";
+  return {
+    status: blockedReasons.length === 0 ? "accepted" : onlyWindowTooShort ? "needs_long_run" : "failed",
+    required_window_ms: LONG_STABILITY_REQUIRED_WINDOW_MS,
+    observed_window_ms: observedWindowMs,
+    blocked_reasons: blockedReasons,
+    safe_to_control: false,
+  };
 }
 
 function stabilityFromRecord(value: unknown): O7BrowserPlaybackStabilitySummary {
@@ -190,6 +259,7 @@ function browserSmokeFromRecord(record: Record<string, unknown>, fallbackBaseUrl
   const status = ["ok", "degraded", "failed", "fail_closed"].includes(String(record.status))
     ? (String(record.status) as O7BrowserPlaybackSmokeSummary["status"])
     : "fail_closed";
+  const stabilitySummary = stabilityFromRecord(record.stability_summary);
   return {
     schema: String(record.schema ?? BROWSER_SMOKE_SCHEMA),
     status,
@@ -225,7 +295,8 @@ function browserSmokeFromRecord(record: Record<string, unknown>, fallbackBaseUrl
     selected_candidate_pair: asRecord(record.selected_candidate_pair),
     peer_state_timeline: recordArray(record.peer_state_timeline),
     post_smoke_remote_health: asRecord(record.post_smoke_remote_health),
-    stability_summary: stabilityFromRecord(record.stability_summary),
+    stability_summary: stabilitySummary,
+    long_stability_acceptance: longStabilityAcceptanceFromSmoke(record, stabilitySummary),
     console_error_count: typeof record.console_error_count === "number" ? record.console_error_count : stringArray(record.console_errors).length,
     page_error_count: typeof record.page_error_count === "number" ? record.page_error_count : stringArray(record.page_errors).length,
     server_peer_id: typeof record.server_peer_id === "string" ? record.server_peer_id : null,

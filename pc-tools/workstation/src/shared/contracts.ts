@@ -1971,6 +1971,14 @@ export interface O7BrowserPlaybackStabilitySummary {
   remote_active_peer_cleaned: "cleaned" | "not_cleaned" | "not_available";
 }
 
+export interface O7LongStabilityAcceptanceSummary {
+  status: "not_observed" | "needs_long_run" | "accepted" | "failed";
+  required_window_ms: number;
+  observed_window_ms: number;
+  blocked_reasons: string[];
+  safe_to_control: false;
+}
+
 export interface O7BrowserPlaybackSmokeSummary {
   schema: "trashbot.o7.local_webrtc_browser_playback_smoke.v1" | string;
   status: "not_run" | "ok" | "degraded" | "failed" | "fail_closed";
@@ -2007,6 +2015,7 @@ export interface O7BrowserPlaybackSmokeSummary {
   peer_state_timeline: Array<Record<string, unknown>>;
   post_smoke_remote_health: Record<string, unknown> | null;
   stability_summary: O7BrowserPlaybackStabilitySummary;
+  long_stability_acceptance: O7LongStabilityAcceptanceSummary;
   console_error_count: number;
   page_error_count: number;
   server_peer_id: string | null;
