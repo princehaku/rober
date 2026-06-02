@@ -187,6 +187,41 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 
 远端命令 exit 0，输出 `schema=trashbot.o1.usb_serial_inventory.v1`，安全字段保持 `safe_to_control=false`、`sends_commands=false`、`opens_serial_devices=false`、`robot_control_executed=false`、`delivery_success=false`。远端 inventory 只看到 3 个候选路径：`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`、`/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0`、`/dev/ttyACM0`，全部指向 `/dev/ttyACM0`；`/dev/lidar` 和 `/dev/ttyUSB*` 未命中。sysfs 继续显示 `idVendor=34bf`、`idProduct=ff0a`、`manufacturer=STC`、`product=STC USB Serial`、`DRIVER=cdc_acm`、`PRODUCT=34bf/ff0a/100`。机器风险为 `identity_risks[0].risk_id=possible_lidar_or_other_stc`、`severity=high`，推荐检查为先拔 LiDAR 后重跑 inventory 并比较 alias/realpath 变化。该材料仍不能证明目标端口是 WAVE ROVER ESP32，不能继续盲发 `T=130`。
 
+## 2026-06-03 `/dev/ttyS5` 控制口证据分层
+
+本轮 Hardware owner 复核了现场新增事实，但复核过程只读取本地资料和 git diff；没有打开任何串口，没有 SSH，没有发送 `T=1`、`T=13`、`cmd_vel` 或其他运动命令，也没有再次发送 `T=130`。
+
+新增现场事实：
+
+- CEO 现场观察到 Orange Pi `/dev/ttyS5 @115200` 上的 `T=1,L=0.08,R=0.08` 可让 WAVE ROVER 底盘响应。
+- 现场随后发送 `T=1,L=0,R=0` 停车命令。
+- `/dev/ttyACM0` 仍按前序证据归类为 STC/LiDAR 风险口，不作为本轮底盘控制口。
+- `/dev/ttyS5 @115200` 上 `T=130` 仍未读到 `T=1001`，反馈/ACK 未闭环。
+
+采用的 vendor 证据：
+
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`：`base_speed_ctrl()` 写 `{"T":1,"L":...,"R":...}`；写入时使用 `json.dumps(data) + '\n'` 并以 UTF-8 编码；vendor Raspberry Pi reference 端口为 `/dev/ttyAMA0`、波特率 `115200`，但 Orange Pi 路径必须现场确认。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`：`CMD_SPEED_CTRL=1`、`CMD_BASE_FEEDBACK=130`、`FEEDBACK_BASE_INFO=1001`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`：串口接收以 `\n` 作为命令结束符，再对累积字符串执行 `deserializeJson()`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/WAVE_ROVER_V0.9.ino`：固件 `Serial.begin(115200)`。
+
+证据边界：
+
+| 事项 | 当前状态 | 不能外推为 |
+| --- | --- | --- |
+| `/dev/ttyS5 @115200` | 现场可写控制口，`T=1` 低速点动有响应 | HIL pass、闭环安全控制、ROS2 `/cmd_vel` 已接入 |
+| `T=1,L=0.08,R=0.08` | CEO 现场观察到底盘响应 | 轮向/速度标定已完成、可量产默认速度 |
+| `T=1,L=0,R=0` | 现场已执行停车命令 | 急停链路已产品化、自动停车逻辑已验证 |
+| `T=130 -> T=1001` | 仍未观察到 `T=1001` | `/odom`、`/imu/data`、`/battery` 实测反馈已可用 |
+
+下一步短时点动和 ACK/急停门槛：
+
+1. 点动前先确认操作员、车辆周边空间、电源切断路径和日志记录方式。
+2. 只允许短时、低速、明确时长的点动；命令后必须自动补发 `T=1,L=0,R=0`。
+3. 先把 `/dev/ttyS5`、`115200`、点动速度、点动时长、自动停车超时做成显式参数，不写死到 launch 默认值。
+4. 在没有 `T=1001` 或等价 ACK 前，PC/ROS 控制入口必须 fail-closed，不得把 UI 按钮或 `/cmd_vel` 直接接到底盘。
+5. 后续 HIL packet 必须同源包含命令日志、停车日志、至少两帧 `T=1001`、ROS `/imu/data`、`/battery` 和 `/odom` 边界说明。
+
 `2026.06.01_20-21_o1-t130-feedback-observation` 继续使用同一 SSH 入口尝试一次显式 `--request-base-feedback` 采集：
 
 ```bash
@@ -346,3 +381,22 @@ timeout 35 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 4. `check_serial_owner_process`：确认没有 vendor app、systemd service 或其他进程占用同一串口。
 5. `use_vendor_terminal_cross_check_t130`：用 vendor terminal 或最小串口终端人工交叉发送 `{"T":130}` 并观察原始行。
 6. `verify_wave_rover_cmd_base_feedback_firmware_branch`：确认当前烧录固件包含 `uart_ctrl.h` 的 `CMD_BASE_FEEDBACK` 到 `baseInfoFeedback()` 路径。
+
+## 2026-06-03 8787 Upper Robot API 安全收口边界
+
+本轮 Hardware owner 只在本地收口 8787 统一上位机 API 的底盘手控安全语义，没有打开真实串口、没有 SSH、没有发送 `T=1/T=13/T=130/T=131`、没有发送 `/cmd_vel`，也没有触发真实运动。
+
+采用的 vendor 来源：
+
+- `docs/vendor/VENDOR_INDEX.md`：WAVE ROVER 上下位机链路为 UART、UTF-8、newline-delimited JSON；Orange Pi 串口设备名必须现场确认。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`：`serial.Serial(uart_dev_set, buad_set, timeout=1)`；`send_command()` 最终写 `(json.dumps(data) + '\n').encode("utf-8")`；示例 `BaseController('/dev/ttyAMA0', 115200)`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`：`CMD_SPEED_CTRL=1`，`CMD_BASE_FEEDBACK=130`，`FEEDBACK_BASE_INFO=1001`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`：`CMD_SPEED_CTRL` 分支要求 `T/L/R` 且 `L/R` 为 float 后调用 `setGoalSpeed()`；`CMD_BASE_FEEDBACK` 分支调用 `baseInfoFeedback()`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`：`baseInfoFeedback()` 输出 `T=1001`，包含 `L/R/r/p/y/v` 等字段并 `Serial.println(...)`。
+
+本轮安全规则：
+
+- 8787 API 手控只允许 `forward/back/left/right/stop`，非法方向必须结构化拒绝，不得 500，不得写串口。
+- accepted manual pulse 必须低速、限时、自动停车；返回中必须保留方向写入结果、stop 写入结果和串口失败原因。
+- `/api/base/stop` 的 `robot_control_executed` 只反映 stop JSON 写入是否成功；HTTP handler 成功不等于底盘已执行。
+- 所有响应继续保留 `feedback_ack.t1001_observed=false`，因为本轮没有读取 `T=1001`，不能声明 ACK、HIL、真实 `/odom`、真实 `/imu/data`、真实 `/battery` 或 delivery success。

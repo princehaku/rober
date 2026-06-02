@@ -2073,7 +2073,7 @@ export interface O7LocalWebrtcCameraResponse extends ProofFlags {
 }
 
 export type O7LiveOperatorDirection = "forward" | "back" | "left" | "right" | "stop";
-export type O7LiveOperatorCameraHealthStatus = "not_listening_observed";
+export type O7LiveOperatorCameraHealthStatus = "not_listening_observed" | "ready" | "not_loaded" | string;
 
 export interface O7LiveOperatorPanelResponse extends ProofFlags {
   schema: "trashbot.o7.live_operator_panel.v1";
@@ -2082,11 +2082,11 @@ export interface O7LiveOperatorPanelResponse extends ProofFlags {
     host: "192.168.1.11";
     port: 37878;
     reachable: true;
-    workstation_api_8787_status: "not_listening_observed";
+    workstation_api_8787_status: "not_listening_observed" | "ready" | "proxy_error" | string;
   };
   lidar_radar: {
-    dev_lidar: "missing";
-    stc_by_id: "unresolved";
+    dev_lidar: "missing" | "present" | string;
+    stc_by_id: "unresolved" | "resolved_to_ttyACM0" | string;
     scan_status: "not_proven";
     pointcloud_fabricated: false;
     source_facts: string[];
@@ -2095,7 +2095,7 @@ export interface O7LiveOperatorPanelResponse extends ProofFlags {
   camera: {
     base_url: "http://192.168.1.11:8088/";
     health_status: O7LiveOperatorCameraHealthStatus;
-    video_source: "/dev/video1";
+    video_source: "/dev/video1" | "auto" | string;
     devices_summary: string[];
     offer_auto_post_enabled: false;
     lan_page_url: string;

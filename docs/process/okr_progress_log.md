@@ -6,6 +6,44 @@
 
 ---
 
+## 2026-06-03 系列
+
+### 2026-06-03 03-04｜O7 upper robot API safety + PC Live Operator｜Product closeout
+
+本轮 Product/OKR 收口覆盖两个 Micro sprint：`sprints/2026.06.03_03-04_o7-upper-robot-api-safety/tech-done.md` 和 `sprints/2026.06.03_03-04_o7-pc-live-operator-upper-api/tech-done.md`。用户价值是把 O7 从“PC 本地 fail-closed 面板 + camera/systemd 证据”推进到“8787 统一上位机 Robot API 软件安全边界 + PC Live Operator 首屏可见”，同时守住 O1 真实底盘闭环未证明的边界。
+
+Hardware worker 收口了 8787 统一上位机 Robot API 安全边界：`upper_robot_api.py` 支持 camera/radar/base 状态；base manual 只能低速、限时、自动停车；非法 direction 结构化拒绝；fake pyserial 单测通过。证据边界是 software safety ready：本轮没有打开真实 `/dev/ttyS5`，没有 SSH，没有发送真实 WAVE ROVER JSON、`cmd_vel` 或运动命令，没有读取 `T=1001`，不证明 robot ACK、HIL pass、真实 `/odom`、真实 `/imu/data`、真实 `/battery` 或 delivery success。
+
+Full-stack worker 收口 PC workstation Live Operator：首屏展示 8787 API 状态、8088 camera、radar `/scan` 缺口、base `/dev/ttyS5`、`T=1001 not observed` 和 manual control fail-closed。PC test/build/lint 通过。PC 没有 POST `/api/base/manual`；唯一 POST 是 camera WebRTC media preview `/api/o7/local-webrtc-camera/offer`，该 `/offer` 只属于摄像头媒体信令，不是底盘控制。
+
+Product closeout 判定：Objective 7 从约 97.5% 调整到约 98%，口径为 `same-LAN camera/systemd + PC Live Operator + unified upper API software safety ready`。方向判断为继续。该上调来自 same-LAN camera/systemd、PC Live Operator 和 8787 unified upper API software safety 的组合证据，不代表 production path、real control、ACK、HIL 或完整上车任务闭环完成。
+
+Objective 1 仍约 93%，仍是最低 Objective。`/dev/ttyS5 @115200` 是 WAVE ROVER 当前可写控制口，低速 `T=1,L=0.08,R=0.08` 有现场响应；8787 upper API guardrail 让后续受控点动更安全。但 `T=1001`、robot ACK、HIL、真实 `/odom`、`/imu/data`、`/battery` 仍未证明，因此本轮不提升 O1 HIL 进度。下一轮 O1 核心抓手仍是 `/dev/ttyS5` 上的短时点动安全门槛、自动停车、速度/时长参数化、operator 日志、急停路径，以及 `T=1001` 或等价 ACK 采集。
+
+Objective 5 和 Objective 6 本轮未推进，均保持约 96%。本轮没有已完成 KR 进入历史归档区；O1、O5、O6、O7 KR 均仍在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节、`sprints/2026.06.03_03-04_o7-upper-robot-api-safety/tech-done.md` 和 `sprints/2026.06.03_03-04_o7-pc-live-operator-upper-api/tech-done.md`。剩余风险：真实 8787 远端监听、真实 `/api/base/manual` 灰度控制、真实串口、WAVE ROVER JSON、`/cmd_vel`、radar `/scan`、`T=1001`、robot ACK、HIL、production path 和完整 delivery success 仍 `not_proven`。
+
+### 2026-06-03 OKR/Product closeout｜O1 ttyS5 control write observed, O7 first-screen offer blocked by active peer
+
+本轮 OKR/sprint 收口只更新产品与进度文档，不改产品代码。用户价值是把现场事实转成 CEO 可判断的 OKR 口径：O1 承认 `/dev/ttyS5 @115200` 已从“候选/风险口”推进到“现场可写控制口”，但不把未闭环的反馈/ACK 包装成 HIL；O7 承认普通用户首屏和 WebRTC 媒体预览入口已经落地，但不把 `409 Conflict` 和无首帧包装成生产视频链路完成。
+
+O1 证据来自 `sprints/2026.06.03_02-03_o1-ttyS5-control-port-evidence/tech-done.md` 与 CEO 现场观察：`printf '{"T":1,"L":0.08,"R":0.08}\n' > /dev/ttyS5` 设备响应，随后已发送 stop；vendor 证据支持 WAVE ROVER UART JSON newline、`T=1` speed control、`T=130` feedback request、`T=1001` expected feedback、`115200` reference baud。`/dev/ttyACM0` 仍是 STC/LiDAR 风险口。`T=130` 在 `/dev/ttyS5` 上仍未读到 `T=1001`，robot ACK 未闭环。
+
+Product closeout 判定：Objective 1 从约 93% 保守上调到约 94.5%，口径为 `software_reference + ttyS5 control write observed + low-speed T=1 field response observed; T=1001/ACK/HIL not_proven`。方向判断为继续。下一轮核心抓手是 `/dev/ttyS5` 上的短时点动安全门槛、自动停车、速度/时长参数化、operator 日志、急停路径，以及 `T=1001` 或等价 ACK 采集；不能宣称 HIL pass、闭环安全控制、真实 ROS `/cmd_vel` 接入、真实 `/imu/data`、`/battery`、`/odom` 或 delivery success。
+
+O7 证据来自 `sprints/2026.06.02_21-22_pc-live-operator-panel/tech-done.md` 与 `sprints/2026.06.03_01-02_o7-camera-systemd-persistence/tech-done.md`：PC 默认首屏已改为普通用户可读 `Rober 控制台`；首屏直接尝试同源 `POST /api/o7/local-webrtc-camera/offer`，由 PC 后端转发到 8088 `/offer`，只用于摄像头 WebRTC 媒体预览，不是控制；方向按钮仍 fail-closed。远端 `trashbot-local-webrtc-camera.service` 已 installed/enabled/active，8088 `/health` ready，unit `MainPID` 与 listener pid 一致。最新首屏 smoke 页面核心区块可见，发起 `/offer` 1 次，但远端 `active_peer_connections=1` 导致 `409 Conflict`，video 无首帧；console error 1、page error 0；点击前进没有新增请求。
+
+Product closeout 判定：Objective 7 保持约 97.5%，方向判断为继续。本轮不再上调，因为 systemd persistence 价值已计入 97.5%，而最新首屏 smoke 只证明媒体预览尝试路径和 fail-closed 控制边界，不证明首屏首帧成功、生产视频链路、真实控制或完整上车闭环。下一轮优先补 camera peer cleanup/独占首帧复验、reboot 后自恢复、browser 180s long-stability 复跑、远端 8787 workstation API、云 relay/TURN/auth/phone/browser production path、弱网、ASR/TTS、手控/Nav2、robot ACK 和完整上车任务。
+
+Objective 5 和 Objective 6 本轮未推进，均保持约 96%。本轮没有已完成 KR 进入历史归档区；O1、O5、O6、O7 KR 均仍在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节、`sprints/2026.06.02_21-22_pc-live-operator-panel/tech-done.md`、`sprints/2026.06.03_01-02_o7-camera-systemd-persistence/tech-done.md` 和 `sprints/2026.06.03_02-03_o1-ttyS5-control-port-evidence/tech-done.md`。剩余风险：真实 `T=1001`/ACK、HIL packet、真实 video 首帧复验、生产 relay/TURN/auth、真实控制和完整 delivery success 仍 `not_proven`。
+
+### 2026-06-03 02-03｜o1-ttyS5-control-port-evidence｜ttyS5 control port observed, T1001/ACK still not proven
+
+本轮 Micro closeout 基于 `sprints/2026.06.03_02-03_o1-ttyS5-control-port-evidence/tech-done.md`。Hardware Infra 复核 2026-06-03 现场底盘串口事实：当前 WAVE ROVER 底盘可写控制口是 Orange Pi `/dev/ttyS5 @115200`，不是 USB STC `/dev/ttyACM0`。CEO 现场观察到 `T=1,L=0.08,R=0.08` 可让底盘响应，随后现场执行 `T=1,L=0,R=0` 停车。
+
+本轮只做本地 vendor 和文档复核，没有打开串口、没有 SSH、没有发送 `T=1`、`T=13`、`cmd_vel`、`T=130` 或任何运动命令。Vendor 复核结论：`base_ctrl.py` 使用 UTF-8 JSON + `\n` 写串口，`base_speed_ctrl()` 写 `T=1` 左右轮速，Raspberry Pi reference 是 `/dev/ttyAMA0 @115200`；`json_cmd.h` 定义 `CMD_SPEED_CTRL=1`、`CMD_BASE_FEEDBACK=130`、`FEEDBACK_BASE_INFO=1001`；`uart_ctrl.h` 按 newline 完成串口 JSON 命令接收；`WAVE_ROVER_V0.9.ino` 使用 `Serial.begin(115200)`。
+
+Product closeout 更新口径：Objective 1 从约 93% 保守上调到约 94.5%，状态更新为 `software_reference + ttyS5 control write observed + low-speed T=1 field response observed; T=1001/ACK/HIL not_proven`。本轮真实价值是纠正控制口和 STC/ttyACM0 误判风险，并把底盘可写控制口推进到现场观察级证据；仍不能声明 HIL pass、闭环安全控制、ROS `/cmd_vel` 接入、真实 `/imu/data`、`/battery`、`/odom` 或 delivery success。下一步必须围绕 `/dev/ttyS5` 做短时点动安全门槛、自动停车、速度/时长参数化、operator 日志、急停路径，以及 `T=1001` 或等价 ACK 采集。
+
 ## 2026-06-02 系列
 
 ### 2026-06-02 20-21｜o7-camera-offer-recovery｜Same-LAN 180s browser material accepted

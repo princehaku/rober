@@ -100,3 +100,59 @@
 ## 当前结论
 
 CEO 问题的硬件来源边界是：视频 RTC 需要机器上协议和设备链路打通；板子上的 vendor 代码只证明 Raspberry Pi 参考 app 有相关功能，不证明 rober 当前 Orange Pi 板端、ROS2、云中转和 PC 端已经完成。下一步应由软件/全栈与硬件按上面的证据清单补最小上车 smoke 或可替代的软件 proof，不能用 vendor app 直接替代项目验收。
+
+## 2026-06-03 底盘串口现场联调补充
+
+本轮现场联调修正了一个关键硬件事实：当前 WAVE ROVER 底盘可写控制口是 Orange Pi 板载 UART `/dev/ttyS5`，不是 USB STC 串口 `/dev/ttyACM0`。本段记录的是 2026-06-03 现场事实和 Hardware owner 复核口径；本次复核只读取本地文件和 git diff，没有打开串口、没有 SSH、没有发送 `T=1`、`T=13`、`cmd_vel` 或任何运动命令。
+
+采用的本地 vendor 来源：
+
+- `docs/vendor/VENDOR_INDEX.md`
+  - WAVE ROVER 上下位机链路为 UART，JSON 一行一包。
+  - Raspberry Pi 默认 `/dev/ttyAMA0` 或 `/dev/serial0` 不能直接作为 Orange Pi 默认路径。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`
+  - `base_speed_ctrl()` 使用 `{"T":1,"L":...,"R":...}` 写左右轮速度。
+  - 串口波特率参考为 `115200`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`
+  - `T=1` 为底盘速度控制命令。
+  - `T=130` 为底盘反馈请求，预期反馈里应出现 `T=1001`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`
+  - 串口接收按 `\n` 作为 JSON 命令结束符后再 `deserializeJson()`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/WAVE_ROVER_V0.9.ino`
+  - 下位机固件 `Serial.begin(115200)`，与现场 `/dev/ttyS5 @115200` 设置一致。
+
+现场命令：
+
+```bash
+stty -F /dev/ttyS5 115200 raw -echo -crtscts
+printf '{"T":1,"L":0.08,"R":0.08}\n' > /dev/ttyS5
+printf '{"T":1,"L":0.08,"R":0.08}\n' > /dev/ttyS5
+```
+
+CEO 现场确认上述命令可以控制设备运动。Codex 随后补发停车命令：
+
+```bash
+stty -F /dev/ttyS5 115200 raw -echo -crtscts
+printf '{"T":1,"L":0,"R":0}\n' > /dev/ttyS5
+```
+
+同步排查结论：
+
+- `/dev/ttyACM0` 对应 `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`，sysfs 显示 `idVendor=34bf`、`idProduct=ff0a`、`manufacturer=STC`、`product=STC USB Serial`。
+- CEO 随后提供的手动串口 smoke 明确：`/dev/ttyACM0 @150000` 写入 `A5 60` 可读雷达 bytes；该口现在按 LiDAR/STC 雷达口记录，不能作为 WAVE ROVER 底盘口解锁证据。
+- `/dev/ttyS5` 可打开、可写 `T=1`，且现场已观察到底盘响应，因此它是当前手动控制写入口。
+- 对 `/dev/ttyS5 @115200` 发送一次 `{"T":130}` 后，4 秒读取窗口内 `read_line_count=0`、`observed_feedback_types=[]`、`t1001_feedback_status=not_observed_after_t130`。
+- `T=130` 未读到 `T=1001` 只证明反馈/ACK 未闭环；不能反推出 `/dev/ttyS5` 不可控，也不能证明 HIL 已通过。
+
+因此，本轮硬件事实分层如下：
+
+| 层级 | 结论 | 证据边界 |
+| --- | --- | --- |
+| 串口写入口 | `/dev/ttyS5 @115200` 是当前可写底盘控制口 | CEO 现场 `T=1,L=0.08,R=0.08` 命令让设备响应；本次复核未重复发送 |
+| USB STC 口 | `/dev/ttyACM0 @150000` 是当前雷达口，不是底盘控制口 | CEO 手动 LiDAR smoke 使用 `A5 60` 启动；身份 probe 指向 STC/LiDAR，`T=130` 无底盘反馈 |
+| 控制协议 | `T=1` 左右轮速命令可用于低速点动 | 来自 vendor `base_ctrl.py` 和现场命令 |
+| 反馈/ACK | 仍未闭环 | `/dev/ttyS5` 上 `T=130` 未读到 `T=1001`，robot ACK 未接入 PC |
+
+后续 PC 控制实现必须按这个分层推进：可以把 `/dev/ttyS5` 作为当前控制串口配置，但必须加入短时点动、自动停车、速度限幅、操作日志和急停兜底。下一次真实运动前的最低门槛是：operator 站位确认、车轮离障碍或低风险空间、速度不高于 `0.08` 左右轮点动、单次点动时长受限、自动补发停车、能人工切断电源/急停，并且全程记录命令与停止结果。在 `T=1001` 或等价 ACK 未接入前，只能声明“现场人工可控”，不能声明“闭环安全控制已完成”。
+
+PC workstation 本轮只消费这些事实做显示边界：`control.base_boundary.observed_write_device="/dev/ttyS5"`、`baudrate=115200`、`required_feedback_id="T=1001"`、`t1001_feedback_status="not_observed_after_t130"`、`manual_control_status="fail_closed_display_only"`。PC 首屏不得 POST `/api/base/manual`，不得发送 `/cmd_vel` 或 WAVE ROVER JSON；真实运动控制必须由后续单独控制合同和 Hardware/Robot 安全验收打开。

@@ -16,7 +16,7 @@ LIDAR_STOP_COMMAND = b"\xA5\x00\xA5\x65\xA5\x65"
 class LidarRuntimeConfig:
     """运行参数独立于 rclpy，便于 fake serial 单测锁定硬件边界。"""
 
-    serial_port: str = "/dev/ttyUSB0"
+    serial_port: str = "/dev/ttyACM0"
     serial_baudrate: int = 150000
     frame_id: str = "laser_frame"
     scan_topic: str = "/scan"
@@ -209,7 +209,7 @@ def main() -> None:
 
         def _declare_parameters(self) -> None:
             # 参数名与 bringup/learn launch 对齐，避免两套入口产生漂移。
-            self.declare_parameter("serial_port", "/dev/ttyUSB0")
+            self.declare_parameter("serial_port", "/dev/ttyACM0")
             self.declare_parameter("serial_baudrate", 150000)
             self.declare_parameter("frame_id", "laser_frame")
             self.declare_parameter("scan_topic", "/scan")

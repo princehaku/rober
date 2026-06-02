@@ -35,6 +35,11 @@ interface JsonResult {
   reason: string;
 }
 
+interface CameraProxyResult {
+  status: number;
+  payload: Record<string, unknown>;
+}
+
 function defaultBrowserSmoke(reason: string, baseUrl: string): O7BrowserPlaybackSmokeSummary {
   // PC API 不运行浏览器 smoke；没有显式脚本证据时只能展示 not_run，不能推断首帧成功。
   return {
@@ -404,6 +409,33 @@ function normalizeBaseUrl(baseUrl: string): { ok: true; normalized: string } | {
   return { ok: true, normalized: parsed.toString().replace(/\/$/, "") };
 }
 
+function configuredCameraBaseUrl(env: NodeJS.ProcessEnv = process.env): { ok: true; normalized: string } | { ok: false; reason: string } {
+  // 优先使用统一上位机 API；旧 camera base 只作为兼容入口。
+  const configuredBaseUrl = env.ROBER_UPPER_API_BASE_URL ?? env.ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL ?? "";
+  return normalizeBaseUrl(configuredBaseUrl);
+}
+
+function usesUpperRobotApi(env: NodeJS.ProcessEnv = process.env): boolean {
+  // 统一上位机 API 暴露 /api/camera/*；旧 8088 smoke 暴露 /health、/devices、/offer。
+  return Boolean(env.ROBER_UPPER_API_BASE_URL?.trim());
+}
+
+function cameraEndpoint(baseUrl: string, path: "health" | "devices" | "offer", env: NodeJS.ProcessEnv = process.env): string {
+  const normalized = baseUrl.replace(/\/+$/, "");
+  if (usesUpperRobotApi(env)) {
+    return `${normalized}/api/camera/${path}`;
+  }
+  return `${normalized}/${path}`;
+}
+
+function cameraPeerCloseEndpoint(baseUrl: string, peerId: string, env: NodeJS.ProcessEnv = process.env): string {
+  const normalized = baseUrl.replace(/\/+$/, "");
+  if (usesUpperRobotApi(env)) {
+    return `${normalized}/api/camera/peers/${peerId}/close`;
+  }
+  return `${normalized}/peers/${peerId}/close`;
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   // 远端 smoke 必须返回 JSON object；数组和字符串都不能当作健康合同消费。
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
@@ -460,9 +492,95 @@ function scanDangerousTrueFields(...records: Array<Record<string, unknown> | nul
   });
 }
 
+async function fetchRemoteJson(url: string, init: RequestInit): Promise<CameraProxyResult> {
+  // 本机 API 只做 camera WebRTC 信令同源代理；响应原样压缩成 JSON，绝不接入控制路径。
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS + 3000),
+    });
+    const text = await response.text();
+    let parsed: unknown = null;
+    try {
+      parsed = text ? JSON.parse(text) : {};
+    } catch {
+      parsed = { error: "remote_non_json_response", body_preview: text.slice(0, 200) };
+    }
+    return {
+      status: response.status,
+      payload: asRecord(parsed) ?? { error: "remote_json_not_object" },
+    };
+  } catch {
+    return {
+      status: 502,
+      payload: {
+        error: "remote_camera_proxy_fetch_failed",
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+      },
+    };
+  }
+}
+
+export async function proxyO7LocalWebrtcCameraOffer(body: unknown, env: NodeJS.ProcessEnv = process.env): Promise<CameraProxyResult> {
+  const normalized = configuredCameraBaseUrl(env);
+  if (!normalized.ok) {
+    return {
+      status: 400,
+      payload: {
+        error: normalized.reason,
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+      },
+    };
+  }
+  return fetchRemoteJson(cameraEndpoint(normalized.normalized, "offer", env), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function proxyO7LocalWebrtcCameraPeerClose(
+  peerId: string,
+  body: unknown,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<CameraProxyResult> {
+  const normalized = configuredCameraBaseUrl(env);
+  if (!normalized.ok) {
+    return {
+      status: 400,
+      payload: {
+        error: normalized.reason,
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+      },
+    };
+  }
+  if (!/^[a-f0-9]{16,64}$/i.test(peerId)) {
+    return {
+      status: 400,
+      payload: {
+        error: "peer_id_invalid",
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+      },
+    };
+  }
+  return fetchRemoteJson(cameraPeerCloseEndpoint(normalized.normalized, peerId, env), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function buildO7LocalWebrtcCamera(options: LocalCameraOptions = {}): Promise<O7LocalWebrtcCameraResponse> {
   const env = options.env ?? process.env;
-  const configuredBaseUrl = env.ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL ?? "";
+  const configuredBaseUrl = env.ROBER_UPPER_API_BASE_URL ?? env.ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL ?? "";
   if (!configuredBaseUrl.trim()) {
     const browserSmoke = await readBrowserSmoke(env, DEFAULT_CAMERA_BASE_URL);
     // 未配置时展示开发默认地址但不主动探测，避免把固定 LAN IP 不可达变成页面启动失败。
@@ -485,8 +603,8 @@ export async function buildO7LocalWebrtcCamera(options: LocalCameraOptions = {})
 
   const browserSmoke = await readBrowserSmoke(env, normalized.normalized);
   const [health, devices] = await Promise.all([
-    fetchJson(`${normalized.normalized}/health`),
-    fetchJson(`${normalized.normalized}/devices`),
+    fetchJson(cameraEndpoint(normalized.normalized, "health", env)),
+    fetchJson(cameraEndpoint(normalized.normalized, "devices", env)),
   ]);
   const healthJson = health.json;
   const devicesJson = devices.json;

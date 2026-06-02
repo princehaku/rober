@@ -29,6 +29,10 @@ import {
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "./catalog";
+import {
+  proxyO7LocalWebrtcCameraOffer,
+  proxyO7LocalWebrtcCameraPeerClose,
+} from "./o7LocalWebrtcCamera";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -104,9 +108,9 @@ export function createWorkstationApp(): express.Express {
     res.json(buildO7LiveEndpointsManifest());
   });
 
-  workstationApp.get("/api/o7/live-operator-panel", (_req, res) => {
+  workstationApp.get("/api/o7/live-operator-panel", async (_req, res) => {
     // Live operator panel 只暴露已观测上位机事实和 blocked control shape，不连接底盘或发送命令。
-    res.json(buildO7LiveOperatorPanel());
+    res.json(await buildO7LiveOperatorPanel());
   });
 
   workstationApp.get("/api/o7/cloud-operator-console-probe", async (req, res) => {
@@ -149,6 +153,18 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/local-webrtc-camera", async (_req, res) => {
     // Local camera smoke 只读 LAN /health 和 /devices，不调用 /offer，也不创建 WebRTC 或控制入口。
     res.json(await buildO7LocalWebrtcCamera());
+  });
+
+  workstationApp.post("/api/o7/local-webrtc-camera/offer", async (req, res) => {
+    // 浏览器受 CORS 限制不能直接 POST 远端 /offer；这里仅同源转发 WebRTC 信令，不发送机器人控制。
+    const result = await proxyO7LocalWebrtcCameraOffer(req.body);
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.post("/api/o7/local-webrtc-camera/peers/:peerId/close", async (req, res) => {
+    // 清理远端 camera peer，避免页面刷新后 8088 保留 active peer；仍不触碰底盘或 ROS2。
+    const result = await proxyO7LocalWebrtcCameraPeerClose(req.params.peerId, req.body);
+    res.status(result.status).json(result.payload);
   });
 
   workstationApp.get("/api/o7/realtime-elevator-preview", async (req, res) => {

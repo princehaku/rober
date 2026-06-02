@@ -1,0 +1,24 @@
+[Unit]
+Description=Trashbot unified upper robot API
+Documentation=file:/root/rober/docs/interfaces/o7_upper_robot_api.md
+After=network-online.target trashbot-local-webrtc-camera.service
+Wants=network-online.target trashbot-local-webrtc-camera.service
+
+[Service]
+Type=simple
+WorkingDirectory=@ROBER_REPO_ROOT@
+Environment=HOST=0.0.0.0
+Environment=PORT=8787
+Environment=ROBER_CAMERA_BASE_URL=http://127.0.0.1:8088
+Environment=ROBER_BASE_SERIAL_PORT=/dev/ttyS5
+Environment=ROBER_BASE_BAUDRATE=115200
+Environment=ROBER_BASE_MAX_SPEED=0.12
+Environment=PYTHONUNBUFFERED=1
+# 该服务合并上位机 camera/radar/base HTTP 入口；base 手控只允许低速点动并自动停车。
+ExecStart=/usr/bin/env bash @ROBER_REPO_ROOT@/onboard/scripts/upper_robot_api.sh
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

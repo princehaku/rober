@@ -13,6 +13,8 @@
 - `POST /peers/{peer_id}/close`：只释放 `/offer` answer 返回的指定 peer，用于机器自检、浏览器 Stop、页面刷新/关闭后主动清理服务端连接，避免下一轮自检或 browser smoke 被单连接保护误判为 `camera_in_use`。
 - `--self-test-url http://host:port`：机器可读 recvonly offer-level 客户端。它会读取 `/health`、`/devices`，依赖齐全时向 `/offer` 发 SDP offer，验证 answer，并等待至少一帧视频；依赖或摄像头失败时输出结构化 `degraded/failed` 原因。
 
+PC workstation 首屏通过同源 `POST /api/o7/local-webrtc-camera/offer` 转发到 8088 或统一上位机 8787 的 camera offer path。该代理只允许摄像头媒体信令；`peer_id` close path 在 PC 后端做本地格式校验，非法 id 不会被代理到远端。它不等价于 `POST /api/base/manual`，也不会发送 `/cmd_vel`、WAVE ROVER JSON 或任何底盘控制。
+
 ## Vendor 来源边界
 
 已按项目纪律读取：
@@ -130,7 +132,7 @@ pc-tools/workstation/.workstation-runtime/o7-browser-playback-smoke.json
 - `offer_http_status` / `offer_error_reason` / `offer_error_detail`：浏览器页面显式点击后 `/offer` 的状态和白名单错误摘要；用于区分 409 占用、依赖缺失、摄像头打不开和其他服务端拒绝。
 - `observation_window_ms` / `final_ready_state` / `stable_video_width` / `stable_video_height`：失败时保留短稳态窗口和 `<video>` 最终状态，避免只留下超时字符串。
 - `server_peer_id` / `server_peer_close_status`：页面 `/offer` 成功返回 peer id 时，脚本会尝试调用 `/peers/{peer_id}/close` 释放本次浏览器 peer；若 `/offer` 被 409 拒绝则 peer id 为空，需先处理服务端已有 active peer。
-- `safe_to_control=false` / `sends_commands=false` / `robot_control_executed=false` / `workstation_api_offer_executed=false`：即使 browser smoke 显式点击页面触发 `/offer`，PC API/UI 仍不能自动发 offer、不能创建控制入口、不能发送机器人控制。
+- `safe_to_control=false` / `sends_commands=false` / `robot_control_executed=false`：即使 PC 首屏或 browser smoke 触发 `/offer`，该 `/offer` 也只允许作为摄像头 WebRTC 媒体预览信令，不能创建控制入口、不能发送机器人控制。
 
 PC workstation 消费该 artifact 时会在 `browser_smoke.long_stability_acceptance` 里派生 3-5 分钟长稳态验收摘要。该字段不是脚本重新执行结果，也不会触发 `/offer`：
 

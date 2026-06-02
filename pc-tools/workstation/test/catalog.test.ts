@@ -4459,9 +4459,23 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("O7 live operator panel exposes observed LAN camera facts and keeps controls blocked", () => {
+  it("O7 live operator panel exposes observed LAN camera facts and keeps controls blocked", async () => {
     // 面板契约服务 PC 首屏展示，但不因为 SSH/camera ready 就开放底盘控制。
-    const panel = buildO7LiveOperatorPanel();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        camera: { status: "ready", video_source: "auto" },
+        radar: {
+          observed_lidar_port: "/dev/ttyACM0",
+          baudrate: 150000,
+          start_command_hex: "a5 60",
+          stop_command_hex: "a5 00 a5 65 a5 65",
+        },
+        base: { port: "/dev/ttyS5", baudrate: 115200 },
+      }),
+    }));
+
+    const panel = await buildO7LiveOperatorPanel();
 
     expect(panel.schema).toBe("trashbot.o7.live_operator_panel.v1");
     expect(panel.endpoint).toBe("/api/o7/live-operator-panel");
@@ -4469,15 +4483,15 @@ describe("workstation fail-closed API contracts", () => {
       host: "192.168.1.11",
       port: 37878,
       reachable: true,
-      workstation_api_8787_status: "not_listening_observed",
+      workstation_api_8787_status: "ready",
     });
-    expect(panel.lidar_radar.dev_lidar).toBe("missing");
-    expect(panel.lidar_radar.stc_by_id).toBe("unresolved");
+    expect(panel.lidar_radar.dev_lidar).toBe("/dev/ttyACM0");
+    expect(panel.lidar_radar.stc_by_id).toBe("resolved_to_ttyACM0");
     expect(panel.lidar_radar.scan_status).toBe("not_proven");
     expect(panel.lidar_radar.pointcloud_fabricated).toBe(false);
     expect(panel.camera.base_url).toBe("http://192.168.1.11:8088/");
-    expect(panel.camera.health_status).toBe("not_listening_observed");
-    expect(panel.camera.video_source).toBe("/dev/video1");
+    expect(panel.camera.health_status).toBe("ready");
+    expect(panel.camera.video_source).toBe("auto");
     expect(panel.camera.offer_auto_post_enabled).toBe(false);
     expect(panel.control.visible_directions).toEqual(["forward", "back", "left", "right", "stop"]);
     expect(panel.control.speed).toEqual({ default_value: 0.2, min: 0, max: 0.5, step: 0.05, unit: "m/s" });

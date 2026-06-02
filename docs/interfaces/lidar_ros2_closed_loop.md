@@ -30,7 +30,49 @@ parser 和 topic 形态，不作为当前 ROS2 driver source of truth。
 - `mock_scan=false` 且 `mock_packets` 为空：进入真实串口模式，打开 `serial_port`、`serial_baudrate`，发送 `A5 60` 启动命令，然后读取 bytes，经 `find_packets` 和 `scan_dict_from_packet` 转为 `sensor_msgs/msg/LaserScan`；若启动命令写入失败，driver 会先关闭刚打开的句柄再抛出错误。
 - `publish_raw_packets=true`：每个完整 packet 同步发布到 `raw_packet_topic`，类型为 `std_msgs/msg/UInt8MultiArray`，用于真机 bringup 时保留 parser 前的原始证据。
 - 节点销毁时会 best-effort 写入 `A5 00 A5 65 A5 65` 并关闭串口；停止写入失败不能阻止 close，该动作也不能替代真实电机停转观察。
-- 用户手动 Python 串口测试已确认 `/dev/ttyACM0`、`150000` baud、`A5 60` 可启动 STC USB Serial LiDAR 电机；launch 仍要求上车时显式传入真实设备路径。
+- 用户手动 Python 串口测试已确认 `/dev/ttyACM0`、`150000` baud、`A5 60` 可启动 STC USB Serial LiDAR 电机；因此项目 ROS2 LiDAR driver 和 `bringup`/`learn` launch 的默认 `lidar_serial_port` 已改为 `/dev/ttyACM0`。稳定部署时仍建议安装 vendor udev 规则，把 STC `34bf:ff0a` 映射为 `/dev/lidar`，然后显式传入 `lidar_serial_port:=/dev/lidar`。
+
+## Orange Pi Direct Bringup
+
+在上位机上，雷达 USB 串口应先确认内核驱动和设备节点。CEO 本轮提供的现场入口如下：
+
+```bash
+modprobe ch341
+modprobe cp210x
+modprobe ftdi_sio
+modprobe pl2303
+modprobe cdc_acm
+```
+
+当前已确认雷达设备是 `/dev/ttyACM0`，串口参数和启动/停止字节来自 `docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp`：
+
+```bash
+source /opt/ros/humble/setup.bash
+source /root/rober/onboard/install/setup.bash
+ros2 launch ros2_trashbot_bringup learn.launch.py \
+  lidar_enabled:=true \
+  lidar_serial_port:=/dev/ttyACM0 \
+  lidar_serial_baudrate:=150000 \
+  lidar_frame_id:=laser_frame \
+  lidar_publish_raw_packets:=true
+```
+
+等价手动串口 smoke 只用于验证电机和原始 bytes，不替代 ROS2 验收：
+
+```bash
+python3 - <<'PY'
+import serial, time
+
+ser = serial.Serial("/dev/ttyACM0", 150000, timeout=1)
+ser.write(bytes([0xA5, 0x60]))
+ser.flush()
+time.sleep(1)
+print(ser.read(64).hex(" "))
+ser.write(bytes([0xA5, 0x00, 0xA5, 0x65, 0xA5, 0x65]))
+ser.flush()
+ser.close()
+PY
+```
 
 ## Evidence Boundary
 
@@ -46,6 +88,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s onboard/src/ros2_trash
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_hardware/test/test_o1_wave_rover_serial_feedback_probe.py
 python3 -m compileall -q onboard/src/ros2_trashbot_hardware onboard/scripts/o1_wave_rover_serial_feedback_probe.py
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s onboard/src/ros2_trashbot_bringup/test -p 'test_launch_contract_static.py'
+PYTHONDONTWRITEBYTECODE=1 python3 onboard/scripts/test_upper_robot_api.py
 ```
 
 真机建图 smoke 的推荐入口：

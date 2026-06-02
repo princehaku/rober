@@ -16,6 +16,356 @@ button {
   font: inherit;
 }
 
+.user-console-shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 18px 0 28px;
+}
+
+.console-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.console-topbar h1 {
+  color: #111827;
+  font-size: 28px;
+}
+
+.console-kicker {
+  margin: 0 0 5px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.console-refresh,
+.primary-link,
+.pad-button {
+  min-height: 40px;
+  border: 1px solid #d0d7e2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #182230;
+  cursor: pointer;
+}
+
+.console-refresh {
+  padding: 0 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
+}
+
+.user-notice,
+.console-loading {
+  margin-bottom: 14px;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.user-console-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 14px;
+}
+
+.console-card {
+  min-width: 0;
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+}
+
+.card-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.card-heading h2 {
+  color: #111827;
+  font-size: 18px;
+}
+
+.card-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #e8f0f7;
+  color: #256072;
+  font-size: 15px;
+}
+
+.camera-window {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 7px;
+  min-height: 168px;
+  border: 1px solid #cfd9e6;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  background:
+    linear-gradient(135deg, rgba(37, 96, 114, 0.12), rgba(47, 84, 235, 0.04)),
+    #f7fafc;
+  text-align: center;
+}
+
+.camera-window-playing {
+  background: #0f172a;
+}
+
+.camera-video {
+  width: 100%;
+  min-height: 168px;
+  max-height: 320px;
+  aspect-ratio: 4 / 3;
+  border-radius: 7px;
+  object-fit: cover;
+  background: #0f172a;
+}
+
+.camera-placeholder {
+  display: grid;
+  place-items: center;
+  gap: 7px;
+  padding: 16px;
+}
+
+.camera-window small,
+.muted-copy,
+.subtle-warning,
+.camera-message,
+.lock-details {
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.camera-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.12);
+}
+
+.primary-link {
+  display: inline-grid;
+  place-items: center;
+  padding: 0 14px;
+  text-decoration: none;
+}
+
+.camera-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.camera-actions .primary-link {
+  min-width: 132px;
+}
+
+.secondary-link {
+  background: #f8fafc;
+}
+
+.camera-message {
+  margin-top: 9px;
+}
+
+.subtle-warning {
+  margin-top: 10px;
+}
+
+.simple-map {
+  position: relative;
+  min-height: 220px;
+  border: 1px solid #d5dee8;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(15, 23, 42, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px),
+    #f8fafc;
+  background-size: 30px 30px;
+}
+
+.route-path {
+  position: absolute;
+  left: 13%;
+  right: 13%;
+  top: 53%;
+  height: 4px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.route-node {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(37, 96, 114, 0.16);
+}
+
+.route-node.home {
+  left: 12%;
+  top: calc(53% - 6px);
+  background: #22c55e;
+}
+
+.route-node.robot {
+  left: 48%;
+  top: calc(53% - 6px);
+  background: #2563eb;
+}
+
+.route-node.dock {
+  right: 12%;
+  top: calc(53% - 6px);
+  background: #f59e0b;
+}
+
+.remote-pad {
+  display: grid;
+  grid-template-areas:
+    ". forward ."
+    "left stop right"
+    ". back .";
+  grid-template-columns: repeat(3, minmax(72px, 1fr));
+  gap: 9px;
+  max-width: 360px;
+  margin: 0 auto 14px;
+}
+
+.pad-button {
+  min-width: 0;
+  font-weight: 760;
+}
+
+.pad-button.forward {
+  grid-area: forward;
+}
+
+.pad-button.left {
+  grid-area: left;
+}
+
+.pad-button.stop {
+  grid-area: stop;
+  border-color: #f4c7a1;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.pad-button.right {
+  grid-area: right;
+}
+
+.pad-button.back {
+  grid-area: back;
+}
+
+.speed-control {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #475467;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.speed-control input {
+  width: 100%;
+}
+
+.lock-message {
+  border: 1px solid #f4c7a1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 14px;
+}
+
+.base-boundary {
+  border: 1px solid #e6d3be;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fffaf3;
+  color: #704214;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.lock-details {
+  margin-top: 9px;
+}
+
+.lock-details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.status-light-list {
+  display: grid;
+  gap: 10px;
+}
+
+.status-light-row {
+  display: grid;
+  grid-template-columns: 16px minmax(62px, 0.8fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 40px;
+  border: 1px solid #e4e9f0;
+  border-radius: 8px;
+  padding: 0 10px;
+}
+
+.status-light-row strong {
+  justify-self: end;
+  color: #344054;
+  font-size: 13px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.status-dot-green {
+  background: #22c55e;
+}
+
+.status-dot-yellow {
+  background: #f59e0b;
+}
+
+.status-dot-gray {
+  background: #98a2b3;
+}
+
+.status-dot-red {
+  background: #ef4444;
+}
+
 .shell {
   width: min(1280px, calc(100% - 32px));
   margin: 0 auto;
@@ -604,6 +954,45 @@ th {
 }
 
 @media (max-width: 860px) {
+  .user-console-shell {
+    width: min(100% - 20px, 1180px);
+    padding-top: 12px;
+  }
+
+  .console-topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .console-topbar h1 {
+    font-size: 24px;
+  }
+
+  .user-console-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .console-card {
+    padding: 14px;
+  }
+
+  .simple-map,
+  .camera-window {
+    min-height: 150px;
+  }
+
+  .remote-pad {
+    grid-template-columns: repeat(3, minmax(58px, 1fr));
+  }
+
+  .status-light-row {
+    grid-template-columns: 14px minmax(54px, 0.7fr) minmax(0, 1fr);
+  }
+
+  .status-light-row strong {
+    justify-self: start;
+  }
+
   .shell {
     width: min(100% - 20px, 1280px);
   }

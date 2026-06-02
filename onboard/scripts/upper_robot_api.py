@@ -1,0 +1,500 @@
+#!/usr/bin/env python3
+"""Orange Pi 上位机统一 Robot API：camera / radar / base 汇总入口。"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import glob
+import json
+import os
+import time
+from pathlib import Path
+from typing import Any
+from urllib.parse import urljoin
+
+
+SCHEMA = "trashbot.upper_robot_api.v1"
+DEFAULT_HOST = "0.0.0.0"
+DEFAULT_PORT = 8787
+DEFAULT_CAMERA_BASE_URL = "http://127.0.0.1:8088"
+DEFAULT_BASE_PORT = "/dev/ttyS5"
+DEFAULT_BASE_BAUDRATE = 115200
+DEFAULT_MAX_SPEED = 0.12
+DEFAULT_PULSE_MS = 260
+MAX_PULSE_MS = 800
+ALLOWED_DIRECTIONS = frozenset({"forward", "back", "left", "right", "stop"})
+
+VENDOR_SOURCES = [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+]
+
+
+def now_ms() -> int:
+    """统一毫秒时间戳，方便 PC、上位机和远端日志对齐。"""
+    return int(time.time() * 1000)
+
+
+def proof_flags() -> dict[str, Any]:
+    """统一 API 在线不等于自动驾驶或交付完成，所以安全字段必须集中固定。"""
+    return {
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "cloud_relay": False,
+    }
+
+
+def json_response(payload: dict[str, Any], status: int = 200) -> Any:
+    """aiohttp 响应统一走 JSON，附带 LAN 调试 CORS，方便 PC 同源/跨源两种接法。"""
+    from aiohttp import web
+
+    return web.json_response(
+        payload,
+        status=status,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type,Accept",
+        },
+    )
+
+
+def compact_error(error: BaseException) -> dict[str, str]:
+    """错误只输出类型和短文本，不泄露系统无关上下文。"""
+    return {"type": type(error).__name__, "message": str(error)[:240]}
+
+
+def t1001_boundary(reason: str | None = None) -> dict[str, Any]:
+    """当前 API 不读反馈包，避免把串口写入误包装成闭环 ACK。"""
+    return {
+        "t1001_observed": False,
+        "robot_ack_connected": False,
+        "reason": reason or "T=1001 feedback is not observed by this local API call",
+        "source_boundary": "vendor T=130 requests FEEDBACK_BASE_INFO, but this API only records write results",
+    }
+
+
+def read_text(path: str, max_bytes: int = 4096) -> str | None:
+    """只读 sysfs/procfs 小文本；失败返回 None，不让健康接口 500。"""
+    try:
+        return Path(path).read_text(encoding="utf-8", errors="replace")[:max_bytes].strip()
+    except OSError:
+        return None
+
+
+def describe_path(path: str) -> dict[str, Any]:
+    """描述设备路径元数据，不打开串口或雷达设备。"""
+    entry: dict[str, Any] = {
+        "path": path,
+        "exists": os.path.exists(path),
+        "lexists": os.path.lexists(path),
+        "is_symlink": os.path.islink(path),
+        "realpath": None,
+        "error": None,
+    }
+    try:
+        if entry["lexists"]:
+            entry["realpath"] = os.path.realpath(path)
+            stat_result = os.stat(path)
+            entry["mode_octal"] = oct(stat_result.st_mode & 0o7777)
+            entry["uid"] = stat_result.st_uid
+            entry["gid"] = stat_result.st_gid
+    except OSError as exc:
+        entry["error"] = compact_error(exc)
+    return entry
+
+
+def list_candidates(patterns: list[str]) -> list[dict[str, Any]]:
+    """候选设备只做 glob/stat，避免状态接口误打开硬件。"""
+    paths: set[str] = set()
+    for pattern in patterns:
+        paths.update(glob.glob(pattern))
+    return [describe_path(path) for path in sorted(paths)]
+
+
+def load_serial_module() -> tuple[Any | None, str | None]:
+    """pyserial 是底盘写入口依赖；缺失时 API 继续返回可读 blocker。"""
+    try:
+        import serial  # type: ignore[import-not-found]
+    except Exception as exc:  # noqa: BLE001 - 现场裁剪 Python 可能缺依赖。
+        return None, f"{type(exc).__name__}: {exc}"
+    return serial, None
+
+
+def wheel_command_for_direction(direction: str, speed: float) -> dict[str, float | int]:
+    """把 PC 方向键转换为 vendor T=1 左右轮速，低速点动后必须自动停车。"""
+    if direction == "forward":
+        left, right = speed, speed
+    elif direction == "back":
+        left, right = -speed, -speed
+    elif direction == "left":
+        left, right = -speed, speed
+    elif direction == "right":
+        left, right = speed, -speed
+    elif direction == "stop":
+        left, right = 0.0, 0.0
+    else:
+        raise ValueError(f"unsupported_direction:{direction}")
+    return {"T": 1, "L": round(left, 3), "R": round(right, 3)}
+
+
+def write_serial_json(port: str, baudrate: int, command: dict[str, Any]) -> dict[str, Any]:
+    """串口写入只发送一行 JSON，调用方负责动作边界和停车兜底。"""
+    serial_module, import_error = load_serial_module()
+    if serial_module is None:
+        return {"ok": False, "error": {"type": "pyserial_unavailable", "message": import_error or "missing"}}
+    serial_obj = None
+    try:
+        serial_obj = serial_module.Serial(port=port, baudrate=baudrate, timeout=0.2)
+        frame = (json.dumps(command, separators=(",", ":")) + "\n").encode("utf-8")
+        bytes_written = serial_obj.write(frame)
+        return {"ok": True, "command": command, "bytes_written": bytes_written}
+    except Exception as exc:  # noqa: BLE001 - 串口现场错误要结构化返回。
+        return {"ok": False, "error": compact_error(exc), "command": command}
+    finally:
+        if serial_obj is not None:
+            try:
+                serial_obj.close()
+            except Exception:
+                pass
+
+
+def build_stop_payload(port: str, baudrate: int) -> dict[str, Any]:
+    """停车接口必须以写入结果为准，不能把 HTTP 调用成功当成底盘已停车。"""
+    stop_result = write_serial_json(port, baudrate, {"T": 1, "L": 0, "R": 0})
+    return {
+        "schema": f"{SCHEMA}.base_stop_result",
+        "generated_at_ms": now_ms(),
+        "stop_result": stop_result,
+        "serial_write_failures": [] if stop_result.get("ok") else [stop_result.get("error")],
+        "feedback_ack": t1001_boundary("stop write does not prove T=1001 or ACK"),
+        "safe_to_control": False,
+        "sends_commands": True,
+        "robot_control_executed": bool(stop_result.get("ok")),
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+    }
+
+
+async def fetch_json(url: str, method: str = "GET", payload: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+    """代理 camera smoke JSON；远端异常压成结构化错误，不影响统一 API 存活。"""
+    from aiohttp import ClientSession, ClientTimeout
+
+    try:
+        async with ClientSession(timeout=ClientTimeout(total=6)) as session:
+            async with session.request(method, url, json=payload) as response:
+                text = await response.text()
+                try:
+                    parsed = json.loads(text) if text else {}
+                except json.JSONDecodeError:
+                    parsed = {"error": "remote_non_json_response", "body_preview": text[:200]}
+                return response.status, parsed if isinstance(parsed, dict) else {"error": "remote_json_not_object"}
+    except Exception as exc:  # noqa: BLE001 - camera 子服务不在线时主 API 仍要可查。
+        return 502, {"error": "camera_proxy_failed", "detail": compact_error(exc)}
+
+
+class UpperRobotApi:
+    """把上位机各硬件入口收敛到一个 HTTP API，PC 不再分散猜端口。"""
+
+    def __init__(self, camera_base_url: str, base_port: str, base_baudrate: int, max_speed: float) -> None:
+        self.camera_base_url = camera_base_url.rstrip("/")
+        self.base_port = base_port
+        self.base_baudrate = base_baudrate
+        self.max_speed = max_speed
+
+    def base_status(self) -> dict[str, Any]:
+        """底盘状态只证明写入口配置和设备存在，不伪造 T=1001 ACK。"""
+        serial_module, import_error = load_serial_module()
+        port_info = describe_path(self.base_port)
+        return {
+            "schema": f"{SCHEMA}.base_status",
+            "generated_at_ms": now_ms(),
+            "vendor_sources": VENDOR_SOURCES,
+            "port": self.base_port,
+            "baudrate": self.base_baudrate,
+            "port_info": port_info,
+            "pyserial_available": serial_module is not None,
+            "pyserial_error": import_error,
+            "write_control_available": bool(port_info["exists"] and serial_module is not None),
+            "feedback_ack": {
+                "t1001_observed": False,
+                "robot_ack_connected": False,
+                "reason": "T=130 on /dev/ttyS5 did not return T=1001 in current evidence",
+            },
+            "control_policy": {
+                "mode": "low_speed_pulse_with_auto_stop",
+                "max_speed": self.max_speed,
+                "max_pulse_ms": MAX_PULSE_MS,
+                "stop_command": {"T": 1, "L": 0, "R": 0},
+            },
+            "sends_commands": False,
+            **proof_flags(),
+        }
+
+    def radar_status(self) -> dict[str, Any]:
+        """雷达当前先合并设备状态，真实 /scan 仍需 ROS2/LiDAR 节点证明。"""
+        candidates = list_candidates(["/dev/lidar", "/dev/ttyACM*", "/dev/serial/by-id/*", "/dev/serial/by-path/*"])
+        tty_acm0 = describe_path("/dev/ttyACM0")
+        lidar_observed = bool(tty_acm0["exists"])
+        return {
+            "schema": f"{SCHEMA}.radar_status",
+            "generated_at_ms": now_ms(),
+            "scan_status": "not_proven",
+            "pointcloud_fabricated": False,
+            "dev_lidar": describe_path("/dev/lidar"),
+            "observed_lidar_port": "/dev/ttyACM0" if lidar_observed else None,
+            "observed_lidar_port_info": tty_acm0,
+            "baudrate": 150000,
+            "start_command_hex": "a5 60",
+            "stop_command_hex": "a5 00 a5 65 a5 65",
+            "candidates": candidates,
+            "ros2": {
+                "driver": "ros2_trashbot_hardware lidar_driver",
+                "launch": "ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 lidar_publish_raw_packets:=true",
+                "scan_topic": "/scan",
+                "raw_packet_topic": "/lidar/raw_packet",
+                "frame_id": "laser_frame",
+            },
+            "blocked_reasons": [
+                *(["ttyACM0_lidar_not_present"] if not lidar_observed else []),
+                "ros2_lidar_scan_not_connected",
+                "scan_continuity_not_observed",
+            ],
+            "sends_commands": False,
+            **proof_flags(),
+        }
+
+    async def camera_health(self) -> tuple[int, dict[str, Any]]:
+        """camera 子接口代理 8088 /health，并标注统一 API 来源。"""
+        status, payload = await fetch_json(urljoin(self.camera_base_url + "/", "health"))
+        payload["upper_api_proxy"] = True
+        payload["upper_api_camera_base_url"] = self.camera_base_url
+        return status, payload
+
+    async def camera_devices(self) -> tuple[int, dict[str, Any]]:
+        """camera 子接口代理 8088 /devices。"""
+        status, payload = await fetch_json(urljoin(self.camera_base_url + "/", "devices"))
+        payload["upper_api_proxy"] = True
+        return status, payload
+
+    async def camera_offer(self, offer: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        """camera WebRTC 信令只代理媒体 offer，不发送任何机器人控制。"""
+        status, payload = await fetch_json(urljoin(self.camera_base_url + "/", "offer"), method="POST", payload=offer)
+        payload["upper_api_proxy"] = True
+        payload["safe_to_control"] = False
+        payload["robot_control_executed"] = False
+        return status, payload
+
+    async def camera_peer_close(self, peer_id: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        """释放 8088 active peer，避免 PC 页面刷新后摄像头被占用。"""
+        if not peer_id or not all(char.isalnum() for char in peer_id):
+            return 400, {"error": "peer_id_invalid", **proof_flags()}
+        status, payload = await fetch_json(
+            urljoin(self.camera_base_url + "/", f"peers/{peer_id}/close"),
+            method="POST",
+            payload=body,
+        )
+        payload["upper_api_proxy"] = True
+        return status, payload
+
+    async def unified_status(self) -> dict[str, Any]:
+        """PC 首屏只拉一个状态接口即可获得 camera/radar/base 总览。"""
+        camera_http_status, camera = await self.camera_health()
+        return {
+            "schema": f"{SCHEMA}.status",
+            "generated_at_ms": now_ms(),
+            "camera": {
+                "http_status": camera_http_status,
+                "status": camera.get("status", "not_loaded"),
+                "video_source": camera.get("video_source", "not_loaded"),
+                "base_url": self.camera_base_url,
+                "offer_path": "/api/camera/offer",
+            },
+            "radar": self.radar_status(),
+            "base": self.base_status(),
+            "routes": {
+                "camera_health": "/api/camera/health",
+                "camera_devices": "/api/camera/devices",
+                "camera_offer": "/api/camera/offer",
+                "camera_peer_close": "/api/camera/peers/{peer_id}/close",
+                "radar_status": "/api/radar/status",
+                "base_status": "/api/base/status",
+                "base_manual": "/api/base/manual",
+                "base_stop": "/api/base/stop",
+            },
+            "sends_commands": False,
+            **proof_flags(),
+        }
+
+    async def manual_control(self, body: dict[str, Any]) -> dict[str, Any]:
+        """低速点动控制：发送方向命令后等待短窗口，再无条件发送停车命令。"""
+        direction = str(body.get("direction", "stop")).strip().lower()
+        if direction not in ALLOWED_DIRECTIONS:
+            return {
+                "schema": f"{SCHEMA}.base_manual_result",
+                "generated_at_ms": now_ms(),
+                "accepted": False,
+                "error": {
+                    "type": "unsupported_direction",
+                    "message": f"direction must be one of {sorted(ALLOWED_DIRECTIONS)}",
+                },
+                "direction": direction,
+                "allowed_directions": sorted(ALLOWED_DIRECTIONS),
+                "command_result": None,
+                "stop_result": None,
+                "serial_write_failures": [],
+                "auto_stop_attempted": False,
+                "auto_stop_executed": False,
+                "feedback_ack": t1001_boundary("manual command rejected before serial write"),
+                "safe_to_control": False,
+                "sends_commands": False,
+                "robot_control_executed": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+            }
+        try:
+            requested_speed = float(body.get("speed", 0.08))
+        except (TypeError, ValueError):
+            requested_speed = 0.08
+        # 手控只允许低速正数，方向由左右轮符号表达，避免 PC 传大速度。
+        speed = min(max(abs(requested_speed), 0.0), self.max_speed)
+        try:
+            requested_pulse_ms = int(body.get("duration_ms", DEFAULT_PULSE_MS))
+        except (TypeError, ValueError):
+            requested_pulse_ms = DEFAULT_PULSE_MS
+        # 点动窗口强制限时，任何非 stop 方向都必须进入停车兜底。
+        pulse_ms = min(max(requested_pulse_ms, 0), MAX_PULSE_MS)
+        command = wheel_command_for_direction(direction, speed)
+        first = write_serial_json(self.base_port, self.base_baudrate, command)
+        await asyncio.sleep(pulse_ms / 1000.0)
+        stop = write_serial_json(self.base_port, self.base_baudrate, {"T": 1, "L": 0, "R": 0})
+        serial_write_failures = [
+            result["error"]
+            for result in (first, stop)
+            if isinstance(result, dict) and not result.get("ok") and "error" in result
+        ]
+        return {
+            "schema": f"{SCHEMA}.base_manual_result",
+            "generated_at_ms": now_ms(),
+            "accepted": True,
+            "direction": direction,
+            "speed": speed,
+            "duration_ms": pulse_ms,
+            "requested_speed": requested_speed,
+            "requested_duration_ms": requested_pulse_ms,
+            "command_result": first,
+            "stop_result": stop,
+            "serial_write_failures": serial_write_failures,
+            "auto_stop_attempted": True,
+            "auto_stop_executed": bool(stop.get("ok")),
+            "manual_command_executed": bool(first.get("ok")),
+            "feedback_ack": t1001_boundary("manual pulse does not prove T=1001 or ACK"),
+            "safe_to_control": False,
+            "sends_commands": True,
+            "robot_control_executed": bool(first.get("ok")),
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+        }
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--host", default=os.getenv("HOST", DEFAULT_HOST))
+    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", str(DEFAULT_PORT))))
+    parser.add_argument("--camera-base-url", default=os.getenv("ROBER_CAMERA_BASE_URL", DEFAULT_CAMERA_BASE_URL))
+    parser.add_argument("--base-port", default=os.getenv("ROBER_BASE_SERIAL_PORT", DEFAULT_BASE_PORT))
+    parser.add_argument("--base-baudrate", type=int, default=int(os.getenv("ROBER_BASE_BAUDRATE", str(DEFAULT_BASE_BAUDRATE))))
+    parser.add_argument("--max-speed", type=float, default=float(os.getenv("ROBER_BASE_MAX_SPEED", str(DEFAULT_MAX_SPEED))))
+    return parser.parse_args()
+
+
+async def run_server(args: argparse.Namespace) -> None:
+    """启动 aiohttp API，所有硬件子面都挂在 /api 下。"""
+    from aiohttp import web
+
+    api = UpperRobotApi(
+        camera_base_url=args.camera_base_url,
+        base_port=args.base_port,
+        base_baudrate=args.base_baudrate,
+        max_speed=args.max_speed,
+    )
+
+    async def options(_: web.Request) -> Any:
+        return json_response({})
+
+    async def root(_: web.Request) -> Any:
+        return json_response({"schema": SCHEMA, "status": "ready", "routes": (await api.unified_status())["routes"], **proof_flags()})
+
+    async def health(_: web.Request) -> Any:
+        return json_response({"schema": f"{SCHEMA}.health", "status": "ready", "generated_at_ms": now_ms(), **proof_flags()})
+
+    async def status(_: web.Request) -> Any:
+        return json_response(await api.unified_status())
+
+    async def camera_health(_: web.Request) -> Any:
+        http_status, payload = await api.camera_health()
+        return json_response(payload, status=http_status)
+
+    async def camera_devices(_: web.Request) -> Any:
+        http_status, payload = await api.camera_devices()
+        return json_response(payload, status=http_status)
+
+    async def camera_offer(request: web.Request) -> Any:
+        body = await request.json()
+        http_status, payload = await api.camera_offer(body if isinstance(body, dict) else {})
+        return json_response(payload, status=http_status)
+
+    async def camera_peer_close(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        http_status, payload = await api.camera_peer_close(request.match_info["peer_id"], body if isinstance(body, dict) else {})
+        return json_response(payload, status=http_status)
+
+    async def radar_status(_: web.Request) -> Any:
+        return json_response(api.radar_status())
+
+    async def base_status(_: web.Request) -> Any:
+        return json_response(api.base_status())
+
+    async def base_stop(_: web.Request) -> Any:
+        return json_response(build_stop_payload(api.base_port, api.base_baudrate))
+
+    async def base_manual(request: web.Request) -> Any:
+        body = await request.json()
+        payload = await api.manual_control(body if isinstance(body, dict) else {})
+        return json_response(payload, status=200 if payload.get("accepted", True) else 400)
+
+    app = web.Application()
+    app.router.add_route("OPTIONS", "/{tail:.*}", options)
+    app.router.add_get("/", root)
+    app.router.add_get("/health", health)
+    app.router.add_get("/api/status", status)
+    app.router.add_get("/api/camera/health", camera_health)
+    app.router.add_get("/api/camera/devices", camera_devices)
+    app.router.add_post("/api/camera/offer", camera_offer)
+    app.router.add_post("/api/camera/peers/{peer_id}/close", camera_peer_close)
+    app.router.add_get("/api/radar/status", radar_status)
+    app.router.add_get("/api/base/status", base_status)
+    app.router.add_post("/api/base/stop", base_stop)
+    app.router.add_post("/api/base/manual", base_manual)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, args.host, args.port)
+    await site.start()
+    print(json.dumps({"event": "upper_robot_api_started", "host": args.host, "port": args.port}, ensure_ascii=False), flush=True)
+    while True:
+        await asyncio.sleep(3600)
+
+
+def main() -> int:
+    args = parse_args()
+    asyncio.run(run_server(args))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

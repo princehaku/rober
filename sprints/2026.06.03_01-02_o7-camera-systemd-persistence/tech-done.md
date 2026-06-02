@@ -48,3 +48,11 @@ Full-Stack 子 agent 已执行：
 - 远端 8787 workstation API 仍未监听。
 - 本轮没有运行新的 180s browser long-stability collector；已有 8088 health 只能证明当前 camera smoke HTTP 服务在线。
 - 没有触发 `/offer`、没有创建 WebRTC session、没有打开串口、没有发送 `T=130/T=131/T=1/T=13`、没有发送 `/cmd_vel`、没有启动 ROS2/Nav2/WAVE ROVER、没有执行机器人运动控制。
+
+## Product Closeout
+
+- OKR 映射：Objective 7。
+- 方向判断：继续。
+- 进度口径：O7 保持约 97.5%。systemd persistence 价值已计入该进度：`trashbot-local-webrtc-camera.service` installed/enabled/active，8088 health ready，unit `MainPID` 与 listener pid 一致。
+- 最新边界：后续 PC 首屏 smoke 已发起 `/offer` 1 次，但远端 `active_peer_connections=1` 导致 `409 Conflict`，video 无首帧；这不推翻 systemd persistence 证据，但也不能宣称首屏首帧成功或生产视频链路完成。
+- 下一轮优先级：camera peer cleanup/独占首帧复验、reboot 后自恢复、browser 180s long-stability 复跑、远端 8787 workstation API、云 relay/TURN/auth 和 phone/browser production path。

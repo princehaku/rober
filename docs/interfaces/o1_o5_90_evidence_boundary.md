@@ -45,6 +45,8 @@ Objective 1 超过 90% 不能只依赖 mock、虚拟串口、Docker build 或 sy
 
 2026-06-02 17-18 新增的 `onboard/scripts/o1_usb_serial_inventory_probe.py` 进一步把现场 USB/串口 inventory 做成只读机器合同。它枚举 `/dev/ttyUSB*`、`/dev/ttyACM*`、`/dev/serial/by-id/*`、`/dev/serial/by-path/*` 和 `/dev/lidar`，读取 tty 上游 sysfs USB 文本，并输出 `trashbot.o1.usb_serial_inventory.v1`。该 schema 固定 `safe_to_control=false`、`sends_commands=false`、`opens_serial_devices=false`、`robot_control_executed=false`、`delivery_success=false`，且 `blocked_commands_not_sent` 包含 `T=130`、`T=131`、`T=1`、`T=13` 和 `cmd_vel`。它的有效用途是让现场先保存 baseline，再分别拔插 LiDAR 与 WAVE ROVER ESP32/底盘控制器，对比哪些 by-id/by-path/`/dev/lidar`/realpath 改变；它不能替代端口物理追线、不能证明 WAVE ROVER 身份、不能证明真实 `T=1001` 或 HIL packet。
 
+2026-06-03 现场事实把 O1 控制口证据从 `/dev/ttyACM0` STC/LiDAR 风险口转向 Orange Pi 板载 UART `/dev/ttyS5 @115200`。CEO 现场观察到 `T=1,L=0.08,R=0.08` 可让底盘响应，随后执行 `T=1,L=0,R=0` 停车命令；Hardware owner 本轮只做本地文件和 diff 复核，没有打开串口、没有 SSH、没有发送运动命令或 `T=130`。该材料可以证明 `/dev/ttyS5 @115200` 是当前现场可写控制口，但仍不满足本节 HIL packet 条件：`T=130` 后仍未观察到真实 `T=1001`，ROS `/imu/data`、`/battery`、`/odom` 同源材料未采集，自动停车、急停、ACK 和 robot control API 也未完成。因此 O1 仍只能写为 `ttyS5_control_port_observed_not_hil`，不能写成 HIL pass、闭环安全控制、真实 `/cmd_vel` 接入或 delivery success。
+
 O1 必需真实材料路径约定：
 
 ```text
@@ -201,3 +203,14 @@ O1/O5 任一项如果缺少上述真实材料，只能写 `not_proven` 或 `bloc
 - O1：真实 WAVE ROVER HIL packet 通过 intake/review，operator report 没有串口、停止路径、轮向、反馈、IMU/battery 或 `/odom` 边界阻断项。
 - O5：公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、production worker/cutover、OSS upload、CDN live traffic 和真实 phone/browser 至少各有一份脱敏真实材料，并通过 external evidence review。
 - 两者都必须保留 `delivery_success=false`，除非另有真实路线/送达闭环材料；O1/O5 90% 只代表对应 Objective 的材料边界满足，不代表整车送达成功。
+
+## 2026-06-03 O7 Upper Robot API 不提升 O1/O5 90% 证据
+
+8787 统一上位机 Robot API 的本轮硬件安全收口只证明本地软件边界：
+
+- fake pyserial/mock 单测可证明非法 direction 不写串口、manual pulse 限速限时并尝试 stop、串口失败原因被保留、`/api/base/stop` 的 `robot_control_executed` 跟随 stop 写入结果。
+- 该证据不打开真实串口、不 SSH、不发送真实 WAVE ROVER JSON、不发送 `/cmd_vel`，也不读取 `T=1001`。
+- 因此它不能替代 O1 的真实 WAVE ROVER HIL packet、`T=1001` 反馈、真实停止路径、轮向、IMU/battery 或 `/odom` 材料。
+- 它也不能替代 O5 的公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic 或真实 phone/browser 材料。
+
+允许记录的状态只能是 `upper_robot_api_hardware_safety_software_guardrail_ready`；不得据此声明 `hil_pass`、`safe_to_control=true`、`robot_ack_connected=true`、`delivery_success=true` 或 O1/O5 真实 90% 证据完成。

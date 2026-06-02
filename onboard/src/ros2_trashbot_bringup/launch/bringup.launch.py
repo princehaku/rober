@@ -137,12 +137,12 @@ def generate_launch_description():
         description='Start ROS2 LiDAR driver; default false avoids blocking bringup without serial hardware')
 
     lidar_serial_port_arg = DeclareLaunchArgument(
-        'lidar_serial_port', default_value='/dev/ttyUSB0',
-        description='LiDAR serial device placeholder from local vendor reference; confirm on robot')
+        'lidar_serial_port', default_value='/dev/ttyACM0',
+        description='LiDAR serial device confirmed on Orange Pi; /dev/lidar udev symlink is preferred when installed')
 
     lidar_serial_baudrate_arg = DeclareLaunchArgument(
         'lidar_serial_baudrate', default_value='150000',
-        description='LiDAR baud rate from docs/vendor/lidar_ros reference')
+        description='LiDAR baud rate from docs/vendor/lidar_pkg_ros2-main reference')
 
     lidar_frame_id_arg = DeclareLaunchArgument(
         'lidar_frame_id', default_value='laser_frame',

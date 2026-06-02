@@ -120,6 +120,9 @@ Runtime contract:
    `ready_for_no_motion_lidar_smoke` when ROS2 Humble setup exists, pyserial is
    importable, a rober workspace is visible, and a `/dev/lidar` / STC / ttyACM
    LiDAR candidate is listed by the read-only probe.
+8. 2026-06-03 现场事实更新：`/dev/ttyACM0` 是当前雷达口，不是底盘控制口。项目
+   ROS2 LiDAR 默认配置已对齐 `/dev/ttyACM0 @150000`；WAVE ROVER 底盘写入口另行
+   记录为 `/dev/ttyS5 @115200`，两者不得混用。
 
 ## Launch Parameters
 
@@ -146,8 +149,10 @@ The ROS2 launch files keep these configurable:
 - `lidar_mock_scan`
 
 `lidar_enabled` defaults to `false` so learning/bringup still work when no
-LiDAR is attached. Real robot smoke should pass the observed or udev-stable
-device explicitly, for example `/dev/ttyACM0`, `/dev/lidar`, or a by-id path.
+LiDAR is attached. `lidar_serial_port` now defaults to the confirmed Orange Pi
+runtime device `/dev/ttyACM0`. Real robot smoke may still pass the udev-stable
+device explicitly, for example `/dev/lidar` or a by-id path, after verifying it
+resolves to the same LiDAR.
 
 ## Verification Commands
 
@@ -156,6 +161,7 @@ Software verification:
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s onboard/src/ros2_trashbot_hardware/test -p 'test_lidar*.py'
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s onboard/src/ros2_trashbot_bringup/test -p 'test_launch_contract_static.py'
+PYTHONDONTWRITEBYTECODE=1 python3 onboard/scripts/test_upper_robot_api.py
 python3 -m compileall -q onboard/src/ros2_trashbot_hardware onboard/src/ros2_trashbot_bringup
 ```
 
@@ -163,6 +169,7 @@ Real robot no-motion smoke:
 
 ```bash
 timeout 20 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json' < onboard/scripts/o1_upper_computer_readiness_probe.py
+ssh -p 37878 root@192.168.1.11 'modprobe ch341; modprobe cp210x; modprobe ftdi_sio; modprobe pl2303; modprobe cdc_acm; ls -l /dev/ttyACM0 /dev/lidar 2>/dev/null || true'
 source /opt/ros/humble/setup.bash
 source install/setup.bash
 ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 lidar_frame_id:=laser_frame lidar_publish_raw_packets:=true
@@ -192,6 +199,7 @@ ros2 run tf2_ros tf2_echo base_link laser_frame
 - 当前 LiDAR ROS2/STC source of truth 是 `docs/vendor/lidar_pkg_ros2-main/`。
 - 历史 `docs/vendor/lidar_ros/` 已保留，只作为 ROS1/protocol reference。
 - 项目 ROS2 driver 已实现用户手动确认可启动电机的 `A5 60` start command。
+- 项目 ROS2 driver、`bringup.launch.py` 和 `learn.launch.py` 的默认 LiDAR 端口已对齐现场雷达 `/dev/ttyACM0 @150000`。
 - Fake serial tests 证明 driver 发送 start/stop bytes、mock 路径不碰串口、split packet 可重同步、启动写失败会 close、停止写失败仍会 close。
 - `2026.06.02_06-07_o1-lidar-upper-runtime-readiness` 远端只读 SSH readiness probe 未进入上位机，错误为 `No route to host`；因此本轮没有采到真实 `/scan` 或 LiDAR runtime 证据。
 - 下一轮必须先恢复 SSH 可达性并检查 `lidar_runtime_readiness.status`；只有它为 `ready_for_no_motion_lidar_smoke` 时，才允许继续执行不含底盘运动命令的 LiDAR driver 与 `/scan` 观察。
