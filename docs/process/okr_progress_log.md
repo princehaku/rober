@@ -8,6 +8,14 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 09-10｜real-material-runbook｜O5/O6/O7 material runbook and freshness visible
+
+本轮 Micro closeout 基于 `sprints/2026.06.02_09-10_real-material-runbook/tech-done.md`。Full-Stack 已扩展只读 `GET /api/real-material/acceptance`，每条 O5/O6/O7 queue item 新增 `artifact_freshness` 和 `collection_runbook`：operator 可见 artifact mtime/age/fresh/stale/missing，并能看到手动采集目标、建议命令、必需 env/artifact、期望输出、成功判定、失败处理和安全说明。该 API 只返回 recipe 与只读 `stat` 摘要，不执行采集命令。
+
+Product closeout 判定：Objective 5、Objective 6、Objective 7 均保持约 96%，不提升百分比。本轮关闭的是“材料队列能不能告诉 operator 下一步怎么采、现有 artifact 是否过期/缺失”的可见性缺口，不证明真实材料已经采集成功。边界仍然是：不执行 probe、不联网、不 SSH、不 POST、不访问 `/robots/*`、不读硬件、不创建 WebRTC session、不发送控制；不证明真实公网 TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实 180s/3-5min artifact、真实 phone/browser 或 delivery success。
+
+验证证据来自 Full-Stack 报告：`cd pc-tools/workstation && npm run test` 通过，57 tests passed；`npm run build` 通过；`npm run lint` 通过；scoped diff-check 通过。剩余风险：freshness 只证明文件 mtime 是否新，不证明 artifact 内容通过验收；真实材料仍需要 operator 按 `collection_runbook` 手动采集并由 item `status` / `blocking_reason` 判定。
+
 ### 2026-06-02 08-09｜real-material-acceptance-queue｜O5/O6 material acceptance queue visible in PC workstation
 
 本轮 Micro closeout 的用户价值是把 O5/O6 external probe artifact 与 O7 browser smoke JSON 从“分散材料”推进到 PC workstation 内的真实材料验收队列，operator 可以直接看到 material status、缺口、next actions 和 fail-closed 边界，而不是继续在 sprint、artifact 和 UI 面板之间人工拼证据。该能力服务“数据可复盘、云端可运营”，但仍只是软件侧材料队列，不证明真实生产云、真实 4G、真实硬件、真实浏览器长稳态或真实交付成功。
