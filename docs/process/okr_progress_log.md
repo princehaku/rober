@@ -8,6 +8,25 @@
 
 ## 2026-06-02 系列
 
+### 2026-06-02 08-09｜real-material-acceptance-queue｜O5/O6 material acceptance queue visible in PC workstation
+
+本轮 Micro closeout 的用户价值是把 O5/O6 external probe artifact 与 O7 browser smoke JSON 从“分散材料”推进到 PC workstation 内的真实材料验收队列，operator 可以直接看到 material status、缺口、next actions 和 fail-closed 边界，而不是继续在 sprint、artifact 和 UI 面板之间人工拼证据。该能力服务“数据可复盘、云端可运营”，但仍只是软件侧材料队列，不证明真实生产云、真实 4G、真实硬件、真实浏览器长稳态或真实交付成功。
+
+Full-Stack 已新增只读 `GET /api/real-material/acceptance` 和 UI `RealMaterialAcceptancePanel.vue`，聚合 O5/O6 external probe artifact 与 O7 browser smoke JSON。安全边界固定为：不执行 probe、不联网、不 SSH、不 POST、不访问 `/robots/*`、不读取硬件、不创建 WebRTC session、不发送控制；`safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`。同步文档为 `docs/product/pc_tools_workstation.md` 与 `docs/interfaces/real_material_acceptance_queue.md`，sprint 证据为 `sprints/2026.06.02_08-09_real-material-acceptance-queue/tech-done.md`。
+
+验证证据来自 Full-Stack 报告：`cd pc-tools/workstation && npm run test` 通过，57 tests passed；`npm run build` 通过；`npm run lint` 通过；scoped diff-check 通过。
+
+Product closeout 判定：Objective 1 保持约 93%，本轮没有继续消费 `remote_network_unreachable` / `ssh_no_route_to_host` blocker，也没有触达远端 SSH、串口、`T=130` 或真实 `T=1001`。Objective 5 从约 95% 调整到约 96% `software + material acceptance queue visible in PC workstation`，方向为继续。Objective 6 从约 95% 调整到约 96% `software + material acceptance queue visible in PC workstation`，方向为继续。Objective 7 保持约 96%；本轮 queue 覆盖 O7 long-stability 材料状态，但不新增真实 180s/3-5min browser artifact。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 93% | 本轮不继续消费 SSH blocker；真实 `T=1001`、UART/HIL、底盘控制、真实 LiDAR `/scan`、ROS Humble runtime、TF、Nav2/SLAM 仍 `not_proven`。 |
+| Objective 5：云中转控制面 | 从约 95% 调整到约 96% | O5/O6 external probe artifact 已进入 PC workstation 真实材料验收队列，operator 可见缺口和 next actions；真实生产 TLS 验收、真实公网 HTTPS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser 仍 `not_proven`。 |
+| Objective 6：云端核心后端 | 从约 95% 调整到约 96% | O6 archive/external probe 相关材料缺口已进入 PC workstation 验收队列；真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、真实云、真实 4G/SIM、真实 phone/browser、真实生产 TLS 验收和上车数据仍 `not_proven`。 |
+| Objective 7：PC 端运营调试平台 | 保持约 96% | Queue 可见 O7 long-stability 材料状态，但没有生成真实 180s/3-5min artifact；弱网、TURN、公网云 relay、鉴权、真实用户浏览器/手机、ASR/TTS、手控/Nav2、robot ACK 和完整上车任务闭环仍 `not_proven`。 |
+
+本轮没有已完成 KR 进入真实材料历史归档区；O5/O6/O7 KR 仍保留在当前推进区。历史记录位置为本节、`OKR.md` 第 4/4.1/5 节和 `sprints/2026.06.02_08-09_real-material-acceptance-queue/tech-done.md`。剩余风险：真实材料验收队列只能减少运营漏看缺口的风险，不能替代真实生产云、真实硬件、真实浏览器长稳态或真实交付验收。
+
 ### 2026-06-02 07-08｜o1-wave-rover-t1001-live-retry + o7-browser-long-stability-acceptance｜Product closeout
 
 本轮 product closeout 同时收口两个 Micro sprint：O1 继续尝试在 fail-closed/no-motion 边界内复采 WAVE ROVER `T=1001`，O7 补齐 PC workstation 对 30s 与 3-5 分钟 browser smoke 证据的产品验收分层。用户价值分别是避免把网络不可达包装成硬件进展，以及避免把 30s 短稳态冒充 180s/3-5min 长稳态。

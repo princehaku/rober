@@ -10,6 +10,7 @@ export { buildO7PreviewsAcceptanceResponse } from "./o7PreviewsAcceptance";
 export { buildO7LiveEndpointsManifest } from "./o7LiveEndpointsManifest";
 export { buildO5O6CloudRelayHealth } from "./o5O6CloudRelayHealth";
 export { buildO5O6ExternalProbeArtifact } from "./o5O6ExternalProbeArtifact";
+export { buildRealMaterialAcceptance } from "./realMaterialAcceptance";
 export { buildO7CloudOperatorConsoleProbe } from "./o7CloudOperatorConsoleProbe";
 export { buildO7CloudArchiveTasksProbe } from "./o7CloudArchiveTasksProbe";
 export { buildO7RealtimeElevatorProbe } from "./o7RealtimeElevatorProbe";

@@ -5,6 +5,7 @@ import type {
   O7CloudArchiveTasksResponse,
   O7CloudOperatorConsoleProbeResponse,
   O5O6ExternalProbeArtifactResponse,
+  RealMaterialAcceptanceResponse,
   O7LabelingPreviewResponse,
   O7LocalWebrtcCameraResponse,
   O7LiveEndpointsManifestResponse,
@@ -36,6 +37,7 @@ export interface WorkstationSnapshot {
   hardwareMaterials: HardwareMaterialsResponse;
   trainingLabeling: TrainingLabelingResponse;
   o5O6ExternalProbeArtifact: O5O6ExternalProbeArtifactResponse;
+  realMaterialAcceptance: RealMaterialAcceptanceResponse;
   o7OperatorConsole: O7OperatorConsoleResponse;
   proofBoundary: ProofBoundaryResponse;
 }
@@ -71,6 +73,7 @@ const API_ENDPOINTS = {
   o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
   o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
   o5O6ExternalProbeArtifact: "/api/o5-o6/external-probe-artifact",
+  realMaterialAcceptance: "/api/real-material/acceptance",
   o7RealtimeElevatorProbe: "/api/o7/realtime-elevator-probe",
   o7RtcSignalingContractProbe: "/api/o7/rtc-signaling-contract-probe",
   o7LocalWebrtcCamera: "/api/o7/local-webrtc-camera",
@@ -228,6 +231,11 @@ export async function getO5O6ExternalProbeArtifact(): Promise<O5O6ExternalProbeA
   return loadJson<O5O6ExternalProbeArtifactResponse>(API_ENDPOINTS.o5O6ExternalProbeArtifact);
 }
 
+export async function getRealMaterialAcceptance(): Promise<RealMaterialAcceptanceResponse> {
+  // Real-material queue 只读后端聚合摘要；前端不触发 probe、LAN health 或 WebRTC session。
+  return loadJson<RealMaterialAcceptanceResponse>(API_ENDPOINTS.realMaterialAcceptance);
+}
+
 export async function getO7RealtimeElevatorProbe(baseUrl: string): Promise<O7RealtimeElevatorProbeResponse> {
   // 前端不直连 relay；PC 后端负责 loopback-only 拉取 snapshot 并扫描 KR1/KR2 危险字段。
   return loadJson<O7RealtimeElevatorProbeResponse>(realtimeElevatorProbeUrl(baseUrl));
@@ -306,6 +314,7 @@ export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise
     hardwareMaterials,
     trainingLabeling,
     o5O6ExternalProbeArtifact,
+    realMaterialAcceptance,
     o7OperatorConsole,
     proofBoundary,
   ] = await Promise.all([
@@ -315,6 +324,7 @@ export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise
     getHardwareMaterials(),
     getTrainingLabeling(),
     getO5O6ExternalProbeArtifact(),
+    getRealMaterialAcceptance(),
     getO7OperatorConsole(),
     getProofBoundary(),
   ]);
@@ -326,6 +336,7 @@ export async function loadWorkstationSnapshot(inputs: RouteDebugInputs): Promise
     hardwareMaterials,
     trainingLabeling,
     o5O6ExternalProbeArtifact,
+    realMaterialAcceptance,
     o7OperatorConsole,
     proofBoundary,
   };

@@ -2156,6 +2156,79 @@ export interface O7PreviewsAcceptanceResponse extends ProofFlags {
   remaining_real_capability_gaps: string[];
 }
 
+export type RealMaterialAcceptanceStatus = "accepted" | "needs_long_run" | "not_observed" | "blocked";
+export type RealMaterialArtifactFreshnessStatus = "fresh" | "stale" | "missing" | "not_applicable";
+export type RealMaterialAcceptanceItemId =
+  | "o5_tls_external_probe"
+  | "o6_archive_external_probe"
+  | "o7_browser_long_stability";
+
+export interface RealMaterialCollectionRunbook {
+  goal: string;
+  suggested_commands: string[];
+  required_env: string[];
+  required_artifacts: string[];
+  expected_output: string;
+  success_criteria: string[];
+  failure_handling: string[];
+  safety_notes: string[];
+}
+
+export interface RealMaterialArtifactFreshness {
+  status: RealMaterialArtifactFreshnessStatus;
+  artifact_ref: string;
+  source: "env_configured" | "workstation_runtime" | "not_applicable";
+  checked_at: string;
+  mtime: string | null;
+  age_seconds: number | null;
+  stale_after_seconds: number | null;
+}
+
+export interface RealMaterialAcceptanceItem {
+  id: RealMaterialAcceptanceItemId;
+  objective: "O5" | "O6" | "O7";
+  title: string;
+  status: RealMaterialAcceptanceStatus;
+  source_endpoint: "/api/o5-o6/external-probe-artifact" | "/api/o7/local-webrtc-camera";
+  source_artifact_status: string;
+  blocking_reason: string;
+  next_action: string;
+  collection_runbook: RealMaterialCollectionRunbook;
+  artifact_freshness: RealMaterialArtifactFreshness;
+  proof_boundary: string;
+  observed_at: string | null;
+  safe_to_control: false;
+  sends_commands: false;
+  robot_control_executed: false;
+}
+
+// Real-material queue 只消费已有 artifact/health/smoke JSON，让 operator 知道下一步该补哪份真实材料。
+// 它不执行 probe、不联网、不读硬件、不访问 /robots/*，也不打开任何控制能力。
+export interface RealMaterialAcceptanceResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.real_material_acceptance.v1";
+  endpoint: "/api/real-material/acceptance";
+  source_endpoints: ["/api/o5-o6/external-probe-artifact", "/api/o7/local-webrtc-camera"];
+  queue_status: "accepted" | "action_required";
+  items: RealMaterialAcceptanceItem[];
+  summary: Record<RealMaterialAcceptanceStatus, number>;
+  fail_closed_flags: {
+    safe_to_control: false;
+    sends_commands: false;
+    robot_control_executed: false;
+  };
+  execution_policy: {
+    reads_existing_artifacts_only: true;
+    network_probe_executed: false;
+    hardware_read_executed: false;
+    post_executed: false;
+    robots_path_accessed: false;
+    webrtc_session_created: false;
+    sends_commands: false;
+  };
+  next_actions: string[];
+  not_proven: string[];
+}
+
 // Health 只证明 Node API 存活，不证明机器人在线。
 export interface HealthResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.health.v1";
@@ -2189,6 +2262,7 @@ export const API_ROUTES = [
   "/api/o7/previews/acceptance",
   "/api/o7/live-endpoints/manifest",
   "/api/o5-o6/cloud-relay-health?baseUrl=<local-or-allowed-url>",
+  "/api/real-material/acceptance",
   "/api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>",
   "/api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>",
   "/api/o7/rtc-signaling-contract-probe?baseUrl=<local-loopback-url>",

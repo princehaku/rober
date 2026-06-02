@@ -453,6 +453,143 @@ const fixtures: Record<string, unknown> = {
     robot_control_executed: false,
     ...PROOF_FLAGS,
   },
+  "/api/real-material/acceptance": {
+    schema: "trashbot.pc_tools_workstation.real_material_acceptance.v1",
+    endpoint: "/api/real-material/acceptance",
+    source_endpoints: ["/api/o5-o6/external-probe-artifact", "/api/o7/local-webrtc-camera"],
+    queue_status: "action_required",
+    items: [
+      {
+        id: "o5_tls_external_probe",
+        objective: "O5",
+        title: "O5 TLS / external probe material",
+        status: "blocked",
+        source_endpoint: "/api/o5-o6/external-probe-artifact",
+        source_artifact_status: "loaded",
+        blocking_reason: "tls_blocked_not_accepted",
+        next_action: "O5: run the existing O5/O6 external probe against production HTTPS and place its JSON artifact in workstation runtime",
+        collection_runbook: {
+          goal: "O5: collect production HTTPS external probe material for /api/o5/readiness/health",
+          suggested_commands: [
+            "cd pc-tools/workstation && ROBER_PC_BASE_URL=http://127.0.0.1:8787 ROBER_CLOUD_BASE_URL=https://<production-cloud-base> ROBER_O5_O6_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
+          ],
+          required_env: ["ROBER_PC_BASE_URL", "ROBER_CLOUD_BASE_URL", "ROBER_O5_O6_BEARER_TOKEN"],
+          required_artifacts: [".workstation-runtime/o5-o6-external-live-probe.json or ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT"],
+          expected_output: "trashbot.o5_o6.external_live_probe.v1 JSON with TLS evidence and endpoint summaries",
+          success_criteria: ["tls_evidence.tls_status=observed and tls_observed=true"],
+          failure_handling: ["If TLS is blocked, fix HTTPS certificate, DNS, or reverse proxy before re-running."],
+          safety_notes: ["Recipe only runs an explicit read-only GET probe; this API never executes it."],
+        },
+        artifact_freshness: {
+          status: "stale",
+          artifact_ref: ".workstation-runtime/o5-o6-external-live-probe.json",
+          source: "workstation_runtime",
+          checked_at: "2026-06-02T09:00:00.000Z",
+          mtime: "2026-06-01T09:00:00.000Z",
+          age_seconds: 86400,
+          stale_after_seconds: 86400,
+        },
+        proof_boundary: "existing_external_probe_artifact_tls_endpoint_summary_only",
+        observed_at: "2026-06-01T15:30:00Z",
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+      },
+      {
+        id: "o6_archive_external_probe",
+        objective: "O6",
+        title: "O6 archive external probe material",
+        status: "accepted",
+        source_endpoint: "/api/o5-o6/external-probe-artifact",
+        source_artifact_status: "loaded",
+        blocking_reason: "real_material_artifact_accepted",
+        next_action: "O6: keep artifact as real-material evidence and wait for OKR owner review",
+        collection_runbook: {
+          goal: "O6: collect production HTTPS external probe material for /api/o6/archive/health",
+          suggested_commands: [
+            "cd pc-tools/workstation && ROBER_PC_BASE_URL=http://127.0.0.1:8787 ROBER_CLOUD_BASE_URL=https://<production-cloud-base> ROBER_O5_O6_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
+          ],
+          required_env: ["ROBER_PC_BASE_URL", "ROBER_CLOUD_BASE_URL", "ROBER_O5_O6_BEARER_TOKEN"],
+          required_artifacts: [".workstation-runtime/o5-o6-external-live-probe.json or ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT"],
+          expected_output: "trashbot.o5_o6.external_live_probe.v1 JSON with TLS evidence and endpoint summaries",
+          success_criteria: ["/api/o6/archive/health reachable=true and schema_status=matched"],
+          failure_handling: ["If endpoint schema mismatches, inspect the cloud relay/API deployment version before OKR review."],
+          safety_notes: ["Do not include raw token, raw base URL, traceback, or artifact absolute path in screenshots."],
+        },
+        artifact_freshness: {
+          status: "stale",
+          artifact_ref: ".workstation-runtime/o5-o6-external-live-probe.json",
+          source: "workstation_runtime",
+          checked_at: "2026-06-02T09:00:00.000Z",
+          mtime: "2026-06-01T09:00:00.000Z",
+          age_seconds: 86400,
+          stale_after_seconds: 86400,
+        },
+        proof_boundary: "existing_external_probe_artifact_archive_endpoint_summary_only",
+        observed_at: "2026-06-01T15:30:00Z",
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+      },
+      {
+        id: "o7_browser_long_stability",
+        objective: "O7",
+        title: "O7 browser 3-5min long stability material",
+        status: "needs_long_run",
+        source_endpoint: "/api/o7/local-webrtc-camera",
+        source_artifact_status: "loaded",
+        blocking_reason: "observation_window_below_180000ms",
+        next_action: "O7: run the existing browser playback smoke for at least 180000ms and place its JSON artifact in workstation runtime",
+        collection_runbook: {
+          goal: "O7: collect 180s+ same-LAN browser playback stability material",
+          suggested_commands: [
+            "cd pc-tools/workstation && ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://<board-lan-host>:8088 ROBER_O7_BROWSER_SMOKE_STABILITY_MS=180000 npm run o7:browser-smoke",
+          ],
+          required_env: ["ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL", "ROBER_O7_BROWSER_SMOKE_STABILITY_MS=180000"],
+          required_artifacts: [".workstation-runtime/o7-browser-playback-smoke.json or ROBER_O7_BROWSER_SMOKE_RESULT_JSON"],
+          expected_output: "trashbot.o7.local_webrtc_browser_playback_smoke.v1 JSON with first frame and stability_summary",
+          success_criteria: ["stability_summary.observation_window_ms >= 180000"],
+          failure_handling: ["If status is needs_long_run, re-run with ROBER_O7_BROWSER_SMOKE_STABILITY_MS=180000 or higher."],
+          safety_notes: ["The acceptance API only reads the JSON artifact and never sends /offer or robot control commands."],
+        },
+        artifact_freshness: {
+          status: "fresh",
+          artifact_ref: ".workstation-runtime/o7-browser-playback-smoke.json",
+          source: "workstation_runtime",
+          checked_at: "2026-06-02T09:00:00.000Z",
+          mtime: "2026-06-02T08:55:00.000Z",
+          age_seconds: 300,
+          stale_after_seconds: 86400,
+        },
+        proof_boundary: "existing_browser_smoke_json_long_stability_summary_only",
+        observed_at: "2026-06-02T07:30:00.000Z",
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+      },
+    ],
+    summary: { accepted: 1, needs_long_run: 1, not_observed: 0, blocked: 1 },
+    fail_closed_flags: {
+      safe_to_control: false,
+      sends_commands: false,
+      robot_control_executed: false,
+    },
+    execution_policy: {
+      reads_existing_artifacts_only: true,
+      network_probe_executed: false,
+      hardware_read_executed: false,
+      post_executed: false,
+      robots_path_accessed: false,
+      webrtc_session_created: false,
+      sends_commands: false,
+    },
+    next_actions: [
+      "O5: run the existing O5/O6 external probe against production HTTPS and place its JSON artifact in workstation runtime",
+      "O7: run the existing browser playback smoke for at least 180000ms and place its JSON artifact in workstation runtime",
+    ],
+    not_proven: ["real_robot_control_not_executed", "real_4g_sim_not_proven"],
+    ...PROOF_FLAGS,
+  },
   "/api/o7/operator-console": {
     schema: "trashbot.o7.operator_console.v1",
     contract_source: "cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py",
@@ -2442,6 +2579,8 @@ function stubWorkstationFetch() {
                               ? "/api/o7/realtime-elevator-probe"
                               : url.startsWith("/api/o7/local-webrtc-camera")
                                 ? "/api/o7/local-webrtc-camera"
+                                : url.startsWith("/api/real-material/acceptance")
+                                  ? "/api/real-material/acceptance"
                                 : url;
     return {
       ok: true,
@@ -2582,6 +2721,20 @@ describe("App", () => {
 
     expect(wrapper.text()).toContain("O7 Operator Console");
     expect(wrapper.text()).toContain("运营调试台");
+    expect(wrapper.text()).toContain("真实材料验收队列");
+    expect(wrapper.text()).toContain("accepted=1 · needs_long_run=1 · not_observed=0 · blocked=1");
+    expect(wrapper.text()).toContain("O5 · blocked");
+    expect(wrapper.text()).toContain("O6 · accepted");
+    expect(wrapper.text()).toContain("O7 · needs_long_run");
+    expect(wrapper.text()).toContain("network_probe=false");
+    expect(wrapper.text()).toContain("robots_path=false");
+    expect(wrapper.text()).toContain("existing_browser_smoke_json_long_stability_summary_only");
+    expect(wrapper.text()).toContain("O7: run the existing browser playback smoke for at least 180000ms");
+    expect(wrapper.text()).toContain("freshness=stale");
+    expect(wrapper.text()).toContain("freshness=fresh");
+    expect(wrapper.text()).toContain("runbook=O7: collect 180s+ same-LAN browser playback stability material");
+    expect(wrapper.text()).toContain("npm run o7:browser-smoke");
+    expect(wrapper.text()).toContain("stability_summary.observation_window_ms >= 180000");
     expect(wrapper.text()).toContain("External Probe Artifact");
     expect(wrapper.text()).toContain("python_stdlib");
     expect(wrapper.text()).toContain("updated=2026-06-01T15:30:00Z");

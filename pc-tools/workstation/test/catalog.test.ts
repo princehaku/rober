@@ -10,6 +10,7 @@ import {
   buildO7LiveEndpointsManifest,
   buildO5O6CloudRelayHealth,
   buildO5O6ExternalProbeArtifact,
+  buildRealMaterialAcceptance,
   buildO7CloudOperatorConsoleProbe,
   buildO7LocalWebrtcCamera,
   buildO7RealtimeElevatorProbe,
@@ -1638,6 +1639,178 @@ describe("workstation fail-closed API contracts", () => {
     expect(JSON.stringify(response)).not.toContain("cloud.example");
     expect(JSON.stringify(response)).not.toContain("baseUrl=");
     expect(JSON.stringify(response)).not.toContain("http%3A%2F%2F");
+  });
+
+  it("real-material acceptance queue summarizes O5 O6 and O7 artifacts without executing probes", async () => {
+    // 新队列只消费临时 JSON artifact；测试不启动 HTTP probe、不访问 LAN camera、不创建 WebRTC。
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-real-material-queue-"));
+    const externalPath = path.join(tempDir, "external.json");
+    const smokePath = path.join(tempDir, "browser-smoke.json");
+    await writeFile(
+      externalPath,
+      JSON.stringify({
+        schema: "trashbot.o5_o6.external_live_probe.v1",
+        executed_at: "2026-06-02T08:10:00Z",
+        probe_status: "observed_fail_closed_contract",
+        runner: "python_stdlib",
+        viewpoint: "external_or_upper_computer_readonly",
+        token_status: "present",
+        credentials_redacted: true,
+        tls_evidence: {
+          tls_status: "observed",
+          scheme: "https",
+          hostname_redacted: "sha256:real-material",
+          host_status: "redacted",
+          port: 443,
+          tls_observed: true,
+          tls_version: "TLSv1.3",
+          cipher_status: "observed",
+          cipher_bits: 256,
+          certificate: {
+            not_before: "2026-01-01T00:00:00Z",
+            not_after: "2026-12-31T00:00:00Z",
+            certificate_expiry_days: 180,
+            issuer_summary: { field_count: 3, common_name_status: "present", organization_status: "present", country_status: "present" },
+            subject_summary: { field_count: 2, common_name_status: "present", organization_status: "absent", country_status: "present" },
+            subject_alt_name_summary: { dns_name_count: 2, ip_address_count: 0 },
+          },
+          verification_error: "none",
+        },
+        endpoints: [
+          {
+            name: "o5_readiness",
+            endpoint: "/api/o5/readiness/health",
+            reachable: true,
+            http_status: 200,
+            schema: "trashbot.o5.readiness_health.v1",
+            schema_status: "matched",
+            contract_status: "observed_fail_closed_contract",
+            failure_category: "none",
+            blocked_reasons: [],
+            dangerous_true_fields: [],
+            sensitive_markers: [],
+          },
+          {
+            name: "o6_archive",
+            endpoint: "/api/o6/archive/health",
+            reachable: true,
+            http_status: 200,
+            schema: "trashbot.o6.archive_health.v1",
+            schema_status: "matched",
+            contract_status: "observed_fail_closed_contract",
+            failure_category: "none",
+            blocked_reasons: [],
+            dangerous_true_fields: [],
+            sensitive_markers: [],
+          },
+        ],
+        summary: {
+          endpoint_count: 2,
+          reachable_count: 2,
+          schema_matched_count: 2,
+          fail_closed_count: 2,
+        },
+        blocked_reasons: [],
+        not_proven: ["real_4g_sim_not_proven"],
+        safe_to_control: false,
+        sends_commands: false,
+        reads_hardware: false,
+        robot_control_executed: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+      }),
+      "utf8",
+    );
+    await writeFile(
+      smokePath,
+      JSON.stringify({
+        schema: "trashbot.o7.local_webrtc_browser_playback_smoke.v1",
+        status: "ok",
+        executed_at: "2026-06-02T08:20:00Z",
+        first_frame_received: true,
+        stability_summary: {
+          status: "observed",
+          observation_window_ms: 30000,
+          connection_remained_connected: "connected",
+          ice_remained_connected: "connected",
+          video_size_stable: "stable",
+          console_errors_added: 0,
+          page_errors_added: 0,
+          post_close_active_peer_connections: 0,
+          remote_active_peer_cleaned: "cleaned",
+        },
+      }),
+      "utf8",
+    );
+
+    const response = await buildRealMaterialAcceptance({
+      env: {
+        ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT: externalPath,
+        ROBER_O7_BROWSER_SMOKE_RESULT_JSON: smokePath,
+      },
+    });
+
+    expect(response.schema).toBe("trashbot.pc_tools_workstation.real_material_acceptance.v1");
+    expect(response.endpoint).toBe("/api/real-material/acceptance");
+    expect(response.queue_status).toBe("action_required");
+    expect(response.summary).toEqual({ accepted: 2, needs_long_run: 1, not_observed: 0, blocked: 0 });
+    expect(response.execution_policy).toMatchObject({
+      reads_existing_artifacts_only: true,
+      network_probe_executed: false,
+      hardware_read_executed: false,
+      post_executed: false,
+      robots_path_accessed: false,
+      webrtc_session_created: false,
+      sends_commands: false,
+    });
+    expect(response.fail_closed_flags).toEqual({
+      safe_to_control: false,
+      sends_commands: false,
+      robot_control_executed: false,
+    });
+    expect(response.items.map((item) => [item.id, item.status, item.blocking_reason])).toEqual([
+      ["o5_tls_external_probe", "accepted", "real_material_artifact_accepted"],
+      ["o6_archive_external_probe", "accepted", "real_material_artifact_accepted"],
+      ["o7_browser_long_stability", "needs_long_run", "observation_window_below_180000ms"],
+    ]);
+    expect(response.items.map((item) => [item.id, item.artifact_freshness.status, item.artifact_freshness.source])).toEqual([
+      ["o5_tls_external_probe", "fresh", "env_configured"],
+      ["o6_archive_external_probe", "fresh", "env_configured"],
+      ["o7_browser_long_stability", "fresh", "env_configured"],
+    ]);
+    expect(response.items[0]?.collection_runbook.goal).toContain("O5: collect production HTTPS external probe material");
+    expect(response.items[0]?.collection_runbook.suggested_commands[0]).toContain("npm run o5o6:external-probe");
+    expect(response.items[2]?.collection_runbook.suggested_commands[0]).toContain("npm run o7:browser-smoke");
+    expect(response.items[2]?.collection_runbook.success_criteria).toContain("stability_summary.observation_window_ms >= 180000");
+    expect(response.next_actions).toEqual([
+      "O7: run the existing browser playback smoke for at least 180000ms and place its JSON artifact in workstation runtime",
+    ]);
+    expect(JSON.stringify(response)).not.toContain(externalPath);
+    expect(JSON.stringify(response)).not.toContain(smokePath);
+    expect(JSON.stringify(response)).not.toContain("/robots/");
+  });
+
+  it("real-material acceptance queue fails closed when artifacts are missing", async () => {
+    // 缺材料时返回 not_observed 队列，而不是尝试补跑 probe 或读取硬件。
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-real-material-missing-"));
+    const response = await buildRealMaterialAcceptance({
+      env: {
+        ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT: path.join(tempDir, "missing-external.json"),
+        ROBER_O7_BROWSER_SMOKE_RESULT_JSON: path.join(tempDir, "missing-smoke.json"),
+      },
+    });
+
+    expect(response.queue_status).toBe("action_required");
+    expect(response.summary).toEqual({ accepted: 0, needs_long_run: 0, not_observed: 3, blocked: 0 });
+    expect(response.items.every((item) => item.safe_to_control === false && item.sends_commands === false)).toBe(true);
+    expect(response.items.map((item) => item.blocking_reason)).toEqual([
+      "external_probe_artifact_missing",
+      "external_probe_artifact_missing",
+      "browser_smoke_artifact_missing",
+    ]);
+    expect(response.items.map((item) => item.artifact_freshness.status)).toEqual(["missing", "missing", "missing"]);
+    expect(response.execution_policy.network_probe_executed).toBe(false);
+    expect(response.execution_policy.robots_path_accessed).toBe(false);
   });
 
   it("O5/O6 external live probe fails closed when configured services are unreachable", async () => {

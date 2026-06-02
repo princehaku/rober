@@ -5,6 +5,7 @@ import O7FixturePreviewPanel from "./components/O7FixturePreviewPanel.vue";
 import O7OperatorConsolePanel from "./components/O7OperatorConsolePanel.vue";
 import ProofBoundaryPanel from "./components/ProofBoundaryPanel.vue";
 import ProofFlagStrip from "./components/ProofFlagStrip.vue";
+import RealMaterialAcceptancePanel from "./components/RealMaterialAcceptancePanel.vue";
 import RouteDebugPanel from "./components/RouteDebugPanel.vue";
 import TrainingLabelingPanel from "./components/TrainingLabelingPanel.vue";
 import WaveRoverMaterialCoveragePanel from "./components/WaveRoverMaterialCoveragePanel.vue";
@@ -19,6 +20,7 @@ import type {
   O5O6ExternalProbeArtifactResponse,
   O7OperatorConsoleResponse,
   ProofBoundaryResponse,
+  RealMaterialAcceptanceResponse,
   RouteDebugSummaryResponse,
   TrainingLabelingResponse,
 } from "./shared/contracts";
@@ -38,6 +40,7 @@ const evidenceTools = ref<EvidenceToolsResponse | null>(null);
 const hardwareMaterials = ref<HardwareMaterialsResponse | null>(null);
 const trainingLabeling = ref<TrainingLabelingResponse | null>(null);
 const o5O6ExternalProbeArtifact = ref<O5O6ExternalProbeArtifactResponse | null>(null);
+const realMaterialAcceptance = ref<RealMaterialAcceptanceResponse | null>(null);
 const o7OperatorConsole = ref<O7OperatorConsoleResponse | null>(null);
 const proofBoundary = ref<ProofBoundaryResponse | null>(null);
 const routeInputs = ref<RouteDebugInputs>({
@@ -60,6 +63,7 @@ async function refresh(): Promise<void> {
     hardwareMaterials.value = snapshot.hardwareMaterials;
     trainingLabeling.value = snapshot.trainingLabeling;
     o5O6ExternalProbeArtifact.value = snapshot.o5O6ExternalProbeArtifact;
+    realMaterialAcceptance.value = snapshot.realMaterialAcceptance;
     o7OperatorConsole.value = snapshot.o7OperatorConsole;
     proofBoundary.value = snapshot.proofBoundary;
   } catch (err) {
@@ -106,6 +110,7 @@ onMounted(() => {
       @refresh="refresh"
     />
     <template v-else-if="activePanel === 'o7'">
+      <RealMaterialAcceptancePanel :real-material-acceptance="realMaterialAcceptance" />
       <section class="probe-artifact-panel" aria-label="O5 O6 external probe artifact">
         <div class="section-head compact-head">
           <div>
