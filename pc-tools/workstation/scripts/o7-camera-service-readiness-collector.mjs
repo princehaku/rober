@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SCHEMA = "trashbot.o7.camera_service_readiness.v1";
+const CAMERA_SYSTEMD_UNIT = "trashbot-local-webrtc-camera.service";
 const DEFAULT_BASE_URL = "http://192.168.1.11:8088/";
 const DEFAULT_SSH_TARGET = "root@192.168.1.11";
 const DEFAULT_SSH_PORT = "37878";
@@ -168,9 +169,20 @@ function baseResult(plan, status, blockedReasons) {
       process_summary: [],
       unit_summary: [],
       script_summary: [],
+      systemd_unit: {
+        name: CAMERA_SYSTEMD_UNIT,
+        installed: null,
+        load_state: null,
+        active_state: null,
+        sub_state: null,
+        main_pid: null,
+        fragment_path_present: null,
+      },
       camera_port_listening: null,
       process_hint_present: null,
       service_unit_hint_present: null,
+      service_unit_installed: null,
+      service_unit_active: null,
       remote_script_present: null,
     },
     readiness: {
@@ -181,6 +193,8 @@ function baseResult(plan, status, blockedReasons) {
       port_not_listening: false,
       process_hint_missing: false,
       service_unit_missing_or_inactive: false,
+      service_unit_not_installed: false,
+      service_unit_inactive: false,
       remote_script_missing: false,
       action_category: "not_observed",
       safe_start_command_hint: null,
@@ -203,7 +217,7 @@ export function buildDryRunResult(plan) {
   return {
     ...baseResult(plan, "dry_run", ["dry_run_no_network_no_ssh_no_post_no_webrtc_no_artifact"]),
     planned_http_gets: [new URL("/health", plan.baseUrl).toString(), new URL("/devices", plan.baseUrl).toString()],
-    planned_ssh_readonly_checks: ["uname", "ss_or_netstat_listening_summary", "camera_process_summary"],
+    planned_ssh_readonly_checks: ["uname", "ss_or_netstat_listening_summary", "camera_process_summary", `systemctl_show_${CAMERA_SYSTEMD_UNIT}`],
     network_probe_executed: false,
     ssh_probe_executed: false,
     post_executed: false,
@@ -305,14 +319,41 @@ function buildReadonlySshCommand() {
     "ps -eo pid,comm,args 2>/dev/null | grep -Ei 'webrtc|camera|uvicorn|node|python|8088' | grep -v grep | head -40 || true",
     "printf '__UNITS__\\n'",
     "systemctl list-units --type=service --all --no-pager 2>/dev/null | grep -Ei 'camera|webrtc|rtc|video' | head -40 || true",
+    "printf '__CAMERA_UNIT__\\n'",
+    `systemctl show ${CAMERA_SYSTEMD_UNIT} --no-pager --property=LoadState,ActiveState,SubState,MainPID,FragmentPath 2>/dev/null || true`,
     "printf '__SCRIPTS__\\n'",
     "find /root/rober/onboard/scripts /home /opt /usr/local -maxdepth 4 -type f \\( -iname '*webrtc*' -o -iname '*camera*' -o -iname '*rtc*' \\) 2>/dev/null | head -40 || true",
   ].join("; ");
 }
 
+export function parseSystemdUnit(lines) {
+  const fields = {};
+  for (const line of lines) {
+    const index = line.indexOf("=");
+    if (index <= 0) {
+      continue;
+    }
+    fields[line.slice(0, index)] = line.slice(index + 1);
+  }
+  const loadState = fields.LoadState || null;
+  const activeState = fields.ActiveState || null;
+  const subState = fields.SubState || null;
+  const mainPid = fields.MainPID && /^\d+$/.test(fields.MainPID) ? Number(fields.MainPID) : null;
+  const fragmentPath = fields.FragmentPath || "";
+  return {
+    name: CAMERA_SYSTEMD_UNIT,
+    installed: loadState === "loaded",
+    load_state: loadState,
+    active_state: activeState,
+    sub_state: subState,
+    main_pid: mainPid,
+    fragment_path_present: Boolean(fragmentPath),
+  };
+}
+
 function parseSection(stdout, section) {
   const marker = `__${section}__`;
-  const nextMarker = /\n__[A-Z]+__\n/g;
+  const nextMarker = /\n__[A-Z_]+__\n/g;
   const start = stdout.indexOf(marker);
   if (start < 0) {
     return [];
@@ -383,10 +424,11 @@ async function runSshProbe(plan) {
   });
 }
 
-function summarizeSshProbe(probe) {
+export function summarizeSshProbe(probe) {
   const listen = parseSection(probe.stdout, "LISTEN");
   const processes = parseSection(probe.stdout, "PROCESS");
   const units = parseSection(probe.stdout, "UNITS");
+  const cameraUnit = parseSystemdUnit(parseSection(probe.stdout, "CAMERA_UNIT"));
   const scripts = parseSection(probe.stdout, "SCRIPTS");
   const uname = parseSection(probe.stdout, "UNAME")[0] ?? null;
   const listeningSummary = listen.filter((line) => /:8088\b|LISTEN|tcp/i.test(line)).slice(0, 20);
@@ -396,7 +438,11 @@ function summarizeSshProbe(probe) {
   const processHintPresent =
     probe.status === "reachable" ? processSummary.some((line) => serviceProcessPattern.test(line)) : null;
   const serviceUnitHintPresent =
-    probe.status === "reachable" ? units.some((line) => /camera|webrtc|rtc|video/i.test(line) && !/smartcard/i.test(line)) : null;
+    probe.status === "reachable"
+      ? cameraUnit.installed === true || units.some((line) => /camera|webrtc|rtc|video/i.test(line) && !/smartcard/i.test(line))
+      : null;
+  const serviceUnitInstalled = probe.status === "reachable" ? cameraUnit.installed === true : null;
+  const serviceUnitActive = probe.status === "reachable" ? cameraUnit.active_state === "active" : null;
   const remoteScriptPresent =
     probe.status === "reachable" ? scripts.some((line) => /local_webrtc_camera_smoke\.(sh|py)$/i.test(line)) : null;
   return {
@@ -407,9 +453,12 @@ function summarizeSshProbe(probe) {
     process_summary: processSummary,
     unit_summary: units.filter((line) => !/smartcard/i.test(line)).slice(0, 20),
     script_summary: scripts.slice(0, 20),
+    systemd_unit: cameraUnit,
     camera_port_listening: cameraPortListening,
     process_hint_present: processHintPresent,
     service_unit_hint_present: serviceUnitHintPresent,
+    service_unit_installed: serviceUnitInstalled,
+    service_unit_active: serviceUnitActive,
     remote_script_present: remoteScriptPresent,
   };
 }
@@ -424,6 +473,12 @@ function deriveActionCategory(ssh, unique) {
   }
   if (ssh.process_hint_present === true && ssh.camera_port_listening === false) {
     return "service_process_present_but_port_closed";
+  }
+  if (ssh.service_unit_installed === false) {
+    return "service_unit_not_installed";
+  }
+  if (ssh.service_unit_active === false) {
+    return "service_unit_inactive";
   }
   if (ssh.service_unit_hint_present === false && ssh.remote_script_present === true) {
     return "remote_script_present_but_service_inactive";
@@ -442,8 +497,11 @@ function deriveActionCategory(ssh, unique) {
 
 function safeStartCommandHint(actionCategory, ssh) {
   // 这里只给人工可复制的安全启动线索，不通过 collector 自动执行，避免把诊断工具变成后台部署器。
+  if ((actionCategory === "service_unit_not_installed" || actionCategory === "service_unit_inactive") && ssh.remote_script_present === true) {
+    return "ssh <board-lan-host> -p <ssh-port> 'cd <rober-worktree> && bash onboard/scripts/install_o7_camera_service.sh --dry-run && bash onboard/scripts/install_o7_camera_service.sh'";
+  }
   if (actionCategory === "remote_script_present_but_service_inactive" && ssh.remote_script_present === true) {
-    return "ssh <board-lan-host> -p <ssh-port> 'cd <rober-worktree> && HOST=0.0.0.0 PORT=8088 bash onboard/scripts/local_webrtc_camera_smoke.sh'";
+    return "ssh <board-lan-host> -p <ssh-port> 'cd <rober-worktree> && bash onboard/scripts/install_o7_camera_service.sh --dry-run'";
   }
   return null;
 }
@@ -453,14 +511,6 @@ export function deriveReadiness(result) {
   const health = result.http_probe.health;
   const devices = result.http_probe.devices;
   const ssh = result.ssh_probe;
-  const operatorStartedProcessHealthy =
-    health.status === "reachable" &&
-    devices.status === "reachable" &&
-    ssh.status === "reachable" &&
-    ssh.camera_port_listening === true &&
-    ssh.process_hint_present === true &&
-    ssh.remote_script_present === true;
-
   if (health.status !== "reachable") {
     blocked.push(health.error_category === "http_connection_refused" ? "http_connection_refused" : "http_health_unreachable");
   }
@@ -476,8 +526,14 @@ export function deriveReadiness(result) {
   if (ssh.process_hint_present === false) {
     blocked.push("process_hint_missing");
   }
-  if (ssh.service_unit_hint_present === false && !operatorStartedProcessHealthy) {
+  if (ssh.service_unit_hint_present === false) {
     blocked.push("service_unit_missing_or_inactive");
+  }
+  if (ssh.service_unit_installed === false) {
+    blocked.push("service_unit_not_installed");
+  }
+  if (ssh.service_unit_active === false) {
+    blocked.push("service_unit_inactive");
   }
   if (ssh.remote_script_present === false) {
     blocked.push("remote_script_missing");
@@ -494,12 +550,18 @@ export function deriveReadiness(result) {
     port_not_listening: unique.includes("port_not_listening"),
     process_hint_missing: unique.includes("process_hint_missing"),
     service_unit_missing_or_inactive: ssh.service_unit_hint_present === false,
+    service_unit_not_installed: unique.includes("service_unit_not_installed"),
+    service_unit_inactive: unique.includes("service_unit_inactive"),
     remote_script_missing: unique.includes("remote_script_missing"),
     action_category: actionCategory,
     safe_start_command_hint: safeStartCommandHint(actionCategory, ssh),
     blocked_reasons: ready ? [] : unique,
     next_action: ready
       ? "Run npm run o7:browser-long-stability and keep the generated browser smoke artifact for OKR review."
+      : actionCategory === "service_unit_not_installed"
+        ? "Install the versioned trashbot-local-webrtc-camera systemd unit with install_o7_camera_service.sh, then rerun readiness."
+      : actionCategory === "service_unit_inactive"
+        ? "Start or restart trashbot-local-webrtc-camera.service, then rerun readiness before long stability."
       : actionCategory === "remote_script_present_but_service_inactive"
         ? "Board SSH is reachable and the local WebRTC camera script exists, but no 8088 listener or service unit is active; start the script/service manually, then rerun readiness."
       : "Fix board HTTP/WebRTC camera service readiness first; do not blindly re-run the 180s browser stability collector.",

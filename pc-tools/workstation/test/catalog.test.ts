@@ -37,7 +37,7 @@ import { runExternalLiveProbe as runExternalLiveProbeJs } from "../scripts/o5-o6
 // @ts-expect-error JS CLI script intentionally stays runnable by plain node.
 import { buildCollectorPlan, buildDryRunResult } from "../scripts/o7-browser-long-stability-collector.mjs";
 // @ts-expect-error JS CLI script intentionally stays runnable by plain node.
-import { buildCollectorPlan as buildCameraReadinessCollectorPlan, buildDryRunResult as buildCameraReadinessDryRunResult, deriveReadiness } from "../scripts/o7-camera-service-readiness-collector.mjs";
+import { buildCollectorPlan as buildCameraReadinessCollectorPlan, buildDryRunResult as buildCameraReadinessDryRunResult, deriveReadiness, parseSystemdUnit, summarizeSshProbe } from "../scripts/o7-camera-service-readiness-collector.mjs";
 
 type ExternalProbeResponse = {
   schema: "trashbot.o5_o6.external_live_probe.v1";
@@ -1863,19 +1863,76 @@ describe("workstation fail-closed API contracts", () => {
     });
     expect(dryRun.planned_http_gets).toEqual(["http://192.168.1.11:8088/health", "http://192.168.1.11:8088/devices"]);
     expect(dryRun.planned_ssh_readonly_checks).toContain("ss_or_netstat_listening_summary");
+    expect(dryRun.planned_ssh_readonly_checks).toContain("systemctl_show_trashbot-local-webrtc-camera.service");
     expect(dryRun.readiness.ready_for_long_stability).toBe(false);
     expect(dryRun.readiness.action_category).toBe("not_observed");
     expect(dryRun.readiness.safe_start_command_hint).toBeNull();
     expect(dryRun.ssh_probe).toMatchObject({
       unit_summary: [],
       script_summary: [],
+      systemd_unit: {
+        name: "trashbot-local-webrtc-camera.service",
+        installed: null,
+        active_state: null,
+      },
       service_unit_hint_present: null,
+      service_unit_installed: null,
+      service_unit_active: null,
       remote_script_present: null,
     });
   });
 
-  it("O7 camera service readiness accepts operator-started script process without systemd unit", () => {
-    // operator-run 启动脚本是本轮恢复路径；缺 systemd unit 只能作为生产化风险，不能阻塞 180s 采集入口。
+  it("O7 camera service readiness parses the versioned systemd unit state", () => {
+    // systemd show 输出是 readiness 的持久化证据源；测试只解析文本，不依赖真实 SSH/systemd。
+    const unit = parseSystemdUnit([
+      "LoadState=loaded",
+      "ActiveState=active",
+      "SubState=running",
+      "MainPID=4242",
+      "FragmentPath=/etc/systemd/system/trashbot-local-webrtc-camera.service",
+    ]);
+
+    expect(unit).toEqual({
+      name: "trashbot-local-webrtc-camera.service",
+      installed: true,
+      load_state: "loaded",
+      active_state: "active",
+      sub_state: "running",
+      main_pid: 4242,
+      fragment_path_present: true,
+    });
+  });
+
+  it("O7 camera service readiness keeps camera unit markers out of generic unit summary", () => {
+    // SSH 输出分段 marker 允许下划线，避免 __CAMERA_UNIT__ 污染 generic unit 摘要。
+    const summary = summarizeSshProbe({
+      status: "reachable",
+      error_category: null,
+      stderr: "",
+      stdout: [
+        "__UNITS__",
+        "other-camera.service loaded inactive dead",
+        "__CAMERA_UNIT__",
+        "LoadState=loaded",
+        "ActiveState=active",
+        "SubState=running",
+        "MainPID=4135",
+        "FragmentPath=/etc/systemd/system/trashbot-local-webrtc-camera.service",
+        "__SCRIPTS__",
+        "/root/rober/onboard/scripts/local_webrtc_camera_smoke.sh",
+      ].join("\n"),
+    });
+
+    expect(summary.unit_summary).toEqual(["other-camera.service loaded inactive dead"]);
+    expect(summary.systemd_unit).toMatchObject({
+      installed: true,
+      active_state: "active",
+      main_pid: 4135,
+    });
+  });
+
+  it("O7 camera service readiness blocks operator-started script process without the fixed systemd unit", () => {
+    // HTTP 和进程健康只能证明当前 8088 在线；缺固定 unit 时不能写成持久化已 ready。
     const readiness = deriveReadiness({
       http_probe: {
         health: { status: "reachable", error_category: null },
@@ -1886,6 +1943,38 @@ describe("workstation fail-closed API contracts", () => {
         camera_port_listening: true,
         process_hint_present: true,
         service_unit_hint_present: false,
+        service_unit_installed: false,
+        service_unit_active: false,
+        remote_script_present: true,
+      },
+    });
+
+    expect(readiness).toMatchObject({
+      ready_for_long_stability: false,
+      action_category: "service_unit_not_installed",
+      service_unit_missing_or_inactive: true,
+      service_unit_not_installed: true,
+      service_unit_inactive: true,
+    });
+    expect(readiness.safe_start_command_hint).toContain("install_o7_camera_service.sh --dry-run");
+    expect(readiness.blocked_reasons).toContain("service_unit_not_installed");
+    expect(readiness.next_action).toContain("Install the versioned trashbot-local-webrtc-camera systemd unit");
+  });
+
+  it("O7 camera service readiness accepts healthy HTTP with active fixed systemd unit", () => {
+    // 固定 unit installed+active 后，readiness 才允许进入 browser long-stability 采集。
+    const readiness = deriveReadiness({
+      http_probe: {
+        health: { status: "reachable", error_category: null },
+        devices: { status: "reachable", error_category: null },
+      },
+      ssh_probe: {
+        status: "reachable",
+        camera_port_listening: true,
+        process_hint_present: true,
+        service_unit_hint_present: true,
+        service_unit_installed: true,
+        service_unit_active: true,
         remote_script_present: true,
       },
     });
@@ -1893,11 +1982,64 @@ describe("workstation fail-closed API contracts", () => {
     expect(readiness).toMatchObject({
       ready_for_long_stability: true,
       action_category: "ready_for_long_stability",
-      service_unit_missing_or_inactive: true,
+      service_unit_missing_or_inactive: false,
+      service_unit_not_installed: false,
+      service_unit_inactive: false,
       safe_start_command_hint: null,
       blocked_reasons: [],
     });
     expect(readiness.next_action).toContain("Run npm run o7:browser-long-stability");
+  });
+
+  it("O7 camera service readiness blocks on missing versioned systemd unit when the service is offline", () => {
+    // 服务离线时，collector 要把“脚本存在但 unit 未安装”说清楚，避免继续依赖 nohup。
+    const readiness = deriveReadiness({
+      http_probe: {
+        health: { status: "unreachable", error_category: "http_connection_refused" },
+        devices: { status: "unreachable", error_category: "http_connection_refused" },
+      },
+      ssh_probe: {
+        status: "reachable",
+        camera_port_listening: false,
+        process_hint_present: false,
+        service_unit_hint_present: false,
+        service_unit_installed: false,
+        service_unit_active: false,
+        remote_script_present: true,
+      },
+    });
+
+    expect(readiness.ready_for_long_stability).toBe(false);
+    expect(readiness.action_category).toBe("service_unit_not_installed");
+    expect(readiness.blocked_reasons).toContain("service_unit_not_installed");
+    expect(readiness.blocked_reasons).toContain("service_unit_inactive");
+    expect(readiness.safe_start_command_hint).toContain("install_o7_camera_service.sh --dry-run");
+  });
+
+  it("O7 camera service readiness blocks on installed but inactive fixed systemd unit", () => {
+    // unit 已安装但 inactive 时，next action 必须指向重启服务，而不是重新安装。
+    const readiness = deriveReadiness({
+      http_probe: {
+        health: { status: "unreachable", error_category: "http_connection_refused" },
+        devices: { status: "unreachable", error_category: "http_connection_refused" },
+      },
+      ssh_probe: {
+        status: "reachable",
+        camera_port_listening: false,
+        process_hint_present: false,
+        service_unit_hint_present: true,
+        service_unit_installed: true,
+        service_unit_active: false,
+        remote_script_present: true,
+      },
+    });
+
+    expect(readiness.ready_for_long_stability).toBe(false);
+    expect(readiness.action_category).toBe("service_unit_inactive");
+    expect(readiness.service_unit_not_installed).toBe(false);
+    expect(readiness.service_unit_inactive).toBe(true);
+    expect(readiness.blocked_reasons).toContain("service_unit_inactive");
+    expect(readiness.next_action).toContain("Start or restart trashbot-local-webrtc-camera.service");
   });
 
   it("real-material acceptance queue surfaces O7 browser collector failure reason", async () => {
@@ -1948,7 +2090,7 @@ describe("workstation fail-closed API contracts", () => {
     expect(JSON.stringify(response)).not.toContain("192.168.1.11");
   });
 
-  it("real-material acceptance queue consumes O7 camera readiness artifact action category", async () => {
+  it("real-material acceptance queue consumes O7 camera readiness unit action category", async () => {
     // readiness artifact 是 operator 已显式采集的只读诊断；queue 只消费它，不自动 SSH 或启动服务。
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-real-material-o7-readiness-"));
     const smokePath = path.join(tempDir, "browser-smoke-failed.json");
@@ -1981,19 +2123,23 @@ describe("workstation fail-closed API contracts", () => {
           camera_port_listening: false,
           process_hint_present: false,
           service_unit_hint_present: false,
+          service_unit_installed: false,
+          service_unit_active: false,
           remote_script_present: true,
         },
         readiness: {
           ready_for_long_stability: false,
-          action_category: "remote_script_present_but_service_inactive",
+          action_category: "service_unit_not_installed",
           safe_start_command_hint:
-            "ssh root@192.168.1.11 -p 37878 'cd /root/rober && HOST=0.0.0.0 PORT=8088 bash onboard/scripts/local_webrtc_camera_smoke.sh'",
+            "ssh root@192.168.1.11 -p 37878 'cd /root/rober && bash onboard/scripts/install_o7_camera_service.sh --dry-run && bash onboard/scripts/install_o7_camera_service.sh'",
           blocked_reasons: [
             "http_health_unreachable",
             "http_devices_unreachable",
             "port_not_listening",
             "process_hint_missing",
             "service_unit_missing_or_inactive",
+            "service_unit_not_installed",
+            "service_unit_inactive",
           ],
         },
         safe_to_control: false,
@@ -2013,16 +2159,19 @@ describe("workstation fail-closed API contracts", () => {
     const o7Item = response.items.find((item) => item.id === "o7_browser_long_stability");
 
     expect(o7Item?.blocking_reason).toBe(
-      "browser_smoke_failed__net_err_connection_refused__remote_health_unreachable__remote_script_present_but_service_inactive",
+      "browser_smoke_failed__net_err_connection_refused__remote_health_unreachable__service_unit_not_installed",
     );
-    expect(o7Item?.next_action).toContain("board script exists but 8088 is not listening");
+    expect(o7Item?.next_action).toContain("install trashbot-local-webrtc-camera.service");
     expect(o7Item?.o7_camera_service_readiness).toMatchObject({
       artifact_status: "loaded",
       readiness_status: "blocked",
-      action_category: "remote_script_present_but_service_inactive",
+      action_category: "service_unit_not_installed",
       ready_for_long_stability: false,
     });
-    expect(o7Item?.o7_camera_service_readiness?.blocked_reasons).toContain("service_unit_missing_or_inactive");
+    expect(o7Item?.o7_camera_service_readiness?.blocked_reasons).toContain("service_unit_not_installed");
+    expect(o7Item?.o7_camera_service_readiness?.safe_start_command_hint).toContain(
+      "install_o7_camera_service.sh --dry-run",
+    );
     expect(o7Item?.o7_camera_service_readiness?.artifact_freshness.source).toBe("env_configured");
     expect(o7Item?.safe_to_control).toBe(false);
     expect(response.execution_policy.network_probe_executed).toBe(false);

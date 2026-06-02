@@ -49,6 +49,24 @@ http://<orange-pi-lan-ip>:8088/
 
 当前 Orange Pi Zero 3 远端实测中，`/dev/video0` 是 `cedrus` platform Video Memory-to-Memory codec，不是 capture 摄像头；`/dev/video2` 是 DV20 metadata 节点，也不能作为视频源。真实 USB 摄像头为 `/dev/video1`，`uvcvideo` driver、Video Capture capability，OpenCV `VideoCapture('/dev/video1', CAP_V4L2)` 可打开并读取 640x480 帧。脚本默认 `ROBER_CAMERA_SOURCE=auto` 时会逐个 `/dev/video*` 打开并读取首帧，跳过打不开或不可读的节点；现场稳定运行仍推荐显式设置 `ROBER_CAMERA_SOURCE=/dev/video1`。
 
+## systemd 持久化入口
+
+O7 camera smoke 现在有仓库内可版本化 systemd 入口：
+
+- unit 模板：`onboard/systemd/trashbot-local-webrtc-camera.service`
+- 安装脚本：`onboard/scripts/install_o7_camera_service.sh`
+
+安装脚本默认从当前仓库渲染 unit 到 `/etc/systemd/system/trashbot-local-webrtc-camera.service`，默认环境是 `HOST=0.0.0.0`、`PORT=8088`、`ROBER_CAMERA_SOURCE=auto`。该 unit 的 `ExecStart` 只运行 `onboard/scripts/local_webrtc_camera_smoke.sh`，不启动 ROS2/Nav2/UART/WAVE ROVER，不打开串口，不发送 `T=130/T=131/T=1/T=13` 或 `/cmd_vel`，也不会 POST `/offer`。
+
+首次上车前必须先运行只读 dry-run：
+
+```bash
+cd /root/rober
+bash onboard/scripts/install_o7_camera_service.sh --dry-run
+```
+
+确认输出只包含 render、`systemctl daemon-reload`、`systemctl enable`、`systemctl restart/status trashbot-local-webrtc-camera.service` 后，再由 operator 执行真实安装。若远端缺 systemd、路径不是 `/root/rober`、依赖缺失或权限不足，必须停在 blocker 记录，不得改用 nohup 冒充持久化。
+
 ## 机器可读 offer-level 自检
 
 服务已启动后，可以在本机、同 LAN PC 或远端 SSH 中运行：

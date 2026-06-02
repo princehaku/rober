@@ -191,7 +191,7 @@ O7 runbook 现在先指向 `npm run o7:camera-service-readiness`，再指向 `np
 
 - HTTP GET `http://192.168.1.11:8088/health`
 - HTTP GET `http://192.168.1.11:8088/devices`
-- SSH `root@192.168.1.11 -p 37878` 上的只读诊断：`uname`、`ss`/`netstat` 监听摘要、camera/WebRTC 相关进程摘要、systemd/unit 摘要、远端脚本摘要
+- SSH `root@192.168.1.11 -p 37878` 上的只读诊断：`uname`、`ss`/`netstat` 监听摘要、camera/WebRTC 相关进程摘要、`trashbot-local-webrtc-camera.service` 的 `systemctl show` 摘要、systemd/unit 摘要、远端脚本摘要
 
 可通过 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL` / `--base-url`、`ROBER_O7_CAMERA_SERVICE_SSH_TARGET` / `--ssh-target`、`ROBER_O7_CAMERA_SERVICE_SSH_PORT` / `--ssh-port` 覆盖目标；输出 artifact 默认为 `.workstation-runtime/o7-camera-service-readiness.json`，schema 为 `trashbot.o7.camera_service_readiness.v1`。该 collector 不 POST `/offer`、不创建 WebRTC session、不读取串口/底盘/ROS2 控制、不发送机器人控制命令。
 
@@ -203,6 +203,8 @@ readiness artifact 的关键分类字段包括：
 - `readiness.port_not_listening`
 - `readiness.process_hint_missing`
 - `readiness.service_unit_missing_or_inactive`
+- `readiness.service_unit_not_installed`
+- `readiness.service_unit_inactive`
 - `readiness.remote_script_missing`
 - `readiness.action_category`
 - `readiness.safe_start_command_hint`
@@ -212,13 +214,15 @@ readiness artifact 的关键分类字段包括：
 
 - `remote_script_present_but_service_inactive`：SSH 可达、远端存在 `local_webrtc_camera_smoke.sh/.py`，但 8088 未监听且没有可见 service/unit；operator 应人工启动脚本或安装 service 后重跑 readiness。
 - `service_process_present_but_port_closed`：有 camera/WebRTC 进程线索，但 8088 未监听；operator 应检查绑定地址、端口和日志。
+- `service_unit_not_installed`：远端脚本存在但固定 unit `trashbot-local-webrtc-camera.service` 未安装；operator 应先运行 `bash onboard/scripts/install_o7_camera_service.sh --dry-run`，确认只会安装 camera smoke 后再安装。
+- `service_unit_inactive`：固定 unit 已可识别但不是 active；operator 应重启 `trashbot-local-webrtc-camera.service` 并检查日志、依赖和 8088 绑定。
 - `service_unit_missing_or_inactive`：没有可见 camera/WebRTC service/unit 线索；operator 应先补服务安装/启动材料。
 - `remote_script_missing`：远端脚本缺失；operator 应先同步 `onboard/scripts/local_webrtc_camera_smoke.*`。
 - `service_not_listening_on_8088`：HTTP/SSH 证据都指向端口未监听，但脚本/unit 线索不足以更细分。
 
-`safe_start_command_hint` 只作为人工提示，不由 collector 或 acceptance API 执行。若 queue 读取到 readiness artifact，会在 O7 item 的 `o7_camera_service_readiness` 中暴露脱敏摘要，并把非 ready 的 `action_category` 追加到 `blocking_reason`，例如 `browser_smoke_failed__net_err_connection_refused__remote_health_unreachable__remote_script_present_but_service_inactive`。
+`safe_start_command_hint` 只作为人工提示，不由 collector 或 acceptance API 执行。当前提示优先指向 `install_o7_camera_service.sh --dry-run`，避免继续依赖 operator-run/nohup。若 queue 读取到 readiness artifact，会在 O7 item 的 `o7_camera_service_readiness` 中暴露脱敏摘要，并把非 ready 的 `action_category` 追加到 `blocking_reason`，例如 `browser_smoke_failed__net_err_connection_refused__remote_health_unreachable__service_unit_not_installed`。
 
-`ready_for_long_stability=true` 的最小恢复口径是：HTTP `/health` 与 `/devices` 可达、SSH 可达、8088 正在监听、camera/WebRTC 进程线索存在、远端 `local_webrtc_camera_smoke.*` 脚本存在。operator-run 直接启动脚本时可以没有 systemd unit；此时 `service_unit_missing_or_inactive=true` 会继续保留为生产化风险，但不阻塞 180s/3-5min 真实浏览器材料采集。
+`ready_for_long_stability=true` 的最小恢复口径是：HTTP `/health` 与 `/devices` 可达、SSH 可达、8088 正在监听、camera/WebRTC 进程线索存在、远端 `local_webrtc_camera_smoke.*` 脚本存在，并且固定 unit `trashbot-local-webrtc-camera.service` 已安装且 `active`。operator-run/nohup 直接启动脚本只能证明当前 8088 在线，不能写成 systemd 持久化 ready；此时 queue 必须保留 `service_unit_not_installed` 或 `service_unit_inactive`，并把下一步指向安装/重启固定 unit。
 
 只有 `ready_for_long_stability=true` 后，operator 才应继续运行 `npm run o7:browser-long-stability`。长稳态入口仍要求 operator 准备 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL`，默认委托现有 `scripts/o7-browser-playback-smoke.mjs`，并把 `ROBER_O7_BROWSER_SMOKE_STABILITY_MS` 强制提升到 `>=180000`，输出落到 `.workstation-runtime/o7-browser-playback-smoke.json` 或通过 `ROBER_O7_BROWSER_SMOKE_RESULT_JSON` 指向。
 

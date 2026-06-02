@@ -58,6 +58,12 @@ function safeCameraStartCommandHint(actionCategory: string, value: unknown): str
   if (typeof value !== "string" || !value.trim()) {
     return null;
   }
+  if (actionCategory === "service_unit_not_installed") {
+    return "ssh <board-lan-host> -p <ssh-port> 'cd <rober-worktree> && bash onboard/scripts/install_o7_camera_service.sh --dry-run && bash onboard/scripts/install_o7_camera_service.sh'";
+  }
+  if (actionCategory === "service_unit_inactive") {
+    return "ssh <board-lan-host> -p <ssh-port> 'systemctl restart trashbot-local-webrtc-camera.service && systemctl --no-pager --full status trashbot-local-webrtc-camera.service'";
+  }
   if (actionCategory === "remote_script_present_but_service_inactive") {
     return "ssh <board-lan-host> -p <ssh-port> 'cd <rober-worktree> && HOST=0.0.0.0 PORT=8088 bash onboard/scripts/local_webrtc_camera_smoke.sh'";
   }
@@ -453,6 +459,12 @@ function o7NextAction(
   // API 仍只返回 operator recipe；不会自动执行 readiness collector、SSH、HTTP probe 或 browser smoke。
   if (status === "accepted") {
     return "O7: keep 180s+ browser smoke artifact and wait for OKR owner review";
+  }
+  if (readiness.action_category === "service_unit_not_installed") {
+    return "O7: install trashbot-local-webrtc-camera.service with install_o7_camera_service.sh dry-run first, then rerun readiness";
+  }
+  if (readiness.action_category === "service_unit_inactive") {
+    return "O7: start or restart trashbot-local-webrtc-camera.service, then rerun readiness before long stability";
   }
   if (readiness.action_category === "remote_script_present_but_service_inactive") {
     return "O7: board script exists but 8088 is not listening; manually start local_webrtc_camera_smoke.sh or install a service, then rerun readiness";
