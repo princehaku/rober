@@ -82,7 +82,7 @@
 - `collection_runbook`：operator 可读采集 runbook，不会由 API 自动执行。
   - `goal`：采集目标。
   - `suggested_commands[]`：兼容旧 UI 的安全 recipe / 脚本入口摘要。
-  - `collection_paths[]`：结构化采集路径列表；O5/O6 item 会列出 PC Node 与上位机 Python 两条入口，O7 item 仍沿用 `suggested_commands[]`。
+  - `collection_paths[]`：结构化采集路径列表；O5/O6 item 会列出 PC Node、上位机 Python、PC 侧 SSH collector 三条入口，O7 item 仍沿用 `suggested_commands[]`。
     - `id=pc_node_npm | upper_computer_python_stdlib | pc_upper_ssh_collector`
     - `runtime=node | python_stdlib | node_ssh`
     - `host_role=pc_workstation | upper_computer | pc_to_upper_computer`
@@ -263,6 +263,8 @@ readiness artifact 的关键分类字段包括：
 2026-06-04 05-06 O5/O6 上位机 PC base URL 合同修正记录：`pc_upper_ssh_collector` 不再在缺省情况下把 `http://127.0.0.1:8787` 传给上位机。未显式传 `--pc-base-url` 或 `ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL` 时，installed script 与 stdin fallback 都向远端 probe 传空 PC base URL，PC aggregate 保持 fail-closed，并在 collector artifact 中追加 `pc_base_url_not_configured_for_upper_ssh`、`ssh_collection.pc_base_url_configured_for_upper_ssh=false` 和 operator next action。该修正只改变采集合同与 blocked 分类，不 POST、不访问 `/robots/*`、不访问 `/cmd_vel`、不读串口/ROS2/硬件、不发送 robot command、不通过 CLI/SSH args/stdin/artifact 传 bearer/token。
 
 2026-06-04 06-07 O5/O6 acceptance API runbook 修正记录：`GET /api/real-material/acceptance` 的 `collection_runbook.suggested_commands[]` 中，`pc_upper_ssh_collector` 示例命令必须展示 `--pc-base-url http://<pc-workstation-host>:8787`，不得展示 `--pc-base-url http://127.0.0.1:8787`。PC workstation 本地 Node 采集路径仍可使用本机 loopback；只有通过 SSH 让上位机发起 probe 时，operator 必须填写上位机可达的 PC workstation 地址。该记录只修正 API-facing recipe，不执行 SSH、不联网、不 POST、不访问 `/robots/*`、不访问 `/cmd_vel`、不读硬件、不发送 robot command。
+
+2026-06-04 07-08 O5/O6 shared contract 修正记录：`pc-tools/workstation/src/shared/contracts.ts` 的 `RealMaterialCollectionPath` 已把 `pc_upper_ssh_collector`、`runtime=node_ssh`、`host_role=pc_to_upper_computer` 纳入正式 TypeScript 合同。`GET /api/real-material/acceptance` 的第三条 `collection_paths[]` 不再需要 `unknown` cast，PC/UI typed consumers 可直接消费 SSH collector 路径；该修正只关闭合同类型滞后，不执行 SSH、不联网、不 POST、不访问 `/robots/*`、不访问 `/cmd_vel`、不读硬件、不发送 robot command，未产出 accepted live material 时不提升 O5/O6 百分比。
 
 2026-06-04 04-05 stdin fallback 更新口径：`pc_upper_ssh_collector` 在 `remote_repo_present_but_probe_script_missing` 时不再直接停止，而是自动进入 `stdin_fallback`，把 PC 本地 `cloud-relay/scripts/o5_o6_external_live_probe.py` 通过 SSH stdin 交给远端 `python3 - --once-json` 执行。该模式不 scp、不写远端、不持久修改 `/root/rober`，安全边界仍为固定 allowlist GET，不 POST、不访问 `/robots/*`、不访问 `/cmd_vel`、不读硬件、不发送控制命令、不把 bearer/token 写入 CLI/SSH args/artifact。artifact 新增 `ssh_collection.execution_mode`、`attempted_execution_modes`、`fallback_used`、`fallback_reason` 与 `stdin_fallback_remote_write=false`，用于区分已安装脚本执行、stdin fallback 采集和 fallback 自身失败。
 

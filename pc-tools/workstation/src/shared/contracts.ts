@@ -2405,10 +2405,10 @@ export type RealMaterialAcceptanceItemId =
   | "o7_browser_long_stability";
 
 export interface RealMaterialCollectionPath {
-  id: "pc_node_npm" | "upper_computer_python_stdlib";
+  id: "pc_node_npm" | "upper_computer_python_stdlib" | "pc_upper_ssh_collector";
   title: string;
-  runtime: "node" | "python_stdlib";
-  host_role: "pc_workstation" | "upper_computer";
+  runtime: "node" | "python_stdlib" | "node_ssh";
+  host_role: "pc_workstation" | "upper_computer" | "pc_to_upper_computer";
   command: string;
   required_env: string[];
   required_artifact: string;

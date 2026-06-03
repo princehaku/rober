@@ -238,7 +238,6 @@ function o5o6Runbook(objective: "O5" | "O6"): RealMaterialCollectionRunbook {
         ],
       },
       {
-        // contracts.ts 尚未放开 node_ssh 字面量；本轮文件范围不允许改共享类型，只在运行时补齐 API recipe。
         id: "pc_upper_ssh_collector",
         title: "PC workstation SSH collector for upper computer",
         runtime: "node_ssh",
@@ -268,7 +267,7 @@ function o5o6Runbook(objective: "O5" | "O6"): RealMaterialCollectionRunbook {
           "Bearer tokens must stay in the upper-computer environment and must not pass through CLI args, SSH args, stdin, or artifact output.",
           "stdin_fallback does not scp, write remote files, or persistently modify the upper computer.",
         ],
-      } as unknown as RealMaterialCollectionRunbook["collection_paths"][number],
+      },
     ],
     required_env: [
       "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",

@@ -183,6 +183,8 @@
 
 本轮 `sprints/2026.06.04_06-07_o5-o6-ssh-runbook-pc-base-url/tech-done.md` 只修正 acceptance API 暴露给 operator 的 O5/O6 采集 runbook，不调整 O5/O6 百分比：`GET /api/real-material/acceptance` 的 `pc_upper_ssh_collector` recipe 已改为 `--pc-base-url http://<pc-workstation-host>:8787`，避免 operator 按 API 示例继续把上位机远端 `127.0.0.1:8787` 当成 PC workstation；未采到 accepted live artifact 前仍不得涨分。
 
+本轮 `sprints/2026.06.04_07-08_o5-o6-collection-path-contract/tech-done.md` 只关闭 O5/O6 acceptance queue 的共享 TypeScript 合同滞后，不调整 O5/O6 百分比：`RealMaterialCollectionPath` 已正式包含 `pc_upper_ssh_collector`、`runtime=node_ssh`、`host_role=pc_to_upper_computer`，`GET /api/real-material/acceptance` 可无 `unknown` cast 返回第三条 SSH collector 路径；未采到 accepted live artifact 前仍不得涨分。
+
 1. **O5（约 96%，最高优先级第一）**：从真实材料验收队列进入实际采集。验收口径是公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser 至少形成一条可回放 artifact；继续扩 runbook/status/readback 不涨分。
 2. **O6（约 96%，最高优先级第二）**：把 archive core 从 mock/readiness 推到真实生产数据链。验收口径是真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、真实上车数据至少形成一条可查询回放链。
    - 当前抓手：`pc_upper_ssh_collector` 继续作为 O5/O6 真实材料采集入口；下一步必须配置有效 `cloud_base_url`、远端 bearer token、上位机可达的显式 PC workstation base URL（例如 `--pc-base-url http://<pc-workstation-host>:8787`），并修正 HTTP/schema 缺口，采到 accepted live artifact 后才能涨分。

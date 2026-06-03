@@ -32,6 +32,7 @@ import {
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
 import { createWorkstationApp } from "../src/server/index";
+import type { RealMaterialCollectionPath } from "../src/shared/contracts";
 // @ts-expect-error JS CLI script intentionally stays runnable by plain node.
 import { runExternalLiveProbe as runExternalLiveProbeJs } from "../scripts/o5-o6-external-live-probe.mjs";
 // @ts-expect-error JS CLI script intentionally stays runnable by plain node.
@@ -1790,11 +1791,14 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.items[0]?.collection_runbook.suggested_commands[2]).toContain("npm run o5o6:upper-ssh-collector");
     expect(response.items[0]?.collection_runbook.suggested_commands[2]).toContain("--pc-base-url http://<pc-workstation-host>:8787");
     expect(response.items[0]?.collection_runbook.suggested_commands[2]).not.toContain("--pc-base-url http://127.0.0.1:8787");
-    expect(response.items[0]?.collection_runbook.collection_paths.map((pathItem) => pathItem.id)).toEqual([
+    const expectedO5O6CollectionPathIds = [
       "pc_node_npm",
       "upper_computer_python_stdlib",
       "pc_upper_ssh_collector",
-    ]);
+    ] satisfies RealMaterialCollectionPath["id"][];
+    expect(response.items[0]?.collection_runbook.collection_paths.map((pathItem) => pathItem.id)).toEqual(
+      expectedO5O6CollectionPathIds,
+    );
     expect(response.items[0]?.collection_runbook.collection_paths[1]).toMatchObject({
       runtime: "python_stdlib",
       host_role: "upper_computer",
@@ -1809,11 +1813,13 @@ describe("workstation fail-closed API contracts", () => {
     const upperSshPath = response.items[0]?.collection_runbook.collection_paths.find(
       (pathItem) => String(pathItem.id) === "pc_upper_ssh_collector",
     );
+    const typedUpperSshPath: RealMaterialCollectionPath | undefined = upperSshPath;
     expect(upperSshPath).toMatchObject({
       runtime: "node_ssh",
       host_role: "pc_to_upper_computer",
       artifact_write_mode: "writes_output_file",
     });
+    expect(typedUpperSshPath?.runtime).toBe("node_ssh");
     expect(upperSshPath?.command).toContain("--pc-base-url http://<pc-workstation-host>:8787");
     expect(upperSshPath?.command).not.toContain("--pc-base-url http://127.0.0.1:8787");
     expect(upperSshPath?.required_env).toContain(
