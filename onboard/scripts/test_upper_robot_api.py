@@ -152,8 +152,66 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(result["observed_lidar_port_info"]["path"], "/dev/ttyACM0")
         self.assertIn("lidar_serial_port:=/dev/ttyACM0", result["ros2"]["launch"])
         self.assertEqual(result["ros2"]["scan_topic"], "/scan")
+        self.assertEqual(result["scan_proof_latest"]["endpoint"], "/api/radar/scan-proof/latest")
+        self.assertEqual(result["scan_proof_latest"]["artifact"]["status"], "missing")
+        self.assertFalse(result["scan_proof_latest"]["sends_commands"])
         self.assertFalse(result["sends_commands"])
         self.assertFalse(result["robot_control_executed"])
+
+    def test_lidar_scan_proof_latest_readback_is_read_only_and_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            artifact_path = Path(tmpdir) / "lidar.json"
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                lidar_scan_proof_artifact_path=str(artifact_path),
+            )
+
+            missing_status, missing = robot.radar_scan_proof_latest()
+
+            self.assertEqual(missing_status, 404)
+            self.assertEqual(missing["artifact"]["status"], "missing")
+            self.assertIsNone(missing["latest_result"])
+            self.assertFalse(missing["sends_commands"])
+            self.assertFalse(missing["sends_motion_commands"])
+            self.assertFalse(missing["robot_control_executed"])
+            self.assertEqual(FakeSerial.instances, [])
+
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.o1.lidar_scan_proof.v1",
+                        "proof": {
+                            "status": "blocked_or_not_observed",
+                            "scan_once_observed": False,
+                            "raw_packet_once_observed": False,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            loaded_status, loaded = robot.radar_scan_proof_latest()
+            summary = api.summarize_lidar_scan_proof_latest_artifact(str(artifact_path))
+
+            self.assertEqual(loaded_status, 200)
+            self.assertEqual(loaded["artifact"]["status"], "loaded")
+            self.assertEqual(loaded["latest_result"]["schema"], "trashbot.o1.lidar_scan_proof.v1")
+            self.assertFalse(loaded["readback_sends_commands"])
+            self.assertEqual(summary["latest_proof_status"], "blocked_or_not_observed")
+            self.assertFalse(summary["latest_scan_once_observed"])
+            self.assertFalse(summary["sends_commands"])
+            self.assertEqual(FakeSerial.instances, [])
+
+            artifact_path.write_text("{not-json", encoding="utf-8")
+            bad_status, bad = robot.radar_scan_proof_latest()
+
+            self.assertEqual(bad_status, 422)
+            self.assertEqual(bad["artifact"]["status"], "bad_json")
+            self.assertFalse(bad["sends_commands"])
+            self.assertEqual(FakeSerial.instances, [])
 
     def test_base_status_does_not_trigger_feedback_request_or_serial_open(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

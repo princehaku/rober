@@ -8,6 +8,51 @@
 
 ## 2026-06-03 系列
 
+### 2026-06-03 17-18｜O1 LiDAR scan proof artifact｜blocked runtime is now machine-readable
+
+本轮 Micro sprint 继续推进当前最低 Objective 1，目标是把 LiDAR ROS2 `/scan`
+从“下一步人工命令”推进为可复跑、可回放、可分类 blocker 的 proof artifact。Vendor
+来源仍是 `docs/vendor/VENDOR_INDEX.md` 与 `docs/vendor/lidar_pkg_ros2-main/`：
+当前 LiDAR source-of-truth 是 ROS2 Humble snapshot，参考串口波特率 `150000`，
+启动字节 `A5 60`，停止序列 `A5 00 A5 65 A5 65`，包同步头 `0xAA 0x55`，
+目标 topic `/scan`，raw packet topic `/lidar/raw_packet`，vendor udev 目标
+`/dev/lidar`。
+
+Hardware Infra 新增 `onboard/scripts/o1_lidar_scan_proof_collector.py`，输出
+`trashbot.o1.lidar_scan_proof.v1` artifact。默认模式只读 ROS2 setup/install、
+LiDAR 设备候选、8787 `/health` 与 `/api/radar/status`，支持 `--output` 原子写入
+latest artifact；只有显式 `--expect-existing-topics` 且 ROS2 runtime ready 时，才会只读
+观察已经存在的 `/scan`、`/lidar/raw_packet` 和 `/scan` hz。collector 固定
+fail-closed：不启动 LiDAR driver，不发送 `A5 60`，不打开 LiDAR 串口，不读取或写入
+WAVE ROVER `/dev/ttyS5`，不发送 `T=1/T=13/T=130/T=131` 或 `/cmd_vel`。
+
+8787 统一上位机 API 新增只读 `GET /api/radar/scan-proof/latest`，并在
+`GET /api/radar/status` 中暴露 `scan_proof_latest` 摘要。readback 只读取
+`ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH` / `--lidar-scan-proof-artifact-path`
+指向的 JSON artifact；artifact 缺失、坏 JSON 或根节点不是对象时 fail-closed 返回，
+不启动 ROS2、不打开串口、不发送 `A5 60` 或任何底盘命令。
+
+远端 no-motion 检查已经通过 `ssh root@192.168.1.11 -p 37878` 到达上位机：
+host 为 `op-z3-b6.home` / Linux `aarch64`，`/dev/ttyACM0` 存在，
+`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00 -> ../../ttyACM0` 存在，
+`/dev/lidar` 不存在，8787 `/health` ready，8787 `/api/radar/status.scan_status=not_proven`，
+`trashbot-upper-robot-api.service` active。阻塞也被机器分类清楚：
+`/opt/ros/humble/setup.bash` 不存在，`/root/rober/onboard/install/setup.bash` 不存在，
+`ros2` 不可用。远端通过 stdin 运行 collector 并写入
+`/tmp/o1_lidar_scan_proof_latest.json`，artifact `bytes_written=7217`，
+`proof.status=blocked_or_not_observed`，`topic_reads.attempted=false`，
+blockers 为 `ros2_humble_setup_missing`、`rober_install_setup_missing`、
+`ros2_command_unavailable`、`upper_api_scan_not_proven`。
+
+验证：collector 单测 4 OK，upper Robot API 单测 15 OK，相关 Python `py_compile` 通过，
+scoped `git diff --check` 通过。Product closeout 判定：Objective 1 保持约 95.5%，
+不提升百分比。本轮只承认 scan proof collection/readback path ready 和
+`blocked_pending_ros2_runtime` 已机器可读分类；真实 `/scan`、`/lidar/raw_packet`、TF、
+SLAM/Nav2、LiDAR continuous scan、HIL、robot ACK、真实 `/odom`、`/imu/data`、`/battery`、
+manual control、`safe_to_control=true` 和 delivery success 仍为 `not_proven`。下一步必须先补齐
+远端 ROS2 Humble runtime/install，再复跑 collector 并采集
+`ros2 topic echo --once /scan`、`ros2 topic hz /scan`、`/lidar/raw_packet` 与 TF。
+
 ### 2026-06-03 16-17｜O1 feedback status summary｜latest material visible in status
 
 本轮 Micro sprint 继续推进当前最低 Objective 1，目标是让 8787

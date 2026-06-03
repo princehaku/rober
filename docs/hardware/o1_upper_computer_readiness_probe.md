@@ -48,6 +48,26 @@ python3 onboard/scripts/o1_upper_computer_readiness_probe.py --once-json
 python3 onboard/scripts/o1_upper_computer_readiness_probe.py --once-json --output /tmp/o1_upper_computer_readiness.json
 ```
 
+LiDAR `/scan` proof artifact collector：
+
+```bash
+python3 onboard/scripts/o1_lidar_scan_proof_collector.py --once-json --output runtime/lidar_scan_proof_latest.json
+```
+
+远端 no-motion LiDAR proof artifact：
+
+```bash
+ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --output /tmp/o1_lidar_scan_proof_latest.json --timeout-s 3' < onboard/scripts/o1_lidar_scan_proof_collector.py
+```
+
+`o1_lidar_scan_proof_collector.py` 默认只读取环境、`/dev/lidar`、`/dev/ttyACM0`、
+`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`、8787 `GET /health` 和
+`GET /api/radar/status`。它不启动 LiDAR driver，不发送 `A5 60`，不打开
+LiDAR 串口，不发送 WAVE ROVER `T=1/T=13/T=130/T=131`，不发布 `/cmd_vel`。
+只有显式加 `--expect-existing-topics` 时，才会在 ROS2 runtime 已满足的前提下
+只读执行 `ros2 topic echo --once /scan`、`ros2 topic echo --once /lidar/raw_packet`
+和 `ros2 topic hz /scan`。
+
 通过用户提供的上位机 SSH 入口以 stdin 方式执行：
 
 ```bash
@@ -75,6 +95,17 @@ ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json' < onboard/scripts/o1_u
 - `lidar_runtime_readiness.commands_if_ready[]` 只包含 ROS2 LiDAR driver 与 `/scan`、`/lidar/raw_packet` 只读观察命令；它们不发送 WAVE ROVER 底盘运动命令，也不写 `/cmd_vel`
 - `wave_rover_readiness.status=not_ready_for_control`
 - `next_safe_commands[]` 只包含编译、单测和只读 probe 命令
+
+LiDAR scan proof collector 关键字段：
+
+- `schema=trashbot.o1.lidar_scan_proof.v1`
+- `proof.status=blocked_or_not_observed` 或 `scan_and_raw_packet_observed`
+- `proof.driver_started_by_collector=false`
+- `proof.lidar_start_command_sent_by_collector=false`
+- `topic_reads.attempted=false` 表示本次只做 readiness/artifact，不读 ROS2 topic
+- `blockers[].code` 记录 `ros2_humble_setup_missing`、`rober_install_setup_missing`、`ros2_command_unavailable`、`upper_api_scan_not_proven` 等机器可读缺口
+- `blocked_commands_not_sent[]` 明确列出未发送的 `T=1/T=13/T=130/T=131/cmd_vel/A5 60`
+- `safe_to_control=false`、`sends_commands=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`
 
 ## 历史远端观察
 
@@ -135,6 +166,37 @@ ssh: connect to host 192.168.1.11 port 37878: No route to host
 2. 若状态是 `blocked_by_readiness`，按 `blockers[].code` 逐项补齐 ROS2 Humble、pyserial、workspace 或 LiDAR 串口候选。
 3. 只有状态是 `ready_for_no_motion_lidar_smoke` 时，才按 `commands_if_ready[]` 人工尝试 LiDAR driver 和 `/scan` 观察。
 4. 全程不得发送 `T=1`、`T=13`、`T=131`、`/cmd_vel` 或任何底盘运动命令。
+
+`2026.06.03_17-18_o1-lidar-scan-proof-artifact` 远端 no-motion 检查：
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'set -u; ...'
+```
+
+结果摘要：
+
+- SSH 可达，host 为 `op-z3-b6.home`，Linux `aarch64`。
+- `/opt/ros/humble/setup.bash` 不存在。
+- `/root/rober/onboard/install/setup.bash` 不存在。
+- `ros2` 不可用，因此未启动 ROS2 LiDAR driver，也未采集真实 `/scan`。
+- `/dev/ttyACM0` 存在，`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00 -> ../../ttyACM0` 存在，`/dev/lidar` 不存在。
+- 8787 `GET /health` 返回 `status=ready`，`GET /api/radar/status` 返回 `scan_status=not_proven`。
+- `trashbot-upper-robot-api.service` 为 `active`，启动命令仍为 `python3 /root/rober/onboard/scripts/upper_robot_api.py ... --base-port /dev/ttyS5`。
+
+随后通过 stdin 运行：
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s - --once-json --output /tmp/o1_lidar_scan_proof_latest.json --timeout-s 3' < onboard/scripts/o1_lidar_scan_proof_collector.py
+```
+
+结果摘要：
+
+- artifact 写入 `/tmp/o1_lidar_scan_proof_latest.json`，`bytes_written=7217`，`method=atomic_replace`。
+- `proof.status=blocked_or_not_observed`。
+- `proof.scan_once_observed=false`、`proof.raw_packet_once_observed=false`。
+- `blockers=[ros2_humble_setup_missing, rober_install_setup_missing, ros2_command_unavailable, upper_api_scan_not_proven]`。
+- `topic_reads.attempted=false`。
+- `safe_to_control=false`、`sends_commands=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`。
 
 ## Not Proven
 

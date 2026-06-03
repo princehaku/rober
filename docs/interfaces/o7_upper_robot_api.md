@@ -67,6 +67,7 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 | `POST` | `/api/camera/offer` | 代理 8088 `/offer`，只用于 recvonly WebRTC 视频 |
 | `POST` | `/api/camera/peers/{peer_id}/close` | 代理 8088 peer cleanup |
 | `GET` | `/api/radar/status` | 雷达设备和 `/scan` 证明状态 |
+| `GET` | `/api/radar/scan-proof/latest` | 只读回放最近一次 LiDAR `/scan` proof artifact；不启动 ROS2、不打开串口、不发送 `A5 60` |
 | `GET` | `/api/base/status` | `/dev/ttyS5`、pyserial、反馈/ACK 状态；只读摘要 latest feedback samples artifact |
 | `POST` | `/api/base/stop` | 发送 `{"T":1,"L":0,"R":0}` 停车 |
 | `POST` | `/api/base/feedback-request` | 发送一次非运动 `{"T":130}` 反馈请求并短窗口读取 JSON |
@@ -149,6 +150,27 @@ ros2 launch ros2_trashbot_bringup learn.launch.py \
 `ros2 topic echo --once /scan`、`ros2 topic hz /scan` 和
 `ros2 topic echo --once /lidar/raw_packet` 后，才能把雷达状态从设备已识别提升为
 `/scan` 连续输出已证明。
+
+### LiDAR scan proof artifact readback
+
+`GET /api/radar/scan-proof/latest` 读取
+`ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH` / `--lidar-scan-proof-artifact-path`
+指向的 JSON，默认 `runtime/lidar_scan_proof_latest.json`。该 artifact 应由
+`onboard/scripts/o1_lidar_scan_proof_collector.py` 生成。
+
+readback 边界：
+
+- 只做 `Path.read_text()` 和 `json.loads()`。
+- artifact 缺失返回 `404`，坏 JSON 返回 `422`。
+- 不启动 ROS2 LiDAR driver。
+- 不打开 `/dev/ttyACM0`、`/dev/lidar` 或 `/dev/ttyS5`。
+- 不发送 `A5 60`、`T=1/T=13/T=130/T=131` 或 `/cmd_vel`。
+- 固定 `safe_to_control=false`、`sends_commands=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`。
+
+`GET /api/radar/status` 的 `scan_proof_latest` 只暴露 latest proof artifact 摘要，
+包括 `artifact.status`、`latest_proof_status`、`latest_scan_once_observed` 和
+`latest_raw_packet_once_observed`。该摘要只代表最近 artifact 的读取状态，不证明当前
+ROS2 `/scan` 正在连续输出。
 
 ## PC 配置
 

@@ -29,6 +29,7 @@ DEFAULT_FEEDBACK_READ_WINDOW_S = 1.2
 DEFAULT_FEEDBACK_SAMPLE_COUNT = 3
 DEFAULT_FEEDBACK_SAMPLE_INTERVAL_S = 0.2
 DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.json"
+DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
 DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS = 15 * 60 * 1000
 MAX_FEEDBACK_READ_TIMEOUT_S = 2.0
 MAX_FEEDBACK_READ_WINDOW_S = 5.0
@@ -49,6 +50,7 @@ ROUTE_PATHS = {
     "camera_offer": "/api/camera/offer",
     "camera_peer_close": "/api/camera/peers/{peer_id}/close",
     "radar_status": "/api/radar/status",
+    "radar_scan_proof_latest": "/api/radar/scan-proof/latest",
     "base_status": "/api/base/status",
     "base_feedback_request": "/api/base/feedback-request",
     "base_feedback_samples": "/api/base/feedback-samples",
@@ -61,6 +63,15 @@ VENDOR_SOURCES = [
     "docs/vendor/VENDOR_INDEX.md",
     "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+]
+
+LIDAR_VENDOR_SOURCES = [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/lidar_pkg_ros2-main/README.md",
+    "docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp",
+    "docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml",
+    "docs/vendor/lidar_pkg_ros2-main/launch/lidar.launch.py",
+    "docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules",
 ]
 
 
@@ -220,6 +231,80 @@ def artifact_path_info(path: str) -> dict[str, Any]:
         "configured_by": "ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH or --feedback-samples-artifact-path",
         "format": "json",
         "schema": f"{SCHEMA}.base_feedback_samples_result",
+    }
+
+
+def lidar_scan_proof_artifact_info(path: str) -> dict[str, Any]:
+    """LiDAR `/scan` proof artifact 只读入口，不代表当前已经证明 `/scan`。"""
+    return {
+        "path": path,
+        "configured_by": "ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH or --lidar-scan-proof-artifact-path",
+        "format": "json",
+        "schema": "trashbot.o1.lidar_scan_proof.v1",
+    }
+
+
+def read_lidar_scan_proof_latest_artifact(path: str) -> tuple[int, dict[str, Any]]:
+    """只读 LiDAR proof artifact，不启动 driver、不打开串口、不发送 A5 60。"""
+    artifact = lidar_scan_proof_artifact_info(path)
+    payload: dict[str, Any] = {
+        "schema": f"{SCHEMA}.lidar_scan_proof_latest_result",
+        "generated_at_ms": now_ms(),
+        "vendor_sources": LIDAR_VENDOR_SOURCES,
+        "artifact": artifact,
+        "latest_result": None,
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+    }
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        artifact.update({"ok": False, "status": "missing", "error": {"type": "FileNotFoundError", "message": "latest LiDAR scan proof artifact is missing"}})
+        return 404, payload
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        return 500, payload
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        artifact.update({"ok": False, "status": "bad_json", "error": compact_error(exc)})
+        return 422, payload
+    if not isinstance(parsed, dict):
+        artifact.update({"ok": False, "status": "json_not_object", "error": {"type": "ValueError", "message": "latest LiDAR artifact JSON root is not an object"}})
+        return 422, payload
+    artifact.update({"ok": True, "status": "loaded", "bytes_read": len(raw.encode("utf-8"))})
+    payload["latest_result"] = parsed
+    return 200, payload
+
+
+def summarize_lidar_scan_proof_latest_artifact(path: str) -> dict[str, Any]:
+    """status 里只做 artifact readback 摘要，避免状态页触发 ROS2 或硬件。"""
+    http_status, payload = read_lidar_scan_proof_latest_artifact(path)
+    latest_result = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else None
+    proof = latest_result.get("proof", {}) if isinstance(latest_result, dict) else {}
+    return {
+        "schema": f"{SCHEMA}.lidar_scan_proof_latest_summary",
+        "generated_at_ms": now_ms(),
+        "endpoint": ROUTE_PATHS["radar_scan_proof_latest"],
+        "http_status": http_status,
+        "artifact": payload["artifact"],
+        "latest_proof_status": proof.get("status") if isinstance(proof, dict) else None,
+        "latest_scan_once_observed": proof.get("scan_once_observed") if isinstance(proof, dict) else None,
+        "latest_raw_packet_once_observed": proof.get("raw_packet_once_observed") if isinstance(proof, dict) else None,
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
     }
 
 
@@ -746,12 +831,14 @@ class UpperRobotApi:
         base_baudrate: int,
         max_speed: float,
         feedback_samples_artifact_path: str = DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH,
+        lidar_scan_proof_artifact_path: str = DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH,
     ) -> None:
         self.camera_base_url = camera_base_url.rstrip("/")
         self.base_port = base_port
         self.base_baudrate = base_baudrate
         self.max_speed = max_speed
         self.feedback_samples_artifact_path = feedback_samples_artifact_path
+        self.lidar_scan_proof_artifact_path = lidar_scan_proof_artifact_path
 
     def base_status(self) -> dict[str, Any]:
         """底盘状态只证明写入口配置和设备存在，不伪造 T=1001 ACK。"""
@@ -810,6 +897,7 @@ class UpperRobotApi:
                 "raw_packet_topic": "/lidar/raw_packet",
                 "frame_id": "laser_frame",
             },
+            "scan_proof_latest": summarize_lidar_scan_proof_latest_artifact(self.lidar_scan_proof_artifact_path),
             "blocked_reasons": [
                 *(["ttyACM0_lidar_not_present"] if not lidar_observed else []),
                 "ros2_lidar_scan_not_connected",
@@ -869,6 +957,7 @@ class UpperRobotApi:
             "base": self.base_status(),
             "routes": dict(ROUTE_PATHS),
             "base_feedback_samples_latest_artifact": artifact_path_info(self.feedback_samples_artifact_path),
+            "lidar_scan_proof_latest_artifact": lidar_scan_proof_artifact_info(self.lidar_scan_proof_artifact_path),
             "sends_commands": False,
             **proof_flags(),
         }
@@ -947,6 +1036,10 @@ class UpperRobotApi:
     def base_feedback_samples_latest(self) -> tuple[int, dict[str, Any]]:
         """latest 回放只读取 artifact，不能打开串口或发送任何 feedback request。"""
         return read_feedback_samples_latest_artifact(self.feedback_samples_artifact_path)
+
+    def radar_scan_proof_latest(self) -> tuple[int, dict[str, Any]]:
+        """LiDAR `/scan` proof 回放只读取 artifact，不能启动 driver 或发送命令。"""
+        return read_lidar_scan_proof_latest_artifact(self.lidar_scan_proof_artifact_path)
 
     async def manual_control(self, body: dict[str, Any]) -> dict[str, Any]:
         """低速点动控制：发送方向命令后等待短窗口，再无条件发送停车命令。"""
@@ -1031,6 +1124,10 @@ def parse_args() -> argparse.Namespace:
         "--feedback-samples-artifact-path",
         default=os.getenv("ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH", DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH),
     )
+    parser.add_argument(
+        "--lidar-scan-proof-artifact-path",
+        default=os.getenv("ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH", DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH),
+    )
     return parser.parse_args()
 
 
@@ -1044,6 +1141,7 @@ async def run_server(args: argparse.Namespace) -> None:
         base_baudrate=args.base_baudrate,
         max_speed=args.max_speed,
         feedback_samples_artifact_path=args.feedback_samples_artifact_path,
+        lidar_scan_proof_artifact_path=args.lidar_scan_proof_artifact_path,
     )
     app = create_app(api)
     runner = web.AppRunner(app)
@@ -1092,6 +1190,10 @@ def create_app(api: UpperRobotApi) -> Any:
     async def radar_status(_: web.Request) -> Any:
         return json_response(api.radar_status())
 
+    async def radar_scan_proof_latest(_: web.Request) -> Any:
+        http_status, payload = api.radar_scan_proof_latest()
+        return json_response(payload, status=http_status)
+
     async def base_status(_: web.Request) -> Any:
         return json_response(api.base_status())
 
@@ -1125,6 +1227,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["camera_offer"], camera_offer)
     app.router.add_post(ROUTE_PATHS["camera_peer_close"], camera_peer_close)
     app.router.add_get(ROUTE_PATHS["radar_status"], radar_status)
+    app.router.add_get(ROUTE_PATHS["radar_scan_proof_latest"], radar_scan_proof_latest)
     app.router.add_get(ROUTE_PATHS["base_status"], base_status)
     app.router.add_post(ROUTE_PATHS["base_feedback_request"], base_feedback_request)
     app.router.add_post(ROUTE_PATHS["base_feedback_samples"], base_feedback_samples)
