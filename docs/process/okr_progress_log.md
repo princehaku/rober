@@ -5410,6 +5410,30 @@ Task B Robot 只补 compatibility fence 和 `docs/interfaces/ros_contracts.md`�
 
 ## 录入规则与边界
 
+### 2026-06-03 22-23｜O1 ROS2 runtime bootstrap｜可执行 Humble arm64 remediation
+
+本轮 micro sprint 继续优先 O1，按最新 next action 避免 artifact/readback-only。
+Hardware owner 新增两个可执行脚本：`o1_ros2_humble_arm64_bootstrap.sh` 负责在
+Ubuntu 22.04 arm64 上安装 ROS2 Humble runtime 并重建 `/root/rober/onboard`；
+`o1_lidar_ros2_scan_smoke.sh` 负责 runtime/build 就绪后只启动 LiDAR driver
+和静态 TF，采集 `/scan` once/hz、`/lidar/raw_packet` once 与 TF artifact。
+readiness probe 的 remediation 现在直接指向这两个脚本。
+
+远端证据：`ssh root@192.168.1.11 -p 37878` 只读检查确认 host 为 Ubuntu 22.04.5
+LTS `aarch64`，`/dev/ttyACM0` 与 STC by-id 存在，pyserial 可用，Docker server
+为 arm64 但仅观察到 amd64 `osrf/ros:humble-desktop`，当前 apt source 没有 ROS2
+source，`/opt/ros/humble/setup.bash`、`/root/rober/onboard/install/setup.bash`
+和检查时远端旧源码 `lidar_driver.py` 均缺失。本轮随后只同步当前 `onboard/src`
+和 `onboard/scripts` 到远端，没有运行 apt install、colcon build 或启动 ROS2 driver。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 95.5%，推进到可执行 runtime remediation | 新脚本把下一步变成明确命令：先 bootstrap ROS2 Humble arm64 runtime/build，再跑 LiDAR-only smoke 采 `/scan`、raw packet、TF。真实 `/scan`、`/lidar/raw_packet` topic、TF、SLAM/Nav2、HIL、ACK、`safe_to_control=true` 和 delivery success 仍未证明。 |
+
+本轮安全边界：未调用 `/api/base/manual`，未写 `/dev/ttyS5`，未发送 WAVE ROVER
+`T=1/T=13/T=130/T=131`，未发布 `/cmd_vel`，未启动 ROS2 LiDAR driver。新增 smoke
+脚本允许未来在 LiDAR 串口发送 `A5 60`/stop bytes，但本轮没有运行该脚本。
+
 ### 2026-06-03 21-22｜O1 LiDAR runtime bootstrap｜上位机 ROS2 blocker 精准分类
 
 本轮 hourly OKR iteration 继续优先 O1，避免重复 artifact/readback-only 工作。Hardware owner 增强 `o1_upper_computer_readiness_probe.py`：新增 `lidar_ros2_bootstrap` 与 `ros2_runtime_remediation_plan`，把 LiDAR ROS2 `/scan` 前置 blocker 拆成 `runtime_missing`、`repo_missing`、`install_missing`、`driver_missing`、`lidar_device_missing`、`docker_arm64_unavailable`、`topics_not_running` 和 `ready_for_scan_bootstrap`。新增字段固定 fail-closed，不打开串口、不启动 driver、不发送 `A5 60`、不调用 `/api/base/manual`、不发送 WAVE ROVER `T=1/T=13/T=130/T=131`、不发布 `/cmd_vel`。

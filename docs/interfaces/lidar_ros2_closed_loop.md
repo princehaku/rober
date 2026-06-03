@@ -103,6 +103,14 @@ base 镜像超时。
   LiDAR driver；probe 本身仍固定 `opens_serial_devices=false`、`starts_ros2_driver=false`、
   `publishes_cmd_vel=false`、`calls_base_manual=false`，且不发送 WAVE ROVER
   `T=1/T=13/T=130/T=131`。
+- `onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh` 是当前上位机 runtime/build
+  remediation 入口：只安装 ROS2 Humble arm64 runtime 并构建 onboard，不启动
+  driver、不打开串口、不写底盘 UART。
+- `onboard/scripts/o1_lidar_ros2_scan_smoke.sh` 是 runtime 就绪后的 LiDAR-only
+  证据入口：只允许 LiDAR 串口，显式拒绝 `/dev/ttyS5`，采集 `/scan` once/hz、
+  `/lidar/raw_packet` once 和 `tf2_echo base_link laser_frame`。该脚本会让 LiDAR
+  driver 向 LiDAR 串口发送 `A5 60` 和退出停止序列，但不发送任何 WAVE ROVER
+  底盘命令，不发布 `/cmd_vel`，不调用 `/api/base/manual`。
 
 ## Verification Commands
 

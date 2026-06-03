@@ -235,3 +235,38 @@ symlink、`/scan` topic。WAVE ROVER 底盘命令来源仍是
 `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py` 与
 `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`，本 probe 继续
 不发送 `T=1/T=13/T=130/T=131`。
+
+## 2026-06-03 22-23 runtime remediation 更新
+
+本轮新增两个可执行脚本，把 blocker 从“需要 ROS2 runtime”推进到可复验动作：
+
+- `onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh`
+  - 目标：在 Ubuntu 22.04 arm64 上安装 ROS2 Humble ros-base、tf2、colcon、
+    pyserial，并重建 `/root/rober/onboard`。
+  - 安全边界：不打开串口、不写 `/dev/ttyS5`、不调用 8787 控制 API、不启动
+    LiDAR driver。
+- `onboard/scripts/o1_lidar_ros2_scan_smoke.sh`
+  - 目标：runtime/build 就绪后，只启动 `ros2_trashbot_hardware lidar_driver`
+    与 `base_link -> laser_frame` 静态 TF，采集 `/scan` once/hz、
+    `/lidar/raw_packet` once 和 `tf2_echo`。
+  - 安全边界：只允许 `/dev/ttyACM*`、`/dev/lidar` 或 STC by-id 这类
+    LiDAR-looking 串口路径，显式拒绝 `/dev/ttyS5`；不接受泛化
+    `/dev/serial/by-path/*`，不发布 `/cmd_vel`，不调用 `/api/base/manual`，
+    不发送 WAVE ROVER `T` 命令。
+
+本轮远端证据来自 `ssh root@192.168.1.11 -p 37878` 的只读/runtime 检查：
+
+- OS/arch：Ubuntu 22.04.5 LTS，`aarch64`。
+- 设备：`/dev/ttyACM0` 存在，`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`
+  指向 `../../ttyACM0`，`/dev/lidar` 不存在。
+- runtime：`/opt/ros/humble/setup.bash` 不存在，`ros2` 不可用，
+  `/root/rober/onboard/install/setup.bash` 不存在。
+- repo：`/root/rober/onboard` 存在；检查时远端旧源码缺
+  `ros2_trashbot_hardware/lidar_driver.py`，随后本轮只同步当前
+  `onboard/src` 与 `onboard/scripts` 到远端，没有运行 apt install 或 colcon。
+- apt/docker：系统有 `apt-get`、`curl`、`gpg`；当前 apt source 没有 ROS2 source；
+  Docker daemon 是 `arm64`，本地仅观察到 `amd64` 的 `osrf/ros:humble-desktop`。
+
+因此本轮状态仍为 `blocked_pending_ros2_runtime_and_build`：已有可执行 bootstrap
+和 scan smoke 入口，但真实 `/scan`、`/lidar/raw_packet`、TF、SLAM/Nav2、HIL、
+ACK、`safe_to_control=true` 与 delivery success 均未证明。

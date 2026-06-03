@@ -22,6 +22,8 @@ ROS_HUMBLE_SETUP = "/opt/ros/humble/setup.bash"
 ROBER_REPO_ROOT = "/root/rober"
 ROBER_ONBOARD_ROOT = "/root/rober/onboard"
 ROBER_INSTALL_SETUP = "/root/rober/onboard/install/setup.bash"
+O1_BOOTSTRAP_SCRIPT = "onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh"
+O1_SCAN_SMOKE_SCRIPT = "onboard/scripts/o1_lidar_ros2_scan_smoke.sh"
 # 串口候选只允许来自这些 glob，避免把网卡、蓝牙或其他敏感设备暴露进 artifact。
 SERIAL_CANDIDATE_PATTERNS = (
     "/dev/ttyUSB*",
@@ -281,12 +283,20 @@ def build_lidar_ros2_bootstrap_readiness(
         ),
     ]
     remediation_plan = {
-        "runtime_missing": f"Install/source ROS2 Humble so {ROS_HUMBLE_SETUP} and ros2 CLI are both available.",
+        "runtime_missing": (
+            f"Run {O1_BOOTSTRAP_SCRIPT} on the upper computer or install/source ROS2 Humble so "
+            f"{ROS_HUMBLE_SETUP} and ros2 CLI are both available."
+        ),
         "repo_missing": f"Sync the rober checkout with onboard/ to {ROBER_REPO_ROOT} or run from a valid checkout.",
-        "install_missing": f"Build onboard workspace: cd {ROBER_ONBOARD_ROOT} && source {ROS_HUMBLE_SETUP} && colcon build --symlink-install.",
+        "install_missing": (
+            f"Run {O1_BOOTSTRAP_SCRIPT} after source sync, or build onboard workspace: cd {ROBER_ONBOARD_ROOT} "
+            f"&& source {ROS_HUMBLE_SETUP} && colcon build --symlink-install."
+        ),
         "driver_missing": "Restore ros2_trashbot_hardware/lidar_driver.py and the setup.py lidar_driver console_scripts entry, then rebuild install.",
         "lidar_device_missing": "Attach/install STC LiDAR udev rule so /dev/lidar, STC by-id, or ttyACM candidate is visible.",
-        "ready_for_scan_bootstrap": "Run only read-only topic proof first; start driver manually only if topics are absent and operator intends LiDAR-only bootstrap.",
+        "ready_for_scan_bootstrap": (
+            f"Run {O1_SCAN_SMOKE_SCRIPT} for LiDAR-only /scan proof; it starts only the LiDAR driver and static TF."
+        ),
     }
     return {
         "status": status,
@@ -364,21 +374,17 @@ def build_ros2_runtime_remediation_plan(
         next_command = "rsync/scp the rober checkout to /root/rober, then rerun this readiness probe"
     elif any(item["code"] == "runtime_missing" for item in classifications):
         next_action = "install_or_provide_ros2_humble_runtime"
-        next_command = "install ROS2 Humble on the aarch64 host or pre-load a usable arm64 Humble Docker image"
+        next_command = f"bash {ROBER_ONBOARD_ROOT}/scripts/o1_ros2_humble_arm64_bootstrap.sh"
     elif any(item["code"] == "install_missing" for item in classifications):
         next_action = "build_current_onboard_workspace"
-        next_command = f"cd {ROBER_ONBOARD_ROOT} && source {ROS_HUMBLE_SETUP} && colcon build --symlink-install"
+        next_command = f"bash {ROBER_ONBOARD_ROOT}/scripts/o1_ros2_humble_arm64_bootstrap.sh --skip-apt-install"
     elif any(item["code"] == "docker_arm64_unavailable" for item in classifications):
         next_action = "prepare_arm64_docker_runtime"
         next_command = "load/build ros-rbs-humble:dev for arm64, then rerun readiness before /scan proof"
     elif any(item["code"] == "topics_not_running" for item in classifications):
         next_action = "start_lidar_driver_no_motion"
         port = lidar_candidates[0] if lidar_candidates else "<lidar_serial_port>"
-        next_command = (
-            f"cd {ROBER_ONBOARD_ROOT} && source {ROS_HUMBLE_SETUP} && source install/setup.bash && "
-            "ros2 run ros2_trashbot_hardware lidar_driver --ros-args "
-            f"-p serial_port:={port} -p serial_baudrate:=150000 -p frame_id:=laser_frame -p publish_raw_packets:=true"
-        )
+        next_command = f"bash {ROBER_ONBOARD_ROOT}/scripts/o1_lidar_ros2_scan_smoke.sh --serial-port {port}"
     else:
         next_action = "collect_scan_proof_read_only_topics"
         next_command = (

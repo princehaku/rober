@@ -183,6 +183,57 @@ class O1UpperComputerReadinessProbeTest(unittest.TestCase):
         self.assertFalse(bootstrap["sends_motion_commands"])
         self.assertFalse(bootstrap["starts_ros2_driver"])
 
+    def test_runtime_remediation_points_to_executable_bootstrap_scripts(self) -> None:
+        temp, root = make_repo(install=False)
+        self.addCleanup(temp.cleanup)
+        runner = CommandStub()
+
+        plan = probe.build_ros2_runtime_remediation_plan(
+            repo_root=root,
+            onboard_path=root / "onboard",
+            humble_setup_exists=False,
+            install_setup_exists=False,
+            lidar_candidates=["/dev/ttyACM0"],
+            command_runner=runner,
+        )
+
+        self.assertEqual(plan["next_action"], "install_or_provide_ros2_humble_runtime")
+        self.assertIn("o1_ros2_humble_arm64_bootstrap.sh", plan["next_command"])
+        forbidden = ("/api/base/manual", "/cmd_vel", '"T":1', '"T":13', '"T":130', '"T":131', "/dev/ttyS5")
+        for item in forbidden:
+            self.assertNotIn(item, plan["next_command"])
+
+    def test_topics_not_running_points_to_lidar_smoke_script(self) -> None:
+        temp, root = make_repo(install=True)
+        self.addCleanup(temp.cleanup)
+        runner = CommandStub(
+            {
+                "docker version": {"returncode": 0, "ok": True, "stdout_preview": "arm64\n"},
+                "command -v ros2": {"returncode": 0, "ok": True, "stdout_preview": "/opt/ros/humble/bin/ros2\n"},
+                "ros2 topic list": {"returncode": 0, "ok": True, "stdout_preview": "/parameter_events\n/rosout\n"},
+            }
+        )
+
+        plan = probe.build_ros2_runtime_remediation_plan(
+            repo_root=root,
+            onboard_path=root / "onboard",
+            humble_setup_exists=True,
+            install_setup_exists=True,
+            lidar_candidates=["/dev/ttyACM0"],
+            command_runner=runner,
+        )
+
+        self.assertEqual(plan["next_action"], "start_lidar_driver_no_motion")
+        self.assertIn("o1_lidar_ros2_scan_smoke.sh", plan["next_command"])
+        self.assertIn("--serial-port /dev/ttyACM0", plan["next_command"])
+
+    def test_lidar_smoke_script_rejects_base_uart_and_broad_by_path(self) -> None:
+        script = (SCRIPT_DIR / "o1_lidar_ros2_scan_smoke.sh").read_text(encoding="utf-8")
+
+        self.assertIn('if [[ "$SERIAL_PORT" == "/dev/ttyS5" ]]', script)
+        self.assertIn("/dev/serial/by-id/*STC*", script)
+        self.assertNotIn("/dev/serial/by-path/*)", script)
+
 
 if __name__ == "__main__":
     unittest.main()
