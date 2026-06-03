@@ -226,6 +226,14 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 
 `onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py` 当前只通过 8787 上位 API 采集短 pulse 验收材料，不新增真实串口直连，不 import/use pyserial，不发送 `T=130`、`T=131` 或 ROS `/cmd_vel`。
 
+2026-06-03 08-09 新增 operator report intake。runner 支持 `--operator-report-json PATH_OR_-`，把现场人工观察 JSON 合并进同一 artifact 的 `operator_report` 字段，并输出机器可读 `operator_report_status`：
+
+- `missing`：未提供报告。
+- `ready_for_review`：报告包含 `operator_present`、`physical_clearance_confirmed`、`emergency_stop_ready`、`observed_motion`、`observed_stop`、`operator_notes`、`reported_at`，且前三个现场安全字段均为 true。
+- `unsafe_or_incomplete`：报告缺字段、布尔值不可解析，或 operator/净空/急停路径任一关键字段为 false。
+
+operator report 只代表人工观察材料，不能让 dry-run 变成 motion，不能把 `safe_to_control` 改成 true，也不能替代 `T=1001`、ACK、ROS `/odom`、`/imu/data`、`/battery` 或真实 HIL packet。执行模式如果缺少完整 operator report，会在 `operator_report_missing_or_incomplete` 阶段 fail-closed，不会 POST `/api/base/manual`。
+
 执行模式的证据顺序固定为：
 
 1. `GET /api/status`：读取 camera/radar/base 摘要，若失败则 `blocked_before_motion`，不 POST manual。
@@ -237,10 +245,11 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 
 - `acceptance_verdict.status=dry_run_only`：未授权运动，仅采集 status。
 - `acceptance_verdict.status=blocked_before_motion`：初始 status 或参数校验失败，运动 POST 被阻断。
+- `acceptance_verdict.failed_step=operator_report_missing_or_incomplete`：执行模式缺少完整人工报告，运动 POST 被阻断。
 - `acceptance_verdict.status=motion_posted_without_ack`：manual 已尝试，但缺 `T=1001`/ACK，或 manual/stop/post-status 任一步失败。
 - `acceptance_verdict.status=motion_posted_with_t1001`：manual/stop 后的 post-status 或 manual response 出现 `T=1001`/ACK 线索；仍不是 HIL pass。
 
-所有 verdict 都固定 `safe_to_control=false`、`hil_pass=false`。缺 `T=1001`/ACK 时不得写成 `safe_to_control=true`；出现 `T=1001`/ACK 时也只能作为 HIL packet 前置材料，仍需同源 `feedback_T1001.log`、ROS `/odom`、`/imu/data`、`/battery` 和 operator report。
+所有 verdict 都固定 `safe_to_control=false`、`hil_pass=false`。缺 `T=1001`/ACK 时不得写成 `safe_to_control=true`；出现 `T=1001`/ACK 或完整 operator report 时也只能作为 HIL packet 前置材料，仍需同源 `feedback_T1001.log`、ROS `/odom`、`/imu/data`、`/battery` 和 operator HIL report。
 
 `2026.06.01_20-21_o1-t130-feedback-observation` 继续使用同一 SSH 入口尝试一次显式 `--request-base-feedback` 采集：
 

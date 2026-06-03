@@ -236,6 +236,8 @@ python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py --dry-run --once-json
 
 2026-06-03 07-08 进一步把 runner 的现场短 pulse 证据合同补强为 `post-status + acceptance_verdict`。执行模式只有在 `--execute-motion --confirm-physical-clearance` 且非 `--dry-run` 时才会调用 8787 `/api/base/manual`；manual 与额外 `/api/base/stop` 后必须再采一次 `GET /api/status`，输出 `post_status_request`、`post_status_summary`、`post_t1001_feedback_status`。机器收口字段 `acceptance_verdict.status` 只允许写成 `dry_run_only`、`blocked_before_motion`、`motion_posted_without_ack`、`motion_posted_with_t1001` 等保守状态；初始 status、manual、stop、post-status 任一步失败都必须 `fail_closed=true` 并保留 `failed_step`。
 
+2026-06-03 08-09 新增 operator report intake，作为 HIL 前置材料而不是 HIL pass。runner 可通过 `--operator-report-json PATH_OR_-` 读取对象 JSON，并把 `operator_present`、`physical_clearance_confirmed`、`emergency_stop_ready`、`observed_motion`、`observed_stop`、`operator_notes`、`reported_at` 归一化到 artifact 的 `operator_report`。`operator_report_status` 只允许 `missing`、`ready_for_review`、`unsafe_or_incomplete`。执行模式缺少完整 report 时必须 fail-closed 到 `failed_step=operator_report_missing_or_incomplete`，不允许把报告缺口下的 HTTP 200 或历史 `T=1001` 误写成 HIL；dry-run 即使携带完整 report 也仍然不发送运动命令。
+
 该 06-07 材料只能把状态提升为 `remote_8787_read_only_observed_not_hil`，不能提升为 `hil_pass`。原因是本轮没有现场物理净空确认、没有 POST `/api/base/manual`、没有 POST `/api/base/stop`、没有打开 `/dev/ttyS5`、没有发送任何 WAVE ROVER JSON 运动命令、没有采集 `T=1001` 原始反馈，也没有 ROS `/odom`、`/imu/data`、`/battery` 同源材料。
 
 执行模式即使未来由现场 operator 明确使用：
@@ -245,6 +247,7 @@ python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
   --base-url http://192.168.1.11:8787 \
   --execute-motion \
   --confirm-physical-clearance \
+  --operator-report-json /safe/runtime/operator_report.json \
   --speed 0.05 \
   --duration-ms 250 \
   --once-json
@@ -253,9 +256,10 @@ python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
 也仍然只是 `api_manual_short_pulse_with_extra_stop_not_hil`，原因是：
 
 - 它只通过 8787 `/api/base/manual`、`/api/base/stop` 和后置 `GET /api/status`，不采集串口原始 `T=1001`。
+- 它只合并 operator report 的人工观察字段，不生成真实串口、ROS topic 或急停演练证据。
 - 它可以证明 manual response、auto-stop、额外 stop evidence、post-status 和 `acceptance_verdict` 的 API 材料形态。
 - 没有 `T=1001` 或 ACK 时，`acceptance_verdict.status` 必须保持 `motion_posted_without_ack` 或更保守状态，`safe_to_control=false`。
 - 即使 post-status 出现 `T=1001`/ACK，`acceptance_verdict.status=motion_posted_with_t1001` 也只能作为 HIL packet 前置材料，不等于 HIL pass。
 - 它不能替代 O1 90% 要求的同源 HIL packet、至少两帧真实 `T=1001`、ROS `/imu/data`、`/battery`、`/odom` 和 operator HIL report。
 
-因此本 runner 当前状态只能记录为 `ready_for_real_short_pulse_collection_not_hil`。本轮没有远端运动 POST，没有真实 WAVE ROVER JSON 运动写入，没有 HIL pass。
+因此本 runner 当前状态只能记录为 `ready_for_real_short_pulse_collection_not_hil` 或 `operator_report_intake_ready_not_hil`。本轮没有远端运动 POST，没有真实 WAVE ROVER JSON 运动写入，没有 HIL pass。

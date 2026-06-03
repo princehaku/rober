@@ -83,6 +83,10 @@ VENDOR_SOURCES = (
 # 安全边界说明：执行后必须再读一次 status，避免只看 manual 响应误判 ACK。
 # 安全边界说明：acceptance_verdict 是机器合同，不让下游从 prose 猜结论。
 # 安全边界说明：status/manual/stop 任一步失败都必须 fail-closed。
+# 安全边界说明：operator report 只是人工观察材料，不能提升控制授权。
+# 安全边界说明：operator report 缺失或不完整时，执行模式必须 fail-closed。
+# 安全边界说明：dry-run 可携带 operator report，但仍然不能发送任何命令。
+# 安全边界说明：operator report 不改变 safe_to_control，HIL 仍需 ACK/T=1001。
 
 # 默认模式必须显式列出禁止动作，避免 dry-run artifact 被误读成可控。
 BLOCKED_COMMANDS_NOT_SENT = (
@@ -91,6 +95,28 @@ BLOCKED_COMMANDS_NOT_SENT = (
     {"command": {"T": 130}, "reason": "this runner observes API status and does not request serial feedback"},
     {"command": {"T": 131}, "reason": "feedback flow state changes are outside acceptance runner scope"},
     {"command": "cmd_vel", "reason": "runner uses 8787 API guardrail, never ROS cmd_vel directly"},
+)
+
+OPERATOR_REPORT_FIELDS = (
+    "operator_present",
+    "physical_clearance_confirmed",
+    "emergency_stop_ready",
+    "observed_motion",
+    "observed_stop",
+    "operator_notes",
+    "reported_at",
+)
+OPERATOR_REPORT_REQUIRED_BOOL_FIELDS = (
+    "operator_present",
+    "physical_clearance_confirmed",
+    "emergency_stop_ready",
+    "observed_motion",
+    "observed_stop",
+)
+OPERATOR_REPORT_CRITICAL_TRUE_FIELDS = (
+    "operator_present",
+    "physical_clearance_confirmed",
+    "emergency_stop_ready",
 )
 
 
@@ -112,6 +138,70 @@ def clamp_int(value: int, minimum: int, maximum: int) -> int:
 def compact_error(error: BaseException) -> dict[str, str]:
     """错误只输出类型和短文本，避免把现场环境噪声写进 artifact。"""
     return {"type": type(error).__name__, "message": str(error)[:300]}
+
+
+def coerce_bool(value: Any) -> bool | None:
+    """人工报告可能来自表单或手写 JSON，这里只做保守布尔归一化。"""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "y", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "n", "off"}:
+            return False
+    return None
+
+
+def read_operator_report(path: str) -> dict[str, Any]:
+    """读取 operator report；'-' 支持 SSH/stdin 管线现场补材料。"""
+    text = Path(path).read_text(encoding="utf-8") if path != "-" else os.sys.stdin.read()
+    parsed = json.loads(text)
+    if not isinstance(parsed, dict):
+        raise ValueError("operator_report_json_must_be_object")
+    return parsed
+
+
+def normalize_operator_report(report: dict[str, Any] | None) -> tuple[dict[str, Any] | None, str]:
+    """把人工观察报告压成稳定字段，并给出机器可读完整性状态。"""
+    if report is None:
+        return None, "missing"
+    normalized: dict[str, Any] = {}
+    missing_or_invalid: list[str] = []
+    unsafe_fields: list[str] = []
+    for field in OPERATOR_REPORT_REQUIRED_BOOL_FIELDS:
+        value = coerce_bool(report.get(field))
+        normalized[field] = value
+        if value is None:
+            missing_or_invalid.append(field)
+    notes = report.get("operator_notes")
+    normalized["operator_notes"] = "" if notes is None else str(notes)
+    reported_at = report.get("reported_at")
+    normalized["reported_at"] = str(reported_at).strip() if reported_at else None
+    for field in OPERATOR_REPORT_CRITICAL_TRUE_FIELDS:
+        if normalized.get(field) is False:
+            unsafe_fields.append(field)
+    status = "ready_for_review"
+    if missing_or_invalid or unsafe_fields:
+        status = "unsafe_or_incomplete"
+    normalized["normalization"] = {
+        "source_fields": list(OPERATOR_REPORT_FIELDS),
+        "missing_or_invalid_fields": missing_or_invalid,
+        "unsafe_fields": unsafe_fields,
+    }
+    return normalized, status
+
+
+def load_operator_report(path: str | None) -> tuple[dict[str, Any] | None, str, dict[str, str] | None]:
+    """报告解析失败也要落 artifact，不能让现场材料静默丢失。"""
+    if not path:
+        report, status = normalize_operator_report(None)
+        return report, status, None
+    try:
+        report, status = normalize_operator_report(read_operator_report(path))
+        return report, status, None
+    except Exception as exc:  # noqa: BLE001 - JSON 材料坏了也要结构化反馈。
+        return None, "unsafe_or_incomplete", compact_error(exc)
 
 
 def parse_json_bytes(data: bytes) -> Any:
@@ -267,6 +357,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         gate_reason = "dry-run blocks execution even when execute/confirm flags are present"
     else:
         gate_reason = "requires --execute-motion and --confirm-physical-clearance together"
+    operator_report, operator_report_status, operator_report_error = load_operator_report(args.operator_report_json)
     return {
         "schema": SCHEMA,
         "version": 1,
@@ -303,6 +394,9 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         "post_status_request": None,
         "post_status_summary": None,
         "post_t1001_feedback_status": "unknown",
+        "operator_report": operator_report,
+        "operator_report_status": operator_report_status,
+        "operator_report_error": operator_report_error,
         "acceptance_verdict": None,
         "blocked_commands_not_sent": list(BLOCKED_COMMANDS_NOT_SENT),
         "next_required_checks": [
@@ -350,10 +444,18 @@ def run_acceptance(args: argparse.Namespace) -> dict[str, Any]:
             reason="initial status read failed; motion POST blocked fail-closed",
         )
         return payload
+    if payload["execution_gate"]["authorized"] and payload["operator_report_status"] != "ready_for_review":
+        payload["acceptance_verdict"] = make_verdict(
+            "blocked_before_motion",
+            failed_step="operator_report_missing_or_incomplete",
+            reason="execute mode requires a complete operator report; motion POST blocked fail-closed",
+            t1001_or_ack_observed=payload["t1001_feedback_status"] == "observed",
+        )
+        return payload
     if not payload["execution_gate"]["authorized"]:
         if status_failed:
             payload["acceptance_verdict"] = make_verdict(
-                "blocked_before_motion",
+                "dry_run_only" if args.dry_run else "blocked_before_motion",
                 failed_step="status_request",
                 reason="dry-run/status read failed; no motion POST was authorized",
             )
@@ -363,6 +465,8 @@ def run_acceptance(args: argparse.Namespace) -> dict[str, Any]:
                 reason="execution was not authorized; only status evidence was collected",
                 t1001_or_ack_observed=payload["t1001_feedback_status"] == "observed",
             )
+        if payload["operator_report_status"] != "missing":
+            payload["acceptance_verdict"]["operator_report_status"] = payload["operator_report_status"]
         return payload
 
     manual_body = {
@@ -424,6 +528,7 @@ def run_acceptance(args: argparse.Namespace) -> dict[str, Any]:
             reason="manual/stop completed but post-status did not report T=1001 or ACK",
             t1001_or_ack_observed=False,
         )
+    payload["acceptance_verdict"]["operator_report_status"] = payload["operator_report_status"]
     return payload
 
 
@@ -450,6 +555,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--execute-motion", action="store_true")
     parser.add_argument("--confirm-physical-clearance", action="store_true")
     parser.add_argument("--dry-run", action="store_true", help="兼容显式 dry-run 调用；默认已经是 dry-run")
+    parser.add_argument("--operator-report-json", help="读取现场 operator report JSON；'-' 表示 stdin")
     parser.add_argument("--once-json", action="store_true", help="输出单次 JSON；保留该参数便于 runbook 稳定调用")
     parser.add_argument("--output", help="原子写入同一份 JSON artifact")
     return parser.parse_args(argv)
