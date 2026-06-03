@@ -194,7 +194,7 @@ function o5o6Runbook(objective: "O5" | "O6"): RealMaterialCollectionRunbook {
     suggested_commands: [
       "cd pc-tools/workstation && ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://127.0.0.1:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
       "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://<pc-workstation-host>:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json --output .workstation-runtime/o5-o6-external-live-probe.json",
-      "cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --ssh-target <upper-ssh-target> --ssh-port <ssh-port> --pc-base-url http://127.0.0.1:8787 --cloud-base-url https://<production-cloud-base> --output .workstation-runtime/o5-o6-external-live-probe.json",
+      "cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --ssh-target <upper-ssh-target> --ssh-port <ssh-port> --pc-base-url http://<pc-workstation-host>:8787 --cloud-base-url https://<production-cloud-base> --output .workstation-runtime/o5-o6-external-live-probe.json",
     ],
     collection_paths: [
       {
@@ -237,6 +237,38 @@ function o5o6Runbook(objective: "O5" | "O6"): RealMaterialCollectionRunbook {
           "Python collector is GET-only, fail-closed, and must not POST, access robots_path_forbidden, read hardware, or send robot commands.",
         ],
       },
+      {
+        // contracts.ts 尚未放开 node_ssh 字面量；本轮文件范围不允许改共享类型，只在运行时补齐 API recipe。
+        id: "pc_upper_ssh_collector",
+        title: "PC workstation SSH collector for upper computer",
+        runtime: "node_ssh",
+        host_role: "pc_to_upper_computer",
+        command:
+          "cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --ssh-target <upper-ssh-target> --ssh-port <ssh-port> --pc-base-url http://<pc-workstation-host>:8787 --cloud-base-url https://<production-cloud-base> --output .workstation-runtime/o5-o6-external-live-probe.json",
+        required_env: [
+          "ROBER_O5_O6_UPPER_SSH_TARGET or --ssh-target",
+          "ROBER_O5_O6_UPPER_SSH_PORT or --ssh-port",
+          "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL or --pc-base-url http://<pc-workstation-host>:8787",
+          "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL or --cloud-base-url",
+          "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN must be configured in the upper-computer runtime environment",
+          "optional ROBER_O5_O6_UPPER_REMOTE_ROOT or --remote-root",
+          "optional ROBER_O5_O6_UPPER_REMOTE_SCRIPT or --remote-script",
+        ],
+        required_artifact: ".workstation-runtime/o5-o6-external-live-probe.json or ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT",
+        artifact_write_mode: "writes_output_file",
+        success_criteria: [
+          ...sharedSuccessCriteria,
+          "ssh_collection.pc_base_url_configured_for_upper_ssh=true when using the SSH collector",
+          "ssh_collection.stdin_fallback_remote_write=false when stdin_fallback is used",
+        ],
+        safety_notes: [
+          "SSH collector is only an operator-run recipe; this acceptance API never executes SSH.",
+          "PC base URL must be reachable from the upper computer and must not use remote loopback 127.0.0.1.",
+          "SSH collector must not POST, access robots_path_forbidden, access cmd_vel_forbidden, read hardware, or send robot commands.",
+          "Bearer tokens must stay in the upper-computer environment and must not pass through CLI args, SSH args, stdin, or artifact output.",
+          "stdin_fallback does not scp, write remote files, or persistently modify the upper computer.",
+        ],
+      } as unknown as RealMaterialCollectionRunbook["collection_paths"][number],
     ],
     required_env: [
       "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",

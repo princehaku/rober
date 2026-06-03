@@ -1788,9 +1788,12 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.items[0]?.collection_runbook.suggested_commands[0]).toContain("npm run o5o6:external-probe");
     expect(response.items[0]?.collection_runbook.suggested_commands[1]).toContain("python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json");
     expect(response.items[0]?.collection_runbook.suggested_commands[2]).toContain("npm run o5o6:upper-ssh-collector");
+    expect(response.items[0]?.collection_runbook.suggested_commands[2]).toContain("--pc-base-url http://<pc-workstation-host>:8787");
+    expect(response.items[0]?.collection_runbook.suggested_commands[2]).not.toContain("--pc-base-url http://127.0.0.1:8787");
     expect(response.items[0]?.collection_runbook.collection_paths.map((pathItem) => pathItem.id)).toEqual([
       "pc_node_npm",
       "upper_computer_python_stdlib",
+      "pc_upper_ssh_collector",
     ]);
     expect(response.items[0]?.collection_runbook.collection_paths[1]).toMatchObject({
       runtime: "python_stdlib",
@@ -1803,6 +1806,23 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.items[0]?.collection_runbook.collection_paths[1]?.success_criteria).toContain(
       "/api/o5/readiness/health reachable=true and schema_status=matched",
     );
+    const upperSshPath = response.items[0]?.collection_runbook.collection_paths.find(
+      (pathItem) => String(pathItem.id) === "pc_upper_ssh_collector",
+    );
+    expect(upperSshPath).toMatchObject({
+      runtime: "node_ssh",
+      host_role: "pc_to_upper_computer",
+      artifact_write_mode: "writes_output_file",
+    });
+    expect(upperSshPath?.command).toContain("--pc-base-url http://<pc-workstation-host>:8787");
+    expect(upperSshPath?.command).not.toContain("--pc-base-url http://127.0.0.1:8787");
+    expect(upperSshPath?.required_env).toContain(
+      "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL or --pc-base-url http://<pc-workstation-host>:8787",
+    );
+    expect(upperSshPath?.success_criteria).toContain(
+      "ssh_collection.pc_base_url_configured_for_upper_ssh=true when using the SSH collector",
+    );
+    expect(upperSshPath?.safety_notes.join(" ")).toContain("must not use remote loopback 127.0.0.1");
     expect(response.items[2]?.collection_runbook.suggested_commands[0]).toContain("npm run o7:camera-service-readiness");
     expect(response.items[2]?.collection_runbook.suggested_commands[1]).toContain("npm run o7:browser-long-stability");
     expect(response.items[2]?.collection_runbook.success_criteria).toContain("stability_summary.observation_window_ms >= 180000");
