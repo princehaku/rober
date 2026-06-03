@@ -1,10 +1,10 @@
 {
   "schema": "trashbot.o5_o6.external_live_probe.v1",
   "runner": "pc_upper_ssh_collector+python_stdlib",
-  "executed_at": "2026-06-03T20:46:22Z",
+  "executed_at": "2026-06-03T21:43:36Z",
   "probe_status": "fail_closed",
   "viewpoint": "upper_computer_via_pc_ssh_readonly",
-  "pc_base_url": "http://loopback:port_configured",
+  "pc_base_url": "not_configured_for_upper_ssh",
   "cloud_base_url": "not_configured",
   "token_status": "absent",
   "credentials_redacted": true,
@@ -78,16 +78,15 @@
       "name": "pc_aggregate",
       "endpoint": "/api/o5-o6/cloud-relay-health",
       "expected_schema": "trashbot.pc_tools_workstation.o5_o6_cloud_relay_health.v1",
-      "reachable": true,
-      "http_status": 405,
-      "schema": "missing_schema",
-      "schema_status": "mismatch",
+      "reachable": false,
+      "http_status": null,
+      "schema": "not_loaded",
+      "schema_status": "not_loaded",
       "contract_status": "fail_closed",
-      "failure_category": "bad_json",
+      "failure_category": "pc_base_url_not_configured_for_upper_ssh",
       "blocked_reasons": [
-        "bad_json",
-        "http_405",
-        "schema_mismatch"
+        "pc_base_url_not_configured_for_upper_ssh",
+        "base_url_not_configured"
       ],
       "dangerous_true_fields": [],
       "sensitive_markers": []
@@ -95,7 +94,7 @@
   ],
   "summary": {
     "endpoint_count": 3,
-    "reachable_count": 1,
+    "reachable_count": 0,
     "schema_matched_count": 0,
     "fail_closed_count": 3,
     "safe_to_control": false,
@@ -125,9 +124,7 @@
   },
   "blocked_reasons": [
     "base_url_not_configured",
-    "bad_json",
-    "http_405",
-    "schema_mismatch",
+    "pc_base_url_not_configured_for_upper_ssh",
     "remote_bearer_token_absent",
     "cloud_base_url_not_configured"
   ],
@@ -165,6 +162,9 @@
     "ssh_port": 37878,
     "remote_root_configured": true,
     "remote_script": "o5_o6_external_live_probe.py",
+    "pc_base_url_configured_for_upper_ssh": false,
+    "pc_base_url_source": "absent",
+    "pc_base_url_next_action": "pass --pc-base-url http://<pc-workstation-host>:8787 or set ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL to an address reachable from the upper computer",
     "output_ref": ".workstation-runtime/o5-o6-external-live-probe.json",
     "failure_category": null,
     "remote_exit_code": 2,

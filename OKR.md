@@ -179,11 +179,11 @@
 
 按完成度从低到高排序。O5/O6 约 96%，是当前最低完成度，因此最高优先级排序为 **O5/O6 -> O1 -> O7**；下一轮 Epic 的 `tech-plan.md` 应优先核对本节：
 
-本轮 `sprints/2026.06.04_04-05_o5-o6-upper-ssh-stdin-fallback/tech-done.md` 只更新当前最高优先级抓手，不调整 O5/O6 百分比：`pc_upper_ssh_collector` 已通过 `stdin_fallback` 绕过远端 probe 脚本缺失，但 artifact 仍为 `fail_closed`，尚未达到 accepted live material。
+本轮 `sprints/2026.06.04_05-06_o5-o6-upper-ssh-pc-base-contract/tech-done.md` 只更新当前最高优先级抓手，不调整 O5/O6 百分比：`pc_upper_ssh_collector` 已修正上位机 SSH 视角的 PC base URL 合同，未显式传 `--pc-base-url http://<pc-workstation-host>:8787` 或 `ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL` 时，不再默认把远端 loopback `127.0.0.1:8787` 误当 PC workstation；artifact 仍为 `fail_closed` 时不得涨分。
 
 1. **O5（约 96%，最高优先级第一）**：从真实材料验收队列进入实际采集。验收口径是公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser 至少形成一条可回放 artifact；继续扩 runbook/status/readback 不涨分。
 2. **O6（约 96%，最高优先级第二）**：把 archive core 从 mock/readiness 推到真实生产数据链。验收口径是真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、真实上车数据至少形成一条可查询回放链。
-   - 当前抓手：`pc_upper_ssh_collector` 继续作为 O5/O6 真实材料采集入口；下一步必须配置有效 `cloud_base_url`、远端 bearer token、上位机到 PC/云端可达 base URL，并修正 HTTP/schema 缺口，采到 accepted live artifact 后才能涨分。
+   - 当前抓手：`pc_upper_ssh_collector` 继续作为 O5/O6 真实材料采集入口；下一步必须配置有效 `cloud_base_url`、远端 bearer token、上位机可达的显式 PC workstation base URL（例如 `--pc-base-url http://<pc-workstation-host>:8787`），并修正 HTTP/schema 缺口，采到 accepted live artifact 后才能涨分。
 3. **O1（约 97%）**：分 LiDAR 与底盘两条线推进。LiDAR 线补 driver 优雅退出、production udev、长稳 smoke、SLAM/Nav2 消费与地图质量；底盘线只在现场看护、物理净空、人工急停可用时做低速短 pulse，并采 status/manual/stop/post-status、operator report、ACK 或 `T=1001`、日志和安全复位证据。
 4. **O7（约 98.9%）**：不再因 UI 文案或区块拆分大幅涨分。下一步补真实 SLAM/map artifact、真实 8787/browser 复跑、production path、完整 operator workflow、弱网/reboot、ASR/TTS、真实手控/Nav2 和完整任务闭环材料。
 

@@ -10,7 +10,6 @@ const DEFAULT_SSH_TARGET = "root@192.168.1.11";
 const DEFAULT_SSH_PORT = "37878";
 const DEFAULT_REMOTE_ROOT = "/root/rober";
 const DEFAULT_REMOTE_SCRIPT = "cloud-relay/scripts/o5_o6_external_live_probe.py";
-const DEFAULT_PC_BASE_URL = "http://127.0.0.1:8787";
 const DEFAULT_SSH_TIMEOUT_SECONDS = 8;
 const DEFAULT_PROBE_TIMEOUT_MS = 2500;
 const ENDPOINTS = ["/api/o5/readiness/health", "/api/o6/archive/health", "/api/o5-o6/cloud-relay-health"];
@@ -57,7 +56,10 @@ function normalizeBaseUrl(raw, { allowEmpty = false } = {}) {
   if (!value && allowEmpty) {
     return "";
   }
-  const parsed = new URL(value || DEFAULT_PC_BASE_URL);
+  if (!value) {
+    throw new Error("base_url_not_configured");
+  }
+  const parsed = new URL(value);
   if (!["http:", "https:"].includes(parsed.protocol)) {
     throw new Error("base_url_protocol_not_allowed");
   }
@@ -93,7 +95,8 @@ export function buildCollectorPlan({ argv = [], env = process.env } = {}) {
   let sshPort = env.ROBER_O5_O6_UPPER_SSH_PORT || DEFAULT_SSH_PORT;
   let remoteRoot = env.ROBER_O5_O6_UPPER_REMOTE_ROOT || DEFAULT_REMOTE_ROOT;
   let remoteScript = env.ROBER_O5_O6_UPPER_REMOTE_SCRIPT || DEFAULT_REMOTE_SCRIPT;
-  let pcBaseUrl = env.ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL || DEFAULT_PC_BASE_URL;
+  let pcBaseUrl = env.ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL || "";
+  let pcBaseUrlSource = pcBaseUrl ? "env" : "absent";
   let cloudBaseUrl = env.ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL || env.ROBER_CLOUD_RELAY_BASE_URL || "";
   let outputPath = env.ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT || defaultOutput;
   let sshTimeoutSeconds = env.ROBER_O5_O6_UPPER_SSH_TIMEOUT_SECONDS || String(DEFAULT_SSH_TIMEOUT_SECONDS);
@@ -110,7 +113,7 @@ export function buildCollectorPlan({ argv = [], env = process.env } = {}) {
       ["--ssh-port", (value) => { sshPort = value; }],
       ["--remote-root", (value) => { remoteRoot = value; }],
       ["--remote-script", (value) => { remoteScript = value; }],
-      ["--pc-base-url", (value) => { pcBaseUrl = value; }],
+      ["--pc-base-url", (value) => { pcBaseUrl = value; pcBaseUrlSource = value ? "cli" : "absent"; }],
       ["--cloud-base-url", (value) => { cloudBaseUrl = value; }],
       ["--output", (value) => { outputPath = value; }],
       ["--timeout-seconds", (value) => { sshTimeoutSeconds = value; }],
@@ -132,7 +135,9 @@ export function buildCollectorPlan({ argv = [], env = process.env } = {}) {
     sshPort: String(parsePositiveInteger(sshPort, "ssh_port")),
     remoteRoot: String(remoteRoot || DEFAULT_REMOTE_ROOT).trim(),
     remoteScript: String(remoteScript || DEFAULT_REMOTE_SCRIPT).trim(),
-    pcBaseUrl: normalizeBaseUrl(pcBaseUrl),
+    pcBaseUrl: normalizeBaseUrl(pcBaseUrl, { allowEmpty: true }),
+    pcBaseUrlExplicit: Boolean(String(pcBaseUrl || "").trim()),
+    pcBaseUrlSource,
     cloudBaseUrl: normalizeBaseUrl(cloudBaseUrl, { allowEmpty: true }),
     outputPath: path.resolve(outputPath),
     sshTimeoutSeconds: parsePositiveInteger(sshTimeoutSeconds, "ssh_timeout_seconds"),
@@ -268,6 +273,16 @@ function keyFalseFields() {
   ];
 }
 
+function pcBaseUrlBlockedReason(plan) {
+  // 上位机 SSH 视角下 127.0.0.1 指向上位机自身，所以 PC base URL 必须显式给出。
+  return plan.pcBaseUrlExplicit && plan.pcBaseUrl ? null : "pc_base_url_not_configured_for_upper_ssh";
+}
+
+function pcBaseUrlNextAction() {
+  // next_action 写成可复制的 operator 动作，但不要求 artifact 暴露真实 PC hostname。
+  return "pass --pc-base-url http://<pc-workstation-host>:8787 or set ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL to an address reachable from the upper computer";
+}
+
 export function buildBlockedArtifact(plan, reason, collectionOptions = {}) {
   const normalizedReason = safeText(reason, "ssh_collection_blocked");
   const endpoints = [
@@ -283,7 +298,7 @@ export function buildBlockedArtifact(plan, reason, collectionOptions = {}) {
     executed_at: nowIso(),
     probe_status: "fail_closed",
     viewpoint: "upper_computer_via_pc_ssh_readonly",
-    pc_base_url: plan.pcBaseUrl ? "configured_redacted" : "not_configured",
+    pc_base_url: plan.pcBaseUrl ? "configured_redacted" : "not_configured_for_upper_ssh",
     cloud_base_url: plan.cloudBaseUrl ? "configured_redacted" : "not_configured",
     token_status: "absent",
     credentials_redacted: true,
@@ -351,6 +366,9 @@ function sshCollectionSummary(plan, status, failureCategory = null, options = {}
     ssh_port: Number(plan.sshPort),
     remote_root_configured: Boolean(plan.remoteRoot),
     remote_script: path.basename(plan.remoteScript),
+    pc_base_url_configured_for_upper_ssh: !pcBaseUrlBlockedReason(plan),
+    pc_base_url_source: plan.pcBaseUrlSource || "absent",
+    pc_base_url_next_action: pcBaseUrlBlockedReason(plan) ? pcBaseUrlNextAction() : null,
     output_ref: safeOutputRef(plan.outputPath),
     failure_category: failureCategory,
     remote_exit_code: typeof options.remoteExitCode === "number" ? options.remoteExitCode : null,
@@ -375,6 +393,9 @@ function sshCollectionSummary(plan, status, failureCategory = null, options = {}
 
 function collectorNextAction(reason) {
   // 下一步只给 operator 可执行入口，不写真实远端绝对路径，避免 artifact 变成现场拓扑清单。
+  if (reason === "pc_base_url_not_configured_for_upper_ssh") {
+    return pcBaseUrlNextAction();
+  }
   if (reason === "remote_repo_root_missing") {
     return "set --remote-root or ROBER_O5_O6_UPPER_REMOTE_ROOT to a checkout that contains cloud-relay/scripts/o5_o6_external_live_probe.py";
   }
@@ -476,6 +497,20 @@ function decorateRemoteProbe(plan, remoteProbe, collectionOptions = {}) {
   const blocked = Array.isArray(remoteProbe.blocked_reasons) ? remoteProbe.blocked_reasons.map((item) => safeText(item)).slice(0, 20) : [];
   const tokenReason = remoteProbe.token_status === "present" ? [] : ["remote_bearer_token_absent"];
   const cloudReason = plan.cloudBaseUrl ? [] : ["cloud_base_url_not_configured"];
+  const pcReason = pcBaseUrlBlockedReason(plan);
+  const endpoints = Array.isArray(remoteProbe.endpoints)
+    ? remoteProbe.endpoints.map((endpoint) => {
+        if (!pcReason || endpoint?.name !== "pc_aggregate") {
+          return endpoint;
+        }
+        const endpointBlockedReasons = Array.isArray(endpoint.blocked_reasons) ? endpoint.blocked_reasons.map((item) => safeText(item)) : [];
+        return {
+          ...endpoint,
+          failure_category: pcReason,
+          blocked_reasons: [...new Set([pcReason, ...endpointBlockedReasons])],
+        };
+      })
+    : remoteProbe.endpoints;
   // token/cloud 缺口不覆盖远端 probe 事实，只追加为 collector 可见 blocked reason。
   return {
     ...remoteProbe,
@@ -485,9 +520,11 @@ function decorateRemoteProbe(plan, remoteProbe, collectionOptions = {}) {
     collector_schema: COLLECTOR_SCHEMA,
     source_host_role: "upper_computer",
     viewpoint: "upper_computer_via_pc_ssh_readonly",
+    pc_base_url: pcReason ? "not_configured_for_upper_ssh" : remoteProbe.pc_base_url,
     credentials_redacted: remoteProbe.credentials_redacted !== false,
+    endpoints,
     ssh_collection: sshCollectionSummary(plan, "collected", null, collectionOptions),
-    blocked_reasons: [...new Set([...blocked, ...tokenReason, ...cloudReason])].slice(0, 20),
+    blocked_reasons: [...new Set([...blocked, ...(pcReason ? [pcReason] : []), ...tokenReason, ...cloudReason])].slice(0, 20),
     safe_to_control: false,
     sends_commands: false,
     reads_hardware: false,
@@ -539,6 +576,7 @@ async function writeArtifact(result, outputPath) {
 }
 
 export function buildDryRunResult(plan) {
+  const pcReason = pcBaseUrlBlockedReason(plan);
   return {
     schema: COLLECTOR_SCHEMA,
     status: "dry_run",
@@ -559,6 +597,12 @@ export function buildDryRunResult(plan) {
       remote_file_write_executed: false,
       contains_bearer_token: false,
     },
+    pc_base_url_contract: {
+      configured_for_upper_ssh: !pcReason,
+      source: plan.pcBaseUrlSource || "absent",
+      blocked_reason: pcReason,
+      next_action: pcReason ? pcBaseUrlNextAction() : null,
+    },
     safety_policy: {
       no_post: true,
       no_robot_control: true,
@@ -566,7 +610,7 @@ export function buildDryRunResult(plan) {
       forbidden_paths: ["/robots/*", "/cmd_vel"],
       bearer_source: "remote_environment_only",
     },
-    blocked_reasons: ["dry_run_no_ssh_no_network_no_artifact"],
+    blocked_reasons: ["dry_run_no_ssh_no_network_no_artifact", ...(pcReason ? [pcReason] : [])],
     safe_to_control: false,
     sends_commands: false,
     reads_hardware: false,
@@ -619,7 +663,9 @@ export async function runCollector({ argv = process.argv.slice(2), env = process
       sshPort: DEFAULT_SSH_PORT,
       remoteRoot: DEFAULT_REMOTE_ROOT,
       remoteScript: DEFAULT_REMOTE_SCRIPT,
-      pcBaseUrl: DEFAULT_PC_BASE_URL,
+      pcBaseUrl: "",
+      pcBaseUrlExplicit: false,
+      pcBaseUrlSource: "absent",
       cloudBaseUrl: "",
       outputPath: defaultOutput,
     };

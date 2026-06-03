@@ -116,12 +116,25 @@ function remoteProbeFixture(): RemoteProbeFixture {
         dangerous_true_fields: [],
         sensitive_markers: [],
       },
+      {
+        name: "pc_aggregate",
+        endpoint: "/api/o5-o6/cloud-relay-health?baseUrl=https%3A%2F%2Fredacted",
+        reachable: false,
+        http_status: null,
+        schema: "not_loaded",
+        schema_status: "not_loaded",
+        contract_status: "fail_closed",
+        failure_category: "base_url_not_configured",
+        blocked_reasons: ["base_url_not_configured"],
+        dangerous_true_fields: [],
+        sensitive_markers: [],
+      },
     ],
     summary: {
-      endpoint_count: 1,
+      endpoint_count: 2,
       reachable_count: 1,
       schema_matched_count: 1,
-      fail_closed_count: 0,
+      fail_closed_count: 1,
       safe_to_control: false,
       sends_commands: false,
       robot_control_executed: false,
@@ -205,8 +218,48 @@ describe("O5/O6 upper SSH collector", () => {
       remote_file_write_executed: false,
       contains_bearer_token: false,
     });
+    expect(dryRun.pc_base_url_contract).toMatchObject({
+      configured_for_upper_ssh: false,
+      source: "absent",
+      blocked_reason: "pc_base_url_not_configured_for_upper_ssh",
+    });
+    expect(dryRun.pc_base_url_contract.next_action).toContain("--pc-base-url http://<pc-workstation-host>:8787");
+    expect(dryRun.blocked_reasons).toContain("pc_base_url_not_configured_for_upper_ssh");
     expect(JSON.stringify(dryRun.stdin_fallback.ssh_args)).toContain("python3 - --once-json");
+    expect(JSON.stringify(dryRun.stdin_fallback.ssh_args)).toContain("--pc-base-url ''");
+    expect(JSON.stringify(dryRun.stdin_fallback.ssh_args)).not.toContain("http://127.0.0.1:8787");
     expect(JSON.stringify(dryRun)).not.toContain("Bearer");
+  });
+
+  it("keeps PC aggregate blocked when upper SSH has no explicit PC workstation base URL", async () => {
+    // 未显式配置 PC workstation URL 时，远端 probe 不应默认访问上位机自己的 127.0.0.1。
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o5o6-upper-pc-base-"));
+    const output = path.join(tempDir, "probe.json");
+    const plan = buildCollectorPlan({
+      argv: ["--cloud-base-url", "https://example.invalid", "--output", output],
+      env: {} as NodeJS.ProcessEnv,
+    });
+    const result = await collectUpperSshArtifact({
+      plan,
+      spawnImpl: fakeSpawn({ code: 2, stdout: `${JSON.stringify(remoteProbeFixture())}\n` }),
+    });
+    const written = JSON.parse(await readFile(output, "utf8"));
+    const pcAggregate = written.endpoints.find((endpoint: { name: string }) => endpoint.name === "pc_aggregate");
+
+    expect(JSON.stringify(buildSshArgs(plan))).toContain("--pc-base-url ''");
+    expect(JSON.stringify(buildSshArgs(plan))).not.toContain("http://127.0.0.1:8787");
+    expect(result.pc_base_url).toBe("not_configured_for_upper_ssh");
+    expect(result.blocked_reasons).toContain("pc_base_url_not_configured_for_upper_ssh");
+    expect(pcAggregate.failure_category).toBe("pc_base_url_not_configured_for_upper_ssh");
+    expect(pcAggregate.blocked_reasons).toContain("pc_base_url_not_configured_for_upper_ssh");
+    expect(written.ssh_collection).toMatchObject({
+      pc_base_url_configured_for_upper_ssh: false,
+      pc_base_url_source: "absent",
+    });
+    expect(written.ssh_collection.pc_base_url_next_action).toContain("ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL");
+    expect(written.safe_to_control).toBe(false);
+    expect(written.sends_commands).toBe(false);
+    expect(written.reads_hardware).toBe(false);
   });
 
   it("decorates a successful remote Python probe and writes the queue-consumable artifact", async () => {
@@ -214,7 +267,7 @@ describe("O5/O6 upper SSH collector", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o5o6-upper-"));
     const output = path.join(tempDir, "probe.json");
     const plan = buildCollectorPlan({
-      argv: ["--cloud-base-url", "https://example.invalid", "--output", output],
+      argv: ["--cloud-base-url", "https://example.invalid", "--pc-base-url", "http://192.168.1.50:8787", "--output", output],
       env: {} as NodeJS.ProcessEnv,
     });
     const result = await collectUpperSshArtifact({
@@ -231,6 +284,8 @@ describe("O5/O6 upper SSH collector", () => {
       execution_mode: "installed_script",
       fallback_used: false,
       target_host_role: "upper_computer",
+      pc_base_url_configured_for_upper_ssh: true,
+      pc_base_url_source: "cli",
       command_boundary: {
         post_executed: false,
         robots_path_accessed: false,
@@ -250,7 +305,7 @@ describe("O5/O6 upper SSH collector", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o5o6-upper-stdin-"));
     const output = path.join(tempDir, "probe.json");
     const plan = buildCollectorPlan({
-      argv: ["--cloud-base-url", "https://example.invalid", "--output", output],
+      argv: ["--cloud-base-url", "https://example.invalid", "--pc-base-url", "http://192.168.1.50:8787", "--output", output],
       env: { TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN: "secret-fixture" } as NodeJS.ProcessEnv,
     });
     const remoteProbe = remoteProbeFixture();
@@ -293,7 +348,7 @@ describe("O5/O6 upper SSH collector", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o5o6-upper-missing-"));
     const output = path.join(tempDir, "probe.json");
     const plan = buildCollectorPlan({
-      argv: ["--cloud-base-url", "https://example.invalid", "--output", output],
+      argv: ["--cloud-base-url", "https://example.invalid", "--pc-base-url", "http://192.168.1.50:8787", "--output", output],
       env: {} as NodeJS.ProcessEnv,
     });
     const fake = fakeSpawnSequence([
