@@ -1,12 +1,10 @@
 {
   "schema": "trashbot.o5_o6.external_live_probe.v1",
-  "runner": "pc_upper_ssh_collector",
-  "collector_schema": "trashbot.o5_o6.upper_ssh_collector.v1",
-  "source_host_role": "upper_computer",
-  "executed_at": "2026-06-03T19:32:21.512Z",
+  "runner": "pc_upper_ssh_collector+python_stdlib",
+  "executed_at": "2026-06-03T20:46:22Z",
   "probe_status": "fail_closed",
   "viewpoint": "upper_computer_via_pc_ssh_readonly",
-  "pc_base_url": "configured_redacted",
+  "pc_base_url": "http://loopback:port_configured",
   "cloud_base_url": "not_configured",
   "token_status": "absent",
   "credentials_redacted": true,
@@ -14,7 +12,7 @@
     "tls_status": "not_configured",
     "scheme": "not_configured",
     "hostname_redacted": "not_configured",
-    "host_status": "cloud_base_url_not_configured",
+    "host_status": "base_url_not_configured",
     "port": null,
     "tls_observed": false,
     "tls_version": "not_observed",
@@ -41,7 +39,7 @@
         "ip_address_count": 0
       }
     },
-    "verification_error": "cloud_base_url_not_configured"
+    "verification_error": "base_url_not_configured"
   },
   "endpoints": [
     {
@@ -53,9 +51,9 @@
       "schema": "not_loaded",
       "schema_status": "not_loaded",
       "contract_status": "fail_closed",
-      "failure_category": "remote_repo_present_but_probe_script_missing",
+      "failure_category": "base_url_not_configured",
       "blocked_reasons": [
-        "remote_repo_present_but_probe_script_missing"
+        "base_url_not_configured"
       ],
       "dangerous_true_fields": [],
       "sensitive_markers": []
@@ -69,9 +67,9 @@
       "schema": "not_loaded",
       "schema_status": "not_loaded",
       "contract_status": "fail_closed",
-      "failure_category": "remote_repo_present_but_probe_script_missing",
+      "failure_category": "base_url_not_configured",
       "blocked_reasons": [
-        "remote_repo_present_but_probe_script_missing"
+        "base_url_not_configured"
       ],
       "dangerous_true_fields": [],
       "sensitive_markers": []
@@ -80,14 +78,16 @@
       "name": "pc_aggregate",
       "endpoint": "/api/o5-o6/cloud-relay-health",
       "expected_schema": "trashbot.pc_tools_workstation.o5_o6_cloud_relay_health.v1",
-      "reachable": false,
-      "http_status": null,
-      "schema": "not_loaded",
-      "schema_status": "not_loaded",
+      "reachable": true,
+      "http_status": 405,
+      "schema": "missing_schema",
+      "schema_status": "mismatch",
       "contract_status": "fail_closed",
-      "failure_category": "remote_repo_present_but_probe_script_missing",
+      "failure_category": "bad_json",
       "blocked_reasons": [
-        "remote_repo_present_but_probe_script_missing"
+        "bad_json",
+        "http_405",
+        "schema_mismatch"
       ],
       "dangerous_true_fields": [],
       "sensitive_markers": []
@@ -95,7 +95,7 @@
   ],
   "summary": {
     "endpoint_count": 3,
-    "reachable_count": 0,
+    "reachable_count": 1,
     "schema_matched_count": 0,
     "fail_closed_count": 3,
     "safe_to_control": false,
@@ -118,48 +118,20 @@
       "/robots/*",
       "/cmd_vel"
     ],
-    "bearer_source": "remote_environment_only",
+    "bearer_source": "environment_only",
     "no_post": true,
     "no_robot_control": true,
     "no_hardware_read": true
   },
-  "key_false_fields": [
-    "safe_to_control=false",
-    "sends_commands=false",
-    "robot_control_executed=false",
-    "delivery_success=false",
-    "primary_actions_enabled=false",
-    "reads_hardware=false"
-  ],
-  "ssh_collection": {
-    "schema": "trashbot.o5_o6.upper_ssh_collector.v1",
-    "status": "blocked",
-    "source_host_role": "pc_workstation",
-    "target_host_role": "upper_computer",
-    "ssh_target_configured": true,
-    "ssh_port": 37878,
-    "remote_root_configured": true,
-    "remote_script": "o5_o6_external_live_probe.py",
-    "output_ref": ".workstation-runtime/o5-o6-external-live-probe.json",
-    "failure_category": "remote_repo_present_but_probe_script_missing",
-    "next_action": "sync cloud-relay/scripts/o5_o6_external_live_probe.py into the configured remote root, or set --remote-script/--remote-root to the probe location",
-    "remote_path_override_supported": true,
-    "dry_run": false,
-    "command_boundary": {
-      "executes_python_stdlib_probe_once": true,
-      "passes_bearer_token_via_cli_or_ssh_args": false,
-      "post_executed": false,
-      "robots_path_accessed": false,
-      "cmd_vel_accessed": false,
-      "hardware_read_executed": false,
-      "robot_control_executed": false
-    }
-  },
   "blocked_reasons": [
-    "remote_repo_present_but_probe_script_missing"
+    "base_url_not_configured",
+    "bad_json",
+    "http_405",
+    "schema_mismatch",
+    "remote_bearer_token_absent",
+    "cloud_base_url_not_configured"
   ],
   "not_proven": [
-    "upper_ssh_probe_not_observed",
     "real_public_https_tls_not_proven",
     "real_4g_sim_not_proven",
     "production_db_queue_not_proven",
@@ -173,5 +145,45 @@
   "robot_control_executed": false,
   "delivery_success": false,
   "primary_actions_enabled": false,
+  "remote_runner": "python_stdlib",
+  "collector_execution_mode": "stdin_fallback",
+  "collector_schema": "trashbot.o5_o6.upper_ssh_collector.v1",
+  "source_host_role": "upper_computer",
+  "ssh_collection": {
+    "schema": "trashbot.o5_o6.upper_ssh_collector.v1",
+    "status": "collected",
+    "execution_mode": "stdin_fallback",
+    "attempted_execution_modes": [
+      "installed_script",
+      "stdin_fallback"
+    ],
+    "fallback_used": true,
+    "fallback_reason": "remote_repo_present_but_probe_script_missing",
+    "source_host_role": "pc_workstation",
+    "target_host_role": "upper_computer",
+    "ssh_target_configured": true,
+    "ssh_port": 37878,
+    "remote_root_configured": true,
+    "remote_script": "o5_o6_external_live_probe.py",
+    "output_ref": ".workstation-runtime/o5-o6-external-live-probe.json",
+    "failure_category": null,
+    "remote_exit_code": 2,
+    "next_action": null,
+    "remote_path_override_supported": true,
+    "stdin_fallback_supported": true,
+    "stdin_fallback_remote_write": false,
+    "dry_run": false,
+    "command_boundary": {
+      "executes_python_stdlib_probe_once": true,
+      "streams_local_probe_over_ssh_stdin": true,
+      "remote_file_write_executed": false,
+      "passes_bearer_token_via_cli_or_ssh_args": false,
+      "post_executed": false,
+      "robots_path_accessed": false,
+      "cmd_vel_accessed": false,
+      "hardware_read_executed": false,
+      "robot_control_executed": false
+    }
+  },
   "artifact_written": true
 }

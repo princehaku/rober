@@ -16,6 +16,8 @@ const DEFAULT_PROBE_TIMEOUT_MS = 2500;
 const ENDPOINTS = ["/api/o5/readiness/health", "/api/o6/archive/health", "/api/o5-o6/cloud-relay-health"];
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workstationRoot = path.resolve(__dirname, "..");
+const repositoryRoot = path.resolve(workstationRoot, "../..");
+const localProbeScript = path.join(repositoryRoot, DEFAULT_REMOTE_SCRIPT);
 const defaultOutput = path.join(workstationRoot, ".workstation-runtime", "o5-o6-external-live-probe.json");
 
 function nowIso() {
@@ -158,6 +160,25 @@ export function buildRemoteCommand(plan) {
   ].join("; ");
 }
 
+export function buildStdinFallbackRemoteCommand(plan) {
+  // stdin fallback 不写远端文件，只把本地 probe 作为 python3 - 的程序正文一次性喂入。
+  // 仍先 cd 到 repo root，是为了沿用上位机运行上下文，同时不要求远端存在 cloud-relay 子树。
+  return [
+    `cd ${shellQuote(plan.remoteRoot)} || exit 41`,
+    [
+      "python3",
+      "-",
+      "--once-json",
+      "--pc-base-url",
+      shellQuote(plan.pcBaseUrl),
+      "--cloud-base-url",
+      shellQuote(plan.cloudBaseUrl),
+      "--timeout-ms",
+      shellQuote(String(plan.probeTimeoutMs)),
+    ].join(" "),
+  ].join("; ");
+}
+
 export function buildSshArgs(plan) {
   // BatchMode 避免自动化卡在密码交互；ConnectTimeout 给 daily scan 一个硬边界。
   return [
@@ -171,6 +192,22 @@ export function buildSshArgs(plan) {
     "sh",
     "-lc",
     buildRemoteCommand(plan),
+  ];
+}
+
+export function buildStdinFallbackSshArgs(plan) {
+  // fallback 仍然只走 sh -lc + python3 -，SSH argv 中不出现 bearer/token 或脚本正文。
+  return [
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    `ConnectTimeout=${plan.sshTimeoutSeconds}`,
+    "-p",
+    plan.sshPort,
+    plan.sshTarget,
+    "sh",
+    "-lc",
+    buildStdinFallbackRemoteCommand(plan),
   ];
 }
 
@@ -231,7 +268,7 @@ function keyFalseFields() {
   ];
 }
 
-export function buildBlockedArtifact(plan, reason) {
+export function buildBlockedArtifact(plan, reason, collectionOptions = {}) {
   const normalizedReason = safeText(reason, "ssh_collection_blocked");
   const endpoints = [
     endpointBlocked("o5_readiness", ENDPOINTS[0], normalizedReason),
@@ -274,7 +311,7 @@ export function buildBlockedArtifact(plan, reason) {
       no_hardware_read: true,
     },
     key_false_fields: keyFalseFields(),
-    ssh_collection: sshCollectionSummary(plan, "blocked", normalizedReason),
+    ssh_collection: sshCollectionSummary(plan, "blocked", normalizedReason, collectionOptions),
     blocked_reasons: [normalizedReason],
     not_proven: [
       "upper_ssh_probe_not_observed",
@@ -294,11 +331,20 @@ export function buildBlockedArtifact(plan, reason) {
   };
 }
 
-function sshCollectionSummary(plan, status, failureCategory = null) {
+function sshCollectionSummary(plan, status, failureCategory = null, options = {}) {
   // SSH 元数据只保留角色、端口和 artifact ref，不回显远端 stderr、token 或完整 URL。
+  const executionMode = options.executionMode || "installed_script";
+  const attemptedExecutionModes =
+    Array.isArray(options.attemptedExecutionModes) && options.attemptedExecutionModes.length > 0
+      ? options.attemptedExecutionModes
+      : [executionMode];
   return {
     schema: COLLECTOR_SCHEMA,
     status,
+    execution_mode: executionMode,
+    attempted_execution_modes: attemptedExecutionModes,
+    fallback_used: executionMode === "stdin_fallback",
+    fallback_reason: options.fallbackReason || null,
     source_host_role: "pc_workstation",
     target_host_role: "upper_computer",
     ssh_target_configured: Boolean(plan.sshTarget),
@@ -307,11 +353,16 @@ function sshCollectionSummary(plan, status, failureCategory = null) {
     remote_script: path.basename(plan.remoteScript),
     output_ref: safeOutputRef(plan.outputPath),
     failure_category: failureCategory,
+    remote_exit_code: typeof options.remoteExitCode === "number" ? options.remoteExitCode : null,
     next_action: failureCategory ? collectorNextAction(failureCategory) : null,
     remote_path_override_supported: true,
+    stdin_fallback_supported: true,
+    stdin_fallback_remote_write: false,
     dry_run: plan.dryRun,
     command_boundary: {
       executes_python_stdlib_probe_once: true,
+      streams_local_probe_over_ssh_stdin: executionMode === "stdin_fallback",
+      remote_file_write_executed: false,
       passes_bearer_token_via_cli_or_ssh_args: false,
       post_executed: false,
       robots_path_accessed: false,
@@ -328,7 +379,16 @@ function collectorNextAction(reason) {
     return "set --remote-root or ROBER_O5_O6_UPPER_REMOTE_ROOT to a checkout that contains cloud-relay/scripts/o5_o6_external_live_probe.py";
   }
   if (reason === "remote_repo_present_but_probe_script_missing") {
-    return "sync cloud-relay/scripts/o5_o6_external_live_probe.py into the configured remote root, or set --remote-script/--remote-root to the probe location";
+    return "collector will retry by SSH stdin fallback; if fallback is unavailable, sync cloud-relay/scripts/o5_o6_external_live_probe.py or set --remote-script/--remote-root to the probe location";
+  }
+  if (reason === "local_stdin_probe_source_missing") {
+    return "restore local cloud-relay/scripts/o5_o6_external_live_probe.py in this checkout, then rerun the read-only SSH collector";
+  }
+  if (reason === "ssh_stdin_fallback_probe_failed") {
+    return "verify remote python3 can run stdin scripts from the configured repo root, then rerun the read-only SSH collector";
+  }
+  if (reason === "ssh_stdin_fallback_stdout_bad_json" || reason === "ssh_stdin_fallback_probe_schema_mismatch") {
+    return "rerun the SSH stdin fallback and inspect the local probe version plus remote Python stdout contract before OKR review";
   }
   if (reason === "ssh_auth_failed") {
     return "fix SSH key or root login access for the upper computer before rerunning the read-only collector";
@@ -342,29 +402,57 @@ function collectorNextAction(reason) {
   return "rerun the read-only SSH collector after fixing the classified blocker";
 }
 
-function parseRemoteProbe(plan, sshResult) {
+function parseProbeStdout(stdout) {
+  try {
+    return JSON.parse(String(stdout || "").trim());
+  } catch {
+    return null;
+  }
+}
+
+function blockedReasonForBadStdout(executionMode) {
+  return executionMode === "stdin_fallback" ? "ssh_stdin_fallback_stdout_bad_json" : "remote_stdout_bad_json";
+}
+
+function blockedReasonForSchemaMismatch(executionMode) {
+  return executionMode === "stdin_fallback" ? "ssh_stdin_fallback_probe_schema_mismatch" : "remote_probe_schema_mismatch";
+}
+
+function blockedReasonForRemoteFailure(executionMode, text) {
+  const classified = classifySshFailure(text);
+  if (executionMode === "stdin_fallback" && classified === "remote_probe_failed") {
+    return "ssh_stdin_fallback_probe_failed";
+  }
+  return classified;
+}
+
+function parseRemoteProbe(plan, sshResult, collectionOptions = {}) {
+  const executionMode = collectionOptions.executionMode || "installed_script";
   if (sshResult.error) {
-    return buildBlockedArtifact(plan, "ssh_spawn_failed");
+    return buildBlockedArtifact(plan, executionMode === "stdin_fallback" ? "ssh_stdin_fallback_probe_failed" : "ssh_spawn_failed", collectionOptions);
   }
   if (sshResult.code === 41) {
-    return buildBlockedArtifact(plan, "remote_repo_root_missing");
+    return buildBlockedArtifact(plan, "remote_repo_root_missing", { ...collectionOptions, remoteExitCode: sshResult.code });
   }
   if (sshResult.code === 42) {
-    return buildBlockedArtifact(plan, "remote_repo_present_but_probe_script_missing");
+    return buildBlockedArtifact(plan, "remote_repo_present_but_probe_script_missing", { ...collectionOptions, remoteExitCode: sshResult.code });
+  }
+  const parsed = parseProbeStdout(sshResult.stdout);
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && parsed.schema === PROBE_SCHEMA) {
+    // Python probe 用 exit 2 表达 fail_closed；stdout 有合法 schema 时仍应作为已采集 artifact 处理。
+    return decorateRemoteProbe(plan, parsed, { ...collectionOptions, remoteExitCode: sshResult.code });
   }
   if (sshResult.code !== 0) {
-    return buildBlockedArtifact(plan, classifySshFailure(`${sshResult.stderr}\n${sshResult.stdout}`));
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(String(sshResult.stdout || "").trim());
-  } catch {
-    return buildBlockedArtifact(plan, "remote_stdout_bad_json");
+    return buildBlockedArtifact(plan, blockedReasonForRemoteFailure(executionMode, `${sshResult.stderr}\n${sshResult.stdout}`), {
+      ...collectionOptions,
+      remoteExitCode: sshResult.code,
+    });
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || parsed.schema !== PROBE_SCHEMA) {
-    return buildBlockedArtifact(plan, "remote_probe_schema_mismatch");
+    const reason = parsed ? blockedReasonForSchemaMismatch(executionMode) : blockedReasonForBadStdout(executionMode);
+    return buildBlockedArtifact(plan, reason, { ...collectionOptions, remoteExitCode: sshResult.code });
   }
-  return decorateRemoteProbe(plan, parsed);
+  return decorateRemoteProbe(plan, parsed, { ...collectionOptions, remoteExitCode: sshResult.code });
 }
 
 function classifySshFailure(text) {
@@ -383,7 +471,7 @@ function classifySshFailure(text) {
   return "remote_probe_failed";
 }
 
-function decorateRemoteProbe(plan, remoteProbe) {
+function decorateRemoteProbe(plan, remoteProbe, collectionOptions = {}) {
   const remoteRunner = typeof remoteProbe.runner === "string" ? remoteProbe.runner : "unknown";
   const blocked = Array.isArray(remoteProbe.blocked_reasons) ? remoteProbe.blocked_reasons.map((item) => safeText(item)).slice(0, 20) : [];
   const tokenReason = remoteProbe.token_status === "present" ? [] : ["remote_bearer_token_absent"];
@@ -393,11 +481,12 @@ function decorateRemoteProbe(plan, remoteProbe) {
     ...remoteProbe,
     runner: `pc_upper_ssh_collector+${safeText(remoteRunner)}`,
     remote_runner: safeText(remoteRunner),
+    collector_execution_mode: collectionOptions.executionMode || "installed_script",
     collector_schema: COLLECTOR_SCHEMA,
     source_host_role: "upper_computer",
     viewpoint: "upper_computer_via_pc_ssh_readonly",
     credentials_redacted: remoteProbe.credentials_redacted !== false,
-    ssh_collection: sshCollectionSummary(plan, "collected", null),
+    ssh_collection: sshCollectionSummary(plan, "collected", null, collectionOptions),
     blocked_reasons: [...new Set([...blocked, ...tokenReason, ...cloudReason])].slice(0, 20),
     safe_to_control: false,
     sends_commands: false,
@@ -408,9 +497,11 @@ function decorateRemoteProbe(plan, remoteProbe) {
   };
 }
 
-function runSsh(plan, spawnImpl = spawn) {
+function runSsh(plan, spawnImpl = spawn, options = {}) {
   return new Promise((resolve) => {
-    const child = spawnImpl("ssh", buildSshArgs(plan), { cwd: workstationRoot, stdio: ["ignore", "pipe", "pipe"] });
+    const useStdin = typeof options.stdin === "string";
+    const args = options.executionMode === "stdin_fallback" ? buildStdinFallbackSshArgs(plan) : buildSshArgs(plan);
+    const child = spawnImpl("ssh", args, { cwd: workstationRoot, stdio: [useStdin ? "pipe" : "ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => {
@@ -425,7 +516,20 @@ function runSsh(plan, spawnImpl = spawn) {
     child.on("close", (code) => {
       resolve({ code, stdout, stderr, error: null });
     });
+    if (useStdin) {
+      // stdin 只承载本地 probe 源码，不承载 token；写完立即关闭，避免 SSH 进程挂住。
+      child.stdin?.end(options.stdin);
+    }
   });
+}
+
+async function readLocalProbeSource() {
+  try {
+    // 本地 probe 是 repo 内固定文件；不从 CLI 传路径，防止 operator 误把任意脚本喂给上位机。
+    return await fs.readFile(localProbeScript, "utf8");
+  } catch {
+    return null;
+  }
 }
 
 async function writeArtifact(result, outputPath) {
@@ -444,6 +548,15 @@ export function buildDryRunResult(plan) {
     ssh_command: {
       binary: "ssh",
       args: buildSshArgs(plan),
+      contains_bearer_token: false,
+    },
+    stdin_fallback: {
+      supported: true,
+      execution_mode: "stdin_fallback",
+      ssh_args: buildStdinFallbackSshArgs(plan),
+      local_probe_ref: "cloud-relay/scripts/o5_o6_external_live_probe.py",
+      streams_local_probe_over_ssh_stdin: true,
+      remote_file_write_executed: false,
       contains_bearer_token: false,
     },
     safety_policy: {
@@ -465,8 +578,31 @@ export function buildDryRunResult(plan) {
 
 export async function collectUpperSshArtifact({ plan, spawnImpl = spawn } = {}) {
   const effectivePlan = plan || buildCollectorPlan();
-  const result = parseRemoteProbe(effectivePlan, await runSsh(effectivePlan, spawnImpl));
-  result.ssh_collection = result.ssh_collection || sshCollectionSummary(effectivePlan, "collected", null);
+  const installedOptions = { executionMode: "installed_script", attemptedExecutionModes: ["installed_script"] };
+  const installedResult = await runSsh(effectivePlan, spawnImpl, installedOptions);
+  let result;
+  if (!installedResult.error && installedResult.code === 42) {
+    const attemptedExecutionModes = ["installed_script", "stdin_fallback"];
+    const fallbackReason = "remote_repo_present_but_probe_script_missing";
+    const localSource = await readLocalProbeSource();
+    if (!localSource) {
+      result = buildBlockedArtifact(effectivePlan, "local_stdin_probe_source_missing", {
+        executionMode: "stdin_fallback",
+        attemptedExecutionModes,
+        fallbackReason,
+      });
+    } else {
+      const fallbackOptions = {
+        executionMode: "stdin_fallback",
+        attemptedExecutionModes,
+        fallbackReason,
+      };
+      result = parseRemoteProbe(effectivePlan, await runSsh(effectivePlan, spawnImpl, { ...fallbackOptions, stdin: localSource }), fallbackOptions);
+    }
+  } else {
+    result = parseRemoteProbe(effectivePlan, installedResult, installedOptions);
+  }
+  result.ssh_collection = result.ssh_collection || sshCollectionSummary(effectivePlan, "collected", null, installedOptions);
   result.artifact_written = true;
   await writeArtifact(result, effectivePlan.outputPath);
   return result;

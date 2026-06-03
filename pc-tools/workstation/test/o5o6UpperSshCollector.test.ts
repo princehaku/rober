@@ -4,13 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error JS CLI script intentionally stays runnable by plain node.
-import {
-  buildCollectorPlan,
-  buildDryRunResult,
-  buildRemoteCommand,
-  buildSshArgs,
-  collectUpperSshArtifact,
-} from "../scripts/o5-o6-upper-ssh-collector.mjs";
+import { buildCollectorPlan, buildDryRunResult, buildRemoteCommand, buildSshArgs, collectUpperSshArtifact } from "../scripts/o5-o6-upper-ssh-collector.mjs";
 
 type FakeSpawnResult = {
   code: number;
@@ -18,12 +12,50 @@ type FakeSpawnResult = {
   stderr?: string;
 };
 
+type FakeSpawnCall = {
+  args: string[];
+  stdin: string;
+};
+
+type RemoteProbeFixture = {
+  probe_status: string;
+  blocked_reasons: string[];
+  [key: string]: unknown;
+};
+
+function requireValue<T>(value: T | undefined, message: string): T {
+  // 测试 helper 明确失败原因，避免 TypeScript 和运行时都把缺失调用吞成 undefined。
+  if (value === undefined) {
+    throw new Error(message);
+  }
+  return value;
+}
+
 function fakeSpawn(result: FakeSpawnResult) {
-  return () => {
+  return fakeSpawnSequence([result]).spawnImpl;
+}
+
+function fakeSpawnSequence(results: FakeSpawnResult[]) {
+  const fallbackResult = requireValue(results[results.length - 1], "fake_spawn_sequence_requires_at_least_one_result");
+  const calls: FakeSpawnCall[] = [];
+  const spawnImpl = (_binary: string, args: string[]) => {
     // fake spawn 只模拟 stdout/stderr/close 事件，避免单测真实连接上位机。
-    const child = new EventEmitter() as EventEmitter & { stdout: EventEmitter; stderr: EventEmitter };
+    const result = results[calls.length] ?? fallbackResult;
+    const call: FakeSpawnCall = { args, stdin: "" };
+    calls.push(call);
+    const child = new EventEmitter() as EventEmitter & {
+      stdout: EventEmitter;
+      stderr: EventEmitter;
+      stdin: { end: (value?: string) => void };
+    };
     child.stdout = new EventEmitter();
     child.stderr = new EventEmitter();
+    child.stdin = {
+      end: (value?: string) => {
+        // fallback 的 stdin 只应承载本地 probe 源码，不应包含 token 或 operator secret。
+        call.stdin += value ?? "";
+      },
+    };
     queueMicrotask(() => {
       if (result.stdout) {
         child.stdout.emit("data", result.stdout);
@@ -35,9 +67,10 @@ function fakeSpawn(result: FakeSpawnResult) {
     });
     return child;
   };
+  return { spawnImpl, calls };
 }
 
-function remoteProbeFixture() {
+function remoteProbeFixture(): RemoteProbeFixture {
   // 远端 fixture 模拟 Python stdlib probe 的脱敏 JSON，不包含真实 URL、token 或硬件路径。
   return {
     schema: "trashbot.o5_o6.external_live_probe.v1",
@@ -165,6 +198,14 @@ describe("O5/O6 upper SSH collector", () => {
       forbidden_paths: ["/robots/*", "/cmd_vel"],
       bearer_source: "remote_environment_only",
     });
+    expect(dryRun.stdin_fallback).toMatchObject({
+      supported: true,
+      execution_mode: "stdin_fallback",
+      streams_local_probe_over_ssh_stdin: true,
+      remote_file_write_executed: false,
+      contains_bearer_token: false,
+    });
+    expect(JSON.stringify(dryRun.stdin_fallback.ssh_args)).toContain("python3 - --once-json");
     expect(JSON.stringify(dryRun)).not.toContain("Bearer");
   });
 
@@ -187,6 +228,8 @@ describe("O5/O6 upper SSH collector", () => {
     expect(result.source_host_role).toBe("upper_computer");
     expect(result.ssh_collection).toMatchObject({
       status: "collected",
+      execution_mode: "installed_script",
+      fallback_used: false,
       target_host_role: "upper_computer",
       command_boundary: {
         post_executed: false,
@@ -202,28 +245,79 @@ describe("O5/O6 upper SSH collector", () => {
     expect(written.ssh_collection.command_boundary.cmd_vel_accessed).toBe(false);
   });
 
-  it("writes a structured blocked artifact when the remote root exists but probe script is missing", async () => {
-    // exit 42 代表已经进入远端 repo root；要把“路径存在但 probe 未同步”讲清楚，方便 operator 直接补文件或改 override。
+  it("uses ssh stdin fallback when the remote root exists but probe script is missing", async () => {
+    // exit 42 代表已经进入远端 repo root；此时应优先用 stdin fallback，而不是要求 operator 先写远端文件。
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o5o6-upper-stdin-"));
+    const output = path.join(tempDir, "probe.json");
+    const plan = buildCollectorPlan({
+      argv: ["--cloud-base-url", "https://example.invalid", "--output", output],
+      env: { TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN: "secret-fixture" } as NodeJS.ProcessEnv,
+    });
+    const remoteProbe = remoteProbeFixture();
+    remoteProbe.probe_status = "fail_closed";
+    remoteProbe.blocked_reasons = ["network_or_service_unreachable"];
+    const fake = fakeSpawnSequence([
+      { code: 42, stderr: "missing script at /root/rober" },
+      { code: 2, stdout: `${JSON.stringify(remoteProbe)}\n` },
+    ]);
+    const result = await collectUpperSshArtifact({
+      plan,
+      spawnImpl: fake.spawnImpl,
+    });
+    const written = JSON.parse(await readFile(output, "utf8"));
+
+    expect(fake.calls).toHaveLength(2);
+    const fallbackCall = requireValue(fake.calls[1], "stdin_fallback_spawn_call_missing");
+    expect(JSON.stringify(fallbackCall.args)).toContain("python3 - --once-json");
+    expect(fallbackCall.stdin).toContain("SCHEMA = \"trashbot.o5_o6.external_live_probe.v1\"");
+    expect(fallbackCall.stdin).not.toContain("secret-fixture");
+    expect(result.probe_status).toBe("fail_closed");
+    expect(result.ssh_collection).toMatchObject({
+      status: "collected",
+      execution_mode: "stdin_fallback",
+      attempted_execution_modes: ["installed_script", "stdin_fallback"],
+      fallback_used: true,
+      fallback_reason: "remote_repo_present_but_probe_script_missing",
+      remote_exit_code: 2,
+    });
+    expect(written.collector_execution_mode).toBe("stdin_fallback");
+    expect(written.blocked_reasons).toContain("network_or_service_unreachable");
+    expect(written.safe_to_control).toBe(false);
+    expect(written.sends_commands).toBe(false);
+    expect(written.reads_hardware).toBe(false);
+    expect(written.robot_control_executed).toBe(false);
+  });
+
+  it("writes a structured blocked artifact when ssh stdin fallback cannot execute", async () => {
+    // fallback 失败时仍要落 external probe shape，避免 acceptance queue 失去机器可读 next_action。
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o5o6-upper-missing-"));
     const output = path.join(tempDir, "probe.json");
     const plan = buildCollectorPlan({
       argv: ["--cloud-base-url", "https://example.invalid", "--output", output],
       env: {} as NodeJS.ProcessEnv,
     });
+    const fake = fakeSpawnSequence([
+      { code: 42, stderr: "missing script at /root/rober" },
+      { code: 127, stderr: "python3: not found" },
+    ]);
     const result = await collectUpperSshArtifact({
       plan,
-      spawnImpl: fakeSpawn({ code: 42, stderr: "missing script at /root/rober" }),
+      spawnImpl: fake.spawnImpl,
     });
     const written = JSON.parse(await readFile(output, "utf8"));
 
     expect(result.probe_status).toBe("fail_closed");
-    expect(result.blocked_reasons).toEqual(["remote_repo_present_but_probe_script_missing"]);
+    expect(result.blocked_reasons).toEqual(["ssh_stdin_fallback_probe_failed"]);
     expect(result.endpoints.every((endpoint: { contract_status: string }) => endpoint.contract_status === "fail_closed")).toBe(true);
-    expect(written.ssh_collection.failure_category).toBe("remote_repo_present_but_probe_script_missing");
+    expect(written.ssh_collection.failure_category).toBe("ssh_stdin_fallback_probe_failed");
+    expect(written.ssh_collection.execution_mode).toBe("stdin_fallback");
+    expect(written.ssh_collection.fallback_reason).toBe("remote_repo_present_but_probe_script_missing");
     expect(written.ssh_collection.remote_path_override_supported).toBe(true);
-    expect(written.ssh_collection.next_action).toContain("--remote-script/--remote-root");
+    expect(written.ssh_collection.stdin_fallback_remote_write).toBe(false);
+    expect(written.ssh_collection.next_action).toContain("remote python3");
     expect(written.safe_to_control).toBe(false);
     expect(written.sends_commands).toBe(false);
     expect(written.reads_hardware).toBe(false);
+    expect(written.robot_control_executed).toBe(false);
   });
 });
