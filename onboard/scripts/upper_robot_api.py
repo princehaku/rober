@@ -26,8 +26,12 @@ MAX_PULSE_MS = 800
 ALLOWED_DIRECTIONS = frozenset({"forward", "back", "left", "right", "stop"})
 DEFAULT_FEEDBACK_READ_TIMEOUT_S = 0.2
 DEFAULT_FEEDBACK_READ_WINDOW_S = 1.2
+DEFAULT_FEEDBACK_SAMPLE_COUNT = 3
+DEFAULT_FEEDBACK_SAMPLE_INTERVAL_S = 0.2
 MAX_FEEDBACK_READ_TIMEOUT_S = 2.0
 MAX_FEEDBACK_READ_WINDOW_S = 5.0
+MAX_FEEDBACK_SAMPLE_COUNT = 8
+MAX_FEEDBACK_SAMPLE_INTERVAL_S = 2.0
 BASE_FEEDBACK_REQUEST_COMMAND = {"T": 130}
 BASE_FEEDBACK_ID = 1001
 BLOCKED_BASE_FEEDBACK_COMMANDS = [
@@ -37,6 +41,18 @@ BLOCKED_BASE_FEEDBACK_COMMANDS = [
     "cmd_vel",
     "/api/base/manual",
 ]
+ROUTE_PATHS = {
+    "camera_health": "/api/camera/health",
+    "camera_devices": "/api/camera/devices",
+    "camera_offer": "/api/camera/offer",
+    "camera_peer_close": "/api/camera/peers/{peer_id}/close",
+    "radar_status": "/api/radar/status",
+    "base_status": "/api/base/status",
+    "base_feedback_request": "/api/base/feedback-request",
+    "base_feedback_samples": "/api/base/feedback-samples",
+    "base_manual": "/api/base/manual",
+    "base_stop": "/api/base/stop",
+}
 
 VENDOR_SOURCES = [
     "docs/vendor/VENDOR_INDEX.md",
@@ -180,6 +196,15 @@ def clamp_float(value: Any, default: float, min_value: float, max_value: float) 
     """HTTP body 里的窗口参数必须限幅，避免一次请求长时间占用串口。"""
     try:
         parsed = float(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return min(max(parsed, min_value), max_value)
+
+
+def clamp_int(value: Any, default: int, min_value: int, max_value: int) -> int:
+    """样本数只允许短批量，防止现场误传大值让 8787 长时间占用串口。"""
+    try:
+        parsed = int(value)
     except (TypeError, ValueError):
         parsed = default
     return min(max(parsed, min_value), max_value)
@@ -379,12 +404,104 @@ def build_base_feedback_payload(
         "t1001_feedback_status": t1001_feedback_status,
         "feedback_ack": {
             "t1001_observed": t1001_observed,
-            "robot_ack_connected": t1001_observed,
-            "reason": "T=1001 observed after explicit T=130 request" if t1001_observed else "T=1001 not observed after explicit T=130 request",
+            "robot_ack_connected": False,
+            "reason": (
+                "T=1001 observed after explicit T=130 request; this is vendor feedback material, not project robot ACK or HIL proof"
+                if t1001_observed
+                else "T=1001 not observed after explicit T=130 request; robot ACK/HIL remains unproven"
+            ),
         },
         "blocked_commands_not_sent": BLOCKED_BASE_FEEDBACK_COMMANDS,
         "safe_to_control": False,
         "sends_commands": bool(serial_write.get("ok")),
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "primary_actions_enabled": False,
+    }
+
+
+def build_base_feedback_samples_payload(
+    *,
+    port: str,
+    baudrate: int,
+    sample_count: int,
+    sample_interval_s: float,
+    read_timeout_s: float,
+    read_window_s: float,
+    samples: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """多样本只聚合 T=130 反馈材料，不把重复观察包装成运动控制许可。"""
+    observed_type_set: set[int] = set()
+    t1001_observed_count = 0
+    sample_results: list[dict[str, Any]] = []
+    for index, sample in enumerate(samples, start=1):
+        observed_types = [
+            item for item in sample.get("observed_feedback_types", [])
+            if isinstance(item, int)
+        ]
+        observed_type_set.update(observed_types)
+        sample_t1001_observed = bool(sample.get("feedback_ack", {}).get("t1001_observed"))
+        if sample_t1001_observed:
+            t1001_observed_count += 1
+        # 每个 sample 保留完整阶段结果，方便远端材料回放和失败定位。
+        sample_results.append(
+            {
+                "sample_index": index,
+                "schema": sample.get("schema"),
+                "serial_open": sample.get("serial_open"),
+                "serial_write": sample.get("serial_write"),
+                "serial_read": sample.get("serial_read"),
+                "read_line_count": sample.get("read_line_count"),
+                "parsed_json_count": sample.get("parsed_json_count"),
+                "invalid_json_count": sample.get("invalid_json_count"),
+                "observed_feedback_types": observed_types,
+                "t1001_feedback_status": sample.get("t1001_feedback_status"),
+                "feedback_ack": sample.get("feedback_ack"),
+                "safe_to_control": False,
+                "sends_motion_commands": False,
+                "robot_control_executed": False,
+                "delivery_success": False,
+                "hil_pass": False,
+            }
+        )
+    all_samples_observed = bool(samples) and t1001_observed_count == len(samples)
+    partial_samples_observed = 0 < t1001_observed_count < len(samples)
+    return {
+        "schema": f"{SCHEMA}.base_feedback_samples_result",
+        "generated_at_ms": now_ms(),
+        "vendor_sources": VENDOR_SOURCES,
+        "port": port,
+        "baudrate": baudrate,
+        "request": {
+            "method": "POST",
+            "endpoint": "/api/base/feedback-samples",
+            "command": BASE_FEEDBACK_REQUEST_COMMAND,
+            "sample_count": sample_count,
+            "sample_interval_s": sample_interval_s,
+            "read_timeout_s": read_timeout_s,
+            "read_window_s": read_window_s,
+        },
+        "requested_sample_count": sample_count,
+        "completed_sample_count": len(samples),
+        "samples": sample_results,
+        "t1001_observed_count": t1001_observed_count,
+        "observed_feedback_types": sorted(observed_type_set),
+        "all_samples_observed_t1001": all_samples_observed,
+        "partial_samples_observed_t1001": partial_samples_observed,
+        "feedback_ack": {
+            "t1001_observed": bool(t1001_observed_count),
+            "robot_ack_connected": False,
+            "reason": (
+                f"T=1001 observed in {t1001_observed_count}/{len(samples)} samples; this is vendor feedback material, not project robot ACK or HIL proof"
+                if t1001_observed_count
+                else "T=1001 not observed in completed samples; robot ACK/HIL remains unproven"
+            ),
+        },
+        "blocked_commands_not_sent": BLOCKED_BASE_FEEDBACK_COMMANDS,
+        "safe_to_control": False,
+        "sends_commands": bool(samples),
         "sends_motion_commands": False,
         "robot_control_executed": False,
         "delivery_success": False,
@@ -546,17 +663,7 @@ class UpperRobotApi:
             },
             "radar": self.radar_status(),
             "base": self.base_status(),
-            "routes": {
-                "camera_health": "/api/camera/health",
-                "camera_devices": "/api/camera/devices",
-                "camera_offer": "/api/camera/offer",
-                "camera_peer_close": "/api/camera/peers/{peer_id}/close",
-                "radar_status": "/api/radar/status",
-                "base_status": "/api/base/status",
-                "base_feedback_request": "/api/base/feedback-request",
-                "base_manual": "/api/base/manual",
-                "base_stop": "/api/base/stop",
-            },
+            "routes": dict(ROUTE_PATHS),
             "sends_commands": False,
             **proof_flags(),
         }
@@ -580,6 +687,55 @@ class UpperRobotApi:
             self.base_baudrate,
             read_timeout_s=read_timeout_s,
             read_window_s=read_window_s,
+        )
+
+    async def base_feedback_samples(self, body: dict[str, Any]) -> dict[str, Any]:
+        """重复执行显式 T=130 采集；默认短批量，不触发 manual 或 feedback-flow。"""
+        sample_count = clamp_int(
+            body.get("sample_count"),
+            DEFAULT_FEEDBACK_SAMPLE_COUNT,
+            1,
+            MAX_FEEDBACK_SAMPLE_COUNT,
+        )
+        sample_interval_s = clamp_float(
+            body.get("sample_interval_s"),
+            DEFAULT_FEEDBACK_SAMPLE_INTERVAL_S,
+            0.0,
+            MAX_FEEDBACK_SAMPLE_INTERVAL_S,
+        )
+        read_timeout_s = clamp_float(
+            body.get("read_timeout_s"),
+            DEFAULT_FEEDBACK_READ_TIMEOUT_S,
+            0.01,
+            MAX_FEEDBACK_READ_TIMEOUT_S,
+        )
+        read_window_s = clamp_float(
+            body.get("read_window_s"),
+            DEFAULT_FEEDBACK_READ_WINDOW_S,
+            0.01,
+            MAX_FEEDBACK_READ_WINDOW_S,
+        )
+        samples: list[dict[str, Any]] = []
+        for index in range(sample_count):
+            samples.append(
+                request_base_feedback_once(
+                    self.base_port,
+                    self.base_baudrate,
+                    read_timeout_s=read_timeout_s,
+                    read_window_s=read_window_s,
+                )
+            )
+            # 最后一帧后不额外 sleep，避免默认请求尾部无意义等待。
+            if index < sample_count - 1 and sample_interval_s > 0:
+                await asyncio.sleep(sample_interval_s)
+        return build_base_feedback_samples_payload(
+            port=self.base_port,
+            baudrate=self.base_baudrate,
+            sample_count=sample_count,
+            sample_interval_s=sample_interval_s,
+            read_timeout_s=read_timeout_s,
+            read_window_s=read_window_s,
+            samples=samples,
         )
 
     async def manual_control(self, body: dict[str, Any]) -> dict[str, Any]:
@@ -674,6 +830,19 @@ async def run_server(args: argparse.Namespace) -> None:
         base_baudrate=args.base_baudrate,
         max_speed=args.max_speed,
     )
+    app = create_app(api)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, args.host, args.port)
+    await site.start()
+    print(json.dumps({"event": "upper_robot_api_started", "host": args.host, "port": args.port}, ensure_ascii=False), flush=True)
+    while True:
+        await asyncio.sleep(3600)
+
+
+def create_app(api: UpperRobotApi) -> Any:
+    """集中注册 aiohttp 路由，测试可直接解析路由而不启动监听端口。"""
+    from aiohttp import web
 
     async def options(_: web.Request) -> Any:
         return json_response({})
@@ -718,6 +887,10 @@ async def run_server(args: argparse.Namespace) -> None:
         body = await request.json() if request.can_read_body else {}
         return json_response(await api.base_feedback_request(body if isinstance(body, dict) else {}))
 
+    async def base_feedback_samples(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        return json_response(await api.base_feedback_samples(body if isinstance(body, dict) else {}))
+
     async def base_manual(request: web.Request) -> Any:
         body = await request.json()
         payload = await api.manual_control(body if isinstance(body, dict) else {})
@@ -728,23 +901,17 @@ async def run_server(args: argparse.Namespace) -> None:
     app.router.add_get("/", root)
     app.router.add_get("/health", health)
     app.router.add_get("/api/status", status)
-    app.router.add_get("/api/camera/health", camera_health)
-    app.router.add_get("/api/camera/devices", camera_devices)
-    app.router.add_post("/api/camera/offer", camera_offer)
-    app.router.add_post("/api/camera/peers/{peer_id}/close", camera_peer_close)
-    app.router.add_get("/api/radar/status", radar_status)
-    app.router.add_get("/api/base/status", base_status)
-    app.router.add_post("/api/base/feedback-request", base_feedback_request)
-    app.router.add_post("/api/base/stop", base_stop)
-    app.router.add_post("/api/base/manual", base_manual)
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, args.host, args.port)
-    await site.start()
-    print(json.dumps({"event": "upper_robot_api_started", "host": args.host, "port": args.port}, ensure_ascii=False), flush=True)
-    while True:
-        await asyncio.sleep(3600)
+    app.router.add_get(ROUTE_PATHS["camera_health"], camera_health)
+    app.router.add_get(ROUTE_PATHS["camera_devices"], camera_devices)
+    app.router.add_post(ROUTE_PATHS["camera_offer"], camera_offer)
+    app.router.add_post(ROUTE_PATHS["camera_peer_close"], camera_peer_close)
+    app.router.add_get(ROUTE_PATHS["radar_status"], radar_status)
+    app.router.add_get(ROUTE_PATHS["base_status"], base_status)
+    app.router.add_post(ROUTE_PATHS["base_feedback_request"], base_feedback_request)
+    app.router.add_post(ROUTE_PATHS["base_feedback_samples"], base_feedback_samples)
+    app.router.add_post(ROUTE_PATHS["base_stop"], base_stop)
+    app.router.add_post(ROUTE_PATHS["base_manual"], base_manual)
+    return app
 
 
 def main() -> int:

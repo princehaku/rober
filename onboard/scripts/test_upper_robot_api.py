@@ -25,6 +25,7 @@ class FakeSerial:
     fail_on_open = False
     fail_on_write = False
     read_lines: list[bytes] = []
+    read_line_batches: list[list[bytes]] = []
 
     def __init__(self, port: str, baudrate: int, timeout: float) -> None:
         if self.__class__.fail_on_open:
@@ -34,8 +35,12 @@ class FakeSerial:
         self.baudrate = baudrate
         self.timeout = timeout
         self.frames: list[bytes] = []
-        # 每个 fake 实例复制一次预设反馈，避免测试之间共享读游标。
-        self.read_lines = list(self.__class__.read_lines)
+        # 多样本测试需要每次打开串口拿到不同反馈，模拟现场逐帧材料。
+        if self.__class__.read_line_batches:
+            self.read_lines = list(self.__class__.read_line_batches.pop(0))
+        else:
+            # 每个 fake 实例复制一次预设反馈，避免测试之间共享读游标。
+            self.read_lines = list(self.__class__.read_lines)
         self.closed = False
         self.__class__.instances.append(self)
 
@@ -61,6 +66,7 @@ class FakeSerial:
         cls.fail_on_open = False
         cls.fail_on_write = False
         cls.read_lines = []
+        cls.read_line_batches = []
 
 
 def install_fake_serial() -> None:
@@ -176,6 +182,7 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(result["observed_feedback_types"], [1001, 1002])
         self.assertEqual(result["t1001_feedback_status"], "observed")
         self.assertTrue(result["feedback_ack"]["t1001_observed"])
+        self.assertFalse(result["feedback_ack"]["robot_ack_connected"])
         self.assertFalse(result["safe_to_control"])
         self.assertFalse(result["sends_motion_commands"])
         self.assertFalse(result["robot_control_executed"])
@@ -201,6 +208,69 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertFalse(result["safe_to_control"])
         self.assertFalse(result["sends_motion_commands"])
         self.assertFalse(result["robot_control_executed"])
+
+    def test_feedback_samples_collects_multiple_t130_samples_and_aggregates_t1001(self) -> None:
+        FakeSerial.read_lines = [
+            b'{"T":1001,"L":0,"R":0,"r":1,"p":2,"y":3,"v":12.4}\n',
+            b'{"T":130}\n',
+        ]
+        robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
+
+        result = asyncio.run(
+            robot.base_feedback_samples(
+                {"sample_count": 3, "sample_interval_s": 0, "read_timeout_s": 0.01, "read_window_s": 0.01}
+            )
+        )
+
+        self.assertEqual(result["schema"], "trashbot.upper_robot_api.v1.base_feedback_samples_result")
+        self.assertEqual(result["requested_sample_count"], 3)
+        self.assertEqual(result["completed_sample_count"], 3)
+        self.assertEqual(result["t1001_observed_count"], 3)
+        self.assertEqual(result["observed_feedback_types"], [130, 1001])
+        self.assertTrue(result["all_samples_observed_t1001"])
+        self.assertFalse(result["partial_samples_observed_t1001"])
+        self.assertTrue(result["feedback_ack"]["t1001_observed"])
+        self.assertFalse(result["feedback_ack"]["robot_ack_connected"])
+        self.assertEqual(len(FakeSerial.instances), 3)
+        for fake_serial in FakeSerial.instances:
+            self.assertEqual(decoded_frame(fake_serial), {"T": 130})
+        self.assertFalse(result["safe_to_control"])
+        self.assertFalse(result["sends_motion_commands"])
+        self.assertFalse(result["robot_control_executed"])
+        self.assertFalse(result["delivery_success"])
+        self.assertFalse(result["hil_pass"])
+        self.assertIn("/api/base/manual", result["blocked_commands_not_sent"])
+
+    def test_feedback_samples_partial_t1001_remains_fail_closed(self) -> None:
+        FakeSerial.read_line_batches = [
+            [b'{"T":1001,"L":0,"R":0,"r":1,"p":2,"y":3,"v":12.4}\n'],
+            [b'{"T":1002}\n'],
+        ]
+        robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
+
+        result = asyncio.run(
+            robot.base_feedback_samples(
+                {"sample_count": 2, "sample_interval_s": 0, "read_timeout_s": 0.01, "read_window_s": 0.01}
+            )
+        )
+
+        self.assertEqual(result["t1001_observed_count"], 1)
+        self.assertFalse(result["all_samples_observed_t1001"])
+        self.assertTrue(result["partial_samples_observed_t1001"])
+        self.assertEqual(result["samples"][0]["t1001_feedback_status"], "observed")
+        self.assertEqual(result["samples"][1]["t1001_feedback_status"], "not_observed_after_t130")
+        self.assertFalse(result["safe_to_control"])
+        self.assertFalse(result["sends_motion_commands"])
+        self.assertFalse(result["robot_control_executed"])
+
+    def test_feedback_samples_route_exists_and_status_does_not_trigger_it(self) -> None:
+        robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
+
+        status = robot.base_status()
+
+        self.assertEqual(api.ROUTE_PATHS["base_feedback_samples"], "/api/base/feedback-samples")
+        self.assertEqual(status["feedback_ack"]["t1001_observed"], False)
+        self.assertEqual(FakeSerial.instances, [])
 
 
 if __name__ == "__main__":

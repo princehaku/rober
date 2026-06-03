@@ -70,6 +70,7 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 | `GET` | `/api/base/status` | `/dev/ttyS5`、pyserial、反馈/ACK 状态 |
 | `POST` | `/api/base/stop` | 发送 `{"T":1,"L":0,"R":0}` 停车 |
 | `POST` | `/api/base/feedback-request` | 发送一次非运动 `{"T":130}` 反馈请求并短窗口读取 JSON |
+| `POST` | `/api/base/feedback-samples` | 重复发送非运动 `{"T":130}`，采集多样本 `T=1001` evidence |
 | `POST` | `/api/base/manual` | 低速方向点动，自动停车 |
 
 ## Base 控制安全边界
@@ -101,6 +102,7 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 - `/api/base/stop` 的 `robot_control_executed` 只跟随 stop JSON 写入结果；pyserial 缺失、串口打开失败或写失败时必须为 `false`。
 - `feedback_ack.t1001_observed=false` 固定保留，因为当前 API 不读取 `T=1001`，也不能把 `T=1` 写入成功当成 ACK 或 HIL。
 - `/api/base/feedback-request` 是非运动请求入口，只允许发送一次 vendor `{"T":130}` 并读取短窗口反馈；HTTP 200、写入成功或坏帧计数都不能外推为真实 ACK/HIL。
+- `/api/base/feedback-samples` 是非运动多样本 evidence collector，只重复同一条 `T=130` 路径并聚合每个 sample 的 `T=1001` 观察状态；它不调用 `/api/base/manual`，不发送 `T=1/T=13/T=131` 或 `/cmd_vel`。
 
 本轮单元测试只使用 fake pyserial/mock 串口，不打开真实 `/dev/ttyS5`，不 SSH，不发送真实 WAVE ROVER JSON、`cmd_vel` 或运动命令。
 
@@ -192,7 +194,8 @@ PC workstation 还提供本机 direct upper API，详见 `docs/interfaces/o7_dir
   - `base.write_control_available=true`
   - `base.feedback_ack.t1001_observed=false`
 - `2026.06.03_13-14_o1-8787-feedback-deploy` 已将当前 `onboard/scripts/upper_robot_api.py` 通过 `scp` 部署到远端 `/root/rober/onboard/scripts/upper_robot_api.py`，并重启 `trashbot-upper-robot-api.service`。部署后 `POST http://192.168.1.11:8787/api/base/feedback-request` 返回 HTTP `200`，`serial_open.ok=true`、`serial_write.command={"T":130}`、`serial_write.bytes_written=10`、`read_line_count=2`、`parsed_json_count=2`、`observed_feedback_types=[130,1001]`、`t1001_feedback_status=observed`。
-- 该验证只发送非运动 `T=130` feedback request；没有调用 `/api/base/manual`，没有发送 `T=1`、`T=13`、`T=131` 或 ROS `/cmd_vel`。响应仍固定 `safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`，所以不能写成 HIL pass、闭环安全控制、真实 `/odom`、`/imu/data`、`/battery` 或 delivery success。
+- `2026.06.03_14-15_o1-8787-feedback-samples` 已将新增 `/api/base/feedback-samples` 的 `onboard/scripts/upper_robot_api.py` 部署到远端并重启 `trashbot-upper-robot-api.service`。部署后 `POST http://127.0.0.1:8787/api/base/feedback-samples` 返回 HTTP `200`，`schema=trashbot.upper_robot_api.v1.base_feedback_samples_result`、`requested_sample_count=3`、`completed_sample_count=3`、`t1001_observed_count=3`、`observed_feedback_types=[130,1001]`、`all_samples_observed_t1001=true`、`partial_samples_observed_t1001=false`、`samples[].t1001_feedback_status=["observed","observed","observed"]`、`feedback_ack.t1001_observed=true`、`feedback_ack.robot_ack_connected=false`。
+- 该验证只发送非运动 `T=130` feedback request；没有调用 `/api/base/manual`，没有发送 `T=1`、`T=13`、`T=131` 或 ROS `/cmd_vel`。响应仍固定 `feedback_ack.robot_ack_connected=false`、`safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`，所以不能写成 robot ACK connected、HIL pass、闭环安全控制、真实 `/odom`、`/imu/data`、`/battery` 或 delivery success。
 
 PC 页面验证：
 

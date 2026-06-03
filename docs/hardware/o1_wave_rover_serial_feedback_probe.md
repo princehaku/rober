@@ -226,6 +226,8 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 
 `onboard/scripts/upper_robot_api.py` 已在 8787 统一上位机 API 中新增显式 `POST /api/base/feedback-request`。该入口只发送一次 vendor `CMD_BASE_FEEDBACK` / `{"T":130}`，随后在短窗口内读取 newline-delimited JSON，并统计是否观察到 `T=1001`。
 
+`POST /api/base/feedback-samples` 是本轮新增的保守多样本 collector。它复用同一条 `request_base_feedback_once()` 路径，重复发送 vendor `{"T":130}`，每个 sample 独立短窗口读取 newline-delimited JSON，再聚合 `T=1001` observed 数量和反馈类型。它不是 motion/manual 入口，不发送 `T=1`、`T=13`、`T=131`、`cmd_vel`，也不调用 `/api/base/manual`。
+
 采用的 vendor 证据：
 
 - `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`：vendor Python reference 使用 `json.dumps(data) + '\n'` 写 UART JSON 行。
@@ -236,6 +238,7 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 接口边界：
 
 - 只有显式 `POST /api/base/feedback-request` 会触发该请求；`GET /api/status` 和 `GET /api/base/status` 不会自动打开串口、不会写 `T=130`。
+- 只有显式 `POST /api/base/feedback-samples` 会触发多样本请求；`GET /api/status` 和 `GET /api/base/status` 不会自动采样。
 - 该 endpoint 不发送 `T=1`、`T=13`、`T=131`、`cmd_vel` 或 `/api/base/manual`，并在响应 `blocked_commands_not_sent` 中固定列出这些未发送命令。
 - 响应固定 `safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`delivery_success=false`、`hil_pass=false`。
 - `feedback_ack.t1001_observed=true` 只表示本次短窗口中解析到 `T=1001` JSON 行；仍不能直接写成 HIL pass、闭环安全控制或真实 `/odom`、`/imu/data`、`/battery` 已接入。
@@ -262,6 +265,40 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 - `invalid_json_count=0`
 - `observed_feedback_types=[130,1001]`
 - `t1001_feedback_status=observed`
+
+## 2026-06-03 14-15 远端 8787 feedback samples 多样本验证
+
+本轮将新增多样本 collector 的 `onboard/scripts/upper_robot_api.py` 通过 `scp`
+部署到远端 `/root/rober/onboard/scripts/upper_robot_api.py`，随后重启
+`trashbot-upper-robot-api.service`，`systemctl is-active` 返回 `active`。
+
+非运动验证命令为 `POST /api/base/feedback-samples`，请求体只包含
+`sample_count=3`、`sample_interval_s=0.2`、`read_timeout_s=0.2` 和
+`read_window_s=1.2`。真实返回关键字段：
+
+- HTTP `200`
+- `schema=trashbot.upper_robot_api.v1.base_feedback_samples_result`
+- `requested_sample_count=3`
+- `completed_sample_count=3`
+- `t1001_observed_count=3`
+- `observed_feedback_types=[130,1001]`
+- `all_samples_observed_t1001=true`
+- `partial_samples_observed_t1001=false`
+- `samples[].t1001_feedback_status=["observed","observed","observed"]`
+- `samples[].observed_feedback_types=[[130,1001],[130,1001],[130,1001]]`
+- `blocked_commands_not_sent=["T=1","T=13","T=131","cmd_vel","/api/base/manual"]`
+- `safe_to_control=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `delivery_success=false`
+- `hil_pass=false`
+
+本轮没有调用 `/api/base/manual`，没有发送 `T=1`、`T=13`、`T=131`
+或 ROS `/cmd_vel`。该材料证明同一个 8787 非运动入口可以重复采到
+3/3 个 `T=130 -> T=1001` 样本；仍不是 HIL pass，不证明运动控制安全、
+robot ACK connected、真实 ROS `/odom`、`/imu/data`、`/battery` 或完整 delivery success。
+- `feedback_ack.t1001_observed=true`
+- `feedback_ack.robot_ack_connected=false`
 - `safe_to_control=false`
 - `sends_motion_commands=false`
 - `robot_control_executed=false`

@@ -6,6 +6,10 @@
 
 该接口是 8787 统一上位机 API 的显式非运动反馈请求入口。调用时只向当前配置的 base serial port 写入一次 vendor `{"T":130}`，随后在短读取窗口内读取 newline-delimited JSON，统计是否观察到 `T=1001`。
 
+`POST /api/base/feedback-samples`
+
+该接口是同源多样本 feedback evidence collector。它重复调用同一条 vendor `{"T":130}` 路径，每个 sample 都只发送一次 `T=130`，随后用短窗口读取 newline-delimited JSON，并聚合每个 sample 的 `T=1001` 观察状态。该接口不调用 `/api/base/manual`，不发送 `T=1`、`T=13`、`T=131` 或 ROS `/cmd_vel`。
+
 `GET /api/status`、`GET /api/base/status` 不会自动触发该请求。
 
 ## Vendor 来源
@@ -25,6 +29,8 @@
 
 ## Request Body
 
+### `/api/base/feedback-request`
+
 字段可省略：
 
 ```json
@@ -36,7 +42,29 @@
 
 实现会对窗口参数限幅，避免一次 HTTP 请求长期占用串口。
 
+### `/api/base/feedback-samples`
+
+字段可省略：
+
+```json
+{
+  "sample_count": 3,
+  "sample_interval_s": 0.2,
+  "read_timeout_s": 0.2,
+  "read_window_s": 1.2
+}
+```
+
+限幅：
+
+- `sample_count`：`1..8`，默认 `3`。
+- `sample_interval_s`：`0..2`，默认 `0.2`。
+- `read_timeout_s`：复用单次 endpoint 限幅，默认 `0.2`。
+- `read_window_s`：复用单次 endpoint 限幅，默认 `1.2`。
+
 ## Response Contract
+
+### `/api/base/feedback-request`
 
 关键字段：
 
@@ -61,7 +89,34 @@
 - `delivery_success=false`
 - `hil_pass=false`
 
-`feedback_ack.t1001_observed=true` 只表示本次短窗口中观察到 `T=1001` JSON 行。它不是 HIL pass，不能替代真实串口日志、ROS `/odom`、`/imu/data`、`/battery`、operator report 或完整上车验收。
+`feedback_ack.t1001_observed=true` 只表示本次短窗口中观察到 `T=1001` JSON 行。`feedback_ack.robot_ack_connected` 必须保持 `false`，因为 vendor base feedback material 不等于项目层 robot ACK/HIL。它不是 HIL pass，不能替代真实串口日志、ROS `/odom`、`/imu/data`、`/battery`、operator report 或完整上车验收。
+
+### `/api/base/feedback-samples`
+
+关键字段：
+
+- `schema=trashbot.upper_robot_api.v1.base_feedback_samples_result`
+- `requested_sample_count`
+- `completed_sample_count`
+- `samples[]`
+- `samples[].t1001_feedback_status`
+- `samples[].observed_feedback_types`
+- `t1001_observed_count`
+- `observed_feedback_types`
+- `all_samples_observed_t1001`
+- `partial_samples_observed_t1001`
+- `feedback_ack.t1001_observed`
+- `blocked_commands_not_sent`
+
+固定 fail-closed 字段：
+
+- `safe_to_control=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `delivery_success=false`
+- `hil_pass=false`
+
+多样本 observed 只能证明同一个 8787 非运动入口可以重复采到 vendor `T=1001` 材料。`feedback_ack.robot_ack_connected` 必须保持 `false`，因为重复观察 `T=1001` 仍不证明项目层 robot ACK/HIL。它仍不是 HIL pass，不能替代运动命令安全、真实 ROS `/odom`、`/imu/data`、`/battery`、自动停车/急停演练或完整上车验收。
 
 ## 2026-06-03 13-14 远端部署验证
 
@@ -92,3 +147,46 @@ POST http://127.0.0.1:8787/api/base/feedback-request
 或 ROS `/cmd_vel`。一次 `T=1001` observed 只能证明 8787 feedback endpoint
 已部署并能采到一帧真实反馈材料；仍不是 HIL pass，不能替代多帧同源反馈、
 ROS `/odom`、`/imu/data`、`/battery`、自动停车/急停演练和 operator HIL report。
+
+## 2026-06-03 14-15 远端多样本验证
+
+本轮继续只调用非运动 endpoint：
+
+```bash
+POST http://127.0.0.1:8787/api/base/feedback-samples
+```
+
+请求体：
+
+```json
+{
+  "sample_count": 3,
+  "sample_interval_s": 0.2,
+  "read_timeout_s": 0.2,
+  "read_window_s": 1.2
+}
+```
+
+真实返回关键字段：
+
+- HTTP `200`
+- `schema=trashbot.upper_robot_api.v1.base_feedback_samples_result`
+- `requested_sample_count=3`
+- `completed_sample_count=3`
+- `t1001_observed_count=3`
+- `observed_feedback_types=[130,1001]`
+- `all_samples_observed_t1001=true`
+- `partial_samples_observed_t1001=false`
+- `samples[].t1001_feedback_status=["observed","observed","observed"]`
+- `samples[].observed_feedback_types=[[130,1001],[130,1001],[130,1001]]`
+- `feedback_ack.t1001_observed=true`
+- `feedback_ack.robot_ack_connected=false`
+- `safe_to_control=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `delivery_success=false`
+- `hil_pass=false`
+
+本次验证没有调用 `/api/base/manual`，没有发送 `T=1`、`T=13`、`T=131`
+或 ROS `/cmd_vel`。该材料把一次 observed 推进为 3/3 多样本同源 observed；
+但仍不能写成 robot ACK connected、HIL pass、闭环安全控制、真实 ROS feedback topic 或 delivery success。

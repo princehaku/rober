@@ -8,6 +8,51 @@
 
 ## 2026-06-03 系列
 
+### 2026-06-03 14-15｜O1 8787 feedback samples｜多样本同源 T1001 evidence observed
+
+本轮 Micro sprint 继续推进当前最低 Objective 1，目标是把上一轮“一次
+`T=130 -> T=1001` observed”推进为“可重复、多样本、同源采集入口和材料记录”。
+Hardware Infra 已复核 vendor 来源：`docs/vendor/VENDOR_INDEX.md`、
+`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、
+`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`、
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`、
+`uart_ctrl.h` 和 `ugv_advance.h`。采用事实仍是：WAVE ROVER UART 为
+UTF-8 newline-delimited JSON，`CMD_BASE_FEEDBACK=130` 会进入
+`baseInfoFeedback()`，`FEEDBACK_BASE_INFO=1001`，`T=1/T=13/T=131`
+分别属于运动或 feedback-flow 状态命令，本轮不得发送。
+
+本轮在 8787 统一上位机 API 新增 `POST /api/base/feedback-samples`。该入口只
+重复发送 vendor `{"T":130}`，每个 sample 短窗口读取 newline-delimited JSON，
+并聚合 `requested_sample_count`、`completed_sample_count`、
+`samples[].t1001_feedback_status`、`t1001_observed_count`、
+`observed_feedback_types`、`all_samples_observed_t1001`、
+`partial_samples_observed_t1001` 和 `feedback_ack.t1001_observed`。
+响应固定 `safe_to_control=false`、`sends_motion_commands=false`、
+`robot_control_executed=false`、`delivery_success=false`、`hil_pass=false`，
+并固定列出未发送命令 `T=1/T=13/T=131/cmd_vel//api/base/manual`。
+
+远端部署验证：`scp` 部署当前 `onboard/scripts/upper_robot_api.py` 到
+`/root/rober/onboard/scripts/upper_robot_api.py`，重启
+`trashbot-upper-robot-api.service` 后服务为 `active`。随后只调用非运动
+`POST http://127.0.0.1:8787/api/base/feedback-samples`，请求
+`sample_count=3`、`sample_interval_s=0.2`、`read_timeout_s=0.2`、
+`read_window_s=1.2`。真实返回 HTTP `200`，
+`schema=trashbot.upper_robot_api.v1.base_feedback_samples_result`、
+`requested_sample_count=3`、`completed_sample_count=3`、
+`t1001_observed_count=3`、`observed_feedback_types=[130,1001]`、
+`all_samples_observed_t1001=true`、`partial_samples_observed_t1001=false`、
+`samples[].t1001_feedback_status=["observed","observed","observed"]`、
+`feedback_ack.t1001_observed=true`、`feedback_ack.robot_ack_connected=false`。
+
+本轮没有调用 `/api/base/manual`，没有发送 `T=1`、`T=13`、`T=131`
+或 ROS `/cmd_vel`。Product closeout 建议：Objective 1 可以只承认
+“远端 feedback samples endpoint deployed + 3/3 同源非运动
+`T=130 -> T=1001` observed”，但仍不能写成 HIL pass、`safe_to_control=true`、
+robot ACK connected、闭环安全控制、真实 ROS `/odom`、`/imu/data`、`/battery`
+或完整上车任务。
+下一步仍需 operator report、自动停车/急停演练、ROS feedback topic 边界材料，
+以及 LiDAR 真实 `/scan`、`/lidar/raw_packet` 和 TF smoke。
+
 ### 2026-06-03 13-14｜O1 8787 feedback deploy｜远端 endpoint deployed，一次真实 T1001 observed
 
 本轮 Micro sprint 继续推进当前最低 Objective 1，目标是关闭上一轮
