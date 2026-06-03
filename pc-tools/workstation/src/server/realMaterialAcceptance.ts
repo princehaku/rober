@@ -163,10 +163,14 @@ function o5o6Reason(
   if (!endpoint) {
     return "expected_endpoint_not_observed_in_artifact";
   }
+  const endpointReason = firstReason(endpoint.blocked_reasons, endpoint.failure_category || "");
+  if (endpointReason) {
+    return endpointReason;
+  }
   if (!(artifact.tls_evidence.tls_status === "observed" && artifact.tls_evidence.tls_observed === true)) {
     return `tls_${artifact.tls_evidence.tls_status}_not_accepted`;
   }
-  return firstReason(endpoint.blocked_reasons, endpoint.failure_category || "endpoint_contract_not_accepted");
+  return endpoint.failure_category || "endpoint_contract_not_accepted";
 }
 
 function o5o6NextAction(objective: "O5" | "O6", status: RealMaterialAcceptanceStatus): string {
@@ -174,7 +178,7 @@ function o5o6NextAction(objective: "O5" | "O6", status: RealMaterialAcceptanceSt
   if (status === "accepted") {
     return `${objective}: keep artifact as real-material evidence and wait for OKR owner review`;
   }
-  return `${objective}: run either PC Node or upper-computer Python stdlib O5/O6 external probe against production HTTPS and place its JSON artifact in workstation runtime`;
+  return `${objective}: run PC Node, upper-computer Python stdlib, or PC SSH O5/O6 collector against production HTTPS and place its JSON artifact in workstation runtime`;
 }
 
 function o5o6Runbook(objective: "O5" | "O6"): RealMaterialCollectionRunbook {
@@ -190,6 +194,7 @@ function o5o6Runbook(objective: "O5" | "O6"): RealMaterialCollectionRunbook {
     suggested_commands: [
       "cd pc-tools/workstation && ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://127.0.0.1:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
       "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://<pc-workstation-host>:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json --output .workstation-runtime/o5-o6-external-live-probe.json",
+      "cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --ssh-target <upper-ssh-target> --ssh-port <ssh-port> --pc-base-url http://127.0.0.1:8787 --cloud-base-url https://<production-cloud-base> --output .workstation-runtime/o5-o6-external-live-probe.json",
     ],
     collection_paths: [
       {

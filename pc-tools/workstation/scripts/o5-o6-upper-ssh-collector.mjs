@@ -307,6 +307,8 @@ function sshCollectionSummary(plan, status, failureCategory = null) {
     remote_script: path.basename(plan.remoteScript),
     output_ref: safeOutputRef(plan.outputPath),
     failure_category: failureCategory,
+    next_action: failureCategory ? collectorNextAction(failureCategory) : null,
+    remote_path_override_supported: true,
     dry_run: plan.dryRun,
     command_boundary: {
       executes_python_stdlib_probe_once: true,
@@ -320,6 +322,26 @@ function sshCollectionSummary(plan, status, failureCategory = null) {
   };
 }
 
+function collectorNextAction(reason) {
+  // 下一步只给 operator 可执行入口，不写真实远端绝对路径，避免 artifact 变成现场拓扑清单。
+  if (reason === "remote_repo_root_missing") {
+    return "set --remote-root or ROBER_O5_O6_UPPER_REMOTE_ROOT to a checkout that contains cloud-relay/scripts/o5_o6_external_live_probe.py";
+  }
+  if (reason === "remote_repo_present_but_probe_script_missing") {
+    return "sync cloud-relay/scripts/o5_o6_external_live_probe.py into the configured remote root, or set --remote-script/--remote-root to the probe location";
+  }
+  if (reason === "ssh_auth_failed") {
+    return "fix SSH key or root login access for the upper computer before rerunning the read-only collector";
+  }
+  if (reason === "ssh_connection_refused" || reason === "ssh_timeout" || reason === "ssh_network_unreachable") {
+    return "verify upper-computer LAN route, SSH port, and sshd status before rerunning the read-only collector";
+  }
+  if (reason === "remote_stdout_bad_json" || reason === "remote_probe_schema_mismatch") {
+    return "rerun the remote Python stdlib probe and inspect the deployed script version before OKR review";
+  }
+  return "rerun the read-only SSH collector after fixing the classified blocker";
+}
+
 function parseRemoteProbe(plan, sshResult) {
   if (sshResult.error) {
     return buildBlockedArtifact(plan, "ssh_spawn_failed");
@@ -328,7 +350,7 @@ function parseRemoteProbe(plan, sshResult) {
     return buildBlockedArtifact(plan, "remote_repo_root_missing");
   }
   if (sshResult.code === 42) {
-    return buildBlockedArtifact(plan, "remote_probe_script_missing");
+    return buildBlockedArtifact(plan, "remote_repo_present_but_probe_script_missing");
   }
   if (sshResult.code !== 0) {
     return buildBlockedArtifact(plan, classifySshFailure(`${sshResult.stderr}\n${sshResult.stdout}`));

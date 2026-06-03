@@ -202,8 +202,8 @@ describe("O5/O6 upper SSH collector", () => {
     expect(written.ssh_collection.command_boundary.cmd_vel_accessed).toBe(false);
   });
 
-  it("writes a structured blocked artifact when the remote probe script is missing", async () => {
-    // 远端 repo/script 缺失不能变成无结构进程失败，必须落 blocked artifact 供 queue 显示。
+  it("writes a structured blocked artifact when the remote root exists but probe script is missing", async () => {
+    // exit 42 代表已经进入远端 repo root；要把“路径存在但 probe 未同步”讲清楚，方便 operator 直接补文件或改 override。
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o5o6-upper-missing-"));
     const output = path.join(tempDir, "probe.json");
     const plan = buildCollectorPlan({
@@ -217,9 +217,11 @@ describe("O5/O6 upper SSH collector", () => {
     const written = JSON.parse(await readFile(output, "utf8"));
 
     expect(result.probe_status).toBe("fail_closed");
-    expect(result.blocked_reasons).toEqual(["remote_probe_script_missing"]);
+    expect(result.blocked_reasons).toEqual(["remote_repo_present_but_probe_script_missing"]);
     expect(result.endpoints.every((endpoint: { contract_status: string }) => endpoint.contract_status === "fail_closed")).toBe(true);
-    expect(written.ssh_collection.failure_category).toBe("remote_probe_script_missing");
+    expect(written.ssh_collection.failure_category).toBe("remote_repo_present_but_probe_script_missing");
+    expect(written.ssh_collection.remote_path_override_supported).toBe(true);
+    expect(written.ssh_collection.next_action).toContain("--remote-script/--remote-root");
     expect(written.safe_to_control).toBe(false);
     expect(written.sends_commands).toBe(false);
     expect(written.reads_hardware).toBe(false);

@@ -1,0 +1,177 @@
+{
+  "schema": "trashbot.o5_o6.external_live_probe.v1",
+  "runner": "pc_upper_ssh_collector",
+  "collector_schema": "trashbot.o5_o6.upper_ssh_collector.v1",
+  "source_host_role": "upper_computer",
+  "executed_at": "2026-06-03T19:32:21.512Z",
+  "probe_status": "fail_closed",
+  "viewpoint": "upper_computer_via_pc_ssh_readonly",
+  "pc_base_url": "configured_redacted",
+  "cloud_base_url": "not_configured",
+  "token_status": "absent",
+  "credentials_redacted": true,
+  "tls_evidence": {
+    "tls_status": "not_configured",
+    "scheme": "not_configured",
+    "hostname_redacted": "not_configured",
+    "host_status": "cloud_base_url_not_configured",
+    "port": null,
+    "tls_observed": false,
+    "tls_version": "not_observed",
+    "cipher_status": "not_observed",
+    "cipher_bits": null,
+    "certificate": {
+      "not_before": "not_available",
+      "not_after": "not_available",
+      "certificate_expiry_days": null,
+      "issuer_summary": {
+        "field_count": 0,
+        "common_name_status": "absent",
+        "organization_status": "absent",
+        "country_status": "absent"
+      },
+      "subject_summary": {
+        "field_count": 0,
+        "common_name_status": "absent",
+        "organization_status": "absent",
+        "country_status": "absent"
+      },
+      "subject_alt_name_summary": {
+        "dns_name_count": 0,
+        "ip_address_count": 0
+      }
+    },
+    "verification_error": "cloud_base_url_not_configured"
+  },
+  "endpoints": [
+    {
+      "name": "o5_readiness",
+      "endpoint": "/api/o5/readiness/health",
+      "expected_schema": "trashbot.o5.readiness_health.v1",
+      "reachable": false,
+      "http_status": null,
+      "schema": "not_loaded",
+      "schema_status": "not_loaded",
+      "contract_status": "fail_closed",
+      "failure_category": "remote_repo_present_but_probe_script_missing",
+      "blocked_reasons": [
+        "remote_repo_present_but_probe_script_missing"
+      ],
+      "dangerous_true_fields": [],
+      "sensitive_markers": []
+    },
+    {
+      "name": "o6_archive",
+      "endpoint": "/api/o6/archive/health",
+      "expected_schema": "trashbot.o6.archive_health.v1",
+      "reachable": false,
+      "http_status": null,
+      "schema": "not_loaded",
+      "schema_status": "not_loaded",
+      "contract_status": "fail_closed",
+      "failure_category": "remote_repo_present_but_probe_script_missing",
+      "blocked_reasons": [
+        "remote_repo_present_but_probe_script_missing"
+      ],
+      "dangerous_true_fields": [],
+      "sensitive_markers": []
+    },
+    {
+      "name": "pc_aggregate",
+      "endpoint": "/api/o5-o6/cloud-relay-health",
+      "expected_schema": "trashbot.pc_tools_workstation.o5_o6_cloud_relay_health.v1",
+      "reachable": false,
+      "http_status": null,
+      "schema": "not_loaded",
+      "schema_status": "not_loaded",
+      "contract_status": "fail_closed",
+      "failure_category": "remote_repo_present_but_probe_script_missing",
+      "blocked_reasons": [
+        "remote_repo_present_but_probe_script_missing"
+      ],
+      "dangerous_true_fields": [],
+      "sensitive_markers": []
+    }
+  ],
+  "summary": {
+    "endpoint_count": 3,
+    "reachable_count": 0,
+    "schema_matched_count": 0,
+    "fail_closed_count": 3,
+    "safe_to_control": false,
+    "sends_commands": false,
+    "robot_control_executed": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "reads_hardware": false
+  },
+  "safety_policy": {
+    "method_allowlist": [
+      "GET"
+    ],
+    "endpoint_allowlist": [
+      "/api/o5/readiness/health",
+      "/api/o6/archive/health",
+      "/api/o5-o6/cloud-relay-health"
+    ],
+    "forbidden_paths": [
+      "/robots/*",
+      "/cmd_vel"
+    ],
+    "bearer_source": "remote_environment_only",
+    "no_post": true,
+    "no_robot_control": true,
+    "no_hardware_read": true
+  },
+  "key_false_fields": [
+    "safe_to_control=false",
+    "sends_commands=false",
+    "robot_control_executed=false",
+    "delivery_success=false",
+    "primary_actions_enabled=false",
+    "reads_hardware=false"
+  ],
+  "ssh_collection": {
+    "schema": "trashbot.o5_o6.upper_ssh_collector.v1",
+    "status": "blocked",
+    "source_host_role": "pc_workstation",
+    "target_host_role": "upper_computer",
+    "ssh_target_configured": true,
+    "ssh_port": 37878,
+    "remote_root_configured": true,
+    "remote_script": "o5_o6_external_live_probe.py",
+    "output_ref": ".workstation-runtime/o5-o6-external-live-probe.json",
+    "failure_category": "remote_repo_present_but_probe_script_missing",
+    "next_action": "sync cloud-relay/scripts/o5_o6_external_live_probe.py into the configured remote root, or set --remote-script/--remote-root to the probe location",
+    "remote_path_override_supported": true,
+    "dry_run": false,
+    "command_boundary": {
+      "executes_python_stdlib_probe_once": true,
+      "passes_bearer_token_via_cli_or_ssh_args": false,
+      "post_executed": false,
+      "robots_path_accessed": false,
+      "cmd_vel_accessed": false,
+      "hardware_read_executed": false,
+      "robot_control_executed": false
+    }
+  },
+  "blocked_reasons": [
+    "remote_repo_present_but_probe_script_missing"
+  ],
+  "not_proven": [
+    "upper_ssh_probe_not_observed",
+    "real_public_https_tls_not_proven",
+    "real_4g_sim_not_proven",
+    "production_db_queue_not_proven",
+    "real_oss_cdn_live_traffic_not_proven",
+    "real_phone_browser_not_proven",
+    "delivery_success_not_proven"
+  ],
+  "safe_to_control": false,
+  "sends_commands": false,
+  "reads_hardware": false,
+  "robot_control_executed": false,
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "artifact_written": true
+}

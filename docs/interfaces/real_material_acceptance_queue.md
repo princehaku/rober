@@ -186,6 +186,7 @@ O5/O6 runbook 必须同时暴露 PC 本地、上位机本地、PC 侧 SSH 三类
      `ROBER_O5_O6_UPPER_PROBE_TIMEOUT_MS` / `--probe-timeout-ms`。
    - 凭证边界：collector 不通过 CLI 或 SSH args 传 bearer token；`TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN` 或 `ROBER_CLOUD_RELAY_BEARER_TOKEN` 必须在上位机运行环境中配置，artifact 只允许显示 `token_status=present|absent`。
    - artifact：默认写回 `.workstation-runtime/o5-o6-external-live-probe.json`；失败时也写 `trashbot.o5_o6.external_live_probe.v1` blocked artifact，供 acceptance queue 分类为 not observed / blocked。
+   - 常见阻塞：若 SSH 可达、`remote_root` 可进入，但远端缺少 `cloud-relay/scripts/o5_o6_external_live_probe.py`，collector 应写 `remote_repo_present_but_probe_script_missing`，下一步是同步该 probe 脚本，或通过 `--remote-root` / `--remote-script` 指向真实脚本位置。
    - dry-run：
      `cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --dry-run --ssh-target root@192.168.1.11 --ssh-port 37878 --cloud-base-url https://example.invalid --pc-base-url http://127.0.0.1:8787`
      只输出计划和安全边界，不 SSH、不联网、不写 artifact。
@@ -250,6 +251,8 @@ readiness artifact 的关键分类字段包括：
 2026-06-02 16-17 只读 recovery readiness 记录：默认 `http://192.168.1.11:8088/` 运行 `npm run o7:camera-service-readiness` 时，SSH 可达但 8088 不在监听列表，HTTP `/health` 与 `/devices` 不可达，远端只读诊断未发现 camera/WebRTC systemd service/unit 或活跃进程；远端存在 `/root/rober/onboard/scripts/local_webrtc_camera_smoke.sh` 和 `.py`。因此 readiness artifact 分类为 blocked，`action_category=remote_script_present_but_service_inactive`，下一步是人工启动/安装该 camera service 后重跑 readiness；本轮未启动服务、未 POST `/offer`、未创建 WebRTC session、未发送任何机器人控制命令。
 
 2026-06-02 18-19 恢复记录：operator 通过 SSH 在 `/root/rober` 下显式启动 `HOST=0.0.0.0 PORT=8088 ROBER_CAMERA_SOURCE=0 bash onboard/scripts/local_webrtc_camera_smoke.sh`，远端日志出现 `aiohttp_server_started`，`/health` 和 `/devices` 返回 200，SSH 监听摘要显示 `python3` 监听 `0.0.0.0:8088`。readiness collector 因此可进入 `ready_for_long_stability`；但该启动仍是 `nohup` operator-run，不是 systemd 持久化服务，生产化 service 安装/自启动仍未证明。
+
+2026-06-04 03-04 O5/O6 上位机 SSH 实连记录：`ssh root@192.168.1.11 -p 37878` 可达，远端 hostname 脱敏角色为上位机，`/root/rober` 存在且主要包含 `onboard/`、`docs/`、`scripts/`、`sprints/` 与历史 runtime；只读路径探测未发现 `cloud-relay/scripts/o5_o6_external_live_probe.py`。因此默认 collector 写回 `.workstation-runtime/o5-o6-external-live-probe.json`，`probe_status=fail_closed`，O5/O6 acceptance queue 应分类为 `blocked`，关键原因 `remote_repo_present_but_probe_script_missing`。本轮未修改远端机器文件，下一步是同步 `cloud-relay/scripts/o5_o6_external_live_probe.py` 到远端 repo，或用 `--remote-root` / `--remote-script` 指向包含该脚本的路径后重跑。
 
 2026-06-02 11-12 真实采集记录：默认 `http://192.168.1.11:8088/` 运行 `npm run o7:browser-long-stability` 时，browser smoke artifact 为 `status=failed`，`failure_category=browser_smoke_failed`，`remote_health_status=remote_health_unreachable`，`start_clicked=false`，`offer_executed_by_browser=false`，`first_frame_received=false`，`stability_summary.status=not_observed`，`server_peer_close_status=not_attempted`；脱敏后 queue 的 O7 `blocking_reason` 应显示 `browser_smoke_failed__net_err_connection_refused__remote_health_unreachable`。该结果说明板端 HTTP/WebRTC 服务当前拒绝连接或未监听，不是 180s 稳定性窗口失败；本轮未创建 WebRTC session、未 POST `/offer`、未拿到首帧。
 

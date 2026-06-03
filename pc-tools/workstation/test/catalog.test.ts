@@ -1787,6 +1787,7 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.items[0]?.collection_runbook.goal).toContain("O5: collect production HTTPS external probe material");
     expect(response.items[0]?.collection_runbook.suggested_commands[0]).toContain("npm run o5o6:external-probe");
     expect(response.items[0]?.collection_runbook.suggested_commands[1]).toContain("python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json");
+    expect(response.items[0]?.collection_runbook.suggested_commands[2]).toContain("npm run o5o6:upper-ssh-collector");
     expect(response.items[0]?.collection_runbook.collection_paths.map((pathItem) => pathItem.id)).toEqual([
       "pc_node_npm",
       "upper_computer_python_stdlib",
@@ -1811,6 +1812,88 @@ describe("workstation fail-closed API contracts", () => {
     expect(JSON.stringify(response)).not.toContain(externalPath);
     expect(JSON.stringify(response)).not.toContain(smokePath);
     expect(JSON.stringify(response)).not.toContain("/robots/");
+  });
+
+  it("real-material acceptance queue surfaces upper SSH collector script-missing blocker", async () => {
+    // SSH collector 的失败原因要直接进入 queue，否则 operator 会被 TLS 缺配置这种次级原因带偏。
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-real-material-ssh-blocked-"));
+    const externalPath = path.join(tempDir, "probe.json");
+    await writeFile(
+      externalPath,
+      JSON.stringify({
+        schema: "trashbot.o5_o6.external_live_probe.v1",
+        runner: "pc_upper_ssh_collector",
+        executed_at: "2026-06-04T03:32:00Z",
+        probe_status: "fail_closed",
+        viewpoint: "upper_computer_via_pc_ssh_readonly",
+        token_status: "absent",
+        credentials_redacted: true,
+        tls_evidence: {
+          tls_status: "not_configured",
+          tls_observed: false,
+        },
+        endpoints: [
+          {
+            name: "o5_readiness",
+            endpoint: "/api/o5/readiness/health",
+            reachable: false,
+            http_status: null,
+            schema: "not_loaded",
+            schema_status: "not_loaded",
+            contract_status: "fail_closed",
+            failure_category: "remote_repo_present_but_probe_script_missing",
+            blocked_reasons: ["remote_repo_present_but_probe_script_missing"],
+          },
+          {
+            name: "o6_archive",
+            endpoint: "/api/o6/archive/health",
+            reachable: false,
+            http_status: null,
+            schema: "not_loaded",
+            schema_status: "not_loaded",
+            contract_status: "fail_closed",
+            failure_category: "remote_repo_present_but_probe_script_missing",
+            blocked_reasons: ["remote_repo_present_but_probe_script_missing"],
+          },
+        ],
+        summary: {
+          endpoint_count: 2,
+          reachable_count: 0,
+          schema_matched_count: 0,
+          fail_closed_count: 2,
+          safe_to_control: false,
+          sends_commands: false,
+          robot_control_executed: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          reads_hardware: false,
+        },
+        blocked_reasons: ["remote_repo_present_but_probe_script_missing"],
+        safe_to_control: false,
+        sends_commands: false,
+        reads_hardware: false,
+        robot_control_executed: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+      }),
+      "utf8",
+    );
+
+    const response = await buildRealMaterialAcceptance({
+      env: {
+        ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT: externalPath,
+        ROBER_O7_BROWSER_SMOKE_RESULT_JSON: path.join(tempDir, "missing-smoke.json"),
+        ROBER_O7_CAMERA_SERVICE_READINESS_ARTIFACT: path.join(tempDir, "missing-readiness.json"),
+      },
+    });
+
+    expect(response.summary).toEqual({ accepted: 0, needs_long_run: 0, not_observed: 1, blocked: 2 });
+    expect(response.items[0]?.status).toBe("blocked");
+    expect(response.items[0]?.blocking_reason).toBe("remote_repo_present_but_probe_script_missing");
+    expect(response.items[1]?.status).toBe("blocked");
+    expect(response.items[1]?.blocking_reason).toBe("remote_repo_present_but_probe_script_missing");
+    expect(response.items[0]?.collection_runbook.suggested_commands[2]).toContain("npm run o5o6:upper-ssh-collector");
+    expect(JSON.stringify(response)).not.toContain(externalPath);
   });
 
   it("O7 long-stability collector dry-run is fail-closed and machine readable", () => {
