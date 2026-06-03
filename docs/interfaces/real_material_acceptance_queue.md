@@ -10,7 +10,7 @@
 
 接口只允许消费已有本地 JSON 材料：
 
-- O5/O6：`GET /api/o5-o6/external-probe-artifact` 的脱敏摘要，来源是 `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 或 `.workstation-runtime/o5-o6-external-live-probe.json`。
+- O5/O6：`GET /api/o5-o6/external-probe-artifact` 的脱敏摘要，来源是 `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 或 `.workstation-runtime/o5-o6-external-live-probe.json`。该 artifact 可由 PC Node probe、上位机 Python stdlib probe，或 PC 侧 SSH collector 拉回生成。
 - O7：`ROBER_O7_BROWSER_SMOKE_RESULT_JSON` 或 `.workstation-runtime/o7-browser-playback-smoke.json`。
 
 禁止行为：
@@ -83,9 +83,9 @@
   - `goal`：采集目标。
   - `suggested_commands[]`：兼容旧 UI 的安全 recipe / 脚本入口摘要。
   - `collection_paths[]`：结构化采集路径列表；O5/O6 item 会列出 PC Node 与上位机 Python 两条入口，O7 item 仍沿用 `suggested_commands[]`。
-    - `id=pc_node_npm | upper_computer_python_stdlib`
-    - `runtime=node | python_stdlib`
-    - `host_role=pc_workstation | upper_computer`
+    - `id=pc_node_npm | upper_computer_python_stdlib | pc_upper_ssh_collector`
+    - `runtime=node | python_stdlib | node_ssh`
+    - `host_role=pc_workstation | upper_computer | pc_to_upper_computer`
     - `command`：人工执行命令；API 不执行该命令。
     - `required_env[]`：该路径需要的环境变量。
     - `required_artifact`：该路径的 artifact 落盘或回传方式。
@@ -145,7 +145,7 @@ Runbook 是 recipe，不是执行结果。API 返回 runbook 时仍必须保持�
 - 不读取硬件。
 - 不发送控制。
 
-O5/O6 runbook 必须同时暴露两条采集路径，避免真实材料采集只依赖 PC Node/npm 环境：
+O5/O6 runbook 必须同时暴露 PC 本地、上位机本地、PC 侧 SSH 三类采集路径，避免真实材料采集只依赖 PC Node/npm 环境，也避免上位机 stdout artifact 需要人工复制：
 
 1. `pc_node_npm`
    - 运行位置：PC workstation。
@@ -169,14 +169,35 @@ O5/O6 runbook 必须同时暴露两条采集路径，避免真实材料采集只
      `TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN` 或 `ROBER_CLOUD_RELAY_BEARER_TOKEN`。
    - artifact：脚本 stdout 输出 `trashbot.o5_o6.external_live_probe.v1` JSON；传 `--output` 时写入 JSON 文件。operator 可把该文件复制回 PC workstation `.workstation-runtime/o5-o6-external-live-probe.json`，或用 `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` 指向实际路径。
 
-两条 O5/O6 路径的共同成功门槛：
+3. `pc_upper_ssh_collector`
+   - 运行位置：PC workstation，通过 SSH 在上位机执行 Python stdlib probe，并把 stdout JSON 拉回 PC runtime artifact。
+   - runtime：Node + SSH + remote Python stdlib。
+   - 命令入口：
+     `cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --ssh-target root@192.168.1.11 --ssh-port 37878 --pc-base-url http://127.0.0.1:8787 --cloud-base-url https://<production-cloud-base> --output .workstation-runtime/o5-o6-external-live-probe.json`
+   - 可覆盖参数/env：
+     `ROBER_O5_O6_UPPER_SSH_TARGET` / `--ssh-target`、
+     `ROBER_O5_O6_UPPER_SSH_PORT` / `--ssh-port`、
+     `ROBER_O5_O6_UPPER_REMOTE_ROOT` / `--remote-root`、
+     `ROBER_O5_O6_UPPER_REMOTE_SCRIPT` / `--remote-script`、
+     `ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL` / `--pc-base-url`、
+     `ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL` 或 `ROBER_CLOUD_RELAY_BASE_URL` / `--cloud-base-url`、
+     `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` / `--output`、
+     `ROBER_O5_O6_UPPER_SSH_TIMEOUT_SECONDS` / `--timeout-seconds`、
+     `ROBER_O5_O6_UPPER_PROBE_TIMEOUT_MS` / `--probe-timeout-ms`。
+   - 凭证边界：collector 不通过 CLI 或 SSH args 传 bearer token；`TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN` 或 `ROBER_CLOUD_RELAY_BEARER_TOKEN` 必须在上位机运行环境中配置，artifact 只允许显示 `token_status=present|absent`。
+   - artifact：默认写回 `.workstation-runtime/o5-o6-external-live-probe.json`；失败时也写 `trashbot.o5_o6.external_live_probe.v1` blocked artifact，供 acceptance queue 分类为 not observed / blocked。
+   - dry-run：
+     `cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --dry-run --ssh-target root@192.168.1.11 --ssh-port 37878 --cloud-base-url https://example.invalid --pc-base-url http://127.0.0.1:8787`
+     只输出计划和安全边界，不 SSH、不联网、不写 artifact。
+
+三条 O5/O6 路径的共同成功门槛：
 
 - `tls_evidence.tls_status=observed` 且 `tls_observed=true`。
 - O5 `/api/o5/readiness/health` 或 O6 `/api/o6/archive/health` 对应 endpoint `reachable=true` 且 `schema_status=matched`。
 - `contract_status=observed_fail_closed_contract` 或 `pass`。
 - `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`reads_hardware=false` 固定不变。
 
-两条 O5/O6 路径的共同安全边界：
+三条 O5/O6 路径的共同安全边界：
 
 - 只发送固定 allowlist GET。
 - 不 POST。

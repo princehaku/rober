@@ -8,6 +8,59 @@
 
 ## 2026-06-04 系列
 
+### 2026-06-04 02-03｜O5/O6 upper SSH collector｜上位机 SSH 采集入口完成，不涨分
+
+本轮 Full-Stack micro sprint 交付 `pc_upper_ssh_collector`，让 PC workstation 可通过
+SSH 触发上位机 `cloud-relay/scripts/o5_o6_external_live_probe.py --once-json`，并把结果写回
+`.workstation-runtime/o5-o6-external-live-probe.json`，作为 real material acceptance queue
+可消费的采集入口。用户价值是把 O5/O6 的下一步从“手工去上位机跑 probe”推进为
+PC 侧可复跑的材料采集动作，但它本身仍是入口能力，不是生产材料。
+
+验证证据来自 `sprints/2026.06.04_02-03_o5-o6-upper-ssh-collector/tech-done.md`：
+`npm test -- --run test/o5o6UpperSshCollector.test.ts` 4 tests passed，
+`npm test -- --run` 85 tests passed，`npm run lint` 通过，dry-run 输出
+`schema=trashbot.o5_o6.upper_ssh_collector.v1`、`status=dry_run`、
+`artifact_written=false`、`contains_bearer_token=false`、
+`blocked_reasons=["dry_run_no_ssh_no_network_no_artifact"]`，且安全边界保持
+`safe_to_control=false`、`sends_commands=false`、`reads_hardware=false`、
+`robot_control_executed=false`。
+
+Product/OKR 收口判定：O5/O6 继续约 96%，本轮不涨分。原因是本轮只交付上位机 SSH
+collector 和 acceptance queue 采集入口，没有产生真实公网 HTTPS/TLS、真实 4G/SIM、
+production DB/queue、OSS/CDN live traffic、真实 phone/browser、真实上车数据或 accepted
+live artifact。下一步真正涨分的口径是：用该 collector 进行 SSH 实连，在上位机真实环境变量
+和 cloud base URL 配置完成后，采到可回放、可被 acceptance queue 判定 accepted 的 live
+artifact，并覆盖 O5 的公网/TLS/4G/queue/phone-browser 或 O6 的真实隧道/DB/OSS/推理/上车数据链。
+
+### 2026-06-04 01-02｜OKR current state rebalance｜当前 KR 和比例更新规则重排
+
+本轮 Product/OKR micro sprint 基于当前真实状态重构 `OKR.md` 当前推进区，不新增 runtime
+证据，不上调 Objective 百分比。用户价值是让后续 sprint 更新 OKR 时只改“当前下一步可涨分
+KR”和“not_proven 风险”，历史材料继续沉淀在本日志，避免当前 KR 区被 6 月 3 日到 6 月 4 日
+多轮材料明细淹没。
+
+本轮保持 O1 约 97%、O5/O6 约 96%、O7 约 98.9% 的当前比例。方向判断均为继续：
+O5/O6 作为当前最低完成度 Objective，被明确排在最高优先级第一和第二；O1 保留首个 ROS2
+LiDAR `/scan` smoke observed 的软件/材料入口，但把底盘 HIL、ACK、`safe_to_control`
+正向准入和 SLAM/Nav2 缺口拆成 not_proven 风险；O7 保留 realtime radar/map split 软件验收，
+但后续不再因 UI 拆分大幅涨分，涨分来源转为真实 SLAM/map artifact、真实 operator workflow
+和 production path。
+
+本轮 `OKR.md` 对每个 active Objective 统一拆成三类 KR：
+已验收软件/材料入口、当前下一步可涨分 KR、不可越界的 not_proven 风险。比例规则也统一为
+“真实生产/现场/可回放 artifact 才涨分”：O5/O6 需要真实公网 HTTPS/TLS、4G/SIM、
+production DB/queue、OSS/CDN、真实 phone/browser 或真实上车数据；O1 需要 LiDAR 长稳/udev/
+SLAM/Nav2/map、底盘低速短 pulse、ACK/`T=1001` 同源材料、ROS feedback topics 和 HIL 复核；
+O7 需要真实 SLAM/map、真实 8787/browser 复跑、production path、完整 operator workflow、
+弱网/reboot/ASR/TTS 材料。
+
+本轮没有 KR 进入历史完成归档区；O2/O3/O4 继续保留为软件侧完成、等待真实现场验证的归档
+Objective。证据来源为：
+`sprints/2026.06.04_00-01_o1-upper-ros2-bootstrap-continue/tech-done.md`、
+`sprints/2026.06.04_00-01_o1-o7-realtime-scan-map-split/tech-done.md`、
+`sprints/2026.06.04_00-01_o1-o7-realtime-scan-map-split/side2side_check.md` 和
+`sprints/2026.06.04_00-01_o1-o7-realtime-scan-map-split/final.md`。
+
 ### 2026-06-04 00-01｜Product/OKR closeout｜O1 首个 ROS2 `/scan` smoke observed，O7 split 软件验收通过
 
 本轮 Product/OKR 收口基于 `sprints/2026.06.04_00-01_o1-upper-ros2-bootstrap-continue/tech-done.md`
