@@ -185,6 +185,34 @@ const scanProofTopBlockers = computed(() => {
   return blockers.slice(0, 3);
 });
 
+const rawPacketProofLatest = computed(() => {
+  // raw packet proof 同样来自 8787 status 摘要；前端不能自己推断或触发 LiDAR 串口采集。
+  return props.liveOperatorPanel?.lidar_radar.raw_packet_proof_latest ?? null;
+});
+
+const rawPacketProofSummary = computed(() => {
+  const proof = rawPacketProofLatest.value;
+  if (!proof) {
+    return "raw packet proof latest 未加载";
+  }
+  const age = proof.age_seconds === null ? "age n/a" : `${proof.age_seconds}s`;
+  return `${proof.artifact_status} · ${proof.freshness_status} · ${age} · ${proof.latest_proof_status}`;
+});
+
+const rawPacketProofStats = computed(() => {
+  const proof = rawPacketProofLatest.value;
+  if (!proof) {
+    return ["bytes n/a", "sync n/a", "packets n/a", "points n/a"];
+  }
+  // 这些数字只代表 latest artifact 摘要，不代表 ROS2 /scan 已连续可用。
+  return [
+    `bytes ${proof.latest_bytes_read ?? "n/a"}`,
+    `sync ${proof.latest_sync_header_count ?? "n/a"}`,
+    `packets ${proof.latest_packets_parse_ok ?? "n/a"}`,
+    `points ${proof.latest_points_total ?? "n/a"}`,
+  ];
+});
+
 watch(
   () => props.liveOperatorPanel?.control.speed.default_value,
   (defaultSpeed) => {
@@ -409,6 +437,22 @@ onBeforeUnmount(() => {
           只读 artifact 回放；PC 不启动 collector、不发送 A5 60、不执行底盘控制。
         </p>
       </div>
+      <div class="scan-proof-box" aria-label="LiDAR raw packet proof 状态">
+        <div class="status-light-row">
+          <span
+            class="status-dot"
+            :class="rawPacketProofLatest?.latest_raw_bytes_observed ? 'status-dot-green' : 'status-dot-yellow'"
+          />
+          <span>Raw packet proof</span>
+          <strong>{{ rawPacketProofSummary }}</strong>
+        </div>
+        <div class="endpoint-list compact-endpoints" aria-label="LiDAR raw packet proof statistics">
+          <code v-for="stat in rawPacketProofStats" :key="stat">{{ stat }}</code>
+        </div>
+        <p class="base-boundary">
+          {{ rawPacketProofLatest?.endpoint || "/api/radar/raw-packet-proof/latest" }} · 只读材料；safe_to_control=false。
+        </p>
+      </div>
     </article>
 
     <article class="console-card control-card" aria-label="操控">
@@ -486,6 +530,11 @@ onBeforeUnmount(() => {
           <span class="status-dot status-dot-yellow" />
           <span>Scan proof</span>
           <strong>{{ directUpperStatus?.upper_status_summary.radar_scan_proof_latest_status || "not_loaded" }}</strong>
+        </div>
+        <div class="status-light-row">
+          <span class="status-dot status-dot-yellow" />
+          <span>Raw packet</span>
+          <strong>{{ directUpperStatus?.upper_status_summary.radar_raw_packet_proof_latest_status || "not_loaded" }}</strong>
         </div>
       </div>
       <div class="endpoint-list" aria-label="本机 direct upper API 路径">

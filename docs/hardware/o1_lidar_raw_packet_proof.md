@@ -107,6 +107,72 @@ python3 onboard/scripts/o1_lidar_raw_packet_proof_collector.py --once-json --out
 - `slam_nav2_proven=false`
 - `hil_pass=false`
 
+## 8787 readback/status 合同
+
+`upper_robot_api.py` 已把 latest raw packet artifact 接入 8787 统一上位机 API，
+用于 PC workstation 和 OKR 材料只读消费。
+
+默认 artifact path：
+
+- `runtime/lidar_raw_packet_proof_latest.json`
+
+覆盖方式：
+
+- 环境变量：`ROBER_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH`
+- CLI 参数：`--lidar-raw-packet-proof-artifact-path`
+
+只读 endpoint：
+
+- `GET /api/radar/raw-packet-proof/latest`
+
+状态面摘要：
+
+- `GET /api/radar/status` 的 `raw_packet_proof_latest`
+- `GET /api/status` 的 `radar.raw_packet_proof_latest`
+
+摘要字段至少包含：
+
+- `endpoint=/api/radar/raw-packet-proof/latest`
+- `artifact.status`、`artifact.ok`、`artifact.mtime_ms`、`artifact.age_ms`
+- `freshness.status`、`freshness.age_seconds`
+- `latest_proof_status`
+- `raw_bytes_observed`
+- `sync_header_observed`
+- `packet_parse_ok`
+- `points_observed`
+- `bytes_read`
+- `sync_header_count`
+- `packets_parse_ok`
+- `points_total`
+- `latest_raw_bytes_observed`，与 `raw_bytes_observed` 同值，供 PC 兼容消费
+- `latest_sync_header_observed`，与 `sync_header_observed` 同值
+- `latest_packet_parse_ok`，与 `packet_parse_ok` 同值
+- `latest_points_observed`，与 `points_observed` 同值
+- `latest_bytes_read`，与 `bytes_read` 同值
+- `latest_sync_header_count`，与 `sync_header_count` 同值
+- `latest_packets_parse_ok`，与 `packets_parse_ok` 同值
+- `latest_points_total`，与 `points_total` 同值
+- fail-closed 安全字段：`readback_sends_commands=false`、
+  `sends_lidar_start_command=false`、`opens_lidar_serial=false`、
+  `starts_ros2=false`、`calls_base_manual=false`、`safe_to_control=false`、
+  `hil_pass=false`
+
+`freshness` 默认使用 15 分钟 stale 窗口，依据 artifact mtime 计算；
+`basis=artifact_mtime_only_material_freshness_not_hil_or_safe_to_control`。
+该字段只表示材料文件新鲜度，不表示 HIL、ACK、`safe_to_control` 或真实
+`/scan`。
+
+该 readback/status 合同只执行 `stat/read_text/json.loads`。它严禁：
+
+- 打开 LiDAR 串口。
+- 发送 `A5 60` 或停止序列。
+- 启动 ROS2 driver 或 launch。
+- 发送 WAVE ROVER 底盘命令。
+- 调用 `/api/base/manual`。
+
+注意：collector 本身会发送 LiDAR start/stop bytes；8787 readback/status
+不会发送任何 LiDAR 或底盘命令。两者证据边界必须分开写。
+
 ## 验收口径
 
 通过标准：

@@ -176,3 +176,33 @@ PC workstation 现在从 8787 统一上位机状态里消费 `radar.scan_proof_l
 - PC 不发送 `T=1/T=13/T=130/T=131` 或 `/cmd_vel`。
 
 因此它只证明 O1 scan proof 材料能被 PC 消费和解释，不证明真实 `/scan`、`/lidar/raw_packet`、TF、SLAM/Nav2、HIL、ACK、`safe_to_control=true`、真实手控或 delivery success。
+
+## 2026-06-03 LiDAR raw packet proof 可见性补充
+
+PC workstation 现在同样消费 8787 统一上位机状态里的
+`radar.raw_packet_proof_latest`，并在 O7 Live Operator Panel 与 direct upper
+status 中展示 raw packet proof 摘要：
+
+- `artifact_status`：最近一次 `trashbot.o1.lidar_raw_packet_proof.v1` artifact
+  是否可回放。
+- `freshness_status` 与 `age_seconds`：材料文件新鲜度摘要。
+- `latest_proof_status`：最近 raw bytes/packet/point proof 的机器可读结论。
+- `latest_raw_bytes_observed`、`latest_sync_header_observed`、
+  `latest_packet_parse_ok`、`latest_points_observed`：原始字节、`0xAA55` sync、
+  packet parse 和 point 材料是否已观察。
+- `latest_bytes_read`、`latest_sync_header_count`、`latest_packets_parse_ok`、
+  `latest_points_total`：operator 首屏可见的 raw packet proof 统计。
+
+该入口仍是只读运营可见性：
+
+- PC 不执行 LiDAR raw packet proof collector。
+- PC 不启动 ROS2 driver 或 launch。
+- PC 不打开 `/dev/ttyACM0`、`/dev/lidar` 或 `/dev/ttyS5`。
+- PC 不发送 vendor `A5 60` 启动命令或停止序列。
+- PC 不发送 `T=1/T=13/T=130/T=131`、`/cmd_vel` 或任何底盘命令。
+- PC 展示层固定 `safe_to_control=false`、`robot_control_executed=false`、
+  `hil_pass=false`。
+
+因此它只证明 O1 raw packet proof 材料能被 PC 消费和解释，不证明真实
+ROS2 `/scan`、TF、SLAM/Nav2、HIL、ACK、`safe_to_control=true`、真实手控或
+delivery success。

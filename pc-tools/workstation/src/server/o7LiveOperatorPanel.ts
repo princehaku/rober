@@ -116,6 +116,9 @@ export async function buildO7LiveOperatorPanel(): Promise<O7LiveOperatorPanelRes
   const scanProofFreshness = nestedRecord(scanProofLatest, "freshness");
   const scanProofStatus = stringField(scanProofLatest, "latest_proof_status", "not_loaded");
   const scanProofBlockerList = scanProofBlockers(scanProofLatest);
+  const rawPacketProofLatest = nestedRecord(upperRadar, "raw_packet_proof_latest");
+  const rawPacketProofArtifact = nestedRecord(rawPacketProofLatest, "artifact");
+  const rawPacketProofFreshness = nestedRecord(rawPacketProofLatest, "freshness");
   const basePort = stringField(upperBase, "port", "/dev/ttyS5");
   const baseBaudrate = numberField(upperBase, "baudrate", 115200);
   // 这个面板只把已观测事实产品化展示，不探测串口、不请求 /offer、不发送任何底盘控制。
@@ -148,6 +151,29 @@ export async function buildO7LiveOperatorPanel(): Promise<O7LiveOperatorPanelRes
         readback_sends_commands: false,
         collector_executed_by_pc: false,
       },
+      raw_packet_proof_latest: {
+        // raw packet proof 是 8787 只读摘要；PC 只展示 raw bytes/packet/point 证据，不采集、不发启动字节。
+        endpoint: "/api/radar/raw-packet-proof/latest",
+        http_status: nullableNumberField(rawPacketProofLatest, "http_status"),
+        artifact_status: stringField(rawPacketProofArtifact, "status", stringField(rawPacketProofLatest, "artifact_status", "not_loaded")),
+        freshness_status: stringField(rawPacketProofFreshness, "status", stringField(rawPacketProofLatest, "freshness_status", "unknown")),
+        age_seconds: nullableNumberField(rawPacketProofFreshness, "age_seconds") ?? nullableNumberField(rawPacketProofLatest, "age_seconds"),
+        latest_proof_status: stringField(rawPacketProofLatest, "latest_proof_status", "not_loaded"),
+        latest_raw_bytes_observed: boolField(rawPacketProofLatest, "latest_raw_bytes_observed", false),
+        latest_sync_header_observed: boolField(rawPacketProofLatest, "latest_sync_header_observed", false),
+        latest_packet_parse_ok: boolField(rawPacketProofLatest, "latest_packet_parse_ok", false),
+        latest_points_observed: boolField(rawPacketProofLatest, "latest_points_observed", false),
+        latest_bytes_read: nullableNumberField(rawPacketProofLatest, "latest_bytes_read"),
+        latest_sync_header_count: nullableNumberField(rawPacketProofLatest, "latest_sync_header_count"),
+        latest_packets_parse_ok: nullableNumberField(rawPacketProofLatest, "latest_packets_parse_ok"),
+        latest_points_total: nullableNumberField(rawPacketProofLatest, "latest_points_total"),
+        sends_commands: false,
+        sends_motion_commands: false,
+        robot_control_executed: false,
+        safe_to_control: false,
+        hil_pass: false,
+        collector_executed_by_pc: false,
+      },
       pointcloud_fabricated: false,
       source_facts: [
         observedLidarPort
@@ -155,6 +181,7 @@ export async function buildO7LiveOperatorPanel(): Promise<O7LiveOperatorPanelRes
           : "upper robot API did not report an observed LiDAR serial device",
         `${numberField(upperRadar, "baudrate", 150000)} baud, start ${stringField(upperRadar, "start_command_hex", "a5 60")}, stop ${stringField(upperRadar, "stop_command_hex", "a5 00 a5 65 a5 65")}`,
         `latest scan proof artifact ${stringField(scanProofArtifact, "status", "not_loaded")} / ${scanProofStatus}`,
+        `latest raw packet proof artifact ${stringField(rawPacketProofArtifact, "status", "not_loaded")} / ${stringField(rawPacketProofLatest, "latest_proof_status", "not_loaded")}`,
         "ROS2 /scan continuity has not been observed",
         "T=1001 WAVE ROVER feedback has not been observed",
       ],

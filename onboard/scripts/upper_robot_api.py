@@ -30,6 +30,7 @@ DEFAULT_FEEDBACK_SAMPLE_COUNT = 3
 DEFAULT_FEEDBACK_SAMPLE_INTERVAL_S = 0.2
 DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.json"
 DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
+DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH = "runtime/lidar_raw_packet_proof_latest.json"
 DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS = 15 * 60 * 1000
 MAX_FEEDBACK_READ_TIMEOUT_S = 2.0
 MAX_FEEDBACK_READ_WINDOW_S = 5.0
@@ -51,6 +52,7 @@ ROUTE_PATHS = {
     "camera_peer_close": "/api/camera/peers/{peer_id}/close",
     "radar_status": "/api/radar/status",
     "radar_scan_proof_latest": "/api/radar/scan-proof/latest",
+    "radar_raw_packet_proof_latest": "/api/radar/raw-packet-proof/latest",
     "base_status": "/api/base/status",
     "base_feedback_request": "/api/base/feedback-request",
     "base_feedback_samples": "/api/base/feedback-samples",
@@ -244,6 +246,16 @@ def lidar_scan_proof_artifact_info(path: str) -> dict[str, Any]:
     }
 
 
+def lidar_raw_packet_proof_artifact_info(path: str) -> dict[str, Any]:
+    """LiDAR raw packet proof artifact 只读入口，只代表串口原始材料可回放。"""
+    return {
+        "path": path,
+        "configured_by": "ROBER_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH or --lidar-raw-packet-proof-artifact-path",
+        "format": "json",
+        "schema": "trashbot.o1.lidar_raw_packet_proof.v1",
+    }
+
+
 def read_lidar_scan_proof_latest_artifact(path: str) -> tuple[int, dict[str, Any]]:
     """只读 LiDAR proof artifact，不启动 driver、不打开串口、不发送 A5 60。"""
     artifact = lidar_scan_proof_artifact_info(path)
@@ -283,6 +295,56 @@ def read_lidar_scan_proof_latest_artifact(path: str) -> tuple[int, dict[str, Any
     return 200, payload
 
 
+def build_lidar_raw_packet_readback_payload(
+    artifact_status: dict[str, Any],
+    latest_result: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """raw packet latest 回放必须 fail-closed，避免 PC 把材料入口当控制入口。"""
+    return {
+        "schema": f"{SCHEMA}.lidar_raw_packet_proof_latest_result",
+        "generated_at_ms": now_ms(),
+        "vendor_sources": LIDAR_VENDOR_SOURCES,
+        "artifact": artifact_status,
+        "latest_result": latest_result,
+        "latest_endpoint_path": ROUTE_PATHS["radar_raw_packet_proof_latest"],
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_lidar_start_command": False,
+        "sends_motion_commands": False,
+        "opens_lidar_serial": False,
+        "starts_ros2": False,
+        "calls_base_manual": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+    }
+
+
+def read_lidar_raw_packet_proof_latest_artifact(path: str) -> tuple[int, dict[str, Any]]:
+    """只读 raw packet artifact，不打开 LiDAR 串口、不发送 A5 60、不启动 ROS2。"""
+    artifact = lidar_raw_packet_proof_artifact_info(path)
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        artifact.update({"ok": False, "status": "missing", "error": {"type": "FileNotFoundError", "message": "latest LiDAR raw packet proof artifact is missing"}})
+        return 404, build_lidar_raw_packet_readback_payload(artifact, None)
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        return 500, build_lidar_raw_packet_readback_payload(artifact, None)
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        artifact.update({"ok": False, "status": "bad_json", "error": compact_error(exc)})
+        return 422, build_lidar_raw_packet_readback_payload(artifact, None)
+    if not isinstance(parsed, dict):
+        artifact.update({"ok": False, "status": "json_not_object", "error": {"type": "ValueError", "message": "latest raw packet artifact JSON root is not an object"}})
+        return 422, build_lidar_raw_packet_readback_payload(artifact, None)
+    artifact.update({"ok": True, "status": "loaded", "bytes_read": len(raw.encode("utf-8"))})
+    return 200, build_lidar_raw_packet_readback_payload(artifact, parsed)
+
+
 def summarize_lidar_scan_proof_latest_artifact(path: str) -> dict[str, Any]:
     """status 里只做 artifact readback 摘要，避免状态页触发 ROS2 或硬件。"""
     http_status, payload = read_lidar_scan_proof_latest_artifact(path)
@@ -306,6 +368,129 @@ def summarize_lidar_scan_proof_latest_artifact(path: str) -> dict[str, Any]:
         "safe_to_control": False,
         "primary_actions_enabled": False,
     }
+
+
+def summarize_lidar_raw_packet_proof_latest_artifact(path: str) -> dict[str, Any]:
+    """status 里摘要 raw packet artifact；只读文件，禁止串口和启动命令。"""
+    endpoint = ROUTE_PATHS["radar_raw_packet_proof_latest"]
+    generated_at_ms = now_ms()
+    stale_after_ms = DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS
+    artifact = {
+        **lidar_raw_packet_proof_artifact_info(path),
+        "ok": False,
+        "status": "unknown",
+    }
+    summary: dict[str, Any] = {
+        "schema": f"{SCHEMA}.lidar_raw_packet_proof_latest_summary",
+        "generated_at_ms": generated_at_ms,
+        "endpoint": endpoint,
+        "artifact": artifact,
+        "latest_proof_status": None,
+        "raw_bytes_observed": None,
+        "sync_header_observed": None,
+        "packet_parse_ok": None,
+        "points_observed": None,
+        "bytes_read": None,
+        "sync_header_count": None,
+        "packets_parse_ok": None,
+        "points_total": None,
+        "latest_raw_bytes_observed": None,
+        "latest_sync_header_observed": None,
+        "latest_packet_parse_ok": None,
+        "latest_points_observed": None,
+        "latest_bytes_read": None,
+        "latest_sync_header_count": None,
+        "latest_packets_parse_ok": None,
+        "latest_points_total": None,
+        "freshness": {
+            "status": "unknown",
+            "age_seconds": None,
+            "stale_after_ms": stale_after_ms,
+            "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control",
+        },
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_lidar_start_command": False,
+        "sends_motion_commands": False,
+        "opens_lidar_serial": False,
+        "starts_ros2": False,
+        "calls_base_manual": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+    }
+    try:
+        stat_result = Path(path).stat()
+    except FileNotFoundError:
+        artifact.update({"ok": False, "status": "missing"})
+        summary["freshness"]["status"] = "missing"
+        return summary
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        summary["freshness"]["status"] = "read_failed"
+        return summary
+
+    mtime_ms = int(stat_result.st_mtime_ns / 1_000_000)
+    age_ms = max(0, generated_at_ms - mtime_ms)
+    artifact.update({"mtime_ms": mtime_ms, "age_ms": age_ms})
+    # freshness 只表达 artifact 文件年龄，不能被 PC 解读成 HIL 或可控状态。
+    summary["freshness"]["age_seconds"] = round(age_ms / 1000.0, 3)
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        summary["freshness"]["status"] = "read_failed"
+        return summary
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        artifact.update({"ok": False, "status": "bad_json", "bytes_read": len(raw.encode("utf-8")), "error": compact_error(exc)})
+        summary["freshness"]["status"] = "bad_json"
+        return summary
+    if not isinstance(parsed, dict):
+        artifact.update({"ok": False, "status": "json_not_object", "bytes_read": len(raw.encode("utf-8"))})
+        summary["freshness"]["status"] = "json_not_object"
+        return summary
+
+    updated_at_ms = parsed.get("generated_at_ms")
+    if isinstance(updated_at_ms, int):
+        artifact["updated_at_ms"] = updated_at_ms
+    proof = parsed.get("proof", {}) if isinstance(parsed.get("proof"), dict) else {}
+    packet_stats = parsed.get("packet_stats", {}) if isinstance(parsed.get("packet_stats"), dict) else {}
+    artifact.update({"ok": True, "status": "loaded", "bytes_read": len(raw.encode("utf-8"))})
+    raw_bytes_observed = proof.get("raw_bytes_observed")
+    sync_header_observed = proof.get("sync_header_observed")
+    packet_parse_ok = proof.get("packet_parse_ok")
+    points_observed = proof.get("points_observed")
+    bytes_read = packet_stats.get("bytes_read")
+    sync_header_count = packet_stats.get("sync_header_count")
+    packets_parse_ok = packet_stats.get("packets_parse_ok")
+    points_total = packet_stats.get("points_total")
+    summary["freshness"]["status"] = freshness_from_age(age_ms, stale_after_ms)
+    summary.update(
+        {
+            "latest_proof_status": proof.get("status"),
+            "raw_bytes_observed": raw_bytes_observed,
+            "sync_header_observed": sync_header_observed,
+            "packet_parse_ok": packet_parse_ok,
+            "points_observed": points_observed,
+            "bytes_read": bytes_read,
+            "sync_header_count": sync_header_count,
+            "packets_parse_ok": packets_parse_ok,
+            "points_total": points_total,
+            "latest_raw_bytes_observed": raw_bytes_observed,
+            "latest_sync_header_observed": sync_header_observed,
+            "latest_packet_parse_ok": packet_parse_ok,
+            "latest_points_observed": points_observed,
+            "latest_bytes_read": bytes_read,
+            "latest_sync_header_count": sync_header_count,
+            "latest_packets_parse_ok": packets_parse_ok,
+            "latest_points_total": points_total,
+        }
+    )
+    return summary
 
 
 def feedback_samples_summary_artifact_status(path: str) -> dict[str, Any]:
@@ -832,6 +1017,7 @@ class UpperRobotApi:
         max_speed: float,
         feedback_samples_artifact_path: str = DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH,
         lidar_scan_proof_artifact_path: str = DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH,
+        lidar_raw_packet_proof_artifact_path: str = DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH,
     ) -> None:
         self.camera_base_url = camera_base_url.rstrip("/")
         self.base_port = base_port
@@ -839,6 +1025,7 @@ class UpperRobotApi:
         self.max_speed = max_speed
         self.feedback_samples_artifact_path = feedback_samples_artifact_path
         self.lidar_scan_proof_artifact_path = lidar_scan_proof_artifact_path
+        self.lidar_raw_packet_proof_artifact_path = lidar_raw_packet_proof_artifact_path
 
     def base_status(self) -> dict[str, Any]:
         """底盘状态只证明写入口配置和设备存在，不伪造 T=1001 ACK。"""
@@ -898,6 +1085,9 @@ class UpperRobotApi:
                 "frame_id": "laser_frame",
             },
             "scan_proof_latest": summarize_lidar_scan_proof_latest_artifact(self.lidar_scan_proof_artifact_path),
+            "raw_packet_proof_latest": summarize_lidar_raw_packet_proof_latest_artifact(
+                self.lidar_raw_packet_proof_artifact_path
+            ),
             "blocked_reasons": [
                 *(["ttyACM0_lidar_not_present"] if not lidar_observed else []),
                 "ros2_lidar_scan_not_connected",
@@ -958,6 +1148,9 @@ class UpperRobotApi:
             "routes": dict(ROUTE_PATHS),
             "base_feedback_samples_latest_artifact": artifact_path_info(self.feedback_samples_artifact_path),
             "lidar_scan_proof_latest_artifact": lidar_scan_proof_artifact_info(self.lidar_scan_proof_artifact_path),
+            "lidar_raw_packet_proof_latest_artifact": lidar_raw_packet_proof_artifact_info(
+                self.lidar_raw_packet_proof_artifact_path
+            ),
             "sends_commands": False,
             **proof_flags(),
         }
@@ -1040,6 +1233,10 @@ class UpperRobotApi:
     def radar_scan_proof_latest(self) -> tuple[int, dict[str, Any]]:
         """LiDAR `/scan` proof 回放只读取 artifact，不能启动 driver 或发送命令。"""
         return read_lidar_scan_proof_latest_artifact(self.lidar_scan_proof_artifact_path)
+
+    def radar_raw_packet_proof_latest(self) -> tuple[int, dict[str, Any]]:
+        """LiDAR raw packet proof 回放只读取 artifact，不能打开串口或发送 A5 60。"""
+        return read_lidar_raw_packet_proof_latest_artifact(self.lidar_raw_packet_proof_artifact_path)
 
     async def manual_control(self, body: dict[str, Any]) -> dict[str, Any]:
         """低速点动控制：发送方向命令后等待短窗口，再无条件发送停车命令。"""
@@ -1128,6 +1325,10 @@ def parse_args() -> argparse.Namespace:
         "--lidar-scan-proof-artifact-path",
         default=os.getenv("ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH", DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH),
     )
+    parser.add_argument(
+        "--lidar-raw-packet-proof-artifact-path",
+        default=os.getenv("ROBER_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH", DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH),
+    )
     return parser.parse_args()
 
 
@@ -1142,6 +1343,7 @@ async def run_server(args: argparse.Namespace) -> None:
         max_speed=args.max_speed,
         feedback_samples_artifact_path=args.feedback_samples_artifact_path,
         lidar_scan_proof_artifact_path=args.lidar_scan_proof_artifact_path,
+        lidar_raw_packet_proof_artifact_path=args.lidar_raw_packet_proof_artifact_path,
     )
     app = create_app(api)
     runner = web.AppRunner(app)
@@ -1194,6 +1396,10 @@ def create_app(api: UpperRobotApi) -> Any:
         http_status, payload = api.radar_scan_proof_latest()
         return json_response(payload, status=http_status)
 
+    async def radar_raw_packet_proof_latest(_: web.Request) -> Any:
+        http_status, payload = api.radar_raw_packet_proof_latest()
+        return json_response(payload, status=http_status)
+
     async def base_status(_: web.Request) -> Any:
         return json_response(api.base_status())
 
@@ -1228,6 +1434,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["camera_peer_close"], camera_peer_close)
     app.router.add_get(ROUTE_PATHS["radar_status"], radar_status)
     app.router.add_get(ROUTE_PATHS["radar_scan_proof_latest"], radar_scan_proof_latest)
+    app.router.add_get(ROUTE_PATHS["radar_raw_packet_proof_latest"], radar_raw_packet_proof_latest)
     app.router.add_get(ROUTE_PATHS["base_status"], base_status)
     app.router.add_post(ROUTE_PATHS["base_feedback_request"], base_feedback_request)
     app.router.add_post(ROUTE_PATHS["base_feedback_samples"], base_feedback_samples)

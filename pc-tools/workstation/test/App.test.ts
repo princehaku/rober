@@ -29,6 +29,40 @@ const liveOperatorFixture = {
     dev_lidar: "/dev/ttyACM0",
     stc_by_id: "resolved_to_ttyACM0",
     scan_status: "not_proven",
+    scan_proof_latest: {
+      endpoint: "/api/radar/scan-proof/latest",
+      artifact_status: "loaded",
+      freshness_status: "fresh",
+      age_seconds: 14,
+      latest_proof_status: "blocked_or_not_observed",
+      latest_scan_once_observed: false,
+      latest_raw_packet_once_observed: false,
+      blocked_reasons: ["ros2_command_unavailable"],
+      readback_sends_commands: false,
+      collector_executed_by_pc: false,
+    },
+    raw_packet_proof_latest: {
+      endpoint: "/api/radar/raw-packet-proof/latest",
+      http_status: 200,
+      artifact_status: "loaded",
+      freshness_status: "fresh",
+      age_seconds: 7,
+      latest_proof_status: "observed_raw_packet_material",
+      latest_raw_bytes_observed: true,
+      latest_sync_header_observed: true,
+      latest_packet_parse_ok: true,
+      latest_points_observed: true,
+      latest_bytes_read: 4246,
+      latest_sync_header_count: 127,
+      latest_packets_parse_ok: 24,
+      latest_points_total: 384,
+      sends_commands: false,
+      sends_motion_commands: false,
+      robot_control_executed: false,
+      safe_to_control: false,
+      hil_pass: false,
+      collector_executed_by_pc: false,
+    },
     pointcloud_fabricated: false,
     source_facts: [
       "/dev/ttyACM0 is reported by upper robot API as the LiDAR serial device",
@@ -256,6 +290,20 @@ const directUpperFixture = {
   upper_status_summary: {
     camera_status: "ready",
     radar_scan_status: "not_proven",
+    radar_scan_proof_artifact_status: "loaded",
+    radar_scan_proof_freshness_status: "fresh",
+    radar_scan_proof_age_seconds: 14,
+    radar_scan_proof_latest_status: "blocked_or_not_observed",
+    radar_scan_proof_blockers: ["ros2_command_unavailable"],
+    radar_raw_packet_proof_artifact_status: "loaded",
+    radar_raw_packet_proof_freshness_status: "fresh",
+    radar_raw_packet_proof_age_seconds: 7,
+    radar_raw_packet_proof_latest_status: "observed_raw_packet_material",
+    radar_raw_packet_proof_bytes_read: 4246,
+    radar_raw_packet_proof_sync_header_count: 127,
+    radar_raw_packet_proof_packets_parse_ok: 24,
+    radar_raw_packet_proof_points_total: 384,
+    radar_raw_packet_proof_safe_to_control: false,
     lidar_port: "/dev/ttyACM0",
     base_port: "/dev/ttyS5",
     base_baudrate: 115200,
@@ -375,6 +423,13 @@ describe("O7 live operator first screen", () => {
     expect(text).toContain("8787 API ready");
     expect(text).toContain("摄像头8088 ready");
     expect(text).toContain("当前没有真实 LiDAR `/scan` 证据");
+    expect(text).toContain("Raw packet proof");
+    expect(text).toContain("observed_raw_packet_material");
+    expect(text).toContain("bytes 4246");
+    expect(text).toContain("sync 127");
+    expect(text).toContain("packets 24");
+    expect(text).toContain("points 384");
+    expect(text).toContain("safe_to_control=false");
     expect(text).toContain("/dev/ttyS5 @ 115200");
     expect(text).toContain("T=1001 not_observed_after_t130");
     expect(text).toContain("manual control fail_closed_display_only");
@@ -438,6 +493,28 @@ describe("O7 live operator contracts", () => {
           baudrate: 150000,
           start_command_hex: "a5 60",
           stop_command_hex: "a5 00 a5 65 a5 65",
+          scan_proof_latest: {
+            artifact: { status: "loaded" },
+            freshness: { status: "fresh", age_seconds: 12 },
+            latest_proof_status: "blocked_or_not_observed",
+            latest_scan_once_observed: false,
+            latest_raw_packet_once_observed: false,
+          },
+          raw_packet_proof_latest: {
+            endpoint: "/api/radar/raw-packet-proof/latest",
+            http_status: 200,
+            artifact: { status: "loaded" },
+            freshness: { status: "fresh", age_seconds: 4 },
+            latest_proof_status: "observed_raw_packet_material",
+            latest_raw_bytes_observed: true,
+            latest_sync_header_observed: true,
+            latest_packet_parse_ok: true,
+            latest_points_observed: true,
+            latest_bytes_read: 4246,
+            latest_sync_header_count: 127,
+            latest_packets_parse_ok: 24,
+            latest_points_total: 384,
+          },
         },
         base: { port: "/dev/ttyS5", baudrate: 115200 },
       }),
@@ -459,6 +536,28 @@ describe("O7 live operator contracts", () => {
     expect(response.lidar_radar.stc_by_id).toBe("resolved_to_ttyACM0");
     expect(response.lidar_radar.scan_status).toBe("not_proven");
     expect(response.lidar_radar.pointcloud_fabricated).toBe(false);
+    expect(response.lidar_radar.raw_packet_proof_latest).toMatchObject({
+      endpoint: "/api/radar/raw-packet-proof/latest",
+      http_status: 200,
+      artifact_status: "loaded",
+      freshness_status: "fresh",
+      age_seconds: 4,
+      latest_proof_status: "observed_raw_packet_material",
+      latest_raw_bytes_observed: true,
+      latest_sync_header_observed: true,
+      latest_packet_parse_ok: true,
+      latest_points_observed: true,
+      latest_bytes_read: 4246,
+      latest_sync_header_count: 127,
+      latest_packets_parse_ok: 24,
+      latest_points_total: 384,
+      sends_commands: false,
+      sends_motion_commands: false,
+      robot_control_executed: false,
+      safe_to_control: false,
+      hil_pass: false,
+      collector_executed_by_pc: false,
+    });
     expect(response.control.base_boundary).toEqual({
       observed_write_device: "/dev/ttyS5",
       baudrate: 115200,
@@ -573,7 +672,19 @@ describe("O7 direct upper PC API", () => {
             ? { schema: "trashbot.upper_robot_api.health.v1", status: "ready" }
             : {
                 camera: { status: "ready" },
-                radar: { scan_status: "not_proven", observed_lidar_port: "/dev/ttyACM0" },
+                radar: {
+                  scan_status: "not_proven",
+                  observed_lidar_port: "/dev/ttyACM0",
+                  raw_packet_proof_latest: {
+                    artifact: { status: "loaded" },
+                    freshness: { status: "fresh", age_seconds: 5 },
+                    latest_proof_status: "observed_raw_packet_material",
+                    latest_bytes_read: 4246,
+                    latest_sync_header_count: 127,
+                    latest_packets_parse_ok: 24,
+                    latest_points_total: 384,
+                  },
+                },
                 base: { port: "/dev/ttyS5", baudrate: 115200, write_control_available: true },
               },
       } as Response;
@@ -589,6 +700,15 @@ describe("O7 direct upper PC API", () => {
     expect(response.upper_status_summary).toMatchObject({
       camera_status: "ready",
       radar_scan_status: "not_proven",
+      radar_raw_packet_proof_artifact_status: "loaded",
+      radar_raw_packet_proof_freshness_status: "fresh",
+      radar_raw_packet_proof_age_seconds: 5,
+      radar_raw_packet_proof_latest_status: "observed_raw_packet_material",
+      radar_raw_packet_proof_bytes_read: 4246,
+      radar_raw_packet_proof_sync_header_count: 127,
+      radar_raw_packet_proof_packets_parse_ok: 24,
+      radar_raw_packet_proof_points_total: 384,
+      radar_raw_packet_proof_safe_to_control: false,
       lidar_port: "/dev/ttyACM0",
       base_port: "/dev/ttyS5",
       base_baudrate: 115200,

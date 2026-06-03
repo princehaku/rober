@@ -68,6 +68,7 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 | `POST` | `/api/camera/peers/{peer_id}/close` | 代理 8088 peer cleanup |
 | `GET` | `/api/radar/status` | 雷达设备和 `/scan` 证明状态 |
 | `GET` | `/api/radar/scan-proof/latest` | 只读回放最近一次 LiDAR `/scan` proof artifact；不启动 ROS2、不打开串口、不发送 `A5 60` |
+| `GET` | `/api/radar/raw-packet-proof/latest` | 只读回放最近一次 LiDAR raw packet proof artifact；不执行 collector、不启动 ROS2、不打开串口、不发送 `A5 60` 或底盘命令 |
 | `GET` | `/api/base/status` | `/dev/ttyS5`、pyserial、反馈/ACK 状态；只读摘要 latest feedback samples artifact |
 | `POST` | `/api/base/stop` | 发送 `{"T":1,"L":0,"R":0}` 停车 |
 | `POST` | `/api/base/feedback-request` | 发送一次非运动 `{"T":130}` 反馈请求并短窗口读取 JSON |
@@ -171,6 +172,49 @@ readback 边界：
 包括 `artifact.status`、`latest_proof_status`、`latest_scan_once_observed` 和
 `latest_raw_packet_once_observed`。该摘要只代表最近 artifact 的读取状态，不证明当前
 ROS2 `/scan` 正在连续输出。
+
+### LiDAR raw packet proof artifact readback
+
+`GET /api/radar/raw-packet-proof/latest` 读取最近一次
+`trashbot.o1.lidar_raw_packet_proof.v1` artifact。它的目标是把绕开 ROS2 runtime
+blocker 的 raw bytes、`0xAA55` sync header、packet parse 和 point 统计材料回放给
+PC/O7 operator。
+
+readback 边界：
+
+- 只做 artifact 读取、JSON 解析和摘要。
+- 不执行 `onboard/scripts/o1_lidar_raw_packet_proof_collector.py`。
+- 不启动 ROS2 LiDAR driver。
+- 不打开 `/dev/ttyACM0`、`/dev/lidar` 或 `/dev/ttyS5`。
+- 不发送 `A5 60`、停止序列、`T=1/T=13/T=130/T=131` 或 `/cmd_vel`。
+- 固定 `sends_commands=false`、`sends_motion_commands=false`、
+  `robot_control_executed=false`、`safe_to_control=false`、`hil_pass=false`。
+
+`GET /api/radar/status` 与统一 `GET /api/status` 的
+`radar.raw_packet_proof_latest` 摘要至少可包含：
+
+- `endpoint="/api/radar/raw-packet-proof/latest"`
+- `http_status`
+- `artifact.status`
+- `freshness.status`
+- `artifact.age_ms` 或等价 age 字段
+- `latest_proof_status`
+- `latest_raw_bytes_observed`
+- `latest_sync_header_observed`
+- `latest_packet_parse_ok`
+- `latest_points_observed`
+- `latest_bytes_read`
+- `latest_sync_header_count`
+- `latest_packets_parse_ok`
+- `latest_points_total`
+- `sends_commands=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `safe_to_control=false`
+- `hil_pass=false`
+
+PC workstation 只消费这些摘要字段并做兼容降级；字段缺失时显示
+`not_loaded` / `unknown` / `n/a`，不得因为摘要缺失导致 UI 500。
 
 ## PC 配置
 

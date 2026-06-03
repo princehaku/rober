@@ -41,6 +41,13 @@ printf '{"T":1,"L":0.08,"R":0.08}\n' > /dev/ttyS5
 
 - `ssh.host="192.168.1.11"`，`ssh.port=37878`，`ssh.reachable=true`，`ssh.workstation_api_8787_status="not_listening_observed"`。
 - `lidar_radar.dev_lidar="missing"`，`lidar_radar.stc_by_id="unresolved"`，`lidar_radar.scan_status="not_proven"`，`lidar_radar.pointcloud_fabricated=false`。
+- `lidar_radar.raw_packet_proof_latest.endpoint="/api/radar/raw-packet-proof/latest"`，展示
+  latest raw bytes、sync header、packet parse 和 point 统计摘要；缺失时必须兼容显示
+  `not_loaded` / `n/a`。
+- `lidar_radar.raw_packet_proof_latest.safe_to_control=false`、
+  `sends_commands=false`、`sends_motion_commands=false`、`robot_control_executed=false`、
+  `hil_pass=false`，PC 首屏只消费 8787 摘要，不执行 collector、不启动 ROS2、不打开
+  LiDAR 串口、不发送 `A5 60` 或底盘命令。
 - `camera.base_url="http://192.168.1.11:8088/"`，`camera.health_status="not_listening_observed"` 是兼容既有 live 面板合同的静态字段；本轮实时 health/devices 以 `GET /api/o7/local-webrtc-camera` 返回为准。`camera.video_source="/dev/video1"`，`camera.offer_auto_post_enabled=false` 保持后端只读合同；前端浏览器在 camera ready 后可主动 POST 本机 `/api/o7/local-webrtc-camera/offer` 创建本地预览。`camera.lan_page_url` 指向同 LAN camera 页面。
 - `control.visible_directions=["forward","back","left","right","stop"]`。
 - `control.speed.default_value=0.2`，`min=0`，`max=0.5`，`step=0.05`，`unit="m/s"`。
@@ -76,6 +83,8 @@ printf '{"T":1,"L":0.08,"R":0.08}\n' > /dev/ttyS5
 - speed slider 和数值
 - 控制锁定提示与可展开的工程详情
 - `/dev/ttyS5 @ 115200`、`T=1001 not_observed_after_t130`、`manual control fail_closed_display_only` 作为底盘安全边界摘要
+- `Raw packet proof` 紧凑状态，展示 artifact/freshness/age/proof status、bytes、sync、
+  packets 和 points；该材料只证明 raw packet proof 可见，不证明 ROS2 `/scan` 或 HIL。
 
 方向按钮点击只更新本地 locked 文案，不调用控制 API，不发送 `/cmd_vel`、WAVE ROVER JSON、ROS2 action、云端 command 或任何底盘运动命令。工程 blocked reasons 只允许放在 `详情` 内，不能作为普通用户主文案。
 

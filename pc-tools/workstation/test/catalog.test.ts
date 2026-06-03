@@ -4470,6 +4470,28 @@ describe("workstation fail-closed API contracts", () => {
           baudrate: 150000,
           start_command_hex: "a5 60",
           stop_command_hex: "a5 00 a5 65 a5 65",
+          scan_proof_latest: {
+            artifact: { status: "loaded" },
+            freshness: { status: "fresh", age_seconds: 9 },
+            latest_proof_status: "blocked_or_not_observed",
+            latest_scan_once_observed: false,
+            latest_raw_packet_once_observed: false,
+          },
+          raw_packet_proof_latest: {
+            endpoint: "/api/radar/raw-packet-proof/latest",
+            http_status: 200,
+            artifact: { status: "loaded" },
+            freshness: { status: "fresh", age_seconds: 3 },
+            latest_proof_status: "observed_raw_packet_material",
+            latest_raw_bytes_observed: true,
+            latest_sync_header_observed: true,
+            latest_packet_parse_ok: true,
+            latest_points_observed: true,
+            latest_bytes_read: 4246,
+            latest_sync_header_count: 127,
+            latest_packets_parse_ok: 24,
+            latest_points_total: 384,
+          },
         },
         base: { port: "/dev/ttyS5", baudrate: 115200 },
       }),
@@ -4489,6 +4511,28 @@ describe("workstation fail-closed API contracts", () => {
       expect(panel.lidar_radar.dev_lidar).toBe("/dev/ttyACM0");
       expect(panel.lidar_radar.stc_by_id).toBe("resolved_to_ttyACM0");
       expect(panel.lidar_radar.scan_status).toBe("not_proven");
+      expect(panel.lidar_radar.raw_packet_proof_latest).toMatchObject({
+        endpoint: "/api/radar/raw-packet-proof/latest",
+        http_status: 200,
+        artifact_status: "loaded",
+        freshness_status: "fresh",
+        age_seconds: 3,
+        latest_proof_status: "observed_raw_packet_material",
+        latest_raw_bytes_observed: true,
+        latest_sync_header_observed: true,
+        latest_packet_parse_ok: true,
+        latest_points_observed: true,
+        latest_bytes_read: 4246,
+        latest_sync_header_count: 127,
+        latest_packets_parse_ok: 24,
+        latest_points_total: 384,
+        sends_commands: false,
+        sends_motion_commands: false,
+        robot_control_executed: false,
+        safe_to_control: false,
+        hil_pass: false,
+        collector_executed_by_pc: false,
+      });
       expect(panel.lidar_radar.pointcloud_fabricated).toBe(false);
       expect(panel.camera.base_url).toBe("http://192.168.1.11:8088/");
       expect(panel.camera.health_status).toBe("ready");

@@ -169,6 +169,15 @@ function blockedStatus(baseUrl: string, reason: string): O7DirectUpperApiStatusR
       radar_scan_proof_age_seconds: null,
       radar_scan_proof_latest_status: "not_loaded",
       radar_scan_proof_blockers: ["radar_scan_proof_latest_not_loaded"],
+      radar_raw_packet_proof_artifact_status: "not_loaded",
+      radar_raw_packet_proof_freshness_status: "unknown",
+      radar_raw_packet_proof_age_seconds: null,
+      radar_raw_packet_proof_latest_status: "not_loaded",
+      radar_raw_packet_proof_bytes_read: null,
+      radar_raw_packet_proof_sync_header_count: null,
+      radar_raw_packet_proof_packets_parse_ok: null,
+      radar_raw_packet_proof_points_total: null,
+      radar_raw_packet_proof_safe_to_control: false,
       lidar_port: "not_loaded",
       base_port: "not_loaded",
       base_baudrate: null,
@@ -208,6 +217,9 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
   const scanProofLatest = nestedRecord(radar, "scan_proof_latest");
   const scanProofArtifact = nestedRecord(scanProofLatest, "artifact");
   const scanProofFreshness = nestedRecord(scanProofLatest, "freshness");
+  const rawPacketProofLatest = nestedRecord(radar, "raw_packet_proof_latest");
+  const rawPacketProofArtifact = nestedRecord(rawPacketProofLatest, "artifact");
+  const rawPacketProofFreshness = nestedRecord(rawPacketProofLatest, "freshness");
   const blockedReasons = [
     ...(healthResult.request.ok ? [] : [`health_${healthResult.request.failure_reason || "failed"}`]),
     ...(statusResult.request.ok ? [] : [`status_${statusResult.request.failure_reason || "failed"}`]),
@@ -239,6 +251,15 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
       radar_scan_proof_age_seconds: numberField(scanProofFreshness, "age_seconds") ?? numberField(scanProofLatest, "age_seconds"),
       radar_scan_proof_latest_status: stringField(scanProofLatest, "latest_proof_status", "not_loaded"),
       radar_scan_proof_blockers: scanProofBlockers(scanProofLatest),
+      radar_raw_packet_proof_artifact_status: stringField(rawPacketProofArtifact, "status", stringField(rawPacketProofLatest, "artifact_status", "not_loaded")),
+      radar_raw_packet_proof_freshness_status: stringField(rawPacketProofFreshness, "status", stringField(rawPacketProofLatest, "freshness_status", "unknown")),
+      radar_raw_packet_proof_age_seconds: numberField(rawPacketProofFreshness, "age_seconds") ?? numberField(rawPacketProofLatest, "age_seconds"),
+      radar_raw_packet_proof_latest_status: stringField(rawPacketProofLatest, "latest_proof_status", "not_loaded"),
+      radar_raw_packet_proof_bytes_read: numberField(rawPacketProofLatest, "latest_bytes_read"),
+      radar_raw_packet_proof_sync_header_count: numberField(rawPacketProofLatest, "latest_sync_header_count"),
+      radar_raw_packet_proof_packets_parse_ok: numberField(rawPacketProofLatest, "latest_packets_parse_ok"),
+      radar_raw_packet_proof_points_total: numberField(rawPacketProofLatest, "latest_points_total"),
+      radar_raw_packet_proof_safe_to_control: false,
       lidar_port: stringField(radar, "observed_lidar_port", "not_loaded"),
       base_port: stringField(base, "port", "not_loaded"),
       base_baudrate: numberField(base, "baudrate"),

@@ -155,8 +155,15 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(result["scan_proof_latest"]["endpoint"], "/api/radar/scan-proof/latest")
         self.assertEqual(result["scan_proof_latest"]["artifact"]["status"], "missing")
         self.assertFalse(result["scan_proof_latest"]["sends_commands"])
+        self.assertEqual(result["raw_packet_proof_latest"]["endpoint"], "/api/radar/raw-packet-proof/latest")
+        self.assertEqual(result["raw_packet_proof_latest"]["artifact"]["status"], "missing")
+        self.assertEqual(result["raw_packet_proof_latest"]["freshness"]["status"], "missing")
+        self.assertIsNone(result["raw_packet_proof_latest"]["freshness"]["age_seconds"])
+        self.assertFalse(result["raw_packet_proof_latest"]["sends_lidar_start_command"])
+        self.assertFalse(result["raw_packet_proof_latest"]["opens_lidar_serial"])
         self.assertFalse(result["sends_commands"])
         self.assertFalse(result["robot_control_executed"])
+        self.assertEqual(FakeSerial.instances, [])
 
     def test_lidar_scan_proof_latest_readback_is_read_only_and_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -211,6 +218,110 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
             self.assertEqual(bad_status, 422)
             self.assertEqual(bad["artifact"]["status"], "bad_json")
             self.assertFalse(bad["sends_commands"])
+            self.assertEqual(FakeSerial.instances, [])
+
+    def test_lidar_raw_packet_proof_latest_readback_missing_loaded_bad_json_is_read_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            artifact_path = Path(tmpdir) / "raw_packet.json"
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                lidar_raw_packet_proof_artifact_path=str(artifact_path),
+            )
+
+            missing_status, missing = robot.radar_raw_packet_proof_latest()
+
+            self.assertEqual(missing_status, 404)
+            self.assertEqual(missing["artifact"]["status"], "missing")
+            self.assertIsNone(missing["latest_result"])
+            self.assertFalse(missing["sends_commands"])
+            self.assertFalse(missing["sends_lidar_start_command"])
+            self.assertFalse(missing["opens_lidar_serial"])
+            self.assertFalse(missing["starts_ros2"])
+            self.assertFalse(missing["calls_base_manual"])
+            self.assertEqual(FakeSerial.instances, [])
+
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.o1.lidar_raw_packet_proof.v1",
+                        "generated_at_ms": api.now_ms(),
+                        "packet_stats": {
+                            "bytes_read": 9086,
+                            "sync_header_count": 275,
+                            "packets_parse_ok": 275,
+                            "points_total": 1923,
+                        },
+                        "proof": {
+                            "status": "raw_packets_parsed",
+                            "raw_bytes_observed": True,
+                            "sync_header_observed": True,
+                            "packet_parse_ok": True,
+                            "points_observed": True,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            loaded_status, loaded = robot.radar_raw_packet_proof_latest()
+            summary = robot.radar_status()["raw_packet_proof_latest"]
+
+            self.assertEqual(loaded_status, 200)
+            self.assertEqual(loaded["artifact"]["status"], "loaded")
+            self.assertEqual(loaded["latest_result"]["schema"], "trashbot.o1.lidar_raw_packet_proof.v1")
+            self.assertFalse(loaded["readback_sends_commands"])
+            self.assertFalse(loaded["sends_lidar_start_command"])
+            self.assertEqual(summary["latest_proof_status"], "raw_packets_parsed")
+            self.assertTrue(summary["raw_bytes_observed"])
+            self.assertTrue(summary["sync_header_observed"])
+            self.assertTrue(summary["packet_parse_ok"])
+            self.assertTrue(summary["points_observed"])
+            self.assertEqual(summary["bytes_read"], 9086)
+            self.assertEqual(summary["sync_header_count"], 275)
+            self.assertEqual(summary["packets_parse_ok"], 275)
+            self.assertEqual(summary["points_total"], 1923)
+            self.assertTrue(summary["latest_raw_bytes_observed"])
+            self.assertTrue(summary["latest_sync_header_observed"])
+            self.assertTrue(summary["latest_packet_parse_ok"])
+            self.assertTrue(summary["latest_points_observed"])
+            self.assertEqual(summary["latest_bytes_read"], 9086)
+            self.assertEqual(summary["latest_sync_header_count"], 275)
+            self.assertEqual(summary["latest_packets_parse_ok"], 275)
+            self.assertEqual(summary["latest_points_total"], 1923)
+            self.assertEqual(summary["freshness"]["status"], "fresh")
+            self.assertIsInstance(summary["freshness"]["age_seconds"], float)
+            self.assertIn("material_freshness_not_hil", summary["freshness"]["basis"])
+            self.assertIn("mtime_ms", summary["artifact"])
+            self.assertIn("age_ms", summary["artifact"])
+            self.assertFalse(summary["opens_lidar_serial"])
+            self.assertFalse(summary["starts_ros2"])
+            self.assertFalse(summary["calls_base_manual"])
+            self.assertEqual(FakeSerial.instances, [])
+
+            old_mtime = time_for_default_stale_artifact()
+            os.utime(artifact_path, (old_mtime, old_mtime))
+            stale_summary = robot.radar_status()["raw_packet_proof_latest"]
+
+            self.assertEqual(stale_summary["freshness"]["status"], "stale")
+            self.assertGreater(stale_summary["freshness"]["age_seconds"], 60)
+            self.assertEqual(stale_summary["latest_bytes_read"], stale_summary["bytes_read"])
+            self.assertEqual(stale_summary["latest_sync_header_count"], stale_summary["sync_header_count"])
+
+            artifact_path.write_text("{not-json", encoding="utf-8")
+            bad_status, bad = robot.radar_raw_packet_proof_latest()
+            bad_summary = robot.radar_status()["raw_packet_proof_latest"]
+
+            self.assertEqual(bad_status, 422)
+            self.assertEqual(bad["artifact"]["status"], "bad_json")
+            self.assertEqual(bad_summary["artifact"]["status"], "bad_json")
+            self.assertEqual(bad_summary["freshness"]["status"], "bad_json")
+            self.assertIsInstance(bad_summary["freshness"]["age_seconds"], float)
+            self.assertIsNone(bad_summary["latest_bytes_read"])
+            self.assertFalse(bad["sends_commands"])
+            self.assertFalse(bad_summary["sends_lidar_start_command"])
             self.assertEqual(FakeSerial.instances, [])
 
     def test_base_status_does_not_trigger_feedback_request_or_serial_open(self) -> None:
@@ -484,6 +595,7 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
 
         self.assertEqual(api.ROUTE_PATHS["base_feedback_samples"], "/api/base/feedback-samples")
         self.assertEqual(api.ROUTE_PATHS["base_feedback_samples_latest"], "/api/base/feedback-samples/latest")
+        self.assertEqual(api.ROUTE_PATHS["radar_raw_packet_proof_latest"], "/api/radar/raw-packet-proof/latest")
         self.assertEqual(status["feedback_ack"]["t1001_observed"], False)
         self.assertEqual(FakeSerial.instances, [])
 
@@ -491,6 +603,11 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
 def time_for_stale_artifact() -> float:
     """让 artifact mtime 落到过去，验证 freshness 不依赖真实硬件时间。"""
     return (api.now_ms() / 1000.0) - 120.0
+
+
+def time_for_default_stale_artifact() -> float:
+    """默认 15 分钟窗口需要更旧的 mtime，才能验证 raw packet freshness stale。"""
+    return (api.now_ms() / 1000.0) - 1200.0
 
 
 if __name__ == "__main__":

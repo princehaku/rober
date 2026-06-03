@@ -49,6 +49,15 @@ trashbot.pc_tools_workstation.o7_direct_upper_status.v1
 - `upper_status_summary.radar_scan_proof_age_seconds`
 - `upper_status_summary.radar_scan_proof_latest_status`
 - `upper_status_summary.radar_scan_proof_blockers`
+- `upper_status_summary.radar_raw_packet_proof_artifact_status`
+- `upper_status_summary.radar_raw_packet_proof_freshness_status`
+- `upper_status_summary.radar_raw_packet_proof_age_seconds`
+- `upper_status_summary.radar_raw_packet_proof_latest_status`
+- `upper_status_summary.radar_raw_packet_proof_bytes_read`
+- `upper_status_summary.radar_raw_packet_proof_sync_header_count`
+- `upper_status_summary.radar_raw_packet_proof_packets_parse_ok`
+- `upper_status_summary.radar_raw_packet_proof_points_total`
+- `upper_status_summary.radar_raw_packet_proof_safe_to_control=false`
 - `upper_status_summary.lidar_port`
 - `upper_status_summary.base_port`
 - `upper_status_summary.base_baudrate`
@@ -149,6 +158,7 @@ trashbot.pc_tools_workstation.o7_direct_upper_manual.v1
 - 展示四个本机 API path，方便浏览器/curl 工具消费。
 - 展示 cloud relay 已绕过和 ACK/T=1001 not observed 边界。
 - 展示 8787 `radar.scan_proof_latest` 摘要：artifact status、freshness、age、latest proof status 和 top blockers。
+- 展示 8787 `radar.raw_packet_proof_latest` 摘要：artifact status、freshness、age、latest proof status、bytes、sync、packets 和 points。
 
 现有方向按钮仍保持锁定，不会因为 direct status ready 自动 POST manual。真实运动必须由 operator 明确调用本机 API，并受 PC clamp 与 8787 guardrail 共同限制。
 
@@ -181,5 +191,10 @@ PC direct upper 现在只消费这些只读摘要和本机转发结果：
 - artifact `loaded` 只代表 scan proof collector 的 JSON 可回放。
 - `latest_proof_status=blocked_or_not_observed` 时，如果远端摘要没有 blocker 明细，PC 会显示 `radar_scan_proof_blocked_or_not_observed`，不会误报为未加载。
 - PC 不执行 collector、不启动 ROS2、不打开 LiDAR 串口、不发送 `A5 60`，也不发送底盘运动命令。
+- `upper_status_summary.radar_raw_packet_proof_*` 来自 8787
+  `/api/status.radar.raw_packet_proof_latest`。
+- raw packet proof artifact `loaded` 只代表 latest raw bytes/packet/point JSON
+  可回放；PC 不执行 raw packet collector、不启动 ROS2、不打开 LiDAR 串口、不发送
+  `A5 60` 或底盘命令。
 
 这些材料仍不能声明真实 `/scan`、`/lidar/raw_packet`、TF、SLAM/Nav2、ACK/HIL、`safe_to_control=true` 或完整上车任务完成。
