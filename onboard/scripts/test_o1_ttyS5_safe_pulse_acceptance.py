@@ -58,6 +58,12 @@ COMPLETE_OPERATOR_REPORT = {
     "reported_at": "2026-06-03T00:00:00Z",
 }
 
+PREFLIGHT_ONLY_OPERATOR_REPORT = {
+    "operator_present": True,
+    "physical_clearance_confirmed": True,
+    "emergency_stop_ready": True,
+}
+
 # 测试边界说明：所有测试只使用 fake HTTP，不访问真实 8787。
 # 测试边界说明：默认 dry-run 必须只 GET status，不能 POST manual。
 # 测试边界说明：单独 `--execute-motion` 不能授权运动，必须双确认。
@@ -91,6 +97,8 @@ COMPLETE_OPERATOR_REPORT = {
 # 测试边界说明：operator report 是人工材料，不是运动授权或 HIL pass。
 # 测试边界说明：execute 缺 operator report 时必须阻断 manual POST。
 # 测试边界说明：dry-run 携带完整 report 仍必须保持只读。
+# 测试边界说明：preflight-only report 可以授权执行前 gate，但不能变成 review/HIL。
+# 测试边界说明：observed_motion/observed_stop 是执行后观察，不得阻断执行前 POST。
 
 
 class SafePulseAcceptanceTest(unittest.TestCase):
@@ -217,6 +225,39 @@ class SafePulseAcceptanceTest(unittest.TestCase):
         self.assertEqual(result["operator_report_status"], "ready_for_review")
         self.assertEqual(result["acceptance_verdict"]["status"], "motion_posted_without_ack")
         self.assertFalse(result["acceptance_verdict"]["safe_to_control"])
+        self.assertFalse(result["acceptance_verdict"]["hil_pass"])
+
+    def test_execute_mode_accepts_preflight_only_operator_report_before_motion(self) -> None:
+        calls: list[tuple[str, str, dict[str, object] | None]] = []
+
+        def fake_http(method: str, base_url: str, path: str, timeout_s: float, payload: dict[str, object] | None = None) -> dict[str, object]:
+            # preflight-only 只证明现场安全准备，不证明运动/停止观察已经完成。
+            calls.append((method, path, payload))
+            if path == "/api/status":
+                return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": STATUS_PAYLOAD, "error": None}
+            if path == "/api/base/manual":
+                return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": {"manual_command_executed": True}, "error": None}
+            return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": {"robot_control_executed": True}, "error": None}
+
+        with tempfile.TemporaryDirectory() as temp_dir, mock.patch.object(runner, "http_json", side_effect=fake_http):
+            args = runner.parse_args(
+                [
+                    "--execute-motion",
+                    "--confirm-physical-clearance",
+                    "--operator-report-json",
+                    self.write_operator_report(temp_dir, PREFLIGHT_ONLY_OPERATOR_REPORT),
+                ]
+            )
+            result = runner.run_acceptance(args)
+
+        self.assertEqual([call[1] for call in calls], ["/api/status", "/api/base/manual", "/api/base/stop", "/api/status"])
+        self.assertEqual(result["operator_report_status"], "ready_for_execution")
+        self.assertIn("observed_motion", result["operator_report"]["normalization"]["review_missing_or_invalid_fields"])
+        self.assertIn("observed_stop", result["operator_report"]["normalization"]["review_missing_or_invalid_fields"])
+        self.assertEqual(result["acceptance_verdict"]["operator_report_status"], "ready_for_execution")
+        self.assertEqual(result["acceptance_verdict"]["status"], "motion_posted_without_ack")
+        self.assertTrue(result["sends_commands"])
+        self.assertFalse(result["safe_to_control"])
         self.assertFalse(result["acceptance_verdict"]["hil_pass"])
 
     def test_execute_mode_reports_post_status_t1001_without_hil_pass(self) -> None:
@@ -366,6 +407,7 @@ class SafePulseAcceptanceTest(unittest.TestCase):
         self.assertEqual(calls, [("GET", "/api/status", None)])
         self.assertEqual(result["operator_report_status"], "unsafe_or_incomplete")
         self.assertIn("observed_stop", result["operator_report"]["normalization"]["missing_or_invalid_fields"])
+        self.assertIn("observed_stop", result["operator_report"]["normalization"]["review_missing_or_invalid_fields"])
         self.assertIn("emergency_stop_ready", result["operator_report"]["normalization"]["unsafe_fields"])
         self.assertEqual(result["acceptance_verdict"]["status"], "blocked_before_motion")
         self.assertEqual(result["acceptance_verdict"]["failed_step"], "operator_report_missing_or_incomplete")
@@ -406,6 +448,26 @@ class SafePulseAcceptanceTest(unittest.TestCase):
         self.assertFalse(result["sends_commands"])
         self.assertFalse(result["robot_control_executed"])
         self.assertFalse(result["safe_to_control"])
+
+    def test_dry_run_with_preflight_only_operator_report_still_sends_no_commands(self) -> None:
+        calls: list[tuple[str, str, dict[str, object] | None]] = []
+
+        def fake_http(method: str, base_url: str, path: str, timeout_s: float, payload: dict[str, object] | None = None) -> dict[str, object]:
+            calls.append((method, path, payload))
+            return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": STATUS_PAYLOAD, "error": None}
+
+        with tempfile.TemporaryDirectory() as temp_dir, mock.patch.object(runner, "http_json", side_effect=fake_http):
+            args = runner.parse_args(
+                ["--dry-run", "--operator-report-json", self.write_operator_report(temp_dir, PREFLIGHT_ONLY_OPERATOR_REPORT), "--once-json"]
+            )
+            result = runner.run_acceptance(args)
+
+        self.assertEqual(calls, [("GET", "/api/status", None)])
+        self.assertEqual(result["operator_report_status"], "ready_for_execution")
+        self.assertEqual(result["acceptance_verdict"]["operator_report_status"], "ready_for_execution")
+        self.assertEqual(result["acceptance_verdict"]["status"], "dry_run_only")
+        self.assertFalse(result["sends_commands"])
+        self.assertIsNone(result["manual_request"])
 
     def test_dry_run_status_failure_keeps_dry_run_verdict(self) -> None:
         def fake_http(method: str, base_url: str, path: str, timeout_s: float, payload: dict[str, object] | None = None) -> dict[str, object]:

@@ -233,7 +233,7 @@ python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
   --once-json
 ```
 
-`--operator-report-json -` 可从 stdin 读取对象 JSON。runner 会归一化 `operator_present`、`physical_clearance_confirmed`、`emergency_stop_ready`、`observed_motion`、`observed_stop`、`operator_notes`、`reported_at`，并输出 `operator_report_status=missing|ready_for_review|unsafe_or_incomplete`。该报告只作为人工观察材料；dry-run 带完整报告仍不 POST `/api/base/manual`，也不会把 `safe_to_control` 或 `hil_pass` 改成 true。
+`--operator-report-json -` 可从 stdin 读取对象 JSON。runner 会归一化执行前安全字段 `operator_present`、`physical_clearance_confirmed`、`emergency_stop_ready`，以及执行后观察字段 `observed_motion`、`observed_stop`、`operator_notes`、`reported_at`，并输出 `operator_report_status=missing|ready_for_execution|ready_for_review|unsafe_or_incomplete`。preflight 三项为 true 时是 `ready_for_execution`，可通过执行前 operator report gate；preflight 为 true 且执行后观察字段完整时是 `ready_for_review`。该报告只作为人工 preflight/观察材料；dry-run 带完整或半完整报告仍不 POST `/api/base/manual`，也不会把 `safe_to_control` 或 `hil_pass` 改成 true。
 
 现场有人看护且 CEO 明确授权真实短 pulse 后，才允许使用：
 
@@ -254,7 +254,7 @@ python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
 
 - 默认 dry-run：`api_status_dry_run_not_hil`
 - 执行模式：`api_manual_short_pulse_with_extra_stop_not_hil`
-- 执行模式缺失或不完整 operator report：`acceptance_verdict.failed_step=operator_report_missing_or_incomplete`，不发送 manual POST。
+- 执行模式缺失或不安全 preflight operator report：`acceptance_verdict.failed_step=operator_report_missing_or_incomplete`，不发送 manual POST。
 - 没有 `T=1001` 或等价 ACK 前，`acceptance_verdict.status` 必须是 `motion_posted_without_ack` 或更保守状态，runner 输出必须保持 `safe_to_control=false`、`delivery_success=false`。
-- 即使 `acceptance_verdict.status=motion_posted_with_t1001` 且 `operator_report_status=ready_for_review`，也只代表 8787 status/manual response 中出现 ACK 线索并携带人工观察材料；仍不是 HIL pass，不能替代同源 `feedback_T1001.log`、ROS `/odom`、`/imu/data`、`/battery` 和 operator HIL report。
+- 即使 `acceptance_verdict.status=motion_posted_with_t1001` 且 `operator_report_status=ready_for_execution` 或 `ready_for_review`，也只代表 8787 status/manual response 中出现 ACK 线索并携带人工材料；仍不是 HIL pass，不能替代同源 `feedback_T1001.log`、ROS `/odom`、`/imu/data`、`/battery` 和 operator HIL report。
 - 本轮未执行真实 `/api/base/manual`，未发送任何运动 POST。

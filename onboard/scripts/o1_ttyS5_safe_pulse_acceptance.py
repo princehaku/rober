@@ -106,18 +106,17 @@ OPERATOR_REPORT_FIELDS = (
     "operator_notes",
     "reported_at",
 )
-OPERATOR_REPORT_REQUIRED_BOOL_FIELDS = (
+OPERATOR_REPORT_PREFLIGHT_BOOL_FIELDS = (
     "operator_present",
     "physical_clearance_confirmed",
     "emergency_stop_ready",
+)
+OPERATOR_REPORT_REVIEW_BOOL_FIELDS = (
     "observed_motion",
     "observed_stop",
 )
-OPERATOR_REPORT_CRITICAL_TRUE_FIELDS = (
-    "operator_present",
-    "physical_clearance_confirmed",
-    "emergency_stop_ready",
-)
+OPERATOR_REPORT_REQUIRED_REVIEW_TEXT_FIELDS = ("operator_notes", "reported_at")
+OPERATOR_REPORT_GATE_STATUSES = frozenset({"ready_for_execution", "ready_for_review"})
 
 
 def utc_now() -> str:
@@ -163,30 +162,45 @@ def read_operator_report(path: str) -> dict[str, Any]:
 
 
 def normalize_operator_report(report: dict[str, Any] | None) -> tuple[dict[str, Any] | None, str]:
-    """把人工观察报告压成稳定字段，并给出机器可读完整性状态。"""
+    """把人工报告分成执行前安全字段和执行后观察字段，避免流程倒置。"""
     if report is None:
         return None, "missing"
     normalized: dict[str, Any] = {}
-    missing_or_invalid: list[str] = []
+    preflight_missing_or_invalid: list[str] = []
+    review_missing_or_invalid: list[str] = []
     unsafe_fields: list[str] = []
-    for field in OPERATOR_REPORT_REQUIRED_BOOL_FIELDS:
+    for field in OPERATOR_REPORT_PREFLIGHT_BOOL_FIELDS:
         value = coerce_bool(report.get(field))
         normalized[field] = value
         if value is None:
-            missing_or_invalid.append(field)
+            preflight_missing_or_invalid.append(field)
+        elif value is False:
+            unsafe_fields.append(field)
+    for field in OPERATOR_REPORT_REVIEW_BOOL_FIELDS:
+        value = coerce_bool(report.get(field))
+        normalized[field] = value
+        if value is None:
+            review_missing_or_invalid.append(field)
     notes = report.get("operator_notes")
     normalized["operator_notes"] = "" if notes is None else str(notes)
     reported_at = report.get("reported_at")
     normalized["reported_at"] = str(reported_at).strip() if reported_at else None
-    for field in OPERATOR_REPORT_CRITICAL_TRUE_FIELDS:
-        if normalized.get(field) is False:
-            unsafe_fields.append(field)
-    status = "ready_for_review"
-    if missing_or_invalid or unsafe_fields:
+    for field in OPERATOR_REPORT_REQUIRED_REVIEW_TEXT_FIELDS:
+        value = normalized.get(field)
+        if not isinstance(value, str) or not value.strip():
+            review_missing_or_invalid.append(field)
+    status = "ready_for_execution"
+    if preflight_missing_or_invalid or unsafe_fields:
         status = "unsafe_or_incomplete"
+    elif not review_missing_or_invalid and all(normalized.get(field) is True for field in OPERATOR_REPORT_REVIEW_BOOL_FIELDS):
+        status = "ready_for_review"
     normalized["normalization"] = {
         "source_fields": list(OPERATOR_REPORT_FIELDS),
-        "missing_or_invalid_fields": missing_or_invalid,
+        "preflight_required_fields": list(OPERATOR_REPORT_PREFLIGHT_BOOL_FIELDS),
+        "review_required_fields": list(OPERATOR_REPORT_REVIEW_BOOL_FIELDS) + list(OPERATOR_REPORT_REQUIRED_REVIEW_TEXT_FIELDS),
+        "missing_or_invalid_fields": preflight_missing_or_invalid + review_missing_or_invalid,
+        "preflight_missing_or_invalid_fields": preflight_missing_or_invalid,
+        "review_missing_or_invalid_fields": review_missing_or_invalid,
         "unsafe_fields": unsafe_fields,
     }
     return normalized, status
@@ -444,11 +458,11 @@ def run_acceptance(args: argparse.Namespace) -> dict[str, Any]:
             reason="initial status read failed; motion POST blocked fail-closed",
         )
         return payload
-    if payload["execution_gate"]["authorized"] and payload["operator_report_status"] != "ready_for_review":
+    if payload["execution_gate"]["authorized"] and payload["operator_report_status"] not in OPERATOR_REPORT_GATE_STATUSES:
         payload["acceptance_verdict"] = make_verdict(
             "blocked_before_motion",
             failed_step="operator_report_missing_or_incomplete",
-            reason="execute mode requires a complete operator report; motion POST blocked fail-closed",
+            reason="execute mode requires safe preflight operator report; motion POST blocked fail-closed",
             t1001_or_ack_observed=payload["t1001_feedback_status"] == "observed",
         )
         return payload

@@ -8,6 +8,16 @@
 
 ## 2026-06-03 系列
 
+### 2026-06-03 09-10｜O1 execution preflight report｜Product closeout
+
+本轮 Product/OKR 收口基于 `sprints/2026.06.03_09-10_o1-execution-preflight-report/tech-done.md`。用户价值是把 O1 watched field pulse 从“执行前也要求执行后观察材料”的错位合同，调整为“执行前 preflight 三项满足即可进入受控执行，执行后 observation 完整再进入复核”，避免现场 operator 在安全条件已确认时仍被报告 gate 误挡，也避免把 dry-run 或 preflight 文档误写成 HIL。
+
+Hardware Infra 本轮完成 safe pulse runner 两阶段 operator report 合同：执行前 `operator_present`、`physical_clearance_confirmed`、`emergency_stop_ready` 三项 true 时输出 `operator_report_status=ready_for_execution`，允许执行模式通过 report gate；执行后 `observed_motion`、`observed_stop`、`operator_notes`、`reported_at` 完整时输出 `ready_for_review`；执行模式允许 `ready_for_execution|ready_for_review` 通过，dry-run 仍不发命令，状态边界为 `execution_preflight_report_ready_not_hil`。验证证据为 py_compile OK、16 tests OK、dry-run preflight-only report 输出 `operator_report_status=ready_for_execution` 且 `sends_commands=false`、diff-check OK；本机 `127.0.0.1:8787` 不可达时仍 fail-closed。
+
+Product closeout 判定：Objective 1 继续，当前进度文字从 `operator report intake ready / watched execution pending` 调整为 `execution preflight report ready / watched execution pending`，仍保持约 93%，不上调。原因是本轮没有真实 motion，没有 POST 远端 `/api/base/manual` 或 `/api/base/stop`，没有打开 `/dev/ttyS5`，没有发送 `T=1/T=13/T=130/T=131` 或 `/cmd_vel`，没有观察到 ACK、`T=1001`、真实 `/odom`、`/imu/data`、`/battery` 或 HIL packet。
+
+OKR/KR 影响：本轮增强 O1 KR3/KR4/KR5 的执行前报告门槛和 fail-closed 合同，但真实反馈/ACK KR 没有完成，因此没有 KR 进入历史完成归档。O1 仍是当前最高优先级；下一轮 P0 仍是 watched field pulse execution + ACK/`T=1001` capture：现场看护、物理净空、人工急停/断电路径可用，经 8787 `/api/base/manual` 做低速短 pulse，并采集 status/manual/stop/post-status、operator report、ACK 或 `T=1001`、日志与安全复位证据。责任 Engineer：`robot-hardware-engineer` 主责，必要时 `robot-software-engineer` 只补 ROS topic/bridge 接口事实。剩余风险为真实运动、自动停车/急停现场演练、ACK/`T=1001`、HIL、真实 ROS topic 和完整 delivery success 仍 `not_proven`。
+
 ### 2026-06-03 07-08｜O1 safe pulse post-status verdict｜Product closeout
 
 本轮 Product/OKR 收口基于 `sprints/2026.06.03_07-08_o1-safe-pulse-post-status/tech-done.md` 和 Hardware Infra Engineer 已提交的 `b361377 Enhance O1 safe pulse post-status verdict`。用户价值是把 O1 的受控短 pulse 验收从“manual/stop 可执行”推进到“执行前 status、manual、stop、执行后 post-status 和 verdict 同源归档”，避免下一轮现场看护执行时漏采 ACK/`T=1001` 或误把 dry-run/失败状态包装成安全控制完成。产品北极星仍是普通手机用户可用的垃圾投递机器人；O1 的价值不是单次点动，而是可信底盘控制证据能被现场安全、PC/ROS 状态和后续 HIL 验收复用。

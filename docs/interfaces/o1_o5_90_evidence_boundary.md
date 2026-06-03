@@ -236,7 +236,7 @@ python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py --dry-run --once-json
 
 2026-06-03 07-08 进一步把 runner 的现场短 pulse 证据合同补强为 `post-status + acceptance_verdict`。执行模式只有在 `--execute-motion --confirm-physical-clearance` 且非 `--dry-run` 时才会调用 8787 `/api/base/manual`；manual 与额外 `/api/base/stop` 后必须再采一次 `GET /api/status`，输出 `post_status_request`、`post_status_summary`、`post_t1001_feedback_status`。机器收口字段 `acceptance_verdict.status` 只允许写成 `dry_run_only`、`blocked_before_motion`、`motion_posted_without_ack`、`motion_posted_with_t1001` 等保守状态；初始 status、manual、stop、post-status 任一步失败都必须 `fail_closed=true` 并保留 `failed_step`。
 
-2026-06-03 08-09 新增 operator report intake，作为 HIL 前置材料而不是 HIL pass。runner 可通过 `--operator-report-json PATH_OR_-` 读取对象 JSON，并把 `operator_present`、`physical_clearance_confirmed`、`emergency_stop_ready`、`observed_motion`、`observed_stop`、`operator_notes`、`reported_at` 归一化到 artifact 的 `operator_report`。`operator_report_status` 只允许 `missing`、`ready_for_review`、`unsafe_or_incomplete`。执行模式缺少完整 report 时必须 fail-closed 到 `failed_step=operator_report_missing_or_incomplete`，不允许把报告缺口下的 HTTP 200 或历史 `T=1001` 误写成 HIL；dry-run 即使携带完整 report 也仍然不发送运动命令。
+2026-06-03 09-10 将 operator report intake 修正为两阶段合同，状态名为 `execution_preflight_report_ready_not_hil`，作为 HIL 前置材料而不是 HIL pass。runner 可通过 `--operator-report-json PATH_OR_-` 读取对象 JSON，并把执行前安全字段 `operator_present`、`physical_clearance_confirmed`、`emergency_stop_ready` 与执行后观察字段 `observed_motion`、`observed_stop`、`operator_notes`、`reported_at` 归一化到 artifact 的 `operator_report`。`operator_report_status` 只允许 `missing`、`ready_for_execution`、`ready_for_review`、`unsafe_or_incomplete`。执行模式只要求 preflight 三项均可解析并为 true 即可通过 operator report gate；执行后观察字段缺失时仍保留为机器可读 review 缺口，但不得阻断执行前 manual POST。preflight 缺失、false 或解析失败时必须 fail-closed 到 `failed_step=operator_report_missing_or_incomplete`。dry-run 即使携带完整或半完整 report 也仍然不发送运动命令。
 
 该 06-07 材料只能把状态提升为 `remote_8787_read_only_observed_not_hil`，不能提升为 `hil_pass`。原因是本轮没有现场物理净空确认、没有 POST `/api/base/manual`、没有 POST `/api/base/stop`、没有打开 `/dev/ttyS5`、没有发送任何 WAVE ROVER JSON 运动命令、没有采集 `T=1001` 原始反馈，也没有 ROS `/odom`、`/imu/data`、`/battery` 同源材料。
 
@@ -262,4 +262,4 @@ python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
 - 即使 post-status 出现 `T=1001`/ACK，`acceptance_verdict.status=motion_posted_with_t1001` 也只能作为 HIL packet 前置材料，不等于 HIL pass。
 - 它不能替代 O1 90% 要求的同源 HIL packet、至少两帧真实 `T=1001`、ROS `/imu/data`、`/battery`、`/odom` 和 operator HIL report。
 
-因此本 runner 当前状态只能记录为 `ready_for_real_short_pulse_collection_not_hil` 或 `operator_report_intake_ready_not_hil`。本轮没有远端运动 POST，没有真实 WAVE ROVER JSON 运动写入，没有 HIL pass。
+因此本 runner 当前状态只能记录为 `ready_for_real_short_pulse_collection_not_hil` 或 `execution_preflight_report_ready_not_hil`。本轮没有远端运动 POST，没有真实 WAVE ROVER JSON 运动写入，没有 HIL pass。

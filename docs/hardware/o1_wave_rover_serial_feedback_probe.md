@@ -226,13 +226,14 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 
 `onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py` 当前只通过 8787 上位 API 采集短 pulse 验收材料，不新增真实串口直连，不 import/use pyserial，不发送 `T=130`、`T=131` 或 ROS `/cmd_vel`。
 
-2026-06-03 08-09 新增 operator report intake。runner 支持 `--operator-report-json PATH_OR_-`，把现场人工观察 JSON 合并进同一 artifact 的 `operator_report` 字段，并输出机器可读 `operator_report_status`：
+2026-06-03 09-10 将 operator report 修正为两阶段合同，状态名为 `execution_preflight_report_ready_not_hil`。runner 支持 `--operator-report-json PATH_OR_-`，把现场人工 JSON 合并进同一 artifact 的 `operator_report` 字段，并输出机器可读 `operator_report_status`：
 
 - `missing`：未提供报告。
-- `ready_for_review`：报告包含 `operator_present`、`physical_clearance_confirmed`、`emergency_stop_ready`、`observed_motion`、`observed_stop`、`operator_notes`、`reported_at`，且前三个现场安全字段均为 true。
+- `ready_for_execution`：执行前 preflight 三项 `operator_present`、`physical_clearance_confirmed`、`emergency_stop_ready` 均可解析并为 true。该状态允许执行模式通过 operator report gate，但仍不是 HIL pass。
+- `ready_for_review`：preflight 三项均为 true，且执行后观察字段 `observed_motion`、`observed_stop` 均可解析并为 true，同时 `operator_notes`、`reported_at` 存在。该状态只表示报告可进入人工/机器复核。
 - `unsafe_or_incomplete`：报告缺字段、布尔值不可解析，或 operator/净空/急停路径任一关键字段为 false。
 
-operator report 只代表人工观察材料，不能让 dry-run 变成 motion，不能把 `safe_to_control` 改成 true，也不能替代 `T=1001`、ACK、ROS `/odom`、`/imu/data`、`/battery` 或真实 HIL packet。执行模式如果缺少完整 operator report，会在 `operator_report_missing_or_incomplete` 阶段 fail-closed，不会 POST `/api/base/manual`。
+operator report 只代表人工 preflight 和执行后观察材料，不能让 dry-run 变成 motion，不能把 `safe_to_control` 改成 true，也不能替代 `T=1001`、ACK、ROS `/odom`、`/imu/data`、`/battery` 或真实 HIL packet。执行模式如果缺少安全 preflight 三项，或三项里任一项为 false/不可解析，会在 `operator_report_missing_or_incomplete` 阶段 fail-closed，不会 POST `/api/base/manual`。`observed_motion`、`observed_stop`、`operator_notes`、`reported_at` 是执行后观察字段，preflight-only 报告缺少这些字段时不得阻断执行前 manual POST。
 
 执行模式的证据顺序固定为：
 
@@ -245,7 +246,7 @@ operator report 只代表人工观察材料，不能让 dry-run 变成 motion，
 
 - `acceptance_verdict.status=dry_run_only`：未授权运动，仅采集 status。
 - `acceptance_verdict.status=blocked_before_motion`：初始 status 或参数校验失败，运动 POST 被阻断。
-- `acceptance_verdict.failed_step=operator_report_missing_or_incomplete`：执行模式缺少完整人工报告，运动 POST 被阻断。
+- `acceptance_verdict.failed_step=operator_report_missing_or_incomplete`：执行模式缺少安全 preflight 报告，运动 POST 被阻断。
 - `acceptance_verdict.status=motion_posted_without_ack`：manual 已尝试，但缺 `T=1001`/ACK，或 manual/stop/post-status 任一步失败。
 - `acceptance_verdict.status=motion_posted_with_t1001`：manual/stop 后的 post-status 或 manual response 出现 `T=1001`/ACK 线索；仍不是 HIL pass。
 
