@@ -74,11 +74,25 @@ ser.close()
 PY
 ```
 
+### 2026-06-03 Raw Packet Evidence
+
+Hardware Infra Engineer 在上位机 `ssh root@192.168.1.11 -p 37878` 做了真实
+LiDAR 原始串口 smoke：`/dev/ttyACM0 @150000` 可打开，写入 vendor 启动命令
+`a5 60` 后 3 秒读到 `4246` bytes，其中 `0xaa55` sync header 数量为 `127`，
+退出时发送停止序列 `a5 00 a5 65 a5 65`。
+
+该结果证明 LiDAR 原始串口数据真实可读，但仍不等于 ROS2 `/scan` 已通过。
+本轮 ROS2 smoke 被上位机环境阻塞：host 缺 `/opt/ros/humble/setup.bash`，`ros2`
+command 不存在，`/root/rober/onboard/install` 不存在；远端 repo 仍是旧
+`setup.py`，没有 `lidar_driver` entry point；临时 Docker 路径先遇到
+`amd64` 镜像在 Orange Pi `arm64` 上 `exec format error`，随后拉取 arm64 ROS
+base 镜像超时。
+
 ## Evidence Boundary
 
 - Vendor source: `docs/vendor/VENDOR_INDEX.md`, `docs/vendor/lidar_pkg_ros2-main/`, and historical comparison snapshot `docs/vendor/lidar_ros/`.
-- Current evidence level: `source=software_reference + user_manual_serial_observed_start`.
-- Hardware status: real `/scan` continuity, real Orange Pi container/device permission, TF measurement, Nav2/SLAM consumption, raw packet quality, stop command physical effect, and `150000` long-run stability are `not_proven`.
+- Current evidence level: `source=software_reference + user_manual_serial_observed_start + upper_api_observed_lidar_port + raw_serial_packet_observed`.
+- Hardware status: real raw bytes and `0xaa55` packet sync headers are observed on `/dev/ttyACM0 @150000`; real `/scan` continuity, ROS2 runtime readiness, TF measurement, Nav2/SLAM consumption, stop command physical effect, and `150000` long-run stability are `not_proven`.
 - Mock status: `lidar_mock_scan` and `lidar_mock_packets` can prove software conversion and no-serial safety only; they are not HIL and cannot be marked `source=hil_pass`.
 
 ## Verification Commands

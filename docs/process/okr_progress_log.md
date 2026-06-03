@@ -8,6 +8,28 @@
 
 ## 2026-06-03 系列
 
+### 2026-06-03 11-12｜O1 LiDAR raw serial evidence｜真实原始包可读，ROS2 /scan 仍阻塞
+
+本轮 hourly OKR iteration 继续优先 O1，由 Hardware Infra Engineer 推进 LiDAR 真实材料线。用户价值是先拿低风险传感器证据，不碰底盘 motion，避免在无人现场看护时把 `/api/base/manual` 或 `/dev/ttyS5` 纳入风险面。
+
+真实材料：上位机 `ssh root@192.168.1.11 -p 37878` 上 `/dev/ttyACM0 @150000` 可打开；写入 vendor 启动命令 `a5 60` 后 3 秒读到 `4246` bytes，观察到 `127` 个 `0xaa55` sync header，退出发送停止序列 `a5 00 a5 65 a5 65`。本轮没有 POST `/api/base/manual`，没有写 `/dev/ttyS5`，没有发送 `T=1/T=13/T=130/T=131` 或 ROS `/cmd_vel`。
+
+阻塞定位：真实 ROS2 `/scan` smoke 未完成。远端 host 缺 `/opt/ros/humble/setup.bash`，`ros2` command 不存在，`/root/rober/onboard/install` 不存在；远端 repo 的 `ros2_trashbot_hardware/setup.py` 仍是旧 entry point，没有 `lidar_driver`；临时 Docker 路径中现有 `osrf/ros:humble-desktop` 是 `amd64`，在 Orange Pi `arm64` 上 `exec format error`，随后拉取 `linux/arm64/v8 osrf/ros:humble-ros-base` 超时。
+
+Product closeout 判定：Objective 1 仍约 94%，但证据口径从“LiDAR 设备/ROS2 合同/统一状态面已对齐”增强为“LiDAR 原始串口数据可读 + ROS2 合同已对齐”。不能上调为 `/scan`、TF、SLAM/Nav2、ACK 或 HIL：真实 `/scan`、`/lidar/raw_packet` topic、`tf2_echo base_link laser_frame`、`T=1001`、robot ACK、真实 `/odom`、`/imu/data`、`/battery` 和完整上车任务仍为 `not_proven`。
+
+下一步优先级：先解决上位机 ROS2 Humble arm64 runtime/当前 install 或 arm64 ROS2 Docker 镜像缓存，再复跑 `/scan`、`/lidar/raw_packet`、TF smoke；底盘 pulse 仍必须等现场看护、物理净空和人工急停路径满足后再执行。
+
+### 2026-06-03 10-11｜OKR current-state refresh｜LiDAR ttyACM0 + 8787 live status reflected
+
+本轮 Product/OKR 收口基于 `sprints/2026.06.03_04-05_o1-lidar-ttyacm0-ros2/tech-done.md` 和当前 PC/上位机联调状态。用户价值是把 OKR 从“8787/software safety ready、`/dev/ttyACM0` 仍偏风险线索”的旧口径，调整成后续迭代可直接执行的当前状态：`/dev/ttyACM0 @150000` 已按 LiDAR 口记录，8787 统一上位机 API 已真实监听并返回 camera/radar/base 聚合状态，PC live panel 已消费 8787 live status。
+
+当前证据：远端 `/api/radar/status` 返回 `observed_lidar_port=/dev/ttyACM0`、`baudrate=150000`、`start_command_hex=a5 60`、`stop_command_hex=a5 00 a5 65 a5 65`、`ros2.scan_topic=/scan`、`scan_status=not_proven`；远端 `/api/status` 同时返回 camera ready、base `/dev/ttyS5 @115200`、radar `/dev/ttyACM0 @150000`；本机 `http://127.0.0.1:5173/api/o7/live-operator-panel` 返回 `workstation_api_8787_status=ready`、`lidar_radar.dev_lidar=/dev/ttyACM0`、`camera.health_status=ready`、`control.base_boundary.observed_write_device=/dev/ttyS5`。
+
+Product closeout 判定：Objective 1 从约 93% 上调到约 94%，但只承认“LiDAR 设备/ROS2 合同/统一状态面已真实对齐”；真实 `/scan`、TF/SLAM/Nav2、`T=1001`、robot ACK、HIL、真实 `/odom`、`/imu/data`、`/battery` 仍为 `not_proven`。Objective 7 从约 98% 上调到约 98.5%，但只承认“PC 首屏已消费 8787 live status”；真实手控、Nav2、生产链路、ACK/HIL 和完整上车任务仍为 `not_proven`。Objective 5、Objective 6 保持约 96%。
+
+下一轮优先级：O1 仍是最低 Objective。后续应拆成两条明确验收线：LiDAR 线启动 ROS2 driver 并采 `ros2 topic echo --once /scan`、`ros2 topic hz /scan`、`/lidar/raw_packet`、TF；底盘线在现场看护、物理净空、人工急停可用时，经 8787 `/api/base/manual` 做低速短 pulse，并采集 status/manual/stop/post-status、operator report、ACK 或 `T=1001`、日志与安全复位证据。不能把 8787 状态展示、camera `/offer`、LiDAR 设备存在或 preflight 合同写成 HIL pass、`safe_to_control=true` 或 delivery success。
+
 ### 2026-06-03 09-10｜O1 execution preflight report｜Product closeout
 
 本轮 Product/OKR 收口基于 `sprints/2026.06.03_09-10_o1-execution-preflight-report/tech-done.md`。用户价值是把 O1 watched field pulse 从“执行前也要求执行后观察材料”的错位合同，调整为“执行前 preflight 三项满足即可进入受控执行，执行后 observation 完整再进入复核”，避免现场 operator 在安全条件已确认时仍被报告 gate 误挡，也避免把 dry-run 或 preflight 文档误写成 HIL。
