@@ -13,6 +13,7 @@ import {
   buildRealMaterialAcceptance,
   buildO7LiveEndpointsManifest,
   buildO7LiveOperatorPanel,
+  buildO7DirectUpperStatus,
   buildO7CloudOperatorConsoleProbe,
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
@@ -29,6 +30,11 @@ import {
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "./catalog";
+import {
+  proxyO7DirectUpperFeedbackRequest,
+  proxyO7DirectUpperManual,
+  proxyO7DirectUpperStop,
+} from "./o7DirectUpperApi";
 import {
   proxyO7LocalWebrtcCameraOffer,
   proxyO7LocalWebrtcCameraPeerClose,
@@ -111,6 +117,29 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/live-operator-panel", async (_req, res) => {
     // Live operator panel 只暴露已观测上位机事实和 blocked control shape，不连接底盘或发送命令。
     res.json(await buildO7LiveOperatorPanel());
+  });
+
+  workstationApp.get("/api/o7/direct-upper/status", async (_req, res) => {
+    // Direct upper mode 是 PC 本机现场入口；只读状态可绕过 cloud relay，但仍保留 ACK/HIL 证明边界。
+    res.json(await buildO7DirectUpperStatus());
+  });
+
+  workstationApp.post("/api/o7/direct-upper/base/stop", async (_req, res) => {
+    // stop 只同源转发到 8787 /api/base/stop；HTTP 成功不等于 robot ACK 或 HIL pass。
+    const result = await proxyO7DirectUpperStop();
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.post("/api/o7/direct-upper/base/feedback-request", async (_req, res) => {
+    // feedback-request 只请求 8787 发送非运动 T=130；HTTP 200 仍不能外推为 T=1001/ACK/HIL。
+    const result = await proxyO7DirectUpperFeedbackRequest();
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.post("/api/o7/direct-upper/base/manual", async (req, res) => {
+    // manual 先经过 PC 低速/短时白名单，再交给 8787 自身 guardrail；失败时默认不转发。
+    const result = await proxyO7DirectUpperManual({ body: req.body });
+    res.status(result.status).json(result.payload);
   });
 
   workstationApp.get("/api/o7/cloud-operator-console-probe", async (req, res) => {

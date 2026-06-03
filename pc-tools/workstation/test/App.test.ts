@@ -7,6 +7,12 @@ import {
   proxyO7LocalWebrtcCameraOffer,
   proxyO7LocalWebrtcCameraPeerClose,
 } from "../src/server/o7LocalWebrtcCamera";
+import {
+  buildO7DirectUpperStatus,
+  proxyO7DirectUpperFeedbackRequest,
+  proxyO7DirectUpperManual,
+  proxyO7DirectUpperStop,
+} from "../src/server/o7DirectUpperApi";
 import { PROOF_FLAGS } from "../src/shared/contracts";
 
 const liveOperatorFixture = {
@@ -235,6 +241,54 @@ const localCameraFixture = {
   },
 };
 
+const directUpperFixture = {
+  schema: "trashbot.pc_tools_workstation.o7_direct_upper_status.v1",
+  endpoint: "/api/o7/direct-upper/status",
+  ...PROOF_FLAGS,
+  mode: "direct_upper_computer_lan_only",
+  status: "ready",
+  upper_api_base_url: "http://192.168.1.11:8787",
+  upper_api_base_url_source: "env",
+  request_timeout_ms: 120,
+  health_request: { path: "/health", method: "GET", executed: true, ok: true, http_status: 200, failure_reason: "" },
+  status_request: { path: "/api/status", method: "GET", executed: true, ok: true, http_status: 200, failure_reason: "" },
+  health_summary: { status: "ready", schema: "trashbot.upper_robot_api.health.v1" },
+  upper_status_summary: {
+    camera_status: "ready",
+    radar_scan_status: "not_proven",
+    lidar_port: "/dev/ttyACM0",
+    base_port: "/dev/ttyS5",
+    base_baudrate: 115200,
+    base_write_control_available: true,
+    robot_ack_connected: false,
+    t1001_observed: false,
+  },
+  safety_flags: {
+    cloud_relay_bypassed: true,
+    pc_local_only: true,
+    direct_upper_computer_mode: true,
+    production_4g_cloud_route_changed: false,
+    safe_to_control: false,
+    sends_cmd_vel: false,
+    sends_wave_rover_json_directly: false,
+    robot_control_executed: false,
+    robot_ack_connected: false,
+    t1001_observed: false,
+  },
+  local_api_paths: {
+    status: "/api/o7/direct-upper/status",
+    stop: "/api/o7/direct-upper/base/stop",
+    manual: "/api/o7/direct-upper/base/manual",
+    feedback_request: "/api/o7/direct-upper/base/feedback-request",
+  },
+  blocked_reasons: ["robot_ack_not_connected", "t1001_feedback_not_observed"],
+  failure_reason: "none",
+  not_proven: ["robot_ack", "t1001_feedback", "hil_pass"],
+  safe_to_control: false,
+  sends_commands: false,
+  robot_control_executed: false,
+};
+
 class MockMediaStream {
   constructor(public tracks: unknown[] = []) {}
 }
@@ -281,9 +335,11 @@ function stubFetch(): ReturnType<typeof vi.fn> {
         ? liveOperatorFixture
         : url === "/api/o7/local-webrtc-camera"
           ? localCameraFixture
-          : url === "/api/o7/local-webrtc-camera/offer"
-            ? { type: "answer", sdp: "m=video\r\na=sendonly\r\n", peer_id: "peer-test-1" }
-            : null;
+          : url === "/api/o7/direct-upper/status"
+            ? directUpperFixture
+            : url === "/api/o7/local-webrtc-camera/offer"
+              ? { type: "answer", sdp: "m=video\r\na=sendonly\r\n", peer_id: "peer-test-1" }
+              : null;
     if (!payload) {
       throw new Error(`unexpected fetch ${url}`);
     }
@@ -323,6 +379,13 @@ describe("O7 live operator first screen", () => {
     expect(text).toContain("T=1001 not_observed_after_t130");
     expect(text).toContain("manual control fail_closed_display_only");
     expect(text).toContain("控制锁定：底盘串口/反馈/ACK 未确认");
+    expect(text).toContain("PC 本机 8787 接口");
+    expect(text).toContain("ready · /dev/ttyS5 · /dev/ttyACM0");
+    expect(text).toContain("/api/o7/direct-upper/status");
+    expect(text).toContain("/api/o7/direct-upper/base/stop");
+    expect(text).toContain("/api/o7/direct-upper/base/feedback-request");
+    expect(text).toContain("/api/o7/direct-upper/base/manual");
+    expect(text).toContain("http://192.168.1.11:8787");
     expect(text).toContain("摄像头画面已连接");
     expect(text).not.toContain("External Probe Artifact");
     expect(text).not.toContain("Real Material Acceptance");
@@ -332,6 +395,7 @@ describe("O7 live operator first screen", () => {
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).toEqual([
       "/api/o7/live-operator-panel",
       "/api/o7/local-webrtc-camera",
+      "/api/o7/direct-upper/status",
       "/api/o7/local-webrtc-camera/offer",
     ]);
   });
@@ -466,5 +530,222 @@ describe("O7 live operator contracts", () => {
       robot_control_executed: false,
     });
     expect(mockedFetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("O7 direct upper PC API", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("fails closed without ROBER_UPPER_API_BASE_URL and does not probe 8787", async () => {
+    const mockedFetch = vi.fn();
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const response = await buildO7DirectUpperStatus({ env: {} });
+    const stop = await proxyO7DirectUpperStop({ env: {} });
+    const feedback = await proxyO7DirectUpperFeedbackRequest({ env: {} });
+
+    expect(response.status).toBe("not_configured");
+    expect(response.safety_flags.cloud_relay_bypassed).toBe(true);
+    expect(response.safety_flags.pc_local_only).toBe(true);
+    expect(response.safety_flags.production_4g_cloud_route_changed).toBe(false);
+    expect(response.safe_to_control).toBe(false);
+    expect(response.robot_control_executed).toBe(false);
+    expect(stop.status).toBe(400);
+    expect(stop.payload.failure_reason).toBe("base_url_not_configured");
+    expect(stop.payload.upper_request.executed).toBe(false);
+    expect(feedback.status).toBe(400);
+    expect(feedback.payload.failure_reason).toBe("base_url_not_configured");
+    expect(feedback.payload.upper_request.executed).toBe(false);
+    expect(mockedFetch).not.toHaveBeenCalled();
+  });
+
+  it("summarizes /health and /api/status from upper 8787 without claiming ACK or HIL", async () => {
+    const mockedFetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      return {
+        ok: true,
+        status: 200,
+        json: async () =>
+          url.endsWith("/health")
+            ? { schema: "trashbot.upper_robot_api.health.v1", status: "ready" }
+            : {
+                camera: { status: "ready" },
+                radar: { scan_status: "not_proven", observed_lidar_port: "/dev/ttyACM0" },
+                base: { port: "/dev/ttyS5", baudrate: 115200, write_control_available: true },
+              },
+      } as Response;
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const response = await buildO7DirectUpperStatus({
+      env: { ROBER_UPPER_API_BASE_URL: "http://127.0.0.1:8787/" },
+    });
+
+    expect(response.status).toBe("ready");
+    expect(response.upper_api_base_url).toBe("http://127.0.0.1:8787");
+    expect(response.upper_status_summary).toMatchObject({
+      camera_status: "ready",
+      radar_scan_status: "not_proven",
+      lidar_port: "/dev/ttyACM0",
+      base_port: "/dev/ttyS5",
+      base_baudrate: 115200,
+      base_write_control_available: true,
+      robot_ack_connected: false,
+      t1001_observed: false,
+    });
+    expect(response.local_api_paths.manual).toBe("/api/o7/direct-upper/base/manual");
+    expect(response.local_api_paths.feedback_request).toBe("/api/o7/direct-upper/base/feedback-request");
+    expect(response.safety_flags.robot_control_executed).toBe(false);
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).toEqual([
+      "http://127.0.0.1:8787/health",
+      "http://127.0.0.1:8787/api/status",
+    ]);
+  });
+
+  it("keeps stop fail-closed when upper /api/base/stop fails", async () => {
+    const mockedFetch = vi.fn(async () => ({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: "serial_unavailable" }),
+    }) as Response);
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const result = await proxyO7DirectUpperStop({
+      env: { ROBER_UPPER_API_BASE_URL: "http://127.0.0.1:8787" },
+    });
+
+    expect(result.status).toBe(502);
+    expect(result.payload.fail_closed).toBe(true);
+    expect(result.payload.upper_request).toMatchObject({
+      path: "/api/base/stop",
+      method: "POST",
+      executed: true,
+      ok: false,
+      http_status: 503,
+    });
+    expect(result.payload.robot_ack_connected).toBe(false);
+    expect(result.payload.t1001_observed).toBe(false);
+    expect(result.payload.robot_control_executed).toBe(false);
+  });
+
+  it("proxies feedback-request as non-motion T=130 request without claiming T=1001 or ACK", async () => {
+    const mockedFetch = vi.fn(async (_input: RequestInfo | URL) => {
+      void _input;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ request_sent: true, feedback_ack: { t1001_observed: true } }),
+      } as Response;
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const result = await proxyO7DirectUpperFeedbackRequest({
+      env: { ROBER_UPPER_API_BASE_URL: "http://127.0.0.1:8787/" },
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.payload.schema).toBe("trashbot.pc_tools_workstation.o7_direct_upper_feedback_request.v1");
+    expect(result.payload.command).toBe("feedback_request");
+    expect(result.payload.upper_request).toMatchObject({
+      path: "/api/base/feedback-request",
+      method: "POST",
+      executed: true,
+      ok: true,
+      http_status: 200,
+    });
+    expect(result.payload.command_payload_summary).toMatchObject({
+      direction: "not_applicable",
+      speed_mps: 0,
+      duration_ms: 0,
+      feedback_request_id: "T=130",
+      required_feedback_id: "T=1001",
+    });
+    expect(result.payload.robot_ack_connected).toBe(false);
+    expect(result.payload.t1001_observed).toBe(false);
+    expect(result.payload.safe_to_control).toBe(false);
+    expect(result.payload.robot_control_executed).toBe(false);
+    expect(String(mockedFetch.mock.calls[0]?.[0])).toBe("http://127.0.0.1:8787/api/base/feedback-request");
+  });
+
+  it("keeps feedback-request fail-closed on bad upper JSON", async () => {
+    const mockedFetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => "not an object",
+    }) as Response);
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const result = await proxyO7DirectUpperFeedbackRequest({
+      env: { ROBER_UPPER_API_BASE_URL: "http://127.0.0.1:8787" },
+    });
+
+    expect(result.status).toBe(502);
+    expect(result.payload.fail_closed).toBe(true);
+    expect(result.payload.failure_reason).toBe("bad_json");
+    expect(result.payload.upper_request).toMatchObject({
+      path: "/api/base/feedback-request",
+      executed: true,
+      ok: false,
+      http_status: 200,
+      failure_reason: "bad_json",
+    });
+    expect(result.payload.safe_to_control).toBe(false);
+    expect(result.payload.robot_control_executed).toBe(false);
+  });
+
+  it("rejects invalid manual direction locally before any upper fetch", async () => {
+    const mockedFetch = vi.fn();
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const result = await proxyO7DirectUpperManual({
+      env: { ROBER_UPPER_API_BASE_URL: "http://127.0.0.1:8787" },
+      body: { direction: "../../../api/base/manual", speed: 9, duration_ms: 999_000 },
+    });
+
+    expect(result.status).toBe(400);
+    expect(result.payload.failure_reason).toBe("invalid_direction");
+    expect(result.payload.accepted_by_workstation).toBe(false);
+    expect(result.payload.upper_request.executed).toBe(false);
+    expect(result.payload.command_payload_summary.direction).toBe("not_applicable");
+    expect(mockedFetch).not.toHaveBeenCalled();
+  });
+
+  it("clamps manual speed and duration before forwarding to the upper 8787 guardrail", async () => {
+    const mockedFetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ accepted: true, feedback_ack: { t1001_observed: false } }),
+      request_body: init?.body,
+    }) as Response & { request_body?: BodyInit | null });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const result = await proxyO7DirectUpperManual({
+      env: { ROBER_UPPER_API_BASE_URL: "http://127.0.0.1:8787/" },
+      body: { direction: "forward", speed: 0.5, duration_ms: 900_000 },
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.payload.accepted_by_workstation).toBe(true);
+    expect(result.payload.fail_closed).toBe(false);
+    expect(result.payload.command_payload_summary).toEqual({
+      direction: "forward",
+      speed_mps: 0.08,
+      duration_ms: 350,
+      clamped_by_pc: true,
+      depends_on_upper_8787_guardrail: true,
+    });
+    expect(result.payload.robot_ack_connected).toBe(false);
+    expect(result.payload.t1001_observed).toBe(false);
+    expect(result.payload.robot_control_executed).toBe(false);
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
+    expect(String(mockedFetch.mock.calls[0]?.[0])).toBe("http://127.0.0.1:8787/api/base/manual");
+    expect(JSON.parse(String(mockedFetch.mock.calls[0]?.[1]?.body))).toEqual({
+      direction: "forward",
+      speed: 0.08,
+      duration_ms: 350,
+    });
   });
 });

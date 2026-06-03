@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { getO7LocalWebrtcCamera } from "../client/workstationApi";
+import { getO7DirectUpperStatus, getO7LocalWebrtcCamera } from "../client/workstationApi";
 import type {
+  O7DirectUpperApiStatusResponse,
   O7LiveOperatorDirection,
   O7LiveOperatorPanelResponse,
   O7LocalWebrtcCameraResponse,
@@ -14,8 +15,11 @@ const props = defineProps<{
 const speed = ref(0.2);
 const lockMessage = ref("控制锁定：底盘串口/反馈/ACK 未确认");
 const cameraSmoke = ref<O7LocalWebrtcCameraResponse | null>(null);
+const directUpperStatus = ref<O7DirectUpperApiStatusResponse | null>(null);
 const cameraLoading = ref(true);
+const directUpperLoading = ref(true);
 const cameraError = ref("");
+const directUpperError = ref("");
 const cameraVideo = ref<HTMLVideoElement | null>(null);
 const cameraPreviewStatus = ref<"idle" | "connecting" | "playing" | "failed">("idle");
 const cameraPreviewMessage = ref("摄像头状态读取中");
@@ -74,6 +78,34 @@ const statusLights = computed(() => [
     text: props.liveOperatorPanel?.control.robot_ack_connected ? "ACK 已连接" : "未确认",
   },
 ]);
+
+const directUpperModeText = computed(() => {
+  // Direct mode 的状态来自 PC 本机 API；未配置时明确提示 env，而不是假装 cloud relay 可用。
+  if (directUpperLoading.value) {
+    return "正在检查 direct upper mode";
+  }
+  if (directUpperError.value) {
+    return `本机 API 暂不可读：${directUpperError.value}`;
+  }
+  const status = directUpperStatus.value;
+  if (!status || status.status === "not_configured") {
+    return "未配置 ROBER_UPPER_API_BASE_URL";
+  }
+  return `${status.status} · ${status.upper_status_summary.base_port} · ${status.upper_status_summary.lidar_port}`;
+});
+
+const directUpperPaths = computed(() => {
+  // 路径由后端 contract 返回，方便 curl/浏览器工具复制并避免前端散落 endpoint 字符串。
+  const paths = directUpperStatus.value?.local_api_paths;
+  return paths
+    ? [paths.status, paths.stop, paths.feedback_request, paths.manual]
+    : [
+        "/api/o7/direct-upper/status",
+        "/api/o7/direct-upper/base/stop",
+        "/api/o7/direct-upper/base/feedback-request",
+        "/api/o7/direct-upper/base/manual",
+      ];
+});
 
 const cameraStatusText = computed(() => {
   // 摄像头 ready 只来自 PC 后端对 8088 /health 和 /devices 的只读摘要。
@@ -158,6 +190,19 @@ async function refreshCameraSmoke(): Promise<void> {
     cameraPreviewMessage.value = "摄像头状态暂不可读";
   } finally {
     cameraLoading.value = false;
+  }
+}
+
+async function refreshDirectUpperStatus(): Promise<void> {
+  // 该入口只读 PC 本机 direct status；不会触发 stop/manual，也不会绕过后端 guardrail。
+  directUpperLoading.value = true;
+  directUpperError.value = "";
+  try {
+    directUpperStatus.value = await getO7DirectUpperStatus();
+  } catch (error) {
+    directUpperError.value = error instanceof Error ? error.message : "direct_upper_status_unavailable";
+  } finally {
+    directUpperLoading.value = false;
   }
 }
 
@@ -279,6 +324,7 @@ function showLocked(direction: O7LiveOperatorDirection): void {
 onMounted(() => {
   // 首屏可自动创建摄像头媒体预览；底盘控制仍保持 fail-closed。
   void refreshCameraSmoke();
+  void refreshDirectUpperStatus();
 });
 
 onBeforeUnmount(() => {
@@ -378,6 +424,35 @@ onBeforeUnmount(() => {
           <strong>{{ item.text }}</strong>
         </div>
       </div>
+    </article>
+
+    <article class="console-card direct-upper-card" aria-label="Direct upper mode">
+      <div class="card-heading">
+        <span class="card-icon">↔</span>
+        <div>
+          <p class="console-kicker">Direct</p>
+          <h2>PC 本机 8787 接口</h2>
+        </div>
+      </div>
+      <p class="muted-copy">{{ directUpperModeText }}</p>
+      <div class="status-light-list">
+        <div class="status-light-row">
+          <span class="status-dot" :class="directUpperStatus?.status === 'ready' ? 'status-dot-green' : 'status-dot-yellow'" />
+          <span>Cloud relay</span>
+          <strong>{{ directUpperStatus?.safety_flags.cloud_relay_bypassed ? "已绕过" : "未确认" }}</strong>
+        </div>
+        <div class="status-light-row">
+          <span class="status-dot status-dot-red" />
+          <span>ACK / T=1001</span>
+          <strong>{{ directUpperStatus?.upper_status_summary.t1001_observed ? "observed" : "not observed" }}</strong>
+        </div>
+      </div>
+      <div class="endpoint-list" aria-label="本机 direct upper API 路径">
+        <code v-for="path in directUpperPaths" :key="path">{{ path }}</code>
+      </div>
+      <p class="base-boundary">
+        {{ directUpperStatus?.upper_api_base_url || "env ROBER_UPPER_API_BASE_URL required" }}
+      </p>
     </article>
   </section>
 </template>

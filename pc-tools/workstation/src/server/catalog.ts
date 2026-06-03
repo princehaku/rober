@@ -9,6 +9,7 @@ export { buildO7OperatorConsoleAcceptanceResponse } from "./o7OperatorConsoleAcc
 export { buildO7PreviewsAcceptanceResponse } from "./o7PreviewsAcceptance";
 export { buildO7LiveEndpointsManifest } from "./o7LiveEndpointsManifest";
 export { buildO7LiveOperatorPanel } from "./o7LiveOperatorPanel";
+export { buildO7DirectUpperStatus, proxyO7DirectUpperFeedbackRequest } from "./o7DirectUpperApi";
 export { buildO5O6CloudRelayHealth } from "./o5O6CloudRelayHealth";
 export { buildO5O6ExternalProbeArtifact } from "./o5O6ExternalProbeArtifact";
 export { buildRealMaterialAcceptance } from "./realMaterialAcceptance";

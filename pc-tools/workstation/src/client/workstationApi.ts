@@ -8,6 +8,8 @@ import type {
   RealMaterialAcceptanceResponse,
   O7LabelingPreviewResponse,
   O7LocalWebrtcCameraResponse,
+  O7DirectUpperApiCommandResponse,
+  O7DirectUpperApiStatusResponse,
   O7LiveEndpointsManifestResponse,
   O7LiveOperatorPanelResponse,
   HealthResponse,
@@ -73,6 +75,8 @@ const API_ENDPOINTS = {
   o7PreviewsAcceptance: "/api/o7/previews/acceptance",
   o7LiveEndpointsManifest: "/api/o7/live-endpoints/manifest",
   o7LiveOperatorPanel: "/api/o7/live-operator-panel",
+  o7DirectUpperStatus: "/api/o7/direct-upper/status",
+  o7DirectUpperFeedbackRequest: "/api/o7/direct-upper/base/feedback-request",
   o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
   o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
   o5O6ExternalProbeArtifact: "/api/o5-o6/external-probe-artifact",
@@ -90,9 +94,9 @@ const API_ENDPOINTS = {
   proofBoundary: "/api/proof-boundary",
 } as const;
 
-async function loadJson<T>(url: string): Promise<T> {
+async function loadJson<T>(url: string, init?: RequestInit): Promise<T> {
   // fetch 失败只抛出 API 层错误；App 负责把错误保持在 fail-closed 展示。
-  const response = await fetch(url);
+  const response = await fetch(url, init);
   if (!response.ok) {
     throw new Error(`${url} returned ${response.status}`);
   }
@@ -222,6 +226,16 @@ export async function getO7LiveEndpointsManifest(): Promise<O7LiveEndpointsManif
 export async function getO7LiveOperatorPanel(): Promise<O7LiveOperatorPanelResponse> {
   // Live Operator 只读后端 fail-closed contract；按钮状态不能由 UI 自己发明。
   return loadJson<O7LiveOperatorPanelResponse>(API_ENDPOINTS.o7LiveOperatorPanel);
+}
+
+export async function getO7DirectUpperStatus(): Promise<O7DirectUpperApiStatusResponse> {
+  // Direct upper status 由 PC 后端聚合 8787；前端不直连上位机也不自己推断安全状态。
+  return loadJson<O7DirectUpperApiStatusResponse>(API_ENDPOINTS.o7DirectUpperStatus);
+}
+
+export async function postO7DirectUpperFeedbackRequest(): Promise<O7DirectUpperApiCommandResponse> {
+  // feedback-request 是非运动 T=130 请求；前端不得把 HTTP 200 展示成 T=1001 或 ACK 成功。
+  return loadJson<O7DirectUpperApiCommandResponse>(API_ENDPOINTS.o7DirectUpperFeedbackRequest, { method: "POST" });
 }
 
 export async function getO7CloudOperatorConsoleProbe(baseUrl: string): Promise<O7CloudOperatorConsoleProbeResponse> {

@@ -2075,6 +2075,105 @@ export interface O7LocalWebrtcCameraResponse extends ProofFlags {
 export type O7LiveOperatorDirection = "forward" | "back" | "left" | "right" | "stop";
 export type O7LiveOperatorCameraHealthStatus = "not_listening_observed" | "ready" | "not_loaded" | string;
 
+export type O7DirectUpperApiMode = "direct_upper_computer_lan_only";
+export type O7DirectUpperApiStatus = "not_configured" | "ready" | "degraded" | "fail_closed";
+export type O7DirectUpperApiDirection = "forward" | "back" | "left" | "right" | "stop";
+
+export interface O7DirectUpperApiRequestResult {
+  path: "/health" | "/api/status" | "/api/base/stop" | "/api/base/manual" | "/api/base/feedback-request";
+  method: "GET" | "POST";
+  executed: boolean;
+  ok: boolean;
+  http_status: number | null;
+  failure_reason: string;
+}
+
+export interface O7DirectUpperApiSafetyFlags {
+  cloud_relay_bypassed: true;
+  pc_local_only: true;
+  direct_upper_computer_mode: true;
+  production_4g_cloud_route_changed: false;
+  safe_to_control: false;
+  sends_cmd_vel: false;
+  sends_wave_rover_json_directly: false;
+  robot_control_executed: false;
+  robot_ack_connected: false;
+  t1001_observed: false;
+}
+
+export interface O7DirectUpperApiStatusResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_direct_upper_status.v1";
+  endpoint: "/api/o7/direct-upper/status";
+  mode: O7DirectUpperApiMode;
+  status: O7DirectUpperApiStatus;
+  upper_api_base_url: string;
+  upper_api_base_url_source: "env" | "not_configured";
+  request_timeout_ms: number;
+  health_request: O7DirectUpperApiRequestResult;
+  status_request: O7DirectUpperApiRequestResult;
+  health_summary: {
+    status: string;
+    schema: string;
+  };
+  upper_status_summary: {
+    camera_status: string;
+    radar_scan_status: string;
+    lidar_port: string;
+    base_port: string;
+    base_baudrate: number | null;
+    base_write_control_available: boolean;
+    robot_ack_connected: false;
+    t1001_observed: false;
+  };
+  safety_flags: O7DirectUpperApiSafetyFlags;
+  local_api_paths: {
+    status: "/api/o7/direct-upper/status";
+    stop: "/api/o7/direct-upper/base/stop";
+    manual: "/api/o7/direct-upper/base/manual";
+    feedback_request: "/api/o7/direct-upper/base/feedback-request";
+  };
+  blocked_reasons: string[];
+  failure_reason: string;
+  not_proven: string[];
+  safe_to_control: false;
+  sends_commands: false;
+  robot_control_executed: false;
+}
+
+export interface O7DirectUpperApiCommandResponse extends ProofFlags {
+  schema:
+    | "trashbot.pc_tools_workstation.o7_direct_upper_stop.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_manual.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_feedback_request.v1";
+  endpoint: "/api/o7/direct-upper/base/stop" | "/api/o7/direct-upper/base/manual" | "/api/o7/direct-upper/base/feedback-request";
+  mode: O7DirectUpperApiMode;
+  command: "stop" | "manual" | "feedback_request";
+  accepted_by_workstation: boolean;
+  upper_request: O7DirectUpperApiRequestResult;
+  upper_api_base_url: string;
+  cloud_relay_bypassed: true;
+  pc_local_only: true;
+  fail_closed: boolean;
+  failure_reason: string;
+  command_payload_summary: {
+    direction: O7DirectUpperApiDirection | "not_applicable";
+    speed_mps: number;
+    duration_ms: number;
+    clamped_by_pc: boolean;
+    depends_on_upper_8787_guardrail: true;
+    feedback_request_id?: "T=130";
+    required_feedback_id?: "T=1001";
+  };
+  robot_ack_connected: false;
+  t1001_observed: false;
+  safety_flags: O7DirectUpperApiSafetyFlags;
+  blocked_reasons: string[];
+  not_proven: string[];
+  safe_to_control: false;
+  sends_commands: false;
+  robot_control_executed: false;
+}
+
 export interface O7LiveOperatorPanelResponse extends ProofFlags {
   schema: "trashbot.o7.live_operator_panel.v1";
   endpoint: "/api/o7/live-operator-panel";

@@ -69,6 +69,7 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 | `GET` | `/api/radar/status` | 雷达设备和 `/scan` 证明状态 |
 | `GET` | `/api/base/status` | `/dev/ttyS5`、pyserial、反馈/ACK 状态 |
 | `POST` | `/api/base/stop` | 发送 `{"T":1,"L":0,"R":0}` 停车 |
+| `POST` | `/api/base/feedback-request` | 发送一次非运动 `{"T":130}` 反馈请求并短窗口读取 JSON |
 | `POST` | `/api/base/manual` | 低速方向点动，自动停车 |
 
 ## Base 控制安全边界
@@ -99,6 +100,7 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 - 响应保留 `command_result`、`stop_result`、`serial_write_failures`、`manual_command_executed`、`auto_stop_attempted`、`auto_stop_executed`。
 - `/api/base/stop` 的 `robot_control_executed` 只跟随 stop JSON 写入结果；pyserial 缺失、串口打开失败或写失败时必须为 `false`。
 - `feedback_ack.t1001_observed=false` 固定保留，因为当前 API 不读取 `T=1001`，也不能把 `T=1` 写入成功当成 ACK 或 HIL。
+- `/api/base/feedback-request` 是非运动请求入口，只允许发送一次 vendor `{"T":130}` 并读取短窗口反馈；HTTP 200、写入成功或坏帧计数都不能外推为真实 ACK/HIL。
 
 本轮单元测试只使用 fake pyserial/mock 串口，不打开真实 `/dev/ttyS5`，不 SSH，不发送真实 WAVE ROVER JSON、`cmd_vel` 或运动命令。
 
@@ -160,6 +162,15 @@ ROBER_UPPER_API_BASE_URL=http://192.168.1.11:8787
 
 旧变量 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://192.168.1.11:8088` 仍保留为兼容 fallback。
 
+PC workstation 还提供本机 direct upper API，详见 `docs/interfaces/o7_direct_upper_pc_api.md`：
+
+- `GET /api/o7/direct-upper/status`
+- `POST /api/o7/direct-upper/base/stop`
+- `POST /api/o7/direct-upper/base/feedback-request`
+- `POST /api/o7/direct-upper/base/manual`
+
+该 direct mode 只用于 PC 本地开发/现场操作。它绕过 cloud relay 作为必需路径，但不改变生产 4G 云路线；PC 响应必须继续保留 `safe_to_control=false`、`robot_control_executed=false`、`robot_ack_connected=false`、`t1001_observed=false`，直到有同源 ACK/HIL 材料。
+
 ## 2026-06-03 实测结果
 
 部署：
@@ -180,6 +191,7 @@ ROBER_UPPER_API_BASE_URL=http://192.168.1.11:8787
   - `base.port=/dev/ttyS5`
   - `base.write_control_available=true`
   - `base.feedback_ack.t1001_observed=false`
+- Hardware worker 后续现场核对到 `POST http://192.168.1.11:8787/api/base/feedback-request` 当前返回 HTTP `405`，`Allow=OPTIONS`；因此文档中的 feedback-request 合同仍只能按本机软件转发和 fail-closed contract 看待，不能写成远端 endpoint 已部署可用、真实 `T=130 -> T=1001` 已闭环、ACK 或 HIL 通过。
 
 PC 页面验证：
 

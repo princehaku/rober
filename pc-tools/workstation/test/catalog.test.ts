@@ -4475,39 +4475,44 @@ describe("workstation fail-closed API contracts", () => {
       }),
     }));
 
-    const panel = await buildO7LiveOperatorPanel();
+    try {
+      const panel = await buildO7LiveOperatorPanel();
 
-    expect(panel.schema).toBe("trashbot.o7.live_operator_panel.v1");
-    expect(panel.endpoint).toBe("/api/o7/live-operator-panel");
-    expect(panel.ssh).toEqual({
-      host: "192.168.1.11",
-      port: 37878,
-      reachable: true,
-      workstation_api_8787_status: "ready",
-    });
-    expect(panel.lidar_radar.dev_lidar).toBe("/dev/ttyACM0");
-    expect(panel.lidar_radar.stc_by_id).toBe("resolved_to_ttyACM0");
-    expect(panel.lidar_radar.scan_status).toBe("not_proven");
-    expect(panel.lidar_radar.pointcloud_fabricated).toBe(false);
-    expect(panel.camera.base_url).toBe("http://192.168.1.11:8088/");
-    expect(panel.camera.health_status).toBe("ready");
-    expect(panel.camera.video_source).toBe("auto");
-    expect(panel.camera.offer_auto_post_enabled).toBe(false);
-    expect(panel.control.visible_directions).toEqual(["forward", "back", "left", "right", "stop"]);
-    expect(panel.control.speed).toEqual({ default_value: 0.2, min: 0, max: 0.5, step: 0.05, unit: "m/s" });
-    expect(panel.control.command_dispatch_enabled).toBe(false);
-    expect(panel.control.sends_commands).toBe(false);
-    expect(panel.control.robot_ack_connected).toBe(false);
-    expect(panel.blocked_reasons).toEqual(expect.arrayContaining([
-      "base_serial_identity_not_proven",
-      "t1001_feedback_not_observed",
-      "robot_ack_not_connected",
-    ]));
-    expect(panel.safe_to_control).toBe(false);
-    expect(panel.sends_commands).toBe(false);
-    expect(panel.robot_control_executed).toBe(false);
-    expect(panel.delivery_success).toBe(false);
-    expect(panel.primary_actions_enabled).toBe(false);
+      expect(panel.schema).toBe("trashbot.o7.live_operator_panel.v1");
+      expect(panel.endpoint).toBe("/api/o7/live-operator-panel");
+      expect(panel.ssh).toEqual({
+        host: "192.168.1.11",
+        port: 37878,
+        reachable: true,
+        workstation_api_8787_status: "ready",
+      });
+      expect(panel.lidar_radar.dev_lidar).toBe("/dev/ttyACM0");
+      expect(panel.lidar_radar.stc_by_id).toBe("resolved_to_ttyACM0");
+      expect(panel.lidar_radar.scan_status).toBe("not_proven");
+      expect(panel.lidar_radar.pointcloud_fabricated).toBe(false);
+      expect(panel.camera.base_url).toBe("http://192.168.1.11:8088/");
+      expect(panel.camera.health_status).toBe("ready");
+      expect(panel.camera.video_source).toBe("auto");
+      expect(panel.camera.offer_auto_post_enabled).toBe(false);
+      expect(panel.control.visible_directions).toEqual(["forward", "back", "left", "right", "stop"]);
+      expect(panel.control.speed).toEqual({ default_value: 0.2, min: 0, max: 0.5, step: 0.05, unit: "m/s" });
+      expect(panel.control.command_dispatch_enabled).toBe(false);
+      expect(panel.control.sends_commands).toBe(false);
+      expect(panel.control.robot_ack_connected).toBe(false);
+      expect(panel.blocked_reasons).toEqual(expect.arrayContaining([
+        "base_serial_identity_not_proven",
+        "t1001_feedback_not_observed",
+        "robot_ack_not_connected",
+      ]));
+      expect(panel.safe_to_control).toBe(false);
+      expect(panel.sends_commands).toBe(false);
+      expect(panel.robot_control_executed).toBe(false);
+      expect(panel.delivery_success).toBe(false);
+      expect(panel.primary_actions_enabled).toBe(false);
+    } finally {
+      // 该用例需要 fake fetch 模拟 8787 状态，但后续 probe 用例依赖真实本机 HTTP fetch。
+      vi.unstubAllGlobals();
+    }
   });
 
   it("O7 local WebRTC camera API fails closed when base URL is not configured", async () => {

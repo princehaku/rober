@@ -313,6 +313,23 @@ button {
   line-height: 1.45;
 }
 
+.endpoint-list {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0;
+}
+
+.endpoint-list code {
+  min-width: 0;
+  border: 1px solid #d8e0ea;
+  border-radius: 6px;
+  padding: 7px 9px;
+  overflow-wrap: anywhere;
+  background: #f8fafc;
+  color: #1f2937;
+  font-size: 12px;
+}
+
 .lock-details {
   margin-top: 9px;
 }
