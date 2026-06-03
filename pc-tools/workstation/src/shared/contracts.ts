@@ -2188,6 +2188,9 @@ export interface O7DirectUpperApiCommandResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export type O7RealtimeRadarStatus = "ready" | "blocked";
+export type O7RealtimeMapStatus = "ready" | "waiting_for_radar" | "waiting_for_mapping";
+
 export interface O7LiveOperatorPanelResponse extends ProofFlags {
   schema: "trashbot.o7.live_operator_panel.v1";
   endpoint: "/api/o7/live-operator-panel";
@@ -2208,6 +2211,7 @@ export interface O7LiveOperatorPanelResponse extends ProofFlags {
       age_seconds: number | null;
       latest_proof_status: string;
       latest_scan_once_observed: boolean;
+      latest_scan_hz_observed: boolean;
       latest_raw_packet_once_observed: boolean;
       blocked_reasons: string[];
       readback_sends_commands: false;
@@ -2238,6 +2242,38 @@ export interface O7LiveOperatorPanelResponse extends ProofFlags {
     pointcloud_fabricated: false;
     source_facts: string[];
     blocked_reasons: string[];
+  };
+  realtime_radar: {
+    title: "实时雷达 (/scan)";
+    status: O7RealtimeRadarStatus;
+    ready: boolean;
+    endpoint: "/api/radar/scan-proof/latest";
+    readiness_source: "scan_proof_once_and_hz_only";
+    scan_once_observed: boolean;
+    scan_hz_observed: boolean;
+    latest_proof_status: string;
+    artifact_status: string;
+    freshness_status: string;
+    age_seconds: number | null;
+    raw_packet_ignored_for_ready: true;
+    raw_packet_material_status: string;
+    blocked_reasons: string[];
+    not_ready_reason: "none" | "scan_once_or_hz_not_observed";
+    safe_to_control: false;
+  };
+  realtime_map: {
+    title: "实时图 (SLAM/map)";
+    status: O7RealtimeMapStatus;
+    ready: boolean;
+    depends_on_realtime_radar: true;
+    map_artifact_status: string;
+    slam_artifact_status: string;
+    latest_map_observed: boolean;
+    latest_slam_observed: boolean;
+    blocked_reasons: string[];
+    not_ready_reason: "none" | "waiting_for_radar" | "waiting_for_mapping";
+    pointcloud_fabricated: false;
+    safe_to_control: false;
   };
   camera: {
     base_url: "http://192.168.1.11:8088/";

@@ -65,6 +65,14 @@ log() {
   printf '[o1-lidar-smoke] %s\n' "$*"
 }
 
+source_ros_setups() {
+  # ROS2/colcon 生成的 setup 脚本会访问未定义变量；只在 source 阶段放宽 nounset。
+  set +u
+  source /opt/ros/humble/setup.bash
+  source "$ONBOARD_ROOT/install/setup.bash"
+  set -u
+}
+
 cleanup() {
   # 退出时先停 driver，让 Python driver best-effort 发送 LiDAR stop bytes 并关闭串口。
   if [[ -n "${DRIVER_PID:-}" ]] && kill -0 "$DRIVER_PID" 2>/dev/null; then
@@ -79,6 +87,11 @@ cleanup() {
 trap cleanup EXIT
 
 guard_safety() {
+  # /dev/ttyS5 是 WAVE ROVER 底盘 UART，必须先于通配规则显式拒绝。
+  if [[ "$SERIAL_PORT" == "/dev/ttyS5" ]]; then
+    echo "refusing WAVE ROVER base UART /dev/ttyS5" >&2
+    exit 41
+  fi
   # 只允许 LiDAR 设备名，防止误把底盘 UART 当雷达打开。
   case "$SERIAL_PORT" in
     /dev/ttyACM*|/dev/lidar|/dev/serial/by-id/*STC*|/dev/serial/by-id/*stc*)
@@ -88,10 +101,6 @@ guard_safety() {
       exit 40
       ;;
   esac
-  if [[ "$SERIAL_PORT" == "/dev/ttyS5" ]]; then
-    echo "refusing WAVE ROVER base UART /dev/ttyS5" >&2
-    exit 41
-  fi
 }
 
 require_runtime() {
@@ -99,8 +108,7 @@ require_runtime() {
   test -f /opt/ros/humble/setup.bash
   test -f "$ONBOARD_ROOT/install/setup.bash"
   test -e "$SERIAL_PORT"
-  source /opt/ros/humble/setup.bash
-  source "$ONBOARD_ROOT/install/setup.bash"
+  source_ros_setups
   command -v ros2 >/dev/null
 }
 
@@ -136,12 +144,13 @@ collect_topics() {
 
 summarize() {
   # summary 只统计证据文件是否出现关键字，最终验收仍需人工看完整 artifact。
-  python3 - "$OUTPUT_DIR" <<'PY'
+  python3 - "$OUTPUT_DIR" "$FRAME_ID" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 out = Path(sys.argv[1])
+frame_id = sys.argv[2]
 def read(name):
     path = out / name
     return path.read_text(errors="replace") if path.exists() else ""
@@ -149,16 +158,44 @@ def read(name):
 summary = {
     "schema": "trashbot.o1.lidar_ros2_scan_smoke.v1",
     "output_dir": str(out),
-    "scan_once_observed": "ranges:" in read("scan_once.txt"),
-    "scan_hz_observed": "average rate:" in read("scan_hz.txt"),
-    "raw_packet_once_observed": "data:" in read("raw_packet_once.txt"),
-    "tf_observed": "At time" in read("tf2_echo.txt") or "Translation:" in read("tf2_echo.txt"),
+    "required_observations": {
+        "scan_once": {
+            "topic": "/scan",
+            "artifact_file": "scan_once.txt",
+            "observed": "ranges:" in read("scan_once.txt"),
+        },
+        "scan_hz": {
+            "topic": "/scan",
+            "artifact_file": "scan_hz.txt",
+            "observed": "average rate:" in read("scan_hz.txt"),
+        },
+        "raw_packet_once": {
+            "topic": "/lidar/raw_packet",
+            "artifact_file": "raw_packet_once.txt",
+            "observed": "data:" in read("raw_packet_once.txt"),
+        },
+        "tf": {
+            "parent_frame": "base_link",
+            "child_frame": frame_id,
+            "artifact_file": "tf2_echo.txt",
+            "observed": "At time" in read("tf2_echo.txt") or "Translation:" in read("tf2_echo.txt"),
+        },
+    },
     "driver_log_tail": read("lidar_driver.log")[-2000:],
+    "driver_started_by_smoke": True,
+    "lidar_start_command_sent_by_smoke": True,
+    "lidar_start_command_hex": "A5 60",
+    "refuses_base_uart_ttyS5": True,
     "safe_to_control": False,
     "sends_base_motion_commands": False,
     "calls_base_manual": False,
     "publishes_cmd_vel": False,
 }
+summary["scan_once_observed"] = summary["required_observations"]["scan_once"]["observed"]
+summary["scan_hz_observed"] = summary["required_observations"]["scan_hz"]["observed"]
+summary["raw_packet_once_observed"] = summary["required_observations"]["raw_packet_once"]["observed"]
+summary["tf_observed"] = summary["required_observations"]["tf"]["observed"]
+summary["all_required_observations_observed"] = all(item["observed"] for item in summary["required_observations"].values())
 (out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
 print(json.dumps(summary, ensure_ascii=False, indent=2))
 PY

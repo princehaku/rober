@@ -88,11 +88,72 @@ command 不存在，`/root/rober/onboard/install` 不存在；远端 repo 仍是
 `amd64` 镜像在 Orange Pi `arm64` 上 `exec format error`，随后拉取 arm64 ROS
 base 镜像超时。
 
+### 2026-06-04 ROS2 Scan Smoke Evidence
+
+Hardware Infra Engineer 继续通过 `ssh root@192.168.1.11 -p 37878` 推进 O1：
+远端 apt/dpkg/locales 已自然结束，ROS2 Humble runtime 已可用；同步当前
+`onboard/src` 与 `onboard/scripts` 后，执行：
+
+```bash
+bash /root/rober/onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh --skip-apt-install
+```
+
+结果为 `Summary: 6 packages finished [2min 8s]`，并确认：
+
+```text
+/opt/ros/humble/setup.bash: exists
+/root/rober/onboard/install/setup.bash: exists
+ros2=/opt/ros/humble/bin/ros2
+```
+
+随后执行 LiDAR-only smoke：
+
+```bash
+bash /root/rober/onboard/scripts/o1_lidar_ros2_scan_smoke.sh \
+  --serial-port /dev/ttyACM0 \
+  --serial-baudrate 150000 \
+  --frame-id laser_frame \
+  --output-dir /tmp/o1_lidar_ros2_scan_smoke
+```
+
+`/tmp/o1_lidar_ros2_scan_smoke/summary.json` 摘要：
+
+```json
+{
+  "scan_once_observed": true,
+  "scan_hz_observed": true,
+  "raw_packet_once_observed": true,
+  "tf_observed": true,
+  "safe_to_control": false,
+  "sends_base_motion_commands": false,
+  "calls_base_manual": false,
+  "publishes_cmd_vel": false
+}
+```
+
+证据片段：
+
+- `/scan` once 输出 `frame_id=laser_frame`、`range_min=0.05`、`range_max=8.0`
+  和真实 `ranges` 数值。
+- `/scan` hz 输出 `average rate`，观察窗口约 `295-300 Hz`。
+- `/lidar/raw_packet` once 的 `data` 以 `170, 85` 开头，即 `0xAA,0x55`。
+- `tf2_echo base_link laser_frame` 输出零位姿静态 TF。
+- topic list 包含 `/scan`、`/lidar/raw_packet`、`/tf_static`。
+
+安全边界：该 smoke 只向 LiDAR 串口发送 `A5 60` 和退出停止序列；未写
+`/dev/ttyS5`，未调用 `/api/base/manual`，未发送 WAVE ROVER
+`T=1/T=13/T=130/T=131`，未发布 `/cmd_vel`。
+
+已知 caveat：smoke 退出阶段 `lidar_driver.log` 出现 ROS context shutdown error。
+该错误发生在 `/scan`、raw packet 和 TF evidence 已采集之后；它不撤销本轮
+topic 观察，但说明 driver 优雅退出仍需单独修复或复验。
+
 ## Evidence Boundary
 
 - Vendor source: `docs/vendor/VENDOR_INDEX.md`, `docs/vendor/lidar_pkg_ros2-main/`, and historical comparison snapshot `docs/vendor/lidar_ros/`.
-- Current evidence level: `source=software_reference + user_manual_serial_observed_start + upper_api_observed_lidar_port + raw_serial_packet_observed`.
-- Hardware status: real raw bytes and `0xaa55` packet sync headers are observed on `/dev/ttyACM0 @150000`; real `/scan` continuity, ROS2 runtime readiness, TF measurement, Nav2/SLAM consumption, stop command physical effect, and `150000` long-run stability are `not_proven`.
+- Current evidence level: `source=software_reference + user_manual_serial_observed_start + upper_api_observed_lidar_port + raw_serial_packet_observed + ros2_scan_smoke_observed`.
+- Hardware status: real raw bytes and `0xaa55` packet sync headers are observed on `/dev/ttyACM0 @150000`; first ROS2 `/scan` once/hz, `/lidar/raw_packet` once, and static TF smoke are observed on the upper computer.
+- Still not proven: Nav2/SLAM consumption, mapping quality, long-run `150000` stability, physical LiDAR motor stop observation, production udev `/dev/lidar`, WAVE ROVER HIL, ACK, `/odom`, `/imu/data`, `/battery`, and `safe_to_control=true`.
 - Mock status: `lidar_mock_scan` and `lidar_mock_packets` can prove software conversion and no-serial safety only; they are not HIL and cannot be marked `source=hil_pass`.
 - Runtime/bootstrap status: `onboard/scripts/o1_upper_computer_readiness_probe.py`
   现在输出 `lidar_ros2_bootstrap.status`，用于区分 `runtime_missing`、
@@ -128,7 +189,8 @@ PYTHONDONTWRITEBYTECODE=1 python3 onboard/scripts/test_upper_robot_api.py
 ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 lidar_frame_id:=laser_frame lidar_publish_raw_packets:=true
 ```
 
-真实上车前必须补充 `ros2 topic echo --once /scan`、`ros2 topic hz /scan`、
-`ros2 topic echo --once /lidar/raw_packet`、`tf2_echo base_link laser_frame` 和
-SLAM/Nav2 订阅证据。Robot Software 静态验证只能证明 launch contract 可复用，
-不能声明真机 LiDAR、真实 TF 或建图质量已通过。
+2026-06-04 已补到首个 LiDAR-only ROS2 smoke：`ros2 topic echo --once /scan`、
+`ros2 topic hz /scan`、`ros2 topic echo --once /lidar/raw_packet` 和
+`tf2_echo base_link laser_frame` 均观察到输出。真实上车前仍必须补充长稳运行、
+生产 udev `/dev/lidar`、SLAM/Nav2 订阅和建图质量证据。Robot Software 静态验证
+只能证明 launch contract 可复用，不能声明完整建图或导航已通过。

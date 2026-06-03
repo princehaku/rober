@@ -44,11 +44,17 @@ def fake_url_fetcher(url: str, _: float) -> dict[str, object]:
 class CommandRecorder:
     """记录是否误运行 ros2/topic 命令。"""
 
-    def __init__(self) -> None:
+    def __init__(self, responses: dict[str, dict[str, object]] | None = None) -> None:
         self.commands: list[str] = []
+        self.responses = responses or {}
 
     def __call__(self, command: str, _: float) -> dict[str, object]:
         self.commands.append(command)
+        for key, value in self.responses.items():
+            if key in command:
+                payload = dict(value)
+                payload.setdefault("command", command)
+                return payload
         return {"command": command, "returncode": 0, "stdout_preview": "ok", "stderr_preview": "", "ok": True}
 
 
@@ -72,7 +78,11 @@ class LidarScanProofCollectorTest(unittest.TestCase):
         self.assertIn("upper_api_scan_not_proven", blocker_codes)
         self.assertFalse(result["topic_reads"]["attempted"])
         self.assertFalse(result["proof"]["scan_once_observed"])
+        self.assertFalse(result["proof"]["scan_hz_observed"])
         self.assertFalse(result["proof"]["raw_packet_once_observed"])
+        self.assertFalse(result["proof"]["tf_observed"])
+        self.assertFalse(result["proof"]["all_required_observations_observed"])
+        self.assertEqual(set(result["proof"]["required_observations"]), {"scan_once", "scan_hz", "raw_packet_once", "tf"})
         self.assertFalse(result["proof"]["driver_started_by_collector"])
         self.assertFalse(result["proof"]["lidar_start_command_sent_by_collector"])
         self.assertFalse(result["safe_to_control"])
@@ -109,16 +119,51 @@ class LidarScanProofCollectorTest(unittest.TestCase):
 
         self.assertTrue(result["topic_reads"]["attempted"])
         self.assertTrue(result["proof"]["scan_once_observed"])
+        self.assertTrue(result["proof"]["scan_hz_observed"])
         self.assertTrue(result["proof"]["raw_packet_once_observed"])
-        self.assertEqual(result["proof"]["status"], "scan_and_raw_packet_observed")
-        self.assertEqual(len(recorder.commands), 4)
+        self.assertTrue(result["proof"]["tf_observed"])
+        self.assertTrue(result["proof"]["all_required_observations_observed"])
+        self.assertEqual(result["proof"]["status"], "scan_once_hz_raw_packet_tf_observed")
+        self.assertEqual(len(recorder.commands), 5)
         self.assertTrue(any("ros2 --version" in command for command in recorder.commands))
         self.assertTrue(any("ros2 topic echo --once /scan" in command for command in recorder.commands))
+        self.assertTrue(any("ros2 topic hz /scan" in command for command in recorder.commands))
         self.assertTrue(any("ros2 topic echo --once /lidar/raw_packet" in command for command in recorder.commands))
+        self.assertTrue(any("tf2_echo base_link laser_frame" in command for command in recorder.commands))
         self.assertFalse(any("/cmd_vel" in command for command in recorder.commands))
         self.assertFalse(any("A5 60" in command for command in recorder.commands))
         self.assertFalse(result["safe_to_control"])
         self.assertFalse(result["hil_pass"])
+
+    def test_timeout_text_markers_still_count_for_hz_and_tf(self) -> None:
+        recorder = CommandRecorder(
+            {
+                "ros2 topic hz /scan": {
+                    "returncode": 124,
+                    "ok": False,
+                    "stdout_preview": "average rate: 6.250\n",
+                    "stderr_preview": "",
+                },
+                "tf2_echo base_link laser_frame": {
+                    "returncode": 124,
+                    "ok": False,
+                    "stdout_preview": "Translation: [0.000, 0.000, 0.000]\n",
+                    "stderr_preview": "",
+                },
+            }
+        )
+
+        result = collector.build_probe_payload(
+            expect_existing_topics=True,
+            path_exists=lambda _: True,
+            path_describer=fake_path_describer,
+            url_fetcher=lambda url, timeout: {"ok": True, "status": "loaded", "payload": {"scan_status": "scan_once_observed"}},
+            command_runner=recorder,
+        )
+
+        self.assertTrue(result["proof"]["scan_hz_observed"])
+        self.assertEqual(result["proof"]["scan_hz_average_rate_hz"], 6.25)
+        self.assertTrue(result["proof"]["tf_observed"])
 
     def test_atomic_write_json_creates_readable_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

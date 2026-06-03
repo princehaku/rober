@@ -101,9 +101,14 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(FakeSerial.instances, [])
 
     def test_manual_pulse_is_low_speed_limited_and_always_attempts_stop(self) -> None:
+        FakeSerial.read_lines = [b'{"T":1001,"L":0,"R":0,"r":1,"p":2,"y":3,"v":12.4}\n']
         robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
 
-        result = asyncio.run(robot.manual_control({"direction": "forward", "speed": 9.0, "duration_ms": 9999}))
+        result = asyncio.run(
+            robot.manual_control(
+                {"direction": "forward", "speed": 9.0, "duration_ms": 9999, "read_timeout_s": 0.01, "read_window_s": 0.01}
+            )
+        )
 
         self.assertTrue(result["accepted"])
         self.assertEqual(result["speed"], 0.12)
@@ -111,10 +116,20 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertTrue(result["manual_command_executed"])
         self.assertTrue(result["auto_stop_attempted"])
         self.assertTrue(result["auto_stop_executed"])
-        self.assertFalse(result["feedback_ack"]["t1001_observed"])
-        self.assertEqual(len(FakeSerial.instances), 2)
+        self.assertTrue(result["feedback_after_stop_attempted"])
+        self.assertEqual(result["t1001_feedback_status"], "observed")
+        self.assertTrue(result["feedback_ack"]["t1001_observed"])
+        self.assertFalse(result["feedback_ack"]["robot_ack_connected"])
+        self.assertFalse(result["safe_to_control"])
+        self.assertFalse(result["hil_pass"])
+        self.assertEqual(result["feedback_evidence"]["request"]["command"], {"T": 130})
+        self.assertEqual(result["feedback_evidence"]["serial_open"]["port"], "/dev/fake-base")
+        self.assertEqual(result["feedback_evidence"]["serial_open"]["baudrate"], 115200)
+        self.assertEqual(result["feedback_evidence"]["observed_feedback_types"], [1001])
+        self.assertEqual(len(FakeSerial.instances), 3)
         self.assertEqual(decoded_frame(FakeSerial.instances[0]), {"T": 1, "L": 0.12, "R": 0.12})
         self.assertEqual(decoded_frame(FakeSerial.instances[1]), {"T": 1, "L": 0, "R": 0})
+        self.assertEqual(decoded_frame(FakeSerial.instances[2]), {"T": 130})
 
     def test_manual_pulse_preserves_serial_write_failure_and_stop_result(self) -> None:
         FakeSerial.fail_on_write = True
@@ -129,6 +144,9 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(len(result["serial_write_failures"]), 2)
         self.assertEqual(result["command_result"]["error"]["type"], "OSError")
         self.assertEqual(result["stop_result"]["error"]["type"], "OSError")
+        self.assertFalse(result["feedback_after_stop_attempted"])
+        self.assertEqual(result["t1001_feedback_status"], "skipped_due_to_manual_write_failure")
+        self.assertEqual(len(FakeSerial.instances), 2)
 
     def test_stop_payload_robot_control_executed_reflects_stop_write_success(self) -> None:
         ok_payload = api.build_stop_payload("/dev/fake-base", 115200)
@@ -209,6 +227,50 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
             self.assertFalse(loaded["readback_sends_commands"])
             self.assertEqual(summary["latest_proof_status"], "blocked_or_not_observed")
             self.assertFalse(summary["latest_scan_once_observed"])
+            self.assertIsNone(summary["latest_scan_hz_observed"])
+            self.assertIsNone(summary["latest_scan_hz_average_rate_hz"])
+            self.assertFalse(summary["latest_raw_packet_once_observed"])
+            self.assertIsNone(summary["latest_tf_observed"])
+            self.assertIsNone(summary["latest_all_required_observations_observed"])
+            self.assertIsNone(summary["latest_required_observations"])
+            self.assertFalse(summary["sends_commands"])
+            self.assertEqual(FakeSerial.instances, [])
+
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.o1.lidar_scan_proof.v1",
+                        "proof": {
+                            "status": "scan_once_hz_raw_packet_tf_observed",
+                            "scan_once_observed": True,
+                            "scan_hz_observed": True,
+                            "scan_hz_average_rate_hz": 7.25,
+                            "raw_packet_once_observed": True,
+                            "tf_observed": True,
+                            "all_required_observations_observed": True,
+                            "required_observations": {
+                                "scan_once": {"topic": "/scan", "observed": True, "result_key": "scan_once"},
+                                "scan_hz": {"topic": "/scan", "observed": True, "average_rate_hz": 7.25, "result_key": "scan_hz"},
+                                "raw_packet_once": {"topic": "/lidar/raw_packet", "observed": True, "result_key": "raw_packet_once"},
+                                "tf": {"parent_frame": "base_link", "child_frame": "laser_frame", "observed": True, "result_key": "tf"},
+                            },
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            summary = api.summarize_lidar_scan_proof_latest_artifact(str(artifact_path))
+
+            self.assertEqual(summary["latest_proof_status"], "scan_once_hz_raw_packet_tf_observed")
+            self.assertTrue(summary["latest_scan_once_observed"])
+            self.assertTrue(summary["latest_scan_hz_observed"])
+            self.assertEqual(summary["latest_scan_hz_average_rate_hz"], 7.25)
+            self.assertTrue(summary["latest_raw_packet_once_observed"])
+            self.assertTrue(summary["latest_tf_observed"])
+            self.assertTrue(summary["latest_all_required_observations_observed"])
+            self.assertEqual(summary["latest_required_observations"]["scan_hz"]["average_rate_hz"], 7.25)
+            self.assertEqual(summary["latest_required_observations"]["tf"]["child_frame"], "laser_frame")
             self.assertFalse(summary["sends_commands"])
             self.assertEqual(FakeSerial.instances, [])
 

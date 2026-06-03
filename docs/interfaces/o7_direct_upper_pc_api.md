@@ -26,6 +26,12 @@ ROBER_UPPER_API_BASE_URL=http://192.168.1.11:8787 npm run dev -- --host 127.0.0.
 - `ROBER_UPPER_API_BASE_URL`：必填。示例 `http://192.168.1.11:8787`。
 - 未配置时，四个接口都不会主动探测默认 LAN IP；`status` 返回 `not_configured`，`stop/feedback-request/manual` 返回 `base_url_not_configured`。
 
+## Timeout 边界
+
+- `GET /api/o7/direct-upper/status` 仍使用 `1200ms` 短超时读取 `/health` 与 `/api/status`，避免首屏状态刷新被远端慢请求拖住。
+- `POST /api/o7/direct-upper/base/stop` 与 `POST /api/o7/direct-upper/base/feedback-request` 仍使用同一短超时；它们不应承担运动 pulse + stop + feedback 回读窗口。
+- `POST /api/o7/direct-upper/base/manual` 使用独立 `5500ms` 远端转发超时。这个窗口用于覆盖上位机 `/api/base/manual` 内部的短运动、自动停车、随后 `T=130` 请求和 `T=1001` 反馈读取；超时仍返回 `502`、`failure_reason="timeout"`、`safe_to_control=false`，不把等待失败包装成成功。
+
 ## `GET /api/o7/direct-upper/status`
 
 响应 schema：
@@ -132,6 +138,7 @@ PC 侧限制：
 - `direction` 只允许 `forward/back/left/right/stop`。
 - `speed` 取绝对值并限制到 `<=0.08 m/s`。
 - `duration_ms` 限制到 `1..350ms`。
+- 本机代理远端 fetch timeout 为 `5500ms`；该值只影响 manual，不影响 status 的 `1200ms` 短超时。
 - 非法 direction 返回 `400 invalid_direction`，不触发远端 fetch。
 - 合法请求仍依赖 8787 自身 `/api/base/manual` guardrail 做最终限速、限时和 auto-stop。
 
@@ -160,7 +167,36 @@ trashbot.pc_tools_workstation.o7_direct_upper_manual.v1
 - 展示 8787 `radar.scan_proof_latest` 摘要：artifact status、freshness、age、latest proof status 和 top blockers。
 - 展示 8787 `radar.raw_packet_proof_latest` 摘要：artifact status、freshness、age、latest proof status、bytes、sync、packets 和 points。
 
-现有方向按钮仍保持锁定，不会因为 direct status ready 自动 POST manual。真实运动必须由 operator 明确调用本机 API，并受 PC clamp 与 8787 guardrail 共同限制。
+2026-06-03 23-24 micro sprint 后，`前进`、`后退`、`左转`、`右转`、`Stop`
+按钮不再只调用本地 `showLocked()`，而是通过 client helper POST PC 同源：
+
+```text
+/api/o7/direct-upper/base/manual
+```
+
+浏览器仍不会直接访问上位机 8787，也不会访问 `/api/base/manual`、`/cmd_vel`
+或 WAVE ROVER JSON 串口。UI 会展示本机代理返回的结果：
+
+- 上位机 HTTP 2xx 且返回 JSON：显示“已发送（仍锁定）”、`upper_request.path`、
+  HTTP 状态、`ACK not observed`、`T=1001 not observed`、`blocked_reasons` 和
+  `safe_to_control=false`。
+- 未配置 `ROBER_UPPER_API_BASE_URL`：显示 `base_url_not_configured`，PC 后端返回
+  `400`，远端 fetch 不执行。
+- 远端非 2xx、超时、fetch 失败或坏 JSON：显示 PC 后端返回的 `failure_reason`，
+  通常为 `upper_http_<status>`、`timeout`、`bad_json` 或 fetch error，PC 后端返回
+  `502`。
+- direct status 不是 `ready` 时，按钮结果会把当前 `direct status` 一并显示，避免
+  operator 误以为已进入闭环可控状态。
+- `W/A/S/D` 键盘快捷键与按钮等价，分别请求 `forward/left/back/right`；`Space` 和
+  `X` 请求 `stop`。前端会忽略输入框、滑条、可编辑区域焦点，以及 repeat keydown，避免把长按键变成连续点动。
+- `forward/back` 使用当前速度滑块和 `250ms`；`left/right` 使用更明显的 turn pulse：
+  UI 请求 `speed=0.08`、`duration_ms=350`，然后仍由 PC 后端和 8787 做二次 clamp 与
+  fail-closed；`stop` 请求 `speed=0`。
+
+即使按钮 POST 成功，响应仍固定 `safe_to_control=false`、
+`robot_control_executed=false`、`robot_ack_connected=false`、`t1001_observed=false`。
+这只证明 PC 本机 manual 代理请求已发出，不证明真实 ACK、HIL、运动安全或 delivery
+success。
 
 ## 证据边界
 
@@ -170,7 +206,7 @@ trashbot.pc_tools_workstation.o7_direct_upper_manual.v1
 - 不证明真实 ROS2 `/cmd_vel`。
 - 不证明真实 `/odom`、`/imu/data`、`/battery`。
 - 不证明 `T=1001` 或 robot ACK。
-- 不证明真实 stop/manual 已现场执行。
+- 不证明真实 stop/manual 已现场执行或真实点动已被 ACK 闭环确认。
 - 不证明 delivery success。
 
 ## 2026-06-03 现场核对结果

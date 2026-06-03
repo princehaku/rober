@@ -350,6 +350,20 @@ def summarize_lidar_scan_proof_latest_artifact(path: str) -> dict[str, Any]:
     http_status, payload = read_lidar_scan_proof_latest_artifact(path)
     latest_result = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else None
     proof = latest_result.get("proof", {}) if isinstance(latest_result, dict) else {}
+    required_observations = proof.get("required_observations") if isinstance(proof, dict) else None
+    # status 面只压缩 artifact 已经写好的机器字段，不能在这里从 stdout 猜结果或触发 ROS2。
+    compact_required_observations = {
+        key: {
+            "observed": value.get("observed"),
+            "result_key": value.get("result_key"),
+            "topic": value.get("topic"),
+            "parent_frame": value.get("parent_frame"),
+            "child_frame": value.get("child_frame"),
+            "average_rate_hz": value.get("average_rate_hz"),
+        }
+        for key, value in required_observations.items()
+        if isinstance(value, dict)
+    } if isinstance(required_observations, dict) else None
     return {
         "schema": f"{SCHEMA}.lidar_scan_proof_latest_summary",
         "generated_at_ms": now_ms(),
@@ -358,7 +372,12 @@ def summarize_lidar_scan_proof_latest_artifact(path: str) -> dict[str, Any]:
         "artifact": payload["artifact"],
         "latest_proof_status": proof.get("status") if isinstance(proof, dict) else None,
         "latest_scan_once_observed": proof.get("scan_once_observed") if isinstance(proof, dict) else None,
+        "latest_scan_hz_observed": proof.get("scan_hz_observed") if isinstance(proof, dict) else None,
+        "latest_scan_hz_average_rate_hz": proof.get("scan_hz_average_rate_hz") if isinstance(proof, dict) else None,
         "latest_raw_packet_once_observed": proof.get("raw_packet_once_observed") if isinstance(proof, dict) else None,
+        "latest_tf_observed": proof.get("tf_observed") if isinstance(proof, dict) else None,
+        "latest_all_required_observations_observed": proof.get("all_required_observations_observed") if isinstance(proof, dict) else None,
+        "latest_required_observations": compact_required_observations,
         "readback_sends_commands": False,
         "sends_commands": False,
         "sends_motion_commands": False,
@@ -972,6 +991,44 @@ def build_base_feedback_samples_payload(
     }
 
 
+def skipped_manual_feedback_payload(port: str, baudrate: int, reason: str) -> dict[str, Any]:
+    """manual 写入失败时不追加 T=130，避免反馈读取挤占停车兜底后的故障定位。"""
+    return {
+        "schema": f"{SCHEMA}.base_manual_feedback_skipped",
+        "generated_at_ms": now_ms(),
+        "vendor_sources": VENDOR_SOURCES,
+        "port": port,
+        "baudrate": baudrate,
+        "request": {
+            "method": "POST",
+            "endpoint": "/api/base/manual",
+            "command": BASE_FEEDBACK_REQUEST_COMMAND,
+            "attempted": False,
+            "reason": reason,
+        },
+        "serial_open": None,
+        "serial_write": None,
+        "serial_read": None,
+        "read_line_count": 0,
+        "parsed_json_count": 0,
+        "invalid_json_count": 0,
+        "observed_feedback_types": [],
+        "t1001_feedback_status": reason,
+        "feedback_ack": {
+            "t1001_observed": False,
+            "robot_ack_connected": False,
+            "reason": "manual direction/stop write failed; T=130 feedback request skipped to preserve fail-closed evidence",
+        },
+        "safe_to_control": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "primary_actions_enabled": False,
+    }
+
+
 def build_stop_payload(port: str, baudrate: int) -> dict[str, Any]:
     """停车接口必须以写入结果为准，不能把 HTTP 调用成功当成底盘已停车。"""
     stop_result = write_serial_json(port, baudrate, {"T": 1, "L": 0, "R": 0})
@@ -1285,6 +1342,22 @@ class UpperRobotApi:
             for result in (first, stop)
             if isinstance(result, dict) and not result.get("ok") and "error" in result
         ]
+        if first.get("ok") and stop.get("ok"):
+            # 反馈请求必须排在停车之后，避免读窗口影响点动停车兜底。
+            feedback_evidence = request_base_feedback_once(
+                self.base_port,
+                self.base_baudrate,
+                read_timeout_s=body.get("read_timeout_s", DEFAULT_FEEDBACK_READ_TIMEOUT_S),
+                read_window_s=body.get("read_window_s", DEFAULT_FEEDBACK_READ_WINDOW_S),
+            )
+            feedback_after_stop_attempted = True
+        else:
+            feedback_evidence = skipped_manual_feedback_payload(
+                self.base_port,
+                self.base_baudrate,
+                "skipped_due_to_manual_write_failure",
+            )
+            feedback_after_stop_attempted = False
         return {
             "schema": f"{SCHEMA}.base_manual_result",
             "generated_at_ms": now_ms(),
@@ -1300,11 +1373,15 @@ class UpperRobotApi:
             "auto_stop_attempted": True,
             "auto_stop_executed": bool(stop.get("ok")),
             "manual_command_executed": bool(first.get("ok")),
-            "feedback_ack": t1001_boundary("manual pulse does not prove T=1001 or ACK"),
+            "feedback_after_stop_attempted": feedback_after_stop_attempted,
+            "feedback_evidence": feedback_evidence,
+            "t1001_feedback_status": feedback_evidence.get("t1001_feedback_status"),
+            "feedback_ack": feedback_evidence.get("feedback_ack", t1001_boundary("manual feedback evidence unavailable")),
             "safe_to_control": False,
             "sends_commands": True,
             "robot_control_executed": bool(first.get("ok")),
             "delivery_success": False,
+            "hil_pass": False,
             "primary_actions_enabled": False,
         }
 

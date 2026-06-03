@@ -90,9 +90,36 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 - `speed` 会被限制到 `ROBER_BASE_MAX_SPEED`，默认 `0.12`。
 - `duration_ms` 会被限制到 `800ms` 以内。
 - 每次方向命令后都会自动发送 `{"T":1,"L":0,"R":0}`。
-- 响应会保留 `feedback_ack.t1001_observed=false` 和 `robot_ack_connected=false`，因为当前 `/dev/ttyS5` 上 `T=130` 还没有读到 `T=1001`。
+- 当方向写入和 auto-stop 写入都成功后，`/api/base/manual` 会在 stop 之后通过同一
+  `base_port/base_baudrate` 发送一次 vendor `{"T":130}`，短窗口读取 `T=1001`，并把结果放入
+  `feedback_ack`、`t1001_feedback_status` 和 `feedback_evidence`。
+- `feedback_ack.robot_ack_connected`、`safe_to_control` 和 `hil_pass` 仍固定为 `false`。
+  `T=1001` 只代表 vendor feedback material，不代表项目 robot ACK、HIL pass 或闭环安全控制。
 
 因此，8787 只能声明“低速点动写入口可用”，不能声明“闭环安全控制完成”。
+
+### Manual left/right vendor mapping
+
+本轮按本地 vendor 资料复核 `/api/base/manual` 的 `left/right` 映射，没有发现 onboard 映射反向问题：
+
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py` 的 `base_speed_ctrl(input_left, input_right)` 直接发送 `{"T":1,"L":input_left,"R":input_right}`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h` 在 `CMD_SPEED_CTRL` 下把 JSON `L/R` 传给 `setGoalSpeed(L,R)`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h` 注释写明 `A-left, B-right`，且 `setGoalSpeed()` 将左输入送入 `setpointA/leftCtrl()`、右输入送入 `setpointB/rightCtrl()`。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/templates/control.js` 的官方 Web 控制同样使用纯左转 `L=-max_speed,R=+max_speed`、纯右转 `L=+max_speed,R=-max_speed`。
+
+所以当前差速点动方向语义为：
+
+| manual direction | vendor `T=1` wheel command | 含义 |
+| --- | --- | --- |
+| `forward` | `{"T":1,"L":+speed,"R":+speed}` | 左右轮同向前进 |
+| `back` | `{"T":1,"L":-speed,"R":-speed}` | 左右轮同向后退 |
+| `left` | `{"T":1,"L":-speed,"R":+speed}` | 左轮后退、右轮前进，原地左转 |
+| `right` | `{"T":1,"L":+speed,"R":-speed}` | 左轮前进、右轮后退，原地右转 |
+| `stop` | `{"T":1,"L":0,"R":0}` | 停车 |
+
+`T=130/T=1001` 语义也按 vendor 边界处理：`json_cmd.h` 定义 `CMD_BASE_FEEDBACK=130`、`FEEDBACK_BASE_INFO=1001`；`uart_ctrl.h` 收到 `T=130` 后调用 `baseInfoFeedback()`；`ugv_advance.h` 的 `baseInfoFeedback()` 输出 `T=1001`，字段包含 `L/R` 轮速、`r/p/y` IMU 姿态和 `v` 电源电压。它能作为 vendor feedback material，不能单独证明手控闭环、安全准入、ROS `/odom` 或 HIL pass。
+
+如果现场反馈“左右转还不行”，优先按 `docs/hardware/o1_base_manual_turn_smoke.md` 做低速短 pulse 复核：净空、急停、左右轮物理方向、auto-stop 和 stop 后 `T=130 -> T=1001` 回读必须同场记录。
 
 ### 2026-06-03 硬件安全收口
 
@@ -103,7 +130,14 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 - 每次 accepted manual pulse 都先写 vendor `{"T":1,"L":...,"R":...}\n`，短窗口后再写 `{"T":1,"L":0,"R":0}\n`。
 - 响应保留 `command_result`、`stop_result`、`serial_write_failures`、`manual_command_executed`、`auto_stop_attempted`、`auto_stop_executed`。
 - `/api/base/stop` 的 `robot_control_executed` 只跟随 stop JSON 写入结果；pyserial 缺失、串口打开失败或写失败时必须为 `false`。
-- `feedback_ack.t1001_observed=false` 固定保留，因为当前 API 不读取 `T=1001`，也不能把 `T=1` 写入成功当成 ACK 或 HIL。
+- `/api/base/manual` 的反馈证据链严格排在 auto-stop 之后：方向 `T=1` 写入成功、停车 `T=1,L=0,R=0`
+  写入成功后，才用同一串口配置发送 `T=130` 并短窗口读取 `T=1001`。
+- 若方向写入或 stop 写入失败，`manual` 响应保留 `command_result`、`stop_result` 和
+  `serial_write_failures`，`feedback_after_stop_attempted=false`，
+  `t1001_feedback_status="skipped_due_to_manual_write_failure"`，不会把失败包装成成功。
+- `manual` 响应里的 `feedback_ack.t1001_observed=true` 只说明 stop 后的显式 `T=130` 读取到了
+  vendor `T=1001` 材料；`robot_ack_connected=false`、`safe_to_control=false`、`hil_pass=false`
+  不变，不能把 `T=1` 写入成功或 `T=1001` 材料当成 ACK/HIL。
 - `/api/base/feedback-request` 是非运动请求入口，只允许发送一次 vendor `{"T":130}` 并读取短窗口反馈；HTTP 200、写入成功或坏帧计数都不能外推为真实 ACK/HIL。
 - `/api/base/feedback-samples` 是非运动多样本 evidence collector，只重复同一条 `T=130` 路径并聚合每个 sample 的 `T=1001` 观察状态；它不调用 `/api/base/manual`，不发送 `T=1/T=13/T=131` 或 `/cmd_vel`。
 - `/api/base/feedback-samples/latest` 只读取 `ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH` / `--feedback-samples-artifact-path` 指向的 JSON artifact，默认 `runtime/base_feedback_samples_latest.json`；artifact 不存在或坏 JSON 时 fail-closed，不打开串口、不发送 `T=130` 或任何运动命令。
@@ -147,10 +181,11 @@ ros2 launch ros2_trashbot_bringup learn.launch.py \
   lidar_publish_raw_packets:=true
 ```
 
-8787 返回 `scan_status="not_proven"` 是刻意保留的验收边界：只有后续采到
-`ros2 topic echo --once /scan`、`ros2 topic hz /scan` 和
-`ros2 topic echo --once /lidar/raw_packet` 后，才能把雷达状态从设备已识别提升为
-`/scan` 连续输出已证明。
+8787 返回 `scan_status="not_proven"` 是刻意保留的验收边界：只有后续分别采到
+`ros2 topic echo --once /scan`、`ros2 topic hz /scan`、`ros2 topic echo --once /lidar/raw_packet`
+和 `tf2_echo base_link laser_frame` 后，才能把雷达材料从设备已识别提升为 ROS2
+runtime proof。PC 的“实时雷达 ready”只能认 `/scan` once + `/scan` hz；raw packet 与 TF 是
+工程诊断/坐标链材料，不能单独替代 `/scan` ready。
 
 ### LiDAR scan proof artifact readback
 
@@ -168,10 +203,46 @@ readback 边界：
 - 不发送 `A5 60`、`T=1/T=13/T=130/T=131` 或 `/cmd_vel`。
 - 固定 `safe_to_control=false`、`sends_commands=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`。
 
-`GET /api/radar/status` 的 `scan_proof_latest` 只暴露 latest proof artifact 摘要，
-包括 `artifact.status`、`latest_proof_status`、`latest_scan_once_observed` 和
-`latest_raw_packet_once_observed`。该摘要只代表最近 artifact 的读取状态，不证明当前
-ROS2 `/scan` 正在连续输出。
+`o1_lidar_scan_proof_collector.py --expect-existing-topics` 仍然只读 ROS2 graph：
+
+- 不启动 `ros2_trashbot_hardware lidar_driver`。
+- 不打开 `/dev/ttyACM0`、`/dev/lidar` 或 `/dev/ttyS5`。
+- 不发送 LiDAR `A5 60` start bytes。
+- 不发送 WAVE ROVER `T=1/T=13/T=130/T=131`，不发布 `/cmd_vel`。
+
+collector artifact 的 `proof.required_observations` 必须独立包含四个 key：
+
+| key | 证明对象 | ready 作用 |
+| --- | --- | --- |
+| `scan_once` | `ros2 topic echo --once /scan` | 证明 `/scan` 至少有一帧 LaserScan |
+| `scan_hz` | `ros2 topic hz /scan` | 证明 `/scan` 有连续频率输出，可供 PC 判断实时雷达 |
+| `raw_packet_once` | `ros2 topic echo --once /lidar/raw_packet` | 证明 driver 发布原始包，只作为工程诊断 |
+| `tf` | `tf2_echo base_link laser_frame` | 证明 base 到 LiDAR frame 的 TF 链，只作为坐标链诊断 |
+
+顶层 `proof` 同步保留机器可读摘要字段：
+
+- `scan_once_observed`
+- `scan_hz_observed`
+- `scan_hz_average_rate_hz`
+- `raw_packet_once_observed`
+- `tf_observed`
+- `all_required_observations_observed`
+
+`o1_lidar_ros2_scan_smoke.sh` 是 LiDAR-only runtime smoke，允许启动 LiDAR driver 和静态 TF，
+因此会在 driver 内发送 LiDAR `A5 60` start bytes；它必须拒绝 `/dev/ttyS5`，并继续固定
+`safe_to_control=false`、`sends_base_motion_commands=false`、`calls_base_manual=false`、
+`publishes_cmd_vel=false`。它的 `summary.json` 使用同一套 `required_observations`
+四项字段，便于 PC 或人工脚本按 `/scan` once、`/scan` hz、raw packet once、TF 分开判读。
+
+`GET /api/radar/status` 的 `scan_proof_latest` 暴露 latest proof artifact 的 compact
+摘要，包括 `artifact.status`、`latest_proof_status`、`latest_scan_once_observed`、
+`latest_scan_hz_observed`、`latest_scan_hz_average_rate_hz`、
+`latest_raw_packet_once_observed`、`latest_tf_observed`、
+`latest_all_required_observations_observed` 和 `latest_required_observations`。旧 artifact
+缺少 hz/TF 字段时这些新增字段保持 `null`，不能把缺省解释成 observed。PC 主状态灯仍只认
+`latest_scan_once_observed=true` 与 `latest_scan_hz_observed=true` 作为实时雷达 ready；
+raw packet 与 TF 只作为工程诊断和坐标链 proof，不参与 ready 判定。该摘要只代表最近
+artifact 的读取状态，不证明当前 ROS2 `/scan` 正在连续输出。
 
 ### LiDAR raw packet proof artifact readback
 
@@ -179,6 +250,17 @@ ROS2 `/scan` 正在连续输出。
 `trashbot.o1.lidar_raw_packet_proof.v1` artifact。它的目标是把绕开 ROS2 runtime
 blocker 的 raw bytes、`0xAA55` sync header、packet parse 和 point 统计材料回放给
 PC/O7 operator。
+
+raw packet proof 与 `/scan` proof 的边界：
+
+- raw packet proof 可以证明 LiDAR 串口 raw bytes、sync header、packet parse 和 points
+  material readiness。
+- raw packet proof 不证明 ROS2 `LaserScan` 已发布，不证明 `/scan` hz，不证明 TF，不证明
+  SLAM/Nav2 可消费。
+- PC 的实时雷达状态不能把 `latest_raw_packet_once_observed=true` 或
+  `latest_raw_bytes_observed=true` 当成 `/scan` ready。
+- `/scan` proof 才是 PC 实时雷达的主判定来源，且应优先读取 `scan_once` 与 `scan_hz`
+  两个字段。
 
 readback 边界：
 

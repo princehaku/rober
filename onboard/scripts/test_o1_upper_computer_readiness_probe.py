@@ -176,7 +176,13 @@ class O1UpperComputerReadinessProbeTest(unittest.TestCase):
         self.assertEqual(bootstrap["blocker_codes"], [])
         joined = "\n".join(bootstrap["commands_if_ready"])
         self.assertIn("ros2 topic echo --once /scan", joined)
+        self.assertIn("ros2 topic hz /scan", joined)
+        self.assertIn("tf2_echo base_link laser_frame", joined)
         self.assertIn("ros2 run ros2_trashbot_hardware lidar_driver", joined)
+        self.assertEqual(
+            bootstrap["scan_smoke_summary_contract"]["required_observation_keys"],
+            ["scan_once", "scan_hz", "raw_packet_once", "tf"],
+        )
         for forbidden in ("/api/base/manual", "/cmd_vel", '"T":1', '"T":13', '"T":130', '"T":131'):
             self.assertNotIn(forbidden, joined)
         self.assertFalse(bootstrap["safe_to_control"])
@@ -233,6 +239,9 @@ class O1UpperComputerReadinessProbeTest(unittest.TestCase):
         self.assertIn('if [[ "$SERIAL_PORT" == "/dev/ttyS5" ]]', script)
         self.assertIn("/dev/serial/by-id/*STC*", script)
         self.assertNotIn("/dev/serial/by-path/*)", script)
+        self.assertIn('"required_observations"', script)
+        self.assertIn('"all_required_observations_observed"', script)
+        self.assertIn('"refuses_base_uart_ttyS5": True', script)
 
 
 if __name__ == "__main__":

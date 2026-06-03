@@ -69,6 +69,13 @@ log() {
   printf '[o1-bootstrap] %s\n' "$*"
 }
 
+source_ros_setup() {
+  # ROS2 setup 脚本内部会探测未定义变量；这里临时关闭 nounset，避免 bootstrap 在已安装 runtime 上误失败。
+  set +u
+  source /opt/ros/humble/setup.bash
+  set -u
+}
+
 require_root() {
   # apt 和 /opt/ros 写入需要 root；非 root 时直接失败，避免半安装状态。
   if [[ "$(id -u)" != "0" ]]; then
@@ -162,10 +169,11 @@ validate_source_tree() {
 
 build_onboard_workspace() {
   # 构建只面向 ROS2 workspace，不启动节点、不打开串口、不触发 LiDAR 或底盘动作。
-  source /opt/ros/humble/setup.bash
+  source_ros_setup
   cd "$ONBOARD_ROOT"
   rm -rf build install log
-  colcon build --symlink-install
+  # 远端历史同步可能留下顶层包目录；只构建 src，避免重复包名阻塞恢复。
+  colcon build --symlink-install --base-paths src
 }
 
 main() {
@@ -182,7 +190,7 @@ main() {
   else
     log "skip colcon requested"
   fi
-  source /opt/ros/humble/setup.bash
+  source_ros_setup
   log "ros2=$(command -v ros2)"
   log "install_setup=$ONBOARD_ROOT/install/setup.bash"
   test -f "$ONBOARD_ROOT/install/setup.bash"

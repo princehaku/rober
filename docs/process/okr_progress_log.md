@@ -6,6 +6,39 @@
 
 ---
 
+## 2026-06-04 系列
+
+### 2026-06-04 00-01｜Product/OKR closeout｜O1 首个 ROS2 `/scan` smoke observed，O7 split 软件验收通过
+
+本轮 Product/OKR 收口基于 `sprints/2026.06.04_00-01_o1-upper-ros2-bootstrap-continue/tech-done.md`
+和 `sprints/2026.06.04_00-01_o1-o7-realtime-scan-map-split/` 当前阶段文档。O1 方向判断继续，
+但口径从“real `/scan` not_proven”修正为“首个 ROS2 LiDAR `/scan` smoke observed”。
+
+O1 保守从约 96% 调整到约 97%。可计入证据仅包括：远端
+`/opt/ros/humble/setup.bash` exists、`/root/rober/onboard/install/setup.bash` exists、
+`colcon build` 6 packages finished [2min 8s]、LiDAR-only smoke 观察到 `/scan` once、
+`/scan` hz 约 295-300 Hz、`/lidar/raw_packet` once、`tf2_echo base_link laser_frame`
+和 summary `all_required_observations_observed=true`。本轮只发送 LiDAR `A5 60` start
+和 stop sequence；没有发送底盘运动命令，没有写 `/dev/ttyS5`，没有调用
+`/api/base/manual`，没有发布 `/cmd_vel`。
+
+O1 仍不得写成 HIL、SLAM/Nav2、长稳、production udev、ACK、真实 ROS feedback topics、
+`safe_to_control=true` 或 delivery success。下一轮 O1 若继续推进，应优先补 driver 优雅退出、
+production udev、长稳 smoke、SLAM/Nav2 消费和地图质量；底盘线仍必须在现场看护、物理净空、
+人工急停可用时再做低速短 pulse 和 ACK/`T=1001` 同源证据采集。
+
+O7 方向判断继续，保守从约 98.8% 调整到约 98.9%。Full-Stack `tech-done.md` 已返回：
+PC 首屏拆成 `实时雷达 (/scan)` 与 `实时图 (SLAM/map)`，raw packet 不参与 radar ready，
+`/scan observed + map absent` 显示等待建图，原组合标题 `雷达未接入 / 等待建图` 已被 rendered
+smoke 证明不再出现。验证证据为 `npm test -- --run` 81 tests passed、`npm run build`
+通过、`npm run lint` 通过、Playwright rendered smoke 通过且浏览器请求不直连 `:8787`/`:18787`、
+不访问 `/api/base/manual` 或 `/cmd_vel`。该增量只计为 PC 软件/渲染验收，不证明真实
+SLAM/map artifact、production operator workflow、真实手控/Nav2 或完整任务闭环。
+
+当前按完成度最低的 Objective 已变为 O5/O6（约 96%）；O1 虽升至约 97%，仍是硬件主链路关键风险。
+本轮没有 KR 进入历史完成归档区，因为 O1 完成的是首个传感器 smoke 材料、O7 完成的是 PC 软件/渲染
+拆分，不是业务闭环、HIL 或生产 operator workflow。
+
 ## 2026-06-03 系列
 
 ### 2026-06-03 17-18｜O1 LiDAR scan proof artifact｜blocked runtime is now machine-readable
@@ -5409,6 +5442,42 @@ Task B Robot 只补 compatibility fence 和 `docs/interfaces/ros_contracts.md`�
 ---
 
 ## 录入规则与边界
+
+### 2026-06-04 00-01｜O1 upper ROS2 bootstrap continue｜真实 `/scan` smoke observed
+
+本轮 micro sprint 继续优先 O1，接上上一轮远端 apt/dpkg 卡在
+`locales.postinst/localedef` 的状态。Hardware owner 先只读确认远端
+`ssh root@192.168.1.11 -p 37878`：apt/dpkg/localedef 已自然结束，`dpkg --audit`
+无输出，`/opt/ros/humble/setup.bash` 已存在；source 后 `ros2=/opt/ros/humble/bin/ros2`，
+但 `/root/rober/onboard/install/setup.bash` 初始仍缺失。远端旧源码缺
+`lidar_driver.py`，已同步当前 `onboard/src` 与 `onboard/scripts` 到上位机。
+
+本轮修复两个 bootstrap/smoke 脚本恢复问题：source ROS2 setup 时临时放宽
+`nounset`，以及 `colcon build --symlink-install --base-paths src` 避免远端历史
+顶层包目录与 `src/` 下同名包重复。远端执行
+`bash /root/rober/onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh --skip-apt-install`
+通过，`Summary: 6 packages finished [2min 8s]`，生成
+`/root/rober/onboard/install/setup.bash`。
+
+随后执行 LiDAR-only smoke：
+`bash /root/rober/onboard/scripts/o1_lidar_ros2_scan_smoke.sh --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame --output-dir /tmp/o1_lidar_ros2_scan_smoke`。
+summary 显示 `scan_once_observed=true`、`scan_hz_observed=true`、
+`raw_packet_once_observed=true`、`tf_observed=true`、`safe_to_control=false`。
+证据片段包括 `/scan` once 的 `frame_id=laser_frame` 与真实 ranges、`/scan` hz
+约 `295-300 Hz`、`/lidar/raw_packet` data 以 `170,85` 即 `0xAA55` 开头、
+`tf2_echo base_link laser_frame` 零位姿静态 TF。smoke 未写 `/dev/ttyS5`，
+未调用 `/api/base/manual`，未发送 WAVE ROVER `T=1/T=13/T=130/T=131`，未发布
+`/cmd_vel`；只发送 LiDAR vendor `A5 60` start 和退出 stop sequence。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | O1 事实推进：真实 ROS2 LiDAR `/scan` smoke observed，但不在本文件调整百分比 | 首次在上位机 ROS2 runtime/build 下观察到 `/scan` once/hz、`/lidar/raw_packet` once 和 `base_link -> laser_frame` 静态 TF。仍不是 HIL pass、不是 SLAM/Nav2 消费、不是长稳运行、不是 WAVE ROVER ACK 或运动控制安全；`/odom`、`/imu/data`、`/battery`、急停演练、`safe_to_control=true` 和 delivery success 仍未证明。 |
+
+本轮本地验证：`python3 -m unittest onboard/scripts/test_upper_robot_api.py` 16 tests OK；
+`python3 -m py_compile onboard/scripts/upper_robot_api.py onboard/scripts/test_upper_robot_api.py`
+通过；`bash -n onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh onboard/scripts/o1_lidar_ros2_scan_smoke.sh`
+通过；scoped `git diff --check` 通过。已复核 O1 manual feedback ACK dirty diff：成功路径为
+`T=1 -> stop -> T=130`，失败路径不追加 `T=130`。
 
 ### 2026-06-03 22-23｜O1 ROS2 runtime bootstrap｜可执行 Humble arm64 remediation
 

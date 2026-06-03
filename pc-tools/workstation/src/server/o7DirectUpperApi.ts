@@ -8,6 +8,7 @@ import type {
 } from "../shared/contracts";
 
 const REQUEST_TIMEOUT_MS = 1200;
+const MANUAL_REQUEST_TIMEOUT_MS = 5500;
 const MAX_PC_MANUAL_SPEED_MPS = 0.08;
 const MAX_PC_MANUAL_DURATION_MS = 350;
 const ALLOWED_DIRECTIONS = ["forward", "back", "left", "right", "stop"] as const;
@@ -120,9 +121,10 @@ async function fetchUpperJson(
   path: O7DirectUpperApiRequestResult["path"],
   method: O7DirectUpperApiRequestResult["method"],
   body?: unknown,
+  timeoutMs = REQUEST_TIMEOUT_MS,
 ): Promise<RemoteJsonResult> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${baseUrl}${path}`, {
       method,
@@ -460,11 +462,17 @@ export async function proxyO7DirectUpperManual(options: DirectUpperOptions = {})
     };
   }
 
-  const remote = await fetchUpperJson(baseUrl, "/api/base/manual", "POST", {
-    direction,
-    speed,
-    duration_ms: durationMs,
-  });
+  const remote = await fetchUpperJson(
+    baseUrl,
+    "/api/base/manual",
+    "POST",
+    {
+      direction,
+      speed,
+      duration_ms: durationMs,
+    },
+    MANUAL_REQUEST_TIMEOUT_MS,
+  );
   return {
     status: remote.request.ok ? 200 : 502,
     payload: commandResponse(

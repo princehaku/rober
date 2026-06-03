@@ -215,7 +215,7 @@ ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s 
 - 本 probe 未打开 pyserial，未读取或写入任何串口。
 - 真实 `T=1001` chassis feedback 未采集。
 - `T=13` 在当前底盘固件上的真实行为未验证。
-- LiDAR 真实 USB path、`150000` 目标硬件稳定性、ROS2 `/scan`、TF/Nav2/SLAM 消费链路仍未验证。
+- LiDAR 真实 `/dev/ttyACM0 @150000`、首个 ROS2 `/scan` once/hz、`/lidar/raw_packet` once 和静态 TF 已在 2026-06-04 smoke 观察到；长稳运行、生产 udev `/dev/lidar`、Nav2/SLAM 消费链路和建图质量仍未验证。
 - 因为没有执行任何控制命令，本轮不能写成 HIL pass，也不能写成真实送达、真实底盘控制或真实 LiDAR ready。
 
 ## 2026-06-03 21-22 更新
@@ -270,3 +270,54 @@ symlink、`/scan` topic。WAVE ROVER 底盘命令来源仍是
 因此本轮状态仍为 `blocked_pending_ros2_runtime_and_build`：已有可执行 bootstrap
 和 scan smoke 入口，但真实 `/scan`、`/lidar/raw_packet`、TF、SLAM/Nav2、HIL、
 ACK、`safe_to_control=true` 与 delivery success 均未证明。
+
+## 2026-06-04 00-01 bootstrap continue 更新
+
+本轮先只读确认远端 `ssh root@192.168.1.11 -p 37878` 的 apt/dpkg 状态：
+
+- `locales.postinst/localedef` 已自然结束，未发现 apt/dpkg/colcon worker。
+- `dpkg --audit` 无输出。
+- `/opt/ros/humble/setup.bash` 已存在；source 后 `ros2=/opt/ros/humble/bin/ros2`。
+- `/root/rober/onboard/install/setup.bash` 初始缺失。
+
+随后同步当前 `onboard/src` 与 `onboard/scripts` 到远端，修复远端旧源码缺
+`lidar_driver.py` 的 build 前置缺口。`o1_ros2_humble_arm64_bootstrap.sh` 本轮新增
+两处恢复能力：
+
+- source ROS2 setup 时临时关闭 `nounset`，避免 ROS2 setup 访问未定义变量导致脚本误失败。
+- `colcon build` 使用 `--base-paths src`，避免远端历史顶层包目录与 `src/` 下同名包重复。
+
+远端执行：
+
+```bash
+bash /root/rober/onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh --skip-apt-install
+```
+
+结果为 `Summary: 6 packages finished [2min 8s]`，并生成
+`/root/rober/onboard/install/setup.bash`。随后执行 LiDAR-only smoke：
+
+```bash
+bash /root/rober/onboard/scripts/o1_lidar_ros2_scan_smoke.sh \
+  --serial-port /dev/ttyACM0 \
+  --serial-baudrate 150000 \
+  --frame-id laser_frame \
+  --output-dir /tmp/o1_lidar_ros2_scan_smoke
+```
+
+结果摘要：
+
+- `/scan` once observed，`frame_id=laser_frame` 且 `ranges` 有真实数值。
+- `/scan` hz observed，窗口内约 `295-300 Hz`。
+- `/lidar/raw_packet` once observed，`data` 以 `170,85` 即 `0xAA55` 开头。
+- `tf2_echo base_link laser_frame` observed，零位姿静态 TF。
+- `/tmp/o1_lidar_ros2_scan_smoke/summary.json` 固定
+  `safe_to_control=false`、`sends_base_motion_commands=false`、
+  `calls_base_manual=false`、`publishes_cmd_vel=false`。
+
+安全边界：本轮未调用 `/api/base/manual`，未写 `/dev/ttyS5`，未发送 WAVE ROVER
+`T=1/T=13/T=130/T=131`，未发布 `/cmd_vel`。LiDAR smoke 发送了 vendor LiDAR
+`A5 60` start 和退出 stop sequence，这是本轮目标行为，不属于底盘运动命令。
+
+剩余风险：driver 退出阶段日志出现 ROS context shutdown error；真实 SLAM/Nav2
+消费、长稳运行、生产 udev `/dev/lidar`、WAVE ROVER HIL、ACK、`/odom`、
+`/imu/data`、`/battery` 和 `safe_to_control=true` 仍未证明。

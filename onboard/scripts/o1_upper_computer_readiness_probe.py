@@ -276,6 +276,7 @@ def build_lidar_ros2_bootstrap_readiness(
         "timeout 10 ros2 topic echo --once /scan",
         "timeout 10 ros2 topic hz /scan",
         "timeout 10 ros2 topic echo --once /lidar/raw_packet",
+        "timeout 10 ros2 run tf2_ros tf2_echo base_link laser_frame",
         (
             "ros2 run ros2_trashbot_hardware lidar_driver --ros-args "
             f"-p serial_port:={candidate_port} -p serial_baudrate:=150000 "
@@ -307,6 +308,16 @@ def build_lidar_ros2_bootstrap_readiness(
         "selected_candidate_hint": candidate_port,
         "ros2_cli": ros2_cli,
         "driver_evidence": driver_evidence,
+        "scan_smoke_summary_contract": {
+            "schema": "trashbot.o1.lidar_ros2_scan_smoke.v1",
+            # 四个结果必须独立存在，PC 不能用 raw packet 替代 `/scan` ready。
+            "required_observation_keys": ["scan_once", "scan_hz", "raw_packet_once", "tf"],
+            "scan_once_field": "scan_once_observed",
+            "scan_hz_field": "scan_hz_observed",
+            "raw_packet_once_field": "raw_packet_once_observed",
+            "tf_field": "tf_observed",
+            "all_required_field": "all_required_observations_observed",
+        },
         "vendor_sources": [
             "docs/vendor/VENDOR_INDEX.md",
             "docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp",
@@ -389,7 +400,9 @@ def build_ros2_runtime_remediation_plan(
         next_action = "collect_scan_proof_read_only_topics"
         next_command = (
             f"cd {ROBER_ONBOARD_ROOT} && source {ROS_HUMBLE_SETUP} && source install/setup.bash && "
-            "timeout 10 ros2 topic echo --once /scan && timeout 10 ros2 topic echo --once /lidar/raw_packet"
+            "timeout 10 ros2 topic echo --once /scan && timeout 10 ros2 topic hz /scan && "
+            "timeout 10 ros2 topic echo --once /lidar/raw_packet && "
+            "timeout 10 ros2 run tf2_ros tf2_echo base_link laser_frame"
         )
 
     return {
@@ -472,7 +485,9 @@ def build_lidar_runtime_readiness(
                 "-p frame_id:=laser_frame -p publish_raw_packets:=true"
             ),
             "timeout 10 ros2 topic echo --once /scan",
+            "timeout 10 ros2 topic hz /scan",
             "timeout 10 ros2 topic echo --once /lidar/raw_packet",
+            "timeout 10 ros2 run tf2_ros tf2_echo base_link laser_frame",
         ],
     }
 

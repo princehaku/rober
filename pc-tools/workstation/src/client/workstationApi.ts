@@ -9,6 +9,7 @@ import type {
   O7LabelingPreviewResponse,
   O7LocalWebrtcCameraResponse,
   O7DirectUpperApiCommandResponse,
+  O7DirectUpperApiDirection,
   O7DirectUpperApiStatusResponse,
   O7LiveEndpointsManifestResponse,
   O7LiveOperatorPanelResponse,
@@ -76,6 +77,7 @@ const API_ENDPOINTS = {
   o7LiveEndpointsManifest: "/api/o7/live-endpoints/manifest",
   o7LiveOperatorPanel: "/api/o7/live-operator-panel",
   o7DirectUpperStatus: "/api/o7/direct-upper/status",
+  o7DirectUpperManual: "/api/o7/direct-upper/base/manual",
   o7DirectUpperFeedbackRequest: "/api/o7/direct-upper/base/feedback-request",
   o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
   o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
@@ -101,6 +103,20 @@ async function loadJson<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(`${url} returned ${response.status}`);
   }
   return (await response.json()) as T;
+}
+
+async function postJsonWithPayload<T>(url: string, body: unknown): Promise<T> {
+  // 控制类 POST 需要读取 400/502 的 JSON 失败原因，不能只抛 HTTP 状态丢掉 guardrail 解释。
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = (await response.json().catch(() => null)) as T | null;
+  if (!payload) {
+    throw new Error(`${url} returned ${response.status} without_json_payload`);
+  }
+  return payload;
 }
 
 function routeDebugUrl(inputs: RouteDebugInputs): string {
@@ -236,6 +252,19 @@ export async function getO7DirectUpperStatus(): Promise<O7DirectUpperApiStatusRe
 export async function postO7DirectUpperFeedbackRequest(): Promise<O7DirectUpperApiCommandResponse> {
   // feedback-request 是非运动 T=130 请求；前端不得把 HTTP 200 展示成 T=1001 或 ACK 成功。
   return loadJson<O7DirectUpperApiCommandResponse>(API_ENDPOINTS.o7DirectUpperFeedbackRequest, { method: "POST" });
+}
+
+export async function postO7DirectUpperManual(
+  direction: O7DirectUpperApiDirection,
+  speed: number,
+  durationMs: number,
+): Promise<O7DirectUpperApiCommandResponse> {
+  // 浏览器只打 PC 同源 direct-upper 代理；PC 后端负责 env、方向白名单、速度/时长限幅和 8787 转发。
+  return postJsonWithPayload<O7DirectUpperApiCommandResponse>(API_ENDPOINTS.o7DirectUpperManual, {
+    direction,
+    speed,
+    duration_ms: durationMs,
+  });
 }
 
 export async function getO7CloudOperatorConsoleProbe(baseUrl: string): Promise<O7CloudOperatorConsoleProbeResponse> {

@@ -1,4 +1,4 @@
-import { flushPromises, mount } from "@vue/test-utils";
+import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App.vue";
 import { buildO7LiveOperatorPanel } from "../src/server/o7LiveOperatorPanel";
@@ -14,6 +14,8 @@ import {
   proxyO7DirectUpperStop,
 } from "../src/server/o7DirectUpperApi";
 import { PROOF_FLAGS } from "../src/shared/contracts";
+
+enableAutoUnmount(afterEach);
 
 const liveOperatorFixture = {
   schema: "trashbot.o7.live_operator_panel.v1",
@@ -36,6 +38,7 @@ const liveOperatorFixture = {
       age_seconds: 14,
       latest_proof_status: "blocked_or_not_observed",
       latest_scan_once_observed: false,
+      latest_scan_hz_observed: false,
       latest_raw_packet_once_observed: false,
       blocked_reasons: ["ros2_command_unavailable"],
       readback_sends_commands: false,
@@ -71,6 +74,38 @@ const liveOperatorFixture = {
       "T=1001 WAVE ROVER feedback has not been observed",
     ],
     blocked_reasons: ["base_serial_identity_not_proven", "t1001_feedback_not_observed", "robot_ack_not_connected"],
+  },
+  realtime_radar: {
+    title: "实时雷达 (/scan)",
+    status: "blocked",
+    ready: false,
+    endpoint: "/api/radar/scan-proof/latest",
+    readiness_source: "scan_proof_once_and_hz_only",
+    scan_once_observed: false,
+    scan_hz_observed: false,
+    latest_proof_status: "blocked_or_not_observed",
+    artifact_status: "loaded",
+    freshness_status: "fresh",
+    age_seconds: 14,
+    raw_packet_ignored_for_ready: true,
+    raw_packet_material_status: "observed_raw_packet_material",
+    blocked_reasons: ["ros2_command_unavailable", "scan_once_not_observed", "scan_hz_not_observed"],
+    not_ready_reason: "scan_once_or_hz_not_observed",
+    safe_to_control: false,
+  },
+  realtime_map: {
+    title: "实时图 (SLAM/map)",
+    status: "waiting_for_radar",
+    ready: false,
+    depends_on_realtime_radar: true,
+    map_artifact_status: "not_loaded",
+    slam_artifact_status: "not_loaded",
+    latest_map_observed: false,
+    latest_slam_observed: false,
+    blocked_reasons: ["realtime_radar_not_ready"],
+    not_ready_reason: "waiting_for_radar",
+    pointcloud_fabricated: false,
+    safe_to_control: false,
   },
   camera: {
     base_url: "http://192.168.1.11:8088/",
@@ -365,7 +400,7 @@ class MockPeerConnection {
 }
 
 function stubWebrtc(): void {
-  // 单测只验证前端发起摄像头 recvonly offer，不打开真实摄像头或控制链路。
+  // 单测只模拟用户点击后的摄像头 recvonly offer，不打开真实摄像头或控制链路。
   vi.stubGlobal("RTCPeerConnection", MockPeerConnection);
   vi.stubGlobal("MediaStream", MockMediaStream);
   Object.defineProperty(HTMLMediaElement.prototype, "play", {
@@ -374,25 +409,72 @@ function stubWebrtc(): void {
   });
 }
 
-function stubFetch(): ReturnType<typeof vi.fn> {
-  const mockedFetch = vi.fn(async (input: RequestInfo | URL) => {
+interface StubFetchOptions {
+  offerOk?: boolean;
+  offerStatus?: number;
+  offerPayload?: unknown;
+}
+
+function stubFetch(options: StubFetchOptions = {}): ReturnType<typeof vi.fn> {
+  const mockedFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    // 首屏只允许 O7 本机 API 和 camera media preview；不能加载旧云端/材料/控制接口。
+    // 首屏只允许 O7 本机只读 API；camera offer 必须由用户点击预览按钮后才出现。
+    const manualBody = init?.body ? JSON.parse(String(init.body)) as { direction?: string; speed?: number; duration_ms?: number } : null;
     const payload =
       url === "/api/o7/live-operator-panel"
         ? liveOperatorFixture
         : url === "/api/o7/local-webrtc-camera"
           ? localCameraFixture
-          : url === "/api/o7/direct-upper/status"
-            ? directUpperFixture
-            : url === "/api/o7/local-webrtc-camera/offer"
-              ? { type: "answer", sdp: "m=video\r\na=sendonly\r\n", peer_id: "peer-test-1" }
+        : url === "/api/o7/direct-upper/status"
+          ? directUpperFixture
+          : url === "/api/o7/local-webrtc-camera/offer"
+              ? options.offerPayload ?? { type: "answer", sdp: "m=video\r\na=sendonly\r\n", peer_id: "peer-test-1" }
+              : url === "/api/o7/direct-upper/base/manual"
+                ? {
+                    schema: "trashbot.pc_tools_workstation.o7_direct_upper_manual.v1",
+                    endpoint: "/api/o7/direct-upper/base/manual",
+                    ...PROOF_FLAGS,
+                    mode: "direct_upper_computer_lan_only",
+                    command: "manual",
+                    accepted_by_workstation: true,
+                    upper_request: {
+                      path: "/api/base/manual",
+                      method: "POST",
+                      executed: true,
+                      ok: true,
+                      http_status: 200,
+                      failure_reason: "",
+                    },
+                    upper_api_base_url: "http://192.168.1.11:8787",
+                    cloud_relay_bypassed: true,
+                    pc_local_only: true,
+                    fail_closed: false,
+                    failure_reason: "none",
+                    command_payload_summary: {
+                      direction: manualBody?.direction ?? "not_applicable",
+                      speed_mps: manualBody?.speed ?? 0,
+                      duration_ms: manualBody?.duration_ms ?? 0,
+                      clamped_by_pc: false,
+                      depends_on_upper_8787_guardrail: true,
+                    },
+                    robot_ack_connected: false,
+                    t1001_observed: false,
+                    safety_flags: directUpperFixture.safety_flags,
+                    blocked_reasons: ["robot_ack_not_connected", "t1001_feedback_not_observed"],
+                    not_proven: ["robot_ack", "t1001_feedback", "hil_pass", "actual_motion_or_stop_observed"],
+                    safe_to_control: false,
+                    sends_commands: false,
+                    robot_control_executed: false,
+                  }
               : null;
     if (!payload) {
       throw new Error(`unexpected fetch ${url}`);
     }
+    const isOffer = url === "/api/o7/local-webrtc-camera/offer";
+    const ok = isOffer ? options.offerOk ?? true : true;
     return {
-      ok: true,
+      ok,
+      status: isOffer ? options.offerStatus ?? (ok ? 200 : 409) : 200,
       json: async () => payload,
     } as Response;
   });
@@ -402,6 +484,7 @@ function stubFetch(): ReturnType<typeof vi.fn> {
 
 describe("O7 live operator first screen", () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -422,7 +505,12 @@ describe("O7 live operator first screen", () => {
     expect(text).toContain("状态");
     expect(text).toContain("8787 API ready");
     expect(text).toContain("摄像头8088 ready");
-    expect(text).toContain("当前没有真实 LiDAR `/scan` 证据");
+    expect(text).toContain("实时雷达 (/scan)");
+    expect(text).toContain("实时图 (SLAM/map)");
+    expect(text).toContain("blocked · once=no · hz=no");
+    expect(text).toContain("waiting_for_radar · 先等待真实 /scan once+hz");
+    expect(text).toContain("scan_once_not_observed");
+    expect(text).toContain("scan_hz_not_observed");
     expect(text).toContain("Raw packet proof");
     expect(text).toContain("observed_raw_packet_material");
     expect(text).toContain("bytes 4246");
@@ -441,7 +529,8 @@ describe("O7 live operator first screen", () => {
     expect(text).toContain("/api/o7/direct-upper/base/feedback-request");
     expect(text).toContain("/api/o7/direct-upper/base/manual");
     expect(text).toContain("http://192.168.1.11:8787");
-    expect(text).toContain("摄像头画面已连接");
+    expect(text).toContain("摄像头已就绪，点击重新连接预览");
+    expect(text).not.toContain("雷达未接入 / 等待建图");
     expect(text).not.toContain("External Probe Artifact");
     expect(text).not.toContain("Real Material Acceptance");
     expect(text).not.toContain("ASR");
@@ -451,11 +540,10 @@ describe("O7 live operator first screen", () => {
       "/api/o7/live-operator-panel",
       "/api/o7/local-webrtc-camera",
       "/api/o7/direct-upper/status",
-      "/api/o7/local-webrtc-camera/offer",
     ]);
   });
 
-  it("keeps direction buttons locked and never calls base manual, cmd_vel, or WAVE ROVER control endpoints", async () => {
+  it("creates the camera offer only after the operator clicks reconnect preview", async () => {
     stubWebrtc();
     const mockedFetch = stubFetch();
 
@@ -463,22 +551,120 @@ describe("O7 live operator first screen", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    const callsBeforeClick = mockedFetch.mock.calls.length;
-    await wrapper.findAll("button").find((button) => button.text() === "前进")?.trigger("click");
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/local-webrtc-camera/offer");
+
+    await wrapper.findAll("button").find((button) => button.text() === "重新连接预览")?.trigger("click");
+    await flushPromises();
     await wrapper.vm.$nextTick();
 
     const calledUrls = mockedFetch.mock.calls.map(([url]) => String(url));
-    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeClick);
-    expect(wrapper.text()).toContain("前进 已拦截：控制锁定，底盘串口/反馈/ACK 未确认");
+    expect(calledUrls.filter((url) => url === "/api/o7/local-webrtc-camera/offer")).toHaveLength(1);
+    expect(wrapper.text()).toContain("摄像头画面已连接");
+    expect(calledUrls).not.toContain("/api/base/manual");
+    expect(wrapper.text()).not.toContain("ready to control");
+  });
+
+  it("shows a readable camera peer conflict when explicit reconnect receives offer 409", async () => {
+    stubWebrtc();
+    const mockedFetch = stubFetch({
+      offerOk: false,
+      offerStatus: 409,
+      offerPayload: { error: "peer_conflict", safe_to_control: false },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/local-webrtc-camera/offer");
+
+    await wrapper.findAll("button").find((button) => button.text() === "重新连接预览")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const calledUrls = mockedFetch.mock.calls.map(([url]) => String(url));
+    expect(calledUrls.filter((url) => url === "/api/o7/local-webrtc-camera/offer")).toHaveLength(1);
+    expect(wrapper.text()).toContain("摄像头已有预览连接，关闭其他页面或稍后再点重新连接预览");
+    expect(calledUrls).not.toContain("/api/base/manual");
+    expect(wrapper.text()).toContain("控制锁定：底盘串口/反馈/ACK 未确认");
+    expect(wrapper.text()).not.toContain("ready to control");
+  });
+
+  it("routes every direction button through the same-origin direct-upper manual proxy while preserving fail-closed copy", async () => {
+    stubWebrtc();
+    const mockedFetch = stubFetch();
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    for (const label of ["前进", "后退", "左转", "右转", "Stop"]) {
+      await wrapper.findAll("button").find((button) => button.text() === label)?.trigger("click");
+      await flushPromises();
+      await wrapper.vm.$nextTick();
+    }
+
+    const calledUrls = mockedFetch.mock.calls.map(([url]) => String(url));
+    const manualCalls = mockedFetch.mock.calls.filter(([url]) => String(url) === "/api/o7/direct-upper/base/manual");
+    expect(manualCalls).toHaveLength(5);
+    expect(manualCalls.map(([, init]) => JSON.parse(String(init?.body)).direction)).toEqual([
+      "forward",
+      "back",
+      "left",
+      "right",
+      "stop",
+    ]);
+    expect(manualCalls.map(([, init]) => JSON.parse(String(init?.body)).duration_ms)).toEqual([250, 250, 350, 350, 250]);
+    expect(manualCalls.map(([, init]) => JSON.parse(String(init?.body)).speed)).toEqual([0.2, 0.2, 0.08, 0.08, 0]);
+    expect(wrapper.text()).toContain("Stop 已发送（仍锁定）：/api/base/manual HTTP 200");
+    expect(wrapper.text()).toContain("ACK not observed / T=1001 not observed");
+    expect(wrapper.text()).toContain("锁定原因 robot_ack_not_connected / t1001_feedback_not_observed");
     expect(calledUrls).not.toContain("/api/base/manual");
     expect(calledUrls.join("\n")).not.toContain("/cmd_vel");
     expect(calledUrls.join("\n")).not.toContain("wave_rover");
     expect(wrapper.text()).not.toContain("ready to control");
   });
+
+  it("supports WASD plus Space/X manual shortcuts while ignoring editable focus and repeat keydown", async () => {
+    stubWebrtc();
+    const mockedFetch = stubFetch();
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const slider = wrapper.find<HTMLInputElement>('input[aria-label="速度"]');
+    await slider.setValue(0.02);
+    slider.element.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "a", repeat: true }));
+
+    for (const eventInit of [
+      { key: "w" },
+      { key: "a" },
+      { key: "s" },
+      { key: "d" },
+      { key: " " },
+      { key: "x" },
+    ]) {
+      window.dispatchEvent(new KeyboardEvent("keydown", eventInit));
+      await flushPromises();
+      await wrapper.vm.$nextTick();
+    }
+
+    const manualCalls = mockedFetch.mock.calls.filter(([url]) => String(url) === "/api/o7/direct-upper/base/manual");
+    const bodies = manualCalls.map(([, init]) => JSON.parse(String(init?.body)));
+    expect(bodies.map((body) => body.direction)).toEqual(["forward", "left", "back", "right", "stop", "stop"]);
+    expect(bodies.map((body) => body.duration_ms)).toEqual([250, 350, 250, 350, 250, 250]);
+    expect(bodies.map((body) => body.speed)).toEqual([0.02, 0.08, 0.02, 0.08, 0, 0]);
+    expect(wrapper.text()).toContain("Stop 已发送（仍锁定）：/api/base/manual HTTP 200");
+    expect(wrapper.text()).toContain("safe_to_control=false");
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/base/manual");
+  });
 });
 
 describe("O7 live operator contracts", () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -498,6 +684,7 @@ describe("O7 live operator contracts", () => {
             freshness: { status: "fresh", age_seconds: 12 },
             latest_proof_status: "blocked_or_not_observed",
             latest_scan_once_observed: false,
+            latest_scan_hz_observed: false,
             latest_raw_packet_once_observed: false,
           },
           raw_packet_proof_latest: {
@@ -536,6 +723,10 @@ describe("O7 live operator contracts", () => {
     expect(response.lidar_radar.stc_by_id).toBe("resolved_to_ttyACM0");
     expect(response.lidar_radar.scan_status).toBe("not_proven");
     expect(response.lidar_radar.pointcloud_fabricated).toBe(false);
+    expect(response.lidar_radar.scan_proof_latest).toMatchObject({
+      latest_scan_once_observed: false,
+      latest_scan_hz_observed: false,
+    });
     expect(response.lidar_radar.raw_packet_proof_latest).toMatchObject({
       endpoint: "/api/radar/raw-packet-proof/latest",
       http_status: 200,
@@ -557,6 +748,37 @@ describe("O7 live operator contracts", () => {
       safe_to_control: false,
       hil_pass: false,
       collector_executed_by_pc: false,
+    });
+    expect(response.realtime_radar).toMatchObject({
+      title: "实时雷达 (/scan)",
+      status: "blocked",
+      ready: false,
+      readiness_source: "scan_proof_once_and_hz_only",
+      scan_once_observed: false,
+      scan_hz_observed: false,
+      raw_packet_ignored_for_ready: true,
+      raw_packet_material_status: "observed_raw_packet_material",
+      not_ready_reason: "scan_once_or_hz_not_observed",
+      safe_to_control: false,
+    });
+    expect(response.realtime_radar.blocked_reasons).toEqual(expect.arrayContaining([
+      "radar_scan_proof_blocked_or_not_observed",
+      "scan_once_not_observed",
+      "scan_hz_not_observed",
+    ]));
+    expect(response.realtime_map).toMatchObject({
+      title: "实时图 (SLAM/map)",
+      status: "waiting_for_radar",
+      ready: false,
+      depends_on_realtime_radar: true,
+      map_artifact_status: "not_loaded",
+      slam_artifact_status: "not_loaded",
+      latest_map_observed: false,
+      latest_slam_observed: false,
+      blocked_reasons: ["realtime_radar_not_ready"],
+      not_ready_reason: "waiting_for_radar",
+      pointcloud_fabricated: false,
+      safe_to_control: false,
     });
     expect(response.control.base_boundary).toEqual({
       observed_write_device: "/dev/ttyS5",
@@ -866,6 +1088,89 @@ describe("O7 direct upper PC API", () => {
       direction: "forward",
       speed: 0.08,
       duration_ms: 350,
+    });
+  });
+
+  it("keeps manual proxy alive past the short status timeout so upper auto-stop feedback can return", async () => {
+    vi.useFakeTimers();
+    const mockedFetch = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((resolve, reject) => {
+      // manual 的远端窗口需要覆盖运动 pulse、自动停车和 T=130/T=1001 回读，不能复用 status 的 1.2s 短超时。
+      const signal = init?.signal;
+      signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+      setTimeout(() => {
+        resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ accepted: true, auto_stop: { posted: true }, feedback_ack: { t1001_observed: false } }),
+        } as Response);
+      }, 1300);
+    }));
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const resultPromise = proxyO7DirectUpperManual({
+      env: { ROBER_UPPER_API_BASE_URL: "http://127.0.0.1:8787" },
+      body: { direction: "right", speed: 0.08, duration_ms: 350 },
+    });
+    await vi.advanceTimersByTimeAsync(1300);
+    const result = await resultPromise;
+
+    expect(result.status).toBe(200);
+    expect(result.payload.accepted_by_workstation).toBe(true);
+    expect(result.payload.upper_request).toMatchObject({
+      path: "/api/base/manual",
+      executed: true,
+      ok: true,
+      http_status: 200,
+      failure_reason: "",
+    });
+  });
+
+  it("keeps map waiting for mapping when /scan once and hz are observed but no SLAM map artifact exists", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        camera: { status: "ready", video_source: "auto" },
+        radar: {
+          observed_lidar_port: "/dev/ttyACM0",
+          scan_proof_latest: {
+            artifact: { status: "loaded" },
+            freshness: { status: "fresh", age_seconds: 2 },
+            latest_proof_status: "scan_once_hz_observed",
+            latest_scan_once_observed: true,
+            latest_scan_hz_observed: true,
+            latest_raw_packet_once_observed: false,
+          },
+          raw_packet_proof_latest: {
+            artifact: { status: "loaded" },
+            freshness: { status: "fresh", age_seconds: 2 },
+            latest_proof_status: "observed_raw_packet_material",
+            latest_raw_bytes_observed: true,
+          },
+        },
+        base: { port: "/dev/ttyS5", baudrate: 115200 },
+      }),
+    }));
+
+    const response = await buildO7LiveOperatorPanel();
+
+    expect(response.realtime_radar).toMatchObject({
+      status: "ready",
+      ready: true,
+      scan_once_observed: true,
+      scan_hz_observed: true,
+      raw_packet_ignored_for_ready: true,
+      blocked_reasons: [],
+      not_ready_reason: "none",
+    });
+    expect(response.realtime_map).toMatchObject({
+      status: "waiting_for_mapping",
+      ready: false,
+      map_artifact_status: "not_loaded",
+      slam_artifact_status: "not_loaded",
+      latest_map_observed: false,
+      latest_slam_observed: false,
+      blocked_reasons: ["slam_map_artifact_not_observed"],
+      not_ready_reason: "waiting_for_mapping",
     });
   });
 });

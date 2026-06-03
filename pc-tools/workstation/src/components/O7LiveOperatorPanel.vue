@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { getO7DirectUpperStatus, getO7LocalWebrtcCamera } from "../client/workstationApi";
+import { getO7DirectUpperStatus, getO7LocalWebrtcCamera, postO7DirectUpperManual } from "../client/workstationApi";
 import type {
+  O7DirectUpperApiCommandResponse,
   O7DirectUpperApiStatusResponse,
   O7LiveOperatorDirection,
   O7LiveOperatorPanelResponse,
@@ -24,6 +25,7 @@ const cameraVideo = ref<HTMLVideoElement | null>(null);
 const cameraPreviewStatus = ref<"idle" | "connecting" | "playing" | "failed">("idle");
 const cameraPreviewMessage = ref("摄像头状态读取中");
 const cameraPeerId = ref<string | null>(null);
+const manualCommandInFlight = ref<O7LiveOperatorDirection | null>(null);
 let cameraPeerConnection: RTCPeerConnection | null = null;
 
 interface CameraOfferAnswerPayload {
@@ -49,6 +51,19 @@ const directionLabels: Record<O7LiveOperatorDirection, string> = {
   stop: "Stop",
 };
 
+const STRAIGHT_PULSE_DURATION_MS = 250;
+const TURN_PULSE_DURATION_MS = 350;
+const TURN_PULSE_SPEED_MPS = 0.08;
+const KEYBOARD_DIRECTIONS: Record<string, O7LiveOperatorDirection> = {
+  w: "forward",
+  s: "back",
+  a: "left",
+  d: "right",
+  " ": "stop",
+  spacebar: "stop",
+  x: "stop",
+};
+
 const statusLights = computed(() => [
   {
     label: "在线",
@@ -69,8 +84,8 @@ const statusLights = computed(() => [
   },
   {
     label: "雷达",
-    tone: props.liveOperatorPanel?.lidar_radar.scan_status === "not_proven" ? "gray" : "green",
-    text: "未接入",
+    tone: props.liveOperatorPanel?.realtime_radar.ready ? "green" : "yellow",
+    text: props.liveOperatorPanel?.realtime_radar.ready ? "/scan ready" : "等待 /scan",
   },
   {
     label: "底盘",
@@ -121,7 +136,7 @@ const cameraStatusText = computed(() => {
 });
 
 const cameraUrl = computed(() => {
-  // 打开页面仍是用户显式动作；自动 offer 只走同源 PC API 的摄像头媒体预览路径。
+  // 打开页面和创建 offer 都必须是用户显式动作，避免首屏并发页面抢占 camera peer。
   return cameraSmoke.value?.camera_page_url || props.liveOperatorPanel?.camera.lan_page_url || "#";
 });
 
@@ -165,6 +180,45 @@ const baseBoundaryText = computed(() => {
   ].join(" · ");
 });
 
+const realtimeRadar = computed(() => {
+  // 雷达状态只读后端派生字段，前端不把 raw packet 或串口材料重新计算为 ready。
+  return props.liveOperatorPanel?.realtime_radar ?? null;
+});
+
+const realtimeMap = computed(() => {
+  // 地图状态依赖后端 map/SLAM artifact 摘要；没有 /scan 时始终等待雷达。
+  return props.liveOperatorPanel?.realtime_map ?? null;
+});
+
+const radarStatusSummary = computed(() => {
+  const radar = realtimeRadar.value;
+  if (!radar) {
+    return "blocked · scan proof latest 未加载";
+  }
+  const age = radar.age_seconds === null ? "age n/a" : `${radar.age_seconds}s`;
+  return `${radar.status} · once=${radar.scan_once_observed ? "yes" : "no"} · hz=${radar.scan_hz_observed ? "yes" : "no"} · ${radar.artifact_status}/${radar.freshness_status}/${age}`;
+});
+
+const mapStatusSummary = computed(() => {
+  const map = realtimeMap.value;
+  if (!map) {
+    return "waiting_for_radar · map contract 未加载";
+  }
+  if (map.status === "waiting_for_radar") {
+    return "waiting_for_radar · 先等待真实 /scan once+hz";
+  }
+  if (map.status === "waiting_for_mapping") {
+    return `waiting_for_mapping · map=${map.map_artifact_status} · slam=${map.slam_artifact_status}`;
+  }
+  return `ready · map=${map.map_artifact_status} · slam=${map.slam_artifact_status}`;
+});
+
+const mapTopBlockers = computed(() => {
+  // 地图 blocker 与雷达 blocker 分开显示，避免重新出现“雷达/建图”合并口径。
+  const blockers = realtimeMap.value?.blocked_reasons ?? ["realtime_radar_not_ready"];
+  return blockers.slice(0, 3);
+});
+
 const scanProofLatest = computed(() => {
   // scan proof 来自 8787 统一 status 的 artifact readback；PC 不执行 collector 或串口读取。
   return props.liveOperatorPanel?.lidar_radar.scan_proof_latest ?? null;
@@ -181,7 +235,7 @@ const scanProofSummary = computed(() => {
 
 const scanProofTopBlockers = computed(() => {
   // 只显示前 3 个 blocker，避免现场长 blocker 列表挤压操作区。
-  const blockers = scanProofLatest.value?.blocked_reasons ?? ["radar_scan_proof_latest_not_loaded"];
+  const blockers = realtimeRadar.value?.blocked_reasons ?? scanProofLatest.value?.blocked_reasons ?? ["radar_scan_proof_latest_not_loaded"];
   return blockers.slice(0, 3);
 });
 
@@ -223,13 +277,16 @@ watch(
 );
 
 async function refreshCameraSmoke(): Promise<void> {
-  // 首屏先读只读健康摘要；只有 ready 后才创建摄像头媒体 offer，不进入控制路径。
+  // 首屏只读健康摘要，不自动创建 WebRTC peer，避免已有 active peer 时触发 409 噪声。
   cameraLoading.value = true;
   cameraError.value = "";
   try {
     cameraSmoke.value = await getO7LocalWebrtcCamera();
-    if (cameraSmoke.value.status === "ready" && cameraPreviewStatus.value === "idle") {
-      await startCameraPreview();
+    if (cameraPreviewStatus.value === "idle") {
+      cameraPreviewMessage.value =
+        cameraSmoke.value.status === "ready"
+          ? "摄像头已就绪，点击重新连接预览"
+          : "摄像头服务未 ready，保留打开摄像头页面入口";
     }
   } catch (error) {
     // 摄像头失败只影响预览，不影响底盘 fail-closed 锁定策略。
@@ -350,9 +407,14 @@ async function startCameraPreview(): Promise<void> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(peerConnection.localDescription),
     });
-    const payload = (await response.json()) as CameraOfferAnswerPayload;
+    const payload = (await response.json().catch(() => ({ error: `offer_${response.status}` }))) as CameraOfferAnswerPayload;
     if (!response.ok) {
-      throw new Error(payload.error || `offer_${response.status}`);
+      const reason = payload.error || `offer_${response.status}`;
+      const readableReason =
+        response.status === 409
+          ? "摄像头已有预览连接，关闭其他页面或稍后再点重新连接预览"
+          : reason;
+      throw new Error(readableReason);
     }
     cameraPeerId.value = payload.peer_id ?? null;
     await peerConnection.setRemoteDescription(payload);
@@ -363,19 +425,85 @@ async function startCameraPreview(): Promise<void> {
   }
 }
 
-function showLocked(direction: O7LiveOperatorDirection): void {
-  // 方向按钮只更新本地提示，不 fetch 控制 API、不发送 /cmd_vel、不构造 WAVE ROVER JSON。
+function commandResultMessage(action: string, result: O7DirectUpperApiCommandResponse): string {
+  // 返回文案同时呈现“已转发”和“仍未闭环”，避免 operator 把 HTTP 200 误解成 HIL/ACK 通过。
+  const request = result.upper_request;
+  const http = request.http_status === null ? "HTTP n/a" : `HTTP ${request.http_status}`;
+  const ack = result.robot_ack_connected ? "ACK observed" : "ACK not observed";
+  const t1001 = result.t1001_observed ? "T=1001 observed" : "T=1001 not observed";
+  const blockers = result.blocked_reasons.length ? result.blocked_reasons.join(" / ") : "none";
+  if (result.accepted_by_workstation && request.ok) {
+    return `${action} 已发送（仍锁定）：${request.path} ${http}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false`;
+  }
+  const reason = result.failure_reason || request.failure_reason || "manual_request_failed";
+  return `${action} 失败：${reason}；${request.path} ${request.executed ? http : "not_executed"}；direct status ${
+    directUpperStatus.value?.status ?? "unknown"
+  }；锁定原因 ${blockers}；safe_to_control=false`;
+}
+
+function isEditableControlTarget(target: EventTarget | null): boolean {
+  // 键盘遥控只服务空白页面焦点；输入框、滑条和可编辑区域必须保留原生键盘行为。
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  return Boolean(target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]'));
+}
+
+function manualPulseForDirection(direction: O7LiveOperatorDirection): { speedMps: number; durationMs: number } {
+  // 左右转现场感知偏弱，因此 UI 层主动请求更长 turn pulse；真实上限仍由 PC 后端和 8787 guardrail clamp。
+  if (direction === "left" || direction === "right") {
+    return { speedMps: TURN_PULSE_SPEED_MPS, durationMs: TURN_PULSE_DURATION_MS };
+  }
+  if (direction === "stop") {
+    return { speedMps: 0, durationMs: STRAIGHT_PULSE_DURATION_MS };
+  }
+  return { speedMps: speed.value, durationMs: STRAIGHT_PULSE_DURATION_MS };
+}
+
+async function sendManualControl(direction: O7LiveOperatorDirection): Promise<void> {
+  // 方向按钮只调用 PC 同源 direct-upper manual 代理；浏览器不直连 8787、不发 /cmd_vel、不构造 WAVE ROVER JSON。
   const action = directionLabels[direction];
-  lockMessage.value = `${action} 已拦截：控制锁定，底盘串口/反馈/ACK 未确认`;
+  if (manualCommandInFlight.value) {
+    lockMessage.value = `${action} 未发送：上一条 ${directionLabels[manualCommandInFlight.value]} 仍在等待；safe_to_control=false`;
+    return;
+  }
+  manualCommandInFlight.value = direction;
+  const pulse = manualPulseForDirection(direction);
+  lockMessage.value = `${action} 发送中：通过 PC 同源 /api/o7/direct-upper/base/manual；safe_to_control=false`;
+  try {
+    const result = await postO7DirectUpperManual(direction, pulse.speedMps, pulse.durationMs);
+    lockMessage.value = commandResultMessage(action, result);
+    await refreshDirectUpperStatus();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "manual_request_failed";
+    lockMessage.value = `${action} 失败：${reason}；只调用 PC 同源 direct-upper manual；safe_to_control=false`;
+  } finally {
+    manualCommandInFlight.value = null;
+  }
+}
+
+function handleManualKeydown(event: KeyboardEvent): void {
+  // repeat keydown 会把短 pulse 变成长按连续命令；现场遥控先保持一次按键一次请求。
+  if (event.repeat || isEditableControlTarget(event.target)) {
+    return;
+  }
+  const direction = KEYBOARD_DIRECTIONS[event.key.toLowerCase()] ?? (event.code === "Space" ? "stop" : null);
+  if (!direction) {
+    return;
+  }
+  event.preventDefault();
+  void sendManualControl(direction);
 }
 
 onMounted(() => {
-  // 首屏可自动创建摄像头媒体预览；底盘控制仍保持 fail-closed。
+  // 首屏只读 camera/direct 状态；offer 与 manual 都必须由用户按钮触发。
+  window.addEventListener("keydown", handleManualKeydown);
   void refreshCameraSmoke();
   void refreshDirectUpperStatus();
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener("keydown", handleManualKeydown);
   void stopCameraPreview("component_unmount");
 });
 </script>
@@ -406,51 +534,71 @@ onBeforeUnmount(() => {
       <p v-if="cameraError" class="subtle-warning">摄像头状态暂不可读：{{ cameraError }}</p>
     </article>
 
-    <article class="console-card map-card" aria-label="地图">
+    <article class="console-card radar-card" aria-label="实时雷达 /scan">
       <div class="card-heading">
         <span class="card-icon">⌁</span>
         <div>
-          <p class="console-kicker">地图</p>
-          <h2>雷达未接入 / 等待建图</h2>
+          <p class="console-kicker">雷达</p>
+          <h2>实时雷达 (/scan)</h2>
         </div>
       </div>
-      <div class="simple-map" aria-label="未接入雷达的地图占位">
+      <div class="scan-proof-box" aria-label="实时雷达 /scan 状态">
+        <div class="status-light-row">
+          <span
+            class="status-dot"
+            :class="realtimeRadar?.ready ? 'status-dot-green' : 'status-dot-yellow'"
+          />
+          <span>/scan readiness</span>
+          <strong>{{ radarStatusSummary }}</strong>
+        </div>
+        <div class="endpoint-list compact-endpoints" aria-label="实时雷达 blockers">
+          <code v-for="blocker in scanProofTopBlockers" :key="blocker">{{ blocker }}</code>
+        </div>
+        <p class="base-boundary">
+          只认 `/scan` once+hz；raw packet proof 不参与雷达 ready 判定。
+        </p>
+      </div>
+      <details class="lock-details diagnostics-details">
+        <summary>诊断详情/工程材料</summary>
+        <p>{{ scanProofSummary }}</p>
+        <div class="endpoint-list compact-endpoints" aria-label="LiDAR raw packet proof statistics">
+          <code v-for="stat in rawPacketProofStats" :key="stat">{{ stat }}</code>
+        </div>
+        <p class="base-boundary">
+          Raw packet proof: {{ rawPacketProofSummary }} · {{ rawPacketProofLatest?.endpoint || "/api/radar/raw-packet-proof/latest" }} · safe_to_control=false。
+        </p>
+      </details>
+    </article>
+
+    <article class="console-card map-card" aria-label="实时图 SLAM map">
+      <div class="card-heading">
+        <span class="card-icon">□</span>
+        <div>
+          <p class="console-kicker">地图</p>
+          <h2>实时图 (SLAM/map)</h2>
+        </div>
+      </div>
+      <div class="simple-map" aria-label="SLAM/map 等待状态占位">
         <span class="route-path" />
         <span class="route-node home" />
         <span class="route-node robot" />
         <span class="route-node dock" />
       </div>
-      <p class="muted-copy">当前没有真实 LiDAR `/scan` 证据；这里仅显示路线占位和机器人位置占位。</p>
-      <div class="scan-proof-box" aria-label="LiDAR scan proof 状态">
+      <p class="muted-copy">{{ mapStatusSummary }}</p>
+      <div class="scan-proof-box" aria-label="SLAM map 状态">
         <div class="status-light-row">
           <span
             class="status-dot"
-            :class="scanProofLatest?.latest_scan_once_observed ? 'status-dot-green' : 'status-dot-yellow'"
+            :class="realtimeMap?.ready ? 'status-dot-green' : 'status-dot-yellow'"
           />
-          <span>Scan proof</span>
-          <strong>{{ scanProofSummary }}</strong>
+          <span>SLAM/map</span>
+          <strong>{{ realtimeMap?.status || "waiting_for_radar" }}</strong>
         </div>
-        <div class="endpoint-list compact-endpoints" aria-label="LiDAR scan proof blockers">
-          <code v-for="blocker in scanProofTopBlockers" :key="blocker">{{ blocker }}</code>
+        <div class="endpoint-list compact-endpoints" aria-label="SLAM map blockers">
+          <code v-for="blocker in mapTopBlockers" :key="blocker">{{ blocker }}</code>
         </div>
         <p class="base-boundary">
-          只读 artifact 回放；PC 不启动 collector、不发送 A5 60、不执行底盘控制。
-        </p>
-      </div>
-      <div class="scan-proof-box" aria-label="LiDAR raw packet proof 状态">
-        <div class="status-light-row">
-          <span
-            class="status-dot"
-            :class="rawPacketProofLatest?.latest_raw_bytes_observed ? 'status-dot-green' : 'status-dot-yellow'"
-          />
-          <span>Raw packet proof</span>
-          <strong>{{ rawPacketProofSummary }}</strong>
-        </div>
-        <div class="endpoint-list compact-endpoints" aria-label="LiDAR raw packet proof statistics">
-          <code v-for="stat in rawPacketProofStats" :key="stat">{{ stat }}</code>
-        </div>
-        <p class="base-boundary">
-          {{ rawPacketProofLatest?.endpoint || "/api/radar/raw-packet-proof/latest" }} · 只读材料；safe_to_control=false。
+          pointcloud_fabricated=false · 没有 map/SLAM artifact 时保持 waiting_for_mapping。
         </p>
       </div>
     </article>
@@ -464,11 +612,11 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="remote-pad" aria-label="方向控制">
-        <button type="button" class="pad-button forward" @click="showLocked('forward')">前进</button>
-        <button type="button" class="pad-button left" @click="showLocked('left')">左转</button>
-        <button type="button" class="pad-button stop" @click="showLocked('stop')">Stop</button>
-        <button type="button" class="pad-button right" @click="showLocked('right')">右转</button>
-        <button type="button" class="pad-button back" @click="showLocked('back')">后退</button>
+        <button type="button" class="pad-button forward" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('forward')">前进</button>
+        <button type="button" class="pad-button left" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('left')">左转</button>
+        <button type="button" class="pad-button stop" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('stop')">Stop</button>
+        <button type="button" class="pad-button right" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('right')">右转</button>
+        <button type="button" class="pad-button back" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('back')">后退</button>
       </div>
       <label class="speed-control">
         <span>速度 {{ speed.toFixed(2) }} {{ liveOperatorPanel?.control.speed.unit ?? "m/s" }}</span>

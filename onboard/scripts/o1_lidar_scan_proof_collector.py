@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -25,6 +26,8 @@ ROS_HUMBLE_SETUP = "/opt/ros/humble/setup.bash"
 ROBER_INSTALL_SETUP = "/root/rober/onboard/install/setup.bash"
 SCAN_TOPIC = "/scan"
 RAW_PACKET_TOPIC = "/lidar/raw_packet"
+BASE_FRAME = "base_link"
+LIDAR_FRAME = "laser_frame"
 
 # vendor 来源固定写入 artifact，现场回放时能直接追到资料入口。
 VENDOR_SOURCES = (
@@ -132,13 +135,14 @@ def ros2_source_prefix() -> str:
 
 
 def build_topic_read_commands(timeout_s: float) -> dict[str, str]:
-    """只构造 topic 读取命令，不构造 driver launch 或任何控制命令。"""
+    """只构造 topic/TF 读取命令，不构造 driver launch 或任何控制命令。"""
     inner_timeout = max(1, int(timeout_s))
     prefix = ros2_source_prefix()
     return {
         "scan_once": f"{prefix} && timeout {inner_timeout} ros2 topic echo --once {SCAN_TOPIC}",
-        "raw_packet_once": f"{prefix} && timeout {inner_timeout} ros2 topic echo --once {RAW_PACKET_TOPIC}",
         "scan_hz": f"{prefix} && timeout {inner_timeout} ros2 topic hz {SCAN_TOPIC}",
+        "raw_packet_once": f"{prefix} && timeout {inner_timeout} ros2 topic echo --once {RAW_PACKET_TOPIC}",
+        "tf": f"{prefix} && timeout {inner_timeout} ros2 run tf2_ros tf2_echo {BASE_FRAME} {LIDAR_FRAME}",
     }
 
 
@@ -152,6 +156,60 @@ def proof_flags() -> dict[str, bool]:
         "delivery_success": False,
         "hil_pass": False,
         "primary_actions_enabled": False,
+    }
+
+
+def command_text(result: dict[str, Any]) -> str:
+    """合并 stdout/stderr 摘要，便于 timeout 后仍从已打印文本识别证据。"""
+    return f"{result.get('stdout_preview', '')}\n{result.get('stderr_preview', '')}"
+
+
+def marker_observed(result: dict[str, Any], markers: tuple[str, ...]) -> bool:
+    """命令可能被 timeout 终止；只要已输出关键证据，就按 observed 记录。"""
+    if result.get("ok"):
+        return True
+    text = command_text(result)
+    return any(marker in text for marker in markers)
+
+
+def parse_scan_hz_average(result: dict[str, Any]) -> float | None:
+    """解析 ros2 topic hz 的 average rate，供 PC 用数值判断实时雷达质量。"""
+    match = re.search(r"average rate:\s*([0-9]+(?:\.[0-9]+)?)", command_text(result))
+    return float(match.group(1)) if match else None
+
+
+def build_required_observations(topic_reads: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """把四个验收点做成稳定字段，避免 PC 从 stdout 文本里猜结果。"""
+    results = topic_reads.get("results", {}) if topic_reads.get("attempted") else {}
+    scan_once_result = results.get("scan_once", {})
+    scan_hz_result = results.get("scan_hz", {})
+    raw_packet_result = results.get("raw_packet_once", {})
+    tf_result = results.get("tf", {})
+    scan_hz_average = parse_scan_hz_average(scan_hz_result)
+    # 四个 key 独立表达，raw packet 只证明驱动发布原始包，不参与 `/scan` ready 判定。
+    return {
+        "scan_once": {
+            "topic": SCAN_TOPIC,
+            "observed": marker_observed(scan_once_result, ("ranges:", "angle_min:", "LaserScan")),
+            "result_key": "scan_once",
+        },
+        "scan_hz": {
+            "topic": SCAN_TOPIC,
+            "observed": marker_observed(scan_hz_result, ("average rate:",)),
+            "average_rate_hz": scan_hz_average,
+            "result_key": "scan_hz",
+        },
+        "raw_packet_once": {
+            "topic": RAW_PACKET_TOPIC,
+            "observed": marker_observed(raw_packet_result, ("data:", "header:", "LidarRawPacket")),
+            "result_key": "raw_packet_once",
+        },
+        "tf": {
+            "parent_frame": BASE_FRAME,
+            "child_frame": LIDAR_FRAME,
+            "observed": marker_observed(tf_result, ("At time", "Translation:", "Rotation:")),
+            "result_key": "tf",
+        },
     }
 
 
@@ -213,9 +271,18 @@ def build_probe_payload(
     elif expect_existing_topics:
         topic_reads["reason"] = "blocked_before_topic_read_by_ros2_runtime"
 
-    scan_once_ok = bool(topic_reads["results"].get("scan_once", {}).get("ok")) if topic_reads["attempted"] else False
-    raw_packet_ok = bool(topic_reads["results"].get("raw_packet_once", {}).get("ok")) if topic_reads["attempted"] else False
-    proof_status = "scan_and_raw_packet_observed" if scan_once_ok and raw_packet_ok else "blocked_or_not_observed"
+    required_observations = build_required_observations(topic_reads)
+    scan_once_ok = required_observations["scan_once"]["observed"]
+    scan_hz_ok = required_observations["scan_hz"]["observed"]
+    raw_packet_ok = required_observations["raw_packet_once"]["observed"]
+    tf_ok = required_observations["tf"]["observed"]
+    all_required_observations_ok = all(item["observed"] for item in required_observations.values())
+    if all_required_observations_ok:
+        proof_status = "scan_once_hz_raw_packet_tf_observed"
+    elif any(item["observed"] for item in required_observations.values()):
+        proof_status = "partially_observed"
+    else:
+        proof_status = "blocked_or_not_observed"
     return {
         "schema": SCHEMA,
         "generated_at": utc_now(),
@@ -236,8 +303,15 @@ def build_probe_payload(
             "status": proof_status,
             "scan_topic": SCAN_TOPIC,
             "raw_packet_topic": RAW_PACKET_TOPIC,
+            "tf_parent_frame": BASE_FRAME,
+            "tf_child_frame": LIDAR_FRAME,
             "scan_once_observed": scan_once_ok,
+            "scan_hz_observed": scan_hz_ok,
+            "scan_hz_average_rate_hz": required_observations["scan_hz"]["average_rate_hz"],
             "raw_packet_once_observed": raw_packet_ok,
+            "tf_observed": tf_ok,
+            "required_observations": required_observations,
+            "all_required_observations_observed": all_required_observations_ok,
             "pointcloud_fabricated": False,
             "driver_started_by_collector": False,
             "lidar_start_command_sent_by_collector": False,
