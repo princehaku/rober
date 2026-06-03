@@ -8,6 +8,32 @@
 
 ## 2026-06-03 系列
 
+### 2026-06-03 16-17｜O1 feedback status summary｜latest material visible in status
+
+本轮 Micro sprint 继续推进当前最低 Objective 1，目标是让 8787
+`GET /api/base/status` 和统一 `GET /api/status` 在不打开串口、不发送任何命令的情况下，
+直接暴露 latest feedback samples artifact 的只读摘要和材料新鲜度。Vendor 复核来源仍是
+`docs/vendor/VENDOR_INDEX.md`、`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、
+`config.yaml` 和 `json_cmd.h`；采用事实仍是 WAVE ROVER UART newline-delimited JSON、
+`CMD_BASE_FEEDBACK=130` 和 `FEEDBACK_BASE_INFO=1001`，而 `T=1/T=13/T=131`
+属于运动或 feedback-flow 状态命令。
+
+本轮在 8787 统一上位机 API 中新增 `base.feedback_samples_latest` 摘要：
+summary 只执行 artifact `stat/read_text/json.loads`，不 import/use pyserial，不打开
+`/dev/*`，不发送 `T=130/T=1/T=13/T=131/cmd_vel` 或 `/api/base/manual`。
+字段包含 endpoint、artifact status/ok/path/config source、`mtime_ms`、
+`updated_at_ms`、`age_ms`、`freshness.status`、`latest_t1001_observed_count`、
+`latest_all_samples_observed_t1001` 和固定 fail-closed 控制字段。默认
+`stale_after_ms=900000`（15 分钟）只表示材料文件新鲜度，不是 HIL、ACK、
+`safe_to_control` 或可运动准入。
+
+本轮未执行远端验证，为避免 worker 卡住；没有启动新的 SSH、scp、systemctl 或 curl。
+本地验证覆盖 14 个 `test_upper_robot_api.py` 用例，包含 missing/fresh/stale/bad_json/
+json_not_object summary 和 status 不打开 fake serial。Product closeout 建议：Objective 1
+保持约 95.5%，只承认“PC/运维可在 status 面看到 latest feedback samples artifact 摘要与
+重启后材料新鲜度”。该材料仍不是 robot ACK、HIL pass、`safe_to_control=true`、闭环安全控制、
+真实 ROS `/odom`、`/imu/data`、`/battery`、真实 `/scan`、manual control 或 delivery success。
+
 ### 2026-06-03 15-16｜O1 feedback artifact readback｜latest material persisted and read-only loaded
 
 本轮 Micro sprint 继续推进当前最低 Objective 1，目标是把 8787

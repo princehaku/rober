@@ -29,6 +29,7 @@ DEFAULT_FEEDBACK_READ_WINDOW_S = 1.2
 DEFAULT_FEEDBACK_SAMPLE_COUNT = 3
 DEFAULT_FEEDBACK_SAMPLE_INTERVAL_S = 0.2
 DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.json"
+DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS = 15 * 60 * 1000
 MAX_FEEDBACK_READ_TIMEOUT_S = 2.0
 MAX_FEEDBACK_READ_WINDOW_S = 5.0
 MAX_FEEDBACK_SAMPLE_COUNT = 8
@@ -220,6 +221,97 @@ def artifact_path_info(path: str) -> dict[str, Any]:
         "format": "json",
         "schema": f"{SCHEMA}.base_feedback_samples_result",
     }
+
+
+def feedback_samples_summary_artifact_status(path: str) -> dict[str, Any]:
+    """status summary 只暴露 artifact 配置来源，避免调用 latest GET 或串口路径。"""
+    return {
+        **artifact_path_info(path),
+        "ok": False,
+        "status": "unknown",
+    }
+
+
+def freshness_from_age(age_ms: int | None, stale_after_ms: int) -> str:
+    """freshness 只是材料文件年龄，不代表 ACK、HIL 或 safe-to-control。"""
+    if age_ms is None:
+        return "unknown"
+    if age_ms <= stale_after_ms:
+        return "fresh"
+    return "stale"
+
+
+def summarize_feedback_samples_latest_artifact(
+    path: str,
+    stale_after_ms: int = DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS,
+) -> dict[str, Any]:
+    """只用 stat/read_text/json.loads 生成 latest artifact 摘要，禁止触发硬件。"""
+    endpoint = ROUTE_PATHS["base_feedback_samples_latest"]
+    artifact = feedback_samples_summary_artifact_status(path)
+    generated_at_ms = now_ms()
+    stale_after_ms = max(0, int(stale_after_ms))
+    base_summary: dict[str, Any] = {
+        "schema": f"{SCHEMA}.base_feedback_samples_latest_summary",
+        "generated_at_ms": generated_at_ms,
+        "endpoint": endpoint,
+        "artifact": artifact,
+        "freshness": {
+            "status": "unknown",
+            "stale_after_ms": stale_after_ms,
+            "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control",
+        },
+        "latest_t1001_observed_count": None,
+        "latest_all_samples_observed_t1001": None,
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+    }
+    try:
+        stat_result = Path(path).stat()
+    except FileNotFoundError:
+        artifact.update({"ok": False, "status": "missing"})
+        base_summary["freshness"]["status"] = "missing"
+        return base_summary
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        base_summary["freshness"]["status"] = "read_failed"
+        return base_summary
+
+    mtime_ms = int(stat_result.st_mtime_ns / 1_000_000)
+    age_ms = max(0, generated_at_ms - mtime_ms)
+    artifact.update({"mtime_ms": mtime_ms, "age_ms": age_ms})
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        base_summary["freshness"]["status"] = "read_failed"
+        return base_summary
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        artifact.update({"ok": False, "status": "bad_json", "bytes_read": len(raw.encode("utf-8")), "error": compact_error(exc)})
+        base_summary["freshness"]["status"] = "bad_json"
+        return base_summary
+    if not isinstance(parsed, dict):
+        artifact.update({"ok": False, "status": "json_not_object", "bytes_read": len(raw.encode("utf-8"))})
+        base_summary["freshness"]["status"] = "json_not_object"
+        return base_summary
+
+    updated_at_ms = parsed.get("generated_at_ms")
+    if not isinstance(updated_at_ms, int):
+        updated_at_ms = parsed.get("artifact", {}).get("written_at_ms") if isinstance(parsed.get("artifact"), dict) else None
+    if isinstance(updated_at_ms, int):
+        artifact["updated_at_ms"] = updated_at_ms
+    artifact.update({"ok": True, "status": "loaded", "bytes_read": len(raw.encode("utf-8"))})
+    base_summary["freshness"]["status"] = freshness_from_age(age_ms, stale_after_ms)
+    base_summary["latest_t1001_observed_count"] = parsed.get("t1001_observed_count")
+    base_summary["latest_all_samples_observed_t1001"] = parsed.get("all_samples_observed_t1001")
+    return base_summary
 
 
 def atomic_write_json_artifact(path: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -680,6 +772,10 @@ class UpperRobotApi:
                 "robot_ack_connected": False,
                 "reason": "T=130 on /dev/ttyS5 did not return T=1001 in current evidence",
             },
+            "feedback_samples_latest": summarize_feedback_samples_latest_artifact(
+                self.feedback_samples_artifact_path,
+                DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS,
+            ),
             "control_policy": {
                 "mode": "low_speed_pulse_with_auto_stop",
                 "max_speed": self.max_speed,

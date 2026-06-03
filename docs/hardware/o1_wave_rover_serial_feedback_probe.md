@@ -230,6 +230,15 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 
 `GET /api/base/feedback-samples/latest` 是 artifact 只读回放入口。`POST /api/base/feedback-samples` 成功或失败后都会尝试把 latest 结果通过同目录临时文件 + `os.replace()` 原子保存到 `ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH` / `--feedback-samples-artifact-path` 指向的 JSON 文件，默认 `runtime/base_feedback_samples_latest.json`。latest GET 只读取该文件；文件不存在、读取失败、JSON 损坏或 JSON root 不是对象时 fail-closed，并固定 `safe_to_control=false`、`sends_commands=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`。该 readback 不打开串口、不 import/use pyserial、不发送 `T=130`、`T=1`、`T=13`、`T=131`、`cmd_vel` 或 `/api/base/manual`。
 
+`GET /api/base/status` 和统一 `GET /api/status` 现在会在 `base.feedback_samples_latest`
+里暴露 latest artifact 的只读摘要。该摘要只允许执行文件层 `stat/read_text/json.loads`，
+不调用完整 latest GET handler，不打开 `/dev/*`，不 import/use pyserial，不发送
+`T=130`、`T=1`、`T=13`、`T=131`、`cmd_vel` 或 `/api/base/manual`。摘要字段包含
+`artifact.status/ok/path/configured_by/mtime_ms/updated_at_ms/age_ms`、`freshness.status`、
+`latest_t1001_observed_count`、`latest_all_samples_observed_t1001` 和固定 fail-closed 控制字段。
+默认 `stale_after_ms=900000`（15 分钟）；这只代表材料新鲜度，不代表 HIL、ACK、
+`safe_to_control`、真实 `/odom`、`/imu/data`、`/battery` 或可运动准入。
+
 采用的 vendor 证据：
 
 - `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`：vendor Python reference 使用 `json.dumps(data) + '\n'` 写 UART JSON 行。
@@ -245,6 +254,8 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 - 响应固定 `safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`delivery_success=false`、`hil_pass=false`。
 - `feedback_ack.t1001_observed=true` 只表示本次短窗口中解析到 `T=1001` JSON 行；仍不能直接写成 HIL pass、闭环安全控制或真实 `/odom`、`/imu/data`、`/battery` 已接入。
 - latest readback 顶层 `sends_commands=false` 表示本次 GET 没有发命令；`latest_result` 内的历史 payload 可能保留上一次 POST 的 `sends_commands=true`，不能混淆为 readback 行为。
+- status summary 顶层 `sends_commands=false` 表示本次 status 摘要没有发命令；`latest_t1001_observed_count`
+  只是从 artifact 历史材料读取的计数，不能混淆为本次 status 重新采样。
 
 ## 2026-06-03 13-14 远端 8787 feedback endpoint 部署验证
 

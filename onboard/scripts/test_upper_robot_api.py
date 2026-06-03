@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 import tempfile
 import types
@@ -155,11 +156,25 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertFalse(result["robot_control_executed"])
 
     def test_base_status_does_not_trigger_feedback_request_or_serial_open(self) -> None:
-        robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                feedback_samples_artifact_path=str(Path(tmpdir) / "missing.json"),
+            )
 
-        result = robot.base_status()
+            result = robot.base_status()
 
         self.assertEqual(result["feedback_ack"]["t1001_observed"], False)
+        self.assertEqual(result["feedback_samples_latest"]["endpoint"], "/api/base/feedback-samples/latest")
+        self.assertEqual(result["feedback_samples_latest"]["artifact"]["status"], "missing")
+        self.assertEqual(result["feedback_samples_latest"]["freshness"]["status"], "missing")
+        self.assertFalse(result["feedback_samples_latest"]["readback_sends_commands"])
+        self.assertFalse(result["feedback_samples_latest"]["sends_commands"])
+        self.assertFalse(result["feedback_samples_latest"]["sends_motion_commands"])
+        self.assertFalse(result["feedback_samples_latest"]["robot_control_executed"])
         self.assertEqual(FakeSerial.instances, [])
 
     def test_feedback_request_sends_only_t130_and_parses_t1001(self) -> None:
@@ -316,6 +331,44 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
             self.assertFalse(latest["robot_control_executed"])
             self.assertEqual(FakeSerial.instances, [])
 
+    def test_feedback_samples_latest_summary_reports_fresh_and_stale_without_serial_open(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            artifact_path = Path(tmpdir) / "latest.json"
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+                        "generated_at_ms": api.now_ms(),
+                        "t1001_observed_count": 3,
+                        "all_samples_observed_t1001": True,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            fresh = api.summarize_feedback_samples_latest_artifact(str(artifact_path), stale_after_ms=60_000)
+
+            self.assertEqual(fresh["artifact"]["status"], "loaded")
+            self.assertTrue(fresh["artifact"]["ok"])
+            self.assertEqual(fresh["freshness"]["status"], "fresh")
+            self.assertEqual(fresh["latest_t1001_observed_count"], 3)
+            self.assertTrue(fresh["latest_all_samples_observed_t1001"])
+            self.assertIn("mtime_ms", fresh["artifact"])
+            self.assertIn("age_ms", fresh["artifact"])
+            self.assertFalse(fresh["sends_commands"])
+            self.assertFalse(fresh["sends_motion_commands"])
+            self.assertFalse(fresh["robot_control_executed"])
+            self.assertEqual(FakeSerial.instances, [])
+
+            old_mtime = time_for_stale_artifact()
+            os.utime(artifact_path, (old_mtime, old_mtime))
+
+            stale = api.summarize_feedback_samples_latest_artifact(str(artifact_path), stale_after_ms=1)
+
+            self.assertEqual(stale["artifact"]["status"], "loaded")
+            self.assertEqual(stale["freshness"]["status"], "stale")
+            self.assertEqual(FakeSerial.instances, [])
+
     def test_feedback_samples_latest_missing_or_bad_json_is_fail_closed_without_serial_open(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             missing_path = str(Path(tmpdir) / "missing.json")
@@ -355,6 +408,17 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
             self.assertFalse(bad["sends_motion_commands"])
             self.assertEqual(FakeSerial.instances, [])
 
+            bad_summary = api.summarize_feedback_samples_latest_artifact(str(bad_path))
+            self.assertEqual(bad_summary["artifact"]["status"], "bad_json")
+            self.assertEqual(bad_summary["freshness"]["status"], "bad_json")
+            self.assertFalse(bad_summary["sends_commands"])
+
+            list_path = Path(tmpdir) / "list.json"
+            list_path.write_text("[]", encoding="utf-8")
+            list_summary = api.summarize_feedback_samples_latest_artifact(str(list_path))
+            self.assertEqual(list_summary["artifact"]["status"], "json_not_object")
+            self.assertEqual(list_summary["freshness"]["status"], "json_not_object")
+
     def test_feedback_samples_route_exists_and_status_does_not_trigger_it(self) -> None:
         robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
 
@@ -364,6 +428,11 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(api.ROUTE_PATHS["base_feedback_samples_latest"], "/api/base/feedback-samples/latest")
         self.assertEqual(status["feedback_ack"]["t1001_observed"], False)
         self.assertEqual(FakeSerial.instances, [])
+
+
+def time_for_stale_artifact() -> float:
+    """让 artifact mtime 落到过去，验证 freshness 不依赖真实硬件时间。"""
+    return (api.now_ms() / 1000.0) - 120.0
 
 
 if __name__ == "__main__":

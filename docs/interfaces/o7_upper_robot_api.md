@@ -61,13 +61,13 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 | Method | Path | 说明 |
 | --- | --- | --- |
 | `GET` | `/health` | 统一 API 进程健康 |
-| `GET` | `/api/status` | camera/radar/base 总览 |
+| `GET` | `/api/status` | camera/radar/base 总览；`base.feedback_samples_latest` 只读摘要 latest feedback samples artifact |
 | `GET` | `/api/camera/health` | 代理 8088 `/health` |
 | `GET` | `/api/camera/devices` | 代理 8088 `/devices` |
 | `POST` | `/api/camera/offer` | 代理 8088 `/offer`，只用于 recvonly WebRTC 视频 |
 | `POST` | `/api/camera/peers/{peer_id}/close` | 代理 8088 peer cleanup |
 | `GET` | `/api/radar/status` | 雷达设备和 `/scan` 证明状态 |
-| `GET` | `/api/base/status` | `/dev/ttyS5`、pyserial、反馈/ACK 状态 |
+| `GET` | `/api/base/status` | `/dev/ttyS5`、pyserial、反馈/ACK 状态；只读摘要 latest feedback samples artifact |
 | `POST` | `/api/base/stop` | 发送 `{"T":1,"L":0,"R":0}` 停车 |
 | `POST` | `/api/base/feedback-request` | 发送一次非运动 `{"T":130}` 反馈请求并短窗口读取 JSON |
 | `POST` | `/api/base/feedback-samples` | 重复发送非运动 `{"T":130}`，采集多样本 `T=1001` evidence |
@@ -105,6 +105,7 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 - `/api/base/feedback-request` 是非运动请求入口，只允许发送一次 vendor `{"T":130}` 并读取短窗口反馈；HTTP 200、写入成功或坏帧计数都不能外推为真实 ACK/HIL。
 - `/api/base/feedback-samples` 是非运动多样本 evidence collector，只重复同一条 `T=130` 路径并聚合每个 sample 的 `T=1001` 观察状态；它不调用 `/api/base/manual`，不发送 `T=1/T=13/T=131` 或 `/cmd_vel`。
 - `/api/base/feedback-samples/latest` 只读取 `ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH` / `--feedback-samples-artifact-path` 指向的 JSON artifact，默认 `runtime/base_feedback_samples_latest.json`；artifact 不存在或坏 JSON 时 fail-closed，不打开串口、不发送 `T=130` 或任何运动命令。
+- `/api/base/status` 和统一 `/api/status` 的 `base.feedback_samples_latest` 只做 latest artifact `stat/read_text/json.loads` 摘要，默认 15 分钟新鲜度窗口；该 freshness 只是材料文件新鲜度，不是 HIL、ACK、`safe_to_control` 或可运动准入。
 
 本轮单元测试只使用 fake pyserial/mock 串口，不打开真实 `/dev/ttyS5`，不 SSH，不发送真实 WAVE ROVER JSON、`cmd_vel` 或运动命令。
 

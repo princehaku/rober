@@ -14,7 +14,10 @@
 
 该接口只读回放最近一次 `/api/base/feedback-samples` 写入的 JSON artifact。它不打开串口、不 import/use pyserial、不发送 `T=130`、`T=1`、`T=13`、`T=131`、`cmd_vel` 或 `/api/base/manual`。artifact 不存在或 JSON 损坏时 fail-closed，返回结构化错误和固定安全字段。
 
-`GET /api/status`、`GET /api/base/status` 不会自动触发 feedback request；`GET /api/status` 只暴露 latest endpoint path 和 artifact path 配置。
+`GET /api/status`、`GET /api/base/status` 不会自动触发 feedback request；两者会通过
+`base.feedback_samples_latest` 暴露 latest artifact 的只读摘要和材料新鲜度。该摘要只做
+`stat/read_text/json.loads`，不打开串口、不 import/use pyserial、不发送 `T=130` 或任何
+motion/manual 命令。
 
 ## Vendor 来源
 
@@ -77,6 +80,13 @@ artifact path：
 ### `/api/base/feedback-samples/latest`
 
 无 request body。该接口只读取配置的 artifact path，不打开硬件。
+
+### `/api/base/status` / `/api/status` status summary
+
+无 request body。`base.feedback_samples_latest` 是 latest artifact 的轻量摘要，不等同于
+`GET /api/base/feedback-samples/latest` 的完整 payload 回放；它面向 PC/运维首屏，默认
+`stale_after_ms=900000`（15 分钟）。这个窗口只表示材料文件的新鲜度，不是 HIL、ACK、
+`safe_to_control` 或可运动准入。
 
 ## Response Contract
 
@@ -157,6 +167,33 @@ artifact path：
 - `hil_pass=false`
 
 `latest_result` 是上一次 POST 采样的历史 payload，因此其中可能保留历史 `sends_commands=true`。顶层 `sends_commands=false` 和 `readback_sends_commands=false` 才表示本次 GET latest 行为没有发送任何命令。
+
+### `/api/base/status` 与统一 `/api/status`
+
+`base.feedback_samples_latest` 关键字段：
+
+- `schema=trashbot.upper_robot_api.v1.base_feedback_samples_latest_summary`
+- `endpoint=/api/base/feedback-samples/latest`
+- `artifact.status=loaded|missing|bad_json|read_failed|json_not_object|unknown`
+- `artifact.ok`
+- `artifact.path`
+- `artifact.configured_by`
+- `artifact.mtime_ms`
+- `artifact.updated_at_ms`（artifact 内可用时）
+- `artifact.age_ms`
+- `freshness.status=fresh|stale|missing|bad_json|read_failed|json_not_object|unknown`
+- `freshness.stale_after_ms=900000`
+- `latest_t1001_observed_count`
+- `latest_all_samples_observed_t1001`
+- `readback_sends_commands=false`
+- `sends_commands=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `hil_pass=false`
+
+`freshness.status=fresh` 只表示 latest artifact 文件在 15 分钟窗口内更新；`stale` 只表示材料
+可能过旧。两者都不能证明当前串口在线、WAVE ROVER ACK、HIL pass、真实 ROS feedback topic、
+manual control 或 `safe_to_control=true`。
 
 ## 2026-06-03 13-14 远端部署验证
 
