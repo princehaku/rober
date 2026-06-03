@@ -71,6 +71,7 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 | `POST` | `/api/base/stop` | 发送 `{"T":1,"L":0,"R":0}` 停车 |
 | `POST` | `/api/base/feedback-request` | 发送一次非运动 `{"T":130}` 反馈请求并短窗口读取 JSON |
 | `POST` | `/api/base/feedback-samples` | 重复发送非运动 `{"T":130}`，采集多样本 `T=1001` evidence |
+| `GET` | `/api/base/feedback-samples/latest` | 只读回放最近一次 feedback samples JSON artifact；不打开串口、不发送命令 |
 | `POST` | `/api/base/manual` | 低速方向点动，自动停车 |
 
 ## Base 控制安全边界
@@ -103,6 +104,7 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 - `feedback_ack.t1001_observed=false` 固定保留，因为当前 API 不读取 `T=1001`，也不能把 `T=1` 写入成功当成 ACK 或 HIL。
 - `/api/base/feedback-request` 是非运动请求入口，只允许发送一次 vendor `{"T":130}` 并读取短窗口反馈；HTTP 200、写入成功或坏帧计数都不能外推为真实 ACK/HIL。
 - `/api/base/feedback-samples` 是非运动多样本 evidence collector，只重复同一条 `T=130` 路径并聚合每个 sample 的 `T=1001` 观察状态；它不调用 `/api/base/manual`，不发送 `T=1/T=13/T=131` 或 `/cmd_vel`。
+- `/api/base/feedback-samples/latest` 只读取 `ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH` / `--feedback-samples-artifact-path` 指向的 JSON artifact，默认 `runtime/base_feedback_samples_latest.json`；artifact 不存在或坏 JSON 时 fail-closed，不打开串口、不发送 `T=130` 或任何运动命令。
 
 本轮单元测试只使用 fake pyserial/mock 串口，不打开真实 `/dev/ttyS5`，不 SSH，不发送真实 WAVE ROVER JSON、`cmd_vel` 或运动命令。
 

@@ -8,6 +8,45 @@
 
 ## 2026-06-03 系列
 
+### 2026-06-03 15-16｜O1 feedback artifact readback｜latest material persisted and read-only loaded
+
+本轮 Micro sprint 继续推进当前最低 Objective 1，目标是把 8787
+`POST /api/base/feedback-samples` 的非运动多样本 evidence 从一次 HTTP 响应推进为
+可持久保存、可只读回放的 latest artifact。Vendor 复核来源仍是
+`docs/vendor/VENDOR_INDEX.md`、`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、
+`config.yaml`、`json_cmd.h`、`uart_ctrl.h` 和 `ugv_advance.h`；采用事实仍是
+WAVE ROVER UART newline-delimited JSON、`CMD_BASE_FEEDBACK=130` 和
+`FEEDBACK_BASE_INFO=1001`，而 `T=1/T=13/T=131` 属于运动或 feedback-flow 状态命令。
+
+本轮在 8787 统一上位机 API 中新增 latest artifact 能力：`POST /api/base/feedback-samples`
+会把采样 payload 通过同目录临时文件 + `os.replace()` 原子保存到
+`runtime/base_feedback_samples_latest.json`，可由
+`ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH` 或 `--feedback-samples-artifact-path`
+覆盖；新增只读 `GET /api/base/feedback-samples/latest`，只读取 artifact，不打开串口、
+不 import/use pyserial、不发送 `T=130/T=1/T=13/T=131/cmd_vel` 或
+`/api/base/manual`。
+
+远端部署验证：`scp` 部署当前 `onboard/scripts/upper_robot_api.py` 到
+`/root/rober/onboard/scripts/upper_robot_api.py`，重启
+`trashbot-upper-robot-api.service` 后服务为 `active`。随后只调用非运动
+`POST /api/base/feedback-samples`，真实返回 HTTP `200`、
+`requested_sample_count=3`、`completed_sample_count=3`、
+`t1001_observed_count=3`、`observed_feedback_types=[130,1001]`、
+`all_samples_observed_t1001=true`、`sample_statuses=["observed","observed","observed"]`、
+`artifact.write.ok=true`、`artifact.write.bytes_written=4989`、
+`safe_to_control=false`、`sends_motion_commands=false`、
+`robot_control_executed=false`、`hil_pass=false`。随后只读
+`GET /api/base/feedback-samples/latest` 返回 HTTP `200`、`artifact.status=loaded`、
+`latest_t1001_observed_count=3`、`readback_sends_commands=false`、
+`sends_commands=false`、`sends_motion_commands=false`、`robot_control_executed=false`、
+`hil_pass=false`。
+
+Product closeout 建议：Objective 1 保持约 95.5%，只承认“真实非运动
+`T=130 -> T=1001` samples 可持久保存并只读回放”。该材料仍不是 robot ACK、
+HIL pass、`safe_to_control=true`、闭环安全控制、真实 ROS `/odom`、`/imu/data`、
+`/battery`、真实 `/scan` 或 delivery success。下一步仍是 LiDAR ROS2 `/scan` 实跑证据，
+以及在现场看护、物理净空和人工急停可用时做受控 `/api/base/manual` 短 pulse。
+
 ### 2026-06-03 14-15｜O1 8787 feedback samples｜多样本同源 T1001 evidence observed
 
 本轮 Micro sprint 继续推进当前最低 Objective 1，目标是把上一轮“一次

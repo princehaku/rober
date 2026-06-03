@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -214,13 +215,20 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
             b'{"T":1001,"L":0,"R":0,"r":1,"p":2,"y":3,"v":12.4}\n',
             b'{"T":130}\n',
         ]
-        robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
-
-        result = asyncio.run(
-            robot.base_feedback_samples(
-                {"sample_count": 3, "sample_interval_s": 0, "read_timeout_s": 0.01, "read_window_s": 0.01}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                feedback_samples_artifact_path=str(Path(tmpdir) / "latest.json"),
             )
-        )
+
+            result = asyncio.run(
+                robot.base_feedback_samples(
+                    {"sample_count": 3, "sample_interval_s": 0, "read_timeout_s": 0.01, "read_window_s": 0.01}
+                )
+            )
 
         self.assertEqual(result["schema"], "trashbot.upper_robot_api.v1.base_feedback_samples_result")
         self.assertEqual(result["requested_sample_count"], 3)
@@ -240,19 +248,27 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertFalse(result["delivery_success"])
         self.assertFalse(result["hil_pass"])
         self.assertIn("/api/base/manual", result["blocked_commands_not_sent"])
+        self.assertEqual(result["artifact"]["write"]["ok"], True)
 
     def test_feedback_samples_partial_t1001_remains_fail_closed(self) -> None:
         FakeSerial.read_line_batches = [
             [b'{"T":1001,"L":0,"R":0,"r":1,"p":2,"y":3,"v":12.4}\n'],
             [b'{"T":1002}\n'],
         ]
-        robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
-
-        result = asyncio.run(
-            robot.base_feedback_samples(
-                {"sample_count": 2, "sample_interval_s": 0, "read_timeout_s": 0.01, "read_window_s": 0.01}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                feedback_samples_artifact_path=str(Path(tmpdir) / "latest.json"),
             )
-        )
+
+            result = asyncio.run(
+                robot.base_feedback_samples(
+                    {"sample_count": 2, "sample_interval_s": 0, "read_timeout_s": 0.01, "read_window_s": 0.01}
+                )
+            )
 
         self.assertEqual(result["t1001_observed_count"], 1)
         self.assertFalse(result["all_samples_observed_t1001"])
@@ -263,12 +279,89 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertFalse(result["sends_motion_commands"])
         self.assertFalse(result["robot_control_executed"])
 
+    def test_feedback_samples_persists_latest_artifact_and_latest_readback_is_read_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            artifact_path = str(Path(tmpdir) / "latest.json")
+            FakeSerial.read_lines = [b'{"T":1001,"v":12.4}\n']
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                feedback_samples_artifact_path=artifact_path,
+            )
+
+            result = asyncio.run(
+                robot.base_feedback_samples(
+                    {"sample_count": 2, "sample_interval_s": 0, "read_timeout_s": 0.01, "read_window_s": 0.01}
+                )
+            )
+
+            self.assertEqual(result["artifact"]["path"], artifact_path)
+            self.assertTrue(result["artifact"]["write"]["ok"])
+            saved = json.loads(Path(artifact_path).read_text(encoding="utf-8"))
+            self.assertEqual(saved["schema"], "trashbot.upper_robot_api.v1.base_feedback_samples_result")
+            self.assertEqual(saved["t1001_observed_count"], 2)
+
+            FakeSerial.reset()
+            http_status, latest = robot.base_feedback_samples_latest()
+
+            self.assertEqual(http_status, 200)
+            self.assertTrue(latest["artifact"]["ok"])
+            self.assertEqual(latest["artifact"]["status"], "loaded")
+            self.assertEqual(latest["latest_result"]["t1001_observed_count"], 2)
+            self.assertFalse(latest["readback_sends_commands"])
+            self.assertFalse(latest["sends_commands"])
+            self.assertFalse(latest["sends_motion_commands"])
+            self.assertFalse(latest["robot_control_executed"])
+            self.assertEqual(FakeSerial.instances, [])
+
+    def test_feedback_samples_latest_missing_or_bad_json_is_fail_closed_without_serial_open(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            missing_path = str(Path(tmpdir) / "missing.json")
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                feedback_samples_artifact_path=missing_path,
+            )
+
+            missing_status, missing = robot.base_feedback_samples_latest()
+
+            self.assertEqual(missing_status, 404)
+            self.assertEqual(missing["artifact"]["status"], "missing")
+            self.assertIsNone(missing["latest_result"])
+            self.assertFalse(missing["sends_commands"])
+            self.assertFalse(missing["robot_control_executed"])
+            self.assertEqual(FakeSerial.instances, [])
+
+            bad_path = Path(tmpdir) / "bad.json"
+            bad_path.write_text("{not-json", encoding="utf-8")
+            bad_robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                feedback_samples_artifact_path=str(bad_path),
+            )
+
+            bad_status, bad = bad_robot.base_feedback_samples_latest()
+
+            self.assertEqual(bad_status, 422)
+            self.assertEqual(bad["artifact"]["status"], "bad_json")
+            self.assertIsNone(bad["latest_result"])
+            self.assertFalse(bad["sends_commands"])
+            self.assertFalse(bad["sends_motion_commands"])
+            self.assertEqual(FakeSerial.instances, [])
+
     def test_feedback_samples_route_exists_and_status_does_not_trigger_it(self) -> None:
         robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
 
         status = robot.base_status()
 
         self.assertEqual(api.ROUTE_PATHS["base_feedback_samples"], "/api/base/feedback-samples")
+        self.assertEqual(api.ROUTE_PATHS["base_feedback_samples_latest"], "/api/base/feedback-samples/latest")
         self.assertEqual(status["feedback_ack"]["t1001_observed"], False)
         self.assertEqual(FakeSerial.instances, [])
 

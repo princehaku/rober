@@ -228,6 +228,8 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 
 `POST /api/base/feedback-samples` 是本轮新增的保守多样本 collector。它复用同一条 `request_base_feedback_once()` 路径，重复发送 vendor `{"T":130}`，每个 sample 独立短窗口读取 newline-delimited JSON，再聚合 `T=1001` observed 数量和反馈类型。它不是 motion/manual 入口，不发送 `T=1`、`T=13`、`T=131`、`cmd_vel`，也不调用 `/api/base/manual`。
 
+`GET /api/base/feedback-samples/latest` 是 artifact 只读回放入口。`POST /api/base/feedback-samples` 成功或失败后都会尝试把 latest 结果通过同目录临时文件 + `os.replace()` 原子保存到 `ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH` / `--feedback-samples-artifact-path` 指向的 JSON 文件，默认 `runtime/base_feedback_samples_latest.json`。latest GET 只读取该文件；文件不存在、读取失败、JSON 损坏或 JSON root 不是对象时 fail-closed，并固定 `safe_to_control=false`、`sends_commands=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`。该 readback 不打开串口、不 import/use pyserial、不发送 `T=130`、`T=1`、`T=13`、`T=131`、`cmd_vel` 或 `/api/base/manual`。
+
 采用的 vendor 证据：
 
 - `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`：vendor Python reference 使用 `json.dumps(data) + '\n'` 写 UART JSON 行。
@@ -242,6 +244,7 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 - 该 endpoint 不发送 `T=1`、`T=13`、`T=131`、`cmd_vel` 或 `/api/base/manual`，并在响应 `blocked_commands_not_sent` 中固定列出这些未发送命令。
 - 响应固定 `safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`delivery_success=false`、`hil_pass=false`。
 - `feedback_ack.t1001_observed=true` 只表示本次短窗口中解析到 `T=1001` JSON 行；仍不能直接写成 HIL pass、闭环安全控制或真实 `/odom`、`/imu/data`、`/battery` 已接入。
+- latest readback 顶层 `sends_commands=false` 表示本次 GET 没有发命令；`latest_result` 内的历史 payload 可能保留上一次 POST 的 `sends_commands=true`，不能混淆为 readback 行为。
 
 ## 2026-06-03 13-14 远端 8787 feedback endpoint 部署验证
 

@@ -28,6 +28,7 @@ DEFAULT_FEEDBACK_READ_TIMEOUT_S = 0.2
 DEFAULT_FEEDBACK_READ_WINDOW_S = 1.2
 DEFAULT_FEEDBACK_SAMPLE_COUNT = 3
 DEFAULT_FEEDBACK_SAMPLE_INTERVAL_S = 0.2
+DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.json"
 MAX_FEEDBACK_READ_TIMEOUT_S = 2.0
 MAX_FEEDBACK_READ_WINDOW_S = 5.0
 MAX_FEEDBACK_SAMPLE_COUNT = 8
@@ -50,6 +51,7 @@ ROUTE_PATHS = {
     "base_status": "/api/base/status",
     "base_feedback_request": "/api/base/feedback-request",
     "base_feedback_samples": "/api/base/feedback-samples",
+    "base_feedback_samples_latest": "/api/base/feedback-samples/latest",
     "base_manual": "/api/base/manual",
     "base_stop": "/api/base/stop",
 }
@@ -208,6 +210,104 @@ def clamp_int(value: Any, default: int, min_value: int, max_value: int) -> int:
     except (TypeError, ValueError):
         parsed = default
     return min(max(parsed, min_value), max_value)
+
+
+def artifact_path_info(path: str) -> dict[str, Any]:
+    """artifact path 是运营材料入口，回包要暴露但不读取或打开串口。"""
+    return {
+        "path": path,
+        "configured_by": "ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH or --feedback-samples-artifact-path",
+        "format": "json",
+        "schema": f"{SCHEMA}.base_feedback_samples_result",
+    }
+
+
+def atomic_write_json_artifact(path: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """用同目录临时文件 + replace，避免运营侧读到半截 JSON。"""
+    destination = Path(path)
+    temp_path: Path | None = None
+    try:
+        if destination.parent and str(destination.parent) not in ("", "."):
+            destination.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = destination.with_name(f".{destination.name}.{os.getpid()}.{now_ms()}.tmp")
+        encoded = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True).encode("utf-8")
+        with temp_path.open("wb") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, destination)
+        try:
+            # 目录 fsync 让 replace 元数据尽量落盘；不支持的平台只记录成功写入。
+            directory_fd = os.open(str(destination.parent or Path(".")), os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+        except OSError:
+            pass
+        return {"ok": True, "path": str(destination), "bytes_written": len(encoded), "method": "atomic_replace"}
+    except Exception as exc:  # noqa: BLE001 - artifact 失败不能让非运动采样被包装成成功落盘。
+        if temp_path is not None:
+            try:
+                temp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        return {"ok": False, "path": str(destination), "error": compact_error(exc), "method": "atomic_replace"}
+
+
+def persist_feedback_samples_artifact(path: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """把 latest 采样结果落成可回放材料；写失败也必须结构化返回。"""
+    storable = dict(payload)
+    storable["artifact"] = {
+        **artifact_path_info(path),
+        "written_at_ms": now_ms(),
+        "write": {"ok": True, "method": "atomic_replace"},
+    }
+    write_result = atomic_write_json_artifact(path, storable)
+    storable["artifact"]["write"] = write_result
+    return storable
+
+
+def build_latest_readback_payload(path: str, artifact_status: dict[str, Any], latest_result: dict[str, Any] | None) -> dict[str, Any]:
+    """latest 回放只描述文件读取结果，历史 payload 放在 latest_result 里。"""
+    return {
+        "schema": f"{SCHEMA}.base_feedback_samples_latest_result",
+        "generated_at_ms": now_ms(),
+        "artifact": artifact_status,
+        "latest_result": latest_result,
+        "latest_endpoint_path": ROUTE_PATHS["base_feedback_samples_latest"],
+        "readback_sends_commands": False,
+        "safe_to_control": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "primary_actions_enabled": False,
+    }
+
+
+def read_feedback_samples_latest_artifact(path: str) -> tuple[int, dict[str, Any]]:
+    """只读 artifact，不打开 serial、不 import pyserial、不触发任何 T=130/T=1。"""
+    artifact = artifact_path_info(path)
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        artifact.update({"ok": False, "status": "missing", "error": {"type": "FileNotFoundError", "message": "latest feedback samples artifact is missing"}})
+        return 404, build_latest_readback_payload(path, artifact, None)
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        return 500, build_latest_readback_payload(path, artifact, None)
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        artifact.update({"ok": False, "status": "bad_json", "error": compact_error(exc)})
+        return 422, build_latest_readback_payload(path, artifact, None)
+    if not isinstance(parsed, dict):
+        artifact.update({"ok": False, "status": "json_not_object", "error": {"type": "ValueError", "message": "latest artifact JSON root is not an object"}})
+        return 422, build_latest_readback_payload(path, artifact, None)
+    artifact.update({"ok": True, "status": "loaded", "bytes_read": len(raw.encode("utf-8"))})
+    return 200, build_latest_readback_payload(path, artifact, parsed)
 
 
 def feedback_request_status(
@@ -547,11 +647,19 @@ async def fetch_json(url: str, method: str = "GET", payload: dict[str, Any] | No
 class UpperRobotApi:
     """把上位机各硬件入口收敛到一个 HTTP API，PC 不再分散猜端口。"""
 
-    def __init__(self, camera_base_url: str, base_port: str, base_baudrate: int, max_speed: float) -> None:
+    def __init__(
+        self,
+        camera_base_url: str,
+        base_port: str,
+        base_baudrate: int,
+        max_speed: float,
+        feedback_samples_artifact_path: str = DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH,
+    ) -> None:
         self.camera_base_url = camera_base_url.rstrip("/")
         self.base_port = base_port
         self.base_baudrate = base_baudrate
         self.max_speed = max_speed
+        self.feedback_samples_artifact_path = feedback_samples_artifact_path
 
     def base_status(self) -> dict[str, Any]:
         """底盘状态只证明写入口配置和设备存在，不伪造 T=1001 ACK。"""
@@ -664,6 +772,7 @@ class UpperRobotApi:
             "radar": self.radar_status(),
             "base": self.base_status(),
             "routes": dict(ROUTE_PATHS),
+            "base_feedback_samples_latest_artifact": artifact_path_info(self.feedback_samples_artifact_path),
             "sends_commands": False,
             **proof_flags(),
         }
@@ -728,7 +837,7 @@ class UpperRobotApi:
             # 最后一帧后不额外 sleep，避免默认请求尾部无意义等待。
             if index < sample_count - 1 and sample_interval_s > 0:
                 await asyncio.sleep(sample_interval_s)
-        return build_base_feedback_samples_payload(
+        payload = build_base_feedback_samples_payload(
             port=self.base_port,
             baudrate=self.base_baudrate,
             sample_count=sample_count,
@@ -737,6 +846,11 @@ class UpperRobotApi:
             read_window_s=read_window_s,
             samples=samples,
         )
+        return persist_feedback_samples_artifact(self.feedback_samples_artifact_path, payload)
+
+    def base_feedback_samples_latest(self) -> tuple[int, dict[str, Any]]:
+        """latest 回放只读取 artifact，不能打开串口或发送任何 feedback request。"""
+        return read_feedback_samples_latest_artifact(self.feedback_samples_artifact_path)
 
     async def manual_control(self, body: dict[str, Any]) -> dict[str, Any]:
         """低速点动控制：发送方向命令后等待短窗口，再无条件发送停车命令。"""
@@ -817,6 +931,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--base-port", default=os.getenv("ROBER_BASE_SERIAL_PORT", DEFAULT_BASE_PORT))
     parser.add_argument("--base-baudrate", type=int, default=int(os.getenv("ROBER_BASE_BAUDRATE", str(DEFAULT_BASE_BAUDRATE))))
     parser.add_argument("--max-speed", type=float, default=float(os.getenv("ROBER_BASE_MAX_SPEED", str(DEFAULT_MAX_SPEED))))
+    parser.add_argument(
+        "--feedback-samples-artifact-path",
+        default=os.getenv("ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH", DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH),
+    )
     return parser.parse_args()
 
 
@@ -829,6 +947,7 @@ async def run_server(args: argparse.Namespace) -> None:
         base_port=args.base_port,
         base_baudrate=args.base_baudrate,
         max_speed=args.max_speed,
+        feedback_samples_artifact_path=args.feedback_samples_artifact_path,
     )
     app = create_app(api)
     runner = web.AppRunner(app)
@@ -891,6 +1010,10 @@ def create_app(api: UpperRobotApi) -> Any:
         body = await request.json() if request.can_read_body else {}
         return json_response(await api.base_feedback_samples(body if isinstance(body, dict) else {}))
 
+    async def base_feedback_samples_latest(_: web.Request) -> Any:
+        http_status, payload = api.base_feedback_samples_latest()
+        return json_response(payload, status=http_status)
+
     async def base_manual(request: web.Request) -> Any:
         body = await request.json()
         payload = await api.manual_control(body if isinstance(body, dict) else {})
@@ -909,6 +1032,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_get(ROUTE_PATHS["base_status"], base_status)
     app.router.add_post(ROUTE_PATHS["base_feedback_request"], base_feedback_request)
     app.router.add_post(ROUTE_PATHS["base_feedback_samples"], base_feedback_samples)
+    app.router.add_get(ROUTE_PATHS["base_feedback_samples_latest"], base_feedback_samples_latest)
     app.router.add_post(ROUTE_PATHS["base_stop"], base_stop)
     app.router.add_post(ROUTE_PATHS["base_manual"], base_manual)
     return app

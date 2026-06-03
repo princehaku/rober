@@ -10,7 +10,11 @@
 
 该接口是同源多样本 feedback evidence collector。它重复调用同一条 vendor `{"T":130}` 路径，每个 sample 都只发送一次 `T=130`，随后用短窗口读取 newline-delimited JSON，并聚合每个 sample 的 `T=1001` 观察状态。该接口不调用 `/api/base/manual`，不发送 `T=1`、`T=13`、`T=131` 或 ROS `/cmd_vel`。
 
-`GET /api/status`、`GET /api/base/status` 不会自动触发该请求。
+`GET /api/base/feedback-samples/latest`
+
+该接口只读回放最近一次 `/api/base/feedback-samples` 写入的 JSON artifact。它不打开串口、不 import/use pyserial、不发送 `T=130`、`T=1`、`T=13`、`T=131`、`cmd_vel` 或 `/api/base/manual`。artifact 不存在或 JSON 损坏时 fail-closed，返回结构化错误和固定安全字段。
+
+`GET /api/status`、`GET /api/base/status` 不会自动触发 feedback request；`GET /api/status` 只暴露 latest endpoint path 和 artifact path 配置。
 
 ## Vendor 来源
 
@@ -62,6 +66,18 @@
 - `read_timeout_s`：复用单次 endpoint 限幅，默认 `0.2`。
 - `read_window_s`：复用单次 endpoint 限幅，默认 `1.2`。
 
+artifact path：
+
+- CLI 参数：`--feedback-samples-artifact-path`
+- 环境变量：`ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH`
+- 默认：`runtime/base_feedback_samples_latest.json`
+
+写入采用同目录临时文件 + `os.replace()` 原子替换。artifact 写入失败不会让采样结果冒泡成 HIL 或 safe-to-control；响应会在 `artifact.write` 中暴露失败原因。
+
+### `/api/base/feedback-samples/latest`
+
+无 request body。该接口只读取配置的 artifact path，不打开硬件。
+
 ## Response Contract
 
 ### `/api/base/feedback-request`
@@ -107,6 +123,9 @@
 - `partial_samples_observed_t1001`
 - `feedback_ack.t1001_observed`
 - `blocked_commands_not_sent`
+- `artifact.path`
+- `artifact.write.ok`
+- `artifact.write.method=atomic_replace`
 
 固定 fail-closed 字段：
 
@@ -117,6 +136,27 @@
 - `hil_pass=false`
 
 多样本 observed 只能证明同一个 8787 非运动入口可以重复采到 vendor `T=1001` 材料。`feedback_ack.robot_ack_connected` 必须保持 `false`，因为重复观察 `T=1001` 仍不证明项目层 robot ACK/HIL。它仍不是 HIL pass，不能替代运动命令安全、真实 ROS `/odom`、`/imu/data`、`/battery`、自动停车/急停演练或完整上车验收。
+
+### `/api/base/feedback-samples/latest`
+
+关键字段：
+
+- `schema=trashbot.upper_robot_api.v1.base_feedback_samples_latest_result`
+- `artifact.status=loaded|missing|bad_json|json_not_object|read_failed`
+- `latest_result`
+- `latest_endpoint_path=/api/base/feedback-samples/latest`
+- `readback_sends_commands=false`
+
+固定 fail-closed 字段：
+
+- `safe_to_control=false`
+- `sends_commands=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `delivery_success=false`
+- `hil_pass=false`
+
+`latest_result` 是上一次 POST 采样的历史 payload，因此其中可能保留历史 `sends_commands=true`。顶层 `sends_commands=false` 和 `readback_sends_commands=false` 才表示本次 GET latest 行为没有发送任何命令。
 
 ## 2026-06-03 13-14 远端部署验证
 
@@ -190,3 +230,47 @@ POST http://127.0.0.1:8787/api/base/feedback-samples
 本次验证没有调用 `/api/base/manual`，没有发送 `T=1`、`T=13`、`T=131`
 或 ROS `/cmd_vel`。该材料把一次 observed 推进为 3/3 多样本同源 observed；
 但仍不能写成 robot ACK connected、HIL pass、闭环安全控制、真实 ROS feedback topic 或 delivery success。
+
+## 2026-06-03 15-16 latest artifact readback 验证
+
+本轮继续只调用非运动 POST 和只读 GET：
+
+```bash
+POST http://127.0.0.1:8787/api/base/feedback-samples
+GET  http://127.0.0.1:8787/api/base/feedback-samples/latest
+```
+
+POST 真实返回关键字段：
+
+- HTTP `200`
+- `requested_sample_count=3`
+- `completed_sample_count=3`
+- `t1001_observed_count=3`
+- `observed_feedback_types=[130,1001]`
+- `all_samples_observed_t1001=true`
+- `samples[].t1001_feedback_status=["observed","observed","observed"]`
+- `artifact.write.ok=true`
+- `artifact.write.bytes_written=4989`
+- `safe_to_control=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `hil_pass=false`
+- `feedback_ack.robot_ack_connected=false`
+
+GET latest 真实返回关键字段：
+
+- HTTP `200`
+- `schema=trashbot.upper_robot_api.v1.base_feedback_samples_latest_result`
+- `artifact.status=loaded`
+- `latest_result.schema=trashbot.upper_robot_api.v1.base_feedback_samples_result`
+- `latest_result.t1001_observed_count=3`
+- `latest_result.all_samples_observed_t1001=true`
+- `readback_sends_commands=false`
+- `safe_to_control=false`
+- `sends_commands=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `hil_pass=false`
+
+本次验证没有调用 `/api/base/manual`，没有发送 `T=1`、`T=13`、`T=131`
+或 ROS `/cmd_vel`。latest readback 只证明 artifact 可读取，不证明它本身发送过或可以发送命令。
