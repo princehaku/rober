@@ -8,6 +8,16 @@
 
 ## 2026-06-03 系列
 
+### 2026-06-03 11-12｜O1 8787 T130 feedback endpoint｜API contract ready，真实 T1001/ACK/HIL 仍未证明
+
+本轮 Micro sprint 基于 `sprints/2026.06.03_11-12_o1-8787-t130-feedback-endpoint/tech-done.md` 和 `docs/interfaces/o1_upper_robot_api_base_feedback.md` 收口。用户价值是把 O1 底盘反馈采集从离线 probe 推进到 8787 统一上位机 API 的显式非运动入口：operator 或 PC/后续工具可调用 `POST /api/base/feedback-request` 请求一次 vendor `{"T":130}`，再短窗口读取 newline-delimited JSON，统计是否观察到 `T=1001`，而不是让 `GET status` 暗中写串口。
+
+Hardware Infra 本轮完成的软件合同为：`POST /api/base/feedback-request` 只发送一次 `T=130`，不会发送 `T=1`、`T=13`、`T=131`、`cmd_vel` 或任何运动命令；响应固定输出 `safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`delivery_success=false`、`hil_pass=false`，并返回 `serial_open`、`serial_write`、`read_line_count`、`parsed_json_count`、`invalid_json_count`、`observed_feedback_types`、`t1001_feedback_status`、`feedback_ack` 和 `blocked_commands_not_sent`。fake serial 单测覆盖 status 不触发串口、feedback request 只写 `T=130`、解析 `T=1001`、坏 JSON 计数和写失败 fail-closed。
+
+Product closeout 判定：Objective 1 继续，仍保持约 94%，不上调。原因是本轮没有真实 `/dev/ttyS5` 复跑，没有 SSH，没有在真实 8787 上观察 `T=130 -> T=1001`，没有 ACK、HIL packet、真实 `/odom`、`/imu/data`、`/battery`、自动停车/急停现场演练或完整上车任务闭环。该 endpoint 是 API 合同和软件护栏推进，不是 `safe_to_control=true`，也不是 HIL pass。
+
+下一步 O1 仍按两条线推进：LiDAR 线补齐上位机 ROS2 Humble arm64 runtime/当前 install 后采真实 `/scan`、`/lidar/raw_packet` 和 TF；底盘线在现场看护、物理净空、人工急停路径可用时，先通过 8787 `/api/base/feedback-request` 复核真实 `T=130 -> T=1001`，再通过 `/api/base/manual` 做低速短 pulse，并采集 status/manual/stop/post-status、operator report、ACK 或 `T=1001`、日志和安全复位证据。本轮没有 KR 进入历史完成归档区；O1 KR3 真实反馈/ACK 仍保留在当前推进区。
+
 ### 2026-06-03 11-12｜O1 LiDAR raw serial evidence｜真实原始包可读，ROS2 /scan 仍阻塞
 
 本轮 hourly OKR iteration 继续优先 O1，由 Hardware Infra Engineer 推进 LiDAR 真实材料线。用户价值是先拿低风险传感器证据，不碰底盘 motion，避免在无人现场看护时把 `/api/base/manual` 或 `/dev/ttyS5` 纳入风险面。

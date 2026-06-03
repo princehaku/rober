@@ -24,6 +24,19 @@ DEFAULT_MAX_SPEED = 0.12
 DEFAULT_PULSE_MS = 260
 MAX_PULSE_MS = 800
 ALLOWED_DIRECTIONS = frozenset({"forward", "back", "left", "right", "stop"})
+DEFAULT_FEEDBACK_READ_TIMEOUT_S = 0.2
+DEFAULT_FEEDBACK_READ_WINDOW_S = 1.2
+MAX_FEEDBACK_READ_TIMEOUT_S = 2.0
+MAX_FEEDBACK_READ_WINDOW_S = 5.0
+BASE_FEEDBACK_REQUEST_COMMAND = {"T": 130}
+BASE_FEEDBACK_ID = 1001
+BLOCKED_BASE_FEEDBACK_COMMANDS = [
+    "T=1",
+    "T=13",
+    "T=131",
+    "cmd_vel",
+    "/api/base/manual",
+]
 
 VENDOR_SOURCES = [
     "docs/vendor/VENDOR_INDEX.md",
@@ -161,6 +174,223 @@ def write_serial_json(port: str, baudrate: int, command: dict[str, Any]) -> dict
                 serial_obj.close()
             except Exception:
                 pass
+
+
+def clamp_float(value: Any, default: float, min_value: float, max_value: float) -> float:
+    """HTTP body 里的窗口参数必须限幅，避免一次请求长时间占用串口。"""
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return min(max(parsed, min_value), max_value)
+
+
+def feedback_request_status(
+    *,
+    serial_open_ok: bool,
+    serial_write_ok: bool,
+    t1001_observed: bool,
+    import_error: str | None,
+    read_error: dict[str, str] | None,
+) -> str:
+    """把串口阶段结果压成稳定机器字段，便于 OKR/HIL 材料做保守判定。"""
+    if import_error:
+        return "pyserial_unavailable"
+    if not serial_open_ok:
+        return "serial_not_opened"
+    if not serial_write_ok:
+        return "write_failed"
+    if read_error:
+        return "read_error"
+    if t1001_observed:
+        return "observed"
+    return "not_observed_after_t130"
+
+
+def request_base_feedback_once(
+    port: str,
+    baudrate: int,
+    *,
+    read_timeout_s: float = DEFAULT_FEEDBACK_READ_TIMEOUT_S,
+    read_window_s: float = DEFAULT_FEEDBACK_READ_WINDOW_S,
+) -> dict[str, Any]:
+    """显式发送一次 vendor T=130，并短窗口读取换行 JSON；这里绝不发运动命令。"""
+    read_timeout_s = clamp_float(read_timeout_s, DEFAULT_FEEDBACK_READ_TIMEOUT_S, 0.01, MAX_FEEDBACK_READ_TIMEOUT_S)
+    read_window_s = clamp_float(read_window_s, DEFAULT_FEEDBACK_READ_WINDOW_S, 0.01, MAX_FEEDBACK_READ_WINDOW_S)
+    serial_module, import_error = load_serial_module()
+    serial_open: dict[str, Any] = {"ok": False, "port": port, "baudrate": baudrate, "timeout_s": read_timeout_s}
+    serial_write: dict[str, Any] = {"ok": False, "command": BASE_FEEDBACK_REQUEST_COMMAND}
+    serial_read: dict[str, Any] = {"ok": False, "window_s": read_window_s, "error": None}
+    read_line_count = 0
+    parsed_json_count = 0
+    invalid_json_count = 0
+    observed_feedback_types: list[int] = []
+    serial_obj = None
+
+    if serial_module is None:
+        status = feedback_request_status(
+            serial_open_ok=False,
+            serial_write_ok=False,
+            t1001_observed=False,
+            import_error=import_error,
+            read_error=None,
+        )
+        return build_base_feedback_payload(
+            port=port,
+            baudrate=baudrate,
+            read_timeout_s=read_timeout_s,
+            read_window_s=read_window_s,
+            serial_open=serial_open,
+            serial_write={"ok": False, "command": BASE_FEEDBACK_REQUEST_COMMAND, "error": {"type": "pyserial_unavailable", "message": import_error or "missing"}},
+            serial_read=serial_read,
+            read_line_count=0,
+            parsed_json_count=0,
+            invalid_json_count=0,
+            observed_feedback_types=[],
+            t1001_feedback_status=status,
+        )
+
+    try:
+        serial_obj = serial_module.Serial(port=port, baudrate=baudrate, timeout=read_timeout_s)
+        serial_open["ok"] = True
+    except Exception as exc:  # noqa: BLE001 - 现场串口打开失败必须结构化返回。
+        serial_open["error"] = compact_error(exc)
+        status = feedback_request_status(
+            serial_open_ok=False,
+            serial_write_ok=False,
+            t1001_observed=False,
+            import_error=None,
+            read_error=None,
+        )
+        return build_base_feedback_payload(
+            port=port,
+            baudrate=baudrate,
+            read_timeout_s=read_timeout_s,
+            read_window_s=read_window_s,
+            serial_open=serial_open,
+            serial_write=serial_write,
+            serial_read=serial_read,
+            read_line_count=0,
+            parsed_json_count=0,
+            invalid_json_count=0,
+            observed_feedback_types=[],
+            t1001_feedback_status=status,
+        )
+
+    try:
+        frame = (json.dumps(BASE_FEEDBACK_REQUEST_COMMAND, separators=(",", ":")) + "\n").encode("utf-8")
+        serial_write["bytes_written"] = serial_obj.write(frame)
+        serial_write["ok"] = True
+    except Exception as exc:  # noqa: BLE001 - 写失败时不能继续包装成 ACK 探测成功。
+        serial_write["error"] = compact_error(exc)
+
+    if serial_write["ok"]:
+        deadline = time.monotonic() + read_window_s
+        try:
+            while time.monotonic() < deadline:
+                raw_line = serial_obj.readline()
+                if not raw_line:
+                    continue
+                read_line_count += 1
+                try:
+                    decoded = raw_line.decode("utf-8").strip()
+                    parsed = json.loads(decoded)
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    invalid_json_count += 1
+                    continue
+                if not isinstance(parsed, dict):
+                    invalid_json_count += 1
+                    continue
+                parsed_json_count += 1
+                feedback_type = parsed.get("T")
+                if isinstance(feedback_type, int):
+                    observed_feedback_types.append(feedback_type)
+        except Exception as exc:  # noqa: BLE001 - 读阶段错误独立暴露，不改写 open/write 结果。
+            serial_read["error"] = compact_error(exc)
+        else:
+            serial_read["ok"] = True
+
+    t1001_observed = BASE_FEEDBACK_ID in observed_feedback_types
+    status = feedback_request_status(
+        serial_open_ok=bool(serial_open.get("ok")),
+        serial_write_ok=bool(serial_write.get("ok")),
+        t1001_observed=t1001_observed,
+        import_error=None,
+        read_error=serial_read.get("error"),
+    )
+    if serial_obj is not None:
+        try:
+            serial_obj.close()
+        except Exception:
+            pass
+    return build_base_feedback_payload(
+        port=port,
+        baudrate=baudrate,
+        read_timeout_s=read_timeout_s,
+        read_window_s=read_window_s,
+        serial_open=serial_open,
+        serial_write=serial_write,
+        serial_read=serial_read,
+        read_line_count=read_line_count,
+        parsed_json_count=parsed_json_count,
+        invalid_json_count=invalid_json_count,
+        observed_feedback_types=sorted(set(observed_feedback_types)),
+        t1001_feedback_status=status,
+    )
+
+
+def build_base_feedback_payload(
+    *,
+    port: str,
+    baudrate: int,
+    read_timeout_s: float,
+    read_window_s: float,
+    serial_open: dict[str, Any],
+    serial_write: dict[str, Any],
+    serial_read: dict[str, Any],
+    read_line_count: int,
+    parsed_json_count: int,
+    invalid_json_count: int,
+    observed_feedback_types: list[int],
+    t1001_feedback_status: str,
+) -> dict[str, Any]:
+    """统一反馈请求输出；即使看到 T=1001，也只能作为材料而不是 HIL pass。"""
+    t1001_observed = BASE_FEEDBACK_ID in observed_feedback_types
+    return {
+        "schema": f"{SCHEMA}.base_feedback_request_result",
+        "generated_at_ms": now_ms(),
+        "vendor_sources": VENDOR_SOURCES,
+        "port": port,
+        "baudrate": baudrate,
+        "request": {
+            "method": "POST",
+            "endpoint": "/api/base/feedback-request",
+            "command": BASE_FEEDBACK_REQUEST_COMMAND,
+            "read_timeout_s": read_timeout_s,
+            "read_window_s": read_window_s,
+        },
+        "serial_open": serial_open,
+        "serial_write": serial_write,
+        "serial_read": serial_read,
+        "read_line_count": read_line_count,
+        "parsed_json_count": parsed_json_count,
+        "invalid_json_count": invalid_json_count,
+        "observed_feedback_types": observed_feedback_types,
+        "t1001_feedback_status": t1001_feedback_status,
+        "feedback_ack": {
+            "t1001_observed": t1001_observed,
+            "robot_ack_connected": t1001_observed,
+            "reason": "T=1001 observed after explicit T=130 request" if t1001_observed else "T=1001 not observed after explicit T=130 request",
+        },
+        "blocked_commands_not_sent": BLOCKED_BASE_FEEDBACK_COMMANDS,
+        "safe_to_control": False,
+        "sends_commands": bool(serial_write.get("ok")),
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "primary_actions_enabled": False,
+    }
 
 
 def build_stop_payload(port: str, baudrate: int) -> dict[str, Any]:
@@ -323,12 +553,34 @@ class UpperRobotApi:
                 "camera_peer_close": "/api/camera/peers/{peer_id}/close",
                 "radar_status": "/api/radar/status",
                 "base_status": "/api/base/status",
+                "base_feedback_request": "/api/base/feedback-request",
                 "base_manual": "/api/base/manual",
                 "base_stop": "/api/base/stop",
             },
             "sends_commands": False,
             **proof_flags(),
         }
+
+    async def base_feedback_request(self, body: dict[str, Any]) -> dict[str, Any]:
+        """非运动反馈请求必须由显式 POST 触发，状态接口永远不自动探测。"""
+        read_timeout_s = clamp_float(
+            body.get("read_timeout_s"),
+            DEFAULT_FEEDBACK_READ_TIMEOUT_S,
+            0.01,
+            MAX_FEEDBACK_READ_TIMEOUT_S,
+        )
+        read_window_s = clamp_float(
+            body.get("read_window_s"),
+            DEFAULT_FEEDBACK_READ_WINDOW_S,
+            0.01,
+            MAX_FEEDBACK_READ_WINDOW_S,
+        )
+        return request_base_feedback_once(
+            self.base_port,
+            self.base_baudrate,
+            read_timeout_s=read_timeout_s,
+            read_window_s=read_window_s,
+        )
 
     async def manual_control(self, body: dict[str, Any]) -> dict[str, Any]:
         """低速点动控制：发送方向命令后等待短窗口，再无条件发送停车命令。"""
@@ -462,6 +714,10 @@ async def run_server(args: argparse.Namespace) -> None:
     async def base_stop(_: web.Request) -> Any:
         return json_response(build_stop_payload(api.base_port, api.base_baudrate))
 
+    async def base_feedback_request(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        return json_response(await api.base_feedback_request(body if isinstance(body, dict) else {}))
+
     async def base_manual(request: web.Request) -> Any:
         body = await request.json()
         payload = await api.manual_control(body if isinstance(body, dict) else {})
@@ -478,6 +734,7 @@ async def run_server(args: argparse.Namespace) -> None:
     app.router.add_post("/api/camera/peers/{peer_id}/close", camera_peer_close)
     app.router.add_get("/api/radar/status", radar_status)
     app.router.add_get("/api/base/status", base_status)
+    app.router.add_post("/api/base/feedback-request", base_feedback_request)
     app.router.add_post("/api/base/stop", base_stop)
     app.router.add_post("/api/base/manual", base_manual)
 

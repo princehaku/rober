@@ -222,6 +222,24 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 4. 在没有 `T=1001` 或等价 ACK 前，PC/ROS 控制入口必须 fail-closed，不得把 UI 按钮或 `/cmd_vel` 直接接到底盘。
 5. 后续 HIL packet 必须同源包含命令日志、停车日志、至少两帧 `T=1001`、ROS `/imu/data`、`/battery` 和 `/odom` 边界说明。
 
+## 2026-06-03 8787 显式 T=130 feedback request endpoint
+
+`onboard/scripts/upper_robot_api.py` 已在 8787 统一上位机 API 中新增显式 `POST /api/base/feedback-request`。该入口只发送一次 vendor `CMD_BASE_FEEDBACK` / `{"T":130}`，随后在短窗口内读取 newline-delimited JSON，并统计是否观察到 `T=1001`。
+
+采用的 vendor 证据：
+
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`：vendor Python reference 使用 `json.dumps(data) + '\n'` 写 UART JSON 行。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`：`CMD_BASE_FEEDBACK=130`，`FEEDBACK_BASE_INFO=1001`，同时 `CMD_SPEED_CTRL=1`、`CMD_ROS_CTRL=13`、`CMD_BASE_FEEDBACK_FLOW=131` 分属运动或 feedback-flow 命令。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`：ESP32 端按 `\n` 结束符累积 JSON，再进入 `CMD_BASE_FEEDBACK -> baseInfoFeedback()` 分支。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`：`baseInfoFeedback()` 输出 `T=1001` 反馈字段。
+
+接口边界：
+
+- 只有显式 `POST /api/base/feedback-request` 会触发该请求；`GET /api/status` 和 `GET /api/base/status` 不会自动打开串口、不会写 `T=130`。
+- 该 endpoint 不发送 `T=1`、`T=13`、`T=131`、`cmd_vel` 或 `/api/base/manual`，并在响应 `blocked_commands_not_sent` 中固定列出这些未发送命令。
+- 响应固定 `safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`delivery_success=false`、`hil_pass=false`。
+- `feedback_ack.t1001_observed=true` 只表示本次短窗口中解析到 `T=1001` JSON 行；仍不能直接写成 HIL pass、闭环安全控制或真实 `/odom`、`/imu/data`、`/battery` 已接入。
+
 ## 2026-06-03 O1 safe pulse post-status acceptance
 
 `onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py` 当前只通过 8787 上位 API 采集短 pulse 验收材料，不新增真实串口直连，不 import/use pyserial，不发送 `T=130`、`T=131` 或 ROS `/cmd_vel`。

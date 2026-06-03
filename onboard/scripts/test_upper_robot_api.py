@@ -24,6 +24,7 @@ class FakeSerial:
     instances: list["FakeSerial"] = []
     fail_on_open = False
     fail_on_write = False
+    read_lines: list[bytes] = []
 
     def __init__(self, port: str, baudrate: int, timeout: float) -> None:
         if self.__class__.fail_on_open:
@@ -33,6 +34,8 @@ class FakeSerial:
         self.baudrate = baudrate
         self.timeout = timeout
         self.frames: list[bytes] = []
+        # 每个 fake 实例复制一次预设反馈，避免测试之间共享读游标。
+        self.read_lines = list(self.__class__.read_lines)
         self.closed = False
         self.__class__.instances.append(self)
 
@@ -43,6 +46,12 @@ class FakeSerial:
         self.frames.append(frame)
         return len(frame)
 
+    def readline(self) -> bytes:
+        # 空 bytes 模拟 pyserial timeout，测试不会阻塞真实硬件。
+        if not self.read_lines:
+            return b""
+        return self.read_lines.pop(0)
+
     def close(self) -> None:
         self.closed = True
 
@@ -51,6 +60,7 @@ class FakeSerial:
         cls.instances = []
         cls.fail_on_open = False
         cls.fail_on_write = False
+        cls.read_lines = []
 
 
 def install_fake_serial() -> None:
@@ -135,6 +145,61 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertIn("lidar_serial_port:=/dev/ttyACM0", result["ros2"]["launch"])
         self.assertEqual(result["ros2"]["scan_topic"], "/scan")
         self.assertFalse(result["sends_commands"])
+        self.assertFalse(result["robot_control_executed"])
+
+    def test_base_status_does_not_trigger_feedback_request_or_serial_open(self) -> None:
+        robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
+
+        result = robot.base_status()
+
+        self.assertEqual(result["feedback_ack"]["t1001_observed"], False)
+        self.assertEqual(FakeSerial.instances, [])
+
+    def test_feedback_request_sends_only_t130_and_parses_t1001(self) -> None:
+        FakeSerial.read_lines = [
+            b"not-json\n",
+            b'{"T":1001,"L":0,"R":0,"r":1,"p":2,"y":3,"v":12.4}\n',
+            b'{"T":1002}\n',
+        ]
+        robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
+
+        result = asyncio.run(robot.base_feedback_request({"read_timeout_s": 0.01, "read_window_s": 0.01}))
+
+        self.assertEqual(len(FakeSerial.instances), 1)
+        self.assertEqual(result["serial_write"]["command"], {"T": 130})
+        self.assertTrue(FakeSerial.instances[0].closed)
+        self.assertEqual(result["serial_open"]["ok"], True)
+        self.assertEqual(result["serial_write"]["ok"], True)
+        self.assertEqual(result["read_line_count"], 3)
+        self.assertEqual(result["parsed_json_count"], 2)
+        self.assertEqual(result["invalid_json_count"], 1)
+        self.assertEqual(result["observed_feedback_types"], [1001, 1002])
+        self.assertEqual(result["t1001_feedback_status"], "observed")
+        self.assertTrue(result["feedback_ack"]["t1001_observed"])
+        self.assertFalse(result["safe_to_control"])
+        self.assertFalse(result["sends_motion_commands"])
+        self.assertFalse(result["robot_control_executed"])
+        self.assertFalse(result["delivery_success"])
+        self.assertFalse(result["hil_pass"])
+        self.assertIn("T=1", result["blocked_commands_not_sent"])
+        self.assertIn("T=13", result["blocked_commands_not_sent"])
+        self.assertIn("T=131", result["blocked_commands_not_sent"])
+        self.assertIn("cmd_vel", result["blocked_commands_not_sent"])
+
+    def test_feedback_request_write_failure_is_fail_closed(self) -> None:
+        FakeSerial.fail_on_write = True
+        robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
+
+        result = asyncio.run(robot.base_feedback_request({"read_timeout_s": 0.01, "read_window_s": 0.01}))
+
+        self.assertEqual(result["serial_write"]["command"], {"T": 130})
+        self.assertEqual(result["serial_open"]["ok"], True)
+        self.assertEqual(result["serial_write"]["ok"], False)
+        self.assertEqual(result["t1001_feedback_status"], "write_failed")
+        self.assertEqual(result["read_line_count"], 0)
+        self.assertFalse(result["feedback_ack"]["t1001_observed"])
+        self.assertFalse(result["safe_to_control"])
+        self.assertFalse(result["sends_motion_commands"])
         self.assertFalse(result["robot_control_executed"])
 
 
