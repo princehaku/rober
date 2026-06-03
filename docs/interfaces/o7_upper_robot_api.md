@@ -191,7 +191,8 @@ PC workstation 还提供本机 direct upper API，详见 `docs/interfaces/o7_dir
   - `base.port=/dev/ttyS5`
   - `base.write_control_available=true`
   - `base.feedback_ack.t1001_observed=false`
-- Hardware worker 后续现场核对到 `POST http://192.168.1.11:8787/api/base/feedback-request` 当前返回 HTTP `405`，`Allow=OPTIONS`；因此文档中的 feedback-request 合同仍只能按本机软件转发和 fail-closed contract 看待，不能写成远端 endpoint 已部署可用、真实 `T=130 -> T=1001` 已闭环、ACK 或 HIL 通过。
+- `2026.06.03_13-14_o1-8787-feedback-deploy` 已将当前 `onboard/scripts/upper_robot_api.py` 通过 `scp` 部署到远端 `/root/rober/onboard/scripts/upper_robot_api.py`，并重启 `trashbot-upper-robot-api.service`。部署后 `POST http://192.168.1.11:8787/api/base/feedback-request` 返回 HTTP `200`，`serial_open.ok=true`、`serial_write.command={"T":130}`、`serial_write.bytes_written=10`、`read_line_count=2`、`parsed_json_count=2`、`observed_feedback_types=[130,1001]`、`t1001_feedback_status=observed`。
+- 该验证只发送非运动 `T=130` feedback request；没有调用 `/api/base/manual`，没有发送 `T=1`、`T=13`、`T=131` 或 ROS `/cmd_vel`。响应仍固定 `safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`，所以不能写成 HIL pass、闭环安全控制、真实 `/odom`、`/imu/data`、`/battery` 或 delivery success。
 
 PC 页面验证：
 

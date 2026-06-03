@@ -8,6 +8,39 @@
 
 ## 2026-06-03 系列
 
+### 2026-06-03 13-14｜O1 8787 feedback deploy｜远端 endpoint deployed，一次真实 T1001 observed
+
+本轮 Micro sprint 继续推进当前最低 Objective 1，目标是关闭上一轮
+`POST /api/base/feedback-request` 在远端 8787 返回 HTTP 405 的部署缺口。
+Hardware Infra 已复核 vendor 来源：`docs/vendor/VENDOR_INDEX.md`、
+`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`、
+`uart_ctrl.h` 和 `ugv_advance.h`。采用事实仍是：WAVE ROVER UART 为
+UTF-8 newline-delimited JSON，`CMD_BASE_FEEDBACK=130`，
+`FEEDBACK_BASE_INFO=1001`，`T=1/T=13/T=131` 分别属于运动或 feedback-flow
+状态命令，本轮不得发送。
+
+本轮将当前 `onboard/scripts/upper_robot_api.py` 通过 `scp` 部署到远端
+`/root/rober/onboard/scripts/upper_robot_api.py`，并重启
+`trashbot-upper-robot-api.service`。重启后服务为 `active`，`/health`
+返回 `status=ready`，`/api/status` 继续返回 camera ready、radar
+`/dev/ttyACM0`、base `/dev/ttyS5` 和 fail-closed 安全字段。
+
+非运动 endpoint 验证结果：`POST /api/base/feedback-request` 返回 HTTP
+`200`，`serial_open.ok=true`、`serial_write.command={"T":130}`、
+`bytes_written=10`、`read_line_count=2`、`parsed_json_count=2`、
+`observed_feedback_types=[130,1001]`、`t1001_feedback_status=observed`。
+响应仍固定 `safe_to_control=false`、`sends_motion_commands=false`、
+`robot_control_executed=false`、`hil_pass=false`。本轮没有调用
+`/api/base/manual`，没有发送 `T=1`、`T=13`、`T=131` 或 ROS `/cmd_vel`。
+
+Product closeout 判定：Objective 1 可从约 94% 保守上调到约 95%，只承认
+“远端 feedback endpoint 已部署 + 一次真实 `T=130 -> T=1001` observed”。
+不能写成 HIL pass、`safe_to_control=true`、闭环安全控制、真实 ROS
+`/odom`、`/imu/data`、`/battery` 或完整上车任务。下一步仍需多帧同源
+`T=1001`、operator report、自动停车/急停演练、ROS topic 边界材料，以及
+LiDAR 真实 `/scan`、`/lidar/raw_packet` 和 TF smoke。
+
 ### 2026-06-03 11-12｜O1 8787 T130 feedback endpoint｜API contract ready，真实 T1001/ACK/HIL 仍未证明
 
 本轮 Micro sprint 基于 `sprints/2026.06.03_11-12_o1-8787-t130-feedback-endpoint/tech-done.md` 和 `docs/interfaces/o1_upper_robot_api_base_feedback.md` 收口。用户价值是把 O1 底盘反馈采集从离线 probe 推进到 8787 统一上位机 API 的显式非运动入口：operator 或 PC/后续工具可调用 `POST /api/base/feedback-request` 请求一次 vendor `{"T":130}`，再短窗口读取 newline-delimited JSON，统计是否观察到 `T=1001`，而不是让 `GET status` 暗中写串口。

@@ -62,3 +62,33 @@
 - `hil_pass=false`
 
 `feedback_ack.t1001_observed=true` 只表示本次短窗口中观察到 `T=1001` JSON 行。它不是 HIL pass，不能替代真实串口日志、ROS `/odom`、`/imu/data`、`/battery`、operator report 或完整上车验收。
+
+## 2026-06-03 13-14 远端部署验证
+
+本轮已把当前 `onboard/scripts/upper_robot_api.py` 通过 `scp` 部署到远端
+`/root/rober/onboard/scripts/upper_robot_api.py`，并重启
+`trashbot-upper-robot-api.service`。验证只调用非运动 endpoint：
+
+```bash
+POST http://127.0.0.1:8787/api/base/feedback-request
+```
+
+真实返回关键字段：
+
+- HTTP `200`
+- `serial_open.ok=true`
+- `serial_write.command={"T":130}`
+- `serial_write.bytes_written=10`
+- `read_line_count=2`
+- `parsed_json_count=2`
+- `observed_feedback_types=[130,1001]`
+- `t1001_feedback_status=observed`
+- `safe_to_control=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `hil_pass=false`
+
+本次验证没有调用 `/api/base/manual`，没有发送 `T=1`、`T=13`、`T=131`
+或 ROS `/cmd_vel`。一次 `T=1001` observed 只能证明 8787 feedback endpoint
+已部署并能采到一帧真实反馈材料；仍不是 HIL pass，不能替代多帧同源反馈、
+ROS `/odom`、`/imu/data`、`/battery`、自动停车/急停演练和 operator HIL report。

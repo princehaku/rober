@@ -196,7 +196,7 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 - CEO 现场观察到 Orange Pi `/dev/ttyS5 @115200` 上的 `T=1,L=0.08,R=0.08` 可让 WAVE ROVER 底盘响应。
 - 现场随后发送 `T=1,L=0,R=0` 停车命令。
 - `/dev/ttyACM0` 仍按前序证据归类为 STC/LiDAR 风险口，不作为本轮底盘控制口。
-- `/dev/ttyS5 @115200` 上 `T=130` 仍未读到 `T=1001`，反馈/ACK 未闭环。
+- `/dev/ttyS5 @115200` 后续已通过 8787 非运动 feedback endpoint 读到一次 `T=1001`；本节原始现场点动当时仍未完成反馈/ACK 闭环，最新部署验证见下方 `2026-06-03 13-14` 段落。
 
 采用的 vendor 证据：
 
@@ -212,7 +212,7 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 | `/dev/ttyS5 @115200` | 现场可写控制口，`T=1` 低速点动有响应 | HIL pass、闭环安全控制、ROS2 `/cmd_vel` 已接入 |
 | `T=1,L=0.08,R=0.08` | CEO 现场观察到底盘响应 | 轮向/速度标定已完成、可量产默认速度 |
 | `T=1,L=0,R=0` | 现场已执行停车命令 | 急停链路已产品化、自动停车逻辑已验证 |
-| `T=130 -> T=1001` | 仍未观察到 `T=1001` | `/odom`、`/imu/data`、`/battery` 实测反馈已可用 |
+| `T=130 -> T=1001` | 2026-06-03 13-14 已通过远端 8787 非运动 endpoint 观察到一次 `T=1001` | HIL pass、闭环安全控制、ROS `/odom`、`/imu/data`、`/battery` 实测反馈已可用 |
 
 下一步短时点动和 ACK/急停门槛：
 
@@ -239,6 +239,40 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 - 该 endpoint 不发送 `T=1`、`T=13`、`T=131`、`cmd_vel` 或 `/api/base/manual`，并在响应 `blocked_commands_not_sent` 中固定列出这些未发送命令。
 - 响应固定 `safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`delivery_success=false`、`hil_pass=false`。
 - `feedback_ack.t1001_observed=true` 只表示本次短窗口中解析到 `T=1001` JSON 行；仍不能直接写成 HIL pass、闭环安全控制或真实 `/odom`、`/imu/data`、`/battery` 已接入。
+
+## 2026-06-03 13-14 远端 8787 feedback endpoint 部署验证
+
+本轮只做远端脚本部署和非运动 feedback request 验证。已将本地
+`onboard/scripts/upper_robot_api.py` 通过 `scp` 复制到远端
+`/root/rober/onboard/scripts/upper_robot_api.py`，随后重启
+`trashbot-upper-robot-api.service`，`systemctl is-active` 返回 `active`。
+
+非运动验证命令为 `POST /api/base/feedback-request`，请求体只包含
+`read_window_s=3` 和 `read_timeout_s=0.2`。真实返回关键字段：
+
+- HTTP `200`
+- `port=/dev/ttyS5`
+- `baudrate=115200`
+- `serial_open.ok=true`
+- `serial_write.command={"T":130}`
+- `serial_write.bytes_written=10`
+- `serial_read.ok=true`
+- `read_line_count=2`
+- `parsed_json_count=2`
+- `invalid_json_count=0`
+- `observed_feedback_types=[130,1001]`
+- `t1001_feedback_status=observed`
+- `safe_to_control=false`
+- `sends_motion_commands=false`
+- `robot_control_executed=false`
+- `delivery_success=false`
+- `hil_pass=false`
+
+本轮没有调用 `/api/base/manual`，没有发送 `T=1`、`T=13`、`T=131`
+或 ROS `/cmd_vel`。因此该证据只把 O1 从“远端 endpoint 405 / 未部署”
+推进到“远端 endpoint 已部署且一次 `T=130 -> T=1001` feedback observed”。
+它仍不能证明 HIL pass、运动控制安全、真实 `/odom`、`/imu/data`、
+`/battery`、自动停车/急停演练或完整上车任务闭环。
 
 ## 2026-06-03 O1 safe pulse post-status acceptance
 
