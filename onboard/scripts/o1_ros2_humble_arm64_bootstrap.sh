@@ -8,6 +8,7 @@ set -Eeuo pipefail
 REPO_ROOT="/root/rober"
 ONBOARD_ROOT="/root/rober/onboard"
 ROS_APT_REPO="${ROS_APT_REPO:-http://packages.ros.org/ros2/ubuntu}"
+UBUNTU_APT_MIRROR="${UBUNTU_APT_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports}"
 SKIP_APT_INSTALL=0
 SKIP_COLCON=0
 
@@ -19,6 +20,7 @@ Options:
   --repo-root PATH       rober repo root, default /root/rober
   --onboard-root PATH    onboard workspace path, default /root/rober/onboard
   --ros-apt-repo URL     ROS2 apt repo URL, default http://packages.ros.org/ros2/ubuntu
+  --ubuntu-apt-mirror URL Ubuntu ports mirror, default https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
   --skip-apt-install     do not install ROS2 packages; only validate and build
   --skip-colcon          install/validate runtime but do not build onboard
   -h, --help             show this help
@@ -37,6 +39,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --ros-apt-repo)
       ROS_APT_REPO="$2"
+      shift 2
+      ;;
+    --ubuntu-apt-mirror)
+      UBUNTU_APT_MIRROR="$2"
       shift 2
       ;;
     --skip-apt-install)
@@ -89,6 +95,7 @@ check_platform() {
 install_ros2_runtime() {
   # ROS2 apt 源只用于 Humble runtime；脚本不拉 Docker 镜像，避免 arm64/amd64 漂移。
   export DEBIAN_FRONTEND=noninteractive
+  configure_ubuntu_apt_mirror
   apt-get update
   apt-get install -y curl gnupg lsb-release locales software-properties-common
   locale-gen en_US en_US.UTF-8 || true
@@ -111,6 +118,29 @@ install_ros2_runtime() {
     python3-rosdep \
     python3-serial \
     python3-pip
+}
+
+configure_ubuntu_apt_mirror() {
+  # 远端曾启用 armhf foreign arch，坏镜像会额外拉 armhf 索引并阻塞本轮 arm64 ROS2 bootstrap。
+  # 这里仅把 Ubuntu ports 源限定为 arm64，不移除 foreign arch，降低对既有系统状态的影响。
+  if [[ -z "$UBUNTU_APT_MIRROR" ]]; then
+    log "ubuntu apt mirror rewrite disabled"
+    return
+  fi
+  . /etc/os-release
+  local sources="/etc/apt/sources.list"
+  local backup="/etc/apt/sources.list.o1-bootstrap.bak"
+  if [[ ! -f "$backup" ]]; then
+    cp "$sources" "$backup"
+    log "backed up $sources to $backup"
+  fi
+  cat >"$sources" <<EOF
+deb [arch=arm64] ${UBUNTU_APT_MIRROR} ${UBUNTU_CODENAME} main restricted universe multiverse
+deb [arch=arm64] ${UBUNTU_APT_MIRROR} ${UBUNTU_CODENAME}-security main restricted universe multiverse
+deb [arch=arm64] ${UBUNTU_APT_MIRROR} ${UBUNTU_CODENAME}-updates main restricted universe multiverse
+deb [arch=arm64] ${UBUNTU_APT_MIRROR} ${UBUNTU_CODENAME}-backports main restricted universe multiverse
+EOF
+  log "configured Ubuntu apt mirror=$UBUNTU_APT_MIRROR arch=arm64"
 }
 
 validate_source_tree() {
