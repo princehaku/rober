@@ -5410,6 +5410,19 @@ Task B Robot 只补 compatibility fence 和 `docs/interfaces/ros_contracts.md`�
 
 ## 录入规则与边界
 
+### 2026-06-03 21-22｜O1 LiDAR runtime bootstrap｜上位机 ROS2 blocker 精准分类
+
+本轮 hourly OKR iteration 继续优先 O1，避免重复 artifact/readback-only 工作。Hardware owner 增强 `o1_upper_computer_readiness_probe.py`：新增 `lidar_ros2_bootstrap` 与 `ros2_runtime_remediation_plan`，把 LiDAR ROS2 `/scan` 前置 blocker 拆成 `runtime_missing`、`repo_missing`、`install_missing`、`driver_missing`、`lidar_device_missing`、`docker_arm64_unavailable`、`topics_not_running` 和 `ready_for_scan_bootstrap`。新增字段固定 fail-closed，不打开串口、不启动 driver、不发送 `A5 60`、不调用 `/api/base/manual`、不发送 WAVE ROVER `T=1/T=13/T=130/T=131`、不发布 `/cmd_vel`。
+
+远端只读 SSH probe 到 `root@192.168.1.11:37878` 成功，host 为 `op-z3-b6.home aarch64`。输出显示 boundary 全部 fail-closed，当前 `lidar_ros2_bootstrap.status=runtime_missing`，blockers 为 `runtime_missing/install_missing/driver_missing`，`ros2_runtime_remediation_plan.next_action=install_or_provide_ros2_humble_runtime`。这把 `/scan` 下一步明确为补 aarch64 ROS2 Humble runtime 或 arm64 Humble 镜像，并重建当前 `/root/rober/onboard/install`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 95.5%，只提升 blocker 分类质量 | 新 probe 和测试能区分 ROS2 runtime/repo/install/driver/device/docker/topic blocker，远端只读验证确认当前主 blocker 仍是 ROS2 Humble runtime 缺失。没有启动 ROS2 driver，没有真实 `/scan`、`/lidar/raw_packet` topic、TF、SLAM/Nav2、HIL、ACK、`safe_to_control=true` 或 delivery success。 |
+| Objective 7：PC 端运营调试平台 | 不调整 | 本轮不改 PC UI，只让后续 O7/operator 可消费更清晰的 O1 runtime blocker 分类。 |
+
+本轮验证：脚本级 readiness unittest 6 tests OK；原硬件包 readiness unittest 9 tests OK；`py_compile` 通过；本地 `--once-json` 输出 `boundary.safe_to_control=false` 和 `ros2_runtime_remediation_plan.next_action=install_or_provide_ros2_humble_runtime`；远端只读 SSH probe 成功并保持 fail-closed。
+
 ### 2026-06-03 06-07｜O1 safe pulse readiness｜远端 8787 只读确认
 
 本轮 hourly OKR iteration 继续优先 O1。Hardware owner 只读确认远端 `ssh root@192.168.1.11 -p 37878` 上 `trashbot-upper-robot-api.service` 已 `enabled/active/running`，8787 监听中，进程参数为 `--base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12`。`GET /api/status` 返回 camera ready、radar `/dev/ttyACM0`、base `/dev/ttyS5 @115200`、`write_control_available=true`、`t1001_observed=false`、`robot_ack_connected=false`。本地 `onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py` 对远端 8787 运行 `--dry-run --once-json --output /tmp/rober_o1_artifacts/o1_safe_pulse_dry_run_2026-06-03T0511.json`，artifact 固定 `manual_request=null`、`stop_request=null`、`sends_commands=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`safe_to_control=false`，并列出 `T=1/T=13/T=130/T=131/cmd_vel` 均未发送。

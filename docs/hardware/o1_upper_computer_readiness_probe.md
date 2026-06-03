@@ -93,6 +93,17 @@ ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json' < onboard/scripts/o1_u
 - `lidar_runtime_readiness.status` 只根据 ROS2 Humble setup、pyserial、repo/workspace 和 LiDAR 串口候选判断是否允许人工进入 no-motion LiDAR smoke
 - `lidar_runtime_readiness.blockers[]` 给出机器可读 blocker code，例如 `ros2_humble_setup_missing`、`pyserial_missing`、`workspace_not_found`、`lidar_serial_candidate_missing`
 - `lidar_runtime_readiness.commands_if_ready[]` 只包含 ROS2 LiDAR driver 与 `/scan`、`/lidar/raw_packet` 只读观察命令；它们不发送 WAVE ROVER 底盘运动命令，也不写 `/cmd_vel`
+- `lidar_ros2_bootstrap.status` 明确给出 LiDAR ROS2 runtime/bootstrap 的下一步分类：
+  - `runtime_missing`：`/opt/ros/humble/setup.bash` 缺失，或 source 后 `ros2` CLI 不可用。
+  - `repo_missing`：未找到 rober checkout 或 `onboard/`。
+  - `install_missing`：repo 存在但 `onboard/install/setup.bash` 缺失。
+  - `driver_missing`：repo/install 中缺 `ros2_trashbot_hardware/lidar_driver.py` 或 `setup.py` 的 `lidar_driver` console script 入口迹象。
+  - `lidar_device_missing`：只读枚举中没有 `/dev/lidar`、STC by-id 或 `ttyACM` 候选。
+  - `ready_for_scan_bootstrap`：上述前置条件满足，可进入只读 `/scan` topic proof，或由现场人员手动启动 LiDAR driver。
+- `lidar_ros2_bootstrap.blocker_codes[]` 保留所有命中的 blocker，`status` 取最高优先级 blocker，避免只看到第一个问题。
+- `lidar_ros2_bootstrap.remediation_plan[]` 给出对应补救动作；这些动作是 bootstrap 指引，不代表 probe 已经执行。
+- `lidar_ros2_bootstrap.commands_if_ready[]` 只在 `status=ready_for_scan_bootstrap` 时输出，允许 `source`、`ros2 topic echo/hz` 和人工启动 `ros2_trashbot_hardware lidar_driver`；不得包含 `/api/base/manual`、`/cmd_vel` 或 WAVE ROVER `T=1/T=13/T=130/T=131`。
+- `lidar_ros2_bootstrap.safe_to_control=false`、`sends_commands=false`、`sends_motion_commands=false`、`sends_wave_rover_t_commands=false`、`calls_base_manual=false`、`publishes_cmd_vel=false`、`opens_serial_devices=false`、`starts_ros2_driver=false`、`hil_pass=false`、`scan_proven=false` 固定 fail-closed。
 - `wave_rover_readiness.status=not_ready_for_control`
 - `next_safe_commands[]` 只包含编译、单测和只读 probe 命令
 
@@ -206,3 +217,21 @@ ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 'python3 -s 
 - `T=13` 在当前底盘固件上的真实行为未验证。
 - LiDAR 真实 USB path、`150000` 目标硬件稳定性、ROS2 `/scan`、TF/Nav2/SLAM 消费链路仍未验证。
 - 因为没有执行任何控制命令，本轮不能写成 HIL pass，也不能写成真实送达、真实底盘控制或真实 LiDAR ready。
+
+## 2026-06-03 21-22 更新
+
+本轮只增强 `o1_upper_computer_readiness_probe.py` 的 LiDAR ROS2 runtime/bootstrap
+分类，不执行远端 artifact readback，也不启动 ROS2 driver。新增
+`lidar_ros2_bootstrap` 字段后，operator 可以直接区分 runtime、repo、install、driver
+和 LiDAR 设备候选缺口；只有全部满足时才输出 `ready_for_scan_bootstrap` 的只读
+topic proof / 人工启动 driver 命令。
+
+本轮采用的 vendor 来源仍是 `docs/vendor/VENDOR_INDEX.md`、
+`docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp`、
+`docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml` 和
+`docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules`：ROS2/STC LiDAR 参考
+使用 `150000` baud、`A5 60` 启动、`0xAA 0x55` 包同步头、`/dev/lidar` udev
+symlink、`/scan` topic。WAVE ROVER 底盘命令来源仍是
+`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py` 与
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`，本 probe 继续
+不发送 `T=1/T=13/T=130/T=131`。

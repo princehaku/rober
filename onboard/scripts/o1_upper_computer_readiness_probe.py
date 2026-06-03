@@ -9,6 +9,7 @@ import importlib.util
 import json
 import os
 import platform
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +18,10 @@ from typing import Callable, Iterable
 
 # 版本号不从 git 读取，因为远端 stdin 运行时可能没有仓库。
 SCHEMA_VERSION = "trashbot.o1.upper_computer_readiness.v1"
+ROS_HUMBLE_SETUP = "/opt/ros/humble/setup.bash"
+ROBER_REPO_ROOT = "/root/rober"
+ROBER_ONBOARD_ROOT = "/root/rober/onboard"
+ROBER_INSTALL_SETUP = "/root/rober/onboard/install/setup.bash"
 # 串口候选只允许来自这些 glob，避免把网卡、蓝牙或其他敏感设备暴露进 artifact。
 SERIAL_CANDIDATE_PATTERNS = (
     "/dev/ttyUSB*",
@@ -47,6 +52,33 @@ VENDOR_SOURCES = (
 )
 
 
+def _safe_run(command: str, timeout_s: float = 5.0) -> dict:
+    """只运行低风险只读命令；超时和失败都结构化进入 readiness。"""
+    try:
+        completed = subprocess.run(
+            ["bash", "-lc", command],
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=timeout_s,
+        )
+        return {
+            "command": command,
+            "returncode": completed.returncode,
+            "ok": completed.returncode == 0,
+            # stdout/stderr 截断，避免把远端环境噪声或路径细节无限写入 artifact。
+            "stdout_preview": completed.stdout[:1600],
+            "stderr_preview": completed.stderr[:1600],
+        }
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "command": command,
+            "returncode": None,
+            "ok": False,
+            "error": {"type": "TimeoutExpired", "message": str(exc)[:300]},
+        }
+
+
 def summarize_serial_candidates(
     globber: Callable[[str], Iterable[str]] = glob.glob,
     patterns: Iterable[str] = SERIAL_CANDIDATE_PATTERNS,
@@ -66,7 +98,9 @@ def summarize_serial_candidates(
 
 def _find_repo_root(start: Path) -> Path | None:
     """从脚本位置向上查找仓库根，stdin 远端执行时允许返回 None。"""
-    for candidate in [start, *start.parents]:
+    # /root/rober 是当前上位机约定路径；stdin 从 /root 执行时父级搜索看不到它。
+    explicit_candidates = [Path(ROBER_REPO_ROOT), Path("/ws"), Path.cwd()]
+    for candidate in [start, *start.parents, *explicit_candidates]:
         # 用 AGENTS.md + onboard 双条件识别 rober 根，避免在 /root stdin 场景误判。
         if (candidate / "AGENTS.md").is_file() and (candidate / "onboard").is_dir():
             return candidate
@@ -106,6 +140,265 @@ def _lidar_candidate_paths(serial_summary: dict) -> list[str]:
         if any(marker in path for marker in LIDAR_CANDIDATE_MARKERS):
             candidates.append(path)
     return sorted(set(candidates))
+
+
+def _docker_arm64_runtime_status(command_runner: Callable[[str, float], dict]) -> dict:
+    """检查本机是否已有可用 arm64 ROS2 容器后备，不拉镜像、不联网。"""
+    docker_version = command_runner("command -v docker >/dev/null && docker version --format '{{.Server.Arch}}'", 4.0)
+    images: list[dict] = []
+    # 只 inspect 本地镜像，避免 readiness probe 变成网络下载或构建动作。
+    for image in ("ros-rbs-humble:dev", "osrf/ros:humble-desktop"):
+        result = command_runner(f"docker image inspect --format '{{{{.Architecture}}}}' {image}", 4.0)
+        architecture = result.get("stdout_preview", "").strip()
+        images.append(
+            {
+                "image": image,
+                "present": bool(result.get("ok")),
+                "architecture": architecture if result.get("ok") else "",
+                "usable_arm64": bool(result.get("ok")) and architecture in {"arm64", "aarch64"},
+            }
+        )
+    return {
+        "docker_available": bool(docker_version.get("ok")),
+        "server_arch": docker_version.get("stdout_preview", "").strip() if docker_version.get("ok") else "",
+        "checks": {
+            "docker_version": docker_version,
+            # 镜像 inspect 结果保留摘要，方便现场判断是缺镜像还是架构不对。
+            "images": images,
+        },
+        "local_arm64_ros_image_available": any(item["usable_arm64"] for item in images),
+    }
+
+
+def _ros2_topic_status(command_runner: Callable[[str, float], dict], runtime_ready: bool) -> dict:
+    """runtime 就绪后才列 ROS2 topic；该动作只读，不 launch、不发布。"""
+    command = f"source {ROS_HUMBLE_SETUP} && source {ROBER_INSTALL_SETUP} && timeout 5 ros2 topic list"
+    if not runtime_ready:
+        return {"attempted": False, "reason": "runtime_or_install_missing", "command": command, "topics": []}
+    result = command_runner(command, 7.0)
+    topics = [line.strip() for line in result.get("stdout_preview", "").splitlines() if line.strip().startswith("/")]
+    return {"attempted": True, "result": result, "command": command, "topics": topics}
+
+
+def _ros2_command_status(command_runner: Callable[[str, float], dict], humble_setup_exists: bool) -> dict:
+    """只检查 ros2 CLI 是否可解析，不启动节点也不访问 ROS graph。"""
+    command = f"source {ROS_HUMBLE_SETUP} && command -v ros2"
+    if not humble_setup_exists:
+        # setup 文件缺失时不 source，避免 stderr 噪声掩盖真正 blocker。
+        return {"attempted": False, "reason": "ros_humble_setup_missing", "command": command, "available": False}
+    result = command_runner(command, 4.0)
+    return {"attempted": True, "result": result, "command": command, "available": bool(result.get("ok"))}
+
+
+def _driver_evidence(onboard_path: Path, install_setup_exists: bool) -> dict:
+    """检查 repo/install 中 LiDAR driver 入口迹象；只读文件元数据和 setup.py 文本。"""
+    package_root = onboard_path / "src" / "ros2_trashbot_hardware"
+    driver_path = package_root / "ros2_trashbot_hardware" / "lidar_driver.py"
+    setup_path = package_root / "setup.py"
+    setup_text = ""
+    try:
+        # 只读取 setup.py 是为了确认 console_scripts 入口，避免 install 缺失时误报 ready。
+        setup_text = setup_path.read_text(encoding="utf-8") if setup_path.is_file() else ""
+    except UnicodeDecodeError:
+        setup_text = ""
+    source_entrypoint_present = "lidar_driver = ros2_trashbot_hardware.lidar_driver:main" in setup_text
+
+    installed_candidates = [
+        onboard_path / "install" / "ros2_trashbot_hardware" / "lib" / "ros2_trashbot_hardware" / "lidar_driver",
+        onboard_path / "install" / "ros2_trashbot_hardware" / "lib" / "python3.10" / "site-packages"
+        / "ros2_trashbot_hardware"
+        / "lidar_driver.py",
+    ]
+    install_entrypoint_present = install_setup_exists and any(path.exists() for path in installed_candidates)
+    return {
+        "source_driver": {"path": str(driver_path), "exists": driver_path.is_file()},
+        "source_setup_entrypoint": {"path": str(setup_path), "present": source_entrypoint_present},
+        "install_entrypoint": {
+            "present": install_entrypoint_present,
+            "candidate_paths": [str(path) for path in installed_candidates],
+        },
+        # source 入口足够进入 build/install 阶段；真实运行仍要求 install setup 存在。
+        "repo_driver_ready": driver_path.is_file() and source_entrypoint_present,
+        "install_driver_ready": install_entrypoint_present,
+    }
+
+
+def build_lidar_ros2_bootstrap_readiness(
+    *,
+    repo_root: Path | None,
+    onboard_path: Path,
+    humble_setup_exists: bool,
+    install_setup_exists: bool,
+    serial_summary: dict,
+    command_runner: Callable[[str, float], dict] = _safe_run,
+) -> dict:
+    """输出 LiDAR ROS2 bootstrap 六类状态，供现场按 blocker 精准补齐。"""
+    repo_present = repo_root is not None and onboard_path.is_dir()
+    lidar_candidates = _lidar_candidate_paths(serial_summary)
+    ros2_cli = _ros2_command_status(command_runner, humble_setup_exists)
+    driver_evidence = _driver_evidence(onboard_path, install_setup_exists) if repo_present else {
+        "source_driver": {"path": str(onboard_path / "src/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py"), "exists": False},
+        "source_setup_entrypoint": {"path": str(onboard_path / "src/ros2_trashbot_hardware/setup.py"), "present": False},
+        "install_entrypoint": {"present": False, "candidate_paths": []},
+        "repo_driver_ready": False,
+        "install_driver_ready": False,
+    }
+
+    blocker_codes: list[str] = []
+    if not humble_setup_exists or not ros2_cli["available"]:
+        blocker_codes.append("runtime_missing")
+    if not repo_present:
+        blocker_codes.append("repo_missing")
+    if repo_present and not install_setup_exists:
+        blocker_codes.append("install_missing")
+    if repo_present and not driver_evidence["repo_driver_ready"]:
+        blocker_codes.append("driver_missing")
+    if repo_present and install_setup_exists and not driver_evidence["install_driver_ready"]:
+        blocker_codes.append("driver_missing")
+    if not lidar_candidates:
+        blocker_codes.append("lidar_device_missing")
+
+    status_priority = (
+        "runtime_missing",
+        "repo_missing",
+        "install_missing",
+        "driver_missing",
+        "lidar_device_missing",
+    )
+    status = next((code for code in status_priority if code in blocker_codes), "ready_for_scan_bootstrap")
+    candidate_port = lidar_candidates[0] if lidar_candidates else "<lidar_serial_port>"
+    workspace = str(onboard_path) if repo_present else ROBER_ONBOARD_ROOT
+    commands_if_ready = [
+        f"source {ROS_HUMBLE_SETUP}",
+        f"cd {workspace} && source install/setup.bash",
+        "timeout 10 ros2 topic echo --once /scan",
+        "timeout 10 ros2 topic hz /scan",
+        "timeout 10 ros2 topic echo --once /lidar/raw_packet",
+        (
+            "ros2 run ros2_trashbot_hardware lidar_driver --ros-args "
+            f"-p serial_port:={candidate_port} -p serial_baudrate:=150000 "
+            "-p frame_id:=laser_frame -p publish_raw_packets:=true"
+        ),
+    ]
+    remediation_plan = {
+        "runtime_missing": f"Install/source ROS2 Humble so {ROS_HUMBLE_SETUP} and ros2 CLI are both available.",
+        "repo_missing": f"Sync the rober checkout with onboard/ to {ROBER_REPO_ROOT} or run from a valid checkout.",
+        "install_missing": f"Build onboard workspace: cd {ROBER_ONBOARD_ROOT} && source {ROS_HUMBLE_SETUP} && colcon build --symlink-install.",
+        "driver_missing": "Restore ros2_trashbot_hardware/lidar_driver.py and the setup.py lidar_driver console_scripts entry, then rebuild install.",
+        "lidar_device_missing": "Attach/install STC LiDAR udev rule so /dev/lidar, STC by-id, or ttyACM candidate is visible.",
+        "ready_for_scan_bootstrap": "Run only read-only topic proof first; start driver manually only if topics are absent and operator intends LiDAR-only bootstrap.",
+    }
+    return {
+        "status": status,
+        "blocker_codes": blocker_codes,
+        "remediation_plan": [remediation_plan[code] for code in blocker_codes] or [remediation_plan["ready_for_scan_bootstrap"]],
+        "commands_if_ready": commands_if_ready if status == "ready_for_scan_bootstrap" else [],
+        "candidate_ports": lidar_candidates,
+        "selected_candidate_hint": candidate_port,
+        "ros2_cli": ros2_cli,
+        "driver_evidence": driver_evidence,
+        "vendor_sources": [
+            "docs/vendor/VENDOR_INDEX.md",
+            "docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp",
+            "docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml",
+            "docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules",
+        ],
+        # fail-closed 安全字段是给 UI/API 消费的硬边界，不随 readiness 变成 true。
+        "safe_to_control": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "sends_wave_rover_t_commands": False,
+        "calls_base_manual": False,
+        "publishes_cmd_vel": False,
+        "opens_serial_devices": False,
+        "starts_ros2_driver": False,
+        "hil_pass": False,
+        "scan_proven": False,
+        "tf_proven": False,
+        "slam_nav2_proven": False,
+    }
+
+
+def build_ros2_runtime_remediation_plan(
+    *,
+    repo_root: Path | None,
+    onboard_path: Path,
+    humble_setup_exists: bool,
+    install_setup_exists: bool,
+    lidar_candidates: list[str],
+    command_runner: Callable[[str, float], dict] = _safe_run,
+) -> dict:
+    """把 `/scan` blocker 分类成下一条可执行动作，而不是只回放旧 artifact。"""
+    repo_present = repo_root is not None and onboard_path.exists()
+    docker_status = _docker_arm64_runtime_status(command_runner)
+    runtime_ready = bool(humble_setup_exists and install_setup_exists)
+    topic_status = _ros2_topic_status(command_runner, runtime_ready)
+    topics = set(topic_status.get("topics", []))
+
+    classifications: list[dict[str, str]] = []
+    if not repo_present:
+        classifications.append({"code": "repo_missing", "detail": f"{ROBER_ONBOARD_ROOT} or rober checkout not detected"})
+    if not humble_setup_exists:
+        classifications.append({"code": "runtime_missing", "detail": f"{ROS_HUMBLE_SETUP} not found"})
+    if repo_present and not install_setup_exists:
+        classifications.append({"code": "install_missing", "detail": f"{ROBER_INSTALL_SETUP} not found"})
+    if (not humble_setup_exists or not install_setup_exists) and not docker_status["local_arm64_ros_image_available"]:
+        classifications.append(
+            {
+                "code": "docker_arm64_unavailable",
+                "detail": "no local arm64 ROS2/Humble image was confirmed by docker image inspect",
+            }
+        )
+    if runtime_ready and ("/scan" not in topics or "/lidar/raw_packet" not in topics):
+        classifications.append(
+            {
+                "code": "topics_not_running",
+                "detail": "ROS2 runtime exists but /scan and/or /lidar/raw_packet are not currently listed",
+            }
+        )
+    if not lidar_candidates:
+        classifications.append({"code": "lidar_device_candidate_missing", "detail": "no read-only LiDAR serial candidate listed"})
+
+    if any(item["code"] == "repo_missing" for item in classifications):
+        next_action = "sync_rober_repo_to_upper_computer"
+        next_command = "rsync/scp the rober checkout to /root/rober, then rerun this readiness probe"
+    elif any(item["code"] == "runtime_missing" for item in classifications):
+        next_action = "install_or_provide_ros2_humble_runtime"
+        next_command = "install ROS2 Humble on the aarch64 host or pre-load a usable arm64 Humble Docker image"
+    elif any(item["code"] == "install_missing" for item in classifications):
+        next_action = "build_current_onboard_workspace"
+        next_command = f"cd {ROBER_ONBOARD_ROOT} && source {ROS_HUMBLE_SETUP} && colcon build --symlink-install"
+    elif any(item["code"] == "docker_arm64_unavailable" for item in classifications):
+        next_action = "prepare_arm64_docker_runtime"
+        next_command = "load/build ros-rbs-humble:dev for arm64, then rerun readiness before /scan proof"
+    elif any(item["code"] == "topics_not_running" for item in classifications):
+        next_action = "start_lidar_driver_no_motion"
+        port = lidar_candidates[0] if lidar_candidates else "<lidar_serial_port>"
+        next_command = (
+            f"cd {ROBER_ONBOARD_ROOT} && source {ROS_HUMBLE_SETUP} && source install/setup.bash && "
+            "ros2 run ros2_trashbot_hardware lidar_driver --ros-args "
+            f"-p serial_port:={port} -p serial_baudrate:=150000 -p frame_id:=laser_frame -p publish_raw_packets:=true"
+        )
+    else:
+        next_action = "collect_scan_proof_read_only_topics"
+        next_command = (
+            f"cd {ROBER_ONBOARD_ROOT} && source {ROS_HUMBLE_SETUP} && source install/setup.bash && "
+            "timeout 10 ros2 topic echo --once /scan && timeout 10 ros2 topic echo --once /lidar/raw_packet"
+        )
+
+    return {
+        "status": "ready_to_collect_scan_topics" if not classifications else "blocked",
+        "primary_blocker": classifications[0]["code"] if classifications else "",
+        "classifications": classifications,
+        "next_action": next_action,
+        "next_command": next_command,
+        "docker_runtime": docker_status,
+        "ros2_topics": topic_status,
+        # 再次固定安全边界：分类 probe 只读，不启动 driver、不发底盘命令。
+        "probe_sends_base_commands": False,
+        "probe_starts_lidar_driver": False,
+        "probe_publishes_cmd_vel": False,
+    }
 
 
 def build_lidar_runtime_readiness(
@@ -183,6 +476,7 @@ def build_probe_payload(
     now: datetime | None = None,
     cwd: Path | None = None,
     argv: list[str] | None = None,
+    command_runner: Callable[[str, float], dict] = _safe_run,
 ) -> dict:
     """构造一次性 JSON 快照；函数保持可注入，方便单元测试覆盖 contract。"""
     current_time = now or datetime.now(timezone.utc)
@@ -193,7 +487,8 @@ def build_probe_payload(
     onboard_path = repo_root / "onboard" if repo_root else current_cwd / "onboard"
     serial_summary = summarize_serial_candidates(globber=globber)
     pyserial_available = _is_pyserial_available()
-    humble_setup_hint = _path_hint(Path("/opt/ros/humble/setup.bash"))
+    humble_setup_hint = _path_hint(Path(ROS_HUMBLE_SETUP))
+    install_setup_hint = _path_hint(Path(ROBER_INSTALL_SETUP))
 
     # WAVE ROVER 控制命令只进入禁止列表，不会被发送到串口或 ROS2。
     blocked_commands = [
@@ -265,6 +560,7 @@ def build_probe_payload(
         # ROS 环境只检查 setup 文件存在性，不 source shell，也不启动节点。
         "ros_env_hints": {
             "humble_setup_bash": humble_setup_hint,
+            "rober_install_setup_bash": install_setup_hint,
             "ROS_DISTRO": os.environ.get("ROS_DISTRO", ""),
         },
         # repo_hints 帮助判断远端是否已有代码 checkout；stdin 采集允许 repo_root=None。
@@ -304,6 +600,23 @@ def build_probe_payload(
             humble_setup_exists=humble_setup_hint["exists"],
             repo_root=repo_root,
         ),
+        # 新字段按 runtime/repo/install/driver/device/ready 六类输出，供 20 分钟内本地判断下一步。
+        "lidar_ros2_bootstrap": build_lidar_ros2_bootstrap_readiness(
+            repo_root=repo_root,
+            onboard_path=onboard_path,
+            humble_setup_exists=humble_setup_hint["exists"],
+            install_setup_exists=install_setup_hint["exists"],
+            serial_summary=serial_summary,
+            command_runner=command_runner,
+        ),
+        "ros2_runtime_remediation_plan": build_ros2_runtime_remediation_plan(
+            repo_root=repo_root,
+            onboard_path=onboard_path,
+            humble_setup_exists=humble_setup_hint["exists"],
+            install_setup_exists=install_setup_hint["exists"],
+            lidar_candidates=_lidar_candidate_paths(serial_summary),
+            command_runner=command_runner,
+        ),
         # WAVE ROVER readiness 刻意保持 not_ready_for_control，避免被 launch 默认误用。
         "wave_rover_readiness": {
             "status": "not_ready_for_control",
@@ -337,7 +650,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    # payload 生成阶段不执行任何外部命令，避免 SSH 上位机采集时产生副作用。
+    # payload 只允许执行本地只读命令；不启动 ROS2 driver、不打开串口、不发布控制 topic。
     payload = build_probe_payload(argv=sys.argv[1:] if argv is None else argv)
     text = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
 

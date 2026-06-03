@@ -94,6 +94,15 @@ base 镜像超时。
 - Current evidence level: `source=software_reference + user_manual_serial_observed_start + upper_api_observed_lidar_port + raw_serial_packet_observed`.
 - Hardware status: real raw bytes and `0xaa55` packet sync headers are observed on `/dev/ttyACM0 @150000`; real `/scan` continuity, ROS2 runtime readiness, TF measurement, Nav2/SLAM consumption, stop command physical effect, and `150000` long-run stability are `not_proven`.
 - Mock status: `lidar_mock_scan` and `lidar_mock_packets` can prove software conversion and no-serial safety only; they are not HIL and cannot be marked `source=hil_pass`.
+- Runtime/bootstrap status: `onboard/scripts/o1_upper_computer_readiness_probe.py`
+  现在输出 `lidar_ros2_bootstrap.status`，用于区分 `runtime_missing`、
+  `repo_missing`、`install_missing`、`driver_missing`、`lidar_device_missing`
+  和 `ready_for_scan_bootstrap`。该字段只证明前置条件分类更细，不证明真实
+  `/scan`、`/lidar/raw_packet`、TF、SLAM/Nav2、HIL 或 `safe_to_control=true`。
+- `ready_for_scan_bootstrap` 只表示可以进入只读 topic proof 或由现场人员手动启动
+  LiDAR driver；probe 本身仍固定 `opens_serial_devices=false`、`starts_ros2_driver=false`、
+  `publishes_cmd_vel=false`、`calls_base_manual=false`，且不发送 WAVE ROVER
+  `T=1/T=13/T=130/T=131`。
 
 ## Verification Commands
 
