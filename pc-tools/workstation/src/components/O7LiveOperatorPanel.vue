@@ -165,6 +165,26 @@ const baseBoundaryText = computed(() => {
   ].join(" · ");
 });
 
+const scanProofLatest = computed(() => {
+  // scan proof 来自 8787 统一 status 的 artifact readback；PC 不执行 collector 或串口读取。
+  return props.liveOperatorPanel?.lidar_radar.scan_proof_latest ?? null;
+});
+
+const scanProofSummary = computed(() => {
+  const proof = scanProofLatest.value;
+  if (!proof) {
+    return "scan proof latest 未加载";
+  }
+  const age = proof.age_seconds === null ? "age n/a" : `${proof.age_seconds}s`;
+  return `${proof.artifact_status} · ${proof.freshness_status} · ${age} · ${proof.latest_proof_status}`;
+});
+
+const scanProofTopBlockers = computed(() => {
+  // 只显示前 3 个 blocker，避免现场长 blocker 列表挤压操作区。
+  const blockers = scanProofLatest.value?.blocked_reasons ?? ["radar_scan_proof_latest_not_loaded"];
+  return blockers.slice(0, 3);
+});
+
 watch(
   () => props.liveOperatorPanel?.control.speed.default_value,
   (defaultSpeed) => {
@@ -373,6 +393,22 @@ onBeforeUnmount(() => {
         <span class="route-node dock" />
       </div>
       <p class="muted-copy">当前没有真实 LiDAR `/scan` 证据；这里仅显示路线占位和机器人位置占位。</p>
+      <div class="scan-proof-box" aria-label="LiDAR scan proof 状态">
+        <div class="status-light-row">
+          <span
+            class="status-dot"
+            :class="scanProofLatest?.latest_scan_once_observed ? 'status-dot-green' : 'status-dot-yellow'"
+          />
+          <span>Scan proof</span>
+          <strong>{{ scanProofSummary }}</strong>
+        </div>
+        <div class="endpoint-list compact-endpoints" aria-label="LiDAR scan proof blockers">
+          <code v-for="blocker in scanProofTopBlockers" :key="blocker">{{ blocker }}</code>
+        </div>
+        <p class="base-boundary">
+          只读 artifact 回放；PC 不启动 collector、不发送 A5 60、不执行底盘控制。
+        </p>
+      </div>
     </article>
 
     <article class="console-card control-card" aria-label="操控">
@@ -445,6 +481,11 @@ onBeforeUnmount(() => {
           <span class="status-dot status-dot-red" />
           <span>ACK / T=1001</span>
           <strong>{{ directUpperStatus?.upper_status_summary.t1001_observed ? "observed" : "not observed" }}</strong>
+        </div>
+        <div class="status-light-row">
+          <span class="status-dot status-dot-yellow" />
+          <span>Scan proof</span>
+          <strong>{{ directUpperStatus?.upper_status_summary.radar_scan_proof_latest_status || "not_loaded" }}</strong>
         </div>
       </div>
       <div class="endpoint-list" aria-label="本机 direct upper API 路径">

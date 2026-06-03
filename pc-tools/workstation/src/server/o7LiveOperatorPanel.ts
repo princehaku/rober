@@ -11,6 +11,9 @@ const BLOCKED_REASONS = [
   "robot_ack_not_connected",
 ] as const;
 
+const DEFAULT_SCAN_PROOF_BLOCKERS = ["radar_scan_proof_latest_not_loaded"] as const;
+const LOADED_SCAN_PROOF_NOT_OBSERVED_BLOCKERS = ["radar_scan_proof_blocked_or_not_observed"] as const;
+
 type O7LiveOperatorPanelWithBaseBoundary = O7LiveOperatorPanelResponse & {
   control: O7LiveOperatorPanelResponse["control"] & {
     base_boundary: {
@@ -61,12 +64,58 @@ function numberField(record: Record<string, unknown> | undefined, key: string, f
   return typeof value === "number" ? value : fallback;
 }
 
+function nullableNumberField(record: Record<string, unknown> | undefined, key: string): number | null {
+  const value = record?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function boolField(record: Record<string, unknown> | undefined, key: string, fallback: boolean): boolean {
+  const value = record?.[key];
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function nestedRecord(record: Record<string, unknown> | undefined, key: string): Record<string, unknown> | undefined {
+  const value = record?.[key];
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+}
+
+function stringArrayField(record: Record<string, unknown> | undefined, key: string, fallback: readonly string[]): string[] {
+  const value = record?.[key];
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [...fallback];
+}
+
+function scanProofBlockers(scanProofLatest: Record<string, unknown> | undefined): string[] {
+  const directBlockers = stringArrayField(scanProofLatest, "blockers", []);
+  const blockedReasons = stringArrayField(scanProofLatest, "blocked_reasons", []);
+  const artifact = nestedRecord(scanProofLatest, "artifact");
+  const artifactBlockers = stringArrayField(artifact, "blockers", []);
+  const blockers = [...directBlockers, ...blockedReasons, ...artifactBlockers];
+  if (blockers.length) {
+    return [...new Set(blockers)];
+  }
+
+  const artifactStatus = stringField(artifact, "status", stringField(scanProofLatest, "artifact_status", "not_loaded"));
+  const latestProofStatus = stringField(scanProofLatest, "latest_proof_status", "not_loaded");
+  if (artifactStatus === "loaded" && latestProofStatus === "blocked_or_not_observed") {
+    // artifact 已加载但远端摘要没有 blocker 明细时，不能误报成 proof 未加载。
+    return [...LOADED_SCAN_PROOF_NOT_OBSERVED_BLOCKERS];
+  }
+
+  // 机器可读 blocker 可能随 artifact schema 演进；只有 artifact 缺失/未加载时才显示未加载。
+  return [...DEFAULT_SCAN_PROOF_BLOCKERS];
+}
+
 export async function buildO7LiveOperatorPanel(): Promise<O7LiveOperatorPanelResponse> {
   const upperStatus = await fetchUpperStatus();
   const upperCamera = upperStatus?.camera;
   const upperRadar = upperStatus?.radar;
   const upperBase = upperStatus?.base;
   const observedLidarPort = stringField(upperRadar, "observed_lidar_port", "");
+  const scanProofLatest = nestedRecord(upperRadar, "scan_proof_latest");
+  const scanProofArtifact = nestedRecord(scanProofLatest, "artifact");
+  const scanProofFreshness = nestedRecord(scanProofLatest, "freshness");
+  const scanProofStatus = stringField(scanProofLatest, "latest_proof_status", "not_loaded");
+  const scanProofBlockerList = scanProofBlockers(scanProofLatest);
   const basePort = stringField(upperBase, "port", "/dev/ttyS5");
   const baseBaudrate = numberField(upperBase, "baudrate", 115200);
   // 这个面板只把已观测事实产品化展示，不探测串口、不请求 /offer、不发送任何底盘控制。
@@ -86,16 +135,30 @@ export async function buildO7LiveOperatorPanel(): Promise<O7LiveOperatorPanelRes
       dev_lidar: observedLidarPort || "missing",
       stc_by_id: observedLidarPort === "/dev/ttyACM0" ? "resolved_to_ttyACM0" : "unresolved",
       scan_status: "not_proven",
+      scan_proof_latest: {
+        // 只消费 8787 统一 status 内的 readback 摘要；PC 不执行 collector、不启动 ROS2、不打开串口。
+        endpoint: "/api/radar/scan-proof/latest",
+        artifact_status: stringField(scanProofArtifact, "status", stringField(scanProofLatest, "artifact_status", "not_loaded")),
+        freshness_status: stringField(scanProofFreshness, "status", stringField(scanProofLatest, "freshness_status", "unknown")),
+        age_seconds: nullableNumberField(scanProofFreshness, "age_seconds") ?? nullableNumberField(scanProofLatest, "age_seconds"),
+        latest_proof_status: scanProofStatus,
+        latest_scan_once_observed: boolField(scanProofLatest, "latest_scan_once_observed", false),
+        latest_raw_packet_once_observed: boolField(scanProofLatest, "latest_raw_packet_once_observed", false),
+        blocked_reasons: scanProofBlockerList,
+        readback_sends_commands: false,
+        collector_executed_by_pc: false,
+      },
       pointcloud_fabricated: false,
       source_facts: [
         observedLidarPort
           ? `${observedLidarPort} is reported by upper robot API as the LiDAR serial device`
           : "upper robot API did not report an observed LiDAR serial device",
         `${numberField(upperRadar, "baudrate", 150000)} baud, start ${stringField(upperRadar, "start_command_hex", "a5 60")}, stop ${stringField(upperRadar, "stop_command_hex", "a5 00 a5 65 a5 65")}`,
+        `latest scan proof artifact ${stringField(scanProofArtifact, "status", "not_loaded")} / ${scanProofStatus}`,
         "ROS2 /scan continuity has not been observed",
         "T=1001 WAVE ROVER feedback has not been observed",
       ],
-      blocked_reasons: [...BLOCKED_REASONS],
+      blocked_reasons: [...BLOCKED_REASONS, ...scanProofBlockerList],
     },
     camera: {
       // 兼容既有 live 面板合同；实时 health/devices 由 local camera API 和 8787 camera proxy 拉取。

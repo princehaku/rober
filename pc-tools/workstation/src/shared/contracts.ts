@@ -2118,6 +2118,11 @@ export interface O7DirectUpperApiStatusResponse extends ProofFlags {
   upper_status_summary: {
     camera_status: string;
     radar_scan_status: string;
+    radar_scan_proof_artifact_status: string;
+    radar_scan_proof_freshness_status: string;
+    radar_scan_proof_age_seconds: number | null;
+    radar_scan_proof_latest_status: string;
+    radar_scan_proof_blockers: string[];
     lidar_port: string;
     base_port: string;
     base_baudrate: number | null;
@@ -2187,6 +2192,18 @@ export interface O7LiveOperatorPanelResponse extends ProofFlags {
     dev_lidar: "missing" | "present" | string;
     stc_by_id: "unresolved" | "resolved_to_ttyACM0" | string;
     scan_status: "not_proven";
+    scan_proof_latest: {
+      endpoint: "/api/radar/scan-proof/latest";
+      artifact_status: string;
+      freshness_status: string;
+      age_seconds: number | null;
+      latest_proof_status: string;
+      latest_scan_once_observed: boolean;
+      latest_raw_packet_once_observed: boolean;
+      blocked_reasons: string[];
+      readback_sends_commands: false;
+      collector_executed_by_pc: false;
+    };
     pointcloud_fabricated: false;
     source_facts: string[];
     blocked_reasons: string[];

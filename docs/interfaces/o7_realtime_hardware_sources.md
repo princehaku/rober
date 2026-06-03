@@ -156,3 +156,23 @@ printf '{"T":1,"L":0,"R":0}\n' > /dev/ttyS5
 后续 PC 控制实现必须按这个分层推进：可以把 `/dev/ttyS5` 作为当前控制串口配置，但必须加入短时点动、自动停车、速度限幅、操作日志和急停兜底。下一次真实运动前的最低门槛是：operator 站位确认、车轮离障碍或低风险空间、速度不高于 `0.08` 左右轮点动、单次点动时长受限、自动补发停车、能人工切断电源/急停，并且全程记录命令与停止结果。在 `T=1001` 或等价 ACK 未接入前，只能声明“现场人工可控”，不能声明“闭环安全控制已完成”。
 
 PC workstation 本轮只消费这些事实做显示边界：`control.base_boundary.observed_write_device="/dev/ttyS5"`、`baudrate=115200`、`required_feedback_id="T=1001"`、`t1001_feedback_status="not_observed_after_t130"`、`manual_control_status="fail_closed_display_only"`。PC 首屏不得 POST `/api/base/manual`，不得发送 `/cmd_vel` 或 WAVE ROVER JSON；真实运动控制必须由后续单独控制合同和 Hardware/Robot 安全验收打开。
+
+## 2026-06-03 LiDAR scan proof 可见性补充
+
+PC workstation 现在从 8787 统一上位机状态里消费 `radar.scan_proof_latest`，并在 O7 Live Operator Panel 与 direct upper status 中展示：
+
+- `artifact_status`：最近一次 `trashbot.o1.lidar_scan_proof.v1` artifact 是否可回放。
+- `freshness_status` 与 `age_seconds`：材料新鲜度摘要。
+- `latest_proof_status`：例如 `blocked_or_not_observed`。
+- `latest_scan_once_observed` 与 `latest_raw_packet_once_observed`：是否已有 `/scan` 或 `/lidar/raw_packet` 一次性观测。
+- `blocked_reasons`：优先透传远端 blocker；如果 artifact 已 loaded 但摘要没有 blocker 明细，PC 使用 `radar_scan_proof_blocked_or_not_observed`，避免误报为未加载。
+
+该入口是只读运营可见性：
+
+- PC 不执行 LiDAR proof collector。
+- PC 不启动 ROS2 driver。
+- PC 不打开 `/dev/ttyACM0` 或 `/dev/lidar`。
+- PC 不发送 vendor `A5 60` 启动命令。
+- PC 不发送 `T=1/T=13/T=130/T=131` 或 `/cmd_vel`。
+
+因此它只证明 O1 scan proof 材料能被 PC 消费和解释，不证明真实 `/scan`、`/lidar/raw_packet`、TF、SLAM/Nav2、HIL、ACK、`safe_to_control=true`、真实手控或 delivery success。

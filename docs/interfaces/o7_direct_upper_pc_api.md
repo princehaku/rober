@@ -44,6 +44,11 @@ trashbot.pc_tools_workstation.o7_direct_upper_status.v1
 - `status_request`：`GET /api/status` 的执行、HTTP 状态、失败原因。
 - `upper_status_summary.camera_status`
 - `upper_status_summary.radar_scan_status`
+- `upper_status_summary.radar_scan_proof_artifact_status`
+- `upper_status_summary.radar_scan_proof_freshness_status`
+- `upper_status_summary.radar_scan_proof_age_seconds`
+- `upper_status_summary.radar_scan_proof_latest_status`
+- `upper_status_summary.radar_scan_proof_blockers`
 - `upper_status_summary.lidar_port`
 - `upper_status_summary.base_port`
 - `upper_status_summary.base_baudrate`
@@ -143,6 +148,7 @@ trashbot.pc_tools_workstation.o7_direct_upper_manual.v1
 - 展示 `ROBER_UPPER_API_BASE_URL`。
 - 展示四个本机 API path，方便浏览器/curl 工具消费。
 - 展示 cloud relay 已绕过和 ACK/T=1001 not observed 边界。
+- 展示 8787 `radar.scan_proof_latest` 摘要：artifact status、freshness、age、latest proof status 和 top blockers。
 
 现有方向按钮仍保持锁定，不会因为 direct status ready 自动 POST manual。真实运动必须由 operator 明确调用本机 API，并受 PC clamp 与 8787 guardrail 共同限制。
 
@@ -159,10 +165,21 @@ trashbot.pc_tools_workstation.o7_direct_upper_manual.v1
 
 ## 2026-06-03 现场核对结果
 
-Hardware worker 现场核对到远端 8787 当前状态：
+早些时候 Hardware worker 现场核对到远端 8787 曾处于：
 
 - `GET http://192.168.1.11:8787/health` ready。
 - `GET http://192.168.1.11:8787/api/status` ready。
 - `POST http://192.168.1.11:8787/api/base/feedback-request` 当前返回 HTTP `405`，`Allow=OPTIONS`。
 
-因此 PC direct upper 的 `POST /api/o7/direct-upper/base/feedback-request` 本轮只能证明本机软件转发、contract 形状和 fail-closed 行为；不能声明远端 `/api/base/feedback-request` 已部署可用，不能声明真实 `T=130 -> T=1001` 闭环，也不能声明 ACK/HIL 通过。
+后续 O1 8787 部署已改变该状态：远端 `POST /api/base/feedback-request` 与
+`POST /api/base/feedback-samples` 已可返回非运动 `T=130 -> T=1001` 材料，
+并且 `GET /api/radar/scan-proof/latest` 已返回 HTTP 200、artifact `loaded`。
+
+PC direct upper 现在只消费这些只读摘要和本机转发结果：
+
+- `upper_status_summary.radar_scan_proof_*` 来自 8787 `/api/status.radar.scan_proof_latest`。
+- artifact `loaded` 只代表 scan proof collector 的 JSON 可回放。
+- `latest_proof_status=blocked_or_not_observed` 时，如果远端摘要没有 blocker 明细，PC 会显示 `radar_scan_proof_blocked_or_not_observed`，不会误报为未加载。
+- PC 不执行 collector、不启动 ROS2、不打开 LiDAR 串口、不发送 `A5 60`，也不发送底盘运动命令。
+
+这些材料仍不能声明真实 `/scan`、`/lidar/raw_packet`、TF、SLAM/Nav2、ACK/HIL、`safe_to_control=true` 或完整上车任务完成。

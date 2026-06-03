@@ -11,6 +11,8 @@ const REQUEST_TIMEOUT_MS = 1200;
 const MAX_PC_MANUAL_SPEED_MPS = 0.08;
 const MAX_PC_MANUAL_DURATION_MS = 350;
 const ALLOWED_DIRECTIONS = ["forward", "back", "left", "right", "stop"] as const;
+const DEFAULT_SCAN_PROOF_BLOCKERS = ["radar_scan_proof_latest_not_loaded"] as const;
+const LOADED_SCAN_PROOF_NOT_OBSERVED_BLOCKERS = ["radar_scan_proof_blocked_or_not_observed"] as const;
 
 interface DirectUpperOptions {
   env?: NodeJS.ProcessEnv;
@@ -86,6 +88,33 @@ function nestedRecord(record: Record<string, unknown> | null | undefined, key: s
   return asRecord(record?.[key]);
 }
 
+function stringArrayField(record: Record<string, unknown> | null | undefined, key: string, fallback: readonly string[]): string[] {
+  const value = record?.[key];
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [...fallback];
+}
+
+function scanProofBlockers(scanProofLatest: Record<string, unknown> | null): string[] {
+  const blockers = [
+    ...stringArrayField(scanProofLatest, "blockers", []),
+    ...stringArrayField(scanProofLatest, "blocked_reasons", []),
+    ...stringArrayField(nestedRecord(scanProofLatest, "artifact"), "blockers", []),
+  ];
+  if (blockers.length) {
+    return [...new Set(blockers)];
+  }
+
+  const artifact = nestedRecord(scanProofLatest, "artifact");
+  const artifactStatus = stringField(artifact, "status", stringField(scanProofLatest, "artifact_status", "not_loaded"));
+  const latestProofStatus = stringField(scanProofLatest, "latest_proof_status", "not_loaded");
+  if (artifactStatus === "loaded" && latestProofStatus === "blocked_or_not_observed") {
+    // artifact 已加载但远端摘要没有 blocker 明细时，不能误报成 proof 未加载。
+    return [...LOADED_SCAN_PROOF_NOT_OBSERVED_BLOCKERS];
+  }
+
+  // Direct status 是给 curl/PC 工具看的机器可读摘要，只有 artifact 缺失/未加载时才显示未加载。
+  return [...DEFAULT_SCAN_PROOF_BLOCKERS];
+}
+
 async function fetchUpperJson(
   baseUrl: string,
   path: O7DirectUpperApiRequestResult["path"],
@@ -135,6 +164,11 @@ function blockedStatus(baseUrl: string, reason: string): O7DirectUpperApiStatusR
     upper_status_summary: {
       camera_status: "not_loaded",
       radar_scan_status: "not_loaded",
+      radar_scan_proof_artifact_status: "not_loaded",
+      radar_scan_proof_freshness_status: "unknown",
+      radar_scan_proof_age_seconds: null,
+      radar_scan_proof_latest_status: "not_loaded",
+      radar_scan_proof_blockers: ["radar_scan_proof_latest_not_loaded"],
       lidar_port: "not_loaded",
       base_port: "not_loaded",
       base_baudrate: null,
@@ -171,6 +205,9 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
   const camera = nestedRecord(statusResult.json, "camera");
   const radar = nestedRecord(statusResult.json, "radar");
   const base = nestedRecord(statusResult.json, "base");
+  const scanProofLatest = nestedRecord(radar, "scan_proof_latest");
+  const scanProofArtifact = nestedRecord(scanProofLatest, "artifact");
+  const scanProofFreshness = nestedRecord(scanProofLatest, "freshness");
   const blockedReasons = [
     ...(healthResult.request.ok ? [] : [`health_${healthResult.request.failure_reason || "failed"}`]),
     ...(statusResult.request.ok ? [] : [`status_${statusResult.request.failure_reason || "failed"}`]),
@@ -197,6 +234,11 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
     upper_status_summary: {
       camera_status: stringField(camera, "status", "not_loaded"),
       radar_scan_status: stringField(radar, "scan_status", "not_loaded"),
+      radar_scan_proof_artifact_status: stringField(scanProofArtifact, "status", stringField(scanProofLatest, "artifact_status", "not_loaded")),
+      radar_scan_proof_freshness_status: stringField(scanProofFreshness, "status", stringField(scanProofLatest, "freshness_status", "unknown")),
+      radar_scan_proof_age_seconds: numberField(scanProofFreshness, "age_seconds") ?? numberField(scanProofLatest, "age_seconds"),
+      radar_scan_proof_latest_status: stringField(scanProofLatest, "latest_proof_status", "not_loaded"),
+      radar_scan_proof_blockers: scanProofBlockers(scanProofLatest),
       lidar_port: stringField(radar, "observed_lidar_port", "not_loaded"),
       base_port: stringField(base, "port", "not_loaded"),
       base_baudrate: numberField(base, "baudrate"),
