@@ -514,6 +514,121 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertFalse(result["starts_lidar_driver"])
         self.assertEqual(result["blockers_summary"][0]["code"], "unsafe_runtime_command")
 
+    def test_lidar_runtime_summary_fallback_updates_latest_when_collector_misses_short_window(self) -> None:
+        original_runtime = api.start_lidar_scan_proof_runtime
+        original_runner = api.run_lidar_scan_proof_collector
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "smoke"
+            output_dir.mkdir()
+            (output_dir / "scan_hz.txt").write_text("average rate: 244.481\n", encoding="utf-8")
+            (output_dir / "summary.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.o1.lidar_ros2_scan_smoke.v1",
+                        "required_observations": {
+                            "scan_once": {"topic": "/scan", "artifact_file": "scan_once.txt", "observed": True},
+                            "scan_hz": {"topic": "/scan", "artifact_file": "scan_hz.txt", "observed": True},
+                            "raw_packet_once": {
+                                "topic": "/lidar/raw_packet",
+                                "artifact_file": "raw_packet_once.txt",
+                                "observed": True,
+                            },
+                            "tf": {
+                                "parent_frame": "base_link",
+                                "child_frame": "laser_frame",
+                                "artifact_file": "tf2_echo.txt",
+                                "observed": True,
+                            },
+                        },
+                        "safe_to_control": False,
+                        "sends_base_motion_commands": False,
+                        "calls_base_manual": False,
+                        "publishes_cmd_vel": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            def fake_runtime(command: str | None, warmup_s: float) -> dict[str, object]:
+                """模拟 runtime summary 已完整，但 collector 子进程错过短窗口。"""
+                return {
+                    "mode": "api_managed_lidar_runtime",
+                    "executed": True,
+                    "ok": True,
+                    "argv": ["bash", "/root/rober/onboard/scripts/o1_lidar_ros2_scan_smoke.sh"],
+                    "log_tail": f"[o1-lidar-smoke] output_dir={output_dir}\n",
+                    "starts_lidar_driver": True,
+                    "opens_lidar_serial": True,
+                    "sends_lidar_start_command": True,
+                    "safe_to_control": False,
+                }
+
+            def fake_runner(**kwargs: object) -> dict[str, object]:
+                """collector partial 仍应被同轮 runtime summary fallback 修正。"""
+                return {
+                    "command_result": {"mode": "read_only_scan_proof_collector", "executed": True, "ok": True},
+                    "collector_payload": {
+                        "schema": "trashbot.o1.lidar_scan_proof.v1",
+                        "artifact": {"ok": True, "path": str(kwargs["artifact_path"])},
+                        "proof": {
+                            "status": "partially_observed",
+                            "scan_once_observed": False,
+                            "scan_hz_observed": False,
+                            "raw_packet_once_observed": False,
+                            "tf_observed": True,
+                            "all_required_observations_observed": False,
+                            "required_observations": {
+                                "scan_once": {"topic": "/scan", "observed": False, "result_key": "scan_once"},
+                                "scan_hz": {"topic": "/scan", "observed": False, "result_key": "scan_hz"},
+                                "raw_packet_once": {
+                                    "topic": "/lidar/raw_packet",
+                                    "observed": False,
+                                    "result_key": "raw_packet_once",
+                                },
+                                "tf": {
+                                    "parent_frame": "base_link",
+                                    "child_frame": "laser_frame",
+                                    "observed": True,
+                                    "result_key": "tf",
+                                },
+                            },
+                        },
+                        "topic_reads": {"attempted": True, "mode": "parallel_topic_and_tf_observation"},
+                        "blockers": [{"code": "upper_api_scan_not_proven", "detail": "8787 radar scan_status='not_proven'"}],
+                    },
+                    "parse_error": None,
+                }
+
+            api.start_lidar_scan_proof_runtime = fake_runtime  # type: ignore[assignment]
+            api.run_lidar_scan_proof_collector = fake_runner  # type: ignore[assignment]
+            try:
+                artifact_path = Path(tmpdir) / "lidar_scan_proof_latest.json"
+                robot = api.UpperRobotApi(
+                    "http://127.0.0.1:8088",
+                    "/dev/fake-base",
+                    115200,
+                    max_speed=0.12,
+                    lidar_scan_proof_artifact_path=str(artifact_path),
+                    lidar_scan_proof_runtime_command="bash /root/rober/onboard/scripts/o1_lidar_ros2_scan_smoke.sh --serial-port /dev/ttyACM0",
+                )
+
+                result = asyncio.run(robot.radar_scan_proof_refresh({"timeout_s": 2}))
+                saved = json.loads(artifact_path.read_text(encoding="utf-8"))
+            finally:
+                api.start_lidar_scan_proof_runtime = original_runtime  # type: ignore[assignment]
+                api.run_lidar_scan_proof_collector = original_runner  # type: ignore[assignment]
+
+        self.assertEqual(result["evidence_type"], "robot_runtime_material")
+        self.assertTrue(result["ros2_runtime_proven"])
+        self.assertEqual(result["proof_summary"]["scan_hz_average_rate_hz"], 244.481)
+        self.assertEqual(result["blockers_summary"], [])
+        self.assertTrue(saved["proof"]["runtime_summary_fallback_used"])
+        self.assertTrue(saved["proof"]["all_required_observations_observed"])
+        self.assertEqual(saved["proof"]["required_observations"]["scan_hz"]["source"], "api_managed_lidar_runtime_summary")
+        self.assertFalse(result["safe_to_control"])
+        self.assertFalse(result["sends_base_motion_commands"])
+
     def test_lidar_raw_packet_proof_latest_readback_missing_loaded_bad_json_is_read_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             artifact_path = Path(tmpdir) / "raw_packet.json"

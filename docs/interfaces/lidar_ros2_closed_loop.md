@@ -187,6 +187,18 @@ topic 观察，但说明 driver 优雅退出仍需单独修复或复验。
   `sends_base_motion_commands=false`、`robot_control_executed=false`。refresh/readback
   即使观察到 `/scan` 或 `/lidar/raw_packet`，也不能外推为 WAVE ROVER ACK、HIL、
   Nav2/SLAM 可消费、`safe_to_control=true` 或 delivery success。
+- 2026-06-05 01-02 延续修复：live 8787 refresh 已证明 API-managed runtime 可以让
+  `/scan` once 和 `/lidar/raw_packet` 出现，但 `scan_hz`/TF 在短生命周期 runtime 下会被串行
+  probe 错过。`o1_lidar_scan_proof_collector.py --expect-existing-topics` 现在并发读取
+  `/scan` once、`/scan` hz、`/lidar/raw_packet` once 和 `tf2_echo base_link laser_frame`，
+  让四个证据点处在同一 driver/TF 窗口内；artifact 的 `topic_reads.mode` 会标记
+  `parallel_topic_and_tf_observation`。当四项 direct topic/TF proof 全部观察到时，collector
+  会清除旧的 `upper_api_scan_not_proven` 摘要 blocker；partial proof 仍保留该 blocker 便于
+  定位。若 collector 子进程因 DDS discovery/短窗口竞争错过 `/scan`，但同轮
+  `o1_lidar_ros2_scan_smoke.sh` 的 `summary.json` 已采到四项全量 evidence，8787 refresh 会把
+  该 summary 作为 `runtime_summary_fallback` 原子写回 latest artifact，并标注
+  `runtime_summary_fallback_used=true`。该 fallback 只读取 smoke 输出文件，不额外启动底盘、
+  不发 `/cmd_vel`、不调用 `/api/base/manual`。
 - `onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh` 是当前上位机 runtime/build
   remediation 入口：只安装 ROS2 Humble arm64 runtime 并构建 onboard，不启动
   driver、不打开串口、不写底盘 UART。

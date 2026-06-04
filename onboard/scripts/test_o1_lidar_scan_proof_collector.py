@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -56,6 +58,27 @@ class CommandRecorder:
                 payload = dict(value)
                 payload.setdefault("command", command)
                 return payload
+        return {"command": command, "returncode": 0, "stdout_preview": "ok", "stderr_preview": "", "ok": True}
+
+
+class ConcurrentCommandRecorder:
+    """模拟短生命周期 runtime，检测 topic/TF probe 是否真的并发启动。"""
+
+    def __init__(self) -> None:
+        self.commands: list[str] = []
+        self.active = 0
+        self.max_active = 0
+        self.lock = threading.Lock()
+
+    def __call__(self, command: str, _: float) -> dict[str, object]:
+        with self.lock:
+            self.commands.append(command)
+            self.active += 1
+            self.max_active = max(self.max_active, self.active)
+        # 短暂重叠足以暴露串行采样；并发是为了同一 LiDAR runtime 窗口抢证据。
+        time.sleep(0.03)
+        with self.lock:
+            self.active -= 1
         return {"command": command, "returncode": 0, "stdout_preview": "ok", "stderr_preview": "", "ok": True}
 
 
@@ -119,6 +142,7 @@ class LidarScanProofCollectorTest(unittest.TestCase):
         )
 
         self.assertTrue(result["topic_reads"]["attempted"])
+        self.assertEqual(result["topic_reads"]["mode"], "parallel_topic_and_tf_observation")
         self.assertTrue(result["proof"]["scan_once_observed"])
         self.assertTrue(result["proof"]["scan_hz_observed"])
         self.assertTrue(result["proof"]["raw_packet_once_observed"])
@@ -135,6 +159,31 @@ class LidarScanProofCollectorTest(unittest.TestCase):
         self.assertFalse(any("A5 60" in command for command in recorder.commands))
         self.assertFalse(result["safe_to_control"])
         self.assertFalse(result["hil_pass"])
+
+    def test_topic_reads_are_scheduled_in_parallel_for_short_runtime_window(self) -> None:
+        recorder = ConcurrentCommandRecorder()
+        commands = collector.build_topic_read_commands(timeout_s=2)
+
+        results = collector.run_topic_read_commands(commands, timeout_s=2, command_runner=recorder)
+
+        self.assertEqual(set(results), {"scan_once", "scan_hz", "raw_packet_once", "tf"})
+        self.assertGreater(recorder.max_active, 1)
+        self.assertEqual(len(recorder.commands), 4)
+
+    def test_full_direct_topic_proof_clears_stale_upper_status_blocker(self) -> None:
+        recorder = CommandRecorder()
+
+        result = collector.build_probe_payload(
+            expect_existing_topics=True,
+            path_exists=lambda _: True,
+            path_describer=fake_path_describer,
+            url_fetcher=fake_url_fetcher,
+            command_runner=recorder,
+        )
+
+        blocker_codes = {item["code"] for item in result["blockers"]}
+        self.assertTrue(result["proof"]["all_required_observations_observed"])
+        self.assertNotIn("upper_api_scan_not_proven", blocker_codes)
 
     def test_timeout_text_markers_still_count_for_hz_and_tf(self) -> None:
         recorder = CommandRecorder(

@@ -309,6 +309,19 @@ readback 边界：
 - 不打开 `/dev/ttyACM0`、`/dev/lidar` 或 `/dev/ttyS5`。
 - 不发送 LiDAR `A5 60` start bytes。
 - 不发送 WAVE ROVER `T=1/T=13/T=130/T=131`，不发布 `/cmd_vel`。
+- 四个观测命令并发执行，artifact 中 `topic_reads.mode` 为
+  `parallel_topic_and_tf_observation`。这样做是为了配合 API-managed LiDAR-only
+  runtime 的短生命周期窗口，避免串行先读 `/scan` once 和 raw packet 后，`scan_hz` 或
+  TF 已错过 driver/static TF 窗口。
+- 如果 direct topic/TF proof 四项全部通过，collector 会把旧的
+  `upper_api_scan_not_proven` 状态摘要 blocker 清掉；如果只观察到部分字段，该 blocker
+  仍保留，用于提示 8787 常态 radar status 还未升级为 continuous scan ready。
+- API-managed runtime 场景下，如果 collector 子进程错过短窗口，但同轮
+  `o1_lidar_ros2_scan_smoke.sh` 的 `summary.json` 已经证明 `scan_once`、`scan_hz`、
+  `raw_packet_once` 和 `tf` 四项全量 observed，8787 会把该 summary 作为
+  `runtime_summary_fallback` 写回 latest artifact。artifact 会标注
+  `proof.runtime_summary_fallback_used=true` 和每个 observation 的
+  `source="api_managed_lidar_runtime_summary"`，避免把 fallback 误读成 collector 直接观测。
 
 collector artifact 的 `proof.required_observations` 必须独立包含四个 key：
 

@@ -658,6 +658,109 @@ def start_lidar_scan_proof_runtime(command: str | None, warmup_s: float) -> dict
         }
 
 
+def lidar_runtime_output_dir(runtime_result: dict[str, Any] | None) -> str | None:
+    """从 smoke 日志里取 output_dir；取不到时不猜新路径，保持 fallback 可审计。"""
+    if not isinstance(runtime_result, dict):
+        return None
+    for line in str(runtime_result.get("log_tail") or "").splitlines():
+        marker = "[o1-lidar-smoke] output_dir="
+        if marker in line:
+            return line.split(marker, 1)[1].strip() or None
+    return None
+
+
+def read_lidar_runtime_summary(runtime_result: dict[str, Any] | None) -> dict[str, Any] | None:
+    """读取同轮 LiDAR-only smoke summary；它是 runtime 自身采集的 topic/TF 材料。"""
+    output_dir = lidar_runtime_output_dir(runtime_result)
+    if not output_dir:
+        return None
+    summary_path = Path(output_dir) / "summary.json"
+    try:
+        parsed = json.loads(summary_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    parsed["_summary_path"] = str(summary_path)
+    return parsed
+
+
+def _average_rate_from_runtime_summary(summary: dict[str, Any]) -> float | None:
+    """summary 只存 observed；需要数值时从同目录 scan_hz.txt 提取 average rate。"""
+    summary_path = summary.get("_summary_path")
+    if not isinstance(summary_path, str):
+        return None
+    text = read_text(str(Path(summary_path).with_name("scan_hz.txt")), max_bytes=4096) or ""
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("average rate:"):
+            value = stripped.split(":", 1)[1].strip().split()[0]
+            try:
+                return float(value)
+            except ValueError:
+                return None
+    return None
+
+
+def apply_lidar_runtime_summary_fallback(
+    *,
+    artifact_path: str,
+    refresh_result: dict[str, Any],
+    runtime_result: dict[str, Any] | None,
+) -> None:
+    """collector 错过短窗口时，用同轮 smoke summary 修正 latest proof artifact。"""
+    collector_payload = refresh_result.get("collector_payload")
+    if not isinstance(collector_payload, dict):
+        return
+    proof = collector_payload.get("proof")
+    if not isinstance(proof, dict) or proof.get("all_required_observations_observed") is True:
+        return
+    summary = read_lidar_runtime_summary(runtime_result)
+    required = summary.get("required_observations") if isinstance(summary, dict) else None
+    if not isinstance(required, dict) or not all(isinstance(item, dict) and item.get("observed") is True for item in required.values()):
+        return
+    average_rate = _average_rate_from_runtime_summary(summary)
+    required_observations = proof.setdefault("required_observations", {})
+    # smoke summary 是本轮 API-managed runtime 自己采的证据；写入来源字段，避免和 collector 混淆。
+    for key, observation in required.items():
+        if not isinstance(observation, dict):
+            continue
+        stable = required_observations.setdefault(key, {})
+        if isinstance(stable, dict):
+            stable.update(observation)
+            stable["observed"] = True
+            stable["source"] = "api_managed_lidar_runtime_summary"
+            stable["summary_path"] = summary.get("_summary_path")
+    if isinstance(required_observations.get("scan_hz"), dict):
+        required_observations["scan_hz"]["average_rate_hz"] = average_rate
+    proof.update(
+        {
+            "status": "scan_once_hz_raw_packet_tf_observed",
+            "scan_once_observed": True,
+            "scan_hz_observed": True,
+            "scan_hz_average_rate_hz": average_rate,
+            "raw_packet_once_observed": True,
+            "tf_observed": True,
+            "all_required_observations_observed": True,
+            "runtime_summary_fallback_used": True,
+            "runtime_summary_path": summary.get("_summary_path"),
+        }
+    )
+    topic_reads = collector_payload.setdefault("topic_reads", {})
+    if isinstance(topic_reads, dict):
+        topic_reads["runtime_summary_fallback"] = {
+            "used": True,
+            "reason": "collector_topic_processes_missed_short_lidar_runtime_window",
+            "summary_path": summary.get("_summary_path"),
+        }
+    collector_payload["blockers"] = [
+        item
+        for item in collector_payload.get("blockers", [])
+        if not (isinstance(item, dict) and item.get("code") == "upper_api_scan_not_proven")
+    ]
+    collector_payload["artifact"] = atomic_write_json_artifact(artifact_path, collector_payload)
+
+
 def lidar_scan_proof_collector_script_path() -> str:
     """collector 固定从同目录寻找，部署时能精确发现脚本是否同步到上位机。"""
     return str(Path(__file__).resolve().with_name("o1_lidar_scan_proof_collector.py"))
@@ -2321,6 +2424,13 @@ class UpperRobotApi:
             upper_api_base_url=upper_api_base_url,
             timeout_s=timeout_s,
         )
+        if runtime_requested:
+            await asyncio.to_thread(
+                apply_lidar_runtime_summary_fallback,
+                artifact_path=self.lidar_scan_proof_artifact_path,
+                refresh_result=refresh_result,
+                runtime_result=runtime_result,
+            )
         return build_lidar_scan_proof_refresh_payload(
             artifact_path=self.lidar_scan_proof_artifact_path,
             refresh_result=refresh_result,

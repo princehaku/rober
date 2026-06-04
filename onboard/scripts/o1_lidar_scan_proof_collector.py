@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 import os
 import re
@@ -187,6 +188,40 @@ def build_topic_read_commands(timeout_s: float) -> dict[str, str]:
     }
 
 
+def run_topic_read_commands(
+    commands: dict[str, str],
+    *,
+    timeout_s: float,
+    command_runner: Callable[[str, float], dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """并发读取短生命周期 ROS2 topic/TF，避免串行采样错过同一 runtime 窗口。"""
+    results: dict[str, dict[str, Any]] = {}
+    if not commands:
+        return results
+    # API-managed LiDAR smoke 是短窗口 runtime；四个 probe 必须同时抢 DDS discovery 和消息。
+    # 如果串行执行，前两个 echo 成功后 driver/TF 可能已经退出，hz/TF 会被误判为 false。
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(commands), 4)) as executor:
+        future_to_name = {
+            executor.submit(command_runner, command, timeout_s + 2): name for name, command in commands.items()
+        }
+        for future in concurrent.futures.as_completed(future_to_name):
+            name = future_to_name[future]
+            command = commands[name]
+            try:
+                results[name] = future.result()
+            except Exception as exc:  # noqa: BLE001 - 单个 probe 异常不能吞掉其他 topic 证据。
+                results[name] = {
+                    "command": command,
+                    "returncode": None,
+                    "ok": False,
+                    "stdout_preview": "",
+                    "stderr_preview": "",
+                    "error": compact_error(exc),
+                }
+    # 按原始命令顺序输出，避免 artifact diff 因并发完成顺序抖动。
+    return {name: results[name] for name in commands if name in results}
+
+
 def proof_flags() -> dict[str, bool]:
     """LiDAR 材料不能被下游误读为底盘控制或 HIL 准入。"""
     return {
@@ -307,8 +342,12 @@ def build_probe_payload(
     if expect_existing_topics and not any(item["code"] in {"ros2_humble_setup_missing", "rober_install_setup_missing", "ros2_command_unavailable"} for item in blockers):
         topic_reads["attempted"] = True
         topic_reads["reason"] = "expect_existing_topics_requested_read_only_ros2_topic_observation"
-        for name, command in topic_reads["commands"].items():
-            topic_reads["results"][name] = command_runner(command, timeout_s + 2)
+        topic_reads["mode"] = "parallel_topic_and_tf_observation"
+        topic_reads["results"] = run_topic_read_commands(
+            topic_reads["commands"],
+            timeout_s=timeout_s,
+            command_runner=command_runner,
+        )
     elif expect_existing_topics:
         topic_reads["reason"] = "blocked_before_topic_read_by_ros2_runtime"
 
@@ -320,6 +359,8 @@ def build_probe_payload(
     all_required_observations_ok = all(item["observed"] for item in required_observations.values())
     if all_required_observations_ok:
         proof_status = "scan_once_hz_raw_packet_tf_observed"
+        # direct topic/TF proof 比 8787 status 摘要更新；全量观察到时不再保留旧 status blocker。
+        blockers = [item for item in blockers if item.get("code") != "upper_api_scan_not_proven"]
     elif any(item["observed"] for item in required_observations.values()):
         proof_status = "partially_observed"
     else:
