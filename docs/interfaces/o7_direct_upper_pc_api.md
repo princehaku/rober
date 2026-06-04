@@ -10,6 +10,20 @@ ROBER_UPPER_API_BASE_URL=http://192.168.1.11:8787 npm run dev -- --host 127.0.0.
 
 该模式绕过 cloud relay 作为必需路径，但只服务 PC 本地浏览器、curl 和调试工具。它不改变生产 4G 云路线，不替代手机端普通用户路径，也不把 8787 HTTP 成功解释成 WAVE ROVER ACK、`T=1001` 或 HIL pass。
 
+2026-06-04 起，PC 现场 direct-upper 的 `status`、`radar start/stop` 以及同类非底盘 operator 代理在缺少显式 env 时会回退到现场默认上位机：
+
+```text
+http://192.168.1.11:8787
+```
+
+响应必须通过 `upper_api_base_url_source` 标明来源：
+
+- `env`：来自 `ROBER_UPPER_API_BASE_URL`，优先级最高。
+- `field_default`：来自当前现场默认 `http://192.168.1.11:8787`。
+- `not_configured`：只用于仍要求显式配置的底盘控制类入口或完全不可解析场景。
+
+这个默认值只解决 PC 到上位机 8787 的 HTTP 路由，不会把 `safe_to_control` 改为 `true`，也不会绕过 ACK、`T=1001`、HIL 或 operator evidence。
+
 ## PC 本机接口
 
 所有接口由 PC workstation Express 提供，默认只绑定 `127.0.0.1`。
@@ -20,11 +34,15 @@ ROBER_UPPER_API_BASE_URL=http://192.168.1.11:8787 npm run dev -- --host 127.0.0.
 | `POST` | `/api/o7/direct-upper/base/stop` | 同源转发到上位机 `/api/base/stop`，失败时 fail-closed。 |
 | `POST` | `/api/o7/direct-upper/base/feedback-request` | 同源转发到上位机 `/api/base/feedback-request`，只请求非运动 `T=130` 反馈。 |
 | `POST` | `/api/o7/direct-upper/base/manual` | PC 侧先做方向白名单、低速、短 duration 限制，再转发到上位机 `/api/base/manual`。 |
+| `POST` | `/api/o7/direct-upper/radar/start` | 同源转发到上位机 `/api/radar/start`，允许使用 field default，不依赖底盘 ACK/T=1001。 |
+| `POST` | `/api/o7/direct-upper/radar/stop` | 同源转发到上位机 `/api/radar/stop`，允许使用 field default，不触碰底盘 UART。 |
 
 ## 环境变量
 
-- `ROBER_UPPER_API_BASE_URL`：必填。示例 `http://192.168.1.11:8787`。
-- 未配置时，四个接口都不会主动探测默认 LAN IP；`status` 返回 `not_configured`，`stop/feedback-request/manual` 返回 `base_url_not_configured`。
+- `ROBER_UPPER_API_BASE_URL`：可选但优先。示例 `http://192.168.1.11:8787`。
+- 未配置时，`GET /api/o7/direct-upper/status` 使用 field default `http://192.168.1.11:8787` 并返回 `upper_api_base_url_source=field_default`。
+- 未配置时，`POST /api/o7/direct-upper/radar/start` 和 `POST /api/o7/direct-upper/radar/stop` 也使用 field default 转发到上位机 `/api/radar/start|stop`。
+- 底盘运动相关的 `base/stop`、`base/feedback-request`、`base/manual` 仍要求显式 `ROBER_UPPER_API_BASE_URL`；缺 env 时返回 `base_url_not_configured` 且不触发远端 fetch。
 
 ## Timeout 边界
 
@@ -46,6 +64,7 @@ trashbot.pc_tools_workstation.o7_direct_upper_status.v1
 - `cloud_relay_bypassed=true`
 - `pc_local_only=true`
 - `upper_api_base_url`
+- `upper_api_base_url_source=env|field_default|not_configured`
 - `health_request`：`GET /health` 的执行、HTTP 状态、失败原因。
 - `status_request`：`GET /api/status` 的执行、HTTP 状态、失败原因。
 - `upper_status_summary.camera_status`
@@ -124,6 +143,43 @@ trashbot.pc_tools_workstation.o7_direct_upper_feedback_request.v1
 - 远端超时、非 2xx、坏 JSON 或 fetch 失败时，PC 返回 `502`，`fail_closed=true`。
 - 未配置 base URL 时，PC 返回 `400`，不触发远端 fetch。
 - 即使远端 JSON 声称包含 `T=1001`，PC 响应仍固定 `safe_to_control=false`、`robot_control_executed=false`、`robot_ack_connected=false`、`t1001_observed=false`；它只说明请求被转发，不证明真实 ACK、HIL 或 `T=1001` 已由同源材料验收。
+
+## `POST /api/o7/direct-upper/radar/start`
+
+PC 后端只转发到：
+
+```text
+<upper_api_base_url>/api/radar/start
+```
+
+响应 schema：
+
+```text
+trashbot.pc_tools_workstation.o7_direct_upper_radar_start.v1
+```
+
+边界：
+
+- 缺少 `ROBER_UPPER_API_BASE_URL` 时使用 `http://192.168.1.11:8787`，响应中 `upper_api_base_url_source=field_default`。
+- 上位机 HTTP 2xx 且返回 object JSON 时，PC 返回 `200`，`failure_reason=none`，`upper_request.executed=true`，`upper_request.path=/api/radar/start`。
+- `robot_ack_not_connected`、`t1001_feedback_not_observed`、`field_evidence_not_proven` 继续作为 safety/not_proven gaps 保留，但不得阻止 LiDAR start HTTP 转发。
+- 响应仍固定 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`；PC 不访问 ROS graph、不打开 LiDAR 串口、不访问 `/dev/ttyS5`、不发送 WAVE ROVER JSON。
+
+## `POST /api/o7/direct-upper/radar/stop`
+
+PC 后端只转发到：
+
+```text
+<upper_api_base_url>/api/radar/stop
+```
+
+响应 schema：
+
+```text
+trashbot.pc_tools_workstation.o7_direct_upper_radar_stop.v1
+```
+
+边界与 `radar/start` 相同：缺 env 可使用 `field_default`，HTTP 成功返回 `200` / `failure_reason=none`，但不证明真实 `/scan`、LiDAR 长稳、SLAM/Nav2 消费、ACK 或 HIL。
 
 ## `POST /api/o7/direct-upper/base/manual`
 

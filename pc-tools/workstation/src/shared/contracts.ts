@@ -2078,9 +2078,36 @@ export type O7LiveOperatorCameraHealthStatus = "not_listening_observed" | "ready
 export type O7DirectUpperApiMode = "direct_upper_computer_lan_only";
 export type O7DirectUpperApiStatus = "not_configured" | "ready" | "degraded" | "fail_closed";
 export type O7DirectUpperApiDirection = "forward" | "back" | "left" | "right" | "stop";
+export type O7DirectUpperApiCommand =
+  | "stop"
+  | "manual"
+  | "feedback_request"
+  | "radar_start"
+  | "radar_stop"
+  | "map_start"
+  | "map_reset"
+  | "map_save"
+  | "map_load"
+  | "map_list"
+  | "localize_reset"
+  | "operator_report";
 
 export interface O7DirectUpperApiRequestResult {
-  path: "/health" | "/api/status" | "/api/base/stop" | "/api/base/manual" | "/api/base/feedback-request";
+  path:
+    | "/health"
+    | "/api/status"
+    | "/api/base/stop"
+    | "/api/base/manual"
+    | "/api/base/feedback-request"
+    | "/api/radar/start"
+    | "/api/radar/stop"
+    | "/api/map/start"
+    | "/api/map/reset"
+    | "/api/map/save"
+    | "/api/map/load"
+    | "/api/map/list"
+    | "/api/localize/reset"
+    | "/api/operator/report";
   method: "GET" | "POST";
   executed: boolean;
   ok: boolean;
@@ -2107,7 +2134,7 @@ export interface O7DirectUpperApiStatusResponse extends ProofFlags {
   mode: O7DirectUpperApiMode;
   status: O7DirectUpperApiStatus;
   upper_api_base_url: string;
-  upper_api_base_url_source: "env" | "not_configured";
+  upper_api_base_url_source: "env" | "field_default" | "not_configured";
   request_timeout_ms: number;
   health_request: O7DirectUpperApiRequestResult;
   status_request: O7DirectUpperApiRequestResult;
@@ -2131,11 +2158,15 @@ export interface O7DirectUpperApiStatusResponse extends ProofFlags {
     radar_raw_packet_proof_sync_header_count: number | null;
     radar_raw_packet_proof_packets_parse_ok: number | null;
     radar_raw_packet_proof_points_total: number | null;
-    radar_raw_packet_proof_safe_to_control: false;
-    lidar_port: string;
-    base_port: string;
-    base_baudrate: number | null;
-    base_write_control_available: boolean;
+      radar_raw_packet_proof_safe_to_control: false;
+      lidar_port: string;
+      map_lifecycle_status: string;
+      map_artifact_ref: string;
+      localization_status: string;
+      operator_report_evidence_ref: string;
+      base_port: string;
+      base_baudrate: number | null;
+      base_write_control_available: boolean;
     robot_ack_connected: false;
     t1001_observed: false;
   };
@@ -2145,6 +2176,15 @@ export interface O7DirectUpperApiStatusResponse extends ProofFlags {
     stop: "/api/o7/direct-upper/base/stop";
     manual: "/api/o7/direct-upper/base/manual";
     feedback_request: "/api/o7/direct-upper/base/feedback-request";
+    radar_start: "/api/o7/direct-upper/radar/start";
+    radar_stop: "/api/o7/direct-upper/radar/stop";
+    map_start: "/api/o7/direct-upper/map/start";
+    map_reset: "/api/o7/direct-upper/map/reset";
+    map_save: "/api/o7/direct-upper/map/save";
+    map_load: "/api/o7/direct-upper/map/load";
+    map_list: "/api/o7/direct-upper/map/list";
+    localize_reset: "/api/o7/direct-upper/localize/reset";
+    operator_report: "/api/o7/direct-upper/operator-report";
   };
   blocked_reasons: string[];
   failure_reason: string;
@@ -2158,13 +2198,35 @@ export interface O7DirectUpperApiCommandResponse extends ProofFlags {
   schema:
     | "trashbot.pc_tools_workstation.o7_direct_upper_stop.v1"
     | "trashbot.pc_tools_workstation.o7_direct_upper_manual.v1"
-    | "trashbot.pc_tools_workstation.o7_direct_upper_feedback_request.v1";
-  endpoint: "/api/o7/direct-upper/base/stop" | "/api/o7/direct-upper/base/manual" | "/api/o7/direct-upper/base/feedback-request";
+    | "trashbot.pc_tools_workstation.o7_direct_upper_feedback_request.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_radar_start.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_radar_stop.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_map_start.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_map_reset.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_map_save.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_map_load.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_map_list.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_localize_reset.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1";
+  endpoint:
+    | "/api/o7/direct-upper/base/stop"
+    | "/api/o7/direct-upper/base/manual"
+    | "/api/o7/direct-upper/base/feedback-request"
+    | "/api/o7/direct-upper/radar/start"
+    | "/api/o7/direct-upper/radar/stop"
+    | "/api/o7/direct-upper/map/start"
+    | "/api/o7/direct-upper/map/reset"
+    | "/api/o7/direct-upper/map/save"
+    | "/api/o7/direct-upper/map/load"
+    | "/api/o7/direct-upper/map/list"
+    | "/api/o7/direct-upper/localize/reset"
+    | "/api/o7/direct-upper/operator-report";
   mode: O7DirectUpperApiMode;
-  command: "stop" | "manual" | "feedback_request";
+  command: O7DirectUpperApiCommand;
   accepted_by_workstation: boolean;
   upper_request: O7DirectUpperApiRequestResult;
   upper_api_base_url: string;
+  upper_api_base_url_source: "env" | "field_default" | "not_configured";
   cloud_relay_bypassed: true;
   pc_local_only: true;
   fail_closed: boolean;
@@ -2177,6 +2239,9 @@ export interface O7DirectUpperApiCommandResponse extends ProofFlags {
     depends_on_upper_8787_guardrail: true;
     feedback_request_id?: "T=130";
     required_feedback_id?: "T=1001";
+    map_id?: string;
+    evidence_ref?: string;
+    report_note?: string;
   };
   robot_ack_connected: false;
   t1001_observed: false;

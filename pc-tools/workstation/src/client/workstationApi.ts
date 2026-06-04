@@ -79,6 +79,16 @@ const API_ENDPOINTS = {
   o7DirectUpperStatus: "/api/o7/direct-upper/status",
   o7DirectUpperManual: "/api/o7/direct-upper/base/manual",
   o7DirectUpperFeedbackRequest: "/api/o7/direct-upper/base/feedback-request",
+  o7DirectUpperStop: "/api/o7/direct-upper/base/stop",
+  o7DirectUpperRadarStart: "/api/o7/direct-upper/radar/start",
+  o7DirectUpperRadarStop: "/api/o7/direct-upper/radar/stop",
+  o7DirectUpperMapStart: "/api/o7/direct-upper/map/start",
+  o7DirectUpperMapReset: "/api/o7/direct-upper/map/reset",
+  o7DirectUpperMapSave: "/api/o7/direct-upper/map/save",
+  o7DirectUpperMapLoad: "/api/o7/direct-upper/map/load",
+  o7DirectUpperMapList: "/api/o7/direct-upper/map/list",
+  o7DirectUpperLocalizeReset: "/api/o7/direct-upper/localize/reset",
+  o7DirectUpperOperatorReport: "/api/o7/direct-upper/operator-report",
   o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
   o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
   o5O6ExternalProbeArtifact: "/api/o5-o6/external-probe-artifact",
@@ -254,6 +264,11 @@ export async function postO7DirectUpperFeedbackRequest(): Promise<O7DirectUpperA
   return loadJson<O7DirectUpperApiCommandResponse>(API_ENDPOINTS.o7DirectUpperFeedbackRequest, { method: "POST" });
 }
 
+export async function postO7DirectUpperStop(): Promise<O7DirectUpperApiCommandResponse> {
+  // stop 必须走 PC 后端 direct-upper 代理；UI 不绕过后端直接访问 8787 或 ROS graph。
+  return postJsonWithPayload<O7DirectUpperApiCommandResponse>(API_ENDPOINTS.o7DirectUpperStop, {});
+}
+
 export async function postO7DirectUpperManual(
   direction: O7DirectUpperApiDirection,
   speed: number,
@@ -265,6 +280,37 @@ export async function postO7DirectUpperManual(
     speed,
     duration_ms: durationMs,
   });
+}
+
+export async function postO7DirectUpperOperatorCommand(
+  command:
+    | "radar_start"
+    | "radar_stop"
+    | "map_start"
+    | "map_reset"
+    | "map_save"
+    | "map_load"
+    | "map_list"
+    | "localize_reset"
+    | "operator_report",
+  payload: { map_id?: string; evidence_ref?: string; note?: string } = {},
+): Promise<O7DirectUpperApiCommandResponse> {
+  // 操作类按钮共用同源代理和 evidence_ref；组件不持有真实 8787 endpoint，也不直连 ROS2。
+  const endpoints = {
+    radar_start: API_ENDPOINTS.o7DirectUpperRadarStart,
+    radar_stop: API_ENDPOINTS.o7DirectUpperRadarStop,
+    map_start: API_ENDPOINTS.o7DirectUpperMapStart,
+    map_reset: API_ENDPOINTS.o7DirectUpperMapReset,
+    map_save: API_ENDPOINTS.o7DirectUpperMapSave,
+    map_load: API_ENDPOINTS.o7DirectUpperMapLoad,
+    map_list: API_ENDPOINTS.o7DirectUpperMapList,
+    localize_reset: API_ENDPOINTS.o7DirectUpperLocalizeReset,
+    operator_report: API_ENDPOINTS.o7DirectUpperOperatorReport,
+  } as const;
+  if (command === "map_list") {
+    return loadJson<O7DirectUpperApiCommandResponse>(endpoints[command]);
+  }
+  return postJsonWithPayload<O7DirectUpperApiCommandResponse>(endpoints[command], payload);
 }
 
 export async function getO7CloudOperatorConsoleProbe(baseUrl: string): Promise<O7CloudOperatorConsoleProbeResponse> {

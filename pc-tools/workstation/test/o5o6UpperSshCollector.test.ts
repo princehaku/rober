@@ -4,14 +4,16 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error JS CLI script intentionally stays runnable by plain node.
-import {
+import * as upperSshCollector from "../scripts/o5-o6-upper-ssh-collector.mjs";
+
+const {
   buildCollectorPlan,
   buildDryRunResult,
   buildProbeInstallSshArgs,
   buildRemoteCommand,
   buildSshArgs,
   collectUpperSshArtifact,
-} from "../scripts/o5-o6-upper-ssh-collector.mjs";
+} = upperSshCollector;
 
 type FakeSpawnResult = {
   code: number;

@@ -339,6 +339,49 @@ button {
   font-weight: 700;
 }
 
+.operator-fields,
+.operator-report-field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.operator-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operator-fields label,
+.operator-report-field {
+  color: #475467;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.operator-fields input,
+.operator-report-field textarea {
+  width: 100%;
+  border: 1px solid #d0d7e2;
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #ffffff;
+  color: #182230;
+  font: inherit;
+}
+
+.operator-control-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.operator-button {
+  width: 100%;
+  min-height: 38px;
+  font-size: 13px;
+  font-weight: 760;
+}
+
 .status-light-list {
   display: grid;
   gap: 10px;

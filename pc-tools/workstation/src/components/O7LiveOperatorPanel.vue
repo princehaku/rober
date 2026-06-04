@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { getO7DirectUpperStatus, getO7LocalWebrtcCamera, postO7DirectUpperManual } from "../client/workstationApi";
+import {
+  getO7DirectUpperStatus,
+  getO7LocalWebrtcCamera,
+  postO7DirectUpperManual,
+  postO7DirectUpperOperatorCommand,
+  postO7DirectUpperStop,
+} from "../client/workstationApi";
 import type {
   O7DirectUpperApiCommandResponse,
   O7DirectUpperApiStatusResponse,
@@ -26,6 +32,10 @@ const cameraPreviewStatus = ref<"idle" | "connecting" | "playing" | "failed">("i
 const cameraPreviewMessage = ref("摄像头状态读取中");
 const cameraPeerId = ref<string | null>(null);
 const manualCommandInFlight = ref<O7LiveOperatorDirection | null>(null);
+const operatorCommandInFlight = ref<string | null>(null);
+const operatorEvidenceRef = ref("operator_field_report_pending");
+const operatorReportNote = ref("not_proven: waiting for field evidence");
+const mapId = ref("latest");
 let cameraPeerConnection: RTCPeerConnection | null = null;
 
 interface CameraOfferAnswerPayload {
@@ -113,13 +123,56 @@ const directUpperPaths = computed(() => {
   // 路径由后端 contract 返回，方便 curl/浏览器工具复制并避免前端散落 endpoint 字符串。
   const paths = directUpperStatus.value?.local_api_paths;
   return paths
-    ? [paths.status, paths.stop, paths.feedback_request, paths.manual]
+    ? [
+        paths.status,
+        paths.stop,
+        paths.feedback_request,
+        paths.manual,
+        paths.radar_start,
+        paths.radar_stop,
+        paths.map_start,
+        paths.map_reset,
+        paths.map_save,
+        paths.map_load,
+        paths.map_list,
+        paths.localize_reset,
+        paths.operator_report,
+      ]
     : [
         "/api/o7/direct-upper/status",
         "/api/o7/direct-upper/base/stop",
         "/api/o7/direct-upper/base/feedback-request",
         "/api/o7/direct-upper/base/manual",
+        "/api/o7/direct-upper/radar/start",
+        "/api/o7/direct-upper/radar/stop",
+        "/api/o7/direct-upper/map/start",
+        "/api/o7/direct-upper/map/reset",
+        "/api/o7/direct-upper/map/save",
+        "/api/o7/direct-upper/map/load",
+        "/api/o7/direct-upper/map/list",
+        "/api/o7/direct-upper/localize/reset",
+        "/api/o7/direct-upper/operator-report",
       ];
+});
+
+const operatorControls = computed(() => [
+  { id: "radar_start", label: "Radar start", kind: "radar_start" as const, payload: {} },
+  { id: "radar_stop", label: "Radar stop", kind: "radar_stop" as const, payload: {} },
+  { id: "map_start", label: "Map start", kind: "map_start" as const, payload: {} },
+  { id: "map_reset", label: "Map reset", kind: "map_reset" as const, payload: {} },
+  { id: "map_save", label: "Map save", kind: "map_save" as const, payload: { map_id: mapId.value } },
+  { id: "map_load", label: "Map load", kind: "map_load" as const, payload: { map_id: mapId.value } },
+  { id: "map_list", label: "Map list", kind: "map_list" as const, payload: {} },
+  { id: "localize_reset", label: "Localize reset", kind: "localize_reset" as const, payload: {} },
+]);
+
+const directUpperEvidenceSummary = computed(() => {
+  // evidence_ref 由 operator 显式填写；缺省值仍是 pending，不能被 UI 包装成现场材料。
+  const status = directUpperStatus.value?.upper_status_summary;
+  const map = status?.map_artifact_ref ?? "not_loaded";
+  const localize = status?.localization_status ?? "not_loaded";
+  const report = status?.operator_report_evidence_ref ?? "missing_operator_report";
+  return `map=${map} · localize=${localize} · report=${report}`;
 });
 
 const cameraStatusText = computed(() => {
@@ -482,6 +535,72 @@ async function sendManualControl(direction: O7LiveOperatorDirection): Promise<vo
   }
 }
 
+async function sendStopControl(): Promise<void> {
+  // Stop 走独立 /api/base/stop 代理；它是安全护栏，不复用 manual stop 的短 pulse 语义。
+  if (operatorCommandInFlight.value || manualCommandInFlight.value) {
+    lockMessage.value = "Stop 未发送：仍有上一条控制请求在等待；safe_to_control=false";
+    return;
+  }
+  operatorCommandInFlight.value = "stop";
+  lockMessage.value = "Stop 发送中：通过 PC 同源 /api/o7/direct-upper/base/stop；safe_to_control=false";
+  try {
+    const result = await postO7DirectUpperStop();
+    lockMessage.value = commandResultMessage("Stop", result);
+    await refreshDirectUpperStatus();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "stop_request_failed";
+    lockMessage.value = `Stop 失败：${reason}；只调用 PC 同源 direct-upper stop；safe_to_control=false`;
+  } finally {
+    operatorCommandInFlight.value = null;
+  }
+}
+
+async function sendOperatorControl(control: (typeof operatorControls.value)[number]): Promise<void> {
+  // 雷达/建图/定位按钮只调用 PC 同源代理；浏览器不直连 8787，也不发布 ROS2 service/action。
+  if (operatorCommandInFlight.value || manualCommandInFlight.value) {
+    lockMessage.value = `${control.label} 未发送：上一条请求仍在等待；safe_to_control=false`;
+    return;
+  }
+  operatorCommandInFlight.value = control.id;
+  lockMessage.value = `${control.label} 发送中：evidence_ref=${operatorEvidenceRef.value}；safe_to_control=false`;
+  try {
+    const result = await postO7DirectUpperOperatorCommand(control.kind, {
+      ...control.payload,
+      evidence_ref: operatorEvidenceRef.value,
+    });
+    lockMessage.value = commandResultMessage(control.label, result);
+    await refreshDirectUpperStatus();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : `${control.id}_request_failed`;
+    lockMessage.value = `${control.label} 失败：${reason}；只调用 PC 同源 direct-upper 代理；safe_to_control=false`;
+  } finally {
+    operatorCommandInFlight.value = null;
+  }
+}
+
+async function sendOperatorReport(): Promise<void> {
+  // operator report 必须携带 evidence_ref，作为人工现场材料引用；它不是机器人 ACK。
+  if (operatorCommandInFlight.value || manualCommandInFlight.value) {
+    lockMessage.value = "Operator report 未发送：上一条请求仍在等待；safe_to_control=false";
+    return;
+  }
+  operatorCommandInFlight.value = "operator_report";
+  lockMessage.value = `Operator report 发送中：evidence_ref=${operatorEvidenceRef.value}；safe_to_control=false`;
+  try {
+    const result = await postO7DirectUpperOperatorCommand("operator_report", {
+      evidence_ref: operatorEvidenceRef.value,
+      note: operatorReportNote.value,
+    });
+    lockMessage.value = commandResultMessage("Operator report", result);
+    await refreshDirectUpperStatus();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "operator_report_failed";
+    lockMessage.value = `Operator report 失败：${reason}；没有报告不得把现场链路写成完成；safe_to_control=false`;
+  } finally {
+    operatorCommandInFlight.value = null;
+  }
+}
+
 function handleManualKeydown(event: KeyboardEvent): void {
   // repeat keydown 会把短 pulse 变成长按连续命令；现场遥控先保持一次按键一次请求。
   if (event.repeat || isEditableControlTarget(event.target)) {
@@ -614,7 +733,7 @@ onBeforeUnmount(() => {
       <div class="remote-pad" aria-label="方向控制">
         <button type="button" class="pad-button forward" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('forward')">前进</button>
         <button type="button" class="pad-button left" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('left')">左转</button>
-        <button type="button" class="pad-button stop" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('stop')">Stop</button>
+        <button type="button" class="pad-button stop" :disabled="Boolean(manualCommandInFlight || operatorCommandInFlight)" @click="sendStopControl">Stop</button>
         <button type="button" class="pad-button right" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('right')">右转</button>
         <button type="button" class="pad-button back" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('back')">后退</button>
       </div>
@@ -635,6 +754,53 @@ onBeforeUnmount(() => {
         <summary>详情</summary>
         <p>{{ controlDetails }}</p>
       </details>
+    </article>
+
+    <article class="console-card operator-workflow-card" aria-label="Upper API operator workflow">
+      <div class="card-heading">
+        <span class="card-icon">⇄</span>
+        <div>
+          <p class="console-kicker">Upper API</p>
+          <h2>雷达 / 建图 / 定位</h2>
+        </div>
+      </div>
+      <div class="operator-fields">
+        <label>
+          <span>evidence_ref</span>
+          <input v-model="operatorEvidenceRef" type="text" aria-label="operator evidence ref">
+        </label>
+        <label>
+          <span>map_id</span>
+          <input v-model="mapId" type="text" aria-label="map id">
+        </label>
+      </div>
+      <div class="operator-control-grid" aria-label="8787 upper API controls">
+        <button
+          v-for="control in operatorControls"
+          :key="control.id"
+          type="button"
+          class="primary-link operator-button"
+          :disabled="Boolean(operatorCommandInFlight || manualCommandInFlight)"
+          @click="sendOperatorControl(control)"
+        >
+          {{ control.label }}
+        </button>
+      </div>
+      <label class="operator-report-field">
+        <span>operator report note</span>
+        <textarea v-model="operatorReportNote" rows="2" aria-label="operator report note" />
+      </label>
+      <button
+        type="button"
+        class="primary-link operator-button"
+        :disabled="Boolean(operatorCommandInFlight || manualCommandInFlight)"
+        @click="sendOperatorReport"
+      >
+        Report evidence ref
+      </button>
+      <p class="base-boundary">
+        {{ directUpperEvidenceSummary }} · blocked/not_proven 由 8787 与 PC 代理返回，UI 不直连 ROS graph。
+      </p>
     </article>
 
     <article class="console-card status-card" aria-label="状态">

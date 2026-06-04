@@ -661,6 +661,128 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(status["feedback_ack"]["t1001_observed"], False)
         self.assertEqual(FakeSerial.instances, [])
 
+    def test_radar_start_stop_default_to_software_guard_without_base_uart(self) -> None:
+        robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
+
+        start = robot.radar_control("start")
+        stop = robot.radar_control("stop")
+        radar_status = robot.radar_status()
+
+        self.assertEqual(start["endpoint"], "/api/radar/start")
+        self.assertEqual(stop["endpoint"], "/api/radar/stop")
+        self.assertEqual(start["command_result"]["mode"], "dry_run_stub")
+        self.assertFalse(start["command_result"]["executed"])
+        self.assertTrue(start["software_guard"])
+        self.assertTrue(start["not_proven"])
+        self.assertEqual(start["status"], "not_proven")
+        self.assertFalse(start["scan_runtime_proven"])
+        self.assertFalse(start["base_uart_touched"])
+        self.assertFalse(start["uses_base_uart"])
+        self.assertFalse(start["sends_base_motion_commands"])
+        self.assertFalse(start["robot_control_executed"])
+        self.assertIn("/dev/ttyS5", start["blocked_devices_not_touched"])
+        self.assertIn("/api/base/manual", start["blocked_commands_not_sent"])
+        self.assertEqual(radar_status["controls"]["start"]["endpoint"], "/api/radar/start")
+        self.assertEqual(radar_status["controls"]["stop"]["endpoint"], "/api/radar/stop")
+        self.assertEqual(FakeSerial.instances, [])
+
+    def test_radar_start_configured_command_executes_but_remains_not_proven(self) -> None:
+        command = f"{sys.executable} -c \"print('lidar-start-stub')\""
+        robot = api.UpperRobotApi(
+            "http://127.0.0.1:8088",
+            "/dev/fake-base",
+            115200,
+            max_speed=0.12,
+            radar_start_command=command,
+        )
+
+        result = robot.radar_control("start")
+
+        self.assertTrue(result["command_result"]["executed"])
+        self.assertTrue(result["command_result"]["ok"])
+        self.assertIn("lidar-start-stub", result["command_result"]["stdout_preview"])
+        self.assertTrue(result["configured_command"]["configured"])
+        self.assertEqual(result["configured_command"]["env"], "ROBER_RADAR_START_COMMAND")
+        self.assertEqual(result["status"], "not_proven")
+        self.assertTrue(result["not_proven"])
+        self.assertFalse(result["scan_runtime_proven"])
+        self.assertFalse(result["safe_to_control"])
+        self.assertFalse(result["robot_control_executed"])
+        self.assertEqual(FakeSerial.instances, [])
+
+    def test_map_lifecycle_and_localize_reset_are_fail_closed_contracts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                map_artifact_dir=tmpdir,
+                localization_artifact_path=str(Path(tmpdir) / "localize.json"),
+            )
+
+            start = robot.map_control("start", {"map_name": "lab"})
+            reset = robot.map_control("reset", {})
+            save = robot.map_control("save", {"artifact_path": str(Path(tmpdir) / "lab.yaml")})
+            localize = robot.localize_reset({"pose": {"x": 1.0, "y": 2.0, "yaw": 0.0}})
+
+        self.assertEqual(start["endpoint"], "/api/map/start")
+        self.assertEqual(reset["endpoint"], "/api/map/reset")
+        self.assertEqual(save["endpoint"], "/api/map/save")
+        self.assertEqual(localize["endpoint"], "/api/localize/reset")
+        self.assertEqual(start["command_result"]["mode"], "dry_run_stub")
+        self.assertEqual(localize["target_ros2_topic"], "/initialpose")
+        self.assertEqual(localize["requested_pose"], {"x": 1.0, "y": 2.0, "yaw": 0.0})
+        for payload in (start, reset, save, localize):
+            self.assertEqual(payload["status"], "not_proven")
+            self.assertTrue(payload["software_guard"])
+            self.assertTrue(payload["not_proven"])
+            self.assertFalse(payload["map_artifact_proven"])
+            self.assertFalse(payload["localization_proven"])
+            self.assertFalse(payload["uses_base_uart"])
+            self.assertFalse(payload["sends_base_motion_commands"])
+            self.assertFalse(payload["robot_control_executed"])
+            self.assertFalse(payload["safe_to_control"])
+        self.assertEqual(FakeSerial.instances, [])
+
+    def test_map_list_reads_artifacts_only_and_unified_status_exposes_routes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Path(tmpdir, "lab.yaml").write_text("image: lab.pgm\n", encoding="utf-8")
+            Path(tmpdir, "lab.pgm").write_bytes(b"P5\n1 1\n255\n\0")
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                map_artifact_dir=tmpdir,
+            )
+
+            async def fake_camera_health() -> tuple[int, dict[str, object]]:
+                """本测试只验证 routes/status，不依赖 aiohttp camera proxy。"""
+                return 200, {"status": "stubbed", "video_source": "test"}
+
+            robot.camera_health = fake_camera_health  # type: ignore[method-assign]
+            listing = robot.map_list()
+            status = asyncio.run(robot.unified_status())
+
+        self.assertEqual(listing["endpoint"], "/api/map/list")
+        self.assertEqual(listing["map_count"], 2)
+        self.assertEqual(sorted(item["name"] for item in listing["maps"]), ["lab.pgm", "lab.yaml"])
+        self.assertTrue(listing["software_guard"])
+        self.assertTrue(listing["not_proven"])
+        self.assertFalse(listing["sends_base_motion_commands"])
+        self.assertEqual(status["routes"]["radar_start"], "/api/radar/start")
+        self.assertEqual(status["routes"]["radar_stop"], "/api/radar/stop")
+        self.assertEqual(status["routes"]["map_start"], "/api/map/start")
+        self.assertEqual(status["routes"]["map_reset"], "/api/map/reset")
+        self.assertEqual(status["routes"]["map_save"], "/api/map/save")
+        self.assertEqual(status["routes"]["map_load"], "/api/map/load")
+        self.assertEqual(status["routes"]["map_list"], "/api/map/list")
+        self.assertEqual(status["routes"]["localize_reset"], "/api/localize/reset")
+        self.assertEqual(status["map"]["status"], "not_proven")
+        self.assertEqual(status["localization"]["status"], "not_proven")
+        self.assertEqual(FakeSerial.instances, [])
+
 
 def time_for_stale_artifact() -> float:
     """让 artifact mtime 落到过去，验证 freshness 不依赖真实硬件时间。"""

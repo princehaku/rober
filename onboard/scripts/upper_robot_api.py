@@ -8,6 +8,8 @@ import asyncio
 import glob
 import json
 import os
+import shlex
+import subprocess
 import time
 from pathlib import Path
 from typing import Any
@@ -31,6 +33,8 @@ DEFAULT_FEEDBACK_SAMPLE_INTERVAL_S = 0.2
 DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.json"
 DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
 DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH = "runtime/lidar_raw_packet_proof_latest.json"
+DEFAULT_MAP_ARTIFACT_DIR = "runtime/maps"
+DEFAULT_LOCALIZATION_ARTIFACT_PATH = "runtime/localization_reset_latest.json"
 DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS = 15 * 60 * 1000
 MAX_FEEDBACK_READ_TIMEOUT_S = 2.0
 MAX_FEEDBACK_READ_WINDOW_S = 5.0
@@ -51,8 +55,16 @@ ROUTE_PATHS = {
     "camera_offer": "/api/camera/offer",
     "camera_peer_close": "/api/camera/peers/{peer_id}/close",
     "radar_status": "/api/radar/status",
+    "radar_start": "/api/radar/start",
+    "radar_stop": "/api/radar/stop",
     "radar_scan_proof_latest": "/api/radar/scan-proof/latest",
     "radar_raw_packet_proof_latest": "/api/radar/raw-packet-proof/latest",
+    "map_start": "/api/map/start",
+    "map_reset": "/api/map/reset",
+    "map_save": "/api/map/save",
+    "map_load": "/api/map/load",
+    "map_list": "/api/map/list",
+    "localize_reset": "/api/localize/reset",
     "base_status": "/api/base/status",
     "base_feedback_request": "/api/base/feedback-request",
     "base_feedback_samples": "/api/base/feedback-samples",
@@ -254,6 +266,129 @@ def lidar_raw_packet_proof_artifact_info(path: str) -> dict[str, Any]:
         "format": "json",
         "schema": "trashbot.o1.lidar_raw_packet_proof.v1",
     }
+
+
+def map_artifact_info(path: str) -> dict[str, Any]:
+    """地图 artifact 目录只作为软件合同入口，不证明 SLAM 已经产图。"""
+    return {
+        "path": path,
+        "configured_by": "ROBER_MAP_ARTIFACT_DIR or --map-artifact-dir",
+        "expected_files": ["*.yaml", "*.pgm", "*.pbstream"],
+        "schema": f"{SCHEMA}.map_lifecycle_artifact",
+    }
+
+
+def localization_artifact_info(path: str) -> dict[str, Any]:
+    """定位 reset artifact 是上层回放材料，不代表 AMCL 已恢复定位。"""
+    return {
+        "path": path,
+        "configured_by": "ROBER_LOCALIZATION_ARTIFACT_PATH or --localization-artifact-path",
+        "format": "json",
+        "schema": f"{SCHEMA}.localization_reset_artifact",
+    }
+
+
+def command_config_info(env_name: str, command: str | None) -> dict[str, Any]:
+    """命令入口显式暴露配置来源，避免 PC 把默认 dry-run 误判为真实 ROS2。"""
+    configured = bool(command and command.strip())
+    try:
+        argv = shlex.split(command) if configured else []
+        error = None
+    except ValueError as exc:
+        # status 接口也要 fail-closed；配置写坏时给 PC 明确错误，不让 8787 变 500。
+        argv = []
+        error = compact_error(exc)
+    return {
+        "env": env_name,
+        "configured": configured,
+        "mode": "command" if configured else "dry_run_stub",
+        "argv": argv,
+        "error": error,
+    }
+
+
+def run_configured_command(command: str | None, timeout_s: float = 12.0) -> dict[str, Any]:
+    """只执行显式配置的非 shell 命令；默认 dry-run，保持 HTTP 合同先行。"""
+    if not command or not command.strip():
+        return {
+            "mode": "dry_run_stub",
+            "executed": False,
+            "ok": False,
+            "reason": "no_command_configured",
+        }
+    try:
+        argv = shlex.split(command)
+    except ValueError as exc:
+        return {"mode": "command", "executed": False, "ok": False, "error": compact_error(exc)}
+    if not argv:
+        return {"mode": "dry_run_stub", "executed": False, "ok": False, "reason": "empty_command"}
+    try:
+        completed = subprocess.run(
+            argv,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+    except Exception as exc:  # noqa: BLE001 - 现场 ROS2 命令失败要结构化给 PC。
+        return {"mode": "command", "executed": False, "ok": False, "argv": argv, "error": compact_error(exc)}
+    return {
+        "mode": "command",
+        "executed": True,
+        "ok": completed.returncode == 0,
+        "argv": argv,
+        "returncode": completed.returncode,
+        "stdout_preview": completed.stdout[-1200:],
+        "stderr_preview": completed.stderr[-1200:],
+    }
+
+
+def software_guard_payload(
+    *,
+    schema_suffix: str,
+    action: str,
+    endpoint: str,
+    command_env: str | None = None,
+    command: str | None = None,
+    command_result: dict[str, Any] | None = None,
+    artifact: dict[str, Any] | None = None,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """所有新生命周期入口都先 fail-closed，真实证明只能来自后续 ROS2/runtime artifact。"""
+    configured = bool(command and command.strip())
+    result_ok = bool(command_result and command_result.get("ok"))
+    payload: dict[str, Any] = {
+        "schema": f"{SCHEMA}.{schema_suffix}",
+        "generated_at_ms": now_ms(),
+        "action": action,
+        "endpoint": endpoint,
+        "status": "not_proven",
+        "proof_state": "not_proven",
+        "software_guard": True,
+        "not_proven": True,
+        "configured_command": command_config_info(command_env, command) if command_env else None,
+        "command_result": command_result,
+        "artifact": artifact,
+        "ros2_runtime_proven": False,
+        "map_artifact_proven": False,
+        "localization_proven": False,
+        "scan_runtime_proven": False,
+        "sends_base_motion_commands": False,
+        "uses_base_uart": False,
+        "blocked_devices_not_touched": [DEFAULT_BASE_PORT, "/dev/ttyS5"],
+        "blocked_commands_not_sent": ["T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual"],
+        "failure_reason": None if result_ok else ("command_not_configured" if not configured else "configured_command_failed"),
+        "operator_message": (
+            "command executed but ROS2/runtime proof is still not attached"
+            if result_ok
+            else "software guard only; configure ROS2 command and attach runtime artifact before claiming proof"
+        ),
+        "sends_commands": result_ok,
+        **proof_flags(),
+    }
+    if extra:
+        payload.update(extra)
+    return payload
 
 
 def read_lidar_scan_proof_latest_artifact(path: str) -> tuple[int, dict[str, Any]]:
@@ -1075,6 +1210,15 @@ class UpperRobotApi:
         feedback_samples_artifact_path: str = DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH,
         lidar_scan_proof_artifact_path: str = DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH,
         lidar_raw_packet_proof_artifact_path: str = DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH,
+        map_artifact_dir: str = DEFAULT_MAP_ARTIFACT_DIR,
+        localization_artifact_path: str = DEFAULT_LOCALIZATION_ARTIFACT_PATH,
+        radar_start_command: str | None = None,
+        radar_stop_command: str | None = None,
+        map_start_command: str | None = None,
+        map_reset_command: str | None = None,
+        map_save_command: str | None = None,
+        map_load_command: str | None = None,
+        localize_reset_command: str | None = None,
     ) -> None:
         self.camera_base_url = camera_base_url.rstrip("/")
         self.base_port = base_port
@@ -1083,6 +1227,15 @@ class UpperRobotApi:
         self.feedback_samples_artifact_path = feedback_samples_artifact_path
         self.lidar_scan_proof_artifact_path = lidar_scan_proof_artifact_path
         self.lidar_raw_packet_proof_artifact_path = lidar_raw_packet_proof_artifact_path
+        self.map_artifact_dir = map_artifact_dir
+        self.localization_artifact_path = localization_artifact_path
+        self.radar_start_command = radar_start_command
+        self.radar_stop_command = radar_stop_command
+        self.map_start_command = map_start_command
+        self.map_reset_command = map_reset_command
+        self.map_save_command = map_save_command
+        self.map_load_command = map_load_command
+        self.localize_reset_command = localize_reset_command
 
     def base_status(self) -> dict[str, Any]:
         """底盘状态只证明写入口配置和设备存在，不伪造 T=1001 ACK。"""
@@ -1145,6 +1298,16 @@ class UpperRobotApi:
             "raw_packet_proof_latest": summarize_lidar_raw_packet_proof_latest_artifact(
                 self.lidar_raw_packet_proof_artifact_path
             ),
+            "controls": {
+                "start": {
+                    "endpoint": ROUTE_PATHS["radar_start"],
+                    "command": command_config_info("ROBER_RADAR_START_COMMAND", self.radar_start_command),
+                },
+                "stop": {
+                    "endpoint": ROUTE_PATHS["radar_stop"],
+                    "command": command_config_info("ROBER_RADAR_STOP_COMMAND", self.radar_stop_command),
+                },
+            },
             "blocked_reasons": [
                 *(["ttyACM0_lidar_not_present"] if not lidar_observed else []),
                 "ros2_lidar_scan_not_connected",
@@ -1153,6 +1316,172 @@ class UpperRobotApi:
             "sends_commands": False,
             **proof_flags(),
         }
+
+    def radar_control(self, action: str) -> dict[str, Any]:
+        """雷达 start/stop 只允许走 LiDAR/ROS2 driver 命令，不触碰底盘 UART。"""
+        if action == "start":
+            endpoint = ROUTE_PATHS["radar_start"]
+            command_env = "ROBER_RADAR_START_COMMAND"
+            command = self.radar_start_command
+        elif action == "stop":
+            endpoint = ROUTE_PATHS["radar_stop"]
+            command_env = "ROBER_RADAR_STOP_COMMAND"
+            command = self.radar_stop_command
+        else:
+            return software_guard_payload(
+                schema_suffix="radar_control_result",
+                action=action,
+                endpoint="/api/radar/{action}",
+                extra={"error": {"type": "unsupported_radar_action", "message": "action must be start or stop"}},
+            )
+        command_result = run_configured_command(command)
+        return software_guard_payload(
+            schema_suffix="radar_control_result",
+            action=f"radar_{action}",
+            endpoint=endpoint,
+            command_env=command_env,
+            command=command,
+            command_result=command_result,
+            artifact=lidar_scan_proof_artifact_info(self.lidar_scan_proof_artifact_path),
+            extra={
+                "scope": "lidar_ros2_driver_only",
+                "base_uart_touched": False,
+                "lidar_start_stop_only": True,
+                "transition_to_proven": [
+                    "ros2 topic echo --once /scan",
+                    "ros2 topic hz /scan",
+                    "artifact update at lidar_scan_proof_latest_artifact.path",
+                ],
+            },
+        )
+
+    def map_status(self) -> dict[str, Any]:
+        """地图生命周期状态只列出软件入口和 artifact 目录，不读取 ROS graph。"""
+        return {
+            "schema": f"{SCHEMA}.map_lifecycle_status",
+            "generated_at_ms": now_ms(),
+            "artifact": map_artifact_info(self.map_artifact_dir),
+            "routes": {
+                "start": ROUTE_PATHS["map_start"],
+                "reset": ROUTE_PATHS["map_reset"],
+                "save": ROUTE_PATHS["map_save"],
+                "load": ROUTE_PATHS["map_load"],
+                "list": ROUTE_PATHS["map_list"],
+                "localize_reset": ROUTE_PATHS["localize_reset"],
+            },
+            "commands": {
+                "start": command_config_info("ROBER_MAP_START_COMMAND", self.map_start_command),
+                "reset": command_config_info("ROBER_MAP_RESET_COMMAND", self.map_reset_command),
+                "save": command_config_info("ROBER_MAP_SAVE_COMMAND", self.map_save_command),
+                "load": command_config_info("ROBER_MAP_LOAD_COMMAND", self.map_load_command),
+                "localize_reset": command_config_info("ROBER_LOCALIZE_RESET_COMMAND", self.localize_reset_command),
+            },
+            "status": "not_proven",
+            "software_guard": True,
+            "not_proven": True,
+            "sends_base_motion_commands": False,
+            "uses_base_uart": False,
+            "sends_commands": False,
+            **proof_flags(),
+        }
+
+    def map_control(self, action: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """建图 lifecycle 先提供 HTTP 合同；默认不启动 ROS2，不伪造地图产物。"""
+        body = body if isinstance(body, dict) else {}
+        command_by_action = {
+            "start": ("ROBER_MAP_START_COMMAND", self.map_start_command, ROUTE_PATHS["map_start"]),
+            "reset": ("ROBER_MAP_RESET_COMMAND", self.map_reset_command, ROUTE_PATHS["map_reset"]),
+            "save": ("ROBER_MAP_SAVE_COMMAND", self.map_save_command, ROUTE_PATHS["map_save"]),
+            "load": ("ROBER_MAP_LOAD_COMMAND", self.map_load_command, ROUTE_PATHS["map_load"]),
+        }
+        if action not in command_by_action:
+            return software_guard_payload(
+                schema_suffix="map_lifecycle_result",
+                action=action,
+                endpoint="/api/map/{action}",
+                artifact=map_artifact_info(self.map_artifact_dir),
+                extra={"error": {"type": "unsupported_map_action", "message": "action must be start/reset/save/load"}},
+            )
+        command_env, command, endpoint = command_by_action[action]
+        command_result = run_configured_command(command)
+        return software_guard_payload(
+            schema_suffix="map_lifecycle_result",
+            action=f"map_{action}",
+            endpoint=endpoint,
+            command_env=command_env,
+            command=command,
+            command_result=command_result,
+            artifact=map_artifact_info(self.map_artifact_dir),
+            extra={
+                "requested_map_name": body.get("map_name"),
+                "requested_artifact_path": body.get("artifact_path"),
+                "map_lifecycle_status": self.map_status(),
+                "transition_to_proven": [
+                    "/map once observed",
+                    "map YAML/image or pbstream artifact exists",
+                    "PC/upper API readback references the same artifact path",
+                ],
+            },
+        )
+
+    def map_list(self) -> dict[str, Any]:
+        """列出本地 map artifact 候选；文件存在仍不等于地图质量已验收。"""
+        root = Path(self.map_artifact_dir)
+        entries: list[dict[str, Any]] = []
+        if root.exists() and root.is_dir():
+            for pattern in ("*.yaml", "*.pgm", "*.pbstream"):
+                for path in sorted(root.glob(pattern)):
+                    try:
+                        stat_result = path.stat()
+                    except OSError as exc:
+                        entries.append({"path": str(path), "ok": False, "error": compact_error(exc)})
+                        continue
+                    entries.append(
+                        {
+                            "path": str(path),
+                            "name": path.name,
+                            "suffix": path.suffix,
+                            "size_bytes": stat_result.st_size,
+                            "mtime_ms": int(stat_result.st_mtime_ns / 1_000_000),
+                        }
+                    )
+        return software_guard_payload(
+            schema_suffix="map_list_result",
+            action="map_list",
+            endpoint=ROUTE_PATHS["map_list"],
+            artifact=map_artifact_info(self.map_artifact_dir),
+            extra={
+                "artifact_dir_exists": root.exists(),
+                "maps": entries,
+                "map_count": len(entries),
+                "command_result": {"mode": "read_only_local_files", "executed": False, "ok": root.exists()},
+                "failure_reason": None if root.exists() else "map_artifact_dir_missing",
+            },
+        )
+
+    def localize_reset(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """定位 reset 合同预留 AMCL /initialpose；默认不发布 ROS2 pose。"""
+        body = body if isinstance(body, dict) else {}
+        command_result = run_configured_command(self.localize_reset_command)
+        return software_guard_payload(
+            schema_suffix="localization_reset_result",
+            action="localize_reset",
+            endpoint=ROUTE_PATHS["localize_reset"],
+            command_env="ROBER_LOCALIZE_RESET_COMMAND",
+            command=self.localize_reset_command,
+            command_result=command_result,
+            artifact=localization_artifact_info(self.localization_artifact_path),
+            extra={
+                "requested_pose": body.get("pose"),
+                "target_ros2_topic": "/initialpose",
+                "expected_runtime_proof": ["/amcl_pose", "tf map->base_link freshness", "pose timestamp freshness"],
+                "transition_to_proven": [
+                    "configured command publishes or calls ROS2 localization reset",
+                    "AMCL pose observed after reset",
+                    "artifact update at localization_artifact.path",
+                ],
+            },
+        )
 
     async def camera_health(self) -> tuple[int, dict[str, Any]]:
         """camera 子接口代理 8088 /health，并标注统一 API 来源。"""
@@ -1201,6 +1530,19 @@ class UpperRobotApi:
                 "offer_path": "/api/camera/offer",
             },
             "radar": self.radar_status(),
+            "map": self.map_status(),
+            "localization": {
+                "schema": f"{SCHEMA}.localization_status",
+                "generated_at_ms": now_ms(),
+                "reset_endpoint": ROUTE_PATHS["localize_reset"],
+                "artifact": localization_artifact_info(self.localization_artifact_path),
+                "command": command_config_info("ROBER_LOCALIZE_RESET_COMMAND", self.localize_reset_command),
+                "status": "not_proven",
+                "software_guard": True,
+                "not_proven": True,
+                "sends_commands": False,
+                **proof_flags(),
+            },
             "base": self.base_status(),
             "routes": dict(ROUTE_PATHS),
             "base_feedback_samples_latest_artifact": artifact_path_info(self.feedback_samples_artifact_path),
@@ -1208,6 +1550,8 @@ class UpperRobotApi:
             "lidar_raw_packet_proof_latest_artifact": lidar_raw_packet_proof_artifact_info(
                 self.lidar_raw_packet_proof_artifact_path
             ),
+            "map_artifact": map_artifact_info(self.map_artifact_dir),
+            "localization_artifact": localization_artifact_info(self.localization_artifact_path),
             "sends_commands": False,
             **proof_flags(),
         }
@@ -1406,6 +1750,18 @@ def parse_args() -> argparse.Namespace:
         "--lidar-raw-packet-proof-artifact-path",
         default=os.getenv("ROBER_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH", DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH),
     )
+    parser.add_argument("--map-artifact-dir", default=os.getenv("ROBER_MAP_ARTIFACT_DIR", DEFAULT_MAP_ARTIFACT_DIR))
+    parser.add_argument(
+        "--localization-artifact-path",
+        default=os.getenv("ROBER_LOCALIZATION_ARTIFACT_PATH", DEFAULT_LOCALIZATION_ARTIFACT_PATH),
+    )
+    parser.add_argument("--radar-start-command", default=os.getenv("ROBER_RADAR_START_COMMAND"))
+    parser.add_argument("--radar-stop-command", default=os.getenv("ROBER_RADAR_STOP_COMMAND"))
+    parser.add_argument("--map-start-command", default=os.getenv("ROBER_MAP_START_COMMAND"))
+    parser.add_argument("--map-reset-command", default=os.getenv("ROBER_MAP_RESET_COMMAND"))
+    parser.add_argument("--map-save-command", default=os.getenv("ROBER_MAP_SAVE_COMMAND"))
+    parser.add_argument("--map-load-command", default=os.getenv("ROBER_MAP_LOAD_COMMAND"))
+    parser.add_argument("--localize-reset-command", default=os.getenv("ROBER_LOCALIZE_RESET_COMMAND"))
     return parser.parse_args()
 
 
@@ -1421,6 +1777,15 @@ async def run_server(args: argparse.Namespace) -> None:
         feedback_samples_artifact_path=args.feedback_samples_artifact_path,
         lidar_scan_proof_artifact_path=args.lidar_scan_proof_artifact_path,
         lidar_raw_packet_proof_artifact_path=args.lidar_raw_packet_proof_artifact_path,
+        map_artifact_dir=args.map_artifact_dir,
+        localization_artifact_path=args.localization_artifact_path,
+        radar_start_command=args.radar_start_command,
+        radar_stop_command=args.radar_stop_command,
+        map_start_command=args.map_start_command,
+        map_reset_command=args.map_reset_command,
+        map_save_command=args.map_save_command,
+        map_load_command=args.map_load_command,
+        localize_reset_command=args.localize_reset_command,
     )
     app = create_app(api)
     runner = web.AppRunner(app)
@@ -1469,6 +1834,12 @@ def create_app(api: UpperRobotApi) -> Any:
     async def radar_status(_: web.Request) -> Any:
         return json_response(api.radar_status())
 
+    async def radar_start(_: web.Request) -> Any:
+        return json_response(api.radar_control("start"))
+
+    async def radar_stop(_: web.Request) -> Any:
+        return json_response(api.radar_control("stop"))
+
     async def radar_scan_proof_latest(_: web.Request) -> Any:
         http_status, payload = api.radar_scan_proof_latest()
         return json_response(payload, status=http_status)
@@ -1479,6 +1850,29 @@ def create_app(api: UpperRobotApi) -> Any:
 
     async def base_status(_: web.Request) -> Any:
         return json_response(api.base_status())
+
+    async def map_start(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        return json_response(api.map_control("start", body if isinstance(body, dict) else {}))
+
+    async def map_reset(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        return json_response(api.map_control("reset", body if isinstance(body, dict) else {}))
+
+    async def map_save(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        return json_response(api.map_control("save", body if isinstance(body, dict) else {}))
+
+    async def map_load(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        return json_response(api.map_control("load", body if isinstance(body, dict) else {}))
+
+    async def map_list(_: web.Request) -> Any:
+        return json_response(api.map_list())
+
+    async def localize_reset(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        return json_response(api.localize_reset(body if isinstance(body, dict) else {}))
 
     async def base_stop(_: web.Request) -> Any:
         return json_response(build_stop_payload(api.base_port, api.base_baudrate))
@@ -1510,8 +1904,16 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["camera_offer"], camera_offer)
     app.router.add_post(ROUTE_PATHS["camera_peer_close"], camera_peer_close)
     app.router.add_get(ROUTE_PATHS["radar_status"], radar_status)
+    app.router.add_post(ROUTE_PATHS["radar_start"], radar_start)
+    app.router.add_post(ROUTE_PATHS["radar_stop"], radar_stop)
     app.router.add_get(ROUTE_PATHS["radar_scan_proof_latest"], radar_scan_proof_latest)
     app.router.add_get(ROUTE_PATHS["radar_raw_packet_proof_latest"], radar_raw_packet_proof_latest)
+    app.router.add_post(ROUTE_PATHS["map_start"], map_start)
+    app.router.add_post(ROUTE_PATHS["map_reset"], map_reset)
+    app.router.add_post(ROUTE_PATHS["map_save"], map_save)
+    app.router.add_post(ROUTE_PATHS["map_load"], map_load)
+    app.router.add_get(ROUTE_PATHS["map_list"], map_list)
+    app.router.add_post(ROUTE_PATHS["localize_reset"], localize_reset)
     app.router.add_get(ROUTE_PATHS["base_status"], base_status)
     app.router.add_post(ROUTE_PATHS["base_feedback_request"], base_feedback_request)
     app.router.add_post(ROUTE_PATHS["base_feedback_samples"], base_feedback_samples)

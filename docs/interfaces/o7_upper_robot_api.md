@@ -8,10 +8,11 @@
 http://192.168.1.11:8787
 ```
 
-8787 统一承接 camera、radar、base 三类入口：
+8787 统一承接 camera、radar、map/localize、base 四类入口：
 
 - camera：代理本机 8088 WebRTC camera smoke。
-- radar：返回 `/dev/ttyACM0 @150000` 雷达设备、启动/停止字节和 ROS2 `/scan` 证明状态。
+- radar：返回 `/dev/ttyACM0 @150000` 雷达设备、启动/停止字节、ROS2 `/scan` 证明状态，并提供 LiDAR/ROS2 driver 一键 start/stop HTTP 合同。
+- map/localize：提供建图 start/reset/save/load/list 与定位 reset HTTP 合同；默认 fail-closed，不证明真实 SLAM、真实地图或 AMCL 定位已完成。
 - base：返回 `/dev/ttyS5` 底盘写入口状态，并提供低速点动/停车 API。
 
 ## Vendor 来源
@@ -67,8 +68,16 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 | `POST` | `/api/camera/offer` | 代理 8088 `/offer`，只用于 recvonly WebRTC 视频 |
 | `POST` | `/api/camera/peers/{peer_id}/close` | 代理 8088 peer cleanup |
 | `GET` | `/api/radar/status` | 雷达设备和 `/scan` 证明状态 |
+| `POST` | `/api/radar/start` | 雷达一键启动合同；默认 dry-run/stub，只能配置 LiDAR/ROS2 driver 命令，不触碰 `/dev/ttyS5` 或底盘运动命令 |
+| `POST` | `/api/radar/stop` | 雷达一键停止合同；默认 dry-run/stub，只能配置 LiDAR/ROS2 driver 停止命令，不触碰 `/dev/ttyS5` 或底盘运动命令 |
 | `GET` | `/api/radar/scan-proof/latest` | 只读回放最近一次 LiDAR `/scan` proof artifact；不启动 ROS2、不打开串口、不发送 `A5 60` |
 | `GET` | `/api/radar/raw-packet-proof/latest` | 只读回放最近一次 LiDAR raw packet proof artifact；不执行 collector、不启动 ROS2、不打开串口、不发送 `A5 60` 或底盘命令 |
+| `POST` | `/api/map/start` | 建图 lifecycle start 合同；默认 dry-run/stub，返回 `not_proven` 与 artifact 入口 |
+| `POST` | `/api/map/reset` | 建图 reset 合同；默认 dry-run/stub，返回 `not_proven` 与 artifact 入口 |
+| `POST` | `/api/map/save` | 地图 save 合同；默认 dry-run/stub，保留 `map_name`/`artifact_path` 回显，不证明地图已保存 |
+| `POST` | `/api/map/load` | 地图 load 合同；默认 dry-run/stub，不证明 map server/Nav2 已消费地图 |
+| `GET` | `/api/map/list` | 只读列出 `ROBER_MAP_ARTIFACT_DIR` 下 `*.yaml/*.pgm/*.pbstream` 候选文件；文件存在不等于地图质量验收 |
+| `POST` | `/api/localize/reset` | 定位 reset 合同；默认 dry-run/stub，预留 `/initialpose`/AMCL 入口，不证明定位恢复 |
 | `GET` | `/api/base/status` | `/dev/ttyS5`、pyserial、反馈/ACK 状态；只读摘要 latest feedback samples artifact |
 | `POST` | `/api/base/stop` | 发送 `{"T":1,"L":0,"R":0}` 停车 |
 | `POST` | `/api/base/feedback-request` | 发送一次非运动 `{"T":130}` 反馈请求并短窗口读取 JSON |
@@ -243,6 +252,70 @@ collector artifact 的 `proof.required_observations` 必须独立包含四个 ke
 `latest_scan_once_observed=true` 与 `latest_scan_hz_observed=true` 作为实时雷达 ready；
 raw packet 与 TF 只作为工程诊断和坐标链 proof，不参与 ready 判定。该摘要只代表最近
 artifact 的读取状态，不证明当前 ROS2 `/scan` 正在连续输出。
+
+### Radar start/stop HTTP contract
+
+`POST /api/radar/start` 和 `POST /api/radar/stop` 是给 PC 工作站的一键入口。本轮只实现
+software-guarded HTTP 合同，默认不启动真实 ROS2、不打开 LiDAR 串口、不发送 `A5 60`，
+更不会触碰底盘 `/dev/ttyS5` 或发送 WAVE ROVER `T=1` 运动命令。
+
+可配置环境变量：
+
+| env / CLI | 用途 |
+| --- | --- |
+| `ROBER_RADAR_START_COMMAND` / `--radar-start-command` | 显式配置 LiDAR/ROS2 driver start 命令 |
+| `ROBER_RADAR_STOP_COMMAND` / `--radar-stop-command` | 显式配置 LiDAR/ROS2 driver stop 命令 |
+| `ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH` / `--lidar-scan-proof-artifact-path` | `/scan` proof latest artifact 路径 |
+
+响应固定包含：
+
+- `status="not_proven"`、`software_guard=true`、`not_proven=true`。
+- `safe_to_control=false`、`robot_control_executed=false`、`sends_base_motion_commands=false`。
+- `blocked_devices_not_touched` 包含 `/dev/ttyS5`，`blocked_commands_not_sent` 包含 `T=1`、`/cmd_vel`、`/api/base/manual`。
+- `command_result.mode="dry_run_stub"` 表示命令未配置；即使命令配置并返回 0，也只表示 start/stop 命令进程执行过，不证明 `/scan` runtime ready。
+
+从 `not_proven` 转正必须另有 runtime evidence：`ros2 topic echo --once /scan`、
+`ros2 topic hz /scan`，并写入 `lidar_scan_proof_latest_artifact.path`。
+
+## Map / Localization lifecycle contract
+
+Map/localize 入口服务 O3/O7 的 PC 工作站按钮合同，不让浏览器直连 ROS graph。默认行为是
+fail-closed dry-run/stub，只返回可读状态和 artifact path。
+
+可配置环境变量：
+
+| env / CLI | 用途 |
+| --- | --- |
+| `ROBER_MAP_ARTIFACT_DIR` / `--map-artifact-dir` | 地图 artifact 目录，默认 `runtime/maps` |
+| `ROBER_LOCALIZATION_ARTIFACT_PATH` / `--localization-artifact-path` | 定位 reset latest artifact，默认 `runtime/localization_reset_latest.json` |
+| `ROBER_MAP_START_COMMAND` / `--map-start-command` | 显式配置 SLAM/map start 命令 |
+| `ROBER_MAP_RESET_COMMAND` / `--map-reset-command` | 显式配置 map reset 命令 |
+| `ROBER_MAP_SAVE_COMMAND` / `--map-save-command` | 显式配置 map save 命令 |
+| `ROBER_MAP_LOAD_COMMAND` / `--map-load-command` | 显式配置 map load 命令 |
+| `ROBER_LOCALIZE_RESET_COMMAND` / `--localize-reset-command` | 显式配置 AMCL `/initialpose` 或定位 reset 命令 |
+
+`POST /api/map/save` 和 `POST /api/map/load` 可接收上层 body，例如：
+
+```json
+{"map_name":"lab","artifact_path":"runtime/maps/lab.yaml"}
+```
+
+`POST /api/localize/reset` 可接收上层 pose body，例如：
+
+```json
+{"pose":{"x":1.0,"y":2.0,"yaw":0.0}}
+```
+
+这些 body 目前只回显给 PC/operator workflow；默认不会发布 ROS2 topic/service。每个响应固定保留：
+
+- `status="not_proven"`、`software_guard=true`、`not_proven=true`。
+- `map_artifact_proven=false`、`localization_proven=false`、`ros2_runtime_proven=false`。
+- `safe_to_control=false`、`robot_control_executed=false`、`sends_base_motion_commands=false`、`uses_base_uart=false`。
+- `artifact.path` 指向 map/localization 材料入口。
+
+转正条件必须另行提供 ROS2 runtime 材料：`/map` once、地图 YAML/image 或 pbstream artifact、
+load 后 AMCL `/amcl_pose`、TF freshness、pose timestamp freshness。仅有 HTTP 200、dry-run、
+fixture、文件候选或命令 returncode 0，均不得宣称真实 SLAM、真实地图保存/加载或真实定位恢复。
 
 ### LiDAR raw packet proof artifact readback
 

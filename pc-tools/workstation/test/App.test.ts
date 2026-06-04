@@ -11,6 +11,8 @@ import {
   buildO7DirectUpperStatus,
   proxyO7DirectUpperFeedbackRequest,
   proxyO7DirectUpperManual,
+  proxyO7DirectUpperRadarStart,
+  proxyO7DirectUpperRadarStop,
   proxyO7DirectUpperStop,
 } from "../src/server/o7DirectUpperApi";
 import { PROOF_FLAGS } from "../src/shared/contracts";
@@ -340,6 +342,10 @@ const directUpperFixture = {
     radar_raw_packet_proof_points_total: 384,
     radar_raw_packet_proof_safe_to_control: false,
     lidar_port: "/dev/ttyACM0",
+    map_lifecycle_status: "waiting_for_mapping",
+    map_artifact_ref: "not_loaded",
+    localization_status: "not_loaded",
+    operator_report_evidence_ref: "missing_operator_report",
     base_port: "/dev/ttyS5",
     base_baudrate: 115200,
     base_write_control_available: true,
@@ -363,6 +369,15 @@ const directUpperFixture = {
     stop: "/api/o7/direct-upper/base/stop",
     manual: "/api/o7/direct-upper/base/manual",
     feedback_request: "/api/o7/direct-upper/base/feedback-request",
+    radar_start: "/api/o7/direct-upper/radar/start",
+    radar_stop: "/api/o7/direct-upper/radar/stop",
+    map_start: "/api/o7/direct-upper/map/start",
+    map_reset: "/api/o7/direct-upper/map/reset",
+    map_save: "/api/o7/direct-upper/map/save",
+    map_load: "/api/o7/direct-upper/map/load",
+    map_list: "/api/o7/direct-upper/map/list",
+    localize_reset: "/api/o7/direct-upper/localize/reset",
+    operator_report: "/api/o7/direct-upper/operator-report",
   },
   blocked_reasons: ["robot_ack_not_connected", "t1001_feedback_not_observed"],
   failure_reason: "none",
@@ -420,6 +435,70 @@ function stubFetch(options: StubFetchOptions = {}): ReturnType<typeof vi.fn> {
     const url = String(input);
     // 首屏只允许 O7 本机只读 API；camera offer 必须由用户点击预览按钮后才出现。
     const manualBody = init?.body ? JSON.parse(String(init.body)) as { direction?: string; speed?: number; duration_ms?: number } : null;
+    const operatorBody = init?.body ? JSON.parse(String(init.body)) as { evidence_ref?: string; map_id?: string; note?: string } : null;
+    const operatorCommandByUrl: Record<string, { schema: string; command: string; upperPath: string; method: "GET" | "POST" }> = {
+      "/api/o7/direct-upper/base/stop": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_stop.v1",
+        command: "stop",
+        upperPath: "/api/base/stop",
+        method: "POST",
+      },
+      "/api/o7/direct-upper/radar/start": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_radar_start.v1",
+        command: "radar_start",
+        upperPath: "/api/radar/start",
+        method: "POST",
+      },
+      "/api/o7/direct-upper/radar/stop": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_radar_stop.v1",
+        command: "radar_stop",
+        upperPath: "/api/radar/stop",
+        method: "POST",
+      },
+      "/api/o7/direct-upper/map/start": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_map_start.v1",
+        command: "map_start",
+        upperPath: "/api/map/start",
+        method: "POST",
+      },
+      "/api/o7/direct-upper/map/reset": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_map_reset.v1",
+        command: "map_reset",
+        upperPath: "/api/map/reset",
+        method: "POST",
+      },
+      "/api/o7/direct-upper/map/save": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_map_save.v1",
+        command: "map_save",
+        upperPath: "/api/map/save",
+        method: "POST",
+      },
+      "/api/o7/direct-upper/map/load": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_map_load.v1",
+        command: "map_load",
+        upperPath: "/api/map/load",
+        method: "POST",
+      },
+      "/api/o7/direct-upper/map/list": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_map_list.v1",
+        command: "map_list",
+        upperPath: "/api/map/list",
+        method: "GET",
+      },
+      "/api/o7/direct-upper/localize/reset": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_localize_reset.v1",
+        command: "localize_reset",
+        upperPath: "/api/localize/reset",
+        method: "POST",
+      },
+      "/api/o7/direct-upper/operator-report": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1",
+        command: "operator_report",
+        upperPath: "/api/operator/report",
+        method: "POST",
+      },
+    };
+    const operatorCommand = operatorCommandByUrl[url];
     const payload =
       url === "/api/o7/live-operator-panel"
         ? liveOperatorFixture
@@ -461,6 +540,46 @@ function stubFetch(options: StubFetchOptions = {}): ReturnType<typeof vi.fn> {
                     t1001_observed: false,
                     safety_flags: directUpperFixture.safety_flags,
                     blocked_reasons: ["robot_ack_not_connected", "t1001_feedback_not_observed"],
+                    not_proven: ["robot_ack", "t1001_feedback", "hil_pass", "actual_motion_or_stop_observed"],
+                    safe_to_control: false,
+                    sends_commands: false,
+                    robot_control_executed: false,
+                  }
+              : operatorCommand
+                ? {
+                    schema: operatorCommand.schema,
+                    endpoint: url,
+                    ...PROOF_FLAGS,
+                    mode: "direct_upper_computer_lan_only",
+                    command: operatorCommand.command,
+                    accepted_by_workstation: true,
+                    upper_request: {
+                      path: operatorCommand.upperPath,
+                      method: operatorCommand.method,
+                      executed: true,
+                      ok: true,
+                      http_status: 200,
+                      failure_reason: "",
+                    },
+                    upper_api_base_url: "http://192.168.1.11:8787",
+                    cloud_relay_bypassed: true,
+                    pc_local_only: true,
+                    fail_closed: false,
+                    failure_reason: "none",
+                    command_payload_summary: {
+                      direction: "not_applicable",
+                      speed_mps: 0,
+                      duration_ms: 0,
+                      clamped_by_pc: false,
+                      depends_on_upper_8787_guardrail: true,
+                      map_id: operatorBody?.map_id,
+                      evidence_ref: operatorBody?.evidence_ref ?? "operator_field_report_pending",
+                      report_note: operatorBody?.note,
+                    },
+                    robot_ack_connected: false,
+                    t1001_observed: false,
+                    safety_flags: directUpperFixture.safety_flags,
+                    blocked_reasons: ["robot_ack_not_connected", "t1001_feedback_not_observed", "field_evidence_not_proven"],
                     not_proven: ["robot_ack", "t1001_feedback", "hil_pass", "actual_motion_or_stop_observed"],
                     safe_to_control: false,
                     sends_commands: false,
@@ -528,6 +647,16 @@ describe("O7 live operator first screen", () => {
     expect(text).toContain("/api/o7/direct-upper/base/stop");
     expect(text).toContain("/api/o7/direct-upper/base/feedback-request");
     expect(text).toContain("/api/o7/direct-upper/base/manual");
+    expect(text).toContain("雷达 / 建图 / 定位");
+    expect(text).toContain("Radar start");
+    expect(text).toContain("Map save");
+    expect(text).toContain("Localize reset");
+    expect(text).toContain("Report evidence ref");
+    expect(text).toContain("/api/o7/direct-upper/radar/start");
+    expect(text).toContain("/api/o7/direct-upper/map/save");
+    expect(text).toContain("/api/o7/direct-upper/localize/reset");
+    expect(text).toContain("/api/o7/direct-upper/operator-report");
+    expect(text).toContain("map=not_loaded · localize=not_loaded · report=missing_operator_report");
     expect(text).toContain("http://192.168.1.11:8787");
     expect(text).toContain("摄像头已就绪，点击重新连接预览");
     expect(text).not.toContain("雷达未接入 / 等待建图");
@@ -606,20 +735,22 @@ describe("O7 live operator first screen", () => {
 
     const calledUrls = mockedFetch.mock.calls.map(([url]) => String(url));
     const manualCalls = mockedFetch.mock.calls.filter(([url]) => String(url) === "/api/o7/direct-upper/base/manual");
-    expect(manualCalls).toHaveLength(5);
+    const stopCalls = mockedFetch.mock.calls.filter(([url]) => String(url) === "/api/o7/direct-upper/base/stop");
+    expect(manualCalls).toHaveLength(4);
+    expect(stopCalls).toHaveLength(1);
     expect(manualCalls.map(([, init]) => JSON.parse(String(init?.body)).direction)).toEqual([
       "forward",
       "back",
       "left",
       "right",
-      "stop",
     ]);
-    expect(manualCalls.map(([, init]) => JSON.parse(String(init?.body)).duration_ms)).toEqual([250, 250, 350, 350, 250]);
-    expect(manualCalls.map(([, init]) => JSON.parse(String(init?.body)).speed)).toEqual([0.2, 0.2, 0.08, 0.08, 0]);
-    expect(wrapper.text()).toContain("Stop 已发送（仍锁定）：/api/base/manual HTTP 200");
+    expect(manualCalls.map(([, init]) => JSON.parse(String(init?.body)).duration_ms)).toEqual([250, 250, 350, 350]);
+    expect(manualCalls.map(([, init]) => JSON.parse(String(init?.body)).speed)).toEqual([0.2, 0.2, 0.08, 0.08]);
+    expect(wrapper.text()).toContain("Stop 已发送（仍锁定）：/api/base/stop HTTP 200");
     expect(wrapper.text()).toContain("ACK not observed / T=1001 not observed");
     expect(wrapper.text()).toContain("锁定原因 robot_ack_not_connected / t1001_feedback_not_observed");
     expect(calledUrls).not.toContain("/api/base/manual");
+    expect(calledUrls).not.toContain("/api/base/stop");
     expect(calledUrls.join("\n")).not.toContain("/cmd_vel");
     expect(calledUrls.join("\n")).not.toContain("wave_rover");
     expect(wrapper.text()).not.toContain("ready to control");
@@ -659,6 +790,47 @@ describe("O7 live operator first screen", () => {
     expect(wrapper.text()).toContain("Stop 已发送（仍锁定）：/api/base/manual HTTP 200");
     expect(wrapper.text()).toContain("safe_to_control=false");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/base/manual");
+  });
+
+  it("routes radar, map, localize, and operator report controls through workstation direct-upper proxies with not_proven copy", async () => {
+    stubWebrtc();
+    const mockedFetch = stubFetch();
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    for (const label of ["Radar start", "Radar stop", "Map start", "Map reset", "Map save", "Map load", "Map list", "Localize reset"]) {
+      await wrapper.findAll("button").find((button) => button.text() === label)?.trigger("click");
+      await flushPromises();
+      await wrapper.vm.$nextTick();
+    }
+    await wrapper.findAll("button").find((button) => button.text() === "Report evidence ref")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const calledUrls = mockedFetch.mock.calls.map(([url]) => String(url));
+    expect(calledUrls).toContain("/api/o7/direct-upper/radar/start");
+    expect(calledUrls).toContain("/api/o7/direct-upper/radar/stop");
+    expect(calledUrls).toContain("/api/o7/direct-upper/map/start");
+    expect(calledUrls).toContain("/api/o7/direct-upper/map/reset");
+    expect(calledUrls).toContain("/api/o7/direct-upper/map/save");
+    expect(calledUrls).toContain("/api/o7/direct-upper/map/load");
+    expect(calledUrls).toContain("/api/o7/direct-upper/map/list");
+    expect(calledUrls).toContain("/api/o7/direct-upper/localize/reset");
+    expect(calledUrls).toContain("/api/o7/direct-upper/operator-report");
+    expect(calledUrls.join("\n")).not.toContain("http://192.168.1.11:8787/api");
+    expect(calledUrls.join("\n")).not.toContain("/cmd_vel");
+    expect(calledUrls.join("\n")).not.toContain("/api/radar/start");
+    expect(wrapper.text()).toContain("Operator report 已发送（仍锁定）：/api/operator/report HTTP 200");
+    expect(wrapper.text()).toContain("锁定原因 robot_ack_not_connected / t1001_feedback_not_observed / field_evidence_not_proven");
+    expect(wrapper.text()).toContain("safe_to_control=false");
+    const saveCall = mockedFetch.mock.calls.find(([url]) => String(url) === "/api/o7/direct-upper/map/save");
+    expect(saveCall).toBeTruthy();
+    expect(JSON.parse(String(saveCall?.[1]?.body))).toMatchObject({
+      map_id: "latest",
+      evidence_ref: "operator_field_report_pending",
+    });
   });
 });
 
@@ -860,15 +1032,29 @@ describe("O7 direct upper PC API", () => {
     vi.unstubAllGlobals();
   });
 
-  it("fails closed without ROBER_UPPER_API_BASE_URL and does not probe 8787", async () => {
-    const mockedFetch = vi.fn();
+  it("uses the field default upper 8787 URL for status without env while keeping base controls explicit", async () => {
+    const mockedFetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      return {
+        ok: true,
+        status: 200,
+        json: async () =>
+          url.endsWith("/health")
+            ? { schema: "trashbot.upper_robot_api.health.v1", status: "ready" }
+            : { camera: { status: "ready" }, radar: { scan_status: "not_proven" }, base: { write_control_available: false } },
+      } as Response;
+    });
     vi.stubGlobal("fetch", mockedFetch);
 
     const response = await buildO7DirectUpperStatus({ env: {} });
     const stop = await proxyO7DirectUpperStop({ env: {} });
     const feedback = await proxyO7DirectUpperFeedbackRequest({ env: {} });
 
-    expect(response.status).toBe("not_configured");
+    expect(response.status).toBe("ready");
+    expect(response.upper_api_base_url).toBe("http://192.168.1.11:8787");
+    expect(response.upper_api_base_url_source).toBe("field_default");
+    expect(response.health_request.executed).toBe(true);
+    expect(response.status_request.executed).toBe(true);
     expect(response.safety_flags.cloud_relay_bypassed).toBe(true);
     expect(response.safety_flags.pc_local_only).toBe(true);
     expect(response.safety_flags.production_4g_cloud_route_changed).toBe(false);
@@ -880,7 +1066,58 @@ describe("O7 direct upper PC API", () => {
     expect(feedback.status).toBe(400);
     expect(feedback.payload.failure_reason).toBe("base_url_not_configured");
     expect(feedback.payload.upper_request.executed).toBe(false);
-    expect(mockedFetch).not.toHaveBeenCalled();
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).toEqual([
+      "http://192.168.1.11:8787/health",
+      "http://192.168.1.11:8787/api/status",
+    ]);
+  });
+
+  it("proxies radar start and stop through the field default upper 8787 URL without ACK/T1001 gating", async () => {
+    const mockedFetch = vi.fn(async (input: RequestInfo | URL) => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ accepted: true, upper_path: String(input).replace("http://192.168.1.11:8787", "") }),
+    }) as Response);
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const start = await proxyO7DirectUpperRadarStart({ env: {}, body: { evidence_ref: "o7-radar-default-url-test" } });
+    const stop = await proxyO7DirectUpperRadarStop({ env: {}, body: { evidence_ref: "o7-radar-default-url-test" } });
+
+    expect(start.status).toBe(200);
+    expect(start.payload.upper_api_base_url).toBe("http://192.168.1.11:8787");
+    expect(start.payload.upper_api_base_url_source).toBe("field_default");
+    expect(start.payload.failure_reason).toBe("none");
+    expect(start.payload.upper_request).toMatchObject({
+      path: "/api/radar/start",
+      method: "POST",
+      executed: true,
+      ok: true,
+      http_status: 200,
+      failure_reason: "",
+    });
+    expect(start.payload.blocked_reasons).toEqual([
+      "robot_ack_not_connected",
+      "t1001_feedback_not_observed",
+      "field_evidence_not_proven",
+    ]);
+    expect(start.payload.safe_to_control).toBe(false);
+    expect(start.payload.sends_commands).toBe(false);
+    expect(start.payload.robot_control_executed).toBe(false);
+
+    expect(stop.status).toBe(200);
+    expect(stop.payload.upper_api_base_url_source).toBe("field_default");
+    expect(stop.payload.failure_reason).toBe("none");
+    expect(stop.payload.upper_request).toMatchObject({
+      path: "/api/radar/stop",
+      method: "POST",
+      executed: true,
+      ok: true,
+      http_status: 200,
+    });
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).toEqual([
+      "http://192.168.1.11:8787/api/radar/start",
+      "http://192.168.1.11:8787/api/radar/stop",
+    ]);
   });
 
   it("summarizes /health and /api/status from upper 8787 without claiming ACK or HIL", async () => {
@@ -932,6 +1169,10 @@ describe("O7 direct upper PC API", () => {
       radar_raw_packet_proof_points_total: 384,
       radar_raw_packet_proof_safe_to_control: false,
       lidar_port: "/dev/ttyACM0",
+      map_lifecycle_status: "not_loaded",
+      map_artifact_ref: "not_loaded",
+      localization_status: "not_loaded",
+      operator_report_evidence_ref: "missing_operator_report",
       base_port: "/dev/ttyS5",
       base_baudrate: 115200,
       base_write_control_available: true,
@@ -940,6 +1181,10 @@ describe("O7 direct upper PC API", () => {
     });
     expect(response.local_api_paths.manual).toBe("/api/o7/direct-upper/base/manual");
     expect(response.local_api_paths.feedback_request).toBe("/api/o7/direct-upper/base/feedback-request");
+    expect(response.local_api_paths.radar_start).toBe("/api/o7/direct-upper/radar/start");
+    expect(response.local_api_paths.map_save).toBe("/api/o7/direct-upper/map/save");
+    expect(response.local_api_paths.localize_reset).toBe("/api/o7/direct-upper/localize/reset");
+    expect(response.local_api_paths.operator_report).toBe("/api/o7/direct-upper/operator-report");
     expect(response.safety_flags.robot_control_executed).toBe(false);
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).toEqual([
       "http://127.0.0.1:8787/health",

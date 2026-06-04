@@ -32,7 +32,16 @@ import {
 } from "./catalog";
 import {
   proxyO7DirectUpperFeedbackRequest,
+  proxyO7DirectUpperLocalizeReset,
+  proxyO7DirectUpperMapList,
+  proxyO7DirectUpperMapLoad,
+  proxyO7DirectUpperMapReset,
+  proxyO7DirectUpperMapSave,
+  proxyO7DirectUpperMapStart,
   proxyO7DirectUpperManual,
+  proxyO7DirectUpperOperatorReport,
+  proxyO7DirectUpperRadarStart,
+  proxyO7DirectUpperRadarStop,
   proxyO7DirectUpperStop,
 } from "./o7DirectUpperApi";
 import {
@@ -139,6 +148,60 @@ export function createWorkstationApp(): express.Express {
   workstationApp.post("/api/o7/direct-upper/base/manual", async (req, res) => {
     // manual 先经过 PC 低速/短时白名单，再交给 8787 自身 guardrail；失败时默认不转发。
     const result = await proxyO7DirectUpperManual({ body: req.body });
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.post("/api/o7/direct-upper/radar/start", async (req, res) => {
+    // radar start 只代理 8787 上位机 API，不让浏览器直连 ROS graph 或 LiDAR 串口。
+    const result = await proxyO7DirectUpperRadarStart({ body: req.body });
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.post("/api/o7/direct-upper/radar/stop", async (req, res) => {
+    // radar stop 同样只走 upper API，不能扩展成底盘 stop 或串口写命令。
+    const result = await proxyO7DirectUpperRadarStop({ body: req.body });
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.post("/api/o7/direct-upper/map/start", async (req, res) => {
+    // map lifecycle 入口由 8787/ROS2 侧实现；PC 只负责同源代理和 fail-closed 展示。
+    const result = await proxyO7DirectUpperMapStart({ body: req.body });
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.post("/api/o7/direct-upper/map/reset", async (req, res) => {
+    // reset 需要 evidence_ref 才能现场复盘，PC 不直接操作 slam_toolbox。
+    const result = await proxyO7DirectUpperMapReset({ body: req.body });
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.post("/api/o7/direct-upper/map/save", async (req, res) => {
+    // save 只转发到 upper API，不由工作站写 map artifact。
+    const result = await proxyO7DirectUpperMapSave({ body: req.body });
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.post("/api/o7/direct-upper/map/load", async (req, res) => {
+    // load 由 upper API 判定 map_id 是否有效，PC 不读取 ROS map_server。
+    const result = await proxyO7DirectUpperMapLoad({ body: req.body });
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.get("/api/o7/direct-upper/map/list", async (_req, res) => {
+    // list 是只读 map artifact 查询，但仍不能被解释成地图可用于 Nav2。
+    const result = await proxyO7DirectUpperMapList();
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.post("/api/o7/direct-upper/localize/reset", async (req, res) => {
+    // localize reset 只能通过 upper API/ROS2 服务执行，浏览器不发布 /initialpose。
+    const result = await proxyO7DirectUpperLocalizeReset({ body: req.body });
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.post("/api/o7/direct-upper/operator-report", async (req, res) => {
+    // operator report 记录 evidence_ref 和人工说明，不替代 stop/status/ACK/HIL 证据。
+    const result = await proxyO7DirectUpperOperatorReport({ body: req.body });
     res.status(result.status).json(result.payload);
   });
 

@@ -170,6 +170,15 @@ Nav2/fixed-route、真实手机、HIL 或 delivery success。
    - 至少完成 3 次连续受控流程：等待开门、进入、语音求助、到目标楼层、开门驶出、继续到垃圾站。
    - 每次任务留下状态转移、失败原因、语音触发和关键快照引用。
 
+### 2026-06-04 12-13 Epic 验收补充
+
+本轮 `sprints/2026.06.04_12-13_real-control-slam-elevator-field-epic/` 只把电梯 assisted delivery 从合同/dry-run 推进到 OpenCV 与 ROS2 可执行方向，不把 mock、fixture 或本地图片测试写成真实电梯完成。
+
+- OpenCV taxonomy 必须覆盖门线/门缝、轿厢内外、楼层显示屏 ROI、目标楼层确认、可驶出/不可驶出、安全接管原因。
+- ROI/rule baseline 必须输出可解释 artifact，包含阈值、置信度、不可判定策略、false positive/false negative 和混淆项。
+- ROS2 状态链必须只消费带 evidence boundary 的识别结果；缺真实图片、缺目标楼层证据或结果冲突时必须 fail closed 并请求人工接管。
+- 受控实景材料仍按“三次连续流程”验收；本轮 fixture 只能作为 `software_guard` 或 `robot_runtime_material` 前置护栏，不能证明真实楼宇、电梯、跨楼层送达或 delivery success。
+
 ## 现场材料校验 Gate
 
 `pc-tools/evidence/elevator_field_run_material_validation.py` 是受控实景验收前的 Docker/local software proof gate。它读取同一 `evidence_ref` 的材料目录，要求存在：
