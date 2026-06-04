@@ -24,6 +24,7 @@
 - `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
 - `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`
 - `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`
 
 已证实的资料结论：
 
@@ -31,6 +32,7 @@
 - vendor Raspberry Pi reference 使用 `/dev/ttyAMA0`、`115200`；Orange Pi Zero 3 的真实串口路径必须在目标机确认，不能硬编码 Raspberry Pi 路径。
 - `T=1` 是左右轮速度命令，`T=13` 是 ROS velocity 命令，`T=131` 会改变 feedback flow 状态；本 probe 全部列为 `blocked_commands_not_sent`。
 - `T=130` 是 base feedback request，在本轮只允许通过 `--request-base-feedback` 显式发送一次；默认模式仍不发送。
+- `T=1001` 是 `baseInfoFeedback()` 输出的 vendor base feedback，字段包含 `L/R/r/p/y/v` 和可选模块信息；只能作为 feedback material，不能单独写成 robot ACK、HIL pass 或 `safe_to_control=true`。
 
 ## 运行命令
 
@@ -82,6 +84,18 @@ ssh -p 37878 root@192.168.1.11 'python3 -s - --once-json --port /dev/ttyACM0 --b
 - `error`
 - `feedback_request.enabled/sent/command/write_error`
 - `blocked_commands_not_sent`
+
+`not_observed_after_t130` 的含义必须保持窄口径：它只表示本次 probe 已显式写出一次
+vendor `{"T":130}`，但读取窗口内没有解析到 vendor `T=1001` JSON 行。它不是 UI
+刷新问题，也不能靠 PC 页面重复 refresh 消除；下一步必须回到 `next_required_checks[]`
+里的现场链路排查，重点核对 ESP32 供电/固件、UART TX/RX、目标端口身份、串口占用和
+vendor terminal 交叉验证。
+
+该字段只能作为 O1/O7 的 safety / HIL / `not_proven` blocker 展示。Radar start/stop
+属于 LiDAR/ROS2 driver 链路，是否执行 `POST /api/radar/start` 或
+`POST /api/radar/stop` 不应以前一轮底盘 `T=1001` 是否 observed 为前置门；Radar
+响应仍必须展示 `field_evidence_not_proven` 等边界，但不得把它们包装成
+`/api/radar/start not_executed`。
 
 ## 端口身份 readiness probe
 

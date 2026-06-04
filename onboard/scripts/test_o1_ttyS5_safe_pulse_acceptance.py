@@ -143,6 +143,12 @@ class SafePulseAcceptanceTest(unittest.TestCase):
         self.assertEqual(result["status_summary"]["base"]["port"], "/dev/ttyS5")
         self.assertEqual(result["status_summary"]["base"]["baudrate"], 115200)
         self.assertEqual(result["t1001_feedback_status"], "not_observed")
+        self.assertIn("docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h", result["vendor_sources"])
+        self.assertTrue(result["hardware_boundary"]["t1001_feedback_material_only"])
+        self.assertTrue(result["hardware_boundary"]["t1001_not_observed_is_not_ui_refreshable"])
+        self.assertTrue(result["hardware_boundary"]["radar_start_stop_must_not_be_gated_by_base_t1001"])
+        self.assertTrue(result["hardware_boundary"]["manual_base_control_requires_operator_env_ack_t1001_hil"])
+        self.assertTrue(result["hardware_boundary"]["manual_base_control_remains_fail_closed_until_hil"])
         self.assertEqual(result["acceptance_verdict"]["status"], "dry_run_only")
         self.assertFalse(result["acceptance_verdict"]["safe_to_control"])
 
@@ -275,6 +281,8 @@ class SafePulseAcceptanceTest(unittest.TestCase):
 
         self.assertEqual([call[1] for call in calls], ["/api/status", "/api/base/manual", "/api/base/stop", "/api/status"])
         self.assertEqual(result["operator_report_status"], "ready_for_execution")
+        self.assertTrue(result["hardware_boundary"]["manual_base_control_requires_operator_env_ack_t1001_hil"])
+        self.assertTrue(result["hardware_boundary"]["manual_base_control_remains_fail_closed_until_hil"])
         self.assertIn("observed_motion", result["operator_report"]["normalization"]["review_missing_or_invalid_fields"])
         self.assertIn("observed_stop", result["operator_report"]["normalization"]["review_missing_or_invalid_fields"])
         self.assertEqual(result["acceptance_verdict"]["operator_report_status"], "ready_for_execution")

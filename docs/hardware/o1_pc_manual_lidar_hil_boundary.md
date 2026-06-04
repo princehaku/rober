@@ -25,6 +25,10 @@
   - vendor speed 配置包含 `slow_speed: 0.2`、`max_speed: 1.3`，只能作为 vendor app reference；现场低速 pulse 仍需由本项目 HIL 参数显式控制。
 - `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`
   - `CMD_SPEED_CTRL=1`，`CMD_ROS_CTRL=13`，`CMD_BASE_FEEDBACK=130`，`CMD_BASE_FEEDBACK_FLOW=131`，`FEEDBACK_BASE_INFO=1001`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`
+  - `CMD_BASE_FEEDBACK` 分支调用 `baseInfoFeedback()`；串口解析以换行符识别一条完整 JSON。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`
+  - `baseInfoFeedback()` 输出 `T=FEEDBACK_BASE_INFO`，包含 `L/R/r/p/y/v` 等字段并用 `Serial.println(...)` 发送。
 - `docs/vendor/lidar_pkg_ros2-main/README.md`
   - ROS2 Humble 参考要求通过 `/dev/ttyUSB*` 或 `/dev/ttyACM*` 插拔确认雷达设备，并修改 `config/lidar_params.yaml`。
 - `docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp`
@@ -50,7 +54,7 @@
   - `T=13`：ROS velocity 命令，字段 `X/Z`，firmware comment 写 m/s 和 rad/s；真实底盘行为仍需 HIL 确认。
 - 非运动反馈：
   - `T=130`：请求 base feedback。
-  - `T=1001`：vendor base feedback，不能单独代表 robot ACK。
+  - `T=1001`：vendor base feedback，来自 `ugv_advance.h` 的 `baseInfoFeedback()`，包含左右轮、IMU roll/pitch/yaw 和电压等字段，不能单独代表 robot ACK。
 - HIL 前任何 API/status/proof 都必须固定 `safe_to_control=false`，除非现场证据包满足本文的 PC manual HIL 准入。
 
 ### LiDAR 串口
@@ -245,6 +249,15 @@ PC/upper API 或人工报告至少记录：
 - radar start/stop 返回体应固定包含 `sends_base_motion_commands=false`、`calls_base_manual=false`、`publishes_cmd_vel=false`。
 - base manual 返回体应固定包含 `touches_lidar_serial=false`、`lidar_start_command_sent=false`、`lidar_stop_command_sent=false`。
 - 没有 operator report 时，PC UI 可以展示 `manual_entry_available`，但不得展示 `field_hil_pass` 或 `safe_to_control=true`。
+- `robot_ack_not_connected`、`t1001_feedback_not_observed`、`field_evidence_not_proven`
+  可以作为 PC/Radar 卡片的 safety/not_proven 展示字段，但不得作为
+  `POST /api/radar/start` 或 `POST /api/radar/stop` 是否转发到 8787 的前置门。
+  Radar start/stop 的执行门只看 LiDAR/ROS2 driver command 配置、upper API 可达性和
+  operator 对雷达动作的确认；底盘 `T=1001` 缺口只能阻断 manual/base 控制转正。
+- `T=1001 not_observed_after_t130` 不是页面刷新可修复状态。它表示底盘 feedback probe
+  已写出 vendor `T=130` 但未在读取窗口内看到 vendor `T=1001`，下一步必须按
+  `docs/hardware/o1_wave_rover_serial_feedback_probe.md` 的现场检查项核对 ESP32 供电/固件、
+  UART TX/RX、目标端口身份、串口占用和 vendor terminal 交叉验证。
 
 ## 验收边界
 

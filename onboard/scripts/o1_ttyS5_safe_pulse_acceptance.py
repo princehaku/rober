@@ -37,6 +37,7 @@ VENDOR_SOURCES = (
     "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h",
     "docs/interfaces/o7_upper_robot_api.md",
 )
 
@@ -454,6 +455,14 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         "operator_report_error": operator_report_error,
         "acceptance_verdict": None,
         "blocked_commands_not_sent": list(BLOCKED_COMMANDS_NOT_SENT),
+        "hardware_boundary": {
+            # 这些字段给 PC/runner 消费，防止把底盘反馈缺口误当成雷达 POST 前置门。
+            "t1001_feedback_material_only": True,
+            "t1001_not_observed_is_not_ui_refreshable": True,
+            "radar_start_stop_must_not_be_gated_by_base_t1001": True,
+            "manual_base_control_requires_operator_env_ack_t1001_hil": True,
+            "manual_base_control_remains_fail_closed_until_hil": True,
+        },
         "next_required_checks": [
             "run_on_orange_pi_same_lan_status_dry_run",
             "confirm_operator_physical_clearance_before_execute_motion",

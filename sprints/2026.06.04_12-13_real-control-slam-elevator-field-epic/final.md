@@ -20,6 +20,10 @@ Robot Software follow-up 已复验 O3/O2 upper API readback guard：Upper API �
 
 Hardware follow-up 已复验 O1 guard：safe pulse 执行模式要求 operator report 显式携带同一 `evidence_ref`，缺失或不一致都在 manual POST 前 fail-closed；LiDAR raw collector 默认 `/dev/lidar`，并在 open 前拒绝底盘 UART 及其规范化别名。
 
+本轮追加收口已把 PC/8787 Radar start 的旧阻断拆清：5173 live direct-upper 当前返回 `adapter.version=2026-06-04.field-default-radar-v2`，`POST /api/radar/start` 已转发到 8787 且 HTTP 200，`upper_request.executed=true`、`failure_reason=none`。但返回仍是 `software_guard` / `dry_run_stub`，因为上位机未配置 `ROBER_RADAR_START_COMMAND`，所以只证明 HTTP 合同恢复，不证明真实 LiDAR/ROS2 driver 已启动。
+
+Hardware/O1 追加复核也明确了 `T=1001` 边界：`T=130` 是 vendor base feedback request，`T=1001` 只能作为 WAVE ROVER vendor feedback material；`T=1001 not_observed_after_t130` 不是 UI refresh 可修复状态，也不得作为 Radar start/stop 是否转发的前置门。它只阻断 manual/base HIL 转正，下一步仍要回到 ESP32 供电/固件、UART TX/RX、端口身份、串口占用和 vendor terminal 交叉验证。
+
 OKR 完成度不涨。本轮没有真实 runtime、HIL、真实图片、电梯现场、真实 PC 控车或 SLAM/AMCL/Nav2 材料；这些才是下一次涨分依据。
 
 ## 实际改动
@@ -45,6 +49,7 @@ OKR 完成度不涨。本轮没有真实 runtime、HIL、真实图片、电梯�
 - `docs/vision/elevator_opencv_baseline.md`
 - `docs/navigation/nav2_map_quality_metrics.md`
 - `docs/hardware/o1_pc_manual_lidar_hil_boundary.md`
+- `docs/hardware/o1_wave_rover_serial_feedback_probe.md`
 
 ## 验证结果
 
@@ -55,6 +60,7 @@ OKR 完成度不涨。本轮没有真实 runtime、HIL、真实图片、电梯�
 - Vision/Nav：vision 18 tests、nav 54 tests。
 - Algorithm fixture：电梯 eval exit 0 且 `field_eval_ready=false`；Nav2 map quality 预期 exit 1 且 `software_guard_pass=false`、`reachable_ratio=0.25`。
 - Hardware guard：safe pulse 18 tests、LiDAR scan collector 5 tests、raw packet collector 7 tests。
+- Hardware/O1 追加收口：`python3 -m compileall -q onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py onboard/scripts/test_o1_ttyS5_safe_pulse_acceptance.py` 通过无输出；`python3 -m unittest onboard.scripts.test_o1_ttyS5_safe_pulse_acceptance` 通过，`Ran 18 tests in 0.407s`，`OK`；相关 diff check 通过无输出。
 - Compile：Robot Software 范围 `python3 -m compileall -q onboard/scripts onboard/src` 通过，命令无输出；Algorithm/PC evidence 范围按各 owner 记录通过。
 - Docker/Humble：未运行 `bash onboard/scripts/docker_humble_build.sh`；当前 WSL distro 缺 Docker CLI / Docker Desktop WSL integration，`docker info` 输出 `The command 'docker' could not be found in this WSL 2 distro.`，因此未进入 colcon。
 - Diff check：Robot Software 收口指定范围 `git diff --check -- onboard/scripts/upper_robot_api.py onboard/scripts/test_upper_robot_api.py onboard/src/ros2_trashbot_nav onboard/src/ros2_trashbot_behavior onboard/src/ros2_trashbot_bringup docs/interfaces/o7_upper_robot_api.md docs/product/elevator_assisted_delivery.md sprints/2026.06.04_12-13_real-control-slam-elevator-field-epic` 通过，命令无输出。
@@ -73,7 +79,7 @@ OKR 完成度不涨。本轮没有真实 runtime、HIL、真实图片、电梯�
 ## 风险和技术遗留
 
 - 8787 新端点默认 dry-run/stub，真实运行依赖上位机 command hook 和 ROS2 runtime。
-- PC UI/API 通过 mock/fetch 和软件合同验证，未证明真实远端 8787 已部署新端点。
+- PC UI/API 已追加 live re-smoke，证明 5173 direct-upper 可到达真实 8787 Radar start HTTP route；但仍未证明真实 LiDAR/ROS2 driver、`/scan` once/hz、SLAM/Nav2 消费或 HIL。
 - Upper API readback 只证明 missing/bad JSON/fixture artifact 的 fail-closed 合同，不证明真实 SLAM `/map`、AMCL、TF freshness、Nav2 消费 `/scan`+map 或电梯 OpenCV 状态链已在 ROS2 runtime 中运行。
 - OpenCV baseline 没有真实电梯图片样本，不能证明真实楼层、门状态或 safe exit。
 - HIL 文档不等于 HIL pass，`safe_to_control` 继续为 false。
@@ -83,7 +89,7 @@ OKR 完成度不涨。本轮没有真实 runtime、HIL、真实图片、电梯�
 
 下一轮继续当前 Epic，不切回 O5/O6：
 
-1. Robot Software：用上位机 `ssh root@192.168.1.11 -p 37878` 部署/复跑 8787 新端点，至少拿到 radar start/stop 或 map list 的真实 HTTP 材料。
+1. Robot Software：在上位机配置真实 `ROBER_RADAR_START_COMMAND` / `ROBER_RADAR_STOP_COMMAND` 或 map lifecycle command hook，采集 `/scan` once/hz、map artifact、AMCL/TF 或 Nav2 lifecycle 材料。
 2. Robot Algorithm：采集或接入真实电梯图片 manifest，跑 offline eval，输出 confusion 和 operator summary。
 3. Full-stack：用真实 8787 base URL 做 PC rendered smoke，保留 evidence_ref。
 4. Hardware：按 HIL boundary 文档做 stop-first 低速 pulse 采证，未满足安全前提则继续保持 `safe_to_control=false`。

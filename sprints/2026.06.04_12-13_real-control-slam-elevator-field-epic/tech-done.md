@@ -414,6 +414,186 @@ Express app 级 HTTP smoke（随机本机端口，mock 上位机 8787，不访�
 - 本轮只完成 PC software guard 和本机同源代理验收，不证明真实 8787 runtime 已部署新端点、真实 PC WASD 控车、真实 Radar start/stop、真实 SLAM/AMCL、真实 Nav2 消费、robot ACK、`T=1001`、HIL 或 `safe_to_control=true`。
 - 真实现场浏览器如果仍由旧 5173 Vite middleware 服务，operator 仍需重启占用 5173 的旧 `npm run dev` 后再用 `adapter=2026-06-04.field-default-radar-v2` 复核。
 
+## Full-Stack/O7 live re-smoke - 5173 field_default 复核
+
+### 根因定位
+
+本次按用户反馈重新复现 127.0.0.1:5173 live API。当前监听进程为
+`node /mnt/e/rober/pc-tools/workstation/node_modules/.bin/../vite/bin/vite.js --host 127.0.0.1 --host 127.0.0.1`，
+PID `63891`。当前 5173 已返回 `adapter.version=2026-06-04.field-default-radar-v2`，
+不再是缺 adapter 或缺 field default 的旧 middleware。
+
+结论：本机 live API 当前没有复现 `base_url_not_configured` 或 `/api/radar/start not_executed`。
+如果 operator 浏览器仍看到旧错误，优先按 stale Vite/browser cache 处理：重启占用 5173 的旧
+`npm run dev` 进程并刷新页面，再以 Direct 卡片的 adapter 指纹为准复核。
+
+### 实际改动
+
+- 未修改 `pc-tools/workstation/src/server/o7DirectUpperApi.ts`、
+  `pc-tools/workstation/src/server/index.ts`、`pc-tools/workstation/src/components/O7LiveOperatorPanel.vue`
+  或 `pc-tools/workstation/test/App.test.ts`。现有源码和回归测试已覆盖本轮目标语义。
+- 仅补充本 `tech-done.md` live re-smoke 记录。
+
+### 验证结果
+
+```bash
+cd pc-tools/workstation && npm test -- --run
+```
+
+结果：通过，`Test Files 3 passed (3)`，`Tests 97 passed (97)`。
+
+```bash
+cd pc-tools/workstation && npm run build
+```
+
+结果：通过，Vite 产物 `dist/assets/index-EBE9rJR4.css`、
+`dist/assets/index-DoWp1Jfx.js` 正常生成，`built in 2.10s`。
+
+```bash
+cd pc-tools/workstation && npm run lint
+```
+
+结果：通过，ESLint 无输出。
+
+Live status smoke：
+
+```json
+{
+  "status": "ready",
+  "upper_api_base_url": "http://192.168.1.11:8787",
+  "upper_api_base_url_source": "field_default",
+  "adapter": "2026-06-04.field-default-radar-v2",
+  "health_request": {
+    "path": "/health",
+    "executed": true,
+    "ok": true,
+    "http_status": 200,
+    "failure_reason": ""
+  },
+  "status_request": {
+    "path": "/api/status",
+    "executed": true,
+    "ok": true,
+    "http_status": 200,
+    "failure_reason": ""
+  },
+  "safe_to_control": false,
+  "robot_ack_connected": false,
+  "t1001_observed": false,
+  "failure_reason": "none"
+}
+```
+
+Live Radar start smoke：
+
+```json
+{
+  "command": "radar_start",
+  "upper_api_base_url_source": "field_default",
+  "adapter": "2026-06-04.field-default-radar-v2",
+  "upper_request": {
+    "path": "/api/radar/start",
+    "method": "POST",
+    "executed": true,
+    "ok": true,
+    "http_status": 200,
+    "failure_reason": ""
+  },
+  "failure_reason": "none",
+  "safe_to_control": false,
+  "robot_ack_connected": false,
+  "t1001_observed": false,
+  "blocked_reasons": [
+    "robot_ack_not_connected",
+    "t1001_feedback_not_observed",
+    "field_evidence_not_proven"
+  ],
+  "robot_control_executed": false
+}
+```
+
+### 剩余风险
+
+- 本次 live smoke 只证明 PC 5173 direct-upper 到 8787 Radar start HTTP 执行链恢复；
+  不证明真实 LiDAR/ROS2 driver 已启动、`/scan` once/hz 已观察、SLAM/Nav2 已消费雷达、
+  PC WASD 已真实控车、robot ACK、`T=1001`、HIL 或 `safe_to_control=true`。
+- `safe_to_control=false`、`robot_ack_connected=false`、`t1001_observed=false` 继续保持，
+  不得用 Radar start HTTP 200 替代现场材料。
+
+## Hardware/O1 follow-up - T=1001 边界与 Radar start 解耦
+
+### 根因边界
+
+`T=1001 not_observed_after_t130` 的准确含义是：runner 或 probe 已经写出 vendor 非运动
+反馈请求 `{"T":130}`，但读取窗口内没有解析到 vendor `T=1001` JSON feedback。它不是
+UI refresh 可解决的问题，不是 robot ACK，不是 HIL pass，也不能单独证明底盘不可用。
+
+Radar start/stop 属于 LiDAR/ROS2 driver 链路，不应被底盘 `T=1001` 当作是否 POST 的
+前置门。`robot_ack_not_connected`、`t1001_feedback_not_observed`、
+`field_evidence_not_proven` 继续作为 safety/HIL/not_proven 展示 blocker，但不得再被包装成
+`/api/radar/start not_executed` 或 `base_url_not_configured`。
+
+### 实际改动
+
+- `onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py`
+  - `vendor_sources` 补充 `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`，
+    明确 `baseInfoFeedback()` / `T=1001` 字段来源。
+  - 输出新增 `hardware_boundary`，固定声明 `T=1001` 只是 feedback material、不是页面刷新问题，
+    Radar start/stop 不得被 base `T=1001` gate，manual/base 控制仍需 operator/env/ACK/T1001/HIL。
+- `onboard/scripts/test_o1_ttyS5_safe_pulse_acceptance.py`
+  - 回归断言 vendor source 和 `hardware_boundary` 字段。
+- `docs/hardware/o1_wave_rover_serial_feedback_probe.md`
+  - 补 `not_observed_after_t130` 的窄口径解释、现场下一步检查和 Radar start/stop 解耦边界。
+- `docs/hardware/o1_pc_manual_lidar_hil_boundary.md`
+  - 补 PC/Radar 卡片可以展示 T1001/HIL blocker，但不能用它阻断 `/api/radar/start|stop` 转发。
+
+### 已读 vendor 来源
+
+- `docs/vendor/VENDOR_INDEX.md`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/WAVE_ROVER_V0.9.ino`
+
+### 验证结果
+
+```bash
+python3 -m compileall -q onboard/scripts
+```
+
+结果：通过，命令无输出。
+
+```bash
+python3 -m unittest onboard.scripts.test_o1_ttyS5_safe_pulse_acceptance
+```
+
+结果：通过，`Ran 18 tests in 0.364s`，`OK`。
+
+```bash
+python3 -m unittest onboard.scripts.test_o1_lidar_scan_proof_collector
+```
+
+结果：通过，`Ran 5 tests in 0.598s`，`OK`。
+
+```bash
+python3 -m unittest onboard.scripts.test_o1_lidar_raw_packet_proof_collector
+```
+
+结果：通过，`Ran 7 tests in 0.246s`，`OK`。
+
+本次没有打开 `/dev/ttyS5`，没有发送 `/api/base/manual`，没有发送 `T=1/T=13/T=130/T=131`，
+没有做真实 HIL。
+
+### 剩余风险
+
+- Manual/base 控制仍不能转正，必须继续保留 operator confirmation、显式 env/API 配置、
+  stop/post-status、ACK/T1001/HIL 证据边界。
+- 下一步如果要消除 `T=1001 not_observed_after_t130`，需要现场核对 ESP32 供电/固件、
+  UART TX/RX、目标端口身份、串口占用和 vendor terminal 交叉验证。
+
 ## Robot Software Worker B follow-up - O3/O2 proof readback fail-closed 验收修补
 
 ### 根因
@@ -657,3 +837,60 @@ Coordinator 验收：
 - 8787 新端点默认是 dry-run/stub/fail-closed，需要在上位机 `ssh root@192.168.1.11 -p 37878` 环境配置真实 command hook 后，才能产生 `robot_runtime_material`。
 - OpenCV baseline 目前只通过 fixture/offline eval，下一步必须接真实电梯图片 manifest，再进入 ROS2 电梯状态链。
 - HIL 文档只完成准入边界，真实低速 pulse 和 operator report 仍需现场条件、观察员和急停路径。
+
+## Hardware/O1 scoped closeout - T1001 feedback boundary
+
+运行时间：2026-06-04T07:13:52Z。
+
+### 已读 vendor 来源
+
+- `AGENTS.md`
+- `OKR.md`
+- `docs/vendor/VENDOR_INDEX.md`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`
+
+### 已证实硬件结论
+
+- `json_cmd.h` 定义 `CMD_BASE_FEEDBACK=130` 和 `FEEDBACK_BASE_INFO=1001`；`uart_ctrl.h` 的 `CMD_BASE_FEEDBACK` 分支调用 `baseInfoFeedback()`。
+- `ugv_advance.h` 的 `baseInfoFeedback()` 输出 `T=1001`，包含 `L/R/r/p/y/v` 等 vendor feedback 字段，并通过 `Serial.println(...)` 发出。
+- `T=1001` 只能作为 vendor feedback material；没有同场 command、stop、post-status、operator report 和现场安全观察时，不得写成 robot ACK、HIL pass 或 `safe_to_control=true`。
+- `T=1001 not_observed_after_t130` 表示显式写出 vendor `{"T":130}` 后读取窗口内未观察到 `T=1001`，不是 PC 页面刷新可修复状态。
+- `robot_ack_not_connected`、`t1001_feedback_not_observed`、`field_evidence_not_proven` 不应作为 `POST /api/radar/start|stop` 转发前置门；Radar start/stop 属于 LiDAR/ROS2 driver 链路，底盘 feedback 缺口只阻断 manual/base 控制转正。
+
+### 实际改动
+
+- `docs/hardware/o1_pc_manual_lidar_hil_boundary.md`：补 `uart_ctrl.h`、`ugv_advance.h` vendor 来源和 `T=1001` 字段来源；明确 radar start/stop 不由底盘 T1001 缺口 gating。
+- `docs/hardware/o1_wave_rover_serial_feedback_probe.md`：补 `ugv_advance.h` 来源，收窄 `not_observed_after_t130` 语义，并明确它只能作为 safety/HIL/not_proven blocker 展示。
+- `onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py`：在 runner JSON 中补 `hardware_boundary` 机器字段，固定表达 T1001 是 feedback material、not observed 不是 UI refresh、radar start/stop 不被 base T1001 gating、manual/base 控制仍需 operator/env/ACK/T1001/HIL。
+- `onboard/scripts/test_o1_ttyS5_safe_pulse_acceptance.py`：补回归断言，覆盖 `ugv_advance.h` vendor source 和 manual/radar fail-closed boundary 字段。
+
+### 验证结果
+
+```bash
+python3 -m compileall -q onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py onboard/scripts/test_o1_ttyS5_safe_pulse_acceptance.py
+```
+
+结果：通过，无输出。
+
+```bash
+python3 -m unittest onboard.scripts.test_o1_ttyS5_safe_pulse_acceptance
+```
+
+结果：通过，`Ran 18 tests in 0.383s`，`OK`。
+
+```bash
+git diff --check -- docs/hardware/o1_pc_manual_lidar_hil_boundary.md docs/hardware/o1_wave_rover_serial_feedback_probe.md onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py onboard/scripts/test_o1_ttyS5_safe_pulse_acceptance.py sprints/2026.06.04_12-13_real-control-slam-elevator-field-epic/tech-done.md
+```
+
+结果：通过，无输出。
+
+### 剩余风险
+
+- 本次只做本地编译、fake HTTP 单测、文档和 diff check；没有打开真实串口、没有触碰 `/dev/ttyS5`、没有发送 `T=130/T=1/T=13/T=131`，也没有执行真实运动。
+- 仍未证明真实 radar start/stop、真实 LiDAR `/scan` 长稳、PC WASD 真实控车、底盘 HIL、robot ACK、真实 `/odom`、`/imu/data`、`/battery` 或 `safe_to_control=true`。
+- 下一步现场履约仍需同一 evidence ref 下采集 low-speed pulse、stop/post-status、至少一组 vendor feedback、operator report 和现场安全记录后，再由 Product/OKR Owner 复核是否可转正。
