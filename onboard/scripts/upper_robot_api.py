@@ -441,7 +441,7 @@ def software_guard_payload(
             if result_ok
             else "software guard only; configure ROS2 command and attach runtime artifact before claiming proof"
         ),
-        "sends_commands": result_ok,
+        "sends_commands": bool(configured and result_ok),
         **proof_flags(),
     }
     if extra:

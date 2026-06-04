@@ -8,6 +8,21 @@
 
 ## 2026-06-04 系列
 
+### 2026-06-04 12-13｜Real control / SLAM / Elevator field Epic｜软件护栏完成，不涨分
+
+本轮 Epic 按 11-12 OKR reset 后的最低 Objective O2/O3 继续推进，并同步推进 O7/O1 作为现场采证入口和安全底座。用户价值是把“真实控车、雷达开关、建图定位、电梯识别”从口头下一步变成可执行的 PC/8787/算法/硬件软件护栏，但不把这些护栏包装成真实 runtime、HIL 或现场送达能力。
+
+本轮实际完成：
+
+- O7/PC：PC workstation direct-upper 已能展示/触发 radar、map、localize、manual/stop 和 operator report，并支持 operator confirmation、fixture mode、共享 `evidence_ref` 与 adapter 指纹；缺 env 的 Radar start 可走现场默认 8787 HTTP 路由，但仍不解除底盘安全锁。
+- O3/Robot Software：8787 upper API 新增 map/localize proof readback、Nav2 lifecycle 合同和 elevator status 边界，默认 `software_guard=true`、`not_proven=true`。
+- O2/Algorithm：OpenCV 电梯 taxonomy、ROI/rule baseline、offline fixture eval 和 Nav2/map quality offline metrics 已有可复跑 fixture 与测试。
+- O1/Hardware：safe pulse evidence_ref 绑定、operator report mismatch fail-closed、LiDAR/base UART 隔离和 vendor-sourced HIL 准入边界已补齐。
+
+Product/OKR 收口判定：O2 继续约 72%，O3 继续约 73%，O7 继续约 88%，O1 继续约 95%，O5/O6 继续约 96%，本轮全部不涨分。原因是本轮没有产生 `robot_runtime_material` 或 `field_hil_material`：没有真实 PC WASD 控车、真实 LiDAR start/stop runtime、真实 SLAM `/map`、AMCL 定位恢复、Nav2 消费 `/scan`+map、真实电梯图片 eval、ROS2 电梯状态机接入、受控电梯流程、底盘 HIL、robot ACK、`T=1001` 同场证据或 `safe_to_control=true`。
+
+证据来源为 `sprints/2026.06.04_12-13_real-control-slam-elevator-field-epic/tech-done.md`、`side2side_check.md`、`final.md` 和 `OKR.md` 第 4.1 节。下一步继续当前方向：Robot Software 先把 8787 新端点部署/复跑到真实上位机并采 radar/map/localize 材料；Robot Algorithm 接真实电梯图片 manifest 跑 offline eval；Full-stack 用真实 8787 base URL 做 PC rendered smoke；Hardware 按 HIL boundary 做 stop-first 低速 pulse，安全条件不足时继续保持 `safe_to_control=false`。
+
 ### 2026-06-04 11-12｜OKR strategy reset｜真实控车、SLAM/定位、OpenCV 电梯识别打回
 
 本轮 Product/OKR Epic 基于 CEO 明确反馈和四个 L2 owner 只读复盘，重写 `OKR.md`

@@ -338,6 +338,14 @@ fixture、文件候选或命令 returncode 0，均不得宣称真实 SLAM、真�
   `latest_initialpose_published`、`latest_amcl_pose_observed`、`latest_tf_fresh` 和
   `latest_pose_fresh`。
 
+这些 readback 入口统一 fail-closed：artifact 缺失返回 `404`/`artifact.status="missing"`，
+坏 JSON 或 JSON root 非 object 返回 `422`/`artifact.status="bad_json|json_not_object"`，
+文件读取失败返回 `500`/`artifact.status="read_failed"`。无论 artifact 是否成功读取，
+响应都固定 `status="not_proven"`、`software_guard=true`、`readback_sends_commands=false`、
+`sends_commands=false`、`starts_ros2=false`、`safe_to_control=false` 和
+`robot_control_executed=false`。这层只回放 evidence，不启动 SLAM、不调用 save/load service，
+不发布 `/initialpose`，也不触碰 `/dev/ttyS5`、`/cmd_vel` 或任何 WAVE ROVER 命令。
+
 Nav2 lifecycle 入口：
 
 - `GET /api/nav2/status` 读取 `ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH`，压缩暴露 map server、
@@ -345,12 +353,21 @@ Nav2 lifecycle 入口：
 - `POST /api/nav2/start|stop` 只执行显式配置的非 shell 命令；默认 dry-run/stub。命令成功只代表
   操作入口执行成功，仍固定 `status="not_proven"`，必须等 Nav2 artifact 证明 runtime。
 
+`/api/nav2/status` 内的 `proof_latest` 使用同一套 readback 规则，并通过
+`proof_latest.http_status` 暴露 `404/422/500/200`。即使命令配置存在或 artifact 中出现
+`map_server_active=true`、`scan_consumed=true`，HTTP 状态仍只表示材料读取状态，不能写成
+真实 Nav2 已运行、已消费 `/scan`+map 或已生成可执行路径。
+
 电梯 evidence/status 入口：
 
 - `GET /api/elevator/status` 读取 `ROBER_ELEVATOR_STATUS_ARTIFACT_PATH`，用于把 OpenCV
   `evidence_ref`、电梯 phase、目标楼层、安全驶出和人工接管原因回放给 PC/operator。
 - artifact 存在、fixture 通过或 OpenCV baseline 输出，都不等于真实电梯识别、真实楼层确认、
   真实驶出、电梯 HIL 或 `delivery_success=true`。
+- `/api/elevator/status.proof_latest` 同样只读 artifact；缺失、坏 JSON 或非 object 必须保持
+  `not_proven`，并保留 `elevator_runtime_proven=false`、`delivery_success=false`、
+  `primary_actions_enabled=false`。PC 只能把它展示成 operator evidence/readback，不得当成
+  ROS2 状态机已完成真实电梯流程。
 
 ### LiDAR raw packet proof artifact readback
 

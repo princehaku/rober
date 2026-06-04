@@ -147,6 +147,20 @@ class LidarRawPacketProofCollectorTest(unittest.TestCase):
         self.assertFalse(payload["proof"]["lidar_start_command_sent_by_collector"])
         self.assertFalse(payload["safe_to_control"])
 
+    def test_collect_refuses_normalized_base_uart_before_opening_serial(self) -> None:
+        payload = collector.collect_raw_packet_proof(
+            port="/dev/../dev/ttyS5",
+            baudrate=150000,
+            timeout_s=0.2,
+            serial_factory=MustNotOpenSerialFactory(),
+        )
+
+        self.assertTrue(payload["target_port_safety"]["target_port_refused"])
+        self.assertIn("/dev/ttyS5", payload["target_port_safety"]["target_port_candidates"])
+        self.assertEqual(payload["collector_error"]["type"], "forbidden_lidar_port")
+        self.assertEqual(payload["lidar_commands_sent"], [])
+        self.assertEqual(payload["base_commands_sent"], [])
+
     def test_atomic_write_json_creates_readable_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir) / "proof" / "latest.json"

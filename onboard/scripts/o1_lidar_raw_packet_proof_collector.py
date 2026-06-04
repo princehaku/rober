@@ -42,6 +42,7 @@ VENDOR_SOURCES = (
     "docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml",
     "docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules",
     "docs/vendor/lidar_ros/README.md",
+    "docs/vendor/lidar_ros/src/lidar_pkg/scripts/lidar_driver.py",
     "onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_packets.py",
 )
 
@@ -149,10 +150,22 @@ def hex_bytes(data: bytes) -> str:
     return data.hex(" ")
 
 
+def normalized_port_candidates(port: str) -> set[str]:
+    """规范化候选路径，避免 `/dev/../dev/ttyS5` 这类别名绕过底盘 UART 拒绝。"""
+    raw = str(port).strip()
+    normalized = os.path.normpath(raw)
+    candidates = {raw, normalized}
+    try:
+        candidates.add(os.path.realpath(normalized))
+    except OSError:
+        # realpath 只是安全辅助；异常时仍用 raw/normpath 做 fail-closed 对比。
+        pass
+    return {candidate for candidate in candidates if candidate}
+
+
 def forbidden_lidar_port(port: str) -> bool:
     """LiDAR collector 只碰传感器口，禁止常见 WAVE ROVER/base UART 路径。"""
-    normalized = str(port).strip()
-    return normalized in FORBIDDEN_LIDAR_PORTS
+    return any(candidate in FORBIDDEN_LIDAR_PORTS for candidate in normalized_port_candidates(port))
 
 
 class TermiosSerial:
@@ -358,6 +371,7 @@ def collect_raw_packet_proof(
         "target_port_safety": {
             "default_port": DEFAULT_PORT,
             "forbidden_lidar_ports": sorted(FORBIDDEN_LIDAR_PORTS),
+            "target_port_candidates": sorted(normalized_port_candidates(port)),
             "refuses_base_uart": True,
             "target_port_refused": forbidden_lidar_port(port),
         },

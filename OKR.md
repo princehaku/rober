@@ -223,12 +223,12 @@
 
 当前 Epic：`sprints/2026.06.04_12-13_real-control-slam-elevator-field-epic/` 已完成本小时 software guard 交付：8787 新增 radar start/stop、map lifecycle、localize reset 的 fail-closed 合同；PC 工作站新增同源 operator controls 和 operator report 入口；Vision 新增 OpenCV 电梯 baseline/offline eval；Hardware 新增 PC manual 与 LiDAR 串口隔离准入。由于没有真实 runtime/HIL/现场材料，本轮不提升 Objective 完成度；涨分仍必须等待真实 PC 控车、雷达开关、SLAM/定位、真实图片 OpenCV eval、HIL 或受控现场材料。
 
-本轮 Epic 建议拆成四个 L2 owner 并行/耦合集成：
+下一步现场取证继续按四个 L2 owner 分工推进，目标从本轮 `software_guard` 转为 `robot_runtime_material` / `field_hil_material`：
 
-1. **User Touchpoint Full-Stack Engineer**：O7 PC operator workflow。交付 WASD 现场控车入口复跑、一键雷达 start/stop、建图/定位控制按钮、stop/急停/operator report UI 和同源 API 证据。
-2. **Robot Software Engineer**：O3 ROS2 map lifecycle。交付 `/api/map/start|reset|save|load|localize` 到 SLAM Toolbox、map server、AMCL `/initialpose`、Nav2 lifecycle 的 upper API/ROS2 glue。
-3. **Robot Algorithm Engineer**：O2/O3 algorithm。交付 OpenCV 电梯 taxonomy、样本/ROI/rule baseline、offline eval、Nav2 消费 `/scan`+map 的质量指标和路线验证方案。
-4. **Hardware Infra Engineer**：O1 field HIL。交付 WAVE ROVER 现场安全前提、底盘 low-speed pulse、stop/post-status、`T=1001` 同场材料、LiDAR start/stop/udev/长稳边界。
+1. **User Touchpoint Full-Stack Engineer**：O7 PC operator workflow。用真实 8787/browser 复跑 WASD 现场控车入口、一键雷达 start/stop、建图/定位按钮、stop/急停/operator report，并保留同一 evidence ref。
+2. **Robot Software Engineer**：O3 ROS2 map lifecycle。把 `/api/map/start|reset|save|load|localize` 跑到 SLAM Toolbox、map server、AMCL `/initialpose`、Nav2 lifecycle 的真实 upper API/ROS2 材料。
+3. **Robot Algorithm Engineer**：O2/O3 algorithm。把 OpenCV 电梯 baseline 接真实图片 manifest，并输出真实图片 offline eval、Nav2 消费 `/scan`+map 的质量指标和路线验证材料。
+4. **Hardware Infra Engineer**：O1 field HIL。按现场安全前提采底盘 low-speed pulse、stop/post-status、`T=1001` 同场材料、LiDAR start/stop/udev/长稳材料。
 
 Epic 验收口径：
 

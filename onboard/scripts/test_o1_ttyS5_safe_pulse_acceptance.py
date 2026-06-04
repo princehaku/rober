@@ -63,6 +63,7 @@ PREFLIGHT_ONLY_OPERATOR_REPORT = {
     "physical_clearance_confirmed": True,
     "emergency_stop_ready": True,
 }
+BOUND_EVIDENCE_REF = "field-main-ref"
 
 # 测试边界说明：所有测试只使用 fake HTTP，不访问真实 8787。
 # 测试边界说明：默认 dry-run 必须只 GET status，不能 POST manual。
@@ -102,10 +103,19 @@ PREFLIGHT_ONLY_OPERATOR_REPORT = {
 
 
 class SafePulseAcceptanceTest(unittest.TestCase):
-    def write_operator_report(self, temp_dir: str, report: dict[str, object] | None = None) -> str:
-        # 每个执行测试都显式提供现场报告，避免绕过新增 fail-closed 闸。
+    def write_operator_report(
+        self,
+        temp_dir: str,
+        report: dict[str, object] | None = None,
+        *,
+        evidence_ref: str | None = BOUND_EVIDENCE_REF,
+    ) -> str:
+        # 每个执行测试都显式提供同一 evidence_ref，避免报告材料和运动材料散落。
         path = Path(temp_dir) / "operator_report.json"
-        path.write_text(json.dumps(COMPLETE_OPERATOR_REPORT if report is None else report), encoding="utf-8")
+        payload = dict(COMPLETE_OPERATOR_REPORT if report is None else report)
+        if evidence_ref is not None and "evidence_ref" not in payload:
+            payload["evidence_ref"] = evidence_ref
+        path.write_text(json.dumps(payload), encoding="utf-8")
         return str(path)
 
     def test_default_dry_run_reads_status_without_motion_post(self) -> None:
@@ -204,6 +214,8 @@ class SafePulseAcceptanceTest(unittest.TestCase):
                 [
                     "--execute-motion",
                     "--confirm-physical-clearance",
+                    "--evidence-ref",
+                    BOUND_EVIDENCE_REF,
                     "--operator-report-json",
                     self.write_operator_report(temp_dir),
                     "--direction",
@@ -253,6 +265,8 @@ class SafePulseAcceptanceTest(unittest.TestCase):
                 [
                     "--execute-motion",
                     "--confirm-physical-clearance",
+                    "--evidence-ref",
+                    BOUND_EVIDENCE_REF,
                     "--operator-report-json",
                     self.write_operator_report(temp_dir, PREFLIGHT_ONLY_OPERATOR_REPORT),
                 ]
@@ -292,6 +306,8 @@ class SafePulseAcceptanceTest(unittest.TestCase):
                 [
                     "--execute-motion",
                     "--confirm-physical-clearance",
+                    "--evidence-ref",
+                    BOUND_EVIDENCE_REF,
                     "--operator-report-json",
                     self.write_operator_report(temp_dir),
                 ]
@@ -318,6 +334,8 @@ class SafePulseAcceptanceTest(unittest.TestCase):
                 [
                     "--execute-motion",
                     "--confirm-physical-clearance",
+                    "--evidence-ref",
+                    BOUND_EVIDENCE_REF,
                     "--operator-report-json",
                     self.write_operator_report(temp_dir),
                 ]
@@ -347,6 +365,8 @@ class SafePulseAcceptanceTest(unittest.TestCase):
                 [
                     "--execute-motion",
                     "--confirm-physical-clearance",
+                    "--evidence-ref",
+                    BOUND_EVIDENCE_REF,
                     "--operator-report-json",
                     self.write_operator_report(temp_dir),
                 ]
@@ -385,6 +405,34 @@ class SafePulseAcceptanceTest(unittest.TestCase):
         self.assertEqual(result["operator_report_evidence_ref_status"], "mismatch")
         self.assertEqual(result["acceptance_verdict"]["status"], "blocked_before_motion")
         self.assertEqual(result["acceptance_verdict"]["failed_step"], "operator_report_evidence_ref_mismatch")
+        self.assertIsNone(result["manual_request"])
+        self.assertFalse(result["safe_to_control"])
+
+    def test_execute_mode_blocks_when_operator_report_ref_is_missing(self) -> None:
+        calls: list[tuple[str, str, dict[str, object] | None]] = []
+
+        def fake_http(method: str, base_url: str, path: str, timeout_s: float, payload: dict[str, object] | None = None) -> dict[str, object]:
+            # evidence_ref 缺失同样无法绑定现场材料，必须停在 manual POST 之前。
+            calls.append((method, path, payload))
+            return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": STATUS_PAYLOAD, "error": None}
+
+        with tempfile.TemporaryDirectory() as temp_dir, mock.patch.object(runner, "http_json", side_effect=fake_http):
+            args = runner.parse_args(
+                [
+                    "--execute-motion",
+                    "--confirm-physical-clearance",
+                    "--evidence-ref",
+                    BOUND_EVIDENCE_REF,
+                    "--operator-report-json",
+                    self.write_operator_report(temp_dir, PREFLIGHT_ONLY_OPERATOR_REPORT, evidence_ref=None),
+                ]
+            )
+            result = runner.run_acceptance(args)
+
+        self.assertEqual(calls, [("GET", "/api/status", None)])
+        self.assertEqual(result["operator_report_evidence_ref_status"], "missing")
+        self.assertEqual(result["acceptance_verdict"]["status"], "blocked_before_motion")
+        self.assertEqual(result["acceptance_verdict"]["failed_step"], "operator_report_evidence_ref_missing")
         self.assertIsNone(result["manual_request"])
         self.assertFalse(result["safe_to_control"])
 
@@ -436,6 +484,8 @@ class SafePulseAcceptanceTest(unittest.TestCase):
                 [
                     "--execute-motion",
                     "--confirm-physical-clearance",
+                    "--evidence-ref",
+                    BOUND_EVIDENCE_REF,
                     "--operator-report-json",
                     self.write_operator_report(temp_dir, incomplete),
                 ]

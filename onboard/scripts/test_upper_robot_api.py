@@ -770,6 +770,7 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(sorted(item["name"] for item in listing["maps"]), ["lab.pgm", "lab.yaml"])
         self.assertTrue(listing["software_guard"])
         self.assertTrue(listing["not_proven"])
+        self.assertFalse(listing["sends_commands"])
         self.assertFalse(listing["sends_base_motion_commands"])
         self.assertEqual(status["routes"]["radar_start"], "/api/radar/start")
         self.assertEqual(status["routes"]["radar_stop"], "/api/radar/stop")
@@ -895,6 +896,66 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(elevator_status["proof_latest"]["latest_opencv_evidence_ref"], "elevator-fixture-001")
         self.assertTrue(elevator_status["proof_latest"]["latest_handoff_required"])
         self.assertFalse(elevator_status["elevator_runtime_proven"])
+        self.assertEqual(FakeSerial.instances, [])
+
+    def test_runtime_artifact_readbacks_missing_and_bad_json_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            map_proof_path = Path(tmpdir) / "missing_map_proof.json"
+            localize_path = Path(tmpdir) / "missing_localize.json"
+            nav2_path = Path(tmpdir) / "missing_nav2.json"
+            elevator_path = Path(tmpdir) / "missing_elevator.json"
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                map_lifecycle_proof_artifact_path=str(map_proof_path),
+                localization_artifact_path=str(localize_path),
+                nav2_lifecycle_artifact_path=str(nav2_path),
+                elevator_status_artifact_path=str(elevator_path),
+            )
+
+            missing_map_status, missing_map = robot.map_proof_latest()
+            missing_localize_status, missing_localize = robot.localize_proof_latest()
+            missing_nav2 = robot.nav2_status()["proof_latest"]
+            missing_elevator = robot.elevator_status()["proof_latest"]
+
+            self.assertEqual(missing_map_status, 404)
+            self.assertEqual(missing_localize_status, 404)
+            self.assertEqual(missing_nav2["http_status"], 404)
+            self.assertEqual(missing_elevator["http_status"], 404)
+            for payload in (missing_map, missing_localize, missing_nav2, missing_elevator):
+                self.assertEqual(payload["artifact"]["status"], "missing")
+                self.assertTrue(payload["software_guard"])
+                self.assertTrue(payload["not_proven"])
+                self.assertFalse(payload["readback_sends_commands"])
+                self.assertFalse(payload["sends_commands"])
+                self.assertFalse(payload["starts_ros2"])
+                self.assertFalse(payload["robot_control_executed"])
+                self.assertFalse(payload["safe_to_control"])
+
+            for artifact_path in (map_proof_path, localize_path, nav2_path, elevator_path):
+                artifact_path.write_text("{not-json", encoding="utf-8")
+
+            bad_map_status, bad_map = robot.map_proof_latest()
+            bad_localize_status, bad_localize = robot.localize_proof_latest()
+            bad_nav2 = robot.nav2_status()["proof_latest"]
+            bad_elevator = robot.elevator_status()["proof_latest"]
+
+            self.assertEqual(bad_map_status, 422)
+            self.assertEqual(bad_localize_status, 422)
+            self.assertEqual(bad_nav2["http_status"], 422)
+            self.assertEqual(bad_elevator["http_status"], 422)
+            for payload in (bad_map, bad_localize, bad_nav2, bad_elevator):
+                self.assertEqual(payload["artifact"]["status"], "bad_json")
+                self.assertTrue(payload["software_guard"])
+                self.assertTrue(payload["not_proven"])
+                self.assertFalse(payload["readback_sends_commands"])
+                self.assertFalse(payload["sends_commands"])
+                self.assertFalse(payload["starts_ros2"])
+                self.assertFalse(payload["robot_control_executed"])
+                self.assertFalse(payload["safe_to_control"])
+
         self.assertEqual(FakeSerial.instances, [])
 
     def test_nav2_configured_command_executes_but_remains_not_proven(self) -> None:

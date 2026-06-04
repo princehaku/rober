@@ -133,6 +133,8 @@ python3 -m ros2_trashbot_nav.map_quality_metrics \
 
 该指标只证明 map artifact 形状和路线候选的离线质量，不证明 SLAM Toolbox 已输出
 真实 `/map`、AMCL 已恢复定位、Nav2 已消费 `/scan` + map，也不证明固定路线实跑。
+导航侧复跑命令、预期 `exit_code=1` 的 fail-closed fixture 语义和真实 map artifact
+切换入口见 `docs/navigation/nav2_map_quality_metrics.md`。
 
 ## 当前风险
 

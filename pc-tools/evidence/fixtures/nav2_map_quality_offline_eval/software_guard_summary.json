@@ -3,6 +3,8 @@
   "source": "software_proof",
   "proof_status": "not_proven",
   "command": "PYTHONPATH=onboard/src/ros2_trashbot_nav python3 -m ros2_trashbot_nav.map_quality_metrics pc-tools/evidence/fixtures/nav2_map_quality_offline_eval/map.yaml --waypoints pc-tools/evidence/fixtures/nav2_map_quality_offline_eval/waypoints.json",
+  "expected_exit_code": 1,
+  "expected_exit_reason": "fixture intentionally fails the waypoint reachability gate so the offline guard remains fail-closed",
   "expected_guard": {
     "free_cells": 20,
     "occupied_cells": 2,

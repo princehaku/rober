@@ -3,6 +3,7 @@
   "source": "software_proof",
   "proof_status": "not_proven",
   "command": "PYTHONPATH=onboard/src/ros2_trashbot_vision python3 -m ros2_trashbot_vision.elevator_opencv_baseline pc-tools/evidence/fixtures/elevator_opencv_baseline_offline_eval/manifest.json",
+  "expected_exit_code": 0,
   "expected_guard": {
     "evaluated_count": 3,
     "door_state": {

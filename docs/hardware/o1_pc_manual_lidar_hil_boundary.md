@@ -35,6 +35,8 @@
   - vendor config 默认 `port_name: "/dev/lidar"`、`frame_id: "laser"`。
 - `docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules`
   - STC USB Serial `idVendor=34bf`、`idProduct=ff0a` 映射为 symlink `lidar`。
+- `docs/vendor/lidar_ros/src/lidar_pkg/scripts/lidar_driver.py`
+  - 历史 ROS1 raw packet 参考发布 `/lidar/raw_packet`，仅作为 `0xAA 0x55` 原始包形态和 topic 名称对比，不作为当前 ROS2 driver 默认。
 
 ## 已证实的硬件结论
 
@@ -167,6 +169,7 @@ python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
 
 - runner 输出必须包含 `same_evidence_ref_required=true`，且 `evidence_chain.initial_status/manual_request/extra_stop/post_status/operator_report` 都等于同一个 `evidence_ref`。
 - `acceptance_verdict.status=motion_posted_with_t1001` 也只能写成 `vendor_feedback_material + operator_observation_material`，不能写成 HIL pass。
+- operator report 必须显式携带同一个 `evidence_ref`；缺失时 runner 必须在 `operator_report_evidence_ref_missing` 阶段阻断，不得发送 `/api/base/manual`。
 - operator report 如声明不同 `evidence_ref`，runner 必须在 `operator_report_evidence_ref_mismatch` 阶段阻断，不得发送 `/api/base/manual`。
 - forward/back/left/right 必须一条证据链测一个方向；不得一次脚本里连测多个方向。
 
@@ -186,7 +189,7 @@ python3 onboard/scripts/o1_lidar_raw_packet_proof_collector.py \
 证据边界：
 
 - 允许写入的 bytes 仅为 LiDAR `A5 60` 和 shutdown `A5 00 A5 65 A5 65`，来源为 `docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp`。
-- collector 输出 `target_port_safety.refuses_base_uart=true`；如果 `--port /dev/ttyS5`、`/dev/ttyAMA0` 或 `/dev/serial0`，必须在 open 前返回 `collector_error.type=forbidden_lidar_port`，且 `lidar_commands_sent=[]`。
+- collector 输出 `target_port_safety.refuses_base_uart=true`；如果 `--port /dev/ttyS5`、`/dev/ttyAMA0`、`/dev/serial0` 或规范化后指向这些底盘 UART 的路径，必须在 open 前返回 `collector_error.type=forbidden_lidar_port`，且 `lidar_commands_sent=[]`。
 - raw packet proof 只证明 `0xAA 0x55` bytes/packet/point 统计，不证明 ROS2 `/scan`、TF、SLAM/Nav2、底盘 HIL 或 `safe_to_control=true`。
 - ROS2 `/scan`、`/lidar/raw_packet` 和 `base_link -> laser_frame` 仍由 `o1_lidar_scan_proof_collector.py --expect-existing-topics` 做只读 topic proof；scan collector 不发送 `A5 60`，也不触碰 `/dev/ttyS5`。
 

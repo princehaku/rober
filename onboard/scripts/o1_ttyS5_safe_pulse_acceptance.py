@@ -89,6 +89,7 @@ VENDOR_SOURCES = (
 # 安全边界说明：operator report 不改变 safe_to_control，HIL 仍需 ACK/T=1001。
 # 安全边界说明：evidence_ref 串起 status/manual/stop/post-status/report，防止现场材料散落。
 # 安全边界说明：operator report 若声明了不同 evidence_ref，执行前必须阻断运动。
+# 安全边界说明：执行模式必须显式绑定 operator report evidence_ref，缺失也要阻断。
 
 # 默认模式必须显式列出禁止动作，避免 dry-run artifact 被误读成可控。
 BLOCKED_COMMANDS_NOT_SENT = (
@@ -503,6 +504,14 @@ def run_acceptance(args: argparse.Namespace) -> dict[str, Any]:
             "blocked_before_motion",
             failed_step="operator_report_missing_or_incomplete",
             reason="execute mode requires safe preflight operator report; motion POST blocked fail-closed",
+            t1001_or_ack_observed=payload["t1001_feedback_status"] == "observed",
+        )
+        return payload
+    if payload["execution_gate"]["authorized"] and payload["operator_report_evidence_ref_status"] == "missing":
+        payload["acceptance_verdict"] = make_verdict(
+            "blocked_before_motion",
+            failed_step="operator_report_evidence_ref_missing",
+            reason="execute mode requires operator report evidence_ref to bind manual/stop/post-status evidence",
             t1001_or_ack_observed=payload["t1001_feedback_status"] == "observed",
         )
         return payload

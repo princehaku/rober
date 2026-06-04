@@ -4,7 +4,298 @@
 
 sprint_type: epic
 
-## Full-Stack Worker A follow-up - direct-upper Radar start 真实 UI/API 复现
+## Hardware/O1 scoped 收口 - safe pulse evidence_ref 与 LiDAR UART 隔离
+
+### 验收目标
+
+本次只验收 Hardware/O1 允许范围：safe pulse evidence-ref 绑定、operator report
+mismatch/missing fail-closed、LiDAR raw packet collector 默认 `/dev/lidar` 且拒绝底盘
+UART、LiDAR scan proof 只读边界、HIL 文档 vendor 来源与安全边界一致。不执行真实运动
+命令，不打开真实串口，不声明 HIL。
+
+### 已读 vendor 来源
+
+- `AGENTS.md`、`OKR.md`、`docs/vendor/VENDOR_INDEX.md`。
+- WAVE ROVER：`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、
+  `config.yaml`、`WAVE_ROVER_V0.9/json_cmd.h`、`uart_ctrl.h`、`movtion_module.h`。
+- LiDAR：`docs/vendor/lidar_pkg_ros2-main/README.md`、`src/lidar_node.cpp`、
+  `config/lidar_params.yaml`、`launch/lidar.launch.py`、`scripts/99-lidar.rules`。
+- 历史 raw packet 参考：`docs/vendor/lidar_ros/README.md`、
+  `docs/vendor/lidar_ros/src/lidar_pkg/scripts/lidar_driver.py`。
+
+### 实际修补
+
+- `onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py`
+  - 执行模式下 operator report 不仅要通过 preflight，还必须显式携带与 runner 相同的
+    `evidence_ref`。
+  - `operator_report_evidence_ref_missing` 和 `operator_report_evidence_ref_mismatch`
+    都在 `/api/base/manual` 前 fail-closed，保持 `safe_to_control=false`、
+    `hil_pass=false`。
+- `onboard/scripts/test_o1_ttyS5_safe_pulse_acceptance.py`
+  - 更新执行模式测试统一绑定 `BOUND_EVIDENCE_REF`。
+  - 新增缺失 `evidence_ref` 的 operator report 阻断回归，断言只 GET `/api/status`，
+    不 POST `/api/base/manual`。
+- `onboard/scripts/o1_lidar_raw_packet_proof_collector.py`
+  - raw collector 继续默认 `/dev/lidar @150000`。
+  - 在 open 前对传入 port 做 raw/normpath/realpath 候选检查，拒绝 `/dev/ttyS5`、
+    `/dev/ttyAMA0`、`/dev/serial0` 及其规范化别名，避免把 LiDAR `A5 60` 写到底盘 UART。
+- `onboard/scripts/test_o1_lidar_raw_packet_proof_collector.py`
+  - 新增 `/dev/../dev/ttyS5` 这类别名在 open 前被拒绝的回归。
+- `docs/hardware/o1_pc_manual_lidar_hil_boundary.md`
+  - 同步 operator report `evidence_ref` 缺失/不一致均阻断 manual POST 的准入口径。
+  - 同步 raw collector 对规范化底盘 UART 别名 fail-closed 的安全边界。
+
+### 验证结果
+
+```bash
+python3 -m unittest onboard.scripts.test_o1_ttyS5_safe_pulse_acceptance
+```
+
+结果：通过，`Ran 18 tests in 0.421s`，`OK`。
+
+```bash
+python3 -m unittest onboard.scripts.test_o1_lidar_scan_proof_collector
+```
+
+结果：通过，`Ran 5 tests in 0.666s`，`OK`。
+
+```bash
+python3 -m unittest onboard.scripts.test_o1_lidar_raw_packet_proof_collector
+```
+
+结果：通过，`Ran 7 tests in 0.258s`，`OK`。
+
+```bash
+git diff --check -- onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py onboard/scripts/test_o1_ttyS5_safe_pulse_acceptance.py onboard/scripts/o1_lidar_raw_packet_proof_collector.py onboard/scripts/test_o1_lidar_raw_packet_proof_collector.py docs/hardware/o1_pc_manual_lidar_hil_boundary.md sprints/2026.06.04_12-13_real-control-slam-elevator-field-epic
+```
+
+结果：通过，exit 0，无输出。
+
+### 剩余风险
+
+- 本轮只做 fake/unit 和 diff check，不访问真实 `/dev/ttyS5`、`/dev/lidar`、
+  `/dev/ttyACM0`、8787 现场 API 或 ROS graph。
+- 不证明 PC WASD 真实控车、LiDAR one-click 真实启动、`T=1001` 同场、robot ACK、
+  ROS `/odom`/`/imu/data`/`/battery`、HIL pass、`safe_to_control=true` 或送达闭环。
+- 下一次真实 low-speed pulse 仍必须按
+  `docs/hardware/o1_pc_manual_lidar_hil_boundary.md` 执行 stop-first、同一
+  `evidence_ref`、operator report 和 post-status 采证。
+
+## Robot Software field follow-up - 8787 Radar start 405 收口
+
+### 根因
+
+按 systematic debugging 先复现再查远端进程：
+
+- 复现：`POST http://192.168.1.11:8787/api/radar/start` 返回
+  `HTTP/1.1 405 Method Not Allowed`，`Allow: OPTIONS`；同机
+  `GET /api/radar/status` 返回 200，说明 8787 在线且 radar status route 存在。
+- SSH 只读确认：`ss -ltnp "sport = :8787"` 显示 PID `7055`，
+  `systemctl status trashbot-upper-robot-api.service` 显示服务运行
+  `python3 /root/rober/onboard/scripts/upper_robot_api.py`，已运行约 14 小时。
+- 远端脚本 `/root/rober/onboard/scripts/upper_robot_api.py` 的 sha256 为
+  `257af64793e08a866a3df80e929e76afd2f1d90d85caab35fd09fe1fc7912735`，
+  `ROUTE_PATHS` 里只有 `radar_status`、`radar_scan_proof_latest`、
+  `radar_raw_packet_proof_latest`，没有 `radar_start/radar_stop`；
+  router grep 也只看到 camera/base POST 注册，没有
+  `app.router.add_post(ROUTE_PATHS["radar_start"], radar_start)`。
+
+结论：PC workstation 已经把 Radar start 转发到远端，但远端 8787 仍运行旧版
+`upper_robot_api.py`，旧脚本没有 `POST /api/radar/start` route，aiohttp 因只匹配到
+全局 `OPTIONS` 返回 405。
+
+### 远端动作
+
+- 本地先验证当前脚本可部署：
+  - `python3 -m unittest onboard.scripts.test_upper_robot_api`：通过，
+    `Ran 23 tests in 1.710s`，`OK`。
+  - `python3 -m compileall -q onboard/scripts/upper_robot_api.py onboard/scripts/test_upper_robot_api.py`：
+    通过，无输出。
+- 通过 `scp -P 37878` 将当前
+  `onboard/scripts/upper_robot_api.py` 同步到远端临时文件
+  `/root/rober/onboard/scripts/upper_robot_api.py.new`。
+- 远端执行 `python3 -m py_compile onboard/scripts/upper_robot_api.py.new` 通过后，
+  备份旧脚本为 `upper_robot_api.py.bak-<timestamp>`，再替换同路径脚本。
+- 重启 `trashbot-upper-robot-api.service`；新服务 PID 为 `24105`，
+  运行命令仍是 `python3 /root/rober/onboard/scripts/upper_robot_api.py ...`。
+- 部署后远端脚本 sha256 与本地一致：
+  `ab0af3d6b27bc467571e2f8eff5437f226f205650b4a19a277406dc70d947a41`。
+- 部署后远端 grep 已看到：
+  - `ROUTE_PATHS["radar_start"] = "/api/radar/start"`
+  - `ROUTE_PATHS["radar_stop"] = "/api/radar/stop"`
+  - `async def radar_start(...)`
+  - `app.router.add_post(ROUTE_PATHS["radar_start"], radar_start)`
+
+本次没有配置 `ROBER_RADAR_START_COMMAND`，没有启动 ROS2/LiDAR driver，没有打开
+`/dev/ttyACM0`，没有触碰 `/dev/ttyS5`，没有发送 WAVE ROVER JSON、`T=1/T=130`
+或 `/cmd_vel`。
+
+### 验证结果
+
+远端 Radar start：
+
+```bash
+curl -i -sS -X POST http://192.168.1.11:8787/api/radar/start \
+  -H 'Content-Type: application/json' \
+  -d '{"evidence_ref":"robot-software-radar-start-smoke"}'
+```
+
+结果：不再 405，返回 `HTTP/1.1 200 OK` JSON object。关键字段：
+
+```json
+{
+  "schema": "trashbot.upper_robot_api.v1.radar_control_result",
+  "action": "radar_start",
+  "endpoint": "/api/radar/start",
+  "status": "not_proven",
+  "software_guard": true,
+  "configured_command": {
+    "env": "ROBER_RADAR_START_COMMAND",
+    "configured": false,
+    "mode": "dry_run_stub"
+  },
+  "command_result": {
+    "mode": "dry_run_stub",
+    "executed": false,
+    "reason": "no_command_configured"
+  },
+  "sends_base_motion_commands": false,
+  "uses_base_uart": false,
+  "base_uart_touched": false,
+  "safe_to_control": false,
+  "robot_control_executed": false
+}
+```
+
+PC 代理 Radar start：
+
+```bash
+curl -sS -X POST http://127.0.0.1:5173/api/o7/direct-upper/radar/start \
+  -H 'Content-Type: application/json' \
+  -d '{"evidence_ref":"robot-software-pc-radar-start-smoke"}'
+```
+
+结果：PC 代理不再收到上位机 405，关键字段：
+
+```json
+{
+  "adapter": {
+    "version": "2026-06-04.field-default-radar-v2"
+  },
+  "upper_request": {
+    "path": "/api/radar/start",
+    "method": "POST",
+    "executed": true,
+    "ok": true,
+    "http_status": 200,
+    "failure_reason": ""
+  },
+  "upper_api_base_url_source": "field_default",
+  "failure_reason": "none",
+  "safe_to_control": false,
+  "sends_commands": false,
+  "robot_control_executed": false
+}
+```
+
+`journalctl -u trashbot-upper-robot-api.service -n 20` 显示服务在
+2026-06-04 14:23:56 CST 正常 stop/start，新日志只有
+`upper_robot_api_started`，没有启动失败或异常栈。
+
+### 剩余风险
+
+- `/api/radar/start not_executed/base_url_not_configured/405` 已消失：远端 POST 已是
+  HTTP 200，PC 代理 `upper_request.executed=true`、`http_status=200`、
+  `failure_reason=none`。
+- 当前仍是 `software_guard`：远端未配置 `ROBER_RADAR_START_COMMAND`，所以只证明
+  HTTP route 和 fail-closed JSON 合同恢复，不证明真实 LiDAR/ROS2 driver 已启动。
+- 真实转正还需要后续配置 LiDAR/ROS2 driver command hook，并采集 `/scan` once、
+  `/scan` hz、必要日志和 artifact；这仍不能触碰底盘 `/dev/ttyS5` 或 WAVE ROVER
+  运动指令。
+
+## Algorithm follow-up - O2/O3 offline artifact 复跑验收
+
+### 验收目标
+
+本次 follow-up 只验收 Algorithm/O2/O3 范围：OpenCV 电梯 taxonomy、ROI/rule
+baseline、offline eval、Nav2 map quality metrics、fixture artifact 复跑入口、测试
+discover 稳定性和 docs 同步。验收边界保持 `software_guard`，不声明真实电梯图片、
+真实 SLAM map、AMCL、Nav2 runtime 或现场路线完成。
+
+### 实际修补
+
+- `pc-tools/evidence/fixtures/elevator_opencv_baseline_offline_eval/software_guard_summary.json`
+  - 补 `expected_exit_code=0`，方便 evidence runner 区分电梯 fixture 的正常通过。
+- `pc-tools/evidence/fixtures/nav2_map_quality_offline_eval/software_guard_summary.json`
+  - 补 `expected_exit_code=1` 和 fail-closed 原因，明确该 fixture 预期因 waypoint
+    reachability gate 未通过而返回非 0，不是脚本崩溃。
+- `docs/navigation/nav2_map_quality_metrics.md`
+  - 新增 Nav2 map quality 专页，记录真实 map artifact 切换入口、输出字段、fixture
+    复跑命令、预期 `exit_code=1` 和 O3 not_proven 边界。
+- `docs/vision/elevator_opencv_baseline.md`
+  - 补导航侧文档链接，避免 map quality 指标只落在 vision 文档里。
+
+### 复跑结果
+
+```bash
+python3 -m compileall -q onboard/src/ros2_trashbot_vision onboard/src/ros2_trashbot_nav pc-tools/evidence
+```
+
+结果：通过，exit 0。
+
+```bash
+python3 -m unittest discover -s onboard/src/ros2_trashbot_vision -p 'test*.py'
+```
+
+结果：通过。
+
+```text
+Ran 18 tests in 1.046s
+OK
+```
+
+```bash
+python3 -m unittest discover -s onboard/src/ros2_trashbot_nav -p 'test*.py'
+```
+
+结果：通过。
+
+```text
+Ran 54 tests in 5.974s
+OK
+```
+
+```bash
+git diff --check -- onboard/src/ros2_trashbot_vision onboard/src/ros2_trashbot_nav pc-tools/evidence docs/vision/elevator_opencv_baseline.md sprints/2026.06.04_12-13_real-control-slam-elevator-field-epic
+```
+
+结果：通过，exit 0。
+
+Fixture artifact 额外复跑：
+
+- 电梯 OpenCV manifest eval：exit 0，`evaluated_count=3`，
+  `software_guard.pass=true`，`field_eval.pass=false`，
+  `field_eval_status=needs_real_image_manifest`。
+- Nav2 map quality fixture：预期 exit 1，JSON 正常输出，
+  `software_guard_pass=false`，`reachable_ratio=0.25`，
+  failure samples 覆盖 occupied、unknown、out_of_bounds。
+
+### 失败定位
+
+没有出现需要修代码的测试失败。唯一需要修补的是证据解释缺口：Nav2 map quality
+fixture 的非 0 退出码是预期 fail-closed，但 summary 和导航文档未明确写出，容易被
+后续 evidence runner 或人工验收误判为命令异常。
+
+### 剩余风险
+
+- OpenCV baseline 仍未接真实/受控电梯图片 manifest，不证明真实门状态、楼层 OCR、
+  safe exit 或跨楼层送达。
+- Map quality helper 仍是 ROS-free 离线过滤，不证明真实 SLAM `/map`、map artifact、
+  AMCL pose、TF freshness、Nav2 消费 `/scan`+map 或固定路线实跑。
+- 下一步 Algorithm 可涨分抓手是接真实图片 manifest 与真实 map artifact，而不是继续
+  增加 fixture 数量。
+
+## Full-Stack Worker A follow-up - direct-upper Radar start 按钮层/UI API 复现
 
 ### 根因
 
@@ -21,10 +312,10 @@ sprint_type: epic
   - 新增 `O7DirectUpperApiAdapterInfo`，要求 direct-upper status 和 command envelope 都返回 adapter 指纹。
 - `pc-tools/workstation/src/server/o7DirectUpperApi.ts`
   - 为 status/command 响应加入 `adapter.version=2026-06-04.field-default-radar-v2`、`adapter.source=pc-tools/workstation/src/server/o7DirectUpperApi.ts`、`field_default_enabled=true`、`field_default_url=http://192.168.1.11:8787` 和 dev server reload hint。
-  - 保持 Radar start 缺 env 走 `field_default`，上位机失败时仍返回 `upper_request.executed=true` 和真实 `upper_http_<status>`。
+  - 保持 Radar start 缺 env 走 `field_default`，上位机失败时仍返回 `upper_request.executed=true` 和实际 `upper_http_<status>`。
 - `pc-tools/workstation/src/components/O7LiveOperatorPanel.vue`
   - Direct 卡片显示 `adapter` 指纹；缺字段时显示 `stale_dev_server_missing_adapter` 并提示重启 `npm run dev`。
-  - Radar/command 结果显示 `source=<upper_api_base_url_source>` 和 `adapter=<adapter.version>`，用于现场截图区分旧 5173 middleware 与真实上位机 HTTP 失败。
+  - Radar/command 结果显示 `source=<upper_api_base_url_source>` 和 `adapter=<adapter.version>`，用于现场截图区分旧 5173 middleware 与上位机 HTTP 失败。
 - `pc-tools/workstation/src/styles.css`
   - 新增 adapter 指纹样式。
 - `pc-tools/workstation/test/App.test.ts`
@@ -102,6 +393,91 @@ Express app 级 HTTP smoke（随机本机端口，mock 上位机 8787，不访�
 - 本轮没有访问 ROS graph、LiDAR 串口、`/dev/ttyS5` 或 WAVE ROVER JSON，不证明真实 `/scan`、真实 Radar start、SLAM/Nav2、robot ACK、`T=1001`、HIL 或 `safe_to_control=true`。
 - `robot_ack_not_connected`、`t1001_feedback_not_observed`、`field_evidence_not_proven` 继续是现场缺口；它们现在只作为锁定原因显示，不再阻止 Radar start HTTP 转发。
 
+## Full-Stack/O7 scoped acceptance - PC operator workflow / direct-upper contract
+
+本轮按 Full-Stack/O7 文件范围复核 PC operator workflow、direct-upper API、fixture/default/env 语义和文档同步。结论：
+
+- `pc-tools/workstation/src/server/o7DirectUpperApi.ts` 当前保持 `status` 与 `radar start/stop` 缺 env 走 `field_default=http://192.168.1.11:8787`；`base/manual/stop/feedback`、`map/*`、`localize/reset` 和 `operator-report` 仍要求显式 `ROBER_UPPER_API_BASE_URL` 或显式 fixture mode。
+- `O7LiveOperatorPanel.vue` 的按钮、WASD/Space/X、Stop、Radar、Map、Localize 和 Operator report 均经 PC 同源 client helper，且需要 `operator confirmation`，不会从浏览器直连 8787、ROS graph、`/cmd_vel`、`/dev/ttyS5` 或 WAVE ROVER JSON。
+- `docs/product/pc_tools_workstation.md` 与 `docs/interfaces/o7_direct_upper_pc_api.md` 已同步 adapter 指纹、stale dev server、field default、fixture mode 和 fail-closed/not_proven 边界。
+- 本次复核未发现需要在允许代码范围内新增修补的构建、类型、lint 或文档阻塞；仅更新本 `tech-done.md` 验收记录。
+
+验证结果：
+
+- `cd pc-tools/workstation && npm test -- --run`：通过，`Test Files 3 passed (3)`，`Tests 97 passed (97)`。
+- `cd pc-tools/workstation && npm run build`：通过，Vite 产物 `dist/assets/index-EBE9rJR4.css` 和 `dist/assets/index-DoWp1Jfx.js` 正常生成，`built in 2.34s`。
+- `cd pc-tools/workstation && npm run lint`：通过，ESLint 无输出。
+- `git diff --check -- pc-tools/workstation docs/product/pc_tools_workstation.md docs/interfaces/o7_direct_upper_pc_api.md sprints/2026.06.04_12-13_real-control-slam-elevator-field-epic`：通过。
+
+剩余风险：
+
+- 本轮只完成 PC software guard 和本机同源代理验收，不证明真实 8787 runtime 已部署新端点、真实 PC WASD 控车、真实 Radar start/stop、真实 SLAM/AMCL、真实 Nav2 消费、robot ACK、`T=1001`、HIL 或 `safe_to_control=true`。
+- 真实现场浏览器如果仍由旧 5173 Vite middleware 服务，operator 仍需重启占用 5173 的旧 `npm run dev` 后再用 `adapter=2026-06-04.field-default-radar-v2` 复核。
+
+## Robot Software Worker B follow-up - O3/O2 proof readback fail-closed 验收修补
+
+### 根因
+
+验收 Robot Software/O3 范围时发现两个护栏缺口：
+
+- `map_list()` 是本地地图 artifact 只读列举，但共用 `software_guard_payload()` 时，只要本地目录存在且 `command_result.ok=true`，响应可能把 `sends_commands` 标为 `true`。这会让 PC/operator 把只读文件扫描误读成上位机已经执行 ROS2/map 命令。
+- 现有 upper API 单测覆盖了 map/localize/Nav2/elevator proof artifact 的 loaded fixture readback，但没有直接覆盖 artifact 缺失和坏 JSON 时的 fail-closed 行为。代码实现已有 `404/422` 保守回包，本轮补回归测试，避免后续改动把 readback 变成启动 ROS2 或发送命令。
+
+### 实际改动
+
+- `onboard/scripts/upper_robot_api.py`
+  - `software_guard_payload()` 的 `sends_commands` 收紧为“显式配置 command 且执行成功”才为 `true`。
+  - 保持显式配置的 radar/map/localize/Nav2 command hook 可作为真实 runtime 切换入口，但只读 `map_list()`、proof readback 和 status summary 不再被误标为发送命令。
+- `onboard/scripts/test_upper_robot_api.py`
+  - `test_map_list_reads_artifacts_only_and_unified_status_exposes_routes` 新增 `sends_commands=false` 断言。
+  - 新增 `test_runtime_artifact_readbacks_missing_and_bad_json_fail_closed`，覆盖 `/api/map/proof/latest`、`/api/localize/proof/latest`、`/api/nav2/status.proof_latest`、`/api/elevator/status.proof_latest` 在 artifact missing 和 bad JSON 时的 `404/422`、`not_proven`、`readback_sends_commands=false`、`starts_ros2=false`、`safe_to_control=false` 和 `robot_control_executed=false`。
+- `docs/interfaces/o7_upper_robot_api.md`
+  - 补齐 map/localize/Nav2/elevator readback 的 missing、bad JSON、非 object、read_failed 回包语义。
+  - 明确 readback 无论 artifact 是否读取成功，都不启动 SLAM、Nav2、OpenCV、电梯状态机、`/initialpose`、`/cmd_vel` 或 WAVE ROVER 串口。
+
+### 验证结果
+
+```bash
+python3 -m unittest onboard.scripts.test_upper_robot_api
+```
+
+结果：通过。
+
+```text
+Ran 23 tests in 1.759s
+OK
+```
+
+```bash
+python3 -m compileall -q onboard/scripts onboard/src
+```
+
+结果：通过，命令无输出。
+
+```bash
+git diff --check -- onboard/scripts/upper_robot_api.py onboard/scripts/test_upper_robot_api.py onboard/src/ros2_trashbot_nav onboard/src/ros2_trashbot_behavior onboard/src/ros2_trashbot_bringup docs/interfaces/o7_upper_robot_api.md docs/product/elevator_assisted_delivery.md sprints/2026.06.04_12-13_real-control-slam-elevator-field-epic
+```
+
+结果：通过，命令无输出。
+
+Docker/Humble 额外检查：
+
+```bash
+docker info
+```
+
+结果：失败于当前 WSL distro 缺 Docker CLI / Docker Desktop WSL integration，未运行 `bash onboard/scripts/docker_humble_build.sh`，因此本轮没有新增 colcon 证据。
+
+```text
+The command 'docker' could not be found in this WSL 2 distro.
+We recommend to activate the WSL integration in Docker Desktop settings.
+```
+
+### 剩余风险
+
+- 本轮仍未覆盖真实 Docker/Humble colcon、真实 ROS2 graph、SLAM `/map`、map artifact、AMCL `/amcl_pose`、TF freshness、Nav2 消费 `/scan`+map、电梯 OpenCV 实景或 HIL。
+- 当前修补只把 upper API software guard/readback 语义压实，不把 O3/O2 写成真实 runtime 完成，也不提升 OKR 百分比。
+
 ## 实际改动
 
 本轮按四个 L2 owner 并行推进，交付范围是 `software_guard`、离线评估和现场准入护栏。不声明真实 PC 控车、真实 LiDAR start/stop、真实 SLAM map、真实 AMCL 定位、真实 Nav2 消费、真实电梯识别、HIL、robot ACK 或 delivery success。
@@ -128,7 +504,7 @@ Express app 级 HTTP smoke（随机本机端口，mock 上位机 8787，不访�
 
 验证结果：
 
-- `cd pc-tools/workstation && npm test -- --run`：3 files / 96 tests passed。
+- `cd pc-tools/workstation && npm test -- --run`：3 files / 97 tests passed。
 - `cd pc-tools/workstation && npm run build`：passed。
 - `cd pc-tools/workstation && npm run lint`：passed。
 - `git diff --check -- pc-tools/workstation docs/product/pc_tools_workstation.md`：passed。
@@ -136,7 +512,7 @@ Express app 级 HTTP smoke（随机本机端口，mock 上位机 8787，不访�
 剩余风险：
 
 - 本轮不证明真实 PC 控车、真实 radar start/stop runtime、真实 ROS2 runtime、真实 SLAM/AMCL、真实 `/scan`、robot ACK、`T=1001` 或 HIL。
-- `docs/interfaces/o7_direct_upper_pc_api.md` 需要同步 direct-upper fixture/default/env 语义，已作为 full-stack follow-up 派发。
+- `docs/interfaces/o7_direct_upper_pc_api.md` 已同步 direct-upper fixture/default/env 语义；真实 runtime 仍需现场 8787 与上车材料复核。
 
 ### Worker B - robot-software-engineer
 
