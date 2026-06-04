@@ -26,6 +26,10 @@ const ALLOWED_DIRECTIONS = ["forward", "back", "left", "right", "stop"] as const
 const DEFAULT_SCAN_PROOF_BLOCKERS = ["radar_scan_proof_latest_not_loaded"] as const;
 const LOADED_SCAN_PROOF_NOT_OBSERVED_BLOCKERS = ["radar_scan_proof_blocked_or_not_observed"] as const;
 type UpperApiBaseUrlSource = "env" | "field_default" | "fixture" | "not_configured";
+type UpperApiBaseUrlPolicy = "explicit_only" | "field_default_allowed";
+
+const EXPLICIT_UPPER_BASE_URL_ONLY: UpperApiBaseUrlPolicy = "explicit_only";
+const FIELD_DEFAULT_ALLOWED: UpperApiBaseUrlPolicy = "field_default_allowed";
 
 interface DirectUpperOptions {
   env?: NodeJS.ProcessEnv;
@@ -95,12 +99,13 @@ function resolveFieldUpperBaseUrl(env: NodeJS.ProcessEnv = process.env): Resolve
   return { url: FIELD_DEFAULT_UPPER_API_BASE_URL, source: "field_default" };
 }
 
-function resolveOperatorUpperBaseUrl(options: DirectUpperOptions, allowFieldDefault: boolean): ResolvedUpperBaseUrl {
+function resolveOperatorUpperBaseUrl(options: DirectUpperOptions, policy: UpperApiBaseUrlPolicy): ResolvedUpperBaseUrl {
   if (fixtureModeRequested(options)) {
     // fixture:// 不会进入 fetch；它只让 PC workflow 产生可回放的软件护栏响应。
     return { url: "fixture://upper-api", source: "fixture" };
   }
-  return allowFieldDefault ? resolveFieldUpperBaseUrl(options.env) : configuredUpperBaseUrl(options.env);
+  // policy 用显式枚举而不是 boolean，避免底盘控制入口误读 true/false 后走 field default。
+  return policy === FIELD_DEFAULT_ALLOWED ? resolveFieldUpperBaseUrl(options.env) : configuredUpperBaseUrl(options.env);
 }
 
 function requestResult(
@@ -541,7 +546,7 @@ async function proxyOperatorCommand(
   schema: O7DirectUpperApiCommandResponse["schema"],
   command: O7DirectUpperApiCommand,
   method: O7DirectUpperApiRequestResult["method"] = "POST",
-  allowFieldDefault = false,
+  baseUrlPolicy: UpperApiBaseUrlPolicy = EXPLICIT_UPPER_BASE_URL_ONLY,
 ): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
   const body = asRecord(options.body);
   const mapId = stringFromBody(body, "map_id", "not_provided");
@@ -557,7 +562,7 @@ async function proxyOperatorCommand(
     evidence_ref: evidenceRef,
     report_note: command === "operator_report" ? reportNote.slice(0, 120) : undefined,
   };
-  const baseUrl = resolveOperatorUpperBaseUrl(options, allowFieldDefault);
+  const baseUrl = resolveOperatorUpperBaseUrl(options, baseUrlPolicy);
   if (baseUrl.source === "fixture") {
     return {
       status: 200,
@@ -610,7 +615,7 @@ async function proxyOperatorCommand(
 export async function proxyO7DirectUpperStop(options: DirectUpperOptions = {}): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
   const body = asRecord(options.body);
   const evidenceRef = stringFromBody(body, "evidence_ref", "missing_operator_evidence_ref");
-  const baseUrl = resolveOperatorUpperBaseUrl(options, false);
+  const baseUrl = resolveOperatorUpperBaseUrl(options, EXPLICIT_UPPER_BASE_URL_ONLY);
   const summary = {
     direction: "not_applicable" as const,
     speed_mps: 0,
@@ -668,7 +673,7 @@ export async function proxyO7DirectUpperStop(options: DirectUpperOptions = {}): 
 export async function proxyO7DirectUpperFeedbackRequest(options: DirectUpperOptions = {}): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
   const body = asRecord(options.body);
   const evidenceRef = stringFromBody(body, "evidence_ref", "missing_operator_evidence_ref");
-  const baseUrl = resolveOperatorUpperBaseUrl(options, false);
+  const baseUrl = resolveOperatorUpperBaseUrl(options, EXPLICIT_UPPER_BASE_URL_ONLY);
   const summary: O7DirectUpperApiCommandResponse["command_payload_summary"] = {
     direction: "not_applicable",
     speed_mps: 0,
@@ -767,7 +772,7 @@ export async function proxyO7DirectUpperManual(options: DirectUpperOptions = {})
     };
   }
 
-  const baseUrl = resolveOperatorUpperBaseUrl(options, false);
+  const baseUrl = resolveOperatorUpperBaseUrl(options, EXPLICIT_UPPER_BASE_URL_ONLY);
   if (baseUrl.source === "fixture") {
     return {
       status: 200,
@@ -834,7 +839,7 @@ export async function proxyO7DirectUpperRadarStart(options: DirectUpperOptions =
     "trashbot.pc_tools_workstation.o7_direct_upper_radar_start.v1",
     "radar_start",
     "POST",
-    true,
+    FIELD_DEFAULT_ALLOWED,
   );
 }
 
@@ -847,7 +852,7 @@ export async function proxyO7DirectUpperRadarStop(options: DirectUpperOptions = 
     "trashbot.pc_tools_workstation.o7_direct_upper_radar_stop.v1",
     "radar_stop",
     "POST",
-    true,
+    FIELD_DEFAULT_ALLOWED,
   );
 }
 
@@ -860,7 +865,7 @@ export async function proxyO7DirectUpperRadarScanProofRefresh(options: DirectUpp
     "trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_refresh.v1",
     "radar_scan_proof_refresh",
     "POST",
-    true,
+    FIELD_DEFAULT_ALLOWED,
   );
 }
 
@@ -940,7 +945,7 @@ export async function proxyO7DirectUpperOperatorReport(options: DirectUpperOptio
     "trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1",
     "operator_report",
     "POST",
-    true,
+    FIELD_DEFAULT_ALLOWED,
   );
 }
 
@@ -953,6 +958,6 @@ export async function proxyO7DirectUpperOperatorReportReadback(options: DirectUp
     "trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1",
     "operator_report",
     "GET",
-    true,
+    FIELD_DEFAULT_ALLOWED,
   );
 }
