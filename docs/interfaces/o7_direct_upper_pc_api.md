@@ -264,6 +264,8 @@ trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_refresh.v1
 - 显式 fixture mode 优先于 field default，响应中 `upper_api_base_url_source=fixture` 且不触发远端 fetch。
 - 该入口只请求上位机刷新只读 scan proof artifact；PC workstation 不执行 collector、不连接 ROS graph、不打开 LiDAR 串口、不发送 `A5 60`、不访问 `/api/base/manual`、不发送 `/cmd_vel`、不构造 WAVE ROVER JSON，也不触发底盘运动。
 - 上位机 HTTP 2xx 且返回 object JSON 时，PC 返回 `200`，`upper_request.executed=true`，`upper_request.path=/api/radar/scan-proof/refresh`。这只证明 PC 同源请求到达 upper read-only refresh route，不证明 fresh `/scan` 或 ROS2 runtime 已验收。
+- PC command response 会额外返回 `upper_result_summary`，把上位机业务结果和 HTTP 转发结果拆开展示。字段包括 `status`、`proof_status`、`latest_proof_status`、`artifact_status`、`artifact_path`、`freshness_status`、`freshness_age_seconds`、`blocked_reasons`、`not_proven`，并固定 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`。
+- 如果上位机 HTTP `200` 但 body 仍是 `status=not_proven` / `proof_status=not_proven` 或返回 `blocked_reasons`，PC 仍返回真实 HTTP code，但 `fail_closed=true`，`blocked_reasons` 会包含远端 blocker，例如 `ros2_command_unavailable`、`upper_api_scan_not_proven`。UI 必须显示 `upper_result=not_proven/...` 和 `upper_blockers=...`，不得只显示成 refresh 已完成。
 - 上位机 HTTP 非 2xx、超时、fetch 失败或坏 JSON 时，PC 返回 `502` 并保留真实失败，如 `upper_http_404`、`upper_http_405`、`upper_http_503`、`timeout` 或 `bad_json`；不得包装成成功，也不得回落为 `/api/radar/start` 或底盘控制失败。
 - command response 继续固定 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`robot_ack_connected=false`、`t1001_observed=false`。
 - `not_proven` 必须继续包含 HIL、PC WASD 控车、Nav2 消费、SLAM map、delivery success、driver start/stop 等边界；即使 remote refresh 返回 fresh artifact，也不能声明 HIL、PC WASD、Nav2、map 或送达成功。
@@ -482,6 +484,11 @@ PC direct upper 现在只消费这些只读摘要和本机转发结果：
 - `upper_status_summary.radar_scan_proof_*` 来自 8787 `/api/status.radar.scan_proof_latest`。
 - artifact `loaded` 只代表 scan proof collector 的 JSON 可回放。
 - `latest_proof_status=blocked_or_not_observed` 时，如果远端摘要没有 blocker 明细，PC 会显示 `radar_scan_proof_blocked_or_not_observed`，不会误报为未加载。
+- `POST /api/o7/direct-upper/radar/scan-proof/refresh` 的按钮结果还会显示本次 POST 的
+  `upper_result_summary`，因此 deployed upper route 从 `405` 变成 `200` 后，如果 ROS2
+  command 仍不可用，operator 会看到 `upper_result=not_proven/not_proven/...`、
+  `upper_blockers=ros2_command_unavailable / upper_api_scan_not_proven` 和 artifact/freshness 摘要，
+  不会被 UI 包装成 runtime success。
 - PC 不执行 collector、不启动 ROS2、不打开 LiDAR 串口、不发送 `A5 60`，也不发送底盘运动命令。
 - `upper_status_summary.radar_raw_packet_proof_*` 来自 8787
   `/api/status.radar.raw_packet_proof_latest`。

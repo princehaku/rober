@@ -8,6 +8,121 @@
 
 ## 2026-06-04 系列
 
+### 2026-06-04 22-23｜Runtime Material Deploy Refresh｜解除 refresh route 405，root cause 收敛到 ROS2 command unavailable
+
+本轮 Epic 接续 `21-22_runtime-material-runtime-hooks` 的现场阻塞：本地
+`POST /api/radar/scan-proof/refresh` software guard 已完成，但上位机
+`192.168.1.11:8787` 返回 HTTP 405。用户价值是把 O3/O7 从“有按钮/有合同”推进到真实上位机
+部署事实，并在没有 fresh `/scan` 时给 operator 明确 blocker，而不是误写成 runtime success。
+
+本轮 IC 证据：
+
+- Robot Software：远端文件同步到 `/root/rober/onboard/scripts/upper_robot_api.py` 和 collector，
+  备份目录 `/root/rober/runtime/deploy_backups/20260604T221619+0800`；旧游离 PID `30042`
+  精确匹配 upper API 后用 SIGTERM 结束，`systemctl start trashbot-upper-robot-api.service`
+  拉起 Main PID `38154`。live `GET /health` HTTP 200 且 `safe_to_control=false`；
+  `GET /api/radar/status` HTTP 200 且已有 `scan_proof_refresh` control、`scan_status=not_proven`；
+  `POST /api/radar/scan-proof/refresh` HTTP 200，解除 405；`GET /api/radar/scan-proof/latest`
+  HTTP 200 且 artifact loaded。runtime proof 未通过，blocker 为 `ros2_command_unavailable` 和
+  `upper_api_scan_not_proven`。本地 unittest 28 OK skipped=2、compileall OK、diff-check OK。
+- Hardware：基于 vendor 来源做 SSH 只读 GET health/radar/status/latest/base/status，确认
+  `safe_to_control=false`、`robot_control_executed=false`、`hil_pass=false`；历史 scan proof 不是本次
+  fresh refresh；`T=1001` 只能是 vendor feedback material，不是 ACK；未改文件，diff-check OK。
+- Full-Stack：补 PC direct-upper response `upper_result_summary`，UI 展示 upper `not_proven` 和
+  blockers；`npm test -- --run` 3 files / 101 tests passed，`npm run build` passed，
+  `npm run lint` passed，diff-check OK；未做 live smoke，因此 O7 不涨分。
+
+本轮 OKR 调整：
+
+| Objective | 调整 | 原因 |
+| --- | --- | --- |
+| O3：建图、定位、Nav2 与固定路线 | 保持约 73% | 405 已解除，但没有 fresh `/scan`、hz、raw packet 或 TF；proof blocked 在 `ros2_command_unavailable` / `upper_api_scan_not_proven`。 |
+| O7：PC 运营调试平台 | 保持约 90% | PC 已能展示 upper `not_proven` 和 blockers，但未做 live smoke，也没有 fresh runtime workflow。 |
+| O8：Epic 交付节奏与证据治理 | 约 43% -> 约 44% | 完成 Epic 留档、解除部署 405 blocker、把 root cause 收敛到 ROS2 command unavailable，并补 PC fail-closed blocker display；不叠加到 45%。 |
+| O1/O2/O5/O6 | 不变 | 本轮不触达 HIL、电梯图片、production cloud 或 archive runtime。 |
+
+本轮进入历史进展的 KR：
+
+- `KR-O3/O7-Deploy-Refresh-Route`：route 部署和 HTTP 405 解除可进入历史进展，但只算部署 blocker
+  解除，不算 fresh scan proof 完成。
+- `KR-O8-Repeated-Blocker-Stop`：root cause 从 `upper_refresh_route_not_deployed_http_405` 收敛到
+  `ros2_command_unavailable` / `upper_api_scan_not_proven`，下一轮不得再消费 405 blocker。
+- `KR-O7-PC-Fail-Closed-Blocker-Display`：PC 能把 HTTP 200 但 upper `not_proven` 显示为锁定状态，
+  防止 operator 误读成 O7 runtime success。
+
+剩余风险：没有 fresh `/scan` runtime material、SLAM `/map`、AMCL、Nav2 lifecycle、PC WASD、
+HIL、robot ACK、真实电梯图片、production cloud 或 user acceptance。下一步必须修上位机 ROS2
+runtime environment/collector command path，恢复 `ros2` 命令或在正确 ROS2 容器内运行 collector，
+再复测 refresh；之后才进入 SLAM/map/AMCL/Nav2。
+
+### 2026-06-04 22-23｜OKR six-sprint breakthrough rewrite｜新增 O9，真实材料破局战役
+
+本轮 Product/OKR micro sprint 复盘用户指定的最近 6 个迭代：
+`16-05_okr-six-sprint-strategy-rewrite`、`16-17_o2-elevator-opencv-state-integration`、
+`17-18_runtime-material-epic`、`19-20_runtime-material-continue`、
+`20-21_runtime-material-followup` 和 `21-22_runtime-material-runtime-hooks`。用户价值是把团队从
+“继续写接口、按钮、fixture 和 readback”拉到短周期真实材料 breakthrough：部署 refresh route、
+fresh scan proof、真实/受控电梯图片、stop-first HIL 和 Epic owner 超时防护。
+
+本轮 OKR 方向判断：**调整并新增 O9**。北极星不变，仍是面向普通手机用户的低成本垃圾投递机器人；
+但最近 6 轮证明，O2/O3/O7/O1 的真实材料断点没有靠更多接口自然消失，必须用 O9 做 72 小时破局。
+O8 可以小幅上调，因为 16:05 之后从连续 Micro 转向 Epic，21-22 已把 blocker 收敛到 live 8787
+未部署/未重载 refresh route；但 O8 是组织治理，不证明产品能力。
+
+最近 6 个迭代问题：
+
+| Sprint | 结论 | OKR 影响 |
+| --- | --- | --- |
+| `16-05_okr-six-sprint-strategy-rewrite` | 从连续 Micro 转向 Epic，打回 O5/O6，建立 O8 口径。 | 支撑治理，不产生产品材料。 |
+| `16-17_o2-elevator-opencv-state-integration` | OpenCV baseline 接入 `task_orchestrator`，全量 smoke 通过。 | O2 software guard 有效，但缺真实/受控电梯图片，不涨 O2。 |
+| `17-18_runtime-material-epic` | 真实 8787 operator report POST/GET 和 PC 同源 readback 通过。 | O7/O8 小涨；O1/O2/O3 不涨。 |
+| `19-20_runtime-material-continue` | Algorithm 有材料，Robot Software、Full-Stack、Hardware 三个 L2 超时。 | 暴露派单粒度问题，O8 不涨。 |
+| `20-21_runtime-material-followup` | 缩小 owner 任务后全员有 note，O7/O8 小涨。 | O2 卡图片 manifest，O3 卡 live hook/ROS graph 空，O1 只有非运动 `T=1001`。 |
+| `21-22_runtime-material-runtime-hooks` | 本地 scan-proof refresh 合同和 PC 按钮完成，live upper 8787 返回 405。 | O8 小涨；O3/O7 不涨，下一步必须部署 refresh route。 |
+
+本轮 OKR 调整：
+
+| Objective | 调整 | 原因 |
+| --- | --- | --- |
+| O1：硬件协议可信底盘 | 保持约 95.5% | 仍无 stop-first HIL、运动 pulse、stop/post-status、ROS feedback 或 `safe_to_control=true`。 |
+| O2：送垃圾任务 + 电梯 assisted delivery | 保持约 72% | 16-17 是 software guard；真实/受控电梯图片 manifest 和 field eval 仍缺。 |
+| O3：建图、定位、Nav2 与固定路线 | 保持约 73% | 本地 refresh 合同不等于 live runtime，现场 8787 `POST /api/radar/scan-proof/refresh` 仍是 HTTP 405。 |
+| O7：PC 运营调试平台 | 保持约 90% | operator report/readback 有效，但 PC refresh 仍卡 live 8787 route，未形成 runtime workflow。 |
+| O5/O6 | 保持 O5 约 84%、O6 约 82% | 本轮不触达 production live material，继续作为支线等待真实上车数据。 |
+| O8：Epic 交付节奏与证据治理 | 约 43% -> 约 44% | 完成最近 6 轮复盘、员工状态检查、O9 KR 重写和 owner 超时防护口径。 |
+| O9：短周期真实材料破局战役 | 新增，0% | 只完成 KR 定义，不计完成；必须靠部署、fresh runtime、真实/受控图片和 HIL 材料涨分。 |
+
+本轮新增/重写的破局 KR：
+
+- `KR-O9-Deploy-Refresh-Route`：部署 refresh route，验收 live 8787
+  `POST /api/radar/scan-proof/refresh` 不再 HTTP 405，PC 同源代理可触发，latest artifact 写入新
+  `evidence_ref`。Owner：Robot Software Engineer + Full-stack Software Engineer。
+- `KR-O9-Fresh-Scan-Proof`：采集 fresh `/scan` once/hz、`/lidar/raw_packet` 或明确缺失原因、TF、
+  collector log、artifact timestamp 和 `safe_to_control=false`。Owner：Robot Software Engineer。
+- `KR-O9-Real-Controlled-Elevator-Images`：真实/受控电梯图片 manifest 通过 checker，并完成 OpenCV
+  eval、样本清单、混淆项、阈值和人工接管策略。Owner：Robot Algorithm Engineer。
+- `KR-O9-Stop-First-HIL-Authorization`：现场安全前提满足时做低速 pulse + stop/post-status +
+  operator report；不满足时形成 CEO 决策级 blocker，不写成 HIL pass。Owner：Hardware Infra
+  Engineer + Full-stack Software Engineer。
+- `KR-O9-Epic-Owner-Timeout-Guard`：下一轮 `tech-plan.md` 将四个 owner 拆成单命令链和单 artifact；
+  `final.md` 逐 owner 记录完成、超时、阻塞和重试策略。Owner：Product Manager / OKR Owner。
+
+员工状态：
+
+- Full-stack：PC 同源代理、operator report readback 和 refresh 按钮能力有效；下一轮只做 PC
+  触发 live refresh route，不扩 UI 面。
+- Robot Software：本地 route 合同有效但现场未部署；下一轮 P0 是确认 service/reload 路径并拿 live
+  POST + fresh artifact。
+- Algorithm：fixture/checker 能力有效但真实/受控图片为空；下一轮必须交付 manifest 和 eval。
+- Hardware：vendor/HIL 边界清楚但没有运动 HIL；下一轮只做 stop-first HIL 授权判断，安全不足就升级。
+- Product/OKR：必须在下一轮 pre_start/tech-plan 先写最近 2 轮 blocker、员工状态和 evidence type，
+  防止再次让 CEO 先发现 Micro 化或 owner 超时。
+
+历史记录位置：`OKR.md` 第 4/4.1/5/6 节、
+`sprints/2026.06.04_22-23_okr-six-sprint-breakthrough-rewrite/tech-done.md` 和本节。剩余风险：
+本轮是 Product/OKR 文档 micro，不产生 fresh `/scan`、map、AMCL、Nav2、真实电梯图片、stop-first
+HIL、PC WASD、production cloud 或用户验收材料；O9 只有定义完成，执行完成度仍为 0%。
+
 ### 2026-06-04 21-22｜Runtime Material Runtime Hooks｜本地 refresh 合同完成，现场 8787 route 未部署
 
 本轮 Epic 接续 20-21 `runtime-material-followup` 的 root cause：上位机 8787 和 ROS2 环境可达，

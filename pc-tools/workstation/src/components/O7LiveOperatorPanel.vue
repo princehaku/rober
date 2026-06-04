@@ -536,6 +536,26 @@ async function startCameraPreview(): Promise<void> {
   }
 }
 
+function upperResultCopy(result: O7DirectUpperApiCommandResponse): string {
+  // upper_result_summary 是 PC 代理透传的远端业务结果；它和 HTTP 2xx 分开展示，避免 not_proven 被误读成完成。
+  const summary = result.upper_result_summary;
+  if (result.command !== "radar_scan_proof_refresh" || !summary) {
+    return "";
+  }
+  const blockers = summary.blocked_reasons.length ? summary.blocked_reasons.join(" / ") : "none";
+  const notProven = summary.not_proven.length ? summary.not_proven.join(" / ") : "none";
+  const age = summary.freshness_age_seconds === null ? "age n/a" : `${summary.freshness_age_seconds}s`;
+  return `；upper_result=${summary.status}/${summary.proof_status}/${summary.latest_proof_status}；upper_blockers=${blockers}；upper_not_proven=${notProven}；artifact=${summary.artifact_status}:${summary.artifact_path}；freshness=${summary.freshness_status}/${age}`;
+}
+
+function upperResultStillNotProven(result: O7DirectUpperApiCommandResponse): boolean {
+  // 只对 scan-proof refresh 改文案；其它按钮仍按原有 HTTP 转发口径展示。
+  const summary = result.upper_result_summary;
+  return result.command === "radar_scan_proof_refresh" && Boolean(summary && (
+    summary.status === "not_proven" || summary.proof_status === "not_proven" || summary.blocked_reasons.length
+  ));
+}
+
 function commandResultMessage(action: string, result: O7DirectUpperApiCommandResponse): string {
   // 返回文案同时呈现“已转发”和“仍未闭环”，避免 operator 把 HTTP 200 误解成 HIL/ACK 通过。
   const request = result.upper_request;
@@ -549,16 +569,20 @@ function commandResultMessage(action: string, result: O7DirectUpperApiCommandRes
   const scanProofBoundary = result.command === "radar_scan_proof_refresh"
     ? "；read-only proof refresh，不启动 driver、不控底盘；not_proven=HIL/PC WASD/Nav2/map/delivery"
     : "";
+  const upperCopy = upperResultCopy(result);
   if (result.upper_api_base_url_source === "fixture" && result.accepted_by_workstation) {
-    return `${action} fixture 已记录（仍锁定）：${request.path}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${scanProofBoundary}`;
+    return `${action} fixture 已记录（仍锁定）：${request.path}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}`;
+  }
+  if (result.accepted_by_workstation && request.ok && upperResultStillNotProven(result)) {
+    return `${action} 已触发但 upper 仍 not_proven（仍锁定）：${request.path} ${http}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}`;
   }
   if (result.accepted_by_workstation && request.ok) {
-    return `${action} 已发送（仍锁定）：${request.path} ${http}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${scanProofBoundary}`;
+    return `${action} 已发送（仍锁定）：${request.path} ${http}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}`;
   }
   const reason = result.failure_reason || request.failure_reason || "manual_request_failed";
   return `${action} 失败：${reason}；${request.path} ${request.executed ? http : "not_executed"}；direct status ${
     directUpperStatus.value?.status ?? "unknown"
-  }；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；锁定原因 ${blockers}；safe_to_control=false${scanProofBoundary}`;
+  }；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}`;
 }
 
 function isEditableControlTarget(target: EventTarget | null): boolean {

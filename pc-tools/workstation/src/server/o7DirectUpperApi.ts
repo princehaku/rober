@@ -1,6 +1,7 @@
 import { PROOF_FLAGS } from "../shared/contracts";
 import type {
   O7DirectUpperApiCommand,
+  O7DirectUpperApiCommandUpperResultSummary,
   O7DirectUpperApiCommandResponse,
   O7DirectUpperApiDirection,
   O7DirectUpperApiAdapterInfo,
@@ -170,6 +171,62 @@ function scanProofBlockers(scanProofLatest: Record<string, unknown> | null): str
 
   // Direct status 是给 curl/PC 工具看的机器可读摘要，只有 artifact 缺失/未加载时才显示未加载。
   return [...DEFAULT_SCAN_PROOF_BLOCKERS];
+}
+
+function uniqueStrings(values: string[]): string[] {
+  // remote blocker 可能同时出现在 blockers、blocked_reasons 和 artifact.blockers；这里统一去重保留原顺序。
+  return [...new Set(values.filter((value) => value.trim()))];
+}
+
+function upperResultSummary(
+  command: O7DirectUpperApiCommand,
+  request: O7DirectUpperApiRequestResult,
+  json: Record<string, unknown> | null,
+): O7DirectUpperApiCommandUpperResultSummary {
+  // command envelope 必须把 upper 的业务结果和 HTTP 转发结果分开，避免 2xx+not_proven 被看成 runtime success。
+  const artifact = nestedRecord(json, "artifact");
+  const freshness = nestedRecord(json, "freshness");
+  const scanProofLatest = nestedRecord(json, "scan_proof_latest");
+  const status = stringField(json, "status", request.ok ? "not_reported" : "not_loaded");
+  const proofStatus = stringField(json, "proof_status", status);
+  const latestProofStatus = stringField(
+    json,
+    "latest_proof_status",
+    stringField(scanProofLatest, "latest_proof_status", "not_reported"),
+  );
+  const blockedReasons = uniqueStrings([
+    ...stringArrayField(json, "blockers", []),
+    ...stringArrayField(json, "blocked_reasons", []),
+    ...stringArrayField(artifact, "blockers", []),
+    ...stringArrayField(scanProofLatest, "blockers", []),
+    ...stringArrayField(scanProofLatest, "blocked_reasons", []),
+    ...(request.ok ? [] : [request.failure_reason || `${command}_upper_request_failed`]),
+  ]);
+  const notProven = uniqueStrings([
+    ...stringArrayField(json, "not_proven", []),
+    ...(status === "not_proven" || proofStatus === "not_proven" ? ["upper_api_scan_not_proven"] : []),
+  ]);
+
+  return {
+    status,
+    proof_status: proofStatus,
+    latest_proof_status: latestProofStatus,
+    artifact_status: stringField(artifact, "status", stringField(json, "artifact_status", "not_reported")),
+    artifact_path: stringField(artifact, "path", stringField(json, "artifact_path", "not_reported")),
+    freshness_status: stringField(freshness, "status", stringField(json, "freshness_status", "not_reported")),
+    freshness_age_seconds: numberField(freshness, "age_seconds") ?? numberField(json, "age_seconds"),
+    safe_to_control: false,
+    sends_commands: false,
+    robot_control_executed: false,
+    delivery_success: false,
+    blocked_reasons: blockedReasons,
+    not_proven: notProven,
+  };
+}
+
+function upperResultIsNotProven(summary: O7DirectUpperApiCommandUpperResultSummary): boolean {
+  // 只用 upper 业务摘要判定 not_proven；不要把固定 HIL/ACK gap 混成 HTTP route 失败。
+  return summary.status === "not_proven" || summary.proof_status === "not_proven" || summary.blocked_reasons.length > 0;
 }
 
 async function fetchUpperJson(
@@ -422,12 +479,19 @@ function commandResponse(
   upperRequest: O7DirectUpperApiRequestResult,
   failureReason: string,
   payloadSummary: O7DirectUpperApiCommandResponse["command_payload_summary"],
+  upperJson: Record<string, unknown> | null = null,
 ): O7DirectUpperApiCommandResponse {
   const hardBlockedReasons = ["robot_ack_not_connected", "t1001_feedback_not_observed", "field_evidence_not_proven"];
   const fixtureBlockers = baseUrl.source === "fixture" ? ["fixture_mode_no_upper_runtime"] : [];
-  const blockedReasons = [...(failureReason === "none" ? [] : [failureReason]), ...fixtureBlockers, ...hardBlockedReasons];
+  const upperSummary = upperResultSummary(command, upperRequest, upperJson);
+  const blockedReasons = uniqueStrings([
+    ...(failureReason === "none" ? [] : [failureReason]),
+    ...(command === "radar_scan_proof_refresh" ? upperSummary.blocked_reasons : []),
+    ...fixtureBlockers,
+    ...hardBlockedReasons,
+  ]);
   const scanProofRefreshNotProven = command === "radar_scan_proof_refresh"
-    ? ["driver_start_stop", "pc_wasd_control", "nav2_consumption", "slam_map", "delivery_success"]
+    ? [...upperSummary.not_proven, "driver_start_stop", "pc_wasd_control", "nav2_consumption", "slam_map", "delivery_success"]
     : [];
   // sends_commands 表示没有发送 ROS/cmd_vel 或直写 WAVE ROVER JSON；8787 POST 只记录在 upper_request。
   return {
@@ -439,11 +503,12 @@ function commandResponse(
     command,
     accepted_by_workstation: acceptedByWorkstation,
     upper_request: upperRequest,
+    upper_result_summary: upperSummary,
     upper_api_base_url: baseUrl.url,
     upper_api_base_url_source: baseUrl.source,
     cloud_relay_bypassed: true,
     pc_local_only: true,
-    fail_closed: !acceptedByWorkstation || !upperRequest.ok,
+    fail_closed: !acceptedByWorkstation || !upperRequest.ok || (command === "radar_scan_proof_refresh" && upperResultIsNotProven(upperSummary)),
     failure_reason: failureReason,
     command_payload_summary: payloadSummary,
     robot_ack_connected: false,
@@ -537,6 +602,7 @@ async function proxyOperatorCommand(
       remote.request,
       remote.request.ok ? "none" : remote.request.failure_reason || `${command}_failed`,
       payloadSummary,
+      remote.json,
     ),
   };
 }

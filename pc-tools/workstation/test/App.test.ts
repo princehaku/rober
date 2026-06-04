@@ -999,6 +999,70 @@ describe("O7 live operator first screen", () => {
     });
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).toContain("http://192.168.1.11:8787/api/radar/start");
   });
+
+  it("shows remote scan-proof not_proven blockers when refresh returns upper HTTP 200", async () => {
+    stubWebrtc();
+    const jsonResponse = (payload: unknown, status = 200): Response => ({
+      ok: status >= 200 && status < 300,
+      status,
+      json: async () => payload,
+    }) as Response;
+    const mockedFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/o7/live-operator-panel") {
+        return jsonResponse(liveOperatorFixture);
+      }
+      if (url === "/api/o7/local-webrtc-camera") {
+        return jsonResponse(localCameraFixture);
+      }
+      if (url === "/api/o7/direct-upper/status") {
+        return jsonResponse(directUpperFixture);
+      }
+      if (url === "/api/o7/direct-upper/radar/scan-proof/refresh") {
+        const result = await proxyO7DirectUpperRadarScanProofRefresh({
+          env: {},
+          body: JSON.parse(String(init?.body ?? "{}")),
+        });
+        return jsonResponse(result.payload, result.status);
+      }
+      if (url === "http://192.168.1.11:8787/api/radar/scan-proof/refresh") {
+        return jsonResponse({
+          schema: "trashbot.upper_robot_api.radar_scan_proof_refresh.v1",
+          status: "not_proven",
+          proof_status: "not_proven",
+          latest_proof_status: "blocked_or_not_observed",
+          artifact: { status: "loaded", path: "artifacts/radar/scan-proof-latest.json" },
+          freshness: { status: "fresh", age_seconds: 1 },
+          blocked_reasons: ["ros2_command_unavailable", "upper_api_scan_not_proven"],
+          not_proven: ["upper_api_scan_not_proven"],
+          safe_to_control: false,
+          sends_commands: false,
+          robot_control_executed: false,
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await confirmOperator(wrapper);
+
+    await wrapper.findAll("button").find((button) => button.text() === "Refresh scan proof")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const text = wrapper.text();
+    expect(text).toContain("Refresh scan proof 已触发但 upper 仍 not_proven（仍锁定）");
+    expect(text).toContain("upper_result=not_proven/not_proven/blocked_or_not_observed");
+    expect(text).toContain("upper_blockers=ros2_command_unavailable / upper_api_scan_not_proven");
+    expect(text).toContain("artifact=loaded:artifacts/radar/scan-proof-latest.json");
+    expect(text).toContain("safe_to_control=false");
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).toContain("http://192.168.1.11:8787/api/radar/scan-proof/refresh");
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/base/manual");
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/cmd_vel");
+  });
 });
 
 describe("O7 live operator contracts", () => {
@@ -1319,6 +1383,22 @@ describe("O7 direct upper PC API", () => {
       http_status: 200,
     });
     expect(refresh.payload.command_payload_summary.evidence_ref).toBe("o7-scan-proof-refresh-field-default");
+    expect(refresh.payload.upper_result_summary).toMatchObject({
+      status: "fresh",
+      proof_status: "fresh",
+      latest_proof_status: "scan_once_hz_observed",
+      artifact_status: "loaded",
+      artifact_path: "not_reported",
+      freshness_status: "fresh",
+      freshness_age_seconds: 0,
+      safe_to_control: false,
+      sends_commands: false,
+      robot_control_executed: false,
+      delivery_success: false,
+      blocked_reasons: [],
+      not_proven: [],
+    });
+    expect(refresh.payload.fail_closed).toBe(false);
     expect(refresh.payload.not_proven).toEqual(expect.arrayContaining([
       "driver_start_stop",
       "pc_wasd_control",
@@ -1333,6 +1413,80 @@ describe("O7 direct upper PC API", () => {
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).toEqual([
       "http://192.168.1.11:8787/api/radar/scan-proof/refresh",
     ]);
+  });
+
+  it("surfaces upper scan proof not_proven summary on HTTP 200 without marking refresh complete", async () => {
+    const mockedFetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        schema: "trashbot.upper_robot_api.radar_scan_proof_refresh.v1",
+        status: "not_proven",
+        proof_status: "not_proven",
+        latest_proof_status: "blocked_or_not_observed",
+        artifact: { status: "loaded", path: "artifacts/radar/scan-proof-latest.json" },
+        freshness: { status: "fresh", age_seconds: 2 },
+        blockers: ["ros2_command_unavailable"],
+        blocked_reasons: ["upper_api_scan_not_proven"],
+        not_proven: ["upper_api_scan_not_proven"],
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+      }),
+    }) as Response);
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const refresh = await proxyO7DirectUpperRadarScanProofRefresh({
+      env: {},
+      body: { evidence_ref: "o7-scan-proof-refresh-not-proven" },
+    });
+
+    expect(refresh.status).toBe(200);
+    expect(refresh.payload.accepted_by_workstation).toBe(true);
+    expect(refresh.payload.failure_reason).toBe("none");
+    expect(refresh.payload.fail_closed).toBe(true);
+    expect(refresh.payload.upper_request).toMatchObject({
+      path: "/api/radar/scan-proof/refresh",
+      method: "POST",
+      executed: true,
+      ok: true,
+      http_status: 200,
+      failure_reason: "",
+    });
+    expect(refresh.payload.upper_result_summary).toMatchObject({
+      status: "not_proven",
+      proof_status: "not_proven",
+      latest_proof_status: "blocked_or_not_observed",
+      artifact_status: "loaded",
+      artifact_path: "artifacts/radar/scan-proof-latest.json",
+      freshness_status: "fresh",
+      freshness_age_seconds: 2,
+      safe_to_control: false,
+      sends_commands: false,
+      robot_control_executed: false,
+      delivery_success: false,
+      blocked_reasons: ["ros2_command_unavailable", "upper_api_scan_not_proven"],
+      not_proven: ["upper_api_scan_not_proven"],
+    });
+    expect(refresh.payload.blocked_reasons).toEqual(expect.arrayContaining([
+      "ros2_command_unavailable",
+      "upper_api_scan_not_proven",
+      "robot_ack_not_connected",
+      "t1001_feedback_not_observed",
+      "field_evidence_not_proven",
+    ]));
+    expect(refresh.payload.not_proven).toEqual(expect.arrayContaining([
+      "upper_api_scan_not_proven",
+      "driver_start_stop",
+      "pc_wasd_control",
+      "nav2_consumption",
+      "slam_map",
+      "delivery_success",
+      "hil_pass",
+    ]));
+    expect(refresh.payload.safe_to_control).toBe(false);
+    expect(refresh.payload.sends_commands).toBe(false);
+    expect(refresh.payload.robot_control_executed).toBe(false);
   });
 
   it("keeps map/localize off the field default route while allowing operator report readback", async () => {

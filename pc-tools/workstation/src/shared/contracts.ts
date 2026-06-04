@@ -2130,6 +2130,22 @@ export interface O7DirectUpperApiSafetyFlags {
   t1001_observed: false;
 }
 
+export interface O7DirectUpperApiCommandUpperResultSummary {
+  status: string;
+  proof_status: string;
+  latest_proof_status: string;
+  artifact_status: string;
+  artifact_path: string;
+  freshness_status: string;
+  freshness_age_seconds: number | null;
+  safe_to_control: false;
+  sends_commands: false;
+  robot_control_executed: false;
+  delivery_success: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
 export interface O7DirectUpperApiAdapterInfo {
   version: string;
   source: "pc-tools/workstation/src/server/o7DirectUpperApi.ts";
@@ -2240,6 +2256,7 @@ export interface O7DirectUpperApiCommandResponse extends ProofFlags {
   command: O7DirectUpperApiCommand;
   accepted_by_workstation: boolean;
   upper_request: O7DirectUpperApiRequestResult;
+  upper_result_summary: O7DirectUpperApiCommandUpperResultSummary;
   upper_api_base_url: string;
   upper_api_base_url_source: "env" | "field_default" | "fixture" | "not_configured";
   cloud_relay_bypassed: true;
