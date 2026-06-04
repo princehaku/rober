@@ -1272,7 +1272,9 @@ describe("O7 direct upper PC API", () => {
         json: async () =>
           url.endsWith("/health")
             ? { schema: "trashbot.upper_robot_api.health.v1", status: "ready" }
-            : { camera: { status: "ready" }, radar: { scan_status: "not_proven" }, base: { write_control_available: false } },
+            : url.endsWith("/api/status")
+              ? { camera: { status: "ready" }, radar: { scan_status: "not_proven" }, base: { write_control_available: false } }
+              : { accepted: true, upper_path: url.replace("http://192.168.1.11:8787", "") },
       } as Response;
     });
     vi.stubGlobal("fetch", mockedFetch);
@@ -1280,6 +1282,10 @@ describe("O7 direct upper PC API", () => {
     const response = await buildO7DirectUpperStatus({ env: {} });
     const stop = await proxyO7DirectUpperStop({ env: {} });
     const feedback = await proxyO7DirectUpperFeedbackRequest({ env: {} });
+    const manual = await proxyO7DirectUpperManual({
+      env: {},
+      body: { direction: "forward", speed: 0.04, duration_ms: 250, evidence_ref: "operator_field_report_pending" },
+    });
 
     expect(response.status).toBe("ready");
     expect(response.upper_api_base_url).toBe("http://192.168.1.11:8787");
@@ -1292,11 +1298,42 @@ describe("O7 direct upper PC API", () => {
     expect(response.safe_to_control).toBe(false);
     expect(response.robot_control_executed).toBe(false);
     expect(stop.status).toBe(400);
+    expect(stop.payload.upper_api_base_url_source).toBe("not_configured");
     expect(stop.payload.failure_reason).toBe("base_url_not_configured");
-    expect(stop.payload.upper_request.executed).toBe(false);
+    expect(stop.payload.upper_request).toMatchObject({
+      path: "/api/base/stop",
+      executed: false,
+      http_status: null,
+      failure_reason: "base_url_not_configured",
+    });
     expect(feedback.status).toBe(400);
+    expect(feedback.payload.upper_api_base_url_source).toBe("not_configured");
     expect(feedback.payload.failure_reason).toBe("base_url_not_configured");
-    expect(feedback.payload.upper_request.executed).toBe(false);
+    expect(feedback.payload.upper_request).toMatchObject({
+      path: "/api/base/feedback-request",
+      executed: false,
+      http_status: null,
+      failure_reason: "base_url_not_configured",
+    });
+    expect(manual.status).toBe(400);
+    expect(manual.payload.upper_api_base_url_source).toBe("not_configured");
+    expect(manual.payload.failure_reason).toBe("base_url_not_configured");
+    expect(manual.payload.upper_request).toMatchObject({
+      path: "/api/base/manual",
+      executed: false,
+      http_status: null,
+      failure_reason: "base_url_not_configured",
+    });
+    expect(manual.payload.command_payload_summary).toMatchObject({
+      direction: "forward",
+      speed_mps: 0.04,
+      duration_ms: 250,
+      evidence_ref: "operator_field_report_pending",
+    });
+    expect([stop, feedback, manual].every((result) => result.payload.safe_to_control === false)).toBe(true);
+    expect([stop, feedback, manual].every((result) => result.payload.robot_ack_connected === false)).toBe(true);
+    expect([stop, feedback, manual].every((result) => result.payload.t1001_observed === false)).toBe(true);
+    expect([stop, feedback, manual].every((result) => result.payload.robot_control_executed === false)).toBe(true);
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).toEqual([
       "http://192.168.1.11:8787/health",
       "http://192.168.1.11:8787/api/status",

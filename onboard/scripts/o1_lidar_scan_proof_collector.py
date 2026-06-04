@@ -24,6 +24,7 @@ DEFAULT_OUTPUT_PATH = "runtime/lidar_scan_proof_latest.json"
 DEFAULT_TIMEOUT_S = 5.0
 ROS_HUMBLE_SETUP = "/opt/ros/humble/setup.bash"
 ROBER_INSTALL_SETUP = "/root/rober/onboard/install/setup.bash"
+DEFAULT_ROS_HOME = "/root/.ros"
 SCAN_TOPIC = "/scan"
 RAW_PACKET_TOPIC = "/lidar/raw_packet"
 BASE_FRAME = "base_link"
@@ -129,9 +130,23 @@ def run_bash(command: str, timeout_s: float) -> dict[str, Any]:
         return {"command": command, "returncode": None, "ok": False, "error": {"type": "TimeoutExpired", "message": str(exc)}}
 
 
+def ros2_environment_prefix() -> str:
+    """systemd 服务常缺 HOME/USER，先固定 ROS 日志目录再调用 ROS2 CLI。"""
+    # rcl logging 会展开 `~/.ros/log`；服务环境缺 HOME 时会先于 topic read 崩溃。
+    # 这里显式补齐 root 服务身份，并创建日志目录，让 artifact 暴露真实 topic 状态。
+    return (
+        "export HOME=${HOME:-/root} && "
+        "export USER=${USER:-root} && "
+        "export LOGNAME=${LOGNAME:-root} && "
+        "export ROS_HOME=${ROS_HOME:-$HOME/.ros} && "
+        'mkdir -p "$ROS_HOME/log" && '
+        "export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log}"
+    )
+
+
 def ros2_source_prefix() -> str:
-    """统一 source 顺序，确保远端 ROS2/install 缺口能被同一命令暴露。"""
-    return f"source {ROS_HUMBLE_SETUP} && source {ROBER_INSTALL_SETUP}"
+    """统一 source/env 顺序，确保远端 ROS2/install 缺口能被同一命令暴露。"""
+    return f"{ros2_environment_prefix()} && source {ROS_HUMBLE_SETUP} && source {ROBER_INSTALL_SETUP}"
 
 
 def ros2_presence_command() -> str:
@@ -299,6 +314,9 @@ def build_probe_payload(
         "ros_runtime": {
             "humble_setup": {"path": ROS_HUMBLE_SETUP, "exists": humble_setup_exists},
             "rober_install_setup": {"path": ROBER_INSTALL_SETUP, "exists": install_setup_exists},
+            # 只记录默认目录，避免把服务环境差异藏进 stderr 里让 PC 难以诊断。
+            "ros_home_default": DEFAULT_ROS_HOME,
+            "ros_log_dir_default": f"{DEFAULT_ROS_HOME}/log",
             "ros2_available": ros2_available,
             "ros2_cli_check": ros2_cli_check,
         },

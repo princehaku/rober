@@ -70,7 +70,7 @@ function configuredUpperBaseUrl(env: NodeJS.ProcessEnv = process.env): ResolvedU
     return { url: configured, source: "env" };
   }
 
-  // CEO 本轮指定 PC 现场默认上位机 8787；只给 status 和非底盘 operator 代理使用。
+  // 缺 env 时保持 fail-closed，由调用方决定哪些现场入口允许使用 field default。
   return { url: "", source: "not_configured" };
 }
 
