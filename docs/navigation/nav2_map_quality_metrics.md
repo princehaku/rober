@@ -74,6 +74,32 @@ fixture summary 文件
 - 仍需另行采集 ROS2 runtime 证据：SLAM `/map`、map file、AMCL pose、TF
   freshness、Nav2 lifecycle 和 `/scan` + map 消费。
 
+## 2026-06-05 O9 map lifecycle runtime root cause
+
+Robot Software Engineer 通过上位机
+`ssh root@192.168.1.11 -p 37878` 只读复核 SLAM/map lifecycle。指定验收命令
+中远端默认 shell 是 `zsh`，直接 `source /opt/ros/humble/setup.bash` 会出现
+`BASH_SOURCE[0]: parameter not set`、`AMENT_TRACE_SETUP_FILES: parameter not set`，
+并导致后续 `ros2` 不进 PATH；复核命令必须用 `bash -lc` 且不要启用
+`set -u` 后再 source ROS2。
+
+修正 shell 后，现场 root cause 已收敛：
+
+- `ros2 topic list` 只有 `/parameter_events` 和 `/rosout`，没有 `/map`、`/scan`、
+  `/lidar/raw_packet`、`/tf_static`、AMCL 或 Nav2 runtime topic。
+- `GET /api/map/proof/latest` 返回 HTTP 404 但带结构化 JSON，artifact 状态为
+  `missing`，路径是 `runtime/map_lifecycle_latest.json`；这是 lifecycle proof
+  artifact 缺失，不是 API route 缺失。
+- `/root/rober/onboard/runtime` 和 `/root/rober/onboard/runtime/maps` 均不存在，
+  `/api/map/list` 因此返回 `failure_reason=map_artifact_dir_missing`。
+- 进程列表只看到 `upper_robot_api.py`，没有 `slam_toolbox`、`map_server`、
+  `nav2` 或常驻 `lidar` 进程。
+
+本轮结论：当前只证明 API-managed 短窗口 fresh LiDAR proof，不证明 SLAM
+`/map`、map artifact、AMCL、Nav2 或 continuous radar。下一步最小命令应先启动
+no-motion learning/SLAM runtime，并在同一窗口采集 `/map` once 与地图 artifact；
+在获得现场安全授权前不得运行 `/cmd_vel`、`/api/base/manual` 或任何底盘控制。
+
 ## 剩余风险
 
 该 helper 只能过滤明显坏地图，不能评估回环漂移、动态障碍、局部规划可行性、

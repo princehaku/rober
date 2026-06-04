@@ -1,0 +1,20 @@
+ROS2=/opt/ros/humble/bin/ros2
+TOPICS
+/parameter_events
+/rosout
+MAP_PROOF
+HTTP/1.1 404 Not Found
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET,POST,OPTIONS
+Access-Control-Allow-Headers: Content-Type,Accept
+Content-Type: application/json; charset=utf-8
+Content-Length: 1381
+Date: Thu, 04 Jun 2026 22:26:14 GMT
+Server: Python/3.10 aiohttp/3.10.10
+
+{"schema": "trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "generated_at_ms": 1780611974172, "endpoint": "/api/map/proof/latest", "source": "map_lifecycle_runtime_artifact", "artifact": {"path": "runtime/map_lifecycle_latest.json", "configured_by": "ROBER_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH or --map-lifecycle-proof-artifact-path", "format": "json", "schema": "trashbot.upper_robot_api.v1.map_lifecycle_runtime_proof", "expected_material": ["/map once", "map yaml/image or pbstream", "map metadata", "slam_toolbox lifecycle state"], "ok": false, "status": "missing", "error": {"type": "FileNotFoundError", "message": "latest runtime artifact is missing"}}, "latest_result": null, "status": "not_proven", "proof_state": "not_proven", "software_guard": true, "not_proven": true, "boundary": "software_guard_only_not_real_slam_map_or_nav2_consumption", "readback_sends_commands": false, "sends_commands": false, "sends_motion_commands": false, "sends_base_motion_commands": false, "uses_base_uart": false, "opens_serial": false, "starts_ros2": false, "ros2_runtime_proven": false, "map_artifact_proven": false, "localization_proven": false, "nav2_runtime_proven": false, "elevator_runtime_proven": false, "field_hil_material": false, "safe_to_control": false, "delivery_success": false, "primary_actions_enabled": false, "robot_control_executed": false, "cloud_relay": false}MAP_DIR
+ls: cannot access '/root/rober/onboard/runtime': No such file or directory
+ls: cannot access '/root/rober/onboard/runtime/maps': No such file or directory
+PROC
+56558 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+57496 bash -lc set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; echo ROS2=$(command -v ros2 || true); echo TOPICS; ros2 topic list || true; echo MAP_PROOF; curl -sS -i http://127.0.0.1:8787/api/map/proof/latest || true; echo MAP_DIR; ls -la /root/rober/onboard/runtime /root/rober/onboard/runtime/maps 2>&1 || true; echo PROC; pgrep -af "slam_toolbox|map_server|nav2|lidar|upper_robot_api" || true

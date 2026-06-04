@@ -347,6 +347,14 @@ const directUpperFixture = {
     radar_scan_proof_freshness_status: "fresh",
     radar_scan_proof_age_seconds: 14,
     radar_scan_proof_latest_status: "blocked_or_not_observed",
+    radar_scan_proof_fresh_observed: false,
+    radar_scan_proof_hz_average_rate_hz: null,
+    radar_scan_proof_tf_observed: false,
+    radar_scan_proof_all_required_observations_observed: false,
+    radar_scan_proof_runtime_summary_fallback_used: false,
+    radar_scan_proof_runtime_summary_path: "not_reported",
+    radar_continuous_scan_status: "not_proven",
+    radar_continuous_blockers: ["scan_continuity_not_observed"],
     radar_scan_proof_blockers: ["ros2_command_unavailable"],
     radar_raw_packet_proof_artifact_status: "loaded",
     radar_raw_packet_proof_freshness_status: "fresh",
@@ -602,6 +610,14 @@ function stubFetch(options: StubFetchOptions = {}): ReturnType<typeof vi.fn> {
                           artifact_path: "artifacts/radar/scan-proof-latest.json",
                           freshness_status: "fresh",
                           freshness_age_seconds: 1,
+                          fresh_scan_proof_observed: true,
+                          scan_hz_average_rate_hz: 257.987,
+                          tf_observed: true,
+                          all_required_observations_observed: true,
+                          runtime_summary_fallback_used: true,
+                          runtime_summary_path: "runtime/lidar_runtime_summary.json",
+                          continuous_scan_status: "not_proven",
+                          continuous_blocked_reasons: ["scan_continuity_not_observed"],
                           safe_to_control: false,
                           sends_commands: false,
                           robot_control_executed: false,
@@ -716,6 +732,8 @@ describe("O7 live operator first screen", () => {
     expect(text).toContain("/api/o7/direct-upper/operator-report");
     expect(text).toContain("map=not_loaded · localize=not_loaded · report=missing_operator_report");
     expect(text).toContain("loaded · fresh · 14s · blocked_or_not_observed");
+    expect(text).toContain("fresh=false · hz=n/a · tf=missing · fallback=false · continuous=not_proven");
+    expect(text).toContain("scan_continuity_not_observed");
     expect(text).toContain("http://192.168.1.11:8787");
     expect(text).toContain("摄像头已就绪，点击重新连接预览");
     expect(text).not.toContain("雷达未接入 / 等待建图");
@@ -903,6 +921,12 @@ describe("O7 live operator first screen", () => {
         const scanProofText = wrapper.text();
         expect(scanProofText).toContain("Refresh scan proof 已触发但 upper 仍 not_proven（仍锁定）");
         expect(scanProofText).toContain("upper_result=fresh/full/fresh_scan_proof_observed");
+        expect(scanProofText).toContain("fresh=true");
+        expect(scanProofText).toContain("hz=257.987");
+        expect(scanProofText).toContain("tf=observed");
+        expect(scanProofText).toContain("fallback=true");
+        expect(scanProofText).toContain("continuous=not_proven");
+        expect(scanProofText).toContain("continuous_blockers=scan_continuity_not_observed");
         expect(scanProofText).toContain("upper_blockers=continuous_scan_status_not_proven");
         expect(scanProofText).toContain("upper_not_proven=continuous_radar_not_proven");
         expect(scanProofText).toContain("artifact=loaded:artifacts/radar/scan-proof-latest.json");
@@ -1060,6 +1084,19 @@ describe("O7 live operator first screen", () => {
           latest_proof_status: "blocked_or_not_observed",
           artifact: { status: "loaded", path: "artifacts/radar/scan-proof-latest.json" },
           freshness: { status: "fresh", age_seconds: 1 },
+          proof_summary: {
+            scan_hz_average_rate_hz: 244.481,
+            tf_observed: true,
+            all_required_observations_observed: true,
+          },
+          latest_result: {
+            proof: {
+              runtime_summary_fallback_used: true,
+              runtime_summary_path: "runtime/lidar_runtime_summary.json",
+            },
+          },
+          continuous_scan_status: "not_proven",
+          continuous_blocked_reasons: ["scan_continuity_not_observed"],
           blocked_reasons: ["ros2_command_unavailable", "upper_api_scan_not_proven"],
           not_proven: ["upper_api_scan_not_proven"],
           safe_to_control: false,
@@ -1083,6 +1120,11 @@ describe("O7 live operator first screen", () => {
     const text = wrapper.text();
     expect(text).toContain("Refresh scan proof 已触发但 upper 仍 not_proven（仍锁定）");
     expect(text).toContain("upper_result=not_proven/not_proven/blocked_or_not_observed");
+    expect(text).toContain("hz=244.481");
+    expect(text).toContain("tf=observed");
+    expect(text).toContain("fallback=true");
+    expect(text).toContain("continuous=not_proven");
+    expect(text).toContain("continuous_blockers=scan_continuity_not_observed");
     expect(text).toContain("upper_blockers=ros2_command_unavailable / upper_api_scan_not_proven");
     expect(text).toContain("artifact=loaded:artifacts/radar/scan-proof-latest.json");
     expect(text).toContain("safe_to_control=false");
@@ -1421,10 +1463,24 @@ describe("O7 direct upper PC API", () => {
       status: 200,
       json: async () => ({
         schema: "trashbot.upper_robot_api.radar_scan_proof_refresh.v1",
-        status: "fresh",
+        status: "refreshed",
+        proof_state: "scan_once_hz_raw_packet_tf_observed",
         artifact: { status: "loaded" },
         freshness: { status: "fresh", age_seconds: 0 },
-        latest_proof_status: "scan_once_hz_observed",
+        proof_summary: {
+          proof_status: "scan_once_hz_raw_packet_tf_observed",
+          scan_hz_average_rate_hz: 257.987,
+          tf_observed: true,
+          all_required_observations_observed: true,
+        },
+        latest_result: {
+          proof: {
+            runtime_summary_fallback_used: true,
+            runtime_summary_path: "runtime/lidar_runtime_summary.json",
+          },
+        },
+        continuous_scan_status: "not_proven",
+        continuous_blocked_reasons: ["scan_continuity_not_observed"],
         requested_path: String(input).replace("http://192.168.1.11:8787", ""),
       }),
     }) as Response);
@@ -1448,22 +1504,31 @@ describe("O7 direct upper PC API", () => {
     });
     expect(refresh.payload.command_payload_summary.evidence_ref).toBe("o7-scan-proof-refresh-field-default");
     expect(refresh.payload.upper_result_summary).toMatchObject({
-      status: "fresh",
-      proof_status: "fresh",
-      latest_proof_status: "scan_once_hz_observed",
+      status: "refreshed",
+      proof_status: "scan_once_hz_raw_packet_tf_observed",
+      latest_proof_status: "scan_once_hz_raw_packet_tf_observed",
       artifact_status: "loaded",
       artifact_path: "not_reported",
       freshness_status: "fresh",
       freshness_age_seconds: 0,
+      fresh_scan_proof_observed: true,
+      scan_hz_average_rate_hz: 257.987,
+      tf_observed: true,
+      all_required_observations_observed: true,
+      runtime_summary_fallback_used: true,
+      runtime_summary_path: "runtime/lidar_runtime_summary.json",
+      continuous_scan_status: "not_proven",
+      continuous_blocked_reasons: ["scan_continuity_not_observed"],
       safe_to_control: false,
       sends_commands: false,
       robot_control_executed: false,
       delivery_success: false,
-      blocked_reasons: [],
-      not_proven: [],
+      blocked_reasons: ["continuous_scan_status_not_proven", "scan_continuity_not_observed"],
+      not_proven: ["continuous_radar_not_proven"],
     });
-    expect(refresh.payload.fail_closed).toBe(false);
+    expect(refresh.payload.fail_closed).toBe(true);
     expect(refresh.payload.not_proven).toEqual(expect.arrayContaining([
+      "continuous_radar_not_proven",
       "driver_start_stop",
       "pc_wasd_control",
       "nav2_consumption",
@@ -1490,6 +1555,13 @@ describe("O7 direct upper PC API", () => {
         latest_proof_status: "blocked_or_not_observed",
         artifact: { status: "loaded", path: "artifacts/radar/scan-proof-latest.json" },
         freshness: { status: "fresh", age_seconds: 2 },
+        latest_scan_hz_average_rate_hz: 257.987,
+        latest_tf_observed: true,
+        latest_all_required_observations_observed: true,
+        runtime_summary_fallback_used: true,
+        runtime_summary_path: "runtime/lidar_runtime_summary.json",
+        continuous_scan_status: "not_proven",
+        continuous_blocked_reasons: ["scan_continuity_not_observed"],
         blockers: ["ros2_command_unavailable"],
         blocked_reasons: ["upper_api_scan_not_proven"],
         not_proven: ["upper_api_scan_not_proven"],
@@ -1525,22 +1597,37 @@ describe("O7 direct upper PC API", () => {
       artifact_path: "artifacts/radar/scan-proof-latest.json",
       freshness_status: "fresh",
       freshness_age_seconds: 2,
+      scan_hz_average_rate_hz: 257.987,
+      tf_observed: true,
+      all_required_observations_observed: true,
+      runtime_summary_fallback_used: true,
+      runtime_summary_path: "runtime/lidar_runtime_summary.json",
+      continuous_scan_status: "not_proven",
+      continuous_blocked_reasons: ["scan_continuity_not_observed"],
       safe_to_control: false,
       sends_commands: false,
       robot_control_executed: false,
       delivery_success: false,
-      blocked_reasons: ["ros2_command_unavailable", "upper_api_scan_not_proven"],
-      not_proven: ["upper_api_scan_not_proven"],
+      blocked_reasons: [
+        "ros2_command_unavailable",
+        "upper_api_scan_not_proven",
+        "continuous_scan_status_not_proven",
+        "scan_continuity_not_observed",
+      ],
+      not_proven: ["upper_api_scan_not_proven", "continuous_radar_not_proven"],
     });
     expect(refresh.payload.blocked_reasons).toEqual(expect.arrayContaining([
       "ros2_command_unavailable",
       "upper_api_scan_not_proven",
+      "continuous_scan_status_not_proven",
+      "scan_continuity_not_observed",
       "robot_ack_not_connected",
       "t1001_feedback_not_observed",
       "field_evidence_not_proven",
     ]));
     expect(refresh.payload.not_proven).toEqual(expect.arrayContaining([
       "upper_api_scan_not_proven",
+      "continuous_radar_not_proven",
       "driver_start_stop",
       "pc_wasd_control",
       "nav2_consumption",
@@ -1684,6 +1771,16 @@ describe("O7 direct upper PC API", () => {
                 radar: {
                   scan_status: "not_proven",
                   observed_lidar_port: "/dev/ttyACM0",
+                  latest_scan_proof: {
+                    observed: true,
+                    scan_hz_average_rate_hz: 244.481,
+                    tf_observed: true,
+                    all_required_observations_observed: true,
+                    runtime_summary_fallback_used: true,
+                    runtime_summary_path: "runtime/lidar_runtime_summary.json",
+                  },
+                  continuous_scan_status: "not_proven",
+                  continuous_blockers: ["scan_continuity_not_observed"],
                   raw_packet_proof_latest: {
                     artifact: { status: "loaded" },
                     freshness: { status: "fresh", age_seconds: 5 },
@@ -1709,6 +1806,14 @@ describe("O7 direct upper PC API", () => {
     expect(response.upper_status_summary).toMatchObject({
       camera_status: "ready",
       radar_scan_status: "not_proven",
+      radar_scan_proof_fresh_observed: true,
+      radar_scan_proof_hz_average_rate_hz: 244.481,
+      radar_scan_proof_tf_observed: true,
+      radar_scan_proof_all_required_observations_observed: true,
+      radar_scan_proof_runtime_summary_fallback_used: true,
+      radar_scan_proof_runtime_summary_path: "runtime/lidar_runtime_summary.json",
+      radar_continuous_scan_status: "not_proven",
+      radar_continuous_blockers: ["scan_continuity_not_observed"],
       radar_raw_packet_proof_artifact_status: "loaded",
       radar_raw_packet_proof_freshness_status: "fresh",
       radar_raw_packet_proof_age_seconds: 5,

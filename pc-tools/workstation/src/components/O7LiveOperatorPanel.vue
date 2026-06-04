@@ -372,9 +372,27 @@ const directScanProofSummary = computed(() => {
   return `${summary.radar_scan_proof_artifact_status} · ${summary.radar_scan_proof_freshness_status} · ${age} · ${summary.radar_scan_proof_latest_status}`;
 });
 
+const directScanProofRuntimeDetails = computed(() => {
+  // fresh proof 和 continuous proof 分开展示，避免 operator 把一次 artifact 误读成连续雷达 ready。
+  const summary = directUpperStatus.value?.upper_status_summary;
+  if (!summary) {
+    return "fresh=false · hz=n/a · tf=n/a · fallback=false · continuous=not_proven";
+  }
+  const hz = summary.radar_scan_proof_hz_average_rate_hz ?? "n/a";
+  const tf = summary.radar_scan_proof_tf_observed === null ? "n/a" : summary.radar_scan_proof_tf_observed ? "observed" : "missing";
+  return [
+    `fresh=${summary.radar_scan_proof_fresh_observed ? "true" : "false"}`,
+    `hz=${hz}`,
+    `tf=${tf}`,
+    `fallback=${summary.radar_scan_proof_runtime_summary_fallback_used ? "true" : "false"}`,
+    `continuous=${summary.radar_continuous_scan_status}`,
+  ].join(" · ");
+});
+
 const directScanProofTopBlockers = computed(() => {
   // 这里显示 8787 direct status 的 blocker，不把 live panel 的旧 artifact 混成 refresh 结果。
-  const blockers = directUpperStatus.value?.upper_status_summary.radar_scan_proof_blockers ?? ["direct_upper_status_not_loaded"];
+  const summary = directUpperStatus.value?.upper_status_summary;
+  const blockers = summary ? [...summary.radar_scan_proof_blockers, ...summary.radar_continuous_blockers] : ["direct_upper_status_not_loaded"];
   return blockers.slice(0, 3);
 });
 
@@ -545,7 +563,10 @@ function upperResultCopy(result: O7DirectUpperApiCommandResponse): string {
   const blockers = summary.blocked_reasons.length ? summary.blocked_reasons.join(" / ") : "none";
   const notProven = summary.not_proven.length ? summary.not_proven.join(" / ") : "none";
   const age = summary.freshness_age_seconds === null ? "age n/a" : `${summary.freshness_age_seconds}s`;
-  return `；upper_result=${summary.status}/${summary.proof_status}/${summary.latest_proof_status}；upper_blockers=${blockers}；upper_not_proven=${notProven}；artifact=${summary.artifact_status}:${summary.artifact_path}；freshness=${summary.freshness_status}/${age}`;
+  const hz = summary.scan_hz_average_rate_hz ?? "n/a";
+  const tf = summary.tf_observed === null ? "n/a" : summary.tf_observed ? "observed" : "missing";
+  const continuousBlockers = summary.continuous_blocked_reasons.length ? summary.continuous_blocked_reasons.join(" / ") : "none";
+  return `；upper_result=${summary.status}/${summary.proof_status}/${summary.latest_proof_status}；fresh=${summary.fresh_scan_proof_observed ? "true" : "false"}；hz=${hz}；tf=${tf}；fallback=${summary.runtime_summary_fallback_used ? "true" : "false"}；continuous=${summary.continuous_scan_status}；continuous_blockers=${continuousBlockers}；upper_blockers=${blockers}；upper_not_proven=${notProven}；artifact=${summary.artifact_status}:${summary.artifact_path}；freshness=${summary.freshness_status}/${age}`;
 }
 
 function upperResultStillNotProven(result: O7DirectUpperApiCommandResponse): boolean {
@@ -976,6 +997,11 @@ onBeforeUnmount(() => {
           <span class="status-dot status-dot-yellow" />
           <span>Scan proof</span>
           <strong>{{ directScanProofSummary }}</strong>
+        </div>
+        <div class="status-light-row">
+          <span class="status-dot status-dot-yellow" />
+          <span>Fresh proof</span>
+          <strong>{{ directScanProofRuntimeDetails }}</strong>
         </div>
         <div class="status-light-row">
           <span class="status-dot status-dot-yellow" />

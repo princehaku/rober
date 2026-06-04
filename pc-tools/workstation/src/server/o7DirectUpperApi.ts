@@ -147,6 +147,11 @@ function numberField(record: Record<string, unknown> | null | undefined, key: st
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function optionalBoolField(record: Record<string, unknown> | null | undefined, key: string): boolean | null {
+  const value = record?.[key];
+  return typeof value === "boolean" ? value : null;
+}
+
 function nestedRecord(record: Record<string, unknown> | null | undefined, key: string): Record<string, unknown> | null {
   return asRecord(record?.[key]);
 }
@@ -178,6 +183,31 @@ function scanProofBlockers(scanProofLatest: Record<string, unknown> | null): str
   return [...DEFAULT_SCAN_PROOF_BLOCKERS];
 }
 
+function scanProofFreshObserved(scanProofLatest: Record<string, unknown> | null, radar: Record<string, unknown> | null = null): boolean {
+  // fresh proof 必须来自 upper 的机器字段；PC 只读摘要，不从 artifact 文案倒推 runtime 成功。
+  const latestScanProof = nestedRecord(radar, "latest_scan_proof");
+  const proofSummary = nestedRecord(radar, "proof_summary");
+  const topLevelObserved = optionalBoolField(radar, "fresh_scan_proof_observed");
+  const nestedObserved = optionalBoolField(latestScanProof, "observed");
+  const nestedRequiredObserved = optionalBoolField(latestScanProof, "all_required_observations_observed");
+  const summaryRequiredObserved = optionalBoolField(proofSummary, "all_required_observations_observed");
+  const requiredObserved = optionalBoolField(scanProofLatest, "latest_all_required_observations_observed");
+  return Boolean(topLevelObserved ?? nestedObserved ?? nestedRequiredObserved ?? summaryRequiredObserved ?? requiredObserved);
+}
+
+function continuousScanStatus(record: Record<string, unknown> | null | undefined, fallback = "not_proven"): string {
+  // upper 当前只证明 fresh artifact；连续雷达未证明时必须有独立 status，不得和 fresh 混用。
+  return stringField(record, "continuous_scan_status", fallback);
+}
+
+function continuousScanBlockers(record: Record<string, unknown> | null | undefined): string[] {
+  const blockers = uniqueStrings([
+    ...stringArrayField(record, "continuous_blocked_reasons", []),
+    ...stringArrayField(record, "continuous_blockers", []),
+  ]);
+  return blockers.length ? blockers : ["scan_continuity_not_observed"];
+}
+
 function uniqueStrings(values: string[]): string[] {
   // remote blocker 可能同时出现在 blockers、blocked_reasons 和 artifact.blockers；这里统一去重保留原顺序。
   return [...new Set(values.filter((value) => value.trim()))];
@@ -192,25 +222,43 @@ function upperResultSummary(
   const artifact = nestedRecord(json, "artifact");
   const freshness = nestedRecord(json, "freshness");
   const scanProofLatest = nestedRecord(json, "scan_proof_latest");
+  const latestScanProof = nestedRecord(json, "latest_scan_proof");
+  const proofSummary = nestedRecord(json, "proof_summary");
+  const latestResult = nestedRecord(json, "latest_result");
+  const latestProof = nestedRecord(latestResult, "proof");
   const status = stringField(json, "status", request.ok ? "not_reported" : "not_loaded");
-  const proofStatus = stringField(json, "proof_status", status);
+  const proofStatus = stringField(json, "proof_status", stringField(json, "proof_state", status));
   const latestProofStatus = stringField(
     json,
     "latest_proof_status",
-    stringField(scanProofLatest, "latest_proof_status", "not_reported"),
+    stringField(
+      scanProofLatest,
+      "latest_proof_status",
+      stringField(proofSummary, "proof_status", stringField(json, "proof_state", "not_reported")),
+    ),
   );
+  const continuousStatus = continuousScanStatus(json);
+  const continuousBlockers = continuousScanBlockers(json);
   const blockedReasons = uniqueStrings([
     ...stringArrayField(json, "blockers", []),
     ...stringArrayField(json, "blocked_reasons", []),
+    ...stringArrayField(json, "blockers_summary", []),
     ...stringArrayField(artifact, "blockers", []),
     ...stringArrayField(scanProofLatest, "blockers", []),
     ...stringArrayField(scanProofLatest, "blocked_reasons", []),
+    ...(command === "radar_scan_proof_refresh" && continuousStatus !== "ready" ? ["continuous_scan_status_not_proven", ...continuousBlockers] : []),
     ...(request.ok ? [] : [request.failure_reason || `${command}_upper_request_failed`]),
   ]);
   const notProven = uniqueStrings([
     ...stringArrayField(json, "not_proven", []),
+    ...(command === "radar_scan_proof_refresh" && continuousStatus !== "ready" ? ["continuous_radar_not_proven"] : []),
     ...(status === "not_proven" || proofStatus === "not_proven" ? ["upper_api_scan_not_proven"] : []),
   ]);
+  const runtimeFallbackUsed =
+    boolField(json, "runtime_summary_fallback_used", false)
+    || boolField(scanProofLatest, "latest_runtime_summary_fallback_used", false)
+    || boolField(latestScanProof, "runtime_summary_fallback_used", false)
+    || boolField(latestProof, "runtime_summary_fallback_used", false);
 
   return {
     status,
@@ -220,6 +268,39 @@ function upperResultSummary(
     artifact_path: stringField(artifact, "path", stringField(json, "artifact_path", "not_reported")),
     freshness_status: stringField(freshness, "status", stringField(json, "freshness_status", "not_reported")),
     freshness_age_seconds: numberField(freshness, "age_seconds") ?? numberField(json, "age_seconds"),
+    fresh_scan_proof_observed: Boolean(
+      optionalBoolField(json, "fresh_scan_proof_observed")
+      ?? optionalBoolField(latestScanProof, "observed")
+      ?? optionalBoolField(latestScanProof, "all_required_observations_observed")
+      ?? optionalBoolField(proofSummary, "all_required_observations_observed")
+      ?? optionalBoolField(scanProofLatest, "latest_all_required_observations_observed")
+    ),
+    scan_hz_average_rate_hz:
+      numberField(json, "latest_scan_hz_average_rate_hz")
+      ?? numberField(json, "scan_hz_average_rate_hz")
+      ?? numberField(proofSummary, "scan_hz_average_rate_hz")
+      ?? numberField(scanProofLatest, "latest_scan_hz_average_rate_hz")
+      ?? numberField(latestScanProof, "scan_hz_average_rate_hz"),
+    tf_observed:
+      optionalBoolField(json, "latest_tf_observed")
+      ?? optionalBoolField(json, "tf_observed")
+      ?? optionalBoolField(proofSummary, "tf_observed")
+      ?? optionalBoolField(scanProofLatest, "latest_tf_observed")
+      ?? optionalBoolField(latestScanProof, "tf_observed"),
+    all_required_observations_observed:
+      optionalBoolField(json, "latest_all_required_observations_observed")
+      ?? optionalBoolField(json, "all_required_observations_observed")
+      ?? optionalBoolField(proofSummary, "all_required_observations_observed")
+      ?? optionalBoolField(scanProofLatest, "latest_all_required_observations_observed")
+      ?? optionalBoolField(latestScanProof, "all_required_observations_observed"),
+    runtime_summary_fallback_used: runtimeFallbackUsed,
+    runtime_summary_path: stringField(
+      json,
+      "runtime_summary_path",
+      stringField(scanProofLatest, "latest_runtime_summary_path", stringField(latestScanProof, "runtime_summary_path", stringField(latestProof, "runtime_summary_path", "not_reported"))),
+    ),
+    continuous_scan_status: continuousStatus,
+    continuous_blocked_reasons: continuousBlockers,
     safe_to_control: false,
     sends_commands: false,
     robot_control_executed: false,
@@ -289,6 +370,14 @@ function blockedStatus(baseUrl: ResolvedUpperBaseUrl, reason: string): O7DirectU
       radar_scan_proof_freshness_status: "unknown",
       radar_scan_proof_age_seconds: null,
       radar_scan_proof_latest_status: "not_loaded",
+      radar_scan_proof_fresh_observed: false,
+      radar_scan_proof_hz_average_rate_hz: null,
+      radar_scan_proof_tf_observed: null,
+      radar_scan_proof_all_required_observations_observed: null,
+      radar_scan_proof_runtime_summary_fallback_used: false,
+      radar_scan_proof_runtime_summary_path: "not_loaded",
+      radar_continuous_scan_status: "not_proven",
+      radar_continuous_blockers: ["scan_continuity_not_observed"],
       radar_scan_proof_blockers: ["radar_scan_proof_latest_not_loaded"],
       radar_raw_packet_proof_artifact_status: "not_loaded",
       radar_raw_packet_proof_freshness_status: "unknown",
@@ -349,6 +438,14 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
         radar_scan_proof_freshness_status: "fixture",
         radar_scan_proof_age_seconds: 0,
         radar_scan_proof_latest_status: "fixture_not_runtime",
+        radar_scan_proof_fresh_observed: false,
+        radar_scan_proof_hz_average_rate_hz: null,
+        radar_scan_proof_tf_observed: null,
+        radar_scan_proof_all_required_observations_observed: null,
+        radar_scan_proof_runtime_summary_fallback_used: false,
+        radar_scan_proof_runtime_summary_path: "fixture_not_runtime",
+        radar_continuous_scan_status: "not_proven",
+        radar_continuous_blockers: ["fixture_mode_no_continuous_scan_runtime"],
         radar_scan_proof_blockers: ["fixture_mode_no_scan_runtime"],
         radar_raw_packet_proof_artifact_status: "fixture",
         radar_raw_packet_proof_freshness_status: "fixture",
@@ -392,6 +489,10 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
   const localization = nestedRecord(statusResult.json, "localization");
   const operator = nestedRecord(statusResult.json, "operator");
   const scanProofLatest = nestedRecord(radar, "scan_proof_latest");
+  const latestScanProof = nestedRecord(radar, "latest_scan_proof");
+  const proofSummary = nestedRecord(radar, "proof_summary");
+  const latestResult = nestedRecord(radar, "latest_result");
+  const latestProof = nestedRecord(latestResult, "proof");
   const scanProofArtifact = nestedRecord(scanProofLatest, "artifact");
   const scanProofFreshness = nestedRecord(scanProofLatest, "freshness");
   const rawPacketProofLatest = nestedRecord(radar, "raw_packet_proof_latest");
@@ -428,6 +529,37 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
       radar_scan_proof_freshness_status: stringField(scanProofFreshness, "status", stringField(scanProofLatest, "freshness_status", "unknown")),
       radar_scan_proof_age_seconds: numberField(scanProofFreshness, "age_seconds") ?? numberField(scanProofLatest, "age_seconds"),
       radar_scan_proof_latest_status: stringField(scanProofLatest, "latest_proof_status", "not_loaded"),
+      radar_scan_proof_fresh_observed: scanProofFreshObserved(scanProofLatest, radar),
+      radar_scan_proof_hz_average_rate_hz:
+        numberField(radar, "latest_scan_hz_average_rate_hz")
+        ?? numberField(radar, "scan_hz_average_rate_hz")
+        ?? numberField(proofSummary, "scan_hz_average_rate_hz")
+        ?? numberField(scanProofLatest, "latest_scan_hz_average_rate_hz")
+        ?? numberField(latestScanProof, "scan_hz_average_rate_hz"),
+      radar_scan_proof_tf_observed:
+        optionalBoolField(radar, "latest_tf_observed")
+        ?? optionalBoolField(radar, "tf_observed")
+        ?? optionalBoolField(proofSummary, "tf_observed")
+        ?? optionalBoolField(scanProofLatest, "latest_tf_observed")
+        ?? optionalBoolField(latestScanProof, "tf_observed"),
+      radar_scan_proof_all_required_observations_observed:
+        optionalBoolField(radar, "latest_all_required_observations_observed")
+        ?? optionalBoolField(radar, "all_required_observations_observed")
+        ?? optionalBoolField(proofSummary, "all_required_observations_observed")
+        ?? optionalBoolField(scanProofLatest, "latest_all_required_observations_observed")
+        ?? optionalBoolField(latestScanProof, "all_required_observations_observed"),
+      radar_scan_proof_runtime_summary_fallback_used:
+        boolField(radar, "runtime_summary_fallback_used", false)
+        || boolField(scanProofLatest, "latest_runtime_summary_fallback_used", false)
+        || boolField(latestScanProof, "runtime_summary_fallback_used", false)
+        || boolField(latestProof, "runtime_summary_fallback_used", false),
+      radar_scan_proof_runtime_summary_path: stringField(
+        radar,
+        "runtime_summary_path",
+        stringField(scanProofLatest, "latest_runtime_summary_path", stringField(latestScanProof, "runtime_summary_path", stringField(latestProof, "runtime_summary_path", "not_reported"))),
+      ),
+      radar_continuous_scan_status: continuousScanStatus(radar),
+      radar_continuous_blockers: continuousScanBlockers(radar),
       radar_scan_proof_blockers: scanProofBlockers(scanProofLatest),
       radar_raw_packet_proof_artifact_status: stringField(rawPacketProofArtifact, "status", stringField(rawPacketProofLatest, "artifact_status", "not_loaded")),
       radar_raw_packet_proof_freshness_status: stringField(rawPacketProofFreshness, "status", stringField(rawPacketProofLatest, "freshness_status", "unknown")),

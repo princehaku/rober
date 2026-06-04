@@ -109,6 +109,14 @@ trashbot.pc_tools_workstation.o7_direct_upper_status.v1
 - `upper_status_summary.radar_scan_proof_freshness_status`
 - `upper_status_summary.radar_scan_proof_age_seconds`
 - `upper_status_summary.radar_scan_proof_latest_status`
+- `upper_status_summary.radar_scan_proof_fresh_observed`：来自上位机机器字段，只表示一次 fresh scan proof 是否观测到 required observations。
+- `upper_status_summary.radar_scan_proof_hz_average_rate_hz`：上位机返回的 scan proof 平均频率，缺失时为 `null`。
+- `upper_status_summary.radar_scan_proof_tf_observed`：上位机返回的 TF 观测结果，缺失时为 `null`。
+- `upper_status_summary.radar_scan_proof_all_required_observations_observed`：上位机 required observations 汇总，缺失时为 `null`。
+- `upper_status_summary.radar_scan_proof_runtime_summary_fallback_used`：上位机是否使用 runtime summary fallback。
+- `upper_status_summary.radar_scan_proof_runtime_summary_path`：上位机 runtime summary 来源路径，缺失时为 `not_reported`。
+- `upper_status_summary.radar_continuous_scan_status`：连续雷达证明状态；当前未证明时必须为 `not_proven`，不得由 fresh artifact 外推成 ready。
+- `upper_status_summary.radar_continuous_blockers`：连续雷达未证明 blocker，例如 `scan_continuity_not_observed`。
 - `upper_status_summary.radar_scan_proof_blockers`
 - `upper_status_summary.radar_raw_packet_proof_artifact_status`
 - `upper_status_summary.radar_raw_packet_proof_freshness_status`
@@ -264,8 +272,10 @@ trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_refresh.v1
 - 显式 fixture mode 优先于 field default，响应中 `upper_api_base_url_source=fixture` 且不触发远端 fetch。
 - 该入口只请求上位机刷新只读 scan proof artifact；PC workstation 不执行 collector、不连接 ROS graph、不打开 LiDAR 串口、不发送 `A5 60`、不访问 `/api/base/manual`、不发送 `/cmd_vel`、不构造 WAVE ROVER JSON，也不触发底盘运动。
 - 上位机 HTTP 2xx 且返回 object JSON 时，PC 返回 `200`，`upper_request.executed=true`，`upper_request.path=/api/radar/scan-proof/refresh`。这只证明 PC 同源请求到达 upper read-only refresh route，不证明 fresh `/scan` 或 ROS2 runtime 已验收。
-- PC command response 会额外返回 `upper_result_summary`，把上位机业务结果和 HTTP 转发结果拆开展示。字段包括 `status`、`proof_status`、`latest_proof_status`、`artifact_status`、`artifact_path`、`freshness_status`、`freshness_age_seconds`、`blocked_reasons`、`not_proven`，并固定 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`。
+- PC command response 会额外返回 `upper_result_summary`，把上位机业务结果和 HTTP 转发结果拆开展示。字段包括 `status`、`proof_status`、`latest_proof_status`、`artifact_status`、`artifact_path`、`freshness_status`、`freshness_age_seconds`、`fresh_scan_proof_observed`、`scan_hz_average_rate_hz`、`tf_observed`、`all_required_observations_observed`、`runtime_summary_fallback_used`、`runtime_summary_path`、`continuous_scan_status`、`continuous_blocked_reasons`、`blocked_reasons`、`not_proven`，并固定 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`delivery_success=false`。
+- `fresh_scan_proof_observed=true`、`scan_hz_average_rate_hz=<number>` 和 `tf_observed=true` 只证明本次 upper read-only refresh 返回了 fresh proof 机器摘要；如果 `continuous_scan_status=not_proven`，PC 必须继续把 `continuous_scan_status_not_proven` 和 continuous blockers 放入 `blocked_reasons`，并在 `not_proven` 中保留 `continuous_radar_not_proven`。
 - 如果上位机 HTTP `200` 但 body 仍是 `status=not_proven` / `proof_status=not_proven` 或返回 `blocked_reasons`，PC 仍返回真实 HTTP code，但 `fail_closed=true`，`blocked_reasons` 会包含远端 blocker，例如 `ros2_command_unavailable`、`upper_api_scan_not_proven`。UI 必须显示 `upper_result=not_proven/...` 和 `upper_blockers=...`，不得只显示成 refresh 已完成。
+- 如果上位机 HTTP `200` 且 fresh proof 字段完整，但 `continuous_scan_status=not_proven`，PC 仍返回 `fail_closed=true`。UI 必须显示 `fresh=true`、`hz=...`、`tf=observed`、`fallback=true|false`、`continuous=not_proven` 和 `continuous_blockers=...`，不得把 fresh artifact 包装成 `continuous radar ready`。
 - 上位机 HTTP 非 2xx、超时、fetch 失败或坏 JSON 时，PC 返回 `502` 并保留真实失败，如 `upper_http_404`、`upper_http_405`、`upper_http_503`、`timeout` 或 `bad_json`；不得包装成成功，也不得回落为 `/api/radar/start` 或底盘控制失败。
 - command response 继续固定 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`robot_ack_connected=false`、`t1001_observed=false`。
 - `not_proven` 必须继续包含 HIL、PC WASD 控车、Nav2 消费、SLAM map、delivery success、driver start/stop 等边界；即使 remote refresh 返回 fresh artifact，也不能声明 HIL、PC WASD、Nav2、map 或送达成功。
@@ -420,6 +430,8 @@ trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1
 - 展示四个本机 API path，方便浏览器/curl 工具消费。
 - 展示 cloud relay 已绕过和 ACK/T=1001 not observed 边界。
 - 展示 8787 `radar.scan_proof_latest` 摘要：artifact status、freshness、age、latest proof status 和 top blockers。
+- 展示 8787 fresh scan proof runtime 摘要：`fresh`、`hz`、`tf`、`fallback` 和 `continuous`；这些字段来自 direct-upper 后端契约，前端不得硬编码假状态。
+- `continuous=not_proven` 和 continuous blockers 必须与 fresh artifact 分开展示，不能把一次 refresh artifact 解释成 continuous radar ready。
 - 展示 8787 `radar.raw_packet_proof_latest` 摘要：artifact status、freshness、age、latest proof status、bytes、sync、packets 和 points。
 
 2026-06-03 23-24 micro sprint 后，`前进`、`后退`、`左转`、`右转`、`Stop`
@@ -465,6 +477,9 @@ success。
 - 不证明真实 `/odom`、`/imu/data`、`/battery`。
 - 不证明 `T=1001` 或 robot ACK。
 - 不证明真实 stop/manual 已现场执行或真实点动已被 ACK 闭环确认。
+- 不证明 continuous radar ready；fresh scan proof artifact、hz 和 TF 只证明一次 read-only refresh 摘要。
+- 不证明真实 SLAM/map 可用。
+- 不证明 PC WASD 控车已经现场验收。
 - 不证明 delivery success。
 
 ## 2026-06-03 现场核对结果

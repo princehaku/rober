@@ -1,0 +1,30 @@
+{
+  "schema": "trashbot.o9.pc_same_origin_refresh_smoke.v1",
+  "generated_at": "2026-06-05T07:06:39+08:00",
+  "sprint": "sprints/2026.06.05_06-07_o9-pc-slam-runtime-epic",
+  "owner": "coordinator_acceptance_after_full_stack_timeout",
+  "status": "blocked",
+  "evidence_type": "blocked_with_root_cause",
+  "command": "PORT=8788 ROBER_UPPER_API_BASE_URL=http://192.168.1.11:8787 npm run api && curl -fsS -X POST http://127.0.0.1:8788/api/o7/direct-upper/radar/scan-proof/refresh",
+  "api_log": "pc-tools/workstation/.workstation-runtime/o9_06_07_pc_api.log",
+  "root_cause": "tsx_ipc_pipe_enotsup",
+  "root_cause_detail": "Node/tsx failed before binding PORT=8788: listen ENOTSUP on /mnt/c/Users/haku/AppData/Local/Temp/tsx-0/*.pipe, so curl could not connect to 127.0.0.1:8788.",
+  "pc_code_verification": {
+    "npm_test_app": "passed_28_tests",
+    "npm_run_build": "passed",
+    "npm_run_lint": "passed",
+    "git_diff_check": "passed"
+  },
+  "safe_to_control": false,
+  "sends_commands": false,
+  "robot_control_executed": false,
+  "not_proven": [
+    "pc_live_api_smoke",
+    "continuous_radar_ready",
+    "slam_map",
+    "pc_wasd_field_control",
+    "hil",
+    "safe_to_control_true",
+    "delivery_success"
+  ]
+}

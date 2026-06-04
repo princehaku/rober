@@ -213,6 +213,17 @@ topic 观察，但说明 driver 优雅退出仍需单独修复或复验。
   `not_proven`，旧的 `/scan` 未证明 blocker 只允许降级为
   `continuous_blocked_reasons`，不能外推为 continuous radar ready、SLAM `/map`、AMCL、Nav2、
   HIL、WAVE ROVER ACK 或 `safe_to_control=true`。
+- 2026-06-05 06-07 O9 runtime 复核口径：上位机 fresh scan proof 仍可由
+  `POST /api/radar/scan-proof/refresh` 产出，现场返回
+  `proof_state=scan_once_hz_raw_packet_tf_observed`、`evidence_type=robot_runtime_material`、
+  `latest_scan_hz_average_rate_hz=173.643`，并继续保持
+  `safe_to_control=false`、`sends_base_motion_commands=false`。但正确用 `bash -lc`
+  source ROS2 后，`ros2 topic list` 只有 `/parameter_events` 和 `/rosout`，
+  没有常驻 `/scan`、`/lidar/raw_packet` 或 `/tf_static`；`pgrep` 也只看到
+  `upper_robot_api.py`，没有常驻 LiDAR driver、SLAM toolbox、map_server 或 Nav2。
+  因此本轮 root cause 是只存在 API-managed 短窗口 LiDAR runtime proof，
+  尚未部署 continuous radar runtime；`continuous_scan_status=not_proven` 的直接
+  blocker 是 `scan_continuity_not_observed`。
 - `onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh` 是当前上位机 runtime/build
   remediation 入口：只安装 ROS2 Humble arm64 runtime 并构建 onboard，不启动
   driver、不打开串口、不写底盘 UART。
