@@ -367,6 +367,9 @@ collector artifact 的 `proof.required_observations` 必须独立包含四个 ke
   `ros2 topic hz`。
 - `runtime_summary_fallback_used`：表示 latest artifact 是否采用同轮
   `o1_lidar_ros2_scan_smoke.sh` 的 `summary.json` fallback。
+- `latest_scan_proof.missing_required_observations`：partial proof 时给出缺失机器项，
+  例如 `scan_hz`、`tf` 或 `all_required_observations`；`failure_reason` 同步使用
+  `latest_scan_proof_required_observations_missing:<comma-list>`。
 - `continuous_scan_status="not_proven"` 与 `continuous_blocked_reasons`：保留常态连续
   雷达未证明的边界，避免把一次 fresh proof 外推成长稳 radar ready。
 - `latest_scan_proof`：包含 artifact 状态、四项 observed 字段、fallback 来源、fail-closed

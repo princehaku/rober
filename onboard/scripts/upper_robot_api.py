@@ -1442,17 +1442,18 @@ def build_radar_latest_scan_proof_status(scan_proof_latest: dict[str, Any]) -> d
     artifact = scan_proof_latest.get("artifact") if isinstance(scan_proof_latest.get("artifact"), dict) else {}
     artifact_status = str(artifact.get("status") or "unknown")
     state = str(scan_proof_latest.get("latest_proof_status") or artifact_status)
-    # fresh proof 必须四项机器字段全为 True；缺字段、坏 JSON 或 partial 都 fail-closed。
-    observed = all(
-        scan_proof_latest.get(field) is True
-        for field in (
-            "latest_scan_once_observed",
-            "latest_scan_hz_observed",
-            "latest_raw_packet_once_observed",
-            "latest_tf_observed",
-            "latest_all_required_observations_observed",
-        )
-    )
+    # fresh proof 必须四项机器字段全为 True；这里保留缺项名，方便 PC/协调者直接定位。
+    required_fields = {
+        "latest_scan_once_observed": "scan_once",
+        "latest_scan_hz_observed": "scan_hz",
+        "latest_raw_packet_once_observed": "raw_packet_once",
+        "latest_tf_observed": "tf",
+        "latest_all_required_observations_observed": "all_required_observations",
+    }
+    missing_required_observations = [
+        name for field, name in required_fields.items() if scan_proof_latest.get(field) is not True
+    ]
+    observed = not missing_required_observations
     failure_reason: str | None = None
     if not observed:
         if artifact_status == "missing":
@@ -1460,7 +1461,7 @@ def build_radar_latest_scan_proof_status(scan_proof_latest: dict[str, Any]) -> d
         elif artifact_status in {"bad_json", "json_not_object", "read_failed"}:
             failure_reason = f"latest_scan_proof_{artifact_status}"
         elif artifact_status == "loaded":
-            failure_reason = f"latest_scan_proof_not_all_observed:{state}"
+            failure_reason = "latest_scan_proof_required_observations_missing:" + ",".join(missing_required_observations)
         else:
             failure_reason = f"latest_scan_proof_unavailable:{artifact_status}"
     return {
@@ -1475,6 +1476,7 @@ def build_radar_latest_scan_proof_status(scan_proof_latest: dict[str, Any]) -> d
         "raw_packet_once_observed": scan_proof_latest.get("latest_raw_packet_once_observed"),
         "tf_observed": scan_proof_latest.get("latest_tf_observed"),
         "all_required_observations_observed": scan_proof_latest.get("latest_all_required_observations_observed"),
+        "missing_required_observations": missing_required_observations,
         "required_observations": scan_proof_latest.get("latest_required_observations"),
         "runtime_summary_fallback_used": bool(scan_proof_latest.get("latest_runtime_summary_fallback_used")),
         "runtime_summary_path": scan_proof_latest.get("latest_runtime_summary_path"),

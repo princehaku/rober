@@ -317,6 +317,68 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
             self.assertIn("scan_continuity_not_observed", bad_radar_status["continuous_blocked_reasons"])
             self.assertEqual(FakeSerial.instances, [])
 
+    def test_radar_status_partial_scan_proof_reports_machine_readable_missing_observations(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            artifact_path = Path(tmpdir) / "lidar.json"
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.o1.lidar_scan_proof.v1",
+                        "proof": {
+                            "status": "partially_observed",
+                            "scan_once_observed": True,
+                            "scan_hz_observed": False,
+                            "raw_packet_once_observed": True,
+                            "tf_observed": False,
+                            "all_required_observations_observed": False,
+                            "required_observations": {
+                                "scan_once": {"topic": "/scan", "observed": True, "result_key": "scan_once"},
+                                "scan_hz": {"topic": "/scan", "observed": False, "result_key": "scan_hz"},
+                                "raw_packet_once": {
+                                    "topic": "/lidar/raw_packet",
+                                    "observed": True,
+                                    "result_key": "raw_packet_once",
+                                },
+                                "tf": {
+                                    "parent_frame": "base_link",
+                                    "child_frame": "laser_frame",
+                                    "observed": False,
+                                    "result_key": "tf",
+                                },
+                            },
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                lidar_scan_proof_artifact_path=str(artifact_path),
+            )
+
+            status = robot.radar_status()
+
+        self.assertEqual(status["scan_status"], "not_proven")
+        self.assertEqual(status["continuous_scan_status"], "not_proven")
+        self.assertFalse(status["fresh_scan_proof_observed"])
+        self.assertEqual(status["latest_scan_proof_state"], "partially_observed")
+        self.assertEqual(
+            status["latest_scan_proof"]["failure_reason"],
+            "latest_scan_proof_required_observations_missing:scan_hz,tf,all_required_observations",
+        )
+        self.assertEqual(
+            status["latest_scan_proof"]["missing_required_observations"],
+            ["scan_hz", "tf", "all_required_observations"],
+        )
+        self.assertIn(status["latest_scan_proof"]["failure_reason"], status["latest_scan_proof_blocked_reasons"])
+        self.assertIn("scan_continuity_not_observed", status["continuous_blocked_reasons"])
+        self.assertFalse(status["safe_to_control"])
+        self.assertFalse(status["sends_base_motion_commands"])
+        self.assertEqual(FakeSerial.instances, [])
+
     def test_lidar_scan_proof_refresh_runs_read_only_collector_contract(self) -> None:
         calls: list[dict[str, object]] = []
         original_runner = api.run_lidar_scan_proof_collector

@@ -1,10 +1,69 @@
 # OKR 进度日志（详细历史）
 
-本文件留存所有 sprint 进度快照、阶段性 Objective % 调整证据和 sprint 引用。`OKR.md` 第 4.1 节只展示当前 6 个 Objective 的最新进度摘要表；详细历史和单 sprint 证据全部留档在此。
+本文件留存所有 sprint 进度快照、阶段性 Objective % 调整证据和 sprint 引用。`OKR.md` 第 4.1 节只展示当前推进区 Objective 的最新进度摘要表；详细历史和单 sprint 证据全部留档在此。
 
 按时间倒序：最新 sprint 在最上方。所有内容均直接来自历次 `OKR.md` 第 4.1 节"补充：sprint xx ..."与 §10-§29 进度快照原文，未对 Objective/KR 文字与完成度数字做改写。
 
 ---
+
+## 2026-06-05 系列
+
+### 2026-06-05 04-05｜OKR Six-Sprint State Rewrite｜打回 02-03 叠加涨分，下一轮改窄 Epic
+
+本轮 Product/OKR micro sprint 复盘最近 6 个迭代：
+`20-21_runtime-material-followup`、`21-22_runtime-material-runtime-hooks`、
+`22-23_runtime-material-deploy-refresh`、`00-01_o9-fresh-scan-proof-runtime`、
+`01-02_o9_scan_hz_tf_runtime`、`02-03_o9_radar_status_fresh_proof`。用户价值是让 CEO
+看到真实状态：`01-02` 是 O9 的 runtime breakthrough，`02-03` 是 useful radar/status
+readback contract，但不是新的 runtime/HIL/field material。
+
+本轮 OKR 方向判断：**继续，但收紧执行方式**。北极星不变，仍是面向普通手机用户的低成本垃圾投递机器人；
+但下一轮不能继续 Micro-only 接口/readback。若进入实现，默认拉一个窄 Epic，至少覆盖 PC 同源复验、
+continuous radar/status 或 SLAM map lifecycle、真实/受控电梯图片、stop-first HIL 决策门。若安全、
+现场、图片或远端权限不足，必须写 CEO 决策 blocker，不得继续消费 Micro。
+
+最近 6 个迭代审计：
+
+| Sprint | 证据事实 | OKR 判断 |
+| --- | --- | --- |
+| `20-21_runtime-material-followup` | owner 粒度缩小后全员有 note；O7 operator-report readback 和 O8 小涨。 | 方法改善，但 O2/O3/O1 真实材料仍缺。 |
+| `21-22_runtime-material-runtime-hooks` | 本地 refresh 合同和 PC 按钮完成；live upper 8787 仍 HTTP 405。 | O8 小涨；O3/O7 不涨。 |
+| `22-23_runtime-material-deploy-refresh` | 405 和 ROS logging blocker 解除，root cause 收敛到 LiDAR topics/TF。 | O8 计治理进展；O3/O7 不涨。 |
+| `00-01_o9-fresh-scan-proof-runtime` | API-managed runtime hook 让 live proof 到 partial，缺 `scan_hz`/TF。 | 不到 `robot_runtime_material`，O9/O3/O7 不涨。 |
+| `01-02_o9_scan_hz_tf_runtime` | live 8787 refresh/latest 返回 full fresh proof，`evidence_type=robot_runtime_material`，但 fallback used 且 continuous radar/status 未证明。 | O9/O3/O7 可按已记录口径小涨；不能外推到 SLAM、Nav2、PC 控车或 HIL。 |
+| `02-03_o9_radar_status_fresh_proof` | status 合同本地测试通过；没有远端 restart/curl；PC 侧 3 tests failed 后清理半成品。 | 只算 status/readback contract，不叠加 KR-O9/O3/O7 完成度。 |
+
+本轮 OKR 调整：
+
+| Objective | 调整 | 原因 |
+| --- | --- | --- |
+| O1：硬件协议可信底盘 | 保持约 95.5% | 没有 stop-first HIL、真实 ACK、ROS feedback topics 或 `safe_to_control=true`。 |
+| O2：送垃圾任务 + 电梯 assisted delivery | 保持约 72% | 没有真实/受控电梯图片 manifest 或 field eval。 |
+| O3：建图、定位、Nav2 与固定路线 | 保持约 75% | 02-03 没有新增 runtime material；continuous radar、SLAM `/map`、AMCL、Nav2 仍缺。 |
+| O5：云中转控制面 | 保持约 84% | 没有 production live material。 |
+| O6：云端核心后端 | 保持约 82% | 没有 production DB/queue、OSS、推理 runtime 或上车数据。 |
+| O7：PC 运营调试平台 | 保持约 91% | PC fresh proof 消费失败并清理半成品；PC 同源触发未复验。 |
+| O8：Epic 交付节奏与证据治理 | 约 44% -> 约 45% | 本轮完成最近 6 个迭代审计、员工状态检查、Micro/Epic 风险打回、02-03 不实叠加拦截和下一轮窄 Epic 口径。 |
+| O9：短周期真实材料破局战役 | 保持约 18% | `01-02` 是当前唯一可计 fresh runtime breakthrough；`02-03` 没有新增 runtime/HIL/field material。 |
+
+员工状态判断：
+
+- Full-stack Software Engineer：PC 同源代理和 operator report 能力有效，但 02-03 PC 消费 fresh proof 失败；下一轮只做 PC 同源 refresh 复验，不扩 UI。
+- Robot Software Engineer：01-02 形成 fresh proof runtime material，02-03 status contract 本地通过但未远端加载；下一轮 P0 是 continuous radar/status 或 SLAM map lifecycle。
+- Robot Algorithm Engineer：仍缺真实/受控电梯图片；下一轮必须交付 manifest 和 OpenCV eval，不能继续只扩 fixture。
+- Hardware Infra Engineer：stop-first HIL 仍缺现场安全材料；下一轮有授权才低速 pulse，否则升级 CEO blocker。
+- Product Manager / OKR Owner：必须先查最近 2 轮 blocker、员工状态和 Micro/Epic 比例，阻止接口/readback Micro 回流。
+
+历史记录位置和剩余风险：
+
+- `KR-O9-Fresh-Scan-Proof` 完成归档仍在
+  `sprints/2026.06.05_01-02_o9_scan_hz_tf_runtime/tech-done.md`；剩余风险是 fallback used、
+  `/api/radar/status` continuous not_proven、无 SLAM/Nav2/HIL/PC 控车。
+- `KR-O9-Radar-Status-Readback` 记录在
+  `sprints/2026.06.05_02-03_o9_radar_status_fresh_proof/tech-done.md`，作为 useful software guard；
+  剩余风险是远端未 restart/curl、PC 侧失败、无新 runtime material。
+- 本轮 Product/OKR 重写记录在
+  `sprints/2026.06.05_04-05_okr-six-sprint-state-rewrite/tech-done.md`；它只证明 O8 治理改善，不证明产品能力。
 
 ## 2026-06-04 系列
 

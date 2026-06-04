@@ -206,7 +206,10 @@ topic 观察，但说明 driver 优雅退出仍需单独修复或复验。
   `continuous_scan_status`。其中 `fresh_scan_proof_observed=true` 只表示 latest artifact
   已同时证明 `/scan` once、`/scan` hz、`/lidar/raw_packet` once 和 TF；若 artifact 缺失、
   坏 JSON 或 partial proof，status 必须 fail-closed，`fresh_scan_proof_observed=false` 并给出
-  `latest_scan_proof.failure_reason`。`continuous_scan_status` 仍固定
+  `latest_scan_proof.failure_reason`。partial proof 还会在
+  `latest_scan_proof.missing_required_observations` 中列出缺失机器项，例如 `scan_hz`、
+  `tf` 或 `all_required_observations`，便于后续 PC/协调者按缺口重试。
+  `continuous_scan_status` 仍固定
   `not_proven`，旧的 `/scan` 未证明 blocker 只允许降级为
   `continuous_blocked_reasons`，不能外推为 continuous radar ready、SLAM `/map`、AMCL、Nav2、
   HIL、WAVE ROVER ACK 或 `safe_to_control=true`。

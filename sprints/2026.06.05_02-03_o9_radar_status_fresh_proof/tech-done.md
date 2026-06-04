@@ -77,6 +77,6 @@ git diff --check -- onboard/scripts/upper_robot_api.py onboard/scripts/test_uppe
 ## 剩余风险
 
 - 远端 8787 尚未重启/curl 验证新版 status 字段。
-- PC 侧 parser/UI 仍未完成 fresh proof 消费，后续需要单独重开 O7 micro 或纳入下一轮 Epic。
+- PC 侧 parser/UI 仍未完成 fresh proof 消费，后续应纳入下一轮窄 Epic 的 PC 同源复验；不再单独拆 Micro-only status/readback。
 - 不证明 continuous radar ready、SLAM `/map`、AMCL、Nav2 lifecycle、固定路线、PC WASD、WAVE ROVER ACK、HIL、`safe_to_control=true` 或真实送达。
 - 下一步应优先做 PC 同源复验、continuous radar/SLAM map lifecycle、真实/受控电梯图片 manifest 或 stop-first HIL，而不是重复写 refresh/latest 接口。
