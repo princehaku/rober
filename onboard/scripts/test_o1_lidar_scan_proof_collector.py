@@ -7,6 +7,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -164,6 +165,24 @@ class LidarScanProofCollectorTest(unittest.TestCase):
         self.assertTrue(result["proof"]["scan_hz_observed"])
         self.assertEqual(result["proof"]["scan_hz_average_rate_hz"], 6.25)
         self.assertTrue(result["proof"]["tf_observed"])
+
+    def test_run_bash_timeout_preserves_process_output(self) -> None:
+        timeout = collector.subprocess.TimeoutExpired(
+            cmd=["bash", "-lc", "ros2 topic hz /scan"],
+            timeout=3,
+            output=b"average rate: 6.250\n",
+            stderr="tf2_echo printed partial output before timeout\n",
+        )
+
+        with mock.patch.object(collector.subprocess, "run", side_effect=timeout) as patched:
+            result = collector.run_bash("ros2 topic hz /scan", 3)
+
+        patched.assert_called_once()
+        self.assertFalse(result["ok"])
+        self.assertIsNone(result["returncode"])
+        self.assertIn("average rate: 6.250", result["stdout_preview"])
+        self.assertIn("tf2_echo printed partial output", result["stderr_preview"])
+        self.assertEqual(result["error"]["type"], "TimeoutExpired")
 
     def test_atomic_write_json_creates_readable_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

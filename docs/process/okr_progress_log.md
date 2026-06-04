@@ -8,6 +8,42 @@
 
 ## 2026-06-04 系列
 
+### 2026-06-05 00-01｜O9 Fresh Scan Proof Runtime｜收窄到常态 LiDAR runtime 未运行
+
+本轮 Epic 针对当前最低 Objective O9，继续推进 O3/O7 fresh scan proof。用户价值是让 PC/operator
+和后续 SLAM/Nav2 不再只看到 HTTP 200 或 readback，而是能区分真实 `/scan` runtime、常态 runtime
+缺失和 collector 误判。
+
+本轮证据：
+
+- Product/OKR 建立 `sprints/2026.06.05_00-01_o9-fresh-scan-proof-runtime/`，
+  写入 `pre_start.md`、`prd.md`、`tech-plan.md`，明确 `OKR 最低优先级核对`：
+  O9 当前 0%，本 sprint 针对 O9/O3/O7，不重复消费 HTTP 405。
+- Robot Software 通过 `ssh root@192.168.1.11 -p 37878` 复核 live upper：
+  `trashbot-upper-robot-api.service` active，`/health` ready，`/dev/ttyACM0` 存在，
+  `/dev/lidar` 缺失，`safe_to_control=false`。
+- 普通 `POST /api/radar/scan-proof/refresh` 仍 HTTP 200 但 proof 为
+  `blocked_or_not_observed`；常态 ROS2 graph 只有 `/parameter_events` 和 `/rosout`，
+  无 `/scan`、无 `/lidar/raw_packet`、无 `base_link -> laser_frame` TF。
+- LiDAR-only smoke 启动 driver/static TF 后可观察 `/scan` once、`/scan` hz、
+  `/lidar/raw_packet` 和 TF，且未发 `/cmd_vel`、未调用 `/api/base/manual`、未写底盘
+  `/dev/ttyS5`，`safe_to_control=false`。
+- 修复 `onboard/scripts/o1_lidar_scan_proof_collector.py` 的 timeout 输出保留问题：
+  `ros2 topic hz` / `tf2_echo` timeout 前已输出的证据不再被丢弃，避免 fresh proof false negative。
+
+本轮 OKR 判断：
+
+| Objective | 调整 | 原因 |
+| --- | --- | --- |
+| O9：短周期真实材料破局战役 | 保持 0% | root cause 收窄，但普通 8787 refresh 仍未形成 full fresh proof。 |
+| O3：建图、定位、Nav2 与固定路线 | 保持约 73% | LiDAR-only smoke 支撑 runtime 方向，但常态 `/scan` proof、SLAM `/map`、AMCL、Nav2 仍缺。 |
+| O7：PC 运营调试平台 | 保持约 90% | 仍没有 PC/operator fresh runtime workflow 完成。 |
+| O8：Epic 交付节奏与证据治理 | 保持约 44% | 本轮有 root-cause 收窄，但两次子 agent 超时，治理不应涨分。 |
+
+下一步：把 LiDAR driver/static TF 纳入受控 runtime/service 或 launch 管理，再复测普通
+`POST /api/radar/scan-proof/refresh`，要求 latest artifact 全量观察 `/scan` once/hz、raw packet
+和 TF；仍保持 `safe_to_control=false`，不触碰底盘运动。
+
 ### 2026-06-04 22-23｜Runtime Material Deploy Refresh｜解除 refresh route 405，root cause 收敛到 LiDAR topics/TF
 
 本轮 Epic 接续 `21-22_runtime-material-runtime-hooks` 的现场阻塞：本地

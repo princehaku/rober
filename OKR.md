@@ -87,13 +87,13 @@
 
 ## 4. 2026 H1 OKR（当前推进区）
 
-更新时间：2026-06-04 22-23 CST，对应 `sprints/2026.06.04_22-23_runtime-material-deploy-refresh/final.md`；`22-23_okr-six-sprint-breakthrough-rewrite` 仍是本轮 O8/O9 框架基础。
+更新时间：2026-06-05 00-01 CST，对应 `sprints/2026.06.05_00-01_o9-fresh-scan-proof-runtime/tech-done.md`；`22-23_okr-six-sprint-breakthrough-rewrite` 仍是本轮 O8/O9 框架基础。
 
 本轮复盘用户指定的最近 6 个迭代后，方向判断是 **调整，并新增 O9 breakthrough 短周期真实材料破局战役**。北极星不变：普通手机用户把垃圾交给低成本小车，小车沿固定路线送到垃圾站，必要时跨楼层进出电梯，并在异常时安全停止、请求人工协助和留下可复盘证据。
 
 关键结论：16:05 之后团队从连续 Micro 转向 Epic，方向明显改善；但最近 6 个迭代证明，团队仍容易把 software guard、readback、按钮、fixture、runbook 当成“向真实材料前进”。下一步不是继续写接口，而是强制把 O2/O3/O7/O1 拉到部署、fresh runtime、真实/受控电梯图片和 stop-first HIL。没有这些证据，产品 Objective 不涨分。
 
-本轮 deploy refresh 收口事实：Robot Software 已把 refresh route 同步到上位机并通过 `trashbot-upper-robot-api.service` 拉起，live `POST /api/radar/scan-proof/refresh` 从 HTTP 405 变为 HTTP 200，`GET /api/radar/scan-proof/latest` 可加载 artifact；随后修复 systemd 子进程缺 ROS logging 环境的问题，最新 artifact 已显示 `ros2_available=true`、`ros2_cli_check.ok=true`。但 proof 结果仍是 `blocked_or_not_observed`，剩余 blocker 为 `upper_api_scan_not_proven`，且 `/scan`、`/lidar/raw_packet`、`base_link -> laser_frame` TF 未发布。因此 O3/O7 产品完成度不涨，下一步必须启动或修复 LiDAR ROS2 driver/topic/TF runtime，再复测 refresh。
+本轮 fresh scan proof runtime 收口事实：`22-23` 已解除 refresh route HTTP 405 和 ROS logging env blocker；`00-01` 进一步证明上位机 ROS2 CLI 在正确 bash/source 环境下可用，LiDAR-only smoke 可观察到 `/scan` once/hz、`/lidar/raw_packet` 和 `base_link -> laser_frame` TF，且 `safe_to_control=false`、未发 `/cmd_vel`、未调用 base/manual。常规 refresh 仍是 `blocked_or_not_observed`，因为 LiDAR driver/static TF 没有作为常态 runtime 持续运行；同时修复 collector timeout 分支丢弃 `ros2 topic hz` / `tf2_echo` 已输出文本造成 false negative 的 bug。因此 O9/O3/O7 产品完成度不涨，下一步必须把 LiDAR driver/static TF 纳入受控 runtime/service 或 launch 管理，再复测普通 8787 refresh。
 
 ### 最近 6 个迭代问题
 
@@ -248,7 +248,7 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-06-04 22-23 CST，对应本轮 `sprints/2026.06.04_22-23_okr-six-sprint-breakthrough-rewrite`。
+更新时间：2026-06-05 00-01 CST，对应本轮 `sprints/2026.06.05_00-01_o9-fresh-scan-proof-runtime`。
 
 **比例更新规则**：O1/O2/O3/O7 只有真实现场、ROS2 runtime、HIL、OpenCV eval、地图 artifact、operator workflow 或受控电梯材料才涨；O5/O6 只有真实生产云、4G/公网/DB/OSS/phone-browser/上车数据才涨；O8 只有执行证据链、blocker 升级、员工状态和 evidence type 复核生效才涨；O9 只有短周期真实材料交付才涨。继续增加 Micro sprint、mock、fixture、UI 文案、readback、状态面或只读 runbook 不再涨产品 Objective。
 
@@ -256,12 +256,12 @@
 | --- | --- | --- | --- | --- | --- |
 | O1：硬件协议可信底盘 | 约 95.5% | 保持 | `/dev/ttyS5` 可写材料、非运动 `T=130 -> T=1001`、LiDAR `/scan` once/hz、TF、PC manual/LiDAR 隔离准入 | KR-O9-Stop-First-HIL-Authorization、KR-O1-ROS-Feedback-Topics | `safe_to_control=true`、HIL pass、robot ACK、真实 `/odom`/`/imu/data`/`/battery` |
 | O2：送垃圾任务 + 电梯 assisted delivery | 约 72% | 保持 | 产品 contract、dry-run evidence schema、OpenCV taxonomy/ROI/rule/offline fixture eval、16-17 状态机 software guard | KR-O9-Real-Controlled-Elevator-Images、KR-O2-OpenCV-Field-Eval、KR-O2-ROS2-State-Runtime | 真实电梯识别、楼层 OCR、实景进出电梯、跨楼层送达 |
-| O3：建图、定位、Nav2 与固定路线 | 约 73% | 保持；22-23 解除 refresh route 405，但 proof blocked | `learn.launch.py`、Nav2 include、首个 `/scan` smoke、map/localize software guard、本地 scan-proof refresh 合同、deployed route HTTP 200/latest artifact loaded | KR-O9-Fresh-Scan-Proof、KR-O3-SLAM-Map-Lifecycle、KR-O3-Nav2-Consumption | fresh `/scan`、真实地图可用、定位恢复、Nav2 实跑、路线通过 |
+| O3：建图、定位、Nav2 与固定路线 | 约 73% | 保持；00-01 收窄到常态 LiDAR runtime 未运行 | `learn.launch.py`、Nav2 include、首个 `/scan` smoke、map/localize software guard、本地 scan-proof refresh 合同、deployed route HTTP 200/latest artifact loaded、LiDAR-only smoke 可观测 `/scan`/raw/TF | KR-O9-Fresh-Scan-Proof、KR-O3-SLAM-Map-Lifecycle、KR-O3-Nav2-Consumption | 普通 refresh fresh `/scan`、真实地图可用、定位恢复、Nav2 实跑、路线通过 |
 | O5：云中转控制面 | 约 84% | 保持 | mock/control plane、readiness health、external probe、TLS summary、acceptance queue、SSH collector installed probe | KR-O5-Production-Live-Control | 真实生产云、真实蜂窝链路、真实 robot command 执行 |
 | O6：云端核心后端 | 约 82% | 保持 | mock archive/query/annotation/inference、archive health、external probe artifact、acceptance queue | KR-O6-Production-Archive-Query、KR-O6-Field-Material-Ingestion | 真实生产数据链、真实 OSS/推理/上车数据 |
 | O7：PC 运营调试平台 | 约 90% | 保持；PC 已补 upper `not_proven` blocker display | WASD/按钮软件入口、PC 同源代理、真实 8787 status/map/operator-report proxy runtime、operator-report readback、PC scan-proof refresh software guard、fail-closed blocker display | KR-O7-Refresh-Button-Live、KR-O7-PC-Manual-Field | 真实控车、fresh runtime refresh、真实雷达开关、真实建图定位、production workflow |
-| O8：Epic 交付节奏与证据治理 | 约 44% | 从约 43% 小幅上调；本轮不叠加到 45% | AGENTS/iteration_velocity 规则、16-05 口径重写、17-18/20-21/21-22 Epic 治理、22-23 解除部署 405、解除 ROS logging blocker、收敛到 LiDAR topics/TF 未发布、PC blocker display | KR-O8-Owner-Timeout-Guard、KR-O8-Repeated-Blocker-Stop、KR-O9-Epic-Owner-Timeout-Guard | 不能把流程合规写成产品能力或 OKR 产品涨分 |
-| O9：短周期真实材料破局战役 | 0% | 保持；deploy route partial，不计完成 | 22-23 只完成 KR 定义、解除 405 和 blocker 收敛；fresh runtime material 未成立 | KR-O9-Fresh-Scan-Proof、KR-O9-Real-Controlled-Elevator-Images、KR-O9-Stop-First-HIL-Authorization | 不能把接口、按钮、计划、readback、HTTP 200 但 not_proven 写成 breakthrough 完成 |
+| O8：Epic 交付节奏与证据治理 | 约 44% | 保持；00-01 不叠加到 45% | AGENTS/iteration_velocity 规则、16-05 口径重写、17-18/20-21/21-22 Epic 治理、22-23 解除部署 405、解除 ROS logging blocker、00-01 收窄到常态 LiDAR runtime 未运行并修复 collector false negative | KR-O8-Owner-Timeout-Guard、KR-O8-Repeated-Blocker-Stop、KR-O9-Epic-Owner-Timeout-Guard | 不能把流程合规写成产品能力或 OKR 产品涨分 |
+| O9：短周期真实材料破局战役 | 0% | 保持；root cause 收窄，不计完成 | 22-23 完成 KR 定义、解除 405 和 blocker 收敛；00-01 证明 LiDAR-only smoke 可出 `/scan`/raw/TF，并修复 collector timeout false negative；普通 refresh fresh runtime material 未成立 | KR-O9-Fresh-Scan-Proof、KR-O9-Real-Controlled-Elevator-Images、KR-O9-Stop-First-HIL-Authorization | 不能把接口、按钮、计划、readback、LiDAR-only smoke 或 HTTP 200 但 not_proven 写成 breakthrough 完成 |
 
 **历史归档区调整：**
 
@@ -273,7 +273,7 @@
 | O3/O7 scan-proof refresh deploy | route 部署、405 解除和 ROS logging guard 进入历史进展；fresh runtime proof 继续留当前推进区 | `sprints/2026.06.04_21-22_runtime-material-runtime-hooks/final.md`、`sprints/2026.06.04_22-23_runtime-material-deploy-refresh/final.md` | LiDAR topics/TF 未发布，不证明 fresh `/scan` |
 | O5/O6 旧高完成度 | 继续按 16:05 打回后的支线口径处理 | `docs/process/okr_progress_log.md` 的 16-05 记录 | 缺 production live material，不应抢 O9 |
 
-本轮没有 O1/O2/O3/O7 产品 KR 完成归档。O9 是新增破局 Objective，当前 0%，因为定义 KR 不等于交付材料。下一轮若只继续写接口、按钮或 readback，不允许上调 O9。
+本轮没有 O1/O2/O3/O7 产品 KR 完成归档。O9 当前 0%，因为 LiDAR-only smoke 和 collector false-negative 修复仍不等于普通 refresh fresh proof。下一轮若不把 LiDAR driver/static TF 纳入常态 runtime 并让 8787 refresh 全量观察通过，不允许上调 O9。
 
 ---
 
