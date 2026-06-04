@@ -199,6 +199,17 @@ topic 观察，但说明 driver 优雅退出仍需单独修复或复验。
   该 summary 作为 `runtime_summary_fallback` 原子写回 latest artifact，并标注
   `runtime_summary_fallback_used=true`。该 fallback 只读取 smoke 输出文件，不额外启动底盘、
   不发 `/cmd_vel`、不调用 `/api/base/manual`。
+- 2026-06-05 02-03 status readback 口径：`GET /api/radar/status` 会读取同一个
+  `runtime/lidar_scan_proof_latest.json`，并在顶层返回 `latest_scan_proof`、
+  `fresh_scan_proof_observed`、`latest_scan_proof_state`、
+  `latest_scan_hz_average_rate_hz`、`runtime_summary_fallback_used` 和
+  `continuous_scan_status`。其中 `fresh_scan_proof_observed=true` 只表示 latest artifact
+  已同时证明 `/scan` once、`/scan` hz、`/lidar/raw_packet` once 和 TF；若 artifact 缺失、
+  坏 JSON 或 partial proof，status 必须 fail-closed，`fresh_scan_proof_observed=false` 并给出
+  `latest_scan_proof.failure_reason`。`continuous_scan_status` 仍固定
+  `not_proven`，旧的 `/scan` 未证明 blocker 只允许降级为
+  `continuous_blocked_reasons`，不能外推为 continuous radar ready、SLAM `/map`、AMCL、Nav2、
+  HIL、WAVE ROVER ACK 或 `safe_to_control=true`。
 - `onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh` 是当前上位机 runtime/build
   remediation 入口：只安装 ROS2 Humble arm64 runtime 并构建 onboard，不启动
   driver、不打开串口、不写底盘 UART。

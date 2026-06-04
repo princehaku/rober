@@ -351,11 +351,31 @@ collector artifact 的 `proof.required_observations` 必须独立包含四个 ke
 摘要，包括 `artifact.status`、`latest_proof_status`、`latest_scan_once_observed`、
 `latest_scan_hz_observed`、`latest_scan_hz_average_rate_hz`、
 `latest_raw_packet_once_observed`、`latest_tf_observed`、
-`latest_all_required_observations_observed` 和 `latest_required_observations`。旧 artifact
-缺少 hz/TF 字段时这些新增字段保持 `null`，不能把缺省解释成 observed。PC 主状态灯仍只认
-`latest_scan_once_observed=true` 与 `latest_scan_hz_observed=true` 作为实时雷达 ready；
-raw packet 与 TF 只作为工程诊断和坐标链 proof，不参与 ready 判定。该摘要只代表最近
-artifact 的读取状态，不证明当前 ROS2 `/scan` 正在连续输出。
+`latest_all_required_observations_observed`、`latest_required_observations`、
+`latest_runtime_summary_fallback_used` 和 `latest_runtime_summary_path`。旧 artifact
+缺少 hz/TF 字段时这些新增字段保持 `null`，不能把缺省解释成 observed。
+
+同一个 status 响应会把 latest artifact 派生成 PC 更容易消费的顶层字段：
+
+- `scan_status="fresh_scan_proof_observed"`：只表示 latest artifact 已同时证明
+  `/scan` once、`/scan` hz、`/lidar/raw_packet` once 和 TF。
+- `fresh_scan_proof_observed=true|false`：缺 artifact、坏 JSON、partial proof 都必须为
+  `false`。
+- `latest_scan_proof_state`：直接来自 proof `status`，缺失或坏 JSON 时为 artifact
+  状态，例如 `missing` 或 `bad_json`。
+- `latest_scan_hz_average_rate_hz`：直接来自 latest artifact，不在 status 中重新执行
+  `ros2 topic hz`。
+- `runtime_summary_fallback_used`：表示 latest artifact 是否采用同轮
+  `o1_lidar_ros2_scan_smoke.sh` 的 `summary.json` fallback。
+- `continuous_scan_status="not_proven"` 与 `continuous_blocked_reasons`：保留常态连续
+  雷达未证明的边界，避免把一次 fresh proof 外推成长稳 radar ready。
+- `latest_scan_proof`：包含 artifact 状态、四项 observed 字段、fallback 来源、fail-closed
+  `failure_reason` 和固定安全假值。
+
+PC 主状态灯如果要区分 O9 fresh proof，可读取 `fresh_scan_proof_observed` 和
+`latest_scan_hz_average_rate_hz`；如果要宣称连续雷达 ready，必须另看
+`continuous_scan_status`，当前仍固定 `not_proven`。raw packet 与 TF 只作为工程诊断和坐标链
+proof；该摘要只代表最近 artifact 的读取状态，不证明当前 ROS2 `/scan` 正在连续输出。
 
 ### Radar start/stop HTTP contract
 

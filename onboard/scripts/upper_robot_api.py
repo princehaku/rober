@@ -1424,9 +1424,66 @@ def summarize_lidar_scan_proof_latest_artifact(path: str) -> dict[str, Any]:
         "latest_tf_observed": proof.get("tf_observed") if isinstance(proof, dict) else None,
         "latest_all_required_observations_observed": proof.get("all_required_observations_observed") if isinstance(proof, dict) else None,
         "latest_required_observations": compact_required_observations,
+        "latest_runtime_summary_fallback_used": proof.get("runtime_summary_fallback_used") if isinstance(proof, dict) else None,
+        "latest_runtime_summary_path": proof.get("runtime_summary_path") if isinstance(proof, dict) else None,
         "readback_sends_commands": False,
         "sends_commands": False,
         "sends_motion_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+    }
+
+
+def build_radar_latest_scan_proof_status(scan_proof_latest: dict[str, Any]) -> dict[str, Any]:
+    """把 latest artifact 摘要提升成 status 顶层字段，但不在这里重新探 ROS2。"""
+    artifact = scan_proof_latest.get("artifact") if isinstance(scan_proof_latest.get("artifact"), dict) else {}
+    artifact_status = str(artifact.get("status") or "unknown")
+    state = str(scan_proof_latest.get("latest_proof_status") or artifact_status)
+    # fresh proof 必须四项机器字段全为 True；缺字段、坏 JSON 或 partial 都 fail-closed。
+    observed = all(
+        scan_proof_latest.get(field) is True
+        for field in (
+            "latest_scan_once_observed",
+            "latest_scan_hz_observed",
+            "latest_raw_packet_once_observed",
+            "latest_tf_observed",
+            "latest_all_required_observations_observed",
+        )
+    )
+    failure_reason: str | None = None
+    if not observed:
+        if artifact_status == "missing":
+            failure_reason = "latest_scan_proof_missing"
+        elif artifact_status in {"bad_json", "json_not_object", "read_failed"}:
+            failure_reason = f"latest_scan_proof_{artifact_status}"
+        elif artifact_status == "loaded":
+            failure_reason = f"latest_scan_proof_not_all_observed:{state}"
+        else:
+            failure_reason = f"latest_scan_proof_unavailable:{artifact_status}"
+    return {
+        "endpoint": scan_proof_latest.get("endpoint"),
+        "artifact": artifact,
+        "state": state,
+        "observed": observed,
+        "failure_reason": failure_reason,
+        "scan_once_observed": scan_proof_latest.get("latest_scan_once_observed"),
+        "scan_hz_observed": scan_proof_latest.get("latest_scan_hz_observed"),
+        "scan_hz_average_rate_hz": scan_proof_latest.get("latest_scan_hz_average_rate_hz"),
+        "raw_packet_once_observed": scan_proof_latest.get("latest_raw_packet_once_observed"),
+        "tf_observed": scan_proof_latest.get("latest_tf_observed"),
+        "all_required_observations_observed": scan_proof_latest.get("latest_all_required_observations_observed"),
+        "required_observations": scan_proof_latest.get("latest_required_observations"),
+        "runtime_summary_fallback_used": bool(scan_proof_latest.get("latest_runtime_summary_fallback_used")),
+        "runtime_summary_path": scan_proof_latest.get("latest_runtime_summary_path"),
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "calls_base_manual": False,
+        "publishes_cmd_vel": False,
         "robot_control_executed": False,
         "delivery_success": False,
         "hil_pass": False,
@@ -2292,10 +2349,24 @@ class UpperRobotApi:
         candidates = list_candidates(["/dev/lidar", "/dev/ttyACM*", "/dev/serial/by-id/*", "/dev/serial/by-path/*"])
         tty_acm0 = describe_path("/dev/ttyACM0")
         lidar_observed = bool(tty_acm0["exists"])
+        scan_proof_latest = summarize_lidar_scan_proof_latest_artifact(self.lidar_scan_proof_artifact_path)
+        latest_scan_proof = build_radar_latest_scan_proof_status(scan_proof_latest)
+        fresh_scan_proof_observed = bool(latest_scan_proof["observed"])
+        # 单次 fresh proof 只能解除“没有任何 /scan 材料”的说法；长稳连续雷达另走独立 blocker。
+        continuous_blocked_reasons = ["scan_continuity_not_observed"]
+        latest_scan_proof_blocked_reasons = (
+            [] if fresh_scan_proof_observed else [str(latest_scan_proof["failure_reason"] or "latest_scan_proof_not_observed")]
+        )
         return {
             "schema": f"{SCHEMA}.radar_status",
             "generated_at_ms": now_ms(),
-            "scan_status": "not_proven",
+            "scan_status": "fresh_scan_proof_observed" if fresh_scan_proof_observed else "not_proven",
+            "continuous_scan_status": "not_proven",
+            "fresh_scan_proof_observed": fresh_scan_proof_observed,
+            "latest_scan_proof_state": latest_scan_proof["state"],
+            "latest_scan_hz_average_rate_hz": latest_scan_proof["scan_hz_average_rate_hz"],
+            "runtime_summary_fallback_used": latest_scan_proof["runtime_summary_fallback_used"],
+            "latest_scan_proof": latest_scan_proof,
             "pointcloud_fabricated": False,
             "dev_lidar": describe_path("/dev/lidar"),
             "observed_lidar_port": "/dev/ttyACM0" if lidar_observed else None,
@@ -2311,7 +2382,7 @@ class UpperRobotApi:
                 "raw_packet_topic": "/lidar/raw_packet",
                 "frame_id": "laser_frame",
             },
-            "scan_proof_latest": summarize_lidar_scan_proof_latest_artifact(self.lidar_scan_proof_artifact_path),
+            "scan_proof_latest": scan_proof_latest,
             "raw_packet_proof_latest": summarize_lidar_raw_packet_proof_latest_artifact(
                 self.lidar_raw_packet_proof_artifact_path
             ),
@@ -2344,12 +2415,18 @@ class UpperRobotApi:
                     "sends_motion_commands": False,
                 },
             },
+            "latest_scan_proof_blocked_reasons": latest_scan_proof_blocked_reasons,
+            "continuous_blocked_reasons": continuous_blocked_reasons,
             "blocked_reasons": [
                 *(["ttyACM0_lidar_not_present"] if not lidar_observed else []),
-                "ros2_lidar_scan_not_connected",
-                "scan_continuity_not_observed",
+                *latest_scan_proof_blocked_reasons,
+                *continuous_blocked_reasons,
             ],
             "sends_commands": False,
+            "sends_motion_commands": False,
+            "sends_base_motion_commands": False,
+            "calls_base_manual": False,
+            "publishes_cmd_vel": False,
             **proof_flags(),
         }
 
