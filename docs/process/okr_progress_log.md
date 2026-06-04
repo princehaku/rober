@@ -8,6 +8,32 @@
 
 ## 2026-06-05 系列
 
+### 2026-06-05 05-06｜O9 Narrow Runtime Material Epic｜远端 status 复验闭环，PC 护栏部分完成，真实材料 blocker 明确
+
+本轮按 `04-05_okr-six-sprint-state-rewrite` 要求启动窄 Epic，而不是继续 Micro-only status/readback。
+
+本轮证据：
+
+- Product/OKR 计划文档落地：`sprints/2026.06.05_05-06_o9-narrow-runtime-material-epic/pre_start.md`、`prd.md`、`tech-plan.md`。
+- Robot Software 复验远端 8787：`systemctl restart trashbot-upper-robot-api.service` 后 curl `/api/radar/status` 和 `/api/radar/scan-proof/latest`，现场返回 `fresh_scan_proof_observed=true`、`latest_scan_proof_state=scan_once_hz_raw_packet_tf_observed`、`latest_scan_hz_average_rate_hz=257.987`、`runtime_summary_fallback_used=true`，同时保留 `continuous_scan_status=not_proven`、`safe_to_control=false`、`robot_control_executed=false`、`hil_pass=false`。
+- Full-stack 补 PC App 最小护栏：`Refresh scan proof` 的 same-origin 路径必须显示 `upper_result=fresh/full/fresh_scan_proof_observed`、artifact、freshness、`continuous_scan_status_not_proven` 和 `continuous_radar_not_proven`，并继续断言浏览器不直连 upper URL、不碰 `/cmd_vel`。
+- Robot Algorithm 只读确认本地和远端没有真实/受控电梯图片 manifest；只有 template、fixture 和 blocker fixture。
+- Hardware Infra 只读确认不具备 stop-first HIL 前提；没有现场看护、净空、急停/断电路径和授权，未执行任何底盘运动命令。
+
+本轮 OKR 调整：
+
+| Objective | 调整 | 原因 |
+| --- | --- | --- |
+| O1：硬件协议可信底盘 | 保持约 95.5% | 没有 HIL、安全授权、ACK 或 ROS feedback topics。 |
+| O2：送垃圾任务 + 电梯 assisted delivery | 保持约 72% | 真实/受控电梯图片 manifest 仍缺。 |
+| O3：建图、定位、Nav2 与固定路线 | 保持约 75% | status 远端复验完成，但 continuous radar 和 SLAM `/map` 仍 blocked。 |
+| O5/O6 | 保持 O5 约 84%、O6 约 82% | 本轮不触达 production live material。 |
+| O7：PC 运营调试平台 | 保持约 91% | 只有 App 最小护栏，没有 PC live API smoke 和 hz/TF/fallback 完整展示。 |
+| O8：Epic 交付节奏与证据治理 | 约 45% -> 约 46% | 本轮按要求启动窄 Epic，完成多 owner 事实闭环和 blocker 收口。 |
+| O9：短周期真实材料破局战役 | 保持约 18% | 没有新增 continuous radar、SLAM/map、field/HIL 或 user acceptance material。 |
+
+本轮关闭的缺口：`02-03` 的远端未 restart/curl 缺口已关闭。剩余最大缺口：PC 完整 parser/UI 展示、SLAM `/map` lifecycle、真实/受控电梯图片、stop-first HIL 安全授权。
+
 ### 2026-06-05 04-05｜OKR Six-Sprint State Rewrite｜打回 02-03 叠加涨分，下一轮改窄 Epic
 
 本轮 Product/OKR micro sprint 复盘最近 6 个迭代：

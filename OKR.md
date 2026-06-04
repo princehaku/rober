@@ -87,11 +87,11 @@
 
 ## 4. 2026 H1 OKR（当前推进区）
 
-更新时间：2026-06-05 04-05 CST，对应 `sprints/2026.06.05_04-05_okr-six-sprint-state-rewrite/tech-done.md`。本轮复盘最近 6 个迭代：`20-21_runtime-material-followup`、`21-22_runtime-material-runtime-hooks`、`22-23_runtime-material-deploy-refresh`、`00-01_o9-fresh-scan-proof-runtime`、`01-02_o9_scan_hz_tf_runtime`、`02-03_o9_radar_status_fresh_proof`；必要时引用 `17-18`/`19-20` 判断趋势。
+更新时间：2026-06-05 05-06 CST，对应 `sprints/2026.06.05_05-06_o9-narrow-runtime-material-epic/final.md`。本轮按 04-05 要求启动窄 Epic，不再继续 Micro-only status/readback：远端 8787 status/latest 已 restart/curl 复验，PC same-origin 最小护栏已补，真实/受控电梯图片与 stop-first HIL 安全前提仍明确 blocked。
 
 本轮方向判断是 **继续：沿 O9 breakthrough 调整口径执行，不改变北极星**。北极星仍是普通手机用户把垃圾交给低成本小车，小车沿固定路线送到垃圾站，必要时跨楼层进出电梯，并在异常时安全停止、请求人工协助和留下可复盘证据。
 
-关键结论：16:05 之后团队从连续 Micro 转向 Epic，方向明显改善；`01-02` 进一步证明 O9 fresh scan proof 可以产出 live runtime material。`02-03_o9_radar_status_fresh_proof` 有价值，但只是 `/api/radar/status` 消费 latest proof 的状态契约/readback 改进：测试通过、远端文件已同步，但没有远端 restart/curl 验证，没有新 runtime material，PC 侧测试失败且半成品已清理。因此本轮不叠加 O9/O3/O7 产品涨分。下一步不能再开 Micro-only interface/readback sprint，必须拉一个窄 Epic，把 O3 拉向 continuous radar 或 SLAM `/map` lifecycle，把 O7 拉向 PC 同源触发复验，把 O2 拉向真实/受控电梯图片，把 O1 拉向 stop-first HIL 决策门。
+关键结论：16:05 之后团队从连续 Micro 转向 Epic，方向明显改善；`01-02` 进一步证明 O9 fresh scan proof 可以产出 live runtime material。`02-03_o9_radar_status_fresh_proof` 有价值，但只是 `/api/radar/status` 消费 latest proof 的状态契约/readback 改进。`05-06_o9-narrow-runtime-material-epic` 关闭了 02-03 的远端未 restart/curl 缺口：live 8787 `/api/radar/status` 已返回 `fresh_scan_proof_observed=true`、`latest_scan_hz_average_rate_hz=257.987`、TF observed 和 `runtime_summary_fallback_used=true`。但 `continuous_scan_status=not_proven`、SLAM `/map` artifact 缺失、PC 只完成最小测试护栏、真实/受控电梯图片缺失、HIL 安全前提缺失。因此本轮不叠加 O9/O3/O7 产品涨分，只给 O8 治理小幅上调。
 
 真实材料边界：`22-23` 已解除 refresh route HTTP 405 和 ROS logging env blocker；`00-01` 把 blocker 收窄到 `scan_hz=false` / `tf=false`；`01-02` micro sprint 通过 live 8787 refresh/latest 形成 `proof_state=scan_once_hz_raw_packet_tf_observed`，`evidence_type=robot_runtime_material`，`scan_hz_average_rate_hz=257.987`，`runtime_summary_fallback_used=true`，`blockers_summary=[]`。安全字段保持 `safe_to_control=false`、`sends_base_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`。`02-03` 只让 `/api/radar/status` 能表达 `fresh_scan_proof_observed` 与 `continuous_scan_status=not_proven` 的差异，且未完成远端加载和 PC 消费。因此当前只证明 live fresh scan proof artifact，不证明 continuous radar ready、SLAM `/map`、AMCL、Nav2、PC WASD、HIL、WAVE ROVER ACK 或 `safe_to_control=true`。
 
@@ -255,7 +255,7 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-06-05 04-05 CST，对应本轮 `sprints/2026.06.05_04-05_okr-six-sprint-state-rewrite/tech-done.md`。
+更新时间：2026-06-05 05-06 CST，对应本轮 `sprints/2026.06.05_05-06_o9-narrow-runtime-material-epic/final.md`。
 
 **比例更新规则**：O1/O2/O3/O7 只有真实现场、ROS2 runtime、HIL、OpenCV eval、地图 artifact、operator workflow 或受控电梯材料才涨；O5/O6 只有真实生产云、4G/公网/DB/OSS/phone-browser/上车数据才涨；O8 只有执行证据链、blocker 升级、员工状态和 evidence type 复核生效才涨；O9 只有短周期真实材料交付才涨。继续增加 Micro sprint、mock、fixture、UI 文案、readback、状态面或只读 runbook 不再涨产品 Objective。
 
@@ -267,7 +267,7 @@
 | O5：云中转控制面 | 约 84% | 保持 | mock/control plane、readiness health、external probe、TLS summary、acceptance queue、SSH collector installed probe | KR-O5-Production-Live-Control | 真实生产云、真实蜂窝链路、真实 robot command 执行 |
 | O6：云端核心后端 | 约 82% | 保持 | mock archive/query/annotation/inference、archive health、external probe artifact、acceptance queue | KR-O6-Production-Archive-Query、KR-O6-Field-Material-Ingestion | 真实生产数据链、真实 OSS/推理/上车数据 |
 | O7：PC 运营调试平台 | 约 91% | 保持；02-03 PC 侧失败不叠加 | WASD/按钮软件入口、PC 同源代理、真实 8787 status/map/operator-report proxy runtime、operator-report readback、PC scan-proof refresh software guard、fail-closed blocker display、01-02 refresh/latest runtime proof；02-03 只验证后端 status contract，PC 消费未完成 | KR-O7-Refresh-Button-Live PC 同源复验、KR-O7-PC-Manual-Field | 真实控车、PC 按钮同源触发已验证、真实雷达长稳、真实建图定位、production workflow |
-| O8：Epic 交付节奏与证据治理 | 约 45% | +1pp；04-05 OKR review materially improves governance | AGENTS/iteration_velocity 规则、16-05 口径重写、17-18/20-21/21-22 Epic 治理、22-23 解除部署 405、解除 ROS logging blocker、00-01 收窄到 LiDAR runtime、04-05 拦截 02-03 不实涨分并强制下一轮窄 Epic | KR-O8-Owner-Timeout-Guard、KR-O8-Repeated-Blocker-Stop、KR-O8-Micro-Loop-Stop、KR-O9-Epic-Owner-Timeout-Guard | 不能把流程合规写成产品能力或 OKR 产品涨分 |
+| O8：Epic 交付节奏与证据治理 | 约 46% | +1pp；05-06 按要求启动窄 Epic 并完成多 owner blocker 收口 | AGENTS/iteration_velocity 规则、16-05 口径重写、17-18/20-21/21-22 Epic 治理、22-23 解除部署 405、解除 ROS logging blocker、00-01 收窄到 LiDAR runtime、04-05 拦截 02-03 不实涨分、05-06 完成窄 Epic 计划/远端复验/PC 护栏/电梯和 HIL blocker | KR-O8-Owner-Timeout-Guard、KR-O8-Repeated-Blocker-Stop、KR-O8-Micro-Loop-Stop、KR-O9-Epic-Owner-Timeout-Guard | 不能把流程合规写成产品能力或 OKR 产品涨分 |
 | O9：短周期真实材料破局战役 | 约 18% | 保持；02-03 无新 runtime/HIL/field material | 22-23 完成 KR 定义、解除 405 和 blocker 收敛；00-01 修复 false negative；01-02 8787 refresh/latest 形成 `robot_runtime_material`，但 radar/status 仍 not_proven；02-03 是 status readback contract，不新增 runtime material | KR-O9-Real-Controlled-Elevator-Images、KR-O9-Stop-First-HIL-Authorization、KR-O9-Narrow-Epic-Real-Material-Gate、PC 同源复验、continuous radar/SLAM | 不能把 live fresh artifact 或 status readback 写成 continuous radar、SLAM/map、Nav2、PC 控车、HIL 或 `safe_to_control=true` |
 
 **历史归档区调整：**

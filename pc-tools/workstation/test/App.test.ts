@@ -593,6 +593,23 @@ function stubFetch(options: StubFetchOptions = {}): ReturnType<typeof vi.fn> {
                     pc_local_only: true,
                     fail_closed: false,
                     failure_reason: "none",
+                    upper_result_summary: operatorCommand.command === "radar_scan_proof_refresh"
+                      ? {
+                          status: "fresh",
+                          proof_status: "full",
+                          latest_proof_status: "fresh_scan_proof_observed",
+                          artifact_status: "loaded",
+                          artifact_path: "artifacts/radar/scan-proof-latest.json",
+                          freshness_status: "fresh",
+                          freshness_age_seconds: 1,
+                          safe_to_control: false,
+                          sends_commands: false,
+                          robot_control_executed: false,
+                          delivery_success: false,
+                          blocked_reasons: ["continuous_scan_status_not_proven"],
+                          not_proven: ["continuous_radar_not_proven"],
+                        }
+                      : undefined,
                     command_payload_summary: {
                       direction: "not_applicable",
                       speed_mps: 0,
@@ -882,6 +899,16 @@ describe("O7 live operator first screen", () => {
       await button?.trigger("click");
       await flushPromises();
       await wrapper.vm.$nextTick();
+      if (label === "Refresh scan proof") {
+        const scanProofText = wrapper.text();
+        expect(scanProofText).toContain("Refresh scan proof 已触发但 upper 仍 not_proven（仍锁定）");
+        expect(scanProofText).toContain("upper_result=fresh/full/fresh_scan_proof_observed");
+        expect(scanProofText).toContain("upper_blockers=continuous_scan_status_not_proven");
+        expect(scanProofText).toContain("upper_not_proven=continuous_radar_not_proven");
+        expect(scanProofText).toContain("artifact=loaded:artifacts/radar/scan-proof-latest.json");
+        expect(scanProofText).toContain("freshness=fresh/1s");
+        expect(scanProofText).toContain("read-only proof refresh，不启动 driver、不控底盘；not_proven=HIL/PC WASD/Nav2/map/delivery");
+      }
     }
     await vi.waitFor(() => {
       const button = wrapper.findAll("button").find((item) => item.text() === "Report evidence ref");
