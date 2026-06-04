@@ -1,0 +1,143 @@
+{
+  "schema": "trashbot.elevator_image_manifest.v1",
+  "manifest_role": "collection_template",
+  "objective": "O2",
+  "owner": "robot-algorithm-engineer",
+  "evidence_type": "blocked_with_root_cause",
+  "generated_at": "2026-06-04T19:20:00+08:00",
+  "image_dir": "replace-with-real-or-controlled-elevator-images",
+  "collection_session": {
+    "site_ref": "replace-with-safe-site-ref",
+    "camera_ref": "replace-with-camera-or-robot-ref",
+    "route_ref": "replace-with-route-or-elevator-ref",
+    "collector": "replace-with-operator",
+    "time_window": "replace-with-start-end-time",
+    "lighting_notes": "replace-with-lighting-and-reflection-notes",
+    "safety_notes": "non-motion collection only; no delivery_success claim"
+  },
+  "minimums": {
+    "door_open_positive": 20,
+    "door_closed_positive": 20,
+    "inside_positive": 20,
+    "outside_negative": 20,
+    "floor_target_positive": 20,
+    "safe_exit_positive": 20,
+    "safe_exit_negative": 20,
+    "uncertain_or_bad_light": 10
+  },
+  "samples": [
+    {
+      "sample_id": "door_open_positive_001",
+      "image": "door_open_positive/replace-with-frame001.jpg",
+      "target_floor": "3",
+      "expected_floor": "3",
+      "expected_door_state": "open",
+      "expected_inside_outside": "inside",
+      "expected_safe_to_exit": "safe",
+      "taxonomy_tags": [
+        "door_open_positive",
+        "inside_positive",
+        "floor_target_positive",
+        "safe_exit_positive"
+      ]
+    },
+    {
+      "sample_id": "door_closed_positive_001",
+      "image": "door_closed_positive/replace-with-frame001.jpg",
+      "target_floor": "3",
+      "expected_floor": "",
+      "expected_door_state": "closed",
+      "expected_inside_outside": "outside",
+      "expected_safe_to_exit": "unsafe",
+      "taxonomy_tags": [
+        "door_closed_positive",
+        "outside_negative",
+        "safe_exit_negative"
+      ]
+    },
+    {
+      "sample_id": "inside_positive_001",
+      "image": "inside_positive/replace-with-frame001.jpg",
+      "target_floor": "3",
+      "expected_floor": "",
+      "expected_door_state": "open",
+      "expected_inside_outside": "inside",
+      "expected_safe_to_exit": "unsafe",
+      "taxonomy_tags": [
+        "inside_positive",
+        "safe_exit_negative"
+      ]
+    },
+    {
+      "sample_id": "outside_negative_001",
+      "image": "outside_negative/replace-with-frame001.jpg",
+      "target_floor": "3",
+      "expected_floor": "",
+      "expected_door_state": "open",
+      "expected_inside_outside": "outside",
+      "expected_safe_to_exit": "unsafe",
+      "taxonomy_tags": [
+        "outside_negative",
+        "safe_exit_negative"
+      ]
+    },
+    {
+      "sample_id": "floor_target_positive_001",
+      "image": "floor_target_positive/replace-with-frame001.jpg",
+      "target_floor": "3",
+      "expected_floor": "3",
+      "expected_door_state": "open",
+      "expected_inside_outside": "inside",
+      "expected_safe_to_exit": "safe",
+      "taxonomy_tags": [
+        "floor_target_positive",
+        "safe_exit_positive"
+      ]
+    },
+    {
+      "sample_id": "safe_exit_positive_001",
+      "image": "safe_exit_positive/replace-with-frame001.jpg",
+      "target_floor": "3",
+      "expected_floor": "3",
+      "expected_door_state": "open",
+      "expected_inside_outside": "inside",
+      "expected_safe_to_exit": "safe",
+      "taxonomy_tags": [
+        "safe_exit_positive"
+      ]
+    },
+    {
+      "sample_id": "safe_exit_negative_001",
+      "image": "safe_exit_negative/replace-with-frame001.jpg",
+      "target_floor": "3",
+      "expected_floor": "2",
+      "expected_door_state": "open",
+      "expected_inside_outside": "inside",
+      "expected_safe_to_exit": "unsafe",
+      "taxonomy_tags": [
+        "safe_exit_negative"
+      ]
+    },
+    {
+      "sample_id": "uncertain_or_bad_light_001",
+      "image": "uncertain_or_bad_light/replace-with-frame001.jpg",
+      "target_floor": "3",
+      "expected_floor": "",
+      "expected_door_state": "uncertain",
+      "expected_inside_outside": "uncertain",
+      "expected_safe_to_exit": "uncertain",
+      "taxonomy_tags": [
+        "uncertain_or_bad_light"
+      ]
+    }
+  ],
+  "checker_command": "PYTHONPATH=onboard/src/ros2_trashbot_vision python3 -m ros2_trashbot_vision.elevator_opencv_baseline --check-template pc-tools/evidence/templates/elevator_image_manifest_collection_template.json",
+  "eval_command_after_collection": "PYTHONPATH=onboard/src/ros2_trashbot_vision python3 -m ros2_trashbot_vision.elevator_opencv_baseline pc-tools/evidence/templates/elevator_image_manifest_collection_template.json",
+  "not_proven": [
+    "real_camera_elevator_recognition",
+    "real_floor_ocr",
+    "real_target_floor_confirmation",
+    "real_safe_exit",
+    "real_cross_floor_delivery"
+  ]
+}

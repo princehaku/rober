@@ -5674,6 +5674,22 @@ Task B Robot 只补 compatibility fence 和 `docs/interfaces/ros_contracts.md`�
 
 ## 录入规则与边界
 
+### 2026-06-04 19-20｜Runtime Material Continue｜O2 manifest checker landed，其他 owner 超时不涨分
+
+本轮 `sprints/2026.06.04_19-20_runtime-material-continue/` 继续按 O8 启动跨 owner Epic，优先 O2/O3，兼顾 O7/O1。Robot Algorithm owner 的 O2 改动落盘：`elevator_opencv_baseline.py` 新增 `--check-template`，输出 `trashbot.elevator_image_manifest_template_check.v1`，并新增 `pc-tools/evidence/templates/elevator_image_manifest_collection_template.json` 与 `pc-tools/evidence/fixtures/elevator_real_image_manifest_blocker/blocked_missing_manifest.json`。验证显示 `status=blocked_missing_real_or_controlled_images`、`can_run_opencv_eval=false`、`field_eval_ready=false`、`image_kinds.real_or_controlled=0`、`template_placeholders=8`。
+
+Robot Software、Full-Stack、Hardware 三个 owner 子任务连续超时，没有 owner note 或可验收材料落盘，因此本轮不新增 O3/O7/O1 runtime/HIL 证据。该问题记录为 `subagent_execution_timeout`，下一轮必须把派单缩小为单一命令链或单一 artifact。
+
+| Objective | 本轮影响 | 证据与缺口 |
+| --- | --- | --- |
+| O2：送垃圾任务 + 电梯 assisted delivery | 保持约 72%，但采集入口更可执行 | 新增真实/受控图片 manifest checker 和采集模板；没有真实/受控图片，不能跑 field eval，不能证明真实电梯识别、楼层 OCR 或跨楼层送达。 |
+| O3：建图、定位、Nav2 与固定路线 | 保持约 73% | 无 fresh `/scan`、`/map`、TF、AMCL 或 Nav2 lifecycle；Robot Software 子任务超时。 |
+| O7：PC 运营调试平台 | 保持约 89% | 17-18 operator report route 进展保留；19-20 无新增 PC operator workflow 材料。 |
+| O1：硬件协议可信底盘 | 保持约 95.5% | 无 field HIL、stop-first pulse、ROS feedback 或 `safe_to_control=true`。 |
+| O8：Epic 交付节奏与证据治理 | 保持约 40% | 文档链完成但 L2 执行超时，不足以涨治理分。 |
+
+验证：`--check-template` 输出 blocked root cause；`python3 -m unittest discover -s onboard/src/ros2_trashbot_vision/test` 通过 20 tests；`compileall` 通过。剩余风险见本 sprint `final.md`。
+
 ### 2026-06-04 00-01｜O1 upper ROS2 bootstrap continue｜真实 `/scan` smoke observed
 
 本轮 micro sprint 继续优先 O1，接上上一轮远端 apt/dpkg 卡在

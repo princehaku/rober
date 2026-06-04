@@ -14,6 +14,8 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 SCHEMA = "trashbot.elevator_opencv_baseline.v1"
 EVAL_SCHEMA = "trashbot.elevator_offline_eval.v1"
+ELEVATOR_IMAGE_MANIFEST_SCHEMA = "trashbot.elevator_image_manifest.v1"
+TEMPLATE_CHECK_SCHEMA = "trashbot.elevator_image_manifest_template_check.v1"
 PROOF_STATUS = "not_proven"
 TAXONOMY_VERSION = "elevator_taxonomy_v0"
 FIELD_EVAL_STATUS = "needs_real_image_manifest"
@@ -129,6 +131,17 @@ QUALITY_GATE_DEFAULTS = {
     "field_eval_max_safe_exit_fp_rate": 0.02,
     "field_eval_max_door_fn_rate": 0.10,
 }
+
+REAL_OR_CONTROLLED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+PLACEHOLDER_MARKERS = (
+    "replace-with",
+    "placeholder",
+    "todo",
+    "<",
+    ">",
+    "填入",
+    "待填",
+)
 
 
 def elevator_taxonomy() -> Dict[str, Any]:
@@ -301,6 +314,256 @@ def evaluate_manifest(manifest_path: str) -> Dict[str, Any]:
         "not_proven": list(NOT_PROVEN),
         "operator_summary": _operator_summary(confusion, errors, quality_metrics),
     }
+
+
+def check_manifest_template(manifest_path: str) -> Dict[str, Any]:
+    """检查真实/受控图片 manifest 是否足以进入 eval，不读取图片像素。"""
+    manifest_file = Path(manifest_path).expanduser()
+    errors: List[str] = []
+    warnings: List[str] = []
+    manifest: Dict[str, Any] = {}
+    if not manifest_file.exists():
+        errors.append(f"manifest not found: {manifest_file}")
+    else:
+        try:
+            loaded = json.loads(manifest_file.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                manifest = loaded
+            else:
+                errors.append("manifest root must be an object")
+        except json.JSONDecodeError as exc:
+            errors.append(f"manifest json decode error: {exc}")
+        except OSError as exc:
+            errors.append(f"manifest read error: {exc}")
+
+    schema = str(manifest.get("schema", "")) if manifest else ""
+    if manifest and schema != ELEVATOR_IMAGE_MANIFEST_SCHEMA:
+        errors.append(f"unsupported manifest schema: {schema}")
+
+    samples = manifest.get("samples", []) if manifest else []
+    if not isinstance(samples, list):
+        errors.append("manifest.samples must be a list")
+        samples = []
+    elif manifest and not samples:
+        warnings.append("manifest.samples is empty")
+
+    # checker 只做采集前置审查；真实 JPEG/PNG 是否可读仍交给 eval/OpenCV 执行。
+    image_root = _resolve_image_root(manifest, manifest_file) if manifest else manifest_file.parent
+    coverage = {tag: 0 for tag in TAXONOMY_SAMPLE_REQUIREMENTS}
+    image_kinds = {"fixture": 0, "real_or_controlled": 0, "missing_or_invalid": 0}
+    missing_image_refs: List[Dict[str, Any]] = []
+    invalid_taxonomy_tags: List[Dict[str, Any]] = []
+    placeholder_count = 0
+    for index, sample in enumerate(samples):
+        if not isinstance(sample, dict):
+            errors.append(f"samples[{index}] must be an object")
+            image_kinds["missing_or_invalid"] += 1
+            continue
+        _check_manifest_template_sample_fields(index, sample, errors)
+        placeholder_count += _check_manifest_template_image_ref(
+            index,
+            sample,
+            image_root,
+            image_kinds,
+            missing_image_refs,
+        )
+        _check_manifest_template_tags(index, sample, coverage, invalid_taxonomy_tags)
+
+    for invalid in invalid_taxonomy_tags:
+        errors.append(
+            f"samples[{invalid['sample_index']}].taxonomy_tags unsupported: {invalid['tag']}"
+        )
+
+    missing_to_minimum = {
+        tag: max(0, spec["minimum"] - coverage[tag])
+        for tag, spec in TAXONOMY_SAMPLE_REQUIREMENTS.items()
+    }
+    field_minimum_met = all(value == 0 for value in missing_to_minimum.values())
+    can_run_opencv_eval = (
+        not errors
+        and image_kinds["real_or_controlled"] > 0
+        and not missing_image_refs
+        and placeholder_count == 0
+    )
+    status = _manifest_template_status(
+        errors=errors,
+        image_kinds=image_kinds,
+        missing_image_refs=missing_image_refs,
+        placeholder_count=placeholder_count,
+        field_minimum_met=field_minimum_met,
+    )
+    return {
+        "schema": TEMPLATE_CHECK_SCHEMA,
+        "manifest_schema": schema,
+        "manifest_path": str(manifest_file),
+        "image_root": str(image_root),
+        "status": status,
+        "evidence_type": "blocked_with_root_cause" if status.startswith("blocked") else "software_guard",
+        "sample_count": len(samples),
+        "can_run_opencv_eval": can_run_opencv_eval,
+        "field_eval_ready": bool(can_run_opencv_eval and field_minimum_met),
+        "image_kinds": image_kinds,
+        "template_placeholders": placeholder_count,
+        "missing_image_refs": missing_image_refs,
+        "sample_coverage": {
+            "taxonomy_version": TAXONOMY_VERSION,
+            "counts": coverage,
+            "minimums": {tag: spec["minimum"] for tag, spec in TAXONOMY_SAMPLE_REQUIREMENTS.items()},
+            "missing_to_field_minimum": missing_to_minimum,
+            "field_minimum_met": field_minimum_met,
+        },
+        "errors": errors,
+        "warnings": warnings,
+        "next_required_evidence": _manifest_template_next_required_evidence(
+            status,
+            missing_to_minimum,
+        ),
+        "rerun_commands": {
+            "check_template": (
+                "PYTHONPATH=onboard/src/ros2_trashbot_vision "
+                f"python3 -m ros2_trashbot_vision.elevator_opencv_baseline --check-template {manifest_file}"
+            ),
+            "opencv_eval_after_real_images": (
+                "PYTHONPATH=onboard/src/ros2_trashbot_vision "
+                f"python3 -m ros2_trashbot_vision.elevator_opencv_baseline {manifest_file}"
+            ),
+        },
+        "not_proven": list(NOT_PROVEN),
+        "acceptance_boundary": (
+            "checker only validates manifest readiness; it does not prove real elevator recognition, "
+            "real floor OCR, safe exit, or cross-floor delivery"
+        ),
+    }
+
+
+def _check_manifest_template_sample_fields(
+    index: int,
+    sample: Dict[str, Any],
+    errors: List[str],
+) -> None:
+    # expected_floor 允许空字符串，但字段必须存在，方便采集端区分未标注和漏字段。
+    required_fields = elevator_taxonomy()["manifest_expected_fields"]
+    for field in required_fields:
+        if field not in sample:
+            errors.append(f"samples[{index}] missing required field: {field}")
+    _check_expected_label(index, sample, "expected_door_state", {DOOR_OPEN, DOOR_CLOSED, DOOR_UNCERTAIN}, errors)
+    _check_expected_label(index, sample, "expected_inside_outside", {INSIDE, OUTSIDE, LOCATION_UNCERTAIN}, errors)
+    _check_expected_label(index, sample, "expected_safe_to_exit", {SAFE_TO_EXIT, UNSAFE_TO_EXIT, SAFE_UNCERTAIN}, errors)
+
+
+def _check_expected_label(
+    index: int,
+    sample: Dict[str, Any],
+    field: str,
+    allowed: set,
+    errors: List[str],
+) -> None:
+    value = sample.get(field)
+    if value not in allowed:
+        errors.append(f"samples[{index}].{field} must be one of {sorted(allowed)}")
+
+
+def _check_manifest_template_image_ref(
+    index: int,
+    sample: Dict[str, Any],
+    image_root: Path,
+    image_kinds: Dict[str, int],
+    missing_image_refs: List[Dict[str, Any]],
+) -> int:
+    image_value = sample.get("image") or sample.get("image_path") or sample.get("raw_image")
+    if not isinstance(image_value, str) or not image_value.strip():
+        image_kinds["missing_or_invalid"] += 1
+        missing_image_refs.append(_manifest_missing_ref(index, "", "", "image_ref_missing"))
+        return 0
+    resolved = _resolve_path(image_value, image_root)
+    if _looks_like_placeholder(image_value) or _looks_like_placeholder(str(image_root)):
+        image_kinds["missing_or_invalid"] += 1
+        missing_image_refs.append(_manifest_missing_ref(index, image_value, resolved, "template_placeholder"))
+        return 1
+    if not resolved.exists():
+        image_kinds["missing_or_invalid"] += 1
+        missing_image_refs.append(_manifest_missing_ref(index, image_value, resolved, "file_not_found"))
+        return 0
+    kind = _image_kind(resolved)
+    if kind == "fixture":
+        image_kinds["fixture"] += 1
+    elif resolved.suffix.lower() in REAL_OR_CONTROLLED_IMAGE_EXTENSIONS:
+        image_kinds["real_or_controlled"] += 1
+    else:
+        image_kinds["missing_or_invalid"] += 1
+        missing_image_refs.append(_manifest_missing_ref(index, image_value, resolved, "unsupported_image_extension"))
+    return 0
+
+
+def _check_manifest_template_tags(
+    index: int,
+    sample: Dict[str, Any],
+    coverage: Dict[str, int],
+    invalid_taxonomy_tags: List[Dict[str, Any]],
+) -> None:
+    explicit = sample.get("taxonomy_tags", [])
+    if not isinstance(explicit, list):
+        invalid_taxonomy_tags.append({"sample_index": index, "tag": "taxonomy_tags_not_list"})
+        return
+    for tag in explicit:
+        if str(tag) not in TAXONOMY_SAMPLE_REQUIREMENTS:
+            invalid_taxonomy_tags.append({"sample_index": index, "tag": str(tag)})
+    # 显式 tag 和 expected 字段同时计入，减少采集端漏填 tag 导致的误报。
+    for tag in _sample_tags(sample):
+        coverage[tag] += 1
+
+
+def _manifest_missing_ref(index: int, original: Any, resolved: Any, reason: str) -> Dict[str, Any]:
+    return {
+        "sample_index": index,
+        "image": str(original),
+        "resolved_path": str(resolved),
+        "reason": reason,
+    }
+
+
+def _looks_like_placeholder(value: str) -> bool:
+    lowered = value.lower()
+    return any(marker in lowered for marker in PLACEHOLDER_MARKERS)
+
+
+def _manifest_template_status(
+    *,
+    errors: Sequence[str],
+    image_kinds: Dict[str, int],
+    missing_image_refs: Sequence[Dict[str, Any]],
+    placeholder_count: int,
+    field_minimum_met: bool,
+) -> str:
+    if errors:
+        return "invalid_manifest_template"
+    if image_kinds["real_or_controlled"] == 0 and image_kinds["fixture"] > 0:
+        return "blocked_fixture_only_not_o2_material"
+    if image_kinds["real_or_controlled"] == 0:
+        return "blocked_missing_real_or_controlled_images"
+    if missing_image_refs or placeholder_count:
+        return "needs_image_file_backfill"
+    if not field_minimum_met:
+        return "ready_for_eval_needs_more_labeled_samples"
+    return "ready_for_opencv_eval"
+
+
+def _manifest_template_next_required_evidence(
+    status: str,
+    missing_to_minimum: Dict[str, int],
+) -> List[str]:
+    if status == "invalid_manifest_template":
+        return ["fix manifest schema, required fields, labels, and taxonomy_tags before collection"]
+    if status == "blocked_fixture_only_not_o2_material":
+        return ["replace PGM fixture files with real or controlled JPEG/PNG/WebP elevator images"]
+    if status == "blocked_missing_real_or_controlled_images":
+        return ["collect real or controlled elevator images and replace template image_dir/image refs"]
+    if status == "needs_image_file_backfill":
+        return ["backfill all referenced image files under the same manifest image_dir"]
+    missing = [f"{tag}:{count}" for tag, count in sorted(missing_to_minimum.items()) if count > 0]
+    if missing:
+        return [f"collect more labeled samples to meet field minimums: {', '.join(missing)}"]
+    return ["run OpenCV eval and attach output artifact with not_proven boundaries"]
 
 
 def _predict_manifest_sample(sample: Dict[str, Any], image_root: Path) -> Dict[str, Any]:
@@ -712,8 +975,14 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Run offline elevator OpenCV baseline evaluation.")
     parser.add_argument("manifest", help="JSON manifest with image_dir and samples.")
     parser.add_argument("--taxonomy", action="store_true", help="Print taxonomy instead of running eval.")
+    parser.add_argument("--check-template", action="store_true", help="Check real/control image manifest readiness.")
     args = parser.parse_args(list(argv) if argv is not None else None)
-    output = elevator_taxonomy() if args.taxonomy else evaluate_manifest(args.manifest)
+    if args.taxonomy:
+        output = elevator_taxonomy()
+    elif args.check_template:
+        output = check_manifest_template(args.manifest)
+    else:
+        output = evaluate_manifest(args.manifest)
     print(json.dumps(output, ensure_ascii=False, indent=2, sort_keys=True, default=_json_default))
     return 1 if output.get("errors") else 0
 

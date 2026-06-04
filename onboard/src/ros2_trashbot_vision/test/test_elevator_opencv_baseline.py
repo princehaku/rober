@@ -19,6 +19,7 @@ from ros2_trashbot_vision.elevator_opencv_baseline import (  # noqa: E402
     SCHEMA,
     UNSAFE_TO_EXIT,
     analyze_grayscale_matrix,
+    check_manifest_template,
     elevator_taxonomy,
     evaluate_manifest,
 )
@@ -157,6 +158,92 @@ class ElevatorOpenCvBaselineTest(unittest.TestCase):
         self.assertFalse(summary["acceptance_gates"]["field_eval"]["pass"])
         self.assertIn("real_floor_ocr", summary["not_proven"])
         self.assertEqual(json.loads(cli.stdout)["evaluated_count"], 3)
+
+    def test_template_checker_blocks_placeholder_images_without_o2_eval_claim(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            manifest_path = root / "manifest_template.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_image_manifest.v1",
+                        "image_dir": "replace-with-real-or-controlled-elevator-images",
+                        "samples": [
+                            {
+                                "sample_id": "door_open_positive_001",
+                                "image": "door_open_positive/replace-with-frame001.jpg",
+                                "target_floor": "3",
+                                "expected_floor": "3",
+                                "expected_door_state": "open",
+                                "expected_inside_outside": "inside",
+                                "expected_safe_to_exit": "safe",
+                                "taxonomy_tags": ["door_open_positive", "floor_target_positive"],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            summary = check_manifest_template(str(manifest_path))
+            cli = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "ros2_trashbot_vision.elevator_opencv_baseline",
+                    "--check-template",
+                    str(manifest_path),
+                ],
+                cwd=str(PACKAGE_ROOT),
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(cli.returncode, 0, cli.stderr)
+        self.assertEqual(summary["status"], "blocked_missing_real_or_controlled_images")
+        self.assertEqual(summary["evidence_type"], "blocked_with_root_cause")
+        self.assertFalse(summary["can_run_opencv_eval"])
+        self.assertFalse(summary["field_eval_ready"])
+        self.assertEqual(summary["template_placeholders"], 1)
+        self.assertEqual(summary["image_kinds"]["real_or_controlled"], 0)
+        self.assertIn("real_camera_elevator_recognition", summary["not_proven"])
+        self.assertEqual(json.loads(cli.stdout)["status"], "blocked_missing_real_or_controlled_images")
+
+    def test_template_checker_rejects_fixture_only_manifest_as_o2_material(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _write_pgm(root / "fixture.pgm", _fixture_matrix(panel=55, gap=180, floor=210, exit_path=170))
+            manifest_path = root / "fixture_manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_image_manifest.v1",
+                        "image_dir": str(root),
+                        "samples": [
+                            {
+                                "sample_id": "fixture_only",
+                                "image": "fixture.pgm",
+                                "target_floor": "3",
+                                "expected_floor": "3",
+                                "expected_door_state": "open",
+                                "expected_inside_outside": "inside",
+                                "expected_safe_to_exit": "safe",
+                                "taxonomy_tags": ["door_open_positive"],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            summary = check_manifest_template(str(manifest_path))
+
+        self.assertEqual(summary["status"], "blocked_fixture_only_not_o2_material")
+        self.assertFalse(summary["can_run_opencv_eval"])
+        self.assertEqual(summary["image_kinds"]["fixture"], 1)
+        self.assertEqual(summary["image_kinds"]["real_or_controlled"], 0)
 
 
 def _fixture_matrix(*, panel: int, gap: int, floor: int, exit_path: int):

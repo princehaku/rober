@@ -104,6 +104,49 @@ python3 -m ros2_trashbot_vision.elevator_opencv_baseline \
 该 fixture 覆盖门开安全、门关外部、低光不可判定三类 software guard。它只用于
 回归测试和工作站 evidence 索引，不得写成真实电梯现场完成。
 
+## Real / Controlled Manifest Checker
+
+2026-06-04 O2 runtime material 继续推进时，仓库搜索没有找到真实或受控电梯图片
+manifest；当前只能留下采集模板和 blocker，不能把 fixture eval 记为 O2 涨分。
+
+采集模板：
+
+```bash
+PYTHONPATH=onboard/src/ros2_trashbot_vision \
+python3 -m ros2_trashbot_vision.elevator_opencv_baseline --check-template \
+  pc-tools/evidence/templates/elevator_image_manifest_collection_template.json
+```
+
+checker 输出 `trashbot.elevator_image_manifest_template_check.v1`，只检查 schema、必填
+字段、taxonomy tag 覆盖、图片引用是否仍是 placeholder、是否只有 PGM fixture、
+真实/受控 JPEG/PNG/WebP 是否存在。它不读取 ROS graph、不移动机器人、不证明真实
+电梯识别，也不证明楼层 OCR 或安全驶出。
+
+状态解释：
+
+- `blocked_missing_real_or_controlled_images`：模板或 manifest 没有真实/受控图片，不能跑
+  O2 field eval。
+- `blocked_fixture_only_not_o2_material`：只有 `.pgm` fixture；只能作为 software guard。
+- `needs_image_file_backfill`：manifest 有真实图片字段，但引用文件缺失。
+- `ready_for_eval_needs_more_labeled_samples`：可跑 eval，但 taxonomy 最低样本数不足，不能
+  当 field minimum 通过。
+- `ready_for_opencv_eval`：图片引用和 taxonomy 最低样本数满足，可继续运行 OpenCV eval；
+  eval 结果仍必须保留 `not_proven` 边界。
+
+真实或受控图片补齐后，才允许运行：
+
+```bash
+PYTHONPATH=onboard/src/ros2_trashbot_vision \
+python3 -m ros2_trashbot_vision.elevator_opencv_baseline \
+  <real_or_controlled_manifest.json>
+```
+
+本轮 blocker 记录在：
+
+```text
+pc-tools/evidence/fixtures/elevator_real_image_manifest_blocker/blocked_missing_manifest.json
+```
+
 建议真实采集最小样本要求：
 
 - 门开正例不少于 20 张。

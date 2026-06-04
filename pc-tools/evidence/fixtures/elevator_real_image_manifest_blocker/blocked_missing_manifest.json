@@ -1,0 +1,39 @@
+{
+  "schema": "trashbot.elevator_real_image_manifest_blocker.v1",
+  "generated_at": "2026-06-04T19:20:00+08:00",
+  "objective": "O2",
+  "owner": "robot-algorithm-engineer",
+  "status": "blocked_missing_real_or_controlled_elevator_image_manifest",
+  "evidence_type": "blocked_with_root_cause",
+  "root_cause": "Repository search found only elevator fixture PGM images and fixture manifest; no real or controlled elevator image manifest was available for OpenCV eval.",
+  "not_accepted_as_o2_score_material": [
+    "pc-tools/evidence/fixtures/elevator_opencv_baseline_offline_eval/manifest.json",
+    "pc-tools/evidence/fixtures/elevator_opencv_baseline_offline_eval/*.pgm"
+  ],
+  "search_commands": [
+    {
+      "command": "find . -path './.git' -prune -o -type f \\( -iname '*manifest*.json' -o -iname '*manifest*.yaml' -o -iname '*manifest*.yml' -o -iname '*elevator*' -o -iname '*lift*' -o -iname '*floor*' \\) -print | sort",
+      "result_summary": "Only fixture elevator manifest plus docs/code references were found; no real/control elevator image manifest."
+    },
+    {
+      "command": "find . -path './.git' -prune -o -path './build' -prune -o -path './install' -prune -o -path './log' -prune -o -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.pgm' -o -iname '*.webp' -o -iname '*.bmp' \\) -print | sort",
+      "result_summary": "Elevator-related image candidates were only PGM fixtures; other images were vendor/UI screenshots and are not O2 elevator eval material."
+    }
+  ],
+  "collection_template": "pc-tools/evidence/templates/elevator_image_manifest_collection_template.json",
+  "checker_command": "PYTHONPATH=onboard/src/ros2_trashbot_vision python3 -m ros2_trashbot_vision.elevator_opencv_baseline --check-template pc-tools/evidence/templates/elevator_image_manifest_collection_template.json",
+  "eval_command_after_collection": "PYTHONPATH=onboard/src/ros2_trashbot_vision python3 -m ros2_trashbot_vision.elevator_opencv_baseline <real_or_controlled_manifest.json>",
+  "next_required_evidence": [
+    "Replace template image_dir and image refs with real or controlled elevator JPEG/PNG/WebP files.",
+    "Collect at least the taxonomy minimum counts for door open/closed, inside/outside, floor target, safe/unsafe exit, and uncertain/bad-light classes.",
+    "Run the checker before eval, then run OpenCV eval only after image refs resolve."
+  ],
+  "not_proven": [
+    "real_camera_elevator_recognition",
+    "real_floor_ocr",
+    "real_target_floor_confirmation",
+    "real_safe_exit",
+    "real_cross_floor_delivery",
+    "delivery_success"
+  ]
+}
