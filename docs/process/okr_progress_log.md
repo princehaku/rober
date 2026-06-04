@@ -8,6 +8,118 @@
 
 ## 2026-06-04 系列
 
+### 2026-06-04 17-18｜Runtime Material Epic｜`upper_http_405` 解除，O8 完成首轮治理闭环
+
+本轮 Epic 接续 16:05 OKR rewrite 的打回口径，目标是把 O2/O3/O7/O1 从 `software_guard`
+推进到 `robot_runtime_material`、`field_hil_material` 或明确 `blocked_with_root_cause`。用户价值是
+让 CEO 和下一轮 owner 看清哪些真实入口已经接上上位机，哪些仍然只是软件护栏，哪些被材料或现场安全
+前提阻塞，避免继续用 fixture、mock、runbook 或状态面制造虚假进度。
+
+本轮 owner 证据：
+
+- Robot Software：SSH 到 `op-z3-b6.home` 可达，8787 live，ROS2 Humble 和 trashbot packages
+  已安装，`learn.launch.py` / `autonomous.launch.py` 可 parse；但 ROS graph 只有
+  `/parameter_events`、`/rosout`，`/scan`、`/lidar/raw_packet`、`/map`、`/amcl_pose`、TF、
+  Nav2 lifecycle 和 map/localize artifact 均缺失。证据类型为 `blocked_with_root_cause`
+  + supporting `robot_runtime_material`。
+- Robot Software operator report：本地 `POST/GET /api/operator/report` patch 单测通过，并已部署到
+  live upper 8787；部署前 route 为 HTTP 405，部署后真实 8787 POST/GET 均为 HTTP 200 且
+  `safe_to_control=false`。证据类型为 `robot_runtime_material` + `software_guard`。
+- Full-Stack：PC 同源代理可访问真实 8787 status 和 map/list，测试/build/lint 通过；operator report
+  复测已通过 PC 同源代理写入真实 8787，HTTP 200、`accepted_by_workstation=true`、
+  `upper_request.ok=true`、`failure_reason=none`。证据类型为 `robot_runtime_material` +
+  `software_guard`。
+- Algorithm：本地和上位机均无真实/受控 elevator image manifest；fixture eval 可复跑但
+  `real_or_controlled=0`、`field_eval.pass=false`。证据类型为 `blocked_with_root_cause`
+  + `software_guard`。
+- Hardware：`/dev/ttyS5 @115200` 非运动 `T=130 -> T=1001` 3/3 新鲜观察，`safe_to_control=false`，
+  未执行 forward/back/left/right/stop pulse。证据类型为 `robot_runtime_material` + `software_guard`，
+  不产生 `field_hil_material`。
+
+本轮 OKR 调整：
+
+| Objective | 调整 | 原因 |
+| --- | --- | --- |
+| O8：Epic 交付节奏与证据治理 | 约 35% -> 约 40% | 首轮跨 owner Epic 完成 owner notes、evidence type gate、blocker scan、owner health、`tech-done.md`、`side2side_check.md`、`final.md` 和 OKR/log 更新；这是治理进展，不证明产品能力。 |
+| O7：PC 运营调试平台 | 约 88% -> 约 89% | 真实 PC proxy 读取 8787 status/map/list；operator report route 已部署到真实 8787 且 PC 同源代理写入/回放成功，但仍不写成 PC WASD、HIL 或现场 operator workflow 完成。 |
+| O1：硬件协议可信底盘 | 保持约 95% | 非运动 `T=1001` runtime material 有效，但没有 `field_hil_material`、低速 pulse、stop/post-status、ROS `/odom`/`/imu/data`/`/battery` 或 `safe_to_control=true`，因此材料增强但不涨。 |
+| O3：建图、定位、Nav2 与固定路线 | 保持约 73% | 上位机 ROS2 环境存在，但 application nodes、fresh `/scan`、`/map`、AMCL、TF、Nav2 lifecycle 和 artifact 缺失。 |
+| O2：送垃圾任务 + 电梯 assisted delivery | 保持约 72% | 缺真实/受控电梯图片 manifest；fixture eval 不能支撑 field eval 或真实电梯识别。 |
+| O5/O6 | 保持 O5 约 84%、O6 约 82% | 本轮不触达 production live material，继续执行 16:05 打回和支线口径。 |
+
+本轮进入历史进展的 KR：
+
+- `KR-O8-Epic-Cadence`：首轮有效 Epic 六文档链完成，证据来源为
+  `sprints/2026.06.04_17-18_runtime-material-epic/tech-done.md`、`side2side_check.md`、`final.md`。
+- `KR-O8-Evidence-Type-Gate`：owner evidence 均被明确标注为 `software_guard`、`robot_runtime_material`、
+  `field_hil_material` 或 `blocked_with_root_cause`。
+- `KR-O8-Owner-Health`：明确 Software 缺 runtime nodes、Algorithm 缺 field manifest、Hardware
+  缺 HIL 安全准入，Full-Stack 已完成 operator report PC 同源复测但缺现场控车材料。
+- `KR-O7-Operator-Report-Route`：旧 `upper_http_405` blocker 已解除；真实上位机 8787 POST/GET
+  `/api/operator/report` 返回 HTTP 200，PC 同源代理 POST 返回 HTTP 200 并可回放同一
+  `evidence_ref`。该 KR 只进入 O7 入口进展，不进入现场 operator workflow 完成归档，因为 PC WASD、
+  stop/急停、ACK/`T=1001` 同场、长期 artifact retention 和 production archive ingestion 仍缺。
+
+本轮没有 O1/O2/O3 产品 KR 完成归档；O1 只有非运动 runtime material 增强，不进入 HIL 完成归档。剩余风险：若下一轮不直接补 ROS2 runtime、受控电梯图片 manifest
+和 stop-first HIL，本轮发现的 blocker 会继续消费 O2/O3/O1；O8/O7 的上涨不得被解释为真实送达、
+真实电梯识别、真实建图定位、真实 PC 控车或 HIL 完成。
+
+### 2026-06-04 16-05｜OKR six-sprint strategy rewrite｜新增 O8，打回 O5/O6，强制下一轮 Epic
+
+本轮 Product/OKR micro sprint 复盘最近 6 个迭代：
+`08-09_o5-o6-upper-ssh-preflight`、`09-10_o5-o6-upper-ssh-live-material`、
+`10-11_agent-proactive-kr-reward-rule`、`10-11_o5-o6-upper-ssh-installed-probe`、
+`11-12_okr-strategy-reset-real-control-slam-elevator` 和
+`12-13_real-control-slam-elevator-field-epic`。用户价值是把 sprint 事实转成 CEO 可判断的
+OKR 方向：最近 6 个迭代里，O5/O6 连续 Micro 消费 SSH collector、installed probe、
+PC/cloud URL 和 remote token blocker，却没有 accepted live artifact；11-12 Epic 纠偏正确，
+12-13 Epic 执行也正确，但只产生 software guard，没有真实 runtime、HIL、现场图片、地图或控车材料。
+
+本轮 OKR 方向判断：继续 rober 北极星，但调整推进方式。O2/O3 继续作为产品主线，O7/O1 是现场采证入口，
+O5/O6 暂降为支线，新增 O8「Epic 交付节奏与证据治理」约束连续 Micro、重复 blocker、evidence type
+和 owner 健康检查。O8 是组织执行 Objective，不新增产品能力，不允许用流程合规给 O1-O7 涨分。
+
+本轮打回和新增：
+
+| Objective | 原口径 | 新口径 | 原因 |
+| --- | --- | --- | --- |
+| O5：云中转控制面产品化 | 约 96% | 约 84% | 最近 3 个 O5/O6 Micro 只产出 preflight、fail_closed live artifact 和 installed probe，同一 PC/cloud URL 与 remote bearer token blocker 未解，没有真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser 或 robot command/status/ACK。 |
+| O6：云端核心后端 | 约 96% | 约 82% | archive/query/annotation/inference 软件合同较多，但缺真实 DB/queue、OSS、推理 runtime 和上车数据；O2/O3/O7 未产出真实材料前，O6 无高质量数据可存档、推理或查询回放。 |
+| O8：Epic 交付节奏与证据治理 | 无 | 新增，约 35% | 最近 6 个迭代暴露连续 Micro、重复 blocker、software proof 过多和真实材料不足；需要把 Epic 节奏、evidence type、blocker 升级和 owner health 写进 OKR。 |
+
+本轮保留 O1/O2/O3/O7 当前比例：O1 约 95%、O2 约 72%、O3 约 73%、O7 约 88%。原因是
+12-13 Epic 确实完成了 O2/O3/O7/O1 的 software guard，但没有 `robot_runtime_material`、
+`field_hil_material`、真实图片、真实地图、真实 PC 控车、HIL 或 `safe_to_control=true`，因此不涨分。
+
+本轮新增/重写的当前 KR：
+
+- `KR-O8-Epic-Cadence`：下一轮实现类 sprint 必须是跨 owner Epic，至少覆盖 O2/O3/O7/O1 中两个 Objective，并产出完整六文档链。
+- `KR-O8-Evidence-Type-Gate`：每个涨分 KR 必须标注 evidence type：`software_guard`、`robot_runtime_material`、`field_hil_material`、`production_live_material` 或 `user_acceptance_material`。
+- `KR-O8-Repeated-Blocker-Stop`：最近 2 轮如果出现同一 blocker root cause，第 3 轮必须切 Objective 或升级 CEO 决策；O5/O6 的 URL/token/cloud 配置 blocker 已触发预警。
+- `KR-O8-Owner-Health`：任一 L2 owner 连续两个 Micro 只产出入口、runbook、fixture 或 fail-closed artifact，下一轮必须转 Epic 真实材料或写明 blocker 升级。
+- `KR-O5-Blocker-Escalation`：若 `pc_base_url_not_configured_for_upper_ssh`、`cloud_base_url_not_configured`、`remote_bearer_token_absent` 再出现一次，必须升级 CEO 决策或暂停 O5 sprint。
+- `KR-O6-Field-Material-Ingestion`：O6 后续必须 ingest 至少一组来自 O2/O3/O7/O1 的真实 runtime/HIL/field material 后才有资格涨分。
+
+下一轮必须推进的 Epic KR 和 owner：
+
+| KR | Owner | 验收命令/材料 | 证据边界 |
+| --- | --- | --- | --- |
+| KR-O3/O7-Radar-Map-Localize-Runtime | Robot Software Engineer + User Touchpoint Full-Stack Engineer | 真实 8787 `/api/radar/start|stop`、`/scan` once/hz、`/api/map/start|save|list`、map artifact、AMCL pose 或明确 fail-closed blocker、PC operator report 和同一 `evidence_ref` | `robot_runtime_material`；缺 ROS2 runtime 或 command hook 时不得涨分。 |
+| KR-O2-Real-Image-Manifest-Eval | Robot Algorithm Engineer | 真实或受控电梯图片 manifest、OpenCV offline eval artifact、样本清单、混淆项、阈值、不可判定策略和 phone-safe operator summary | `robot_runtime_material` 或受控 field 前置材料；fixture 不涨分。 |
+| KR-O1/O7-Stop-First-HIL | Hardware Infra Engineer + User Touchpoint Full-Stack Engineer | 现场安全前提、manual response、stop response、post-status、`T=1001` 同场边界、operator report、视频/现场记录 | `field_hil_material`；安全条件不满足时升级 blocker，不继续 Micro。 |
+| KR-O8-Epic-Governance | Product Manager / OKR Owner | 下一轮 `tech-plan.md` 包含 OKR 最低优先级核对、最近 2 轮 blocker scan、evidence type gate、owner health 检查；`final.md` 复核理由 | 组织治理证据，不证明产品能力。 |
+
+员工状态判断：Full-stack 近期执行力强但 O5/O6 Micro 偏多，下一轮必须转 O7 真实 runtime；Robot Software
+已把 upper API software guard 做实，下一轮必须接 ROS2 runtime；Robot Algorithm 已完成 fixture baseline，
+下一轮必须接真实/受控图片和 map artifact；Hardware Infra 已把 HIL 边界写清，下一轮必须按现场条件做
+stop-first pulse 或升级 blocker；Product/OKR Owner 必须持续检查 Micro/Epic 比例、重复 blocker 和
+evidence type。
+
+历史记录位置：本节、`OKR.md` 第 4/4.1/5/6 节和
+`sprints/2026.06.04_16-05_okr-six-sprint-strategy-rewrite/tech-done.md`。剩余风险：本轮是文档与 OKR
+口径调整，不产生真实 runtime/HIL/现场材料；O5/O6 打回是基于最近 6 个迭代的证据边界收紧，不代表相关
+软件入口无价值，但后续不得抢占 O2/O3/O7/O1 的真实材料 Epic。
+
 ### 2026-06-04 12-13｜Real control / SLAM / Elevator field Epic｜软件护栏完成，不涨分
 
 本轮 Epic 按 11-12 OKR reset 后的最低 Objective O2/O3 继续推进，并同步推进 O7/O1 作为现场采证入口和安全底座。用户价值是把“真实控车、雷达开关、建图定位、电梯识别”从口头下一步变成可执行的 PC/8787/算法/硬件软件护栏，但不把这些护栏包装成真实 runtime、HIL 或现场送达能力。

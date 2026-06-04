@@ -38,6 +38,7 @@ DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "runtime/map_lifecycle_latest.json"
 DEFAULT_LOCALIZATION_ARTIFACT_PATH = "runtime/localization_reset_latest.json"
 DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "runtime/nav2_lifecycle_latest.json"
 DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH = "runtime/elevator_status_latest.json"
+DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH = "runtime/operator_report_latest.json"
 DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS = 15 * 60 * 1000
 MAX_FEEDBACK_READ_TIMEOUT_S = 2.0
 MAX_FEEDBACK_READ_WINDOW_S = 5.0
@@ -51,6 +52,37 @@ BLOCKED_BASE_FEEDBACK_COMMANDS = [
     "T=131",
     "cmd_vel",
     "/api/base/manual",
+]
+OPERATOR_REPORT_FIELDS = (
+    "operator_present",
+    "evidence_ref",
+    "physical_clearance_confirmed",
+    "emergency_stop_ready",
+    "observed_motion",
+    "observed_stop",
+    "operator_notes",
+    "reported_at",
+)
+OPERATOR_REPORT_PREFLIGHT_BOOL_FIELDS = (
+    "operator_present",
+    "physical_clearance_confirmed",
+    "emergency_stop_ready",
+)
+OPERATOR_REPORT_REVIEW_BOOL_FIELDS = (
+    "observed_motion",
+    "observed_stop",
+)
+OPERATOR_REPORT_REQUIRED_REVIEW_TEXT_FIELDS = ("operator_notes", "reported_at")
+OPERATOR_REPORT_DOES_NOT_REPLACE = [
+    "/api/base/stop",
+    "/api/base/status",
+    "/api/base/feedback-request",
+    "/api/base/feedback-samples",
+    "T=1001",
+    "robot ACK",
+    "HIL",
+    "ROS /odom /imu/data /battery",
+    "field video or现场记录",
 ]
 ROUTE_PATHS = {
     "camera_health": "/api/camera/health",
@@ -74,6 +106,7 @@ ROUTE_PATHS = {
     "nav2_start": "/api/nav2/start",
     "nav2_stop": "/api/nav2/stop",
     "elevator_status": "/api/elevator/status",
+    "operator_report": "/api/operator/report",
     "base_status": "/api/base/status",
     "base_feedback_request": "/api/base/feedback-request",
     "base_feedback_samples": "/api/base/feedback-samples",
@@ -344,6 +377,100 @@ def elevator_status_artifact_info(path: str) -> dict[str, Any]:
             "manual handoff reason",
         ],
     }
+
+
+def operator_report_artifact_info(path: str) -> dict[str, Any]:
+    """operator report 是人工现场材料入口，不能被下游当成控制或 HIL 结果。"""
+    return {
+        "path": path,
+        "configured_by": "ROBER_OPERATOR_REPORT_ARTIFACT_PATH or --operator-report-artifact-path",
+        "format": "json",
+        "schema": f"{SCHEMA}.operator_report_result",
+    }
+
+
+def operator_report_guard_flags() -> dict[str, Any]:
+    """operator report 只收材料；这些固定假值防止 PC 把报告误解成 ACK 或可控状态。"""
+    return {
+        "operator_report_material_only": True,
+        "software_guard": True,
+        "not_proven": True,
+        "evidence_type": "software_guard",
+        "report_replaces_stop_status_ack_or_hil": False,
+        "field_hil_material": False,
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "uses_base_uart": False,
+        "opens_serial": False,
+        "starts_ros2": False,
+        "robot_control_executed": False,
+        "hil_pass": False,
+        **proof_flags(),
+    }
+
+
+def coerce_report_bool(value: Any) -> bool | None:
+    """PC 表单和 SSH 手写 JSON 都可能传字符串布尔值，归一化时宁可保守失败。"""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "y", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "n", "off"}:
+            return False
+    return None
+
+
+def normalize_operator_report(report: dict[str, Any] | None) -> tuple[dict[str, Any] | None, str]:
+    """把人工报告拆成执行前安全字段和执行后观察字段，避免用事后材料放行运动。"""
+    if report is None:
+        return None, "missing"
+    normalized: dict[str, Any] = {}
+    evidence_ref = report.get("evidence_ref")
+    normalized["evidence_ref"] = str(evidence_ref).strip() if evidence_ref else None
+    preflight_missing_or_invalid: list[str] = []
+    review_missing_or_invalid: list[str] = []
+    unsafe_fields: list[str] = []
+    for field in OPERATOR_REPORT_PREFLIGHT_BOOL_FIELDS:
+        value = coerce_report_bool(report.get(field))
+        normalized[field] = value
+        if value is None:
+            preflight_missing_or_invalid.append(field)
+        elif value is False:
+            unsafe_fields.append(field)
+    for field in OPERATOR_REPORT_REVIEW_BOOL_FIELDS:
+        value = coerce_report_bool(report.get(field))
+        normalized[field] = value
+        if value is None:
+            review_missing_or_invalid.append(field)
+    # PC 侧当前发送 note；runner 历史字段是 operator_notes，这里兼容两种入口。
+    notes = report.get("operator_notes", report.get("note"))
+    normalized["operator_notes"] = "" if notes is None else str(notes)
+    normalized["note"] = normalized["operator_notes"]
+    reported_at = report.get("reported_at")
+    normalized["reported_at"] = str(reported_at).strip() if reported_at else None
+    for field in OPERATOR_REPORT_REQUIRED_REVIEW_TEXT_FIELDS:
+        value = normalized.get(field)
+        if not isinstance(value, str) or not value.strip():
+            review_missing_or_invalid.append(field)
+    status = "ready_for_execution"
+    if preflight_missing_or_invalid or unsafe_fields:
+        status = "unsafe_or_incomplete"
+    elif not review_missing_or_invalid and all(normalized.get(field) is True for field in OPERATOR_REPORT_REVIEW_BOOL_FIELDS):
+        status = "ready_for_review"
+    normalized["normalization"] = {
+        "source_fields": list(OPERATOR_REPORT_FIELDS),
+        "preflight_required_fields": list(OPERATOR_REPORT_PREFLIGHT_BOOL_FIELDS),
+        "review_required_fields": list(OPERATOR_REPORT_REVIEW_BOOL_FIELDS) + list(OPERATOR_REPORT_REQUIRED_REVIEW_TEXT_FIELDS),
+        "missing_or_invalid_fields": preflight_missing_or_invalid + review_missing_or_invalid,
+        "preflight_missing_or_invalid_fields": preflight_missing_or_invalid,
+        "review_missing_or_invalid_fields": review_missing_or_invalid,
+        "unsafe_fields": unsafe_fields,
+    }
+    return normalized, status
 
 
 def command_config_info(env_name: str, command: str | None) -> dict[str, Any]:
@@ -1125,6 +1252,96 @@ def read_feedback_samples_latest_artifact(path: str) -> tuple[int, dict[str, Any
     return 200, build_latest_readback_payload(path, artifact, parsed)
 
 
+def build_operator_report_payload(path: str, report: dict[str, Any]) -> dict[str, Any]:
+    """构造并持久化 operator report；写文件是唯一副作用，不触碰 ROS2 或串口。"""
+    normalized_report, report_status = normalize_operator_report(report)
+    report_note = ""
+    if isinstance(normalized_report, dict):
+        report_note = str(normalized_report.get("operator_notes") or "")[:120]
+    payload: dict[str, Any] = {
+        "schema": f"{SCHEMA}.operator_report_result",
+        "generated_at_ms": now_ms(),
+        "endpoint": ROUTE_PATHS["operator_report"],
+        "request": {"method": "POST", "endpoint": ROUTE_PATHS["operator_report"]},
+        "operator_report": normalized_report,
+        "operator_report_status": report_status,
+        "command_payload_summary": {
+            "evidence_ref": normalized_report.get("evidence_ref") if isinstance(normalized_report, dict) else None,
+            "report_note": report_note,
+        },
+        "artifact": {
+            **operator_report_artifact_info(path),
+            "written_at_ms": now_ms(),
+            "write": {"ok": True, "method": "atomic_replace"},
+        },
+        "does_not_replace": list(OPERATOR_REPORT_DOES_NOT_REPLACE),
+        "boundary": "operator_report_is_human_site_material_only_not_ack_t1001_hil_stop_status_or_motion",
+        **operator_report_guard_flags(),
+    }
+    write_result = atomic_write_json_artifact(path, payload)
+    payload["artifact"]["write"] = write_result
+    return payload
+
+
+def build_operator_report_latest_payload(
+    artifact_status: dict[str, Any],
+    latest_result: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """GET readback 只回放 latest report 文件，不能把人工材料升级成 runtime proof。"""
+    return {
+        "schema": f"{SCHEMA}.operator_report_latest_result",
+        "generated_at_ms": now_ms(),
+        "endpoint": ROUTE_PATHS["operator_report"],
+        "artifact": artifact_status,
+        "latest_result": latest_result,
+        "latest_endpoint_path": ROUTE_PATHS["operator_report"],
+        "does_not_replace": list(OPERATOR_REPORT_DOES_NOT_REPLACE),
+        "boundary": "operator_report_readback_only_not_ack_t1001_hil_stop_status_or_motion",
+        **operator_report_guard_flags(),
+    }
+
+
+def read_operator_report_latest_artifact(path: str) -> tuple[int, dict[str, Any]]:
+    """只读 operator report artifact，不调用 stop/status/manual，也不读取串口。"""
+    artifact = operator_report_artifact_info(path)
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        artifact.update({"ok": False, "status": "missing", "error": {"type": "FileNotFoundError", "message": "latest operator report artifact is missing"}})
+        return 404, build_operator_report_latest_payload(artifact, None)
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        return 500, build_operator_report_latest_payload(artifact, None)
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        artifact.update({"ok": False, "status": "bad_json", "error": compact_error(exc)})
+        return 422, build_operator_report_latest_payload(artifact, None)
+    if not isinstance(parsed, dict):
+        artifact.update({"ok": False, "status": "json_not_object", "error": {"type": "ValueError", "message": "latest operator report JSON root is not an object"}})
+        return 422, build_operator_report_latest_payload(artifact, None)
+    artifact.update({"ok": True, "status": "loaded", "bytes_read": len(raw.encode("utf-8"))})
+    return 200, build_operator_report_latest_payload(artifact, parsed)
+
+
+def summarize_operator_report_latest_artifact(path: str) -> dict[str, Any]:
+    """status 页面只摘要 report artifact，避免统一状态接口顺手读取硬件或远端服务。"""
+    http_status, payload = read_operator_report_latest_artifact(path)
+    latest = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else None
+    report = latest.get("operator_report") if isinstance(latest, dict) and isinstance(latest.get("operator_report"), dict) else {}
+    return {
+        "schema": f"{SCHEMA}.operator_report_latest_summary",
+        "generated_at_ms": now_ms(),
+        "endpoint": ROUTE_PATHS["operator_report"],
+        "http_status": http_status,
+        "artifact": payload["artifact"],
+        "operator_report_status": latest.get("operator_report_status") if isinstance(latest, dict) else None,
+        "latest_evidence_ref": report.get("evidence_ref") if isinstance(report, dict) else None,
+        "latest_report_note": report.get("operator_notes") if isinstance(report, dict) else None,
+        **operator_report_guard_flags(),
+    }
+
+
 def feedback_request_status(
     *,
     serial_open_ok: bool,
@@ -1514,6 +1731,7 @@ class UpperRobotApi:
         localization_artifact_path: str = DEFAULT_LOCALIZATION_ARTIFACT_PATH,
         nav2_lifecycle_artifact_path: str = DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH,
         elevator_status_artifact_path: str = DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH,
+        operator_report_artifact_path: str = DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH,
         radar_start_command: str | None = None,
         radar_stop_command: str | None = None,
         map_start_command: str | None = None,
@@ -1536,6 +1754,7 @@ class UpperRobotApi:
         self.localization_artifact_path = localization_artifact_path
         self.nav2_lifecycle_artifact_path = nav2_lifecycle_artifact_path
         self.elevator_status_artifact_path = elevator_status_artifact_path
+        self.operator_report_artifact_path = operator_report_artifact_path
         self.radar_start_command = radar_start_command
         self.radar_stop_command = radar_stop_command
         self.map_start_command = map_start_command
@@ -1921,6 +2140,15 @@ class UpperRobotApi:
             **proof_flags(),
         }
 
+    def operator_report(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """POST operator report 只写人工材料，不能触发底盘、stop、status 或 ROS2 运行。"""
+        report = body if isinstance(body, dict) else {}
+        return build_operator_report_payload(self.operator_report_artifact_path, report)
+
+    def operator_report_latest(self) -> tuple[int, dict[str, Any]]:
+        """GET operator report 只读 latest artifact，给 PC 做 readback 和 evidence_ref 对齐。"""
+        return read_operator_report_latest_artifact(self.operator_report_artifact_path)
+
     async def camera_health(self) -> tuple[int, dict[str, Any]]:
         """camera 子接口代理 8088 /health，并标注统一 API 来源。"""
         status, payload = await fetch_json(urljoin(self.camera_base_url + "/", "health"))
@@ -1985,6 +2213,7 @@ class UpperRobotApi:
             },
             "nav2": self.nav2_status(),
             "elevator": self.elevator_status(),
+            "operator_report": summarize_operator_report_latest_artifact(self.operator_report_artifact_path),
             "base": self.base_status(),
             "routes": dict(ROUTE_PATHS),
             "base_feedback_samples_latest_artifact": artifact_path_info(self.feedback_samples_artifact_path),
@@ -1997,6 +2226,7 @@ class UpperRobotApi:
             "localization_artifact": localization_artifact_info(self.localization_artifact_path),
             "nav2_lifecycle_artifact": nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
             "elevator_status_artifact": elevator_status_artifact_info(self.elevator_status_artifact_path),
+            "operator_report_artifact": operator_report_artifact_info(self.operator_report_artifact_path),
             "sends_commands": False,
             **proof_flags(),
         }
@@ -2212,6 +2442,10 @@ def parse_args() -> argparse.Namespace:
         "--elevator-status-artifact-path",
         default=os.getenv("ROBER_ELEVATOR_STATUS_ARTIFACT_PATH", DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH),
     )
+    parser.add_argument(
+        "--operator-report-artifact-path",
+        default=os.getenv("ROBER_OPERATOR_REPORT_ARTIFACT_PATH", DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH),
+    )
     parser.add_argument("--radar-start-command", default=os.getenv("ROBER_RADAR_START_COMMAND"))
     parser.add_argument("--radar-stop-command", default=os.getenv("ROBER_RADAR_STOP_COMMAND"))
     parser.add_argument("--map-start-command", default=os.getenv("ROBER_MAP_START_COMMAND"))
@@ -2241,6 +2475,7 @@ async def run_server(args: argparse.Namespace) -> None:
         localization_artifact_path=args.localization_artifact_path,
         nav2_lifecycle_artifact_path=args.nav2_lifecycle_artifact_path,
         elevator_status_artifact_path=args.elevator_status_artifact_path,
+        operator_report_artifact_path=args.operator_report_artifact_path,
         radar_start_command=args.radar_start_command,
         radar_stop_command=args.radar_stop_command,
         map_start_command=args.map_start_command,
@@ -2358,6 +2593,26 @@ def create_app(api: UpperRobotApi) -> Any:
     async def elevator_status(_: web.Request) -> Any:
         return json_response(api.elevator_status())
 
+    async def operator_report_post(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        if not isinstance(body, dict):
+            payload = {
+                "schema": f"{SCHEMA}.operator_report_result",
+                "generated_at_ms": now_ms(),
+                "endpoint": ROUTE_PATHS["operator_report"],
+                "error": {"type": "invalid_operator_report", "message": "JSON body must be an object"},
+                "operator_report": None,
+                "operator_report_status": "unsafe_or_incomplete",
+                "does_not_replace": list(OPERATOR_REPORT_DOES_NOT_REPLACE),
+                **operator_report_guard_flags(),
+            }
+            return json_response(payload, status=400)
+        return json_response(api.operator_report(body))
+
+    async def operator_report_get(_: web.Request) -> Any:
+        http_status, payload = api.operator_report_latest()
+        return json_response(payload, status=http_status)
+
     async def base_stop(_: web.Request) -> Any:
         return json_response(build_stop_payload(api.base_port, api.base_baudrate))
 
@@ -2404,6 +2659,8 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["nav2_start"], nav2_start)
     app.router.add_post(ROUTE_PATHS["nav2_stop"], nav2_stop)
     app.router.add_get(ROUTE_PATHS["elevator_status"], elevator_status)
+    app.router.add_post(ROUTE_PATHS["operator_report"], operator_report_post)
+    app.router.add_get(ROUTE_PATHS["operator_report"], operator_report_get)
     app.router.add_get(ROUTE_PATHS["base_status"], base_status)
     app.router.add_post(ROUTE_PATHS["base_feedback_request"], base_feedback_request)
     app.router.add_post(ROUTE_PATHS["base_feedback_samples"], base_feedback_samples)

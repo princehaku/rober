@@ -983,6 +983,127 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertFalse(result["safe_to_control"])
         self.assertEqual(FakeSerial.instances, [])
 
+    def test_operator_report_post_persists_latest_and_readback_is_read_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            artifact_path = str(Path(tmpdir) / "operator_report_latest.json")
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                operator_report_artifact_path=artifact_path,
+            )
+
+            result = robot.operator_report(
+                {
+                    "evidence_ref": "operator_field_report_pending",
+                    "note": "not_proven: waiting for field evidence",
+                    "operator_present": True,
+                    "physical_clearance_confirmed": True,
+                    "emergency_stop_ready": True,
+                }
+            )
+
+            self.assertEqual(result["schema"], "trashbot.upper_robot_api.v1.operator_report_result")
+            self.assertEqual(result["endpoint"], "/api/operator/report")
+            self.assertEqual(api.ROUTE_PATHS["operator_report"], "/api/operator/report")
+            self.assertEqual(result["operator_report_status"], "ready_for_execution")
+            self.assertEqual(result["operator_report"]["evidence_ref"], "operator_field_report_pending")
+            self.assertTrue(result["artifact"]["write"]["ok"])
+            self.assertFalse(result["safe_to_control"])
+            self.assertFalse(result["robot_control_executed"])
+            self.assertFalse(result["sends_commands"])
+            self.assertFalse(result["sends_motion_commands"])
+            self.assertIn("T=1001", result["does_not_replace"])
+            self.assertIn("/api/base/stop", result["does_not_replace"])
+
+            FakeSerial.reset()
+            http_status, latest = robot.operator_report_latest()
+
+            self.assertEqual(http_status, 200)
+            self.assertEqual(latest["artifact"]["status"], "loaded")
+            self.assertEqual(latest["latest_result"]["operator_report_status"], "ready_for_execution")
+            self.assertFalse(latest["readback_sends_commands"])
+            self.assertFalse(latest["sends_commands"])
+            self.assertFalse(latest["sends_motion_commands"])
+            self.assertFalse(latest["robot_control_executed"])
+            self.assertFalse(latest["safe_to_control"])
+            self.assertEqual(FakeSerial.instances, [])
+
+    def test_operator_report_latest_missing_and_bad_json_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            missing_path = str(Path(tmpdir) / "missing_operator_report.json")
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                operator_report_artifact_path=missing_path,
+            )
+
+            missing_status, missing = robot.operator_report_latest()
+
+            self.assertEqual(missing_status, 404)
+            self.assertEqual(missing["artifact"]["status"], "missing")
+            self.assertIsNone(missing["latest_result"])
+            self.assertFalse(missing["sends_commands"])
+            self.assertFalse(missing["robot_control_executed"])
+
+            bad_path = Path(tmpdir) / "bad_operator_report.json"
+            bad_path.write_text("{not-json", encoding="utf-8")
+            bad_robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                operator_report_artifact_path=str(bad_path),
+            )
+
+            bad_status, bad = bad_robot.operator_report_latest()
+
+            self.assertEqual(bad_status, 422)
+            self.assertEqual(bad["artifact"]["status"], "bad_json")
+            self.assertFalse(bad["readback_sends_commands"])
+            self.assertEqual(FakeSerial.instances, [])
+
+
+class UpperRobotApiHttpRouteTest(unittest.IsolatedAsyncioTestCase):
+    async def test_operator_report_http_post_and_get_are_not_405_when_aiohttp_is_available(self) -> None:
+        try:
+            from aiohttp.test_utils import TestClient, TestServer
+        except Exception as exc:  # noqa: BLE001 - 本机缺 aiohttp 时保留类方法回归作为必跑证明。
+            self.skipTest(f"aiohttp test client unavailable: {exc}")
+
+        install_fake_serial()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                operator_report_artifact_path=str(Path(tmpdir) / "operator_report_latest.json"),
+            )
+            client = TestClient(TestServer(api.create_app(robot)))
+            await client.start_server()
+            try:
+                post_response = await client.post(
+                    "/api/operator/report",
+                    json={"evidence_ref": "operator_field_report_pending", "note": "route smoke"},
+                )
+                post_body = await post_response.json()
+                get_response = await client.get("/api/operator/report")
+                get_body = await get_response.json()
+            finally:
+                await client.close()
+
+        self.assertNotEqual(post_response.status, 405)
+        self.assertNotEqual(get_response.status, 405)
+        self.assertEqual(post_response.status, 200)
+        self.assertEqual(get_response.status, 200)
+        self.assertEqual(post_body["endpoint"], "/api/operator/report")
+        self.assertEqual(get_body["latest_result"]["operator_report"]["evidence_ref"], "operator_field_report_pending")
+        self.assertEqual(FakeSerial.instances, [])
+
 
 def time_for_stale_artifact() -> float:
     """让 artifact mtime 落到过去，验证 freshness 不依赖真实硬件时间。"""

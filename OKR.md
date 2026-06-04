@@ -85,28 +85,47 @@
 
 ---
 
-## 4. 2026 H1 OKR（当前推进中）
+## 4. 2026 H1 OKR（当前推进区）
 
-更新时间：2026-06-04，对应 `sprints/2026.06.04_12-13_real-control-slam-elevator-field-epic/final.md`。
+更新时间：2026-06-04 18:56 CST，对应 `sprints/2026.06.04_17-18_runtime-material-epic/final.md`；16:05 OKR rewrite 仍是本轮口径基础。
 
-本轮按 CEO 反馈和四个 L2 owner 的只读复盘重置当前 OKR。判断原则从“软件入口是否存在”改成“普通用户价值是否可现场验证”：PC WASD 必须真的能让小车前进/后退/左右转和停止；右侧雷达必须有一键开启/关闭；建图、重置、保存、加载、定位必须和 ROS2/SLAM/Nav2 联动；电梯进出必须进入 OpenCV 视觉识别和 ROS2 状态链，而不是停留在合同、dry-run 或本地 fixture。
+本轮复盘最近 6 个迭代后，方向判断是 **继续，但调整推进方式和完成度口径**。北极星没有变：普通手机用户把垃圾交给低成本小车，小车沿固定路线送到垃圾站，必要时跨楼层进出电梯，并在异常时安全停止、请求人工协助和留下可复盘证据。最近 6 轮暴露的问题不是"缺更多入口"，而是入口、runbook、fixture 和 software guard 已经多于真实材料；下一步必须用 Epic 把 O2/O3/O7/O1 拉到 `robot_runtime_material` / `field_hil_material`。
 
-本轮不新增 Objective。现有 O1/O2/O3/O7 足以覆盖 CEO 指出的真实缺口；需要新增的是 KR 和验收口径，而不是继续堆新的抽象 O。O2/O3 已从“历史归档软件完成 ~99%”撤回当前推进区，O1/O2/O3/O7 的虚高比例被打回。
+### 最近 6 个迭代问题
+
+| Sprint | 类型 | 结论 | OKR 影响 |
+| --- | --- | --- | --- |
+| `08-09_o5-o6-upper-ssh-preflight` | Micro | 只增强 SSH collector preflight/failure classification；没有 accepted live artifact。 | O5/O6 不涨分，继续缺真实公网/4G/DB/OSS/phone/browser。 |
+| `09-10_o5-o6-upper-ssh-live-material` | Micro | SSH 可达但 artifact 为 `fail_closed`；主 blocker 是 PC base URL、cloud base URL、remote bearer token。 | 重复消费 O5/O6 配置 blocker，不支撑北极星主线。 |
+| `10-11_agent-proactive-kr-reward-rule` | Micro | 主动 KR 奖励规则落地；这是流程资产，不是产品 KR 完成。 | 需要进入 O8 治理，不能把流程规则当业务结果。 |
+| `10-11_o5-o6-upper-ssh-installed-probe` | Micro | installed probe 同步成功，但仍 `fail_closed`，同一生产配置缺口未解。 | O5/O6 96% 口径虚高，必须打回并降级为支线。 |
+| `11-12_okr-strategy-reset-real-control-slam-elevator` | Epic | Product 主动打回 O1/O2/O3/O7，把主线拉回真实控车、SLAM/定位、OpenCV 电梯。 | 方向正确，但只重置口径，没有 runtime/HIL 证据。 |
+| `12-13_real-control-slam-elevator-field-epic` | Epic | 四个 L2 owner 并行完成 software guard；没有真实 runtime/HIL/现场图片/地图/控车。 | 继续当前方向，不涨分；下一轮必须进入真实材料。 |
+
+### 员工状态判断
+
+| 角色 | 状态 | 调整要求 |
+| --- | --- | --- |
+| User Touchpoint Full-Stack Engineer | 产出高，但最近连续围绕 O5/O6 collector 做 Micro，开始偏离真实操控主线。 | 下一轮主责 O7 PC operator 真实 8787/browser runtime，不再优先做 O5/O6 runbook 或 fail-closed collector。 |
+| Robot Software Engineer | 12-13 已补 upper API/map/localize/elevator readback guard，方向有效。 | 下一轮从 API 合同转到 ROS2 runtime：SLAM `/map`、AMCL、Nav2 lifecycle、真实 command hook。 |
+| Robot Algorithm Engineer | OpenCV taxonomy、ROI/rule baseline、Nav2 map quality fixture 已可复跑。 | 下一轮必须接真实或受控图片 manifest 和真实 map artifact，不再只扩 fixture。 |
+| Hardware Infra Engineer | 安全边界、vendor 引用和 HIL 准入清楚。 | 下一轮按现场条件做 stop-first 低速 pulse；若安全条件不满足，必须升级 blocker，不能继续写文档替代 HIL。 |
+| Product Manager / OKR Owner | 已主动打回虚高 O1/O2/O3/O7，本轮继续打回 O5/O6 并新增 O8。 | 后续每轮收口必须查最近 2 轮 blocker 和 Micro/Epic 比例，防止 CEO 先发现节奏偏航。 |
 
 ### 当前百分比与涨分规则
 
 | Objective | 当前比例 | 方向判断 | 比例怎么涨 |
 | --- | --- | --- | --- |
-| O2：可送垃圾任务 + 电梯 assisted delivery | 约 72% | 调整，已从历史归档撤回当前推进区 | 只靠 OpenCV 电梯语义识别、ROS2 状态机接入、受控电梯材料、跨楼层任务记录和安全接管材料涨分；合同、dry-run、fixture、文案和本地校验不再涨。 |
-| O3：可验证导航、建图、定位与固定路线 | 约 73% | 调整，已从历史归档撤回当前推进区 | 只靠 SLAM Toolbox `/map`、地图 artifact、reset/save/load、AMCL `/initialpose`、Nav2 消费 `/scan`+map、路线实跑和地图质量材料涨分；`learn.launch.py` 入口或 fixed-route dry-run 不再涨。 |
-| O7：PC 端运营调试平台 | 约 88% | 打回后继续，PC 入口必须变成真实 operator workflow | 只靠真实 PC WASD 控车、雷达一键开关、建图/定位控制、真实 8787/browser 复跑、stop/急停/operator report 和任务记录涨分；UI/API mock、同源代理、rendered smoke 不再单独涨。 |
-| O1：硬件协议可信底盘 | 约 95% | 打回后继续，底盘 HIL 和 ROS feedback 仍是硬门槛 | 只靠底盘低速短 pulse、stop/post-status、ACK 或 `T=1001` 同场证据、真实 `/odom`/`/imu/data`/`/battery`、LiDAR 长稳、production udev、SLAM/Nav2 消费和 HIL 复核涨分。 |
-| O5：云中转控制面产品化 | 约 96% | 继续，但下一轮不再抢占真实操控/建图/电梯 Epic | 只靠真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser 和 robot command/status/ACK 生产材料涨分。 |
-| O6：云端核心后端 | 约 96% | 继续，但下一轮不再抢占真实操控/建图/电梯 Epic | 只靠真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、真实上车数据和 PC/手机查询回放涨分。 |
+| O2：可送垃圾任务 + 电梯 assisted delivery | 约 72% | 调整，主线第一优先级 | 只靠真实/受控图片 OpenCV eval、ROS2 电梯状态机接入、受控电梯流程、跨楼层任务记录和安全接管材料涨分。 |
+| O3：可验证导航、建图、定位与固定路线 | 约 73% | 调整，主线第一优先级 | 只靠 SLAM Toolbox `/map`、地图 artifact、reset/save/load、AMCL `/initialpose`、Nav2 消费 `/scan`+map、路线实跑和地图质量材料涨分。 |
+| O7：PC 端运营调试平台 | 约 89% | 继续，必须变成真实 operator workflow | 只靠真实 PC WASD 控车、雷达一键 start/stop 真实运行、建图/定位控制、真实 8787/browser 复跑、stop/急停/operator report 涨分。 |
+| O1：硬件协议可信底盘 | 约 95% | 继续，HIL 和 ROS feedback 仍是硬门槛 | 只靠底盘低速短 pulse、stop/post-status、ACK 或 `T=1001` 同场证据、真实 `/odom`/`/imu/data`/`/battery`、LiDAR 长稳、HIL 复核涨分。 |
+| O5：云中转控制面产品化 | 约 84%（从约 96% 打回） | 调整，降为支线 | 只靠真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser 和 robot command/status/ACK 生产材料涨分。 |
+| O6：云端核心后端 | 约 82%（从约 96% 打回） | 调整，等待真实上车材料 | 只靠真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、真实上车数据查询回放涨分。 |
+| O8：Epic 交付节奏与证据治理 | 约 40%（从约 35% 上调） | 继续组织执行 Objective | 只靠连续 Epic 证据链、重复 blocker 升级、evidence type 标签、owner 健康检查和下一轮真实材料收口涨分；O8 是执行治理，不新增产品承诺。 |
 
 ### Objective 1：打通官方硬件协议，建立可信底盘控制层
 
-**当前比例：约 95%（从约 97% 打回）**
 **责任 Engineer：Hardware Infra Engineer 主责，Robot Software Engineer 配合 ROS2 topic/bringup。**
 **方向判断：继续。LiDAR 首个 `/scan` smoke 可计入，但底盘 HIL、PC 手控真实运动、ACK/`T=1001` 同场闭环和 ROS feedback topic 未完成。**
 
@@ -120,123 +139,131 @@
 
 ### Objective 2：可送垃圾任务 + 电梯 assisted delivery 必达闭环
 
-**当前比例：约 72%（从历史归档“软件完成 ~99%”打回）**
 **责任 Engineer：Robot Algorithm Engineer 主责 OpenCV 识别，Robot Software Engineer 主责状态机接入，User Touchpoint Full-Stack Engineer 配合 PC/手机状态。**
 **方向判断：调整。电梯 assisted delivery 是 MVP 必须能力，但当前证据停在合同、dry-run、fixture 和 visual gate；它不是 OpenCV 电梯门/轿厢/楼层语义识别，也不是实景进出电梯。**
 
 | KR 类型 | 当前口径 |
 | --- | --- |
-| 已验收软件/材料入口 | `docs/product/elevator_assisted_delivery.md` 定义用户流程、人工协助边界、dry-run evidence schema、材料校验 gate；行为层和 diagnostics 能消费 dry-run/fixture；visual gate 仅是 ORB keyframe 匹配，不等于电梯门、轿厢或楼层识别。 |
-| KR-O2-OpenCV-Elevator-Taxonomy | 建立 OpenCV 电梯识别 taxonomy：门线/门缝、轿厢内外、楼层显示屏 ROI、目标楼层确认、可驶出/不可驶出、安全接管原因；每类样本需要定义正负例、最低数量、采集要求和失败边界。Owner：Robot Algorithm Engineer。 |
-| KR-O2-OpenCV-ROI-Rule-Baseline | 基于真实或受控采集图片建立 OpenCV ROI + rule baseline，先做可解释的门开/关、进入轿厢、目标楼层候选、驶出安全条件判断；允许 mock/fixture 开发，但必须保留真实图片切换入口。Owner：Robot Algorithm Engineer。 |
-| KR-O2-Offline-Eval | 对电梯识别 baseline 输出离线评估 artifact，至少包含样本清单、混淆项、false positive/false negative、置信度阈值、不可判定策略和 phone-safe operator summary。Owner：Robot Algorithm Engineer。 |
+| 已验收软件/材料入口 | `docs/product/elevator_assisted_delivery.md` 定义用户流程、人工协助边界、dry-run evidence schema、材料校验 gate；行为层和 diagnostics 能消费 dry-run/fixture；12-13 已有 OpenCV taxonomy、ROI/rule baseline 和 offline fixture eval。 |
+| KR-O2-Real-Image-Manifest-Eval | 接入真实或受控采集的电梯图片 manifest，输出样本清单、门线/轿厢/楼层显示屏 ROI、false positive/false negative、阈值和不可判定策略。Owner：Robot Algorithm Engineer。 |
 | KR-O2-ROS2-State-Integration | 将 OpenCV 识别结果接入 `task_orchestrator` 电梯状态链，覆盖等待开门、进入、请求按楼层、等待目标楼层、开门驶出、人工接管；task record 必须保留关键快照和失败原因。Owner：Robot Software Engineer。 |
 | KR-O2-Controlled-Elevator-Field | 在受控电梯场景完成至少 3 次连续流程材料：等待开门、进入、语音求助、目标楼层确认、开门驶出、继续到垃圾站或安全中止。Owner：Robot Software Engineer + Robot Algorithm Engineer。 |
 | 不可越界的 not_proven 风险 | 当前不证明真实相机电梯识别、楼层 OCR、目标楼层确认、OpenCV 规则有效、真实进出电梯、真实跨楼层送达、真实喇叭/TTS 播放、真实手机用户验收或 delivery success。 |
 
 ### Objective 3：可验证导航、建图、定位与固定路线
 
-**当前比例：约 73%（从历史归档“软件完成 ~99%”打回）**
 **责任 Engineer：Robot Software Engineer 主责 ROS2/SLAM/Map API，Robot Algorithm Engineer 主责 Nav2/路线质量，User Touchpoint Full-Stack Engineer 配合 PC 控制面。**
-**方向判断：调整。`learn.launch.py` 有 SLAM Toolbox 入口，但没有 `/map` 建图、reset/save/load、AMCL 定位恢复、Nav2 消费 `/scan`+map 或路线实跑证据。**
+**方向判断：调整。`learn.launch.py` 有 SLAM Toolbox 入口，12-13 已有 map/localize fail-closed API 合同，但没有 `/map` 建图、reset/save/load、AMCL 定位恢复、Nav2 消费 `/scan`+map 或路线实跑证据。**
 
 | KR 类型 | 当前口径 |
 | --- | --- |
-| 已验收软件/材料入口 | `learn.launch.py` 已有学习阶段入口；`map_recorder` 只有 `/trashbot/save_map` Trigger；`autonomous.launch.py` include Nav2；PC realtime map 当前为 waiting 状态；首个 LiDAR `/scan` smoke 已 observed。 |
+| 已验收软件/材料入口 | `learn.launch.py` 学习阶段入口、`/trashbot/save_map` Trigger、Nav2 include、首个 LiDAR `/scan` smoke、8787 `/api/map/*` 和 `/api/localize/reset` software guard。 |
 | KR-O3-SLAM-Map-Lifecycle | 建立 ROS2 联动的建图生命周期：开启 SLAM、重置地图、保存地图、加载地图、列出 map artifact；至少形成 `/map` once、map file、metadata、日志和 PC/upper API 可回放证据。Owner：Robot Software Engineer。 |
 | KR-O3-Localization-Reset | 建立定位恢复链路：PC/upper API 发布 `/initialpose`，AMCL lifecycle 正常，load map 后能恢复定位；证据包含 `/amcl_pose`、TF、pose freshness 和失败原因。Owner：Robot Software Engineer。 |
 | KR-O3-Nav2-Consumption | 证明 Nav2 消费真实 `/scan` + map：map server、AMCL、planner/controller lifecycle 状态、路径生成、短距离目标或 fixed-route dry-run 到实跑的边界清晰。Owner：Robot Algorithm Engineer。 |
-| KR-O3-Map-Quality-Metrics | 输出地图质量指标：覆盖区域、未知区比例、回环/漂移风险、关键 waypoint 可达性、保存/加载一致性、失败样例；低质量地图不得进入 O7 operator workflow 或 O2 电梯实景。Owner：Robot Algorithm Engineer。 |
 | 不可越界的 not_proven 风险 | 当前不证明真实建图完成、地图 artifact 可用、重置/保存/加载链路、定位恢复、Nav2 真实路径执行、固定路线现场通过、关键帧实景匹配或任务闭环。 |
 
 ### Objective 5：云中转控制面产品化
 
-**当前比例：约 96%**
 **责任 Engineer：User Touchpoint Full-Stack Engineer 主责，Robot Software Engineer 配合 robot command/ACK 合同。**
-**方向判断：继续，但下一轮 Epic 不以 O5/O6 为主。真实操控、建图、定位、电梯识别缺口更直接阻塞北极星。**
+**方向判断：调整并打回。最近 6 个迭代里 O5/O6 连续 3 个 Micro 都没有 accepted live artifact，96% 会误导团队继续抢占主线。O5 继续存在，但下一轮不得优先于 O2/O3/O7/O1，除非生产 URL、token、4G/公网和 DB/queue 已经同时就绪。**
 
 | KR 类型 | 当前口径 |
 | --- | --- |
-| 已验收软件/材料入口 | 本地/mock control plane、readiness health、aggregate health、external probe、TLS evidence summary、real material acceptance queue、`pc_upper_ssh_collector` 和 runbook/preflight 分类。 |
-| 当前下一步可涨分 KR | 真实公网 HTTPS/TLS、真实 4G/SIM 或等价蜂窝链路、production DB/queue/worker、OSS/CDN live traffic、真实 phone/browser 和 robot command/status/ACK 控制面记录。 |
+| 已验收软件/材料入口 | 本地/mock control plane、readiness health、aggregate health、external probe、TLS evidence summary、real material acceptance queue、`pc_upper_ssh_collector`、preflight 分类、installed probe 同步。 |
+| KR-O5-Production-Live-Control | 真实公网 HTTPS/TLS、真实 4G/SIM 或等价蜂窝链路、production DB/queue/worker、真实 phone/browser 和 robot command/status/ACK 控制面记录进入 accepted live artifact。Owner：User Touchpoint Full-Stack Engineer。 |
+| KR-O5-Blocker-Escalation | 若 `pc_base_url_not_configured_for_upper_ssh`、`cloud_base_url_not_configured`、`remote_bearer_token_absent` 再出现一次，必须在 Epic pre_start 升级 CEO 决策或暂停 O5 sprint，不得继续 Micro 消费。Owner：Product Manager / OKR Owner。 |
 | 不可越界的 not_proven 风险 | 当前不证明真实生产云、真实公网入口、真实蜂窝链路、production DB/queue、OSS/CDN 实流量、真实 phone/browser、真实 robot command 执行或上车任务闭环。 |
 
 ### Objective 6：云端核心后端 - 数据存档、模型推理与打标平台
 
-**当前比例：约 96%**
 **责任 Engineer：User Touchpoint Full-Stack Engineer 主责，Robot Algorithm Engineer 配合数据/推理证据。**
-**方向判断：继续，但下一轮 Epic 不以 O5/O6 为主。O6 需要等 O2/O3/O7 产生真实上车、电梯和地图材料后才有高质量数据可存档和推理。**
+**方向判断：调整并打回。O6 的 archive/query/annotation/inference 软件合同很多，但缺真实 DB/queue、OSS、推理 runtime 和上车数据；在 O2/O3/O7 没有真实材料前，O6 无高质量数据可运营。**
 
 | KR 类型 | 当前口径 |
 | --- | --- |
 | 已验收软件/材料入口 | `trashbot.archive.v1` task/event/annotation/inference/query、algorithm feed、archive health、external probe artifact、acceptance queue 与本地/Docker mock archive/query/annotation/inference 基线逻辑。 |
-| 当前下一步可涨分 KR | 真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、真实上车数据查询回放；优先消费 O2/O3/O7 产生的电梯、地图、路线和 operator workflow 材料。 |
+| KR-O6-Production-Archive-Query | 真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、真实上车数据查询回放；优先消费 O2/O3/O7 产生的电梯、地图、路线和 operator workflow 材料。Owner：User Touchpoint Full-Stack Engineer + Robot Algorithm Engineer。 |
+| KR-O6-Field-Material-Ingestion | 至少 ingest 一组来自 O2/O3/O7/O1 的真实 runtime/HIL/field material，并完成 phone/PC 安全摘要、查询回放和 not_proven 边界。Owner：User Touchpoint Full-Stack Engineer。 |
 | 不可越界的 not_proven 风险 | 当前不证明真实生产数据链、真实 OSS、真实推理、真实上车数据、真实 4G/SIM、真实 phone/browser 或完整数据运营闭环。 |
 
 ### Objective 7：PC 端运营调试与数据训练平台
 
-**当前比例：约 88%（从约 98.9% 打回）**
 **责任 Engineer：User Touchpoint Full-Stack Engineer 主责，Robot Software Engineer 配合 8787/ROS2 状态合同，Hardware Infra Engineer 配合底盘现场证据。**
-**方向判断：继续并打回。PC 已有 WASD/按钮软件入口，但尚未证明 PC 能真实控制小车；雷达没有一键开启/关闭；建图/定位也没有 PC -> ROS2 操作链。**
+**方向判断：继续。PC 已有 WASD/按钮软件入口和 12-13 direct-upper software guard，但尚未证明 PC 能真实控制小车、启动雷达、控制建图/定位或形成 operator workflow。**
 
 | KR 类型 | 当前口径 |
 | --- | --- |
-| 已验收软件/材料入口 | PC 同源 API、WASD/按钮映射、camera 首屏 no auto-offer、realtime radar/map split、`GET /api/radar/status`、mock/fetch tests、build/lint/rendered smoke。 |
+| 已验收软件/材料入口 | PC 同源 API、WASD/按钮映射、camera 首屏 no auto-offer、realtime radar/map split、direct-upper radar/map/localize/report UI/API 护栏、真实 8787 operator report POST/GET route、PC 同源 operator report retest、mock/fetch tests、build/lint/rendered smoke。 |
 | KR-O7-PC-Manual-Field | PC 浏览器用 W/S/A/D 与 Space/X 完成受控 forward/back/left/right/stop 现场点动，证据与 O1 manual HIL 同源；UI 必须展示 ACK/T=1001 边界、stop 结果、失败原因和 operator report。Owner：User Touchpoint Full-Stack Engineer + Hardware Infra Engineer。 |
-| KR-O7-Radar-OneClick | PC 右侧雷达提供一键开启/关闭，目标接口为 `POST /api/radar/start`、`POST /api/radar/stop` 和只读 status；开启只允许触发 LiDAR start/ROS2 driver，不得触碰 `/dev/ttyS5` 或底盘命令；关闭后状态、topic 和日志可回放。Owner：User Touchpoint Full-Stack Engineer + Robot Software Engineer。 |
+| KR-O7-Radar-OneClick-Runtime | PC 右侧雷达一键 start/stop 真实运行，形成 `/scan` once/hz、停止后状态和日志；该链只允许触发 LiDAR/ROS2 driver，不得触碰 `/dev/ttyS5` 或底盘命令。Owner：User Touchpoint Full-Stack Engineer + Robot Software Engineer。 |
 | KR-O7-Map-SLAM-Controls | PC 提供建图开启、重置、保存、加载、定位入口，全部走 upper API/ROS2 服务，不让浏览器直连 ROS graph；每个按钮都要显示 ROS2 操作状态、artifact 路径、失败原因和 not_proven 边界。Owner：User Touchpoint Full-Stack Engineer + Robot Software Engineer。 |
-| KR-O7-Stop-Estop-Report | PC operator workflow 必须包含停止/急停/恢复/人工报告入口；没有 stop/post-status 和 operator report 时，不得把 WASD 或 Nav2 下发写成可用。Owner：User Touchpoint Full-Stack Engineer。 |
 | 不可越界的 not_proven 风险 | 当前不证明真实 PC WASD 控车、真实雷达一键开关、真实建图控制、真实定位恢复、真实 Nav2 下发、production path、弱网、ASR/TTS、robot ACK、HIL 或完整 operator workflow。 |
+
+### Objective 8：Epic 交付节奏与证据治理
+
+**责任 Owner：Product Manager / OKR Owner 主责，四个 L2 Engineer 执行。**
+**方向判断：新增。O8 是组织执行 Objective，不新增产品能力；它约束团队不要用连续 Micro、重复 blocker 和 software proof 制造虚假进度。**
+
+| KR 类型 | 当前口径 |
+| --- | --- |
+| KR-O8-Epic-Cadence | 从 2026-06-04 16:05 起，下一轮实现类 sprint 必须是跨 owner Epic，目标至少覆盖 O2/O3/O7/O1 中两个 Objective，并产出 `pre_start.md -> prd.md -> tech-plan.md -> tech-done.md -> side2side_check.md -> final.md`。Owner：Product Manager / OKR Owner。 |
+| KR-O8-Evidence-Type-Gate | 每个涨分 KR 必须标注 evidence type：`software_guard`、`robot_runtime_material`、`field_hil_material`、`production_live_material` 或 `user_acceptance_material`；只有后四类中的真实材料可推动当前 Objective 完成度。Owner：Product Manager / OKR Owner。 |
+| KR-O8-Repeated-Blocker-Stop | 最近 2 轮如果出现同一 blocker root cause，第 3 轮必须切 Objective 或升级 CEO 决策；O5/O6 的 URL/token/cloud 配置 blocker 已触发预警。Owner：Product Manager / OKR Owner。 |
+| KR-O8-Owner-Health | 任一 L2 owner 连续两个 Micro 只产出入口、runbook、fixture 或 fail-closed artifact，下一轮必须转 Epic 真实材料或写明 blocker 升级。Owner：Product Manager / OKR Owner。 |
+| 不可越界的 not_proven 风险 | O8 规则本身不证明产品能力完成；只有后续 sprint 按 O8 产出真实 runtime/HIL/production/user materials 才能涨产品 Objective。 |
 
 ---
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-06-04，对应本轮 `sprints/2026.06.04_12-13_real-control-slam-elevator-field-epic`。
+更新时间：2026-06-04 18:56 CST，对应本轮 `sprints/2026.06.04_17-18_runtime-material-epic`。
 
-**比例更新规则**：O2/O3/O7/O1 只有真实现场、ROS2 runtime、HIL、OpenCV eval、地图 artifact、operator workflow 或受控电梯材料才涨；O5/O6 仍只有真实生产云、4G/公网/DB/OSS/phone-browser/上车数据才涨。继续增加 micro sprint、mock、fixture、UI 文案、readback、状态面或只读 runbook 不再涨分。
+**比例更新规则**：O2/O3/O7/O1 只有真实现场、ROS2 runtime、HIL、OpenCV eval、地图 artifact、operator workflow 或受控电梯材料才涨；O5/O6 只有真实生产云、4G/公网/DB/OSS/phone-browser/上车数据才涨；O8 只有执行证据链、blocker 升级和 evidence type 复核生效才涨。继续增加 Micro sprint、mock、fixture、UI 文案、readback、状态面或只读 runbook 不再涨分。
 
 | Objective | 当前比例 | 本轮变化 | 已验收/可计入 | 下一步可涨分 KR | 不得越界 |
 | --- | --- | --- | --- | --- | --- |
-| O2：送垃圾任务 + 电梯 assisted delivery | 约 72% | 本轮完成 OpenCV taxonomy、ROI/rule baseline 和 offline fixture eval software guard；比例不涨 | 产品 contract、dry-run evidence schema、fixture/diagnostics、visual gate ORB 匹配、`trashbot.elevator_opencv_baseline.v1` software guard | 真实图片 manifest eval、ROS2 状态机接入、受控电梯 3 次材料 | 真实电梯识别、楼层 OCR、实景进出电梯、跨楼层送达 |
-| O3：建图、定位、Nav2 与固定路线 | 约 73% | 本轮完成 8787 map/localize fail-closed API 合同；比例不涨 | `learn.launch.py` 入口、`/trashbot/save_map` 单一 Trigger、Nav2 include、首个 `/scan` smoke、`/api/map/*` 和 `/api/localize/reset` software guard | SLAM `/map`、reset/save/load、AMCL `/initialpose`、Nav2 消费 `/scan`+map、地图质量指标 | 真实地图可用、定位恢复、Nav2 实跑、路线通过 |
-| O7：PC 运营调试平台 | 约 88% | 本轮 PC operator 接入 radar/map/localize/operator report 同源代理；比例不涨 | WASD/按钮软件入口、PC 同源代理、radar/map split、rendered smoke、direct-upper radar/map/localize/report UI/API 护栏 | PC WASD 现场控车、雷达一键 start/stop 真实运行、建图/定位控制、stop/急停/operator workflow | 真实控车、真实雷达开关、真实建图定位、production workflow |
-| O1：硬件协议可信底盘 | 约 95% | 本轮补 HIL/串口隔离 vendor 边界文档；比例不涨 | `/dev/ttyS5` 可写材料、非运动 `T=130 -> T=1001`、LiDAR `/scan` once/hz、TF、PC manual/LiDAR 隔离准入 | 低速短 pulse、ACK/T=1001 同场证据、ROS feedback topics、LiDAR 长稳/udev、HIL | `safe_to_control=true`、HIL pass、robot ACK、真实 `/odom`/`/imu/data`/`/battery` |
-| O5：云中转控制面 | 约 96% | 保持 | mock/control plane、readiness health、external probe、TLS summary、acceptance queue | 真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser | 真实生产云、真实蜂窝链路、真实 robot command 执行 |
-| O6：云端核心后端 | 约 96% | 保持 | mock archive/query/annotation/inference、archive health、external probe artifact、acceptance queue | 真实隧道、production DB/queue、OSS upload、真实推理 runtime、真实上车数据回放 | 真实生产数据链、真实 OSS/推理/上车数据 |
+| O2：送垃圾任务 + 电梯 assisted delivery | 约 72% | 保持；本轮无真实/受控 elevator image manifest | 产品 contract、dry-run evidence schema、fixture/diagnostics、OpenCV taxonomy/ROI/rule/offline fixture eval software guard | 真实图片 manifest eval、ROS2 状态机接入、受控电梯 3 次材料 | 真实电梯识别、楼层 OCR、实景进出电梯、跨楼层送达 |
+| O3：建图、定位、Nav2 与固定路线 | 约 73% | 保持；SSH/8787/ROS2 installed live，但 ROS graph topics 和 map/localize/Nav2 artifact 缺失 | `learn.launch.py` 入口、Nav2 include、首个 `/scan` smoke、`/api/map/*` 和 `/api/localize/reset` software guard、上位机 ROS2 package/launch parseability | SLAM `/map`、reset/save/load、AMCL `/initialpose`、Nav2 消费 `/scan`+map、地图质量指标 | 真实地图可用、定位恢复、Nav2 实跑、路线通过 |
+| O7：PC 运营调试平台 | 约 89% | 从约 88% 小幅上调；真实上位机 8787 operator report route 已部署，PC 同源代理可写入并回放同一 evidence_ref，但仍非现场控车/HIL workflow | WASD/按钮软件入口、PC 同源代理、radar/map split、direct-upper radar/map/localize/report UI/API 护栏、真实 8787 status/map/operator-report proxy runtime | PC WASD 现场控车、雷达一键 start/stop 真实运行、建图/定位控制、stop/急停/operator workflow | 真实控车、真实雷达开关、真实建图定位、production workflow |
+| O1：硬件协议可信底盘 | 约 95% | 保持；本轮刷新 `/dev/ttyS5 @115200` 非运动 `T=130 -> T=1001` 3/3 runtime material，但无 HIL/ROS feedback，材料增强但不涨 | `/dev/ttyS5` 可写材料、非运动 `T=130 -> T=1001`、LiDAR `/scan` once/hz、TF、PC manual/LiDAR 隔离准入 | 低速短 pulse、ACK/T=1001 同场证据、ROS feedback topics、LiDAR 长稳/udev、HIL | `safe_to_control=true`、HIL pass、robot ACK、真实 `/odom`/`/imu/data`/`/battery` |
+| O5：云中转控制面 | 约 84% | 从约 96% 打回 | mock/control plane、readiness health、external probe、TLS summary、acceptance queue、SSH collector installed probe | 真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser | 真实生产云、真实蜂窝链路、真实 robot command 执行 |
+| O6：云端核心后端 | 约 82% | 从约 96% 打回 | mock archive/query/annotation/inference、archive health、external probe artifact、acceptance queue | 真实隧道、production DB/queue、OSS upload、真实推理 runtime、真实上车数据回放 | 真实生产数据链、真实 OSS/推理/上车数据 |
+| O8：Epic 交付节奏与证据治理 | 约 40% | 从约 35% 上调；首轮跨 owner Epic 完成 owner notes、evidence type gate、blocker scan、side-to-side、final 收口和旧 blocker 纠偏 | AGENTS/iteration_velocity 规则、10-11 主动 KR 奖励流程、17-18 Runtime Material Epic 治理证据链 | 下一轮继续按 O8 产出真实材料收口、blocker 升级和 owner health 复核 | 不能把流程合规写成产品能力或 OKR 涨分 |
 
 **历史归档区调整：**
 
 | Objective | 当前处理 | 历史记录位置 | 剩余风险 |
 | --- | --- | --- | --- |
-| O2：可送垃圾任务 + 电梯 assisted delivery | 撤出历史归档，回到当前推进区，比例打回约 72% | 旧 ~99% 软件归档仍保留在 `docs/process/okr_progress_log.md`，本轮追加打回原因 | 合同/dry-run 不等于 OpenCV 识别或真实电梯流程 |
-| O3：可验证导航与固定路线 | 撤出历史归档，回到当前推进区，比例打回约 73% | 旧 ~99% 软件归档仍保留在 `docs/process/okr_progress_log.md`，本轮追加打回原因 | `learn.launch`/dry-run 不等于 SLAM map、定位恢复或 Nav2 实跑 |
-| O4：手机用户体验与量产边界 | 暂留历史归档，不在本轮打回 | `docs/process/okr_progress_log.md` | 后续若 CEO 要求真实手机端发车/状态/接管，应单独拉回当前推进区 |
+| O2：可送垃圾任务 + 电梯 assisted delivery | 继续留在当前推进区，保持约 72% | 旧 ~99% 软件归档保留在 `docs/process/okr_progress_log.md`，11-12 已追加打回原因 | 合同/dry-run 不等于 OpenCV 识别或真实电梯流程 |
+| O3：可验证导航与固定路线 | 继续留在当前推进区，保持约 73% | 旧 ~99% 软件归档保留在 `docs/process/okr_progress_log.md`，11-12 已追加打回原因 | `learn.launch`/dry-run 不等于 SLAM map、定位恢复或 Nav2 实跑 |
+| O5：云中转控制面 | 从当前 96% 打回约 84%，旧 96% 仅作为软件证明历史 | 本轮追加到 `docs/process/okr_progress_log.md` | 连续 Micro 未产生 accepted live material，生产云/4G/DB/OSS/phone-browser 仍缺 |
+| O6：云端核心后端 | 从当前 96% 打回约 82%，旧 96% 仅作为软件证明历史 | 本轮追加到 `docs/process/okr_progress_log.md` | 缺真实 DB/queue、OSS、推理 runtime、上车数据和查询回放 |
+| O8：Epic 交付节奏与证据治理 | 从约 35% 上调到约 40%，继续留在当前推进区 | `sprints/2026.06.04_17-18_runtime-material-epic/tech-done.md`、`side2side_check.md`、`final.md` 与 `docs/process/okr_progress_log.md` | 治理进展不证明产品能力；下一轮仍需真实 runtime/HIL/field material |
+| O4：手机用户体验与量产边界 | 暂留历史归档，不在本轮打回 | `docs/process/okr_progress_log.md` | 后续若 CEO 要求真实手机端发车、状态、接管，应单独拉回当前推进区 |
 
-本轮没有已完成 KR 进入历史归档；本轮完成了 Epic 启动后的软件护栏推进，但没有真实 runtime/HIL/现场材料，因此百分比保持不变。下一步必须把 8787 雷达/建图/定位合同跑到真实 ROS2 runtime，并把电梯 baseline 接真实图片 manifest 和状态机消费，不能用 software proof 替代现场能力。
+本轮没有 O2/O3 产品 KR 进入历史完成归档；O8 的 Epic governance 和 evidence type gate 已进入 `docs/process/okr_progress_log.md` 历史进展，O7 因真实 8787 operator report route 与 PC 同源代理复测通过小幅上涨，O1 仅记录非运动 `T=130 -> T=1001` 3/3 runtime material 增强但不涨。下一步必须把 8787 雷达/建图/定位合同跑到真实 ROS2 runtime，把电梯 baseline 接真实图片 manifest 和状态机消费，并按 O8 全链路留档，不能用 software proof 替代现场能力。
 
 ---
 
 ## 5. 当前最高优先级
 
-按完成度和北极星阻塞程度排序，当前最高优先级为 **O2/O3 -> O7 -> O1 -> O5/O6**。原因是普通用户要的是“把垃圾交给小车后能跨楼层送达”，而当前最大缺口不是云端 runbook，而是 PC 真实控车、雷达开关、建图/定位和电梯 OpenCV 识别没有串成现场闭环。
+当前优先级为 **O2/O3 真实材料 -> O7 operator 端到端 -> O1 stop-first HIL -> O8 持续治理 -> O5/O6**。O8 已完成首轮 Epic 治理小幅涨分，但不抢产品主线；产品侧最低缺口仍是 O2/O3，因为普通用户要的是“把垃圾交给小车后能跨楼层送达”，不是 collector、runbook 或 status 面。
 
-当前 Epic：`sprints/2026.06.04_12-13_real-control-slam-elevator-field-epic/` 已完成本小时 software guard 交付：8787 新增 radar start/stop、map lifecycle、localize reset 的 fail-closed 合同；PC 工作站新增同源 operator controls 和 operator report 入口；Vision 新增 OpenCV 电梯 baseline/offline eval；Hardware 新增 PC manual 与 LiDAR 串口隔离准入。由于没有真实 runtime/HIL/现场材料，本轮不提升 Objective 完成度；涨分仍必须等待真实 PC 控车、雷达开关、SLAM/定位、真实图片 OpenCV eval、HIL 或受控现场材料。
+下一轮必须继续跨 owner Epic，目标从本轮“runtime 可达但关键材料缺失”转为 fresh ROS2 runtime、真实/受控图片和 stop-first HIL：
 
-下一步现场取证继续按四个 L2 owner 分工推进，目标从本轮 `software_guard` 转为 `robot_runtime_material` / `field_hil_material`：
-
-1. **User Touchpoint Full-Stack Engineer**：O7 PC operator workflow。用真实 8787/browser 复跑 WASD 现场控车入口、一键雷达 start/stop、建图/定位按钮、stop/急停/operator report，并保留同一 evidence ref。
-2. **Robot Software Engineer**：O3 ROS2 map lifecycle。把 `/api/map/start|reset|save|load|localize` 跑到 SLAM Toolbox、map server、AMCL `/initialpose`、Nav2 lifecycle 的真实 upper API/ROS2 材料。
-3. **Robot Algorithm Engineer**：O2/O3 algorithm。把 OpenCV 电梯 baseline 接真实图片 manifest，并输出真实图片 offline eval、Nav2 消费 `/scan`+map 的质量指标和路线验证材料。
-4. **Hardware Infra Engineer**：O1 field HIL。按现场安全前提采底盘 low-speed pulse、stop/post-status、`T=1001` 同场材料、LiDAR start/stop/udev/长稳材料。
+1. **Robot Software Engineer + User Touchpoint Full-Stack Engineer**：KR-O3/O7-Radar-Map-Localize-Runtime。把 8787 radar/map/localize command hook 跑到真实上位机，材料至少包含 `/api/radar/start|stop` 响应、`/scan` once/hz、`/api/map/start|save|list`、map artifact、AMCL pose 或明确 fail-closed blocker、PC operator report 和同一 `evidence_ref`。
+2. **Robot Algorithm Engineer**：KR-O2-Real-Image-Manifest-Eval。接真实或受控电梯图片 manifest，输出 OpenCV offline eval artifact、样本清单、混淆项、阈值、不可判定策略和 phone-safe operator summary；没有真实图片时必须升级材料 blocker。
+3. **Hardware Infra Engineer + User Touchpoint Full-Stack Engineer**：KR-O1/O7-Stop-First-HIL。按 `docs/hardware/o1_pc_manual_lidar_hil_boundary.md` 做 stop-first 低速 pulse；材料至少包含现场安全前提、manual response、stop response、post-status、`T=1001` 同场边界、operator report 和视频/现场记录。
+4. **Product Manager / OKR Owner**：KR-O8-Epic-Governance。下一轮 `tech-plan.md` 必须包含 OKR 最低优先级核对、最近 2 轮 blocker scan、evidence type gate、owner health 检查和不继续 O5/O6 Micro 的理由；`final.md` 必须复核这些理由是否成立。
 
 Epic 验收口径：
 
 - PC WASD：W/S/A/D/Space/X 在现场对真实小车有效，forward/back/left/right/stop 全部有 manual response、stop response、post-status、operator report 和同一 evidence ref。
 - 雷达：PC 一键开启/关闭 LiDAR/ROS2 driver，`/scan` once/hz、停止后状态和日志可回放，且不触碰底盘 UART。
 - 建图/定位：PC 或 upper API 能开启、重置、保存、加载地图并发布定位；至少有 `/map` artifact、map metadata、AMCL pose、TF 和失败原因。
-- 电梯 OpenCV：至少完成 taxonomy、样本/ROI/rule baseline 和 offline eval；进入 ROS2 状态机前必须输出 not_proven 边界和人工接管策略。
-- 证据链：`pre_start.md -> prd.md -> tech-plan.md -> tech-done.md -> side2side_check.md -> final.md` 全套留档；不能再以 Micro sprint 替代战略推进。
+- 电梯 OpenCV：必须从 fixture 扩展到真实或受控图片 manifest；进入 ROS2 状态机前必须输出 not_proven 边界和人工接管策略。
+- O8：证据链必须完整，且所有涨分项标注 evidence type；没有 `robot_runtime_material`、`field_hil_material`、`production_live_material` 或 `user_acceptance_material` 时不得上调产品 Objective。
 
 > 当前 70%-90%+ 只代表软件入口、合同或首个 smoke。真实材料未完成时，任何 Objective 都不得表述为真实硬件闭环、真实 PC 控车、真实建图定位、真实 OpenCV 电梯识别、真实生产云、真实手机或真实送达完成。
 
@@ -246,18 +273,19 @@ Epic 验收口径：
 
 ### 下一轮 Epic（必须启动）
 
-- 打通 PC WASD -> PC 同源 API -> 8787 `/api/base/manual` -> WAVE ROVER low-speed pulse -> stop/post-status -> `T=1001` 同场材料 -> operator report。
-- 增加雷达一键开启/关闭，明确 LiDAR start/stop 与底盘 UART 隔离。
-- 增加建图、重置、保存、加载、定位 API，并让 PC 能看到 SLAM/map/AMCL/Nav2 的真实状态。
-- 建立 OpenCV 电梯识别 taxonomy、样本集、ROI/rule baseline、offline eval 和 ROS2 状态机接入计划。
+- 打通 PC/8787 雷达 start/stop 到真实 LiDAR/ROS2 runtime，并采 `/scan` once/hz 和 stop 后状态。
+- 打通 PC/8787 map/localize 到 SLAM Toolbox、map server、AMCL/Nav2 lifecycle，并采 map artifact、AMCL pose、TF 或明确 blocker。
+- 把 OpenCV 电梯 baseline 接真实或受控图片 manifest，输出离线评估和人工接管策略。
+- 做一次 stop-first 低速 HIL drill；安全条件不足时升级 CEO 决策，不继续写 Micro 文档。
 - 补完整 Epic 文档链和 side-to-side 验收，不再用连续 Micro sprint 刷 `software_proof`。
 
 ### 近期（现场闭环）
 
 - O1：真实 WAVE ROVER 底盘低速短 pulse、stop/post-status、ACK/T=1001 同场证据、ROS feedback topics。
-- O2：OpenCV 电梯识别 baseline 进入 ROS2 状态机，至少完成受控离线评估和人工接管策略。
+- O2：OpenCV 电梯识别 baseline 进入 ROS2 状态机，至少完成真实/受控离线评估和人工接管策略。
 - O3：SLAM Toolbox `/map`、map artifact、AMCL 定位恢复、Nav2 消费 `/scan`+map。
 - O7：PC operator workflow 形成“查看状态 -> 开雷达 -> 建图/定位 -> WASD/stop -> 记录证据 -> 回放”的完整链路。
+- O8：每轮收口检查 Micro/Epic 比例、重复 blocker 和 evidence type，防止流程产物替代真实交付。
 
 ### 中期（真实生产和数据闭环）
 

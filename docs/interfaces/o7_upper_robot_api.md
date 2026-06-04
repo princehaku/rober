@@ -85,12 +85,62 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 | `POST` | `/api/nav2/start` | Nav2 lifecycle start 合同；默认 dry-run/stub，显式配置后仍需 artifact 证明 |
 | `POST` | `/api/nav2/stop` | Nav2 lifecycle stop 合同；默认 dry-run/stub，不触碰底盘串口 |
 | `GET` | `/api/elevator/status` | 只读回放 OpenCV/电梯状态链 evidence artifact；不证明真实电梯识别或送达 |
+| `POST` | `/api/operator/report` | 写入 PC/operator 人工现场报告 latest artifact；只作为 evidence/readback，不替代 stop/status/ACK/T=1001/HIL |
+| `GET` | `/api/operator/report` | 只读回放最近一次 operator report artifact；缺失返回 `404`，坏 JSON 返回 `422` |
 | `GET` | `/api/base/status` | `/dev/ttyS5`、pyserial、反馈/ACK 状态；只读摘要 latest feedback samples artifact |
 | `POST` | `/api/base/stop` | 发送 `{"T":1,"L":0,"R":0}` 停车 |
 | `POST` | `/api/base/feedback-request` | 发送一次非运动 `{"T":130}` 反馈请求并短窗口读取 JSON |
 | `POST` | `/api/base/feedback-samples` | 重复发送非运动 `{"T":130}`，采集多样本 `T=1001` evidence |
 | `GET` | `/api/base/feedback-samples/latest` | 只读回放最近一次 feedback samples JSON artifact；不打开串口、不发送命令 |
 | `POST` | `/api/base/manual` | 低速方向点动，自动停车 |
+
+## Operator report evidence contract
+
+`/api/operator/report` 是 O7 PC/operator workflow 的人工材料入口，当前合同优先解决真实
+8787 对 PC 同源代理 POST 返回 `405 Method Not Allowed` 的阻断。它只负责把 operator 当前
+`evidence_ref`、备注和现场安全/观察字段写入 latest JSON artifact，默认路径：
+
+```text
+runtime/operator_report_latest.json
+```
+
+可配置：
+
+| env / CLI | 用途 |
+| --- | --- |
+| `ROBER_OPERATOR_REPORT_ARTIFACT_PATH` / `--operator-report-artifact-path` | operator report latest artifact，默认 `runtime/operator_report_latest.json` |
+
+POST 示例：
+
+```json
+{
+  "evidence_ref": "operator_field_report_pending",
+  "note": "not_proven: waiting for field evidence",
+  "operator_present": true,
+  "physical_clearance_confirmed": true,
+  "emergency_stop_ready": true
+}
+```
+
+状态语义沿用 O1 safe pulse runner 的两阶段报告合同：
+
+- preflight 三项 `operator_present`、`physical_clearance_confirmed`、`emergency_stop_ready`
+  均为 true 时，`operator_report_status="ready_for_execution"`。
+- preflight 三项为 true，且 `observed_motion`、`observed_stop`、`operator_notes`、`reported_at`
+  都完整时，`operator_report_status="ready_for_review"`。
+- 缺失、false 或无法解析的字段保持 `unsafe_or_incomplete`；GET artifact 缺失返回 `404`，
+  坏 JSON 或非 object 返回 `422`。
+
+安全边界：
+
+- POST 的唯一副作用是原子写 `ROBER_OPERATOR_REPORT_ARTIFACT_PATH` 指向的 JSON 文件。
+- GET 只做 `Path.read_text()` 和 `json.loads()` readback。
+- 不调用 `/api/base/manual`、`/api/base/stop`、`/api/base/status` 或 feedback endpoints。
+- 不打开 `/dev/ttyS5`，不发送 `T=1/T=13/T=130/T=131`，不发布 `/cmd_vel`，不启动 ROS2。
+- 响应固定保留 `safe_to_control=false`、`robot_control_executed=false`、`hil_pass=false`、
+  `delivery_success=false`、`primary_actions_enabled=false`。
+- operator report 只是人工现场材料，不能替代 stop response、post-status、`T=1001`
+  vendor material、robot ACK、真实 HIL、ROS `/odom`/`/imu/data`/`/battery` 或视频/现场记录。
 
 ## Base 控制安全边界
 
@@ -305,6 +355,7 @@ fail-closed dry-run/stub，只返回可读状态和 artifact path。
 | `ROBER_NAV2_START_COMMAND` / `--nav2-start-command` | 显式配置 Nav2/lifecycle start 命令 |
 | `ROBER_NAV2_STOP_COMMAND` / `--nav2-stop-command` | 显式配置 Nav2/lifecycle stop 命令 |
 | `ROBER_ELEVATOR_STATUS_ARTIFACT_PATH` / `--elevator-status-artifact-path` | OpenCV/电梯状态链 latest evidence，默认 `runtime/elevator_status_latest.json` |
+| `ROBER_OPERATOR_REPORT_ARTIFACT_PATH` / `--operator-report-artifact-path` | PC/operator latest report evidence，默认 `runtime/operator_report_latest.json` |
 
 `POST /api/map/save` 和 `POST /api/map/load` 可接收上层 body，例如：
 
