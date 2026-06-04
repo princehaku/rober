@@ -26,6 +26,6 @@ KR-O3/O7-Scan-Proof-Refresh-Deploy：把上一轮已经本地验证的 scan proo
 - 收口时间：2026-06-04 22-23 CST。
 - 方向判断：继续，但 O3/O7 不涨分；O8 可按治理进展维持约 44%。
 - 核心事实：live `POST /api/radar/scan-proof/refresh` 已从 HTTP 405 变为 HTTP 200，部署 blocker 解除。
-- 不涨分原因：proof result 仍是 `blocked_or_not_observed`，blocker 为 `ros2_command_unavailable` 和 `upper_api_scan_not_proven`，没有 fresh `/scan` runtime material。
+- 不涨分原因：proof result 仍是 `blocked_or_not_observed`；`ros2_command_unavailable` 已解除，剩余 blocker 是 `upper_api_scan_not_proven`，且 `/scan`、`/lidar/raw_packet`、`base_link -> laser_frame` TF 未发布，没有 fresh `/scan` runtime material。
 - O7 判断：PC fail-closed blocker display 是有效 software guard，但未做 live smoke，也不证明 operator runtime workflow。
-- 下一步：修上位机 ROS2 runtime environment / collector command path，恢复 `ros2` 命令或切到正确 ROS2 容器内 collector，再复测 refresh；之后才进入 SLAM/map/AMCL/Nav2。
+- 下一步：启动或修复上位机 LiDAR ROS2 driver/topic/TF runtime，再复测 refresh；之后才进入 SLAM/map/AMCL/Nav2。

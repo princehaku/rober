@@ -43,7 +43,7 @@
 | --- | --- | --- |
 | O3：建图、定位、Nav2 与固定路线 | 保持约 73% | 405 和 ROS logging blocker 已解除，但没有 fresh `/scan`、hz、raw packet 或 TF；proof blocked 在真实 topic/TF 未发布。 |
 | O7：PC 运营调试平台 | 保持约 90% | PC 已能展示 upper `not_proven` 和 blockers，但未做 live smoke，也没有 fresh runtime workflow。 |
-| O8：Epic 交付节奏与证据治理 | 约 43% -> 约 44% | 完成 Epic 留档、解除部署 405 blocker、把 root cause 收敛到 ROS2 command unavailable，并补 PC fail-closed blocker display；不叠加到 45%。 |
+| O8：Epic 交付节奏与证据治理 | 约 43% -> 约 44% | 完成 Epic 留档、解除部署 405 blocker、解除 ROS logging blocker、把 root cause 收敛到 LiDAR topics/TF 未发布，并补 PC fail-closed blocker display；不叠加到 45%。 |
 | O1/O2/O5/O6 | 不变 | 本轮不触达 HIL、电梯图片、production cloud 或 archive runtime。 |
 
 本轮进入历史进展的 KR：

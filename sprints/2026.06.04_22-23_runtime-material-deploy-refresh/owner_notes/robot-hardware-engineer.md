@@ -66,7 +66,7 @@ sprint_type: epic owner note for `2026.06.04_22-23_runtime-material-deploy-refre
   - `robot_control_executed=false`
   - `hil_pass=false`
 - `onboard/scripts/o1_lidar_scan_proof_collector.py` 固定声明并实现只读 topic proof：不启动 LiDAR driver、不打开 LiDAR 串口、不读取或写入 WAVE ROVER `/dev/ttyS5`、不发送 `T=1/T=13/T=130/T=131`、不发布 `/cmd_vel`。
-- Robot Software owner note 记录 live `POST /api/radar/scan-proof/refresh` 已从 HTTP 405 变为 HTTP 200，但 proof 仍是 `blocked_or_not_observed`，blockers 为 `ros2_command_unavailable` 和 `upper_api_scan_not_proven`。
+- Robot Software owner note 记录 live `POST /api/radar/scan-proof/refresh` 已从 HTTP 405 变为 HTTP 200；后续 ROS logging env guard 已让 `ros2_available=true`，但 proof 仍是 `blocked_or_not_observed`，剩余 blocker 为 `upper_api_scan_not_proven`，且 `/scan`、`/lidar/raw_packet`、`base_link -> laser_frame` TF 未发布。
 
 ## live GET 复核结果
 
@@ -120,7 +120,7 @@ git diff --check -- docs/hardware/o1_wave_rover_serial_feedback_probe.md docs/ha
 
 ## 剩余风险和下一步
 
-- 上位机 ROS2 runtime/collector command path 仍未修复；当前 blocker 仍是 `ros2_command_unavailable` / `upper_api_scan_not_proven`。
+- 上位机 ROS2 CLI/logging 环境已修复；当前 blocker 是 LiDAR ROS2 topics/TF 未发布，latest artifact 仍为 `blocked_or_not_observed`。
 - 未证明 fresh `/scan` once/hz、`/lidar/raw_packet`、TF、SLAM `/map`、AMCL、Nav2 消费或固定路线。
 - 未证明 PC WASD、底盘 HIL、急停演练、robot ACK、真实 `/odom`、`/imu/data`、`/battery` 或 `safe_to_control=true`。
 - 任何进入 `POST /api/base/manual`、低速 pulse、turn smoke 或 stop-first HIL 的动作，都需要 CEO/现场明确授权、操作员看护、物理净空、急停可用、同一 evidence ref 和执行后现场记录。
