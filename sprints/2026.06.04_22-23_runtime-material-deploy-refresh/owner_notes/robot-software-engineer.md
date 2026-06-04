@@ -156,3 +156,84 @@ micro
 - 部署/路由问题已解除：live `POST /api/radar/scan-proof/refresh` 不再是 `405`，当前返回 HTTP `200`。
 - 本轮仍不能涨 O3/O7 runtime 分：refresh 的 root cause 是远端当前 API 进程环境 `ros2_command_unavailable`，所以 artifact fresh readback 只能证明只读 refresh route 可执行并写出 blocked root cause，不能证明 `/scan`、hz、raw packet 或 TF 已被观察到。
 - 本轮没有触碰底盘运动链路：未调用 `/cmd_vel`、`/api/base/manual`，未发送 WAVE ROVER `T=1/T=13/T=130/T=131`，未打开底盘串口，未把 `safe_to_control` 置为 true。
+
+## 继续执行：ROS log env fix 与最新 live refresh
+
+- 执行时间：2026-06-04 23:20-23:25 CST。
+- 本地代码修复：
+  - `onboard/scripts/o1_lidar_scan_proof_collector.py`
+    - 新增 ROS2 CLI 前置环境：`HOME=${HOME:-/root}`、`USER=${USER:-root}`、`LOGNAME=${LOGNAME:-root}`、`ROS_HOME=${ROS_HOME:-$HOME/.ros}`、`mkdir -p "$ROS_HOME/log"`、`ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log}`。
+    - 原因：`trashbot-upper-robot-api.service` 进程环境缺 `HOME/USER/LOGNAME/ROS_LOG_DIR`，ROS2 topic read 会先在 rcl logging 初始化阶段失败，掩盖真实 `/scan` topic 状态。
+    - 安全边界：该修复只影响 ROS2 CLI 日志目录和 artifact 诊断字段，不启动 LiDAR driver、不打开 `/dev/ttyACM0`、不打开 `/dev/ttyS5`、不发送 `A5 60`、不发送 WAVE ROVER `T=1/T=13/T=130/T=131`、不发布 `/cmd_vel`。
+  - `onboard/scripts/test_o1_lidar_scan_proof_collector.py`
+    - 新增 regression test，确保 collector 生成的 ROS2 CLI 命令保留 systemd-safe logging environment。
+
+- 本地验证：
+  - `python3 -m unittest onboard.scripts.test_o1_lidar_scan_proof_collector`
+    - 输出：`Ran 6 tests in 0.594s`
+    - 结果：`OK`
+  - `python3 -m unittest onboard.scripts.test_upper_robot_api`
+    - 输出：`Ran 28 tests in 1.798s`
+    - 结果：`OK (skipped=2)`
+  - `python3 -m compileall -q onboard/scripts`
+    - 结果：通过，无输出。
+
+- 远端备份/同步：
+  - 备份目录：`/root/rober/runtime/deploy_backups/20260604T232019+0800_ros_log_env`
+  - 回滚文件：`/root/rober/runtime/deploy_backups/20260604T232019+0800_ros_log_env/o1_lidar_scan_proof_collector.py`
+  - 备份旧 hash：`b27621eb19e27d57e2fb907ddfa87f9c181cd65c77f10f5182626350bf285ee4`
+  - 同步后本地 hash：`7175ec89c6ebcc18bca22414f58029cd3504aaecdd1b4bb0aa11d376ddb1d3c4`
+  - 同步后远端 hash：`7175ec89c6ebcc18bca22414f58029cd3504aaecdd1b4bb0aa11d376ddb1d3c4`
+  - 远端 `python3 -m py_compile /root/rober/onboard/scripts/o1_lidar_scan_proof_collector.py`：通过，无输出。
+  - 未重启 8787：upper API 每次 refresh 以 subprocess 方式执行 collector，本次只替换 collector 文件即可生效。
+
+- 最新 live `POST /api/radar/scan-proof/refresh`：
+  - HTTP `200`
+  - `schema=trashbot.upper_robot_api.v1.lidar_scan_proof_refresh_result`
+  - `status=refreshed`
+  - `proof_state=blocked_or_not_observed`
+  - `evidence_type=blocked_with_root_cause`
+  - `artifact_path=runtime/lidar_scan_proof_latest.json`
+  - `latest_result.generated_at=2026-06-04T15:24:52.896869Z`
+  - `latest_result.generated_at_ms=1780586667853`
+  - `ros2_available=true`
+  - `ros2_cli_check.ok=true`
+  - `ros_log_dir_default=/root/.ros/log`
+  - `scan_once_observed=false`
+  - `scan_hz_observed=false`
+  - `raw_packet_once_observed=false`
+  - `tf_observed=false`
+  - `all_required_observations_observed=false`
+  - `blockers_summary`：
+    - `upper_api_scan_not_proven`: `8787 radar scan_status='not_proven'`
+  - topic read failure details after log env fix:
+    - `/scan` once：`WARNING: topic [/scan] does not appear to be published yet`，`Could not determine the type for the passed topic`
+    - `/lidar/raw_packet` once：`WARNING: topic [/lidar/raw_packet] does not appear to be published yet`，`Could not determine the type for the passed topic`
+    - `/scan` hz：collector subprocess timeout after `7.0s`
+    - TF：`Invalid frame ID "base_link" ... frame does not exist`
+  - 安全字段：`safe_to_control=false`、`sends_motion_commands=false`、`robot_control_executed=false`、`starts_lidar_driver=false`、`opens_lidar_serial=false`、`sends_lidar_start_command=false`
+  - 明确未发送：`A5 60`、`T=1`、`T=13`、`T=130`、`T=131`、`/cmd_vel`、`/api/base/manual`
+  - 明确未打开：`/dev/ttyS5`、`/dev/ttyACM0`、`/dev/lidar`
+
+- 最新 live `GET /api/radar/scan-proof/latest`：
+  - HTTP `200`
+  - `schema=trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result`
+  - artifact：`runtime/lidar_scan_proof_latest.json`
+  - artifact status：`loaded`
+  - artifact ok：`true`
+  - artifact bytes：`18346`
+  - `latest_result.generated_at=2026-06-04T15:24:52.896869Z`
+  - `proof.status=blocked_or_not_observed`
+  - `ros2_available=true`
+  - `scan_once_observed=false`
+  - `scan_hz_observed=false`
+  - `raw_packet_once_observed=false`
+  - `tf_observed=false`
+  - `safe_to_control=false`
+  - `robot_control_executed=false`
+
+- 最新结论：
+  - 旧 blocker `HTTP 405` 已解除。
+  - 中间 blocker `ros2_command_unavailable` / ROS logging directory crash 已解除；现在 artifact 能看到 `ros2_available=true`，并且 ROS2 CLI 命令包含 `ROS_LOG_DIR=/root/.ros/log` 兜底。
+  - 当前剩余 blocker 是真实 runtime 未启动或未发布 `/scan`、`/lidar/raw_packet` 与 `base_link -> laser_frame` TF；本次 refresh 按合同只读 existing topics，不启动 driver，因此不能把该结果写成 fresh scan proof。
+  - 本轮仍不能推动 O3/O7 产品 Objective 涨分，只能作为 deployment/runtime blocker 进一步收敛证据。
