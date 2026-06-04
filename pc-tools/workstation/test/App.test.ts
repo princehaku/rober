@@ -16,6 +16,7 @@ import {
   proxyO7DirectUpperMapStart,
   proxyO7DirectUpperManual,
   proxyO7DirectUpperOperatorReport,
+  proxyO7DirectUpperOperatorReportReadback,
   proxyO7DirectUpperRadarStart,
   proxyO7DirectUpperRadarStop,
   proxyO7DirectUpperStop,
@@ -679,7 +680,7 @@ describe("O7 live operator first screen", () => {
     expect(text).toContain("Report evidence ref");
     expect(text).toContain("fixture mode");
     expect(text).toContain("operator confirmation");
-    expect(text).toContain("real upper mode · radar uses field_default if env is absent; base/map/localize/report still require env");
+    expect(text).toContain("real upper mode · radar/report use field_default if env is absent; base/map/localize still require env");
     expect(text).toContain("adapter=2026-06-04.field-default-radar-v2");
     expect(text).toContain("field_default=http://192.168.1.11:8787");
     expect(text).toContain("/api/o7/direct-upper/radar/start");
@@ -1273,11 +1274,78 @@ describe("O7 direct upper PC API", () => {
     ]);
   });
 
-  it("keeps map/localize/report off the field default route unless fixture mode is explicit", async () => {
-    const mockedFetch = vi.fn();
+  it("keeps map/localize off the field default route while allowing operator report readback", async () => {
+    const mockedFetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) as { evidence_ref?: string; note?: string } : {};
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          schema: "trashbot.upper_robot_api.operator_report.v1",
+          evidence_ref: body.evidence_ref ?? "o7-report-field-default",
+          operator_report_status: init?.method === "GET" ? "ready_for_review" : "unsafe_or_incomplete",
+        }),
+      } as Response;
+    });
     vi.stubGlobal("fetch", mockedFetch);
 
     const mapStart = await proxyO7DirectUpperMapStart({ env: {}, body: { evidence_ref: "o7-map-no-env" } });
+    const localizeReset = await proxyO7DirectUpperLocalizeReset({ env: {}, body: { evidence_ref: "o7-localize-no-env" } });
+    const reportPost = await proxyO7DirectUpperOperatorReport({
+      env: {},
+      body: { evidence_ref: "o7-report-field-default", note: "field default report write/readback" },
+    });
+    const reportReadback = await proxyO7DirectUpperOperatorReportReadback({
+      env: {},
+      body: { evidence_ref: "o7-report-field-default" },
+    });
+
+    expect(mapStart.status).toBe(400);
+    expect(mapStart.payload.failure_reason).toBe("base_url_not_configured");
+    expect(mapStart.payload.upper_api_base_url_source).toBe("not_configured");
+    expect(mapStart.payload.upper_request.executed).toBe(false);
+    expect(localizeReset.status).toBe(400);
+    expect(localizeReset.payload.failure_reason).toBe("base_url_not_configured");
+    expect(localizeReset.payload.upper_request.executed).toBe(false);
+
+    expect(reportPost.status).toBe(200);
+    expect(reportPost.payload.upper_api_base_url).toBe("http://192.168.1.11:8787");
+    expect(reportPost.payload.upper_api_base_url_source).toBe("field_default");
+    expect(reportPost.payload.upper_request).toMatchObject({
+      path: "/api/operator/report",
+      method: "POST",
+      executed: true,
+      ok: true,
+      http_status: 200,
+    });
+    expect(reportPost.payload.command_payload_summary).toMatchObject({
+      evidence_ref: "o7-report-field-default",
+      report_note: "field default report write/readback",
+    });
+    expect(reportPost.payload.safe_to_control).toBe(false);
+    expect(reportPost.payload.robot_control_executed).toBe(false);
+
+    expect(reportReadback.status).toBe(200);
+    expect(reportReadback.payload.upper_request).toMatchObject({
+      path: "/api/operator/report",
+      method: "GET",
+      executed: true,
+      ok: true,
+      http_status: 200,
+    });
+    expect(reportReadback.payload.upper_api_base_url_source).toBe("field_default");
+    expect(reportReadback.payload.safe_to_control).toBe(false);
+    expect(reportReadback.payload.robot_control_executed).toBe(false);
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).toEqual([
+      "http://192.168.1.11:8787/api/operator/report",
+      "http://192.168.1.11:8787/api/operator/report",
+    ]);
+  });
+
+  it("keeps map/localize fixture mode explicit without operator report upper fetch", async () => {
+    const mockedFetch = vi.fn();
+    vi.stubGlobal("fetch", mockedFetch);
+
     const mapSaveFixture = await proxyO7DirectUpperMapSave({
       env: {},
       body: { evidence_ref: "o7-map-fixture", map_id: "field-map-a", fixture_mode: true },
@@ -1294,11 +1362,6 @@ describe("O7 direct upper PC API", () => {
       env: {},
       body: { evidence_ref: "o7-report-fixture", note: "fixture only", fixture_mode: true },
     });
-
-    expect(mapStart.status).toBe(400);
-    expect(mapStart.payload.failure_reason).toBe("base_url_not_configured");
-    expect(mapStart.payload.upper_api_base_url_source).toBe("not_configured");
-    expect(mapStart.payload.upper_request.executed).toBe(false);
 
     expect(mapSaveFixture.status).toBe(200);
     expect(mapSaveFixture.payload.upper_api_base_url_source).toBe("fixture");

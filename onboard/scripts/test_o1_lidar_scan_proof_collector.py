@@ -125,7 +125,7 @@ class LidarScanProofCollectorTest(unittest.TestCase):
         self.assertTrue(result["proof"]["all_required_observations_observed"])
         self.assertEqual(result["proof"]["status"], "scan_once_hz_raw_packet_tf_observed")
         self.assertEqual(len(recorder.commands), 5)
-        self.assertTrue(any("ros2 --version" in command for command in recorder.commands))
+        self.assertTrue(any("command -v ros2" in command and "ros2 --help" in command for command in recorder.commands))
         self.assertTrue(any("ros2 topic echo --once /scan" in command for command in recorder.commands))
         self.assertTrue(any("ros2 topic hz /scan" in command for command in recorder.commands))
         self.assertTrue(any("ros2 topic echo --once /lidar/raw_packet" in command for command in recorder.commands))

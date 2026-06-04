@@ -87,7 +87,7 @@
 
 ## 4. 2026 H1 OKR（当前推进区）
 
-更新时间：2026-06-04 19:35 CST，对应 `sprints/2026.06.04_19-20_runtime-material-continue/final.md`；16:05 OKR rewrite 仍是本轮口径基础。
+更新时间：2026-06-04 20:58 CST，对应 `sprints/2026.06.04_20-21_runtime-material-followup/final.md`；16:05 OKR rewrite 仍是本轮口径基础。
 
 本轮复盘最近 6 个迭代后，方向判断是 **继续，但调整推进方式和完成度口径**。北极星没有变：普通手机用户把垃圾交给低成本小车，小车沿固定路线送到垃圾站，必要时跨楼层进出电梯，并在异常时安全停止、请求人工协助和留下可复盘证据。最近 6 轮暴露的问题不是"缺更多入口"，而是入口、runbook、fixture 和 software guard 已经多于真实材料；下一步必须用 Epic 把 O2/O3/O7/O1 拉到 `robot_runtime_material` / `field_hil_material`。
 
@@ -118,11 +118,11 @@
 | --- | --- | --- | --- |
 | O2：可送垃圾任务 + 电梯 assisted delivery | 约 72% | 调整，主线第一优先级 | 只靠真实/受控图片 OpenCV eval、ROS2 电梯状态机接入、受控电梯流程、跨楼层任务记录和安全接管材料涨分。 |
 | O3：可验证导航、建图、定位与固定路线 | 约 73% | 调整，主线第一优先级 | 只靠 SLAM Toolbox `/map`、地图 artifact、reset/save/load、AMCL `/initialpose`、Nav2 消费 `/scan`+map、路线实跑和地图质量材料涨分。 |
-| O7：PC 端运营调试平台 | 约 89% | 继续，必须变成真实 operator workflow | 只靠真实 PC WASD 控车、雷达一键 start/stop 真实运行、建图/定位控制、真实 8787/browser 复跑、stop/急停/operator report 涨分。 |
+| O7：PC 端运营调试平台 | 约 90% | 继续，必须变成真实 operator workflow | 只靠真实 PC WASD 控车、雷达一键 start/stop 真实运行、建图/定位控制、真实 8787/browser 复跑、stop/急停/operator report 涨分。 |
 | O1：硬件协议可信底盘 | 约 95% | 继续，HIL 和 ROS feedback 仍是硬门槛 | 只靠底盘低速短 pulse、stop/post-status、ACK 或 `T=1001` 同场证据、真实 `/odom`/`/imu/data`/`/battery`、LiDAR 长稳、HIL 复核涨分。 |
 | O5：云中转控制面产品化 | 约 84%（从约 96% 打回） | 调整，降为支线 | 只靠真实公网 HTTPS/TLS、真实 4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser 和 robot command/status/ACK 生产材料涨分。 |
 | O6：云端核心后端 | 约 82%（从约 96% 打回） | 调整，等待真实上车材料 | 只靠真实隧道、production DB/queue、真实 OSS upload、真实推理 runtime、真实上车数据查询回放涨分。 |
-| O8：Epic 交付节奏与证据治理 | 约 40%（从约 35% 上调） | 继续组织执行 Objective | 只靠连续 Epic 证据链、重复 blocker 升级、evidence type 标签、owner 健康检查和下一轮真实材料收口涨分；O8 是执行治理，不新增产品承诺。 |
+| O8：Epic 交付节奏与证据治理 | 约 42%（从约 40% 上调） | 继续组织执行 Objective | 只靠连续 Epic 证据链、重复 blocker 升级、evidence type 标签、owner 健康检查和下一轮真实材料收口涨分；O8 是执行治理，不新增产品承诺。 |
 
 ### Objective 1：打通官方硬件协议，建立可信底盘控制层
 
@@ -217,19 +217,19 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-06-04 19:35 CST，对应本轮 `sprints/2026.06.04_19-20_runtime-material-continue`。
+更新时间：2026-06-04 20:58 CST，对应本轮 `sprints/2026.06.04_20-21_runtime-material-followup`。
 
 **比例更新规则**：O2/O3/O7/O1 只有真实现场、ROS2 runtime、HIL、OpenCV eval、地图 artifact、operator workflow 或受控电梯材料才涨；O5/O6 只有真实生产云、4G/公网/DB/OSS/phone-browser/上车数据才涨；O8 只有执行证据链、blocker 升级和 evidence type 复核生效才涨。继续增加 Micro sprint、mock、fixture、UI 文案、readback、状态面或只读 runbook 不再涨分。
 
 | Objective | 当前比例 | 本轮变化 | 已验收/可计入 | 下一步可涨分 KR | 不得越界 |
 | --- | --- | --- | --- | --- | --- |
-| O2：送垃圾任务 + 电梯 assisted delivery | 约 72% | 保持；19-20 新增真实/受控图片采集模板、manifest checker 和 blocker artifact，但无真实/受控 elevator image manifest | 产品 contract、dry-run evidence schema、fixture/diagnostics、OpenCV taxonomy/ROI/rule/offline fixture eval software guard、`--check-template` 采集模板护栏 | 真实图片 manifest eval、ROS2 状态机接入、受控电梯 3 次材料 | 真实电梯识别、楼层 OCR、实景进出电梯、跨楼层送达 |
-| O3：建图、定位、Nav2 与固定路线 | 约 73% | 保持；SSH/8787/ROS2 installed live，但 ROS graph topics 和 map/localize/Nav2 artifact 缺失 | `learn.launch.py` 入口、Nav2 include、首个 `/scan` smoke、`/api/map/*` 和 `/api/localize/reset` software guard、上位机 ROS2 package/launch parseability | SLAM `/map`、reset/save/load、AMCL `/initialpose`、Nav2 消费 `/scan`+map、地图质量指标 | 真实地图可用、定位恢复、Nav2 实跑、路线通过 |
-| O7：PC 运营调试平台 | 约 89% | 从约 88% 小幅上调；真实上位机 8787 operator report route 已部署，PC 同源代理可写入并回放同一 evidence_ref，但仍非现场控车/HIL workflow | WASD/按钮软件入口、PC 同源代理、radar/map split、direct-upper radar/map/localize/report UI/API 护栏、真实 8787 status/map/operator-report proxy runtime | PC WASD 现场控车、雷达一键 start/stop 真实运行、建图/定位控制、stop/急停/operator workflow | 真实控车、真实雷达开关、真实建图定位、production workflow |
-| O1：硬件协议可信底盘 | 约 95% | 保持；本轮刷新 `/dev/ttyS5 @115200` 非运动 `T=130 -> T=1001` 3/3 runtime material，但无 HIL/ROS feedback，材料增强但不涨 | `/dev/ttyS5` 可写材料、非运动 `T=130 -> T=1001`、LiDAR `/scan` once/hz、TF、PC manual/LiDAR 隔离准入 | 低速短 pulse、ACK/T=1001 同场证据、ROS feedback topics、LiDAR 长稳/udev、HIL | `safe_to_control=true`、HIL pass、robot ACK、真实 `/odom`/`/imu/data`/`/battery` |
+| O2：送垃圾任务 + 电梯 assisted delivery | 约 72% | 保持；20-21 复查本地和上位机仍无真实/受控 elevator image manifest | 产品 contract、dry-run evidence schema、fixture/diagnostics、OpenCV taxonomy/ROI/rule/offline fixture eval software guard、`--check-template` 采集模板护栏 | 真实图片 manifest eval、ROS2 状态机接入、受控电梯 3 次材料 | 真实电梯识别、楼层 OCR、实景进出电梯、跨楼层送达 |
+| O3：建图、定位、Nav2 与固定路线 | 约 73% | 保持；SSH/8787/ROS2 installed live，20-21 明确 live hooks 为 `dry_run_stub/no_command_configured` 且 ROS graph 只有 `/parameter_events`、`/rosout` | `learn.launch.py` 入口、Nav2 include、首个 `/scan` smoke、`/api/map/*` 和 `/api/localize/reset` software guard、上位机 ROS2 package/launch parseability、LiDAR collector Humble CLI false-blocker 修复 | SLAM `/map`、reset/save/load、AMCL `/initialpose`、Nav2 消费 `/scan`+map、地图质量指标 | 真实地图可用、定位恢复、Nav2 实跑、路线通过 |
+| O7：PC 运营调试平台 | 约 90% | 从约 89% 小幅上调；PC same-origin operator-report POST/GET 可走现场默认 8787 写入/回读 artifact，但仍非现场控车/HIL workflow | WASD/按钮软件入口、PC 同源代理、radar/map split、direct-upper radar/map/localize/report UI/API 护栏、真实 8787 status/map/operator-report proxy runtime 和 operator-report readback | PC WASD 现场控车、雷达一键 start/stop 真实运行、建图/定位控制、stop/急停/operator workflow | 真实控车、真实雷达开关、真实建图定位、production workflow |
+| O1：硬件协议可信底盘 | 约 95.5% | 保持；20-21 fresh `/api/base/feedback-request` 观察到非运动 `T=130 -> T=1001`，但 status samples 仍可能 stale，材料增强但不涨 HIL | `/dev/ttyS5` 可写材料、非运动 `T=130 -> T=1001`、LiDAR `/scan` once/hz、TF、PC manual/LiDAR 隔离准入 | 低速短 pulse、ACK/T=1001 同场证据、ROS feedback topics、LiDAR 长稳/udev、HIL | `safe_to_control=true`、HIL pass、robot ACK、真实 `/odom`/`/imu/data`/`/battery` |
 | O5：云中转控制面 | 约 84% | 从约 96% 打回 | mock/control plane、readiness health、external probe、TLS summary、acceptance queue、SSH collector installed probe | 真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实 phone/browser | 真实生产云、真实蜂窝链路、真实 robot command 执行 |
 | O6：云端核心后端 | 约 82% | 从约 96% 打回 | mock archive/query/annotation/inference、archive health、external probe artifact、acceptance queue | 真实隧道、production DB/queue、OSS upload、真实推理 runtime、真实上车数据回放 | 真实生产数据链、真实 OSS/推理/上车数据 |
-| O8：Epic 交付节奏与证据治理 | 约 40% | 从约 35% 上调；首轮跨 owner Epic 完成 owner notes、evidence type gate、blocker scan、side-to-side、final 收口和旧 blocker 纠偏 | AGENTS/iteration_velocity 规则、10-11 主动 KR 奖励流程、17-18 Runtime Material Epic 治理证据链 | 下一轮继续按 O8 产出真实材料收口、blocker 升级和 owner health 复核 | 不能把流程合规写成产品能力或 OKR 涨分 |
+| O8：Epic 交付节奏与证据治理 | 约 42% | 从约 40% 上调；20-21 用小 owner task 修正上一轮超时，形成四条 owner notes、evidence type gate、side-to-side 和 final 收口 | AGENTS/iteration_velocity 规则、10-11 主动 KR 奖励流程、17-18/20-21 Runtime Material Epic 治理证据链 | 下一轮继续按 O8 产出真实材料收口、blocker 升级和 owner health 复核 | 不能把流程合规写成产品能力或 OKR 涨分 |
 
 **历史归档区调整：**
 
@@ -239,10 +239,10 @@
 | O3：可验证导航与固定路线 | 继续留在当前推进区，保持约 73% | 旧 ~99% 软件归档保留在 `docs/process/okr_progress_log.md`，11-12 已追加打回原因 | `learn.launch`/dry-run 不等于 SLAM map、定位恢复或 Nav2 实跑 |
 | O5：云中转控制面 | 从当前 96% 打回约 84%，旧 96% 仅作为软件证明历史 | 本轮追加到 `docs/process/okr_progress_log.md` | 连续 Micro 未产生 accepted live material，生产云/4G/DB/OSS/phone-browser 仍缺 |
 | O6：云端核心后端 | 从当前 96% 打回约 82%，旧 96% 仅作为软件证明历史 | 本轮追加到 `docs/process/okr_progress_log.md` | 缺真实 DB/queue、OSS、推理 runtime、上车数据和查询回放 |
-| O8：Epic 交付节奏与证据治理 | 从约 35% 上调到约 40%，继续留在当前推进区 | `sprints/2026.06.04_17-18_runtime-material-epic/tech-done.md`、`side2side_check.md`、`final.md` 与 `docs/process/okr_progress_log.md` | 治理进展不证明产品能力；下一轮仍需真实 runtime/HIL/field material |
+| O8：Epic 交付节奏与证据治理 | 从约 40% 上调到约 42%，继续留在当前推进区 | `sprints/2026.06.04_20-21_runtime-material-followup/tech-done.md`、`side2side_check.md`、`final.md` 与 `docs/process/okr_progress_log.md` | 治理进展不证明产品能力；下一轮仍需真实 runtime/HIL/field material |
 | O4：手机用户体验与量产边界 | 暂留历史归档，不在本轮打回 | `docs/process/okr_progress_log.md` | 后续若 CEO 要求真实手机端发车、状态、接管，应单独拉回当前推进区 |
 
-本轮没有 O2/O3 产品 KR 进入历史完成归档；O8 的 Epic governance 和 evidence type gate 已进入 `docs/process/okr_progress_log.md` 历史进展，O7 因真实 8787 operator report route 与 PC 同源代理复测通过小幅上涨，O1 仅记录非运动 `T=130 -> T=1001` 3/3 runtime material 增强但不涨。19-20 把 O2 下一步从“缺图片”推进为可执行 `trashbot.elevator_image_manifest.v1` 采集模板和 checker，但仍不是 field material。下一步必须把 8787 雷达/建图/定位合同跑到真实 ROS2 runtime，把模板回填真实图片 manifest，并按 O8 全链路留档，不能用 software proof 替代现场能力。
+本轮没有 O2/O3 产品 KR 进入历史完成归档；O8 的 Epic governance 和 evidence type gate 已进入 `docs/process/okr_progress_log.md` 历史进展，O7 因 PC same-origin operator-report POST/GET 到真实 8787 artifact route 可写可读而小幅上涨，O1 仅记录非运动 `T=130 -> T=1001` fresh material 增强但不涨。20-21 把 O3 root cause 收敛为 live 8787 hook 未配置和 ROS graph 空，把 O2 root cause 收敛为真实/受控图片 manifest 缺失。下一步必须把 8787 雷达/建图/定位合同跑到真实 ROS2 runtime，把模板回填真实图片 manifest，并按 O8 全链路留档，不能用 software proof 替代现场能力。
 
 ---
 

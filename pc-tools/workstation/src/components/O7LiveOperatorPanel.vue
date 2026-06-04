@@ -187,7 +187,7 @@ const operatorModeSummary = computed(() => {
   // fixture mode 是显式软件护栏模式，真实上位机未执行时也必须在 UI 文案里暴露。
   return fixtureMode.value
     ? "fixture mode · no upper fetch · software_guard"
-    : "real upper mode · radar uses field_default if env is absent; base/map/localize/report still require env";
+    : "real upper mode · radar/report use field_default if env is absent; base/map/localize still require env";
 });
 
 const directUpperAdapterSummary = computed(() => {

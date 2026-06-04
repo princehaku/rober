@@ -164,6 +164,11 @@ topic 观察，但说明 driver 优雅退出仍需单独修复或复验。
   LiDAR driver；probe 本身仍固定 `opens_serial_devices=false`、`starts_ros2_driver=false`、
   `publishes_cmd_vel=false`、`calls_base_manual=false`，且不发送 WAVE ROVER
   `T=1/T=13/T=130/T=131`。
+- `o1_lidar_scan_proof_collector.py --expect-existing-topics` 的 ROS2 CLI readiness
+  只使用 `command -v ros2 && ros2 --help`；不能使用 `ros2 --version`，因为 Humble
+  目标机上该参数会返回非零并造成 `ros2_command_unavailable` false blocker。该修复
+  只允许 collector 继续做只读 topic/TF readback，不会启动 driver、打开 LiDAR 串口、
+  写 `/dev/ttyS5`、调用 `/api/base/manual` 或发布 `/cmd_vel`。
 - `onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh` 是当前上位机 runtime/build
   remediation 入口：只安装 ROS2 Humble arm64 runtime 并构建 onboard，不启动
   driver、不打开串口、不写底盘 UART。

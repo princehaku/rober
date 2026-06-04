@@ -847,12 +847,27 @@ export async function proxyO7DirectUpperLocalizeReset(options: DirectUpperOption
 }
 
 export async function proxyO7DirectUpperOperatorReport(options: DirectUpperOptions = {}): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
-  // operator report 用 evidence_ref 串起现场报告；没有报告不能把控制链路写成已验收。
+  // operator report 只写人工材料，不触发底盘、雷达或 ROS2；允许现场默认 8787 解决本轮 readback。
   return proxyOperatorCommand(
     options,
     "/api/o7/direct-upper/operator-report",
     "/api/operator/report",
     "trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1",
     "operator_report",
+    "POST",
+    true,
+  );
+}
+
+export async function proxyO7DirectUpperOperatorReportReadback(options: DirectUpperOptions = {}): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
+  // readback 是只读 latest artifact 查询；用于确认 PC same-origin -> 8787 report 链路，不代表 HIL/ACK。
+  return proxyOperatorCommand(
+    options,
+    "/api/o7/direct-upper/operator-report",
+    "/api/operator/report",
+    "trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1",
+    "operator_report",
+    "GET",
+    true,
   );
 }

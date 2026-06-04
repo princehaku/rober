@@ -5674,6 +5674,20 @@ Task B Robot 只补 compatibility fence 和 `docs/interfaces/ros_contracts.md`�
 
 ## 录入规则与边界
 
+### 2026-06-04 20-21｜Runtime Material Followup｜O7 readback 小涨，O2/O3 blocker 收敛
+
+本轮 `sprints/2026.06.04_20-21_runtime-material-followup/` 接续上一轮 Runtime Material Epic，但把 owner task 缩小为单一 evidence slice。四个 owner 都产出 note：Robot Software 通过 SSH 确认上位机 8787/ROS2 可达但 live hooks 为 `dry_run_stub/no_command_configured`、ROS graph 只有 `/parameter_events` 和 `/rosout`；同时修复 LiDAR collector 使用 `ros2 --version` 导致 Humble false blocker 的问题。Robot Algorithm 复查本地和上位机，仍没有真实/受控电梯 image manifest，checker 继续 `blocked_missing_real_or_controlled_images`。Full-Stack 验证 PC same-origin operator-report POST/GET 可通过现场默认 `http://192.168.1.11:8787` 写入/回读 artifact，且不触发运动。Hardware 按 vendor 资料完成非运动 preflight，并通过 8787 fresh feedback request 观察到 `T=130 -> T=1001`。
+
+| Objective | 本轮影响 | 证据与缺口 |
+| --- | --- | --- |
+| O2：送垃圾任务 + 电梯 assisted delivery | 保持约 72% | 仍无真实/受控电梯图片 manifest；fixture 和 UI 截图不得作为 OpenCV field eval。 |
+| O3：建图、定位、Nav2 与固定路线 | 保持约 73% | 上位机 runtime 可达但 hooks 未配置、ROS graph 空；未获得 fresh `/scan`、`/map`、AMCL、TF 或 Nav2 lifecycle。 |
+| O7：PC 运营调试平台 | 约 89% -> 约 90% | PC/8787 operator-report artifact route 支持 POST/GET readback；仍不证明 PC WASD、HIL、map/localize runtime 或 delivery success。 |
+| O1：硬件协议可信底盘 | 保持约 95.5% | fresh 非运动 `T=130 -> T=1001` observed；仍不是 robot ACK、HIL pass、`safe_to_control=true` 或 ROS feedback topics。 |
+| O8：Epic 交付节奏与证据治理 | 约 40% -> 约 42% | 本轮修正上一轮 owner timeout，形成完整 owner notes、evidence type gate、side-to-side 和 final 收口；治理进展不证明产品能力。 |
+
+验证：upper API unittest 26 OK/skipped 1、LiDAR collector unittest 5 OK、vision unittest 20 OK、PC workstation tests 98 passed、PC build/lint passed、compileall passed、scoped diff-check passed。剩余风险见本 sprint `final.md`。
+
 ### 2026-06-04 19-20｜Runtime Material Continue｜O2 manifest checker landed，其他 owner 超时不涨分
 
 本轮 `sprints/2026.06.04_19-20_runtime-material-continue/` 继续按 O8 启动跨 owner Epic，优先 O2/O3，兼顾 O7/O1。Robot Algorithm owner 的 O2 改动落盘：`elevator_opencv_baseline.py` 新增 `--check-template`，输出 `trashbot.elevator_image_manifest_template_check.v1`，并新增 `pc-tools/evidence/templates/elevator_image_manifest_collection_template.json` 与 `pc-tools/evidence/fixtures/elevator_real_image_manifest_blocker/blocked_missing_manifest.json`。验证显示 `status=blocked_missing_real_or_controlled_images`、`can_run_opencv_eval=false`、`field_eval_ready=false`、`image_kinds.real_or_controlled=0`、`template_placeholders=8`。

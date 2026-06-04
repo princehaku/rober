@@ -10,7 +10,7 @@ ROBER_UPPER_API_BASE_URL=http://192.168.1.11:8787 npm run dev -- --host 127.0.0.
 
 该模式绕过 cloud relay 作为必需路径，但只服务 PC 本地浏览器、curl 和调试工具。它不改变生产 4G 云路线，不替代手机端普通用户路径，也不把 8787 HTTP 成功解释成 WAVE ROVER ACK、`T=1001` 或 HIL pass。
 
-2026-06-04 起，PC 现场 direct-upper 的 `status` 和 `radar start/stop` 在缺少显式 env 时会回退到现场默认上位机：
+2026-06-04 起，PC 现场 direct-upper 的 `status`、`radar start/stop` 和 `operator-report` 写入/回读在缺少显式 env 时会回退到现场默认上位机：
 
 ```text
 http://192.168.1.11:8787
@@ -59,17 +59,19 @@ adapter.field_default_url=http://192.168.1.11:8787
 | `POST` | `/api/o7/direct-upper/map/load` | 同源转发到上位机 `/api/map/load`，保留 `map_id` 和 `evidence_ref`，需要显式 env 或 fixture mode。 |
 | `GET` | `/api/o7/direct-upper/map/list` | 同源转发到上位机 `/api/map/list`，需要显式 env 或 fixture mode。 |
 | `POST` | `/api/o7/direct-upper/localize/reset` | 同源转发到上位机 `/api/localize/reset`，需要显式 env 或 fixture mode。 |
-| `POST` | `/api/o7/direct-upper/operator-report` | 同源转发到上位机 `/api/operator/report`，记录 `evidence_ref` 和 `note`，需要显式 env 或 fixture mode。 |
+| `POST` | `/api/o7/direct-upper/operator-report` | 同源转发到上位机 `/api/operator/report`，记录 `evidence_ref` 和 `note`；允许使用 field default，不触发运动。 |
+| `GET` | `/api/o7/direct-upper/operator-report` | 同源回读上位机 `/api/operator/report` latest artifact；允许使用 field default，只读不触发运动。 |
 
 ## 环境变量
 
 - `ROBER_UPPER_API_BASE_URL`：可选但优先。示例 `http://192.168.1.11:8787`。
 - 未配置时，`GET /api/o7/direct-upper/status` 使用 field default `http://192.168.1.11:8787` 并返回 `upper_api_base_url_source=field_default`。
 - 未配置时，`POST /api/o7/direct-upper/radar/start` 和 `POST /api/o7/direct-upper/radar/stop` 也使用 field default 转发到上位机 `/api/radar/start|stop`。
+- 未配置时，`POST|GET /api/o7/direct-upper/operator-report` 使用 field default 写入/回读上位机 `/api/operator/report`，只作用于 operator report artifact，不访问 base/manual/stop/feedback。
 - `ROBER_O7_DIRECT_UPPER_FIXTURE_MODE=1`：显式打开 fixture mode；支持 `1/true/yes/on`。fixture mode 返回 `upper_api_base_url_source=fixture`、`upper_api_base_url=fixture://upper-api`，并且不触发远端 fetch。
 - 请求 body 也可传 `fixture_mode=true` 打开单次 fixture mode。UI 的 `fixture mode` 勾选框使用该入口。
 - 底盘运动相关的 `base/stop`、`base/feedback-request`、`base/manual` 仍要求显式 `ROBER_UPPER_API_BASE_URL` 或 fixture mode；缺 env 且没有 fixture mode 时返回 `base_url_not_configured`，不触发远端 fetch。
-- `map/start|reset|save|load|list`、`localize/reset` 和 `operator-report` 也要求显式 `ROBER_UPPER_API_BASE_URL` 或 fixture mode；缺 env 且没有 fixture mode 时返回 `base_url_not_configured`，不使用 field default。
+- `map/start|reset|save|load|list` 和 `localize/reset` 仍要求显式 `ROBER_UPPER_API_BASE_URL` 或 fixture mode；缺 env 且没有 fixture mode 时返回 `base_url_not_configured`，不使用 field default。
 
 ## Timeout 边界
 
@@ -344,18 +346,24 @@ trashbot.pc_tools_workstation.o7_direct_upper_localize_reset.v1
 - fixture mode 时返回 `200`，`upper_request.executed=false`，不发布 `/initialpose`。
 - 即使远端 HTTP 成功，PC 仍不证明 AMCL lifecycle、`/amcl_pose`、TF、定位恢复或 Nav2 可用。
 
-## `POST /api/o7/direct-upper/operator-report`
+## `POST|GET /api/o7/direct-upper/operator-report`
 
-PC 后端只转发到显式 env 指向的上位机：
+PC 后端转发到上位机 operator report artifact 入口；缺少显式 env 时允许使用现场默认 8787：
 
 ```text
-<ROBER_UPPER_API_BASE_URL>/api/operator/report
+<upper_api_base_url>/api/operator/report
 ```
 
-请求示例：
+POST 请求示例：
 
 ```json
 {"evidence_ref":"operator_field_report_pending","note":"not_proven: waiting for field evidence","fixture_mode":false}
+```
+
+GET readback 示例：
+
+```text
+/api/o7/direct-upper/operator-report?evidence_ref=operator_field_report_pending
 ```
 
 响应 schema：
@@ -366,7 +374,9 @@ trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1
 
 边界：
 
-- 不使用 field default。缺 env 且没有 fixture mode 时返回 `400 base_url_not_configured`，不触发远端 fetch。
+- 缺 env 且没有 fixture mode 时使用 `http://192.168.1.11:8787`，响应中 `upper_api_base_url_source=field_default`。
+- `POST` 只写入上位机 operator report latest artifact；`GET` 只回读该 latest artifact。
+- 该入口不访问 `/api/base/manual`、`/api/base/stop`、`/api/base/feedback-request`、`/api/base/status`、ROS graph、串口或 LiDAR endpoint。
 - `command_payload_summary.evidence_ref` 保留 operator 当前 evidence ref。
 - `command_payload_summary.report_note` 最多保留前 120 个字符。
 - fixture mode 时返回 `200`，`upper_request.executed=false`，只证明 PC workflow 可以生成 report envelope。

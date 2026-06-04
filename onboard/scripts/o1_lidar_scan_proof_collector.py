@@ -134,6 +134,12 @@ def ros2_source_prefix() -> str:
     return f"source {ROS_HUMBLE_SETUP} && source {ROBER_INSTALL_SETUP}"
 
 
+def ros2_presence_command() -> str:
+    """用 Humble 兼容的方式验证 ROS2 CLI；`ros2 --version` 在目标机上会误报失败。"""
+    # Humble 的 ros2 CLI 没有稳定 `--version`，所以用 `command -v` 加 `--help` 做最小可执行检查。
+    return f"{ros2_source_prefix()} && command -v ros2 && ros2 --help >/dev/null"
+
+
 def build_topic_read_commands(timeout_s: float) -> dict[str, str]:
     """只构造 topic/TF 读取命令，不构造 driver launch 或任何控制命令。"""
     inner_timeout = max(1, int(timeout_s))
@@ -238,10 +244,10 @@ def build_probe_payload(
         "radar_status": url_fetcher(f"{upper_api_base_url.rstrip('/')}/api/radar/status", timeout_s),
     }
     ros2_available = shutil.which("ros2") is not None
-    ros2_version: dict[str, Any] | None = None
+    ros2_cli_check: dict[str, Any] | None = None
     if humble_setup_exists:
-        ros2_version = command_runner(f"{ros2_source_prefix()} && ros2 --version", timeout_s)
-        ros2_available = bool(ros2_version.get("ok")) or ros2_available
+        ros2_cli_check = command_runner(ros2_presence_command(), timeout_s)
+        ros2_available = bool(ros2_cli_check.get("ok")) or ros2_available
 
     blockers: list[dict[str, str]] = []
     if not humble_setup_exists:
@@ -294,7 +300,7 @@ def build_probe_payload(
             "humble_setup": {"path": ROS_HUMBLE_SETUP, "exists": humble_setup_exists},
             "rober_install_setup": {"path": ROBER_INSTALL_SETUP, "exists": install_setup_exists},
             "ros2_available": ros2_available,
-            "ros2_version": ros2_version,
+            "ros2_cli_check": ros2_cli_check,
         },
         "lidar_devices": lidar_devices,
         "upper_api": upper_api,

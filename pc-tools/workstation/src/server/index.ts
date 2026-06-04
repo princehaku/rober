@@ -40,6 +40,7 @@ import {
   proxyO7DirectUpperMapStart,
   proxyO7DirectUpperManual,
   proxyO7DirectUpperOperatorReport,
+  proxyO7DirectUpperOperatorReportReadback,
   proxyO7DirectUpperRadarStart,
   proxyO7DirectUpperRadarStop,
   proxyO7DirectUpperStop,
@@ -207,6 +208,17 @@ export function createWorkstationApp(): express.Express {
   workstationApp.post("/api/o7/direct-upper/operator-report", async (req, res) => {
     // operator report 记录 evidence_ref 和人工说明，不替代 stop/status/ACK/HIL 证据。
     const result = await proxyO7DirectUpperOperatorReport({ body: req.body });
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.get("/api/o7/direct-upper/operator-report", async (req, res) => {
+    // report readback 只读 8787 latest artifact；它不触发 base/manual、stop、ROS2 或串口动作。
+    const result = await proxyO7DirectUpperOperatorReportReadback({
+      body: {
+        evidence_ref: queryString(req.query.evidence_ref),
+        fixture_mode: queryString(req.query.fixture_mode),
+      },
+    });
     res.status(result.status).json(result.payload);
   });
 
