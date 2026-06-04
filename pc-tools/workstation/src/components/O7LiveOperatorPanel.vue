@@ -36,6 +36,8 @@ const operatorCommandInFlight = ref<string | null>(null);
 const operatorEvidenceRef = ref("operator_field_report_pending");
 const operatorReportNote = ref("not_proven: waiting for field evidence");
 const mapId = ref("latest");
+const operatorConfirmed = ref(false);
+const fixtureMode = ref(false);
 let cameraPeerConnection: RTCPeerConnection | null = null;
 
 interface CameraOfferAnswerPayload {
@@ -173,6 +175,43 @@ const directUpperEvidenceSummary = computed(() => {
   const localize = status?.localization_status ?? "not_loaded";
   const report = status?.operator_report_evidence_ref ?? "missing_operator_report";
   return `map=${map} · localize=${localize} · report=${report}`;
+});
+
+const operatorEvidenceRefValue = computed(() => {
+  // 空 evidence_ref 会让现场链路无法复盘，因此统一压成 missing token 进入所有命令 envelope。
+  const trimmed = operatorEvidenceRef.value.trim();
+  return trimmed || "missing_operator_evidence_ref";
+});
+
+const operatorModeSummary = computed(() => {
+  // fixture mode 是显式软件护栏模式，真实上位机未执行时也必须在 UI 文案里暴露。
+  return fixtureMode.value
+    ? "fixture mode · no upper fetch · software_guard"
+    : "real upper mode · radar uses field_default if env is absent; base/map/localize/report still require env";
+});
+
+const directUpperAdapterSummary = computed(() => {
+  // adapter 指纹用于现场识别旧 Vite middleware；缺字段时优先提示重启 dev server。
+  const adapter = directUpperStatus.value?.adapter;
+  if (!adapter) {
+    return "adapter=missing · stale_dev_server_missing_adapter · restart npm run dev";
+  }
+  return `adapter=${adapter.version} · source=${adapter.source} · field_default=${adapter.field_default_enabled ? adapter.field_default_url : "disabled"}`;
+});
+
+const directUpperStaleWarning = computed(() => {
+  // 旧 5173 进程可能固定住旧 Express app；这个提示只来自 API 指纹，不靠 operator 猜测。
+  const status = directUpperStatus.value;
+  if (!status) {
+    return "";
+  }
+  if (!status.adapter) {
+    return "stale_dev_server_missing_adapter：当前 5173 API 不是本轮 direct-upper adapter，请重启 npm run dev。";
+  }
+  if (status.status === "not_configured" || status.upper_api_base_url_source === "not_configured") {
+    return "direct_upper_not_using_field_default：若 Radar start 仍报 base_url_not_configured，请重启占用 5173 的旧 Vite 进程。";
+  }
+  return "";
 });
 
 const cameraStatusText = computed(() => {
@@ -485,13 +524,19 @@ function commandResultMessage(action: string, result: O7DirectUpperApiCommandRes
   const ack = result.robot_ack_connected ? "ACK observed" : "ACK not observed";
   const t1001 = result.t1001_observed ? "T=1001 observed" : "T=1001 not observed";
   const blockers = result.blocked_reasons.length ? result.blocked_reasons.join(" / ") : "none";
+  const evidence = result.command_payload_summary.evidence_ref ?? operatorEvidenceRefValue.value;
+  const adapter = result.adapter?.version ?? "missing_adapter_stale_dev_server";
+  const source = result.upper_api_base_url_source ?? "missing_source";
+  if (result.upper_api_base_url_source === "fixture" && result.accepted_by_workstation) {
+    return `${action} fixture 已记录（仍锁定）：${request.path}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false`;
+  }
   if (result.accepted_by_workstation && request.ok) {
-    return `${action} 已发送（仍锁定）：${request.path} ${http}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false`;
+    return `${action} 已发送（仍锁定）：${request.path} ${http}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false`;
   }
   const reason = result.failure_reason || request.failure_reason || "manual_request_failed";
   return `${action} 失败：${reason}；${request.path} ${request.executed ? http : "not_executed"}；direct status ${
     directUpperStatus.value?.status ?? "unknown"
-  }；锁定原因 ${blockers}；safe_to_control=false`;
+  }；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；锁定原因 ${blockers}；safe_to_control=false`;
 }
 
 function isEditableControlTarget(target: EventTarget | null): boolean {
@@ -513,9 +558,21 @@ function manualPulseForDirection(direction: O7LiveOperatorDirection): { speedMps
   return { speedMps: speed.value, durationMs: STRAIGHT_PULSE_DURATION_MS };
 }
 
+function ensureOperatorConfirmed(action: string): boolean {
+  // 所有会触发 real/fixture 控制面的按钮和键盘快捷键都必须经过同一个人工确认门。
+  if (!operatorConfirmed.value) {
+    lockMessage.value = `${action} 未发送：请先勾选 operator confirmation；evidence_ref=${operatorEvidenceRefValue.value}；safe_to_control=false`;
+    return false;
+  }
+  return true;
+}
+
 async function sendManualControl(direction: O7LiveOperatorDirection): Promise<void> {
   // 方向按钮只调用 PC 同源 direct-upper manual 代理；浏览器不直连 8787、不发 /cmd_vel、不构造 WAVE ROVER JSON。
   const action = directionLabels[direction];
+  if (!ensureOperatorConfirmed(action)) {
+    return;
+  }
   if (manualCommandInFlight.value) {
     lockMessage.value = `${action} 未发送：上一条 ${directionLabels[manualCommandInFlight.value]} 仍在等待；safe_to_control=false`;
     return;
@@ -524,7 +581,13 @@ async function sendManualControl(direction: O7LiveOperatorDirection): Promise<vo
   const pulse = manualPulseForDirection(direction);
   lockMessage.value = `${action} 发送中：通过 PC 同源 /api/o7/direct-upper/base/manual；safe_to_control=false`;
   try {
-    const result = await postO7DirectUpperManual(direction, pulse.speedMps, pulse.durationMs);
+    const result = await postO7DirectUpperManual(
+      direction,
+      pulse.speedMps,
+      pulse.durationMs,
+      operatorEvidenceRefValue.value,
+      fixtureMode.value,
+    );
     lockMessage.value = commandResultMessage(action, result);
     await refreshDirectUpperStatus();
   } catch (error) {
@@ -537,6 +600,9 @@ async function sendManualControl(direction: O7LiveOperatorDirection): Promise<vo
 
 async function sendStopControl(): Promise<void> {
   // Stop 走独立 /api/base/stop 代理；它是安全护栏，不复用 manual stop 的短 pulse 语义。
+  if (!ensureOperatorConfirmed("Stop")) {
+    return;
+  }
   if (operatorCommandInFlight.value || manualCommandInFlight.value) {
     lockMessage.value = "Stop 未发送：仍有上一条控制请求在等待；safe_to_control=false";
     return;
@@ -544,7 +610,7 @@ async function sendStopControl(): Promise<void> {
   operatorCommandInFlight.value = "stop";
   lockMessage.value = "Stop 发送中：通过 PC 同源 /api/o7/direct-upper/base/stop；safe_to_control=false";
   try {
-    const result = await postO7DirectUpperStop();
+    const result = await postO7DirectUpperStop(operatorEvidenceRefValue.value, fixtureMode.value);
     lockMessage.value = commandResultMessage("Stop", result);
     await refreshDirectUpperStatus();
   } catch (error) {
@@ -557,16 +623,20 @@ async function sendStopControl(): Promise<void> {
 
 async function sendOperatorControl(control: (typeof operatorControls.value)[number]): Promise<void> {
   // 雷达/建图/定位按钮只调用 PC 同源代理；浏览器不直连 8787，也不发布 ROS2 service/action。
+  if (!ensureOperatorConfirmed(control.label)) {
+    return;
+  }
   if (operatorCommandInFlight.value || manualCommandInFlight.value) {
     lockMessage.value = `${control.label} 未发送：上一条请求仍在等待；safe_to_control=false`;
     return;
   }
   operatorCommandInFlight.value = control.id;
-  lockMessage.value = `${control.label} 发送中：evidence_ref=${operatorEvidenceRef.value}；safe_to_control=false`;
+  lockMessage.value = `${control.label} 发送中：evidence_ref=${operatorEvidenceRefValue.value}；safe_to_control=false`;
   try {
     const result = await postO7DirectUpperOperatorCommand(control.kind, {
       ...control.payload,
-      evidence_ref: operatorEvidenceRef.value,
+      evidence_ref: operatorEvidenceRefValue.value,
+      fixture_mode: fixtureMode.value,
     });
     lockMessage.value = commandResultMessage(control.label, result);
     await refreshDirectUpperStatus();
@@ -580,16 +650,20 @@ async function sendOperatorControl(control: (typeof operatorControls.value)[numb
 
 async function sendOperatorReport(): Promise<void> {
   // operator report 必须携带 evidence_ref，作为人工现场材料引用；它不是机器人 ACK。
+  if (!ensureOperatorConfirmed("Operator report")) {
+    return;
+  }
   if (operatorCommandInFlight.value || manualCommandInFlight.value) {
     lockMessage.value = "Operator report 未发送：上一条请求仍在等待；safe_to_control=false";
     return;
   }
   operatorCommandInFlight.value = "operator_report";
-  lockMessage.value = `Operator report 发送中：evidence_ref=${operatorEvidenceRef.value}；safe_to_control=false`;
+  lockMessage.value = `Operator report 发送中：evidence_ref=${operatorEvidenceRefValue.value}；safe_to_control=false`;
   try {
     const result = await postO7DirectUpperOperatorCommand("operator_report", {
-      evidence_ref: operatorEvidenceRef.value,
+      evidence_ref: operatorEvidenceRefValue.value,
       note: operatorReportNote.value,
+      fixture_mode: fixtureMode.value,
     });
     lockMessage.value = commandResultMessage("Operator report", result);
     await refreshDirectUpperStatus();
@@ -774,6 +848,16 @@ onBeforeUnmount(() => {
           <input v-model="mapId" type="text" aria-label="map id">
         </label>
       </div>
+      <div class="operator-guard-row" aria-label="operator mode and confirmation">
+        <label class="operator-toggle">
+          <input v-model="fixtureMode" type="checkbox" aria-label="fixture mode">
+          <span>fixture mode</span>
+        </label>
+        <label class="operator-toggle confirmation-toggle">
+          <input v-model="operatorConfirmed" type="checkbox" aria-label="operator confirmation">
+          <span>operator confirmation</span>
+        </label>
+      </div>
       <div class="operator-control-grid" aria-label="8787 upper API controls">
         <button
           v-for="control in operatorControls"
@@ -799,7 +883,7 @@ onBeforeUnmount(() => {
         Report evidence ref
       </button>
       <p class="base-boundary">
-        {{ directUpperEvidenceSummary }} · blocked/not_proven 由 8787 与 PC 代理返回，UI 不直连 ROS graph。
+        {{ operatorModeSummary }} · {{ directUpperEvidenceSummary }} · blocked/not_proven 由 8787 与 PC 代理返回，UI 不直连 ROS graph。
       </p>
     </article>
 
@@ -829,6 +913,8 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <p class="muted-copy">{{ directUpperModeText }}</p>
+      <p class="adapter-fingerprint">{{ directUpperAdapterSummary }}</p>
+      <p v-if="directUpperStaleWarning" class="subtle-warning">{{ directUpperStaleWarning }}</p>
       <div class="status-light-list">
         <div class="status-light-row">
           <span class="status-dot" :class="directUpperStatus?.status === 'ready' ? 'status-dot-green' : 'status-dot-yellow'" />

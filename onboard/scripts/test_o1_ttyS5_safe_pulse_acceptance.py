@@ -126,6 +126,10 @@ class SafePulseAcceptanceTest(unittest.TestCase):
         self.assertFalse(result["sends_commands"])
         self.assertFalse(result["sends_motion_commands"])
         self.assertFalse(result["robot_control_executed"])
+        self.assertTrue(result["same_evidence_ref_required"])
+        self.assertEqual(result["evidence_ref_source"], "generated")
+        self.assertIn("o1-ttyS5-safe-pulse-", result["evidence_ref"])
+        self.assertEqual(result["evidence_chain"]["manual_request"], result["evidence_ref"])
         self.assertEqual(result["status_summary"]["base"]["port"], "/dev/ttyS5")
         self.assertEqual(result["status_summary"]["base"]["baudrate"], 115200)
         self.assertEqual(result["t1001_feedback_status"], "not_observed")
@@ -213,7 +217,11 @@ class SafePulseAcceptanceTest(unittest.TestCase):
             result = runner.run_acceptance(args)
 
         self.assertEqual(calls[0], ("GET", "/api/status", None))
-        self.assertEqual(calls[1], ("POST", "/api/base/manual", {"direction": "forward", "speed": runner.MAX_SPEED, "duration_ms": runner.MAX_DURATION_MS}))
+        self.assertEqual(calls[1][0:2], ("POST", "/api/base/manual"))
+        self.assertEqual(
+            calls[1][2],
+            {"direction": "forward", "speed": runner.MAX_SPEED, "duration_ms": runner.MAX_DURATION_MS, "evidence_ref": result["evidence_ref"]},
+        )
         self.assertEqual(calls[2], ("POST", "/api/base/stop", {}))
         self.assertEqual(calls[3], ("GET", "/api/status", None))
         self.assertTrue(result["sends_commands"])
@@ -221,6 +229,7 @@ class SafePulseAcceptanceTest(unittest.TestCase):
         self.assertTrue(result["robot_control_executed"])
         self.assertFalse(result["safe_to_control"])
         self.assertEqual(result["stop_request"]["path"], "/api/base/stop")
+        self.assertEqual(result["stop_request"]["evidence_ref"], result["evidence_ref"])
         self.assertEqual(result["post_t1001_feedback_status"], "not_observed")
         self.assertEqual(result["operator_report_status"], "ready_for_review")
         self.assertEqual(result["acceptance_verdict"]["status"], "motion_posted_without_ack")
@@ -349,6 +358,35 @@ class SafePulseAcceptanceTest(unittest.TestCase):
         self.assertEqual(result["acceptance_verdict"]["failed_step"], "stop_request")
         self.assertTrue(result["acceptance_verdict"]["fail_closed"])
         self.assertFalse(result["acceptance_verdict"]["safe_to_control"])
+
+    def test_execute_mode_blocks_when_operator_report_ref_mismatches(self) -> None:
+        calls: list[tuple[str, str, dict[str, object] | None]] = []
+
+        def fake_http(method: str, base_url: str, path: str, timeout_s: float, payload: dict[str, object] | None = None) -> dict[str, object]:
+            # evidence_ref 不一致时必须停在 status 后，不能继续发 manual POST。
+            calls.append((method, path, payload))
+            return {"ok": True, "http_status": 200, "elapsed_ms": 1.0, "json": STATUS_PAYLOAD, "error": None}
+
+        with tempfile.TemporaryDirectory() as temp_dir, mock.patch.object(runner, "http_json", side_effect=fake_http):
+            mismatched = {**PREFLIGHT_ONLY_OPERATOR_REPORT, "evidence_ref": "field-other-ref"}
+            args = runner.parse_args(
+                [
+                    "--execute-motion",
+                    "--confirm-physical-clearance",
+                    "--evidence-ref",
+                    "field-main-ref",
+                    "--operator-report-json",
+                    self.write_operator_report(temp_dir, mismatched),
+                ]
+            )
+            result = runner.run_acceptance(args)
+
+        self.assertEqual(calls, [("GET", "/api/status", None)])
+        self.assertEqual(result["operator_report_evidence_ref_status"], "mismatch")
+        self.assertEqual(result["acceptance_verdict"]["status"], "blocked_before_motion")
+        self.assertEqual(result["acceptance_verdict"]["failed_step"], "operator_report_evidence_ref_mismatch")
+        self.assertIsNone(result["manual_request"])
+        self.assertFalse(result["safe_to_control"])
 
     def test_operator_report_json_path_is_normalized(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -500,6 +538,7 @@ class SafePulseAcceptanceTest(unittest.TestCase):
             self.assertEqual(written["schema"], runner.SCHEMA)
             self.assertEqual(written["status_request"]["source"], "local_status_json")
             self.assertEqual(written["status_summary"]["base"]["port"], "/dev/ttyS5")
+            self.assertEqual(written["evidence_chain"]["post_status"], written["evidence_ref"])
             self.assertEqual(written["acceptance_verdict"]["status"], "dry_run_only")
 
 

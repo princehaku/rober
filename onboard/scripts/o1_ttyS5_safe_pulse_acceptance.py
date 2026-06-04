@@ -87,6 +87,8 @@ VENDOR_SOURCES = (
 # 安全边界说明：operator report 缺失或不完整时，执行模式必须 fail-closed。
 # 安全边界说明：dry-run 可携带 operator report，但仍然不能发送任何命令。
 # 安全边界说明：operator report 不改变 safe_to_control，HIL 仍需 ACK/T=1001。
+# 安全边界说明：evidence_ref 串起 status/manual/stop/post-status/report，防止现场材料散落。
+# 安全边界说明：operator report 若声明了不同 evidence_ref，执行前必须阻断运动。
 
 # 默认模式必须显式列出禁止动作，避免 dry-run artifact 被误读成可控。
 BLOCKED_COMMANDS_NOT_SENT = (
@@ -99,6 +101,7 @@ BLOCKED_COMMANDS_NOT_SENT = (
 
 OPERATOR_REPORT_FIELDS = (
     "operator_present",
+    "evidence_ref",
     "physical_clearance_confirmed",
     "emergency_stop_ready",
     "observed_motion",
@@ -122,6 +125,22 @@ OPERATOR_REPORT_GATE_STATUSES = frozenset({"ready_for_execution", "ready_for_rev
 def utc_now() -> str:
     """统一 UTC 时间，避免 PC 和 Orange Pi 时区不同导致材料难对齐。"""
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def generated_evidence_ref(direction: str) -> str:
+    """默认 ref 可直接进文件名和 operator report，不依赖现场人工临时命名。"""
+    return f"o1-ttyS5-safe-pulse-{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}-{direction}"
+
+
+def normalize_evidence_ref(value: Any, direction: str) -> tuple[str, str]:
+    """保守清洗 evidence_ref，避免空白或奇怪字符破坏 artifact 路径。"""
+    raw = "" if value is None else str(value).strip()
+    source = "provided" if raw else "generated"
+    if not raw:
+        raw = generated_evidence_ref(direction)
+    safe = "".join(ch if (ch.isascii() and (ch.isalnum() or ch in {"-", "_", ".", ":", "@"})) else "-" for ch in raw)
+    safe = safe.strip("-")[:160]
+    return safe or generated_evidence_ref(direction), source
 
 
 def clamp_float(value: float, minimum: float, maximum: float) -> float:
@@ -166,6 +185,8 @@ def normalize_operator_report(report: dict[str, Any] | None) -> tuple[dict[str, 
     if report is None:
         return None, "missing"
     normalized: dict[str, Any] = {}
+    evidence_ref = report.get("evidence_ref")
+    normalized["evidence_ref"] = str(evidence_ref).strip() if evidence_ref else None
     preflight_missing_or_invalid: list[str] = []
     review_missing_or_invalid: list[str] = []
     unsafe_fields: list[str] = []
@@ -365,6 +386,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
     speed = clamp_float(float(args.speed), 0.0, MAX_SPEED)
     duration_ms = clamp_int(int(args.duration_ms), 0, MAX_DURATION_MS)
     direction = str(args.direction).strip().lower()
+    evidence_ref, evidence_ref_source = normalize_evidence_ref(args.evidence_ref, direction)
     # `--dry-run` 是最高优先级安全闸，即使用户误传 execute/confirm 也不能 POST。
     execution_authorized = bool(args.execute_motion and args.confirm_physical_clearance and not args.dry_run)
     if args.dry_run:
@@ -372,11 +394,29 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
     else:
         gate_reason = "requires --execute-motion and --confirm-physical-clearance together"
     operator_report, operator_report_status, operator_report_error = load_operator_report(args.operator_report_json)
+    report_ref = operator_report.get("evidence_ref") if isinstance(operator_report, dict) else None
+    if not report_ref:
+        report_ref_status = "missing"
+    elif report_ref == evidence_ref:
+        report_ref_status = "matches"
+    else:
+        report_ref_status = "mismatch"
     return {
         "schema": SCHEMA,
         "version": 1,
         "generated_at": utc_now(),
         "vendor_sources": list(VENDOR_SOURCES),
+        "evidence_ref": evidence_ref,
+        "evidence_ref_source": evidence_ref_source,
+        "same_evidence_ref_required": True,
+        "operator_report_evidence_ref_status": report_ref_status,
+        "evidence_chain": {
+            "initial_status": evidence_ref,
+            "manual_request": evidence_ref,
+            "extra_stop": evidence_ref,
+            "post_status": evidence_ref,
+            "operator_report": evidence_ref,
+        },
         "evidence_boundary": "api_status_dry_run_not_hil",
         "upper_api": {"base_url": args.base_url.rstrip("/"), "status_path": "/api/status"},
         "requested_motion": {
@@ -466,6 +506,14 @@ def run_acceptance(args: argparse.Namespace) -> dict[str, Any]:
             t1001_or_ack_observed=payload["t1001_feedback_status"] == "observed",
         )
         return payload
+    if payload["execution_gate"]["authorized"] and payload["operator_report_evidence_ref_status"] == "mismatch":
+        payload["acceptance_verdict"] = make_verdict(
+            "blocked_before_motion",
+            failed_step="operator_report_evidence_ref_mismatch",
+            reason="operator report evidence_ref must match the runner evidence_ref before motion POST",
+            t1001_or_ack_observed=payload["t1001_feedback_status"] == "observed",
+        )
+        return payload
     if not payload["execution_gate"]["authorized"]:
         if status_failed:
             payload["acceptance_verdict"] = make_verdict(
@@ -487,6 +535,7 @@ def run_acceptance(args: argparse.Namespace) -> dict[str, Any]:
         "direction": payload["requested_motion"]["direction"],
         "speed": payload["requested_motion"]["speed"],
         "duration_ms": payload["requested_motion"]["duration_ms"],
+        "evidence_ref": payload["evidence_ref"],
     }
     payload["evidence_boundary"] = "api_manual_short_pulse_with_extra_stop_not_hil"
     payload["manual_request"] = {"method": "POST", "path": "/api/base/manual", "json": manual_body}
@@ -500,7 +549,12 @@ def run_acceptance(args: argparse.Namespace) -> dict[str, Any]:
 
     # manual endpoint 自带 auto-stop；这里再调用 stop 形成独立停车证据，失败也不能吞。
     stop_result = http_json("POST", args.base_url, "/api/base/stop", args.http_timeout_s, {})
-    payload["stop_request"] = {"method": "POST", "path": "/api/base/stop", "reason": "extra fail-closed stop evidence after manual pulse"}
+    payload["stop_request"] = {
+        "method": "POST",
+        "path": "/api/base/stop",
+        "evidence_ref": payload["evidence_ref"],
+        "reason": "extra fail-closed stop evidence after manual pulse",
+    }
     payload["stop_evidence"] = stop_result
     post_status_result = http_json("GET", args.base_url, "/api/status", args.http_timeout_s)
     post_status_payload = post_status_result.get("json") if post_status_result.get("ok") else None
@@ -566,6 +620,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--direction", default=DEFAULT_DIRECTION)
     parser.add_argument("--speed", type=float, default=DEFAULT_SPEED)
     parser.add_argument("--duration-ms", type=int, default=DEFAULT_DURATION_MS)
+    parser.add_argument("--evidence-ref", help="同一现场证据包 ref；默认按 UTC 和 direction 生成")
     parser.add_argument("--execute-motion", action="store_true")
     parser.add_argument("--confirm-physical-clearance", action="store_true")
     parser.add_argument("--dry-run", action="store_true", help="兼容显式 dry-run 调用；默认已经是 dry-run")

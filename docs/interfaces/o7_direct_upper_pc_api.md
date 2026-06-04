@@ -10,7 +10,7 @@ ROBER_UPPER_API_BASE_URL=http://192.168.1.11:8787 npm run dev -- --host 127.0.0.
 
 该模式绕过 cloud relay 作为必需路径，但只服务 PC 本地浏览器、curl 和调试工具。它不改变生产 4G 云路线，不替代手机端普通用户路径，也不把 8787 HTTP 成功解释成 WAVE ROVER ACK、`T=1001` 或 HIL pass。
 
-2026-06-04 起，PC 现场 direct-upper 的 `status`、`radar start/stop` 以及同类非底盘 operator 代理在缺少显式 env 时会回退到现场默认上位机：
+2026-06-04 起，PC 现场 direct-upper 的 `status` 和 `radar start/stop` 在缺少显式 env 时会回退到现场默认上位机：
 
 ```text
 http://192.168.1.11:8787
@@ -20,9 +20,26 @@ http://192.168.1.11:8787
 
 - `env`：来自 `ROBER_UPPER_API_BASE_URL`，优先级最高。
 - `field_default`：来自当前现场默认 `http://192.168.1.11:8787`。
-- `not_configured`：只用于仍要求显式配置的底盘控制类入口或完全不可解析场景。
+- `fixture`：来自显式 fixture mode，请求不执行上位机 fetch，只返回可回放的软件护栏 envelope。
+- `not_configured`：用于仍要求显式配置的入口，且没有显式 fixture mode。
 
 这个默认值只解决 PC 到上位机 8787 的 HTTP 路由，不会把 `safe_to_control` 改为 `true`，也不会绕过 ACK、`T=1001`、HIL 或 operator evidence。
+
+2026-06-04 13:48 起，direct-upper status 和 command envelope 必须返回 adapter 指纹：
+
+```text
+adapter.version=2026-06-04.field-default-radar-v2
+adapter.source=pc-tools/workstation/src/server/o7DirectUpperApi.ts
+adapter.field_default_enabled=true
+adapter.field_default_url=http://192.168.1.11:8787
+```
+
+这个字段用于识别 stale Vite dev server。当前 `vite.config.ts` 在插件初始化时执行
+`const apiApp = createWorkstationApp()`；如果 5173 上的旧 `npm run dev` 进程没有重启，
+它可能继续服务旧 Express middleware，看起来就会仍然返回
+`base_url_not_configured` / `upper_request.executed=false`。新 UI 会在 Direct 卡片显示
+`adapter=<version>`；如果 API 缺少 `adapter` 或 Radar start 仍显示
+`/api/radar/start not_executed`，operator 应重启占用 5173 的 dev server 后再复测。
 
 ## PC 本机接口
 
@@ -36,13 +53,23 @@ http://192.168.1.11:8787
 | `POST` | `/api/o7/direct-upper/base/manual` | PC 侧先做方向白名单、低速、短 duration 限制，再转发到上位机 `/api/base/manual`。 |
 | `POST` | `/api/o7/direct-upper/radar/start` | 同源转发到上位机 `/api/radar/start`，允许使用 field default，不依赖底盘 ACK/T=1001。 |
 | `POST` | `/api/o7/direct-upper/radar/stop` | 同源转发到上位机 `/api/radar/stop`，允许使用 field default，不触碰底盘 UART。 |
+| `POST` | `/api/o7/direct-upper/map/start` | 同源转发到上位机 `/api/map/start`，需要显式 env 或 fixture mode。 |
+| `POST` | `/api/o7/direct-upper/map/reset` | 同源转发到上位机 `/api/map/reset`，需要显式 env 或 fixture mode。 |
+| `POST` | `/api/o7/direct-upper/map/save` | 同源转发到上位机 `/api/map/save`，保留 `map_id` 和 `evidence_ref`，需要显式 env 或 fixture mode。 |
+| `POST` | `/api/o7/direct-upper/map/load` | 同源转发到上位机 `/api/map/load`，保留 `map_id` 和 `evidence_ref`，需要显式 env 或 fixture mode。 |
+| `GET` | `/api/o7/direct-upper/map/list` | 同源转发到上位机 `/api/map/list`，需要显式 env 或 fixture mode。 |
+| `POST` | `/api/o7/direct-upper/localize/reset` | 同源转发到上位机 `/api/localize/reset`，需要显式 env 或 fixture mode。 |
+| `POST` | `/api/o7/direct-upper/operator-report` | 同源转发到上位机 `/api/operator/report`，记录 `evidence_ref` 和 `note`，需要显式 env 或 fixture mode。 |
 
 ## 环境变量
 
 - `ROBER_UPPER_API_BASE_URL`：可选但优先。示例 `http://192.168.1.11:8787`。
 - 未配置时，`GET /api/o7/direct-upper/status` 使用 field default `http://192.168.1.11:8787` 并返回 `upper_api_base_url_source=field_default`。
 - 未配置时，`POST /api/o7/direct-upper/radar/start` 和 `POST /api/o7/direct-upper/radar/stop` 也使用 field default 转发到上位机 `/api/radar/start|stop`。
-- 底盘运动相关的 `base/stop`、`base/feedback-request`、`base/manual` 仍要求显式 `ROBER_UPPER_API_BASE_URL`；缺 env 时返回 `base_url_not_configured` 且不触发远端 fetch。
+- `ROBER_O7_DIRECT_UPPER_FIXTURE_MODE=1`：显式打开 fixture mode；支持 `1/true/yes/on`。fixture mode 返回 `upper_api_base_url_source=fixture`、`upper_api_base_url=fixture://upper-api`，并且不触发远端 fetch。
+- 请求 body 也可传 `fixture_mode=true` 打开单次 fixture mode。UI 的 `fixture mode` 勾选框使用该入口。
+- 底盘运动相关的 `base/stop`、`base/feedback-request`、`base/manual` 仍要求显式 `ROBER_UPPER_API_BASE_URL` 或 fixture mode；缺 env 且没有 fixture mode 时返回 `base_url_not_configured`，不触发远端 fetch。
+- `map/start|reset|save|load|list`、`localize/reset` 和 `operator-report` 也要求显式 `ROBER_UPPER_API_BASE_URL` 或 fixture mode；缺 env 且没有 fixture mode 时返回 `base_url_not_configured`，不使用 field default。
 
 ## Timeout 边界
 
@@ -61,10 +88,15 @@ trashbot.pc_tools_workstation.o7_direct_upper_status.v1
 关键字段：
 
 - `mode=direct_upper_computer_lan_only`
+- `adapter.version=2026-06-04.field-default-radar-v2`
+- `adapter.source=pc-tools/workstation/src/server/o7DirectUpperApi.ts`
+- `adapter.field_default_enabled=true`
+- `adapter.field_default_url=http://192.168.1.11:8787`
 - `cloud_relay_bypassed=true`
 - `pc_local_only=true`
 - `upper_api_base_url`
-- `upper_api_base_url_source=env|field_default|not_configured`
+- `upper_api_base_url_source=env|field_default|fixture|not_configured`
+- `adapter.version/source/field_default_enabled/field_default_url/dev_server_reload_hint`
 - `health_request`：`GET /health` 的执行、HTTP 状态、失败原因。
 - `status_request`：`GET /api/status` 的执行、HTTP 状态、失败原因。
 - `upper_status_summary.camera_status`
@@ -89,7 +121,7 @@ trashbot.pc_tools_workstation.o7_direct_upper_status.v1
 - `upper_status_summary.base_write_control_available`
 - `upper_status_summary.robot_ack_connected=false`
 - `upper_status_summary.t1001_observed=false`
-- `local_api_paths.status/stop/feedback_request/manual`
+- `local_api_paths.status/stop/feedback_request/manual/radar_start/radar_stop/map_start/map_reset/map_save/map_load/map_list/localize_reset/operator_report`
 
 固定安全字段：
 
@@ -100,6 +132,27 @@ trashbot.pc_tools_workstation.o7_direct_upper_status.v1
 - `robot_control_executed=false`
 - `robot_ack_connected=false`
 - `t1001_observed=false`
+
+fixture status 边界：
+
+- 只有 `ROBER_O7_DIRECT_UPPER_FIXTURE_MODE=1` 会让 status 返回 fixture 摘要；请求 body 不能影响 `GET /status`。
+- fixture status 返回 `status=ready` 只是为了 PC workflow 演示可继续，不证明上位机 8787 在线。
+- fixture status 的 `health_request.executed=false`、`status_request.executed=false`，`failure_reason=fixture_mode_no_upper_runtime`。
+- fixture status 的 `map_lifecycle_status=fixture_ready_not_proven`、`map_artifact_ref=fixture_map_not_written`、`localization_status=fixture_pose_not_published`。
+- fixture status 固定 `safe_to_control=false`、`robot_control_executed=false`、`robot_ack_connected=false`、`t1001_observed=false`。
+
+## 共通请求字段
+
+控制、雷达、建图、定位和 report 入口共享以下 operator 字段：
+
+```json
+{"evidence_ref":"operator_field_report_pending","fixture_mode":false}
+```
+
+- `evidence_ref`：operator 当前现场材料引用。PC 会把空值压成 `missing_operator_evidence_ref`，并写入 `command_payload_summary.evidence_ref`。
+- `fixture_mode`：单次请求 fixture 开关。为 `true` 时不执行上位机 fetch，`upper_request.executed=false`、`upper_request.ok=true`、`upper_request.failure_reason=fixture_mode_no_upper_fetch`。
+- 所有 command response 都包含 `adapter`、`upper_api_base_url_source`、`upper_request`、`command_payload_summary`、`blocked_reasons`、`not_proven` 和固定安全字段。
+- fixture command response 仍追加 `fixture_mode_no_upper_runtime`、`field_evidence_not_proven`、`robot_ack_not_connected`、`t1001_feedback_not_observed`，不得被解释成真实 runtime 或现场材料通过。
 
 ## `POST /api/o7/direct-upper/base/stop`
 
@@ -119,7 +172,9 @@ trashbot.pc_tools_workstation.o7_direct_upper_stop.v1
 
 - 上位机 HTTP 2xx 且返回 JSON 时，`accepted_by_workstation=true`、`upper_request.ok=true`。
 - 远端超时、非 2xx、坏 JSON 或 fetch 失败时，PC 返回 `502`，`fail_closed=true`。
-- 未配置 base URL 时，PC 返回 `400`，不触发远端 fetch。
+- 未配置 base URL 且没有 fixture mode 时，PC 返回 `400`，不触发远端 fetch。
+- fixture mode 时，PC 返回 `200`，`upper_request.executed=false`，不触发远端 fetch。
+- `command_payload_summary.evidence_ref` 保留 operator 当前 evidence ref。
 - 响应仍固定 `robot_control_executed=false`、`robot_ack_connected=false`、`t1001_observed=false`。
 
 ## `POST /api/o7/direct-upper/base/feedback-request`
@@ -141,7 +196,9 @@ trashbot.pc_tools_workstation.o7_direct_upper_feedback_request.v1
 - 该入口只请求上位机发送一次 vendor `T=130` 非运动反馈请求；PC 本机 API 不直写 WAVE ROVER JSON。
 - 上位机 HTTP 2xx 且返回 object JSON 时，`accepted_by_workstation=true`、`upper_request.ok=true`。
 - 远端超时、非 2xx、坏 JSON 或 fetch 失败时，PC 返回 `502`，`fail_closed=true`。
-- 未配置 base URL 时，PC 返回 `400`，不触发远端 fetch。
+- 未配置 base URL 且没有 fixture mode 时，PC 返回 `400`，不触发远端 fetch。
+- fixture mode 时，PC 返回 `200`，`upper_request.executed=false`，不触发远端 fetch。
+- `command_payload_summary.evidence_ref` 保留 operator 当前 evidence ref。
 - 即使远端 JSON 声称包含 `T=1001`，PC 响应仍固定 `safe_to_control=false`、`robot_control_executed=false`、`robot_ack_connected=false`、`t1001_observed=false`；它只说明请求被转发，不证明真实 ACK、HIL 或 `T=1001` 已由同源材料验收。
 
 ## `POST /api/o7/direct-upper/radar/start`
@@ -161,7 +218,9 @@ trashbot.pc_tools_workstation.o7_direct_upper_radar_start.v1
 边界：
 
 - 缺少 `ROBER_UPPER_API_BASE_URL` 时使用 `http://192.168.1.11:8787`，响应中 `upper_api_base_url_source=field_default`。
+- 显式 fixture mode 优先于 field default，响应中 `upper_api_base_url_source=fixture` 且不触发远端 fetch。
 - 上位机 HTTP 2xx 且返回 object JSON 时，PC 返回 `200`，`failure_reason=none`，`upper_request.executed=true`，`upper_request.path=/api/radar/start`。
+- 上位机 HTTP 非 2xx、超时或 fetch 失败时，PC 可返回 `502`，但仍必须保留 `upper_request.executed=true`，并显示真实失败如 `upper_http_503` / `timeout` / fetch error；不得回落到 `base_url_not_configured` 或 `/api/radar/start not_executed`。
 - `robot_ack_not_connected`、`t1001_feedback_not_observed`、`field_evidence_not_proven` 继续作为 safety/not_proven gaps 保留，但不得阻止 LiDAR start HTTP 转发。
 - 响应仍固定 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`；PC 不访问 ROS graph、不打开 LiDAR 串口、不访问 `/dev/ttyS5`、不发送 WAVE ROVER JSON。
 
@@ -212,11 +271,113 @@ trashbot.pc_tools_workstation.o7_direct_upper_manual.v1
 - `robot_ack_connected=false`
 - `t1001_observed=false`
 
+manual 也保留 `command_payload_summary.evidence_ref`。缺少 `ROBER_UPPER_API_BASE_URL` 且没有 fixture mode 时返回 `400 base_url_not_configured`；fixture mode 时返回 `200`，不触发上位机 fetch，但仍记录 clamp 后的方向、速度、duration 与 `evidence_ref`。
+
+## `POST /api/o7/direct-upper/map/start|reset|save|load`
+
+PC 后端只转发到显式 env 指向的上位机：
+
+```text
+<ROBER_UPPER_API_BASE_URL>/api/map/start
+<ROBER_UPPER_API_BASE_URL>/api/map/reset
+<ROBER_UPPER_API_BASE_URL>/api/map/save
+<ROBER_UPPER_API_BASE_URL>/api/map/load
+```
+
+响应 schema：
+
+```text
+trashbot.pc_tools_workstation.o7_direct_upper_map_start.v1
+trashbot.pc_tools_workstation.o7_direct_upper_map_reset.v1
+trashbot.pc_tools_workstation.o7_direct_upper_map_save.v1
+trashbot.pc_tools_workstation.o7_direct_upper_map_load.v1
+```
+
+边界：
+
+- 不使用 field default。缺 env 且没有 fixture mode 时返回 `400 base_url_not_configured`，不触发远端 fetch。
+- `map/save` 和 `map/load` 的 `command_payload_summary.map_id` 来自 body `map_id`，缺失时为 `not_provided`。
+- 每个 map command 都保留 `command_payload_summary.evidence_ref`。
+- fixture mode 时返回 `200`，`upper_api_base_url_source=fixture`，`upper_request.executed=false`，不写 map artifact。
+- 即使远端 HTTP 成功，PC 仍不证明真实 SLAM Toolbox、真实 `/map`、map file、map server、Nav2 消费或地图质量通过。
+
+## `GET /api/o7/direct-upper/map/list`
+
+PC 后端只转发到显式 env 指向的上位机：
+
+```text
+<ROBER_UPPER_API_BASE_URL>/api/map/list
+```
+
+响应 schema：
+
+```text
+trashbot.pc_tools_workstation.o7_direct_upper_map_list.v1
+```
+
+边界：
+
+- 不使用 field default。缺 env 且没有 fixture mode 时返回 `400 base_url_not_configured`，不触发远端 fetch。
+- 因为 `GET` 不使用 JSON request body，普通 UI 调用会通过 query 传 `evidence_ref` 和 `fixture_mode=true`，例如 `/api/o7/direct-upper/map/list?evidence_ref=operator_field_report_pending&fixture_mode=true`。
+- server helper 仍支持测试或内部调用携带 `body.fixture_mode=true`，但浏览器入口以 query 为准。
+- fixture mode 时返回 `200`，`upper_request.executed=false`，不读取真实 map artifact 目录。
+- 文件候选存在不能证明 map 可被 AMCL/Nav2 消费，也不能证明地图质量通过。
+
+## `POST /api/o7/direct-upper/localize/reset`
+
+PC 后端只转发到显式 env 指向的上位机：
+
+```text
+<ROBER_UPPER_API_BASE_URL>/api/localize/reset
+```
+
+响应 schema：
+
+```text
+trashbot.pc_tools_workstation.o7_direct_upper_localize_reset.v1
+```
+
+边界：
+
+- 不使用 field default。缺 env 且没有 fixture mode 时返回 `400 base_url_not_configured`，不触发远端 fetch。
+- `command_payload_summary.evidence_ref` 保留 operator 当前 evidence ref。
+- fixture mode 时返回 `200`，`upper_request.executed=false`，不发布 `/initialpose`。
+- 即使远端 HTTP 成功，PC 仍不证明 AMCL lifecycle、`/amcl_pose`、TF、定位恢复或 Nav2 可用。
+
+## `POST /api/o7/direct-upper/operator-report`
+
+PC 后端只转发到显式 env 指向的上位机：
+
+```text
+<ROBER_UPPER_API_BASE_URL>/api/operator/report
+```
+
+请求示例：
+
+```json
+{"evidence_ref":"operator_field_report_pending","note":"not_proven: waiting for field evidence","fixture_mode":false}
+```
+
+响应 schema：
+
+```text
+trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1
+```
+
+边界：
+
+- 不使用 field default。缺 env 且没有 fixture mode 时返回 `400 base_url_not_configured`，不触发远端 fetch。
+- `command_payload_summary.evidence_ref` 保留 operator 当前 evidence ref。
+- `command_payload_summary.report_note` 最多保留前 120 个字符。
+- fixture mode 时返回 `200`，`upper_request.executed=false`，只证明 PC workflow 可以生成 report envelope。
+- operator report 不能替代 stop response、post-status、T=1001 vendor material、robot ACK、HIL 或视频/现场记录。
+
 ## 前端入口
 
 `O7LiveOperatorPanel.vue` 的默认首屏新增 `PC 本机 8787 接口` 卡片：
 
 - 展示 direct mode 状态。
+- 展示 `adapter.version`、`adapter.source` 和 field default 是否启用；缺少 `adapter` 时显示 `stale_dev_server_missing_adapter`。
 - 展示 `ROBER_UPPER_API_BASE_URL`。
 - 展示四个本机 API path，方便浏览器/curl 工具消费。
 - 展示 cloud relay 已绕过和 ACK/T=1001 not observed 边界。
@@ -241,6 +402,9 @@ trashbot.pc_tools_workstation.o7_direct_upper_manual.v1
 - 远端非 2xx、超时、fetch 失败或坏 JSON：显示 PC 后端返回的 `failure_reason`，
   通常为 `upper_http_<status>`、`timeout`、`bad_json` 或 fetch error，PC 后端返回
   `502`。
+- 所有 direct-upper command 结果都显示 `source=<upper_api_base_url_source>` 和
+  `adapter=<adapter.version>`；缺失 adapter 时显示 `missing_adapter_stale_dev_server`，
+  用来区分旧 5173 middleware 和真实上位机失败。
 - direct status 不是 `ready` 时，按钮结果会把当前 `direct status` 一并显示，避免
   operator 误以为已进入闭环可控状态。
 - `W/A/S/D` 键盘快捷键与按钮等价，分别请求 `forward/left/back/right`；`Space` 和

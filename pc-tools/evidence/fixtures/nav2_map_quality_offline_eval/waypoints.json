@@ -1,0 +1,31 @@
+{
+  "schema": "trashbot.nav2_map_quality_waypoints_fixture.v1",
+  "source": "software_proof",
+  "proof_status": "not_proven",
+  "waypoints": [
+    {
+      "frame_id": "map",
+      "x": 0.5,
+      "y": 0.5,
+      "qw": 1.0
+    },
+    {
+      "frame_id": "map",
+      "x": 3.5,
+      "y": 4.5,
+      "qw": 1.0
+    },
+    {
+      "frame_id": "map",
+      "x": 2.5,
+      "y": 4.5,
+      "qw": 1.0
+    },
+    {
+      "frame_id": "map",
+      "x": 9.0,
+      "y": 9.0,
+      "qw": 1.0
+    }
+  ]
+}

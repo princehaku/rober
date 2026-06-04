@@ -17,7 +17,7 @@ from typing import Any, Callable
 
 
 SCHEMA = "trashbot.o1.lidar_raw_packet_proof.v1"
-DEFAULT_PORT = "/dev/ttyACM0"
+DEFAULT_PORT = "/dev/lidar"
 DEFAULT_BAUDRATE = 150000
 DEFAULT_TIMEOUT_S = 3.0
 DEFAULT_OUTPUT_PATH = "/tmp/o1_lidar_raw_packet_proof_latest.json"
@@ -25,12 +25,14 @@ LIDAR_START_COMMAND = b"\xA5\x60"
 LIDAR_STOP_COMMAND = b"\xA5\x00\xA5\x65\xA5\x65"
 PACKET_HEADER = b"\xAA\x55"
 MIN_PACKET_SIZE = 8
+FORBIDDEN_LIDAR_PORTS = frozenset({"/dev/ttyS5", "/dev/ttyAMA0", "/dev/serial0"})
 
 # 本脚本允许启动/停止 LiDAR 串口，这是本轮 raw packet proof 的目标行为。
 # 串口事实来自 docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp 和 VENDOR_INDEX。
 # 本脚本不启动 ROS2 driver，不读取 /scan，不发布 /cmd_vel，不触碰底盘控制口。
 # Artifact 只能证明 raw bytes 可读取、packet 可解析、points 可统计。
 # 真实 /scan、TF、SLAM/Nav2、HIL 和 safe_to_control 必须由后续独立材料证明。
+# 如果调用方误传底盘 UART，本脚本必须在 open 前拒绝，不能把 A5 bytes 写入 WAVE ROVER。
 VENDOR_SOURCES = (
     "AGENTS.md",
     "OKR.md",
@@ -145,6 +147,12 @@ def compact_error(error: BaseException) -> dict[str, str]:
 def hex_bytes(data: bytes) -> str:
     """artifact 中的命令和样例统一用小写 hex，便于 shell/readback 对照。"""
     return data.hex(" ")
+
+
+def forbidden_lidar_port(port: str) -> bool:
+    """LiDAR collector 只碰传感器口，禁止常见 WAVE ROVER/base UART 路径。"""
+    normalized = str(port).strip()
+    return normalized in FORBIDDEN_LIDAR_PORTS
 
 
 class TermiosSerial:
@@ -304,32 +312,38 @@ def collect_raw_packet_proof(
     collector_error: dict[str, Any] | None = None
     serial_handle: Any | None = None
 
-    try:
-        serial_handle = serial_factory(port, int(baudrate))
-        serial_open["ok"] = True
-        start_written = serial_handle.write(LIDAR_START_COMMAND)
-        command_writes.append({"name": "lidar_start", "hex": hex_bytes(LIDAR_START_COMMAND), "bytes_written": start_written, "allowed_by_task": True})
+    if forbidden_lidar_port(port):
+        collector_error = {
+            "type": "forbidden_lidar_port",
+            "message": f"refusing to open base UART path {port}; use /dev/lidar or a confirmed STC ttyACM/by-id path",
+        }
+    else:
+        try:
+            serial_handle = serial_factory(port, int(baudrate))
+            serial_open["ok"] = True
+            start_written = serial_handle.write(LIDAR_START_COMMAND)
+            command_writes.append({"name": "lidar_start", "hex": hex_bytes(LIDAR_START_COMMAND), "bytes_written": start_written, "allowed_by_task": True})
 
-        deadline = time.monotonic() + timeout_s
-        while time.monotonic() < deadline:
-            chunk = serial_handle.read(4096)
-            if chunk:
-                raw_chunks.append(bytes(chunk))
-            else:
-                time.sleep(0.01)
-    except Exception as exc:
-        collector_error = compact_error(exc)
-    finally:
-        if serial_handle is not None:
-            try:
-                stop_written = serial_handle.write(LIDAR_STOP_COMMAND)
-                command_writes.append({"name": "lidar_stop", "hex": hex_bytes(LIDAR_STOP_COMMAND), "bytes_written": stop_written, "allowed_by_task": True})
-            except Exception as exc:
-                command_writes.append({"name": "lidar_stop", "hex": hex_bytes(LIDAR_STOP_COMMAND), "error": compact_error(exc), "allowed_by_task": True})
-            try:
-                serial_handle.close()
-            except Exception as exc:
-                serial_open["close_error"] = compact_error(exc)
+            deadline = time.monotonic() + timeout_s
+            while time.monotonic() < deadline:
+                chunk = serial_handle.read(4096)
+                if chunk:
+                    raw_chunks.append(bytes(chunk))
+                else:
+                    time.sleep(0.01)
+        except Exception as exc:
+            collector_error = compact_error(exc)
+        finally:
+            if serial_handle is not None:
+                try:
+                    stop_written = serial_handle.write(LIDAR_STOP_COMMAND)
+                    command_writes.append({"name": "lidar_stop", "hex": hex_bytes(LIDAR_STOP_COMMAND), "bytes_written": stop_written, "allowed_by_task": True})
+                except Exception as exc:
+                    command_writes.append({"name": "lidar_stop", "hex": hex_bytes(LIDAR_STOP_COMMAND), "error": compact_error(exc), "allowed_by_task": True})
+                try:
+                    serial_handle.close()
+                except Exception as exc:
+                    serial_open["close_error"] = compact_error(exc)
 
     raw_data = b"".join(raw_chunks)
     packet_stats = summarize_packets(raw_data, find_packets, parse_packet)
@@ -341,6 +355,12 @@ def collect_raw_packet_proof(
         "evidence_boundary": "lidar_raw_packet_parse_material_readiness_only",
         "parser_source": parser_source,
         "target": {"port": port, "baudrate": int(baudrate)},
+        "target_port_safety": {
+            "default_port": DEFAULT_PORT,
+            "forbidden_lidar_ports": sorted(FORBIDDEN_LIDAR_PORTS),
+            "refuses_base_uart": True,
+            "target_port_refused": forbidden_lidar_port(port),
+        },
         "serial_open": serial_open,
         "lidar_commands_sent": command_writes,
         "base_commands_sent": [],

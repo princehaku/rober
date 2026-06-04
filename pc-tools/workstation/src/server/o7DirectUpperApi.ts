@@ -3,6 +3,7 @@ import type {
   O7DirectUpperApiCommand,
   O7DirectUpperApiCommandResponse,
   O7DirectUpperApiDirection,
+  O7DirectUpperApiAdapterInfo,
   O7DirectUpperApiRequestResult,
   O7DirectUpperApiSafetyFlags,
   O7DirectUpperApiStatusResponse,
@@ -13,10 +14,17 @@ const MANUAL_REQUEST_TIMEOUT_MS = 5500;
 const MAX_PC_MANUAL_SPEED_MPS = 0.08;
 const MAX_PC_MANUAL_DURATION_MS = 350;
 const FIELD_DEFAULT_UPPER_API_BASE_URL = "http://192.168.1.11:8787";
+const DIRECT_UPPER_ADAPTER: O7DirectUpperApiAdapterInfo = {
+  version: "2026-06-04.field-default-radar-v2",
+  source: "pc-tools/workstation/src/server/o7DirectUpperApi.ts",
+  field_default_enabled: true,
+  field_default_url: FIELD_DEFAULT_UPPER_API_BASE_URL,
+  dev_server_reload_hint: "restart npm run dev if 127.0.0.1:5173 still reports missing adapter or base_url_not_configured for radar/start",
+};
 const ALLOWED_DIRECTIONS = ["forward", "back", "left", "right", "stop"] as const;
 const DEFAULT_SCAN_PROOF_BLOCKERS = ["radar_scan_proof_latest_not_loaded"] as const;
 const LOADED_SCAN_PROOF_NOT_OBSERVED_BLOCKERS = ["radar_scan_proof_blocked_or_not_observed"] as const;
-type UpperApiBaseUrlSource = "env" | "field_default" | "not_configured";
+type UpperApiBaseUrlSource = "env" | "field_default" | "fixture" | "not_configured";
 
 interface DirectUpperOptions {
   env?: NodeJS.ProcessEnv;
@@ -65,6 +73,17 @@ function configuredUpperBaseUrl(env: NodeJS.ProcessEnv = process.env): ResolvedU
   return { url: "", source: "not_configured" };
 }
 
+function truthyFlag(value: unknown): boolean {
+  // fixture mode 必须由 operator 或 env 明确打开，避免缺 env 时误触发“假成功”链路。
+  return value === true || (typeof value === "string" && ["1", "true", "yes", "on"].includes(value.trim().toLowerCase()));
+}
+
+function fixtureModeRequested(options: DirectUpperOptions): boolean {
+  // 支持 body 与 env 两个入口：UI 可临时跑 fixture，CI 可用 env 锁定软件护栏。
+  const body = asRecord(options.body);
+  return truthyFlag(body?.fixture_mode) || truthyFlag(options.env?.ROBER_O7_DIRECT_UPPER_FIXTURE_MODE);
+}
+
 function resolveFieldUpperBaseUrl(env: NodeJS.ProcessEnv = process.env): ResolvedUpperBaseUrl {
   const configured = configuredUpperBaseUrl(env);
   if (configured.url) {
@@ -73,6 +92,14 @@ function resolveFieldUpperBaseUrl(env: NodeJS.ProcessEnv = process.env): Resolve
 
   // field default 让 direct-upper 雷达/status 链路不再因缺 env 被卡死。
   return { url: FIELD_DEFAULT_UPPER_API_BASE_URL, source: "field_default" };
+}
+
+function resolveOperatorUpperBaseUrl(options: DirectUpperOptions, allowFieldDefault: boolean): ResolvedUpperBaseUrl {
+  if (fixtureModeRequested(options)) {
+    // fixture:// 不会进入 fetch；它只让 PC workflow 产生可回放的软件护栏响应。
+    return { url: "fixture://upper-api", source: "fixture" };
+  }
+  return allowFieldDefault ? resolveFieldUpperBaseUrl(options.env) : configuredUpperBaseUrl(options.env);
 }
 
 function requestResult(
@@ -185,6 +212,7 @@ function blockedStatus(baseUrl: ResolvedUpperBaseUrl, reason: string): O7DirectU
     endpoint: "/api/o7/direct-upper/status",
     ...PROOF_FLAGS,
     mode: "direct_upper_computer_lan_only",
+    adapter: DIRECT_UPPER_ADAPTER,
     status: baseUrl.url ? "fail_closed" : "not_configured",
     upper_api_base_url: baseUrl.url,
     upper_api_base_url_source: baseUrl.source,
@@ -246,6 +274,45 @@ function blockedStatus(baseUrl: ResolvedUpperBaseUrl, reason: string): O7DirectU
 }
 
 export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {}): Promise<O7DirectUpperApiStatusResponse> {
+  if (truthyFlag(options.env?.ROBER_O7_DIRECT_UPPER_FIXTURE_MODE)) {
+    // 状态 fixture 只用于本机工作流演示，不能被解释成真实 8787 runtime 已在线。
+    return {
+      ...blockedStatus({ url: "fixture://upper-api", source: "fixture" }, "fixture_mode_no_upper_runtime"),
+      status: "ready",
+      upper_status_summary: {
+        camera_status: "fixture_ready_not_proven",
+        radar_scan_status: "fixture_ready_not_proven",
+        radar_scan_proof_artifact_status: "fixture",
+        radar_scan_proof_freshness_status: "fixture",
+        radar_scan_proof_age_seconds: 0,
+        radar_scan_proof_latest_status: "fixture_not_runtime",
+        radar_scan_proof_blockers: ["fixture_mode_no_scan_runtime"],
+        radar_raw_packet_proof_artifact_status: "fixture",
+        radar_raw_packet_proof_freshness_status: "fixture",
+        radar_raw_packet_proof_age_seconds: 0,
+        radar_raw_packet_proof_latest_status: "fixture_not_runtime",
+        radar_raw_packet_proof_bytes_read: null,
+        radar_raw_packet_proof_sync_header_count: null,
+        radar_raw_packet_proof_packets_parse_ok: null,
+        radar_raw_packet_proof_points_total: null,
+        radar_raw_packet_proof_safe_to_control: false,
+        map_lifecycle_status: "fixture_ready_not_proven",
+        map_artifact_ref: "fixture_map_not_written",
+        localization_status: "fixture_pose_not_published",
+        operator_report_evidence_ref: "fixture_operator_report_pending",
+        lidar_port: "fixture_not_hardware",
+        base_port: "fixture_not_hardware",
+        base_baudrate: null,
+        base_write_control_available: false,
+        robot_ack_connected: false,
+        t1001_observed: false,
+      },
+      blocked_reasons: ["fixture_mode_no_upper_runtime", "robot_ack_not_connected", "t1001_feedback_not_observed"],
+      failure_reason: "fixture_mode_no_upper_runtime",
+      not_proven: ["upper_8787_runtime", "robot_ack", "t1001_feedback", "hil_pass", "actual_motion_or_stop_observed"],
+    };
+  }
+
   const baseUrl = resolveFieldUpperBaseUrl(options.env);
   if (!baseUrl.url) {
     return blockedStatus(baseUrl, "base_url_not_configured");
@@ -280,6 +347,7 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
     endpoint: "/api/o7/direct-upper/status",
     ...PROOF_FLAGS,
     mode: "direct_upper_computer_lan_only",
+    adapter: DIRECT_UPPER_ADAPTER,
     status: healthResult.request.ok && statusResult.request.ok ? "ready" : healthResult.request.ok || statusResult.request.ok ? "degraded" : "fail_closed",
     upper_api_base_url: baseUrl.url,
     upper_api_base_url_source: baseUrl.source,
@@ -354,13 +422,15 @@ function commandResponse(
   payloadSummary: O7DirectUpperApiCommandResponse["command_payload_summary"],
 ): O7DirectUpperApiCommandResponse {
   const hardBlockedReasons = ["robot_ack_not_connected", "t1001_feedback_not_observed", "field_evidence_not_proven"];
-  const blockedReasons = [...(failureReason === "none" ? [] : [failureReason]), ...hardBlockedReasons];
+  const fixtureBlockers = baseUrl.source === "fixture" ? ["fixture_mode_no_upper_runtime"] : [];
+  const blockedReasons = [...(failureReason === "none" ? [] : [failureReason]), ...fixtureBlockers, ...hardBlockedReasons];
   // sends_commands 表示没有发送 ROS/cmd_vel 或直写 WAVE ROVER JSON；8787 POST 只记录在 upper_request。
   return {
     schema,
     endpoint,
     ...PROOF_FLAGS,
     mode: "direct_upper_computer_lan_only",
+    adapter: DIRECT_UPPER_ADAPTER,
     command,
     accepted_by_workstation: acceptedByWorkstation,
     upper_request: upperRequest,
@@ -375,7 +445,13 @@ function commandResponse(
     t1001_observed: false,
     safety_flags: safetyFlags(),
     blocked_reasons: blockedReasons,
-    not_proven: ["robot_ack", "t1001_feedback", "hil_pass", "actual_motion_or_stop_observed"],
+    not_proven: [
+      ...(baseUrl.source === "fixture" ? ["upper_8787_runtime"] : []),
+      "robot_ack",
+      "t1001_feedback",
+      "hil_pass",
+      "actual_motion_or_stop_observed",
+    ],
     safe_to_control: false,
     sends_commands: false,
     robot_control_executed: false,
@@ -394,6 +470,7 @@ async function proxyOperatorCommand(
   schema: O7DirectUpperApiCommandResponse["schema"],
   command: O7DirectUpperApiCommand,
   method: O7DirectUpperApiRequestResult["method"] = "POST",
+  allowFieldDefault = false,
 ): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
   const body = asRecord(options.body);
   const mapId = stringFromBody(body, "map_id", "not_provided");
@@ -409,7 +486,22 @@ async function proxyOperatorCommand(
     evidence_ref: evidenceRef,
     report_note: command === "operator_report" ? reportNote.slice(0, 120) : undefined,
   };
-  const baseUrl = resolveFieldUpperBaseUrl(options.env);
+  const baseUrl = resolveOperatorUpperBaseUrl(options, allowFieldDefault);
+  if (baseUrl.source === "fixture") {
+    return {
+      status: 200,
+      payload: commandResponse(
+        schema,
+        localEndpoint,
+        command,
+        baseUrl,
+        true,
+        requestResult(remotePath, method, false, true, null, "fixture_mode_no_upper_fetch"),
+        "none",
+        payloadSummary,
+      ),
+    };
+  }
   if (!baseUrl.url) {
     return {
       status: 400,
@@ -444,14 +536,32 @@ async function proxyOperatorCommand(
 }
 
 export async function proxyO7DirectUpperStop(options: DirectUpperOptions = {}): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
-  const baseUrl = configuredUpperBaseUrl(options.env);
+  const body = asRecord(options.body);
+  const evidenceRef = stringFromBody(body, "evidence_ref", "missing_operator_evidence_ref");
+  const baseUrl = resolveOperatorUpperBaseUrl(options, false);
   const summary = {
     direction: "not_applicable" as const,
     speed_mps: 0,
     duration_ms: 0,
     clamped_by_pc: false,
     depends_on_upper_8787_guardrail: true as const,
+    evidence_ref: evidenceRef,
   };
+  if (baseUrl.source === "fixture") {
+    return {
+      status: 200,
+      payload: commandResponse(
+        "trashbot.pc_tools_workstation.o7_direct_upper_stop.v1",
+        "/api/o7/direct-upper/base/stop",
+        "stop",
+        baseUrl,
+        true,
+        requestResult("/api/base/stop", "POST", false, true, null, "fixture_mode_no_upper_fetch"),
+        "none",
+        summary,
+      ),
+    };
+  }
   if (!baseUrl.url) {
     return {
       status: 400,
@@ -484,7 +594,9 @@ export async function proxyO7DirectUpperStop(options: DirectUpperOptions = {}): 
 }
 
 export async function proxyO7DirectUpperFeedbackRequest(options: DirectUpperOptions = {}): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
-  const baseUrl = configuredUpperBaseUrl(options.env);
+  const body = asRecord(options.body);
+  const evidenceRef = stringFromBody(body, "evidence_ref", "missing_operator_evidence_ref");
+  const baseUrl = resolveOperatorUpperBaseUrl(options, false);
   const summary: O7DirectUpperApiCommandResponse["command_payload_summary"] = {
     direction: "not_applicable",
     speed_mps: 0,
@@ -493,7 +605,23 @@ export async function proxyO7DirectUpperFeedbackRequest(options: DirectUpperOpti
     depends_on_upper_8787_guardrail: true,
     feedback_request_id: "T=130",
     required_feedback_id: "T=1001",
+    evidence_ref: evidenceRef,
   };
+  if (baseUrl.source === "fixture") {
+    return {
+      status: 200,
+      payload: commandResponse(
+        "trashbot.pc_tools_workstation.o7_direct_upper_feedback_request.v1",
+        "/api/o7/direct-upper/base/feedback-request",
+        "feedback_request",
+        baseUrl,
+        true,
+        requestResult("/api/base/feedback-request", "POST", false, true, null, "fixture_mode_no_upper_fetch"),
+        "none",
+        summary,
+      ),
+    };
+  }
   if (!baseUrl.url) {
     return {
       status: 400,
@@ -536,6 +664,7 @@ function finiteNumber(value: unknown, fallback: number): number {
 export async function proxyO7DirectUpperManual(options: DirectUpperOptions = {}): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
   const body = asRecord(options.body);
   const direction = manualDirection(body?.direction);
+  const evidenceRef = stringFromBody(body, "evidence_ref", "missing_operator_evidence_ref");
   const requestedSpeed = Math.abs(finiteNumber(body?.speed, 0.04));
   const requestedDuration = Math.round(finiteNumber(body?.duration_ms, 250));
   const speed = Math.min(requestedSpeed, MAX_PC_MANUAL_SPEED_MPS);
@@ -547,6 +676,7 @@ export async function proxyO7DirectUpperManual(options: DirectUpperOptions = {})
     duration_ms: direction ? durationMs : 0,
     clamped_by_pc: clamped,
     depends_on_upper_8787_guardrail: true as const,
+    evidence_ref: evidenceRef,
   };
 
   if (!direction) {
@@ -565,7 +695,22 @@ export async function proxyO7DirectUpperManual(options: DirectUpperOptions = {})
     };
   }
 
-  const baseUrl = configuredUpperBaseUrl(options.env);
+  const baseUrl = resolveOperatorUpperBaseUrl(options, false);
+  if (baseUrl.source === "fixture") {
+    return {
+      status: 200,
+      payload: commandResponse(
+        "trashbot.pc_tools_workstation.o7_direct_upper_manual.v1",
+        "/api/o7/direct-upper/base/manual",
+        "manual",
+        baseUrl,
+        true,
+        requestResult("/api/base/manual", "POST", false, true, null, "fixture_mode_no_upper_fetch"),
+        "none",
+        payloadSummary,
+      ),
+    };
+  }
   if (!baseUrl.url) {
     return {
       status: 400,
@@ -616,6 +761,8 @@ export async function proxyO7DirectUpperRadarStart(options: DirectUpperOptions =
     "/api/radar/start",
     "trashbot.pc_tools_workstation.o7_direct_upper_radar_start.v1",
     "radar_start",
+    "POST",
+    true,
   );
 }
 
@@ -627,6 +774,8 @@ export async function proxyO7DirectUpperRadarStop(options: DirectUpperOptions = 
     "/api/radar/stop",
     "trashbot.pc_tools_workstation.o7_direct_upper_radar_stop.v1",
     "radar_stop",
+    "POST",
+    true,
   );
 }
 

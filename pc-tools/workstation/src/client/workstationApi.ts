@@ -164,6 +164,20 @@ function cloudArchiveTasksUrl(archiveJson: string): string {
   return `${API_ENDPOINTS.o7CloudArchiveTasks}?${params.toString()}`;
 }
 
+function directUpperMapListUrl(payload: { evidence_ref?: string; fixture_mode?: boolean }): string {
+  // map/list 是 GET，必须用 query 承载 evidence_ref/fixture_mode；浏览器仍只访问 PC 同源 API。
+  const params = new URLSearchParams();
+  const evidenceRef = payload.evidence_ref?.trim();
+  if (evidenceRef) {
+    params.set("evidence_ref", evidenceRef);
+  }
+  if (payload.fixture_mode) {
+    params.set("fixture_mode", "true");
+  }
+  const query = params.toString();
+  return query ? `${API_ENDPOINTS.o7DirectUpperMapList}?${query}` : API_ENDPOINTS.o7DirectUpperMapList;
+}
+
 function cloudOperatorConsoleProbeUrl(baseUrl: string): string {
   // probe 只把 operator 输入交给 PC 后端；SSRF 和 schema 风险由后端统一 fail-closed。
   const params = new URLSearchParams();
@@ -259,26 +273,42 @@ export async function getO7DirectUpperStatus(): Promise<O7DirectUpperApiStatusRe
   return loadJson<O7DirectUpperApiStatusResponse>(API_ENDPOINTS.o7DirectUpperStatus);
 }
 
-export async function postO7DirectUpperFeedbackRequest(): Promise<O7DirectUpperApiCommandResponse> {
+export async function postO7DirectUpperFeedbackRequest(
+  evidenceRef = "missing_operator_evidence_ref",
+  fixtureMode = false,
+): Promise<O7DirectUpperApiCommandResponse> {
   // feedback-request 是非运动 T=130 请求；前端不得把 HTTP 200 展示成 T=1001 或 ACK 成功。
-  return loadJson<O7DirectUpperApiCommandResponse>(API_ENDPOINTS.o7DirectUpperFeedbackRequest, { method: "POST" });
+  return postJsonWithPayload<O7DirectUpperApiCommandResponse>(API_ENDPOINTS.o7DirectUpperFeedbackRequest, {
+    evidence_ref: evidenceRef,
+    fixture_mode: fixtureMode,
+  });
 }
 
-export async function postO7DirectUpperStop(): Promise<O7DirectUpperApiCommandResponse> {
+export async function postO7DirectUpperStop(
+  evidenceRef = "missing_operator_evidence_ref",
+  fixtureMode = false,
+): Promise<O7DirectUpperApiCommandResponse> {
   // stop 必须走 PC 后端 direct-upper 代理；UI 不绕过后端直接访问 8787 或 ROS graph。
-  return postJsonWithPayload<O7DirectUpperApiCommandResponse>(API_ENDPOINTS.o7DirectUpperStop, {});
+  return postJsonWithPayload<O7DirectUpperApiCommandResponse>(API_ENDPOINTS.o7DirectUpperStop, {
+    evidence_ref: evidenceRef,
+    fixture_mode: fixtureMode,
+  });
 }
 
 export async function postO7DirectUpperManual(
   direction: O7DirectUpperApiDirection,
   speed: number,
   durationMs: number,
+  evidenceRef = "missing_operator_evidence_ref",
+  fixtureMode = false,
 ): Promise<O7DirectUpperApiCommandResponse> {
   // 浏览器只打 PC 同源 direct-upper 代理；PC 后端负责 env、方向白名单、速度/时长限幅和 8787 转发。
   return postJsonWithPayload<O7DirectUpperApiCommandResponse>(API_ENDPOINTS.o7DirectUpperManual, {
     direction,
     speed,
     duration_ms: durationMs,
+    evidence_ref: evidenceRef,
+    fixture_mode: fixtureMode,
   });
 }
 
@@ -293,7 +323,7 @@ export async function postO7DirectUpperOperatorCommand(
     | "map_list"
     | "localize_reset"
     | "operator_report",
-  payload: { map_id?: string; evidence_ref?: string; note?: string } = {},
+  payload: { map_id?: string; evidence_ref?: string; note?: string; fixture_mode?: boolean } = {},
 ): Promise<O7DirectUpperApiCommandResponse> {
   // 操作类按钮共用同源代理和 evidence_ref；组件不持有真实 8787 endpoint，也不直连 ROS2。
   const endpoints = {
@@ -308,7 +338,7 @@ export async function postO7DirectUpperOperatorCommand(
     operator_report: API_ENDPOINTS.o7DirectUpperOperatorReport,
   } as const;
   if (command === "map_list") {
-    return loadJson<O7DirectUpperApiCommandResponse>(endpoints[command]);
+    return loadJson<O7DirectUpperApiCommandResponse>(directUpperMapListUrl(payload));
   }
   return postJsonWithPayload<O7DirectUpperApiCommandResponse>(endpoints[command], payload);
 }

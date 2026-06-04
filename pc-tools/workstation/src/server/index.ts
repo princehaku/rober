@@ -133,15 +133,15 @@ export function createWorkstationApp(): express.Express {
     res.json(await buildO7DirectUpperStatus());
   });
 
-  workstationApp.post("/api/o7/direct-upper/base/stop", async (_req, res) => {
+  workstationApp.post("/api/o7/direct-upper/base/stop", async (req, res) => {
     // stop 只同源转发到 8787 /api/base/stop；HTTP 成功不等于 robot ACK 或 HIL pass。
-    const result = await proxyO7DirectUpperStop();
+    const result = await proxyO7DirectUpperStop({ body: req.body });
     res.status(result.status).json(result.payload);
   });
 
-  workstationApp.post("/api/o7/direct-upper/base/feedback-request", async (_req, res) => {
+  workstationApp.post("/api/o7/direct-upper/base/feedback-request", async (req, res) => {
     // feedback-request 只请求 8787 发送非运动 T=130；HTTP 200 仍不能外推为 T=1001/ACK/HIL。
-    const result = await proxyO7DirectUpperFeedbackRequest();
+    const result = await proxyO7DirectUpperFeedbackRequest({ body: req.body });
     res.status(result.status).json(result.payload);
   });
 
@@ -187,9 +187,14 @@ export function createWorkstationApp(): express.Express {
     res.status(result.status).json(result.payload);
   });
 
-  workstationApp.get("/api/o7/direct-upper/map/list", async (_req, res) => {
+  workstationApp.get("/api/o7/direct-upper/map/list", async (req, res) => {
     // list 是只读 map artifact 查询，但仍不能被解释成地图可用于 Nav2。
-    const result = await proxyO7DirectUpperMapList();
+    const result = await proxyO7DirectUpperMapList({
+      body: {
+        evidence_ref: queryString(req.query.evidence_ref),
+        fixture_mode: queryString(req.query.fixture_mode),
+      },
+    });
     res.status(result.status).json(result.payload);
   });
 

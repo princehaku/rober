@@ -313,6 +313,17 @@ button {
   line-height: 1.45;
 }
 
+.adapter-fingerprint {
+  border: 1px solid #d8e0ea;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  color: #344054;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .endpoint-list {
   display: grid;
   gap: 7px;
@@ -340,7 +351,8 @@ button {
 }
 
 .operator-fields,
-.operator-report-field {
+.operator-report-field,
+.operator-guard-row {
   display: grid;
   gap: 8px;
   margin-bottom: 12px;
@@ -351,10 +363,38 @@ button {
 }
 
 .operator-fields label,
-.operator-report-field {
+.operator-report-field,
+.operator-toggle {
   color: #475467;
   font-size: 12px;
   font-weight: 760;
+}
+
+.operator-guard-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operator-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 1px solid #d0d7e2;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #f8fafc;
+}
+
+.operator-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.confirmation-toggle {
+  border-color: #f4c7a1;
+  background: #fff7ed;
+  color: #9a3412;
 }
 
 .operator-fields input,

@@ -63,7 +63,17 @@ class BrokenSerialFactory:
         raise OSError("port missing")
 
 
+class MustNotOpenSerialFactory:
+    """安全拒绝测试中若触发 open，说明 base UART 防线失效。"""
+
+    def __call__(self, _: str, __: int) -> FakeSerial:
+        raise AssertionError("serial_factory_should_not_be_called_for_forbidden_base_uart")
+
+
 class LidarRawPacketProofCollectorTest(unittest.TestCase):
+    def test_default_port_prefers_vendor_udev_symlink(self) -> None:
+        self.assertEqual(collector.DEFAULT_PORT, "/dev/lidar")
+
     def test_summarize_packets_parses_project_mock_packet(self) -> None:
         packet = make_mock_packet()
 
@@ -97,6 +107,7 @@ class LidarRawPacketProofCollectorTest(unittest.TestCase):
         self.assertTrue(payload["proof"]["lidar_start_command_sent_by_collector"])
         self.assertTrue(payload["proof"]["lidar_stop_command_sent_by_collector"])
         self.assertFalse(payload["proof"]["ros2_driver_started_by_collector"])
+        self.assertFalse(payload["target_port_safety"]["target_port_refused"])
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["ros2_scan_proven"])
         self.assertFalse(payload["hil_pass"])
@@ -118,6 +129,23 @@ class LidarRawPacketProofCollectorTest(unittest.TestCase):
         self.assertFalse(payload["robot_control_executed"])
         self.assertFalse(payload["delivery_success"])
         self.assertIsNotNone(payload["collector_error"])
+
+    def test_collect_refuses_base_uart_before_opening_serial(self) -> None:
+        payload = collector.collect_raw_packet_proof(
+            port="/dev/ttyS5",
+            baudrate=150000,
+            timeout_s=0.2,
+            serial_factory=MustNotOpenSerialFactory(),
+        )
+
+        self.assertFalse(payload["serial_open"]["ok"])
+        self.assertTrue(payload["target_port_safety"]["refuses_base_uart"])
+        self.assertTrue(payload["target_port_safety"]["target_port_refused"])
+        self.assertEqual(payload["collector_error"]["type"], "forbidden_lidar_port")
+        self.assertEqual(payload["lidar_commands_sent"], [])
+        self.assertEqual(payload["base_commands_sent"], [])
+        self.assertFalse(payload["proof"]["lidar_start_command_sent_by_collector"])
+        self.assertFalse(payload["safe_to_control"])
 
     def test_atomic_write_json_creates_readable_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

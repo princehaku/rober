@@ -1,0 +1,28 @@
+{
+  "schema": "trashbot.elevator_opencv_fixture_summary.v1",
+  "source": "software_proof",
+  "proof_status": "not_proven",
+  "command": "PYTHONPATH=onboard/src/ros2_trashbot_vision python3 -m ros2_trashbot_vision.elevator_opencv_baseline pc-tools/evidence/fixtures/elevator_opencv_baseline_offline_eval/manifest.json",
+  "expected_guard": {
+    "evaluated_count": 3,
+    "door_state": {
+      "tp": 1,
+      "tn": 1,
+      "uncertain": 1
+    },
+    "safe_to_exit": {
+      "tp": 1,
+      "tn": 1,
+      "uncertain": 1
+    },
+    "software_guard_pass": true,
+    "field_eval_ready": false
+  },
+  "not_proven": [
+    "real_camera_elevator_recognition",
+    "real_floor_ocr",
+    "real_target_floor_confirmation",
+    "real_safe_exit",
+    "real_cross_floor_delivery"
+  ]
+}

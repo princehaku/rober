@@ -13,6 +13,7 @@ http://192.168.1.11:8787
 - camera：代理本机 8088 WebRTC camera smoke。
 - radar：返回 `/dev/ttyACM0 @150000` 雷达设备、启动/停止字节、ROS2 `/scan` 证明状态，并提供 LiDAR/ROS2 driver 一键 start/stop HTTP 合同。
 - map/localize：提供建图 start/reset/save/load/list 与定位 reset HTTP 合同；默认 fail-closed，不证明真实 SLAM、真实地图或 AMCL 定位已完成。
+- nav2/elevator：提供 Nav2 lifecycle 与电梯 evidence/status 只读边界；默认只消费 artifact 或显式配置命令，不证明真实路径执行、OpenCV 电梯识别或跨楼层送达。
 - base：返回 `/dev/ttyS5` 底盘写入口状态，并提供低速点动/停车 API。
 
 ## Vendor 来源
@@ -77,7 +78,13 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 | `POST` | `/api/map/save` | 地图 save 合同；默认 dry-run/stub，保留 `map_name`/`artifact_path` 回显，不证明地图已保存 |
 | `POST` | `/api/map/load` | 地图 load 合同；默认 dry-run/stub，不证明 map server/Nav2 已消费地图 |
 | `GET` | `/api/map/list` | 只读列出 `ROBER_MAP_ARTIFACT_DIR` 下 `*.yaml/*.pgm/*.pbstream` 候选文件；文件存在不等于地图质量验收 |
+| `GET` | `/api/map/proof/latest` | 只读回放最近一次 SLAM/map lifecycle runtime artifact；不启动 SLAM、不调用保存服务 |
 | `POST` | `/api/localize/reset` | 定位 reset 合同；默认 dry-run/stub，预留 `/initialpose`/AMCL 入口，不证明定位恢复 |
+| `GET` | `/api/localize/proof/latest` | 只读回放最近一次 AMCL/TF/pose freshness artifact；不发布 `/initialpose` |
+| `GET` | `/api/nav2/status` | 只读回放 Nav2 lifecycle artifact 和 start/stop 配置；不探 ROS graph |
+| `POST` | `/api/nav2/start` | Nav2 lifecycle start 合同；默认 dry-run/stub，显式配置后仍需 artifact 证明 |
+| `POST` | `/api/nav2/stop` | Nav2 lifecycle stop 合同；默认 dry-run/stub，不触碰底盘串口 |
+| `GET` | `/api/elevator/status` | 只读回放 OpenCV/电梯状态链 evidence artifact；不证明真实电梯识别或送达 |
 | `GET` | `/api/base/status` | `/dev/ttyS5`、pyserial、反馈/ACK 状态；只读摘要 latest feedback samples artifact |
 | `POST` | `/api/base/stop` | 发送 `{"T":1,"L":0,"R":0}` 停车 |
 | `POST` | `/api/base/feedback-request` | 发送一次非运动 `{"T":130}` 反馈请求并短窗口读取 JSON |
@@ -287,12 +294,17 @@ fail-closed dry-run/stub，只返回可读状态和 artifact path。
 | env / CLI | 用途 |
 | --- | --- |
 | `ROBER_MAP_ARTIFACT_DIR` / `--map-artifact-dir` | 地图 artifact 目录，默认 `runtime/maps` |
+| `ROBER_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH` / `--map-lifecycle-proof-artifact-path` | SLAM/map lifecycle latest proof，默认 `runtime/map_lifecycle_latest.json` |
 | `ROBER_LOCALIZATION_ARTIFACT_PATH` / `--localization-artifact-path` | 定位 reset latest artifact，默认 `runtime/localization_reset_latest.json` |
 | `ROBER_MAP_START_COMMAND` / `--map-start-command` | 显式配置 SLAM/map start 命令 |
 | `ROBER_MAP_RESET_COMMAND` / `--map-reset-command` | 显式配置 map reset 命令 |
 | `ROBER_MAP_SAVE_COMMAND` / `--map-save-command` | 显式配置 map save 命令 |
 | `ROBER_MAP_LOAD_COMMAND` / `--map-load-command` | 显式配置 map load 命令 |
 | `ROBER_LOCALIZE_RESET_COMMAND` / `--localize-reset-command` | 显式配置 AMCL `/initialpose` 或定位 reset 命令 |
+| `ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH` / `--nav2-lifecycle-artifact-path` | Nav2 lifecycle latest proof，默认 `runtime/nav2_lifecycle_latest.json` |
+| `ROBER_NAV2_START_COMMAND` / `--nav2-start-command` | 显式配置 Nav2/lifecycle start 命令 |
+| `ROBER_NAV2_STOP_COMMAND` / `--nav2-stop-command` | 显式配置 Nav2/lifecycle stop 命令 |
+| `ROBER_ELEVATOR_STATUS_ARTIFACT_PATH` / `--elevator-status-artifact-path` | OpenCV/电梯状态链 latest evidence，默认 `runtime/elevator_status_latest.json` |
 
 `POST /api/map/save` 和 `POST /api/map/load` 可接收上层 body，例如：
 
@@ -316,6 +328,29 @@ fail-closed dry-run/stub，只返回可读状态和 artifact path。
 转正条件必须另行提供 ROS2 runtime 材料：`/map` once、地图 YAML/image 或 pbstream artifact、
 load 后 AMCL `/amcl_pose`、TF freshness、pose timestamp freshness。仅有 HTTP 200、dry-run、
 fixture、文件候选或命令 returncode 0，均不得宣称真实 SLAM、真实地图保存/加载或真实定位恢复。
+
+新增只读 proof 入口：
+
+- `GET /api/map/proof/latest` 读取 `ROBER_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH`，压缩暴露
+  `latest_map_once_observed`、`latest_map_file_observed`、`latest_map_metadata_observed` 和
+  `latest_slam_toolbox_state`。
+- `GET /api/localize/proof/latest` 读取 `ROBER_LOCALIZATION_ARTIFACT_PATH`，压缩暴露
+  `latest_initialpose_published`、`latest_amcl_pose_observed`、`latest_tf_fresh` 和
+  `latest_pose_fresh`。
+
+Nav2 lifecycle 入口：
+
+- `GET /api/nav2/status` 读取 `ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH`，压缩暴露 map server、
+  AMCL、planner/controller lifecycle、`/scan`+map 消费和 path 生成状态。
+- `POST /api/nav2/start|stop` 只执行显式配置的非 shell 命令；默认 dry-run/stub。命令成功只代表
+  操作入口执行成功，仍固定 `status="not_proven"`，必须等 Nav2 artifact 证明 runtime。
+
+电梯 evidence/status 入口：
+
+- `GET /api/elevator/status` 读取 `ROBER_ELEVATOR_STATUS_ARTIFACT_PATH`，用于把 OpenCV
+  `evidence_ref`、电梯 phase、目标楼层、安全驶出和人工接管原因回放给 PC/operator。
+- artifact 存在、fixture 通过或 OpenCV baseline 输出，都不等于真实电梯识别、真实楼层确认、
+  真实驶出、电梯 HIL 或 `delivery_success=true`。
 
 ### LiDAR raw packet proof artifact readback
 

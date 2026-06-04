@@ -34,7 +34,10 @@ DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.j
 DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
 DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH = "runtime/lidar_raw_packet_proof_latest.json"
 DEFAULT_MAP_ARTIFACT_DIR = "runtime/maps"
+DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "runtime/map_lifecycle_latest.json"
 DEFAULT_LOCALIZATION_ARTIFACT_PATH = "runtime/localization_reset_latest.json"
+DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "runtime/nav2_lifecycle_latest.json"
+DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH = "runtime/elevator_status_latest.json"
 DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS = 15 * 60 * 1000
 MAX_FEEDBACK_READ_TIMEOUT_S = 2.0
 MAX_FEEDBACK_READ_WINDOW_S = 5.0
@@ -64,7 +67,13 @@ ROUTE_PATHS = {
     "map_save": "/api/map/save",
     "map_load": "/api/map/load",
     "map_list": "/api/map/list",
+    "map_proof_latest": "/api/map/proof/latest",
     "localize_reset": "/api/localize/reset",
+    "localize_proof_latest": "/api/localize/proof/latest",
+    "nav2_status": "/api/nav2/status",
+    "nav2_start": "/api/nav2/start",
+    "nav2_stop": "/api/nav2/stop",
+    "elevator_status": "/api/elevator/status",
     "base_status": "/api/base/status",
     "base_feedback_request": "/api/base/feedback-request",
     "base_feedback_samples": "/api/base/feedback-samples",
@@ -278,6 +287,22 @@ def map_artifact_info(path: str) -> dict[str, Any]:
     }
 
 
+def map_lifecycle_proof_artifact_info(path: str) -> dict[str, Any]:
+    """SLAM/map lifecycle runtime 材料入口，读取它也不能替代真实 ROS2 运行。"""
+    return {
+        "path": path,
+        "configured_by": "ROBER_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH or --map-lifecycle-proof-artifact-path",
+        "format": "json",
+        "schema": f"{SCHEMA}.map_lifecycle_runtime_proof",
+        "expected_material": [
+            "/map once",
+            "map yaml/image or pbstream",
+            "map metadata",
+            "slam_toolbox lifecycle state",
+        ],
+    }
+
+
 def localization_artifact_info(path: str) -> dict[str, Any]:
     """定位 reset artifact 是上层回放材料，不代表 AMCL 已恢复定位。"""
     return {
@@ -285,6 +310,39 @@ def localization_artifact_info(path: str) -> dict[str, Any]:
         "configured_by": "ROBER_LOCALIZATION_ARTIFACT_PATH or --localization-artifact-path",
         "format": "json",
         "schema": f"{SCHEMA}.localization_reset_artifact",
+    }
+
+
+def nav2_lifecycle_artifact_info(path: str) -> dict[str, Any]:
+    """Nav2 lifecycle 材料入口用于回放状态，不在 HTTP status 里探 ROS graph。"""
+    return {
+        "path": path,
+        "configured_by": "ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH or --nav2-lifecycle-artifact-path",
+        "format": "json",
+        "schema": f"{SCHEMA}.nav2_lifecycle_runtime_proof",
+        "expected_material": [
+            "map_server lifecycle state",
+            "amcl lifecycle state",
+            "planner/controller lifecycle state",
+            "Nav2 consumes /scan + map",
+            "path generated or explicitly blocked",
+        ],
+    }
+
+
+def elevator_status_artifact_info(path: str) -> dict[str, Any]:
+    """电梯 evidence 只读入口把 OpenCV/状态链材料暴露给 PC，但不宣称实景通过。"""
+    return {
+        "path": path,
+        "configured_by": "ROBER_ELEVATOR_STATUS_ARTIFACT_PATH or --elevator-status-artifact-path",
+        "format": "json",
+        "schema": "trashbot.elevator_status_runtime_boundary.v1",
+        "expected_material": [
+            "opencv evidence_ref",
+            "door/floor/safe_to_exit decision",
+            "task_orchestrator elevator phase",
+            "manual handoff reason",
+        ],
     }
 
 
@@ -389,6 +447,247 @@ def software_guard_payload(
     if extra:
         payload.update(extra)
     return payload
+
+
+def runtime_boundary_flags() -> dict[str, Any]:
+    """所有 ROS2 runtime 材料 readback 都保守关闭控制和 OKR 完成宣称。"""
+    return {
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "uses_base_uart": False,
+        "opens_serial": False,
+        "starts_ros2": False,
+        "ros2_runtime_proven": False,
+        "map_artifact_proven": False,
+        "localization_proven": False,
+        "nav2_runtime_proven": False,
+        "elevator_runtime_proven": False,
+        "field_hil_material": False,
+    }
+
+
+def build_runtime_artifact_readback_payload(
+    *,
+    schema_suffix: str,
+    endpoint: str,
+    artifact: dict[str, Any],
+    latest_result: dict[str, Any] | None,
+    boundary: str,
+    source: str,
+) -> dict[str, Any]:
+    """统一 latest artifact 输出，避免每个入口遗漏 fail-closed 字段。"""
+    return {
+        "schema": f"{SCHEMA}.{schema_suffix}",
+        "generated_at_ms": now_ms(),
+        "endpoint": endpoint,
+        "source": source,
+        "artifact": artifact,
+        "latest_result": latest_result,
+        "status": "not_proven",
+        "proof_state": "not_proven",
+        "software_guard": True,
+        "not_proven": True,
+        "boundary": boundary,
+        **runtime_boundary_flags(),
+        **proof_flags(),
+    }
+
+
+def read_runtime_artifact_latest(
+    path: str,
+    *,
+    artifact_info: dict[str, Any],
+    schema_suffix: str,
+    endpoint: str,
+    boundary: str,
+    source: str,
+) -> tuple[int, dict[str, Any]]:
+    """只读 JSON artifact；缺失、坏 JSON、非对象都不能触发 ROS2 或硬件。"""
+    artifact = dict(artifact_info)
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        artifact.update({"ok": False, "status": "missing", "error": {"type": "FileNotFoundError", "message": "latest runtime artifact is missing"}})
+        return 404, build_runtime_artifact_readback_payload(
+            schema_suffix=schema_suffix,
+            endpoint=endpoint,
+            artifact=artifact,
+            latest_result=None,
+            boundary=boundary,
+            source=source,
+        )
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        return 500, build_runtime_artifact_readback_payload(
+            schema_suffix=schema_suffix,
+            endpoint=endpoint,
+            artifact=artifact,
+            latest_result=None,
+            boundary=boundary,
+            source=source,
+        )
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        artifact.update({"ok": False, "status": "bad_json", "bytes_read": len(raw.encode("utf-8")), "error": compact_error(exc)})
+        return 422, build_runtime_artifact_readback_payload(
+            schema_suffix=schema_suffix,
+            endpoint=endpoint,
+            artifact=artifact,
+            latest_result=None,
+            boundary=boundary,
+            source=source,
+        )
+    if not isinstance(parsed, dict):
+        artifact.update({"ok": False, "status": "json_not_object", "bytes_read": len(raw.encode("utf-8"))})
+        return 422, build_runtime_artifact_readback_payload(
+            schema_suffix=schema_suffix,
+            endpoint=endpoint,
+            artifact=artifact,
+            latest_result=None,
+            boundary=boundary,
+            source=source,
+        )
+    artifact.update({"ok": True, "status": "loaded", "bytes_read": len(raw.encode("utf-8"))})
+    return 200, build_runtime_artifact_readback_payload(
+        schema_suffix=schema_suffix,
+        endpoint=endpoint,
+        artifact=artifact,
+        latest_result=parsed,
+        boundary=boundary,
+        source=source,
+    )
+
+
+def latest_proof_value(parsed: dict[str, Any] | None, *keys: str) -> Any:
+    """兼容 collector 把字段写在 proof 或顶层两种形态，减少 artifact 格式返工。"""
+    if not isinstance(parsed, dict):
+        return None
+    proof = parsed.get("proof") if isinstance(parsed.get("proof"), dict) else {}
+    for key in keys:
+        if key in proof:
+            return proof.get(key)
+        if key in parsed:
+            return parsed.get(key)
+    return None
+
+
+def runtime_artifact_summary(
+    path: str,
+    *,
+    artifact_info: dict[str, Any],
+    schema_suffix: str,
+    endpoint: str,
+    boundary: str,
+    source: str,
+    fields: dict[str, tuple[str, ...]],
+) -> dict[str, Any]:
+    """status 页面用压缩摘要，既能给 PC 点灯，也保留 not_proven 边界。"""
+    http_status, payload = read_runtime_artifact_latest(
+        path,
+        artifact_info=artifact_info,
+        schema_suffix=schema_suffix,
+        endpoint=endpoint,
+        boundary=boundary,
+        source=source,
+    )
+    latest = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else None
+    summary: dict[str, Any] = {
+        "schema": f"{SCHEMA}.{schema_suffix}_summary",
+        "generated_at_ms": now_ms(),
+        "endpoint": endpoint,
+        "http_status": http_status,
+        "artifact": payload["artifact"],
+        "latest_result_schema": latest.get("schema") if isinstance(latest, dict) else None,
+        "latest_proof_status": latest_proof_value(latest, "status"),
+        "latest_evidence_ref": latest_proof_value(latest, "evidence_ref"),
+        "status": "not_proven",
+        "software_guard": True,
+        "not_proven": True,
+        "boundary": boundary,
+        **runtime_boundary_flags(),
+        **proof_flags(),
+    }
+    for output_key, candidate_keys in fields.items():
+        summary[output_key] = latest_proof_value(latest, *candidate_keys)
+    return summary
+
+
+def summarize_map_lifecycle_latest_artifact(path: str) -> dict[str, Any]:
+    """压缩 SLAM/map proof；字段缺失保持 None，不能默认判定 observed。"""
+    return runtime_artifact_summary(
+        path,
+        artifact_info=map_lifecycle_proof_artifact_info(path),
+        schema_suffix="map_lifecycle_proof_latest",
+        endpoint=ROUTE_PATHS["map_proof_latest"],
+        boundary="software_guard_only_not_real_slam_map_or_nav2_consumption",
+        source="map_lifecycle_runtime_artifact",
+        fields={
+            "latest_map_once_observed": ("map_once_observed", "/map_once_observed"),
+            "latest_map_file_observed": ("map_file_observed", "map_yaml_observed", "map_pbstream_observed"),
+            "latest_map_metadata_observed": ("map_metadata_observed", "metadata_observed"),
+            "latest_slam_toolbox_state": ("slam_toolbox_state", "slam_state"),
+        },
+    )
+
+
+def summarize_localization_latest_artifact(path: str) -> dict[str, Any]:
+    """压缩 AMCL/initialpose proof；只做 artifact 摘要，不发布 /initialpose。"""
+    return runtime_artifact_summary(
+        path,
+        artifact_info=localization_artifact_info(path),
+        schema_suffix="localization_proof_latest",
+        endpoint=ROUTE_PATHS["localize_proof_latest"],
+        boundary="software_guard_only_not_real_amcl_localization_reset",
+        source="localization_runtime_artifact",
+        fields={
+            "latest_initialpose_published": ("initialpose_published", "initial_pose_published"),
+            "latest_amcl_pose_observed": ("amcl_pose_observed", "/amcl_pose_observed"),
+            "latest_tf_fresh": ("tf_fresh", "map_to_base_link_tf_fresh"),
+            "latest_pose_fresh": ("pose_fresh", "pose_timestamp_fresh"),
+        },
+    )
+
+
+def summarize_nav2_lifecycle_latest_artifact(path: str) -> dict[str, Any]:
+    """压缩 Nav2 lifecycle proof；Nav2 消费 /scan+map 仍由 runtime artifact 证明。"""
+    return runtime_artifact_summary(
+        path,
+        artifact_info=nav2_lifecycle_artifact_info(path),
+        schema_suffix="nav2_lifecycle_proof_latest",
+        endpoint=ROUTE_PATHS["nav2_status"],
+        boundary="software_guard_only_not_real_nav2_runtime_or_path_execution",
+        source="nav2_lifecycle_runtime_artifact",
+        fields={
+            "latest_map_server_active": ("map_server_active", "map_server_lifecycle_active"),
+            "latest_amcl_active": ("amcl_active", "amcl_lifecycle_active"),
+            "latest_planner_active": ("planner_active", "planner_server_active"),
+            "latest_controller_active": ("controller_active", "controller_server_active"),
+            "latest_scan_consumed": ("scan_consumed", "laser_scan_consumed"),
+            "latest_path_generated": ("path_generated", "global_path_generated"),
+        },
+    )
+
+
+def summarize_elevator_status_latest_artifact(path: str) -> dict[str, Any]:
+    """压缩电梯 evidence；OpenCV/状态链未进真实电梯前必须持续 not_proven。"""
+    return runtime_artifact_summary(
+        path,
+        artifact_info=elevator_status_artifact_info(path),
+        schema_suffix="elevator_status_latest",
+        endpoint=ROUTE_PATHS["elevator_status"],
+        boundary="software_guard_only_not_real_elevator_opencv_or_field_delivery",
+        source="elevator_status_runtime_artifact",
+        fields={
+            "latest_elevator_phase": ("elevator_phase", "phase"),
+            "latest_opencv_evidence_ref": ("opencv_evidence_ref", "evidence_ref"),
+            "latest_target_floor_confirmed": ("target_floor_confirmed",),
+            "latest_safe_to_exit": ("safe_to_exit",),
+            "latest_handoff_required": ("handoff_required", "manual_handoff_required"),
+        },
+    )
 
 
 def read_lidar_scan_proof_latest_artifact(path: str) -> tuple[int, dict[str, Any]]:
@@ -1211,7 +1510,10 @@ class UpperRobotApi:
         lidar_scan_proof_artifact_path: str = DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH,
         lidar_raw_packet_proof_artifact_path: str = DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH,
         map_artifact_dir: str = DEFAULT_MAP_ARTIFACT_DIR,
+        map_lifecycle_proof_artifact_path: str = DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH,
         localization_artifact_path: str = DEFAULT_LOCALIZATION_ARTIFACT_PATH,
+        nav2_lifecycle_artifact_path: str = DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH,
+        elevator_status_artifact_path: str = DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH,
         radar_start_command: str | None = None,
         radar_stop_command: str | None = None,
         map_start_command: str | None = None,
@@ -1219,6 +1521,8 @@ class UpperRobotApi:
         map_save_command: str | None = None,
         map_load_command: str | None = None,
         localize_reset_command: str | None = None,
+        nav2_start_command: str | None = None,
+        nav2_stop_command: str | None = None,
     ) -> None:
         self.camera_base_url = camera_base_url.rstrip("/")
         self.base_port = base_port
@@ -1228,7 +1532,10 @@ class UpperRobotApi:
         self.lidar_scan_proof_artifact_path = lidar_scan_proof_artifact_path
         self.lidar_raw_packet_proof_artifact_path = lidar_raw_packet_proof_artifact_path
         self.map_artifact_dir = map_artifact_dir
+        self.map_lifecycle_proof_artifact_path = map_lifecycle_proof_artifact_path
         self.localization_artifact_path = localization_artifact_path
+        self.nav2_lifecycle_artifact_path = nav2_lifecycle_artifact_path
+        self.elevator_status_artifact_path = elevator_status_artifact_path
         self.radar_start_command = radar_start_command
         self.radar_stop_command = radar_stop_command
         self.map_start_command = map_start_command
@@ -1236,6 +1543,8 @@ class UpperRobotApi:
         self.map_save_command = map_save_command
         self.map_load_command = map_load_command
         self.localize_reset_command = localize_reset_command
+        self.nav2_start_command = nav2_start_command
+        self.nav2_stop_command = nav2_stop_command
 
     def base_status(self) -> dict[str, Any]:
         """底盘状态只证明写入口配置和设备存在，不伪造 T=1001 ACK。"""
@@ -1361,13 +1670,16 @@ class UpperRobotApi:
             "schema": f"{SCHEMA}.map_lifecycle_status",
             "generated_at_ms": now_ms(),
             "artifact": map_artifact_info(self.map_artifact_dir),
+            "proof_latest": summarize_map_lifecycle_latest_artifact(self.map_lifecycle_proof_artifact_path),
             "routes": {
                 "start": ROUTE_PATHS["map_start"],
                 "reset": ROUTE_PATHS["map_reset"],
                 "save": ROUTE_PATHS["map_save"],
                 "load": ROUTE_PATHS["map_load"],
                 "list": ROUTE_PATHS["map_list"],
+                "proof_latest": ROUTE_PATHS["map_proof_latest"],
                 "localize_reset": ROUTE_PATHS["localize_reset"],
+                "localize_proof_latest": ROUTE_PATHS["localize_proof_latest"],
             },
             "commands": {
                 "start": command_config_info("ROBER_MAP_START_COMMAND", self.map_start_command),
@@ -1375,6 +1687,12 @@ class UpperRobotApi:
                 "save": command_config_info("ROBER_MAP_SAVE_COMMAND", self.map_save_command),
                 "load": command_config_info("ROBER_MAP_LOAD_COMMAND", self.map_load_command),
                 "localize_reset": command_config_info("ROBER_LOCALIZE_RESET_COMMAND", self.localize_reset_command),
+            },
+            "runtime_entrypoints": {
+                "learn_launch": "ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0",
+                "save_service": "ros2 service call /trashbot/save_map std_srvs/srv/Trigger {}",
+                "map_topic": "/map",
+                "proof_artifact_path": self.map_lifecycle_proof_artifact_path,
             },
             "status": "not_proven",
             "software_guard": True,
@@ -1415,11 +1733,13 @@ class UpperRobotApi:
             extra={
                 "requested_map_name": body.get("map_name"),
                 "requested_artifact_path": body.get("artifact_path"),
+                "proof_artifact": map_lifecycle_proof_artifact_info(self.map_lifecycle_proof_artifact_path),
                 "map_lifecycle_status": self.map_status(),
                 "transition_to_proven": [
                     "/map once observed",
                     "map YAML/image or pbstream artifact exists",
                     "PC/upper API readback references the same artifact path",
+                    f"GET {ROUTE_PATHS['map_proof_latest']} returns runtime material",
                 ],
             },
         )
@@ -1459,6 +1779,17 @@ class UpperRobotApi:
             },
         )
 
+    def map_proof_latest(self) -> tuple[int, dict[str, Any]]:
+        """只读最近一次 SLAM/map lifecycle proof，不能启动 SLAM 或保存地图。"""
+        return read_runtime_artifact_latest(
+            self.map_lifecycle_proof_artifact_path,
+            artifact_info=map_lifecycle_proof_artifact_info(self.map_lifecycle_proof_artifact_path),
+            schema_suffix="map_lifecycle_proof_latest",
+            endpoint=ROUTE_PATHS["map_proof_latest"],
+            boundary="software_guard_only_not_real_slam_map_or_nav2_consumption",
+            source="map_lifecycle_runtime_artifact",
+        )
+
     def localize_reset(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
         """定位 reset 合同预留 AMCL /initialpose；默认不发布 ROS2 pose。"""
         body = body if isinstance(body, dict) else {}
@@ -1474,14 +1805,121 @@ class UpperRobotApi:
             extra={
                 "requested_pose": body.get("pose"),
                 "target_ros2_topic": "/initialpose",
+                "proof_artifact": localization_artifact_info(self.localization_artifact_path),
                 "expected_runtime_proof": ["/amcl_pose", "tf map->base_link freshness", "pose timestamp freshness"],
                 "transition_to_proven": [
                     "configured command publishes or calls ROS2 localization reset",
                     "AMCL pose observed after reset",
                     "artifact update at localization_artifact.path",
+                    f"GET {ROUTE_PATHS['localize_proof_latest']} returns AMCL/TF material",
                 ],
             },
         )
+
+    def localize_proof_latest(self) -> tuple[int, dict[str, Any]]:
+        """只读定位 runtime proof，避免 status 接口误发布 /initialpose。"""
+        return read_runtime_artifact_latest(
+            self.localization_artifact_path,
+            artifact_info=localization_artifact_info(self.localization_artifact_path),
+            schema_suffix="localization_proof_latest",
+            endpoint=ROUTE_PATHS["localize_proof_latest"],
+            boundary="software_guard_only_not_real_amcl_localization_reset",
+            source="localization_runtime_artifact",
+        )
+
+    def nav2_status(self) -> dict[str, Any]:
+        """Nav2 lifecycle 状态只读 artifact；真实 graph 查询由外部 collector 写材料。"""
+        return {
+            "schema": f"{SCHEMA}.nav2_lifecycle_status",
+            "generated_at_ms": now_ms(),
+            "status": "not_proven",
+            "software_guard": True,
+            "not_proven": True,
+            "artifact": nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
+            "proof_latest": summarize_nav2_lifecycle_latest_artifact(self.nav2_lifecycle_artifact_path),
+            "routes": {
+                "status": ROUTE_PATHS["nav2_status"],
+                "start": ROUTE_PATHS["nav2_start"],
+                "stop": ROUTE_PATHS["nav2_stop"],
+            },
+            "commands": {
+                "start": command_config_info("ROBER_NAV2_START_COMMAND", self.nav2_start_command),
+                "stop": command_config_info("ROBER_NAV2_STOP_COMMAND", self.nav2_stop_command),
+            },
+            "runtime_entrypoints": {
+                "autonomous_launch": "ros2 launch ros2_trashbot_bringup autonomous.launch.py map_file:=<map.yaml>",
+                "lifecycle_nodes_expected": ["map_server", "amcl", "planner_server", "controller_server"],
+                "required_inputs": ["/scan", "map yaml/image", "tf map->base_link"],
+            },
+            **runtime_boundary_flags(),
+            **proof_flags(),
+        }
+
+    def nav2_control(self, action: str) -> dict[str, Any]:
+        """Nav2 start/stop 是配置命令入口；默认不启动 lifecycle manager。"""
+        if action == "start":
+            endpoint = ROUTE_PATHS["nav2_start"]
+            command_env = "ROBER_NAV2_START_COMMAND"
+            command = self.nav2_start_command
+        elif action == "stop":
+            endpoint = ROUTE_PATHS["nav2_stop"]
+            command_env = "ROBER_NAV2_STOP_COMMAND"
+            command = self.nav2_stop_command
+        else:
+            return software_guard_payload(
+                schema_suffix="nav2_lifecycle_result",
+                action=action,
+                endpoint="/api/nav2/{action}",
+                artifact=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
+                extra={"error": {"type": "unsupported_nav2_action", "message": "action must be start or stop"}},
+            )
+        command_result = run_configured_command(command)
+        return software_guard_payload(
+            schema_suffix="nav2_lifecycle_result",
+            action=f"nav2_{action}",
+            endpoint=endpoint,
+            command_env=command_env,
+            command=command,
+            command_result=command_result,
+            artifact=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
+            extra={
+                "nav2_lifecycle_status": self.nav2_status(),
+                "transition_to_proven": [
+                    "map_server/amcl/planner/controller lifecycle states observed",
+                    "/scan and map consumed by Nav2 stack",
+                    "path generated or explicit blocked reason recorded",
+                    f"artifact update at {self.nav2_lifecycle_artifact_path}",
+                ],
+            },
+        )
+
+    def elevator_status(self) -> dict[str, Any]:
+        """电梯 status 将 OpenCV evidence 和状态机边界暴露给上层，默认不证明实景。"""
+        return {
+            "schema": f"{SCHEMA}.elevator_status",
+            "generated_at_ms": now_ms(),
+            "status": "not_proven",
+            "software_guard": True,
+            "not_proven": True,
+            "artifact": elevator_status_artifact_info(self.elevator_status_artifact_path),
+            "proof_latest": summarize_elevator_status_latest_artifact(self.elevator_status_artifact_path),
+            "routes": {"status": ROUTE_PATHS["elevator_status"]},
+            "expected_state_chain": [
+                "waiting_elevator_open",
+                "entering_elevator",
+                "requesting_floor_help",
+                "waiting_target_floor",
+                "exiting_elevator",
+                "manual_handoff_or_resume_delivery",
+            ],
+            "transition_to_proven": [
+                "OpenCV evidence_ref points to real/controlled images",
+                "task_orchestrator record keeps elevator phase and failure reason",
+                "operator can see handoff/safe_to_exit status without claiming delivery_success",
+            ],
+            **runtime_boundary_flags(),
+            **proof_flags(),
+        }
 
     async def camera_health(self) -> tuple[int, dict[str, Any]]:
         """camera 子接口代理 8088 /health，并标注统一 API 来源。"""
@@ -1535,7 +1973,9 @@ class UpperRobotApi:
                 "schema": f"{SCHEMA}.localization_status",
                 "generated_at_ms": now_ms(),
                 "reset_endpoint": ROUTE_PATHS["localize_reset"],
+                "proof_latest_endpoint": ROUTE_PATHS["localize_proof_latest"],
                 "artifact": localization_artifact_info(self.localization_artifact_path),
+                "proof_latest": summarize_localization_latest_artifact(self.localization_artifact_path),
                 "command": command_config_info("ROBER_LOCALIZE_RESET_COMMAND", self.localize_reset_command),
                 "status": "not_proven",
                 "software_guard": True,
@@ -1543,6 +1983,8 @@ class UpperRobotApi:
                 "sends_commands": False,
                 **proof_flags(),
             },
+            "nav2": self.nav2_status(),
+            "elevator": self.elevator_status(),
             "base": self.base_status(),
             "routes": dict(ROUTE_PATHS),
             "base_feedback_samples_latest_artifact": artifact_path_info(self.feedback_samples_artifact_path),
@@ -1551,7 +1993,10 @@ class UpperRobotApi:
                 self.lidar_raw_packet_proof_artifact_path
             ),
             "map_artifact": map_artifact_info(self.map_artifact_dir),
+            "map_lifecycle_proof_artifact": map_lifecycle_proof_artifact_info(self.map_lifecycle_proof_artifact_path),
             "localization_artifact": localization_artifact_info(self.localization_artifact_path),
+            "nav2_lifecycle_artifact": nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
+            "elevator_status_artifact": elevator_status_artifact_info(self.elevator_status_artifact_path),
             "sends_commands": False,
             **proof_flags(),
         }
@@ -1752,8 +2197,20 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--map-artifact-dir", default=os.getenv("ROBER_MAP_ARTIFACT_DIR", DEFAULT_MAP_ARTIFACT_DIR))
     parser.add_argument(
+        "--map-lifecycle-proof-artifact-path",
+        default=os.getenv("ROBER_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH", DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH),
+    )
+    parser.add_argument(
         "--localization-artifact-path",
         default=os.getenv("ROBER_LOCALIZATION_ARTIFACT_PATH", DEFAULT_LOCALIZATION_ARTIFACT_PATH),
+    )
+    parser.add_argument(
+        "--nav2-lifecycle-artifact-path",
+        default=os.getenv("ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH", DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH),
+    )
+    parser.add_argument(
+        "--elevator-status-artifact-path",
+        default=os.getenv("ROBER_ELEVATOR_STATUS_ARTIFACT_PATH", DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH),
     )
     parser.add_argument("--radar-start-command", default=os.getenv("ROBER_RADAR_START_COMMAND"))
     parser.add_argument("--radar-stop-command", default=os.getenv("ROBER_RADAR_STOP_COMMAND"))
@@ -1762,6 +2219,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--map-save-command", default=os.getenv("ROBER_MAP_SAVE_COMMAND"))
     parser.add_argument("--map-load-command", default=os.getenv("ROBER_MAP_LOAD_COMMAND"))
     parser.add_argument("--localize-reset-command", default=os.getenv("ROBER_LOCALIZE_RESET_COMMAND"))
+    parser.add_argument("--nav2-start-command", default=os.getenv("ROBER_NAV2_START_COMMAND"))
+    parser.add_argument("--nav2-stop-command", default=os.getenv("ROBER_NAV2_STOP_COMMAND"))
     return parser.parse_args()
 
 
@@ -1778,7 +2237,10 @@ async def run_server(args: argparse.Namespace) -> None:
         lidar_scan_proof_artifact_path=args.lidar_scan_proof_artifact_path,
         lidar_raw_packet_proof_artifact_path=args.lidar_raw_packet_proof_artifact_path,
         map_artifact_dir=args.map_artifact_dir,
+        map_lifecycle_proof_artifact_path=args.map_lifecycle_proof_artifact_path,
         localization_artifact_path=args.localization_artifact_path,
+        nav2_lifecycle_artifact_path=args.nav2_lifecycle_artifact_path,
+        elevator_status_artifact_path=args.elevator_status_artifact_path,
         radar_start_command=args.radar_start_command,
         radar_stop_command=args.radar_stop_command,
         map_start_command=args.map_start_command,
@@ -1786,6 +2248,8 @@ async def run_server(args: argparse.Namespace) -> None:
         map_save_command=args.map_save_command,
         map_load_command=args.map_load_command,
         localize_reset_command=args.localize_reset_command,
+        nav2_start_command=args.nav2_start_command,
+        nav2_stop_command=args.nav2_stop_command,
     )
     app = create_app(api)
     runner = web.AppRunner(app)
@@ -1870,9 +2334,29 @@ def create_app(api: UpperRobotApi) -> Any:
     async def map_list(_: web.Request) -> Any:
         return json_response(api.map_list())
 
+    async def map_proof_latest(_: web.Request) -> Any:
+        http_status, payload = api.map_proof_latest()
+        return json_response(payload, status=http_status)
+
     async def localize_reset(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
         return json_response(api.localize_reset(body if isinstance(body, dict) else {}))
+
+    async def localize_proof_latest(_: web.Request) -> Any:
+        http_status, payload = api.localize_proof_latest()
+        return json_response(payload, status=http_status)
+
+    async def nav2_status(_: web.Request) -> Any:
+        return json_response(api.nav2_status())
+
+    async def nav2_start(_: web.Request) -> Any:
+        return json_response(api.nav2_control("start"))
+
+    async def nav2_stop(_: web.Request) -> Any:
+        return json_response(api.nav2_control("stop"))
+
+    async def elevator_status(_: web.Request) -> Any:
+        return json_response(api.elevator_status())
 
     async def base_stop(_: web.Request) -> Any:
         return json_response(build_stop_payload(api.base_port, api.base_baudrate))
@@ -1913,7 +2397,13 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["map_save"], map_save)
     app.router.add_post(ROUTE_PATHS["map_load"], map_load)
     app.router.add_get(ROUTE_PATHS["map_list"], map_list)
+    app.router.add_get(ROUTE_PATHS["map_proof_latest"], map_proof_latest)
     app.router.add_post(ROUTE_PATHS["localize_reset"], localize_reset)
+    app.router.add_get(ROUTE_PATHS["localize_proof_latest"], localize_proof_latest)
+    app.router.add_get(ROUTE_PATHS["nav2_status"], nav2_status)
+    app.router.add_post(ROUTE_PATHS["nav2_start"], nav2_start)
+    app.router.add_post(ROUTE_PATHS["nav2_stop"], nav2_stop)
+    app.router.add_get(ROUTE_PATHS["elevator_status"], elevator_status)
     app.router.add_get(ROUTE_PATHS["base_status"], base_status)
     app.router.add_post(ROUTE_PATHS["base_feedback_request"], base_feedback_request)
     app.router.add_post(ROUTE_PATHS["base_feedback_samples"], base_feedback_samples)

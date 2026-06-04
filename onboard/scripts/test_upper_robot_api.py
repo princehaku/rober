@@ -778,9 +778,148 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(status["routes"]["map_save"], "/api/map/save")
         self.assertEqual(status["routes"]["map_load"], "/api/map/load")
         self.assertEqual(status["routes"]["map_list"], "/api/map/list")
+        self.assertEqual(status["routes"]["map_proof_latest"], "/api/map/proof/latest")
         self.assertEqual(status["routes"]["localize_reset"], "/api/localize/reset")
+        self.assertEqual(status["routes"]["localize_proof_latest"], "/api/localize/proof/latest")
+        self.assertEqual(status["routes"]["nav2_status"], "/api/nav2/status")
+        self.assertEqual(status["routes"]["nav2_start"], "/api/nav2/start")
+        self.assertEqual(status["routes"]["nav2_stop"], "/api/nav2/stop")
+        self.assertEqual(status["routes"]["elevator_status"], "/api/elevator/status")
         self.assertEqual(status["map"]["status"], "not_proven")
         self.assertEqual(status["localization"]["status"], "not_proven")
+        self.assertEqual(status["nav2"]["status"], "not_proven")
+        self.assertEqual(status["elevator"]["status"], "not_proven")
+        self.assertEqual(FakeSerial.instances, [])
+
+    def test_runtime_artifact_readbacks_cover_map_localize_nav2_and_elevator_without_side_effects(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            map_proof_path = Path(tmpdir) / "map_proof.json"
+            localize_path = Path(tmpdir) / "localize.json"
+            nav2_path = Path(tmpdir) / "nav2.json"
+            elevator_path = Path(tmpdir) / "elevator.json"
+            map_proof_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.upper_robot_api.v1.map_lifecycle_runtime_proof",
+                        "proof": {
+                            "status": "fixture_map_material",
+                            "evidence_ref": "map-fixture-001",
+                            "map_once_observed": True,
+                            "map_file_observed": True,
+                            "map_metadata_observed": True,
+                            "slam_toolbox_state": "active",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            localize_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.upper_robot_api.v1.localization_reset_artifact",
+                        "proof": {
+                            "status": "fixture_localization_material",
+                            "initialpose_published": True,
+                            "amcl_pose_observed": True,
+                            "tf_fresh": True,
+                            "pose_fresh": True,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            nav2_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+                        "proof": {
+                            "status": "fixture_nav2_material",
+                            "map_server_active": True,
+                            "amcl_active": True,
+                            "planner_active": True,
+                            "controller_active": True,
+                            "scan_consumed": True,
+                            "path_generated": False,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            elevator_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.elevator_status_runtime_boundary.v1",
+                        "proof": {
+                            "status": "fixture_elevator_status",
+                            "phase": "waiting_target_floor",
+                            "opencv_evidence_ref": "elevator-fixture-001",
+                            "target_floor_confirmed": False,
+                            "safe_to_exit": False,
+                            "manual_handoff_required": True,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                map_lifecycle_proof_artifact_path=str(map_proof_path),
+                localization_artifact_path=str(localize_path),
+                nav2_lifecycle_artifact_path=str(nav2_path),
+                elevator_status_artifact_path=str(elevator_path),
+            )
+
+            map_http_status, map_latest = robot.map_proof_latest()
+            localize_http_status, localize_latest = robot.localize_proof_latest()
+            nav2_status = robot.nav2_status()
+            elevator_status = robot.elevator_status()
+
+        self.assertEqual(map_http_status, 200)
+        self.assertEqual(map_latest["artifact"]["status"], "loaded")
+        self.assertEqual(map_latest["latest_result"]["proof"]["evidence_ref"], "map-fixture-001")
+        self.assertFalse(map_latest["readback_sends_commands"])
+        self.assertFalse(map_latest["starts_ros2"])
+        self.assertFalse(map_latest["safe_to_control"])
+        self.assertEqual(localize_http_status, 200)
+        self.assertFalse(localize_latest["readback_sends_commands"])
+        self.assertEqual(localize_latest["latest_result"]["proof"]["status"], "fixture_localization_material")
+        self.assertEqual(nav2_status["proof_latest"]["latest_proof_status"], "fixture_nav2_material")
+        self.assertTrue(nav2_status["proof_latest"]["latest_map_server_active"])
+        self.assertTrue(nav2_status["proof_latest"]["latest_scan_consumed"])
+        self.assertFalse(nav2_status["proof_latest"]["latest_path_generated"])
+        self.assertFalse(nav2_status["nav2_runtime_proven"])
+        self.assertEqual(elevator_status["proof_latest"]["latest_elevator_phase"], "waiting_target_floor")
+        self.assertEqual(elevator_status["proof_latest"]["latest_opencv_evidence_ref"], "elevator-fixture-001")
+        self.assertTrue(elevator_status["proof_latest"]["latest_handoff_required"])
+        self.assertFalse(elevator_status["elevator_runtime_proven"])
+        self.assertEqual(FakeSerial.instances, [])
+
+    def test_nav2_configured_command_executes_but_remains_not_proven(self) -> None:
+        command = f"{sys.executable} -c \"print('nav2-start-stub')\""
+        robot = api.UpperRobotApi(
+            "http://127.0.0.1:8088",
+            "/dev/fake-base",
+            115200,
+            max_speed=0.12,
+            nav2_start_command=command,
+        )
+
+        result = robot.nav2_control("start")
+
+        self.assertEqual(result["endpoint"], "/api/nav2/start")
+        self.assertTrue(result["command_result"]["executed"])
+        self.assertTrue(result["command_result"]["ok"])
+        self.assertIn("nav2-start-stub", result["command_result"]["stdout_preview"])
+        self.assertTrue(result["configured_command"]["configured"])
+        self.assertEqual(result["configured_command"]["env"], "ROBER_NAV2_START_COMMAND")
+        self.assertEqual(result["status"], "not_proven")
+        self.assertTrue(result["not_proven"])
+        self.assertFalse(result["nav2_lifecycle_status"]["proof_latest"]["nav2_runtime_proven"])
+        self.assertFalse(result["robot_control_executed"])
+        self.assertFalse(result["safe_to_control"])
         self.assertEqual(FakeSerial.instances, [])
 
 

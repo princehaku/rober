@@ -1,0 +1,21 @@
+{
+  "schema": "trashbot.nav2_map_quality_fixture_summary.v1",
+  "source": "software_proof",
+  "proof_status": "not_proven",
+  "command": "PYTHONPATH=onboard/src/ros2_trashbot_nav python3 -m ros2_trashbot_nav.map_quality_metrics pc-tools/evidence/fixtures/nav2_map_quality_offline_eval/map.yaml --waypoints pc-tools/evidence/fixtures/nav2_map_quality_offline_eval/waypoints.json",
+  "expected_guard": {
+    "free_cells": 20,
+    "occupied_cells": 2,
+    "unknown_cells": 3,
+    "unknown_ratio": 0.12,
+    "reachable_waypoint_ratio": 0.25,
+    "software_guard_pass": false
+  },
+  "not_proven": [
+    "real_slam_map_runtime",
+    "real_amcl_localization",
+    "real_nav2_scan_map_consumption",
+    "real_fixed_route_execution",
+    "real_waypoint_reachability"
+  ]
+}

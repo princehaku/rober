@@ -81,6 +81,115 @@
 6. 自动停车：manual API 必须在 pulse 后补发 stop；若 stop response 或 post-status 缺失，证据包不得标记为 HIL pass。
 7. 同一 evidence ref：manual response、stop response、post-status、`T=1001`、operator report 和现场记录必须使用同一 `evidence_ref`。
 
+## 下一次现场 low-speed pulse 证据链
+
+现场命令必须先 dry-run，再执行单方向短 pulse。以下命令只走 8787 HTTP guardrail，不直接打开 `/dev/ttyS5`；真实串口写入只能由 `/api/base/manual` 和 `/api/base/stop` 完成。
+
+1. 生成本次统一证据 ref：
+
+```bash
+EVIDENCE_REF="field-$(date -u +%Y%m%dT%H%M%SZ)-forward"
+```
+
+2. 写入执行前 operator preflight。三项为 true 只代表可进入执行前 gate，不代表已经观察到运动或停止：
+
+```bash
+cat > /safe/runtime/operator-preflight.json <<EOF
+{
+  "schema": "trashbot.o1.pc_manual_hil_operator_report.v1",
+  "evidence_ref": "${EVIDENCE_REF}",
+  "operator_present": true,
+  "physical_clearance_confirmed": true,
+  "emergency_stop_ready": true
+}
+EOF
+```
+
+3. 先跑 dry-run，确认 base 口径仍是 `/dev/ttyS5 @115200`，并确认 `safe_to_control=false`、`hil_pass=false`：
+
+```bash
+python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
+  --base-url http://192.168.1.11:8787 \
+  --evidence-ref "${EVIDENCE_REF}" \
+  --dry-run \
+  --operator-report-json /safe/runtime/operator-preflight.json \
+  --once-json \
+  --output "/safe/runtime/${EVIDENCE_REF}-dry-run.json"
+```
+
+4. 只有现场有人看护、净空、物理停机路径可用且 CEO/现场负责人明确授权后，执行一个方向的低速短 pulse：
+
+```bash
+python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
+  --base-url http://192.168.1.11:8787 \
+  --evidence-ref "${EVIDENCE_REF}" \
+  --execute-motion \
+  --confirm-physical-clearance \
+  --operator-report-json /safe/runtime/operator-preflight.json \
+  --direction forward \
+  --speed 0.05 \
+  --duration-ms 250 \
+  --once-json \
+  --output "/safe/runtime/${EVIDENCE_REF}-pulse.json"
+```
+
+5. 执行后补完整 operator review，必须使用同一个 `evidence_ref`。如果实际观察和脚本结果冲突，以现场 stop/安全为先，证据包保持 `safe_to_control=false`：
+
+```bash
+cat > /safe/runtime/operator-review.json <<EOF
+{
+  "schema": "trashbot.o1.pc_manual_hil_operator_report.v1",
+  "evidence_ref": "${EVIDENCE_REF}",
+  "operator_present": true,
+  "physical_clearance_confirmed": true,
+  "emergency_stop_ready": true,
+  "observed_motion": true,
+  "observed_stop": true,
+  "operator_notes": "replace with observed short pulse and stop notes",
+  "reported_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+EOF
+```
+
+6. 用 review report 再跑一次 dry-run readback，把 operator report、post-status 和 `T=1001` 状态绑定到同一 artifact：
+
+```bash
+python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
+  --base-url http://192.168.1.11:8787 \
+  --evidence-ref "${EVIDENCE_REF}" \
+  --dry-run \
+  --operator-report-json /safe/runtime/operator-review.json \
+  --once-json \
+  --output "/safe/runtime/${EVIDENCE_REF}-post-review.json"
+```
+
+判定口径：
+
+- runner 输出必须包含 `same_evidence_ref_required=true`，且 `evidence_chain.initial_status/manual_request/extra_stop/post_status/operator_report` 都等于同一个 `evidence_ref`。
+- `acceptance_verdict.status=motion_posted_with_t1001` 也只能写成 `vendor_feedback_material + operator_observation_material`，不能写成 HIL pass。
+- operator report 如声明不同 `evidence_ref`，runner 必须在 `operator_report_evidence_ref_mismatch` 阶段阻断，不得发送 `/api/base/manual`。
+- forward/back/left/right 必须一条证据链测一个方向；不得一次脚本里连测多个方向。
+
+## LiDAR start/stop 证据链
+
+LiDAR raw packet collector 当前默认端口为 vendor udev symlink `/dev/lidar`，现场也可显式传入确认过的 `/dev/ttyACM0` 或 STC `/dev/serial/by-id/...`。该 collector 允许发送 LiDAR start/stop bytes，但必须拒绝底盘 UART：
+
+```bash
+python3 onboard/scripts/o1_lidar_raw_packet_proof_collector.py \
+  --port /dev/lidar \
+  --baudrate 150000 \
+  --timeout-s 3 \
+  --once-json \
+  --output /safe/runtime/o1-lidar-raw-packet-proof.json
+```
+
+证据边界：
+
+- 允许写入的 bytes 仅为 LiDAR `A5 60` 和 shutdown `A5 00 A5 65 A5 65`，来源为 `docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp`。
+- collector 输出 `target_port_safety.refuses_base_uart=true`；如果 `--port /dev/ttyS5`、`/dev/ttyAMA0` 或 `/dev/serial0`，必须在 open 前返回 `collector_error.type=forbidden_lidar_port`，且 `lidar_commands_sent=[]`。
+- raw packet proof 只证明 `0xAA 0x55` bytes/packet/point 统计，不证明 ROS2 `/scan`、TF、SLAM/Nav2、底盘 HIL 或 `safe_to_control=true`。
+- ROS2 `/scan`、`/lidar/raw_packet` 和 `base_link -> laser_frame` 仍由 `o1_lidar_scan_proof_collector.py --expect-existing-topics` 做只读 topic proof；scan collector 不发送 `A5 60`，也不触碰 `/dev/ttyS5`。
+
 ## Operator Report 最小字段
 
 PC/upper API 或人工报告至少记录：

@@ -10,11 +10,12 @@ sprint_type: epic
 
 | 要求 | 本轮结果 | 验收状态 |
 | --- | --- | --- |
-| PC operator workflow | PC workstation 增加 direct-upper radar/map/localize/operator report UI/API；manual/stop 仍走同源代理 | software_guard 通过 |
+| PC operator workflow | PC workstation 增加 direct-upper radar/map/localize/operator report UI/API；manual/stop 仍走同源代理，并增加 confirmation、fixture mode 与共享 `evidence_ref` | software_guard 通过 |
 | 雷达一键 start/stop | 8787 新增 `/api/radar/start|stop`，PC 新增对应按钮/代理 | software_guard 通过，runtime 未证明 |
-| 建图/定位控制 | 8787 新增 `/api/map/start|reset|save|load|list` 和 `/api/localize/reset`，PC 可消费 | software_guard 通过，SLAM/AMCL runtime 未证明 |
+| 建图/定位控制 | 8787 新增 `/api/map/start|reset|save|load|list`、`/api/map/proof/latest`、`/api/localize/reset`、`/api/localize/proof/latest`，PC 可消费 | software_guard 通过，SLAM/AMCL runtime 未证明 |
+| Nav2/map quality | 新增 ROS-free map quality offline metrics 和 fixture，输出 unknown ratio、waypoint reachability、failure samples | offline guard 通过，Nav2 runtime 未证明 |
 | OpenCV 电梯识别 | 新增 taxonomy、ROI/rule baseline、offline eval 和测试 | offline fixture eval 通过，真实图片未证明 |
-| HIL/硬件边界 | 新增 vendor-sourced PC manual 与 LiDAR 串口隔离准入 | 文档护栏通过，现场 HIL 未证明 |
+| HIL/硬件边界 | 新增 vendor-sourced PC manual、同一 evidence_ref 绑定与 LiDAR 串口隔离准入 | unit/software guard 通过，现场 HIL 未证明 |
 
 ## 证据边界
 
@@ -26,9 +27,9 @@ sprint_type: epic
 | Objective | 本轮是否推进 | 是否涨分 | 原因 |
 | --- | --- | --- | --- |
 | O2 | 是 | 否 | 有 OpenCV baseline/offline fixture eval，但没有真实图片 eval、状态机接入或受控电梯材料。 |
-| O3 | 是 | 否 | 有 map/localize upper API 合同，但没有真实 `/map`、map artifact、AMCL pose 或 Nav2 runtime。 |
-| O7 | 是 | 否 | PC operator workflow 已能消费新合同，但没有真实 8787/HIL/browser field material。 |
-| O1 | 是 | 否 | HIL/串口隔离边界更清楚，但没有真实低速 pulse、post-status 或 ROS feedback topics。 |
+| O3 | 是 | 否 | 有 map/localize/Nav2 upper API 合同和 map quality offline guard，但没有真实 `/map`、map artifact、AMCL pose 或 Nav2 runtime。 |
+| O7 | 是 | 否 | PC operator workflow 已能消费新合同并保留 evidence_ref/fixture 边界，但没有真实 8787/HIL/browser field material。 |
+| O1 | 是 | 否 | HIL/串口隔离和 evidence_ref 边界更清楚，但没有真实低速 pulse、post-status 或 ROS feedback topics。 |
 | O5/O6 | 否 | 否 | 本轮按优先级没有抢占 O2/O3/O7/O1。 |
 
 ## 下一轮 Side-by-side 验收建议

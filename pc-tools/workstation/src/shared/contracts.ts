@@ -2128,13 +2128,22 @@ export interface O7DirectUpperApiSafetyFlags {
   t1001_observed: false;
 }
 
+export interface O7DirectUpperApiAdapterInfo {
+  version: string;
+  source: "pc-tools/workstation/src/server/o7DirectUpperApi.ts";
+  field_default_enabled: boolean;
+  field_default_url: "http://192.168.1.11:8787";
+  dev_server_reload_hint: string;
+}
+
 export interface O7DirectUpperApiStatusResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.o7_direct_upper_status.v1";
   endpoint: "/api/o7/direct-upper/status";
   mode: O7DirectUpperApiMode;
+  adapter: O7DirectUpperApiAdapterInfo;
   status: O7DirectUpperApiStatus;
   upper_api_base_url: string;
-  upper_api_base_url_source: "env" | "field_default" | "not_configured";
+  upper_api_base_url_source: "env" | "field_default" | "fixture" | "not_configured";
   request_timeout_ms: number;
   health_request: O7DirectUpperApiRequestResult;
   status_request: O7DirectUpperApiRequestResult;
@@ -2222,11 +2231,12 @@ export interface O7DirectUpperApiCommandResponse extends ProofFlags {
     | "/api/o7/direct-upper/localize/reset"
     | "/api/o7/direct-upper/operator-report";
   mode: O7DirectUpperApiMode;
+  adapter: O7DirectUpperApiAdapterInfo;
   command: O7DirectUpperApiCommand;
   accepted_by_workstation: boolean;
   upper_request: O7DirectUpperApiRequestResult;
   upper_api_base_url: string;
-  upper_api_base_url_source: "env" | "field_default" | "not_configured";
+  upper_api_base_url_source: "env" | "field_default" | "fixture" | "not_configured";
   cloud_relay_bypassed: true;
   pc_local_only: true;
   fail_closed: boolean;

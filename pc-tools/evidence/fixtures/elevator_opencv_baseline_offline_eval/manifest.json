@@ -1,0 +1,45 @@
+{
+  "schema": "trashbot.elevator_image_manifest.v1",
+  "source": "software_proof",
+  "proof_status": "not_proven",
+  "image_dir": ".",
+  "samples": [
+    {
+      "sample_id": "fixture_open_inside_safe_f3",
+      "image": "open_inside_safe_f3.pgm",
+      "target_floor": "3",
+      "expected_floor": "3",
+      "expected_door_state": "open",
+      "expected_inside_outside": "inside",
+      "expected_safe_to_exit": "safe",
+      "taxonomy_tags": [
+        "door_open_positive",
+        "inside_positive",
+        "floor_target_positive",
+        "safe_exit_positive"
+      ]
+    },
+    {
+      "sample_id": "fixture_closed_outside_unsafe",
+      "image": "closed_outside_unsafe.pgm",
+      "target_floor": "3",
+      "expected_door_state": "closed",
+      "expected_inside_outside": "outside",
+      "expected_safe_to_exit": "unsafe",
+      "taxonomy_tags": [
+        "door_closed_positive",
+        "outside_negative",
+        "safe_exit_negative"
+      ]
+    },
+    {
+      "sample_id": "fixture_ambiguous_bad_light",
+      "image": "ambiguous_bad_light.pgm",
+      "expected_door_state": "open",
+      "expected_safe_to_exit": "safe",
+      "taxonomy_tags": [
+        "uncertain_or_bad_light"
+      ]
+    }
+  ]
+}

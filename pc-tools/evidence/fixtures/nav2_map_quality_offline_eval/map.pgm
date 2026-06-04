@@ -1,0 +1,9 @@
+P2
+# software_proof fixture: free/unknown/occupied map cells for offline quality guard
+5 5
+255
+254 254 205 0 254
+254 254 205 0 254
+254 254 254 254 254
+205 254 254 254 254
+254 254 254 254 254

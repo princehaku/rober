@@ -34,6 +34,9 @@ class ElevatorOpenCvBaselineTest(unittest.TestCase):
         self.assertIn("safe_to_exit", taxonomy["labels"])
         self.assertIn("floor_display", taxonomy["roi_names"])
         self.assertTrue(taxonomy["sample_requirements"]["real_image_directory_required_for_field_eval"])
+        self.assertIn("taxonomy_classes", taxonomy)
+        self.assertIn("floor_target_positive", taxonomy["taxonomy_classes"])
+        self.assertIn("quality_gate_defaults", taxonomy)
         self.assertIn("real_camera_elevator_recognition", taxonomy["not_proven"])
 
     def test_rule_baseline_detects_open_inside_and_safe_fixture(self):
@@ -104,6 +107,7 @@ class ElevatorOpenCvBaselineTest(unittest.TestCase):
                                 "expected_door_state": "open",
                                 "expected_inside_outside": "inside",
                                 "expected_safe_to_exit": "safe",
+                                "taxonomy_tags": ["door_open_positive", "floor_target_positive"],
                             },
                             {
                                 "sample_id": "closed_outside",
@@ -143,6 +147,14 @@ class ElevatorOpenCvBaselineTest(unittest.TestCase):
         self.assertEqual(summary["confusion"]["safe_to_exit"]["tp"], 1)
         self.assertEqual(summary["confusion"]["safe_to_exit"]["tn"], 1)
         self.assertEqual(summary["operator_summary"]["uncertain_total"], 2)
+        self.assertTrue(summary["quality_metrics"]["software_guard_pass"])
+        self.assertFalse(summary["quality_metrics"]["field_eval_ready"])
+        self.assertEqual(summary["sample_coverage"]["counts"]["door_open_positive"], 2)
+        self.assertEqual(summary["sample_coverage"]["counts"]["floor_target_positive"], 1)
+        self.assertEqual(summary["sample_coverage"]["image_kinds"]["fixture"], 3)
+        self.assertFalse(summary["sample_coverage"]["field_minimum_met"])
+        self.assertTrue(summary["acceptance_gates"]["software_guard"]["pass"])
+        self.assertFalse(summary["acceptance_gates"]["field_eval"]["pass"])
         self.assertIn("real_floor_ocr", summary["not_proven"])
         self.assertEqual(json.loads(cli.stdout)["evaluated_count"], 3)
 
