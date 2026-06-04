@@ -182,6 +182,31 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         payload.update(overrides)
         return payload
 
+    def make_elevator_opencv_baseline_artifact(self, sample_id="opencv-safe-001", **overrides):
+        payload = {
+            "schema": "trashbot.elevator_opencv_baseline.v1",
+            "taxonomy_version": "elevator_taxonomy_v0",
+            "proof_status": "not_proven",
+            "sample_id": sample_id,
+            "image_ref": "/tmp/elevator-safe.pgm",
+            "door_state": "open",
+            "inside_outside": "inside",
+            "target_floor_candidate": "1",
+            "safe_to_exit": "safe",
+            "confidence": 0.82,
+            "uncertain_reasons": [],
+            "not_proven": [
+                "real_camera_elevator_recognition",
+                "real_floor_ocr",
+                "real_target_floor_confirmation",
+                "real_safe_exit",
+                "real_cross_floor_delivery",
+            ],
+            "metadata": {"fixture_kind": "software_guard"},
+        }
+        payload.update(overrides)
+        return payload
+
     def test_execute_collection_default_elevator_assist_dry_run_success_sets_result_and_record(self):
         with tempfile.TemporaryDirectory() as td:
             node = self.make_orchestrator(Path(td))
@@ -485,6 +510,91 @@ class TaskOrchestratorCollectionExecutionTest(unittest.TestCase):
         )
         self.assertEqual(payload["evidence_ref"], "")
         self.assertEqual(payload["result_path"], "")
+
+    def test_execute_collection_opencv_baseline_artifact_drives_state_chain_snapshot(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_file = Path(td) / "elevator-opencv.json"
+            artifact_file.write_text(
+                json.dumps(self.make_elevator_opencv_baseline_artifact()),
+                encoding="utf-8",
+            )
+            node = self.make_orchestrator(Path(td))
+            node.elevator_assist_mode = "opencv_baseline"
+            node.elevator_assist_evidence_file = str(artifact_file)
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        assist = payload["elevator_assist"]
+        phase_evidence = assist["evidence"]["phase_evidence"]
+        snapshot = assist["evidence"]["opencv_baseline_snapshot"]
+
+        self.assertTrue(result.success)
+        self.assertTrue(goal.succeeded)
+        self.assertEqual(payload["evidence_ref"], "opencv:opencv-safe-001")
+        self.assertEqual(assist["mode"], "opencv_baseline")
+        self.assertEqual(assist["schema"], "trashbot.elevator_opencv_baseline.v1")
+        self.assertEqual(assist["proof_gate"], "software_guard_elevator_opencv_baseline_state_chain_gate")
+        self.assertEqual(assist["phase"], "resume_delivery")
+        self.assertEqual(assist["manual_takeover_reason"], "")
+        self.assertEqual(phase_evidence["waiting_elevator_open"]["status"], "door_open")
+        self.assertEqual(phase_evidence["entering_elevator"]["status"], "inside_elevator")
+        self.assertEqual(phase_evidence["waiting_target_floor"]["status"], "target_floor_confirmed")
+        self.assertEqual(phase_evidence["exiting_elevator"]["status"], "safe_to_exit")
+        self.assertEqual(snapshot["door_state"], "open")
+        self.assertEqual(snapshot["target_floor_candidate"], "1")
+        self.assertIn("OpenCV 电梯识别", assist["safe_phone_copy"])
+        self.assertEqual(assist["delivery_success"], False)
+        self.assertEqual(assist["primary_actions_enabled"], False)
+        trace = payload["elevator_action_feedback_trace"]
+        self.assertEqual(trace["source_boundary"], "software_guard_elevator_opencv_baseline_state_chain_gate")
+        self.assertEqual(trace["safe_evidence_ref"], "opencv:opencv-safe-001")
+        self.assertEqual(trace["phases"][-1]["current_step"], "elevator:resume_delivery")
+        self.assertEqual(payload["final_status"], "success")
+
+    def test_execute_collection_opencv_baseline_unsafe_artifact_fails_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact_file = Path(td) / "elevator-opencv-unsafe.json"
+            artifact_file.write_text(
+                json.dumps(
+                    self.make_elevator_opencv_baseline_artifact(
+                        sample_id="opencv-unsafe-001",
+                        target_floor_candidate="2",
+                        safe_to_exit="unsafe",
+                        confidence=0.42,
+                        uncertain_reasons=["target floor mismatch", "exit path dark"],
+                    )
+                ),
+                encoding="utf-8",
+            )
+            node = self.make_orchestrator(Path(td))
+            node.elevator_assist_mode = "opencv_baseline"
+            node.elevator_assist_evidence_file = str(artifact_file)
+            goal = FakeGoalHandle()
+
+            result = asyncio.run(node._execute_collection(goal))
+            payload = json.loads(Path(result.task_record_path).read_text(encoding="utf-8"))
+
+        assist = payload["elevator_assist"]
+        snapshot = assist["evidence"]["opencv_baseline_snapshot"]
+
+        self.assertFalse(result.success)
+        self.assertTrue(goal.aborted)
+        self.assertEqual(result.error_code, "elevator_failed")
+        self.assertEqual(payload["final_status"], "failed")
+        self.assertEqual(payload["failure_code"], "elevator_failed")
+        self.assertEqual(payload["evidence_ref"], "opencv:opencv-unsafe-001")
+        self.assertEqual(payload["human_intervention_required"], True)
+        self.assertEqual(assist["mode"], "opencv_baseline")
+        self.assertEqual(assist["phase"], "waiting_target_floor")
+        self.assertEqual(assist["manual_takeover_reason"], "target_floor_unconfirmed")
+        self.assertIn("target_floor_unconfirmed", assist["failure_reason"])
+        self.assertEqual(snapshot["safe_to_exit"], "unsafe")
+        self.assertEqual(snapshot["confidence"], 0.42)
+        self.assertIn("target floor mismatch", snapshot["uncertain_reasons"])
+        self.assertEqual(assist["delivery_success"], False)
+        self.assertEqual(assist["primary_actions_enabled"], False)
 
     def test_execute_collection_elevator_rehearsal_artifact_failure_requires_manual_takeover(self):
         with tempfile.TemporaryDirectory() as td:

@@ -28,12 +28,16 @@ from ros2_trashbot_behavior.delivery_elevator_assist import (
     ELEVATOR_ASSIST_DRY_RUN_PHASES,
     ELEVATOR_ASSIST_FAILURES,
     ELEVATOR_ASSIST_FEEDBACK_MESSAGES,
+    ELEVATOR_ASSIST_OPENCV_BASELINE_PROOF_GATE,
+    ELEVATOR_ASSIST_OPENCV_BASELINE_SCHEMA,
     ELEVATOR_ASSIST_PROMPT,
     ELEVATOR_ASSIST_PROOF_GATE,
     ELEVATOR_ASSIST_REHEARSAL_PROOF_GATE,
     ELEVATOR_ASSIST_REHEARSAL_REQUIRED_PHASES,
     ELEVATOR_ASSIST_REHEARSAL_SCHEMA,
     is_safe_elevator_evidence_ref,
+    opencv_baseline_to_phase_evidence,
+    validate_opencv_baseline_artifact,
     validate_rehearsal_artifact,
     with_elevator_assist_boundary,
 )
@@ -990,6 +994,12 @@ class TaskOrchestrator(Node):
     def _perform_elevator_assist(self, machine, goal_handle=None, start_time=None):
         if not self.elevator_assist_enabled:
             return self._elevator_assist_disabled_status()
+        if self.elevator_assist_mode == "opencv_baseline":
+            return self._perform_opencv_baseline_elevator_assist(
+                machine,
+                goal_handle,
+                start_time,
+            )
         if self.elevator_assist_mode != "dry_run":
             return self._with_elevator_assist_boundary({
                 "enabled": True,
@@ -1086,6 +1096,126 @@ class TaskOrchestrator(Node):
             "events": events,
             "success": True,
         }, phone_copy="电梯辅助 dry-run 已走完默认软件主链路；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
+
+    def _perform_opencv_baseline_elevator_assist(
+        self,
+        machine,
+        goal_handle=None,
+        start_time=None,
+    ):
+        payload, read_error = self._read_elevator_assist_artifact(
+            missing_reason="missing elevator opencv baseline artifact",
+            invalid_reason="invalid elevator opencv baseline artifact file",
+        )
+        if read_error:
+            return self._opencv_baseline_failed_status(
+                machine,
+                read_error,
+                "invalid_opencv_baseline_artifact_file",
+                payload if isinstance(payload, dict) else {},
+            )
+
+        validation_error = self._validate_opencv_baseline_artifact(payload)
+        if validation_error:
+            return self._opencv_baseline_failed_status(
+                machine,
+                validation_error,
+                "invalid_opencv_baseline_artifact",
+                payload if isinstance(payload, dict) else {},
+            )
+
+        mapped = opencv_baseline_to_phase_evidence(
+            payload,
+            target_floor=self.elevator_assist_target_floor,
+        )
+        phase_evidence = mapped["phase_evidence"]
+        events = []
+        phases_to_publish = list(ELEVATOR_ASSIST_REHEARSAL_REQUIRED_PHASES)
+        if not mapped["success"]:
+            blocked_phase = self._opencv_baseline_blocked_phase(mapped["manual_takeover_reason"])
+            # 失败时只发布到第一个阻塞阶段，避免手机端看到后续阶段像是已真实走过。
+            phases_to_publish = phases_to_publish[:phases_to_publish.index(blocked_phase) + 1]
+
+        phase_total = len(phases_to_publish) + (1 if mapped["success"] else 0)
+        for phase_index, phase in enumerate(phases_to_publish):
+            phase_payload = phase_evidence[phase]
+            event = {
+                "phase": phase,
+                "state": phase,
+                "evidence": phase_payload,
+                "requires_human_help": (
+                    phase in ("requesting_floor_help", "waiting_target_floor")
+                    or not mapped["success"]
+                ),
+                "speaker_prompt": ELEVATOR_ASSIST_PROMPT
+                if phase == "requesting_floor_help"
+                else "",
+            }
+            events.append(event)
+            # state transition 只写阶段摘要；完整 OpenCV 快照保留在 elevator_assist.evidence。
+            machine.elevator_phase(phase, json.dumps(event, ensure_ascii=False, sort_keys=True))
+            self._publish_elevator_assist_feedback(
+                goal_handle,
+                machine,
+                start_time,
+                phase,
+                phase_index,
+                max(phase_total, 1),
+            )
+
+        evidence_ref = self._derive_opencv_baseline_evidence_ref(payload)
+        base = {
+            "enabled": True,
+            "mode": "opencv_baseline",
+            "target_floor": self.elevator_assist_target_floor,
+            "speaker_prompt": ELEVATOR_ASSIST_PROMPT,
+            "evidence": {
+                "phase_evidence": phase_evidence,
+                "opencv_baseline_snapshot": mapped["snapshot"],
+                "blockers": mapped["blockers"],
+            },
+            "events": events,
+            "schema": ELEVATOR_ASSIST_OPENCV_BASELINE_SCHEMA,
+            "source": "software_proof",
+            "evidence_ref": evidence_ref,
+            "result_path": evidence_ref,
+            "proof_gate": ELEVATOR_ASSIST_OPENCV_BASELINE_PROOF_GATE,
+            "evidence_boundary": ELEVATOR_ASSIST_OPENCV_BASELINE_PROOF_GATE,
+            "same_evidence_ref_required": True,
+            "phone_safe_summary": mapped["phone_safe_summary"],
+        }
+        if not mapped["success"]:
+            reason = "OpenCV baseline requested manual takeover: " + ", ".join(mapped["blockers"])
+            return self._with_elevator_assist_boundary({
+                **base,
+                "state": "failed",
+                "phase": phases_to_publish[-1] if phases_to_publish else "opencv_baseline_validation",
+                "requires_human_help": True,
+                "reason": reason,
+                "failure_reason": reason,
+                "manual_takeover_reason": mapped["manual_takeover_reason"],
+                "success": False,
+            }, phone_copy=mapped["phone_safe_summary"])
+
+        machine.elevator_completed("elevator opencv baseline accepted; resume delivery")
+        self._publish_elevator_assist_feedback(
+            goal_handle,
+            machine,
+            start_time,
+            "resume_delivery",
+            phase_total - 1,
+            phase_total,
+        )
+        return self._with_elevator_assist_boundary({
+            **base,
+            "state": "resume_delivery",
+            "phase": "resume_delivery",
+            "requires_human_help": False,
+            "reason": "elevator opencv baseline artifact accepted",
+            "failure_reason": "",
+            "manual_takeover_reason": "",
+            "success": True,
+        }, phone_copy=mapped["phone_safe_summary"])
 
     def _perform_rehearsal_artifact_elevator_assist(
         self,
@@ -1257,6 +1387,74 @@ class TaskOrchestrator(Node):
             "evidence_boundary": ELEVATOR_ASSIST_REHEARSAL_PROOF_GATE,
             "same_evidence_ref_required": True,
         }, phone_copy="电梯演练 artifact 未通过校验，行为主链路已失败关闭；不证明真实电梯、真实喇叭、真实 Nav2、HIL 或送达成功。")
+
+    def _read_elevator_assist_artifact(self, *, missing_reason, invalid_reason):
+        artifact_path = str(getattr(self, "elevator_assist_evidence_file", "") or "").strip()
+        if not artifact_path:
+            return {}, missing_reason
+        if not os.path.exists(artifact_path):
+            return {}, missing_reason
+        try:
+            if os.path.getsize(artifact_path) == 0:
+                return {}, missing_reason
+        except OSError as exc:
+            return {}, f"{invalid_reason}: {exc}"
+        try:
+            with open(artifact_path, "r", encoding="utf-8") as f:
+                return json.load(f), ""
+        except (OSError, json.JSONDecodeError) as exc:
+            return {}, f"{invalid_reason}: {exc}"
+
+    def _validate_opencv_baseline_artifact(self, payload):
+        # OpenCV 结果 schema 和未证明边界由 helper 统一维护，状态机只消费映射后的阶段证据。
+        return validate_opencv_baseline_artifact(payload)
+
+    def _opencv_baseline_blocked_phase(self, manual_takeover_reason):
+        reason = str(manual_takeover_reason or "")
+        if reason == "door_not_open":
+            return "waiting_elevator_open"
+        if reason == "inside_outside_unconfirmed":
+            return "entering_elevator"
+        if reason == "target_floor_unconfirmed":
+            return "waiting_target_floor"
+        return "exiting_elevator"
+
+    def _derive_opencv_baseline_evidence_ref(self, payload):
+        sample_id = str(payload.get("sample_id") or "").strip() if isinstance(payload, dict) else ""
+        candidate = f"opencv:{sample_id}" if sample_id else ""
+        # image_ref 可能是本机路径，不能直接塞进顶层 evidence_ref 让手机/API 误展示。
+        return candidate if self._is_safe_elevator_evidence_ref(candidate) else ""
+
+    def _opencv_baseline_failed_status(self, machine, reason, manual_takeover_reason, payload=None):
+        machine.elevator_phase(
+            "opencv_baseline_validation",
+            json.dumps({"reason": reason}, ensure_ascii=False, sort_keys=True),
+        )
+        evidence_ref = ""
+        if isinstance(payload, dict):
+            evidence_ref = self._derive_opencv_baseline_evidence_ref(payload)
+        return self._with_elevator_assist_boundary({
+            "enabled": True,
+            "mode": "opencv_baseline",
+            "state": "failed",
+            "phase": "opencv_baseline_validation",
+            "requires_human_help": True,
+            "reason": reason,
+            "failure_reason": reason,
+            "manual_takeover_reason": manual_takeover_reason,
+            "target_floor": self.elevator_assist_target_floor,
+            "speaker_prompt": ELEVATOR_ASSIST_PROMPT,
+            "evidence": {},
+            "events": [],
+            "success": False,
+            "schema": ELEVATOR_ASSIST_OPENCV_BASELINE_SCHEMA,
+            "source": "software_proof",
+            "evidence_ref": evidence_ref,
+            "result_path": evidence_ref,
+            "proof_gate": ELEVATOR_ASSIST_OPENCV_BASELINE_PROOF_GATE,
+            "evidence_boundary": ELEVATOR_ASSIST_OPENCV_BASELINE_PROOF_GATE,
+            "same_evidence_ref_required": True,
+        }, phone_copy="OpenCV 电梯识别 artifact 未通过校验，行为主链路已失败关闭；不证明真实电梯、真实 Nav2、HIL 或送达成功。")
 
     def _confirm_dropoff_callback(self, request, response):
         accepted, message = self.dropoff_gate.confirm(

@@ -179,6 +179,29 @@ Nav2/fixed-route、真实手机、HIL 或 delivery success。
 - ROS2 状态链必须只消费带 evidence boundary 的识别结果；缺真实图片、缺目标楼层证据或结果冲突时必须 fail closed 并请求人工接管。
 - 受控实景材料仍按“三次连续流程”验收；本轮 fixture 只能作为 `software_guard` 或 `robot_runtime_material` 前置护栏，不能证明真实楼宇、电梯、跨楼层送达或 delivery success。
 
+### 2026-06-04 16-17 Micro：OpenCV baseline 状态链接入
+
+`task_orchestrator` 现在支持 `elevator_assist_mode=opencv_baseline`，并继续复用
+`elevator_assist_evidence_file` 读取 `trashbot.elevator_opencv_baseline.v1` JSON
+artifact。该模式把 `door_state`、`inside_outside`、`target_floor_candidate`、
+`safe_to_exit`、`confidence` 和 `uncertain_reasons` 转成行为层
+`phase_evidence`：
+
+- `waiting_elevator_open`：`door_state=open` 才映射为 `door_open`。
+- `entering_elevator`：`inside_outside=inside` 才映射为 `inside_elevator`。
+- `requesting_floor_help`：只有确认在轿厢内才标记 `prompt_ready`。
+- `waiting_target_floor`：`target_floor_candidate` 必须等于目标楼层。
+- `exiting_elevator`：`safe_to_exit=safe` 且置信度达软件阈值才允许进入
+  `resume_delivery`。
+
+任一条件缺失、冲突、低置信度或 artifact schema/boundary 不安全时，行为层必须
+fail closed，写入 `manual_takeover_reason`、`phone_safe_summary`、
+`opencv_baseline_snapshot` 和 `phase_evidence` 快照，并保持
+`delivery_success=false`、`primary_actions_enabled=false`。这只属于
+`software_guard_elevator_opencv_baseline_state_chain_gate`，不证明真实相机电梯识别、
+真实楼层 OCR、真实可驶出、真实 Nav2/fixed-route、WAVE ROVER/UART/HIL、
+真实跨楼层送达或手机用户验收。
+
 ## 现场材料校验 Gate
 
 `pc-tools/evidence/elevator_field_run_material_validation.py` 是受控实景验收前的 Docker/local software proof gate。它读取同一 `evidence_ref` 的材料目录，要求存在：
