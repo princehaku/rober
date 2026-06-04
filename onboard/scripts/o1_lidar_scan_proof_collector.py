@@ -127,7 +127,27 @@ def run_bash(command: str, timeout_s: float) -> dict[str, Any]:
             "ok": completed.returncode == 0,
         }
     except subprocess.TimeoutExpired as exc:
-        return {"command": command, "returncode": None, "ok": False, "error": {"type": "TimeoutExpired", "message": str(exc)}}
+        # `ros2 topic hz` 和 `tf2_echo` 本来就常靠 timeout 收尾；如果丢掉已打印文本，
+        # live proof 会把真实观察误判成未观察，所以 timeout 分支也必须保留输出。
+        return {
+            "command": command,
+            "returncode": None,
+            "ok": False,
+            "stdout_preview": preview_timeout_text(exc.stdout),
+            "stderr_preview": preview_timeout_text(exc.stderr),
+            "error": {"type": "TimeoutExpired", "message": str(exc)},
+        }
+
+
+def preview_timeout_text(value: Any, limit: int = 2000) -> str:
+    """TimeoutExpired 可能给 bytes 或 str；统一保留尾部证据文本。"""
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        text = value.decode("utf-8", errors="replace")
+    else:
+        text = str(value)
+    return text[-limit:]
 
 
 def ros2_environment_prefix() -> str:
