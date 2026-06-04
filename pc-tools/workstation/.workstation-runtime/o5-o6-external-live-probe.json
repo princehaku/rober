@@ -1,7 +1,7 @@
 {
   "schema": "trashbot.o5_o6.external_live_probe.v1",
   "runner": "pc_upper_ssh_collector+python_stdlib",
-  "executed_at": "2026-06-03T21:43:36Z",
+  "executed_at": "2026-06-04T01:10:05Z",
   "probe_status": "fail_closed",
   "viewpoint": "upper_computer_via_pc_ssh_readonly",
   "pc_base_url": "not_configured_for_upper_ssh",
@@ -165,6 +165,87 @@
     "pc_base_url_configured_for_upper_ssh": false,
     "pc_base_url_source": "absent",
     "pc_base_url_next_action": "pass --pc-base-url http://<pc-workstation-host>:8787 or set ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL to an address reachable from the upper computer",
+    "preflight": {
+      "schema": "trashbot.o5_o6.upper_ssh_collector_preflight.v1",
+      "status": "blocked",
+      "checks": [
+        {
+          "id": "ssh_target",
+          "status": "configured",
+          "source": "ssh_command",
+          "blocked_reason": null,
+          "next_action": null
+        },
+        {
+          "id": "ssh_port",
+          "status": "configured",
+          "source": "ssh_command",
+          "blocked_reason": null,
+          "next_action": null
+        },
+        {
+          "id": "pc_base_url",
+          "status": "blocked",
+          "source": "absent",
+          "blocked_reason": "pc_base_url_not_configured_for_upper_ssh",
+          "next_action": "pass --pc-base-url http://<pc-workstation-host>:8787 or set ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL to an address reachable from the upper computer"
+        },
+        {
+          "id": "cloud_base_url",
+          "status": "blocked",
+          "source": "absent",
+          "blocked_reason": "cloud_base_url_not_configured",
+          "next_action": "pass --cloud-base-url https://<production-cloud-base> or set ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL"
+        },
+        {
+          "id": "remote_bearer_token",
+          "status": "requires_remote_runtime",
+          "source": "remote_environment_only",
+          "blocked_reason": "remote_bearer_token_not_verified_by_pc_preflight",
+          "next_action": "configure TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN in the upper-computer runtime before live collection"
+        },
+        {
+          "id": "remote_root",
+          "status": "requires_ssh_probe",
+          "source": "default",
+          "blocked_reason": "remote_root_not_verified_by_pc_preflight",
+          "next_action": "run the collector without --dry-run to check remote_root by read-only SSH cd; override with --remote-root if needed"
+        },
+        {
+          "id": "remote_probe_script",
+          "status": "requires_ssh_probe",
+          "source": "default",
+          "blocked_reason": "remote_probe_script_not_verified_by_pc_preflight",
+          "next_action": "live collector checks installed script first and then tries stdin_fallback without writing remote files"
+        }
+      ],
+      "failure_classification": [
+        "pc_base_url_not_configured_for_upper_ssh",
+        "cloud_base_url_not_configured",
+        "remote_bearer_token_not_verified_by_pc_preflight",
+        "remote_root_not_verified_by_pc_preflight",
+        "remote_probe_script_not_verified_by_pc_preflight"
+      ],
+      "operator_next_actions": [
+        "pass --pc-base-url http://<pc-workstation-host>:8787 or set ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL to an address reachable from the upper computer",
+        "pass --cloud-base-url https://<production-cloud-base> or set ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL",
+        "configure TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN in the upper-computer runtime before live collection",
+        "run the collector without --dry-run to check remote_root by read-only SSH cd; override with --remote-root if needed",
+        "live collector checks installed script first and then tries stdin_fallback without writing remote files"
+      ],
+      "accepts_ssh_command_input": true,
+      "example_ssh_command_input": "ssh root@192.168.1.11 -p 37878",
+      "remote_bearer_token_local_hint": "not_observed_locally",
+      "execution_policy": {
+        "dry_run_no_ssh": false,
+        "network_probe_executed": false,
+        "post_executed": false,
+        "robots_path_accessed": false,
+        "cmd_vel_accessed": false,
+        "hardware_read_executed": false,
+        "robot_control_executed": false
+      }
+    },
     "output_ref": ".workstation-runtime/o5-o6-external-live-probe.json",
     "failure_category": null,
     "remote_exit_code": 2,
