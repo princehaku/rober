@@ -34,6 +34,7 @@ DEFAULT_FEEDBACK_SAMPLE_INTERVAL_S = 0.2
 DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.json"
 DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
 DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S = 5.0
+DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S = 6.0
 DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH = "runtime/lidar_raw_packet_proof_latest.json"
 DEFAULT_MAP_ARTIFACT_DIR = "runtime/maps"
 DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "runtime/map_lifecycle_latest.json"
@@ -55,6 +56,18 @@ BLOCKED_BASE_FEEDBACK_COMMANDS = [
     "cmd_vel",
     "/api/base/manual",
 ]
+BLOCKED_LIDAR_RUNTIME_COMMAND_TOKENS = (
+    "/dev/ttyS5",
+    "/api/base",
+    "/cmd_vel",
+    "cmd_vel",
+    "T=1",
+    "T=13",
+    "T=130",
+    "T=131",
+)
+SAFE_LIDAR_RUNTIME_SCRIPT = "o1_lidar_ros2_scan_smoke.sh"
+SAFE_LIDAR_RUNTIME_SHELLS = ("bash", "sh")
 OPERATOR_REPORT_FIELDS = (
     "operator_present",
     "evidence_ref",
@@ -531,6 +544,120 @@ def run_configured_command(command: str | None, timeout_s: float = 12.0) -> dict
     }
 
 
+def _extract_flag_value(argv: list[str], flag: str) -> str | None:
+    """兼容 `--flag value` 和 `--flag=value` 两种脚本参数写法。"""
+    for index, item in enumerate(argv):
+        if item == flag and index + 1 < len(argv):
+            return argv[index + 1]
+        if item.startswith(f"{flag}="):
+            return item.split("=", 1)[1]
+    return None
+
+
+def _is_lidar_serial_path(path: str) -> bool:
+    """只允许看起来像 STC LiDAR 的串口路径，避免配置误指到底盘 UART。"""
+    return (
+        path == "/dev/lidar"
+        or path.startswith("/dev/ttyACM")
+        or (path.startswith("/dev/serial/by-id/") and "stc" in path.lower())
+        or (path.startswith("/dev/serial/by-path/") and path.strip())
+    )
+
+
+def validate_lidar_runtime_command(command: str | None) -> tuple[list[str], dict[str, str] | None]:
+    """只接受项目 LiDAR-only smoke 脚本，拒绝任意 shell/底盘控制命令。"""
+    if not command or not command.strip():
+        return [], {"type": "no_command_configured", "message": "ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND is not configured"}
+    try:
+        argv = shlex.split(command)
+    except ValueError as exc:
+        return [], compact_error(exc)
+    if not argv:
+        return [], {"type": "empty_command", "message": "runtime command parsed to empty argv"}
+    joined = " ".join(argv)
+    if any(token in joined for token in (";", "&&", "||", "|", "$(", "`")):
+        return [], {"type": "unsafe_runtime_command", "message": "shell operators are not allowed in LiDAR runtime command"}
+    for token in BLOCKED_LIDAR_RUNTIME_COMMAND_TOKENS:
+        if token in joined:
+            return [], {"type": "unsafe_runtime_command", "message": f"blocked token in LiDAR runtime command: {token}"}
+    script_index = 1 if Path(argv[0]).name in SAFE_LIDAR_RUNTIME_SHELLS else 0
+    if script_index >= len(argv) or Path(argv[script_index]).name != SAFE_LIDAR_RUNTIME_SCRIPT:
+        return [], {
+            "type": "unsupported_runtime_command",
+            "message": f"only {SAFE_LIDAR_RUNTIME_SCRIPT} is allowed for API-managed scan proof runtime",
+        }
+    serial_port = _extract_flag_value(argv, "--serial-port")
+    if serial_port and not _is_lidar_serial_path(serial_port):
+        return [], {"type": "unsafe_lidar_serial_path", "message": f"refusing non-LiDAR serial path: {serial_port}"}
+    return argv, None
+
+
+def start_lidar_scan_proof_runtime(command: str | None, warmup_s: float) -> dict[str, Any]:
+    """后台启动 LiDAR-only runtime，让随后 collector 能读取新鲜 `/scan`/TF。"""
+    argv, error = validate_lidar_runtime_command(command)
+    warmup_s = min(max(float(warmup_s), 0.0), 30.0)
+    if error:
+        return {
+            "mode": "api_managed_lidar_runtime",
+            "executed": False,
+            "ok": False,
+            "argv": argv,
+            "error": error,
+            "warmup_s": warmup_s,
+            "allowed_script": SAFE_LIDAR_RUNTIME_SCRIPT,
+            "safe_to_control": False,
+            "sends_base_motion_commands": False,
+            "uses_base_uart": False,
+        }
+    log_path = f"/tmp/rober_lidar_scan_proof_runtime_{now_ms()}.log"
+    try:
+        log_handle = open(log_path, "ab", buffering=0)
+        process = subprocess.Popen(  # noqa: S603 - argv 已经按 LiDAR-only 脚本白名单校验。
+            argv,
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+            close_fds=True,
+        )
+        log_handle.close()
+        if warmup_s > 0:
+            time.sleep(warmup_s)
+        returncode = process.poll()
+        log_tail = read_text(log_path, max_bytes=2000) or ""
+        return {
+            "mode": "api_managed_lidar_runtime",
+            "executed": True,
+            "ok": returncode is None or returncode == 0,
+            "argv": argv,
+            "pid": process.pid,
+            "returncode_after_warmup": returncode,
+            "warmup_s": warmup_s,
+            "log_path": log_path,
+            "log_tail": log_tail[-2000:],
+            "allowed_script": SAFE_LIDAR_RUNTIME_SCRIPT,
+            "starts_lidar_driver": True,
+            "opens_lidar_serial": True,
+            "sends_lidar_start_command": True,
+            "sends_base_motion_commands": False,
+            "uses_base_uart": False,
+            "safe_to_control": False,
+        }
+    except Exception as exc:  # noqa: BLE001 - 现场权限/脚本缺失要回到 blocked artifact。
+        return {
+            "mode": "api_managed_lidar_runtime",
+            "executed": False,
+            "ok": False,
+            "argv": argv,
+            "warmup_s": warmup_s,
+            "error": compact_error(exc),
+            "allowed_script": SAFE_LIDAR_RUNTIME_SCRIPT,
+            "safe_to_control": False,
+            "sends_base_motion_commands": False,
+            "uses_base_uart": False,
+        }
+
+
 def lidar_scan_proof_collector_script_path() -> str:
     """collector 固定从同目录寻找，部署时能精确发现脚本是否同步到上位机。"""
     return str(Path(__file__).resolve().with_name("o1_lidar_scan_proof_collector.py"))
@@ -661,9 +788,14 @@ def summarize_lidar_refresh_blockers(
     command_result: dict[str, Any],
     collector_payload: dict[str, Any] | None,
     parse_error: dict[str, str] | None,
+    runtime_result: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     """把部署、进程、artifact 和 ROS2 topic blocker 合成 PC 可读列表。"""
     blockers: list[dict[str, str]] = []
+    if runtime_result and runtime_result.get("ok") is not True:
+        error = runtime_result.get("error") if isinstance(runtime_result.get("error"), dict) else {}
+        detail = error.get("message") or "LiDAR runtime command did not start or stay healthy through warmup"
+        blockers.append({"code": str(error.get("type") or "lidar_runtime_start_failed"), "detail": str(detail)})
     if not command_result.get("ok"):
         reason = command_result.get("reason") or "collector_process_failed"
         detail = command_result.get("error", {}).get("message") if isinstance(command_result.get("error"), dict) else None
@@ -703,17 +835,27 @@ def build_lidar_scan_proof_refresh_payload(
     artifact_path: str,
     refresh_result: dict[str, Any],
     timeout_s: float,
+    runtime_result: dict[str, Any] | None = None,
+    runtime_requested: bool = False,
+    runtime_warmup_s: float = DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S,
 ) -> dict[str, Any]:
     """构造 refresh 回包；即使 proof 观察到 `/scan`，也不能外推到底盘可控。"""
     command_result = refresh_result.get("command_result", {})
     collector_payload = refresh_result.get("collector_payload") if isinstance(refresh_result.get("collector_payload"), dict) else None
     parse_error = refresh_result.get("parse_error") if isinstance(refresh_result.get("parse_error"), dict) else None
     proof_summary = lidar_refresh_proof_summary(collector_payload)
-    blockers = summarize_lidar_refresh_blockers(command_result, collector_payload, parse_error)
+    blockers = summarize_lidar_refresh_blockers(command_result, collector_payload, parse_error, runtime_result)
     scan_runtime_proven = bool(proof_summary.get("scan_once_observed") and proof_summary.get("scan_hz_observed"))
     all_required_observed = bool(proof_summary.get("all_required_observations_observed"))
-    evidence_type = "robot_runtime_material" if all_required_observed else "blocked_with_root_cause"
-    status = "refreshed" if command_result.get("ok") else "blocked"
+    runtime_ok = not runtime_requested or bool(runtime_result and runtime_result.get("ok"))
+    runtime_started = bool(runtime_result and runtime_result.get("ok"))
+    evidence_type = "robot_runtime_material" if all_required_observed and runtime_ok else "blocked_with_root_cause"
+    status = "refreshed" if command_result.get("ok") and runtime_ok else "blocked"
+    # API-managed runtime 会碰 LiDAR 串口/A5 60；blocked 字段只能列仍被禁止的底盘动作。
+    blocked_commands_not_sent = ["T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual"]
+    if not runtime_requested:
+        blocked_commands_not_sent.insert(0, "A5 60")
+    blocked_devices_not_opened = ["/dev/ttyS5"] if runtime_requested else ["/dev/ttyS5", "/dev/ttyACM0", "/dev/lidar"]
     return {
         "schema": f"{SCHEMA}.lidar_scan_proof_refresh_result",
         "generated_at_ms": now_ms(),
@@ -721,18 +863,21 @@ def build_lidar_scan_proof_refresh_payload(
         "request": {
             "method": "POST",
             "endpoint": ROUTE_PATHS["radar_scan_proof_refresh"],
-            "mode": "read_only_expect_existing_topics",
+            "mode": "api_managed_lidar_runtime_then_topic_observation" if runtime_requested else "read_only_expect_existing_topics",
             "timeout_s": timeout_s,
+            "runtime_requested": runtime_requested,
+            "runtime_warmup_s": runtime_warmup_s,
         },
         "status": status,
         "proof_state": proof_summary.get("proof_status") or "not_proven",
         "evidence_type": evidence_type,
+        "runtime_start": runtime_result,
         "collector": {
             "script_path": command_result.get("script_path"),
             "expect_existing_topics": True,
-            "starts_driver": False,
-            "opens_lidar_serial": False,
-            "sends_lidar_start_command": False,
+            "starts_driver": runtime_started,
+            "opens_lidar_serial": runtime_started,
+            "sends_lidar_start_command": runtime_started,
         },
         "command_result": command_result,
         "artifact": lidar_scan_proof_artifact_info(artifact_path),
@@ -740,22 +885,23 @@ def build_lidar_scan_proof_refresh_payload(
         "latest_result": collector_payload,
         "proof_summary": proof_summary,
         "blockers_summary": blockers,
-        "blocked_commands_not_sent": ["A5 60", "T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual"],
-        "blocked_devices_not_opened": ["/dev/ttyS5", "/dev/ttyACM0", "/dev/lidar"],
+        "blocked_commands_not_sent": blocked_commands_not_sent,
+        "blocked_devices_not_opened": blocked_devices_not_opened,
         "read_only_topic_observation": True,
-        "ros2_runtime_proven": all_required_observed,
+        "runtime_start_proven": runtime_started,
+        "ros2_runtime_proven": all_required_observed and runtime_ok,
         "scan_runtime_proven": scan_runtime_proven,
-        "software_guard": not all_required_observed,
-        "not_proven": not all_required_observed,
-        "sends_commands": False,
+        "software_guard": evidence_type != "robot_runtime_material",
+        "not_proven": evidence_type != "robot_runtime_material",
+        "sends_commands": bool(runtime_requested),
         "sends_motion_commands": False,
         "sends_base_motion_commands": False,
         "uses_base_uart": False,
         "opens_serial": False,
-        "opens_lidar_serial": False,
-        "starts_ros2": False,
-        "starts_lidar_driver": False,
-        "sends_lidar_start_command": False,
+        "opens_lidar_serial": runtime_started,
+        "starts_ros2": runtime_started,
+        "starts_lidar_driver": runtime_started,
+        "sends_lidar_start_command": runtime_started,
         "robot_control_executed": False,
         "delivery_success": False,
         "hil_pass": False,
@@ -1970,6 +2116,8 @@ class UpperRobotApi:
         operator_report_artifact_path: str = DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH,
         radar_start_command: str | None = None,
         radar_stop_command: str | None = None,
+        lidar_scan_proof_runtime_command: str | None = None,
+        lidar_scan_proof_runtime_warmup_s: float = DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S,
         map_start_command: str | None = None,
         map_reset_command: str | None = None,
         map_save_command: str | None = None,
@@ -1993,6 +2141,8 @@ class UpperRobotApi:
         self.operator_report_artifact_path = operator_report_artifact_path
         self.radar_start_command = radar_start_command
         self.radar_stop_command = radar_stop_command
+        self.lidar_scan_proof_runtime_command = lidar_scan_proof_runtime_command
+        self.lidar_scan_proof_runtime_warmup_s = min(max(float(lidar_scan_proof_runtime_warmup_s), 0.0), 30.0)
         self.map_start_command = map_start_command
         self.map_reset_command = map_reset_command
         self.map_save_command = map_save_command
@@ -2073,11 +2223,21 @@ class UpperRobotApi:
                 },
                 "scan_proof_refresh": {
                     "endpoint": ROUTE_PATHS["radar_scan_proof_refresh"],
-                    "mode": "read_only_expect_existing_topics",
+                    "mode": (
+                        "api_managed_lidar_runtime_then_topic_observation"
+                        if self.lidar_scan_proof_runtime_command
+                        else "read_only_expect_existing_topics"
+                    ),
                     "artifact": lidar_scan_proof_artifact_info(self.lidar_scan_proof_artifact_path),
-                    "starts_driver": False,
-                    "opens_lidar_serial": False,
-                    "sends_lidar_start_command": False,
+                    "runtime_command": command_config_info(
+                        "ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND",
+                        self.lidar_scan_proof_runtime_command,
+                    ),
+                    "runtime_warmup_s": self.lidar_scan_proof_runtime_warmup_s,
+                    "allowed_runtime_script": SAFE_LIDAR_RUNTIME_SCRIPT,
+                    "starts_driver": bool(self.lidar_scan_proof_runtime_command),
+                    "opens_lidar_serial": bool(self.lidar_scan_proof_runtime_command),
+                    "sends_lidar_start_command": bool(self.lidar_scan_proof_runtime_command),
                     "sends_motion_commands": False,
                 },
             },
@@ -2129,7 +2289,7 @@ class UpperRobotApi:
         )
 
     async def radar_scan_proof_refresh(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
-        """显式刷新 LiDAR proof artifact；只读 ROS2 topic，不启动 driver 或底盘。"""
+        """显式刷新 LiDAR proof artifact；可选先启动 LiDAR-only runtime，永不触碰底盘。"""
         body = body if isinstance(body, dict) else {}
         timeout_s = clamp_float(
             body.get("timeout_s"),
@@ -2137,7 +2297,23 @@ class UpperRobotApi:
             1.0,
             30.0,
         )
+        runtime_warmup_s = clamp_float(
+            body.get("runtime_warmup_s"),
+            self.lidar_scan_proof_runtime_warmup_s,
+            0.0,
+            30.0,
+        )
+        runtime_requested = bool(self.lidar_scan_proof_runtime_command)
+        if "start_runtime" in body:
+            runtime_requested = bool(body.get("start_runtime"))
         upper_api_base_url = str(body.get("upper_api_base_url") or "http://127.0.0.1:8787")
+        runtime_result = None
+        if runtime_requested:
+            runtime_result = await asyncio.to_thread(
+                start_lidar_scan_proof_runtime,
+                self.lidar_scan_proof_runtime_command,
+                runtime_warmup_s,
+            )
         # subprocess 放到线程里，避免 collector 反查本机 8787 /health 时被当前 HTTP handler 阻塞。
         refresh_result = await asyncio.to_thread(
             run_lidar_scan_proof_collector,
@@ -2149,6 +2325,9 @@ class UpperRobotApi:
             artifact_path=self.lidar_scan_proof_artifact_path,
             refresh_result=refresh_result,
             timeout_s=timeout_s,
+            runtime_result=runtime_result,
+            runtime_requested=runtime_requested,
+            runtime_warmup_s=runtime_warmup_s,
         )
 
     def map_status(self) -> dict[str, Any]:
@@ -2716,6 +2895,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--radar-start-command", default=os.getenv("ROBER_RADAR_START_COMMAND"))
     parser.add_argument("--radar-stop-command", default=os.getenv("ROBER_RADAR_STOP_COMMAND"))
+    parser.add_argument("--lidar-scan-proof-runtime-command", default=os.getenv("ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND"))
+    parser.add_argument(
+        "--lidar-scan-proof-runtime-warmup-s",
+        type=float,
+        default=float(os.getenv("ROBER_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S", str(DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S))),
+    )
     parser.add_argument("--map-start-command", default=os.getenv("ROBER_MAP_START_COMMAND"))
     parser.add_argument("--map-reset-command", default=os.getenv("ROBER_MAP_RESET_COMMAND"))
     parser.add_argument("--map-save-command", default=os.getenv("ROBER_MAP_SAVE_COMMAND"))
@@ -2746,6 +2931,8 @@ async def run_server(args: argparse.Namespace) -> None:
         operator_report_artifact_path=args.operator_report_artifact_path,
         radar_start_command=args.radar_start_command,
         radar_stop_command=args.radar_stop_command,
+        lidar_scan_proof_runtime_command=args.lidar_scan_proof_runtime_command,
+        lidar_scan_proof_runtime_warmup_s=args.lidar_scan_proof_runtime_warmup_s,
         map_start_command=args.map_start_command,
         map_reset_command=args.map_reset_command,
         map_save_command=args.map_save_command,
