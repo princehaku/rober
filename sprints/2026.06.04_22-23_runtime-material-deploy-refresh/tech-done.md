@@ -156,9 +156,9 @@ passed with no output
 
 ### 实际改动
 
-- `pc-tools/workstation/src/server/o7DirectUpperApi.ts`：将 direct-upper base URL 选择从 boolean 改成显式策略名，避免底盘相关入口误读 `true/false` 后意外走 field default。
+- `pc-tools/workstation/src/server/o7DirectUpperApi.ts`：保留 direct-upper base URL 显式策略名，避免底盘相关入口误读 `true/false` 后意外走 field default。
 - 最终安全边界保持：`status`、`radar start/stop`、`scan-proof refresh`、`operator-report` 缺 env 可使用现场 field default；`base/stop`、`base/feedback-request`、`base/manual`、`map/*`、`localize/reset` 缺 env 必须 fail-closed。
-- 未改 UI 功能，未触发 live upper，未执行底盘运动。
+- 未改 UI 功能，未触发 live upper manual/stop/feedback，未执行底盘运动。
 
 ### 验证结果
 
@@ -174,11 +174,11 @@ Tests 101 passed (101)
 ```bash
 cd pc-tools/workstation && npm run build
 cd pc-tools/workstation && npm run lint
-git diff --check -- pc-tools/workstation docs/interfaces/o7_direct_upper_pc_api.md docs/product/pc_tools_workstation.md sprints/2026.06.04_22-23_runtime-material-deploy-refresh/owner_notes/full-stack-software-engineer.md
+git diff --check -- pc-tools/workstation/src/server/o7DirectUpperApi.ts pc-tools/workstation/test/App.test.ts docs/interfaces/o7_direct_upper_pc_api.md docs/product/pc_tools_workstation.md sprints/2026.06.04_22-23_runtime-material-deploy-refresh/tech-done.md
 ```
 
 ```text
-all passed
+passed with no output
 ```
 
 ### 剩余风险
