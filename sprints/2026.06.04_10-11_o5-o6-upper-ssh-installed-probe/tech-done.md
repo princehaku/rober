@@ -10,7 +10,7 @@ full-stack-software-engineer
 
 ## 本轮目标
 
-继续推进当前最低完成度 Objective O5/O6（约 96%），但避免继续消费同一个纯 runbook/status blocker。本轮目标是把 `pc_upper_ssh_collector` 从远端缺 probe 脚本时只能 `stdin_fallback`，推进到可显式同步并运行上位机已安装 probe 脚本。
+继续推进 O5/O6（约 96%）当前未完成的真实材料采集通路，但避免继续消费同一个纯 runbook/status blocker。按当前 OKR 口径，O5/O6 不是最低完成度 Objective；本轮目标只是把 `pc_upper_ssh_collector` 从远端缺 probe 脚本时只能 `stdin_fallback`，推进到可显式同步并运行上位机已安装 probe 脚本。
 
 安全边界：只允许同步 `/root/rober/cloud-relay/scripts/o5_o6_external_live_probe.py` 这一份 probe 文件；不传 secret、不 POST、不访问 `/robots/*`、不访问 `/cmd_vel`、不读串口/ROS2/Nav2/硬件、不发送 robot/base control。
 
@@ -21,13 +21,17 @@ full-stack-software-engineer
   - dry-run 只输出同步计划、预检分类和安全边界，不 SSH、不写远端、不写 artifact。
   - verifier 修正后，live 模式只允许把本地 `cloud-relay/scripts/o5_o6_external_live_probe.py` 通过 SSH stdin 直接写到固定远端最终路径 `/root/rober/cloud-relay/scripts/o5_o6_external_live_probe.py`；不写临时文件、不创建远端目录、不运行 `py_compile`，避免 `.tmp` 或 `__pycache__` 让写入边界外溢。
   - artifact 新增 `remote_probe_sync`、`remote_probe_sync.exact_final_path_only=true` 和 `command_boundary.remote_write_scope=single_probe_script_only`，把最终 probe 文件写入和机器人控制动作严格区分。
+  - 补充修正 top-level `viewpoint`：未同步时仍为 `upper_computer_via_pc_ssh_readonly`；同步成功后改为 `upper_computer_via_pc_ssh_probe_sync_then_readonly_probe`，避免把固定 probe 文件写入误标为纯只读。
 - `pc-tools/workstation/test/o5o6UpperSshCollector.test.ts`
   - 增加同步 dry-run 测试，确认不 SSH、不写远端、不泄漏 token、不触碰控制路径。
   - 增加 sync 后走 `installed_script` 的采集测试，确认不再落 `remote_repo_present_but_probe_script_missing`。
+  - 增加 `viewpoint` 断言：默认 installed script 保持只读视角；sync 成功必须暴露 `probe_sync_then_readonly_probe` 视角。
 - `docs/interfaces/real_material_acceptance_queue.md`
   - 同步 O5/O6 acceptance queue 文档，记录 `sync_remote_probe` 模式、关键 artifact 字段、失败分类、dry-run 命令和安全边界。
+  - 补充 `viewpoint` 字段语义，区分 readonly、sync attempt、sync success 三种 collector 视角。
 - `pc-tools/workstation/.workstation-runtime/o5-o6-external-live-probe.json`
   - 真实 SSH collector 已写回最新 fail-closed runtime artifact。
+  - 补正 artifact top-level `viewpoint=upper_computer_via_pc_ssh_probe_sync_then_readonly_probe`，与 `remote_probe_sync.status=synced` 和 `remote_write_scope=single_probe_script_only` 对齐。
 
 ## 用户旅程变化和触点收益
 
@@ -54,7 +58,13 @@ Full-Stack Engineer 已运行：
 cd pc-tools/workstation && npm test -- --run test/o5o6UpperSshCollector.test.ts
 ```
 
-结果：退出码 0，`Test Files 1 passed (1)`，`Tests 9 passed (9)`，`Duration 18.35s`。
+补充 `viewpoint` 断言前，目标测试先复现失败：
+
+```text
+AssertionError: expected 'upper_computer_via_pc_ssh_readonly' to be 'upper_computer_via_pc_ssh_probe_sync_then_readonly_probe'
+```
+
+修复后重跑结果：退出码 0，`Test Files 1 passed (1)`，`Tests 9 passed (9)`，`Duration 18.05s`。
 
 ```bash
 cd pc-tools/workstation && npm run lint
@@ -94,6 +104,7 @@ node scripts/o5-o6-upper-ssh-collector.mjs --sync-remote-probe --ssh-command "ss
 ```json
 {
   "probe_status": "fail_closed",
+  "viewpoint": "upper_computer_via_pc_ssh_probe_sync_then_readonly_probe",
   "collector_execution_mode": "installed_script",
   "blocked_reasons": [
     "base_url_not_configured",
@@ -147,7 +158,7 @@ O5/O6 不涨分，继续约 96%。
 
 ## 完成前反思
 
-- 需求是否满足：已按当前最低 Objective O5/O6 推进实际采集通路，避免继续只写 runbook；真实远端 probe 缺失 blocker 已解除，verifier 指出的 temp/pycache 写入边界已改为最终路径直写。
+- 需求是否满足：已按 O5/O6 当前未完成验收项推进实际采集通路，避免继续只写 runbook；真实远端 probe 缺失 blocker 已解除，verifier 指出的 temp/pycache 写入边界已改为最终路径直写。
 - 是否误改无关文件：最终应只提交 O5/O6 collector、collector test、接口文档、runtime artifact 和本 sprint 文档；其他 dirty 文件保持不动。
 - 是否留下 TODO：没有新增代码 TODO。
 - 验证缺口：accepted live material 还依赖 PC/cloud URL 与远端 token；未进行真实生产 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN 或真实 phone/browser 验收。

@@ -403,6 +403,18 @@ function tlsBlocked(reason) {
   };
 }
 
+function collectionViewpoint(plan, collectionOptions = {}) {
+  // top-level viewpoint 必须反映 SSH 同步是否写过远端 probe，避免把 sync 模式误标为纯只读。
+  const sync = collectionOptions.remoteProbeSync || {};
+  if (sync.remoteFileWriteExecuted) {
+    return "upper_computer_via_pc_ssh_probe_sync_then_readonly_probe";
+  }
+  if (plan.syncRemoteProbe || collectionOptions.executionMode === "sync_remote_probe" || sync.remoteFileWriteAttempted) {
+    return "upper_computer_via_pc_ssh_probe_sync_attempt";
+  }
+  return "upper_computer_via_pc_ssh_readonly";
+}
+
 function keyFalseFields() {
   return [
     "safe_to_control=false",
@@ -538,7 +550,7 @@ export function buildBlockedArtifact(plan, reason, collectionOptions = {}) {
     source_host_role: "upper_computer",
     executed_at: nowIso(),
     probe_status: "fail_closed",
-    viewpoint: "upper_computer_via_pc_ssh_readonly",
+    viewpoint: collectionViewpoint(plan, collectionOptions),
     pc_base_url: plan.pcBaseUrl ? "configured_redacted" : "not_configured_for_upper_ssh",
     cloud_base_url: plan.cloudBaseUrl ? "configured_redacted" : "not_configured",
     token_status: "absent",
@@ -812,7 +824,7 @@ function decorateRemoteProbe(plan, remoteProbe, collectionOptions = {}) {
     collector_execution_mode: collectionOptions.executionMode || "installed_script",
     collector_schema: COLLECTOR_SCHEMA,
     source_host_role: "upper_computer",
-    viewpoint: "upper_computer_via_pc_ssh_readonly",
+    viewpoint: collectionViewpoint(plan, collectionOptions),
     pc_base_url: pcReason ? "not_configured_for_upper_ssh" : remoteProbe.pc_base_url,
     credentials_redacted: remoteProbe.credentials_redacted !== false,
     endpoints,

@@ -389,6 +389,7 @@ describe("O5/O6 upper SSH collector", () => {
     expect(result.schema).toBe("trashbot.o5_o6.external_live_probe.v1");
     expect(result.runner).toBe("pc_upper_ssh_collector+python_stdlib");
     expect(result.source_host_role).toBe("upper_computer");
+    expect(result.viewpoint).toBe("upper_computer_via_pc_ssh_readonly");
     expect(result.ssh_collection).toMatchObject({
       status: "collected",
       execution_mode: "installed_script",
@@ -520,7 +521,9 @@ describe("O5/O6 upper SSH collector", () => {
         robot_control_executed: false,
       },
     });
+    expect(result.viewpoint).toBe("upper_computer_via_pc_ssh_probe_sync_then_readonly_probe");
     expect(written.collector_execution_mode).toBe("installed_script");
+    expect(written.viewpoint).toBe("upper_computer_via_pc_ssh_probe_sync_then_readonly_probe");
     expect(written.blocked_reasons).not.toContain("remote_repo_present_but_probe_script_missing");
     expect(written.ssh_collection.remote_probe_sync.remote_target_ref).toBe("/root/rober/cloud-relay/scripts/o5_o6_external_live_probe.py");
     expect(written.safe_to_control).toBe(false);

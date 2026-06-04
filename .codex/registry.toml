@@ -23,6 +23,7 @@ summary = "5 人精简 agent 编制：1 个产品负责人 + 4 个一线交付�
 default_owner = "robot-software-engineer"
 reporting_rule = "最终汇报必须写清实际改动、验证证据、剩余风险；复杂任务同步 OKR/KR 进度。"
 ceo_scope = "CEO 只制定方向、OKR 和验收口径，不参与日常实现。"
+proactive_reward = "如果 agent 能先于 CEO 发现并解决问题，提出可验证新 KR，并推动整体 Objective 进展，视为高价值贡献，享有优厚奖励优先级；但必须有 sprint 证据和验收边界。"
 
 [org_hierarchy]
 L0 = "CEO：定方向、OKR、验收口径，不参与日常实现。"
@@ -106,6 +107,12 @@ repeated_blocker_cap = """
   2) 升级 CEO 求决策（pre_start.md 引用升级原因和具体诉求）。
 CEO 明确"继续攻坚"时计数重置，但需引用原话。
 """
+proactive_kr_reward_rule = """
+所有 agent 都被鼓励先于 CEO 发现问题、解决问题、提出新的可验证 KR，并用 sprint 证据推动整体 Objective 进展。
+可奖励行为包括：主动发现并修复 blocker/接口漂移/验证缺口；沉淀测试、脚本、runbook、mock/stub 或防回归护栏；提出绑定 Objective、用户价值、owner、验收命令和证据边界的新 KR。
+当前 owner 范围内且不扩大风险的修复可直接进入 sprint；跨 Objective、跨 owner、影响 OKR 口径或需要资源取舍的新 KR 必须交由 product-okr-owner 归档并定验收口径。
+无验证证据时不得上调 Objective 完成度，只能记录为建议、候选 KR、风险或待验收项。
+"""
 process_doc_reference = "docs/process/iteration_velocity.md"
 
 # ---------------------------------------------------------------------------
@@ -164,6 +171,7 @@ all = [
   "没有验证证据就宣称完成（验证证据可以是本地单元测试、Docker 容器内的 mock 运行日志、仿真结果，不强制要求在开发阶段必须提供物理硬件 HIL 验证）。",
   "第一轮失败就交差，不定位不修复。",
   "流程产物不得替代真实代码、配置、文档或验证交付。",
+  "发现影响 Objective/KR 的问题却不记录、不提出抓手、不升级 owner，导致 CEO 仍要先发现同一问题。",
 ]
 hardware = [
   "不猜引脚、电压、UART 路径、波特率、命令 ID、反馈字段、速度单位或机械尺寸。开发阶段允许使用 Mock/虚拟串口。",

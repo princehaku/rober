@@ -17,7 +17,7 @@
 5. **六文档契约对微切片过重**：30 分钟 sprint 写 6 个 markdown 让"留档时间 ≥ 实现时间"。
 6. **主节点 dispatch 成本**：5-50 行单文件改动也走完整 dispatch SOP，沟通成本明显高于实际编码成本。
 
-因此本文用四把硬尺子收紧迭代纪律：默认并行、Epic/Micro 分层、最低 Objective 软提醒、Blocker 重复消费红线。
+因此本文用五把硬尺子收紧迭代纪律：默认并行、Epic/Micro 分层、最低 Objective 软提醒、Blocker 重复消费红线、主动发现与 KR 奖励机制。
 
 ## 2. Epic / Micro Sprint 判定矩阵
 
@@ -165,7 +165,40 @@ Epic sprint 的 tech-plan.md 推荐使用以下模板：
 - 如果主结论是 blocked 在某个硬件/环境 blocker 上，agent 小队可以通过编写 mock node、本地 stub 或虚拟驱动（如 `command_mode=mock`）来将该 OKR/KR 任务在软件层面跑通。
 - 一旦软件逻辑在本地/Docker 通过 Mock 数据测试并保留证据，即可认定为「软件侧完成」，不计入 blocker 消费，从而避免触发 blocker 重复消费红线。
 
-## 6. 与既有规则的关系
+## 6. 主动发现与 KR 奖励机制
+
+CEO 明确奖励方向：如果 agent 能先于 CEO 发现和解决问题，提出新的 KR，并推动整体 Objective 进展，这类行为享有优厚奖励优先级。该规则适用于主节点、Product/OKR Owner 和所有 L2 Engineer。
+
+### 6.1 可奖励行为
+
+- 在用户指出前发现 blocker、接口漂移、验证缺口、重复失败、文档滞后或低完成度 Objective 的新抓手。
+- 在 owner 权限范围内完成定位、修复、验证和防回归留档，而不是只写“建议后续处理”。
+- 提出新 KR 时能明确绑定 Objective、用户价值、最小实现路径、验收命令、证据边界、owner 和风险。
+- 把一次性修复沉淀成测试、脚本、mock/stub、runbook、dashboard、collector 或流程护栏，让整体 Objective 后续推进更快。
+
+### 6.2 KR 提案门槛
+
+新 KR 不需要等 CEO 先命名，但必须满足以下最小结构：
+
+```markdown
+Objective: O{n} - {名称}
+KR 草案: {一句话结果}
+用户价值: {为什么这个 KR 能改善真实用户/现场交付}
+Owner: {product-okr-owner | robot-software-engineer | robot-hardware-engineer | robot-algorithm-engineer | full-stack-software-engineer}
+最小实现路径: {1-3 步}
+验收命令/证据: {测试、构建、smoke、mock、HIL 或现场材料}
+证据边界: {哪些仍然 not_proven}
+风险/决策: {是否需要 CEO 或 Product 取舍}
+```
+
+### 6.3 执行与归档
+
+- 当前 owner 范围内、风险不扩大的问题修复，可以直接进入当前 sprint 或新 Micro sprint。
+- 跨 Objective、跨 owner、影响 OKR 口径、需要资源取舍或可能改变产品方向的新 KR，必须交由 `product-okr-owner` 归档、定验收口径并决定是否写入 `OKR.md`。
+- 所有主动发现的问题和 KR 提案必须进入 sprint 文档；不能只在聊天里说“我发现了”。
+- 没有验证证据时，只能把 KR 写成“建议 / 候选 / 待验收”，不得上调完成度。
+
+## 7. 与既有规则的关系
 
 本文是 `AGENTS.md` 与 `.codex/registry.toml` 的**总规则补充**，**不取代**任何既有规则：
 
@@ -175,13 +208,13 @@ Epic sprint 的 tech-plan.md 推荐使用以下模板：
 - **`.codex/registry.toml` `[execution_policy]` 字段是机器可读契约**，本文是人类可读说明；两者矛盾时以本文 + AGENTS.md 表述为准，但务必同步修订 registry.toml。
 - **OKR.md 是产品方向与完成度的唯一权威**；本文的"最低 Objective 软提醒"是流程引导，不修改任何 Objective / KR / 完成度数字。在缺少真实数据时，允许通过 Mock/仿真测试数据将对应 Objective 评估为"软件侧完成"。
 
-### 6.1 引用一致性
+### 7.1 引用一致性
 
 修改本文规则时必须同步更新：
 
-- `AGENTS.md`：并行启动强制规则、Epic / Micro Sprint 分层、OKR 最低优先级软提醒、同一 Blocker 重复消费红线、Tech Plan 自动执行规则、Sprint 留档原则共六个小节。
-- `.codex/registry.toml`：`[execution_policy]` 表里 `tech_plan_execution_rule`、`parallel_default`、`parallel_solo_exemptions`、`epic_micro_doc_policy`、`okr_lowest_objective_rule`、`repeated_blocker_cap`、`process_doc_reference` 七个字段。
+- `AGENTS.md`：并行启动强制规则、Epic / Micro Sprint 分层、OKR 最低优先级软提醒、同一 Blocker 重复消费红线、主动发现与 KR 奖励机制、Tech Plan 自动执行规则、Sprint 留档原则共七个小节。
+- `.codex/registry.toml`：`[execution_policy]` 表里 `tech_plan_execution_rule`、`parallel_default`、`parallel_solo_exemptions`、`epic_micro_doc_policy`、`okr_lowest_objective_rule`、`repeated_blocker_cap`、`proactive_kr_reward_rule`、`process_doc_reference` 八个字段。
 - `OKR.md` 4.1 节末尾追加的"最低 Objective 软提醒规则"短段（只引用本文，不引入完成度数字、不修改既有快照）。
-### 6.2 自指风险与首个示范用例
+### 7.2 自指风险与首个示范用例
 
 本文规则的引入本身就是一个 Epic sprint：`sprints/2026.05.12_23-24_iteration-velocity-fence-tuning/`。该 sprint 走完整六文档，作为新分层规则的首个示范用例。新规则只覆盖未来 sprint，**不追溯过往 sprint**。

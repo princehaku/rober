@@ -3,7 +3,7 @@
   "runner": "pc_upper_ssh_collector+python_stdlib",
   "executed_at": "2026-06-04T02:59:01Z",
   "probe_status": "fail_closed",
-  "viewpoint": "upper_computer_via_pc_ssh_readonly",
+  "viewpoint": "upper_computer_via_pc_ssh_probe_sync_then_readonly_probe",
   "pc_base_url": "not_configured_for_upper_ssh",
   "cloud_base_url": "not_configured",
   "token_status": "absent",

@@ -8,6 +8,57 @@
 
 ## 2026-06-04 系列
 
+### 2026-06-04 11-12｜OKR strategy reset｜真实控车、SLAM/定位、OpenCV 电梯识别打回
+
+本轮 Product/OKR Epic 基于 CEO 明确反馈和四个 L2 owner 只读复盘，重写 `OKR.md`
+当前推进区，不新增 runtime 证据，不上调任何 Objective。用户价值是把 OKR 从“软件入口已存在”
+拉回“普通用户 trash delivery 能现场验证”：PC WASD 必须真实控制小车，雷达必须一键开启/关闭，
+建图必须和 ROS2/SLAM/Nav2 联动，电梯 assisted delivery 必须进入 OpenCV 打标、识别、离线评估
+和 ROS2 状态链。
+
+本轮打回 O1/O2/O3/O7：
+
+| Objective | 原口径 | 新口径 | 打回理由 |
+| --- | --- | --- | --- |
+| O1：硬件协议可信底盘 | 约 97% | 约 95% | `/dev/ttyS5 @115200`、非运动 `T=130 -> T=1001` 和 LiDAR `/scan` 首个 smoke 不证明 PC WASD 真实控车、底盘 HIL、robot ACK、ROS feedback topics、SLAM/Nav2 消费或 `safe_to_control=true`。 |
+| O2：可送垃圾任务 + 电梯 assisted delivery | 历史归档软件完成 ~99% | 当前推进区约 72% | 现有材料是合同、dry-run、fixture 和 ORB visual gate；不证明 OpenCV 门线/轿厢/楼层语义识别、真实训练/标注质量、实景进出电梯或跨楼层送达。 |
+| O3：可验证导航、建图、定位与固定路线 | 历史归档软件完成 ~99% | 当前推进区约 73% | `learn.launch.py` 入口、`/trashbot/save_map` 单一 Trigger 和 Nav2 include 不证明 `/map` 建图、reset/save/load、AMCL `/initialpose`、定位恢复、Nav2 消费 `/scan`+map 或路线实跑。 |
+| O7：PC 端运营调试平台 | 约 98.9% | 约 88% | PC 已有 WASD/按钮和同源代理只证明 UI/API 软件链路；不证明真实小车能被 PC 控制。右侧雷达没有 `POST /api/radar/start|stop`，建图/定位也没有 PC -> ROS2 控制链。 |
+
+O5/O6 保持约 96%，但下一轮不再作为最高优先级抢占真实能力 Epic。O2/O3 已从历史归档区撤回
+当前推进区；O4 暂留历史归档，后续若 CEO 要求真实手机端发车、状态、接管和验收，应单独拉回当前
+推进区。
+
+本轮新增/重写的当前 KR 包括：
+
+- `KR-O7-PC-Manual-Field`：PC W/S/A/D/Space/X 对真实小车完成低速前后左右/stop，并采
+  manual response、stop response、post-status、operator report 和同一 evidence ref。
+- `KR-O7-Radar-OneClick`：PC 提供 `POST /api/radar/start|stop`，只触发 LiDAR/ROS2 driver，
+  不触碰底盘 UART。
+- `KR-O7-Map-SLAM-Controls` 与 `KR-O3-SLAM-Map-Lifecycle`：建图开启、重置、保存、加载、
+  定位进入 upper API/ROS2 链路，至少形成 `/map` artifact、metadata、AMCL pose 和失败原因。
+- `KR-O2-OpenCV-Elevator-Taxonomy`、`KR-O2-OpenCV-ROI-Rule-Baseline`、`KR-O2-Offline-Eval`
+  和 `KR-O2-ROS2-State-Integration`：电梯识别从合同/dry-run 进入 OpenCV taxonomy、样本、
+  ROI/rule baseline、离线评估和 ROS2 状态机。
+- `KR-O1-Base-Manual-HIL` 与 `KR-O1/O7-ACK-T1001-Bridge`：把 PC 手控、8787 manual、vendor
+  `T=1`、stop、`T=130 -> T=1001`、日志和 operator report 对齐到同一现场证据链，且不得把
+  `T=1001` 单独写成 robot ACK。
+
+下一轮必须是跨四个 L2 owner 的 Epic，不再用连续 Micro sprint 堆 `software_proof`。建议 owner
+切分：Full-stack 负责 PC operator workflow、WASD、雷达开关、建图/定位按钮和 operator report；
+Robot Software 负责 upper API、SLAM Toolbox、AMCL `/initialpose`、Nav2 lifecycle 和电梯状态机；
+Robot Algorithm 负责 OpenCV 电梯识别与 Nav2/map quality metrics；Hardware Infra 负责 WAVE ROVER
+现场安全前提、low-speed pulse、stop/post-status、`T=1001` 同场材料和 LiDAR start/stop/udev/长稳。
+
+证据来源为四个 owner 只读复盘、本轮 `sprints/2026.06.04_11-12_okr-strategy-reset-real-control-slam-elevator/`
+文档、`sprints/2026.06.03_23-24_o7-pc-direct-manual-control/tech-done.md`、
+`sprints/2026.06.03_24-25_o7-wasd-direct-control/tech-done.md`、
+`sprints/2026.06.03_23-24_o1-base-manual-feedback-ack/tech-done.md`、
+`sprints/2026.06.03_24-25_o1-base-turn-smoke/tech-done.md`、
+`sprints/2026.06.04_00-01_o1-o7-realtime-scan-map-split/final.md`、
+`sprints/2026.06.04_00-01_o1-upper-ros2-bootstrap-continue/tech-done.md` 和
+`docs/product/elevator_assisted_delivery.md`。
+
 ### 2026-06-04 02-03｜O5/O6 upper SSH collector｜上位机 SSH 采集入口完成，不涨分
 
 本轮 Full-Stack micro sprint 交付 `pc_upper_ssh_collector`，让 PC workstation 可通过
