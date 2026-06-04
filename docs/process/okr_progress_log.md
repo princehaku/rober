@@ -8,7 +8,7 @@
 
 ## 2026-06-04 系列
 
-### 2026-06-04 22-23｜Runtime Material Deploy Refresh｜解除 refresh route 405，root cause 收敛到 ROS2 command unavailable
+### 2026-06-04 22-23｜Runtime Material Deploy Refresh｜解除 refresh route 405，root cause 收敛到 LiDAR topics/TF
 
 本轮 Epic 接续 `21-22_runtime-material-runtime-hooks` 的现场阻塞：本地
 `POST /api/radar/scan-proof/refresh` software guard 已完成，但上位机
@@ -23,8 +23,13 @@
   拉起 Main PID `38154`。live `GET /health` HTTP 200 且 `safe_to_control=false`；
   `GET /api/radar/status` HTTP 200 且已有 `scan_proof_refresh` control、`scan_status=not_proven`；
   `POST /api/radar/scan-proof/refresh` HTTP 200，解除 405；`GET /api/radar/scan-proof/latest`
-  HTTP 200 且 artifact loaded。runtime proof 未通过，blocker 为 `ros2_command_unavailable` 和
-  `upper_api_scan_not_proven`。本地 unittest 28 OK skipped=2、compileall OK、diff-check OK。
+  HTTP 200 且 artifact loaded。随后修复 collector 在 systemd 子进程环境下缺
+  `HOME/USER/LOGNAME/ROS_LOG_DIR` 导致 ROS logging 初始化失败的问题；远端同步后本地/远端 hash
+  均为 `7175ec89c6ebcc18bca22414f58029cd3504aaecdd1b4bb0aa11d376ddb1d3c4`，远端
+  `py_compile` 通过。最新 refresh 仍未通过 runtime proof，但已显示 `ros2_available=true`、
+  `ros2_cli_check.ok=true`，剩余 blocker 是 `upper_api_scan_not_proven`，且 `/scan`、
+  `/lidar/raw_packet`、`base_link -> laser_frame` TF 未发布。本地 unittest/compileall/diff-check
+  通过。
 - Hardware：基于 vendor 来源做 SSH 只读 GET health/radar/status/latest/base/status，确认
   `safe_to_control=false`、`robot_control_executed=false`、`hil_pass=false`；历史 scan proof 不是本次
   fresh refresh；`T=1001` 只能是 vendor feedback material，不是 ACK；未改文件，diff-check OK。
@@ -36,7 +41,7 @@
 
 | Objective | 调整 | 原因 |
 | --- | --- | --- |
-| O3：建图、定位、Nav2 与固定路线 | 保持约 73% | 405 已解除，但没有 fresh `/scan`、hz、raw packet 或 TF；proof blocked 在 `ros2_command_unavailable` / `upper_api_scan_not_proven`。 |
+| O3：建图、定位、Nav2 与固定路线 | 保持约 73% | 405 和 ROS logging blocker 已解除，但没有 fresh `/scan`、hz、raw packet 或 TF；proof blocked 在真实 topic/TF 未发布。 |
 | O7：PC 运营调试平台 | 保持约 90% | PC 已能展示 upper `not_proven` 和 blockers，但未做 live smoke，也没有 fresh runtime workflow。 |
 | O8：Epic 交付节奏与证据治理 | 约 43% -> 约 44% | 完成 Epic 留档、解除部署 405 blocker、把 root cause 收敛到 ROS2 command unavailable，并补 PC fail-closed blocker display；不叠加到 45%。 |
 | O1/O2/O5/O6 | 不变 | 本轮不触达 HIL、电梯图片、production cloud 或 archive runtime。 |
@@ -46,14 +51,14 @@
 - `KR-O3/O7-Deploy-Refresh-Route`：route 部署和 HTTP 405 解除可进入历史进展，但只算部署 blocker
   解除，不算 fresh scan proof 完成。
 - `KR-O8-Repeated-Blocker-Stop`：root cause 从 `upper_refresh_route_not_deployed_http_405` 收敛到
-  `ros2_command_unavailable` / `upper_api_scan_not_proven`，下一轮不得再消费 405 blocker。
+  ROS logging env 缺口，再收敛到真实 LiDAR ROS2 topic/TF 未发布，下一轮不得再消费 405 或
+  `ros2_command_unavailable` blocker。
 - `KR-O7-PC-Fail-Closed-Blocker-Display`：PC 能把 HTTP 200 但 upper `not_proven` 显示为锁定状态，
   防止 operator 误读成 O7 runtime success。
 
 剩余风险：没有 fresh `/scan` runtime material、SLAM `/map`、AMCL、Nav2 lifecycle、PC WASD、
-HIL、robot ACK、真实电梯图片、production cloud 或 user acceptance。下一步必须修上位机 ROS2
-runtime environment/collector command path，恢复 `ros2` 命令或在正确 ROS2 容器内运行 collector，
-再复测 refresh；之后才进入 SLAM/map/AMCL/Nav2。
+HIL、robot ACK、真实电梯图片、production cloud 或 user acceptance。下一步必须启动或修复上位机
+LiDAR ROS2 driver/topic/TF runtime，再复测 refresh；之后才进入 SLAM/map/AMCL/Nav2。
 
 ### 2026-06-04 22-23｜OKR six-sprint breakthrough rewrite｜新增 O9，真实材料破局战役
 
