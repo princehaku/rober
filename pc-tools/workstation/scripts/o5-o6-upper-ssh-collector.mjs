@@ -156,6 +156,7 @@ function safeText(value, fallback = "unknown") {
 
 export function buildCollectorPlan({ argv = [], env = process.env } = {}) {
   let dryRun = false;
+  let syncRemoteProbe = false;
   let sshTarget = env.ROBER_O5_O6_UPPER_SSH_TARGET || DEFAULT_SSH_TARGET;
   let sshTargetSource = env.ROBER_O5_O6_UPPER_SSH_TARGET ? "env" : "default";
   let sshPort = env.ROBER_O5_O6_UPPER_SSH_PORT || DEFAULT_SSH_PORT;
@@ -176,6 +177,10 @@ export function buildCollectorPlan({ argv = [], env = process.env } = {}) {
     const item = argv[index];
     if (item === "--dry-run") {
       dryRun = true;
+      continue;
+    }
+    if (item === "--sync-remote-probe" || item === "--install-remote-probe") {
+      syncRemoteProbe = true;
       continue;
     }
     const sshCommand = takeValue(argv, index, "--ssh-command");
@@ -213,6 +218,7 @@ export function buildCollectorPlan({ argv = [], env = process.env } = {}) {
 
   return {
     dryRun,
+    syncRemoteProbe,
     sshTarget: String(sshTarget || "").trim(),
     sshTargetSource,
     sshPort: String(parsePositiveInteger(sshPort, "ssh_port")),
@@ -274,6 +280,35 @@ export function buildStdinFallbackRemoteCommand(plan) {
   ].join("; ");
 }
 
+function remoteProbeSyncTarget(plan) {
+  // 同步模式只允许默认 probe 位置，避免把这个 helper 变成任意远端写文件工具。
+  const targetAllowed = plan.remoteRoot === DEFAULT_REMOTE_ROOT && plan.remoteScript === DEFAULT_REMOTE_SCRIPT;
+  return {
+    requested: Boolean(plan.syncRemoteProbe),
+    mode: "ssh_stdin_write",
+    local_probe_ref: "cloud-relay/scripts/o5_o6_external_live_probe.py",
+    remote_target_ref: `${DEFAULT_REMOTE_ROOT}/${DEFAULT_REMOTE_SCRIPT}`,
+    allowed_write_scope: "single_probe_script_only",
+    exact_final_path_only: true,
+    target_allowed: targetAllowed,
+    blocked_reason: targetAllowed ? null : "remote_probe_sync_target_outside_allowed_path",
+  };
+}
+
+export function buildProbeInstallRemoteCommand(plan) {
+  // 远端写入必须直达最终脚本，避免 tmp/pycache 让安全边界从单文件变成多文件。
+  const target = remoteProbeSyncTarget(plan);
+  if (!target.target_allowed) {
+    return "exit 49";
+  }
+  return [
+    `cd ${shellQuote(DEFAULT_REMOTE_ROOT)} || exit 41`,
+    `test -d ${shellQuote(path.posix.dirname(DEFAULT_REMOTE_SCRIPT))} || exit 43`,
+    `cat > ${shellQuote(DEFAULT_REMOTE_SCRIPT)} || exit 44`,
+    `test -s ${shellQuote(DEFAULT_REMOTE_SCRIPT)} || exit 47`,
+  ].join("; ");
+}
+
 export function buildSshArgs(plan) {
   // BatchMode 避免自动化卡在密码交互；ConnectTimeout 给 daily scan 一个硬边界。
   return [
@@ -287,6 +322,22 @@ export function buildSshArgs(plan) {
     "sh",
     "-lc",
     buildRemoteCommand(plan),
+  ];
+}
+
+export function buildProbeInstallSshArgs(plan) {
+  // 同步命令只走 SSH stdin 写 probe 文件；argv 中不出现源码、URL token 或 bearer。
+  return [
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    `ConnectTimeout=${plan.sshTimeoutSeconds}`,
+    "-p",
+    plan.sshPort,
+    plan.sshTarget,
+    "sh",
+    "-lc",
+    buildProbeInstallRemoteCommand(plan),
   ];
 }
 
@@ -421,6 +472,22 @@ function buildPreflightChecks(plan) {
       next_action: "live collector checks installed script first and then tries stdin_fallback without writing remote files",
     },
   ];
+  if (plan.syncRemoteProbe) {
+    const syncTarget = remoteProbeSyncTarget(plan);
+    checks.push({
+      id: "remote_probe_sync",
+      status: plan.dryRun ? "dry_run_not_executed" : syncTarget.target_allowed ? "requested" : "blocked",
+      source: "cli",
+      blocked_reason: plan.dryRun
+        ? "remote_probe_sync_not_executed_dry_run"
+        : syncTarget.blocked_reason,
+      next_action: plan.dryRun
+        ? "rerun without --dry-run only when intentionally syncing the local probe to the default upper-computer path"
+        : syncTarget.blocked_reason
+          ? "use the default /root/rober/cloud-relay/scripts/o5_o6_external_live_probe.py sync target for this safe helper"
+          : null,
+    });
+  }
   return checks;
 }
 
@@ -544,6 +611,7 @@ function sshCollectionSummary(plan, status, failureCategory = null, options = {}
     pc_base_url_source: plan.pcBaseUrlSource || "absent",
     pc_base_url_next_action: pcBaseUrlBlockedReason(plan) ? pcBaseUrlNextAction() : null,
     preflight: buildPreflight(plan),
+    remote_probe_sync: remoteProbeSyncSummary(plan, options.remoteProbeSync),
     output_ref: safeOutputRef(plan.outputPath),
     failure_category: failureCategory,
     remote_exit_code: typeof options.remoteExitCode === "number" ? options.remoteExitCode : null,
@@ -555,7 +623,9 @@ function sshCollectionSummary(plan, status, failureCategory = null, options = {}
     command_boundary: {
       executes_python_stdlib_probe_once: true,
       streams_local_probe_over_ssh_stdin: executionMode === "stdin_fallback",
-      remote_file_write_executed: false,
+      remote_file_write_attempted: Boolean(options.remoteProbeSync?.remoteFileWriteAttempted),
+      remote_file_write_executed: Boolean(options.remoteProbeSync?.remoteFileWriteExecuted),
+      remote_write_scope: options.remoteProbeSync?.remoteFileWriteExecuted ? "single_probe_script_only" : "none",
       passes_bearer_token_via_cli_or_ssh_args: false,
       post_executed: false,
       robots_path_accessed: false,
@@ -563,6 +633,30 @@ function sshCollectionSummary(plan, status, failureCategory = null, options = {}
       hardware_read_executed: false,
       robot_control_executed: false,
     },
+  };
+}
+
+function remoteProbeSyncSummary(plan, syncResult = {}) {
+  // artifact 需要把远端写入边界说清楚，避免 operator 把同步脚本误读为控制动作。
+  const target = remoteProbeSyncTarget(plan);
+  const observed = syncResult || {};
+  return {
+    ...target,
+    status: observed.status || (plan.syncRemoteProbe ? (plan.dryRun ? "dry_run_not_executed" : "requested") : "not_requested"),
+    ssh_executed: Boolean(observed.sshExecuted),
+    remote_file_write_attempted: Boolean(observed.remoteFileWriteAttempted),
+    remote_file_write_executed: Boolean(observed.remoteFileWriteExecuted),
+    dry_run_no_write: Boolean(plan.dryRun),
+    contains_bearer_token: false,
+    passes_bearer_token_via_cli_or_ssh_args: false,
+    post_executed: false,
+    robots_path_accessed: false,
+    cmd_vel_accessed: false,
+    hardware_read_executed: false,
+    robot_control_executed: false,
+    remote_exit_code: typeof observed.remoteExitCode === "number" ? observed.remoteExitCode : null,
+    failure_category: observed.failureCategory || target.blocked_reason || null,
+    next_action: observed.failureCategory ? collectorNextAction(observed.failureCategory) : null,
   };
 }
 
@@ -579,6 +673,15 @@ function collectorNextAction(reason) {
   }
   if (reason === "local_stdin_probe_source_missing") {
     return "restore local cloud-relay/scripts/o5_o6_external_live_probe.py in this checkout, then rerun the read-only SSH collector";
+  }
+  if (reason === "local_sync_probe_source_missing") {
+    return "restore local cloud-relay/scripts/o5_o6_external_live_probe.py in this checkout, then rerun --sync-remote-probe";
+  }
+  if (reason === "remote_probe_sync_target_outside_allowed_path") {
+    return "use the default /root/rober/cloud-relay/scripts/o5_o6_external_live_probe.py sync target for this scoped helper";
+  }
+  if (reason === "remote_probe_sync_failed" || reason === "remote_probe_sync_did_not_materialize_script") {
+    return "verify remote /root/rober/cloud-relay/scripts exists and the final probe path is writable, then rerun --sync-remote-probe";
   }
   if (reason === "ssh_stdin_fallback_probe_failed") {
     return "verify remote python3 can run stdin scripts from the configured repo root, then rerun the read-only SSH collector";
@@ -651,6 +754,21 @@ function parseRemoteProbe(plan, sshResult, collectionOptions = {}) {
   return decorateRemoteProbe(plan, parsed, { ...collectionOptions, remoteExitCode: sshResult.code });
 }
 
+function blockedReasonForProbeSyncFailure(sshResult) {
+  // 同步失败优先复用 SSH 分类；远端 shell 步骤失败则归到 probe sync 范围内。
+  if (sshResult.error) {
+    return "remote_probe_sync_failed";
+  }
+  if (sshResult.code === 41) {
+    return "remote_repo_root_missing";
+  }
+  if (sshResult.code === 49) {
+    return "remote_probe_sync_target_outside_allowed_path";
+  }
+  const classified = classifySshFailure(`${sshResult.stderr}\n${sshResult.stdout}`);
+  return classified === "remote_probe_failed" ? "remote_probe_sync_failed" : classified;
+}
+
 function classifySshFailure(text) {
   if (/Permission denied|publickey|Authentication/i.test(text)) {
     return "ssh_auth_failed";
@@ -712,7 +830,12 @@ function decorateRemoteProbe(plan, remoteProbe, collectionOptions = {}) {
 function runSsh(plan, spawnImpl = spawn, options = {}) {
   return new Promise((resolve) => {
     const useStdin = typeof options.stdin === "string";
-    const args = options.executionMode === "stdin_fallback" ? buildStdinFallbackSshArgs(plan) : buildSshArgs(plan);
+    const args =
+      options.executionMode === "stdin_fallback"
+        ? buildStdinFallbackSshArgs(plan)
+        : options.executionMode === "sync_remote_probe"
+          ? buildProbeInstallSshArgs(plan)
+          : buildSshArgs(plan);
     const child = spawnImpl("ssh", args, { cwd: workstationRoot, stdio: [useStdin ? "pipe" : "ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
@@ -744,6 +867,51 @@ async function readLocalProbeSource() {
   }
 }
 
+async function syncRemoteProbeToUpper(plan, spawnImpl) {
+  const target = remoteProbeSyncTarget(plan);
+  if (!target.target_allowed) {
+    return {
+      status: "blocked",
+      sshExecuted: false,
+      remoteFileWriteAttempted: false,
+      remoteFileWriteExecuted: false,
+      remoteExitCode: null,
+      failureCategory: target.blocked_reason,
+    };
+  }
+  const localSource = await readLocalProbeSource();
+  if (!localSource) {
+    return {
+      status: "blocked",
+      sshExecuted: false,
+      remoteFileWriteAttempted: false,
+      remoteFileWriteExecuted: false,
+      remoteExitCode: null,
+      failureCategory: "local_sync_probe_source_missing",
+    };
+  }
+  const sshResult = await runSsh(plan, spawnImpl, { executionMode: "sync_remote_probe", stdin: localSource });
+  const remoteExitCode = typeof sshResult.code === "number" ? sshResult.code : null;
+  if (!sshResult.error && sshResult.code === 0) {
+    return {
+      status: "synced",
+      sshExecuted: true,
+      remoteFileWriteAttempted: true,
+      remoteFileWriteExecuted: true,
+      remoteExitCode,
+      failureCategory: null,
+    };
+  }
+  return {
+    status: "blocked",
+    sshExecuted: true,
+    remoteFileWriteAttempted: true,
+    remoteFileWriteExecuted: false,
+    remoteExitCode,
+    failureCategory: blockedReasonForProbeSyncFailure(sshResult),
+  };
+}
+
 async function writeArtifact(result, outputPath) {
   // 非 dry-run 的 blocked/observed 结果都落同一个 artifact，acceptance queue 只读这个文件。
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
@@ -773,6 +941,13 @@ export function buildDryRunResult(plan) {
       remote_file_write_executed: false,
       contains_bearer_token: false,
     },
+    sync_remote_probe: {
+      ...remoteProbeSyncSummary(plan),
+      ssh_args: plan.syncRemoteProbe ? buildProbeInstallSshArgs(plan) : [],
+      dry_run_no_ssh: true,
+      dry_run_no_write: true,
+      remote_file_write_executed: false,
+    },
     pc_base_url_contract: {
       configured_for_upper_ssh: !pcReason,
       source: plan.pcBaseUrlSource || "absent",
@@ -788,7 +963,11 @@ export function buildDryRunResult(plan) {
       forbidden_paths: ["/robots/*", "/cmd_vel"],
       bearer_source: "remote_environment_only",
     },
-    blocked_reasons: ["dry_run_no_ssh_no_network_no_artifact", ...(pcReason ? [pcReason] : [])],
+    blocked_reasons: [
+      "dry_run_no_ssh_no_network_no_artifact",
+      ...(plan.syncRemoteProbe ? ["remote_probe_sync_not_executed_dry_run"] : []),
+      ...(pcReason ? [pcReason] : []),
+    ],
     safe_to_control: false,
     sends_commands: false,
     reads_hardware: false,
@@ -800,10 +979,31 @@ export function buildDryRunResult(plan) {
 
 export async function collectUpperSshArtifact({ plan, spawnImpl = spawn } = {}) {
   const effectivePlan = plan || buildCollectorPlan();
-  const installedOptions = { executionMode: "installed_script", attemptedExecutionModes: ["installed_script"] };
+  const syncResult = effectivePlan.syncRemoteProbe ? await syncRemoteProbeToUpper(effectivePlan, spawnImpl) : null;
+  if (syncResult && syncResult.status !== "synced") {
+    const result = buildBlockedArtifact(effectivePlan, syncResult.failureCategory, {
+      executionMode: "sync_remote_probe",
+      attemptedExecutionModes: ["sync_remote_probe"],
+      remoteExitCode: syncResult.remoteExitCode,
+      remoteProbeSync: syncResult,
+    });
+    result.artifact_written = true;
+    await writeArtifact(result, effectivePlan.outputPath);
+    return result;
+  }
+  const installedOptions = {
+    executionMode: "installed_script",
+    attemptedExecutionModes: effectivePlan.syncRemoteProbe ? ["sync_remote_probe", "installed_script"] : ["installed_script"],
+    remoteProbeSync: syncResult,
+  };
   const installedResult = await runSsh(effectivePlan, spawnImpl, installedOptions);
   let result;
-  if (!installedResult.error && installedResult.code === 42) {
+  if (effectivePlan.syncRemoteProbe && !installedResult.error && installedResult.code === 42) {
+    result = buildBlockedArtifact(effectivePlan, "remote_probe_sync_did_not_materialize_script", {
+      ...installedOptions,
+      remoteExitCode: installedResult.code,
+    });
+  } else if (!installedResult.error && installedResult.code === 42) {
     const attemptedExecutionModes = ["installed_script", "stdin_fallback"];
     const fallbackReason = "remote_repo_present_but_probe_script_missing";
     const localSource = await readLocalProbeSource();
@@ -837,6 +1037,7 @@ export async function runCollector({ argv = process.argv.slice(2), env = process
   } catch (error) {
     const fallback = {
       dryRun: false,
+      syncRemoteProbe: false,
       sshTarget: DEFAULT_SSH_TARGET,
       sshPort: DEFAULT_SSH_PORT,
       remoteRoot: DEFAULT_REMOTE_ROOT,

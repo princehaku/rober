@@ -4,7 +4,14 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error JS CLI script intentionally stays runnable by plain node.
-import { buildCollectorPlan, buildDryRunResult, buildRemoteCommand, buildSshArgs, collectUpperSshArtifact } from "../scripts/o5-o6-upper-ssh-collector.mjs";
+import {
+  buildCollectorPlan,
+  buildDryRunResult,
+  buildProbeInstallSshArgs,
+  buildRemoteCommand,
+  buildSshArgs,
+  collectUpperSshArtifact,
+} from "../scripts/o5-o6-upper-ssh-collector.mjs";
 
 type FakeSpawnResult = {
   code: number;
@@ -231,6 +238,55 @@ describe("O5/O6 upper SSH collector", () => {
     expect(JSON.stringify(dryRun)).not.toContain("Bearer");
   });
 
+  it("dry-run classifies remote probe sync without executing ssh or writing remote files", () => {
+    // 新同步模式必须显式请求；dry-run 只展示写入边界，不能偷偷 SSH 或落 artifact。
+    const plan = buildCollectorPlan({
+      argv: [
+        "--dry-run",
+        "--sync-remote-probe",
+        "--ssh-command",
+        "ssh root@192.168.1.11 -p 37878",
+        "--cloud-base-url",
+        "https://example.invalid",
+      ],
+      env: { TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN: "local-secret-not-forwarded" } as NodeJS.ProcessEnv,
+    });
+    const dryRun = buildDryRunResult(plan);
+    const syncArgs = JSON.stringify(buildProbeInstallSshArgs(plan));
+
+    expect(dryRun.sync_remote_probe).toMatchObject({
+      requested: true,
+      status: "dry_run_not_executed",
+      mode: "ssh_stdin_write",
+      allowed_write_scope: "single_probe_script_only",
+      exact_final_path_only: true,
+      target_allowed: true,
+      dry_run_no_ssh: true,
+      dry_run_no_write: true,
+      ssh_executed: false,
+      remote_file_write_attempted: false,
+      remote_file_write_executed: false,
+      contains_bearer_token: false,
+      post_executed: false,
+      robots_path_accessed: false,
+      cmd_vel_accessed: false,
+      hardware_read_executed: false,
+      robot_control_executed: false,
+    });
+    expect(dryRun.preflight.checks.map((check: { id: string }) => check.id)).toContain("remote_probe_sync");
+    expect(dryRun.preflight.failure_classification).toContain("remote_probe_sync_not_executed_dry_run");
+    expect(dryRun.blocked_reasons).toContain("remote_probe_sync_not_executed_dry_run");
+    expect(syncArgs).toContain("test -d 'cloud-relay/scripts'");
+    expect(syncArgs).toContain("cat > 'cloud-relay/scripts/o5_o6_external_live_probe.py'");
+    expect(syncArgs).toContain("test -s 'cloud-relay/scripts/o5_o6_external_live_probe.py'");
+    expect(syncArgs).not.toContain(".o5_o6_external_live_probe.py.tmp");
+    expect(syncArgs).not.toContain("py_compile");
+    expect(syncArgs).not.toContain("mkdir -p");
+    expect(JSON.stringify(dryRun)).not.toContain("local-secret-not-forwarded");
+    expect(syncArgs).not.toContain("/robots/");
+    expect(syncArgs).not.toContain("/cmd_vel");
+  });
+
   it("parses operator ssh command input and classifies preflight gaps without executing ssh", () => {
     // operator 可直接粘贴 SSH 入口；dry-run 只解析 target/port 并输出缺口分类，不触发真实连接。
     const plan = buildCollectorPlan({
@@ -391,6 +447,82 @@ describe("O5/O6 upper SSH collector", () => {
     });
     expect(written.collector_execution_mode).toBe("stdin_fallback");
     expect(written.blocked_reasons).toContain("network_or_service_unreachable");
+    expect(written.safe_to_control).toBe(false);
+    expect(written.sends_commands).toBe(false);
+    expect(written.reads_hardware).toBe(false);
+    expect(written.robot_control_executed).toBe(false);
+  });
+
+  it("can sync the local probe over ssh stdin before running the installed remote script", async () => {
+    // sync 模式只写固定 probe 脚本，然后复用 installed_script 采集路径，消除缺脚本 blocker。
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o5o6-upper-sync-"));
+    const output = path.join(tempDir, "probe.json");
+    const plan = buildCollectorPlan({
+      argv: [
+        "--sync-remote-probe",
+        "--cloud-base-url",
+        "https://example.invalid",
+        "--pc-base-url",
+        "http://192.168.1.50:8787",
+        "--output",
+        output,
+      ],
+      env: { TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN: "secret-fixture" } as NodeJS.ProcessEnv,
+    });
+    const remoteProbe = remoteProbeFixture();
+    remoteProbe.probe_status = "fail_closed";
+    remoteProbe.blocked_reasons = ["network_or_service_unreachable"];
+    const fake = fakeSpawnSequence([
+      { code: 0 },
+      { code: 2, stdout: `${JSON.stringify(remoteProbe)}\n` },
+    ]);
+    const result = await collectUpperSshArtifact({
+      plan,
+      spawnImpl: fake.spawnImpl,
+    });
+    const written = JSON.parse(await readFile(output, "utf8"));
+    const syncCall = requireValue(fake.calls[0], "sync_remote_probe_spawn_call_missing");
+    const installedCall = requireValue(fake.calls[1], "installed_script_spawn_call_missing");
+
+    expect(fake.calls).toHaveLength(2);
+    expect(JSON.stringify(syncCall.args)).toContain("test -d 'cloud-relay/scripts'");
+    expect(JSON.stringify(syncCall.args)).toContain("cat > 'cloud-relay/scripts/o5_o6_external_live_probe.py'");
+    expect(JSON.stringify(syncCall.args)).toContain("test -s 'cloud-relay/scripts/o5_o6_external_live_probe.py'");
+    expect(JSON.stringify(syncCall.args)).not.toContain(".o5_o6_external_live_probe.py.tmp");
+    expect(JSON.stringify(syncCall.args)).not.toContain("py_compile");
+    expect(JSON.stringify(syncCall.args)).not.toContain("mkdir -p");
+    expect(syncCall.stdin).toContain("SCHEMA = \"trashbot.o5_o6.external_live_probe.v1\"");
+    expect(syncCall.stdin).not.toContain("secret-fixture");
+    expect(JSON.stringify(installedCall.args)).toContain("python3 'cloud-relay/scripts/o5_o6_external_live_probe.py' --once-json");
+    expect(result.ssh_collection).toMatchObject({
+      status: "collected",
+      execution_mode: "installed_script",
+      attempted_execution_modes: ["sync_remote_probe", "installed_script"],
+      fallback_used: false,
+      remote_probe_sync: {
+        requested: true,
+        status: "synced",
+        exact_final_path_only: true,
+        ssh_executed: true,
+        remote_file_write_attempted: true,
+        remote_file_write_executed: true,
+        contains_bearer_token: false,
+      },
+      command_boundary: {
+        remote_file_write_attempted: true,
+        remote_file_write_executed: true,
+        remote_write_scope: "single_probe_script_only",
+        passes_bearer_token_via_cli_or_ssh_args: false,
+        post_executed: false,
+        robots_path_accessed: false,
+        cmd_vel_accessed: false,
+        hardware_read_executed: false,
+        robot_control_executed: false,
+      },
+    });
+    expect(written.collector_execution_mode).toBe("installed_script");
+    expect(written.blocked_reasons).not.toContain("remote_repo_present_but_probe_script_missing");
+    expect(written.ssh_collection.remote_probe_sync.remote_target_ref).toBe("/root/rober/cloud-relay/scripts/o5_o6_external_live_probe.py");
     expect(written.safe_to_control).toBe(false);
     expect(written.sends_commands).toBe(false);
     expect(written.reads_hardware).toBe(false);
