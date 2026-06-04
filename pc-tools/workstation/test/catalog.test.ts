@@ -1789,6 +1789,7 @@ describe("workstation fail-closed API contracts", () => {
     expect(response.items[0]?.collection_runbook.suggested_commands[0]).toContain("npm run o5o6:external-probe");
     expect(response.items[0]?.collection_runbook.suggested_commands[1]).toContain("python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json");
     expect(response.items[0]?.collection_runbook.suggested_commands[2]).toContain("npm run o5o6:upper-ssh-collector");
+    expect(response.items[0]?.collection_runbook.suggested_commands[2]).toContain("--ssh-command \"ssh <upper-ssh-target> -p <ssh-port>\"");
     expect(response.items[0]?.collection_runbook.suggested_commands[2]).toContain("--pc-base-url http://<pc-workstation-host>:8787");
     expect(response.items[0]?.collection_runbook.suggested_commands[2]).not.toContain("--pc-base-url http://127.0.0.1:8787");
     const expectedO5O6CollectionPathIds = [
@@ -1821,10 +1822,26 @@ describe("workstation fail-closed API contracts", () => {
     });
     expect(typedUpperSshPath?.runtime).toBe("node_ssh");
     expect(upperSshPath?.command).toContain("--pc-base-url http://<pc-workstation-host>:8787");
+    expect(upperSshPath?.command).toContain("--ssh-command \"ssh <upper-ssh-target> -p <ssh-port>\"");
     expect(upperSshPath?.command).not.toContain("--pc-base-url http://127.0.0.1:8787");
     expect(upperSshPath?.required_env).toContain(
-      "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL or --pc-base-url http://<pc-workstation-host>:8787",
+      "ROBER_O5_O6_UPPER_SSH_TARGET/ROBER_O5_O6_UPPER_SSH_PORT or --ssh-command \"ssh <upper-ssh-target> -p <ssh-port>\"",
     );
+    expect(upperSshPath?.required_env).toContain("ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL or --pc-base-url http://<pc-workstation-host>:8787");
+    expect(upperSshPath?.preflight_checks).toEqual([
+      "ssh_target",
+      "ssh_port",
+      "pc_base_url_reachable_from_upper",
+      "cloud_base_url",
+      "remote_bearer_token",
+      "remote_root",
+      "remote_probe_script",
+      "stdin_fallback",
+    ]);
+    expect(upperSshPath?.failure_classification).toContain("ssh_target_not_configured");
+    expect(upperSshPath?.failure_classification).toContain("pc_base_url_not_configured_for_upper_ssh");
+    expect(upperSshPath?.failure_classification).toContain("remote_bearer_token_not_verified_by_pc_preflight");
+    expect(upperSshPath?.failure_classification).toContain("remote_repo_present_but_probe_script_missing");
     expect(upperSshPath?.success_criteria).toContain(
       "ssh_collection.pc_base_url_configured_for_upper_ssh=true when using the SSH collector",
     );

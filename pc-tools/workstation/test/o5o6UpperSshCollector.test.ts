@@ -231,6 +231,60 @@ describe("O5/O6 upper SSH collector", () => {
     expect(JSON.stringify(dryRun)).not.toContain("Bearer");
   });
 
+  it("parses operator ssh command input and classifies preflight gaps without executing ssh", () => {
+    // operator 可直接粘贴 SSH 入口；dry-run 只解析 target/port 并输出缺口分类，不触发真实连接。
+    const plan = buildCollectorPlan({
+      argv: [
+        "--dry-run",
+        "--ssh-command",
+        "ssh root@192.168.1.11 -p 37878",
+        "--cloud-base-url",
+        "https://example.invalid",
+      ],
+      env: { TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN: "local-secret-not-forwarded" } as NodeJS.ProcessEnv,
+    });
+    const dryRun = buildDryRunResult(plan);
+
+    expect(plan.sshTarget).toBe("root@192.168.1.11");
+    expect(plan.sshPort).toBe("37878");
+    expect(plan.sshTargetSource).toBe("ssh_command");
+    expect(plan.sshPortSource).toBe("ssh_command");
+    expect(dryRun.preflight).toMatchObject({
+      schema: "trashbot.o5_o6.upper_ssh_collector_preflight.v1",
+      status: "blocked",
+      accepts_ssh_command_input: true,
+      remote_bearer_token_local_hint: "local_env_present_not_forwarded",
+      execution_policy: {
+        dry_run_no_ssh: true,
+        network_probe_executed: false,
+        post_executed: false,
+        robots_path_accessed: false,
+        cmd_vel_accessed: false,
+        hardware_read_executed: false,
+        robot_control_executed: false,
+      },
+    });
+    expect(dryRun.preflight.checks.map((check: { id: string }) => check.id)).toEqual([
+      "ssh_target",
+      "ssh_port",
+      "pc_base_url",
+      "cloud_base_url",
+      "remote_bearer_token",
+      "remote_root",
+      "remote_probe_script",
+    ]);
+    expect(dryRun.preflight.failure_classification).toContain("pc_base_url_not_configured_for_upper_ssh");
+    expect(dryRun.preflight.failure_classification).toContain("remote_bearer_token_not_verified_by_pc_preflight");
+    expect(dryRun.preflight.failure_classification).toContain("remote_root_not_verified_by_pc_preflight");
+    expect(dryRun.preflight.failure_classification).toContain("remote_probe_script_not_verified_by_pc_preflight");
+    expect(dryRun.failure_classification).toEqual(dryRun.preflight.failure_classification);
+    expect(JSON.stringify(dryRun)).not.toContain("local-secret-not-forwarded");
+    expect(JSON.stringify(dryRun.ssh_command.args)).not.toContain("/robots/");
+    expect(JSON.stringify(dryRun.ssh_command.args)).not.toContain("/cmd_vel");
+    expect(JSON.stringify(dryRun.stdin_fallback.ssh_args)).not.toContain("/robots/");
+    expect(JSON.stringify(dryRun.stdin_fallback.ssh_args)).not.toContain("/cmd_vel");
+  });
+
   it("keeps PC aggregate blocked when upper SSH has no explicit PC workstation base URL", async () => {
     // 未显式配置 PC workstation URL 时，远端 probe 不应默认访问上位机自己的 127.0.0.1。
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "rober-o5o6-upper-pc-base-"));

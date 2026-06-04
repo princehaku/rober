@@ -2410,6 +2410,8 @@ export interface RealMaterialCollectionPath {
   runtime: "node" | "python_stdlib" | "node_ssh";
   host_role: "pc_workstation" | "upper_computer" | "pc_to_upper_computer";
   command: string;
+  preflight_checks: string[];
+  failure_classification: string[];
   required_env: string[];
   required_artifact: string;
   artifact_write_mode: "writes_output_file" | "stdout_json_optional_output";

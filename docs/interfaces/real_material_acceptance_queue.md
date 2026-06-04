@@ -87,6 +87,8 @@
     - `runtime=node | python_stdlib | node_ssh`
     - `host_role=pc_workstation | upper_computer | pc_to_upper_computer`
     - `command`：人工执行命令；API 不执行该命令。
+    - `preflight_checks[]`：该路径进入采集前必须人工确认或由 dry-run 输出的预检项。
+    - `failure_classification[]`：该路径会暴露的机器可读失败分类 token，方便测试和 runbook 不靠自然语言判断。
     - `required_env[]`：该路径需要的环境变量。
     - `required_artifact`：该路径的 artifact 落盘或回传方式。
     - `artifact_write_mode=writes_output_file | stdout_json_optional_output`
@@ -175,9 +177,10 @@ O5/O6 runbook 必须同时暴露 PC 本地、上位机本地、PC 侧 SSH 三类
    - 执行模式：
      - `installed_script`：默认先进入远端 `remote_root`，执行已安装的 `cloud-relay/scripts/o5_o6_external_live_probe.py`。
      - `stdin_fallback`：若 SSH 可达、`remote_root` 可进入，但远端缺 probe 脚本，collector 会把 PC 本地 `cloud-relay/scripts/o5_o6_external_live_probe.py` 通过 SSH stdin 喂给 `python3 -` 一次性只读执行；不 scp、不写远端文件、不持久修改上位机。
-   - 命令入口：
-     `cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --ssh-target root@192.168.1.11 --ssh-port 37878 --pc-base-url http://<pc-workstation-host>:8787 --cloud-base-url https://<production-cloud-base> --output .workstation-runtime/o5-o6-external-live-probe.json`
-   - 可覆盖参数/env：
+  - 命令入口：
+     `cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --ssh-command "ssh <upper-ssh-target> -p <ssh-port>" --pc-base-url http://<pc-workstation-host>:8787 --cloud-base-url https://<production-cloud-base> --output .workstation-runtime/o5-o6-external-live-probe.json`
+  - 可覆盖参数/env：
+     `--ssh-command "ssh root@192.168.1.11 -p 37878"`（operator 可粘贴实际 SSH 入口；acceptance API 只展示占位符，不回显真实 IP/账号）、
      `ROBER_O5_O6_UPPER_SSH_TARGET` / `--ssh-target`、
      `ROBER_O5_O6_UPPER_SSH_PORT` / `--ssh-port`、
      `ROBER_O5_O6_UPPER_REMOTE_ROOT` / `--remote-root`、
@@ -187,14 +190,18 @@ O5/O6 runbook 必须同时暴露 PC 本地、上位机本地、PC 侧 SSH 三类
      `ROBER_O5_O6_EXTERNAL_PROBE_ARTIFACT` / `--output`、
      `ROBER_O5_O6_UPPER_SSH_TIMEOUT_SECONDS` / `--timeout-seconds`、
      `ROBER_O5_O6_UPPER_PROBE_TIMEOUT_MS` / `--probe-timeout-ms`。
-   - 凭证边界：collector 不通过 CLI 或 SSH args 传 bearer token；`TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN` 或 `ROBER_CLOUD_RELAY_BEARER_TOKEN` 必须在上位机运行环境中配置，artifact 只允许显示 `token_status=present|absent`。
-   - artifact：默认写回 `.workstation-runtime/o5-o6-external-live-probe.json`；失败时也写 `trashbot.o5_o6.external_live_probe.v1` blocked artifact，供 acceptance queue 分类为 not observed / blocked。若 remote probe 输出合法 JSON 但以 exit 2 表示 `probe_status=fail_closed`，collector 仍保留该 JSON 并标记 `ssh_collection.status=collected`。
-   - 关键字段：`ssh_collection.execution_mode=installed_script|stdin_fallback`、`ssh_collection.attempted_execution_modes[]`、`ssh_collection.fallback_used`、`ssh_collection.fallback_reason`、`ssh_collection.stdin_fallback_remote_write=false`。
-   - PC base URL 合同：上位机 SSH collector 不默认使用 `http://127.0.0.1:8787`，因为远端 loopback 指向上位机自身，不是 PC workstation。operator 必须显式传 `--pc-base-url http://<pc-workstation-host>:8787`，或配置 `ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL` 为上位机可达地址。
+  - 凭证边界：collector 不通过 CLI 或 SSH args 传 bearer token；`TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN` 或 `ROBER_CLOUD_RELAY_BEARER_TOKEN` 必须在上位机运行环境中配置，artifact 只允许显示 `token_status=present|absent`。
+  - artifact：默认写回 `.workstation-runtime/o5-o6-external-live-probe.json`；失败时也写 `trashbot.o5_o6.external_live_probe.v1` blocked artifact，供 acceptance queue 分类为 not observed / blocked。若 remote probe 输出合法 JSON 但以 exit 2 表示 `probe_status=fail_closed`，collector 仍保留该 JSON 并标记 `ssh_collection.status=collected`。
+  - 关键字段：`ssh_collection.execution_mode=installed_script|stdin_fallback`、`ssh_collection.attempted_execution_modes[]`、`ssh_collection.fallback_used`、`ssh_collection.fallback_reason`、`ssh_collection.stdin_fallback_remote_write=false`。
+  - 预检字段：dry-run 与 live artifact 的 `ssh_collection.preflight` 使用 `trashbot.o5_o6.upper_ssh_collector_preflight.v1`，固定 `network_probe_executed=false`、`post_executed=false`、`robots_path_accessed=false`、`cmd_vel_accessed=false`、`hardware_read_executed=false`、`robot_control_executed=false`。
+  - 预检分类：`preflight.checks[]` 固定覆盖 `ssh_target`、`ssh_port`、`pc_base_url`、`cloud_base_url`、`remote_bearer_token`、`remote_root`、`remote_probe_script`。其中 target/port 可由 `--ssh-command` 解析；PC/cloud URL 缺失会直接标为 `blocked`；remote bearer/root/script 在 dry-run 中只标为 `requires_remote_runtime` 或 `requires_ssh_probe`，不会通过 PC 预检伪造为已通过。
+  - 机器失败分类：`preflight.failure_classification[]` 和 `collection_paths[].failure_classification[]` 至少覆盖 `ssh_target_not_configured`、`ssh_port_not_configured`、`pc_base_url_not_configured_for_upper_ssh`、`cloud_base_url_not_configured`、`remote_bearer_token_not_verified_by_pc_preflight`、`remote_repo_root_missing`、`remote_repo_present_but_probe_script_missing`、`ssh_auth_failed`、`ssh_connection_refused`、`ssh_timeout`、`ssh_network_unreachable`、`ssh_stdin_fallback_probe_failed`、`ssh_stdin_fallback_stdout_bad_json`、`ssh_stdin_fallback_probe_schema_mismatch`。
+  - PC base URL 合同：上位机 SSH collector 不默认使用 `http://127.0.0.1:8787`，因为远端 loopback 指向上位机自身，不是 PC workstation。operator 必须显式传 `--pc-base-url http://<pc-workstation-host>:8787`，或配置 `ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL` 为上位机可达地址。
    - 常见阻塞：若未显式提供 PC base URL，collector / artifact 应写 `pc_base_url_not_configured_for_upper_ssh`，并把 `next_action` 指向 `--pc-base-url http://<pc-workstation-host>:8787` 或 `ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL`。若 SSH 可达、`remote_root` 可进入，但远端缺少 `cloud-relay/scripts/o5_o6_external_live_probe.py`，collector 应先尝试 `stdin_fallback`。若 fallback 仍失败，blocked artifact 应写 `ssh_stdin_fallback_probe_failed` / `ssh_stdin_fallback_stdout_bad_json` / `ssh_stdin_fallback_probe_schema_mismatch` 等机器原因，并给出检查远端 `python3`、本地 probe 源和 stdout contract 的 `next_action`。
    - dry-run：
      `cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --dry-run --ssh-target root@192.168.1.11 --ssh-port 37878 --cloud-base-url https://example.invalid`
-     只输出计划和安全边界，不 SSH、不联网、不写 artifact；dry-run 会展示 `installed_script` 与 `stdin_fallback` 两种 SSH argv，但不会输出 probe 源码。若未传 PC base URL，dry-run 必须在 `pc_base_url_contract` 中暴露 `configured_for_upper_ssh=false`、`blocked_reason=pc_base_url_not_configured_for_upper_ssh` 和 operator next action。
+     或 `cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --dry-run --ssh-command "ssh root@192.168.1.11 -p 37878" --cloud-base-url https://example.invalid`
+     只输出计划、预检分类和安全边界，不 SSH、不联网、不写 artifact；dry-run 会展示 `installed_script` 与 `stdin_fallback` 两种 SSH argv，但不会输出 probe 源码。若未传 PC base URL，dry-run 必须在 `pc_base_url_contract` 和 `preflight.failure_classification[]` 中暴露 `pc_base_url_not_configured_for_upper_ssh` 和 operator next action。
 
 三条 O5/O6 路径的共同成功门槛：
 
@@ -265,6 +272,8 @@ readiness artifact 的关键分类字段包括：
 2026-06-04 06-07 O5/O6 acceptance API runbook 修正记录：`GET /api/real-material/acceptance` 的 `collection_runbook.suggested_commands[]` 中，`pc_upper_ssh_collector` 示例命令必须展示 `--pc-base-url http://<pc-workstation-host>:8787`，不得展示 `--pc-base-url http://127.0.0.1:8787`。PC workstation 本地 Node 采集路径仍可使用本机 loopback；只有通过 SSH 让上位机发起 probe 时，operator 必须填写上位机可达的 PC workstation 地址。该记录只修正 API-facing recipe，不执行 SSH、不联网、不 POST、不访问 `/robots/*`、不访问 `/cmd_vel`、不读硬件、不发送 robot command。
 
 2026-06-04 07-08 O5/O6 shared contract 修正记录：`pc-tools/workstation/src/shared/contracts.ts` 的 `RealMaterialCollectionPath` 已把 `pc_upper_ssh_collector`、`runtime=node_ssh`、`host_role=pc_to_upper_computer` 纳入正式 TypeScript 合同。`GET /api/real-material/acceptance` 的第三条 `collection_paths[]` 不再需要 `unknown` cast，PC/UI typed consumers 可直接消费 SSH collector 路径；该修正只关闭合同类型滞后，不执行 SSH、不联网、不 POST、不访问 `/robots/*`、不访问 `/cmd_vel`、不读硬件、不发送 robot command，未产出 accepted live material 时不提升 O5/O6 百分比。
+
+2026-06-04 08-09 O5/O6 SSH collector preflight/failure classification 记录：`pc_upper_ssh_collector` dry-run 已支持 `--ssh-command "ssh root@192.168.1.11 -p 37878"` 这类 operator 粘贴入口，并输出 `trashbot.o5_o6.upper_ssh_collector_preflight.v1`。预检分类能把缺 SSH target/port、PC base URL、cloud base URL、远端 bearer、remote root、remote probe script/stdin fallback 等缺口拆成机器 token；`GET /api/real-material/acceptance` 的 `collection_paths[]` 同步暴露 `preflight_checks[]` 与 `failure_classification[]`。该增强只做 GET-only/metadata/preflight/fail-closed 合同，不执行 SSH、不联网、不 POST、不访问 `/robots/*`、不访问 `/cmd_vel`、不读串口/ROS2/硬件、不发送 robot command；未采到 accepted live artifact 时不提升 O5/O6 百分比。
 
 2026-06-04 04-05 stdin fallback 更新口径：`pc_upper_ssh_collector` 在 `remote_repo_present_but_probe_script_missing` 时不再直接停止，而是自动进入 `stdin_fallback`，把 PC 本地 `cloud-relay/scripts/o5_o6_external_live_probe.py` 通过 SSH stdin 交给远端 `python3 - --once-json` 执行。该模式不 scp、不写远端、不持久修改 `/root/rober`，安全边界仍为固定 allowlist GET，不 POST、不访问 `/robots/*`、不访问 `/cmd_vel`、不读硬件、不发送控制命令、不把 bearer/token 写入 CLI/SSH args/artifact。artifact 新增 `ssh_collection.execution_mode`、`attempted_execution_modes`、`fallback_used`、`fallback_reason` 与 `stdin_fallback_remote_write=false`，用于区分已安装脚本执行、stdin fallback 采集和 fallback 自身失败。
 

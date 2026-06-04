@@ -194,7 +194,7 @@ function o5o6Runbook(objective: "O5" | "O6"): RealMaterialCollectionRunbook {
     suggested_commands: [
       "cd pc-tools/workstation && ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://127.0.0.1:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
       "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://<pc-workstation-host>:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json --output .workstation-runtime/o5-o6-external-live-probe.json",
-      "cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --ssh-target <upper-ssh-target> --ssh-port <ssh-port> --pc-base-url http://<pc-workstation-host>:8787 --cloud-base-url https://<production-cloud-base> --output .workstation-runtime/o5-o6-external-live-probe.json",
+      "cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --ssh-command \"ssh <upper-ssh-target> -p <ssh-port>\" --pc-base-url http://<pc-workstation-host>:8787 --cloud-base-url https://<production-cloud-base> --output .workstation-runtime/o5-o6-external-live-probe.json",
     ],
     collection_paths: [
       {
@@ -204,6 +204,8 @@ function o5o6Runbook(objective: "O5" | "O6"): RealMaterialCollectionRunbook {
         host_role: "pc_workstation",
         command:
           "cd pc-tools/workstation && ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://127.0.0.1:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> npm run o5o6:external-probe -- --output .workstation-runtime/o5-o6-external-live-probe.json",
+        preflight_checks: ["pc_base_url", "cloud_base_url", "bearer_token", "output_artifact_path"],
+        failure_classification: ["pc_base_url_not_configured", "cloud_base_url_not_configured", "bearer_token_absent", "output_artifact_not_writable"],
         required_env: [
           "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",
           "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL",
@@ -224,6 +226,14 @@ function o5o6Runbook(objective: "O5" | "O6"): RealMaterialCollectionRunbook {
         host_role: "upper_computer",
         command:
           "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL=http://<pc-workstation-host>:8787 ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL=https://<production-cloud-base> TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=<redacted> python3 cloud-relay/scripts/o5_o6_external_live_probe.py --once-json --output .workstation-runtime/o5-o6-external-live-probe.json",
+        preflight_checks: ["pc_base_url_reachable_from_upper", "cloud_base_url", "remote_bearer_token", "python3", "probe_script"],
+        failure_classification: [
+          "pc_base_url_not_configured",
+          "cloud_base_url_not_configured",
+          "remote_bearer_token_absent",
+          "python3_missing",
+          "probe_script_missing",
+        ],
         required_env: [
           "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL",
           "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL",
@@ -243,10 +253,36 @@ function o5o6Runbook(objective: "O5" | "O6"): RealMaterialCollectionRunbook {
         runtime: "node_ssh",
         host_role: "pc_to_upper_computer",
         command:
-          "cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --ssh-target <upper-ssh-target> --ssh-port <ssh-port> --pc-base-url http://<pc-workstation-host>:8787 --cloud-base-url https://<production-cloud-base> --output .workstation-runtime/o5-o6-external-live-probe.json",
+          "cd pc-tools/workstation && npm run o5o6:upper-ssh-collector -- --ssh-command \"ssh <upper-ssh-target> -p <ssh-port>\" --pc-base-url http://<pc-workstation-host>:8787 --cloud-base-url https://<production-cloud-base> --output .workstation-runtime/o5-o6-external-live-probe.json",
+        preflight_checks: [
+          "ssh_target",
+          "ssh_port",
+          "pc_base_url_reachable_from_upper",
+          "cloud_base_url",
+          "remote_bearer_token",
+          "remote_root",
+          "remote_probe_script",
+          "stdin_fallback",
+        ],
+        failure_classification: [
+          "ssh_target_not_configured",
+          "ssh_port_not_configured",
+          "pc_base_url_not_configured_for_upper_ssh",
+          "cloud_base_url_not_configured",
+          "remote_bearer_token_not_verified_by_pc_preflight",
+          "remote_repo_root_missing",
+          "remote_repo_present_but_probe_script_missing",
+          "local_stdin_probe_source_missing",
+          "ssh_auth_failed",
+          "ssh_connection_refused",
+          "ssh_timeout",
+          "ssh_network_unreachable",
+          "ssh_stdin_fallback_probe_failed",
+          "ssh_stdin_fallback_stdout_bad_json",
+          "ssh_stdin_fallback_probe_schema_mismatch",
+        ],
         required_env: [
-          "ROBER_O5_O6_UPPER_SSH_TARGET or --ssh-target",
-          "ROBER_O5_O6_UPPER_SSH_PORT or --ssh-port",
+          "ROBER_O5_O6_UPPER_SSH_TARGET/ROBER_O5_O6_UPPER_SSH_PORT or --ssh-command \"ssh <upper-ssh-target> -p <ssh-port>\"",
           "ROBER_O5_O6_EXTERNAL_PROBE_PC_BASE_URL or --pc-base-url http://<pc-workstation-host>:8787",
           "ROBER_O5_O6_EXTERNAL_PROBE_CLOUD_BASE_URL or ROBER_CLOUD_RELAY_BASE_URL or --cloud-base-url",
           "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN or ROBER_CLOUD_RELAY_BEARER_TOKEN must be configured in the upper-computer runtime environment",
