@@ -82,6 +82,7 @@ const API_ENDPOINTS = {
   o7DirectUpperStop: "/api/o7/direct-upper/base/stop",
   o7DirectUpperRadarStart: "/api/o7/direct-upper/radar/start",
   o7DirectUpperRadarStop: "/api/o7/direct-upper/radar/stop",
+  o7DirectUpperRadarScanProofRefresh: "/api/o7/direct-upper/radar/scan-proof/refresh",
   o7DirectUpperMapStart: "/api/o7/direct-upper/map/start",
   o7DirectUpperMapReset: "/api/o7/direct-upper/map/reset",
   o7DirectUpperMapSave: "/api/o7/direct-upper/map/save",
@@ -316,6 +317,7 @@ export async function postO7DirectUpperOperatorCommand(
   command:
     | "radar_start"
     | "radar_stop"
+    | "radar_scan_proof_refresh"
     | "map_start"
     | "map_reset"
     | "map_save"
@@ -329,6 +331,7 @@ export async function postO7DirectUpperOperatorCommand(
   const endpoints = {
     radar_start: API_ENDPOINTS.o7DirectUpperRadarStart,
     radar_stop: API_ENDPOINTS.o7DirectUpperRadarStop,
+    radar_scan_proof_refresh: API_ENDPOINTS.o7DirectUpperRadarScanProofRefresh,
     map_start: API_ENDPOINTS.o7DirectUpperMapStart,
     map_reset: API_ENDPOINTS.o7DirectUpperMapReset,
     map_save: API_ENDPOINTS.o7DirectUpperMapSave,

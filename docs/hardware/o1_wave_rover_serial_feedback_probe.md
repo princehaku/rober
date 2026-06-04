@@ -253,6 +253,18 @@ timeout 30 ssh -o BatchMode=yes -o ConnectTimeout=8 -p 37878 root@192.168.1.11 '
 默认 `stale_after_ms=900000`（15 分钟）；这只代表材料新鲜度，不代表 HIL、ACK、
 `safe_to_control`、真实 `/odom`、`/imu/data`、`/battery` 或可运动准入。
 
+2026-06-04 hardware readback 复核显示：`GET /api/base/feedback-samples/latest`
+仍能读到上一轮 artifact，latest result 记录 `t1001_observed_count=3`、
+`all_samples_observed_t1001=true`，且 latest result 内部 `sends_commands=true`
+只表示该历史采样动作曾显式发送 vendor `{"T":130}`。同一次只读复核里
+`GET /api/base/status` 把同一 artifact 摘要标为 `freshness.status=stale`
+（`age_ms` 已超过 `stale_after_ms=900000`）。这两者不是冲突：前者是历史
+`T=1001` feedback material，后者是当前 readback 的新鲜度判定。当前 readback
+本身必须继续保持 `readback_sends_commands=false`、`sends_commands=false`、
+`sends_motion_commands=false`、`safe_to_control=false`、`hil_pass=false`；
+不得把 stale artifact 里的 `T=1001` 写成 robot ACK、HIL、`safe_to_control=true`
+或 ROS `/odom`、`/imu/data`、`/battery` 已实测。
+
 采用的 vendor 证据：
 
 - `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`：vendor Python reference 使用 `json.dumps(data) + '\n'` 写 UART JSON 行。

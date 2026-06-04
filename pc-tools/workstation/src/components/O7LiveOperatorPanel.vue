@@ -132,6 +132,7 @@ const directUpperPaths = computed(() => {
         paths.manual,
         paths.radar_start,
         paths.radar_stop,
+        paths.scan_proof_refresh,
         paths.map_start,
         paths.map_reset,
         paths.map_save,
@@ -147,6 +148,7 @@ const directUpperPaths = computed(() => {
         "/api/o7/direct-upper/base/manual",
         "/api/o7/direct-upper/radar/start",
         "/api/o7/direct-upper/radar/stop",
+        "/api/o7/direct-upper/radar/scan-proof/refresh",
         "/api/o7/direct-upper/map/start",
         "/api/o7/direct-upper/map/reset",
         "/api/o7/direct-upper/map/save",
@@ -160,6 +162,7 @@ const directUpperPaths = computed(() => {
 const operatorControls = computed(() => [
   { id: "radar_start", label: "Radar start", kind: "radar_start" as const, payload: {} },
   { id: "radar_stop", label: "Radar stop", kind: "radar_stop" as const, payload: {} },
+  { id: "scan_proof_refresh", label: "Refresh scan proof", kind: "radar_scan_proof_refresh" as const, payload: {} },
   { id: "map_start", label: "Map start", kind: "map_start" as const, payload: {} },
   { id: "map_reset", label: "Map reset", kind: "map_reset" as const, payload: {} },
   { id: "map_save", label: "Map save", kind: "map_save" as const, payload: { map_id: mapId.value } },
@@ -187,7 +190,7 @@ const operatorModeSummary = computed(() => {
   // fixture mode 是显式软件护栏模式，真实上位机未执行时也必须在 UI 文案里暴露。
   return fixtureMode.value
     ? "fixture mode · no upper fetch · software_guard"
-    : "real upper mode · radar/report use field_default if env is absent; base/map/localize still require env";
+    : "real upper mode · radar/report/scan-proof refresh use field_default if env is absent; base/map/localize still require env";
 });
 
 const directUpperAdapterSummary = computed(() => {
@@ -359,6 +362,22 @@ const rawPacketProofStats = computed(() => {
   ];
 });
 
+const directScanProofSummary = computed(() => {
+  // Direct status 只读 8787 /api/status 摘要；fresh/stale 由上位机 artifact freshness 给出，UI 不自行判定。
+  const summary = directUpperStatus.value?.upper_status_summary;
+  if (!summary) {
+    return "not_loaded · freshness unknown · age n/a";
+  }
+  const age = summary.radar_scan_proof_age_seconds === null ? "age n/a" : `${summary.radar_scan_proof_age_seconds}s`;
+  return `${summary.radar_scan_proof_artifact_status} · ${summary.radar_scan_proof_freshness_status} · ${age} · ${summary.radar_scan_proof_latest_status}`;
+});
+
+const directScanProofTopBlockers = computed(() => {
+  // 这里显示 8787 direct status 的 blocker，不把 live panel 的旧 artifact 混成 refresh 结果。
+  const blockers = directUpperStatus.value?.upper_status_summary.radar_scan_proof_blockers ?? ["direct_upper_status_not_loaded"];
+  return blockers.slice(0, 3);
+});
+
 watch(
   () => props.liveOperatorPanel?.control.speed.default_value,
   (defaultSpeed) => {
@@ -527,16 +546,19 @@ function commandResultMessage(action: string, result: O7DirectUpperApiCommandRes
   const evidence = result.command_payload_summary.evidence_ref ?? operatorEvidenceRefValue.value;
   const adapter = result.adapter?.version ?? "missing_adapter_stale_dev_server";
   const source = result.upper_api_base_url_source ?? "missing_source";
+  const scanProofBoundary = result.command === "radar_scan_proof_refresh"
+    ? "；read-only proof refresh，不启动 driver、不控底盘；not_proven=HIL/PC WASD/Nav2/map/delivery"
+    : "";
   if (result.upper_api_base_url_source === "fixture" && result.accepted_by_workstation) {
-    return `${action} fixture 已记录（仍锁定）：${request.path}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false`;
+    return `${action} fixture 已记录（仍锁定）：${request.path}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${scanProofBoundary}`;
   }
   if (result.accepted_by_workstation && request.ok) {
-    return `${action} 已发送（仍锁定）：${request.path} ${http}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false`;
+    return `${action} 已发送（仍锁定）：${request.path} ${http}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${scanProofBoundary}`;
   }
   const reason = result.failure_reason || request.failure_reason || "manual_request_failed";
   return `${action} 失败：${reason}；${request.path} ${request.executed ? http : "not_executed"}；direct status ${
     directUpperStatus.value?.status ?? "unknown"
-  }；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；锁定原因 ${blockers}；safe_to_control=false`;
+  }；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；锁定原因 ${blockers}；safe_to_control=false${scanProofBoundary}`;
 }
 
 function isEditableControlTarget(target: EventTarget | null): boolean {
@@ -929,7 +951,7 @@ onBeforeUnmount(() => {
         <div class="status-light-row">
           <span class="status-dot status-dot-yellow" />
           <span>Scan proof</span>
-          <strong>{{ directUpperStatus?.upper_status_summary.radar_scan_proof_latest_status || "not_loaded" }}</strong>
+          <strong>{{ directScanProofSummary }}</strong>
         </div>
         <div class="status-light-row">
           <span class="status-dot status-dot-yellow" />
@@ -937,11 +959,14 @@ onBeforeUnmount(() => {
           <strong>{{ directUpperStatus?.upper_status_summary.radar_raw_packet_proof_latest_status || "not_loaded" }}</strong>
         </div>
       </div>
+      <div class="endpoint-list compact-endpoints" aria-label="direct scan proof blockers">
+        <code v-for="blocker in directScanProofTopBlockers" :key="blocker">{{ blocker }}</code>
+      </div>
       <div class="endpoint-list" aria-label="本机 direct upper API 路径">
         <code v-for="path in directUpperPaths" :key="path">{{ path }}</code>
       </div>
       <p class="base-boundary">
-        {{ directUpperStatus?.upper_api_base_url || "env ROBER_UPPER_API_BASE_URL required" }}
+        {{ directUpperStatus?.upper_api_base_url || "env ROBER_UPPER_API_BASE_URL required" }} · scan-proof refresh is read-only proof refresh，不证明 HIL、PC WASD、Nav2、map 或 delivery success。
       </p>
     </article>
   </section>

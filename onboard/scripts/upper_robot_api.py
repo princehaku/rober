@@ -10,6 +10,7 @@ import json
 import os
 import shlex
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -32,6 +33,7 @@ DEFAULT_FEEDBACK_SAMPLE_COUNT = 3
 DEFAULT_FEEDBACK_SAMPLE_INTERVAL_S = 0.2
 DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.json"
 DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
+DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S = 5.0
 DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH = "runtime/lidar_raw_packet_proof_latest.json"
 DEFAULT_MAP_ARTIFACT_DIR = "runtime/maps"
 DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "runtime/map_lifecycle_latest.json"
@@ -92,6 +94,7 @@ ROUTE_PATHS = {
     "radar_status": "/api/radar/status",
     "radar_start": "/api/radar/start",
     "radar_stop": "/api/radar/stop",
+    "radar_scan_proof_refresh": "/api/radar/scan-proof/refresh",
     "radar_scan_proof_latest": "/api/radar/scan-proof/latest",
     "radar_raw_packet_proof_latest": "/api/radar/raw-packet-proof/latest",
     "map_start": "/api/map/start",
@@ -525,6 +528,239 @@ def run_configured_command(command: str | None, timeout_s: float = 12.0) -> dict
         "returncode": completed.returncode,
         "stdout_preview": completed.stdout[-1200:],
         "stderr_preview": completed.stderr[-1200:],
+    }
+
+
+def lidar_scan_proof_collector_script_path() -> str:
+    """collector 固定从同目录寻找，部署时能精确发现脚本是否同步到上位机。"""
+    return str(Path(__file__).resolve().with_name("o1_lidar_scan_proof_collector.py"))
+
+
+def parse_last_json_object(text: str) -> tuple[dict[str, Any] | None, dict[str, str] | None]:
+    """collector stdout 只信最后一个 JSON object，避免日志行干扰 HTTP 回包。"""
+    for line in reversed(text.splitlines()):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            parsed = json.loads(stripped)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            return parsed, None
+        return None, {"type": "ValueError", "message": "collector JSON root is not an object"}
+    return None, {"type": "ValueError", "message": "collector did not print a JSON object"}
+
+
+def preview_text(value: Any, limit: int = 1200) -> str:
+    """subprocess timeout 里 stdout/stderr 可能不是 str，统一压成短文本。"""
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        text = value.decode("utf-8", errors="replace")
+    else:
+        text = str(value)
+    return text[-limit:]
+
+
+def run_lidar_scan_proof_collector(
+    *,
+    artifact_path: str,
+    upper_api_base_url: str = "http://127.0.0.1:8787",
+    timeout_s: float = DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S,
+    script_path: str | None = None,
+) -> dict[str, Any]:
+    """运行只读 proof collector；这里不拼 shell，避免注入和误触发控制命令。"""
+    script = script_path or lidar_scan_proof_collector_script_path()
+    if not Path(script).exists():
+        return {
+            "command_result": {
+                "mode": "read_only_scan_proof_collector",
+                "executed": False,
+                "ok": False,
+                "reason": "collector_script_missing",
+                "script_path": script,
+                "error": {"type": "FileNotFoundError", "message": f"{script} is missing"},
+            },
+            "collector_payload": None,
+            "parse_error": None,
+        }
+    collector_timeout_s = min(max(float(timeout_s), 1.0), 30.0)
+    # collector 内部会做 ROS2 CLI/topic timeout，这里额外给进程总时限，防止 HTTP refresh 卡死。
+    process_timeout_s = min(max(collector_timeout_s * 6 + 12.0, 20.0), 210.0)
+    argv = [
+        sys.executable or "python3",
+        script,
+        "--once-json",
+        "--expect-existing-topics",
+        "--output",
+        artifact_path,
+        "--upper-api-base-url",
+        upper_api_base_url,
+        "--timeout-s",
+        str(collector_timeout_s),
+    ]
+    try:
+        completed = subprocess.run(
+            argv,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=process_timeout_s,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "command_result": {
+                "mode": "read_only_scan_proof_collector",
+                "executed": True,
+                "ok": False,
+                "argv": argv,
+                "script_path": script,
+                "timeout_s": process_timeout_s,
+                "error": {"type": "TimeoutExpired", "message": str(exc)},
+                "stdout_preview": preview_text(exc.stdout),
+                "stderr_preview": preview_text(exc.stderr),
+            },
+            "collector_payload": None,
+            "parse_error": {"type": "TimeoutExpired", "message": "collector process timed out before JSON artifact could be trusted"},
+        }
+    except Exception as exc:  # noqa: BLE001 - 现场 Python/权限异常要结构化返回给 PC。
+        return {
+            "command_result": {
+                "mode": "read_only_scan_proof_collector",
+                "executed": False,
+                "ok": False,
+                "argv": argv,
+                "script_path": script,
+                "error": compact_error(exc),
+            },
+            "collector_payload": None,
+            "parse_error": None,
+        }
+    parsed, parse_error = parse_last_json_object(completed.stdout)
+    command_ok = completed.returncode == 0 and parsed is not None
+    return {
+        "command_result": {
+            "mode": "read_only_scan_proof_collector",
+            "executed": True,
+            "ok": command_ok,
+            "argv": argv,
+            "script_path": script,
+            "timeout_s": process_timeout_s,
+            "returncode": completed.returncode,
+            "stdout_preview": completed.stdout[-1200:],
+            "stderr_preview": completed.stderr[-1200:],
+            "parse_error": parse_error,
+        },
+        "collector_payload": parsed,
+        "parse_error": parse_error,
+    }
+
+
+def summarize_lidar_refresh_blockers(
+    command_result: dict[str, Any],
+    collector_payload: dict[str, Any] | None,
+    parse_error: dict[str, str] | None,
+) -> list[dict[str, str]]:
+    """把部署、进程、artifact 和 ROS2 topic blocker 合成 PC 可读列表。"""
+    blockers: list[dict[str, str]] = []
+    if not command_result.get("ok"):
+        reason = command_result.get("reason") or "collector_process_failed"
+        detail = command_result.get("error", {}).get("message") if isinstance(command_result.get("error"), dict) else None
+        blockers.append({"code": str(reason), "detail": str(detail or "read-only scan proof collector did not complete successfully")})
+    if parse_error:
+        blockers.append({"code": "collector_json_parse_failed", "detail": parse_error.get("message", "collector JSON parse failed")})
+    if isinstance(collector_payload, dict):
+        artifact = collector_payload.get("artifact") if isinstance(collector_payload.get("artifact"), dict) else {}
+        artifact_ok = artifact.get("ok")
+        if artifact and artifact_ok is not True:
+            blockers.append({"code": "scan_proof_artifact_write_failed", "detail": str(artifact.get("error") or artifact)})
+        for item in collector_payload.get("blockers", []):
+            if isinstance(item, dict):
+                blockers.append({"code": str(item.get("code", "collector_blocker")), "detail": str(item.get("detail", ""))})
+        proof = collector_payload.get("proof") if isinstance(collector_payload.get("proof"), dict) else {}
+        if proof and proof.get("all_required_observations_observed") is not True and not blockers:
+            blockers.append({"code": "required_observations_not_all_observed", "detail": str(proof.get("status", "not_proven"))})
+    return blockers
+
+
+def lidar_refresh_proof_summary(collector_payload: dict[str, Any] | None) -> dict[str, Any]:
+    """从 collector payload 提取稳定 proof 字段，避免 PC 解析 stdout。"""
+    proof = collector_payload.get("proof") if isinstance(collector_payload, dict) and isinstance(collector_payload.get("proof"), dict) else {}
+    return {
+        "proof_status": proof.get("status") if isinstance(proof, dict) else None,
+        "scan_once_observed": proof.get("scan_once_observed") if isinstance(proof, dict) else None,
+        "scan_hz_observed": proof.get("scan_hz_observed") if isinstance(proof, dict) else None,
+        "scan_hz_average_rate_hz": proof.get("scan_hz_average_rate_hz") if isinstance(proof, dict) else None,
+        "raw_packet_once_observed": proof.get("raw_packet_once_observed") if isinstance(proof, dict) else None,
+        "tf_observed": proof.get("tf_observed") if isinstance(proof, dict) else None,
+        "all_required_observations_observed": proof.get("all_required_observations_observed") if isinstance(proof, dict) else None,
+    }
+
+
+def build_lidar_scan_proof_refresh_payload(
+    *,
+    artifact_path: str,
+    refresh_result: dict[str, Any],
+    timeout_s: float,
+) -> dict[str, Any]:
+    """构造 refresh 回包；即使 proof 观察到 `/scan`，也不能外推到底盘可控。"""
+    command_result = refresh_result.get("command_result", {})
+    collector_payload = refresh_result.get("collector_payload") if isinstance(refresh_result.get("collector_payload"), dict) else None
+    parse_error = refresh_result.get("parse_error") if isinstance(refresh_result.get("parse_error"), dict) else None
+    proof_summary = lidar_refresh_proof_summary(collector_payload)
+    blockers = summarize_lidar_refresh_blockers(command_result, collector_payload, parse_error)
+    scan_runtime_proven = bool(proof_summary.get("scan_once_observed") and proof_summary.get("scan_hz_observed"))
+    all_required_observed = bool(proof_summary.get("all_required_observations_observed"))
+    evidence_type = "robot_runtime_material" if all_required_observed else "blocked_with_root_cause"
+    status = "refreshed" if command_result.get("ok") else "blocked"
+    return {
+        "schema": f"{SCHEMA}.lidar_scan_proof_refresh_result",
+        "generated_at_ms": now_ms(),
+        "endpoint": ROUTE_PATHS["radar_scan_proof_refresh"],
+        "request": {
+            "method": "POST",
+            "endpoint": ROUTE_PATHS["radar_scan_proof_refresh"],
+            "mode": "read_only_expect_existing_topics",
+            "timeout_s": timeout_s,
+        },
+        "status": status,
+        "proof_state": proof_summary.get("proof_status") or "not_proven",
+        "evidence_type": evidence_type,
+        "collector": {
+            "script_path": command_result.get("script_path"),
+            "expect_existing_topics": True,
+            "starts_driver": False,
+            "opens_lidar_serial": False,
+            "sends_lidar_start_command": False,
+        },
+        "command_result": command_result,
+        "artifact": lidar_scan_proof_artifact_info(artifact_path),
+        "artifact_path": artifact_path,
+        "latest_result": collector_payload,
+        "proof_summary": proof_summary,
+        "blockers_summary": blockers,
+        "blocked_commands_not_sent": ["A5 60", "T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual"],
+        "blocked_devices_not_opened": ["/dev/ttyS5", "/dev/ttyACM0", "/dev/lidar"],
+        "read_only_topic_observation": True,
+        "ros2_runtime_proven": all_required_observed,
+        "scan_runtime_proven": scan_runtime_proven,
+        "software_guard": not all_required_observed,
+        "not_proven": not all_required_observed,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "uses_base_uart": False,
+        "opens_serial": False,
+        "opens_lidar_serial": False,
+        "starts_ros2": False,
+        "starts_lidar_driver": False,
+        "sends_lidar_start_command": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
     }
 
 
@@ -1835,6 +2071,15 @@ class UpperRobotApi:
                     "endpoint": ROUTE_PATHS["radar_stop"],
                     "command": command_config_info("ROBER_RADAR_STOP_COMMAND", self.radar_stop_command),
                 },
+                "scan_proof_refresh": {
+                    "endpoint": ROUTE_PATHS["radar_scan_proof_refresh"],
+                    "mode": "read_only_expect_existing_topics",
+                    "artifact": lidar_scan_proof_artifact_info(self.lidar_scan_proof_artifact_path),
+                    "starts_driver": False,
+                    "opens_lidar_serial": False,
+                    "sends_lidar_start_command": False,
+                    "sends_motion_commands": False,
+                },
             },
             "blocked_reasons": [
                 *(["ttyACM0_lidar_not_present"] if not lidar_observed else []),
@@ -1881,6 +2126,29 @@ class UpperRobotApi:
                     "artifact update at lidar_scan_proof_latest_artifact.path",
                 ],
             },
+        )
+
+    async def radar_scan_proof_refresh(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """显式刷新 LiDAR proof artifact；只读 ROS2 topic，不启动 driver 或底盘。"""
+        body = body if isinstance(body, dict) else {}
+        timeout_s = clamp_float(
+            body.get("timeout_s"),
+            DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S,
+            1.0,
+            30.0,
+        )
+        upper_api_base_url = str(body.get("upper_api_base_url") or "http://127.0.0.1:8787")
+        # subprocess 放到线程里，避免 collector 反查本机 8787 /health 时被当前 HTTP handler 阻塞。
+        refresh_result = await asyncio.to_thread(
+            run_lidar_scan_proof_collector,
+            artifact_path=self.lidar_scan_proof_artifact_path,
+            upper_api_base_url=upper_api_base_url,
+            timeout_s=timeout_s,
+        )
+        return build_lidar_scan_proof_refresh_payload(
+            artifact_path=self.lidar_scan_proof_artifact_path,
+            refresh_result=refresh_result,
+            timeout_s=timeout_s,
         )
 
     def map_status(self) -> dict[str, Any]:
@@ -2539,6 +2807,11 @@ def create_app(api: UpperRobotApi) -> Any:
     async def radar_stop(_: web.Request) -> Any:
         return json_response(api.radar_control("stop"))
 
+    async def radar_scan_proof_refresh(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        payload = await api.radar_scan_proof_refresh(body if isinstance(body, dict) else {})
+        return json_response(payload)
+
     async def radar_scan_proof_latest(_: web.Request) -> Any:
         http_status, payload = api.radar_scan_proof_latest()
         return json_response(payload, status=http_status)
@@ -2645,6 +2918,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_get(ROUTE_PATHS["radar_status"], radar_status)
     app.router.add_post(ROUTE_PATHS["radar_start"], radar_start)
     app.router.add_post(ROUTE_PATHS["radar_stop"], radar_stop)
+    app.router.add_post(ROUTE_PATHS["radar_scan_proof_refresh"], radar_scan_proof_refresh)
     app.router.add_get(ROUTE_PATHS["radar_scan_proof_latest"], radar_scan_proof_latest)
     app.router.add_get(ROUTE_PATHS["radar_raw_packet_proof_latest"], radar_raw_packet_proof_latest)
     app.router.add_post(ROUTE_PATHS["map_start"], map_start)

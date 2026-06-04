@@ -10,7 +10,7 @@ ROBER_UPPER_API_BASE_URL=http://192.168.1.11:8787 npm run dev -- --host 127.0.0.
 
 该模式绕过 cloud relay 作为必需路径，但只服务 PC 本地浏览器、curl 和调试工具。它不改变生产 4G 云路线，不替代手机端普通用户路径，也不把 8787 HTTP 成功解释成 WAVE ROVER ACK、`T=1001` 或 HIL pass。
 
-2026-06-04 起，PC 现场 direct-upper 的 `status`、`radar start/stop` 和 `operator-report` 写入/回读在缺少显式 env 时会回退到现场默认上位机：
+2026-06-04 起，PC 现场 direct-upper 的 `status`、`radar start/stop`、`scan-proof refresh` 和 `operator-report` 写入/回读在缺少显式 env 时会回退到现场默认上位机：
 
 ```text
 http://192.168.1.11:8787
@@ -28,7 +28,7 @@ http://192.168.1.11:8787
 2026-06-04 13:48 起，direct-upper status 和 command envelope 必须返回 adapter 指纹：
 
 ```text
-adapter.version=2026-06-04.field-default-radar-v2
+adapter.version=2026-06-04.scan-proof-refresh-v1
 adapter.source=pc-tools/workstation/src/server/o7DirectUpperApi.ts
 adapter.field_default_enabled=true
 adapter.field_default_url=http://192.168.1.11:8787
@@ -39,7 +39,8 @@ adapter.field_default_url=http://192.168.1.11:8787
 它可能继续服务旧 Express middleware，看起来就会仍然返回
 `base_url_not_configured` / `upper_request.executed=false`。新 UI 会在 Direct 卡片显示
 `adapter=<version>`；如果 API 缺少 `adapter` 或 Radar start 仍显示
-`/api/radar/start not_executed`，operator 应重启占用 5173 的 dev server 后再复测。
+`/api/radar/start not_executed`，或 scan-proof refresh 仍显示
+`/api/radar/scan-proof/refresh not_executed`，operator 应重启占用 5173 的 dev server 后再复测。
 
 ## PC 本机接口
 
@@ -53,6 +54,7 @@ adapter.field_default_url=http://192.168.1.11:8787
 | `POST` | `/api/o7/direct-upper/base/manual` | PC 侧先做方向白名单、低速、短 duration 限制，再转发到上位机 `/api/base/manual`。 |
 | `POST` | `/api/o7/direct-upper/radar/start` | 同源转发到上位机 `/api/radar/start`，允许使用 field default，不依赖底盘 ACK/T=1001。 |
 | `POST` | `/api/o7/direct-upper/radar/stop` | 同源转发到上位机 `/api/radar/stop`，允许使用 field default，不触碰底盘 UART。 |
+| `POST` | `/api/o7/direct-upper/radar/scan-proof/refresh` | 同源转发到上位机 `/api/radar/scan-proof/refresh`，只触发只读 proof refresh，不启动 driver、不控底盘。 |
 | `POST` | `/api/o7/direct-upper/map/start` | 同源转发到上位机 `/api/map/start`，需要显式 env 或 fixture mode。 |
 | `POST` | `/api/o7/direct-upper/map/reset` | 同源转发到上位机 `/api/map/reset`，需要显式 env 或 fixture mode。 |
 | `POST` | `/api/o7/direct-upper/map/save` | 同源转发到上位机 `/api/map/save`，保留 `map_id` 和 `evidence_ref`，需要显式 env 或 fixture mode。 |
@@ -66,7 +68,7 @@ adapter.field_default_url=http://192.168.1.11:8787
 
 - `ROBER_UPPER_API_BASE_URL`：可选但优先。示例 `http://192.168.1.11:8787`。
 - 未配置时，`GET /api/o7/direct-upper/status` 使用 field default `http://192.168.1.11:8787` 并返回 `upper_api_base_url_source=field_default`。
-- 未配置时，`POST /api/o7/direct-upper/radar/start` 和 `POST /api/o7/direct-upper/radar/stop` 也使用 field default 转发到上位机 `/api/radar/start|stop`。
+- 未配置时，`POST /api/o7/direct-upper/radar/start`、`POST /api/o7/direct-upper/radar/stop` 和 `POST /api/o7/direct-upper/radar/scan-proof/refresh` 也使用 field default 转发到上位机 `/api/radar/start|stop|scan-proof/refresh`。
 - 未配置时，`POST|GET /api/o7/direct-upper/operator-report` 使用 field default 写入/回读上位机 `/api/operator/report`，只作用于 operator report artifact，不访问 base/manual/stop/feedback。
 - `ROBER_O7_DIRECT_UPPER_FIXTURE_MODE=1`：显式打开 fixture mode；支持 `1/true/yes/on`。fixture mode 返回 `upper_api_base_url_source=fixture`、`upper_api_base_url=fixture://upper-api`，并且不触发远端 fetch。
 - 请求 body 也可传 `fixture_mode=true` 打开单次 fixture mode。UI 的 `fixture mode` 勾选框使用该入口。
@@ -90,7 +92,7 @@ trashbot.pc_tools_workstation.o7_direct_upper_status.v1
 关键字段：
 
 - `mode=direct_upper_computer_lan_only`
-- `adapter.version=2026-06-04.field-default-radar-v2`
+- `adapter.version=2026-06-04.scan-proof-refresh-v1`
 - `adapter.source=pc-tools/workstation/src/server/o7DirectUpperApi.ts`
 - `adapter.field_default_enabled=true`
 - `adapter.field_default_url=http://192.168.1.11:8787`
@@ -123,7 +125,7 @@ trashbot.pc_tools_workstation.o7_direct_upper_status.v1
 - `upper_status_summary.base_write_control_available`
 - `upper_status_summary.robot_ack_connected=false`
 - `upper_status_summary.t1001_observed=false`
-- `local_api_paths.status/stop/feedback_request/manual/radar_start/radar_stop/map_start/map_reset/map_save/map_load/map_list/localize_reset/operator_report`
+- `local_api_paths.status/stop/feedback_request/manual/radar_start/radar_stop/scan_proof_refresh/map_start/map_reset/map_save/map_load/map_list/localize_reset/operator_report`
 
 固定安全字段：
 
@@ -241,6 +243,30 @@ trashbot.pc_tools_workstation.o7_direct_upper_radar_stop.v1
 ```
 
 边界与 `radar/start` 相同：缺 env 可使用 `field_default`，HTTP 成功返回 `200` / `failure_reason=none`，但不证明真实 `/scan`、LiDAR 长稳、SLAM/Nav2 消费、ACK 或 HIL。
+
+## `POST /api/o7/direct-upper/radar/scan-proof/refresh`
+
+PC 后端只转发到：
+
+```text
+<upper_api_base_url>/api/radar/scan-proof/refresh
+```
+
+响应 schema：
+
+```text
+trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_refresh.v1
+```
+
+边界：
+
+- 缺少 `ROBER_UPPER_API_BASE_URL` 时使用 `http://192.168.1.11:8787`，响应中 `upper_api_base_url_source=field_default`。
+- 显式 fixture mode 优先于 field default，响应中 `upper_api_base_url_source=fixture` 且不触发远端 fetch。
+- 该入口只请求上位机刷新只读 scan proof artifact；PC workstation 不执行 collector、不连接 ROS graph、不打开 LiDAR 串口、不发送 `A5 60`、不访问 `/api/base/manual`、不发送 `/cmd_vel`、不构造 WAVE ROVER JSON，也不触发底盘运动。
+- 上位机 HTTP 2xx 且返回 object JSON 时，PC 返回 `200`，`upper_request.executed=true`，`upper_request.path=/api/radar/scan-proof/refresh`。这只证明 PC 同源请求到达 upper read-only refresh route，不证明 fresh `/scan` 或 ROS2 runtime 已验收。
+- 上位机 HTTP 非 2xx、超时、fetch 失败或坏 JSON 时，PC 返回 `502` 并保留真实失败，如 `upper_http_404`、`upper_http_405`、`upper_http_503`、`timeout` 或 `bad_json`；不得包装成成功，也不得回落为 `/api/radar/start` 或底盘控制失败。
+- command response 继续固定 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`robot_ack_connected=false`、`t1001_observed=false`。
+- `not_proven` 必须继续包含 HIL、PC WASD 控车、Nav2 消费、SLAM map、delivery success、driver start/stop 等边界；即使 remote refresh 返回 fresh artifact，也不能声明 HIL、PC WASD、Nav2、map 或送达成功。
 
 ## `POST /api/o7/direct-upper/base/manual`
 

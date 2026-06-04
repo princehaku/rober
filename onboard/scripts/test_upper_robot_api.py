@@ -282,6 +282,82 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
             self.assertFalse(bad["sends_commands"])
             self.assertEqual(FakeSerial.instances, [])
 
+    def test_lidar_scan_proof_refresh_runs_read_only_collector_contract(self) -> None:
+        calls: list[dict[str, object]] = []
+        original_runner = api.run_lidar_scan_proof_collector
+
+        def fake_runner(**kwargs: object) -> dict[str, object]:
+            """模拟 collector 子进程，证明 upper API 只调只读 proof 入口。"""
+            calls.append(kwargs)
+            return {
+                "command_result": {
+                    "mode": "read_only_scan_proof_collector",
+                    "executed": True,
+                    "ok": True,
+                    "script_path": "/fake/o1_lidar_scan_proof_collector.py",
+                    "argv": ["python3", "o1_lidar_scan_proof_collector.py", "--expect-existing-topics"],
+                    "returncode": 0,
+                },
+                "collector_payload": {
+                    "schema": "trashbot.o1.lidar_scan_proof.v1",
+                    "artifact": {"ok": True, "path": str(kwargs["artifact_path"])},
+                    "proof": {
+                        "status": "blocked_or_not_observed",
+                        "scan_once_observed": False,
+                        "scan_hz_observed": False,
+                        "raw_packet_once_observed": False,
+                        "tf_observed": False,
+                        "all_required_observations_observed": False,
+                    },
+                    "blockers": [{"code": "upper_api_scan_not_proven", "detail": "8787 radar scan_status='not_proven'"}],
+                    "safe_to_control": False,
+                    "sends_motion_commands": False,
+                    "robot_control_executed": False,
+                },
+                "parse_error": None,
+            }
+
+        api.run_lidar_scan_proof_collector = fake_runner  # type: ignore[assignment]
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                artifact_path = str(Path(tmpdir) / "lidar_scan_proof_latest.json")
+                robot = api.UpperRobotApi(
+                    "http://127.0.0.1:8088",
+                    "/dev/fake-base",
+                    115200,
+                    max_speed=0.12,
+                    lidar_scan_proof_artifact_path=artifact_path,
+                )
+
+                result = asyncio.run(robot.radar_scan_proof_refresh({"timeout_s": 2}))
+                status = robot.radar_status()
+        finally:
+            api.run_lidar_scan_proof_collector = original_runner  # type: ignore[assignment]
+
+        self.assertEqual(api.ROUTE_PATHS["radar_scan_proof_refresh"], "/api/radar/scan-proof/refresh")
+        self.assertEqual(calls[0]["artifact_path"], artifact_path)
+        self.assertEqual(calls[0]["upper_api_base_url"], "http://127.0.0.1:8787")
+        self.assertEqual(calls[0]["timeout_s"], 2.0)
+        self.assertEqual(result["endpoint"], "/api/radar/scan-proof/refresh")
+        self.assertEqual(result["status"], "refreshed")
+        self.assertEqual(result["proof_state"], "blocked_or_not_observed")
+        self.assertEqual(result["evidence_type"], "blocked_with_root_cause")
+        self.assertEqual(result["artifact_path"], artifact_path)
+        self.assertEqual(result["command_result"]["mode"], "read_only_scan_proof_collector")
+        self.assertEqual(result["blockers_summary"][0]["code"], "upper_api_scan_not_proven")
+        self.assertFalse(result["scan_runtime_proven"])
+        self.assertFalse(result["safe_to_control"])
+        self.assertFalse(result["sends_commands"])
+        self.assertFalse(result["sends_motion_commands"])
+        self.assertFalse(result["robot_control_executed"])
+        self.assertFalse(result["opens_lidar_serial"])
+        self.assertFalse(result["starts_lidar_driver"])
+        self.assertIn("/dev/ttyS5", result["blocked_devices_not_opened"])
+        self.assertIn("A5 60", result["blocked_commands_not_sent"])
+        self.assertEqual(status["controls"]["scan_proof_refresh"]["endpoint"], "/api/radar/scan-proof/refresh")
+        self.assertFalse(status["controls"]["scan_proof_refresh"]["opens_lidar_serial"])
+        self.assertEqual(FakeSerial.instances, [])
+
     def test_lidar_raw_packet_proof_latest_readback_missing_loaded_bad_json_is_read_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             artifact_path = Path(tmpdir) / "raw_packet.json"
@@ -1068,6 +1144,76 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
 
 
 class UpperRobotApiHttpRouteTest(unittest.IsolatedAsyncioTestCase):
+    async def test_radar_scan_proof_refresh_http_post_is_not_405_and_stays_non_motion(self) -> None:
+        try:
+            from aiohttp.test_utils import TestClient, TestServer
+        except Exception as exc:  # noqa: BLE001 - 本机缺 aiohttp 时保留类方法回归作为必跑证明。
+            self.skipTest(f"aiohttp test client unavailable: {exc}")
+
+        calls: list[dict[str, object]] = []
+        original_runner = api.run_lidar_scan_proof_collector
+
+        def fake_runner(**kwargs: object) -> dict[str, object]:
+            """HTTP route smoke 只验证 8787 调度边界，不运行真实 ROS2 topic 命令。"""
+            calls.append(kwargs)
+            return {
+                "command_result": {
+                    "mode": "read_only_scan_proof_collector",
+                    "executed": True,
+                    "ok": True,
+                    "script_path": "/fake/o1_lidar_scan_proof_collector.py",
+                    "returncode": 0,
+                },
+                "collector_payload": {
+                    "schema": "trashbot.o1.lidar_scan_proof.v1",
+                    "artifact": {"ok": True, "path": str(kwargs["artifact_path"])},
+                    "proof": {
+                        "status": "scan_once_hz_raw_packet_tf_observed",
+                        "scan_once_observed": True,
+                        "scan_hz_observed": True,
+                        "scan_hz_average_rate_hz": 7.5,
+                        "raw_packet_once_observed": True,
+                        "tf_observed": True,
+                        "all_required_observations_observed": True,
+                    },
+                    "blockers": [],
+                },
+                "parse_error": None,
+            }
+
+        api.run_lidar_scan_proof_collector = fake_runner  # type: ignore[assignment]
+        install_fake_serial()
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                robot = api.UpperRobotApi(
+                    "http://127.0.0.1:8088",
+                    "/dev/fake-base",
+                    115200,
+                    max_speed=0.12,
+                    lidar_scan_proof_artifact_path=str(Path(tmpdir) / "lidar_scan_proof_latest.json"),
+                )
+                client = TestClient(TestServer(api.create_app(robot)))
+                await client.start_server()
+                try:
+                    response = await client.post("/api/radar/scan-proof/refresh", json={"timeout_s": 1})
+                    body = await response.json()
+                finally:
+                    await client.close()
+        finally:
+            api.run_lidar_scan_proof_collector = original_runner  # type: ignore[assignment]
+
+        self.assertEqual(response.status, 200)
+        self.assertEqual(body["endpoint"], "/api/radar/scan-proof/refresh")
+        self.assertEqual(body["evidence_type"], "robot_runtime_material")
+        self.assertTrue(body["scan_runtime_proven"])
+        self.assertTrue(body["ros2_runtime_proven"])
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["sends_motion_commands"])
+        self.assertFalse(body["robot_control_executed"])
+        self.assertFalse(body["opens_lidar_serial"])
+        self.assertEqual(calls[0]["timeout_s"], 1.0)
+        self.assertEqual(FakeSerial.instances, [])
+
     async def test_operator_report_http_post_and_get_are_not_405_when_aiohttp_is_available(self) -> None:
         try:
             from aiohttp.test_utils import TestClient, TestServer

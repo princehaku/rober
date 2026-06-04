@@ -15,11 +15,11 @@ const MAX_PC_MANUAL_SPEED_MPS = 0.08;
 const MAX_PC_MANUAL_DURATION_MS = 350;
 const FIELD_DEFAULT_UPPER_API_BASE_URL = "http://192.168.1.11:8787";
 const DIRECT_UPPER_ADAPTER: O7DirectUpperApiAdapterInfo = {
-  version: "2026-06-04.field-default-radar-v2",
+  version: "2026-06-04.scan-proof-refresh-v1",
   source: "pc-tools/workstation/src/server/o7DirectUpperApi.ts",
   field_default_enabled: true,
   field_default_url: FIELD_DEFAULT_UPPER_API_BASE_URL,
-  dev_server_reload_hint: "restart npm run dev if 127.0.0.1:5173 still reports missing adapter or base_url_not_configured for radar/start",
+  dev_server_reload_hint: "restart npm run dev if 127.0.0.1:5173 still reports missing adapter or base_url_not_configured for radar/start or scan-proof refresh",
 };
 const ALLOWED_DIRECTIONS = ["forward", "back", "left", "right", "stop"] as const;
 const DEFAULT_SCAN_PROOF_BLOCKERS = ["radar_scan_proof_latest_not_loaded"] as const;
@@ -256,6 +256,7 @@ function blockedStatus(baseUrl: ResolvedUpperBaseUrl, reason: string): O7DirectU
       feedback_request: "/api/o7/direct-upper/base/feedback-request",
       radar_start: "/api/o7/direct-upper/radar/start",
       radar_stop: "/api/o7/direct-upper/radar/stop",
+      scan_proof_refresh: "/api/o7/direct-upper/radar/scan-proof/refresh",
       map_start: "/api/o7/direct-upper/map/start",
       map_reset: "/api/o7/direct-upper/map/reset",
       map_save: "/api/o7/direct-upper/map/save",
@@ -394,6 +395,7 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
       feedback_request: "/api/o7/direct-upper/base/feedback-request",
       radar_start: "/api/o7/direct-upper/radar/start",
       radar_stop: "/api/o7/direct-upper/radar/stop",
+      scan_proof_refresh: "/api/o7/direct-upper/radar/scan-proof/refresh",
       map_start: "/api/o7/direct-upper/map/start",
       map_reset: "/api/o7/direct-upper/map/reset",
       map_save: "/api/o7/direct-upper/map/save",
@@ -424,6 +426,9 @@ function commandResponse(
   const hardBlockedReasons = ["robot_ack_not_connected", "t1001_feedback_not_observed", "field_evidence_not_proven"];
   const fixtureBlockers = baseUrl.source === "fixture" ? ["fixture_mode_no_upper_runtime"] : [];
   const blockedReasons = [...(failureReason === "none" ? [] : [failureReason]), ...fixtureBlockers, ...hardBlockedReasons];
+  const scanProofRefreshNotProven = command === "radar_scan_proof_refresh"
+    ? ["driver_start_stop", "pc_wasd_control", "nav2_consumption", "slam_map", "delivery_success"]
+    : [];
   // sends_commands 表示没有发送 ROS/cmd_vel 或直写 WAVE ROVER JSON；8787 POST 只记录在 upper_request。
   return {
     schema,
@@ -447,6 +452,7 @@ function commandResponse(
     blocked_reasons: blockedReasons,
     not_proven: [
       ...(baseUrl.source === "fixture" ? ["upper_8787_runtime"] : []),
+      ...scanProofRefreshNotProven,
       "robot_ack",
       "t1001_feedback",
       "hil_pass",
@@ -774,6 +780,19 @@ export async function proxyO7DirectUpperRadarStop(options: DirectUpperOptions = 
     "/api/radar/stop",
     "trashbot.pc_tools_workstation.o7_direct_upper_radar_stop.v1",
     "radar_stop",
+    "POST",
+    true,
+  );
+}
+
+export async function proxyO7DirectUpperRadarScanProofRefresh(options: DirectUpperOptions = {}): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
+  // scan-proof refresh 只请求 upper API 做只读 ROS2/LiDAR proof 刷新；PC 不直连 ROS graph 或 LiDAR 串口。
+  return proxyOperatorCommand(
+    options,
+    "/api/o7/direct-upper/radar/scan-proof/refresh",
+    "/api/radar/scan-proof/refresh",
+    "trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_refresh.v1",
+    "radar_scan_proof_refresh",
     "POST",
     true,
   );

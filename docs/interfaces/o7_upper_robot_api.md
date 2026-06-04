@@ -71,6 +71,7 @@ bash onboard/scripts/install_upper_robot_api_service.sh --repo-root /root/rober
 | `GET` | `/api/radar/status` | 雷达设备和 `/scan` 证明状态 |
 | `POST` | `/api/radar/start` | 雷达一键启动合同；默认 dry-run/stub，只能配置 LiDAR/ROS2 driver 命令，不触碰 `/dev/ttyS5` 或底盘运动命令 |
 | `POST` | `/api/radar/stop` | 雷达一键停止合同；默认 dry-run/stub，只能配置 LiDAR/ROS2 driver 停止命令，不触碰 `/dev/ttyS5` 或底盘运动命令 |
+| `POST` | `/api/radar/scan-proof/refresh` | 只读刷新 LiDAR `/scan` proof artifact；只运行 collector 读取既有 ROS2 topic，不启动 driver、不打开串口、不发送运动命令 |
 | `GET` | `/api/radar/scan-proof/latest` | 只读回放最近一次 LiDAR `/scan` proof artifact；不启动 ROS2、不打开串口、不发送 `A5 60` |
 | `GET` | `/api/radar/raw-packet-proof/latest` | 只读回放最近一次 LiDAR raw packet proof artifact；不执行 collector、不启动 ROS2、不打开串口、不发送 `A5 60` 或底盘命令 |
 | `POST` | `/api/map/start` | 建图 lifecycle start 合同；默认 dry-run/stub，返回 `not_proven` 与 artifact 入口 |
@@ -259,6 +260,39 @@ runtime proof。PC 的“实时雷达 ready”只能认 `/scan` once + `/scan` h
 `ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH` / `--lidar-scan-proof-artifact-path`
 指向的 JSON，默认 `runtime/lidar_scan_proof_latest.json`。该 artifact 应由
 `onboard/scripts/o1_lidar_scan_proof_collector.py` 生成。
+
+`POST /api/radar/scan-proof/refresh` 是 O3/O7 的只读刷新入口。它默认用当前
+Python 解释器执行同目录 `onboard/scripts/o1_lidar_scan_proof_collector.py`：
+
+```bash
+python3 onboard/scripts/o1_lidar_scan_proof_collector.py \
+  --once-json \
+  --expect-existing-topics \
+  --output runtime/lidar_scan_proof_latest.json \
+  --upper-api-base-url http://127.0.0.1:8787
+```
+
+refresh 入口的唯一目标是把“当前已有 ROS2 graph 是否能读到 `/scan`、`/scan` hz、
+`/lidar/raw_packet` 和 `base_link -> laser_frame` TF”刷新成 latest artifact。它不会启动
+LiDAR driver，不会打开 `/dev/ttyACM0` 或 `/dev/lidar`，不会发送 vendor `A5 60`
+启动字节，也不会触碰 `/dev/ttyS5`、`T=1/T=13/T=130/T=131`、`/api/base/manual`
+或 `/cmd_vel`。
+
+refresh 响应固定包含：
+
+- `command_result`：collector 子进程执行结果；脚本缺失时为
+  `reason="collector_script_missing"`，用于定位部署 blocker。
+- `artifact_path` / `artifact`：latest artifact 路径和 schema。
+- `proof_summary`：collector 的 `/scan` once、hz、raw packet、TF 摘要。
+- `blockers_summary`：ROS2 setup/install、topic 未观察、artifact 写入失败或 collector
+  JSON parse 失败等 blocker。
+- `safe_to_control=false`、`sends_commands=false`、`sends_motion_commands=false`、
+  `robot_control_executed=false`、`opens_lidar_serial=false`、`starts_lidar_driver=false`。
+
+实现上 refresh handler 会在线程里运行 collector 子进程，避免 collector 反查本机
+`/health`、`/api/radar/status` 时被当前 aiohttp request handler 阻塞。若 live 上位机没有同步
+collector 脚本，或者 8787 重启方式不明确，必须把结果写成部署 blocker，不能把本地单测写成
+fresh runtime material。
 
 readback 边界：
 

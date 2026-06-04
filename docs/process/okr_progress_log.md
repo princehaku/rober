@@ -8,6 +8,57 @@
 
 ## 2026-06-04 系列
 
+### 2026-06-04 21-22｜Runtime Material Runtime Hooks｜本地 refresh 合同完成，现场 8787 route 未部署
+
+本轮 Epic 接续 20-21 `runtime-material-followup` 的 root cause：上位机 8787 和 ROS2 环境可达，
+但 live hook 没有 fresh scan proof refresh 路径，operator 只能读旧 artifact 或看到
+`dry_run_stub/no_command_configured`。本轮目标不是继续写 runbook，而是把 O3/O7 的下一步变成
+可点击、可代理、可回放的只读 refresh 合同。
+
+本轮 owner 证据：
+
+- Robot Software：本地新增 `POST /api/radar/scan-proof/refresh`，只运行
+  `o1_lidar_scan_proof_collector.py --once-json --expect-existing-topics` 写入
+  `runtime/lidar_scan_proof_latest.json`，固定 `safe_to_control=false`、
+  `sends_motion_commands=false`、`robot_control_executed=false`。本地
+  `python3 -m unittest onboard.scripts.test_upper_robot_api` 28 tests OK，`compileall`
+  和 scoped diff-check 通过。SSH 只读显示 live 8787 的 radar controls 仍只有 `start/stop`，
+  没有 `scan_proof_refresh`。
+- Full-Stack：PC workstation 新增
+  `POST /api/o7/direct-upper/radar/scan-proof/refresh`、client helper、shared contract 和
+  `Refresh scan proof` UI 按钮，缺 env 时沿用现场默认 `http://192.168.1.11:8787`。PC
+  `npm test -- --run` 99 tests OK，build/lint 和 scoped diff-check 通过。现场
+  `GET /health` HTTP 200，但 `POST /api/radar/scan-proof/refresh` 返回 HTTP 405 / `Allow=OPTIONS`。
+- Hardware：复核 vendor 边界和现场只读 readback，确认 scan proof/latest 不是 HIL，`T=1001`
+  只是 vendor feedback material；base feedback latest 中历史 3/3 `T=1001` 与
+  `/api/base/status.feedback_samples_latest.freshness.status=stale` 不冲突。未调用
+  `/api/base/manual`、`/api/base/feedback-request`、未发送 `T=1/T=13/T=130/T=131`、未发布
+  `/cmd_vel`。
+
+本轮 OKR 调整：
+
+| Objective | 调整 | 原因 |
+| --- | --- | --- |
+| O3：建图、定位、Nav2 与固定路线 | 保持约 73% | 本地 upper API refresh 合同完成，但 live 8787 未部署 route，未产生 fresh `/scan`、map、AMCL、TF 或 Nav2 material。 |
+| O7：PC 运营调试平台 | 保持约 90% | PC refresh UI/API 已接入并验证，但现场 upper 返回 HTTP 405，不能写成真实 operator runtime workflow。 |
+| O1：硬件协议可信底盘 | 保持约 95.5% | 安全边界和 stale/fresh 口径更清楚，但无 HIL、ACK 或新的 fresh feedback。 |
+| O8：Epic 交付节奏与证据治理 | 约 42% -> 约 43% | 连续 Epic 留档、owner notes、evidence type gate 和部署 blocker 收口完成。 |
+| O2/O5/O6 | 不变 | 本轮不触达真实电梯图片、production cloud 或 archive runtime。 |
+
+本轮进入历史进展的 KR：
+
+- `KR-O8-Evidence-Type-Gate`：本轮明确区分 `software_guard`、`blocked_with_root_cause` 和
+  vendor feedback material，未把本地合同写成产品 runtime material。
+- `KR-O8-Repeated-Blocker-Stop`：O3 blocker 从“无应用 ROS graph / hook 未配置”进一步收敛为
+  “本地 route 已完成但 live 8787 未部署或未重载”，下一轮必须处理部署/reload，不再重复旧 readback。
+- `KR-O7-Scan-Proof-Refresh-Software-Guard`：PC 已有同源 refresh 操作入口和用户可读 not_proven
+  展示，但它只作为 software guard，不进入 O7 现场 workflow 完成归档。
+
+剩余风险：没有 fresh `/scan` once/hz、`/lidar/raw_packet`、TF、SLAM `/map`、AMCL、Nav2 lifecycle、
+PC WASD、HIL、robot ACK、`safe_to_control=true` 或 delivery success。下一轮必须确认
+`trashbot-upper-robot-api.service` 或实际 8787 启动命令，安全部署并重测
+`POST /api/radar/scan-proof/refresh`。
+
 ### 2026-06-04 17-18｜Runtime Material Epic｜`upper_http_405` 解除，O8 完成首轮治理闭环
 
 本轮 Epic 接续 16:05 OKR rewrite 的打回口径，目标是把 O2/O3/O7/O1 从 `software_guard`

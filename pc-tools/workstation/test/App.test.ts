@@ -17,6 +17,7 @@ import {
   proxyO7DirectUpperManual,
   proxyO7DirectUpperOperatorReport,
   proxyO7DirectUpperOperatorReportReadback,
+  proxyO7DirectUpperRadarScanProofRefresh,
   proxyO7DirectUpperRadarStart,
   proxyO7DirectUpperRadarStop,
   proxyO7DirectUpperStop,
@@ -319,11 +320,11 @@ const localCameraFixture = {
 };
 
 const directUpperAdapterFixture = {
-  version: "2026-06-04.field-default-radar-v2",
+  version: "2026-06-04.scan-proof-refresh-v1",
   source: "pc-tools/workstation/src/server/o7DirectUpperApi.ts",
   field_default_enabled: true,
   field_default_url: "http://192.168.1.11:8787",
-  dev_server_reload_hint: "restart npm run dev if 127.0.0.1:5173 still reports missing adapter or base_url_not_configured for radar/start",
+  dev_server_reload_hint: "restart npm run dev if 127.0.0.1:5173 still reports missing adapter or base_url_not_configured for radar/start or scan-proof refresh",
 } as const;
 
 const directUpperFixture = {
@@ -386,6 +387,7 @@ const directUpperFixture = {
     feedback_request: "/api/o7/direct-upper/base/feedback-request",
     radar_start: "/api/o7/direct-upper/radar/start",
     radar_stop: "/api/o7/direct-upper/radar/stop",
+    scan_proof_refresh: "/api/o7/direct-upper/radar/scan-proof/refresh",
     map_start: "/api/o7/direct-upper/map/start",
     map_reset: "/api/o7/direct-upper/map/reset",
     map_save: "/api/o7/direct-upper/map/save",
@@ -469,6 +471,12 @@ function stubFetch(options: StubFetchOptions = {}): ReturnType<typeof vi.fn> {
         schema: "trashbot.pc_tools_workstation.o7_direct_upper_radar_stop.v1",
         command: "radar_stop",
         upperPath: "/api/radar/stop",
+        method: "POST",
+      },
+      "/api/o7/direct-upper/radar/scan-proof/refresh": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_refresh.v1",
+        command: "radar_scan_proof_refresh",
+        upperPath: "/api/radar/scan-proof/refresh",
         method: "POST",
       },
       "/api/o7/direct-upper/map/start": {
@@ -675,19 +683,22 @@ describe("O7 live operator first screen", () => {
     expect(text).toContain("/api/o7/direct-upper/base/manual");
     expect(text).toContain("雷达 / 建图 / 定位");
     expect(text).toContain("Radar start");
+    expect(text).toContain("Refresh scan proof");
     expect(text).toContain("Map save");
     expect(text).toContain("Localize reset");
     expect(text).toContain("Report evidence ref");
     expect(text).toContain("fixture mode");
     expect(text).toContain("operator confirmation");
-    expect(text).toContain("real upper mode · radar/report use field_default if env is absent; base/map/localize still require env");
-    expect(text).toContain("adapter=2026-06-04.field-default-radar-v2");
+    expect(text).toContain("real upper mode · radar/report/scan-proof refresh use field_default if env is absent; base/map/localize still require env");
+    expect(text).toContain("adapter=2026-06-04.scan-proof-refresh-v1");
     expect(text).toContain("field_default=http://192.168.1.11:8787");
     expect(text).toContain("/api/o7/direct-upper/radar/start");
+    expect(text).toContain("/api/o7/direct-upper/radar/scan-proof/refresh");
     expect(text).toContain("/api/o7/direct-upper/map/save");
     expect(text).toContain("/api/o7/direct-upper/localize/reset");
     expect(text).toContain("/api/o7/direct-upper/operator-report");
     expect(text).toContain("map=not_loaded · localize=not_loaded · report=missing_operator_report");
+    expect(text).toContain("loaded · fresh · 14s · blocked_or_not_observed");
     expect(text).toContain("http://192.168.1.11:8787");
     expect(text).toContain("摄像头已就绪，点击重新连接预览");
     expect(text).not.toContain("雷达未接入 / 等待建图");
@@ -852,7 +863,7 @@ describe("O7 live operator first screen", () => {
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/direct-upper/base/manual");
   });
 
-  it("routes radar, map, localize, and operator report controls through workstation direct-upper proxies with not_proven copy", async () => {
+  it("routes radar, scan proof refresh, map, localize, and operator report controls through workstation direct-upper proxies with not_proven copy", async () => {
     stubWebrtc();
     const mockedFetch = stubFetch();
 
@@ -861,7 +872,7 @@ describe("O7 live operator first screen", () => {
     await wrapper.vm.$nextTick();
     await confirmOperator(wrapper);
 
-    for (const label of ["Radar start", "Radar stop", "Map start", "Map reset", "Map save", "Map load", "Map list", "Localize reset"]) {
+    for (const label of ["Radar start", "Radar stop", "Refresh scan proof", "Map start", "Map reset", "Map save", "Map load", "Map list", "Localize reset"]) {
       await vi.waitFor(() => {
         const button = wrapper.findAll("button").find((item) => item.text() === label);
         expect(button?.attributes("disabled")).toBeUndefined();
@@ -883,6 +894,7 @@ describe("O7 live operator first screen", () => {
     const calledUrls = mockedFetch.mock.calls.map(([url]) => String(url));
     expect(calledUrls).toContain("/api/o7/direct-upper/radar/start");
     expect(calledUrls).toContain("/api/o7/direct-upper/radar/stop");
+    expect(calledUrls).toContain("/api/o7/direct-upper/radar/scan-proof/refresh");
     expect(calledUrls).toContain("/api/o7/direct-upper/map/start");
     expect(calledUrls).toContain("/api/o7/direct-upper/map/reset");
     expect(calledUrls).toContain("/api/o7/direct-upper/map/save");
@@ -893,6 +905,7 @@ describe("O7 live operator first screen", () => {
     expect(calledUrls.join("\n")).not.toContain("http://192.168.1.11:8787/api");
     expect(calledUrls.join("\n")).not.toContain("/cmd_vel");
     expect(calledUrls.join("\n")).not.toContain("/api/radar/start");
+    expect(calledUrls.join("\n")).not.toContain("/api/radar/scan-proof/refresh");
     expect(wrapper.text()).toContain("Operator report 已发送（仍锁定）：/api/operator/report HTTP 200");
     expect(wrapper.text()).toContain("锁定原因 robot_ack_not_connected / t1001_feedback_not_observed / field_evidence_not_proven");
     expect(wrapper.text()).toContain("safe_to_control=false");
@@ -964,7 +977,7 @@ describe("O7 live operator first screen", () => {
     expect(text).toContain("Radar start 失败：upper_http_503");
     expect(text).toContain("/api/radar/start HTTP 503");
     expect(text).toContain("source=field_default");
-    expect(text).toContain("adapter=2026-06-04.field-default-radar-v2");
+    expect(text).toContain("adapter=2026-06-04.scan-proof-refresh-v1");
     expect(text).toContain("safe_to_control=false");
     expect(text).toContain("robot_ack_not_connected / t1001_feedback_not_observed / field_evidence_not_proven");
     expect(text).not.toContain("Radar start 失败：base_url_not_configured");
@@ -1274,6 +1287,54 @@ describe("O7 direct upper PC API", () => {
     ]);
   });
 
+  it("proxies read-only scan proof refresh through the field default route without claiming runtime success", async () => {
+    const mockedFetch = vi.fn(async (input: RequestInfo | URL) => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        schema: "trashbot.upper_robot_api.radar_scan_proof_refresh.v1",
+        status: "fresh",
+        artifact: { status: "loaded" },
+        freshness: { status: "fresh", age_seconds: 0 },
+        latest_proof_status: "scan_once_hz_observed",
+        requested_path: String(input).replace("http://192.168.1.11:8787", ""),
+      }),
+    }) as Response);
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const refresh = await proxyO7DirectUpperRadarScanProofRefresh({
+      env: {},
+      body: { evidence_ref: "o7-scan-proof-refresh-field-default" },
+    });
+
+    expect(refresh.status).toBe(200);
+    expect(refresh.payload.schema).toBe("trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_refresh.v1");
+    expect(refresh.payload.command).toBe("radar_scan_proof_refresh");
+    expect(refresh.payload.upper_api_base_url_source).toBe("field_default");
+    expect(refresh.payload.upper_request).toMatchObject({
+      path: "/api/radar/scan-proof/refresh",
+      method: "POST",
+      executed: true,
+      ok: true,
+      http_status: 200,
+    });
+    expect(refresh.payload.command_payload_summary.evidence_ref).toBe("o7-scan-proof-refresh-field-default");
+    expect(refresh.payload.not_proven).toEqual(expect.arrayContaining([
+      "driver_start_stop",
+      "pc_wasd_control",
+      "nav2_consumption",
+      "slam_map",
+      "delivery_success",
+      "hil_pass",
+    ]));
+    expect(refresh.payload.safe_to_control).toBe(false);
+    expect(refresh.payload.sends_commands).toBe(false);
+    expect(refresh.payload.robot_control_executed).toBe(false);
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).toEqual([
+      "http://192.168.1.11:8787/api/radar/scan-proof/refresh",
+    ]);
+  });
+
   it("keeps map/localize off the field default route while allowing operator report readback", async () => {
     const mockedFetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       const body = init?.body ? JSON.parse(String(init.body)) as { evidence_ref?: string; note?: string } : {};
@@ -1453,6 +1514,7 @@ describe("O7 direct upper PC API", () => {
     expect(response.local_api_paths.manual).toBe("/api/o7/direct-upper/base/manual");
     expect(response.local_api_paths.feedback_request).toBe("/api/o7/direct-upper/base/feedback-request");
     expect(response.local_api_paths.radar_start).toBe("/api/o7/direct-upper/radar/start");
+    expect(response.local_api_paths.scan_proof_refresh).toBe("/api/o7/direct-upper/radar/scan-proof/refresh");
     expect(response.local_api_paths.map_save).toBe("/api/o7/direct-upper/map/save");
     expect(response.local_api_paths.localize_reset).toBe("/api/o7/direct-upper/localize/reset");
     expect(response.local_api_paths.operator_report).toBe("/api/o7/direct-upper/operator-report");

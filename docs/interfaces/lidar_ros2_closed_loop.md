@@ -169,6 +169,18 @@ topic 观察，但说明 driver 优雅退出仍需单独修复或复验。
   目标机上该参数会返回非零并造成 `ros2_command_unavailable` false blocker。该修复
   只允许 collector 继续做只读 topic/TF readback，不会启动 driver、打开 LiDAR 串口、
   写 `/dev/ttyS5`、调用 `/api/base/manual` 或发布 `/cmd_vel`。
+- 2026-06-04 runtime hook 复核口径：`GET /api/radar/scan-proof/latest` 只能回放
+  `runtime/lidar_scan_proof_latest.json`，不得启动 driver、打开 `/dev/ttyS5`、发送
+  WAVE ROVER `T=1/T=13/T=130/T=131` 或发布 `/cmd_vel`。`POST
+  /api/radar/scan-proof/refresh` 只能运行同目录只读
+  `o1_lidar_scan_proof_collector.py --expect-existing-topics --output
+  runtime/lidar_scan_proof_latest.json`，用于刷新 artifact、`command_result` 和
+  `blockers_summary`。该入口不得启动 LiDAR driver，不得打开 `/dev/ttyACM0`、
+  `/dev/lidar` 或 `/dev/ttyS5`，不得发送 `A5 60`、WAVE ROVER
+  `T=1/T=13/T=130/T=131` 或 `/cmd_vel`；响应固定保留 `safe_to_control=false`、
+  `sends_motion_commands=false`、`robot_control_executed=false`。refresh/readback
+  即使观察到 `/scan` 或 `/lidar/raw_packet`，也不能外推为 WAVE ROVER ACK、HIL、
+  Nav2/SLAM 可消费、`safe_to_control=true` 或 delivery success。
 - `onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh` 是当前上位机 runtime/build
   remediation 入口：只安装 ROS2 Humble arm64 runtime 并构建 onboard，不启动
   driver、不打开串口、不写底盘 UART。
