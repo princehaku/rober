@@ -12,7 +12,7 @@ sprint_type: epic
 | --- | --- | --- |
 | Robot Software Engineer | Partial pass | `GET /api/nav2/status` 新增 `amcl_nav2_readiness` 输入护栏，从 canonical `/root/rober/onboard/runtime/map_lifecycle_latest.json` 和 `/root/rober/onboard/runtime/maps` 只读折算 Nav2 输入状态；更新 `docs/navigation/nav2_map_quality_metrics.md` 和 API 回归测试。 |
 | Full-stack Software Engineer | Pass | PC 端新增 `Read scan latest`、`Read map proof latest` 按钮和 browser workflow collector；生成 `pc-tools/workstation/.workstation-runtime/o7-direct-upper-browser-workflow.json` 与 `.png`，覆盖 refresh scan proof、read scan latest、read map proof latest、localize reset。 |
-| Robot Algorithm Engineer | Blocked with root cause | 新增 `pc-tools/evidence/fixtures/elevator_o10_image_eval_decision_gate/blocked_missing_real_or_controlled_manifest.json`，更新 `docs/vision/elevator_opencv_baseline.md`，明确缺真实/受控电梯图片 manifest，不能跑 field eval。 |
+| Robot Algorithm Engineer | Blocked with root cause | 新增 `pc-tools/evidence/fixtures/elevator_o10_image_eval_decision_gate/blocked_missing_real_or_controlled_manifest.json`，更新 `docs/vision/elevator_opencv_baseline.md`，补齐 `owner_notes/algorithm.md` 复核记录；Algorithm blocker code 为 `real_controlled_image_manifest_missing` / `blocked_with_root_cause`，明确缺真实/受控电梯图片 manifest，不能跑 field eval，也不能把 fixture/checker 扩写成真实电梯识别。 |
 | Hardware Infra Engineer | Blocked with root cause | 更新 `docs/hardware/o1_pc_manual_lidar_hil_boundary.md`，补 stop-first HIL CEO blocker 模板；已读 vendor source，确认无现场看护/净空/急停/授权时禁止运动。 |
 
 ## 验证结果
@@ -37,13 +37,17 @@ Algorithm：
 - `python3 -m unittest onboard/src/ros2_trashbot_vision/test/test_elevator_opencv_baseline.py`：7 tests OK。
 - `python3 -m unittest discover -s onboard/src/ros2_trashbot_vision/test -p 'test_*.py'`：20 tests OK。
 - manifest template checker 输出 `blocked_missing_real_or_controlled_images`，`field_eval_ready=false`。
+- Algorithm owner 复核：电梯图片 gate 保持 `real_controlled_image_manifest_missing` / `blocked_with_root_cause`；fixture eval 仅为 `software_guard`，task record 必须保留 `not_proven`；Nav2 readiness 仍是输入护栏 `software_guard`，不声明 AMCL/Nav2 runtime、路径生成或 path execution。
 
 Hardware：
 
 - `sed -n '1,220p' docs/vendor/VENDOR_INDEX.md`：已确认 vendor 入口。
+- `grep -R "safe_to_control=false\|sends_base_motion_commands=false\|robot_control_executed=false\|hil_pass=false\|missing_same-session_site_safety_authorization\|not_proven" ...`：通过，Hardware 文档、owner note 和 tech-done 均保留 no-motion / blocked 字段。
+- `git diff --check -- docs/hardware/o1_pc_manual_lidar_hil_boundary.md sprints/2026.06.05_13-14_o10-amcl-nav2-readiness-epic/owner_notes/hardware.md sprints/2026.06.05_13-14_o10-amcl-nav2-readiness-epic/tech-done.md`：通过，无 whitespace error。
 - `python3 -m compileall -q onboard/scripts onboard/src`：通过。
 - `python3 -m unittest onboard/scripts/test_o1_ttyS5_safe_pulse_acceptance.py`：18 tests OK。
-- 未执行 SSH、`/api/base/manual`、`T=1/T=11/T=13` 或 ROS `/cmd_vel`。
+- 未执行 SSH、`/api/base/manual`、base manual、WASD、pulse、`T=1/T=11/T=13`、WAVE ROVER motion 或 ROS `/cmd_vel`。
+- 安全字段保持：`safe_to_control=false`、`sends_base_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`、`field_hil_material=not_proven`。
 
 ## 证据边界
 
@@ -56,4 +60,5 @@ Hardware：
 - AMCL/Nav2 runtime collector 仍未跑；O3 不涨。
 - 电梯真实/受控图片 manifest 缺失；O2 不涨。
 - stop-first HIL 缺现场安全授权；O1 不涨，`safe_to_control=false` 保持。
+- Hardware blocker root cause：`missing_same-session_site_safety_authorization`；解除前不得把 `not_proven` 写成 HIL pass。
 - 本轮没有真实送达、真实跨楼层、PC WASD、HIL、robot ACK、`T=1001` 同场材料或 production cloud。
