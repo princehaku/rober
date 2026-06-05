@@ -41,6 +41,7 @@ import {
   proxyO7DirectUpperManual,
   proxyO7DirectUpperOperatorReport,
   proxyO7DirectUpperOperatorReportReadback,
+  proxyO7DirectUpperRadarScanProofLatest,
   proxyO7DirectUpperRadarScanProofRefresh,
   proxyO7DirectUpperRadarStart,
   proxyO7DirectUpperRadarStop,
@@ -168,6 +169,17 @@ export function createWorkstationApp(): express.Express {
   workstationApp.post("/api/o7/direct-upper/radar/scan-proof/refresh", async (req, res) => {
     // scan-proof refresh 只代理 upper 只读刷新；PC 不访问 ROS graph、LiDAR 串口或底盘控制面。
     const result = await proxyO7DirectUpperRadarScanProofRefresh({ body: req.body });
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.get("/api/o7/direct-upper/radar/scan-proof/latest", async (req, res) => {
+    // latest 只读回放 upper artifact；它用于证明同源代理拿到 JSON，而不是把一次 proof 外推成连续雷达 ready。
+    const result = await proxyO7DirectUpperRadarScanProofLatest({
+      body: {
+        evidence_ref: queryString(req.query.evidence_ref),
+        fixture_mode: queryString(req.query.fixture_mode),
+      },
+    });
     res.status(result.status).json(result.payload);
   });
 

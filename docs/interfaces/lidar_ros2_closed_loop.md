@@ -224,6 +224,30 @@ topic 观察，但说明 driver 优雅退出仍需单独修复或复验。
   因此本轮 root cause 是只存在 API-managed 短窗口 LiDAR runtime proof，
   尚未部署 continuous radar runtime；`continuous_scan_status=not_proven` 的直接
   blocker 是 `scan_continuity_not_observed`。
+- 2026-06-05 08-09 O9 map lifecycle helper 口径：`POST /api/map/proof/refresh`
+  现在由 8787 上位机 API 注册，调用同目录 `o3_map_lifecycle_proof.py` 写入
+  `runtime/map_lifecycle_latest.json`，并由 `GET /api/map/proof/latest` 只读回放。
+  helper 目标是 no-motion 采集 `/scan` once、`/map` once、`/trashbot/save_map`
+  和 `runtime/maps` 下的 YAML/PGM artifact；失败时必须写成
+  `blocked_with_root_cause`，并把根因收敛到 ROS install/source、LiDAR、
+  SLAM/TF/topic remap、map saver 或文件路径/权限等具体层。该 route/helper 只允许
+  LiDAR 与 SLAM proof，不发布 `/cmd_vel`、不调用 `/api/base/manual`、不写
+  WAVE ROVER 底盘 UART；响应和 artifact 必须固定
+  `safe_to_control=false`、`sends_base_motion_commands=false`、
+  `robot_control_executed=false`。观察到 `/map` 或 map file 也不能外推为
+  AMCL/Nav2 ready、地图可导航、fixed-route 可跑、HIL pass 或
+  `safe_to_control=true`。
+- 2026-06-05 09:33 CST Owner 2 收口：远端 apt/dpkg 已恢复，`ros2 pkg prefix
+  slam_toolbox` 返回 `/opt/ros/humble`。no-motion proof 已启动 LiDAR driver、
+  `slam_toolbox`、`map_recorder`、`odom->base_link` 静态 TF 和
+  `base_link->laser_frame` 静态 TF；`/scan` once、`/map` once、map metadata
+  已观察到，`/trashbot/save_map` 返回 success，`runtime/maps/trashbot_map.pgm`
+  与 `runtime/maps/trashbot_map.yaml` 已在远端文件系统确认存在。安全字段仍为
+  `safe_to_control=false`、`sends_base_motion_commands=false`、
+  `robot_control_executed=false`；本轮未发布 `/cmd_vel`、未调用
+  `/api/base/manual`、未写 WAVE ROVER 底盘 UART。artifact 曾因相对路径枚举误把已
+  保存 map 判为 `file path/permissions`，helper 已改为按 onboard workdir 解析
+  `runtime/maps`。
 - `onboard/scripts/o1_ros2_humble_arm64_bootstrap.sh` 是当前上位机 runtime/build
   remediation 入口：只安装 ROS2 Humble arm64 runtime 并构建 onboard，不启动
   driver、不打开串口、不写底盘 UART。

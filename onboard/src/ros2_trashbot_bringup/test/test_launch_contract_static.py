@@ -153,6 +153,34 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertIn("'sample_manifest_name': route_sample_manifest_name", recorder_block)
         self.assertIn("'sample_manifest_max_entries': route_sample_manifest_max_entries", recorder_block)
 
+    def test_learn_launch_keeps_no_motion_map_proof_explicit(self):
+        source = read_launch("learn.launch.py")
+        ast.parse(source)
+
+        self.assertIn("'waypoint_manager', default_value='true'", source)
+        self.assertIn("'no_motion_static_odom_tf', default_value='false'", source)
+        self.assertIn("'slam_map_frame',", source)
+        self.assertIn("'slam_odom_frame',", source)
+        self.assertIn("'slam_base_frame',", source)
+        self.assertIn("waypoint_manager_condition = IfCondition(waypoint_manager)", source)
+        self.assertIn("no_motion_static_odom_tf_condition = IfCondition(no_motion_static_odom_tf)", source)
+
+        odom_block = node_block(source, "static_transform_publisher")
+        self.assertIn("condition=lidar_condition", odom_block)
+        no_motion_block = source[source.index("name='odom_to_base_link_no_motion'"):]
+        self.assertIn("condition=no_motion_static_odom_tf_condition", no_motion_block)
+        self.assertIn("'--frame-id', 'odom'", no_motion_block)
+        self.assertIn("'--child-frame-id', 'base_link'", no_motion_block)
+
+        waypoint_block = node_block(source, "waypoint_manager")
+        self.assertIn("condition=waypoint_manager_condition", waypoint_block)
+
+        slam_block = node_block(source, "async_slam_toolbox_node")
+        self.assertIn("'map_frame': slam_map_frame", slam_block)
+        self.assertIn("'odom_frame': slam_odom_frame", slam_block)
+        self.assertIn("'base_frame': slam_base_frame", slam_block)
+        self.assertIn("'scan_topic': lidar_scan_topic", slam_block)
+
     def test_autonomous_can_start_operator_gateway(self):
         source = read_launch("autonomous.launch.py")
         gateway_block = source[source.index("executable='operator_gateway'"):]

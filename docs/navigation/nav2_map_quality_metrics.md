@@ -100,6 +100,36 @@ Robot Software Engineer 通过上位机
 no-motion learning/SLAM runtime，并在同一窗口采集 `/map` once 与地图 artifact；
 在获得现场安全授权前不得运行 `/cmd_vel`、`/api/base/manual` 或任何底盘控制。
 
+### Map lifecycle proof refresh route
+
+`POST /api/map/proof/refresh` 是本轮新增的 no-motion map lifecycle proof 入口。
+它调用 `onboard/scripts/o3_map_lifecycle_proof.py`，目标是在同一窗口内启动
+`learn.launch.py lidar_enabled:=true`，观察 `/scan` once、`/map` once，调用
+`/trashbot/save_map`，并把 `runtime/maps` 下的 YAML/PGM 和最小 map metadata 写入
+`runtime/map_lifecycle_latest.json`。`GET /api/map/proof/latest` 只读回放该 JSON，
+不会启动 ROS2、SLAM 或任何硬件。
+
+失败时 helper 必须写入 `blocked_with_root_cause`，并在 `proof.root_causes` 中区分
+`ROS install/source`、`LiDAR/launch/topic remap`、`SLAM/TF/topic remap`、
+`map saver`、`file path/permissions` 等层。2026-06-05 09:33 CST 远端收口后，
+`slam_toolbox` 已安装，helper 已在 no-motion 窗口观察到 `/scan` once、`/map`
+once 和 map metadata，并且 `/trashbot/save_map` 返回
+`success=True, message='Map saved to runtime/maps/trashbot_map.pgm'`。命令末尾
+`find /root/rober/onboard/runtime/maps` 已确认 `trashbot_map.pgm` 与
+`trashbot_map.yaml` 存在。
+
+本轮同步修正 helper 对 `runtime/maps` 的相对路径枚举：文件检查按 onboard workdir
+解析，避免 systemd/current-working-directory 不同导致已保存地图被误判为
+`map_save_reported_success_but_no_artifact_files_found`。该修正只改 artifact
+列举边界，不改变 no-motion 安全口径。
+
+该 route/helper 的证据边界固定为 no-motion：不发布 `/cmd_vel`，不调用
+`/api/base/manual`，不写 WAVE ROVER 底盘 UART，且所有 payload 必须保持
+`safe_to_control=false`、`sends_base_motion_commands=false`、
+`robot_control_executed=false`。即使后续出现 `/map` once 和 map artifact，也仍需
+另行验证 map quality、AMCL、Nav2 lifecycle、路径生成和现场安全净空，不能把本
+route 的结果写成地图可导航或 fixed-route 可跑。
+
 ## 剩余风险
 
 该 helper 只能过滤明显坏地图，不能评估回环漂移、动态障碍、局部规划可行性、

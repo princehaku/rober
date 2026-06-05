@@ -38,6 +38,7 @@ DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S = 6.0
 DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH = "runtime/lidar_raw_packet_proof_latest.json"
 DEFAULT_MAP_ARTIFACT_DIR = "runtime/maps"
 DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "runtime/map_lifecycle_latest.json"
+DEFAULT_MAP_LIFECYCLE_PROOF_REFRESH_TIMEOUT_S = 45.0
 DEFAULT_LOCALIZATION_ARTIFACT_PATH = "runtime/localization_reset_latest.json"
 DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "runtime/nav2_lifecycle_latest.json"
 DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH = "runtime/elevator_status_latest.json"
@@ -115,6 +116,7 @@ ROUTE_PATHS = {
     "map_save": "/api/map/save",
     "map_load": "/api/map/load",
     "map_list": "/api/map/list",
+    "map_proof_refresh": "/api/map/proof/refresh",
     "map_proof_latest": "/api/map/proof/latest",
     "localize_reset": "/api/localize/reset",
     "localize_proof_latest": "/api/localize/proof/latest",
@@ -350,6 +352,74 @@ def map_lifecycle_proof_artifact_info(path: str) -> dict[str, Any]:
             "slam_toolbox lifecycle state",
         ],
     }
+
+
+def run_map_lifecycle_proof_helper(
+    *,
+    artifact_path: str,
+    map_artifact_dir: str,
+    timeout_s: float,
+) -> dict[str, Any]:
+    """运行 no-motion map proof helper；该入口只启动 LiDAR/SLAM，不接触底盘控制。"""
+    script_path = Path(__file__).resolve().with_name("o3_map_lifecycle_proof.py")
+    command = [
+        sys.executable,
+        str(script_path),
+        "--output",
+        artifact_path,
+        "--map-dir",
+        map_artifact_dir,
+        "--timeout-s",
+        str(timeout_s),
+    ]
+    started_ms = now_ms()
+    try:
+        completed = subprocess.run(  # noqa: S603 - command argv 固定为本仓库 helper。
+            command,
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=max(timeout_s + 10.0, 15.0),
+        )
+        return {
+            "mode": "map_lifecycle_proof_helper",
+            "executed": True,
+            "ok": completed.returncode == 0,
+            "returncode": completed.returncode,
+            "argv": command,
+            "elapsed_ms": now_ms() - started_ms,
+            "stdout_preview": completed.stdout[-4000:],
+            "stderr_preview": completed.stderr[-4000:],
+            "safe_to_control": False,
+            "sends_base_motion_commands": False,
+            "robot_control_executed": False,
+        }
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "mode": "map_lifecycle_proof_helper",
+            "executed": True,
+            "ok": False,
+            "argv": command,
+            "elapsed_ms": now_ms() - started_ms,
+            "error": compact_error(exc),
+            "stdout_preview": (exc.stdout or "")[-4000:] if isinstance(exc.stdout, str) else "",
+            "stderr_preview": (exc.stderr or "")[-4000:] if isinstance(exc.stderr, str) else "",
+            "safe_to_control": False,
+            "sends_base_motion_commands": False,
+            "robot_control_executed": False,
+        }
+    except Exception as exc:  # noqa: BLE001 - 现场脚本/权限问题必须结构化写回。
+        return {
+            "mode": "map_lifecycle_proof_helper",
+            "executed": False,
+            "ok": False,
+            "argv": command,
+            "elapsed_ms": now_ms() - started_ms,
+            "error": compact_error(exc),
+            "safe_to_control": False,
+            "sends_base_motion_commands": False,
+            "robot_control_executed": False,
+        }
 
 
 def localization_artifact_info(path: str) -> dict[str, Any]:
@@ -2532,6 +2602,7 @@ class UpperRobotApi:
                 "save": ROUTE_PATHS["map_save"],
                 "load": ROUTE_PATHS["map_load"],
                 "list": ROUTE_PATHS["map_list"],
+                "proof_refresh": ROUTE_PATHS["map_proof_refresh"],
                 "proof_latest": ROUTE_PATHS["map_proof_latest"],
                 "localize_reset": ROUTE_PATHS["localize_reset"],
                 "localize_proof_latest": ROUTE_PATHS["localize_proof_latest"],
@@ -2631,6 +2702,50 @@ class UpperRobotApi:
                 "map_count": len(entries),
                 "command_result": {"mode": "read_only_local_files", "executed": False, "ok": root.exists()},
                 "failure_reason": None if root.exists() else "map_artifact_dir_missing",
+            },
+        )
+
+    async def map_proof_refresh(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """触发 no-motion `/map` lifecycle proof，并把失败写成可回放 artifact。"""
+        body = body if isinstance(body, dict) else {}
+        timeout_s = clamp_float(
+            body.get("timeout_s"),
+            DEFAULT_MAP_LIFECYCLE_PROOF_REFRESH_TIMEOUT_S,
+            10.0,
+            180.0,
+        )
+        command_result = await asyncio.to_thread(
+            run_map_lifecycle_proof_helper,
+            artifact_path=self.map_lifecycle_proof_artifact_path,
+            map_artifact_dir=self.map_artifact_dir,
+            timeout_s=timeout_s,
+        )
+        http_status, latest = self.map_proof_latest()
+        return software_guard_payload(
+            schema_suffix="map_lifecycle_proof_refresh_result",
+            action="map_proof_refresh",
+            endpoint=ROUTE_PATHS["map_proof_refresh"],
+            command_env="built_in_no_motion_map_lifecycle_helper",
+            command="o3_map_lifecycle_proof.py",
+            command_result=command_result,
+            artifact=map_lifecycle_proof_artifact_info(self.map_lifecycle_proof_artifact_path),
+            extra={
+                "map_artifact": map_artifact_info(self.map_artifact_dir),
+                "latest_readback_http_status": http_status,
+                "latest_result": latest.get("latest_result"),
+                "map_lifecycle_status": self.map_status(),
+                "opens_base_uart": False,
+                "publishes_cmd_vel": False,
+                "calls_base_manual": False,
+                "sends_base_motion_commands": False,
+                "robot_control_executed": False,
+                "safe_to_control": False,
+                "transition_to_proven": [
+                    "/scan once observed",
+                    "/map once observed",
+                    "map recorder saves YAML/PGM artifact",
+                    f"GET {ROUTE_PATHS['map_proof_latest']} returns the same runtime artifact",
+                ],
             },
         )
 
@@ -3218,6 +3333,11 @@ def create_app(api: UpperRobotApi) -> Any:
     async def map_list(_: web.Request) -> Any:
         return json_response(api.map_list())
 
+    async def map_proof_refresh(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        payload = await api.map_proof_refresh(body if isinstance(body, dict) else {})
+        return json_response(payload)
+
     async def map_proof_latest(_: web.Request) -> Any:
         http_status, payload = api.map_proof_latest()
         return json_response(payload, status=http_status)
@@ -3302,6 +3422,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["map_save"], map_save)
     app.router.add_post(ROUTE_PATHS["map_load"], map_load)
     app.router.add_get(ROUTE_PATHS["map_list"], map_list)
+    app.router.add_post(ROUTE_PATHS["map_proof_refresh"], map_proof_refresh)
     app.router.add_get(ROUTE_PATHS["map_proof_latest"], map_proof_latest)
     app.router.add_post(ROUTE_PATHS["localize_reset"], localize_reset)
     app.router.add_get(ROUTE_PATHS["localize_proof_latest"], localize_proof_latest)

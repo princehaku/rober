@@ -12,6 +12,7 @@ import type {
 
 const REQUEST_TIMEOUT_MS = 1200;
 const MANUAL_REQUEST_TIMEOUT_MS = 5500;
+const SCAN_PROOF_REFRESH_TIMEOUT_MS = 55000;
 const MAX_PC_MANUAL_SPEED_MPS = 0.08;
 const MAX_PC_MANUAL_DURATION_MS = 350;
 const FIELD_DEFAULT_UPPER_API_BASE_URL = "http://192.168.1.11:8787";
@@ -227,18 +228,19 @@ function upperResultSummary(
   const latestResult = nestedRecord(json, "latest_result");
   const latestProof = nestedRecord(latestResult, "proof");
   const status = stringField(json, "status", request.ok ? "not_reported" : "not_loaded");
-  const proofStatus = stringField(json, "proof_status", stringField(json, "proof_state", status));
+  const proofStatus = stringField(json, "proof_status", stringField(json, "proof_state", stringField(latestProof, "status", status)));
   const latestProofStatus = stringField(
     json,
     "latest_proof_status",
     stringField(
       scanProofLatest,
       "latest_proof_status",
-      stringField(proofSummary, "proof_status", stringField(json, "proof_state", "not_reported")),
+      stringField(proofSummary, "proof_status", stringField(json, "proof_state", stringField(latestProof, "status", "not_reported"))),
     ),
   );
   const continuousStatus = continuousScanStatus(json);
   const continuousBlockers = continuousScanBlockers(json);
+  const isScanProofReadback = command === "radar_scan_proof_refresh" || command === "radar_scan_proof_latest";
   const blockedReasons = uniqueStrings([
     ...stringArrayField(json, "blockers", []),
     ...stringArrayField(json, "blocked_reasons", []),
@@ -246,12 +248,12 @@ function upperResultSummary(
     ...stringArrayField(artifact, "blockers", []),
     ...stringArrayField(scanProofLatest, "blockers", []),
     ...stringArrayField(scanProofLatest, "blocked_reasons", []),
-    ...(command === "radar_scan_proof_refresh" && continuousStatus !== "ready" ? ["continuous_scan_status_not_proven", ...continuousBlockers] : []),
+    ...(isScanProofReadback && continuousStatus !== "ready" ? ["continuous_scan_status_not_proven", ...continuousBlockers] : []),
     ...(request.ok ? [] : [request.failure_reason || `${command}_upper_request_failed`]),
   ]);
   const notProven = uniqueStrings([
     ...stringArrayField(json, "not_proven", []),
-    ...(command === "radar_scan_proof_refresh" && continuousStatus !== "ready" ? ["continuous_radar_not_proven"] : []),
+    ...(isScanProofReadback && continuousStatus !== "ready" ? ["continuous_radar_not_proven"] : []),
     ...(status === "not_proven" || proofStatus === "not_proven" ? ["upper_api_scan_not_proven"] : []),
   ]);
   const runtimeFallbackUsed =
@@ -274,25 +276,29 @@ function upperResultSummary(
       ?? optionalBoolField(latestScanProof, "all_required_observations_observed")
       ?? optionalBoolField(proofSummary, "all_required_observations_observed")
       ?? optionalBoolField(scanProofLatest, "latest_all_required_observations_observed")
+      ?? optionalBoolField(latestProof, "all_required_observations_observed")
     ),
     scan_hz_average_rate_hz:
       numberField(json, "latest_scan_hz_average_rate_hz")
       ?? numberField(json, "scan_hz_average_rate_hz")
       ?? numberField(proofSummary, "scan_hz_average_rate_hz")
       ?? numberField(scanProofLatest, "latest_scan_hz_average_rate_hz")
-      ?? numberField(latestScanProof, "scan_hz_average_rate_hz"),
+      ?? numberField(latestScanProof, "scan_hz_average_rate_hz")
+      ?? numberField(latestProof, "scan_hz_average_rate_hz"),
     tf_observed:
       optionalBoolField(json, "latest_tf_observed")
       ?? optionalBoolField(json, "tf_observed")
       ?? optionalBoolField(proofSummary, "tf_observed")
       ?? optionalBoolField(scanProofLatest, "latest_tf_observed")
-      ?? optionalBoolField(latestScanProof, "tf_observed"),
+      ?? optionalBoolField(latestScanProof, "tf_observed")
+      ?? optionalBoolField(latestProof, "tf_observed"),
     all_required_observations_observed:
       optionalBoolField(json, "latest_all_required_observations_observed")
       ?? optionalBoolField(json, "all_required_observations_observed")
       ?? optionalBoolField(proofSummary, "all_required_observations_observed")
       ?? optionalBoolField(scanProofLatest, "latest_all_required_observations_observed")
-      ?? optionalBoolField(latestScanProof, "all_required_observations_observed"),
+      ?? optionalBoolField(latestScanProof, "all_required_observations_observed")
+      ?? optionalBoolField(latestProof, "all_required_observations_observed"),
     runtime_summary_fallback_used: runtimeFallbackUsed,
     runtime_summary_path: stringField(
       json,
@@ -408,6 +414,7 @@ function blockedStatus(baseUrl: ResolvedUpperBaseUrl, reason: string): O7DirectU
       radar_start: "/api/o7/direct-upper/radar/start",
       radar_stop: "/api/o7/direct-upper/radar/stop",
       scan_proof_refresh: "/api/o7/direct-upper/radar/scan-proof/refresh",
+      scan_proof_latest: "/api/o7/direct-upper/radar/scan-proof/latest",
       map_start: "/api/o7/direct-upper/map/start",
       map_reset: "/api/o7/direct-upper/map/reset",
       map_save: "/api/o7/direct-upper/map/save",
@@ -590,6 +597,7 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
       radar_start: "/api/o7/direct-upper/radar/start",
       radar_stop: "/api/o7/direct-upper/radar/stop",
       scan_proof_refresh: "/api/o7/direct-upper/radar/scan-proof/refresh",
+      scan_proof_latest: "/api/o7/direct-upper/radar/scan-proof/latest",
       map_start: "/api/o7/direct-upper/map/start",
       map_reset: "/api/o7/direct-upper/map/reset",
       map_save: "/api/o7/direct-upper/map/save",
@@ -621,13 +629,14 @@ function commandResponse(
   const hardBlockedReasons = ["robot_ack_not_connected", "t1001_feedback_not_observed", "field_evidence_not_proven"];
   const fixtureBlockers = baseUrl.source === "fixture" ? ["fixture_mode_no_upper_runtime"] : [];
   const upperSummary = upperResultSummary(command, upperRequest, upperJson);
+  const isScanProofReadback = command === "radar_scan_proof_refresh" || command === "radar_scan_proof_latest";
   const blockedReasons = uniqueStrings([
     ...(failureReason === "none" ? [] : [failureReason]),
-    ...(command === "radar_scan_proof_refresh" ? upperSummary.blocked_reasons : []),
+    ...(isScanProofReadback ? upperSummary.blocked_reasons : []),
     ...fixtureBlockers,
     ...hardBlockedReasons,
   ]);
-  const scanProofRefreshNotProven = command === "radar_scan_proof_refresh"
+  const scanProofReadbackNotProven = isScanProofReadback
     ? [...upperSummary.not_proven, "driver_start_stop", "pc_wasd_control", "nav2_consumption", "slam_map", "delivery_success"]
     : [];
   // sends_commands 表示没有发送 ROS/cmd_vel 或直写 WAVE ROVER JSON；8787 POST 只记录在 upper_request。
@@ -654,7 +663,7 @@ function commandResponse(
     blocked_reasons: blockedReasons,
     not_proven: [
       ...(baseUrl.source === "fixture" ? ["upper_8787_runtime"] : []),
-      ...scanProofRefreshNotProven,
+      ...scanProofReadbackNotProven,
       "robot_ack",
       "t1001_feedback",
       "hil_pass",
@@ -727,7 +736,8 @@ async function proxyOperatorCommand(
   }
 
   const remoteBody = command === "map_list" ? undefined : { ...body, evidence_ref: evidenceRef };
-  const remote = await fetchUpperJson(baseUrl.url, remotePath, method, remoteBody);
+  const timeoutMs = command === "radar_scan_proof_refresh" ? SCAN_PROOF_REFRESH_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+  const remote = await fetchUpperJson(baseUrl.url, remotePath, method, remoteBody, timeoutMs);
   return {
     status: remote.request.ok ? 200 : 502,
     payload: commandResponse(
@@ -990,6 +1000,7 @@ export async function proxyO7DirectUpperRadarStop(options: DirectUpperOptions = 
 
 export async function proxyO7DirectUpperRadarScanProofRefresh(options: DirectUpperOptions = {}): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
   // scan-proof refresh 只请求 upper API 做只读 ROS2/LiDAR proof 刷新；PC 不直连 ROS graph 或 LiDAR 串口。
+  // 8787 该入口会先拉起短暂 LiDAR/ROS2 runtime 并等待 collector，因此不能复用首屏 status 的 1200ms 超时。
   return proxyOperatorCommand(
     options,
     "/api/o7/direct-upper/radar/scan-proof/refresh",
@@ -997,6 +1008,19 @@ export async function proxyO7DirectUpperRadarScanProofRefresh(options: DirectUpp
     "trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_refresh.v1",
     "radar_scan_proof_refresh",
     "POST",
+    FIELD_DEFAULT_ALLOWED,
+  );
+}
+
+export async function proxyO7DirectUpperRadarScanProofLatest(options: DirectUpperOptions = {}): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
+  // latest 是只读 artifact readback，用于 curl/PC 证明同源代理拿到的仍是一份 fresh proof 摘要，而不是前端 SPA fallback。
+  return proxyOperatorCommand(
+    options,
+    "/api/o7/direct-upper/radar/scan-proof/latest",
+    "/api/radar/scan-proof/latest",
+    "trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_latest.v1",
+    "radar_scan_proof_latest",
+    "GET",
     FIELD_DEFAULT_ALLOWED,
   );
 }

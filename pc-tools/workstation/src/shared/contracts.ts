@@ -2085,6 +2085,7 @@ export type O7DirectUpperApiCommand =
   | "radar_start"
   | "radar_stop"
   | "radar_scan_proof_refresh"
+  | "radar_scan_proof_latest"
   | "map_start"
   | "map_reset"
   | "map_save"
@@ -2103,6 +2104,7 @@ export interface O7DirectUpperApiRequestResult {
     | "/api/radar/start"
     | "/api/radar/stop"
     | "/api/radar/scan-proof/refresh"
+    | "/api/radar/scan-proof/latest"
     | "/api/map/start"
     | "/api/map/reset"
     | "/api/map/save"
@@ -2222,6 +2224,7 @@ export interface O7DirectUpperApiStatusResponse extends ProofFlags {
     radar_start: "/api/o7/direct-upper/radar/start";
     radar_stop: "/api/o7/direct-upper/radar/stop";
     scan_proof_refresh: "/api/o7/direct-upper/radar/scan-proof/refresh";
+    scan_proof_latest: "/api/o7/direct-upper/radar/scan-proof/latest";
     map_start: "/api/o7/direct-upper/map/start";
     map_reset: "/api/o7/direct-upper/map/reset";
     map_save: "/api/o7/direct-upper/map/save";
@@ -2246,6 +2249,7 @@ export interface O7DirectUpperApiCommandResponse extends ProofFlags {
     | "trashbot.pc_tools_workstation.o7_direct_upper_radar_start.v1"
     | "trashbot.pc_tools_workstation.o7_direct_upper_radar_stop.v1"
     | "trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_refresh.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_latest.v1"
     | "trashbot.pc_tools_workstation.o7_direct_upper_map_start.v1"
     | "trashbot.pc_tools_workstation.o7_direct_upper_map_reset.v1"
     | "trashbot.pc_tools_workstation.o7_direct_upper_map_save.v1"
@@ -2260,6 +2264,7 @@ export interface O7DirectUpperApiCommandResponse extends ProofFlags {
     | "/api/o7/direct-upper/radar/start"
     | "/api/o7/direct-upper/radar/stop"
     | "/api/o7/direct-upper/radar/scan-proof/refresh"
+    | "/api/o7/direct-upper/radar/scan-proof/latest"
     | "/api/o7/direct-upper/map/start"
     | "/api/o7/direct-upper/map/reset"
     | "/api/o7/direct-upper/map/save"

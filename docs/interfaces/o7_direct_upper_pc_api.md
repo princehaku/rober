@@ -55,6 +55,7 @@ adapter.field_default_url=http://192.168.1.11:8787
 | `POST` | `/api/o7/direct-upper/radar/start` | 同源转发到上位机 `/api/radar/start`，允许使用 field default，不依赖底盘 ACK/T=1001。 |
 | `POST` | `/api/o7/direct-upper/radar/stop` | 同源转发到上位机 `/api/radar/stop`，允许使用 field default，不触碰底盘 UART。 |
 | `POST` | `/api/o7/direct-upper/radar/scan-proof/refresh` | 同源转发到上位机 `/api/radar/scan-proof/refresh`，只触发只读 proof refresh，不启动 driver、不控底盘。 |
+| `GET` | `/api/o7/direct-upper/radar/scan-proof/latest` | 同源回读上位机 `/api/radar/scan-proof/latest`，只返回 latest artifact 摘要，不触发 refresh、不控底盘。 |
 | `POST` | `/api/o7/direct-upper/map/start` | 同源转发到上位机 `/api/map/start`，需要显式 env 或 fixture mode。 |
 | `POST` | `/api/o7/direct-upper/map/reset` | 同源转发到上位机 `/api/map/reset`，需要显式 env 或 fixture mode。 |
 | `POST` | `/api/o7/direct-upper/map/save` | 同源转发到上位机 `/api/map/save`，保留 `map_id` 和 `evidence_ref`，需要显式 env 或 fixture mode。 |
@@ -68,7 +69,7 @@ adapter.field_default_url=http://192.168.1.11:8787
 
 - `ROBER_UPPER_API_BASE_URL`：可选但优先。示例 `http://192.168.1.11:8787`。
 - 未配置时，`GET /api/o7/direct-upper/status` 使用 field default `http://192.168.1.11:8787` 并返回 `upper_api_base_url_source=field_default`。
-- 未配置时，`POST /api/o7/direct-upper/radar/start`、`POST /api/o7/direct-upper/radar/stop` 和 `POST /api/o7/direct-upper/radar/scan-proof/refresh` 也使用 field default 转发到上位机 `/api/radar/start|stop|scan-proof/refresh`。
+- 未配置时，`POST /api/o7/direct-upper/radar/start`、`POST /api/o7/direct-upper/radar/stop`、`POST /api/o7/direct-upper/radar/scan-proof/refresh` 和 `GET /api/o7/direct-upper/radar/scan-proof/latest` 也使用 field default 转发到上位机 `/api/radar/start|stop|scan-proof/refresh|scan-proof/latest`。
 - 未配置时，`POST|GET /api/o7/direct-upper/operator-report` 使用 field default 写入/回读上位机 `/api/operator/report`，只作用于 operator report artifact，不访问 base/manual/stop/feedback。
 - `ROBER_O7_DIRECT_UPPER_FIXTURE_MODE=1`：显式打开 fixture mode；支持 `1/true/yes/on`。fixture mode 返回 `upper_api_base_url_source=fixture`、`upper_api_base_url=fixture://upper-api`，并且不触发远端 fetch。
 - 请求 body 也可传 `fixture_mode=true` 打开单次 fixture mode。UI 的 `fixture mode` 勾选框使用该入口。
@@ -80,6 +81,7 @@ adapter.field_default_url=http://192.168.1.11:8787
 - `GET /api/o7/direct-upper/status` 仍使用 `1200ms` 短超时读取 `/health` 与 `/api/status`，避免首屏状态刷新被远端慢请求拖住。
 - `POST /api/o7/direct-upper/base/stop` 与 `POST /api/o7/direct-upper/base/feedback-request` 仍使用同一短超时；它们不应承担运动 pulse + stop + feedback 回读窗口。
 - `POST /api/o7/direct-upper/base/manual` 使用独立 `5500ms` 远端转发超时。这个窗口用于覆盖上位机 `/api/base/manual` 内部的短运动、自动停车、随后 `T=130` 请求和 `T=1001` 反馈读取；超时仍返回 `502`、`failure_reason="timeout"`、`safe_to_control=false`，不把等待失败包装成成功。
+- `POST /api/o7/direct-upper/radar/scan-proof/refresh` 使用独立 `55000ms` 远端转发超时。这个窗口只用于等待上位机只读 LiDAR/ROS2 scan proof runtime + collector 返回；PC 仍不发布 `/cmd_vel`、不访问底盘 UART、不把一次 fresh proof 外推成 continuous radar ready。
 
 ## `GET /api/o7/direct-upper/status`
 
@@ -279,6 +281,28 @@ trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_refresh.v1
 - 上位机 HTTP 非 2xx、超时、fetch 失败或坏 JSON 时，PC 返回 `502` 并保留真实失败，如 `upper_http_404`、`upper_http_405`、`upper_http_503`、`timeout` 或 `bad_json`；不得包装成成功，也不得回落为 `/api/radar/start` 或底盘控制失败。
 - command response 继续固定 `safe_to_control=false`、`sends_commands=false`、`robot_control_executed=false`、`robot_ack_connected=false`、`t1001_observed=false`。
 - `not_proven` 必须继续包含 HIL、PC WASD 控车、Nav2 消费、SLAM map、delivery success、driver start/stop 等边界；即使 remote refresh 返回 fresh artifact，也不能声明 HIL、PC WASD、Nav2、map 或送达成功。
+
+## `GET /api/o7/direct-upper/radar/scan-proof/latest`
+
+PC 后端只读转发到：
+
+```text
+<upper_api_base_url>/api/radar/scan-proof/latest
+```
+
+响应 schema：
+
+```text
+trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_latest.v1
+```
+
+边界：
+
+- 缺少 `ROBER_UPPER_API_BASE_URL` 时使用 `http://192.168.1.11:8787`，响应中 `upper_api_base_url_source=field_default`。
+- 该入口只做 latest artifact readback，不触发上位机 refresh，不执行 collector，不启动 ROS2/LiDAR runtime，不打开 LiDAR 串口，不访问 `/api/base/manual`、`/cmd_vel`、WAVE ROVER JSON 或底盘运动。
+- PC command envelope 与 refresh 共用 `upper_result_summary` 字段，便于 curl 直接看到 `proof_status/latest_proof_status`、artifact、hz、TF、`runtime_summary_fallback_used`、`continuous_scan_status` 和 blocker。
+- 即使 latest 返回 `scan_once_hz_raw_packet_tf_observed`，只证明最近一次 artifact 可回读；如果 `continuous_scan_status` 缺失或为 `not_proven`，PC 仍保留 `continuous_radar_not_proven`、`safe_to_control=false`、`robot_control_executed=false`、`hil_pass` 等边界。
+- 上位机 HTTP 非 2xx、超时、fetch 失败或坏 JSON 时，PC 返回 `502`，不得落入构建后的 SPA HTML fallback，也不得包装成 runtime success。
 
 ## `POST /api/o7/direct-upper/base/manual`
 

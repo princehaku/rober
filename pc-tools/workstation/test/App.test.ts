@@ -17,6 +17,7 @@ import {
   proxyO7DirectUpperManual,
   proxyO7DirectUpperOperatorReport,
   proxyO7DirectUpperOperatorReportReadback,
+  proxyO7DirectUpperRadarScanProofLatest,
   proxyO7DirectUpperRadarScanProofRefresh,
   proxyO7DirectUpperRadarStart,
   proxyO7DirectUpperRadarStop,
@@ -396,6 +397,7 @@ const directUpperFixture = {
     radar_start: "/api/o7/direct-upper/radar/start",
     radar_stop: "/api/o7/direct-upper/radar/stop",
     scan_proof_refresh: "/api/o7/direct-upper/radar/scan-proof/refresh",
+    scan_proof_latest: "/api/o7/direct-upper/radar/scan-proof/latest",
     map_start: "/api/o7/direct-upper/map/start",
     map_reset: "/api/o7/direct-upper/map/reset",
     map_save: "/api/o7/direct-upper/map/save",
@@ -1544,6 +1546,114 @@ describe("O7 direct upper PC API", () => {
     ]);
   });
 
+  it("waits for slow upper scan proof refresh instead of using the short status timeout", async () => {
+    const mockedFetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      void init?.signal;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          schema: "trashbot.upper_robot_api.radar_scan_proof_refresh.v1",
+          status: "refreshed",
+          proof_state: "scan_once_hz_raw_packet_tf_observed",
+          latest_result: {
+            proof: {
+              status: "scan_once_hz_raw_packet_tf_observed",
+              scan_hz_average_rate_hz: 175.443,
+              tf_observed: true,
+              all_required_observations_observed: true,
+              runtime_summary_fallback_used: true,
+              runtime_summary_path: "/tmp/o1_lidar_ros2_scan_smoke/summary.json",
+            },
+          },
+          continuous_scan_status: "not_proven",
+          continuous_blocked_reasons: ["scan_continuity_not_observed"],
+          blockers_summary: [],
+          safe_to_control: false,
+          robot_control_executed: false,
+        }),
+      } as Response;
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const refresh = await proxyO7DirectUpperRadarScanProofRefresh({
+      env: { ROBER_UPPER_API_BASE_URL: "http://127.0.0.1:8787" },
+    });
+
+    expect(refresh.status).toBe(200);
+    const firstCall = mockedFetch.mock.calls[0] as [RequestInfo | URL, RequestInit?] | undefined;
+    const refreshSignal = firstCall?.[1]?.signal;
+    expect(refreshSignal).toBeInstanceOf(AbortSignal);
+    expect((refreshSignal as AbortSignal).aborted).toBe(false);
+    expect(refresh.payload.upper_result_summary).toMatchObject({
+      proof_status: "scan_once_hz_raw_packet_tf_observed",
+      scan_hz_average_rate_hz: 175.443,
+      tf_observed: true,
+      runtime_summary_fallback_used: true,
+      continuous_scan_status: "not_proven",
+    });
+  });
+
+  it("proxies read-only scan proof latest as JSON instead of falling through to the SPA shell", async () => {
+    const mockedFetch = vi.fn(async (_input: RequestInfo | URL) => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        schema: "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+        artifact: { status: "loaded", path: "runtime/lidar_scan_proof_latest.json" },
+        latest_result: {
+          proof: {
+            status: "scan_once_hz_raw_packet_tf_observed",
+            scan_hz_average_rate_hz: 175.443,
+            tf_observed: true,
+            all_required_observations_observed: true,
+            runtime_summary_fallback_used: true,
+            runtime_summary_path: "/tmp/o1_lidar_ros2_scan_smoke/summary.json",
+          },
+        },
+        safe_to_control: false,
+        sends_commands: false,
+        robot_control_executed: false,
+      }),
+    }) as Response);
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const latest = await proxyO7DirectUpperRadarScanProofLatest({
+      env: {},
+      body: { evidence_ref: "o7-scan-proof-latest-field-default" },
+    });
+
+    expect(latest.status).toBe(200);
+    expect(latest.payload.schema).toBe("trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_latest.v1");
+    expect(latest.payload.endpoint).toBe("/api/o7/direct-upper/radar/scan-proof/latest");
+    expect(latest.payload.command).toBe("radar_scan_proof_latest");
+    expect(latest.payload.upper_api_base_url_source).toBe("field_default");
+    expect(latest.payload.upper_request).toMatchObject({
+      path: "/api/radar/scan-proof/latest",
+      method: "GET",
+      executed: true,
+      ok: true,
+      http_status: 200,
+    });
+    expect(latest.payload.upper_result_summary).toMatchObject({
+      proof_status: "scan_once_hz_raw_packet_tf_observed",
+      latest_proof_status: "scan_once_hz_raw_packet_tf_observed",
+      artifact_status: "loaded",
+      scan_hz_average_rate_hz: 175.443,
+      tf_observed: true,
+      all_required_observations_observed: true,
+      runtime_summary_fallback_used: true,
+      continuous_scan_status: "not_proven",
+      safe_to_control: false,
+      robot_control_executed: false,
+    });
+    expect(latest.payload.not_proven).toEqual(expect.arrayContaining(["continuous_radar_not_proven", "hil_pass"]));
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).toEqual([
+      "http://192.168.1.11:8787/api/radar/scan-proof/latest",
+    ]);
+  });
+
   it("surfaces upper scan proof not_proven summary on HTTP 200 without marking refresh complete", async () => {
     const mockedFetch = vi.fn(async () => ({
       ok: true,
@@ -1838,6 +1948,7 @@ describe("O7 direct upper PC API", () => {
     expect(response.local_api_paths.feedback_request).toBe("/api/o7/direct-upper/base/feedback-request");
     expect(response.local_api_paths.radar_start).toBe("/api/o7/direct-upper/radar/start");
     expect(response.local_api_paths.scan_proof_refresh).toBe("/api/o7/direct-upper/radar/scan-proof/refresh");
+    expect(response.local_api_paths.scan_proof_latest).toBe("/api/o7/direct-upper/radar/scan-proof/latest");
     expect(response.local_api_paths.map_save).toBe("/api/o7/direct-upper/map/save");
     expect(response.local_api_paths.localize_reset).toBe("/api/o7/direct-upper/localize/reset");
     expect(response.local_api_paths.operator_report).toBe("/api/o7/direct-upper/operator-report");

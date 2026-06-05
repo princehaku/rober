@@ -1228,6 +1228,7 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(status["routes"]["map_save"], "/api/map/save")
         self.assertEqual(status["routes"]["map_load"], "/api/map/load")
         self.assertEqual(status["routes"]["map_list"], "/api/map/list")
+        self.assertEqual(status["routes"]["map_proof_refresh"], "/api/map/proof/refresh")
         self.assertEqual(status["routes"]["map_proof_latest"], "/api/map/proof/latest")
         self.assertEqual(status["routes"]["localize_reset"], "/api/localize/reset")
         self.assertEqual(status["routes"]["localize_proof_latest"], "/api/localize/proof/latest")
@@ -1585,6 +1586,86 @@ class UpperRobotApiHttpRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(body["robot_control_executed"])
         self.assertFalse(body["opens_lidar_serial"])
         self.assertEqual(calls[0]["timeout_s"], 1.0)
+        self.assertEqual(FakeSerial.instances, [])
+
+    async def test_map_proof_refresh_http_post_is_not_405_and_records_blocked_artifact(self) -> None:
+        try:
+            from aiohttp.test_utils import TestClient, TestServer
+        except Exception as exc:  # noqa: BLE001 - 本机缺 aiohttp 时保留类方法回归作为必跑证明。
+            self.skipTest(f"aiohttp test client unavailable: {exc}")
+
+        calls: list[dict[str, object]] = []
+        original_runner = api.run_map_lifecycle_proof_helper
+
+        def fake_runner(**kwargs: object) -> dict[str, object]:
+            """HTTP route 只验证 map proof 调度，不启动 LiDAR、SLAM 或底盘。"""
+            calls.append(kwargs)
+            artifact_path = Path(str(kwargs["artifact_path"]))
+            artifact_path.parent.mkdir(parents=True, exist_ok=True)
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.upper_robot_api.v1.map_lifecycle_runtime_proof",
+                        "proof": {
+                            "status": "blocked_with_root_cause",
+                            "evidence_ref": "map-route-test",
+                            "map_once_observed": False,
+                            "map_file_observed": False,
+                            "map_metadata_observed": False,
+                            "root_causes": [{"layer": "ROS install/source", "reason": "slam_toolbox_missing"}],
+                        },
+                        "safe_to_control": False,
+                        "sends_base_motion_commands": False,
+                        "robot_control_executed": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            return {
+                "mode": "map_lifecycle_proof_helper",
+                "executed": True,
+                "ok": False,
+                "returncode": 2,
+                "safe_to_control": False,
+                "sends_base_motion_commands": False,
+                "robot_control_executed": False,
+            }
+
+        api.run_map_lifecycle_proof_helper = fake_runner  # type: ignore[assignment]
+        install_fake_serial()
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                robot = api.UpperRobotApi(
+                    "http://127.0.0.1:8088",
+                    "/dev/fake-base",
+                    115200,
+                    max_speed=0.12,
+                    map_artifact_dir=str(Path(tmpdir) / "maps"),
+                    map_lifecycle_proof_artifact_path=str(Path(tmpdir) / "map_lifecycle_latest.json"),
+                )
+                client = TestClient(TestServer(api.create_app(robot)))
+                await client.start_server()
+                try:
+                    response = await client.post("/api/map/proof/refresh", json={"timeout_s": 10})
+                    body = await response.json()
+                    latest_response = await client.get("/api/map/proof/latest")
+                    latest_body = await latest_response.json()
+                finally:
+                    await client.close()
+        finally:
+            api.run_map_lifecycle_proof_helper = original_runner  # type: ignore[assignment]
+
+        self.assertNotEqual(response.status, 405)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(latest_response.status, 200)
+        self.assertEqual(body["endpoint"], "/api/map/proof/refresh")
+        self.assertEqual(body["latest_readback_http_status"], 200)
+        self.assertEqual(body["latest_result"]["proof"]["status"], "blocked_with_root_cause")
+        self.assertEqual(latest_body["latest_result"]["proof"]["root_causes"][0]["reason"], "slam_toolbox_missing")
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["sends_base_motion_commands"])
+        self.assertFalse(body["robot_control_executed"])
+        self.assertEqual(calls[0]["timeout_s"], 10.0)
         self.assertEqual(FakeSerial.instances, [])
 
     async def test_operator_report_http_post_and_get_are_not_405_when_aiohttp_is_available(self) -> None:

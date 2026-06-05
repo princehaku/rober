@@ -23,6 +23,10 @@ def generate_launch_description():
         'route_recorder', default_value='false',
         description='Start fixed-route CSV and keyframe recording during manual learning')
 
+    waypoint_manager_arg = DeclareLaunchArgument(
+        'waypoint_manager', default_value='true',
+        description='Start waypoint manager during manual learning')
+
     route_output_dir_arg = DeclareLaunchArgument(
         'route_output_dir',
         default_value=PathJoinSubstitution([
@@ -129,6 +133,25 @@ def generate_launch_description():
         'lidar_tf_yaw', default_value='0.0',
         description='Placeholder LiDAR yaw from base_link in radians; measure on real robot')
 
+    no_motion_static_odom_tf_arg = DeclareLaunchArgument(
+        'no_motion_static_odom_tf', default_value='false',
+        description='Publish static odom->base_link only for no-motion SLAM smoke proof')
+
+    slam_map_frame_arg = DeclareLaunchArgument(
+        'slam_map_frame',
+        default_value='map',
+        description='SLAM map frame id used by slam_toolbox')
+
+    slam_odom_frame_arg = DeclareLaunchArgument(
+        'slam_odom_frame',
+        default_value='odom',
+        description='SLAM odom frame id used by slam_toolbox')
+
+    slam_base_frame_arg = DeclareLaunchArgument(
+        'slam_base_frame',
+        default_value='base_link',
+        description='SLAM base frame id; no-motion proof uses static odom->base_link')
+
     lidar_mock_packets_arg = DeclareLaunchArgument(
         'lidar_mock_packets', default_value='',
         description='Pipe-separated hex packets for software-only LiDAR verification')
@@ -137,10 +160,25 @@ def generate_launch_description():
         'lidar_mock_scan', default_value='false',
         description='Publish built-in mock scan packet; software proof only')
 
+    map_dir_arg = DeclareLaunchArgument(
+        'map_dir',
+        default_value=PathJoinSubstitution([
+            EnvironmentVariable('HOME'),
+            '.ros',
+            'trashbot_maps',
+        ]),
+        description='Directory where map_recorder writes learned map artifacts')
+
+    default_map_name_arg = DeclareLaunchArgument(
+        'default_map_name',
+        default_value='trashbot_map',
+        description='Base filename used by map_recorder for PGM/YAML map artifacts')
+
     use_sim_time = LaunchConfiguration('use_sim_time')
     record_interval = LaunchConfiguration('record_interval')
     pose_topic = LaunchConfiguration('pose_topic')
     route_recorder = LaunchConfiguration('route_recorder')
+    waypoint_manager = LaunchConfiguration('waypoint_manager')
     route_output_dir = LaunchConfiguration('route_output_dir')
     route_camera_topic = LaunchConfiguration('route_camera_topic')
     route_odom_topic = LaunchConfiguration('route_odom_topic')
@@ -166,15 +204,24 @@ def generate_launch_description():
     lidar_tf_roll = LaunchConfiguration('lidar_tf_roll')
     lidar_tf_pitch = LaunchConfiguration('lidar_tf_pitch')
     lidar_tf_yaw = LaunchConfiguration('lidar_tf_yaw')
+    no_motion_static_odom_tf = LaunchConfiguration('no_motion_static_odom_tf')
+    slam_map_frame = LaunchConfiguration('slam_map_frame')
+    slam_odom_frame = LaunchConfiguration('slam_odom_frame')
+    slam_base_frame = LaunchConfiguration('slam_base_frame')
     lidar_mock_packets = LaunchConfiguration('lidar_mock_packets')
     lidar_mock_scan = LaunchConfiguration('lidar_mock_scan')
+    map_dir = LaunchConfiguration('map_dir')
+    default_map_name = LaunchConfiguration('default_map_name')
     lidar_condition = IfCondition(lidar_enabled)
+    waypoint_manager_condition = IfCondition(waypoint_manager)
+    no_motion_static_odom_tf_condition = IfCondition(no_motion_static_odom_tf)
 
     return LaunchDescription([
         use_sim_time_arg,
         record_interval_arg,
         pose_topic_arg,
         route_recorder_arg,
+        waypoint_manager_arg,
         route_output_dir_arg,
         route_camera_topic_arg,
         route_odom_topic_arg,
@@ -200,8 +247,14 @@ def generate_launch_description():
         lidar_tf_roll_arg,
         lidar_tf_pitch_arg,
         lidar_tf_yaw_arg,
+        no_motion_static_odom_tf_arg,
+        slam_map_frame_arg,
+        slam_odom_frame_arg,
+        slam_base_frame_arg,
         lidar_mock_packets_arg,
         lidar_mock_scan_arg,
+        map_dir_arg,
+        default_map_name_arg,
 
         # LiDAR 闭环默认关闭，避免没有真实 USB 串口时阻塞人工学习和路线记录。
         Node(
@@ -245,6 +298,25 @@ def generate_launch_description():
             ],
         ),
 
+        # no-motion proof 没有底盘里程计，显式开启时才给 SLAM 一个静态 odom 边界。
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='odom_to_base_link_no_motion',
+            output='screen',
+            condition=no_motion_static_odom_tf_condition,
+            arguments=[
+                '--x', '0.0',
+                '--y', '0.0',
+                '--z', '0.0',
+                '--roll', '0.0',
+                '--pitch', '0.0',
+                '--yaw', '0.0',
+                '--frame-id', 'odom',
+                '--child-frame-id', 'base_link',
+            ],
+        ),
+
         # SLAM Toolbox 只消费 launch 提供的话题/TF；LiDAR 未开启时不假装有 scan 输入。
         Node(
             package='slam_toolbox',
@@ -254,6 +326,11 @@ def generate_launch_description():
             parameters=[{
                 'use_sim_time': use_sim_time,
                 'mode': 'mapping',
+                # 显式绑定 frame/topic，避免 proof 依赖 slam_toolbox 默认 base_footprint。
+                'map_frame': slam_map_frame,
+                'odom_frame': slam_odom_frame,
+                'base_frame': slam_base_frame,
+                'scan_topic': lidar_scan_topic,
             }],
         ),
 
@@ -263,7 +340,12 @@ def generate_launch_description():
             executable='map_recorder',
             name='map_recorder',
             output='screen',
-            parameters=[{'use_sim_time': use_sim_time}],
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                # map proof helper 显式传 runtime/maps，防止 artifact 分散到默认 HOME。
+                'map_dir': map_dir,
+                'default_map_name': default_map_name,
+            }],
         ),
 
         # 航点学习仍以 pose_topic 为契约，避免和具体定位来源强耦合。
@@ -272,6 +354,7 @@ def generate_launch_description():
             executable='waypoint_manager',
             name='waypoint_manager',
             output='screen',
+            condition=waypoint_manager_condition,
             parameters=[{
                 'use_sim_time': use_sim_time,
                 'learn_mode': True,
