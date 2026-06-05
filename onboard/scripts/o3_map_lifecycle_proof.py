@@ -19,8 +19,8 @@ SCHEMA = "trashbot.upper_robot_api.v1.map_lifecycle_runtime_proof"
 DEFAULT_ROS_SETUP = "/opt/ros/humble/setup.bash"
 DEFAULT_ONBOARD_SETUP = "/root/rober/onboard/install/setup.bash"
 DEFAULT_WORKDIR = "/root/rober/onboard"
-DEFAULT_OUTPUT = "runtime/map_lifecycle_latest.json"
-DEFAULT_MAP_DIR = "runtime/maps"
+DEFAULT_OUTPUT = "/root/rober/onboard/runtime/map_lifecycle_latest.json"
+DEFAULT_MAP_DIR = "/root/rober/onboard/runtime/maps"
 VENDOR_SOURCES = [
     "docs/vendor/VENDOR_INDEX.md",
     "docs/vendor/lidar_pkg_ros2-main/README.md",

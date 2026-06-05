@@ -35,6 +35,7 @@ import {
   proxyO7DirectUpperLocalizeReset,
   proxyO7DirectUpperMapList,
   proxyO7DirectUpperMapLoad,
+  proxyO7DirectUpperMapProofLatest,
   proxyO7DirectUpperMapReset,
   proxyO7DirectUpperMapSave,
   proxyO7DirectUpperMapStart,
@@ -210,6 +211,17 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/direct-upper/map/list", async (req, res) => {
     // list 是只读 map artifact 查询，但仍不能被解释成地图可用于 Nav2。
     const result = await proxyO7DirectUpperMapList({
+      body: {
+        evidence_ref: queryString(req.query.evidence_ref),
+        fixture_mode: queryString(req.query.fixture_mode),
+      },
+    });
+    res.status(result.status).json(result.payload);
+  });
+
+  workstationApp.get("/api/o7/direct-upper/map/proof/latest", async (req, res) => {
+    // map proof latest 只读回放 upper canonical path contract，不触发建图、不读取本机 artifact。
+    const result = await proxyO7DirectUpperMapProofLatest({
       body: {
         evidence_ref: queryString(req.query.evidence_ref),
         fixture_mode: queryString(req.query.fixture_mode),

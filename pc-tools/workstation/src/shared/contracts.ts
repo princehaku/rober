@@ -2091,6 +2091,7 @@ export type O7DirectUpperApiCommand =
   | "map_save"
   | "map_load"
   | "map_list"
+  | "map_proof_latest"
   | "localize_reset"
   | "operator_report";
 
@@ -2110,6 +2111,7 @@ export interface O7DirectUpperApiRequestResult {
     | "/api/map/save"
     | "/api/map/load"
     | "/api/map/list"
+    | "/api/map/proof/latest"
     | "/api/localize/reset"
     | "/api/operator/report";
   method: "GET" | "POST";
@@ -2148,6 +2150,10 @@ export interface O7DirectUpperApiCommandUpperResultSummary {
   runtime_summary_path: string;
   continuous_scan_status: string;
   continuous_blocked_reasons: string[];
+  map_proof_canonical_path: string;
+  map_proof_resolved_path: string;
+  map_proof_configured_path: string;
+  map_proof_compatibility_paths: string[];
   safe_to_control: false;
   sends_commands: false;
   robot_control_executed: false;
@@ -2202,11 +2208,21 @@ export interface O7DirectUpperApiStatusResponse extends ProofFlags {
     radar_raw_packet_proof_bytes_read: number | null;
     radar_raw_packet_proof_sync_header_count: number | null;
     radar_raw_packet_proof_packets_parse_ok: number | null;
-    radar_raw_packet_proof_points_total: number | null;
+      radar_raw_packet_proof_points_total: number | null;
       radar_raw_packet_proof_safe_to_control: false;
       lidar_port: string;
       map_lifecycle_status: string;
       map_artifact_ref: string;
+      map_proof_latest_status: string;
+      map_proof_artifact_status: string;
+      map_proof_artifact_path: string;
+      map_proof_canonical_path: string;
+      map_proof_resolved_path: string;
+      map_proof_configured_path: string;
+      map_proof_compatibility_paths: string[];
+      map_proof_failure_reason: string;
+      map_proof_blockers: string[];
+      map_proof_safe_to_control: false;
       localization_status: string;
       operator_report_evidence_ref: string;
       base_port: string;
@@ -2230,6 +2246,7 @@ export interface O7DirectUpperApiStatusResponse extends ProofFlags {
     map_save: "/api/o7/direct-upper/map/save";
     map_load: "/api/o7/direct-upper/map/load";
     map_list: "/api/o7/direct-upper/map/list";
+    map_proof_latest: "/api/o7/direct-upper/map/proof/latest";
     localize_reset: "/api/o7/direct-upper/localize/reset";
     operator_report: "/api/o7/direct-upper/operator-report";
   };
@@ -2255,6 +2272,7 @@ export interface O7DirectUpperApiCommandResponse extends ProofFlags {
     | "trashbot.pc_tools_workstation.o7_direct_upper_map_save.v1"
     | "trashbot.pc_tools_workstation.o7_direct_upper_map_load.v1"
     | "trashbot.pc_tools_workstation.o7_direct_upper_map_list.v1"
+    | "trashbot.pc_tools_workstation.o7_direct_upper_map_proof_latest.v1"
     | "trashbot.pc_tools_workstation.o7_direct_upper_localize_reset.v1"
     | "trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1";
   endpoint:
@@ -2270,6 +2288,7 @@ export interface O7DirectUpperApiCommandResponse extends ProofFlags {
     | "/api/o7/direct-upper/map/save"
     | "/api/o7/direct-upper/map/load"
     | "/api/o7/direct-upper/map/list"
+    | "/api/o7/direct-upper/map/proof/latest"
     | "/api/o7/direct-upper/localize/reset"
     | "/api/o7/direct-upper/operator-report";
   mode: O7DirectUpperApiMode;

@@ -36,8 +36,11 @@ DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
 DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S = 5.0
 DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S = 6.0
 DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH = "runtime/lidar_raw_packet_proof_latest.json"
-DEFAULT_MAP_ARTIFACT_DIR = "runtime/maps"
-DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "runtime/map_lifecycle_latest.json"
+DEFAULT_ROBER_ROOT = "/root/rober"
+DEFAULT_ONBOARD_WORKDIR = "/root/rober/onboard"
+DEFAULT_MAP_ARTIFACT_DIR = "/root/rober/onboard/runtime/maps"
+DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "/root/rober/onboard/runtime/map_lifecycle_latest.json"
+LEGACY_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "/root/rober/runtime/map_lifecycle_latest.json"
 DEFAULT_MAP_LIFECYCLE_PROOF_REFRESH_TIMEOUT_S = 45.0
 DEFAULT_LOCALIZATION_ARTIFACT_PATH = "runtime/localization_reset_latest.json"
 DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "runtime/nav2_lifecycle_latest.json"
@@ -330,18 +333,38 @@ def lidar_raw_packet_proof_artifact_info(path: str) -> dict[str, Any]:
 
 def map_artifact_info(path: str) -> dict[str, Any]:
     """地图 artifact 目录只作为软件合同入口，不证明 SLAM 已经产图。"""
+    resolved_path = resolve_onboard_runtime_path(path)
     return {
-        "path": path,
+        "path": resolved_path,
+        "configured_path": path,
+        "resolved_path": resolved_path,
+        "canonical_path": DEFAULT_MAP_ARTIFACT_DIR,
         "configured_by": "ROBER_MAP_ARTIFACT_DIR or --map-artifact-dir",
         "expected_files": ["*.yaml", "*.pgm", "*.pbstream"],
         "schema": f"{SCHEMA}.map_lifecycle_artifact",
     }
 
 
+def resolve_onboard_runtime_path(path: str) -> str:
+    """map proof 相对路径统一落到 onboard workdir，避免 systemd cwd 漂到仓库根。"""
+    candidate = Path(path)
+    if candidate.is_absolute():
+        return str(candidate)
+    # 这里只改 map lifecycle 合同；其它 runtime artifact 暂不扩大迁移范围。
+    return str(Path(DEFAULT_ONBOARD_WORKDIR) / candidate)
+
+
 def map_lifecycle_proof_artifact_info(path: str) -> dict[str, Any]:
     """SLAM/map lifecycle runtime 材料入口，读取它也不能替代真实 ROS2 运行。"""
+    resolved_path = resolve_onboard_runtime_path(path)
     return {
-        "path": path,
+        "path": resolved_path,
+        "configured_path": path,
+        "resolved_path": resolved_path,
+        "canonical_path": DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH,
+        "legacy_path": LEGACY_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH,
+        "compatibility_paths": [LEGACY_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH],
+        "legacy_exists": Path(LEGACY_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH).exists(),
         "configured_by": "ROBER_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH or --map-lifecycle-proof-artifact-path",
         "format": "json",
         "schema": f"{SCHEMA}.map_lifecycle_runtime_proof",
@@ -2365,8 +2388,8 @@ class UpperRobotApi:
         self.feedback_samples_artifact_path = feedback_samples_artifact_path
         self.lidar_scan_proof_artifact_path = lidar_scan_proof_artifact_path
         self.lidar_raw_packet_proof_artifact_path = lidar_raw_packet_proof_artifact_path
-        self.map_artifact_dir = map_artifact_dir
-        self.map_lifecycle_proof_artifact_path = map_lifecycle_proof_artifact_path
+        self.map_artifact_dir = resolve_onboard_runtime_path(map_artifact_dir)
+        self.map_lifecycle_proof_artifact_path = resolve_onboard_runtime_path(map_lifecycle_proof_artifact_path)
         self.localization_artifact_path = localization_artifact_path
         self.nav2_lifecycle_artifact_path = nav2_lifecycle_artifact_path
         self.elevator_status_artifact_path = elevator_status_artifact_path

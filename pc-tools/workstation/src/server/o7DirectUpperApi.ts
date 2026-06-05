@@ -26,6 +26,7 @@ const DIRECT_UPPER_ADAPTER: O7DirectUpperApiAdapterInfo = {
 const ALLOWED_DIRECTIONS = ["forward", "back", "left", "right", "stop"] as const;
 const DEFAULT_SCAN_PROOF_BLOCKERS = ["radar_scan_proof_latest_not_loaded"] as const;
 const LOADED_SCAN_PROOF_NOT_OBSERVED_BLOCKERS = ["radar_scan_proof_blocked_or_not_observed"] as const;
+const DEFAULT_MAP_PROOF_BLOCKERS = ["map_proof_latest_not_loaded"] as const;
 type UpperApiBaseUrlSource = "env" | "field_default" | "fixture" | "not_configured";
 type UpperApiBaseUrlPolicy = "explicit_only" | "field_default_allowed";
 
@@ -209,6 +210,52 @@ function continuousScanBlockers(record: Record<string, unknown> | null | undefin
   return blockers.length ? blockers : ["scan_continuity_not_observed"];
 }
 
+function mapProofLatestRecord(record: Record<string, unknown> | null | undefined): Record<string, unknown> | null {
+  // upper /api/status 可能在 Robot Software 部署前后使用不同字段名；PC 只做兼容读取，不发明 proof。
+  return nestedRecord(record, "proof_latest")
+    ?? nestedRecord(record, "map_proof_latest")
+    ?? nestedRecord(record, "latest_proof")
+    ?? nestedRecord(record, "latest_result");
+}
+
+function mapProofResult(record: Record<string, unknown> | null | undefined): Record<string, unknown> | null {
+  // latest_result.proof 是当前 map proof refresh/latest 最常见形状；缺失时回到顶层 proof 记录。
+  return nestedRecord(record, "proof") ?? record ?? null;
+}
+
+function mapProofPath(record: Record<string, unknown> | null | undefined, key: string, fallback: string): string {
+  const artifact = nestedRecord(record, "artifact");
+  return stringField(record, key, stringField(artifact, key, fallback));
+}
+
+function mapProofCompatibilityPaths(record: Record<string, unknown> | null | undefined): string[] {
+  const artifact = nestedRecord(record, "artifact");
+  const paths = [
+    ...stringArrayField(record, "compatibility_paths", []),
+    ...stringArrayField(artifact, "compatibility_paths", []),
+    ...stringArrayField(record, "legacy_paths", []),
+    ...stringArrayField(artifact, "legacy_paths", []),
+  ];
+  return uniqueStrings(paths);
+}
+
+function mapProofBlockers(record: Record<string, unknown> | null | undefined): string[] {
+  const proof = mapProofResult(record);
+  const artifact = nestedRecord(record, "artifact");
+  const blockers = uniqueStrings([
+    ...stringArrayField(record, "blockers", []),
+    ...stringArrayField(record, "blocked_reasons", []),
+    ...stringArrayField(proof, "blockers", []),
+    ...stringArrayField(proof, "blocked_reasons", []),
+    ...stringArrayField(artifact, "blockers", []),
+  ]);
+  if (blockers.length) {
+    return blockers;
+  }
+  const status = stringField(proof, "status", stringField(record, "status", "not_loaded"));
+  return status === "not_loaded" ? [...DEFAULT_MAP_PROOF_BLOCKERS] : [];
+}
+
 function uniqueStrings(values: string[]): string[] {
   // remote blocker 可能同时出现在 blockers、blocked_reasons 和 artifact.blockers；这里统一去重保留原顺序。
   return [...new Set(values.filter((value) => value.trim()))];
@@ -227,8 +274,11 @@ function upperResultSummary(
   const proofSummary = nestedRecord(json, "proof_summary");
   const latestResult = nestedRecord(json, "latest_result");
   const latestProof = nestedRecord(latestResult, "proof");
+  const mapProof = command === "map_proof_latest" ? mapProofResult(latestResult ?? json) : null;
+  const mapProofPathSource = command === "map_proof_latest" ? json : latestResult ?? json;
   const status = stringField(json, "status", request.ok ? "not_reported" : "not_loaded");
   const proofStatus = stringField(json, "proof_status", stringField(json, "proof_state", stringField(latestProof, "status", status)));
+  const mapProofStatus = stringField(mapProof, "status", proofStatus);
   const latestProofStatus = stringField(
     json,
     "latest_proof_status",
@@ -241,6 +291,7 @@ function upperResultSummary(
   const continuousStatus = continuousScanStatus(json);
   const continuousBlockers = continuousScanBlockers(json);
   const isScanProofReadback = command === "radar_scan_proof_refresh" || command === "radar_scan_proof_latest";
+  const isMapProofReadback = command === "map_proof_latest";
   const blockedReasons = uniqueStrings([
     ...stringArrayField(json, "blockers", []),
     ...stringArrayField(json, "blocked_reasons", []),
@@ -249,12 +300,16 @@ function upperResultSummary(
     ...stringArrayField(scanProofLatest, "blockers", []),
     ...stringArrayField(scanProofLatest, "blocked_reasons", []),
     ...(isScanProofReadback && continuousStatus !== "ready" ? ["continuous_scan_status_not_proven", ...continuousBlockers] : []),
+    ...(isMapProofReadback ? mapProofBlockers(latestResult ?? json) : []),
     ...(request.ok ? [] : [request.failure_reason || `${command}_upper_request_failed`]),
   ]);
   const notProven = uniqueStrings([
     ...stringArrayField(json, "not_proven", []),
     ...(isScanProofReadback && continuousStatus !== "ready" ? ["continuous_radar_not_proven"] : []),
-    ...(status === "not_proven" || proofStatus === "not_proven" ? ["upper_api_scan_not_proven"] : []),
+    ...(isMapProofReadback && mapProofStatus !== "map_once_artifact_metadata_observed" ? ["map_proof_latest_not_ready_for_nav2"] : []),
+    ...(status === "not_proven" || proofStatus === "not_proven"
+      ? [isMapProofReadback ? "upper_api_map_proof_not_proven" : "upper_api_scan_not_proven"]
+      : []),
   ]);
   const runtimeFallbackUsed =
     boolField(json, "runtime_summary_fallback_used", false)
@@ -307,6 +362,10 @@ function upperResultSummary(
     ),
     continuous_scan_status: continuousStatus,
     continuous_blocked_reasons: continuousBlockers,
+    map_proof_canonical_path: mapProofPath(mapProofPathSource, "canonical_path", "not_reported"),
+    map_proof_resolved_path: mapProofPath(mapProofPathSource, "resolved_path", "not_reported"),
+    map_proof_configured_path: mapProofPath(mapProofPathSource, "configured_path", "not_reported"),
+    map_proof_compatibility_paths: mapProofCompatibilityPaths(mapProofPathSource),
     safe_to_control: false,
     sends_commands: false,
     robot_control_executed: false,
@@ -396,6 +455,16 @@ function blockedStatus(baseUrl: ResolvedUpperBaseUrl, reason: string): O7DirectU
       radar_raw_packet_proof_safe_to_control: false,
       map_lifecycle_status: "not_loaded",
       map_artifact_ref: "not_loaded",
+      map_proof_latest_status: "not_loaded",
+      map_proof_artifact_status: "not_loaded",
+      map_proof_artifact_path: "not_loaded",
+      map_proof_canonical_path: "not_loaded",
+      map_proof_resolved_path: "not_loaded",
+      map_proof_configured_path: "not_loaded",
+      map_proof_compatibility_paths: [],
+      map_proof_failure_reason: reason,
+      map_proof_blockers: ["map_proof_latest_not_loaded"],
+      map_proof_safe_to_control: false,
       localization_status: "not_loaded",
       operator_report_evidence_ref: "missing_operator_report",
       lidar_port: "not_loaded",
@@ -420,6 +489,7 @@ function blockedStatus(baseUrl: ResolvedUpperBaseUrl, reason: string): O7DirectU
       map_save: "/api/o7/direct-upper/map/save",
       map_load: "/api/o7/direct-upper/map/load",
       map_list: "/api/o7/direct-upper/map/list",
+      map_proof_latest: "/api/o7/direct-upper/map/proof/latest",
       localize_reset: "/api/o7/direct-upper/localize/reset",
       operator_report: "/api/o7/direct-upper/operator-report",
     },
@@ -465,6 +535,16 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
         radar_raw_packet_proof_safe_to_control: false,
         map_lifecycle_status: "fixture_ready_not_proven",
         map_artifact_ref: "fixture_map_not_written",
+        map_proof_latest_status: "fixture_not_runtime",
+        map_proof_artifact_status: "fixture",
+        map_proof_artifact_path: "fixture_not_runtime",
+        map_proof_canonical_path: "fixture_not_runtime",
+        map_proof_resolved_path: "fixture_not_runtime",
+        map_proof_configured_path: "fixture_not_runtime",
+        map_proof_compatibility_paths: [],
+        map_proof_failure_reason: "fixture_mode_no_upper_runtime",
+        map_proof_blockers: ["fixture_mode_no_map_runtime"],
+        map_proof_safe_to_control: false,
         localization_status: "fixture_pose_not_published",
         operator_report_evidence_ref: "fixture_operator_report_pending",
         lidar_port: "fixture_not_hardware",
@@ -493,6 +573,9 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
   const radar = nestedRecord(statusResult.json, "radar");
   const base = nestedRecord(statusResult.json, "base");
   const map = nestedRecord(statusResult.json, "map");
+  const mapProofLatest = mapProofLatestRecord(map);
+  const mapProof = mapProofResult(mapProofLatest);
+  const mapProofArtifact = nestedRecord(mapProofLatest, "artifact");
   const localization = nestedRecord(statusResult.json, "localization");
   const operator = nestedRecord(statusResult.json, "operator");
   const scanProofLatest = nestedRecord(radar, "scan_proof_latest");
@@ -579,6 +662,16 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
       radar_raw_packet_proof_safe_to_control: false,
       map_lifecycle_status: stringField(map, "lifecycle_status", stringField(map, "status", "not_loaded")),
       map_artifact_ref: stringField(map, "artifact_ref", stringField(map, "map_ref", "not_loaded")),
+      map_proof_latest_status: stringField(mapProof, "status", stringField(mapProofLatest, "status", "not_loaded")),
+      map_proof_artifact_status: stringField(mapProofArtifact, "status", stringField(mapProofLatest, "artifact_status", "not_loaded")),
+      map_proof_artifact_path: mapProofPath(mapProofLatest, "path", stringField(mapProofLatest, "artifact_path", "not_loaded")),
+      map_proof_canonical_path: mapProofPath(mapProofLatest, "canonical_path", "not_reported"),
+      map_proof_resolved_path: mapProofPath(mapProofLatest, "resolved_path", "not_reported"),
+      map_proof_configured_path: mapProofPath(mapProofLatest, "configured_path", "not_reported"),
+      map_proof_compatibility_paths: mapProofCompatibilityPaths(mapProofLatest),
+      map_proof_failure_reason: stringField(mapProofLatest, "failure_reason", stringField(mapProof, "failure_reason", "none")),
+      map_proof_blockers: mapProofBlockers(mapProofLatest),
+      map_proof_safe_to_control: false,
       localization_status: stringField(localization, "status", "not_loaded"),
       operator_report_evidence_ref: stringField(operator, "latest_evidence_ref", "missing_operator_report"),
       lidar_port: stringField(radar, "observed_lidar_port", "not_loaded"),
@@ -603,6 +696,7 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
       map_save: "/api/o7/direct-upper/map/save",
       map_load: "/api/o7/direct-upper/map/load",
       map_list: "/api/o7/direct-upper/map/list",
+      map_proof_latest: "/api/o7/direct-upper/map/proof/latest",
       localize_reset: "/api/o7/direct-upper/localize/reset",
       operator_report: "/api/o7/direct-upper/operator-report",
     },
@@ -630,9 +724,11 @@ function commandResponse(
   const fixtureBlockers = baseUrl.source === "fixture" ? ["fixture_mode_no_upper_runtime"] : [];
   const upperSummary = upperResultSummary(command, upperRequest, upperJson);
   const isScanProofReadback = command === "radar_scan_proof_refresh" || command === "radar_scan_proof_latest";
+  const isMapProofReadback = command === "map_proof_latest";
   const blockedReasons = uniqueStrings([
     ...(failureReason === "none" ? [] : [failureReason]),
     ...(isScanProofReadback ? upperSummary.blocked_reasons : []),
+    ...(isMapProofReadback ? upperSummary.blocked_reasons : []),
     ...fixtureBlockers,
     ...hardBlockedReasons,
   ]);
@@ -654,7 +750,10 @@ function commandResponse(
     upper_api_base_url_source: baseUrl.source,
     cloud_relay_bypassed: true,
     pc_local_only: true,
-    fail_closed: !acceptedByWorkstation || !upperRequest.ok || (command === "radar_scan_proof_refresh" && upperResultIsNotProven(upperSummary)),
+    fail_closed: !acceptedByWorkstation
+      || !upperRequest.ok
+      || (command === "radar_scan_proof_refresh" && upperResultIsNotProven(upperSummary))
+      || (isMapProofReadback && upperResultIsNotProven(upperSummary)),
     failure_reason: failureReason,
     command_payload_summary: payloadSummary,
     robot_ack_connected: false,
@@ -664,6 +763,7 @@ function commandResponse(
     not_proven: [
       ...(baseUrl.source === "fixture" ? ["upper_8787_runtime"] : []),
       ...scanProofReadbackNotProven,
+      ...(isMapProofReadback ? [...upperSummary.not_proven, "amcl_not_proven", "nav2_consumption", "pc_wasd_control", "delivery_success"] : []),
       "robot_ack",
       "t1001_feedback",
       "hil_pass",
@@ -1077,6 +1177,18 @@ export async function proxyO7DirectUpperMapList(options: DirectUpperOptions = {}
     "/api/map/list",
     "trashbot.pc_tools_workstation.o7_direct_upper_map_list.v1",
     "map_list",
+    "GET",
+  );
+}
+
+export async function proxyO7DirectUpperMapProofLatest(options: DirectUpperOptions = {}): Promise<{ status: number; payload: O7DirectUpperApiCommandResponse }> {
+  // map proof latest 是只读路径契约回放；PC 不读取本地 map 文件，也不启动 AMCL/Nav2。
+  return proxyOperatorCommand(
+    options,
+    "/api/o7/direct-upper/map/proof/latest",
+    "/api/map/proof/latest",
+    "trashbot.pc_tools_workstation.o7_direct_upper_map_proof_latest.v1",
+    "map_proof_latest",
     "GET",
   );
 }

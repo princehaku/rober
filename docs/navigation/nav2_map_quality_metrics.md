@@ -88,8 +88,10 @@ Robot Software Engineer 通过上位机
 - `ros2 topic list` 只有 `/parameter_events` 和 `/rosout`，没有 `/map`、`/scan`、
   `/lidar/raw_packet`、`/tf_static`、AMCL 或 Nav2 runtime topic。
 - `GET /api/map/proof/latest` 返回 HTTP 404 但带结构化 JSON，artifact 状态为
-  `missing`，路径是 `runtime/map_lifecycle_latest.json`；这是 lifecycle proof
-  artifact 缺失，不是 API route 缺失。
+  `missing`；canonical latest JSON 路径锁定为
+  `/root/rober/onboard/runtime/map_lifecycle_latest.json`，旧
+  `/root/rober/runtime/map_lifecycle_latest.json` 只能作为 legacy path 审计，不再作为
+  latest readback 的事实来源。
 - `/root/rober/onboard/runtime` 和 `/root/rober/onboard/runtime/maps` 均不存在，
   `/api/map/list` 因此返回 `failure_reason=map_artifact_dir_missing`。
 - 进程列表只看到 `upper_robot_api.py`，没有 `slam_toolbox`、`map_server`、
@@ -106,8 +108,10 @@ no-motion learning/SLAM runtime，并在同一窗口采集 `/map` once 与地图
 它调用 `onboard/scripts/o3_map_lifecycle_proof.py`，目标是在同一窗口内启动
 `learn.launch.py lidar_enabled:=true`，观察 `/scan` once、`/map` once，调用
 `/trashbot/save_map`，并把 `runtime/maps` 下的 YAML/PGM 和最小 map metadata 写入
-`runtime/map_lifecycle_latest.json`。`GET /api/map/proof/latest` 只读回放该 JSON，
-不会启动 ROS2、SLAM 或任何硬件。
+`/root/rober/onboard/runtime/map_lifecycle_latest.json`。`GET /api/map/proof/latest`
+只读回放该 canonical JSON，不会启动 ROS2、SLAM 或任何硬件；如果现场仍残留
+`/root/rober/runtime/map_lifecycle_latest.json`，只能说明旧契约曾经写入过 legacy
+位置，不能覆盖 canonical latest。
 
 失败时 helper 必须写入 `blocked_with_root_cause`，并在 `proof.root_causes` 中区分
 `ROS install/source`、`LiDAR/launch/topic remap`、`SLAM/TF/topic remap`、
@@ -115,7 +119,7 @@ no-motion learning/SLAM runtime，并在同一窗口采集 `/map` once 与地图
 `slam_toolbox` 已安装，helper 已在 no-motion 窗口观察到 `/scan` once、`/map`
 once 和 map metadata，并且 `/trashbot/save_map` 返回
 `success=True, message='Map saved to runtime/maps/trashbot_map.pgm'`。命令末尾
-`find /root/rober/onboard/runtime/maps` 已确认 `trashbot_map.pgm` 与
+`find /root/rober/onboard/runtime` 已确认 `trashbot_map.pgm` 与
 `trashbot_map.yaml` 存在。
 
 本轮同步修正 helper 对 `runtime/maps` 的相对路径枚举：文件检查按 onboard workdir

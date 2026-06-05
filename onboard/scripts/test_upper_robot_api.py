@@ -1406,6 +1406,35 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
                 self.assertFalse(payload["robot_control_executed"])
                 self.assertFalse(payload["safe_to_control"])
 
+    def test_map_lifecycle_path_contract_resolves_to_onboard_runtime(self) -> None:
+        """map proof latest 必须脱离进程 cwd，固定指向 onboard runtime 契约。"""
+        install_fake_serial()
+        robot = api.UpperRobotApi(
+            "http://127.0.0.1:8088",
+            "/dev/fake-base",
+            115200,
+            max_speed=0.12,
+            map_artifact_dir="runtime/maps",
+            map_lifecycle_proof_artifact_path="runtime/map_lifecycle_latest.json",
+        )
+
+        status, latest = robot.map_proof_latest()
+        map_status = robot.map_status()
+
+        self.assertEqual(status, 404)
+        self.assertEqual(robot.map_lifecycle_proof_artifact_path, api.DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH)
+        self.assertEqual(robot.map_artifact_dir, api.DEFAULT_MAP_ARTIFACT_DIR)
+        self.assertEqual(latest["artifact"]["path"], api.DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH)
+        self.assertEqual(latest["artifact"]["canonical_path"], api.DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH)
+        self.assertEqual(latest["artifact"]["legacy_path"], api.LEGACY_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH)
+        self.assertIn(api.LEGACY_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH, latest["artifact"]["compatibility_paths"])
+        self.assertEqual(map_status["runtime_entrypoints"]["proof_artifact_path"], api.DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH)
+        self.assertEqual(map_status["artifact"]["path"], api.DEFAULT_MAP_ARTIFACT_DIR)
+        self.assertFalse(latest["starts_ros2"])
+        self.assertFalse(latest["sends_base_motion_commands"])
+        self.assertFalse(latest["robot_control_executed"])
+        self.assertEqual(FakeSerial.instances, [])
+
         self.assertEqual(FakeSerial.instances, [])
 
     def test_nav2_configured_command_executes_but_remains_not_proven(self) -> None:

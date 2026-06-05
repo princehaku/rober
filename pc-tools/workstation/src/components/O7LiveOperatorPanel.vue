@@ -138,6 +138,7 @@ const directUpperPaths = computed(() => {
         paths.map_save,
         paths.map_load,
         paths.map_list,
+        paths.map_proof_latest,
         paths.localize_reset,
         paths.operator_report,
       ]
@@ -154,6 +155,7 @@ const directUpperPaths = computed(() => {
         "/api/o7/direct-upper/map/save",
         "/api/o7/direct-upper/map/load",
         "/api/o7/direct-upper/map/list",
+        "/api/o7/direct-upper/map/proof/latest",
         "/api/o7/direct-upper/localize/reset",
         "/api/o7/direct-upper/operator-report",
       ];
@@ -393,6 +395,48 @@ const directScanProofTopBlockers = computed(() => {
   // 这里显示 8787 direct status 的 blocker，不把 live panel 的旧 artifact 混成 refresh 结果。
   const summary = directUpperStatus.value?.upper_status_summary;
   const blockers = summary ? [...summary.radar_scan_proof_blockers, ...summary.radar_continuous_blockers] : ["direct_upper_status_not_loaded"];
+  return blockers.slice(0, 3);
+});
+
+const directMapProofSummary = computed(() => {
+  // map proof latest 只展示 upper 侧 canonical path contract；UI 不读取 map 文件，也不判断 Nav2 可用。
+  const summary = directUpperStatus.value?.upper_status_summary;
+  if (!summary) {
+    return "not_loaded · artifact not_loaded · path not_loaded";
+  }
+  return [
+    summary.map_proof_latest_status,
+    `artifact=${summary.map_proof_artifact_status}`,
+    `path=${summary.map_proof_artifact_path}`,
+    `safe_to_control=${summary.map_proof_safe_to_control}`,
+  ].join(" · ");
+});
+
+const directMapProofPathDetails = computed(() => {
+  // canonical/resolved/configured 分开展示，避免继续把旧 runtime fallback 当唯一事实路径。
+  const summary = directUpperStatus.value?.upper_status_summary;
+  if (!summary) {
+    return "canonical=not_loaded · resolved=not_loaded · configured=not_loaded";
+  }
+  const compatibilityPaths = summary.map_proof_compatibility_paths ?? [];
+  const compatibility = compatibilityPaths.length
+    ? compatibilityPaths.join(" / ")
+    : "none";
+  return [
+    `canonical=${summary.map_proof_canonical_path}`,
+    `resolved=${summary.map_proof_resolved_path}`,
+    `configured=${summary.map_proof_configured_path}`,
+    `compat=${compatibility}`,
+  ].join(" · ");
+});
+
+const directMapProofTopBlockers = computed(() => {
+  // failure/blocker 明确来自 8787 status 摘要；没有摘要时保持 fail-closed。
+  const summary = directUpperStatus.value?.upper_status_summary;
+  const mapProofBlockers = summary?.map_proof_blockers ?? [];
+  const blockers = mapProofBlockers.length
+    ? mapProofBlockers
+    : [summary?.map_proof_failure_reason || "map_proof_latest_not_loaded"];
   return blockers.slice(0, 3);
 });
 
@@ -1008,15 +1052,24 @@ onBeforeUnmount(() => {
           <span>Raw packet</span>
           <strong>{{ directUpperStatus?.upper_status_summary.radar_raw_packet_proof_latest_status || "not_loaded" }}</strong>
         </div>
+        <div class="status-light-row">
+          <span class="status-dot status-dot-yellow" />
+          <span>Map proof</span>
+          <strong>{{ directMapProofSummary }}</strong>
+        </div>
       </div>
       <div class="endpoint-list compact-endpoints" aria-label="direct scan proof blockers">
         <code v-for="blocker in directScanProofTopBlockers" :key="blocker">{{ blocker }}</code>
+      </div>
+      <p class="base-boundary">{{ directMapProofPathDetails }}</p>
+      <div class="endpoint-list compact-endpoints" aria-label="direct map proof blockers">
+        <code v-for="blocker in directMapProofTopBlockers" :key="blocker">{{ blocker }}</code>
       </div>
       <div class="endpoint-list" aria-label="本机 direct upper API 路径">
         <code v-for="path in directUpperPaths" :key="path">{{ path }}</code>
       </div>
       <p class="base-boundary">
-        {{ directUpperStatus?.upper_api_base_url || "env ROBER_UPPER_API_BASE_URL required" }} · scan-proof refresh is read-only proof refresh，不证明 HIL、PC WASD、Nav2、map 或 delivery success。
+        {{ directUpperStatus?.upper_api_base_url || "env ROBER_UPPER_API_BASE_URL required" }} · scan/map proof latest are read-only readback，不证明 HIL、PC WASD、AMCL、Nav2 或 delivery success。
       </p>
     </article>
   </section>

@@ -61,6 +61,7 @@ adapter.field_default_url=http://192.168.1.11:8787
 | `POST` | `/api/o7/direct-upper/map/save` | 同源转发到上位机 `/api/map/save`，保留 `map_id` 和 `evidence_ref`，需要显式 env 或 fixture mode。 |
 | `POST` | `/api/o7/direct-upper/map/load` | 同源转发到上位机 `/api/map/load`，保留 `map_id` 和 `evidence_ref`，需要显式 env 或 fixture mode。 |
 | `GET` | `/api/o7/direct-upper/map/list` | 同源转发到上位机 `/api/map/list`，需要显式 env 或 fixture mode。 |
+| `GET` | `/api/o7/direct-upper/map/proof/latest` | 同源回读上位机 `/api/map/proof/latest`，只展示 canonical path contract、artifact/path、失败原因和 safety false。 |
 | `POST` | `/api/o7/direct-upper/localize/reset` | 同源转发到上位机 `/api/localize/reset`，需要显式 env 或 fixture mode。 |
 | `POST` | `/api/o7/direct-upper/operator-report` | 同源转发到上位机 `/api/operator/report`，记录 `evidence_ref` 和 `note`；允许使用 field default，不触发运动。 |
 | `GET` | `/api/o7/direct-upper/operator-report` | 同源回读上位机 `/api/operator/report` latest artifact；允许使用 field default，只读不触发运动。 |
@@ -74,7 +75,7 @@ adapter.field_default_url=http://192.168.1.11:8787
 - `ROBER_O7_DIRECT_UPPER_FIXTURE_MODE=1`：显式打开 fixture mode；支持 `1/true/yes/on`。fixture mode 返回 `upper_api_base_url_source=fixture`、`upper_api_base_url=fixture://upper-api`，并且不触发远端 fetch。
 - 请求 body 也可传 `fixture_mode=true` 打开单次 fixture mode。UI 的 `fixture mode` 勾选框使用该入口。
 - 底盘运动相关的 `base/stop`、`base/feedback-request`、`base/manual` 仍要求显式 `ROBER_UPPER_API_BASE_URL` 或 fixture mode；缺 env 且没有 fixture mode 时返回 `base_url_not_configured`，不触发远端 fetch。
-- `map/start|reset|save|load|list` 和 `localize/reset` 仍要求显式 `ROBER_UPPER_API_BASE_URL` 或 fixture mode；缺 env 且没有 fixture mode 时返回 `base_url_not_configured`，不使用 field default。
+- `map/start|reset|save|load|list|proof/latest` 和 `localize/reset` 仍要求显式 `ROBER_UPPER_API_BASE_URL` 或 fixture mode；缺 env 且没有 fixture mode 时返回 `base_url_not_configured`，不使用 field default。
 
 ## Timeout 边界
 
@@ -129,13 +130,23 @@ trashbot.pc_tools_workstation.o7_direct_upper_status.v1
 - `upper_status_summary.radar_raw_packet_proof_packets_parse_ok`
 - `upper_status_summary.radar_raw_packet_proof_points_total`
 - `upper_status_summary.radar_raw_packet_proof_safe_to_control=false`
+- `upper_status_summary.map_proof_latest_status`
+- `upper_status_summary.map_proof_artifact_status`
+- `upper_status_summary.map_proof_artifact_path`
+- `upper_status_summary.map_proof_canonical_path`
+- `upper_status_summary.map_proof_resolved_path`
+- `upper_status_summary.map_proof_configured_path`
+- `upper_status_summary.map_proof_compatibility_paths`
+- `upper_status_summary.map_proof_failure_reason`
+- `upper_status_summary.map_proof_blockers`
+- `upper_status_summary.map_proof_safe_to_control=false`
 - `upper_status_summary.lidar_port`
 - `upper_status_summary.base_port`
 - `upper_status_summary.base_baudrate`
 - `upper_status_summary.base_write_control_available`
 - `upper_status_summary.robot_ack_connected=false`
 - `upper_status_summary.t1001_observed=false`
-- `local_api_paths.status/stop/feedback_request/manual/radar_start/radar_stop/scan_proof_refresh/map_start/map_reset/map_save/map_load/map_list/localize_reset/operator_report`
+- `local_api_paths.status/stop/feedback_request/manual/radar_start/radar_stop/scan_proof_refresh/scan_proof_latest/map_start/map_reset/map_save/map_load/map_list/map_proof_latest/localize_reset/operator_report`
 
 固定安全字段：
 
@@ -153,6 +164,7 @@ fixture status 边界：
 - fixture status 返回 `status=ready` 只是为了 PC workflow 演示可继续，不证明上位机 8787 在线。
 - fixture status 的 `health_request.executed=false`、`status_request.executed=false`，`failure_reason=fixture_mode_no_upper_runtime`。
 - fixture status 的 `map_lifecycle_status=fixture_ready_not_proven`、`map_artifact_ref=fixture_map_not_written`、`localization_status=fixture_pose_not_published`。
+- fixture status 的 `map_proof_latest_status=fixture_not_runtime`、`map_proof_artifact_path=fixture_not_runtime`、`map_proof_safe_to_control=false`。
 - fixture status 固定 `safe_to_control=false`、`robot_control_executed=false`、`robot_ack_connected=false`、`t1001_observed=false`。
 
 ## 共通请求字段
@@ -387,6 +399,28 @@ trashbot.pc_tools_workstation.o7_direct_upper_map_list.v1
 - fixture mode 时返回 `200`，`upper_request.executed=false`，不读取真实 map artifact 目录。
 - 文件候选存在不能证明 map 可被 AMCL/Nav2 消费，也不能证明地图质量通过。
 
+## `GET /api/o7/direct-upper/map/proof/latest`
+
+PC 后端只转发到显式 env 指向的上位机：
+
+```text
+<ROBER_UPPER_API_BASE_URL>/api/map/proof/latest
+```
+
+响应 schema：
+
+```text
+trashbot.pc_tools_workstation.o7_direct_upper_map_proof_latest.v1
+```
+
+边界：
+
+- 不使用 field default。缺 env 且没有 fixture mode 时返回 `400 base_url_not_configured`，不触发远端 fetch。
+- 该入口只读回放 upper map proof latest，不触发 `/api/map/proof/refresh`、SLAM Toolbox、map server、AMCL 或 Nav2。
+- `upper_result_summary.artifact_path`、`map_proof_canonical_path`、`map_proof_resolved_path`、`map_proof_configured_path` 和 `map_proof_compatibility_paths` 用于核对 O10 path contract。
+- 如果 upper 返回旧 runtime fallback 路径，PC 只展示 compatibility/path 边界，不把它改写成 canonical success。
+- 响应仍固定 `safe_to_control=false`、`robot_control_executed=false`、`delivery_success=false`，也不证明 AMCL/Nav2 消费地图。
+
 ## `POST /api/o7/direct-upper/localize/reset`
 
 PC 后端只转发到显式 env 指向的上位机：
@@ -451,12 +485,13 @@ trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1
 - 展示 direct mode 状态。
 - 展示 `adapter.version`、`adapter.source` 和 field default 是否启用；缺少 `adapter` 时显示 `stale_dev_server_missing_adapter`。
 - 展示 `ROBER_UPPER_API_BASE_URL`。
-- 展示四个本机 API path，方便浏览器/curl 工具消费。
+- 展示本机 API path，包含 `scan-proof/latest` 和 `map/proof/latest`，方便浏览器/curl 工具消费。
 - 展示 cloud relay 已绕过和 ACK/T=1001 not observed 边界。
 - 展示 8787 `radar.scan_proof_latest` 摘要：artifact status、freshness、age、latest proof status 和 top blockers。
 - 展示 8787 fresh scan proof runtime 摘要：`fresh`、`hz`、`tf`、`fallback` 和 `continuous`；这些字段来自 direct-upper 后端契约，前端不得硬编码假状态。
 - `continuous=not_proven` 和 continuous blockers 必须与 fresh artifact 分开展示，不能把一次 refresh artifact 解释成 continuous radar ready。
 - 展示 8787 `radar.raw_packet_proof_latest` 摘要：artifact status、freshness、age、latest proof status、bytes、sync、packets 和 points。
+- 展示 8787 `map proof latest` 摘要：latest status、artifact status/path、canonical/resolved/configured/compatibility paths、failure reason、top blockers 和 `safe_to_control=false`。
 
 2026-06-03 23-24 micro sprint 后，`前进`、`后退`、`左转`、`右转`、`Stop`
 按钮不再只调用本地 `showLocked()`，而是通过 client helper POST PC 同源：
@@ -502,7 +537,7 @@ success。
 - 不证明 `T=1001` 或 robot ACK。
 - 不证明真实 stop/manual 已现场执行或真实点动已被 ACK 闭环确认。
 - 不证明 continuous radar ready；fresh scan proof artifact、hz 和 TF 只证明一次 read-only refresh 摘要。
-- 不证明真实 SLAM/map 可用。
+- 不证明真实 SLAM/map 可用；map proof latest 只证明 path contract readback，不证明 AMCL/Nav2 consumption。
 - 不证明 PC WASD 控车已经现场验收。
 - 不证明 delivery success。
 

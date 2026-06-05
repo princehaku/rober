@@ -276,3 +276,29 @@ PC/upper API 或人工报告至少记录：
 1. Full-stack/Software 在 PC/upper API 返回体中消费本文隔离字段，避免雷达 start/stop 触碰底盘口。
 2. Hardware 在现场条件满足后按本文 operator report 字段采集低速短 pulse 材料。
 3. Product/OKR Owner 只在证据包包含 command、stop、post-status、`T=1001`、operator report 和现场记录后，决定是否把 `safe_to_control_candidate` 转为正式 HIL 进展。
+
+## O10 map proof/path contract 硬件复核
+
+本节记录 `2026.06.05_12-13_o10-delivery-readiness-path-contract-epic` 的 Hardware Infra 复核结论。复核范围只覆盖 map lifecycle proof latest path contract 是否越界到底盘控制，以及 stop-first HIL 是否具备现场前提。
+
+已读来源：
+
+- `docs/vendor/VENDOR_INDEX.md`：WAVE ROVER 上下位机链路是 UART newline-delimited JSON；vendor Raspberry Pi 默认 `/dev/ttyAMA0 @115200` 不能直接当作 Orange Pi 现场默认；`T=1/T=13/T=130/T=131/T=1001` 的边界必须按本地 vendor 文件确认。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`：`process_commands()` 只通过串口写入 JSON + `\n`；`base_speed_ctrl()` 发送 `{"T":1,"L":...,"R":...}`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`：`CMD_SPEED_CTRL=1`、`CMD_ROS_CTRL=13`、`CMD_BASE_FEEDBACK=130`、`CMD_BASE_FEEDBACK_FLOW=131`、`FEEDBACK_BASE_INFO=1001`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`：`CMD_BASE_FEEDBACK` 分支调用 `baseInfoFeedback()`，串口 JSON 由换行分帧。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`：`baseInfoFeedback()` 输出 `T=1001` vendor feedback material。
+- `onboard/scripts/o3_map_lifecycle_proof.py` 与 `onboard/scripts/upper_robot_api.py` 的当前 no-motion map lifecycle proof 代码注释和安全字段：helper 只运行 LiDAR/SLAM proof，回包固定 `safe_to_control=false`、`sends_base_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`。
+
+复核结论：
+
+- O10 map proof/path contract lock 只应修正或锁定 `runtime/map_lifecycle_latest.json` 的 canonical/readback 路径，不是 HIL、PC WASD 或 base manual sprint。
+- map lifecycle proof 可启动 LiDAR/SLAM runtime 并观察 `/scan`、`/map`、map metadata 与 artifact，但不得发布 `/cmd_vel`，不得调用 `/api/base/manual`，不得打开 WAVE ROVER base UART。
+- 本轮 path contract lock 不应发送 WAVE ROVER `T=1`、`T=13`、`T=130`、`T=131`，也不得把历史或旁路 `T=1001` 读数写成 robot ACK。
+- 即使 remote refresh/latest 成功，也只能证明 no-motion map proof/path contract。它不证明 WAVE ROVER stop、manual pulse、robot ACK、`safe_to_control=true`、HIL pass、AMCL/Nav2 可跑或真实送达闭环。
+
+stop-first HIL 当前判定：
+
+- 本轮没有现场看护、物理净空、急停/断电路径和 CEO/现场授权的同场材料。
+- 因此前提缺失时，Hardware 只能记录 `blocked_with_root_cause` / CEO blocker；不得写 `field_hil_material`、`hil_pass=true` 或 `safe_to_control=true`。
+- 如 CEO 后续授权现场低速 pulse，仍必须按本文 `PC Manual HIL 准入` 先 stop、再单方向低速短 pulse、自动停车、post-status、`T=1001` vendor feedback 和 operator report 同一 `evidence_ref` 收证。
