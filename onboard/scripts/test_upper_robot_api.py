@@ -18,6 +18,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import upper_robot_api as api  # noqa: E402
+import o10_amcl_nav2_runtime_proof as nav2_proof  # noqa: E402
 
 
 class FakeSerial:
@@ -158,6 +159,17 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertFalse(failed_payload["stop_result"]["ok"])
         self.assertFalse(failed_payload["robot_control_executed"])
         self.assertEqual(failed_payload["serial_write_failures"][0]["type"], "OSError")
+
+    def test_nav2_lifecycle_parser_does_not_treat_inactive_as_active(self) -> None:
+        # `inactive` 包含 `active` 子串，回归测试锁住 fail-closed 生命周期判断。
+        inactive = {"ok": True, "stdout": "inactive [2]\n", "stderr": ""}
+        active = {"ok": True, "stdout": "active [3]\n", "stderr": ""}
+        labeled_active = {"ok": True, "stdout": "Current state: active\n", "stderr": ""}
+
+        self.assertFalse(nav2_proof.parse_lifecycle_active(inactive))
+        self.assertFalse(nav2_proof.parse_lifecycle_active({"ok": False, "stdout": "active [3]\n"}))
+        self.assertTrue(nav2_proof.parse_lifecycle_active(active))
+        self.assertTrue(nav2_proof.parse_lifecycle_active(labeled_active))
 
     def test_radar_status_documents_ttyacm0_ros2_lidar_contract(self) -> None:
         robot = api.UpperRobotApi("http://127.0.0.1:8088", "/dev/fake-base", 115200, max_speed=0.12)
@@ -1233,6 +1245,8 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(status["routes"]["localize_reset"], "/api/localize/reset")
         self.assertEqual(status["routes"]["localize_proof_latest"], "/api/localize/proof/latest")
         self.assertEqual(status["routes"]["nav2_status"], "/api/nav2/status")
+        self.assertEqual(status["routes"]["nav2_proof_refresh"], "/api/nav2/proof/refresh")
+        self.assertEqual(status["routes"]["nav2_proof_latest"], "/api/nav2/proof/latest")
         self.assertEqual(status["routes"]["nav2_start"], "/api/nav2/start")
         self.assertEqual(status["routes"]["nav2_stop"], "/api/nav2/stop")
         self.assertEqual(status["routes"]["elevator_status"], "/api/elevator/status")
@@ -1290,6 +1304,9 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
                             "planner_active": True,
                             "controller_active": True,
                             "scan_consumed": True,
+                            "map_consumed": True,
+                            "amcl_pose_observed": True,
+                            "path_generation_ready": True,
                             "path_generated": False,
                         },
                     }
@@ -1337,9 +1354,13 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertEqual(localize_http_status, 200)
         self.assertFalse(localize_latest["readback_sends_commands"])
         self.assertEqual(localize_latest["latest_result"]["proof"]["status"], "fixture_localization_material")
+        self.assertEqual(nav2_status["proof_latest"]["endpoint"], "/api/nav2/proof/latest")
         self.assertEqual(nav2_status["proof_latest"]["latest_proof_status"], "fixture_nav2_material")
         self.assertTrue(nav2_status["proof_latest"]["latest_map_server_active"])
         self.assertTrue(nav2_status["proof_latest"]["latest_scan_consumed"])
+        self.assertTrue(nav2_status["proof_latest"]["latest_map_consumed"])
+        self.assertTrue(nav2_status["proof_latest"]["latest_amcl_pose_observed"])
+        self.assertTrue(nav2_status["proof_latest"]["latest_path_generation_ready"])
         self.assertFalse(nav2_status["proof_latest"]["latest_path_generated"])
         self.assertFalse(nav2_status["nav2_runtime_proven"])
         self.assertEqual(elevator_status["proof_latest"]["latest_elevator_phase"], "waiting_target_floor")
@@ -1774,6 +1795,114 @@ class UpperRobotApiHttpRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(body["sends_base_motion_commands"])
         self.assertFalse(body["robot_control_executed"])
         self.assertEqual(calls[0]["timeout_s"], 10.0)
+        self.assertEqual(FakeSerial.instances, [])
+
+    async def test_nav2_proof_refresh_http_post_is_not_405_and_records_blocked_artifact(self) -> None:
+        try:
+            from aiohttp.test_utils import TestClient, TestServer
+        except Exception as exc:  # noqa: BLE001 - 本机缺 aiohttp 时保留类方法回归作为必跑证明。
+            self.skipTest(f"aiohttp test client unavailable: {exc}")
+
+        calls: list[dict[str, object]] = []
+        original_runner = api.run_nav2_runtime_proof_helper
+
+        def fake_runner(**kwargs: object) -> dict[str, object]:
+            """HTTP route 只验证 O10 collector 调度；不发布 /cmd_vel 或 /initialpose。"""
+            calls.append(kwargs)
+            artifact_path = Path(str(kwargs["artifact_path"]))
+            artifact_path.parent.mkdir(parents=True, exist_ok=True)
+            artifact_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+                        "evidence_type": "blocked_with_root_cause",
+                        "proof": {
+                            "status": "blocked_with_root_cause",
+                            "evidence_ref": "nav2-route-test",
+                            "map_server_active": False,
+                            "amcl_active": False,
+                            "planner_active": False,
+                            "controller_active": False,
+                            "scan_consumed": False,
+                            "map_consumed": False,
+                            "amcl_pose_observed": False,
+                            "initialpose_publish_attempted": False,
+                            "initialpose_published": False,
+                            "path_generation_ready": False,
+                            "path_generated": False,
+                            "root_causes": [{"layer": "Nav2 lifecycle", "reason": "map_server_lifecycle_not_active"}],
+                        },
+                        "safe_to_control": False,
+                        "sends_base_motion_commands": False,
+                        "publishes_cmd_vel": False,
+                        "calls_base_manual": False,
+                        "robot_control_executed": False,
+                        "hil_pass": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            return {
+                "mode": "o10_amcl_nav2_runtime_proof_helper",
+                "executed": True,
+                "ok": False,
+                "returncode": 2,
+                "safe_to_control": False,
+                "sends_base_motion_commands": False,
+                "publishes_cmd_vel": False,
+                "calls_base_manual": False,
+                "robot_control_executed": False,
+                "hil_pass": False,
+            }
+
+        api.run_nav2_runtime_proof_helper = fake_runner  # type: ignore[assignment]
+        install_fake_serial()
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                robot = api.UpperRobotApi(
+                    "http://127.0.0.1:8088",
+                    "/dev/fake-base",
+                    115200,
+                    max_speed=0.12,
+                    map_artifact_dir=str(Path(tmpdir) / "maps"),
+                    map_lifecycle_proof_artifact_path=str(Path(tmpdir) / "map_lifecycle_latest.json"),
+                    nav2_lifecycle_artifact_path=str(Path(tmpdir) / "nav2_lifecycle_latest.json"),
+                )
+                client = TestClient(TestServer(api.create_app(robot)))
+                await client.start_server()
+                try:
+                    response = await client.post("/api/nav2/proof/refresh", json={"timeout_s": 6})
+                    body = await response.json()
+                    latest_response = await client.get("/api/nav2/proof/latest")
+                    latest_body = await latest_response.json()
+                    status_response = await client.get("/api/nav2/status")
+                    status_body = await status_response.json()
+                finally:
+                    await client.close()
+        finally:
+            api.run_nav2_runtime_proof_helper = original_runner  # type: ignore[assignment]
+
+        self.assertNotEqual(response.status, 405)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(latest_response.status, 200)
+        self.assertEqual(status_response.status, 200)
+        self.assertEqual(body["endpoint"], "/api/nav2/proof/refresh")
+        self.assertEqual(body["status"], "blocked_with_root_cause")
+        self.assertEqual(body["proof_state"], "blocked_with_root_cause")
+        self.assertEqual(body["latest_readback_http_status"], 200)
+        self.assertEqual(body["latest_result"]["proof"]["root_causes"][0]["reason"], "map_server_lifecycle_not_active")
+        self.assertEqual(latest_body["endpoint"], "/api/nav2/proof/latest")
+        self.assertEqual(latest_body["latest_result"]["proof"]["status"], "blocked_with_root_cause")
+        self.assertEqual(status_body["routes"]["proof_refresh"], "/api/nav2/proof/refresh")
+        self.assertEqual(status_body["routes"]["proof_latest"], "/api/nav2/proof/latest")
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["sends_base_motion_commands"])
+        self.assertFalse(body["publishes_cmd_vel"])
+        self.assertFalse(body["calls_base_manual"])
+        self.assertFalse(body["robot_control_executed"])
+        self.assertFalse(body["hil_pass"])
+        self.assertFalse(body["path_generated"])
+        self.assertEqual(calls[0]["timeout_s"], 6.0)
         self.assertEqual(FakeSerial.instances, [])
 
     async def test_operator_report_http_post_and_get_are_not_405_when_aiohttp_is_available(self) -> None:

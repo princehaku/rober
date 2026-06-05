@@ -8,6 +8,63 @@
 
 ## 2026-06-05 系列
 
+### 2026-06-05 16-17｜OKR Six-Sprint Nav2 Runtime Rewrite｜最近 6 轮复盘，下一轮转 AMCL/Nav2 runtime bringup
+
+本轮 Product/OKR micro sprint 复盘最近 6 个迭代：
+`06-07_o9-pc-slam-runtime-epic`、`08-09_o9-pc-smoke-map-runtime-epic`、`10-05_okr-six-sprint-breakthrough-rewrite`、`12-13_o10-delivery-readiness-path-contract-epic`、`13-14_o10-amcl-nav2-readiness-epic`、`15-16_o10-amcl-nav2-runtime-epic`。
+
+本轮方向判断：**继续并收紧 O10 执行抓手**。最近 6 轮不是“员工一直 Micro”：`06-07`、`08-09`、`12-13`、`13-14`、`15-16` 都是 Epic，`10-05` 是 Product micro。员工状态比上一轮健康，团队已经从 latest/readback/status 转到真实 runtime blocker；15-16 已经证明 AMCL/Nav2 blocked root cause，下一轮不能继续写 collector 或 readback，必须推进 AMCL/Nav2 install/launch/lifecycle bringup、map quality/waypoint gate、真实/受控电梯图片 manifest 和 Hardware HIL CEO blocker。
+
+最近 6 轮问题：
+
+| Sprint | 证据事实 | OKR 判断 |
+| --- | --- | --- |
+| `06-07_o9-pc-slam-runtime-epic` | PC 能表达 hz/TF/fallback/continuous not_proven；PC live smoke blocked at `tsx_ipc_pipe_enotsup`；远端 ROS graph 无常驻 `/scan`/`/map`/SLAM/Nav2。 | O8 小涨，O3/O7/O9 不涨。 |
+| `08-09_o9-pc-smoke-map-runtime-epic` | `TMPDIR=/tmp` 解除 PC smoke blocker；8788 POST refresh + GET latest HTTP 200；no-motion `/scan` once、`/map` once、map metadata、PGM/YAML 落盘和 latest clean readback 成立。 | O3/O7/O8/O9 按证据边界小涨；不证明 continuous radar、AMCL/Nav2、HIL 或控车。 |
+| `10-05_okr-six-sprint-breakthrough-rewrite` | Product 新增 O10，把旧 O3/O7/O9 证据降为 O10 前置材料。 | 只算 Product micro，不产生 robot runtime/HIL/field/user acceptance material。 |
+| `12-13_o10-delivery-readiness-path-contract-epic` | canonical latest JSON 锁到 `/root/rober/onboard/runtime/map_lifecycle_latest.json`，map artifacts 锁到 `/root/rober/onboard/runtime/maps`；8787/8788 readback 通过。 | O10 首段小涨；不能外推 AMCL/Nav2、HIL、PC WASD 或 delivery success。 |
+| `13-14_o10-amcl-nav2-readiness-epic` | PC browser workflow JSON/截图成立；`/api/nav2/status.amcl_nav2_readiness` 输入护栏成立；电梯图片和 HIL 形成 CEO blocker。 | O7/O8/O10 小涨；O1/O2/O3/O5/O6/O9 保持。 |
+| `15-16_o10-amcl-nav2-runtime-epic` | `KR-O10-AMCL-Nav2-Runtime` no-motion collector、`POST /api/nav2/proof/refresh`、`GET /api/nav2/proof/latest` live 成立；artifact `blocked_with_root_cause`，canonical map inputs ready，但 `nav2_amcl_missing`、`nav2_planner_missing`、`nav2_controller_missing`、lifecycle not active，`/scan`/`/map`/`/amcl_pose` 未 observed，ROS graph 只有 `/parameter_events` 和 `/rosout`；安全字段全部 false，不控车。 | O10 约 10% -> 约 13%，O8 约 50% -> 约 51%；O3/O7/O9 不涨，因为不是 AMCL/Nav2 runtime success。 |
+
+本轮 OKR 调整：O1 保持约 95.5%，O2 保持约 72%，O3 保持约 77%，O5 保持约 84%，O6 保持约 82%，O7 保持约 94%，O8 约 50% -> 约 51%，O9 保持约 22%，O10 约 10% -> 约 13%。O10 上调只计 `KR-O10-AMCL-Nav2-Runtime` collector 和 live `blocked_with_root_cause` artifact，不证明 AMCL localization、Nav2 path generation/path execution 或 delivery success。
+
+员工状态：Robot Software Engineer 已把 AMCL/Nav2 runtime 缺口做成 8787 live artifact，下一轮 P0 是 Nav2 install/launch/lifecycle bringup；Robot Algorithm Engineer 需要补 map quality/waypoint gate 和真实/受控电梯图片 manifest；Hardware Infra Engineer 必须继续把 HIL 卡在 CEO/现场安全授权；Full-stack Software Engineer 只做必要 fail-closed 状态展示配合；Product Manager / OKR Owner 必须继续检查最近 2 轮 blocker、员工状态和 Micro/Epic 比例。当前不是 Micro-only，但下一轮必须继续 Epic，不能回到 status/readback 微修。
+
+下一轮必须创建或更新 O10 Epic sprint 文档链：`pre_start.md` 写最近 2 轮 blocker、员工状态、Micro/Epic 风险和 CEO blocker；`prd.md` 写用户价值和受控送达 readiness 口径；`tech-plan.md` 写 Robot Software + Algorithm 主责、map/waypoint gate、HIL/图片 blocker 和验收命令；`tech-done.md` 写实际 runtime bringup 或 blocked root cause；`side2side_check.md` / `final.md` 收 pass/blocked 与不可越界项。
+
+候选 KR：`KR-O10-AMCL-Nav2-Runtime-Success`（Robot Software Engineer + Robot Algorithm Engineer，验收 map_server、AMCL、planner/controller lifecycle readback、AMCL `/initialpose` 边界和 no-motion path generation readiness）；`KR-O10-Map-Waypoint-Quality-Gate`（Robot Algorithm Engineer，验收 canonical map artifact + 同一 `map` frame waypoint manifest + metrics pass/fail）；`KR-O10-Elevator-Image-Manifest`（Robot Algorithm Engineer，验收真实/受控电梯图片 manifest + OpenCV eval）；`KR-O10-Stop-First-HIL-CEO-Blocker`（Hardware Infra Engineer + Full-stack Software Engineer，验收现场安全四项满足后低速 pulse，否则 CEO blocker）。
+
+### 2026-06-05 15-16｜O10 AMCL/Nav2 Runtime Collector｜live blocker artifact 成立，O10/O8 小涨
+
+本轮 `sprints/2026.06.05_15-16_o10-amcl-nav2-runtime-epic/` 继续针对最低完成度
+O10，不重复消费 latest/path/readback。Robot Software 新增 no-motion
+AMCL/Nav2 runtime proof collector，并在 upper API 增加
+`POST /api/nav2/proof/refresh` 与 `GET /api/nav2/proof/latest`。该 collector 只读
+canonical map proof、map artifacts、Nav2/AMCL package、lifecycle、`/scan`、
+`/map`、`/amcl_pose` 和 path generation readiness；不发布 `/cmd_vel`，不调用
+`/api/base/manual`，不发布 `/initialpose`，不发送 Nav2 goal。
+
+远端部署到 `root@192.168.1.11:37878` 后，`trashbot-upper-robot-api.service`
+重启为 `active`。live `POST /api/nav2/proof/refresh` 返回
+`blocked_with_root_cause`，`GET /api/nav2/proof/latest` artifact `status=loaded`，
+路径为 `/root/rober/onboard/runtime/nav2_lifecycle_latest.json`。关键事实是
+canonical map inputs ready，YAML/PGM 可读；但 root causes 包含
+`nav2_amcl_missing`、`nav2_planner_missing`、`nav2_controller_missing`，
+map_server/amcl/planner/controller lifecycle not active，`/scan`、`/map`、
+`/amcl_pose` 未发布，ROS graph 只有 `/parameter_events` 和 `/rosout`。
+
+| Objective | 本轮影响 | 证据与缺口 |
+| --- | --- | --- |
+| O10：受控送达闭环实战战役 | 约 10% -> 约 13% | AMCL/Nav2 缺口从抽象风险变成 live 8787 可回放 blocker artifact；仍不证明 AMCL localization、Nav2 path generation/path execution 或 delivery success。 |
+| O8：Epic 交付节奏与证据治理 | 约 50% -> 约 51% | Epic 文档链、证据边界和 blocker root cause 完成收口；治理进展不证明产品能力。 |
+| O3：建图、定位、Nav2 与固定路线 | 保持约 77% | 本轮是 `blocked_with_root_cause` artifact，不是 AMCL/Nav2 runtime success。 |
+| O7/O9 | 保持 O7 约 94%、O9 约 22% | 本轮未做 PC 消费，也没有新的 O9 runtime success。 |
+
+验证：`python3 -m compileall -q onboard/scripts onboard/src` 通过；
+`python3 -m unittest onboard.scripts.test_upper_robot_api` 38 tests OK/skipped 4；
+`python3 -m unittest discover -s onboard/scripts -p 'test_*.py'` 87 tests OK/skipped 4；
+scoped `git diff --check` 通过。剩余风险见本 sprint `tech-done.md`；截至 2026-06-05 16-17 尚无 `final.md`。
+
 ### 2026-06-05 10-05｜OKR Six-Sprint Breakthrough Rewrite｜新增 O10 受控送达闭环实战战役，禁止回到 latest/readback/status
 
 本轮 Product/OKR micro sprint 复盘最近 6 个已完成迭代：

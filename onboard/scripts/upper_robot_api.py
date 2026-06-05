@@ -43,7 +43,8 @@ DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "/root/rober/onboard/runtime/map_lif
 LEGACY_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "/root/rober/runtime/map_lifecycle_latest.json"
 DEFAULT_MAP_LIFECYCLE_PROOF_REFRESH_TIMEOUT_S = 45.0
 DEFAULT_LOCALIZATION_ARTIFACT_PATH = "runtime/localization_reset_latest.json"
-DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "runtime/nav2_lifecycle_latest.json"
+DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_lifecycle_latest.json"
+DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S = 8.0
 DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH = "runtime/elevator_status_latest.json"
 DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH = "runtime/operator_report_latest.json"
 DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS = 15 * 60 * 1000
@@ -124,6 +125,8 @@ ROUTE_PATHS = {
     "localize_reset": "/api/localize/reset",
     "localize_proof_latest": "/api/localize/proof/latest",
     "nav2_status": "/api/nav2/status",
+    "nav2_proof_refresh": "/api/nav2/proof/refresh",
+    "nav2_proof_latest": "/api/nav2/proof/latest",
     "nav2_start": "/api/nav2/start",
     "nav2_stop": "/api/nav2/stop",
     "elevator_status": "/api/elevator/status",
@@ -445,6 +448,86 @@ def run_map_lifecycle_proof_helper(
         }
 
 
+def run_nav2_runtime_proof_helper(
+    *,
+    artifact_path: str,
+    map_proof_path: str,
+    map_artifact_dir: str,
+    timeout_s: float,
+) -> dict[str, Any]:
+    """运行 no-motion AMCL/Nav2 collector；默认只读现有 ROS graph，不发布 goal。"""
+    script_path = Path(__file__).resolve().with_name("o10_amcl_nav2_runtime_proof.py")
+    command = [
+        sys.executable,
+        str(script_path),
+        "--output",
+        artifact_path,
+        "--map-proof",
+        map_proof_path,
+        "--map-dir",
+        map_artifact_dir,
+        "--timeout-s",
+        str(timeout_s),
+    ]
+    started_ms = now_ms()
+    try:
+        completed = subprocess.run(  # noqa: S603 - argv 固定为仓库 helper，不接受外部 shell。
+            command,
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=max(timeout_s * 8 + 20.0, 45.0),
+        )
+        return {
+            "mode": "o10_amcl_nav2_runtime_proof_helper",
+            "executed": True,
+            "ok": completed.returncode == 0,
+            "returncode": completed.returncode,
+            "argv": command,
+            "elapsed_ms": now_ms() - started_ms,
+            "stdout_preview": completed.stdout[-4000:],
+            "stderr_preview": completed.stderr[-4000:],
+            "safe_to_control": False,
+            "sends_base_motion_commands": False,
+            "publishes_cmd_vel": False,
+            "calls_base_manual": False,
+            "robot_control_executed": False,
+            "hil_pass": False,
+        }
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "mode": "o10_amcl_nav2_runtime_proof_helper",
+            "executed": True,
+            "ok": False,
+            "argv": command,
+            "elapsed_ms": now_ms() - started_ms,
+            "error": compact_error(exc),
+            "stdout_preview": preview_text(exc.stdout, 4000),
+            "stderr_preview": preview_text(exc.stderr, 4000),
+            "safe_to_control": False,
+            "sends_base_motion_commands": False,
+            "publishes_cmd_vel": False,
+            "calls_base_manual": False,
+            "robot_control_executed": False,
+            "hil_pass": False,
+        }
+    except Exception as exc:  # noqa: BLE001 - 远端 Python/权限缺口必须给出结构化 blocker。
+        return {
+            "mode": "o10_amcl_nav2_runtime_proof_helper",
+            "executed": False,
+            "ok": False,
+            "argv": command,
+            "elapsed_ms": now_ms() - started_ms,
+            "error": compact_error(exc),
+            "safe_to_control": False,
+            "sends_base_motion_commands": False,
+            "publishes_cmd_vel": False,
+            "calls_base_manual": False,
+            "robot_control_executed": False,
+            "hil_pass": False,
+        }
+
+
 def localization_artifact_info(path: str) -> dict[str, Any]:
     """定位 reset artifact 是上层回放材料，不代表 AMCL 已恢复定位。"""
     return {
@@ -457,8 +540,12 @@ def localization_artifact_info(path: str) -> dict[str, Any]:
 
 def nav2_lifecycle_artifact_info(path: str) -> dict[str, Any]:
     """Nav2 lifecycle 材料入口用于回放状态，不在 HTTP status 里探 ROS graph。"""
+    resolved_path = resolve_onboard_runtime_path(path)
     return {
-        "path": path,
+        "path": resolved_path,
+        "configured_path": path,
+        "resolved_path": resolved_path,
+        "canonical_path": DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH,
         "configured_by": "ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH or --nav2-lifecycle-artifact-path",
         "format": "json",
         "schema": f"{SCHEMA}.nav2_lifecycle_runtime_proof",
@@ -1362,7 +1449,7 @@ def summarize_nav2_lifecycle_latest_artifact(path: str) -> dict[str, Any]:
         path,
         artifact_info=nav2_lifecycle_artifact_info(path),
         schema_suffix="nav2_lifecycle_proof_latest",
-        endpoint=ROUTE_PATHS["nav2_status"],
+        endpoint=ROUTE_PATHS["nav2_proof_latest"],
         boundary="software_guard_only_not_real_nav2_runtime_or_path_execution",
         source="nav2_lifecycle_runtime_artifact",
         fields={
@@ -1371,6 +1458,9 @@ def summarize_nav2_lifecycle_latest_artifact(path: str) -> dict[str, Any]:
             "latest_planner_active": ("planner_active", "planner_server_active"),
             "latest_controller_active": ("controller_active", "controller_server_active"),
             "latest_scan_consumed": ("scan_consumed", "laser_scan_consumed"),
+            "latest_map_consumed": ("map_consumed", "map_server_map_consumed"),
+            "latest_amcl_pose_observed": ("amcl_pose_observed", "/amcl_pose_observed"),
+            "latest_path_generation_ready": ("path_generation_ready", "global_path_generation_ready"),
             "latest_path_generated": ("path_generated", "global_path_generated"),
         },
     )
@@ -2520,7 +2610,7 @@ class UpperRobotApi:
         self.map_artifact_dir = resolve_onboard_runtime_path(map_artifact_dir)
         self.map_lifecycle_proof_artifact_path = resolve_onboard_runtime_path(map_lifecycle_proof_artifact_path)
         self.localization_artifact_path = localization_artifact_path
-        self.nav2_lifecycle_artifact_path = nav2_lifecycle_artifact_path
+        self.nav2_lifecycle_artifact_path = resolve_onboard_runtime_path(nav2_lifecycle_artifact_path)
         self.elevator_status_artifact_path = elevator_status_artifact_path
         self.operator_report_artifact_path = operator_report_artifact_path
         self.radar_start_command = radar_start_command
@@ -2949,6 +3039,83 @@ class UpperRobotApi:
             source="localization_runtime_artifact",
         )
 
+    async def nav2_proof_refresh(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """触发 no-motion AMCL/Nav2 proof refresh；失败也必须写成 latest artifact。"""
+        body = body if isinstance(body, dict) else {}
+        timeout_s = clamp_float(
+            body.get("timeout_s"),
+            DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S,
+            4.0,
+            30.0,
+        )
+        command_result = await asyncio.to_thread(
+            run_nav2_runtime_proof_helper,
+            artifact_path=self.nav2_lifecycle_artifact_path,
+            map_proof_path=self.map_lifecycle_proof_artifact_path,
+            map_artifact_dir=self.map_artifact_dir,
+            timeout_s=timeout_s,
+        )
+        http_status, latest = self.nav2_proof_latest()
+        proof = latest.get("latest_result", {}).get("proof") if isinstance(latest.get("latest_result"), dict) else {}
+        proof_status = proof.get("status") if isinstance(proof, dict) else "not_proven"
+        latest_result = latest.get("latest_result") if isinstance(latest.get("latest_result"), dict) else {}
+        # collector 可能把 evidence_type 放在顶层或 proof 内；两处都缺失时必须保守 blocked。
+        evidence_type = latest_proof_value(latest_result, "evidence_type") or "blocked_with_root_cause"
+        return software_guard_payload(
+            schema_suffix="nav2_runtime_proof_refresh_result",
+            action="nav2_proof_refresh",
+            endpoint=ROUTE_PATHS["nav2_proof_refresh"],
+            command_env="built_in_no_motion_amcl_nav2_runtime_helper",
+            command="o10_amcl_nav2_runtime_proof.py",
+            command_result=command_result,
+            artifact=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
+            extra={
+                "status": "refreshed" if evidence_type == "robot_runtime_material" else "blocked_with_root_cause",
+                "proof_state": proof_status,
+                "evidence_type": evidence_type,
+                "latest_readback_http_status": http_status,
+                "latest_result": latest.get("latest_result"),
+                "proof_latest": summarize_nav2_lifecycle_latest_artifact(self.nav2_lifecycle_artifact_path),
+                "map_readiness": build_amcl_nav2_readiness_from_map_proof(
+                    self.map_lifecycle_proof_artifact_path,
+                    self.map_artifact_dir,
+                ),
+                "opens_base_uart": False,
+                "sends_commands": False,
+                "sends_motion_commands": False,
+                "publishes_cmd_vel": False,
+                "calls_base_manual": False,
+                "sends_base_motion_commands": False,
+                "starts_ros2": False,
+                "starts_nav2": False,
+                "robot_control_executed": False,
+                "safe_to_control": False,
+                "hil_pass": False,
+                "path_generated": False,
+                "path_execution_attempted": False,
+                "read_only_existing_ros_graph": True,
+                "blocked_commands_not_sent": ["T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual", "/initialpose"],
+                "transition_to_proven": [
+                    "map_server/amcl/planner/controller lifecycle active",
+                    "/scan and /map observed in the same no-motion ROS2 graph",
+                    "/amcl_pose observed or /initialpose boundary explicitly blocked",
+                    "path generation readiness observed without sending a navigation goal",
+                    f"GET {ROUTE_PATHS['nav2_proof_latest']} returns the same artifact",
+                ],
+            },
+        )
+
+    def nav2_proof_latest(self) -> tuple[int, dict[str, Any]]:
+        """只读 AMCL/Nav2 proof artifact，不探 ROS graph，不发布 initialpose/goal。"""
+        return read_runtime_artifact_latest(
+            self.nav2_lifecycle_artifact_path,
+            artifact_info=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
+            schema_suffix="nav2_runtime_proof_latest",
+            endpoint=ROUTE_PATHS["nav2_proof_latest"],
+            boundary="software_guard_only_not_real_nav2_path_execution_or_delivery",
+            source="nav2_lifecycle_runtime_artifact",
+        )
+
     def nav2_status(self) -> dict[str, Any]:
         """Nav2 lifecycle 状态只读 artifact；真实 graph 查询由外部 collector 写材料。"""
         return {
@@ -2965,6 +3132,8 @@ class UpperRobotApi:
             ),
             "routes": {
                 "status": ROUTE_PATHS["nav2_status"],
+                "proof_refresh": ROUTE_PATHS["nav2_proof_refresh"],
+                "proof_latest": ROUTE_PATHS["nav2_proof_latest"],
                 "start": ROUTE_PATHS["nav2_start"],
                 "stop": ROUTE_PATHS["nav2_stop"],
             },
@@ -2976,6 +3145,8 @@ class UpperRobotApi:
                 "autonomous_launch": "ros2 launch ros2_trashbot_bringup autonomous.launch.py map_file:=<map.yaml>",
                 "lifecycle_nodes_expected": ["map_server", "amcl", "planner_server", "controller_server"],
                 "required_inputs": ["/scan", "map yaml/image", "tf map->base_link"],
+                "proof_refresh": ROUTE_PATHS["nav2_proof_refresh"],
+                "proof_latest": ROUTE_PATHS["nav2_proof_latest"],
             },
             **runtime_boundary_flags(),
             **proof_flags(),
@@ -3509,6 +3680,15 @@ def create_app(api: UpperRobotApi) -> Any:
     async def nav2_status(_: web.Request) -> Any:
         return json_response(api.nav2_status())
 
+    async def nav2_proof_refresh(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        payload = await api.nav2_proof_refresh(body if isinstance(body, dict) else {})
+        return json_response(payload)
+
+    async def nav2_proof_latest(_: web.Request) -> Any:
+        http_status, payload = api.nav2_proof_latest()
+        return json_response(payload, status=http_status)
+
     async def nav2_start(_: web.Request) -> Any:
         return json_response(api.nav2_control("start"))
 
@@ -3583,6 +3763,8 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["localize_reset"], localize_reset)
     app.router.add_get(ROUTE_PATHS["localize_proof_latest"], localize_proof_latest)
     app.router.add_get(ROUTE_PATHS["nav2_status"], nav2_status)
+    app.router.add_post(ROUTE_PATHS["nav2_proof_refresh"], nav2_proof_refresh)
+    app.router.add_get(ROUTE_PATHS["nav2_proof_latest"], nav2_proof_latest)
     app.router.add_post(ROUTE_PATHS["nav2_start"], nav2_start)
     app.router.add_post(ROUTE_PATHS["nav2_stop"], nav2_stop)
     app.router.add_get(ROUTE_PATHS["elevator_status"], elevator_status)

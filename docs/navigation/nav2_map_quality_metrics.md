@@ -57,6 +57,40 @@ YAML/image 一致性、coverage、unknown ratio 和 waypoint cell 状态。
 quality、AMCL `/initialpose`/`/amcl_pose`、map server、planner/controller
 lifecycle 和 `/scan` + map 消费材料。
 
+## O10 AMCL/Nav2 no-motion runtime proof
+
+`POST /api/nav2/proof/refresh` 是 O10 新增的 no-motion AMCL/Nav2 proof 入口。
+它调用 `onboard/scripts/o10_amcl_nav2_runtime_proof.py`，基于 canonical map
+proof `/root/rober/onboard/runtime/map_lifecycle_latest.json` 和 map artifacts
+`/root/rober/onboard/runtime/maps`，只读采集现有 ROS2 graph 的 runtime 状态：
+
+- `map_server`、`amcl`、`planner_server`、`controller_server` lifecycle 是否 active。
+  lifecycle 判断必须精确匹配 `active`，不能把 `inactive` 子串误判为 active。
+- `/scan`、`/map`、`/amcl_pose` 是否能在短窗口内读取一次。
+- AMCL `/initialpose` 边界是否保持 no-motion：collector 不发布 `/initialpose`，
+  只读取 `/initialpose` topic info，并把 `initialpose_publish_attempted=false`
+  写入 artifact。
+- planner path generation readiness 只看 `compute_path_to_pose` /
+  `compute_path_through_poses` action 或 service 是否可见；collector 不发送 goal，
+  不调用 path action，因此 `path_generated=false`。
+
+`GET /api/nav2/proof/latest` 只读回放
+`/root/rober/onboard/runtime/nav2_lifecycle_latest.json`。latest 缺失、坏 JSON、
+ROS2 不可用、Nav2 包缺失、lifecycle 未 active、`/scan`/`/map`/`/amcl_pose`
+缺失或 planner action 不可见时，payload 必须保持
+`status=blocked_with_root_cause`，并在 `proof.root_causes` 中写清具体层：
+`canonical map proof`、`ROS install/source`、`Nav2 lifecycle`、`Nav2 sensor
+input`、`Nav2 map input`、`AMCL localization`、`AMCL scan consumption` 或
+`Nav2 path generation`。
+
+该 route/helper 的证据边界固定为 no-motion。refresh/latest 即使观察到 AMCL 或
+Nav2 readiness，也必须保持 `safe_to_control=false`、
+`sends_base_motion_commands=false`、`publishes_cmd_vel=false`、
+`calls_base_manual=false`、`robot_control_executed=false`、`hil_pass=false`。
+它不打开 `/dev/ttyS5`，不调用 `/api/base/manual`，不发布 `/cmd_vel`，不发送
+Nav2 goal，不执行 fixed route，也不证明 delivery success。若没有真实 runtime，
+唯一合格结果是 `blocked_with_root_cause`，不能写成可导航。
+
 ## Fixture 复跑
 
 当前可复跑 fixture：
