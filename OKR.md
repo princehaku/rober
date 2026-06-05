@@ -87,7 +87,7 @@
 
 ## 4. 2026 H1 OKR（当前推进区）
 
-更新时间：2026-06-05 16-17 CST，对应 `sprints/2026.06.05_16-17_okr-six-sprint-nav2-runtime-rewrite/tech-done.md`。本轮 Product/OKR 复盘最近 6 个迭代，并采用 15-16 最新 `final.md` 的严格收口口径：O10 Epic 完成 no-motion AMCL/Nav2 runtime proof collector、8787 `POST /api/nav2/proof/refresh` / `GET /api/nav2/proof/latest` 和 live `blocked_with_root_cause` artifact，并修复 lifecycle parser 不能把 `inactive` 子串误判成 `active`；O10 已由 15-16 收到约 12%，本轮不重复上调，O8 保持约 51%，O1/O2/O3/O5/O6/O7/O9 保持。
+更新时间：2026-06-05 15-16 CST，对应 `sprints/2026.06.05_15-16_o10-amcl-nav2-runtime-epic/final.md`。本轮 O10 Epic 完成 no-motion AMCL/Nav2 runtime proof collector、8787 `POST /api/nav2/proof/refresh` / `GET /api/nav2/proof/latest` 和 live `blocked_with_root_cause` artifact，并修复 lifecycle parser 不能把 `inactive` 子串误判成 `active`；O10 约 10% -> 约 12%，O8 约 50% -> 约 51%，O1/O2/O3/O5/O6/O7/O9 保持。
 
 本轮方向判断是 **调整：北极星继续，战役目标从 O9 的“真实材料破局”升级到 O10 的“受控送达闭环实战”**。北极星仍是普通手机用户把垃圾交给低成本小车，小车沿固定路线送到垃圾站，必要时 assisted elevator，并在异常时安全停止、请求人工协助和留下可复盘证据；普通用户不需要理解 ROS2、SSH、串口或硬件调试。
 
@@ -269,7 +269,7 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-06-05 16-17 CST，对应本轮 `sprints/2026.06.05_16-17_okr-six-sprint-nav2-runtime-rewrite/tech-done.md`。
+更新时间：2026-06-05 15-16 CST，对应本轮 `sprints/2026.06.05_15-16_o10-amcl-nav2-runtime-epic/final.md`。
 
 **比例更新规则**：O1/O2/O3/O7 只有真实现场、ROS2 runtime、HIL、OpenCV eval、地图 artifact、operator workflow 或受控电梯材料才涨；O5/O6 只有真实生产云、4G/公网/DB/OSS/phone-browser/上车数据才涨；O8 只有执行证据链、blocker 升级、员工状态和 evidence type 复核生效才涨；O9 只有短周期真实材料交付才涨；O10 只有受控送达 readiness chain 的新增链式证据才涨。继续增加 Micro sprint、mock、fixture、UI 文案、readback、状态面或只读 runbook 不再涨产品 Objective。
 
