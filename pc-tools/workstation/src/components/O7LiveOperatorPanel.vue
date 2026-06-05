@@ -133,6 +133,7 @@ const directUpperPaths = computed(() => {
         paths.radar_start,
         paths.radar_stop,
         paths.scan_proof_refresh,
+        paths.scan_proof_latest,
         paths.map_start,
         paths.map_reset,
         paths.map_save,
@@ -165,11 +166,13 @@ const operatorControls = computed(() => [
   { id: "radar_start", label: "Radar start", kind: "radar_start" as const, payload: {} },
   { id: "radar_stop", label: "Radar stop", kind: "radar_stop" as const, payload: {} },
   { id: "scan_proof_refresh", label: "Refresh scan proof", kind: "radar_scan_proof_refresh" as const, payload: {} },
+  { id: "scan_proof_latest", label: "Read scan latest", kind: "radar_scan_proof_latest" as const, payload: {} },
   { id: "map_start", label: "Map start", kind: "map_start" as const, payload: {} },
   { id: "map_reset", label: "Map reset", kind: "map_reset" as const, payload: {} },
   { id: "map_save", label: "Map save", kind: "map_save" as const, payload: { map_id: mapId.value } },
   { id: "map_load", label: "Map load", kind: "map_load" as const, payload: { map_id: mapId.value } },
   { id: "map_list", label: "Map list", kind: "map_list" as const, payload: {} },
+  { id: "map_proof_latest", label: "Read map proof latest", kind: "map_proof_latest" as const, payload: {} },
   { id: "localize_reset", label: "Localize reset", kind: "localize_reset" as const, payload: {} },
 ]);
 
@@ -601,23 +604,30 @@ async function startCameraPreview(): Promise<void> {
 function upperResultCopy(result: O7DirectUpperApiCommandResponse): string {
   // upper_result_summary 是 PC 代理透传的远端业务结果；它和 HTTP 2xx 分开展示，避免 not_proven 被误读成完成。
   const summary = result.upper_result_summary;
-  if (result.command !== "radar_scan_proof_refresh" || !summary) {
+  if (!summary) {
     return "";
   }
   const blockers = summary.blocked_reasons.length ? summary.blocked_reasons.join(" / ") : "none";
   const notProven = summary.not_proven.length ? summary.not_proven.join(" / ") : "none";
-  const age = summary.freshness_age_seconds === null ? "age n/a" : `${summary.freshness_age_seconds}s`;
-  const hz = summary.scan_hz_average_rate_hz ?? "n/a";
-  const tf = summary.tf_observed === null ? "n/a" : summary.tf_observed ? "observed" : "missing";
-  const continuousBlockers = summary.continuous_blocked_reasons.length ? summary.continuous_blocked_reasons.join(" / ") : "none";
-  return `；upper_result=${summary.status}/${summary.proof_status}/${summary.latest_proof_status}；fresh=${summary.fresh_scan_proof_observed ? "true" : "false"}；hz=${hz}；tf=${tf}；fallback=${summary.runtime_summary_fallback_used ? "true" : "false"}；continuous=${summary.continuous_scan_status}；continuous_blockers=${continuousBlockers}；upper_blockers=${blockers}；upper_not_proven=${notProven}；artifact=${summary.artifact_status}:${summary.artifact_path}；freshness=${summary.freshness_status}/${age}`;
+  if (result.command === "radar_scan_proof_refresh" || result.command === "radar_scan_proof_latest") {
+    const age = summary.freshness_age_seconds === null ? "age n/a" : `${summary.freshness_age_seconds}s`;
+    const hz = summary.scan_hz_average_rate_hz ?? "n/a";
+    const tf = summary.tf_observed === null ? "n/a" : summary.tf_observed ? "observed" : "missing";
+    const continuousBlockers = summary.continuous_blocked_reasons.length ? summary.continuous_blocked_reasons.join(" / ") : "none";
+    return `；upper_result=${summary.status}/${summary.proof_status}/${summary.latest_proof_status}；fresh=${summary.fresh_scan_proof_observed ? "true" : "false"}；hz=${hz}；tf=${tf}；fallback=${summary.runtime_summary_fallback_used ? "true" : "false"}；continuous=${summary.continuous_scan_status}；continuous_blockers=${continuousBlockers}；upper_blockers=${blockers}；upper_not_proven=${notProven}；artifact=${summary.artifact_status}:${summary.artifact_path}；freshness=${summary.freshness_status}/${age}；safe_to_control=${summary.safe_to_control}`;
+  }
+  if (result.command === "map_proof_latest") {
+    const compatibility = summary.map_proof_compatibility_paths.length ? summary.map_proof_compatibility_paths.join(" / ") : "none";
+    return `；upper_result=${summary.status}/${summary.proof_status}/${summary.latest_proof_status}；artifact=${summary.artifact_status}:${summary.artifact_path}；canonical=${summary.map_proof_canonical_path}；resolved=${summary.map_proof_resolved_path}；configured=${summary.map_proof_configured_path}；compat=${compatibility}；upper_blockers=${blockers}；upper_not_proven=${notProven}；safe_to_control=${summary.safe_to_control}；robot_control_executed=${summary.robot_control_executed}`;
+  }
+  return "";
 }
 
 function upperResultStillNotProven(result: O7DirectUpperApiCommandResponse): boolean {
-  // 只对 scan-proof refresh 改文案；其它按钮仍按原有 HTTP 转发口径展示。
+  // 只读 proof readback 要把 fail-closed/not_proven 文案顶出来，不能淹没在普通已发送文案里。
   const summary = result.upper_result_summary;
-  return result.command === "radar_scan_proof_refresh" && Boolean(summary && (
-    summary.status === "not_proven" || summary.proof_status === "not_proven" || summary.blocked_reasons.length
+  return (result.command === "radar_scan_proof_refresh" || result.command === "radar_scan_proof_latest" || result.command === "map_proof_latest") && Boolean(summary && (
+    summary.status === "not_proven" || summary.proof_status === "not_proven" || summary.blocked_reasons.length || result.fail_closed
   ));
 }
 
@@ -631,23 +641,26 @@ function commandResultMessage(action: string, result: O7DirectUpperApiCommandRes
   const evidence = result.command_payload_summary.evidence_ref ?? operatorEvidenceRefValue.value;
   const adapter = result.adapter?.version ?? "missing_adapter_stale_dev_server";
   const source = result.upper_api_base_url_source ?? "missing_source";
-  const scanProofBoundary = result.command === "radar_scan_proof_refresh"
-    ? "；read-only proof refresh，不启动 driver、不控底盘；not_proven=HIL/PC WASD/Nav2/map/delivery"
+  const scanProofBoundary = result.command === "radar_scan_proof_refresh" || result.command === "radar_scan_proof_latest"
+    ? "；read-only scan proof refresh/readback，不启动 driver、不控底盘；not_proven=HIL/PC WASD/Nav2/map/delivery"
+    : "";
+  const mapProofBoundary = result.command === "map_proof_latest"
+    ? "；read-only map proof latest，不启动 SLAM/AMCL/Nav2；not_proven=AMCL/Nav2/PC WASD/HIL/delivery"
     : "";
   const upperCopy = upperResultCopy(result);
   if (result.upper_api_base_url_source === "fixture" && result.accepted_by_workstation) {
-    return `${action} fixture 已记录（仍锁定）：${request.path}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}`;
+    return `${action} fixture 已记录（仍锁定）：${request.path}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}${mapProofBoundary}`;
   }
   if (result.accepted_by_workstation && request.ok && upperResultStillNotProven(result)) {
-    return `${action} 已触发但 upper 仍 not_proven（仍锁定）：${request.path} ${http}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}`;
+    return `${action} 已触发但 upper 仍 not_proven（仍锁定）：${request.path} ${http}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}${mapProofBoundary}`;
   }
   if (result.accepted_by_workstation && request.ok) {
-    return `${action} 已发送（仍锁定）：${request.path} ${http}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}`;
+    return `${action} 已发送（仍锁定）：${request.path} ${http}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}${mapProofBoundary}`;
   }
   const reason = result.failure_reason || request.failure_reason || "manual_request_failed";
   return `${action} 失败：${reason}；${request.path} ${request.executed ? http : "not_executed"}；direct status ${
     directUpperStatus.value?.status ?? "unknown"
-  }；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}`;
+  }；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}${mapProofBoundary}`;
 }
 
 function isEditableControlTarget(target: EventTarget | null): boolean {

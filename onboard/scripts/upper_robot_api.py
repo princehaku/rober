@@ -1376,6 +1376,135 @@ def summarize_nav2_lifecycle_latest_artifact(path: str) -> dict[str, Any]:
     )
 
 
+def build_amcl_nav2_readiness_from_map_proof(map_proof_path: str, map_artifact_dir: str) -> dict[str, Any]:
+    """把 canonical map proof 折成 Nav2 输入状态；这里只读文件，不探 ROS graph。"""
+    http_status, readback = read_runtime_artifact_latest(
+        map_proof_path,
+        artifact_info=map_lifecycle_proof_artifact_info(map_proof_path),
+        schema_suffix="amcl_nav2_map_input_latest",
+        endpoint=ROUTE_PATHS["nav2_status"],
+        boundary="software_guard_only_map_input_not_amcl_or_nav2_runtime",
+        source="map_lifecycle_runtime_artifact",
+    )
+    latest = readback.get("latest_result") if isinstance(readback.get("latest_result"), dict) else None
+    proof = latest.get("proof") if isinstance(latest, dict) and isinstance(latest.get("proof"), dict) else {}
+    expected_map_dir = resolve_onboard_runtime_path(map_artifact_dir)
+    observed_map_dir = proof.get("map_artifact_dir") if isinstance(proof.get("map_artifact_dir"), str) else None
+    map_files = proof.get("map_files") if isinstance(proof.get("map_files"), list) else []
+    yaml_files = _successful_map_files(map_files, ".yaml")
+    pgm_files = _successful_map_files(map_files, ".pgm")
+    root_causes = _amcl_nav2_readiness_root_causes(
+        http_status=http_status,
+        proof=proof,
+        observed_map_dir=observed_map_dir,
+        expected_map_dir=expected_map_dir,
+        yaml_files=yaml_files,
+        pgm_files=pgm_files,
+    )
+    inputs_ready = not root_causes
+    # 这里即使输入齐了也只解锁下一步 collector，不把地图质量或 Nav2 runtime 写成已证明。
+    status = "map_inputs_ready_for_no_motion_nav2_collector" if inputs_ready else "blocked_with_root_cause"
+    return {
+        "schema": f"{SCHEMA}.amcl_nav2_readiness_from_map_proof.v1",
+        "generated_at_ms": now_ms(),
+        "status": status,
+        "evidence_type": "software_guard",
+        "source_evidence_type": latest.get("evidence_type") if isinstance(latest, dict) else None,
+        "source_evidence_ref": proof.get("evidence_ref"),
+        "source_http_status": http_status,
+        "source_latest_status": latest_proof_value(latest, "status"),
+        "map_proof_artifact": readback["artifact"],
+        "expected_map_artifact_dir": expected_map_dir,
+        "observed_map_artifact_dir": observed_map_dir,
+        "map_yaml_candidates": yaml_files,
+        "map_image_candidates": pgm_files,
+        "map_metadata": proof.get("map_metadata") if isinstance(proof.get("map_metadata"), dict) else {},
+        "readiness_inputs": {
+            "canonical_latest_loaded": http_status == 200,
+            "map_once_observed": proof.get("map_once_observed") is True,
+            "map_file_observed": proof.get("map_file_observed") is True,
+            "map_metadata_observed": proof.get("map_metadata_observed") is True,
+            "canonical_map_dir_matched": observed_map_dir == expected_map_dir,
+            "map_yaml_available": bool(yaml_files),
+            "map_image_available": bool(pgm_files),
+        },
+        "root_causes": root_causes,
+        "blockers": root_causes,
+        "next_no_motion_steps": [
+            "run map quality gate against selected YAML and same-frame waypoints",
+            "collect AMCL /initialpose and /amcl_pose material under a new artifact",
+            "collect map_server/amcl/planner/controller lifecycle readback without /cmd_vel",
+        ],
+        "not_proven": [
+            "map_quality_pass",
+            "real_amcl_localization",
+            "real_nav2_scan_map_consumption",
+            "path_generated",
+            "fixed_route_execution",
+            "delivery_success",
+        ],
+        "software_guard": True,
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "uses_base_uart": False,
+        "starts_ros2": False,
+        "robot_control_executed": False,
+        "safe_to_control": False,
+        "hil_pass": False,
+        **proof_flags(),
+    }
+
+
+def _successful_map_files(map_files: list[Any], suffix: str) -> list[dict[str, Any]]:
+    """只接受 proof 中已经 stat 成功的文件，避免把错误项当成 Nav2 输入。"""
+    result: list[dict[str, Any]] = []
+    for item in map_files:
+        if not isinstance(item, dict):
+            continue
+        if item.get("ok") is False:
+            continue
+        path = str(item.get("path") or "")
+        item_suffix = str(item.get("suffix") or Path(path).suffix)
+        if item_suffix == suffix:
+            result.append(dict(item))
+    return result
+
+
+def _amcl_nav2_readiness_root_causes(
+    *,
+    http_status: int,
+    proof: dict[str, Any],
+    observed_map_dir: str | None,
+    expected_map_dir: str,
+    yaml_files: list[dict[str, Any]],
+    pgm_files: list[dict[str, Any]],
+) -> list[dict[str, str]]:
+    """root cause 必须落到输入层，方便下一轮选择 map、waypoint 或 runtime collector。"""
+    causes: list[dict[str, str]] = []
+    if http_status != 200:
+        causes.append({"layer": "map proof latest", "reason": f"canonical_latest_http_status_{http_status}"})
+        return causes
+    if proof.get("status") != "map_once_artifact_metadata_observed":
+        causes.append({"layer": "map proof latest", "reason": "map_lifecycle_proof_not_clean"})
+    if proof.get("map_once_observed") is not True:
+        causes.append({"layer": "map proof latest", "reason": "map_once_not_observed"})
+    if proof.get("map_file_observed") is not True:
+        causes.append({"layer": "map artifact", "reason": "map_file_not_observed"})
+    if proof.get("map_metadata_observed") is not True:
+        causes.append({"layer": "map metadata", "reason": "map_metadata_not_observed"})
+    if observed_map_dir != expected_map_dir:
+        causes.append({"layer": "map artifact contract", "reason": "canonical_map_artifact_dir_mismatch"})
+    if not yaml_files:
+        causes.append({"layer": "map artifact", "reason": "map_yaml_missing"})
+    if not pgm_files:
+        causes.append({"layer": "map artifact", "reason": "map_image_pgm_missing"})
+    return causes
+
+
 def summarize_elevator_status_latest_artifact(path: str) -> dict[str, Any]:
     """压缩电梯 evidence；OpenCV/状态链未进真实电梯前必须持续 not_proven。"""
     return runtime_artifact_summary(
@@ -2830,6 +2959,10 @@ class UpperRobotApi:
             "not_proven": True,
             "artifact": nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
             "proof_latest": summarize_nav2_lifecycle_latest_artifact(self.nav2_lifecycle_artifact_path),
+            "amcl_nav2_readiness": build_amcl_nav2_readiness_from_map_proof(
+                self.map_lifecycle_proof_artifact_path,
+                self.map_artifact_dir,
+            ),
             "routes": {
                 "status": ROUTE_PATHS["nav2_status"],
                 "start": ROUTE_PATHS["nav2_start"],

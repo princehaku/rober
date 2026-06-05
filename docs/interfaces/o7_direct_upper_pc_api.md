@@ -492,6 +492,8 @@ trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1
 - `continuous=not_proven` 和 continuous blockers 必须与 fresh artifact 分开展示，不能把一次 refresh artifact 解释成 continuous radar ready。
 - 展示 8787 `radar.raw_packet_proof_latest` 摘要：artifact status、freshness、age、latest proof status、bytes、sync、packets 和 points。
 - 展示 8787 `map proof latest` 摘要：latest status、artifact status/path、canonical/resolved/configured/compatibility paths、failure reason、top blockers 和 `safe_to_control=false`。
+- `雷达 / 建图 / 定位` 按钮区必须提供 `Refresh scan proof`、`Read scan latest`、`Read map proof latest` 和 `Localize reset` 等 PC 同源按钮级入口。`Read scan latest` 只 GET `/api/o7/direct-upper/radar/scan-proof/latest`，展示 artifact、hz、TF、fallback、continuous blockers、`safe_to_control=false`；`Read map proof latest` 只 GET `/api/o7/direct-upper/map/proof/latest`，展示 canonical/resolved/configured/compat paths、artifact status/path、upper blockers、`safe_to_control=false` 和 `robot_control_executed=false`。
+- 上述 readback 按钮结果必须通过同一个 `lock-message` 展示 `upper_request.path`、HTTP 状态、`source`、`adapter`、`evidence_ref`、`ACK not observed`、`T=1001 not observed`、`fail_closed/not_proven` 和剩余安全边界；不得只用页面 status 卡片或 curl 结果替代浏览器按钮证据。
 
 2026-06-03 23-24 micro sprint 后，`前进`、`后退`、`左转`、`右转`、`Stop`
 按钮不再只调用本地 `showLocked()`，而是通过 client helper POST PC 同源：
@@ -540,6 +542,28 @@ success。
 - 不证明真实 SLAM/map 可用；map proof latest 只证明 path contract readback，不证明 AMCL/Nav2 consumption。
 - 不证明 PC WASD 控车已经现场验收。
 - 不证明 delivery success。
+
+## 浏览器按钮级 workflow 证据
+
+在 8788 工作站服务启动后，可运行：
+
+```bash
+cd pc-tools/workstation
+TMPDIR=/tmp npm run o7:direct-upper-workflow
+```
+
+脚本默认访问 `http://127.0.0.1:8788/`，通过真实浏览器点击
+`Refresh scan proof`、`Read scan latest`、`Read map proof latest` 和
+`Localize reset`，并输出：
+
+```text
+.workstation-runtime/o7-direct-upper-browser-workflow.json
+.workstation-runtime/o7-direct-upper-browser-workflow.png
+```
+
+该证据类型为 `browser_workflow_button_level`：只证明 PC 浏览器实际经过按钮路径触发
+同源 direct-upper proxy 并看到了 readback/fail-closed 文案；不证明 PC WASD 控车、
+HIL、AMCL、Nav2 消费、地图可导航或 delivery success。
 
 ## 2026-06-03 现场核对结果
 

@@ -87,6 +87,67 @@
 6. 自动停车：manual API 必须在 pulse 后补发 stop；若 stop response 或 post-status 缺失，证据包不得标记为 HIL pass。
 7. 同一 evidence ref：manual response、stop response、post-status、`T=1001`、operator report 和现场记录必须使用同一 `evidence_ref`。
 
+## Stop-first HIL Gate CEO Blocker 模板
+
+本节用于 `KR-O10-Stop-First-HIL-Gate` 的硬件决策门。若现场看护、净空、急停/断电路径、CEO/现场授权四项任一项没有同场材料，本轮必须输出 `blocked_with_root_cause`，并保持 no-motion。即使上位机可 SSH，也不得执行 `/api/base/manual`、pulse、WASD、`T=1`、`T=11`、`T=13` 或 ROS `/cmd_vel`。
+
+采用的 vendor 来源：
+
+- `docs/vendor/VENDOR_INDEX.md`：WAVE ROVER 上下位机链路是 UART newline-delimited JSON；Orange Pi 不能沿用 Raspberry Pi 串口路径假设。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`：vendor 上位机通过 `json.dumps(data) + '\n'` 写串口，`base_speed_ctrl()` 发送 `{"T":1,"L":...,"R":...}`。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`：`T=1`、`T=11`、`T=13` 是底盘速度/PWM/ROS 控制命令，`T=130` 和 `T=131` 是反馈相关命令。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`：下位机按 JSON 字段 `T` 分发，`CMD_SPEED_CTRL`、`CMD_PWM_INPUT`、`CMD_ROS_CTRL` 会进入底盘控制路径。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h`：`rosCtrl()` 会把 `X/Z` 转成左右轮目标速度；`heartBeatCtrl()` 是下位机超时保护，不是现场急停授权替代品。
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`：`baseInfoFeedback()` 输出 `T=1001` 反馈；该反馈只能作为 vendor material，不能单独代表 HIL pass。
+
+当前无授权时的固定判定：
+
+```json
+{
+  "schema": "trashbot.o10.stop_first_hil_gate_blocker.v1",
+  "kr": "KR-O10-Stop-First-HIL-Gate",
+  "status": "blocked_with_root_cause",
+  "blocker_root_cause": "missing_same-session_site_safety_authorization",
+  "missing_required_materials": [
+    "operator_present_and_named",
+    "physical_clearance_confirmed_for_low_speed_pulse",
+    "emergency_stop_or_power_cut_path_confirmed",
+    "ceo_or_site_authorization_for_motion"
+  ],
+  "no_motion_enforced": true,
+  "forbidden_until_unblocked": [
+    "/api/base/manual",
+    "pulse",
+    "base manual",
+    "WASD",
+    "T=1",
+    "T=11",
+    "T=13",
+    "ROS /cmd_vel"
+  ],
+  "allowed_now": [
+    "read vendor docs",
+    "compileall",
+    "unit tests",
+    "dry-run status collection",
+    "operator report template preparation"
+  ],
+  "safe_to_control": false,
+  "hil_pass": false,
+  "evidence_type": "blocked_with_root_cause"
+}
+```
+
+CEO/现场需要提供：
+
+- 现场 operator 姓名或角色，以及其确认已站在可立即断电/急停的位置。
+- 低速短 pulse 的物理净空照片或文字确认，包含机器人周边无人员、线缆、桌脚和易碰撞物。
+- 明确急停/断电路径，例如电源开关、插拔路径或现场 stop 责任人。
+- CEO 或现场负责人明确授权本次仅执行 stop-first、单方向、低速、短时 pulse。
+- 统一 `evidence_ref`，后续 preflight、stop、pulse、post-status、`T=1001` 和 operator review 必须共享该 ref。
+
+解除 blocker 前只能生成 `api_status_dry_run_not_hil`、`software_guard` 或 `blocked_with_root_cause`，不得写 `field_hil_material`、`safe_to_control=true`、`hil_pass=true` 或 robot ACK 已验证。
+
 ## 下一次现场 low-speed pulse 证据链
 
 现场命令必须先 dry-run，再执行单方向短 pulse。以下命令只走 8787 HTTP guardrail，不直接打开 `/dev/ttyS5`；真实串口写入只能由 `/api/base/manual` 和 `/api/base/stop` 完成。

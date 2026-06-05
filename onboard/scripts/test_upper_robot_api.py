@@ -1348,6 +1348,85 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertFalse(elevator_status["elevator_runtime_proven"])
         self.assertEqual(FakeSerial.instances, [])
 
+    def test_nav2_status_derives_readiness_inputs_from_canonical_map_proof(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            map_dir = root / "maps"
+            map_dir.mkdir()
+            map_yaml = map_dir / "trashbot_map.yaml"
+            map_pgm = map_dir / "trashbot_map.pgm"
+            map_yaml.write_text("image: trashbot_map.pgm\nresolution: 0.05\norigin: [0, 0, 0]\n", encoding="utf-8")
+            map_pgm.write_bytes(b"P5\n1 1\n255\n\0")
+            map_proof_path = root / "map_lifecycle_latest.json"
+            map_proof_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "trashbot.upper_robot_api.v1.map_lifecycle_runtime_proof",
+                        "evidence_type": "robot_runtime_material",
+                        "proof": {
+                            "status": "map_once_artifact_metadata_observed",
+                            "evidence_ref": "o10-map-proof-001",
+                            "map_once_observed": True,
+                            "map_file_observed": True,
+                            "map_metadata_observed": True,
+                            "map_metadata": {"frame_id": "map", "width": 1, "height": 1, "resolution": 0.05},
+                            "map_artifact_dir": str(map_dir),
+                            "map_files": [
+                                {"path": str(map_yaml), "name": map_yaml.name, "suffix": ".yaml", "size_bytes": 64},
+                                {"path": str(map_pgm), "name": map_pgm.name, "suffix": ".pgm", "size_bytes": 12},
+                            ],
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                map_artifact_dir=str(map_dir),
+                map_lifecycle_proof_artifact_path=str(map_proof_path),
+            )
+
+            readiness = robot.nav2_status()["amcl_nav2_readiness"]
+
+        self.assertEqual(readiness["status"], "map_inputs_ready_for_no_motion_nav2_collector")
+        self.assertEqual(readiness["source_evidence_type"], "robot_runtime_material")
+        self.assertEqual(readiness["source_evidence_ref"], "o10-map-proof-001")
+        self.assertEqual(readiness["root_causes"], [])
+        self.assertTrue(readiness["readiness_inputs"]["canonical_latest_loaded"])
+        self.assertTrue(readiness["readiness_inputs"]["canonical_map_dir_matched"])
+        self.assertTrue(readiness["readiness_inputs"]["map_yaml_available"])
+        self.assertTrue(readiness["readiness_inputs"]["map_image_available"])
+        self.assertFalse(readiness["publishes_cmd_vel"])
+        self.assertFalse(readiness["calls_base_manual"])
+        self.assertFalse(readiness["starts_ros2"])
+        self.assertFalse(readiness["safe_to_control"])
+
+    def test_nav2_status_blocks_readiness_when_canonical_map_proof_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            robot = api.UpperRobotApi(
+                "http://127.0.0.1:8088",
+                "/dev/fake-base",
+                115200,
+                max_speed=0.12,
+                map_artifact_dir=str(Path(tmpdir) / "maps"),
+                map_lifecycle_proof_artifact_path=str(Path(tmpdir) / "missing_map_lifecycle_latest.json"),
+            )
+
+            readiness = robot.nav2_status()["amcl_nav2_readiness"]
+
+        self.assertEqual(readiness["status"], "blocked_with_root_cause")
+        self.assertEqual(readiness["source_http_status"], 404)
+        self.assertIn(
+            {"layer": "map proof latest", "reason": "canonical_latest_http_status_404"},
+            readiness["root_causes"],
+        )
+        self.assertFalse(readiness["readiness_inputs"]["canonical_latest_loaded"])
+        self.assertFalse(readiness["sends_base_motion_commands"])
+        self.assertFalse(readiness["robot_control_executed"])
+
     def test_runtime_artifact_readbacks_missing_and_bad_json_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             map_proof_path = Path(tmpdir) / "missing_map_proof.json"

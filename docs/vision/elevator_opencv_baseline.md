@@ -147,6 +147,52 @@ python3 -m ros2_trashbot_vision.elevator_opencv_baseline \
 pc-tools/evidence/fixtures/elevator_real_image_manifest_blocker/blocked_missing_manifest.json
 ```
 
+### 2026-06-05 O10 Elevator Image Eval 决策门
+
+O10 AMCL/Nav2 readiness epic 的算法侧复查继续没有发现真实或受控电梯图片
+manifest。仓库内电梯相关图片仍只有
+`pc-tools/evidence/fixtures/elevator_opencv_baseline_offline_eval/*.pgm`；其他
+JPG/PNG 是 vendor 或 UI 截图，不是电梯识别 field material。因此本轮只能形成
+`blocked_with_root_cause` 决策门，不能把 fixture eval 写成 O10/O2 涨分材料。
+
+本轮 checker 关键输出：
+
+- `--check-template pc-tools/evidence/templates/elevator_image_manifest_collection_template.json`
+  返回 `status=blocked_missing_real_or_controlled_images`。
+- `can_run_opencv_eval=false`、`field_eval_ready=false`。
+- `template_placeholders=8`。
+- `image_kinds.real_or_controlled=0`、`image_kinds.fixture=0`、
+  `image_kinds.missing_or_invalid=8`。
+
+可复跑的 fixture eval 仍然只证明软件护栏：
+
+- `evaluated_count=3`。
+- `door_state`: `tp=1`、`tn=1`、`fp=0`、`fn=0`、`uncertain=1`。
+- `safe_to_exit`: `tp=1`、`tn=1`、`fp=0`、`fn=0`、`uncertain=1`。
+- `operator_summary.uncertain_total=2`。
+- `software_guard_pass=true`，但 `field_eval_ready=false`。
+- 当前阈值为 `open_gap_delta=38.0`、`closed_gap_delta=16.0`、
+  `dark_inside_mean=88.0`、`safe_exit_mean=105.0`、
+  `floor_panel_delta=28.0`、`min_confidence=0.58`。
+
+O10 blocker artifact：
+
+```text
+pc-tools/evidence/fixtures/elevator_o10_image_eval_decision_gate/blocked_missing_real_or_controlled_manifest.json
+```
+
+CEO / 现场 owner 需要补齐一个解析到真实文件的
+`trashbot.elevator_image_manifest.v1`。最低样本要求仍为：门开 20、门关 20、轿厢内
+20、轿厢外 20、目标楼层屏 20、安全驶出 20、不安全驶出 20、低光/反光/遮挡/倾斜
+不可判定 10。样本可带多个 taxonomy tag，但每个 tag 的最低数量必须由真实或受控
+JPEG/PNG/WebP/BMP 电梯图片满足。
+
+在该 blocker 解除前，人工接管策略固定为 fail-closed：门状态非 `open` 就等待或求助；
+`inside_outside` 不确定就停车请求确认；目标楼层候选不等于目标楼层就继续等待并请求人工确认；
+`safe_to_exit` 非 `safe` 或置信度低于 `min_confidence` 就停止并人工接管。task record
+必须保留 `image_ref`、`uncertain_reasons`、阈值和 `not_proven`，不得宣称真实电梯识别、
+楼层 OCR、安全驶出、跨楼层送达或 delivery success。
+
 建议真实采集最小样本要求：
 
 - 门开正例不少于 20 张。

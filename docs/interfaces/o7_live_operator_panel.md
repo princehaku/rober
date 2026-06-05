@@ -109,6 +109,7 @@ printf '{"T":1,"L":0.08,"R":0.08}\n' > /dev/ttyS5
 - `Raw packet proof` 只能放在 `诊断详情/工程材料` 中，展示
   artifact/freshness/age/proof status、bytes、sync、packets 和 points；该材料只证明
   raw packet proof 可见，不证明 ROS2 `/scan`、SLAM/map 或 HIL。
+- `雷达 / 建图 / 定位` 区提供 `Refresh scan proof`、`Read scan latest`、`Read map proof latest`、`Localize reset` 等按钮级 workflow。按钮必须走 PC 同源 `/api/o7/direct-upper/*`，并在返回文案里展示 artifact status、hz、TF、fallback、canonical path、failure/blocker、fail-closed/safety 字段；浏览器不得直连 8787、ROS graph、`/cmd_vel` 或串口。
 
 方向按钮点击不再固定写死“已拦截”。当前行为：
 
@@ -152,5 +153,16 @@ cd pc-tools/workstation && npm run lint
 `Real Material Acceptance`、`ASR`、`TTS`、`cloud`，首屏只读 camera 状态且不自动
 POST `/api/o7/local-webrtc-camera/offer`，点击“重新连接预览”后才创建预览；若 offer
 409，需要显示 peer conflict 可读提示。点击 `前进` 显示用户可懂的控制锁提示，console 无 app error。
+direct-upper 按钮级验收还需覆盖 `Refresh scan proof`、`Read scan latest`、
+`Read map proof latest`、`Localize reset` 中至少两个关键入口，且页面可见
+`safe_to_control=false`、`ACK not observed`、`T=1001 not observed`、hz/TF/fallback 或
+canonical path/failure reason。推荐在 8788 服务启动后运行：
+
+```bash
+cd pc-tools/workstation && TMPDIR=/tmp npm run o7:direct-upper-workflow
+```
+
+该脚本输出 `.workstation-runtime/o7-direct-upper-browser-workflow.json` 和截图，只能作为
+`browser_workflow_button_level`，不得外推为 PC WASD、HIL、AMCL/Nav2 或 delivery success。
 
 远端联调只允许只读确认 SSH、8088 camera health/devices 和 8787 API 监听状态。PC dev server 需要用 `ROBER_LOCAL_WEBRTC_CAMERA_BASE_URL=http://192.168.1.11:8088/` 启动，然后通过 `GET /api/o7/local-webrtc-camera` 读取上位机 `/health` 与 `/devices`。除非底盘身份、T1001 feedback 和 robot ACK 都被证明，否则不得发送控制命令。

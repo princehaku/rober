@@ -36,6 +36,27 @@ YAML/image 一致性、coverage、unknown ratio 和 waypoint cell 状态。
 - `not_proven`: 固定保留真实 SLAM、AMCL、Nav2 消费、路线实跑和真实 waypoint
   可达未证明项。
 
+## O10 AMCL/Nav2 readiness 输入护栏
+
+`GET /api/nav2/status` 现在会从 canonical map lifecycle latest 只读折算
+`amcl_nav2_readiness`：
+
+- latest JSON 固定读取 `/root/rober/onboard/runtime/map_lifecycle_latest.json`。
+- map artifact 目录固定按 `/root/rober/onboard/runtime/maps` 校验。
+- 只有 latest 载入成功、`proof.status=map_once_artifact_metadata_observed`、
+  `map_once_observed=true`、map metadata 存在，并且 proof 中同时列出 YAML 和 PGM
+  时，状态才会变为 `map_inputs_ready_for_no_motion_nav2_collector`。
+- 失败时状态为 `blocked_with_root_cause`，root cause 会落到 latest 缺失、proof
+  不干净、canonical map 目录漂移、YAML 缺失、PGM 缺失或 metadata 缺失等输入层。
+- 该字段的 `evidence_type=software_guard`，可以保留上游
+  `source_evidence_type=robot_runtime_material`，但不把地图 artifact 外推成 AMCL、
+  Nav2、路径生成或 fixed-route 已证明。
+
+该护栏只做 readback 和输入归一化：不启动 ROS2，不发布 `/cmd_vel`，不调用
+`/api/base/manual`，不打开底盘 UART。输入齐备后，下一步仍需单独采集 map
+quality、AMCL `/initialpose`/`/amcl_pose`、map server、planner/controller
+lifecycle 和 `/scan` + map 消费材料。
+
 ## Fixture 复跑
 
 当前可复跑 fixture：

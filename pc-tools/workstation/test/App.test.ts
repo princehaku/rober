@@ -369,6 +369,16 @@ const directUpperFixture = {
     lidar_port: "/dev/ttyACM0",
     map_lifecycle_status: "waiting_for_mapping",
     map_artifact_ref: "not_loaded",
+    map_proof_latest_status: "map_once_artifact_metadata_observed",
+    map_proof_artifact_status: "loaded",
+    map_proof_artifact_path: "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+    map_proof_canonical_path: "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+    map_proof_resolved_path: "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+    map_proof_configured_path: "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+    map_proof_compatibility_paths: ["/root/rober/runtime/map_lifecycle_latest.json"],
+    map_proof_failure_reason: "none",
+    map_proof_blockers: ["nav2_consumption_not_proven"],
+    map_proof_safe_to_control: false,
     localization_status: "not_loaded",
     operator_report_evidence_ref: "missing_operator_report",
     base_port: "/dev/ttyS5",
@@ -403,6 +413,7 @@ const directUpperFixture = {
     map_save: "/api/o7/direct-upper/map/save",
     map_load: "/api/o7/direct-upper/map/load",
     map_list: "/api/o7/direct-upper/map/list",
+    map_proof_latest: "/api/o7/direct-upper/map/proof/latest",
     localize_reset: "/api/o7/direct-upper/localize/reset",
     operator_report: "/api/o7/direct-upper/operator-report",
   },
@@ -489,6 +500,12 @@ function stubFetch(options: StubFetchOptions = {}): ReturnType<typeof vi.fn> {
         upperPath: "/api/radar/scan-proof/refresh",
         method: "POST",
       },
+      "/api/o7/direct-upper/radar/scan-proof/latest": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_radar_scan_proof_latest.v1",
+        command: "radar_scan_proof_latest",
+        upperPath: "/api/radar/scan-proof/latest",
+        method: "GET",
+      },
       "/api/o7/direct-upper/map/start": {
         schema: "trashbot.pc_tools_workstation.o7_direct_upper_map_start.v1",
         command: "map_start",
@@ -517,6 +534,12 @@ function stubFetch(options: StubFetchOptions = {}): ReturnType<typeof vi.fn> {
         schema: "trashbot.pc_tools_workstation.o7_direct_upper_map_list.v1",
         command: "map_list",
         upperPath: "/api/map/list",
+        method: "GET",
+      },
+      "/api/o7/direct-upper/map/proof/latest": {
+        schema: "trashbot.pc_tools_workstation.o7_direct_upper_map_proof_latest.v1",
+        command: "map_proof_latest",
+        upperPath: "/api/map/proof/latest",
         method: "GET",
       },
       "/api/o7/direct-upper/localize/reset": {
@@ -603,7 +626,7 @@ function stubFetch(options: StubFetchOptions = {}): ReturnType<typeof vi.fn> {
                     pc_local_only: true,
                     fail_closed: false,
                     failure_reason: "none",
-                    upper_result_summary: operatorCommand.command === "radar_scan_proof_refresh"
+                    upper_result_summary: operatorCommand.command === "radar_scan_proof_refresh" || operatorCommand.command === "radar_scan_proof_latest"
                       ? {
                           status: "fresh",
                           proof_status: "full",
@@ -627,6 +650,34 @@ function stubFetch(options: StubFetchOptions = {}): ReturnType<typeof vi.fn> {
                           blocked_reasons: ["continuous_scan_status_not_proven"],
                           not_proven: ["continuous_radar_not_proven"],
                         }
+                      : operatorCommand.command === "map_proof_latest"
+                        ? {
+                            status: "map_once_artifact_metadata_observed",
+                            proof_status: "map_once_artifact_metadata_observed",
+                            latest_proof_status: "map_once_artifact_metadata_observed",
+                            artifact_status: "loaded",
+                            artifact_path: "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+                            freshness_status: "fresh",
+                            freshness_age_seconds: 2,
+                            fresh_scan_proof_observed: false,
+                            scan_hz_average_rate_hz: null,
+                            tf_observed: null,
+                            all_required_observations_observed: null,
+                            runtime_summary_fallback_used: false,
+                            runtime_summary_path: "not_applicable",
+                            continuous_scan_status: "not_proven",
+                            continuous_blocked_reasons: ["scan_continuity_not_observed"],
+                            map_proof_canonical_path: "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+                            map_proof_resolved_path: "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+                            map_proof_configured_path: "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+                            map_proof_compatibility_paths: ["/root/rober/runtime/map_lifecycle_latest.json"],
+                            safe_to_control: false,
+                            sends_commands: false,
+                            robot_control_executed: false,
+                            delivery_success: false,
+                            blocked_reasons: ["nav2_consumption_not_proven"],
+                            not_proven: ["amcl_not_proven", "nav2_consumption_not_proven"],
+                          }
                       : undefined,
                     command_payload_summary: {
                       direction: "not_applicable",
@@ -719,7 +770,9 @@ describe("O7 live operator first screen", () => {
     expect(text).toContain("雷达 / 建图 / 定位");
     expect(text).toContain("Radar start");
     expect(text).toContain("Refresh scan proof");
+    expect(text).toContain("Read scan latest");
     expect(text).toContain("Map save");
+    expect(text).toContain("Read map proof latest");
     expect(text).toContain("Localize reset");
     expect(text).toContain("Report evidence ref");
     expect(text).toContain("fixture mode");
@@ -729,13 +782,18 @@ describe("O7 live operator first screen", () => {
     expect(text).toContain("field_default=http://192.168.1.11:8787");
     expect(text).toContain("/api/o7/direct-upper/radar/start");
     expect(text).toContain("/api/o7/direct-upper/radar/scan-proof/refresh");
+    expect(text).toContain("/api/o7/direct-upper/radar/scan-proof/latest");
     expect(text).toContain("/api/o7/direct-upper/map/save");
+    expect(text).toContain("/api/o7/direct-upper/map/proof/latest");
     expect(text).toContain("/api/o7/direct-upper/localize/reset");
     expect(text).toContain("/api/o7/direct-upper/operator-report");
     expect(text).toContain("map=not_loaded · localize=not_loaded · report=missing_operator_report");
     expect(text).toContain("loaded · fresh · 14s · blocked_or_not_observed");
     expect(text).toContain("fresh=false · hz=n/a · tf=missing · fallback=false · continuous=not_proven");
     expect(text).toContain("scan_continuity_not_observed");
+    expect(text).toContain("canonical=/root/rober/onboard/runtime/map_lifecycle_latest.json");
+    expect(text).toContain("safe_to_control=false");
+    expect(text).toContain("nav2_consumption_not_proven");
     expect(text).toContain("http://192.168.1.11:8787");
     expect(text).toContain("摄像头已就绪，点击重新连接预览");
     expect(text).not.toContain("雷达未接入 / 等待建图");
@@ -909,7 +967,7 @@ describe("O7 live operator first screen", () => {
     await wrapper.vm.$nextTick();
     await confirmOperator(wrapper);
 
-    for (const label of ["Radar start", "Radar stop", "Refresh scan proof", "Map start", "Map reset", "Map save", "Map load", "Map list", "Localize reset"]) {
+    for (const label of ["Radar start", "Radar stop", "Refresh scan proof", "Read scan latest", "Map start", "Map reset", "Map save", "Map load", "Map list", "Read map proof latest", "Localize reset"]) {
       await vi.waitFor(() => {
         const button = wrapper.findAll("button").find((item) => item.text() === label);
         expect(button?.attributes("disabled")).toBeUndefined();
@@ -933,7 +991,26 @@ describe("O7 live operator first screen", () => {
         expect(scanProofText).toContain("upper_not_proven=continuous_radar_not_proven");
         expect(scanProofText).toContain("artifact=loaded:artifacts/radar/scan-proof-latest.json");
         expect(scanProofText).toContain("freshness=fresh/1s");
-        expect(scanProofText).toContain("read-only proof refresh，不启动 driver、不控底盘；not_proven=HIL/PC WASD/Nav2/map/delivery");
+        expect(scanProofText).toContain("read-only scan proof refresh/readback，不启动 driver、不控底盘；not_proven=HIL/PC WASD/Nav2/map/delivery");
+      }
+      if (label === "Read scan latest") {
+        const scanLatestText = wrapper.text();
+        expect(scanLatestText).toContain("Read scan latest 已触发但 upper 仍 not_proven（仍锁定）");
+        expect(scanLatestText).toContain("/api/radar/scan-proof/latest HTTP 200");
+        expect(scanLatestText).toContain("hz=257.987");
+        expect(scanLatestText).toContain("tf=observed");
+        expect(scanLatestText).toContain("fallback=true");
+        expect(scanLatestText).toContain("safe_to_control=false");
+      }
+      if (label === "Read map proof latest") {
+        const mapProofText = wrapper.text();
+        expect(mapProofText).toContain("Read map proof latest 已触发但 upper 仍 not_proven（仍锁定）");
+        expect(mapProofText).toContain("/api/map/proof/latest HTTP 200");
+        expect(mapProofText).toContain("canonical=/root/rober/onboard/runtime/map_lifecycle_latest.json");
+        expect(mapProofText).toContain("artifact=loaded:/root/rober/onboard/runtime/maps/trashbot_map.yaml");
+        expect(mapProofText).toContain("upper_blockers=nav2_consumption_not_proven");
+        expect(mapProofText).toContain("safe_to_control=false");
+        expect(mapProofText).toContain("read-only map proof latest，不启动 SLAM/AMCL/Nav2；not_proven=AMCL/Nav2/PC WASD/HIL/delivery");
       }
     }
     await vi.waitFor(() => {
@@ -948,11 +1025,13 @@ describe("O7 live operator first screen", () => {
     expect(calledUrls).toContain("/api/o7/direct-upper/radar/start");
     expect(calledUrls).toContain("/api/o7/direct-upper/radar/stop");
     expect(calledUrls).toContain("/api/o7/direct-upper/radar/scan-proof/refresh");
+    expect(calledUrls.some((url) => url.startsWith("/api/o7/direct-upper/radar/scan-proof/latest?"))).toBe(true);
     expect(calledUrls).toContain("/api/o7/direct-upper/map/start");
     expect(calledUrls).toContain("/api/o7/direct-upper/map/reset");
     expect(calledUrls).toContain("/api/o7/direct-upper/map/save");
     expect(calledUrls).toContain("/api/o7/direct-upper/map/load");
     expect(calledUrls.some((url) => url.startsWith("/api/o7/direct-upper/map/list?"))).toBe(true);
+    expect(calledUrls.some((url) => url.startsWith("/api/o7/direct-upper/map/proof/latest?"))).toBe(true);
     expect(calledUrls).toContain("/api/o7/direct-upper/localize/reset");
     expect(calledUrls).toContain("/api/o7/direct-upper/operator-report");
     expect(calledUrls.join("\n")).not.toContain("http://192.168.1.11:8787/api");

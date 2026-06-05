@@ -83,11 +83,13 @@ const API_ENDPOINTS = {
   o7DirectUpperRadarStart: "/api/o7/direct-upper/radar/start",
   o7DirectUpperRadarStop: "/api/o7/direct-upper/radar/stop",
   o7DirectUpperRadarScanProofRefresh: "/api/o7/direct-upper/radar/scan-proof/refresh",
+  o7DirectUpperRadarScanProofLatest: "/api/o7/direct-upper/radar/scan-proof/latest",
   o7DirectUpperMapStart: "/api/o7/direct-upper/map/start",
   o7DirectUpperMapReset: "/api/o7/direct-upper/map/reset",
   o7DirectUpperMapSave: "/api/o7/direct-upper/map/save",
   o7DirectUpperMapLoad: "/api/o7/direct-upper/map/load",
   o7DirectUpperMapList: "/api/o7/direct-upper/map/list",
+  o7DirectUpperMapProofLatest: "/api/o7/direct-upper/map/proof/latest",
   o7DirectUpperLocalizeReset: "/api/o7/direct-upper/localize/reset",
   o7DirectUpperOperatorReport: "/api/o7/direct-upper/operator-report",
   o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
@@ -165,8 +167,8 @@ function cloudArchiveTasksUrl(archiveJson: string): string {
   return `${API_ENDPOINTS.o7CloudArchiveTasks}?${params.toString()}`;
 }
 
-function directUpperMapListUrl(payload: { evidence_ref?: string; fixture_mode?: boolean }): string {
-  // map/list 是 GET，必须用 query 承载 evidence_ref/fixture_mode；浏览器仍只访问 PC 同源 API。
+function directUpperReadbackUrl(endpoint: string, payload: { evidence_ref?: string; fixture_mode?: boolean }): string {
+  // GET readback 必须用 query 承载 evidence_ref/fixture_mode；浏览器仍只访问 PC 同源 API。
   const params = new URLSearchParams();
   const evidenceRef = payload.evidence_ref?.trim();
   if (evidenceRef) {
@@ -176,7 +178,7 @@ function directUpperMapListUrl(payload: { evidence_ref?: string; fixture_mode?: 
     params.set("fixture_mode", "true");
   }
   const query = params.toString();
-  return query ? `${API_ENDPOINTS.o7DirectUpperMapList}?${query}` : API_ENDPOINTS.o7DirectUpperMapList;
+  return query ? `${endpoint}?${query}` : endpoint;
 }
 
 function cloudOperatorConsoleProbeUrl(baseUrl: string): string {
@@ -318,11 +320,13 @@ export async function postO7DirectUpperOperatorCommand(
     | "radar_start"
     | "radar_stop"
     | "radar_scan_proof_refresh"
+    | "radar_scan_proof_latest"
     | "map_start"
     | "map_reset"
     | "map_save"
     | "map_load"
     | "map_list"
+    | "map_proof_latest"
     | "localize_reset"
     | "operator_report",
   payload: { map_id?: string; evidence_ref?: string; note?: string; fixture_mode?: boolean } = {},
@@ -332,16 +336,18 @@ export async function postO7DirectUpperOperatorCommand(
     radar_start: API_ENDPOINTS.o7DirectUpperRadarStart,
     radar_stop: API_ENDPOINTS.o7DirectUpperRadarStop,
     radar_scan_proof_refresh: API_ENDPOINTS.o7DirectUpperRadarScanProofRefresh,
+    radar_scan_proof_latest: API_ENDPOINTS.o7DirectUpperRadarScanProofLatest,
     map_start: API_ENDPOINTS.o7DirectUpperMapStart,
     map_reset: API_ENDPOINTS.o7DirectUpperMapReset,
     map_save: API_ENDPOINTS.o7DirectUpperMapSave,
     map_load: API_ENDPOINTS.o7DirectUpperMapLoad,
     map_list: API_ENDPOINTS.o7DirectUpperMapList,
+    map_proof_latest: API_ENDPOINTS.o7DirectUpperMapProofLatest,
     localize_reset: API_ENDPOINTS.o7DirectUpperLocalizeReset,
     operator_report: API_ENDPOINTS.o7DirectUpperOperatorReport,
   } as const;
-  if (command === "map_list") {
-    return loadJson<O7DirectUpperApiCommandResponse>(directUpperMapListUrl(payload));
+  if (command === "map_list" || command === "radar_scan_proof_latest" || command === "map_proof_latest") {
+    return loadJson<O7DirectUpperApiCommandResponse>(directUpperReadbackUrl(endpoints[command], payload));
   }
   return postJsonWithPayload<O7DirectUpperApiCommandResponse>(endpoints[command], payload);
 }

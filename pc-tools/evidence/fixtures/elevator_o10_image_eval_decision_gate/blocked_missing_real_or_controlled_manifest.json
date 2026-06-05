@@ -1,0 +1,105 @@
+{
+  "schema": "trashbot.o10_elevator_image_eval_decision_gate.v1",
+  "generated_at": "2026-06-05T13:14:00+08:00",
+  "objective": "O10",
+  "kr": "KR-O10-Elevator-Image-Eval",
+  "owner": "robot-algorithm-engineer",
+  "status": "blocked_missing_real_or_controlled_elevator_image_manifest",
+  "evidence_type": "blocked_with_root_cause",
+  "autonomy_goal": "Use real or controlled elevator images to decide whether the OpenCV baseline can safely feed assisted delivery state gates.",
+  "repository_material_search_result": {
+    "real_or_controlled_manifest_found": false,
+    "accepted_manifest_schema_required": "trashbot.elevator_image_manifest.v1",
+    "fixture_only_manifest": "pc-tools/evidence/fixtures/elevator_opencv_baseline_offline_eval/manifest.json",
+    "collection_template": "pc-tools/evidence/templates/elevator_image_manifest_collection_template.json",
+    "why_fixture_is_not_accepted": "PGM fixtures are deterministic software guards and do not represent camera perspective, lens angle, elevator lighting, reflections, display exposure, people occlusion, or threshold geometry."
+  },
+  "checker_result": {
+    "command": "PYTHONPATH=onboard/src/ros2_trashbot_vision python3 -m ros2_trashbot_vision.elevator_opencv_baseline --check-template pc-tools/evidence/templates/elevator_image_manifest_collection_template.json",
+    "schema": "trashbot.elevator_image_manifest_template_check.v1",
+    "status": "blocked_missing_real_or_controlled_images",
+    "can_run_opencv_eval": false,
+    "field_eval_ready": false,
+    "template_placeholders": 8,
+    "image_kinds": {
+      "fixture": 0,
+      "real_or_controlled": 0,
+      "missing_or_invalid": 8
+    }
+  },
+  "offline_fixture_eval_result": {
+    "command": "PYTHONPATH=onboard/src/ros2_trashbot_vision python3 -m ros2_trashbot_vision.elevator_opencv_baseline pc-tools/evidence/fixtures/elevator_opencv_baseline_offline_eval/manifest.json",
+    "schema": "trashbot.elevator_offline_eval.v1",
+    "evaluated_count": 3,
+    "software_guard_pass": true,
+    "field_eval_ready": false,
+    "door_state": {
+      "tp": 1,
+      "tn": 1,
+      "fp": 0,
+      "fn": 0,
+      "uncertain": 1
+    },
+    "safe_to_exit": {
+      "tp": 1,
+      "tn": 1,
+      "fp": 0,
+      "fn": 0,
+      "uncertain": 1
+    },
+    "operator_uncertain_total": 2,
+    "thresholds": {
+      "open_gap_delta": 38.0,
+      "closed_gap_delta": 16.0,
+      "dark_inside_mean": 88.0,
+      "safe_exit_mean": 105.0,
+      "floor_panel_delta": 28.0,
+      "min_confidence": 0.58
+    }
+  },
+  "required_samples_before_field_eval": {
+    "door_open_positive": 20,
+    "door_closed_positive": 20,
+    "inside_positive": 20,
+    "outside_negative": 20,
+    "floor_target_positive": 20,
+    "safe_exit_positive": 20,
+    "safe_exit_negative": 20,
+    "uncertain_or_bad_light": 10,
+    "minimum_total_if_non_overlapping": 150,
+    "note": "Samples may carry multiple taxonomy tags, but every tag minimum must be satisfied with resolved JPEG/PNG/WebP/BMP real or controlled elevator images."
+  },
+  "collection_requirements": [
+    "Use non-motion collection first; do not send base motion commands while collecting this image set.",
+    "Record site_ref, camera_ref, route_ref, collector, time window, lighting/reflection notes, and safety notes.",
+    "Cover elevator hall outside, inside car, threshold/door-open, door-closed, target floor display, non-target floor display, safe exit, unsafe exit, low light, glare, occlusion, and tilted frames.",
+    "Keep original image files and manifest under an evidence path; run checker before OpenCV eval."
+  ],
+  "manual_takeover_strategy_until_unblocked": [
+    "If door_state is not open, wait or request operator help.",
+    "If inside_outside is uncertain, stop and request operator confirmation.",
+    "If target_floor_candidate does not match target_floor, keep waiting and ask a human to confirm floor.",
+    "If safe_to_exit is not safe or confidence is below min_confidence, stop and require manual takeover.",
+    "Always persist image_ref, uncertain_reasons, thresholds, and not_proven fields into task records before any assisted delivery decision."
+  ],
+  "why_o10_o2_cannot_increase": [
+    "No real or controlled elevator image manifest exists in the repository.",
+    "The only evaluated images are software fixture PGM files.",
+    "OpenCV FP/FN metrics from fixtures do not measure real elevator camera false positives, false negatives, display confusion, lighting robustness, or floor confirmation.",
+    "Without field eval, behavior integration must stay fail-closed and cannot support delivery-readiness chain progress."
+  ],
+  "next_required_evidence": [
+    "Backfill a resolved trashbot.elevator_image_manifest.v1 with real or controlled elevator image files.",
+    "Run the template checker and reach ready_for_opencv_eval or ready_for_eval_needs_more_labeled_samples.",
+    "Run OpenCV eval and attach FP/FN/uncertain, thresholds, confusion, and manual takeover summary.",
+    "Only after a real/controlled eval artifact exists may Robot Software consume it in the elevator state runtime chain."
+  ],
+  "not_proven": [
+    "real_camera_elevator_recognition",
+    "real_floor_ocr",
+    "real_target_floor_confirmation",
+    "real_safe_exit",
+    "real_cross_floor_delivery",
+    "delivery_success"
+  ]
+}

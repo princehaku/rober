@@ -7,6 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "api": "tsx src/server/index.ts",
     "o7:browser-smoke": "node scripts/o7-browser-playback-smoke.mjs",
+    "o7:direct-upper-workflow": "node scripts/o7-direct-upper-browser-workflow.mjs",
     "o7:browser-long-stability": "node scripts/o7-browser-long-stability-collector.mjs",
     "o7:camera-service-readiness": "node scripts/o7-camera-service-readiness-collector.mjs",
     "o5o6:external-probe": "node scripts/o5-o6-external-live-probe.mjs",
