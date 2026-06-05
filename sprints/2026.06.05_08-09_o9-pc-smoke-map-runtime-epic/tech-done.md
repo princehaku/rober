@@ -336,3 +336,61 @@ python3 -m unittest discover -s onboard/scripts -p 'test_*.py'
 - 本轮未发布 `/cmd_vel`，未调用 `/api/base/manual`，未发送 WAVE ROVER 底盘命令。
 - 当前证明范围是 no-motion `/scan` once、`/map` once、map metadata、PGM/YAML 文件落盘和 8787 readback route 可用。
 - 当前仍不证明 continuous radar ready、AMCL、Nav2 lifecycle、路径生成、地图质量可导航、fixed-route 可跑、PC WASD、WAVE ROVER ACK、HIL pass 或真实送达闭环。
+
+### 2026-06-05 Product 收口补充：短复跑 latest 成功
+
+本段记录 Product 收到的最新 Robot 短复跑证据，用于 `side2side_check.md` / `final.md` / `OKR.md` 收口；本段覆盖上方旧的 partial blocker、false-negative 和 “latest 需复跑确认”口径：
+
+- `POST /api/map/proof/refresh` 后 latest/readback 成功，`latest_result.proof.status=map_once_artifact_metadata_observed`。
+- `evidence_type=robot_runtime_material`，`root_causes=[]`。
+- `map_once_observed=true`，`map_file_observed=true`。
+- map files 包括 `/root/rober/onboard/runtime/maps/trashbot_map.yaml` 和 `/root/rober/onboard/runtime/maps/trashbot_map.pgm`。
+- 安全字段仍为 `safe_to_control=false`、`sends_base_motion_commands=false`、`robot_control_executed=false`。
+- 剩余路径风险：`GET /api/map/proof/latest` 能读到 latest，但 JSON 实际在 `/root/rober/runtime/map_lifecycle_latest.json`，不是原计划 `/root/rober/onboard/runtime/map_lifecycle_latest.json`；原因是 upper API service cwd 是 `/root/rober`。
+- 证据边界：本轮仍不证明地图可导航、AMCL/Nav2 ready、continuous radar、PC WASD、WAVE ROVER ACK、HIL pass 或真实送达闭环。
+
+### 2026-06-05 09:48 CST helper 相对路径复跑
+
+按状态检查要求只复跑一次 `POST /api/map/proof/refresh`，不扩功能、不触碰 `pc-tools`、不提交 git。
+
+部署确认：
+
+```bash
+scp -P 37878 onboard/scripts/o3_map_lifecycle_proof.py root@192.168.1.11:/root/rober/onboard/scripts/o3_map_lifecycle_proof.py
+ssh root@192.168.1.11 -p 37878 'bash -lc '\''chmod +x /root/rober/onboard/scripts/o3_map_lifecycle_proof.py; grep -n "def workdir_path\\|map_artifact_dir = workdir_path" /root/rober/onboard/scripts/o3_map_lifecycle_proof.py'\'' '
+```
+
+结果：
+
+- 远端 helper 已包含 `def workdir_path(...)`。
+- 远端 helper 已包含 `map_artifact_dir = workdir_path(args, args.map_dir)`。
+
+复跑命令：
+
+```bash
+ssh root@192.168.1.11 -p 37878 'bash -lc '\''set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; set -u; curl -fsS -X POST http://127.0.0.1:8787/api/map/proof/refresh; echo; curl -fsS http://127.0.0.1:8787/api/map/proof/latest; echo; cat /root/rober/onboard/runtime/map_lifecycle_latest.json; echo; find /root/rober/onboard/runtime/maps -maxdepth 2 -type f 2>/dev/null | sort | tail -n 20'\'' '
+```
+
+结果摘要：
+
+- `POST /api/map/proof/refresh` 执行完成，`command_result.ok=true`，helper `returncode=0`。
+- latest artifact readback：`latest_result.proof.status=map_once_artifact_metadata_observed`。
+- latest evidence：`evidence_type=robot_runtime_material`、`not_proven=false`、`root_causes=[]`。
+- `/scan` once 成立，frame_id `laser_frame`。
+- `/map` once 成立，frame_id `map`，metadata 为 `resolution=0.05`、`width=99`、`height=63`。
+- `map_file_observed=true`，map files：
+  - `/root/rober/onboard/runtime/maps/trashbot_map.yaml`，`size_bytes=164`
+  - `/root/rober/onboard/runtime/maps/trashbot_map.pgm`，`size_bytes=6271`
+- `/trashbot/save_map` 返回 `success=True, message='Map saved to runtime/maps/trashbot_map.pgm'`。
+- 安全字段保持：`safe_to_control=false`、`sends_base_motion_commands=false`、`robot_control_executed=false`、`publishes_cmd_vel=false`、`calls_base_manual=false`、`hil_pass=false`。
+
+额外路径事实：
+
+- 用户指定的 `cat /root/rober/onboard/runtime/map_lifecycle_latest.json` 返回 `No such file or directory`。
+- 短查找确认 latest JSON 实际路径是 `/root/rober/runtime/map_lifecycle_latest.json`，原因是 `trashbot-upper-robot-api.service` 当前 cwd 为 `/root/rober`，而 upper API 的 proof artifact path 仍是相对路径 `runtime/map_lifecycle_latest.json`。
+- map artifact 文件路径已经正确落在 `/root/rober/onboard/runtime/maps/`，因为 helper 已按 onboard workdir 解析 `map_dir`。
+
+当前 root cause 状态：
+
+- 已修复并验证：map file relative-path false-negative。
+- 新的剩余 root cause：latest JSON 输出路径仍受 upper API service cwd 影响，`GET /api/map/proof/latest` 能读到 `/root/rober/runtime/map_lifecycle_latest.json`，但用户指定的 `/root/rober/onboard/runtime/map_lifecycle_latest.json` 不存在。该问题只影响 artifact 文件落点一致性，不影响本次 `/map` once、map file observed 和 8787 latest readback 证据。
