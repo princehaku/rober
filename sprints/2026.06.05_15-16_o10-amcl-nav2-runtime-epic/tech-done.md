@@ -15,6 +15,8 @@ Robot Software Engineer 本轮完成 O10 `KR-O10-AMCL-Nav2-Runtime-Collector`
   `/root/rober/onboard/runtime/maps`，只读采集 ROS2 graph 中的 map server、AMCL、
   planner/controller lifecycle、`/scan`、`/map`、`/amcl_pose`、`/initialpose`
   边界和 path generation readiness。
+- 修复 lifecycle parser 的 fail-closed 判断：不能用 `"active" in text` 判断状态，
+  因为 `inactive` 包含 `active` 子串；现在只接受精确 `active` 形态。
 - 更新 `onboard/scripts/upper_robot_api.py`，新增：
   - `POST /api/nav2/proof/refresh`
   - `GET /api/nav2/proof/latest`
@@ -30,9 +32,9 @@ Robot Software Engineer 本轮完成 O10 `KR-O10-AMCL-Nav2-Runtime-Collector`
 
 - `python3 -m compileall -q onboard/scripts onboard/src`：通过，exit 0，无输出。
 - `python3 -m unittest onboard.scripts.test_upper_robot_api`：通过，
-  `Ran 38 tests in 1.747s`，`OK (skipped=4)`。
+  `Ran 39 tests`，`OK (skipped=4)`。
 - `python3 -m unittest discover -s onboard/scripts -p 'test_*.py'`：通过，
-  `Ran 87 tests in 4.336s`，`OK (skipped=4)`。
+  `Ran 88 tests`，`OK (skipped=4)`。
 - `git diff --check -- onboard/scripts docs/navigation docs/interfaces sprints/2026.06.05_15-16_o10-amcl-nav2-runtime-epic`：
   通过，exit 0。
 

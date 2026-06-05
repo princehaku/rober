@@ -25,9 +25,11 @@ AMCL/Nav2 安装、launch 和 lifecycle bringup；缺资源时升级 CEO 决策�
 ## 核心证据
 
 - 本地验证通过：`python3 -m compileall -q onboard/scripts onboard/src`；
-  `python3 -m unittest onboard.scripts.test_upper_robot_api` Ran 38 OK skipped=4；
-  `python3 -m unittest discover -s onboard/scripts -p 'test_*.py'` Ran 87 OK skipped=4；
+  `python3 -m unittest onboard.scripts.test_upper_robot_api` Ran 39 OK skipped=4；
+  `python3 -m unittest discover -s onboard/scripts -p 'test_*.py'` Ran 88 OK skipped=4；
   `git diff --check -- onboard/scripts docs/navigation docs/interfaces sprints/2026.06.05_15-16_o10-amcl-nav2-runtime-epic` exit 0。
+- Robot Software 复核修复了 lifecycle parser 的误判风险：`inactive` 包含 `active`
+  子串，collector 现在只接受精确 `active` 状态，并新增回归测试。
 - 远端部署通过：`upper_robot_api.py` 和 `o10_amcl_nav2_runtime_proof.py`
   已同步到 `root@192.168.1.11:/root/rober/onboard/scripts/`，并重启
   `trashbot-upper-robot-api.service`，service active。
