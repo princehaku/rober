@@ -8,6 +8,21 @@
 
 ## 2026-06-05 系列
 
+### 2026-06-05 10-05｜OKR Six-Sprint Breakthrough Rewrite｜新增 O10 受控送达闭环实战战役，禁止回到 latest/readback/status
+
+本轮 Product/OKR micro sprint 复盘最近 6 个已完成迭代：
+`01-02_o9_scan_hz_tf_runtime`、`02-03_o9_radar_status_fresh_proof`、`04-05_okr-six-sprint-state-rewrite`、`05-06_o9-narrow-runtime-material-epic`、`06-07_o9-pc-slam-runtime-epic`、`08-09_o9-pc-smoke-map-runtime-epic`。
+
+本轮方向判断：**调整并新增 O10**。最近改进支撑 OKR 战略定位，但只支撑“从入口/单次材料走向受控送达”的前半段，不能说已经能送垃圾。O9 继续作为短周期真实材料破局 Objective；O10 受控送达闭环实战战役承接下一阶段，把 O3 no-motion map material、O7 PC same-origin proof、O2 电梯图片、O1 stop-first HIL 串成 delivery-readiness chain。O10 从 0% 开始，旧证据只能作为前置材料，不能直接涨分。
+
+最近 6 轮问题：`01-02` 是 Micro，fresh `/scan` once/hz/raw/TF 成立但 fallback used；`02-03` 是 Micro，只是 radar/status latest readback software guard；`04-05` 是 Micro，Product 打回不实叠加；`05-06` 是 Epic，关闭远端未加载缺口但图片/HIL blocked；`06-07` 是 Epic，PC 展示边界但 live smoke blocked；`08-09` 是 Epic，PC 8788 same-origin 和 no-motion `/map` material 成立，但 latest JSON 路径漂移，且仍无 AMCL/Nav2、按钮级验收、电梯图片、HIL。
+
+本轮 OKR 调整：O1 保持约 95.5%，O2 保持约 72%，O3 保持约 76%，O5 保持约 84%，O6 保持约 82%，O7 保持约 92%，O8 保持约 48%，O9 保持约 20%；新增 O10「受控送达闭环实战战役」0%。本轮不重复给 08-09 已计入材料涨分。
+
+员工状态：Full-stack 和 Robot Software 进展快，但必须从 API/once proof 转浏览器按钮级与 AMCL/Nav2；Robot Algorithm 仍被真实/受控电梯图片卡住；Hardware Infra 仍被 stop-first HIL 安全授权卡住；Product 下一轮必须启动跨 owner Epic，每个 owner 单 artifact/单命令链，final 收 delivery-readiness chain。
+
+下一轮要求：必须启动跨 owner Epic，目标是 O10 delivery-readiness chain。Robot Software 锁定 latest JSON 路径契约；Robot Algorithm 做 AMCL/Nav2 readiness 和真实/受控电梯图片 eval；Full-stack 做 PC 浏览器按钮级 workflow；Hardware 做 stop-first HIL 决策门；Product final 必须逐 owner 收 pass/blocked、证据边界和 CEO 决策点。
+
 ### 2026-06-05 05-06｜O9 Narrow Runtime Material Epic｜远端 status 复验闭环，PC 护栏部分完成，真实材料 blocker 明确
 
 本轮按 `04-05_okr-six-sprint-state-rewrite` 要求启动窄 Epic，而不是继续 Micro-only status/readback。

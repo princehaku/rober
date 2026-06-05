@@ -87,13 +87,13 @@
 
 ## 4. 2026 H1 OKR（当前推进区）
 
-更新时间：2026-06-05 08-09 CST，对应 `sprints/2026.06.05_08-09_o9-pc-smoke-map-runtime-epic/final.md`。本轮继续 O9 窄 Epic：PC same-origin scan-proof workflow 已从上一轮 `tsx_ipc_pipe_enotsup` blocker 推进到 `TMPDIR=/tmp` 启动 8788、build pass、App test 30 pass、8788 POST refresh + GET latest 均 HTTP 200 JSON；关键字段为 `artifact_status=loaded`、`proof_status=scan_once_hz_raw_packet_tf_observed`、hz `241.753`、TF true、`runtime_summary_fallback_used=true`、`continuous_scan_status=not_proven`、`safe_to_control=false`、`robot_control_executed=false`。Robot Software/Algorithm 已安装 `slam_toolbox`，`ros2 pkg prefix slam_toolbox` 返回 `/opt/ros/humble`；no-motion proof 已观察到 `/scan` once、`/map` once、map metadata，`/trashbot/save_map` success，远端确认存在 `/root/rober/onboard/runtime/maps/trashbot_map.pgm` 和 `.yaml`；短复跑 latest/readback 返回 `latest_result.proof.status=map_once_artifact_metadata_observed`、`evidence_type=robot_runtime_material`、`root_causes=[]`、`map_once_observed=true`、`map_file_observed=true`。边界是 latest JSON 实际在 `/root/rober/runtime/map_lifecycle_latest.json`，不是原计划 `/root/rober/onboard/runtime/map_lifecycle_latest.json`，因为 upper API service cwd 是 `/root/rober`；安全字段固定 false，无 `/cmd_vel`、无 `/api/base/manual`、无 WAVE ROVER 底盘 UART/HIL。
+更新时间：2026-06-05 10-05 CST，对应 `sprints/2026.06.05_10-05_okr-six-sprint-breakthrough-rewrite/tech-done.md`。本轮 Product/OKR 复盘最近 6 个已完成迭代，只重写 Objective/KR 与证据边界，不新增产品代码、不重复上调 08-09 已计入的进度。O1/O2/O5/O6 保持；O3/O7/O8/O9 保持 08-09 口径；新增 O10「受控送达闭环实战战役」，当前 0%。
 
-本轮方向判断是 **继续：沿 O9 breakthrough 调整口径执行，不改变北极星**。北极星仍是普通手机用户把垃圾交给低成本小车，小车沿固定路线送到垃圾站，必要时跨楼层进出电梯，并在异常时安全停止、请求人工协助和留下可复盘证据。
+本轮方向判断是 **调整：北极星继续，战役目标从 O9 的“真实材料破局”升级到 O10 的“受控送达闭环实战”**。北极星仍是普通手机用户把垃圾交给低成本小车，小车沿固定路线送到垃圾站，必要时 assisted elevator，并在异常时安全停止、请求人工协助和留下可复盘证据；普通用户不需要理解 ROS2、SSH、串口或硬件调试。
 
-关键结论：16:05 之后团队从连续 Micro 转向 Epic，方向明显改善；`01-02` 进一步证明 O9 fresh scan proof 可以产出 live runtime material。`02-03_o9_radar_status_fresh_proof` 有价值，但只是 `/api/radar/status` 消费 latest proof 的状态契约/readback 改进。`05-06_o9-narrow-runtime-material-epic` 关闭了 02-03 的远端未 restart/curl 缺口。`06-07_o9-pc-slam-runtime-epic` 把 PC 消费缺口从“字段不全”推进到软件护栏，并把 SLAM/root cause 从泛泛的 map missing 收敛为：`ros2 topic list` 只有 `/parameter_events` 和 `/rosout`，`/api/map/proof/latest` 404 且 `runtime/map_lifecycle_latest.json` missing，`/root/rober/onboard/runtime/maps` 不存在。`08-09_o9-pc-smoke-map-runtime-epic` 同时补上 PC 8788 same-origin live smoke、no-motion `/map` once/map artifact 落盘和 latest/readback clean success 的缺口，可给 O3/O7/O9 小幅涨分；但 latest JSON 路径漂移仍需修正或文档化，也不能外推 continuous radar、AMCL、Nav2、PC WASD、HIL 或 `safe_to_control=true`。
+关键结论：最近 6 轮不是“员工一直 Micro”。`01-02`、`02-03`、`04-05` 是 Micro，`05-06`、`06-07`、`08-09` 已经是 Epic；团队已从入口/readback 纠偏到跨 owner 真实材料 Epic。真正问题是下一阶段不能再消费 latest/readback/status，必须转向 latest JSON 路径契约、AMCL/Nav2、浏览器按钮级 workflow、真实/受控电梯图片、stop-first HIL 和 delivery-readiness chain。
 
-真实材料边界：`22-23` 已解除 refresh route HTTP 405 和 ROS logging env blocker；`00-01` 把 blocker 收窄到 `scan_hz=false` / `tf=false`；`01-02` micro sprint 通过 live 8787 refresh/latest 形成 `proof_state=scan_once_hz_raw_packet_tf_observed`，`evidence_type=robot_runtime_material`，`scan_hz_average_rate_hz=257.987`，`runtime_summary_fallback_used=true`，`blockers_summary=[]`。`08-09` 进一步形成 PC same-origin scan proof 和 no-motion map lifecycle material，latest/readback 为 `map_once_artifact_metadata_observed`、`root_causes=[]`。安全字段保持 `safe_to_control=false`、`sends_base_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`。`02-03` 只让 `/api/radar/status` 能表达 `fresh_scan_proof_observed` 与 `continuous_scan_status=not_proven` 的差异。因此当前证明 live fresh scan proof artifact 与 no-motion `/map` once/map files/latest readback，不证明 continuous radar ready、地图可导航、AMCL、Nav2、PC WASD、HIL、WAVE ROVER ACK 或 `safe_to_control=true`。
+真实材料边界：`01-02` 通过 live 8787 refresh/latest 形成 fresh `/scan` once/hz/raw/TF `robot_runtime_material`，但 fallback used，continuous radar/status、SLAM、Nav2、PC 控车和 HIL 都未证明。`08-09` 进一步形成 PC 8788 same-origin POST refresh + GET latest HTTP 200 JSON，以及 no-motion `/scan` once、`/map` once、map metadata、`trashbot_map.pgm/.yaml` 落盘和 latest/readback clean success。P0 风险是 latest JSON 实际在 `/root/rober/runtime/map_lifecycle_latest.json`，不是计划的 `/root/rober/onboard/runtime/map_lifecycle_latest.json`；安全字段保持 `safe_to_control=false`、`sends_base_motion_commands=false`、`robot_control_executed=false`、`hil_pass=false`。因此当前证明 live fresh scan proof artifact 与 no-motion map 前置材料，不证明 continuous radar ready、地图可导航、AMCL、Nav2、PC WASD、HIL、WAVE ROVER ACK、真实电梯识别或真实送达。
 
 ### 最近迭代问题与新增证据
 
@@ -123,6 +123,7 @@
 - O3 有两次真实 runtime 破局：fresh `/scan` once/hz、raw packet 和 TF 已成 artifact；08-09 又拿到 no-motion `/map` once、map metadata、PGM/YAML 落盘和 latest/readback clean success。但 latest JSON 路径漂移仍需修正或文档化，且没有 continuous radar、AMCL、Nav2、低速 pulse、stop/post-status 或 `safe_to_control=true`。
 - O1 仍未破局：没有 stop-first HIL、robot ACK、ROS feedback topics 或现场安全授权下的运动材料。
 - O5/O6 不应抢主线：最近证据仍没有 production live material，它们只应等待 O2/O3/O7/O1 真实材料进入 archive/control plane。
+- O10 必须接住下一阶段：把 O3 no-motion map material、O7 PC same-origin proof、O2 电梯图片、O1 stop-first HIL 串成可验收的 delivery-readiness chain；旧证据只能作为前置材料，不能直接抬高 O10 进度。
 
 ### 员工状态
 
@@ -146,6 +147,7 @@
 | O7：PC 端运营调试平台 | 约 92% | 继续，必须从 API runtime proof 走向 PC operator workflow | 已按 8787 refresh/latest runtime proof 和 08-09 PC 8788 same-origin refresh/latest live smoke 小幅涨分；后续只靠浏览器按钮级复验、真实雷达 start/stop、建图/定位控制、PC WASD 现场控车、stop/急停和 operator workflow 涨分。 |
 | O8：Epic 交付节奏与证据治理 | 约 48% | 继续，组织治理小幅上调 | 04-05 完成审计，05-06 完成窄 Epic 多 owner blocker 收口，06-07 完成超时重派、PC live smoke blocker 结构化、远端 SLAM/root cause 收敛，08-09 完成 PC live proof 与 map root cause closeout；O8 不证明产品能力。 |
 | O9：短周期真实材料破局战役 | 约 20% | 继续，执行型 breakthrough Objective | 已完成 refresh route 部署、01-02 fresh scan proof artifact、08-09 PC same-origin scan-proof live smoke，以及 no-motion `/map` once/map artifact/latest clean readback；02-03 只是 status readback contract。后续只靠路径契约修正、真实/受控电梯图片、stop-first HIL 授权、continuous radar/SLAM 推进和 Epic owner 超时防护涨分。 |
+| O10：受控送达闭环实战战役 | 0% | 新增，下一阶段主 Objective | 旧 O3/O7/O9 证据只能作为前置材料，不直接涨 O10；O10 只靠路径契约锁定、AMCL/Nav2 readiness、PC 按钮级 workflow、真实/受控电梯图片 eval、stop-first HIL 决策和 delivery-readiness chain 验收涨分。 |
 
 ### Objective 1：打通官方硬件协议，建立可信底盘控制层
 
@@ -254,24 +256,40 @@
 | KR-O9-Epic-Owner-Timeout-Guard | Epic owner 超时防护：下一轮 `tech-plan.md` 将四个 owner 拆成单命令链和单 artifact；`final.md` 必须逐 owner 记录完成、超时、阻塞和重试策略。Owner：Product Manager / OKR Owner。证据边界：组织治理，不涨产品 Objective。 |
 | CEO 决策点 | 若现场无法部署 8787 route、无法采电梯图片、无法满足 stop-first HIL 安全前提，CEO 需要在下一轮 pre_start 明确提供现场资源、允许远程部署、暂停对应 KR 或切换 Objective。 |
 
+### Objective 10：受控送达闭环实战战役
+
+**责任 Owner：Product Manager / OKR Owner 统筹，Robot Software Engineer、Robot Algorithm Engineer、Full-stack Software Engineer、Hardware Infra Engineer 分别交付。**
+**方向判断：新增。O9 已能组织短周期真实材料破局，但不足以组织下一阶段的受控送达 readiness；O10 从 0% 开始，不能用旧证据虚涨。**
+
+| KR 类型 | 当前口径 |
+| --- | --- |
+| KR-O10-Path-Contract-Lock | 修正或锁定 latest JSON 路径契约：明确 `/root/rober/runtime/map_lifecycle_latest.json` 与 `/root/rober/onboard/runtime/map_lifecycle_latest.json` 的唯一读写口径，更新 API/readback/docs，验收以同一远端命令链证明 refresh/latest/readback 路径一致。Owner：Robot Software Engineer。证据边界：`robot_runtime_material`。 |
+| KR-O10-AMCL-Nav2-Readiness | 基于 08-09 no-motion `/map` once、metadata 和 PGM/YAML，推进 AMCL `/initialpose`、map server、planner/controller lifecycle、路径生成或 fixed-route dry-run；不得发布 `/cmd_vel` 或写成可导航地图已完成。Owner：Robot Algorithm Engineer + Robot Software Engineer。证据边界：`robot_runtime_material`。 |
+| KR-O10-PC-Button-Workflow | 把 PC proof 从 8788 API smoke 推到浏览器按钮级：refresh scan proof、map proof latest、localize/map controls 必须通过 same-origin route 展示 hz、TF、fallback、artifact、失败原因和 fail-closed 安全字段。Owner：Full-stack Software Engineer。证据边界：`robot_runtime_material` 或 `user_acceptance_material`。 |
+| KR-O10-Elevator-Image-Eval | 采集真实/受控电梯图片 manifest，跑 OpenCV eval，输出 false positive、false negative、不可判定样本、阈值和人工接管策略；fixture/template 不再涨分。Owner：Robot Algorithm Engineer。证据边界：`robot_runtime_material` 或受控 field 前置材料。 |
+| KR-O10-Stop-First-HIL-Gate | 有现场看护、净空、急停/断电路径和 CEO/现场授权时，完成低速 pulse + stop/post-status + operator report；缺任一前提时写 CEO 决策 blocker，不得标 HIL pass。Owner：Hardware Infra Engineer + Full-stack Software Engineer。证据边界：`field_hil_material` 或 `blocked_with_root_cause`。 |
+| KR-O10-Delivery-Readiness-Chain | 串联 O3 no-motion map material、O7 PC same-origin proof、O2 电梯图片 eval、O1 stop-first HIL 决策，形成一份可验收 delivery-readiness chain；必须明确每段 pass/blocked、证据链接、不可外推项和下一步低速受控送达条件。Owner：Product Manager / OKR Owner。证据边界：阶段验收，不等于 delivery success。 |
+| 不可越界的 not_proven 风险 | 当前不证明真实送垃圾、真实跨楼层、AMCL/Nav2 可实跑、PC WASD 控车、HIL pass、`safe_to_control=true`、真实手机验收或 production cloud。O10 只认新的链式证据，不认重复 latest/status/readback。 |
+
 ---
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-06-05 08-09 CST，对应本轮 `sprints/2026.06.05_08-09_o9-pc-smoke-map-runtime-epic/final.md`。
+更新时间：2026-06-05 10-05 CST，对应本轮 `sprints/2026.06.05_10-05_okr-six-sprint-breakthrough-rewrite/tech-done.md`。
 
-**比例更新规则**：O1/O2/O3/O7 只有真实现场、ROS2 runtime、HIL、OpenCV eval、地图 artifact、operator workflow 或受控电梯材料才涨；O5/O6 只有真实生产云、4G/公网/DB/OSS/phone-browser/上车数据才涨；O8 只有执行证据链、blocker 升级、员工状态和 evidence type 复核生效才涨；O9 只有短周期真实材料交付才涨。继续增加 Micro sprint、mock、fixture、UI 文案、readback、状态面或只读 runbook 不再涨产品 Objective。
+**比例更新规则**：O1/O2/O3/O7 只有真实现场、ROS2 runtime、HIL、OpenCV eval、地图 artifact、operator workflow 或受控电梯材料才涨；O5/O6 只有真实生产云、4G/公网/DB/OSS/phone-browser/上车数据才涨；O8 只有执行证据链、blocker 升级、员工状态和 evidence type 复核生效才涨；O9 只有短周期真实材料交付才涨；O10 只有受控送达 readiness chain 的新增链式证据才涨。继续增加 Micro sprint、mock、fixture、UI 文案、readback、状态面或只读 runbook 不再涨产品 Objective。
 
 | Objective | 当前比例 | 本轮变化 | 已验收/可计入 | 下一步可涨分 KR | 不得越界 |
 | --- | --- | --- | --- | --- | --- |
 | O1：硬件协议可信底盘 | 约 95.5% | 保持 | `/dev/ttyS5` 可写材料、非运动 `T=130 -> T=1001`、LiDAR `/scan` once/hz、TF、PC manual/LiDAR 隔离准入；01-02 安全字段继续 fail-closed | KR-O9-Stop-First-HIL-Authorization、KR-O1-ROS-Feedback-Topics | `safe_to_control=true`、HIL pass、robot ACK、真实 `/odom`/`/imu/data`/`/battery` |
 | O2：送垃圾任务 + 电梯 assisted delivery | 约 72% | 保持 | 产品 contract、dry-run evidence schema、OpenCV taxonomy/ROI/rule/offline fixture eval、16-17 状态机 software guard | KR-O9-Real-Controlled-Elevator-Images、KR-O2-OpenCV-Field-Eval、KR-O2-ROS2-State-Runtime | 真实电梯识别、楼层 OCR、实景进出电梯、跨楼层送达 |
-| O3：建图、定位、Nav2 与固定路线 | 约 76% | +1pp；08-09 no-motion `/map` once、metadata、PGM/YAML 落盘和 latest clean readback | `learn.launch.py`、Nav2 include、首个 `/scan` smoke、map/localize software guard、本地 scan-proof refresh 合同、01-02 live fresh `/scan` once/hz/raw/TF runtime material；08-09 `slam_toolbox` installed、`/map` once、map metadata、`trashbot_map.pgm/.yaml` 落盘、`/api/map/proof/latest` HTTP 200 loaded，`latest_result.proof.status=map_once_artifact_metadata_observed`、`root_causes=[]`；latest JSON path drift 待处理 | latest JSON 路径契约修正、KR-O3-Nav2-Consumption、continuous radar/status | continuous radar ready、地图可导航、定位恢复、Nav2 实跑、路线通过 |
+| O3：建图、定位、Nav2 与固定路线 | 约 76% | 保持；08-09 已计入 +1pp，本轮不重复涨分 | `learn.launch.py`、Nav2 include、首个 `/scan` smoke、map/localize software guard、本地 scan-proof refresh 合同、01-02 live fresh `/scan` once/hz/raw/TF runtime material；08-09 `slam_toolbox` installed、`/map` once、map metadata、`trashbot_map.pgm/.yaml` 落盘、`/api/map/proof/latest` HTTP 200 loaded，`latest_result.proof.status=map_once_artifact_metadata_observed`、`root_causes=[]`；latest JSON path drift 待处理 | latest JSON 路径契约修正、KR-O3-Nav2-Consumption、continuous radar/status、KR-O10-AMCL-Nav2-Readiness | continuous radar ready、地图可导航、定位恢复、Nav2 实跑、路线通过 |
 | O5：云中转控制面 | 约 84% | 保持 | mock/control plane、readiness health、external probe、TLS summary、acceptance queue、SSH collector installed probe | KR-O5-Production-Live-Control | 真实生产云、真实蜂窝链路、真实 robot command 执行 |
 | O6：云端核心后端 | 约 82% | 保持 | mock archive/query/annotation/inference、archive health、external probe artifact、acceptance queue | KR-O6-Production-Archive-Query、KR-O6-Field-Material-Ingestion | 真实生产数据链、真实 OSS/推理/上车数据 |
-| O7：PC 运营调试平台 | 约 92% | +1pp；PC same-origin scan-proof live smoke 成立 | WASD/按钮软件入口、PC 同源代理、真实 8787 status/map/operator-report proxy runtime、operator-report readback、PC scan-proof refresh software guard、fail-closed blocker display、01-02 refresh/latest runtime proof；08-09 `TMPDIR=/tmp` 启动 8788，POST refresh + GET latest 均 HTTP 200 JSON，`proof_status=scan_once_hz_raw_packet_tf_observed`、hz `241.753`、TF true、`runtime_summary_fallback_used=true`、`continuous_scan_status=not_proven` | 浏览器按钮级 refresh 验收、KR-O7-PC-Manual-Field、KR-O7-Map-SLAM-Controls | 真实控车、真实雷达长稳、真实建图定位、production workflow、`safe_to_control=true` |
-| O8：Epic 交付节奏与证据治理 | 约 48% | +1pp；08-09 完成 Product closeout、证据边界和 root cause 归档 | AGENTS/iteration_velocity 规则、16-05 口径重写、17-18/20-21/21-22 Epic 治理、22-23 解除部署 405、解除 ROS logging blocker、00-01 收窄到 LiDAR runtime、04-05 拦截 02-03 不实涨分、05-06 窄 Epic 收口、06-07 PC smoke blocker 与 SLAM root cause 收口、08-09 PC live proof 与 map blocked root cause closeout | KR-O8-Owner-Timeout-Guard、KR-O8-Repeated-Blocker-Stop、KR-O8-Micro-Loop-Stop、KR-O9-Epic-Owner-Timeout-Guard | 不能把流程合规写成产品能力或 OKR 产品涨分 |
-| O9：短周期真实材料破局战役 | 约 20% | +2pp；PC same-origin runtime material 和 no-motion map lifecycle material 进入 O9 | 22-23 完成 KR 定义、解除 405 和 blocker 收敛；00-01 修复 false negative；01-02 8787 refresh/latest 形成 `robot_runtime_material`，但 radar/status 仍 not_proven；06-07 收敛到无常驻 LiDAR/SLAM runtime 与 PC smoke `tsx` blocker；08-09 证明 8788 same-origin scan-proof refresh/latest live smoke，并形成 `/scan` once、`/map` once、metadata、PGM/YAML 落盘、latest clean readback | latest JSON 路径契约修正、KR-O9-Real-Controlled-Elevator-Images、KR-O9-Stop-First-HIL-Authorization、continuous radar/status、AMCL/Nav2 | 不能把 live fresh artifact、PC readback、status readback 或 no-motion map once 写成 continuous radar、地图可导航、Nav2、PC 控车、HIL 或 `safe_to_control=true` |
+| O7：PC 运营调试平台 | 约 92% | 保持；08-09 已计入 +1pp，本轮不重复涨分 | WASD/按钮软件入口、PC 同源代理、真实 8787 status/map/operator-report proxy runtime、operator-report readback、PC scan-proof refresh software guard、fail-closed blocker display、01-02 refresh/latest runtime proof；08-09 `TMPDIR=/tmp` 启动 8788，POST refresh + GET latest 均 HTTP 200 JSON，`proof_status=scan_once_hz_raw_packet_tf_observed`、hz `241.753`、TF true、`runtime_summary_fallback_used=true`、`continuous_scan_status=not_proven` | 浏览器按钮级 refresh 验收、KR-O7-PC-Manual-Field、KR-O7-Map-SLAM-Controls、KR-O10-PC-Button-Workflow | 真实控车、真实雷达长稳、真实建图定位、production workflow、`safe_to_control=true` |
+| O8：Epic 交付节奏与证据治理 | 约 48% | 保持；本轮只新增 O10 口径和下一轮 Epic 要求，不把文档治理重复涨分 | AGENTS/iteration_velocity 规则、16-05 口径重写、17-18/20-21/21-22 Epic 治理、22-23 解除部署 405、解除 ROS logging blocker、00-01 收窄到 LiDAR runtime、04-05 拦截 02-03 不实涨分、05-06 窄 Epic 收口、06-07 PC smoke blocker 与 SLAM root cause 收口、08-09 PC live proof 与 map blocked root cause closeout | KR-O8-Owner-Timeout-Guard、KR-O8-Repeated-Blocker-Stop、KR-O8-Micro-Loop-Stop、KR-O10-Delivery-Readiness-Chain | 不能把流程合规写成产品能力或 OKR 产品涨分 |
+| O9：短周期真实材料破局战役 | 约 20% | 保持；08-09 已计入 +2pp，本轮不重复涨分 | 22-23 完成 KR 定义、解除 405 和 blocker 收敛；00-01 修复 false negative；01-02 8787 refresh/latest 形成 `robot_runtime_material`，但 radar/status 仍 not_proven；06-07 收敛到无常驻 LiDAR/SLAM runtime 与 PC smoke `tsx` blocker；08-09 证明 8788 same-origin scan-proof refresh/latest live smoke，并形成 `/scan` once、`/map` once、metadata、PGM/YAML 落盘、latest clean readback | latest JSON 路径契约修正、KR-O9-Real-Controlled-Elevator-Images、KR-O9-Stop-First-HIL-Authorization、continuous radar/status、AMCL/Nav2 | 不能把 live fresh artifact、PC readback、status readback 或 no-motion map once 写成 continuous radar、地图可导航、Nav2、PC 控车、HIL 或 `safe_to_control=true` |
+| O10：受控送达闭环实战战役 | 0% | 新增；旧证据只作前置材料，不涨分 | 08-09 的 O3 no-motion map material、O7 PC same-origin proof、O9 fresh proof 是前置入口；O2 真实图片和 O1 stop-first HIL 仍缺 | KR-O10-Path-Contract-Lock、KR-O10-AMCL-Nav2-Readiness、KR-O10-PC-Button-Workflow、KR-O10-Elevator-Image-Eval、KR-O10-Stop-First-HIL-Gate、KR-O10-Delivery-Readiness-Chain | 真实送达、真实跨楼层、AMCL/Nav2 实跑、PC WASD/HIL、`safe_to_control=true`、真实手机验收 |
 
 **历史归档区调整：**
 
@@ -291,15 +309,15 @@
 
 ## 5. 当前最高优先级
 
-当前优先级为 **O9 窄 Epic 真实材料突破 -> 修正或锁定 `map_lifecycle_latest.json` 路径契约 -> O3 AMCL/Nav2 lifecycle 与 continuous radar/SLAM -> O7 浏览器按钮级同源验收和建图控制 readback -> O2 真实/受控电梯图片 -> O1 stop-first HIL 决策门 -> O8 防 Micro 回流治理 -> O5/O6 支线等待**。
+当前优先级为 **O10 受控送达闭环实战战役 -> P0 latest JSON 路径契约 -> O3 AMCL/Nav2 lifecycle 与 continuous radar/SLAM -> O7 浏览器按钮级同源验收和建图控制 readback -> O2 真实/受控电梯图片 -> O1 stop-first HIL 决策门 -> O8 防 Micro 回流治理 -> O5/O6 支线等待**。
 
-下一轮不再接受“继续写接口”“重复 refresh/latest”“只补 status/readback”作为主任务。必须按 O9 拉一个短周期窄 Epic，四个 owner 任务必须窄到单命令链、单 artifact、单验收口径；如果安全、人、图像、远端权限或现场资源缺失，必须在 pre_start 写 CEO 决策 blocker，不能继续拆 Micro 消费同一缺口：
+下一轮不再接受“继续写接口”“重复 refresh/latest”“只补 status/readback”作为主任务。必须按 O10 拉一个跨 owner Epic，四个 owner 任务必须窄到单命令链、单 artifact、单验收口径；如果安全、人、图像、远端权限或现场资源缺失，必须在 pre_start 写 CEO 决策 blocker，不能继续拆 Micro 消费同一缺口：
 
 1. **Robot Software Engineer + Robot Algorithm Engineer：先修正或锁定 map proof latest 路径契约。** 远端 `bash -lc` source 口径、`slam_toolbox` 安装、no-motion `/map` once、PGM/YAML 落盘和 latest clean readback 已成立；下一步处理 `/root/rober/runtime` vs `/root/rober/onboard/runtime` 路径口径，然后推进 AMCL/Nav2 lifecycle 与路径生成边界；保持 `safe_to_control=false`，不得控车。
 2. **Full-stack Software Engineer：把 PC proof 从 API smoke 推到按钮级验收。** 8788 same-origin refresh/latest API 已过；下一步只做浏览器按钮级触发和 fail-closed 展示验收，不扩 UI 面，不写成 continuous radar ready。
 3. **Robot Algorithm Engineer：真实/受控电梯图片。** 采集并校验 manifest，跑 OpenCV eval，输出样本清单、混淆项、阈值和人工接管策略。
 4. **Hardware Infra Engineer + Full-stack Software Engineer：stop-first HIL。** 有现场看护、净空、急停、授权才做低速 pulse；否则直接升级 CEO 决策，不得产出 HIL pass 文案。
-5. **Product Manager / OKR Owner：Epic owner 超时防护。** `pre_start.md` 必须写最近 2 轮 blocker scan、员工状态、Micro/Epic 风险、CEO 决策 blocker；`tech-plan.md` 必须写单 owner 验收命令和 evidence type；`final.md` 必须逐 owner 复盘超时、阻塞和重试。
+5. **Product Manager / OKR Owner：收 delivery-readiness chain。** `pre_start.md` 必须写最近 2 轮 blocker scan、员工状态、Micro/Epic 风险、CEO 决策 blocker；`tech-plan.md` 必须写单 owner 验收命令和 evidence type；`final.md` 必须逐 owner 复盘 pass/blocked、证据边界、下一步低速受控送达条件。
 
 验收口径：
 
@@ -307,7 +325,7 @@
 - PC 同源 refresh：浏览器按钮必须触发 live 8787 route，UI/API 显示 `runtime_summary_fallback_used`、hz、TF 和 fail-closed 安全字段。
 - 真实/受控电梯图片：manifest 必须能被 checker 接受，OpenCV eval 必须输出 false positive/false negative 和人工接管策略。
 - Stop-first HIL：材料必须包含 safety preflight、manual response、stop response、post-status、`T=1001` 同场边界和 operator report；不满足安全前提时只允许写 blocker。
-- O8/O9：所有涨分项必须标注 evidence type；重复 `01-02` 已归档的 fresh proof 或 `02-03` status readback 不再涨分，必须产生新的 `robot_runtime_material`、`field_hil_material`、`production_live_material` 或 `user_acceptance_material`。
+- O8/O9/O10：所有涨分项必须标注 evidence type；重复 `01-02` 已归档的 fresh proof 或 `02-03` status readback 不再涨分，O10 必须产生新的链式 `robot_runtime_material`、`field_hil_material`、`production_live_material` 或 `user_acceptance_material`。
 
 > 当前 70%-90%+ 只代表软件入口、合同、首个 smoke、operator readback 或单次 fresh runtime artifact。真实材料未完成时，任何 Objective 都不得表述为 continuous radar ready、真实硬件闭环、真实 PC 控车、真实建图定位、真实 OpenCV 电梯识别、真实生产云、真实手机或真实送达完成。
 
@@ -315,13 +333,13 @@
 
 ## 6. OKR 完成路线
 
-### 下一轮窄 Epic（O9 必须继续）
+### 下一轮跨 owner Epic（O10 受控送达 readiness chain）
 
-- 基于 fresh scan proof 和 no-motion `/map` material，先修正或锁定 map lifecycle latest 路径契约，再推进 `/api/radar/status` continuous radar blocker、AMCL 或 Nav2。
-- 通过 PC 同源触发 fresh scan proof，证明按钮和 8787 latest 同源；如果 PC parser/UI 继续失败，必须定位并重开，不得写成 O7 完成。
+- 基于 fresh scan proof 和 no-motion `/map` material，先修正或锁定 `map_lifecycle_latest.json` latest JSON 路径契约，再推进 AMCL/Nav2 readiness。
+- 把 PC 同源 proof 从 API smoke 推到浏览器按钮级验收；如果 PC parser/UI 继续失败，必须定位并重开，不得写成 O7 完成。
 - 回填真实/受控电梯图片 manifest，完成 OpenCV eval；如果没有图片资源，必须升级 CEO 决策 blocker。
 - 按 stop-first HIL 做安全授权判断，满足则低速 pulse，不满足则升级 CEO 决策。
-- 用 O8 owner 超时防护控制派单粒度，不再让多个 L2 同时超时，也不让 Micro 接口/readback 代替真实材料。
+- Product 在 final 中收一份 delivery-readiness chain：每段写 pass/blocked、证据链接、证据边界、下一步低速受控送达条件；不能把 readiness chain 写成 delivery success。
 
 ### 近期（现场闭环）
 
