@@ -917,6 +917,420 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             "evidence_refs": ["evidence/archive-001.json"],
         }
 
+    def _o6_event_archive_payload(self, task_id="task-o6-events", event_id="evt-route-0001", event_type="route.pose"):
+        # 事件 payload 固定落在 helper task 时间窗内，便于复用同一批 fail-closed 用例。
+        return {
+            "robot_id": "trashbot-001",
+            "task_id": task_id,
+            "events": [
+                {
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "occurred_at_ms": 1500,
+                    "pose": {"x_m": 1.2, "y_m": 0.4, "yaw_rad": 0.1, "floor_id": "F1"},
+                    "summary": "route pose frame",
+                    "severity": "info",
+                    "evidence_refs": ["oss://mock/rober/trashbot-001/task-o6-events/frame-0001.jpg"],
+                    "metadata": {"frame_index": 1, "camera": "front"},
+                }
+            ],
+        }
+
+    def _o6_evidence_archive_payload(self, task_id="task-o6-evidence", evidence_id="evd-frame-0001"):
+        # evidence 接口只写 ref 摘要；测试里用 oss:// 输入验证回包不泄露完整 URL。
+        return {
+            "robot_id": "trashbot-001",
+            "task_id": task_id,
+            "evidence_refs": [
+                {
+                    "evidence_id": evidence_id,
+                    "evidence_type": "camera_frame",
+                    "evidence_ref": "oss://mock/rober/trashbot-001/task-o6-evidence/frame-0001.jpg",
+                    "captured_at_ms": 1500,
+                    "event_id": "evt-route-0001",
+                    "content_type": "image/jpeg",
+                    "size_bytes": 123456,
+                    "checksum": "sha256:mock",
+                    "metadata": {"camera": "front"},
+                }
+            ],
+        }
+
+    def test_o6_archive_events_endpoint_writes_lists_filters_and_detail_reads_back(self):
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-events"),
+        )
+        self.assertEqual(status, 201)
+
+        payload = self._o6_event_archive_payload(task_id="task-o6-events")
+        payload["events"].append(
+            {
+                "event_id": "evt-elevator-0001",
+                "event_type": "elevator.door_state",
+                "occurred_at_ms": 1700,
+                "summary": "door state sample",
+                "severity": "warning",
+                "metadata": {"door_state": "unknown"},
+            }
+        )
+        status, created = self.client.request("POST", "/api/o6/archive/events", payload)
+
+        encoded = json.dumps(created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertEqual(created["schema"], "trashbot.o6.archive_events.v1")
+        self.assertEqual(created["source"], "local_mock_event_archive")
+        self.assertEqual(created["proof_status"], "not_proven")
+        self.assertTrue(created["archive_event_written"])
+        self.assertFalse(created["real_cloud_db_connected"])
+        self.assertFalse(created["real_oss_connected"])
+        self.assertFalse(created["safe_to_control"])
+        self.assertFalse(created["delivery_success"])
+        self.assertFalse(created["primary_actions_enabled"])
+        self.assertEqual(created["event_summary"]["created_count"], 2)
+        self.assertEqual(created["event_summary"]["updated_count"], 0)
+        self.assertEqual(created["events_written"][0]["evidence_refs"], ["frame-0001.jpg"])
+        for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "oss://mock"):
+            self.assertNotIn(forbidden, encoded)
+
+        status, listing = self.client.request(
+            "GET",
+            "/api/o6/archive/events?task_id=task-o6-events&event_type=route.pose&from_ms=1400&to_ms=1600&limit=10",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(listing["schema"], "trashbot.o6.archive_events.v1")
+        self.assertFalse(listing["archive_event_written"])
+        self.assertEqual(listing["query"]["event_type"], "route.pose")
+        self.assertEqual(len(listing["events"]), 1)
+        self.assertEqual(listing["events"][0]["event_id"], "evt-route-0001")
+        self.assertEqual(listing["event_summary"]["event_count"], 1)
+
+        status, detail = self.client.request("GET", "/api/o6/archive/tasks/task-o6-events", token="")
+        self.assertEqual(status, 200)
+        event_by_id = {event.get("event_id"): event for event in detail["task"]["events"] if event.get("event_id")}
+        self.assertEqual(event_by_id["evt-route-0001"]["source"], "local_mock_event_archive")
+        self.assertEqual(event_by_id["evt-route-0001"]["metadata"]["frame_index"], 1)
+
+    def test_o6_archive_events_endpoint_is_idempotent_and_supports_mixed_batches(self):
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-events-mixed"),
+        )
+        self.assertEqual(status, 201)
+
+        status, first = self.client.request(
+            "POST",
+            "/api/o6/archive/events",
+            self._o6_event_archive_payload(task_id="task-o6-events-mixed", event_id="evt-a"),
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(first["event_summary"]["created_count"], 1)
+
+        mixed = self._o6_event_archive_payload(task_id="task-o6-events-mixed", event_id="evt-a")
+        mixed["events"][0]["summary"] = "route pose frame updated"
+        mixed["events"].append(
+            {
+                "event_id": "evt-b",
+                "event_type": "task.recovery",
+                "occurred_at_ms": 1600,
+                "summary": "recovery note",
+                "severity": "info",
+                "metadata": {"reason": "operator_note"},
+            }
+        )
+        status, updated = self.client.request("POST", "/api/o6/archive/events", mixed)
+        self.assertEqual(status, 200)
+        self.assertTrue(updated["duplicate"])
+        self.assertEqual(updated["write_status"], "updated")
+        self.assertEqual(updated["event_summary"]["created_count"], 1)
+        self.assertEqual(updated["event_summary"]["updated_count"], 1)
+
+        status, listing = self.client.request("GET", "/api/o6/archive/events?task_id=task-o6-events-mixed&limit=10")
+        self.assertEqual(status, 200)
+        events = {event["event_id"]: event for event in listing["events"]}
+        self.assertEqual(events["evt-a"]["summary"], "route pose frame updated")
+        self.assertIn("evt-b", events)
+
+    def test_o6_archive_events_endpoint_rejects_bad_json_scope_query_and_unsafe_payloads(self):
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-events-reject"),
+        )
+        self.assertEqual(status, 201)
+
+        status, bad_json = self.client.request("POST", "/api/o6/archive/events", raw_body=b"{bad-json")
+        self.assertEqual(status, 400)
+        self.assertEqual(bad_json["error"]["code"], "malformed_json")
+
+        status, non_object = self.client.request("POST", "/api/o6/archive/events", raw_body=b"[]")
+        self.assertEqual(status, 400)
+        self.assertEqual(non_object["error"]["code"], "bad_request")
+
+        missing = {"robot_id": "trashbot-001", "task_id": "task-o6-events-reject"}
+        status, missing_body = self.client.request("POST", "/api/o6/archive/events", missing)
+        self.assertEqual(status, 400)
+        self.assertEqual(missing_body["error"]["code"], "bad_request")
+
+        too_large = self._o6_event_archive_payload(task_id="task-o6-events-reject")
+        too_large["events"] = [
+            {
+                "event_id": f"evt-{index:03d}",
+                "event_type": "route.pose",
+                "occurred_at_ms": 1500,
+            }
+            for index in range(relay_module.O6_ARCHIVE_MAX_BATCH_ITEMS + 1)
+        ]
+        status, oversized = self.client.request("POST", "/api/o6/archive/events", too_large)
+        self.assertEqual(status, 400)
+        self.assertEqual(oversized["error"]["code"], "bad_request")
+
+        unknown = self._o6_event_archive_payload(task_id="missing-task")
+        status, unknown_body = self.client.request("POST", "/api/o6/archive/events", unknown)
+        self.assertEqual(status, 404)
+        self.assertEqual(unknown_body["error"]["code"], "unknown_task")
+
+        unauthorized = self._o6_event_archive_payload(task_id="task-o6-events-reject")
+        unauthorized["robot_id"] = "trashbot-other"
+        status, unauthorized_body = self.client.request("POST", "/api/o6/archive/events", unauthorized)
+        self.assertEqual(status, 403)
+        self.assertEqual(unauthorized_body["error"]["code"], "unauthorized_task")
+
+        bad_type = self._o6_event_archive_payload(task_id="task-o6-events-reject", event_type="model_inference.floor_recognition")
+        status, bad_type_body = self.client.request("POST", "/api/o6/archive/events", bad_type)
+        self.assertEqual(status, 400)
+        self.assertEqual(bad_type_body["error"]["code"], "bad_request")
+
+        out_of_window = self._o6_event_archive_payload(task_id="task-o6-events-reject")
+        out_of_window["events"][0]["occurred_at_ms"] = 2500
+        status, window_body = self.client.request("POST", "/api/o6/archive/events", out_of_window)
+        self.assertEqual(status, 400)
+        self.assertIn("occurred_at_ms", window_body["error"]["message"])
+
+        unsafe = self._o6_event_archive_payload(task_id="task-o6-events-reject")
+        unsafe["events"][0]["metadata"] = {"note": "Authorization Bearer leaked-token"}
+        status, unsafe_body = self.client.request("POST", "/api/o6/archive/events", unsafe)
+        self.assertEqual(status, 400)
+        self.assertIn("unsafe", unsafe_body["error"]["message"].lower())
+
+        real_claim = self._o6_event_archive_payload(task_id="task-o6-events-reject")
+        real_claim["cloud_db_connected"] = True
+        status, real_claim_body = self.client.request("POST", "/api/o6/archive/events", real_claim)
+        self.assertEqual(status, 400)
+        self.assertEqual(real_claim_body["error"]["code"], "bad_request")
+
+        raw_content = self._o6_event_archive_payload(task_id="task-o6-events-reject")
+        raw_content["events"][0]["image_base64"] = "base64,raw"
+        status, raw_body = self.client.request("POST", "/api/o6/archive/events", raw_content)
+        self.assertEqual(status, 400)
+        self.assertEqual(raw_body["error"]["code"], "bad_request")
+
+        status, invalid_type = self.client.request("GET", "/api/o6/archive/events?event_type=bad.type")
+        self.assertEqual(status, 400)
+        status, invalid_limit = self.client.request("GET", "/api/o6/archive/events?limit=99999")
+        self.assertEqual(status, 400)
+        status, invalid_window = self.client.request("GET", "/api/o6/archive/events?from_ms=2000&to_ms=1000")
+        self.assertEqual(status, 400)
+        status, unknown_query = self.client.request("GET", "/api/o6/archive/events?task_id=missing-task")
+        self.assertEqual(status, 404)
+        self.assertEqual(unknown_query["error"]["code"], "unknown_task")
+
+    def test_o6_archive_evidence_endpoint_writes_lists_filters_and_detail_reads_back(self):
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-evidence"),
+        )
+        self.assertEqual(status, 201)
+
+        payload = self._o6_evidence_archive_payload(task_id="task-o6-evidence")
+        payload["evidence_refs"].append(
+            {
+                "evidence_id": "evd-failure-0001",
+                "evidence_type": "failure_snapshot",
+                "evidence_ref": "oss://mock/rober/trashbot-001/task-o6-evidence/failure-0001.jpg",
+                "captured_at_ms": 1700,
+                "event_id": "evt-failure-0001",
+                "content_type": "image/jpeg",
+                "size_bytes": 42,
+                "checksum": "sha256:mock-failure",
+                "metadata": {"reason": "blocked"},
+            }
+        )
+        status, created = self.client.request("POST", "/api/o6/archive/evidence", payload)
+
+        encoded = json.dumps(created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertEqual(created["schema"], "trashbot.o6.archive_evidence.v1")
+        self.assertEqual(created["source"], "local_mock_evidence_archive")
+        self.assertEqual(created["proof_status"], "not_proven")
+        self.assertTrue(created["archive_evidence_written"])
+        self.assertFalse(created["real_oss_upload_success"])
+        self.assertFalse(created["real_cloud_db_connected"])
+        self.assertFalse(created["real_oss_connected"])
+        self.assertFalse(created["safe_to_control"])
+        self.assertFalse(created["delivery_success"])
+        self.assertEqual(created["evidence_summary"]["created_count"], 2)
+        self.assertEqual(created["evidence_refs_written"][0]["evidence_ref"], "frame-0001.jpg")
+        for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "oss://mock"):
+            self.assertNotIn(forbidden, encoded)
+
+        status, listing = self.client.request(
+            "GET",
+            "/api/o6/archive/evidence?task_id=task-o6-evidence&evidence_type=camera_frame&event_id=evt-route-0001&limit=10",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(listing["schema"], "trashbot.o6.archive_evidence.v1")
+        self.assertFalse(listing["archive_evidence_written"])
+        self.assertEqual(len(listing["evidence_refs"]), 1)
+        self.assertEqual(listing["evidence_refs"][0]["evidence_id"], "evd-frame-0001")
+        self.assertEqual(listing["evidence_summary"]["evidence_ref_count"], 1)
+
+        status, detail = self.client.request("GET", "/api/o6/archive/tasks/task-o6-evidence", token="")
+        self.assertEqual(status, 200)
+        evidence_by_id = {
+            ref.get("evidence_id"): ref
+            for ref in detail["task"]["evidence_refs"]
+            if isinstance(ref, dict) and ref.get("evidence_id")
+        }
+        self.assertEqual(evidence_by_id["evd-frame-0001"]["source"] if "source" in evidence_by_id["evd-frame-0001"] else "local_mock_evidence_archive", "local_mock_evidence_archive")
+        self.assertEqual(evidence_by_id["evd-frame-0001"]["metadata"]["camera"], "front")
+
+    def test_o6_archive_evidence_endpoint_is_idempotent_and_supports_mixed_batches(self):
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-evidence-mixed"),
+        )
+        self.assertEqual(status, 201)
+
+        status, first = self.client.request(
+            "POST",
+            "/api/o6/archive/evidence",
+            self._o6_evidence_archive_payload(task_id="task-o6-evidence-mixed", evidence_id="evd-a"),
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(first["evidence_summary"]["created_count"], 1)
+
+        mixed = self._o6_evidence_archive_payload(task_id="task-o6-evidence-mixed", evidence_id="evd-a")
+        mixed["evidence_refs"][0]["checksum"] = "sha256:updated"
+        mixed["evidence_refs"].append(
+            {
+                "evidence_id": "evd-b",
+                "evidence_type": "snapshot",
+                "evidence_ref": "oss://mock/rober/trashbot-001/task-o6-evidence-mixed/snapshot-0001.jpg",
+                "captured_at_ms": 1600,
+                "content_type": "image/jpeg",
+                "metadata": {"camera": "rear"},
+            }
+        )
+        status, updated = self.client.request("POST", "/api/o6/archive/evidence", mixed)
+        self.assertEqual(status, 200)
+        self.assertTrue(updated["duplicate"])
+        self.assertEqual(updated["write_status"], "updated")
+        self.assertEqual(updated["evidence_summary"]["created_count"], 1)
+        self.assertEqual(updated["evidence_summary"]["updated_count"], 1)
+
+        status, listing = self.client.request("GET", "/api/o6/archive/evidence?task_id=task-o6-evidence-mixed&limit=10")
+        self.assertEqual(status, 200)
+        evidence = {item["evidence_id"]: item for item in listing["evidence_refs"]}
+        self.assertEqual(evidence["evd-a"]["checksum"], "sha256:updated")
+        self.assertIn("evd-b", evidence)
+
+    def test_o6_archive_evidence_endpoint_rejects_bad_json_scope_query_and_unsafe_payloads(self):
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-evidence-reject"),
+        )
+        self.assertEqual(status, 201)
+
+        status, bad_json = self.client.request("POST", "/api/o6/archive/evidence", raw_body=b"{bad-json")
+        self.assertEqual(status, 400)
+        self.assertEqual(bad_json["error"]["code"], "malformed_json")
+
+        status, non_object = self.client.request("POST", "/api/o6/archive/evidence", raw_body=b"[]")
+        self.assertEqual(status, 400)
+        self.assertEqual(non_object["error"]["code"], "bad_request")
+
+        missing = {"robot_id": "trashbot-001", "task_id": "task-o6-evidence-reject"}
+        status, missing_body = self.client.request("POST", "/api/o6/archive/evidence", missing)
+        self.assertEqual(status, 400)
+        self.assertEqual(missing_body["error"]["code"], "bad_request")
+
+        too_large = self._o6_evidence_archive_payload(task_id="task-o6-evidence-reject")
+        too_large["evidence_refs"] = [
+            {
+                "evidence_id": f"evd-{index:03d}",
+                "evidence_type": "camera_frame",
+                "evidence_ref": f"oss://mock/rober/task-o6-evidence-reject/frame-{index:03d}.jpg",
+                "captured_at_ms": 1500,
+            }
+            for index in range(relay_module.O6_ARCHIVE_MAX_BATCH_ITEMS + 1)
+        ]
+        status, oversized = self.client.request("POST", "/api/o6/archive/evidence", too_large)
+        self.assertEqual(status, 400)
+        self.assertEqual(oversized["error"]["code"], "bad_request")
+
+        unknown = self._o6_evidence_archive_payload(task_id="missing-task")
+        status, unknown_body = self.client.request("POST", "/api/o6/archive/evidence", unknown)
+        self.assertEqual(status, 404)
+        self.assertEqual(unknown_body["error"]["code"], "unknown_task")
+
+        unauthorized = self._o6_evidence_archive_payload(task_id="task-o6-evidence-reject")
+        unauthorized["robot_id"] = "trashbot-other"
+        status, unauthorized_body = self.client.request("POST", "/api/o6/archive/evidence", unauthorized)
+        self.assertEqual(status, 403)
+        self.assertEqual(unauthorized_body["error"]["code"], "unauthorized_task")
+
+        bad_type = self._o6_evidence_archive_payload(task_id="task-o6-evidence-reject")
+        bad_type["evidence_refs"][0]["evidence_type"] = "raw_video"
+        status, bad_type_body = self.client.request("POST", "/api/o6/archive/evidence", bad_type)
+        self.assertEqual(status, 400)
+        self.assertEqual(bad_type_body["error"]["code"], "bad_request")
+
+        out_of_window = self._o6_evidence_archive_payload(task_id="task-o6-evidence-reject")
+        out_of_window["evidence_refs"][0]["captured_at_ms"] = 2500
+        status, window_body = self.client.request("POST", "/api/o6/archive/evidence", out_of_window)
+        self.assertEqual(status, 400)
+        self.assertIn("captured_at_ms", window_body["error"]["message"])
+
+        unsafe = self._o6_evidence_archive_payload(task_id="task-o6-evidence-reject")
+        unsafe["evidence_refs"][0]["metadata"] = {"note": "Authorization Bearer leaked-token"}
+        status, unsafe_body = self.client.request("POST", "/api/o6/archive/evidence", unsafe)
+        self.assertEqual(status, 400)
+        self.assertIn("unsafe", unsafe_body["error"]["message"].lower())
+
+        real_claim = self._o6_evidence_archive_payload(task_id="task-o6-evidence-reject")
+        real_claim["oss_uploaded"] = True
+        status, real_claim_body = self.client.request("POST", "/api/o6/archive/evidence", real_claim)
+        self.assertEqual(status, 400)
+        self.assertEqual(real_claim_body["error"]["code"], "bad_request")
+
+        raw_content = self._o6_evidence_archive_payload(task_id="task-o6-evidence-reject")
+        raw_content["evidence_refs"][0]["image_base64"] = "base64,raw"
+        status, raw_body = self.client.request("POST", "/api/o6/archive/evidence", raw_content)
+        self.assertEqual(status, 400)
+        self.assertEqual(raw_body["error"]["code"], "bad_request")
+
+        credential_url = self._o6_evidence_archive_payload(task_id="task-o6-evidence-reject")
+        credential_url["evidence_refs"][0]["evidence_ref"] = "https://example.test/frame.jpg?token=secret"
+        status, credential_body = self.client.request("POST", "/api/o6/archive/evidence", credential_url)
+        self.assertEqual(status, 400)
+        self.assertEqual(credential_body["error"]["code"], "bad_request")
+
+        status, invalid_type = self.client.request("GET", "/api/o6/archive/evidence?evidence_type=bad.type")
+        self.assertEqual(status, 400)
+        status, invalid_limit = self.client.request("GET", "/api/o6/archive/evidence?limit=99999")
+        self.assertEqual(status, 400)
+        status, unknown_query = self.client.request("GET", "/api/o6/archive/evidence?task_id=missing-task")
+        self.assertEqual(status, 404)
+        self.assertEqual(unknown_query["error"]["code"], "unknown_task")
+
     def test_o6_cloud_archive_labels_endpoints_create_list_and_detail(self):
         status, _ = self.client.request("POST", "/api/o6/archive/tasks", self._o6_archive_task_payload())
         self.assertEqual(status, 201)

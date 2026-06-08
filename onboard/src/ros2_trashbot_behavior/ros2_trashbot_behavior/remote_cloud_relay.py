@@ -93,13 +93,47 @@ O7_RTC_SIGNALING_CONTRACT_SCHEMA = "trashbot.o7.rtc_signaling_contract.v1"
 O7_RTC_SIGNALING_SESSION_RECEIPT_SCHEMA = "trashbot.o7.rtc_signaling_session_receipt.v1"
 O6_CLOUD_ARCHIVE_SCHEMA = "trashbot.o6.cloud_archive.v1"
 O6_CLOUD_ARCHIVE_STORE_SCHEMA = "trashbot.o6.cloud_archive_store.v1"
+O6_ARCHIVE_EVENTS_SCHEMA = "trashbot.o6.archive_events.v1"
+O6_ARCHIVE_EVIDENCE_SCHEMA = "trashbot.o6.archive_evidence.v1"
 O6_CLOUD_LABELING_SCHEMA = "trashbot.o6.archive_labeling.v1"
 O6_MODEL_INFERENCE_SCHEMA = "trashbot.o6.model_inference.v1"
 O6_CLOUD_ARCHIVE_STATE_ENV = "TRASHBOT_O6_CLOUD_ARCHIVE_STATE"
 O6_CLOUD_ARCHIVE_MAX_TRAJECTORY_FRAMES = 64
 O6_CLOUD_ARCHIVE_MAX_EVENTS = 64
-O6_CLOUD_ARCHIVE_MAX_EVIDENCE_REFS = 32
+O6_CLOUD_ARCHIVE_MAX_EVIDENCE_REFS = 64
 O6_CLOUD_ARCHIVE_MAX_BODY_BYTES = 256 * 1024
+O6_ARCHIVE_EVENT_SOURCE = "local_mock_event_archive"
+O6_ARCHIVE_EVIDENCE_SOURCE = "local_mock_evidence_archive"
+O6_ARCHIVE_MAX_BATCH_ITEMS = 64
+O6_ARCHIVE_MAX_QUERY_LIMIT = 200
+O6_ARCHIVE_DEFAULT_QUERY_LIMIT = 50
+O6_ARCHIVE_MAX_ID_LENGTH = 128
+O6_ARCHIVE_MAX_EVENT_EVIDENCE_REFS = 8
+O6_ARCHIVE_MAX_SUMMARY_LENGTH = 512
+O6_ARCHIVE_MAX_METADATA_BYTES = 8 * 1024
+O6_ARCHIVE_MAX_METADATA_DEPTH = 3
+O6_ARCHIVE_MAX_METADATA_ITEMS = 32
+O6_ARCHIVE_MAX_EVIDENCE_REF_LENGTH = 512
+O6_ARCHIVE_ALLOWED_EVENT_TYPES = {
+    "perception.detected_object",
+    "route.frame",
+    "route.pose",
+    "elevator.door_state",
+    "elevator.floor_evidence",
+    "task.failure",
+    "task.recovery",
+    "operator.note",
+}
+O6_ARCHIVE_ALLOWED_EVIDENCE_TYPES = {
+    "camera_frame",
+    "snapshot",
+    "route_frame",
+    "elevator_frame",
+    "failure_snapshot",
+    "audio_clip",
+    "log_excerpt",
+}
+O6_ARCHIVE_ALLOWED_EVENT_SEVERITIES = {"info", "warning", "error"}
 O6_TUNNEL_STATUS_SCHEMA = "trashbot.o6.tunnel_status.v1"
 O6_CLOUD_TUNNEL_STATUS_MAX_BODY_BYTES = 64 * 1024
 O6_TUNNEL_STATUS_DEFAULT_TTL_SECONDS = 300
@@ -12281,6 +12315,337 @@ def _o6_cloud_archive_has_unsafe_claim(value):
     return False
 
 
+def _o6_archive_has_real_capability_claim(value):
+    """事件/证据存档只能证明 local/mock 写入，任何真实能力 true 声明都直接拒绝。"""
+
+    blocked_true_keys = {
+        "success",
+        "production_ready",
+        "cloud_db_connected",
+        "oss_uploaded",
+        "oss_upload_success",
+        "robot_control_executed",
+        "delivery_success",
+        "safe_to_control",
+        "primary_actions_enabled",
+        "real_cloud_db_connected",
+        "real_oss_connected",
+        "real_oss_upload_success",
+        "connects_cloud_production",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key).lower()
+            if key_text in blocked_true_keys and item is True:
+                return True
+            if _o6_archive_has_real_capability_claim(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_o6_archive_has_real_capability_claim(item) for item in value)
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        return any(
+            marker in lowered
+            for marker in (
+                "success=true",
+                "production_ready=true",
+                "cloud_db_connected=true",
+                "oss_uploaded=true",
+                "oss_upload_success=true",
+                "robot_control_executed=true",
+                "delivery_success=true",
+                "safe_to_control=true",
+                "primary_actions_enabled=true",
+                "connects_cloud_production=true",
+            )
+        )
+    return False
+
+
+def _o6_archive_has_raw_content(value):
+    """证据 API 只保存引用摘要，若请求携带原始图片/音频/日志内容就 fail-closed。"""
+
+    blocked_exact_keys = {
+        "base64",
+        "image_base64",
+        "video_base64",
+        "audio_base64",
+        "raw_content",
+        "raw_image",
+        "raw_video",
+        "raw_audio",
+        "binary",
+        "blob",
+        "data_uri",
+        "full_log",
+        "model_response",
+        "content",
+        "payload",
+        "image",
+        "video",
+        "audio",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key).lower()
+            if key_text in blocked_exact_keys:
+                return True
+            if _o6_archive_has_raw_content(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_o6_archive_has_raw_content(item) for item in value)
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        return lowered.startswith(("data:image", "data:video", "data:audio")) or "base64," in lowered
+    return False
+
+
+def _o6_archive_validate_id(value, field_name):
+    """幂等键必须短小稳定；空值或被脱敏的值都会破坏 upsert 语义。"""
+
+    if value is None or isinstance(value, (dict, list)):
+        raise ValueError(f"{field_name} is required")
+    if len(str(value)) > O6_ARCHIVE_MAX_ID_LENGTH:
+        raise ValueError(f"{field_name} is too long")
+    safe_text = _o6_cloud_archive_safe_text(value, O6_ARCHIVE_MAX_ID_LENGTH).strip()
+    if not safe_text or safe_text == "[redacted]":
+        raise ValueError(f"{field_name} is required")
+    return safe_text
+
+
+def _o6_archive_validate_query_limit(raw_limit):
+    """GET limit 不做静默放大或截断，非法 query 直接拒绝，避免误读分页边界。"""
+
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("invalid limit") from exc
+    if limit <= 0 or limit > O6_ARCHIVE_MAX_QUERY_LIMIT:
+        raise ValueError("invalid limit")
+    return limit
+
+
+def _o6_archive_validate_optional_time(raw_value, field_name):
+    """查询时间窗只接受有限整数毫秒，坏值不能被解释成全量查询。"""
+
+    if raw_value in (None, ""):
+        return None
+    value = _o6_cloud_archive_int(raw_value, None)
+    if value is None:
+        raise ValueError(f"{field_name} is invalid")
+    return value
+
+
+def _o6_archive_time_inside_task(value_ms, task, field_name):
+    """事件/证据必须落在 task 时间窗内，防止越权把别的任务证据挂进来。"""
+
+    started_at_ms = _o6_cloud_archive_int(_o6_cloud_archive_dict(task).get("started_at_ms"), None)
+    finished_at_ms = _o6_cloud_archive_int(_o6_cloud_archive_dict(task).get("finished_at_ms"), None)
+    if value_ms is None:
+        raise ValueError(f"{field_name} is required")
+    if started_at_ms is None:
+        raise ValueError("archive task time window is unavailable")
+    if value_ms < started_at_ms:
+        raise ValueError(f"{field_name} must be inside archive task window")
+    if finished_at_ms is not None and value_ms > finished_at_ms:
+        raise ValueError(f"{field_name} must be inside archive task window")
+
+
+def _o6_archive_safe_metadata_value(value, depth):
+    """metadata 允许小型嵌套摘要，但不允许原始内容、凭证或真实能力声明。"""
+
+    if depth > O6_ARCHIVE_MAX_METADATA_DEPTH:
+        raise ValueError("metadata object is too deep")
+    if _o6_cloud_archive_has_unsafe_claim(value) or _o6_archive_has_real_capability_claim(value):
+        raise ValueError("metadata contains unsafe content")
+    if _o6_archive_has_raw_content(value):
+        raise ValueError("metadata contains raw content")
+    if isinstance(value, dict):
+        if len(value) > O6_ARCHIVE_MAX_METADATA_ITEMS:
+            raise ValueError("metadata object is too large")
+        safe_dict = {}
+        for key, item in value.items():
+            safe_key = _o6_cloud_archive_safe_text(key, 80).strip()
+            if not safe_key or safe_key == "[redacted]":
+                raise ValueError("metadata contains unsafe content")
+            safe_dict[safe_key] = _o6_archive_safe_metadata_value(item, depth + 1)
+        return safe_dict
+    if isinstance(value, list):
+        if len(value) > O6_ARCHIVE_MAX_METADATA_ITEMS:
+            raise ValueError("metadata array is too large")
+        return [_o6_archive_safe_metadata_value(item, depth + 1) for item in value]
+    if isinstance(value, str):
+        safe_text = _o6_cloud_archive_safe_text(value, 240)
+        if safe_text == "[redacted]":
+            raise ValueError("metadata contains unsafe content")
+        return safe_text
+    if isinstance(value, bool) or value is None:
+        return value
+    if isinstance(value, (int, float)):
+        number = _o6_cloud_archive_number(value, None)
+        if number is None:
+            raise ValueError("metadata number is invalid")
+        return number
+    safe_text = _o6_cloud_archive_safe_text(value, 240)
+    if safe_text == "[redacted]":
+        raise ValueError("metadata contains unsafe content")
+    return safe_text
+
+
+def _o6_archive_safe_metadata(metadata):
+    """metadata 上限按序列化字节数计算，保证本地 JSON store 不被大 payload 撑爆。"""
+
+    if metadata is None:
+        return {}
+    if not isinstance(metadata, dict):
+        raise ValueError("metadata must be an object")
+    safe_metadata = _o6_archive_safe_metadata_value(metadata, 1)
+    encoded = json.dumps(safe_metadata, ensure_ascii=False, sort_keys=True)
+    if len(encoded.encode("utf-8")) > O6_ARCHIVE_MAX_METADATA_BYTES:
+        raise ValueError("metadata object is too large")
+    return safe_metadata
+
+
+def _o6_archive_sanitize_evidence_ref(value):
+    """只保留 evidence_ref 的安全摘要；URL query、fragment 或凭证一律拒绝。"""
+
+    if value is None or isinstance(value, (dict, list)):
+        raise ValueError("evidence_ref is required")
+    text = str(value).strip()
+    if not text or len(text) > O6_ARCHIVE_MAX_EVIDENCE_REF_LENGTH:
+        raise ValueError("evidence_ref is required")
+    lowered = text.lower()
+    if lowered.startswith("data:") or _o6_archive_has_raw_content(text):
+        raise ValueError("evidence_ref contains raw content")
+    if _o6_cloud_archive_has_unsafe_claim(text):
+        raise ValueError("evidence_ref contains unsafe content")
+    if "://" in text:
+        parsed = urlparse(text)
+        if parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise ValueError("evidence_ref contains credential URL")
+        if parsed.scheme.lower() not in {"oss", "s3", "mock", "http", "https"}:
+            raise ValueError("evidence_ref scheme is unsupported")
+        # _safe_text 会脱敏所有 :// 字符串；这里已经校验过 URL 安全性，因此直接取 path basename。
+        safe_ref = pathlib.PurePath((parsed.path or "").replace("\\", "/")).name[:160]
+    else:
+        safe_ref = _o6_cloud_archive_safe_ref(text)
+    if not safe_ref or safe_ref == "[redacted]":
+        raise ValueError("evidence_ref is required")
+    return safe_ref
+
+
+def _o6_archive_safe_pose(pose):
+    """pose 只保留路线回放需要的最小字段，避免把完整定位/地图 payload 放进事件。"""
+
+    if pose is None:
+        return {}
+    if not isinstance(pose, dict):
+        raise ValueError("pose must be an object")
+    if _o6_cloud_archive_has_unsafe_claim(pose) or _o6_archive_has_real_capability_claim(pose):
+        raise ValueError("pose contains unsafe content")
+    return {
+        "x_m": _o6_cloud_archive_number(pose.get("x_m"), None),
+        "y_m": _o6_cloud_archive_number(pose.get("y_m"), None),
+        "yaw_rad": _o6_cloud_archive_number(pose.get("yaw_rad"), None),
+        "floor_id": _o6_cloud_archive_safe_text(pose.get("floor_id") or "", 80),
+    }
+
+
+def _o6_archive_event_item_payload(item, task):
+    """把一条 event 请求转成 store 记录；失败时整批拒绝，避免部分写入。"""
+
+    if not isinstance(item, dict):
+        raise ValueError("event item must be an object")
+    if (
+        _o6_cloud_archive_has_unsafe_claim(item)
+        or _o6_archive_has_real_capability_claim(item)
+        or _o6_archive_has_raw_content(item)
+    ):
+        raise ValueError("unsafe event payload")
+    event_id = _o6_archive_validate_id(item.get("event_id"), "event_id")
+    event_type = _o6_cloud_archive_safe_text(item.get("event_type") or "", 80).strip()
+    if event_type not in O6_ARCHIVE_ALLOWED_EVENT_TYPES:
+        raise ValueError("unsupported event_type")
+    occurred_at_ms = _o6_cloud_archive_int(item.get("occurred_at_ms"), None)
+    _o6_archive_time_inside_task(occurred_at_ms, task, "occurred_at_ms")
+    summary_raw = item.get("summary", "")
+    if len(str(summary_raw)) > O6_ARCHIVE_MAX_SUMMARY_LENGTH:
+        raise ValueError("summary is too long")
+    summary = _o6_cloud_archive_safe_text(summary_raw, O6_ARCHIVE_MAX_SUMMARY_LENGTH)
+    if summary == "[redacted]":
+        raise ValueError("summary contains unsafe content")
+    severity = _o6_cloud_archive_safe_text(item.get("severity") or "info", 24).strip().lower()
+    if severity not in O6_ARCHIVE_ALLOWED_EVENT_SEVERITIES:
+        raise ValueError("unsupported severity")
+    evidence_refs = item.get("evidence_refs", [])
+    if evidence_refs is None:
+        evidence_refs = []
+    if not isinstance(evidence_refs, list):
+        raise ValueError("evidence_refs must be an array")
+    if len(evidence_refs) > O6_ARCHIVE_MAX_EVENT_EVIDENCE_REFS:
+        raise ValueError("evidence_refs array is too large")
+    safe_refs = [_o6_archive_sanitize_evidence_ref(ref) for ref in evidence_refs]
+    return {
+        "event_id": event_id,
+        "event_type": event_type,
+        "timestamp_ms": occurred_at_ms,
+        "occurred_at_ms": occurred_at_ms,
+        "source": O6_ARCHIVE_EVENT_SOURCE,
+        "pose": _o6_archive_safe_pose(item.get("pose")),
+        "summary": summary,
+        "severity": severity,
+        "evidence_refs": safe_refs,
+        "metadata": _o6_archive_safe_metadata(item.get("metadata") or {}),
+    }
+
+
+def _o6_archive_evidence_item_payload(item, task):
+    """把 evidence ref 请求转成摘要记录；绝不保存原始大对象内容。"""
+
+    if not isinstance(item, dict):
+        raise ValueError("evidence item must be an object")
+    if (
+        _o6_cloud_archive_has_unsafe_claim(item)
+        or _o6_archive_has_real_capability_claim(item)
+        or _o6_archive_has_raw_content(item)
+    ):
+        raise ValueError("unsafe evidence payload")
+    evidence_id = _o6_archive_validate_id(item.get("evidence_id"), "evidence_id")
+    evidence_type = _o6_cloud_archive_safe_text(item.get("evidence_type") or "", 80).strip()
+    if evidence_type not in O6_ARCHIVE_ALLOWED_EVIDENCE_TYPES:
+        raise ValueError("unsupported evidence_type")
+    evidence_ref = _o6_archive_sanitize_evidence_ref(item.get("evidence_ref"))
+    captured_at_ms = _o6_cloud_archive_int(item.get("captured_at_ms"), None)
+    _o6_archive_time_inside_task(captured_at_ms, task, "captured_at_ms")
+    event_id = ""
+    if item.get("event_id") is not None:
+        event_id = _o6_archive_validate_id(item.get("event_id"), "event_id")
+    content_type = _o6_cloud_archive_safe_text(item.get("content_type") or "", 120)
+    if content_type == "[redacted]":
+        raise ValueError("content_type contains unsafe content")
+    size_bytes = None
+    if item.get("size_bytes") is not None:
+        size_bytes = _o6_cloud_archive_int(item.get("size_bytes"), None)
+        if size_bytes is None or size_bytes < 0:
+            raise ValueError("size_bytes is invalid")
+    checksum = _o6_cloud_archive_safe_text(item.get("checksum") or "", 160)
+    if checksum == "[redacted]":
+        raise ValueError("checksum contains unsafe content")
+    return {
+        "evidence_id": evidence_id,
+        "evidence_type": evidence_type,
+        "evidence_ref": evidence_ref,
+        "captured_at_ms": captured_at_ms,
+        "event_id": event_id,
+        "content_type": content_type,
+        "size_bytes": size_bytes,
+        "checksum": checksum,
+        "metadata": _o6_archive_safe_metadata(item.get("metadata") or {}),
+    }
+
+
 def _o6_tunnel_status_has_credential_url(value):
     """隧道 endpoint 若出现凭证信息（如 URL 中的 token/用户密码）直接判为不安全。"""
 
@@ -12532,6 +12897,23 @@ def _o6_cloud_archive_event_payload(event):
 
     event = _o6_cloud_archive_dict(event)
     event_type = _o6_cloud_archive_safe_text(event.get("event_type") or "", 80)
+    if event_type in O6_ARCHIVE_ALLOWED_EVENT_TYPES or event.get("source") == O6_ARCHIVE_EVENT_SOURCE:
+        return {
+            "event_id": _o6_cloud_archive_safe_text(event.get("event_id") or "", O6_ARCHIVE_MAX_ID_LENGTH),
+            "event_type": event_type,
+            "occurred_at_ms": _o6_cloud_archive_int(event.get("occurred_at_ms"), _o6_cloud_archive_int(event.get("timestamp_ms"), None)),
+            "source": O6_ARCHIVE_EVENT_SOURCE,
+            "pose": _o6_cloud_archive_dict(event.get("pose")),
+            "summary": _o6_cloud_archive_safe_text(event.get("summary") or "", O6_ARCHIVE_MAX_SUMMARY_LENGTH),
+            "severity": _o6_cloud_archive_safe_text(event.get("severity") or "info", 24),
+            "evidence_refs": [
+                _o6_cloud_archive_safe_ref(ref)
+                for ref in _o6_cloud_archive_list(event.get("evidence_refs"))[:O6_ARCHIVE_MAX_EVENT_EVIDENCE_REFS]
+            ],
+            "metadata": _o6_cloud_archive_dict(event.get("metadata")),
+            "created_at_ms": _o6_cloud_archive_int(event.get("created_at_ms"), None),
+            "updated_at_ms": _o6_cloud_archive_int(event.get("updated_at_ms"), None),
+        }
     safe_event = {
         "event_type": event_type,
         "timestamp_ms": _o6_cloud_archive_int(event.get("timestamp_ms"), None),
@@ -12562,6 +12944,26 @@ def _o6_cloud_archive_event_payload(event):
     return safe_event
 
 
+def _o6_cloud_archive_evidence_ref_payload(ref):
+    """兼容旧 string evidence_ref 和新 evidence 摘要对象，task detail 仍只返回白名单。"""
+
+    if isinstance(ref, dict):
+        return {
+            "evidence_id": _o6_cloud_archive_safe_text(ref.get("evidence_id") or "", O6_ARCHIVE_MAX_ID_LENGTH),
+            "evidence_type": _o6_cloud_archive_safe_text(ref.get("evidence_type") or "", 80),
+            "evidence_ref": _o6_cloud_archive_safe_ref(ref.get("evidence_ref") or ""),
+            "captured_at_ms": _o6_cloud_archive_int(ref.get("captured_at_ms"), None),
+            "event_id": _o6_cloud_archive_safe_text(ref.get("event_id") or "", O6_ARCHIVE_MAX_ID_LENGTH),
+            "content_type": _o6_cloud_archive_safe_text(ref.get("content_type") or "", 120),
+            "size_bytes": _o6_cloud_archive_int(ref.get("size_bytes"), None),
+            "checksum": _o6_cloud_archive_safe_text(ref.get("checksum") or "", 160),
+            "metadata": _o6_cloud_archive_dict(ref.get("metadata")),
+            "created_at_ms": _o6_cloud_archive_int(ref.get("created_at_ms"), None),
+            "updated_at_ms": _o6_cloud_archive_int(ref.get("updated_at_ms"), None),
+        }
+    return _o6_cloud_archive_safe_ref(ref)
+
+
 def _o6_cloud_archive_task_detail(task):
     """详情视图把白名单字段展开成 O6-shaped 数据源，不回显原始危险 payload。"""
 
@@ -12587,7 +12989,7 @@ def _o6_cloud_archive_task_detail(task):
     for event in _o6_cloud_archive_list(task.get("events"))[:O6_CLOUD_ARCHIVE_MAX_EVENTS]:
         events.append(_o6_cloud_archive_event_payload(event))
     evidence_refs = [
-        _o6_cloud_archive_safe_ref(ref)
+        _o6_cloud_archive_evidence_ref_payload(ref)
         for ref in _o6_cloud_archive_list(task.get("evidence_refs"))[:O6_CLOUD_ARCHIVE_MAX_EVIDENCE_REFS]
     ]
     return {
@@ -12736,6 +13138,156 @@ def _o6_cloud_archive_collection_payload(tasks, *, task=None, write_status=None,
         "evidence_ref_total": sum(item["evidence_ref_count"] for item in task_summaries),
     }
     return payload
+
+
+def _o6_archive_events_fixed_payload(*, written=False):
+    """events 成功响应固定 local/mock 边界；GET 不把查询误写成写入成功。"""
+
+    return {
+        "schema": O6_ARCHIVE_EVENTS_SCHEMA,
+        "schema_version": 1,
+        "source": O6_ARCHIVE_EVENT_SOURCE,
+        "proof_status": "not_proven",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "pc_only": True,
+        "real_cloud_db_connected": False,
+        "real_oss_connected": False,
+        "connects_cloud_production": False,
+        "robot_control_executed": False,
+        "archive_event_written": bool(written),
+        "not_proven": [
+            "real_cloud_db_not_connected",
+            "real_oss_not_connected",
+            "real_cloud_production_not_connected",
+            "robot_control_not_executed",
+        ],
+    }
+
+
+def _o6_archive_evidence_fixed_payload(*, written=False):
+    """evidence 成功响应固定 OSS 未上传，避免 PC 把 ref 摘要误读成真实对象存在。"""
+
+    return {
+        "schema": O6_ARCHIVE_EVIDENCE_SCHEMA,
+        "schema_version": 1,
+        "source": O6_ARCHIVE_EVIDENCE_SOURCE,
+        "proof_status": "not_proven",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "pc_only": True,
+        "real_cloud_db_connected": False,
+        "real_oss_connected": False,
+        "real_oss_upload_success": False,
+        "connects_cloud_production": False,
+        "robot_control_executed": False,
+        "archive_evidence_written": bool(written),
+        "not_proven": [
+            "real_cloud_db_not_connected",
+            "real_oss_not_connected",
+            "real_oss_upload_success",
+            "real_cloud_production_not_connected",
+            "robot_control_not_executed",
+        ],
+    }
+
+
+def _o6_archive_event_summary(events, *, created_count=0, updated_count=0):
+    """事件摘要给 PC route replay 使用，只统计白名单字段，不回显原始 payload。"""
+
+    counts = {}
+    for event in events:
+        event_type = _o6_cloud_archive_safe_text(_o6_cloud_archive_dict(event).get("event_type") or "", 80)
+        if event_type:
+            counts[event_type] = counts.get(event_type, 0) + 1
+    return {
+        "event_count": len(events),
+        "event_types": sorted(counts),
+        "event_type_counts": counts,
+        "created_count": int(created_count),
+        "updated_count": int(updated_count),
+    }
+
+
+def _o6_archive_evidence_summary(evidence_refs, *, created_count=0, updated_count=0):
+    """证据摘要只统计 ref 记录，不检查 OSS/CDN 对象是否真实存在。"""
+
+    counts = {}
+    for evidence in evidence_refs:
+        evidence_type = _o6_cloud_archive_safe_text(_o6_cloud_archive_dict(evidence).get("evidence_type") or "", 80)
+        if evidence_type:
+            counts[evidence_type] = counts.get(evidence_type, 0) + 1
+    return {
+        "evidence_ref_count": len(evidence_refs),
+        "evidence_types": sorted(counts),
+        "evidence_type_counts": counts,
+        "created_count": int(created_count),
+        "updated_count": int(updated_count),
+    }
+
+
+def _o6_archive_events_response_payload(task, events, *, write_status, duplicate, created_count, updated_count):
+    """POST events 回包只返回本批写入摘要，完整 task timeline 仍走 GET/detail。"""
+
+    safe_events = [_o6_cloud_archive_event_payload(event) for event in events]
+    return {
+        **_o6_archive_events_fixed_payload(written=True),
+        "write_status": write_status,
+        "duplicate": bool(duplicate),
+        "task_id": _o6_cloud_archive_safe_text(_o6_cloud_archive_dict(task).get("task_id") or "", 80),
+        "robot_id": _o6_cloud_archive_safe_text(_o6_cloud_archive_dict(task).get("robot_id") or "", 80),
+        "events_written": safe_events,
+        "event_summary": _o6_archive_event_summary(
+            safe_events,
+            created_count=created_count,
+            updated_count=updated_count,
+        ),
+    }
+
+
+def _o6_archive_events_list_payload(events, query):
+    """GET events 返回按 occurred_at_ms 升序裁剪后的白名单 timeline。"""
+
+    safe_events = [_o6_cloud_archive_event_payload(event) for event in events]
+    return {
+        **_o6_archive_events_fixed_payload(written=False),
+        "query": query,
+        "events": safe_events,
+        "event_summary": _o6_archive_event_summary(safe_events),
+    }
+
+
+def _o6_archive_evidence_response_payload(task, evidence_refs, *, write_status, duplicate, created_count, updated_count):
+    """POST evidence 回包固定 OSS upload false，只承认 ref 摘要写入本地 store。"""
+
+    safe_refs = [_o6_cloud_archive_evidence_ref_payload(ref) for ref in evidence_refs]
+    return {
+        **_o6_archive_evidence_fixed_payload(written=True),
+        "write_status": write_status,
+        "duplicate": bool(duplicate),
+        "task_id": _o6_cloud_archive_safe_text(_o6_cloud_archive_dict(task).get("task_id") or "", 80),
+        "robot_id": _o6_cloud_archive_safe_text(_o6_cloud_archive_dict(task).get("robot_id") or "", 80),
+        "evidence_refs_written": safe_refs,
+        "evidence_summary": _o6_archive_evidence_summary(
+            safe_refs,
+            created_count=created_count,
+            updated_count=updated_count,
+        ),
+    }
+
+
+def _o6_archive_evidence_list_payload(evidence_refs, query):
+    """GET evidence 只返回 ref 摘要，禁止返回 token、URL query、base64 或原始对象。"""
+
+    safe_refs = [_o6_cloud_archive_evidence_ref_payload(ref) for ref in evidence_refs]
+    return {
+        **_o6_archive_evidence_fixed_payload(written=False),
+        "query": query,
+        "evidence_refs": safe_refs,
+        "evidence_summary": _o6_archive_evidence_summary(safe_refs),
+    }
 
 
 def _o6_model_inference_fixed_payload():
@@ -13277,9 +13829,15 @@ def _o6_cloud_archive_validate_task_payload(payload):
             raise ValueError("unsafe event")
         safe_events.append(_o6_cloud_archive_event_payload(event))
 
-    safe_evidence_refs = [_o6_cloud_archive_safe_ref(ref) for ref in evidence_refs]
+    safe_evidence_refs = []
+    for ref in evidence_refs:
+        if isinstance(ref, dict):
+            # 已经通过 incremental evidence API 写入的对象摘要，重载 state 时必须保持兼容。
+            safe_evidence_refs.append(_o6_cloud_archive_evidence_ref_payload(ref))
+        else:
+            safe_evidence_refs.append(_o6_cloud_archive_safe_ref(ref))
     if any(
-        ref == "[redacted]"
+        ref == "[redacted]" or (isinstance(ref, dict) and ref.get("evidence_ref") == "[redacted]")
         for ref in safe_evidence_refs
         + [frame["evidence_ref"] for frame in safe_trajectory_frames]
         + [event["evidence_ref"] for event in safe_events]
@@ -13405,6 +13963,255 @@ class FileBackedO6CloudArchiveStore:
             write_status=write_status,
             duplicate=isinstance(existing, dict),
         )
+
+    def upsert_archive_events(self, payload):
+        # incremental events 必须挂到已有 task，不能通过事件写入口偷偷创建任务。
+        if not isinstance(payload, dict):
+            raise ValueError("request body must be an object")
+        if _o6_cloud_archive_has_unsafe_claim(payload) or _o6_archive_has_real_capability_claim(payload):
+            raise ValueError("unsafe event payload")
+        robot_id = _o6_cloud_archive_safe_text(payload.get("robot_id") or "", 80).strip()
+        task_id = _o6_cloud_archive_safe_text(payload.get("task_id") or "", 80).strip()
+        if not robot_id:
+            raise ValueError("robot_id is required")
+        if not task_id:
+            raise ValueError("task_id is required")
+        if "events" not in payload or not isinstance(payload.get("events"), list):
+            raise ValueError("events is required and must be an array")
+        incoming_raw = _o6_cloud_archive_list(payload.get("events"))
+        if len(incoming_raw) == 0:
+            raise ValueError("events must not be empty")
+        if len(incoming_raw) > O6_ARCHIVE_MAX_BATCH_ITEMS:
+            raise ValueError("events array is too large")
+
+        with self._lock:
+            task = self._tasks.get(task_id)
+            if not isinstance(task, dict):
+                return 404, phone_error("unknown_task", "archive task not found")
+            if task.get("robot_id") != robot_id:
+                return 403, phone_error("unauthorized_task", "robot_id does not match archive task")
+            incoming_events = [_o6_archive_event_item_payload(item, task) for item in incoming_raw]
+            existing_events = _o6_cloud_archive_list(task.get("events"))
+            existing_by_key = {}
+            for index, event in enumerate(existing_events):
+                if not isinstance(event, dict):
+                    continue
+                event_id = _o6_cloud_archive_safe_text(event.get("event_id") or "", O6_ARCHIVE_MAX_ID_LENGTH)
+                if event_id:
+                    existing_by_key[event_id] = index
+            new_key_count = sum(1 for event in incoming_events if event["event_id"] not in existing_by_key)
+            if len(existing_events) + new_key_count > O6_CLOUD_ARCHIVE_MAX_EVENTS:
+                raise ValueError("events array is too large")
+
+            duplicate_exists = False
+            created_count = 0
+            updated_count = 0
+            now_ms = int(_now() * 1000)
+            for event in incoming_events:
+                event["updated_at_ms"] = now_ms
+                key = event["event_id"]
+                if key in existing_by_key:
+                    duplicate_exists = True
+                    index = existing_by_key[key]
+                    previous = existing_events[index] if index < len(existing_events) else {}
+                    event["created_at_ms"] = _o6_cloud_archive_int(previous.get("created_at_ms"), now_ms)
+                    if index < len(existing_events):
+                        existing_events[index] = event
+                    else:
+                        existing_events.append(event)
+                    updated_count += 1
+                else:
+                    event["created_at_ms"] = now_ms
+                    existing_by_key[key] = len(existing_events)
+                    existing_events.append(event)
+                    created_count += 1
+            task["events"] = existing_events
+            task["updated_at_ms"] = now_ms
+            task["event_archive_last_updated_ms"] = now_ms
+            self._persist_locked()
+
+        write_status = "updated" if duplicate_exists else "created"
+        return (200 if duplicate_exists else 201), _o6_archive_events_response_payload(
+            task,
+            incoming_events,
+            write_status=write_status,
+            duplicate=duplicate_exists,
+            created_count=created_count,
+            updated_count=updated_count,
+        )
+
+    def list_archive_events(self, *, robot_id="", task_id="", event_type="", from_ms=None, to_ms=None, limit=O6_ARCHIVE_DEFAULT_QUERY_LIMIT):
+        # 查询端同样 fail-closed：非法类型/时间窗/limit 不返回宽泛全量数据。
+        robot_id = _o6_cloud_archive_safe_text(robot_id or "", 80).strip()
+        task_id = _o6_cloud_archive_safe_text(task_id or "", 80).strip()
+        event_type = _o6_cloud_archive_safe_text(event_type or "", 80).strip()
+        if event_type and event_type not in O6_ARCHIVE_ALLOWED_EVENT_TYPES:
+            raise ValueError("unsupported event_type")
+        limit = _o6_archive_validate_query_limit(limit)
+        if from_ms is not None and to_ms is not None and int(from_ms) > int(to_ms):
+            raise ValueError("invalid time window")
+        with self._lock:
+            if task_id:
+                task = self._tasks.get(task_id)
+                if not isinstance(task, dict):
+                    return 404, phone_error("unknown_task", "archive task not found")
+                if robot_id and task.get("robot_id") != robot_id:
+                    return 403, phone_error("unauthorized_task", "robot_id does not match archive task")
+                tasks = [task]
+            else:
+                tasks = [
+                    task
+                    for task in self._tasks.values()
+                    if isinstance(task, dict) and (not robot_id or task.get("robot_id") == robot_id)
+                ]
+        events = []
+        for task in tasks:
+            for event in _o6_cloud_archive_list(task.get("events")):
+                if not isinstance(event, dict):
+                    continue
+                if event.get("source") != O6_ARCHIVE_EVENT_SOURCE:
+                    continue
+                event_record = _o6_cloud_archive_event_payload(event)
+                occurred_at_ms = _o6_cloud_archive_int(event_record.get("occurred_at_ms"), None)
+                if event_type and event_record.get("event_type") != event_type:
+                    continue
+                if from_ms is not None and (occurred_at_ms is None or occurred_at_ms < int(from_ms)):
+                    continue
+                if to_ms is not None and (occurred_at_ms is None or occurred_at_ms > int(to_ms)):
+                    continue
+                events.append(event_record)
+        events.sort(key=lambda item: _o6_cloud_archive_int(item.get("occurred_at_ms"), 0) or 0)
+        events = events[:limit]
+        query = {
+            "robot_id": robot_id,
+            "task_id": task_id,
+            "event_type": event_type,
+            "from_ms": from_ms,
+            "to_ms": to_ms,
+            "limit": limit,
+        }
+        return 200, _o6_archive_events_list_payload(events, query)
+
+    def upsert_archive_evidence(self, payload):
+        # evidence 写入口只保存 ref 摘要，真实 OSS 上传成功字段必须固定为 false。
+        if not isinstance(payload, dict):
+            raise ValueError("request body must be an object")
+        if _o6_cloud_archive_has_unsafe_claim(payload) or _o6_archive_has_real_capability_claim(payload):
+            raise ValueError("unsafe evidence payload")
+        robot_id = _o6_cloud_archive_safe_text(payload.get("robot_id") or "", 80).strip()
+        task_id = _o6_cloud_archive_safe_text(payload.get("task_id") or "", 80).strip()
+        if not robot_id:
+            raise ValueError("robot_id is required")
+        if not task_id:
+            raise ValueError("task_id is required")
+        if "evidence_refs" not in payload or not isinstance(payload.get("evidence_refs"), list):
+            raise ValueError("evidence_refs is required and must be an array")
+        incoming_raw = _o6_cloud_archive_list(payload.get("evidence_refs"))
+        if len(incoming_raw) == 0:
+            raise ValueError("evidence_refs must not be empty")
+        if len(incoming_raw) > O6_ARCHIVE_MAX_BATCH_ITEMS:
+            raise ValueError("evidence_refs array is too large")
+
+        with self._lock:
+            task = self._tasks.get(task_id)
+            if not isinstance(task, dict):
+                return 404, phone_error("unknown_task", "archive task not found")
+            if task.get("robot_id") != robot_id:
+                return 403, phone_error("unauthorized_task", "robot_id does not match archive task")
+            incoming_refs = [_o6_archive_evidence_item_payload(item, task) for item in incoming_raw]
+            existing_refs = _o6_cloud_archive_list(task.get("evidence_refs"))
+            existing_by_key = {}
+            for index, evidence in enumerate(existing_refs):
+                if not isinstance(evidence, dict):
+                    continue
+                evidence_id = _o6_cloud_archive_safe_text(evidence.get("evidence_id") or "", O6_ARCHIVE_MAX_ID_LENGTH)
+                if evidence_id:
+                    existing_by_key[evidence_id] = index
+            new_key_count = sum(1 for evidence in incoming_refs if evidence["evidence_id"] not in existing_by_key)
+            if len(existing_refs) + new_key_count > O6_CLOUD_ARCHIVE_MAX_EVIDENCE_REFS:
+                raise ValueError("evidence_refs array is too large")
+
+            duplicate_exists = False
+            created_count = 0
+            updated_count = 0
+            now_ms = int(_now() * 1000)
+            for evidence in incoming_refs:
+                evidence["updated_at_ms"] = now_ms
+                key = evidence["evidence_id"]
+                if key in existing_by_key:
+                    duplicate_exists = True
+                    index = existing_by_key[key]
+                    previous = existing_refs[index] if index < len(existing_refs) else {}
+                    evidence["created_at_ms"] = _o6_cloud_archive_int(previous.get("created_at_ms"), now_ms)
+                    if index < len(existing_refs):
+                        existing_refs[index] = evidence
+                    else:
+                        existing_refs.append(evidence)
+                    updated_count += 1
+                else:
+                    evidence["created_at_ms"] = now_ms
+                    existing_by_key[key] = len(existing_refs)
+                    existing_refs.append(evidence)
+                    created_count += 1
+            task["evidence_refs"] = existing_refs
+            task["updated_at_ms"] = now_ms
+            task["evidence_archive_last_updated_ms"] = now_ms
+            self._persist_locked()
+
+        write_status = "updated" if duplicate_exists else "created"
+        return (200 if duplicate_exists else 201), _o6_archive_evidence_response_payload(
+            task,
+            incoming_refs,
+            write_status=write_status,
+            duplicate=duplicate_exists,
+            created_count=created_count,
+            updated_count=updated_count,
+        )
+
+    def list_archive_evidence(self, *, robot_id="", task_id="", evidence_type="", event_id="", limit=O6_ARCHIVE_DEFAULT_QUERY_LIMIT):
+        # evidence 查询不做对象探测，只返回本地 ref 摘要和固定 not_proven 边界。
+        robot_id = _o6_cloud_archive_safe_text(robot_id or "", 80).strip()
+        task_id = _o6_cloud_archive_safe_text(task_id or "", 80).strip()
+        evidence_type = _o6_cloud_archive_safe_text(evidence_type or "", 80).strip()
+        event_id = _o6_cloud_archive_safe_text(event_id or "", O6_ARCHIVE_MAX_ID_LENGTH).strip()
+        if evidence_type and evidence_type not in O6_ARCHIVE_ALLOWED_EVIDENCE_TYPES:
+            raise ValueError("unsupported evidence_type")
+        limit = _o6_archive_validate_query_limit(limit)
+        with self._lock:
+            if task_id:
+                task = self._tasks.get(task_id)
+                if not isinstance(task, dict):
+                    return 404, phone_error("unknown_task", "archive task not found")
+                if robot_id and task.get("robot_id") != robot_id:
+                    return 403, phone_error("unauthorized_task", "robot_id does not match archive task")
+                tasks = [task]
+            else:
+                tasks = [
+                    task
+                    for task in self._tasks.values()
+                    if isinstance(task, dict) and (not robot_id or task.get("robot_id") == robot_id)
+                ]
+        evidence_refs = []
+        for task in tasks:
+            for evidence in _o6_cloud_archive_list(task.get("evidence_refs")):
+                if not isinstance(evidence, dict):
+                    continue
+                evidence_record = _o6_cloud_archive_evidence_ref_payload(evidence)
+                if evidence_type and evidence_record.get("evidence_type") != evidence_type:
+                    continue
+                if event_id and evidence_record.get("event_id") != event_id:
+                    continue
+                evidence_refs.append(evidence_record)
+        evidence_refs.sort(key=lambda item: _o6_cloud_archive_int(item.get("captured_at_ms"), 0) or 0)
+        evidence_refs = evidence_refs[:limit]
+        query = {
+            "robot_id": robot_id,
+            "task_id": task_id,
+            "evidence_type": evidence_type,
+            "event_id": event_id,
+            "limit": limit,
+        }
+        return 200, _o6_archive_evidence_list_payload(evidence_refs, query)
 
     def upsert_labels(self, payload):
         labels_payload = _o6_cloud_archive_validate_label_payload(payload)
@@ -15032,6 +15839,51 @@ def make_handler(store, archive_store, bearer_token):
                     return
                 self._send_json(status_code, payload)
                 return
+            if parsed.path == "/api/o6/archive/events":
+                # 事件查询只返回 local/mock 事件白名单，非法 query 直接 fail-closed。
+                query = parse_qs(parsed.query)
+                raw_limit = next(iter(query.get("limit", [str(O6_ARCHIVE_DEFAULT_QUERY_LIMIT)])), str(O6_ARCHIVE_DEFAULT_QUERY_LIMIT))
+                try:
+                    limit = _o6_archive_validate_query_limit(raw_limit)
+                    from_ms = _o6_archive_validate_optional_time(next(iter(query.get("from_ms", [""])), ""), "from_ms")
+                    to_ms = _o6_archive_validate_optional_time(next(iter(query.get("to_ms", [""])), ""), "to_ms")
+                    status_code, payload = archive_store.list_archive_events(
+                        robot_id=next(iter(query.get("robot_id", [""])), ""),
+                        task_id=next(iter(query.get("task_id", [""])), ""),
+                        event_type=next(iter(query.get("event_type", [""])), ""),
+                        from_ms=from_ms,
+                        to_ms=to_ms,
+                        limit=limit,
+                    )
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
+            if parsed.path == "/api/o6/archive/evidence":
+                # 证据查询只返回 evidence_ref 摘要，不探测 OSS/CDN 对象是否存在。
+                query = parse_qs(parsed.query)
+                raw_limit = next(iter(query.get("limit", [str(O6_ARCHIVE_DEFAULT_QUERY_LIMIT)])), str(O6_ARCHIVE_DEFAULT_QUERY_LIMIT))
+                try:
+                    limit = _o6_archive_validate_query_limit(raw_limit)
+                    status_code, payload = archive_store.list_archive_evidence(
+                        robot_id=next(iter(query.get("robot_id", [""])), ""),
+                        task_id=next(iter(query.get("task_id", [""])), ""),
+                        evidence_type=next(iter(query.get("evidence_type", [""])), ""),
+                        event_id=next(iter(query.get("event_id", [""])), ""),
+                        limit=limit,
+                    )
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
             if parsed.path == "/api/o6/archive/labels":
                 # 标注接口只返回 task 级摘要，不回显完整 label payload，确保前端不能把原始标注当 truth 使用。
                 query = parse_qs(parsed.query)
@@ -15215,6 +16067,54 @@ def make_handler(store, archive_store, bearer_token):
                     return
                 try:
                     status_code, payload = archive_store.upsert_task(body)
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
+            if parsed.path == "/api/o6/archive/events":
+                # 事件增量写入只允许附着已有 task，支持 task_id + event_id 幂等 upsert。
+                try:
+                    body = parse_json_body_with_limit(self, O6_CLOUD_ARCHIVE_MAX_BODY_BYTES)
+                except ValueError as exc:
+                    message = str(exc)
+                    if message == "request body too large":
+                        self._send_json(400, phone_error("bad_request", message))
+                        return
+                    self._send_json(400, phone_error("malformed_json", "request body was not valid JSON"))
+                    return
+                except TypeError as exc:
+                    self._send_json(400, phone_error("bad_request", str(exc)))
+                    return
+                try:
+                    status_code, payload = archive_store.upsert_archive_events(body)
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
+            if parsed.path == "/api/o6/archive/evidence":
+                # evidence 写入只保存 ref 摘要；图片/视频/音频原始内容必须在校验层被拒绝。
+                try:
+                    body = parse_json_body_with_limit(self, O6_CLOUD_ARCHIVE_MAX_BODY_BYTES)
+                except ValueError as exc:
+                    message = str(exc)
+                    if message == "request body too large":
+                        self._send_json(400, phone_error("bad_request", message))
+                        return
+                    self._send_json(400, phone_error("malformed_json", "request body was not valid JSON"))
+                    return
+                except TypeError as exc:
+                    self._send_json(400, phone_error("bad_request", str(exc)))
+                    return
+                try:
+                    status_code, payload = archive_store.upsert_archive_evidence(body)
                 except ValueError as exc:
                     self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
                     return

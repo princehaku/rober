@@ -8,6 +8,10 @@
 `POST /api/o6/archive/labels`
 `GET /api/o6/archive/labels`
 `GET /api/o6/archive/labels/<task_id>`
+`POST /api/o6/archive/events`
+`GET /api/o6/archive/events`
+`POST /api/o6/archive/evidence`
+`GET /api/o6/archive/evidence`
 `POST /api/o6/archive/inference`
 
 这是 `remote_cloud_relay.py` 内置的本地 mock archive API。它提供 `trashbot.o6.cloud_archive.v1` 的 O6-shaped 数据源，让后续 O7 route replay / labeling / voice / safe command 可以从统一的任务存档形状继续消费，但它不连接真实云数据库，不连接真实 OSS，不下发机器人控制，也不声明 production cloud ready。
@@ -33,7 +37,7 @@
 
 - `evidence_refs[]`
 
-`trajectory_frames[]` 和 `events[]` 都只允许小数组。当前实现上限分别是 64 和 64；`evidence_refs[]` 上限是 32。超过上限直接 fail closed。
+`trajectory_frames[]`、`events[]` 和 `evidence_refs[]` 都只允许小数组。当前实现上限分别是 64、64 和 64。超过上限直接 fail closed。
 
 ## Response Contract（Archive tasks）
 
@@ -80,6 +84,170 @@
 - 更新：`200`
 - `write_status=created | updated`
  - `duplicate=true | false`
+
+## O6 事件与证据引用本地 mock contract
+
+`POST /api/o6/archive/events`、`GET /api/o6/archive/events`、`POST /api/o6/archive/evidence`、`GET /api/o6/archive/evidence` 是 O6-KR2/O6-KR3 的任务内增量存档入口。它们复用 `TRASHBOT_O6_CLOUD_ARCHIVE_STATE` 和既有 file-backed local/mock store，只允许附着到已存在 task，不会隐式创建 task。
+
+### POST /api/o6/archive/events
+
+请求必须包含：
+
+- `robot_id`
+- `task_id`
+- `events[]`：1 到 64 条
+
+每条 event 必须包含：
+
+- `event_id`：task 内幂等键，长度 1 到 128
+- `event_type`：必须是白名单类型
+- `occurred_at_ms`：必须落在 task `started_at_ms..finished_at_ms` 时间窗内
+
+可选字段：
+
+- `pose`：仅保留 `x_m / y_m / yaw_rad / floor_id`
+- `summary`：最多 512 字符
+- `severity=info|warning|error`
+- `evidence_refs[]`：每条 event 最多 8 个引用，回包只返回 basename 摘要
+- `metadata`：小型 object，深度最多 3，序列化后最多 8 KiB
+
+event_type 白名单：
+
+- `perception.detected_object`
+- `route.frame`
+- `route.pose`
+- `elevator.door_state`
+- `elevator.floor_evidence`
+- `task.failure`
+- `task.recovery`
+- `operator.note`
+
+成功响应固定：
+
+- `schema=trashbot.o6.archive_events.v1`
+- `schema_version=1`
+- `source=local_mock_event_archive`
+- `proof_status=not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `pc_only=true`
+- `real_cloud_db_connected=false`
+- `real_oss_connected=false`
+- `connects_cloud_production=false`
+- `robot_control_executed=false`
+- `archive_event_written=true`
+
+幂等键是 `task_id + event_id`。全新批次返回 `201/write_status=created/duplicate=false`；命中任一已有 `event_id` 返回 `200/write_status=updated/duplicate=true`，并在 `event_summary.created_count/updated_count` 给出混合批次摘要。
+
+### GET /api/o6/archive/events
+
+支持 query：
+
+- `robot_id`
+- `task_id`
+- `event_type`
+- `from_ms`
+- `to_ms`
+- `limit`：默认 50，最大 200
+
+返回：
+
+- `schema=trashbot.o6.archive_events.v1`
+- `source=local_mock_event_archive`
+- `query`
+- `events[]`
+- `event_summary`
+
+`events[]` 只返回白名单字段：`event_id/event_type/occurred_at_ms/source/pose/summary/severity/evidence_refs/metadata/created_at_ms/updated_at_ms`，并按 `occurred_at_ms` 升序排列。非法 `limit`、未知 `event_type`、非法时间窗、`unknown_task` 或 `unauthorized_task` 都 fail-closed。
+
+### POST /api/o6/archive/evidence
+
+请求必须包含：
+
+- `robot_id`
+- `task_id`
+- `evidence_refs[]`：1 到 64 条
+
+每条 evidence ref 必须包含：
+
+- `evidence_id`：task 内幂等键，长度 1 到 128
+- `evidence_type`：必须是白名单类型
+- `evidence_ref`：对象引用或 mock ref；服务端只保存 basename 摘要，不保存图片/视频/音频原始内容
+- `captured_at_ms`：必须落在 task 时间窗内
+
+可选字段：
+
+- `event_id`
+- `content_type`
+- `size_bytes`
+- `checksum`
+- `metadata`：小型 object，深度最多 3，序列化后最多 8 KiB
+
+evidence_type 白名单：
+
+- `camera_frame`
+- `snapshot`
+- `route_frame`
+- `elevator_frame`
+- `failure_snapshot`
+- `audio_clip`
+- `log_excerpt`
+
+成功响应固定：
+
+- `schema=trashbot.o6.archive_evidence.v1`
+- `schema_version=1`
+- `source=local_mock_evidence_archive`
+- `proof_status=not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `pc_only=true`
+- `real_cloud_db_connected=false`
+- `real_oss_connected=false`
+- `real_oss_upload_success=false`
+- `connects_cloud_production=false`
+- `robot_control_executed=false`
+- `archive_evidence_written=true`
+
+幂等键是 `task_id + evidence_id`。全新批次返回 `201/write_status=created/duplicate=false`；命中任一已有 `evidence_id` 返回 `200/write_status=updated/duplicate=true`。
+
+### GET /api/o6/archive/evidence
+
+支持 query：
+
+- `robot_id`
+- `task_id`
+- `evidence_type`
+- `event_id`
+- `limit`：默认 50，最大 200
+
+返回：
+
+- `schema=trashbot.o6.archive_evidence.v1`
+- `source=local_mock_evidence_archive`
+- `query`
+- `evidence_refs[]`
+- `evidence_summary`
+
+`evidence_refs[]` 只返回白名单字段：`evidence_id/evidence_type/evidence_ref/captured_at_ms/event_id/content_type/size_bytes/checksum/metadata/created_at_ms/updated_at_ms`。它不返回 credential URL、token、base64、原始图片、原始音频、原始视频、完整日志或完整模型响应。写入后 `GET /api/o6/archive/tasks/<task_id>` 仍能在兼容 `events[]` / `evidence_refs[]` 中读到对应摘要。
+
+### fail-closed 规则（Events/Evidence）
+
+以下场景返回 4xx，且不得写入任何 event/evidence：
+
+- bad JSON、非对象 JSON、空 body
+- 缺少 `robot_id/task_id/events/evidence_refs` 或必填 item 字段
+- `events[]` / `evidence_refs[]` 非数组、为空或超过 64
+- `unknown_task`
+- `unauthorized_task`
+- 非白名单 `event_type` / `evidence_type`
+- `occurred_at_ms` / `captured_at_ms` 越过 task 时间窗
+- `metadata` 非 object、超深、超长或含 unsafe content
+- payload 含 `Authorization`、`Bearer`、`token`、`password`、`secret`、`private_key`、credential URL、`/cmd_vel`、串口路径、`baudrate`、`traceback`
+- payload 含 base64、原始图片/视频/音频、完整日志、完整模型响应或 raw content
+- payload 声明真实能力，例如 `success=true`、`production_ready=true`、`cloud_db_connected=true`、`oss_uploaded=true`、`robot_control_executed=true`、`delivery_success=true`
 
 ## O6 local/mock 模型推理 contract
 
