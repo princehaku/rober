@@ -1258,6 +1258,200 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertLessEqual(capped_listing["limit"], relay_module.O6_CLOUD_LABELING_MAX_LIST_LIMIT)
         self.assertEqual(capped_listing["status_filter"], "all")
 
+    def _o6_inference_payload(self, task_id="task-o6-001", inference_id="infer-001", input_id="frame-001"):
+        # 推理接口只消费已有 archive task，因此测试 payload 固定落在 helper task 的时间窗口内。
+        return {
+            "robot_id": "trashbot-001",
+            "task_id": task_id,
+            "inference_id": inference_id,
+            "model_family": "elevator_scene_stub",
+            "requested_outputs": ["elevator_door_state", "floor_recognition"],
+            "inputs": [
+                {
+                    "input_id": input_id,
+                    "input_type": "image_ref",
+                    "evidence_ref": f"frames/{input_id}.jpg",
+                    "captured_at_ms": 1500,
+                    "metadata": {"camera": "front", "scene": "elevator"},
+                }
+            ],
+        }
+
+    def test_o6_model_inference_endpoint_writes_events_and_detail_reads_them(self):
+        status, _ = self.client.request("POST", "/api/o6/archive/tasks", self._o6_archive_task_payload())
+        self.assertEqual(status, 201)
+
+        status, created = self.client.request("POST", "/api/o6/archive/inference", self._o6_inference_payload())
+
+        encoded = json.dumps(created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertEqual(created["schema"], relay_module.O6_MODEL_INFERENCE_SCHEMA)
+        self.assertEqual(created["source"], "local_mock_inference")
+        self.assertEqual(created["proof_status"], "not_proven")
+        self.assertEqual(created["write_status"], "created")
+        self.assertFalse(created["duplicate"])
+        self.assertFalse(created["safe_to_control"])
+        self.assertFalse(created["delivery_success"])
+        self.assertFalse(created["primary_actions_enabled"])
+        self.assertFalse(created["connects_cloud_production"])
+        self.assertFalse(created["robot_control_executed"])
+        self.assertFalse(created["real_gpu_model_connected"])
+        self.assertFalse(created["real_external_model_api_connected"])
+        self.assertFalse(created["real_model_inference_success"])
+        self.assertTrue(created["archive_event_written"])
+        self.assertEqual(created["result_summary"]["result_count"], 2)
+        self.assertEqual(created["result_summary"]["created_count"], 2)
+        self.assertEqual(created["result_summary"]["updated_count"], 0)
+        self.assertIn("model_inference.elevator_door_state", created["result_summary"]["event_types"])
+        self.assertIn("model_inference.floor_recognition", created["result_summary"]["event_types"])
+        self.assertIn("real_gpu_model", created["not_proven"])
+        for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "traceback"):
+            self.assertNotIn(forbidden, encoded)
+
+        status, detail = self.client.request("GET", "/api/o6/archive/tasks/task-o6-001", token="")
+        self.assertEqual(status, 200)
+        event_by_type = {event["event_type"]: event for event in detail["task"]["events"]}
+        self.assertIn("model_inference.elevator_door_state", event_by_type)
+        self.assertIn("model_inference.floor_recognition", event_by_type)
+        door_event = event_by_type["model_inference.elevator_door_state"]
+        self.assertEqual(door_event["source"], "local_mock_inference")
+        self.assertEqual(door_event["inference_id"], "infer-001")
+        self.assertEqual(door_event["input_id"], "frame-001")
+        self.assertEqual(door_event["result_type"], "elevator_door_state")
+        self.assertEqual(door_event["result_value"], "unknown")
+        self.assertEqual(door_event["confidence"], 0.0)
+        self.assertEqual(door_event["evidence_ref"], "frame-001.jpg")
+        self.assertIn("real_elevator_door_state", door_event["not_proven"])
+
+    def test_o6_model_inference_endpoint_is_idempotent_and_supports_mixed_batches(self):
+        status, _ = self.client.request("POST", "/api/o6/archive/tasks", self._o6_archive_task_payload(task_id="task-o6-inf-mixed"))
+        self.assertEqual(status, 201)
+
+        status, first = self.client.request(
+            "POST",
+            "/api/o6/archive/inference",
+            self._o6_inference_payload(task_id="task-o6-inf-mixed", inference_id="infer-mixed", input_id="frame-a"),
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(first["result_summary"]["created_count"], 2)
+
+        mixed_payload = self._o6_inference_payload(
+            task_id="task-o6-inf-mixed",
+            inference_id="infer-mixed",
+            input_id="frame-a",
+        )
+        mixed_payload["requested_outputs"] = ["elevator_door_state"]
+        mixed_payload["inputs"].append(
+            {
+                "input_id": "frame-b",
+                "input_type": "snapshot_ref",
+                "evidence_ref": "frames/frame-b.jpg",
+                "captured_at_ms": 1600,
+                "metadata": {"camera": "front"},
+            }
+        )
+
+        status, mixed = self.client.request("POST", "/api/o6/archive/inference", mixed_payload)
+        self.assertEqual(status, 200)
+        self.assertTrue(mixed["duplicate"])
+        self.assertEqual(mixed["write_status"], "updated")
+        self.assertEqual(mixed["result_summary"]["created_count"], 1)
+        self.assertEqual(mixed["result_summary"]["updated_count"], 1)
+
+        status, detail = self.client.request("GET", "/api/o6/archive/tasks/task-o6-inf-mixed", token="")
+        self.assertEqual(status, 200)
+        inference_events = [
+            event
+            for event in detail["task"]["events"]
+            if str(event.get("event_type", "")).startswith("model_inference.")
+        ]
+        keys = {(event["inference_id"], event["input_id"], event["result_type"]) for event in inference_events}
+        self.assertEqual(len(keys), 3)
+        self.assertIn(("infer-mixed", "frame-a", "elevator_door_state"), keys)
+        self.assertIn(("infer-mixed", "frame-a", "floor_recognition"), keys)
+        self.assertIn(("infer-mixed", "frame-b", "elevator_door_state"), keys)
+
+    def test_o6_model_inference_endpoint_rejects_unknown_and_unauthorized_tasks(self):
+        status, unknown = self.client.request(
+            "POST",
+            "/api/o6/archive/inference",
+            self._o6_inference_payload(task_id="missing-task"),
+        )
+        self.assertEqual(status, 404)
+        self.assertEqual(unknown["error"]["code"], "unknown_task")
+
+        status, _ = self.client.request("POST", "/api/o6/archive/tasks", self._o6_archive_task_payload(task_id="task-o6-auth"))
+        self.assertEqual(status, 201)
+        payload = self._o6_inference_payload(task_id="task-o6-auth")
+        payload["robot_id"] = "trashbot-other"
+        status, unauthorized = self.client.request("POST", "/api/o6/archive/inference", payload)
+        self.assertEqual(status, 403)
+        self.assertEqual(unauthorized["error"]["code"], "unauthorized_task")
+
+    def test_o6_model_inference_endpoint_rejects_bad_unsafe_oversized_and_out_of_window(self):
+        status, _ = self.client.request("POST", "/api/o6/archive/tasks", self._o6_archive_task_payload(task_id="task-o6-inf-reject"))
+        self.assertEqual(status, 201)
+
+        status, bad_json = self.client.request("POST", "/api/o6/archive/inference", raw_body=b"{bad-json")
+        self.assertEqual(status, 400)
+        self.assertEqual(bad_json["error"]["code"], "malformed_json")
+
+        status, non_object = self.client.request("POST", "/api/o6/archive/inference", raw_body=b"[]")
+        self.assertEqual(status, 400)
+        self.assertEqual(non_object["error"]["code"], "bad_request")
+
+        missing = self._o6_inference_payload(task_id="task-o6-inf-reject")
+        del missing["requested_outputs"]
+        status, missing_body = self.client.request("POST", "/api/o6/archive/inference", missing)
+        self.assertEqual(status, 400)
+        self.assertEqual(missing_body["error"]["code"], "bad_request")
+
+        unknown_output = self._o6_inference_payload(task_id="task-o6-inf-reject")
+        unknown_output["requested_outputs"] = ["trash_detector"]
+        status, unsupported = self.client.request("POST", "/api/o6/archive/inference", unknown_output)
+        self.assertEqual(status, 400)
+        self.assertEqual(unsupported["error"]["code"], "bad_request")
+
+        too_many_inputs = self._o6_inference_payload(task_id="task-o6-inf-reject")
+        too_many_inputs["inputs"] = [
+            {
+                "input_id": f"frame-{index:03d}",
+                "input_type": "image_ref",
+                "evidence_ref": f"frames/frame-{index:03d}.jpg",
+                "captured_at_ms": 1500,
+                "metadata": {},
+            }
+            for index in range(relay_module.O6_MODEL_INFERENCE_MAX_INPUTS + 1)
+        ]
+        status, oversized = self.client.request("POST", "/api/o6/archive/inference", too_many_inputs)
+        self.assertEqual(status, 400)
+        self.assertEqual(oversized["error"]["code"], "bad_request")
+        self.assertIn("too large", oversized["error"]["message"].lower())
+
+        unsafe = self._o6_inference_payload(task_id="task-o6-inf-reject")
+        unsafe["inputs"][0]["metadata"] = {"note": "Authorization Bearer leaked-token"}
+        status, unsafe_body = self.client.request("POST", "/api/o6/archive/inference", unsafe)
+        self.assertEqual(status, 400)
+        self.assertEqual(unsafe_body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", unsafe_body["error"]["message"].lower())
+
+        real_claim = self._o6_inference_payload(task_id="task-o6-inf-reject")
+        real_claim["gpu_connected"] = True
+        status, claim_body = self.client.request("POST", "/api/o6/archive/inference", real_claim)
+        self.assertEqual(status, 400)
+        self.assertEqual(claim_body["error"]["code"], "bad_request")
+
+        out_of_window = self._o6_inference_payload(task_id="task-o6-inf-reject")
+        out_of_window["inputs"][0]["captured_at_ms"] = 2500
+        status, window_body = self.client.request("POST", "/api/o6/archive/inference", out_of_window)
+        self.assertEqual(status, 400)
+        self.assertEqual(window_body["error"]["code"], "bad_request")
+        self.assertIn("captured_at_ms", window_body["error"]["message"])
+
+        status, detail = self.client.request("GET", "/api/o6/archive/tasks/task-o6-inf-reject", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(detail["task"]["events"]), 1)
+
     def test_o7_realtime_elevator_snapshot_endpoint_is_public_readonly_and_fail_closed(self):
         with mock.patch.dict(os.environ, {"TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON": ""}):
             status, body = self.client.request("GET", "/api/o7/realtime-elevator/snapshot", token="")

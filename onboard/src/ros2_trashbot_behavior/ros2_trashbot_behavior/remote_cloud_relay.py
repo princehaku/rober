@@ -94,11 +94,18 @@ O7_RTC_SIGNALING_SESSION_RECEIPT_SCHEMA = "trashbot.o7.rtc_signaling_session_rec
 O6_CLOUD_ARCHIVE_SCHEMA = "trashbot.o6.cloud_archive.v1"
 O6_CLOUD_ARCHIVE_STORE_SCHEMA = "trashbot.o6.cloud_archive_store.v1"
 O6_CLOUD_LABELING_SCHEMA = "trashbot.o6.archive_labeling.v1"
+O6_MODEL_INFERENCE_SCHEMA = "trashbot.o6.model_inference.v1"
 O6_CLOUD_ARCHIVE_STATE_ENV = "TRASHBOT_O6_CLOUD_ARCHIVE_STATE"
 O6_CLOUD_ARCHIVE_MAX_TRAJECTORY_FRAMES = 64
 O6_CLOUD_ARCHIVE_MAX_EVENTS = 64
 O6_CLOUD_ARCHIVE_MAX_EVIDENCE_REFS = 32
 O6_CLOUD_ARCHIVE_MAX_BODY_BYTES = 256 * 1024
+O6_MODEL_INFERENCE_ALLOWED_OUTPUTS = {"elevator_door_state", "floor_recognition"}
+O6_MODEL_INFERENCE_ALLOWED_INPUT_TYPES = {"image_ref", "frame_ref", "snapshot_ref", "metadata_only"}
+O6_MODEL_INFERENCE_MAX_REQUESTED_OUTPUTS = 8
+O6_MODEL_INFERENCE_MAX_INPUTS = 16
+O6_MODEL_INFERENCE_MAX_METADATA_KEYS = 16
+O6_MODEL_INFERENCE_MAX_METADATA_BYTES = 2048
 O6_CLOUD_LABELING_MAX_LABELS = 64
 O6_CLOUD_LABELING_MAX_ITEM_ID_LENGTH = 80
 O6_CLOUD_LABELING_MAX_ITEM_TYPE_LENGTH = 120
@@ -12263,6 +12270,46 @@ def _o6_cloud_archive_has_unsafe_claim(value):
     return False
 
 
+def _o6_model_inference_has_real_capability_claim(value):
+    """推理接口是 local/mock 合同，任何真实能力 true 声明都必须在写入前拒绝。"""
+
+    blocked_true_keys = {
+        "success",
+        "production_ready",
+        "gpu_connected",
+        "external_model_connected",
+        "floor_recognition_proven",
+        "elevator_door_state_proven",
+        "robot_control_executed",
+        "real_model_inference_success",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key).lower()
+            if key_text in blocked_true_keys and item is True:
+                return True
+            if _o6_model_inference_has_real_capability_claim(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_o6_model_inference_has_real_capability_claim(item) for item in value)
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        return any(
+            marker in lowered
+            for marker in (
+                "success=true",
+                "production_ready=true",
+                "gpu_connected=true",
+                "external_model_connected=true",
+                "floor_recognition_proven=true",
+                "elevator_door_state_proven=true",
+                "robot_control_executed=true",
+            )
+        )
+    return False
+
+
 def _o6_cloud_archive_task_summary(task):
     """列表视图只保留 O6-shaped 任务摘要，避免把完整轨迹直接铺到首页。"""
 
@@ -12282,6 +12329,41 @@ def _o6_cloud_archive_task_summary(task):
         "updated_at_ms": _o6_cloud_archive_int(task.get("updated_at_ms"), None),
         "status": "local_mock_archive_ready",
     }
+
+
+def _o6_cloud_archive_event_payload(event):
+    """事件详情默认只留基础字段；模型推理事件额外开放可复盘的白名单字段。"""
+
+    event = _o6_cloud_archive_dict(event)
+    event_type = _o6_cloud_archive_safe_text(event.get("event_type") or "", 80)
+    safe_event = {
+        "event_type": event_type,
+        "timestamp_ms": _o6_cloud_archive_int(event.get("timestamp_ms"), None),
+        "state": _o6_cloud_archive_safe_text(event.get("state") or "", 80),
+        "details": _o6_cloud_archive_safe_text(event.get("details") or "", 160),
+        "evidence_ref": _o6_cloud_archive_safe_ref(event.get("evidence_ref") or ""),
+    }
+    if event_type in {"model_inference.elevator_door_state", "model_inference.floor_recognition"}:
+        safe_event.update(
+            {
+                "event_id": _o6_cloud_archive_safe_text(event.get("event_id") or "", 240),
+                "occurred_at_ms": _o6_cloud_archive_int(event.get("occurred_at_ms"), safe_event["timestamp_ms"]),
+                "source": "local_mock_inference",
+                "inference_id": _o6_cloud_archive_safe_text(event.get("inference_id") or "", 80),
+                "input_id": _o6_cloud_archive_safe_text(event.get("input_id") or "", 80),
+                "input_type": _o6_cloud_archive_safe_text(event.get("input_type") or "", 80),
+                "model_family": _o6_cloud_archive_safe_text(event.get("model_family") or "", 120),
+                "result_type": _o6_cloud_archive_safe_text(event.get("result_type") or "", 80),
+                "result_value": _o6_cloud_archive_safe_text(event.get("result_value") or "", 120),
+                "confidence": _o6_cloud_archive_number(event.get("confidence"), None),
+                "not_proven": [
+                    _o6_cloud_archive_safe_text(item, 80)
+                    for item in _o6_cloud_archive_list(event.get("not_proven"))[:12]
+                ],
+                "metadata": _o6_cloud_archive_dict(event.get("metadata")),
+            }
+        )
+    return safe_event
 
 
 def _o6_cloud_archive_task_detail(task):
@@ -12307,16 +12389,7 @@ def _o6_cloud_archive_task_detail(task):
         )
     events = []
     for event in _o6_cloud_archive_list(task.get("events"))[:O6_CLOUD_ARCHIVE_MAX_EVENTS]:
-        event = _o6_cloud_archive_dict(event)
-        events.append(
-            {
-                "event_type": _o6_cloud_archive_safe_text(event.get("event_type") or "", 80),
-                "timestamp_ms": _o6_cloud_archive_int(event.get("timestamp_ms"), None),
-                "state": _o6_cloud_archive_safe_text(event.get("state") or "", 80),
-                "details": _o6_cloud_archive_safe_text(event.get("details") or "", 160),
-                "evidence_ref": _o6_cloud_archive_safe_ref(event.get("evidence_ref") or ""),
-            }
-        )
+        events.append(_o6_cloud_archive_event_payload(event))
     evidence_refs = [
         _o6_cloud_archive_safe_ref(ref)
         for ref in _o6_cloud_archive_list(task.get("evidence_refs"))[:O6_CLOUD_ARCHIVE_MAX_EVIDENCE_REFS]
@@ -12398,6 +12471,218 @@ def _o6_cloud_archive_collection_payload(tasks, *, task=None, write_status=None,
         "evidence_ref_total": sum(item["evidence_ref_count"] for item in task_summaries),
     }
     return payload
+
+
+def _o6_model_inference_fixed_payload():
+    """所有成功响应固定 local/mock 和 not_proven 边界，禁止被前端误读成真实模型。"""
+
+    return {
+        "schema": O6_MODEL_INFERENCE_SCHEMA,
+        "schema_version": 1,
+        "source": "local_mock_inference",
+        "proof_status": "not_proven",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "pc_only": True,
+        "connects_cloud_production": False,
+        "robot_control_executed": False,
+        "real_gpu_model_connected": False,
+        "real_external_model_api_connected": False,
+        "real_model_inference_success": False,
+        "real_floor_recognition_proven": False,
+        "real_elevator_door_state_proven": False,
+        "archive_event_written": True,
+        "not_proven": [
+            "real_gpu_model",
+            "real_external_model_api",
+            "real_cloud_production",
+            "real_oss_evidence_object",
+            "real_elevator_door_state",
+            "real_floor_recognition",
+            "robot_control",
+        ],
+    }
+
+
+def _o6_model_inference_safe_metadata(metadata):
+    """metadata 只保存少量摘要字段，避免把原始模型返回体或图片塞进事件。"""
+
+    if metadata is None:
+        return {}
+    if not isinstance(metadata, dict):
+        raise ValueError("metadata must be an object")
+    if len(metadata) > O6_MODEL_INFERENCE_MAX_METADATA_KEYS:
+        raise ValueError("metadata object is too large")
+    encoded = json.dumps(metadata, ensure_ascii=False, sort_keys=True)
+    if len(encoded.encode("utf-8")) > O6_MODEL_INFERENCE_MAX_METADATA_BYTES:
+        raise ValueError("metadata object is too large")
+    safe_metadata = {}
+    for key, value in metadata.items():
+        safe_key = _o6_cloud_archive_safe_text(key, 60).strip()
+        if not safe_key or safe_key == "[redacted]":
+            raise ValueError("unsafe metadata")
+        if isinstance(value, (dict, list)):
+            raise ValueError("metadata values must be primitive summaries")
+        if isinstance(value, str):
+            safe_value_text = _o6_cloud_archive_safe_text(value, 160)
+            if safe_value_text == "[redacted]":
+                raise ValueError("unsafe metadata")
+            safe_metadata[safe_key] = safe_value_text
+        elif isinstance(value, bool) or value is None:
+            safe_metadata[safe_key] = value
+        elif isinstance(value, (int, float)):
+            safe_metadata[safe_key] = _o6_cloud_archive_number(value, None)
+        else:
+            safe_metadata[safe_key] = _o6_cloud_archive_safe_text(value, 160)
+    return safe_metadata
+
+
+def _o6_model_inference_validate_payload(payload, task):
+    """推理请求必须绑定已有 task，并且所有输入时间落在该 task 的起止窗口内。"""
+
+    if not isinstance(payload, dict):
+        raise ValueError("request body must be an object")
+    if _o6_cloud_archive_has_unsafe_claim(payload) or _o6_model_inference_has_real_capability_claim(payload):
+        raise ValueError("unsafe inference payload")
+    robot_id = _o6_cloud_archive_safe_text(payload.get("robot_id") or "", 80).strip()
+    task_id = _o6_cloud_archive_safe_text(payload.get("task_id") or "", 80).strip()
+    inference_id = _o6_cloud_archive_safe_text(payload.get("inference_id") or "", 80).strip()
+    model_family = _o6_cloud_archive_safe_text(payload.get("model_family") or "", 120).strip()
+    if not robot_id:
+        raise ValueError("robot_id is required")
+    if not task_id:
+        raise ValueError("task_id is required")
+    if not inference_id:
+        raise ValueError("inference_id is required")
+    if not model_family:
+        raise ValueError("model_family is required")
+    if "requested_outputs" not in payload or not isinstance(payload.get("requested_outputs"), list):
+        raise ValueError("requested_outputs is required and must be an array")
+    if "inputs" not in payload or not isinstance(payload.get("inputs"), list):
+        raise ValueError("inputs is required and must be an array")
+    requested_outputs = _o6_cloud_archive_list(payload.get("requested_outputs"))
+    inputs = _o6_cloud_archive_list(payload.get("inputs"))
+    if len(requested_outputs) == 0:
+        raise ValueError("requested_outputs must not be empty")
+    if len(inputs) == 0:
+        raise ValueError("inputs must not be empty")
+    if len(requested_outputs) > O6_MODEL_INFERENCE_MAX_REQUESTED_OUTPUTS:
+        raise ValueError("requested_outputs array is too large")
+    if len(inputs) > O6_MODEL_INFERENCE_MAX_INPUTS:
+        raise ValueError("inputs array is too large")
+
+    safe_outputs = []
+    for output in requested_outputs:
+        output_text = _o6_cloud_archive_safe_text(output, 80).strip()
+        if output_text not in O6_MODEL_INFERENCE_ALLOWED_OUTPUTS:
+            raise ValueError("unsupported requested output")
+        if output_text not in safe_outputs:
+            safe_outputs.append(output_text)
+
+    started_at_ms = _o6_cloud_archive_int(_o6_cloud_archive_dict(task).get("started_at_ms"), None)
+    finished_at_ms = _o6_cloud_archive_int(_o6_cloud_archive_dict(task).get("finished_at_ms"), None)
+    if started_at_ms is None or finished_at_ms is None:
+        raise ValueError("archive task time window is unavailable")
+
+    safe_inputs = []
+    for item in inputs:
+        item = _o6_cloud_archive_dict(item)
+        if _o6_cloud_archive_has_unsafe_claim(item) or _o6_model_inference_has_real_capability_claim(item):
+            raise ValueError("unsafe inference input")
+        input_id = _o6_cloud_archive_safe_text(item.get("input_id") or "", 80).strip()
+        input_type = _o6_cloud_archive_safe_text(item.get("input_type") or "", 80).strip()
+        evidence_ref = _o6_cloud_archive_safe_ref(item.get("evidence_ref") or "")
+        captured_at_ms = _o6_cloud_archive_int(item.get("captured_at_ms"), None)
+        if not input_id:
+            raise ValueError("input_id is required")
+        if input_type not in O6_MODEL_INFERENCE_ALLOWED_INPUT_TYPES:
+            raise ValueError("unsupported input_type")
+        if not evidence_ref or evidence_ref == "[redacted]":
+            raise ValueError("evidence_ref is required")
+        if captured_at_ms is None:
+            raise ValueError("captured_at_ms is required")
+        if captured_at_ms < started_at_ms or captured_at_ms > finished_at_ms:
+            raise ValueError("captured_at_ms must be inside archive task window")
+        safe_inputs.append(
+            {
+                "input_id": input_id,
+                "input_type": input_type,
+                "evidence_ref": evidence_ref,
+                "captured_at_ms": captured_at_ms,
+                "metadata": _o6_model_inference_safe_metadata(item.get("metadata") or {}),
+            }
+        )
+    return {
+        "robot_id": robot_id,
+        "task_id": task_id,
+        "inference_id": inference_id,
+        "model_family": model_family,
+        "requested_outputs": safe_outputs,
+        "inputs": safe_inputs,
+    }
+
+
+def _o6_model_inference_result_value(result_type):
+    """stub 输出故意保持 unknown，证明合同和落库，不伪装真实识别能力。"""
+
+    if result_type == "elevator_door_state":
+        return "unknown"
+    if result_type == "floor_recognition":
+        return "unknown"
+    return "unknown"
+
+
+def _o6_model_inference_result_event(payload, input_item, result_type):
+    """把单个 input/output 组合转成 archive event，供幂等更新和 GET detail 复用。"""
+
+    event_type = f"model_inference.{result_type}"
+    event_id = f"{payload['inference_id']}:{input_item['input_id']}:{result_type}"
+    not_proven = ["real_gpu_model", "real_external_model_api", "robot_control"]
+    if result_type == "elevator_door_state":
+        not_proven.append("real_elevator_door_state")
+    if result_type == "floor_recognition":
+        not_proven.append("real_floor_recognition")
+    return {
+        "event_id": event_id,
+        "event_type": event_type,
+        "timestamp_ms": input_item["captured_at_ms"],
+        "occurred_at_ms": input_item["captured_at_ms"],
+        "state": "not_proven",
+        "details": "local mock inference result, not real model proof",
+        "source": "local_mock_inference",
+        "inference_id": payload["inference_id"],
+        "input_id": input_item["input_id"],
+        "input_type": input_item["input_type"],
+        "model_family": payload["model_family"],
+        "result_type": result_type,
+        "result_value": _o6_model_inference_result_value(result_type),
+        "confidence": 0.0,
+        "evidence_ref": input_item["evidence_ref"],
+        "metadata": input_item["metadata"],
+        "not_proven": not_proven,
+    }
+
+
+def _o6_model_inference_response_payload(task, events, *, write_status, duplicate, created_count, updated_count):
+    """响应只返回安全摘要和结果列表；完整 task 仍通过 archive detail 查询。"""
+
+    safe_events = [_o6_cloud_archive_event_payload(event) for event in events]
+    return {
+        **_o6_model_inference_fixed_payload(),
+        "write_status": write_status,
+        "duplicate": bool(duplicate),
+        "task_id": _o6_cloud_archive_safe_text(_o6_cloud_archive_dict(task).get("task_id") or "", 80),
+        "robot_id": _o6_cloud_archive_safe_text(_o6_cloud_archive_dict(task).get("robot_id") or "", 80),
+        "inference_id": safe_events[0]["inference_id"] if safe_events else "",
+        "results": safe_events,
+        "result_summary": {
+            "result_count": len(safe_events),
+            "created_count": int(created_count),
+            "updated_count": int(updated_count),
+            "event_types": sorted({event.get("event_type") for event in safe_events}),
+        },
+    }
 
 
 def _o6_cloud_archive_labeling_fixed_payload():
@@ -12725,15 +13010,7 @@ def _o6_cloud_archive_validate_task_payload(payload):
         event = _o6_cloud_archive_dict(event)
         if _o6_cloud_archive_has_unsafe_claim(event):
             raise ValueError("unsafe event")
-        safe_events.append(
-            {
-                "event_type": _o6_cloud_archive_safe_text(event.get("event_type") or "", 80),
-                "timestamp_ms": _o6_cloud_archive_int(event.get("timestamp_ms"), None),
-                "state": _o6_cloud_archive_safe_text(event.get("state") or "", 80),
-                "details": _o6_cloud_archive_safe_text(event.get("details") or "", 160),
-                "evidence_ref": _o6_cloud_archive_safe_ref(event.get("evidence_ref") or ""),
-            }
-        )
+        safe_events.append(_o6_cloud_archive_event_payload(event))
 
     safe_evidence_refs = [_o6_cloud_archive_safe_ref(ref) for ref in evidence_refs]
     if any(
@@ -12891,6 +13168,90 @@ class FileBackedO6CloudArchiveStore:
             task,
             write_status=write_status,
             duplicate=duplicate,
+        )
+
+    def upsert_inference(self, payload):
+        # 推理结果只能附着在已有 task 上，避免 PC/手机看到无法追溯来源的孤儿事件。
+        if not isinstance(payload, dict):
+            raise ValueError("request body must be an object")
+        if _o6_cloud_archive_has_unsafe_claim(payload) or _o6_model_inference_has_real_capability_claim(payload):
+            raise ValueError("unsafe inference payload")
+        task_id = _o6_cloud_archive_safe_text(payload.get("task_id") or "", 80).strip()
+        robot_id = _o6_cloud_archive_safe_text(payload.get("robot_id") or "", 80).strip()
+        if not task_id:
+            raise ValueError("task_id is required")
+        if not robot_id:
+            raise ValueError("robot_id is required")
+
+        with self._lock:
+            task = self._tasks.get(task_id)
+            if not isinstance(task, dict):
+                return 404, phone_error("unknown_task", "archive task not found")
+            if task.get("robot_id") != robot_id:
+                return 403, phone_error("unauthorized_task", "robot_id does not match archive task")
+
+            inference_payload = _o6_model_inference_validate_payload(payload, task)
+            incoming_events = [
+                _o6_model_inference_result_event(inference_payload, input_item, result_type)
+                for input_item in inference_payload["inputs"]
+                for result_type in inference_payload["requested_outputs"]
+            ]
+            existing_events = _o6_cloud_archive_list(task.get("events"))
+            existing_by_key = {}
+            for index, event in enumerate(existing_events):
+                if not isinstance(event, dict):
+                    continue
+                key = (
+                    event.get("inference_id"),
+                    event.get("input_id"),
+                    event.get("result_type"),
+                )
+                if all(key):
+                    existing_by_key[key] = index
+            new_key_count = 0
+            for event in incoming_events:
+                key = (event["inference_id"], event["input_id"], event["result_type"])
+                if key not in existing_by_key:
+                    new_key_count += 1
+            if len(existing_events) + new_key_count > O6_CLOUD_ARCHIVE_MAX_EVENTS:
+                raise ValueError("events array is too large")
+
+            duplicate_exists = False
+            created_count = 0
+            updated_count = 0
+            now_ms = int(_now() * 1000)
+            for event in incoming_events:
+                key = (event["inference_id"], event["input_id"], event["result_type"])
+                event["updated_at_ms"] = now_ms
+                if key in existing_by_key:
+                    duplicate_exists = True
+                    index = existing_by_key[key]
+                    previous = existing_events[index] if index < len(existing_events) else {}
+                    event["created_at_ms"] = _o6_cloud_archive_int(previous.get("created_at_ms"), now_ms)
+                    if index < len(existing_events):
+                        existing_events[index] = event
+                    else:
+                        existing_events.append(event)
+                    updated_count += 1
+                else:
+                    event["created_at_ms"] = now_ms
+                    existing_by_key[key] = len(existing_events)
+                    existing_events.append(event)
+                    created_count += 1
+            task["events"] = existing_events
+            task["updated_at_ms"] = now_ms
+            task["inference_last_updated_ms"] = now_ms
+            self._persist_locked()
+
+        write_status = "updated" if duplicate_exists else "created"
+        status_code = 200 if duplicate_exists else 201
+        return status_code, _o6_model_inference_response_payload(
+            task,
+            incoming_events,
+            write_status=write_status,
+            duplicate=duplicate_exists,
+            created_count=created_count,
+            updated_count=updated_count,
         )
 
     def list_labels(self, status_filter="all", limit=O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT):
@@ -14470,6 +14831,30 @@ def make_handler(store, archive_store, bearer_token):
                     return
                 try:
                     status_code, payload = archive_store.upsert_labels(body)
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
+            if parsed.path == "/api/o6/archive/inference":
+                # 推理提交只写 local/mock archive event；它不连接真实模型、不下发控制、不证明楼层识别。
+                try:
+                    body = parse_json_body_with_limit(self, O6_CLOUD_ARCHIVE_MAX_BODY_BYTES)
+                except ValueError as exc:
+                    message = str(exc)
+                    if message == "request body too large":
+                        self._send_json(400, phone_error("bad_request", message))
+                        return
+                    self._send_json(400, phone_error("malformed_json", "request body was not valid JSON"))
+                    return
+                except TypeError as exc:
+                    self._send_json(400, phone_error("bad_request", str(exc)))
+                    return
+                try:
+                    status_code, payload = archive_store.upsert_inference(body)
                 except ValueError as exc:
                     self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
                     return

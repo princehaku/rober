@@ -8,6 +8,7 @@
 `POST /api/o6/archive/labels`
 `GET /api/o6/archive/labels`
 `GET /api/o6/archive/labels/<task_id>`
+`POST /api/o6/archive/inference`
 
 这是 `remote_cloud_relay.py` 内置的本地 mock archive API。它提供 `trashbot.o6.cloud_archive.v1` 的 O6-shaped 数据源，让后续 O7 route replay / labeling / voice / safe command 可以从统一的任务存档形状继续消费，但它不连接真实云数据库，不连接真实 OSS，不下发机器人控制，也不声明 production cloud ready。
 
@@ -79,6 +80,116 @@
 - 更新：`200`
 - `write_status=created | updated`
  - `duplicate=true | false`
+
+## O6 local/mock 模型推理 contract
+
+`POST /api/o6/archive/inference` 是 O6-KR5 的 local/mock 模型推理写入口。它复用 `TRASHBOT_O6_CLOUD_ARCHIVE_STATE` 和 `FileBackedO6CloudArchiveStore`，只允许把推理结果写入已存在 archive task 的 `events[]`，不创建孤儿 inference record。
+
+### Request Contract（POST）
+
+必填字段：
+
+- `robot_id`
+- `task_id`
+- `inference_id`
+- `model_family`
+- `requested_outputs`
+- `inputs`
+
+`requested_outputs[]` 当前上限是 8，但首批只允许：
+
+- `elevator_door_state`
+- `floor_recognition`
+
+`inputs[]` 当前上限是 16。每条 input 必须包含：
+
+- `input_id`
+- `input_type`：`image_ref | frame_ref | snapshot_ref | metadata_only`
+- `evidence_ref`
+- `captured_at_ms`
+- `metadata`：可选小型 JSON object 摘要，不能包含原始图片、凭证、完整模型返回体或真实能力声明
+
+### Response Contract（POST）
+
+所有成功响应固定：
+
+- `schema=trashbot.o6.model_inference.v1`
+- `schema_version=1`
+- `source=local_mock_inference`
+- `proof_status=not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `pc_only=true`
+- `connects_cloud_production=false`
+- `robot_control_executed=false`
+- `real_gpu_model_connected=false`
+- `real_external_model_api_connected=false`
+- `real_model_inference_success=false`
+- `real_floor_recognition_proven=false`
+- `real_elevator_door_state_proven=false`
+- `archive_event_written=true`
+
+成功响应还包含：
+
+- `write_status`：`created | updated`
+- `duplicate`：首次写入 `false`，命中任一既有幂等键时 `true`
+- `task_id`
+- `robot_id`
+- `inference_id`
+- `results[]`
+- `result_summary`
+- `not_proven`
+
+### Archive event contract
+
+每个 `input + requested_output` 组合写成一条 task event：
+
+- `event_type=model_inference.elevator_door_state`
+- `event_type=model_inference.floor_recognition`
+
+事件白名单字段包含：
+
+- `event_id`
+- `event_type`
+- `timestamp_ms`
+- `occurred_at_ms`
+- `source=local_mock_inference`
+- `inference_id`
+- `input_id`
+- `input_type`
+- `model_family`
+- `result_type`
+- `result_value`
+- `confidence`
+- `evidence_ref`
+- `metadata`
+- `not_proven`
+
+当前 deterministic local/mock stub 固定返回 `result_value=unknown` 与 `confidence=0.0`。这只证明 API、幂等、事件落库和读取链路，不证明真实 GPU、真实外部模型、真实楼层识别或真实电梯门状态。
+
+### Duplicate Semantics（Inference）
+
+幂等键：`task_id + inference_id + input_id + result_type`。
+
+- 全新结果：`201` + `write_status=created` + `duplicate=false`
+- 已有结果：`200` + `write_status=updated` + `duplicate=true`
+- 混合批次：只要命中任一旧键即返回 `updated`，`result_summary.created_count/updated_count` 给出批内摘要
+
+### Fail-Closed / 安全告警（Inference）
+
+以下场景返回 fail-closed，且不得写入 `events[]`：
+
+- 坏 JSON / 非对象 JSON / 空 body
+- 缺少 `robot_id`、`task_id`、`inference_id`、`model_family`、`requested_outputs[]`、`inputs[]`
+- `requested_outputs[]` 或 `inputs[]` 不是数组、为空或超过上限
+- 未知 output 或 unsupported `input_type`
+- `unknown_task`
+- `unauthorized_task`
+- `captured_at_ms` 不在 task `started_at_ms..finished_at_ms` 窗口内
+- `metadata` 非小型 object 或包含 unsafe content
+- unsafe content（`Authorization` / `Bearer` / token / `/cmd_vel` / 串口路径 / `baudrate` / `traceback` / 凭证 URL）
+- 真实能力声明（如 `success=true`、`production_ready=true`、`gpu_connected=true`、`external_model_connected=true`、`floor_recognition_proven=true`、`elevator_door_state_proven=true`、`robot_control_executed=true`）
 
 ## O6 标注本地 mock contract
 
