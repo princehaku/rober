@@ -161,6 +161,22 @@ O6_CLOUD_LABELING_MAX_EVIDENCE_REF_LENGTH = 512
 O6_CLOUD_LABELING_MAX_NOTES_LENGTH = 512
 O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT = 50
 O6_CLOUD_LABELING_MAX_LIST_LIMIT = 100
+O6_CONSUMER_READ_SCHEMA = "trashbot.o6.consumer_read.v1"
+O6_CONSUMER_ALLOWED_VIEWS = {"default", "summary"}
+O6_CONSUMER_ALLOWED_INCLUDES = {
+    "trajectory",
+    "events",
+    "evidence",
+    "labeling",
+    "inference",
+    "tunnel",
+}
+O6_CONSUMER_ALLOWED_STATUS = {
+    "completed_mock",
+    "failed_mock",
+    "in_progress_mock",
+    "unknown_not_proven",
+}
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -13140,6 +13156,382 @@ def _o6_cloud_archive_collection_payload(tasks, *, task=None, write_status=None,
     return payload
 
 
+def _o6_consumer_fixed_payload():
+    """消费侧读模型固定 local/mock 边界，避免 PC/手机把聚合读接口误当成真实云读面。"""
+
+    return {
+        "schema": O6_CONSUMER_READ_SCHEMA,
+        "schema_version": 1,
+        "source": "local_mock_consumer_read_model",
+        "proof_status": "not_proven",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "pc_only": True,
+        "connects_cloud_production": False,
+        "robot_control_executed": False,
+        "real_cloud_db_connected": False,
+        "real_oss_connected": False,
+        "not_proven": [
+            "real_cloud_db_not_connected",
+            "real_oss_not_connected",
+            "real_cloud_production_not_connected",
+            "real_robot_control_not_executed",
+        ],
+    }
+
+
+def _o6_consumer_proof_boundary():
+    """聚合接口显式重复 fail-closed 边界，便于消费方直接展示“这是 software proof”。"""
+
+    return {
+        "proof_status": "not_proven",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "connects_cloud_production": False,
+        "robot_control_executed": False,
+        "state": "local_mock_only",
+    }
+
+
+def _o6_consumer_validate_view(view):
+    """view 只允许 default/summary，避免消费方拼错后得到意外重 payload。"""
+
+    view_text = _o6_cloud_archive_safe_text(view or "default", 32).strip().lower() or "default"
+    if view_text not in O6_CONSUMER_ALLOWED_VIEWS:
+        raise ValueError("unsupported view")
+    return view_text
+
+
+def _o6_consumer_validate_includes(include_text):
+    """include 只开放白名单 section，未知 section 直接 fail-closed。"""
+
+    if include_text is None:
+        return None
+    if not isinstance(include_text, str):
+        raise ValueError("include must be a string")
+    raw_items = [item.strip().lower() for item in include_text.split(",") if item.strip()]
+    if not raw_items:
+        return []
+    includes = []
+    for item in raw_items:
+        if item not in O6_CONSUMER_ALLOWED_INCLUDES:
+            raise ValueError("unsupported include section")
+        if item not in includes:
+            includes.append(item)
+    return includes
+
+
+def _o6_consumer_validate_status_filter(status_filter):
+    """消费侧列表允许按统一 summary 状态过滤，而不是暴露底层存档字段。"""
+
+    status_text = _o6_cloud_archive_safe_text(status_filter or "all", 48).strip().lower() or "all"
+    if status_text != "all" and status_text not in O6_CONSUMER_ALLOWED_STATUS:
+        raise ValueError("unsupported status filter")
+    return status_text
+
+
+def _o6_consumer_validate_date_filter(date_text):
+    """date 仅接受 YYYY-MM-DD，后续 PC/手机能直接按日筛选本地 mock 任务。"""
+
+    date_value = _o6_cloud_archive_safe_text(date_text or "", 32).strip()
+    if not date_value:
+        return ""
+    try:
+        datetime.strptime(date_value, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError("date must be YYYY-MM-DD") from exc
+    return date_value
+
+
+def _o6_consumer_validate_before_started_at_ms(value):
+    """轻量分页先用时间窗裁剪，避免在 local/mock store 里引入复杂 cursor 机制。"""
+
+    if value in (None, ""):
+        return None
+    before_started_at_ms = _o6_cloud_archive_int(value, None)
+    if before_started_at_ms is None:
+        raise ValueError("before_started_at_ms must be an integer")
+    return before_started_at_ms
+
+
+def _o6_consumer_validate_query_values(query_values):
+    """读接口 query 也走 unsafe 扫描，避免把凭证或控制字段带进日志/错误路径。"""
+
+    if _o6_cloud_archive_has_unsafe_claim(query_values):
+        raise ValueError("unsafe query")
+
+
+def _o6_consumer_date_from_ms(timestamp_ms):
+    """统一用 UTC 日切片，保持本地 mock 和未来云端 DB 迁移时的查询语义稳定。"""
+
+    if timestamp_ms is None:
+        return ""
+    return datetime.fromtimestamp(int(timestamp_ms) / 1000.0, tz=timezone.utc).strftime("%Y-%m-%d")
+
+
+def _o6_consumer_latest_event_at_ms(events):
+    """任务卡片只显示最后一条事件时间，避免消费侧自己遍历 timeline。"""
+
+    latest = None
+    for event in _o6_cloud_archive_list(events):
+        event_payload = _o6_cloud_archive_event_payload(event)
+        occurred_at_ms = _o6_cloud_archive_int(
+            event_payload.get("occurred_at_ms"),
+            _o6_cloud_archive_int(event_payload.get("timestamp_ms"), None),
+        )
+        if occurred_at_ms is None:
+            continue
+        if latest is None or occurred_at_ms > latest:
+            latest = occurred_at_ms
+    return latest
+
+
+def _o6_consumer_task_status_summary(task):
+    """消费侧状态统一在后端归一，避免 PC/手机重复猜测 completed/failed/in-progress。"""
+
+    task_payload = _o6_cloud_archive_dict(task)
+    started_at_ms = _o6_cloud_archive_int(task_payload.get("started_at_ms"), None)
+    finished_at_ms = _o6_cloud_archive_int(task_payload.get("finished_at_ms"), None)
+    events = [_o6_cloud_archive_event_payload(item) for item in _o6_cloud_archive_list(task_payload.get("events"))]
+    has_failure = any(event.get("event_type") == "task.failure" for event in events)
+    if finished_at_ms is not None and finished_at_ms >= (started_at_ms or finished_at_ms):
+        return "failed_mock" if has_failure else "completed_mock"
+    if started_at_ms is not None:
+        return "in_progress_mock"
+    return "unknown_not_proven"
+
+
+def _o6_consumer_labeling_status(task):
+    """consumer 层沿用底层 pending/partial/labeled 语义，不把“无 label”改写成别的状态。"""
+
+    labels = _o6_cloud_archive_list(_o6_cloud_archive_dict(task).get("labels"))
+    task_status, _, _, _ = _o6_cloud_archive_label_status(labels)
+    return task_status
+
+
+def _o6_consumer_inference_events(task):
+    """推理摘要统一从 event timeline 抽取，不额外维护第二套 inference store。"""
+
+    inference_events = []
+    for event in _o6_cloud_archive_list(_o6_cloud_archive_dict(task).get("events")):
+        event_payload = _o6_cloud_archive_event_payload(event)
+        if str(event_payload.get("event_type", "")).startswith("model_inference."):
+            inference_events.append(event_payload)
+    inference_events.sort(
+        key=lambda item: _o6_cloud_archive_int(
+            item.get("occurred_at_ms"),
+            _o6_cloud_archive_int(item.get("timestamp_ms"), 0),
+        )
+        or 0
+    )
+    return inference_events
+
+
+def _o6_consumer_inference_status(task):
+    """推理状态区分 absent 和 not_available，方便消费端解释“无结果”和“无接入”。"""
+
+    events = _o6_cloud_archive_list(_o6_cloud_archive_dict(task).get("events"))
+    if not events:
+        return "not_available"
+    inference_events = _o6_consumer_inference_events(task)
+    return "present" if inference_events else "absent"
+
+
+def _o6_consumer_tunnel_status_summary(store, robot_id):
+    """tunnel 缺失时保持 unknown_not_proven，而不是伪造 offline 结论。"""
+
+    robot_key = _o6_cloud_archive_safe_text(robot_id or "", 80).strip()
+    if not robot_key:
+        return None, "unknown_not_proven"
+    record = store._tunnel_status.get(robot_key)
+    if not isinstance(record, dict):
+        return None, "unknown_not_proven"
+    tunnel_status = _o6_tunnel_status_record_to_status(record)
+    return tunnel_status, tunnel_status.get("status", "unknown_not_proven")
+
+
+def _o6_consumer_task_summary(task, store):
+    """统一任务卡片字段，给 PC/手机共享同一份最小消费摘要。"""
+
+    task_payload = _o6_cloud_archive_dict(task)
+    tunnel_status, tunnel_status_summary = _o6_consumer_tunnel_status_summary(store, task_payload.get("robot_id"))
+    summary = _o6_cloud_archive_task_summary(task_payload)
+    summary.update(
+        {
+            "task_status_summary": _o6_consumer_task_status_summary(task_payload),
+            "latest_event_at_ms": _o6_consumer_latest_event_at_ms(task_payload.get("events")),
+            "evidence_count": len(_o6_cloud_archive_list(task_payload.get("evidence_refs"))),
+            "labeling_status": _o6_consumer_labeling_status(task_payload),
+            "inference_status": _o6_consumer_inference_status(task_payload),
+            "tunnel_status_summary": tunnel_status_summary,
+        }
+    )
+    summary.pop("evidence_ref_count", None)
+    if tunnel_status:
+        summary["latest_tunnel_seen_at_ms"] = tunnel_status.get("last_seen_at_ms")
+    return summary
+
+
+def _o6_consumer_task_matches_filters(task_summary, *, robot_id, task_id, date_filter, status_filter, before_started_at_ms):
+    """所有过滤都基于统一摘要执行，避免列表和详情使用不同状态解释。"""
+
+    if robot_id and task_summary.get("robot_id") != robot_id:
+        return False
+    if task_id and task_summary.get("task_id") != task_id:
+        return False
+    if date_filter and _o6_consumer_date_from_ms(task_summary.get("started_at_ms")) != date_filter:
+        return False
+    if status_filter != "all" and task_summary.get("task_status_summary") != status_filter:
+        return False
+    if before_started_at_ms is not None and _o6_cloud_archive_int(task_summary.get("started_at_ms"), None) is not None:
+        if _o6_cloud_archive_int(task_summary.get("started_at_ms"), 0) >= before_started_at_ms:
+            return False
+    return True
+
+
+def _o6_consumer_build_trajectory_section(task, *, view):
+    """summary 视图默认裁剪轨迹样本，避免手机首屏拿到整段 frame 列表。"""
+
+    frames = _o6_cloud_archive_task_detail(task).get("trajectory_frames", [])
+    selected_frames = frames if view == "default" else frames[: min(3, len(frames))]
+    return {
+        "status": "local_mock_archive_ready" if frames else "not_available",
+        "total_count": len(frames),
+        "has_more": len(selected_frames) < len(frames),
+        "frames": selected_frames,
+    }
+
+
+def _o6_consumer_build_events_section(task, *, view):
+    """事件 section 保持时间升序，便于消费端直接渲染 timeline。"""
+
+    events = [_o6_cloud_archive_event_payload(item) for item in _o6_cloud_archive_list(_o6_cloud_archive_dict(task).get("events"))]
+    events.sort(
+        key=lambda item: _o6_cloud_archive_int(
+            item.get("occurred_at_ms"),
+            _o6_cloud_archive_int(item.get("timestamp_ms"), 0),
+        )
+        or 0
+    )
+    selected_events = events if view == "default" else events[: min(5, len(events))]
+    return {
+        "status": "local_mock_archive_ready" if events else "not_available",
+        "total_count": len(events),
+        "has_more": len(selected_events) < len(events),
+        "events": selected_events,
+    }
+
+
+def _o6_consumer_build_evidence_section(task, *, view):
+    """证据 section 只返回白名单摘要，不探测对象是否真实存在。"""
+
+    evidence_refs = [
+        _o6_cloud_archive_evidence_ref_payload(ref)
+        for ref in _o6_cloud_archive_list(_o6_cloud_archive_dict(task).get("evidence_refs"))
+    ]
+    evidence_refs.sort(key=lambda item: _o6_cloud_archive_int(_o6_cloud_archive_dict(item).get("captured_at_ms"), 0) or 0)
+    selected_refs = evidence_refs if view == "default" else evidence_refs[: min(5, len(evidence_refs))]
+    return {
+        "status": "local_mock_archive_ready" if evidence_refs else "not_available",
+        "total_count": len(evidence_refs),
+        "has_more": len(selected_refs) < len(evidence_refs),
+        "evidence_refs": selected_refs,
+    }
+
+
+def _o6_consumer_build_labeling_section(task):
+    """标注 section 既给 task 级状态，也给少量 item 摘要，方便 PC 直接跳标注。"""
+
+    labels = [_o6_cloud_archive_label_item_summary(item) for item in _o6_cloud_archive_list(_o6_cloud_archive_dict(task).get("labels"))]
+    task_status, pending_count, labeled_count, latest_updated_at_ms = _o6_cloud_archive_label_status(labels)
+    if not labels:
+        return {
+            "status": "local_mock_labeling_ready",
+            "labeling_status": task_status,
+            "label_count": 0,
+            "pending_item_count": pending_count,
+            "labeled_item_count": labeled_count,
+            "items": [],
+        }
+    return {
+        "status": "local_mock_labeling_ready",
+        "labeling_status": task_status,
+        "label_count": len(labels),
+        "pending_item_count": pending_count,
+        "labeled_item_count": labeled_count,
+        "latest_label_updated_at_ms": latest_updated_at_ms,
+        "items": labels[: min(5, len(labels))],
+        "has_more": len(labels) > min(5, len(labels)),
+    }
+
+
+def _o6_consumer_build_inference_section(task, *, view):
+    """推理 section 只基于 event 抽摘要，保持和现有 inference 写入口同源。"""
+
+    inference_events = _o6_consumer_inference_events(task)
+    if not inference_events:
+        return {
+            "status": "not_available" if not _o6_cloud_archive_list(_o6_cloud_archive_dict(task).get("events")) else "absent",
+            "inference_status": _o6_consumer_inference_status(task),
+            "result_count": 0,
+            "results": [],
+        }
+    selected_results = inference_events if view == "default" else inference_events[: min(4, len(inference_events))]
+    return {
+        "status": "local_mock_inference_ready",
+        "inference_status": "present",
+        "result_count": len(inference_events),
+        "results": selected_results,
+        "has_more": len(selected_results) < len(inference_events),
+    }
+
+
+def _o6_consumer_build_tunnel_section(store, robot_id):
+    """tunnel 只拿 latest known status；缺数据时显式 blocked_not_proven。"""
+
+    tunnel_status, tunnel_status_summary = _o6_consumer_tunnel_status_summary(store, robot_id)
+    if not tunnel_status:
+        return {
+            "status": "blocked_not_proven",
+            "tunnel_status_summary": tunnel_status_summary,
+            "latest_known_status": None,
+            "temporal_alignment": "latest_known_robot_snapshot_not_task_aligned",
+            "blocked_reasons": ["tunnel_status_not_available"],
+        }
+    return {
+        "status": "local_mock_tunnel_status_ready",
+        "tunnel_status_summary": tunnel_status_summary,
+        "latest_known_status": tunnel_status,
+        "temporal_alignment": "latest_known_robot_snapshot_not_task_aligned",
+        "blocked_reasons": [],
+    }
+
+
+def _o6_consumer_build_task_detail(task, store, *, view, includes):
+    """详情默认返回全量 section；summary/include 模式只保留消费方明确请求的内容。"""
+
+    requested_includes = includes if includes is not None else list(O6_CONSUMER_ALLOWED_INCLUDES)
+    payload = {
+        "task_summary": _o6_consumer_task_summary(task, store),
+        "proof_boundary": _o6_consumer_proof_boundary(),
+    }
+    if "trajectory" in requested_includes:
+        payload["trajectory"] = _o6_consumer_build_trajectory_section(task, view=view)
+    if "events" in requested_includes:
+        payload["events"] = _o6_consumer_build_events_section(task, view=view)
+    if "evidence" in requested_includes:
+        payload["evidence"] = _o6_consumer_build_evidence_section(task, view=view)
+    if "labeling" in requested_includes:
+        payload["labeling"] = _o6_consumer_build_labeling_section(task)
+    if "inference" in requested_includes:
+        payload["inference"] = _o6_consumer_build_inference_section(task, view=view)
+    if "tunnel" in requested_includes:
+        payload["tunnel_status"] = _o6_consumer_build_tunnel_section(store, _o6_cloud_archive_dict(task).get("robot_id"))
+    return payload
+
+
 def _o6_archive_events_fixed_payload(*, written=False):
     """events 成功响应固定 local/mock 边界；GET 不把查询误写成写入成功。"""
 
@@ -14397,6 +14789,124 @@ class FileBackedO6CloudArchiveStore:
             return 404, phone_error("not_found", "archive task not found")
         payload = _o6_cloud_archive_collection_payload(tasks, task=task)
         payload["task_lookup"] = {"task_id": task_id, "status": "local_mock_archive_ready"}
+        return 200, payload
+
+    def list_consumer_tasks(
+        self,
+        *,
+        robot_id="",
+        task_id="",
+        date="",
+        status_filter="all",
+        limit=O6_ARCHIVE_DEFAULT_QUERY_LIMIT,
+        before_started_at_ms=None,
+        view="default",
+        includes=None,
+    ):
+        """统一消费侧列表查询，把底层 O6 store 聚合成 PC/手机共享读模型。"""
+
+        _o6_consumer_validate_query_values(
+            {
+                "robot_id": robot_id,
+                "task_id": task_id,
+                "date": date,
+                "status": status_filter,
+                "limit": limit,
+                "before_started_at_ms": before_started_at_ms,
+                "view": view,
+                "include": includes,
+            }
+        )
+        robot_id = _o6_cloud_archive_safe_text(robot_id or "", 80).strip()
+        task_id = _o6_cloud_archive_safe_text(task_id or "", 80).strip()
+        date_filter = _o6_consumer_validate_date_filter(date)
+        status_filter = _o6_consumer_validate_status_filter(status_filter)
+        limit = _o6_archive_validate_query_limit(limit)
+        before_started_at_ms = _o6_consumer_validate_before_started_at_ms(before_started_at_ms)
+        view = _o6_consumer_validate_view(view)
+        include_items = includes if includes is None else list(includes)
+        with self._lock:
+            tasks = list(self._tasks.values())
+        applied_includes = include_items if include_items is not None else sorted(O6_CONSUMER_ALLOWED_INCLUDES)
+        task_summaries = []
+        for task in tasks:
+            summary = _o6_consumer_task_summary(task, self)
+            if not _o6_consumer_task_matches_filters(
+                summary,
+                robot_id=robot_id,
+                task_id=task_id,
+                date_filter=date_filter,
+                status_filter=status_filter,
+                before_started_at_ms=before_started_at_ms,
+            ):
+                continue
+            task_summaries.append(summary)
+        task_summaries.sort(
+            key=lambda item: (
+                _o6_cloud_archive_int(item.get("started_at_ms"), -1) or -1,
+                _o6_cloud_archive_int(item.get("latest_event_at_ms"), -1) or -1,
+            ),
+            reverse=True,
+        )
+        task_summaries = task_summaries[:limit]
+        payload = {
+            **_o6_consumer_fixed_payload(),
+            "view": view,
+            "include": applied_includes,
+            "query": {
+                "robot_id": robot_id,
+                "task_id": task_id,
+                "date": date_filter,
+                "status": status_filter,
+                "limit": limit,
+                "before_started_at_ms": before_started_at_ms,
+            },
+            "consumer_status": "local_mock_consumer_read_ready" if task_summaries else "blocked_not_proven",
+            "task_list": {
+                "total_tasks": len(task_summaries),
+                "tasks": task_summaries,
+                "status": "local_mock_consumer_read_ready" if task_summaries else "blocked_not_proven",
+            },
+            "blocked_reasons": [] if task_summaries else ["local_mock_archive_store_empty"],
+        }
+        return 200, payload
+
+    def get_consumer_task(self, task_id, *, robot_id="", view="default", includes=None):
+        """消费侧详情在同一 task 上聚合 trajectory/events/evidence/labeling/inference/tunnel。"""
+
+        _o6_consumer_validate_query_values(
+            {
+                "task_id": task_id,
+                "robot_id": robot_id,
+                "view": view,
+                "include": includes,
+            }
+        )
+        task_id = _o6_cloud_archive_safe_text(task_id or "", 80).strip()
+        if not task_id:
+            return 400, phone_error("bad_request", "task_id is required")
+        robot_id = _o6_cloud_archive_safe_text(robot_id or "", 80).strip()
+        view = _o6_consumer_validate_view(view)
+        include_items = includes if includes is None else list(includes)
+        with self._lock:
+            task = self._tasks.get(task_id)
+        if not isinstance(task, dict):
+            return 404, phone_error("not_found", "archive task not found")
+        if robot_id and task.get("robot_id") != robot_id:
+            return 403, phone_error("unauthorized_task", "robot_id does not match archive task")
+        applied_includes = include_items if include_items is not None else sorted(O6_CONSUMER_ALLOWED_INCLUDES)
+        payload = {
+            **_o6_consumer_fixed_payload(),
+            "view": view,
+            "include": applied_includes,
+            "task_lookup": {
+                "task_id": task_id,
+                "robot_id": robot_id,
+                "status": "local_mock_consumer_read_ready",
+            },
+            "consumer_status": "local_mock_consumer_read_ready",
+        }
+        payload.update(_o6_consumer_build_task_detail(task, self, view=view, includes=include_items))
         return 200, payload
 
     def upsert_tunnel_status(self, payload):
@@ -15827,6 +16337,32 @@ def make_handler(store, archive_store, bearer_token):
                 archive_json = os.environ.get(O7_CLOUD_ARCHIVE_TASKS_ENV, "")
                 self._send_json(200, build_o7_cloud_archive_tasks_contract(archive_json))
                 return
+            if parsed.path == "/api/o6/consumer/tasks":
+                # 消费侧列表是只读聚合面：复用 O6 本地 mock store，但不改写底层 archive/tunnel contract。
+                query = parse_qs(parsed.query)
+                include_param = next(iter(query.get("include", [None])), None)
+                view = next(iter(query.get("view", ["default"])), "default")
+                raw_limit = next(iter(query.get("limit", [str(O6_ARCHIVE_DEFAULT_QUERY_LIMIT)])), str(O6_ARCHIVE_DEFAULT_QUERY_LIMIT))
+                try:
+                    includes = _o6_consumer_validate_includes(include_param)
+                    status_code, payload = archive_store.list_consumer_tasks(
+                        robot_id=next(iter(query.get("robot_id", [""])), ""),
+                        task_id=next(iter(query.get("task_id", [""])), ""),
+                        date=next(iter(query.get("date", [""])), ""),
+                        status_filter=next(iter(query.get("status", ["all"])), "all"),
+                        limit=raw_limit,
+                        before_started_at_ms=next(iter(query.get("before_started_at_ms", [""])), ""),
+                        view=view,
+                        includes=includes,
+                    )
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
             if parsed.path == "/api/o6/archive/tasks":
                 # O6 archive tasks 是本地 mock file-backed store；它只证明数据形状，不连接真实云。
                 try:
@@ -15953,6 +16489,31 @@ def make_handler(store, archive_store, bearer_token):
                     return
                 try:
                     status_code, payload = archive_store.get_task(task_id)
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
+            if parsed.path.startswith("/api/o6/consumer/tasks/"):
+                # 消费侧详情明确聚合 task/evidence/labels/inference/tunnel；未知 include/view 必须 fail-closed。
+                task_id = unquote(parsed.path.removeprefix("/api/o6/consumer/tasks/").strip("/"))
+                if not task_id:
+                    self._send_json(400, phone_error("bad_request", "task_id is required"))
+                    return
+                query = parse_qs(parsed.query)
+                include_param = next(iter(query.get("include", [None])), None)
+                view = next(iter(query.get("view", ["default"])), "default")
+                try:
+                    includes = _o6_consumer_validate_includes(include_param)
+                    status_code, payload = archive_store.get_consumer_task(
+                        task_id,
+                        robot_id=next(iter(query.get("robot_id", [""])), ""),
+                        view=view,
+                        includes=includes,
+                    )
                 except ValueError as exc:
                     self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
                     return

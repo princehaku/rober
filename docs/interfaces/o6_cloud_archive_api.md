@@ -13,8 +13,118 @@
 `POST /api/o6/archive/evidence`
 `GET /api/o6/archive/evidence`
 `POST /api/o6/archive/inference`
+`GET /api/o6/consumer/tasks`
+`GET /api/o6/consumer/tasks/<task_id>`
 
 这是 `remote_cloud_relay.py` 内置的本地 mock archive API。它提供 `trashbot.o6.cloud_archive.v1` 的 O6-shaped 数据源，让后续 O7 route replay / labeling / voice / safe command 可以从统一的任务存档形状继续消费，但它不连接真实云数据库，不连接真实 OSS，不下发机器人控制，也不声明 production cloud ready。
+
+## O6 Consumer Read API
+
+`GET /api/o6/consumer/tasks` 和 `GET /api/o6/consumer/tasks/<task_id>` 是本轮新增的只读聚合面。它们继续复用 `TRASHBOT_O6_CLOUD_ARCHIVE_STATE` 的同一个 file-backed local/mock store，把已有 archive task、events、evidence refs、labels、`model_inference.*` events 和 tunnel latest known snapshot 整成给 PC/手机共享的读模型；它们不替代既有 `/api/o6/archive/*` 和 `/api/o6/tunnel/*`，也不连接真实云 DB、真实 OSS、真实手机、真实公网、真实机器人控制或真实交付成功。
+
+### 固定顶层边界
+
+- `schema=trashbot.o6.consumer_read.v1`
+- `source=local_mock_consumer_read_model`
+- `proof_status=not_proven`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `real_cloud_db_connected=false`
+- `real_oss_connected=false`
+- `connects_cloud_production=false`
+- `robot_control_executed=false`
+
+### GET /api/o6/consumer/tasks
+
+作用：
+
+- 返回任务卡片级聚合摘要
+- 给 PC/手机共享同一份任务列表字段，不要求消费方自己 join task/events/evidence/labels/tunnel
+
+支持 query：
+
+- `robot_id`
+- `task_id`
+- `date=YYYY-MM-DD`（按 task `started_at_ms` 的 UTC 日期过滤）
+- `status=all|completed_mock|failed_mock|in_progress_mock|unknown_not_proven`
+- `limit`（默认 50，最大 200；非法或过大直接 fail-closed）
+- `before_started_at_ms`
+- `view=default|summary`
+- `include=trajectory,events,evidence,labeling,inference,tunnel`（白名单外直接 fail-closed）
+
+列表 `task_list.tasks[]` 至少包含：
+
+- `task_id`
+- `robot_id`
+- `started_at_ms`
+- `finished_at_ms`
+- `task_status_summary`
+- `latest_event_at_ms`
+- `trajectory_frame_count`
+- `event_count`
+- `evidence_count`
+- `labeling_status`
+- `inference_status`
+- `tunnel_status_summary`
+- `selected`
+
+约束：
+
+- 列表按 `started_at_ms` 倒序返回
+- `selected` 只是 store 中最后一次 upsert task 的单选标记，不等于前端用户选择状态
+- `labeling_status` 沿用底层 `pending|partial|labeled` 语义，不把“没有 labels”改写成别的真值
+- `tunnel_status_summary` 是 robot 维度 latest known snapshot 的摘要，不是 task 时间对齐历史
+
+### GET /api/o6/consumer/tasks/<task_id>
+
+作用：
+
+- 返回单任务聚合详情
+- 默认面向 PC；手机可走 `view=summary`
+
+支持 query：
+
+- `robot_id`
+- `view=default|summary`
+- `include=trajectory,events,evidence,labeling,inference,tunnel`
+
+固定 section：
+
+- `task_summary`
+- `proof_boundary`
+
+按 `include` 返回的 section：
+
+- `trajectory`
+- `events`
+- `evidence`
+- `labeling`
+- `inference`
+- `tunnel_status`
+
+聚合要求：
+
+- `events` 继续经过 `_o6_cloud_archive_event_payload()`，必须保留 `model_inference.*` 的 `inference_id/input_id/result_type/result_value/confidence/not_proven`
+- `evidence` 继续经过 `_o6_cloud_archive_evidence_ref_payload()`，兼容旧 string 和新 dict 摘要
+- `labeling` 返回 task 级状态和限量 item summary
+- `inference` 只从 `model_inference.*` timeline 摘要抽取，不新建第二套 store
+- `tunnel_status.latest_known_status` 明确是 latest known robot snapshot，并附带 `temporal_alignment=latest_known_robot_snapshot_not_task_aligned`
+
+### fail-closed 规则（Consumer Read）
+
+以下场景返回 4xx 或结构化 blocked/not_proven，而不是伪造成功态：
+
+- `task_id` 不存在
+- `robot_id` 与 task 不匹配
+- `view` 未知
+- `include` 含未知 section
+- `limit` 非法或超过 200
+- query 含 `Authorization` / `Bearer` / token / password / secret / `/cmd_vel` / 串口路径 / `baudrate` / `traceback`
+- 缺 tunnel 时返回 `tunnel_status.status=blocked_not_proven`
+- 没有 labels 时返回 `labeling_status=pending` + `label_count=0`
+- 没有 inference event 但 task 有 events 时返回 `inference.status=absent`
+- summary 视图和 `include=` 必须真的裁剪未请求的重 section
 
 ## Storage
 

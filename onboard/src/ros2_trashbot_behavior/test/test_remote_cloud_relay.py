@@ -1691,6 +1691,107 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             ],
         }
 
+    def _o6_consumer_seed_task(self, task_id, *, started_at_ms, finished_at_ms, failure=False):
+        # consumer 读面必须复用 archive/timeline 真数据，因此种子任务仍走既有写接口。
+        payload = self._o6_archive_task_payload(task_id=task_id, finished_at=finished_at_ms)
+        payload["started_at_ms"] = started_at_ms
+        payload["trajectory_frames"] = [
+            {
+                "frame_index": 0,
+                "timestamp_ms": started_at_ms,
+                "x_m": 1.25,
+                "y_m": 2.5,
+                "yaw_rad": 0.5,
+                "speed_mps": 0.15,
+                "state": "patrol",
+                "evidence_ref": "frames/frame-001.jpg",
+            },
+            {
+                "frame_index": 1,
+                "timestamp_ms": started_at_ms + 200,
+                "x_m": 1.35,
+                "y_m": 2.7,
+                "yaw_rad": 0.55,
+                "speed_mps": 0.12,
+                "state": "collect" if failure else "patrol",
+                "evidence_ref": "frames/frame-002.jpg",
+            },
+        ]
+        payload["events"] = [
+            {
+                "event_type": "archive_created",
+                "timestamp_ms": started_at_ms + 100,
+                "state": "recorded",
+                "details": "local mock archive ready",
+                "evidence_ref": "events/event-001.json",
+            }
+        ]
+        status, body = self.client.request("POST", "/api/o6/archive/tasks", payload)
+        self.assertEqual(status, 201)
+        if failure:
+            status, _ = self.client.request(
+                "POST",
+                "/api/o6/archive/events",
+                {
+                    "robot_id": "trashbot-001",
+                    "task_id": task_id,
+                    "events": [
+                        {
+                            "event_id": "evt-failure-001",
+                            "event_type": "task.failure",
+                            "occurred_at_ms": started_at_ms + 300,
+                            "summary": "blocked by mock failure",
+                            "severity": "error",
+                            "metadata": {"reason": "mock_failure"},
+                        }
+                    ],
+                },
+            )
+            self.assertEqual(status, 201)
+        return body
+
+    def _o6_consumer_seed_rich_task(self, task_id="task-o6-consumer-rich"):
+        # rich task 用来验证 consumer detail 的聚合完整性和 include/view 瘦身。
+        self._o6_consumer_seed_task(task_id, started_at_ms=1000, finished_at_ms=2200)
+        status, _ = self.client.request("POST", "/api/o6/archive/events", self._o6_event_archive_payload(task_id=task_id))
+        self.assertEqual(status, 201)
+        status, _ = self.client.request("POST", "/api/o6/archive/evidence", self._o6_evidence_archive_payload(task_id=task_id))
+        self.assertEqual(status, 201)
+        labels_payload = {
+            "robot_id": "trashbot-001",
+            "task_id": task_id,
+            "labels": [
+                {
+                    "item_id": "frame-001",
+                    "item_type": "route_frame",
+                    "label_type": "floor_id",
+                    "value": "F1",
+                    "confidence": 0.9,
+                    "annotator_id": "operator-a",
+                    "evidence_ref": "frames/frame-001.jpg",
+                }
+            ],
+        }
+        status, _ = self.client.request("POST", "/api/o6/archive/labels", labels_payload)
+        self.assertEqual(status, 201)
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/inference",
+            self._o6_inference_payload(task_id=task_id, inference_id="infer-consumer", input_id="frame-001"),
+        )
+        self.assertEqual(status, 201)
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/tunnel/heartbeat",
+            {
+                "robot_id": "trashbot-001",
+                "tunnel_provider": "mock",
+                "endpoint": "https://relay.example.test/edge",
+                "metadata": {"ip_family": "ipv4", "network_type": "cellular"},
+            },
+        )
+        self.assertEqual(status, 201)
+
     def test_o6_model_inference_endpoint_writes_events_and_detail_reads_them(self):
         status, _ = self.client.request("POST", "/api/o6/archive/tasks", self._o6_archive_task_payload())
         self.assertEqual(status, 201)
@@ -2049,6 +2150,138 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         )
         self.assertEqual(status, 200)
         self.assertLessEqual(too_large["query"]["limit"], relay_module.O6_TUNNEL_STATUS_MAX_LIST_LIMIT)
+
+    def test_o6_consumer_tasks_endpoint_lists_descending_and_aggregates_summary_fields(self):
+        self._o6_consumer_seed_rich_task("task-o6-consumer-rich")
+        self._o6_consumer_seed_task(
+            "task-o6-consumer-failed",
+            started_at_ms=3000,
+            finished_at_ms=3600,
+            failure=True,
+        )
+
+        status, body = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks?view=summary&status=all&limit=10",
+            token="",
+        )
+
+        self.assertEqual(status, 200)
+        self.assertEqual(body["schema"], relay_module.O6_CONSUMER_READ_SCHEMA)
+        self.assertEqual(body["source"], "local_mock_consumer_read_model")
+        self.assertEqual(body["consumer_status"], "local_mock_consumer_read_ready")
+        self.assertEqual(body["view"], "summary")
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["delivery_success"])
+        self.assertFalse(body["connects_cloud_production"])
+        self.assertFalse(body["robot_control_executed"])
+        self.assertEqual(body["task_list"]["total_tasks"], 2)
+        tasks = body["task_list"]["tasks"]
+        self.assertEqual(tasks[0]["task_id"], "task-o6-consumer-failed")
+        self.assertEqual(tasks[0]["task_status_summary"], "failed_mock")
+        self.assertEqual(tasks[1]["task_id"], "task-o6-consumer-rich")
+        self.assertEqual(tasks[1]["task_status_summary"], "completed_mock")
+        self.assertEqual(tasks[1]["labeling_status"], "labeled")
+        self.assertEqual(tasks[1]["inference_status"], "present")
+        self.assertEqual(tasks[1]["tunnel_status_summary"], "online")
+        self.assertGreaterEqual(tasks[1]["latest_event_at_ms"], 1500)
+
+        status, filtered = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks?status=failed_mock&before_started_at_ms=4000&limit=10",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(filtered["task_list"]["total_tasks"], 1)
+        self.assertEqual(filtered["task_list"]["tasks"][0]["task_id"], "task-o6-consumer-failed")
+
+    def test_o6_consumer_task_detail_supports_include_and_summary_view_without_losing_inference_fields(self):
+        self._o6_consumer_seed_rich_task("task-o6-consumer-detail")
+
+        status, body = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/task-o6-consumer-detail?view=summary&include=trajectory,events,evidence,labeling,inference,tunnel",
+            token="",
+        )
+
+        self.assertEqual(status, 200)
+        self.assertEqual(body["task_lookup"]["task_id"], "task-o6-consumer-detail")
+        self.assertEqual(body["task_summary"]["task_id"], "task-o6-consumer-detail")
+        self.assertEqual(body["trajectory"]["status"], "local_mock_archive_ready")
+        self.assertTrue(body["trajectory"]["has_more"] or len(body["trajectory"]["frames"]) <= 2)
+        self.assertEqual(body["events"]["status"], "local_mock_archive_ready")
+        occurred = [event.get("occurred_at_ms", event.get("timestamp_ms")) for event in body["events"]["events"]]
+        self.assertEqual(occurred, sorted(occurred))
+        self.assertEqual(body["evidence"]["status"], "local_mock_archive_ready")
+        self.assertEqual(body["labeling"]["labeling_status"], "labeled")
+        self.assertEqual(body["inference"]["inference_status"], "present")
+        inference_result = body["inference"]["results"][0]
+        self.assertIn("inference_id", inference_result)
+        self.assertIn("input_id", inference_result)
+        self.assertIn("result_type", inference_result)
+        self.assertIn("result_value", inference_result)
+        self.assertIn("confidence", inference_result)
+        self.assertIn("not_proven", inference_result)
+        self.assertEqual(body["tunnel_status"]["temporal_alignment"], "latest_known_robot_snapshot_not_task_aligned")
+        self.assertEqual(body["tunnel_status"]["latest_known_status"]["status"], "online")
+        self.assertFalse(body["proof_boundary"]["safe_to_control"])
+
+        status, slim = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/task-o6-consumer-detail?view=summary&include=events",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertIn("events", slim)
+        self.assertNotIn("trajectory", slim)
+        self.assertNotIn("evidence", slim)
+        self.assertNotIn("labeling", slim)
+        self.assertNotIn("inference", slim)
+        self.assertNotIn("tunnel_status", slim)
+
+    def test_o6_consumer_tasks_endpoint_fail_closed_paths_and_missing_subviews(self):
+        self._o6_consumer_seed_task("task-o6-consumer-empty", started_at_ms=5000, finished_at_ms=5600)
+
+        status, empty_detail = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/task-o6-consumer-empty?include=labeling,inference,tunnel",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(empty_detail["labeling"]["labeling_status"], "pending")
+        self.assertEqual(empty_detail["labeling"]["label_count"], 0)
+        self.assertEqual(empty_detail["inference"]["status"], "absent")
+        self.assertEqual(empty_detail["inference"]["inference_status"], "absent")
+        self.assertEqual(empty_detail["tunnel_status"]["status"], "blocked_not_proven")
+        self.assertEqual(empty_detail["tunnel_status"]["tunnel_status_summary"], "unknown_not_proven")
+
+        status, missing = self.client.request("GET", "/api/o6/consumer/tasks/missing-task", token="")
+        self.assertEqual(status, 404)
+        self.assertEqual(missing["error"]["code"], "not_found")
+
+        status, mismatch = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/task-o6-consumer-empty?robot_id=trashbot-other",
+            token="",
+        )
+        self.assertEqual(status, 403)
+        self.assertEqual(mismatch["error"]["code"], "unauthorized_task")
+
+        status, bad_include = self.client.request("GET", "/api/o6/consumer/tasks?include=bad_section", token="")
+        self.assertEqual(status, 400)
+        self.assertEqual(bad_include["error"]["code"], "bad_request")
+
+        status, bad_view = self.client.request("GET", "/api/o6/consumer/tasks/task-o6-consumer-empty?view=wide", token="")
+        self.assertEqual(status, 400)
+        self.assertEqual(bad_view["error"]["code"], "bad_request")
+
+        status, bad_limit = self.client.request("GET", "/api/o6/consumer/tasks?limit=99999", token="")
+        self.assertEqual(status, 400)
+        self.assertEqual(bad_limit["error"]["code"], "bad_request")
+
+        status, unsafe_query = self.client.request("GET", "/api/o6/consumer/tasks?robot_id=Authorization%20Bearer%20leaked", token="")
+        self.assertEqual(status, 400)
+        self.assertEqual(unsafe_query["error"]["code"], "bad_request")
 
     def test_o7_realtime_elevator_snapshot_endpoint_is_public_readonly_and_fail_closed(self):
         with mock.patch.dict(os.environ, {"TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON": ""}):
