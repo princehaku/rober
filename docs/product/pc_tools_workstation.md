@@ -154,6 +154,18 @@ O7 Operator Console 是云端契约驱动的最小运营视图，不是实时控
 - `GET /api/o7/operator-console/acceptance` 是 O7 Console 的 acceptance guard。它必须保持 `reads_hardware=false`、`sends_commands=false`、`connects_cloud_production=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`not_real_capability_proof=true`，并复核 `command_dispatch_enabled=false`、`manual_control_enabled=false`、`navigate_goal_enabled=false`、`keyboard_control_enabled=false`、`tts_send_enabled=false`、`submit_enabled=false`、`playback_available=false`。该 guard 的 `blocked_not_proven_guard_ok` 只说明 fail-closed 契约未漂移，不证明 O7 任一真实能力完成。
 - O7 Previews 顶部的 `O7 previews acceptance guard` 现在包含只读 `O7 real capability gap summary`。该 summary 不新增 API、不触发 probe、不读取 fixture、不发送命令，只消费已加载的 `GET /api/o7/previews/acceptance` 响应里的 `surfaces`、`remaining_real_capability_gaps`、`blocked`、`not_proven` 和 `fixed_false_fields`。前端按 O7-KR1~KR6 将既有 surface id 分组展示 matched surface count、surface ids、blocked/not_proven 摘要、`ready_for_real_operation=false`、remaining real capability gaps，以及 `safe_to_control=false`、`sends_commands=false`、`connects_cloud_production=false`、`robot_control_executed=false`。未加载 guard 时显示 `not_loaded`，不得把 14 个 software-proof surface 解释成 O7 完成度提升。
 
+## O7 与 O6 Consumer Read 集成指导
+
+- O7 的任务列表与任务详情在 PC 端默认使用 consumer read：
+  - `GET /api/o6/consumer/tasks`
+  - `GET /api/o6/consumer/tasks/<task_id>`
+- 目的：统一字段语义（`task_status_summary`、`labeling_status`、`inference_status`、`tunnel_status_summary`、`proof_boundary`），避免在 O7 不同 tab 再次做底层 endpoint join。
+- `view=summary` 适用于移动端或列表内嵌只读快照；PC 需要逐项排障时可加 `include=trajectory,events,evidence,labeling,inference,tunnel`。
+- 容错原则：
+  - task 不存在 / robot_id mismatch / limit 越界 / include/view 非法 / query 含危险字段：统一 fail-closed 处理，不展示“任务成功/可控制”。
+  - `selected` 只保留 store 的单选标记，不等于用户 UI 选择状态。
+- 本规则的作用域是 O7 开发/调试文案层：**不改变** `docs/interfaces/o6_cloud_archive_api.md` 已有 consumer read schema，不开启真实云 DB、OSS、TLS、4G 或 robot control 逻辑。
+
 ## Training/Labeling Asset Inventory 边界
 
 Training/Labeling 是 Node-native 本地资产清单入口，不是训练入口、标注服务入口或数据上传入口。
