@@ -886,6 +886,378 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "traceback"):
             self.assertNotIn(forbidden, encoded)
 
+    def _o6_archive_task_payload(self, task_id="task-o6-001", robot_id="trashbot-001", finished_at=2000):
+        # 标注接口依赖已有 task，先用 local mock task API 固定创建/更新同一份可复用输入。
+        return {
+            "robot_id": robot_id,
+            "task_id": task_id,
+            "started_at_ms": 1000,
+            "finished_at_ms": finished_at,
+            "trajectory_frames": [
+                {
+                    "frame_index": 0,
+                    "timestamp_ms": 1000,
+                    "x_m": 1.25,
+                    "y_m": 2.5,
+                    "yaw_rad": 0.5,
+                    "speed_mps": 0.15,
+                    "state": "patrol",
+                    "evidence_ref": "frames/frame-001.jpg",
+                }
+            ],
+            "events": [
+                {
+                    "event_type": "archive_created",
+                    "timestamp_ms": 1200,
+                    "state": "recorded",
+                    "details": "local mock archive ready",
+                    "evidence_ref": "events/event-001.json",
+                }
+            ],
+            "evidence_refs": ["evidence/archive-001.json"],
+        }
+
+    def test_o6_cloud_archive_labels_endpoints_create_list_and_detail(self):
+        status, _ = self.client.request("POST", "/api/o6/archive/tasks", self._o6_archive_task_payload())
+        self.assertEqual(status, 201)
+
+        payload = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-001",
+            "labels": [
+                {
+                    "item_id": "traj-0001",
+                    "item_type": "trajectory_frame",
+                    "label_type": "elevator_door_state",
+                    "value": "open",
+                    "confidence": 0.93,
+                    "annotator_id": "labeler-01",
+                    "evidence_ref": "labels/evidence-0001.json",
+                    "notes": "first sample",
+                },
+                {
+                    "item_id": "traj-0002",
+                    "item_type": "trajectory_frame",
+                    "label_type": "trajectory_gate",
+                    "value": "valid",
+                    "annotator_id": "labeler-01",
+                    "evidence_ref": "labels/evidence-0002.json",
+                },
+            ],
+        }
+
+        status, created = self.client.request("POST", "/api/o6/archive/labels", payload)
+        self.assertEqual(status, 201)
+        self.assertEqual(created["write_status"], "created")
+        self.assertEqual(created["task_id"], "task-o6-001")
+        self.assertFalse(created["duplicate"])
+        self.assertEqual(created["label_summary"]["itemized_label_count"], 2)
+        self.assertEqual(created["label_summary"]["pending_item_count"], 1)
+        self.assertEqual(created["label_summary"]["labeled_item_count"], 1)
+        self.assertEqual(created["task_status"], "partial")
+        self.assertEqual(created["schema"], relay_module.O6_CLOUD_LABELING_SCHEMA)
+        self.assertEqual(created["source"], "local_mock_labeling")
+        self.assertEqual(created["proof_status"], "not_proven")
+        self.assertFalse(created["safe_to_control"])
+        self.assertFalse(created["delivery_success"])
+        self.assertFalse(created["primary_actions_enabled"])
+        self.assertTrue(created["pc_only"])
+        self.assertFalse(created["submit_enabled"])
+        self.assertFalse(created["rollback_enabled"])
+        self.assertFalse(created["dataset_export_available"])
+        self.assertFalse(created["real_annotation_api_connected"])
+        self.assertFalse(created["real_dataset_export_connected"])
+        self.assertFalse(created["connects_cloud_production"])
+        self.assertFalse(created["robot_control_executed"])
+
+        status, listing = self.client.request("GET", "/api/o6/archive/labels?status=pending")
+        self.assertEqual(status, 200)
+        self.assertEqual(listing["schema"], relay_module.O6_CLOUD_LABELING_SCHEMA)
+        self.assertEqual(listing["status_filter"], "pending")
+        self.assertEqual(listing["label_summary"]["task_count"], 1)
+        self.assertEqual(listing["label_summary"]["pending_task_count"], 0)
+        self.assertEqual(listing["label_summary"]["partial_task_count"], 1)
+        self.assertEqual(listing["label_summary"]["labeled_task_count"], 0)
+        self.assertEqual(len(listing["task_summary"]), 1)
+        self.assertEqual(listing["task_summary"][0]["task_id"], "task-o6-001")
+        self.assertEqual(listing["task_summary"][0]["task_status"], "partial")
+
+        status, labeled_listing = self.client.request("GET", "/api/o6/archive/labels?status=labeled")
+        self.assertEqual(labeled_listing["label_summary"]["labeled_task_count"], 0)
+
+        status, detail = self.client.request("GET", "/api/o6/archive/labels/task-o6-001", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(detail["task_id"], "task-o6-001")
+        self.assertEqual(detail["robot_id"], "trashbot-001")
+        self.assertEqual(detail["task_status"], "partial")
+        self.assertEqual(len(detail["itemized_labels"]), 2)
+        self.assertEqual(detail["itemized_labels"][0]["item_type"], "trajectory_frame")
+        self.assertEqual(detail["itemized_labels"][0]["label_type"], "elevator_door_state")
+        self.assertIn("real_annotation_submit_success", detail["not_proven"])
+
+    def test_o6_cloud_archive_labels_endpoint_idempotent_upsert_and_task_scope(self):
+        status, _ = self.client.request("POST", "/api/o6/archive/tasks", self._o6_archive_task_payload(task_id="task-o6-002"))
+        self.assertEqual(status, 201)
+
+        first_labels = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-002",
+            "labels": [
+                {
+                    "item_id": "traj-0101",
+                    "item_type": "trajectory_frame",
+                    "label_type": "elevator_door_state",
+                    "value": "closed",
+                    "confidence": 0.7,
+                    "evidence_ref": "labels/evidence-0101.json",
+                }
+            ],
+        }
+
+        status, created = self.client.request("POST", "/api/o6/archive/labels", first_labels)
+        self.assertEqual(status, 201)
+        self.assertFalse(created["duplicate"])
+        self.assertEqual(created["write_status"], "created")
+
+        new_key = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-002",
+            "labels": [
+                {
+                    "item_id": "traj-0102",
+                    "item_type": "trajectory_frame",
+                    "label_type": "trajectory_gate",
+                    "value": "ok",
+                    "confidence": 0.82,
+                    "evidence_ref": "labels/evidence-0102.json",
+                }
+            ],
+        }
+        status, created_new_key = self.client.request("POST", "/api/o6/archive/labels", new_key)
+        self.assertEqual(status, 201)
+        self.assertFalse(created_new_key["duplicate"])
+        self.assertEqual(created_new_key["write_status"], "created")
+        self.assertEqual(created_new_key["label_summary"]["itemized_label_count"], 2)
+
+        duplicated = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-002",
+            "labels": [
+                {
+                    "item_id": "traj-0101",
+                    "item_type": "trajectory_frame",
+                    "label_type": "elevator_door_state",
+                    "value": "open",
+                    "confidence": 0.97,
+                    "evidence_ref": "labels/evidence-0101-updated.json",
+                }
+            ],
+        }
+        status, updated = self.client.request("POST", "/api/o6/archive/labels", duplicated)
+        self.assertEqual(status, 200)
+        self.assertTrue(updated["duplicate"])
+        self.assertEqual(updated["write_status"], "updated")
+        self.assertEqual(updated["label_summary"]["labeled_item_count"], 2)
+
+        status, list_detail = self.client.request("GET", "/api/o6/archive/labels/task-o6-002", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(list_detail["task_status"], "labeled")
+
+    def test_o6_cloud_archive_labels_endpoint_batch_with_mix_existing_and_new_keys(self):
+        status, _ = self.client.request("POST", "/api/o6/archive/tasks", self._o6_archive_task_payload(task_id="task-o6-004"))
+        self.assertEqual(status, 201)
+
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/labels",
+            {
+                "robot_id": "trashbot-001",
+                "task_id": "task-o6-004",
+                "labels": [
+                    {
+                        "item_id": "traj-0401",
+                        "item_type": "trajectory_frame",
+                        "label_type": "elevator_door_state",
+                        "value": "open",
+                        "confidence": 0.9,
+                        "evidence_ref": "labels/evidence-0401.json",
+                    },
+                    {
+                        "item_id": "traj-0402",
+                        "item_type": "trajectory_frame",
+                        "label_type": "trajectory_gate",
+                        "value": "valid",
+                        "confidence": 0.8,
+                        "evidence_ref": "labels/evidence-0402.json",
+                    },
+                ],
+            },
+        )
+        self.assertEqual(status, 201)
+
+        mixed_payload = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-004",
+            "labels": [
+                {
+                    "item_id": "traj-0401",
+                    "item_type": "trajectory_frame",
+                    "label_type": "elevator_door_state",
+                    "value": "closed",
+                    "confidence": 0.95,
+                    "evidence_ref": "labels/evidence-0401-updated.json",
+                },
+                {
+                    "item_id": "traj-0403",
+                    "item_type": "trajectory_frame",
+                    "label_type": "trajectory_gate",
+                    "value": "unknown",
+                    "confidence": 0.88,
+                    "evidence_ref": "labels/evidence-0403.json",
+                },
+            ],
+        }
+
+        status, mixed = self.client.request("POST", "/api/o6/archive/labels", mixed_payload)
+        self.assertEqual(status, 200)
+        self.assertTrue(mixed["duplicate"])
+        self.assertEqual(mixed["write_status"], "updated")
+        self.assertEqual(mixed["label_summary"]["itemized_label_count"], 3)
+        self.assertEqual(mixed["task_status"], "labeled")
+
+        status, detail = self.client.request("GET", "/api/o6/archive/labels/task-o6-004", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(detail["label_summary"]["itemized_label_count"], 3)
+        itemized_labels = {(item["item_id"], item["label_type"]): item for item in detail["itemized_labels"]}
+        self.assertEqual(itemized_labels[("traj-0401", "elevator_door_state")]["value"], "closed")
+        self.assertIn(("traj-0402", "trajectory_gate"), itemized_labels)
+        self.assertIn(("traj-0403", "trajectory_gate"), itemized_labels)
+
+        status, cross = self.client.request(
+            "POST",
+            "/api/o6/archive/labels",
+            {
+                "robot_id": "trashbot-002",
+                "task_id": "task-o6-004",
+                "labels": [
+                    {
+                        "item_id": "traj-0102",
+                        "item_type": "trajectory_frame",
+                        "label_type": "elevator_door_state",
+                        "value": "open",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(status, 403)
+        self.assertEqual(cross["error"]["code"], "unauthorized_task")
+
+        status, missing_task = self.client.request(
+            "POST",
+            "/api/o6/archive/labels",
+            {
+                "robot_id": "trashbot-001",
+                "task_id": "task-o6-004-missing",
+                "labels": [
+                    {
+                        "item_id": "traj-0201",
+                        "item_type": "trajectory_frame",
+                        "label_type": "elevator_door_state",
+                        "value": "open",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(status, 404)
+        self.assertEqual(missing_task["error"]["code"], "unknown_task")
+
+        status, list_detail = self.client.request("GET", "/api/o6/archive/labels/task-o6-004", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(list_detail["task_status"], "labeled")
+
+    def test_o6_cloud_archive_labels_endpoint_rejects_bad_json_labels_and_invalid_query(self):
+        status, _ = self.client.request("POST", "/api/o6/archive/tasks", self._o6_archive_task_payload(task_id="task-o6-003"))
+        self.assertEqual(status, 201)
+
+        status, bad_type = self.client.request(
+            "POST",
+            "/api/o6/archive/labels",
+            {
+                "robot_id": "trashbot-001",
+                "task_id": "task-o6-003",
+                "labels": {},
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(bad_type["error"]["code"], "bad_request")
+
+        status, missing = self.client.request(
+            "POST",
+            "/api/o6/archive/labels",
+            {
+                "robot_id": "trashbot-001",
+                "task_id": "task-o6-003",
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(missing["error"]["code"], "bad_request")
+
+        status, raw_body = self.client.request(
+            "POST",
+            "/api/o6/archive/labels",
+            raw_body=b"[]",
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(raw_body["error"]["code"], "bad_request")
+
+        unsafe_payload = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-003",
+            "labels": [
+                {
+                    "item_id": "traj-0301",
+                    "item_type": "trajectory_frame",
+                    "label_type": "elevator_door_state",
+                    "value": "Authorization: Bearer leaked-token",
+                }
+            ],
+        }
+        status, unsafe = self.client.request("POST", "/api/o6/archive/labels", unsafe_payload)
+        self.assertEqual(status, 400)
+        self.assertEqual(unsafe["error"]["code"], "bad_request")
+        self.assertIn("unsafe", unsafe["error"]["message"].lower())
+
+        too_large = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-003",
+            "labels": [
+                {
+                    "item_id": f"traj-{index:04d}",
+                    "item_type": "trajectory_frame",
+                    "label_type": "elevator_door_state",
+                    "value": "open",
+                }
+                for index in range(relay_module.O6_CLOUD_LABELING_MAX_LABELS + 1)
+            ],
+        }
+        status, oversized = self.client.request("POST", "/api/o6/archive/labels", too_large)
+        self.assertEqual(status, 400)
+        self.assertEqual(oversized["error"]["code"], "bad_request")
+        self.assertIn("too large", oversized["error"]["message"].lower())
+
+        status, invalid_status = self.client.request("GET", "/api/o6/archive/labels?status=invalid", token="")
+        self.assertEqual(status, 400)
+        self.assertEqual(invalid_status["error"]["code"], "bad_request")
+
+        status, invalid_limit = self.client.request("GET", "/api/o6/archive/labels?limit=-1", token="")
+        self.assertEqual(status, 400)
+        self.assertEqual(invalid_limit["error"]["code"], "bad_request")
+
+        status, capped_listing = self.client.request("GET", "/api/o6/archive/labels?limit=99999", token="")
+        self.assertEqual(status, 200)
+        self.assertLessEqual(capped_listing["limit"], relay_module.O6_CLOUD_LABELING_MAX_LIST_LIMIT)
+        self.assertEqual(capped_listing["status_filter"], "all")
+
     def test_o7_realtime_elevator_snapshot_endpoint_is_public_readonly_and_fail_closed(self):
         with mock.patch.dict(os.environ, {"TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON": ""}):
             status, body = self.client.request("GET", "/api/o7/realtime-elevator/snapshot", token="")

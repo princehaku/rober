@@ -93,11 +93,22 @@ O7_RTC_SIGNALING_CONTRACT_SCHEMA = "trashbot.o7.rtc_signaling_contract.v1"
 O7_RTC_SIGNALING_SESSION_RECEIPT_SCHEMA = "trashbot.o7.rtc_signaling_session_receipt.v1"
 O6_CLOUD_ARCHIVE_SCHEMA = "trashbot.o6.cloud_archive.v1"
 O6_CLOUD_ARCHIVE_STORE_SCHEMA = "trashbot.o6.cloud_archive_store.v1"
+O6_CLOUD_LABELING_SCHEMA = "trashbot.o6.archive_labeling.v1"
 O6_CLOUD_ARCHIVE_STATE_ENV = "TRASHBOT_O6_CLOUD_ARCHIVE_STATE"
 O6_CLOUD_ARCHIVE_MAX_TRAJECTORY_FRAMES = 64
 O6_CLOUD_ARCHIVE_MAX_EVENTS = 64
 O6_CLOUD_ARCHIVE_MAX_EVIDENCE_REFS = 32
 O6_CLOUD_ARCHIVE_MAX_BODY_BYTES = 256 * 1024
+O6_CLOUD_LABELING_MAX_LABELS = 64
+O6_CLOUD_LABELING_MAX_ITEM_ID_LENGTH = 80
+O6_CLOUD_LABELING_MAX_ITEM_TYPE_LENGTH = 120
+O6_CLOUD_LABELING_MAX_LABEL_TYPE_LENGTH = 120
+O6_CLOUD_LABELING_MAX_VALUE_LENGTH = 240
+O6_CLOUD_LABELING_MAX_ANNOTATOR_ID_LENGTH = 512
+O6_CLOUD_LABELING_MAX_EVIDENCE_REF_LENGTH = 512
+O6_CLOUD_LABELING_MAX_NOTES_LENGTH = 512
+O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT = 50
+O6_CLOUD_LABELING_MAX_LIST_LIMIT = 100
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -12389,6 +12400,270 @@ def _o6_cloud_archive_collection_payload(tasks, *, task=None, write_status=None,
     return payload
 
 
+def _o6_cloud_archive_labeling_fixed_payload():
+    """返回所有 O6 标注接口的公共边界字段，避免 list/detail/写入重复写死。"""
+
+    return {
+        "schema": O6_CLOUD_LABELING_SCHEMA,
+        "schema_version": 1,
+        "source": "local_mock_labeling",
+        "proof_status": "not_proven",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "pc_only": True,
+        "submit_enabled": False,
+        "rollback_enabled": False,
+        "dataset_export_available": False,
+        "real_annotation_api_connected": False,
+        "real_dataset_export_connected": False,
+        "connects_cloud_production": False,
+        "robot_control_executed": False,
+        "not_proven": [
+            "real_annotation_submit_success",
+            "real_annotation_review_api",
+            "real_dataset_export",
+            "real_o7_labeling_production",
+        ],
+    }
+
+
+def _o6_cloud_archive_label_status(labels):
+    """根据本地标注项状态返回 task 级状态，支持 pending/partial/labeled。"""
+
+    labels = _o6_cloud_archive_list(labels)
+    if not labels:
+        return "pending", 0, 0, None
+    labeled_count = 0
+    latest_label_updated_at_ms = None
+    for label in labels:
+        if not isinstance(label, dict):
+            continue
+        confidence = _o6_cloud_archive_number(label.get("confidence"), None)
+        if confidence is not None:
+            labeled_count += 1
+        updated_at_ms = _o6_cloud_archive_int(label.get("updated_at_ms"), None)
+        if latest_label_updated_at_ms is None or (
+            updated_at_ms is not None and updated_at_ms > latest_label_updated_at_ms
+        ):
+            latest_label_updated_at_ms = updated_at_ms
+    total_count = len([item for item in _o6_cloud_archive_list(labels) if isinstance(item, dict)])
+    pending_count = max(total_count - labeled_count, 0)
+    if total_count <= 0:
+        status = "pending"
+    elif labeled_count == 0:
+        status = "pending"
+    elif labeled_count == total_count:
+        status = "labeled"
+    else:
+        status = "partial"
+    return status, pending_count, labeled_count, latest_label_updated_at_ms
+
+
+def _o6_cloud_archive_label_status_for_filter(task_status_filter, task_status):
+    """把 list 接口的 status 过滤映射为 pending/labeled/blocked 语义。"""
+
+    if task_status_filter == "all":
+        return True
+    if task_status_filter == "pending":
+        return task_status in {"pending", "partial"}
+    return task_status == task_status_filter
+
+
+def _o6_cloud_archive_label_item_summary(label):
+    """只回显白名单字段，防止后续 payload 泄露。"""
+
+    item = _o6_cloud_archive_dict(label)
+    return {
+        "item_id": _o6_cloud_archive_safe_text(item.get("item_id") or "", O6_CLOUD_LABELING_MAX_ITEM_ID_LENGTH),
+        "item_type": _o6_cloud_archive_safe_text(item.get("item_type") or "", O6_CLOUD_LABELING_MAX_ITEM_TYPE_LENGTH),
+        "label_type": _o6_cloud_archive_safe_text(item.get("label_type") or "", O6_CLOUD_LABELING_MAX_LABEL_TYPE_LENGTH),
+        "value": _o6_cloud_archive_safe_text(item.get("value") or "", O6_CLOUD_LABELING_MAX_VALUE_LENGTH),
+        "confidence": _o6_cloud_archive_number(item.get("confidence"), None),
+        "annotator_id": _o6_cloud_archive_safe_text(item.get("annotator_id") or "", O6_CLOUD_LABELING_MAX_ANNOTATOR_ID_LENGTH),
+        "evidence_ref": _o6_cloud_archive_safe_ref(item.get("evidence_ref") or ""),
+        "notes": _o6_cloud_archive_safe_text(item.get("notes") or "", O6_CLOUD_LABELING_MAX_NOTES_LENGTH),
+        "created_at_ms": _o6_cloud_archive_int(item.get("created_at_ms"), None),
+        "updated_at_ms": _o6_cloud_archive_int(item.get("updated_at_ms"), None),
+    }
+
+
+def _o6_cloud_archive_label_item_payload(label):
+    """标注单条 item 的最小安全 schema 校验，失败则抛错让调用方 fail closed。"""
+
+    safe_label = _o6_cloud_archive_dict(label)
+    if _o6_cloud_archive_has_unsafe_claim(safe_label):
+        raise ValueError("unsafe label")
+    item_id_raw = safe_label.get("item_id")
+    item_type_raw = safe_label.get("item_type")
+    label_type_raw = safe_label.get("label_type")
+    value_raw = safe_label.get("value")
+    if item_id_raw is None or item_type_raw is None or label_type_raw is None or value_raw is None:
+        raise ValueError("label field is required")
+    if len(str(item_id_raw)) > O6_CLOUD_LABELING_MAX_ITEM_ID_LENGTH:
+        raise ValueError("item_id is too long")
+    if len(str(item_type_raw)) > O6_CLOUD_LABELING_MAX_ITEM_TYPE_LENGTH:
+        raise ValueError("item_type is too long")
+    if len(str(label_type_raw)) > O6_CLOUD_LABELING_MAX_LABEL_TYPE_LENGTH:
+        raise ValueError("label_type is too long")
+    if len(str(value_raw)) > O6_CLOUD_LABELING_MAX_VALUE_LENGTH:
+        raise ValueError("value is too long")
+    if "annotator_id" in safe_label and len(str(safe_label.get("annotator_id"))) > O6_CLOUD_LABELING_MAX_ANNOTATOR_ID_LENGTH:
+        raise ValueError("annotator_id is too long")
+    if "evidence_ref" in safe_label and len(str(safe_label.get("evidence_ref"))) > O6_CLOUD_LABELING_MAX_EVIDENCE_REF_LENGTH:
+        raise ValueError("evidence_ref is too long")
+    if "notes" in safe_label and len(str(safe_label.get("notes"))) > O6_CLOUD_LABELING_MAX_NOTES_LENGTH:
+        raise ValueError("notes is too long")
+
+    item_id = _o6_cloud_archive_safe_text(item_id_raw, O6_CLOUD_LABELING_MAX_ITEM_ID_LENGTH).strip()
+    item_type = _o6_cloud_archive_safe_text(
+        item_type_raw, O6_CLOUD_LABELING_MAX_ITEM_TYPE_LENGTH
+    ).strip()
+    label_type = _o6_cloud_archive_safe_text(
+        label_type_raw, O6_CLOUD_LABELING_MAX_LABEL_TYPE_LENGTH
+    ).strip()
+    value = _o6_cloud_archive_safe_text(value_raw, O6_CLOUD_LABELING_MAX_VALUE_LENGTH).strip()
+    if not item_id or not item_type or not label_type or not value:
+        raise ValueError("label field is required")
+
+    confidence = _o6_cloud_archive_number(safe_label.get("confidence"), None)
+    if confidence is not None and (confidence < 0 or confidence > 1):
+        raise ValueError("confidence must be between 0 and 1")
+
+    annotator_id = (
+        _o6_cloud_archive_safe_text(safe_label.get("annotator_id") or "", O6_CLOUD_LABELING_MAX_ANNOTATOR_ID_LENGTH).strip()
+        if safe_label.get("annotator_id") is not None
+        else ""
+    )
+    evidence_ref = _o6_cloud_archive_safe_ref(safe_label.get("evidence_ref") or "")
+    if evidence_ref == "[redacted]":
+        raise ValueError("unsafe evidence_ref")
+    notes = _o6_cloud_archive_safe_text(safe_label.get("notes") or "", O6_CLOUD_LABELING_MAX_NOTES_LENGTH).strip()
+    if any(
+        len(text) > 0 and text == "[redacted]"
+        for text in (item_id, item_type, label_type, value, annotator_id, evidence_ref, notes)
+    ):
+        raise ValueError("unsafe label field")
+    return {
+        "item_id": item_id,
+        "item_type": item_type,
+        "label_type": label_type,
+        "value": value,
+        "confidence": confidence,
+        "annotator_id": annotator_id,
+        "evidence_ref": evidence_ref,
+        "notes": notes,
+        "source": "local_mock_labeling",
+    }
+
+
+def _o6_cloud_archive_labeling_task_summary(task):
+    """给 /api/o6/archive/labels 汇总列表返回 task 维度状态。"""
+
+    task = _o6_cloud_archive_dict(task)
+    labels = _o6_cloud_archive_list(task.get("labels"))
+    task_status, pending_count, labeled_count, latest_label_updated_at_ms = _o6_cloud_archive_label_status(labels)
+    return {
+        "task_id": _o6_cloud_archive_safe_text(task.get("task_id") or "", 80),
+        "robot_id": _o6_cloud_archive_safe_text(task.get("robot_id") or "", 80),
+        "task_status": task_status,
+        "pending_item_count": pending_count,
+        "labeled_item_count": labeled_count,
+        "latest_label_updated_at_ms": latest_label_updated_at_ms,
+        "itemized_label_count": len(_o6_cloud_archive_list(labels)),
+        "selected": bool(task.get("selected")),
+    }
+
+
+def _o6_cloud_archive_build_labeling_list_payload(tasks, *, status_filter="all", limit=O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT):
+    """列表响应只返回摘要，不返回完整 labels payload。"""
+
+    task_summaries = []
+    for task in tasks:
+        task_summary = _o6_cloud_archive_labeling_task_summary(task)
+        if not _o6_cloud_archive_label_status_for_filter(status_filter, task_summary["task_status"]):
+            continue
+        task_summaries.append(task_summary)
+    task_summaries.sort(
+        key=lambda item: _o6_cloud_archive_int(item.get("latest_label_updated_at_ms"), -1) or -1,
+        reverse=True,
+    )
+    task_summaries = task_summaries[: int(limit)]
+    task_count = len(task_summaries)
+    task_status_counts = {}
+    for item in task_summaries:
+        task_status_counts[item["task_status"]] = task_status_counts.get(item["task_status"], 0) + 1
+    return {
+        **_o6_cloud_archive_labeling_fixed_payload(),
+        "task_summary": task_summaries,
+        "status": "local_mock_labeling_ready" if task_count else "blocked_not_proven",
+        "label_summary": {
+            "task_count": len(task_summaries),
+            "pending_task_count": task_status_counts.get("pending", 0),
+            "partial_task_count": task_status_counts.get("partial", 0),
+            "labeled_task_count": task_status_counts.get("labeled", 0),
+            "blocked_task_count": task_status_counts.get("blocked", 0),
+        },
+        "status_filter": status_filter,
+        "limit": int(limit),
+        "blocked_reasons": [] if task_count else ["local_mock_labeling_store_empty"],
+    }
+
+
+def _o6_cloud_archive_build_labeling_detail_payload(task, *, write_status=None, duplicate=False):
+    """task 详情响应只返回 itemized labels 与聚合摘要，不回显原始 payload。"""
+
+    task = _o6_cloud_archive_dict(task)
+    labels = _o6_cloud_archive_list(task.get("labels"))
+    itemized_labels = [_o6_cloud_archive_label_item_summary(label) for label in labels]
+    task_status, pending_item_count, labeled_item_count, latest_label_updated_at_ms = _o6_cloud_archive_label_status(labels)
+    payload = {
+        **_o6_cloud_archive_labeling_fixed_payload(),
+        "task_id": _o6_cloud_archive_safe_text(task.get("task_id") or "", 80),
+        "robot_id": _o6_cloud_archive_safe_text(task.get("robot_id") or "", 80),
+        "task_status": task_status,
+        "itemized_labels": itemized_labels,
+        "label_summary": {
+            "itemized_label_count": len(labels),
+            "pending_item_count": pending_item_count,
+            "labeled_item_count": labeled_item_count,
+            "latest_label_updated_at_ms": latest_label_updated_at_ms,
+        },
+    }
+    if write_status:
+        payload["write_status"] = write_status
+    if duplicate is not None:
+        payload["duplicate"] = bool(duplicate)
+    return payload
+
+
+def _o6_cloud_archive_validate_label_payload(payload):
+    """labeling upsert 的请求体校验，任何字段异常都 fail closed。"""
+
+    if not isinstance(payload, dict):
+        raise ValueError("request body must be an object")
+    if _o6_cloud_archive_has_unsafe_claim(payload):
+        raise ValueError("unsafe labeling payload")
+    robot_id = _o6_cloud_archive_safe_text(payload.get("robot_id") or "", 80).strip()
+    task_id = _o6_cloud_archive_safe_text(payload.get("task_id") or "", 80).strip()
+    if not robot_id:
+        raise ValueError("robot_id is required")
+    if not task_id:
+        raise ValueError("task_id is required")
+    if "labels" not in payload or not isinstance(payload.get("labels"), list):
+        raise ValueError("labels is required and must be an array")
+    labels = _o6_cloud_archive_list(payload.get("labels"))
+    if len(labels) == 0:
+        raise ValueError("labels must not be empty")
+    if len(labels) > O6_CLOUD_LABELING_MAX_LABELS:
+        raise ValueError("labels array is too large")
+
+    validated_labels = []
+    for label in labels:
+        validated_labels.append(_o6_cloud_archive_label_item_payload(label))
+    return {"robot_id": robot_id, "task_id": task_id, "labels": validated_labels}
+
+
 def _o6_cloud_archive_validate_task_payload(payload):
     """POST 只接受小型 task archive payload；危险字段和超大数组直接 fail closed。"""
 
@@ -12508,6 +12783,14 @@ class FileBackedO6CloudArchiveStore:
             if not isinstance(task, dict):
                 continue
             safe_task = _o6_cloud_archive_validate_task_payload(task)
+            safe_labels = []
+            for label in _o6_cloud_archive_list(task.get("labels")):
+                try:
+                    parsed_label = _o6_cloud_archive_label_item_payload(label)
+                except ValueError:
+                    continue
+                safe_labels.append(parsed_label)
+            safe_task["labels"] = safe_labels
             safe_task["created_at_ms"] = _o6_cloud_archive_int(task.get("created_at_ms"), safe_task["started_at_ms"])
             safe_task["updated_at_ms"] = _o6_cloud_archive_int(task.get("updated_at_ms"), safe_task["finished_at_ms"])
             safe_task["selected"] = bool(task.get("selected"))
@@ -12555,6 +12838,90 @@ class FileBackedO6CloudArchiveStore:
             write_status=write_status,
             duplicate=isinstance(existing, dict),
         )
+
+    def upsert_labels(self, payload):
+        labels_payload = _o6_cloud_archive_validate_label_payload(payload)
+        task_id = labels_payload["task_id"]
+        robot_id = labels_payload["robot_id"]
+        # 不能新建 task；只允许在已有 task 之上追加或更新，避免越权 taskId 被误当成“空任务”创建。
+        with self._lock:
+            task = self._tasks.get(task_id)
+            if not isinstance(task, dict):
+                return 404, phone_error("unknown_task", "archive task not found")
+            if task.get("robot_id") != robot_id:
+                return 403, phone_error("unauthorized_task", "robot_id does not match archive task")
+            existing_labels = _o6_cloud_archive_list(task.get("labels"))
+            existing_by_key = {}
+            for index, label in enumerate(existing_labels):
+                if not isinstance(label, dict):
+                    continue
+                key = (label.get("item_id"), label.get("label_type"))
+                existing_by_key[key] = index
+            now_ms = int(_now() * 1000)
+            duplicate_exists = False
+            for incoming in labels_payload["labels"]:
+                key = (incoming["item_id"], incoming["label_type"])
+                if key in existing_by_key:
+                    duplicate_exists = True
+                    index = existing_by_key[key]
+                    target = existing_labels[index] if isinstance(index, int) and index < len(existing_labels) else {}
+                    incoming["created_at_ms"] = _o6_cloud_archive_int(target.get("created_at_ms"), now_ms)
+                    incoming["updated_at_ms"] = now_ms
+                    if index < len(existing_labels):
+                        existing_labels[index] = incoming
+                    else:
+                        existing_labels.append(incoming)
+                else:
+                    incoming["created_at_ms"] = now_ms
+                    incoming["updated_at_ms"] = now_ms
+                    existing_by_key[key] = len(existing_labels)
+                    existing_labels.append(incoming)
+            task["labels"] = existing_labels
+            task["updated_at_ms"] = now_ms
+            task["labeling_last_updated_ms"] = now_ms
+            self._persist_locked()
+        duplicate = bool(duplicate_exists)
+        if duplicate_exists:
+            status_code = 200
+            write_status = "updated"
+        else:
+            status_code = 201
+            write_status = "created"
+        return status_code, _o6_cloud_archive_build_labeling_detail_payload(
+            task,
+            write_status=write_status,
+            duplicate=duplicate,
+        )
+
+    def list_labels(self, status_filter="all", limit=O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT):
+        # 只返回任务级摘要，禁止原样回显 itemized labels，避免查询端误用原始 payload。
+        if not isinstance(status_filter, str):
+            raise TypeError("status filter must be a string")
+        status_filter = status_filter.strip().lower() or "all"
+        if status_filter not in {"all", "pending", "labeled"}:
+            raise ValueError("unsupported label status filter")
+        try:
+            limit = int(limit)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("limit must be an integer") from exc
+        if limit <= 0:
+            raise ValueError("limit must be greater than 0")
+        if limit > O6_CLOUD_LABELING_MAX_LIST_LIMIT:
+            limit = O6_CLOUD_LABELING_MAX_LIST_LIMIT
+        with self._lock:
+            tasks = list(self._tasks.values())
+        return 200, _o6_cloud_archive_build_labeling_list_payload(tasks, status_filter=status_filter, limit=limit)
+
+    def get_task_labels(self, task_id):
+        task_id = _o6_cloud_archive_safe_text(task_id or "", 80).strip()
+        if not task_id:
+            return 400, phone_error("bad_request", "task_id is required")
+        with self._lock:
+            task = self._tasks.get(task_id)
+            tasks = list(self._tasks.values())
+        if not task:
+            return 404, phone_error("unknown_task", "archive task not found")
+        return 200, _o6_cloud_archive_build_labeling_detail_payload(task)
 
     def list_tasks(self):
         with self._lock:
@@ -13937,6 +14304,26 @@ def make_handler(store, archive_store, bearer_token):
                     return
                 self._send_json(status_code, payload)
                 return
+            if parsed.path == "/api/o6/archive/labels":
+                # 标注接口只返回 task 级摘要，不回显完整 label payload，确保前端不能把原始标注当 truth 使用。
+                query = parse_qs(parsed.query)
+                status_filter = next(iter(query.get("status", ["all"])), "all")
+                raw_limit = next(iter(query.get("limit", [str(O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT)])), str(O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT))
+                try:
+                    limit = int(raw_limit)
+                except (TypeError, ValueError):
+                    self._send_json(400, phone_error("bad_request", "invalid limit"))
+                    return
+                try:
+                    status_code, payload = archive_store.list_labels(status_filter=status_filter, limit=limit)
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
             if parsed.path.startswith("/api/o6/archive/tasks/"):
                 # task_id 走独立路径，便于 O6 shaped data source 被 O7 后续直接消费。
                 task_id = unquote(parsed.path.removeprefix("/api/o6/archive/tasks/").strip("/"))
@@ -13945,6 +14332,22 @@ def make_handler(store, archive_store, bearer_token):
                     return
                 try:
                     status_code, payload = archive_store.get_task(task_id)
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
+            if parsed.path.startswith("/api/o6/archive/labels/"):
+                # task_id 在 URL 中固定，便于 PC/O7 标注消费以 task 为单位拉取详情。
+                task_id = unquote(parsed.path.removeprefix("/api/o6/archive/labels/").strip("/"))
+                if not task_id:
+                    self._send_json(400, phone_error("bad_request", "task_id is required"))
+                    return
+                try:
+                    status_code, payload = archive_store.get_task_labels(task_id)
                 except ValueError as exc:
                     self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
                     return
@@ -14043,6 +14446,30 @@ def make_handler(store, archive_store, bearer_token):
                     return
                 try:
                     status_code, payload = archive_store.upsert_task(body)
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
+            if parsed.path == "/api/o6/archive/labels":
+                # 标注提交沿用 file-backed mock store，支持同一条 task 的幂等更新，不触发控制。
+                try:
+                    body = parse_json_body_with_limit(self, O6_CLOUD_ARCHIVE_MAX_BODY_BYTES)
+                except ValueError as exc:
+                    message = str(exc)
+                    if message == "request body too large":
+                        self._send_json(400, phone_error("bad_request", message))
+                        return
+                    self._send_json(400, phone_error("malformed_json", "request body was not valid JSON"))
+                    return
+                except TypeError as exc:
+                    self._send_json(400, phone_error("bad_request", str(exc)))
+                    return
+                try:
+                    status_code, payload = archive_store.upsert_labels(body)
                 except ValueError as exc:
                     self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
                     return
