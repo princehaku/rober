@@ -191,6 +191,74 @@
 - unsafe content（`Authorization` / `Bearer` / token / `/cmd_vel` / 串口路径 / `baudrate` / `traceback` / 凭证 URL）
 - 真实能力声明（如 `success=true`、`production_ready=true`、`gpu_connected=true`、`external_model_connected=true`、`floor_recognition_proven=true`、`elevator_door_state_proven=true`、`robot_control_executed=true`）
 
+## O6 local/mock tunnel online status contract
+
+`POST /api/o6/tunnel/heartbeat`、`GET /api/o6/tunnel/robots`、`GET /api/o6/tunnel/robots/<robot_id>` 为 O6-KR1 增补本地/文件化隧道观测入口，和既有 archive/labels/inference 共用同一套 `TRASHBOT_O6_CLOUD_ARCHIVE_STATE`。
+
+### POST /api/o6/tunnel/heartbeat
+
+必填字段：
+
+- `robot_id`
+- `tunnel_provider`（`frp` / `wireguard` / `ngrok` / `mock`）
+
+可选字段：
+
+- `endpoint`：可选上报 endpoint，必须脱敏保存/返回，不回显 credential token/secret/password/private_key/Authorization
+- `observed_at`：可选，支持整数毫秒或 ISO8601；缺省用服务端当前毫秒
+- `ttl_seconds`：可选，默认 `300`，范围 `60~86400`
+- `metadata`：可选，仅允许 `ip_family / network_type / region / notes`
+
+失败场景（fail-closed）：
+
+- bad JSON、bad body
+- 缺字段
+- `tunnel_provider` 不在白名单
+- `metadata` 非 object、超字段长度、非法 key
+- `endpoint`/`metadata` 含 unsafe content（包含 `Authorization` / `Bearer` / token / `/cmd_vel` / 串口路径 / `baudrate` / `traceback` / credential URL）
+
+成功响应固定：
+
+- `schema=trashbot.o6.tunnel_status.v1`
+- `schema_version=1`
+- `source=local_mock_tunnel_status`
+- `proof_status=not_proven`
+- `real_tunnel_connected=false`
+- `real_4g_connected=false`
+- `connects_cloud_production=false`
+- `robot_control_executed=false`
+- `safe_to_control=false`
+- `robot_id`
+- `status`
+- `last_seen_at_ms`
+- `ttl_seconds`
+- `observed_at_ms`
+- `endpoint`
+- `tunnel_provider`
+- `metadata`
+
+### GET /api/o6/tunnel/robots
+
+查询参数：
+
+- `status=online|offline|all`（默认 `all`）
+- `provider=<frp|wireguard|ngrok|mock>`（可选）
+- `limit`（默认 50，最大 100）
+
+响应是按 `last_seen_at_ms` 倒序的列表，返回：
+
+- `robots[]`
+- `total_robots`
+- `query`（`status`/`provider`/`limit`）
+- `updated_at_ms`
+
+### GET /api/o6/tunnel/robots/<robot_id>
+
+- 存在则返回该 robot 的单机快照（同上字段）
+- 不存在返回 `404 + error.code=not_found`
+
+### 安全边界
+
 ## O6 标注本地 mock contract
 
 `POST /api/o6/archive/labels` 及其查询接口是 O6 标注回路的 local/mock 入口，仍不连接真实生产云、OSS 或训练服务，不会下发控制。

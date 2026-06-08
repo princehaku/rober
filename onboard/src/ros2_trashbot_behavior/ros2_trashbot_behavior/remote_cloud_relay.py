@@ -100,6 +100,17 @@ O6_CLOUD_ARCHIVE_MAX_TRAJECTORY_FRAMES = 64
 O6_CLOUD_ARCHIVE_MAX_EVENTS = 64
 O6_CLOUD_ARCHIVE_MAX_EVIDENCE_REFS = 32
 O6_CLOUD_ARCHIVE_MAX_BODY_BYTES = 256 * 1024
+O6_TUNNEL_STATUS_SCHEMA = "trashbot.o6.tunnel_status.v1"
+O6_CLOUD_TUNNEL_STATUS_MAX_BODY_BYTES = 64 * 1024
+O6_TUNNEL_STATUS_DEFAULT_TTL_SECONDS = 300
+O6_TUNNEL_STATUS_MIN_TTL_SECONDS = 60
+O6_TUNNEL_STATUS_MAX_TTL_SECONDS = 60 * 60 * 24
+O6_TUNNEL_STATUS_DEFAULT_LIST_LIMIT = 50
+O6_TUNNEL_STATUS_MAX_LIST_LIMIT = 100
+O6_TUNNEL_STATUS_ALLOWED_PROVIDERS = ("frp", "wireguard", "ngrok", "mock")
+O6_TUNNEL_STATUS_ALLOWED_METADATA_KEYS = ("ip_family", "network_type", "region", "notes")
+O6_TUNNEL_STATUS_MAX_METADATA_VALUE_LEN = 120
+O6_TUNNEL_STATUS_MAX_METADATA_ITEMS = 4
 O6_MODEL_INFERENCE_ALLOWED_OUTPUTS = {"elevator_door_state", "floor_recognition"}
 O6_MODEL_INFERENCE_ALLOWED_INPUT_TYPES = {"image_ref", "frame_ref", "snapshot_ref", "metadata_only"}
 O6_MODEL_INFERENCE_MAX_REQUESTED_OUTPUTS = 8
@@ -12270,6 +12281,191 @@ def _o6_cloud_archive_has_unsafe_claim(value):
     return False
 
 
+def _o6_tunnel_status_has_credential_url(value):
+    """隧道 endpoint 若出现凭证信息（如 URL 中的 token/用户密码）直接判为不安全。"""
+
+    if not isinstance(value, str):
+        return False
+    parsed = urlparse(value)
+    if not parsed.scheme and not parsed.netloc:
+        # 无法可靠解析为 URL 的 endpoint 按文本规则继续检查。
+        lowered = value.lower()
+        return "credential" in lowered and "://" not in lowered
+    if parsed.username or parsed.password:
+        return True
+    lower_query = (parsed.query or "").lower()
+    if "credential" in lower_query:
+        return True
+    if "private_key" in lower_query:
+        return True
+    if "secret" in lower_query:
+        return True
+    if "token" in lower_query:
+        return True
+    return False
+
+
+def _o6_tunnel_status_sanitize_endpoint(value):
+    """对 endpoint 做最小脱敏：去掉凭证、query、fragment，并保留可读 host/path。"""
+
+    text = str(value)
+    if len(text) > 240:
+        text = text[:240]
+    text = text.strip()
+    if not text:
+        return ""
+    if _o6_tunnel_status_has_unsafe_payload(text):
+        return ""
+    if "://" not in text:
+        # 非 URL 格式保留到问号前，避免携带 query token。
+        return text.split("?", 1)[0].split("#", 1)[0].strip()
+    parsed = urlparse(text)
+    if parsed.password or parsed.username:
+        return ""
+    netloc = parsed.hostname or ""
+    if parsed.port:
+        netloc = f"{netloc}:{parsed.port}"
+    if not netloc:
+        netloc = ""
+    if parsed.path:
+        path = parsed.path if parsed.path not in {"/", ""} else ""
+    else:
+        path = ""
+    if not netloc:
+        return ""
+    return f"{parsed.scheme}://{netloc}{path}" if path else f"{parsed.scheme}://{netloc}"
+
+
+def _o6_tunnel_status_parse_time_ms(value):
+    """兼容整数毫秒与 ISO8601 字符串，失败时抛出 ValueError 以 fail-closed。"""
+
+    if value is None:
+        return int(_now() * 1000)
+    if isinstance(value, bool):
+        raise ValueError("observed_at type is invalid")
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return int(_now() * 1000)
+        try:
+            return int(float(text))
+        except ValueError:
+            pass
+        safe_text = text.replace("Z", "+00:00") if text.endswith("Z") else text
+        try:
+            dt = datetime.fromisoformat(safe_text)
+        except ValueError:
+            raise ValueError("observed_at must be ms number or ISO8601 string") from None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp() * 1000)
+    raise ValueError("observed_at type is invalid")
+
+
+def _o6_tunnel_status_validate_payload(payload):
+    """heartbeat 入参做白名单与类型约束，失败则统一抛 ValueError。"""
+
+    if not isinstance(payload, dict):
+        raise ValueError("request body must be an object")
+    robot_id = _o6_cloud_archive_safe_text(payload.get("robot_id") or "", 80).strip()
+    if not robot_id:
+        raise ValueError("robot_id is required")
+
+    provider = _o6_cloud_archive_safe_text(payload.get("tunnel_provider") or "", 24).strip().lower()
+    if provider not in O6_TUNNEL_STATUS_ALLOWED_PROVIDERS:
+        raise ValueError("tunnel_provider is unsupported")
+
+    endpoint = payload.get("endpoint")
+    if endpoint is None:
+        sanitized_endpoint = ""
+    elif isinstance(endpoint, str):
+        if _o6_tunnel_status_has_unsafe_payload(endpoint):
+            raise ValueError("endpoint contains unsafe content")
+        sanitized_endpoint = _o6_tunnel_status_sanitize_endpoint(endpoint)
+        if "authorization" in sanitized_endpoint.lower() or "bearer" in sanitized_endpoint.lower() or "token" in sanitized_endpoint.lower():
+            raise ValueError("endpoint contains unsafe content")
+    else:
+        raise ValueError("endpoint must be string when provided")
+
+    observed_at = payload.get("observed_at")
+    observed_at_ms = _o6_tunnel_status_parse_time_ms(observed_at)
+
+    ttl = _o6_cloud_archive_int(payload.get("ttl_seconds"), None)
+    if ttl is None:
+        ttl = O6_TUNNEL_STATUS_DEFAULT_TTL_SECONDS
+    if ttl < O6_TUNNEL_STATUS_MIN_TTL_SECONDS or ttl > O6_TUNNEL_STATUS_MAX_TTL_SECONDS:
+        raise ValueError("ttl_seconds must be between 60 and 86400")
+
+    metadata = payload.get("metadata")
+    if metadata is None:
+        metadata = {}
+    if not isinstance(metadata, dict):
+        raise ValueError("metadata must be an object")
+    safe_metadata = {}
+    for key, value in list(metadata.items()):
+        key_text = _o6_cloud_archive_safe_text(key, 80).strip()
+        if key_text not in O6_TUNNEL_STATUS_ALLOWED_METADATA_KEYS:
+            raise ValueError(f"metadata key {key_text or 'unknown'} is unsupported")
+        if value is None:
+            continue
+        if _o6_tunnel_status_has_unsafe_payload(value):
+            raise ValueError("metadata contains unsafe content")
+        safe_value_text = _o6_cloud_archive_safe_text(value, O6_TUNNEL_STATUS_MAX_METADATA_VALUE_LEN)
+        if safe_value_text == "[redacted]":
+            raise ValueError("metadata contains unsafe content")
+        safe_metadata[key_text] = safe_value_text
+    if len(safe_metadata) > O6_TUNNEL_STATUS_MAX_METADATA_ITEMS:
+        raise ValueError("metadata has too many fields")
+
+    return {
+        "robot_id": robot_id,
+        "tunnel_provider": provider,
+        "endpoint": sanitized_endpoint,
+        "observed_at_ms": observed_at_ms,
+        "ttl_seconds": ttl,
+        "metadata": safe_metadata,
+    }
+
+
+def _o6_tunnel_status_has_unsafe_payload(payload):
+    """对通用 payload 做危险字符串扫描，覆盖 token/credential 私密串和 /cmd_vel。"""
+
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            if _o6_tunnel_status_has_unsafe_payload(key):
+                return True
+            if _o6_tunnel_status_has_unsafe_payload(value):
+                return True
+        return False
+    if isinstance(payload, list):
+        return any(_o6_tunnel_status_has_unsafe_payload(item) for item in payload)
+    if isinstance(payload, str):
+        lowered = payload.lower()
+        if "://" in lowered:
+            if _o6_tunnel_status_has_credential_url(payload):
+                return True
+        blocked_markers = (
+            "authorization",
+            "bearer",
+            "token",
+            "password",
+            "secret",
+            "private_key",
+            "/cmd_vel",
+            "serial",
+            "ttyusb",
+            "ttyacm",
+            "baudrate",
+            "credential",
+            "credential_url",
+            "traceback",
+        )
+        return any(marker in lowered for marker in blocked_markers)
+    return False
+
+
 def _o6_model_inference_has_real_capability_claim(value):
     """推理接口是 local/mock 合同，任何真实能力 true 声明都必须在写入前拒绝。"""
 
@@ -12416,6 +12612,75 @@ def _o6_cloud_archive_task_detail(task):
         "connects_cloud_production": False,
         "robot_control_executed": False,
     }
+
+
+def _o6_tunnel_status_fixed_payload():
+    """隧道在线态接口固定成功字段：所有成功响应都只证明 local/mock 边界，不承诺真实隧道。"""
+
+    return {
+        "schema": O6_TUNNEL_STATUS_SCHEMA,
+        "schema_version": 1,
+        "source": "local_mock_tunnel_status",
+        "proof_status": "not_proven",
+        "safe_to_control": False,
+        "real_tunnel_connected": False,
+        "real_4g_connected": False,
+        "connects_cloud_production": False,
+        "robot_control_executed": False,
+        "not_proven": [
+            "real_tunnel_connectivity",
+            "real_cloud_production_tunnel",
+            "robot_control_not_executed",
+        ],
+    }
+
+
+def _o6_tunnel_status_has_online(last_seen_at_ms, ttl_seconds, now_ms):
+    """按 last_seen + ttl 判断是否在线；now_ms 缺省按服务器时钟。"""
+
+    return int(now_ms) <= int(last_seen_at_ms or 0) + int(ttl_seconds or 0) * 1000
+
+
+def _o6_tunnel_status_record_to_status(record):
+    """把 store 中的单条记录映射为查询/响应安全快照。"""
+
+    now_ms = int(_now() * 1000)
+    last_seen_at_ms = _o6_cloud_archive_int(record.get("last_seen_at_ms"), _o6_cloud_archive_int(record.get("observed_at_ms"), now_ms))
+    ttl_seconds = _o6_cloud_archive_int(record.get("ttl_seconds"), O6_TUNNEL_STATUS_DEFAULT_TTL_SECONDS)
+    endpoint = _o6_tunnel_status_sanitize_endpoint(record.get("endpoint") or "")
+    provider = _o6_cloud_archive_safe_text(record.get("tunnel_provider") or "", 24).strip()
+    robot_id = _o6_cloud_archive_safe_text(record.get("robot_id") or "", 80).strip()
+    observed_at_ms = _o6_cloud_archive_int(record.get("observed_at_ms"), last_seen_at_ms)
+    is_online = _o6_tunnel_status_has_online(last_seen_at_ms, ttl_seconds, now_ms)
+    return {
+        "robot_id": robot_id,
+        "status": "online" if is_online else "offline",
+        "last_seen_at_ms": last_seen_at_ms,
+        "ttl_seconds": ttl_seconds,
+        "observed_at_ms": observed_at_ms,
+        "tunnel_provider": provider,
+        "endpoint": endpoint,
+        "metadata": _o6_cloud_archive_dict(record.get("metadata")),
+    }
+
+
+def _o6_tunnel_status_single_payload(record):
+    """单机查询与 heartbeat 回包复用，避免字段口径漂移。"""
+
+    payload = _o6_tunnel_status_fixed_payload()
+    payload.update(_o6_tunnel_status_record_to_status(record))
+    return payload
+
+
+def _o6_tunnel_status_collection_payload(records, query):
+    """列表接口返回 envelope，明确保留 query 与结果总数用于分页/过滤回溯。"""
+
+    payload = _o6_tunnel_status_fixed_payload()
+    payload["updated_at_ms"] = int(_now() * 1000)
+    payload["query"] = query
+    payload["total_robots"] = len(records)
+    payload["robots"] = records
+    return payload
 
 
 def _o6_cloud_archive_collection_payload(tasks, *, task=None, write_status=None, duplicate=False):
@@ -13041,6 +13306,7 @@ class FileBackedO6CloudArchiveStore:
         self.state_path = os.path.expanduser(str(state_path or "")).strip() or _o6_cloud_archive_default_state_path()
         self._lock = threading.Lock()
         self._tasks = {}
+        self._tunnel_status = {}
         self._load()
 
     def _load(self):
@@ -13067,11 +13333,34 @@ class FileBackedO6CloudArchiveStore:
                 except ValueError:
                     continue
                 safe_labels.append(parsed_label)
-            safe_task["labels"] = safe_labels
+            if safe_labels:
+                safe_task["labels"] = safe_labels
             safe_task["created_at_ms"] = _o6_cloud_archive_int(task.get("created_at_ms"), safe_task["started_at_ms"])
             safe_task["updated_at_ms"] = _o6_cloud_archive_int(task.get("updated_at_ms"), safe_task["finished_at_ms"])
             safe_task["selected"] = bool(task.get("selected"))
             self._tasks[str(task_id)] = safe_task
+
+        tunnel_status = payload.get("tunnel_status")
+        if isinstance(tunnel_status, dict):
+            for robot_id, status in tunnel_status.items():
+                if not isinstance(status, dict):
+                    continue
+                payload_for_validation = dict(status)
+                payload_for_validation["robot_id"] = str(robot_id)
+                try:
+                    safe_status = _o6_tunnel_status_validate_payload(payload_for_validation)
+                except ValueError:
+                    continue
+                # 本地存储重放时也只读入安全字段，避免旧文件中的敏感路径污染查询面。
+                self._tunnel_status[safe_status["robot_id"]] = {
+                    "robot_id": safe_status["robot_id"],
+                    "tunnel_provider": safe_status["tunnel_provider"],
+                    "endpoint": safe_status["endpoint"],
+                    "observed_at_ms": safe_status["observed_at_ms"],
+                    "last_seen_at_ms": safe_status["observed_at_ms"],
+                    "ttl_seconds": safe_status["ttl_seconds"],
+                    "metadata": safe_status["metadata"],
+                }
 
     def _persist_locked(self):
         if not self.state_path:
@@ -13082,6 +13371,7 @@ class FileBackedO6CloudArchiveStore:
             "schema": O6_CLOUD_ARCHIVE_STORE_SCHEMA,
             "updated_at_ms": int(_now() * 1000),
             "tasks": self._tasks,
+            "tunnel_status": self._tunnel_status,
         }
         fd, tmp_path = tempfile.mkstemp(prefix=".trashbot-o6-archive-", suffix=".json", dir=state_dir)
         try:
@@ -13301,6 +13591,73 @@ class FileBackedO6CloudArchiveStore:
         payload = _o6_cloud_archive_collection_payload(tasks, task=task)
         payload["task_lookup"] = {"task_id": task_id, "status": "local_mock_archive_ready"}
         return 200, payload
+
+    def upsert_tunnel_status(self, payload):
+        status_payload = _o6_tunnel_status_validate_payload(payload)
+        robot_id = status_payload["robot_id"]
+        now_ms = int(_now() * 1000)
+        # 采用上报时带来的 observed_at 作为 last_seen，便于恢复端统一比较在线窗口。
+        status_payload["last_seen_at_ms"] = status_payload["observed_at_ms"]
+        status_payload["updated_at_ms"] = now_ms
+        with self._lock:
+            is_update = robot_id in self._tunnel_status
+            if not is_update:
+                status_payload["created_at_ms"] = now_ms
+            else:
+                status_payload["created_at_ms"] = self._tunnel_status[robot_id].get("created_at_ms", now_ms)
+            self._tunnel_status[robot_id] = status_payload
+            self._persist_locked()
+        return (200 if is_update else 201), _o6_tunnel_status_single_payload(status_payload)
+
+    def list_tunnel_statuses(self, status_filter="all", limit=O6_TUNNEL_STATUS_DEFAULT_LIST_LIMIT, provider=""):
+        if not isinstance(status_filter, str):
+            raise TypeError("status filter must be a string")
+        if not isinstance(provider, str):
+            raise TypeError("provider filter must be a string")
+        status_filter = (status_filter or "all").strip().lower()
+        if status_filter not in {"all", "online", "offline"}:
+            raise ValueError("unsupported tunnel status filter")
+        now_ms = int(_now() * 1000)
+        limit = _o6_cloud_archive_int(limit, O6_TUNNEL_STATUS_DEFAULT_LIST_LIMIT)
+        if not limit:
+            raise ValueError("limit must be an integer")
+        if limit <= 0:
+            raise ValueError("limit must be greater than 0")
+        if limit > O6_TUNNEL_STATUS_MAX_LIST_LIMIT:
+            limit = O6_TUNNEL_STATUS_MAX_LIST_LIMIT
+        provider_filter = _o6_cloud_archive_safe_text(provider, 24).strip().lower()
+        with self._lock:
+            records = list(self._tunnel_status.values())
+        converted = []
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            if provider_filter and _o6_cloud_archive_safe_text(record.get("tunnel_provider"), 24).strip().lower() != provider_filter:
+                continue
+            status = _o6_tunnel_status_record_to_status(record)
+            if status["status"] != status_filter and status_filter != "all":
+                continue
+            converted.append(status)
+        converted.sort(key=lambda item: item.get("last_seen_at_ms", 0), reverse=True)
+        converted = converted[:limit]
+        return 200, _o6_tunnel_status_collection_payload(
+            converted,
+            query={
+                "status": status_filter,
+                "provider": provider_filter or "all",
+                "limit": limit,
+            },
+        )
+
+    def get_tunnel_status(self, robot_id):
+        robot_id = _o6_cloud_archive_safe_text(robot_id or "", 80).strip()
+        if not robot_id:
+            return 400, phone_error("bad_request", "robot_id is required")
+        with self._lock:
+            record = self._tunnel_status.get(robot_id)
+        if not isinstance(record, dict):
+            return 404, phone_error("not_found", "unknown robot")
+        return 200, _o6_tunnel_status_single_payload(record)
 
 
 def _build_o7_cloud_archive_tasks_empty_contract(failure_reason="real_cloud_archive_store_not_connected"):
@@ -14586,6 +14943,16 @@ def make_handler(store, archive_store, bearer_token):
             self.end_headers()
             self.wfile.write(data)
 
+        def _send_tunnel_status_json(self, status_code, payload):
+            # 隧道状态 API 需要返回脱敏后的 endpoint（如 http://host/path），
+            # 不能被通用 _safe_text 规则里的 :// 检测再重写成 [redacted]。
+            data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            self.send_response(status_code)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
         def _send_static_asset(self, asset):
             asset_path, content_type = asset
             try:
@@ -14684,6 +15051,47 @@ def make_handler(store, archive_store, bearer_token):
                     self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
                     return
                 self._send_json(status_code, payload)
+                return
+            if parsed.path == "/api/o6/tunnel/robots":
+                # O6 tunnel online/offline 是 local/mock 可观测链路，不下发控制。
+                query = parse_qs(parsed.query)
+                status_filter = next(iter(query.get("status", ["all"])), "all")
+                raw_limit = next(iter(query.get("limit", [str(O6_TUNNEL_STATUS_DEFAULT_LIST_LIMIT)])), str(O6_TUNNEL_STATUS_DEFAULT_LIST_LIMIT))
+                provider = next(iter(query.get("provider", [""])), "")
+                try:
+                    limit = int(raw_limit)
+                except (TypeError, ValueError):
+                    self._send_json(400, phone_error("bad_request", "invalid limit"))
+                    return
+                try:
+                    status_code, payload = archive_store.list_tunnel_statuses(
+                        status_filter=status_filter,
+                        limit=limit,
+                        provider=provider,
+                    )
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_tunnel_status_json(status_code, payload)
+                return
+            if parsed.path.startswith("/api/o6/tunnel/robots/"):
+                # 单机状态查询路径只读；不存在 robot_id 则 fail-closed。
+                robot_id = unquote(parsed.path.removeprefix("/api/o6/tunnel/robots/").strip("/"))
+                if not robot_id:
+                    self._send_json(400, phone_error("bad_request", "robot_id is required"))
+                    return
+                try:
+                    status_code, payload = archive_store.get_tunnel_status(robot_id)
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_tunnel_status_json(status_code, payload)
                 return
             if parsed.path.startswith("/api/o6/archive/tasks/"):
                 # task_id 走独立路径，便于 O6 shaped data source 被 O7 后续直接消费。
@@ -14862,6 +15270,30 @@ def make_handler(store, archive_store, bearer_token):
                     self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
                     return
                 self._send_json(status_code, payload)
+                return
+            if parsed.path == "/api/o6/tunnel/heartbeat":
+                # tunnel 心跳只写 local/mock file-backed 状态，任何异常都 fail-closed。
+                try:
+                    body = parse_json_body_with_limit(self, O6_CLOUD_TUNNEL_STATUS_MAX_BODY_BYTES)
+                except ValueError as exc:
+                    message = str(exc)
+                    if message == "request body too large":
+                        self._send_json(400, phone_error("bad_request", message))
+                        return
+                    self._send_json(400, phone_error("malformed_json", "request body was not valid JSON"))
+                    return
+                except TypeError as exc:
+                    self._send_json(400, phone_error("bad_request", str(exc)))
+                    return
+                try:
+                    status_code, payload = archive_store.upsert_tunnel_status(body)
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_tunnel_status_json(status_code, payload)
                 return
             if parsed.path == "/api/o7/rtc/signaling/sessions":
                 # 该写入口接收 offer payload，因此即使不创建 RTC session，也必须先走 bearer gate。

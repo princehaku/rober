@@ -1452,6 +1452,190 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(len(detail["task"]["events"]), 1)
 
+    def test_o6_tunnel_heartbeat_endpoint_rejects_unsupported_provider(self):
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/tunnel/heartbeat",
+            {
+                "robot_id": "trashbot-001",
+                "tunnel_provider": "http",
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsupported", body["error"]["message"].lower())
+
+    def test_o6_tunnel_heartbeat_endpoint_rejects_unsafe_metadata_and_endpoint(self):
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/tunnel/heartbeat",
+            {
+                "robot_id": "trashbot-001",
+                "tunnel_provider": "frp",
+                "endpoint": "https://example.com/tunnel?token=leaked",
+                "metadata": {"ip_family": "ipv4", "notes": "safe"},
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
+
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/tunnel/heartbeat",
+            {
+                "robot_id": "trashbot-001",
+                "tunnel_provider": "frp",
+                "endpoint": "tcp://agent.local/",
+                "metadata": {"notes": "token=leaked"},
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
+
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/tunnel/heartbeat",
+            {
+                "robot_id": "trashbot-001",
+                "tunnel_provider": "frp",
+                "endpoint": "traceback",
+                "metadata": {"ip_family": "ipv4", "notes": "safe"},
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
+
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/tunnel/heartbeat",
+            {
+                "robot_id": "trashbot-001",
+                "tunnel_provider": "frp",
+                "endpoint": "tcp://agent.local/",
+                "metadata": {"secret": "should not appear"},
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/tunnel/heartbeat",
+            {
+                "robot_id": "trashbot-001",
+                "tunnel_provider": "frp",
+                "endpoint": "tcp://agent.local/",
+                "metadata": {"notes": "traceback observed"},
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+
+    def test_o6_tunnel_heartbeat_persists_redacted_status_and_list_supports_filters(self):
+        now_ms = int(time.time() * 1000)
+        with mock.patch.object(relay_module, "_now", return_value=now_ms / 1000.0):
+            status, first = self.client.request(
+                "POST",
+                "/api/o6/tunnel/heartbeat",
+                {
+                    "robot_id": "trashbot-online",
+                    "tunnel_provider": "frp",
+                    "endpoint": "https://tunnel.example.com/stream?region=cn",
+                    "metadata": {
+                        "ip_family": "ipv4",
+                        "network_type": "cellular",
+                        "region": "cn-hangzhou",
+                        "notes": "clean heartbeat",
+                    },
+                },
+            )
+        self.assertEqual(status, 201)
+        self.assertEqual(first["schema"], relay_module.O6_TUNNEL_STATUS_SCHEMA)
+        self.assertEqual(first["source"], "local_mock_tunnel_status")
+        self.assertFalse(first["real_tunnel_connected"])
+        self.assertFalse(first["real_4g_connected"])
+        self.assertFalse(first["connects_cloud_production"])
+        self.assertFalse(first["robot_control_executed"])
+        self.assertEqual(first["robot_id"], "trashbot-online")
+        self.assertEqual(first["tunnel_provider"], "frp")
+        self.assertEqual(first["endpoint"], "https://tunnel.example.com/stream")
+        self.assertNotIn("region=cn", first["endpoint"])
+        self.assertNotIn("token", first["endpoint"])
+        self.assertEqual(first["metadata"]["ip_family"], "ipv4")
+        self.assertEqual(first["metadata"]["notes"], "clean heartbeat")
+
+        status, second = self.client.request(
+            "POST",
+            "/api/o6/tunnel/heartbeat",
+            {
+                "robot_id": "trashbot-offline",
+                "tunnel_provider": "mock",
+                "observed_at": int(time.time() * 1000) - 120000,
+                "ttl_seconds": 60,
+                "metadata": {"ip_family": "ipv6"},
+            },
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(second["robot_id"], "trashbot-offline")
+
+        status, listing = self.client.request("GET", "/api/o6/tunnel/robots")
+        self.assertEqual(status, 200)
+        self.assertEqual(listing["schema"], relay_module.O6_TUNNEL_STATUS_SCHEMA)
+        self.assertEqual(listing["query"]["status"], "all")
+        self.assertEqual(listing["query"]["provider"], "all")
+        self.assertLessEqual(len(listing["robots"]), 2)
+        self.assertEqual(listing["robots"][0]["robot_id"], "trashbot-online")
+        self.assertEqual(listing["robots"][1]["robot_id"], "trashbot-offline")
+        self.assertEqual(listing["robots"][0]["status"], "online")
+        self.assertEqual(listing["robots"][1]["status"], "offline")
+
+        status, online_only = self.client.request("GET", "/api/o6/tunnel/robots?status=online")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(online_only["robots"]), 1)
+        self.assertEqual(online_only["robots"][0]["robot_id"], "trashbot-online")
+        self.assertEqual(online_only["robots"][0]["status"], "online")
+        self.assertEqual(online_only["query"]["status"], "online")
+
+        status, offline_only = self.client.request("GET", "/api/o6/tunnel/robots?status=offline")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(offline_only["robots"]), 1)
+        self.assertEqual(offline_only["robots"][0]["robot_id"], "trashbot-offline")
+        self.assertEqual(offline_only["robots"][0]["status"], "offline")
+
+        status, provider_only = self.client.request("GET", "/api/o6/tunnel/robots?provider=mock")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(provider_only["robots"]), 1)
+        self.assertEqual(provider_only["robots"][0]["robot_id"], "trashbot-offline")
+
+        status, detail = self.client.request("GET", "/api/o6/tunnel/robots/trashbot-online")
+        self.assertEqual(status, 200)
+        self.assertEqual(detail["robot_id"], "trashbot-online")
+        self.assertEqual(detail["status"], "online")
+        self.assertTrue(detail["schema_version"] > 0)
+
+        status, missing = self.client.request("GET", "/api/o6/tunnel/robots/missing")
+        self.assertEqual(status, 404)
+        self.assertEqual(missing["error"]["code"], "not_found")
+
+    def test_o6_tunnel_heartbeat_endpoint_rejects_invalid_query(self):
+        status, invalid_limit = self.client.request("GET", "/api/o6/tunnel/robots?limit=-1")
+        self.assertEqual(status, 400)
+        self.assertEqual(invalid_limit["error"]["code"], "bad_request")
+
+        status, invalid_status = self.client.request("GET", "/api/o6/tunnel/robots?status=bad")
+        self.assertEqual(status, 400)
+        self.assertEqual(invalid_status["error"]["code"], "bad_request")
+
+        status, too_large = self.client.request(
+            "GET",
+            f"/api/o6/tunnel/robots?limit={relay_module.O6_TUNNEL_STATUS_MAX_LIST_LIMIT + 1}"
+        )
+        self.assertEqual(status, 200)
+        self.assertLessEqual(too_large["query"]["limit"], relay_module.O6_TUNNEL_STATUS_MAX_LIST_LIMIT)
+
     def test_o7_realtime_elevator_snapshot_endpoint_is_public_readonly_and_fail_closed(self):
         with mock.patch.dict(os.environ, {"TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON": ""}):
             status, body = self.client.request("GET", "/api/o7/realtime-elevator/snapshot", token="")
@@ -3993,6 +4177,61 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
 
 
 class RemoteCloudRelayStoreTest(unittest.TestCase):
+    def test_file_backed_o6_store_reloads_tasks_and_tunnel_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = pathlib.Path(tmp) / "o6_archive_state.json"
+            fixture = {
+                "schema": relay_module.O6_CLOUD_ARCHIVE_STORE_SCHEMA,
+                "tasks": {
+                    "task-o6-store": {
+                        "robot_id": "trashbot-001",
+                        "task_id": "task-o6-store",
+                        "started_at_ms": 1000,
+                        "finished_at_ms": 2000,
+                        "trajectory_frames": [],
+                        "events": [],
+                        "evidence_refs": ["evidence/store-001.json"],
+                        "labels": [],
+                        "created_at_ms": 1500,
+                        "updated_at_ms": 2500,
+                        "selected": True,
+                    }
+                },
+                "tunnel_status": {
+                    "trashbot-001": {
+                        "robot_id": "trashbot-001",
+                        "tunnel_provider": "frp",
+                        "endpoint": "https://tunnel.example.com/stream",
+                        "observed_at_ms": 3000,
+                        "ttl_seconds": 300,
+                        "metadata": {
+                            "ip_family": "ipv4",
+                            "network_type": "cellular",
+                        },
+                        "created_at_ms": 3000,
+                        "updated_at_ms": 3000,
+                        "last_seen_at_ms": 3000,
+                    }
+                },
+            }
+            state_path.write_text(json.dumps(fixture), encoding="utf-8")
+
+            with mock.patch.object(relay_module, "_now", return_value=4.0):
+                restored = relay_module.FileBackedO6CloudArchiveStore(state_path)
+                status, task_payload = restored.get_task("task-o6-store")
+                self.assertEqual(status, 200)
+                self.assertEqual(task_payload["task_list"]["total_tasks"], 1)
+
+                status, robot_payload = restored.get_tunnel_status("trashbot-001")
+                self.assertEqual(status, 200)
+                self.assertEqual(robot_payload["robot_id"], "trashbot-001")
+                self.assertEqual(robot_payload["tunnel_provider"], "frp")
+
+                status, robots_payload = restored.list_tunnel_statuses()
+                self.assertEqual(status, 200)
+                self.assertEqual(robots_payload["robots"][0]["robot_id"], "trashbot-001")
+                self.assertEqual(robots_payload["robots"][0]["status"], "online")
+
     def test_file_backed_store_persists_and_redacts_sensitive_data(self):
         with tempfile.TemporaryDirectory() as tmp:
             state_path = pathlib.Path(tmp) / "relay_state.json"
