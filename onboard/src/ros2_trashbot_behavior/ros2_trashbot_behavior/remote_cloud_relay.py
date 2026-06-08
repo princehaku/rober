@@ -91,6 +91,13 @@ O7_REALTIME_ELEVATOR_FIXTURE_SCHEMA = "trashbot.o7.realtime_elevator_fixture.v1"
 O7_REALTIME_ELEVATOR_SNAPSHOT_ENV = "TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON"
 O7_RTC_SIGNALING_CONTRACT_SCHEMA = "trashbot.o7.rtc_signaling_contract.v1"
 O7_RTC_SIGNALING_SESSION_RECEIPT_SCHEMA = "trashbot.o7.rtc_signaling_session_receipt.v1"
+O6_CLOUD_ARCHIVE_SCHEMA = "trashbot.o6.cloud_archive.v1"
+O6_CLOUD_ARCHIVE_STORE_SCHEMA = "trashbot.o6.cloud_archive_store.v1"
+O6_CLOUD_ARCHIVE_STATE_ENV = "TRASHBOT_O6_CLOUD_ARCHIVE_STATE"
+O6_CLOUD_ARCHIVE_MAX_TRAJECTORY_FRAMES = 64
+O6_CLOUD_ARCHIVE_MAX_EVENTS = 64
+O6_CLOUD_ARCHIVE_MAX_EVIDENCE_REFS = 32
+O6_CLOUD_ARCHIVE_MAX_BODY_BYTES = 256 * 1024
 OSS_CDN_PHONE_MANIFEST_STALE_AFTER_SEC = 24 * 60 * 60
 NETWORK_RECOVERY_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
 CREDENTIAL_ROTATION_ARTIFACT_STALE_AFTER_SEC = 24 * 60 * 60
@@ -12141,6 +12148,433 @@ def build_o7_rtc_signaling_session_receipt(body):
     }
 
 
+def _o6_cloud_archive_default_state_path():
+    """O6 本地 mock 存档默认落到临时目录，避免把开发机固定路径写死进仓库。"""
+
+    return str(pathlib.Path(tempfile.gettempdir()) / "trashbot_o6_cloud_archive_state.json")
+
+
+def _o6_cloud_archive_state_path_from_env():
+    """O6 存档路径只接受环境变量注入；空值时回落到临时目录的本地文件。"""
+
+    return _env_value(os.environ, O6_CLOUD_ARCHIVE_STATE_ENV, _o6_cloud_archive_default_state_path())
+
+
+def _o6_cloud_archive_safe_ref(value):
+    """O6 只保留引用的 basename，防止把绝对路径、URL 或凭证片段带回响应。"""
+
+    text = _o7_archive_safe_text(value or "", 240)
+    if not text or text == "[redacted]":
+        return text
+    return pathlib.PurePath(text.replace("\\", "/")).name[:160]
+
+
+def _o6_cloud_archive_safe_text(value, limit=160):
+    """O6 文本字段只保留短摘要；坏值先被压短，避免大段 payload 直接出现在 API。"""
+
+    limit = max(1, int(limit))
+    text = _o7_archive_safe_text(value or "", limit)
+    if text == "[redacted]":
+        return text
+    return text[:limit]
+
+
+def _o6_cloud_archive_list(value):
+    """数组字段只接受 list；其他类型一律按空数组处理，方便 fail closed。"""
+
+    return value if isinstance(value, list) else []
+
+
+def _o6_cloud_archive_dict(value):
+    """对象字段只接受 dict；其余类型直接丢弃，避免把脏结构混进存档。"""
+
+    return value if isinstance(value, dict) else {}
+
+
+def _o6_cloud_archive_number(value, default=None):
+    """只允许有限数值进入 O6 存档，字符串、NaN 和 Infinity 都会降级。"""
+
+    if isinstance(value, bool) or value is None:
+        return default
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    if not math.isfinite(number):
+        return default
+    return number
+
+
+def _o6_cloud_archive_int(value, default):
+    """毫秒时间戳和 frame index 都会影响回放体验，坏值统一回退到默认值。"""
+
+    number = _o6_cloud_archive_number(value, None)
+    if number is None:
+        return default
+    return int(number)
+
+
+def _o6_cloud_archive_has_unsafe_claim(value):
+    """O6 只允许本地 mock 数据；一旦看到控制、凭证或串口痕迹就直接拒绝。"""
+
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key).lower()
+            if _o6_cloud_archive_has_unsafe_claim(item):
+                return True
+            if any(
+                marker in key_text
+                for marker in ("token", "bearer", "authorization", "secret", "password", "serial", "baudrate", "cmd_vel", "traceback")
+            ):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_o6_cloud_archive_has_unsafe_claim(item) for item in value)
+    if isinstance(value, str):
+        lowered = value.lower()
+        if "://" in lowered and "@" in lowered:
+            return True
+        blocked_markers = (
+            "authorization",
+            "bearer",
+            "token",
+            "secret",
+            "password",
+            "/cmd_vel",
+            "cmd_vel",
+            "/dev/tty",
+            "ttyusb",
+            "serial",
+            "baudrate",
+            "traceback",
+        )
+        return any(marker in lowered for marker in blocked_markers)
+    return False
+
+
+def _o6_cloud_archive_task_summary(task):
+    """列表视图只保留 O6-shaped 任务摘要，避免把完整轨迹直接铺到首页。"""
+
+    task = _o6_cloud_archive_dict(task)
+    trajectory_frames = _o6_cloud_archive_list(task.get("trajectory_frames"))
+    events = _o6_cloud_archive_list(task.get("events"))
+    evidence_refs = _o6_cloud_archive_list(task.get("evidence_refs"))
+    return {
+        "task_id": _o6_cloud_archive_safe_text(task.get("task_id") or "", 80),
+        "robot_id": _o6_cloud_archive_safe_text(task.get("robot_id") or "", 80),
+        "started_at_ms": _o6_cloud_archive_int(task.get("started_at_ms"), None),
+        "finished_at_ms": _o6_cloud_archive_int(task.get("finished_at_ms"), None),
+        "trajectory_frame_count": len(trajectory_frames),
+        "event_count": len(events),
+        "evidence_ref_count": len(evidence_refs),
+        "selected": bool(task.get("selected")),
+        "updated_at_ms": _o6_cloud_archive_int(task.get("updated_at_ms"), None),
+        "status": "local_mock_archive_ready",
+    }
+
+
+def _o6_cloud_archive_task_detail(task):
+    """详情视图把白名单字段展开成 O6-shaped 数据源，不回显原始危险 payload。"""
+
+    task = _o6_cloud_archive_dict(task)
+    trajectory_frames = []
+    for index, frame in enumerate(
+        _o6_cloud_archive_list(task.get("trajectory_frames"))[:O6_CLOUD_ARCHIVE_MAX_TRAJECTORY_FRAMES]
+    ):
+        frame = _o6_cloud_archive_dict(frame)
+        trajectory_frames.append(
+            {
+                "frame_index": _o6_cloud_archive_int(frame.get("frame_index"), index),
+                "timestamp_ms": _o6_cloud_archive_int(frame.get("timestamp_ms"), None),
+                "x_m": _o6_cloud_archive_number(frame.get("x_m"), None),
+                "y_m": _o6_cloud_archive_number(frame.get("y_m"), None),
+                "yaw_rad": _o6_cloud_archive_number(frame.get("yaw_rad"), None),
+                "speed_mps": _o6_cloud_archive_number(frame.get("speed_mps"), None),
+                "state": _o6_cloud_archive_safe_text(frame.get("state") or "", 80),
+                "evidence_ref": _o6_cloud_archive_safe_ref(frame.get("evidence_ref") or ""),
+            }
+        )
+    events = []
+    for event in _o6_cloud_archive_list(task.get("events"))[:O6_CLOUD_ARCHIVE_MAX_EVENTS]:
+        event = _o6_cloud_archive_dict(event)
+        events.append(
+            {
+                "event_type": _o6_cloud_archive_safe_text(event.get("event_type") or "", 80),
+                "timestamp_ms": _o6_cloud_archive_int(event.get("timestamp_ms"), None),
+                "state": _o6_cloud_archive_safe_text(event.get("state") or "", 80),
+                "details": _o6_cloud_archive_safe_text(event.get("details") or "", 160),
+                "evidence_ref": _o6_cloud_archive_safe_ref(event.get("evidence_ref") or ""),
+            }
+        )
+    evidence_refs = [
+        _o6_cloud_archive_safe_ref(ref)
+        for ref in _o6_cloud_archive_list(task.get("evidence_refs"))[:O6_CLOUD_ARCHIVE_MAX_EVIDENCE_REFS]
+    ]
+    return {
+        "task_id": _o6_cloud_archive_safe_text(task.get("task_id") or "", 80),
+        "robot_id": _o6_cloud_archive_safe_text(task.get("robot_id") or "", 80),
+        "started_at_ms": _o6_cloud_archive_int(task.get("started_at_ms"), None),
+        "finished_at_ms": _o6_cloud_archive_int(task.get("finished_at_ms"), None),
+        "trajectory_frames": trajectory_frames,
+        "events": events,
+        "evidence_refs": evidence_refs,
+        "created_at_ms": _o6_cloud_archive_int(task.get("created_at_ms"), None),
+        "updated_at_ms": _o6_cloud_archive_int(task.get("updated_at_ms"), None),
+        "selected": bool(task.get("selected")),
+        "source": "local_mock_archive",
+        "proof_status": "not_proven",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "pc_only": True,
+        "real_cloud_db_connected": False,
+        "real_oss_connected": False,
+        "connects_cloud_production": False,
+        "robot_control_executed": False,
+    }
+
+
+def _o6_cloud_archive_collection_payload(tasks, *, task=None, write_status=None, duplicate=False):
+    """统一拼装 O6 API 响应，避免 list / detail / upsert 三个入口的安全边界漂移。"""
+
+    task_summaries = [_o6_cloud_archive_task_summary(item) for item in tasks]
+    selected_task = next(
+        (item for item in task_summaries if item.get("selected")),
+        task_summaries[-1] if task_summaries else None,
+    )
+    latest_task = task_summaries[-1] if task_summaries else None
+    payload = {
+        "schema": O6_CLOUD_ARCHIVE_SCHEMA,
+        "schema_version": 1,
+        "source": "local_mock_archive",
+        "proof_status": "not_proven",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "pc_only": True,
+        "real_cloud_db_connected": False,
+        "real_oss_connected": False,
+        "connects_cloud_production": False,
+        "robot_control_executed": False,
+        "archive_status": "local_mock_archive_ready" if task_summaries else "blocked_not_proven",
+        "duplicate": bool(duplicate),
+        "task_list": {
+            "source": "local_mock_archive_file",
+            "total_tasks": len(task_summaries),
+            "tasks": task_summaries,
+            "status": "local_mock_archive_ready" if task_summaries else "blocked_not_proven",
+        },
+        "selected_task": selected_task,
+        "latest_task": latest_task,
+        "blocked_reasons": [] if task_summaries else ["local_mock_archive_store_empty"],
+        "not_proven": [
+            "real_cloud_db_not_connected",
+            "real_oss_not_connected",
+            "real_cloud_production_not_connected",
+            "real_robot_control_not_executed",
+        ],
+    }
+    if task is not None:
+        payload["task"] = _o6_cloud_archive_task_detail(task)
+    if write_status:
+        payload["write_status"] = write_status
+    payload["summary"] = {
+        "task_count": len(task_summaries),
+        "selected_task_id": selected_task["task_id"] if isinstance(selected_task, dict) else None,
+        "latest_task_id": latest_task["task_id"] if isinstance(latest_task, dict) else None,
+        "trajectory_frame_total": sum(item["trajectory_frame_count"] for item in task_summaries),
+        "event_total": sum(item["event_count"] for item in task_summaries),
+        "evidence_ref_total": sum(item["evidence_ref_count"] for item in task_summaries),
+    }
+    return payload
+
+
+def _o6_cloud_archive_validate_task_payload(payload):
+    """POST 只接受小型 task archive payload；危险字段和超大数组直接 fail closed。"""
+
+    if not isinstance(payload, dict):
+        raise ValueError("request body must be an object")
+    if _o6_cloud_archive_has_unsafe_claim(payload):
+        raise ValueError("unsafe archive payload")
+    robot_id = _o6_cloud_archive_safe_text(payload.get("robot_id") or "", 80).strip()
+    task_id = _o6_cloud_archive_safe_text(payload.get("task_id") or "", 80).strip()
+    if not robot_id:
+        raise ValueError("robot_id is required")
+    if not task_id:
+        raise ValueError("task_id is required")
+    started_at_ms = _o6_cloud_archive_int(payload.get("started_at_ms"), None)
+    finished_at_ms = _o6_cloud_archive_int(payload.get("finished_at_ms"), None)
+    if started_at_ms is None:
+        raise ValueError("started_at_ms is required")
+    if finished_at_ms is None:
+        raise ValueError("finished_at_ms is required")
+    if finished_at_ms < started_at_ms:
+        raise ValueError("finished_at_ms must be greater than or equal to started_at_ms")
+    # trajectory/events 是 O6 后续回放和事件流的最小合同，缺字段不能被静默解释成空任务。
+    if "trajectory_frames" not in payload or not isinstance(payload.get("trajectory_frames"), list):
+        raise ValueError("trajectory_frames is required and must be an array")
+    if "events" not in payload or not isinstance(payload.get("events"), list):
+        raise ValueError("events is required and must be an array")
+    if "evidence_refs" in payload and not isinstance(payload.get("evidence_refs"), list):
+        raise ValueError("evidence_refs must be an array")
+    trajectory_frames = _o6_cloud_archive_list(payload.get("trajectory_frames"))
+    events = _o6_cloud_archive_list(payload.get("events"))
+    evidence_refs = _o6_cloud_archive_list(payload.get("evidence_refs"))
+    if len(trajectory_frames) > O6_CLOUD_ARCHIVE_MAX_TRAJECTORY_FRAMES:
+        raise ValueError("trajectory_frames array is too large")
+    if len(events) > O6_CLOUD_ARCHIVE_MAX_EVENTS:
+        raise ValueError("events array is too large")
+    if len(evidence_refs) > O6_CLOUD_ARCHIVE_MAX_EVIDENCE_REFS:
+        raise ValueError("evidence_refs array is too large")
+
+    safe_trajectory_frames = []
+    for index, frame in enumerate(trajectory_frames):
+        frame = _o6_cloud_archive_dict(frame)
+        if _o6_cloud_archive_has_unsafe_claim(frame):
+            raise ValueError("unsafe trajectory frame")
+        safe_trajectory_frames.append(
+            {
+                "frame_index": _o6_cloud_archive_int(frame.get("frame_index"), index),
+                "timestamp_ms": _o6_cloud_archive_int(frame.get("timestamp_ms"), None),
+                "x_m": _o6_cloud_archive_number(frame.get("x_m"), None),
+                "y_m": _o6_cloud_archive_number(frame.get("y_m"), None),
+                "yaw_rad": _o6_cloud_archive_number(frame.get("yaw_rad"), None),
+                "speed_mps": _o6_cloud_archive_number(frame.get("speed_mps"), None),
+                "state": _o6_cloud_archive_safe_text(frame.get("state") or "", 80),
+                "evidence_ref": _o6_cloud_archive_safe_ref(frame.get("evidence_ref") or ""),
+            }
+        )
+
+    safe_events = []
+    for event in events:
+        event = _o6_cloud_archive_dict(event)
+        if _o6_cloud_archive_has_unsafe_claim(event):
+            raise ValueError("unsafe event")
+        safe_events.append(
+            {
+                "event_type": _o6_cloud_archive_safe_text(event.get("event_type") or "", 80),
+                "timestamp_ms": _o6_cloud_archive_int(event.get("timestamp_ms"), None),
+                "state": _o6_cloud_archive_safe_text(event.get("state") or "", 80),
+                "details": _o6_cloud_archive_safe_text(event.get("details") or "", 160),
+                "evidence_ref": _o6_cloud_archive_safe_ref(event.get("evidence_ref") or ""),
+            }
+        )
+
+    safe_evidence_refs = [_o6_cloud_archive_safe_ref(ref) for ref in evidence_refs]
+    if any(
+        ref == "[redacted]"
+        for ref in safe_evidence_refs
+        + [frame["evidence_ref"] for frame in safe_trajectory_frames]
+        + [event["evidence_ref"] for event in safe_events]
+    ):
+        raise ValueError("unsafe evidence_ref")
+
+    sanitized_task = {
+        "task_id": task_id,
+        "robot_id": robot_id,
+        "started_at_ms": started_at_ms,
+        "finished_at_ms": finished_at_ms,
+        "trajectory_frames": safe_trajectory_frames,
+        "events": safe_events,
+        "evidence_refs": safe_evidence_refs,
+        "selected": True,
+    }
+    return sanitized_task
+
+
+class FileBackedO6CloudArchiveStore:
+    """本地 mock archive 文件后端；它只证明 O6-shaped 数据源，不证明真实云归档。"""
+
+    def __init__(self, state_path):
+        self.state_path = os.path.expanduser(str(state_path or "")).strip() or _o6_cloud_archive_default_state_path()
+        self._lock = threading.Lock()
+        self._tasks = {}
+        self._load()
+
+    def _load(self):
+        if not self.state_path or not os.path.exists(self.state_path):
+            return
+        try:
+            with open(self.state_path, "r", encoding="utf-8") as state_file:
+                payload = json.load(state_file)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            return
+        if not isinstance(payload, dict) or payload.get("schema") != O6_CLOUD_ARCHIVE_STORE_SCHEMA:
+            return
+        tasks = payload.get("tasks")
+        if not isinstance(tasks, dict):
+            return
+        for task_id, task in tasks.items():
+            if not isinstance(task, dict):
+                continue
+            safe_task = _o6_cloud_archive_validate_task_payload(task)
+            safe_task["created_at_ms"] = _o6_cloud_archive_int(task.get("created_at_ms"), safe_task["started_at_ms"])
+            safe_task["updated_at_ms"] = _o6_cloud_archive_int(task.get("updated_at_ms"), safe_task["finished_at_ms"])
+            safe_task["selected"] = bool(task.get("selected"))
+            self._tasks[str(task_id)] = safe_task
+
+    def _persist_locked(self):
+        if not self.state_path:
+            return
+        state_dir = os.path.dirname(self.state_path) or "."
+        os.makedirs(state_dir, exist_ok=True)
+        payload = {
+            "schema": O6_CLOUD_ARCHIVE_STORE_SCHEMA,
+            "updated_at_ms": int(_now() * 1000),
+            "tasks": self._tasks,
+        }
+        fd, tmp_path = tempfile.mkstemp(prefix=".trashbot-o6-archive-", suffix=".json", dir=state_dir)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as tmp_file:
+                json.dump(payload, tmp_file, ensure_ascii=False, sort_keys=True)
+                tmp_file.write("\n")
+                tmp_file.flush()
+                os.fsync(tmp_file.fileno())
+            os.replace(tmp_path, self.state_path)
+        finally:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
+    def upsert_task(self, payload):
+        task = _o6_cloud_archive_validate_task_payload(payload)
+        with self._lock:
+            existing = self._tasks.get(task["task_id"])
+            created_at_ms = existing.get("created_at_ms") if isinstance(existing, dict) else task["started_at_ms"]
+            task["created_at_ms"] = _o6_cloud_archive_int(created_at_ms, task["started_at_ms"])
+            task["updated_at_ms"] = int(_now() * 1000)
+            # 这个本地 mock store 只保留一个显式 selected task，方便 O7 后续稳定消费。
+            for other_task in self._tasks.values():
+                other_task["selected"] = False
+            task["selected"] = True
+            self._tasks[task["task_id"]] = task
+            self._persist_locked()
+        write_status = "updated" if isinstance(existing, dict) else "created"
+        return 200 if isinstance(existing, dict) else 201, _o6_cloud_archive_collection_payload(
+            list(self._tasks.values()),
+            task=task,
+            write_status=write_status,
+            duplicate=isinstance(existing, dict),
+        )
+
+    def list_tasks(self):
+        with self._lock:
+            tasks = list(self._tasks.values())
+        return 200, _o6_cloud_archive_collection_payload(tasks)
+
+    def get_task(self, task_id):
+        task_id = _o6_cloud_archive_safe_text(task_id or "", 80).strip()
+        if not task_id:
+            return 400, phone_error("bad_request", "task_id is required")
+        with self._lock:
+            task = self._tasks.get(task_id)
+            tasks = list(self._tasks.values())
+        if not task:
+            return 404, phone_error("not_found", "archive task not found")
+        payload = _o6_cloud_archive_collection_payload(tasks, task=task)
+        payload["task_lookup"] = {"task_id": task_id, "status": "local_mock_archive_ready"}
+        return 200, payload
+
+
 def _build_o7_cloud_archive_tasks_empty_contract(failure_reason="real_cloud_archive_store_not_connected"):
     """返回云中继 archive tasks 空 contract；所有失败路径都复用它来 fail closed。"""
 
@@ -13383,7 +13817,30 @@ def parse_json_body(handler):
     return payload
 
 
-def make_handler(store, bearer_token):
+def parse_json_body_with_limit(handler, max_bytes):
+    """只给个别路由用的局部大小限制，避免把全局 JSON 解析行为改坏。"""
+
+    try:
+        length = int(handler.headers.get("Content-Length") or 0)
+    except ValueError as exc:
+        raise ValueError("malformed content length") from exc
+    if length < 0:
+        raise ValueError("malformed content length")
+    if length > int(max_bytes):
+        raise ValueError("request body too large")
+    if length <= 0:
+        return {}
+    raw = handler.rfile.read(length)
+    try:
+        payload = json.loads(raw.decode("utf-8") or "{}")
+    except json.JSONDecodeError as exc:
+        raise ValueError("malformed_json") from exc
+    if not isinstance(payload, dict):
+        raise TypeError("JSON body must be an object")
+    return payload
+
+
+def make_handler(store, archive_store, bearer_token):
     expected_token = str(bearer_token or "").strip()
 
     class RelayHandler(BaseHTTPRequestHandler):
@@ -13468,6 +13925,34 @@ def make_handler(store, bearer_token):
                 archive_json = os.environ.get(O7_CLOUD_ARCHIVE_TASKS_ENV, "")
                 self._send_json(200, build_o7_cloud_archive_tasks_contract(archive_json))
                 return
+            if parsed.path == "/api/o6/archive/tasks":
+                # O6 archive tasks 是本地 mock file-backed store；它只证明数据形状，不连接真实云。
+                try:
+                    status_code, payload = archive_store.list_tasks()
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
+            if parsed.path.startswith("/api/o6/archive/tasks/"):
+                # task_id 走独立路径，便于 O6 shaped data source 被 O7 后续直接消费。
+                task_id = unquote(parsed.path.removeprefix("/api/o6/archive/tasks/").strip("/"))
+                if not task_id:
+                    self._send_json(400, phone_error("bad_request", "task_id is required"))
+                    return
+                try:
+                    status_code, payload = archive_store.get_task(task_id)
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
             if parsed.path == "/api/o7/realtime-elevator/snapshot":
                 # O7 realtime/elevator 只读取显式 env 配置的本机 fixture；query path 被刻意忽略。
                 snapshot_json = os.environ.get(O7_REALTIME_ELEVATOR_SNAPSHOT_ENV, "")
@@ -13542,6 +14027,30 @@ def make_handler(store, bearer_token):
 
         def do_POST(self):
             parsed = urlparse(self.path)
+            if parsed.path == "/api/o6/archive/tasks":
+                # O6 POST 只写本地 mock store；坏 JSON、坏字段和超大数组都必须 fail closed。
+                try:
+                    body = parse_json_body_with_limit(self, O6_CLOUD_ARCHIVE_MAX_BODY_BYTES)
+                except ValueError as exc:
+                    message = str(exc)
+                    if message == "request body too large":
+                        self._send_json(400, phone_error("bad_request", message))
+                        return
+                    self._send_json(400, phone_error("malformed_json", "request body was not valid JSON"))
+                    return
+                except TypeError as exc:
+                    self._send_json(400, phone_error("bad_request", str(exc)))
+                    return
+                try:
+                    status_code, payload = archive_store.upsert_task(body)
+                except ValueError as exc:
+                    self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
+                    return
+                except (OSError, sqlite3.Error) as exc:
+                    self._send_json(503, phone_error("archive_store_unavailable", _safe_error_reason(exc)))
+                    return
+                self._send_json(status_code, payload)
+                return
             if parsed.path == "/api/o7/rtc/signaling/sessions":
                 # 该写入口接收 offer payload，因此即使不创建 RTC session，也必须先走 bearer gate。
                 if not self._authorized():
@@ -13646,7 +14155,8 @@ def make_handler(store, bearer_token):
 
 def build_server(host, port, state_path, bearer_token, state_backend="file"):
     store = build_relay_store(state_path, state_backend)
-    return ThreadingHTTPServer((host, int(port)), make_handler(store, bearer_token))
+    archive_store = FileBackedO6CloudArchiveStore(_o6_cloud_archive_state_path_from_env())
+    return ThreadingHTTPServer((host, int(port)), make_handler(store, archive_store, bearer_token))
 
 
 def main(argv=None):

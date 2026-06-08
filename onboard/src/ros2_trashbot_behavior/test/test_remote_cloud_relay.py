@@ -208,12 +208,19 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.state_path = pathlib.Path(self.tmp.name) / "relay_state.json"
+        self.o6_state_path = pathlib.Path(self.tmp.name) / "o6_archive_state.json"
+        self.env_patcher = mock.patch.dict(
+            os.environ,
+            {"TRASHBOT_O6_CLOUD_ARCHIVE_STATE": str(self.o6_state_path)},
+        )
+        self.env_patcher.start()
         self.server = build_server("127.0.0.1", 0, self.state_path, "phone-token")
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.client = RelayHttpClient(f"http://127.0.0.1:{self.server.server_address[1]}")
 
     def tearDown(self):
+        self.env_patcher.stop()
         self.server.shutdown()
         self.server.server_close()
         self.thread.join(timeout=1.0)
@@ -700,6 +707,185 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(body["task_list"]["total_tasks"], 0)
         self.assertEqual(body["task_list"]["tasks"], [])
 
+    def test_o6_cloud_archive_tasks_endpoint_is_public_readonly_and_fail_closed(self):
+        status, body = self.client.request("GET", "/api/o6/archive/tasks", token="")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(body["schema"], "trashbot.o6.cloud_archive.v1")
+        self.assertEqual(body["source"], "local_mock_archive")
+        self.assertEqual(body["archive_status"], "blocked_not_proven")
+        self.assertFalse(body["real_cloud_db_connected"])
+        self.assertFalse(body["real_oss_connected"])
+        self.assertFalse(body["connects_cloud_production"])
+        self.assertFalse(body["robot_control_executed"])
+        self.assertFalse(body["safe_to_control"])
+        self.assertFalse(body["delivery_success"])
+        self.assertFalse(body["primary_actions_enabled"])
+        self.assertEqual(body["task_list"]["total_tasks"], 0)
+        self.assertEqual(body["task_list"]["tasks"], [])
+        self.assertIsNone(body["selected_task"])
+        self.assertIsNone(body["latest_task"])
+        self.assertEqual(body["summary"]["task_count"], 0)
+        self.assertIn("real_cloud_db_not_connected", body["not_proven"])
+
+    def test_o6_cloud_archive_tasks_endpoint_upserts_lists_and_gets_item(self):
+        payload = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-001",
+            "started_at_ms": 1000,
+            "finished_at_ms": 2000,
+            "trajectory_frames": [
+                {
+                    "frame_index": 0,
+                    "timestamp_ms": 1000,
+                    "x_m": 1.25,
+                    "y_m": 2.5,
+                    "yaw_rad": 0.5,
+                    "speed_mps": 0.15,
+                    "state": "patrol",
+                    "evidence_ref": "frames/frame-001.jpg",
+                }
+            ],
+            "events": [
+                {
+                    "event_type": "archive_created",
+                    "timestamp_ms": 1200,
+                    "state": "recorded",
+                    "details": "local mock archive ready",
+                    "evidence_ref": "events/event-001.json",
+                }
+            ],
+            "evidence_refs": ["evidence/archive-001.json"],
+        }
+
+        status, created = self.client.request("POST", "/api/o6/archive/tasks", payload)
+        self.assertEqual(status, 201)
+        self.assertEqual(created["write_status"], "created")
+        self.assertFalse(created["duplicate"])
+        self.assertEqual(created["task"]["task_id"], "task-o6-001")
+        self.assertEqual(created["task"]["trajectory_frames"][0]["x_m"], 1.25)
+        self.assertEqual(created["task"]["events"][0]["event_type"], "archive_created")
+        self.assertEqual(created["task"]["evidence_refs"], ["archive-001.json"])
+        self.assertTrue(self.o6_state_path.exists())
+
+        status, listing = self.client.request("GET", "/api/o6/archive/tasks", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(listing["task_list"]["total_tasks"], 1)
+        self.assertEqual(listing["selected_task"]["task_id"], "task-o6-001")
+        self.assertEqual(listing["latest_task"]["task_id"], "task-o6-001")
+
+        status, detail = self.client.request("GET", "/api/o6/archive/tasks/task-o6-001", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(detail["task"]["task_id"], "task-o6-001")
+        self.assertEqual(detail["task"]["trajectory_frames"][0]["state"], "patrol")
+        self.assertEqual(detail["task_lookup"]["status"], "local_mock_archive_ready")
+
+        updated_payload = dict(payload)
+        updated_payload["finished_at_ms"] = 2500
+        updated_payload["events"] = payload["events"] + [
+            {
+                "event_type": "archive_updated",
+                "timestamp_ms": 2200,
+                "state": "updated",
+                "details": "still local mock",
+                "evidence_ref": "events/event-002.json",
+            }
+        ]
+        status, updated = self.client.request("POST", "/api/o6/archive/tasks", updated_payload)
+        self.assertEqual(status, 200)
+        self.assertTrue(updated["duplicate"])
+        self.assertEqual(updated["write_status"], "updated")
+        self.assertEqual(updated["task"]["finished_at_ms"], 2500)
+        self.assertEqual(updated["task_list"]["total_tasks"], 1)
+        self.assertEqual(updated["summary"]["task_count"], 1)
+
+    def test_o6_cloud_archive_tasks_endpoint_rejects_unsafe_or_oversized_payloads(self):
+        unsafe_payload = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-unsafe",
+            "started_at_ms": 1000,
+            "finished_at_ms": 2000,
+            "trajectory_frames": [],
+            "events": [],
+            "evidence_refs": ["Authorization: Bearer leaked-token"],
+        }
+        status, body = self.client.request("POST", "/api/o6/archive/tasks", unsafe_payload)
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
+
+        too_large_payload = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-large",
+            "started_at_ms": 1000,
+            "finished_at_ms": 2000,
+            "trajectory_frames": [
+                {
+                    "frame_index": index,
+                    "timestamp_ms": 1000 + index,
+                    "x_m": float(index),
+                    "y_m": float(index),
+                    "yaw_rad": 0.0,
+                    "speed_mps": 0.1,
+                    "state": "patrol",
+                    "evidence_ref": f"frames/frame-{index:03d}.jpg",
+                }
+                for index in range(65)
+            ],
+            "events": [],
+            "evidence_refs": [],
+        }
+        status, body = self.client.request("POST", "/api/o6/archive/tasks", too_large_payload)
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("too large", body["error"]["message"].lower())
+
+        raw_body = b"{" + b" " * (relay_module.O6_CLOUD_ARCHIVE_MAX_BODY_BYTES + 1) + b"}"
+        status, body = self.client.request("POST", "/api/o6/archive/tasks", raw_body=raw_body)
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("too large", body["error"]["message"].lower())
+
+    def test_o6_cloud_archive_tasks_endpoint_rejects_bad_json_missing_fields_and_time_order(self):
+        # O6 是后续 O7 的数据源，坏输入必须早拒绝，不能生成看似可回放的空任务。
+        status, body = self.client.request("POST", "/api/o6/archive/tasks", raw_body=b'{"robot_id":')
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "malformed_json")
+
+        missing_events_payload = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-missing-events",
+            "started_at_ms": 1000,
+            "finished_at_ms": 2000,
+            "trajectory_frames": [],
+        }
+        status, body = self.client.request("POST", "/api/o6/archive/tasks", missing_events_payload)
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("events", body["error"]["message"])
+
+        bad_time_payload = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-bad-time",
+            "started_at_ms": 2000,
+            "finished_at_ms": 1000,
+            "trajectory_frames": [],
+            "events": [],
+        }
+        status, body = self.client.request("POST", "/api/o6/archive/tasks", bad_time_payload)
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("finished_at_ms", body["error"]["message"])
+
+    def test_o6_cloud_archive_tasks_endpoint_missing_detail_fails_closed(self):
+        status, body = self.client.request("GET", "/api/o6/archive/tasks/missing-task", token="")
+
+        encoded = json.dumps(body, ensure_ascii=False)
+        self.assertEqual(status, 404)
+        self.assertEqual(body["error"]["code"], "not_found")
+        for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "traceback"):
+            self.assertNotIn(forbidden, encoded)
+
     def test_o7_realtime_elevator_snapshot_endpoint_is_public_readonly_and_fail_closed(self):
         with mock.patch.dict(os.environ, {"TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON": ""}):
             status, body = self.client.request("GET", "/api/o7/realtime-elevator/snapshot", token="")
@@ -1091,7 +1277,11 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
 
         server = relay_module.ThreadingHTTPServer(
             ("127.0.0.1", 0),
-            relay_module.make_handler(FailingStore(), "phone-token"),
+            relay_module.make_handler(
+                FailingStore(),
+                relay_module.FileBackedO6CloudArchiveStore(pathlib.Path(self.tmp.name) / "unused_o6_archive_state.json"),
+                "phone-token",
+            ),
         )
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
@@ -1260,7 +1450,11 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
 
         server = relay_module.ThreadingHTTPServer(
             ("127.0.0.1", 0),
-            relay_module.make_handler(FailingStore(), "phone-token"),
+            relay_module.make_handler(
+                FailingStore(),
+                relay_module.FileBackedO6CloudArchiveStore(pathlib.Path(self.tmp.name) / "unused_o6_archive_state.json"),
+                "phone-token",
+            ),
         )
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
@@ -1467,7 +1661,11 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
 
         server = relay_module.ThreadingHTTPServer(
             ("127.0.0.1", 0),
-            relay_module.make_handler(FailingStore(), "phone-token"),
+            relay_module.make_handler(
+                FailingStore(),
+                relay_module.FileBackedO6CloudArchiveStore(pathlib.Path(self.tmp.name) / "unused_o6_archive_state.json"),
+                "phone-token",
+            ),
         )
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
