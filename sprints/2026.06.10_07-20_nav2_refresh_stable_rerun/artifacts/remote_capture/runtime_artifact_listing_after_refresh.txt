@@ -1,0 +1,4 @@
+-rw-r--r-- 1 root root 13951 Jun 10 05:01 /root/rober/onboard/runtime/map_lifecycle_latest.json
+-rw-r--r-- 1 root root 12549 Jun 10 05:14 /root/rober/onboard/runtime/nav2_lifecycle_latest.json
+Wed Jun 10 05:15:05 AM CST 2026
+exit=0

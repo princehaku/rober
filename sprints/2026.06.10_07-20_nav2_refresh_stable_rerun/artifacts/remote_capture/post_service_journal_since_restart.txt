@@ -1,0 +1,2 @@
+Jun 10 05:08:18 op-z3-b6.home env[115648]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
+exit=0
