@@ -969,6 +969,118 @@ const consumerRouteReplayTunnelSummary = computed(() => {
   ];
 });
 
+const consumerDetailLabelingQueueBlockedReason = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  // 标注队列主路径必须直接绑定 consumer detail；缺 detail、缺样本或任务状态不可审阅时都要关闸。
+  if (consumerTaskDetailLoading.value) {
+    return "consumer_task_detail_loading";
+  }
+  if (consumerTaskDetailError.value) {
+    return "consumer_task_detail_api_unavailable";
+  }
+  if (!detail) {
+    return "consumer_task_detail_not_loaded";
+  }
+  if (detail.detail_status !== "loaded_fail_closed_summary") {
+    return detail.fail_closed_reason || "consumer_task_detail_fail_closed";
+  }
+  const taskId = detail.task_summary?.task_id?.trim() ?? "";
+  const requestedTaskId = consumerSelectedTaskId.value.trim();
+  const taskStatus = detail.task_summary?.task_status_summary ?? "";
+  if (!taskId || taskId === "unknown_task" || taskId === "not_provided") {
+    return "unknown_task";
+  }
+  if (requestedTaskId && taskId !== requestedTaskId) {
+    return "task_id_mismatch";
+  }
+  if (!taskStatus || /(?:failed|blocked|error|invalid|unknown|expired|cancel|not_proven)/i.test(taskStatus)) {
+    return `task_status_not_reviewable:${taskStatus || "missing"}`;
+  }
+  if (!detail.labeling.label_count || !detail.labeling.sample_items.length) {
+    return "labeling_missing";
+  }
+  if (!detail.evidence.count || !detail.evidence.sample_evidence.length) {
+    return "evidence_missing";
+  }
+  if (!detail.events.count || !detail.events.sample_events.length) {
+    return "events_missing";
+  }
+  if (!detail.trajectory.frame_count || !routeReplayFrames.value.length) {
+    return "trajectory_missing";
+  }
+  return "";
+});
+
+const consumerDetailLabelingQueueNavigationEnabled = computed(
+  () => consumerDetailLabelingQueueBlockedReason.value === "",
+);
+
+const consumerDetailLabelingQueueRowSummaries = computed(() => {
+  // 这里把 labeling / evidence / events / trajectory 串成同一条只读检查线，但只输出短摘要。
+  if (!consumerDetailLabelingQueueNavigationEnabled.value) {
+    return [];
+  }
+  const labelItems = sampleRecords(consumerTaskDetailResult.value?.labeling.sample_items, 5);
+  const trajectorySummaries = routeReplayFrames.value.map((frame) => safeDetailFrameSummary(frame));
+  const eventSummaries = sampleDetailSummaries(consumerTaskDetailResult.value?.events.sample_events, "event", 5);
+  const evidenceSummaries = sampleDetailSummaries(consumerTaskDetailResult.value?.evidence.sample_evidence, "evidence", 5);
+  const maxLength = Math.min(
+    5,
+    Math.max(labelItems.length, trajectorySummaries.length, eventSummaries.length, evidenceSummaries.length),
+  );
+  return Array.from({ length: maxLength }, (_, index) => {
+    const item = labelItems[index];
+    const itemSummary = item
+      ? [
+          `item_id=${asCursorLabel(item.item_id, "blocked_not_proven")}`,
+          `frame_id=${asCursorLabel(item.frame_id, "blocked_not_proven")}`,
+          `status=${asCursorLabel(item.status, "blocked_not_proven")}`,
+          `evidence_ref=${asCursorLabel(item.evidence_ref, "missing_evidence_ref")}`,
+        ].join(" · ")
+      : "blocked_not_proven";
+    return [
+      `#${index + 1}`,
+      itemSummary,
+      `trajectory=${trajectorySummaries[index] ?? "blocked_not_proven"}`,
+      `event=${eventSummaries[index] ?? "blocked_not_proven"}`,
+      `evidence=${evidenceSummaries[index] ?? "blocked_not_proven"}`,
+    ].join(" · ");
+  });
+});
+
+function consumerDetailLabelingQueueFalseFields(): string[] {
+  const detail = consumerTaskDetailResult.value;
+  // 这些 false 字段让 operator 一眼看见：这里只是只读检查视图，不是 annotation 生产入口。
+  return [
+    `submit_enabled=false`,
+    `export_enabled=false`,
+    `rollback_enabled=false`,
+    `dataset_export_available=false`,
+    `real_annotation_api_connected=false`,
+    `connects_cloud_production=${String(detail?.connects_cloud_production ?? false)}`,
+    `safe_to_control=${String(detail?.safe_to_control ?? false)}`,
+    `primary_actions_enabled=${String(detail?.primary_actions_enabled ?? false)}`,
+    `robot_control_executed=${String(detail?.robot_control_executed ?? false)}`,
+  ];
+}
+
+const consumerDetailLabelingQueueSummary = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  // summary 只压缩标签、证据、事件和轨迹的计数，不把完整 payload 灌进 UI。
+  if (!detail) {
+    return "blocked_not_proven";
+  }
+  return [
+    `consumer-detail labeling primary path`,
+    `task_id=${detail.task_summary?.task_id ?? "blocked_not_proven"}`,
+    `labeling_status=${detail.labeling.status}`,
+    `label_count=${detail.labeling.label_count}`,
+    `evidence_count=${detail.evidence.count}`,
+    `event_count=${detail.events.count}`,
+    `trajectory_frame_count=${detail.trajectory.frame_count}`,
+  ].join(" · ");
+});
+
 onBeforeUnmount(() => {
   // 组件销毁时必须清掉本地计时器，避免离开页面后仍然推进 cursor。
   stopRouteReplayPlayback();
@@ -2384,6 +2496,66 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             <li v-for="item in consumerDetailNotProven()" :key="item">{{ item }}</li>
           </ul>
 
+          <h3>Consumer-detail labeling queue primary path</h3>
+          <div class="notice" role="note">
+            consumer-detail labeling primary path · submit_enabled=false · export_enabled=false ·
+            rollback_enabled=false · dataset_export_available=false · real_annotation_api_connected=false ·
+            safe_to_control=false · primary_actions_enabled=false · robot_control_executed=false
+          </div>
+          <dl class="kv compact-kv">
+            <dt>cursor_status</dt>
+            <dd>{{ consumerDetailLabelingQueueNavigationEnabled ? "consumer_detail_labeling_queue_ready" : "blocked_not_proven" }}</dd>
+            <dt>blocked_reason</dt>
+            <dd>{{ consumerDetailLabelingQueueBlockedReason || "none_consumer_detail_only" }}</dd>
+            <dt>summary</dt>
+            <dd>{{ consumerDetailLabelingQueueSummary }}</dd>
+            <dt>current task</dt>
+            <dd>{{ consumerTaskDetailResult?.task_summary?.task_id ?? "blocked_not_proven" }}</dd>
+            <dt>labeling status</dt>
+            <dd>{{ consumerTaskDetailResult?.labeling.status ?? "blocked_not_proven" }}</dd>
+            <dt>label count</dt>
+            <dd>{{ consumerTaskDetailResult?.labeling.label_count ?? 0 }}</dd>
+            <dt>evidence count</dt>
+            <dd>{{ consumerTaskDetailResult?.evidence.count ?? 0 }}</dd>
+            <dt>event count</dt>
+            <dd>{{ consumerTaskDetailResult?.events.count ?? 0 }}</dd>
+            <dt>trajectory frame count</dt>
+            <dd>{{ consumerTaskDetailResult?.trajectory.frame_count ?? 0 }}</dd>
+            <dt>submit_enabled</dt>
+            <dd>false</dd>
+            <dt>export_enabled</dt>
+            <dd>false</dd>
+            <dt>rollback_enabled</dt>
+            <dd>false</dd>
+            <dt>real_annotation_api_connected</dt>
+            <dd>false</dd>
+            <dt>dataset_export_available</dt>
+            <dd>false</dd>
+            <dt>connects_cloud_production</dt>
+            <dd>{{ consumerTaskDetailResult?.connects_cloud_production ?? false }}</dd>
+            <dt>safe_to_control</dt>
+            <dd>{{ consumerTaskDetailResult?.safe_to_control ?? false }}</dd>
+            <dt>primary_actions_enabled</dt>
+            <dd>{{ consumerTaskDetailResult?.primary_actions_enabled ?? false }}</dd>
+            <dt>robot_control_executed</dt>
+            <dd>{{ consumerTaskDetailResult?.robot_control_executed ?? false }}</dd>
+          </dl>
+          <h3>Labeling queue check rows</h3>
+          <ul class="dense">
+            <li v-if="!consumerDetailLabelingQueueRowSummaries.length">blocked_not_proven</li>
+            <li v-for="row in consumerDetailLabelingQueueRowSummaries" :key="row">{{ row }}</li>
+          </ul>
+          <h3>Labeling queue false fields</h3>
+          <ul class="dense">
+            <li v-for="field in consumerDetailLabelingQueueFalseFields()" :key="field">{{ field }}</li>
+          </ul>
+          <h3>Consumer-detail labeling queue notes</h3>
+          <ul class="dense">
+            <li>consumer-detail labeling primary path uses task detail labels plus evidence/events/trajectory checks</li>
+            <li>submit/export/rollback stay closed; archive fixture review panel only survives as debug fallback</li>
+            <li>missing detail, labeling, evidence, events or trajectory keeps the view blocked_not_proven</li>
+          </ul>
+
           <h3>Consumer-detail route replay player</h3>
           <div class="notice" role="note">
             local_detail_cursor_only · sends_to_robot=false · safe_to_control=false · primary_actions_enabled=false ·
@@ -3168,7 +3340,7 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
         </div>
       </div>
 
-      <h3>Labeling queue inspector</h3>
+      <h3>Labeling queue inspector debug fallback</h3>
       <dl class="kv compact-kv">
         <dt>status</dt>
         <dd>{{ archiveResult?.labeling_queue_inspector.status ?? "blocked_not_proven" }}</dd>
@@ -3178,11 +3350,11 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
         <dd>{{ archiveResult?.labeling_queue_inspector.review_item_count ?? 0 }}</dd>
       </dl>
 
-      <h3>Local labeling review panel</h3>
+      <h3>Debug fallback: archive fixture labeling review panel</h3>
       <div class="notice" role="note">
-        local_fixture_item_cursor_only · submit_enabled=false · rollback_enabled=false ·
-        dataset_export_available=false · real_annotation_api_connected=false ·
-        draft_labels.autosave_available=false
+        debug_fallback_only · local_fixture_item_cursor_only · consumer-detail labeling primary path stays isolated ·
+        submit_enabled=false · rollback_enabled=false · dataset_export_available=false ·
+        real_annotation_api_connected=false · draft_labels.autosave_available=false
       </div>
       <dl class="kv compact-kv">
         <dt>cursor_status</dt>

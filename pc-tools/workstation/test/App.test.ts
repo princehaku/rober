@@ -995,7 +995,7 @@ const fixtures: Record<string, unknown> = {
       {
         id: "labeling_review_panel",
         source_endpoint: "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
-        ui_surface: "Local labeling review panel",
+        ui_surface: "Debug fallback: archive fixture labeling review panel",
         evidence_boundary: "local_fixture_cursor_only",
         software_proof_available: true,
         acceptance_status: "blocked_not_proven",
@@ -2453,7 +2453,7 @@ describe("App", () => {
     expect(wrapper.text()).toContain("cloud_archive_tasks_probe_not_loaded");
     expect(wrapper.text()).toContain("rtc_signaling_contract_probe_not_loaded");
     expect(wrapper.text()).toContain("realtime_elevator_probe_not_loaded");
-    expect(wrapper.text()).toContain("Local labeling review panel");
+    expect(wrapper.text()).toContain("Debug fallback: archive fixture labeling review panel");
     expect(wrapper.findAll("button").find((button) => button.text() === "Next item")?.attributes("disabled")).toBeDefined();
     expect(wrapper.text()).toContain("Local voice ASR/TTS monitor panel");
     expect(wrapper.findAll("button").find((button) => button.text() === "Next ASR event")?.attributes("disabled")).toBeDefined();
@@ -2712,14 +2712,19 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.text()).toContain("1 / 2");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalCursor);
-    expect(wrapper.text()).toContain("Labeling queue inspector");
-    expect(wrapper.text()).toContain("Local labeling review panel");
+    expect(wrapper.text()).toContain("Consumer-detail labeling queue primary path");
+    expect(wrapper.text()).toContain("consumer-detail labeling primary path");
+    expect(wrapper.text()).toContain("consumer_detail_labeling_queue_ready");
+    expect(wrapper.text()).toContain("submit_enabled=false");
+    expect(wrapper.text()).toContain("export_enabled=false");
+    expect(wrapper.text()).toContain("rollback_enabled=false");
+    expect(wrapper.text()).toContain("real_annotation_api_connected=false");
+    expect(wrapper.text()).toContain("dataset_export_available=false");
+    expect(wrapper.text()).toContain("consumer-detail labeling primary path uses task detail labels plus evidence/events/trajectory checks");
+    expect(wrapper.text()).toContain("Labeling queue inspector debug fallback");
+    expect(wrapper.text()).toContain("Debug fallback: archive fixture labeling review panel");
     expect(wrapper.text()).toContain("local_fixture_item_cursor_only");
     expect(wrapper.text()).toContain("local_fixture_item_cursor_ready");
-    expect(wrapper.text()).toContain("submit_enabled=false");
-    expect(wrapper.text()).toContain("rollback_enabled=false");
-    expect(wrapper.text()).toContain("dataset_export_available=false");
-    expect(wrapper.text()).toContain("real_annotation_api_connected=false");
     expect(wrapper.text()).toContain("draft_labels.autosave_available=false");
     expect(wrapper.text()).toContain("1 / 2");
     expect(wrapper.findAll("button").find((button) => button.text() === "Next item")?.attributes("disabled")).toBeUndefined();
@@ -2960,5 +2965,137 @@ describe("App", () => {
     expect(wrapper.text()).not.toMatch(
       /\bSend\b|\bSpeak\b|\bDispatch\b|\bRun\b|\bSubmit\b|\bControl\b|\bPlay\b|\bPause\b|\bExport\b|\bStop\b|\bCancel\b|\bRecovery\b/,
     );
+  });
+
+  it("blocks consumer-detail labeling queue primary path when labeling samples are missing", async () => {
+    // 这个用例只验证 consumer-detail 标注主路径的 fail-closed 分支，不依赖 archive fallback。
+    const consumerTaskListFixture = fixtures["/api/o7/consumer-read/tasks"] as Record<string, unknown>;
+    const blockedFixtures: Record<string, unknown> = {
+      ...fixtures,
+      "/api/o7/consumer-read/tasks": {
+        ...consumerTaskListFixture,
+        task_list: [
+          {
+            task_id: "task-consumer-labeling-blocked",
+            robot_id: "robot_fixture",
+            started_at_ms: 1000,
+            finished_at_ms: 2000,
+            task_status_summary: "completed_mock",
+            latest_event_at_ms: 1900,
+            trajectory_frame_count: 2,
+            event_count: 1,
+            evidence_count: 1,
+            labeling_status: "partial",
+            inference_status: "present",
+            tunnel_status_summary: "online",
+            selected: true,
+          },
+        ],
+      },
+      "/api/o7/consumer-read/tasks/task-consumer-labeling-blocked": {
+        schema: "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1",
+        detail_status: "loaded_fail_closed_summary",
+        source_base_url: "http://127.0.0.1:8088",
+        remote_endpoint:
+          "/api/o6/consumer/tasks/task-consumer-labeling-blocked?view=default&include=trajectory,events,evidence,labeling,inference,tunnel",
+        remote_schema: "trashbot.o6.consumer_read.v1",
+        requested_task_id: "task-consumer-labeling-blocked",
+        query_strategy: {
+          view: "default",
+          include: ["trajectory", "events", "evidence", "labeling", "inference", "tunnel"],
+          primary_path: true,
+          fail_closed_visible: true,
+        },
+        task_summary: {
+          task_id: "task-consumer-labeling-blocked",
+          robot_id: "robot_fixture",
+          task_status_summary: "completed_mock",
+          started_at_ms: 1000,
+          finished_at_ms: 2000,
+        },
+        trajectory: {
+          status: "loaded_not_proven",
+          frame_count: 2,
+          sample_frames: [
+            {
+              frame_index: 0,
+              timestamp_ms: 1000,
+              pose: { x_m: 0.2, y_m: 0.1, yaw_rad: 0 },
+              velocity: { linear_mps: 0.1 },
+              state: "consumer_departed",
+              evidence_ref: "consumer-frame-000.jpg",
+            },
+          ],
+        },
+        events: {
+          status: "loaded_not_proven",
+          count: 1,
+          sample_events: [{ event_type: "route.frame", state: "consumer_en_route", timestamp_ms: 1200, evidence_ref: "consumer-event-001.json" }],
+        },
+        evidence: {
+          status: "loaded_not_proven",
+          count: 1,
+          sample_evidence: [{ evidence_type: "snapshot", state: "consumer_en_route", timestamp_ms: 1200, evidence_ref: "consumer-evidence-001.jpg" }],
+        },
+        labeling: {
+          status: "pending",
+          label_count: 0,
+          sample_items: [],
+        },
+        inference: {
+          status: "present",
+          count: 1,
+          sample_results: [{ result_type: "floor_recognition", status: "not_proven", timestamp_ms: 1200, evidence_ref: "consumer-inference-001.json" }],
+        },
+        tunnel_status: {
+          status: "loaded_not_proven",
+          latest_known_status: "online",
+          temporal_alignment: "latest_known_robot_snapshot_not_task_aligned",
+        },
+        blocked_reasons: [],
+        not_proven: ["proof_status=not_proven", "robot_control_executed=false"],
+        fail_closed_reason: "none",
+        local_loopback_only: true,
+        connects_cloud_production: false,
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+    };
+
+    const mockedFetch = vi.fn(async (url: string) => {
+      const fixtureKey = url.startsWith("/api/route/debug-summary")
+        ? "/api/route/debug-summary"
+        : url.startsWith("/api/o7/consumer-read/tasks/")
+          ? "/api/o7/consumer-read/tasks/task-consumer-labeling-blocked"
+          : url.startsWith("/api/o7/consumer-read/tasks")
+            ? "/api/o7/consumer-read/tasks"
+            : url;
+      return {
+        ok: true,
+        json: async () => blockedFixtures[fixtureKey],
+      };
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.findAll("button").find((button) => button.text() === "O7 Previews")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    await wrapper.findAll("button").find((button) => button.text() === "Load consumer task list")?.trigger("click");
+    await flushPromises();
+    await wrapper.findAll("button").find((button) => button.text() === "Load consumer task detail")?.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Consumer-detail labeling queue primary path");
+    expect(wrapper.text()).toContain("blocked_not_proven");
+    expect(wrapper.text()).toContain("labeling_missing");
+    expect(wrapper.text()).toContain("submit_enabled=false");
+    expect(wrapper.text()).toContain("export_enabled=false");
+    expect(wrapper.text()).toContain("rollback_enabled=false");
+    expect(wrapper.text()).toContain("real_annotation_api_connected=false");
+    expect(wrapper.text()).toContain("dataset_export_available=false");
+    expect(wrapper.text()).not.toContain("consumer_detail_labeling_queue_ready");
   });
 });
