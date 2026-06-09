@@ -270,3 +270,35 @@ ROS2 命令发送、stop 成功、LiDAR 与 WAVE ROVER feedback 可采集，但�
 - 下一步建议人工在场做外部视频/肉眼确认，检查电机供电、急停、遥控/模式、底盘是否架空；
   若仍无运动，再考虑 vendor direct `T=1` 更高 PWM/速度受控 HIL，但必须有人在场并保留
   `/trashbot/stop` 或 UART 零速兜底。
+
+### 2026-06-10 04:07 复跑补证
+
+本轮再次在真实上位机 `root@192.168.1.11:37878` 上完整复跑了同一套最小起动阈值 probe，远端日志已拉回 `artifacts/remote_capture/`。复跑结果与前一版一致：四个低速阶梯都能发出、都能停住，但仍未证明真实物理运动或 wheel feedback 非零。
+
+关键证据：
+
+- `probe_exit_status=0`
+- `pre_stop.success=true`
+- `stop_precheck.success=true`
+- `final_stop.success=true`
+- `final_cleanup_check.log` 显示 `trashbot-upper-robot-api.service` 恢复为 `active`
+- `lsof /dev/ttyS5 /dev/ttyACM0` 清场阶段无异常占用
+
+本轮四阶梯实际指标：
+
+| `linear.x` | publish window | paired_bins | median_abs_diff_m | changed_bin_ratio | healthy post scans | wheel L/R nonzero | odom delta |
+| ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: |
+| 0.03 m/s | 0.162465934s | 719 | 0.0044999719 | 0.2058414465 | 22 | false | 0.00450040047 m |
+| 0.05 m/s | 0.163676055s | 714 | 0.0090000033 | 0.3277310924 | 21 | false | 0.00758665045 m |
+| 0.07 m/s | 0.168769288s | 718 | 0.0055000186 | 0.2506963788 | 23 | false | 0.00700849695 m |
+| 0.09 m/s | 0.164172677s | 712 | 0.0090000033 | 0.3539325843 | 21 | false | 0.01346430897 m |
+
+结论保持不变：
+
+- `motion_commands_sent=true`
+- `max_step_linear_x_mps_sent=0.09`
+- `physical_motion_lidar_delta_proven=false`
+- `wheel_feedback_lr_nonzero_proven=false`
+- `min_actuation_step_proven=null`
+- `safe_to_control=true`
+- `delivery_success=false`
