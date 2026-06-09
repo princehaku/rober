@@ -45,6 +45,7 @@
 ### Feedback fields 与采样频率
 
 - 关键字段：`L`,`R`,`r`,`p`,`y`,`v`（`T=1001`）需齐备。
+- 真实上车 smoke 已观测到 `y` 可能返回 JSON `null` 或字符串 `"null"`；项目侧将其解释为 `yaw unavailable`，而不是整帧无效。
 - `configure_feedback` 默认发送序列：`{"T":143,"cmd":0}` -> `{"T":142,"cmd":<interval_ms>}` -> `{"T":131,"cmd":1}`。
 - 建议在 `source=hil_pass` 下采样至少 2 帧 `T=1001`，确认采样间隔接近 `feedback_interval_ms`（例如 100ms 时约 10Hz）。
 - `v` 默认映射为电压；`r/p/y` 为欧拉角（厂商原始值按项目桥接代码按弧度发布 yaw）。
@@ -120,11 +121,12 @@ right_mps = linear.x + angular.z * track_width_m / 2
 ### `/imu/data`
 
 当前仅发布 yaw 四元数（`T=1001` 的 `y`），`r/p` 虽在反馈帧内但未进入 ROS 消息。
+若真实反馈里的 `y` 为 JSON `null` 或字符串 `"null"`，bridge 仍发布 IMU 样本，但设置 `orientation_covariance[0] = -1.0`，明确表示 orientation unavailable，避免伪造 yaw。
 HIL run 必须在报告中说明：`/imu/data` 与 `T=1001.y` 一一对应（以 `evidence_ref` 绑定）。
 
 ### `/battery`
 
-当前仅发布电压（来自 `T=1001.v`）。不提供当前、SOC、容量与电芯信息。
+当前仅发布电压（来自 `T=1001.v`）。只要 `v` 存在且是 finite 数值，即使 `y` unavailable，也必须继续发布 `/battery`。不提供当前、SOC、容量与电芯信息。
 HIL run 需记录 `T=1001.v` 与 `/battery` 取样对齐证据。
 
 ## Run-time Validation Checklist

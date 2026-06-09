@@ -1,0 +1,2 @@
+[INFO] [1781024738.634890259] [esp32_bridge]: Connected to WAVE ROVER ESP32 on /dev/ttyS5 @ 115200
+[INFO] [1781024738.710618764] [esp32_bridge]: ESP32Bridge ready: vendor WAVE ROVER UART protocol is one UTF-8 JSON object per newline; command_mode=speed; odom source=ROS-side command integration until measured wheel odometry is validated

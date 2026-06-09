@@ -131,21 +131,28 @@ class ESP32Bridge(Node):
                     self.get_logger().error(f"Serial read error: {exc}")
                 time.sleep(0.1)
 
-    def _publish_feedback(self, feedback: dict[str, float]) -> None:
+    def _publish_feedback(self, feedback: dict[str, float | None]) -> None:
         now = self.get_clock().now().to_msg()
 
         imu = Imu()
         imu.header.stamp = now
         imu.header.frame_id = "imu_link"
         # 当前只把 vendor y 映射为 yaw；roll/pitch 暂不发布，避免制造未经 HIL 对齐的姿态事实。
-        yaw = vendor_degrees_to_ros_radians(feedback["yaw"])
-        imu.orientation.z = math.sin(yaw / 2.0)
-        imu.orientation.w = math.cos(yaw / 2.0)
+        yaw_degrees = feedback["yaw"]
+        if yaw_degrees is None:
+            # 当真实板子明确回传 yaw unavailable 时，仍发布 IMU 样本，但用 ROS 约定显式声明 orientation 不可用。
+            imu.orientation.w = 1.0
+            imu.orientation_covariance[0] = -1.0
+        else:
+            yaw = vendor_degrees_to_ros_radians(yaw_degrees)
+            imu.orientation.z = math.sin(yaw / 2.0)
+            imu.orientation.w = math.cos(yaw / 2.0)
         self.imu_pub.publish(imu)
 
         battery = BatteryState()
         battery.header.stamp = now
-        battery.voltage = feedback["voltage"]
+        # parser 已确保 v 是有限数值；这里不再二次兜底，避免把真实电压样本误吞掉。
+        battery.voltage = float(feedback["voltage"])
         battery.present = True
         self.battery_pub.publish(battery)
 

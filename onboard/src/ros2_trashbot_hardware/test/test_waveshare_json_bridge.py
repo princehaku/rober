@@ -36,8 +36,33 @@ def _install_ros_stubs():
 
     sensor_msgs = types.ModuleType("sensor_msgs")
     sensor_msgs.msg = types.ModuleType("sensor_msgs.msg")
-    sensor_msgs.msg.Imu = type("Imu", (), {})
-    sensor_msgs.msg.BatteryState = type("BatteryState", (), {})
+
+    class _Header:
+        def __init__(self):
+            self.stamp = None
+            self.frame_id = ""
+
+    class _Orientation:
+        def __init__(self):
+            self.x = 0.0
+            self.y = 0.0
+            self.z = 0.0
+            self.w = 0.0
+
+    class Imu:
+        def __init__(self):
+            self.header = _Header()
+            self.orientation = _Orientation()
+            self.orientation_covariance = [0.0] * 9
+
+    class BatteryState:
+        def __init__(self):
+            self.header = _Header()
+            self.voltage = 0.0
+            self.present = False
+
+    sensor_msgs.msg.Imu = Imu
+    sensor_msgs.msg.BatteryState = BatteryState
     sensor_msgs.msg.Range = type("Range", (), {})
     sys.modules.setdefault("sensor_msgs", sensor_msgs)
     sys.modules.setdefault("sensor_msgs.msg", sensor_msgs.msg)
@@ -57,6 +82,24 @@ def _install_ros_stubs():
 def _bridge_module():
     _install_ros_stubs()
     return importlib.import_module("ros2_trashbot_hardware.esp32_bridge")
+
+
+class _FakePublisher:
+    def __init__(self):
+        self.messages = []
+
+    def publish(self, message):
+        self.messages.append(message)
+
+
+class _FakeClockNow:
+    def to_msg(self):
+        return "fake-stamp"
+
+
+class _FakeClock:
+    def now(self):
+        return _FakeClockNow()
 
 
 class WaveshareJsonBridgeTest(unittest.TestCase):
@@ -196,6 +239,25 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             },
         )
 
+    def test_base_feedback_line_accepts_null_yaw_without_dropping_voltage(self):
+        bridge = _bridge_module()
+
+        for yaw_value in ("null", None):
+            with self.subTest(yaw_value=yaw_value):
+                payload = {
+                    "T": 1001,
+                    "L": 0.2,
+                    "R": 0.3,
+                    "r": 1.0,
+                    "p": 2.0,
+                    "y": yaw_value,
+                    "v": 11.7,
+                }
+                feedback = bridge.parse_feedback_line(json.dumps(payload))
+
+                self.assertEqual(feedback["voltage"], 11.7)
+                self.assertIsNone(feedback["yaw"])
+
     def test_feedback_parser_ignores_bad_or_unknown_lines(self):
         bridge = _bridge_module()
 
@@ -211,13 +273,46 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
     def test_feedback_parser_rejects_non_finite_numeric_values(self):
         bridge = _bridge_module()
 
-        for key in ("L", "R", "r", "p", "y", "v"):
+        for key in ("L", "R", "r", "p", "v"):
             payload = {"T": 1001, "L": 0.2, "R": 0.3, "r": 1.0, "p": 2.0, "y": 3.0, "v": 11.7}
             payload[key] = "NaN"
             self.assertIsNone(bridge.parse_feedback_line(json.dumps(payload)))
 
             payload[key] = "Infinity"
             self.assertIsNone(bridge.parse_feedback_line(json.dumps(payload)))
+
+        for yaw_value in ("NaN", "Infinity", "-Infinity", "yaw?"):
+            payload = {"T": 1001, "L": 0.2, "R": 0.3, "r": 1.0, "p": 2.0, "y": yaw_value, "v": 11.7}
+            self.assertIsNone(bridge.parse_feedback_line(json.dumps(payload)))
+
+    def test_publish_feedback_marks_orientation_unavailable_when_yaw_missing(self):
+        bridge = _bridge_module()
+
+        node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+        node.imu_pub = _FakePublisher()
+        node.battery_pub = _FakePublisher()
+        node.get_clock = lambda: _FakeClock()
+
+        node._publish_feedback(
+            {
+                "left_speed": 0.2,
+                "right_speed": 0.3,
+                "roll": 1.0,
+                "pitch": 2.0,
+                "yaw": None,
+                "voltage": 11.7,
+            }
+        )
+
+        self.assertEqual(len(node.imu_pub.messages), 1)
+        self.assertEqual(len(node.battery_pub.messages), 1)
+        imu = node.imu_pub.messages[0]
+        battery = node.battery_pub.messages[0]
+        self.assertEqual(imu.header.frame_id, "imu_link")
+        self.assertEqual(imu.orientation.w, 1.0)
+        self.assertEqual(imu.orientation_covariance[0], -1.0)
+        self.assertEqual(battery.voltage, 11.7)
+        self.assertTrue(battery.present)
 
     def test_startup_config_sends_echo_interval_and_feedback_flow(self):
         bridge = _bridge_module()

@@ -24,7 +24,32 @@ def vendor_degrees_to_ros_radians(value: float) -> float:
     return math.radians(float(value))
 
 
-def parse_feedback_line(line: bytes | str) -> Optional[dict[str, float]]:
+def _parse_required_finite_float(data: dict[str, object], key: str) -> float:
+    """解析必须存在且必须是有限数值的字段。"""
+    # L/R/r/p/v 一旦出现坏值，就说明这帧的速度或电压事实不可信，必须整帧 fail-closed。
+    value = float(data[key])
+    if not math.isfinite(value):
+        raise ValueError(f"{key} must be finite")
+    return value
+
+
+def _parse_optional_yaw(data: dict[str, object]) -> float | None:
+    """解析允许缺失语义的 yaw 字段。"""
+    raw_value = data["y"]
+    # 真实上车 smoke 已观测到 y 可能是 JSON null 或字符串 "null"；这表示姿态不可用，不代表整帧无效。
+    if raw_value is None:
+        return None
+    if isinstance(raw_value, str) and raw_value.strip().lower() == "null":
+        return None
+
+    yaw = float(raw_value)
+    # yaw 如果给了数值，就必须是有限值；否则宁可丢弃，避免把坏姿态扩散到 /imu/data。
+    if not math.isfinite(yaw):
+        raise ValueError("y must be finite when present")
+    return yaw
+
+
+def parse_feedback_line(line: bytes | str) -> Optional[dict[str, float | None]]:
     """解析 WAVE ROVER T=1001 底盘反馈，并忽略无关 UART 行。"""
     try:
         if isinstance(line, bytes):
@@ -43,18 +68,14 @@ def parse_feedback_line(line: bytes | str) -> Optional[dict[str, float]]:
 
     try:
         feedback = {
-            "left_speed": float(data["L"]),
-            "right_speed": float(data["R"]),
-            "roll": float(data["r"]),
-            "pitch": float(data["p"]),
-            "yaw": float(data["y"]),
-            "voltage": float(data["v"]),
+            "left_speed": _parse_required_finite_float(data, "L"),
+            "right_speed": _parse_required_finite_float(data, "R"),
+            "roll": _parse_required_finite_float(data, "r"),
+            "pitch": _parse_required_finite_float(data, "p"),
+            "yaw": _parse_optional_yaw(data),
+            "voltage": _parse_required_finite_float(data, "v"),
         }
     except (TypeError, ValueError):
-        return None
-
-    # 串口数据里一旦出现 NaN/Infinity，宁可丢弃也不污染 /imu/data 或 /battery。
-    if not all(math.isfinite(value) for value in feedback.values()):
         return None
 
     return feedback
