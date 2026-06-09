@@ -6,6 +6,8 @@
 - safe_to_control=false
 - delivery_success=false
 - visible_content_proven=false
+- deployed_field_smoke_proven=true
+- default_camera_device_smoke_proven=true
 
 ## 对照目标
 
@@ -18,7 +20,7 @@
 | FP1：bringup 默认相机设备固化 | 通过 | `bringup.launch.py` 中 `camera_device` 默认值为 `/dev/video1`，`camera_enabled` 仍默认 `false` |
 | FP2：learn 默认相机设备固化 | 通过 | `learn.launch.py` 中 `camera_device` 默认值为 `/dev/video1`，相机节点仍受 `IfCondition(camera_enabled)` 控制 |
 | FP3：验证口径和文档边界同步 | 通过 | `docs/vision/board_camera_publisher.md` 已写明 `/dev/video1` 是当前现场默认，`visible_content_proven=false` 仍成立 |
-| FP4：contract 测试或最小静态验证 | 通过 | `python3 -m unittest onboard/src/ros2_trashbot_bringup/test/test_launch_contract_static.py` 通过，Docker/Humble build 通过 |
+| FP4：contract 测试或最小静态验证 | 通过 | `python3 -m unittest onboard/src/ros2_trashbot_bringup/test/test_launch_contract_static.py` 通过，Docker/Humble build 通过，真实上位机部署后 no-motion smoke 通过 |
 
 ## 验证对照
 
@@ -37,10 +39,27 @@ Finished <<< ros2_trashbot_bringup [6.22s]
 Summary: 6 packages finished [55.4s]
 ```
 
-真实上位机 no-motion smoke 未作为通过证据，因为远端 `/root/rober/onboard` 仍是旧默认 `/dev/video0`。该 smoke 失败复现了本 sprint 要消除的现场风险：
+部署前，真实上位机 `/root/rober/onboard` 仍是旧默认 `/dev/video0`；不显式传
+`camera_device` 的 no-motion smoke 失败，复现了本 sprint 要消除的现场风险：
 
 ```text
 RuntimeError: Failed to open camera device /dev/video0; camera_publisher fails closed and will not fabricate frames
+```
+
+随后仅同步本轮两个 launch 文件到远端并最小重建 `ros2_trashbot_bringup`。部署后再次不显式传
+`camera_device` 运行 no-motion smoke，通过：
+
+```text
+/camera/image_raw
+Type: sensor_msgs/msg/Image
+Publisher count: 1
+image_message_observed=true
+height=480
+width=640
+encoding=bgr8
+step=1920
+data_len=921600
+camera_publisher streaming /dev/video1 to /camera/image_raw
 ```
 
 ## 边界核对
@@ -53,4 +72,5 @@ RuntimeError: Failed to open camera device /dev/video0; camera_publisher fails c
 
 ## 结论
 
-本轮软件侧验收通过，可以提交。剩余验收缺口是部署到真实上位机后复跑不显式传 `camera_device` 的 no-motion smoke，并继续排查黑场/遮挡/光照/USB 摄像头本体问题。
+本轮软件侧验收和真实上位机部署后 no-motion smoke 均通过，可以提交。
+剩余缺口不是默认设备链路，而是 `visible_content_proven=false`：画面仍近黑，需要继续排查镜头盖、遮挡、朝向、光照或 USB 摄像头本体。

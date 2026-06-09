@@ -6,7 +6,9 @@
 - safe_to_control=false
 - delivery_success=false
 - visible_content_proven=false
-- software_proof_only=true
+- software_proof_only=false
+- deployed_field_smoke_proven=true
+- default_camera_device_smoke_proven=true
 
 ## 复盘结论
 
@@ -27,21 +29,22 @@
 - launch contract 单测通过：`Ran 16 tests ... OK`。
 - Docker/Humble 构建通过：`Summary: 6 packages finished [55.4s]`。
 - 构建不稳定点复核通过：`Patrol.idl` 存在，PythonLibs 探测输出 `PythonLibs found.`。
-- 真实上位机 SSH 可达，但远端仍是旧代码；不显式传 `camera_device` 的 smoke 失败于旧默认 `/dev/video0`，因此不能作为本轮新默认值的上车通过证据。
+- 真实上位机 SSH 可达；部署前不显式传 `camera_device` 的 smoke 失败于旧默认 `/dev/video0`，复现了本 sprint 要消除的现场风险。
+- 仅同步本轮两个 launch 文件到远端并最小重建 `ros2_trashbot_bringup` 后，不显式传 `camera_device` 的 no-motion smoke 通过：`/camera/image_raw` 出现，`Publisher count: 1`，subscriber 收到 `480x640 bgr8`、`data_len=921600`，日志显示 `camera_publisher streaming /dev/video1 to /camera/image_raw`。
+- 远端 smoke 全程未发送 `/cmd_vel`，清理后没有 `camera_publisher` 或 `bringup.launch.py` 进程残留。
 
 ## OKR 回顾
 
 `OKR.md` 当前最低完成度 Objective 是 O7，但第 5 节要求优先推进现场 O3 验证 lane。该选择在本轮仍成立：O7 的历史回放和标注需要真实 route/keyframe 输入，本轮减少后续真实采集的默认参数错误。
 
-本轮不更新 OKR 百分比，不归档 KR。证据边界是 `software_proof_only=true`。
+本轮不更新 OKR 百分比，不归档 KR。证据边界是默认设备链路已完成本地软件证明和真实上位机 no-motion smoke，但仍不证明可用视觉内容、运动、Nav2 或送达闭环。
 
 ## 剩余风险
 
-- 真实上位机尚未部署本轮代码；部署后必须复跑 no-motion camera smoke。
 - `visible_content_proven=false` 仍未解决，后续需要 Hardware 现场检查镜头盖、遮挡、朝向、光照和 USB 摄像头本体。
 - `/dev/video1` 是当前实板枚举事实，不是量产稳定命名方案；后续需要 udev 规则或设备探测机制。
 - 本轮没有 HIL、运动控制、Nav2 实跑或送达任务证据。
 
 ## 下一步
 
-部署本轮代码到 `root@192.168.1.11:37878` 后，优先运行不显式传 `camera_device` 的 no-motion smoke；若 `/camera/image_raw` 发布成功，再继续排查画面黑场，目标是为后续 `route.csv`、keyframe 和 replay JSONL 采集恢复可用视觉输入。
+下一步继续排查画面黑场：确认镜头盖、遮挡、朝向、光照和 USB 摄像头本体，目标是把 `visible_content_proven` 变为 true，为后续 `route.csv`、keyframe 和 replay JSONL 采集恢复可用视觉输入。
