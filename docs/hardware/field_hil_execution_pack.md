@@ -77,6 +77,10 @@
 - 外部视频记录：observer 必须从侧后方连续录制轮子、地面参考物和整车姿态，视频开始前口播时间、step、速度和是否架空。
 - API service 管理：如需停止 `trashbot-upper-robot-api.service` 释放串口，必须记录停止前状态；结束后必须恢复 `active`。
 - 清场条件：现场人员口头确认清场；任何人员、宠物、线缆或不稳定物体进入安全空间时不得运动。
+- operator report intake：现场人工材料必须按
+  `docs/hardware/field_hil_operator_report_template.md` 提交到 `/api/operator/report`；
+  该入口只写材料 artifact，不能替代 `/trashbot/stop`、robot ACK、`T=1001` feedback、
+  HIL 结果或 motion proof。
 
 ## 受控运动 HIL 顺序
 
@@ -175,6 +179,29 @@
 - route/map artifacts：`route.csv`、keyframes、manifest、`map.yaml/.pgm`，以及同轮命令和视频对齐说明。
 - API restore 记录：service 停止前状态、停止原因、恢复后 `active` 和 `/api/base/status`。
 - operator report：谁在现场、底盘状态、是否落地、每步观察、异常、最终布尔值。
+
+## operator report intake
+
+`/api/operator/report` 是现场人工材料入口，用于把 observer 的文字观察、外部视频引用、
+相机可见性、wheel feedback、scan delta、route/map 和 delivery 布尔值收进同一
+`evidence_ref`。它的当前实现见 `onboard/scripts/upper_robot_api.py`：
+
+- POST `/api/operator/report` 只持久化 `runtime/operator_report_latest.json` 或
+  `ROBER_OPERATOR_REPORT_ARTIFACT_PATH` 指定的 JSON 文件。
+- 返回中固定包含 `operator_report_material_only=true`、`not_proven=true`、
+  `report_replaces_stop_status_ack_or_hil=false`、`sends_motion_commands=false`、
+  `opens_serial=false`、`hil_pass=false` 和 `delivery_success=false`。
+- 当前 normalizer 只保留 `operator_present`、`evidence_ref`、
+  `physical_clearance_confirmed`、`emergency_stop_ready`、`observed_motion`、
+  `observed_stop`、`operator_notes`/`note`、`reported_at`；细分布尔值必须同时写入
+  `operator_notes` 的结构化文本中，不能只作为未识别顶层字段提交。
+
+现场填写和 `curl` 示例以 `docs/hardware/field_hil_operator_report_template.md` 为准。
+即使 report 中写入 `visible_content_proven=true`、`physical_motion_lidar_delta_proven=true`、
+`wheel_feedback_lr_nonzero_proven=true` 或 `delivery_success=true`，也只表示 operator
+声称材料已观察到对应现象；最终是否翻转 HIL/route/delivery 证据，仍必须由同一
+`evidence_ref` 下的原始视频、图片、`T=1001` JSONL、scan metrics、route/map artifacts
+和 stop/API restore 记录共同证明。
 
 ## 下一轮最低执行建议
 

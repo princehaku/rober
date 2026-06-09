@@ -216,20 +216,6 @@ camera/OpenCV/v4l2/ROS camera topic，未发布 `/cmd_vel`，未启动底盘控�
 证据或 wheel feedback 非零。下一步需要现场肉眼/外部视频、检查电机供电/急停/模式/
 底盘是否架空；若仍无运动，再考虑人工在场的 vendor direct `T=1` 更高 PWM/速度受控 HIL。
 
-## 2026-06-10 WAVE ROVER Min Actuation Probe 复跑补证
-
-`sprints/2026.06.10_04-15_wave_rover_min_actuation_probe/` 已在真实上位机 `root@192.168.1.11:37878` 复跑同一套低速阶梯 probe，并把远端日志拉回 `artifacts/remote_capture/`。最新复跑仍然只证明了可控发送、可控停止和清场成功，没有把 `linear.x=[0.03,0.05,0.07,0.09]` 提升为真实物理运动或 wheel feedback 非零证据。
-
-最新复跑结论：
-
-- `motion_commands_sent=true`
-- `max_step_linear_x_mps_sent=0.09`
-- `physical_motion_lidar_delta_proven=false`
-- `wheel_feedback_lr_nonzero_proven=false`
-- `min_actuation_step_proven=null`
-- `safe_to_control=true`
-- `delivery_success=false`
-
 ## 2026-06-10 Field HIL Execution Pack
 
 `docs/hardware/field_hil_execution_pack.md` 已把当前证据矩阵和下一轮现场 HIL
@@ -241,6 +227,14 @@ camera/OpenCV/v4l2/ROS camera topic，未发布 `/cmd_vel`，未启动底盘控�
 API service 管理和清场条件全部通过后，才允许继续受控运动。`visible_content_proven`、
 `physical_motion_lidar_delta_proven`、`wheel_feedback_lr_nonzero_proven`、
 `delivery_success` 的翻转条件以该 execution pack 为准。
+
+## 2026-06-10 Field HIL Operator Report Template
+
+`docs/hardware/field_hil_operator_report_template.md` 已补充 `/api/operator/report`
+现场人工材料提交模板。该入口用于记录 operator report、外部视频引用、相机可见性、
+wheel feedback、scan delta、route/map 和 delivery 布尔值，但返回边界必须保持
+`operator_report_material_only=true`。report 不能替代 `/trashbot/stop`、robot ACK、
+`T=1001` feedback、HIL pass 或 motion proof。
 
 ## 资料来源
 
