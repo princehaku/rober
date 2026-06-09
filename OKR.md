@@ -152,14 +152,14 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-05-27。
+更新时间：2026-06-09。
 
 | Objective | 进度 | 主要缺口 |
 | --- | --- | --- |
 | O1：硬件协议可信底盘 | ~83% | 真实 WAVE ROVER 上车实测、UART 链路、HIL 准入、PR #5 2D LiDAR/ToF 硬件材料 |
 | O5：云中转控制面 | ~80% | 真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收 |
-| O6：云端核心后端 | 0% | 新 Objective，隧道接入、数据存档、打标 API、模型推理接口 |
-| O7：PC 端运营调试平台 | ~5% | O7 board/cloud/PC 契约和 PC O7 Console software proof 已建立；仍缺真实 RTC/视频、真实 ASR/TTS、真实手控/寻路、真实地图/电梯/回放/标注数据流和上车验证 |
+| O6：云端核心后端 | ~30% | archive、tunnel online、event/evidence、labeling、model inference、consumer read API 已有 local/mock software proof；仍缺真实隧道、生产 DB/queue、OSS、TLS/4G、真实机器人数据 |
+| O7：PC 端运营调试平台 | ~12% | O6 consumer detail 已驱动 PC route replay 与 labeling queue 主路径；仍缺真实 RTC/视频、真实 ASR/TTS、真实手控/寻路、真实地图/电梯/回放/标注数据流和上车验证 |
 
 **已归档 Objective（软件侧完成，等待真实现场验证）：**
 
@@ -177,12 +177,13 @@
 
 按完成度从低到高排序：
 
-1. **O6（0%）**：建立隧道接入链路 → 任务/事件存档 → 打标 API → 模型推理接口。这是 PC 端和新手机端能力的数据基础。
-2. **O7（~5%）**：在现有 O7 board/cloud/PC 契约基础上，补真实 RTC/视频、ASR/TTS、实时地图、电梯状态、回放、标注、手控/寻路的可执行链路和上车证据。
-3. **O5（~80%）**：把已有命令/状态/ACK 控制面接到真实部署链路：公网 HTTPS、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收。
-4. **O1（~83%）**：真实 WAVE ROVER 上车，UART 实测，PR #5 硬件材料到位后提升。
+1. **现场 O3 验证 lane（归档 Objective 临时激活）**：CEO 已提供真实上位机 SSH，必须优先产出 `map.yaml`、`route.csv`、keyframe、rosbag 或 replay JSONL，避免继续消费只读 handoff/review/surface。
+2. **O6（~30%）**：把 local/mock archive/tunnel/event/evidence/labeling/inference/consumer read proof 接到真实隧道、生产 DB/queue、OSS 与真实机器人数据。
+3. **O7（~12%）**：基于真实路线材料推进 PC 实时地图、历史回放、标注、ASR/TTS、手控/寻路，而不是继续只做 fixture surface。
+4. **O5（~80%）**：把已有命令/状态/ACK 控制面接到真实部署链路：公网 HTTPS、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收。
+5. **O1（~83%）**：真实 WAVE ROVER 上车，UART 实测，PR #5 硬件材料到位后提升。
 
-> O6 是 O7 的数据前提，建议先单线闭环 O6 最小 MVP（隧道 + 存档 + 查询 API），再并行推进 O7 和 O5 真实部署。
+> 2026-06-09 方向调整：O6 最小 local/mock 数据底座已形成，CEO 又提供真实上位机 SSH。因此下一轮优先跑 `sprints/2026.06.09_13-00_board-live-slam-route/`，用真实上位机补 O3 路线证据；O6/O7 后续必须消费这份真实路线材料，而不是继续堆叠只读 surface。
 
 ---
 
