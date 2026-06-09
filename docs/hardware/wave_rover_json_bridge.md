@@ -50,6 +50,14 @@
 - 建议在 `source=hil_pass` 下采样至少 2 帧 `T=1001`，确认采样间隔接近 `feedback_interval_ms`（例如 100ms 时约 10Hz）。
 - `v` 默认映射为电压；`r/p/y` 为欧拉角（厂商原始值按项目桥接代码按弧度发布 yaw）。
 
+### Upper Robot API status feedback ack
+
+- `onboard/scripts/upper_robot_api.py` 的 `/api/base/status.feedback_ack` 只表示 API 通过非运动 `{"T":130}` readback 或 fresh samples artifact 看到了 vendor `T=1001`。
+- `/api/base/status` 允许发送 `T=130` 只读反馈请求；它不得发送 `T=1`、`T=13`、`T=131`、`/cmd_vel` 或 `/api/base/manual`，也不得把 `safe_to_control`、`primary_actions_enabled`、`robot_control_executed` 置为 true。
+- `feedback_ack.t1001_observed=true` 的来源必须写入 `source`：`fresh_readback` 表示本次 status 调用短窗口读回，`fresh_artifact` 表示 samples artifact 未过期且包含 `T=1001`。stale artifact 只能作为历史材料摘要，不能抬高 ACK。
+- ACK 识别只依赖 vendor `T=1001` 帧身份；`y` 为 JSON `null` 或字符串 `"null"` 只代表 yaw unavailable，不能导致整帧被丢弃。
+- 该字段不是 ROS `/odom`、`/imu/data`、`/battery` 的对齐证明，也不是导航级 HIL pass；真实运动、轮向、里程计和电池/IMU 对齐仍按 run 级 HIL 证据归档。
+
 ### HIL 运行参数留存模板（与 run 级证据绑定）
 
 - 每次 `source=hil_pass` 运行前需记录参数快照：

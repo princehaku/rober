@@ -1,0 +1,3 @@
+{"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
+67972 zsh -c set -eu pkill -f "^python3 /root/rober/onboard/scripts/upper_robot_api.py" || true sleep 1 nohup python3 /root/rober/onboard/scripts/upper_robot_api.py \   --host 0.0.0.0 \   --port 8787 \   --camera-base-url http://127.0.0.1:8088 \   --base-port /dev/ttyS5 \   --base-baudrate 115200 \   --max-speed 0.12 \   >/tmp/upper_robot_api_restore.log 2>&1 & sleep 2 cat /tmp/upper_robot_api_restore.log pgrep -af "python3 /root/rober/onboard/scripts/upper_robot_api.py" || true 
+67975 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
