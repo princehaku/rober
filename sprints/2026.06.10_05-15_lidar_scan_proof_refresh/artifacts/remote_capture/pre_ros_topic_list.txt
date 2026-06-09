@@ -1,0 +1,6 @@
+2026-06-10T04:28:42+08:00
+/amcl_pose
+/map
+/parameter_events
+/rosout
+/trashbot/waypoints

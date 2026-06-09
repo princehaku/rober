@@ -1,0 +1,10 @@
+2026-06-10T04:29:34+08:00
+/amcl_pose
+/lidar/raw_packet
+/map
+/parameter_events
+/rosout
+/scan
+/tf
+/tf_static
+/trashbot/waypoints

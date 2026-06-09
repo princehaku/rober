@@ -1,0 +1,39 @@
+2026-06-10T04:28:35+08:00
+crw-rw---- 1 root dialout 166,  0 Jun 10 04:08 /dev/ttyACM0
+crw-rw---- 1 root dialout   4, 69 Jun 10 04:08 /dev/ttyS5
+lrwxrwxrwx 1 root root 13 Jun  8 13:17 /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 -> ../../ttyACM0
+/dev/ttyACM0
+DEVPATH=/devices/platform/soc/5200400.usb/usb5/5-1/5-1:1.0/tty/ttyACM0
+DEVNAME=/dev/ttyACM0
+MAJOR=166
+MINOR=0
+SUBSYSTEM=tty
+USEC_INITIALIZED=11724412
+ID_VENDOR=STC
+ID_VENDOR_ENC=STC
+ID_VENDOR_ID=34bf
+ID_MODEL=STC_USB_Serial
+ID_MODEL_ENC=STC\x20USB\x20Serial
+ID_MODEL_ID=ff0a
+ID_REVISION=0100
+ID_SERIAL=STC_STC_USB_Serial
+ID_TYPE=generic
+ID_BUS=usb
+ID_USB_INTERFACES=:020201:0a0000:
+ID_USB_INTERFACE_NUM=00
+ID_USB_DRIVER=cdc_acm
+ID_USB_CLASS_FROM_DATABASE=Miscellaneous Device
+ID_USB_PROTOCOL_FROM_DATABASE=Interface Association
+ID_PATH=platform-5200400.usb-usb-0:1:1.0
+ID_PATH_TAG=platform-5200400_usb-usb-0_1_1_0
+DEVLINKS=/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0 /dev/serial/by-id/usb-STC_STC_USB_Serial-if00
+TAGS=:systemd:
+CURRENT_TAGS=:systemd:
+DEVPATH=/devices/platform/soc/5001400.serial/tty/ttyS5
+DEVNAME=/dev/ttyS5
+MAJOR=4
+MINOR=69
+SUBSYSTEM=tty
+USEC_INITIALIZED=11194131
+TAGS=:systemd:
+CURRENT_TAGS=:systemd:

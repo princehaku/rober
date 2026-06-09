@@ -273,6 +273,54 @@ UART 写入。
 安全清场和 route/map 对齐全部满足 `docs/hardware/field_hil_execution_pack.md` 后，
 才允许进入受控运动。
 
+## 2026-06-10 05:15 LiDAR scan proof refresh
+
+`sprints/2026.06.10_05-15_lidar_scan_proof_refresh/` 在真实上位机
+`root@192.168.1.11:37878` 上调用唯一允许的 LiDAR-only API refresh：
+`POST /api/radar/scan-proof/refresh`，body 为
+`{"start_runtime": true, "runtime_warmup_s": 6, "timeout_s": 12}`。
+
+安全边界：
+
+- 只允许 API-managed `o1_lidar_ros2_scan_smoke.sh` runtime 触碰 LiDAR 串口
+  `/dev/ttyACM0`，实板枚举显示
+  `/dev/serial/by-id/usb-STC_STC_USB_Serial-if00 -> ../../ttyACM0`。
+- 未发布非零 `/cmd_vel`，未发送 direct UART `T=1` / `T=13` / `T=130` /
+  `T=131`，未调用 `/api/base/manual`、`/api/base/status`、`/api/base/stop`、
+  `/api/map/start`、`/api/nav2/start` 或任何底盘/导航运动 endpoint。
+- `lsof /dev/ttyS5 /dev/ttyACM0` 在 refresh 前无输出；refresh 窗口内只有
+  `lidar_driver` 占用 `/dev/ttyACM0`，无 `/dev/ttyS5` 行；最终清场后两者均无
+  lsof 输出。
+
+本轮将 refresh 前 live ROS graph 中缺失的 `/scan` 推进为 API-managed runtime
+窗口内的新鲜 proof：
+
+- refresh 回包：`status=refreshed`，`evidence_type=robot_runtime_material`。
+- `scan_runtime_proven=true`，`ros2_runtime_proven=true`。
+- `proof_state=scan_once_hz_raw_packet_tf_observed`。
+- `/scan` once observed、`/scan` hz observed、`/lidar/raw_packet` once observed、
+  `base_link -> laser_frame` TF observed。
+- `scan_hz_average_rate_hz=14.951`。
+- guard 字段保持 `sends_motion_commands=false`、
+  `sends_base_motion_commands=false`、`uses_base_uart=false`、
+  `publishes_cmd_vel=false`、`safe_to_control=false`。
+
+重要边界：本轮证明的是 refresh 启动的临时 LiDAR runtime 窗口内存在当前 live
+`/scan`。该 smoke runtime 结束后，最终 ROS topic list 再次没有 `/scan`，
+`GET /api/radar/status` 仍报告 `blocked_reasons=["scan_continuity_not_observed"]`。
+因此它不等于常驻 `/scan`、地图/AMCL/Nav2 消费、运动、物理 LiDAR delta 或送达闭环。
+`physical_motion_lidar_delta_proven=false`，`wheel_feedback_lr_nonzero_proven=false`，
+`delivery_success=false` 仍保持不变。
+
+关键 artifact：
+
+- `sprints/2026.06.10_05-15_lidar_scan_proof_refresh/artifacts/lidar_scan_proof_latest.json`
+- `sprints/2026.06.10_05-15_lidar_scan_proof_refresh/artifacts/o1_lidar_ros2_scan_smoke/summary.json`
+- `sprints/2026.06.10_05-15_lidar_scan_proof_refresh/artifacts/o1_lidar_ros2_scan_smoke/scan_once.txt`
+- `sprints/2026.06.10_05-15_lidar_scan_proof_refresh/artifacts/o1_lidar_ros2_scan_smoke/scan_hz.txt`
+- `sprints/2026.06.10_05-15_lidar_scan_proof_refresh/artifacts/runtime_logs/rober_lidar_scan_proof_runtime_1781036938372.log`
+- `sprints/2026.06.10_05-15_lidar_scan_proof_refresh/artifacts/remote_capture/final_lsof_and_runtime_processes.txt`
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`

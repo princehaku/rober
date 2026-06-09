@@ -1,0 +1,43 @@
+[o1-lidar-smoke] output_dir=/tmp/o1_lidar_ros2_scan_smoke
+[o1-lidar-smoke] serial_port=/dev/ttyACM0 baudrate=150000 frame_id=laser_frame
+{
+  "schema": "trashbot.o1.lidar_ros2_scan_smoke.v1",
+  "output_dir": "/tmp/o1_lidar_ros2_scan_smoke",
+  "required_observations": {
+    "scan_once": {
+      "topic": "/scan",
+      "artifact_file": "scan_once.txt",
+      "observed": true
+    },
+    "scan_hz": {
+      "topic": "/scan",
+      "artifact_file": "scan_hz.txt",
+      "observed": true
+    },
+    "raw_packet_once": {
+      "topic": "/lidar/raw_packet",
+      "artifact_file": "raw_packet_once.txt",
+      "observed": true
+    },
+    "tf": {
+      "parent_frame": "base_link",
+      "child_frame": "laser_frame",
+      "artifact_file": "tf2_echo.txt",
+      "observed": true
+    }
+  },
+  "driver_log_tail": "[INFO] [1781036942.336135651] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000\n",
+  "driver_started_by_smoke": true,
+  "lidar_start_command_sent_by_smoke": true,
+  "lidar_start_command_hex": "A5 60",
+  "refuses_base_uart_ttyS5": true,
+  "safe_to_control": false,
+  "sends_base_motion_commands": false,
+  "calls_base_manual": false,
+  "publishes_cmd_vel": false,
+  "scan_once_observed": true,
+  "scan_hz_observed": true,
+  "raw_packet_once_observed": true,
+  "tf_observed": true,
+  "all_required_observations_observed": true
+}

@@ -1,0 +1,9 @@
+/amcl_pose
+/lidar/raw_packet
+/map
+/parameter_events
+/rosout
+/scan
+/tf
+/tf_static
+/trashbot/waypoints
