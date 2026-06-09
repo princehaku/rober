@@ -58,13 +58,13 @@
 - `git diff --check`
   - 通过
 - `git status --short --branch`
-  - 仅本轮允许范围内文件为 modified，待 commit/push
+  - 主节点复核时工作树干净，`master...origin/master` 已同步
 
 ## 失败定位与偏差
 
 - 首轮 Vitest 失败根因是 `listenConsumerRead()` test helper 把 detail 路径硬编码为 `task-consumer-001`，导致新用例命中 404 后误报 schema mismatch。
 - 修复方式：放宽 helper，对任意 `/api/o6/consumer/tasks/<task_id>?view=default&include=...` detail 请求返回 detail fixture。
-- 当前唯一未闭环项是 commit/push 尚未执行。
+- 实现提交 `484414c` 已推送到 `origin/master`；主节点仅补正本留档中的 commit/push 状态描述。
 
 ## 剩余风险
 
