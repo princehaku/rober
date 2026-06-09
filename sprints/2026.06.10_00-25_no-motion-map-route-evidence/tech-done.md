@@ -111,6 +111,12 @@ ssh -p 37878 root@192.168.1.11 '...'
 - 清理后：`ros2 node list` 为空，相关 `ps` 输出为空。
 - 证据：`artifacts/board_no_motion_capture_20260610/remote_cleanup.txt`
 
+清场后补充执行了一次短 no-motion smoke，证据保存在：
+
+- `artifacts/board_no_motion_capture_clean_20260610/remote_capture/`
+- 该目录包含最小 `route.csv`、`manifest.json`、`keyframes/000.*`、`map_output_trashbot_map.yaml` 和 `.pgm`。
+- 这次 clean capture 只作为清场后最小复跑材料，不替代上方完整 `board_no_motion_capture_20260610` 证据包。
+
 ## 失败定位
 
 1. `/scan` sample 未完成：`scan_once.txt` 为空。

@@ -1,0 +1,11 @@
+1781022355.4494457 [INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-10-00-25-55-444402-op-z3-b6.home-41470
+1781022355.4503980 [INFO] [launch]: Default logging verbosity is set to INFO
+1781022355.8798530 [INFO] [async_slam_toolbox_node-1]: process started with pid [41471]
+1781022355.8820431 [INFO] [map_recorder-2]: process started with pid [41473]
+1781022355.8839407 [INFO] [waypoint_manager-3]: process started with pid [41475]
+1781022355.8910277 [INFO] [camera_publisher-4]: process started with pid [41477]
+1781022355.8973930 [INFO] [lidar_driver-5]: process started with pid [41479]
+1781022355.8994293 [INFO] [static_transform_publisher-6]: process started with pid [41481]
+1781022355.9079456 [INFO] [static_transform_publisher-7]: process started with pid [41483]
+1781022355.9178388 [INFO] [python3-8]: process started with pid [41485]
+1781022355.9195890 [INFO] [route_data_recorder-9]: process started with pid [41490]

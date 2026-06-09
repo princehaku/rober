@@ -1,0 +1,25 @@
+{
+  "schema": "trashbot.vision_samples.v1",
+  "sample_output_dir": "/tmp/trashbot_no_motion_route_clean",
+  "updated_at": 1781022360.3344977,
+  "samples": [
+    {
+      "sample_id": "route_keyframe_000",
+      "sample_ref": "vision_sample://keyframes/000.json",
+      "timestamp": 1781022360.3188615,
+      "frame_id": "map",
+      "raw_image": "keyframes/000.jpg",
+      "annotated_image": "",
+      "json": "keyframes/000.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "0",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    }
+  ]
+}
