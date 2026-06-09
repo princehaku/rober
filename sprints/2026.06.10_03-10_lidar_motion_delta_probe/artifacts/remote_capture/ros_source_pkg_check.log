@@ -1,0 +1,9 @@
+WORKSPACE=/root/rober/onboard
+ROS_DISTRO=humble
+/root/rober/onboard/install/ros2_trashbot_hardware
+ros2_trashbot_hardware esp32_bridge
+ros2_trashbot_hardware hardware_diagnostics_proof
+ros2_trashbot_hardware lidar_driver
+---
+bool success   # indicate successful run of triggered service
+string message # informational, e.g. for error messages

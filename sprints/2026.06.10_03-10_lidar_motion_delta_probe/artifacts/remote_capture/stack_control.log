@@ -1,0 +1,233 @@
+[start] 2026-06-10T03:05:45+08:00 remote_dir=/tmp/rober_lidar_motion_delta_20260610_030518
+[host] op-z3-b6.home Linux op-z3-b6.home 6.1.31-sun50iw9 #1.0.4 SMP Thu Jul 11 16:37:41 CST 2024 aarch64 aarch64 aarch64 GNU/Linux
+[ros] ROS_DISTRO=humble
+/root/rober/onboard/install/ros2_trashbot_hardware
+Python 3.10.12
+crw-rw---- 1 root dialout 166,  0 Jun 10 01:20 /dev/ttyACM0
+crw-rw---- 1 root dialout   4, 69 Jun 10 03:05 /dev/ttyS5
+[pre_stop_api]
+{"schema": "trashbot.upper_robot_api.v1.base_stop_result", "generated_at_ms": 1781031948674, "stop_result": {"ok": true, "command": {"T": 1, "L": 0, "R": 0}, "bytes_written": 20}, "serial_write_failures": [], "feedback_ack": {"t1001_observed": false, "robot_ack_connected": false, "reason": "stop write does not prove T=1001 or ACK", "source_boundary": "vendor T=130 requests FEEDBACK_BASE_INFO, but this API only records write results"}, "safe_to_control": false, "sends_commands": true, "robot_control_executed": true, "delivery_success": false, "primary_actions_enabled": false}[stop_api_service]
+lsof before stack
+process before stack
+[launch_lidar]
+[launch_esp32]
+[topic_list]
+/battery
+/cmd_vel
+/imu/data
+/odom
+/parameter_events
+/rosout
+/scan
+/tf
+[service_list]
+/esp32_bridge/describe_parameters
+/esp32_bridge/get_parameter_types
+/esp32_bridge/get_parameters
+/esp32_bridge/list_parameters
+/esp32_bridge/set_parameters
+/esp32_bridge/set_parameters_atomically
+/lidar_driver/describe_parameters
+/lidar_driver/get_parameter_types
+/lidar_driver/get_parameters
+/lidar_driver/list_parameters
+/lidar_driver/set_parameters
+/lidar_driver/set_parameters_atomically
+/trashbot/beep
+/trashbot/reset_odom
+/trashbot/stop
+[scan_once]
+header:
+  stamp:
+    sec: 1781031961
+    nanosec: 839296461
+  frame_id: laser_frame
+angle_min: 1.9692223072052002
+angle_max: 2.091395378112793
+angle_increment: 0.02036217413842678
+time_increment: 9.999999747378752e-05
+scan_time: 0.10000000149011612
+range_min: 0.05000000074505806
+range_max: 8.0
+ranges:
+- 5.859000205993652
+- 0.6690000295639038
+- 0.6209999918937683
+- 0.5149999856948853
+- 0.5799999833106995
+- 0.45100000500679016
+- 0.2879999876022339
+intensities:
+- 231.0
+- 155.0
+- 153.0
+- 58.0
+- 56.0
+- 86.0
+- 255.0
+---
+[odom_once_before]
+header:
+  stamp:
+    sec: 1781031965
+    nanosec: 114890827
+  frame_id: odom
+child_frame_id: base_link
+pose:
+  pose:
+    position:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    orientation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  covariance:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+[stop_before_capture]
+requester: making request: std_srvs.srv.Trigger_Request()
+
+response:
+std_srvs.srv.Trigger_Response(success=True, message='Motors stopped')
+
+[probe_run]
+[stop_after_capture]
+requester: making request: std_srvs.srv.Trigger_Request()
+
+response:
+std_srvs.srv.Trigger_Response(success=True, message='Motors stopped')
+
+[post_topics]
+[summary]
+{
+    "battery_topic_seen": true,
+    "command_integration_odom_delta_m": 0.00601554609,
+    "delivery_success": false,
+    "failure_reason": "scan_delta_below_conservative_threshold",
+    "final_stop": {
+        "message": "Motors stopped",
+        "success": true
+    },
+    "generated_at_unix_s": 1781031976.446884,
+    "imu_topic_seen": true,
+    "max_linear_x_mps": 0.03,
+    "max_pulse_duration_s": 0.22162205299537163,
+    "motion_commands_sent": true,
+    "physical_motion_lidar_delta_proven": false,
+    "post_stop": {
+        "message": "Motors stopped",
+        "success": true
+    },
+    "pre_stop": {
+        "message": "Motors stopped",
+        "success": true
+    },
+    "safe_to_control": false,
+    "scan_delta_metric": {
+        "changed_bin_ratio": 0.0,
+        "max_abs_diff_m": 0.006499767303466797,
+        "median_abs_diff_m": 0.006499767303466797,
+        "paired_bins": 1,
+        "physical_motion_lidar_delta_proven": false,
+        "sector_delta_m": {
+            "finite_median_delta_m": 0.010749995708465576,
+            "front_median_delta_m": 0.0027500391006469727,
+            "left_median_delta_m": -0.0009999871253967285,
+            "right_median_delta_m": null
+        },
+        "threshold": {
+            "changed_bin_abs_threshold_m": 0.08,
+            "changed_bin_ratio_gte": 0.18,
+            "median_abs_diff_m_gte": 0.04,
+            "min_paired_bins": 40
+        }
+    },
+    "scan_frames_after": 1194,
+    "scan_frames_before": 896,
+    "scan_frames_motion": 62,
+    "scan_phase_summary": {
+        "baseline": {
+            "finite_count_median": 8.0,
+            "finite_median": 1.1025000214576721,
+            "frame_count": 896,
+            "front_median": 1.668500006198883,
+            "left_median": 1.1949999928474426,
+            "profile": [
+                5.668499946594238
+            ],
+            "profile_hash": "97a6d21df7c51e82",
+            "right_median": null
+        },
+        "motion": {
+            "finite_count_median": 8.0,
+            "finite_median": 0.995250016450882,
+            "frame_count": 62,
+            "front_median": 1.754999965429306,
+            "left_median": 1.7997500002384186,
+            "profile": [
+                5.672749996185303
+            ],
+            "profile_hash": "97a6d21df7c51e82",
+            "right_median": null
+        },
+        "post": {
+            "finite_count_median": 8.0,
+            "finite_median": 1.1132500171661377,
+            "frame_count": 1194,
+            "front_median": 1.67125004529953,
+            "left_median": 1.194000005722046,
+            "profile": [
+                5.6620001792907715
+            ],
+            "profile_hash": "c57727d64e318e2e",
+            "right_median": null
+        }
+    },
+    "schema": "rober.lidar_motion_delta_probe.v1",
+    "stop_confirmed": true,
+    "tf_transform_count": 146,
+    "vendor_sources": [
+        "docs/vendor/VENDOR_INDEX.md",
+        "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+        "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py"
+    ],
+    "wheel_feedback_lr_nonzero_proven": false
+}
+[normal_cleanup]
+[cleanup] 2026-06-10T03:06:31+08:00 begin
+[cleanup] 2026-06-10T03:06:39+08:00 done
+[done] 2026-06-10T03:06:39+08:00

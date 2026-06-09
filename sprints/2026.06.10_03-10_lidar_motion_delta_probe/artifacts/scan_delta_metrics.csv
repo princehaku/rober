@@ -1,0 +1,9 @@
+metric,value
+median_abs_diff_m,0.006499767303466797
+max_abs_diff_m,0.006499767303466797
+changed_bin_ratio,0.0
+paired_bins,1
+finite_median_delta_m,0.010749995708465576
+front_median_delta_m,0.0027500391006469727
+left_median_delta_m,-0.0009999871253967285
+right_median_delta_m,

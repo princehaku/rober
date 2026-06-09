@@ -53,6 +53,36 @@ ros2 topic echo --once /tf_static
   不应写死成所有板卡的默认值。
 - 本入口只解决传感器证据采集，不解决 `/dev/ttyS5` 与底盘桥的串口独占。
 
+## 2026-06-10 LiDAR Motion Delta Probe
+
+`sprints/2026.06.10_03-10_lidar_motion_delta_probe/` 在真实上位机
+`root@192.168.1.11:37878` 上启动最小 ROS2 stack：
+
+- `lidar_driver`：`/dev/ttyACM0 @ 150000`，发布 `/scan`。
+- `esp32_bridge`：`/dev/ttyS5 @ 115200`，`command_mode:=speed`，提供 `/trashbot/stop`。
+- 未启动 camera、Nav2 或 autonomous navigation。
+
+本轮发送一次 bounded `/cmd_vel` 脉冲：`linear.x=0.03`，实际窗口
+`0.22162205299537163s`，随后 `/trashbot/stop` 成功。采集结果：
+
+- `motion_commands_sent=true`
+- `stop_confirmed=true`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `command_integration_odom_delta_m=0.00601554609`
+- `physical_motion_lidar_delta_proven=false`
+- `wheel_feedback_lr_nonzero_proven=false`
+
+失败定位：baseline/post `/scan` 有 896/1194 帧，但当前可比 profile 只有
+`paired_bins=1`，`median_abs_diff_m=0.006499767303466797`，
+`changed_bin_ratio=0.0`，低于保守阈值。因此本轮不能把 LiDAR delta 写成
+真实物理运动佐证；`/odom` 仍只能按 command integration 处理，不是实测里程计。
+
+结束后已补跑清场：本轮 `lidar_driver` / `esp32_bridge` 进程清理完成，
+`trashbot-upper-robot-api.service` 恢复为 `active`，`/dev/ttyS5` 与 `/dev/ttyACM0`
+无本轮 ROS 进程残留占用。详见
+`sprints/2026.06.10_03-10_lidar_motion_delta_probe/artifacts/remote_capture/final_process_check_after_rerun.log`。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`
