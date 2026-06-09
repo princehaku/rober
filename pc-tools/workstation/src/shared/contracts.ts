@@ -1875,7 +1875,15 @@ export interface O7ConsumerTaskDetailResponse extends ProofFlags {
       | "trashbot.field_evidence_manifest.v1"
       | "trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1"
       | "not_loaded";
-    input_status: "loaded" | "missing" | "schema_mismatch" | "invalid_shape" | "unsafe_claim" | "not_provided";
+    input_status:
+      | "loaded"
+      | "missing"
+      | "schema_mismatch"
+      | "invalid_shape"
+      | "unsafe_claim"
+      | "not_provided"
+      | "bad_json"
+      | "read_error";
     artifact_status: "gated" | "missing" | "blocked";
     manifest_gate: {
       schema: "trashbot.field_evidence_manifest.v1" | "not_loaded";

@@ -3121,8 +3121,106 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("O7 consumer detail fails closed when field evidence contract is missing", async () => {
-    // 本轮 detail 主路径必须带 manifest 或 ingest；缺失时不能继续给出“可读成功”摘要。
+  it("O7 consumer detail fills missing field evidence from valid local manifest without replacing remote detail sections", async () => {
+    // 本地 manifest 只补 field_evidence，trajectory/events/evidence/labeling/inference/tunnel 仍来自 O6 detail。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-consumer-local-manifest-"));
+    const manifestPath = path.join(root, "field-evidence-manifest.json");
+    await writeFile(
+      manifestPath,
+      JSON.stringify(sampleFieldEvidenceManifest("/tmp/consumer-task-local-001", "consumer-field-evidence-local")),
+      "utf8",
+    );
+    const listPayload = {
+      schema: "trashbot.o6.consumer_read.v1",
+      task_list: { tasks: [{ task_id: "task-consumer-local-001", robot_id: "robot_fixture" }] },
+      blocked_reasons: [],
+      not_proven: ["proof_status=not_proven"],
+    };
+    const detailPayload = {
+      schema: "trashbot.o6.consumer_read.v1",
+      task_summary: {
+        task_id: "task-consumer-local-001",
+        robot_id: "robot_fixture",
+        task_status_summary: "completed_mock",
+      },
+      trajectory: { status: "remote_trajectory_loaded", frame_count: 7, frames: [{ frame_index: 6, x_m: 4.2 }] },
+      events: { status: "remote_events_loaded", count: 2, items: [{ event_type: "remote_event" }] },
+      evidence: { status: "remote_evidence_loaded", count: 1, items: [{ evidence_type: "remote_snapshot" }] },
+      labeling: { status: "remote_labeling_loaded", label_count: 1, items: [{ item_id: "remote_label" }] },
+      inference: { status: "remote_inference_loaded", count: 1, items: [{ result_type: "remote_inference" }] },
+      tunnel_status: {
+        status: "remote_tunnel_loaded",
+        latest_known_status: "online",
+        temporal_alignment: "latest_known_robot_snapshot_not_task_aligned",
+      },
+      blocked_reasons: [],
+      not_proven: ["robot_control_executed=false"],
+    };
+    const server = await listenConsumerRead(listPayload, detailPayload);
+
+    try {
+      const detail = await buildO7ConsumerTaskDetail(server.baseUrl, "task-consumer-local-001", manifestPath);
+
+      expect(detail.detail_status).toBe("loaded_fail_closed_summary");
+      expect(detail.field_evidence.source_contract).toBe("trashbot.field_evidence_manifest.v1");
+      expect(detail.field_evidence.input_status).toBe("loaded");
+      expect(detail.field_evidence.manifest_gate.status).toBe("gated");
+      expect(detail.trajectory.status).toBe("remote_trajectory_loaded");
+      expect(detail.trajectory.frame_count).toBe(7);
+      expect(detail.events.sample_events[0]?.event_type).toBe("remote_event");
+      expect(detail.evidence.sample_evidence[0]?.evidence_type).toBe("remote_snapshot");
+      expect(detail.labeling.sample_items[0]?.item_id).toBe("remote_label");
+      expect(detail.inference.sample_results[0]?.result_type).toBe("remote_inference");
+      expect(detail.tunnel_status.status).toBe("remote_tunnel_loaded");
+      expect(detail.safe_to_control).toBe(false);
+      expect(detail.primary_actions_enabled).toBe(false);
+      expect(detail.delivery_success).toBe(false);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("O7 consumer detail prefers valid remote field evidence over a provided local manifest", async () => {
+    // 远端已有合法 field evidence 时，本地 query 不能覆盖 O6 detail 给出的证据合同。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-consumer-remote-priority-"));
+    const localManifestPath = path.join(root, "local-field-evidence.json");
+    await writeFile(
+      localManifestPath,
+      JSON.stringify(sampleFieldEvidenceManifest("/tmp/local-manifest", "local-field-evidence")),
+      "utf8",
+    );
+    const detailPayload = {
+      schema: "trashbot.o6.consumer_read.v1",
+      field_evidence_manifest: sampleFieldEvidenceManifest("/tmp/remote-manifest", "remote-field-evidence"),
+      task_summary: { task_id: "task-consumer-remote-priority", robot_id: "robot_fixture", task_status_summary: "completed_mock" },
+      trajectory: { status: "loaded_not_proven", frame_count: 0, frames: [] },
+      events: { status: "loaded_not_proven", count: 0, items: [] },
+      evidence: { status: "loaded_not_proven", count: 0, items: [] },
+      labeling: { status: "pending", label_count: 0, items: [] },
+      inference: { status: "absent", count: 0, items: [] },
+      tunnel_status: { status: "blocked_not_proven", latest_known_status: "blocked_not_proven" },
+      blocked_reasons: [],
+      not_proven: ["proof_status=not_proven"],
+    };
+    const server = await listenConsumerRead(
+      { schema: "trashbot.o6.consumer_read.v1", task_list: { tasks: [] }, blocked_reasons: [], not_proven: [] },
+      detailPayload,
+    );
+
+    try {
+      const detail = await buildO7ConsumerTaskDetail(server.baseUrl, "task-consumer-remote-priority", localManifestPath);
+
+      expect(detail.detail_status).toBe("loaded_fail_closed_summary");
+      expect(detail.field_evidence.manifest_gate.blocked_reason).toBe("preflight_ready_not_delivery_proof");
+      expect(detail.field_evidence.source_contract).toBe("trashbot.field_evidence_manifest.v1");
+      expect(detail.field_evidence.input_status).toBe("loaded");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("O7 consumer detail fails closed when remote field evidence and local manifest are missing", async () => {
+    // 远端缺 field evidence 时必须要求本地 manifest；未提供 query 仍不能继续给出“可读成功”摘要。
     const listPayload = {
       schema: "trashbot.o6.consumer_read.v1",
       task_list: { tasks: [{ task_id: "task-consumer-missing-field-evidence", robot_id: "robot_fixture" }] },
@@ -3151,10 +3249,53 @@ describe("workstation fail-closed API contracts", () => {
       const detail = await buildO7ConsumerTaskDetail(server.baseUrl, "task-consumer-missing-field-evidence");
 
       expect(detail.detail_status).toBe("fail_closed");
-      expect(detail.fail_closed_reason).toBe("field_evidence_contract_missing");
-      expect(detail.field_evidence.input_status).toBe("missing");
+      expect(detail.fail_closed_reason).toBe("field_evidence_manifest_json_not_provided");
+      expect(detail.field_evidence.input_status).toBe("not_provided");
       expect(detail.field_evidence.artifact_status).toBe("blocked");
       expect(detail.safe_to_control).toBe(false);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("O7 consumer detail fails closed for unsafe local manifest when remote field evidence is missing", async () => {
+    // 本地 manifest 出现控制/成功 true 声明时必须 fail-closed，不能补齐 field_evidence。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-consumer-unsafe-manifest-"));
+    const manifestPath = path.join(root, "unsafe-field-evidence.json");
+    await writeFile(
+      manifestPath,
+      JSON.stringify({
+        ...sampleFieldEvidenceManifest("/tmp/unsafe-manifest", "unsafe-field-evidence"),
+        safe_to_control: true,
+      }),
+      "utf8",
+    );
+    const detailPayload = {
+      schema: "trashbot.o6.consumer_read.v1",
+      task_summary: { task_id: "task-consumer-unsafe-local", robot_id: "robot_fixture", task_status_summary: "completed_mock" },
+      trajectory: { status: "loaded_not_proven", frame_count: 0, frames: [] },
+      events: { status: "loaded_not_proven", count: 0, items: [] },
+      evidence: { status: "loaded_not_proven", count: 0, items: [] },
+      labeling: { status: "pending", label_count: 0, items: [] },
+      inference: { status: "absent", count: 0, items: [] },
+      tunnel_status: { status: "blocked_not_proven", latest_known_status: "blocked_not_proven" },
+      blocked_reasons: [],
+      not_proven: ["proof_status=not_proven"],
+    };
+    const server = await listenConsumerRead(
+      { schema: "trashbot.o6.consumer_read.v1", task_list: { tasks: [] }, blocked_reasons: [], not_proven: [] },
+      detailPayload,
+    );
+
+    try {
+      const detail = await buildO7ConsumerTaskDetail(server.baseUrl, "task-consumer-unsafe-local", manifestPath);
+
+      expect(detail.detail_status).toBe("fail_closed");
+      expect(detail.fail_closed_reason).toBe("field_evidence_manifest_json_success_claim");
+      expect(detail.field_evidence.input_status).toBe("unsafe_claim");
+      expect(detail.safe_to_control).toBe(false);
+      expect(detail.primary_actions_enabled).toBe(false);
+      expect(detail.delivery_success).toBe(false);
     } finally {
       await server.close();
     }

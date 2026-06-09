@@ -17,7 +17,8 @@ import { buildO7RouteReplayPreview } from "./o7RouteReplayPreview";
 type JsonRecord = Record<string, unknown>;
 type ManifestArtifactStatus = "gated" | "missing" | "blocked";
 type ManifestGateStatus = "gated" | "blocked_not_proven";
-type DetailFieldEvidenceInputStatus = "loaded" | "missing" | "schema_mismatch" | "invalid_shape" | "unsafe_claim" | "not_provided";
+type DetailFieldEvidenceInputStatus =
+  O7ConsumerTaskDetailResponse["field_evidence"]["input_status"];
 
 const LIST_SCHEMA = "trashbot.pc_tools_workstation.o7_consumer_task_list.v1" as const;
 const DETAIL_SCHEMA = "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1" as const;
@@ -559,6 +560,74 @@ function detailFieldEvidenceSource(
   return { errorReason: "field_evidence_contract_missing", inputStatus: "missing" };
 }
 
+function detailInputStatusFromLocalManifestStatus(
+  status: LoadJsonStatus,
+): DetailFieldEvidenceInputStatus {
+  // 详情页只暴露少量 operator 可理解状态；底层读取状态在 blocked_reason 里保留细分原因。
+  switch (status) {
+    case "loaded":
+      return "loaded";
+    case "not_provided":
+      return "not_provided";
+    case "missing":
+      return "missing";
+    case "bad_json":
+      return "bad_json";
+    case "read_error":
+      return "read_error";
+    case "not_object":
+      return "invalid_shape";
+    case "unsupported_schema":
+      return "schema_mismatch";
+    case "unsafe_copy":
+    case "success_claim":
+    case "control_claim":
+      return "unsafe_claim";
+  }
+}
+
+type DetailFieldEvidenceSourceResult =
+  | {
+      manifest: O7FieldEvidenceManifestSummary;
+      inputStatus: DetailFieldEvidenceInputStatus;
+      sourceContract: O7ConsumerTaskDetailResponse["field_evidence"]["source_contract"];
+    }
+  | {
+      errorReason: string;
+      inputStatus: DetailFieldEvidenceInputStatus;
+    };
+
+async function localManifestFieldEvidenceSource(
+  manifestJson: string,
+): Promise<DetailFieldEvidenceSourceResult> {
+  // 本地 manifest 只在远端完全缺 field evidence 时才作为补齐来源，不能覆盖远端有效合同。
+  const manifestInput = await loadJsonObject(manifestJson);
+  if (manifestInput.status !== "loaded") {
+    return {
+      errorReason: `field_evidence_manifest_json_${manifestInput.status}`,
+      inputStatus: detailInputStatusFromLocalManifestStatus(manifestInput.status),
+    };
+  }
+  const manifestSafety = manifestInputSafetyStatus(manifestInput.payload);
+  if (manifestSafety.status !== "loaded") {
+    return {
+      errorReason: `field_evidence_manifest_json_${manifestSafety.status}`,
+      inputStatus: detailInputStatusFromLocalManifestStatus(manifestSafety.status),
+    };
+  }
+  if (asString(manifestInput.payload?.schema, "") !== FIELD_EVIDENCE_MANIFEST_SCHEMA) {
+    return {
+      errorReason: "field_evidence_manifest_json_schema_mismatch",
+      inputStatus: "schema_mismatch",
+    };
+  }
+  return {
+    manifest: buildManifestSummary(manifestInput.payload),
+    inputStatus: "loaded",
+    sourceContract: FIELD_EVIDENCE_MANIFEST_SCHEMA,
+  };
+}
+
 function aggregateDistinct(values: Array<string | string[] | null | undefined>): string[] {
   // 这里把 manifest、route replay 和 labeling 的缺口合并成单一展示列，避免 reviewer 来回比对。
   const flattened = values.flatMap((item) => (Array.isArray(item) ? item : item ? [item] : []));
@@ -649,7 +718,11 @@ export async function buildO7ConsumerTaskList(baseUrl: string): Promise<O7Consum
   };
 }
 
-export async function buildO7ConsumerTaskDetail(baseUrl: string, taskId: string): Promise<O7ConsumerTaskDetailResponse> {
+export async function buildO7ConsumerTaskDetail(
+  baseUrl: string,
+  taskId: string,
+  fieldEvidenceManifestJson = "",
+): Promise<O7ConsumerTaskDetailResponse> {
   const normalized = normalizeLoopbackBaseUrl(baseUrl);
   if (!normalized.ok) {
     return failClosedDetail(normalized.reason, baseUrl, taskId);
@@ -682,7 +755,12 @@ export async function buildO7ConsumerTaskDetail(baseUrl: string, taskId: string)
   if (dangerous.length > 0) {
     return failClosedDetail(`dangerous_true_fields:${dangerous.join(",")}`, normalized.normalized, trimmedTaskId);
   }
-  const fieldEvidenceSource = detailFieldEvidenceSource(remote);
+  let fieldEvidenceSource = detailFieldEvidenceSource(remote);
+  if ("errorReason" in fieldEvidenceSource) {
+    if (fieldEvidenceSource.errorReason === "field_evidence_contract_missing") {
+      fieldEvidenceSource = await localManifestFieldEvidenceSource(fieldEvidenceManifestJson);
+    }
+  }
   if ("errorReason" in fieldEvidenceSource) {
     const failClosed = failClosedDetail(fieldEvidenceSource.errorReason, normalized.normalized, trimmedTaskId);
     failClosed.field_evidence = {

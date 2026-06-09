@@ -174,6 +174,7 @@ const consumerTaskListResult = ref<O7ConsumerTaskListResponse | null>(null);
 const consumerTaskListError = ref("");
 const consumerTaskListLoading = ref(false);
 const consumerSelectedTaskId = ref("");
+const consumerFieldEvidenceManifestJson = ref("");
 const consumerTaskDetailResult = ref<O7ConsumerTaskDetailResponse | null>(null);
 const consumerTaskDetailError = ref("");
 const consumerTaskDetailLoading = ref(false);
@@ -1705,11 +1706,15 @@ async function loadConsumerTaskList(): Promise<void> {
 }
 
 async function loadConsumerTaskDetail(): Promise<void> {
-  // O7 详情主入口固定由后端追加 include=trajectory,events,evidence,labeling,inference,tunnel。
+  // 本地 manifest 只作为 field_evidence 缺口补齐输入，详情其余部分仍来自 O6 远端响应。
   consumerTaskDetailLoading.value = true;
   consumerTaskDetailError.value = "";
   try {
-    consumerTaskDetailResult.value = await getO7ConsumerTaskDetail(consumerReadBaseUrl.value, consumerSelectedTaskId.value);
+    consumerTaskDetailResult.value = await getO7ConsumerTaskDetail(
+      consumerReadBaseUrl.value,
+      consumerSelectedTaskId.value,
+      consumerFieldEvidenceManifestJson.value,
+    );
     resetRouteReplayCursor();
   } catch (error) {
     consumerTaskDetailError.value = error instanceof Error ? error.message : "consumer_task_detail_not_available";
@@ -2561,6 +2566,14 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           placeholder="task_id from consumer task list"
         >
       </label>
+      <label class="single-input">
+        <span>Local field evidence manifest JSON</span>
+        <input
+          v-model="consumerFieldEvidenceManifestJson"
+          aria-label="O7 consumer local field evidence manifest JSON"
+          placeholder="pc-tools/evidence/fixtures/field_evidence_manifest.json"
+        >
+      </label>
 
       <div v-if="consumerTaskListError" class="notice" role="alert">
         Consumer task list API unavailable: {{ consumerTaskListError }}. safe_to_control=false.
@@ -2644,6 +2657,8 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             <dd>{{ consumerTaskDetailResult?.field_evidence.source_contract ?? "not_loaded" }}</dd>
             <dt>field evidence input</dt>
             <dd>{{ consumerTaskDetailResult?.field_evidence.input_status ?? "missing" }}</dd>
+            <dt>local manifest query</dt>
+            <dd><code>{{ consumerFieldEvidenceManifestJson || "not_provided" }}</code></dd>
             <dt>manifest_gate</dt>
             <dd>{{ consumerTaskDetailResult?.field_evidence.manifest_gate.status ?? "blocked_not_proven" }}</dd>
             <dt>artifact_status</dt>

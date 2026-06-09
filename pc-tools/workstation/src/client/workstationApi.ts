@@ -136,12 +136,16 @@ function consumerTaskListUrl(baseUrl: string): string {
   return `${API_ENDPOINTS.o7ConsumerTaskList}?${params.toString()}`;
 }
 
-function consumerTaskDetailUrl(baseUrl: string, taskId: string): string {
-  // 详情入口固定由后端追加 include 策略；前端只传 task_id 和 loopback base URL。
+function consumerTaskDetailUrl(baseUrl: string, taskId: string, fieldEvidenceManifestJson = ""): string {
+  // 本地 manifest 路径只交给 Node 后端读取；浏览器不直接访问文件，也不覆盖远端有效证据。
   const params = new URLSearchParams();
   const trimmedBaseUrl = baseUrl.trim();
   if (trimmedBaseUrl) {
     params.set("baseUrl", trimmedBaseUrl);
+  }
+  const trimmedManifestJson = fieldEvidenceManifestJson.trim();
+  if (trimmedManifestJson) {
+    params.set("fieldEvidenceManifestJson", trimmedManifestJson);
   }
   const trimmedTaskId = taskId.trim();
   return `${API_ENDPOINTS.o7ConsumerTaskDetailPrefix}${encodeURIComponent(trimmedTaskId)}?${params.toString()}`;
@@ -287,9 +291,13 @@ export async function getO7ConsumerTaskList(baseUrl: string): Promise<O7Consumer
   return loadJson<O7ConsumerTaskListResponse>(consumerTaskListUrl(baseUrl));
 }
 
-export async function getO7ConsumerTaskDetail(baseUrl: string, taskId: string): Promise<O7ConsumerTaskDetailResponse> {
-  // O7 任务详情主路径固定由后端附带 include 策略，避免组件发明字段选择。
-  return loadJson<O7ConsumerTaskDetailResponse>(consumerTaskDetailUrl(baseUrl, taskId));
+export async function getO7ConsumerTaskDetail(
+  baseUrl: string,
+  taskId: string,
+  fieldEvidenceManifestJson = "",
+): Promise<O7ConsumerTaskDetailResponse> {
+  // 可选本地 manifest 只补齐缺失 field_evidence，不改变 detail 的轨迹/事件/标注等远端来源。
+  return loadJson<O7ConsumerTaskDetailResponse>(consumerTaskDetailUrl(baseUrl, taskId, fieldEvidenceManifestJson));
 }
 
 export async function loadO7FixturePreview(

@@ -2693,6 +2693,7 @@ describe("App", () => {
     expect(wrapper.text()).toContain("Cloud archive tasks probe");
     expect(wrapper.text()).toContain("RTC signaling contract probe");
     expect(wrapper.text()).toContain("Realtime/elevator cloud probe");
+    expect(wrapper.text()).toContain("Local field evidence manifest JSON");
     expect(wrapper.text()).toContain("Cloud Archive Tasks");
     expect(wrapper.text()).toContain("fixture_json_not_provided");
     expect(wrapper.text()).toContain("archive_json_not_provided");
@@ -2723,6 +2724,9 @@ describe("App", () => {
     await wrapper.find('input[aria-label="Cloud archive tasks probe base URL"]').setValue("http://127.0.0.1:8088");
     await wrapper.find('input[aria-label="O7 consumer read base URL"]').setValue("http://127.0.0.1:8088");
     await wrapper.find('input[aria-label="O7 consumer selected task ID"]').setValue("task-consumer-001");
+    await wrapper
+      .find('input[aria-label="O7 consumer local field evidence manifest JSON"]')
+      .setValue("fixtures/field-evidence-manifest.json");
     await wrapper.find('input[aria-label="Realtime elevator cloud probe base URL"]').setValue("http://127.0.0.1:8088");
     await wrapper.find('input[aria-label="RTC signaling contract probe base URL"]').setValue("http://127.0.0.1:8088");
     await wrapper.find('input[aria-label="Cloud archive fixture JSON path"]').setValue("fixtures/archive.json");
@@ -2779,7 +2783,9 @@ describe("App", () => {
     expect(previewCalls).toContain("/api/o7/previews/acceptance");
     expect(previewCalls).toContain("/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/consumer-read/tasks?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
-    expect(previewCalls).toContain("/api/o7/consumer-read/tasks/task-consumer-001?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001?baseUrl=http%3A%2F%2F127.0.0.1%3A8088&fieldEvidenceManifestJson=fixtures%2Ffield-evidence-manifest.json",
+    );
     expect(previewCalls).toContain("/api/o7/cloud-archive/tasks-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/rtc-signaling-contract-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/realtime-elevator-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");

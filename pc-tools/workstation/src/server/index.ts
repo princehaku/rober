@@ -112,8 +112,14 @@ export function createWorkstationApp(): express.Express {
   });
 
   workstationApp.get("/api/o7/consumer-read/tasks/:taskId", async (req, res) => {
-    // O7 详情主入口固定附带 include 策略，只返回只读 fail-closed 摘要。
-    res.json(await buildO7ConsumerTaskDetail(queryString(req.query.baseUrl), req.params.taskId ?? ""));
+    // 本地 field evidence manifest 只作为远端缺字段时的只读补齐来源，不改变远端轨迹/事件等摘要。
+    res.json(
+      await buildO7ConsumerTaskDetail(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        queryString(req.query.fieldEvidenceManifestJson),
+      ),
+    );
   });
 
   workstationApp.get("/api/o7/cloud-archive/tasks-probe", async (req, res) => {
