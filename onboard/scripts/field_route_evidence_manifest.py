@@ -27,6 +27,15 @@ ARTIFACT_CANDIDATES = {
     "rosbag": ["rosbag", "route_bag", "route_data/rosbag", "route_data/route_bag"],
     "replay_jsonl": ["replay.jsonl", "fixed_route_replay.jsonl", "route_data/fixed_route_replay.jsonl"],
 }
+EXISTING_MANIFEST_CANDIDATES = [
+    "field_evidence_manifest.json",
+    "trashbot_field_evidence_manifest.json",
+    "trashbot.field_evidence_manifest.v1.json",
+    "manifest.json",
+    "route_data/field_evidence_manifest.json",
+    "route_data/trashbot_field_evidence_manifest.json",
+]
+UNSAFE_EXISTING_MANIFEST_FIELDS = ["delivery_success", "safe_to_control", "primary_actions_enabled"]
 
 
 def utc_now() -> str:
@@ -178,6 +187,75 @@ def scan_local_artifacts(root: Path) -> dict[str, Any]:
     }
 
 
+def find_existing_manifest(root: Path, output: Path | None) -> Path | None:
+    # 离线 packet 可能已经带 manifest；先按固定候选找，避免递归误吃大目录里的历史 JSON。
+    for candidate in EXISTING_MANIFEST_CANDIDATES:
+        path = root / candidate
+        if path.exists() and path.is_file() and (output is None or path.resolve() != output.resolve()):
+            return path
+    return None
+
+
+def existing_manifest_summary(root: Path, output: Path | None) -> dict[str, Any]:
+    # 已有 manifest 是输入证据的一部分；schema 或危险声明异常时必须让整个 intake fail closed。
+    path = find_existing_manifest(root, output)
+    if path is None:
+        return {
+            "present": False,
+            "path": None,
+            "status": "not_found",
+            "schema": None,
+            "gate_pass": None,
+            "dangerous_true_fields": [],
+            "blocked_reason": None,
+            "safe_for_reuse": True,
+        }
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "present": True,
+            "path": str(path),
+            "status": "invalid_json",
+            "schema": None,
+            "gate_pass": None,
+            "dangerous_true_fields": [],
+            "blocked_reason": f"invalid_existing_manifest_json:{exc}",
+            "safe_for_reuse": False,
+        }
+    if not isinstance(loaded, dict):
+        return {
+            "present": True,
+            "path": str(path),
+            "status": "invalid_root",
+            "schema": None,
+            "gate_pass": None,
+            "dangerous_true_fields": [],
+            "blocked_reason": "invalid_existing_manifest_root",
+            "safe_for_reuse": False,
+        }
+    dangerous_true_fields = [field for field in UNSAFE_EXISTING_MANIFEST_FIELDS if loaded.get(field) is True]
+    if loaded.get("schema") != SCHEMA:
+        status = "schema_mismatch"
+        blocked_reason = "existing_manifest_schema_mismatch"
+    elif dangerous_true_fields:
+        status = "unsafe_claim"
+        blocked_reason = "unsafe_existing_manifest_claim"
+    else:
+        status = "schema_match_safe"
+        blocked_reason = None
+    return {
+        "present": True,
+        "path": str(path),
+        "status": status,
+        "schema": loaded.get("schema"),
+        "gate_pass": loaded.get("gate_pass") if isinstance(loaded.get("gate_pass"), bool) else None,
+        "dangerous_true_fields": dangerous_true_fields,
+        "blocked_reason": blocked_reason,
+        "safe_for_reuse": blocked_reason is None,
+    }
+
+
 def read_preflight(path: Path | None) -> dict[str, Any]:
     # preflight 缺失也必须 fail closed；不能因为 artifact 完整就跳过现场 ready 条件。
     if path is None:
@@ -268,11 +346,20 @@ def preflight_ready(preflight: dict[str, Any]) -> bool:
     )
 
 
-def build_status(artifact_gate_pass: bool, artifacts: dict[str, Any], preflight: dict[str, Any], ssh_status: str | None) -> tuple[str, str | None]:
+def build_status(
+    artifact_gate_pass: bool,
+    artifacts: dict[str, Any],
+    preflight: dict[str, Any],
+    ssh_status: str | None,
+    input_manifest: dict[str, Any],
+) -> tuple[str, str | None]:
     # SSH 不可达先报网络入口；本地模式再表达 artifact gate 和 preflight 边界。
     if ssh_status:
         # SSH 模式连只读扫描都不可用时，根因是远端入口，不再把派生的 artifact 缺失当主因。
         return ssh_status, ssh_status
+    if input_manifest.get("blocked_reason"):
+        # packet 内已有 manifest 不可信时，不能用同目录其它 artifact 把它“洗白”成通过。
+        return "blocked_existing_manifest_reuse", str(input_manifest["blocked_reason"])
     artifact_reason = artifact_blocked_reason(artifacts)
     if not artifact_gate_pass:
         if artifact_reason == "empty_required_artifact":
@@ -284,16 +371,38 @@ def build_status(artifact_gate_pass: bool, artifacts: dict[str, Any], preflight:
     return "field_evidence_manifest_ready_not_delivery_proof", reason
 
 
-def build_manifest(args: argparse.Namespace, artifacts: dict[str, Any], preflight: dict[str, Any], ssh_status: str | None = None) -> dict[str, Any]:
+def build_manifest(
+    args: argparse.Namespace,
+    artifacts: dict[str, Any],
+    preflight: dict[str, Any],
+    ssh_status: str | None = None,
+    input_manifest: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    input_manifest = input_manifest or {
+        "present": False,
+        "status": "not_scanned",
+        "blocked_reason": None,
+        "safe_for_reuse": True,
+        "dangerous_true_fields": [],
+    }
     artifact_gate_pass = artifacts_pass(artifacts)
-    status, blocked_reason = build_status(artifact_gate_pass, artifacts, preflight, ssh_status)
-    proven_material = artifact_gate_pass and preflight_ready(preflight) and ssh_status is None
+    input_manifest_safe = input_manifest.get("safe_for_reuse") is True
+    gate_pass = artifact_gate_pass and input_manifest_safe
+    status, blocked_reason = build_status(artifact_gate_pass, artifacts, preflight, ssh_status, input_manifest)
+    proven_material = gate_pass and preflight_ready(preflight) and ssh_status is None
     source = "ssh_remote" if args.mode == "ssh" else "local_fixture"
     health = artifact_health(artifacts, ssh_status)
+    if input_manifest.get("blocked_reason"):
+        health = {
+            **health,
+            "status": "blocked",
+            "blocked_artifacts": sorted(set(health["blocked_artifacts"] + ["input_manifest"])),
+            "summary": "blocked_existing_manifest_reuse",
+        }
     manifest_gate = {
         "schema": SCHEMA,
-        "status": "gated" if artifact_gate_pass else "blocked_not_proven",
-        "gate_pass": artifact_gate_pass,
+        "status": "gated" if gate_pass else "blocked_not_proven",
+        "gate_pass": gate_pass,
         "blocked_reason": blocked_reason,
         "source": source,
     }
@@ -307,9 +416,10 @@ def build_manifest(args: argparse.Namespace, artifacts: dict[str, Any], prefligh
         "preflight_json": args.preflight_json,
         "preflight_status": preflight.get("status"),
         "preflight": preflight,
-        "gate_pass": artifact_gate_pass,
+        "gate_pass": gate_pass,
         "artifact_status": health["status"],
         "artifact_health": health,
+        "input_manifest": input_manifest,
         "manifest_gate": manifest_gate,
         "status": status,
         "blocked_reason": blocked_reason,
@@ -389,7 +499,8 @@ def write_manifest(manifest: dict[str, Any], output: Path) -> None:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate a trashbot field evidence manifest.")
     parser.add_argument("--mode", choices=["local", "ssh"], required=True)
-    parser.add_argument("--artifact-root", required=True)
+    parser.add_argument("--artifact-root", dest="artifact_root")
+    parser.add_argument("--input", dest="input_dir", help="Alias for --artifact-root when importing a local offline evidence packet.")
     parser.add_argument("--preflight-json")
     parser.add_argument("--output", required=True)
     parser.add_argument("--ssh-target", default="root@192.168.1.11")
@@ -399,6 +510,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.timeout_s < 1:
         parser.error("--timeout-s must be >= 1")
+    if args.artifact_root and args.input_dir and Path(args.artifact_root).expanduser() != Path(args.input_dir).expanduser():
+        parser.error("--artifact-root and --input must point to the same directory when both are provided")
+    args.artifact_root = args.artifact_root or args.input_dir
+    if not args.artifact_root:
+        parser.error("one of --artifact-root or --input is required")
     # run_id 默认来自 UTC 时间，保证每份 manifest 能被后续 archive 稳定索引。
     args.run_id = args.run_id or "field_evidence_" + _dt.datetime.now(tz=_dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     return args
@@ -413,9 +529,12 @@ def main(argv: list[str] | None = None) -> int:
         artifacts, ssh_status, ssh_result = run_ssh_scan(args)
         if not artifacts:
             artifacts = {name: missing_artifact(Path(args.artifact_root), name, "ssh_scan_unavailable") for name in ARTIFACT_CANDIDATES}
+        input_manifest = existing_manifest_summary(Path(args.artifact_root).expanduser(), Path(args.output).expanduser())
     else:
-        artifacts = scan_local_artifacts(Path(args.artifact_root).expanduser())
-    manifest = build_manifest(args, artifacts, preflight, ssh_status)
+        artifact_root = Path(args.artifact_root).expanduser()
+        artifacts = scan_local_artifacts(artifact_root)
+        input_manifest = existing_manifest_summary(artifact_root, Path(args.output).expanduser())
+    manifest = build_manifest(args, artifacts, preflight, ssh_status, input_manifest)
     if ssh_result is not None:
         manifest["ssh_scan"] = ssh_result
     write_manifest(manifest, Path(args.output))

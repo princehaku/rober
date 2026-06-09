@@ -7,9 +7,16 @@
 必需输入：
 
 - `--mode local|ssh`
-- `--artifact-root <dir>`
-- `--preflight-json <field_route_evidence_preflight.py 输出>`
+- `--artifact-root <dir>` 或 `--input <dir>`
 - `--output <manifest.json>`
+
+`--input` 是离线 evidence packet intake 的别名，语义等同于 `--artifact-root`。保留 `--artifact-root` 是为了兼容前序 SSH/manifest 脚本；新增 `--input` 是为了让现场人工导出的本地目录可以直接进入 sprint P0 验收命令，不需要再连 `root@192.168.1.11 -p 37878`。
+
+可选输入：
+
+- `--preflight-json <field_route_evidence_preflight.py 输出>`
+
+没有 `--preflight-json` 时仍会生成 manifest，但 `preflight.status=missing_preflight_json`、`not_proven=true`，只证明离线 artifact intake 软件路径，不证明现场 ready 或 delivery。
 
 可选 SSH 参数：
 
@@ -46,6 +53,34 @@ manifest 会检查以下材料：
 - `reason`
 
 目录 artifact 使用稳定排序后的目录摘要：对子文件的相对路径、大小和 sha256 做二次 sha256，因此可复跑比较，但不会把图片或 bag 内容写进 manifest。
+
+## 离线 evidence packet intake
+
+本地目录可以来自现场人工 USB 拷贝、压缩包解压、后续 SSH 成功后的 run 目录，或已有 `trashbot.field_evidence_manifest.v1` 的材料包。推荐命令：
+
+```bash
+python3 onboard/scripts/field_route_evidence_manifest.py \
+  --mode local \
+  --input /tmp/trashbot_field_evidence_fixture \
+  --output /tmp/trashbot_field_evidence_manifest.json
+```
+
+离线 intake 会在 artifact 扫描前检查目录内已有 manifest 候选：
+
+- `field_evidence_manifest.json`
+- `trashbot_field_evidence_manifest.json`
+- `trashbot.field_evidence_manifest.v1.json`
+- `manifest.json`
+- `route_data/field_evidence_manifest.json`
+- `route_data/trashbot_field_evidence_manifest.json`
+
+已有 manifest 的 `schema` 必须是 `trashbot.field_evidence_manifest.v1`。如果 schema 不匹配、JSON 无法解析，或已有 manifest 自带以下危险成功声明，输出必须 fail closed，返回非零，并把 `input_manifest.blocked_reason` 写入新 manifest：
+
+- `delivery_success=true`
+- `safe_to_control=true`
+- `primary_actions_enabled=true`
+
+这条规则的原因是：离线 packet 是材料入口，不是现场控制或送达验收单。即使同一目录的 `map.yaml`、`route.csv`、keyframes、rosbag 和 replay 都齐全，也不能用 artifact 完整性把旧 manifest 的危险成功声明“洗白”。
 
 ## gate 语义
 
@@ -96,6 +131,15 @@ python3 onboard/scripts/field_route_evidence_manifest.py \
 ```
 
 如果 `/tmp/trashbot_field_preflight_ssh.json` 仍是 `blocked_ssh_unreachable`，完整 fixture 的 `gate_pass` 可以为 `true`，但 `not_proven=true`、`delivery_success=false`、`primary_actions_enabled=false` 必须保持。
+
+使用离线 intake alias 复跑同一个 fixture：
+
+```bash
+python3 onboard/scripts/field_route_evidence_manifest.py \
+  --mode local \
+  --input /tmp/trashbot_field_manifest_fixture_complete \
+  --output /tmp/trashbot_field_manifest_complete_from_input.json
+```
 
 缺失 fixture 示例：
 
