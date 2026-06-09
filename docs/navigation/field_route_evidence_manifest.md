@@ -63,6 +63,8 @@ manifest 顶层始终保留安全边界：
 
 这条规则用于“不再次只消费同一 SSH blocker”：SSH 仍不可达时，研发可以用本地完整 fixture 验证 manifest 功能；但输出不会伪装成真实现场路线材料。
 
+`pc-tools/workstation` 的 O7 Field Evidence Consumer Ingest 会继续消费这份 manifest，并把它和 route replay / labeling fixture 合成统一只读摘要。入口说明见 [O7 Field Evidence Consumer Ingest](o7_field_evidence_consumer_ingest.md)。本地/mock 与 future SSH 读取都必须保持 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`，以及明确的 `blocked_reason` / `next_required_evidence`。
+
 ## 本地 fixture 复跑
 
 完整 fixture 示例：

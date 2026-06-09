@@ -16,6 +16,7 @@ import type { O7FixturePreviewInputs, O7FixturePreviewKind, O7FixturePreviewResp
 import type {
   O7CloudArchiveTasksProbeResponse,
   O7CloudArchiveTasksResponse,
+  O7FieldEvidenceConsumerIngestResponse,
   O7ConsumerTaskDetailResponse,
   O7ConsumerTaskListResponse,
   O7LabelingQueueInspectorReviewItem,
@@ -198,6 +199,12 @@ const previewsAcceptanceLoading = ref(false);
 const liveEndpointsManifestResult = ref<O7LiveEndpointsManifestResponse | null>(null);
 const liveEndpointsManifestError = ref("");
 const liveEndpointsManifestLoading = ref(false);
+const fieldEvidenceConsumerIngestManifestJson = ref("");
+const fieldEvidenceConsumerIngestRouteReplayJson = ref("");
+const fieldEvidenceConsumerIngestLabelingJson = ref("");
+const fieldEvidenceConsumerIngestResult = ref<O7FieldEvidenceConsumerIngestResponse | null>(null);
+const fieldEvidenceConsumerIngestError = ref("");
+const fieldEvidenceConsumerIngestLoading = ref(false);
 const routeReplayCursor = ref(0);
 const routeReplayPlaying = ref(false);
 const routeReplayPlaybackTimer = ref<number | null>(null);
@@ -1808,6 +1815,41 @@ async function loadLiveEndpointsManifest(): Promise<void> {
   }
 }
 
+async function loadFieldEvidenceConsumerIngest(): Promise<void> {
+  // 这条入口把 manifest、route replay 和 labeling 绑进同一份只读消费摘要。
+  // UI 只发 query，不自己拼装任何机器人状态或成功结论。
+  fieldEvidenceConsumerIngestLoading.value = true;
+  fieldEvidenceConsumerIngestError.value = "";
+  try {
+    const params = new URLSearchParams();
+    const manifestJson = fieldEvidenceConsumerIngestManifestJson.value.trim();
+    const routeReplayJson = fieldEvidenceConsumerIngestRouteReplayJson.value.trim();
+    const labelingJson = fieldEvidenceConsumerIngestLabelingJson.value.trim();
+    if (manifestJson) {
+      params.set("manifestJson", manifestJson);
+    }
+    if (routeReplayJson) {
+      params.set("routeReplayFixtureJson", routeReplayJson);
+    }
+    if (labelingJson) {
+      params.set("labelingFixtureJson", labelingJson);
+    }
+    const query = params.toString();
+    const response = await fetch(
+      `/api/o7/field-evidence-consumer-ingest${query ? `?${query}` : ""}`,
+    );
+    if (!response.ok) {
+      throw new Error(`/api/o7/field-evidence-consumer-ingest returned ${response.status}`);
+    }
+    fieldEvidenceConsumerIngestResult.value = (await response.json()) as O7FieldEvidenceConsumerIngestResponse;
+  } catch (err) {
+    fieldEvidenceConsumerIngestError.value =
+      err instanceof Error ? err.message : "field_evidence_consumer_ingest_unavailable_not_proven";
+  } finally {
+    fieldEvidenceConsumerIngestLoading.value = false;
+  }
+}
+
 function coreFalseFields(kind: O7FixturePreviewKind, result: O7FixturePreviewResult | undefined): string[] {
   const record = asRecord(result);
   // 这些字段是 operator 最容易误读成“已接通/可操作”的核心开关，必须显式展示 false。
@@ -2015,6 +2057,148 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           </ul>
         </div>
       </div>
+    </article>
+
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <div>
+          <h3>Field evidence consumer ingest</h3>
+          <p class="eyebrow">Manifest entry point for route replay and labeling. Local mock and future SSH share the same summary shape.</p>
+        </div>
+        <span class="pill danger">{{ fieldEvidenceConsumerIngestResult?.ingest_status ?? "not_loaded" }}</span>
+      </div>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <label class="single-input">
+            <span>Manifest JSON path</span>
+            <input
+              v-model="fieldEvidenceConsumerIngestManifestJson"
+              aria-label="Field evidence manifest JSON path"
+              placeholder="pc-tools/evidence/fixtures/field_evidence_manifest.json"
+            >
+          </label>
+          <label class="single-input">
+            <span>Route replay fixture JSON path</span>
+            <input
+              v-model="fieldEvidenceConsumerIngestRouteReplayJson"
+              aria-label="Route replay fixture JSON path"
+              placeholder="pc-tools/evidence/fixtures/wave_rover_feedback_replay/pass/route_replay.json"
+            >
+          </label>
+          <label class="single-input">
+            <span>Labeling fixture JSON path</span>
+            <input
+              v-model="fieldEvidenceConsumerIngestLabelingJson"
+              aria-label="Labeling fixture JSON path"
+              placeholder="pc-tools/evidence/fixtures/wave_rover_hil_packet_intake/pass/labeling.json"
+            >
+          </label>
+          <button class="secondary" type="button" @click="loadFieldEvidenceConsumerIngest">
+            {{ fieldEvidenceConsumerIngestLoading ? "Loading consumer ingest" : "Load field evidence consumer ingest" }}
+          </button>
+          <div v-if="fieldEvidenceConsumerIngestError" class="notice" role="alert">
+            Field evidence consumer ingest unavailable: {{ fieldEvidenceConsumerIngestError }}.
+          </div>
+        </div>
+        <div>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.schema ?? "trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1" }}</dd>
+            <dt>source manifest schema</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.source_manifest_schema ?? "not_loaded" }}</dd>
+            <dt>manifest status</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.manifest.status ?? "not_loaded" }}</dd>
+            <dt>manifest gate_pass</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.manifest.gate_pass ?? false }}</dd>
+            <dt>route replay preview</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.route_replay_preview.preview_status ?? "not_loaded" }}</dd>
+            <dt>labeling preview</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.labeling_preview.preview_status ?? "not_loaded" }}</dd>
+            <dt>blocked reason</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.consumer_entry.blocked_reason ?? "not_loaded" }}</dd>
+            <dt>fallback mode</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.consumer_entry.fallback_mode ?? "blocked_not_proven" }}</dd>
+            <dt>safe_to_control</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.safe_to_control ?? false }}</dd>
+            <dt>delivery_success</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.delivery_success ?? false }}</dd>
+          </dl>
+        </div>
+      </div>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>Manifest summary</h3>
+          <dl class="kv compact-kv">
+            <dt>run_id</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.manifest.run_id ?? "not_loaded" }}</dd>
+            <dt>mode</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.manifest.mode ?? "not_loaded" }}</dd>
+            <dt>artifact_root</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.manifest.artifact_root ?? "not_loaded" }}</dd>
+            <dt>preflight_status</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.manifest.preflight_status ?? "null" }}</dd>
+            <dt>gate_pass</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.manifest.gate_pass ?? false }}</dd>
+            <dt>blocked_reason</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.manifest.blocked_reason ?? "not_loaded" }}</dd>
+          </dl>
+          <h3>Manifest artifacts</h3>
+          <ul class="dense">
+            <li>map_yaml={{ fieldEvidenceConsumerIngestResult?.manifest.artifacts.map_yaml.present ?? false }} · {{ fieldEvidenceConsumerIngestResult?.manifest.artifacts.map_yaml.reason ?? "none" }}</li>
+            <li>route_csv={{ fieldEvidenceConsumerIngestResult?.manifest.artifacts.route_csv.present ?? false }} · {{ fieldEvidenceConsumerIngestResult?.manifest.artifacts.route_csv.reason ?? "none" }}</li>
+            <li>keyframes={{ fieldEvidenceConsumerIngestResult?.manifest.artifacts.keyframes.present ?? false }} · {{ fieldEvidenceConsumerIngestResult?.manifest.artifacts.keyframes.reason ?? "none" }}</li>
+            <li>rosbag={{ fieldEvidenceConsumerIngestResult?.manifest.artifacts.rosbag.present ?? false }} · {{ fieldEvidenceConsumerIngestResult?.manifest.artifacts.rosbag.reason ?? "none" }}</li>
+            <li>replay_jsonl={{ fieldEvidenceConsumerIngestResult?.manifest.artifacts.replay_jsonl.present ?? false }} · {{ fieldEvidenceConsumerIngestResult?.manifest.artifacts.replay_jsonl.reason ?? "none" }}</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Route replay consumer</h3>
+          <dl class="kv compact-kv">
+            <dt>task_id</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.route_replay_preview.task.task_id ?? "not_loaded" }}</dd>
+            <dt>route_id</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.route_replay_preview.task.route_id ?? "not_loaded" }}</dd>
+            <dt>frame_count</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.route_replay_preview.trajectory.frame_count ?? 0 }}</dd>
+            <dt>playback_cursor</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.route_replay_preview.playback_cursor_initial_state.status ?? "not_loaded" }}</dd>
+            <dt>blocked_reason</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.route_replay_preview.blocked_reasons[0] ?? "not_loaded" }}</dd>
+          </dl>
+          <h3>Labeling consumer</h3>
+          <dl class="kv compact-kv">
+            <dt>queue_id</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.labeling_preview.queue.queue_id ?? "not_loaded" }}</dd>
+            <dt>review_item_count</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.labeling_preview.queue.review_item_count ?? 0 }}</dd>
+            <dt>label_schema</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.labeling_preview.label_schema.schema_ref ?? "not_loaded" }}</dd>
+            <dt>submit_enabled</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.labeling_preview.submit_enabled ?? false }}</dd>
+            <dt>blocked_reason</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.labeling_preview.blocked_reasons[0] ?? "not_loaded" }}</dd>
+          </dl>
+        </div>
+      </div>
+
+      <h3>Consumer entry blocked reasons</h3>
+      <ul class="dense">
+        <li v-for="reason in fieldEvidenceConsumerIngestResult?.blocked_reasons ?? ['not_loaded']" :key="reason">
+          {{ reason }}
+        </li>
+      </ul>
+      <h3>Consumer entry not proven</h3>
+      <ul class="dense">
+        <li v-for="item in fieldEvidenceConsumerIngestResult?.not_proven ?? ['not_loaded']" :key="item">{{ item }}</li>
+      </ul>
+      <h3>Consumer entry next required evidence</h3>
+      <ul class="dense">
+        <li v-for="item in fieldEvidenceConsumerIngestResult?.next_required_evidence ?? ['not_loaded']" :key="item">
+          {{ item }}
+        </li>
+      </ul>
     </article>
 
     <article class="snapshot-panel">

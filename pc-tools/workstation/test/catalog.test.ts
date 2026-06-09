@@ -18,6 +18,7 @@ import {
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
   buildO7PreviewsAcceptanceResponse,
+  buildO7FieldEvidenceConsumerIngest,
   buildO7LabelingPreview,
   buildO7RealtimeElevatorPreview,
   buildO7RouteReplayPreview,
@@ -214,6 +215,82 @@ function sampleLabelingFixture(evidenceRef: string) {
       export_ref: "dataset-export-missing.json",
       supported_formats: ["coco", "jsonl"],
       gaps: ["operator_review_not_complete"],
+    },
+  };
+}
+
+function sampleFieldEvidenceManifest(root: string, evidenceRef: string) {
+  // manifest fixture 只表达现场材料 gate 和安全边界，不证明真实路线或交付成功。
+  return {
+    schema: "trashbot.field_evidence_manifest.v1",
+    run_id: "field_evidence_20260609T101500Z",
+    generated_at: "2026-06-09T10:15:00Z",
+    source: "local_fixture",
+    mode: "local",
+    artifact_root: root,
+    preflight_json: "preflight.json",
+    preflight_status: "ready_for_live_route_capture_not_proven",
+    preflight: {
+      schema: "trashbot.field_route_preflight.v1",
+      status: "ready_for_live_route_capture_not_proven",
+      dry_run: false,
+      blocked_reason: null,
+      mode: "local",
+      read_ok: true,
+    },
+    gate_pass: true,
+    status: "field_evidence_manifest_ready_not_delivery_proof",
+    blocked_reason: "preflight_ready_not_delivery_proof",
+    not_proven: true,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    artifacts: {
+      map_yaml: {
+        required: true,
+        present: true,
+        path: path.join(root, "map.yaml"),
+        size_bytes: 24,
+        mtime_utc: "2026-06-09T10:15:00Z",
+        sha256: "map-sha",
+        reason: null,
+      },
+      route_csv: {
+        required: true,
+        present: true,
+        path: path.join(root, "route.csv"),
+        size_bytes: 18,
+        mtime_utc: "2026-06-09T10:15:00Z",
+        sha256: "route-sha",
+        reason: null,
+      },
+      keyframes: {
+        required: true,
+        present: true,
+        path: path.join(root, "keyframes"),
+        size_bytes: 128,
+        mtime_utc: "2026-06-09T10:15:00Z",
+        sha256: "keyframes-sha",
+        reason: null,
+        file_count: 2,
+      },
+      rosbag: {
+        required: true,
+        present: true,
+        path: path.join(root, "route_bag"),
+        size_bytes: 256,
+        mtime_utc: "2026-06-09T10:15:00Z",
+        sha256: "rosbag-sha",
+        reason: null,
+      },
+      replay_jsonl: {
+        required: true,
+        present: true,
+        path: evidenceRef,
+        size_bytes: 96,
+        mtime_utc: "2026-06-09T10:15:00Z",
+        sha256: "replay-sha",
+        reason: null,
+      },
     },
   };
 }
@@ -1808,6 +1885,122 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.blocked_reasons.length).toBeGreaterThan(0);
       expectNoLegacyPythonGateSemantics(response);
     }
+  });
+
+  it("O7 field evidence consumer ingest composes manifest route replay and labeling fixtures", async () => {
+    // 主入口必须把三类 local fixture 拼成同一份只读消费摘要，且保留控制关闭边界。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-field-ingest-"));
+    const evidenceRef = path.join(root, "manifest-evidence.json");
+    const manifestPath = path.join(root, "field-evidence-manifest.json");
+    const routeReplayPath = path.join(root, "route-replay.json");
+    const labelingPath = path.join(root, "labeling.json");
+    await writeFile(manifestPath, JSON.stringify(sampleFieldEvidenceManifest(root, evidenceRef)), "utf8");
+    await writeFile(routeReplayPath, JSON.stringify(sampleRouteReplayFixture(evidenceRef)), "utf8");
+    await writeFile(labelingPath, JSON.stringify(sampleLabelingFixture(evidenceRef)), "utf8");
+
+    const response = await buildO7FieldEvidenceConsumerIngest({
+      manifestJson: manifestPath,
+      routeReplayFixtureJson: routeReplayPath,
+      labelingFixtureJson: labelingPath,
+    });
+
+    expect(response.schema).toBe("trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1");
+    expect(response.ingest_status).toBe("fixture_consumer_ready_not_proven");
+    expect(response.manifest_input_status.status).toBe("loaded");
+    expect(response.manifest_input_status.manifest_json).toBe("file:field-evidence-manifest.json");
+    expect(response.route_replay_input_status.status).toBe("loaded");
+    expect(response.route_replay_input_status.fixture_json).toBe("file:route-replay.json");
+    expect(response.labeling_input_status.status).toBe("loaded");
+    expect(response.labeling_input_status.fixture_json).toBe("file:labeling.json");
+    expect(response.source_manifest_schema).toBe("trashbot.field_evidence_manifest.v1");
+    expect(response.manifest.schema).toBe("trashbot.field_evidence_manifest.v1");
+    expect(response.manifest.run_id).toBe("field_evidence_20260609T101500Z");
+    expect(response.manifest.source).toBe("local_fixture");
+    expect(response.manifest.mode).toBe("local");
+    expect(response.manifest.status).toBe("field_evidence_manifest_ready_not_delivery_proof");
+    expect(response.manifest.gate_pass).toBe(true);
+    expect(response.manifest.not_proven).toBe(true);
+    expect(response.manifest.delivery_success).toBe(false);
+    expect(response.manifest.primary_actions_enabled).toBe(false);
+    expect(response.route_replay_preview.preview_status).toBe("fixture_preview_ready");
+    expect(response.route_replay_preview.task.task_id).toBe("task-fixture-001");
+    expect(response.labeling_preview.preview_status).toBe("fixture_preview_ready");
+    expect(response.labeling_preview.queue.queue_id).toBe("queue-fixture-001");
+    expect(response.consumer_entry.fallback_mode).toBe("local_mock");
+    expect(response.consumer_entry.primary_path).toBe("/api/o7/field-evidence-consumer-ingest");
+    expect(response.consumer_entry.route_replay_path).toBe("/api/o7/route-replay-preview");
+    expect(response.consumer_entry.labeling_path).toBe("/api/o7/labeling-preview");
+    expect(response.consumer_entry.blocked_reason).toBe("");
+    expect(response.safe_to_control).toBe(false);
+    expect(response.delivery_success).toBe(false);
+    expect(response.primary_actions_enabled).toBe(false);
+    expect(response.blocked_reasons).toEqual(expect.arrayContaining(["preflight_ready_not_delivery_proof"]));
+    expect(response.not_proven).toEqual(
+      expect.arrayContaining([
+        "field_evidence_manifest_not_delivery_proof",
+        "real_o6_cloud_archive",
+        "real_route_replay_playback",
+        "real_robot_control",
+        "real_o6_annotation_api",
+        "real_labeling_review_queue",
+        "real_label_schema_api",
+        "real_review_item_media",
+        "real_draft_label_autosave",
+        "real_annotation_submit",
+        "real_annotation_rollback",
+        "real_training_dataset_export",
+      ]),
+    );
+    expect(response.next_required_evidence).toEqual(
+      expect.arrayContaining([
+        "real_o6_cloud_archive",
+        "real_route_replay_playback",
+        "real_robot_control",
+        "real_o6_annotation_api",
+        "real_labeling_review_queue",
+        "real_label_schema_api",
+        "real_review_item_media",
+        "real_draft_label_autosave",
+        "real_annotation_submit",
+        "real_annotation_rollback",
+        "real_training_dataset_export",
+      ]),
+    );
+    expectNoLegacyPythonGateSemantics(response);
+  });
+
+  it("O7 field evidence consumer ingest fails closed when local fixture paths are missing", async () => {
+    // 任一层缺文件都要进入 blocked_not_proven，不能把缺口误报成 ready。
+    const root = await mkdtemp(path.join(os.tmpdir(), "rober-o7-field-ingest-missing-"));
+    const manifestPath = path.join(root, "missing-manifest.json");
+    const routeReplayPath = path.join(root, "missing-route-replay.json");
+    const labelingPath = path.join(root, "missing-labeling.json");
+
+    const response = await buildO7FieldEvidenceConsumerIngest({
+      manifestJson: manifestPath,
+      routeReplayFixtureJson: routeReplayPath,
+      labelingFixtureJson: labelingPath,
+    });
+
+    expect(response.schema).toBe("trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1");
+    expect(response.ingest_status).toBe("blocked_not_proven");
+    expect(response.manifest_input_status.status).toBe("missing");
+    expect(response.route_replay_input_status.status).toBe("missing");
+    expect(response.labeling_input_status.status).toBe("missing");
+    expect(response.source_manifest_schema).toBe("not_loaded");
+    expect(response.manifest.status).toBe("manifest_not_loaded");
+    expect(response.manifest.gate_pass).toBe(false);
+    expect(response.manifest.not_proven).toBe(true);
+    expect(response.route_replay_preview.preview_status).toBe("blocked_not_proven");
+    expect(response.labeling_preview.preview_status).toBe("blocked_not_proven");
+    expect(response.consumer_entry.fallback_mode).toBe("blocked_not_proven");
+    expect(response.consumer_entry.blocked_reason).toBe("manifest_not_loaded");
+    expect(response.safe_to_control).toBe(false);
+    expect(response.delivery_success).toBe(false);
+    expect(response.primary_actions_enabled).toBe(false);
+    expect(response.blocked_reasons).toEqual(expect.arrayContaining(["fixture_json_missing", "manifest_not_loaded"]));
+    expect(response.not_proven).toEqual(expect.arrayContaining(["field_evidence_manifest_not_delivery_proof", "real_o6_cloud_archive", "real_o6_annotation_api"]));
+    expectNoLegacyPythonGateSemantics(response);
   });
 
   it("O7 voice preview summarizes a safe local fixture without ASR TTS speaker or control claims", async () => {

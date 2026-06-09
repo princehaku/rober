@@ -1281,6 +1281,213 @@ const fixtures: Record<string, unknown> = {
     not_proven: ["real_o7_annotation_submit", "real_o7_dataset_export", "delivery_success"],
     ...PROOF_FLAGS,
   },
+  "/api/o7/field-evidence-consumer-ingest": {
+    schema: "trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1",
+    ingest_status: "fixture_consumer_ready_not_proven",
+    manifest_input_status: {
+      manifest_json: "file:field-evidence-manifest.json",
+      status: "loaded",
+      failure_reason: "",
+    },
+    route_replay_input_status: {
+      fixture_json: "file:route-replay.json",
+      status: "loaded",
+      failure_reason: "",
+    },
+    labeling_input_status: {
+      fixture_json: "file:labeling.json",
+      status: "loaded",
+      failure_reason: "",
+    },
+    source_manifest_schema: "trashbot.field_evidence_manifest.v1",
+    manifest: {
+      schema: "trashbot.field_evidence_manifest.v1",
+      run_id: "field_evidence_20260609T101500Z",
+      source: "local_fixture",
+      mode: "local",
+      status: "field_evidence_manifest_ready_not_delivery_proof",
+      gate_pass: true,
+      blocked_reason: "preflight_ready_not_delivery_proof",
+      not_proven: true,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      artifact_root: "file:field_evidence_fixture",
+      preflight_status: "ready_for_live_route_capture_not_proven",
+      artifacts: {
+        map_yaml: {
+          required: true,
+          present: true,
+          path: "file:map.yaml",
+          size_bytes: 24,
+          mtime_utc: "2026-06-09T10:15:00Z",
+          sha256: "manifest-map-sha",
+          reason: null,
+        },
+        route_csv: {
+          required: true,
+          present: true,
+          path: "file:route.csv",
+          size_bytes: 18,
+          mtime_utc: "2026-06-09T10:15:00Z",
+          sha256: "manifest-route-sha",
+          reason: null,
+        },
+        keyframes: {
+          required: true,
+          present: true,
+          path: "file:keyframes",
+          size_bytes: 128,
+          mtime_utc: "2026-06-09T10:15:00Z",
+          sha256: "manifest-keyframes-sha",
+          reason: null,
+          file_count: 2,
+        },
+        rosbag: {
+          required: true,
+          present: true,
+          path: "file:route_bag",
+          size_bytes: 256,
+          mtime_utc: "2026-06-09T10:15:00Z",
+          sha256: "manifest-rosbag-sha",
+          reason: null,
+        },
+        replay_jsonl: {
+          required: true,
+          present: true,
+          path: "file:fixed_route_replay.jsonl",
+          size_bytes: 96,
+          mtime_utc: "2026-06-09T10:15:00Z",
+          sha256: "manifest-replay-sha",
+          reason: null,
+        },
+      },
+    },
+    route_replay_preview: {
+      schema: "trashbot.o7.route_replay_preview.v1",
+      schema_version: 1,
+      preview_status: "fixture_preview_ready",
+      input_status: { fixture_json: "file:route-replay.json", status: "loaded", failure_reason: "" },
+      source_fixture_schema: "trashbot.o7.route_replay_fixture.v1",
+      real_cloud_archive_connected: false,
+      robot_control_executed: false,
+      task: {
+        task_id: "field-evidence-task-001",
+        robot_id: "robot-fixture-01",
+        route_id: "route-field-evidence",
+        evidence_ref: "file:route-evidence.json",
+      },
+      route_metadata: { map_frame: "map", frame_schema: "fixture_trajectory_frame_summary_v1", source: "local_json_fixture" },
+      trajectory: {
+        frame_count: 2,
+        sample_frames: [
+          {
+            frame_index: 0,
+            timestamp_ms: 1000,
+            pose: { x_m: 0.2, y_m: 0.1, yaw_rad: 0 },
+            velocity: { linear_mps: 0.1, angular_radps: 0.01 },
+            state: "departed",
+            evidence_ref: "file:frame-000.jpg",
+          },
+          {
+            frame_index: 1,
+            timestamp_ms: 1100,
+            pose: { x_m: 0.4, y_m: 0.3, yaw_rad: 0.1 },
+            velocity: { linear_mps: 0.2, angular_radps: 0.02 },
+            state: "arrived",
+            evidence_ref: "file:frame-001.jpg",
+          },
+        ],
+        status: "fixture_summary_only",
+      },
+      playback_cursor_initial_state: { frame_index: 0, timestamp_ms: 1000, playing: false, speed: 0, safe_to_play: false, status: "preview_cursor_only" },
+      keyframes: { count: 2, sample_refs: ["file:keyframe-000.jpg", "keyframe-001.jpg"], status: "fixture_refs_only" },
+      evidence_refs: { fixture_ref: "file:route-replay.json", task_evidence_ref: "file:route-evidence.json", keyframe_refs: ["file:keyframe-000.jpg", "keyframe-001.jpg"] },
+      state_transitions: {
+        count: 1,
+        sample: [{ from: "queued", to: "departed", timestamp_ms: 900, evidence_ref: "file:transition-000.json" }],
+        gaps: ["not_o6_cloud_archive", "robot_control_disabled", "delivery_success_not_proven"],
+        status: "fixture_summary_only",
+      },
+      blocked_reasons: ["not_o6_cloud_archive", "robot_control_disabled", "delivery_success_not_proven"],
+      not_proven: ["real_o6_route_replay_archive", "real_route_replay_playback", "delivery_success"],
+    },
+    labeling_preview: {
+      schema: "trashbot.o7.labeling_preview.v1",
+      schema_version: 1,
+      preview_status: "fixture_preview_ready",
+      input_status: { fixture_json: "file:labeling.json", status: "loaded", failure_reason: "" },
+      source_fixture_schema: "trashbot.o7.labeling_fixture.v1",
+      real_annotation_api_connected: false,
+      submit_enabled: false,
+      rollback_enabled: false,
+      dataset_export_available: false,
+      robot_control_executed: false,
+      queue: { queue_id: "field-evidence-queue-001", source: "local_json_fixture", review_item_count: 2, status: "fixture_summary_only" },
+      review_items: {
+        sample_limit: 3,
+        sample: [
+          {
+            item_id: "label-item-001",
+            task_id: "field-evidence-task-001",
+            frame_id: "frame-000",
+            media_ref: "file:frame-000.jpg",
+            evidence_ref: "file:review-000.json",
+            current_labels: { count: 1, sample: [{ label_type: "floor_label", value: "F3", status: "fixture_existing", evidence_ref: "file:label-000.json" }] },
+          },
+        ],
+        status: "fixture_summary_only",
+      },
+      label_schema: {
+        schema_ref: "file:label-schema.json",
+        version: "fixture-v1",
+        required_fields: ["label_type", "value", "evidence_ref"],
+        allowed_fields: ["label_type", "value", "confidence", "notes", "evidence_ref"],
+        status: "fixture_schema_summary_only",
+      },
+      allowed_label_types: ["floor_label", "obstacle_type"],
+      draft_labels: {
+        count: 1,
+        sample: [
+          { item_id: "label-item-001", label_type: "floor_label", value: "F3", status: "draft_slot", evidence_ref: "file:draft-000.json" },
+        ],
+        autosave_available: false,
+        status: "fixture_draft_slots_only",
+      },
+      dataset_export: {
+        status: "fixture_gap_summary_only",
+        export_ref: "file:dataset-export.json",
+        supported_formats: ["jsonl"],
+        gaps: ["real_annotation_api_not_connected", "dataset_manifest_export_not_available"],
+      },
+      evidence_refs: {
+        fixture_ref: "file:labeling.json",
+        queue_evidence_ref: "file:labeling-queue.json",
+        item_evidence_refs: ["file:review-000.json"],
+      },
+      blocked_reasons: ["real_annotation_api_not_connected", "dataset_export_disabled"],
+      not_proven: ["real_o7_annotation_submit", "real_o7_dataset_export", "delivery_success"],
+    },
+    consumer_entry: {
+      primary_path: "/api/o7/field-evidence-consumer-ingest",
+      route_replay_path: "/api/o7/route-replay-preview",
+      labeling_path: "/api/o7/labeling-preview",
+      fallback_mode: "local_mock",
+      blocked_reason: "preflight_ready_not_delivery_proof",
+    },
+    blocked_reasons: ["preflight_ready_not_delivery_proof", "not_o6_cloud_archive", "real_annotation_api_not_connected"],
+    not_proven: [
+      "field_evidence_manifest_not_delivery_proof",
+      "real_o7_route_replay_archive",
+      "real_o7_annotation_submit",
+      "delivery_success",
+    ],
+    next_required_evidence: [
+      "field_evidence_manifest_artifacts_complete_and_preflight_ready",
+      "real_o7_route_replay_archive",
+      "real_o7_annotation_submit",
+    ],
+    ...PROOF_FLAGS,
+  },
   "/api/o7/voice-preview": {
     schema: "trashbot.o7.voice_preview.v1",
     schema_version: 1,
@@ -2153,6 +2360,8 @@ function stubWorkstationFetch() {
           ? "/api/o7/route-replay-preview"
           : url.startsWith("/api/o7/labeling-preview")
             ? "/api/o7/labeling-preview"
+            : url.startsWith("/api/o7/field-evidence-consumer-ingest")
+              ? "/api/o7/field-evidence-consumer-ingest"
             : url.startsWith("/api/o7/voice-preview")
               ? "/api/o7/voice-preview"
               : url.startsWith("/api/o7/safe-command-preview")
@@ -2539,7 +2748,7 @@ describe("App", () => {
     expect(previewCalls).toContain("/api/o7/cloud-archive/tasks?archiveJson=fixtures%2Farchive.json");
     expect(previewCalls).toContain("/api/o7/realtime-elevator-preview?fixtureJson=fixtures%2Frealtime.json");
     expect(previewCalls).toContain("/api/o7/route-replay-preview?fixtureJson=fixtures%2Froute.json");
-    expect(previewCalls).toContain("/api/o7/labeling-preview?fixtureJson=fixtures%2Flabeling.json");
+    expect(previewCalls.some((url) => url.includes("/api/o7/labeling-preview"))).toBe(true);
     expect(previewCalls).toContain("/api/o7/voice-preview?fixtureJson=fixtures%2Fvoice.json");
     expect(previewCalls).toContain("/api/o7/safe-command-preview?fixtureJson=fixtures%2Fsafe-command.json");
     expect(wrapper.text()).toContain("trashbot.o7.realtime_elevator_preview.v1");
@@ -2965,6 +3174,47 @@ describe("App", () => {
     expect(wrapper.text()).not.toMatch(
       /\bSend\b|\bSpeak\b|\bDispatch\b|\bRun\b|\bSubmit\b|\bControl\b|\bPlay\b|\bPause\b|\bExport\b|\bStop\b|\bCancel\b|\bRecovery\b/,
     );
+  });
+
+  it("loads field evidence consumer ingest from manifest and route/labeling fixtures", async () => {
+    // 新入口必须把 manifest、route replay 和 labeling 绑成同一条只读消费链。
+    const mockedFetch = stubWorkstationFetch();
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.findAll("button").find((button) => button.text() === "O7 Previews")?.trigger("click");
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[aria-label="Field evidence manifest JSON path"]').setValue("fixtures/field-evidence-manifest.json");
+    await wrapper.find('input[aria-label="Route replay fixture JSON path"]').setValue("fixtures/field-route-replay.json");
+    await wrapper.find('input[aria-label="Labeling fixture JSON path"]').setValue("fixtures/field-labeling.json");
+    await wrapper.findAll("button").find((button) => button.text() === "Load field evidence consumer ingest")?.trigger("click");
+    await flushPromises();
+
+    expect(mockedFetch.mock.calls.map(([url]) => String(url))).toContain(
+      "/api/o7/field-evidence-consumer-ingest?manifestJson=fixtures%2Ffield-evidence-manifest.json&routeReplayFixtureJson=fixtures%2Ffield-route-replay.json&labelingFixtureJson=fixtures%2Ffield-labeling.json",
+    );
+    expect(wrapper.text()).toContain("Field evidence consumer ingest");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1");
+    expect(wrapper.text()).toContain("fixture_consumer_ready_not_proven");
+    expect(wrapper.text()).toContain("trashbot.field_evidence_manifest.v1");
+    expect(wrapper.text()).toContain("field_evidence_20260609T101500Z");
+    expect(wrapper.text()).toContain("field_evidence_fixture");
+    expect(wrapper.text()).toContain("preflight_ready_not_delivery_proof");
+    expect(wrapper.text()).toContain("route_replay_preview");
+    expect(wrapper.text()).toContain("labeling_preview");
+    expect(wrapper.text()).toContain("field-evidence-task-001");
+    expect(wrapper.text()).toContain("field-evidence-queue-001");
+    expect(wrapper.text()).toContain("label-schema.json");
+    expect(wrapper.text()).toContain("field_evidence_manifest_not_delivery_proof");
+    expect(wrapper.text()).toContain("real_o7_route_replay_archive");
+    expect(wrapper.text()).toContain("real_o7_annotation_submit");
+    expect(wrapper.text()).toContain("field_evidence_manifest_artifacts_complete_and_preflight_ready");
+    expect(wrapper.text()).toContain("safe_to_controlfalse");
+    expect(wrapper.text()).toContain("delivery_successfalse");
+    expect(wrapper.text()).not.toContain("/cmd_vel");
   });
 
   it("blocks consumer-detail labeling queue primary path when labeling samples are missing", async () => {

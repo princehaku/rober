@@ -238,6 +238,26 @@ When `enable_visual_gate:=true`, dry-run preflights keyframe coverage for the fu
 
 `artifact_path` 中每一行都是一次状态写入的 replay 记录，所有行复用同一个 `evidence_ref`，用于单次 run 的一致性回放（O3 software proof）。
 
+### 4.1 O7 Field Evidence Consumer Ingest
+
+`trashbot.field_evidence_manifest.v1` 生成后，可以进入 PC 工作站的 O7 Field Evidence Consumer Ingest 主入口，把 manifest、route replay fixture 和 labeling fixture 合成同一份只读消费摘要。这个入口只服务于软件证明和本地/mock 复跑，不会把 route replay 变成真实播放，也不会把 labeling 变成真实提交。
+
+推荐的本地消费链是：
+
+1. 先生成 `field_evidence_manifest.json`
+2. 再准备 `route replay` fixture 和 `labeling` fixture
+3. 用 `pc-tools/workstation` 的 `GET /api/o7/field-evidence-consumer-ingest` 或 O7 Previews 面板加载三者
+
+该入口必须继续暴露：
+
+- `source_manifest_schema=trashbot.field_evidence_manifest.v1`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- 明确的 `blocked_reason` / `next_required_evidence`
+
+只要 manifest 缺失、schema 不匹配、preflight 未 ready、fixture 不完整或 SSH 不可达，PC 侧都应 fail closed，而不是把缺口吞成 ready。
+
 示例状态片段：
 
 ```json

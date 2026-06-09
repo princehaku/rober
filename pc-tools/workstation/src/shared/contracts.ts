@@ -1284,6 +1284,113 @@ export interface O7LabelingPreviewDraftSample extends O7LabelingPreviewLabelSumm
   item_id: string;
 }
 
+export interface O7FieldEvidenceManifestArtifactSummary {
+  required: boolean;
+  present: boolean;
+  path: string;
+  size_bytes: number;
+  mtime_utc: string | null;
+  sha256: string | null;
+  reason: string | null;
+  file_count?: number;
+  files?: Array<{
+    path: string;
+    size_bytes: number;
+    sha256: string;
+  }>;
+}
+
+export interface O7FieldEvidenceManifestSummary {
+  schema: "trashbot.field_evidence_manifest.v1" | "not_loaded";
+  run_id: string;
+  source: "local_fixture" | "ssh_remote" | "not_loaded";
+  mode: "local" | "ssh" | "not_loaded";
+  status: string;
+  gate_pass: boolean;
+  blocked_reason: string;
+  not_proven: boolean;
+  delivery_success: false;
+  primary_actions_enabled: false;
+  artifact_root: string;
+  preflight_status: string | null;
+  artifacts: {
+    map_yaml: O7FieldEvidenceManifestArtifactSummary;
+    route_csv: O7FieldEvidenceManifestArtifactSummary;
+    keyframes: O7FieldEvidenceManifestArtifactSummary;
+    rosbag: O7FieldEvidenceManifestArtifactSummary;
+    replay_jsonl: O7FieldEvidenceManifestArtifactSummary;
+  };
+}
+
+// Field evidence consumer ingest 把 manifest 接到 route replay / labeling 两条只读消费链。
+// 它只做本地或 SSH 产物的安全摘要，不把前端推成真正的回放、标注提交或现场成功。
+export interface O7FieldEvidenceConsumerIngestResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1";
+  ingest_status: "fixture_consumer_ready_not_proven" | "blocked_not_proven";
+  manifest_input_status: {
+    manifest_json: string;
+    status:
+      | "loaded"
+      | "not_provided"
+      | "missing"
+      | "read_error"
+      | "bad_json"
+      | "not_object"
+      | "unsupported_schema"
+      | "unsafe_copy"
+      | "success_claim"
+      | "control_claim";
+    failure_reason: string;
+  };
+  route_replay_input_status: {
+    fixture_json: string;
+    status:
+      | "loaded"
+      | "not_provided"
+      | "missing"
+      | "read_error"
+      | "bad_json"
+      | "not_object"
+      | "unsupported_schema"
+      | "unsafe_copy"
+      | "success_claim"
+      | "control_claim";
+    failure_reason: string;
+  };
+  labeling_input_status: {
+    fixture_json: string;
+    status:
+      | "loaded"
+      | "not_provided"
+      | "missing"
+      | "read_error"
+      | "bad_json"
+      | "not_object"
+      | "unsupported_schema"
+      | "unsafe_copy"
+      | "success_claim"
+      | "control_claim"
+      | "submit_claim"
+      | "rollback_claim"
+      | "export_claim";
+    failure_reason: string;
+  };
+  source_manifest_schema: "trashbot.field_evidence_manifest.v1" | "not_loaded";
+  manifest: O7FieldEvidenceManifestSummary;
+  route_replay_preview: O7RouteReplayPreviewResponse;
+  labeling_preview: O7LabelingPreviewResponse;
+  consumer_entry: {
+    primary_path: "/api/o7/field-evidence-consumer-ingest";
+    route_replay_path: "/api/o7/route-replay-preview";
+    labeling_path: "/api/o7/labeling-preview";
+    fallback_mode: "local_mock" | "ssh_remote" | "blocked_not_proven";
+    blocked_reason: string;
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+  next_required_evidence: string[];
+}
+
 // Labeling preview 是 O7-KR4 的 PC-only 本地 fixture adapter，不是标注 API。
 // submit/rollback/export 和真实 annotation API 全部固定 false，避免 UI 误开动作。
 export interface O7LabelingPreviewResponse extends ProofFlags {
@@ -1998,6 +2105,7 @@ export const API_ROUTES = [
   "/api/o7/realtime-elevator-preview?fixtureJson=<local-json>",
   "/api/o7/route-replay-preview?fixtureJson=<local-json>",
   "/api/o7/labeling-preview?fixtureJson=<local-json>",
+  "/api/o7/field-evidence-consumer-ingest?manifestJson=<local-json>&routeReplayFixtureJson=<local-json>&labelingFixtureJson=<local-json>",
   "/api/o7/voice-preview?fixtureJson=<local-json>",
   "/api/o7/safe-command-preview?fixtureJson=<local-json>",
   "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
@@ -2024,6 +2132,8 @@ export const NOT_PROVEN_ITEMS = [
   "real_o7_trajectory_playback",
   "real_o7_labeling_review_queue",
   "real_o7_labeling_fixture_preview_annotation_api",
+  "real_o7_field_evidence_manifest",
+  "real_o7_field_evidence_consumer_ingest",
   "real_o7_annotation_submit",
   "real_o7_dataset_export",
   "real_o7_voice_api",

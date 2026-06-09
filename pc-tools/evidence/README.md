@@ -13,6 +13,8 @@
 - `hil_alignment_status.alignment_status` 会独立给出真实 HIL 对齐状态，即使软件对账 pass 也不会自动转为现场完成。
 - 生成的 artifact 继续保持 `source=software_proof`、`not_proven` 与 `delivery_success=false`，不宣称真实路线、真实 HIL、真实投递成功或串口/波特率已通过。
 
+`trashbot.field_evidence_manifest.v1` 与 `pc-tools/workstation` 的 O7 Field Evidence Consumer Ingest 也是同一条只读证据链的一部分。manifest 负责把现场/本地材料门禁摘要成稳定结构，workstation 再把它消费成 route replay / labeling 两个 preview 的统一输出；本地/mock fixture 和未来 SSH 读取都必须保留同样的 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false` 边界。manifest 缺失、预检未 ready、fixture 不完整、unsafe copy 或 schema 不匹配都必须 fail closed，不能直接收口成现场成功。
+
 ## JSON Fixture 语义
 
 JSON fixture 可读只表示工作站能索引并解析本地 JSON，不表示真实现场材料齐全，也不表示 HIL、手机、云端、ROS2、Nav2、WAVE ROVER 或交付成功通过。

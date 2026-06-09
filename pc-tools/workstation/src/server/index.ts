@@ -15,6 +15,7 @@ import {
   buildO7OperatorConsoleResponse,
   buildO7PreviewsAcceptanceResponse,
   buildO7LabelingPreview,
+  buildO7FieldEvidenceConsumerIngest,
   buildO7RealtimeElevatorProbe,
   buildO7RealtimeElevatorPreview,
   buildO7RouteReplayPreview,
@@ -143,6 +144,17 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/labeling-preview", async (req, res) => {
     // Labeling preview 只读取本地 fixture 摘要，提交、回滚、导出和机器人控制全部关闭。
     res.json(await buildO7LabelingPreview({ fixtureJson: queryString(req.query.fixtureJson) }));
+  });
+
+  workstationApp.get("/api/o7/field-evidence-consumer-ingest", async (req, res) => {
+    // Field evidence consumer ingest 把 manifest 入口和 route replay / labeling 两条只读链拼成一份摘要。
+    res.json(
+      await buildO7FieldEvidenceConsumerIngest({
+        manifestJson: queryString(req.query.manifestJson),
+        routeReplayFixtureJson: queryString(req.query.routeReplayFixtureJson),
+        labelingFixtureJson: queryString(req.query.labelingFixtureJson),
+      }),
+    );
   });
 
   workstationApp.get("/api/o7/voice-preview", async (req, res) => {
