@@ -1,0 +1,24 @@
+{
+  "schema": "trashbot.live_sensor_api_snapshot.camera.v1",
+  "generated_at_ms": 1781036548843,
+  "attempt_order": [
+    "/dev/video1",
+    "/dev/video0",
+    "/dev/video2"
+  ],
+  "selected_device": "/dev/video1",
+  "frame_saved": "/tmp/rober_live_sensor_api_snapshot_20260610_042225/camera/camera_frame_video1.jpg",
+  "read_ok": true,
+  "visible_content_proven": false,
+  "error": null,
+  "width": 640,
+  "height": 480,
+  "channels": 3,
+  "mean": 0.9961740451388889,
+  "std": 1.5225192245593269,
+  "min": 0,
+  "max": 8,
+  "non_black_ratio": 0.0,
+  "non_dark_ratio": 0.0,
+  "edge_count": 0
+}

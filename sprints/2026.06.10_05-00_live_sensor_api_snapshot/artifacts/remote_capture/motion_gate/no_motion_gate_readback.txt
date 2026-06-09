@@ -1,0 +1,5 @@
+2026-06-10T04:23:06+08:00
+No /cmd_vel published. No direct T=1/T=13 sent. No manual/control/nav motion endpoint invoked.
+Skipped endpoints: /api/base/manual, /api/base/stop, /api/base/status, /api/radar/start, /api/radar/scan-proof/refresh, /api/map/start, /api/map/proof/refresh, /api/nav2/start, /api/nav2/proof/refresh.
+/api/base/status skipped because current implementation sends non-motion T=130 feedback readback on /dev/ttyS5; this no-motion snapshot avoids UART writes entirely.
+Base motion gate remains blocked until field HIL operator, external video, visible camera or equivalent proof, stop gate, scan, feedback, and route/map alignment pass.

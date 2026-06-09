@@ -1,0 +1,7 @@
+2026-06-10T04:22:59+08:00
+ROS_DOMAIN_ID=unset
+/amcl_pose [geometry_msgs/msg/PoseWithCovarianceStamped]
+/map [nav_msgs/msg/OccupancyGrid]
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/rosout [rcl_interfaces/msg/Log]
+/trashbot/waypoints [ros2_trashbot_interfaces/msg/WaypointList]

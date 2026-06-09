@@ -236,6 +236,43 @@ wheel feedback、scan delta、route/map 和 delivery 布尔值，但返回边界
 `operator_report_material_only=true`。report 不能替代 `/trashbot/stop`、robot ACK、
 `T=1001` feedback、HIL pass 或 motion proof。
 
+## 2026-06-10 05:00 Live Sensor/API Snapshot
+
+`sprints/2026.06.10_05-00_live_sensor_api_snapshot/` 在真实上位机
+`root@192.168.1.11:37878` 上做了一次 no motion command 的 live sensor/API
+snapshot。本轮只读 SSH、systemd、HTTP GET/readback、设备枚举、camera frame、
+ROS topic 和已有 map/route artifacts；未发布非零 `/cmd_vel`，未发送 direct UART
+`T=1`/`T=13`，未调用 `/api/base/manual`、`/api/radar/start`、`/api/map/start`、
+`/api/nav2/start` 或任何会导致运动的 endpoint。`/api/base/status` 也被跳过，因为
+当前实现会向 `/dev/ttyS5` 发送非运动 `T=130` feedback readback，本轮选择完全避免
+UART 写入。
+
+当前事实边界：
+
+- SSH 可达，`trashbot-upper-robot-api.service` 为 `active (running)`。
+- `/api/operator/report` readback 返回 missing latest artifact，但 guard 字段保持
+  `operator_report_material_only=true`、`sends_motion_commands=false`、
+  `safe_to_control=false`、`delivery_success=false`。
+- `/dev/video0`、`/dev/video1`、`/dev/video2`、`/dev/ttyS5`、`/dev/ttyACM0`
+  当前存在；`/dev/video1` 仍是 DV20 USB capture 候选，`/dev/ttyACM0` 通过
+  serial by-id/path 指向 STC USB Serial。
+- Camera OpenCV 可从 `/dev/video1` 读取 `640x480` frame，但样本仍近黑：
+  `max=8`、`non_black_ratio=0.0`、`non_dark_ratio=0.0`、`edge_count=0`，
+  因此 `visible_content_proven=false`。
+- API `/api/radar/status` 仍能读取 latest LiDAR proof artifact，显示历史/latest
+  `/scan`、raw packet 和 TF 材料存在；但本轮 live ROS topic list 没有 `/scan`，
+  `ros2 topic echo --once /scan` 返回 unknown topic。因此当前 live `/scan` 未证明。
+- `/root/rober/onboard/runtime/maps/trashbot_map.yaml` 和 `.pgm` 存在，但只找到
+  2026-06-05 的 map lifecycle 材料；未找到同轮真实移动的 `route.csv`、keyframe
+  或 manifest，`real_route_map_proven=false`。
+- 本轮没有运动窗口，`physical_motion_lidar_delta_proven=false`、
+  `wheel_feedback_lr_nonzero_proven=false`、`delivery_success=false`。
+
+下一步现场 HIL gate 不变：先让现场人员提交 `/api/operator/report`，修复 camera
+黑场并获得外部视频条件；只有 camera/视频、stop、LiDAR `/scan`、WAVE ROVER feedback、
+安全清场和 route/map 对齐全部满足 `docs/hardware/field_hil_execution_pack.md` 后，
+才允许进入受控运动。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`

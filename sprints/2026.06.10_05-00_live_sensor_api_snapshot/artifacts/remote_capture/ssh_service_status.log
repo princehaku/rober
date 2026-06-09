@@ -1,0 +1,21 @@
+remote_dir=/tmp/rober_live_sensor_api_snapshot_20260610_042225
+no_motion_command_policy=nonzero_cmd_vel_forbidden; direct_T1_T13_forbidden; manual_nav_motion_endpoints_forbidden
+op-z3-b6.home
+2026-06-10T04:22:26+08:00
+Linux op-z3-b6.home 6.1.31-sun50iw9 #1.0.4 SMP Thu Jul 11 16:37:41 CST 2024 aarch64 aarch64 aarch64 GNU/Linux
+active
+● trashbot-upper-robot-api.service - Trashbot unified upper robot API
+     Loaded: loaded (/etc/systemd/system/trashbot-upper-robot-api.service; enabled; vendor preset: enabled)
+    Drop-In: /etc/systemd/system/trashbot-upper-robot-api.service.d
+             └─20-lidar-scan-proof-runtime.conf
+     Active: active (running) since Wed 2026-06-10 04:08:37 CST; 13min ago
+       Docs: file:/root/rober/docs/interfaces/o7_upper_robot_api.md
+   Main PID: 99004 (python3)
+      Tasks: 1 (limit: 2204)
+     Memory: 25.7M
+        CPU: 1.209s
+     CGroup: /system.slice/trashbot-upper-robot-api.service
+             └─99004 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+
+Jun 10 04:08:37 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 10 04:08:39 op-z3-b6.home env[99004]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}

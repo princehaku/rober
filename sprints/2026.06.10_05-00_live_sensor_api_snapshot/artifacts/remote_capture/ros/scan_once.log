@@ -1,0 +1,5 @@
+2026-06-10T04:23:02+08:00
+ROS_DOMAIN_ID=unset
+Unknown topic '/scan'
+WARNING: topic [/scan] does not appear to be published yet
+Could not determine the type for the passed topic

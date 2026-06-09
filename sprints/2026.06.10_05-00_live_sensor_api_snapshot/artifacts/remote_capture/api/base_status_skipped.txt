@@ -1,0 +1,1 @@
+GET /api/base/status intentionally skipped: current implementation sends non-motion T=130 readback on /dev/ttyS5; this snapshot avoids UART writes.

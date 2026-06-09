@@ -1,0 +1,110 @@
+{
+  "http_status": "200",
+  "body": {
+    "schema": "trashbot.upper_robot_api.v1.elevator_status",
+    "generated_at_ms": 1781036548566,
+    "status": "not_proven",
+    "software_guard": true,
+    "not_proven": true,
+    "artifact": {
+      "path": "runtime/elevator_status_latest.json",
+      "configured_by": "ROBER_ELEVATOR_STATUS_ARTIFACT_PATH or --elevator-status-artifact-path",
+      "format": "json",
+      "schema": "trashbot.elevator_status_runtime_boundary.v1",
+      "expected_material": [
+        "opencv evidence_ref",
+        "door/floor/safe_to_exit decision",
+        "task_orchestrator elevator phase",
+        "manual handoff reason"
+      ]
+    },
+    "proof_latest": {
+      "schema": "trashbot.upper_robot_api.v1.elevator_status_latest_summary",
+      "generated_at_ms": 1781036548566,
+      "endpoint": "/api/elevator/status",
+      "http_status": 404,
+      "artifact": {
+        "path": "runtime/elevator_status_latest.json",
+        "configured_by": "ROBER_ELEVATOR_STATUS_ARTIFACT_PATH or --elevator-status-artifact-path",
+        "format": "json",
+        "schema": "trashbot.elevator_status_runtime_boundary.v1",
+        "expected_material": [
+          "opencv evidence_ref",
+          "door/floor/safe_to_exit decision",
+          "task_orchestrator elevator phase",
+          "manual handoff reason"
+        ],
+        "ok": false,
+        "status": "missing",
+        "error": {
+          "type": "FileNotFoundError",
+          "message": "latest runtime artifact is missing"
+        }
+      },
+      "latest_result_schema": null,
+      "latest_proof_status": null,
+      "latest_evidence_ref": null,
+      "status": "not_proven",
+      "software_guard": true,
+      "not_proven": true,
+      "boundary": "software_guard_only_not_real_elevator_opencv_or_field_delivery",
+      "readback_sends_commands": false,
+      "sends_commands": false,
+      "sends_motion_commands": false,
+      "sends_base_motion_commands": false,
+      "uses_base_uart": false,
+      "opens_serial": false,
+      "starts_ros2": false,
+      "ros2_runtime_proven": false,
+      "map_artifact_proven": false,
+      "localization_proven": false,
+      "nav2_runtime_proven": false,
+      "elevator_runtime_proven": false,
+      "field_hil_material": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "robot_control_executed": false,
+      "cloud_relay": false,
+      "latest_elevator_phase": null,
+      "latest_opencv_evidence_ref": null,
+      "latest_target_floor_confirmed": null,
+      "latest_safe_to_exit": null,
+      "latest_handoff_required": null
+    },
+    "routes": {
+      "status": "/api/elevator/status"
+    },
+    "expected_state_chain": [
+      "waiting_elevator_open",
+      "entering_elevator",
+      "requesting_floor_help",
+      "waiting_target_floor",
+      "exiting_elevator",
+      "manual_handoff_or_resume_delivery"
+    ],
+    "transition_to_proven": [
+      "OpenCV evidence_ref points to real/controlled images",
+      "task_orchestrator record keeps elevator phase and failure reason",
+      "operator can see handoff/safe_to_exit status without claiming delivery_success"
+    ],
+    "readback_sends_commands": false,
+    "sends_commands": false,
+    "sends_motion_commands": false,
+    "sends_base_motion_commands": false,
+    "uses_base_uart": false,
+    "opens_serial": false,
+    "starts_ros2": false,
+    "ros2_runtime_proven": false,
+    "map_artifact_proven": false,
+    "localization_proven": false,
+    "nav2_runtime_proven": false,
+    "elevator_runtime_proven": false,
+    "field_hil_material": false,
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "robot_control_executed": false,
+    "cloud_relay": false
+  }
+}

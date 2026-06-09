@@ -1,0 +1,53 @@
+{
+  "http_status": "404",
+  "body": {
+    "schema": "trashbot.upper_robot_api.v1.operator_report_latest_result",
+    "generated_at_ms": 1781036546706,
+    "endpoint": "/api/operator/report",
+    "artifact": {
+      "path": "runtime/operator_report_latest.json",
+      "configured_by": "ROBER_OPERATOR_REPORT_ARTIFACT_PATH or --operator-report-artifact-path",
+      "format": "json",
+      "schema": "trashbot.upper_robot_api.v1.operator_report_result",
+      "ok": false,
+      "status": "missing",
+      "error": {
+        "type": "FileNotFoundError",
+        "message": "latest operator report artifact is missing"
+      }
+    },
+    "latest_result": null,
+    "latest_endpoint_path": "/api/operator/report",
+    "does_not_replace": [
+      "/api/base/stop",
+      "/api/base/status",
+      "/api/base/feedback-request",
+      "/api/base/feedback-samples",
+      "T=1001",
+      "robot ACK",
+      "HIL",
+      "ROS /odom /imu/data /battery",
+      "field video or现场记录"
+    ],
+    "boundary": "operator_report_readback_only_not_ack_t1001_hil_stop_status_or_motion",
+    "operator_report_material_only": true,
+    "software_guard": true,
+    "not_proven": true,
+    "evidence_type": "software_guard",
+    "report_replaces_stop_status_ack_or_hil": false,
+    "field_hil_material": false,
+    "readback_sends_commands": false,
+    "sends_commands": false,
+    "sends_motion_commands": false,
+    "sends_base_motion_commands": false,
+    "uses_base_uart": false,
+    "opens_serial": false,
+    "starts_ros2": false,
+    "robot_control_executed": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "cloud_relay": false
+  }
+}

@@ -1,0 +1,28 @@
+2026-06-10T04:22:26+08:00
+crw-rw----  1 root dialout 166,  0 Jun 10 04:08 /dev/ttyACM0
+crw-rw----  1 root dialout   4, 69 Jun 10 04:08 /dev/ttyS5
+crw-rw----+ 1 root video    81,  0 Jun  8 13:17 /dev/video0
+crw-rw----+ 1 root video    81,  1 Jun  8 13:17 /dev/video1
+crw-rw----+ 1 root video    81,  2 Jun  8 13:17 /dev/video2
+lrwxrwxrwx 1 root root 13 Jun  8 13:17 /dev/serial/by-id/usb-STC_STC_USB_Serial-if00 -> ../../ttyACM0
+lrwxrwxrwx 1 root root 13 Jun  8 13:17 /dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0 -> ../../ttyACM0
+cedrus (platform:cedrus):
+	/dev/video0
+	/dev/media0
+
+USB Composite Device: DV20 USB  (usb-5310000.usb-1):
+	/dev/video1
+	/dev/video2
+	/dev/media1
+
+Bus 009 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+Bus 003 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 006 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+Bus 004 Device 002: ID 4c4a:4a55 Jieli Technology USB Composite Device
+Bus 004 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 005 Device 002: ID 34bf:ff0a STC STC USB Serial
+Bus 005 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+Bus 002 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 007 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 008 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
