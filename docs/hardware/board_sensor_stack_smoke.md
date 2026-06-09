@@ -419,6 +419,66 @@ scan 提供的 smoke-only 拓扑，不是机械安装标定、不是外参结论
 可导航地图。即使 `/map` once 后续可观测，仍必须单独验证地图质量、AMCL/Nav2
 readiness、fixed route 和真实现场导航。
 
+## 2026-06-10 06:35 formal API map proof refresh
+
+`sprints/2026.06.10_06-35_formal_map_api_refresh/` 将上一轮候选 helper
+修复部署到真实上位机正式路径：
+`/root/rober/onboard/scripts/o3_map_lifecycle_proof.py`，并调用正式
+`POST /api/map/proof/refresh`，body 为 `{"timeout_s":60}`。
+
+部署方式：
+
+- 远端 `root@192.168.1.11:37878` 可达，hostname 为 `op-z3-b6.home`，
+  远端时间为 `Wed Jun 10 04:59:38 AM CST 2026`。
+- `/root/rober` 和 `/root/rober/onboard` 均无 git 元数据，无法执行
+  `git pull --ff-only`；因此按 fallback 备份单文件到
+  `/tmp/rober_o3_map_lifecycle_proof_before_20260610_050003.py` 后覆盖正式
+  helper。
+- 覆盖后正式 helper sha256 为
+  `cd40b1a73c1c3c936f8a08ac96fa5b8d7ff15b0ea5c47e4bb2c0452cefa6f2a6`，
+  并包含 `static_laser_tf_enabled:=true` 与
+  `no_motion_static_odom_tf:=true`。
+
+安全边界：
+
+- 本轮未调用 `/api/base/*`、`/api/map/start`、`/api/nav2/start` 或任何运动/
+  导航执行接口。
+- formal API map proof 的 artifact 字段保持 `publishes_cmd_vel=false`、
+  `calls_base_manual=false`、`sends_base_motion_commands=false`、
+  `uses_base_uart=false`、`safe_to_control=false`、`delivery_success=false`。
+- pre/post/final `lsof /dev/ttyS5 /dev/ttyACM0` 与 `fuser -v` 均无占用输出；
+  本轮没有打开 WAVE ROVER/base UART `/dev/ttyS5`。
+
+正式 API 结果：
+
+- `python3 -m py_compile` 和 `--help` 均通过。
+- `POST /api/map/proof/refresh` 返回 HTTP 200；外层 `status=not_proven`、
+  `software_guard=true`，这是 API 对非导航/非 HIL 材料的保守分类。
+- canonical `/root/rober/onboard/runtime/map_lifecycle_latest.json` 的 runtime
+  proof status 为 `map_once_artifact_metadata_observed`。
+- `scan_once_observed=true`、`map_once_observed=true`、
+  `map_metadata_observed=true`、`map_file_observed=true`。
+- map metadata：`frame_id=map`、`resolution=0.05000000074505806`、
+  `width=237`、`height=126`。
+- map files：`/root/rober/onboard/runtime/maps/trashbot_map.yaml`
+  和 `trashbot_map.pgm`，本地已拉回到本轮 artifacts。
+- runtime log 证明正式 helper 启动了 `learn.launch.py` 的 LiDAR+SLAM 窗口，
+  同时发布 `base_link -> laser_frame` 的 `static_laser_tf` 和
+  `odom -> base_link` 的 `no_motion_static_odom_tf`。
+
+已知风险：
+
+- refresh 前 default ROS domain 已存在 `/map`，并有多组
+  `waypoint_manager`、`map_recorder`、`task_orchestrator` 进程；不能确认它们是
+  上一轮 map proof 残留，因此本轮只记录，不清理。
+- runtime 结束时 `lidar_driver` 和 `map_recorder` 在 SIGINT 关闭路径打印
+  traceback；helper stop_runtime 仍返回 `ok=true`，最终没有本轮
+  `o3_map_lifecycle_proof`、`slam_toolbox`、`lidar_driver` 或 `ros2 launch`
+  残留进程。
+- `GET /api/nav2/status` 仍为 `status=not_proven`；它只说明 map inputs 已满足
+  no-motion Nav2 collector 的前置材料，不等于地图质量、AMCL/Nav2 ready、固定路线
+  或 delivery_success。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`

@@ -1,0 +1,4 @@
+-rwxr-xr-x 1 root root 16529 Jun 10 05:00 /root/rober/onboard/scripts/o3_map_lifecycle_proof.py
+cd40b1a73c1c3c936f8a08ac96fa5b8d7ff15b0ea5c47e4bb2c0452cefa6f2a6  /root/rober/onboard/scripts/o3_map_lifecycle_proof.py
+125:            "static_laser_tf_enabled:=true",
+126:            "no_motion_static_odom_tf:=true",

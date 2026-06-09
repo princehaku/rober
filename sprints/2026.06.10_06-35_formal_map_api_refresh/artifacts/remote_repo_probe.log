@@ -1,0 +1,9 @@
+---PATHS---
+ls: cannot access '/root/rober/.git': No such file or directory
+ls: cannot access '/root/rober/onboard/.git': No such file or directory
+drwxr-xr-x  8 root root  4096 Jun  3 15:32 /root/rober
+drwxr-xr-x 12  501 staff 4096 Jun 10 03:41 /root/rober/onboard
+---ONBOARD_GIT---
+---HELPER_SUM---
+-rwxr-xr-x 1 root root 16083 Jun  5 12:24 /root/rober/onboard/scripts/o3_map_lifecycle_proof.py
+f8cffd9830ee66b5344985475c32665184a05a9ed4fb77df3ae21244c184fea3  /root/rober/onboard/scripts/o3_map_lifecycle_proof.py

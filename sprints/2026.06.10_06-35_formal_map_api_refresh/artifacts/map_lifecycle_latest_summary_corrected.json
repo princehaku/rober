@@ -1,0 +1,37 @@
+{
+  "status": "map_once_artifact_metadata_observed",
+  "proof_status": "map_once_artifact_metadata_observed",
+  "evidence_ref": "o3-map-lifecycle-1781038819987",
+  "scan_once_observed": true,
+  "map_once_observed": true,
+  "map_metadata_observed": true,
+  "map_file_observed": true,
+  "publishes_cmd_vel": false,
+  "calls_base_manual": false,
+  "uses_base_uart": false,
+  "sends_base_motion_commands": false,
+  "map_metadata": {
+    "frame_id": "map",
+    "height": 126,
+    "resolution": 0.05000000074505806,
+    "width": 237
+  },
+  "map_files": [
+    {
+      "mtime_ms": 1781038862097,
+      "name": "trashbot_map.yaml",
+      "path": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+      "size_bytes": 162,
+      "suffix": ".yaml"
+    },
+    {
+      "mtime_ms": 1781038862093,
+      "name": "trashbot_map.pgm",
+      "path": "/root/rober/onboard/runtime/maps/trashbot_map.pgm",
+      "size_bytes": 29900,
+      "suffix": ".pgm"
+    }
+  ],
+  "runtime_command": "ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 lidar_frame_id:=laser_frame lidar_publish_raw_packets:=true static_laser_tf_enabled:=true no_motion_static_odom_tf:=true waypoint_manager:=false map_dir:=/root/rober/onboard/runtime/maps default_map_name:=trashbot_map",
+  "runtime_log_path": "/tmp/rober_map_lifecycle_runtime_1781038833209.log"
+}

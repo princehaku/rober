@@ -1,0 +1,32 @@
+---PYC_COMPILE---
+py_compile_rc:0
+---HELP---
+usage: o3_map_lifecycle_proof.py [-h] [--output OUTPUT] [--map-dir MAP_DIR]
+                                 [--map-name MAP_NAME]
+                                 [--serial-port SERIAL_PORT]
+                                 [--serial-baudrate SERIAL_BAUDRATE]
+                                 [--frame-id FRAME_ID] [--startup-s STARTUP_S]
+                                 [--timeout-s TIMEOUT_S]
+                                 [--ros-setup ROS_SETUP]
+                                 [--onboard-setup ONBOARD_SETUP]
+                                 [--workdir WORKDIR]
+
+no-motion LiDAR + SLAM `/map` lifecycle proof 采集器。 这个 helper 是
+`/api/map/proof/refresh` 的内置入口，只证明传感器和 SLAM 生命周期材料，不发布 `/cmd_vel`，不调用底盘 manual
+API，也不打开 WAVE ROVER UART。保存地图前必须先观测到 `/map`，避免把旧 YAML/PGM 误当成本轮地图。
+
+options:
+  -h, --help            show this help message and exit
+  --output OUTPUT
+  --map-dir MAP_DIR
+  --map-name MAP_NAME
+  --serial-port SERIAL_PORT
+  --serial-baudrate SERIAL_BAUDRATE
+  --frame-id FRAME_ID
+  --startup-s STARTUP_S
+  --timeout-s TIMEOUT_S
+  --ros-setup ROS_SETUP
+  --onboard-setup ONBOARD_SETUP
+  --workdir WORKDIR
+---SERIAL_BEFORE_API_LSOF---
+---SERIAL_BEFORE_API_FUSER---

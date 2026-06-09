@@ -1,0 +1,25 @@
+op-z3-b6.home
+Wed Jun 10 04:59:38 AM CST 2026
+119:            "no_motion_static_odom_tf:=true",
+---STATUS---
+---SERIAL_PRE_LSOF---
+---SERIAL_PRE_FUSER---
+---PIDS---
+39007 /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 0 --rmw-implementation rmw_fastrtps_cpp
+89708 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_2onpg4e3
+89710 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_dsaxn8kl
+89714 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_u339gbb6
+90724 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_r4pb2h7_
+90726 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_qnhml2vi
+90730 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_5l8vn9w_
+95878 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_no94j9rg
+95880 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_rbxtj8bc
+95884 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_zz0cmio_
+110484 /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 77 --rmw-implementation rmw_fastrtps_cpp
+111535 zsh -c hostname; date; cd /root/rober && git rev-parse --short HEAD || true; (rg -n "static_laser_tf_enabled:=true|no_motion_static_odom_tf:=true" /root/rober/onboard/scripts/o3_map_lifecycle_proof.py || grep -n "static_laser_tf_enabled:=true\|no_motion_static_odom_tf:=true" /root/rober/onboard/scripts/o3_map_lifecycle_proof.py); echo ---STATUS---; cd /root/rober && git status --short || true; echo ---SERIAL_PRE_LSOF---; lsof /dev/ttyS5 /dev/ttyACM0 || true; echo ---SERIAL_PRE_FUSER---; fuser -v /dev/ttyS5 /dev/ttyACM0 || true; echo ---PIDS---; pgrep -af "ros2|slam_toolbox|lidar_driver|map_lifecycle|nav2|static_transform_publisher" || true; echo ---TOPICS---; bash -lc "source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0} ros2 topic list 2>/dev/null | sort | sed -n 1,120p" || true
+---TOPICS---
+/amcl_pose
+/map
+/parameter_events
+/rosout
+/trashbot/waypoints

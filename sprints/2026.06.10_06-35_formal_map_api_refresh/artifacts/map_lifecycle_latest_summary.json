@@ -1,0 +1,13 @@
+{
+  "status": "map_once_artifact_metadata_observed",
+  "map_once_observed": null,
+  "map_metadata_observed": null,
+  "map_file_observed": null,
+  "scan_once_observed": null,
+  "publishes_cmd_vel": false,
+  "uses_base_uart": false,
+  "sends_base_motion_commands": false,
+  "map_metadata": null,
+  "map_files": null,
+  "runtime_log_path": "/tmp/rober_map_lifecycle_runtime_1781038833209.log"
+}
