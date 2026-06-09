@@ -239,9 +239,30 @@ function sampleFieldEvidenceManifest(root: string, evidenceRef: string) {
       read_ok: true,
     },
     gate_pass: true,
+    artifact_status: "gated",
+    artifact_health: {
+      status: "gated",
+      required_count: 5,
+      present_count: 5,
+      missing_count: 0,
+      blocked_count: 0,
+      empty_count: 0,
+      present_artifacts: ["map_yaml", "route_csv", "keyframes", "rosbag", "replay_jsonl"],
+      missing_artifacts: [],
+      blocked_artifacts: [],
+      summary: "all_required_artifacts_present",
+    },
+    manifest_gate: {
+      schema: "trashbot.field_evidence_manifest.v1",
+      status: "gated",
+      gate_pass: true,
+      blocked_reason: "preflight_ready_not_delivery_proof",
+      source: "local_fixture",
+    },
     status: "field_evidence_manifest_ready_not_delivery_proof",
     blocked_reason: "preflight_ready_not_delivery_proof",
     not_proven: true,
+    safe_to_control: false,
     delivery_success: false,
     primary_actions_enabled: false,
     artifacts: {
@@ -727,7 +748,7 @@ function listenConsumerRead(listPayload: unknown, detailPayload: unknown): Promi
       res.end(JSON.stringify(listPayload));
       return;
     }
-    if (req.url?.startsWith("/api/o6/consumer/tasks/task-consumer-001?view=default&include=")) {
+    if (req.url?.startsWith("/api/o6/consumer/tasks/") && req.url.includes("?view=default&include=")) {
       res.end(JSON.stringify(detailPayload));
       return;
     }
@@ -2991,6 +3012,7 @@ describe("workstation fail-closed API contracts", () => {
     };
     const detailPayload = {
       schema: "trashbot.o6.consumer_read.v1",
+      field_evidence_manifest: sampleFieldEvidenceManifest("/tmp/consumer-task-001", "consumer-field-evidence-001"),
       task_summary: {
         task_id: "task-consumer-001",
         robot_id: "robot_fixture",
@@ -3041,11 +3063,98 @@ describe("workstation fail-closed API contracts", () => {
         "inference",
         "tunnel",
       ]);
+      expect(detail.field_evidence.source_contract).toBe("trashbot.field_evidence_manifest.v1");
+      expect(detail.field_evidence.input_status).toBe("loaded");
+      expect(detail.field_evidence.artifact_status).toBe("gated");
+      expect(detail.field_evidence.manifest_gate.status).toBe("gated");
+      expect(detail.field_evidence.not_proven).toBe(true);
+      expect(detail.field_evidence.safe_to_control).toBe(false);
       expect(detail.task_summary?.task_id).toBe("task-consumer-001");
       expect(detail.trajectory.frame_count).toBe(3);
       expect(detail.tunnel_status.temporal_alignment).toBe("latest_known_robot_snapshot_not_task_aligned");
       expect(detail.connects_cloud_production).toBe(false);
       expect(detail.robot_control_executed).toBe(false);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("O7 consumer detail accepts existing field evidence ingest contract and reuses manifest gate", async () => {
+    // 兼容已有 ingest contract，避免 O6 detail 已接入旧摘要时还需要前端重新 join 本地 fixture。
+    const listPayload = {
+      schema: "trashbot.o6.consumer_read.v1",
+      task_list: { tasks: [{ task_id: "task-consumer-ingest-001", robot_id: "robot_fixture" }] },
+      blocked_reasons: [],
+      not_proven: ["proof_status=not_proven"],
+    };
+    const detailPayload = {
+      schema: "trashbot.o6.consumer_read.v1",
+      field_evidence_consumer_ingest: {
+        schema: "trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1",
+        manifest: sampleFieldEvidenceManifest("/tmp/consumer-task-ingest-001", "consumer-field-evidence-002"),
+      },
+      task_summary: { task_id: "task-consumer-ingest-001", robot_id: "robot_fixture", task_status_summary: "completed_mock" },
+      trajectory: { status: "loaded_not_proven", frame_count: 0, frames: [] },
+      events: { status: "loaded_not_proven", count: 0, items: [] },
+      evidence: { status: "loaded_not_proven", count: 0, items: [] },
+      labeling: { status: "pending", label_count: 0, items: [] },
+      inference: { status: "absent", count: 0, items: [] },
+      tunnel_status: { status: "blocked_not_proven", latest_known_status: "blocked_not_proven" },
+      blocked_reasons: [],
+      not_proven: ["proof_status=not_proven"],
+    };
+    const server = await listenConsumerRead(listPayload, detailPayload);
+
+    try {
+      const detail = await buildO7ConsumerTaskDetail(server.baseUrl, "task-consumer-ingest-001");
+
+      expect(detail.detail_status).toBe("loaded_fail_closed_summary");
+      expect(detail.field_evidence.source_contract).toBe(
+        "trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1",
+      );
+      expect(detail.field_evidence.input_status).toBe("loaded");
+      expect(detail.field_evidence.manifest_gate.status).toBe("gated");
+      expect(detail.field_evidence.artifact_status).toBe("gated");
+      expect(detail.field_evidence.delivery_success).toBe(false);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("O7 consumer detail fails closed when field evidence contract is missing", async () => {
+    // 本轮 detail 主路径必须带 manifest 或 ingest；缺失时不能继续给出“可读成功”摘要。
+    const listPayload = {
+      schema: "trashbot.o6.consumer_read.v1",
+      task_list: { tasks: [{ task_id: "task-consumer-missing-field-evidence", robot_id: "robot_fixture" }] },
+      blocked_reasons: [],
+      not_proven: ["proof_status=not_proven"],
+    };
+    const detailPayload = {
+      schema: "trashbot.o6.consumer_read.v1",
+      task_summary: {
+        task_id: "task-consumer-missing-field-evidence",
+        robot_id: "robot_fixture",
+        task_status_summary: "completed_mock",
+      },
+      trajectory: { status: "loaded_not_proven", frame_count: 0, frames: [] },
+      events: { status: "loaded_not_proven", count: 0, items: [] },
+      evidence: { status: "loaded_not_proven", count: 0, items: [] },
+      labeling: { status: "pending", label_count: 0, items: [] },
+      inference: { status: "absent", count: 0, items: [] },
+      tunnel_status: { status: "blocked_not_proven", latest_known_status: "blocked_not_proven" },
+      blocked_reasons: [],
+      not_proven: ["proof_status=not_proven"],
+    };
+    const server = await listenConsumerRead(listPayload, detailPayload);
+
+    try {
+      const detail = await buildO7ConsumerTaskDetail(server.baseUrl, "task-consumer-missing-field-evidence");
+
+      expect(detail.detail_status).toBe("fail_closed");
+      expect(detail.fail_closed_reason).toBe("field_evidence_contract_missing");
+      expect(detail.field_evidence.input_status).toBe("missing");
+      expect(detail.field_evidence.artifact_status).toBe("blocked");
+      expect(detail.safe_to_control).toBe(false);
     } finally {
       await server.close();
     }
@@ -3061,6 +3170,7 @@ describe("workstation fail-closed API contracts", () => {
     };
     const detailPayload = {
       schema: "trashbot.o6.consumer_read.v1",
+      field_evidence_manifest: sampleFieldEvidenceManifest("/tmp/consumer-task-001", "consumer-field-evidence-001"),
       task_summary: { task_id: "task-consumer-001", robot_id: "robot_fixture", task_status_summary: "completed_mock" },
       trajectory: { status: "loaded_not_proven", frame_count: 0, frames: [] },
       events: { status: "loaded_not_proven", count: 0, items: [] },

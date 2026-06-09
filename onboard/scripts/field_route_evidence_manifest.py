@@ -215,6 +215,49 @@ def artifact_blocked_reason(artifacts: dict[str, Any]) -> str | None:
     return reasons[0]
 
 
+def artifact_status(artifacts: dict[str, Any], ssh_status: str | None) -> str:
+    # artifact_status 只描述材料健康，不把 preflight 是否 ready 混进 gate 语义。
+    if ssh_status:
+        return "blocked"
+    if artifacts_pass(artifacts):
+        return "gated"
+    if artifact_blocked_reason(artifacts) in {"missing_required_artifact", "empty_required_artifact"}:
+        return "missing"
+    return "blocked"
+
+
+def artifact_health(artifacts: dict[str, Any], ssh_status: str | None) -> dict[str, Any]:
+    # artifact_health 保留计数与摘要，便于 consumer detail 直接解释“为什么还不能当成功证据”。
+    required_count = len(artifacts)
+    present_artifacts = [name for name, item in artifacts.items() if item.get("present") and not item.get("reason")]
+    missing_artifacts = [name for name, item in artifacts.items() if not item.get("present")]
+    blocked_artifacts = [name for name, item in artifacts.items() if item.get("reason") and str(item.get("reason")) not in {"missing", "empty", "no_keyframe_file"}]
+    empty_artifacts = [name for name, item in artifacts.items() if str(item.get("reason")) in {"empty", "no_keyframe_file"}]
+    status = artifact_status(artifacts, ssh_status)
+    if status == "gated":
+        summary = "all_required_artifacts_present"
+    elif status == "missing":
+        summary = "missing_required_artifacts"
+    elif ssh_status:
+        summary = "blocked_ssh_scan_unavailable"
+    elif empty_artifacts:
+        summary = "empty_required_artifacts"
+    else:
+        summary = "blocked_artifact_scan_unavailable"
+    return {
+        "status": status,
+        "required_count": required_count,
+        "present_count": len(present_artifacts),
+        "missing_count": len(missing_artifacts),
+        "blocked_count": len(blocked_artifacts),
+        "empty_count": len(empty_artifacts),
+        "present_artifacts": present_artifacts,
+        "missing_artifacts": missing_artifacts,
+        "blocked_artifacts": blocked_artifacts,
+        "summary": summary,
+    }
+
+
 def preflight_ready(preflight: dict[str, Any]) -> bool:
     # 只有非 dry-run 且 ready 的 preflight 才能解除 manifest 的 not_proven 标记。
     return (
@@ -246,6 +289,14 @@ def build_manifest(args: argparse.Namespace, artifacts: dict[str, Any], prefligh
     status, blocked_reason = build_status(artifact_gate_pass, artifacts, preflight, ssh_status)
     proven_material = artifact_gate_pass and preflight_ready(preflight) and ssh_status is None
     source = "ssh_remote" if args.mode == "ssh" else "local_fixture"
+    health = artifact_health(artifacts, ssh_status)
+    manifest_gate = {
+        "schema": SCHEMA,
+        "status": "gated" if artifact_gate_pass else "blocked_not_proven",
+        "gate_pass": artifact_gate_pass,
+        "blocked_reason": blocked_reason,
+        "source": source,
+    }
     return {
         "schema": SCHEMA,
         "run_id": args.run_id,
@@ -257,9 +308,13 @@ def build_manifest(args: argparse.Namespace, artifacts: dict[str, Any], prefligh
         "preflight_status": preflight.get("status"),
         "preflight": preflight,
         "gate_pass": artifact_gate_pass,
+        "artifact_status": health["status"],
+        "artifact_health": health,
+        "manifest_gate": manifest_gate,
         "status": status,
         "blocked_reason": blocked_reason,
         "not_proven": not proven_material,
+        "safe_to_control": False,
         "delivery_success": False,
         "primary_actions_enabled": False,
         "artifacts": artifacts,

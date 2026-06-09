@@ -53,8 +53,17 @@ manifest 会检查以下材料：
 
 manifest 顶层始终保留安全边界：
 
+- `safe_to_control=false`
 - `delivery_success=false`
 - `primary_actions_enabled=false`
+
+同时保留面向 O6/O7 消费的显式 gate 字段：
+
+- `artifact_status`：`gated | missing | blocked`
+- `artifact_health`：artifact 计数、present/missing 列表和摘要
+- `manifest_gate.status`：`gated | blocked_not_proven`
+- `manifest_gate.gate_pass`
+- `manifest_gate.blocked_reason`
 
 当 preflight 是 dry-run、SSH 不可达、preflight JSON 缺失或不是 `ready_for_live_route_capture_not_proven` 时，即使本地 fixture 完整，也必须保持：
 

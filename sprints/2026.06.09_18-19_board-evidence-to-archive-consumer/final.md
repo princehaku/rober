@@ -4,49 +4,44 @@
 
 `sprint_type: epic`
 
-## 迭代结论（设计阶段）
+## 迭代结论
 
-- 本轮按用户要求已完成完整 6 文件设计链条，聚焦“manifest 到 O6 archive / O7 consumer detail”可执行设计。
-- 目标是把上一轮 `field_evidence_manifest.v1` 的现场材料产物，升级为可被 O6/O7 统一消费的主入口。
-- 本轮尚未进入代码实现，属于“先验收设计再执行”的产品入口轮。
+- 本轮已把 `trashbot.field_evidence_manifest.v1` 真正接入 O7 `consumer detail` 主路径，并补齐 O7/PC 对 `manifest_gate`、`artifact_status`、`not_proven`、`delivery_success`、`safe_to_control`、`primary_actions_enabled` 的可读展示。
+- `consumer detail` 现在强制要求上游 detail 提供 field evidence manifest 或既有 ingest contract；缺字段、schema mismatch、unsafe success/control claim、无 contract 时统一 fail-closed。
+- SSH 不可达不再阻断本轮软件闭环：preflight 可留存 `blocked_ssh_unreachable` JSON，本地完整 fixture 仍可驱动 manifest->consumer detail 的 mock 证据链。
 
 ## 本轮功能点完整性判断
 
-判定：**功能点完整性已具备（设计可执行）**，满足以下条款：
+判定：**功能点完整性已具备（实现 + 本地验证完成）**，满足以下条款：
 
 1. 读取 `trashbot.field_evidence_manifest.v1` 的入口和异常态定义齐全；
-2. manifest -> O6 archive/consumer detail 转换或注入方向明确；
-3. O7/PC 可观察 manifest gate、artifact status、not_proven、delivery_success、primary_actions_enabled；
+2. manifest -> O7 consumer detail 映射已实际落地，并兼容既有 ingest contract；
+3. O7/PC 可观察 manifest gate、artifact status、not_proven、delivery_success、safe_to_control、primary_actions_enabled；
 4. 失败态固定 fail-closed，不允许误导为真实控制或真实交付成功；
 5. SSH 不可达时保留本地/mock 兜底路径；
-6. 验收命令包含 Python 脚本单元/构建、PC build/test/lint、git diff 检查及有界 SSH 命令。
+6. 验收命令已覆盖 Python 脚本、单元测试、PC build/test/lint、local/mock smoke、`rg` 和 `git diff --check`。
 
 ## 验收命令清单（留痕）
 
-- `python3` 预检与 manifest 脚本帮助页：
-  - `python3 onboard/scripts/field_route_evidence_preflight.py --help`
-  - `python3 onboard/scripts/field_route_evidence_manifest.py --help`
-- `python3` 基础验证：
-  - `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile onboard/scripts/field_route_evidence_preflight.py onboard/scripts/field_route_evidence_manifest.py`
-  - `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/tests/test_field_route_evidence_preflight.py onboard/tests/test_field_route_evidence_manifest.py`
-- PC 工程链：
-  - `cd pc-tools/workstation && npm run build && npm run test && npm run lint`
-- 空白差异检查：
-  - `git diff --check -- sprints/2026.06.09_18-19_board-evidence-to-archive-consumer`
-- SSH 有界预检：
-  - `timeout 8s ssh -o BatchMode=yes -o ConnectTimeout=5 root@192.168.1.11 -p 37878 "echo preflight_probe"`
-- manifest 与 SSH 联动 smoke 模板：
-  - `python3 onboard/scripts/field_route_evidence_preflight.py --mode ssh --ssh-target root@192.168.1.11 --ssh-port 37878 --timeout-s 5 --output /tmp/trashbot_field_preflight_ssh.json`
-  - `python3 onboard/scripts/field_route_evidence_manifest.py --mode local --artifact-root /tmp/trashbot_field_manifest_fixture_complete --preflight-json /tmp/trashbot_field_preflight_ssh.json --output /tmp/trashbot_field_manifest_complete.json`
+- `python3 onboard/scripts/field_route_evidence_preflight.py --help`：通过
+- `python3 onboard/scripts/field_route_evidence_manifest.py --help`：通过
+- `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile ...`：通过
+- `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest ...`：通过，`Ran 10 tests`
+- `cd pc-tools/workstation && npm run build && npm run test && npm run lint`：通过，`48 passed (48)`
+- `timeout 8s ssh ...`：当前 macOS 主机失败，原因是 `timeout` 命令不存在，不是 target 返回
+- `python3 onboard/scripts/field_route_evidence_preflight.py --mode ssh ...`：通过，输出 `status=blocked_ssh_unreachable`
+- `python3 onboard/scripts/field_route_evidence_manifest.py --mode local ...`：通过，输出 `gate_pass=true`、`status=field_evidence_manifest_ready_not_delivery_proof`
+- `rg -n "field_evidence_manifest.v1|manifest_gate|artifact_status|not_proven|delivery_success|primary_actions_enabled|safe_to_control" ...`：通过
+- `git diff --check`：通过
 
 ## 风险与剩余证据缺口
 
-- 仍未补齐实时现场证据落库（真实 SSH、真实 `map.yaml/route.csv/keyframes/rosbag/replay.jsonl`）。
-- 未验证 O7 consumer detail 与 O6 archive/consumer 的最终生产级联通（本轮为设计）。
+- 仍未补齐真实 SSH / 真实 `map.yaml/route.csv/keyframes/rosbag/replay.jsonl` 现场证据。
+- 真实 O6 archive/consumer production 链路、真实隧道、真实机器人数据仍未验证。
 - `delivery_success=true` 仍不在本轮证据范围内；真实 deliver 与真实 robot control 在后续 sprint 验收。
+- 当前开发机缺少 `timeout` 命令；若后续必须逐字复跑 SSH 有界命令，需要安装 coreutils 或切到带 `timeout` 的 shell 环境。
 
 ## 责任与下一位执行
 
 - 下游 owner：`full-stack-software-engineer`
-- 本 sprint 文档可直接转入实现，建议首轮只实现 manifest->O6 archive 与 consumer detail 的最小闭环，其他真实现场项按新 blocker 出现后按 sprint 追加。
-
+- 下一步优先把真实 SSH/board 路线材料挂进同一 contract，再让 O6 archive 生产链读同一份 evidence。

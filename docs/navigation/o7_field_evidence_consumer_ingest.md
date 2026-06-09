@@ -16,6 +16,8 @@ manifest 必须是 `trashbot.field_evidence_manifest.v1`。如果 manifest 缺�
 
 输出统一为 `trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1`，并继续保留：
 
+- `manifest.manifest_gate`
+- `manifest.artifact_status`
 - `safe_to_control=false`
 - `delivery_success=false`
 - `primary_actions_enabled=false`
@@ -25,6 +27,13 @@ manifest 必须是 `trashbot.field_evidence_manifest.v1`。如果 manifest 缺�
 - `next_required_evidence`
 
 route replay 和 labeling 的 preview 结果必须和 local/mock 与未来 live SSH 共用同一份结构，区别只在输入来源，不在 UI 语义。
+
+`O7 consumer detail` 继续消费 O6 detail 主路径时，也必须从上游 detail 中读取以下两种之一：
+
+- 直接内嵌的 `trashbot.field_evidence_manifest.v1`
+- 现有 `trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1`
+
+缺字段、schema mismatch、坏对象、unsafe success/control claim，或两者都缺失时，`consumer detail` 必须 fail closed，并把 `manifest_gate`、`artifact_status`、`not_proven`、`safe_to_control`、`delivery_success`、`primary_actions_enabled` 显式展示成 blocked/not_proven。
 
 ## 状态
 

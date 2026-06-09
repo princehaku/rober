@@ -15,6 +15,9 @@ import { buildO7LabelingPreview } from "./o7LabelingPreview";
 import { buildO7RouteReplayPreview } from "./o7RouteReplayPreview";
 
 type JsonRecord = Record<string, unknown>;
+type ManifestArtifactStatus = "gated" | "missing" | "blocked";
+type ManifestGateStatus = "gated" | "blocked_not_proven";
+type DetailFieldEvidenceInputStatus = "loaded" | "missing" | "schema_mismatch" | "invalid_shape" | "unsafe_claim" | "not_provided";
 
 const LIST_SCHEMA = "trashbot.pc_tools_workstation.o7_consumer_task_list.v1" as const;
 const DETAIL_SCHEMA = "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1" as const;
@@ -27,6 +30,9 @@ const DEFAULT_DETAIL_INCLUDE = ["trajectory", "events", "evidence", "labeling", 
 const FIELD_EVIDENCE_MANIFEST_SCHEMA = "trashbot.field_evidence_manifest.v1" as const;
 const FIELD_EVIDENCE_CONSUMER_INGEST_SCHEMA =
   "trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1" as const;
+const MANIFEST_ARTIFACT_KEYS = ["map_yaml", "route_csv", "keyframes", "rosbag", "replay_jsonl"] as const;
+const MANIFEST_ARTIFACT_STATUSES = new Set(["gated", "missing", "blocked"]);
+const MANIFEST_GATE_STATUSES = new Set(["gated", "blocked_not_proven"]);
 
 const DANGEROUS_TRUE_FIELDS = new Set([
   "safe_to_control",
@@ -173,6 +179,16 @@ function fixedFalseFields() {
   };
 }
 
+function normalizeManifestArtifactStatus(value: unknown): ManifestArtifactStatus {
+  // artifact_status 只接受 manifest 约定的三种枚举，避免上游自由字符串污染 UI 语义。
+  return typeof value === "string" && MANIFEST_ARTIFACT_STATUSES.has(value) ? (value as ManifestArtifactStatus) : "blocked";
+}
+
+function normalizeManifestGateStatus(value: unknown): ManifestGateStatus {
+  // manifest_gate 只有 gated / blocked_not_proven；其他值一律按 fail-closed 处理。
+  return typeof value === "string" && MANIFEST_GATE_STATUSES.has(value) ? (value as ManifestGateStatus) : "blocked_not_proven";
+}
+
 function failClosedList(reason: string, baseUrl: string): O7ConsumerTaskListResponse {
   // 列表失败时仍返回完整 contract，让 UI 能明确看到主路径被关闸的原因。
   return {
@@ -212,6 +228,23 @@ function failClosedDetail(reason: string, baseUrl: string, taskId: string): O7Co
       include: [...DEFAULT_DETAIL_INCLUDE],
       primary_path: true,
       fail_closed_visible: true,
+    },
+    field_evidence: {
+      source_contract: "not_loaded",
+      input_status: "missing",
+      artifact_status: "blocked",
+      manifest_gate: {
+        schema: "not_loaded",
+        status: "blocked_not_proven",
+        gate_pass: false,
+        blocked_reason: reason,
+        source: "not_loaded",
+      },
+      blocked_reason: reason,
+      not_proven: true,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
     },
     task_summary: null,
     trajectory: { status: "blocked_not_proven", frame_count: 0, sample_frames: [] },
@@ -360,12 +393,33 @@ function buildManifestSummary(manifest: JsonRecord | null): O7FieldEvidenceManif
       mode: "not_loaded",
       status: "manifest_not_loaded",
       gate_pass: false,
+      artifact_status: "blocked",
       blocked_reason: "manifest_not_loaded",
       not_proven: true,
+      safe_to_control: false,
       delivery_success: false,
       primary_actions_enabled: false,
       artifact_root: "",
       preflight_status: null,
+      manifest_gate: {
+        schema: "not_loaded",
+        status: "blocked_not_proven",
+        gate_pass: false,
+        blocked_reason: "manifest_not_loaded",
+        source: "not_loaded",
+      },
+      artifact_health: {
+        status: "blocked",
+        required_count: MANIFEST_ARTIFACT_KEYS.length,
+        present_count: 0,
+        missing_count: MANIFEST_ARTIFACT_KEYS.length,
+        blocked_count: 0,
+        empty_count: 0,
+        present_artifacts: [],
+        missing_artifacts: [...MANIFEST_ARTIFACT_KEYS],
+        blocked_artifacts: [],
+        summary: "manifest_not_loaded",
+      },
       artifacts: {
         map_yaml: missingManifestArtifact(".", "map.yaml", "manifest_not_loaded"),
         route_csv: missingManifestArtifact(".", "route.csv", "manifest_not_loaded"),
@@ -378,6 +432,8 @@ function buildManifestSummary(manifest: JsonRecord | null): O7FieldEvidenceManif
 
   const artifactRoot = asString(manifest.artifact_root, "");
   const artifacts = asRecord(manifest.artifacts);
+  const manifestGate = asRecord(manifest.manifest_gate);
+  const artifactHealth = asRecord(manifest.artifact_health);
   return {
     schema: asString(manifest.schema, "not_loaded") === FIELD_EVIDENCE_MANIFEST_SCHEMA ? FIELD_EVIDENCE_MANIFEST_SCHEMA : "not_loaded",
     run_id: asString(manifest.run_id, "not_loaded"),
@@ -385,12 +441,34 @@ function buildManifestSummary(manifest: JsonRecord | null): O7FieldEvidenceManif
     mode: asString(manifest.mode, "not_loaded") as O7FieldEvidenceManifestSummary["mode"],
     status: asString(manifest.status, "manifest_not_loaded"),
     gate_pass: asBoolean(manifest.gate_pass),
+    artifact_status: normalizeManifestArtifactStatus(manifest.artifact_status),
     blocked_reason: asString(manifest.blocked_reason, "manifest_not_loaded"),
     not_proven: asBoolean(manifest.not_proven),
+    safe_to_control: false,
     delivery_success: false,
     primary_actions_enabled: false,
     artifact_root: safePathToken(artifactRoot),
     preflight_status: typeof manifest.preflight_status === "string" ? manifest.preflight_status : null,
+    manifest_gate: {
+      schema:
+        asString(manifestGate?.schema, "") === FIELD_EVIDENCE_MANIFEST_SCHEMA ? FIELD_EVIDENCE_MANIFEST_SCHEMA : "not_loaded",
+      status: normalizeManifestGateStatus(manifestGate?.status),
+      gate_pass: asBoolean(manifestGate?.gate_pass),
+      blocked_reason: asString(manifestGate?.blocked_reason, "manifest_not_loaded"),
+      source: asString(manifestGate?.source, "not_loaded") as O7FieldEvidenceManifestSummary["manifest_gate"]["source"],
+    },
+    artifact_health: {
+      status: normalizeManifestArtifactStatus(artifactHealth?.status ?? manifest.artifact_status),
+      required_count: asNumber(artifactHealth?.required_count) ?? MANIFEST_ARTIFACT_KEYS.length,
+      present_count: asNumber(artifactHealth?.present_count) ?? 0,
+      missing_count: asNumber(artifactHealth?.missing_count) ?? MANIFEST_ARTIFACT_KEYS.length,
+      blocked_count: asNumber(artifactHealth?.blocked_count) ?? 0,
+      empty_count: asNumber(artifactHealth?.empty_count) ?? 0,
+      present_artifacts: stringList(artifactHealth?.present_artifacts),
+      missing_artifacts: stringList(artifactHealth?.missing_artifacts),
+      blocked_artifacts: stringList(artifactHealth?.blocked_artifacts),
+      summary: asString(artifactHealth?.summary, "manifest_not_loaded"),
+    },
     artifacts: {
       map_yaml: manifestArtifactSummary(artifacts?.map_yaml, artifactRoot, "map.yaml"),
       route_csv: manifestArtifactSummary(artifacts?.route_csv, artifactRoot, "route.csv"),
@@ -399,6 +477,86 @@ function buildManifestSummary(manifest: JsonRecord | null): O7FieldEvidenceManif
       replay_jsonl: manifestArtifactSummary(artifacts?.replay_jsonl, artifactRoot, "replay.jsonl"),
     },
   };
+}
+
+function detailFieldEvidenceSectionFromManifest(
+  manifest: O7FieldEvidenceManifestSummary,
+  inputStatus: DetailFieldEvidenceInputStatus,
+  sourceContract: O7ConsumerTaskDetailResponse["field_evidence"]["source_contract"],
+): O7ConsumerTaskDetailResponse["field_evidence"] {
+  // consumer detail 统一把 manifest 关键边界收敛到一处，供 O7 页面直接展示。
+  return {
+    source_contract: sourceContract,
+    input_status: inputStatus,
+    artifact_status: manifest.artifact_status,
+    manifest_gate: manifest.manifest_gate,
+    blocked_reason: manifest.blocked_reason,
+    not_proven: manifest.not_proven,
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+  };
+}
+
+function extractManifestFromConsumerIngest(payload: JsonRecord): JsonRecord | null {
+  // 兼容现有 ingest contract：如果 O6 detail 已挂了 ingest 摘要，就优先复用其中的 manifest。
+  if (asString(payload.schema, "") !== FIELD_EVIDENCE_CONSUMER_INGEST_SCHEMA) {
+    return null;
+  }
+  const manifest = asRecord(payload.manifest);
+  return manifest && asString(manifest.schema, "") === FIELD_EVIDENCE_MANIFEST_SCHEMA ? manifest : null;
+}
+
+function detailFieldEvidenceSource(
+  remote: JsonRecord,
+):
+  | {
+      manifest: O7FieldEvidenceManifestSummary;
+      inputStatus: DetailFieldEvidenceInputStatus;
+      sourceContract: O7ConsumerTaskDetailResponse["field_evidence"]["source_contract"];
+    }
+  | {
+      errorReason: string;
+      inputStatus: DetailFieldEvidenceInputStatus;
+    } {
+  // O7 detail 允许两种上游形态：直接挂 manifest，或挂现有 ingest contract。
+  const directManifest = asRecord(remote.field_evidence_manifest) ?? asRecord(remote.manifest);
+  if (directManifest) {
+    const safety = manifestInputSafetyStatus(directManifest);
+    if (safety.status !== "loaded") {
+      return { errorReason: safety.reason, inputStatus: "unsafe_claim" };
+    }
+    if (asString(directManifest.schema, "") !== FIELD_EVIDENCE_MANIFEST_SCHEMA) {
+      return { errorReason: "field_evidence_manifest_schema_mismatch", inputStatus: "schema_mismatch" };
+    }
+    return {
+      manifest: buildManifestSummary(directManifest),
+      inputStatus: "loaded",
+      sourceContract: FIELD_EVIDENCE_MANIFEST_SCHEMA,
+    };
+  }
+
+  const ingestPayload = asRecord(remote.field_evidence_consumer_ingest) ?? asRecord(remote.field_evidence_ingest);
+  if (ingestPayload) {
+    if (asString(ingestPayload.schema, "") !== FIELD_EVIDENCE_CONSUMER_INGEST_SCHEMA) {
+      return { errorReason: "field_evidence_consumer_ingest_schema_mismatch", inputStatus: "schema_mismatch" };
+    }
+    const dangerous = scanDangerousTrueFields(ingestPayload);
+    if (dangerous.length > 0) {
+      return { errorReason: `field_evidence_consumer_ingest_unsafe_claim:${dangerous.join(",")}`, inputStatus: "unsafe_claim" };
+    }
+    const manifest = extractManifestFromConsumerIngest(ingestPayload);
+    if (!manifest) {
+      return { errorReason: "field_evidence_consumer_ingest_manifest_missing", inputStatus: "invalid_shape" };
+    }
+    return {
+      manifest: buildManifestSummary(manifest),
+      inputStatus: "loaded",
+      sourceContract: FIELD_EVIDENCE_CONSUMER_INGEST_SCHEMA,
+    };
+  }
+
+  return { errorReason: "field_evidence_contract_missing", inputStatus: "missing" };
 }
 
 function aggregateDistinct(values: Array<string | string[] | null | undefined>): string[] {
@@ -524,6 +682,15 @@ export async function buildO7ConsumerTaskDetail(baseUrl: string, taskId: string)
   if (dangerous.length > 0) {
     return failClosedDetail(`dangerous_true_fields:${dangerous.join(",")}`, normalized.normalized, trimmedTaskId);
   }
+  const fieldEvidenceSource = detailFieldEvidenceSource(remote);
+  if ("errorReason" in fieldEvidenceSource) {
+    const failClosed = failClosedDetail(fieldEvidenceSource.errorReason, normalized.normalized, trimmedTaskId);
+    failClosed.field_evidence = {
+      ...failClosed.field_evidence,
+      input_status: fieldEvidenceSource.inputStatus,
+    };
+    return failClosed;
+  }
 
   const taskSummary = asRecord(remote.task_summary);
   const trajectory = asRecord(remote.trajectory);
@@ -546,6 +713,11 @@ export async function buildO7ConsumerTaskDetail(baseUrl: string, taskId: string)
       primary_path: true,
       fail_closed_visible: true,
     },
+    field_evidence: detailFieldEvidenceSectionFromManifest(
+      fieldEvidenceSource.manifest,
+      fieldEvidenceSource.inputStatus,
+      fieldEvidenceSource.sourceContract,
+    ),
     task_summary: taskSummary
       ? {
           task_id: asString(taskSummary.task_id, trimmedTaskId),

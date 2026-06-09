@@ -1307,12 +1307,33 @@ export interface O7FieldEvidenceManifestSummary {
   mode: "local" | "ssh" | "not_loaded";
   status: string;
   gate_pass: boolean;
+  artifact_status: "gated" | "missing" | "blocked";
   blocked_reason: string;
   not_proven: boolean;
+  safe_to_control: false;
   delivery_success: false;
   primary_actions_enabled: false;
   artifact_root: string;
   preflight_status: string | null;
+  manifest_gate: {
+    schema: "trashbot.field_evidence_manifest.v1" | "not_loaded";
+    status: "gated" | "blocked_not_proven";
+    gate_pass: boolean;
+    blocked_reason: string;
+    source: "local_fixture" | "ssh_remote" | "not_loaded";
+  };
+  artifact_health: {
+    status: "gated" | "missing" | "blocked";
+    required_count: number;
+    present_count: number;
+    missing_count: number;
+    blocked_count: number;
+    empty_count: number;
+    present_artifacts: string[];
+    missing_artifacts: string[];
+    blocked_artifacts: string[];
+    summary: string;
+  };
   artifacts: {
     map_yaml: O7FieldEvidenceManifestArtifactSummary;
     route_csv: O7FieldEvidenceManifestArtifactSummary;
@@ -1848,6 +1869,26 @@ export interface O7ConsumerTaskDetailResponse extends ProofFlags {
     include: string[];
     primary_path: true;
     fail_closed_visible: true;
+  };
+  field_evidence: {
+    source_contract:
+      | "trashbot.field_evidence_manifest.v1"
+      | "trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1"
+      | "not_loaded";
+    input_status: "loaded" | "missing" | "schema_mismatch" | "invalid_shape" | "unsafe_claim" | "not_provided";
+    artifact_status: "gated" | "missing" | "blocked";
+    manifest_gate: {
+      schema: "trashbot.field_evidence_manifest.v1" | "not_loaded";
+      status: "gated" | "blocked_not_proven";
+      gate_pass: boolean;
+      blocked_reason: string;
+      source: "local_fixture" | "ssh_remote" | "not_loaded";
+    };
+    blocked_reason: string;
+    not_proven: boolean;
+    safe_to_control: false;
+    delivery_success: false;
+    primary_actions_enabled: false;
   };
   task_summary: {
     task_id: string;

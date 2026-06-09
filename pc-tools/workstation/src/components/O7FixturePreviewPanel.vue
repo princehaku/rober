@@ -2109,6 +2109,10 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             <dd>{{ fieldEvidenceConsumerIngestResult?.source_manifest_schema ?? "not_loaded" }}</dd>
             <dt>manifest status</dt>
             <dd>{{ fieldEvidenceConsumerIngestResult?.manifest.status ?? "not_loaded" }}</dd>
+            <dt>manifest gate</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.manifest.manifest_gate.status ?? "blocked_not_proven" }}</dd>
+            <dt>artifact_status</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.manifest.artifact_status ?? "blocked" }}</dd>
             <dt>manifest gate_pass</dt>
             <dd>{{ fieldEvidenceConsumerIngestResult?.manifest.gate_pass ?? false }}</dd>
             <dt>route replay preview</dt>
@@ -2123,6 +2127,8 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             <dd>{{ fieldEvidenceConsumerIngestResult?.safe_to_control ?? false }}</dd>
             <dt>delivery_success</dt>
             <dd>{{ fieldEvidenceConsumerIngestResult?.delivery_success ?? false }}</dd>
+            <dt>primary_actions_enabled</dt>
+            <dd>{{ fieldEvidenceConsumerIngestResult?.primary_actions_enabled ?? false }}</dd>
           </dl>
         </div>
       </div>
@@ -2634,12 +2640,35 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             <dd>{{ consumerTaskDetailResult?.query_strategy.include.join(",") ?? "trajectory,events,evidence,labeling,inference,tunnel" }}</dd>
             <dt>fail-closed visible</dt>
             <dd>{{ consumerTaskDetailResult?.query_strategy.fail_closed_visible ?? true }}</dd>
+            <dt>field evidence contract</dt>
+            <dd>{{ consumerTaskDetailResult?.field_evidence.source_contract ?? "not_loaded" }}</dd>
+            <dt>field evidence input</dt>
+            <dd>{{ consumerTaskDetailResult?.field_evidence.input_status ?? "missing" }}</dd>
+            <dt>manifest_gate</dt>
+            <dd>{{ consumerTaskDetailResult?.field_evidence.manifest_gate.status ?? "blocked_not_proven" }}</dd>
+            <dt>artifact_status</dt>
+            <dd>{{ consumerTaskDetailResult?.field_evidence.artifact_status ?? "blocked" }}</dd>
             <dt>safe_to_control</dt>
             <dd>{{ consumerTaskDetailResult?.safe_to_control ?? false }}</dd>
+            <dt>delivery_success</dt>
+            <dd>{{ consumerTaskDetailResult?.delivery_success ?? false }}</dd>
+            <dt>primary_actions_enabled</dt>
+            <dd>{{ consumerTaskDetailResult?.primary_actions_enabled ?? false }}</dd>
             <dt>connects_cloud_production</dt>
             <dd>{{ consumerTaskDetailResult?.connects_cloud_production ?? false }}</dd>
             <dt>robot_control_executed</dt>
             <dd>{{ consumerTaskDetailResult?.robot_control_executed ?? false }}</dd>
+          </dl>
+          <h3>Field evidence boundary</h3>
+          <dl class="kv compact-kv">
+            <dt>blocked_reason</dt>
+            <dd>{{ consumerTaskDetailResult?.field_evidence.blocked_reason ?? "not_loaded" }}</dd>
+            <dt>not_proven</dt>
+            <dd>{{ consumerTaskDetailResult?.field_evidence.not_proven ?? true }}</dd>
+            <dt>manifest source</dt>
+            <dd>{{ consumerTaskDetailResult?.field_evidence.manifest_gate.source ?? "not_loaded" }}</dd>
+            <dt>manifest gate_pass</dt>
+            <dd>{{ consumerTaskDetailResult?.field_evidence.manifest_gate.gate_pass ?? false }}</dd>
           </dl>
           <h3>Task summary</h3>
           <dl class="kv compact-kv">

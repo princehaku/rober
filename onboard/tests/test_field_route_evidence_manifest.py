@@ -69,11 +69,14 @@ class FieldRouteEvidenceManifestTest(unittest.TestCase):
         self.assertEqual(packet["schema"], manifest.SCHEMA)
         self.assertTrue(packet["gate_pass"])
         self.assertTrue(packet["not_proven"])
+        self.assertFalse(packet["safe_to_control"])
         self.assertFalse(packet["delivery_success"])
         self.assertFalse(packet["primary_actions_enabled"])
         self.assertEqual(packet["blocked_reason"], "blocked_ssh_unreachable")
         self.assertTrue(packet["artifacts"]["keyframes"]["present"])
         self.assertGreater(packet["artifacts"]["rosbag"]["size_bytes"], 0)
+        self.assertEqual(packet["artifact_status"], "gated")
+        self.assertEqual(packet["manifest_gate"]["status"], "gated")
 
     def test_missing_artifact_fails_closed_with_nonzero_rc(self):
         # 缺 route/replay 等必需材料时必须非零退出，方便 CI 或现场脚本 fail fast。
@@ -161,6 +164,7 @@ class FieldRouteEvidenceManifestTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertTrue(packet["gate_pass"])
         self.assertTrue(packet["not_proven"])
+        self.assertFalse(packet["safe_to_control"])
         self.assertEqual(packet["blocked_reason"], "dry_run_template_only_not_proven")
 
     def test_ssh_command_is_read_only_and_uses_expected_port(self):

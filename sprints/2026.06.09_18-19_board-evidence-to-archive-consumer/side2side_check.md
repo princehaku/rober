@@ -4,7 +4,7 @@
 
 `sprint_type: epic`
 
-## 验收对照框架（待验收）
+## 验收对照框架
 
 ### 1) 设计完整性
 
@@ -24,8 +24,17 @@
 - 是否保持 `delivery_success=false` 与 `primary_actions_enabled=false` 的固定边界。
 - 是否明确下一位工程师的文件范围、执行命令、owner、验收口径。
 
-## 初审结论（待工程实现）
+## 对照结果
 
-1. 设计闭环完整，能够支撑直接下发实现；未发现“同一 blocker 消费”回归点。
-2. 待验收项：`full-stack-software-engineer` 按 `tech-plan.md` 完成实现后，补齐执行日志/截图/命令输出。
+1. `consumer detail` 已把 `manifest_gate`、`artifact_status`、`not_proven`、`delivery_success`、`safe_to_control`、`primary_actions_enabled` 提升为显式字段和 UI 可见项。
+2. 上游 field evidence 输入现在只接受：
+   - `trashbot.field_evidence_manifest.v1`
+   - `trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1`
+3. 缺 contract、schema mismatch、unsafe claim、bad shape 时，`consumer detail` 直接 `fail_closed`，不再回退到未标记 raw join。
+4. SSH 不可达时，preflight 仍写出 `blocked_ssh_unreachable` JSON；本地完整 fixture 仍能完成 manifest->consumer detail 的 software proof 闭环。
 
+## 验收结论
+
+1. 本轮实现满足 `tech-plan.md` 的 FP1-FP4，且 O7 detail 主路径已消费 field evidence contract。
+2. 验证证据完整覆盖 Python 脚本、单元测试、workstation build/test/lint、local/mock manifest smoke、`rg` 和 `git diff --check`。
+3. 唯一环境偏差是 macOS 缺少 `timeout` 命令；该偏差已被记录，未阻断 preflight JSON 与 local/mock 软件闭环。
