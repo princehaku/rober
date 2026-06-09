@@ -1,0 +1,1 @@
+/tmp/rober_20260610_0845_nav2_initialpose

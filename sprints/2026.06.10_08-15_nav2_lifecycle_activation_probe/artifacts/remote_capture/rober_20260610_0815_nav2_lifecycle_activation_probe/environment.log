@@ -1,0 +1,5 @@
+hostname=op-z3-b6.home
+2026-06-10T05:45:26+08:00
+Linux op-z3-b6.home 6.1.31-sun50iw9 #1.0.4 SMP Thu Jul 11 16:37:41 CST 2024 aarch64 aarch64 aarch64 GNU/Linux
+map_file=/root/rober/onboard/runtime/maps/trashbot_map.yaml
+-rw-r--r-- 1 root root 162 Jun 10 05:01 /root/rober/onboard/runtime/maps/trashbot_map.yaml

@@ -1,0 +1,34 @@
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  ros-humble-diagnostic-updater
+The following NEW packages will be installed:
+  ros-humble-diagnostic-updater ros-humble-nav2-lifecycle-manager
+  ros-humble-nav2-navfn-planner
+  ros-humble-nav2-regulated-pure-pursuit-controller
+0 upgraded, 4 newly installed, 0 to remove and 322 not upgraded.
+Need to get 328 kB of archives.
+After this operation, 1,278 kB of additional disk space will be used.
+Get:1 http://packages.ros.org/ros2/ubuntu jammy/main arm64 ros-humble-diagnostic-updater arm64 4.0.6-1jammy.20260423.163707 [94.4 kB]
+Get:2 http://packages.ros.org/ros2/ubuntu jammy/main arm64 ros-humble-nav2-lifecycle-manager arm64 1.1.20-1jammy.20260426.013516 [110 kB]
+Get:3 http://packages.ros.org/ros2/ubuntu jammy/main arm64 ros-humble-nav2-navfn-planner arm64 1.1.20-1jammy.20260426.075604 [45.8 kB]
+Get:4 http://packages.ros.org/ros2/ubuntu jammy/main arm64 ros-humble-nav2-regulated-pure-pursuit-controller arm64 1.1.20-1jammy.20260426.044121 [77.3 kB]
+Fetched 328 kB in 2s (177 kB/s)
+Selecting previously unselected package ros-humble-diagnostic-updater.
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 215808 files and directories currently installed.)
+Preparing to unpack .../ros-humble-diagnostic-updater_4.0.6-1jammy.20260423.163707_arm64.deb ...
+Unpacking ros-humble-diagnostic-updater (4.0.6-1jammy.20260423.163707) ...
+Selecting previously unselected package ros-humble-nav2-lifecycle-manager.
+Preparing to unpack .../ros-humble-nav2-lifecycle-manager_1.1.20-1jammy.20260426.013516_arm64.deb ...
+Unpacking ros-humble-nav2-lifecycle-manager (1.1.20-1jammy.20260426.013516) ...
+Selecting previously unselected package ros-humble-nav2-navfn-planner.
+Preparing to unpack .../ros-humble-nav2-navfn-planner_1.1.20-1jammy.20260426.075604_arm64.deb ...
+Unpacking ros-humble-nav2-navfn-planner (1.1.20-1jammy.20260426.075604) ...
+Selecting previously unselected package ros-humble-nav2-regulated-pure-pursuit-controller.
+Preparing to unpack .../ros-humble-nav2-regulated-pure-pursuit-controller_1.1.20-1jammy.20260426.044121_arm64.deb ...
+Unpacking ros-humble-nav2-regulated-pure-pursuit-controller (1.1.20-1jammy.20260426.044121) ...
+Setting up ros-humble-nav2-regulated-pure-pursuit-controller (1.1.20-1jammy.20260426.044121) ...
+Setting up ros-humble-diagnostic-updater (4.0.6-1jammy.20260423.163707) ...
+Setting up ros-humble-nav2-navfn-planner (1.1.20-1jammy.20260426.075604) ...
+Setting up ros-humble-nav2-lifecycle-manager (1.1.20-1jammy.20260426.013516) ...

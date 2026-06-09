@@ -1,0 +1,26 @@
+[INFO] [1781041536.085819131] [map_server]: 
+	map_server lifecycle node launched. 
+	Waiting on external lifecycle transitions to activate
+	See https://design.ros2.org/articles/node_lifecycle.html for more information.
+[INFO] [1781041536.086509420] [map_server]: Creating
+[INFO] [1781041539.031698957] [map_server]: Configuring
+[INFO] [1781041539.032045664] [map_io]: Loading yaml file: /root/rober/onboard/runtime/maps/trashbot_map.yaml
+[INFO] [1781041539.035053904] [map_io]: resolution: 0.05
+[INFO] [1781041539.035169446] [map_io]: origin[0]: -6.07104
+[INFO] [1781041539.035200945] [map_io]: origin[1]: -5.61091
+[INFO] [1781041539.035229529] [map_io]: origin[2]: 0
+[INFO] [1781041539.035259112] [map_io]: free_thresh: 0.196
+[INFO] [1781041539.035288445] [map_io]: occupied_thresh: 0.65
+[INFO] [1781041539.035323237] [map_io]: mode: trinary
+[INFO] [1781041539.035355778] [map_io]: negate: 0
+[INFO] [1781041539.088450734] [map_io]: Loading image_file: /root/rober/onboard/runtime/maps/trashbot_map.pgm
+[INFO] [1781041539.133937464] [map_io]: Read map /root/rober/onboard/runtime/maps/trashbot_map.pgm: 237 X 126 map @ 0.05 m/cell
+[INFO] [1781041540.167954671] [map_server]: Activating
+[INFO] [1781041540.169021876] [map_server]: Creating bond (map_server) to lifecycle manager.
+[INFO] [1781041831.245209700] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [1781041831.245742157] [map_server]: Running Nav2 LifecycleNode rcl preshutdown (map_server)
+[INFO] [1781041831.246187822] [map_server]: Deactivating
+[INFO] [1781041831.246288530] [map_server]: Destroying bond (map_server) to lifecycle manager.
+[INFO] [1781041831.283305579] [map_server]: Cleaning up
+[INFO] [1781041831.283557328] [map_server]: Destroying bond (map_server) to lifecycle manager.
+[INFO] [1781041831.425964791] [map_server]: Destroying

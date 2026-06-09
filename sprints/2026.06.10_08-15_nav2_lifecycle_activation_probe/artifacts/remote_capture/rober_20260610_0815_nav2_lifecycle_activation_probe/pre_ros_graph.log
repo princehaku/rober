@@ -1,0 +1,20 @@
+### pre_ros_graph
+### command: bash -lc source /opt/ros/humble/setup.bash; ros2 topic list; ros2 node list
+### started_at: 2026-06-10T05:45:26+08:00
+/amcl_pose
+/map
+/parameter_events
+/rosout
+/trashbot/waypoints
+WARNING: Be aware that there are nodes in the graph that share an exact name, which can have unintended side effects.
+/map_recorder
+/map_recorder
+/map_recorder
+/task_orchestrator
+/task_orchestrator
+/task_orchestrator
+/waypoint_manager
+/waypoint_manager
+/waypoint_manager
+### exit_code: 0
+### finished_at: 2026-06-10T05:45:30+08:00

@@ -1,0 +1,7 @@
+Wed Jun 10 07:13:26 AM CST 2026
+### matching processes
+root      132835       1  1 07:09 ?        00:00:02 /usr/bin/python3 /opt/ros/humble/bin/ros2 topic echo --once /amcl_pose
+root      133585       1  1 07:10 ?        00:00:02 /usr/bin/python3 /opt/ros/humble/bin/ros2 topic echo --once /amcl_pose
+root      133658       1  1 07:11 ?        00:00:02 /usr/bin/python3 /opt/ros/humble/bin/ros2 topic echo --once /amcl_pose
+### lsof
+### fuser

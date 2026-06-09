@@ -206,6 +206,60 @@ smoke 的边界如下：
 `ros-humble-nav2-bringup` 的 dry-run 会新增 164 个包并升级 5 个系统库，所以不应
 在没有明确维护窗口时把它当作小修复执行。
 
+`2026-06-10 08:15` 后续 probe 只安装窄包：
+
+- `ros-humble-nav2-lifecycle-manager`
+- `ros-humble-nav2-navfn-planner`
+- `ros-humble-nav2-regulated-pure-pursuit-controller`
+
+APT dry-run 和实际安装均为 `0 upgraded, 4 newly installed, 0 to remove`，额外新增
+`ros-humble-diagnostic-updater`。安装后上述三个包以及
+`nav2_amcl/nav2_planner/nav2_controller/nav2_map_server` 均可由
+`ros2 pkg prefix` 定位到 `/opt/ros/humble`。
+
+手动 no-motion runtime 证明包缺失层已经消失，但 Nav2 ready 仍未成立：
+
+- `map_server` 手动窗口内可加载 `/root/rober/onboard/runtime/maps/trashbot_map.yaml`
+  并进入 `active [3]`。
+- `amcl` 手动窗口内进入 `active [3]`，但本流程禁止 `/initialpose`，所以
+  `/amcl_pose` 未观测，AMCL 日志明确要求设置 initial pose。
+- `planner_server` 卡在 global costmap activation，原因是缺
+  `map -> base_link` 或等效 localization TF；日志反复出现
+  `Timed out waiting for transform from base_link to map`。
+- `controller_server` 插件可加载，但 lifecycle 停在 `inactive [2]`，未进入 active。
+- 手动窗口内 `/scan_once_observed=true`，`/map_once_observed=false`，
+  `amcl_pose_observed=false`。
+- `/cmd_vel` topic 因 controller server 出现 publisher，但
+  `timeout 8 ros2 topic echo /cmd_vel` 无消息；本轮仍未发 goal、未 compute path、
+  未发布 `/initialpose`、未调用任何 `/api/base/*` 或 `/api/nav2/start/stop`。
+
+正式 `/api/nav2/proof/refresh -d '{"timeout_s":20}'` 是 read-only existing graph
+collector，清场后调用时不会复用手动 stack，因此 canonical artifact 仍保持
+`status=blocked_with_root_cause`，并记录 `map_server_active=false`、
+`amcl_active=false`、`planner_active=false`、`controller_active=false`、
+`scan_once_observed=false`、`map_once_observed=false`、`amcl_pose_observed=false`。
+这不是 ready 回退，而是 collector 与手动 runtime 证据边界不同。下一步如果要继续
+no-motion Nav2 readiness，必须先定义不发布运动命令的 initial pose / localization
+证据边界，或提供只读可验证的 `map -> odom -> base_link` TF 来源；否则 planner
+global costmap 会继续卡住。
+
+`2026-06-10 08:45` 起，`/api/nav2/proof/refresh` 支持显式 opt-in 的
+no-motion initialpose/localization proof。默认 body 不传
+`"initialpose_opt_in": true` 时仍保持 read-only collector，不发布 `/initialpose`。
+只有 body 显式传入 `initialpose_opt_in=true` 时，helper 才会在证明窗口内向
+`/initialpose` 发布一次 PoseWithCovarianceStamped，并记录 `initialpose_x`、
+`initialpose_y`、`initialpose_yaw` 与 `initialpose_frame_id`。
+
+该 opt-in 只用于验证 AMCL localization 证据，不改变固定路线执行边界：
+
+- 允许采集 `/amcl_pose`、`map -> odom` 与 `map -> base_link` listener 结果。
+- 禁止发送 Nav2 goal、调用 compute path、发布 `/cmd_vel`、调用 `/api/base/*`、
+  启动 `/api/nav2/start` 或打开 WAVE ROVER/base UART `/dev/ttyS5`。
+- Artifact 必须继续保留 `safe_to_control=false`、`publishes_cmd_vel=false`、
+  `calls_base_manual=false`、`uses_base_uart=false`、`delivery_success=false`。
+- 即使 `/amcl_pose` 或 TF 被观测，也只能说明 no-motion localization proof 前进；
+  仍不等于 path generation、path execution、fixed-route execution、HIL 或送达成功。
+
 ## 3. Dry-Run Verification
 
 Run fixed-route logic without Nav2 movement:

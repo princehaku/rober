@@ -1,0 +1,3 @@
+Wed Jun 10 05:50:31 AM CST 2026
+ 129261  129080 S    bash -lc source /opt/ros/humble/setup.bash; for n in /map_server /amcl /planner_server /controller_server; do echo "## $n"; ros2 lifecycle get "$n" || true; done
+ 129298  129080 Sl   /usr/bin/python3 /opt/ros/humble/bin/ros2 lifecycle get /planner_server

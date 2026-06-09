@@ -1,0 +1,8 @@
+### lifecycle_get_before_manual
+### command: bash -lc source /opt/ros/humble/setup.bash; for n in /map_server /amcl /planner_server /controller_server; do echo "## $n"; ros2 lifecycle get "$n" || true; done
+### started_at: 2026-06-10T05:45:42+08:00
+## /map_server
+active [3]
+## /amcl
+active [3]
+## /planner_server

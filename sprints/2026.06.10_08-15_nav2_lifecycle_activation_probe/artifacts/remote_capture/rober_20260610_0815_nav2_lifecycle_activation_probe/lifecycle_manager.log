@@ -1,0 +1,17 @@
+[INFO] [1781041536.237334190] [lifecycle_manager_navigation]: Creating
+[INFO] [1781041536.302073442] [lifecycle_manager_navigation]: [34m[1mCreating and initializing lifecycle service clients[0m[0m
+[INFO] [1781041538.766706759] [lifecycle_manager_navigation]: [34m[1mStarting managed nodes bringup...[0m[0m
+[INFO] [1781041538.766989466] [lifecycle_manager_navigation]: [34m[1mConfiguring map_server[0m[0m
+[INFO] [1781041539.175425082] [lifecycle_manager_navigation]: [34m[1mConfiguring amcl[0m[0m
+[INFO] [1781041539.327003099] [lifecycle_manager_navigation]: [34m[1mConfiguring planner_server[0m[0m
+[INFO] [1781041539.857805034] [lifecycle_manager_navigation]: [34m[1mConfiguring controller_server[0m[0m
+[INFO] [1781041540.167288132] [lifecycle_manager_navigation]: [34m[1mActivating map_server[0m[0m
+[INFO] [1781041540.305721732] [lifecycle_manager_navigation]: Server map_server connected with bond.
+[INFO] [1781041540.305913273] [lifecycle_manager_navigation]: [34m[1mActivating amcl[0m[0m
+[INFO] [1781041540.427756760] [lifecycle_manager_navigation]: Server amcl connected with bond.
+[INFO] [1781041540.427956718] [lifecycle_manager_navigation]: [34m[1mActivating planner_server[0m[0m
+[INFO] [1781041831.269812788] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [1781041831.270407870] [lifecycle_manager_navigation]: Running Nav2 LifecycleManager rcl preshutdown (lifecycle_manager_navigation)
+[ERROR] [1781041833.316534436] [lifecycle_manager_navigation]: Failed to change state for node: planner_server. Exception: planner_server/get_state service client: async_send_request failed.
+[ERROR] [1781041833.316865144] [lifecycle_manager_navigation]: Failed to bring up all requested nodes. Aborting bringup.
+[INFO] [1781041833.405119279] [lifecycle_manager_navigation]: Destroying lifecycle_manager_navigation

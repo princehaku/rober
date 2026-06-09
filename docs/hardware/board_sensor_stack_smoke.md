@@ -637,6 +637,106 @@ read-only lifecycle 状态均为 `unconfigured [1]`。这说明当前节点可�
 lifecycle transition service。final cleanup 后本轮 `lidar_driver`、Nav2 server、
 static TF 进程无残留，`/dev/ttyS5` 与 `/dev/ttyACM0` 的 `lsof/fuser` 均无输出。
 
+## 2026-06-10 08:15 Nav2 lifecycle activation probe
+
+`sprints/2026.06.10_08-15_nav2_lifecycle_activation_probe/` 继续真实上位机
+`root@192.168.1.11:37878` 的 no-motion Nav2 readiness 采集。本轮仍不使用
+`autonomous.launch.py`，不启动 `esp32_bridge`、`task_orchestrator` 或任何
+goal/path execution。
+
+窄包安装已执行，dry-run 与实际安装均为：
+
+- 新增 `ros-humble-nav2-lifecycle-manager`、
+  `ros-humble-nav2-navfn-planner`、
+  `ros-humble-nav2-regulated-pure-pursuit-controller`。
+- 额外新增 ROS 依赖 `ros-humble-diagnostic-updater`。
+- `0 upgraded, 4 newly installed, 0 to remove`；未升级或卸载系统包。
+- 安装后 `nav2_lifecycle_manager`、`nav2_navfn_planner`、
+  `nav2_regulated_pure_pursuit_controller`、`nav2_amcl`、`nav2_planner`、
+  `nav2_controller`、`nav2_map_server` 均可由 `ros2 pkg prefix` 定位到
+  `/opt/ros/humble`。
+
+手动 no-motion runtime 使用 `/dev/ttyACM0 @ 150000` LiDAR、`base_link -> laser_frame`
+与 `odom -> base_link` static TF、direct `map_server/amcl/planner_server/controller_server`
+以及 `nav2_lifecycle_manager`。结果：
+
+- `map_server_active=true`：手动窗口内 `map_server` 读取
+  `/root/rober/onboard/runtime/maps/trashbot_map.yaml` 与 `.pgm` 后进入
+  `active [3]`。
+- `amcl_active=true`：手动窗口内 `amcl` 进入 `active [3]`，但因本轮禁止
+  `/initialpose`，持续提示需要 initial pose，未发布 `/amcl_pose` 或 localization
+  transform。
+- `planner_active=false`：`global_costmap` 卡在 `activating [13]`，日志反复提示
+  `Timed out waiting for transform from base_link to map`。
+- `controller_active=false`：controller 插件加载成功，但 lifecycle 停在
+  `inactive [2]`，未进入 active。
+- `scan_once_observed=true`：手动窗口内 `/scan` once 成功。
+- `map_once_observed=false`、`amcl_pose_observed=false`：8 秒 echo 均超时。
+
+`/cmd_vel` 安全证据：
+
+- 手动窗口中 `/cmd_vel` topic 出现，publisher 为 `controller_server`。
+- `timeout 8 ros2 topic echo /cmd_vel` 未收到消息，`publishes_cmd_vel=false`
+  仍成立。
+- 本轮未调用 `ros2 action send_goal`、compute path service、`/initialpose`、
+  `/api/base/*`、`/api/map/start`、`/api/nav2/start` 或 `/api/nav2/stop`。
+- 未打开 WAVE ROVER/base UART `/dev/ttyS5`；只读 `lsof/fuser` 检查。
+
+正式 `/api/nav2/proof/refresh -d '{"timeout_s":20}'` 在清场后调用，返回
+`status=blocked_with_root_cause`、`failure_reason=configured_command_failed`。
+formal collector 是 read-only existing ROS graph collector；它不会启动本轮手动
+stack，因此 canonical artifact 仍记录 `map_server_active=false`、
+`amcl_active=false`、`planner_active=false`、`controller_active=false`、
+`scan_once_observed=false`、`map_once_observed=false`、`amcl_pose_observed=false`。
+`GET /api/nav2/proof/latest` 与 `GET /api/nav2/status` 均 HTTP 200，guard 字段保持
+`publishes_cmd_vel=false`、`calls_base_manual=false`、`uses_base_uart=false`、
+`safe_to_control=false`、`delivery_success=false`。
+
+清场结果：本轮手动 stack PGID 与 runner PGID 均已清理；final
+`lsof /dev/ttyS5 /dev/ttyACM0` 和 `fuser -v /dev/ttyS5 /dev/ttyACM0` 无输出。
+结论是：窄包安装有效推进到 lifecycle/plugin 可启动层，但 Nav2 ready 仍被
+AMCL initial pose 边界和 `map -> base_link` TF 缺失阻塞，不构成 path generation、
+fixed-route execution、safe_to_control 或 delivery_success。
+
+## 2026-06-10 08:45 Nav2 initialpose no-motion proof boundary
+
+`sprints/2026.06.10_08-45_nav2_initialpose_no_motion_proof/` 将 08:15 blocker
+拆成显式 opt-in 的 localization proof。`POST /api/nav2/proof/refresh` 默认 body
+不传 `initialpose_opt_in` 时仍是 read-only collector，不发布 `/initialpose`。
+
+允许的 opt-in body 形状：
+
+```json
+{
+  "timeout_s": 20,
+  "initialpose_opt_in": true,
+  "initialpose_x": 0.0,
+  "initialpose_y": 0.0,
+  "initialpose_yaw": 0.0,
+  "initialpose_frame_id": "map"
+}
+```
+
+启用 opt-in 后，helper 只在 no-motion 窗口内向 `/initialpose` 发布一次
+`geometry_msgs/msg/PoseWithCovarianceStamped`，用于 AMCL 初始定位证据。之后只读采集
+`/amcl_pose`、`map -> odom`、`map -> base_link`、lifecycle 和 topic/node 信息。
+
+安全边界保持不变：
+
+- 不发布 `/cmd_vel`。
+- 不调用 `/api/base/*`，也不调用 `/api/nav2/start` 或 `/api/map/start`。
+- 不发送 Nav2 goal，不调用 compute path action/service。
+- 不打开 WAVE ROVER/base UART `/dev/ttyS5`；底盘 UART/JSON 事实仍以
+  `docs/vendor/VENDOR_INDEX.md` 为准，本 proof 不消费该链路。
+- Artifact 必须记录 `initialpose_publish_attempted`、`initialpose_published`、
+  pose 数值、`/amcl_pose`、TF listener 结果，并保持 `safe_to_control=false`、
+  `publishes_cmd_vel=false`、`calls_base_manual=false`、`uses_base_uart=false`、
+  `delivery_success=false`。
+
+因此本入口最多证明 AMCL no-motion localization material，不证明 Nav2 path
+generation、controller output、真实底盘运动、fixed-route execution、HIL 或 delivery
+success。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`

@@ -1,0 +1,36 @@
+ros-humble-nav2-lifecycle-manager:
+  Installed: (none)
+  Candidate: 1.1.20-1jammy.20260426.013516
+  Version table:
+     1.1.20-1jammy.20260426.013516 500
+        500 http://packages.ros.org/ros2/ubuntu jammy/main arm64 Packages
+ros-humble-nav2-navfn-planner:
+  Installed: (none)
+  Candidate: 1.1.20-1jammy.20260426.075604
+  Version table:
+     1.1.20-1jammy.20260426.075604 500
+        500 http://packages.ros.org/ros2/ubuntu jammy/main arm64 Packages
+ros-humble-nav2-regulated-pure-pursuit-controller:
+  Installed: (none)
+  Candidate: 1.1.20-1jammy.20260426.044121
+  Version table:
+     1.1.20-1jammy.20260426.044121 500
+        500 http://packages.ros.org/ros2/ubuntu jammy/main arm64 Packages
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  ros-humble-diagnostic-updater
+The following NEW packages will be installed:
+  ros-humble-diagnostic-updater ros-humble-nav2-lifecycle-manager
+  ros-humble-nav2-navfn-planner
+  ros-humble-nav2-regulated-pure-pursuit-controller
+0 upgraded, 4 newly installed, 0 to remove and 322 not upgraded.
+Inst ros-humble-diagnostic-updater (4.0.6-1jammy.20260423.163707 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-lifecycle-manager (1.1.20-1jammy.20260426.013516 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-navfn-planner (1.1.20-1jammy.20260426.075604 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-regulated-pure-pursuit-controller (1.1.20-1jammy.20260426.044121 ROS jammy:jammy [arm64])
+Conf ros-humble-diagnostic-updater (4.0.6-1jammy.20260423.163707 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-lifecycle-manager (1.1.20-1jammy.20260426.013516 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-navfn-planner (1.1.20-1jammy.20260426.075604 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-regulated-pure-pursuit-controller (1.1.20-1jammy.20260426.044121 ROS jammy:jammy [arm64])

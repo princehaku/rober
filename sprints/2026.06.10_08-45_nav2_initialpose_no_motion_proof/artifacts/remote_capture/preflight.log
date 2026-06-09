@@ -1,0 +1,9 @@
+Wed Jun 10 07:08:07 AM CST 2026
+op-z3-b6.home
+### lsof
+### fuser
+### ros graph
+/opt/ros/humble/setup.bash:6: BASH_SOURCE[0]: parameter not set
+/opt/ros/humble/setup.bash:8: AMENT_TRACE_SETUP_FILES: parameter not set
+zsh:1: command not found: ros2
+zsh:1: command not found: ros2

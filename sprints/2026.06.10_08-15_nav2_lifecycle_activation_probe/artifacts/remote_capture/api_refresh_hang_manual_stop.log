@@ -1,0 +1,4 @@
+Wed Jun 10 05:44:29 AM CST 2026
+ 127588  127293  127293 S          01:27 curl -sS -X POST http://127.0.0.1:8787/api/nav2/proof/refresh -H Content-Type: application/json -d {"timeout_s":20}
+ 127590  115648  115648 S          01:27 /usr/bin/python3 /root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py --output /root/rober/onboard/runtime/nav2_lifecycle_latest.json --map-proof /root/rober/onboard/runtime/map_lifecycle_latest.json --map-dir /root/rober/onboard/runtime/maps --timeout-s 20.0
+ 128437  127590  115648 S          00:01 bash -lc set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 action list

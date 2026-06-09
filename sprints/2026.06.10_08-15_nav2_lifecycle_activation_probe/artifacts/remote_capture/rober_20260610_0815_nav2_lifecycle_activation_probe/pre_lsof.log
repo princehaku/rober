@@ -1,0 +1,5 @@
+### pre_lsof
+### command: lsof /dev/ttyS5 /dev/ttyACM0
+### started_at: 2026-06-10T05:45:26+08:00
+### exit_code: 1
+### finished_at: 2026-06-10T05:45:26+08:00

@@ -7,7 +7,6 @@ import argparse
 import json
 import math
 import os
-import signal
 import shlex
 import subprocess
 import time
@@ -78,40 +77,24 @@ def source_prefix(args: argparse.Namespace) -> str:
 def run_ros(args: argparse.Namespace, command: str, timeout_s: float) -> dict[str, Any]:
     """执行只读 ROS2 CLI；命令文本固定来自本 helper，不拼接用户 shell。"""
     started_ms = now_ms()
-    process: subprocess.Popen[str] | None = None
     try:
-        process = subprocess.Popen(  # noqa: S603 - argv 固定为 bash -lc，命令来源只来自本 helper。
+        completed = subprocess.run(
             ["bash", "-lc", f"{source_prefix(args)}; {command}"],
+            check=False,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            start_new_session=True,
+            capture_output=True,
+            timeout=timeout_s,
         )
-        stdout, stderr = process.communicate(timeout=timeout_s)
         return {
             "command": command,
             "executed": True,
-            "ok": process.returncode == 0,
-            "returncode": process.returncode,
+            "ok": completed.returncode == 0,
+            "returncode": completed.returncode,
             "elapsed_ms": now_ms() - started_ms,
-            "stdout": stdout[-8000:],
-            "stderr": stderr[-4000:],
+            "stdout": completed.stdout[-8000:],
+            "stderr": completed.stderr[-4000:],
         }
     except subprocess.TimeoutExpired as exc:
-        # ROS2 CLI 超时时必须杀整个进程组，否则 echo/pub 子进程会留在现场污染下一轮 proof。
-        if process is not None:
-            try:
-                os.killpg(process.pid, signal.SIGTERM)
-                stdout, stderr = process.communicate(timeout=2.0)
-            except (ProcessLookupError, subprocess.TimeoutExpired):
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                stdout, stderr = process.communicate()
-        else:
-            stdout = exc.stdout if isinstance(exc.stdout, str) else ""
-            stderr = exc.stderr if isinstance(exc.stderr, str) else ""
         return {
             "command": command,
             "executed": True,
@@ -119,8 +102,8 @@ def run_ros(args: argparse.Namespace, command: str, timeout_s: float) -> dict[st
             "returncode": None,
             "elapsed_ms": now_ms() - started_ms,
             "error": compact_error(exc),
-            "stdout": (stdout or "")[-8000:],
-            "stderr": (stderr or "")[-4000:],
+            "stdout": (exc.stdout or "")[-8000:] if isinstance(exc.stdout, str) else "",
+            "stderr": (exc.stderr or "")[-4000:] if isinstance(exc.stderr, str) else "",
         }
 
 
@@ -302,33 +285,6 @@ def topic_once_observed(result: dict[str, Any]) -> bool:
     return bool(result.get("ok") and str(result.get("stdout") or "").strip())
 
 
-def tf_echo_transform_observed(result: dict[str, Any]) -> bool:
-    """tf2_echo 会被 timeout 结束；只要已有完整 transform 且无 lookup 失败即可采信。"""
-    text = f"{result.get('stdout') or ''}\n{result.get('stderr') or ''}".strip()
-    if not text:
-        return False
-    lowered = text.lower()
-    failure_needles = [
-        "could not transform",
-        "lookup would require extrapolation",
-        "lookup exception",
-        "connectivity exception",
-        "extrapolation exception",
-        "invalid frame id",
-        "frame does not exist",
-        "does not exist",
-        "unable to transform",
-        "waiting for transform",
-        "failure at",
-    ]
-    if text_contains_any(lowered, failure_needles):
-        return False
-    # tf2_echo 正常输出至少应同时包含平移和旋转；单独时间戳或日志不能算观测成功。
-    has_translation = "translation:" in lowered or "transform.translation" in lowered
-    has_rotation = "rotation:" in lowered or "transform.rotation" in lowered
-    return bool(has_translation and has_rotation)
-
-
 def text_contains_any(text: str, needles: list[str]) -> bool:
     """action/service 名称在不同 Nav2 版本略有差异，所以只做保守包含判断。"""
     lowered = text.lower()
@@ -465,8 +421,8 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             else "default_read_only_not_published_by_collector_no_motion_boundary"
         ),
         "localization_tf_observed": {
-            "map_to_odom": tf_echo_transform_observed(map_to_odom_tf),
-            "map_to_base_link": tf_echo_transform_observed(map_to_base_link_tf),
+            "map_to_odom": topic_once_observed(map_to_odom_tf),
+            "map_to_base_link": topic_once_observed(map_to_base_link_tf),
         },
         "path_generation_ready": path_generation_ready,
         "path_generated": False,

@@ -11,10 +11,15 @@ import os
 import subprocess
 import sys
 import unittest
+import importlib.util
 from pathlib import Path
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "o10_amcl_nav2_runtime_proof.py"
+SPEC = importlib.util.spec_from_file_location("o10_amcl_nav2_runtime_proof", SCRIPT)
+assert SPEC is not None and SPEC.loader is not None
+HELPER = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(HELPER)
 
 
 class Nav2RuntimeProofHelperTests(unittest.TestCase):
@@ -42,7 +47,9 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertIn("--map-proof", result.stdout)
         self.assertIn("--map-dir", result.stdout)
         self.assertIn("--timeout-s", result.stdout)
-        self.assertNotIn("ros2 topic", result.stdout)
+        self.assertIn("--initialpose-opt-in", result.stdout)
+        self.assertIn("--initialpose-x", result.stdout)
+        self.assertIn("--initialpose-yaw", result.stdout)
         self.assertNotIn("ros2 launch", result.stdout)
 
     def test_static_no_motion_guard_terms(self) -> None:
@@ -60,7 +67,7 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
 
         # 禁止出现会发布速度、触碰底盘 API 或打开串口的直接入口。
         for forbidden in (
-            "ros2 topic pub",
+            "/cmd_vel geometry_msgs/msg/Twist",
             "geometry_msgs/msg/Twist",
             "/api/base/",
             "/api/nav2/start",
@@ -68,8 +75,8 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, text)
 
-    def test_static_read_only_nav2_collector_shape(self) -> None:
-        """collector 只能只读现有 graph，不能发送 goal、发布 initialpose 或启动 Nav2。"""
+    def test_static_opt_in_initialpose_collector_shape(self) -> None:
+        """collector 默认只读；只有 opt-in 分支允许单次 /initialpose 定位 proof。"""
         text = SCRIPT.read_text(encoding="utf-8")
 
         # O10 helper 的核心证据来自只读 topic/node/lifecycle/action/service 查询。
@@ -78,6 +85,13 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "ros2 topic echo --once /scan",
             "ros2 topic echo --once /map",
             "ros2 topic echo --once /amcl_pose",
+            "default_read_only_no_initialpose_publish",
+            "ros2 topic pub --once /initialpose",
+            "geometry_msgs/msg/PoseWithCovarianceStamped",
+            "start_new_session=True",
+            "os.killpg",
+            "tf_echo_transform_observed(map_to_odom_tf)",
+            "tf_echo_transform_observed(map_to_base_link_tf)",
             "read_only_existing_ros_graph_no_motion",
         ):
             self.assertIn(required, text)
@@ -88,9 +102,60 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "ros2 service call",
             "ComputePathToPose",
             "NavigateToPose",
-            "initialpose_published\": True",
+            "compute_path_to_pose ",
+            "navigate_to_pose ",
         ):
             self.assertNotIn(forbidden, text)
+
+    def test_upper_api_passes_initialpose_opt_in_only_from_body(self) -> None:
+        """正式 HTTP refresh 只能通过 body 的显式 boolean opt-in 传递定位种子。"""
+        api_text = (SCRIPT.parent / "upper_robot_api.py").read_text(encoding="utf-8")
+
+        for required in (
+            "initialpose_opt_in=bool(body.get(\"initialpose_opt_in\") is True)",
+            "--initialpose-opt-in",
+            "--initialpose-frame-id",
+            "initialpose_x=clamp_float(body.get(\"initialpose_x\")",
+            "initialpose_yaw=clamp_float(body.get(\"initialpose_yaw\")",
+        ):
+            self.assertIn(required, api_text)
+
+        # API wrapper 也必须继续禁止底盘、速度和 HIL 成功标志。
+        for required in (
+            "\"publishes_cmd_vel\": False",
+            "\"calls_base_manual\": False",
+            "\"sends_base_motion_commands\": False",
+            "\"hil_pass\": False",
+        ):
+            self.assertIn(required, api_text)
+
+    def test_tf_echo_timeout_stdout_transform_counts_observed(self) -> None:
+        """tf2_echo 正常持续输出时可能被 timeout 杀掉，不能因 rc=124 误判失败。"""
+        result = {
+            "ok": False,
+            "returncode": 124,
+            "stdout": (
+                "At time 1781050000.000000000\n"
+                "- Translation: [1.000, 2.000, 0.000]\n"
+                "- Rotation: in Quaternion [0.000, 0.000, 0.000, 1.000]\n"
+            ),
+            "stderr": "",
+        }
+
+        self.assertTrue(HELPER.tf_echo_transform_observed(result))
+
+    def test_tf_echo_failure_or_empty_output_not_observed(self) -> None:
+        """TF 判定必须保守，lookup failure 或空输出不能被当成 transform。"""
+        failure = {
+            "ok": False,
+            "returncode": 124,
+            "stdout": "",
+            "stderr": "Failure at 1.0: Could not transform map to base_link",
+        }
+        empty = {"ok": False, "returncode": 124, "stdout": "", "stderr": ""}
+
+        self.assertFalse(HELPER.tf_echo_transform_observed(failure))
+        self.assertFalse(HELPER.tf_echo_transform_observed(empty))
 
 
 if __name__ == "__main__":

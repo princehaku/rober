@@ -1,0 +1,7 @@
+nav2_lifecycle_manager /opt/ros/humble
+nav2_navfn_planner /opt/ros/humble
+nav2_regulated_pure_pursuit_controller /opt/ros/humble
+nav2_amcl /opt/ros/humble
+nav2_planner /opt/ros/humble
+nav2_controller /opt/ros/humble
+nav2_map_server /opt/ros/humble

@@ -1,0 +1,20 @@
+Wed Jun 10 07:14:30 AM CST 2026
+op-z3-b6.home
+### lsof
+### fuser
+### ros graph
+/amcl_pose
+/map
+/parameter_events
+/rosout
+/trashbot/waypoints
+WARNING: Be aware that there are nodes in the graph that share an exact name, which can have unintended side effects.
+/map_recorder
+/map_recorder
+/map_recorder
+/task_orchestrator
+/task_orchestrator
+/task_orchestrator
+/waypoint_manager
+/waypoint_manager
+/waypoint_manager

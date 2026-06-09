@@ -1,0 +1,105 @@
+Wed Jun 10 05:49:07 AM CST 2026
+==== /map_server
+active [3]
+==== /amcl
+active [3]
+==== /planner_server
+==== /controller_server
+inactive [2]
+==== /global_costmap/global_costmap
+activating [13]
+==== /local_costmap/local_costmap
+inactive [2]
+==== topics
+/amcl/transition_event
+/amcl_pose
+/bond
+/cmd_vel
+/controller_server/transition_event
+/diagnostics
+/global_costmap/costmap
+/global_costmap/costmap_raw
+/global_costmap/costmap_updates
+/global_costmap/footprint
+/global_costmap/global_costmap/transition_event
+/global_costmap/published_footprint
+/initialpose
+/local_costmap/costmap
+/local_costmap/costmap_raw
+/local_costmap/costmap_updates
+/local_costmap/footprint
+/local_costmap/local_costmap/transition_event
+/local_costmap/published_footprint
+/lookahead_collision_arc
+/lookahead_point
+/map
+/map_server/transition_event
+/odom
+/parameter_events
+/particle_cloud
+/plan
+/planner_server/transition_event
+/received_global_plan
+/rosout
+/scan
+/speed_limit
+/tf
+/tf_static
+/trashbot/waypoints
+==== nodes
+/amcl
+/controller_server
+/global_costmap/global_costmap
+/lidar_driver
+/lifecycle_manager_navigation
+/local_costmap/local_costmap
+/map_recorder
+/map_recorder
+/map_recorder
+/map_server
+/planner_server
+/static_transform_publisher_ZDtoDtjpRWQ9BrCN
+/static_transform_publisher_ygldCIfilDBnGOHE
+/task_orchestrator
+/task_orchestrator
+/task_orchestrator
+/transform_listener_impl_aaaacdc5f1c0
+/transform_listener_impl_aaaae23cfb60
+/transform_listener_impl_aaab0a4cf580
+/waypoint_manager
+/waypoint_manager
+/waypoint_manager
+==== cmd_vel info
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 1
+
+Node name: controller_server
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: PUBLISHER
+GID: 01.0f.1b.26.92.f8.a4.ae.00.00.00.00.00.00.4d.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+==== /scan once
+scan_rc=0
+==== /map once
+map_rc=124
+==== /amcl_pose once
+amcl_rc=124
+==== /cmd_vel echo
+cmd_echo_rc=124
+==== lsof
+COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+lidar_dri 129156 root   19u   CHR  166,0      0t0  438 /dev/ttyACM0
+==== fuser
+ 129156

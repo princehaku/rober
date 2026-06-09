@@ -455,8 +455,13 @@ def run_nav2_runtime_proof_helper(
     map_proof_path: str,
     map_artifact_dir: str,
     timeout_s: float,
+    initialpose_opt_in: bool,
+    initialpose_x: float,
+    initialpose_y: float,
+    initialpose_yaw: float,
+    initialpose_frame_id: str,
 ) -> dict[str, Any]:
-    """运行 no-motion AMCL/Nav2 collector；默认只读现有 ROS graph，不发布 goal。"""
+    """运行 no-motion AMCL/Nav2 collector；/initialpose 必须显式 opt-in 才发布。"""
     script_path = Path(__file__).resolve().with_name("o10_amcl_nav2_runtime_proof.py")
     command = [
         sys.executable,
@@ -470,6 +475,21 @@ def run_nav2_runtime_proof_helper(
         "--timeout-s",
         str(timeout_s),
     ]
+    if initialpose_opt_in:
+        # 只有 HTTP body 明确 opt-in 时才把定位种子传给 helper，避免默认 refresh 变成写 topic。
+        command.extend(
+            [
+                "--initialpose-opt-in",
+                "--initialpose-x",
+                str(initialpose_x),
+                "--initialpose-y",
+                str(initialpose_y),
+                "--initialpose-yaw",
+                str(initialpose_yaw),
+                "--initialpose-frame-id",
+                initialpose_frame_id,
+            ]
+        )
     started_ms = now_ms()
     try:
         completed = subprocess.run(  # noqa: S603 - argv 固定为仓库 helper，不接受外部 shell。
@@ -492,6 +512,7 @@ def run_nav2_runtime_proof_helper(
             "sends_base_motion_commands": False,
             "publishes_cmd_vel": False,
             "calls_base_manual": False,
+            "initialpose_opt_in": initialpose_opt_in,
             "robot_control_executed": False,
             "hil_pass": False,
         }
@@ -3177,6 +3198,11 @@ class UpperRobotApi:
             map_proof_path=self.map_lifecycle_proof_artifact_path,
             map_artifact_dir=self.map_artifact_dir,
             timeout_s=timeout_s,
+            initialpose_opt_in=bool(body.get("initialpose_opt_in") is True),
+            initialpose_x=clamp_float(body.get("initialpose_x"), 0.0, -1000.0, 1000.0),
+            initialpose_y=clamp_float(body.get("initialpose_y"), 0.0, -1000.0, 1000.0),
+            initialpose_yaw=clamp_float(body.get("initialpose_yaw"), 0.0, -6.283185307179586, 6.283185307179586),
+            initialpose_frame_id=str(body.get("initialpose_frame_id") or "map")[:80],
         )
         http_status, latest = self.nav2_proof_latest()
         proof = latest.get("latest_result", {}).get("proof") if isinstance(latest.get("latest_result"), dict) else {}
@@ -3196,6 +3222,7 @@ class UpperRobotApi:
                 "status": "refreshed" if evidence_type == "robot_runtime_material" else "blocked_with_root_cause",
                 "proof_state": proof_status,
                 "evidence_type": evidence_type,
+                "initialpose_opt_in": bool(body.get("initialpose_opt_in") is True),
                 "latest_readback_http_status": http_status,
                 "latest_result": latest.get("latest_result"),
                 "proof_latest": summarize_nav2_lifecycle_latest_artifact(self.nav2_lifecycle_artifact_path),
