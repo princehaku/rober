@@ -1,0 +1,247 @@
+{
+  "artifact_health": {
+    "blocked_artifacts": [],
+    "blocked_count": 0,
+    "empty_count": 0,
+    "missing_artifacts": [
+      "rosbag"
+    ],
+    "missing_count": 1,
+    "optional_missing_artifacts": [],
+    "optional_present_artifacts": [],
+    "present_artifacts": [
+      "map_yaml",
+      "map_pgm",
+      "route_csv",
+      "source_manifest",
+      "keyframes",
+      "replay_jsonl"
+    ],
+    "present_count": 6,
+    "required_count": 7,
+    "status": "missing",
+    "summary": "missing_required_artifacts"
+  },
+  "artifact_root": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts",
+  "artifact_status": "missing",
+  "artifacts": {
+    "keyframes": {
+      "file_count": 32,
+      "files": [
+        {
+          "path": "001.jpg",
+          "sha256": "92761c933a0e1067b7bebbe3363db4328c2565eeadbedbeef442e832b75701f0",
+          "size_bytes": 12850
+        },
+        {
+          "path": "001.json",
+          "sha256": "5d4c1ba170e567bcd528ac9487ddf0fe59c25d6980032dda886320742ffa5b87",
+          "size_bytes": 568
+        },
+        {
+          "path": "002.jpg",
+          "sha256": "3356c9cbddf7df52c44fb7725537feb10068ac5e1a5f297b2225c3e66782b2fc",
+          "size_bytes": 12707
+        },
+        {
+          "path": "002.json",
+          "sha256": "7ec63e293358acf176fc866a66edd62f1da050ba52a29f59c78be9b44b7469bc",
+          "size_bytes": 567
+        },
+        {
+          "path": "003.jpg",
+          "sha256": "3356c9cbddf7df52c44fb7725537feb10068ac5e1a5f297b2225c3e66782b2fc",
+          "size_bytes": 12707
+        },
+        {
+          "path": "003.json",
+          "sha256": "11bf2f0104a7a236a236d7825a57dc6940dade1699bfd85b5c4b661c4fd02b28",
+          "size_bytes": 575
+        },
+        {
+          "path": "004.jpg",
+          "sha256": "3356c9cbddf7df52c44fb7725537feb10068ac5e1a5f297b2225c3e66782b2fc",
+          "size_bytes": 12707
+        },
+        {
+          "path": "004.json",
+          "sha256": "a0d4c8fdf3c625d30be79968584a3e0206410bd0e70d806095668930d8873843",
+          "size_bytes": 576
+        },
+        {
+          "path": "005.jpg",
+          "sha256": "2f191b8985cc3a870513cc336832abda0a08f3a7b57114e168f44e7d63d527b1",
+          "size_bytes": 12598
+        },
+        {
+          "path": "005.json",
+          "sha256": "d54d0e33c97c7c52dd4dce5692ab32387f982a925532ff8fcb4e66961a1a6231",
+          "size_bytes": 568
+        },
+        {
+          "path": "006.jpg",
+          "sha256": "2f191b8985cc3a870513cc336832abda0a08f3a7b57114e168f44e7d63d527b1",
+          "size_bytes": 12598
+        },
+        {
+          "path": "006.json",
+          "sha256": "1cce17b91449f4bc987adf62c9d6445ca63a6c548660c7491493fb4cf1509905",
+          "size_bytes": 568
+        },
+        {
+          "path": "007.jpg",
+          "sha256": "2f191b8985cc3a870513cc336832abda0a08f3a7b57114e168f44e7d63d527b1",
+          "size_bytes": 12598
+        },
+        {
+          "path": "007.json",
+          "sha256": "40bd8c27d111eff80ead13f745d5f099a0f0e57ff46a2a987446fd6061674713",
+          "size_bytes": 569
+        },
+        {
+          "path": "008.jpg",
+          "sha256": "c550ed225ff49498a65f40ac6123ae39a17fd177bc2453fa5b1bfbf078d18f3a",
+          "size_bytes": 12603
+        },
+        {
+          "path": "008.json",
+          "sha256": "81bc49c5e5655ca9f335cb2be54d83b6ef32770acc415f44f67e08aa71348525",
+          "size_bytes": 575
+        },
+        {
+          "path": "009.jpg",
+          "sha256": "c550ed225ff49498a65f40ac6123ae39a17fd177bc2453fa5b1bfbf078d18f3a",
+          "size_bytes": 12603
+        },
+        {
+          "path": "009.json",
+          "sha256": "350bea08947045642690d836c6536dfdd009ce1180e72b9fee744fe8885afe31",
+          "size_bytes": 574
+        },
+        {
+          "path": "010.jpg",
+          "sha256": "c550ed225ff49498a65f40ac6123ae39a17fd177bc2453fa5b1bfbf078d18f3a",
+          "size_bytes": 12603
+        },
+        {
+          "path": "010.json",
+          "sha256": "65375a6b9ad822ceeec9382c5776cc36449c03b94aec685648cf81dd8a15a7f5",
+          "size_bytes": 576
+        }
+      ],
+      "mtime_utc": "2026-06-09T17:19:47+00:00",
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/keyframes",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "ac45437d67943953d08534f0adeaba5ace010c97c17be35e78b758fc9e02c18b",
+      "size_bytes": 211866
+    },
+    "map_pgm": {
+      "mtime_utc": "2026-06-09T17:19:46+00:00",
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/map/trashbot_dynamic_odom_tf_map.pgm",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "255dc6d72577bfdd3f1729020dcbbf99fc104439a11db17b748445f6b73ab5b8",
+      "size_bytes": 6290
+    },
+    "map_yaml": {
+      "mtime_utc": "2026-06-09T17:19:46+00:00",
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/map/trashbot_dynamic_odom_tf_map.yaml",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "62946ea1e89c0165c55633a37d34fd4d74fb2531038d348b855c6cbdeefc61ff",
+      "size_bytes": 149
+    },
+    "replay_jsonl": {
+      "mtime_utc": "2026-06-09T18:23:36+00:00",
+      "path": "sprints/2026.06.10_02-05_field-run-bundle-replay-intake/artifacts/derived_replay.jsonl",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "ed218581f36a130fe6fc83d2e7795a52844d38421ba2f11b94319b619e17777f",
+      "size_bytes": 5705
+    },
+    "rosbag": {
+      "mtime_utc": null,
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/rosbag",
+      "present": false,
+      "reason": "missing",
+      "required": true,
+      "sha256": null,
+      "size_bytes": 0
+    },
+    "route_csv": {
+      "mtime_utc": "2026-06-09T17:19:46+00:00",
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/route.csv",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "334f3c7ec002f1beae817c5b7ee906e095d63b4c23996f18163e7b9afb07a39d",
+      "size_bytes": 1370
+    },
+    "source_manifest": {
+      "mtime_utc": "2026-06-09T17:19:46+00:00",
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/manifest.json",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "5b01c491d4da93fc3ad5e587d911059564ba4b777f6535eff89cdccc6a61d634",
+      "size_bytes": 8655
+    }
+  },
+  "blocked_reason": "missing_required_artifact",
+  "delivery_success": false,
+  "derived_replay": {
+    "blocked_reason": null,
+    "frame_count": 17,
+    "generated": true,
+    "output": "sprints/2026.06.10_02-05_field-run-bundle-replay-intake/artifacts/derived_replay.jsonl",
+    "source_route_csv": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/route.csv"
+  },
+  "gate_pass": false,
+  "generated_at": "2026-06-09T18:23:36+00:00",
+  "input_manifest": {
+    "blocked_reason": null,
+    "dangerous_true_fields": [],
+    "gate_pass": null,
+    "path": null,
+    "present": false,
+    "safe_for_reuse": true,
+    "schema": null,
+    "status": "not_found"
+  },
+  "manifest_gate": {
+    "blocked_reason": "missing_required_artifact",
+    "gate_pass": false,
+    "schema": "trashbot.field_evidence_manifest.v1",
+    "source": "local_fixture",
+    "status": "blocked_not_proven"
+  },
+  "mode": "local",
+  "not_proven": true,
+  "preflight": {
+    "blocked_reason": "missing_preflight_json",
+    "dry_run": null,
+    "read_ok": false,
+    "status": "missing_preflight_json"
+  },
+  "preflight_json": null,
+  "preflight_status": "missing_preflight_json",
+  "primary_actions_enabled": false,
+  "run_id": "field_run_bundle_replay_intake_20260610",
+  "safe_to_control": false,
+  "schema": "trashbot.field_evidence_manifest.v1",
+  "source": "local_fixture",
+  "source_manifest": {
+    "blocked_reason": null,
+    "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/manifest.json",
+    "present": true,
+    "sample_count": 16,
+    "schema": "trashbot.vision_samples.v1",
+    "status": "source_manifest"
+  },
+  "status": "blocked_artifacts_missing"
+}

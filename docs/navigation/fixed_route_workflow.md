@@ -111,6 +111,19 @@ Expected outputs:
 - `manifest.json`
 - `image_conversion_status.json`（仅在图像转换退化时出现）
 
+采集完成后，如果 route 材料和 map 材料像 `2026.06.10_01-15` 一样分在相邻目录，应生成 `trashbot.field_evidence_manifest.v1`，供 O6/O7 archive、consumer detail 和 PC replay 使用：
+
+```bash
+python3 onboard/scripts/field_route_evidence_manifest.py \
+  --mode local \
+  --artifact-root sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route \
+  --map-yaml sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/map/trashbot_dynamic_odom_tf_map.yaml \
+  --map-pgm sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/map/trashbot_dynamic_odom_tf_map.pgm \
+  --output /tmp/trashbot_real_route_field_manifest.json
+```
+
+这一步只整理真实路线材料，不发布运动命令，不证明 Nav2 实跑或送达成功；输出必须保持 `safe_to_control=false`、`primary_actions_enabled=false`、`delivery_success=false`、`not_proven=true`。`route/manifest.json` 若是 `trashbot.vision_samples.v1`，会作为 source manifest 进入 field evidence manifest，而不是被当作 schema mismatch。
+
 ## 2. Route Conversion
 
 Convert a CSV route to fixed-route YAML when needed:

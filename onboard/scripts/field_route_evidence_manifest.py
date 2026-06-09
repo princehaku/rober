@@ -7,9 +7,11 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import datetime as _dt
 import hashlib
 import json
+import math
 import shlex
 import subprocess
 import sys
@@ -21,23 +23,22 @@ SCHEMA = "trashbot.field_evidence_manifest.v1"
 READY_PREFLIGHT_STATUS = "ready_for_live_route_capture_not_proven"
 KEYFRAME_SUFFIXES = {".jpg", ".jpeg", ".png", ".json"}
 ARTIFACT_CANDIDATES = {
-    "map_yaml": ["map.yaml", "route_data/map.yaml"],
-    "route_csv": ["route.csv", "route_data/route.csv"],
-    "keyframes": ["keyframes", "route_data/keyframes"],
+    "map_yaml": ["map.yaml", "map/map.yaml", "map/*.yaml", "route_data/map.yaml"],
+    "map_pgm": ["map.pgm", "map/*.pgm", "route_data/map.pgm"],
+    "route_csv": ["route.csv", "route/route.csv", "route_data/route.csv"],
+    "source_manifest": ["manifest.json", "route/manifest.json", "route_data/manifest.json"],
+    "keyframes": ["keyframes", "route/keyframes", "route_data/keyframes"],
     "rosbag": ["rosbag", "route_bag", "route_data/rosbag", "route_data/route_bag"],
-    "replay_jsonl": ["replay.jsonl", "fixed_route_replay.jsonl", "route_data/fixed_route_replay.jsonl"],
+    "replay_jsonl": ["replay.jsonl", "fixed_route_replay.jsonl", "route/replay.jsonl", "route/fixed_route_replay.jsonl", "route_data/fixed_route_replay.jsonl"],
 }
 EXISTING_MANIFEST_CANDIDATES = [
     "field_evidence_manifest.json",
     "trashbot_field_evidence_manifest.json",
     "trashbot.field_evidence_manifest.v1.json",
-    "manifest.json",
     "route_data/field_evidence_manifest.json",
     "route_data/trashbot_field_evidence_manifest.json",
 ]
 UNSAFE_EXISTING_MANIFEST_FIELDS = ["delivery_success", "safe_to_control", "primary_actions_enabled"]
-
-
 def utc_now() -> str:
     # 统一 UTC 让本地 fixture、上位机和后续云端 archive 能按同一时间轴对齐。
     return _dt.datetime.now(tz=_dt.timezone.utc).replace(microsecond=0).isoformat()
@@ -90,6 +91,11 @@ def digest_directory(path: Path, allowed_suffixes: set[str] | None = None) -> tu
 def artifact_path(root: Path, name: str) -> Path | None:
     # 支持 route_data 子目录是为了兼容 preflight 模板中的默认采集输出结构。
     for candidate in ARTIFACT_CANDIDATES[name]:
+        if "*" in candidate:
+            matches = sorted(root.glob(candidate))
+            if matches:
+                return matches[0]
+            continue
         path = root / candidate
         if path.exists():
             return path
@@ -102,12 +108,12 @@ def artifact_path(root: Path, name: str) -> Path | None:
     return None
 
 
-def missing_artifact(root: Path, name: str, reason: str) -> dict[str, Any]:
+def missing_artifact(root: Path, name: str, reason: str, *, required: bool = True, expected_path: Path | None = None) -> dict[str, Any]:
     # 缺失项保留期望路径，现场排查时不用回查代码就能知道该补哪个文件。
     return {
-        "required": True,
+        "required": required,
         "present": False,
-        "path": str(root / ARTIFACT_CANDIDATES[name][0]),
+        "path": str(expected_path or root / ARTIFACT_CANDIDATES[name][0]),
         "size_bytes": 0,
         "mtime_utc": None,
         "sha256": None,
@@ -115,18 +121,19 @@ def missing_artifact(root: Path, name: str, reason: str) -> dict[str, Any]:
     }
 
 
-def scan_file_artifact(root: Path, name: str) -> dict[str, Any]:
+def scan_file_artifact(root: Path, name: str, *, explicit_path: Path | None = None, required: bool = True) -> dict[str, Any]:
     # map、route、replay 都必须是非空文件；空模板不能进入现场证据链。
-    path = artifact_path(root, name)
+    path = explicit_path if explicit_path is not None else artifact_path(root, name)
     if path is None:
-        return missing_artifact(root, name, "missing")
+        reason = "missing" if required else "missing_optional"
+        return missing_artifact(root, name, reason, required=required)
     if not path.is_file():
-        return missing_artifact(root, name, "not_file")
+        return missing_artifact(root, name, "not_file", required=required, expected_path=path)
     size = path.stat().st_size
     if size <= 0:
-        return missing_artifact(root, name, "empty")
+        return missing_artifact(root, name, "empty", required=required, expected_path=path)
     return {
-        "required": True,
+        "required": required,
         "present": True,
         "path": str(path),
         "size_bytes": size,
@@ -136,17 +143,40 @@ def scan_file_artifact(root: Path, name: str) -> dict[str, Any]:
     }
 
 
-def scan_directory_artifact(root: Path, name: str, allowed_suffixes: set[str] | None = None) -> dict[str, Any]:
+def scan_explicit_file_artifact(path: Path, fallback_root: Path, name: str) -> dict[str, Any]:
+    # derive replay 产物可以写到当前 sprint artifacts；这里显式接入，避免 discovery 误判为缺失。
+    required = True
+    if not path.exists():
+        reason = "missing" if required else "missing_optional"
+        return missing_artifact(fallback_root, name, reason, required=required, expected_path=path)
+    if not path.is_file():
+        return missing_artifact(fallback_root, name, "not_file", required=required, expected_path=path)
+    size = path.stat().st_size
+    if size <= 0:
+        return missing_artifact(fallback_root, name, "empty", required=required, expected_path=path)
+    return {
+        "required": required,
+        "present": True,
+        "path": str(path),
+        "size_bytes": size,
+        "mtime_utc": mtime_utc(path.stat().st_mtime),
+        "sha256": sha256_file(path),
+        "reason": None,
+    }
+
+
+def scan_directory_artifact(root: Path, name: str, allowed_suffixes: set[str] | None = None, *, required: bool = True) -> dict[str, Any]:
     # keyframes 只认可图片或 JSON，rosbag 则认可目录或单个非空 bag 文件。
     path = artifact_path(root, name)
     if path is None:
-        return missing_artifact(root, name, "missing")
+        reason = "missing" if required else "missing_optional"
+        return missing_artifact(root, name, reason, required=required)
     if path.is_file():
         size = path.stat().st_size
         if size <= 0:
-            return missing_artifact(root, name, "empty")
+            return missing_artifact(root, name, "empty", required=required, expected_path=path)
         return {
-            "required": True,
+            "required": required,
             "present": True,
             "path": str(path),
             "size_bytes": size,
@@ -156,15 +186,15 @@ def scan_directory_artifact(root: Path, name: str, allowed_suffixes: set[str] | 
             "file_count": 1,
         }
     if not path.is_dir():
-        return missing_artifact(root, name, "not_directory")
+        return missing_artifact(root, name, "not_directory", required=required, expected_path=path)
     digest, total_size, file_count, latest_mtime, files = digest_directory(path, allowed_suffixes)
     if not files:
         reason = "no_keyframe_file" if allowed_suffixes else "empty"
-        return missing_artifact(root, name, reason)
+        return missing_artifact(root, name, reason, required=required, expected_path=path)
     if total_size <= 0:
-        return missing_artifact(root, name, "empty")
+        return missing_artifact(root, name, "empty", required=required, expected_path=path)
     return {
-        "required": True,
+        "required": required,
         "present": True,
         "path": str(path),
         "size_bytes": total_size,
@@ -176,15 +206,111 @@ def scan_directory_artifact(root: Path, name: str, allowed_suffixes: set[str] | 
     }
 
 
-def scan_local_artifacts(root: Path) -> dict[str, Any]:
+def scan_local_artifacts(root: Path, *, map_yaml: Path | None = None, map_pgm: Path | None = None) -> dict[str, Any]:
     # artifact gate 与 ROS2 运行解耦，缺真实硬件时也能用 fixture 验证 fail-closed 语义。
     return {
-        "map_yaml": scan_file_artifact(root, "map_yaml"),
+        "map_yaml": scan_file_artifact(root, "map_yaml", explicit_path=map_yaml),
+        "map_pgm": scan_file_artifact(root, "map_pgm", explicit_path=map_pgm),
         "route_csv": scan_file_artifact(root, "route_csv"),
+        "source_manifest": scan_file_artifact(root, "source_manifest"),
         "keyframes": scan_directory_artifact(root, "keyframes", KEYFRAME_SUFFIXES),
         "rosbag": scan_directory_artifact(root, "rosbag"),
         "replay_jsonl": scan_file_artifact(root, "replay_jsonl"),
     }
+
+
+def safe_route_reference(path: Path) -> str:
+    # replay JSONL 会被 O7/PC consumer 长期消费，因此只允许稳定逻辑引用，不泄露本机绝对路径。
+    return "field_route://" + path.as_posix().lstrip("/")
+
+
+def route_relative_reference(route_csv_path: Path, target_name: str) -> str:
+    # 同一个 route bundle 内部的帧引用保持相对关系，便于后续 archive/解压后复用。
+    route_dir_name = route_csv_path.parent.name
+    if route_dir_name in {"route", "route_data"}:
+        return safe_route_reference(Path(route_dir_name) / "keyframes" / target_name)
+    return safe_route_reference(Path("keyframes") / target_name)
+
+
+def quaternion_to_yaw_rad(qx: float, qy: float, qz: float, qw: float) -> float:
+    # route.csv 当前记录完整 quaternion；这里显式转 yaw，避免 consumer 再各自重复推导。
+    siny_cosp = 2.0 * (qw * qz + qx * qy)
+    cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz)
+    return math.atan2(siny_cosp, cosy_cosp)
+
+
+def parse_timestamp_ms(row: dict[str, str]) -> int:
+    # 现场 CSV 由 sec/nanosec 组成；统一落成毫秒整数，保证 JSONL 在不同 Python 版本下仍然稳定。
+    sec = int(row.get("sec") or 0)
+    nanosec = int(row.get("nanosec") or 0)
+    return sec * 1000 + nanosec // 1_000_000
+
+
+def derive_replay_events(route_csv_path: Path) -> list[dict[str, Any]]:
+    # 派生 replay 只复用 route.csv 的位姿事实，不猜测速度、控制命令或 delivery 成功状态。
+    events: list[dict[str, Any]] = []
+    with route_csv_path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            frame_name = str(row.get("frame") or "").strip()
+            frame_index = int(row.get("index") or len(events))
+            event = {
+                "schema": "trashbot.fixed_route_replay.v1",
+                "event": "route_frame",
+                "frame_index": frame_index,
+                "timestamp_ms": parse_timestamp_ms(row),
+                "frame_id": str(row.get("frame_id") or "map"),
+                "x_m": float(row.get("x") or 0.0),
+                "y_m": float(row.get("y") or 0.0),
+                "yaw_rad": quaternion_to_yaw_rad(
+                    float(row.get("qx") or 0.0),
+                    float(row.get("qy") or 0.0),
+                    float(row.get("qz") or 0.0),
+                    float(row.get("qw") or 1.0),
+                ),
+                "state": "not_proven_route_replay_only",
+                "evidence_ref": route_relative_reference(route_csv_path, frame_name) if frame_name else safe_route_reference(Path(route_csv_path.name)),
+                "source_route_csv": safe_route_reference(Path(route_csv_path.name)),
+            }
+            events.append(event)
+    return events
+
+
+def derive_replay_jsonl(route_csv_path: Path, output_path: Path) -> dict[str, Any]:
+    # 先生成 deterministic JSONL，再让常规 artifact scan 读取同一输出文件，避免派生逻辑与 gate 视图分叉。
+    events = derive_replay_events(route_csv_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as handle:
+        for event in events:
+            handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+    return {
+        "generated": True,
+        "frame_count": len(events),
+        "output": str(output_path),
+        "source_route_csv": str(route_csv_path),
+        "blocked_reason": None,
+    }
+
+
+def build_derived_replay_summary(args: argparse.Namespace, route_csv_path: Path | None) -> dict[str, Any]:
+    # derive 是可选能力；未启用时明确标成 not_requested，避免 consumer 猜测 replay 来源。
+    if not args.derive_replay_jsonl:
+        return {
+            "generated": False,
+            "frame_count": 0,
+            "output": None,
+            "source_route_csv": str(route_csv_path) if route_csv_path else None,
+            "blocked_reason": "not_requested",
+        }
+    if route_csv_path is None or not route_csv_path.is_file():
+        return {
+            "generated": False,
+            "frame_count": 0,
+            "output": args.derive_replay_jsonl,
+            "source_route_csv": None,
+            "blocked_reason": "missing_route_csv",
+        }
+    return derive_replay_jsonl(route_csv_path, Path(args.derive_replay_jsonl).expanduser())
 
 
 def find_existing_manifest(root: Path, output: Path | None) -> Path | None:
@@ -197,7 +323,7 @@ def find_existing_manifest(root: Path, output: Path | None) -> Path | None:
 
 
 def existing_manifest_summary(root: Path, output: Path | None) -> dict[str, Any]:
-    # 已有 manifest 是输入证据的一部分；schema 或危险声明异常时必须让整个 intake fail closed。
+    # 只有 field-evidence manifest 才按复用安全检查；route/manifest.json 另作为 source manifest 读取。
     path = find_existing_manifest(root, output)
     if path is None:
         return {
@@ -256,6 +382,49 @@ def existing_manifest_summary(root: Path, output: Path | None) -> dict[str, Any]
     }
 
 
+def source_manifest_summary(artifact: dict[str, Any]) -> dict[str, Any]:
+    # route_recorder 写出的 manifest.json 可能是 vision_samples schema；它是上游证据，不是本工具旧版输出。
+    if not artifact.get("present"):
+        return {
+            "present": False,
+            "path": artifact.get("path"),
+            "status": "not_found",
+            "schema": None,
+            "sample_count": None,
+            "blocked_reason": artifact.get("reason"),
+        }
+    path = Path(str(artifact["path"]))
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "present": True,
+            "path": str(path),
+            "status": "invalid_json",
+            "schema": None,
+            "sample_count": None,
+            "blocked_reason": f"invalid_source_manifest_json:{exc}",
+        }
+    if not isinstance(loaded, dict):
+        return {
+            "present": True,
+            "path": str(path),
+            "status": "invalid_root",
+            "schema": None,
+            "sample_count": None,
+            "blocked_reason": "invalid_source_manifest_root",
+        }
+    samples = loaded.get("samples")
+    return {
+        "present": True,
+        "path": str(path),
+        "status": "source_manifest",
+        "schema": loaded.get("schema"),
+        "sample_count": len(samples) if isinstance(samples, list) else None,
+        "blocked_reason": None,
+    }
+
+
 def read_preflight(path: Path | None) -> dict[str, Any]:
     # preflight 缺失也必须 fail closed；不能因为 artifact 完整就跳过现场 ready 条件。
     if path is None:
@@ -278,12 +447,20 @@ def read_preflight(path: Path | None) -> dict[str, Any]:
 
 def artifacts_pass(artifacts: dict[str, Any]) -> bool:
     # gate_pass 只表示必需材料完整，delivery_success 仍由真实任务验收单独证明。
-    return all(item.get("present") and not item.get("reason") for item in artifacts.values())
+    return all(
+        item.get("present") and not item.get("reason")
+        for item in artifacts.values()
+        if item.get("required", True)
+    )
 
 
 def artifact_blocked_reason(artifacts: dict[str, Any]) -> str | None:
     # 缺失优先于空文件上报，方便现场先补目录/文件，再处理内容质量。
-    reasons = [str(item.get("reason")) for item in artifacts.values() if item.get("reason")]
+    reasons = [
+        str(item.get("reason"))
+        for item in artifacts.values()
+        if item.get("required", True) and item.get("reason")
+    ]
     if not reasons:
         return None
     if "missing" in reasons:
@@ -306,11 +483,15 @@ def artifact_status(artifacts: dict[str, Any], ssh_status: str | None) -> str:
 
 def artifact_health(artifacts: dict[str, Any], ssh_status: str | None) -> dict[str, Any]:
     # artifact_health 保留计数与摘要，便于 consumer detail 直接解释“为什么还不能当成功证据”。
-    required_count = len(artifacts)
-    present_artifacts = [name for name, item in artifacts.items() if item.get("present") and not item.get("reason")]
-    missing_artifacts = [name for name, item in artifacts.items() if not item.get("present")]
-    blocked_artifacts = [name for name, item in artifacts.items() if item.get("reason") and str(item.get("reason")) not in {"missing", "empty", "no_keyframe_file"}]
-    empty_artifacts = [name for name, item in artifacts.items() if str(item.get("reason")) in {"empty", "no_keyframe_file"}]
+    required_artifacts = {name: item for name, item in artifacts.items() if item.get("required", True)}
+    optional_artifacts = {name: item for name, item in artifacts.items() if not item.get("required", True)}
+    required_count = len(required_artifacts)
+    present_artifacts = [name for name, item in required_artifacts.items() if item.get("present") and not item.get("reason")]
+    missing_artifacts = [name for name, item in required_artifacts.items() if not item.get("present")]
+    blocked_artifacts = [name for name, item in required_artifacts.items() if item.get("reason") and str(item.get("reason")) not in {"missing", "empty", "no_keyframe_file"}]
+    empty_artifacts = [name for name, item in required_artifacts.items() if str(item.get("reason")) in {"empty", "no_keyframe_file"}]
+    optional_present_artifacts = [name for name, item in optional_artifacts.items() if item.get("present") and not item.get("reason")]
+    optional_missing_artifacts = [name for name, item in optional_artifacts.items() if not item.get("present")]
     status = artifact_status(artifacts, ssh_status)
     if status == "gated":
         summary = "all_required_artifacts_present"
@@ -332,6 +513,8 @@ def artifact_health(artifacts: dict[str, Any], ssh_status: str | None) -> dict[s
         "present_artifacts": present_artifacts,
         "missing_artifacts": missing_artifacts,
         "blocked_artifacts": blocked_artifacts,
+        "optional_present_artifacts": optional_present_artifacts,
+        "optional_missing_artifacts": optional_missing_artifacts,
         "summary": summary,
     }
 
@@ -377,6 +560,8 @@ def build_manifest(
     preflight: dict[str, Any],
     ssh_status: str | None = None,
     input_manifest: dict[str, Any] | None = None,
+    derived_replay: dict[str, Any] | None = None,
+    source_manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     input_manifest = input_manifest or {
         "present": False,
@@ -385,6 +570,7 @@ def build_manifest(
         "safe_for_reuse": True,
         "dangerous_true_fields": [],
     }
+    source_manifest = source_manifest or source_manifest_summary(artifacts.get("source_manifest", {}))
     artifact_gate_pass = artifacts_pass(artifacts)
     input_manifest_safe = input_manifest.get("safe_for_reuse") is True
     gate_pass = artifact_gate_pass and input_manifest_safe
@@ -420,6 +606,7 @@ def build_manifest(
         "artifact_status": health["status"],
         "artifact_health": health,
         "input_manifest": input_manifest,
+        "source_manifest": source_manifest,
         "manifest_gate": manifest_gate,
         "status": status,
         "blocked_reason": blocked_reason,
@@ -427,6 +614,14 @@ def build_manifest(
         "safe_to_control": False,
         "delivery_success": False,
         "primary_actions_enabled": False,
+        "derived_replay": derived_replay
+        or {
+            "generated": False,
+            "frame_count": 0,
+            "output": None,
+            "source_route_csv": None,
+            "blocked_reason": "not_requested",
+        },
         "artifacts": artifacts,
     }
 
@@ -501,7 +696,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--mode", choices=["local", "ssh"], required=True)
     parser.add_argument("--artifact-root", dest="artifact_root")
     parser.add_argument("--input", dest="input_dir", help="Alias for --artifact-root when importing a local offline evidence packet.")
+    parser.add_argument("--map-yaml", help="Explicit map YAML path when route artifacts and map artifacts are stored in separate directories.")
+    parser.add_argument("--map-pgm", help="Explicit map PGM path when route artifacts and map artifacts are stored in separate directories.")
     parser.add_argument("--preflight-json")
+    parser.add_argument("--derive-replay-jsonl", help="Derive a replay JSONL from route.csv without enabling control or delivery claims.")
     parser.add_argument("--output", required=True)
     parser.add_argument("--ssh-target", default="root@192.168.1.11")
     parser.add_argument("--ssh-port", type=int, default=37878)
@@ -525,16 +723,33 @@ def main(argv: list[str] | None = None) -> int:
     preflight = read_preflight(Path(args.preflight_json).expanduser() if args.preflight_json else None)
     ssh_status = None
     ssh_result = None
+    derived_replay = None
     if args.mode == "ssh":
         artifacts, ssh_status, ssh_result = run_ssh_scan(args)
         if not artifacts:
-            artifacts = {name: missing_artifact(Path(args.artifact_root), name, "ssh_scan_unavailable") for name in ARTIFACT_CANDIDATES}
+            artifacts = {
+                name: missing_artifact(
+                    Path(args.artifact_root),
+                    name,
+                    "missing_optional" if name in {"map_pgm", "source_manifest"} else "ssh_scan_unavailable",
+                    required=name not in {"map_pgm", "source_manifest"},
+                )
+                for name in ARTIFACT_CANDIDATES
+            }
         input_manifest = existing_manifest_summary(Path(args.artifact_root).expanduser(), Path(args.output).expanduser())
+        source_manifest = source_manifest_summary(artifacts.get("source_manifest", {}))
     else:
         artifact_root = Path(args.artifact_root).expanduser()
-        artifacts = scan_local_artifacts(artifact_root)
+        map_yaml = Path(args.map_yaml).expanduser() if args.map_yaml else None
+        map_pgm = Path(args.map_pgm).expanduser() if args.map_pgm else None
+        route_csv_path = artifact_path(artifact_root, "route_csv")
+        derived_replay = build_derived_replay_summary(args, route_csv_path)
+        artifacts = scan_local_artifacts(artifact_root, map_yaml=map_yaml, map_pgm=map_pgm)
+        if derived_replay and derived_replay.get("generated") is True and args.derive_replay_jsonl:
+            artifacts["replay_jsonl"] = scan_explicit_file_artifact(Path(args.derive_replay_jsonl).expanduser(), artifact_root, "replay_jsonl")
         input_manifest = existing_manifest_summary(artifact_root, Path(args.output).expanduser())
-    manifest = build_manifest(args, artifacts, preflight, ssh_status, input_manifest)
+        source_manifest = source_manifest_summary(artifacts.get("source_manifest", {}))
+    manifest = build_manifest(args, artifacts, preflight, ssh_status, input_manifest, derived_replay, source_manifest)
     if ssh_result is not None:
         manifest["ssh_scan"] = ssh_result
     write_manifest(manifest, Path(args.output))

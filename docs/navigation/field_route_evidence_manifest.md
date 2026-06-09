@@ -15,8 +15,13 @@
 可选输入：
 
 - `--preflight-json <field_route_evidence_preflight.py 输出>`
+- `--map-yaml <map.yaml>`：当 `--artifact-root` 指向 `artifacts/route/` 而 map 位于相邻 `artifacts/map/` 时必须显式传入。
+- `--map-pgm <map.pgm>`：同上，必须显式传入相邻 map 图像，脚本不会隐式猜测任意父目录。
+- `--derive-replay-jsonl <output.jsonl>`
 
 没有 `--preflight-json` 时仍会生成 manifest，但 `preflight.status=missing_preflight_json`、`not_proven=true`，只证明离线 artifact intake 软件路径，不证明现场 ready 或 delivery。
+
+`--derive-replay-jsonl` 只在本地 intake 时生效：脚本会只读解析 `route.csv`，派生 deterministic replay JSONL，补给 O7/PC consumer 与 manifest gate。它不会生成 rosbag，不会发布 `/cmd_vel`，也不会把 `safe_to_control`、`delivery_success`、`primary_actions_enabled` 置为 `true`。
 
 可选 SSH 参数：
 
@@ -34,13 +39,22 @@ SSH 模式只运行远端只读 Python 扫描，不启动 `ros2 launch`、Nav2�
 
 ## 必需 artifact
 
-manifest 会检查以下材料：
+manifest 必需检查以下材料：
 
-- `map.yaml`
-- `route.csv`
-- `keyframes/` 下至少一个 `.jpg`、`.jpeg`、`.png` 或 `.json`
+- `map.yaml`，或真实 bundle 下的 `map/*.yaml`
+- `map.pgm`，或真实 bundle 下的 `map/*.pgm`
+- `route.csv`，或真实 bundle 下的 `route/route.csv`
+- `manifest.json`，或真实 bundle 下的 `route/manifest.json`
+- `keyframes/`，或真实 bundle 下的 `route/keyframes/`，目录下至少一个 `.jpg`、`.jpeg`、`.png` 或 `.json`
+
+完整 bundle / 旧 field packet intake 还会把以下运行材料纳入 gate：
+
 - `rosbag` / `route_bag` 目录或 rosbag 文件
 - `replay.jsonl` 或 `fixed_route_replay.jsonl`
+
+当 `--artifact-root` 明确指向 `artifacts/route/` 或 `route_data/`，并且同时提供 `--map-yaml` 与 `--map-pgm` 时，脚本进入真实 route-root material intake：`rosbag` 和 `replay_jsonl` 缺失会记录为 optional 缺口，不阻断 `gate_pass`。这条路径用于先把真实 route/map/source refs 交给 O6/O7 消费，不宣称 Nav2 实跑或 delivery success。
+
+兼容顺序保持向后兼容：同层路径、`route/` 分层路径、`route_data/` 旧路径都会被扫描。真实 2026-06-10 现场 bundle 使用 `map/` 与 `route/` 分层结构时，可以直接传 bundle root；如果只传 `artifacts/route/`，必须用 `--map-yaml` 和 `--map-pgm` 显式引用相邻 map 文件。
 
 每项 artifact 记录：
 
@@ -54,6 +68,8 @@ manifest 会检查以下材料：
 
 目录 artifact 使用稳定排序后的目录摘要：对子文件的相对路径、大小和 sha256 做二次 sha256，因此可复跑比较，但不会把图片或 bag 内容写进 manifest。
 
+`manifest.json` 是上游 route/source manifest。例如 `route_data_recorder` 写出的 `trashbot.vision_samples.v1` 会作为 `source_manifest` 记录 schema、路径和样本数量，不会因为 schema 不是 `trashbot.field_evidence_manifest.v1` 而阻断生成。只有 `field_evidence_manifest.json`、`trashbot_field_evidence_manifest.json` 或 `trashbot.field_evidence_manifest.v1.json` 这类旧 field-evidence 输出才进入 `input_manifest` 安全复用检查。
+
 ## 离线 evidence packet intake
 
 本地目录可以来自现场人工 USB 拷贝、压缩包解压、后续 SSH 成功后的 run 目录，或已有 `trashbot.field_evidence_manifest.v1` 的材料包。推荐命令：
@@ -65,12 +81,11 @@ python3 onboard/scripts/field_route_evidence_manifest.py \
   --output /tmp/trashbot_field_evidence_manifest.json
 ```
 
-离线 intake 会在 artifact 扫描前检查目录内已有 manifest 候选：
+离线 intake 会在 artifact 扫描前检查目录内已有 field-evidence manifest 候选：
 
 - `field_evidence_manifest.json`
 - `trashbot_field_evidence_manifest.json`
 - `trashbot.field_evidence_manifest.v1.json`
-- `manifest.json`
 - `route_data/field_evidence_manifest.json`
 - `route_data/trashbot_field_evidence_manifest.json`
 
@@ -99,6 +114,16 @@ manifest 顶层始终保留安全边界：
 - `manifest_gate.status`：`gated | blocked_not_proven`
 - `manifest_gate.gate_pass`
 - `manifest_gate.blocked_reason`
+- `derived_replay.generated | frame_count | output | source_route_csv | blocked_reason`
+
+`derived_replay` 只描述 replay JSONL 是否由 `route.csv` 派生成功：
+
+- `generated=true` 说明派生文件已写出，并且 `replay_jsonl` artifact 会扫描到该输出。
+- `frame_count` 是 JSONL 行数；例如 2026-06-10 的 01-15 真实 route bundle 期望值是 `17`。
+- `blocked_reason=missing_route_csv` 表示请求了 derive，但输入 bundle 中没有可读 `route.csv`。
+- `blocked_reason=not_requested` 表示本次没有启用 derive；如果 bundle 本身也没有 replay 文件，manifest 会继续因为缺 `replay_jsonl` 而 fail closed。
+
+即使 `derived_replay.generated=true`，manifest 仍不会把这份材料升级成 Nav2 实跑、固定路线成功或 delivery proof。derive replay 只补 O7-safe 回放材料，不补 O3 现场 rosbag 证据。
 
 当 preflight 是 dry-run、SSH 不可达、preflight JSON 缺失或不是 `ready_for_live_route_capture_not_proven` 时，即使本地 fixture 完整，也必须保持：
 
@@ -141,6 +166,33 @@ python3 onboard/scripts/field_route_evidence_manifest.py \
   --output /tmp/trashbot_field_manifest_complete_from_input.json
 ```
 
+真实 bundle 或只有 `route.csv` 的 packet 可以直接派生 replay：
+
+```bash
+python3 onboard/scripts/field_route_evidence_manifest.py \
+  --mode local \
+  --input sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts \
+  --derive-replay-jsonl sprints/2026.06.10_02-05_field-run-bundle-replay-intake/artifacts/derived_replay.jsonl \
+  --output sprints/2026.06.10_02-05_field-run-bundle-replay-intake/artifacts/field_run_manifest.json \
+  --run-id field_run_bundle_replay_intake_20260610
+```
+
+派生得到的每一行 JSONL 至少包含：
+
+- `schema`
+- `event`
+- `frame_index`
+- `timestamp_ms`
+- `frame_id`
+- `x_m`
+- `y_m`
+- `yaw_rad`
+- `state`
+- `evidence_ref`
+- `source_route_csv`
+
+其中 `evidence_ref` 与 `source_route_csv` 使用 `field_route://...` 安全引用，不写开发机绝对路径，便于后续 archive、解压和 O7 消费者复用。
+
 缺失 fixture 示例：
 
 ```bash
@@ -156,6 +208,21 @@ python3 onboard/scripts/field_route_evidence_manifest.py \
 ```
 
 缺失 fixture 必须输出 `gate_pass=false`，并通过 `blocked_artifacts_missing` 或 `blocked_artifacts_empty` fail closed。
+
+## 真实 01-15 route artifact 复跑
+
+`sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/` 是真实上位机路线材料目录，map 文件在相邻 `artifacts/map/`。生成 O6/O7 可消费的 fail-closed manifest：
+
+```bash
+python3 onboard/scripts/field_route_evidence_manifest.py \
+  --mode local \
+  --artifact-root sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route \
+  --map-yaml sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/map/trashbot_dynamic_odom_tf_map.yaml \
+  --map-pgm sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/map/trashbot_dynamic_odom_tf_map.pgm \
+  --output /tmp/trashbot_real_route_field_manifest.json
+```
+
+该输出应显式引用真实 `route.csv`、`manifest.json`、`keyframes/`、`map.yaml` 和 `map.pgm`。因为没有本轮真实 delivery/result 验收，它仍必须保持 `not_proven=true`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。如果 `route_bag` 或 replay 缺失，manifest 会记录到 optional 缺口，不阻断 O6/O7 route/material intake。
 
 ## 真实 SSH 复跑
 
