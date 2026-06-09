@@ -76,3 +76,19 @@ SSH 不可达时，工具仍会写出 JSON，状态为 `blocked_ssh_unreachable`
 工具不发布 `/cmd_vel`，不启动运动任务，不修改 WAVE ROVER、ESP32、UART、串口、底盘协议或 launch 默认硬件参数。命令输出进入 JSON 前会做长度裁剪和常见凭证脱敏，避免把 token、password、private key 片段带入证据包。
 
 真实路线验收仍需要补齐上位机 SSH 可达、ROS2 topic smoke、`map.yaml`、`route.csv`、`keyframes/`、`route_bag/` 或 fixed-route replay JSONL。
+
+## 下游 artifact gate
+
+预检 JSON 生成后，使用 `onboard/scripts/field_route_evidence_manifest.py` 继续生成 `trashbot.field_evidence_manifest.v1`。manifest gate 会校验 `map.yaml`、`route.csv`、`keyframes/`、rosbag 和 fixed-route replay JSONL 是否存在且非空，并记录 sha256 或目录摘要。
+
+示例：
+
+```bash
+python3 onboard/scripts/field_route_evidence_manifest.py \
+  --mode local \
+  --artifact-root /tmp/trashbot_field_manifest_fixture_complete \
+  --preflight-json /tmp/trashbot_field_preflight_ssh.json \
+  --output /tmp/trashbot_field_manifest_complete.json
+```
+
+如果 SSH 仍不可达，必须保留 `blocked_ssh_unreachable` 与 `not_proven=true`，但可以用本地完整 fixture 和缺失 fixture 验证 manifest 功能，确保不再次只消费同一 SSH blocker。无论 artifact gate 是否通过，manifest 仍保持 `delivery_success=false` 和 `primary_actions_enabled=false`，直到真实现场路线和送达验收另行证明。

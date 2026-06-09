@@ -42,6 +42,45 @@ ros2 run ros2_trashbot_nav route_data_recorder \
   -p route_id:=trash_station_route
 ```
 
+## 1.5 Board Live Route Preflight
+
+现场场景下先跑统一预检脚本，再执行 learn/route capture，避免每次重复手工整理命令。推荐链路：
+
+```bash
+bash onboard/scripts/board_live_route_preflight.sh
+```
+
+脚本默认使用 `192.168.1.11:37878`（可通过环境变量 `TRASHBOT_LIVE_BOARD_HOST`/`TRASHBOT_LIVE_BOARD_PORT` 或 `--host`/`--port` 覆盖）。
+运行结果写入：`~/.ros/trashbot_live_preflight/<run_id>.log`。
+
+最低执行要求：
+
+- 本机 `git status --short`
+- 默认网关可达性检查（允许失败，继续留痕）
+- `ping`/`nc` 到目标 host:port
+- `ssh` 到 `root@192.168.1.11 -p 37878`
+- SSH 可达时进行 ros2 预检：
+  - `hostname`
+  - `date`
+  - `source /opt/ros/humble/setup.bash`
+  - `command -v ros2`
+  - `ros2 pkg list`
+  - `/scan` `/camera/image_raw` `/odom` `/tf` `/map` topic list 与 `hz` smoke
+
+脚本只输出 capture/replay 模板，不执行底盘运动命令。你可以在网络恢复并确认 SSH 可达后，基于同一 `run_id` 手动执行：
+
+- `learn.launch.py route_recorder:=true`
+- `/trashbot/save_map`
+- `route_csv_to_yaml`
+- `fixed_route_autonomy dry_run`
+- 可选 `ros2 bag record`
+
+失败边界约束：
+
+- `--local-only` 仅做本机预检，不发起 SSH 远端命令。
+- `--dry-run` 只复用/打印模板，不要求远端可达。
+- `--skip-capture` 会跳过 capture 模板输出，仍产生日志和网络闭环；如网络不达则返回非 0 并注明日志路径，避免“只报错不闭环”。
+
 Expected outputs:
 
 - `route.csv`

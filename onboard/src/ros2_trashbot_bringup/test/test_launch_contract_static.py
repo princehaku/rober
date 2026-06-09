@@ -92,27 +92,51 @@ class LaunchContractStaticTest(unittest.TestCase):
 
         self.assertIn("'fixed_route_status_file': debug_status_file", task_block)
 
-    def test_launches_default_elevator_assist_off_and_pass_to_orchestrator(self):
-        for launch_name in ("bringup.launch.py", "autonomous.launch.py"):
-            with self.subTest(launch_name=launch_name):
-                source = read_launch(launch_name)
-                ast.parse(source)
-                task_block = source[
-                    source.index("executable='task_orchestrator'"):
-                    source.index("# Patrol scheduler" if launch_name == "autonomous.launch.py" else "Node(\n            package='ros2_trashbot_behavior',\n            executable='operator_gateway'")
-                ]
+    def test_bringup_default_elevator_assist_off_and_pass_to_task_orchestrator(self):
+        # bringup 默认只做基础链路，优先保证“上电可控”和“快速退化”，因此不默认触发电梯子状态机。
+        launch_name = "bringup.launch.py"
+        source = read_launch(launch_name)
+        ast.parse(source)
+        task_block = source[
+            source.index("executable='task_orchestrator'"):
+            source.index(
+                "Node(\n            package='ros2_trashbot_behavior',\n            executable='operator_gateway'"
+            )
+        ]
 
-                self.assertIn("'elevator_assist_enabled', default_value='false'", source)
-                self.assertIn("'elevator_assist_mode', default_value='dry_run'", source)
-                self.assertIn("'elevator_assist_target_floor', default_value='1'", source)
-                self.assertIn("'elevator_assist_dry_run_failure', default_value=''", source)
-                self.assertIn("'elevator_assist_enabled': elevator_assist_enabled", task_block)
-                self.assertIn("'elevator_assist_mode': elevator_assist_mode", task_block)
-                self.assertIn("'elevator_assist_target_floor': elevator_assist_target_floor", task_block)
-                self.assertIn(
-                    "'elevator_assist_dry_run_failure': elevator_assist_dry_run_failure",
-                    task_block,
-                )
+        self.assertIn("'elevator_assist_enabled', default_value='false'", source)
+        self.assertIn("'elevator_assist_mode', default_value='dry_run'", source)
+        self.assertIn("'elevator_assist_target_floor', default_value='1'", source)
+        self.assertIn("'elevator_assist_dry_run_failure', default_value=''", source)
+        self.assertIn("'elevator_assist_enabled': elevator_assist_enabled", task_block)
+        self.assertIn("'elevator_assist_mode': elevator_assist_mode", task_block)
+        self.assertIn("'elevator_assist_target_floor': elevator_assist_target_floor", task_block)
+        self.assertIn(
+            "'elevator_assist_dry_run_failure': elevator_assist_dry_run_failure",
+            task_block,
+        )
+
+    def test_autonomous_default_elevator_assist_on_and_pass_to_task_orchestrator(self):
+        # autonomous 是主链路演进入口，默认开启电梯 dry-run，便于主线证据链可复现，不代表真实电梯能力已完成交付。
+        launch_name = "autonomous.launch.py"
+        source = read_launch(launch_name)
+        ast.parse(source)
+        task_block = source[
+            source.index("executable='task_orchestrator'"):
+            source.index("# Patrol scheduler")
+        ]
+
+        self.assertIn("'elevator_assist_enabled', default_value='true'", source)
+        self.assertIn("'elevator_assist_mode', default_value='dry_run'", source)
+        self.assertIn("'elevator_assist_target_floor', default_value='1'", source)
+        self.assertIn("'elevator_assist_dry_run_failure', default_value=''", source)
+        self.assertIn("'elevator_assist_enabled': elevator_assist_enabled", task_block)
+        self.assertIn("'elevator_assist_mode': elevator_assist_mode", task_block)
+        self.assertIn("'elevator_assist_target_floor': elevator_assist_target_floor", task_block)
+        self.assertIn(
+            "'elevator_assist_dry_run_failure': elevator_assist_dry_run_failure",
+            task_block,
+        )
 
     def test_launches_do_not_start_retired_trash_detector(self):
         for launch_name in ("learn.launch.py", "bringup.launch.py", "autonomous.launch.py"):
