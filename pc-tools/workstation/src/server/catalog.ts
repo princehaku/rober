@@ -9,6 +9,7 @@ export { buildO7OperatorConsoleAcceptanceResponse } from "./o7OperatorConsoleAcc
 export { buildO7PreviewsAcceptanceResponse } from "./o7PreviewsAcceptance";
 export { buildO7LiveEndpointsManifest } from "./o7LiveEndpointsManifest";
 export { buildO7CloudOperatorConsoleProbe } from "./o7CloudOperatorConsoleProbe";
+export { buildO7ConsumerTaskDetail, buildO7ConsumerTaskList } from "./o7ConsumerReadAdapter";
 export { buildO7CloudArchiveTasksProbe } from "./o7CloudArchiveTasksProbe";
 export { buildO7RealtimeElevatorProbe } from "./o7RealtimeElevatorProbe";
 export { buildO7RtcSignalingContractProbe } from "./o7RtcSignalingContractProbe";

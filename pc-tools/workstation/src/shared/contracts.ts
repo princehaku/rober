@@ -1688,6 +1688,108 @@ export interface O7CloudOperatorConsoleProbeResponse extends ProofFlags {
   reads_hardware: false;
 }
 
+export interface O7ConsumerTaskListItem {
+  task_id: string;
+  robot_id: string;
+  started_at_ms: number | null;
+  finished_at_ms: number | null;
+  task_status_summary: string;
+  latest_event_at_ms: number | null;
+  trajectory_frame_count: number;
+  event_count: number;
+  evidence_count: number;
+  labeling_status: string;
+  inference_status: string;
+  tunnel_status_summary: string;
+  selected: boolean;
+}
+
+export interface O7ConsumerTaskListResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_consumer_task_list.v1";
+  list_status: "loaded_fail_closed_summary" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: string;
+  remote_schema: string;
+  query_strategy: {
+    view: "summary";
+    include: [];
+    limit: number;
+    primary_path: true;
+    fail_closed_visible: true;
+  };
+  task_list: O7ConsumerTaskListItem[];
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+  safe_to_control: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  delivery_success: false;
+  primary_actions_enabled: false;
+}
+
+export interface O7ConsumerTaskDetailResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1";
+  detail_status: "loaded_fail_closed_summary" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: string;
+  remote_schema: string;
+  requested_task_id: string;
+  query_strategy: {
+    view: "default";
+    include: string[];
+    primary_path: true;
+    fail_closed_visible: true;
+  };
+  task_summary: {
+    task_id: string;
+    robot_id: string;
+    task_status_summary: string;
+    started_at_ms: number | null;
+    finished_at_ms: number | null;
+  } | null;
+  trajectory: {
+    status: string;
+    frame_count: number;
+    sample_frames: Record<string, unknown>[];
+  };
+  events: {
+    status: string;
+    count: number;
+    sample_events: Record<string, unknown>[];
+  };
+  evidence: {
+    status: string;
+    count: number;
+    sample_evidence: Record<string, unknown>[];
+  };
+  labeling: {
+    status: string;
+    label_count: number;
+    sample_items: Record<string, unknown>[];
+  };
+  inference: {
+    status: string;
+    count: number;
+    sample_results: Record<string, unknown>[];
+  };
+  tunnel_status: {
+    status: string;
+    latest_known_status: string;
+    temporal_alignment: string;
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+  safe_to_control: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  delivery_success: false;
+  primary_actions_enabled: false;
+}
+
 export interface O7CloudArchiveTasksProbeResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1";
   probe_status: "loaded_fail_closed_contract" | "fail_closed";

@@ -8,6 +8,8 @@ import {
   buildO7CloudArchiveTasks,
   buildO7CloudArchiveTasksProbe,
   buildO7LiveEndpointsManifest,
+  buildO7ConsumerTaskDetail,
+  buildO7ConsumerTaskList,
   buildO7CloudOperatorConsoleProbe,
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
@@ -101,6 +103,16 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/cloud-operator-console-probe", async (req, res) => {
     // Cloud probe 只允许后端探测本机回环 HTTP contract，不能变成外网或生产云代理。
     res.json(await buildO7CloudOperatorConsoleProbe(queryString(req.query.baseUrl)));
+  });
+
+  workstationApp.get("/api/o7/consumer-read/tasks", async (req, res) => {
+    // O7 列表主入口只读代理本机回环 O6 consumer read，不直连公网或机器人。
+    res.json(await buildO7ConsumerTaskList(queryString(req.query.baseUrl)));
+  });
+
+  workstationApp.get("/api/o7/consumer-read/tasks/:taskId", async (req, res) => {
+    // O7 详情主入口固定附带 include 策略，只返回只读 fail-closed 摘要。
+    res.json(await buildO7ConsumerTaskDetail(queryString(req.query.baseUrl), req.params.taskId ?? ""));
   });
 
   workstationApp.get("/api/o7/cloud-archive/tasks-probe", async (req, res) => {

@@ -4,6 +4,8 @@ import {
   getO7CloudArchiveTasks,
   getO7CloudArchiveTasksProbe,
   getO7CloudOperatorConsoleProbe,
+  getO7ConsumerTaskDetail,
+  getO7ConsumerTaskList,
   getO7LiveEndpointsManifest,
   getO7PreviewsAcceptance,
   getO7RealtimeElevatorProbe,
@@ -14,6 +16,8 @@ import type { O7FixturePreviewInputs, O7FixturePreviewKind, O7FixturePreviewResp
 import type {
   O7CloudArchiveTasksProbeResponse,
   O7CloudArchiveTasksResponse,
+  O7ConsumerTaskDetailResponse,
+  O7ConsumerTaskListResponse,
   O7LabelingQueueInspectorReviewItem,
   O7LiveEndpointsManifestResponse,
   O7PreviewsAcceptanceResponse,
@@ -152,6 +156,14 @@ const archiveJson = ref("");
 const archiveResult = ref<O7CloudArchiveTasksResponse | null>(null);
 const archiveError = ref("");
 const archiveLoading = ref(false);
+const consumerReadBaseUrl = ref("http://127.0.0.1:8088");
+const consumerTaskListResult = ref<O7ConsumerTaskListResponse | null>(null);
+const consumerTaskListError = ref("");
+const consumerTaskListLoading = ref(false);
+const consumerSelectedTaskId = ref("");
+const consumerTaskDetailResult = ref<O7ConsumerTaskDetailResponse | null>(null);
+const consumerTaskDetailError = ref("");
+const consumerTaskDetailLoading = ref(false);
 const cloudArchiveProbeBaseUrl = ref("http://127.0.0.1:8088");
 const cloudArchiveProbeResult = ref<O7CloudArchiveTasksProbeResponse | null>(null);
 const cloudArchiveProbeError = ref("");
@@ -293,6 +305,22 @@ function archiveBlockedReasons(): string[] {
 
 function archiveNotProven(): string[] {
   return archiveResult.value?.not_proven ?? ["archive_not_loaded_and_real_cloud_archive_not_proven"];
+}
+
+function consumerListBlockedReasons(): string[] {
+  return consumerTaskListResult.value?.blocked_reasons ?? ["consumer_task_list_not_loaded"];
+}
+
+function consumerListNotProven(): string[] {
+  return consumerTaskListResult.value?.not_proven ?? ["consumer_task_list_not_proven"];
+}
+
+function consumerDetailBlockedReasons(): string[] {
+  return consumerTaskDetailResult.value?.blocked_reasons ?? ["consumer_task_detail_not_loaded"];
+}
+
+function consumerDetailNotProven(): string[] {
+  return consumerTaskDetailResult.value?.not_proven ?? ["consumer_task_detail_not_proven"];
 }
 
 function cloudProbeBlockedReasons(): string[] {
@@ -1206,6 +1234,33 @@ async function loadArchiveTasks(): Promise<void> {
   }
 }
 
+async function loadConsumerTaskList(): Promise<void> {
+  // O7 任务列表主入口固定走 O6 consumer read summary 视图，避免前端继续 join 低层接口。
+  consumerTaskListLoading.value = true;
+  consumerTaskListError.value = "";
+  try {
+    consumerTaskListResult.value = await getO7ConsumerTaskList(consumerReadBaseUrl.value);
+    consumerSelectedTaskId.value = consumerTaskListResult.value.task_list[0]?.task_id ?? "";
+  } catch (error) {
+    consumerTaskListError.value = error instanceof Error ? error.message : "consumer_task_list_not_available";
+  } finally {
+    consumerTaskListLoading.value = false;
+  }
+}
+
+async function loadConsumerTaskDetail(): Promise<void> {
+  // O7 详情主入口固定由后端追加 include=trajectory,events,evidence,labeling,inference,tunnel。
+  consumerTaskDetailLoading.value = true;
+  consumerTaskDetailError.value = "";
+  try {
+    consumerTaskDetailResult.value = await getO7ConsumerTaskDetail(consumerReadBaseUrl.value, consumerSelectedTaskId.value);
+  } catch (error) {
+    consumerTaskDetailError.value = error instanceof Error ? error.message : "consumer_task_detail_not_available";
+  } finally {
+    consumerTaskDetailLoading.value = false;
+  }
+}
+
 watch(localDraftItemKey, () => {
   // item cursor 改变时不复用上一条 item 的草稿；新 item 通过独立 key 读取自己的内存槽位。
   if (localDraftItemKey.value && !localAnnotationDrafts.value[localDraftItemKey.value]) {
@@ -1821,6 +1876,168 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <h3>Not proven</h3>
           <ul class="dense">
             <li v-for="item in cloudArchiveProbeNotProven()" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article class="snapshot-panel">
+      <div class="section-head compact-head">
+        <div>
+          <h3>O7 consumer read primary path</h3>
+          <p class="eyebrow">Primary task list/detail path via O6 consumer read summary + detail strategy.</p>
+        </div>
+        <span class="pill danger">{{ consumerTaskListResult?.list_status ?? "not_loaded" }}</span>
+      </div>
+
+      <label class="single-input">
+        <span>Consumer relay base URL</span>
+        <input
+          v-model="consumerReadBaseUrl"
+          aria-label="O7 consumer read base URL"
+          placeholder="http://127.0.0.1:8088"
+        >
+      </label>
+      <div class="route-inputs">
+        <button class="secondary" type="button" @click="loadConsumerTaskList">
+          {{ consumerTaskListLoading ? "Loading consumer task list" : "Load consumer task list" }}
+        </button>
+        <button class="secondary" type="button" @click="loadConsumerTaskDetail">
+          {{ consumerTaskDetailLoading ? "Loading consumer task detail" : "Load consumer task detail" }}
+        </button>
+      </div>
+
+      <label class="single-input">
+        <span>Selected task ID</span>
+        <input
+          v-model="consumerSelectedTaskId"
+          aria-label="O7 consumer selected task ID"
+          placeholder="task_id from consumer task list"
+        >
+      </label>
+
+      <div v-if="consumerTaskListError" class="notice" role="alert">
+        Consumer task list API unavailable: {{ consumerTaskListError }}. safe_to_control=false.
+      </div>
+      <div v-if="consumerTaskDetailError" class="notice" role="alert">
+        Consumer task detail API unavailable: {{ consumerTaskDetailError }}. safe_to_control=false.
+      </div>
+
+      <div class="two-col snapshot-grid">
+        <div>
+          <h3>List strategy</h3>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ consumerTaskListResult?.schema ?? "trashbot.pc_tools_workstation.o7_consumer_task_list.v1" }}</dd>
+            <dt>remote endpoint</dt>
+            <dd><code>{{ consumerTaskListResult?.remote_endpoint ?? "/api/o6/consumer/tasks?view=summary&limit=50" }}</code></dd>
+            <dt>view</dt>
+            <dd>{{ consumerTaskListResult?.query_strategy.view ?? "summary" }}</dd>
+            <dt>include</dt>
+            <dd>{{ consumerTaskListResult?.query_strategy.include.join(",") ?? "none" }}</dd>
+            <dt>primary path</dt>
+            <dd>{{ consumerTaskListResult?.query_strategy.primary_path ?? true }}</dd>
+            <dt>fail-closed visible</dt>
+            <dd>{{ consumerTaskListResult?.query_strategy.fail_closed_visible ?? true }}</dd>
+            <dt>task count</dt>
+            <dd>{{ consumerTaskListResult?.task_list.length ?? 0 }}</dd>
+          </dl>
+          <table>
+            <thead>
+              <tr>
+                <th>task_id</th>
+                <th>status</th>
+                <th>labels</th>
+                <th>inference</th>
+                <th>tunnel</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!consumerTaskListResult?.task_list.length">
+                <td colspan="5">blocked_not_proven</td>
+              </tr>
+              <tr
+                v-for="task in consumerTaskListResult?.task_list ?? []"
+                :key="task.task_id"
+                @click="consumerSelectedTaskId = task.task_id"
+              >
+                <td>{{ task.task_id }}</td>
+                <td>{{ task.task_status_summary }}</td>
+                <td>{{ task.labeling_status }}</td>
+                <td>{{ task.inference_status }}</td>
+                <td>{{ task.tunnel_status_summary }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <h3>List blocked reasons</h3>
+          <ul class="dense">
+            <li v-for="reason in consumerListBlockedReasons()" :key="reason">{{ reason }}</li>
+          </ul>
+          <h3>List not proven</h3>
+          <ul class="dense">
+            <li v-for="item in consumerListNotProven()" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3>Detail strategy</h3>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ consumerTaskDetailResult?.schema ?? "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1" }}</dd>
+            <dt>remote endpoint</dt>
+            <dd><code>{{ consumerTaskDetailResult?.remote_endpoint ?? "/api/o6/consumer/tasks/<task_id>" }}</code></dd>
+            <dt>requested task</dt>
+            <dd>{{ (consumerTaskDetailResult?.requested_task_id ?? consumerSelectedTaskId) || "not_loaded" }}</dd>
+            <dt>view</dt>
+            <dd>{{ consumerTaskDetailResult?.query_strategy.view ?? "default" }}</dd>
+            <dt>include</dt>
+            <dd>{{ consumerTaskDetailResult?.query_strategy.include.join(",") ?? "trajectory,events,evidence,labeling,inference,tunnel" }}</dd>
+            <dt>fail-closed visible</dt>
+            <dd>{{ consumerTaskDetailResult?.query_strategy.fail_closed_visible ?? true }}</dd>
+            <dt>safe_to_control</dt>
+            <dd>{{ consumerTaskDetailResult?.safe_to_control ?? false }}</dd>
+            <dt>connects_cloud_production</dt>
+            <dd>{{ consumerTaskDetailResult?.connects_cloud_production ?? false }}</dd>
+            <dt>robot_control_executed</dt>
+            <dd>{{ consumerTaskDetailResult?.robot_control_executed ?? false }}</dd>
+          </dl>
+          <h3>Task summary</h3>
+          <dl class="kv compact-kv">
+            <dt>task_id</dt>
+            <dd>{{ consumerTaskDetailResult?.task_summary?.task_id ?? "blocked_not_proven" }}</dd>
+            <dt>robot_id</dt>
+            <dd>{{ consumerTaskDetailResult?.task_summary?.robot_id ?? "blocked_not_proven" }}</dd>
+            <dt>task_status_summary</dt>
+            <dd>{{ consumerTaskDetailResult?.task_summary?.task_status_summary ?? "blocked_not_proven" }}</dd>
+            <dt>trajectory</dt>
+            <dd>{{ consumerTaskDetailResult?.trajectory.frame_count ?? 0 }} / {{ consumerTaskDetailResult?.trajectory.status ?? "blocked_not_proven" }}</dd>
+            <dt>events</dt>
+            <dd>{{ consumerTaskDetailResult?.events.count ?? 0 }} / {{ consumerTaskDetailResult?.events.status ?? "blocked_not_proven" }}</dd>
+            <dt>evidence</dt>
+            <dd>{{ consumerTaskDetailResult?.evidence.count ?? 0 }} / {{ consumerTaskDetailResult?.evidence.status ?? "blocked_not_proven" }}</dd>
+            <dt>labeling</dt>
+            <dd>{{ consumerTaskDetailResult?.labeling.label_count ?? 0 }} / {{ consumerTaskDetailResult?.labeling.status ?? "blocked_not_proven" }}</dd>
+            <dt>inference</dt>
+            <dd>{{ consumerTaskDetailResult?.inference.count ?? 0 }} / {{ consumerTaskDetailResult?.inference.status ?? "blocked_not_proven" }}</dd>
+            <dt>tunnel</dt>
+            <dd>{{ consumerTaskDetailResult?.tunnel_status.latest_known_status ?? "blocked_not_proven" }}</dd>
+          </dl>
+          <h3>Detail samples</h3>
+          <ul class="dense">
+            <li>trajectory={{ consumerTaskDetailResult?.trajectory.sample_frames.length ?? 0 }}</li>
+            <li>events={{ consumerTaskDetailResult?.events.sample_events.length ?? 0 }}</li>
+            <li>evidence={{ consumerTaskDetailResult?.evidence.sample_evidence.length ?? 0 }}</li>
+            <li>labeling={{ consumerTaskDetailResult?.labeling.sample_items.length ?? 0 }}</li>
+            <li>inference={{ consumerTaskDetailResult?.inference.sample_results.length ?? 0 }}</li>
+            <li>temporal_alignment={{ consumerTaskDetailResult?.tunnel_status.temporal_alignment ?? "latest_known_robot_snapshot_not_task_aligned" }}</li>
+          </ul>
+          <h3>Detail blocked reasons</h3>
+          <ul class="dense">
+            <li v-for="reason in consumerDetailBlockedReasons()" :key="reason">{{ reason }}</li>
+          </ul>
+          <h3>Detail not proven</h3>
+          <ul class="dense">
+            <li v-for="item in consumerDetailNotProven()" :key="item">{{ item }}</li>
           </ul>
         </div>
       </div>

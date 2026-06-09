@@ -1737,6 +1737,83 @@ const fixtures: Record<string, unknown> = {
     not_proven: ["real_o7_cloud_archive_task_api", "real_o7_command_api", "delivery_success"],
     ...PROOF_FLAGS,
   },
+  "/api/o7/consumer-read/tasks": {
+    schema: "trashbot.pc_tools_workstation.o7_consumer_task_list.v1",
+    list_status: "loaded_fail_closed_summary",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o6/consumer/tasks?view=summary&limit=50",
+    remote_schema: "trashbot.o6.consumer_read.v1",
+    query_strategy: {
+      view: "summary",
+      include: [],
+      limit: 50,
+      primary_path: true,
+      fail_closed_visible: true,
+    },
+    task_list: [
+      {
+        task_id: "task-consumer-001",
+        robot_id: "robot_fixture",
+        started_at_ms: 1000,
+        finished_at_ms: 2000,
+        task_status_summary: "completed_mock",
+        latest_event_at_ms: 1900,
+        trajectory_frame_count: 3,
+        event_count: 2,
+        evidence_count: 1,
+        labeling_status: "partial",
+        inference_status: "present",
+        tunnel_status_summary: "online",
+        selected: true,
+      },
+    ],
+    blocked_reasons: [],
+    not_proven: ["proof_status=not_proven", "safe_to_control=false"],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001": {
+    schema: "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1",
+    detail_status: "loaded_fail_closed_summary",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint:
+      "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,labeling,inference,tunnel",
+    remote_schema: "trashbot.o6.consumer_read.v1",
+    requested_task_id: "task-consumer-001",
+    query_strategy: {
+      view: "default",
+      include: ["trajectory", "events", "evidence", "labeling", "inference", "tunnel"],
+      primary_path: true,
+      fail_closed_visible: true,
+    },
+    task_summary: {
+      task_id: "task-consumer-001",
+      robot_id: "robot_fixture",
+      task_status_summary: "completed_mock",
+      started_at_ms: 1000,
+      finished_at_ms: 2000,
+    },
+    trajectory: { status: "loaded_not_proven", frame_count: 3, sample_frames: [{ frame_index: 0 }] },
+    events: { status: "loaded_not_proven", count: 2, sample_events: [{ event_type: "route.frame" }] },
+    evidence: { status: "loaded_not_proven", count: 1, sample_evidence: [{ evidence_type: "snapshot" }] },
+    labeling: { status: "partial", label_count: 1, sample_items: [{ item_id: "label-1" }] },
+    inference: { status: "present", count: 1, sample_results: [{ result_type: "floor_recognition" }] },
+    tunnel_status: {
+      status: "loaded_not_proven",
+      latest_known_status: "online",
+      temporal_alignment: "latest_known_robot_snapshot_not_task_aligned",
+    },
+    blocked_reasons: [],
+    not_proven: ["proof_status=not_proven", "robot_control_executed=false"],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  },
   "/api/proof-boundary": {
     schema: "trashbot.pc_tools_workstation.proof_boundary.v2",
     can_prove: ["Node/Vue workstation can index local JSON fixtures under pc-tools/evidence/fixtures"],
@@ -2029,6 +2106,10 @@ function stubWorkstationFetch() {
   const mockedFetch = vi.fn(async (url: string) => {
     const fixtureKey = url.startsWith("/api/route/debug-summary")
       ? "/api/route/debug-summary"
+      : url.startsWith("/api/o7/consumer-read/tasks/")
+        ? "/api/o7/consumer-read/tasks/task-consumer-001"
+        : url.startsWith("/api/o7/consumer-read/tasks")
+          ? "/api/o7/consumer-read/tasks"
       : url.startsWith("/api/o7/realtime-elevator-preview")
         ? "/api/o7/realtime-elevator-preview"
         : url.startsWith("/api/o7/route-replay-preview")
@@ -2353,18 +2434,19 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/rtc-signaling-contract-probe");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/o7/cloud-archive/tasks");
 
-    const inputs = wrapper.findAll("input");
-    expect(inputs).toHaveLength(19);
-    await inputs[0]!.setValue("http://127.0.0.1:8088");
-    await inputs[1]!.setValue("http://127.0.0.1:8088");
-    await inputs[2]!.setValue("http://127.0.0.1:8088");
-    await inputs[3]!.setValue("http://127.0.0.1:8088");
-    await inputs[4]!.setValue("fixtures/archive.json");
-    await inputs[14]!.setValue("fixtures/realtime.json");
-    await inputs[15]!.setValue("fixtures/route.json");
-    await inputs[16]!.setValue("fixtures/labeling.json");
-    await inputs[17]!.setValue("fixtures/voice.json");
-    await inputs[18]!.setValue("fixtures/safe-command.json");
+    expect(wrapper.findAll("input").length).toBeGreaterThanOrEqual(21);
+    await wrapper.find('input[aria-label="Cloud operator console probe base URL"]').setValue("http://127.0.0.1:8088");
+    await wrapper.find('input[aria-label="Cloud archive tasks probe base URL"]').setValue("http://127.0.0.1:8088");
+    await wrapper.find('input[aria-label="O7 consumer read base URL"]').setValue("http://127.0.0.1:8088");
+    await wrapper.find('input[aria-label="O7 consumer selected task ID"]').setValue("task-consumer-001");
+    await wrapper.find('input[aria-label="Realtime elevator cloud probe base URL"]').setValue("http://127.0.0.1:8088");
+    await wrapper.find('input[aria-label="RTC signaling contract probe base URL"]').setValue("http://127.0.0.1:8088");
+    await wrapper.find('input[aria-label="Cloud archive fixture JSON path"]').setValue("fixtures/archive.json");
+    await wrapper.find('input[aria-label="Realtime/Elevator fixture JSON path"]').setValue("fixtures/realtime.json");
+    await wrapper.find('input[aria-label="Route Replay fixture JSON path"]').setValue("fixtures/route.json");
+    await wrapper.find('input[aria-label="Labeling fixture JSON path"]').setValue("fixtures/labeling.json");
+    await wrapper.find('input[aria-label="Voice fixture JSON path"]').setValue("fixtures/voice.json");
+    await wrapper.find('input[aria-label="Safe Command fixture JSON path"]').setValue("fixtures/safe-command.json");
 
     const callsBeforeManifest = mockedFetch.mock.calls.length;
     await wrapper.findAll("button").find((button) => button.text() === "Load live endpoints manifest")?.trigger("click");
@@ -2388,6 +2470,12 @@ describe("App", () => {
     await wrapper.findAll("button").find((button) => button.text() === "Probe realtime/elevator snapshot")?.trigger("click");
     await flushPromises();
 
+    await wrapper.findAll("button").find((button) => button.text() === "Load consumer task list")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "Load consumer task detail")?.trigger("click");
+    await flushPromises();
+
     await wrapper.findAll("button").find((button) => button.text() === "Load archive tasks")?.trigger("click");
     await flushPromises();
 
@@ -2406,6 +2494,8 @@ describe("App", () => {
     expect(previewCalls).toContain("/api/o7/live-endpoints/manifest");
     expect(previewCalls).toContain("/api/o7/previews/acceptance");
     expect(previewCalls).toContain("/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
+    expect(previewCalls).toContain("/api/o7/consumer-read/tasks?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
+    expect(previewCalls).toContain("/api/o7/consumer-read/tasks/task-consumer-001?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/cloud-archive/tasks-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/rtc-signaling-contract-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/realtime-elevator-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
@@ -2422,6 +2512,8 @@ describe("App", () => {
     expect(wrapper.text()).toContain("trashbot.o7.safe_command_preview.v1");
     expect(wrapper.text()).toContain("trashbot.o7.cloud_archive_tasks.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_task_list.v1");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_task_detail.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_rtc_signaling_contract_probe.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v1");
@@ -2443,6 +2535,8 @@ describe("App", () => {
     expect(wrapper.text()).toContain("O7_ROUTE_REPLAY_URL:url_must_not_include_credentials_query_or_hash");
     expect(wrapper.text()).toContain("token_values_exposed=false");
     expect(wrapper.text()).toContain("url_query_hash_credentials_exposed=false");
+    expect(wrapper.text()).toContain("task-consumer-001");
+    expect(wrapper.text()).toContain("latest_known_robot_snapshot_not_task_aligned");
     expect(wrapper.text()).toContain("idempotent_command_api_trace");
     expect(wrapper.text()).toContain("real_robot_ack_connected");
     expect(wrapper.text()).toContain("software_proof_o7_previews_acceptance_guard");
@@ -2678,7 +2772,7 @@ describe("App", () => {
     expect(wrapper.text()).toContain("local_tts_draft_valid");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalTtsDraftEdit);
 
-    await inputs[4]!.setValue("fixtures/archive-other.json");
+    await wrapper.find('input[aria-label="Cloud archive fixture JSON path"]').setValue("fixtures/archive-other.json");
     await wrapper.vm.$nextTick();
     expect(wrapper.text()).toContain("operator-default");
     expect(wrapper.text()).not.toContain("operator-soft");
@@ -2785,7 +2879,7 @@ describe("App", () => {
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalSafeCommandDraftEdit);
 
     await wrapper.find("input[aria-label=\"Local safe command idempotency draft ref\"]").setValue("draft-ref-custom");
-    await inputs[4]!.setValue("fixtures/archive-third.json");
+    await wrapper.find('input[aria-label="Cloud archive fixture JSON path"]').setValue("fixtures/archive-third.json");
     await wrapper.vm.$nextTick();
     expect(wrapper.text()).not.toContain("draft-ref-custom");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeLocalSafeCommandDraftEdit);

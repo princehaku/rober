@@ -3,6 +3,8 @@ import type {
   HardwareMaterialsResponse,
   O7CloudArchiveTasksProbeResponse,
   O7CloudArchiveTasksResponse,
+  O7ConsumerTaskDetailResponse,
+  O7ConsumerTaskListResponse,
   O7CloudOperatorConsoleProbeResponse,
   O7LabelingPreviewResponse,
   O7LiveEndpointsManifestResponse,
@@ -66,7 +68,9 @@ const API_ENDPOINTS = {
   o7PreviewsAcceptance: "/api/o7/previews/acceptance",
   o7LiveEndpointsManifest: "/api/o7/live-endpoints/manifest",
   o7CloudOperatorConsoleProbe: "/api/o7/cloud-operator-console-probe",
+  o7ConsumerTaskList: "/api/o7/consumer-read/tasks",
   o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
+  o7ConsumerTaskDetailPrefix: "/api/o7/consumer-read/tasks/",
   o7RealtimeElevatorProbe: "/api/o7/realtime-elevator-probe",
   o7RtcSignalingContractProbe: "/api/o7/rtc-signaling-contract-probe",
   o7RealtimeElevatorPreview: "/api/o7/realtime-elevator-preview",
@@ -120,6 +124,27 @@ function cloudArchiveTasksUrl(archiveJson: string): string {
   const params = new URLSearchParams();
   params.set("archiveJson", trimmed);
   return `${API_ENDPOINTS.o7CloudArchiveTasks}?${params.toString()}`;
+}
+
+function consumerTaskListUrl(baseUrl: string): string {
+  // consumer read 列表固定走 view=summary；这里只允许 operator 提供 loopback base URL。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  return `${API_ENDPOINTS.o7ConsumerTaskList}?${params.toString()}`;
+}
+
+function consumerTaskDetailUrl(baseUrl: string, taskId: string): string {
+  // 详情入口固定由后端追加 include 策略；前端只传 task_id 和 loopback base URL。
+  const params = new URLSearchParams();
+  const trimmedBaseUrl = baseUrl.trim();
+  if (trimmedBaseUrl) {
+    params.set("baseUrl", trimmedBaseUrl);
+  }
+  const trimmedTaskId = taskId.trim();
+  return `${API_ENDPOINTS.o7ConsumerTaskDetailPrefix}${encodeURIComponent(trimmedTaskId)}?${params.toString()}`;
 }
 
 function cloudOperatorConsoleProbeUrl(baseUrl: string): string {
@@ -255,6 +280,16 @@ export async function getO7SafeCommandPreview(fixtureJson: string): Promise<O7Sa
 export async function getO7CloudArchiveTasks(archiveJson: string): Promise<O7CloudArchiveTasksResponse> {
   // Cloud archive task API 只读本地 fixture，不连接 O6 云归档、实时、标注、语音或命令 API。
   return loadJson<O7CloudArchiveTasksResponse>(cloudArchiveTasksUrl(archiveJson));
+}
+
+export async function getO7ConsumerTaskList(baseUrl: string): Promise<O7ConsumerTaskListResponse> {
+  // O7 任务列表主路径统一走 workstation 后端 adapter，浏览器不直连 relay。
+  return loadJson<O7ConsumerTaskListResponse>(consumerTaskListUrl(baseUrl));
+}
+
+export async function getO7ConsumerTaskDetail(baseUrl: string, taskId: string): Promise<O7ConsumerTaskDetailResponse> {
+  // O7 任务详情主路径固定由后端附带 include 策略，避免组件发明字段选择。
+  return loadJson<O7ConsumerTaskDetailResponse>(consumerTaskDetailUrl(baseUrl, taskId));
 }
 
 export async function loadO7FixturePreview(

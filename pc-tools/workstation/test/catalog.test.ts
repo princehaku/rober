@@ -7,6 +7,8 @@ import {
   buildO7CloudArchiveTasksProbe,
   buildO7CloudArchiveTasks,
   buildO7LiveEndpointsManifest,
+  buildO7ConsumerTaskDetail,
+  buildO7ConsumerTaskList,
   buildO7CloudOperatorConsoleProbe,
   buildO7RealtimeElevatorProbe,
   buildO7RtcSignalingContractProbe,
@@ -621,6 +623,35 @@ function listenCloudArchive(payload: unknown): Promise<{ baseUrl: string; close:
     res.setHeader("Content-Type", "application/json");
     if (req.url === "/api/o7/cloud-archive/tasks") {
       res.end(JSON.stringify(payload));
+      return;
+    }
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: "not_found" }));
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
+function listenConsumerRead(listPayload: unknown, detailPayload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  // consumer read adapter 测试只模拟本机 O6 list/detail 合同，不连接真实 relay、云或机器人。
+  const server = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    if (req.url === "/api/o6/consumer/tasks?view=summary&limit=50") {
+      res.end(JSON.stringify(listPayload));
+      return;
+    }
+    if (req.url?.startsWith("/api/o6/consumer/tasks/task-consumer-001?view=default&include=")) {
+      res.end(JSON.stringify(detailPayload));
       return;
     }
     res.statusCode = 404;
@@ -2736,6 +2767,148 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.robot_control_executed).toBe(false);
     } finally {
       await server.close();
+    }
+  });
+
+  it("O7 consumer read adapters use O6 list/detail primary path with fixed strategy", async () => {
+    // adapter 只验证 O7 PC 对 O6 consumer read 的主入口拼接，不证明真实云、真实控制或真实交付。
+    const listPayload = {
+      schema: "trashbot.o6.consumer_read.v1",
+      task_list: {
+        tasks: [
+          {
+            task_id: "task-consumer-001",
+            robot_id: "robot_fixture",
+            started_at_ms: 1000,
+            finished_at_ms: 2000,
+            task_status_summary: "completed_mock",
+            latest_event_at_ms: 1900,
+            trajectory_frame_count: 3,
+            event_count: 2,
+            evidence_count: 1,
+            labeling_status: "partial",
+            inference_status: "present",
+            tunnel_status_summary: "online",
+            selected: true,
+          },
+        ],
+      },
+      blocked_reasons: [],
+      not_proven: ["proof_status=not_proven"],
+    };
+    const detailPayload = {
+      schema: "trashbot.o6.consumer_read.v1",
+      task_summary: {
+        task_id: "task-consumer-001",
+        robot_id: "robot_fixture",
+        task_status_summary: "completed_mock",
+        started_at_ms: 1000,
+        finished_at_ms: 2000,
+      },
+      trajectory: { status: "loaded_not_proven", frame_count: 3, frames: [{ frame_index: 0, x_m: 1.0 }] },
+      events: { status: "loaded_not_proven", count: 2, items: [{ event_type: "route.frame" }] },
+      evidence: { status: "loaded_not_proven", count: 1, items: [{ evidence_type: "snapshot" }] },
+      labeling: { status: "partial", label_count: 1, items: [{ item_id: "label-1" }] },
+      inference: { status: "present", count: 1, items: [{ result_type: "floor_recognition" }] },
+      tunnel_status: {
+        status: "loaded_not_proven",
+        latest_known_status: "online",
+        temporal_alignment: "latest_known_robot_snapshot_not_task_aligned",
+      },
+      blocked_reasons: [],
+      not_proven: ["robot_control_executed=false"],
+    };
+    const server = await listenConsumerRead(listPayload, detailPayload);
+
+    try {
+      const list = await buildO7ConsumerTaskList(server.baseUrl);
+      const detail = await buildO7ConsumerTaskDetail(server.baseUrl, "task-consumer-001");
+
+      expect(list.schema).toBe("trashbot.pc_tools_workstation.o7_consumer_task_list.v1");
+      expect(list.remote_endpoint).toBe("/api/o6/consumer/tasks?view=summary&limit=50");
+      expect(list.query_strategy.view).toBe("summary");
+      expect(list.query_strategy.include).toEqual([]);
+      expect(list.task_list[0]).toMatchObject({
+        task_id: "task-consumer-001",
+        labeling_status: "partial",
+        inference_status: "present",
+        tunnel_status_summary: "online",
+      });
+      expect(list.safe_to_control).toBe(false);
+
+      expect(detail.schema).toBe("trashbot.pc_tools_workstation.o7_consumer_task_detail.v1");
+      expect(detail.remote_endpoint).toBe(
+        "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,labeling,inference,tunnel",
+      );
+      expect(detail.query_strategy.include).toEqual([
+        "trajectory",
+        "events",
+        "evidence",
+        "labeling",
+        "inference",
+        "tunnel",
+      ]);
+      expect(detail.task_summary?.task_id).toBe("task-consumer-001");
+      expect(detail.trajectory.frame_count).toBe(3);
+      expect(detail.tunnel_status.temporal_alignment).toBe("latest_known_robot_snapshot_not_task_aligned");
+      expect(detail.connects_cloud_production).toBe(false);
+      expect(detail.robot_control_executed).toBe(false);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("O7 consumer read HTTP endpoints expose workstation adapter contract", async () => {
+    // Express 路由测试确认 PC 端入口已经挂到 workstation，而不是让浏览器直接打 relay。
+    const listPayload = {
+      schema: "trashbot.o6.consumer_read.v1",
+      task_list: { tasks: [{ task_id: "task-consumer-001", robot_id: "robot_fixture" }] },
+      blocked_reasons: [],
+      not_proven: ["proof_status=not_proven"],
+    };
+    const detailPayload = {
+      schema: "trashbot.o6.consumer_read.v1",
+      task_summary: { task_id: "task-consumer-001", robot_id: "robot_fixture", task_status_summary: "completed_mock" },
+      trajectory: { status: "loaded_not_proven", frame_count: 0, frames: [] },
+      events: { status: "loaded_not_proven", count: 0, items: [] },
+      evidence: { status: "loaded_not_proven", count: 0, items: [] },
+      labeling: { status: "pending", label_count: 0, items: [] },
+      inference: { status: "absent", count: 0, items: [] },
+      tunnel_status: { status: "blocked_not_proven", latest_known_status: "blocked_not_proven" },
+      blocked_reasons: [],
+      not_proven: ["proof_status=not_proven"],
+    };
+    const upstream = await listenConsumerRead(listPayload, detailPayload);
+    const workstation = await listen(createWorkstationApp());
+
+    try {
+      const listUrl = new URL("/api/o7/consumer-read/tasks", workstation.baseUrl);
+      listUrl.searchParams.set("baseUrl", upstream.baseUrl);
+      const listResponse = await fetch(listUrl);
+      const listBody = (await listResponse.json()) as Awaited<ReturnType<typeof buildO7ConsumerTaskList>>;
+
+      const detailUrl = new URL("/api/o7/consumer-read/tasks/task-consumer-001", workstation.baseUrl);
+      detailUrl.searchParams.set("baseUrl", upstream.baseUrl);
+      const detailResponse = await fetch(detailUrl);
+      const detailBody = (await detailResponse.json()) as Awaited<ReturnType<typeof buildO7ConsumerTaskDetail>>;
+
+      expect(listResponse.status).toBe(200);
+      expect(listBody.schema).toBe("trashbot.pc_tools_workstation.o7_consumer_task_list.v1");
+      expect(listBody.task_list[0]?.task_id).toBe("task-consumer-001");
+      expect(detailResponse.status).toBe(200);
+      expect(detailBody.schema).toBe("trashbot.pc_tools_workstation.o7_consumer_task_detail.v1");
+      expect(detailBody.requested_task_id).toBe("task-consumer-001");
+      expect(detailBody.query_strategy.include).toEqual([
+        "trajectory",
+        "events",
+        "evidence",
+        "labeling",
+        "inference",
+        "tunnel",
+      ]);
+    } finally {
+      await upstream.close();
+      await workstation.close();
     }
   });
 
