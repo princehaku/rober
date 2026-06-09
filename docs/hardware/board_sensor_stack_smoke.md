@@ -216,6 +216,18 @@ camera/OpenCV/v4l2/ROS camera topic，未发布 `/cmd_vel`，未启动底盘控�
 证据或 wheel feedback 非零。下一步需要现场肉眼/外部视频、检查电机供电/急停/模式/
 底盘是否架空；若仍无运动，再考虑人工在场的 vendor direct `T=1` 更高 PWM/速度受控 HIL。
 
+## 2026-06-10 Field HIL Execution Pack
+
+`docs/hardware/field_hil_execution_pack.md` 已把当前证据矩阵和下一轮现场 HIL
+顺序收敛为可执行 gate。后续不要继续盲跑远程低速 probe；必须先由现场人员确认
+镜头盖/保护膜/补光/相机朝向、电机供电、急停/遥控/模式、底盘落地或架空状态、
+安全空间和外部视频记录条件。
+
+只有 `/trashbot/stop`、UART、battery/feedback、LiDAR scan、camera 可见性或外部视频、
+API service 管理和清场条件全部通过后，才允许继续受控运动。`visible_content_proven`、
+`physical_motion_lidar_delta_proven`、`wheel_feedback_lr_nonzero_proven`、
+`delivery_success` 的翻转条件以该 execution pack 为准。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`
