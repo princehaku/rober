@@ -30,6 +30,11 @@ sprint_type: epic
 
 ## 验证结果
 
+### 2026-06-09 复核
+
+- 当前工作树保持 clean，未发现额外未提交改动。
+- 这次复核重新跑通 `npm test -- --run`、`npm run build`、`npm run lint`、`rg -n ...`、`git diff --check` 和 `git status --short --branch`，结果均符合 software proof 收口边界。
+
 ### 命令
 
 ```bash

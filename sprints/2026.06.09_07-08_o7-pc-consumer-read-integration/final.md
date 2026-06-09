@@ -9,6 +9,11 @@
 - `view=summary` 与 detail `include=trajectory,events,evidence,labeling,inference,tunnel` 策略已固化并在 UI 可见
 - fail-closed 语义与 software proof boundary 已在 workstation UI、测试和文档中同步可见
 
+### 2026-06-09 复核
+
+- 当前复核仅同步 sprint 文档状态与再次验证，不引入新的代码路径。
+- 复核结果仍维持 consumer read primary path、fail-closed 展示和 software proof 边界不变。
+
 ## 对 OKR 的影响
 
 - 直接推进：O7（PC 端运营调试平台）可执行性
