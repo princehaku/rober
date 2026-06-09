@@ -1,0 +1,12 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-10-00-37-22-578118-op-z3-b6.home-44174
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [esp32_bridge-1]: process started with pid [44201]
+[INFO] [waypoint_manager-2]: process started with pid [44203]
+[INFO] [map_recorder-3]: process started with pid [44205]
+[INFO] [task_orchestrator-4]: process started with pid [44207]
+[esp32_bridge-1] [INFO] [1781023044.648169369] [esp32_bridge]: Connected to WAVE ROVER ESP32 on /dev/ttyS5 @ 115200
+[waypoint_manager-2] [WARN] [1781023044.661749078] [waypoint_manager]: nav2_simple_commander is unavailable; waypoint navigation disabled: No module named 'nav2_simple_commander'
+[esp32_bridge-1] [INFO] [1781023044.772687621] [esp32_bridge]: ESP32Bridge ready: vendor WAVE ROVER UART protocol is one UTF-8 JSON object per newline; command_mode=speed; odom source=ROS-side command integration until measured wheel odometry is validated
+[waypoint_manager-2] [INFO] [1781023045.073824429] [waypoint_manager]: Loaded 44 waypoints from /root/.ros/trashbot_maps/waypoints.yaml
+[waypoint_manager-2] [INFO] [1781023045.076606920] [waypoint_manager]: WaypointManager ready. Loaded 44 waypoints.
+[task_orchestrator-4] [INFO] [1781023045.098033273] [task_orchestrator]: TaskOrchestrator ready. Awaiting learning or patrol command.

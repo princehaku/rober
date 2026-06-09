@@ -1,0 +1,274 @@
+[2026-06-10 00:37:16] step1: baseline
+Wed Jun 10 12:37:16 AM CST 2026
+op-z3-b6.home
+root        1173       1  0 Jun09 ?        00:00:01 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+root       39007       1  0 00:23 ?        00:00:02 /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 0 --rmw-implementation rmw_fastrtps_cpp
+[2026-06-10 00:37:16] baseline api status
+{"schema": "trashbot.upper_robot_api.v1.base_status", "generated_at_ms": 1781023036965, "vendor_sources": ["docs/vendor/VENDOR_INDEX.md", "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py", "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"], "port": "/dev/ttyS5", "baudrate": 115200, "port_info": {"path": "/dev/ttyS5", "exists": true, "lexists": true, "is_symlink": false, "realpath": "/dev/ttyS5", "error": null, "mode_octal": "0o660", "uid": 0, "gid": 20}, "pyserial_available": true, "pyserial_error": null, "write_control_available": true, "feedback_ack": {"t1001_observed": false, "robot_ack_connected": false, "reason": "T=130 on /dev/ttyS5 did not return T=1001 in current evidence"}, "feedback_samples_latest": {"schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_summary", "generated_at_ms": 1781023036965, "endpoint": "/api/base/feedback-samples/latest", "artifact": {"path": "runtime/base_feedback_samples_latest.json", "configured_by": "ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH or --feedback-samples-artifact-path", "format": "json", "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result", "ok": true, "status": "loaded", "mtime_ms": 1781020997105, "age_ms": 2039860, "updated_at_ms": 1781020997101, "bytes_read": 3868}, "freshness": {"status": "stale", "stale_after_ms": 900000, "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control"}, "latest_t1001_observed_count": 2, "latest_all_samples_observed_t1001": true, "readback_sends_commands": false, "sends_commands": false, "sends_motion_commands": false, "robot_control_executed": false, "delivery_success": false, "hil_pass": false, "safe_to_control": false, "primary_actions_enabled": false}, "control_policy": {"mode": "low_speed_pulse_with_auto_stop", "max_speed": 0.12, "max_pulse_ms": 800, "stop_command": {"T": 1, "L": 0, "R": 0}}, "sends_commands": false, "safe_to_control": false, "delivery_success": false, "primary_actions_enabled": false, "robot_control_executed": false, "cloud_relay": false}
+[2026-06-10 00:37:16] baseline tty holder
+crw-rw---- 1 root dialout 4, 69 Jun 10 00:03 /dev/ttyS5
+[2026-06-10 00:37:17] step2: stop upper_robot_api.py only
+[2026-06-10 00:37:17] upper_robot_api pid=1173
+[2026-06-10 00:37:19] /dev/ttyS5 released
+[2026-06-10 00:37:19] step3: start base-only bringup
+[2026-06-10 00:37:19] bringup pid=44174
+[2026-06-10 00:37:27] bringup running
+[2026-06-10 00:37:27] step4: topic/service smoke
+/esp32_bridge
+/map_recorder
+/task_orchestrator
+/waypoint_manager
+Type: geometry_msgs/msg/Twist
+Publisher count: 0
+Subscription count: 1
+header:
+  stamp:
+    sec: 1781023059
+    nanosec: 814081924
+  frame_id: odom
+child_frame_id: base_link
+pose:
+  pose:
+    position:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    orientation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  covariance:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+twist:
+  twist:
+    linear:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    angular:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+  covariance:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+---
+/trashbot/stop
+[2026-06-10 00:37:58] step5: low-speed pulse
+Waiting for at least 1 matching subscription(s)...
+Waiting for at least 1 matching subscription(s)...
+publisher: beginning loop
+publishing #1: geometry_msgs.msg.Twist(linear=geometry_msgs.msg.Vector3(x=0.03, y=0.0, z=0.0), angular=geometry_msgs.msg.Vector3(x=0.0, y=0.0, z=0.0))
+
+publisher: beginning loop
+publishing #1: geometry_msgs.msg.Twist(linear=geometry_msgs.msg.Vector3(x=0.0, y=0.0, z=0.0), angular=geometry_msgs.msg.Vector3(x=0.0, y=0.0, z=0.0))
+
+waiting for service to become available...
+requester: making request: std_srvs.srv.Trigger_Request()
+
+response:
+std_srvs.srv.Trigger_Response(success=True, message='Motors stopped')
+
+header:
+  stamp:
+    sec: 1781023100
+    nanosec: 913476705
+  frame_id: odom
+child_frame_id: base_link
+pose:
+  pose:
+    position:
+      x: 0.15000877008
+      y: 0.0
+      z: 0.0
+    orientation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  covariance:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+twist:
+  twist:
+    linear:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    angular:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+  covariance:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+---
+[2026-06-10 00:38:23] step5b: launch log tail
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-10-00-37-22-578118-op-z3-b6.home-44174
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [esp32_bridge-1]: process started with pid [44201]
+[INFO] [waypoint_manager-2]: process started with pid [44203]
+[INFO] [map_recorder-3]: process started with pid [44205]
+[INFO] [task_orchestrator-4]: process started with pid [44207]
+[esp32_bridge-1] [INFO] [1781023044.648169369] [esp32_bridge]: Connected to WAVE ROVER ESP32 on /dev/ttyS5 @ 115200
+[waypoint_manager-2] [WARN] [1781023044.661749078] [waypoint_manager]: nav2_simple_commander is unavailable; waypoint navigation disabled: No module named 'nav2_simple_commander'
+[esp32_bridge-1] [INFO] [1781023044.772687621] [esp32_bridge]: ESP32Bridge ready: vendor WAVE ROVER UART protocol is one UTF-8 JSON object per newline; command_mode=speed; odom source=ROS-side command integration until measured wheel odometry is validated
+[waypoint_manager-2] [INFO] [1781023045.073824429] [waypoint_manager]: Loaded 44 waypoints from /root/.ros/trashbot_maps/waypoints.yaml
+[waypoint_manager-2] [INFO] [1781023045.076606920] [waypoint_manager]: WaypointManager ready. Loaded 44 waypoints.
+[task_orchestrator-4] [INFO] [1781023045.098033273] [task_orchestrator]: TaskOrchestrator ready. Awaiting learning or patrol command.
+[2026-06-10 00:38:23] remote status=ok
+[2026-06-10 00:38:23] cleanup: publish zero cmd_vel before shutdown
+Waiting for at least 1 matching subscription(s)...
+publisher: beginning loop
+publishing #1: geometry_msgs.msg.Twist(linear=geometry_msgs.msg.Vector3(x=0.0, y=0.0, z=0.0), angular=geometry_msgs.msg.Vector3(x=0.0, y=0.0, z=0.0))
+
+waiting for service to become available...
+requester: making request: std_srvs.srv.Trigger_Request()
+
+response:
+std_srvs.srv.Trigger_Response(success=True, message='Motors stopped')
+
+[2026-06-10 00:38:37] cleanup: restore upper_robot_api.py
+[2026-06-10 00:38:40] cleanup: final api status
+{"schema": "trashbot.upper_robot_api.v1.base_status", "generated_at_ms": 1781023120660, "vendor_sources": ["docs/vendor/VENDOR_INDEX.md", "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py", "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"], "port": "/dev/ttyS5", "baudrate": 115200, "port_info": {"path": "/dev/ttyS5", "exists": true, "lexists": true, "is_symlink": false, "realpath": "/dev/ttyS5", "error": null, "mode_octal": "0o660", "uid": 0, "gid": 20}, "pyserial_available": true, "pyserial_error": null, "write_control_available": true, "feedback_ack": {"t1001_observed": false, "robot_ack_connected": false, "reason": "T=130 on /dev/ttyS5 did not return T=1001 in current evidence"}, "feedback_samples_latest": {"schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_summary", "generated_at_ms": 1781023120660, "endpoint": "/api/base/feedback-samples/latest", "artifact": {"path": "runtime/base_feedback_samples_latest.json", "configured_by": "ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH or --feedback-samples-artifact-path", "format": "json", "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result", "ok": true, "status": "loaded", "mtime_ms": 1780572584310, "age_ms": 450536350, "updated_at_ms": 1780572584313, "bytes_read": 4989}, "freshness": {"status": "stale", "stale_after_ms": 900000, "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control"}, "latest_t1001_observed_count": 3, "latest_all_samples_observed_t1001": true, "readback_sends_commands": false, "sends_commands": false, "sends_motion_commands": false, "robot_control_executed": false, "delivery_success": false, "hil_pass": false, "safe_to_control": false, "primary_actions_enabled": false}, "control_policy": {"mode": "low_speed_pulse_with_auto_stop", "max_speed": 0.12, "max_pulse_ms": 800, "stop_command": {"T": 1, "L": 0, "R": 0}}, "sends_commands": false, "safe_to_control": false, "delivery_success": false, "primary_actions_enabled": false, "robot_control_executed": false, "cloud_relay": false}
+[2026-06-10 00:38:40] cleanup: final tty holder
+                     USER        PID ACCESS COMMAND
+/dev/ttyS5:          root      44201 F.... esp32_bridge
