@@ -1796,11 +1796,48 @@ const fixtures: Record<string, unknown> = {
       started_at_ms: 1000,
       finished_at_ms: 2000,
     },
-    trajectory: { status: "loaded_not_proven", frame_count: 3, sample_frames: [{ frame_index: 0 }] },
-    events: { status: "loaded_not_proven", count: 2, sample_events: [{ event_type: "route.frame" }] },
-    evidence: { status: "loaded_not_proven", count: 1, sample_evidence: [{ evidence_type: "snapshot" }] },
-    labeling: { status: "partial", label_count: 1, sample_items: [{ item_id: "label-1" }] },
-    inference: { status: "present", count: 1, sample_results: [{ result_type: "floor_recognition" }] },
+    trajectory: {
+      status: "loaded_not_proven",
+      frame_count: 3,
+      sample_frames: [
+        {
+          frame_index: 0,
+          timestamp_ms: 1000,
+          pose: { x_m: 0.2, y_m: 0.1, yaw_rad: 0 },
+          velocity: { linear_mps: 0.1 },
+          state: "consumer_departed",
+          evidence_ref: "consumer-frame-000.jpg",
+        },
+        {
+          frame_index: 1,
+          timestamp_ms: 1200,
+          pose: { x_m: 0.4, y_m: 0.3, yaw_rad: 0.1 },
+          velocity: { linear_mps: 0.2 },
+          state: "consumer_en_route",
+          evidence_ref: "consumer-frame-001.jpg",
+        },
+      ],
+    },
+    events: {
+      status: "loaded_not_proven",
+      count: 2,
+      sample_events: [{ event_type: "route.frame", state: "consumer_en_route", timestamp_ms: 1200, evidence_ref: "consumer-event-001.json" }],
+    },
+    evidence: {
+      status: "loaded_not_proven",
+      count: 1,
+      sample_evidence: [{ evidence_type: "snapshot", state: "consumer_en_route", timestamp_ms: 1200, evidence_ref: "consumer-evidence-001.jpg" }],
+    },
+    labeling: {
+      status: "partial",
+      label_count: 1,
+      sample_items: [{ item_id: "label-1", frame_id: "frame-001", status: "pending", evidence_ref: "consumer-label-001.json" }],
+    },
+    inference: {
+      status: "present",
+      count: 1,
+      sample_results: [{ result_type: "floor_recognition", status: "not_proven", timestamp_ms: 1200, evidence_ref: "consumer-inference-001.json" }],
+    },
     tunnel_status: {
       status: "loaded_not_proven",
       latest_known_status: "online",
@@ -2536,6 +2573,13 @@ describe("App", () => {
     expect(wrapper.text()).toContain("token_values_exposed=false");
     expect(wrapper.text()).toContain("url_query_hash_credentials_exposed=false");
     expect(wrapper.text()).toContain("task-consumer-001");
+    expect(wrapper.text()).toContain("local_consumer_detail_cursor_ready");
+    expect(wrapper.text()).toContain("readonly_consumer_detail_trajectory_ready");
+    expect(wrapper.text()).toContain("consumer-frame-000.jpg");
+    expect(wrapper.text()).toContain("consumer_en_route");
+    expect(wrapper.text()).toContain("consumer-event-001.json");
+    expect(wrapper.text()).toContain("consumer-evidence-001.jpg");
+    expect(wrapper.text()).toContain("consumer-inference-001.json");
     expect(wrapper.text()).toContain("latest_known_robot_snapshot_not_task_aligned");
     expect(wrapper.text()).toContain("idempotent_command_api_trace");
     expect(wrapper.text()).toContain("real_robot_ack_connected");

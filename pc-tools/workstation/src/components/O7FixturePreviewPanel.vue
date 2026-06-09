@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import {
   getO7CloudArchiveTasks,
   getO7CloudArchiveTasksProbe,
@@ -48,6 +48,18 @@ interface RouteReplayTrajectoryPoint {
 interface RouteReplayMinimapPoint extends RouteReplayTrajectoryPoint {
   svg_x: number;
   svg_y: number;
+}
+
+interface RouteReplayDetailFrame {
+  frame_index: number;
+  cursor_index: number;
+  timestamp_ms: number | null;
+  x_m: number | null;
+  y_m: number | null;
+  yaw_rad: number | null;
+  speed_mps: number | null;
+  state: string;
+  evidence_ref: string;
 }
 
 interface RealtimePosePreview {
@@ -187,6 +199,9 @@ const liveEndpointsManifestResult = ref<O7LiveEndpointsManifestResponse | null>(
 const liveEndpointsManifestError = ref("");
 const liveEndpointsManifestLoading = ref(false);
 const routeReplayCursor = ref(0);
+const routeReplayPlaying = ref(false);
+const routeReplayPlaybackTimer = ref<number | null>(null);
+const fixtureRouteReplayCursor = ref(0);
 const labelingReviewCursor = ref(0);
 const localAnnotationDrafts = ref<Record<string, LocalAnnotationDraft>>({});
 const localTtsDraft = ref<LocalTtsDraft | null>(null);
@@ -202,6 +217,31 @@ function asRecord(result: O7FixturePreviewResult | undefined): Record<string, un
 function asStringArray(value: unknown): string[] {
   // 后端契约规定 blocked_reasons/not_proven 是数组；防御式处理避免坏响应撑爆 UI。
   return Array.isArray(value) ? value.map(String) : [];
+}
+
+function asObjectRecord(value: unknown): Record<string, unknown> | null {
+  // consumer detail 的样本字段是 object 列表，非对象一律按缺失处理。
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function asFiniteNumber(value: unknown): number | null {
+  // 轨迹和时间戳只接受有限数字，字符串数字不自动提升，避免把坏数据误画成可用轨迹。
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function asCursorLabel(value: unknown, fallback: string): string {
+  // 标题和状态只接受短字符串，避免把完整原始 payload 直接展示到页面。
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, 160) : fallback;
+}
+
+function sampleRecords(value: unknown, limit = 5): Record<string, unknown>[] {
+  // 只保留少量样本做前端摘要，避免 detail 页把整段事件流和证据流都展开。
+  return Array.isArray(value)
+    ? value
+        .slice(0, limit)
+        .map((item) => asObjectRecord(item))
+        .filter((item): item is Record<string, unknown> => Boolean(item))
+    : [];
 }
 
 function jsonSummary(value: unknown): string {
@@ -477,7 +517,82 @@ function inspectorCursorFields(result: O7CloudArchiveTasksResponse | null): stri
   ];
 }
 
-const routeReplayFrames = computed(() => archiveResult.value?.route_replay_inspector.sample_frames ?? []);
+function normalizeRouteReplayDetailFrame(value: unknown, cursorIndex: number): RouteReplayDetailFrame | null {
+  const record = asObjectRecord(value);
+  // consumer detail 的轨迹样本可能有轻微字段形状差异，这里只做白名单投影，不做结构修复。
+  if (!record) {
+    return null;
+  }
+  const pose = asObjectRecord(record.pose);
+  const velocity = asObjectRecord(record.velocity);
+  return {
+    frame_index:
+      asFiniteNumber(record.frame_index ?? record.frameIndex) === null
+        ? cursorIndex
+        : Math.trunc(asFiniteNumber(record.frame_index ?? record.frameIndex) as number),
+    cursor_index: cursorIndex,
+    timestamp_ms: asFiniteNumber(record.timestamp_ms ?? record.timestampMs),
+    x_m: asFiniteNumber(record.x_m ?? pose?.x_m ?? pose?.x ?? pose?.xM),
+    y_m: asFiniteNumber(record.y_m ?? pose?.y_m ?? pose?.y ?? pose?.yM),
+    yaw_rad: asFiniteNumber(record.yaw_rad ?? pose?.yaw_rad ?? pose?.yaw ?? pose?.yawRad),
+    speed_mps: asFiniteNumber(record.speed_mps ?? velocity?.linear_mps ?? velocity?.linear ?? velocity?.speed_mps),
+    state: asCursorLabel(record.state ?? record.status ?? record.event_type, "blocked_not_proven"),
+    evidence_ref: asCursorLabel(record.evidence_ref ?? record.evidenceRef, "missing_evidence_ref"),
+  };
+}
+
+function safeDetailFrameSummary(frame: RouteReplayDetailFrame): string {
+  // 帧摘要只展示详情里已给出的坐标和证据，不展开原始轨迹 payload。
+  return [
+    `frame_index=${frame.frame_index}`,
+    `timestamp_ms=${frame.timestamp_ms ?? "null"}`,
+    `x_m=${frame.x_m ?? "null"}`,
+    `y_m=${frame.y_m ?? "null"}`,
+    `yaw_rad=${frame.yaw_rad ?? "null"}`,
+    `speed_mps=${frame.speed_mps ?? "null"}`,
+    `state=${frame.state}`,
+    `evidence_ref=${frame.evidence_ref}`,
+  ].join(" · ");
+}
+
+function sampleDetailSummaries(value: unknown, label: string, limit = 5): string[] {
+  // 只有少量摘要会进入 UI；完整数组仍留在后端 contract 内，不被浏览器展开。
+  return sampleRecords(value, limit).map((record, index) => {
+    const timestamp = asFiniteNumber(record.timestamp_ms ?? record.timestampMs);
+    const state = asCursorLabel(record.state ?? record.status ?? record.event_type, "blocked_not_proven");
+    const evidence = asCursorLabel(record.evidence_ref ?? record.evidenceRef, "missing_evidence_ref");
+    const primary =
+      label === "event"
+        ? `event_type=${asCursorLabel(record.event_type ?? record.type, "blocked_not_proven")}`
+        : label === "evidence"
+          ? `evidence_type=${asCursorLabel(record.evidence_type ?? record.type, "blocked_not_proven")}`
+          : label === "labeling"
+            ? `item_id=${asCursorLabel(record.item_id, "blocked_not_proven")}; frame_id=${asCursorLabel(record.frame_id, "blocked_not_proven")}`
+            : label === "inference"
+              ? `result_type=${asCursorLabel(record.result_type ?? record.inference_type, "blocked_not_proven")}`
+              : `status=${asCursorLabel(record.status, "blocked_not_proven")}`;
+    return [
+      `${index + 1}.`,
+      primary,
+      `state=${state}`,
+      `timestamp_ms=${timestamp ?? "null"}`,
+      `evidence_ref=${evidence}`,
+    ].join(" · ");
+  });
+}
+
+const routeReplayFrames = computed<RouteReplayDetailFrame[]>(() =>
+  sampleRecords(consumerTaskDetailResult.value?.trajectory.sample_frames).map((frame, cursorIndex) =>
+    normalizeRouteReplayDetailFrame(frame, cursorIndex),
+  ).filter((frame): frame is RouteReplayDetailFrame => Boolean(frame)),
+);
+const fixtureRouteReplayFrames = computed<RouteReplayDetailFrame[]>(() =>
+  (archiveResult.value?.route_replay_inspector.sample_frames ?? []).map((frame, cursorIndex) => ({
+    // fixture 回放作为次路径保留，字段来自后端已压缩的 inspector 摘要。
+    ...frame,
+    cursor_index: cursorIndex,
+  })),
+);
 const labelingReviewItems = computed(() => archiveResult.value?.labeling_queue_inspector.sample_review_items ?? []);
 const voiceAsrEvents = computed(() => archiveResult.value?.voice_asr_tts_inspector.sample_asr_events ?? []);
 const safeCommandSamples = computed(() => archiveResult.value?.safe_command_inspector.sample_commands ?? []);
@@ -547,6 +662,19 @@ const routeReplayTrajectoryPoints = computed<RouteReplayTrajectoryPoint[]>(() =>
     })),
 );
 
+const fixtureRouteReplayTrajectoryPoints = computed<RouteReplayTrajectoryPoint[]>(() =>
+  fixtureRouteReplayFrames.value
+    .map((frame, cursorIndex) => ({ frame, cursorIndex }))
+    .filter(({ frame }) => isFiniteNumber(frame.x_m) && isFiniteNumber(frame.y_m))
+    .map(({ frame, cursorIndex }) => ({
+      // fixture 次路径也只画有效 x/y，避免旧调试样本被误读成真实地图。
+      frame_index: frame.frame_index,
+      cursor_index: cursorIndex,
+      x_m: Number(frame.x_m),
+      y_m: Number(frame.y_m),
+    })),
+);
+
 function normalizeRouteReplayPoint(
   point: RouteReplayTrajectoryPoint,
   bounds: { minX: number; maxX: number; minY: number; maxY: number },
@@ -576,8 +704,29 @@ const routeReplayMinimapPoints = computed<RouteReplayMinimapPoint[]>(() => {
   return points.map((point) => normalizeRouteReplayPoint(point, bounds));
 });
 
+const fixtureRouteReplayMinimapPoints = computed<RouteReplayMinimapPoint[]>(() => {
+  const points = fixtureRouteReplayTrajectoryPoints.value;
+  if (!points.length) {
+    return [];
+  }
+  const xs = points.map((point) => point.x_m);
+  const ys = points.map((point) => point.y_m);
+  const bounds = {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
+  // 旧 fixture 小地图仍走同一个归一化算法，但不参与 consumer-detail 主路径判断。
+  return points.map((point) => normalizeRouteReplayPoint(point, bounds));
+});
+
 const routeReplayMinimapPolyline = computed(() =>
   routeReplayMinimapPoints.value.map((point) => `${point.svg_x.toFixed(2)},${point.svg_y.toFixed(2)}`).join(" "),
+);
+
+const fixtureRouteReplayMinimapPolyline = computed(() =>
+  fixtureRouteReplayMinimapPoints.value.map((point) => `${point.svg_x.toFixed(2)},${point.svg_y.toFixed(2)}`).join(" "),
 );
 
 const currentRouteReplayMinimapMarker = computed<RouteReplayMinimapPoint | null>(() => {
@@ -589,12 +738,24 @@ const currentRouteReplayMinimapMarker = computed<RouteReplayMinimapPoint | null>
   return routeReplayMinimapPoints.value.find((point) => point.cursor_index === routeReplayCursor.value) ?? null;
 });
 
+const currentFixtureRouteReplayMinimapMarker = computed<RouteReplayMinimapPoint | null>(() => {
+  const frame = fixtureRouteReplayFrames.value[fixtureRouteReplayCursor.value] ?? null;
+  // fixture 当前帧坐标无效时同样不画 marker，避免 debug fallback 产生确定位置错觉。
+  if (!frame || !isFiniteNumber(frame.x_m) || !isFiniteNumber(frame.y_m)) {
+    return null;
+  }
+  return fixtureRouteReplayMinimapPoints.value.find((point) => point.cursor_index === fixtureRouteReplayCursor.value) ?? null;
+});
+
 const routeReplayMinimapStatus = computed(() => {
-  // 少于两个有效点不能构成轨迹检查能力，只能作为未证明状态展示。
-  if (routeReplayTrajectoryPoints.value.length < 2) {
+  // 没有有效点时必须阻断；只有 1 个点时仍可浏览当前 marker，但不能画出完整轨迹线。
+  if (routeReplayTrajectoryPoints.value.length === 0) {
     return "blocked_not_proven";
   }
-  return "readonly_fixture_trajectory_ready";
+  if (routeReplayTrajectoryPoints.value.length === 1) {
+    return "readonly_consumer_detail_trajectory_single_point";
+  }
+  return "readonly_consumer_detail_trajectory_ready";
 });
 
 const routeReplayCurrentMarkerStatus = computed(() => {
@@ -605,28 +766,213 @@ const routeReplayCurrentMarkerStatus = computed(() => {
   return `frame_index=${currentRouteReplayMinimapMarker.value.frame_index}`;
 });
 
-const routeReplayBlockedReason = computed(() => {
-  const archive = archiveResult.value as (O7CloudArchiveTasksResponse & { playback_available?: boolean }) | null;
-  // 逐帧浏览只绑定本地 sample_frames；未加载、无 selected task、显式 playback=false 都必须关闸。
-  if (!archive) {
-    return "archive_not_loaded";
+const fixtureRouteReplayMinimapStatus = computed(() => {
+  // fixture 次路径保持更严格的旧语义：少于两个点不画成轨迹。
+  if (fixtureRouteReplayTrajectoryPoints.value.length < 2) {
+    return "blocked_not_proven";
   }
-  if (!archive.route_replay_inspector.selected_task_id) {
-    return "selected_task_missing";
+  return "readonly_fixture_trajectory_ready";
+});
+
+const fixtureRouteReplayCurrentMarkerStatus = computed(() => {
+  if (!currentFixtureRouteReplayMinimapMarker.value) {
+    return "blocked_unknown_current_frame_coordinate";
+  }
+  return `frame_index=${currentFixtureRouteReplayMinimapMarker.value.frame_index}`;
+});
+
+const routeReplayBlockedReason = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  // 逐帧浏览只绑定 consumer detail；未加载、失败态、未知任务或轨迹缺失都必须关闸。
+  if (consumerTaskDetailLoading.value) {
+    return "consumer_task_detail_loading";
+  }
+  if (consumerTaskDetailError.value) {
+    return "consumer_task_detail_api_unavailable";
+  }
+  if (!detail) {
+    return "consumer_task_detail_not_loaded";
+  }
+  if (detail.detail_status !== "loaded_fail_closed_summary") {
+    return detail.fail_closed_reason || "consumer_task_detail_fail_closed";
+  }
+  const taskId = detail.task_summary?.task_id?.trim() ?? "";
+  const requestedTaskId = consumerSelectedTaskId.value.trim();
+  const taskStatus = detail.task_summary?.task_status_summary ?? "";
+  if (!taskId || taskId === "unknown_task" || taskId === "not_provided") {
+    return "unknown_task";
+  }
+  if (requestedTaskId && taskId !== requestedTaskId) {
+    return "task_id_mismatch";
+  }
+  if (!taskStatus || /(?:failed|blocked|error|invalid|unknown|expired|cancel|not_proven)/i.test(taskStatus)) {
+    return `task_status_not_playable:${taskStatus || "missing"}`;
   }
   if (!routeReplayFrames.value.length) {
-    return "sample_frames_missing";
-  }
-  if (archive.playback_available === false) {
-    return "playback_available_false";
-  }
-  if (archive.route_replay_inspector.status !== "fixture_inspector_ready") {
-    return "route_replay_inspector_blocked_not_proven";
+    return "trajectory_missing";
   }
   return "";
 });
 
 const routeReplayNavigationEnabled = computed(() => routeReplayBlockedReason.value === "");
+
+const fixtureRouteReplayBlockedReason = computed(() => {
+  const archive = archiveResult.value as (O7CloudArchiveTasksResponse & { playback_available?: boolean }) | null;
+  const inspector = archive?.route_replay_inspector;
+  // fixture replay 只是旧调试 fallback；没有本地 archive 或 inspector ready 时必须关闸。
+  if (!archive) {
+    return "archive_not_loaded";
+  }
+  if (!inspector?.selected_task_id) {
+    return "selected_task_missing";
+  }
+  if (!fixtureRouteReplayFrames.value.length) {
+    return "sample_frames_missing";
+  }
+  if (archive.playback_available === false) {
+    return "playback_available_false";
+  }
+  if (inspector.status !== "fixture_inspector_ready") {
+    return "route_replay_inspector_blocked_not_proven";
+  }
+  return "";
+});
+
+const fixtureRouteReplayNavigationEnabled = computed(() => fixtureRouteReplayBlockedReason.value === "");
+
+function stopRouteReplayPlayback(): void {
+  // 播放器只允许在浏览器内推进 cursor；停止时必须清理本地计时器，避免切页后继续跳帧。
+  if (routeReplayPlaybackTimer.value !== null) {
+    window.clearInterval(routeReplayPlaybackTimer.value);
+    routeReplayPlaybackTimer.value = null;
+  }
+  routeReplayPlaying.value = false;
+}
+
+function clampRouteReplayCursor(index: number): void {
+  const maxIndex = Math.max(routeReplayFrames.value.length - 1, 0);
+  // cursor 只允许落在当前 detail 的 sample frame 范围内，越界时直接压回边界。
+  routeReplayCursor.value = Math.min(Math.max(index, 0), maxIndex);
+}
+
+function resetRouteReplayCursor(): void {
+  stopRouteReplayPlayback();
+  clampRouteReplayCursor(0);
+}
+
+function previousRouteReplayFrame(): void {
+  if (routeReplayNavigationEnabled.value) {
+    stopRouteReplayPlayback();
+    clampRouteReplayCursor(routeReplayCursor.value - 1);
+  }
+}
+
+function nextRouteReplayFrame(): void {
+  if (routeReplayNavigationEnabled.value) {
+    stopRouteReplayPlayback();
+    clampRouteReplayCursor(routeReplayCursor.value + 1);
+  }
+}
+
+function setRouteReplayCursorFromInput(event: Event): void {
+  const target = event.target as HTMLInputElement;
+  if (routeReplayNavigationEnabled.value) {
+    stopRouteReplayPlayback();
+    clampRouteReplayCursor(Number(target.value));
+  }
+}
+
+function tickRouteReplayPlayback(): void {
+  const nextIndex = routeReplayCursor.value + 1;
+  if (!routeReplayNavigationEnabled.value || routeReplayFrames.value.length === 0) {
+    stopRouteReplayPlayback();
+    return;
+  }
+  if (nextIndex >= routeReplayFrames.value.length) {
+    stopRouteReplayPlayback();
+    return;
+  }
+  clampRouteReplayCursor(nextIndex);
+}
+
+function startRouteReplayPlayback(): void {
+  if (!routeReplayNavigationEnabled.value || routeReplayFrames.value.length <= 1) {
+    return;
+  }
+  stopRouteReplayPlayback();
+  routeReplayPlaying.value = true;
+  routeReplayPlaybackTimer.value = window.setInterval(() => {
+    tickRouteReplayPlayback();
+  }, 900);
+}
+
+function toggleRouteReplayPlayback(): void {
+  if (routeReplayPlaying.value) {
+    stopRouteReplayPlayback();
+    return;
+  }
+  startRouteReplayPlayback();
+}
+
+function clampFixtureRouteReplayCursor(index: number): void {
+  const maxIndex = Math.max(fixtureRouteReplayFrames.value.length - 1, 0);
+  // fixture cursor 与 consumer cursor 完全隔离，防止加载 archive 改变主路径帧位。
+  fixtureRouteReplayCursor.value = Math.min(Math.max(index, 0), maxIndex);
+}
+
+function resetFixtureRouteReplayCursor(): void {
+  clampFixtureRouteReplayCursor(0);
+}
+
+function previousFixtureRouteReplayFrame(): void {
+  if (fixtureRouteReplayNavigationEnabled.value) {
+    clampFixtureRouteReplayCursor(fixtureRouteReplayCursor.value - 1);
+  }
+}
+
+function nextFixtureRouteReplayFrame(): void {
+  if (fixtureRouteReplayNavigationEnabled.value) {
+    clampFixtureRouteReplayCursor(fixtureRouteReplayCursor.value + 1);
+  }
+}
+
+function setFixtureRouteReplayCursorFromInput(event: Event): void {
+  const target = event.target as HTMLInputElement;
+  if (fixtureRouteReplayNavigationEnabled.value) {
+    clampFixtureRouteReplayCursor(Number(target.value));
+  }
+}
+
+const consumerRouteReplayTaskSummary = computed(() => consumerTaskDetailResult.value?.task_summary ?? null);
+const consumerRouteReplayEventSummaries = computed(() =>
+  sampleDetailSummaries(consumerTaskDetailResult.value?.events.sample_events, "event"),
+);
+const consumerRouteReplayEvidenceSummaries = computed(() =>
+  sampleDetailSummaries(consumerTaskDetailResult.value?.evidence.sample_evidence, "evidence"),
+);
+const consumerRouteReplayLabelingSummaries = computed(() =>
+  sampleDetailSummaries(consumerTaskDetailResult.value?.labeling.sample_items, "labeling"),
+);
+const consumerRouteReplayInferenceSummaries = computed(() =>
+  sampleDetailSummaries(consumerTaskDetailResult.value?.inference.sample_results, "inference"),
+);
+const consumerRouteReplayTunnelSummary = computed(() => {
+  const tunnel = consumerTaskDetailResult.value?.tunnel_status;
+  // tunnel 只是 latest known snapshot 摘要，不是任务内历史事实；这里只读白名单字段。
+  if (!tunnel) {
+    return ["blocked_not_proven"];
+  }
+  return [
+    `status=${asCursorLabel(tunnel.status, "blocked_not_proven")}`,
+    `latest_known_status=${asCursorLabel(tunnel.latest_known_status, "blocked_not_proven")}`,
+    `temporal_alignment=${asCursorLabel(tunnel.temporal_alignment, "latest_known_robot_snapshot_not_task_aligned")}`,
+  ];
+});
+
+onBeforeUnmount(() => {
+  // 组件销毁时必须清掉本地计时器，避免离开页面后仍然推进 cursor。
+  stopRouteReplayPlayback();
+});
 
 const labelingReviewBlockedReason = computed(() => {
   const inspector = archiveResult.value?.labeling_queue_inspector;
@@ -874,12 +1220,16 @@ const localSafeCommandDraftStatus = computed(() => {
 });
 
 const currentRouteReplayFrame = computed(() => {
-  // cursor 是数组下标，不发送给后端；frame_index 保持使用 archive fixture 的原始字段。
+  // cursor 只是浏览器本地数组下标，不发送给后端；frame_index 仍来自 consumer detail 样本。
   if (!routeReplayNavigationEnabled.value) {
     return null;
   }
   return routeReplayFrames.value[routeReplayCursor.value] ?? routeReplayFrames.value[0] ?? null;
 });
+
+const currentRouteReplayFrameSummary = computed(() =>
+  currentRouteReplayFrame.value ? safeDetailFrameSummary(currentRouteReplayFrame.value) : "blocked_not_proven",
+);
 
 function routeReplayCursorDisplay(): string {
   const frame = currentRouteReplayFrame.value;
@@ -888,6 +1238,22 @@ function routeReplayCursorDisplay(): string {
     return `blocked_not_proven / ${routeReplayFrames.value.length}`;
   }
   return `${routeReplayCursor.value + 1} / ${routeReplayFrames.value.length}`;
+}
+
+const currentFixtureRouteReplayFrame = computed(() => {
+  // fixture frame 只用于本地 debug fallback，不影响 consumer-detail 主路径。
+  if (!fixtureRouteReplayNavigationEnabled.value) {
+    return null;
+  }
+  return fixtureRouteReplayFrames.value[fixtureRouteReplayCursor.value] ?? fixtureRouteReplayFrames.value[0] ?? null;
+});
+
+function fixtureRouteReplayCursorDisplay(): string {
+  const frame = currentFixtureRouteReplayFrame.value;
+  if (!frame) {
+    return `blocked_not_proven / ${fixtureRouteReplayFrames.value.length}`;
+  }
+  return `${fixtureRouteReplayCursor.value + 1} / ${fixtureRouteReplayFrames.value.length}`;
 }
 
 const currentLabelingReviewItem = computed<O7LabelingQueueInspectorReviewItem | null>(() => {
@@ -1051,12 +1417,6 @@ function safeCommandCursorDisplay(): string {
   return `${safeCommandCursor.value + 1} / ${safeCommandSamples.value.length}`;
 }
 
-function clampRouteReplayCursor(index: number): void {
-  const maxIndex = Math.max(routeReplayFrames.value.length - 1, 0);
-  // 所有 navigation 都只改浏览器内存里的数组下标，避免误变成真实回放命令。
-  routeReplayCursor.value = Math.min(Math.max(index, 0), maxIndex);
-}
-
 function clampLabelingReviewCursor(index: number): void {
   const maxIndex = Math.max(labelingReviewItems.value.length - 1, 0);
   // 标注浏览 cursor 不能落库、不能 autosave，只允许在当前浏览器会话内换焦点。
@@ -1073,10 +1433,6 @@ function clampSafeCommandCursor(index: number): void {
   const maxIndex = Math.max(safeCommandSamples.value.length - 1, 0);
   // command navigation 只改变浏览器内存下标，不写后端、不发送命令、不绑定键盘。
   safeCommandCursor.value = Math.min(Math.max(index, 0), maxIndex);
-}
-
-function resetRouteReplayCursor(): void {
-  clampRouteReplayCursor(0);
 }
 
 function resetLabelingReviewCursor(): void {
@@ -1159,12 +1515,6 @@ function setLocalSafeCommandIdempotencyDraftRef(event: Event): void {
   writeLocalSafeCommandDraft({ idempotencyDraftRef: (event.target as HTMLInputElement).value });
 }
 
-function previousRouteReplayFrame(): void {
-  if (routeReplayNavigationEnabled.value) {
-    clampRouteReplayCursor(routeReplayCursor.value - 1);
-  }
-}
-
 function previousLabelingReviewItem(): void {
   if (labelingReviewNavigationEnabled.value) {
     clampLabelingReviewCursor(labelingReviewCursor.value - 1);
@@ -1180,12 +1530,6 @@ function previousVoiceAsrEvent(): void {
 function previousSafeCommand(): void {
   if (safeCommandNavigationEnabled.value) {
     clampSafeCommandCursor(safeCommandCursor.value - 1);
-  }
-}
-
-function nextRouteReplayFrame(): void {
-  if (routeReplayNavigationEnabled.value) {
-    clampRouteReplayCursor(routeReplayCursor.value + 1);
   }
 }
 
@@ -1207,20 +1551,13 @@ function nextSafeCommand(): void {
   }
 }
 
-function setRouteReplayCursorFromInput(event: Event): void {
-  const target = event.target as HTMLInputElement;
-  if (routeReplayNavigationEnabled.value) {
-    clampRouteReplayCursor(Number(target.value));
-  }
-}
-
 async function loadArchiveTasks(): Promise<void> {
   // 只有 operator 点击按钮才读取本地 archive 路径；页面加载不会自动触碰文件系统。
   archiveLoading.value = true;
   archiveError.value = "";
   try {
     archiveResult.value = await getO7CloudArchiveTasks(archiveJson.value);
-    resetRouteReplayCursor();
+    resetFixtureRouteReplayCursor();
     resetLabelingReviewCursor();
     localAnnotationDrafts.value = {};
     resetVoiceAsrEventCursor();
@@ -1254,6 +1591,7 @@ async function loadConsumerTaskDetail(): Promise<void> {
   consumerTaskDetailError.value = "";
   try {
     consumerTaskDetailResult.value = await getO7ConsumerTaskDetail(consumerReadBaseUrl.value, consumerSelectedTaskId.value);
+    resetRouteReplayCursor();
   } catch (error) {
     consumerTaskDetailError.value = error instanceof Error ? error.message : "consumer_task_detail_not_available";
   } finally {
@@ -1270,8 +1608,14 @@ watch(localDraftItemKey, () => {
 
 watch(archiveJson, () => {
   // operator 切换 archive path 时立即清理本地覆盖值，避免旧任务草稿留在新路径上下文里。
+  resetFixtureRouteReplayCursor();
   resetLocalTtsDraft();
   resetLocalSafeCommandDraft();
+});
+
+watch([consumerSelectedTaskId, consumerReadBaseUrl], () => {
+  // consumer 主路径切换任务或 relay 时只清理主路径 cursor，不碰 fixture fallback 状态。
+  resetRouteReplayCursor();
 });
 
 async function loadCloudOperatorConsoleProbe(): Promise<void> {
@@ -2039,6 +2383,225 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <ul class="dense">
             <li v-for="item in consumerDetailNotProven()" :key="item">{{ item }}</li>
           </ul>
+
+          <h3>Consumer-detail route replay player</h3>
+          <div class="notice" role="note">
+            local_detail_cursor_only · sends_to_robot=false · safe_to_control=false · primary_actions_enabled=false ·
+            local_state_only=true · playback_available=false
+          </div>
+          <dl class="kv compact-kv">
+            <dt>cursor_status</dt>
+            <dd>{{ routeReplayNavigationEnabled ? "local_consumer_detail_cursor_ready" : "blocked_not_proven" }}</dd>
+            <dt>blocked_reason</dt>
+            <dd>{{ routeReplayBlockedReason || "none_consumer_detail_only" }}</dd>
+            <dt>current frame</dt>
+            <dd>{{ routeReplayCursorDisplay() }}</dd>
+            <dt>frame_index</dt>
+            <dd>{{ currentRouteReplayFrame?.frame_index ?? "blocked_not_proven" }}</dd>
+            <dt>timestamp_ms</dt>
+            <dd>{{ currentRouteReplayFrame?.timestamp_ms ?? "null" }}</dd>
+            <dt>state</dt>
+            <dd>{{ currentRouteReplayFrame?.state ?? "blocked_not_proven" }}</dd>
+            <dt>evidence_ref</dt>
+            <dd>{{ currentRouteReplayFrame?.evidence_ref ?? "blocked_not_proven" }}</dd>
+            <dt>frame_summary</dt>
+            <dd>{{ currentRouteReplayFrameSummary }}</dd>
+            <dt>playing</dt>
+            <dd>{{ routeReplayPlaying }}</dd>
+            <dt>trajectory_points</dt>
+            <dd>{{ routeReplayTrajectoryPoints.length }}</dd>
+          </dl>
+          <div class="route-inputs">
+            <button class="secondary" type="button" :disabled="!routeReplayNavigationEnabled" @click="toggleRouteReplayPlayback">
+              {{ routeReplayPlaying ? "Pause" : "Play" }}
+            </button>
+            <button
+              class="secondary"
+              type="button"
+              :disabled="!routeReplayNavigationEnabled || routeReplayCursor <= 0"
+              @click="previousRouteReplayFrame"
+            >
+              Previous frame
+            </button>
+            <button
+              class="secondary"
+              type="button"
+              :disabled="!routeReplayNavigationEnabled || routeReplayCursor >= routeReplayFrames.length - 1"
+              @click="nextRouteReplayFrame"
+            >
+              Next frame
+            </button>
+            <button class="secondary" type="button" :disabled="!routeReplayNavigationEnabled" @click="resetRouteReplayCursor">
+              Reset cursor
+            </button>
+          </div>
+          <label class="single-input">
+            <span>Frame cursor</span>
+            <input
+              aria-label="Consumer route replay frame cursor"
+              type="range"
+              min="0"
+              :max="Math.max(routeReplayFrames.length - 1, 0)"
+              :value="routeReplayCursor"
+              :disabled="!routeReplayNavigationEnabled"
+              @input="setRouteReplayCursorFromInput"
+            >
+          </label>
+
+          <h3>Consumer-detail trajectory minimap</h3>
+          <div class="notice" role="note">
+            readonly_consumer_detail_trajectory_only · no_real_map_loaded · no_robot_motion_claim · safe_to_control=false ·
+            primary_actions_enabled=false · robot_control_executed=false
+          </div>
+          <div class="two-col snapshot-grid">
+            <div>
+              <svg
+                aria-label="Consumer-detail route replay trajectory minimap"
+                role="img"
+                viewBox="0 0 100 100"
+                width="100%"
+                height="220"
+                preserveAspectRatio="xMidYMid meet"
+                style="display: block; width: 100%; min-height: 220px; border: 1px solid #d7dee6; border-radius: 6px; background: #f7f9fb;"
+              >
+                <!-- 这里只消费 consumer detail 的 x/y 样本，固定 viewBox 防止极端值把布局撑坏。 -->
+                <rect x="10" y="10" width="80" height="80" fill="#ffffff" stroke="#d7dee6" stroke-width="0.8" />
+                <line x1="10" y1="50" x2="90" y2="50" stroke="#d7dee6" stroke-width="0.4" />
+                <line x1="50" y1="10" x2="50" y2="90" stroke="#d7dee6" stroke-width="0.4" />
+                <polyline
+                  v-if="routeReplayMinimapStatus !== 'blocked_not_proven'"
+                  :points="routeReplayMinimapPolyline"
+                  fill="none"
+                  stroke="#315f8a"
+                  stroke-width="2.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <circle
+                  v-for="point in routeReplayMinimapPoints"
+                  :key="`${point.cursor_index}:${point.frame_index}`"
+                  :cx="point.svg_x"
+                  :cy="point.svg_y"
+                  r="1.8"
+                  fill="#5f6b7a"
+                />
+                <circle
+                  v-if="routeReplayMinimapStatus !== 'blocked_not_proven' && currentRouteReplayMinimapMarker"
+                  :cx="currentRouteReplayMinimapMarker.svg_x"
+                  :cy="currentRouteReplayMinimapMarker.svg_y"
+                  r="4"
+                  fill="#9a3412"
+                  stroke="#ffffff"
+                  stroke-width="1.4"
+                />
+                <text
+                  v-if="routeReplayMinimapStatus === 'blocked_not_proven'"
+                  x="50"
+                  y="50"
+                  text-anchor="middle"
+                  dominant-baseline="middle"
+                  fill="#8a1f1f"
+                  font-size="6"
+                >
+                  blocked_not_proven
+                </text>
+                <text
+                  v-else-if="!currentRouteReplayMinimapMarker"
+                  x="50"
+                  y="50"
+                  text-anchor="middle"
+                  dominant-baseline="middle"
+                  fill="#8a1f1f"
+                  font-size="5"
+                >
+                  current_marker_unknown
+                </text>
+              </svg>
+            </div>
+            <div>
+              <dl class="kv compact-kv">
+                <dt>minimap_status</dt>
+                <dd>{{ routeReplayMinimapStatus }}</dd>
+                <dt>trajectory_points</dt>
+                <dd>{{ routeReplayTrajectoryPoints.length }}</dd>
+                <dt>map_frame</dt>
+                <dd>{{ consumerTaskDetailResult?.trajectory.status ?? "blocked_not_proven" }}</dd>
+                <dt>current_marker</dt>
+                <dd>{{ routeReplayCurrentMarkerStatus }}</dd>
+                <dt>task_status_summary</dt>
+                <dd>{{ consumerRouteReplayTaskSummary?.task_status_summary ?? "blocked_not_proven" }}</dd>
+                <dt>safe_to_control</dt>
+                <dd>false</dd>
+                <dt>primary_actions_enabled</dt>
+                <dd>false</dd>
+                <dt>robot_control_executed</dt>
+                <dd>false</dd>
+              </dl>
+            </div>
+          </div>
+
+          <h3>Route replay frame samples</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>frame_index</th>
+                <th>timestamp_ms</th>
+                <th>x_m</th>
+                <th>y_m</th>
+                <th>yaw_rad</th>
+                <th>speed_mps</th>
+                <th>state</th>
+                <th>evidence_ref</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!routeReplayFrames.length">
+                <td colspan="8">blocked_not_proven</td>
+              </tr>
+              <tr v-for="frame in routeReplayFrames" :key="`${frame.cursor_index}:${frame.frame_index}`">
+                <td>{{ frame.frame_index }}</td>
+                <td>{{ frame.timestamp_ms ?? "null" }}</td>
+                <td>{{ frame.x_m ?? "null" }}</td>
+                <td>{{ frame.y_m ?? "null" }}</td>
+                <td>{{ frame.yaw_rad ?? "null" }}</td>
+                <td>{{ frame.speed_mps ?? "null" }}</td>
+                <td>{{ frame.state }}</td>
+                <td>{{ frame.evidence_ref }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Route replay sample summaries</h3>
+          <div class="two-col snapshot-grid">
+            <div>
+              <h4>Events</h4>
+              <ul class="dense">
+                <li v-for="item in consumerRouteReplayEventSummaries" :key="item">{{ item }}</li>
+                <li v-if="!consumerRouteReplayEventSummaries.length">blocked_not_proven</li>
+              </ul>
+              <h4>Evidence</h4>
+              <ul class="dense">
+                <li v-for="item in consumerRouteReplayEvidenceSummaries" :key="item">{{ item }}</li>
+                <li v-if="!consumerRouteReplayEvidenceSummaries.length">blocked_not_proven</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Labeling</h4>
+              <ul class="dense">
+                <li v-for="item in consumerRouteReplayLabelingSummaries" :key="item">{{ item }}</li>
+                <li v-if="!consumerRouteReplayLabelingSummaries.length">blocked_not_proven</li>
+              </ul>
+              <h4>Inference</h4>
+              <ul class="dense">
+                <li v-for="item in consumerRouteReplayInferenceSummaries" :key="item">{{ item }}</li>
+                <li v-if="!consumerRouteReplayInferenceSummaries.length">blocked_not_proven</li>
+              </ul>
+              <h4>Tunnel</h4>
+              <ul class="dense">
+                <li v-for="item in consumerRouteReplayTunnelSummary" :key="item">{{ item }}</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     </article>
@@ -2378,51 +2941,51 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
       </div>
       <dl class="kv compact-kv">
         <dt>cursor_status</dt>
-        <dd>{{ routeReplayNavigationEnabled ? "local_fixture_cursor_ready" : "blocked_not_proven" }}</dd>
+        <dd>{{ fixtureRouteReplayNavigationEnabled ? "local_fixture_cursor_ready" : "blocked_not_proven" }}</dd>
         <dt>blocked_reason</dt>
-        <dd>{{ routeReplayBlockedReason || "none_local_fixture_only" }}</dd>
+        <dd>{{ fixtureRouteReplayBlockedReason || "none_local_fixture_only" }}</dd>
         <dt>current frame</dt>
-        <dd>{{ routeReplayCursorDisplay() }}</dd>
+        <dd>{{ fixtureRouteReplayCursorDisplay() }}</dd>
         <dt>frame_index</dt>
-        <dd>{{ currentRouteReplayFrame?.frame_index ?? "blocked_not_proven" }}</dd>
+        <dd>{{ currentFixtureRouteReplayFrame?.frame_index ?? "blocked_not_proven" }}</dd>
         <dt>timestamp_ms</dt>
-        <dd>{{ currentRouteReplayFrame?.timestamp_ms ?? "null" }}</dd>
+        <dd>{{ currentFixtureRouteReplayFrame?.timestamp_ms ?? "null" }}</dd>
         <dt>pose</dt>
         <dd>
-          x={{ currentRouteReplayFrame?.x_m ?? "null" }},
-          y={{ currentRouteReplayFrame?.y_m ?? "null" }},
-          yaw={{ currentRouteReplayFrame?.yaw_rad ?? "null" }}
+          x={{ currentFixtureRouteReplayFrame?.x_m ?? "null" }},
+          y={{ currentFixtureRouteReplayFrame?.y_m ?? "null" }},
+          yaw={{ currentFixtureRouteReplayFrame?.yaw_rad ?? "null" }}
         </dd>
         <dt>velocity</dt>
-        <dd>{{ currentRouteReplayFrame?.speed_mps ?? "null" }} mps</dd>
+        <dd>{{ currentFixtureRouteReplayFrame?.speed_mps ?? "null" }} mps</dd>
         <dt>state</dt>
-        <dd>{{ currentRouteReplayFrame?.state ?? "blocked_not_proven" }}</dd>
+        <dd>{{ currentFixtureRouteReplayFrame?.state ?? "blocked_not_proven" }}</dd>
         <dt>evidence_ref</dt>
-        <dd>{{ currentRouteReplayFrame?.evidence_ref ?? "blocked_not_proven" }}</dd>
+        <dd>{{ currentFixtureRouteReplayFrame?.evidence_ref ?? "blocked_not_proven" }}</dd>
       </dl>
       <div class="route-inputs">
         <!-- 这些按钮只改变本地数组下标，不调用 API，也不代表真实云回放或机器人运动。 -->
         <button
           class="secondary"
           type="button"
-          :disabled="!routeReplayNavigationEnabled || routeReplayCursor <= 0"
-          @click="previousRouteReplayFrame"
+          :disabled="!fixtureRouteReplayNavigationEnabled || fixtureRouteReplayCursor <= 0"
+          @click="previousFixtureRouteReplayFrame"
         >
           Previous frame
         </button>
         <button
           class="secondary"
           type="button"
-          :disabled="!routeReplayNavigationEnabled || routeReplayCursor >= routeReplayFrames.length - 1"
-          @click="nextRouteReplayFrame"
+          :disabled="!fixtureRouteReplayNavigationEnabled || fixtureRouteReplayCursor >= fixtureRouteReplayFrames.length - 1"
+          @click="nextFixtureRouteReplayFrame"
         >
           Next frame
         </button>
         <button
           class="secondary"
           type="button"
-          :disabled="!routeReplayNavigationEnabled"
-          @click="resetRouteReplayCursor"
+          :disabled="!fixtureRouteReplayNavigationEnabled"
+          @click="resetFixtureRouteReplayCursor"
         >
           Reset cursor
         </button>
@@ -2433,10 +2996,10 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           aria-label="Local route replay frame cursor"
           type="range"
           min="0"
-          :max="Math.max(routeReplayFrames.length - 1, 0)"
-          :value="routeReplayCursor"
-          :disabled="!routeReplayNavigationEnabled"
-          @input="setRouteReplayCursorFromInput"
+          :max="Math.max(fixtureRouteReplayFrames.length - 1, 0)"
+          :value="fixtureRouteReplayCursor"
+          :disabled="!fixtureRouteReplayNavigationEnabled"
+          @input="setFixtureRouteReplayCursorFromInput"
         >
       </label>
 
@@ -2461,8 +3024,8 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             <line x1="10" y1="50" x2="90" y2="50" stroke="#d7dee6" stroke-width="0.4" />
             <line x1="50" y1="10" x2="50" y2="90" stroke="#d7dee6" stroke-width="0.4" />
             <polyline
-              v-if="routeReplayMinimapStatus === 'readonly_fixture_trajectory_ready'"
-              :points="routeReplayMinimapPolyline"
+              v-if="fixtureRouteReplayMinimapStatus === 'readonly_fixture_trajectory_ready'"
+              :points="fixtureRouteReplayMinimapPolyline"
               fill="none"
               stroke="#315f8a"
               stroke-width="2.4"
@@ -2470,7 +3033,7 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
               stroke-linejoin="round"
             />
             <circle
-              v-for="point in routeReplayMinimapPoints"
+              v-for="point in fixtureRouteReplayMinimapPoints"
               :key="`${point.cursor_index}:${point.frame_index}`"
               :cx="point.svg_x"
               :cy="point.svg_y"
@@ -2478,16 +3041,16 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
               fill="#5f6b7a"
             />
             <circle
-              v-if="routeReplayMinimapStatus === 'readonly_fixture_trajectory_ready' && currentRouteReplayMinimapMarker"
-              :cx="currentRouteReplayMinimapMarker.svg_x"
-              :cy="currentRouteReplayMinimapMarker.svg_y"
+              v-if="fixtureRouteReplayMinimapStatus === 'readonly_fixture_trajectory_ready' && currentFixtureRouteReplayMinimapMarker"
+              :cx="currentFixtureRouteReplayMinimapMarker.svg_x"
+              :cy="currentFixtureRouteReplayMinimapMarker.svg_y"
               r="4"
               fill="#9a3412"
               stroke="#ffffff"
               stroke-width="1.4"
             />
             <text
-              v-if="routeReplayMinimapStatus !== 'readonly_fixture_trajectory_ready'"
+              v-if="fixtureRouteReplayMinimapStatus !== 'readonly_fixture_trajectory_ready'"
               x="50"
               y="50"
               text-anchor="middle"
@@ -2498,7 +3061,7 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
               blocked_not_proven
             </text>
             <text
-              v-else-if="!currentRouteReplayMinimapMarker"
+              v-else-if="!currentFixtureRouteReplayMinimapMarker"
               x="50"
               y="50"
               text-anchor="middle"
@@ -2513,13 +3076,13 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
         <div>
           <dl class="kv compact-kv">
             <dt>minimap_status</dt>
-            <dd>{{ routeReplayMinimapStatus }}</dd>
+            <dd>{{ fixtureRouteReplayMinimapStatus }}</dd>
             <dt>trajectory_points</dt>
-            <dd>{{ routeReplayTrajectoryPoints.length }}</dd>
+            <dd>{{ fixtureRouteReplayTrajectoryPoints.length }}</dd>
             <dt>map_frame</dt>
             <dd>{{ archiveResult?.route_replay_inspector.map_frame ?? "blocked_not_proven" }}</dd>
             <dt>current_marker</dt>
-            <dd>{{ routeReplayCurrentMarkerStatus }}</dd>
+            <dd>{{ fixtureRouteReplayCurrentMarkerStatus }}</dd>
             <dt>safe_to_control</dt>
             <dd>false</dd>
             <dt>playback_available</dt>
