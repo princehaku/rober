@@ -1,0 +1,4 @@
+-rw-r--r-- 1 root root 13951 Jun 10 05:01 /root/rober/onboard/runtime/map_lifecycle_latest.json
+-rw-r--r-- 1 root root 11669 Jun  5 16:44 /root/rober/onboard/runtime/nav2_lifecycle_latest.json
+34edeccef59d4e5d20821feebf85353416b1fe1e39b0062e42aa66155f04d716  /root/rober/onboard/runtime/nav2_lifecycle_latest.json
+5290097d3c590b0d82eee6988ec2929571d6be9d5882a619c4ee52f44d01169f  /root/rober/onboard/runtime/map_lifecycle_latest.json

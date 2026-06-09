@@ -479,6 +479,70 @@ readiness、fixed route 和真实现场导航。
   no-motion Nav2 collector 的前置材料，不等于地图质量、AMCL/Nav2 ready、固定路线
   或 delivery_success。
 
+## 2026-06-10 07:05 map proof contract harden
+
+`upper_robot_api.py` 现在把 `/api/map/proof/latest` 和
+`/api/map/proof/refresh` 的顶层 readback 合同拆成两层：
+
+- 当最新 map proof artifact 同时满足 `status=map_once_artifact_metadata_observed`、
+  `scan_once_observed=true`、`map_once_observed=true`、
+  `map_file_observed=true`、`map_metadata_observed=true` 时，读回会把
+  `status` / `proof_state` / `ros2_runtime_proven` / `map_artifact_proven`
+  直接暴露给 PC 消费。
+- `safe_to_control=false`、`delivery_success=false`、
+  `primary_actions_enabled=false`、`robot_control_executed=false`、
+  `sends_motion_commands=false`、`sends_base_motion_commands=false`、
+  `uses_base_uart=false` 仍然保持关闭。
+- artifact 缺失、坏 JSON、`status` 非 clean，或任一 required observation 为 false 时，
+  继续 fail closed 为 `not_proven`。
+- `GET /api/map/status` 的 `proof_latest` 摘要会跟随同一合同，供 PC 点灯，
+  但它仍然不代表 Nav2 可用、真实路线、发车许可或 delivery 成功。
+
+## 2026-06-10 07:05 Nav2 no-motion collector reconcile
+
+`sprints/2026.06.10_07-05_nav2_no_motion_collector_reconcile/` 将真实上位机
+`root@192.168.1.11:37878` 上的
+`/root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py` 拉回本地
+`onboard/scripts/o10_amcl_nav2_runtime_proof.py`，作为
+`/api/nav2/proof/refresh` 使用的同目录 no-motion helper。本轮只做 helper
+reconcile、静态 guard 测试和正式 API readback，不启动 path execution，不发送
+Nav2 goal，不发布 `/cmd_vel`。
+
+远端来源：
+
+- `size=19418`
+- `mtime=2026-06-05 16:15`
+- `sha256=b79f4471dec458479425abbb44fad438334055bc8a94e30d0a1372e4ccccb117`
+
+正式 API 结果：
+
+- `POST /api/nav2/proof/refresh` 返回 `curl: (52) Empty reply from server`，未产生新的
+  `nav2_lifecycle_latest.json`；`trashbot-upper-robot-api.service` 随后由 systemd
+  恢复为 `active`。
+- `GET /api/nav2/proof/latest` 和 `GET /api/nav2/status` 均返回 HTTP 200，但读到的
+  canonical artifact 仍是 2026-06-05 16:44 的旧 blocked 结果。
+- `GET /api/nav2/status` 的 `amcl_nav2_readiness.status` 为
+  `map_inputs_ready_for_no_motion_nav2_collector`，说明当前 map proof 已满足下一步
+  collector 输入，不代表 AMCL/Nav2 runtime ready。
+- 旧 `nav2_lifecycle_latest.json` 的 blockers 包括 `nav2_amcl_missing`、
+  `nav2_planner_missing`、`nav2_controller_missing`、`map_server_lifecycle_not_active`、
+  `amcl_lifecycle_not_active`、`planner_lifecycle_not_active`、
+  `controller_lifecycle_not_active`、`/scan_once_not_observed`、
+  `/map_once_not_observed` 和 `/amcl_pose_once_not_observed`。
+- `latest_map_server_active=false`、`latest_amcl_active=false`、
+  `latest_planner_active=false`、`latest_controller_active=false`、
+  `latest_scan_consumed=false`、`latest_map_consumed=false`。
+
+安全边界：
+
+- 本轮未调用 `/api/base/*`、`/api/map/start`、`/api/nav2/start` 或任何运动/
+  导航执行接口。
+- 本轮只读 `lsof/fuser` 检查 `/dev/ttyS5` 和 `/dev/ttyACM0`；未打开
+  WAVE ROVER/base UART `/dev/ttyS5`。
+- API readback 和旧 artifact 的 guard 均保持 `publishes_cmd_vel=false`、
+  `calls_base_manual=false`、`uses_base_uart=false`、`safe_to_control=false`、
+  `delivery_success=false`。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`

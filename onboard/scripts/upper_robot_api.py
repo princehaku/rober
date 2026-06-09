@@ -42,6 +42,7 @@ DEFAULT_MAP_ARTIFACT_DIR = "/root/rober/onboard/runtime/maps"
 DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "/root/rober/onboard/runtime/map_lifecycle_latest.json"
 LEGACY_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "/root/rober/runtime/map_lifecycle_latest.json"
 DEFAULT_MAP_LIFECYCLE_PROOF_REFRESH_TIMEOUT_S = 45.0
+MAP_LIFECYCLE_OBSERVED_STATUS = "map_once_artifact_metadata_observed"
 DEFAULT_LOCALIZATION_ARTIFACT_PATH = "runtime/localization_reset_latest.json"
 DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_lifecycle_latest.json"
 DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S = 8.0
@@ -1408,21 +1409,80 @@ def runtime_artifact_summary(
 
 
 def summarize_map_lifecycle_latest_artifact(path: str) -> dict[str, Any]:
-    """压缩 SLAM/map proof；字段缺失保持 None，不能默认判定 observed。"""
-    return runtime_artifact_summary(
+    """压缩 SLAM/map proof；观测齐全时才把顶层状态抬成可消费读回。"""
+    http_status, payload = read_runtime_artifact_latest(
         path,
         artifact_info=map_lifecycle_proof_artifact_info(path),
         schema_suffix="map_lifecycle_proof_latest",
         endpoint=ROUTE_PATHS["map_proof_latest"],
         boundary="software_guard_only_not_real_slam_map_or_nav2_consumption",
         source="map_lifecycle_runtime_artifact",
-        fields={
-            "latest_map_once_observed": ("map_once_observed", "/map_once_observed"),
-            "latest_map_file_observed": ("map_file_observed", "map_yaml_observed", "map_pbstream_observed"),
-            "latest_map_metadata_observed": ("map_metadata_observed", "metadata_observed"),
-            "latest_slam_toolbox_state": ("slam_toolbox_state", "slam_state"),
-        },
     )
+    latest = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else None
+    observed = map_lifecycle_runtime_readback_contract(latest)
+    summary: dict[str, Any] = {
+        "schema": f"{SCHEMA}.map_lifecycle_proof_latest_summary",
+        "generated_at_ms": now_ms(),
+        "endpoint": ROUTE_PATHS["map_proof_latest"],
+        "http_status": http_status,
+        "artifact": payload["artifact"],
+        "latest_result_schema": latest.get("schema") if isinstance(latest, dict) else None,
+        "latest_proof_status": latest_proof_value(latest, "status"),
+        "latest_evidence_ref": latest_proof_value(latest, "evidence_ref"),
+        "latest_map_once_observed": latest_proof_value(latest, "map_once_observed", "/map_once_observed"),
+        "latest_map_file_observed": latest_proof_value(
+            latest,
+            "map_file_observed",
+            "map_yaml_observed",
+            "map_pbstream_observed",
+        ),
+        "latest_map_metadata_observed": latest_proof_value(latest, "map_metadata_observed", "metadata_observed"),
+        "latest_slam_toolbox_state": latest_proof_value(latest, "slam_toolbox_state", "slam_state"),
+        **observed,
+        "boundary": "software_guard_only_not_real_slam_map_or_nav2_consumption",
+    }
+    return summary
+
+
+def map_lifecycle_runtime_readback_contract(latest: dict[str, Any] | None) -> dict[str, Any]:
+    """把 map lifecycle runtime artifact 折成可消费读回合同，失败时继续 fail-closed。"""
+    latest_status = latest_proof_value(latest, "status")
+    latest_scan_once = latest_proof_value(latest, "scan_once_observed")
+    latest_map_once = latest_proof_value(latest, "map_once_observed", "/map_once_observed")
+    latest_map_file = latest_proof_value(latest, "map_file_observed", "map_yaml_observed", "map_pbstream_observed")
+    latest_map_metadata = latest_proof_value(latest, "map_metadata_observed", "metadata_observed")
+    required_observations = (
+        latest_status == MAP_LIFECYCLE_OBSERVED_STATUS
+        and latest_scan_once is True
+        and latest_map_once is True
+        and latest_map_file is True
+        and latest_map_metadata is True
+    )
+    # 只有观测链条齐全时，PC 才能消费地图生命周期 proof；其它情况继续按 software guard 处理。
+    contract_status = MAP_LIFECYCLE_OBSERVED_STATUS if required_observations else "not_proven"
+    return {
+        "status": contract_status,
+        "proof_state": contract_status,
+        "latest_proof_status": latest_status,
+        "scan_once_observed": latest_scan_once is True,
+        "map_once_observed": latest_map_once is True,
+        "map_file_observed": latest_map_file is True,
+        "map_metadata_observed": latest_map_metadata is True,
+        "ros2_runtime_proven": required_observations,
+        "map_artifact_proven": required_observations,
+        "not_proven": not required_observations,
+        "software_guard": not required_observations,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "uses_base_uart": False,
+        "opens_serial": False,
+        "starts_ros2": False,
+        "cloud_relay": False,
+    }
 
 
 def summarize_localization_latest_artifact(path: str) -> dict[str, Any]:
@@ -2887,11 +2947,12 @@ class UpperRobotApi:
 
     def map_status(self) -> dict[str, Any]:
         """地图生命周期状态只列出软件入口和 artifact 目录，不读取 ROS graph。"""
+        proof_latest = summarize_map_lifecycle_latest_artifact(self.map_lifecycle_proof_artifact_path)
         return {
             "schema": f"{SCHEMA}.map_lifecycle_status",
             "generated_at_ms": now_ms(),
             "artifact": map_artifact_info(self.map_artifact_dir),
-            "proof_latest": summarize_map_lifecycle_latest_artifact(self.map_lifecycle_proof_artifact_path),
+            "proof_latest": proof_latest,
             "routes": {
                 "start": ROUTE_PATHS["map_start"],
                 "reset": ROUTE_PATHS["map_reset"],
@@ -2916,9 +2977,9 @@ class UpperRobotApi:
                 "map_topic": "/map",
                 "proof_artifact_path": self.map_lifecycle_proof_artifact_path,
             },
-            "status": "not_proven",
-            "software_guard": True,
-            "not_proven": True,
+            "status": proof_latest.get("status", "not_proven"),
+            "software_guard": proof_latest.get("software_guard", True),
+            "not_proven": proof_latest.get("not_proven", True),
             "sends_base_motion_commands": False,
             "uses_base_uart": False,
             "sends_commands": False,
@@ -3017,7 +3078,7 @@ class UpperRobotApi:
             timeout_s=timeout_s,
         )
         http_status, latest = self.map_proof_latest()
-        return software_guard_payload(
+        payload = software_guard_payload(
             schema_suffix="map_lifecycle_proof_refresh_result",
             action="map_proof_refresh",
             endpoint=ROUTE_PATHS["map_proof_refresh"],
@@ -3044,10 +3105,16 @@ class UpperRobotApi:
                 ],
             },
         )
+        contract = map_lifecycle_runtime_readback_contract(latest.get("latest_result"))
+        if bool(command_result.get("ok")) and contract.get("not_proven") is False:
+            payload.update(contract)
+            payload["failure_reason"] = None
+            payload["operator_message"] = "map lifecycle proof attached and ready for read-only consumption"
+        return payload
 
     def map_proof_latest(self) -> tuple[int, dict[str, Any]]:
         """只读最近一次 SLAM/map lifecycle proof，不能启动 SLAM 或保存地图。"""
-        return read_runtime_artifact_latest(
+        http_status, payload = read_runtime_artifact_latest(
             self.map_lifecycle_proof_artifact_path,
             artifact_info=map_lifecycle_proof_artifact_info(self.map_lifecycle_proof_artifact_path),
             schema_suffix="map_lifecycle_proof_latest",
@@ -3055,6 +3122,8 @@ class UpperRobotApi:
             boundary="software_guard_only_not_real_slam_map_or_nav2_consumption",
             source="map_lifecycle_runtime_artifact",
         )
+        payload.update(map_lifecycle_runtime_readback_contract(payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else None))
+        return http_status, payload
 
     def localize_reset(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
         """定位 reset 合同预留 AMCL /initialpose；默认不发布 ROS2 pose。"""

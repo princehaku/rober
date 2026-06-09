@@ -11,6 +11,8 @@ status 允许发送 `T=130`，但必须持续关闭所有运动控制许可。
 """
 
 import importlib.util
+import asyncio
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -115,6 +117,149 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(status["safe_to_control"])
         self.assertFalse(status["primary_actions_enabled"])
         self.assertFalse(status["robot_control_executed"])
+
+    def test_map_proof_latest_promotes_clean_runtime_material(self) -> None:
+        """map proof 观测齐全时，readback 顶层应直接暴露可消费状态。"""
+        # 这里用最小可读 artifact 模拟真实 no-motion helper 产物，避免依赖远端硬件。
+        clean_artifact = {
+            "schema": "trashbot.upper_robot_api.v1.map_lifecycle_runtime_proof",
+            "status": "map_once_artifact_metadata_observed",
+            "proof_state": "map_once_artifact_metadata_observed",
+            "evidence_type": "robot_runtime_material",
+            "not_proven": False,
+            "proof": {
+                "status": "map_once_artifact_metadata_observed",
+                "scan_once_observed": True,
+                "map_once_observed": True,
+                "map_file_observed": True,
+                "map_metadata_observed": True,
+                "evidence_ref": "map-proof-clean",
+                "slam_toolbox_state": "runtime_attempted",
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "map_lifecycle_latest.json"
+            artifact_path.write_text(json.dumps(clean_artifact), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                map_lifecycle_proof_artifact_path=str(artifact_path),
+            )
+
+            http_status, payload = api.map_proof_latest()
+            status = api.map_status()
+
+        # 观测链条齐全时，顶层状态必须和 artifact proof 一致，而不是继续卡在 not_proven。
+        self.assertEqual(200, http_status)
+        self.assertEqual("map_once_artifact_metadata_observed", payload["status"])
+        self.assertEqual("map_once_artifact_metadata_observed", payload["proof_state"])
+        self.assertTrue(payload["ros2_runtime_proven"])
+        self.assertTrue(payload["map_artifact_proven"])
+        self.assertFalse(payload["not_proven"])
+        self.assertFalse(payload["software_guard"])
+        # 安全面仍然必须关闭，证明地图材料可消费不等于可发车。
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["primary_actions_enabled"])
+        self.assertFalse(payload["robot_control_executed"])
+        self.assertFalse(payload["sends_motion_commands"])
+        self.assertFalse(payload["sends_base_motion_commands"])
+        self.assertFalse(payload["uses_base_uart"])
+
+        # status 页面要把同一份 proof 摘要抬给 PC 点灯。
+        proof_latest = status["proof_latest"]
+        self.assertEqual("map_once_artifact_metadata_observed", proof_latest["status"])
+        self.assertEqual("map_once_artifact_metadata_observed", proof_latest["proof_state"])
+        self.assertTrue(proof_latest["ros2_runtime_proven"])
+        self.assertTrue(proof_latest["map_artifact_proven"])
+        self.assertFalse(proof_latest["not_proven"])
+        self.assertFalse(proof_latest["software_guard"])
+        self.assertTrue(proof_latest["latest_map_once_observed"])
+        self.assertTrue(proof_latest["latest_map_file_observed"])
+        self.assertTrue(proof_latest["latest_map_metadata_observed"])
+
+    def test_map_proof_latest_fails_closed_on_bad_json(self) -> None:
+        """坏 JSON 仍必须 fail closed，不能把地图材料误判成已证明。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "map_lifecycle_latest.json"
+            artifact_path.write_text("{bad json", encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                map_lifecycle_proof_artifact_path=str(artifact_path),
+            )
+
+            http_status, payload = api.map_proof_latest()
+
+        # 解析失败时，接口继续按 software guard 处理，安全字段不能被翻开。
+        self.assertEqual(422, http_status)
+        self.assertEqual("not_proven", payload["status"])
+        self.assertEqual("not_proven", payload["proof_state"])
+        self.assertTrue(payload["software_guard"])
+        self.assertTrue(payload["not_proven"])
+        self.assertFalse(payload["ros2_runtime_proven"])
+        self.assertFalse(payload["map_artifact_proven"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["primary_actions_enabled"])
+
+    def test_map_proof_refresh_attaches_readback_contract(self) -> None:
+        """refresh 成功时应把 readback contract 抬到顶层，不再保留 not attached 话术。"""
+        clean_artifact = {
+            "schema": "trashbot.upper_robot_api.v1.map_lifecycle_runtime_proof",
+            "status": "map_once_artifact_metadata_observed",
+            "proof_state": "map_once_artifact_metadata_observed",
+            "evidence_type": "robot_runtime_material",
+            "not_proven": False,
+            "proof": {
+                "status": "map_once_artifact_metadata_observed",
+                "scan_once_observed": True,
+                "map_once_observed": True,
+                "map_file_observed": True,
+                "map_metadata_observed": True,
+                "evidence_ref": "map-proof-refresh-clean",
+                "slam_toolbox_state": "runtime_attempted",
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "map_lifecycle_latest.json"
+            artifact_path.write_text(json.dumps(clean_artifact), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                map_lifecycle_proof_artifact_path=str(artifact_path),
+            )
+
+            with mock.patch.object(
+                upper_robot_api,
+                "run_map_lifecycle_proof_helper",
+                return_value={"ok": True, "executed": True, "returncode": 0, "elapsed_ms": 1},
+            ):
+                payload = asyncio.run(api.map_proof_refresh({"timeout_s": 60}))
+
+        # command ok + proof ok 时，顶层必须显示 observed，而不是继续保守成未证明。
+        self.assertEqual("map_once_artifact_metadata_observed", payload["status"])
+        self.assertEqual("map_once_artifact_metadata_observed", payload["proof_state"])
+        self.assertFalse(payload["not_proven"])
+        self.assertFalse(payload["software_guard"])
+        self.assertTrue(payload["ros2_runtime_proven"])
+        self.assertTrue(payload["map_artifact_proven"])
+        self.assertIsNone(payload["failure_reason"])
+        self.assertEqual(
+            "map lifecycle proof attached and ready for read-only consumption",
+            payload["operator_message"],
+        )
+        self.assertEqual(200, payload["latest_readback_http_status"])
+        self.assertEqual("map_once_artifact_metadata_observed", payload["latest_result"]["status"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["sends_motion_commands"])
 
 
 if __name__ == "__main__":
