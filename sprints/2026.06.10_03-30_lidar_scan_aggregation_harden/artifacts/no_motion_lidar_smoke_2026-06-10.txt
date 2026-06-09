@@ -1,0 +1,25 @@
+command_scope=no_motion_lidar_only
+target=root@192.168.1.11:37878
+workspace=/root/rober/onboard
+serial_port=/dev/ttyACM0
+serial_baudrate=150000
+
+ssh_check:
+connected
+
+remote_build:
+Starting >>> ros2_trashbot_hardware
+Finished <<< ros2_trashbot_hardware [5.91s]
+Summary: 1 package finished [7.19s]
+
+scan_metrics:
+{"angle_max": 6.267913818359375, "angle_min": 3.1421380043029785, "angle_span_deg": 179.0937618495007, "finite_count": 161, "range_max": 8.0, "range_min": 0.05000000074505806, "ranges_count": 161}
+
+lidar_driver_log_tail:
+[INFO] [1781033689.357307401] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000
+
+cleanup_check:
+pgrep -af "[r]os2 run ros2_trashbot_hardware lidar_driver" returned no process.
+
+motion_command_scope:
+No /cmd_vel was published in this smoke.

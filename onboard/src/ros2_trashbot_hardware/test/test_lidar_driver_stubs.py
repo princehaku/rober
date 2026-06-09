@@ -1,3 +1,4 @@
+import math
 import sys
 from pathlib import Path
 import unittest
@@ -9,6 +10,7 @@ from ros2_trashbot_hardware.lidar_driver import (
     LIDAR_START_COMMAND,
     LIDAR_STOP_COMMAND,
     LidarRuntimeConfig,
+    LidarScanAggregator,
     LidarSerialSession,
     packets_from_mock_config,
     parse_bool,
@@ -86,6 +88,39 @@ class LidarDriverStubsTest(unittest.TestCase):
         self.assertEqual(scan["frame_id"], "laser_frame")
         self.assertEqual(len(scan["ranges"]), 3)
         self.assertGreater(scan["angle_increment"], 0.0)
+
+    def test_scan_aggregator_waits_for_more_than_one_narrow_packet(self):
+        aggregator = LidarScanAggregator(max_packets=4, min_points=9)
+
+        # 单个窄角 packet 不能再直接发布，否则 motion-delta 仍会只配到极少 bin。
+        scan = aggregator.add_packet(make_mock_packet(0.0, 20.0))
+
+        self.assertIsNone(scan)
+
+    def test_scan_aggregator_publishes_sorted_frame_on_angle_wrap(self):
+        aggregator = LidarScanAggregator(max_packets=8, min_points=99)
+
+        # 回绕 packet 纳入同一帧后再排序，能覆盖 0 度附近和高角度区间。
+        self.assertIsNone(aggregator.add_packet(make_mock_packet(300.0, 330.0)))
+        scan = aggregator.add_packet(make_mock_packet(5.0, 35.0))
+
+        self.assertIsNotNone(scan)
+        assert scan is not None
+        self.assertEqual(len(scan["ranges"]), 6)
+        self.assertAlmostEqual(scan["angle_min"], math.radians(5.0))
+        self.assertAlmostEqual(scan["angle_max"], math.radians(330.0))
+        self.assertGreater(math.degrees(scan["angle_max"] - scan["angle_min"]), 300.0)
+
+    def test_scan_aggregator_fallback_uses_packet_and_point_thresholds(self):
+        aggregator = LidarScanAggregator(max_packets=2, min_points=6)
+
+        # 兜底必须同时有足够 packet 和点数，避免异常现场长时间没有 /scan。
+        self.assertIsNone(aggregator.add_packet(make_mock_packet(0.0, 10.0)))
+        scan = aggregator.add_packet(make_mock_packet(15.0, 25.0))
+
+        self.assertIsNotNone(scan)
+        assert scan is not None
+        self.assertEqual(len(scan["ranges"]), 6)
 
     def test_real_serial_session_sends_start_and_stop_commands(self):
         config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=150000)

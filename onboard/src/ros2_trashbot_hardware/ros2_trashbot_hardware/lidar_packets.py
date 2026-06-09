@@ -81,12 +81,17 @@ def parse_packet(packet: bytes) -> list[LidarPoint]:
     return points
 
 
-def make_mock_packet() -> bytes:
-    """Build a deterministic software-only packet for launch/mock validation."""
+def make_mock_packet(
+    start_angle_deg: float = 0.0,
+    end_angle_deg: float = 30.0,
+    samples: list[tuple[int, int]] | None = None,
+) -> bytes:
+    """构造确定性的纯软件 packet，用于 launch/mock 和聚合回归验证。"""
 
-    fsa = int(0.0 * 64.0) << 1
-    lsa = int(30.0 * 64.0) << 1
-    samples = [(4000, 12), (5000, 13), (6000, 14)]
+    # 参数化 mock packet 让聚合单测能构造角度回绕，不需要依赖真实串口数据。
+    fsa = int(float(start_angle_deg) * 64.0) << 1
+    lsa = int(float(end_angle_deg) * 64.0) << 1
+    samples = samples or [(4000, 12), (5000, 13), (6000, 14)]
     packet = bytearray(PACKET_HEADER)
     packet.extend((0x00, len(samples)))
     packet.extend((fsa & 0xFF, (fsa >> 8) & 0xFF, lsa & 0xFF, (lsa >> 8) & 0xFF))

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .lidar_packets import find_packets, make_mock_packet, packet_from_hex, parse_packet
+from .lidar_packets import LidarPoint, find_packets, make_mock_packet, packet_from_hex, parse_packet
 
 
 LIDAR_START_COMMAND = b"\xA5\x60"
@@ -29,6 +29,8 @@ class LidarRuntimeConfig:
     mock_packets: str = ""
     mock_scan: bool = False
     read_size: int = 1024
+    aggregation_max_packets: int = 24
+    aggregation_min_points: int = 48
 
 
 def parse_bool(value: Any) -> bool:
@@ -143,9 +145,33 @@ def scan_dict_from_packet(
 ) -> dict[str, Any]:
     """把一个完整 packet 转成 LaserScan 形状的字典供测试和 ROS adapter 使用。"""
 
-    points = parse_packet(packet)
+    return scan_dict_from_points(
+        parse_packet(packet),
+        frame_id=frame_id,
+        range_min=range_min,
+        range_max=range_max,
+        scan_time=scan_time,
+        time_increment=time_increment,
+    )
+
+
+def scan_dict_from_points(
+    points: list[LidarPoint],
+    *,
+    frame_id: str = "laser_frame",
+    range_min: float = 0.05,
+    range_max: float = 8.0,
+    scan_time: float = 0.1,
+    time_increment: float = 0.0001,
+) -> dict[str, Any]:
+    """把已解析点集转成 LaserScan 字典；只使用真实采样点，不补假距离。"""
+
+    # LaserScan 仍需要有序 ranges；这里按角度排序，避免跨 0 度回绕时 angle_min/max 反向。
+    sorted_points = sorted(points, key=lambda point: point.angle_rad)
+    points = sorted_points
     angle_min = points[0].angle_rad if points else 0.0
     angle_max = points[-1].angle_rad if points else 0.0
+    # 不把未覆盖角度填入 ranges，因此 angle_increment 只是当前点集的平均步长。
     angle_increment = (angle_max - angle_min) / float(len(points) - 1) if len(points) > 1 else 0.0
     return {
         "frame_id": frame_id,
@@ -159,6 +185,76 @@ def scan_dict_from_packet(
         "ranges": [point.distance_m for point in points],
         "intensities": [float(point.intensity) for point in points],
     }
+
+
+class LidarScanAggregator:
+    """把多个 LiDAR packet 聚合成一帧更宽角度的 LaserScan 字典。"""
+
+    def __init__(
+        self,
+        *,
+        frame_id: str = "laser_frame",
+        range_min: float = 0.05,
+        range_max: float = 8.0,
+        scan_time: float = 0.1,
+        time_increment: float = 0.0001,
+        max_packets: int = 24,
+        min_points: int = 48,
+    ) -> None:
+        self.frame_id = frame_id
+        self.range_min = range_min
+        self.range_max = range_max
+        self.scan_time = scan_time
+        self.time_increment = time_increment
+        # 阈值夹紧到 1 以上，避免 launch 参数误填 0 后重新退化为异常状态。
+        self.max_packets = max(1, int(max_packets))
+        self.min_points = max(1, int(min_points))
+        self._points: list[LidarPoint] = []
+        self._packet_count = 0
+        self._last_packet_first_angle: float | None = None
+
+    def add_packet(self, packet: bytes) -> dict[str, Any] | None:
+        """加入一个完整 packet；达到回绕或兜底阈值时返回一帧 scan。"""
+
+        points = parse_packet(packet)
+        if not points:
+            return None
+
+        first_angle = points[0].angle_rad
+        wrapped = (
+            self._last_packet_first_angle is not None
+            and first_angle < self._last_packet_first_angle
+        )
+
+        # 当前回绕 packet 也纳入本帧，和厂商上位机参考一样在 break 前已解析当前帧。
+        self._points.extend(points)
+        self._packet_count += 1
+        self._last_packet_first_angle = first_angle
+
+        enough_points = len(self._points) >= self.min_points
+        too_many_packets = self._packet_count >= self.max_packets
+        if wrapped or (too_many_packets and enough_points):
+            return self.flush()
+        return None
+
+    def flush(self) -> dict[str, Any] | None:
+        """发布并清空当前聚合帧；空帧返回 None，避免 ROS 发布无意义 scan。"""
+
+        if not self._points:
+            return None
+        scan_dict = scan_dict_from_points(
+            self._points,
+            frame_id=self.frame_id,
+            range_min=self.range_min,
+            range_max=self.range_max,
+            scan_time=self.scan_time,
+            time_increment=self.time_increment,
+        )
+        # flush 后重新等待下一批 packet；last angle 清空可避免跨批误判回绕。
+        self._points = []
+        self._packet_count = 0
+        self._last_packet_first_angle = None
+        return scan_dict
 
 
 def extract_packets_from_chunks(chunks: list[bytes]) -> list[bytes]:
@@ -192,6 +288,15 @@ def main() -> None:
             )
             self.mock_packet_index = 0
             self.serial_session: LidarSerialSession | None = None
+            self.scan_aggregator = LidarScanAggregator(
+                frame_id=self.config.frame_id,
+                range_min=self.config.range_min,
+                range_max=self.config.range_max,
+                scan_time=self.config.scan_time,
+                time_increment=self.config.time_increment,
+                max_packets=self.config.aggregation_max_packets,
+                min_points=self.config.aggregation_min_points,
+            )
             self.scan_pub = self.create_publisher(LaserScan, self.config.scan_topic, 10)
             self.raw_pub = None
             if self.config.publish_raw_packets:
@@ -221,6 +326,8 @@ def main() -> None:
             self.declare_parameter("time_increment", 0.0001)
             self.declare_parameter("mock_packets", "")
             self.declare_parameter("mock_scan", False)
+            self.declare_parameter("scan_aggregation_max_packets", 24)
+            self.declare_parameter("scan_aggregation_min_points", 48)
 
         def _param(self, name: str) -> Any:
             # rclpy Parameter 在不同测试/运行路径里统一从 value 取真实值。
@@ -240,6 +347,8 @@ def main() -> None:
                 time_increment=float(self._param("time_increment")),
                 mock_packets=str(self._param("mock_packets")),
                 mock_scan=parse_bool(self._param("mock_scan")),
+                aggregation_max_packets=int(self._param("scan_aggregation_max_packets")),
+                aggregation_min_points=int(self._param("scan_aggregation_min_points")),
             )
 
         def _tick(self) -> None:
@@ -262,14 +371,9 @@ def main() -> None:
                 raw_msg = UInt8MultiArray()
                 raw_msg.data = list(packet)
                 self.raw_pub.publish(raw_msg)
-            scan_dict = scan_dict_from_packet(
-                packet,
-                frame_id=self.config.frame_id,
-                range_min=self.config.range_min,
-                range_max=self.config.range_max,
-                scan_time=self.config.scan_time,
-                time_increment=self.config.time_increment,
-            )
+            scan_dict = self.scan_aggregator.add_packet(packet)
+            if scan_dict is None:
+                return
             msg = LaserScan()
             msg.header.stamp = self.get_clock().now().to_msg()
             msg.header.frame_id = scan_dict["frame_id"]

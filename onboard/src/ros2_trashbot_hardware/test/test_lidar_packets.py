@@ -21,6 +21,13 @@ class LidarPacketsTest(unittest.TestCase):
         self.assertAlmostEqual(points[0].distance_m, 1.0)
         self.assertAlmostEqual(points[2].angle_rad, math.radians(30.0))
 
+    def test_mock_packet_can_model_angle_wrap_inputs(self):
+        points = parse_packet(make_mock_packet(350.0, 10.0))
+
+        self.assertEqual(len(points), 3)
+        self.assertAlmostEqual(points[0].angle_rad, math.radians(350.0))
+        self.assertAlmostEqual(points[-1].angle_rad, math.radians(10.0))
+
     def test_parse_packet_rejects_bad_header_or_length(self):
         with self.assertRaises(ValueError):
             parse_packet(b"\x00\x55\x00\x00")

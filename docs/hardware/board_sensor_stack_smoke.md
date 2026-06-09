@@ -83,11 +83,34 @@ ros2 topic echo --once /tf_static
 无本轮 ROS 进程残留占用。详见
 `sprints/2026.06.10_03-10_lidar_motion_delta_probe/artifacts/remote_capture/final_process_check_after_rerun.log`。
 
+## 2026-06-10 LiDAR Scan Aggregation Harden
+
+`sprints/2026.06.10_03-30_lidar_scan_aggregation_harden/` 修复 `/scan`
+发布形态：`lidar_driver` 不再把单个窄角度 packet 直接当完整 LaserScan
+发布，而是默认累积多个 parsed `LidarPoint` 后再发布。聚合触发条件：
+
+- 后一个 packet 首角小于前一个 packet 首角，按厂商上位机参考的 start angle
+  回绕视为一轮 LiDAR 数据完成。
+- 未观察到回绕时，达到 `scan_aggregation_max_packets` 且已有至少
+  `scan_aggregation_min_points` 个有效点后兜底发布，避免现场长时间没有
+  `/scan`。
+
+重要边界：
+
+- 聚合帧只使用真实 packet 中解析出的距离点，不伪造 360 度，也不把未覆盖角度
+  填成虚假距离。
+- `angle_increment` 是当前聚合点集的平均角度步长；它提升 motion-delta
+  对比的角度覆盖，但不等于机械标定、真实运动证明或实测里程计。
+- no-motion smoke 只允许启动 LiDAR 并采样 `/scan` 指标，禁止发布 `/cmd_vel`。
+  建议记录 `ranges_count`、`finite_count`、`angle_min/max` 和 `angle_span_deg`。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`
 - `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
   - `base_config.use_lidar: false`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`
+  - LiDAR 参考路径使用 `/dev/ttyACM*`，并以 start angle 回绕作为一轮数据输出触发。
 - `docs/vendor/waveshare_wave_rover/ugv_rpi/cv_ctrl.py`
   - USB camera 参考入口为 OpenCV `VideoCapture`
 - `sprints/2026.06.09_23-20_board-bringup-blocker-fix/artifacts/hardware_device_probe.md`
