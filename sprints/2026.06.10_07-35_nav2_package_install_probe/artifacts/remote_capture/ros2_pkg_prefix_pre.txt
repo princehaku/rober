@@ -1,0 +1,5 @@
+usage: ros2 [-h] [--use-python-default-buffering]
+            Call `ros2 <command> -h` for more detailed usage. ...
+ros2: error: unrecognized arguments: nav2_planner nav2_controller nav2_map_server
+
+EXIT_CODE:2

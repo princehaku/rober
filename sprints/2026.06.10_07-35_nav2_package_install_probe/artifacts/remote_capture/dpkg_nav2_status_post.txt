@@ -1,0 +1,17 @@
+Desired=Unknown/Install/Remove/Purge/Hold
+| Status=Not/Inst/Conf-files/Unpacked/halF-conf/Half-inst/trig-aWait/Trig-pend
+|/ Err?=(none)/Reinst-required (Status,Err: uppercase=bad)
+||/ Name                       Version                       Architecture Description
++++-==========================-=============================-============-=================================================================================================================================================================================================================================================================================================================
+ii  ros-humble-angles          1.15.0-1jammy.20260307.125919 arm64        This package provides a set of simple math utilities to work with angles.
+ii  ros-humble-nav-2d-msgs     1.1.20-1jammy.20260416.043829 arm64        Basic message types for two dimensional navigation, extending from geometry_msgs::Pose2D.
+ii  ros-humble-nav-2d-utils    1.1.20-1jammy.20260426.013609 arm64        A handful of useful utility functions for nav_2d packages.
+ii  ros-humble-nav2-amcl       1.1.20-1jammy.20260423.175841 arm64        amcl is a probabilistic localization system for a robot moving in 2D.
+ii  ros-humble-nav2-controller 1.1.20-1jammy.20260426.043720 arm64        Controller action interface
+ii  ros-humble-nav2-core       1.1.20-1jammy.20260426.043016 arm64        A set of headers for plugins core to the Nav2 stack
+ii  ros-humble-nav2-costmap-2d 1.1.20-1jammy.20260426.023041 arm64        This package provides an implementation of a 2D costmap that takes in sensor data from the world, builds a 2D or 3D occupancy grid of the data (depending on whether a voxel based implementation is used), and inflates costs in a 2D costmap based on the occupancy grid and a user specified inflation radius.
+ii  ros-humble-nav2-map-server 1.1.20-1jammy.20260423.180326 arm64        Refactored map server for ROS2 Navigation
+ii  ros-humble-nav2-planner    1.1.20-1jammy.20260426.044006 arm64        TODO
+ii  ros-humble-nav2-voxel-grid 1.1.20-1jammy.20260423.003452 arm64        voxel_grid provides an implementation of an efficient 3D voxel grid.
+
+EXIT_CODE:0

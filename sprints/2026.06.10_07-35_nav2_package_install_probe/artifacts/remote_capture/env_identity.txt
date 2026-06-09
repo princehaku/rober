@@ -1,0 +1,20 @@
+op-z3-b6.home
+Wed Jun 10 05:19:15 AM CST 2026
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+NAME="Ubuntu"
+VERSION_ID="22.04"
+VERSION="22.04.5 LTS (Jammy Jellyfish)"
+VERSION_CODENAME=jammy
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+ROS_DISTRO=
+ROS_DISTRO_AFTER_SOURCE=humble
+/opt/ros/humble/bin/ros2
+usage: ros2 [-h] [--use-python-default-buffering]
+            Call `ros2 <command> -h` for more detailed usage. ...
+ros2: error: unrecognized arguments: --version
+
+EXIT_CODE:0

@@ -1,0 +1,6 @@
+nav2_amcl /opt/ros/humble
+nav2_planner /opt/ros/humble
+nav2_controller /opt/ros/humble
+nav2_map_server /opt/ros/humble
+
+EXIT_CODE:0

@@ -1,0 +1,34 @@
+Reading package lists...
+Building dependency tree...
+Reading state information...
+ros-humble-nav2-map-server is already the newest version (1.1.20-1jammy.20260423.180326).
+ros-humble-nav2-map-server set to manually installed.
+The following additional packages will be installed:
+  ros-humble-angles ros-humble-nav-2d-msgs ros-humble-nav-2d-utils
+  ros-humble-nav2-core ros-humble-nav2-costmap-2d ros-humble-nav2-voxel-grid
+The following NEW packages will be installed:
+  ros-humble-angles ros-humble-nav-2d-msgs ros-humble-nav-2d-utils
+  ros-humble-nav2-amcl ros-humble-nav2-controller ros-humble-nav2-core
+  ros-humble-nav2-costmap-2d ros-humble-nav2-planner
+  ros-humble-nav2-voxel-grid
+0 upgraded, 9 newly installed, 0 to remove and 322 not upgraded.
+Inst ros-humble-angles (1.15.0-1jammy.20260307.125919 ROS jammy:jammy [arm64])
+Inst ros-humble-nav-2d-msgs (1.1.20-1jammy.20260416.043829 ROS jammy:jammy [arm64])
+Inst ros-humble-nav-2d-utils (1.1.20-1jammy.20260426.013609 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-amcl (1.1.20-1jammy.20260423.175841 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-voxel-grid (1.1.20-1jammy.20260423.003452 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-costmap-2d (1.1.20-1jammy.20260426.023041 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-core (1.1.20-1jammy.20260426.043016 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-controller (1.1.20-1jammy.20260426.043720 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-planner (1.1.20-1jammy.20260426.044006 ROS jammy:jammy [arm64])
+Conf ros-humble-angles (1.15.0-1jammy.20260307.125919 ROS jammy:jammy [arm64])
+Conf ros-humble-nav-2d-msgs (1.1.20-1jammy.20260416.043829 ROS jammy:jammy [arm64])
+Conf ros-humble-nav-2d-utils (1.1.20-1jammy.20260426.013609 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-amcl (1.1.20-1jammy.20260423.175841 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-voxel-grid (1.1.20-1jammy.20260423.003452 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-costmap-2d (1.1.20-1jammy.20260426.023041 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-core (1.1.20-1jammy.20260426.043016 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-controller (1.1.20-1jammy.20260426.043720 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-planner (1.1.20-1jammy.20260426.044006 ROS jammy:jammy [arm64])
+
+EXIT_CODE:0

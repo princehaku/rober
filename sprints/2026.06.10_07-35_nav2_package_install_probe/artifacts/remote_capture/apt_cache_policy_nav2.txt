@@ -1,0 +1,27 @@
+ros-humble-nav2-amcl:
+  Installed: (none)
+  Candidate: 1.1.20-1jammy.20260423.175841
+  Version table:
+     1.1.20-1jammy.20260423.175841 500
+        500 http://packages.ros.org/ros2/ubuntu jammy/main arm64 Packages
+ros-humble-nav2-planner:
+  Installed: (none)
+  Candidate: 1.1.20-1jammy.20260426.044006
+  Version table:
+     1.1.20-1jammy.20260426.044006 500
+        500 http://packages.ros.org/ros2/ubuntu jammy/main arm64 Packages
+ros-humble-nav2-controller:
+  Installed: (none)
+  Candidate: 1.1.20-1jammy.20260426.043720
+  Version table:
+     1.1.20-1jammy.20260426.043720 500
+        500 http://packages.ros.org/ros2/ubuntu jammy/main arm64 Packages
+ros-humble-nav2-map-server:
+  Installed: 1.1.20-1jammy.20260423.180326
+  Candidate: 1.1.20-1jammy.20260423.180326
+  Version table:
+ *** 1.1.20-1jammy.20260423.180326 500
+        500 http://packages.ros.org/ros2/ubuntu jammy/main arm64 Packages
+        100 /var/lib/dpkg/status
+
+EXIT_CODE:0

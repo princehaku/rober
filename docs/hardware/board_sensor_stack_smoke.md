@@ -543,6 +543,61 @@ Nav2 goal，不发布 `/cmd_vel`。
   `calls_base_manual=false`、`uses_base_uart=false`、`safe_to_control=false`、
   `delivery_success=false`。
 
+## 2026-06-10 07:35 Nav2 package install probe
+
+`sprints/2026.06.10_07-35_nav2_package_install_probe/` 只处理真实上位机
+`root@192.168.1.11:37878` 的 Nav2 runtime 包缺失层，不启动运动或导航执行。
+本轮先记录 hostname/date/OS/ROS distro、APT sources、`apt-cache policy`、
+`apt-get -s install` 和当前包状态；dry-run 显示只会新增 9 个 ROS 包，
+`0 upgraded, 0 to remove`，因此执行：
+
+```bash
+DEBIAN_FRONTEND=noninteractive apt-get install -y --no-upgrade \
+  ros-humble-nav2-amcl \
+  ros-humble-nav2-planner \
+  ros-humble-nav2-controller \
+  ros-humble-nav2-map-server
+```
+
+安装结果：
+
+- `ros-humble-nav2-map-server` 原本已安装，未升级。
+- 新增 `ros-humble-nav2-amcl`、`ros-humble-nav2-planner`、
+  `ros-humble-nav2-controller` 及其 ROS runtime 依赖。
+- post individual `ros2 pkg prefix` 确认 `nav2_amcl`、`nav2_planner`、
+  `nav2_controller`、`nav2_map_server` 均位于 `/opt/ros/humble`。
+- 旧 blocker `nav2_amcl_missing`、`nav2_planner_missing`、
+  `nav2_controller_missing` 已从最新 no-motion proof 中消失。
+
+本轮随后只调用允许的 no-motion API：
+
+```bash
+curl -sS -X POST http://127.0.0.1:8787/api/nav2/proof/refresh \
+  -H 'Content-Type: application/json' \
+  -d '{"timeout_s":20}'
+curl -sS http://127.0.0.1:8787/api/nav2/proof/latest
+curl -sS http://127.0.0.1:8787/api/nav2/status
+```
+
+正式 proof 仍是 `blocked_with_root_cause`，这是预期前进而不是 ready：
+
+- lifecycle 未 active：`map_server_lifecycle_not_active`、
+  `amcl_lifecycle_not_active`、`planner_lifecycle_not_active`、
+  `controller_lifecycle_not_active`。
+- topic/material 未观测：`/scan_once_not_observed`、`/map_once_not_observed`、
+  `/amcl_pose_once_not_observed`。
+- `publishes_cmd_vel=false`、`calls_base_manual=false`、
+  `uses_base_uart=false`、`safe_to_control=false`、`delivery_success=false`。
+
+安全复查：pre/install/post/final `lsof /dev/ttyS5 /dev/ttyACM0 || true` 和
+`fuser -v /dev/ttyS5 /dev/ttyACM0 || true` 均无进程行。本轮没有打开 WAVE
+ROVER/base UART `/dev/ttyS5`，没有调用 `/api/base/*`、`/api/map/start`、
+`/api/nav2/start`、`/api/nav2/stop`，没有启动 autonomous launch，没有发送 goal。
+
+下一步应单独处理 Nav2 lifecycle/runtime 启动与同图 `/scan`、`/map`、
+`/amcl_pose` 观测，不应把本轮 package install 视为 AMCL/Nav2 ready、
+path generation、fixed-route execution 或 delivery_success。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`
