@@ -71,7 +71,7 @@ def generate_launch_description():
         description='Start the camera publisher for field route keyframe capture')
 
     camera_device_arg = DeclareLaunchArgument(
-        'camera_device', default_value='/dev/video0',
+        'camera_device', default_value='/dev/video1',
         description='VideoCapture device path or index for the camera publisher')
 
     camera_topic_arg = DeclareLaunchArgument(
@@ -409,7 +409,7 @@ def generate_launch_description():
             }],
         ),
 
-        # 真实相机只在显式启用时拉起；当前实板的 /dev/video1 来源记录在 docs/navigation 文档中，默认不写死。
+        # 真实相机只在显式启用时拉起；默认指向现场已验证的 UVC capture，避免误绑 Cedrus decoder。
         Node(
             package='ros2_trashbot_vision',
             executable='camera_publisher',

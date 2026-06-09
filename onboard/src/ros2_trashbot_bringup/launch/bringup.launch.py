@@ -114,7 +114,7 @@ def generate_launch_description():
         description='Start the real camera publisher for /camera/image_raw')
 
     camera_device_arg = DeclareLaunchArgument(
-        'camera_device', default_value='/dev/video0',
+        'camera_device', default_value='/dev/video1',
         description='VideoCapture device path or index for the real camera publisher')
 
     camera_topic_arg = DeclareLaunchArgument(

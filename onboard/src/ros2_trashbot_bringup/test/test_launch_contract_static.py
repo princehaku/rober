@@ -154,6 +154,20 @@ class LaunchContractStaticTest(unittest.TestCase):
                 self.assertNotIn("vision_detection_confidence", source)
                 self.assertNotIn("save_detection_samples", source)
 
+    def test_field_camera_default_uses_verified_capture_device(self):
+        # 实板上 /dev/video0 是 Cedrus decoder；默认指向 /dev/video1，避免相机启用后误绑非采集节点。
+        for launch_name in ("bringup.launch.py", "learn.launch.py"):
+            with self.subTest(launch_name=launch_name):
+                source = read_launch(launch_name)
+                ast.parse(source)
+                camera_block = node_block(source, "camera_publisher")
+
+                self.assertIn("'camera_enabled', default_value='false'", source)
+                self.assertIn("'camera_device', default_value='/dev/video1'", source)
+                self.assertNotIn("'camera_device', default_value='/dev/video0'", source)
+                self.assertIn("condition=IfCondition(camera_enabled)", camera_block)
+                self.assertIn("'device': camera_device", camera_block)
+
     def test_learn_launch_can_start_fixed_route_recorder(self):
         source = read_launch("learn.launch.py")
         ast.parse(source)

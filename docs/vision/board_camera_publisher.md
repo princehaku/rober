@@ -13,7 +13,7 @@ keyframe 证据和 bringup smoke。
 
 ## 参数
 
-- `device`：相机设备路径或数字索引；默认 `/dev/video0`
+- `device`：相机设备路径或数字索引；`bringup.launch.py` 与 `learn.launch.py` 现场默认 `/dev/video1`
 - `topic`：发布 topic；默认 `/camera/image_raw`
 - `frame_id`：图像 header frame；默认 `camera`
 - `width`：请求宽度；默认 `640`
@@ -29,7 +29,6 @@ keyframe 证据和 bringup smoke。
 ros2 launch ros2_trashbot_bringup bringup.launch.py \
   base_enabled:=false \
   camera_enabled:=true \
-  camera_device:=/dev/video0 \
   camera_topic:=/camera/image_raw \
   camera_frame_id:=camera \
   camera_width:=640 \
@@ -79,13 +78,16 @@ ros2 launch ros2_trashbot_bringup bringup.launch.py \
 - 其中 `/dev/video1` 具备 `Video Capture` 能力，OpenCV 实测 `opened=True read=True`。
 - `/dev/video2` 是 metadata 节点，OpenCV 不能作为图像输入打开。
 
-因此当前实板的推荐相机参数是：
+因此当前实板的默认相机参数已经固化为：
 
 ```bash
-camera_enabled:=true camera_device:=/dev/video1
+camera_enabled:=true
 ```
 
-`/dev/video0` 只适合作为失败样例保留在排查记录里，不应继续作为这块板的现场采样设备假设。
+`bringup.launch.py` 与 `learn.launch.py` 在 `camera_enabled:=true` 且未显式传
+`camera_device` 时会使用 `/dev/video1`。`/dev/video0` 只适合作为失败样例保留在排查记录里，
+不应继续作为这块板的现场采样设备假设。不同设备批次如枚举变化，仍可显式传
+`camera_device:=...` 覆盖默认值。
 
 ## 2026-06-10 ROS2 topic path 结论
 
@@ -121,11 +123,19 @@ ros2 run ros2_trashbot_vision camera_publisher --ros-args \
 之前，不应把该画面用于路线关键帧、视觉定位、障碍识别或远程可视验收。
 
 当前实板仍以 `/dev/video1` 作为真实相机。`/dev/video0` 是 Cedrus decoder；
-launch 中的 `/dev/video0` 仅是可覆盖默认值，现场运行必须显式传：
+launch 默认值已从 `/dev/video0` 固化为 `/dev/video1`，因此现场运行可省略 `camera_device`：
 
 ```bash
-camera_device:=/dev/video1
+ros2 launch ros2_trashbot_bringup bringup.launch.py \
+  base_enabled:=false \
+  camera_enabled:=true \
+  camera_width:=640 \
+  camera_height:=480 \
+  camera_fps:=2.0
 ```
+
+本轮只修正默认设备选择，`visible_content_proven=false` 仍成立：在可见内容被证明前，
+不能把这路画面用于路线关键帧、视觉定位、障碍识别或远程可视验收。
 
 ## 本地资料来源
 
