@@ -1,0 +1,52 @@
+{
+  "api_restore_success": true,
+  "baudrate": 115200,
+  "exception": null,
+  "final_stop_success": true,
+  "generated_at_ms": 1781028372114,
+  "port": "/dev/ttyS5",
+  "schema": "rober.wheel_feedback_sweep.v1",
+  "segments": [
+    {
+      "api_restore_success": true,
+      "feedback_file": "speed_003_feedback.jsonl",
+      "invalid_json_count": 0,
+      "max_abs_left_speed": 0.0,
+      "max_abs_right_speed": 0.0,
+      "nonzero_lr_count": 0,
+      "record_count": 97,
+      "segment": "speed_003",
+      "stop_success": true
+    },
+    {
+      "api_restore_success": true,
+      "feedback_file": "speed_005_feedback.jsonl",
+      "invalid_json_count": 0,
+      "max_abs_left_speed": 0.0,
+      "max_abs_right_speed": 0.0,
+      "nonzero_lr_count": 0,
+      "record_count": 96,
+      "segment": "speed_005",
+      "stop_success": true
+    },
+    {
+      "api_restore_success": true,
+      "feedback_file": "pwm_35_feedback.jsonl",
+      "invalid_json_count": 0,
+      "max_abs_left_speed": 0.0,
+      "max_abs_right_speed": 0.0,
+      "nonzero_lr_count": 0,
+      "record_count": 34,
+      "segment": "pwm_35",
+      "stop_success": true
+    }
+  ],
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h"
+  ]
+}

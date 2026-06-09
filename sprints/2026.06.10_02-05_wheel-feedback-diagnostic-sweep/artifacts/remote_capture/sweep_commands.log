@@ -1,0 +1,30 @@
+2026-06-10T02:06:11+08:00 remote_capture_start
+2026-06-10T02:06:11+08:00 stop service trashbot-upper-robot-api.service before direct /dev/ttyS5 takeover
+{"baudrate": 115200, "message": "serial_open_start", "port": "/dev/ttyS5", "ts_ms": 1781028372114}
+{"baudrate": 115200, "message": "serial_open_ok", "port": "/dev/ttyS5", "ts_ms": 1781028372115}
+{"bytes_written": 18, "command": {"T": 143, "cmd": 0}, "label": "disable_echo", "message": "serial_write", "ts_ms": 1781028372125}
+{"bytes_written": 18, "command": {"T": 142, "cmd": 0}, "label": "feedback_interval_0", "message": "serial_write", "ts_ms": 1781028372137}
+{"bytes_written": 18, "command": {"T": 131, "cmd": 1}, "label": "enable_feedback_flow", "message": "serial_write", "ts_ms": 1781028372149}
+{"command": {"L": 0.03, "R": 0.03, "T": 1}, "duration_s": 0.8, "message": "segment_start", "segment": "speed_003", "ts_ms": 1781028372451}
+{"bytes_written": 10, "command": {"T": 130}, "label": "speed_003_pre_feedback_request", "message": "serial_write", "ts_ms": 1781028372461}
+{"bytes_written": 26, "command": {"L": 0.03, "R": 0.03, "T": 1}, "label": "speed_003_motion", "message": "serial_write", "ts_ms": 1781028372565}
+{"bytes_written": 20, "command": {"L": 0, "R": 0, "T": 1}, "label": "speed_003_forced_stop", "message": "serial_write", "ts_ms": 1781028373381}
+{"bytes_written": 10, "command": {"T": 130}, "label": "speed_003_post_stop_feedback_request", "message": "serial_write", "ts_ms": 1781028373393}
+{"invalid": 0, "message": "segment_done", "post_stop_records": 33, "records": 97, "segment": "speed_003", "stop_success": true, "ts_ms": 1781028373647}
+{"command": {"L": 0.05, "R": 0.05, "T": 1}, "duration_s": 0.8, "message": "segment_start", "segment": "speed_005", "ts_ms": 1781028373798}
+{"bytes_written": 10, "command": {"T": 130}, "label": "speed_005_pre_feedback_request", "message": "serial_write", "ts_ms": 1781028373809}
+{"bytes_written": 26, "command": {"L": 0.05, "R": 0.05, "T": 1}, "label": "speed_005_motion", "message": "serial_write", "ts_ms": 1781028373901}
+{"bytes_written": 20, "command": {"L": 0, "R": 0, "T": 1}, "label": "speed_005_forced_stop", "message": "serial_write", "ts_ms": 1781028374717}
+{"bytes_written": 10, "command": {"T": 130}, "label": "speed_005_post_stop_feedback_request", "message": "serial_write", "ts_ms": 1781028374729}
+{"invalid": 0, "message": "segment_done", "post_stop_records": 33, "records": 96, "segment": "speed_005", "stop_success": true, "ts_ms": 1781028374987}
+{"command": {"L": 35, "R": 35, "T": 11}, "duration_s": 0.25, "message": "segment_start", "segment": "pwm_35", "ts_ms": 1781028375138}
+{"bytes_written": 10, "command": {"T": 130}, "label": "pwm_35_pre_feedback_request", "message": "serial_write", "ts_ms": 1781028375149}
+{"bytes_written": 23, "command": {"L": 35, "R": 35, "T": 11}, "label": "pwm_35_motion", "message": "serial_write", "ts_ms": 1781028375241}
+{"bytes_written": 20, "command": {"L": 0, "R": 0, "T": 1}, "label": "pwm_35_forced_stop", "message": "serial_write", "ts_ms": 1781028375517}
+{"bytes_written": 10, "command": {"T": 130}, "label": "pwm_35_post_stop_feedback_request", "message": "serial_write", "ts_ms": 1781028375529}
+{"invalid": 0, "message": "segment_done", "post_stop_records": 35, "records": 34, "segment": "pwm_35", "stop_success": true, "ts_ms": 1781028375783}
+{"bytes_written": 20, "command": {"L": 0, "R": 0, "T": 1}, "label": "final_forced_stop", "message": "serial_write", "ts_ms": 1781028375945}
+{"bytes_written": 18, "command": {"T": 131, "cmd": 0}, "label": "disable_feedback_flow_after_sweep", "message": "serial_write", "ts_ms": 1781028375957}
+{"message": "serial_closed", "ts_ms": 1781028375958}
+2026-06-10T02:06:16+08:00 python_capture_rc=0
+2026-06-10T02:06:16+08:00 start service trashbot-upper-robot-api.service after direct /dev/ttyS5 release
