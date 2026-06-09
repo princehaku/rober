@@ -1,0 +1,187 @@
+{
+  "schema": "trashbot.vision_samples.v1",
+  "sample_output_dir": "/tmp/trashbot_integrated_sensor_motion_route",
+  "updated_at": 1781023651.3308654,
+  "samples": [
+    {
+      "sample_id": "route_keyframe_001",
+      "sample_ref": "vision_sample://keyframes/001.json",
+      "timestamp": 1781023648.1604533,
+      "frame_id": "map",
+      "raw_image": "keyframes/001.jpg",
+      "annotated_image": "",
+      "json": "keyframes/001.json",
+      "context": {
+        "task_id": "",
+        "route_id": "integrated_sensor_motion_20260610",
+        "checkpoint_id": "1",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_002",
+      "sample_ref": "vision_sample://keyframes/002.json",
+      "timestamp": 1781023648.5103624,
+      "frame_id": "map",
+      "raw_image": "keyframes/002.jpg",
+      "annotated_image": "",
+      "json": "keyframes/002.json",
+      "context": {
+        "task_id": "",
+        "route_id": "integrated_sensor_motion_20260610",
+        "checkpoint_id": "2",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_003",
+      "sample_ref": "vision_sample://keyframes/003.json",
+      "timestamp": 1781023648.8603082,
+      "frame_id": "map",
+      "raw_image": "keyframes/003.jpg",
+      "annotated_image": "",
+      "json": "keyframes/003.json",
+      "context": {
+        "task_id": "",
+        "route_id": "integrated_sensor_motion_20260610",
+        "checkpoint_id": "3",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_004",
+      "sample_ref": "vision_sample://keyframes/004.json",
+      "timestamp": 1781023649.210298,
+      "frame_id": "map",
+      "raw_image": "keyframes/004.jpg",
+      "annotated_image": "",
+      "json": "keyframes/004.json",
+      "context": {
+        "task_id": "",
+        "route_id": "integrated_sensor_motion_20260610",
+        "checkpoint_id": "4",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_005",
+      "sample_ref": "vision_sample://keyframes/005.json",
+      "timestamp": 1781023649.5602975,
+      "frame_id": "map",
+      "raw_image": "keyframes/005.jpg",
+      "annotated_image": "",
+      "json": "keyframes/005.json",
+      "context": {
+        "task_id": "",
+        "route_id": "integrated_sensor_motion_20260610",
+        "checkpoint_id": "5",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_006",
+      "sample_ref": "vision_sample://keyframes/006.json",
+      "timestamp": 1781023649.910338,
+      "frame_id": "map",
+      "raw_image": "keyframes/006.jpg",
+      "annotated_image": "",
+      "json": "keyframes/006.json",
+      "context": {
+        "task_id": "",
+        "route_id": "integrated_sensor_motion_20260610",
+        "checkpoint_id": "6",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_007",
+      "sample_ref": "vision_sample://keyframes/007.json",
+      "timestamp": 1781023650.2603068,
+      "frame_id": "map",
+      "raw_image": "keyframes/007.jpg",
+      "annotated_image": "",
+      "json": "keyframes/007.json",
+      "context": {
+        "task_id": "",
+        "route_id": "integrated_sensor_motion_20260610",
+        "checkpoint_id": "7",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_008",
+      "sample_ref": "vision_sample://keyframes/008.json",
+      "timestamp": 1781023650.6103468,
+      "frame_id": "map",
+      "raw_image": "keyframes/008.jpg",
+      "annotated_image": "",
+      "json": "keyframes/008.json",
+      "context": {
+        "task_id": "",
+        "route_id": "integrated_sensor_motion_20260610",
+        "checkpoint_id": "8",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_009",
+      "sample_ref": "vision_sample://keyframes/009.json",
+      "timestamp": 1781023650.9602146,
+      "frame_id": "map",
+      "raw_image": "keyframes/009.jpg",
+      "annotated_image": "",
+      "json": "keyframes/009.json",
+      "context": {
+        "task_id": "",
+        "route_id": "integrated_sensor_motion_20260610",
+        "checkpoint_id": "9",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_010",
+      "sample_ref": "vision_sample://keyframes/010.json",
+      "timestamp": 1781023651.3102815,
+      "frame_id": "map",
+      "raw_image": "keyframes/010.jpg",
+      "annotated_image": "",
+      "json": "keyframes/010.json",
+      "context": {
+        "task_id": "",
+        "route_id": "integrated_sensor_motion_20260610",
+        "checkpoint_id": "10",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    }
+  ]
+}

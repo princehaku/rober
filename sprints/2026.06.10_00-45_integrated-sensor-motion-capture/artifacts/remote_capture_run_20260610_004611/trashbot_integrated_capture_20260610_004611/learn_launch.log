@@ -1,0 +1,40 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-10-00-46-25-502286-op-z3-b6.home-47558
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [async_slam_toolbox_node-1]: process started with pid [47560]
+[INFO] [map_recorder-2]: process started with pid [47562]
+[INFO] [camera_publisher-3]: process started with pid [47564]
+[INFO] [lidar_driver-4]: process started with pid [47566]
+[INFO] [static_transform_publisher-5]: process started with pid [47568]
+[INFO] [static_transform_publisher-6]: process started with pid [47570]
+[INFO] [route_data_recorder-7]: process started with pid [47574]
+[static_transform_publisher-5] [WARN] [1781023585.952310500] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-6] [WARN] [1781023585.994080209] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-6] [INFO] [1781023586.701529134] [no_motion_static_odom_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-6] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-6] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-6] from 'odom' to 'base_link'
+[static_transform_publisher-5] [INFO] [1781023586.720838826] [static_laser_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-5] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-5] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-5] from 'base_link' to 'laser_frame'
+[async_slam_toolbox_node-1] [INFO] [1781023586.978895388] [slam_toolbox]: Using solver plugin solver_plugins::CeresSolver
+[lidar_driver-4] [INFO] [1781023587.864271240] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000
+[camera_publisher-3] [INFO] [1781023588.383722436] [camera_publisher]: camera_publisher streaming /dev/video1 to /camera/image_raw with frame_id=camera, requested 640x480@15.00fps
+[route_data_recorder-7] [INFO] [1781023588.610895423] [route_data_recorder]: Recording route data to /tmp/trashbot_integrated_sensor_motion_route
+[route_data_recorder-7] [WARN] [1781023588.614208080] [route_data_recorder]: cv_bridge unavailable; using numpy/cv2 image fallback for common encodings
+[route_data_recorder-7] [INFO] [1781023588.621106726] [route_data_recorder]: Saved waypoint #1 at (0.00, 0.00)
+[async_slam_toolbox_node-1] [WARN] [1781023588.789906971] [slam_toolbox]: minimum laser range setting (0.0 m) exceeds the capabilities of the used Lidar (0.1 m)
+[async_slam_toolbox_node-1] [WARN] [1781023588.790407261] [slam_toolbox]: maximum laser range setting (25.0 m) exceeds the capabilities of the used Lidar (8.0 m)
+[async_slam_toolbox_node-1] Info: clipped range threshold to be within minimum and maximum range!
+[async_slam_toolbox_node-1] Registering sensor: [Custom Described Lidar]
+[route_data_recorder-7] [INFO] [1781023648.190009872] [route_data_recorder]: Saved waypoint #2 at (0.01, 0.00)
+[route_data_recorder-7] [INFO] [1781023648.559962211] [route_data_recorder]: Saved waypoint #3 at (0.02, 0.00)
+[route_data_recorder-7] [INFO] [1781023648.887628631] [route_data_recorder]: Saved waypoint #4 at (0.03, 0.00)
+[route_data_recorder-7] [INFO] [1781023649.243697718] [route_data_recorder]: Saved waypoint #5 at (0.04, 0.00)
+[route_data_recorder-7] [INFO] [1781023649.582543773] [route_data_recorder]: Saved waypoint #6 at (0.05, 0.00)
+[route_data_recorder-7] [INFO] [1781023649.962497540] [route_data_recorder]: Saved waypoint #7 at (0.06, 0.00)
+[route_data_recorder-7] [INFO] [1781023650.289223547] [route_data_recorder]: Saved waypoint #8 at (0.07, 0.00)
+[route_data_recorder-7] [INFO] [1781023650.675068089] [route_data_recorder]: Saved waypoint #9 at (0.08, 0.00)
+[route_data_recorder-7] [INFO] [1781023650.980064784] [route_data_recorder]: Saved waypoint #10 at (0.09, 0.00)
+[route_data_recorder-7] [INFO] [1781023651.335451082] [route_data_recorder]: Saved waypoint #11 at (0.10, 0.00)
+[map_recorder-2] [INFO] [1781023662.856992635] [map_recorder]: Map saved to /tmp/trashbot_integrated_sensor_motion_maps/trashbot_integrated_sensor_motion_map.pgm

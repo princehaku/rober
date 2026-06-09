@@ -1,0 +1,5 @@
+requester: making request: std_srvs.srv.Trigger_Request()
+
+response:
+std_srvs.srv.Trigger_Response(success=True, message='Map saved to /tmp/trashbot_integrated_sensor_motion_maps/trashbot_integrated_sensor_motion_map.pgm')
+
