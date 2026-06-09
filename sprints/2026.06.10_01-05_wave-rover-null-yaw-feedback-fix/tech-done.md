@@ -26,8 +26,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_hardware
 
 如环境允许，补充 Docker/Humble 或板上增量构建；如不运行，必须写明原因。
 
-## 待完成
-
 ## 实际改动
 
 - `onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/wave_rover_feedback.py`
@@ -50,7 +48,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_hardware
 - 已运行：
   - `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_hardware/test/test_waveshare_json_bridge.py`
   - `python3 -m py_compile onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/wave_rover_feedback.py onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/esp32_bridge_node.py`
-  - `bash onboard/scripts/docker_humble_build.sh`
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_hardware/test/test_waveshare_json_bridge.py
@@ -60,8 +57,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/src/ros2_trashbot_hardware
   - `Ran 16 tests in 0.011s`
   - `OK`
   - `py_compile` 无输出，表示语法检查通过。
-  - Docker/Humble 输出 `Summary: 6 packages finished [55.4s]`。
-  - Docker build 阶段出现 `InvalidBaseImagePlatform` warning：基础镜像为 `linux/amd64`，当前 Docker host 为 `linux/arm64/v8`；构建与 colcon 均已继续并通过，证据边界仍是 `software_proof_docker_only`。
+- 未运行本地 Docker/Humble 全量构建；本轮改动已由 Python 单元测试、`py_compile` 和下方真实上位机单包构建覆盖。
 
 ## 硬件复测补充（2026-06-10）
 
