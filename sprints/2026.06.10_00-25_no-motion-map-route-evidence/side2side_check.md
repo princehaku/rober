@@ -12,11 +12,13 @@
 | no-motion `route.csv` | 通过 | `route_output/route.csv` 共 `75` 行 |
 | keyframe + manifest | 通过 | `route_output/keyframes/` 与 `route_output/manifest.json` |
 | `map.yaml` | 通过 | `map_output/trashbot_no_motion_map.yaml` 与 `.pgm` |
-| `/scan` sample | 未通过 | `scan_once.txt` 为空，LiDAR driver 串口读空数据崩溃 |
-| camera launch ownership | 部分通过 | sample/keyframes 存在，但本轮 launch 内 camera publisher 打开 `/dev/video1` 失败，可能由残留 publisher 供给 |
+| 清场后 `/scan` sample | 通过 | `no_motion_learn_capture_clean.md` 记录 `frame_id=laser_frame`，有有效 ranges/intensities |
+| 清场后 camera ownership | 通过 | `no_motion_learn_capture_clean.md` 记录 `/camera/image_raw` 为 `640x480 bgr8`，清场前设备占用已解除 |
+| 清场后 `/tf_static` | 通过 | `base_link -> laser_frame` smoke TF 可采样 |
+| 清场后 `/odom` | 通过 | synthetic zero `/odom` 可采样，`frame_id=odom`、`child_frame_id=base_link` |
 
 ## 结论
 
-本轮从“只有 sensor-only topic/keyframe fallback，缺 map/route”推进到“真实上位机 no-motion 产出 map、route.csv、keyframes 和 manifest”。这满足 O7/O6 可消费的真实 route/map artifact 入口，但仍不是真实路线运动或 HIL。
+本轮从“只有 sensor-only topic/keyframe fallback，缺 map/route”推进到“真实上位机 no-motion 产出 map、route.csv、keyframes、manifest，并在清场后干净采到 `/scan`、camera、`/tf_static`、synthetic `/odom`”。这满足 O7/O6 可消费的真实 no-motion route/map artifact 入口，但仍不是真实路线运动或 HIL。
 
-不通过项已收敛为现场进程清理和设备占用问题：`ttyacm0_diagnostics.txt` 显示重复节点、残留 `lidar_driver` 和 `/dev/ttyACM0` 占用。下一轮应先做远端 ROS 进程清场，再重跑 LiDAR/camera ownership smoke。
+清场复跑已证明上一轮不通过项主要来自残留进程和设备占用，而不是传感器硬件坏。剩余边界是：`route.csv` 仍是 synthetic `/odom` 零位样本，`map.yaml` 是 no-motion smoke 地图，不能当作可导航地图或真实运动路线。

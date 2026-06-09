@@ -2,9 +2,9 @@
 
 ## 收口状态
 
-状态：部分完成，核心 no-motion map/route evidence 已落地，LiDAR/camera ownership 仍需下一轮清场复验。
+状态：部分完成，核心 no-motion map/route evidence 已落地，清场后 LiDAR/camera/TF/odom ownership 已复验通过。
 
-本轮在真实上位机 `root@192.168.1.11:37878` 上完成了 no-motion `learn.launch.py` 采集闭环：`map.yaml`、`route.csv`、keyframes、manifest 均已产生。相比上一轮 `No map data received` 和 `ModuleNotFoundError: cv_bridge`，这轮已经把 O7/O6 可消费的真实路线材料入口打通。
+本轮在真实上位机 `root@192.168.1.11:37878` 上完成了 no-motion `learn.launch.py` 采集闭环：`map.yaml`、`route.csv`、keyframes、manifest 均已产生。清场后复跑也证明 `/scan`、`/camera/image_raw`、`/tf_static`、synthetic `/odom` 可在同一轮干净采样。相比上一轮 `No map data received` 和 `ModuleNotFoundError: cv_bridge`，这轮已经把 O7/O6 可消费的真实 no-motion 路线材料入口打通。
 
 ## 关键证据
 
@@ -16,6 +16,12 @@
 - `manifest.json`：`trashbot.vision_samples.v1`
 - `map_output/trashbot_no_motion_map.yaml` 与 `.pgm`：已保存
 - 远端清理：清理后 `ros2 node list` 为空，相关 `ps` 输出为空
+- 清场后复跑：
+  - `/scan`：成功，`frame_id=laser_frame`，有有效 ranges/intensities
+  - `/camera/image_raw`：成功，`640x480`、`encoding=bgr8`
+  - `/tf_static`：成功，`base_link -> laser_frame`
+  - `/odom`：成功，synthetic zero odom，`frame_id=odom`、`child_frame_id=base_link`
+  - `route.csv`、`manifest.json`、`keyframes/000.*`、`trashbot_map.yaml`、`trashbot_map.pgm`：均已拉回本地 clean artifact
 
 ## OKR 回顾
 
@@ -26,14 +32,15 @@
 
 ## 剩余风险
 
-- `/scan` 本轮未采到，`lidar_driver` 因 `/dev/ttyACM0` 读空数据崩溃；现场存在重复节点和串口占用，需清场后重跑。
-- `camera_publisher` 本轮 launch 内打开 `/dev/video1` 失败，但 topic/keyframe 数据由残留 camera publisher 供给；需清场后证明 launch ownership。
 - `route.csv` 是 synthetic `/odom` 的 no-motion 零位样本，不能当作真实路线。
 - `map.yaml` 是 no-motion 建图 smoke，不能当作可导航地图。
+- `waypoint_manager` 在 no-motion 期间仍会写入 `auto_000x` 零位航点；后续 clean capture 应显式关闭该节点或把副作用隔离到临时 waypoint 文件。
+- 多个 Python 节点在 `Ctrl-C` 收尾时会打印 `rcl_shutdown already called`，不影响本轮证据，但退出路径需要单独整理。
 - 本轮未发布 `/cmd_vel`，不改变 `safe_to_control=false` 和 `primary_actions_enabled=false` 的产品安全边界。
 
 ## 下一步
 
-1. 远端清理残留 ROS 进程后重跑 camera/LiDAR ownership smoke。
-2. 在 LiDAR `/scan` 稳定后，用真实缓慢移动采集 route/map，并把 synthetic `/odom` 切回真实 `/odom`。
+1. 增加 `waypoint_manager_enabled` 或临时 waypoint 文件隔离，避免 no-motion clean capture 污染默认 waypoint 存储。
+2. 在安全现场条件下，用真实缓慢移动采集 route/map，并把 synthetic `/odom` 切回真实 `/odom`。
 3. 将本轮 `route.csv`、keyframes、manifest 接入 O7 route replay / labeling queue 做消费验证。
+4. 单独整理 Python ROS2 节点退出路径，消除 `rcl_shutdown already called` 收尾噪声。

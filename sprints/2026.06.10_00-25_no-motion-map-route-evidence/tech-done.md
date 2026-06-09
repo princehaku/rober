@@ -117,6 +117,85 @@ ssh -p 37878 root@192.168.1.11 '...'
 - 该目录包含最小 `route.csv`、`manifest.json`、`keyframes/000.*`、`map_output_trashbot_map.yaml` 和 `.pgm`。
 - 这次 clean capture 只作为清场后最小复跑材料，不替代上方完整 `board_no_motion_capture_20260610` 证据包。
 
+### 2026-06-10 清场后复跑
+
+针对上轮 artifact 的污染问题，又补做了一次“清场后复跑”，重点是把重复节点、设备占用和 topic 单帧证据拉直。
+
+- 清场前盘点：
+  - `ps -ef` 中同时存在三轮 no-motion 相关残留进程
+  - `/dev/video1` 被残留 `camera_publisher` 占用
+  - `/dev/ttyACM0` 被残留 `lidar_driver` 占用
+- 明确未触碰：
+  - `python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12`
+- 清场动作：
+  - 仅 kill 本轮残留 `slam_toolbox`、`map_recorder`、`waypoint_manager`、`camera_publisher`、`lidar_driver`、`static_transform_publisher`、`route_data_recorder`、`no_motion_mock_odom_pub`
+  - `ros2 daemon stop && ros2 daemon start`
+- 清场后基线：
+  - `ros2 node list` 为空
+  - no-motion 相关 `ps` 输出为空
+  - `fuser /dev/video1 /dev/ttyACM0` 无占用
+
+清场后复跑命令：
+
+```bash
+ros2 launch ros2_trashbot_bringup learn.launch.py \
+  lidar_enabled:=true \
+  lidar_serial_port:=/dev/ttyACM0 \
+  lidar_serial_baudrate:=150000 \
+  static_laser_tf_enabled:=true \
+  no_motion_static_odom_tf:=true \
+  no_motion_mock_odom_enabled:=true \
+  camera_enabled:=true \
+  camera_device:=/dev/video1 \
+  route_recorder:=true \
+  route_output_dir:=/tmp/trashbot_no_motion_route_clean
+```
+
+清场后复跑在线阶段 `ros2 node list` 结果干净且无重复名：
+
+- `/camera_publisher`
+- `/lidar_driver`
+- `/map_recorder`
+- `/no_motion_mock_odom_pub`
+- `/no_motion_static_odom_tf`
+- `/route_data_recorder`
+- `/slam_toolbox`
+- `/static_laser_tf`
+- `/waypoint_manager`
+
+四类 topic 单帧全部成功：
+
+- `/scan`：`frame_id=laser_frame`，已返回有效 ranges/intensities
+- `/camera/image_raw`：`640x480`，`encoding=bgr8`
+- `/tf_static`：`base_link -> laser_frame`
+- `/odom`：`frame_id=odom`，`child_frame_id=base_link`
+
+clean capture 文件结果：
+
+- `route.csv`：1 行样本，frame=`000.jpg`
+- `manifest.json`：`schema=trashbot.vision_samples.v1`
+- `keyframes/000.jpg`
+- `keyframes/000.json`
+- `~/.ros/trashbot_maps/trashbot_map.yaml`
+- `~/.ros/trashbot_maps/trashbot_map.pgm`
+
+`/trashbot/save_map` 返回：
+
+```text
+success=True, message='Map saved to /root/.ros/trashbot_maps/trashbot_map.pgm'
+```
+
+本地已落盘的新 artifact：
+
+- `sprints/2026.06.10_00-25_no-motion-map-route-evidence/artifacts/no_motion_learn_capture_clean.md`
+- `sprints/2026.06.10_00-25_no-motion-map-route-evidence/artifacts/board_no_motion_capture_clean_20260610/remote_capture/`
+
+复跑结束后再次确认：
+
+- no-motion 相关 `ps` 输出为空
+- `ros2 node list` 为空
+- `upper_robot_api.py` 仍保持运行
+
 ## 失败定位
 
 1. `/scan` sample 未完成：`scan_once.txt` 为空。
@@ -136,3 +215,5 @@ serial.serialutil.SerialException: device reports readiness to read but returned
 - LiDAR 和 camera 的本轮 launch ownership 不干净，下一轮现场验证前必须先清理残留 ROS 进程和串口占用。
 - `static_transform_publisher` 仍使用 old-style 参数，后续可单独切换为新式参数消除 warning。
 - 本轮没有发布 `/cmd_vel`，也没有提升 `safe_to_control`、`primary_actions_enabled` 或 delivery success。
+- 清场后复跑虽然把 graph 和 topic 证据拉干净了，但 `waypoint_manager` 仍会在 no-motion 期间写入 `auto_000x` 零位航点；后续若要让 clean capture 更收敛，建议现场 no-motion 采集时关闭该节点。
+- 前台 `Ctrl-C` 收尾时多个 Python 节点会打印 `rcl_shutdown already called`；这不影响本轮证据，但说明节点退出路径还有收尾噪声。

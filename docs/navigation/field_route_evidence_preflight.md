@@ -224,6 +224,27 @@ ros2 launch ros2_trashbot_bringup learn.launch.py \
 
 `route_data_recorder` 也已把 `cv_bridge` 改为可选依赖：优先使用 `cv_bridge`；缺失时对 `rgb8`、`bgr8`、`mono8`、`bgra8`、`rgba8` 使用 `numpy` + `cv2` 转换；不支持的 encoding 只记录原因并继续等待 `/odom`，避免节点启动即崩溃。
 
+## 2026-06-10 清场后复跑补充
+
+对 `root@192.168.1.11:37878` 做第二次 no-motion 复跑时，现场经验需要补一条强制 gate：
+
+1. 先盘点：
+   - `ros2 node list`
+   - `ps -ef | grep -E 'slam|lidar|camera_publisher|route_data_recorder|static_transform|topic pub'`
+   - `fuser -v /dev/video1 /dev/ttyACM0`
+2. 只清理本轮 no-motion 残留 ROS2/launch 进程，**不要杀 `upper_robot_api.py`**。
+3. 清场后必须再次确认：
+   - `ros2 node list` 为空
+   - `/dev/video1`、`/dev/ttyACM0` 无占用
+4. 只有在基线干净后，才允许重新执行 `learn.launch.py` 的 no-motion capture。
+
+本次 clean rerun 已证明：如果先清场，再复跑 `learn.launch.py`，则 `/scan`、`/camera/image_raw`、`/tf_static`、`/odom`、`route.csv`、`manifest.json`、`keyframes/000.*`、`save_map`、`trashbot_map.yaml` 都可以在同一轮里拿到干净证据，不再混入重复同名节点。
+
+但该 clean rerun 也暴露了两个边界：
+
+- 当前 no-motion route 仍依赖 synthetic zero `/odom`，所以只能证明软件链路，不证明真实路线。
+- `waypoint_manager` 会持续追加 `auto_000x` 零位航点；如果现场目标只是最小 clean capture，建议显式关闭它或在验收时把这部分副作用单独记录。
+
 ## 下游 artifact gate
 
 预检 JSON 生成后，使用 `onboard/scripts/field_route_evidence_manifest.py` 继续生成 `trashbot.field_evidence_manifest.v1`。manifest gate 会校验 `map.yaml`、`route.csv`、`keyframes/`、rosbag 和 fixed-route replay JSONL 是否存在且非空，并记录 sha256 或目录摘要。
