@@ -1,0 +1,126 @@
+== baseline ==
+Wed Jun 10 12:56:10 AM CST 2026
+op-z3-b6.home
+root       39007       1  0 00:23 ?        00:00:04 /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 0 --rmw-implementation rmw_fastrtps_cpp
+root       50740       1  0 00:49 ?        00:00:01 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+{"schema": "trashbot.upper_robot_api.v1.base_status", "generated_at_ms": 1781024170799, "vendor_sources": ["docs/vendor/VENDOR_INDEX.md", "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py", "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"], "port": "/dev/ttyS5", "baudrate": 115200, "port_info": {"path": "/dev/ttyS5", "exists": true, "lexists": true, "is_symlink": false, "realpath": "/dev/ttyS5", "error": null, "mode_octal": "0o660", "uid": 0, "gid": 20}, "pyserial_available": true, "pyserial_error": null, "write_control_available": true, "feedback_ack": {"t1001_observed": false, "robot_ack_connected": false, "reason": "T=130 on /dev/ttyS5 did not return T=1001 in current evidence"}, "feedback_samples_latest": {"schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_summary", "generated_at_ms": 1781024170799, "endpoint": "/api/base/feedback-samples/latest", "artifact": {"path": "runtime/base_feedback_samples_latest.json", "configured_by": "ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH or --feedback-samples-artifact-path", "format": "json", "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result", "ok": true, "status": "loaded", "mtime_ms": 1780572584310, "age_ms": 451586489, "updated_at_ms": 1780572584313, "bytes_read": 4989}, "freshness": {"status": "stale", "stale_after_ms": 900000, "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control"}, "latest_t1001_observed_count": 3, "latest_all_samples_observed_t1001": true, "readback_sends_commands": false, "sends_commands": false, "sends_motion_commands": false, "robot_control_executed": false, "delivery_success": false, "hil_pass": false, "safe_to_control": false, "primary_actions_enabled": false}, "control_policy": {"mode": "low_speed_pulse_with_auto_stop", "max_speed": 0.12, "max_pulse_ms": 800, "stop_command": {"T": 1, "L": 0, "R": 0}}, "sends_commands": false, "safe_to_control": false, "delivery_success": false, "primary_actions_enabled": false, "robot_control_executed": false, "cloud_relay": false}
+== fuser before ==
+api_pid=50740
+== fuser after stop ==
+OPEN /dev/ttyS5 115200
+TX {"T":143,"cmd":0}\n
+TX {"T":142,"cmd":100}\n
+TX {"T":131,"cmd":1}\n
+TX {"T":130}\n
+RX {"T":1001,"L":0,"R":0,"r":-0.563273668,"p":-0.201685265,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.616693795,"p":-0.263500184,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.58861047,"p":-0.169431463,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.609940648,"p":-0.251546979,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.555575371,"p":-0.173379257,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.556934834,"p":-0.238176793,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.543027163,"p":-0.199417278,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.578179955,"p":-0.294096708,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.581864595,"p":-0.276653081,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.591660261,"p":-0.246638313,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.59108454,"p":-0.217360079,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.564733207,"p":-0.238671988,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.57546097,"p":-0.221347913,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.512310922,"p":-0.277852297,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.575624228,"p":-0.20926474,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.566664815,"p":-0.248454452,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.597401381,"p":-0.235044956,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.561056614,"p":-0.283463418,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.60712266,"p":-0.21872516,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.572716177,"p":-0.28471902,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.588166118,"p":-0.19962123,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.549774051,"p":-0.251918346,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.638912857,"p":-0.230672374,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.550873041,"p":-0.225497141,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.602138817,"p":-0.198420003,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.606666207,"p":-0.312654436,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.595698059,"p":-0.34125796,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.563645303,"p":-0.170590013,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.592238784,"p":-0.264158845,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.591022313,"p":-0.2142912,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.595408738,"p":-0.264788955,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.536822617,"p":-0.299365848,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.50340414,"p":-0.278121024,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.581677258,"p":-0.225053862,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.578388095,"p":-0.238012224,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.522425532,"p":-0.243119866,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.570505798,"p":-0.275557458,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.576152027,"p":-0.253878266,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.592031777,"p":-0.276192069,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.641104579,"p":-0.281132072,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.621510804,"p":-0.268443793,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.580528617,"p":-0.26404196,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.552713275,"p":-0.235763133,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.574729741,"p":-0.195121005,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.572153151,"p":-0.327559084,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.592338502,"p":-0.256131947,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.53503871,"p":-0.252623975,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.607187927,"p":-0.299916327,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.542303205,"p":-0.263535678,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.604485989,"p":-0.248680636,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.575296044,"p":-0.229115054,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.560566604,"p":-0.207697004,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.557720304,"p":-0.195488617,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.593766809,"p":-0.236850336,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.534127712,"p":-0.288643539,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.519590795,"p":-0.283520967,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.64502424,"p":-0.301062375,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.589390099,"p":-0.316432953,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.557514369,"p":-0.247824073,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.623629034,"p":-0.249481454,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.57698679,"p":-0.252139628,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.534978032,"p":-0.250641525,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.543199837,"p":-0.257335991,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.55840832,"p":-0.270512104,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.62053299,"p":-0.289791524,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.4892928,"p":-0.273083895,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.532374442,"p":-0.214467138,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.573292971,"p":-0.208302245,"y":"null","v":12.43053055}
+RX {"T":1001,"L":0,"R":0,"r":-0.590307176,"p":-0.202348158,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.526717067,"p":-0.27390185,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.570842266,"p":-0.235798746,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.612648606,"p":-0.266835958,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.671135962,"p":-0.362570882,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.539150357,"p":-0.264549971,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.626824558,"p":-0.208392471,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.610634565,"p":-0.226651847,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.622383058,"p":-0.249597251,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.609406233,"p":-0.175861284,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.600839198,"p":-0.284057677,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.596880972,"p":-0.279502809,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.57163322,"p":-0.265011549,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.621042371,"p":-0.248070017,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.569793642,"p":-0.29466939,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.580220461,"p":-0.302071691,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.582463562,"p":-0.272947699,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.566733897,"p":-0.256997854,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.582727194,"p":-0.332836837,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.584282398,"p":-0.285413176,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.538236678,"p":-0.180777878,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.568212569,"p":-0.195845053,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.561881006,"p":-0.164813712,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.538669765,"p":-0.258859664,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.592107952,"p":-0.269496828,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.586346686,"p":-0.346559376,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.60036695,"p":-0.216614425,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.539513052,"p":-0.244824186,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.600669086,"p":-0.289241642,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.587109566,"p":-0.267916352,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.556540132,"p":-0.277017385,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.596037269,"p":-0.267810017,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.587563872,"p":-0.331901163,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.562081635,"p":-0.278767824,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.577723384,"p":-0.308301836,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.704836667,"p":-0.249125227,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.61285615,"p":-0.266578466,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.663275957,"p":-0.210792169,"y":"null","v":12.41456985}
+RX {"T":1001,"L":0,"R":0,"r":-0.600541472,"p":-0.303536654,"y":"null","v":12.41456985}
+DONE
+== restore api ==
+== api status after restore ==
+{"schema": "trashbot.upper_robot_api.v1.base_status", "generated_at_ms": 1781024185207, "vendor_sources": ["docs/vendor/VENDOR_INDEX.md", "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py", "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"], "port": "/dev/ttyS5", "baudrate": 115200, "port_info": {"path": "/dev/ttyS5", "exists": true, "lexists": true, "is_symlink": false, "realpath": "/dev/ttyS5", "error": null, "mode_octal": "0o660", "uid": 0, "gid": 20}, "pyserial_available": true, "pyserial_error": null, "write_control_available": true, "feedback_ack": {"t1001_observed": false, "robot_ack_connected": false, "reason": "T=130 on /dev/ttyS5 did not return T=1001 in current evidence"}, "feedback_samples_latest": {"schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_summary", "generated_at_ms": 1781024185207, "endpoint": "/api/base/feedback-samples/latest", "artifact": {"path": "runtime/base_feedback_samples_latest.json", "configured_by": "ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH or --feedback-samples-artifact-path", "format": "json", "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result", "ok": true, "status": "loaded", "mtime_ms": 1780572584310, "age_ms": 451600897, "updated_at_ms": 1780572584313, "bytes_read": 4989}, "freshness": {"status": "stale", "stale_after_ms": 900000, "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control"}, "latest_t1001_observed_count": 3, "latest_all_samples_observed_t1001": true, "readback_sends_commands": false, "sends_commands": false, "sends_motion_commands": false, "robot_control_executed": false, "delivery_success": false, "hil_pass": false, "safe_to_control": false, "primary_actions_enabled": false}, "control_policy": {"mode": "low_speed_pulse_with_auto_stop", "max_speed": 0.12, "max_pulse_ms": 800, "stop_command": {"T": 1, "L": 0, "R": 0}}, "sends_commands": false, "safe_to_control": false, "delivery_success": false, "primary_actions_enabled": false, "robot_control_executed": false, "cloud_relay": false}
+== fuser after restore ==
