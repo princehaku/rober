@@ -1,0 +1,164 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-10-04-54-40-513130-op-z3-b6.home-110357
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [async_slam_toolbox_node-1]: process started with pid [110382]
+[INFO] [map_recorder-2]: process started with pid [110384]
+[INFO] [lidar_driver-3]: process started with pid [110386]
+[INFO] [static_transform_publisher-4]: process started with pid [110388]
+[INFO] [static_transform_publisher-5]: process started with pid [110390]
+[static_transform_publisher-4] [WARN] [1781038480.860222242] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-5] [WARN] [1781038480.931028186] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-4] [INFO] [1781038480.999348174] [static_laser_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-4] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-4] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-4] from 'base_link' to 'laser_frame'
+[static_transform_publisher-5] [INFO] [1781038481.062197587] [no_motion_static_odom_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-5] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-5] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-5] from 'odom' to 'base_link'
+[async_slam_toolbox_node-1] [INFO] [1781038481.156235082] [slam_toolbox]: Using solver plugin solver_plugins::CeresSolver
+[lidar_driver-3] [INFO] [1781038482.295434877] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000
+[async_slam_toolbox_node-1] [WARN] [1781038484.633513427] [slam_toolbox]: minimum laser range setting (0.0 m) exceeds the capabilities of the used Lidar (0.1 m)
+[async_slam_toolbox_node-1] Info: clipped range threshold to be within minimum and maximum range!
+[async_slam_toolbox_node-1] Registering sensor: [Custom Described Lidar]
+[async_slam_toolbox_node-1] [WARN] [1781038484.634169093] [slam_toolbox]: maximum laser range setting (25.0 m) exceeds the capabilities of the used Lidar (8.0 m)
+[map_recorder-2] [INFO] [1781038502.703895413] [map_recorder]: Map saved to /tmp/rober_candidate_maps_domain77/trashbot_map.pgm
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[INFO] [static_transform_publisher-5]: sending signal 'SIGINT' to process[static_transform_publisher-5]
+[INFO] [static_transform_publisher-4]: sending signal 'SIGINT' to process[static_transform_publisher-4]
+[INFO] [lidar_driver-3]: sending signal 'SIGINT' to process[lidar_driver-3]
+[ERROR] [static_transform_publisher-5]: process has died [pid 110390, exit code -2, cmd '/opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 odom base_link --ros-args -r __node:=no_motion_static_odom_tf'].
+[ERROR] [static_transform_publisher-4]: process has died [pid 110388, exit code -2, cmd '/opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 base_link laser_frame --ros-args -r __node:=static_laser_tf'].
+[INFO] [map_recorder-2]: sending signal 'SIGINT' to process[map_recorder-2]
+[INFO] [async_slam_toolbox_node-1]: sending signal 'SIGINT' to process[async_slam_toolbox_node-1]
+[static_transform_publisher-4] [INFO] [1781038503.202480888] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[static_transform_publisher-5] [INFO] [1781038503.202722304] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[async_slam_toolbox_node-1] [INFO] [1781038503.202843554] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[map_recorder-2] [INFO] [1781038503.256993229] [map_recorder]: Map saved to /tmp/rober_candidate_maps_domain77/trashbot_map.pgm
+[map_recorder-2] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[lidar_driver-3] Traceback (most recent call last):
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 400, in main
+[lidar_driver-3]     rclpy.spin(node)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 229, in spin
+[lidar_driver-3]     executor.spin_once()
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 808, in spin_once
+[lidar_driver-3]     self._spin_once_impl(timeout_sec)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 803, in _spin_once_impl
+[lidar_driver-3]     handler()
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 256, in __call__
+[lidar_driver-3]     self._execute_coroutine_step(self._handler)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 272, in _execute_coroutine_step
+[lidar_driver-3]     result = coro.send(None)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 488, in handler
+[ERROR] [async_slam_toolbox_node-1]: process has died [pid 110382, exit code -2, cmd '/opt/ros/humble/lib/slam_toolbox/async_slam_toolbox_node --ros-args -r __node:=slam_toolbox --params-file /tmp/launch_params_az4fycf5'].
+[lidar_driver-3]     await call_coroutine(entity, arg)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 396, in _execute_timer
+[lidar_driver-3]     await await_or_execute(tmr.callback)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 110, in await_or_execute
+[lidar_driver-3]     return callback(*args)
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 355, in _tick
+[lidar_driver-3]     packets = self._next_packets()
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 367, in _next_packets
+[lidar_driver-3]     return self.serial_session.read_packets()
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 109, in read_packets
+[lidar_driver-3]     chunk = self._serial.read(int(self.config.read_size)) or b""
+[lidar_driver-3]   File "/usr/local/lib/python3.10/dist-packages/serial/serialposix.py", line 565, in read
+[lidar_driver-3]     ready, _, _ = select.select([self.fd, self.pipe_abort_read_r], [], [], timeout.time_left())
+[lidar_driver-3] KeyboardInterrupt
+[lidar_driver-3] 
+[lidar_driver-3] During handling of the above exception, another exception occurred:
+[lidar_driver-3] 
+[lidar_driver-3] Traceback (most recent call last):
+[lidar_driver-3]   File "/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver", line 33, in <module>
+[lidar_driver-3]     sys.exit(load_entry_point('ros2-trashbot-hardware', 'console_scripts', 'lidar_driver')())
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 403, in main
+[lidar_driver-3]     rclpy.shutdown()
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 130, in shutdown
+[lidar_driver-3]     _shutdown(context=context)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/utilities.py", line 58, in shutdown
+[lidar_driver-3]     return context.shutdown()
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/context.py", line 102, in shutdown
+[lidar_driver-3]     self.__context.shutdown()
+[lidar_driver-3] rclpy._rclpy_pybind11.RCLError: failed to shutdown: rcl_shutdown already called on the given context, at ./src/rcl/init.c:241
+[lidar_driver-3] Error in sys.excepthook:
+[lidar_driver-3] Traceback (most recent call last):
+[lidar_driver-3]   File "/usr/lib/python3/dist-packages/apport_python_hook.py", line 55, in apport_excepthook
+[lidar_driver-3]     import apt_pkg
+[lidar_driver-3] KeyboardInterrupt
+[lidar_driver-3] 
+[lidar_driver-3] Original exception was:
+[lidar_driver-3] Traceback (most recent call last):
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 400, in main
+[lidar_driver-3]     rclpy.spin(node)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 229, in spin
+[lidar_driver-3]     executor.spin_once()
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 808, in spin_once
+[lidar_driver-3]     self._spin_once_impl(timeout_sec)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 803, in _spin_once_impl
+[lidar_driver-3]     handler()
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 256, in __call__
+[map_recorder-2] Traceback (most recent call last):
+[map_recorder-2]   File "/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder", line 33, in <module>
+[map_recorder-2]     sys.exit(load_entry_point('ros2-trashbot-nav', 'console_scripts', 'map_recorder')())
+[map_recorder-2]   File "/root/rober/onboard/build/ros2_trashbot_nav/ros2_trashbot_nav/map_recorder.py", line 105, in main
+[map_recorder-2]     rclpy.shutdown()
+[map_recorder-2]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 130, in shutdown
+[map_recorder-2]     _shutdown(context=context)
+[map_recorder-2]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/utilities.py", line 58, in shutdown
+[map_recorder-2]     return context.shutdown()
+[map_recorder-2]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/context.py", line 102, in shutdown
+[map_recorder-2]     self.__context.shutdown()
+[map_recorder-2] rclpy._rclpy_pybind11.RCLError: failed to shutdown: rcl_shutdown already called on the given context, at ./src/rcl/init.c:241
+[map_recorder-2] Error in sys.excepthook:
+[map_recorder-2] Traceback (most recent call last):
+[map_recorder-2]   File "/usr/lib/python3/dist-packages/apport_python_hook.py", line 55, in apport_excepthook
+[lidar_driver-3]     self._execute_coroutine_step(self._handler)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 272, in _execute_coroutine_step
+[lidar_driver-3]     result = coro.send(None)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 488, in handler
+[lidar_driver-3]     await call_coroutine(entity, arg)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 396, in _execute_timer
+[lidar_driver-3]     await await_or_execute(tmr.callback)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 110, in await_or_execute
+[lidar_driver-3]     return callback(*args)
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 355, in _tick
+[map_recorder-2]     import apt_pkg
+[map_recorder-2] KeyboardInterrupt
+[map_recorder-2] 
+[map_recorder-2] Original exception was:
+[map_recorder-2] Traceback (most recent call last):
+[map_recorder-2]   File "/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder", line 33, in <module>
+[map_recorder-2]     sys.exit(load_entry_point('ros2-trashbot-nav', 'console_scripts', 'map_recorder')())
+[map_recorder-2]   File "/root/rober/onboard/build/ros2_trashbot_nav/ros2_trashbot_nav/map_recorder.py", line 105, in main
+[map_recorder-2]     rclpy.shutdown()
+[map_recorder-2]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 130, in shutdown
+[map_recorder-2]     _shutdown(context=context)
+[map_recorder-2]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/utilities.py", line 58, in shutdown
+[map_recorder-2]     return context.shutdown()
+[map_recorder-2]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/context.py", line 102, in shutdown
+[map_recorder-2]     self.__context.shutdown()
+[map_recorder-2] rclpy._rclpy_pybind11.RCLError: failed to shutdown: rcl_shutdown already called on the given context, at ./src/rcl/init.c:241
+[lidar_driver-3]     packets = self._next_packets()
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 367, in _next_packets
+[lidar_driver-3]     return self.serial_session.read_packets()
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 109, in read_packets
+[lidar_driver-3]     chunk = self._serial.read(int(self.config.read_size)) or b""
+[lidar_driver-3]   File "/usr/local/lib/python3.10/dist-packages/serial/serialposix.py", line 565, in read
+[lidar_driver-3]     ready, _, _ = select.select([self.fd, self.pipe_abort_read_r], [], [], timeout.time_left())
+[lidar_driver-3] KeyboardInterrupt
+[lidar_driver-3] 
+[lidar_driver-3] During handling of the above exception, another exception occurred:
+[lidar_driver-3] 
+[lidar_driver-3] Traceback (most recent call last):
+[lidar_driver-3]   File "/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver", line 33, in <module>
+[lidar_driver-3]     sys.exit(load_entry_point('ros2-trashbot-hardware', 'console_scripts', 'lidar_driver')())
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 403, in main
+[lidar_driver-3]     rclpy.shutdown()
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 130, in shutdown
+[lidar_driver-3]     _shutdown(context=context)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/utilities.py", line 58, in shutdown
+[lidar_driver-3]     return context.shutdown()
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/context.py", line 102, in shutdown
+[lidar_driver-3]     self.__context.shutdown()
+[lidar_driver-3] rclpy._rclpy_pybind11.RCLError: failed to shutdown: rcl_shutdown already called on the given context, at ./src/rcl/init.c:241
+[ERROR] [map_recorder-2]: process has died [pid 110384, exit code 1, cmd '/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_na7otzry'].
+[ERROR] [lidar_driver-3]: process has died [pid 110386, exit code 1, cmd '/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -r __node:=lidar_driver --params-file /tmp/launch_params_ucog7ey1'].

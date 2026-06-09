@@ -121,6 +121,8 @@ def start_runtime(args: argparse.Namespace) -> dict[str, Any]:
             f"lidar_serial_baudrate:={int(args.serial_baudrate)}",
             f"lidar_frame_id:={shlex.quote(args.frame_id)}",
             "lidar_publish_raw_packets:=true",
+            # slam_toolbox 订阅 laser_frame 的 /scan，no-motion proof 必须补齐 base_link -> laser_frame。
+            "static_laser_tf_enabled:=true",
             "no_motion_static_odom_tf:=true",
             "waypoint_manager:=false",
             f"map_dir:={map_dir}",

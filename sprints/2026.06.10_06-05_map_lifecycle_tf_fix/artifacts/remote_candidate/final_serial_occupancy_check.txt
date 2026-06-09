@@ -1,0 +1,13 @@
+== tools ==
+/usr/bin/lsof
+/usr/bin/fuser
+== devices ==
+crw-rw---- 1 root dialout 166,  0 Jun 10 04:53 /dev/ttyACM0
+crw-rw---- 1 root dialout   4, 69 Jun 10 04:08 /dev/ttyS5
+== lsof_after_verify ==
+== fuser_after_verify ==
+== proof_processes_after_verify ==
+89710 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_dsaxn8kl
+90726 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_qnhml2vi
+95880 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_rbxtj8bc
+109662 zsh -c  set +e echo "== tools ==" command -v lsof || true command -v fuser || true echo "== devices ==" ls -l /dev/ttyS5 /dev/ttyACM0 2>&1 || true echo "== lsof_after_verify ==" (command -v lsof >/dev/null && lsof /dev/ttyS5 /dev/ttyACM0 || true) echo "== fuser_after_verify ==" (command -v fuser >/dev/null && fuser -v /dev/ttyS5 /dev/ttyACM0 2>&1 || true) echo "== proof_processes_after_verify ==" pgrep -af "rober_o3_map_lifecycle_proof_candidate|o3_map_lifecycle_proof|learn.launch.py|slam_toolbox|lidar_driver|static_transform_publisher|map_recorder" || true 

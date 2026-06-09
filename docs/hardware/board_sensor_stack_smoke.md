@@ -399,6 +399,26 @@ UART 写入。
 下一步不是再修 helper 入口，而是定位 SLAM/TF/topic timing：`/scan` 已观测，
 但 `/map` once 与 `/map_metadata` 未在 no-motion 窗口内形成可保存的新地图。
 
+## 2026-06-10 06:05 map lifecycle no-motion laser TF fix
+
+`sprints/2026.06.10_06-05_map_lifecycle_tf_fix/` 修正
+`onboard/scripts/o3_map_lifecycle_proof.py` 的 no-motion LiDAR+SLAM runtime：
+启动 `learn.launch.py` 时同时传入 `static_laser_tf_enabled:=true` 和
+`no_motion_static_odom_tf:=true`。
+
+本次只补齐 `/map` proof 所需的 smoke-only TF 拓扑：
+
+- `no_motion_static_odom_tf:=true` 发布 `odom -> base_link` 静态 TF。
+- `static_laser_tf_enabled:=true` 发布 `base_link -> laser_frame` 静态 TF。
+- LiDAR 仍只允许使用 `/dev/ttyACM0`，用于 `/scan`、`/tf`、`/map` 的 no-motion proof。
+- 禁止 `/cmd_vel`、`/api/base/*`、`/api/map/start`、`/api/nav2/*` 和
+  WAVE ROVER/base UART `/dev/ttyS5`。
+
+边界：`static_laser_tf_enabled` 在这里是为 slam_toolbox 消费 `laser_frame`
+scan 提供的 smoke-only 拓扑，不是机械安装标定、不是外参结论，也不等同于
+可导航地图。即使 `/map` once 后续可观测，仍必须单独验证地图质量、AMCL/Nav2
+readiness、fixed route 和真实现场导航。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`

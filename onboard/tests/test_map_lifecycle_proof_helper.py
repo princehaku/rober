@@ -61,6 +61,30 @@ class MapLifecycleProofHelperTests(unittest.TestCase):
         ):
             self.assertIn(required, text)
 
+    def test_launch_command_enables_complete_no_motion_tf_chain(self) -> None:
+        """LiDAR+SLAM proof 必须同时补齐 odom->base_link 和 base_link->laser_frame。"""
+        text = SCRIPT.read_text(encoding="utf-8")
+
+        # /map proof 的上一轮 blocker 是 slam_toolbox 丢弃 laser_frame scan；
+        # 这里锁定 smoke-only laser TF，避免回归成只有 odom TF 的半截拓扑。
+        for required in (
+            "static_laser_tf_enabled:=true",
+            "no_motion_static_odom_tf:=true",
+            "lidar_enabled:=true",
+            "lidar_publish_raw_packets:=true",
+        ):
+            self.assertIn(required, text)
+
+        # proof helper 只能启动 learn.launch.py 的传感器/SLAM窗口，不能绕到运动或 API 链路。
+        for forbidden in (
+            "/api/base/",
+            "/api/map/start",
+            "/api/nav2/",
+            "/dev/ttyS5",
+            "base_enabled:=true",
+        ):
+            self.assertNotIn(forbidden, text)
+
 
 if __name__ == "__main__":
     unittest.main()
