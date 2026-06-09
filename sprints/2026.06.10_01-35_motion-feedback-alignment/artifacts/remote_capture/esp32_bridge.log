@@ -1,0 +1,7 @@
+[INFO] [1781027007.046286525] [esp32_bridge]: Connected to WAVE ROVER ESP32 on /dev/ttyS5 @ 115200
+[INFO] [1781027007.109481669] [esp32_bridge]: ESP32Bridge ready: vendor WAVE ROVER UART protocol is one UTF-8 JSON object per newline; command_mode=speed; publish_odom_tf=True; odom source=ROS-side command integration until measured wheel odometry is validated
+[ERROR] [1781027050.414029527] [esp32_bridge]: Serial read error: device reports readiness to read but returned no data (device disconnected or multiple access on port?)
+[ERROR] [1781027051.133603161] [esp32_bridge]: Serial read error: device reports readiness to read but returned no data (device disconnected or multiple access on port?)
+[ERROR] [1781027051.745565868] [esp32_bridge]: Serial read error: device reports readiness to read but returned no data (device disconnected or multiple access on port?)
+[ERROR] [1781027098.191439723] [esp32_bridge]: Serial read error: device reports readiness to read but returned no data (device disconnected or multiple access on port?)
+[ERROR] [1781027098.395255904] [esp32_bridge]: Serial read error: device reports readiness to read but returned no data (device disconnected or multiple access on port?)

@@ -1,0 +1,211 @@
+node_list_before_pulse:
+/esp32_bridge
+topic_list_before_pulse:
+/battery
+/cmd_vel
+/imu/data
+/odom
+/parameter_events
+/rosout
+/tf
+rclpy_pulse_with_discovery_wait:
+subscription_count_before_pulse=1
+pulse_start_monotonic=92355.363863
+zero_start_monotonic=92355.624335
+nonzero_duration_s=0.260472
+stop_success=True
+stop_message=Motors stopped
+odom_after_motion:
+header:
+  stamp:
+    sec: 1781027016
+    nanosec: 554269681
+  frame_id: odom
+child_frame_id: base_link
+pose:
+  pose:
+    position:
+      x: 0.00894574317
+      y: 0.0
+      z: 0.0
+    orientation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  covariance:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+twist:
+  twist:
+    linear:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    angular:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+  covariance:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+---
+tf_after_motion:
+transforms:
+- header:
+    stamp:
+      sec: 1781027019
+      nanosec: 354698576
+    frame_id: odom
+  child_frame_id: base_link
+  transform:
+    translation:
+      x: 0.00894574317
+      y: 0.0
+      z: 0.0
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+---
+battery_once_after_motion:
+header:
+  stamp:
+    sec: 1781027022
+    nanosec: 533606544
+  frame_id: ''
+voltage: 12.399479866027832
+temperature: 0.0
+current: 0.0
+charge: 0.0
+capacity: 0.0
+design_capacity: 0.0
+percentage: 0.0
+power_supply_status: 0
+power_supply_health: 0
+power_supply_technology: 0
+present: true
+cell_voltage: []
+cell_temperature: []
+location: ''
+serial_number: ''
+---
+imu_once_after_motion:
+header:
+  stamp:
+    sec: 1781027025
+    nanosec: 389753480
+  frame_id: imu_link
+orientation:
+  x: 0.0
+  y: 0.0
+  z: 0.0
+  w: 1.0
+orientation_covariance:
+- -1.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+angular_velocity:
+  x: 0.0
+  y: 0.0
+  z: 0.0
+angular_velocity_covariance:
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+linear_acceleration:
+  x: 0.0
+  y: 0.0
+  z: 0.0
+linear_acceleration_covariance:
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+---

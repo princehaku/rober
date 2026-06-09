@@ -1,0 +1,62 @@
+{
+  "schema": "rober.motion_feedback_alignment.v1",
+  "generated_at_ms": 1781027170374,
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h"
+  ],
+  "requested_bridge_params": {
+    "serial_port": "/dev/ttyS5",
+    "serial_baudrate": 115200,
+    "command_mode": "speed",
+    "feedback_interval_ms": 100,
+    "publish_odom_tf": true
+  },
+  "motion_command": {
+    "linear_x_mps": 0.03,
+    "nonzero_duration_target_s": 0.25,
+    "zero_command_sent": true,
+    "trashbot_stop_called": true
+  },
+  "evidence_boundary": "Final bounded run waited for one /cmd_vel subscriber and kept nonzero command duration <=0.3s. It proves bridge startup, /battery, /imu/data, /trashbot/stop, and restored API fresh T=1001 ACK. It does not prove bounded-run /odom or dynamic /tf nonzero, and does not prove T=1001.L/R nonzero during motion because the current bridge does not expose L/R and raw UART retry produced corrupted/incomplete lines.",
+  "observed": {
+    "status_before.json": {
+      "feedback_ack_t1001_observed": true,
+      "feedback_readback_t1001_status": "observed",
+      "read_line_count": 13,
+      "parsed_json_count": 13,
+      "invalid_json_count": 0
+    },
+    "status_after.json": {
+      "feedback_ack_t1001_observed": true,
+      "feedback_readback_t1001_status": "observed",
+      "read_line_count": 13,
+      "parsed_json_count": 13,
+      "invalid_json_count": 0
+    },
+    "subscription_count_before_pulse": 1,
+    "nonzero_duration_s": 0.260472,
+    "nonzero_duration_lte_0_3s": true,
+    "odom_nonzero_translation_or_pose_text": false,
+    "tf_odom_base_link_nonzero_text": false,
+    "battery_topic_sample_present": true,
+    "imu_topic_sample_present": true,
+    "stop_service_success_text": true,
+    "bridge_connected_text": true
+  },
+  "t1001_lr_motion_window": {
+    "left_nonzero_proven": false,
+    "right_nonzero_proven": false,
+    "raw_t1001_lines_available": false,
+    "reason": "No valid raw T=1001 line with nonzero L/R was captured during the bounded bridge motion window."
+  },
+  "attempt_notes": [
+    "Initial attempt failed because ROS setup was sourced under set -u (AMENT_TRACE_SETUP_FILES unbound).",
+    "A ROS CLI long-pulse retry produced nonzero /odom and /tf but the /cmd_vel CLI latency made the nonzero command window about 3s, so it is archived only as diagnostic context, not the bounded safety evidence.",
+    "A direct raw UART retry produced corrupted/incomplete T=1001 lines and did not prove nonzero L/R.",
+    "Final bounded discovery-wait run kept nonzero_duration_s <= 0.3 but /odom and /tf stayed at zero."
+  ]
+}
