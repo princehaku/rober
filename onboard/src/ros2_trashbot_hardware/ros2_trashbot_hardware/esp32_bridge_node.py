@@ -12,6 +12,7 @@ Vendor 来源：
 
 from __future__ import annotations
 
+import json
 import math
 import threading
 import time
@@ -54,6 +55,7 @@ class ESP32Bridge(Node):
         self.max_wheel_speed_mps = config.max_wheel_speed_mps
         self.feedback_interval_ms = config.feedback_interval_ms
         self.publish_odom_tf = config.publish_odom_tf
+        self.feedback_debug_log_path = config.feedback_debug_log_path
 
         self._serial_lock = threading.Lock()
         self._running = True
@@ -101,6 +103,7 @@ class ESP32Bridge(Node):
             "object per newline; "
             f"command_mode={self.command_mode}; "
             f"publish_odom_tf={self.publish_odom_tf}; "
+            f"feedback_debug_log_enabled={bool(self.feedback_debug_log_path)}; "
             "odom source=ROS-side command integration until measured wheel odometry is validated"
         )
 
@@ -160,6 +163,35 @@ class ESP32Bridge(Node):
         battery.voltage = float(feedback["voltage"])
         battery.present = True
         self.battery_pub.publish(battery)
+
+        self._append_feedback_debug_line(feedback)
+
+    def _append_feedback_debug_line(self, feedback: dict[str, float | None]) -> None:
+        """按需追加 vendor T=1001 原始反馈证据，不参与控制闭环。"""
+        log_path = getattr(self, "feedback_debug_log_path", "")
+        if not log_path:
+            return
+
+        yaw = feedback["yaw"]
+        record = {
+            "schema": "trashbot.wave_rover.feedback_debug.v1",
+            "observed_at_unix_s": time.time(),
+            "source": "wave_rover_uart_t1001",
+            "left_speed": feedback["left_speed"],
+            "right_speed": feedback["right_speed"],
+            "roll": feedback["roll"],
+            "pitch": feedback["pitch"],
+            "yaw": yaw,
+            "yaw_available": yaw is not None,
+            "voltage": feedback["voltage"],
+        }
+
+        try:
+            # 串口 reader 已拥有同一帧的解析结果；这里只做追加落盘，失败不能影响 topic 或停车服务。
+            with open(log_path, "a", encoding="utf-8") as log_file:
+                log_file.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+        except OSError as exc:
+            self.get_logger().warn(f"Failed to append WAVE ROVER feedback debug log: {exc}")
 
     def _cmd_vel_callback(self, msg: Twist) -> None:
         try:

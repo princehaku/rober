@@ -2,6 +2,7 @@ import importlib
 import json
 from pathlib import Path
 import sys
+import tempfile
 import types
 import unittest
 
@@ -194,6 +195,14 @@ class _FakeBroadcaster:
 
     def sendTransform(self, message):
         self.messages.append(message)
+
+
+class _FakeLogger:
+    def __init__(self):
+        self.warnings = []
+
+    def warn(self, message):
+        self.warnings.append(message)
 
 
 class WaveshareJsonBridgeTest(unittest.TestCase):
@@ -408,6 +417,72 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
         self.assertEqual(battery.voltage, 11.7)
         self.assertTrue(battery.present)
 
+    def test_publish_feedback_appends_debug_jsonl_when_path_enabled(self):
+        bridge = _bridge_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "feedback.jsonl"
+            node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+            node.imu_pub = _FakePublisher()
+            node.battery_pub = _FakePublisher()
+            node.get_clock = lambda: _FakeClock()
+            node.get_logger = lambda: _FakeLogger()
+            # 调试日志只记录已解析的同帧 vendor 字段，避免和串口 owner 抢读 raw UART。
+            node.feedback_debug_log_path = str(log_path)
+
+            node._publish_feedback(
+                {
+                    "left_speed": 0.2,
+                    "right_speed": 0.3,
+                    "roll": 1.0,
+                    "pitch": 2.0,
+                    "yaw": 3.0,
+                    "voltage": 11.7,
+                }
+            )
+
+            record = json.loads(log_path.read_text(encoding="utf-8").strip())
+            self.assertEqual(record["schema"], "trashbot.wave_rover.feedback_debug.v1")
+            self.assertGreater(record["observed_at_unix_s"], 0)
+            self.assertEqual(record["source"], "wave_rover_uart_t1001")
+            self.assertEqual(record["left_speed"], 0.2)
+            self.assertEqual(record["right_speed"], 0.3)
+            self.assertEqual(record["roll"], 1.0)
+            self.assertEqual(record["pitch"], 2.0)
+            self.assertEqual(record["yaw"], 3.0)
+            self.assertTrue(record["yaw_available"])
+            self.assertEqual(record["voltage"], 11.7)
+
+    def test_publish_feedback_warns_but_keeps_topics_when_debug_log_fails(self):
+        bridge = _bridge_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            logger = _FakeLogger()
+            node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+            node.imu_pub = _FakePublisher()
+            node.battery_pub = _FakePublisher()
+            node.get_clock = lambda: _FakeClock()
+            node.get_logger = lambda: logger
+            # 目录路径会触发 OSError；此时仍必须先完成 topic 发布，不能影响安全 stop 线程。
+            node.feedback_debug_log_path = temp_dir
+
+            node._publish_feedback(
+                {
+                    "left_speed": 0.2,
+                    "right_speed": 0.3,
+                    "roll": 1.0,
+                    "pitch": 2.0,
+                    "yaw": None,
+                    "voltage": 11.7,
+                }
+            )
+
+            self.assertEqual(len(node.imu_pub.messages), 1)
+            self.assertEqual(len(node.battery_pub.messages), 1)
+            self.assertEqual(node.imu_pub.messages[0].orientation_covariance[0], -1.0)
+            self.assertEqual(node.battery_pub.messages[0].voltage, 11.7)
+            self.assertIn("Failed to append WAVE ROVER feedback debug log", logger.warnings[0])
+
     def test_declare_and_load_bridge_config_defaults_publish_odom_tf_true(self):
         bridge_config = importlib.import_module("ros2_trashbot_hardware.bridge_config")
 
@@ -426,6 +501,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
         config = bridge_config.load_bridge_config(node)
 
         self.assertTrue(config.publish_odom_tf)
+        self.assertEqual(config.feedback_debug_log_path, "")
 
     def test_publish_odom_sends_matching_tf_when_enabled(self):
         bridge = _bridge_module()

@@ -50,6 +50,15 @@
 - 建议在 `source=hil_pass` 下采样至少 2 帧 `T=1001`，确认采样间隔接近 `feedback_interval_ms`（例如 100ms 时约 10Hz）。
 - `v` 默认映射为电压；`r/p/y` 为欧拉角（厂商原始值按项目桥接代码按弧度发布 yaw）。
 
+### Feedback debug JSONL
+
+- `feedback_debug_log_path` 默认为空字符串，默认不写文件、不改变 `/imu/data`、`/battery`、`/odom` 或 `odom -> base_link` TF 行为。
+- 当 `feedback_debug_log_path` 非空时，`esp32_bridge` 在每个已解析有效的 vendor `T=1001` 帧后追加一行 JSONL，用于上车 bounded motion evidence。
+- 单行 schema 为 `trashbot.wave_rover.feedback_debug.v1`，字段包含 `observed_at_unix_s`、`source=wave_rover_uart_t1001`、`left_speed`、`right_speed`、`roll`、`pitch`、`yaw`、`yaw_available`、`voltage`。
+- 该日志复用 bridge 已拥有的串口 owner 和解析结果，避免 direct raw UART 抢读造成 corrupted/incomplete JSON。
+- 写入失败只记录 runtime warning；不得阻塞 `/imu/data`、`/battery` 或 `/trashbot/stop`。路径目录、权限和磁盘空间需在上车 run 前由 operator 确认。
+- `left_speed/right_speed` 采用 vendor `T=1001.L/R` 原始反馈口径，只能作为 evidence/debug 材料；在缺少 HIL 对齐前，不代表导航级实测轮速里程计。
+
 ### Upper Robot API status feedback ack
 
 - `onboard/scripts/upper_robot_api.py` 的 `/api/base/status.feedback_ack` 只表示 API 通过非运动 `{"T":130}` readback 或 fresh samples artifact 看到了 vendor `T=1001`。
@@ -97,8 +106,10 @@ right_mps = linear.x + angular.z * track_width_m / 2
 - `feedback_interval_ms`
 - `odom_publish_hz`
 - `publish_odom_tf`
+- `feedback_debug_log_path`
 
 参数校验要求：`track_width_m > 0`、`max_wheel_speed_mps > 0`、`feedback_interval_ms >= 0`、`odom_publish_hz > 0`。`publish_odom_tf` 是布尔开关，默认 `true`，仅控制是否把同源 command integration `/odom` 同步广播为 `odom -> base_link` TF。
+`feedback_debug_log_path` 是默认关闭的 evidence/debug 文件路径；非空时追加 JSONL，写入失败仅 warning。
 
 ## Code Structure
 

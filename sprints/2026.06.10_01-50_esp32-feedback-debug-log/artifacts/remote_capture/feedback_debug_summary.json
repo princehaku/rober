@@ -1,0 +1,50 @@
+{
+  "schema": "trashbot.wave_rover.feedback_debug.remote_capture_summary.v1",
+  "generated_at_unix_s": 1781027972.4183166,
+  "capture_attempt": "retry_clean_api_stopped_before_bridge",
+  "source_jsonl": "/tmp/trashbot_feedback_debug_remote_capture/feedback_debug.jsonl",
+  "record_count": 1592,
+  "invalid_line_count": 0,
+  "valid_t1001_feedback_rows": 1592,
+  "nonzero_lr_count": 0,
+  "nonzero_lr_samples": [],
+  "first_record": {
+    "left_speed": 0.0,
+    "observed_at_unix_s": 1781027881.5945628,
+    "pitch": -0.046356671,
+    "right_speed": 0.0,
+    "roll": -0.661366343,
+    "schema": "trashbot.wave_rover.feedback_debug.v1",
+    "source": "wave_rover_uart_t1001",
+    "voltage": 12.40335941,
+    "yaw": null,
+    "yaw_available": false
+  },
+  "last_record": {
+    "left_speed": 0.0,
+    "observed_at_unix_s": 1781027967.4659212,
+    "pitch": -0.107636571,
+    "right_speed": 0.0,
+    "roll": -0.678893745,
+    "schema": "trashbot.wave_rover.feedback_debug.v1",
+    "source": "wave_rover_uart_t1001",
+    "voltage": 12.41489983,
+    "yaw": null,
+    "yaw_available": false
+  },
+  "invalid_lines": [],
+  "bounded_pulse": {
+    "linear_x_mps": 0.03,
+    "nonzero_window_s": 0.25,
+    "stop_service": "/trashbot/stop"
+  },
+  "status_after_feedback_ack_t1001_observed": true,
+  "status_after_service_schema": "trashbot.upper_robot_api.v1.base_status",
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h"
+  ]
+}

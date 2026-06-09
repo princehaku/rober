@@ -1,0 +1,22 @@
+retry_capture_started_at=2026-06-10T01:57:42+08:00
+stopping trashbot-upper-robot-api.service
+killed_upper_api_processes= [{'pid': 78382, 'cmd': 'bash -lc set -e; REMOTE_CAPTURE=/tmp/trashbot_feedback_debug_remote_capture; mkdir -p "$REMOTE_CAPTURE"; rm -f /tmp/trashbot_feedback_debug.jsonl "$REMOTE_CAPTURE"/esp32_bridge.log "$REMOTE_CAPTURE"/feedback_debug.jsonl "$REMOTE_CAPTURE"/feedback_debug_summary.json "$REMOTE_CAPTURE"/pulse_and_stop.log "$REMOTE_CAPTURE"/odom_after_motion.txt "$REMOTE_CAPTURE"/tf_after_motion.txt "$REMOTE_CAPTURE"/status_after.json "$REMOTE_CAPTURE"/upper_robot_api_restore.log; touch /tmp/trashbot_feedback_debug.jsonl; { echo "retry_capture_started_at=$(date -Is)"; echo "stopping trashbot-upper-robot-api.service"; systemctl stop trashbot-upper-robot-api.service || true; python3 - <<"PY"\nimport os, signal, time\nkilled=[]\nfor pid in os.listdir("/proc"):\n    if not pid.isdigit() or int(pid) == os.getpid():\n        continue\n    try:\n        cmd=open(f"/proc/{pid}/cmdline", "rb").read().replace(b"\\x00", b" ").decode("utf-8", "ignore")\n    except Exception:\n        continue\n    if "/root/rober/onboard/scripts/upper_robot_api.py" in cmd:\n        os.kill(int(pid), signal.SIGTERM)\n        killed.append({"pid": int(pid), "cmd": cmd})\nprint("killed_upper_api_processes=", killed)\ntime.sleep(1)\nPY\nps -eo pid,ppid,cmd | grep -E "upper_robot_api|esp32_bridge" | grep -v grep || true; } > "$REMOTE_CAPTURE/upper_robot_api_restore.log" 2>&1; if ps -eo cmd | grep -E "upper_robot_api|esp32_bridge" | grep -v grep >/dev/null; then echo "process_cleanup_failed"; exit 2; fi '}]
+retry_restore_started_at=2026-06-10T01:59:27+08:00
+stopping_bridge_pid=78679
+stopping_bridge_child_pid=78704
+● trashbot-upper-robot-api.service - Trashbot unified upper robot API
+     Loaded: loaded (/etc/systemd/system/trashbot-upper-robot-api.service; enabled; vendor preset: enabled)
+    Drop-In: /etc/systemd/system/trashbot-upper-robot-api.service.d
+             └─20-lidar-scan-proof-runtime.conf
+     Active: active (running) since Wed 2026-06-10 01:59:28 CST; 2s ago
+       Docs: file:/root/rober/docs/interfaces/o7_upper_robot_api.md
+   Main PID: 79771 (python3)
+      Tasks: 1 (limit: 2204)
+     Memory: 25.7M
+        CPU: 1.078s
+     CGroup: /system.slice/trashbot-upper-robot-api.service
+             └─79771 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+
+Jun 10 01:59:28 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 10 01:59:29 op-z3-b6.home env[79771]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
+retry_restore_finished_at=2026-06-10T01:59:30+08:00
