@@ -94,6 +94,25 @@ right_mps = linear.x + angular.z * track_width_m / 2
 
 当前桥接在项目侧默认将 `T=1` 值按 `max_wheel_speed_mps` 归一化并夹到 `[-1,1]`，该参数是可调的项目参数，不能当作硬件标称校准值。
 
+### 2026-06-10 低速起动阈值边界
+
+真实上位机 `root@192.168.1.11:37878` 的 bounded probe 已通过 ROS2
+`esp32_bridge` + `/cmd_vel` 路径发送 `linear.x=0.03/0.05/0.07/0.09m/s`，
+每步 publish window 均小于 `0.18s`，且每步 `/trashbot/stop` 成功。
+
+在当前 `command_mode=speed`、`max_wheel_speed_mps=1.3` 下，对应 expected command：
+
+- `0.03m/s -> {"T":1,"L":0.023077,"R":0.023077}`
+- `0.05m/s -> {"T":1,"L":0.038462,"R":0.038462}`
+- `0.07m/s -> {"T":1,"L":0.053846,"R":0.053846}`
+- `0.09m/s -> {"T":1,"L":0.069231,"R":0.069231}`
+
+这些值只代表项目公式计算出的 expected JSON，不是 WAVE ROVER 反馈。该 probe 的
+WAVE ROVER `T=1001` feedback debug 仍未观测到 `left_speed/right_speed` 非零，
+LiDAR median delta 也低于 `0.03m` 证明阈值。因此截至本记录，`T=1 L/R<=0.069231`
+不能写成已证明的物理起动区间；后续需人工在场复核电机供电、急停、模式、底盘架空状态，
+再决定是否做更高 PWM/速度的受控 HIL。
+
 ## Configurable Parameters
 
 - `serial_port`

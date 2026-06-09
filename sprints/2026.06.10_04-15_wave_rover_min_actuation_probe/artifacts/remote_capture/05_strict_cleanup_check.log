@@ -1,0 +1,7 @@
+[strict service]
+active
+[strict lsof]
+[strict processes]
+[api]
+root       97973       1  4 04:00 ?        00:00:01 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+Wed Jun 10 04:01:24 AM CST 2026

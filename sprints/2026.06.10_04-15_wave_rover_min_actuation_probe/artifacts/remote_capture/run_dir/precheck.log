@@ -1,0 +1,14 @@
+[connection]
+op-z3-b6.home
+Wed Jun 10 04:00:10 AM CST 2026
+ROS_DISTRO=humble
+/root/rober/onboard/install/ros2_trashbot_hardware
+[devices]
+crw-rw---- 1 root dialout 166,  0 Jun 10 03:43 /dev/ttyACM0
+crw-rw---- 1 root dialout   4, 69 Jun 10 03:43 /dev/ttyS5
+[service before]
+active
+[lsof before]
+[processes before]
+root       94077       1  0 03:43 ?        00:00:01 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+root       97817   97678  1 04:00 ?        00:00:00 bash /tmp/run_remote_wave_rover_min_actuation_probe.sh

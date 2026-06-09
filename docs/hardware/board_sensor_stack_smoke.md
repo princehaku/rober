@@ -169,6 +169,53 @@ camera/OpenCV/v4l2/ROS camera topic，未发布 `/cmd_vel`，未启动底盘控�
 
 下一步必须现场人工确认镜头盖/保护膜/遮挡、朝向、补光、USB 口和相机本体。
 
+## 2026-06-10 WAVE ROVER Min Actuation Probe
+
+`sprints/2026.06.10_04-15_wave_rover_min_actuation_probe/` 在真实上位机
+`root@192.168.1.11:37878` 上通过现有 ROS2 `esp32_bridge` + `/cmd_vel`
+路径做最小起动阈值阶梯 probe。本轮未改产品代码、launch、LiDAR driver、camera
+代码或 firmware。
+
+采用资料来源：
+
+- `docs/vendor/VENDOR_INDEX.md`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`
+- 当前 `wave_rover_protocol.py` / `bridge_config.py` / `esp32_bridge_node.py`
+
+安全边界：
+
+- `lidar_driver`：`/dev/ttyACM0 @ 150000`。
+- `esp32_bridge`：`/dev/ttyS5 @ 115200`，`command_mode:=speed`，
+  `feedback_debug_log_path` 打开。
+- probe 窗口临时停止 `trashbot-upper-robot-api.service`，结束后恢复 `active`。
+- 每步后立即零速并调用 `/trashbot/stop`；最终严格复查 `lsof /dev/ttyS5 /dev/ttyACM0`
+  无输出，`esp32_bridge` / `lidar_driver` / probe 无残留。
+
+阶梯结果：
+
+| `linear.x` | expected `T=1 L/R` | publish window | paired_bins | median_abs_diff_m | changed_bin_ratio | wheel feedback nonzero | command integration odom delta |
+| ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: |
+| 0.03 m/s | 0.023077 | 0.164106s | 719 | 0.008000 | 0.312935 | false | 0.004503m |
+| 0.05 m/s | 0.038462 | 0.166476s | 716 | 0.006750 | 0.284916 | false | 0.004998m |
+| 0.07 m/s | 0.053846 | 0.167155s | 719 | 0.007000 | 0.255911 | false | 0.006891m |
+| 0.09 m/s | 0.069231 | 0.177252s | 720 | 0.007500 | 0.298611 | false | 0.017972m |
+
+结论：
+
+- `motion_commands_sent=true`
+- `max_step_linear_x_mps_sent=0.09`
+- `physical_motion_lidar_delta_proven=false`
+- `wheel_feedback_lr_nonzero_proven=false`
+- `min_actuation_step_proven=null`
+- `safe_to_control=true`，仅代表本轮 bounded smoke 可停与清场成功，不代表自主发车。
+- `delivery_success=false`
+
+失败定位：`linear.x=0.03-0.09m/s`、每步 `<=0.18s` 的低速短脉冲仍无物理运动
+证据或 wheel feedback 非零。下一步需要现场肉眼/外部视频、检查电机供电/急停/模式/
+底盘是否架空；若仍无运动，再考虑人工在场的 vendor direct `T=1` 更高 PWM/速度受控 HIL。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`
