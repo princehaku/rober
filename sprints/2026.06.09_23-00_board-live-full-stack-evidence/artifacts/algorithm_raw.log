@@ -1,0 +1,745 @@
+=== local git status ===
+## master...origin/master
+?? sprints/2026.06.09_23-00_board-live-full-stack-evidence/
+
+=== remote preflight ===
+op-z3-b6.home
+Tue Jun  9 10:59:07 PM CST 2026
+Linux op-z3-b6.home 6.1.31-sun50iw9 #1.0.4 SMP Thu Jul 11 16:37:41 CST 2024 aarch64 aarch64 aarch64 GNU/Linux
+
+=== remote ros package/topic/node snapshot ===
+/opt/ros/humble/setup.bash:.:11: no such file or directory: /root/setup.sh
+/opt/ros/humble/local_setup.bash:.:11: no such file or directory: /root/local_setup.sh
+not found: "/root/local_setup.bash"
+sourced=/root/rober/onboard/install/setup.bash
+--- packages ---
+zsh:1: command not found: ros2
+--- topics ---
+zsh:1: command not found: ros2
+--- topics typed ---
+zsh:1: command not found: ros2
+--- nodes ---
+zsh:1: command not found: ros2
+
+=== required topic smoke ===
+/opt/ros/humble/setup.bash:.:11: no such file or directory: /root/setup.sh
+/opt/ros/humble/local_setup.bash:.:11: no such file or directory: /root/local_setup.sh
+not found: "/root/local_setup.bash"
+--- hz /scan ---
+timeout: failed to run command ‘ros2’: No such file or directory
+--- hz /camera/image_raw ---
+--- hz /odom ---
+timeout: failed to run command ‘ros2’: No such file or directory
+--- echo /tf once ---
+timeout: failed to run command ‘ros2’: No such file or directory
+timeout: failed to run command ‘ros2’--- echo /map once ---
+: No such file or directory
+timeout: failed to run command ‘ros2’: No such file or directory
+
+=== expanded topic metadata ===
+/opt/ros/humble/setup.bash:.:11: no such file or directory: /root/setup.sh
+/opt/ros/humble/local_setup.bash:.:11: no such file or directory: /root/local_setup.sh
+--- info /scan ---
+not found: "/root/local_setup.bash"
+timeout: failed to run command ‘ros2’: No such file or directory
+--- info /camera/image_raw ---
+--- info /odom ---
+timeout: failed to run command ‘ros2’: No such file or directory
+timeout: failed to run command ‘ros2’: No such file or directory
+--- info /tf ---
+--- info /map ---
+timeout: failed to run command ‘ros2’: No such file or directory
+--- camera header once ---
+--- scan header once ---
+timeout: failed to run command ‘ros2’: No such file or directory
+timeout: failed to run command ‘ros2’: No such file or directory
+timeout: failed to run command ‘ros2’: No such file or directory
+--- odom once ---
+timeout: failed to run command ‘ros2’: No such file or directory
+
+=== launch and map/slam discovery ===
+/opt/ros/humble/setup.bash:.:11: no such file or directory: /root/setup.sh
+/opt/ros/humble/local_setup.bash:.:11: no such file or directory: /root/local_setup.sh
+--- package prefixes ---
+pkg=ros2_trashbot_bringup
+pkg=ros2_trashbot_nav
+pkg=slam_toolbox
+pkg=nav2_map_server
+--- launch files ---
+--- map files in likely roots ---
+not found: "/root/local_setup.bash"
+/root/rober/onboard/runtime/maps/trashbot_map.pgm
+--- services map/slam ---
+zsh:1: command not found: ros2
+
+=== short rosbag attempt ===
+REMOTE_RUN_DIR=/root/.ros/trashbot_live_runs/field_full_stack_20260609_225911
+/opt/ros/humble/setup.bash:6: BASH_SOURCE[0]: parameter not set
+/opt/ros/humble/setup.bash:8: AMENT_TRACE_SETUP_FILES: parameter not set
+_colcon_prefix_chain_bash_source_script:2: COLCON_TRACE: parameter not set
+zsh:1: command not found: ros2
+zsh:1: command not found: ros2
+missing_topic=/scan
+missing_topic=/camera/image_raw
+missing_topic=/odom
+missing_topic=/tf
+missing_topic=/map
+record_topics=
+rosbag_skipped=no_target_topics
+--- run files ---
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_225911
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_225911/record_topics.txt
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_225911/rosbag_rc.txt
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_225911/topic_list.txt
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_225911/topic_list_typed.txt
+--- metadata ---
+
+=== retry with remote bash: ros package/topic/node snapshot ===
+sourced=/root/rober/onboard/install/setup.bash
+ROS_DISTRO=humble
+ros2_path=/opt/ros/humble/bin/ros2
+--- packages ---
+ros2_trashbot_behavior
+ros2_trashbot_bringup
+ros2_trashbot_hardware
+ros2_trashbot_nav
+ros2_trashbot_vision
+--- topics ---
+/parameter_events
+/rosout
+--- topics typed ---
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/rosout [rcl_interfaces/msg/Log]
+--- nodes ---
+
+=== retry with remote bash: required topic smoke ===
+--- hz /scan ---
+WARNING: topic [/scan] does not appear to be published yet
+--- hz /camera/image_raw ---
+WARNING: topic [/camera/image_raw] does not appear to be published yet
+--- hz /odom ---
+WARNING: topic [/odom] does not appear to be published yet
+--- echo /tf once ---
+WARNING: topic [/tf] does not appear to be published yet
+Could not determine the type for the passed topic
+--- echo /map once ---
+WARNING: topic [/map] does not appear to be published yet
+Could not determine the type for the passed topic
+
+=== retry with remote bash: expanded topic metadata ===
+--- info /scan ---
+Unknown topic '/scan'
+--- info /camera/image_raw ---
+Unknown topic '/camera/image_raw'
+--- info /odom ---
+Unknown topic '/odom'
+--- info /tf ---
+Unknown topic '/tf'
+--- info /map ---
+Unknown topic '/map'
+--- info /cmd_vel ---
+Unknown topic '/cmd_vel'
+--- info /imu/data ---
+Unknown topic '/imu/data'
+--- info /battery ---
+Unknown topic '/battery'
+--- camera header once ---
+WARNING: topic [/camera/image_raw] does not appear to be published yet
+Could not determine the type for the passed topic
+--- scan header once ---
+WARNING: topic [/scan] does not appear to be published yet
+Could not determine the type for the passed topic
+--- odom once ---
+WARNING: topic [/odom] does not appear to be published yet
+Could not determine the type for the passed topic
+--- tf_static once ---
+WARNING: topic [/tf_static] does not appear to be published yet
+Could not determine the type for the passed topic
+
+=== retry with remote bash: launch and map/slam discovery ===
+--- package prefixes ---
+pkg=ros2_trashbot_bringup
+/root/rober/onboard/install/ros2_trashbot_bringup
+pkg=ros2_trashbot_nav
+/root/rober/onboard/install/ros2_trashbot_nav
+pkg=ros2_trashbot_hardware
+/root/rober/onboard/install/ros2_trashbot_hardware
+pkg=ros2_trashbot_vision
+/root/rober/onboard/install/ros2_trashbot_vision
+pkg=ros2_trashbot_behavior
+/root/rober/onboard/install/ros2_trashbot_behavior
+pkg=slam_toolbox
+/opt/ros/humble
+pkg=nav2_map_server
+/opt/ros/humble
+--- launch files ---
+--- map/route files in likely roots ---
+/root/rober/onboard/runtime/maps/trashbot_map.pgm
+--- services map/slam ---
+
+=== remote bash: source/install launch discovery detail ===
+--- install package share tree ---
+pkg=ros2_trashbot_bringup prefix=/root/rober/onboard/install/ros2_trashbot_bringup
+/root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/hook/cmake_prefix_path.dsv
+/root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/hook/cmake_prefix_path.ps1
+/root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/hook/cmake_prefix_path.sh
+/root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/launch/__pycache__/learn.launch.cpython-310.pyc
+/root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/package.bash
+/root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/package.dsv
+/root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/package.ps1
+/root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/package.sh
+/root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/package.zsh
+pkg=ros2_trashbot_nav prefix=/root/rober/onboard/install/ros2_trashbot_nav
+/root/rober/onboard/install/ros2_trashbot_nav/share/ros2_trashbot_nav/hook/ament_prefix_path.dsv
+/root/rober/onboard/install/ros2_trashbot_nav/share/ros2_trashbot_nav/hook/ament_prefix_path.ps1
+/root/rober/onboard/install/ros2_trashbot_nav/share/ros2_trashbot_nav/hook/ament_prefix_path.sh
+/root/rober/onboard/install/ros2_trashbot_nav/share/ros2_trashbot_nav/hook/pythonpath.dsv
+/root/rober/onboard/install/ros2_trashbot_nav/share/ros2_trashbot_nav/hook/pythonpath.ps1
+/root/rober/onboard/install/ros2_trashbot_nav/share/ros2_trashbot_nav/hook/pythonpath.sh
+/root/rober/onboard/install/ros2_trashbot_nav/share/ros2_trashbot_nav/package.bash
+/root/rober/onboard/install/ros2_trashbot_nav/share/ros2_trashbot_nav/package.dsv
+/root/rober/onboard/install/ros2_trashbot_nav/share/ros2_trashbot_nav/package.ps1
+/root/rober/onboard/install/ros2_trashbot_nav/share/ros2_trashbot_nav/package.sh
+/root/rober/onboard/install/ros2_trashbot_nav/share/ros2_trashbot_nav/package.zsh
+pkg=ros2_trashbot_hardware prefix=/root/rober/onboard/install/ros2_trashbot_hardware
+/root/rober/onboard/install/ros2_trashbot_hardware/share/ros2_trashbot_hardware/hook/ament_prefix_path.dsv
+/root/rober/onboard/install/ros2_trashbot_hardware/share/ros2_trashbot_hardware/hook/ament_prefix_path.ps1
+/root/rober/onboard/install/ros2_trashbot_hardware/share/ros2_trashbot_hardware/hook/ament_prefix_path.sh
+/root/rober/onboard/install/ros2_trashbot_hardware/share/ros2_trashbot_hardware/hook/pythonpath.dsv
+/root/rober/onboard/install/ros2_trashbot_hardware/share/ros2_trashbot_hardware/hook/pythonpath.ps1
+/root/rober/onboard/install/ros2_trashbot_hardware/share/ros2_trashbot_hardware/hook/pythonpath.sh
+/root/rober/onboard/install/ros2_trashbot_hardware/share/ros2_trashbot_hardware/package.bash
+/root/rober/onboard/install/ros2_trashbot_hardware/share/ros2_trashbot_hardware/package.dsv
+/root/rober/onboard/install/ros2_trashbot_hardware/share/ros2_trashbot_hardware/package.ps1
+/root/rober/onboard/install/ros2_trashbot_hardware/share/ros2_trashbot_hardware/package.sh
+/root/rober/onboard/install/ros2_trashbot_hardware/share/ros2_trashbot_hardware/package.zsh
+pkg=ros2_trashbot_vision prefix=/root/rober/onboard/install/ros2_trashbot_vision
+/root/rober/onboard/install/ros2_trashbot_vision/share/ros2_trashbot_vision/hook/ament_prefix_path.dsv
+/root/rober/onboard/install/ros2_trashbot_vision/share/ros2_trashbot_vision/hook/ament_prefix_path.ps1
+/root/rober/onboard/install/ros2_trashbot_vision/share/ros2_trashbot_vision/hook/ament_prefix_path.sh
+/root/rober/onboard/install/ros2_trashbot_vision/share/ros2_trashbot_vision/hook/pythonpath.dsv
+/root/rober/onboard/install/ros2_trashbot_vision/share/ros2_trashbot_vision/hook/pythonpath.ps1
+/root/rober/onboard/install/ros2_trashbot_vision/share/ros2_trashbot_vision/hook/pythonpath.sh
+/root/rober/onboard/install/ros2_trashbot_vision/share/ros2_trashbot_vision/package.bash
+/root/rober/onboard/install/ros2_trashbot_vision/share/ros2_trashbot_vision/package.dsv
+/root/rober/onboard/install/ros2_trashbot_vision/share/ros2_trashbot_vision/package.ps1
+/root/rober/onboard/install/ros2_trashbot_vision/share/ros2_trashbot_vision/package.sh
+/root/rober/onboard/install/ros2_trashbot_vision/share/ros2_trashbot_vision/package.zsh
+pkg=ros2_trashbot_behavior prefix=/root/rober/onboard/install/ros2_trashbot_behavior
+/root/rober/onboard/install/ros2_trashbot_behavior/share/ros2_trashbot_behavior/hook/ament_prefix_path.dsv
+/root/rober/onboard/install/ros2_trashbot_behavior/share/ros2_trashbot_behavior/hook/ament_prefix_path.ps1
+/root/rober/onboard/install/ros2_trashbot_behavior/share/ros2_trashbot_behavior/hook/ament_prefix_path.sh
+/root/rober/onboard/install/ros2_trashbot_behavior/share/ros2_trashbot_behavior/hook/pythonpath.dsv
+/root/rober/onboard/install/ros2_trashbot_behavior/share/ros2_trashbot_behavior/hook/pythonpath.ps1
+/root/rober/onboard/install/ros2_trashbot_behavior/share/ros2_trashbot_behavior/hook/pythonpath.sh
+/root/rober/onboard/install/ros2_trashbot_behavior/share/ros2_trashbot_behavior/package.bash
+/root/rober/onboard/install/ros2_trashbot_behavior/share/ros2_trashbot_behavior/package.dsv
+/root/rober/onboard/install/ros2_trashbot_behavior/share/ros2_trashbot_behavior/package.ps1
+/root/rober/onboard/install/ros2_trashbot_behavior/share/ros2_trashbot_behavior/package.sh
+/root/rober/onboard/install/ros2_trashbot_behavior/share/ros2_trashbot_behavior/package.zsh
+--- source launch/config candidates ---
+/root/rober/onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/delivery_navigation.py
+/root/rober/onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics_route_elevator_field_session.py
+/root/rober/onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics_route_elevator_proof.py
+/root/rober/onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics_route_field_artifacts.py
+/root/rober/onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics_route_field_run.py
+/root/rober/onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics_route_rehearsal.py
+/root/rober/onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics_route_task_field_retest.py
+/root/rober/onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/operator_gateway_diagnostics_route_terminal.py
+/root/rober/onboard/src/ros2_trashbot_behavior/test/test_delivery_navigation.py
+/root/rober/onboard/src/ros2_trashbot_behavior/test/test_task_orchestrator_fixed_route_status.py
+/root/rober/onboard/src/ros2_trashbot_bringup/launch/autonomous.launch.py
+/root/rober/onboard/src/ros2_trashbot_bringup/launch/bringup.launch.py
+/root/rober/onboard/src/ros2_trashbot_bringup/launch/learn.launch.py
+/root/rober/onboard/src/ros2_trashbot_bringup/test/test_launch_contract_static.py
+/root/rober/onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py
+/root/rober/onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_packets.py
+/root/rober/onboard/src/ros2_trashbot_hardware/test/test_lidar_driver_stubs.py
+/root/rober/onboard/src/ros2_trashbot_hardware/test/test_lidar_packets.py
+/root/rober/onboard/src/ros2_trashbot_nav/config/nav2_params.yaml
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/algorithm_evidence_feed.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/elevator_assist.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/fixed_route_autonomy.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/__init__.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/keyframe_camera_sim.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/map_recorder.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/nav_to_goal.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/route_contracts.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/route_csv_to_yaml.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/route_data_recorder.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/route_debug_web.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/route_parsers.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/route_proof_summary.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/route_utils.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/visual_gate_proof.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/visual_gate_runtime.py
+/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/waypoint_manager.py
+/root/rober/onboard/src/ros2_trashbot_nav/setup.py
+/root/rober/onboard/src/ros2_trashbot_nav/test/test_algorithm_evidence_feed.py
+/root/rober/onboard/src/ros2_trashbot_nav/test/test_fixed_route_dry_run_offline.py
+/root/rober/onboard/src/ros2_trashbot_nav/test/test_fixed_route_status_static.py
+/root/rober/onboard/src/ros2_trashbot_nav/test/test_route_csv_to_yaml.py
+/root/rober/onboard/src/ros2_trashbot_nav/test/test_route_data_recorder_manifest.py
+/root/rober/onboard/src/ros2_trashbot_nav/test/test_route_debug_web.py
+/root/rober/onboard/src/ros2_trashbot_nav/test/test_route_proof_summary.py
+/root/rober/onboard/src/ros2_trashbot_nav/test/test_visual_gate_proof.py
+/root/rober/onboard/src/ros2_trashbot_nav/test/test_waypoint_manager_learn_mode_static.py
+--- executable candidates ---
+ros2_trashbot_nav algorithm_evidence_feed
+ros2_trashbot_nav fixed_route_autonomy
+ros2_trashbot_nav keyframe_camera_sim
+ros2_trashbot_nav map_recorder
+ros2_trashbot_nav nav_to_goal
+ros2_trashbot_nav route_csv_to_yaml
+ros2_trashbot_nav route_data_recorder
+ros2_trashbot_nav route_debug_web
+ros2_trashbot_nav visual_gate_proof
+ros2_trashbot_nav waypoint_manager
+
+=== remote bash: short rosbag attempt with available fallback topics ===
+REMOTE_RUN_DIR=/root/.ros/trashbot_live_runs/field_full_stack_20260609_230217
+/opt/ros/humble/setup.bash: line 8: AMENT_TRACE_SETUP_FILES: unbound variable
+
+=== remote bash: learn.launch show-args and short discovery ===
+--- ros2 launch learn.launch.py --show-args ---
+Arguments (pass arguments as '<name>:=<value>'):
+
+    'use_sim_time':
+        Use simulation clock
+        (default: 'false')
+
+    'record_interval':
+        Seconds between automatic waypoint recording during learning
+        (default: '5.0')
+
+    'pose_topic':
+        PoseWithCovarianceStamped topic used for recording waypoints
+        (default: '/pose')
+
+    'route_recorder':
+        Start fixed-route CSV and keyframe recording during manual learning
+        (default: 'false')
+
+    'waypoint_manager':
+        Start waypoint manager during manual learning
+        (default: 'true')
+
+    'route_output_dir':
+        Directory for learned route.csv and keyframes
+        (default: PathJoinSubstitution('EnvVar('HOME'), '.ros', 'trashbot_runs', 'run_001''))
+
+    'route_camera_topic':
+        Camera Image topic used for route keyframe capture
+        (default: '/camera/image_raw')
+
+    'route_odom_topic':
+        Odometry topic used for fixed-route pose capture
+        (default: '/odom')
+
+    'route_min_distance_m':
+        Minimum travel distance between recorded fixed-route checkpoints
+        (default: '0.8')
+
+    'route_frame_id':
+        Frame id written to learned fixed-route CSV checkpoints
+        (default: 'map')
+
+    'route_id':
+        Route id written to learned keyframe sample manifest context
+        (default: '')
+
+    'route_sample_manifest_name':
+        Vision sample manifest filename written beside learned route data
+        (default: 'manifest.json')
+
+    'route_sample_manifest_max_entries':
+        Maximum learned keyframe sample entries kept in the route manifest
+        (default: '500')
+
+    'lidar_enabled':
+        Start ROS2 LiDAR driver during learning; default false keeps mock/offline learning usable
+        (default: 'false')
+
+    'lidar_serial_port':
+        LiDAR serial device confirmed on Orange Pi; /dev/lidar udev symlink is preferred when installed
+        (default: '/dev/ttyACM0')
+
+    'lidar_serial_baudrate':
+        LiDAR baud rate from docs/vendor/lidar_pkg_ros2-main reference
+        (default: '150000')
+
+    'lidar_frame_id':
+        LiDAR frame id; must match measured base_link static TF on hardware
+        (default: 'laser_frame')
+
+    'lidar_scan_topic':
+        LaserScan topic consumed by SLAM during learning
+        (default: '/scan')
+
+    'lidar_raw_packet_topic':
+        Optional raw LiDAR packet topic
+        (default: '/lidar/raw_packet')
+
+    'lidar_publish_raw_packets':
+        Publish raw 0xAA55 packets for diagnostics
+        (default: 'false')
+
+    'lidar_range_min':
+        LiDAR LaserScan range_min in meters; tune after real point cloud validation
+        (default: '0.05')
+
+    'lidar_range_max':
+        LiDAR LaserScan range_max in meters; tune after real point cloud validation
+        (default: '8.0')
+
+    'lidar_scan_time':
+        LiDAR LaserScan scan_time placeholder in seconds; measure on real hardware
+        (default: '0.1')
+
+    'lidar_time_increment':
+        LiDAR LaserScan time_increment placeholder in seconds; measure on real hardware
+        (default: '0.0001')
+
+    'lidar_tf_x':
+        Placeholder LiDAR x offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_y':
+        Placeholder LiDAR y offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_z':
+        Placeholder LiDAR z offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_roll':
+        Placeholder LiDAR roll from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_pitch':
+        Placeholder LiDAR pitch from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_yaw':
+        Placeholder LiDAR yaw from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'no_motion_static_odom_tf':
+        Publish static odom->base_link only for no-motion SLAM smoke proof
+        (default: 'false')
+
+    'slam_map_frame':
+        SLAM map frame id used by slam_toolbox
+        (default: 'map')
+
+    'slam_odom_frame':
+        SLAM odom frame id used by slam_toolbox
+        (default: 'odom')
+
+    'slam_base_frame':
+        SLAM base frame id; no-motion proof uses static odom->base_link
+        (default: 'base_link')
+
+    'lidar_mock_packets':
+        Pipe-separated hex packets for software-only LiDAR verification
+        (default: '')
+
+    'lidar_mock_scan':
+        Publish built-in mock scan packet; software proof only
+        (default: 'false')
+
+    'map_dir':
+        Directory where map_recorder writes learned map artifacts
+        (default: PathJoinSubstitution('EnvVar('HOME'), '.ros', 'trashbot_maps''))
+
+    'default_map_name':
+        Base filename used by map_recorder for PGM/YAML map artifacts
+        (default: 'trashbot_map')
+--- ros2 launch bringup.launch.py --show-args ---
+Arguments (pass arguments as '<name>:=<value>'):
+
+    'use_sim_time':
+        Use simulation clock
+        (default: 'false')
+
+    'serial_port':
+        UART device for the WAVE ROVER ESP32 controller
+        (default: '/dev/ttyUSB0')
+
+    'serial_baudrate':
+        UART baud rate for the WAVE ROVER ESP32 controller
+        (default: '115200')
+
+    'command_mode':
+        WAVE ROVER command mode: speed uses T=1, ros uses T=13
+        (default: 'speed')
+
+    'track_width_m':
+        WAVE ROVER differential drive track width in meters
+        (default: '0.172')
+
+    'max_wheel_speed_mps':
+        Wheel speed used to normalize T=1 speed commands
+        (default: '1.3')
+
+    'waypoint_file':
+        Path to saved waypoint YAML
+        (default: '~/.ros/trashbot_maps/waypoints.yaml')
+
+    'delivery_mode':
+        Delivery mode: dry_run or waypoint
+        (default: 'dry_run')
+
+    'delivery_target':
+        Waypoint name for trash station delivery
+        (default: 'trash_station')
+
+    'return_target':
+        Optional waypoint name to return to after dropoff
+        (default: '')
+
+    'elevator_assist_enabled':
+        Enable elevator assisted delivery dry-run subflow
+        (default: 'false')
+
+    'elevator_assist_mode':
+        Elevator assisted delivery mode; dry_run is the only software-only mode
+        (default: 'dry_run')
+
+    'elevator_assist_target_floor':
+        Target floor used in elevator assisted delivery dry-run records
+        (default: '1')
+
+    'elevator_assist_dry_run_failure':
+        Optional dry-run failure: door_timeout, target_floor_unconfirmed, unsafe_to_exit
+        (default: '')
+
+    'task_record_dir':
+        Directory for delivery task records
+        (default: '~/.ros/trashbot_tasks')
+
+    'dropoff_timeout_sec':
+        Delivery dropoff timeout in seconds
+        (default: '30.0')
+
+    'navigation_timeout_sec':
+        Delivery navigation timeout in seconds
+        (default: '120.0')
+
+    'operator_gateway':
+        Start local HTTP operator gateway
+        (default: 'false')
+
+    'operator_gateway_host':
+        Operator gateway bind host
+        (default: '0.0.0.0')
+
+    'operator_gateway_port':
+        Operator gateway HTTP port
+        (default: '8766')
+
+    'operator_gateway_collect_action':
+        Operator gateway collect action name
+        (default: '/trashbot/collect_trash')
+
+    'operator_gateway_dropoff_service':
+        Operator gateway dropoff confirmation service name
+        (default: '/trashbot/confirm_dropoff')
+
+    'operator_status_file':
+        Operator gateway status JSON path
+        (default: '/tmp/trashbot_operator_status.json')
+
+    'operator_pose_topic':
+        Pose topic used by the operator gateway live location view
+        (default: '/amcl_pose')
+
+    'operator_hardware_proof_ref':
+        Optional software-proof artifact path for diagnostics.hardware_proof (not HIL evidence)
+        (default: '')
+
+    'remote_bridge':
+        Start outbound 4G remote bridge
+        (default: 'false')
+
+    'remote_cloud_base_url':
+        Remote cloud base URL for outbound polling
+        (default: '')
+
+    'remote_robot_id':
+        Remote cloud robot identifier
+        (default: 'trashbot-001')
+
+    'remote_auth_token':
+        Remote cloud bearer token
+        (default: '')
+
+    'remote_poll_interval_sec':
+        Remote bridge polling interval in seconds
+        (default: '2.0')
+
+    'remote_request_timeout_sec':
+        Remote bridge HTTP request timeout in seconds
+        (default: '5.0')
+
+    'lidar_enabled':
+        Start ROS2 LiDAR driver; default false avoids blocking bringup without serial hardware
+        (default: 'false')
+
+    'lidar_serial_port':
+        LiDAR serial device confirmed on Orange Pi; /dev/lidar udev symlink is preferred when installed
+        (default: '/dev/ttyACM0')
+
+    'lidar_serial_baudrate':
+        LiDAR baud rate from docs/vendor/lidar_pkg_ros2-main reference
+        (default: '150000')
+
+    'lidar_frame_id':
+        LiDAR frame id; must match measured base_link static TF on hardware
+        (default: 'laser_frame')
+
+    'lidar_scan_topic':
+        LaserScan topic consumed by Nav2/SLAM
+        (default: '/scan')
+
+    'lidar_raw_packet_topic':
+        Optional raw LiDAR packet topic
+        (default: '/lidar/raw_packet')
+
+    'lidar_publish_raw_packets':
+        Publish raw 0xAA55 packets for diagnostics
+        (default: 'false')
+
+    'lidar_range_min':
+        LiDAR LaserScan range_min in meters; tune after real point cloud validation
+        (default: '0.05')
+
+    'lidar_range_max':
+        LiDAR LaserScan range_max in meters; tune after real point cloud validation
+        (default: '8.0')
+
+    'lidar_scan_time':
+        LiDAR LaserScan scan_time placeholder in seconds; measure on real hardware
+        (default: '0.1')
+
+    'lidar_time_increment':
+        LiDAR LaserScan time_increment placeholder in seconds; measure on real hardware
+        (default: '0.0001')
+
+    'lidar_tf_x':
+        Placeholder LiDAR x offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_y':
+        Placeholder LiDAR y offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_z':
+        Placeholder LiDAR z offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_roll':
+        Placeholder LiDAR roll from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_pitch':
+        Placeholder LiDAR pitch from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_yaw':
+        Placeholder LiDAR yaw from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'lidar_mock_packets':
+        Pipe-separated hex packets for software-only LiDAR verification
+        (default: '')
+
+    'lidar_mock_scan':
+        Publish built-in mock scan packet; software proof only
+        (default: 'false')
+--- direct source launch files exist ---
+-rwxrwxrwx 1 root root 17426 Jun  1 11:19 /root/rober/onboard/src/ros2_trashbot_bringup/launch/autonomous.launch.py
+-rwxrwxrwx 1 root root 19961 Jun  3 03:32 /root/rober/onboard/src/ros2_trashbot_bringup/launch/bringup.launch.py
+-rwxrwxrwx 1 root root 16497 Jun  5 09:32 /root/rober/onboard/src/ros2_trashbot_bringup/launch/learn.launch.py
+--- installed launch dir detail ---
+   936688      4 drwxr-xr-x   3 root     root         4096 Jun  4 23:42 /root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/launch
+   936697      4 lrwxrwxrwx   1 root     root           68 Jun  4 23:42 /root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/launch/learn.launch.py -> /root/rober/onboard/src/ros2_trashbot_bringup/launch/learn.launch.py
+   936689      4 drwxr-xr-x   2 root     root         4096 Jun  9 23:03 /root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/launch/__pycache__
+   961676     12 -rw-r--r--   1 root     root         9769 Jun  9 23:03 /root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/launch/__pycache__/bringup.launch.cpython-310.pyc
+   961621     12 -rw-r--r--   1 root     root         8207 Jun  5 09:33 /root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/launch/__pycache__/learn.launch.cpython-310.pyc
+   936691      4 lrwxrwxrwx   1 root     root           98 Jun  4 23:42 /root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/launch/__pycache__/autonomous.launch.cpython-310.pyc -> /root/rober/onboard/src/ros2_trashbot_bringup/launch/__pycache__/autonomous.launch.cpython-310.pyc
+   936696      4 lrwxrwxrwx   1 root     root           70 Jun  4 23:42 /root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/launch/bringup.launch.py -> /root/rober/onboard/src/ros2_trashbot_bringup/launch/bringup.launch.py
+   936695      4 lrwxrwxrwx   1 root     root           73 Jun  4 23:42 /root/rober/onboard/install/ros2_trashbot_bringup/share/ros2_trashbot_bringup/launch/autonomous.launch.py -> /root/rober/onboard/src/ros2_trashbot_bringup/launch/autonomous.launch.py
+
+=== remote bash: short rosbag attempt with available fallback topics, no set -u ===
+REMOTE_RUN_DIR=/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304
+sourced=/root/rober/onboard/install/setup.bash
+missing_target_topic=/scan
+missing_target_topic=/camera/image_raw
+missing_target_topic=/odom
+missing_target_topic=/tf
+missing_target_topic=/map
+record_mode=fallback_graph_only_no_sensor_topics
+record_topics= /rosout /parameter_events
+stdin is not a terminal device. Keyboard handling disabled.[INFO] [1781017390.877146932] [rosbag2_recorder]: Press SPACE for pausing/resuming
+[INFO] [1781017390.896265835] [rosbag2_storage]: Opened database '/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/route_bag/route_bag_0.db3' for READ_WRITE.
+[INFO] [1781017390.914116867] [rosbag2_recorder]: Listening for topics...
+[INFO] [1781017390.914146450] [rosbag2_recorder]: Event publisher thread: Starting
+[INFO] [1781017390.919648601] [rosbag2_recorder]: Subscribed to topic '/rosout'
+[INFO] [1781017390.923103549] [rosbag2_recorder]: Subscribed to topic '/parameter_events'
+[INFO] [1781017390.923827755] [rosbag2_recorder]: Recording...
+[INFO] [1781017390.924870294] [rosbag2_recorder]: All requested topics are subscribed. Stopping discovery...
+[INFO] [1781017399.404199089] [rosbag2_cpp]: Writing remaining messages from cache to the bag. It may take a while
+[INFO] [1781017399.411791859] [rosbag2_recorder]: Event publisher thread: Exiting
+[INFO] [1781017399.412304524] [rosbag2_recorder]: Recording stopped
+rosbag_rc=124
+--- topic_list.txt ---
+/parameter_events
+/rosout
+--- topic_list_typed.txt ---
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/rosout [rcl_interfaces/msg/Log]
+--- run files ---
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/record_mode.txt
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/record_topics.txt
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/rosbag_rc.txt
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/route_bag
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/route_bag/metadata.yaml
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/route_bag/route_bag_0.db3
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/topic_list.txt
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/topic_list_typed.txt
+--- metadata ---
+/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/route_bag/metadata.yaml
+rosbag2_bagfile_information:
+  version: 5
+  storage_identifier: sqlite3
+  duration:
+    nanoseconds: 424457
+  starting_time:
+    nanoseconds_since_epoch: 1781017390989425940
+  message_count: 7
+  topics_with_message_count:
+    - topic_metadata:
+        name: /parameter_events
+        type: rcl_interfaces/msg/ParameterEvent
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 2\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 9223372036\n    nsec: 854775807\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 0
+    - topic_metadata:
+        name: /rosout
+        type: rcl_interfaces/msg/Log
+        serialization_format: cdr
+        offered_qos_profiles: "- history: 3\n  depth: 0\n  reliability: 1\n  durability: 1\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 10\n    nsec: 0\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false\n- history: 3\n  depth: 0\n  reliability: 1\n  durability: 1\n  deadline:\n    sec: 9223372036\n    nsec: 854775807\n  lifespan:\n    sec: 10\n    nsec: 0\n  liveliness: 1\n  liveliness_lease_duration:\n    sec: 9223372036\n    nsec: 854775807\n  avoid_ros_namespace_conventions: false"
+      message_count: 7
+  compression_format: ""
+  compression_mode: ""
+  relative_file_paths:
+    - route_bag_0.db3
+  files:
+    - path: route_bag_0.db3
+      starting_time:
+        nanoseconds_since_epoch: 1781017390989425940
+      duration:
+        nanoseconds: 424457
+      message_count: 7

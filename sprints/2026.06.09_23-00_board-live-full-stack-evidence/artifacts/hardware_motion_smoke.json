@@ -1,0 +1,74 @@
+{
+  "schema": "trashbot.hardware_motion_smoke.v1",
+  "sprint": "sprints/2026.06.09_23-00_board-live-full-stack-evidence",
+  "target": {
+    "ssh_host": "192.168.1.11",
+    "ssh_port": 37878,
+    "hostname": "op-z3-b6.home",
+    "uname": "Linux op-z3-b6.home 6.1.31-sun50iw9 #1.0.4 SMP Thu Jul 11 16:37:41 CST 2024 aarch64"
+  },
+  "run_time_cst": "2026-06-09T23:00:30+08:00",
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h"
+  ],
+  "safe_gate": {
+    "passed": false,
+    "reasons": [
+      "ROS2 /cmd_vel topic is unknown",
+      "ROS2 /odom topic is unknown",
+      "ROS2 /battery topic is unknown",
+      "No active ROS2 hardware bridge node was observed",
+      "upper_robot_api reports safe_to_control=false and primary_actions_enabled=false",
+      "Only read-only vendor T=130 feedback was collected; this is not ROS2 robot ACK or HIL proof"
+    ]
+  },
+  "motion_smoke": {
+    "executed": false,
+    "requested_command": {
+      "topic": "/cmd_vel",
+      "message_type": "geometry_msgs/msg/Twist",
+      "linear_x_mps": 0.03,
+      "duration_s": 1
+    },
+    "sent_commands": [],
+    "stop_sent": false,
+    "exit_code": null,
+    "odom_before": null,
+    "odom_after": null,
+    "blocked_reason": "Safe gate failed before motion; publishing /cmd_vel would have no observed ROS2 hardware subscriber and no /odom before-after evidence path."
+  },
+  "read_only_feedback_probe": {
+    "executed": true,
+    "transport": "upper_robot_api /api/base/feedback-samples",
+    "port": "/dev/ttyS5",
+    "baudrate": 115200,
+    "command": {
+      "T": 130
+    },
+    "sample_count": 3,
+    "completed_sample_count": 3,
+    "observed_feedback_types": [
+      130,
+      1001
+    ],
+    "all_samples_observed_t1001": true,
+    "sends_motion_commands": false,
+    "robot_control_executed": false,
+    "hil_pass": false
+  },
+  "assertions": {
+    "cmd_vel_published": false,
+    "direct_vendor_motion_command_sent": false,
+    "api_base_manual_called": false,
+    "hardware_config_modified": false,
+    "launch_parameters_modified": false,
+    "delivery_success": false,
+    "safe_to_control": false,
+    "primary_actions_enabled": false
+  }
+}

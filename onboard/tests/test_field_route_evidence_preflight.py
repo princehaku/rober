@@ -43,6 +43,18 @@ class FieldRouteEvidencePreflightTest(unittest.TestCase):
         self.assertEqual(command[-1], "true")
         templates = preflight.topic_smoke_templates("root@192.168.1.11", 37878)
         self.assertIn("ssh -p 37878 root@192.168.1.11", templates[0]["command"])
+        self.assertIn("bash -lc", templates[0]["command"])
+        self.assertIn("source /opt/ros/humble/setup.bash", templates[0]["command"])
+        self.assertIn("/root/rober/onboard/install/setup.bash", templates[0]["command"])
+
+    def test_remote_ros_commands_source_ros_and_workspace_before_execution(self):
+        # 远端 ROS2 命令必须在 bash -lc 下恢复环境，避免 SSH 非登录 shell 丢失 ros2。
+        remote = preflight.build_remote_ros_command("ros2 topic list")
+
+        self.assertIn("bash -lc", remote)
+        self.assertIn("source /opt/ros/humble/setup.bash", remote)
+        self.assertIn("/root/rober/onboard/install/setup.bash", remote)
+        self.assertIn("ros2 topic list", remote)
 
     def test_ssh_unreachable_still_writes_evidence_packet(self):
         # SSH 不可达时也必须交付 JSON，不允许把本轮退化成纯网络 blocker。
@@ -95,6 +107,29 @@ class FieldRouteEvidencePreflightTest(unittest.TestCase):
 
         self.assertEqual(status, "blocked_setup_missing")
         self.assertFalse(checks["setup_candidates"]["ok"])
+
+    def test_package_detection_uses_full_stdout_not_truncated_summary(self):
+        # ros2 pkg list 很长时，逻辑判断必须基于完整 stdout，而不是裁剪后的摘要。
+        full_stdout = "\n".join(
+            ["ament_index_python"] * 400
+            + preflight.REQUIRED_PACKAGES
+        )
+        result = {
+            "returncode": 0,
+            "stdout": "ament_index_python\n<truncated>",
+            "stderr": "",
+            "_stdout_full": full_stdout,
+            "_stderr_full": "",
+            "timed_out": False,
+            "command": ["ros2", "pkg", "list"],
+        }
+        with mock.patch.object(preflight, "run_command", return_value=result):
+            args = preflight.parse_args(["--mode", "local", "--output", "/tmp/unused.json"])
+            check, status = preflight.check_packages(args, remote=False)
+
+        self.assertTrue(check["ok"])
+        self.assertEqual(check["missing"], [])
+        self.assertIsNone(status)
 
 
 if __name__ == "__main__":

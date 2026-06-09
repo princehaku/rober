@@ -1,0 +1,12 @@
+{
+  "timestamp": 1781020610.2163532,
+  "device": "/dev/video1",
+  "opened": true,
+  "read": true,
+  "shape": [
+    480,
+    640,
+    3
+  ],
+  "image": "/root/.ros/trashbot_live_runs/no_motion_sensor_20260609_235445/keyframe_sample.jpg"
+}

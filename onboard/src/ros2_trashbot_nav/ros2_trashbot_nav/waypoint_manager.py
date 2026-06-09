@@ -1,14 +1,23 @@
 import copy
+import os
+from typing import Any, List, Optional
+
 import rclpy
-from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
-from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
+from rclpy.node import Node
 
 from ros2_trashbot_interfaces.srv import RecordWaypoint
 from ros2_trashbot_interfaces.msg import Waypoint, WaypointList
 import yaml
-import os
-from typing import List, Optional
+
+try:
+    # Nav2 在真实导航阶段才是强依赖；缺包时学习/航点服务仍应能存活。
+    from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
+    NAV2_IMPORT_ERROR = ""
+except ImportError as exc:
+    BasicNavigator = None
+    TaskResult = None
+    NAV2_IMPORT_ERROR = str(exc)
 
 
 class WaypointManager(Node):
@@ -31,23 +40,35 @@ class WaypointManager(Node):
         self.declare_parameter('record_interval', 5.0)
         self.record_interval = float(self.get_parameter('record_interval').value)
 
-        # Waypoint storage
+        # 航点存储始终可用，不能因为导航依赖缺失而影响学习阶段。
         self.waypoints: List[Waypoint] = []
         self.current_map_name = ''
         self.latest_pose: Optional[PoseWithCovarianceStamped] = None
         self._auto_record_count = 0
         self._warned_missing_pose = False
 
-        # Services
+        # 将 Nav2 是否可用显式状态化，避免调用导航时才暴露不可读异常。
+        self._nav2_available = BasicNavigator is not None and TaskResult is not None
+        self._nav2_unavailable_reason = ''
+        self.navigator: Optional[Any] = None
+        if self._nav2_available:
+            self.navigator = BasicNavigator()
+        else:
+            self._nav2_unavailable_reason = (
+                'nav2_simple_commander is unavailable; '
+                f'waypoint navigation disabled: {NAV2_IMPORT_ERROR}'
+            )
+            self.get_logger().warn(self._nav2_unavailable_reason)
+
+        # 服务接口保持可用，供学习阶段和上层编排记录航点。
         self.record_wp_srv = self.create_service(
             RecordWaypoint, '/trashbot/record_waypoint', self._record_waypoint)
 
-        # Publishers
+        # 航点列表 topic 在缺 Nav2 时仍然要持续发布。
         self.waypoint_list_pub = self.create_publisher(
             WaypointList, '/trashbot/waypoints', 10)
 
-        # Pose source for recording waypoints. In learn mode this can be
-        # remapped to slam_toolbox's pose topic; in autonomous mode AMCL is the default.
+        # 航点记录只依赖 pose 输入；学习阶段可改接 slam pose，自主阶段默认走 AMCL。
         self.pose_sub = self.create_subscription(
             PoseWithCovarianceStamped, self.pose_topic, self._on_pose, 10)
         self.auto_record_timer = None
@@ -58,9 +79,6 @@ class WaypointManager(Node):
             else:
                 self.get_logger().warn(
                     f'learn_mode enabled but record_interval={self.record_interval}; automatic recording disabled')
-
-        # Nav2 navigator (for autonomous driving)
-        self.navigator = BasicNavigator()
 
         self._load_waypoints()
         self.get_logger().info(f'WaypointManager ready. Loaded {len(self.waypoints)} waypoints.')
@@ -146,7 +164,7 @@ class WaypointManager(Node):
                     wp.visited = wp_data.get('visited', False)
                     wp.last_visit_time = wp_data.get('last_visit_time', 0.0)
                     wp.comment = wp_data.get('comment', '')
-                    # Pose reconstruction from stored coordinates
+                    # 仅从 YAML 恢复位姿，不依赖 Nav2，保证学习产物在缺导航依赖时也可继续读写。
                     pose = PoseStamped()
                     pose.header.frame_id = 'map'
                     pose.header.stamp = self.get_clock().now().to_msg()
@@ -199,10 +217,22 @@ class WaypointManager(Node):
         msg.last_updated = self.get_clock().now().nanoseconds / 1e9
         self.waypoint_list_pub.publish(msg)
 
+    def _navigation_blocked_reason(self) -> str:
+        """Explain why navigation is disabled without throwing at call sites."""
+        if self.navigator is not None and self._nav2_available:
+            return ''
+        return self._nav2_unavailable_reason or 'navigation backend is unavailable'
+
     def navigate_to_waypoint(self, index: int) -> bool:
         """Navigate to a specific waypoint index."""
         if index < 0 or index >= len(self.waypoints):
             self.get_logger().error(f'Invalid waypoint index: {index}')
+            return False
+
+        blocked_reason = self._navigation_blocked_reason()
+        if blocked_reason:
+            # fail closed：缺依赖时拒绝导航，但不影响学习模式、waypoint 服务和 topic 发布。
+            self.get_logger().error(f'Cannot navigate to waypoint because {blocked_reason}')
             return False
 
         wp = self.waypoints[index]

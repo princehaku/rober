@@ -1,0 +1,19 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-09-23-55-44-896267-op-z3-b6.home-26449
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [lidar_driver-1]: process started with pid [26450]
+[INFO] [static_transform_publisher-2]: process started with pid [26452]
+[INFO] [waypoint_manager-3]: process started with pid [26454]
+[INFO] [map_recorder-4]: process started with pid [26456]
+[INFO] [camera_publisher-5]: process started with pid [26458]
+[INFO] [task_orchestrator-6]: process started with pid [26460]
+[static_transform_publisher-2] [WARN] [1781020545.235050774] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-2] [INFO] [1781020545.395454596] [static_laser_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-2] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-2] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-2] from 'base_link' to 'laser_frame'
+[lidar_driver-1] [INFO] [1781020547.540955359] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000
+[camera_publisher-5] [INFO] [1781020547.674268428] [camera_publisher]: camera_publisher streaming /dev/video1 to /camera/image_raw with frame_id=camera, requested 640x480@15.00fps
+[waypoint_manager-3] [WARN] [1781020547.816843802] [waypoint_manager]: nav2_simple_commander is unavailable; waypoint navigation disabled: No module named 'nav2_simple_commander'
+[task_orchestrator-6] [INFO] [1781020547.846298216] [task_orchestrator]: TaskOrchestrator ready. Awaiting learning or patrol command.
+[waypoint_manager-3] [WARN] [1781020547.898533063] [waypoint_manager]: No waypoint file at /root/.ros/trashbot_maps/waypoints.yaml, starting fresh
+[waypoint_manager-3] [INFO] [1781020547.900935723] [waypoint_manager]: WaypointManager ready. Loaded 0 waypoints.

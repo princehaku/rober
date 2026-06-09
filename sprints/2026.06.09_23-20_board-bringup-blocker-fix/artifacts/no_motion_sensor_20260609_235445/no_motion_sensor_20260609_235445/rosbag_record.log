@@ -1,0 +1,11 @@
+stdin is not a terminal device. Keyboard handling disabled.[INFO] [1781020583.557531420] [rosbag2_recorder]: Press SPACE for pausing/resuming
+[INFO] [1781020583.564416983] [rosbag2_storage]: Opened database '/root/.ros/trashbot_live_runs/no_motion_sensor_20260609_235445/route_bag/route_bag_0.db3' for READ_WRITE.
+[INFO] [1781020583.569331677] [rosbag2_recorder]: Listening for topics...
+[INFO] [1781020583.569353427] [rosbag2_recorder]: Event publisher thread: Starting
+[INFO] [1781020583.583350927] [rosbag2_recorder]: Subscribed to topic '/tf_static'
+[INFO] [1781020583.608878561] [rosbag2_recorder]: Subscribed to topic '/scan'
+[INFO] [1781020583.609353393] [rosbag2_recorder]: Recording...
+[INFO] [1781020586.461424172] [rosbag2_recorder]: Subscribed to topic '/camera/image_raw'
+[INFO] [1781020590.309440911] [rosbag2_cpp]: Writing remaining messages from cache to the bag. It may take a while
+[INFO] [1781020590.313938939] [rosbag2_recorder]: Event publisher thread: Exiting
+[INFO] [1781020590.314152189] [rosbag2_recorder]: Recording stopped

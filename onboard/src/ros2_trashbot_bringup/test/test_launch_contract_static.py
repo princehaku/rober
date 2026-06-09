@@ -22,7 +22,10 @@ class LaunchContractStaticTest(unittest.TestCase):
         source = read_launch("bringup.launch.py")
 
         task_block = source[source.index("executable='task_orchestrator'"):]
-        map_block = source[source.index("executable='map_recorder'"):source.index("# --- Behavior ---")]
+        map_block = source[
+            source.index("executable='map_recorder'"):
+            source.index("executable='task_orchestrator'")
+        ]
 
         for key in (
             "'waypoint_file'",
@@ -37,7 +40,10 @@ class LaunchContractStaticTest(unittest.TestCase):
             "'dropoff_timeout_sec'",
             "'navigation_timeout_sec'",
         ):
-            self.assertIn(key, task_block)
+            if key == "'elevator_assist_target_floor'":
+                self.assertIn("'elevator_assist_target_floor': ParameterValue(", task_block)
+            else:
+                self.assertIn(key, task_block)
             self.assertNotIn(key, map_block)
 
     def test_autonomous_declares_fixed_route_arguments_and_exclusive_conditions(self):
@@ -110,7 +116,7 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertIn("'elevator_assist_dry_run_failure', default_value=''", source)
         self.assertIn("'elevator_assist_enabled': elevator_assist_enabled", task_block)
         self.assertIn("'elevator_assist_mode': elevator_assist_mode", task_block)
-        self.assertIn("'elevator_assist_target_floor': elevator_assist_target_floor", task_block)
+        self.assertIn("'elevator_assist_target_floor': ParameterValue(", task_block)
         self.assertIn(
             "'elevator_assist_dry_run_failure': elevator_assist_dry_run_failure",
             task_block,
@@ -237,6 +243,65 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertIn("'pose_topic': operator_pose_topic", gateway_block)
         self.assertIn("'hardware_proof_ref': operator_hardware_proof_ref", gateway_block)
 
+    def test_bringup_can_disable_base_for_sensor_only_smoke(self):
+        # sensor-only smoke 需要避开 /dev/ttyS5 竞争，因此 esp32 bridge 必须单独门控。
+        source = read_launch("bringup.launch.py")
+        ast.parse(source)
+        base_block = node_block(source, "esp32_bridge")
+
+        self.assertIn("'base_enabled', default_value='true'", source)
+        self.assertIn("condition=IfCondition(base_enabled)", base_block)
+
+    def test_bringup_can_start_lidar_driver_with_explicit_parameters(self):
+        # LiDAR 默认关闭，避免开发机无串口时把 smoke 失败误读成主链路回归。
+        source = read_launch("bringup.launch.py")
+        ast.parse(source)
+        lidar_block = node_block(source, "lidar_driver")
+
+        for argument in (
+            "'lidar_enabled'",
+            "'lidar_serial_port'",
+            "'lidar_serial_baudrate'",
+            "'lidar_frame_id'",
+            "'lidar_scan_topic'",
+            "'lidar_raw_packet_topic'",
+            "'lidar_publish_raw_packets'",
+            "'lidar_mock_packets'",
+            "'lidar_mock_scan'",
+        ):
+            self.assertIn(argument, source)
+
+        self.assertIn("condition=IfCondition(lidar_enabled)", lidar_block)
+        self.assertIn("'serial_port': lidar_serial_port", lidar_block)
+        self.assertIn("'serial_baudrate': lidar_serial_baudrate", lidar_block)
+        self.assertIn("'frame_id': lidar_frame_id", lidar_block)
+        self.assertIn("'scan_topic': lidar_scan_topic", lidar_block)
+        self.assertIn("'publish_raw_packets': lidar_publish_raw_packets", lidar_block)
+        self.assertIn("'mock_packets': lidar_mock_packets", lidar_block)
+        self.assertIn("'mock_scan': lidar_mock_scan", lidar_block)
+
+    def test_bringup_can_publish_smoke_only_static_laser_tf(self):
+        # 该静态 TF 只用于拓扑 smoke，不代表 base_link 到 laser_frame 已完成机械标定。
+        source = read_launch("bringup.launch.py")
+        ast.parse(source)
+        tf_block = node_block(source, "static_transform_publisher")
+
+        for argument in (
+            "'static_laser_tf_enabled'",
+            "'base_frame_id'",
+            "'laser_tf_x'",
+            "'laser_tf_y'",
+            "'laser_tf_z'",
+            "'laser_tf_roll'",
+            "'laser_tf_pitch'",
+            "'laser_tf_yaw'",
+        ):
+            self.assertIn(argument, source)
+
+        self.assertIn("condition=IfCondition(static_laser_tf_enabled)", tf_block)
+        self.assertIn("base_frame_id", tf_block)
+        self.assertIn("lidar_frame_id", tf_block)
+
     def test_hardware_bridge_launches_with_canonical_serial_parameters(self):
         for launch_name in ("bringup.launch.py", "autonomous.launch.py"):
             with self.subTest(launch_name=launch_name):
@@ -245,7 +310,7 @@ class LaunchContractStaticTest(unittest.TestCase):
 
                 hardware_block = source[
                     source.index("executable='esp32_bridge'"):
-                    source.index("# Nav2 bringup" if launch_name == "autonomous.launch.py" else "# --- Navigation ---")
+                    source.index("executable='waypoint_manager'" if launch_name == "bringup.launch.py" else "# Nav2 bringup")
                 ]
 
                 self.assertIn("'serial_port': serial_port", hardware_block)

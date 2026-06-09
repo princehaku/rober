@@ -57,6 +57,24 @@ class WaypointManagerLearnModeStaticTest(unittest.TestCase):
             )
         )
 
+    def test_waypoint_manager_handles_missing_nav2_import_without_crashing_module_load(self):
+        tree = _source_tree()
+        try_nodes = [node for node in ast.walk(tree) if isinstance(node, ast.Try)]
+
+        self.assertTrue(
+            any(
+                any(
+                    isinstance(handler.type, ast.Name) and handler.type.id == "ImportError"
+                    for handler in node.handlers
+                )
+                for node in try_nodes
+            )
+        )
+
+        source = SOURCE.read_text(encoding="utf-8")
+        self.assertIn("nav2_simple_commander is unavailable", source)
+        self.assertIn("Cannot navigate to waypoint because", source)
+
     def test_navigation_result_checks_do_not_compare_to_zero(self):
         for source in PACKAGE_SOURCE.glob("*.py"):
             tree = ast.parse(source.read_text(encoding="utf-8"))

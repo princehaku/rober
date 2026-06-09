@@ -1,0 +1,155 @@
+import sys
+from pathlib import Path
+import unittest
+
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PACKAGE_ROOT))
+
+from ros2_trashbot_hardware.lidar_driver import (
+    LIDAR_START_COMMAND,
+    LIDAR_STOP_COMMAND,
+    LidarRuntimeConfig,
+    LidarSerialSession,
+    packets_from_mock_config,
+    parse_bool,
+    scan_dict_from_packet,
+    uses_real_serial,
+)
+from ros2_trashbot_hardware.lidar_packets import make_mock_packet
+
+
+class FakeSerial:
+    instances = []
+
+    def __init__(self, *, port, baudrate, timeout):
+        # fake serial 记录参数，证明 runtime 采用 launch 下发的串口配置。
+        self.port = port
+        self.baudrate = baudrate
+        self.timeout = timeout
+        self.writes = []
+        self.read_chunks = [b"noise" + make_mock_packet()]
+        self.closed = False
+        FakeSerial.instances.append(self)
+
+    def write(self, data):
+        # 记录原始 bytes，避免把 hex 字符串误当成真正串口命令。
+        self.writes.append(bytes(data))
+        return len(data)
+
+    def read(self, size):
+        # 按真实串口 read 语义返回 bytes；size 只由 driver 控制。
+        self.last_read_size = size
+        if self.read_chunks:
+            return self.read_chunks.pop(0)
+        return b""
+
+    def close(self):
+        self.closed = True
+
+
+class FakeStartWriteFailure(FakeSerial):
+    def write(self, data):
+        # 启动命令失败必须释放串口，避免下一轮 HIL 被半开句柄挡住。
+        self.writes.append(bytes(data))
+        raise OSError("start write failed")
+
+
+class FakeStopWriteFailure(FakeSerial):
+    def write(self, data):
+        # 停止命令失败时仍应 close；物理停转由后续 HIL 观察补证。
+        self.writes.append(bytes(data))
+        if bytes(data) == LIDAR_STOP_COMMAND:
+            raise OSError("stop write failed")
+        return len(data)
+
+
+class FakeSplitSerial(FakeSerial):
+    def __init__(self, *, port, baudrate, timeout):
+        super().__init__(port=port, baudrate=baudrate, timeout=timeout)
+        packet = make_mock_packet()
+        # 模拟真实 USB 串口把帧头和 payload 拆到多次 read 的情况。
+        self.read_chunks = [b"noise" + packet[:1], packet[1:5], packet[5:]]
+
+
+class LidarDriverStubsTest(unittest.TestCase):
+    def setUp(self):
+        FakeSerial.instances = []
+
+    def test_parse_bool_accepts_launch_style_values(self):
+        self.assertTrue(parse_bool("true"))
+        self.assertTrue(parse_bool("1"))
+        self.assertFalse(parse_bool("false"))
+        self.assertFalse(parse_bool(""))
+
+    def test_scan_dict_is_laserscan_shaped_without_ros_imports(self):
+        scan = scan_dict_from_packet(make_mock_packet(), frame_id="laser_frame")
+        self.assertEqual(scan["frame_id"], "laser_frame")
+        self.assertEqual(len(scan["ranges"]), 3)
+        self.assertGreater(scan["angle_increment"], 0.0)
+
+    def test_real_serial_session_sends_start_and_stop_commands(self):
+        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=150000)
+        session = LidarSerialSession(config, serial_factory=FakeSerial)
+
+        session.open()
+        packets = session.read_packets()
+        session.close()
+
+        fake = FakeSerial.instances[0]
+        self.assertEqual(fake.port, "/dev/ttyACM0")
+        self.assertEqual(fake.baudrate, 150000)
+        self.assertEqual(fake.writes[0], LIDAR_START_COMMAND)
+        self.assertEqual(fake.writes[-1], LIDAR_STOP_COMMAND)
+        self.assertEqual(len(packets), 1)
+        self.assertTrue(fake.closed)
+
+    def test_start_write_failure_closes_serial_handle(self):
+        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=150000)
+        session = LidarSerialSession(config, serial_factory=FakeStartWriteFailure)
+
+        with self.assertRaises(OSError):
+            session.open()
+
+        fake = FakeSerial.instances[0]
+        self.assertEqual(fake.writes, [LIDAR_START_COMMAND])
+        self.assertTrue(fake.closed)
+        self.assertEqual(session.read_packets(), [])
+
+    def test_stop_write_failure_still_closes_serial_handle(self):
+        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=150000)
+        session = LidarSerialSession(config, serial_factory=FakeStopWriteFailure)
+
+        session.open()
+        session.close()
+
+        fake = FakeSerial.instances[0]
+        self.assertEqual(fake.writes, [LIDAR_START_COMMAND, LIDAR_STOP_COMMAND])
+        self.assertTrue(fake.closed)
+        self.assertEqual(session.read_packets(), [])
+
+    def test_serial_session_resyncs_split_packet_reads(self):
+        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=150000)
+        session = LidarSerialSession(config, serial_factory=FakeSplitSerial)
+
+        session.open()
+        self.assertEqual(session.read_packets(), [])
+        self.assertEqual(session.read_packets(), [])
+        packets = session.read_packets()
+        session.close()
+
+        self.assertEqual(packets, [make_mock_packet()])
+
+    def test_mock_scan_does_not_open_serial(self):
+        config = LidarRuntimeConfig(mock_scan=True)
+
+        self.assertFalse(uses_real_serial(config))
+        self.assertEqual(len(packets_from_mock_config(config.mock_scan, config.mock_packets)), 1)
+        self.assertEqual(FakeSerial.instances, [])
+
+    def test_mock_packets_do_not_open_serial(self):
+        packet_hex = make_mock_packet().hex(" ")
+        config = LidarRuntimeConfig(mock_scan=False, mock_packets=packet_hex)
+
+        self.assertFalse(uses_real_serial(config))
+        self.assertEqual(len(packets_from_mock_config(config.mock_scan, config.mock_packets)), 1)
+        self.assertEqual(FakeSerial.instances, [])

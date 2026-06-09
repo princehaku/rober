@@ -1,0 +1,223 @@
+{
+  "blocked_reason": "blocked_ros2_cli_missing",
+  "checks": {
+    "environment": {
+      "cwd": "/Users/m1/apps/rober",
+      "hostname": "HAKU-M1-PRO.local",
+      "ok": true,
+      "platform": "macOS-15.7.4-arm64-arm-64bit-Mach-O",
+      "python": "3.13.5",
+      "time_utc": "2026-06-09T15:09:46+00:00"
+    },
+    "ros2_cli": {
+      "ok": false,
+      "result": {
+        "command": [
+          "ssh",
+          "-o",
+          "ConnectTimeout=8",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "StrictHostKeyChecking=accept-new",
+          "-p",
+          "37878",
+          "root@192.168.1.11",
+          "command -v ros2"
+        ],
+        "returncode": 1,
+        "stderr": "",
+        "stdout": "",
+        "timed_out": false
+      }
+    },
+    "setup_candidates": {
+      "candidates": [
+        {
+          "exists": true,
+          "path": "/opt/ros/humble/setup.bash",
+          "result": {
+            "command": [
+              "ssh",
+              "-o",
+              "ConnectTimeout=8",
+              "-o",
+              "BatchMode=yes",
+              "-o",
+              "StrictHostKeyChecking=accept-new",
+              "-p",
+              "37878",
+              "root@192.168.1.11",
+              "test -f /opt/ros/humble/setup.bash"
+            ],
+            "returncode": 0,
+            "stderr": "",
+            "stdout": "",
+            "timed_out": false
+          }
+        },
+        {
+          "exists": false,
+          "path": "/ws/install/setup.bash",
+          "result": {
+            "command": [
+              "ssh",
+              "-o",
+              "ConnectTimeout=8",
+              "-o",
+              "BatchMode=yes",
+              "-o",
+              "StrictHostKeyChecking=accept-new",
+              "-p",
+              "37878",
+              "root@192.168.1.11",
+              "test -f /ws/install/setup.bash"
+            ],
+            "returncode": 1,
+            "stderr": "",
+            "stdout": "",
+            "timed_out": false
+          }
+        },
+        {
+          "exists": true,
+          "path": "~/rober/onboard/install/setup.bash",
+          "result": {
+            "command": [
+              "ssh",
+              "-o",
+              "ConnectTimeout=8",
+              "-o",
+              "BatchMode=yes",
+              "-o",
+              "StrictHostKeyChecking=accept-new",
+              "-p",
+              "37878",
+              "root@192.168.1.11",
+              "test -f ~/rober/onboard/install/setup.bash"
+            ],
+            "returncode": 0,
+            "stderr": "",
+            "stdout": "",
+            "timed_out": false
+          }
+        },
+        {
+          "exists": false,
+          "path": "~/apps/rober/onboard/install/setup.bash",
+          "result": {
+            "command": [
+              "ssh",
+              "-o",
+              "ConnectTimeout=8",
+              "-o",
+              "BatchMode=yes",
+              "-o",
+              "StrictHostKeyChecking=accept-new",
+              "-p",
+              "37878",
+              "root@192.168.1.11",
+              "test -f ~/apps/rober/onboard/install/setup.bash"
+            ],
+            "returncode": 1,
+            "stderr": "",
+            "stdout": "",
+            "timed_out": false
+          }
+        }
+      ],
+      "ok": true
+    },
+    "ssh_reachability": {
+      "ok": true,
+      "port": 37878,
+      "result": {
+        "command": [
+          "ssh",
+          "-o",
+          "ConnectTimeout=8",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "StrictHostKeyChecking=accept-new",
+          "-p",
+          "37878",
+          "root@192.168.1.11",
+          "true"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "",
+        "timed_out": false
+      },
+      "target": "root@192.168.1.11"
+    }
+  },
+  "commands": {
+    "learning": [
+      {
+        "command": "RUN_ID=field_route_$(date +%Y%m%d_%H%M%S); OUT_DIR=$HOME/.ros/trashbot_runs/${RUN_ID}; mkdir -p $OUT_DIR",
+        "name": "prepare_output_dir"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 ros2 launch ros2_trashbot_bringup learn.launch.py route_recorder:=true route_output_dir:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data route_id:=board_field_route",
+        "name": "learn_launch_route_record"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 ros2 service call /trashbot/save_map std_srvs/srv/Trigger",
+        "name": "save_map"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 ros2 run ros2_trashbot_nav route_csv_to_yaml --ros-args -p input_csv:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/route.csv -p output_yaml:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/fixed_route.yaml",
+        "name": "route_csv_to_yaml"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 ros2 run ros2_trashbot_nav fixed_route_autonomy --ros-args -p route_file:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/fixed_route.yaml -p keyframe_dir:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/keyframes -p dry_run:=true -p enable_visual_gate:=false",
+        "name": "fixed_route_autonomy_dry_run"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 ros2 bag record -o $HOME/.ros/trashbot_runs/${RUN_ID}/route_bag /scan /camera/image_raw /odom /tf /map",
+        "name": "optional_rosbag_record"
+      }
+    ],
+    "topic_smoke": [
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 ros2 topic hz /scan --window 2",
+        "topic": "/scan"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 ros2 topic hz /odom --window 2",
+        "topic": "/odom"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 ros2 topic hz /camera/image_raw --window 2",
+        "topic": "/camera/image_raw"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 ros2 topic echo --once /tf",
+        "topic": "/tf"
+      }
+    ]
+  },
+  "delivery_success": false,
+  "dry_run": false,
+  "generated_at": "2026-06-09T15:09:53+00:00",
+  "mode": "ssh",
+  "next_required_evidence": [
+    "真实上位机 SSH 可达证据",
+    "ROS2 setup.bash 和 trashbot package 可用证据",
+    "/scan、/camera/image_raw、/odom、/tf、/map topic 与 smoke 输出",
+    "map.yaml、route.csv、keyframes、rosbag 或 replay JSONL"
+  ],
+  "not_proven": true,
+  "primary_actions_enabled": false,
+  "schema": "trashbot.board_field_evidence_preflight.v1",
+  "source": "software_preflight",
+  "status": "blocked_ros2_cli_missing",
+  "target": {
+    "mode": "ssh",
+    "ssh_port": 37878,
+    "ssh_target": "root@192.168.1.11",
+    "timeout_s": 8
+  }
+}

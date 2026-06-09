@@ -1,0 +1,121 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-09-23-58-25-463743-op-z3-b6.home-27448
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [lidar_driver-1]: process started with pid [27449]
+[INFO] [static_transform_publisher-2]: process started with pid [27451]
+[INFO] [waypoint_manager-3]: process started with pid [27453]
+[INFO] [map_recorder-4]: process started with pid [27455]
+[INFO] [camera_publisher-5]: process started with pid [27457]
+[INFO] [task_orchestrator-6]: process started with pid [27461]
+[static_transform_publisher-2] [WARN] [1781020705.790297053] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-2] [INFO] [1781020705.983164780] [static_laser_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-2] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-2] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-2] from 'base_link' to 'laser_frame'
+[lidar_driver-1] [INFO] [1781020707.729195129] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000
+[waypoint_manager-3] [WARN] [1781020708.495569803] [waypoint_manager]: nav2_simple_commander is unavailable; waypoint navigation disabled: No module named 'nav2_simple_commander'
+[waypoint_manager-3] [WARN] [1781020708.594832054] [waypoint_manager]: No waypoint file at /root/.ros/trashbot_maps/waypoints.yaml, starting fresh
+[waypoint_manager-3] [INFO] [1781020708.597434547] [waypoint_manager]: WaypointManager ready. Loaded 0 waypoints.
+[task_orchestrator-6] [INFO] [1781020708.677639604] [task_orchestrator]: TaskOrchestrator ready. Awaiting learning or patrol command.
+[camera_publisher-5] [INFO] [1781020708.758081785] [camera_publisher]: camera_publisher streaming /dev/video1 to /camera/image_raw with frame_id=camera, requested 640x480@15.00fps
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT) again, ignoring...
+[INFO] [task_orchestrator-6]: sending signal 'SIGINT' to process[task_orchestrator-6]
+[INFO] [camera_publisher-5]: sending signal 'SIGINT' to process[camera_publisher-5]
+[INFO] [map_recorder-4]: sending signal 'SIGINT' to process[map_recorder-4]
+[INFO] [waypoint_manager-3]: sending signal 'SIGINT' to process[waypoint_manager-3]
+[INFO] [static_transform_publisher-2]: sending signal 'SIGINT' to process[static_transform_publisher-2]
+[INFO] [lidar_driver-1]: sending signal 'SIGINT' to process[lidar_driver-1]
+[static_transform_publisher-2] [INFO] [1781020731.112129702] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[ERROR] [static_transform_publisher-2]: process has died [pid 27451, exit code -2, cmd '/opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 base_link laser_frame --ros-args -r __node:=static_laser_tf'].
+[camera_publisher-5] Traceback (most recent call last):
+[camera_publisher-5]   File "/root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher", line 33, in <module>
+[camera_publisher-5]     sys.exit(load_entry_point('ros2-trashbot-vision', 'console_scripts', 'camera_publisher')())
+[camera_publisher-5]   File "/root/rober/onboard/build/ros2_trashbot_vision/ros2_trashbot_vision/camera_publisher.py", line 110, in main
+[camera_publisher-5]     node.destroy_node()
+[camera_publisher-5]   File "/root/rober/onboard/build/ros2_trashbot_vision/ros2_trashbot_vision/camera_publisher.py", line 99, in destroy_node
+[camera_publisher-5]     return super().destroy_node()
+[camera_publisher-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1691, in destroy_node
+[camera_publisher-5]     self.destroy_service(self._services[0])
+[camera_publisher-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1615, in destroy_service
+[camera_publisher-5]     service.destroy()
+[camera_publisher-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/service.py", line 93, in destroy
+[camera_publisher-5]     self.__service.destroy_when_not_in_use()
+[camera_publisher-5] KeyboardInterrupt
+[task_orchestrator-6] Traceback (most recent call last):
+[task_orchestrator-6]   File "/root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator", line 33, in <module>
+[task_orchestrator-6]     sys.exit(load_entry_point('ros2-trashbot-behavior', 'console_scripts', 'task_orchestrator')())
+[map_recorder-4] Traceback (most recent call last):
+[map_recorder-4]   File "/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder", line 33, in <module>
+[map_recorder-4]     sys.exit(load_entry_point('ros2-trashbot-nav', 'console_scripts', 'map_recorder')())
+[map_recorder-4]   File "/root/rober/onboard/build/ros2_trashbot_nav/ros2_trashbot_nav/map_recorder.py", line 104, in main
+[map_recorder-4]     node.destroy_node()
+[map_recorder-4]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1696, in destroy_node
+[task_orchestrator-6]   File "/root/rober/onboard/build/ros2_trashbot_behavior/ros2_trashbot_behavior/task_orchestrator.py", line 1340, in main
+[task_orchestrator-6]     node.destroy_node()
+[task_orchestrator-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1691, in destroy_node
+[task_orchestrator-6]     self.destroy_service(self._services[0])
+[task_orchestrator-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1615, in destroy_service
+[map_recorder-4]     self.__node.destroy_when_not_in_use()
+[map_recorder-4] KeyboardInterrupt
+[waypoint_manager-3] Traceback (most recent call last):
+[waypoint_manager-3]   File "/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager", line 33, in <module>
+[waypoint_manager-3]     sys.exit(load_entry_point('ros2-trashbot-nav', 'console_scripts', 'waypoint_manager')())
+[waypoint_manager-3]   File "/root/rober/onboard/build/ros2_trashbot_nav/ros2_trashbot_nav/waypoint_manager.py", line 275, in main
+[waypoint_manager-3]     node.destroy_node()
+[waypoint_manager-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1696, in destroy_node
+[task_orchestrator-6]     service.destroy()
+[task_orchestrator-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/service.py", line 93, in destroy
+[task_orchestrator-6]     self.__service.destroy_when_not_in_use()
+[task_orchestrator-6] KeyboardInterrupt
+[waypoint_manager-3]     self.__node.destroy_when_not_in_use()
+[waypoint_manager-3] KeyboardInterrupt
+[lidar_driver-1] Traceback (most recent call last):
+[lidar_driver-1]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 296, in main
+[lidar_driver-1]     rclpy.spin(node)
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 229, in spin
+[lidar_driver-1]     executor.spin_once()
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 808, in spin_once
+[lidar_driver-1]     self._spin_once_impl(timeout_sec)
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 803, in _spin_once_impl
+[lidar_driver-1]     handler()
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 256, in __call__
+[lidar_driver-1]     self._execute_coroutine_step(self._handler)
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 272, in _execute_coroutine_step
+[lidar_driver-1]     result = coro.send(None)
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 488, in handler
+[lidar_driver-1]     await call_coroutine(entity, arg)
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 396, in _execute_timer
+[lidar_driver-1]     await await_or_execute(tmr.callback)
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 110, in await_or_execute
+[lidar_driver-1]     return callback(*args)
+[lidar_driver-1]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 248, in _tick
+[lidar_driver-1]     self._publish_packet(packet)
+[lidar_driver-1]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 274, in _publish_packet
+[lidar_driver-1]     msg.header.stamp = self.get_clock().now().to_msg()
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/clock.py", line 147, in now
+[lidar_driver-1]     return Time(nanoseconds=rcl_time.nanoseconds, clock_type=self.clock_type)
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/time.py", line 29, in __init__
+[lidar_driver-1]     if not isinstance(clock_type, _rclpy.ClockType):
+[lidar_driver-1] KeyboardInterrupt
+[lidar_driver-1] 
+[lidar_driver-1] During handling of the above exception, another exception occurred:
+[lidar_driver-1] 
+[lidar_driver-1] Traceback (most recent call last):
+[lidar_driver-1]   File "/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver", line 33, in <module>
+[lidar_driver-1]     sys.exit(load_entry_point('ros2-trashbot-hardware', 'console_scripts', 'lidar_driver')())
+[lidar_driver-1]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 298, in main
+[lidar_driver-1]     node.destroy_node()
+[lidar_driver-1]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 291, in destroy_node
+[lidar_driver-1]     return super().destroy_node()
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1691, in destroy_node
+[lidar_driver-1]     self.destroy_service(self._services[0])
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1615, in destroy_service
+[lidar_driver-1]     service.destroy()
+[lidar_driver-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/service.py", line 93, in destroy
+[lidar_driver-1]     self.__service.destroy_when_not_in_use()
+[lidar_driver-1] KeyboardInterrupt
+[ERROR] [waypoint_manager-3]: process has died [pid 27453, exit code -2, cmd '/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_89rpbsdt'].
+[ERROR] [map_recorder-4]: process has died [pid 27455, exit code -2, cmd '/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_33ccrand'].
+[ERROR] [lidar_driver-1]: process has died [pid 27449, exit code -2, cmd '/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -r __node:=lidar_driver --params-file /tmp/launch_params_buvvcovz'].
+[ERROR] [camera_publisher-5]: process has died [pid 27457, exit code -2, cmd '/root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher --ros-args -r __node:=camera_publisher --params-file /tmp/launch_params_soilk5t5'].
+[ERROR] [task_orchestrator-6]: process has died [pid 27461, exit code -2, cmd '/root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_f6r5bynx'].

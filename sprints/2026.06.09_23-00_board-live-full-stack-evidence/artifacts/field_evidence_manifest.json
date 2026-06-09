@@ -1,0 +1,110 @@
+{
+  "artifact_health": {
+    "blocked_artifacts": [],
+    "blocked_count": 0,
+    "empty_count": 0,
+    "missing_artifacts": [
+      "map_yaml",
+      "route_csv",
+      "keyframes",
+      "replay_jsonl"
+    ],
+    "missing_count": 4,
+    "present_artifacts": [
+      "rosbag"
+    ],
+    "present_count": 1,
+    "required_count": 5,
+    "status": "missing",
+    "summary": "missing_required_artifacts"
+  },
+  "artifact_root": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run",
+  "artifact_status": "missing",
+  "artifacts": {
+    "keyframes": {
+      "mtime_utc": null,
+      "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/keyframes",
+      "present": false,
+      "reason": "missing",
+      "required": true,
+      "sha256": null,
+      "size_bytes": 0
+    },
+    "map_yaml": {
+      "mtime_utc": null,
+      "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/map.yaml",
+      "present": false,
+      "reason": "missing",
+      "required": true,
+      "sha256": null,
+      "size_bytes": 0
+    },
+    "replay_jsonl": {
+      "mtime_utc": null,
+      "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/replay.jsonl",
+      "present": false,
+      "reason": "missing",
+      "required": true,
+      "sha256": null,
+      "size_bytes": 0
+    },
+    "rosbag": {
+      "file_count": 1,
+      "mtime_utc": "2026-06-09T15:09:34+00:00",
+      "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/route_bag/route_bag_0.db3",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "d8e77cefba0611cb664690f560bf8104e1fcac7c458af98b30d9d7b07d3b073e",
+      "size_bytes": 24576
+    },
+    "route_csv": {
+      "mtime_utc": null,
+      "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/route.csv",
+      "present": false,
+      "reason": "missing",
+      "required": true,
+      "sha256": null,
+      "size_bytes": 0
+    }
+  },
+  "blocked_reason": "missing_required_artifact",
+  "delivery_success": false,
+  "gate_pass": false,
+  "generated_at": "2026-06-09T15:09:53+00:00",
+  "input_manifest": {
+    "blocked_reason": null,
+    "dangerous_true_fields": [],
+    "gate_pass": null,
+    "path": null,
+    "present": false,
+    "safe_for_reuse": true,
+    "schema": null,
+    "status": "not_found"
+  },
+  "manifest_gate": {
+    "blocked_reason": "missing_required_artifact",
+    "gate_pass": false,
+    "schema": "trashbot.field_evidence_manifest.v1",
+    "source": "local_fixture",
+    "status": "blocked_not_proven"
+  },
+  "mode": "local",
+  "not_proven": true,
+  "preflight": {
+    "blocked_reason": "blocked_ros2_cli_missing",
+    "dry_run": false,
+    "mode": "ssh",
+    "read_ok": true,
+    "schema": "trashbot.board_field_evidence_preflight.v1",
+    "status": "blocked_ros2_cli_missing"
+  },
+  "preflight_json": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json",
+  "preflight_status": "blocked_ros2_cli_missing",
+  "primary_actions_enabled": false,
+  "run_id": "field_evidence_20260609T150953Z",
+  "safe_to_control": false,
+  "schema": "trashbot.field_evidence_manifest.v1",
+  "source": "local_fixture",
+  "status": "blocked_artifacts_missing"
+}

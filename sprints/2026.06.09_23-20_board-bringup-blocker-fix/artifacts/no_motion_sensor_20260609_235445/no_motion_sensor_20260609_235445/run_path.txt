@@ -1,0 +1,1 @@
+/root/.ros/trashbot_live_runs/no_motion_sensor_20260609_235445

@@ -1,0 +1,1 @@
+wc: /root/.ros/trashbot_live_runs/no_motion_sensor_20260609_235445/route_data/route.csv: No such file or directory

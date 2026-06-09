@@ -17,5 +17,9 @@ setup(
     maintainer_email='trashbot@local',
     description='Vision support package for trashbot; no default detector is shipped in the MVP',
     license='MIT',
-    entry_points={'console_scripts': []},
+    entry_points={
+        'console_scripts': [
+            'camera_publisher = ros2_trashbot_vision.camera_publisher:main',
+        ],
+    },
 )

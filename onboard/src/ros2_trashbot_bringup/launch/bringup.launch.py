@@ -1,16 +1,21 @@
-"""Main bringup launch - starts all trashbot nodes together."""
+"""主 bringup launch：集中启动 trashbot 基础节点。"""
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch.conditions import IfCondition
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
-    # Arguments
+    # 基础参数
     use_sim_time_arg = DeclareLaunchArgument(
         'use_sim_time', default_value='false',
         description='Use simulation clock')
+
+    base_enabled_arg = DeclareLaunchArgument(
+        'base_enabled', default_value='true',
+        description='Start the ESP32 bridge; disable for sensor-only smoke to avoid /dev/ttyS5 conflicts')
 
     serial_port_arg = DeclareLaunchArgument(
         'serial_port', default_value='/dev/ttyUSB0',
@@ -32,9 +37,105 @@ def generate_launch_description():
         'max_wheel_speed_mps', default_value='1.3',
         description='Wheel speed used to normalize T=1 speed commands')
 
+    lidar_enabled_arg = DeclareLaunchArgument(
+        'lidar_enabled', default_value='false',
+        description='Start the LiDAR driver for /scan smoke when the serial device is available')
+
+    lidar_serial_port_arg = DeclareLaunchArgument(
+        'lidar_serial_port', default_value='/dev/ttyACM0',
+        description='LiDAR serial port used by ros2_trashbot_hardware/lidar_driver')
+
+    lidar_serial_baudrate_arg = DeclareLaunchArgument(
+        'lidar_serial_baudrate', default_value='150000',
+        description='LiDAR serial baudrate used by ros2_trashbot_hardware/lidar_driver')
+
+    lidar_frame_id_arg = DeclareLaunchArgument(
+        'lidar_frame_id', default_value='laser_frame',
+        description='frame_id attached to LiDAR LaserScan messages')
+
+    lidar_scan_topic_arg = DeclareLaunchArgument(
+        'lidar_scan_topic', default_value='/scan',
+        description='Topic published by the LiDAR driver')
+
+    lidar_raw_packet_topic_arg = DeclareLaunchArgument(
+        'lidar_raw_packet_topic', default_value='/lidar/raw_packet',
+        description='Optional LiDAR raw packet topic for packet-level debugging')
+
+    lidar_publish_raw_packets_arg = DeclareLaunchArgument(
+        'lidar_publish_raw_packets', default_value='false',
+        description='Publish raw LiDAR packets when packet-level debugging is needed')
+
+    lidar_mock_packets_arg = DeclareLaunchArgument(
+        'lidar_mock_packets', default_value='',
+        description='Optional hex packet replay input; keeps LiDAR driver in mock mode')
+
+    lidar_mock_scan_arg = DeclareLaunchArgument(
+        'lidar_mock_scan', default_value='false',
+        description='Publish deterministic mock LiDAR scans without opening a serial port')
+
+    static_laser_tf_enabled_arg = DeclareLaunchArgument(
+        'static_laser_tf_enabled', default_value='false',
+        description='Publish a smoke-only base_link -> laser_frame static TF; not a mechanical calibration')
+
+    base_frame_id_arg = DeclareLaunchArgument(
+        'base_frame_id', default_value='base_link',
+        description='Parent frame used by the smoke-only static laser TF')
+
+    laser_tf_x_arg = DeclareLaunchArgument(
+        'laser_tf_x', default_value='0.0',
+        description='Smoke-only static TF x offset from base_frame_id to lidar_frame_id')
+
+    laser_tf_y_arg = DeclareLaunchArgument(
+        'laser_tf_y', default_value='0.0',
+        description='Smoke-only static TF y offset from base_frame_id to lidar_frame_id')
+
+    laser_tf_z_arg = DeclareLaunchArgument(
+        'laser_tf_z', default_value='0.0',
+        description='Smoke-only static TF z offset from base_frame_id to lidar_frame_id')
+
+    laser_tf_roll_arg = DeclareLaunchArgument(
+        'laser_tf_roll', default_value='0.0',
+        description='Smoke-only static TF roll from base_frame_id to lidar_frame_id')
+
+    laser_tf_pitch_arg = DeclareLaunchArgument(
+        'laser_tf_pitch', default_value='0.0',
+        description='Smoke-only static TF pitch from base_frame_id to lidar_frame_id')
+
+    laser_tf_yaw_arg = DeclareLaunchArgument(
+        'laser_tf_yaw', default_value='0.0',
+        description='Smoke-only static TF yaw from base_frame_id to lidar_frame_id')
+
     waypoint_file_arg = DeclareLaunchArgument(
         'waypoint_file', default_value='~/.ros/trashbot_maps/waypoints.yaml',
         description='Path to saved waypoint YAML')
+
+    camera_enabled_arg = DeclareLaunchArgument(
+        'camera_enabled', default_value='false',
+        description='Start the real camera publisher for /camera/image_raw')
+
+    camera_device_arg = DeclareLaunchArgument(
+        'camera_device', default_value='/dev/video0',
+        description='VideoCapture device path or index for the real camera publisher')
+
+    camera_topic_arg = DeclareLaunchArgument(
+        'camera_topic', default_value='/camera/image_raw',
+        description='Topic published by the real camera publisher')
+
+    camera_frame_id_arg = DeclareLaunchArgument(
+        'camera_frame_id', default_value='camera',
+        description='frame_id attached to published camera images')
+
+    camera_width_arg = DeclareLaunchArgument(
+        'camera_width', default_value='640',
+        description='Requested camera frame width passed to VideoCapture')
+
+    camera_height_arg = DeclareLaunchArgument(
+        'camera_height', default_value='480',
+        description='Requested camera frame height passed to VideoCapture')
+
+    camera_fps_arg = DeclareLaunchArgument(
+        'camera_fps', default_value='15.0',
+        description='Requested camera publish rate in frames per second')
 
     delivery_mode_arg = DeclareLaunchArgument(
         'delivery_mode', default_value='dry_run',
@@ -133,12 +234,37 @@ def generate_launch_description():
         description='Remote bridge HTTP request timeout in seconds')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
+    base_enabled = LaunchConfiguration('base_enabled')
     serial_port = LaunchConfiguration('serial_port')
     serial_baudrate = LaunchConfiguration('serial_baudrate')
     command_mode = LaunchConfiguration('command_mode')
     track_width_m = LaunchConfiguration('track_width_m')
     max_wheel_speed_mps = LaunchConfiguration('max_wheel_speed_mps')
+    lidar_enabled = LaunchConfiguration('lidar_enabled')
+    lidar_serial_port = LaunchConfiguration('lidar_serial_port')
+    lidar_serial_baudrate = LaunchConfiguration('lidar_serial_baudrate')
+    lidar_frame_id = LaunchConfiguration('lidar_frame_id')
+    lidar_scan_topic = LaunchConfiguration('lidar_scan_topic')
+    lidar_raw_packet_topic = LaunchConfiguration('lidar_raw_packet_topic')
+    lidar_publish_raw_packets = LaunchConfiguration('lidar_publish_raw_packets')
+    lidar_mock_packets = LaunchConfiguration('lidar_mock_packets')
+    lidar_mock_scan = LaunchConfiguration('lidar_mock_scan')
+    static_laser_tf_enabled = LaunchConfiguration('static_laser_tf_enabled')
+    base_frame_id = LaunchConfiguration('base_frame_id')
+    laser_tf_x = LaunchConfiguration('laser_tf_x')
+    laser_tf_y = LaunchConfiguration('laser_tf_y')
+    laser_tf_z = LaunchConfiguration('laser_tf_z')
+    laser_tf_roll = LaunchConfiguration('laser_tf_roll')
+    laser_tf_pitch = LaunchConfiguration('laser_tf_pitch')
+    laser_tf_yaw = LaunchConfiguration('laser_tf_yaw')
     waypoint_file = LaunchConfiguration('waypoint_file')
+    camera_enabled = LaunchConfiguration('camera_enabled')
+    camera_device = LaunchConfiguration('camera_device')
+    camera_topic = LaunchConfiguration('camera_topic')
+    camera_frame_id = LaunchConfiguration('camera_frame_id')
+    camera_width = LaunchConfiguration('camera_width')
+    camera_height = LaunchConfiguration('camera_height')
+    camera_fps = LaunchConfiguration('camera_fps')
     delivery_mode = LaunchConfiguration('delivery_mode')
     delivery_target = LaunchConfiguration('delivery_target')
     return_target = LaunchConfiguration('return_target')
@@ -166,12 +292,13 @@ def generate_launch_description():
     remote_bridge_condition = IfCondition(remote_bridge)
 
     nodes = [
-        # --- Hardware Bridge (ESP32 <-> ROS2) ---
+        # --- 硬件桥（ESP32 <-> ROS2） ---
         Node(
             package='ros2_trashbot_hardware',
             executable='esp32_bridge',
             name='esp32_bridge',
             output='screen',
+            condition=IfCondition(base_enabled),
             parameters=[{
                 'use_sim_time': use_sim_time,
                 'serial_port': serial_port,
@@ -182,7 +309,45 @@ def generate_launch_description():
             }],
         ),
 
-        # --- Navigation ---
+        # LiDAR 默认关闭，避免开发机或未接设备环境把 sensor smoke 失败误判成 bringup 回归。
+        Node(
+            package='ros2_trashbot_hardware',
+            executable='lidar_driver',
+            name='lidar_driver',
+            output='screen',
+            condition=IfCondition(lidar_enabled),
+            parameters=[{
+                'serial_port': lidar_serial_port,
+                'serial_baudrate': lidar_serial_baudrate,
+                'frame_id': lidar_frame_id,
+                'scan_topic': lidar_scan_topic,
+                'raw_packet_topic': lidar_raw_packet_topic,
+                'publish_raw_packets': lidar_publish_raw_packets,
+                'mock_packets': lidar_mock_packets,
+                'mock_scan': lidar_mock_scan,
+            }],
+        ),
+
+        # 该 TF 只用于 smoke 证明 topic/拓扑链路，不代表机械安装标定已完成。
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='static_laser_tf',
+            output='screen',
+            condition=IfCondition(static_laser_tf_enabled),
+            arguments=[
+                laser_tf_x,
+                laser_tf_y,
+                laser_tf_z,
+                laser_tf_yaw,
+                laser_tf_pitch,
+                laser_tf_roll,
+                base_frame_id,
+                lidar_frame_id,
+            ],
+        ),
+
+        # --- 导航 ---
         Node(
             package='ros2_trashbot_nav',
             executable='waypoint_manager',
@@ -204,7 +369,24 @@ def generate_launch_description():
             }],
         ),
 
-        # --- Behavior ---
+        # 真实相机只在显式启用时拉起，避免开发机或无设备环境默认失败。
+        Node(
+            package='ros2_trashbot_vision',
+            executable='camera_publisher',
+            name='camera_publisher',
+            output='screen',
+            condition=IfCondition(camera_enabled),
+            parameters=[{
+                'device': camera_device,
+                'topic': camera_topic,
+                'frame_id': camera_frame_id,
+                'width': camera_width,
+                'height': camera_height,
+                'fps': camera_fps,
+            }],
+        ),
+
+        # --- 行为 ---
         Node(
             package='ros2_trashbot_behavior',
             executable='task_orchestrator',
@@ -218,7 +400,8 @@ def generate_launch_description():
                 'return_target': return_target,
                 'elevator_assist_enabled': elevator_assist_enabled,
                 'elevator_assist_mode': elevator_assist_mode,
-                'elevator_assist_target_floor': elevator_assist_target_floor,
+                # 目标楼层必须按 string 传给 task_orchestrator，避免 launch YAML 推断成整数。
+                'elevator_assist_target_floor': ParameterValue(elevator_assist_target_floor, value_type=str),
                 'elevator_assist_dry_run_failure': elevator_assist_dry_run_failure,
                 'task_record_dir': task_record_dir,
                 'dropoff_timeout_sec': dropoff_timeout_sec,
@@ -266,12 +449,37 @@ def generate_launch_description():
 
     return LaunchDescription([
         use_sim_time_arg,
+        base_enabled_arg,
         serial_port_arg,
         serial_baudrate_arg,
         command_mode_arg,
         track_width_arg,
         max_wheel_speed_arg,
+        lidar_enabled_arg,
+        lidar_serial_port_arg,
+        lidar_serial_baudrate_arg,
+        lidar_frame_id_arg,
+        lidar_scan_topic_arg,
+        lidar_raw_packet_topic_arg,
+        lidar_publish_raw_packets_arg,
+        lidar_mock_packets_arg,
+        lidar_mock_scan_arg,
+        static_laser_tf_enabled_arg,
+        base_frame_id_arg,
+        laser_tf_x_arg,
+        laser_tf_y_arg,
+        laser_tf_z_arg,
+        laser_tf_roll_arg,
+        laser_tf_pitch_arg,
+        laser_tf_yaw_arg,
         waypoint_file_arg,
+        camera_enabled_arg,
+        camera_device_arg,
+        camera_topic_arg,
+        camera_frame_id_arg,
+        camera_width_arg,
+        camera_height_arg,
+        camera_fps_arg,
         delivery_mode_arg,
         delivery_target_arg,
         return_target_arg,

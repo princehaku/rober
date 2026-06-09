@@ -1,0 +1,49 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-09-23-07-55-900344-op-z3-b6.home-13606
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [esp32_bridge-1]: process started with pid [13608]
+[INFO] [lidar_driver-2]: process started with pid [13610]
+[INFO] [static_transform_publisher-3]: process started with pid [13612]
+[INFO] [waypoint_manager-4]: process started with pid [13614]
+[INFO] [map_recorder-5]: process started with pid [13616]
+[INFO] [task_orchestrator-6]: process started with pid [13618]
+[static_transform_publisher-3] [INFO] [1781017676.559714300] [base_link_to_laser_frame]: Spinning until stopped - publishing transform
+[static_transform_publisher-3] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-3] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-3] from 'base_link' to 'laser_frame'
+[waypoint_manager-4] Traceback (most recent call last):
+[waypoint_manager-4]   File "/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager", line 33, in <module>
+[waypoint_manager-4]     sys.exit(load_entry_point('ros2-trashbot-nav', 'console_scripts', 'waypoint_manager')())
+[waypoint_manager-4]   File "/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager", line 25, in importlib_load_entry_point
+[waypoint_manager-4]     return next(matches).load()
+[waypoint_manager-4]   File "/usr/lib/python3.10/importlib/metadata/__init__.py", line 171, in load
+[waypoint_manager-4]     module = import_module(match.group('module'))
+[waypoint_manager-4]   File "/usr/lib/python3.10/importlib/__init__.py", line 126, in import_module
+[waypoint_manager-4]     return _bootstrap._gcd_import(name[level:], package, level)
+[waypoint_manager-4]   File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+[waypoint_manager-4]   File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+[waypoint_manager-4]   File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+[waypoint_manager-4]   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+[waypoint_manager-4]   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+[waypoint_manager-4]   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+[waypoint_manager-4]   File "/root/rober/onboard/build/ros2_trashbot_nav/ros2_trashbot_nav/waypoint_manager.py", line 5, in <module>
+[waypoint_manager-4]     from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
+[waypoint_manager-4] ModuleNotFoundError: No module named 'nav2_simple_commander'
+[esp32_bridge-1] [INFO] [1781017678.516336403] [esp32_bridge]: Connected to WAVE ROVER ESP32 on /dev/ttyS5 @ 115200
+[ERROR] [waypoint_manager-4]: process has died [pid 13614, exit code 1, cmd '/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_ai3ph4yn'].
+[esp32_bridge-1] [INFO] [1781017678.702126815] [esp32_bridge]: ESP32Bridge ready: vendor WAVE ROVER UART protocol is one UTF-8 JSON object per newline; command_mode=speed; odom source=ROS-side command integration until measured wheel odometry is validated
+[task_orchestrator-6] Traceback (most recent call last):
+[task_orchestrator-6]   File "/root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator", line 33, in <module>
+[task_orchestrator-6]     sys.exit(load_entry_point('ros2-trashbot-behavior', 'console_scripts', 'task_orchestrator')())
+[task_orchestrator-6]   File "/root/rober/onboard/build/ros2_trashbot_behavior/ros2_trashbot_behavior/task_orchestrator.py", line 1332, in main
+[task_orchestrator-6]     node = TaskOrchestrator()
+[task_orchestrator-6]   File "/root/rober/onboard/build/ros2_trashbot_behavior/ros2_trashbot_behavior/task_orchestrator.py", line 69, in __init__
+[task_orchestrator-6]     self.declare_parameter("elevator_assist_target_floor", "1")
+[task_orchestrator-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 367, in declare_parameter
+[task_orchestrator-6]     return self.declare_parameters('', [args], ignore_override)[0]
+[task_orchestrator-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 493, in declare_parameters
+[task_orchestrator-6]     self._set_parameters(
+[task_orchestrator-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 738, in _set_parameters
+[task_orchestrator-6]     raise InvalidParameterTypeException(
+[task_orchestrator-6] rclpy.exceptions.InvalidParameterTypeException: Trying to set parameter 'elevator_assist_target_floor' to '1' of type 'INTEGER', expecting type 'STRING'
+[lidar_driver-2] [INFO] [1781017678.821579771] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000
+[ERROR] [task_orchestrator-6]: process has died [pid 13618, exit code 1, cmd '/root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_856x7avf'].

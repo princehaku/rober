@@ -1,0 +1,3 @@
+/trashbot/confirm_dropoff
+/trashbot/record_waypoint
+/trashbot/save_map

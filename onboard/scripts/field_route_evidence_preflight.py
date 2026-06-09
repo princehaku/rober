@@ -12,6 +12,7 @@ import json
 import os
 import platform
 import re
+import shlex
 import socket
 import subprocess
 import sys
@@ -30,6 +31,8 @@ REQUIRED_TOPICS = ["/scan", "/camera/image_raw", "/odom", "/tf", "/map"]
 SMOKE_TOPICS = ["/scan", "/odom", "/camera/image_raw"]
 SETUP_CANDIDATES = [
     "/opt/ros/humble/setup.bash",
+    "/root/rober/onboard/install/setup.bash",
+    "/root/rober/install/setup.bash",
     "/ws/install/setup.bash",
     "~/rober/onboard/install/setup.bash",
     "~/apps/rober/onboard/install/setup.bash",
@@ -83,6 +86,8 @@ def run_command(command: list[str], timeout_s: int) -> dict[str, Any]:
             "returncode": completed.returncode,
             "stdout": safe_text(completed.stdout),
             "stderr": safe_text(completed.stderr),
+            "_stdout_full": completed.stdout,
+            "_stderr_full": completed.stderr,
             "timed_out": False,
         }
     except subprocess.TimeoutExpired as exc:
@@ -91,6 +96,8 @@ def run_command(command: list[str], timeout_s: int) -> dict[str, Any]:
             "returncode": None,
             "stdout": safe_text(exc.stdout or ""),
             "stderr": safe_text(exc.stderr or ""),
+            "_stdout_full": exc.stdout or "",
+            "_stderr_full": exc.stderr or "",
             "timed_out": True,
         }
     except OSError as exc:
@@ -99,6 +106,8 @@ def run_command(command: list[str], timeout_s: int) -> dict[str, Any]:
             "returncode": None,
             "stdout": "",
             "stderr": safe_text(str(exc)),
+            "_stdout_full": "",
+            "_stderr_full": str(exc),
             "timed_out": False,
         }
 
@@ -106,6 +115,11 @@ def run_command(command: list[str], timeout_s: int) -> dict[str, Any]:
 def split_lines(text: str) -> list[str]:
     # ros2 输出通常是一行一个条目，先去空白再比较，减少格式差异误判。
     return [line.strip() for line in text.splitlines() if line.strip()]
+
+
+def result_stdout_lines(result: dict[str, Any]) -> list[str]:
+    # 逻辑判断必须看完整 stdout，不能基于已裁剪摘要做存在性判定。
+    return split_lines(str(result.get("_stdout_full", "")))
 
 
 def build_ssh_command(target: str, port: int, remote_command: str, timeout_s: int) -> list[str]:
@@ -123,6 +137,29 @@ def build_ssh_command(target: str, port: int, remote_command: str, timeout_s: in
         target,
         remote_command,
     ]
+
+
+def build_remote_ros_command(command: str) -> str:
+    # 远端 ros2 命令统一走 bash -lc 并 source ROS2 + 工作区，避免 SSH 非登录 shell 丢环境。
+    setup_candidates = " ".join(shlex.quote(candidate) for candidate in SETUP_CANDIDATES[1:])
+    script = f"""
+source /opt/ros/humble/setup.bash
+workspace_setup=""
+for candidate in {setup_candidates}; do
+    expanded="${{candidate/#\\~/$HOME}}"
+    if [ -f "$expanded" ]; then
+        source "$expanded"
+        workspace_setup="$expanded"
+        break
+    fi
+done
+if [ -z "$workspace_setup" ]; then
+    echo "No trashbot workspace setup.bash found" >&2
+    exit 12
+fi
+{command}
+""".strip()
+    return f"bash -lc {shlex.quote(script)}"
 
 
 def local_environment() -> dict[str, Any]:
@@ -193,7 +230,7 @@ def check_local_setup_candidates() -> dict[str, Any]:
 def check_remote_setup_candidates(args: argparse.Namespace) -> dict[str, Any]:
     # 远端检查只执行 test -f，不读取文件内容，避免泄露安装细节或凭证。
     results = []
-    for raw_path in SETUP_CANDIDATES:
+    for raw_path in SETUP_CANDIDATES[1:]:
         remote = f"test -f {raw_path}"
         result = run_command(build_ssh_command(args.ssh_target, args.ssh_port, remote, args.timeout_s), args.timeout_s + 2)
         results.append({"path": raw_path, "exists": result["returncode"] == 0, "result": result})
@@ -210,7 +247,7 @@ def check_local_ros2(args: argparse.Namespace) -> tuple[dict[str, Any], str | No
 def check_remote_ros2(args: argparse.Namespace) -> tuple[dict[str, Any], str | None]:
     # SSH 可达后再查 ros2，确保网络 blocker 和环境 blocker 能分层。
     result = run_command(
-        build_ssh_command(args.ssh_target, args.ssh_port, "command -v ros2", args.timeout_s),
+        build_ssh_command(args.ssh_target, args.ssh_port, build_remote_ros_command("command -v ros2"), args.timeout_s),
         args.timeout_s + 2,
     )
     ok = result["returncode"] == 0 and bool(result["stdout"])
@@ -220,11 +257,16 @@ def check_remote_ros2(args: argparse.Namespace) -> tuple[dict[str, Any], str | N
 def check_packages(args: argparse.Namespace, remote: bool) -> tuple[dict[str, Any], str | None]:
     # 包列表是能否进入 learn/fixed route 命令链的最小软件边界。
     if remote:
-        command = build_ssh_command(args.ssh_target, args.ssh_port, "ros2 pkg list", args.timeout_s)
+        command = build_ssh_command(
+            args.ssh_target,
+            args.ssh_port,
+            build_remote_ros_command("ros2 pkg list"),
+            args.timeout_s,
+        )
         result = run_command(command, args.timeout_s + 2)
     else:
         result = run_command(["ros2", "pkg", "list"], args.timeout_s)
-    found = set(split_lines(result["stdout"])) if result["returncode"] == 0 else set()
+    found = set(result_stdout_lines(result)) if result["returncode"] == 0 else set()
     missing = [pkg for pkg in REQUIRED_PACKAGES if pkg not in found]
     check = {"ok": result["returncode"] == 0 and not missing, "required": REQUIRED_PACKAGES, "missing": missing, "result": result}
     return check, (None if check["ok"] else "blocked_trashbot_packages_missing")
@@ -233,11 +275,16 @@ def check_packages(args: argparse.Namespace, remote: bool) -> tuple[dict[str, An
 def check_topics(args: argparse.Namespace, remote: bool) -> tuple[dict[str, Any], str | None]:
     # topic list 只证明当前 ROS graph 暴露了必要输入，不证明数据质量。
     if remote:
-        command = build_ssh_command(args.ssh_target, args.ssh_port, "ros2 topic list", args.timeout_s)
+        command = build_ssh_command(
+            args.ssh_target,
+            args.ssh_port,
+            build_remote_ros_command("ros2 topic list"),
+            args.timeout_s,
+        )
         result = run_command(command, args.timeout_s + 2)
     else:
         result = run_command(["ros2", "topic", "list"], args.timeout_s)
-    found = set(split_lines(result["stdout"])) if result["returncode"] == 0 else set()
+    found = set(result_stdout_lines(result)) if result["returncode"] == 0 else set()
     missing = [topic for topic in REQUIRED_TOPICS if topic not in found]
     check = {"ok": result["returncode"] == 0 and not missing, "required": REQUIRED_TOPICS, "missing": missing, "result": result}
     return check, (None if check["ok"] else "blocked_required_topics_missing")
@@ -249,7 +296,7 @@ def check_topic_smoke(args: argparse.Namespace, remote: bool) -> tuple[dict[str,
     for topic in SMOKE_TOPICS:
         local_command = ["ros2", "topic", "hz", topic, "--window", "2"]
         if remote:
-            remote_command = " ".join(local_command)
+            remote_command = build_remote_ros_command(" ".join(local_command))
             command = build_ssh_command(args.ssh_target, args.ssh_port, remote_command, args.timeout_s)
             result = run_command(command, args.timeout_s + 2)
         else:
@@ -258,7 +305,15 @@ def check_topic_smoke(args: argparse.Namespace, remote: bool) -> tuple[dict[str,
 
     tf_command = ["ros2", "topic", "echo", "--once", "/tf"]
     if remote:
-        result = run_command(build_ssh_command(args.ssh_target, args.ssh_port, " ".join(tf_command), args.timeout_s), args.timeout_s + 2)
+        result = run_command(
+            build_ssh_command(
+                args.ssh_target,
+                args.ssh_port,
+                build_remote_ros_command(" ".join(tf_command)),
+                args.timeout_s,
+            ),
+            args.timeout_s + 2,
+        )
     else:
         result = run_command(tf_command, args.timeout_s)
     results.append({"topic": "/tf", "kind": "echo_once", "ok": result["returncode"] == 0, "result": result})
@@ -365,14 +420,34 @@ def ssh_prefix(target: str, port: int | None) -> str:
     return "" if target == "local" else f"ssh -p {port} {target} "
 
 
+def remote_template_shell(command: str) -> str:
+    # 人工执行模板保持可读，同时显式列出主工作区和候选工作区回退顺序。
+    return (
+        'bash -lc "source /opt/ros/humble/setup.bash; '
+        'source /root/rober/onboard/install/setup.bash '
+        '|| source /root/rober/install/setup.bash '
+        '|| source /ws/install/setup.bash '
+        '|| source ~/rober/onboard/install/setup.bash '
+        '|| source ~/apps/rober/onboard/install/setup.bash; '
+        f'{command}"'
+    )
+
+
 def topic_smoke_templates(target: str, port: int | None = None) -> list[dict[str, str]]:
     # 模板写入 JSON，让 SSH 恢复后的现场动作不依赖聊天记录。
     prefix = ssh_prefix(target, port)
+    if target == "local":
+        return [
+            {"topic": "/scan", "command": "ros2 topic hz /scan --window 2"},
+            {"topic": "/odom", "command": "ros2 topic hz /odom --window 2"},
+            {"topic": "/camera/image_raw", "command": "ros2 topic hz /camera/image_raw --window 2"},
+            {"topic": "/tf", "command": "ros2 topic echo --once /tf"},
+        ]
     return [
-        {"topic": "/scan", "command": f"{prefix}ros2 topic hz /scan --window 2"},
-        {"topic": "/odom", "command": f"{prefix}ros2 topic hz /odom --window 2"},
-        {"topic": "/camera/image_raw", "command": f"{prefix}ros2 topic hz /camera/image_raw --window 2"},
-        {"topic": "/tf", "command": f"{prefix}ros2 topic echo --once /tf"},
+        {"topic": "/scan", "command": f"{prefix}{remote_template_shell('ros2 topic hz /scan --window 2')}"},
+        {"topic": "/odom", "command": f"{prefix}{remote_template_shell('ros2 topic hz /odom --window 2')}"},
+        {"topic": "/camera/image_raw", "command": f"{prefix}{remote_template_shell('ros2 topic hz /camera/image_raw --window 2')}"},
+        {"topic": "/tf", "command": f"{prefix}{remote_template_shell('ros2 topic echo --once /tf')}"},
     ]
 
 
@@ -388,32 +463,52 @@ def learning_command_templates(target: str, port: int | None = None) -> list[dic
         {
             "name": "learn_launch_route_record",
             "command": (
-                f"{prefix}ros2 launch ros2_trashbot_bringup learn.launch.py "
-                f"route_recorder:=true route_output_dir:={out_dir}/route_data route_id:=board_field_route"
+                (
+                    "ros2 launch ros2_trashbot_bringup learn.launch.py "
+                    f"route_recorder:=true route_output_dir:={out_dir}/route_data route_id:=board_field_route"
+                )
+                if target == "local"
+                else f"{prefix}{remote_template_shell('ros2 launch ros2_trashbot_bringup learn.launch.py ' + 'route_recorder:=true route_output_dir:=' + out_dir + '/route_data route_id:=board_field_route')}"
             ),
         },
         {
             "name": "save_map",
-            "command": f"{prefix}ros2 service call /trashbot/save_map std_srvs/srv/Trigger",
+            "command": (
+                "ros2 service call /trashbot/save_map std_srvs/srv/Trigger"
+                if target == "local"
+                else f"{prefix}{remote_template_shell('ros2 service call /trashbot/save_map std_srvs/srv/Trigger')}"
+            ),
         },
         {
             "name": "route_csv_to_yaml",
             "command": (
-                f"{prefix}ros2 run ros2_trashbot_nav route_csv_to_yaml --ros-args "
-                f"-p input_csv:={out_dir}/route_data/route.csv -p output_yaml:={out_dir}/route_data/fixed_route.yaml"
+                (
+                    "ros2 run ros2_trashbot_nav route_csv_to_yaml --ros-args "
+                    f"-p input_csv:={out_dir}/route_data/route.csv -p output_yaml:={out_dir}/route_data/fixed_route.yaml"
+                )
+                if target == "local"
+                else f"{prefix}{remote_template_shell('ros2 run ros2_trashbot_nav route_csv_to_yaml --ros-args ' + '-p input_csv:=' + out_dir + '/route_data/route.csv -p output_yaml:=' + out_dir + '/route_data/fixed_route.yaml')}"
             ),
         },
         {
             "name": "fixed_route_autonomy_dry_run",
             "command": (
-                f"{prefix}ros2 run ros2_trashbot_nav fixed_route_autonomy --ros-args "
-                f"-p route_file:={out_dir}/route_data/fixed_route.yaml -p keyframe_dir:={out_dir}/route_data/keyframes "
-                "-p dry_run:=true -p enable_visual_gate:=false"
+                (
+                    "ros2 run ros2_trashbot_nav fixed_route_autonomy --ros-args "
+                    f"-p route_file:={out_dir}/route_data/fixed_route.yaml -p keyframe_dir:={out_dir}/route_data/keyframes "
+                    "-p dry_run:=true -p enable_visual_gate:=false"
+                )
+                if target == "local"
+                else f"{prefix}{remote_template_shell('ros2 run ros2_trashbot_nav fixed_route_autonomy --ros-args ' + '-p route_file:=' + out_dir + '/route_data/fixed_route.yaml -p keyframe_dir:=' + out_dir + '/route_data/keyframes -p dry_run:=true -p enable_visual_gate:=false')}"
             ),
         },
         {
             "name": "optional_rosbag_record",
-            "command": f"{prefix}ros2 bag record -o {out_dir}/route_bag /scan /camera/image_raw /odom /tf /map",
+            "command": (
+                f"ros2 bag record -o {out_dir}/route_bag /scan /camera/image_raw /odom /tf /map"
+                if target == "local"
+                else f"{prefix}{remote_template_shell('ros2 bag record -o ' + out_dir + '/route_bag /scan /camera/image_raw /odom /tf /map')}"
+            ),
         },
     ]
 
@@ -476,7 +571,23 @@ def build_packet(args: argparse.Namespace) -> dict[str, Any]:
 def write_packet(packet: dict[str, Any], output: Path) -> None:
     # 父目录由工具创建，现场只需要指定目标文件即可稳定落盘。
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(packet, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    output.write_text(
+        json.dumps(strip_private_fields(packet), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def strip_private_fields(value: Any) -> Any:
+    # 内部完整 stdout/stderr 只供本次进程判断，不写进 artifact，避免 JSON 过大。
+    if isinstance(value, dict):
+        return {
+            key: strip_private_fields(item)
+            for key, item in value.items()
+            if not key.startswith("_")
+        }
+    if isinstance(value, list):
+        return [strip_private_fields(item) for item in value]
+    return value
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

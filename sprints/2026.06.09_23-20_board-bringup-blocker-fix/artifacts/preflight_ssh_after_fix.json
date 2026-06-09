@@ -1,0 +1,311 @@
+{
+  "blocked_reason": "blocked_required_topics_missing",
+  "checks": {
+    "environment": {
+      "cwd": "/Users/m1/apps/rober",
+      "hostname": "HAKU-M1-PRO.local",
+      "ok": true,
+      "platform": "macOS-15.7.4-arm64-arm-64bit-Mach-O",
+      "python": "3.13.5",
+      "time_utc": "2026-06-09T15:33:29+00:00"
+    },
+    "ros2_cli": {
+      "ok": true,
+      "result": {
+        "command": [
+          "ssh",
+          "-o",
+          "ConnectTimeout=8",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "StrictHostKeyChecking=accept-new",
+          "-p",
+          "37878",
+          "root@192.168.1.11",
+          "bash -lc 'source /opt/ros/humble/setup.bash\nworkspace_setup=\"\"\nfor candidate in /root/rober/onboard/install/setup.bash /root/rober/install/setup.bash /ws/install/setup.bash '\"'\"'~/rober/onboard/install/setup.bash'\"'\"' '\"'\"'~/apps/rober/onbo\n<truncated 311 chars>"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "/opt/ros/humble/bin/ros2",
+        "timed_out": false
+      }
+    },
+    "setup_candidates": {
+      "candidates": [
+        {
+          "exists": true,
+          "path": "/root/rober/onboard/install/setup.bash",
+          "result": {
+            "command": [
+              "ssh",
+              "-o",
+              "ConnectTimeout=8",
+              "-o",
+              "BatchMode=yes",
+              "-o",
+              "StrictHostKeyChecking=accept-new",
+              "-p",
+              "37878",
+              "root@192.168.1.11",
+              "test -f /root/rober/onboard/install/setup.bash"
+            ],
+            "returncode": 0,
+            "stderr": "",
+            "stdout": "",
+            "timed_out": false
+          }
+        },
+        {
+          "exists": false,
+          "path": "/root/rober/install/setup.bash",
+          "result": {
+            "command": [
+              "ssh",
+              "-o",
+              "ConnectTimeout=8",
+              "-o",
+              "BatchMode=yes",
+              "-o",
+              "StrictHostKeyChecking=accept-new",
+              "-p",
+              "37878",
+              "root@192.168.1.11",
+              "test -f /root/rober/install/setup.bash"
+            ],
+            "returncode": 1,
+            "stderr": "",
+            "stdout": "",
+            "timed_out": false
+          }
+        },
+        {
+          "exists": false,
+          "path": "/ws/install/setup.bash",
+          "result": {
+            "command": [
+              "ssh",
+              "-o",
+              "ConnectTimeout=8",
+              "-o",
+              "BatchMode=yes",
+              "-o",
+              "StrictHostKeyChecking=accept-new",
+              "-p",
+              "37878",
+              "root@192.168.1.11",
+              "test -f /ws/install/setup.bash"
+            ],
+            "returncode": 1,
+            "stderr": "",
+            "stdout": "",
+            "timed_out": false
+          }
+        },
+        {
+          "exists": true,
+          "path": "~/rober/onboard/install/setup.bash",
+          "result": {
+            "command": [
+              "ssh",
+              "-o",
+              "ConnectTimeout=8",
+              "-o",
+              "BatchMode=yes",
+              "-o",
+              "StrictHostKeyChecking=accept-new",
+              "-p",
+              "37878",
+              "root@192.168.1.11",
+              "test -f ~/rober/onboard/install/setup.bash"
+            ],
+            "returncode": 0,
+            "stderr": "",
+            "stdout": "",
+            "timed_out": false
+          }
+        },
+        {
+          "exists": false,
+          "path": "~/apps/rober/onboard/install/setup.bash",
+          "result": {
+            "command": [
+              "ssh",
+              "-o",
+              "ConnectTimeout=8",
+              "-o",
+              "BatchMode=yes",
+              "-o",
+              "StrictHostKeyChecking=accept-new",
+              "-p",
+              "37878",
+              "root@192.168.1.11",
+              "test -f ~/apps/rober/onboard/install/setup.bash"
+            ],
+            "returncode": 1,
+            "stderr": "",
+            "stdout": "",
+            "timed_out": false
+          }
+        }
+      ],
+      "ok": true
+    },
+    "ssh_reachability": {
+      "ok": true,
+      "port": 37878,
+      "result": {
+        "command": [
+          "ssh",
+          "-o",
+          "ConnectTimeout=8",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "StrictHostKeyChecking=accept-new",
+          "-p",
+          "37878",
+          "root@192.168.1.11",
+          "true"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "",
+        "timed_out": false
+      },
+      "target": "root@192.168.1.11"
+    },
+    "topics": {
+      "missing": [
+        "/scan",
+        "/camera/image_raw",
+        "/odom",
+        "/tf",
+        "/map"
+      ],
+      "ok": false,
+      "required": [
+        "/scan",
+        "/camera/image_raw",
+        "/odom",
+        "/tf",
+        "/map"
+      ],
+      "result": {
+        "command": [
+          "ssh",
+          "-o",
+          "ConnectTimeout=8",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "StrictHostKeyChecking=accept-new",
+          "-p",
+          "37878",
+          "root@192.168.1.11",
+          "bash -lc 'source /opt/ros/humble/setup.bash\nworkspace_setup=\"\"\nfor candidate in /root/rober/onboard/install/setup.bash /root/rober/install/setup.bash /ws/install/setup.bash '\"'\"'~/rober/onboard/install/setup.bash'\"'\"' '\"'\"'~/apps/rober/onbo\n<truncated 311 chars>"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "/parameter_events\n/rosout",
+        "timed_out": false
+      }
+    },
+    "trashbot_packages": {
+      "missing": [],
+      "ok": true,
+      "required": [
+        "ros2_trashbot_bringup",
+        "ros2_trashbot_nav",
+        "ros2_trashbot_hardware",
+        "ros2_trashbot_behavior"
+      ],
+      "result": {
+        "command": [
+          "ssh",
+          "-o",
+          "ConnectTimeout=8",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "StrictHostKeyChecking=accept-new",
+          "-p",
+          "37878",
+          "root@192.168.1.11",
+          "bash -lc 'source /opt/ros/humble/setup.bash\nworkspace_setup=\"\"\nfor candidate in /root/rober/onboard/install/setup.bash /root/rober/install/setup.bash /ws/install/setup.bash '\"'\"'~/rober/onboard/install/setup.bash'\"'\"' '\"'\"'~/apps/rober/onbo\n<truncated 309 chars>"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "action_msgs\nactionlib_msgs\nament_cmake\nament_cmake_auto\nament_cmake_copyright\nament_cmake_core\nament_cmake_cppcheck\nament_cmake_cpplint\nament_cmake_export_definitions\nament_cmake_export_dependencies\nament_cmake_export_include_directories\nament_cmake_export_interfaces\nament_cmake_export_libraries\nament_cmake_export_link_flags\nament_cmake_export_targets\nament_cmake_flake8\nament_cmake_gen_version_h\nament_cmake_gmock\nament_cmake_gtest\nament_cmake_include_directories\nament_cmake_libraries\nament_cmake_lint_cmake\nament_cmake_pep257\nament_cmake_pytest\nament_cmake_python\nament_cmake_ros\nament_cmake_target_dependencies\nament_cmake_test\nament_cmake_uncrustify\nament_cmake_version\nament_cmake_xmllint\nament_copyright\nament_cppcheck\nament_cpplint\nament_flake8\nament_index_cpp\nament_index_python\nament_lint\nament_lint_auto\nament_lint_cmake\nament_lint_common\nament_package\nament_pep257\nament_uncrustify\nament_xmllint\nbond\nbondcpp\nbuiltin_interfaces\nclass_loader\ncommon_interfaces\ncomposition_interfaces\nconsole_bridge_vendor\ndiagnostic_msgs\ndomain_coordinator\neigen3_cmake_module\nfastrtps_cmake_module\ngeometry2\ngeometry_msgs\nimage_transport\ninteractive_markers\nkdl_parser\nkeyboard_handler\nlaser_geometry\nlaunch\nlaunch_ros\nlaunch_testing\nlaunch_testing_ament_cmake\nlaunch_testing_ros\nlaunch_xml\nlaunch_yaml\nlibcurl_vendor\nlibstatistics_collector\nlibyaml_vendor\nlifecycle_msgs\nmap_msgs\nmessage_filters\nnav2_common\nnav2_map_server\nnav2_msgs\nnav2_util\nnav_msgs\norocos_kdl_vendor\nosrf_pycommon\npluginlib\npybind11_vendor\npython_cmake_module\npython_orocos_kdl_vendor\nrcl\nrcl_action\nrcl_interfaces\nrcl_lifecycle\nrc\n<truncated 1843 chars>",
+        "timed_out": false
+      }
+    }
+  },
+  "commands": {
+    "learning": [
+      {
+        "command": "RUN_ID=field_route_$(date +%Y%m%d_%H%M%S); OUT_DIR=$HOME/.ros/trashbot_runs/${RUN_ID}; mkdir -p $OUT_DIR",
+        "name": "prepare_output_dir"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 bash -lc \"source /opt/ros/humble/setup.bash; source /root/rober/onboard/install/setup.bash || source /root/rober/install/setup.bash || source /ws/install/setup.bash || source ~/rober/onboard/install/setup.bash || source ~/apps/rober/onboard/install/setup.bash; ros2 launch ros2_trashbot_bringup learn.launch.py route_recorder:=true route_output_dir:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data route_id:=board_field_route\"",
+        "name": "learn_launch_route_record"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 bash -lc \"source /opt/ros/humble/setup.bash; source /root/rober/onboard/install/setup.bash || source /root/rober/install/setup.bash || source /ws/install/setup.bash || source ~/rober/onboard/install/setup.bash || source ~/apps/rober/onboard/install/setup.bash; ros2 service call /trashbot/save_map std_srvs/srv/Trigger\"",
+        "name": "save_map"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 bash -lc \"source /opt/ros/humble/setup.bash; source /root/rober/onboard/install/setup.bash || source /root/rober/install/setup.bash || source /ws/install/setup.bash || source ~/rober/onboard/install/setup.bash || source ~/apps/rober/onboard/install/setup.bash; ros2 run ros2_trashbot_nav route_csv_to_yaml --ros-args -p input_csv:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/route.csv -p output_yaml:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/fixed_route.yaml\"",
+        "name": "route_csv_to_yaml"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 bash -lc \"source /opt/ros/humble/setup.bash; source /root/rober/onboard/install/setup.bash || source /root/rober/install/setup.bash || source /ws/install/setup.bash || source ~/rober/onboard/install/setup.bash || source ~/apps/rober/onboard/install/setup.bash; ros2 run ros2_trashbot_nav fixed_route_autonomy --ros-args -p route_file:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/fixed_route.yaml -p keyframe_dir:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/keyframes -p dry_run:=true -p enable_visual_gate:=false\"",
+        "name": "fixed_route_autonomy_dry_run"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 bash -lc \"source /opt/ros/humble/setup.bash; source /root/rober/onboard/install/setup.bash || source /root/rober/install/setup.bash || source /ws/install/setup.bash || source ~/rober/onboard/install/setup.bash || source ~/apps/rober/onboard/install/setup.bash; ros2 bag record -o $HOME/.ros/trashbot_runs/${RUN_ID}/route_bag /scan /camera/image_raw /odom /tf /map\"",
+        "name": "optional_rosbag_record"
+      }
+    ],
+    "topic_smoke": [
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 bash -lc \"source /opt/ros/humble/setup.bash; source /root/rober/onboard/install/setup.bash || source /root/rober/install/setup.bash || source /ws/install/setup.bash || source ~/rober/onboard/install/setup.bash || source ~/apps/rober/onboard/install/setup.bash; ros2 topic hz /scan --window 2\"",
+        "topic": "/scan"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 bash -lc \"source /opt/ros/humble/setup.bash; source /root/rober/onboard/install/setup.bash || source /root/rober/install/setup.bash || source /ws/install/setup.bash || source ~/rober/onboard/install/setup.bash || source ~/apps/rober/onboard/install/setup.bash; ros2 topic hz /odom --window 2\"",
+        "topic": "/odom"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 bash -lc \"source /opt/ros/humble/setup.bash; source /root/rober/onboard/install/setup.bash || source /root/rober/install/setup.bash || source /ws/install/setup.bash || source ~/rober/onboard/install/setup.bash || source ~/apps/rober/onboard/install/setup.bash; ros2 topic hz /camera/image_raw --window 2\"",
+        "topic": "/camera/image_raw"
+      },
+      {
+        "command": "ssh -p 37878 root@192.168.1.11 bash -lc \"source /opt/ros/humble/setup.bash; source /root/rober/onboard/install/setup.bash || source /root/rober/install/setup.bash || source /ws/install/setup.bash || source ~/rober/onboard/install/setup.bash || source ~/apps/rober/onboard/install/setup.bash; ros2 topic echo --once /tf\"",
+        "topic": "/tf"
+      }
+    ]
+  },
+  "delivery_success": false,
+  "dry_run": false,
+  "generated_at": "2026-06-09T15:33:44+00:00",
+  "mode": "ssh",
+  "next_required_evidence": [
+    "真实上位机 SSH 可达证据",
+    "ROS2 setup.bash 和 trashbot package 可用证据",
+    "/scan、/camera/image_raw、/odom、/tf、/map topic 与 smoke 输出",
+    "map.yaml、route.csv、keyframes、rosbag 或 replay JSONL"
+  ],
+  "not_proven": true,
+  "primary_actions_enabled": false,
+  "schema": "trashbot.board_field_evidence_preflight.v1",
+  "source": "software_preflight",
+  "status": "blocked_required_topics_missing",
+  "target": {
+    "mode": "ssh",
+    "ssh_port": 37878,
+    "ssh_target": "root@192.168.1.11",
+    "timeout_s": 8
+  }
+}

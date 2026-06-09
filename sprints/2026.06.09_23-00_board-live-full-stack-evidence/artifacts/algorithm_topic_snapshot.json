@@ -1,0 +1,95 @@
+{
+  "schema": "trashbot.algorithm_topic_snapshot.v1",
+  "captured_at_cst": "2026-06-09 23:03",
+  "host": {
+    "ssh_target": "root@192.168.1.11",
+    "ssh_port": 37878,
+    "hostname": "op-z3-b6.home",
+    "kernel": "Linux op-z3-b6.home 6.1.31-sun50iw9 #1.0.4 SMP Thu Jul 11 16:37:41 CST 2024 aarch64"
+  },
+  "ros_environment": {
+    "ros_distro": "humble",
+    "ros2_path": "/opt/ros/humble/bin/ros2",
+    "workspace_setup": "/root/rober/onboard/install/setup.bash",
+    "trashbot_packages_found": [
+      "ros2_trashbot_behavior",
+      "ros2_trashbot_bringup",
+      "ros2_trashbot_hardware",
+      "ros2_trashbot_nav",
+      "ros2_trashbot_vision"
+    ]
+  },
+  "ros_graph": {
+    "nodes": [],
+    "topics": [
+      {
+        "name": "/parameter_events",
+        "type": "rcl_interfaces/msg/ParameterEvent"
+      },
+      {
+        "name": "/rosout",
+        "type": "rcl_interfaces/msg/Log"
+      }
+    ],
+    "target_topics": {
+      "/scan": {
+        "status": "missing",
+        "evidence": "ros2 topic hz reported topic does not appear to be published; ros2 topic info returned Unknown topic"
+      },
+      "/camera/image_raw": {
+        "status": "missing",
+        "evidence": "ros2 topic hz reported topic does not appear to be published; ros2 topic info returned Unknown topic"
+      },
+      "/odom": {
+        "status": "missing",
+        "evidence": "ros2 topic hz reported topic does not appear to be published; ros2 topic info returned Unknown topic"
+      },
+      "/tf": {
+        "status": "missing",
+        "evidence": "ros2 topic echo --once could not determine type; ros2 topic info returned Unknown topic"
+      },
+      "/map": {
+        "status": "missing",
+        "evidence": "ros2 topic echo --once could not determine type; ros2 topic info returned Unknown topic"
+      }
+    }
+  },
+  "slam_and_map": {
+    "slam_toolbox_installed": true,
+    "nav2_map_server_installed": true,
+    "active_map_or_slam_services": [],
+    "existing_map_artifacts": [
+      "/root/rober/onboard/runtime/maps/trashbot_map.pgm"
+    ],
+    "learn_launch_entry": {
+      "package": "ros2_trashbot_bringup",
+      "launch_file": "learn.launch.py",
+      "show_args_succeeded": true,
+      "not_started_reason": "No live /scan, /odom, /tf, or camera topics were present; this run was limited to discovery and short rosbag evidence."
+    }
+  },
+  "rosbag": {
+    "remote_run_dir": "/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304",
+    "record_mode": "fallback_graph_only_no_sensor_topics",
+    "recorded_topics": [
+      "/rosout",
+      "/parameter_events"
+    ],
+    "missing_target_topics": [
+      "/scan",
+      "/camera/image_raw",
+      "/odom",
+      "/tf",
+      "/map"
+    ],
+    "metadata_path": "/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/route_bag/metadata.yaml",
+    "storage_identifier": "sqlite3",
+    "message_count": 7,
+    "topic_message_counts": {
+      "/rosout": 7,
+      "/parameter_events": 0
+    },
+    "timeout_exit_code": 124
+  },
+  "raw_log": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log"
+}

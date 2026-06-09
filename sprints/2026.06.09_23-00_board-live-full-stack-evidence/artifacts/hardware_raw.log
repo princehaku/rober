@@ -1,0 +1,171 @@
+# hardware_raw.log
+
+## local git status
+
+Command:
+git status --short --branch
+
+Output:
+## master...origin/master
+?? sprints/2026.06.09_23-00_board-live-full-stack-evidence/
+
+## vendor entrypoint
+
+Command:
+sed -n '1,220p' docs/vendor/VENDOR_INDEX.md
+
+Key output:
+- Main SBC: Orange Pi Zero 3, H618.
+- Mobile base: Waveshare WAVE ROVER.
+- Upper/lower controller link: UART, newline-delimited JSON.
+- Vendor Raspberry Pi default: `/dev/ttyAMA0` at `115200`.
+- ROS2 Orange Pi target may expose a different UART device; confirm on robot before setting launch defaults.
+- Key chassis commands include `T=1`, `T=13`, `T=130`, `T=131`, `T=142`, `T=143`.
+
+## vendor source checks
+
+Command:
+rg -n "1001|CMD_BASE_FEEDBACK|CMD_ROS_CTRL|CMD_SPEED_CTRL|Serial|115200|ttyAMA|serial0|ttyUSB|ttyACM" docs/vendor/waveshare_wave_rover/...
+
+Key output:
+- `json_cmd.h:1`: `#define FEEDBACK_BASE_INFO  1001`
+- `json_cmd.h:55`: `#define CMD_SPEED_CTRL 1`
+- `json_cmd.h:61`: `#define CMD_ROS_CTRL 13`
+- `json_cmd.h:102`: `#define CMD_BASE_FEEDBACK 130`
+- `base_ctrl.py:134`: `serial.Serial(uart_dev_set, buad_set, timeout=1)`
+- `base_ctrl.py:268`: `BaseController('/dev/ttyAMA0', 115200)`
+- `base_ctrl.py:271`: alternate comment `BaseController('/dev/serial0', 115200)`
+- `base_ctrl.py:24`: extra sensor probes `/dev/ttyUSB*` at `115200`
+- `base_ctrl.py:31`: lidar probes `/dev/ttyACM*` at `230400`
+
+## ssh preflight and devices
+
+Command:
+ssh -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new -p 37878 root@192.168.1.11 'hostname; date; uname -a; ls -l /dev/tty* /dev/video* 2>/dev/null | head -100'
+
+Output excerpt:
+op-z3-b6.home
+Tue Jun  9 10:58:42 PM CST 2026
+Linux op-z3-b6.home 6.1.31-sun50iw9 #1.0.4 SMP Thu Jul 11 16:37:41 CST 2024 aarch64 aarch64 aarch64 GNU/Linux
+crw-rw----  1 root     dialout 166,  0 Jun  8 13:17 /dev/ttyACM0
+crw-rw----  1 root     dialout   4, 65 Jun  8 13:17 /dev/ttyS1
+crw-rw----  1 root     dialout   4, 66 Jun  8 13:17 /dev/ttyS2
+crw-rw----  1 root     dialout   4, 67 Jun  8 13:17 /dev/ttyS3
+crw-rw----  1 root     dialout   4, 68 Jun  8 13:17 /dev/ttyS4
+crw-rw----  1 root     dialout   4, 69 Jun  8 13:17 /dev/ttyS5
+crw-rw----+ 1 root     video    81,  0 Jun  8 13:17 /dev/video0
+crw-rw----+ 1 root     video    81,  1 Jun  8 13:17 /dev/video1
+crw-rw----+ 1 root     video    81,  2 Jun  8 13:17 /dev/video2
+
+## ros2 source issue with default remote shell
+
+Command:
+ssh -p 37878 root@192.168.1.11 'source /opt/ros/humble/setup.bash; ...; ros2 topic list | sort; ros2 node list || true'
+
+Output:
+/opt/ros/humble/setup.bash:.:11: no such file or directory: /root/setup.sh
+/opt/ros/humble/local_setup.bash:.:11: no such file or directory: /root/local_setup.sh
+not found: "/root/local_setup.bash"
+zsh:1: command not found: ros2
+zsh:1: command not found: ros2
+
+Resolution:
+Use remote `bash -lc` for ROS2 commands because root's login shell is `/usr/bin/zsh`.
+
+## ros2 graph via bash
+
+Command:
+ssh -p 37878 root@192.168.1.11 'bash -lc '\''source /opt/ros/humble/setup.bash; [ -f ~/rober/onboard/install/setup.bash ] && source ~/rober/onboard/install/setup.bash; ros2 topic list -t | sort; timeout 5s ros2 node list || true'\'''
+
+Output:
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/rosout [rcl_interfaces/msg/Log]
+
+Command:
+ssh -p 37878 root@192.168.1.11 'bash -lc '\''source /opt/ros/humble/setup.bash; ...; timeout 5s ros2 topic echo /battery --once || true; timeout 5s ros2 topic echo /odom --once || true'\'''
+
+Output:
+WARNING: topic [/battery] does not appear to be published yet
+Could not determine the type for the passed topic
+WARNING: topic [/odom] does not appear to be published yet
+Could not determine the type for the passed topic
+
+Command:
+ssh -p 37878 root@192.168.1.11 'bash -lc '\''source /opt/ros/humble/setup.bash; ...; for t in /cmd_vel /battery /odom /imu/data /scan /camera/image_raw /tf; do timeout 4s ros2 topic info -v $t || true; done'\'''
+
+Output:
+Unknown topic '/cmd_vel'
+Unknown topic '/battery'
+Unknown topic '/odom'
+Unknown topic '/imu/data'
+Unknown topic '/scan'
+Unknown topic '/camera/image_raw'
+Unknown topic '/tf'
+
+## installed project packages and processes
+
+Command:
+ssh -p 37878 root@192.168.1.11 'bash -lc '\''source /opt/ros/humble/setup.bash; [ -f ~/rober/onboard/install/setup.bash ] && source ~/rober/onboard/install/setup.bash; ros2 pkg list | grep ros2_trashbot || true; ps -eo pid,comm,args | egrep "ros2|trashbot|lidar|camera|slam|nav2|serial|micro" | grep -v egrep || true'\'''
+
+Output:
+ros2_trashbot_behavior
+ros2_trashbot_bringup
+ros2_trashbot_hardware
+ros2_trashbot_interfaces
+ros2_trashbot_nav
+ros2_trashbot_vision
+1172 python3 python3 /root/rober/onboard/scripts/local_webrtc_camera_smoke.py --host 0.0.0.0 --port 8088 --video-source auto --width 640 --height 480 --fps 15
+1173 python3 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+
+## serial identity
+
+Command:
+ssh -p 37878 root@192.168.1.11 'bash -lc '\''ls -l /dev/serial/by-id /dev/serial/by-path 2>/dev/null || true; for d in /sys/class/tty/ttyACM0 /sys/class/tty/ttyS2 /sys/class/tty/ttyS5; do readlink -f "$d/device"; cat "$d/device/uevent" | head -20; done'\'''
+
+Output excerpt:
+/dev/serial/by-id:
+usb-STC_STC_USB_Serial-if00 -> ../../ttyACM0
+/sys/class/tty/ttyACM0 -> /sys/devices/platform/soc/5200400.usb/usb5/5-1/5-1:1.0
+DRIVER=cdc_acm
+PRODUCT=34bf/ff0a/100
+/sys/class/tty/ttyS2 -> /sys/devices/platform/soc/5000800.serial
+DRIVER=dw-apb-uart
+OF_ALIAS_0=serial2
+/sys/class/tty/ttyS5 -> /sys/devices/platform/soc/5001400.serial
+DRIVER=dw-apb-uart
+OF_ALIAS_0=serial5
+
+## upper robot API status
+
+Command:
+curl http://127.0.0.1:8787/
+
+Output excerpt:
+{"schema":"trashbot.upper_robot_api.v1","status":"ready",...,"safe_to_control":false,"delivery_success":false,"primary_actions_enabled":false,"robot_control_executed":false,"cloud_relay":false}
+
+Command:
+curl http://127.0.0.1:8787/api/base/status
+
+Output excerpt:
+{"schema":"trashbot.upper_robot_api.v1.base_status","port":"/dev/ttyS5","baudrate":115200,"pyserial_available":true,"write_control_available":true,...,"safe_to_control":false,"delivery_success":false,"primary_actions_enabled":false,"robot_control_executed":false}
+
+## fresh read-only base feedback
+
+Command:
+curl -X POST -H "Content-Type: application/json" -d '{"sample_count":3,"read_timeout_s":0.2,"read_window_s":1.2,"sample_interval_s":0.2}' http://127.0.0.1:8787/api/base/feedback-samples
+
+Output excerpt:
+{"schema":"trashbot.upper_robot_api.v1.base_feedback_samples_result","generated_at_ms":1781017230075,"port":"/dev/ttyS5","baudrate":115200,"request":{"method":"POST","endpoint":"/api/base/feedback-samples","command":{"T":130},"sample_count":3,"sample_interval_s":0.2,"read_timeout_s":0.2,"read_window_s":1.2},"completed_sample_count":3,"observed_feedback_types":[130,1001],"all_samples_observed_t1001":true,"feedback_ack":{"t1001_observed":true,"robot_ack_connected":false,"reason":"T=1001 observed in 3/3 samples; this is vendor feedback material, not project robot ACK or HIL proof"},"blocked_commands_not_sent":["T=1","T=13","T=131","cmd_vel","/api/base/manual"],"safe_to_control":false,"sends_commands":true,"sends_motion_commands":false,"robot_control_executed":false,"delivery_success":false,"hil_pass":false,"primary_actions_enabled":false}
+
+## motion smoke
+
+Decision: not executed.
+
+Blocking facts:
+- `/cmd_vel` unknown in ROS graph.
+- `/odom` unknown in ROS graph.
+- `/battery` unknown in ROS graph.
+- No ROS2 hardware bridge node active.
+- API and feedback artifacts remain fail-closed: `safe_to_control=false`, `primary_actions_enabled=false`, `robot_control_executed=false`.
+
+No `/cmd_vel`, no `/api/base/manual`, no direct `T=1`, and no direct `T=13` command was sent.

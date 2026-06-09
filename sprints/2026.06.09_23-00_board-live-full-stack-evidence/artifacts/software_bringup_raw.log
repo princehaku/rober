@@ -1,0 +1,1574 @@
+## command: git status --short --branch
+## master...origin/master
+?? sprints/2026.06.09_23-00_board-live-full-stack-evidence/
+
+## command: remote show-args bringup + learn
+Arguments (pass arguments as '<name>:=<value>'):
+
+    'use_sim_time':
+        Use simulation clock
+        (default: 'false')
+
+    'serial_port':
+        UART device for the WAVE ROVER ESP32 controller
+        (default: '/dev/ttyUSB0')
+
+    'serial_baudrate':
+        UART baud rate for the WAVE ROVER ESP32 controller
+        (default: '115200')
+
+    'command_mode':
+        WAVE ROVER command mode: speed uses T=1, ros uses T=13
+        (default: 'speed')
+
+    'track_width_m':
+        WAVE ROVER differential drive track width in meters
+        (default: '0.172')
+
+    'max_wheel_speed_mps':
+        Wheel speed used to normalize T=1 speed commands
+        (default: '1.3')
+
+    'waypoint_file':
+        Path to saved waypoint YAML
+        (default: '~/.ros/trashbot_maps/waypoints.yaml')
+
+    'delivery_mode':
+        Delivery mode: dry_run or waypoint
+        (default: 'dry_run')
+
+    'delivery_target':
+        Waypoint name for trash station delivery
+        (default: 'trash_station')
+
+    'return_target':
+        Optional waypoint name to return to after dropoff
+        (default: '')
+
+    'elevator_assist_enabled':
+        Enable elevator assisted delivery dry-run subflow
+        (default: 'false')
+
+    'elevator_assist_mode':
+        Elevator assisted delivery mode; dry_run is the only software-only mode
+        (default: 'dry_run')
+
+    'elevator_assist_target_floor':
+        Target floor used in elevator assisted delivery dry-run records
+        (default: '1')
+
+    'elevator_assist_dry_run_failure':
+        Optional dry-run failure: door_timeout, target_floor_unconfirmed, unsafe_to_exit
+        (default: '')
+
+    'task_record_dir':
+        Directory for delivery task records
+        (default: '~/.ros/trashbot_tasks')
+
+    'dropoff_timeout_sec':
+        Delivery dropoff timeout in seconds
+        (default: '30.0')
+
+    'navigation_timeout_sec':
+        Delivery navigation timeout in seconds
+        (default: '120.0')
+
+    'operator_gateway':
+        Start local HTTP operator gateway
+        (default: 'false')
+
+    'operator_gateway_host':
+        Operator gateway bind host
+        (default: '0.0.0.0')
+
+    'operator_gateway_port':
+        Operator gateway HTTP port
+        (default: '8766')
+
+    'operator_gateway_collect_action':
+        Operator gateway collect action name
+        (default: '/trashbot/collect_trash')
+
+    'operator_gateway_dropoff_service':
+        Operator gateway dropoff confirmation service name
+        (default: '/trashbot/confirm_dropoff')
+
+    'operator_status_file':
+        Operator gateway status JSON path
+        (default: '/tmp/trashbot_operator_status.json')
+
+    'operator_pose_topic':
+        Pose topic used by the operator gateway live location view
+        (default: '/amcl_pose')
+
+    'operator_hardware_proof_ref':
+        Optional software-proof artifact path for diagnostics.hardware_proof (not HIL evidence)
+        (default: '')
+
+    'remote_bridge':
+        Start outbound 4G remote bridge
+        (default: 'false')
+
+    'remote_cloud_base_url':
+        Remote cloud base URL for outbound polling
+        (default: '')
+
+    'remote_robot_id':
+        Remote cloud robot identifier
+        (default: 'trashbot-001')
+
+    'remote_auth_token':
+        Remote cloud bearer token
+        (default: '')
+
+    'remote_poll_interval_sec':
+        Remote bridge polling interval in seconds
+        (default: '2.0')
+
+    'remote_request_timeout_sec':
+        Remote bridge HTTP request timeout in seconds
+        (default: '5.0')
+
+    'lidar_enabled':
+        Start ROS2 LiDAR driver; default false avoids blocking bringup without serial hardware
+        (default: 'false')
+
+    'lidar_serial_port':
+        LiDAR serial device confirmed on Orange Pi; /dev/lidar udev symlink is preferred when installed
+        (default: '/dev/ttyACM0')
+
+    'lidar_serial_baudrate':
+        LiDAR baud rate from docs/vendor/lidar_pkg_ros2-main reference
+        (default: '150000')
+
+    'lidar_frame_id':
+        LiDAR frame id; must match measured base_link static TF on hardware
+        (default: 'laser_frame')
+
+    'lidar_scan_topic':
+        LaserScan topic consumed by Nav2/SLAM
+        (default: '/scan')
+
+    'lidar_raw_packet_topic':
+        Optional raw LiDAR packet topic
+        (default: '/lidar/raw_packet')
+
+    'lidar_publish_raw_packets':
+        Publish raw 0xAA55 packets for diagnostics
+        (default: 'false')
+
+    'lidar_range_min':
+        LiDAR LaserScan range_min in meters; tune after real point cloud validation
+        (default: '0.05')
+
+    'lidar_range_max':
+        LiDAR LaserScan range_max in meters; tune after real point cloud validation
+        (default: '8.0')
+
+    'lidar_scan_time':
+        LiDAR LaserScan scan_time placeholder in seconds; measure on real hardware
+        (default: '0.1')
+
+    'lidar_time_increment':
+        LiDAR LaserScan time_increment placeholder in seconds; measure on real hardware
+        (default: '0.0001')
+
+    'lidar_tf_x':
+        Placeholder LiDAR x offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_y':
+        Placeholder LiDAR y offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_z':
+        Placeholder LiDAR z offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_roll':
+        Placeholder LiDAR roll from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_pitch':
+        Placeholder LiDAR pitch from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_yaw':
+        Placeholder LiDAR yaw from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'lidar_mock_packets':
+        Pipe-separated hex packets for software-only LiDAR verification
+        (default: '')
+
+    'lidar_mock_scan':
+        Publish built-in mock scan packet; software proof only
+        (default: 'false')
+Arguments (pass arguments as '<name>:=<value>'):
+
+    'use_sim_time':
+        Use simulation clock
+        (default: 'false')
+
+    'record_interval':
+        Seconds between automatic waypoint recording during learning
+        (default: '5.0')
+
+    'pose_topic':
+        PoseWithCovarianceStamped topic used for recording waypoints
+        (default: '/pose')
+
+    'route_recorder':
+        Start fixed-route CSV and keyframe recording during manual learning
+        (default: 'false')
+
+    'waypoint_manager':
+        Start waypoint manager during manual learning
+        (default: 'true')
+
+    'route_output_dir':
+        Directory for learned route.csv and keyframes
+        (default: PathJoinSubstitution('EnvVar('HOME'), '.ros', 'trashbot_runs', 'run_001''))
+
+    'route_camera_topic':
+        Camera Image topic used for route keyframe capture
+        (default: '/camera/image_raw')
+
+    'route_odom_topic':
+        Odometry topic used for fixed-route pose capture
+        (default: '/odom')
+
+    'route_min_distance_m':
+        Minimum travel distance between recorded fixed-route checkpoints
+        (default: '0.8')
+
+    'route_frame_id':
+        Frame id written to learned fixed-route CSV checkpoints
+        (default: 'map')
+
+    'route_id':
+        Route id written to learned keyframe sample manifest context
+        (default: '')
+
+    'route_sample_manifest_name':
+        Vision sample manifest filename written beside learned route data
+        (default: 'manifest.json')
+
+    'route_sample_manifest_max_entries':
+        Maximum learned keyframe sample entries kept in the route manifest
+        (default: '500')
+
+    'lidar_enabled':
+        Start ROS2 LiDAR driver during learning; default false keeps mock/offline learning usable
+        (default: 'false')
+
+    'lidar_serial_port':
+        LiDAR serial device confirmed on Orange Pi; /dev/lidar udev symlink is preferred when installed
+        (default: '/dev/ttyACM0')
+
+    'lidar_serial_baudrate':
+        LiDAR baud rate from docs/vendor/lidar_pkg_ros2-main reference
+        (default: '150000')
+
+    'lidar_frame_id':
+        LiDAR frame id; must match measured base_link static TF on hardware
+        (default: 'laser_frame')
+
+    'lidar_scan_topic':
+        LaserScan topic consumed by SLAM during learning
+        (default: '/scan')
+
+    'lidar_raw_packet_topic':
+        Optional raw LiDAR packet topic
+        (default: '/lidar/raw_packet')
+
+    'lidar_publish_raw_packets':
+        Publish raw 0xAA55 packets for diagnostics
+        (default: 'false')
+
+    'lidar_range_min':
+        LiDAR LaserScan range_min in meters; tune after real point cloud validation
+        (default: '0.05')
+
+    'lidar_range_max':
+        LiDAR LaserScan range_max in meters; tune after real point cloud validation
+        (default: '8.0')
+
+    'lidar_scan_time':
+        LiDAR LaserScan scan_time placeholder in seconds; measure on real hardware
+        (default: '0.1')
+
+    'lidar_time_increment':
+        LiDAR LaserScan time_increment placeholder in seconds; measure on real hardware
+        (default: '0.0001')
+
+    'lidar_tf_x':
+        Placeholder LiDAR x offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_y':
+        Placeholder LiDAR y offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_z':
+        Placeholder LiDAR z offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_roll':
+        Placeholder LiDAR roll from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_pitch':
+        Placeholder LiDAR pitch from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_yaw':
+        Placeholder LiDAR yaw from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'no_motion_static_odom_tf':
+        Publish static odom->base_link only for no-motion SLAM smoke proof
+        (default: 'false')
+
+    'slam_map_frame':
+        SLAM map frame id used by slam_toolbox
+        (default: 'map')
+
+    'slam_odom_frame':
+        SLAM odom frame id used by slam_toolbox
+        (default: 'odom')
+
+    'slam_base_frame':
+        SLAM base frame id; no-motion proof uses static odom->base_link
+        (default: 'base_link')
+
+    'lidar_mock_packets':
+        Pipe-separated hex packets for software-only LiDAR verification
+        (default: '')
+
+    'lidar_mock_scan':
+        Publish built-in mock scan packet; software proof only
+        (default: 'false')
+
+    'map_dir':
+        Directory where map_recorder writes learned map artifacts
+        (default: PathJoinSubstitution('EnvVar('HOME'), '.ros', 'trashbot_maps''))
+
+    'default_map_name':
+        Base filename used by map_recorder for PGM/YAML map artifacts
+        (default: 'trashbot_map')
+/opt/ros/humble/setup.bash: line 8: AMENT_TRACE_SETUP_FILES: unbound variable
+REMOTE_OUT=/root/.ros/trashbot_live_runs/software_bringup_20260609_230745
+## remote runtime
+op-z3-b6.home
+Tue Jun  9 11:07:45 PM CST 2026
+Linux op-z3-b6.home 6.1.31-sun50iw9 #1.0.4 SMP Thu Jul 11 16:37:41 CST 2024 aarch64 aarch64 aarch64 GNU/Linux
+## package prefixes
+/root/rober/onboard/install/ros2_trashbot_bringup
+/root/rober/onboard/install/ros2_trashbot_hardware
+/root/rober/onboard/install/ros2_trashbot_nav
+/root/rober/onboard/install/ros2_trashbot_behavior
+/root/rober/onboard/install/ros2_trashbot_vision
+## pre-launch graph
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/rosout [rcl_interfaces/msg/Log]
+## start short bringup
+LAUNCH_PID=13606
+## graph during launch
+/base_link_to_laser_frame
+/esp32_bridge
+/lidar_driver
+/map_recorder
+/battery [sensor_msgs/msg/BatteryState]
+/cmd_vel [geometry_msgs/msg/Twist]
+/imu/data [sensor_msgs/msg/Imu]
+/map [nav_msgs/msg/OccupancyGrid]
+/odom [nav_msgs/msg/Odometry]
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/rosout [rcl_interfaces/msg/Log]
+/scan [sensor_msgs/msg/LaserScan]
+/tf_static [tf2_msgs/msg/TFMessage]
+## topic info
+### /scan
+Type: sensor_msgs/msg/LaserScan
+
+Publisher count: 1
+
+Node name: lidar_driver
+Node namespace: /
+Topic type: sensor_msgs/msg/LaserScan
+Endpoint type: PUBLISHER
+GID: 01.0f.1b.26.2a.35.5b.db.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+### /odom
+Type: nav_msgs/msg/Odometry
+
+Publisher count: 1
+
+Node name: esp32_bridge
+Node namespace: /
+Topic type: nav_msgs/msg/Odometry
+Endpoint type: PUBLISHER
+GID: 01.0f.1b.26.28.35.8f.51.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+### /tf
+Unknown topic '/tf'
+### /camera/image_raw
+Unknown topic '/camera/image_raw'
+### /battery
+Type: sensor_msgs/msg/BatteryState
+
+Publisher count: 1
+
+Node name: esp32_bridge
+Node namespace: /
+Topic type: sensor_msgs/msg/BatteryState
+Endpoint type: PUBLISHER
+GID: 01.0f.1b.26.28.35.8f.51.00.00.00.00.00.00.13.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+### /imu/data
+Type: sensor_msgs/msg/Imu
+
+Publisher count: 1
+
+Node name: esp32_bridge
+Node namespace: /
+Topic type: sensor_msgs/msg/Imu
+Endpoint type: PUBLISHER
+GID: 01.0f.1b.26.28.35.8f.51.00.00.00.00.00.00.12.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+### /cmd_vel
+Type: geometry_msgs/msg/Twist
+
+Publisher count: 0
+
+Subscription count: 1
+
+Node name: esp32_bridge
+Node namespace: /
+Topic type: geometry_msgs/msg/Twist
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.1b.26.28.35.8f.51.00.00.00.00.00.00.14.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+## topic one-shot probes
+### echo_once /scan
+header:
+  stamp:
+    sec: 1781017702
+    nanosec: 439710531
+  frame_id: laser_frame
+angle_min: 5.243350982666016
+angle_max: 5.360069751739502
+angle_increment: 0.01667412742972374
+time_increment: 9.999999747378752e-05
+scan_time: 0.10000000149011612
+range_min: 0.05000000074505806
+range_max: 8.0
+ranges:
+- 5.479000091552734
+- 1.4019999504089355
+- 1.3919999599456787
+- 1.3700000047683716
+- 1.3480000495910645
+- 1.3359999656677246
+- 1.315000057220459
+- 1.2940000295639038
+intensities:
+- 162.0
+- 207.0
+- 211.0
+- 219.0
+- 219.0
+- 222.0
+- 224.0
+- 226.0
+---
+### echo_once /odom
+header:
+  stamp:
+    sec: 1781017705
+    nanosec: 550385610
+  frame_id: odom
+child_frame_id: base_link
+pose:
+  pose:
+    position:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    orientation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  covariance:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+twist:
+  twist:
+    linear:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    angular:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+  covariance:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+---
+### echo_once /tf
+WARNING: topic [/tf] does not appear to be published yet
+### echo_once /camera/image_raw
+Could not determine the type for the passed topic
+WARNING: topic [/camera/image_raw] does not appear to be published yet
+Could not determine the type for the passed topic
+### echo_once /battery
+### echo_once /imu/data
+## launch log head
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-09-23-07-55-900344-op-z3-b6.home-13606
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [esp32_bridge-1]: process started with pid [13608]
+[INFO] [lidar_driver-2]: process started with pid [13610]
+[INFO] [static_transform_publisher-3]: process started with pid [13612]
+[INFO] [waypoint_manager-4]: process started with pid [13614]
+[INFO] [map_recorder-5]: process started with pid [13616]
+[INFO] [task_orchestrator-6]: process started with pid [13618]
+[static_transform_publisher-3] [INFO] [1781017676.559714300] [base_link_to_laser_frame]: Spinning until stopped - publishing transform
+[static_transform_publisher-3] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-3] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-3] from 'base_link' to 'laser_frame'
+[waypoint_manager-4] Traceback (most recent call last):
+[waypoint_manager-4]   File "/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager", line 33, in <module>
+[waypoint_manager-4]     sys.exit(load_entry_point('ros2-trashbot-nav', 'console_scripts', 'waypoint_manager')())
+[waypoint_manager-4]   File "/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager", line 25, in importlib_load_entry_point
+[waypoint_manager-4]     return next(matches).load()
+[waypoint_manager-4]   File "/usr/lib/python3.10/importlib/metadata/__init__.py", line 171, in load
+[waypoint_manager-4]     module = import_module(match.group('module'))
+[waypoint_manager-4]   File "/usr/lib/python3.10/importlib/__init__.py", line 126, in import_module
+[waypoint_manager-4]     return _bootstrap._gcd_import(name[level:], package, level)
+[waypoint_manager-4]   File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+[waypoint_manager-4]   File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+[waypoint_manager-4]   File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+[waypoint_manager-4]   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+[waypoint_manager-4]   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+[waypoint_manager-4]   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+[waypoint_manager-4]   File "/root/rober/onboard/build/ros2_trashbot_nav/ros2_trashbot_nav/waypoint_manager.py", line 5, in <module>
+[waypoint_manager-4]     from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
+[waypoint_manager-4] ModuleNotFoundError: No module named 'nav2_simple_commander'
+[esp32_bridge-1] [INFO] [1781017678.516336403] [esp32_bridge]: Connected to WAVE ROVER ESP32 on /dev/ttyS5 @ 115200
+[ERROR] [waypoint_manager-4]: process has died [pid 13614, exit code 1, cmd '/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_ai3ph4yn'].
+[esp32_bridge-1] [INFO] [1781017678.702126815] [esp32_bridge]: ESP32Bridge ready: vendor WAVE ROVER UART protocol is one UTF-8 JSON object per newline; command_mode=speed; odom source=ROS-side command integration until measured wheel odometry is validated
+[task_orchestrator-6] Traceback (most recent call last):
+[task_orchestrator-6]   File "/root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator", line 33, in <module>
+[task_orchestrator-6]     sys.exit(load_entry_point('ros2-trashbot-behavior', 'console_scripts', 'task_orchestrator')())
+[task_orchestrator-6]   File "/root/rober/onboard/build/ros2_trashbot_behavior/ros2_trashbot_behavior/task_orchestrator.py", line 1332, in main
+[task_orchestrator-6]     node = TaskOrchestrator()
+[task_orchestrator-6]   File "/root/rober/onboard/build/ros2_trashbot_behavior/ros2_trashbot_behavior/task_orchestrator.py", line 69, in __init__
+[task_orchestrator-6]     self.declare_parameter("elevator_assist_target_floor", "1")
+[task_orchestrator-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 367, in declare_parameter
+[task_orchestrator-6]     return self.declare_parameters('', [args], ignore_override)[0]
+[task_orchestrator-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 493, in declare_parameters
+[task_orchestrator-6]     self._set_parameters(
+[task_orchestrator-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 738, in _set_parameters
+[task_orchestrator-6]     raise InvalidParameterTypeException(
+[task_orchestrator-6] rclpy.exceptions.InvalidParameterTypeException: Trying to set parameter 'elevator_assist_target_floor' to '1' of type 'INTEGER', expecting type 'STRING'
+[lidar_driver-2] [INFO] [1781017678.821579771] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000
+[ERROR] [task_orchestrator-6]: process has died [pid 13618, exit code 1, cmd '/root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_856x7avf'].
+## stopping launch
+## post-stop graph
+/base_link_to_laser_frame
+/esp32_bridge
+/lidar_driver
+/map_recorder
+/battery [sensor_msgs/msg/BatteryState]
+/cmd_vel [geometry_msgs/msg/Twist]
+/imu/data [sensor_msgs/msg/Imu]
+/map [nav_msgs/msg/OccupancyGrid]
+/odom [nav_msgs/msg/Odometry]
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/rosout [rcl_interfaces/msg/Log]
+/scan [sensor_msgs/msg/LaserScan]
+/tf_static [tf2_msgs/msg/TFMessage]
+REMOTE_OUT=/root/.ros/trashbot_live_runs/software_bringup_20260609_230745
+post_cleanup_nodes
+/base_link_to_laser_frame
+post_cleanup_topics
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/rosout [rcl_interfaces/msg/Log]
+/tf_static [tf2_msgs/msg/TFMessage]
+matching_processes
+
+## command: pull remote runs
+
+## pulled files
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/record_mode.txt
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/record_topics.txt
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/rosbag_rc.txt
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/route_bag
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/route_bag/metadata.yaml
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/route_bag/route_bag_0.db3
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/topic_list.txt
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/topic_list_typed.txt
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/bringup.log
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/nodes.txt
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topic_echo_once.txt
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topic_info.txt
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topics.txt
+
+## command: field_route_evidence_preflight ssh
+{"output": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json", "schema": "trashbot.board_field_evidence_preflight.v1", "status": "blocked_ros2_cli_missing"}
+
+## preflight json summary
+{
+    "blocked_reason": "blocked_ros2_cli_missing",
+    "checks": {
+        "environment": {
+            "cwd": "/Users/m1/apps/rober",
+            "hostname": "HAKU-M1-PRO.local",
+            "ok": true,
+            "platform": "macOS-15.7.4-arm64-arm-64bit-Mach-O",
+            "python": "3.13.5",
+            "time_utc": "2026-06-09T15:09:46+00:00"
+        },
+        "ros2_cli": {
+            "ok": false,
+            "result": {
+                "command": [
+                    "ssh",
+                    "-o",
+                    "ConnectTimeout=8",
+                    "-o",
+                    "BatchMode=yes",
+                    "-o",
+                    "StrictHostKeyChecking=accept-new",
+                    "-p",
+                    "37878",
+                    "root@192.168.1.11",
+                    "command -v ros2"
+                ],
+                "returncode": 1,
+                "stderr": "",
+                "stdout": "",
+                "timed_out": false
+            }
+        },
+        "setup_candidates": {
+            "candidates": [
+                {
+                    "exists": true,
+                    "path": "/opt/ros/humble/setup.bash",
+                    "result": {
+                        "command": [
+                            "ssh",
+                            "-o",
+                            "ConnectTimeout=8",
+                            "-o",
+                            "BatchMode=yes",
+                            "-o",
+                            "StrictHostKeyChecking=accept-new",
+                            "-p",
+                            "37878",
+                            "root@192.168.1.11",
+                            "test -f /opt/ros/humble/setup.bash"
+                        ],
+                        "returncode": 0,
+                        "stderr": "",
+                        "stdout": "",
+                        "timed_out": false
+                    }
+                },
+                {
+                    "exists": false,
+                    "path": "/ws/install/setup.bash",
+                    "result": {
+                        "command": [
+                            "ssh",
+                            "-o",
+                            "ConnectTimeout=8",
+                            "-o",
+                            "BatchMode=yes",
+                            "-o",
+                            "StrictHostKeyChecking=accept-new",
+                            "-p",
+                            "37878",
+                            "root@192.168.1.11",
+                            "test -f /ws/install/setup.bash"
+                        ],
+                        "returncode": 1,
+                        "stderr": "",
+                        "stdout": "",
+                        "timed_out": false
+                    }
+                },
+                {
+                    "exists": true,
+                    "path": "~/rober/onboard/install/setup.bash",
+                    "result": {
+                        "command": [
+                            "ssh",
+                            "-o",
+                            "ConnectTimeout=8",
+                            "-o",
+                            "BatchMode=yes",
+                            "-o",
+                            "StrictHostKeyChecking=accept-new",
+                            "-p",
+                            "37878",
+                            "root@192.168.1.11",
+                            "test -f ~/rober/onboard/install/setup.bash"
+                        ],
+                        "returncode": 0,
+                        "stderr": "",
+                        "stdout": "",
+                        "timed_out": false
+                    }
+                },
+                {
+                    "exists": false,
+                    "path": "~/apps/rober/onboard/install/setup.bash",
+                    "result": {
+                        "command": [
+                            "ssh",
+                            "-o",
+                            "ConnectTimeout=8",
+                            "-o",
+                            "BatchMode=yes",
+                            "-o",
+                            "StrictHostKeyChecking=accept-new",
+                            "-p",
+                            "37878",
+                            "root@192.168.1.11",
+                            "test -f ~/apps/rober/onboard/install/setup.bash"
+                        ],
+                        "returncode": 1,
+                        "stderr": "",
+                        "stdout": "",
+                        "timed_out": false
+                    }
+                }
+            ],
+            "ok": true
+        },
+        "ssh_reachability": {
+            "ok": true,
+            "port": 37878,
+            "result": {
+                "command": [
+                    "ssh",
+                    "-o",
+                    "ConnectTimeout=8",
+                    "-o",
+                    "BatchMode=yes",
+                    "-o",
+                    "StrictHostKeyChecking=accept-new",
+                    "-p",
+                    "37878",
+                    "root@192.168.1.11",
+                    "true"
+                ],
+                "returncode": 0,
+                "stderr": "",
+                "stdout": "",
+                "timed_out": false
+            },
+            "target": "root@192.168.1.11"
+        }
+    },
+    "commands": {
+        "learning": [
+            {
+                "command": "RUN_ID=field_route_$(date +%Y%m%d_%H%M%S); OUT_DIR=$HOME/.ros/trashbot_runs/${RUN_ID}; mkdir -p $OUT_DIR",
+                "name": "prepare_output_dir"
+            },
+            {
+                "command": "ssh -p 37878 root@192.168.1.11 ros2 launch ros2_trashbot_bringup learn.launch.py route_recorder:=true route_output_dir:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data route_id:=board_field_route",
+                "name": "learn_launch_route_record"
+            },
+            {
+                "command": "ssh -p 37878 root@192.168.1.11 ros2 service call /trashbot/save_map std_srvs/srv/Trigger",
+                "name": "save_map"
+            },
+            {
+                "command": "ssh -p 37878 root@192.168.1.11 ros2 run ros2_trashbot_nav route_csv_to_yaml --ros-args -p input_csv:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/route.csv -p output_yaml:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/fixed_route.yaml",
+                "name": "route_csv_to_yaml"
+            },
+            {
+                "command": "ssh -p 37878 root@192.168.1.11 ros2 run ros2_trashbot_nav fixed_route_autonomy --ros-args -p route_file:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/fixed_route.yaml -p keyframe_dir:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/keyframes -p dry_run:=true -p enable_visual_gate:=false",
+                "name": "fixed_route_autonomy_dry_run"
+            },
+            {
+                "command": "ssh -p 37878 root@192.168.1.11 ros2 bag record -o $HOME/.ros/trashbot_runs/${RUN_ID}/route_bag /scan /camera/image_raw /odom /tf /map",
+                "name": "optional_rosbag_record"
+            }
+        ],
+        "topic_smoke": [
+            {
+                "command": "ssh -p 37878 root@192.168.1.11 ros2 topic hz /scan --window 2",
+                "topic": "/scan"
+            },
+            {
+                "command": "ssh -p 37878 root@192.168.1.11 ros2 topic hz /odom --window 2",
+                "topic": "/odom"
+            },
+            {
+                "command": "ssh -p 37878 root@192.168.1.11 ros2 topic hz /camera/image_raw --window 2",
+                "topic": "/camera/image_raw"
+            },
+            {
+                "command": "ssh -p 37878 root@192.168.1.11 ros2 topic echo --once /tf",
+                "topic": "/tf"
+            }
+        ]
+    },
+    "delivery_success": false,
+    "dry_run": false,
+    "generated_at": "2026-06-09T15:09:53+00:00",
+    "mode": "ssh",
+    "next_required_evidence": [
+        "\u771f\u5b9e\u4e0a\u4f4d\u673a SSH \u53ef\u8fbe\u8bc1\u636e",
+        "ROS2 setup.bash \u548c trashbot package \u53ef\u7528\u8bc1\u636e",
+        "/scan\u3001/camera/image_raw\u3001/odom\u3001/tf\u3001/map topic \u4e0e smoke \u8f93\u51fa",
+        "map.yaml\u3001route.csv\u3001keyframes\u3001rosbag \u6216 replay JSONL"
+    ],
+    "not_proven": true,
+    "primary_actions_enabled": false,
+    "schema": "trashbot.board_field_evidence_preflight.v1",
+    "source": "software_preflight",
+    "status": "blocked_ros2_cli_missing",
+    "target": {
+        "mode": "ssh",
+        "ssh_port": 37878,
+        "ssh_target": "root@192.168.1.11",
+        "timeout_s": 8
+    }
+}
+
+## command: field_route_evidence_manifest local
+{"gate_pass": false, "output": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json", "schema": "trashbot.field_evidence_manifest.v1", "status": "blocked_artifacts_missing"}
+
+## manifest json summary
+{
+    "artifact_health": {
+        "blocked_artifacts": [],
+        "blocked_count": 0,
+        "empty_count": 0,
+        "missing_artifacts": [
+            "map_yaml",
+            "route_csv",
+            "keyframes",
+            "replay_jsonl"
+        ],
+        "missing_count": 4,
+        "present_artifacts": [
+            "rosbag"
+        ],
+        "present_count": 1,
+        "required_count": 5,
+        "status": "missing",
+        "summary": "missing_required_artifacts"
+    },
+    "artifact_root": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run",
+    "artifact_status": "missing",
+    "artifacts": {
+        "keyframes": {
+            "mtime_utc": null,
+            "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/keyframes",
+            "present": false,
+            "reason": "missing",
+            "required": true,
+            "sha256": null,
+            "size_bytes": 0
+        },
+        "map_yaml": {
+            "mtime_utc": null,
+            "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/map.yaml",
+            "present": false,
+            "reason": "missing",
+            "required": true,
+            "sha256": null,
+            "size_bytes": 0
+        },
+        "replay_jsonl": {
+            "mtime_utc": null,
+            "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/replay.jsonl",
+            "present": false,
+            "reason": "missing",
+            "required": true,
+            "sha256": null,
+            "size_bytes": 0
+        },
+        "rosbag": {
+            "file_count": 1,
+            "mtime_utc": "2026-06-09T15:09:34+00:00",
+            "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/route_bag/route_bag_0.db3",
+            "present": true,
+            "reason": null,
+            "required": true,
+            "sha256": "d8e77cefba0611cb664690f560bf8104e1fcac7c458af98b30d9d7b07d3b073e",
+            "size_bytes": 24576
+        },
+        "route_csv": {
+            "mtime_utc": null,
+            "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/route.csv",
+            "present": false,
+            "reason": "missing",
+            "required": true,
+            "sha256": null,
+            "size_bytes": 0
+        }
+    },
+    "blocked_reason": "missing_required_artifact",
+    "delivery_success": false,
+    "gate_pass": false,
+    "generated_at": "2026-06-09T15:09:53+00:00",
+    "input_manifest": {
+        "blocked_reason": null,
+        "dangerous_true_fields": [],
+        "gate_pass": null,
+        "path": null,
+        "present": false,
+        "safe_for_reuse": true,
+        "schema": null,
+        "status": "not_found"
+    },
+    "manifest_gate": {
+        "blocked_reason": "missing_required_artifact",
+        "gate_pass": false,
+        "schema": "trashbot.field_evidence_manifest.v1",
+        "source": "local_fixture",
+        "status": "blocked_not_proven"
+    },
+    "mode": "local",
+    "not_proven": true,
+    "preflight": {
+        "blocked_reason": "blocked_ros2_cli_missing",
+        "dry_run": false,
+        "mode": "ssh",
+        "read_ok": true,
+        "schema": "trashbot.board_field_evidence_preflight.v1",
+        "status": "blocked_ros2_cli_missing"
+    },
+    "preflight_json": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json",
+    "preflight_status": "blocked_ros2_cli_missing",
+    "primary_actions_enabled": false,
+    "run_id": "field_evidence_20260609T150953Z",
+    "safe_to_control": false,
+    "schema": "trashbot.field_evidence_manifest.v1",
+    "source": "local_fixture",
+    "status": "blocked_artifacts_missing"
+}
+## git status --short --branch
+## master...origin/master
+?? sprints/2026.06.09_23-00_board-live-full-stack-evidence/
+
+## rg acceptance search
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:5:本轮满足“不能只停留在 SSH 探针”的验收底线：已经在真实上位机短时启动平台 bringup，并让真实 `/scan`、`/odom`、`/battery`、`/imu/data`、`/cmd_vel`、`/map`、`/tf_static` 进入 ROS graph。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:7:本轮不满足“完整现场 evidence packet”的产品验收：缺 camera topic、动态 `/tf`、`map.yaml`、`route.csv`、keyframes 和 replay JSONL，manifest 正确保持 fail-closed。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:15:| 雷达证据 | partial pass | `/scan` 注册，`lidar_driver` 发布 LaserScan one-shot 样本。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:16:| 摄像头证据 | fail | `/camera/image_raw` unknown，当前没有 ROS camera topic。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:17:| 建图证据 | fail | `/map` topic 注册但未保存 `map.yaml`，也没有可复用 SLAM/map artifact。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:18:| 运动证据 | fail-closed | `/cmd_vel` 有 subscriber、`/odom` 可观测，但没有安全 gate 和 HIL clearance；未发运动。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:20:| manifest | pass as fail-closed | `field_evidence_manifest.json` 生成，`gate_pass=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:24:### 雷达
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:30:- `bringup.launch.py lidar_enabled:=true` 后 `/scan` 出现。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:31:- `/scan` publisher 是 `lidar_driver`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:32:- `topic echo --once /scan` 有非空 ranges 和 intensities。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:37:- 没有完整传感器 rosbag；现有 rosbag 是 graph-only fallback。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:39:### 摄像头
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:46:- ROS graph 中 `/camera/image_raw` 不存在。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:53:### 建图
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:64:- 没有 `map.yaml`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:68:### 运动
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:75:- `/odom` 可 echo，但样本为无运动的零 pose/twist。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:80:- `safe_to_control=false`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:81:- `primary_actions_enabled=false`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:82:- `delivery_success=false`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:83:- 本轮无现场安全确认和运动授权，未发布 `/cmd_vel`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:95:3. 启动 camera ROS driver，补 `/camera/image_raw`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:96:4. 用 `learn.launch.py lidar_enabled:=true no_motion_static_odom_tf:=true` 做静态 no-motion SLAM smoke，验证能否产出 `map.yaml`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:7:CEO 已确认 `ssh root@192.168.1.11 -p 37878` 当前可从 Codex 主机连通。上一轮 SSH blocker 已解除，本轮恢复真实上车 evidence capture，覆盖雷达、摄像头、建图和运动 smoke。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:16:2. 传感器 gate：确认雷达 `/scan`、摄像头 `/camera/image_raw`、里程计 `/odom`、`/tf` 或可替代实际 topic。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:17:3. 建图 gate：尝试启动或发现 SLAM / map 链路，产出 `map.yaml` 或明确缺口。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:18:4. 运动 gate：在安全前提下执行低速、短时、可停止 motion smoke，并记录 `/cmd_vel`、`/odom`、硬件反馈或失败原因。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:19:5. evidence packet gate：把真实材料整理成 artifact root，并生成 `trashbot.field_evidence_manifest.v1`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:23:- `robot-hardware-engineer`：真实硬件和安全 gate，读取 vendor 资料，确认设备、串口、底盘/传感器状态和运动安全边界。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:24:- `robot-algorithm-engineer`：雷达、摄像头、SLAM/建图、rosbag/topic capture。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:30:- 运动 smoke 只允许低速、短时、可停止；必须先记录安全前置条件，并在命令后立即 stop。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:31:- 未证实运动成功前，不得把 `delivery_success`、`safe_to_control`、`primary_actions_enabled` 置为 true。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:14:- `sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:45:- `/scan [sensor_msgs/msg/LaserScan]`，publisher=`lidar_driver`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:46:- `/odom [nav_msgs/msg/Odometry]`，publisher=`esp32_bridge`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:51:- `/tf_static [tf2_msgs/msg/TFMessage]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:55:- `/camera/image_raw`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:56:- `/tf`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:58:未执行运动：
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:66:平台层 ROS graph blocker 已从“没有业务 node”推进到“硬件 bridge/LiDAR 可启动，但 full bringup 仍有节点失败和 camera/tf/map artifact 缺口”。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:82:- `/camera/image_raw` 未注册，当前 bringup 没有给出 ROS camera topic。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:83:- `/tf` 未注册，只有 `/tf_static` 的 `base_link -> laser_frame` 静态变换。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:84:- `/map` topic 存在但未产出 `map.yaml`，不能当作建图完成证据。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:105:python3 onboard/scripts/field_route_evidence_manifest.py --mode local --input sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run --preflight-json sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json --output sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json || true
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:110:- `schema=trashbot.field_evidence_manifest.v1`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:113:- `safe_to_control=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:114:- `delivery_success=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:115:- `primary_actions_enabled=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:116:- `present_artifacts=["rosbag"]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:117:- `missing_artifacts=["map_yaml","route_csv","keyframes","replay_jsonl"]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:123:| 雷达 | 部分通过 | `lidar_driver` 启动，`/scan` 注册并 echo 到 LaserScan 样本。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:124:| 摄像头 | blocked | `/camera/image_raw` unknown，未发现 ROS camera driver/topic。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:125:| 建图 | blocked | `/map` topic 注册，但没有 `map.yaml`、SLAM save 或 route artifact。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:126:| 运动 | blocked | `/cmd_vel` 有 subscriber 且 `/odom` 可观测，但安全 gate 未通过，本轮按要求不发运动命令。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:138:- `rg -n "雷达|摄像头|建图|运动|/scan|/camera/image_raw|/odom|/tf|map.yaml|route.csv|rosbag|field_evidence_manifest|safe_to_control=false|delivery_success=false|primary_actions_enabled=false" ...`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:148:- 当前 `/odom` 是 bridge 的 ROS-side command integration source；未做真实运动和轮速/里程计校验。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:61:- 运动 smoke 必须低速、短时、立即 stop。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:68:ssh -p 37878 root@192.168.1.11 'source /opt/ros/humble/setup.bash; for f in /ws/install/setup.bash ~/rober/onboard/install/setup.bash ~/apps/rober/onboard/install/setup.bash; do [ -f "$f" ] && source "$f"; done; timeout 5s ros2 topic echo /battery --once || true; timeout 5s ros2 topic echo /odom --once || true'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:71:运动 smoke 仅在现场安全前提满足时执行：
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:79:目标：雷达、摄像头、SLAM/建图、rosbag 和 route evidence。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:85:- rosbag 最多 30 秒。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:92:ssh -p 37878 root@192.168.1.11 'source /opt/ros/humble/setup.bash; for f in /ws/install/setup.bash ~/rober/onboard/install/setup.bash ~/apps/rober/onboard/install/setup.bash; do [ -f "$f" ] && source "$f"; done; timeout 8s ros2 topic hz /scan --window 5 || true; timeout 8s ros2 topic hz /camera/image_raw --window 5 || true; timeout 8s ros2 topic hz /odom --window 5 || true; timeout 5s ros2 topic echo /tf --once || true'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:93:ssh -p 37878 root@192.168.1.11 'RUN_ID=field_full_stack_$(date +%Y%m%d_%H%M%S); OUT=/root/.ros/trashbot_live_runs/$RUN_ID; mkdir -p "$OUT"; source /opt/ros/humble/setup.bash; for f in /ws/install/setup.bash ~/rober/onboard/install/setup.bash ~/apps/rober/onboard/install/setup.bash; do [ -f "$f" ] && source "$f"; done; timeout 30s ros2 bag record -o "$OUT/route_bag" /scan /camera/image_raw /odom /tf /map; find "$OUT" -maxdepth 4 -type f -o -type d | sort'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:104:- manifest 必须保持 `delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`，除非另有完整真实送达证据。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:110:python3 onboard/scripts/field_route_evidence_manifest.py --mode local --input sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/<pulled_run_dir> --preflight-json sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json --output sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:111:python3 -m json.tool sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json >/tmp/field_evidence_manifest.pretty.json
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:123:rg -n "雷达|摄像头|建图|运动|/scan|/camera/image_raw|/odom|/tf|map.yaml|route.csv|rosbag|field_evidence_manifest|safe_to_control=false|delivery_success=false|primary_actions_enabled=false" sprints/2026.06.09_23-00_board-live-full-stack-evidence
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:131:- 雷达 gate：通过或明确失败原因。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:132:- 摄像头 gate：通过或明确失败原因。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:133:- 建图 gate：通过或明确失败原因。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:134:- 运动 gate：通过或明确安全/runtime 阻断原因。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:141:- 真实运动有物理风险；低速 smoke 也必须先确认安全边界。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:143:- `map.yaml` / `route.csv` 可能需要人工驾驶或另开终端；如果本轮不能安全移动，必须留下可复跑命令。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:35:      "/scan": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:39:      "/camera/image_raw": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:43:      "/odom": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:47:      "/tf": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:68:      "not_started_reason": "No live /scan, /odom, /tf, or camera topics were present; this run was limited to discovery and short rosbag evidence."
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:71:  "rosbag": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:79:      "/scan",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:80:      "/camera/image_raw",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:81:      "/odom",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:82:      "/tf",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:7:      "map_yaml",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:8:      "route_csv",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:14:      "rosbag"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:33:    "map_yaml": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:35:      "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/map.yaml",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:51:    "rosbag": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:61:    "route_csv": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:63:      "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/route.csv",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:88:    "schema": "trashbot.field_evidence_manifest.v1",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:107:  "schema": "trashbot.field_evidence_manifest.v1",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_motion_smoke.json:23:      "ROS2 /odom topic is unknown",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_motion_smoke.json:26:      "upper_robot_api reports safe_to_control=false and primary_actions_enabled=false",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_motion_smoke.json:43:    "blocked_reason": "Safe gate failed before motion; publishing /cmd_vel would have no observed ROS2 hardware subscriber and no /odom before-after evidence path."
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:5:项目需要从 local/mock software proof 进入真实上车材料闭环。PC 端 route replay、标注、云端 archive 和后续手机验收都需要真实 `map.yaml`、轨迹、关键帧、rosbag 或 replay JSONL，而不是继续消费 fixture。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:9:作为研发/运营人员，我希望真实上位机能一次性完成雷达、摄像头、建图和运动 smoke 的 evidence capture，这样后续可以：
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:22:- 雷达证据：`/scan` 或实际雷达 topic 的 `topic list` / `hz` / `echo --once` 摘要。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:23:- 摄像头证据：`/camera/image_raw` 或实际 image topic 的 `topic list` / `hz` / `echo --once` 摘要。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:24:- 建图证据：`/map`、SLAM node、map save service 或 `map.yaml` 产物；若无法建图，写明缺少哪一层。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:25:- 运动证据：低速 motion smoke 的命令、stop 命令、`/odom` 或硬件反馈变化；若未执行，必须写明安全 gate 或 runtime gate 阻断原因。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:26:- artifact root：集中保存本轮输出，至少包含 preflight JSON、topic snapshot、rosbag 或文本证据。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:27:- manifest：生成或尝试生成 `trashbot.field_evidence_manifest.v1`，并保持 fail-closed 字段。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:31:- 30 秒以内 rosbag：优先 `/scan /camera/image_raw /odom /tf /map`，缺 topic 时记录替代 topic。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:33:- route/replay：如果 route recorder 可用，产出 `route.csv` 或 dry-run replay JSONL。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:51:  - `ros2 topic info -v` reported unknown topics for `/cmd_vel`, `/battery`, `/odom`, `/imu/data`, `/scan`, `/camera/image_raw`, and `/tf`.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:52:  - `timeout 5s ros2 topic echo /battery --once` and `/odom --once` both failed because the topics were not published.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:57:  - API root reports `safe_to_control=false`, `delivery_success=false`, `primary_actions_enabled=false`, `robot_control_executed=false`.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:58:  - `/api/base/status` reports configured base port `/dev/ttyS5`, baudrate `115200`, `pyserial_available=true`, `write_control_available=true`, but still `safe_to_control=false`.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:70:- `/odom` and `/battery` are not published, so there is no ROS-side before/after observation path.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:72:- Existing API policy keeps `safe_to_control=false` and `primary_actions_enabled=false`.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:79:- Current proof is not HIL pass: no wheel direction check, no low-speed movement, no observed stop, no `/odom` before/after delta, and no `/battery` ROS topic.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:82:- Camera and lidar devices/API evidence exist, but this hardware report did not execute the algorithm lane's sensor capture or rosbag workflow.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:5:- 目标：为现场 O3 验证 lane 补真实上位机的传感器、SLAM/map、rosbag 证据，供后续 O6 archive 和 O7 route replay / labeling 消费。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:6:- 抓手：不改算法代码，不启动无人值守长距离导航；通过 SSH 在真实上位机 `op-z3-b6.home` 上采集 ROS2 package/topic/node、目标 topic smoke、SLAM/map 入口和短 rosbag。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:7:- 硬件资料入口已读：`docs/vendor/VENDOR_INDEX.md`。本轮没有新增引脚、电压、UART、波特率、机械安装或底盘运动假设。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:40:## 雷达 / 摄像头 / 里程计 / TF / Map 证据
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:46:| `/scan` | 缺失 | `ros2 topic hz` 提示未发布；`ros2 topic info -v` 返回 `Unknown topic '/scan'` |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:47:| `/camera/image_raw` | 缺失 | `ros2 topic hz` 提示未发布；`ros2 topic info -v` 返回 `Unknown topic '/camera/image_raw'` |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:48:| `/odom` | 缺失 | `ros2 topic hz` 提示未发布；`ros2 topic info -v` 返回 `Unknown topic '/odom'` |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:49:| `/tf` | 缺失 | `ros2 topic echo --once` 无法确定类型；`ros2 topic info -v` 返回 `Unknown topic '/tf'` |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:54:- `/cmd_vel`、`/imu/data`、`/battery`、`/tf_static` 也均未注册。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:69:- 本轮没有启动 `learn.launch.py` 长跑：目标传感器 topic、odom/tf 和 camera topic 都不存在，启动 SLAM 不能产出有效 live map，且本轮边界是不做无人值守长距离导航。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:74:- 目标 topic：`/scan /camera/image_raw /odom /tf /map`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:77:- rosbag metadata：`/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/route_bag/metadata.yaml`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:83:- `rosbag_rc=124` 是 `timeout 10s` 结束录制的退出码；录制已正常写出 metadata 和 db3。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:85:说明：这是 graph-only fallback bag，不是传感器 rosbag，不能用于路线、SLAM 或视觉评测。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:91:3. 雷达、摄像头、odom、tf、map topic 均未注册，说明传感器/bringup 链路未启动或未接入 ROS graph。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:92:4. 已有 `learn.launch.py` 和 LiDAR 参数入口，但当前缺 live `/scan`、`/odom`、`/tf`，无法生成有效 `map.yaml` 或 route/keyframe。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:102:- 剩余风险：本轮只证明真实上位机 ROS2 环境和 package 可用，未证明雷达、摄像头、odom/tf、SLAM 或 Nav2 现场链路可用。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:103:- 下一步建议 1：由硬件/平台 owner 先启动最小 bringup，至少让 `/scan`、`/odom`、`/tf` 进入 ROS graph；如果只有 LiDAR 可用，可用 `learn.launch.py lidar_enabled:=true no_motion_static_odom_tf:=true` 做静态 no-motion SLAM smoke。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:104:- 下一步建议 2：确认 camera driver/launch 入口，产出 `/camera/image_raw` 后再补 keyframe 或图像 metadata。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:105:- 下一步建议 3：传感器 topic 存在后，重跑 30 秒目标 rosbag，并优先生成 `map.yaml`、`route.csv` 或 keyframe，不再消费 graph-only fallback bag。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:7:本轮把 ROS graph blocker 从“只有 `/rosout` 和 `/parameter_events`”推进到“真实上位机可短时启动 ESP32 bridge 和 LiDAR driver，并发布 `/scan`、`/odom`、`/battery`、`/imu/data`、`/cmd_vel`、`/map`、`/tf_static`”。这证明平台最小 bringup 有可用入口，不再是纯 SSH 或 package proof。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:9:本轮没有达成完整 field evidence packet：缺 `/camera/image_raw`、动态 `/tf`、`map.yaml`、`route.csv`、keyframes、replay JSONL 和安全运动 smoke。`field_evidence_manifest.json` 已按预期保持 fail-closed。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:18:- `/scan` one-shot LaserScan 样本已保存。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:19:- `/odom` one-shot 样本已保存。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:26:- 摄像头未进入 ROS graph：`/camera/image_raw` unknown。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:27:- 动态 TF 未进入 ROS graph：`/tf` 未发布，仅 `/tf_static` 存在。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:28:- 建图未完成：没有 `map.yaml` 或 SLAM save 成功证据。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:29:- 运动未执行：未满足安全 gate，且本轮任务默认不做 motion。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:33:`artifacts/field_evidence_manifest.json`：
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:37:- `safe_to_control=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:38:- `delivery_success=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:39:- `primary_actions_enabled=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:40:- `present_artifacts=["rosbag"]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:41:- `missing_artifacts=["map_yaml","route_csv","keyframes","replay_jsonl"]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:53:- O1：真实 WAVE ROVER UART 可由硬件 agent 的只读反馈和本轮 `esp32_bridge` 连接共同支撑，但未做运动/HIL，不能宣称 HIL 通过。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:58:2. 明确 camera ROS driver 启动入口，产出 `/camera/image_raw`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:59:3. 用短时 `learn.launch.py lidar_enabled:=true no_motion_static_odom_tf:=true` 生成 no-motion SLAM smoke，目标是 `map.yaml`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:60:4. 只有当现场安全 gate 明确通过，且 `/cmd_vel` subscriber、`/odom` before/after、stop 观察链齐备时，再执行低速 motion smoke。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:65:- 当前 `/odom` 仍需通过真实运动验证；无运动时零 pose/twist 只能证明 topic 链路存在。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:66:- 当前 graph-only bag 不含 `/scan` 或 `/odom`，后续必须在 bringup 已启动状态下重录目标 rosbag。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:150:        (default: '/scan')
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:230:        Directory for learned route.csv and keyframes
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:235:        (default: '/camera/image_raw')
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:239:        (default: '/odom')
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:279:        (default: '/scan')
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:386:/odom [nav_msgs/msg/Odometry]
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:389:/scan [sensor_msgs/msg/LaserScan]
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:390:/tf_static [tf2_msgs/msg/TFMessage]
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:392:### /scan
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:413:### /odom
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:434:### /tf
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:435:Unknown topic '/tf'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:436:### /camera/image_raw
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:437:Unknown topic '/camera/image_raw'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:502:### echo_once /scan
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:534:### echo_once /odom
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:637:### echo_once /tf
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:638:WARNING: topic [/tf] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:639:### echo_once /camera/image_raw
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:641:WARNING: topic [/camera/image_raw] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:705:/odom [nav_msgs/msg/Odometry]
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:708:/scan [sensor_msgs/msg/LaserScan]
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:709:/tf_static [tf2_msgs/msg/TFMessage]
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:716:/tf_static [tf2_msgs/msg/TFMessage]
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:726:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/rosbag_rc.txt
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:913:                "command": "ssh -p 37878 root@192.168.1.11 ros2 run ros2_trashbot_nav route_csv_to_yaml --ros-args -p input_csv:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/route.csv -p output_yaml:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/fixed_route.yaml",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:914:                "name": "route_csv_to_yaml"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:921:                "command": "ssh -p 37878 root@192.168.1.11 ros2 bag record -o $HOME/.ros/trashbot_runs/${RUN_ID}/route_bag /scan /camera/image_raw /odom /tf /map",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:922:                "name": "optional_rosbag_record"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:927:                "command": "ssh -p 37878 root@192.168.1.11 ros2 topic hz /scan --window 2",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:928:                "topic": "/scan"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:931:                "command": "ssh -p 37878 root@192.168.1.11 ros2 topic hz /odom --window 2",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:932:                "topic": "/odom"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:935:                "command": "ssh -p 37878 root@192.168.1.11 ros2 topic hz /camera/image_raw --window 2",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:936:                "topic": "/camera/image_raw"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:939:                "command": "ssh -p 37878 root@192.168.1.11 ros2 topic echo --once /tf",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:940:                "topic": "/tf"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:951:        "/scan\u3001/camera/image_raw\u3001/odom\u3001/tf\u3001/map topic \u4e0e smoke \u8f93\u51fa",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:952:        "map.yaml\u3001route.csv\u3001keyframes\u3001rosbag \u6216 replay JSONL"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:968:{"gate_pass": false, "output": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json", "schema": "trashbot.field_evidence_manifest.v1", "status": "blocked_artifacts_missing"}
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:977:            "map_yaml",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:978:            "route_csv",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:984:            "rosbag"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1003:        "map_yaml": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1005:            "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/map.yaml",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1021:        "rosbag": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1031:        "route_csv": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1033:            "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/route.csv",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1058:        "schema": "trashbot.field_evidence_manifest.v1",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1077:    "schema": "trashbot.field_evidence_manifest.v1",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1086:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:5:本轮满足“不能只停留在 SSH 探针”的验收底线：已经在真实上位机短时启动平台 bringup，并让真实 `/scan`、`/odom`、`/battery`、`/imu/data`、`/cmd_vel`、`/map`、`/tf_static` 进入 ROS graph。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1087:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:7:本轮不满足“完整现场 evidence packet”的产品验收：缺 camera topic、动态 `/tf`、`map.yaml`、`route.csv`、keyframes 和 replay JSONL，manifest 正确保持 fail-closed。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1088:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:15:| 雷达证据 | partial pass | `/scan` 注册，`lidar_driver` 发布 LaserScan one-shot 样本。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1089:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:16:| 摄像头证据 | fail | `/camera/image_raw` unknown，当前没有 ROS camera topic。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1090:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:17:| 建图证据 | fail | `/map` topic 注册但未保存 `map.yaml`，也没有可复用 SLAM/map artifact。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1091:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:18:| 运动证据 | fail-closed | `/cmd_vel` 有 subscriber、`/odom` 可观测，但没有安全 gate 和 HIL clearance；未发运动。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1092:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:20:| manifest | pass as fail-closed | `field_evidence_manifest.json` 生成，`gate_pass=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1093:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:24:### 雷达
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1094:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:30:- `bringup.launch.py lidar_enabled:=true` 后 `/scan` 出现。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1095:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:31:- `/scan` publisher 是 `lidar_driver`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1096:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:32:- `topic echo --once /scan` 有非空 ranges 和 intensities。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1097:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:37:- 没有完整传感器 rosbag；现有 rosbag 是 graph-only fallback。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1098:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:39:### 摄像头
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1099:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:46:- ROS graph 中 `/camera/image_raw` 不存在。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1100:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:53:### 建图
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1101:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:64:- 没有 `map.yaml`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1102:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:68:### 运动
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1103:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:75:- `/odom` 可 echo，但样本为无运动的零 pose/twist。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1104:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:80:- `safe_to_control=false`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1105:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:81:- `primary_actions_enabled=false`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1106:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:82:- `delivery_success=false`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1107:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:83:- 本轮无现场安全确认和运动授权，未发布 `/cmd_vel`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1108:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:95:3. 启动 camera ROS driver，补 `/camera/image_raw`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1109:sprints/2026.06.09_23-00_board-live-full-stack-evidence/side2side_check.md:96:4. 用 `learn.launch.py lidar_enabled:=true no_motion_static_odom_tf:=true` 做静态 no-motion SLAM smoke，验证能否产出 `map.yaml`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1110:sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:7:CEO 已确认 `ssh root@192.168.1.11 -p 37878` 当前可从 Codex 主机连通。上一轮 SSH blocker 已解除，本轮恢复真实上车 evidence capture，覆盖雷达、摄像头、建图和运动 smoke。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1111:sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:16:2. 传感器 gate：确认雷达 `/scan`、摄像头 `/camera/image_raw`、里程计 `/odom`、`/tf` 或可替代实际 topic。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1112:sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:17:3. 建图 gate：尝试启动或发现 SLAM / map 链路，产出 `map.yaml` 或明确缺口。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1113:sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:18:4. 运动 gate：在安全前提下执行低速、短时、可停止 motion smoke，并记录 `/cmd_vel`、`/odom`、硬件反馈或失败原因。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1114:sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:19:5. evidence packet gate：把真实材料整理成 artifact root，并生成 `trashbot.field_evidence_manifest.v1`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1115:sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:23:- `robot-hardware-engineer`：真实硬件和安全 gate，读取 vendor 资料，确认设备、串口、底盘/传感器状态和运动安全边界。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1116:sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:24:- `robot-algorithm-engineer`：雷达、摄像头、SLAM/建图、rosbag/topic capture。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1117:sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:30:- 运动 smoke 只允许低速、短时、可停止；必须先记录安全前置条件，并在命令后立即 stop。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1118:sprints/2026.06.09_23-00_board-live-full-stack-evidence/pre_start.md:31:- 未证实运动成功前，不得把 `delivery_success`、`safe_to_control`、`primary_actions_enabled` 置为 true。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1119:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:14:- `sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1120:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:45:- `/scan [sensor_msgs/msg/LaserScan]`，publisher=`lidar_driver`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1121:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:46:- `/odom [nav_msgs/msg/Odometry]`，publisher=`esp32_bridge`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1122:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:51:- `/tf_static [tf2_msgs/msg/TFMessage]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1123:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:55:- `/camera/image_raw`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1124:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:56:- `/tf`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1125:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:58:未执行运动：
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1126:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:66:平台层 ROS graph blocker 已从“没有业务 node”推进到“硬件 bridge/LiDAR 可启动，但 full bringup 仍有节点失败和 camera/tf/map artifact 缺口”。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1127:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:82:- `/camera/image_raw` 未注册，当前 bringup 没有给出 ROS camera topic。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1128:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:83:- `/tf` 未注册，只有 `/tf_static` 的 `base_link -> laser_frame` 静态变换。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1129:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:84:- `/map` topic 存在但未产出 `map.yaml`，不能当作建图完成证据。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1130:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:105:python3 onboard/scripts/field_route_evidence_manifest.py --mode local --input sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run --preflight-json sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json --output sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json || true
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1131:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:110:- `schema=trashbot.field_evidence_manifest.v1`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1132:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:113:- `safe_to_control=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1133:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:114:- `delivery_success=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1134:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:115:- `primary_actions_enabled=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1135:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:116:- `present_artifacts=["rosbag"]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1136:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:117:- `missing_artifacts=["map_yaml","route_csv","keyframes","replay_jsonl"]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1137:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:123:| 雷达 | 部分通过 | `lidar_driver` 启动，`/scan` 注册并 echo 到 LaserScan 样本。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1138:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:124:| 摄像头 | blocked | `/camera/image_raw` unknown，未发现 ROS camera driver/topic。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1139:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:125:| 建图 | blocked | `/map` topic 注册，但没有 `map.yaml`、SLAM save 或 route artifact。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1140:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:126:| 运动 | blocked | `/cmd_vel` 有 subscriber 且 `/odom` 可观测，但安全 gate 未通过，本轮按要求不发运动命令。 |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1141:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:138:- `rg -n "雷达|摄像头|建图|运动|/scan|/camera/image_raw|/odom|/tf|map.yaml|route.csv|rosbag|field_evidence_manifest|safe_to_control=false|delivery_success=false|primary_actions_enabled=false" ...`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1142:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-done.md:148:- 当前 `/odom` 是 bridge 的 ROS-side command integration source；未做真实运动和轮速/里程计校验。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1143:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:61:- 运动 smoke 必须低速、短时、立即 stop。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1144:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:68:ssh -p 37878 root@192.168.1.11 'source /opt/ros/humble/setup.bash; for f in /ws/install/setup.bash ~/rober/onboard/install/setup.bash ~/apps/rober/onboard/install/setup.bash; do [ -f "$f" ] && source "$f"; done; timeout 5s ros2 topic echo /battery --once || true; timeout 5s ros2 topic echo /odom --once || true'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1145:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:71:运动 smoke 仅在现场安全前提满足时执行：
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1146:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:79:目标：雷达、摄像头、SLAM/建图、rosbag 和 route evidence。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1147:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:85:- rosbag 最多 30 秒。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1148:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:92:ssh -p 37878 root@192.168.1.11 'source /opt/ros/humble/setup.bash; for f in /ws/install/setup.bash ~/rober/onboard/install/setup.bash ~/apps/rober/onboard/install/setup.bash; do [ -f "$f" ] && source "$f"; done; timeout 8s ros2 topic hz /scan --window 5 || true; timeout 8s ros2 topic hz /camera/image_raw --window 5 || true; timeout 8s ros2 topic hz /odom --window 5 || true; timeout 5s ros2 topic echo /tf --once || true'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1149:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:93:ssh -p 37878 root@192.168.1.11 'RUN_ID=field_full_stack_$(date +%Y%m%d_%H%M%S); OUT=/root/.ros/trashbot_live_runs/$RUN_ID; mkdir -p "$OUT"; source /opt/ros/humble/setup.bash; for f in /ws/install/setup.bash ~/rober/onboard/install/setup.bash ~/apps/rober/onboard/install/setup.bash; do [ -f "$f" ] && source "$f"; done; timeout 30s ros2 bag record -o "$OUT/route_bag" /scan /camera/image_raw /odom /tf /map; find "$OUT" -maxdepth 4 -type f -o -type d | sort'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1150:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:104:- manifest 必须保持 `delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`，除非另有完整真实送达证据。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1151:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:110:python3 onboard/scripts/field_route_evidence_manifest.py --mode local --input sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/<pulled_run_dir> --preflight-json sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json --output sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1152:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:111:python3 -m json.tool sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json >/tmp/field_evidence_manifest.pretty.json
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1153:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:123:rg -n "雷达|摄像头|建图|运动|/scan|/camera/image_raw|/odom|/tf|map.yaml|route.csv|rosbag|field_evidence_manifest|safe_to_control=false|delivery_success=false|primary_actions_enabled=false" sprints/2026.06.09_23-00_board-live-full-stack-evidence
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1154:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:131:- 雷达 gate：通过或明确失败原因。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1155:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:132:- 摄像头 gate：通过或明确失败原因。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1156:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:133:- 建图 gate：通过或明确失败原因。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1157:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:134:- 运动 gate：通过或明确安全/runtime 阻断原因。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1158:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:141:- 真实运动有物理风险；低速 smoke 也必须先确认安全边界。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1159:sprints/2026.06.09_23-00_board-live-full-stack-evidence/tech-plan.md:143:- `map.yaml` / `route.csv` 可能需要人工驾驶或另开终端；如果本轮不能安全移动，必须留下可复跑命令。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1160:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:35:      "/scan": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1161:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:39:      "/camera/image_raw": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1162:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:43:      "/odom": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1163:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:47:      "/tf": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1164:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:68:      "not_started_reason": "No live /scan, /odom, /tf, or camera topics were present; this run was limited to discovery and short rosbag evidence."
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1165:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:71:  "rosbag": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1166:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:79:      "/scan",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1167:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:80:      "/camera/image_raw",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1168:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:81:      "/odom",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1169:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_topic_snapshot.json:82:      "/tf",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1170:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:7:      "map_yaml",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1171:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:8:      "route_csv",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1172:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:14:      "rosbag"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1173:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:33:    "map_yaml": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1174:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:35:      "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/map.yaml",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1175:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:51:    "rosbag": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1176:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:61:    "route_csv": {
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1177:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:63:      "path": "sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/route.csv",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1178:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:88:    "schema": "trashbot.field_evidence_manifest.v1",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1179:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/field_evidence_manifest.json:107:  "schema": "trashbot.field_evidence_manifest.v1",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1180:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_motion_smoke.json:23:      "ROS2 /odom topic is unknown",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1181:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_motion_smoke.json:26:      "upper_robot_api reports safe_to_control=false and primary_actions_enabled=false",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1182:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_motion_smoke.json:43:    "blocked_reason": "Safe gate failed before motion; publishing /cmd_vel would have no observed ROS2 hardware subscriber and no /odom before-after evidence path."
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1183:sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:5:项目需要从 local/mock software proof 进入真实上车材料闭环。PC 端 route replay、标注、云端 archive 和后续手机验收都需要真实 `map.yaml`、轨迹、关键帧、rosbag 或 replay JSONL，而不是继续消费 fixture。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1184:sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:9:作为研发/运营人员，我希望真实上位机能一次性完成雷达、摄像头、建图和运动 smoke 的 evidence capture，这样后续可以：
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1185:sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:22:- 雷达证据：`/scan` 或实际雷达 topic 的 `topic list` / `hz` / `echo --once` 摘要。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1186:sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:23:- 摄像头证据：`/camera/image_raw` 或实际 image topic 的 `topic list` / `hz` / `echo --once` 摘要。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1187:sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:24:- 建图证据：`/map`、SLAM node、map save service 或 `map.yaml` 产物；若无法建图，写明缺少哪一层。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1188:sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:25:- 运动证据：低速 motion smoke 的命令、stop 命令、`/odom` 或硬件反馈变化；若未执行，必须写明安全 gate 或 runtime gate 阻断原因。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1189:sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:26:- artifact root：集中保存本轮输出，至少包含 preflight JSON、topic snapshot、rosbag 或文本证据。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1190:sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:27:- manifest：生成或尝试生成 `trashbot.field_evidence_manifest.v1`，并保持 fail-closed 字段。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1191:sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:31:- 30 秒以内 rosbag：优先 `/scan /camera/image_raw /odom /tf /map`，缺 topic 时记录替代 topic。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1192:sprints/2026.06.09_23-00_board-live-full-stack-evidence/prd.md:33:- route/replay：如果 route recorder 可用，产出 `route.csv` 或 dry-run replay JSONL。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1193:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:51:  - `ros2 topic info -v` reported unknown topics for `/cmd_vel`, `/battery`, `/odom`, `/imu/data`, `/scan`, `/camera/image_raw`, and `/tf`.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1194:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:52:  - `timeout 5s ros2 topic echo /battery --once` and `/odom --once` both failed because the topics were not published.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1195:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:57:  - API root reports `safe_to_control=false`, `delivery_success=false`, `primary_actions_enabled=false`, `robot_control_executed=false`.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1196:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:58:  - `/api/base/status` reports configured base port `/dev/ttyS5`, baudrate `115200`, `pyserial_available=true`, `write_control_available=true`, but still `safe_to_control=false`.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1197:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:70:- `/odom` and `/battery` are not published, so there is no ROS-side before/after observation path.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1198:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:72:- Existing API policy keeps `safe_to_control=false` and `primary_actions_enabled=false`.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1199:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:79:- Current proof is not HIL pass: no wheel direction check, no low-speed movement, no observed stop, no `/odom` before/after delta, and no `/battery` ROS topic.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1200:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_report.md:82:- Camera and lidar devices/API evidence exist, but this hardware report did not execute the algorithm lane's sensor capture or rosbag workflow.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1201:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:5:- 目标：为现场 O3 验证 lane 补真实上位机的传感器、SLAM/map、rosbag 证据，供后续 O6 archive 和 O7 route replay / labeling 消费。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1202:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:6:- 抓手：不改算法代码，不启动无人值守长距离导航；通过 SSH 在真实上位机 `op-z3-b6.home` 上采集 ROS2 package/topic/node、目标 topic smoke、SLAM/map 入口和短 rosbag。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1203:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:7:- 硬件资料入口已读：`docs/vendor/VENDOR_INDEX.md`。本轮没有新增引脚、电压、UART、波特率、机械安装或底盘运动假设。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1204:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:40:## 雷达 / 摄像头 / 里程计 / TF / Map 证据
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1205:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:46:| `/scan` | 缺失 | `ros2 topic hz` 提示未发布；`ros2 topic info -v` 返回 `Unknown topic '/scan'` |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1206:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:47:| `/camera/image_raw` | 缺失 | `ros2 topic hz` 提示未发布；`ros2 topic info -v` 返回 `Unknown topic '/camera/image_raw'` |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1207:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:48:| `/odom` | 缺失 | `ros2 topic hz` 提示未发布；`ros2 topic info -v` 返回 `Unknown topic '/odom'` |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1208:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:49:| `/tf` | 缺失 | `ros2 topic echo --once` 无法确定类型；`ros2 topic info -v` 返回 `Unknown topic '/tf'` |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1209:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:54:- `/cmd_vel`、`/imu/data`、`/battery`、`/tf_static` 也均未注册。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1210:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:69:- 本轮没有启动 `learn.launch.py` 长跑：目标传感器 topic、odom/tf 和 camera topic 都不存在，启动 SLAM 不能产出有效 live map，且本轮边界是不做无人值守长距离导航。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1211:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:74:- 目标 topic：`/scan /camera/image_raw /odom /tf /map`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1212:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:77:- rosbag metadata：`/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/route_bag/metadata.yaml`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1213:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:83:- `rosbag_rc=124` 是 `timeout 10s` 结束录制的退出码；录制已正常写出 metadata 和 db3。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1214:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:85:说明：这是 graph-only fallback bag，不是传感器 rosbag，不能用于路线、SLAM 或视觉评测。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1215:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:91:3. 雷达、摄像头、odom、tf、map topic 均未注册，说明传感器/bringup 链路未启动或未接入 ROS graph。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1216:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:92:4. 已有 `learn.launch.py` 和 LiDAR 参数入口，但当前缺 live `/scan`、`/odom`、`/tf`，无法生成有效 `map.yaml` 或 route/keyframe。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1217:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:102:- 剩余风险：本轮只证明真实上位机 ROS2 环境和 package 可用，未证明雷达、摄像头、odom/tf、SLAM 或 Nav2 现场链路可用。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1218:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:103:- 下一步建议 1：由硬件/平台 owner 先启动最小 bringup，至少让 `/scan`、`/odom`、`/tf` 进入 ROS graph；如果只有 LiDAR 可用，可用 `learn.launch.py lidar_enabled:=true no_motion_static_odom_tf:=true` 做静态 no-motion SLAM smoke。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1219:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:104:- 下一步建议 2：确认 camera driver/launch 入口，产出 `/camera/image_raw` 后再补 keyframe 或图像 metadata。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1220:sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_report.md:105:- 下一步建议 3：传感器 topic 存在后，重跑 30 秒目标 rosbag，并优先生成 `map.yaml`、`route.csv` 或 keyframe，不再消费 graph-only fallback bag。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1221:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:7:本轮把 ROS graph blocker 从“只有 `/rosout` 和 `/parameter_events`”推进到“真实上位机可短时启动 ESP32 bridge 和 LiDAR driver，并发布 `/scan`、`/odom`、`/battery`、`/imu/data`、`/cmd_vel`、`/map`、`/tf_static`”。这证明平台最小 bringup 有可用入口，不再是纯 SSH 或 package proof。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1222:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:9:本轮没有达成完整 field evidence packet：缺 `/camera/image_raw`、动态 `/tf`、`map.yaml`、`route.csv`、keyframes、replay JSONL 和安全运动 smoke。`field_evidence_manifest.json` 已按预期保持 fail-closed。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1223:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:18:- `/scan` one-shot LaserScan 样本已保存。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1224:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:19:- `/odom` one-shot 样本已保存。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1225:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:26:- 摄像头未进入 ROS graph：`/camera/image_raw` unknown。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1226:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:27:- 动态 TF 未进入 ROS graph：`/tf` 未发布，仅 `/tf_static` 存在。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1227:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:28:- 建图未完成：没有 `map.yaml` 或 SLAM save 成功证据。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1228:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:29:- 运动未执行：未满足安全 gate，且本轮任务默认不做 motion。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1229:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:33:`artifacts/field_evidence_manifest.json`：
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1230:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:37:- `safe_to_control=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1231:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:38:- `delivery_success=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1232:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:39:- `primary_actions_enabled=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1233:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:40:- `present_artifacts=["rosbag"]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1234:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:41:- `missing_artifacts=["map_yaml","route_csv","keyframes","replay_jsonl"]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1235:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:53:- O1：真实 WAVE ROVER UART 可由硬件 agent 的只读反馈和本轮 `esp32_bridge` 连接共同支撑，但未做运动/HIL，不能宣称 HIL 通过。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1236:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:58:2. 明确 camera ROS driver 启动入口，产出 `/camera/image_raw`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1237:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:59:3. 用短时 `learn.launch.py lidar_enabled:=true no_motion_static_odom_tf:=true` 生成 no-motion SLAM smoke，目标是 `map.yaml`。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1238:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:60:4. 只有当现场安全 gate 明确通过，且 `/cmd_vel` subscriber、`/odom` before/after、stop 观察链齐备时，再执行低速 motion smoke。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1239:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:65:- 当前 `/odom` 仍需通过真实运动验证；无运动时零 pose/twist 只能证明 topic 链路存在。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_raw.log:1240:sprints/2026.06.09_23-00_board-live-full-stack-evidence/final.md:66:- 当前 graph-only bag 不含 `/scan` 或 `/odom`，后续必须在 bringup 已启动状态下重录目标 rosbag。
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:28:--- hz /scan ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:30:--- hz /camera/image_raw ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:31:--- hz /odom ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:33:--- echo /tf once ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:42:--- info /scan ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:45:--- info /camera/image_raw ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:46:--- info /odom ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:49:--- info /tf ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:75:=== short rosbag attempt ===
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:82:missing_topic=/scan
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:83:missing_topic=/camera/image_raw
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:84:missing_topic=/odom
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:85:missing_topic=/tf
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:88:rosbag_skipped=no_target_topics
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:92:/root/.ros/trashbot_live_runs/field_full_stack_20260609_225911/rosbag_rc.txt
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:116:--- hz /scan ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:117:WARNING: topic [/scan] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:118:--- hz /camera/image_raw ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:119:WARNING: topic [/camera/image_raw] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:120:--- hz /odom ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:121:WARNING: topic [/odom] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:122:--- echo /tf once ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:123:WARNING: topic [/tf] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:130:--- info /scan ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:131:Unknown topic '/scan'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:132:--- info /camera/image_raw ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:133:Unknown topic '/camera/image_raw'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:134:--- info /odom ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:135:Unknown topic '/odom'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:136:--- info /tf ---
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:137:Unknown topic '/tf'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:147:WARNING: topic [/camera/image_raw] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:150:WARNING: topic [/scan] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:153:WARNING: topic [/odom] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:156:WARNING: topic [/tf_static] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:268:/root/rober/onboard/src/ros2_trashbot_nav/ros2_trashbot_nav/route_csv_to_yaml.py
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:281:/root/rober/onboard/src/ros2_trashbot_nav/test/test_route_csv_to_yaml.py
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:293:ros2_trashbot_nav route_csv_to_yaml
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:299:=== remote bash: short rosbag attempt with available fallback topics ===
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:328:        Directory for learned route.csv and keyframes
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:333:        (default: '/camera/image_raw')
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:337:        (default: '/odom')
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:377:        (default: '/scan')
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:603:        (default: '/scan')
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:674:=== remote bash: short rosbag attempt with available fallback topics, no set -u ===
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:677:missing_target_topic=/scan
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:678:missing_target_topic=/camera/image_raw
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:679:missing_target_topic=/odom
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:680:missing_target_topic=/tf
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:684:stdin is not a terminal device. Keyboard handling disabled.[INFO] [1781017390.877146932] [rosbag2_recorder]: Press SPACE for pausing/resuming
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:685:[INFO] [1781017390.896265835] [rosbag2_storage]: Opened database '/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/route_bag/route_bag_0.db3' for READ_WRITE.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:686:[INFO] [1781017390.914116867] [rosbag2_recorder]: Listening for topics...
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:687:[INFO] [1781017390.914146450] [rosbag2_recorder]: Event publisher thread: Starting
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:688:[INFO] [1781017390.919648601] [rosbag2_recorder]: Subscribed to topic '/rosout'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:689:[INFO] [1781017390.923103549] [rosbag2_recorder]: Subscribed to topic '/parameter_events'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:690:[INFO] [1781017390.923827755] [rosbag2_recorder]: Recording...
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:691:[INFO] [1781017390.924870294] [rosbag2_recorder]: All requested topics are subscribed. Stopping discovery...
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:692:[INFO] [1781017399.404199089] [rosbag2_cpp]: Writing remaining messages from cache to the bag. It may take a while
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:693:[INFO] [1781017399.411791859] [rosbag2_recorder]: Event publisher thread: Exiting
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:694:[INFO] [1781017399.412304524] [rosbag2_recorder]: Recording stopped
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:695:rosbag_rc=124
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:706:/root/.ros/trashbot_live_runs/field_full_stack_20260609_230304/rosbag_rc.txt
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/algorithm_raw.log:714:rosbag2_bagfile_information:
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_raw.log:85:ssh -p 37878 root@192.168.1.11 'bash -lc '\''source /opt/ros/humble/setup.bash; ...; timeout 5s ros2 topic echo /battery --once || true; timeout 5s ros2 topic echo /odom --once || true'\'''
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_raw.log:90:WARNING: topic [/odom] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_raw.log:94:ssh -p 37878 root@192.168.1.11 'bash -lc '\''source /opt/ros/humble/setup.bash; ...; for t in /cmd_vel /battery /odom /imu/data /scan /camera/image_raw /tf; do timeout 4s ros2 topic info -v $t || true; done'\'''
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_raw.log:99:Unknown topic '/odom'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_raw.log:101:Unknown topic '/scan'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_raw.log:102:Unknown topic '/camera/image_raw'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_raw.log:103:Unknown topic '/tf'
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_raw.log:166:- `/odom` unknown in ROS graph.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/hardware_raw.log:169:- API and feedback artifacts remain fail-closed: `safe_to_control=false`, `primary_actions_enabled=false`, `robot_control_executed=false`.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topic_info.txt:1:### /scan
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topic_info.txt:22:### /odom
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topic_info.txt:43:### /tf
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topic_info.txt:44:### /camera/image_raw
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topics.txt:5:/odom [nav_msgs/msg/Odometry]
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topics.txt:8:/scan [sensor_msgs/msg/LaserScan]
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topics.txt:9:/tf_static [tf2_msgs/msg/TFMessage]
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topic_echo_once.txt:1:### echo_once /scan
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topic_echo_once.txt:33:### echo_once /odom
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topic_echo_once.txt:136:### echo_once /tf
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topic_echo_once.txt:137:WARNING: topic [/tf] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topic_echo_once.txt:138:### echo_once /camera/image_raw
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/software_bringup_20260609_230745/topic_echo_once.txt:139:WARNING: topic [/camera/image_raw] does not appear to be published yet
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:43:  - `lidar_scan_topic`, default `/scan`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:47:  - `route_camera_topic`, default `/camera/image_raw`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:48:  - `route_odom_topic`, default `/odom`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:74:- `/scan [sensor_msgs/msg/LaserScan]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:75:- `/odom [nav_msgs/msg/Odometry]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:80:- `/tf_static [tf2_msgs/msg/TFMessage]`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:86:- `/scan`: published by `lidar_driver`, frame `laser_frame`, sample ranges included `5.479`, `1.402`, `1.392`, `1.370` meters.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:87:- `/odom`: published by `esp32_bridge`, frame `odom`, child `base_link`, zero pose/twist while no motion was commanded.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:90:- `/camera/image_raw`: unknown topic.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:91:- `/tf`: not published; only `/tf_static` was present.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:131:  - `rosbag_rc.txt`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:141:The graph-only rosbag contains `/rosout` and `/parameter_events` only, `message_count: 7`, and remains useful as runtime evidence only. It is not route, SLAM, or sensor bag evidence.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:151:- `artifacts/field_evidence_manifest.json`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:152:  - `schema=trashbot.field_evidence_manifest.v1`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:155:  - `safe_to_control=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:156:  - `delivery_success=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:157:  - `primary_actions_enabled=false`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:158:  - Present required artifact: `rosbag`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:159:  - Missing required artifacts: `map_yaml`, `route_csv`, `keyframes`, `replay_jsonl`
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:165:| 雷达 | partial pass | `/scan` published by `lidar_driver`; one-shot LaserScan sample captured. |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:166:| 摄像头 | blocked | `/camera/image_raw` unknown; no ROS camera driver/topic in bringup evidence. |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:167:| 建图 | blocked | `/map` topic exists from `map_recorder`, but no `map.yaml`, route, SLAM output, or valid map artifact. |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:168:| 运动 | blocked by policy | `/cmd_vel` has an `esp32_bridge` subscriber and `/odom` is observable, but no operator safety gate or HIL clearance; no motion command sent. |
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:173:2. Add or start the camera ROS driver so `/camera/image_raw` exists.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:174:3. Rerun short bringup and record `/scan /odom /tf_static /camera/image_raw /map` before attempting route/keyframe capture.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/software_bringup_report.md:175:4. Only after explicit safety gate, use `/cmd_vel` low-speed smoke and observe `/odom` before/after plus stop.
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:171:        "command": "ssh -p 37878 root@192.168.1.11 ros2 run ros2_trashbot_nav route_csv_to_yaml --ros-args -p input_csv:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/route.csv -p output_yaml:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/fixed_route.yaml",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:172:        "name": "route_csv_to_yaml"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:179:        "command": "ssh -p 37878 root@192.168.1.11 ros2 bag record -o $HOME/.ros/trashbot_runs/${RUN_ID}/route_bag /scan /camera/image_raw /odom /tf /map",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:180:        "name": "optional_rosbag_record"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:185:        "command": "ssh -p 37878 root@192.168.1.11 ros2 topic hz /scan --window 2",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:186:        "topic": "/scan"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:189:        "command": "ssh -p 37878 root@192.168.1.11 ros2 topic hz /odom --window 2",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:190:        "topic": "/odom"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:193:        "command": "ssh -p 37878 root@192.168.1.11 ros2 topic hz /camera/image_raw --window 2",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:194:        "topic": "/camera/image_raw"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:197:        "command": "ssh -p 37878 root@192.168.1.11 ros2 topic echo --once /tf",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:198:        "topic": "/tf"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:209:    "/scan、/camera/image_raw、/odom、/tf、/map topic 与 smoke 输出",
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/preflight_ssh.json:210:    "map.yaml、route.csv、keyframes、rosbag 或 replay JSONL"
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/rosbag_rc.txt:1:rosbag_rc=124
+sprints/2026.06.09_23-00_board-live-full-stack-evidence/artifacts/pulled_remote_run/field_full_stack_20260609_230304/route_bag/metadata.yaml:1:rosbag2_bagfile_information:
+
+## git diff --check
