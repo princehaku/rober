@@ -1,0 +1,26 @@
+{
+  "sample_id": "route_keyframe_010",
+  "sample_ref": "vision_sample://keyframes/010.json",
+  "timestamp": 1781025534.6202655,
+  "frame_id": "map",
+  "raw_image": "keyframes/010.jpg",
+  "annotated_image": "",
+  "detector": "route_data_recorder",
+  "context": {
+    "task_id": "",
+    "route_id": "dynamic_odom_tf_20260610",
+    "checkpoint_id": "10",
+    "event_type": "route_keyframe",
+    "anomaly_type": ""
+  },
+  "route_pose": {
+    "x": 0.10499999567999999,
+    "y": 0.0,
+    "z": 0.0,
+    "qx": 0.0,
+    "qy": 0.0,
+    "qz": 0.0,
+    "qw": 1.0
+  },
+  "detections": []
+}

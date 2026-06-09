@@ -88,8 +88,9 @@ right_mps = linear.x + angular.z * track_width_m / 2
 - `max_wheel_speed_mps`
 - `feedback_interval_ms`
 - `odom_publish_hz`
+- `publish_odom_tf`
 
-参数校验要求：`track_width_m > 0`、`max_wheel_speed_mps > 0`、`feedback_interval_ms >= 0`、`odom_publish_hz > 0`。
+参数校验要求：`track_width_m > 0`、`max_wheel_speed_mps > 0`、`feedback_interval_ms >= 0`、`odom_publish_hz > 0`。`publish_odom_tf` 是布尔开关，默认 `true`，仅控制是否把同源 command integration `/odom` 同步广播为 `odom -> base_link` TF。
 
 ## Code Structure
 
@@ -117,6 +118,10 @@ right_mps = linear.x + angular.z * track_width_m / 2
 ### `/odom`
 
 当前实现基于最近一次 `/cmd_vel` 的指令积分计算（未使用轮速闭环），未经过独立编码器融合校验。故 `/odom` 在证据上应标注 `source=command_integration` 并由 HIL 的第一轮 run 带 `source=hil_pass` 重验。
+
+### `odom -> base_link` TF
+
+当前 bridge 可选发布动态 `odom -> base_link` TF，内容与同周期 `/odom` 的 pose 完全一致，默认由 `publish_odom_tf=true` 开启。这个 TF 仅用于补齐 ROS 拓扑和下一轮 integrated capture 对 `no_motion_static_odom_tf` 的依赖解除，不代表实测轮速、编码器或导航级里程计；真实上车时仍必须把 `/odom` topic 与 TF 一起按 `source=command_integration` 口径留证。
 
 ### `/imu/data`
 

@@ -21,26 +21,83 @@ def _install_ros_stubs():
     geometry_msgs = types.ModuleType("geometry_msgs")
     geometry_msgs.msg = types.ModuleType("geometry_msgs.msg")
 
+    class _Header:
+        def __init__(self):
+            self.stamp = None
+            self.frame_id = ""
+
+    class _Vector3:
+        def __init__(self):
+            self.x = 0.0
+            self.y = 0.0
+            self.z = 0.0
+
+    class _Quaternion:
+        def __init__(self):
+            self.x = 0.0
+            self.y = 0.0
+            self.z = 0.0
+            self.w = 0.0
+
+    class _Transform:
+        def __init__(self):
+            self.translation = _Vector3()
+            self.rotation = _Quaternion()
+
+    class TransformStamped:
+        def __init__(self):
+            self.header = _Header()
+            self.child_frame_id = ""
+            self.transform = _Transform()
+
     class Twist:
         pass
 
+    geometry_msgs.msg.TransformStamped = TransformStamped
     geometry_msgs.msg.Twist = Twist
     sys.modules.setdefault("geometry_msgs", geometry_msgs)
     sys.modules.setdefault("geometry_msgs.msg", geometry_msgs.msg)
 
     nav_msgs = types.ModuleType("nav_msgs")
     nav_msgs.msg = types.ModuleType("nav_msgs.msg")
-    nav_msgs.msg.Odometry = type("Odometry", (), {})
+
+    class _Point:
+        def __init__(self):
+            self.x = 0.0
+            self.y = 0.0
+            self.z = 0.0
+
+    class _Pose:
+        def __init__(self):
+            self.position = _Point()
+            self.orientation = _Quaternion()
+
+    class _PoseWithCovariance:
+        def __init__(self):
+            self.pose = _Pose()
+
+    class _TwistValues:
+        def __init__(self):
+            self.linear = _Vector3()
+            self.angular = _Vector3()
+
+    class _TwistWithCovariance:
+        def __init__(self):
+            self.twist = _TwistValues()
+
+    class Odometry:
+        def __init__(self):
+            self.header = _Header()
+            self.child_frame_id = ""
+            self.pose = _PoseWithCovariance()
+            self.twist = _TwistWithCovariance()
+
+    nav_msgs.msg.Odometry = Odometry
     sys.modules.setdefault("nav_msgs", nav_msgs)
     sys.modules.setdefault("nav_msgs.msg", nav_msgs.msg)
 
     sensor_msgs = types.ModuleType("sensor_msgs")
     sensor_msgs.msg = types.ModuleType("sensor_msgs.msg")
-
-    class _Header:
-        def __init__(self):
-            self.stamp = None
-            self.frame_id = ""
 
     class _Orientation:
         def __init__(self):
@@ -78,6 +135,19 @@ def _install_ros_stubs():
     serial.Serial = object
     sys.modules.setdefault("serial", serial)
 
+    tf2_ros = types.ModuleType("tf2_ros")
+
+    class TransformBroadcaster:
+        def __init__(self, node):
+            self.node = node
+            self.messages = []
+
+        def sendTransform(self, message):
+            self.messages.append(message)
+
+    tf2_ros.TransformBroadcaster = TransformBroadcaster
+    sys.modules.setdefault("tf2_ros", tf2_ros)
+
 
 def _bridge_module():
     _install_ros_stubs()
@@ -93,13 +163,37 @@ class _FakePublisher:
 
 
 class _FakeClockNow:
+    def __init__(self, nanoseconds=0):
+        self.nanoseconds = nanoseconds
+
     def to_msg(self):
         return "fake-stamp"
 
+    def __sub__(self, other):
+        return _FakeClockNow(self.nanoseconds - other.nanoseconds)
+
 
 class _FakeClock:
+    def __init__(self, *nanoseconds_values):
+        self._values = list(nanoseconds_values) or [0]
+
     def now(self):
-        return _FakeClockNow()
+        if len(self._values) > 1:
+            return _FakeClockNow(self._values.pop(0))
+        return _FakeClockNow(self._values[0])
+
+
+class _FakeParameter:
+    def __init__(self, value):
+        self.value = value
+
+
+class _FakeBroadcaster:
+    def __init__(self):
+        self.messages = []
+
+    def sendTransform(self, message):
+        self.messages.append(message)
 
 
 class WaveshareJsonBridgeTest(unittest.TestCase):
@@ -313,6 +407,73 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
         self.assertEqual(imu.orientation_covariance[0], -1.0)
         self.assertEqual(battery.voltage, 11.7)
         self.assertTrue(battery.present)
+
+    def test_declare_and_load_bridge_config_defaults_publish_odom_tf_true(self):
+        bridge_config = importlib.import_module("ros2_trashbot_hardware.bridge_config")
+
+        class _ConfigNode:
+            def __init__(self):
+                self.parameters = {}
+
+            def declare_parameter(self, name, value):
+                self.parameters[name] = value
+
+            def get_parameter(self, name):
+                return _FakeParameter(self.parameters[name])
+
+        node = _ConfigNode()
+        bridge_config.declare_bridge_parameters(node)
+        config = bridge_config.load_bridge_config(node)
+
+        self.assertTrue(config.publish_odom_tf)
+
+    def test_publish_odom_sends_matching_tf_when_enabled(self):
+        bridge = _bridge_module()
+
+        node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+        node._last_cmd_linear = 1.0
+        node._last_cmd_angular = 0.5
+        node._odom_x = 0.0
+        node._odom_y = 0.0
+        node._odom_theta = 0.0
+        node._last_odom_time = _FakeClockNow(0)
+        node.get_clock = lambda: _FakeClock(1_000_000_000)
+        node.odom_pub = _FakePublisher()
+        node.odom_tf_broadcaster = _FakeBroadcaster()
+
+        node._publish_odom()
+
+        self.assertEqual(len(node.odom_pub.messages), 1)
+        self.assertEqual(len(node.odom_tf_broadcaster.messages), 1)
+        odom = node.odom_pub.messages[0]
+        transform = node.odom_tf_broadcaster.messages[0]
+        self.assertEqual(transform.header.frame_id, odom.header.frame_id)
+        self.assertEqual(transform.child_frame_id, odom.child_frame_id)
+        self.assertEqual(transform.transform.translation.x, odom.pose.pose.position.x)
+        self.assertEqual(transform.transform.translation.y, odom.pose.pose.position.y)
+        self.assertEqual(transform.transform.translation.z, odom.pose.pose.position.z)
+        self.assertEqual(transform.transform.rotation.x, odom.pose.pose.orientation.x)
+        self.assertEqual(transform.transform.rotation.y, odom.pose.pose.orientation.y)
+        self.assertEqual(transform.transform.rotation.z, odom.pose.pose.orientation.z)
+        self.assertEqual(transform.transform.rotation.w, odom.pose.pose.orientation.w)
+
+    def test_publish_odom_skips_tf_when_disabled(self):
+        bridge = _bridge_module()
+
+        node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+        node._last_cmd_linear = 0.2
+        node._last_cmd_angular = 0.0
+        node._odom_x = 0.0
+        node._odom_y = 0.0
+        node._odom_theta = 0.0
+        node._last_odom_time = _FakeClockNow(0)
+        node.get_clock = lambda: _FakeClock(500_000_000)
+        node.odom_pub = _FakePublisher()
+        node.odom_tf_broadcaster = None
+
+        node._publish_odom()
+
+        self.assertEqual(len(node.odom_pub.messages), 1)
 
     def test_startup_config_sends_echo_interval_and_feedback_flow(self):
         bridge = _bridge_module()

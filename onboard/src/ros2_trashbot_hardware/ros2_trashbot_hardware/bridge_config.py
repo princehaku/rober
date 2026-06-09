@@ -28,6 +28,7 @@ class BridgeConfig:
     max_wheel_speed_mps: float
     feedback_interval_ms: int
     odom_publish_hz: float
+    publish_odom_tf: bool
     alias_port_used: bool = False
     alias_baudrate_used: bool = False
 
@@ -64,6 +65,8 @@ def declare_bridge_parameters(node: Any) -> None:
     node.declare_parameter("max_wheel_speed_mps", 1.3)
     node.declare_parameter("feedback_interval_ms", 100)
     node.declare_parameter("odom_publish_hz", 20.0)
+    # 动态 odom TF 默认开启，便于下一轮 smoke 直接复用；但它仍只代表命令积分，不是实测编码器。
+    node.declare_parameter("publish_odom_tf", True)
 
 
 def load_bridge_config(node: Any) -> BridgeConfig:
@@ -82,6 +85,7 @@ def load_bridge_config(node: Any) -> BridgeConfig:
         max_wheel_speed_mps=float(node.get_parameter("max_wheel_speed_mps").value),
         feedback_interval_ms=int(node.get_parameter("feedback_interval_ms").value),
         odom_publish_hz=float(node.get_parameter("odom_publish_hz").value),
+        publish_odom_tf=bool(node.get_parameter("publish_odom_tf").value),
         alias_port_used=bool(alias_port),
         alias_baudrate_used=bool(alias_baudrate),
     )

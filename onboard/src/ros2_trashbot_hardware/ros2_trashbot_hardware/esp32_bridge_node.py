@@ -17,12 +17,13 @@ import threading
 import time
 from typing import Any
 
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import TransformStamped, Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import BatteryState, Imu
 from std_srvs.srv import Trigger
 import serial
+from tf2_ros import TransformBroadcaster
 
 from ros2_trashbot_hardware.bridge_config import declare_bridge_parameters, load_bridge_config
 from ros2_trashbot_hardware.wave_rover_feedback import (
@@ -52,6 +53,7 @@ class ESP32Bridge(Node):
         self.track_width_m = config.track_width_m
         self.max_wheel_speed_mps = config.max_wheel_speed_mps
         self.feedback_interval_ms = config.feedback_interval_ms
+        self.publish_odom_tf = config.publish_odom_tf
 
         self._serial_lock = threading.Lock()
         self._running = True
@@ -73,6 +75,8 @@ class ESP32Bridge(Node):
         self.odom_pub = self.create_publisher(Odometry, "/odom", 10)
         self.imu_pub = self.create_publisher(Imu, "/imu/data", 10)
         self.battery_pub = self.create_publisher(BatteryState, "/battery", 10)
+        # TF 与 /odom 必须同源，避免后续集成时出现 topic 与 TF 两套不同的里程计事实。
+        self.odom_tf_broadcaster = TransformBroadcaster(self) if self.publish_odom_tf else None
 
         self.cmd_vel_sub = self.create_subscription(Twist, "/cmd_vel", self._cmd_vel_callback, 10)
 
@@ -96,6 +100,7 @@ class ESP32Bridge(Node):
             "ESP32Bridge ready: vendor WAVE ROVER UART protocol is one UTF-8 JSON "
             "object per newline; "
             f"command_mode={self.command_mode}; "
+            f"publish_odom_tf={self.publish_odom_tf}; "
             "odom source=ROS-side command integration until measured wheel odometry is validated"
         )
 
@@ -199,6 +204,23 @@ class ESP32Bridge(Node):
         msg.twist.twist.linear.x = self._last_cmd_linear
         msg.twist.twist.angular.z = self._last_cmd_angular
         self.odom_pub.publish(msg)
+        if self.odom_tf_broadcaster is not None:
+            self.odom_tf_broadcaster.sendTransform(self._build_odom_transform(msg))
+
+    def _build_odom_transform(self, odom: Odometry) -> TransformStamped:
+        """把 command integration 的 odom 复制为同源 TF，避免 topic/TF 数据漂移。"""
+        transform = TransformStamped()
+        transform.header.stamp = odom.header.stamp
+        transform.header.frame_id = odom.header.frame_id
+        transform.child_frame_id = odom.child_frame_id
+        transform.transform.translation.x = odom.pose.pose.position.x
+        transform.transform.translation.y = odom.pose.pose.position.y
+        transform.transform.translation.z = odom.pose.pose.position.z
+        transform.transform.rotation.x = odom.pose.pose.orientation.x
+        transform.transform.rotation.y = odom.pose.pose.orientation.y
+        transform.transform.rotation.z = odom.pose.pose.orientation.z
+        transform.transform.rotation.w = odom.pose.pose.orientation.w
+        return transform
 
     def _send_stop(self) -> bool:
         # 停车命令使用 T=1 零左右轮速，这是 vendor speed control 的最小安全路径。
