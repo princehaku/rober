@@ -1,0 +1,68 @@
+{
+  "feedback_records_after_cleanup_copy": 348,
+  "first_nonzero": null,
+  "last_records": [
+    {
+      "left_speed": 0.0,
+      "observed_at_unix_s": 1781034166.844553,
+      "pitch": -0.12029168,
+      "right_speed": 0.0,
+      "roll": -0.756953597,
+      "schema": "trashbot.wave_rover.feedback_debug.v1",
+      "source": "wave_rover_uart_t1001",
+      "voltage": 12.37572956,
+      "yaw": null,
+      "yaw_available": false
+    },
+    {
+      "left_speed": 0.0,
+      "observed_at_unix_s": 1781034166.9464474,
+      "pitch": -0.038528148,
+      "right_speed": 0.0,
+      "roll": -0.632650137,
+      "schema": "trashbot.wave_rover.feedback_debug.v1",
+      "source": "wave_rover_uart_t1001",
+      "voltage": 12.37572956,
+      "yaw": null,
+      "yaw_available": false
+    },
+    {
+      "left_speed": 0.0,
+      "observed_at_unix_s": 1781034167.0482597,
+      "pitch": -0.099383578,
+      "right_speed": 0.0,
+      "roll": -0.659098804,
+      "schema": "trashbot.wave_rover.feedback_debug.v1",
+      "source": "wave_rover_uart_t1001",
+      "voltage": 12.37572956,
+      "yaw": null,
+      "yaw_available": false
+    },
+    {
+      "left_speed": 0.0,
+      "observed_at_unix_s": 1781034167.1501966,
+      "pitch": -0.152495965,
+      "right_speed": 0.0,
+      "roll": -0.601780653,
+      "schema": "trashbot.wave_rover.feedback_debug.v1",
+      "source": "wave_rover_uart_t1001",
+      "voltage": 12.37572956,
+      "yaw": null,
+      "yaw_available": false
+    },
+    {
+      "left_speed": 0.0,
+      "observed_at_unix_s": 1781034167.252243,
+      "pitch": -0.057848621,
+      "right_speed": 0.0,
+      "roll": -0.664480329,
+      "schema": "trashbot.wave_rover.feedback_debug.v1",
+      "source": "wave_rover_uart_t1001",
+      "voltage": 12.37572956,
+      "yaw": null,
+      "yaw_available": false
+    }
+  ],
+  "nonzero_count": 0,
+  "wheel_feedback_lr_nonzero_proven": false
+}

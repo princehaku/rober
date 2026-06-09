@@ -1,0 +1,7 @@
+metric,value
+paired_bins,361
+median_abs_diff_m,0.003999948501586914
+mean_abs_diff_m,0.13545810067484418
+max_abs_diff_m,5.6717500407248735
+changed_bin_ratio,0.09418282548476455
+changed_bin_abs_threshold_m,0.05

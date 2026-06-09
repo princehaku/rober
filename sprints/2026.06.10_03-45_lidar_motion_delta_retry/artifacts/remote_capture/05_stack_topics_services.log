@@ -1,0 +1,57 @@
+[pids] lidar=93585 bridge=93601
+[process owned]
+    PID CMD
+  93585 /usr/bin/python3 /opt/ros/humble/bin/ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000
+    PID CMD
+  93601 /usr/bin/python3 /opt/ros/humble/bin/ros2 run ros2_trashbot_hardware esp32_bridge --ros-args -p serial_port:=/dev/ttyS5 -p serial_baudrate:=115200 -p command_mode:=speed -p feedback_interval_ms:=100 -p publish_odom_tf:=true -p feedback_debug_log_path:=/root/rober/onboard/sprints/2026.06.10_03-45_lidar_motion_delta_retry/artifacts/remote_capture/wave_rover_feedback_debug.jsonl
+[topics]
+/amcl_pose
+/battery
+/cmd_vel
+/imu/data
+/map
+/odom
+/parameter_events
+/rosout
+/scan
+/tf
+/trashbot/waypoints
+[services]
+/esp32_bridge/describe_parameters
+/esp32_bridge/get_parameter_types
+/esp32_bridge/get_parameters
+/esp32_bridge/list_parameters
+/esp32_bridge/set_parameters
+/esp32_bridge/set_parameters_atomically
+/lidar_driver/describe_parameters
+/lidar_driver/get_parameter_types
+/lidar_driver/get_parameters
+/lidar_driver/list_parameters
+/lidar_driver/set_parameters
+/lidar_driver/set_parameters_atomically
+/map_recorder/describe_parameters
+/map_recorder/get_parameter_types
+/map_recorder/get_parameters
+/map_recorder/list_parameters
+/map_recorder/set_parameters
+/map_recorder/set_parameters_atomically
+/task_orchestrator/describe_parameters
+/task_orchestrator/get_parameter_types
+/task_orchestrator/get_parameters
+/task_orchestrator/list_parameters
+/task_orchestrator/set_parameters
+/task_orchestrator/set_parameters_atomically
+/trashbot/beep
+/trashbot/confirm_dropoff
+/trashbot/record_waypoint
+/trashbot/reset_odom
+/trashbot/save_map
+/trashbot/stop
+/waypoint_manager/describe_parameters
+/waypoint_manager/get_parameter_types
+/waypoint_manager/get_parameters
+/waypoint_manager/list_parameters
+/waypoint_manager/set_parameters
+/waypoint_manager/set_parameters_atomically
+[stop service type]
+std_srvs/srv/Trigger

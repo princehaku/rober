@@ -104,6 +104,48 @@ ros2 topic echo --once /tf_static
 - no-motion smoke 只允许启动 LiDAR 并采样 `/scan` 指标，禁止发布 `/cmd_vel`。
   建议记录 `ranges_count`、`finite_count`、`angle_min/max` 和 `angle_span_deg`。
 
+## 2026-06-10 LiDAR Motion Delta Retry
+
+`sprints/2026.06.10_03-45_lidar_motion_delta_retry/` 在聚合 `/scan`
+修复后重跑一次受控低速 motion-delta capture。安全边界：
+
+- 远端 `root@192.168.1.11:37878`，workspace `/root/rober/onboard`。
+- `lidar_driver`：`/dev/ttyACM0 @ 150000`。
+- `esp32_bridge`：`/dev/ttyS5 @ 115200`，`command_mode:=speed`，
+  `feedback_debug_log_path` 打开。
+- 本轮临时停止 `trashbot-upper-robot-api.service` 避免串口竞争，结束后恢复 active。
+- 运动前 `/trashbot/stop` 成功，baseline `/scan` 健康后才发送命令。
+
+本轮发送一次 bounded `/cmd_vel` 脉冲：
+
+- `motion_commands_sent=true`
+- `linear.x=0.03`
+- `angular.z=0`
+- `actual_pulse_duration_s=0.23607158900995273`
+- `post_stop.success=true`
+
+聚合 `/scan` delta 结果：
+
+- `scan_frames_baseline=25`
+- `scan_frames_post=39`
+- `paired_bins=361`
+- `median_abs_diff_m=0.003999948501586914`
+- `changed_bin_ratio=0.09418282548476455`
+- `physical_motion_lidar_delta_proven=false`
+
+底盘反馈：
+
+- 拉回的 `wave_rover_feedback_debug.jsonl` 共 348 条 `T=1001` 记录。
+- `wheel_feedback_lr_nonzero_proven=false`，`left_speed/right_speed` 未出现非零。
+- `/odom` 位移约 `0.00749907216m`，仍只代表 ROS-side command integration。
+
+结论：本轮证明在 stop 可用、极低速、短窗口条件下可以发送并停止一次
+bounded 控制脉冲；但 LiDAR delta 与 WAVE ROVER wheel feedback 仍不能证明真实
+physical motion。`safe_to_control=true` 只适用于同等 bounded smoke 条件，
+不等于自主导航或送达闭环可发车。清场已补跑确认：
+本轮 `lidar_driver` / `esp32_bridge` / probe 无残留，`/dev/ttyS5` 与
+`/dev/ttyACM0` 无本轮 ROS 占用，`trashbot-upper-robot-api.service` 为 `active`。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`

@@ -1,0 +1,4 @@
+strict_process_check
+lsof_check
+service_check
+active
