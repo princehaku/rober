@@ -1,0 +1,22 @@
+{
+  "writes": {
+    "brightness": true,
+    "contrast": true,
+    "saturation": true,
+    "gamma": true,
+    "gain": true,
+    "backlight_compensation": true,
+    "auto_exposure": true,
+    "exposure_time_absolute": false
+  },
+  "after": {
+    "brightness": 0,
+    "contrast": 0,
+    "saturation": 0,
+    "gamma": 10,
+    "gain": 4,
+    "backlight_compensation": 0,
+    "auto_exposure": 3,
+    "exposure_time_absolute": 80
+  }
+}

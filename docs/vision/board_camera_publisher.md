@@ -155,3 +155,53 @@ ros2 launch ros2_trashbot_bringup bringup.launch.py \
 
 因此当前实现只采纳 vendor 的最小 USB/OpenCV 入口思路，不引入 Raspberry Pi
 `Picamera2`、boot overlay 或音视频栈假设。
+
+## 2026-06-10 04:00 camera visibility probe
+
+`sprints/2026.06.10_04-00_board_camera_visibility_probe/` 在真实上位机
+`root@192.168.1.11:37878` 上把设备层、OpenCV 直采和 ROS topic 三段证据放在同一轮复核。
+本轮未发送 `/cmd_vel`，未启动底盘控制。
+
+设备事实保持不变：
+
+- `/dev/video1` 是 `uvcvideo` 驱动的 `USB Composite Device: DV20 USB`，具备 `Video Capture`。
+- `/dev/video0` 仍是 `cedrus (platform:cedrus)`，不是相机采集节点。
+- `/dev/video2` 仍是同一个 UVC 设备的 metadata 节点。
+- `/dev/video1` 支持 `MJPG`：1280x720、640x480、480x320、1920x1080；支持 `YUYV`：640x480、320x240。
+
+OpenCV 直采矩阵结论：
+
+| 样本 | read_ok | mean_luma | dynamic_range_luma | non_black_ratio | edge_count | 结论 |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| `default_mjpg_640x480` | true | 1.0 | 0.0 | 0.0 | 0 | 不可见 |
+| `default_yuyv_640x480` | true | 0.001237 | 1.0 | 0.0 | 0 | 不可见 |
+| `default_mjpg_320x240` | true | 1.0 | 0.0 | 0.0 | 0 | 不可见；设备实际输出 480x320 |
+| `default_yuyv_320x240` | true | 0.000755 | 1.0 | 0.0 | 0 | 不可见 |
+| `boosted_mjpg_640x480` | true | 1.0 | 0.0 | 0.0 | 0 | 保守 brightness/gain/backlight sweep 后仍不可见 |
+
+ROS topic smoke 结论：
+
+- `bringup.launch.py base_enabled:=false camera_enabled:=true camera_width:=640 camera_height:=480 camera_fps:=2.0`
+  未显式传 `camera_device` 时，`camera_publisher` 日志显示使用 `/dev/video1`。
+- `/camera/image_raw` 出现在 ROS graph，`ros2 topic info` 显示 `sensor_msgs/msg/Image`、`Publisher count: 1`。
+- subscriber 收到 `640x480 bgr8` 图像，`data_len=921600`。
+- ROS topic 样本指标：`mean_luma=0.001243`、`dynamic_range_luma=1.0`、
+  `non_black_ratio=0.0`、`edge_count=0`。
+
+布尔结论：
+
+- `camera_device_opened=true`
+- `ros_camera_topic_proven=true`
+- `visible_content_proven=false`
+- `probable_failure_class=physical_occlusion_or_dark_scene`
+
+失败分类理由：设备枚举、OpenCV read、ROS publish/subscribe 都成立，MJPG/YUYV 和两档分辨率均能读到帧，
+保守 brightness/gain/backlight sweep 后控制项恢复正常，但所有样本仍没有非黑像素和边缘纹理。
+因此当前更像镜头盖/遮挡、朝向纯暗面、现场光照不足、相机本体输出黑场，或 USB 摄像头光学路径问题；
+驱动格式错误和设备路径错误的概率低于物理遮挡/暗场。
+
+后续路线关键帧、视觉定位、障碍识别或远程可视验收前，必须先由现场人工完成：
+
+1. 确认镜头盖、保护膜、遮挡和摄像头朝向。
+2. 对准有纹理的高对比目标，并打开补光。
+3. 必要时更换 USB 口或 USB 摄像头本体后重跑本 sprint 的 OpenCV/ROS 双路径采样。

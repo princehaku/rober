@@ -146,6 +146,29 @@ physical motion。`safe_to_control=true` 只适用于同等 bounded smoke 条件
 本轮 `lidar_driver` / `esp32_bridge` / probe 无残留，`/dev/ttyS5` 与
 `/dev/ttyACM0` 无本轮 ROS 占用，`trashbot-upper-robot-api.service` 为 `active`。
 
+## 2026-06-10 04:00 Camera Visibility Boundary
+
+`sprints/2026.06.10_04-00_board_camera_visibility_probe/` 在真实上位机
+`root@192.168.1.11:37878` 上复核 `/dev/video1` 可见性。本轮只触碰
+camera/OpenCV/v4l2/ROS camera topic，未发布 `/cmd_vel`，未启动底盘控制。
+
+已证明：
+
+- `/dev/video1` 仍是 DV20 USB 的 `uvcvideo` capture 节点，OpenCV 可打开并读帧。
+- `bringup.launch.py base_enabled:=false camera_enabled:=true` 未显式传 `camera_device`
+  时，`camera_publisher` 使用默认 `/dev/video1` 并发布 `/camera/image_raw`。
+- `/camera/image_raw` subscriber 收到 `640x480 bgr8` 图像。
+- 清场后无 `camera_publisher` / `bringup.launch.py` 残留，`/dev/video1` 无占用；
+  brightness/gain/backlight 等临时控制项已恢复。
+
+未证明：
+
+- `visible_content_proven=false`。OpenCV MJPG/YUYV、640x480/320x240 与 ROS topic 样本的
+  `non_black_ratio=0.0`、`edge_count=0`，不能用于路线关键帧、视觉定位、障碍识别或远程可视验收。
+- 本轮不构成运动、导航、里程计或送达闭环证据。
+
+下一步必须现场人工确认镜头盖/保护膜/遮挡、朝向、补光、USB 口和相机本体。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`

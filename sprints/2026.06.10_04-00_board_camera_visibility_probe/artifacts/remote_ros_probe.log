@@ -1,0 +1,38 @@
+== bringup pid ==
+95876
+== camera publisher processes ==
+  95876   95852 Sl   /usr/bin/python3 /opt/ros/humble/bin/ros2 launch ros2_trashbot_bringup bringup.launch.py base_enabled:=false camera_enabled:=true camera_width:=640 camera_height:=480 camera_fps:=2.0
+  95882   95876 Rl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher --ros-args -r __node:=camera_publisher --params-file /tmp/launch_params_6gwi1778
+== topic list ==
+/amcl_pose
+/camera/image_raw
+/map
+/parameter_events
+/rosout
+/trashbot/waypoints
+== topic info ==
+Type: sensor_msgs/msg/Image
+Publisher count: 1
+Subscription count: 0
+== topic hz ==
+WARNING: topic [/camera/image_raw] does not appear to be published yet
+{
+  "schema": "trashbot.ros_camera_image_metrics.v1",
+  "topic": "/camera/image_raw",
+  "image_message_observed": true,
+  "height": 480,
+  "width": 640,
+  "encoding": "bgr8",
+  "step": 1920,
+  "data_len": 921600,
+  "frame_path": "/tmp/rober_camera_visibility_probe_0400/ros/ros_camera_image_raw_sample.jpg",
+  "mean_luma": 0.001243,
+  "min_luma": 0.0,
+  "max_luma": 1.0,
+  "dynamic_range_luma": 1.0,
+  "non_black_ratio": 0.0,
+  "laplacian_var": 0.009538,
+  "edge_count": 0,
+  "edge_ratio": 0.0,
+  "visible_content_candidate": false
+}

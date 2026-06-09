@@ -1,0 +1,6 @@
+/amcl_pose
+/camera/image_raw
+/map
+/parameter_events
+/rosout
+/trashbot/waypoints

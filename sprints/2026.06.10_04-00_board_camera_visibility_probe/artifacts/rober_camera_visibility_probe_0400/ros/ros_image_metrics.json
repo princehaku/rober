@@ -1,0 +1,20 @@
+{
+  "schema": "trashbot.ros_camera_image_metrics.v1",
+  "topic": "/camera/image_raw",
+  "image_message_observed": true,
+  "height": 480,
+  "width": 640,
+  "encoding": "bgr8",
+  "step": 1920,
+  "data_len": 921600,
+  "frame_path": "/tmp/rober_camera_visibility_probe_0400/ros/ros_camera_image_raw_sample.jpg",
+  "mean_luma": 0.001243,
+  "min_luma": 0.0,
+  "max_luma": 1.0,
+  "dynamic_range_luma": 1.0,
+  "non_black_ratio": 0.0,
+  "laplacian_var": 0.009538,
+  "edge_count": 0,
+  "edge_ratio": 0.0,
+  "visible_content_candidate": false
+}

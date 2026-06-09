@@ -1,0 +1,11 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-10-03-51-43-919283-op-z3-b6.home-95876
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [waypoint_manager-1]: process started with pid [95878]
+[INFO] [map_recorder-2]: process started with pid [95880]
+[INFO] [camera_publisher-3]: process started with pid [95882]
+[INFO] [task_orchestrator-4]: process started with pid [95884]
+[waypoint_manager-1] [WARN] [1781034706.740421875] [waypoint_manager]: nav2_simple_commander is unavailable; waypoint navigation disabled: No module named 'nav2_simple_commander'
+[camera_publisher-3] [INFO] [1781034706.970069032] [camera_publisher]: camera_publisher streaming /dev/video1 to /camera/image_raw with frame_id=camera, requested 640x480@2.00fps
+[task_orchestrator-4] [INFO] [1781034707.008007622] [task_orchestrator]: TaskOrchestrator ready. Awaiting learning or patrol command.
+[waypoint_manager-1] [INFO] [1781034707.140083191] [waypoint_manager]: Loaded 44 waypoints from /root/.ros/trashbot_maps/waypoints.yaml
+[waypoint_manager-1] [INFO] [1781034707.142706680] [waypoint_manager]: WaypointManager ready. Loaded 44 waypoints.
