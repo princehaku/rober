@@ -1,0 +1,3 @@
+[after service stop]
+inactive
+[lsof after service stop]

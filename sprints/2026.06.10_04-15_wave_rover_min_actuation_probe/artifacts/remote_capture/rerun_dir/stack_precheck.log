@@ -1,0 +1,56 @@
+[started pids]
+LIDAR_PID=98893
+BRIDGE_PID=98894
+[service list]
+/esp32_bridge/describe_parameters
+/esp32_bridge/get_parameters
+/esp32_bridge/get_parameter_types
+/esp32_bridge/list_parameters
+/esp32_bridge/set_parameters
+/esp32_bridge/set_parameters_atomically
+/lidar_driver/describe_parameters
+/lidar_driver/get_parameters
+/lidar_driver/get_parameter_types
+/lidar_driver/list_parameters
+/lidar_driver/set_parameters
+/lidar_driver/set_parameters_atomically
+/map_recorder/describe_parameters
+/map_recorder/get_parameters
+/map_recorder/get_parameter_types
+/map_recorder/list_parameters
+/map_recorder/set_parameters
+/map_recorder/set_parameters_atomically
+/task_orchestrator/describe_parameters
+/task_orchestrator/get_parameters
+/task_orchestrator/get_parameter_types
+/task_orchestrator/list_parameters
+/task_orchestrator/set_parameters
+/task_orchestrator/set_parameters_atomically
+/trashbot/beep
+/trashbot/confirm_dropoff
+/trashbot/record_waypoint
+/trashbot/reset_odom
+/trashbot/save_map
+/trashbot/stop
+/waypoint_manager/describe_parameters
+/waypoint_manager/get_parameters
+/waypoint_manager/get_parameter_types
+/waypoint_manager/list_parameters
+/waypoint_manager/set_parameters
+/waypoint_manager/set_parameters_atomically
+[topic list]
+/amcl_pose
+/battery
+/cmd_vel
+/imu/data
+/map
+/odom
+/parameter_events
+/rosout
+/scan
+/tf
+/trashbot/waypoints
+[lsof stack]
+COMMAND     PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+lidar_dri 98896 root   19u   CHR  166,0      0t0  438 /dev/ttyACM0
+esp32_bri 98897 root   19u   CHR   4,69      0t0  120 /dev/ttyS5

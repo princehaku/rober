@@ -207,6 +207,27 @@ std_srvs.srv.Trigger_Response(success=True, message='Motors stopped')
 - expected JSON 是项目公式 `linear.x/max_wheel_speed_mps` 的 expected command，
   不是额外硬件反馈。
 
+### 补充 rerun artifacts
+
+主会话后续状态核对时发现同一 probe 脚本在 `2026-06-10T04:08` 又留下了一组未归档
+remote capture 文件。为避免丢失现场证据，已将这些文件收敛到：
+
+- `artifacts/remote_capture/rerun_dir/`
+
+该 rerun 的结论与主记录一致，没有把任何布尔值翻转为 true：
+
+| step | `linear.x` | duration | median_abs_diff_m | changed_bin_ratio | wheel L/R nonzero | command integration odom delta |
+| --- | ---: | ---: | ---: | ---: | --- | ---: |
+| 1 | 0.03 m/s | 0.162466s | 0.004500 | 0.205841 | false | 0.004500m |
+| 2 | 0.05 m/s | 0.163676s | 0.009000 | 0.327731 | false | 0.007587m |
+| 3 | 0.07 m/s | 0.168769s | 0.005500 | 0.250696 | false | 0.007008m |
+| 4 | 0.09 m/s | 0.164173s | 0.009000 | 0.353933 | false | 0.013464m |
+
+`rerun_dir/final_cleanup_check.log` 记录 API 服务为 `active`，`lsof` 与本轮 ROS 进程检查无异常。
+因此 rerun 只增强“低速短脉冲可 stop，但仍无物理运动或 wheel feedback 非零证据”的结论，
+不改变 `physical_motion_lidar_delta_proven=false`、`wheel_feedback_lr_nonzero_proven=false`、
+`min_actuation_step_proven=null`。
+
 ### 清场检查
 
 本轮 probe 退出后执行 stop 与进程清理，并恢复 API 服务。最终严格复查：
