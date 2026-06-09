@@ -1,0 +1,28 @@
+### pre_map_runtime_listing
+### command: bash -lc for d in /root/rober/onboard/runtime /root/rober/onboard/runtime/maps /root/rober/runtime; do echo "## $d"; find "$d" -maxdepth 3 -type f -o -type d 2>&1 | sort || true; done
+### started_at: 2026-06-10T04:38:09+08:00
+## /root/rober/onboard/runtime
+/root/rober/onboard/runtime
+/root/rober/onboard/runtime/map_lifecycle_latest.json
+/root/rober/onboard/runtime/maps
+/root/rober/onboard/runtime/maps/trashbot_map.pgm
+/root/rober/onboard/runtime/maps/trashbot_map.yaml
+/root/rober/onboard/runtime/nav2_lifecycle_latest.json
+## /root/rober/onboard/runtime/maps
+/root/rober/onboard/runtime/maps
+/root/rober/onboard/runtime/maps/trashbot_map.pgm
+/root/rober/onboard/runtime/maps/trashbot_map.yaml
+## /root/rober/runtime
+/root/rober/runtime
+/root/rober/runtime/base_feedback_samples_latest.json
+/root/rober/runtime/deploy_backups
+/root/rober/runtime/deploy_backups/20260604T221619+0800
+/root/rober/runtime/deploy_backups/20260604T221619+0800/o1_lidar_scan_proof_collector.py.before
+/root/rober/runtime/deploy_backups/20260604T221619+0800/upper_robot_api.py.before
+/root/rober/runtime/deploy_backups/20260604T232019+0800_ros_log_env
+/root/rober/runtime/deploy_backups/20260604T232019+0800_ros_log_env/o1_lidar_scan_proof_collector.py
+/root/rober/runtime/lidar_raw_packet_proof_latest.json
+/root/rober/runtime/lidar_scan_proof_latest.json
+/root/rober/runtime/map_lifecycle_latest.json
+### exit_code: 0
+### finished_at: 2026-06-10T04:38:09+08:00

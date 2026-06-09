@@ -1,0 +1,6 @@
+### pre_upper_api_process
+### command: pgrep -af upper_robot_api.py
+### started_at: 2026-06-10T04:38:05+08:00
+99004 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+### exit_code: 0
+### finished_at: 2026-06-10T04:38:05+08:00

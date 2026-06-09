@@ -1,0 +1,6 @@
+### pre_date
+### command: date -Is
+### started_at: 2026-06-10T04:38:05+08:00
+2026-06-10T04:38:05+08:00
+### exit_code: 0
+### finished_at: 2026-06-10T04:38:05+08:00

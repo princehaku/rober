@@ -1,0 +1,9 @@
+### final_lsof_and_runtime_processes
+### command: bash -lc echo "## lsof"; lsof /dev/ttyS5 /dev/ttyACM0 2>&1 || true; echo "## processes"; pgrep -af "o3_map_lifecycle_proof|slam_toolbox|map_saver|map_lifecycle|lidar_driver|ros2 launch" || true
+### started_at: 2026-06-10T04:39:00+08:00
+## lsof
+## processes
+106092 bash /tmp/run_map_lifecycle_capture.sh
+106517 bash -lc echo "## lsof"; lsof /dev/ttyS5 /dev/ttyACM0 2>&1 || true; echo "## processes"; pgrep -af "o3_map_lifecycle_proof|slam_toolbox|map_saver|map_lifecycle|lidar_driver|ros2 launch" || true
+### exit_code: 0
+### finished_at: 2026-06-10T04:39:01+08:00

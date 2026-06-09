@@ -1,0 +1,5 @@
+### post_lsof_ttyS5_ttyACM0
+### command: bash -lc lsof /dev/ttyS5 /dev/ttyACM0 2>&1 || true
+### started_at: 2026-06-10T04:39:00+08:00
+### exit_code: 0
+### finished_at: 2026-06-10T04:39:00+08:00

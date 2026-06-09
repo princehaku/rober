@@ -1,0 +1,91 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-10-04-38-26-731019-op-z3-b6.home-106275
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [async_slam_toolbox_node-1]: process started with pid [106298]
+[INFO] [map_recorder-2]: process started with pid [106300]
+[INFO] [lidar_driver-3]: process started with pid [106302]
+[INFO] [static_transform_publisher-4]: process started with pid [106304]
+[static_transform_publisher-4] [WARN] [1781037507.144269860] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-4] [INFO] [1781037507.477957205] [no_motion_static_odom_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-4] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-4] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-4] from 'odom' to 'base_link'
+[async_slam_toolbox_node-1] [INFO] [1781037507.985382863] [slam_toolbox]: Using solver plugin solver_plugins::CeresSolver
+[lidar_driver-3] [INFO] [1781037509.401471814] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000
+[async_slam_toolbox_node-1] [INFO] [1781037510.285089367] [slam_toolbox]: Message Filter dropping message: frame 'laser_frame' at time 1781037510.186 for reason 'discarding message because the queue is full'
+[async_slam_toolbox_node-1] [INFO] [1781037512.830498708] [slam_toolbox]: Message Filter dropping message: frame 'laser_frame' at time 1781037512.752 for reason 'discarding message because the queue is full'
+[async_slam_toolbox_node-1] [INFO] [1781037515.345344413] [slam_toolbox]: Message Filter dropping message: frame 'laser_frame' at time 1781037515.245 for reason 'discarding message because the queue is full'
+[async_slam_toolbox_node-1] [INFO] [1781037517.912701632] [slam_toolbox]: Message Filter dropping message: frame 'laser_frame' at time 1781037517.835 for reason 'discarding message because the queue is full'
+[async_slam_toolbox_node-1] [INFO] [1781037520.481204804] [slam_toolbox]: Message Filter dropping message: frame 'laser_frame' at time 1781037520.403 for reason 'discarding message because the queue is full'
+[async_slam_toolbox_node-1] [INFO] [1781037522.989649033] [slam_toolbox]: Message Filter dropping message: frame 'laser_frame' at time 1781037522.890 for reason 'discarding message because the queue is full'
+[async_slam_toolbox_node-1] [INFO] [1781037525.570943158] [slam_toolbox]: Message Filter dropping message: frame 'laser_frame' at time 1781037525.474 for reason 'discarding message because the queue is full'
+[async_slam_toolbox_node-1] [INFO] [1781037528.145831473] [slam_toolbox]: Message Filter dropping message: frame 'laser_frame' at time 1781037528.049 for reason 'discarding message because the queue is full'
+[async_slam_toolbox_node-1] [INFO] [1781037530.650919673] [slam_toolbox]: Message Filter dropping message: frame 'laser_frame' at time 1781037530.626 for reason 'discarding message because the queue is full'
+[async_slam_toolbox_node-1] [INFO] [1781037533.224800367] [slam_toolbox]: Message Filter dropping message: frame 'laser_frame' at time 1781037533.128 for reason 'discarding message because the queue is full'
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[INFO] [static_transform_publisher-4]: sending signal 'SIGINT' to process[static_transform_publisher-4]
+[INFO] [lidar_driver-3]: sending signal 'SIGINT' to process[lidar_driver-3]
+[INFO] [map_recorder-2]: sending signal 'SIGINT' to process[map_recorder-2]
+[ERROR] [static_transform_publisher-4]: process has died [pid 106304, exit code -2, cmd '/opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 odom base_link --ros-args -r __node:=no_motion_static_odom_tf'].
+[INFO] [async_slam_toolbox_node-1]: sending signal 'SIGINT' to process[async_slam_toolbox_node-1]
+[async_slam_toolbox_node-1] [INFO] [1781037534.339272063] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[static_transform_publisher-4] [INFO] [1781037534.339293979] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[ERROR] [async_slam_toolbox_node-1]: process has died [pid 106298, exit code -2, cmd '/opt/ros/humble/lib/slam_toolbox/async_slam_toolbox_node --ros-args -r __node:=slam_toolbox --params-file /tmp/launch_params_3uv3dcck'].
+[lidar_driver-3] Traceback (most recent call last):
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 400, in main
+[map_recorder-2] Traceback (most recent call last):
+[map_recorder-2]   File "/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder", line 33, in <module>
+[map_recorder-2]     sys.exit(load_entry_point('ros2-trashbot-nav', 'console_scripts', 'map_recorder')())
+[map_recorder-2]   File "/root/rober/onboard/build/ros2_trashbot_nav/ros2_trashbot_nav/map_recorder.py", line 104, in main
+[map_recorder-2]     node.destroy_node()
+[map_recorder-2]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1691, in destroy_node
+[lidar_driver-3]     rclpy.spin(node)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 229, in spin
+[lidar_driver-3]     executor.spin_once()
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 808, in spin_once
+[lidar_driver-3]     self._spin_once_impl(timeout_sec)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 803, in _spin_once_impl
+[lidar_driver-3]     handler()
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 256, in __call__
+[lidar_driver-3]     self._execute_coroutine_step(self._handler)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 272, in _execute_coroutine_step
+[lidar_driver-3]     result = coro.send(None)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 488, in handler
+[lidar_driver-3]     await call_coroutine(entity, arg)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 396, in _execute_timer
+[lidar_driver-3]     await await_or_execute(tmr.callback)
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 110, in await_or_execute
+[lidar_driver-3]     return callback(*args)
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 355, in _tick
+[lidar_driver-3]     packets = self._next_packets()
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 367, in _next_packets
+[lidar_driver-3]     return self.serial_session.read_packets()
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 109, in read_packets
+[lidar_driver-3]     chunk = self._serial.read(int(self.config.read_size)) or b""
+[lidar_driver-3]   File "/usr/local/lib/python3.10/dist-packages/serial/serialposix.py", line 565, in read
+[lidar_driver-3]     ready, _, _ = select.select([self.fd, self.pipe_abort_read_r], [], [], timeout.time_left())
+[lidar_driver-3] KeyboardInterrupt
+[lidar_driver-3] 
+[lidar_driver-3] During handling of the above exception, another exception occurred:
+[lidar_driver-3] 
+[lidar_driver-3] Traceback (most recent call last):
+[lidar_driver-3]   File "/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver", line 33, in <module>
+[lidar_driver-3]     sys.exit(load_entry_point('ros2-trashbot-hardware', 'console_scripts', 'lidar_driver')())
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 402, in main
+[lidar_driver-3]     node.destroy_node()
+[lidar_driver-3]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 395, in destroy_node
+[lidar_driver-3]     return super().destroy_node()
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1691, in destroy_node
+[map_recorder-2]     self.destroy_service(self._services[0])
+[map_recorder-2]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1615, in destroy_service
+[map_recorder-2]     service.destroy()
+[map_recorder-2]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/service.py", line 93, in destroy
+[lidar_driver-3]     self.destroy_service(self._services[0])
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1615, in destroy_service
+[map_recorder-2]     self.__service.destroy_when_not_in_use()
+[map_recorder-2] KeyboardInterrupt
+[lidar_driver-3]     service.destroy()
+[lidar_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/service.py", line 93, in destroy
+[lidar_driver-3]     self.__service.destroy_when_not_in_use()
+[lidar_driver-3] KeyboardInterrupt
+[ERROR] [map_recorder-2]: process has died [pid 106300, exit code -2, cmd '/root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_s09d765a'].
+[ERROR] [lidar_driver-3]: process has died [pid 106302, exit code -2, cmd '/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -r __node:=lidar_driver --params-file /tmp/launch_params_vkm19_7a'].

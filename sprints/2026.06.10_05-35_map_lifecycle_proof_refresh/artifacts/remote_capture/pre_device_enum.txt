@@ -1,0 +1,17 @@
+### pre_device_enum
+### command: bash -lc ls -l /dev/ttyS5 /dev/ttyACM0 /dev/serial/by-id /dev/serial/by-path 2>&1 || true; readlink -f /dev/ttyS5 /dev/ttyACM0 2>&1 || true
+### started_at: 2026-06-10T04:38:05+08:00
+crw-rw---- 1 root dialout 166,  0 Jun 10 04:29 /dev/ttyACM0
+crw-rw---- 1 root dialout   4, 69 Jun 10 04:08 /dev/ttyS5
+
+/dev/serial/by-id:
+total 0
+lrwxrwxrwx 1 root root 13 Jun  8 13:17 usb-STC_STC_USB_Serial-if00 -> ../../ttyACM0
+
+/dev/serial/by-path:
+total 0
+lrwxrwxrwx 1 root root 13 Jun  8 13:17 platform-5200400.usb-usb-0:1:1.0 -> ../../ttyACM0
+/dev/ttyS5
+/dev/ttyACM0
+### exit_code: 0
+### finished_at: 2026-06-10T04:38:05+08:00

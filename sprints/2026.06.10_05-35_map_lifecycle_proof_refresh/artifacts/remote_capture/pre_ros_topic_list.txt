@@ -1,0 +1,9 @@
+### pre_ros_topic_list
+### started_at: 2026-06-10T04:38:06+08:00
+/amcl_pose [geometry_msgs/msg/PoseWithCovarianceStamped]
+/map [nav_msgs/msg/OccupancyGrid]
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/rosout [rcl_interfaces/msg/Log]
+/trashbot/waypoints [ros2_trashbot_interfaces/msg/WaypointList]
+### exit_code: 0
+### finished_at: 2026-06-10T04:38:09+08:00

@@ -321,6 +321,60 @@ UART 写入。
 - `sprints/2026.06.10_05-15_lidar_scan_proof_refresh/artifacts/runtime_logs/rober_lidar_scan_proof_runtime_1781036938372.log`
 - `sprints/2026.06.10_05-15_lidar_scan_proof_refresh/artifacts/remote_capture/final_lsof_and_runtime_processes.txt`
 
+## 2026-06-10 05:35 map lifecycle proof refresh
+
+`sprints/2026.06.10_05-35_map_lifecycle_proof_refresh/` 在真实上位机
+`root@192.168.1.11:37878` 上调用唯一允许的 map lifecycle API refresh：
+`POST /api/map/proof/refresh`，body 为 `{"timeout_s":60}`。本轮没有调用
+`/api/map/start`、`/api/nav2/start`、`/api/nav2/proof/refresh`、`/api/base/manual`、
+`/api/base/status` 或 `/api/base/stop`。
+
+安全边界：
+
+- 未发布非零 `/cmd_vel`，未发送 direct UART `T=1` / `T=13` / `T=130` /
+  `T=131` 到 `/dev/ttyS5`。
+- refresh guard 字段保持 `publishes_cmd_vel=false`、`calls_base_manual=false`、
+  `sends_base_motion_commands=false`、`uses_base_uart=false`、
+  `safe_to_control=false`、`delivery_success=false`。
+- refresh 前 `/dev/ttyS5` 和 `/dev/ttyACM0` 均存在，`/dev/serial/by-id/usb-STC_STC_USB_Serial-if00`
+  指向 `/dev/ttyACM0`；refresh 前后 `lsof /dev/ttyS5 /dev/ttyACM0` 无底盘或
+  LiDAR runtime 残留。
+- 结束后 `trashbot-upper-robot-api.service` 为 `active`，无 `o3_map_lifecycle_proof`、
+  `slam_toolbox`、`map_saver`、`lidar_driver` 或 `ros2 launch` 残留进程。
+
+本轮把 canonical current map lifecycle artifact 刷新为最新失败状态，而不是证明
+路线地图：
+
+- `POST /api/map/proof/refresh` 返回 HTTP 200，但 top-level `status=not_proven`，
+  `failure_reason=configured_command_failed`，helper `returncode=2`。
+- canonical `/root/rober/onboard/runtime/map_lifecycle_latest.json` 当前为
+  `blocked_with_root_cause`，root cause 为 `/map_once_not_observed`。
+- helper no-motion runtime 成功启动 `learn.launch.py` 的 LiDAR + SLAM 窗口，
+  `/scan` once observed，runtime topic list 中出现 `/scan`、`/map`、`/map_metadata`、
+  `/tf`、`/tf_static` 和 `slam_toolbox` topic。
+- `map_once_observed=false`：`timeout 12 ros2 topic echo --once /map` 超时。
+- `map_file_observed=true`：`/root/rober/onboard/runtime/maps/trashbot_map.yaml` 和
+  `trashbot_map.pgm` 存在，但它们是已有文件，不是本轮新保存地图。
+- `map_metadata_observed=false`：本轮没有拿到当前 map metadata。
+- `map_artifact_proven=false`、`real_route_map_proven=false`、`nav2_runtime_proven=false`、
+  `delivery_success=false` 均不能翻 true。
+
+`GET /api/nav2/status` 只用于 downstream readiness readback，结果仍为
+`status=not_proven`；`amcl_nav2_readiness.status=blocked_with_root_cause`，blocker 为
+`map_lifecycle_proof_not_clean`、`map_once_not_observed` 和
+`map_metadata_not_observed`。因此旧 `map_yaml`/`map_pgm` 只能作为材料候选，
+不能解锁 AMCL/Nav2、fixed route execution、真实移动 route/map 或 delivery proof。
+
+关键 artifact：
+
+- `sprints/2026.06.10_05-35_map_lifecycle_proof_refresh/artifacts/remote_capture/api_map_proof_refresh_response.json`
+- `sprints/2026.06.10_05-35_map_lifecycle_proof_refresh/artifacts/remote_capture/onboard_runtime_map_lifecycle_latest.json`
+- `sprints/2026.06.10_05-35_map_lifecycle_proof_refresh/artifacts/remote_capture/legacy_runtime_map_lifecycle_latest.json`
+- `sprints/2026.06.10_05-35_map_lifecycle_proof_refresh/artifacts/remote_capture/runtime_maps/trashbot_map.yaml`
+- `sprints/2026.06.10_05-35_map_lifecycle_proof_refresh/artifacts/remote_capture/runtime_maps/trashbot_map.pgm`
+- `sprints/2026.06.10_05-35_map_lifecycle_proof_refresh/artifacts/remote_capture/runtime_logs/rober_map_lifecycle_runtime_1781037503387.log`
+- `sprints/2026.06.10_05-35_map_lifecycle_proof_refresh/artifacts/remote_capture/final_clean_after_capture_bash.txt`
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`
