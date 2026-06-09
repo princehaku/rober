@@ -6,14 +6,16 @@
 
 阻塞根因：当前开发主机无法到达 CEO 提供的真实上位机地址 `192.168.1.11:37878`。SSH、ping、nc 均在网络层返回 `No route to host` 或 100% 丢包，ARP 显示 `192.168.1.11` 为 incomplete。
 
+2026-06-09 13:48 CST 复测补充：本机 `en0` 仍显示 `192.168.1.3/24`，但默认网关 `192.168.1.1` 也无法 ping 通，说明当前优先 blocker 是本机 LAN/网关可达性异常；在恢复网关与目标 IP 可达前，无法判断远端 SSH、ROS2/Humble 或 topic 状态。
+
 ## 本轮完成的事
 
 - 读取 `AGENTS.md`、`OKR.md` 和本 sprint `tech-plan.md`。
 - 按要求读取 `docs/vendor/VENDOR_INDEX.md` 前 180 行。
-- 执行本机 `git status --short`，确认已有 `.codex/agents/*`、`.codex/registry.toml` 和旧 sprint 未提交改动，本轮未覆盖或提交这些文件。
+- 执行本机 `git status --short`，本轮开始时输出为空；后续只修改本 sprint 允许范围内的收口文档。
 - 尝试真实上位机 SSH：`ssh root@192.168.1.11 -p 37878`。
 - 补充网络诊断：`ping`、`nc`、`ssh -vvv`、`arp -an`、`ifconfig`、`netstat -rn`。
-- 新增本 sprint `tech-done.md`、`side2side_check.md`、`final.md`，记录失败证据、边界和下一步 owner。
+- 更新本 sprint `tech-done.md`、`side2side_check.md`、`final.md`，记录失败证据、边界和下一步 owner。
 
 ## OKR 影响
 
@@ -38,7 +40,7 @@
 1. 现场确认 Orange Pi/上位机已开机、入网，SSH 服务端口 `37878` 仍有效。
 2. 在路由器或随身 WiFi 后台确认当前 IP 是否仍为 `192.168.1.11`。
 3. 排查 Mac 是否在访客网络、VPN 隔离、AP client isolation 或错误 WiFi 下。
-4. 本机先验证 `arp -an` 能解析目标 IP，`nc -vz 目标IP 37878` 能连通，再恢复本 sprint tech-plan 的 ROS2 执行链。
+4. 本机先验证 `ping 192.168.1.1`、`arp -an` 能解析目标 IP，且 `nc -vz 目标IP 37878` 能连通，再恢复本 sprint tech-plan 的 ROS2 执行链。
 
 ## 完成前反思
 

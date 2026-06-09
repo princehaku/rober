@@ -10,6 +10,8 @@
 
 实际结果：未进入 ROS2、topic、SLAM 或 route 采集阶段。失败阻塞在本机到上位机的网络邻居层，`192.168.1.11:37878` 当前不可达。
 
+本轮复测时间：2026-06-09 13:48 CST。复测仍停在同一网络层 blocker，未进入 SSH 认证或远端命令执行阶段。
+
 ## 改动文件和接口影响
 
 实际改动：
@@ -51,17 +53,10 @@ git status --short
 输出摘要：
 
 ```text
- M .codex/agents/full-stack-software-engineer.toml
- M .codex/agents/product-okr-owner.toml
- M .codex/agents/robot-algorithm-engineer.toml
- M .codex/agents/robot-hardware-engineer.toml
- M .codex/agents/robot-software-engineer.toml
- M .codex/registry.toml
-?? sprints/2026.06.09_11-50_agent-execution-bias-config/
-?? sprints/2026.06.09_12-05_slam-route-live-run/
+<empty>
 ```
 
-说明：这些是本轮开始前已存在的未提交改动或未跟踪目录。本轮未覆盖、回滚或提交这些文件。
+说明：本轮开始时工作区干净；后续只修改本 sprint 允许范围内的收口文档。
 
 ### SSH 最小环境探测
 
@@ -78,6 +73,20 @@ ssh: connect to host 192.168.1.11 port 37878: No route to host
 ```
 
 结论：未能登录上位机，未执行到 `hostname/date/command -v ros2/find setup.bash`。
+
+复测命令：
+
+```bash
+ssh -vvv -p 37878 -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new root@192.168.1.11 'hostname'
+```
+
+关键输出：
+
+```text
+debug1: Connecting to 192.168.1.11 [192.168.1.11] port 37878.
+debug1: connect to address 192.168.1.11 port 37878: No route to host
+ssh: connect to host 192.168.1.11 port 37878: No route to host
+```
 
 ### 网络诊断
 
@@ -140,6 +149,8 @@ Request timeout for icmp_seq 0
 sendto: No route to host
 2 packets transmitted, 0 packets received, 100.0% packet loss
 ```
+
+复测使用 `ping -c 2 -W 3000 192.168.1.1` 仍为 100% packet loss，并返回 `sendto: No route to host`。这说明当前本机到默认网关也存在可达性异常，不能把问题直接归因于上位机 SSH 服务。
 
 命令：
 
