@@ -375,6 +375,30 @@ UART 写入。
 - `sprints/2026.06.10_05-35_map_lifecycle_proof_refresh/artifacts/remote_capture/runtime_logs/rober_map_lifecycle_runtime_1781037503387.log`
 - `sprints/2026.06.10_05-35_map_lifecycle_proof_refresh/artifacts/remote_capture/final_clean_after_capture_bash.txt`
 
+## 2026-06-10 05:50 map lifecycle helper reconcile
+
+`onboard/scripts/o3_map_lifecycle_proof.py` 已从真实上位机
+`root@192.168.1.11:37878` 的 `/root/rober/onboard/scripts/o3_map_lifecycle_proof.py`
+纳入本地仓库，供 `upper_robot_api.py` 的
+`Path(__file__).resolve().with_name("o3_map_lifecycle_proof.py")` 入口复现。
+远端来源为 `size=16083`、`mtime=2026-06-05 12:24:57.032651159 +0800`、
+`sha256=f8cffd9830ee66b5344985475c32665184a05a9ed4fb77df3ae21244c184fea3`。
+
+该 helper 的安全边界仍是 no-motion 软件证明：
+
+- `--help` 只走 argparse，不触碰 LiDAR、WAVE ROVER、UART 或 ROS2 runtime。
+- 运行 proof 时只启动 LiDAR + SLAM no-motion 窗口，artifact 字段保持
+  `publishes_cmd_vel=false`、`calls_base_manual=false`、`safe_to_control=false`、
+  `delivery_success=false`。
+- helper 不调用 `/api/base/manual`，不打开底盘 UART，也不发送 direct UART
+  `T=1`、`T=13`、`T=130`、`T=131`。
+- save map gate 仍要求先观测 `/map`；当前失败根因继续是
+  `/map_once_not_observed`，因此已有 `trashbot_map.yaml` / `trashbot_map.pgm`
+  不能被提升为本轮 clean map proof。
+
+下一步不是再修 helper 入口，而是定位 SLAM/TF/topic timing：`/scan` 已观测，
+但 `/map` once 与 `/map_metadata` 未在 no-motion 窗口内形成可保存的新地图。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`
