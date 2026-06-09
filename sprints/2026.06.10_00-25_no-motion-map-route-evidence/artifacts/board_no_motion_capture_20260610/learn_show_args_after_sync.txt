@@ -1,0 +1,205 @@
+Arguments (pass arguments as '<name>:=<value>'):
+
+    'use_sim_time':
+        Use simulation clock
+        (default: 'false')
+
+    'record_interval':
+        Seconds between automatic waypoint recording during learning
+        (default: '5.0')
+
+    'pose_topic':
+        PoseWithCovarianceStamped topic used for recording waypoints
+        (default: '/pose')
+
+    'route_recorder':
+        Start fixed-route CSV and keyframe recording during manual learning
+        (default: 'false')
+
+    'waypoint_manager':
+        Start waypoint manager during manual learning
+        (default: 'true')
+
+    'route_output_dir':
+        Directory for learned route.csv and keyframes
+        (default: PathJoinSubstitution('EnvVar('HOME'), '.ros', 'trashbot_runs', 'run_001''))
+
+    'route_camera_topic':
+        Camera Image topic used for route keyframe capture
+        (default: '/camera/image_raw')
+
+    'route_odom_topic':
+        Odometry topic used for fixed-route pose capture
+        (default: '/odom')
+
+    'route_min_distance_m':
+        Minimum travel distance between recorded fixed-route checkpoints
+        (default: '0.8')
+
+    'route_frame_id':
+        Frame id written to learned fixed-route CSV checkpoints
+        (default: 'map')
+
+    'route_id':
+        Route id written to learned keyframe sample manifest context
+        (default: '')
+
+    'route_sample_manifest_name':
+        Vision sample manifest filename written beside learned route data
+        (default: 'manifest.json')
+
+    'route_sample_manifest_max_entries':
+        Maximum learned keyframe sample entries kept in the route manifest
+        (default: '500')
+
+    'camera_enabled':
+        Start the camera publisher for field route keyframe capture
+        (default: 'false')
+
+    'camera_device':
+        VideoCapture device path or index for the camera publisher
+        (default: '/dev/video0')
+
+    'camera_topic':
+        Topic published by the camera publisher
+        (default: '/camera/image_raw')
+
+    'camera_frame_id':
+        frame_id attached to published camera images
+        (default: 'camera')
+
+    'camera_width':
+        Requested camera frame width passed to VideoCapture
+        (default: '640')
+
+    'camera_height':
+        Requested camera frame height passed to VideoCapture
+        (default: '480')
+
+    'camera_fps':
+        Requested camera publish rate in frames per second
+        (default: '15.0')
+
+    'lidar_enabled':
+        Start the LiDAR driver for /scan during field learn capture
+        (default: 'false')
+
+    'lidar_serial_port':
+        LiDAR serial port used by ros2_trashbot_hardware/lidar_driver
+        (default: '/dev/ttyACM0')
+
+    'lidar_serial_baudrate':
+        LiDAR serial baudrate used by ros2_trashbot_hardware/lidar_driver
+        (default: '150000')
+
+    'lidar_frame_id':
+        frame_id attached to LiDAR LaserScan messages
+        (default: 'laser_frame')
+
+    'lidar_scan_topic':
+        Topic published by the LiDAR driver
+        (default: '/scan')
+
+    'lidar_raw_packet_topic':
+        Optional LiDAR raw packet topic for packet-level debugging
+        (default: '/lidar/raw_packet')
+
+    'lidar_publish_raw_packets':
+        Publish raw LiDAR packets when packet-level debugging is needed
+        (default: 'false')
+
+    'lidar_range_min':
+        LiDAR LaserScan range_min in meters; tune after real point cloud validation
+        (default: '0.05')
+
+    'lidar_range_max':
+        LiDAR LaserScan range_max in meters; tune after real point cloud validation
+        (default: '8.0')
+
+    'lidar_scan_time':
+        LiDAR LaserScan scan_time placeholder in seconds; measure on real hardware
+        (default: '0.1')
+
+    'lidar_time_increment':
+        LiDAR LaserScan time_increment placeholder in seconds; measure on real hardware
+        (default: '0.0001')
+
+    'lidar_mock_packets':
+        Optional hex packet replay input; keeps LiDAR driver in mock mode
+        (default: '')
+
+    'lidar_mock_scan':
+        Publish deterministic mock LiDAR scans without opening a serial port
+        (default: 'false')
+
+    'static_laser_tf_enabled':
+        Publish a smoke-only base_link -> laser_frame static TF; not a mechanical calibration
+        (default: 'false')
+
+    'base_frame_id':
+        Base frame used by field sensor evidence TFs
+        (default: 'base_link')
+
+    'laser_tf_x':
+        Smoke-only static TF x offset from base_frame_id to lidar_frame_id
+        (default: '0.0')
+
+    'laser_tf_y':
+        Smoke-only static TF y offset from base_frame_id to lidar_frame_id
+        (default: '0.0')
+
+    'laser_tf_z':
+        Smoke-only static TF z offset from base_frame_id to lidar_frame_id
+        (default: '0.0')
+
+    'laser_tf_roll':
+        Smoke-only static TF roll from base_frame_id to lidar_frame_id
+        (default: '0.0')
+
+    'laser_tf_pitch':
+        Smoke-only static TF pitch from base_frame_id to lidar_frame_id
+        (default: '0.0')
+
+    'laser_tf_yaw':
+        Smoke-only static TF yaw from base_frame_id to lidar_frame_id
+        (default: '0.0')
+
+    'no_motion_static_odom_tf':
+        Publish a no-motion odom -> base_link static TF for sensor-only evidence capture
+        (default: 'false')
+
+    'no_motion_mock_odom_enabled':
+        Publish zero-speed synthetic /odom for no-motion route recorder software proof only
+        (default: 'false')
+
+    'no_motion_mock_odom_topic':
+        Topic used by the no-motion synthetic Odometry publisher
+        (default: '/odom')
+
+    'no_motion_mock_odom_rate':
+        Publish rate for the no-motion synthetic Odometry publisher
+        (default: '1.0')
+
+    'no_motion_odom_frame_id':
+        Parent odom frame used by no-motion evidence capture
+        (default: 'odom')
+
+    'slam_map_frame':
+        SLAM map frame id used by slam_toolbox
+        (default: 'map')
+
+    'slam_odom_frame':
+        SLAM odom frame id used by slam_toolbox
+        (default: 'odom')
+
+    'slam_base_frame':
+        SLAM base frame id used by slam_toolbox
+        (default: 'base_link')
+
+    'map_dir':
+        Directory where map_recorder writes learned map artifacts
+        (default: PathJoinSubstitution('EnvVar('HOME'), '.ros', 'trashbot_maps''))
+
+    'default_map_name':
+        Base filename used by map_recorder for PGM/YAML map artifacts
+        (default: 'trashbot_map')

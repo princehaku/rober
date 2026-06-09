@@ -1,0 +1,26 @@
+{
+  "sample_id": "route_keyframe_046",
+  "sample_ref": "vision_sample://keyframes/046.json",
+  "timestamp": 1781022095.0792952,
+  "frame_id": "map",
+  "raw_image": "keyframes/046.jpg",
+  "annotated_image": "",
+  "detector": "route_data_recorder",
+  "context": {
+    "task_id": "",
+    "route_id": "",
+    "checkpoint_id": "46",
+    "event_type": "route_keyframe",
+    "anomaly_type": ""
+  },
+  "route_pose": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "qx": 0.0,
+    "qy": 0.0,
+    "qz": 0.0,
+    "qw": 1.0
+  },
+  "detections": []
+}

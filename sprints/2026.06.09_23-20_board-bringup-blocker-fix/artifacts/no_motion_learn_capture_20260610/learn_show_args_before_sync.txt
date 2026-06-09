@@ -1,0 +1,153 @@
+Arguments (pass arguments as '<name>:=<value>'):
+
+    'use_sim_time':
+        Use simulation clock
+        (default: 'false')
+
+    'record_interval':
+        Seconds between automatic waypoint recording during learning
+        (default: '5.0')
+
+    'pose_topic':
+        PoseWithCovarianceStamped topic used for recording waypoints
+        (default: '/pose')
+
+    'route_recorder':
+        Start fixed-route CSV and keyframe recording during manual learning
+        (default: 'false')
+
+    'waypoint_manager':
+        Start waypoint manager during manual learning
+        (default: 'true')
+
+    'route_output_dir':
+        Directory for learned route.csv and keyframes
+        (default: PathJoinSubstitution('EnvVar('HOME'), '.ros', 'trashbot_runs', 'run_001''))
+
+    'route_camera_topic':
+        Camera Image topic used for route keyframe capture
+        (default: '/camera/image_raw')
+
+    'route_odom_topic':
+        Odometry topic used for fixed-route pose capture
+        (default: '/odom')
+
+    'route_min_distance_m':
+        Minimum travel distance between recorded fixed-route checkpoints
+        (default: '0.8')
+
+    'route_frame_id':
+        Frame id written to learned fixed-route CSV checkpoints
+        (default: 'map')
+
+    'route_id':
+        Route id written to learned keyframe sample manifest context
+        (default: '')
+
+    'route_sample_manifest_name':
+        Vision sample manifest filename written beside learned route data
+        (default: 'manifest.json')
+
+    'route_sample_manifest_max_entries':
+        Maximum learned keyframe sample entries kept in the route manifest
+        (default: '500')
+
+    'lidar_enabled':
+        Start ROS2 LiDAR driver during learning; default false keeps mock/offline learning usable
+        (default: 'false')
+
+    'lidar_serial_port':
+        LiDAR serial device confirmed on Orange Pi; /dev/lidar udev symlink is preferred when installed
+        (default: '/dev/ttyACM0')
+
+    'lidar_serial_baudrate':
+        LiDAR baud rate from docs/vendor/lidar_pkg_ros2-main reference
+        (default: '150000')
+
+    'lidar_frame_id':
+        LiDAR frame id; must match measured base_link static TF on hardware
+        (default: 'laser_frame')
+
+    'lidar_scan_topic':
+        LaserScan topic consumed by SLAM during learning
+        (default: '/scan')
+
+    'lidar_raw_packet_topic':
+        Optional raw LiDAR packet topic
+        (default: '/lidar/raw_packet')
+
+    'lidar_publish_raw_packets':
+        Publish raw 0xAA55 packets for diagnostics
+        (default: 'false')
+
+    'lidar_range_min':
+        LiDAR LaserScan range_min in meters; tune after real point cloud validation
+        (default: '0.05')
+
+    'lidar_range_max':
+        LiDAR LaserScan range_max in meters; tune after real point cloud validation
+        (default: '8.0')
+
+    'lidar_scan_time':
+        LiDAR LaserScan scan_time placeholder in seconds; measure on real hardware
+        (default: '0.1')
+
+    'lidar_time_increment':
+        LiDAR LaserScan time_increment placeholder in seconds; measure on real hardware
+        (default: '0.0001')
+
+    'lidar_tf_x':
+        Placeholder LiDAR x offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_y':
+        Placeholder LiDAR y offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_z':
+        Placeholder LiDAR z offset from base_link in meters; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_roll':
+        Placeholder LiDAR roll from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_pitch':
+        Placeholder LiDAR pitch from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'lidar_tf_yaw':
+        Placeholder LiDAR yaw from base_link in radians; measure on real robot
+        (default: '0.0')
+
+    'no_motion_static_odom_tf':
+        Publish static odom->base_link only for no-motion SLAM smoke proof
+        (default: 'false')
+
+    'slam_map_frame':
+        SLAM map frame id used by slam_toolbox
+        (default: 'map')
+
+    'slam_odom_frame':
+        SLAM odom frame id used by slam_toolbox
+        (default: 'odom')
+
+    'slam_base_frame':
+        SLAM base frame id; no-motion proof uses static odom->base_link
+        (default: 'base_link')
+
+    'lidar_mock_packets':
+        Pipe-separated hex packets for software-only LiDAR verification
+        (default: '')
+
+    'lidar_mock_scan':
+        Publish built-in mock scan packet; software proof only
+        (default: 'false')
+
+    'map_dir':
+        Directory where map_recorder writes learned map artifacts
+        (default: PathJoinSubstitution('EnvVar('HOME'), '.ros', 'trashbot_maps''))
+
+    'default_map_name':
+        Base filename used by map_recorder for PGM/YAML map artifacts
+        (default: 'trashbot_map')

@@ -1,0 +1,82 @@
+# cleanup started 2026-06-10T00:24:30+08:00
+# safety: no /cmd_vel publish commands executed
+## before ros2 node list
+/camera_publisher
+/lidar_driver
+/map_recorder
+/no_motion_mock_odom_pub
+/no_motion_static_odom_tf
+/route_data_recorder
+/slam_toolbox
+/static_laser_tf
+/transform_listener_impl_aaaaf7db51a0
+/waypoint_manager
+## before ps
+  40100       1 S    bash -lc cd /root/rober/onboard && rm -rf /tmp/trashbot_no_motion_route_clean /tmp/trashbot_no_motion_learn_clean.log && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && nohup ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 static_laser_tf_enabled:=true no_motion_static_odom_tf:=true no_motion_mock_odom_enabled:=true camera_enabled:=true camera_device:=/dev/video1 route_recorder:=true route_output_dir:=/tmp/trashbot_no_motion_route_clean > /tmp/trashbot_no_motion_learn_clean.log 2>&1 < /dev/null & echo LAUNCH_PID=$! && sleep 10 && ps -p $! -o pid=,cmd=
+  40124   40100 Sl   /usr/bin/python3 /opt/ros/humble/bin/ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 static_laser_tf_enabled:=true no_motion_static_odom_tf:=true no_motion_mock_odom_enabled:=true camera_enabled:=true camera_device:=/dev/video1 route_recorder:=true route_output_dir:=/tmp/trashbot_no_motion_route_clean
+  40125   40124 Sl   /opt/ros/humble/lib/slam_toolbox/async_slam_toolbox_node --ros-args -r __node:=slam_toolbox --params-file /tmp/launch_params_oxnp3ov9
+  40127   40124 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_95cwqzt4
+  40129   40124 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_ai_s09se
+  40131   40124 Rl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher --ros-args -r __node:=camera_publisher --params-file /tmp/launch_params_mzsiu74v
+  40133   40124 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -r __node:=lidar_driver --params-file /tmp/launch_params_f3o6betr
+  40135   40124 Sl   /opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 base_link laser_frame --ros-args -r __node:=static_laser_tf
+  40137   40124 Sl   /opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 odom base_link --ros-args -r __node:=no_motion_static_odom_tf
+  40139   40124 Sl   python3 -c import sys import rclpy from nav_msgs.msg import Odometry from rclpy.node import Node rate=float(sys.argv[1]) topic=sys.argv[2] odom_frame=sys.argv[3] base_frame=sys.argv[4] rclpy.init() node=Node("no_motion_mock_odom_pub") publisher=node.create_publisher(Odometry, topic, 10) timer_period=1.0 / rate if rate > 0.0 else 1.0 message=Odometry() message.header.frame_id=odom_frame message.child_frame_id=base_frame message.pose.pose.orientation.w=1.0 def tick():     message.header.stamp=node.get_clock().now().to_msg()     publisher.publish(message) node.create_timer(timer_period, tick) tick() rclpy.spin(node)  1.0 /odom odom base_link
+  40141   40124 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/route_data_recorder --ros-args -r __node:=route_data_recorder --params-file /tmp/launch_params_c3_qjn_l
+## selected pids
+none
+## after ros2 node list
+/camera_publisher
+/lidar_driver
+/map_recorder
+/no_motion_mock_odom_pub
+/no_motion_static_odom_tf
+/route_data_recorder
+/slam_toolbox
+/static_laser_tf
+/transform_listener_impl_aaaaf7db51a0
+/waypoint_manager
+## after ps
+  40100       1 S    bash -lc cd /root/rober/onboard && rm -rf /tmp/trashbot_no_motion_route_clean /tmp/trashbot_no_motion_learn_clean.log && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && nohup ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 static_laser_tf_enabled:=true no_motion_static_odom_tf:=true no_motion_mock_odom_enabled:=true camera_enabled:=true camera_device:=/dev/video1 route_recorder:=true route_output_dir:=/tmp/trashbot_no_motion_route_clean > /tmp/trashbot_no_motion_learn_clean.log 2>&1 < /dev/null & echo LAUNCH_PID=$! && sleep 10 && ps -p $! -o pid=,cmd=
+  40124   40100 Sl   /usr/bin/python3 /opt/ros/humble/bin/ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 static_laser_tf_enabled:=true no_motion_static_odom_tf:=true no_motion_mock_odom_enabled:=true camera_enabled:=true camera_device:=/dev/video1 route_recorder:=true route_output_dir:=/tmp/trashbot_no_motion_route_clean
+  40125   40124 Rl   /opt/ros/humble/lib/slam_toolbox/async_slam_toolbox_node --ros-args -r __node:=slam_toolbox --params-file /tmp/launch_params_oxnp3ov9
+  40127   40124 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_95cwqzt4
+  40129   40124 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_ai_s09se
+  40131   40124 Rl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher --ros-args -r __node:=camera_publisher --params-file /tmp/launch_params_mzsiu74v
+  40133   40124 Rl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -r __node:=lidar_driver --params-file /tmp/launch_params_f3o6betr
+  40135   40124 Sl   /opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 base_link laser_frame --ros-args -r __node:=static_laser_tf
+  40137   40124 Sl   /opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 odom base_link --ros-args -r __node:=no_motion_static_odom_tf
+  40139   40124 Sl   python3 -c import sys import rclpy from nav_msgs.msg import Odometry from rclpy.node import Node rate=float(sys.argv[1]) topic=sys.argv[2] odom_frame=sys.argv[3] base_frame=sys.argv[4] rclpy.init() node=Node("no_motion_mock_odom_pub") publisher=node.create_publisher(Odometry, topic, 10) timer_period=1.0 / rate if rate > 0.0 else 1.0 message=Odometry() message.header.frame_id=odom_frame message.child_frame_id=base_frame message.pose.pose.orientation.w=1.0 def tick():     message.header.stamp=node.get_clock().now().to_msg()     publisher.publish(message) node.create_timer(timer_period, tick) tick() rclpy.spin(node)  1.0 /odom odom base_link
+  40141   40124 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/route_data_recorder --ros-args -r __node:=route_data_recorder --params-file /tmp/launch_params_c3_qjn_l
+# cleanup finished 2026-06-10T00:24:34+08:00
+# cleanup retry started 2026-06-10T00:25:01+08:00
+# safety: no /cmd_vel publish commands executed
+## retry before ros2 node list
+/camera_publisher
+/lidar_driver
+/map_recorder
+/no_motion_mock_odom_pub
+/no_motion_static_odom_tf
+/route_data_recorder
+/slam_toolbox
+/static_laser_tf
+/transform_listener_impl_aaaaf7db51a0
+/waypoint_manager
+## retry before ps
+  40100       1 S    bash -lc cd /root/rober/onboard && rm -rf /tmp/trashbot_no_motion_route_clean /tmp/trashbot_no_motion_learn_clean.log && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && nohup ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 static_laser_tf_enabled:=true no_motion_static_odom_tf:=true no_motion_mock_odom_enabled:=true camera_enabled:=true camera_device:=/dev/video1 route_recorder:=true route_output_dir:=/tmp/trashbot_no_motion_route_clean > /tmp/trashbot_no_motion_learn_clean.log 2>&1 < /dev/null & echo LAUNCH_PID=$! && sleep 10 && ps -p $! -o pid=,cmd=
+  40124   40100 Sl   /usr/bin/python3 /opt/ros/humble/bin/ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 static_laser_tf_enabled:=true no_motion_static_odom_tf:=true no_motion_mock_odom_enabled:=true camera_enabled:=true camera_device:=/dev/video1 route_recorder:=true route_output_dir:=/tmp/trashbot_no_motion_route_clean
+  40125   40124 Sl   /opt/ros/humble/lib/slam_toolbox/async_slam_toolbox_node --ros-args -r __node:=slam_toolbox --params-file /tmp/launch_params_oxnp3ov9
+  40127   40124 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_95cwqzt4
+  40129   40124 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_ai_s09se
+  40131   40124 Rl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher --ros-args -r __node:=camera_publisher --params-file /tmp/launch_params_mzsiu74v
+  40133   40124 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -r __node:=lidar_driver --params-file /tmp/launch_params_f3o6betr
+  40135   40124 Sl   /opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 base_link laser_frame --ros-args -r __node:=static_laser_tf
+  40137   40124 Sl   /opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 odom base_link --ros-args -r __node:=no_motion_static_odom_tf
+  40139   40124 Sl   python3 -c import sys import rclpy from nav_msgs.msg import Odometry from rclpy.node import Node rate=float(sys.argv[1]) topic=sys.argv[2] odom_frame=sys.argv[3] base_frame=sys.argv[4] rclpy.init() node=Node("no_motion_mock_odom_pub") publisher=node.create_publisher(Odometry, topic, 10) timer_period=1.0 / rate if rate > 0.0 else 1.0 message=Odometry() message.header.frame_id=odom_frame message.child_frame_id=base_frame message.pose.pose.orientation.w=1.0 def tick():     message.header.stamp=node.get_clock().now().to_msg()     publisher.publish(message) node.create_timer(timer_period, tick) tick() rclpy.spin(node)  1.0 /odom odom base_link
+  40141   40124 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/route_data_recorder --ros-args -r __node:=route_data_recorder --params-file /tmp/launch_params_c3_qjn_l
+  40591   40452 Ss   bash -lc source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && sleep 8 && echo === PS === && ps -ef | grep -E "learn.launch.py|slam_toolbox|lidar_driver|camera_publisher|route_data_recorder|static_transform_publisher|no_motion_mock_odom_pub" | grep -v grep || true && echo === NODES === && ros2 node list 2>&1 || true && echo === LOG TAIL === && tail -n 80 /tmp/trashbot_no_motion_learn_clean.log || true
+## retry selected pids
+40100 40124 40125 40127 40129 40131 40133 40135 40137 40139 40141 40591 
+## retry after ros2 node list
+## retry after ps
+# cleanup retry finished 2026-06-10T00:25:08+08:00

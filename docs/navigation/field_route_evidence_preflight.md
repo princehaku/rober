@@ -154,6 +154,76 @@ ModuleNotFoundError: No module named 'cv_bridge'
 - **已证明**：`/scan`、`/camera/image_raw`、`/tf_static`、短 rosbag、相机单帧 keyframe fallback。
 - **未证明**：`map.yaml`、`route.csv`、keyframe manifest、fixed-route replay JSONL。
 
+从 `learn.launch.py` 增补 no-motion 入口后，下一轮现场验证必须改为以下链路，而不是继续使用缺 `/odom` 的 sensor-only bringup：
+
+```bash
+ros2 launch ros2_trashbot_bringup learn.launch.py \
+  lidar_enabled:=true \
+  lidar_serial_port:=/dev/ttyACM0 \
+  lidar_serial_baudrate:=150000 \
+  static_laser_tf_enabled:=true \
+  no_motion_static_odom_tf:=true \
+  no_motion_mock_odom_enabled:=true \
+  camera_enabled:=true \
+  camera_device:=/dev/video1 \
+  route_recorder:=true \
+  route_output_dir:=/tmp/trashbot_no_motion_route
+```
+
+该入口的现场验收顺序必须固定为：
+
+1. `ros2 launch ... --show-args` 确认新增参数都已暴露。
+2. `ros2 topic echo --once /scan`、`/camera/image_raw`、`/tf_static`、`/odom`。
+3. 检查 `/tmp/trashbot_no_motion_route/route.csv` 是否至少新增 1 行。
+4. 若图像转换成功，检查 `keyframes/*.jpg`、`keyframes/*.json`、`manifest.json`；若转换失败，必须检查 `image_conversion_status.json` 并记录失败原因。
+5. 调用 `/trashbot/save_map`，仅以 `map.yaml` 实际落盘作为地图成功标准；service 存在或 `/map` topic 名称出现都不算成功。
+
+## 2026-06-10 learn.launch no-motion capture 入口
+
+为避免现场同时手工启动多个 launch 造成参数漂移，`ros2_trashbot_bringup/learn.launch.py` 已新增一组默认关闭的 no-motion 现场证据采集参数。正常学习模式默认行为不变；只有显式传参时才启动 camera、LiDAR、smoke-only TF、synthetic `/odom` 和 `route_data_recorder`。
+
+推荐命令：
+
+```bash
+ros2 launch ros2_trashbot_bringup learn.launch.py \
+  lidar_enabled:=true \
+  lidar_serial_port:=/dev/ttyACM0 \
+  lidar_serial_baudrate:=150000 \
+  static_laser_tf_enabled:=true \
+  no_motion_static_odom_tf:=true \
+  no_motion_mock_odom_enabled:=true \
+  camera_enabled:=true \
+  camera_device:=/dev/video1 \
+  route_recorder:=true \
+  route_output_dir:=/tmp/trashbot_no_motion_route
+```
+
+采样 gate：
+
+- `/scan`
+- `/camera/image_raw`
+- `/tf_static`
+- `/odom`
+- `/map`
+- `/trashbot/save_map`
+
+检查产物：
+
+- `/tmp/trashbot_no_motion_route/route.csv`
+- `/tmp/trashbot_no_motion_route/keyframes/`
+- `/tmp/trashbot_no_motion_route/manifest.json`
+- `/tmp/trashbot_no_motion_route/image_conversion_status.json`（仅在图像转换降级或失败时出现）
+
+重要边界：
+
+1. `no_motion_mock_odom_enabled:=true` 通过 ROS2 CLI 发布零速 synthetic `nav_msgs/Odometry`，只用于验证 route recorder 软件链路，不是实测里程计、轮速标定或 HIL。
+2. `no_motion_static_odom_tf:=true` 只发布 `odom -> base_link` 的 no-motion 拓扑 TF，不代表定位或底盘运动已经成立。
+3. `static_laser_tf_enabled:=true` 仍是 smoke-only `base_link -> laser_frame` 拓扑证据，不代表 LiDAR 机械安装标定。
+4. 本命令不发布 `/cmd_vel`，不绕过 `upper_robot_api.py` 安全 gate，不修改 WAVE ROVER 串口、协议或速度默认值。
+5. 当前实板设备号 `/dev/video1`、`/dev/ttyACM0 @ 150000` 来自本 sprint 现场探测；硬件事实入口仍以 `docs/vendor/VENDOR_INDEX.md` 及其指向的本地 vendor 资料为准，不能写死成全项目默认。
+
+`route_data_recorder` 也已把 `cv_bridge` 改为可选依赖：优先使用 `cv_bridge`；缺失时对 `rgb8`、`bgr8`、`mono8`、`bgra8`、`rgba8` 使用 `numpy` + `cv2` 转换；不支持的 encoding 只记录原因并继续等待 `/odom`，避免节点启动即崩溃。
+
 ## 下游 artifact gate
 
 预检 JSON 生成后，使用 `onboard/scripts/field_route_evidence_manifest.py` 继续生成 `trashbot.field_evidence_manifest.v1`。manifest gate 会校验 `map.yaml`、`route.csv`、`keyframes/`、rosbag 和 fixed-route replay JSONL 是否存在且非空，并记录 sha256 或目录摘要。

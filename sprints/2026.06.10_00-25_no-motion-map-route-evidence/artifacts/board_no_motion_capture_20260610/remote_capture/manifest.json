@@ -1,0 +1,1339 @@
+{
+  "schema": "trashbot.vision_samples.v1",
+  "sample_output_dir": "/tmp/trashbot_no_motion_route",
+  "updated_at": 1781022108.3661904,
+  "samples": [
+    {
+      "sample_id": "route_keyframe_000",
+      "sample_ref": "vision_sample://keyframes/000.json",
+      "timestamp": 1781022072.079424,
+      "frame_id": "map",
+      "raw_image": "keyframes/000.jpg",
+      "annotated_image": "",
+      "json": "keyframes/000.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "0",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_001",
+      "sample_ref": "vision_sample://keyframes/001.json",
+      "timestamp": 1781022072.3482215,
+      "frame_id": "map",
+      "raw_image": "keyframes/001.jpg",
+      "annotated_image": "",
+      "json": "keyframes/001.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "1",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_002",
+      "sample_ref": "vision_sample://keyframes/002.json",
+      "timestamp": 1781022073.0793927,
+      "frame_id": "map",
+      "raw_image": "keyframes/002.jpg",
+      "annotated_image": "",
+      "json": "keyframes/002.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "2",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_003",
+      "sample_ref": "vision_sample://keyframes/003.json",
+      "timestamp": 1781022073.348133,
+      "frame_id": "map",
+      "raw_image": "keyframes/003.jpg",
+      "annotated_image": "",
+      "json": "keyframes/003.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "3",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_004",
+      "sample_ref": "vision_sample://keyframes/004.json",
+      "timestamp": 1781022074.079356,
+      "frame_id": "map",
+      "raw_image": "keyframes/004.jpg",
+      "annotated_image": "",
+      "json": "keyframes/004.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "4",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_005",
+      "sample_ref": "vision_sample://keyframes/005.json",
+      "timestamp": 1781022074.3480246,
+      "frame_id": "map",
+      "raw_image": "keyframes/005.jpg",
+      "annotated_image": "",
+      "json": "keyframes/005.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "5",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_006",
+      "sample_ref": "vision_sample://keyframes/006.json",
+      "timestamp": 1781022075.079211,
+      "frame_id": "map",
+      "raw_image": "keyframes/006.jpg",
+      "annotated_image": "",
+      "json": "keyframes/006.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "6",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_007",
+      "sample_ref": "vision_sample://keyframes/007.json",
+      "timestamp": 1781022075.3480046,
+      "frame_id": "map",
+      "raw_image": "keyframes/007.jpg",
+      "annotated_image": "",
+      "json": "keyframes/007.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "7",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_008",
+      "sample_ref": "vision_sample://keyframes/008.json",
+      "timestamp": 1781022076.0792284,
+      "frame_id": "map",
+      "raw_image": "keyframes/008.jpg",
+      "annotated_image": "",
+      "json": "keyframes/008.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "8",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_009",
+      "sample_ref": "vision_sample://keyframes/009.json",
+      "timestamp": 1781022076.3481326,
+      "frame_id": "map",
+      "raw_image": "keyframes/009.jpg",
+      "annotated_image": "",
+      "json": "keyframes/009.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "9",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_010",
+      "sample_ref": "vision_sample://keyframes/010.json",
+      "timestamp": 1781022077.079171,
+      "frame_id": "map",
+      "raw_image": "keyframes/010.jpg",
+      "annotated_image": "",
+      "json": "keyframes/010.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "10",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_011",
+      "sample_ref": "vision_sample://keyframes/011.json",
+      "timestamp": 1781022077.3479793,
+      "frame_id": "map",
+      "raw_image": "keyframes/011.jpg",
+      "annotated_image": "",
+      "json": "keyframes/011.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "11",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_012",
+      "sample_ref": "vision_sample://keyframes/012.json",
+      "timestamp": 1781022078.0794067,
+      "frame_id": "map",
+      "raw_image": "keyframes/012.jpg",
+      "annotated_image": "",
+      "json": "keyframes/012.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "12",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_013",
+      "sample_ref": "vision_sample://keyframes/013.json",
+      "timestamp": 1781022078.3480122,
+      "frame_id": "map",
+      "raw_image": "keyframes/013.jpg",
+      "annotated_image": "",
+      "json": "keyframes/013.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "13",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_014",
+      "sample_ref": "vision_sample://keyframes/014.json",
+      "timestamp": 1781022079.0793774,
+      "frame_id": "map",
+      "raw_image": "keyframes/014.jpg",
+      "annotated_image": "",
+      "json": "keyframes/014.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "14",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_015",
+      "sample_ref": "vision_sample://keyframes/015.json",
+      "timestamp": 1781022079.3479133,
+      "frame_id": "map",
+      "raw_image": "keyframes/015.jpg",
+      "annotated_image": "",
+      "json": "keyframes/015.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "15",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_016",
+      "sample_ref": "vision_sample://keyframes/016.json",
+      "timestamp": 1781022080.0792344,
+      "frame_id": "map",
+      "raw_image": "keyframes/016.jpg",
+      "annotated_image": "",
+      "json": "keyframes/016.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "16",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_017",
+      "sample_ref": "vision_sample://keyframes/017.json",
+      "timestamp": 1781022080.3479161,
+      "frame_id": "map",
+      "raw_image": "keyframes/017.jpg",
+      "annotated_image": "",
+      "json": "keyframes/017.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "17",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_018",
+      "sample_ref": "vision_sample://keyframes/018.json",
+      "timestamp": 1781022081.079217,
+      "frame_id": "map",
+      "raw_image": "keyframes/018.jpg",
+      "annotated_image": "",
+      "json": "keyframes/018.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "18",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_019",
+      "sample_ref": "vision_sample://keyframes/019.json",
+      "timestamp": 1781022081.347906,
+      "frame_id": "map",
+      "raw_image": "keyframes/019.jpg",
+      "annotated_image": "",
+      "json": "keyframes/019.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "19",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_020",
+      "sample_ref": "vision_sample://keyframes/020.json",
+      "timestamp": 1781022082.0791183,
+      "frame_id": "map",
+      "raw_image": "keyframes/020.jpg",
+      "annotated_image": "",
+      "json": "keyframes/020.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "20",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_021",
+      "sample_ref": "vision_sample://keyframes/021.json",
+      "timestamp": 1781022082.3479204,
+      "frame_id": "map",
+      "raw_image": "keyframes/021.jpg",
+      "annotated_image": "",
+      "json": "keyframes/021.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "21",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_022",
+      "sample_ref": "vision_sample://keyframes/022.json",
+      "timestamp": 1781022083.079299,
+      "frame_id": "map",
+      "raw_image": "keyframes/022.jpg",
+      "annotated_image": "",
+      "json": "keyframes/022.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "22",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_023",
+      "sample_ref": "vision_sample://keyframes/023.json",
+      "timestamp": 1781022083.3479805,
+      "frame_id": "map",
+      "raw_image": "keyframes/023.jpg",
+      "annotated_image": "",
+      "json": "keyframes/023.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "23",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_024",
+      "sample_ref": "vision_sample://keyframes/024.json",
+      "timestamp": 1781022084.0793054,
+      "frame_id": "map",
+      "raw_image": "keyframes/024.jpg",
+      "annotated_image": "",
+      "json": "keyframes/024.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "24",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_025",
+      "sample_ref": "vision_sample://keyframes/025.json",
+      "timestamp": 1781022084.3495066,
+      "frame_id": "map",
+      "raw_image": "keyframes/025.jpg",
+      "annotated_image": "",
+      "json": "keyframes/025.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "25",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_026",
+      "sample_ref": "vision_sample://keyframes/026.json",
+      "timestamp": 1781022085.07925,
+      "frame_id": "map",
+      "raw_image": "keyframes/026.jpg",
+      "annotated_image": "",
+      "json": "keyframes/026.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "26",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_027",
+      "sample_ref": "vision_sample://keyframes/027.json",
+      "timestamp": 1781022085.3481097,
+      "frame_id": "map",
+      "raw_image": "keyframes/027.jpg",
+      "annotated_image": "",
+      "json": "keyframes/027.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "27",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_028",
+      "sample_ref": "vision_sample://keyframes/028.json",
+      "timestamp": 1781022086.0791535,
+      "frame_id": "map",
+      "raw_image": "keyframes/028.jpg",
+      "annotated_image": "",
+      "json": "keyframes/028.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "28",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_029",
+      "sample_ref": "vision_sample://keyframes/029.json",
+      "timestamp": 1781022086.3485162,
+      "frame_id": "map",
+      "raw_image": "keyframes/029.jpg",
+      "annotated_image": "",
+      "json": "keyframes/029.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "29",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_030",
+      "sample_ref": "vision_sample://keyframes/030.json",
+      "timestamp": 1781022087.0793922,
+      "frame_id": "map",
+      "raw_image": "keyframes/030.jpg",
+      "annotated_image": "",
+      "json": "keyframes/030.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "30",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_031",
+      "sample_ref": "vision_sample://keyframes/031.json",
+      "timestamp": 1781022087.3481045,
+      "frame_id": "map",
+      "raw_image": "keyframes/031.jpg",
+      "annotated_image": "",
+      "json": "keyframes/031.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "31",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_032",
+      "sample_ref": "vision_sample://keyframes/032.json",
+      "timestamp": 1781022088.0792534,
+      "frame_id": "map",
+      "raw_image": "keyframes/032.jpg",
+      "annotated_image": "",
+      "json": "keyframes/032.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "32",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_033",
+      "sample_ref": "vision_sample://keyframes/033.json",
+      "timestamp": 1781022088.3482308,
+      "frame_id": "map",
+      "raw_image": "keyframes/033.jpg",
+      "annotated_image": "",
+      "json": "keyframes/033.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "33",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_034",
+      "sample_ref": "vision_sample://keyframes/034.json",
+      "timestamp": 1781022089.0792518,
+      "frame_id": "map",
+      "raw_image": "keyframes/034.jpg",
+      "annotated_image": "",
+      "json": "keyframes/034.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "34",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_035",
+      "sample_ref": "vision_sample://keyframes/035.json",
+      "timestamp": 1781022089.3481193,
+      "frame_id": "map",
+      "raw_image": "keyframes/035.jpg",
+      "annotated_image": "",
+      "json": "keyframes/035.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "35",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_036",
+      "sample_ref": "vision_sample://keyframes/036.json",
+      "timestamp": 1781022090.0792887,
+      "frame_id": "map",
+      "raw_image": "keyframes/036.jpg",
+      "annotated_image": "",
+      "json": "keyframes/036.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "36",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_037",
+      "sample_ref": "vision_sample://keyframes/037.json",
+      "timestamp": 1781022090.3479877,
+      "frame_id": "map",
+      "raw_image": "keyframes/037.jpg",
+      "annotated_image": "",
+      "json": "keyframes/037.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "37",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_038",
+      "sample_ref": "vision_sample://keyframes/038.json",
+      "timestamp": 1781022091.0792053,
+      "frame_id": "map",
+      "raw_image": "keyframes/038.jpg",
+      "annotated_image": "",
+      "json": "keyframes/038.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "38",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_039",
+      "sample_ref": "vision_sample://keyframes/039.json",
+      "timestamp": 1781022091.348139,
+      "frame_id": "map",
+      "raw_image": "keyframes/039.jpg",
+      "annotated_image": "",
+      "json": "keyframes/039.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "39",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_040",
+      "sample_ref": "vision_sample://keyframes/040.json",
+      "timestamp": 1781022092.0794086,
+      "frame_id": "map",
+      "raw_image": "keyframes/040.jpg",
+      "annotated_image": "",
+      "json": "keyframes/040.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "40",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_041",
+      "sample_ref": "vision_sample://keyframes/041.json",
+      "timestamp": 1781022092.3480043,
+      "frame_id": "map",
+      "raw_image": "keyframes/041.jpg",
+      "annotated_image": "",
+      "json": "keyframes/041.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "41",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_042",
+      "sample_ref": "vision_sample://keyframes/042.json",
+      "timestamp": 1781022093.080369,
+      "frame_id": "map",
+      "raw_image": "keyframes/042.jpg",
+      "annotated_image": "",
+      "json": "keyframes/042.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "42",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_043",
+      "sample_ref": "vision_sample://keyframes/043.json",
+      "timestamp": 1781022093.3481708,
+      "frame_id": "map",
+      "raw_image": "keyframes/043.jpg",
+      "annotated_image": "",
+      "json": "keyframes/043.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "43",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_044",
+      "sample_ref": "vision_sample://keyframes/044.json",
+      "timestamp": 1781022094.07921,
+      "frame_id": "map",
+      "raw_image": "keyframes/044.jpg",
+      "annotated_image": "",
+      "json": "keyframes/044.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "44",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_045",
+      "sample_ref": "vision_sample://keyframes/045.json",
+      "timestamp": 1781022094.3480444,
+      "frame_id": "map",
+      "raw_image": "keyframes/045.jpg",
+      "annotated_image": "",
+      "json": "keyframes/045.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "45",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_046",
+      "sample_ref": "vision_sample://keyframes/046.json",
+      "timestamp": 1781022095.0792952,
+      "frame_id": "map",
+      "raw_image": "keyframes/046.jpg",
+      "annotated_image": "",
+      "json": "keyframes/046.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "46",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_047",
+      "sample_ref": "vision_sample://keyframes/047.json",
+      "timestamp": 1781022095.3480556,
+      "frame_id": "map",
+      "raw_image": "keyframes/047.jpg",
+      "annotated_image": "",
+      "json": "keyframes/047.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "47",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_048",
+      "sample_ref": "vision_sample://keyframes/048.json",
+      "timestamp": 1781022096.0797327,
+      "frame_id": "map",
+      "raw_image": "keyframes/048.jpg",
+      "annotated_image": "",
+      "json": "keyframes/048.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "48",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_049",
+      "sample_ref": "vision_sample://keyframes/049.json",
+      "timestamp": 1781022096.3481705,
+      "frame_id": "map",
+      "raw_image": "keyframes/049.jpg",
+      "annotated_image": "",
+      "json": "keyframes/049.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "49",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_050",
+      "sample_ref": "vision_sample://keyframes/050.json",
+      "timestamp": 1781022097.0820742,
+      "frame_id": "map",
+      "raw_image": "keyframes/050.jpg",
+      "annotated_image": "",
+      "json": "keyframes/050.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "50",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_051",
+      "sample_ref": "vision_sample://keyframes/051.json",
+      "timestamp": 1781022097.3481762,
+      "frame_id": "map",
+      "raw_image": "keyframes/051.jpg",
+      "annotated_image": "",
+      "json": "keyframes/051.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "51",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_052",
+      "sample_ref": "vision_sample://keyframes/052.json",
+      "timestamp": 1781022098.0792615,
+      "frame_id": "map",
+      "raw_image": "keyframes/052.jpg",
+      "annotated_image": "",
+      "json": "keyframes/052.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "52",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_053",
+      "sample_ref": "vision_sample://keyframes/053.json",
+      "timestamp": 1781022098.3480444,
+      "frame_id": "map",
+      "raw_image": "keyframes/053.jpg",
+      "annotated_image": "",
+      "json": "keyframes/053.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "53",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_054",
+      "sample_ref": "vision_sample://keyframes/054.json",
+      "timestamp": 1781022099.0791955,
+      "frame_id": "map",
+      "raw_image": "keyframes/054.jpg",
+      "annotated_image": "",
+      "json": "keyframes/054.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "54",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_055",
+      "sample_ref": "vision_sample://keyframes/055.json",
+      "timestamp": 1781022099.348164,
+      "frame_id": "map",
+      "raw_image": "keyframes/055.jpg",
+      "annotated_image": "",
+      "json": "keyframes/055.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "55",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_056",
+      "sample_ref": "vision_sample://keyframes/056.json",
+      "timestamp": 1781022100.079412,
+      "frame_id": "map",
+      "raw_image": "keyframes/056.jpg",
+      "annotated_image": "",
+      "json": "keyframes/056.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "56",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_057",
+      "sample_ref": "vision_sample://keyframes/057.json",
+      "timestamp": 1781022100.347928,
+      "frame_id": "map",
+      "raw_image": "keyframes/057.jpg",
+      "annotated_image": "",
+      "json": "keyframes/057.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "57",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_058",
+      "sample_ref": "vision_sample://keyframes/058.json",
+      "timestamp": 1781022101.0792403,
+      "frame_id": "map",
+      "raw_image": "keyframes/058.jpg",
+      "annotated_image": "",
+      "json": "keyframes/058.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "58",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_059",
+      "sample_ref": "vision_sample://keyframes/059.json",
+      "timestamp": 1781022101.3480153,
+      "frame_id": "map",
+      "raw_image": "keyframes/059.jpg",
+      "annotated_image": "",
+      "json": "keyframes/059.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "59",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_060",
+      "sample_ref": "vision_sample://keyframes/060.json",
+      "timestamp": 1781022102.079199,
+      "frame_id": "map",
+      "raw_image": "keyframes/060.jpg",
+      "annotated_image": "",
+      "json": "keyframes/060.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "60",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_061",
+      "sample_ref": "vision_sample://keyframes/061.json",
+      "timestamp": 1781022102.3480008,
+      "frame_id": "map",
+      "raw_image": "keyframes/061.jpg",
+      "annotated_image": "",
+      "json": "keyframes/061.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "61",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_062",
+      "sample_ref": "vision_sample://keyframes/062.json",
+      "timestamp": 1781022103.0793092,
+      "frame_id": "map",
+      "raw_image": "keyframes/062.jpg",
+      "annotated_image": "",
+      "json": "keyframes/062.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "62",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_063",
+      "sample_ref": "vision_sample://keyframes/063.json",
+      "timestamp": 1781022103.3506334,
+      "frame_id": "map",
+      "raw_image": "keyframes/063.jpg",
+      "annotated_image": "",
+      "json": "keyframes/063.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "63",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_064",
+      "sample_ref": "vision_sample://keyframes/064.json",
+      "timestamp": 1781022104.0792205,
+      "frame_id": "map",
+      "raw_image": "keyframes/064.jpg",
+      "annotated_image": "",
+      "json": "keyframes/064.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "64",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_065",
+      "sample_ref": "vision_sample://keyframes/065.json",
+      "timestamp": 1781022104.3484,
+      "frame_id": "map",
+      "raw_image": "keyframes/065.jpg",
+      "annotated_image": "",
+      "json": "keyframes/065.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "65",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_066",
+      "sample_ref": "vision_sample://keyframes/066.json",
+      "timestamp": 1781022105.0791843,
+      "frame_id": "map",
+      "raw_image": "keyframes/066.jpg",
+      "annotated_image": "",
+      "json": "keyframes/066.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "66",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_067",
+      "sample_ref": "vision_sample://keyframes/067.json",
+      "timestamp": 1781022105.3480022,
+      "frame_id": "map",
+      "raw_image": "keyframes/067.jpg",
+      "annotated_image": "",
+      "json": "keyframes/067.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "67",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_068",
+      "sample_ref": "vision_sample://keyframes/068.json",
+      "timestamp": 1781022106.0793364,
+      "frame_id": "map",
+      "raw_image": "keyframes/068.jpg",
+      "annotated_image": "",
+      "json": "keyframes/068.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "68",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_069",
+      "sample_ref": "vision_sample://keyframes/069.json",
+      "timestamp": 1781022106.347928,
+      "frame_id": "map",
+      "raw_image": "keyframes/069.jpg",
+      "annotated_image": "",
+      "json": "keyframes/069.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "69",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_070",
+      "sample_ref": "vision_sample://keyframes/070.json",
+      "timestamp": 1781022107.0792937,
+      "frame_id": "map",
+      "raw_image": "keyframes/070.jpg",
+      "annotated_image": "",
+      "json": "keyframes/070.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "70",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_071",
+      "sample_ref": "vision_sample://keyframes/071.json",
+      "timestamp": 1781022107.34822,
+      "frame_id": "map",
+      "raw_image": "keyframes/071.jpg",
+      "annotated_image": "",
+      "json": "keyframes/071.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "71",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_072",
+      "sample_ref": "vision_sample://keyframes/072.json",
+      "timestamp": 1781022108.0792532,
+      "frame_id": "map",
+      "raw_image": "keyframes/072.jpg",
+      "annotated_image": "",
+      "json": "keyframes/072.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "72",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    },
+    {
+      "sample_id": "route_keyframe_073",
+      "sample_ref": "vision_sample://keyframes/073.json",
+      "timestamp": 1781022108.3480241,
+      "frame_id": "map",
+      "raw_image": "keyframes/073.jpg",
+      "annotated_image": "",
+      "json": "keyframes/073.json",
+      "context": {
+        "task_id": "",
+        "route_id": "",
+        "checkpoint_id": "73",
+        "event_type": "route_keyframe",
+        "anomaly_type": ""
+      },
+      "detection_count": 0,
+      "max_confidence": 0
+    }
+  ]
+}

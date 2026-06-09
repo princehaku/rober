@@ -182,6 +182,88 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertIn("'sample_manifest_name': route_sample_manifest_name", recorder_block)
         self.assertIn("'sample_manifest_max_entries': route_sample_manifest_max_entries", recorder_block)
 
+    def test_learn_launch_can_start_no_motion_sensor_capture_stack(self):
+        # no-motion 现场采集必须一条 learn.launch 拉起 SLAM、传感器、route recorder 和 synthetic odom。
+        source = read_launch("learn.launch.py")
+        ast.parse(source)
+
+        for argument in (
+            "'camera_enabled'",
+            "'camera_device'",
+            "'camera_topic'",
+            "'camera_frame_id'",
+            "'camera_width'",
+            "'camera_height'",
+            "'camera_fps'",
+            "'waypoint_manager'",
+            "'lidar_enabled'",
+            "'lidar_serial_port'",
+            "'lidar_serial_baudrate'",
+            "'lidar_frame_id'",
+            "'lidar_scan_topic'",
+            "'lidar_raw_packet_topic'",
+            "'lidar_publish_raw_packets'",
+            "'lidar_range_min'",
+            "'lidar_range_max'",
+            "'lidar_scan_time'",
+            "'lidar_time_increment'",
+            "'lidar_mock_packets'",
+            "'lidar_mock_scan'",
+            "'static_laser_tf_enabled'",
+            "'base_frame_id'",
+            "'no_motion_static_odom_tf'",
+            "'no_motion_mock_odom_enabled'",
+            "'no_motion_mock_odom_topic'",
+            "'no_motion_mock_odom_rate'",
+            "'no_motion_odom_frame_id'",
+            "'slam_map_frame'",
+            "'slam_odom_frame'",
+            "'slam_base_frame'",
+            "'map_dir'",
+            "'default_map_name'",
+        ):
+            self.assertIn(argument, source)
+
+        camera_block = node_block(source, "camera_publisher")
+        lidar_block = node_block(source, "lidar_driver")
+
+        for default_off in (
+            "'camera_enabled', default_value='false'",
+            "'lidar_enabled', default_value='false'",
+            "'static_laser_tf_enabled', default_value='false'",
+            "'no_motion_static_odom_tf', default_value='false'",
+            "'no_motion_mock_odom_enabled', default_value='false'",
+        ):
+            self.assertIn(default_off, source)
+
+        self.assertIn("condition=IfCondition(camera_enabled)", camera_block)
+        self.assertIn("'device': camera_device", camera_block)
+        self.assertIn("'topic': camera_topic", camera_block)
+        self.assertIn("condition=IfCondition(lidar_enabled)", lidar_block)
+        self.assertIn("'serial_port': lidar_serial_port", lidar_block)
+        self.assertIn("'scan_topic': lidar_scan_topic", lidar_block)
+        self.assertIn("'range_min': lidar_range_min", lidar_block)
+        self.assertIn("'range_max': lidar_range_max", lidar_block)
+        self.assertIn("'scan_time': lidar_scan_time", lidar_block)
+        self.assertIn("'time_increment': lidar_time_increment", lidar_block)
+
+        self.assertIn("name='static_laser_tf'", source)
+        self.assertIn("condition=IfCondition(static_laser_tf_enabled)", source)
+        self.assertIn("name='no_motion_static_odom_tf'", source)
+        self.assertIn("condition=IfCondition(no_motion_static_odom_tf)", source)
+        self.assertIn("message.header.frame_id=odom_frame", source)
+        self.assertIn("message.child_frame_id=base_frame", source)
+        self.assertIn("'python3'", source)
+        self.assertIn('node=Node("no_motion_mock_odom_pub")', source)
+        self.assertIn("ExecuteProcess(", source)
+        self.assertIn("condition=IfCondition(no_motion_mock_odom_enabled)", source)
+        self.assertNotIn("'/cmd_vel'", source)
+        self.assertIn("'map_frame': slam_map_frame", source)
+        self.assertIn("'odom_frame': slam_odom_frame", source)
+        self.assertIn("'base_frame': slam_base_frame", source)
+        self.assertIn("'map_dir': map_dir", source)
+        self.assertIn("'default_map_name': default_map_name", source)
+
     def test_autonomous_can_start_operator_gateway(self):
         source = read_launch("autonomous.launch.py")
         gateway_block = source[source.index("executable='operator_gateway'"):]

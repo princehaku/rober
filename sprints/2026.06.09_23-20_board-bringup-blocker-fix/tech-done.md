@@ -266,6 +266,10 @@ ros2 launch ros2_trashbot_bringup bringup.launch.py \
 - 若下一轮需要 `map.yaml`，必须把 mapping node 明确纳入现场 launch，并确认 `/map` 持续发布。
 - 若下一轮需要 `route.csv` / `manifest.json`，必须先解决板上 `cv_bridge` 依赖，再决定是真实运动采集还是 mock `/odom` 软件链路验证。
 
+## 交接：2026-06-10 no-motion map/route sprint
+
+本轮末尾的 no-motion map/route blocker 已转入并收口于 `sprints/2026.06.10_00-25_no-motion-map-route-evidence/`。该后续 sprint 已把 `learn.launch.py` 作为统一 no-motion capture 入口，解决 `cv_bridge` 缺失导致 `route_data_recorder` 启动即崩溃的问题，并在真实上位机产出 `map.yaml`、`route.csv`、keyframes 与 manifest。剩余 `/scan` 和 camera launch ownership 风险以新 sprint 的 `final.md` 为准。
+
 ## 追加验证：2026-06-10 低速运动 Gate
 
 ### 新增 artifact

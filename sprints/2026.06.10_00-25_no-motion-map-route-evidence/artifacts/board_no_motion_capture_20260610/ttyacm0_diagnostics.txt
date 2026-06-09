@@ -1,0 +1,99 @@
+===nodes===
+WARNING: Be aware that there are nodes in the graph that share an exact name, which can have unintended side effects.
+/camera_publisher
+/lidar_driver
+/map_recorder
+/map_recorder
+/map_recorder
+/no_motion_mock_odom_pub
+/no_motion_mock_odom_pub
+/no_motion_static_odom_tf
+/no_motion_static_odom_tf
+/no_motion_static_odom_tf
+/route_data_recorder
+/route_data_recorder
+/route_data_recorder
+/static_laser_tf
+/static_laser_tf
+/static_laser_tf
+/waypoint_manager
+/waypoint_manager
+/waypoint_manager
+===scan_info===
+Type: sensor_msgs/msg/LaserScan
+
+Publisher count: 1
+
+Node name: lidar_driver
+Node namespace: /
+Topic type: sensor_msgs/msg/LaserScan
+Endpoint type: PUBLISHER
+GID: 01.0f.1b.26.77.81.d5.62.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+===ps_lidar_camera===
+root       32110       1 92 00:17 ?        00:04:49 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher --ros-args -r __node:=camera_publisher --params-file /tmp/launch_params_maivza6_
+root       32114       1  1 00:17 ?        00:00:04 /opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 base_link laser_frame --ros-args -r __node:=static_laser_tf
+root       32116       1  1 00:17 ?        00:00:04 /opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 odom base_link --ros-args -r __node:=no_motion_static_odom_tf
+root       33143       1  9 00:18 ?        00:00:24 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -r __node:=lidar_driver --params-file /tmp/launch_params_tkeqqo_8
+root       33145       1  1 00:18 ?        00:00:04 /opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 base_link laser_frame --ros-args -r __node:=static_laser_tf
+root       33147       1  1 00:18 ?        00:00:04 /opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 odom base_link --ros-args -r __node:=no_motion_static_odom_tf
+root       33149       1  2 00:18 ?        00:00:06 python3 -c import sys import rclpy from nav_msgs.msg import Odometry from rclpy.node import Node rate=float(sys.argv[1]) topic=sys.argv[2] odom_frame=sys.argv[3] base_frame=sys.argv[4] rclpy.init() node=Node("no_motion_mock_odom_pub") publisher=node.create_publisher(Odometry, topic, 10) timer_period=1.0 / rate if rate > 0.0 else 1.0 message=Odometry() message.header.frame_id=odom_frame message.child_frame_id=base_frame message.pose.pose.orientation.w=1.0 def tick():     message.header.stamp=node.get_clock().now().to_msg()     publisher.publish(message) node.create_timer(timer_period, tick) tick() rclpy.spin(node)  1.0 /odom odom base_link
+root       37174       1  2 00:20 ?        00:00:02 /opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 base_link laser_frame --ros-args -r __node:=static_laser_tf
+root       37176       1  2 00:20 ?        00:00:02 /opt/ros/humble/lib/tf2_ros/static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 odom base_link --ros-args -r __node:=no_motion_static_odom_tf
+root       37178       1  3 00:20 ?        00:00:03 python3 -c import sys import rclpy from nav_msgs.msg import Odometry from rclpy.node import Node rate=float(sys.argv[1]) topic=sys.argv[2] odom_frame=sys.argv[3] base_frame=sys.argv[4] rclpy.init() node=Node("no_motion_mock_odom_pub") publisher=node.create_publisher(Odometry, topic, 10) timer_period=1.0 / rate if rate > 0.0 else 1.0 message=Odometry() message.header.frame_id=odom_frame message.child_frame_id=base_frame message.pose.pose.orientation.w=1.0 def tick():     message.header.stamp=node.get_clock().now().to_msg()     publisher.publish(message) node.create_timer(timer_period, tick) tick() rclpy.spin(node)  1.0 /odom odom base_link
+===ttyACM0===
+crw-rw---- 1 root dialout 166, 0 Jun 10 00:21 /dev/ttyACM0
+===fuser===
+                     USER        PID ACCESS COMMAND
+/dev/ttyACM0:        root      33143 F.... lidar_driver
+===dmesg_tail===
+[   16.230199] bluetooth_set_power: start_block=0
+[   16.230230] WCN: start_marlin [MARLIN_BLUETOOTH]
+[   16.230242] WCN: marlin power state:5, subsys: [MARLIN_BLUETOOTH] power 1
+[   16.230248] WCN: marlin have open, GNSS is closed
+[   16.230253] bluetooth_set_power: end_block=0
+[   16.284137] mtty_open device success!
+[   16.849714] Bluetooth: Core ver 2.22
+[   16.849876] NET: Registered PF_BLUETOOTH protocol family
+[   16.849881] Bluetooth: HCI device and connection manager initialized
+[   16.849903] Bluetooth: HCI socket layer initialized
+[   16.849912] Bluetooth: L2CAP socket layer initialized
+[   16.849928] Bluetooth: SCO socket layer initialized
+[   16.943521] Bluetooth: HCI UART driver ver 2.3
+[   16.943555] Bluetooth: HCI UART protocol H4 registered
+[   16.943561] Bluetooth: HCI UART protocol BCSP registered
+[   16.943666] Bluetooth: HCI UART protocol LL registered
+[   16.943672] Bluetooth: HCI UART protocol ATH3K registered
+[   16.943702] Bluetooth: HCI UART protocol Three-wire (H5) registered
+[   16.943931] Bluetooth: HCI UART protocol Intel registered
+[   16.944028] Bluetooth: HCI UART protocol Broadcom registered
+[   16.944055] Bluetooth: HCI UART protocol QCA registered
+[   16.944060] Bluetooth: HCI UART protocol AG6XX registered
+[   16.944089] Bluetooth: HCI UART protocol Marvell registered
+[   19.578840] dwmac-sun8i 5020000.ethernet eth0: Register MEM_TYPE_PAGE_POOL RxQ-0
+[   19.580781] dwmac-sun8i 5020000.ethernet eth0: PHY [stmmac-0:01] driver [YT8531 Gigabit Ethernet] (irq=POLL)
+[   19.581145] dwmac-sun8i 5020000.ethernet eth0: No Safety Features support found
+[   19.581157] dwmac-sun8i 5020000.ethernet eth0: No MAC Management Counters available
+[   19.581164] dwmac-sun8i 5020000.ethernet eth0: PTP not supported by HW
+[   19.581545] dwmac-sun8i 5020000.ethernet eth0: configuring for phy/rgmii link mode
+[   20.037010] Bluetooth: BNEP (Ethernet Emulation) ver 1.3
+[   20.037030] Bluetooth: BNEP filters: protocol multicast
+[   20.037050] Bluetooth: BNEP socket layer initialized
+[   20.042166] Bluetooth: MGMT ver 1.22
+[   20.080306] NET: Registered PF_ALG protocol family
+[   22.359557] IPv6: ADDRCONF(NETDEV_CHANGE): wlan0: link becomes ready
+[   42.255550] Initializing XFRM netlink socket
+[   42.498711] bridge: filtering via arp/ip/ip6tables is no longer available by default. Update your scripts to load br_netfilter if you need this.
+[   45.301342] Bluetooth: RFCOMM TTY layer initialized
+[   45.301390] Bluetooth: RFCOMM socket layer initialized
+[   45.301422] Bluetooth: RFCOMM ver 1.11

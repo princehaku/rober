@@ -1,0 +1,15 @@
+/camera/image_raw
+/map
+/map_metadata
+/odom
+/parameter_events
+/pose
+/rosout
+/scan
+/slam_toolbox/feedback
+/slam_toolbox/graph_visualization
+/slam_toolbox/scan_visualization
+/slam_toolbox/update
+/tf
+/tf_static
+/trashbot/waypoints

@@ -19,6 +19,28 @@ ros2 launch ros2_trashbot_bringup learn.launch.py \
   route_frame_id:=map
 ```
 
+No-motion 现场证据采集也统一复用 `learn.launch.py`，但只允许采样传感器、TF、`/odom` 和地图服务，禁止任何 `/cmd_vel` 发布：
+
+```bash
+ros2 launch ros2_trashbot_bringup learn.launch.py \
+  lidar_enabled:=true \
+  lidar_serial_port:=/dev/ttyACM0 \
+  lidar_serial_baudrate:=150000 \
+  static_laser_tf_enabled:=true \
+  no_motion_static_odom_tf:=true \
+  no_motion_mock_odom_enabled:=true \
+  camera_enabled:=true \
+  camera_device:=/dev/video1 \
+  route_recorder:=true \
+  route_output_dir:=/tmp/trashbot_no_motion_route
+```
+
+这个 no-motion 入口的边界是：
+
+- `slam_toolbox` + `map_recorder` 负责证明 `map.yaml` 是否真的可保存，而不是只证明 service 存在。
+- `camera_publisher`、`lidar_driver`、`static_transform_publisher`、synthetic `/odom` 只为 route/keyframe 软件链路补齐输入拓扑，不代表真实运动、真实里程计或机械标定已完成。
+- `route_data_recorder` 在缺 `cv_bridge` 时会自动退化到 numpy/cv2 raw buffer fallback；若图像仍无法转换，也必须继续写 `route.csv` 并落盘 `image_conversion_status.json`。
+
 Use these launch arguments when the robot topic names differ from defaults:
 
 - `route_camera_topic` defaults to `/camera/image_raw`.
@@ -87,6 +109,7 @@ Expected outputs:
 - `keyframes/*.jpg`
 - `keyframes/*.json`
 - `manifest.json`
+- `image_conversion_status.json`（仅在图像转换退化时出现）
 
 ## 2. Route Conversion
 

@@ -4,8 +4,25 @@ import os
 import time
 from math import hypot
 
-import cv2
-from cv_bridge import CvBridge, CvBridgeError
+# cv_bridge 在现场 Orange Pi 镜像里可能缺失；这里必须把它做成可选依赖，避免节点在订阅 /odom 前崩溃。
+try:
+    from cv_bridge import CvBridge, CvBridgeError
+except ImportError:
+    CvBridge = None
+    CvBridgeError = Exception
+
+# OpenCV 仍用于写 keyframe；若运行环境缺失，route.csv 仍应继续记录，不能因为图片链路拖垮路线链路。
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+
+# numpy 是 cv_bridge 缺失时解析 sensor_msgs/Image 原始 buffer 的最小依赖，缺失时只记录原因并保持节点存活。
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
@@ -40,8 +57,10 @@ class RouteDataRecorder(Node):
         os.makedirs(self.output_dir, exist_ok=True)
         self.route_csv = os.path.join(self.output_dir, 'route.csv')
 
-        self.bridge = CvBridge()
+        # 优先使用 cv_bridge，保证桌面/容器环境和历史 keyframe 输出保持一致。
+        self.bridge = CvBridge() if CvBridge is not None else None
         self.latest_frame = None
+        self.last_image_conversion_error = ''
         self.last_x = None
         self.last_y = None
         self.index = 0
@@ -53,12 +72,22 @@ class RouteDataRecorder(Node):
         self.create_subscription(Odometry, self.odom_topic, self._on_odom, 50)
 
         self.get_logger().info(f'Recording route data to {self.output_dir}')
+        if self.bridge is None:
+            self.get_logger().warn('cv_bridge unavailable; using numpy/cv2 image fallback for common encodings')
+        if cv2 is None:
+            self._record_image_conversion_failure('cv2 unavailable; keyframe image writing disabled')
+        elif np is None and self.bridge is None:
+            self._record_image_conversion_failure('numpy unavailable; cv_bridge fallback disabled')
 
     def _on_image(self, msg: Image):
-        try:
-            self.latest_frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        except CvBridgeError as exc:
-            self.get_logger().warn(f'Image conversion failed: {exc}')
+        frame, failure_reason = convert_image_msg_to_bgr8(msg, bridge=self.bridge)
+        if failure_reason:
+            # 转换失败时清空旧帧，避免把过期 keyframe 写到新的 odom checkpoint 上。
+            self.latest_frame = None
+            self._record_image_conversion_failure(failure_reason)
+            self.get_logger().warn(f'Image conversion failed: {failure_reason}')
+            return
+        self.latest_frame = frame
 
     def _on_odom(self, msg: Odometry):
         x = msg.pose.pose.position.x
@@ -70,7 +99,9 @@ class RouteDataRecorder(Node):
         frame_path = os.path.join(self.keyframe_dir, frame_name)
         wrote_keyframe = False
         if self.latest_frame is not None:
-            if not cv2.imwrite(frame_path, self.latest_frame):
+            if cv2 is None:
+                self._record_image_conversion_failure('cv2 unavailable; keyframe image writing disabled')
+            elif not cv2.imwrite(frame_path, self.latest_frame):
                 self.get_logger().warn(f'Failed writing keyframe: {frame_path}')
             else:
                 wrote_keyframe = True
@@ -97,6 +128,25 @@ class RouteDataRecorder(Node):
         self.last_x, self.last_y = x, y
         self.index += 1
         self.get_logger().info(f'Saved waypoint #{self.index} at ({x:.2f}, {y:.2f})')
+
+    def _record_image_conversion_failure(self, reason: str):
+        if reason == self.last_image_conversion_error:
+            return
+        self.last_image_conversion_error = reason
+        status_path = os.path.join(self.output_dir, 'image_conversion_status.json')
+        payload = {
+            'schema': 'trashbot.route_data_recorder.image_conversion.v1',
+            'updated_at': time.time(),
+            'status': 'degraded',
+            'reason': reason,
+            'cv_bridge_available': self.bridge is not None,
+            'cv2_available': cv2 is not None,
+            'numpy_available': np is not None,
+        }
+        try:
+            write_json_file(status_path, payload)
+        except OSError as exc:
+            self.get_logger().warn(f'Failed writing image conversion status: {exc}')
 
     def _write_route_keyframe_sample(self, msg: Odometry, frame_name: str, frame_path: str):
         stamp = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9
@@ -146,6 +196,65 @@ def main(args=None):
     finally:
         node.destroy_node()
         rclpy.shutdown()
+
+
+def convert_image_msg_to_bgr8(msg: Image, bridge=None):
+    if bridge is not None:
+        try:
+            return bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8'), ''
+        except CvBridgeError as exc:
+            # cv_bridge 已安装但当前编码或数据仍失败时，再尝试 raw buffer fallback，避免单帧异常拖垮整条路线采集。
+            fallback_frame, fallback_reason = convert_image_msg_to_bgr8_without_cv_bridge(msg)
+            if not fallback_reason:
+                return fallback_frame, ''
+            return None, f'{exc}; fallback={fallback_reason}'
+    return convert_image_msg_to_bgr8_without_cv_bridge(msg)
+
+
+def convert_image_msg_to_bgr8_without_cv_bridge(msg: Image):
+    if np is None:
+        return None, 'numpy unavailable; cannot convert Image without cv_bridge'
+    if cv2 is None:
+        return None, 'cv2 unavailable; cannot convert Image without cv_bridge'
+
+    encoding = str(getattr(msg, 'encoding', '') or '').lower()
+    converters = {
+        'bgr8': (3, None),
+        'rgb8': (3, cv2.COLOR_RGB2BGR),
+        'mono8': (1, cv2.COLOR_GRAY2BGR),
+        'bgra8': (4, cv2.COLOR_BGRA2BGR),
+        'rgba8': (4, cv2.COLOR_RGBA2BGR),
+    }
+    if encoding not in converters:
+        return None, f'unsupported image encoding: {encoding or "<empty>"}'
+
+    height = int(getattr(msg, 'height', 0) or 0)
+    width = int(getattr(msg, 'width', 0) or 0)
+    channels, color_code = converters[encoding]
+    minimum_step = width * channels
+    step = int(getattr(msg, 'step', 0) or minimum_step)
+    if height <= 0 or width <= 0:
+        return None, f'invalid image shape: height={height}, width={width}'
+    if step < minimum_step:
+        return None, f'invalid image step: step={step}, expected_at_least={minimum_step}'
+
+    # sensor_msgs/Image 的每行可能有 padding；先按 step 切行，再只取真实像素区域。
+    buffer = np.frombuffer(bytes(getattr(msg, 'data', b'')), dtype=np.uint8)
+    required_bytes = height * step
+    if buffer.size < required_bytes:
+        return None, f'image data too short: bytes={buffer.size}, expected_at_least={required_bytes}'
+
+    rows = buffer[:required_bytes].reshape((height, step))
+    pixel_bytes = rows[:, :minimum_step]
+    if channels == 1:
+        image = pixel_bytes.reshape((height, width))
+    else:
+        image = pixel_bytes.reshape((height, width, channels))
+
+    # OpenCV 写 jpg 需要 BGR 排列；bgr8 直接 copy，其他常见编码显式转成 BGR，避免颜色通道反转。
+    if color_code is None:
+        return image.copy(), ''
+    return cv2.cvtColor(image, color_code), ''
 
 
 def relative_sample_path(path: str, output_dir: str) -> str:

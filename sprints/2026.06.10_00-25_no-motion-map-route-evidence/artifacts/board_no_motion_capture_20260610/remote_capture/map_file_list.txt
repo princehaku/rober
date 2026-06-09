@@ -1,0 +1,2 @@
+/tmp/trashbot_no_motion_maps/trashbot_no_motion_map.pgm
+/tmp/trashbot_no_motion_maps/trashbot_no_motion_map.yaml

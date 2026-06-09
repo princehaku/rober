@@ -1,0 +1,153 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-10-00-20-58-040064-op-z3-b6.home-37162
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [async_slam_toolbox_node-1]: process started with pid [37164]
+[INFO] [map_recorder-2]: process started with pid [37166]
+[INFO] [waypoint_manager-3]: process started with pid [37168]
+[INFO] [camera_publisher-4]: process started with pid [37170]
+[INFO] [lidar_driver-5]: process started with pid [37172]
+[INFO] [static_transform_publisher-6]: process started with pid [37174]
+[INFO] [static_transform_publisher-7]: process started with pid [37176]
+[INFO] [python3-8]: process started with pid [37178]
+[INFO] [route_data_recorder-9]: process started with pid [37180]
+[static_transform_publisher-7] [WARN] [1781022058.583969635] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-6] [WARN] [1781022058.616253111] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-7] [INFO] [1781022060.604227346] [no_motion_static_odom_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-7] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-7] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-7] from 'odom' to 'base_link'
+[static_transform_publisher-6] [INFO] [1781022060.617326136] [static_laser_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-6] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-6] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-6] from 'base_link' to 'laser_frame'
+[async_slam_toolbox_node-1] [INFO] [1781022063.933384380] [slam_toolbox]: Using solver plugin solver_plugins::CeresSolver
+[waypoint_manager-3] [WARN] [1781022067.751411333] [waypoint_manager]: nav2_simple_commander is unavailable; waypoint navigation disabled: No module named 'nav2_simple_commander'
+[camera_publisher-4] Traceback (most recent call last):
+[camera_publisher-4]   File "/root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher", line 33, in <module>
+[camera_publisher-4]     sys.exit(load_entry_point('ros2-trashbot-vision', 'console_scripts', 'camera_publisher')())
+[camera_publisher-4]   File "/root/rober/onboard/build/ros2_trashbot_vision/ros2_trashbot_vision/camera_publisher.py", line 104, in main
+[camera_publisher-4]     node = CameraPublisher()
+[camera_publisher-4]   File "/root/rober/onboard/build/ros2_trashbot_vision/ros2_trashbot_vision/camera_publisher.py", line 42, in __init__
+[camera_publisher-4]     raise RuntimeError(
+[camera_publisher-4] RuntimeError: Failed to open camera device /dev/video1; camera_publisher fails closed and will not fabricate frames
+[waypoint_manager-3] [INFO] [1781022069.997034672] [waypoint_manager]: Loaded 44 waypoints from /root/.ros/trashbot_maps/waypoints.yaml
+[waypoint_manager-3] [INFO] [1781022070.000933659] [waypoint_manager]: WaypointManager ready. Loaded 44 waypoints.
+[ERROR] [camera_publisher-4]: process has died [pid 37170, exit code 1, cmd '/root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher --ros-args -r __node:=camera_publisher --params-file /tmp/launch_params_dghrxez4'].
+[async_slam_toolbox_node-1] [WARN] [1781022071.893887126] [slam_toolbox]: minimum laser range setting (0.0 m) exceeds the capabilities of the used Lidar (0.1 m)
+[async_slam_toolbox_node-1] [WARN] [1781022071.894730040] [slam_toolbox]: maximum laser range setting (25.0 m) exceeds the capabilities of the used Lidar (8.0 m)
+[async_slam_toolbox_node-1] Info: clipped range threshold to be within minimum and maximum range!
+[async_slam_toolbox_node-1] Registering sensor: [Custom Described Lidar]
+[route_data_recorder-9] [INFO] [1781022072.354452722] [route_data_recorder]: Recording route data to /tmp/trashbot_no_motion_route
+[route_data_recorder-9] [WARN] [1781022072.363278235] [route_data_recorder]: cv_bridge unavailable; using numpy/cv2 image fallback for common encodings
+[route_data_recorder-9] [INFO] [1781022072.582571465] [route_data_recorder]: Saved waypoint #1 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022072.736582079] [route_data_recorder]: Saved waypoint #2 at (0.00, 0.00)
+[lidar_driver-5] [INFO] [1781022072.830145435] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000
+[route_data_recorder-9] [INFO] [1781022073.165371906] [route_data_recorder]: Saved waypoint #3 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022073.405636067] [route_data_recorder]: Saved waypoint #4 at (0.00, 0.00)
+[waypoint_manager-3] [INFO] [1781022073.613629210] [waypoint_manager]: Recorded waypoint "auto_0000" at (0.00, 0.00)
+[lidar_driver-5] Traceback (most recent call last):
+[lidar_driver-5]   File "/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver", line 33, in <module>
+[lidar_driver-5]     sys.exit(load_entry_point('ros2-trashbot-hardware', 'console_scripts', 'lidar_driver')())
+[lidar_driver-5]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 296, in main
+[lidar_driver-5]     rclpy.spin(node)
+[lidar_driver-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 229, in spin
+[lidar_driver-5]     executor.spin_once()
+[lidar_driver-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 808, in spin_once
+[lidar_driver-5]     self._spin_once_impl(timeout_sec)
+[lidar_driver-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 805, in _spin_once_impl
+[lidar_driver-5]     raise handler.exception()
+[lidar_driver-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 272, in _execute_coroutine_step
+[lidar_driver-5]     result = coro.send(None)
+[lidar_driver-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 488, in handler
+[lidar_driver-5]     await call_coroutine(entity, arg)
+[lidar_driver-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 396, in _execute_timer
+[lidar_driver-5]     await await_or_execute(tmr.callback)
+[lidar_driver-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 110, in await_or_execute
+[lidar_driver-5]     return callback(*args)
+[lidar_driver-5]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 246, in _tick
+[lidar_driver-5]     packets = self._next_packets()
+[lidar_driver-5]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 258, in _next_packets
+[lidar_driver-5]     return self.serial_session.read_packets()
+[lidar_driver-5]   File "/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py", line 107, in read_packets
+[lidar_driver-5]     chunk = self._serial.read(int(self.config.read_size)) or b""
+[lidar_driver-5]   File "/usr/local/lib/python3.10/dist-packages/serial/serialposix.py", line 595, in read
+[lidar_driver-5]     raise SerialException(
+[lidar_driver-5] serial.serialutil.SerialException: device reports readiness to read but returned no data (device disconnected or multiple access on port?)
+[route_data_recorder-9] [INFO] [1781022074.102618462] [route_data_recorder]: Saved waypoint #5 at (0.00, 0.00)
+[ERROR] [lidar_driver-5]: process has died [pid 37172, exit code 1, cmd '/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -r __node:=lidar_driver --params-file /tmp/launch_params_s11laeqf'].
+[route_data_recorder-9] [INFO] [1781022074.378671504] [route_data_recorder]: Saved waypoint #6 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022075.099952902] [route_data_recorder]: Saved waypoint #7 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022075.375936486] [route_data_recorder]: Saved waypoint #8 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022076.114011995] [route_data_recorder]: Saved waypoint #9 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022076.374252464] [route_data_recorder]: Saved waypoint #10 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022077.099988680] [route_data_recorder]: Saved waypoint #11 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022077.369388995] [route_data_recorder]: Saved waypoint #12 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022078.123180118] [route_data_recorder]: Saved waypoint #13 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022078.373811244] [route_data_recorder]: Saved waypoint #14 at (0.00, 0.00)
+[waypoint_manager-3] [INFO] [1781022078.417169684] [waypoint_manager]: Recorded waypoint "auto_0001" at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022079.173044383] [route_data_recorder]: Saved waypoint #15 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022079.372452805] [route_data_recorder]: Saved waypoint #16 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022080.101161761] [route_data_recorder]: Saved waypoint #17 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022080.376483014] [route_data_recorder]: Saved waypoint #18 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022081.104936680] [route_data_recorder]: Saved waypoint #19 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022081.369915175] [route_data_recorder]: Saved waypoint #20 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022082.105467567] [route_data_recorder]: Saved waypoint #21 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022082.370941228] [route_data_recorder]: Saved waypoint #22 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022083.110488440] [route_data_recorder]: Saved waypoint #23 at (0.00, 0.00)
+[waypoint_manager-3] [INFO] [1781022083.343151585] [waypoint_manager]: Recorded waypoint "auto_0002" at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022083.376853348] [route_data_recorder]: Saved waypoint #24 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022084.110852953] [route_data_recorder]: Saved waypoint #25 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022084.386148915] [route_data_recorder]: Saved waypoint #26 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022085.105710693] [route_data_recorder]: Saved waypoint #27 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022085.377928748] [route_data_recorder]: Saved waypoint #28 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022086.105982040] [route_data_recorder]: Saved waypoint #29 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022086.375878227] [route_data_recorder]: Saved waypoint #30 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022087.210132792] [route_data_recorder]: Saved waypoint #31 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022087.439134948] [route_data_recorder]: Saved waypoint #32 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022088.106529900] [route_data_recorder]: Saved waypoint #33 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022088.469955111] [route_data_recorder]: Saved waypoint #34 at (0.00, 0.00)
+[waypoint_manager-3] [INFO] [1781022088.511288557] [waypoint_manager]: Recorded waypoint "auto_0003" at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022089.105636042] [route_data_recorder]: Saved waypoint #35 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022089.380779171] [route_data_recorder]: Saved waypoint #36 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022090.107609300] [route_data_recorder]: Saved waypoint #37 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022090.381197392] [route_data_recorder]: Saved waypoint #38 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022091.109665974] [route_data_recorder]: Saved waypoint #39 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022091.404207622] [route_data_recorder]: Saved waypoint #40 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022092.177135556] [route_data_recorder]: Saved waypoint #41 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022092.375675939] [route_data_recorder]: Saved waypoint #42 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022093.111954162] [route_data_recorder]: Saved waypoint #43 at (0.00, 0.00)
+[waypoint_manager-3] [INFO] [1781022093.353378986] [waypoint_manager]: Recorded waypoint "auto_0004" at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022093.386213294] [route_data_recorder]: Saved waypoint #44 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022094.135579181] [route_data_recorder]: Saved waypoint #45 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022094.381244283] [route_data_recorder]: Saved waypoint #46 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022095.133341078] [route_data_recorder]: Saved waypoint #47 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022095.377413518] [route_data_recorder]: Saved waypoint #48 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022096.152727737] [route_data_recorder]: Saved waypoint #49 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022096.540747157] [route_data_recorder]: Saved waypoint #50 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022097.256722197] [route_data_recorder]: Saved waypoint #51 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022097.400287638] [route_data_recorder]: Saved waypoint #52 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022098.116575969] [route_data_recorder]: Saved waypoint #53 at (0.00, 0.00)
+[waypoint_manager-3] [INFO] [1781022098.363171233] [waypoint_manager]: Recorded waypoint "auto_0005" at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022098.407719627] [route_data_recorder]: Saved waypoint #54 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022099.127958404] [route_data_recorder]: Saved waypoint #55 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022099.385892089] [route_data_recorder]: Saved waypoint #56 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022100.191159500] [route_data_recorder]: Saved waypoint #57 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022100.380155997] [route_data_recorder]: Saved waypoint #58 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022101.111721319] [route_data_recorder]: Saved waypoint #59 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022101.385193537] [route_data_recorder]: Saved waypoint #60 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022102.116727317] [route_data_recorder]: Saved waypoint #61 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022102.381373272] [route_data_recorder]: Saved waypoint #62 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022103.115515836] [route_data_recorder]: Saved waypoint #63 at (0.00, 0.00)
+[waypoint_manager-3] [INFO] [1781022103.347121150] [waypoint_manager]: Recorded waypoint "auto_0006" at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022103.407479408] [route_data_recorder]: Saved waypoint #64 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022104.116942387] [route_data_recorder]: Saved waypoint #65 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022104.386037452] [route_data_recorder]: Saved waypoint #66 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022105.114401910] [route_data_recorder]: Saved waypoint #67 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022105.381767397] [route_data_recorder]: Saved waypoint #68 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022106.198677269] [route_data_recorder]: Saved waypoint #69 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022106.378762380] [route_data_recorder]: Saved waypoint #70 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022107.233808584] [route_data_recorder]: Saved waypoint #71 at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022107.462517366] [route_data_recorder]: Saved waypoint #72 at (0.00, 0.00)
+[map_recorder-2] [INFO] [1781022107.705685351] [map_recorder]: Map saved to /tmp/trashbot_no_motion_maps/trashbot_no_motion_map.pgm
+[route_data_recorder-9] [INFO] [1781022108.118496022] [route_data_recorder]: Saved waypoint #73 at (0.00, 0.00)
+[waypoint_manager-3] [INFO] [1781022108.347645679] [waypoint_manager]: Recorded waypoint "auto_0007" at (0.00, 0.00)
+[route_data_recorder-9] [INFO] [1781022108.382102731] [route_data_recorder]: Saved waypoint #74 at (0.00, 0.00)
