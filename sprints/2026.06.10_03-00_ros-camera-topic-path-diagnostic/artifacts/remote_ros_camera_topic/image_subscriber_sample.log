@@ -1,0 +1,26 @@
+{
+  "bright_ratio": 0.0,
+  "data_len": 921600,
+  "dynamic_range_luma": 0.9266,
+  "encoding": "bgr8",
+  "expected_data_len_from_height_step": 921600,
+  "failure_reason": null,
+  "header": {
+    "frame_id": "camera",
+    "stamp_nanosec": 871035778,
+    "stamp_sec": 1781031307
+  },
+  "height": 480,
+  "image_message_observed": true,
+  "is_bigendian": false,
+  "max_luma": 0.9266,
+  "mean_luma": 0.21674,
+  "min_luma": 0.0,
+  "non_black_ratio": 0.0,
+  "sample_path_ppm": "/tmp/rober_ros_camera_topic_20260610_025425/camera_image_raw_sample.ppm",
+  "stddev_luma": 0.07359,
+  "step": 1920,
+  "topic": "/camera/image_raw",
+  "visible_content_candidate": false,
+  "width": 640
+}

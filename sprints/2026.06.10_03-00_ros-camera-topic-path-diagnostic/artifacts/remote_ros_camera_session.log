@@ -1,0 +1,87 @@
+REMOTE_TMPDIR=/tmp/rober_ros_camera_topic_20260610_025425
+== safety ==
+motion_commands_sent=false
+cmd_vel_commands_sent=false
+serial_motion_commands_sent=false
+== source ros env ==
+which_ros2=/opt/ros/humble/bin/ros2
+/root/rober/onboard/install/ros2_trashbot_vision
+/root/rober/onboard/install/ros2_trashbot_bringup
+== python imports ==
+cv2=OK
+rclpy=OK
+== start camera publisher ==
+publisher_pid=85408
+== publisher initial status ==
+publisher_alive=true
+[INFO] [1781031272.400514148] [camera_publisher]: camera_publisher streaming /dev/video1 to /camera/image_raw with frame_id=camera, requested 640x480@2.00fps
+== ros2 topic list ==
+/camera/image_raw
+/parameter_events
+/rosout
+== ros2 topic info /camera/image_raw ==
+Type: sensor_msgs/msg/Image
+Publisher count: 1
+Subscription count: 0
+== ros2 topic echo header ==
+stamp:
+  sec: 1781031278
+  nanosec: 382722532
+frame_id: camera
+---
+== ros2 topic echo shape fields ==
+-- height --
+480
+---
+-- width --
+640
+---
+-- encoding --
+bgr8
+---
+-- step --
+1920
+---
+== ros2 topic hz /camera/image_raw ==
+average rate: 1.120
+	min: 0.893s max: 0.894s std dev: 0.00053s window: 3
+average rate: 1.120
+	min: 0.893s max: 0.894s std dev: 0.00043s window: 5
+average rate: 1.120
+	min: 0.893s max: 0.894s std dev: 0.00038s window: 7
+average rate: 1.119
+	min: 0.893s max: 0.895s std dev: 0.00054s window: 9
+== python image subscriber sample ==
+{
+  "bright_ratio": 0.0,
+  "data_len": 921600,
+  "dynamic_range_luma": 0.9266,
+  "encoding": "bgr8",
+  "expected_data_len_from_height_step": 921600,
+  "failure_reason": null,
+  "header": {
+    "frame_id": "camera",
+    "stamp_nanosec": 871035778,
+    "stamp_sec": 1781031307
+  },
+  "height": 480,
+  "image_message_observed": true,
+  "is_bigendian": false,
+  "max_luma": 0.9266,
+  "mean_luma": 0.21674,
+  "min_luma": 0.0,
+  "non_black_ratio": 0.0,
+  "sample_path_ppm": "/tmp/rober_ros_camera_topic_20260610_025425/camera_image_raw_sample.ppm",
+  "stddev_luma": 0.07359,
+  "step": 1920,
+  "topic": "/camera/image_raw",
+  "visible_content_candidate": false,
+  "width": 640
+}
+== final publisher log ==
+[INFO] [1781031272.400514148] [camera_publisher]: camera_publisher streaming /dev/video1 to /camera/image_raw with frame_id=camera, requested 640x480@2.00fps
+== cleanup publisher ==
+publisher_cleanup=ok
+== package artifacts ==
+REMOTE_TGZ=/tmp/rober_ros_camera_topic_20260610_025425.tgz
+== done ==

@@ -1,0 +1,13 @@
+== before ==
+85410 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher --ros-args -p device:=/dev/video1 -p topic:=/camera/image_raw -p width:=640 -p height:=480 -p fps:=2.0
+85978 zsh -c set -u; echo "== before =="; pgrep -af "ros2_trashbot_vision/.*/camera_publisher|camera_publisher" || true; PIDS=$(pgrep -f "/root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher" || true); if [ -n "$PIDS" ]; then kill $PIDS || true; sleep 1; fi; PIDS=$(pgrep -f "/root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher" || true); if [ -n "$PIDS" ]; then kill -9 $PIDS || true; sleep 1; fi; echo "== after =="; pgrep -af "ros2_trashbot_vision/.*/camera_publisher|camera_publisher" || true
+zsh:kill:1: illegal pid: 85410\n85978\n85980
+zsh:kill:1: illegal pid: 85410\n85978\n85983
+== after ==
+85410 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher --ros-args -p device:=/dev/video1 -p topic:=/camera/image_raw -p width:=640 -p height:=480 -p fps:=2.0
+85978 zsh -c set -u; echo "== before =="; pgrep -af "ros2_trashbot_vision/.*/camera_publisher|camera_publisher" || true; PIDS=$(pgrep -f "/root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher" || true); if [ -n "$PIDS" ]; then kill $PIDS || true; sleep 1; fi; PIDS=$(pgrep -f "/root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher" || true); if [ -n "$PIDS" ]; then kill -9 $PIDS || true; sleep 1; fi; echo "== after =="; pgrep -af "ros2_trashbot_vision/.*/camera_publisher|camera_publisher" || true
+== targeted kill ==
+== after targeted kill ==
+    PID COMMAND
+86126 zsh -c echo "== targeted kill =="; kill 85410 2>/dev/null || true; sleep 1; kill -9 85410 2>/dev/null || true; echo "== after targeted kill =="; ps -p 85410 -o pid,args 2>/dev/null || true; pgrep -af "/root/rober/onboard/install/ros2_trashbot_vision/lib/ros2_trashbot_vision/camera_publisher" || true
+== final residual check ==

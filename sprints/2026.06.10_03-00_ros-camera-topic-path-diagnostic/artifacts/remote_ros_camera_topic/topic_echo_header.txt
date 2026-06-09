@@ -1,0 +1,5 @@
+stamp:
+  sec: 1781031278
+  nanosec: 382722532
+frame_id: camera
+---

@@ -87,6 +87,46 @@ camera_enabled:=true camera_device:=/dev/video1
 
 `/dev/video0` 只适合作为失败样例保留在排查记录里，不应继续作为这块板的现场采样设备假设。
 
+## 2026-06-10 ROS2 topic path 结论
+
+在 `root@192.168.1.11:37878` 实板上，root shell 直接执行 `ros2` 仍不在 `PATH`。
+本轮确认可用的 ROS2 source 链是：
+
+```bash
+source /opt/ros/humble/setup.bash
+source /root/rober/onboard/install/setup.bash
+```
+
+source 后 `ros2 pkg prefix ros2_trashbot_vision` 和 `ros2 pkg prefix ros2_trashbot_bringup`
+均能解析到 `/root/rober/onboard/install/...`。现场最小 camera publisher smoke 使用：
+
+```bash
+ros2 run ros2_trashbot_vision camera_publisher --ros-args \
+  -p device:=/dev/video1 \
+  -p topic:=/camera/image_raw \
+  -p width:=640 \
+  -p height:=480 \
+  -p fps:=2.0
+```
+
+实测结果：
+
+- `/camera/image_raw` 出现在 ROS graph，`ros2 topic info` 显示 `sensor_msgs/msg/Image`、`Publisher count: 1`。
+- subscriber 收到 `640x480 bgr8` 图像，`step=1920`、`data_len=921600`。
+- `ros_camera_topic_proven=true`：已证明 `/dev/video1` 可以经 `camera_publisher` 发布到 `/camera/image_raw`。
+- `visible_content_proven=false`：图像仍近黑，`mean_luma=0.21674`、`dynamic_range_luma=0.9266`、`non_black_ratio=0.0`。
+
+因此当前只能宣称 ROS2 camera topic 主链路可发布消息，不能宣称已经有可用视觉路线内容。
+下一步必须在现场确认镜头盖、遮挡、朝向、光照和 USB 摄像头本体；在 `visible_content_proven=true`
+之前，不应把该画面用于路线关键帧、视觉定位、障碍识别或远程可视验收。
+
+当前实板仍以 `/dev/video1` 作为真实相机。`/dev/video0` 是 Cedrus decoder；
+launch 中的 `/dev/video0` 仅是可覆盖默认值，现场运行必须显式传：
+
+```bash
+camera_device:=/dev/video1
+```
+
 ## 本地资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`

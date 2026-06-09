@@ -1,0 +1,28 @@
+== direct ros2 ==
+== setup candidates ==
+FOUND /opt/ros/humble/setup.bash
+MISS /ws/install/setup.bash
+FOUND /root/rober/onboard/install/setup.bash
+MISS /root/apps/rober/onboard/install/setup.bash
+MISS /home/orangepi/rober/onboard/install/setup.bash
+MISS /home/ubuntu/rober/onboard/install/setup.bash
+== find setup sample ==
+/opt/ros/humble/setup.bash
+/root/rober/onboard/install/setup.bash
+/root/rober/onboard/install/setup.bash
+== try source candidates ==
+WHICH_ROS2=/opt/ros/humble/bin/ros2
+Package not found
+Package not found
+WHICH_ROS2=/opt/ros/humble/bin/ros2
+Package not found
+Package not found
+WHICH_ROS2=/opt/ros/humble/bin/ros2
+/root/rober/onboard/install/ros2_trashbot_vision
+/root/rober/onboard/install/ros2_trashbot_bringup
+WHICH_ROS2=/opt/ros/humble/bin/ros2
+Package not found
+Package not found
+WHICH_ROS2=/opt/ros/humble/bin/ros2
+Package not found
+Package not found

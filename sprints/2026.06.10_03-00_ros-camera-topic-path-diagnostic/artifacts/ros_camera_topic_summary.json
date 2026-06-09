@@ -1,0 +1,82 @@
+{
+  "camera_device_requested": "/dev/video1",
+  "camera_topic_requested": "/camera/image_raw",
+  "claim_boundary": "ROS2 camera topic path from /dev/video1 to /camera/image_raw is proven for message publication only; image content remains uniformly dark, so visible_content_proven=false.",
+  "delivery_success": false,
+  "failure_reason": null,
+  "image_message_observed": true,
+  "image_sample": {
+    "bright_ratio": 0.0,
+    "data_len": 921600,
+    "dynamic_range_luma": 0.9266,
+    "encoding": "bgr8",
+    "expected_data_len_from_height_step": 921600,
+    "failure_reason": null,
+    "header": {
+      "frame_id": "camera",
+      "stamp_nanosec": 871035778,
+      "stamp_sec": 1781031307
+    },
+    "height": 480,
+    "image_message_observed": true,
+    "is_bigendian": false,
+    "max_luma": 0.9266,
+    "mean_luma": 0.21674,
+    "min_luma": 0.0,
+    "non_black_ratio": 0.0,
+    "sample_path_ppm": "/tmp/rober_ros_camera_topic_20260610_025425/camera_image_raw_sample.ppm",
+    "stddev_luma": 0.07359,
+    "step": 1920,
+    "topic": "/camera/image_raw",
+    "visible_content_candidate": false,
+    "width": 640
+  },
+  "launch_default_risk": {
+    "bringup_launch_camera_device_default": "/dev/video0",
+    "camera_publisher_default_device": "/dev/video0",
+    "field_camera_device_observed_previous_sprint": "/dev/video1",
+    "learn_launch_camera_device_default": "/dev/video0",
+    "risk": "Field runs must pass camera_device:=/dev/video1 explicitly; otherwise launch defaults can bind the Cedrus decoder at /dev/video0."
+  },
+  "motion_commands_sent": false,
+  "publisher_cleanup": {
+    "final_residual_check_empty": true,
+    "initial_cleanup_note": "Original smoke script killed the ros2 run parent but a Python camera_publisher child process remained.",
+    "residual_pid_observed": 85410,
+    "targeted_kill_performed": true
+  },
+  "publisher_command": "ros2 run ros2_trashbot_vision camera_publisher --ros-args -p device:=/dev/video1 -p topic:=/camera/image_raw -p width:=640 -p height:=480 -p fps:=2.0",
+  "publisher_started": true,
+  "ros2_available": true,
+  "ros2_source_chain": [
+    "/opt/ros/humble/setup.bash",
+    "/root/rober/onboard/install/setup.bash"
+  ],
+  "ros_camera_topic_proven": true,
+  "run_time": "2026-06-10T02:54:25+08:00",
+  "safe_to_control": false,
+  "schema": "trashbot.ros_camera_topic_diagnostic.v1",
+  "source_files": {
+    "bringup_launch": "onboard/src/ros2_trashbot_bringup/launch/bringup.launch.py",
+    "camera_publisher": "onboard/src/ros2_trashbot_vision/ros2_trashbot_vision/camera_publisher.py",
+    "image_sample_summary": "sprints/2026.06.10_03-00_ros-camera-topic-path-diagnostic/artifacts/remote_ros_camera_topic/image_sample_summary.json",
+    "learn_launch": "onboard/src/ros2_trashbot_bringup/launch/learn.launch.py",
+    "remote_publisher_cleanup_check": "sprints/2026.06.10_03-00_ros-camera-topic-path-diagnostic/artifacts/remote_publisher_cleanup_check.log",
+    "remote_ros_camera_session": "sprints/2026.06.10_03-00_ros-camera-topic-path-diagnostic/artifacts/remote_ros_camera_session.log",
+    "ros2_environment_discovery": "sprints/2026.06.10_03-00_ros-camera-topic-path-diagnostic/artifacts/ros2_environment_discovery.log",
+    "ssh_host_info": "sprints/2026.06.10_03-00_ros-camera-topic-path-diagnostic/artifacts/ssh_host_info.log",
+    "vendor_index": "docs/vendor/VENDOR_INDEX.md"
+  },
+  "sprint": "2026.06.10_03-00_ros-camera-topic-path-diagnostic",
+  "topic_echo_header": "stamp:\n  sec: 1781031278\n  nanosec: 382722532\nframe_id: camera\n---",
+  "topic_echo_shape_fields": "-- height --\n480\n---\n-- width --\n640\n---\n-- encoding --\nbgr8\n---\n-- step --\n1920\n---",
+  "topic_hz_excerpt": [
+    "average rate: 1.120",
+    "\tmin: 0.893s max: 0.894s std dev: 0.00038s window: 7",
+    "average rate: 1.119",
+    "\tmin: 0.893s max: 0.895s std dev: 0.00054s window: 9"
+  ],
+  "topic_info": "Type: sensor_msgs/msg/Image\nPublisher count: 1\nSubscription count: 0",
+  "topic_observed": true,
+  "visible_content_proven": false
+}

@@ -1,0 +1,1 @@
+[INFO] [1781031272.400514148] [camera_publisher]: camera_publisher streaming /dev/video1 to /camera/image_raw with frame_id=camera, requested 640x480@2.00fps
