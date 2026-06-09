@@ -1,0 +1,32 @@
+op-z3-b6.home
+Wed Jun 10 05:30:34 AM CST 2026
+pkg nav2_bringup: Package not found
+pkg nav2_lifecycle_manager: Package not found
+pkg nav2_amcl: /opt/ros/humble
+pkg nav2_planner: /opt/ros/humble
+pkg nav2_controller: /opt/ros/humble
+pkg nav2_map_server: /opt/ros/humble
+pkg nav2_navfn_planner: Package not found
+pkg nav2_regulated_pure_pursuit_controller: Package not found
+pkg nav2_costmap_2d: /opt/ros/humble
+map: -rw-r--r-- 1 root root 162 Jun 10 05:01 /root/rober/onboard/runtime/maps/trashbot_map.yaml
+params: lrwxrwxrwx 1 root root 67 Jun  4 23:42 /root/rober/onboard/install/ros2_trashbot_nav/share/ros2_trashbot_nav/config/nav2_params.yaml -> /root/rober/onboard/build/ros2_trashbot_nav/config/nav2_params.yaml
+pre_lsof:
+pre_fuser:
+pre_nodes:
+WARNING: Be aware that there are nodes in the graph that share an exact name, which can have unintended side effects.
+/map_recorder
+/map_recorder
+/map_recorder
+/task_orchestrator
+/task_orchestrator
+/task_orchestrator
+/waypoint_manager
+/waypoint_manager
+/waypoint_manager
+pre_topics:
+/amcl_pose
+/map
+/parameter_events
+/rosout
+/trashbot/waypoints

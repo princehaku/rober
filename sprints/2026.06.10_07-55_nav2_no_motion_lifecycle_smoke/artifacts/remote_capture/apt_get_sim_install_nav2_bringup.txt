@@ -1,0 +1,445 @@
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  comerr-dev gdal-data krb5-multidev libaec-dev libaec0 libarmadillo10
+  libarpack2 libavcodec-dev libavformat-dev libavutil-dev libbenchmark-dev
+  libbenchmark1 libblosc1 libbsd-dev libcfitsio9 libcharls2 libdc1394-dev
+  libflann-dev libflann1.9 libfreexl1 libfyba0 libgdal30 libgdcm-dev
+  libgdcm3.0 libgeos-c1v5 libgeos3.10.2 libgeotiff5 libgl2ps1.4 libgphoto2-dev
+  libgssapi-krb5-2 libgssrpc4 libhdf4-0-alt libhdf5-103-1 libhdf5-hl-100
+  libhdf5-mpi-dev libhdf5-openmpi-103-1 libhdf5-openmpi-cpp-103-1
+  libhdf5-openmpi-dev libhdf5-openmpi-fortran-102 libhdf5-openmpi-hl-100
+  libhdf5-openmpi-hl-cpp-100 libhdf5-openmpi-hl-fortran-100 libilmbase-dev
+  libilmbase25 libk5crypto3 libkadm5clnt-mit12 libkadm5srv-mit12 libkdb5-10
+  libkmlbase1 libkmldom1 libkmlengine1 libkrb5-3 libkrb5-dev libkrb5support0
+  liblept5 libllvm14 liblz4-dev libmd-dev libmysqlclient21 libnanoflann-dev
+  libncurses-dev libnetcdf19 libnorm-dev libodbc2 libodbcinst2 libogdi4.1
+  libomp-14-dev libomp-dev libomp5-14 libopencv-calib3d-dev
+  libopencv-calib3d4.5d libopencv-contrib-dev libopencv-contrib4.5d
+  libopencv-core-dev libopencv-core4.5d libopencv-dev libopencv-dnn-dev
+  libopencv-dnn4.5d libopencv-features2d-dev libopencv-features2d4.5d
+  libopencv-flann-dev libopencv-flann4.5d libopencv-highgui-dev
+  libopencv-highgui4.5d libopencv-imgcodecs-dev libopencv-imgcodecs4.5d
+  libopencv-imgproc-dev libopencv-imgproc4.5d libopencv-ml-dev
+  libopencv-ml4.5d libopencv-objdetect-dev libopencv-objdetect4.5d
+  libopencv-photo-dev libopencv-photo4.5d libopencv-shape-dev
+  libopencv-shape4.5d libopencv-stitching-dev libopencv-stitching4.5d
+  libopencv-superres-dev libopencv-superres4.5d libopencv-video-dev
+  libopencv-video4.5d libopencv-videoio-dev libopencv-videoio4.5d
+  libopencv-videostab-dev libopencv-videostab4.5d libopencv-viz-dev
+  libopencv-viz4.5d libopenexr-dev libopenexr25 libpgm-dev libpq5 libproj22
+  libqhull-r8.0 libraw1394-dev librttopo1 libsocket++1 libsodium-dev
+  libsodium23 libspatialite7 libsuperlu5 libswresample-dev libswscale-dev
+  libsz2 libtbb2 libtesseract4 libtk8.6 liburiparser1 libvtk9.1 libxerces-c3.2
+  libxsimd-dev libxtensor-dev libzmq3-dev mysql-common nlohmann-json3-dev
+  proj-data python3-opencv ros-humble-behaviortree-cpp-v3
+  ros-humble-costmap-queue ros-humble-cv-bridge ros-humble-diagnostic-updater
+  ros-humble-dwb-core ros-humble-dwb-critics ros-humble-dwb-msgs
+  ros-humble-dwb-plugins ros-humble-nav2-behavior-tree
+  ros-humble-nav2-behaviors ros-humble-nav2-bt-navigator
+  ros-humble-nav2-collision-monitor ros-humble-nav2-constrained-smoother
+  ros-humble-nav2-dwb-controller ros-humble-nav2-lifecycle-manager
+  ros-humble-nav2-mppi-controller ros-humble-nav2-navfn-planner
+  ros-humble-nav2-regulated-pure-pursuit-controller
+  ros-humble-nav2-rotation-shim-controller ros-humble-nav2-route
+  ros-humble-nav2-rviz-plugins ros-humble-nav2-simple-commander
+  ros-humble-nav2-smac-planner ros-humble-nav2-smoother
+  ros-humble-nav2-theta-star-planner ros-humble-nav2-velocity-smoother
+  ros-humble-nav2-waypoint-follower ros-humble-navigation2 ros-humble-ompl
+  unixodbc-common xtl-dev
+Suggested packages:
+  krb5-doc libbenchmark-tools geotiff-bin gdal-bin libgeotiff-epsg krb5-user
+  libhdf4-doc libhdf4-alt-dev hdf4-tools libhdf5-doc ncurses-doc libnorm-doc
+  odbc-postgresql tdsodbc ogdi-bin libomp-14-doc opencv-doc proj-bin
+  libraw1394-doc tk8.6 vtk9-doc vtk9-examples libxsimd-doc xtensor-doc
+Recommended packages:
+  proj-bin krb5-locales opencv-data libopencv4.5-java libraw1394-tools
+The following NEW packages will be installed:
+  comerr-dev gdal-data krb5-multidev libaec-dev libaec0 libarmadillo10
+  libarpack2 libavcodec-dev libavformat-dev libavutil-dev libbenchmark-dev
+  libbenchmark1 libblosc1 libbsd-dev libcfitsio9 libcharls2 libdc1394-dev
+  libflann-dev libflann1.9 libfreexl1 libfyba0 libgdal30 libgdcm-dev
+  libgdcm3.0 libgeos-c1v5 libgeos3.10.2 libgeotiff5 libgl2ps1.4 libgphoto2-dev
+  libgssrpc4 libhdf4-0-alt libhdf5-103-1 libhdf5-hl-100 libhdf5-mpi-dev
+  libhdf5-openmpi-103-1 libhdf5-openmpi-cpp-103-1 libhdf5-openmpi-dev
+  libhdf5-openmpi-fortran-102 libhdf5-openmpi-hl-100
+  libhdf5-openmpi-hl-cpp-100 libhdf5-openmpi-hl-fortran-100 libilmbase-dev
+  libilmbase25 libkadm5clnt-mit12 libkadm5srv-mit12 libkdb5-10 libkmlbase1
+  libkmldom1 libkmlengine1 libkrb5-dev liblept5 libllvm14 liblz4-dev libmd-dev
+  libmysqlclient21 libnanoflann-dev libncurses-dev libnetcdf19 libnorm-dev
+  libodbc2 libodbcinst2 libogdi4.1 libomp-14-dev libomp-dev libomp5-14
+  libopencv-calib3d-dev libopencv-calib3d4.5d libopencv-contrib-dev
+  libopencv-contrib4.5d libopencv-core-dev libopencv-core4.5d libopencv-dev
+  libopencv-dnn-dev libopencv-dnn4.5d libopencv-features2d-dev
+  libopencv-features2d4.5d libopencv-flann-dev libopencv-flann4.5d
+  libopencv-highgui-dev libopencv-highgui4.5d libopencv-imgcodecs-dev
+  libopencv-imgcodecs4.5d libopencv-imgproc-dev libopencv-imgproc4.5d
+  libopencv-ml-dev libopencv-ml4.5d libopencv-objdetect-dev
+  libopencv-objdetect4.5d libopencv-photo-dev libopencv-photo4.5d
+  libopencv-shape-dev libopencv-shape4.5d libopencv-stitching-dev
+  libopencv-stitching4.5d libopencv-superres-dev libopencv-superres4.5d
+  libopencv-video-dev libopencv-video4.5d libopencv-videoio-dev
+  libopencv-videoio4.5d libopencv-videostab-dev libopencv-videostab4.5d
+  libopencv-viz-dev libopencv-viz4.5d libopenexr-dev libopenexr25 libpgm-dev
+  libpq5 libproj22 libqhull-r8.0 libraw1394-dev librttopo1 libsocket++1
+  libsodium-dev libspatialite7 libsuperlu5 libswresample-dev libswscale-dev
+  libsz2 libtbb2 libtesseract4 libtk8.6 liburiparser1 libvtk9.1 libxerces-c3.2
+  libxsimd-dev libxtensor-dev libzmq3-dev mysql-common nlohmann-json3-dev
+  proj-data python3-opencv ros-humble-behaviortree-cpp-v3
+  ros-humble-costmap-queue ros-humble-cv-bridge ros-humble-diagnostic-updater
+  ros-humble-dwb-core ros-humble-dwb-critics ros-humble-dwb-msgs
+  ros-humble-dwb-plugins ros-humble-nav2-behavior-tree
+  ros-humble-nav2-behaviors ros-humble-nav2-bringup
+  ros-humble-nav2-bt-navigator ros-humble-nav2-collision-monitor
+  ros-humble-nav2-constrained-smoother ros-humble-nav2-dwb-controller
+  ros-humble-nav2-lifecycle-manager ros-humble-nav2-mppi-controller
+  ros-humble-nav2-navfn-planner
+  ros-humble-nav2-regulated-pure-pursuit-controller
+  ros-humble-nav2-rotation-shim-controller ros-humble-nav2-route
+  ros-humble-nav2-rviz-plugins ros-humble-nav2-simple-commander
+  ros-humble-nav2-smac-planner ros-humble-nav2-smoother
+  ros-humble-nav2-theta-star-planner ros-humble-nav2-velocity-smoother
+  ros-humble-nav2-waypoint-follower ros-humble-navigation2 ros-humble-ompl
+  unixodbc-common xtl-dev
+The following packages will be upgraded:
+  libgssapi-krb5-2 libk5crypto3 libkrb5-3 libkrb5support0 libsodium23
+5 upgraded, 164 newly installed, 0 to remove and 317 not upgraded.
+Inst libk5crypto3 [1.19.2-2ubuntu0.4] (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libk5crypto3 (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libkrb5support0 [1.19.2-2ubuntu0.4] (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64]) [libkrb5-3:arm64 ]
+Conf libkrb5support0 (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64]) [libkrb5-3:arm64 ]
+Inst libkrb5-3 [1.19.2-2ubuntu0.4] (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64]) [libgssapi-krb5-2:arm64 ]
+Conf libkrb5-3 (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64]) [libgssapi-krb5-2:arm64 ]
+Inst libgssapi-krb5-2 [1.19.2-2ubuntu0.4] (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libgssapi-krb5-2 (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst gdal-data (3.4.1+dfsg-1build4 Ubuntu:22.04/jammy [all])
+Inst libgssrpc4 (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libkdb5-10 (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libkadm5srv-mit12 (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libkadm5clnt-mit12 (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst comerr-dev (2.1-1.46.5-2ubuntu1.2 Ubuntu:22.04/jammy-updates [arm64])
+Inst krb5-multidev (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libaec0 (1.0.6-1 Ubuntu:22.04/jammy [arm64])
+Inst libarpack2 (3.8.0-1 Ubuntu:22.04/jammy [arm64])
+Inst libsuperlu5 (5.3.0+dfsg1-2 Ubuntu:22.04/jammy [arm64])
+Inst libarmadillo10 (1:10.8.2+dfsg-1 Ubuntu:22.04/jammy [arm64])
+Inst libavutil-dev (7:4.4.2-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libswresample-dev (7:4.4.2-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libavcodec-dev (7:4.4.2-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libavformat-dev (7:4.4.2-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libbenchmark1 (1.6.1-1 Ubuntu:22.04/jammy [arm64])
+Inst libbenchmark-dev (1.6.1-1 Ubuntu:22.04/jammy [arm64])
+Inst libblosc1 (1.21.1+ds2-2 Ubuntu:22.04/jammy [arm64])
+Inst libmd-dev (1.0.4-1build1 Ubuntu:22.04/jammy [arm64])
+Inst libbsd-dev (0.11.5-1 Ubuntu:22.04/jammy [arm64])
+Inst libcfitsio9 (4.0.0-1 Ubuntu:22.04/jammy [arm64])
+Inst libcharls2 (2.3.4-1 Ubuntu:22.04/jammy [arm64])
+Inst libraw1394-dev (2.1.2-2build2 Ubuntu:22.04/jammy [arm64])
+Inst libdc1394-dev (2.2.6-4 Ubuntu:22.04/jammy [arm64])
+Inst libflann1.9 (1.9.1+dfsg-11 Ubuntu:22.04/jammy [arm64])
+Inst libsz2 (1.0.6-1 Ubuntu:22.04/jammy [arm64])
+Inst libhdf5-openmpi-103-1 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Inst libhdf5-openmpi-fortran-102 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Inst libhdf5-openmpi-hl-100 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Inst libhdf5-openmpi-hl-fortran-100 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Inst libhdf5-openmpi-cpp-103-1 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Inst libhdf5-openmpi-hl-cpp-100 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Inst libaec-dev (1.0.6-1 Ubuntu:22.04/jammy [arm64])
+Inst libhdf5-openmpi-dev (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Inst libhdf5-mpi-dev (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Inst liblz4-dev (1.9.3-2build2 Ubuntu:22.04/jammy [arm64])
+Inst libflann-dev (1.9.1+dfsg-11 Ubuntu:22.04/jammy [arm64])
+Inst libfyba0 (4.1.1-7 Ubuntu:22.04/jammy [arm64])
+Inst libfreexl1 (1.0.6-1 Ubuntu:22.04/jammy [arm64])
+Inst libgeos3.10.2 (3.10.2-1 Ubuntu:22.04/jammy [arm64])
+Inst libgeos-c1v5 (3.10.2-1 Ubuntu:22.04/jammy [arm64])
+Inst proj-data (8.2.1-1 Ubuntu:22.04/jammy [all])
+Inst libproj22 (8.2.1-1 Ubuntu:22.04/jammy [arm64])
+Inst libgeotiff5 (1.7.0-2build1 Ubuntu:22.04/jammy [arm64])
+Inst libhdf4-0-alt (4.2.15-4 Ubuntu:22.04/jammy [arm64])
+Inst libhdf5-103-1 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Inst liburiparser1 (0.9.6+dfsg-1 Ubuntu:22.04/jammy [arm64])
+Inst libkmlbase1 (1.3.0-9 Ubuntu:22.04/jammy [arm64])
+Inst libkmldom1 (1.3.0-9 Ubuntu:22.04/jammy [arm64])
+Inst libkmlengine1 (1.3.0-9 Ubuntu:22.04/jammy [arm64])
+Inst mysql-common (5.8+1.0.8 Ubuntu:22.04/jammy [all])
+Inst libmysqlclient21 (8.0.46-0ubuntu0.22.04.2 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libhdf5-hl-100 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Inst libnetcdf19 (1:4.8.1-1 Ubuntu:22.04/jammy [arm64])
+Inst libodbc2 (2.3.9-5ubuntu0.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst unixodbc-common (2.3.9-5ubuntu0.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [all])
+Inst libodbcinst2 (2.3.9-5ubuntu0.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libogdi4.1 (4.1.0+ds-5 Ubuntu:22.04/jammy [arm64])
+Inst libpq5 (14.23-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libqhull-r8.0 (2020.2-4 Ubuntu:22.04/jammy [arm64])
+Inst librttopo1 (1.1.0-2 Ubuntu:22.04/jammy [arm64])
+Inst libspatialite7 (5.0.1-2build2 Ubuntu:22.04/jammy [arm64])
+Inst libxerces-c3.2 (3.2.3+debian-3ubuntu0.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libgdal30 (3.4.1+dfsg-1build4 Ubuntu:22.04/jammy [arm64])
+Inst libsocket++1 (1.12.13+git20131030.5d039ba-1 Ubuntu:22.04/jammy [arm64])
+Inst libgdcm3.0 (3.0.10-1build2 Ubuntu:22.04/jammy [arm64])
+Inst libgdcm-dev (3.0.10-1build2 Ubuntu:22.04/jammy [arm64])
+Inst libgl2ps1.4 (1.4.2+dfsg1-2 Ubuntu:22.04/jammy [arm64])
+Inst libgphoto2-dev (2.5.27-1build2 Ubuntu:22.04/jammy [arm64])
+Inst libilmbase25 (2.5.7-2 Ubuntu:22.04/jammy [arm64])
+Inst libilmbase-dev (2.5.7-2 Ubuntu:22.04/jammy [arm64])
+Inst liblept5 (1.82.0-3build1 Ubuntu:22.04/jammy [arm64])
+Inst libllvm14 (1:14.0.0-1ubuntu1.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libnanoflann-dev (1.4.2+ds-1 Ubuntu:22.04/jammy [all])
+Inst libncurses-dev (6.3-2ubuntu0.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libnorm-dev (1.5.9+dfsg-2 Ubuntu:22.04/jammy [arm64])
+Inst libomp5-14 (1:14.0.0-1ubuntu1.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libomp-14-dev (1:14.0.0-1ubuntu1.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libtbb2 (2020.3-1ubuntu3 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-core4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-flann4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-imgproc4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-features2d4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-calib3d4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-core-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-flann-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopenexr25 (2.5.7-1 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-imgcodecs4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-highgui4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-imgproc-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-imgcodecs-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-videoio4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-videoio-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopenexr-dev (2.5.7-1 Ubuntu:22.04/jammy [arm64])
+Inst libswscale-dev (7:4.4.2-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libopencv-highgui-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-ml4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-ml-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-features2d-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-calib3d-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-dnn4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-objdetect4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-video4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libtesseract4 (4.1.1-2.1build1 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-contrib4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-dnn-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-objdetect-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-photo4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-photo-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-shape4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-video-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-shape-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-stitching4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-stitching-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-superres4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-superres-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-videostab4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-videostab-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libtk8.6 (8.6.12-1build1 Ubuntu:22.04/jammy [arm64])
+Inst libvtk9.1 (9.1.0+really9.1.0+dfsg2-3build1 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-viz4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-viz-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-contrib-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libopencv-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst libpgm-dev (5.3.128~dfsg-2 Ubuntu:22.04/jammy [arm64])
+Inst libsodium23 [1.0.18-1build2] (1.0.18-1ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libsodium-dev (1.0.18-1ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libxsimd-dev (7.6.0-2 Ubuntu:22.04/jammy [arm64])
+Inst xtl-dev (0.7.2-2 Ubuntu:22.04/jammy [all])
+Inst nlohmann-json3-dev (3.10.5-2 Ubuntu:22.04/jammy [all])
+Inst libxtensor-dev (0.23.10-15 Ubuntu:22.04/jammy [arm64])
+Inst libkrb5-dev (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Inst libzmq3-dev (4.3.4-2 Ubuntu:22.04/jammy [arm64])
+Inst python3-opencv (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Inst ros-humble-behaviortree-cpp-v3 (3.8.7-1jammy.20260423.005003 ROS jammy:jammy [arm64])
+Inst ros-humble-costmap-queue (1.1.20-1jammy.20260426.042123 ROS jammy:jammy [arm64])
+Inst ros-humble-cv-bridge (3.2.1-1jammy.20260416.072157 ROS jammy:jammy [arm64])
+Inst ros-humble-diagnostic-updater (4.0.6-1jammy.20260423.163707 ROS jammy:jammy [arm64])
+Inst ros-humble-dwb-msgs (1.1.20-1jammy.20260416.051414 ROS jammy:jammy [arm64])
+Inst ros-humble-dwb-core (1.1.20-1jammy.20260426.043647 ROS jammy:jammy [arm64])
+Inst ros-humble-dwb-critics (1.1.20-1jammy.20260426.044529 ROS jammy:jammy [arm64])
+Inst ros-humble-dwb-plugins (1.1.20-1jammy.20260426.044632 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-behavior-tree (1.1.20-1jammy.20260423.180545 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-behaviors (1.1.20-1jammy.20260426.075153 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-bt-navigator (1.1.20-1jammy.20260426.074756 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-collision-monitor (1.1.20-1jammy.20260426.042858 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-constrained-smoother (1.1.20-1jammy.20260426.043954 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-dwb-controller (1.1.20-1jammy.20260426.045554 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-lifecycle-manager (1.1.20-1jammy.20260426.013516 ROS jammy:jammy [arm64])
+Inst libomp-dev (1:14.0-55~exp2 Ubuntu:22.04/jammy [arm64])
+Inst ros-humble-nav2-mppi-controller (1.1.20-1jammy.20260426.075047 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-navfn-planner (1.1.20-1jammy.20260426.075604 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-regulated-pure-pursuit-controller (1.1.20-1jammy.20260426.044121 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-rotation-shim-controller (1.1.20-1jammy.20260426.044946 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-route (1.1.20-1jammy.20260426.044222 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-rviz-plugins (1.1.20-1jammy.20260426.050128 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-simple-commander (1.1.20-1jammy.20260423.160209 ROS jammy:jammy [arm64])
+Inst ros-humble-ompl (1.7.0-4jammy.20260306.230109 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-smac-planner (1.1.20-1jammy.20260426.044222 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-smoother (1.1.20-1jammy.20260426.043730 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-theta-star-planner (1.1.20-1jammy.20260426.044226 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-velocity-smoother (1.1.20-1jammy.20260423.180545 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-waypoint-follower (1.1.20-1jammy.20260426.074921 ROS jammy:jammy [arm64])
+Inst ros-humble-navigation2 (1.1.20-1jammy.20260426.081639 ROS jammy:jammy [arm64])
+Inst ros-humble-nav2-bringup (1.1.20-1jammy.20260427.075527 ROS jammy:jammy [arm64])
+Conf gdal-data (3.4.1+dfsg-1build4 Ubuntu:22.04/jammy [all])
+Conf libgssrpc4 (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libkdb5-10 (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libkadm5srv-mit12 (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libkadm5clnt-mit12 (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf comerr-dev (2.1-1.46.5-2ubuntu1.2 Ubuntu:22.04/jammy-updates [arm64])
+Conf krb5-multidev (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libaec0 (1.0.6-1 Ubuntu:22.04/jammy [arm64])
+Conf libarpack2 (3.8.0-1 Ubuntu:22.04/jammy [arm64])
+Conf libsuperlu5 (5.3.0+dfsg1-2 Ubuntu:22.04/jammy [arm64])
+Conf libarmadillo10 (1:10.8.2+dfsg-1 Ubuntu:22.04/jammy [arm64])
+Conf libavutil-dev (7:4.4.2-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libswresample-dev (7:4.4.2-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libavcodec-dev (7:4.4.2-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libavformat-dev (7:4.4.2-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libbenchmark1 (1.6.1-1 Ubuntu:22.04/jammy [arm64])
+Conf libbenchmark-dev (1.6.1-1 Ubuntu:22.04/jammy [arm64])
+Conf libblosc1 (1.21.1+ds2-2 Ubuntu:22.04/jammy [arm64])
+Conf libmd-dev (1.0.4-1build1 Ubuntu:22.04/jammy [arm64])
+Conf libbsd-dev (0.11.5-1 Ubuntu:22.04/jammy [arm64])
+Conf libcfitsio9 (4.0.0-1 Ubuntu:22.04/jammy [arm64])
+Conf libcharls2 (2.3.4-1 Ubuntu:22.04/jammy [arm64])
+Conf libraw1394-dev (2.1.2-2build2 Ubuntu:22.04/jammy [arm64])
+Conf libdc1394-dev (2.2.6-4 Ubuntu:22.04/jammy [arm64])
+Conf libflann1.9 (1.9.1+dfsg-11 Ubuntu:22.04/jammy [arm64])
+Conf libsz2 (1.0.6-1 Ubuntu:22.04/jammy [arm64])
+Conf libhdf5-openmpi-103-1 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Conf libhdf5-openmpi-fortran-102 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Conf libhdf5-openmpi-hl-100 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Conf libhdf5-openmpi-hl-fortran-100 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Conf libhdf5-openmpi-cpp-103-1 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Conf libhdf5-openmpi-hl-cpp-100 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Conf libaec-dev (1.0.6-1 Ubuntu:22.04/jammy [arm64])
+Conf libhdf5-openmpi-dev (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Conf libhdf5-mpi-dev (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Conf liblz4-dev (1.9.3-2build2 Ubuntu:22.04/jammy [arm64])
+Conf libflann-dev (1.9.1+dfsg-11 Ubuntu:22.04/jammy [arm64])
+Conf libfyba0 (4.1.1-7 Ubuntu:22.04/jammy [arm64])
+Conf libfreexl1 (1.0.6-1 Ubuntu:22.04/jammy [arm64])
+Conf libgeos3.10.2 (3.10.2-1 Ubuntu:22.04/jammy [arm64])
+Conf libgeos-c1v5 (3.10.2-1 Ubuntu:22.04/jammy [arm64])
+Conf proj-data (8.2.1-1 Ubuntu:22.04/jammy [all])
+Conf libproj22 (8.2.1-1 Ubuntu:22.04/jammy [arm64])
+Conf libgeotiff5 (1.7.0-2build1 Ubuntu:22.04/jammy [arm64])
+Conf libhdf4-0-alt (4.2.15-4 Ubuntu:22.04/jammy [arm64])
+Conf libhdf5-103-1 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Conf liburiparser1 (0.9.6+dfsg-1 Ubuntu:22.04/jammy [arm64])
+Conf libkmlbase1 (1.3.0-9 Ubuntu:22.04/jammy [arm64])
+Conf libkmldom1 (1.3.0-9 Ubuntu:22.04/jammy [arm64])
+Conf libkmlengine1 (1.3.0-9 Ubuntu:22.04/jammy [arm64])
+Conf mysql-common (5.8+1.0.8 Ubuntu:22.04/jammy [all])
+Conf libmysqlclient21 (8.0.46-0ubuntu0.22.04.2 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libhdf5-hl-100 (1.10.7+repack-4ubuntu2 Ubuntu:22.04/jammy [arm64])
+Conf libnetcdf19 (1:4.8.1-1 Ubuntu:22.04/jammy [arm64])
+Conf libodbc2 (2.3.9-5ubuntu0.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf unixodbc-common (2.3.9-5ubuntu0.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [all])
+Conf libodbcinst2 (2.3.9-5ubuntu0.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libogdi4.1 (4.1.0+ds-5 Ubuntu:22.04/jammy [arm64])
+Conf libpq5 (14.23-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libqhull-r8.0 (2020.2-4 Ubuntu:22.04/jammy [arm64])
+Conf librttopo1 (1.1.0-2 Ubuntu:22.04/jammy [arm64])
+Conf libspatialite7 (5.0.1-2build2 Ubuntu:22.04/jammy [arm64])
+Conf libxerces-c3.2 (3.2.3+debian-3ubuntu0.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libgdal30 (3.4.1+dfsg-1build4 Ubuntu:22.04/jammy [arm64])
+Conf libsocket++1 (1.12.13+git20131030.5d039ba-1 Ubuntu:22.04/jammy [arm64])
+Conf libgdcm3.0 (3.0.10-1build2 Ubuntu:22.04/jammy [arm64])
+Conf libgdcm-dev (3.0.10-1build2 Ubuntu:22.04/jammy [arm64])
+Conf libgl2ps1.4 (1.4.2+dfsg1-2 Ubuntu:22.04/jammy [arm64])
+Conf libgphoto2-dev (2.5.27-1build2 Ubuntu:22.04/jammy [arm64])
+Conf libilmbase25 (2.5.7-2 Ubuntu:22.04/jammy [arm64])
+Conf libilmbase-dev (2.5.7-2 Ubuntu:22.04/jammy [arm64])
+Conf liblept5 (1.82.0-3build1 Ubuntu:22.04/jammy [arm64])
+Conf libllvm14 (1:14.0.0-1ubuntu1.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libnanoflann-dev (1.4.2+ds-1 Ubuntu:22.04/jammy [all])
+Conf libncurses-dev (6.3-2ubuntu0.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libnorm-dev (1.5.9+dfsg-2 Ubuntu:22.04/jammy [arm64])
+Conf libomp5-14 (1:14.0.0-1ubuntu1.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libomp-14-dev (1:14.0.0-1ubuntu1.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libtbb2 (2020.3-1ubuntu3 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-core4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-flann4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-imgproc4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-features2d4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-calib3d4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-core-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-flann-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopenexr25 (2.5.7-1 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-imgcodecs4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-highgui4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-imgproc-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-imgcodecs-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-videoio4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-videoio-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopenexr-dev (2.5.7-1 Ubuntu:22.04/jammy [arm64])
+Conf libswscale-dev (7:4.4.2-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libopencv-highgui-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-ml4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-ml-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-features2d-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-calib3d-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-dnn4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-objdetect4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-video4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libtesseract4 (4.1.1-2.1build1 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-contrib4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-dnn-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-objdetect-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-photo4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-photo-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-shape4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-video-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-shape-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-stitching4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-stitching-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-superres4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-superres-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-videostab4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-videostab-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libtk8.6 (8.6.12-1build1 Ubuntu:22.04/jammy [arm64])
+Conf libvtk9.1 (9.1.0+really9.1.0+dfsg2-3build1 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-viz4.5d (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-viz-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-contrib-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libopencv-dev (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf libpgm-dev (5.3.128~dfsg-2 Ubuntu:22.04/jammy [arm64])
+Conf libsodium23 (1.0.18-1ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libsodium-dev (1.0.18-1ubuntu0.22.04.1 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libxsimd-dev (7.6.0-2 Ubuntu:22.04/jammy [arm64])
+Conf xtl-dev (0.7.2-2 Ubuntu:22.04/jammy [all])
+Conf nlohmann-json3-dev (3.10.5-2 Ubuntu:22.04/jammy [all])
+Conf libxtensor-dev (0.23.10-15 Ubuntu:22.04/jammy [arm64])
+Conf libkrb5-dev (1.19.2-2ubuntu0.7 Ubuntu:22.04/jammy-security, Ubuntu:22.04/jammy-updates [arm64])
+Conf libzmq3-dev (4.3.4-2 Ubuntu:22.04/jammy [arm64])
+Conf python3-opencv (4.5.4+dfsg-9ubuntu4 Ubuntu:22.04/jammy [arm64])
+Conf ros-humble-behaviortree-cpp-v3 (3.8.7-1jammy.20260423.005003 ROS jammy:jammy [arm64])
+Conf ros-humble-costmap-queue (1.1.20-1jammy.20260426.042123 ROS jammy:jammy [arm64])
+Conf ros-humble-cv-bridge (3.2.1-1jammy.20260416.072157 ROS jammy:jammy [arm64])
+Conf ros-humble-diagnostic-updater (4.0.6-1jammy.20260423.163707 ROS jammy:jammy [arm64])
+Conf ros-humble-dwb-msgs (1.1.20-1jammy.20260416.051414 ROS jammy:jammy [arm64])
+Conf ros-humble-dwb-core (1.1.20-1jammy.20260426.043647 ROS jammy:jammy [arm64])
+Conf ros-humble-dwb-critics (1.1.20-1jammy.20260426.044529 ROS jammy:jammy [arm64])
+Conf ros-humble-dwb-plugins (1.1.20-1jammy.20260426.044632 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-behavior-tree (1.1.20-1jammy.20260423.180545 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-behaviors (1.1.20-1jammy.20260426.075153 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-bt-navigator (1.1.20-1jammy.20260426.074756 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-collision-monitor (1.1.20-1jammy.20260426.042858 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-constrained-smoother (1.1.20-1jammy.20260426.043954 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-dwb-controller (1.1.20-1jammy.20260426.045554 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-lifecycle-manager (1.1.20-1jammy.20260426.013516 ROS jammy:jammy [arm64])
+Conf libomp-dev (1:14.0-55~exp2 Ubuntu:22.04/jammy [arm64])
+Conf ros-humble-nav2-mppi-controller (1.1.20-1jammy.20260426.075047 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-navfn-planner (1.1.20-1jammy.20260426.075604 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-regulated-pure-pursuit-controller (1.1.20-1jammy.20260426.044121 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-rotation-shim-controller (1.1.20-1jammy.20260426.044946 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-route (1.1.20-1jammy.20260426.044222 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-rviz-plugins (1.1.20-1jammy.20260426.050128 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-simple-commander (1.1.20-1jammy.20260423.160209 ROS jammy:jammy [arm64])
+Conf ros-humble-ompl (1.7.0-4jammy.20260306.230109 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-smac-planner (1.1.20-1jammy.20260426.044222 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-smoother (1.1.20-1jammy.20260426.043730 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-theta-star-planner (1.1.20-1jammy.20260426.044226 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-velocity-smoother (1.1.20-1jammy.20260423.180545 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-waypoint-follower (1.1.20-1jammy.20260426.074921 ROS jammy:jammy [arm64])
+Conf ros-humble-navigation2 (1.1.20-1jammy.20260426.081639 ROS jammy:jammy [arm64])
+Conf ros-humble-nav2-bringup (1.1.20-1jammy.20260427.075527 ROS jammy:jammy [arm64])

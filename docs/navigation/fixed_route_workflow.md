@@ -186,6 +186,26 @@ For closeout and review language, keep these layers separate:
   evidence, still requiring `delivery_success=false` until a real delivery
   result explicitly proves success.
 
+## 2.6 Nav2 No-Motion Lifecycle Smoke Boundary
+
+真实上车 Nav2 readiness 不能用 `autonomous.launch.py` 做 no-motion smoke，因为该
+launch 无条件启动 `esp32_bridge` 并触碰底盘 UART。`2026-06-10 07:55` 现场
+smoke 的边界如下：
+
+- 允许启动 LiDAR `/dev/ttyACM0`、smoke-only static TF 和 Nav2 lifecycle nodes。
+- 禁止 `/cmd_vel`、`/api/base/*`、`/api/map/start`、`/api/nav2/start`、
+  `/api/nav2/stop`、`ros2 action send_goal`、compute path service 和
+  lifecycle transition service。
+- 禁止打开 WAVE ROVER/base UART `/dev/ttyS5`，只允许 `lsof/fuser` 只读检查。
+- 不发布 `/initialpose`；因此 `/amcl_pose` 未观测仍是有效 blocker。
+
+本轮结果显示 `/scan_once_observed=true`，但 `map_server`、`amcl`、
+`planner_server`、`controller_server` 均停在 `unconfigured [1]`，`/map` 与
+`/amcl_pose` 未产出。直接 root cause 是真实上位机缺 `nav2_bringup`、
+`nav2_lifecycle_manager` 以及当前参数所需的 Navfn/RPP 插件包；安装
+`ros-humble-nav2-bringup` 的 dry-run 会新增 164 个包并升级 5 个系统库，所以不应
+在没有明确维护窗口时把它当作小修复执行。
+
 ## 3. Dry-Run Verification
 
 Run fixed-route logic without Nav2 movement:

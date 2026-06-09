@@ -1,0 +1,163 @@
+op-z3-b6.home
+Wed Jun 10 05:31:23 AM CST 2026
+nodes:
+WARNING: Be aware that there are nodes in the graph that share an exact name, which can have unintended side effects.
+/amcl
+/controller_server
+/global_costmap/global_costmap
+/lidar_driver
+/local_costmap/local_costmap
+/map_recorder
+/map_recorder
+/map_recorder
+/map_server
+/planner_server
+/static_transform_publisher_4vzIUtrBRTUkZCSX
+/static_transform_publisher_PhGHxjFvZS5aV9Yd
+/task_orchestrator
+/task_orchestrator
+/task_orchestrator
+/waypoint_manager
+/waypoint_manager
+/waypoint_manager
+topics:
+/amcl/transition_event
+/amcl_pose
+/controller_server/transition_event
+/global_costmap/global_costmap/transition_event
+/local_costmap/local_costmap/transition_event
+/map
+/map_server/transition_event
+/parameter_events
+/planner_server/transition_event
+/rosout
+/scan
+/tf_static
+/trashbot/waypoints
+lifecycle /map_server:
+unconfigured [1]
+lifecycle /amcl:
+unconfigured [1]
+lifecycle /planner_server:
+unconfigured [1]
+lifecycle /controller_server:
+unconfigured [1]
+topic_info_scan:
+Type: sensor_msgs/msg/LaserScan
+
+Publisher count: 1
+
+Node name: lidar_driver
+Node namespace: /
+Topic type: sensor_msgs/msg/LaserScan
+Endpoint type: PUBLISHER
+GID: 01.0f.1b.26.d6.e4.ba.94.00.00.00.00.00.00.11.03.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Subscription count: 0
+
+topic_info_map:
+Type: nav_msgs/msg/OccupancyGrid
+
+Publisher count: 0
+
+Subscription count: 3
+
+Node name: map_recorder
+Node namespace: /
+Topic type: nav_msgs/msg/OccupancyGrid
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.1b.26.66.62.07.ec.00.00.00.00.00.00.11.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: map_recorder
+Node namespace: /
+Topic type: nav_msgs/msg/OccupancyGrid
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.1b.26.6e.5e.de.94.00.00.00.00.00.00.11.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: map_recorder
+Node namespace: /
+Topic type: nav_msgs/msg/OccupancyGrid
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.1b.26.88.76.fa.44.00.00.00.00.00.00.11.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+topic_info_amcl_pose:
+Type: geometry_msgs/msg/PoseWithCovarianceStamped
+
+Publisher count: 0
+
+Subscription count: 3
+
+Node name: waypoint_manager
+Node namespace: /
+Topic type: geometry_msgs/msg/PoseWithCovarianceStamped
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.1b.26.64.62.95.f5.00.00.00.00.00.00.14.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: waypoint_manager
+Node namespace: /
+Topic type: geometry_msgs/msg/PoseWithCovarianceStamped
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.1b.26.6c.5e.a8.e8.00.00.00.00.00.00.14.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+
+Node name: waypoint_manager
+Node namespace: /
+Topic type: geometry_msgs/msg/PoseWithCovarianceStamped
+Endpoint type: SUBSCRIPTION
+GID: 01.0f.1b.26.86.76.29.7f.00.00.00.00.00.00.14.04.00.00.00.00.00.00.00.00
+QoS profile:
+  Reliability: RELIABLE
+  History (Depth): UNKNOWN
+  Durability: VOLATILE
+  Lifespan: Infinite
+  Deadline: Infinite
+  Liveliness: AUTOMATIC
+  Liveliness lease duration: Infinite
+

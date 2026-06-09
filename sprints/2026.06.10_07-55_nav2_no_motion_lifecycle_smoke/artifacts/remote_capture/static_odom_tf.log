@@ -1,0 +1,6 @@
+[WARN] [1781040653.177604922] []: Old-style arguments are deprecated; see --help for new-style arguments
+[INFO] [1781040653.674896459] [static_transform_publisher_4vzIUtrBRTUkZCSX]: Spinning until stopped - publishing transform
+translation: ('0.000000', '0.000000', '0.000000')
+rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+from 'odom' to 'base_link'
+[INFO] [1781040826.547323857] [rclcpp]: signal_handler(SIGINT/SIGTERM)

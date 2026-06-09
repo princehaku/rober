@@ -1,0 +1,30 @@
+ros-humble-nav2-bringup:
+  Installed: (none)
+  Candidate: 1.1.20-1jammy.20260427.075527
+  Version table:
+     1.1.20-1jammy.20260427.075527 500
+        500 http://packages.ros.org/ros2/ubuntu jammy/main arm64 Packages
+ros-humble-navigation2:
+  Installed: (none)
+  Candidate: 1.1.20-1jammy.20260426.081639
+  Version table:
+     1.1.20-1jammy.20260426.081639 500
+        500 http://packages.ros.org/ros2/ubuntu jammy/main arm64 Packages
+ros-humble-nav2-lifecycle-manager:
+  Installed: (none)
+  Candidate: 1.1.20-1jammy.20260426.013516
+  Version table:
+     1.1.20-1jammy.20260426.013516 500
+        500 http://packages.ros.org/ros2/ubuntu jammy/main arm64 Packages
+ros-humble-nav2-navfn-planner:
+  Installed: (none)
+  Candidate: 1.1.20-1jammy.20260426.075604
+  Version table:
+     1.1.20-1jammy.20260426.075604 500
+        500 http://packages.ros.org/ros2/ubuntu jammy/main arm64 Packages
+ros-humble-nav2-regulated-pure-pursuit-controller:
+  Installed: (none)
+  Candidate: 1.1.20-1jammy.20260426.044121
+  Version table:
+     1.1.20-1jammy.20260426.044121 500
+        500 http://packages.ros.org/ros2/ubuntu jammy/main arm64 Packages

@@ -598,6 +598,45 @@ ROVER/base UART `/dev/ttyS5`，没有调用 `/api/base/*`、`/api/map/start`、
 `/amcl_pose` 观测，不应把本轮 package install 视为 AMCL/Nav2 ready、
 path generation、fixed-route execution 或 delivery_success。
 
+## 2026-06-10 07:55 Nav2 no-motion lifecycle smoke
+
+`sprints/2026.06.10_07-55_nav2_no_motion_lifecycle_smoke/` 在真实上位机
+`root@192.168.1.11:37878` 上运行 no-motion Nav2 lifecycle/runtime smoke。
+本轮不使用 `autonomous.launch.py`，不启动 `esp32_bridge`、`task_orchestrator`
+或任何 goal/path execution。
+
+正式 `nav2_bringup` 路径在包检查阶段被阻塞：
+
+- `nav2_bringup`、`nav2_lifecycle_manager`、`nav2_navfn_planner`、
+  `nav2_regulated_pure_pursuit_controller` 均 `Package not found`。
+- `apt-get -s install ros-humble-nav2-bringup` 显示
+  `5 upgraded, 164 newly installed, 0 to remove and 317 not upgraded`，
+  会拉入完整 `ros-humble-navigation2`、OpenCV/GDAL 等大量依赖并升级系统库；
+  本轮未安装。
+
+fallback smoke 启动独立 `/tmp` 进程组，仅运行：
+
+- `lidar_driver`：`/dev/ttyACM0 @ 150000`，发布 `/scan`。
+- static TF：`base_link -> laser_frame` 与 `odom -> base_link`，均为零位姿
+  smoke-only，不代表机械标定或真实里程计。
+- 直接 executable：`map_server`、`amcl`、`planner_server`、`controller_server`。
+
+正式 `/api/nav2/proof/refresh -d '{"timeout_s":20}'` 结果：
+
+- `status=blocked_with_root_cause`
+- `scan_once_observed=true`，旧 `/scan_once_not_observed` blocker 已消失。
+- `map_server_active=false`、`amcl_active=false`、`planner_active=false`、
+  `controller_active=false`。
+- `map_once_observed=false`、`amcl_pose_observed=false`、
+  `path_generation_ready=false`。
+- `publishes_cmd_vel=false`、`calls_base_manual=false`、
+  `uses_base_uart=false`、`delivery_success=false`。
+
+read-only lifecycle 状态均为 `unconfigured [1]`。这说明当前节点可被直接拉起，
+但缺 `nav2_lifecycle_manager`/正式 bringup 后不会自动 active；本轮也没有调用
+lifecycle transition service。final cleanup 后本轮 `lidar_driver`、Nav2 server、
+static TF 进程无残留，`/dev/ttyS5` 与 `/dev/ttyACM0` 的 `lsof/fuser` 均无输出。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`
