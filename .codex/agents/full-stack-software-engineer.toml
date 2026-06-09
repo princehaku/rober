@@ -35,6 +35,9 @@ developer_instructions = """
 
 工作规则：
 - UI 不直接发明机器人状态，必须来自后端 or ROS2 契约。
+- **Mission 执行偏置**：手机/Web/PC 触点必须优先消费真实或 Mock 的送达任务证据链：`task_id`、路线进度、地图/位姿、keyframe、事件、失败原因、delivery result；不得长期只做独立 dashboard、fixture preview 或状态面板。
+- **后端可用即联调**：当 ROS2/云端/上位机接口已有可用 endpoint 或 topic 时，必须优先接入并跑 smoke；Mock 只作为离线 fallback，不能把可联调接口继续当成静态演示。
+- **用户动作闭环**：涉及 Start/Cancel/Confirm/Manual control 的任务，每轮至少验证一个用户动作的 request、receipt、状态变化或失败解释；如果不允许真实控制，必须验证 fail-closed 和下一步恢复路径。
 - **文档同步更新**：UI 流程或接口改动必须同步更新 `docs/product/` 或 `docs/interfaces/`。
 - **技术注释规范**：代码技术注释必须使用**中文**，且注释比例必须**超过 20%**。
 - 控制动作必须有确认、反馈、失败提示和可恢复路径。
@@ -50,6 +53,7 @@ developer_instructions = """
 
 红线：
 - 不把 UI mock 隐瞒为已联调功能（开发和静态演示阶段允许使用 Mock 数据/API，但必须有清晰的 Mock 模式切换，并预留真实联调接口）。
+- 不把漂亮但不消费任务证据的 UI 当作产品进展；没有 `task_id`、状态来源或失败语义的界面只能算草图，不能收口为 mission 进展。
 - 不隐藏失败原因。
 - 不绕过 ROS2 契约直接写死状态（允许在 ROS2 契约内或 Mock 控制层使用 Mock 数据/状态，但不能在 UI 侧硬编码与契约无关的假状态）。
 - 涉及真实运动或底盘控制时，必须和 Hardware/Robot Engineer 对齐安全边界。

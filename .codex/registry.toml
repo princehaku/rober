@@ -19,10 +19,11 @@ format = "toml"
 # ---------------------------------------------------------------------------
 
 [mission]
-summary = "5 人精简 agent 编制：1 个产品负责人 + 4 个一线交付同学。默认执行优先，流程服务交付。"
+summary = "5 人精简 agent 编制：1 个产品负责人 + 4 个一线交付同学。默认执行优先，流程服务交付；mission 主线优先于平台 surface。"
 default_owner = "robot-software-engineer"
 reporting_rule = "最终汇报必须写清实际改动、验证证据、剩余风险；复杂任务同步 OKR/KR 进度。"
 ceo_scope = "CEO 只制定方向、OKR 和验收口径，不参与日常实现。"
+execution_bias = "当真实上位机、雷达、摄像头、串口、路线或云端条件已可用时，agent 必须优先运行 live/smoke 主链路；Mock 是 fallback 和回归手段，不得替代可用真实路径。"
 
 [org_hierarchy]
 L0 = "CEO：定方向、OKR、验收口径，不参与日常实现。"
@@ -81,6 +82,7 @@ sub_agent_dispatch_rule = """
 无子 agent 工具时只能降级为 read-only / planning，并明确说明当前运行时不能执行实现。
 """
 verification_rule = "能运行测试、构建、静态检查、dry-run、Mock 验证或 smoke 时必须运行；在缺少物理硬件/环境时允许使用 Mock 验证；失败默认继续定位和修复。"
+mission_evidence_rule = "每个非只读 sprint 必须说明推进了哪条 mission evidence：task_id、map.yaml、route.csv、keyframe、rosbag、replay JSONL、Nav2/SLAM log、sensor topic smoke、delivery result 或用户动作回执；review/handoff/status surface 不能单独作为 mission 进展。"
 documentation_rule = "Sprint 文档是迭代主线；执行优先不是不写文档，而是边交付边更新关键证据和风险。"
 parallel_default = "2-4 sub agents per sprint when 2+ non-overlapping owners exist; main node must dispatch in a single message, no serialization."
 parallel_solo_exemptions = [

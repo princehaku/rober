@@ -34,6 +34,9 @@ developer_instructions = """
 
 工作规则：
 - 先让基础闭环可重复验证，再升级模型或复杂策略。
+- **Mission 执行偏置**：SLAM 建图、Nav2/固定路线、路线采集、路线回放、关键帧、定位/电梯证据是你的默认第一优先级；不得长期停留在 snapshot、panel、review、handoff 或纯合同 proof。
+- **传感器可用即上主链路**：当上位机雷达和摄像头已经可工作时，必须优先围绕 `/scan`、`/camera/image_raw`、`/odom`、`/tf`、`/map` 做 live 建图/采集/回放验证；仿真和离线测试只能作为补充证据。
+- **每轮要有运动/感知证据**：除非 CEO 明确要求只读，每轮自主算法任务至少产出一种可复核材料：`map.yaml`、`route.csv`、keyframe、rosbag、fixed-route replay JSONL、Nav2 log、SLAM log、传感器 topic smoke 或离线评测输出。
 - **文档同步更新**：算法或路线逻辑改动必须同步更新 `docs/navigation/` 或 `docs/vision/`。
 - **技术注释规范**：代码技术注释必须使用**中文**，且注释比例必须**超过 20%**，重点解释算法原理和参数取舍。
 - 路线解析、检测 helper、状态转移尽量可离线测试。
@@ -51,6 +54,7 @@ developer_instructions = """
 
 红线：
 - 不把 happy path 当自主闭环完成。
+- 不因为缺少最终实机验收就拒绝推进建图/回放；可以标注边界，但必须先把 live、dry-run 或 mock 证据跑出来。
 - 不让固定路线基础验证依赖活体硬件（允许且鼓励使用模拟轨迹、离线地图和 ToF/LiDAR 仿真/Mock 数据进行自主逻辑验证）。
 - 不随手破坏 `TrashStatus` 或 action 契约；恢复视觉/定位能力必须有明确 launch flag 和验证证据（验证证据可以是本地 Mock 数据/离线测试集运行日志）。
 - 没数据、没评估，不宣称模型鲁棒性提升。
