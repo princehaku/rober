@@ -1,0 +1,80 @@
+{
+  "schema": "trashbot.visual_route_motion_evidence.v1",
+  "sprint": "2026.06.10_02-40_visual-route-motion-evidence",
+  "source_sprint": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf",
+  "source_files": {
+    "route_csv": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/route.csv",
+    "manifest_json": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/manifest.json",
+    "keyframes_dir": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/keyframes",
+    "map_dir": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/map",
+    "vendor_index": "docs/vendor/VENDOR_INDEX.md"
+  },
+  "vendor_fact_boundary": {
+    "main_sbc": "Orange Pi Zero 3, H618",
+    "mobile_base": "Waveshare WAVE ROVER",
+    "lower_controller": "ESP32 firmware from Waveshare WAVE ROVER package",
+    "upper_lower_link": "UART, newline-delimited UTF-8 JSON",
+    "vendor_default_uart": "/dev/ttyAMA0 at 115200 on Raspberry Pi reference; Orange Pi device must be confirmed on robot"
+  },
+  "keyframe_count": 16,
+  "adjacent_pair_count": 15,
+  "non_identical_adjacent_pairs": 6,
+  "visually_changed_adjacent_pairs_mean_absdiff_gt_1": 0,
+  "keyframe_image_size": {
+    "width": 640,
+    "height": 480
+  },
+  "keyframe_mean_absdiff": {
+    "min": 0.0,
+    "max": 0.45241753472222224,
+    "avg": 0.17916493055555555
+  },
+  "keyframe_changed_pixel_ratio": {
+    "min": 0.0,
+    "max": 0.0015950520833333333,
+    "avg": 0.000580295138888889
+  },
+  "route_row_count": 17,
+  "route_frame_id": "map",
+  "route_total_path_m": 0.1679980841099999,
+  "route_total_displacement_m": 0.1679980841099999,
+  "route_positive_segment_count": 16,
+  "route_min_step_m": 0.010489806839999997,
+  "route_max_step_m": 0.010514268029999996,
+  "route_median_step_m": 0.010499298089999984,
+  "route_duration_sec": 179.1498897075653,
+  "route_active_duration_sec": 5.249908685684204,
+  "route_max_time_gap_sec": 173.8999810218811,
+  "route_x_monotonic_non_decreasing": true,
+  "route_start": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "route_end": {
+    "x": 0.1679980841099999,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "boundary_flags": {
+    "safe_to_control": false,
+    "delivery_success": false,
+    "not_proven": true
+  },
+  "manual_visual_review": {
+    "contact_sheet_appears_mostly_dark": true,
+    "reviewed_files": [
+      "sprints/2026.06.10_02-40_visual-route-motion-evidence/artifacts/keyframe_contact_sheet.jpg",
+      "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/keyframes/001.jpg",
+      "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/keyframes/011.jpg"
+    ],
+    "claim_boundary": "只能证明 camera image 文件存在且有微小像素/哈希变化，不能证明可用视觉内容/环境结构。"
+  },
+  "evidence_claim": "仅证明上一轮 camera image 关键帧文件存在、相邻图像存在微小像素/哈希变化，且 command-integration route.csv 存在连续 odom 位移；人工视觉检查显示 contact sheet 和抽样原始帧几乎全黑，不能证明可用视觉内容、环境结构、encoder wheel speed、真实 Nav2 完成或垃圾收集送达闭环完成。",
+  "outputs": {
+    "summary_json": "sprints/2026.06.10_02-40_visual-route-motion-evidence/artifacts/visual_motion_summary.json",
+    "keyframe_diff_summary_csv": "sprints/2026.06.10_02-40_visual-route-motion-evidence/artifacts/keyframe_diff_summary.csv",
+    "contact_sheet_jpg": "sprints/2026.06.10_02-40_visual-route-motion-evidence/artifacts/keyframe_contact_sheet.jpg",
+    "analysis_log": "sprints/2026.06.10_02-40_visual-route-motion-evidence/artifacts/visual_motion_analysis.log"
+  }
+}

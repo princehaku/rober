@@ -1,0 +1,13 @@
+source_route=/Users/m1/apps/rober/sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/route.csv
+source_keyframes=/Users/m1/apps/rober/sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/keyframes
+source_manifest=/Users/m1/apps/rober/sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/manifest.json
+decoder=/usr/bin/sips
+keyframe_count=16
+non_identical_adjacent_pairs=6
+visual_mean_absdiff_avg=0.179165
+route_row_count=17
+route_total_displacement_m=0.167998084
+route_positive_segment_count=16
+safe_to_control=false delivery_success=false not_proven=true
+manual_visual_review.contact_sheet_appears_mostly_dark=true
+manual_visual_review.claim_boundary=只能证明 camera image 文件存在且有微小像素/哈希变化，不能证明可用视觉内容/环境结构。
