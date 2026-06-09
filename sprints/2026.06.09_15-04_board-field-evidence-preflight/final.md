@@ -2,36 +2,66 @@
 
 ## 收口状态
 
-状态：blocked_after_design。
+状态：software_preflight_ready。
 
-本轮完成了 `board_field_evidence_preflight_cli` 的设计、验收口径和工程交接；未进入产品代码实现，因为子 agent 启动工具连续失败。
+本轮已实现并验证 `board_field_evidence_preflight_cli`。该工具提供 local/dry-run 和 SSH 两类 evidence packet 入口，能在没有 ROS2、没有真实 SSH 的 macOS 开发机上稳定产出 JSON，并在 SSH 不可达时分层记录 `blocked_ssh_unreachable`。
 
 ## OKR 影响
 
-本轮没有提升 O3/O6/O7 的可运行软件证据进度，因为 CLI 尚未实现。
+本轮支撑临时激活 O3 现场验证 lane：下一次上位机网络恢复后，可以先用标准 JSON 预检定位 SSH、ROS2、setup、package、topic、topic smoke，再进入 map/route/keyframe/rosbag/replay 采集。
 
-但本轮避免了第三次重复消费 `192.168.1.11:37878` 的网络 blocker，并把下一次现场执行前的标准预检能力设计清楚，避免继续堆叠只读 handoff 或 PC surface。
+本轮也为 O6 evidence archive 和 O7 PC route replay 准备了可被消费的标准 preflight contract，但不直接提升真实现场材料完成度。
 
 ## 已完成事项
 
-- 创建 Epic sprint 留档。
-- 写清 PRD、技术方案、失败分层、验收命令和实现范围。
-- 明确本轮不涉及 WAVE ROVER UART、baudrate、JSON 指令、速度映射、反馈协议、引脚、电压或机械尺寸。
-- 明确真实 SSH 恢复后如何继续生成 map、route、keyframe、rosbag、replay 前置证据。
+- 新增 `onboard/scripts/field_route_evidence_preflight.py`。
+- 新增 `onboard/tests/test_field_route_evidence_preflight.py`。
+- 新增 `docs/navigation/field_route_evidence_preflight.md`。
+- 更新 `tech-done.md` 和 `side2side_check.md` 的实现与验证证据。
+- dry-run JSON 证明模板入口可用，且明确 `not_proven=true`、`delivery_success=false`、`primary_actions_enabled=false`。
+- SSH 建议预检已运行并输出 `blocked_ssh_unreachable` JSON，不再把本轮收口成纯 SSH blocker。
 
-## 未完成事项
+## 验证结果
 
-- 未新增 `onboard/scripts/field_route_evidence_preflight.py`。
-- 未新增单元测试。
-- 未新增 `docs/navigation/field_route_evidence_preflight.md`。
-- 未运行 py_compile、unittest、dry-run JSON 生成或 Docker/Humble build。
-- 未生成真实现场证据包。
+已通过：
+
+```text
+PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile onboard/scripts/field_route_evidence_preflight.py
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest onboard/tests/test_field_route_evidence_preflight.py
+python3 onboard/scripts/field_route_evidence_preflight.py --mode local --dry-run --output /tmp/trashbot_field_preflight.json
+python3 -m json.tool /tmp/trashbot_field_preflight.json >/tmp/trashbot_field_preflight.pretty.json
+python3 onboard/scripts/field_route_evidence_preflight.py --mode ssh --ssh-target root@192.168.1.11 --ssh-port 37878 --timeout-s 5 --output /tmp/trashbot_field_preflight_ssh.json
+python3 -m json.tool /tmp/trashbot_field_preflight_ssh.json >/tmp/trashbot_field_preflight_ssh.pretty.json
+```
+
+单元测试结果：
+
+```text
+Ran 5 tests in 0.014s
+OK
+```
+
+dry-run 状态：
+
+```text
+dry_run_template_only_not_proven
+```
+
+SSH 状态：
+
+```text
+blocked_ssh_unreachable
+```
+
+## 未完成事项与风险
+
+- 未证明真实上位机 SSH、ROS2 topic、map、route、keyframe、rosbag 或 replay 已成功；本轮只交付 preflight 软件入口。
+- 未执行 Docker/Humble `colcon build`，因为本轮是独立 Python CLI 和 unittest，验收命令未要求全工作区构建。
+- 未改动 WAVE ROVER、ESP32、UART、串口、底盘协议、launch 默认硬件参数或 OKR 百分比。
 
 ## 完成前反思
 
-- 没有越权修改产品代码或测试代码。
-- 没有把子 agent 工具失败包装成工程完成。
-- 没有重复消费上一轮 SSH 网络不可达 blocker。
-- 没有扩大到硬件协议、串口或 launch 默认参数。
-- 当前最大缺口是运行时子 agent 能力不可用；恢复后应直接执行 `tech-plan.md`。
-
+- 没有 revert 或覆盖工作区中已有的无关改动。
+- 没有扩大文件范围到无关 PC/mobile/cloud surface。
+- 代码注释采用中文，核心复杂逻辑解释了 fail closed、dry-run 不等于实证和 SSH 不可达仍落盘的原因。
+- 测试首轮失败已定位并修复，最终验收链路全部通过。
