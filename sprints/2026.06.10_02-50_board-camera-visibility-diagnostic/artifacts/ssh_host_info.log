@@ -1,0 +1,16 @@
+== host ==
+op-z3-b6.home
+2026-06-10T02:43:49+08:00
+Linux op-z3-b6.home 6.1.31-sun50iw9 #1.0.4 SMP Thu Jul 11 16:37:41 CST 2024 aarch64 aarch64 aarch64 GNU/Linux
+== usershell ==
+uid=0(root) gid=0(root) groups=0(root)
+== video devices ==
+crw-rw----+ 1 root video 81, 0 Jun  8 13:17 /dev/video0
+crw-rw----+ 1 root video 81, 1 Jun  8 13:17 /dev/video1
+crw-rw----+ 1 root video 81, 2 Jun  8 13:17 /dev/video2
+== tools ==
+v4l2-ctl=/usr/bin/v4l2-ctl
+ffmpeg=/usr/local/bin/ffmpeg
+fswebcam=MISSING
+python3=/usr/bin/python3
+ros2=MISSING

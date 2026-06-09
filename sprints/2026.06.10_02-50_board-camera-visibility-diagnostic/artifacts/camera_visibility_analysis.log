@@ -1,0 +1,9 @@
+{
+  "sample_count": 4,
+  "best_sample_mean_luma": 100.0,
+  "best_sample_non_black_ratio": 1.0,
+  "best_sample_mostly_dark": false,
+  "visible_content_proven": false
+}
+claim_boundary: 采样链路成功；默认样本黑场，调亮/手动曝光样本均匀灰/白且动态范围不足，因此 visible_content_proven=false；不能证明可用环境视觉内容。
+manual_visual_review: contact sheet 为两块灰/白面板和两块黑色面板，没有可复核环境纹理或结构。

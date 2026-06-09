@@ -1,0 +1,136 @@
+== run_dir == /tmp/rober_camera_visibility_1781030663
+== started == 2026-06-10T02:44:23+08:00
+== no motion commands: camera diagnostics only ==
+== initial controls ==
+brightness: 0
+contrast: 0
+saturation: 0
+gamma: 10
+gain: 4
+power_line_frequency: 0
+white_balance_temperature: 4500
+sharpness: 0
+backlight_compensation: 0
+auto_exposure: 3 (Aperture Priority Mode)
+exposure_time_absolute: 80
+
+== capture default_mjpg_640x480 ==
+command: ffmpeg -f video4linux2 -input_format mjpeg -video_size 640x480 -i /dev/video1 -frames:v 1
+[mjpeg @ 0xaaaae1f387b0] EOI missing, emulating
+Input #0, video4linux2,v4l2, from '/dev/video1':
+  Duration: N/A, start: 96007.041618, bitrate: N/A
+  Stream #0:0: Video: mjpeg (Baseline), yuvj422p(pc, bt470bg/unknown/unknown), 640x480 [SAR 1:1 DAR 4:3], 30 fps, 30 tbr, 1000k tbn, 1000k tbc
+Stream mapping:
+  Stream #0:0 -> #0:0 (mjpeg (native) -> mjpeg (native))
+Press [q] to stop, [?] for help
+Output #0, image2, to '/tmp/rober_camera_visibility_1781030663/default_mjpg_640x480.jpg':
+  Metadata:
+    encoder         : Lavf58.76.100
+  Stream #0:0: Video: mjpeg, yuvj422p(pc, bt470bg/unknown/unknown, progressive), 640x480 [SAR 1:1 DAR 4:3], q=2-31, 200 kb/s, 30 fps, 30 tbn
+    Metadata:
+      encoder         : Lavc58.134.100 mjpeg
+    Side data:
+      cpb: bitrate max/min/avg: 0/0/200000 buffer size: 0 vbv_delay: N/A
+frame=    1 fps=0.0 q=1.6 size=N/A time=00:00:00.03 bitrate=N/A speed=3.33e+04x    frame=    1 fps=0.0 q=1.6 Lsize=N/A time=00:00:00.03 bitrate=N/A speed=0.238x    
+video:3kB audio:0kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+capture_rc_default_mjpg_640x480=0
+-rw-r--r-- 1 root root 2621 Jun 10 02:44 /tmp/rober_camera_visibility_1781030663/default_mjpg_640x480.jpg
+
+== capture default_yuyv_640x480 ==
+command: ffmpeg -f video4linux2 -input_format yuyv422 -video_size 640x480 -i /dev/video1 -frames:v 1
+Input #0, video4linux2,v4l2, from '/dev/video1':
+  Duration: N/A, start: 96007.743866, bitrate: 108134 kb/s
+  Stream #0:0: Video: rawvideo (YUY2 / 0x32595559), yuyv422, 640x480, 108134 kb/s, 22 fps, 22 tbr, 1000k tbn, 1000k tbc
+Stream mapping:
+  Stream #0:0 -> #0:0 (rawvideo (native) -> mjpeg (native))
+Press [q] to stop, [?] for help
+[swscaler @ 0xaaaabf9fbbd0] deprecated pixel format used, make sure you did set range correctly
+Output #0, image2, to '/tmp/rober_camera_visibility_1781030663/default_yuyv_640x480.jpg':
+  Metadata:
+    encoder         : Lavf58.76.100
+  Stream #0:0: Video: mjpeg, yuvj422p(pc, progressive), 640x480, q=2-31, 200 kb/s, 22 fps, 22 tbn
+    Metadata:
+      encoder         : Lavc58.134.100 mjpeg
+    Side data:
+      cpb: bitrate max/min/avg: 0/0/200000 buffer size: 0 vbv_delay: N/A
+frame=    1 fps=0.0 q=1.6 size=N/A time=00:00:00.04 bitrate=N/A speed=4.55e+04x    frame=    1 fps=0.0 q=1.6 Lsize=N/A time=00:00:00.04 bitrate=N/A speed=0.852x    
+video:3kB audio:0kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+capture_rc_default_yuyv_640x480=0
+-rw-r--r-- 1 root root 3356 Jun 10 02:44 /tmp/rober_camera_visibility_1781030663/default_yuyv_640x480.jpg
+
+== temporary brightness/gain/backlight probe ==
+brightness: 80
+gain: 7
+backlight_compensation: 128
+auto_exposure: 3 (Aperture Priority Mode)
+exposure_time_absolute: 80
+
+== capture boosted_auto_mjpg_640x480 ==
+command: ffmpeg -f video4linux2 -input_format mjpeg -video_size 640x480 -i /dev/video1 -frames:v 1
+[mjpeg @ 0xaaab15b4a7b0] EOI missing, emulating
+Input #0, video4linux2,v4l2, from '/dev/video1':
+  Duration: N/A, start: 96008.266860, bitrate: N/A
+  Stream #0:0: Video: mjpeg (Baseline), yuvj422p(pc, bt470bg/unknown/unknown), 640x480 [SAR 1:1 DAR 4:3], 30 fps, 30 tbr, 1000k tbn, 1000k tbc
+Stream mapping:
+  Stream #0:0 -> #0:0 (mjpeg (native) -> mjpeg (native))
+Press [q] to stop, [?] for help
+Output #0, image2, to '/tmp/rober_camera_visibility_1781030663/boosted_auto_mjpg_640x480.jpg':
+  Metadata:
+    encoder         : Lavf58.76.100
+  Stream #0:0: Video: mjpeg, yuvj422p(pc, bt470bg/unknown/unknown, progressive), 640x480 [SAR 1:1 DAR 4:3], q=2-31, 200 kb/s, 30 fps, 30 tbn
+    Metadata:
+      encoder         : Lavc58.134.100 mjpeg
+    Side data:
+      cpb: bitrate max/min/avg: 0/0/200000 buffer size: 0 vbv_delay: N/A
+frame=    1 fps=0.0 q=1.6 size=N/A time=00:00:00.03 bitrate=N/A speed=3.33e+04x    frame=    1 fps=0.0 q=1.6 Lsize=N/A time=00:00:00.03 bitrate=N/A speed= 1.3x    
+video:3kB audio:0kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+capture_rc_boosted_auto_mjpg_640x480=0
+-rw-r--r-- 1 root root 2636 Jun 10 02:44 /tmp/rober_camera_visibility_1781030663/boosted_auto_mjpg_640x480.jpg
+
+== temporary manual exposure probe ==
+brightness: 100
+gain: 7
+backlight_compensation: 200
+auto_exposure: 1 (Manual Mode)
+exposure_time_absolute: 20000
+
+== capture manual_exposure_mjpg_640x480 ==
+command: ffmpeg -f video4linux2 -input_format mjpeg -video_size 640x480 -i /dev/video1 -frames:v 1
+[mjpeg @ 0xaaab21d4c7b0] EOI missing, emulating
+Input #0, video4linux2,v4l2, from '/dev/video1':
+  Duration: N/A, start: 96008.895971, bitrate: N/A
+  Stream #0:0: Video: mjpeg (Baseline), yuvj422p(pc, bt470bg/unknown/unknown), 640x480 [SAR 1:1 DAR 4:3], 30 fps, 30 tbr, 1000k tbn, 1000k tbc
+Stream mapping:
+  Stream #0:0 -> #0:0 (mjpeg (native) -> mjpeg (native))
+Press [q] to stop, [?] for help
+Output #0, image2, to '/tmp/rober_camera_visibility_1781030663/manual_exposure_mjpg_640x480.jpg':
+  Metadata:
+    encoder         : Lavf58.76.100
+  Stream #0:0: Video: mjpeg, yuvj422p(pc, bt470bg/unknown/unknown, progressive), 640x480 [SAR 1:1 DAR 4:3], q=2-31, 200 kb/s, 30 fps, 30 tbn
+    Metadata:
+      encoder         : Lavc58.134.100 mjpeg
+    Side data:
+      cpb: bitrate max/min/avg: 0/0/200000 buffer size: 0 vbv_delay: N/A
+frame=    1 fps=0.0 q=1.6 size=N/A time=00:00:00.03 bitrate=N/A speed=N/A    frame=    1 fps=0.0 q=1.6 Lsize=N/A time=00:00:00.03 bitrate=N/A speed=1.31x    
+video:3kB audio:0kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+capture_rc_manual_exposure_mjpg_640x480=0
+-rw-r--r-- 1 root root 2621 Jun 10 02:44 /tmp/rober_camera_visibility_1781030663/manual_exposure_mjpg_640x480.jpg
+
+== restore nominal controls ==
+brightness: 0
+contrast: 0
+saturation: 0
+gamma: 10
+gain: 4
+power_line_frequency: 0
+white_balance_temperature: 4500
+sharpness: 0
+backlight_compensation: 0
+auto_exposure: 3 (Aperture Priority Mode)
+exposure_time_absolute: 20000
+== files ==
+boosted_auto_mjpg_640x480.jpg 2636 bytes
+capture.log 6450 bytes
+default_mjpg_640x480.jpg 2621 bytes
+default_yuyv_640x480.jpg 3356 bytes
+manual_exposure_mjpg_640x480.jpg 2621 bytes

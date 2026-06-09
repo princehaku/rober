@@ -1,0 +1,299 @@
+== list devices ==
+cedrus (platform:cedrus):
+	/dev/video0
+	/dev/media0
+
+USB Composite Device: DV20 USB  (usb-5310000.usb-1):
+	/dev/video1
+	/dev/video2
+	/dev/media1
+
+
+== /dev/video0 --all ==
+Driver Info:
+	Driver name      : cedrus
+	Card type        : cedrus
+	Bus info         : platform:cedrus
+	Driver version   : 6.1.31
+	Capabilities     : 0x84208000
+		Video Memory-to-Memory
+		Streaming
+		Extended Pix Format
+		Device Capabilities
+	Device Caps      : 0x04208000
+		Video Memory-to-Memory
+		Streaming
+		Extended Pix Format
+Media Driver Info:
+	Driver name      : cedrus
+	Model            : cedrus
+	Serial           : 
+	Bus info         : platform:cedrus
+	Media version    : 6.1.31
+	Hardware revision: 0x00000000 (0)
+	Driver version   : 6.1.31
+Interface Info:
+	ID               : 0x0300000c
+	Type             : V4L Video
+Entity Info:
+	ID               : 0x00000001 (1)
+	Name             : cedrus-source
+	Function         : V4L2 I/O
+	Pad 0x01000002   : 0: Source
+	  Link 0x02000008: to remote pad 0x1000004 of entity 'cedrus-proc' (Video Decoder): Data, Enabled, Immutable
+Priority: 2
+Format Video Capture:
+	Width/Height      : 16/32
+	Pixel Format      : 'ST12' (Y/UV 4:2:0 (32x32 Linear))
+	Field             : None
+	Bytes per Line    : 32
+	Size Image        : 2048
+	Colorspace        : Default
+	Transfer Function : Default (maps to Rec. 709)
+	YCbCr/HSV Encoding: Default (maps to ITU-R 601)
+	Quantization      : Default (maps to Full Range)
+	Flags             : 
+Format Video Output:
+	Width/Height      : 16/32
+	Pixel Format      : 'MG2S' (MPEG-2 Parsed Slice Data)
+	Field             : None
+	Bytes per Line    : 0
+	Size Image        : 1024
+	Colorspace        : Default
+	Transfer Function : Default (maps to Rec. 709)
+	YCbCr/HSV Encoding: Default (maps to ITU-R 601)
+	Quantization      : Default (maps to Full Range)
+	Flags             : 
+
+Codec Controls
+
+                   h264_profile 0x00990a6b (menu)   : min=0 max=4 default=2 value=2 (Main)
+				0: Baseline
+				1: Constrained Baseline
+				2: Main
+				4: High
+
+Stateless Codec Controls
+
+               h264_decode_mode 0x00a40900 (menu)   : min=0 max=0 default=0 value=0 (Slice-Based)
+				0: Slice-Based
+                h264_start_code 0x00a40901 (menu)   : min=0 max=0 default=0 value=0 (No Start Code)
+				0: No Start Code
+    h264_sequence_parameter_set 0x00a40902 (h264-sps): value=unsupported payload type flags=has-payload
+     h264_picture_parameter_set 0x00a40903 (h264-pps): value=unsupported payload type flags=has-payload
+            h264_scaling_matrix 0x00a40904 (h264-scaling-matrix): value=unsupported payload type flags=has-payload
+   h264_prediction_weight_table 0x00a40905 (h264-pred-weights): value=unsupported payload type flags=has-payload
+          h264_slice_parameters 0x00a40906 (h264-slice-params): value=unsupported payload type flags=has-payload
+         h264_decode_parameters 0x00a40907 (h264-decode-params): value=unsupported payload type flags=has-payload
+           vp8_frame_parameters 0x00a409c8 (vp8-frame): value=unsupported payload type flags=has-payload
+         mpeg_2_sequence_header 0x00a409dc (mpeg2-sequence): value=unsupported payload type flags=has-payload
+          mpeg_2_picture_header 0x00a409dd (mpeg2-picture): value=unsupported payload type flags=has-payload
+   mpeg_2_quantisation_matrices 0x00a409de (mpeg2-quantisation): value=unsupported payload type flags=has-payload
+    hevc_sequence_parameter_set 0x00a40a90 (unknown): type=270 value=unsupported payload type flags=has-payload
+     hevc_picture_parameter_set 0x00a40a91 (unknown): type=271 value=unsupported payload type flags=has-payload
+          hevc_slice_parameters 0x00a40a92 (unknown): type=272 dims=[1] flags=has-payload, 0x00000800
+            hevc_scaling_matrix 0x00a40a93 (unknown): type=273 value=unsupported payload type flags=has-payload
+         hevc_decode_parameters 0x00a40a94 (unknown): type=274 value=unsupported payload type flags=has-payload
+               hevc_decode_mode 0x00a40a95 (menu)   : min=0 max=0 default=0 value=0 (Slice-Based)
+				0: Slice-Based
+                hevc_start_code 0x00a40a96 (menu)   : min=0 max=0 default=0 value=0 (No Start Code)
+				0: No Start Code
+       hevc_entry_point_offsets 0x00a40a97 (u32)    : min=0 max=4294967295 step=1 default=0 dims=[256] flags=has-payload, 0x00000800
+
+== /dev/video0 --list-formats-ext ==
+ioctl: VIDIOC_ENUM_FMT
+	Type: Video Capture
+
+	[0]: 'ST12' (Y/UV 4:2:0 (32x32 Linear))
+	[1]: 'NV12' (Y/UV 4:2:0)
+
+== /dev/video0 --list-ctrls ==
+
+Codec Controls
+
+                   h264_profile 0x00990a6b (menu)   : min=0 max=4 default=2 value=2 (Main)
+
+Stateless Codec Controls
+
+               h264_decode_mode 0x00a40900 (menu)   : min=0 max=0 default=0 value=0 (Slice-Based)
+                h264_start_code 0x00a40901 (menu)   : min=0 max=0 default=0 value=0 (No Start Code)
+    h264_sequence_parameter_set 0x00a40902 (h264-sps): value=unsupported payload type flags=has-payload
+     h264_picture_parameter_set 0x00a40903 (h264-pps): value=unsupported payload type flags=has-payload
+            h264_scaling_matrix 0x00a40904 (h264-scaling-matrix): value=unsupported payload type flags=has-payload
+   h264_prediction_weight_table 0x00a40905 (h264-pred-weights): value=unsupported payload type flags=has-payload
+          h264_slice_parameters 0x00a40906 (h264-slice-params): value=unsupported payload type flags=has-payload
+         h264_decode_parameters 0x00a40907 (h264-decode-params): value=unsupported payload type flags=has-payload
+           vp8_frame_parameters 0x00a409c8 (vp8-frame): value=unsupported payload type flags=has-payload
+         mpeg_2_sequence_header 0x00a409dc (mpeg2-sequence): value=unsupported payload type flags=has-payload
+          mpeg_2_picture_header 0x00a409dd (mpeg2-picture): value=unsupported payload type flags=has-payload
+   mpeg_2_quantisation_matrices 0x00a409de (mpeg2-quantisation): value=unsupported payload type flags=has-payload
+    hevc_sequence_parameter_set 0x00a40a90 (unknown): type=270 value=unsupported payload type flags=has-payload
+     hevc_picture_parameter_set 0x00a40a91 (unknown): type=271 value=unsupported payload type flags=has-payload
+          hevc_slice_parameters 0x00a40a92 (unknown): type=272 dims=[1] flags=has-payload, 0x00000800
+            hevc_scaling_matrix 0x00a40a93 (unknown): type=273 value=unsupported payload type flags=has-payload
+         hevc_decode_parameters 0x00a40a94 (unknown): type=274 value=unsupported payload type flags=has-payload
+               hevc_decode_mode 0x00a40a95 (menu)   : min=0 max=0 default=0 value=0 (Slice-Based)
+                hevc_start_code 0x00a40a96 (menu)   : min=0 max=0 default=0 value=0 (No Start Code)
+       hevc_entry_point_offsets 0x00a40a97 (u32)    : min=0 max=4294967295 step=1 default=0 dims=[256] flags=has-payload, 0x00000800
+
+== /dev/video1 --all ==
+Driver Info:
+	Driver name      : uvcvideo
+	Card type        : USB Composite Device: DV20 USB 
+	Bus info         : usb-5310000.usb-1
+	Driver version   : 6.1.31
+	Capabilities     : 0x84a00001
+		Video Capture
+		Metadata Capture
+		Streaming
+		Extended Pix Format
+		Device Capabilities
+	Device Caps      : 0x04200001
+		Video Capture
+		Streaming
+		Extended Pix Format
+Media Driver Info:
+	Driver name      : uvcvideo
+	Model            : USB Composite Device: DV20 USB 
+	Serial           : 
+	Bus info         : usb-5310000.usb-1
+	Media version    : 6.1.31
+	Hardware revision: 0x00000100 (256)
+	Driver version   : 6.1.31
+Interface Info:
+	ID               : 0x03000002
+	Type             : V4L Video
+Entity Info:
+	ID               : 0x00000001 (1)
+	Name             : USB Composite Device: DV20 USB 
+	Function         : V4L2 I/O
+	Flags            : default
+	Pad 0x01000007   : 0: Sink
+	  Link 0x02000010: from remote pad 0x100000a of entity 'Extension 3' (Video Pixel Formatter): Data, Enabled, Immutable
+Priority: 2
+Video input : 0 (Input 1: ok)
+Format Video Capture:
+	Width/Height      : 640/480
+	Pixel Format      : 'YUYV' (YUYV 4:2:2)
+	Field             : None
+	Bytes per Line    : 1280
+	Size Image        : 614400
+	Colorspace        : sRGB
+	Transfer Function : Rec. 709
+	YCbCr/HSV Encoding: ITU-R 601
+	Quantization      : Default (maps to Limited Range)
+	Flags             : 
+Crop Capability Video Capture:
+	Bounds      : Left 0, Top 0, Width 640, Height 480
+	Default     : Left 0, Top 0, Width 640, Height 480
+	Pixel Aspect: 1/1
+Selection Video Capture: crop_default, Left 0, Top 0, Width 640, Height 480, Flags: 
+Selection Video Capture: crop_bounds, Left 0, Top 0, Width 640, Height 480, Flags: 
+Streaming Parameters Video Capture:
+	Capabilities     : timeperframe
+	Frames per second: 22.000 (22/1)
+	Read buffers     : 0
+
+User Controls
+
+                     brightness 0x00980900 (int)    : min=-127 max=127 step=1 default=0 value=0
+                       contrast 0x00980901 (int)    : min=0 max=511 step=1 default=256 value=0
+                     saturation 0x00980902 (int)    : min=0 max=511 step=1 default=256 value=0
+                          gamma 0x00980910 (int)    : min=10 max=30 step=10 default=20 value=10
+                           gain 0x00980913 (int)    : min=1 max=7 step=1 default=4 value=4
+           power_line_frequency 0x00980918 (menu)   : min=0 max=2 default=0 value=0 (Disabled)
+				0: Disabled
+				1: 50 Hz
+				2: 60 Hz
+      white_balance_temperature 0x0098091a (int)    : min=0 max=6500 step=1 default=4500 value=4500
+                      sharpness 0x0098091b (int)    : min=0 max=256 step=1 default=128 value=0
+         backlight_compensation 0x0098091c (int)    : min=0 max=255 step=1 default=0 value=0
+
+Camera Controls
+
+                  auto_exposure 0x009a0901 (menu)   : min=0 max=3 default=3 value=3 (Aperture Priority Mode)
+				1: Manual Mode
+				3: Aperture Priority Mode
+         exposure_time_absolute 0x009a0902 (int)    : min=80 max=100000 step=1 default=80 value=80 flags=inactive
+
+== /dev/video1 --list-formats-ext ==
+ioctl: VIDIOC_ENUM_FMT
+	Type: Video Capture
+
+	[0]: 'MJPG' (Motion-JPEG, compressed)
+		Size: Discrete 1280x720
+			Interval: Discrete 0.033s (30.000 fps)
+		Size: Discrete 640x480
+			Interval: Discrete 0.033s (30.000 fps)
+		Size: Discrete 480x320
+			Interval: Discrete 0.033s (30.000 fps)
+		Size: Discrete 1920x1080
+			Interval: Discrete 0.033s (30.000 fps)
+	[1]: 'YUYV' (YUYV 4:2:2)
+		Size: Discrete 640x480
+			Interval: Discrete 0.045s (22.000 fps)
+		Size: Discrete 320x240
+			Interval: Discrete 0.040s (25.000 fps)
+			Interval: Discrete 0.050s (20.000 fps)
+
+== /dev/video1 --list-ctrls ==
+
+User Controls
+
+                     brightness 0x00980900 (int)    : min=-127 max=127 step=1 default=0 value=0
+                       contrast 0x00980901 (int)    : min=0 max=511 step=1 default=256 value=0
+                     saturation 0x00980902 (int)    : min=0 max=511 step=1 default=256 value=0
+                          gamma 0x00980910 (int)    : min=10 max=30 step=10 default=20 value=10
+                           gain 0x00980913 (int)    : min=1 max=7 step=1 default=4 value=4
+           power_line_frequency 0x00980918 (menu)   : min=0 max=2 default=0 value=0 (Disabled)
+      white_balance_temperature 0x0098091a (int)    : min=0 max=6500 step=1 default=4500 value=4500
+                      sharpness 0x0098091b (int)    : min=0 max=256 step=1 default=128 value=0
+         backlight_compensation 0x0098091c (int)    : min=0 max=255 step=1 default=0 value=0
+
+Camera Controls
+
+                  auto_exposure 0x009a0901 (menu)   : min=0 max=3 default=3 value=3 (Aperture Priority Mode)
+         exposure_time_absolute 0x009a0902 (int)    : min=80 max=100000 step=1 default=80 value=80 flags=inactive
+
+== /dev/video2 --all ==
+Driver Info:
+	Driver name      : uvcvideo
+	Card type        : USB Composite Device: DV20 USB 
+	Bus info         : usb-5310000.usb-1
+	Driver version   : 6.1.31
+	Capabilities     : 0x84a00001
+		Video Capture
+		Metadata Capture
+		Streaming
+		Extended Pix Format
+		Device Capabilities
+	Device Caps      : 0x04a00000
+		Metadata Capture
+		Streaming
+		Extended Pix Format
+Media Driver Info:
+	Driver name      : uvcvideo
+	Model            : USB Composite Device: DV20 USB 
+	Serial           : 
+	Bus info         : usb-5310000.usb-1
+	Media version    : 6.1.31
+	Hardware revision: 0x00000100 (256)
+	Driver version   : 6.1.31
+Interface Info:
+	ID               : 0x03000005
+	Type             : V4L Video
+Entity Info:
+	ID               : 0x00000004 (4)
+	Name             : USB Composite Device: DV20 USB 
+	Function         : V4L2 I/O
+Priority: 2
+Format Metadata Capture:
+	Sample Format   : 'UVCH' (UVC Payload Header Metadata)
+	Buffer Size     : 10240
+
+== /dev/video2 --list-formats-ext ==
+ioctl: VIDIOC_ENUM_FMT
+	Type: Video Capture
+
+
+== /dev/video2 --list-ctrls ==

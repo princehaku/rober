@@ -1,0 +1,5 @@
+sample_name,file,width,height,mean_luma,min_luma,max_luma,dynamic_range_luma,stddev_luma,non_black_ratio,bright_ratio,has_texture_candidate,mostly_dark,visible_content_candidate
+manual_exposure_mjpg_640x480,sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/remote_capture/manual_exposure_mjpg_640x480.jpg,640,480,100.0,100.0,100.0,0.0,0.0,1.0,1.0,False,False,False
+boosted_auto_mjpg_640x480,sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/remote_capture/boosted_auto_mjpg_640x480.jpg,640,480,80.0125,80.0,84.0,4.0,0.223257,1.0,1.0,False,False,False
+default_mjpg_640x480,sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/remote_capture/default_mjpg_640x480.jpg,640,480,1.0,1.0,1.0,0.0,0.0,0.0,0.0,False,True,False
+default_yuyv_640x480,sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/remote_capture/default_yuyv_640x480.jpg,640,480,0.227723,0.0,1.125,1.125,0.115935,0.0,0.0,False,True,False

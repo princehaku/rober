@@ -1,0 +1,159 @@
+{
+  "schema": "trashbot.camera_visibility_diagnostic.v1",
+  "sprint": "2026.06.10_02-50_board-camera-visibility-diagnostic",
+  "source_files": {
+    "vendor_index": "docs/vendor/VENDOR_INDEX.md",
+    "ssh_host_info": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/ssh_host_info.log",
+    "v4l2_enumeration": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/v4l2_enumeration.log",
+    "remote_capture_session": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/remote_capture_session.log",
+    "remote_control_restore": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/remote_control_restore.log"
+  },
+  "device_enumeration": {
+    "video_nodes_seen": [
+      "/dev/video0",
+      "/dev/video1",
+      "/dev/video2"
+    ],
+    "camera_device": "/dev/video1",
+    "camera_card": "USB Composite Device: DV20 USB",
+    "camera_driver": "uvcvideo",
+    "non_camera_nodes": {
+      "/dev/video0": "cedrus video decoder, not camera capture",
+      "/dev/video2": "UVC metadata capture node"
+    },
+    "formats_observed": [
+      "MJPG 1280x720/640x480/480x320/1920x1080 @30fps",
+      "YUYV 640x480 @22fps, 320x240 @25/20fps"
+    ],
+    "controls_observed": [
+      "brightness",
+      "contrast",
+      "saturation",
+      "gamma",
+      "gain",
+      "backlight_compensation",
+      "auto_exposure",
+      "exposure_time_absolute"
+    ]
+  },
+  "motion_commands_sent": false,
+  "safe_to_control": false,
+  "delivery_success": false,
+  "sample_count": 4,
+  "best_sample": {
+    "sample_name": "manual_exposure_mjpg_640x480",
+    "width": 640,
+    "height": 480,
+    "mean_luma": 100.0,
+    "min_luma": 100.0,
+    "max_luma": 100.0,
+    "dynamic_range_luma": 0.0,
+    "stddev_luma": 0.0,
+    "non_black_threshold_luma": 10.0,
+    "non_black_ratio": 1.0,
+    "bright_threshold_luma": 35.0,
+    "bright_ratio": 1.0,
+    "has_texture_candidate": false,
+    "mostly_dark": false,
+    "visible_content_candidate": false,
+    "file": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/remote_capture/manual_exposure_mjpg_640x480.jpg"
+  },
+  "best_sample_mean_luma": 100.0,
+  "best_sample_non_black_ratio": 1.0,
+  "best_sample_mostly_dark": false,
+  "visible_content_proven": false,
+  "samples": [
+    {
+      "sample_name": "manual_exposure_mjpg_640x480",
+      "width": 640,
+      "height": 480,
+      "mean_luma": 100.0,
+      "min_luma": 100.0,
+      "max_luma": 100.0,
+      "dynamic_range_luma": 0.0,
+      "stddev_luma": 0.0,
+      "non_black_threshold_luma": 10.0,
+      "non_black_ratio": 1.0,
+      "bright_threshold_luma": 35.0,
+      "bright_ratio": 1.0,
+      "has_texture_candidate": false,
+      "mostly_dark": false,
+      "visible_content_candidate": false,
+      "file": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/remote_capture/manual_exposure_mjpg_640x480.jpg"
+    },
+    {
+      "sample_name": "boosted_auto_mjpg_640x480",
+      "width": 640,
+      "height": 480,
+      "mean_luma": 80.0125,
+      "min_luma": 80.0,
+      "max_luma": 84.0,
+      "dynamic_range_luma": 4.0,
+      "stddev_luma": 0.223257,
+      "non_black_threshold_luma": 10.0,
+      "non_black_ratio": 1.0,
+      "bright_threshold_luma": 35.0,
+      "bright_ratio": 1.0,
+      "has_texture_candidate": false,
+      "mostly_dark": false,
+      "visible_content_candidate": false,
+      "file": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/remote_capture/boosted_auto_mjpg_640x480.jpg"
+    },
+    {
+      "sample_name": "default_mjpg_640x480",
+      "width": 640,
+      "height": 480,
+      "mean_luma": 1.0,
+      "min_luma": 1.0,
+      "max_luma": 1.0,
+      "dynamic_range_luma": 0.0,
+      "stddev_luma": 0.0,
+      "non_black_threshold_luma": 10.0,
+      "non_black_ratio": 0.0,
+      "bright_threshold_luma": 35.0,
+      "bright_ratio": 0.0,
+      "has_texture_candidate": false,
+      "mostly_dark": true,
+      "visible_content_candidate": false,
+      "file": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/remote_capture/default_mjpg_640x480.jpg"
+    },
+    {
+      "sample_name": "default_yuyv_640x480",
+      "width": 640,
+      "height": 480,
+      "mean_luma": 0.227723,
+      "min_luma": 0.0,
+      "max_luma": 1.125,
+      "dynamic_range_luma": 1.125,
+      "stddev_luma": 0.115935,
+      "non_black_threshold_luma": 10.0,
+      "non_black_ratio": 0.0,
+      "bright_threshold_luma": 35.0,
+      "bright_ratio": 0.0,
+      "has_texture_candidate": false,
+      "mostly_dark": true,
+      "visible_content_candidate": false,
+      "file": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/remote_capture/default_yuyv_640x480.jpg"
+    }
+  ],
+  "claim_boundary": "采样链路成功；默认样本黑场，调亮/手动曝光样本均匀灰/白且动态范围不足，因此 visible_content_proven=false；不能证明可用环境视觉内容。",
+  "manual_visual_review": {
+    "contact_sheet_shows_uniform_dark_or_gray_panels": true,
+    "texture_or_environment_structure_visible": false,
+    "reviewed_file": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/camera_visibility_contact_sheet.jpg",
+    "review_note": "contact sheet 为两块灰/白面板和两块黑色面板，没有可复核环境纹理或结构。"
+  },
+  "next_steps_if_dark": [
+    "确认镜头盖/遮挡",
+    "打开现场照明或对准高亮目标",
+    "确认 ROS camera 使用 /dev/video1 而非 metadata/decoder 节点",
+    "复核曝光/增益控制是否被驱动或上层节点覆盖",
+    "需要时采集一段视频而非单帧排除启动瞬态"
+  ],
+  "outputs": {
+    "summary_json": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/camera_visibility_summary.json",
+    "summary_csv": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/camera_visibility_samples.csv",
+    "contact_sheet_ppm": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/camera_visibility_contact_sheet.ppm",
+    "contact_sheet_jpg": "sprints/2026.06.10_02-50_board-camera-visibility-diagnostic/artifacts/camera_visibility_contact_sheet.jpg"
+  }
+}
