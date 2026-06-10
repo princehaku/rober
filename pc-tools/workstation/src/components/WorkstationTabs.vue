@@ -12,15 +12,15 @@ export type WorkstationPanel =
 const activePanel = defineModel<WorkstationPanel>({ required: true });
 
 const panels: Array<{ id: WorkstationPanel; label: string }> = [
-  // 所有入口对应工作站只读能力，不增加任何控制台式主动作。
-  { id: "route", label: "Route Debug" },
-  { id: "robotControl", label: "Robot Control" },
-  { id: "o7", label: "O7 Console" },
-  { id: "o7Previews", label: "O7 Previews" },
-  { id: "evidence", label: "Evidence Tools" },
-  { id: "hardware", label: "Hardware Materials" },
-  { id: "training", label: "Data Assets" },
-  { id: "boundary", label: "Proof Boundary" },
+  // 标签改成普通用户更容易理解的短中文，但入口能力保持不变。
+  { id: "robotControl", label: "机器人" },
+  { id: "route", label: "路线" },
+  { id: "o7", label: "控制台" },
+  { id: "o7Previews", label: "预览" },
+  { id: "evidence", label: "证据" },
+  { id: "hardware", label: "硬件" },
+  { id: "training", label: "数据" },
+  { id: "boundary", label: "安全边界" },
 ];
 </script>
 

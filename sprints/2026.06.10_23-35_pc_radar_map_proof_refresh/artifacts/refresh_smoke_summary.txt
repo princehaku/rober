@@ -1,0 +1,10 @@
+radar_http_status=502
+map_http_status=502
+radar_proxy_status=refresh_failed
+map_proxy_status=refresh_failed
+radar_last_result_status=fetch_failed
+map_last_result_status=fetch_failed
+radar_safe_to_control=false
+map_safe_to_control=false
+radar_blocked_reasons=["fetch_timeout_15000ms"]
+map_blocked_reasons=["fetch_timeout_50000ms"]

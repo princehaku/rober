@@ -1,0 +1,35 @@
+{
+  "schema": "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+  "source": "software_proof",
+  "proof_status": "not_proven",
+  "safe_to_control": false,
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "pc_only": true,
+  "refresh_kind": "map_proof_refresh",
+  "proxy_status": "refresh_forwarded",
+  "source_base_url": "http://192.168.1.11:8787",
+  "normalized_base_url": "http://192.168.1.11:8787",
+  "remote_endpoint": "/api/map/proof/refresh",
+  "remote_http_status": 200,
+  "status": "loaded_fail_closed_summary",
+  "last_result_status": "map_once_artifact_metadata_observed",
+  "last_result_schema": "trashbot.upper_robot_api.v1.map_lifecycle_proof_refresh_result",
+  "last_result_evidence_ref": "o3-map-lifecycle-1781107375198",
+  "last_refreshed_at_ms": 1781107374654,
+  "latest_readback_key_values": {
+    "status": "map_once_artifact_metadata_observed",
+    "latest_proof_status": "map_once_artifact_metadata_observed",
+    "evidence_ref": "o3-map-lifecycle-1781107375198",
+    "map_once_observed": "true",
+    "map_file_observed": "true",
+    "map_metadata_observed": "true"
+  },
+  "failure_reason": "",
+  "blocked_reasons": [],
+  "hard_dangerous_true_fields": [],
+  "non_motion_evidence_actions_observed": [
+    "sends_commands"
+  ],
+  "robot_control_executed": false
+}

@@ -23,6 +23,8 @@ import {
   buildO7SafeCommandPreview,
   buildO7VoicePreview,
   buildProofBoundary,
+  buildRadarScanProofRefreshProxy,
+  buildMapProofRefreshProxy,
   buildRobotControlSummary,
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
@@ -318,6 +320,22 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/robot-control/summary", async (req, res) => {
     // Robot Control V1 只读代理上位机 GET status/latest/readback，拒绝浏览器直连和危险 URL。
     res.json(await buildRobotControlSummary(queryString(req.query.baseUrl)));
+  });
+
+  workstationApp.post("/api/robot-control/radar/scan-proof/refresh", async (req, res) => {
+    // Radar refresh 只允许固定 POST body，不接受浏览器把它改造成通用控制代理。
+    const response = await buildRadarScanProofRefreshProxy(queryString(req.query.baseUrl));
+    res
+      .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
+      .json(response);
+  });
+
+  workstationApp.post("/api/robot-control/map/proof/refresh", async (req, res) => {
+    // Map refresh 只允许固定 POST body，不接受浏览器把它改造成建图/导航控制代理。
+    const response = await buildMapProofRefreshProxy(queryString(req.query.baseUrl));
+    res
+      .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
+      .json(response);
   });
 
   workstationApp.post("/api/robot-control/camera/offer", async (req, res) => {

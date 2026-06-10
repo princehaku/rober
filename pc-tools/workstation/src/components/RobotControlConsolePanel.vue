@@ -3,10 +3,17 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
   getO7ConsumerTaskDetail,
   getRobotControlSummary,
+  postRobotControlMapProofRefresh,
+  postRobotControlRadarScanProofRefresh,
   postRobotControlCameraOffer,
   postRobotControlCameraPeerClose,
 } from "../client/workstationApi";
-import type { O7ConsumerTaskDetailResponse, RobotControlPreviewStatus, RobotControlSummaryResponse } from "../shared/contracts";
+import type {
+  O7ConsumerTaskDetailResponse,
+  RobotControlPreviewStatus,
+  RobotControlProofRefreshProxyResponse,
+  RobotControlSummaryResponse,
+} from "../shared/contracts";
 
 // 本组件仍然是 fail-closed 控制台；新增的 WebRTC 只负责观察视频，不负责任何运动控制。
 const robotApiBaseUrl = ref("");
@@ -17,6 +24,8 @@ const loading = ref(false);
 const error = ref("");
 const robotSummary = ref<RobotControlSummaryResponse | null>(null);
 const taskDetail = ref<O7ConsumerTaskDetailResponse | null>(null);
+const radarRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
+const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 
 // WebRTC 状态单独维护，是为了把“上位机 readback”与“本地页面会话状态”区分开。
 const previewStatus = ref<RobotControlPreviewStatus>("idle_not_started");
@@ -28,29 +37,14 @@ const videoTrackState = ref("not_received");
 const lastOfferAt = ref("");
 const lastStopAt = ref("");
 const cleanupStatus = ref("not_started");
+const radarRefreshPending = ref(false);
+const mapRefreshPending = ref(false);
 const previewVideo = ref<HTMLVideoElement | null>(null);
 const previewStream = ref<MediaStream | null>(null);
 const previewPeerConnection = ref<RTCPeerConnection | null>(null);
 const previewStartPending = ref(false);
 const previewStopPending = ref(false);
 const sessionEpoch = ref(0);
-
-const proofRows = computed(() => {
-  // O3 proof 字段固定列出，缺字段也要显示 unknown，不能把缺失当作通过。
-  const proof = robotSummary.value?.o3_proof_summary;
-  return [
-    ["managed_runtime_started", proof?.managed_runtime_started],
-    ["scan_once_observed", proof?.scan_once_observed],
-    ["map_once_observed", proof?.map_once_observed],
-    ["amcl_pose_observed", proof?.amcl_pose_observed],
-    ["localization_tf_observed", proof?.localization_tf_observed],
-    ["planner_server_active", proof?.planner_server_active],
-    ["path_generation_requested", proof?.path_generation_requested],
-    ["path_generation_succeeded", proof?.path_generation_succeeded],
-    ["path_generated", proof?.path_generated],
-    ["path_point_count", proof?.path_point_count],
-  ];
-});
 
 const selectedTaskSummary = computed(() => {
   // task_id 是回放和 evidence 的主键；没有 task_id 时保持 blocked 空状态。
@@ -78,13 +72,88 @@ const canStopPreview = computed(
   () => !previewBusy.value && (previewPeerConnection.value !== null || previewPeerId.value.length > 0),
 );
 
-function display(value: unknown): string {
-  // 展示层统一把 null/undefined 压成 unknown，避免模板里散落 fallback 逻辑。
-  if (value === null || value === undefined) {
-    return "unknown";
+function recordContains(record: Record<string, string> | undefined, needle: string): boolean {
+  // 首屏只看人话摘要，具体 key 需要在详情里复核，所以这里用宽松字符串匹配。
+  if (!record) {
+    return false;
   }
-  return String(value);
+  return Object.entries(record).some(([key, value]) => key.includes(needle) || value.includes(needle));
 }
+
+function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有异常"; hint: string } {
+  // 连接状态只给普通用户看三档，细节放在折叠区。
+  if (!robotApiBaseUrl.value.trim()) {
+    return { state: "未连接", hint: "先输入地址，再点连接/刷新。" };
+  }
+  const connection = robotSummary.value?.robot_api_connection;
+  if (!connection) {
+    return { state: "未连接", hint: "先输入地址，再点连接/刷新。" };
+  }
+  if (connection.status === "readable" && connection.failed_count === 0 && connection.blocked_count === 0) {
+    return { state: "已连接", hint: "已读到小车状态摘要。" };
+  }
+  if (connection.status === "blocked" || connection.failed_count > 0 || connection.blocked_count > 0 || connection.dangerous_true_fields.length > 0) {
+    return { state: "有异常", hint: "可读到部分信息，但有字段被阻断或失败。" };
+  }
+  return { state: "未连接", hint: "还没有连上可读状态。" };
+}
+
+function summarizeCameraState(): { state: "未打开" | "连接中" | "已打开" | "失败"; hint: string } {
+  // 摄像头首屏只暴露会话进度，不泄露 peer / ICE / SDP 细节。
+  switch (previewStatus.value) {
+    case "starting_local_peer":
+    case "connecting_offer_posted":
+      return { state: "连接中", hint: "正在打开实时画面。" };
+    case "streaming":
+      return { state: "已打开", hint: "画面已打开，控制仍然锁定。" };
+    case "start_failed":
+    case "peer_cleanup_failed":
+      return { state: "失败", hint: failureReason.value || "打开画面失败。" };
+    default:
+      return { state: "未打开", hint: "还没有打开实时画面。" };
+  }
+}
+
+function summarizeProofState(pending: boolean, result: RobotControlProofRefreshProxyResponse | null): { state: "未刷新" | "刷新中" | "已刷新" | "失败"; hint: string } {
+  // 雷达和地图首屏共用同一套人话状态，细节保留给详情区。
+  if (pending) {
+    return { state: "刷新中", hint: "正在刷新证据。" };
+  }
+  if (!result) {
+    return { state: "未刷新", hint: "还没有刷新过。" };
+  }
+  if (result.proxy_status === "refresh_failed" || result.status === "blocked" || result.last_result_status === "fetch_failed") {
+    return { state: "失败", hint: result.failure_reason || "刷新失败。" };
+  }
+  return { state: "已刷新", hint: "已经拿到最新证据。" };
+}
+
+function summarizeRadarEvidence(): string {
+  // 只给出 scan / tf 的人话判断，不把 raw packet 等字段铺到首屏。
+  if (!radarRefreshResult.value) {
+    return "scan 未见；tf 未见。";
+  }
+  const record = radarRefreshResult.value.latest_readback_key_values;
+  const scanVisible = recordContains(record, "scan");
+  const tfVisible = recordContains(record, "tf");
+  return `scan ${scanVisible ? "可见" : "未见"}；tf ${tfVisible ? "可见" : "未见"}。`;
+}
+
+function summarizeMapEvidence(): string {
+  // 地图首屏只说 map / evidence 的可见性，不展开 proof schema。
+  if (!mapRefreshResult.value) {
+    return "map 未见；evidence 未见。";
+  }
+  const record = mapRefreshResult.value.latest_readback_key_values;
+  const mapVisible = recordContains(record, "map");
+  const evidenceVisible = recordContains(record, "evidence");
+  return `map ${mapVisible ? "可见" : "未见"}；evidence ${evidenceVisible ? "可见" : "未见"}。`;
+}
+
+const robotConnectionSummary = computed(() => summarizeRobotConnection());
+const cameraSummary = computed(() => summarizeCameraState());
+const radarSummary = computed(() => summarizeProofState(radarRefreshPending.value, radarRefreshResult.value));
+const mapSummary = computed(() => summarizeProofState(mapRefreshPending.value, mapRefreshResult.value));
 
 function listText(items: string[] | undefined, fallback = "none"): string {
   // blocked/not_proven 只展示少量摘要，完整定位应回到后端日志或 artifact。
@@ -100,6 +169,55 @@ function sampleText(items: Record<string, unknown>[] | undefined): string {
     .slice(0, 2)
     .map((item) => JSON.stringify(item).slice(0, 160))
     .join(" | ");
+}
+
+function recordText(record: Record<string, string> | undefined): string {
+  // key-value 摘要只展示短 JSON，避免把刷新结果拆成太多视觉噪声。
+  if (!record || Object.keys(record).length === 0) {
+    return "none";
+  }
+  return JSON.stringify(record).slice(0, 260);
+}
+
+function timestampText(epochMs: number | null | undefined): string {
+  // 刷新时间统一显示成 ISO 字符串，便于和上位机日志对齐。
+  return typeof epochMs === "number" && Number.isFinite(epochMs) ? new Date(epochMs).toISOString() : "never";
+}
+
+function makeRefreshFallback(
+  kind: "radar_scan_proof_refresh" | "map_proof_refresh",
+  baseUrl: string,
+  reason: string,
+): RobotControlProofRefreshProxyResponse {
+  // 网络错误或解析错误时也要保留卡片字段，避免 UI 空白后误读为成功。
+  const now = Date.now();
+  const endpoint = kind === "radar_scan_proof_refresh" ? "/api/radar/scan-proof/refresh" : "/api/map/proof/refresh";
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    refresh_kind: kind,
+    proxy_status: "refresh_failed",
+    source_base_url: baseUrl,
+    normalized_base_url: baseUrl.trim() || "not_loaded",
+    remote_endpoint: endpoint,
+    remote_http_status: null,
+    status: "blocked",
+    last_result_status: "fetch_failed",
+    last_result_schema: "not_loaded",
+    last_result_evidence_ref: "not_loaded",
+    last_refreshed_at_ms: now,
+    latest_readback_key_values: {},
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    non_motion_evidence_actions_observed: [],
+    robot_control_executed: false,
+  };
 }
 
 function stampNow(): string {
@@ -206,6 +324,45 @@ async function refreshConsole(): Promise<void> {
   } finally {
     loading.value = false;
   }
+}
+
+async function runRefreshAction(
+  kind: "radar_scan_proof_refresh" | "map_proof_refresh",
+  action: () => Promise<RobotControlProofRefreshProxyResponse>,
+  target: typeof radarRefreshResult,
+  pending: typeof radarRefreshPending,
+): Promise<void> {
+  // 刷新动作先落本地卡片状态，再顺手回刷 Robot Control summary，避免卡片和顶部摘要不同步。
+  pending.value = true;
+  try {
+    target.value = await action();
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : `${kind}_request_failed`;
+    target.value = makeRefreshFallback(kind, robotApiBaseUrl.value, reason);
+  } finally {
+    pending.value = false;
+    await refreshConsole();
+  }
+}
+
+async function refreshRadarProof(): Promise<void> {
+  // Radar refresh 只刷新 no-motion scan proof snapshot，不开启任何底盘动作。
+  await runRefreshAction(
+    "radar_scan_proof_refresh",
+    () => postRobotControlRadarScanProofRefresh(robotApiBaseUrl.value),
+    radarRefreshResult,
+    radarRefreshPending,
+  );
+}
+
+async function refreshMapProof(): Promise<void> {
+  // Map refresh 只刷新 no-motion map proof snapshot，不开启建图、导航或路径执行。
+  await runRefreshAction(
+    "map_proof_refresh",
+    () => postRobotControlMapProofRefresh(robotApiBaseUrl.value),
+    mapRefreshResult,
+    mapRefreshPending,
+  );
 }
 
 async function startPreview(): Promise<void> {
@@ -320,218 +477,284 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="workspace robot-console">
-    <div class="section-head">
+    <div class="section-head compact-head">
       <div>
-        <p class="eyebrow">O7 Robot Control Console V1</p>
-        <h2>Robot Control</h2>
+        <p class="eyebrow">小车控制</p>
+        <h2>Rober 小车</h2>
+        <p class="muted">面向普通用户的简易风格，真实控制仍保持锁定。</p>
       </div>
-      <span class="pill danger">primary_actions_enabled=false</span>
+      <span class="pill danger">安全锁定</span>
     </div>
 
-    <form class="robot-control-form" @submit.prevent="refreshConsole">
+    <form class="robot-quick-connect" @submit.prevent="refreshConsole">
       <label>
-        <span>task_id selector</span>
-        <input v-model="taskId" name="task_id" placeholder="task_id">
-      </label>
-      <label>
-        <span>Robot API base URL</span>
+        <span>小车地址</span>
         <input v-model="robotApiBaseUrl" name="robotApiBaseUrl" placeholder="http://192.168.x.x:8787">
       </label>
-      <label>
-        <span>O6 consumer base URL</span>
-        <input v-model="o6ConsumerBaseUrl" name="o6ConsumerBaseUrl" placeholder="http://127.0.0.1:8088">
-      </label>
-      <label>
-        <span>Mock/field manifest JSON</span>
-        <input v-model="fieldEvidenceManifestJson" name="fieldEvidenceManifestJson" placeholder="optional local JSON">
-      </label>
-      <button class="secondary" type="submit" :disabled="loading">Refresh control console</button>
+      <button class="secondary" type="submit" :disabled="loading">连接/刷新</button>
+      <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
     </form>
 
     <div v-if="error" class="notice" role="alert">
-      {{ error }}; safe_to_control=false; delivery_success=false; primary_actions_enabled=false.
+      {{ error }}；安全锁定保持不变。
     </div>
 
     <div class="robot-console-grid">
       <article class="snapshot-panel">
-        <h3>task_id selector</h3>
-        <dl class="kv compact-kv">
-          <dt>selected</dt>
-          <dd>{{ selectedTaskSummary }}</dd>
-          <dt>source</dt>
-          <dd>{{ routeReplaySource }}</dd>
-          <dt>task status</dt>
-          <dd>{{ taskDetail?.task_summary?.task_status_summary ?? "blocked_not_loaded" }}</dd>
-          <dt>safe_to_control</dt>
-          <dd>false</dd>
-          <dt>delivery_success</dt>
-          <dd>false</dd>
-        </dl>
+        <h3>小车连接</h3>
+        <div class="simple-status-row">
+          <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
+          <span class="muted">{{ robotConnectionSummary.hint }}</span>
+        </div>
+        <p class="panel-note">先输入地址，再点连接/刷新；真正控制始终关闭。</p>
       </article>
 
       <article class="snapshot-panel">
-        <h3>Robot API connection</h3>
-        <dl class="kv compact-kv">
-          <dt>proxy</dt>
-          <dd>Node server only; Vue direct access=false</dd>
-          <dt>base URL</dt>
-          <dd>{{ robotSummary?.normalized_base_url ?? "not_loaded" }}</dd>
-          <dt>状态</dt>
-          <dd>{{ robotSummary?.robot_api_connection.status ?? "not_loaded" }}</dd>
-          <dt>read count</dt>
-          <dd>
-            loaded={{ robotSummary?.robot_api_connection.loaded_count ?? 0 }},
-            failed={{ robotSummary?.robot_api_connection.failed_count ?? 0 }},
-            blocked={{ robotSummary?.robot_api_connection.blocked_count ?? 0 }}
-          </dd>
-          <dt>blocked reason</dt>
-          <dd>{{ listText(robotSummary?.robot_api_connection.blocked_reasons, "none") }}</dd>
-        </dl>
-      </article>
-
-      <article class="snapshot-panel">
-        <h3>Camera Preview</h3>
-        <div class="locked-actions" aria-label="camera preview actions">
-          <button type="button" :disabled="!canStartPreview" @click="startPreview">Start Preview</button>
-          <button type="button" :disabled="!canStopPreview" @click="stopPreview">Stop Preview</button>
+        <h3>实时画面</h3>
+        <div class="panel-action-row">
+          <button type="button" :disabled="!canStartPreview" @click="startPreview">打开画面</button>
+          <button type="button" :disabled="!canStopPreview" @click="stopPreview">关闭画面</button>
+          <span class="status-chip" :data-state="cameraSummary.state">{{ cameraSummary.state }}</span>
         </div>
         <video ref="previewVideo" autoplay muted playsinline />
-        <dl class="kv compact-kv">
-          <dt>preview_status</dt>
-          <dd>{{ previewStatus }}</dd>
-          <dt>failure_reason</dt>
-          <dd>{{ failureReason || "none" }}</dd>
-          <dt>peer_id</dt>
-          <dd>{{ previewPeerId || "not_assigned" }}</dd>
-          <dt>ice_connection_state</dt>
-          <dd>{{ iceConnectionState }}</dd>
-          <dt>video_track_state</dt>
-          <dd>{{ videoTrackState }}</dd>
-          <dt>last_offer_at</dt>
-          <dd>{{ lastOfferAt || "never" }}</dd>
-          <dt>last_stop_at</dt>
-          <dd>{{ lastStopAt || "never" }}</dd>
-          <dt>cleanup_status</dt>
-          <dd>{{ cleanupStatus }}</dd>
-        </dl>
-        <p class="muted">
-          camera_health={{ robotSummary?.readback_summary.camera.status ?? "not_loaded" }};
-          devices={{ robotSummary?.readback_summary.camera.devices_status ?? "not_loaded" }};
-          safe_to_control=false; delivery_success=false; primary_actions_enabled=false.
-        </p>
+        <p class="panel-note">{{ cameraSummary.hint }}</p>
       </article>
 
       <article class="snapshot-panel">
-        <h3>O3 proof summary</h3>
-        <table>
-          <tbody>
-            <tr v-for="[key, value] in proofRows" :key="key">
-              <th>{{ key }}</th>
-              <td>{{ display(value) }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="muted">root_causes: {{ listText(robotSummary?.o3_proof_summary.root_causes) }}</p>
-        <p class="muted">not_proven: {{ listText(robotSummary?.o3_proof_summary.not_proven) }}</p>
-      </article>
-
-      <article class="snapshot-panel">
-        <h3>route replay / Mock fallback</h3>
-        <dl class="kv compact-kv">
-          <dt>source</dt>
-          <dd>{{ routeReplaySource }}</dd>
-          <dt>trajectory</dt>
-          <dd>{{ taskDetail?.trajectory.status ?? "blocked_not_loaded" }} / frames={{ taskDetail?.trajectory.frame_count ?? 0 }}</dd>
-          <dt>events</dt>
-          <dd>{{ taskDetail?.events.status ?? "blocked_not_loaded" }} / count={{ taskDetail?.events.count ?? 0 }}</dd>
-          <dt>tunnel</dt>
-          <dd>{{ taskDetail?.tunnel_status.latest_known_status ?? "blocked_not_loaded" }}</dd>
-          <dt>Mock</dt>
-          <dd>{{ fieldEvidenceManifestJson ? "local_mock_or_field_manifest_visible" : "Mock fallback not selected" }}</dd>
-        </dl>
-      </article>
-
-      <article class="snapshot-panel">
-        <h3>evidence / keyframe / labeling readiness</h3>
-        <dl class="kv compact-kv">
-          <dt>field evidence</dt>
-          <dd>{{ taskDetail?.field_evidence.artifact_status ?? "blocked_not_loaded" }}</dd>
-          <dt>manifest gate</dt>
-          <dd>{{ taskDetail?.field_evidence.manifest_gate.status ?? "blocked_not_loaded" }}</dd>
-          <dt>evidence</dt>
-          <dd>{{ taskDetail?.evidence.status ?? "blocked_not_loaded" }} / count={{ taskDetail?.evidence.count ?? 0 }}</dd>
-          <dt>labeling</dt>
-          <dd>{{ taskDetail?.labeling.status ?? "blocked_not_loaded" }} / labels={{ taskDetail?.labeling.label_count ?? 0 }}</dd>
-          <dt>keyframe/sample</dt>
-          <dd>{{ sampleText(taskDetail?.evidence.sample_evidence) }}</dd>
-        </dl>
-      </article>
-
-      <article class="snapshot-panel">
-        <h3>manual / nav safe command boundary</h3>
-        <p class="muted">{{ robotSummary?.safe_command_boundary.locked_reason ?? "locked by V1 boundary" }}</p>
-        <div class="locked-actions" aria-label="locked robot actions">
-          <button disabled type="button">/api/base/manual locked</button>
-          <button disabled type="button">cmd_vel locked</button>
-          <button disabled type="button">Nav2 goal locked</button>
-          <button disabled type="button">map start locked</button>
-          <button disabled type="button">radar start locked</button>
-          <button disabled type="button">keyboard control locked</button>
-          <button disabled type="button">map click goal locked</button>
+        <h3>雷达</h3>
+        <div class="panel-action-row">
+          <button type="button" :disabled="loading || radarRefreshPending || !robotApiBaseUrl.trim()" @click="refreshRadarProof">
+            刷新雷达
+          </button>
+          <span class="status-chip" :data-state="radarSummary.state">{{ radarSummary.state }}</span>
         </div>
-        <p class="muted">
-          command_dispatch_enabled=false; manual_control_enabled=false; navigate_goal_enabled=false;
-          keyboard_control_enabled=false; robot_control_executed=false.
-        </p>
+        <p class="panel-note">{{ radarSummary.hint }} {{ summarizeRadarEvidence() }}</p>
       </article>
 
       <article class="snapshot-panel">
-        <h3>Camera / LiDAR / Base readback</h3>
-        <dl class="kv compact-kv">
-          <dt>Camera</dt>
-          <dd>
-            /api/camera/health={{ robotSummary?.readback_summary.camera.status ?? "not_loaded" }},
-            /api/camera/devices={{ robotSummary?.readback_summary.camera.devices_status ?? "not_loaded" }}
-          </dd>
-          <dt>LiDAR</dt>
-          <dd>
-            /api/radar/status={{ robotSummary?.readback_summary.lidar.status ?? "not_loaded" }},
-            scan={{ robotSummary?.readback_summary.lidar.latest_scan_proof_status ?? "not_loaded" }},
-            raw={{ robotSummary?.readback_summary.lidar.latest_raw_packet_proof_status ?? "not_loaded" }}
-          </dd>
-          <dt>Base</dt>
-          <dd>
-            /api/base/status={{ robotSummary?.readback_summary.base.status ?? "not_loaded" }},
-            readback={{ robotSummary?.readback_summary.base.latest_feedback_status ?? "not_loaded" }}
-          </dd>
-          <dt>unsafe starts</dt>
-          <dd>radar start=false; map start=false; base manual=false</dd>
-        </dl>
+        <h3>地图</h3>
+        <div class="panel-action-row">
+          <button type="button" :disabled="loading || mapRefreshPending || !robotApiBaseUrl.trim()" @click="refreshMapProof">
+            刷新地图
+          </button>
+          <span class="status-chip" :data-state="mapSummary.state">{{ mapSummary.state }}</span>
+        </div>
+        <p class="panel-note">{{ mapSummary.hint }} {{ summarizeMapEvidence() }}</p>
+      </article>
+
+      <article class="snapshot-panel">
+        <h3>移动/导航</h3>
+        <div class="locked-summary">
+          <span class="status-chip" data-state="locked">手动移动（未开放）</span>
+          <span class="status-chip" data-state="locked">自动导航（未开放）</span>
+        </div>
+        <p class="panel-note">手动移动和自动导航都未开放，相关端点继续留在详情里。</p>
       </article>
     </div>
 
-    <section class="preflight-panel">
-      <h3>Robot API readback endpoints</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>endpoint</th>
-            <th>HTTP</th>
-            <th>状态</th>
-            <th>schema</th>
-            <th>key readback</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="endpoint in robotSummary?.read_endpoints ?? []" :key="endpoint.id">
-            <td>{{ endpoint.endpoint }}</td>
-            <td>{{ endpoint.http_status ?? "n/a" }}</td>
-            <td>{{ endpoint.request_status }} / {{ endpoint.status }}</td>
-            <td>{{ endpoint.schema }}</td>
-            <td>{{ JSON.stringify(endpoint.key_values).slice(0, 220) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <details class="advanced-details">
+      <summary>高级诊断</summary>
+      <div class="advanced-grid">
+        <section class="advanced-block">
+          <h3>连接详情</h3>
+          <form class="robot-control-form" @submit.prevent="refreshConsole">
+            <label>
+              <span>task_id</span>
+              <input v-model="taskId" name="task_id" placeholder="task_id">
+            </label>
+            <label>
+              <span>O6 consumer base URL</span>
+              <input v-model="o6ConsumerBaseUrl" name="o6ConsumerBaseUrl" placeholder="http://127.0.0.1:8088">
+            </label>
+            <label>
+              <span>Mock/field manifest JSON</span>
+              <input v-model="fieldEvidenceManifestJson" name="fieldEvidenceManifestJson" placeholder="optional local JSON">
+            </label>
+            <button class="secondary" type="submit" :disabled="loading">刷新状态</button>
+          </form>
+          <dl class="kv compact-kv">
+            <dt>selected</dt>
+            <dd>{{ selectedTaskSummary }}</dd>
+            <dt>source</dt>
+            <dd>{{ routeReplaySource }}</dd>
+            <dt>task status</dt>
+            <dd>{{ taskDetail?.task_summary?.task_status_summary ?? "blocked_not_loaded" }}</dd>
+            <dt>safe_to_control</dt>
+            <dd>safe_to_control=false</dd>
+            <dt>delivery_success</dt>
+            <dd>delivery_success=false</dd>
+            <dt>primary_actions_enabled</dt>
+            <dd>primary_actions_enabled=false</dd>
+            <dt>proxy</dt>
+            <dd>Node server only; Vue direct access=false</dd>
+            <dt>normalized base URL</dt>
+            <dd>{{ robotSummary?.normalized_base_url ?? "not_loaded" }}</dd>
+            <dt>Robot API status</dt>
+            <dd>{{ robotSummary?.robot_api_connection.status ?? "not_loaded" }}</dd>
+            <dt>read count</dt>
+            <dd>
+              loaded={{ robotSummary?.robot_api_connection.loaded_count ?? 0 }},
+              failed={{ robotSummary?.robot_api_connection.failed_count ?? 0 }},
+              blocked={{ robotSummary?.robot_api_connection.blocked_count ?? 0 }}
+            </dd>
+            <dt>blocked reason</dt>
+            <dd>{{ listText(robotSummary?.robot_api_connection.blocked_reasons, "none") }}</dd>
+          </dl>
+        </section>
+
+        <section class="advanced-block">
+          <h3>实时画面详情</h3>
+          <dl class="kv compact-kv">
+            <dt>preview_status</dt>
+            <dd>{{ previewStatus }}</dd>
+            <dt>failure_reason</dt>
+            <dd>{{ failureReason || "none" }}</dd>
+            <dt>peer_id</dt>
+            <dd>{{ previewPeerId || "not_assigned" }}</dd>
+            <dt>peer base URL</dt>
+            <dd>{{ previewPeerBaseUrl || "not_assigned" }}</dd>
+            <dt>ice_connection_state</dt>
+            <dd>{{ iceConnectionState }}</dd>
+            <dt>video_track_state</dt>
+            <dd>{{ videoTrackState }}</dd>
+            <dt>last_offer_at</dt>
+            <dd>{{ lastOfferAt || "never" }}</dd>
+            <dt>last_stop_at</dt>
+            <dd>{{ lastStopAt || "never" }}</dd>
+            <dt>cleanup_status</dt>
+            <dd>{{ cleanupStatus }}</dd>
+            <dt>camera_health</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.status ?? "not_loaded" }}</dd>
+            <dt>camera_devices</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.devices_status ?? "not_loaded" }}</dd>
+          </dl>
+        </section>
+
+        <section class="advanced-block">
+          <h3>雷达详情</h3>
+          <dl class="kv compact-kv">
+            <dt>pending</dt>
+            <dd>{{ radarRefreshPending ? "pending" : "idle" }}</dd>
+            <dt>last result status</dt>
+            <dd>{{ radarRefreshResult?.last_result_status ?? "not_loaded" }}</dd>
+            <dt>failure reason</dt>
+            <dd>{{ radarRefreshResult?.failure_reason || "none" }}</dd>
+            <dt>latest readback key values</dt>
+            <dd>{{ recordText(radarRefreshResult?.latest_readback_key_values) }}</dd>
+            <dt>non-motion evidence actions</dt>
+            <dd>{{ listText(radarRefreshResult?.non_motion_evidence_actions_observed, "none") }}</dd>
+            <dt>hard dangerous true fields</dt>
+            <dd>{{ listText(radarRefreshResult?.hard_dangerous_true_fields, "none") }}</dd>
+            <dt>last refreshed time</dt>
+            <dd>{{ timestampText(radarRefreshResult?.last_refreshed_at_ms) }}</dd>
+            <dt>blocked reasons</dt>
+            <dd>{{ listText(radarRefreshResult?.blocked_reasons, "none") }}</dd>
+          </dl>
+        </section>
+
+        <section class="advanced-block">
+          <h3>地图详情</h3>
+          <dl class="kv compact-kv">
+            <dt>pending</dt>
+            <dd>{{ mapRefreshPending ? "pending" : "idle" }}</dd>
+            <dt>last result status</dt>
+            <dd>{{ mapRefreshResult?.last_result_status ?? "not_loaded" }}</dd>
+            <dt>failure reason</dt>
+            <dd>{{ mapRefreshResult?.failure_reason || "none" }}</dd>
+            <dt>latest readback key values</dt>
+            <dd>{{ recordText(mapRefreshResult?.latest_readback_key_values) }}</dd>
+            <dt>non-motion evidence actions</dt>
+            <dd>{{ listText(mapRefreshResult?.non_motion_evidence_actions_observed, "none") }}</dd>
+            <dt>hard dangerous true fields</dt>
+            <dd>{{ listText(mapRefreshResult?.hard_dangerous_true_fields, "none") }}</dd>
+            <dt>last refreshed time</dt>
+            <dd>{{ timestampText(mapRefreshResult?.last_refreshed_at_ms) }}</dd>
+            <dt>blocked reasons</dt>
+            <dd>{{ listText(mapRefreshResult?.blocked_reasons, "none") }}</dd>
+          </dl>
+        </section>
+
+        <section class="advanced-block">
+          <h3>任务与证据</h3>
+          <dl class="kv compact-kv">
+            <dt>O3 proof summary</dt>
+            <dd>
+              {{ robotSummary?.o3_proof_summary.proof_status ?? "not_loaded" }};
+              {{ robotSummary?.o3_proof_summary.delivery_success ?? false }};
+              {{ robotSummary?.o3_proof_summary.primary_actions_enabled ?? false }}
+            </dd>
+            <dt>root_causes</dt>
+            <dd>{{ listText(robotSummary?.o3_proof_summary.root_causes) }}</dd>
+            <dt>not_proven</dt>
+            <dd>{{ listText(robotSummary?.o3_proof_summary.not_proven) }}</dd>
+            <dt>route replay</dt>
+            <dd>{{ taskDetail?.trajectory.status ?? "blocked_not_loaded" }} / frames={{ taskDetail?.trajectory.frame_count ?? 0 }}</dd>
+            <dt>events</dt>
+            <dd>{{ taskDetail?.events.status ?? "blocked_not_loaded" }} / count={{ taskDetail?.events.count ?? 0 }}</dd>
+            <dt>tunnel</dt>
+            <dd>{{ taskDetail?.tunnel_status.latest_known_status ?? "blocked_not_loaded" }}</dd>
+            <dt>field evidence</dt>
+            <dd>{{ taskDetail?.field_evidence.artifact_status ?? "blocked_not_loaded" }}</dd>
+            <dt>manifest gate</dt>
+            <dd>{{ taskDetail?.field_evidence.manifest_gate.status ?? "blocked_not_loaded" }}</dd>
+            <dt>evidence</dt>
+            <dd>{{ taskDetail?.evidence.status ?? "blocked_not_loaded" }} / count={{ taskDetail?.evidence.count ?? 0 }}</dd>
+            <dt>labeling</dt>
+            <dd>{{ taskDetail?.labeling.status ?? "blocked_not_loaded" }} / labels={{ taskDetail?.labeling.label_count ?? 0 }}</dd>
+            <dt>keyframe/sample</dt>
+            <dd>{{ sampleText(taskDetail?.evidence.sample_evidence) }}</dd>
+          </dl>
+        </section>
+
+        <section class="advanced-block">
+          <h3>控制边界 / readback</h3>
+          <p class="muted">{{ robotSummary?.safe_command_boundary.locked_reason ?? "locked by V1 boundary" }}</p>
+          <dl class="kv compact-kv">
+            <dt>command_dispatch_enabled</dt>
+            <dd>command_dispatch_enabled=false</dd>
+            <dt>manual_control_enabled</dt>
+            <dd>manual_control_enabled=false</dd>
+            <dt>navigate_goal_enabled</dt>
+            <dd>navigate_goal_enabled=false</dd>
+            <dt>keyboard_control_enabled</dt>
+            <dd>keyboard_control_enabled=false</dd>
+            <dt>robot_control_executed</dt>
+            <dd>robot_control_executed=false</dd>
+            <dt>Camera / LiDAR / Base</dt>
+            <dd>
+              /api/camera/health={{ robotSummary?.readback_summary.camera.status ?? "not_loaded" }},
+              /api/camera/devices={{ robotSummary?.readback_summary.camera.devices_status ?? "not_loaded" }},
+              /api/radar/status={{ robotSummary?.readback_summary.lidar.status ?? "not_loaded" }},
+              scan={{ robotSummary?.readback_summary.lidar.latest_scan_proof_status ?? "not_loaded" }},
+              raw={{ robotSummary?.readback_summary.lidar.latest_raw_packet_proof_status ?? "not_loaded" }},
+              /api/base/status={{ robotSummary?.readback_summary.base.status ?? "not_loaded" }},
+              readback={{ robotSummary?.readback_summary.base.latest_feedback_status ?? "not_loaded" }}
+            </dd>
+            <dt>unsafe starts</dt>
+            <dd>radar start=false; map start=false; base manual=false</dd>
+          </dl>
+          <table class="preflight-table">
+            <thead>
+              <tr>
+                <th>endpoint</th>
+                <th>HTTP</th>
+                <th>状态</th>
+                <th>schema</th>
+                <th>key readback</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="endpoint in robotSummary?.read_endpoints ?? []" :key="endpoint.id">
+                <td>{{ endpoint.endpoint }}</td>
+                <td>{{ endpoint.http_status ?? "n/a" }}</td>
+                <td>{{ endpoint.request_status }} / {{ endpoint.status }}</td>
+                <td>{{ endpoint.schema }}</td>
+                <td>{{ JSON.stringify(endpoint.key_values).slice(0, 220) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </details>
   </section>
 </template>

@@ -388,6 +388,61 @@ const fixtures: Record<string, unknown> = {
     not_proven: ["O7", "path_generated", "delivery_success"],
     ...PROOF_FLAGS,
   },
+    "/api/robot-control/radar/scan-proof/refresh": {
+      schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+      robot_control_executed: false,
+      refresh_kind: "radar_scan_proof_refresh",
+      proxy_status: "refresh_forwarded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/radar/scan-proof/refresh",
+    remote_http_status: 200,
+    status: "loaded_fail_closed_summary",
+    last_result_status: "scan_once_observed",
+    last_result_schema: "trashbot.upper_robot_api.v1.radar_scan_proof_refresh",
+    last_result_evidence_ref: "radar-scan-refresh-proof",
+    last_refreshed_at_ms: 1781040815776,
+      latest_readback_key_values: {
+        status: "scan_once_observed",
+        evidence_ref: "radar-scan-refresh-proof",
+        scan_once_observed: "true",
+        scan_hz_observed: "10",
+        raw_packet_once_observed: "true",
+        tf_observed: "true",
+      },
+      failure_reason: "",
+      blocked_reasons: [],
+      hard_dangerous_true_fields: [],
+      non_motion_evidence_actions_observed: ["sends_commands", "starts_ros2"],
+      ...PROOF_FLAGS,
+    },
+    "/api/robot-control/map/proof/refresh": {
+      schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+      robot_control_executed: false,
+    refresh_kind: "map_proof_refresh",
+    proxy_status: "refresh_forwarded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/map/proof/refresh",
+    remote_http_status: 200,
+    status: "loaded_fail_closed_summary",
+    last_result_status: "map_once_observed",
+    last_result_schema: "trashbot.upper_robot_api.v1.map_proof_refresh",
+    last_result_evidence_ref: "map-refresh-proof",
+    last_refreshed_at_ms: 1781040816776,
+      latest_readback_key_values: {
+        status: "map_once_observed",
+        evidence_ref: "map-refresh-proof",
+        map_once_observed: "true",
+        map_file_observed: "true",
+        map_metadata_observed: "true",
+      },
+      failure_reason: "",
+      blocked_reasons: [],
+      hard_dangerous_true_fields: [],
+      non_motion_evidence_actions_observed: ["sends_commands", "starts_ros2"],
+      ...PROOF_FLAGS,
+    },
   "/api/robot-control/camera/offer": {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_offer_proxy.v1",
     proxy_status: "offer_forwarded",
@@ -2510,45 +2565,50 @@ const fixtures: Record<string, unknown> = {
 function stubWorkstationFetch() {
   // 测试桩允许 route debug 带 query，确保表单路径仍走同一个只读 API。
   const mockedFetch = vi.fn(async (url: string, options?: RequestInit) => {
-    const fixtureKey = url.startsWith("/api/route/debug-summary")
-      ? "/api/route/debug-summary"
-      : url.startsWith("/api/robot-control/summary")
-        ? "/api/robot-control/summary"
-      : url.startsWith("/api/robot-control/camera/offer")
-        ? "/api/robot-control/camera/offer"
-        : url.startsWith("/api/robot-control/camera/peers/peer-preview-001/close")
-          ? "/api/robot-control/camera/peers/peer-preview-001/close"
-        : url.startsWith("/api/o7/consumer-read/tasks/")
-        ? "/api/o7/consumer-read/tasks/task-consumer-001"
-        : url.startsWith("/api/o7/consumer-read/tasks")
-          ? "/api/o7/consumer-read/tasks"
-      : url.startsWith("/api/o7/realtime-elevator-preview")
-        ? "/api/o7/realtime-elevator-preview"
-        : url.startsWith("/api/o7/route-replay-preview")
-          ? "/api/o7/route-replay-preview"
-          : url.startsWith("/api/o7/labeling-preview")
-            ? "/api/o7/labeling-preview"
-            : url.startsWith("/api/o7/field-evidence-consumer-ingest")
-              ? "/api/o7/field-evidence-consumer-ingest"
-            : url.startsWith("/api/o7/voice-preview")
-              ? "/api/o7/voice-preview"
-              : url.startsWith("/api/o7/safe-command-preview")
-                ? "/api/o7/safe-command-preview"
-                : url.startsWith("/api/o7/previews/acceptance")
-                  ? "/api/o7/previews/acceptance"
-                  : url.startsWith("/api/o7/live-endpoints/manifest")
-                    ? "/api/o7/live-endpoints/manifest"
-                    : url.startsWith("/api/o7/cloud-archive/tasks-probe")
-                      ? "/api/o7/cloud-archive/tasks-probe"
-                      : url.startsWith("/api/o7/cloud-archive/tasks")
-                        ? "/api/o7/cloud-archive/tasks"
-                        : url.startsWith("/api/o7/cloud-operator-console-probe")
-                          ? "/api/o7/cloud-operator-console-probe"
-                          : url.startsWith("/api/o7/rtc-signaling-contract-probe")
-                            ? "/api/o7/rtc-signaling-contract-probe"
-                            : url.startsWith("/api/o7/realtime-elevator-probe")
-                              ? "/api/o7/realtime-elevator-probe"
-                              : url;
+    let fixtureKey = url;
+    if (url.startsWith("/api/route/debug-summary")) {
+      fixtureKey = "/api/route/debug-summary";
+    } else if (url.startsWith("/api/robot-control/summary")) {
+      fixtureKey = "/api/robot-control/summary";
+    } else if (url.startsWith("/api/robot-control/radar/scan-proof/refresh")) {
+      fixtureKey = "/api/robot-control/radar/scan-proof/refresh";
+    } else if (url.startsWith("/api/robot-control/map/proof/refresh")) {
+      fixtureKey = "/api/robot-control/map/proof/refresh";
+    } else if (url.startsWith("/api/robot-control/camera/offer")) {
+      fixtureKey = "/api/robot-control/camera/offer";
+    } else if (url.startsWith("/api/robot-control/camera/peers/peer-preview-001/close")) {
+      fixtureKey = "/api/robot-control/camera/peers/peer-preview-001/close";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks")) {
+      fixtureKey = "/api/o7/consumer-read/tasks";
+    } else if (url.startsWith("/api/o7/realtime-elevator-preview")) {
+      fixtureKey = "/api/o7/realtime-elevator-preview";
+    } else if (url.startsWith("/api/o7/route-replay-preview")) {
+      fixtureKey = "/api/o7/route-replay-preview";
+    } else if (url.startsWith("/api/o7/labeling-preview")) {
+      fixtureKey = "/api/o7/labeling-preview";
+    } else if (url.startsWith("/api/o7/field-evidence-consumer-ingest")) {
+      fixtureKey = "/api/o7/field-evidence-consumer-ingest";
+    } else if (url.startsWith("/api/o7/voice-preview")) {
+      fixtureKey = "/api/o7/voice-preview";
+    } else if (url.startsWith("/api/o7/safe-command-preview")) {
+      fixtureKey = "/api/o7/safe-command-preview";
+    } else if (url.startsWith("/api/o7/previews/acceptance")) {
+      fixtureKey = "/api/o7/previews/acceptance";
+    } else if (url.startsWith("/api/o7/live-endpoints/manifest")) {
+      fixtureKey = "/api/o7/live-endpoints/manifest";
+    } else if (url.startsWith("/api/o7/cloud-archive/tasks-probe")) {
+      fixtureKey = "/api/o7/cloud-archive/tasks-probe";
+    } else if (url.startsWith("/api/o7/cloud-archive/tasks")) {
+      fixtureKey = "/api/o7/cloud-archive/tasks";
+    } else if (url.startsWith("/api/o7/cloud-operator-console-probe")) {
+      fixtureKey = "/api/o7/cloud-operator-console-probe";
+    } else if (url.startsWith("/api/o7/rtc-signaling-contract-probe")) {
+      fixtureKey = "/api/o7/rtc-signaling-contract-probe";
+    } else if (url.startsWith("/api/o7/realtime-elevator-probe")) {
+      fixtureKey = "/api/o7/realtime-elevator-probe";
+    }
     if (options?.method === "POST" && fixtureKey === "/api/robot-control/camera/offer") {
       const body = JSON.parse(String(options.body ?? "{}")) as { type?: string; sdp?: string };
       if (body.type !== "offer" || !body.sdp) {
@@ -2587,13 +2647,15 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    await wrapper.findAll("button").find((button) => button.text() === "路线")?.trigger("click");
+    await wrapper.vm.$nextTick();
+
     expect(wrapper.text()).toContain("node_route_json_loader");
     expect(wrapper.text()).toContain("pc-tools/workstation/src/server/routeDebugLoader.ts");
-    expect(wrapper.text()).toContain("safe_to_control=false");
-    expect(wrapper.text()).toContain("delivery_success=false");
-    expect(wrapper.text()).toContain("pc_only=true");
     expect(wrapper.text()).toContain("console_controls");
     expect(wrapper.text()).toContain("read_only");
+    expect(wrapper.text()).toContain("not_loaded_pc_only");
+    expect(wrapper.text()).toContain("blocked_not_proven");
     expect(wrapper.text()).toContain("status_json_not_provided");
     expect(wrapper.text()).not.toContain("route_debug_web.py");
     expect(wrapper.text()).not.toContain("python -m");
@@ -2610,6 +2672,9 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    await wrapper.findAll("button").find((button) => button.text() === "路线")?.trigger("click");
+    await wrapper.vm.$nextTick();
+
     await wrapper.find("input").setValue("C:\\tmp\\status proof.json");
     await wrapper.find("form.route-inputs").trigger("submit");
     await flushPromises();
@@ -2624,35 +2689,99 @@ describe("App", () => {
     expect(wrapper.text()).not.toContain("/dev/tty");
   });
 
-  it("renders Robot Control V1 with Robot API proxy and locked command boundary", async () => {
-    // Robot Control 测试只验证 Node proxy 摘要和 locked UI，不触发任何真实控制 endpoint。
+  it("renders Robot Control V1 by default with Robot API proxy and locked command boundary", async () => {
+    // 首屏默认就是 Robot Control；测试只验证 Node proxy 摘要和 locked UI，不触发任何真实控制 endpoint。
     stubWorkstationFetch();
 
     const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    await wrapper.findAll("button").find((button) => button.text() === "Robot Control")?.trigger("click");
+    const firstScreenText = wrapper.find(".robot-console-grid").text();
+    expect(firstScreenText).toContain("小车连接");
+    expect(firstScreenText).toContain("实时画面");
+    expect(firstScreenText).toContain("雷达");
+    expect(firstScreenText).toContain("地图");
+    expect(firstScreenText).toContain("移动/导航");
+    expect(firstScreenText).toContain("未连接");
+    expect(firstScreenText).toContain("未打开");
+    expect(firstScreenText).toContain("未刷新");
+    expect(firstScreenText).toContain("手动移动（未开放）");
+    expect(firstScreenText).toContain("自动导航（未开放）");
+    expect(firstScreenText).not.toContain("task_id selector");
+    expect(firstScreenText).not.toContain("O6 consumer base URL");
+    expect(firstScreenText).not.toContain("peer_id");
+    expect(firstScreenText).not.toContain("ice_connection_state");
+    expect(firstScreenText).not.toContain("scan_once_observed");
+    expect(firstScreenText).not.toContain("map_once_observed");
+    expect(wrapper.text()).not.toContain("source=software_proof");
+    expect(wrapper.text()).not.toContain("proof_status=not_proven");
+    expect(firstScreenText).not.toContain("/cmd_vel");
+    expect(wrapper.find(".tabs").text()).toContain("机器人");
+    expect(wrapper.find("details summary").text()).toContain("高级诊断");
+    expect(wrapper.find("details").text()).toContain("task_id");
+    expect(wrapper.find("details").text()).toContain("Robot API status");
+    expect(wrapper.find("details").text()).toContain("Node server only; Vue direct access=false");
+    expect(wrapper.find("details").text()).toContain("path_generated");
+    expect(wrapper.find("details").text()).toContain("planner_server_not_active");
+    expect(wrapper.find("details").text()).toContain("safe_to_control=false");
+    expect(wrapper.find("details").text()).toContain("delivery_success=false");
+    expect(wrapper.find("details").text()).toContain("primary_actions_enabled=false");
+  });
+
+  it("refreshes radar and map proof through fixed POST proxies and auto refreshes the summary", async () => {
+    // 刷新按钮只打 workstation 固定 POST 代理，动作结束后还要自动回刷 summary。
+    const mockedFetch = stubWorkstationFetch();
+
+    const wrapper = mount(App);
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.text()).toContain("Robot Control");
-    expect(wrapper.text()).toContain("task_id selector");
-    expect(wrapper.text()).toContain("Robot API connection");
-    expect(wrapper.text()).toContain("O3 proof summary");
-    expect(wrapper.text()).toContain("route replay / Mock fallback");
-    expect(wrapper.text()).toContain("evidence / keyframe / labeling readiness");
-    expect(wrapper.text()).toContain("manual / nav safe command boundary");
-    expect(wrapper.text()).toContain("Camera / LiDAR / Base readback");
-    expect(wrapper.text()).toContain("Node server only; Vue direct access=false");
-    expect(wrapper.text()).toContain("path_generated");
-    expect(wrapper.text()).toContain("planner_server_not_active");
-    expect(wrapper.text()).toContain("safe_to_control=false");
-    expect(wrapper.text()).toContain("delivery_success=false");
-    expect(wrapper.text()).toContain("primary_actions_enabled=false");
-    expect(wrapper.text()).toContain("/api/base/manual locked");
-    expect(wrapper.text()).toContain("cmd_vel locked");
-    expect(wrapper.findAll("button[disabled]").some((button) => button.text().includes("Nav2 goal locked"))).toBe(true);
+    const firstScreenText = wrapper.find(".robot-console-grid").text();
+    expect(firstScreenText).toContain("刷新雷达");
+    expect(firstScreenText).toContain("刷新地图");
+    expect(firstScreenText).toContain("未刷新");
+    expect(firstScreenText).not.toContain("scan_once_observed");
+    expect(firstScreenText).not.toContain("map_once_observed");
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    await flushPromises();
+
+    const summaryCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
+
+    await wrapper.findAll("button").find((button) => button.text() === "刷新雷达")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find(".robot-console-grid").text()).toContain("已刷新");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("scan 可见");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("tf 可见");
+    expect(wrapper.find("details").text()).toContain("scan_once_observed");
+    expect(wrapper.find("details").text()).toContain("scan_hz_observed");
+    expect(wrapper.find("details").text()).toContain("tf_observed");
+    expect(wrapper.find("details").text()).toContain("non-motion evidence actions");
+    expect(wrapper.find("details").text()).toContain("sends_commands");
+    expect(wrapper.find("details").text()).toContain("starts_ros2");
+    expect(wrapper.find("details").text()).toContain("last refreshed time");
+    expect(wrapper.find("details").text()).toContain("latest readback key values");
+    expect(wrapper.find("details").text()).toContain("blocked reasons");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh") && options?.method === "POST")).toBe(true);
+    const summaryCallsAfterRadar = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
+    expect(summaryCallsAfterRadar).toBeGreaterThan(summaryCallsBefore);
+
+    await wrapper.findAll("button").find((button) => button.text() === "刷新地图")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find(".robot-console-grid").text()).toContain("已刷新");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("map 可见");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("evidence 可见");
+    expect(wrapper.find("details").text()).toContain("map_once_observed");
+    expect(wrapper.find("details").text()).toContain("map_file_observed");
+    expect(wrapper.find("details").text()).toContain("map_metadata_observed");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/proof/refresh") && options?.method === "POST")).toBe(true);
+    const summaryCallsAfterMap = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
+    expect(summaryCallsAfterMap).toBeGreaterThan(summaryCallsAfterRadar);
   });
 
   it("starts and stops Camera Preview through workstation camera proxy while keeping control locked", async () => {
@@ -2721,36 +2850,34 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    await wrapper.findAll("button").find((button) => button.text() === "Robot Control")?.trigger("click");
-    await flushPromises();
-    await wrapper.vm.$nextTick();
-
     const robotBaseUrlInput = wrapper.find('input[name="robotApiBaseUrl"]');
     await robotBaseUrlInput.setValue("http://192.168.1.11:8787");
     await flushPromises();
 
-    await wrapper.findAll("button").find((button) => button.text() === "Start Preview")?.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "打开画面")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.text()).toContain("Camera Preview");
-    expect(wrapper.text()).toContain("preview_status");
-    expect(wrapper.text()).toContain("streaming");
-    expect(wrapper.text()).toContain("peer-preview-001");
-    expect(wrapper.text()).toContain("ice_connection_state");
-    expect(wrapper.text()).toContain("connected");
-    expect(wrapper.text()).toContain("video_track_state");
-    expect(wrapper.text()).toContain("live");
-    expect(wrapper.text()).toContain("safe_to_control=false");
-    expect(wrapper.text()).toContain("/api/base/manual locked");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("已打开");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("画面已打开");
+    expect(wrapper.find("details").text()).toContain("preview_status");
+    expect(wrapper.find("details").text()).toContain("streaming");
+    expect(wrapper.find("details").text()).toContain("peer-preview-001");
+    expect(wrapper.find("details").text()).toContain("ice_connection_state");
+    expect(wrapper.find("details").text()).toContain("connected");
+    expect(wrapper.find("details").text()).toContain("video_track_state");
+    expect(wrapper.find("details").text()).toContain("live");
+    expect(wrapper.find("details").text()).toContain("safe_to_control=false");
+    expect(wrapper.find("details").text()).toContain("Node server only; Vue direct access=false");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);
 
-    await wrapper.findAll("button").find((button) => button.text() === "Stop Preview")?.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "关闭画面")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.text()).toContain("stopped_by_user");
-    expect(wrapper.text()).toContain("peer_closed:closed");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("未打开");
+    expect(wrapper.find("details").text()).toContain("stopped_by_user");
+    expect(wrapper.find("details").text()).toContain("peer_closed:closed");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).includes("/api/robot-control/camera/peers/peer-preview-001/close") && options?.method === "POST")).toBe(true);
   });
 
@@ -2815,20 +2942,17 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    await wrapper.findAll("button").find((button) => button.text() === "Robot Control")?.trigger("click");
-    await flushPromises();
-    await wrapper.vm.$nextTick();
-
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
     await flushPromises();
 
-    await wrapper.findAll("button").find((button) => button.text() === "Start Preview")?.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "打开画面")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.text()).toContain("start_failed");
-    expect(wrapper.text()).toContain("remote_answer_missing");
-    expect(wrapper.text()).not.toContain("preview_statusstopped_by_user");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("失败");
+    expect(wrapper.find("details").text()).toContain("start_failed");
+    expect(wrapper.find("details").text()).toContain("remote_answer_missing");
+    expect(wrapper.find("details").text()).not.toContain("preview_statusstopped_by_user");
   });
 
   it("renders hardware material coverage with fail-closed copy", async () => {
@@ -2839,7 +2963,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    await wrapper.findAll("button").find((button) => button.text() === "Hardware Materials")?.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "硬件")?.trigger("click");
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain("WAVE ROVER Material Coverage");
@@ -2899,7 +3023,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    await wrapper.findAll("button").find((button) => button.text() === "O7 Console")?.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "控制台")?.trigger("click");
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain("O7 Operator Console");
@@ -3021,7 +3145,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    await wrapper.findAll("button").find((button) => button.text() === "O7 Previews")?.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "预览")?.trigger("click");
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain("O7 Fixture Previews");
@@ -3580,7 +3704,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    await wrapper.findAll("button").find((button) => button.text() === "O7 Previews")?.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "预览")?.trigger("click");
     await wrapper.vm.$nextTick();
 
     await wrapper.find('input[aria-label="Field evidence manifest JSON path"]').setValue("fixtures/field-evidence-manifest.json");
@@ -3744,7 +3868,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    await wrapper.findAll("button").find((button) => button.text() === "O7 Previews")?.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "预览")?.trigger("click");
     await wrapper.vm.$nextTick();
     await wrapper.findAll("button").find((button) => button.text() === "Load consumer task list")?.trigger("click");
     await flushPromises();

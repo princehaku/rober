@@ -18,6 +18,7 @@ import type {
   O7SafeCommandPreviewResponse,
   O7VoicePreviewResponse,
   ProofBoundaryResponse,
+  RobotControlProofRefreshProxyResponse,
   RobotControlCameraCloseProxyResponse,
   RobotControlCameraOfferProxyResponse,
   RobotControlSummaryResponse,
@@ -83,6 +84,8 @@ const API_ENDPOINTS = {
   o7SafeCommandPreview: "/api/o7/safe-command-preview",
   o7CloudArchiveTasks: "/api/o7/cloud-archive/tasks",
   robotControlSummary: "/api/robot-control/summary",
+  robotControlRadarScanProofRefresh: "/api/robot-control/radar/scan-proof/refresh",
+  robotControlMapProofRefresh: "/api/robot-control/map/proof/refresh",
   robotControlCameraOffer: "/api/robot-control/camera/offer",
   robotControlCameraPeersPrefix: "/api/robot-control/camera/peers/",
   proofBoundary: "/api/proof-boundary",
@@ -98,7 +101,7 @@ async function loadJson<T>(url: string): Promise<T> {
 }
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
-  // POST 只用于 camera offer/close 本机代理；失败时仍由调用方保持 fail-closed UI。
+  // POST 只用于 workstation 固定代理；失败时仍由调用方保持 fail-closed UI。
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -157,6 +160,17 @@ function robotControlSummaryUrl(baseUrl: string): string {
   }
   const query = params.toString();
   return query ? `${API_ENDPOINTS.robotControlSummary}?${query}` : API_ENDPOINTS.robotControlSummary;
+}
+
+function robotControlProofRefreshUrl(endpoint: string, baseUrl: string): string {
+  // refresh 只允许固定 POST endpoint，浏览器只提供 baseUrl，不能拼接任意路径。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  const query = params.toString();
+  return query ? `${endpoint}?${query}` : endpoint;
 }
 
 function robotControlCameraOfferUrl(baseUrl: string): string {
@@ -342,6 +356,24 @@ export async function getO7CloudArchiveTasks(archiveJson: string): Promise<O7Clo
 export async function getRobotControlSummary(baseUrl: string): Promise<RobotControlSummaryResponse> {
   // Robot Control V1 只读取 Node 代理后的 fail-closed 摘要，不接收前端任意 endpoint。
   return loadJson<RobotControlSummaryResponse>(robotControlSummaryUrl(baseUrl));
+}
+
+export async function postRobotControlRadarScanProofRefresh(
+  baseUrl: string,
+): Promise<RobotControlProofRefreshProxyResponse> {
+  // Radar refresh 只透过本机 Node 代理发给上位机，固定 body 由后端掌控。
+  return postJson<RobotControlProofRefreshProxyResponse>(
+    robotControlProofRefreshUrl(API_ENDPOINTS.robotControlRadarScanProofRefresh, baseUrl),
+    {},
+  );
+}
+
+export async function postRobotControlMapProofRefresh(baseUrl: string): Promise<RobotControlProofRefreshProxyResponse> {
+  // Map refresh 只透过本机 Node 代理发给上位机，固定 body 由后端掌控。
+  return postJson<RobotControlProofRefreshProxyResponse>(
+    robotControlProofRefreshUrl(API_ENDPOINTS.robotControlMapProofRefresh, baseUrl),
+    {},
+  );
 }
 
 export async function postRobotControlCameraOffer(

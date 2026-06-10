@@ -26,6 +26,9 @@ import {
   buildO7SafeCommandPreview,
   buildO7VoicePreview,
   buildProofBoundary,
+  buildMapProofRefreshProxy,
+  buildRadarScanProofRefreshProxy,
+  computeRobotProofRefreshTimeoutMs,
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
@@ -800,6 +803,53 @@ function listenRobotCameraProxyApi(
       const port = typeof address === "object" && address ? address.port : 0;
       resolve({
         baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
+function listenRobotProofRefreshApi(
+  handlers: Record<string, { payload: unknown; statusCode?: number }>,
+): Promise<{
+  baseUrl: string;
+  close: () => Promise<void>;
+  receivedBodies: Record<string, unknown[]>;
+}> {
+  // refresh 代理测试需要检查上游是否只收固定 POST body，而不是浏览器拼接的任意控制参数。
+  const receivedBodies: Record<string, unknown[]> = {};
+  const server = http.createServer((req, res) => {
+    const url = req.url ?? "/";
+    const handler = handlers[url];
+    if (req.method !== "POST" || !handler) {
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+    req.on("end", () => {
+      if (!receivedBodies[url]) {
+        receivedBodies[url] = [];
+      }
+      receivedBodies[url].push(body ? JSON.parse(body) : {});
+      res.statusCode = handler.statusCode ?? 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(handler.payload));
+    });
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        receivedBodies,
         close: () => new Promise((closeResolve, closeReject) => {
           server.close((error) => (error ? closeReject(error) : closeResolve()));
         }),
@@ -3639,6 +3689,232 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.o3_proof_summary.path_generated).toBe(true);
     } finally {
       await robotApi.close();
+    }
+  });
+
+  it("workstation proof refresh proxies only allow fixed radar and map POST bodies", async () => {
+    // refresh 代理必须把 body 锁死成 workstation 预设值，且危险 true 字段仍然 fail closed。
+    const upstream = await listenRobotProofRefreshApi({
+      "/api/radar/scan-proof/refresh": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_scan_proof_refresh",
+          status: "refreshed",
+          latest_proof_status: "raw_packets_parsed",
+          evidence_ref: "radar-refresh-proof",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          sends_commands: true,
+          starts_ros2: true,
+          scan_once_observed: true,
+          scan_hz_observed: 10,
+          raw_packet_once_observed: true,
+          tf_observed: true,
+        },
+      },
+      "/api/map/proof/refresh": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_proof_refresh",
+          status: "map_once_artifact_metadata_observed",
+          evidence_ref: "map-refresh-proof",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          sends_commands: true,
+          starts_ros2: true,
+          map_once_observed: true,
+          map_file_observed: true,
+          map_metadata_observed: true,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const radarResponse = await fetch(
+        `${workstation.baseUrl}/api/robot-control/radar/scan-proof/refresh?baseUrl=${encodeURIComponent(upstream.baseUrl)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ignored: true }),
+        },
+      );
+      const radarBody = (await radarResponse.json()) as {
+        proxy_status: string;
+        safe_to_control: boolean;
+        blocked_reasons: string[];
+        latest_readback_key_values: Record<string, string>;
+        hard_dangerous_true_fields: string[];
+        non_motion_evidence_actions_observed: string[];
+      };
+      expect(radarResponse.status).toBe(200);
+      expect(radarBody.proxy_status).toBe("refresh_forwarded");
+      expect(radarBody.safe_to_control).toBe(false);
+      expect(radarBody.blocked_reasons).toEqual([]);
+      expect(radarBody.hard_dangerous_true_fields).toEqual([]);
+      expect(radarBody.non_motion_evidence_actions_observed).toEqual(expect.arrayContaining(["sends_commands", "starts_ros2"]));
+      expect(radarBody.latest_readback_key_values.scan_once_observed).toBe("true");
+      expect(upstream.receivedBodies["/api/radar/scan-proof/refresh"]?.[0]).toEqual({
+        timeout_s: 10,
+        runtime_warmup_s: 6,
+        start_runtime: true,
+      });
+
+      const mapResponse = await fetch(
+        `${workstation.baseUrl}/api/robot-control/map/proof/refresh?baseUrl=${encodeURIComponent(upstream.baseUrl)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ignored: true }),
+        },
+      );
+      const mapBody = (await mapResponse.json()) as {
+        proxy_status: string;
+        safe_to_control: boolean;
+        blocked_reasons: string[];
+        latest_readback_key_values: Record<string, string>;
+        hard_dangerous_true_fields: string[];
+        non_motion_evidence_actions_observed: string[];
+      };
+      expect(mapResponse.status).toBe(200);
+      expect(mapBody.proxy_status).toBe("refresh_forwarded");
+      expect(mapBody.safe_to_control).toBe(false);
+      expect(mapBody.blocked_reasons).toEqual([]);
+      expect(mapBody.hard_dangerous_true_fields).toEqual([]);
+      expect(mapBody.non_motion_evidence_actions_observed).toEqual(expect.arrayContaining(["sends_commands", "starts_ros2"]));
+      expect(mapBody.latest_readback_key_values.map_once_observed).toBe("true");
+      expect(upstream.receivedBodies["/api/map/proof/refresh"]?.[0]).toEqual({ timeout_s: 45 });
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation proof refresh proxies still fail closed on hard dangerous true fields", async () => {
+    // 允许的证据动作不能放开控制面，但真正的硬危险字段仍然必须 fail closed。
+    const upstream = await listenRobotProofRefreshApi({
+      "/api/radar/scan-proof/refresh": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_scan_proof_refresh",
+          status: "scan_once_observed",
+          evidence_ref: "radar-refresh-proof",
+          safe_to_control: true,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          scan_once_observed: true,
+          scan_hz_observed: 10,
+          raw_packet_once_observed: true,
+          tf_observed: true,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(
+        `${workstation.baseUrl}/api/robot-control/radar/scan-proof/refresh?baseUrl=${encodeURIComponent(upstream.baseUrl)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ignored: true }),
+        },
+      );
+      const body = (await response.json()) as {
+        proxy_status: string;
+        failure_reason: string;
+        blocked_reasons: string[];
+        hard_dangerous_true_fields: string[];
+        non_motion_evidence_actions_observed: string[];
+      };
+
+      expect(response.status).toBe(502);
+      expect(body.proxy_status).toBe("refresh_failed");
+      expect(body.failure_reason).toBe("hard_dangerous_true_field:safe_to_control");
+      expect(body.blocked_reasons).toContain("hard_dangerous_true_field:safe_to_control");
+      expect(body.hard_dangerous_true_fields).toContain("safe_to_control");
+      expect(body.non_motion_evidence_actions_observed).toEqual([]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("computes refresh timeout budgets from the fixed body and caps them", () => {
+    // timeout 由 body 预估时长加余量推导，不再用拍脑袋的固定 15s / 50s。
+    expect(
+      computeRobotProofRefreshTimeoutMs({
+        request_body: { timeout_s: 10, runtime_warmup_s: 6, start_runtime: true },
+        timeout_cap_ms: 60_000,
+        safety_margin_ms: 10_000,
+      }),
+    ).toBe(26_000);
+    expect(
+      computeRobotProofRefreshTimeoutMs({
+        request_body: { timeout_s: 45 },
+        timeout_cap_ms: 120_000,
+        safety_margin_ms: 20_000,
+      }),
+    ).toBe(65_000);
+    expect(
+      computeRobotProofRefreshTimeoutMs({
+        request_body: { timeout_s: 999, runtime_warmup_s: 999 },
+        timeout_cap_ms: 60_000,
+        safety_margin_ms: 10_000,
+      }),
+    ).toBe(60_000);
+    expect(
+      computeRobotProofRefreshTimeoutMs({
+        request_body: { timeout_s: 999 },
+        timeout_cap_ms: 120_000,
+        safety_margin_ms: 20_000,
+      }),
+    ).toBe(120_000);
+  });
+
+  it("reports the computed fetch timeout ms when radar refresh hangs", async () => {
+    // 这里不靠真实等待，直接断言 AbortSignal.timeout 接收到的就是计算后的毫秒数。
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    const originalFetch = globalThis.fetch;
+    const timeoutError = Object.assign(new Error("timeout"), { name: "TimeoutError" });
+    const fetchMock = vi.fn(() => Promise.reject(timeoutError));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const response = await buildRadarScanProofRefreshProxy("http://127.0.0.1:8787");
+      expect(timeoutSpy).toHaveBeenCalledWith(26_000);
+      expect(response.proxy_status).toBe("refresh_failed");
+      expect(response.failure_reason).toBe("fetch_timeout_26000ms");
+      expect(response.blocked_reasons).toContain("fetch_timeout_26000ms");
+      expect(response.safe_to_control).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+      timeoutSpy.mockRestore();
+    }
+  });
+
+  it("reports the computed fetch timeout ms when map refresh hangs", async () => {
+    // map 的 timeout 同样必须按 body 计算，并且封顶前后都能写出准确毫秒数。
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    const originalFetch = globalThis.fetch;
+    const timeoutError = Object.assign(new Error("timeout"), { name: "TimeoutError" });
+    const fetchMock = vi.fn(() => Promise.reject(timeoutError));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const response = await buildMapProofRefreshProxy("http://127.0.0.1:8787");
+      expect(timeoutSpy).toHaveBeenCalledWith(65_000);
+      expect(response.proxy_status).toBe("refresh_failed");
+      expect(response.failure_reason).toBe("fetch_timeout_65000ms");
+      expect(response.blocked_reasons).toContain("fetch_timeout_65000ms");
+      expect(response.safe_to_control).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+      timeoutSpy.mockRestore();
     }
   });
 

@@ -4,7 +4,6 @@ import EvidenceToolsPanel from "./components/EvidenceToolsPanel.vue";
 import O7FixturePreviewPanel from "./components/O7FixturePreviewPanel.vue";
 import O7OperatorConsolePanel from "./components/O7OperatorConsolePanel.vue";
 import ProofBoundaryPanel from "./components/ProofBoundaryPanel.vue";
-import ProofFlagStrip from "./components/ProofFlagStrip.vue";
 import RobotControlConsolePanel from "./components/RobotControlConsolePanel.vue";
 import RouteDebugPanel from "./components/RouteDebugPanel.vue";
 import TrainingLabelingPanel from "./components/TrainingLabelingPanel.vue";
@@ -25,7 +24,8 @@ import type {
 
 // App 只组合全局状态和布局，不再承载各页面的展示细节。
 // activePanel 是本地导航状态，不参与证明链路。
-const activePanel = ref<WorkstationPanel>("route");
+// 首屏默认落到 Robot Control，让普通用户先看到简易控制页，而不是工程调试页。
+const activePanel = ref<WorkstationPanel>("robotControl");
 // loading 只说明 API 请求中，不说明任何旧 gate 正在执行。
 const loading = ref(true);
 // error 展示 API 不可用原因，并继续保持主动作关闭。
@@ -78,40 +78,34 @@ onMounted(() => {
   <main class="shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">pc-tools/workstation</p>
-        <h1>Rober PC Tools Workstation</h1>
+        <p class="eyebrow">Rober</p>
+        <h1>Rober 小车控制台</h1>
       </div>
-      <button class="secondary" type="button" @click="refresh">Refresh</button>
+      <button class="secondary" type="button" @click="refresh">刷新</button>
     </header>
-
-    <ProofFlagStrip :health="health" />
 
     <div v-if="error" class="notice" role="alert">
       API unavailable: {{ error }}. primary_actions_enabled=false.
     </div>
 
+    <div v-if="loading" class="notice" role="status">
+      Loading local workstation summary...
+    </div>
+
     <WorkstationTabs v-model="activePanel" />
 
-    <section v-if="loading" class="workspace">
-      <h2>Loading local software proof index</h2>
-      <p>primary_actions_enabled=false</p>
-    </section>
-
     <RouteDebugPanel
-      v-else-if="activePanel === 'route'"
+      v-if="activePanel === 'route'"
       v-model:route-inputs="routeInputs"
       :route-summary="routeSummary"
       @refresh="refresh"
     />
-    <RobotControlConsolePanel v-else-if="activePanel === 'robotControl'" />
-    <O7OperatorConsolePanel v-else-if="activePanel === 'o7'" :operator-console="o7OperatorConsole" />
-    <O7FixturePreviewPanel v-else-if="activePanel === 'o7Previews'" />
-    <EvidenceToolsPanel v-else-if="activePanel === 'evidence'" :evidence-tools="evidenceTools" />
-    <WaveRoverMaterialCoveragePanel
-      v-else-if="activePanel === 'hardware'"
-      :hardware-materials="hardwareMaterials"
-    />
-    <TrainingLabelingPanel v-else-if="activePanel === 'training'" :training-labeling="trainingLabeling" />
-    <ProofBoundaryPanel v-else :proof-boundary="proofBoundary" />
+    <RobotControlConsolePanel v-if="activePanel === 'robotControl'" />
+    <O7OperatorConsolePanel v-if="activePanel === 'o7'" :operator-console="o7OperatorConsole" />
+    <O7FixturePreviewPanel v-if="activePanel === 'o7Previews'" />
+    <EvidenceToolsPanel v-if="activePanel === 'evidence'" :evidence-tools="evidenceTools" />
+    <WaveRoverMaterialCoveragePanel v-if="activePanel === 'hardware'" :hardware-materials="hardwareMaterials" />
+    <TrainingLabelingPanel v-if="activePanel === 'training'" :training-labeling="trainingLabeling" />
+    <ProofBoundaryPanel v-if="activePanel === 'boundary'" :health="health" :proof-boundary="proofBoundary" />
   </main>
 </template>

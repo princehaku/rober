@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import type { ProofBoundaryResponse } from "../shared/contracts";
+import ProofFlagStrip from "./ProofFlagStrip.vue";
+import type { HealthResponse, ProofBoundaryResponse } from "../shared/contracts";
 
 defineProps<{
+  health: HealthResponse | null;
   proofBoundary: ProofBoundaryResponse | null;
 }>();
 
@@ -37,5 +39,9 @@ defineProps<{
       <dt>recovery_path</dt>
       <dd>{{ proofBoundary?.control_policy.recovery_path }}</dd>
     </dl>
+    <details class="advanced-details">
+      <summary>高级安全信息</summary>
+      <ProofFlagStrip :health="health" />
+    </details>
   </section>
 </template>

@@ -1,0 +1,12 @@
+radar_http_status=502
+map_http_status=502
+radar_proxy_status=refresh_failed
+map_proxy_status=refresh_failed
+radar_failure_reason=dangerous_true_field:sends_commands
+map_failure_reason=dangerous_true_field:sends_commands
+radar_safe_to_control=false
+map_safe_to_control=false
+radar_blocked_reasons=["dangerous_true_field:sends_commands","dangerous_true_field:starts_ros2"]
+map_blocked_reasons=["dangerous_true_field:sends_commands"]
+radar_last_result_status=refreshed
+map_last_result_status=map_once_artifact_metadata_observed

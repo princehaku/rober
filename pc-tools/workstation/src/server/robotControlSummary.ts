@@ -3,6 +3,8 @@ import type {
   RobotApiEndpointReadback,
   RobotApiProofSummary,
   RobotApiReadEndpointId,
+  RobotControlProofRefreshProxyResponse,
+  RobotControlProofRefreshKind,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
 
@@ -37,7 +39,61 @@ const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
   { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
 ];
 
-const DANGEROUS_TRUE_FIELDS = new Set([
+export type RobotProofRefreshConfig = {
+  kind: RobotControlProofRefreshKind;
+  endpoint: "/api/radar/scan-proof/refresh" | "/api/map/proof/refresh";
+  request_body: Record<string, unknown>;
+  timeout_cap_ms: number;
+  safety_margin_ms: number;
+  key_fields: string[];
+};
+
+const RADAR_SCAN_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
+  kind: "radar_scan_proof_refresh",
+  endpoint: "/api/radar/scan-proof/refresh",
+  request_body: {
+    timeout_s: 10,
+    runtime_warmup_s: 6,
+    start_runtime: true,
+  },
+  timeout_cap_ms: 60_000,
+  safety_margin_ms: 10_000,
+  key_fields: [
+    "status",
+    "latest_proof_status",
+    "latest_result_status",
+    "evidence_ref",
+    "scan_once_observed",
+    "scan_hz_observed",
+    "raw_packet_once_observed",
+    "tf_observed",
+    "blocked_reasons",
+  ],
+};
+
+const MAP_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
+  kind: "map_proof_refresh",
+  endpoint: "/api/map/proof/refresh",
+  request_body: {
+    timeout_s: 45,
+  },
+  timeout_cap_ms: 120_000,
+  safety_margin_ms: 20_000,
+  key_fields: [
+    "status",
+    "latest_proof_status",
+    "latest_result_status",
+    "evidence_ref",
+    "map_once_observed",
+    "map_file_observed",
+    "map_metadata_observed",
+    "blocked_reasons",
+  ],
+};
+
+const REFRESH_NON_MOTION_EVIDENCE_ACTION_FIELDS = new Set(["sends_commands", "starts_ros2"]);
+
+const HARD_DANGEROUS_TRUE_FIELDS = new Set([
   "safe_to_control",
   "delivery_success",
   "primary_actions_enabled",
@@ -46,18 +102,18 @@ const DANGEROUS_TRUE_FIELDS = new Set([
   "navigate_goal_enabled",
   "keyboard_control_enabled",
   "robot_control_executed",
-  "sends_commands",
   "sends_motion_commands",
   "sends_base_motion_commands",
   "publishes_cmd_vel",
   "calls_base_manual",
-  "starts_ros2",
   "starts_nav2",
   "opens_serial",
   "opens_base_uart",
   "uses_base_uart",
   "hil_pass",
 ]);
+
+const DANGEROUS_TRUE_FIELDS = new Set([...HARD_DANGEROUS_TRUE_FIELDS, ...REFRESH_NON_MOTION_EVIDENCE_ACTION_FIELDS]);
 
 const STATUS_KEYS = [
   "safe_to_control",
@@ -141,18 +197,18 @@ export function endpointUrl(base: URL, endpoint: string): string {
   return next.toString();
 }
 
-export function scanDangerousTrueFields(value: unknown, path = ""): string[] {
+export function scanDangerousTrueFields(value: unknown, path = "", fields: ReadonlySet<string> = DANGEROUS_TRUE_FIELDS): string[] {
   // 任意层出现危险 true 字段都进入 blocked reason；PC 端仍固定不放开控制按钮。
   if (!value || typeof value !== "object") {
     return [];
   }
   if (Array.isArray(value)) {
-    return value.flatMap((item, index) => scanDangerousTrueFields(item, `${path}[${index}]`));
+    return value.flatMap((item, index) => scanDangerousTrueFields(item, `${path}[${index}]`, fields));
   }
   return Object.entries(value as JsonRecord).flatMap(([key, nested]) => {
     const currentPath = path ? `${path}.${key}` : key;
-    const current = DANGEROUS_TRUE_FIELDS.has(key) && nested === true ? [currentPath] : [];
-    return current.concat(scanDangerousTrueFields(nested, currentPath));
+    const current = fields.has(key) && nested === true ? [currentPath] : [];
+    return current.concat(scanDangerousTrueFields(nested, currentPath, fields));
   });
 }
 
@@ -201,13 +257,34 @@ function stringList(value: unknown, limit = 8): string[] {
   });
 }
 
-function compactKeyValues(payload: JsonRecord | null): Record<string, string> {
+function compactKeyValues(payload: JsonRecord | null, keys: readonly string[] = STATUS_KEYS): Record<string, string> {
   // 关键字段白名单足够支撑控制台判断，不透传完整上位机 payload。
-  const entries = STATUS_KEYS.flatMap((key) => {
+  const entries = keys.flatMap((key) => {
     const found = findFirstKey(payload, [key]);
     return found === undefined ? [] : [[key, String(found).slice(0, 120)] as const];
   });
   return Object.fromEntries(entries);
+}
+
+function compactTrueFields(fields: string[]): string[] {
+  // 响应只保留短字段名，避免把完整对象路径直接塞进卡片和日志摘要。
+  return fields.map((field) => field.slice(0, 180));
+}
+
+function numericSeconds(value: unknown): number | null {
+  // 只接受有限正数秒；其他值视为未配置，避免把异常 body 变成无限等待。
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return null;
+  }
+  return value;
+}
+
+export function computeRobotProofRefreshTimeoutMs(config: Pick<RobotProofRefreshConfig, "request_body" | "timeout_cap_ms" | "safety_margin_ms">): number {
+  // 代理 timeout 由 body 预估时长加安全余量推导，并且封顶，避免卡死 workstation。
+  const timeoutS = numericSeconds(config.request_body.timeout_s) ?? 0;
+  const warmupS = numericSeconds(config.request_body.runtime_warmup_s) ?? 0;
+  const calculatedMs = Math.round((timeoutS + warmupS) * 1000 + Math.max(0, Math.trunc(config.safety_margin_ms)));
+  return Math.min(config.timeout_cap_ms, calculatedMs);
 }
 
 async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise<RobotApiEndpointReadback> {
@@ -275,7 +352,7 @@ async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise
     };
   }
 
-  const dangerous = scanDangerousTrueFields(payload);
+  const dangerous = scanDangerousTrueFields(payload, "", DANGEROUS_TRUE_FIELDS);
   const status = asString(findFirstKey(payload, ["status", "latest_proof_status", "state"]), response.ok ? "loaded" : "blocked");
   return {
     id,
@@ -292,6 +369,199 @@ async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise
     ],
     dangerous_true_fields: dangerous,
   };
+}
+
+function blockedRefreshResponse(
+  sourceBaseUrl: string,
+  reason: string,
+  config: RobotProofRefreshConfig,
+): RobotControlProofRefreshProxyResponse {
+  // 固定 POST 刷新端点在 URL 不合法时也必须返回同一套 fail-closed 字段，避免 UI 分叉。
+  const observedAt = Date.now();
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+    ...PROOF_FLAGS,
+    refresh_kind: config.kind,
+    proxy_status: "refresh_rejected",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    remote_endpoint: config.endpoint,
+    remote_http_status: null,
+    status: "blocked",
+    last_result_status: "blocked_not_proven",
+    last_result_schema: "not_loaded",
+    last_result_evidence_ref: "not_loaded",
+    last_refreshed_at_ms: observedAt,
+    latest_readback_key_values: {},
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    non_motion_evidence_actions_observed: [],
+    robot_control_executed: false,
+  };
+}
+
+async function buildProofRefreshProxy(
+  baseUrl: string,
+  config: RobotProofRefreshConfig,
+): Promise<RobotControlProofRefreshProxyResponse> {
+  // refresh 端点只允许固定 POST 路径和固定 body，不能由前端拼接任意控制参数。
+  const normalized = normalizeRobotApiBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return blockedRefreshResponse(baseUrl, normalized.reason, config);
+  }
+
+  const timeout_ms = computeRobotProofRefreshTimeoutMs(config);
+  const observedAt = Date.now();
+  let response: Response;
+  try {
+    response = await fetch(endpointUrl(normalized.normalized, config.endpoint), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(config.request_body),
+      signal: AbortSignal.timeout(timeout_ms),
+    });
+  } catch (error) {
+    return {
+      schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+      ...PROOF_FLAGS,
+      refresh_kind: config.kind,
+      proxy_status: "refresh_failed",
+      source_base_url: baseUrl,
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_endpoint: config.endpoint,
+      remote_http_status: null,
+      status: "blocked",
+      last_result_status: "fetch_failed",
+      last_result_schema: "not_loaded",
+      last_result_evidence_ref: "not_loaded",
+      last_refreshed_at_ms: observedAt,
+      latest_readback_key_values: {},
+      failure_reason:
+        error instanceof Error && error.name === "TimeoutError"
+          ? `fetch_timeout_${timeout_ms}ms`
+          : error instanceof Error
+            ? error.message.slice(0, 180)
+            : "fetch_failed",
+      blocked_reasons: [
+        error instanceof Error && error.name === "TimeoutError"
+          ? `fetch_timeout_${timeout_ms}ms`
+          : error instanceof Error
+            ? error.message.slice(0, 180)
+            : "fetch_failed",
+      ],
+      hard_dangerous_true_fields: [],
+      non_motion_evidence_actions_observed: [],
+      robot_control_executed: false,
+    };
+  }
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    return {
+      schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+      ...PROOF_FLAGS,
+      refresh_kind: config.kind,
+      proxy_status: "refresh_failed",
+      source_base_url: baseUrl,
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_endpoint: config.endpoint,
+      remote_http_status: response.status,
+      status: "blocked",
+      last_result_status: "bad_json",
+      last_result_schema: "not_loaded",
+      last_result_evidence_ref: "not_loaded",
+      last_refreshed_at_ms: observedAt,
+      latest_readback_key_values: {},
+      failure_reason: "response_json_parse_failed",
+      blocked_reasons: ["response_json_parse_failed", `refresh_http_status_${response.status}`],
+      hard_dangerous_true_fields: [],
+      non_motion_evidence_actions_observed: [],
+      robot_control_executed: false,
+    };
+  }
+
+  const payload = asRecord(body);
+  if (!payload) {
+    return {
+      schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+      ...PROOF_FLAGS,
+      refresh_kind: config.kind,
+      proxy_status: "refresh_failed",
+      source_base_url: baseUrl,
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_endpoint: config.endpoint,
+      remote_http_status: response.status,
+      status: "blocked",
+      last_result_status: "not_object",
+      last_result_schema: "not_object",
+      last_result_evidence_ref: "not_loaded",
+      last_refreshed_at_ms: observedAt,
+      latest_readback_key_values: {},
+      failure_reason: "response_json_not_object",
+      blocked_reasons: ["response_json_not_object", `refresh_http_status_${response.status}`],
+      hard_dangerous_true_fields: [],
+      non_motion_evidence_actions_observed: [],
+      robot_control_executed: false,
+    };
+  }
+
+  const hardDangerous = scanDangerousTrueFields(payload, "", HARD_DANGEROUS_TRUE_FIELDS);
+  const nonMotionEvidenceActionsObserved = compactTrueFields(
+    scanDangerousTrueFields(payload, "", REFRESH_NON_MOTION_EVIDENCE_ACTION_FIELDS),
+  );
+  const lastResultStatus = asString(
+    findFirstKey(payload, ["status", "latest_proof_status", "latest_result_status", "refresh_status", "result_status"]),
+    response.ok ? "loaded" : "blocked",
+  );
+  const lastResultSchema = asString(payload.schema, "schema_missing");
+  const lastResultEvidenceRef = asString(findFirstKey(payload, ["evidence_ref", "latest_evidence_ref", "result_evidence_ref"]), "not_loaded");
+  const blockedReasons = [
+    ...(response.ok ? [] : [`refresh_http_status_${response.status}`]),
+    ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
+  ];
+  const refreshSuccessful = response.ok && hardDangerous.length === 0;
+
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+    ...PROOF_FLAGS,
+    refresh_kind: config.kind,
+    proxy_status: refreshSuccessful ? "refresh_forwarded" : "refresh_failed",
+    source_base_url: baseUrl,
+    normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+    remote_endpoint: config.endpoint,
+    remote_http_status: response.status,
+    status: refreshSuccessful ? "loaded_fail_closed_summary" : "blocked",
+    last_result_status: lastResultStatus,
+    last_result_schema: lastResultSchema,
+    last_result_evidence_ref: lastResultEvidenceRef,
+    last_refreshed_at_ms: observedAt,
+    latest_readback_key_values: compactKeyValues(payload, config.key_fields),
+    failure_reason:
+      hardDangerous.length > 0
+        ? `hard_dangerous_true_field:${hardDangerous[0]}`
+        : response.ok
+          ? ""
+          : `refresh_http_status_${response.status}`,
+    blocked_reasons: blockedReasons,
+    hard_dangerous_true_fields: hardDangerous,
+    non_motion_evidence_actions_observed: nonMotionEvidenceActionsObserved,
+    robot_control_executed: false,
+  };
+}
+
+export async function buildRadarScanProofRefreshProxy(baseUrl: string): Promise<RobotControlProofRefreshProxyResponse> {
+  // Radar refresh 只允许固定 no-motion scan proof body，不开放任意参数或动作扩展。
+  return buildProofRefreshProxy(baseUrl, RADAR_SCAN_PROOF_REFRESH_CONFIG);
+}
+
+export async function buildMapProofRefreshProxy(baseUrl: string): Promise<RobotControlProofRefreshProxyResponse> {
+  // Map refresh 只允许固定 no-motion map proof body，不开放导航、建图或控制参数。
+  return buildProofRefreshProxy(baseUrl, MAP_PROOF_REFRESH_CONFIG);
 }
 
 function pickReadback(readbacks: RobotApiEndpointReadback[], id: RobotApiReadEndpointId): RobotApiEndpointReadback | null {

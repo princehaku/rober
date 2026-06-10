@@ -2062,6 +2062,30 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   primary_actions_enabled: false;
 }
 
+export type RobotControlProofRefreshKind = "radar_scan_proof_refresh" | "map_proof_refresh";
+export type RobotControlProofRefreshProxyStatus = "refresh_forwarded" | "refresh_rejected" | "refresh_failed";
+
+export interface RobotControlProofRefreshProxyResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1";
+  refresh_kind: RobotControlProofRefreshKind;
+  proxy_status: RobotControlProofRefreshProxyStatus;
+  source_base_url: string;
+  normalized_base_url: string;
+  remote_endpoint: "/api/radar/scan-proof/refresh" | "/api/map/proof/refresh";
+  remote_http_status: number | null;
+  status: "blocked" | "loaded_fail_closed_summary";
+  last_result_status: string;
+  last_result_schema: string;
+  last_result_evidence_ref: string;
+  last_refreshed_at_ms: number;
+  latest_readback_key_values: Record<string, string>;
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  non_motion_evidence_actions_observed: string[];
+  robot_control_executed: false;
+}
+
 export interface RobotControlCameraAnswerSummary {
   type: "answer" | "pranswer";
   sdp: string;

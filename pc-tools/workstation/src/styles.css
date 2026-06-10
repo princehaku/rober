@@ -195,6 +195,93 @@ h3 {
   font: inherit;
 }
 
+.robot-quick-connect {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  padding: 12px;
+  background: #f7f9fb;
+}
+
+.robot-quick-connect label,
+.robot-control-form label {
+  display: block;
+  min-width: 0;
+}
+
+.robot-quick-connect span,
+.robot-control-form span,
+.muted {
+  color: #5f6b7a;
+  font-size: 12px;
+}
+
+.robot-quick-connect span,
+.robot-control-form span {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.robot-quick-connect input,
+.robot-control-form input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #bdc7d3;
+  border-radius: 6px;
+  padding: 0 9px;
+  background: #ffffff;
+  color: #17202a;
+  font: inherit;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid #cfd7df;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: #1b2a38;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-chip[data-state="已连接"],
+.status-chip[data-state="已打开"],
+.status-chip[data-state="已刷新"] {
+  border-color: #bfd4c6;
+  background: #eff8f1;
+  color: #245d36;
+}
+
+.status-chip[data-state="连接中"],
+.status-chip[data-state="刷新中"] {
+  border-color: #cfe0f0;
+  background: #eef5fb;
+  color: #22537a;
+}
+
+.status-chip[data-state="未连接"],
+.status-chip[data-state="未打开"],
+.status-chip[data-state="未刷新"],
+.status-chip[data-state="locked"] {
+  background: #f5f7fa;
+  color: #5f6b7a;
+}
+
+.status-chip[data-state="有异常"],
+.status-chip[data-state="失败"] {
+  border-color: #efc9c9;
+  background: #fff1f1;
+  color: #9a3412;
+}
+
 .robot-control-form,
 .robot-console-grid,
 .locked-actions {
@@ -212,35 +299,64 @@ h3 {
   background: #f7f9fb;
 }
 
-.robot-control-form label,
-.robot-control-form span {
-  display: block;
-  min-width: 0;
-}
-
-.robot-control-form span,
-.muted {
-  color: #5f6b7a;
-  font-size: 12px;
-}
-
-.robot-control-form span {
-  margin-bottom: 5px;
-}
-
-.robot-control-form input {
-  width: 100%;
-  min-height: 36px;
-  border: 1px solid #bdc7d3;
-  border-radius: 6px;
-  padding: 0 9px;
-  background: #ffffff;
-  color: #17202a;
-  font: inherit;
-}
-
 .robot-console-grid {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.simple-status-row,
+.panel-action-row,
+.locked-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-note {
+  margin-top: 8px;
+  color: #44525f;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.advanced-details {
+  margin-top: 14px;
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 10px 12px 12px;
+}
+
+.advanced-details > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #1b2a38;
+}
+
+.advanced-grid {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.advanced-block {
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.advanced-block h3 {
+  margin-top: 0;
+}
+
+.preflight-table {
+  margin-top: 10px;
+}
+
+.preflight-table th,
+.preflight-table td {
+  font-size: 12px;
 }
 
 .locked-actions {
@@ -418,8 +534,10 @@ th {
     .three-col,
     .kr-grid,
     .route-inputs,
+    .robot-quick-connect,
     .robot-control-form,
     .robot-console-grid,
+    .advanced-grid,
     .locked-actions {
     grid-template-columns: 1fr;
   }
