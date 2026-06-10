@@ -354,6 +354,69 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertEqual("frame_contract", classification["blocking_segment"])
         self.assertFalse(classification["frame_naming_consistent"])
 
+    def test_tf_source_diagnostics_classifies_amcl_map_odom_missing(self) -> None:
+        """source inventory 要先于 tf2_echo 给出 AMCL 未广播 map->odom 的下一层原因。"""
+        args = HELPER.parse_args([])
+        combined_stdout = """
+__TOPIC_LIST_T__
+/tf [tf2_msgs/msg/TFMessage]
+/tf_static [tf2_msgs/msg/TFMessage]
+__AMCL_NODE_INFO__
+/amcl
+  Subscribers:
+    * /initialpose [geometry_msgs/msg/PoseWithCovarianceStamped]
+    * /scan [sensor_msgs/msg/LaserScan]
+  Publishers:
+    * /amcl_pose [geometry_msgs/msg/PoseWithCovarianceStamped]
+    * /particle_cloud [nav2_msgs/msg/ParticleCloud]
+__AMCL_PARAMS__
+__PARAM__tf_broadcast=Boolean value is: True
+__PARAM__global_frame_id=String value is: map
+__PARAM__odom_frame_id=String value is: odom
+__PARAM__base_frame_id=String value is: base_link
+__TF_ONCE__
+WARNING: topic echo timed out
+__TF_STATIC_ONCE__
+transforms:
+- header:
+    frame_id: odom
+  child_frame_id: base_link
+- header:
+    frame_id: base_link
+  child_frame_id: laser_frame
+"""
+        amcl_pose = {"stdout": "header:\n  frame_id: map\npose:\n  pose:\n"}
+        source = HELPER.build_tf_source_diagnostics(
+            args,
+            {"stdout": combined_stdout, "ok": True},
+            amcl_pose_result=amcl_pose,
+        )
+        observed = {
+            "map_to_odom": bool(source["map_to_odom_source_observed"]),
+            "odom_to_base_link": bool(source["odom_to_base_link_source_observed"]),
+            "base_link_to_laser_frame": bool(source["base_link_to_laser_frame_source_observed"]),
+            "map_to_base_link": False,
+        }
+        diagnostics = HELPER.build_tf_chain_diagnostics(
+            args=args,
+            results={"map_to_odom": {"executed": True, "ok": False, "stdout": "Invalid frame ID \"map\""}},
+            observed=observed,
+            tf_source_diagnostics=source,
+        )
+
+        classification = HELPER.classify_tf_chain_failure(args=args, observed=observed, diagnostics=diagnostics)
+
+        self.assertTrue(source["tf_topics_observed"]["/tf"])
+        self.assertTrue(source["tf_static_observed"])
+        self.assertEqual("map", source["amcl_pose_frame_id"])
+        self.assertEqual("True", source["amcl_tf_broadcast_param"])
+        self.assertTrue(source["odom_to_base_link_source_observed"])
+        self.assertTrue(source["base_link_to_laser_frame_source_observed"])
+        self.assertFalse(source["map_to_odom_source_observed"])
+        self.assertEqual("amcl_map_to_odom_tf_not_observed_on_tf", source["amcl_tf_root_cause"])
+        self.assertEqual("blocked_by_missing_map_to_odom", classification["map_to_base_link"])
+        self.assertEqual("amcl_map_to_odom_tf_not_observed_on_tf", classification["reason"])
+
     def test_phase_artifact_writer_records_partial_progress(self) -> None:
         """helper 被外层 timeout 打断前，partial artifact 必须已经有阶段和命令证据。"""
         with tempfile.TemporaryDirectory() as temp_dir:

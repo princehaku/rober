@@ -1039,3 +1039,22 @@ artifact 新增稳定字段：
 `map_to_base_link_tf2_timeout_or_chain_timing`。这只证明 TF/source/timing
 定位材料，不允许用更长 timeout 掩盖问题，也不触发 `NavigateToPose`、
 `/cmd_vel`、`/api/base/*`、`/dev/ttyS5` 或 WAVE ROVER `T=1/T=13/T=130/T=131`。
+
+## 2026-06-11 04:45 AMCL TF Source Diagnostics
+
+本轮仍是 no-motion localization evidence capture，不新增任何底盘或 WAVE ROVER
+动作。helper 在 `/initialpose` 与 `/amcl_pose` 之后、慢 `tf2_echo` 之前，先采集
+轻量 source/timing 快照：
+
+- `/tf` 和 `/tf_static` 是否出现在 topic graph。
+- `/tf_static` 中是否能看到 `odom -> base_link`、`base_link -> laser_frame`。
+- `/tf` 中是否能看到 AMCL 广播的 `map -> odom`。
+- `/amcl_pose.header.frame_id`、`/amcl` publishers/subscribers。
+- `/amcl` 实际参数：`tf_broadcast`、`global_frame_id`、`odom_frame_id`、`base_frame_id`。
+
+artifact/readback 新增 `tf_topics_observed`、`tf_static_observed`、
+`tf_frame_inventory`、`amcl_pose_frame_id`、`amcl_node_publishers`、
+`amcl_node_subscribers`、`amcl_tf_broadcast_param`、`amcl_frame_params`、
+`map_frame_observed`、`odom_frame_observed` 和 `amcl_tf_root_cause`。这些字段只用于
+定位 AMCL/TF source/timing root cause；安全边界继续禁止 `/cmd_vel`、`/api/base/*`、
+`NavigateToPose`、`/dev/ttyS5` 和 WAVE ROVER `T=1/T=13/T=130/T=131`。

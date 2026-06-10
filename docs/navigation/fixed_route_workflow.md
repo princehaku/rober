@@ -1867,6 +1867,15 @@ helper 会先观测 `map->odom` 与 `odom->base_link`，再判断是否执行完
 readiness 的前置材料；它不证明路径执行、固定路线运行、真实运动、HIL pass 或
 delivery success。
 
+2026-06-11 04:45 起，helper 在慢 `tf2_echo` 前先采集 AMCL/TF source snapshot，
+避免 upper timeout 时丢失下一层 root cause。`/api/localize/reset` 和
+`/api/localize/proof/latest` 会继续透传 `tf_topics_observed`、`tf_static_observed`、
+`tf_frame_inventory`、`amcl_pose_frame_id`、`amcl_node_publishers`、
+`amcl_node_subscribers`、`amcl_tf_broadcast_param`、`amcl_frame_params`、
+`map_frame_observed`、`odom_frame_observed` 和 `amcl_tf_root_cause`。这些字段只用于判断
+AMCL 是否实际广播 `map->odom`、managed static TF 是否存在、frame id 是否一致；
+不代表路径执行、底盘运动或 HIL 通过。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

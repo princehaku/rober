@@ -577,6 +577,37 @@ def write_nav2_helper_failure_artifact(
             if isinstance(partial_proof.get("tf_chain_diagnostics"), dict)
             else {}
         ),
+        "tf_topics_observed": (
+            partial_proof.get("tf_topics_observed")
+            if isinstance(partial_proof.get("tf_topics_observed"), dict)
+            else {"/tf": False, "/tf_static": False}
+        ),
+        "tf_static_observed": bool(partial_proof.get("tf_static_observed")),
+        "tf_frame_inventory": (
+            partial_proof.get("tf_frame_inventory")
+            if isinstance(partial_proof.get("tf_frame_inventory"), dict)
+            else {"frames": [], "edges": [], "dynamic_edges": [], "static_edges": []}
+        ),
+        "amcl_pose_frame_id": partial_proof.get("amcl_pose_frame_id"),
+        "amcl_node_publishers": (
+            partial_proof.get("amcl_node_publishers")
+            if isinstance(partial_proof.get("amcl_node_publishers"), list)
+            else []
+        ),
+        "amcl_node_subscribers": (
+            partial_proof.get("amcl_node_subscribers")
+            if isinstance(partial_proof.get("amcl_node_subscribers"), list)
+            else []
+        ),
+        "amcl_tf_broadcast_param": partial_proof.get("amcl_tf_broadcast_param"),
+        "amcl_frame_params": (
+            partial_proof.get("amcl_frame_params")
+            if isinstance(partial_proof.get("amcl_frame_params"), dict)
+            else {}
+        ),
+        "map_frame_observed": bool(partial_proof.get("map_frame_observed")),
+        "odom_frame_observed": bool(partial_proof.get("odom_frame_observed")),
+        "amcl_tf_root_cause": partial_proof.get("amcl_tf_root_cause"),
         "tf_failure_classification": (
             partial_proof.get("tf_failure_classification")
             if isinstance(partial_proof.get("tf_failure_classification"), dict)
@@ -2169,6 +2200,33 @@ def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dic
             "map_to_base_link": map_to_base_link,
         },
         "tf_chain_diagnostics": proof.get("tf_chain_diagnostics") if isinstance(proof.get("tf_chain_diagnostics"), dict) else {},
+        "tf_topics_observed": (
+            proof.get("tf_topics_observed")
+            if isinstance(proof.get("tf_topics_observed"), dict)
+            else {"/tf": False, "/tf_static": False}
+        ),
+        "tf_static_observed": proof.get("tf_static_observed") is True,
+        "tf_frame_inventory": (
+            proof.get("tf_frame_inventory")
+            if isinstance(proof.get("tf_frame_inventory"), dict)
+            else {"frames": [], "edges": [], "dynamic_edges": [], "static_edges": []}
+        ),
+        "amcl_pose_frame_id": proof.get("amcl_pose_frame_id"),
+        "amcl_node_publishers": (
+            proof.get("amcl_node_publishers")
+            if isinstance(proof.get("amcl_node_publishers"), list)
+            else []
+        ),
+        "amcl_node_subscribers": (
+            proof.get("amcl_node_subscribers")
+            if isinstance(proof.get("amcl_node_subscribers"), list)
+            else []
+        ),
+        "amcl_tf_broadcast_param": proof.get("amcl_tf_broadcast_param"),
+        "amcl_frame_params": proof.get("amcl_frame_params") if isinstance(proof.get("amcl_frame_params"), dict) else {},
+        "map_frame_observed": proof.get("map_frame_observed") is True,
+        "odom_frame_observed": proof.get("odom_frame_observed") is True,
+        "amcl_tf_root_cause": proof.get("amcl_tf_root_cause"),
         "tf_failure_classification": (
             proof.get("tf_failure_classification")
             if isinstance(proof.get("tf_failure_classification"), dict)
@@ -3983,6 +4041,17 @@ class UpperRobotApi:
                 "localization_tf_observed": readback_contract["localization_tf_observed"],
                 "tf_chain_observed": readback_contract["tf_chain_observed"],
                 "tf_chain_diagnostics": readback_contract["tf_chain_diagnostics"],
+                "tf_topics_observed": readback_contract["tf_topics_observed"],
+                "tf_static_observed": readback_contract["tf_static_observed"],
+                "tf_frame_inventory": readback_contract["tf_frame_inventory"],
+                "amcl_pose_frame_id": readback_contract["amcl_pose_frame_id"],
+                "amcl_node_publishers": readback_contract["amcl_node_publishers"],
+                "amcl_node_subscribers": readback_contract["amcl_node_subscribers"],
+                "amcl_tf_broadcast_param": readback_contract["amcl_tf_broadcast_param"],
+                "amcl_frame_params": readback_contract["amcl_frame_params"],
+                "map_frame_observed": readback_contract["map_frame_observed"],
+                "odom_frame_observed": readback_contract["odom_frame_observed"],
+                "amcl_tf_root_cause": readback_contract["amcl_tf_root_cause"],
                 "tf_failure_classification": readback_contract["tf_failure_classification"],
                 "managed_runtime_started": readback_contract["managed_runtime_started"],
                 "managed_runtime_cleanup_ok": readback_contract["managed_runtime_cleanup_ok"],

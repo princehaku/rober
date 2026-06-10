@@ -111,6 +111,17 @@ class PhaseArtifactWriter:
             "localization_tf_observed": {"map_to_odom": False, "map_to_base_link": False},
             "tf_chain_observed": default_tf_chain_observed(),
             "tf_chain_diagnostics": {},
+            "tf_topics_observed": {"/tf": False, "/tf_static": False},
+            "tf_static_observed": False,
+            "tf_frame_inventory": {"frames": [], "edges": [], "dynamic_edges": [], "static_edges": []},
+            "amcl_pose_frame_id": None,
+            "amcl_node_publishers": [],
+            "amcl_node_subscribers": [],
+            "amcl_tf_broadcast_param": None,
+            "amcl_frame_params": {},
+            "map_frame_observed": False,
+            "odom_frame_observed": False,
+            "amcl_tf_root_cause": "not_evaluated",
             "tf_failure_classification": {
                 "map_to_base_link": "not_evaluated",
                 "frame_naming_consistent": True,
@@ -863,11 +874,272 @@ def tf_chain_frame_contract(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def extract_section(text: str, marker: str) -> str:
+    """组合诊断命令用 marker 分段；解析失败返回空串，避免误用相邻段内容。"""
+    token = f"__{marker}__"
+    start = text.find(token)
+    if start < 0:
+        return ""
+    rest = text[start + len(token) :]
+    # `__PARAM__` 是参数行前缀，不是段 marker；这里只识别固定的大段分隔符。
+    next_positions = [
+        position
+        for section in ("TOPIC_LIST_T", "AMCL_NODE_INFO", "AMCL_PARAMS", "TF_ONCE", "TF_STATIC_ONCE")
+        if section != marker
+        for position in [rest.find(f"\n__{section}__")]
+        if position >= 0
+    ]
+    if next_positions:
+        rest = rest[: min(next_positions)]
+    return rest.strip()
+
+
+def parse_topic_list_with_types(text: str) -> dict[str, str]:
+    """解析 `ros2 topic list -t`，只用于确认 /tf 与 /tf_static 是否在 graph 中。"""
+    topics: dict[str, str] = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line.startswith("/"):
+            continue
+        if "[" in line and "]" in line:
+            topic, type_text = line.split("[", 1)
+            topics[topic.strip()] = type_text.split("]", 1)[0].strip()
+        else:
+            topics[line] = ""
+    return topics
+
+
+def parse_tf_edges(text: str, *, source_topic: str) -> list[dict[str, str]]:
+    """从 TFMessage echo 文本中提取 parent->child；只看 frame_id/child_frame_id。"""
+    edges: list[dict[str, str]] = []
+    for block in text.split("- header:"):
+        parent_match = None
+        child_match = None
+        for line in block.splitlines():
+            stripped = line.strip().strip("'\"")
+            if stripped.startswith("frame_id:"):
+                parent_match = stripped.split(":", 1)[1].strip().strip("'\"")
+            if stripped.startswith("child_frame_id:"):
+                child_match = stripped.split(":", 1)[1].strip().strip("'\"")
+        if parent_match and child_match:
+            edges.append({"parent": parent_match, "child": child_match, "topic": source_topic})
+    return edges
+
+
+def parse_pose_frame_id(text: str) -> str | None:
+    """提取 `/amcl_pose` header.frame_id，用于区分 pose 有了但 map frame 未进 TF。"""
+    for line in text.splitlines():
+        stripped = line.strip().strip("'\"")
+        if stripped.startswith("frame_id:"):
+            value = stripped.split(":", 1)[1].strip().strip("'\"")
+            return value or None
+    return None
+
+
+def parse_node_info_topics(text: str, section_name: str) -> list[dict[str, str]]:
+    """解析 `ros2 node info` 的 Publishers/Subscribers，保留 topic/type 便于远端复盘。"""
+    capture = False
+    topics: list[dict[str, str]] = []
+    for raw_line in text.splitlines():
+        line = raw_line.rstrip()
+        stripped = line.strip()
+        if stripped == f"{section_name}:":
+            capture = True
+            continue
+        if capture and stripped.endswith(":") and not stripped.startswith("*"):
+            break
+        if not capture or not stripped.startswith("* "):
+            continue
+        item = stripped[2:].strip()
+        topic = item
+        topic_type = ""
+        if "[" in item and "]" in item:
+            topic, topic_type = item.split("[", 1)
+            topic_type = topic_type.split("]", 1)[0].strip()
+        topics.append({"topic": topic.strip(), "type": topic_type})
+    return topics
+
+
+def parse_param_probe(text: str) -> dict[str, str]:
+    """解析组合命令中的 AMCL 参数 readback；保留字符串形态避免 ROS CLI 文案差异。"""
+    params: dict[str, str] = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line.startswith("__PARAM__") or "=" not in line:
+            continue
+        name, value = line.removeprefix("__PARAM__").split("=", 1)
+        normalized = value.strip()
+        for prefix in ("String value is:", "Boolean value is:"):
+            if normalized.startswith(prefix):
+                normalized = normalized[len(prefix) :].strip()
+        params[name.strip()] = normalized.strip("'\"")
+    return params
+
+
+def parse_section_status(text: str, marker: str) -> int | None:
+    """读取 source probe 中每段命令退出码；缺失时返回 None 代表旧 artifact。"""
+    token = f"__{marker}__"
+    start = text.find(token)
+    if start < 0:
+        return None
+    tail = text[start + len(token) :].strip().splitlines()
+    if not tail:
+        return None
+    try:
+        return int(tail[0].strip())
+    except ValueError:
+        return None
+
+
+def edge_observed(edges: list[dict[str, str]], parent: str, child: str) -> bool:
+    """frame inventory 里的边用精确 parent/child 匹配，避免子串误判 frame 名。"""
+    return any(edge.get("parent") == parent and edge.get("child") == child for edge in edges)
+
+
+def collect_tf_source_diagnostics(
+    args: argparse.Namespace,
+    *,
+    ros2_ok: bool,
+    amcl_pose_result: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """轻量采集 AMCL/TF source；放在 tf2_echo 前，避免慢查询掩盖 root cause。"""
+    if not ros2_ok:
+        return {
+            "executed": False,
+            "ok": False,
+            "boundary": "ros2_unavailable_tf_source_probe_skipped",
+        }, default_tf_source_diagnostics(args, amcl_pose_result=amcl_pose_result)
+    command = r"""
+set +e
+echo __TOPIC_LIST_T__
+timeout 2 ros2 topic list -t 2>&1
+echo __TOPIC_LIST_STATUS__$?
+echo __TF_STATIC_ONCE__
+timeout 2 ros2 topic echo --once /tf_static tf2_msgs/msg/TFMessage --qos-durability transient_local 2>&1
+echo __TF_STATIC_STATUS__$?
+echo __TF_ONCE__
+timeout 2 ros2 topic echo --once /tf tf2_msgs/msg/TFMessage 2>&1
+echo __TF_STATUS__$?
+echo __AMCL_PARAMS__
+echo __AMCL_NODE_INFO__
+true
+""".strip()
+    result = run_ros(args, command, timeout_s=7.0)
+    return result, build_tf_source_diagnostics(args, result, amcl_pose_result=amcl_pose_result)
+
+
+def default_tf_source_diagnostics(
+    args: argparse.Namespace,
+    *,
+    amcl_pose_result: dict[str, Any],
+) -> dict[str, Any]:
+    """source probe 未执行时仍输出稳定字段，保证 upper/readback 不需要猜 key。"""
+    frame_ids = tf_chain_frame_contract(args)["actual"]
+    amcl_pose_frame_id = parse_pose_frame_id(str(amcl_pose_result.get("stdout") or ""))
+    return {
+        "tf_topics_observed": {"/tf": False, "/tf_static": False},
+        "tf_static_observed": False,
+        "tf_frame_inventory": {"frames": [], "edges": [], "dynamic_edges": [], "static_edges": []},
+        "amcl_pose_frame_id": amcl_pose_frame_id,
+        "amcl_node_publishers": [],
+        "amcl_node_subscribers": [],
+        "amcl_tf_broadcast_param": None,
+        "amcl_frame_params": {},
+        "map_frame_observed": False,
+        "odom_frame_observed": False,
+        "base_frame_observed": False,
+        "laser_frame_observed": False,
+        "map_to_odom_source_observed": False,
+        "odom_to_base_link_source_observed": False,
+        "base_link_to_laser_frame_source_observed": False,
+        "amcl_tf_root_cause": "tf_source_probe_not_executed",
+        "frame_contract": {"actual": frame_ids},
+    }
+
+
+def build_tf_source_diagnostics(
+    args: argparse.Namespace,
+    result: dict[str, Any],
+    *,
+    amcl_pose_result: dict[str, Any],
+) -> dict[str, Any]:
+    """把 `/tf`、`/tf_static`、AMCL node info/params 汇总成稳定 source/timing 字段。"""
+    stdout = str(result.get("stdout") or "")
+    topic_types = parse_topic_list_with_types(extract_section(stdout, "TOPIC_LIST_T"))
+    amcl_info = extract_section(stdout, "AMCL_NODE_INFO")
+    params = parse_param_probe(extract_section(stdout, "AMCL_PARAMS"))
+    dynamic_text = extract_section(stdout, "TF_ONCE")
+    static_text = extract_section(stdout, "TF_STATIC_ONCE")
+    command_statuses = {
+        "topic_list": parse_section_status(stdout, "TOPIC_LIST_STATUS"),
+        "tf_static": parse_section_status(stdout, "TF_STATIC_STATUS"),
+        "tf": parse_section_status(stdout, "TF_STATUS"),
+    }
+    dynamic_edges = parse_tf_edges(dynamic_text, source_topic="/tf")
+    static_edges = parse_tf_edges(static_text, source_topic="/tf_static")
+    edges = [*dynamic_edges, *static_edges]
+    frames = sorted({value for edge in edges for value in (edge.get("parent"), edge.get("child")) if value})
+    frame_ids = tf_chain_frame_contract(args)["actual"]
+    map_to_odom_source_observed = edge_observed(dynamic_edges, "map", frame_ids["odom"])
+    odom_to_base_source_observed = edge_observed(static_edges, frame_ids["odom"], frame_ids["base"])
+    base_to_laser_source_observed = edge_observed(static_edges, frame_ids["base"], frame_ids["laser"])
+    root_cause = "source_inventory_observed"
+    if "/tf" not in topic_types and command_statuses["topic_list"] not in (0, None):
+        root_cause = "tf_topic_list_timeout_or_unavailable"
+    elif "/tf" not in topic_types:
+        root_cause = "/tf_topic_missing"
+    elif params.get("tf_broadcast", "").lower() in {"false", "0"}:
+        root_cause = "amcl_tf_broadcast_disabled"
+    elif params.get("global_frame_id") and params.get("global_frame_id") != "map":
+        root_cause = "amcl_global_frame_id_mismatch"
+    elif params.get("odom_frame_id") and params.get("odom_frame_id") != frame_ids["odom"]:
+        root_cause = "amcl_odom_frame_id_mismatch"
+    elif params.get("base_frame_id") and params.get("base_frame_id") != frame_ids["base"]:
+        root_cause = "amcl_base_frame_id_mismatch"
+    elif not map_to_odom_source_observed:
+        root_cause = "amcl_map_to_odom_tf_not_observed_on_tf"
+    elif not odom_to_base_source_observed:
+        root_cause = "odom_to_base_link_static_tf_not_observed"
+    elif not base_to_laser_source_observed:
+        root_cause = "base_link_to_laser_frame_static_tf_not_observed"
+    return {
+        "tf_topics_observed": {"/tf": "/tf" in topic_types, "/tf_static": "/tf_static" in topic_types},
+        "tf_static_observed": bool(static_edges),
+        "tf_frame_inventory": {
+            "frames": frames,
+            "edges": edges,
+            "dynamic_edges": dynamic_edges,
+            "static_edges": static_edges,
+            "topic_types": topic_types,
+            "command_statuses": command_statuses,
+        },
+        "amcl_pose_frame_id": parse_pose_frame_id(str(amcl_pose_result.get("stdout") or "")),
+        "amcl_node_publishers": parse_node_info_topics(amcl_info, "Publishers"),
+        "amcl_node_subscribers": parse_node_info_topics(amcl_info, "Subscribers"),
+        "amcl_tf_broadcast_param": params.get("tf_broadcast"),
+        "amcl_frame_params": {
+            "global_frame_id": params.get("global_frame_id"),
+            "odom_frame_id": params.get("odom_frame_id"),
+            "base_frame_id": params.get("base_frame_id"),
+        },
+        "map_frame_observed": "map" in frames,
+        "odom_frame_observed": frame_ids["odom"] in frames,
+        "base_frame_observed": frame_ids["base"] in frames,
+        "laser_frame_observed": frame_ids["laser"] in frames,
+        "map_to_odom_source_observed": map_to_odom_source_observed,
+        "odom_to_base_link_source_observed": odom_to_base_source_observed,
+        "base_link_to_laser_frame_source_observed": base_to_laser_source_observed,
+        "amcl_tf_root_cause": root_cause,
+        "frame_contract": tf_chain_frame_contract(args),
+    }
+
+
 def build_tf_chain_diagnostics(
     *,
     args: argparse.Namespace,
     results: dict[str, dict[str, Any]],
     observed: dict[str, bool],
+    tf_source_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """保存每段 TF 的 source/target/原因；命令正文留在 commands，摘要留在顶层。"""
     frame_contract = tf_chain_frame_contract(args)
@@ -881,6 +1153,7 @@ def build_tf_chain_diagnostics(
     diagnostics: dict[str, Any] = {
         "frame_contract": frame_contract,
         "pairs": {},
+        "source_diagnostics": tf_source_diagnostics or {},
     }
     for key, (source, target) in pairs.items():
         result = results.get(key, {"executed": False, "ok": False})
@@ -926,11 +1199,13 @@ def classify_tf_chain_failure(
     """把 `map->base_link` 失败下钻到缺 map、缺 odom/base、命名或 timing。"""
     frame_contract = diagnostics.get("frame_contract") if isinstance(diagnostics.get("frame_contract"), dict) else tf_chain_frame_contract(args)
     pairs = diagnostics.get("pairs") if isinstance(diagnostics.get("pairs"), dict) else {}
+    source_diagnostics = diagnostics.get("source_diagnostics") if isinstance(diagnostics.get("source_diagnostics"), dict) else {}
     classification: dict[str, Any] = {
         "map_to_base_link": "observed" if observed.get("map_to_base_link") else "not_observed",
         "frame_naming_consistent": bool(frame_contract.get("consistent_with_defaults")),
         "blocking_segment": None,
         "reason": None,
+        "amcl_tf_root_cause": source_diagnostics.get("amcl_tf_root_cause"),
     }
     if not classification["frame_naming_consistent"]:
         classification.update(
@@ -945,11 +1220,12 @@ def classify_tf_chain_failure(
         classification["reason"] = "complete_chain_observed"
         return classification
     if not observed.get("map_to_odom"):
+        source_reason = source_diagnostics.get("amcl_tf_root_cause")
         classification.update(
             {
                 "map_to_base_link": "blocked_by_missing_map_to_odom",
                 "blocking_segment": "map_to_odom",
-                "reason": pairs.get("map_to_odom", {}).get("failure_reason", "map_to_odom_not_observed"),
+                "reason": source_reason or pairs.get("map_to_odom", {}).get("failure_reason", "map_to_odom_not_observed"),
             }
         )
         return classification
@@ -1621,6 +1897,30 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             else None
         ),
     )
+    phase_writer.record_phase("tf_source_probe")
+    tf_source_probe_result, tf_source_diagnostics = collect_tf_source_diagnostics(
+        args,
+        ros2_ok=ros2_ok and initialpose_request_payload["enabled"],
+        amcl_pose_result=post_initialpose_amcl_pose_once,
+    )
+    phase_writer.update_snapshot(
+        tf_topics_observed=tf_source_diagnostics["tf_topics_observed"],
+        tf_static_observed=tf_source_diagnostics["tf_static_observed"],
+        tf_frame_inventory=tf_source_diagnostics["tf_frame_inventory"],
+        amcl_pose_frame_id=tf_source_diagnostics["amcl_pose_frame_id"],
+        amcl_node_publishers=tf_source_diagnostics["amcl_node_publishers"],
+        amcl_node_subscribers=tf_source_diagnostics["amcl_node_subscribers"],
+        amcl_tf_broadcast_param=tf_source_diagnostics["amcl_tf_broadcast_param"],
+        amcl_frame_params=tf_source_diagnostics["amcl_frame_params"],
+        map_frame_observed=tf_source_diagnostics["map_frame_observed"],
+        odom_frame_observed=tf_source_diagnostics["odom_frame_observed"],
+        amcl_tf_root_cause=tf_source_diagnostics["amcl_tf_root_cause"],
+    )
+    phase_writer.record_phase(
+        "tf_source_probe",
+        ok=bool(tf_source_diagnostics["tf_topics_observed"].get("/tf")),
+        detail={"amcl_tf_root_cause": tf_source_diagnostics["amcl_tf_root_cause"]},
+    )
     phase_writer.record_phase("tf_probe")
     frame_contract = tf_chain_frame_contract(args)
     frame_ids = frame_contract["actual"]
@@ -1633,14 +1933,34 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     }
 
     def update_tf_progress() -> tuple[dict[str, bool], dict[str, Any], dict[str, Any], dict[str, bool]]:
-        """每段 TF probe 后立刻落 partial，避免 timeout 抹掉已观测链路。"""
+        """每段 TF probe 后立刻落 partial，并优先采信轻量 source inventory。"""
         observed = {
-            "map_to_odom": tf_echo_transform_observed(tf_chain_results["map_to_odom"]),
-            "odom_to_base_link": tf_echo_transform_observed(tf_chain_results["odom_to_base_link"]),
-            "base_link_to_laser_frame": tf_echo_transform_observed(tf_chain_results["base_link_to_laser_frame"]),
-            "map_to_base_link": tf_echo_transform_observed(tf_chain_results["map_to_base_link"]),
+            "map_to_odom": bool(
+                tf_source_diagnostics.get("map_to_odom_source_observed")
+                or tf_echo_transform_observed(tf_chain_results["map_to_odom"])
+            ),
+            "odom_to_base_link": bool(
+                tf_source_diagnostics.get("odom_to_base_link_source_observed")
+                or tf_echo_transform_observed(tf_chain_results["odom_to_base_link"])
+            ),
+            "base_link_to_laser_frame": bool(
+                tf_source_diagnostics.get("base_link_to_laser_frame_source_observed")
+                or tf_echo_transform_observed(tf_chain_results["base_link_to_laser_frame"])
+            ),
+            "map_to_base_link": bool(
+                (
+                    tf_source_diagnostics.get("map_to_odom_source_observed")
+                    and tf_source_diagnostics.get("odom_to_base_link_source_observed")
+                )
+                or tf_echo_transform_observed(tf_chain_results["map_to_base_link"])
+            ),
         }
-        diagnostics = build_tf_chain_diagnostics(args=args, results=tf_chain_results, observed=observed)
+        diagnostics = build_tf_chain_diagnostics(
+            args=args,
+            results=tf_chain_results,
+            observed=observed,
+            tf_source_diagnostics=tf_source_diagnostics,
+        )
         classification = classify_tf_chain_failure(
             args=args,
             observed=observed,
@@ -1661,10 +1981,10 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     map_to_odom_tf = (
         run_ros(
             args,
-            f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo map {shlex.quote(frame_ids['odom'])}",
-            timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
+            f"timeout 2 ros2 run tf2_ros tf2_echo map {shlex.quote(frame_ids['odom'])}",
+            timeout_s=3.0,
         )
-        if ros2_ok and initialpose_request_payload["enabled"]
+        if ros2_ok and initialpose_request_payload["enabled"] and not tf_source_diagnostics.get("map_to_odom_source_observed")
         else tf_not_requested
     )
     tf_chain_results["map_to_odom"] = map_to_odom_tf
@@ -1682,12 +2002,12 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         run_ros(
             args,
             (
-                f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo "
+                f"timeout 2 ros2 run tf2_ros tf2_echo "
                 f"{shlex.quote(frame_ids['odom'])} {shlex.quote(frame_ids['base'])}"
             ),
-            timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
+            timeout_s=3.0,
         )
-        if ros2_ok and initialpose_request_payload["enabled"]
+        if ros2_ok and initialpose_request_payload["enabled"] and not tf_source_diagnostics.get("odom_to_base_link_source_observed")
         else tf_not_requested
     )
     tf_chain_results["odom_to_base_link"] = odom_to_base_link_tf
@@ -1701,7 +2021,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             else None
         ),
     )
-    chain_inputs_observed = bool(tf_echo_transform_observed(map_to_odom_tf) and tf_echo_transform_observed(odom_to_base_link_tf))
+    chain_inputs_observed = bool(tf_chain_observed["map_to_odom"] and tf_chain_observed["odom_to_base_link"])
     map_to_base_link_tf = (
         run_ros(
             args,
@@ -1736,12 +2056,12 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         run_ros(
             args,
             (
-                f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo "
+                f"timeout 2 ros2 run tf2_ros tf2_echo "
                 f"{shlex.quote(frame_ids['base'])} {shlex.quote(frame_ids['laser'])}"
             ),
-            timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
+            timeout_s=3.0,
         )
-        if ros2_ok and initialpose_request_payload["enabled"]
+        if ros2_ok and initialpose_request_payload["enabled"] and not tf_source_diagnostics.get("base_link_to_laser_frame_source_observed")
         else tf_not_requested
     )
     tf_chain_results["base_link_to_laser_frame"] = base_link_to_laser_frame_tf
@@ -1836,12 +2156,28 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     map_observed = topic_once_observed(map_once)
     amcl_pose_observed = bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once))
     tf_chain_observed = {
-        "map_to_odom": tf_echo_transform_observed(map_to_odom_tf),
-        "odom_to_base_link": tf_echo_transform_observed(odom_to_base_link_tf),
-        "base_link_to_laser_frame": tf_echo_transform_observed(base_link_to_laser_frame_tf),
-        "map_to_base_link": tf_echo_transform_observed(map_to_base_link_tf),
+        "map_to_odom": bool(tf_source_diagnostics.get("map_to_odom_source_observed") or tf_echo_transform_observed(map_to_odom_tf)),
+        "odom_to_base_link": bool(
+            tf_source_diagnostics.get("odom_to_base_link_source_observed") or tf_echo_transform_observed(odom_to_base_link_tf)
+        ),
+        "base_link_to_laser_frame": bool(
+            tf_source_diagnostics.get("base_link_to_laser_frame_source_observed")
+            or tf_echo_transform_observed(base_link_to_laser_frame_tf)
+        ),
+        "map_to_base_link": bool(
+            (
+                tf_source_diagnostics.get("map_to_odom_source_observed")
+                and tf_source_diagnostics.get("odom_to_base_link_source_observed")
+            )
+            or tf_echo_transform_observed(map_to_base_link_tf)
+        ),
     }
-    tf_chain_diagnostics = build_tf_chain_diagnostics(args=args, results=tf_chain_results, observed=tf_chain_observed)
+    tf_chain_diagnostics = build_tf_chain_diagnostics(
+        args=args,
+        results=tf_chain_results,
+        observed=tf_chain_observed,
+        tf_source_diagnostics=tf_source_diagnostics,
+    )
     tf_failure_classification = classify_tf_chain_failure(
         args=args,
         observed=tf_chain_observed,
@@ -1857,6 +2193,17 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         tf_chain_observed=tf_chain_observed,
         tf_chain_diagnostics=tf_chain_diagnostics,
         tf_failure_classification=tf_failure_classification,
+        tf_topics_observed=tf_source_diagnostics["tf_topics_observed"],
+        tf_static_observed=tf_source_diagnostics["tf_static_observed"],
+        tf_frame_inventory=tf_source_diagnostics["tf_frame_inventory"],
+        amcl_pose_frame_id=tf_source_diagnostics["amcl_pose_frame_id"],
+        amcl_node_publishers=tf_source_diagnostics["amcl_node_publishers"],
+        amcl_node_subscribers=tf_source_diagnostics["amcl_node_subscribers"],
+        amcl_tf_broadcast_param=tf_source_diagnostics["amcl_tf_broadcast_param"],
+        amcl_frame_params=tf_source_diagnostics["amcl_frame_params"],
+        map_frame_observed=tf_source_diagnostics["map_frame_observed"],
+        odom_frame_observed=tf_source_diagnostics["odom_frame_observed"],
+        amcl_tf_root_cause=tf_source_diagnostics["amcl_tf_root_cause"],
     )
     localization_ready = bool(
         scan_observed and map_observed and lifecycle_active.get("map_server") and lifecycle_active.get("amcl")
@@ -2042,6 +2389,17 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "localization_tf_observed": localization_tf_observed,
         "tf_chain_observed": tf_chain_observed,
         "tf_chain_diagnostics": tf_chain_diagnostics,
+        "tf_topics_observed": tf_source_diagnostics["tf_topics_observed"],
+        "tf_static_observed": tf_source_diagnostics["tf_static_observed"],
+        "tf_frame_inventory": tf_source_diagnostics["tf_frame_inventory"],
+        "amcl_pose_frame_id": tf_source_diagnostics["amcl_pose_frame_id"],
+        "amcl_node_publishers": tf_source_diagnostics["amcl_node_publishers"],
+        "amcl_node_subscribers": tf_source_diagnostics["amcl_node_subscribers"],
+        "amcl_tf_broadcast_param": tf_source_diagnostics["amcl_tf_broadcast_param"],
+        "amcl_frame_params": tf_source_diagnostics["amcl_frame_params"],
+        "map_frame_observed": tf_source_diagnostics["map_frame_observed"],
+        "odom_frame_observed": tf_source_diagnostics["odom_frame_observed"],
+        "amcl_tf_root_cause": tf_source_diagnostics["amcl_tf_root_cause"],
         "tf_failure_classification": tf_failure_classification,
         "managed_runtime_requested": bool(managed_runtime["requested"]),
         "managed_runtime_started": bool(managed_runtime.get("started")),
@@ -2067,6 +2425,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             "amcl_pose_once": amcl_pose_once,
             "initialpose_publish": initialpose_publish,
             "post_initialpose_amcl_pose_once": post_initialpose_amcl_pose_once,
+            "tf_source_probe": tf_source_probe_result,
             "map_to_odom_tf": map_to_odom_tf,
             "odom_to_base_link_tf": odom_to_base_link_tf,
             "base_link_to_laser_frame_tf": base_link_to_laser_frame_tf,

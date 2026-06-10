@@ -1,0 +1,5 @@
+service=active
+ros_processes
+220744 zsh -c printf "service="; systemctl is-active trashbot-upper-robot-api.service; printf "ros_processes\n"; pgrep -af "o10_amcl_nav2_runtime_proof|lidar_driver|nav2_map_server|nav2_amcl|nav2_lifecycle_manager|tf2_ros static_transform_publisher|planner_server|controller_server" || true; printf "ttyS5\n"; fuser /dev/ttyS5 2>/dev/null || true; lsof /dev/ttyS5 2>/dev/null || true; printf "ttyACM0\n"; fuser /dev/ttyACM0 2>/dev/null || true; lsof /dev/ttyACM0 2>/dev/null || true
+ttyS5
+ttyACM0

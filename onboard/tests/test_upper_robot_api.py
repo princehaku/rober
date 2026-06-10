@@ -446,6 +446,22 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                         }
                     }
                 },
+                "tf_topics_observed": {"/tf": True, "/tf_static": True},
+                "tf_static_observed": True,
+                "tf_frame_inventory": {
+                    "frames": ["base_link", "laser_frame", "map", "odom"],
+                    "edges": [{"parent": "map", "child": "odom", "topic": "/tf"}],
+                    "dynamic_edges": [{"parent": "map", "child": "odom", "topic": "/tf"}],
+                    "static_edges": [{"parent": "odom", "child": "base_link", "topic": "/tf_static"}],
+                },
+                "amcl_pose_frame_id": "map",
+                "amcl_node_publishers": [{"topic": "/amcl_pose", "type": "geometry_msgs/msg/PoseWithCovarianceStamped"}],
+                "amcl_node_subscribers": [{"topic": "/scan", "type": "sensor_msgs/msg/LaserScan"}],
+                "amcl_tf_broadcast_param": "True",
+                "amcl_frame_params": {"global_frame_id": "map", "odom_frame_id": "odom", "base_frame_id": "base_link"},
+                "map_frame_observed": True,
+                "odom_frame_observed": True,
+                "amcl_tf_root_cause": "source_inventory_observed",
                 "tf_failure_classification": {
                     "map_to_base_link": "observed",
                     "frame_naming_consistent": True,
@@ -500,6 +516,11 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["localization_tf_observed"]["map_to_base_link"])
         self.assertTrue(payload["tf_chain_observed"]["odom_to_base_link"])
         self.assertTrue(payload["tf_chain_observed"]["base_link_to_laser_frame"])
+        self.assertTrue(payload["tf_topics_observed"]["/tf"])
+        self.assertTrue(payload["tf_static_observed"])
+        self.assertEqual("map", payload["amcl_pose_frame_id"])
+        self.assertEqual("True", payload["amcl_tf_broadcast_param"])
+        self.assertEqual("source_inventory_observed", payload["amcl_tf_root_cause"])
         self.assertEqual("observed", payload["tf_failure_classification"]["map_to_base_link"])
         self.assertTrue(payload["managed_runtime_started"])
         self.assertFalse(payload["path_generation_opt_in"])
@@ -517,6 +538,8 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(latest["amcl_pose_observed"])
         self.assertTrue(latest["latest_localization_tf_observed"])
         self.assertTrue(latest["tf_chain_observed"]["map_to_base_link"])
+        self.assertTrue(latest["tf_topics_observed"]["/tf_static"])
+        self.assertEqual("map", latest["amcl_frame_params"]["global_frame_id"])
         self.assertFalse(latest["safe_to_control"])
 
     def test_localize_proof_latest_exposes_phase_partial_fields(self) -> None:
@@ -554,6 +577,22 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                         }
                     }
                 },
+                "tf_topics_observed": {"/tf": True, "/tf_static": True},
+                "tf_static_observed": True,
+                "tf_frame_inventory": {
+                    "frames": ["base_link", "laser_frame", "odom"],
+                    "edges": [{"parent": "odom", "child": "base_link", "topic": "/tf_static"}],
+                    "dynamic_edges": [],
+                    "static_edges": [{"parent": "odom", "child": "base_link", "topic": "/tf_static"}],
+                },
+                "amcl_pose_frame_id": "map",
+                "amcl_node_publishers": [{"topic": "/amcl_pose", "type": "geometry_msgs/msg/PoseWithCovarianceStamped"}],
+                "amcl_node_subscribers": [{"topic": "/initialpose", "type": "geometry_msgs/msg/PoseWithCovarianceStamped"}],
+                "amcl_tf_broadcast_param": "True",
+                "amcl_frame_params": {"global_frame_id": "map", "odom_frame_id": "odom", "base_frame_id": "base_link"},
+                "map_frame_observed": False,
+                "odom_frame_observed": True,
+                "amcl_tf_root_cause": "amcl_map_to_odom_tf_not_observed_on_tf",
                 "tf_failure_classification": {
                     "map_to_base_link": "blocked_by_missing_odom_to_base_link",
                     "blocking_segment": "odom_to_base_link",
@@ -592,6 +631,11 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(latest["tf_chain_observed"]["map_to_odom"])
         self.assertFalse(latest["tf_chain_observed"]["odom_to_base_link"])
         self.assertEqual("blocked_by_missing_odom_to_base_link", latest["tf_failure_classification"]["map_to_base_link"])
+        self.assertTrue(latest["tf_topics_observed"]["/tf"])
+        self.assertEqual("map", latest["amcl_pose_frame_id"])
+        self.assertEqual("amcl_map_to_odom_tf_not_observed_on_tf", latest["amcl_tf_root_cause"])
+        self.assertFalse(latest["map_frame_observed"])
+        self.assertTrue(latest["odom_frame_observed"])
         self.assertFalse(latest["safe_to_control"])
 
     def test_default_localization_artifact_resolves_to_onboard_runtime(self) -> None:
