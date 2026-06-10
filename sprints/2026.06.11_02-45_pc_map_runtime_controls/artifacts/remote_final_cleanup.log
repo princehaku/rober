@@ -1,0 +1,8 @@
+== final devices ==
+== final target processes ==
+== service ==
+active
+== files ==
+-rw-r--r-- 1 root root 14874 Jun 11 02:52 /root/rober/onboard/runtime/map_lifecycle_latest.json
+-rw-r--r-- 1 root root  8218 Jun 11 02:52 /root/rober/onboard/runtime/maps/pc_runtime_v1.pgm
+-rw-r--r-- 1 root root   166 Jun 11 02:52 /root/rober/onboard/runtime/maps/pc_runtime_v1.yaml

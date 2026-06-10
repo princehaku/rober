@@ -1752,7 +1752,43 @@ Use the summary with these ownership rules:
 
 The procurement summary can be attached to route/elevator handoff material as context, not as a replacement for `nav2_fixed_route_runtime_log.json`, route status, task record, completion signal, door state, target-floor confirmation, or diagnostics mobile-safe summary. If any sensor material is missing, placeholder, cross-run, or outside the safe copy whitelist, keep the owner handoff blocked/not_proven and rerun the Hardware intake before Autonomy treats it as planning input.
 
-### 7.2 Route code structure after 2026-05-25 refactor
+### 7.2 PC Map Runtime Controls V1 boundary
+
+2026-06-11 的 `PC/上位机 Map Start/Save Runtime Controls V1` 让 PC 高级诊断
+可以通过固定代理触发上位机 no-motion map runtime：
+
+- PC 固定代理：
+  - `POST /api/robot-control/map/start?baseUrl=<upper-api>`
+  - `POST /api/robot-control/map/save?baseUrl=<upper-api>`
+- 上位机固定入口：
+  - `POST /api/map/start`
+  - `POST /api/map/save`
+- helper：
+  - `onboard/scripts/o3_map_lifecycle_proof.py`
+
+该 runtime 的算法边界是：启动 LiDAR + SLAM，等待 `/scan`、`/map`，调用
+`/trashbot/save_map`，写出 `map_name.yaml/pgm`，最后清理本轮进程。`map_name`
+只允许短安全基名；`artifact_path` 在上位机响应中明确标记为 ignored，不参与写路径。
+
+本轮实板 smoke 在 `root@192.168.1.11:37878` 上生成：
+
+- `/root/rober/onboard/runtime/maps/pc_runtime_v1.yaml`
+- `/root/rober/onboard/runtime/maps/pc_runtime_v1.pgm`
+- `/root/rober/onboard/runtime/maps/pc_proxy_start.yaml`
+- `/root/rober/onboard/runtime/maps/pc_proxy_start.pgm`
+- `/root/rober/onboard/runtime/maps/pc_proxy_save2.yaml`
+- `/root/rober/onboard/runtime/maps/pc_proxy_save2.pgm`
+
+它们只能作为后续 map quality、AMCL/Nav2 readiness 和 fixed-route 采集的输入候选，
+不能直接作为可导航地图或路线执行通过。后续进入 Nav2/fixed-route 前仍必须补：
+
+- map quality gate；
+- AMCL `/initialpose` 与 `/amcl_pose` 材料；
+- map_server/amcl/planner/controller lifecycle readback；
+- fixed-route route.csv/keyframe/route replay 或真实路线 runtime log；
+- 无 `/cmd_vel` 误发、无 `/api/base/*`、无 `/dev/ttyS5` 底盘占用的同轮证据。
+
+### 7.3 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:
 

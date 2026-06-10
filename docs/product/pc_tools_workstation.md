@@ -226,6 +226,42 @@ Hardware Materials 是 Node-native 只读入口，不恢复旧 Python evidence g
 
 Robot Control V1 读取到 Robot API status/latest/readback 也只能证明“PC 端可读到短摘要”。端点级只读超时只用于减少真实慢端点被误判成 `fetch_failed`，固定 manual/stop 代理也只证明 workstation 能按安全门槛转发受控点动请求，不代表 UI 可以自由控制，也不代表控制安全边界放松。它不证明真实手控已开放、真实 `/cmd_vel` 发布、真实 `/api/base/manual` 已安全放开、真实 Nav2 goal dispatch、真实 map/radar runtime 启动、真实 Camera/LiDAR/Base HIL、真实 robot ACK 或真实 delivery success。Robot API 不可达、schema drift、缺字段、Mock fallback、O6 detail 不可达或危险 true 字段出现时，页面必须继续显示 blocked reason，并保持 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
 
+## PC Map Runtime Controls V1
+
+2026-06-11 起，Robot Control 的普通首屏仍保持五卡片简洁布局。地图卡片只显示
+`刷新地图`、`查看地图列表` 和短状态，不显示 `开始建图`、`保存地图`、`Start`、
+`Reset`、`raw`、`HIL`、速度或点动类工程控件。
+
+`高级诊断` 的地图详情允许固定 map lifecycle 操作：
+
+- `地图列表`：GET-only 固定代理到上位机 `/api/map/list`。
+- `开始建图（高级）`：POST 固定代理到上位机 `/api/map/start`。
+- `保存地图`：POST 固定代理到上位机 `/api/map/save`。
+- `Reset（受控/高级，禁用）`：仍保持禁用。
+
+PC 代理 body 只允许短 `map_name` 和相对 `artifact_path` 字段；未知字段、绝对路径、
+路径穿越或 shell 字符串会被拒绝。上位机再次校验 `map_name`，并忽略
+`artifact_path`，地图文件只写入配置的 `map_artifact_dir`。
+
+代理判定规则：
+
+- `command_result.executed=true` 不再单独导致 `lifecycle_failed`，因为 no-motion
+  helper 的 start/save 必须真实执行 ROS2 LiDAR+SLAM runtime 才能产出地图材料。
+- 仍然 fail closed 于 HTTP 非 OK、远端 `failure_reason/error`、以及任何硬危险字段
+  true：`safe_to_control`、`delivery_success`、`primary_actions_enabled`、
+  `robot_control_executed`、`sends_motion_commands`、`sends_base_motion_commands`、
+  `publishes_cmd_vel`、`calls_base_manual`、`uses_base_uart` 等。
+- 顶层 PC 合同继续固定 `safe_to_control=false`、`delivery_success=false`、
+  `primary_actions_enabled=false`、`robot_control_executed=false`。
+
+本轮 Browser smoke 结论：首屏 `.robot-console-grid` 为 5 张卡片，地图卡片只含
+`刷新地图` 与 `查看地图列表`；首屏未出现 `开始建图`、`保存地图`、`Start`、
+`Reset`、`raw`、`HIL`、`速度`、`点动`。打开 `高级诊断` 后，地图详情包含
+`开始建图（高级）`、`保存地图`、`map_name（可选）` 和 `artifact_path（可选）`。
+
+边界：该能力只证明 PC 可以经固定代理触发上位机 no-motion map runtime，不证明
+地图质量、Nav2 可行驶、真实运动、WAVE ROVER HIL、robot ACK 或 delivery success。
+
 ## 禁止声明
 
 第一阶段不得声明完成：
@@ -238,9 +274,13 @@ Robot Control V1 读取到 Robot API status/latest/readback 也只能证明“PC
 - 4G、云端、OSS/CDN 生产链路
 - 真实训练、真实标注、真实投放或真实交付成功
 - O7 实时地图/机器人位置、电梯状态链、历史路线回放、标注提交、ASR/TTS runtime、手控或寻路 dispatch
-- Robot Control V1 已经放开真实持续手控、真实 `/cmd_vel`、真实自动导航、Nav2 goal、map start、radar start、keyboard control 或 map click goal
+- Robot Control V1 已经放开真实持续手控、真实 `/cmd_vel`、真实自动导航、Nav2 goal、radar start、keyboard control 或 map click goal
+- PC Map Runtime Controls V1 已经证明地图质量、Nav2 可行驶、真实运动、HIL 或 delivery success
 
-UI 不提供 Start、Confirm、Cancel、Dropoff、Collect 或任何真实控制入口。
+普通首屏不提供工程 Start/Save/Reset、Confirm、Cancel、Dropoff、Collect、Nav2 goal、
+手控、速度/点动或任何真实运动/交付控制入口。当前仅 `高级诊断` 地图详情提供
+no-motion map runtime 的 `开始建图（高级）` / `保存地图` 固定入口；它们只触发
+LiDAR+SLAM 建图材料采集，不等于真实底盘控制、Nav2 执行、delivery 或安全放行。
 
 ## 运行与验证
 

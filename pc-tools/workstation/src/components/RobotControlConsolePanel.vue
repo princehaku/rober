@@ -6,6 +6,7 @@ import {
   getRobotControlMapList,
   postRobotControlBaseManual,
   postRobotControlBaseStop,
+  postRobotControlMapStart,
   postRobotControlMapSave,
   postRobotControlMapProofRefresh,
   postRobotControlNav2ProofRefresh,
@@ -434,7 +435,7 @@ function mapLifecycleRequestBody() {
   };
 }
 
-function makeMapLifecycleFallback(action: "list" | "save", reason: string): RobotControlMapLifecycleResponse {
+function makeMapLifecycleFallback(action: "list" | "start" | "save", reason: string): RobotControlMapLifecycleResponse {
   // fetch 级失败仍补完整字段，避免地图卡片在错误时消失或误读成成功。
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
@@ -448,14 +449,14 @@ function makeMapLifecycleFallback(action: "list" | "save", reason: string): Robo
     proxy_status: "lifecycle_failed",
     source_base_url: robotApiBaseUrl.value,
     normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
-    remote_endpoint: action === "list" ? "/api/map/list" : "/api/map/save",
+    remote_endpoint: action === "list" ? "/api/map/list" : action === "start" ? "/api/map/start" : "/api/map/save",
     remote_method: action === "list" ? "GET" : "POST",
     remote_http_status: null,
     status: "blocked",
     map_count: null,
     map_names: [],
     command_result: { mode: "not_loaded", executed: false, ok: null },
-    request_body: action === "save" ? mapLifecycleRequestBody() : {},
+    request_body: action === "start" || action === "save" ? mapLifecycleRequestBody() : {},
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
@@ -648,7 +649,7 @@ async function refreshNav2Proof(): Promise<void> {
 }
 
 async function runMapLifecycleAction(
-  action: "list" | "save",
+  action: "list" | "start" | "save",
   request: () => Promise<RobotControlMapLifecycleResponse>,
 ): Promise<void> {
   // 地图 lifecycle 动作结束后回刷 summary，让首页连接状态和高级 readback 保持一致。
@@ -671,8 +672,13 @@ async function loadMapList(): Promise<void> {
   await runMapLifecycleAction("list", () => getRobotControlMapList(robotApiBaseUrl.value));
 }
 
+async function startMapRuntime(): Promise<void> {
+  // 开始建图只在高级诊断内开放，走固定 /api/map/start no-motion runtime helper。
+  await runMapLifecycleAction("start", () => postRobotControlMapStart(robotApiBaseUrl.value, mapLifecycleRequestBody()));
+}
+
 async function saveMap(): Promise<void> {
-  // 保存只调用固定 /api/map/save；命令未配置时预期由上位机返回 software guard。
+  // 保存只调用固定 /api/map/save；上位机会忽略 artifact_path 并在固定目录产出地图。
   await runMapLifecycleAction("save", () => postRobotControlMapSave(robotApiBaseUrl.value, mapLifecycleRequestBody()));
 }
 
@@ -1129,8 +1135,8 @@ onBeforeUnmount(() => {
             <button class="secondary" type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="saveMap">
               保存地图
             </button>
-            <button class="secondary" type="button" disabled title="受控/高级：本轮禁止真实 map start smoke">
-              Start（受控/高级，禁用）
+            <button class="secondary" type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="startMapRuntime">
+              开始建图（高级）
             </button>
             <button class="secondary" type="button" disabled title="受控/高级：本轮不开放 reset">
               Reset（受控/高级，禁用）

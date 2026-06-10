@@ -1,0 +1,20 @@
+== proof latest compact ==
+{
+  "http_status_field": "not_proven",
+  "latest_status": "blocked_with_root_cause",
+  "proof_status": "blocked_with_root_cause",
+  "root_causes": [
+    {
+      "layer": "SLAM/TF/topic remap",
+      "reason": "/map_once_not_observed"
+    }
+  ],
+  "scan_once_observed": true,
+  "map_once_observed": false,
+  "map_file_observed": true,
+  "map_metadata_observed": false,
+  "save_map_ok": false,
+  "runtime_ok": true,
+  "runtime_log_tail": "nc_slam_toolbox_node-1] [INFO] [1781117675.764545491] [slam_toolbox]: Using solver plugin solver_plugins::CeresSolver\n[lidar_driver-3] [INFO] [1781117677.468406613] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000\n[async_slam_toolbox_node-1] [WARN] [1781117678.353502509] [slam_toolbox]: minimum laser range setting (0.0 m) exceeds the capabilities of the used Lidar (0.1 m)\n[async_slam_toolbox_node-1] Info: clipped range threshold to be within minimum and maximum range!\n[async_slam_toolbox_node-1] Registering sensor: [Custom Described Lidar]\n[async_slam_toolbox_node-1] LaserRangeScan contains 9 range readings, expected 8\n[async_slam_toolbox_node-1] [WARN] [1781117678.354107299] [slam_toolbox]: maximum laser range setting (25.0 m) exceeds the capabilities of the used Lidar (8.0 m)\n"
+}
+== cleanup ==

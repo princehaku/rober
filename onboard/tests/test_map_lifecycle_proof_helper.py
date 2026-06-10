@@ -40,8 +40,23 @@ class MapLifecycleProofHelperTests(unittest.TestCase):
         self.assertEqual(0, result.returncode)
         self.assertIn("--output", result.stdout)
         self.assertIn("--map-dir", result.stdout)
+        self.assertIn("--map-name", result.stdout)
         self.assertIn("--timeout-s", result.stdout)
         self.assertNotIn("ros2 launch", result.stdout)
+
+    def test_rejects_unsafe_map_name_before_ros_runtime(self) -> None:
+        """map_name 只能是短基名，不能用路径穿越影响保存位置。"""
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--map-name", "../bad"],
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=5,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("map_name must match", result.stderr)
+        self.assertNotIn("ros2 launch", result.stdout + result.stderr)
 
     def test_static_no_motion_guard_terms(self) -> None:
         """helper 只能做 no-motion map proof，不能夹带运动控制入口。"""

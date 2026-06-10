@@ -1,0 +1,7 @@
+== final devices after proxy ==
+== final target processes after proxy ==
+== maps ==
+-rw-r--r-- 1 root root 52223 Jun 11 02:56 /root/rober/onboard/runtime/maps/pc_proxy_save2.pgm
+-rw-r--r-- 1 root root   165 Jun 11 02:56 /root/rober/onboard/runtime/maps/pc_proxy_save2.yaml
+-rw-r--r-- 1 root root 47468 Jun 11 02:54 /root/rober/onboard/runtime/maps/pc_proxy_start.pgm
+-rw-r--r-- 1 root root   165 Jun 11 02:54 /root/rober/onboard/runtime/maps/pc_proxy_start.yaml

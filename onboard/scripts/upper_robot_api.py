@@ -8,6 +8,7 @@ import asyncio
 import glob
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -41,8 +42,9 @@ DEFAULT_ONBOARD_WORKDIR = "/root/rober/onboard"
 DEFAULT_MAP_ARTIFACT_DIR = "/root/rober/onboard/runtime/maps"
 DEFAULT_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "/root/rober/onboard/runtime/map_lifecycle_latest.json"
 LEGACY_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH = "/root/rober/runtime/map_lifecycle_latest.json"
-DEFAULT_MAP_LIFECYCLE_PROOF_REFRESH_TIMEOUT_S = 45.0
+DEFAULT_MAP_LIFECYCLE_PROOF_REFRESH_TIMEOUT_S = 70.0
 MAP_LIFECYCLE_OBSERVED_STATUS = "map_once_artifact_metadata_observed"
+SAFE_MAP_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 DEFAULT_LOCALIZATION_ARTIFACT_PATH = "runtime/localization_reset_latest.json"
 DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_lifecycle_latest.json"
 DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S = 8.0
@@ -392,6 +394,7 @@ def run_map_lifecycle_proof_helper(
     artifact_path: str,
     map_artifact_dir: str,
     timeout_s: float,
+    map_name: str | None = None,
 ) -> dict[str, Any]:
     """运行 no-motion map proof helper；该入口只启动 LiDAR/SLAM，不接触底盘控制。"""
     script_path = Path(__file__).resolve().with_name("o3_map_lifecycle_proof.py")
@@ -405,6 +408,9 @@ def run_map_lifecycle_proof_helper(
         "--timeout-s",
         str(timeout_s),
     ]
+    if map_name:
+        # map_name 已由 API body 白名单校验；这里仍用 argv 传参，禁止 shell 拼接。
+        command.extend(["--map-name", map_name])
     started_ms = now_ms()
     try:
         completed = subprocess.run(  # noqa: S603 - command argv 固定为本仓库 helper。
@@ -424,7 +430,11 @@ def run_map_lifecycle_proof_helper(
             "stdout_preview": completed.stdout[-4000:],
             "stderr_preview": completed.stderr[-4000:],
             "safe_to_control": False,
+            "sends_motion_commands": False,
             "sends_base_motion_commands": False,
+            "publishes_cmd_vel": False,
+            "calls_base_manual": False,
+            "uses_base_uart": False,
             "robot_control_executed": False,
         }
     except subprocess.TimeoutExpired as exc:
@@ -438,7 +448,11 @@ def run_map_lifecycle_proof_helper(
             "stdout_preview": (exc.stdout or "")[-4000:] if isinstance(exc.stdout, str) else "",
             "stderr_preview": (exc.stderr or "")[-4000:] if isinstance(exc.stderr, str) else "",
             "safe_to_control": False,
+            "sends_motion_commands": False,
             "sends_base_motion_commands": False,
+            "publishes_cmd_vel": False,
+            "calls_base_manual": False,
+            "uses_base_uart": False,
             "robot_control_executed": False,
         }
     except Exception as exc:  # noqa: BLE001 - 现场脚本/权限问题必须结构化写回。
@@ -450,7 +464,11 @@ def run_map_lifecycle_proof_helper(
             "elapsed_ms": now_ms() - started_ms,
             "error": compact_error(exc),
             "safe_to_control": False,
+            "sends_motion_commands": False,
             "sends_base_motion_commands": False,
+            "publishes_cmd_vel": False,
+            "calls_base_manual": False,
+            "uses_base_uart": False,
             "robot_control_executed": False,
         }
 
@@ -739,6 +757,8 @@ def operator_report_guard_flags() -> dict[str, Any]:
         "sends_commands": False,
         "sends_motion_commands": False,
         "sends_base_motion_commands": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
         "uses_base_uart": False,
         "opens_serial": False,
         "starts_ros2": False,
@@ -1430,6 +1450,30 @@ def software_guard_payload(
     return payload
 
 
+def normalize_map_runtime_body(body: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str] | None]:
+    """直连上位机也必须校验 body；artifact_path 只回显忽略，不能成为写文件入口。"""
+    raw_map_name = body.get("map_name")
+    map_name = "trashbot_map"
+    if raw_map_name is not None:
+        if not isinstance(raw_map_name, str):
+            return {}, {"type": "invalid_map_name", "message": "map_name must be a string"}
+        candidate = raw_map_name.strip()
+        if not SAFE_MAP_NAME_PATTERN.fullmatch(candidate):
+            return {}, {
+                "type": "invalid_map_name",
+                "message": "map_name must match ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$",
+            }
+        map_name = candidate
+    ignored_artifact_path = body.get("artifact_path") if body.get("artifact_path") is not None else None
+    return {
+        "map_name": map_name,
+        "requested_map_name": raw_map_name,
+        "requested_artifact_path": ignored_artifact_path,
+        "artifact_path_ignored": ignored_artifact_path is not None,
+        "artifact_path_policy": "ignored_by_upper_api; map files always go under configured map_artifact_dir",
+    }, None
+
+
 def runtime_boundary_flags() -> dict[str, Any]:
     """所有 ROS2 runtime 材料 readback 都保守关闭控制和 OKR 完成宣称。"""
     return {
@@ -1666,6 +1710,8 @@ def map_lifecycle_runtime_readback_contract(latest: dict[str, Any] | None) -> di
         "robot_control_executed": False,
         "sends_motion_commands": False,
         "sends_base_motion_commands": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
         "uses_base_uart": False,
         "opens_serial": False,
         "starts_ros2": False,
@@ -3185,7 +3231,7 @@ class UpperRobotApi:
         }
 
     def map_control(self, action: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
-        """建图 lifecycle 先提供 HTTP 合同；默认不启动 ROS2，不伪造地图产物。"""
+        """建图 start/save 进入 no-motion helper；reset/load 继续保持 guard。"""
         body = body if isinstance(body, dict) else {}
         command_by_action = {
             "start": ("ROBER_MAP_START_COMMAND", self.map_start_command, ROUTE_PATHS["map_start"]),
@@ -3202,6 +3248,75 @@ class UpperRobotApi:
                 extra={"error": {"type": "unsupported_map_action", "message": "action must be start/reset/save/load"}},
             )
         command_env, command, endpoint = command_by_action[action]
+        normalized_body, body_error = normalize_map_runtime_body(body)
+        if body_error:
+            return software_guard_payload(
+                schema_suffix="map_lifecycle_result",
+                action=f"map_{action}",
+                endpoint=endpoint,
+                command_env=command_env,
+                command=command,
+                command_result={"mode": "map_lifecycle_body_guard", "executed": False, "ok": False, "error": body_error},
+                artifact=map_artifact_info(self.map_artifact_dir),
+                extra={
+                    "failure_reason": body_error["type"],
+                    "blocked_reasons": [body_error["type"]],
+                    "requested_map_name": body.get("map_name"),
+                    "requested_artifact_path": body.get("artifact_path"),
+                },
+            )
+        if action in {"start", "save"}:
+            # V1 使用同一个受控 no-motion runtime：启动 LiDAR+SLAM、观测 /map、调用 save_map、清场。
+            command_result = run_map_lifecycle_proof_helper(
+                artifact_path=self.map_lifecycle_proof_artifact_path,
+                map_artifact_dir=self.map_artifact_dir,
+                timeout_s=DEFAULT_MAP_LIFECYCLE_PROOF_REFRESH_TIMEOUT_S,
+                map_name=str(normalized_body["map_name"]),
+            )
+            latest_http_status, latest_payload = self.map_proof_latest()
+            latest_result = latest_payload.get("latest_result") if isinstance(latest_payload.get("latest_result"), dict) else None
+            contract = map_lifecycle_runtime_readback_contract(latest_result)
+            failure_reason = None
+            blocked_reasons: list[str] = []
+            if not command_result.get("ok"):
+                failure_reason = "map_lifecycle_runtime_helper_failed"
+                blocked_reasons.append(failure_reason)
+            elif contract["status"] != MAP_LIFECYCLE_OBSERVED_STATUS:
+                failure_reason = "map_lifecycle_runtime_proof_not_clean"
+                blocked_reasons.append(failure_reason)
+            payload = software_guard_payload(
+                schema_suffix="map_lifecycle_result",
+                action=f"map_{action}",
+                endpoint=endpoint,
+                command_env="built_in_no_motion_map_lifecycle_helper",
+                command="o3_map_lifecycle_proof.py",
+                command_result=command_result,
+                artifact=map_artifact_info(self.map_artifact_dir),
+                extra={
+                    **normalized_body,
+                    **contract,
+                    "failure_reason": failure_reason,
+                    "blocked_reasons": blocked_reasons,
+                    "latest_readback_http_status": latest_http_status,
+                    "latest_result": latest_result,
+                    "proof_artifact": map_lifecycle_proof_artifact_info(self.map_lifecycle_proof_artifact_path),
+                    "map_lifecycle_status": self.map_status(),
+                    "scope": "no_motion_lidar_slam_map_runtime_control",
+                    "no_motion_runtime_control": True,
+                    "does_not_prove": [
+                        "slam_map_quality",
+                        "nav2_execution",
+                        "real_motion",
+                        "delivery_success",
+                    ],
+                },
+            )
+            payload["operator_message"] = (
+                "no-motion map runtime proof attached; artifact_path was ignored"
+                if not failure_reason
+                else "no-motion map runtime helper failed; inspect latest_result.root_causes"
+            )
+            return payload
         command_result = run_configured_command(command)
         return software_guard_payload(
             schema_suffix="map_lifecycle_result",
@@ -3212,8 +3327,7 @@ class UpperRobotApi:
             command_result=command_result,
             artifact=map_artifact_info(self.map_artifact_dir),
             extra={
-                "requested_map_name": body.get("map_name"),
-                "requested_artifact_path": body.get("artifact_path"),
+                **normalized_body,
                 "proof_artifact": map_lifecycle_proof_artifact_info(self.map_lifecycle_proof_artifact_path),
                 "map_lifecycle_status": self.map_status(),
                 "transition_to_proven": [

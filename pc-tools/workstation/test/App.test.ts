@@ -3001,9 +3001,15 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("command_result");
     expect(wrapper.find("details").text()).toContain("executed=false");
     expect(wrapper.find("details").text()).toContain("software_guard_command_not_configured");
-    expect(wrapper.find("details").text()).toContain("Start（受控/高级，禁用）");
+    expect(wrapper.find("details").text()).toContain("开始建图（高级）");
     expect(wrapper.find("details").text()).toContain("Reset（受控/高级，禁用）");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/save") && options?.method === "POST")).toBe(true);
+
+    await wrapper.findAll("button").find((button) => button.text() === "开始建图（高级）")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/start") && options?.method === "POST")).toBe(true);
   });
 
   it("starts and stops Camera Preview through workstation camera proxy while keeping control locked", async () => {

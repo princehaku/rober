@@ -4378,8 +4378,57 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("workstation map lifecycle proxy fails closed on dangerous true fields and executed command result", async () => {
-    // 上位机如果声称危险 true 或命令已执行，PC 端仍保持 blocked/not_proven 合同。
+  it("workstation map lifecycle proxy forwards safe executed no-motion helper results", async () => {
+    // executed=true 只代表受控 no-motion helper 跑过；只要无危险字段和远端 failure，代理应通过。
+    const upstream = await listenRobotMapLifecycleApi({
+      "/api/map/save": {
+        method: "POST",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_lifecycle_result",
+          status: "map_once_artifact_metadata_observed",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          sends_motion_commands: false,
+          sends_base_motion_commands: false,
+          publishes_cmd_vel: false,
+          calls_base_manual: false,
+          uses_base_uart: false,
+          failure_reason: null,
+          command_result: { mode: "map_lifecycle_proof_helper", executed: true, ok: true },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/map/save?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ map_name: "floor_1" }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        status: string;
+        command_result: { executed: boolean; ok: boolean };
+        blocked_reasons: string[];
+        robot_control_executed: boolean;
+      };
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("lifecycle_forwarded");
+      expect(body.status).toBe("loaded_fail_closed_summary");
+      expect(body.command_result.executed).toBe(true);
+      expect(body.command_result.ok).toBe(true);
+      expect(body.blocked_reasons).toEqual([]);
+      expect(body.robot_control_executed).toBe(false);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation map lifecycle proxy fails closed on dangerous true fields", async () => {
+    // 上位机如果声称危险 true，PC 端仍保持 blocked/not_proven 合同。
     const upstream = await listenRobotMapLifecycleApi({
       "/api/map/save": {
         method: "POST",
@@ -4414,7 +4463,6 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.hard_dangerous_true_fields).toContain("safe_to_control");
       expect(body.blocked_reasons).toEqual(expect.arrayContaining([
         "hard_dangerous_true_field:safe_to_control",
-        "map_lifecycle_command_executed:save",
       ]));
       expect(body.robot_control_executed).toBe(false);
     } finally {

@@ -26,6 +26,7 @@ DEFAULT_ONBOARD_SETUP = "/root/rober/onboard/install/setup.bash"
 DEFAULT_WORKDIR = "/root/rober/onboard"
 DEFAULT_OUTPUT = "/root/rober/onboard/runtime/map_lifecycle_latest.json"
 DEFAULT_MAP_DIR = "/root/rober/onboard/runtime/maps"
+SAFE_MAP_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 VENDOR_SOURCES = [
     "docs/vendor/VENDOR_INDEX.md",
     "docs/vendor/lidar_pkg_ros2-main/README.md",
@@ -53,6 +54,14 @@ def safety_flags() -> dict[str, Any]:
         "delivery_success": False,
         "hil_pass": False,
     }
+
+
+def validate_map_name(map_name: str) -> str:
+    """地图名会进入 save_map 参数链路，只允许短文件基名，避免路径穿越或 shell 片段。"""
+    normalized = map_name.strip()
+    if not SAFE_MAP_NAME_RE.fullmatch(normalized):
+        raise ValueError("map_name must match ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+    return normalized
 
 
 def compact_error(error: BaseException) -> dict[str, str]:
@@ -303,9 +312,10 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
 
     topic_list = run_ros(args, "ros2 topic list", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
     scan_once = run_ros(args, "timeout 8 ros2 topic echo --once /scan", timeout_s=10.0) if runtime else {"executed": False, "ok": False}
-    map_once = run_ros(args, "timeout 12 ros2 topic echo --once /map", timeout_s=14.0) if runtime else {"executed": False, "ok": False}
+    # 真实板端 slam_toolbox 偶尔需要十几秒才发布第一帧 /map；窗口略宽能减少误报。
+    map_once = run_ros(args, "timeout 20 ros2 topic echo --once /map", timeout_s=24.0) if runtime else {"executed": False, "ok": False}
     save_map = (
-        run_ros(args, "timeout 8 ros2 service call /trashbot/save_map std_srvs/srv/Trigger '{}'", timeout_s=10.0)
+        run_ros(args, "timeout 12 ros2 service call /trashbot/save_map std_srvs/srv/Trigger '{}'", timeout_s=15.0)
         if map_once.get("ok")
         else {"executed": False, "ok": False, "reason": "skipped_until_map_once_observed"}
     )
@@ -394,6 +404,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    args.map_name = validate_map_name(args.map_name)
     payload = build_proof(args)
     write_json_atomic(args.output, payload)
     print(json.dumps(payload, ensure_ascii=False, sort_keys=True))

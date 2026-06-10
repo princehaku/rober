@@ -908,3 +908,60 @@ fixed-route execution、delivery success 或 HIL pass。
   - USB camera 参考入口为 OpenCV `VideoCapture`
 - `sprints/2026.06.09_23-20_board-bringup-blocker-fix/artifacts/hardware_device_probe.md`
   - `/dev/video1` 是 DV20 USB 图像节点，`/dev/ttyACM0` 单独运行 `lidar_driver` 可产出 `/scan`
+
+## 2026-06-11 02:45 PC Map Runtime Controls V1
+
+本轮将 `POST /api/map/start` 与 `POST /api/map/save` 接到上位机内置
+`o3_map_lifecycle_proof.py` no-motion helper。helper 只启动
+LiDAR + SLAM，观测 `/scan` 和 `/map`，调用 `/trashbot/save_map`，然后清理
+本轮 launch 进程组；它不发布 `/cmd_vel`，不调用 `/api/base/*`，不打开
+WAVE ROVER 底盘 UART `/dev/ttyS5`。
+
+实板验证目标：`root@192.168.1.11:37878`，上位机 API 为
+`http://127.0.0.1:8787`。部署后远端 `python3 -m py_compile
+onboard/scripts/upper_robot_api.py onboard/scripts/o3_map_lifecycle_proof.py`
+通过，`trashbot-upper-robot-api.service` 重启后 `active`。
+
+关键证据：
+
+- `POST /api/map/save` body 使用
+  `{"map_name":"pc_runtime_v1","artifact_path":"/tmp/ignored.yaml"}`。
+- 返回 `status=map_once_artifact_metadata_observed`、
+  `command_result.executed=true`、`command_result.ok=true`、
+  `artifact_path_ignored=true`。
+- 本轮生成 `/root/rober/onboard/runtime/maps/pc_runtime_v1.yaml` 和
+  `/root/rober/onboard/runtime/maps/pc_runtime_v1.pgm`。
+- `GET /api/map/list` 可列出 `pc_runtime_v1.yaml/pgm`。
+- `GET /api/map/proof/latest` 顶层读回
+  `scan_once_observed=true`、`map_once_observed=true`、
+  `map_file_observed=true`、`map_metadata_observed=true`。
+- pre/during/post `lsof /dev/ttyS5 /dev/ttyACM0` 与最终 `fuser` 清场均未显示
+  `/dev/ttyS5` 占用；during 只观察到本轮 `o3_map_lifecycle_proof.py` 和
+  helper 启动的 LiDAR/SLAM runtime。
+- 最终复查 `o3_map_lifecycle_proof.py`、`slam_toolbox`、`lidar_driver`
+  无残留，`trashbot-upper-robot-api.service` 仍为 `active`。
+
+PC 代理 smoke：
+
+- `POST /api/robot-control/map/start?baseUrl=http://192.168.1.11:8787`
+  返回 `proxy_status=lifecycle_forwarded`、`remote_http_status=200`、
+  `command_result.executed=true`、`command_result.ok=true`。
+- `POST /api/robot-control/map/save?baseUrl=http://192.168.1.11:8787`
+  首轮暴露 `/map_once_not_observed` 抖动；helper 将 `/map` 观测窗口从 12s
+  放宽到 20s、save service 窗口从 8s 放宽到 12s 后，rerun 返回
+  `proxy_status=lifecycle_forwarded`、`command_result.ok=true`。
+- 最终生成 `pc_proxy_start.yaml/pgm` 与 `pc_proxy_save2.yaml/pgm`，并再次确认
+  `/dev/ttyS5`、`/dev/ttyACM0` 无占用，目标进程无残留。
+
+证据路径：
+
+- `sprints/2026.06.11_02-45_pc_map_runtime_controls/artifacts/remote_map_save_smoke.log`
+- `sprints/2026.06.11_02-45_pc_map_runtime_controls/artifacts/pc_proxy_map_start.json`
+- `sprints/2026.06.11_02-45_pc_map_runtime_controls/artifacts/pc_proxy_map_save_rerun.json`
+- `sprints/2026.06.11_02-45_pc_map_runtime_controls/artifacts/remote_final_cleanup_after_proxy.log`
+
+边界：本轮证明 PC/上位机可以受控触发 no-motion map runtime，并生成地图文件。
+它不证明地图质量、AMCL 定位可用、Nav2 可行驶、固定路线执行、真实底盘运动、
+WAVE ROVER HIL、robot ACK 或 delivery success。WAVE ROVER 底盘 UART 事实仍以
+`docs/vendor/VENDOR_INDEX.md` 及其指向的 vendor 文件为准；本轮没有触碰
+`/dev/ttyS5 @ 115200`、`T=1/T=13/T=130/T=131` 或 JSON newline 底盘命令。

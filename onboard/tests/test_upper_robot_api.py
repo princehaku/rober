@@ -261,6 +261,76 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["delivery_success"])
         self.assertFalse(payload["sends_motion_commands"])
 
+    def test_map_start_uses_no_motion_helper_with_safe_map_name(self) -> None:
+        """`/api/map/start` 直连 helper，不能再退回 command_not_configured。"""
+        clean_artifact = {
+            "schema": "trashbot.upper_robot_api.v1.map_lifecycle_runtime_proof",
+            "status": "map_once_artifact_metadata_observed",
+            "proof": {
+                "status": "map_once_artifact_metadata_observed",
+                "scan_once_observed": True,
+                "map_once_observed": True,
+                "map_file_observed": True,
+                "map_metadata_observed": True,
+                "evidence_ref": "map-start-control-clean",
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "map_lifecycle_latest.json"
+            artifact_path.write_text(json.dumps(clean_artifact), encoding="utf-8")
+            map_dir = Path(temp_dir) / "maps"
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                map_artifact_dir=str(map_dir),
+                map_lifecycle_proof_artifact_path=str(artifact_path),
+            )
+
+            with mock.patch.object(
+                upper_robot_api,
+                "run_map_lifecycle_proof_helper",
+                return_value={"mode": "map_lifecycle_proof_helper", "ok": True, "executed": True, "returncode": 0},
+            ) as helper_mock:
+                payload = api.map_control("start", {"map_name": "floor_1", "artifact_path": "/tmp/ignored.yaml"})
+
+        helper_mock.assert_called_once()
+        helper_kwargs = helper_mock.call_args.kwargs
+        self.assertEqual("floor_1", helper_kwargs["map_name"])
+        self.assertEqual(str(map_dir), helper_kwargs["map_artifact_dir"])
+        self.assertEqual(str(artifact_path), helper_kwargs["artifact_path"])
+        self.assertTrue(payload["command_result"]["executed"])
+        self.assertTrue(payload["command_result"]["ok"])
+        self.assertNotEqual("command_not_configured", payload["failure_reason"])
+        self.assertIsNone(payload["failure_reason"])
+        self.assertTrue(payload["artifact_path_ignored"])
+        self.assertEqual("/tmp/ignored.yaml", payload["requested_artifact_path"])
+        self.assertEqual("map_once_artifact_metadata_observed", payload["status"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["sends_motion_commands"])
+        self.assertFalse(payload["publishes_cmd_vel"])
+        self.assertFalse(payload["calls_base_manual"])
+        self.assertFalse(payload["uses_base_uart"])
+
+    def test_map_save_rejects_unsafe_map_name_without_helper_execution(self) -> None:
+        """非法 map_name 必须在 subprocess 前失败，避免路径或 shell 片段进入 argv。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+
+        with mock.patch.object(upper_robot_api, "run_map_lifecycle_proof_helper") as helper_mock:
+            payload = api.map_control("save", {"map_name": "../bad"})
+
+        helper_mock.assert_not_called()
+        self.assertEqual("invalid_map_name", payload["failure_reason"])
+        self.assertEqual(["invalid_map_name"], payload["blocked_reasons"])
+        self.assertFalse(payload["command_result"]["executed"])
+        self.assertFalse(payload["safe_to_control"])
+
     def test_radar_lifecycle_validation_accepts_lidar_only_start_stop(self) -> None:
         """start/stop 只接受受管 LiDAR lifecycle 脚本和 LiDAR 串口。"""
         start = (

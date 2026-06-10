@@ -363,8 +363,8 @@ export function computeRobotProofRefreshTimeoutMs(config: Pick<RobotProofRefresh
   return Math.min(config.timeout_cap_ms, calculatedMs);
 }
 
-function safeLifecycleText(value: unknown, maxLength: number): string | null {
-  // map lifecycle body 只允许短文本槽位，防止 UI 把任意 JSON 或 shell 片段透传到上位机。
+function safeMapName(value: unknown): string | null {
+  // map_name 会进入上位机 argv；PC 侧先限短基名，板端还会再校验一次。
   if (value === undefined || value === null) {
     return null;
   }
@@ -375,7 +375,25 @@ function safeLifecycleText(value: unknown, maxLength: number): string | null {
   if (!trimmed) {
     return null;
   }
-  if (trimmed.length > maxLength || !/^[A-Za-z0-9._/ -]+$/.test(trimmed)) {
+  if (trimmed.length > 64 || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(trimmed)) {
+    return "";
+  }
+  return trimmed;
+}
+
+function safeLifecycleArtifactPath(value: unknown): string | null {
+  // artifact_path 只作为兼容请求字段；上位机会忽略它，PC 仍拒绝绝对路径和穿越。
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== "string") {
+    return "";
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed.length > 120 || trimmed.startsWith("/") || trimmed.includes("..") || !/^[A-Za-z0-9._/-]+$/.test(trimmed)) {
     return "";
   }
   return trimmed;
@@ -394,11 +412,11 @@ function sanitizeMapLifecycleBody(body: unknown): { ok: true; body: RobotControl
   if (unknownKeys.length > 0) {
     return { ok: false, reason: `request_body_unknown_fields:${unknownKeys.slice(0, 4).join("|")}` };
   }
-  const mapName = safeLifecycleText(payload.map_name, 80);
+  const mapName = safeMapName(payload.map_name);
   if (mapName === "") {
     return { ok: false, reason: "map_name_invalid_or_too_long" };
   }
-  const artifactPath = safeLifecycleText(payload.artifact_path, 240);
+  const artifactPath = safeLifecycleArtifactPath(payload.artifact_path);
   if (artifactPath === "") {
     return { ok: false, reason: "artifact_path_invalid_or_too_long" };
   }
@@ -474,6 +492,22 @@ function blockedRadarLifecycleResponse(
 function remoteBlockedReasons(payload: JsonRecord | null): string[] {
   // 上位机 guard 的 blocked_reasons 是诊断信息，不自动等同 PC 代理拦截。
   return stringList(findFirstKey(payload, ["blocked_reasons"]), 8);
+}
+
+function remoteFailureReasons(payload: JsonRecord | null, prefix: string): string[] {
+  // 远端明确 failure 才影响代理状态；command_result.executed 只是诊断字段，不再单独判失败。
+  const reasons: string[] = [];
+  const failure = asString(findFirstKey(payload, ["failure_reason"]), "");
+  if (failure) {
+    reasons.push(`${prefix}_remote_failure:${failure}`);
+  }
+  const error = findFirstKey(payload, ["error"]);
+  if (typeof error === "string" && error.trim()) {
+    reasons.push(`${prefix}_remote_error:${error.trim().slice(0, 120)}`);
+  } else if (error && typeof error === "object") {
+    reasons.push(`${prefix}_remote_error`);
+  }
+  return reasons;
 }
 
 export async function buildRadarLifecycleProxy(
@@ -614,12 +648,12 @@ export async function buildMapLifecycleProxy(
       method: config.method,
       headers: config.method === "POST" ? { "Content-Type": "application/json" } : undefined,
       body: config.method === "POST" ? JSON.stringify(sanitized.body) : undefined,
-      signal: AbortSignal.timeout(config.action === "save" ? 10_000 : 5_000),
+      signal: AbortSignal.timeout(config.action === "start" || config.action === "save" ? 120_000 : 5_000),
     });
   } catch (error) {
     const reason =
       error instanceof Error && error.name === "TimeoutError"
-        ? `fetch_timeout_${config.action === "save" ? 10_000 : 5_000}ms`
+        ? `fetch_timeout_${config.action === "start" || config.action === "save" ? 120_000 : 5_000}ms`
         : error instanceof Error
           ? error.message.slice(0, 180)
           : "fetch_failed";
@@ -656,11 +690,10 @@ export async function buildMapLifecycleProxy(
 
   const hardDangerous = scanDangerousTrueFields(payload, "", HARD_DANGEROUS_TRUE_FIELDS);
   const commandResult = commandResultSummary(payload);
-  const commandExecutedReason = commandResult.executed ? [`map_lifecycle_command_executed:${config.action}`] : [];
   const blockedReasons = [
     ...(response.ok ? [] : [`map_lifecycle_http_status_${response.status}`]),
     ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
-    ...commandExecutedReason,
+    ...remoteFailureReasons(payload, "map_lifecycle"),
   ];
   const forwarded = response.ok && blockedReasons.length === 0;
   return {
