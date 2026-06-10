@@ -1849,6 +1849,19 @@ body、goal、endpoint 或路径生成参数。
 摘要：`initialpose_published`、`amcl_pose_observed`、
 `localization_tf_observed.map_to_odom/map_to_base_link`、`managed_runtime_started`、
 `managed_runtime_cleanup_ok`、`root_causes` 和 `blocked_devices_not_opened`。
+2026-06-11 的 `localization_tf_chain` 迭代进一步把 TF 诊断拆成稳定的
+`tf_chain_observed` 四段：
+
+- `map_to_odom`
+- `odom_to_base_link`
+- `base_link_to_laser_frame`
+- `map_to_base_link`
+
+helper 会先观测 `map->odom` 与 `odom->base_link`，再判断是否执行完整
+`map->base_link` probe；这样 `map->base_link=false` 时可以区分
+`map->odom` 缺失、`odom->base_link` 静态 TF 缺失、frame 命名不一致或
+`tf2` timeout/timing。`base_link->laser_frame` 同步记录为 managed static TF
+诊断字段，用于确认 AMCL scan frame 输入链路，但它仍不代表机械标定值。
 
 这一步最多证明 AMCL no-motion localization material，可以作为后续 planner
 readiness 的前置材料；它不证明路径执行、固定路线运行、真实运动、HIL pass 或

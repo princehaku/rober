@@ -1,0 +1,220 @@
+{
+    "schema": "trashbot.upper_robot_api.v1.localization_reset_result",
+    "generated_at_ms": 1781123811421,
+    "action": "localize_reset",
+    "endpoint": "/api/localize/reset",
+    "status": "blocked_with_root_cause",
+    "proof_state": "blocked_with_root_cause",
+    "software_guard": true,
+    "not_proven": true,
+    "configured_command": {
+        "env": "built_in_no_motion_amcl_nav2_runtime_helper",
+        "configured": true,
+        "mode": "command",
+        "argv": [
+            "o10_amcl_nav2_runtime_proof.py",
+            "--output",
+            "runtime/localization_reset_latest.json"
+        ],
+        "error": null
+    },
+    "command_result": {
+        "mode": "o10_amcl_nav2_runtime_proof_helper",
+        "executed": true,
+        "ok": false,
+        "argv": [
+            "bash",
+            "-lc",
+            "source /opt/ros/humble/setup.bash && if [ -f /root/rober/onboard/install/setup.bash ]; then source /root/rober/onboard/install/setup.bash; fi && /usr/bin/python3 /root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py --output /root/rober/onboard/runtime/localization_reset_latest.json --map-proof /root/rober/onboard/runtime/map_lifecycle_latest.json --map-dir /root/rober/onboard/runtime/maps --timeout-s 8.0 --managed-runtime-opt-in --managed-timeout-s 12.0 --initialpose-opt-in --initialpose-x 0.0 --initialpose-y 0.0 --initialpose-yaw 0.0 --initialpose-frame-id map"
+        ],
+        "helper_argv": [
+            "/usr/bin/python3",
+            "/root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+            "--output",
+            "/root/rober/onboard/runtime/localization_reset_latest.json",
+            "--map-proof",
+            "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+            "--map-dir",
+            "/root/rober/onboard/runtime/maps",
+            "--timeout-s",
+            "8.0",
+            "--managed-runtime-opt-in",
+            "--managed-timeout-s",
+            "12.0",
+            "--initialpose-opt-in",
+            "--initialpose-x",
+            "0.0",
+            "--initialpose-y",
+            "0.0",
+            "--initialpose-yaw",
+            "0.0",
+            "--initialpose-frame-id",
+            "map"
+        ],
+        "elapsed_ms": 44535,
+        "timeout_budget": {
+            "collector_timeout_s": 8.0,
+            "path_generation_timeout_s": 0.0,
+            "managed_runtime_timeout_s": 12.0,
+            "initialpose_margin_s": 4.0,
+            "base_margin_s": 12.0,
+            "path_margin_s": 0.0,
+            "managed_margin_s": 6.0,
+            "raw_timeout_s": 42.0,
+            "process_timeout_s": 42.0,
+            "cap_s": 42.0,
+            "pc_proxy_budget_s": 46.0,
+            "budget_policy": "finish_before_pc_proxy_timeout_or_return_structured_timeout"
+        },
+        "process_timeout_s": 42.0,
+        "error": {
+            "type": "TimeoutExpired",
+            "message": "Command '['bash', '-lc', 'source /opt/ros/humble/setup.bash && if [ -f /root/rober/onboard/install/setup.bash ]; then source /root/rober/onboard/install/setup.bash; fi && /usr/bin/python3 /root/rober/onboard/scripts/o10_amcl_nav2_runtime_pr"
+        },
+        "stdout_preview": "",
+        "stderr_preview": "",
+        "helper_process_group": 215244,
+        "helper_cleanup_result": {
+            "attempted": true,
+            "process_group": 215244,
+            "sent_signal": "SIGINT",
+            "killed_with_sigkill": false,
+            "ok": true,
+            "error": null,
+            "residual_cleanup": {
+                "attempted": true,
+                "ok": true,
+                "matched": [
+                    {
+                        "pid": 215267,
+                        "pgid": 215267,
+                        "command": "bash -lc set -e; set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; pids=(); cleanup(){ for pid in \"${pids[@]}\"; do kill"
+                    },
+                    {
+                        "pid": 215301,
+                        "pgid": 215267,
+                        "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_packets:=false"
+                    },
+                    {
+                        "pid": 215302,
+                        "pgid": 215267,
+                        "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run tf2_ros static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 odom base_link"
+                    },
+                    {
+                        "pid": 215303,
+                        "pgid": 215267,
+                        "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run tf2_ros static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 base_link laser_frame"
+                    },
+                    {
+                        "pid": 215304,
+                        "pgid": 215267,
+                        "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_map_server map_server --ros-args --params-file /tmp/rober_nav2_localization_q4jxjs21.yaml -r __node:=map_server"
+                    },
+                    {
+                        "pid": 215305,
+                        "pgid": 215267,
+                        "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_amcl amcl --ros-args --params-file /tmp/rober_nav2_localization_q4jxjs21.yaml -r __node:=amcl"
+                    },
+                    {
+                        "pid": 215306,
+                        "pgid": 215267,
+                        "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_q4jxjs21.yaml -r __node:=lifecycle_manager"
+                    },
+                    {
+                        "pid": 215307,
+                        "pgid": 215267,
+                        "command": "/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_pack"
+                    },
+                    {
+                        "pid": 215308,
+                        "pgid": 215267,
+                        "command": "/opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_q4jxjs21.yaml -r __node:=lifecycle_manager"
+                    },
+                    {
+                        "pid": 215340,
+                        "pgid": 215267,
+                        "command": "/opt/ros/humble/lib/nav2_amcl/amcl --ros-args --params-file /tmp/rober_nav2_localization_q4jxjs21.yaml -r __node:=amcl"
+                    },
+                    {
+                        "pid": 215353,
+                        "pgid": 215267,
+                        "command": "/opt/ros/humble/lib/nav2_map_server/map_server --ros-args --params-file /tmp/rober_nav2_localization_q4jxjs21.yaml -r __node:=map_server"
+                    }
+                ],
+                "killed_pgids": [
+                    215267
+                ],
+                "remaining": []
+            }
+        },
+        "safe_to_control": false,
+        "sends_base_motion_commands": false,
+        "publishes_cmd_vel": false,
+        "calls_base_manual": false,
+        "managed_runtime_opt_in": true,
+        "initialpose_opt_in": true,
+        "path_generation_opt_in": false,
+        "robot_control_executed": false,
+        "hil_pass": false,
+        "fallback_artifact_written": true,
+        "partial_artifact_preserved": true
+    },
+    "artifact": {
+        "path": "/root/rober/onboard/runtime/localization_reset_latest.json",
+        "configured_by": "ROBER_LOCALIZATION_ARTIFACT_PATH or --localization-artifact-path",
+        "format": "json",
+        "schema": "trashbot.upper_robot_api.v1.localization_reset_artifact"
+    },
+    "ros2_runtime_proven": false,
+    "map_artifact_proven": false,
+    "localization_proven": false,
+    "scan_runtime_proven": false,
+    "sends_base_motion_commands": false,
+    "uses_base_uart": false,
+    "blocked_devices_not_touched": [
+        "/dev/ttyS5",
+        "/dev/ttyS5"
+    ],
+    "blocked_commands_not_sent": [
+        "T=1",
+        "T=13",
+        "T=130",
+        "T=131",
+        "/cmd_vel",
+        "/api/base/manual",
+        "/api/nav2/start",
+        "/api/nav2/stop",
+        "navigate_to_pose",
+        "compute_path_to_pose"
+    ],
+    "failure_reason": "configured_command_failed",
+    "operator_message": "software guard only; configure ROS2 command and attach runtime artifact before claiming proof",
+    "sends_commands": false,
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "robot_control_executed": false,
+    "cloud_relay": false,
+    "evidence_type": "blocked_with_root_cause",
+    "requested_pose": {
+        "frame_id": "map",
+        "x": 0.0,
+        "y": 0.0,
+        "yaw": 0.0
+    },
+    "target_ros2_topic": "/initialpose",
+    "proof_artifact": {
+        "path": "/root/rober/onboard/runtime/localization_reset_latest.json",
+        "configured_by": "ROBER_LOCALIZATION_ARTIFACT_PATH or --localization-artifact-path",
+        "format": "json",
+        "schema": "trashbot.upper_robot_api.v1.localization_reset_artifact"
+    },
+    "managed_runtime_opt_in": true,
+    "managed_timeout_s": 12.0,
+    "initialpose_opt_in": true,
+    "path_generation_opt_in": false,
+    "path_generation_opt_in_ignored": false,
+    "latest_readback_http_status": 200,
+    "latest_result": {
+        "calls_base_manual": false,
+        "delivery_success": false,

@@ -1,0 +1,10 @@
+status "blocked_with_root_cause"
+proof_state "blocked_with_root_cause"
+initialpose_published true
+amcl_pose_observed true
+localization_tf_observed {"map_to_odom": false, "map_to_base_link": false}
+tf_chain_observed {"map_to_odom": false, "odom_to_base_link": false, "base_link_to_laser_frame": false, "map_to_base_link": false}
+tf_failure_classification {"blocking_segment": "map_to_odom", "frame_naming_consistent": true, "map_to_base_link": "blocked_by_missing_map_to_odom", "reason": "frame_missing_or_name_mismatch"}
+root_causes [{"layer": "Localization TF", "reason": "odom_to_base_link_tf_probe_interrupted_before_transform_observed"}, {"layer": "helper process", "reason": "sigint_before_final_artifact"}, {"layer": "upper API helper process", "reason": "helper_process_timeout_after_partial_artifact"}]
+localization_reset_observed false
+command_ok False elapsed 44529

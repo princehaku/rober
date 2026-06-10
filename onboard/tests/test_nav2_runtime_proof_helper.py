@@ -304,10 +304,55 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "start_new_session=True",
             "os.killpg",
             "tf_echo_transform_observed(map_to_odom_tf)",
+            "tf_echo_transform_observed(odom_to_base_link_tf)",
+            "tf_echo_transform_observed(base_link_to_laser_frame_tf)",
             "tf_echo_transform_observed(map_to_base_link_tf)",
+            "tf_chain_observed",
+            "tf_failure_classification",
             "read_only_existing_ros_graph_no_motion",
         ):
             self.assertIn(required, text)
+
+    def test_tf_chain_failure_classifies_missing_odom_base_link(self) -> None:
+        """`map->base_link` 失败必须下钻到缺失的链路段，而不是只给最终布尔值。"""
+        args = HELPER.parse_args([])
+        observed = {
+            "map_to_odom": True,
+            "odom_to_base_link": False,
+            "base_link_to_laser_frame": True,
+            "map_to_base_link": False,
+        }
+        diagnostics = HELPER.build_tf_chain_diagnostics(
+            args=args,
+            results={
+                "map_to_odom": {"executed": True, "ok": True, "stdout": "Translation:\nRotation:"},
+                "odom_to_base_link": {"executed": True, "ok": False, "returncode": 124, "stdout": "Waiting for transform"},
+                "base_link_to_laser_frame": {"executed": True, "ok": True, "stdout": "Translation:\nRotation:"},
+                "map_to_base_link": {"executed": False, "ok": False, "boundary": "skipped"},
+            },
+            observed=observed,
+        )
+
+        classification = HELPER.classify_tf_chain_failure(args=args, observed=observed, diagnostics=diagnostics)
+        causes = HELPER.tf_chain_root_causes(classification, observed)
+
+        self.assertEqual("blocked_by_missing_odom_to_base_link", classification["map_to_base_link"])
+        self.assertEqual("odom_to_base_link", classification["blocking_segment"])
+        self.assertEqual("tf2_timeout_or_timing", classification["reason"])
+        self.assertEqual("map_to_base_link_blocked_by_missing_odom_to_base_link", causes[0]["reason"])
+        self.assertEqual("odom_to_base_link", causes[0]["source"])
+
+    def test_tf_chain_failure_classifies_frame_naming_mismatch(self) -> None:
+        """如果 runtime frame 参数偏离默认合同，artifact 要明确提示命名不一致。"""
+        args = HELPER.parse_args(["--managed-base-frame-id", "base_footprint"])
+        observed = HELPER.default_tf_chain_observed()
+        diagnostics = HELPER.build_tf_chain_diagnostics(args=args, results={}, observed=observed)
+
+        classification = HELPER.classify_tf_chain_failure(args=args, observed=observed, diagnostics=diagnostics)
+
+        self.assertEqual("frame_naming_mismatch", classification["map_to_base_link"])
+        self.assertEqual("frame_contract", classification["blocking_segment"])
+        self.assertFalse(classification["frame_naming_consistent"])
 
     def test_phase_artifact_writer_records_partial_progress(self) -> None:
         """helper 被外层 timeout 打断前，partial artifact 必须已经有阶段和命令证据。"""

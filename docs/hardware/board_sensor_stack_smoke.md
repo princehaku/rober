@@ -1013,3 +1013,29 @@ runtime、发布一次 `/initialpose`、观察 `/amcl_pose` 和 localization TF�
 `amcl_pose_observed`、`localization_tf_observed.map_to_odom`、
 `localization_tf_observed.map_to_base_link`、`managed_runtime_started`、
 `managed_runtime_cleanup_ok` 和 `root_causes`。所有安全字段继续保持 false。
+
+## 2026-06-11 04:30 Localization TF Chain Diagnostics
+
+本轮不改变硬件边界，只把 no-motion localization reset 的 TF 诊断从最终布尔值
+下钻到链路段。helper 的 managed runtime 仍只允许启动 LiDAR `/dev/ttyACM0`、
+`map_server`、`amcl`、lifecycle manager 以及两个 static transform publisher：
+
+- `odom -> base_link`
+- `base_link -> laser_frame`
+
+artifact 新增稳定字段：
+
+- `tf_chain_observed.map_to_odom`
+- `tf_chain_observed.odom_to_base_link`
+- `tf_chain_observed.base_link_to_laser_frame`
+- `tf_chain_observed.map_to_base_link`
+- `tf_chain_diagnostics`
+- `tf_failure_classification`
+
+如果 `map->base_link` 仍未观测，root cause 必须尽量下钻为
+`map_to_base_link_blocked_by_missing_map_to_odom`、
+`map_to_base_link_blocked_by_missing_odom_to_base_link`、
+`map_to_base_link_frame_naming_mismatch` 或
+`map_to_base_link_tf2_timeout_or_chain_timing`。这只证明 TF/source/timing
+定位材料，不允许用更长 timeout 掩盖问题，也不触发 `NavigateToPose`、
+`/cmd_vel`、`/api/base/*`、`/dev/ttyS5` 或 WAVE ROVER `T=1/T=13/T=130/T=131`。

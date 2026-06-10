@@ -562,6 +562,26 @@ def write_nav2_helper_failure_artifact(
             if isinstance(partial_proof.get("localization_tf_observed"), dict)
             else {"map_to_odom": False, "map_to_base_link": False}
         ),
+        "tf_chain_observed": (
+            partial_proof.get("tf_chain_observed")
+            if isinstance(partial_proof.get("tf_chain_observed"), dict)
+            else {
+                "map_to_odom": False,
+                "odom_to_base_link": False,
+                "base_link_to_laser_frame": False,
+                "map_to_base_link": False,
+            }
+        ),
+        "tf_chain_diagnostics": (
+            partial_proof.get("tf_chain_diagnostics")
+            if isinstance(partial_proof.get("tf_chain_diagnostics"), dict)
+            else {}
+        ),
+        "tf_failure_classification": (
+            partial_proof.get("tf_failure_classification")
+            if isinstance(partial_proof.get("tf_failure_classification"), dict)
+            else {"map_to_base_link": "not_evaluated", "frame_naming_consistent": True}
+        ),
         "managed_runtime_requested": bool(partial_proof.get("managed_runtime_requested", managed_runtime_opt_in)),
         "managed_runtime_started": bool(partial_proof.get("managed_runtime_started")),
         "managed_runtime_cleanup_ok": bool(partial_proof.get("managed_runtime_cleanup_ok")),
@@ -2112,10 +2132,13 @@ def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dic
     """把 O10 helper artifact 折成定位 reset 可读合同，安全字段仍全部 fail-closed。"""
     proof = latest.get("proof") if isinstance(latest, dict) and isinstance(latest.get("proof"), dict) else {}
     tf_value = proof.get("localization_tf_observed") if isinstance(proof.get("localization_tf_observed"), dict) else {}
+    tf_chain_value = proof.get("tf_chain_observed") if isinstance(proof.get("tf_chain_observed"), dict) else {}
     initialpose_published = proof.get("initialpose_published") is True
     amcl_pose_observed = proof.get("amcl_pose_observed") is True
-    map_to_odom = tf_value.get("map_to_odom") is True
-    map_to_base_link = tf_value.get("map_to_base_link") is True
+    odom_to_base_link = tf_chain_value.get("odom_to_base_link") is True
+    base_link_to_laser_frame = tf_chain_value.get("base_link_to_laser_frame") is True
+    map_to_odom = tf_value.get("map_to_odom") is True or tf_chain_value.get("map_to_odom") is True
+    map_to_base_link = tf_value.get("map_to_base_link") is True or tf_chain_value.get("map_to_base_link") is True
     managed_runtime_started = proof.get("managed_runtime_started") is True
     root_causes = proof.get("root_causes") if isinstance(proof.get("root_causes"), list) else []
     helper_status = proof.get("status") if isinstance(proof.get("status"), str) else latest_proof_value(latest, "status")
@@ -2139,6 +2162,18 @@ def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dic
         "amcl_pose_observed": amcl_pose_observed,
         "latest_amcl_pose_observed": amcl_pose_observed,
         "localization_tf_observed": {"map_to_odom": map_to_odom, "map_to_base_link": map_to_base_link},
+        "tf_chain_observed": {
+            "map_to_odom": map_to_odom,
+            "odom_to_base_link": odom_to_base_link,
+            "base_link_to_laser_frame": base_link_to_laser_frame,
+            "map_to_base_link": map_to_base_link,
+        },
+        "tf_chain_diagnostics": proof.get("tf_chain_diagnostics") if isinstance(proof.get("tf_chain_diagnostics"), dict) else {},
+        "tf_failure_classification": (
+            proof.get("tf_failure_classification")
+            if isinstance(proof.get("tf_failure_classification"), dict)
+            else {"map_to_base_link": "not_evaluated", "frame_naming_consistent": True}
+        ),
         "latest_localization_tf_observed": bool(map_to_odom and map_to_base_link),
         "managed_runtime_started": managed_runtime_started,
         "managed_runtime_requested": proof.get("managed_runtime_requested") is True,
@@ -3946,6 +3981,9 @@ class UpperRobotApi:
                 "initialpose_published": readback_contract["initialpose_published"],
                 "amcl_pose_observed": readback_contract["amcl_pose_observed"],
                 "localization_tf_observed": readback_contract["localization_tf_observed"],
+                "tf_chain_observed": readback_contract["tf_chain_observed"],
+                "tf_chain_diagnostics": readback_contract["tf_chain_diagnostics"],
+                "tf_failure_classification": readback_contract["tf_failure_classification"],
                 "managed_runtime_started": readback_contract["managed_runtime_started"],
                 "managed_runtime_cleanup_ok": readback_contract["managed_runtime_cleanup_ok"],
                 "root_causes": root_causes,
@@ -3977,7 +4015,14 @@ class UpperRobotApi:
                     "compute_path_to_pose",
                 ],
                 "blocked_devices_not_opened": ["/dev/ttyS5"],
-                "expected_runtime_proof": ["/initialpose once", "/amcl_pose", "tf map->odom", "tf map->base_link"],
+                "expected_runtime_proof": [
+                    "/initialpose once",
+                    "/amcl_pose",
+                    "tf map->odom",
+                    "tf odom->base_link",
+                    "tf base_link->laser_frame",
+                    "tf map->base_link",
+                ],
                 "transition_to_proven": [
                     "built-in helper publishes one /initialpose only when initialpose_opt_in is true",
                     "managed runtime is limited to localization graph when opted in",

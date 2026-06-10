@@ -30,6 +30,12 @@ DEFAULT_MANAGED_TIMEOUT_S = 20.0
 DEFAULT_MANAGED_BASE_FRAME_ID = "base_link"
 DEFAULT_MANAGED_ODOM_FRAME_ID = "odom"
 DEFAULT_MANAGED_LASER_FRAME_ID = "laser_frame"
+TF_CHAIN_KEYS = (
+    "map_to_odom",
+    "odom_to_base_link",
+    "base_link_to_laser_frame",
+    "map_to_base_link",
+)
 ROS2_PREFLIGHT_COMMAND = "command -v ros2"
 LOCALIZATION_LIFECYCLE_NODES = {
     "map_server": "/map_server",
@@ -103,6 +109,12 @@ class PhaseArtifactWriter:
             "initialpose_published": False,
             "amcl_pose_observed": False,
             "localization_tf_observed": {"map_to_odom": False, "map_to_base_link": False},
+            "tf_chain_observed": default_tf_chain_observed(),
+            "tf_chain_diagnostics": {},
+            "tf_failure_classification": {
+                "map_to_base_link": "not_evaluated",
+                "frame_naming_consistent": True,
+            },
             "package_availability": {package: None for package in EXPECTED_PACKAGES},
             "package_check_mode": "deferred_after_localization_main_path",
             "package_checks_batch_ok": False,
@@ -218,6 +230,10 @@ def install_phase_signal_handlers(writer: PhaseArtifactWriter) -> None:
             command_text = str(writer.current_command.get("command") or "")
         if "tf2_echo map base_link" in command_text:
             contextual_root_cause = {"layer": "Localization TF", "reason": "map_to_base_link_tf_probe_interrupted_before_transform_observed"}
+        elif "tf2_echo odom base_link" in command_text:
+            contextual_root_cause = {"layer": "Localization TF", "reason": "odom_to_base_link_tf_probe_interrupted_before_transform_observed"}
+        elif "tf2_echo base_link laser_frame" in command_text:
+            contextual_root_cause = {"layer": "Localization TF", "reason": "base_link_to_laser_frame_tf_probe_interrupted_before_transform_observed"}
         elif "tf2_echo map odom" in command_text:
             contextual_root_cause = {"layer": "Localization TF", "reason": "map_to_odom_tf_probe_interrupted_before_transform_observed"}
         elif "/amcl_pose" in command_text:
@@ -803,6 +819,186 @@ def tf_echo_transform_observed(result: dict[str, Any]) -> bool:
     return bool(has_translation and has_rotation)
 
 
+def default_tf_chain_observed() -> dict[str, bool]:
+    """TF 链字段必须稳定，partial/final/upper readback 都使用同一组键。"""
+    return {key: False for key in TF_CHAIN_KEYS}
+
+
+def tf_probe_result_reason(result: dict[str, Any]) -> str:
+    """把 tf2_echo 失败压成下一层原因，避免所有失败都落成同一个 unknown。"""
+    text = f"{result.get('stdout') or ''}\n{result.get('stderr') or ''}".lower()
+    if tf_echo_transform_observed(result):
+        return "observed"
+    # 命名或发布源不一致时，tf2_echo 会明确提示 frame 不存在；这类问题优先于 timeout。
+    if any(needle in text for needle in ("invalid frame id", "frame does not exist", "does not exist")):
+        return "frame_missing_or_name_mismatch"
+    if "lookup would require extrapolation" in text or "extrapolation exception" in text:
+        return "tf2_extrapolation_or_clock_timing"
+    if "connectivity exception" in text or "could not transform" in text or "unable to transform" in text:
+        return "tf2_connectivity_gap"
+    if result.get("returncode") == 124 or result.get("error"):
+        return "tf2_timeout_or_timing"
+    if not str(result.get("stdout") or result.get("stderr") or "").strip():
+        return "tf2_empty_output_or_timing"
+    return "tf2_unclassified_failure"
+
+
+def tf_chain_frame_contract(args: argparse.Namespace) -> dict[str, Any]:
+    """记录 helper 实际使用的 frame，便于区分链路缺失和 frame 命名不一致。"""
+    map_frame = "map"
+    odom_frame = str(args.managed_odom_frame_id)
+    base_frame = str(args.managed_base_frame_id)
+    laser_frame = str(args.managed_laser_frame_id)
+    expected = {
+        "map": "map",
+        "odom": DEFAULT_MANAGED_ODOM_FRAME_ID,
+        "base": DEFAULT_MANAGED_BASE_FRAME_ID,
+        "laser": DEFAULT_MANAGED_LASER_FRAME_ID,
+    }
+    actual = {"map": map_frame, "odom": odom_frame, "base": base_frame, "laser": laser_frame}
+    return {
+        "expected": expected,
+        "actual": actual,
+        "consistent_with_defaults": actual == expected,
+    }
+
+
+def build_tf_chain_diagnostics(
+    *,
+    args: argparse.Namespace,
+    results: dict[str, dict[str, Any]],
+    observed: dict[str, bool],
+) -> dict[str, Any]:
+    """保存每段 TF 的 source/target/原因；命令正文留在 commands，摘要留在顶层。"""
+    frame_contract = tf_chain_frame_contract(args)
+    frames = frame_contract["actual"]
+    pairs = {
+        "map_to_odom": ("map", frames["odom"]),
+        "odom_to_base_link": (frames["odom"], frames["base"]),
+        "base_link_to_laser_frame": (frames["base"], frames["laser"]),
+        "map_to_base_link": ("map", frames["base"]),
+    }
+    diagnostics: dict[str, Any] = {
+        "frame_contract": frame_contract,
+        "pairs": {},
+    }
+    for key, (source, target) in pairs.items():
+        result = results.get(key, {"executed": False, "ok": False})
+        diagnostics["pairs"][key] = {
+            "source_frame": source,
+            "target_frame": target,
+            "observed": bool(observed.get(key)),
+            "executed": bool(result.get("executed")),
+            "returncode": result.get("returncode"),
+            "elapsed_ms": result.get("elapsed_ms"),
+            "failure_reason": tf_probe_result_reason(result),
+            "boundary": result.get("boundary"),
+            "error": result.get("error") if isinstance(result.get("error"), dict) else None,
+            "stdout_preview": str(result.get("stdout") or "")[-400:],
+            "stderr_preview": str(result.get("stderr") or "")[-400:],
+        }
+    return diagnostics
+
+
+def tf_segment_root_cause(
+    diagnostics: dict[str, Any],
+    segment: str,
+    *,
+    layer: str = "Localization TF",
+) -> dict[str, str]:
+    """每段 TF 失败都写 source/detail，避免 timeout 时只知道最后卡在哪条命令。"""
+    pairs = diagnostics.get("pairs") if isinstance(diagnostics.get("pairs"), dict) else {}
+    detail = pairs.get(segment) if isinstance(pairs.get(segment), dict) else {}
+    return {
+        "layer": layer,
+        "reason": f"{segment}_not_observed",
+        "source": segment,
+        "detail": str(detail.get("failure_reason") or "not_observed"),
+    }
+
+
+def classify_tf_chain_failure(
+    *,
+    args: argparse.Namespace,
+    observed: dict[str, bool],
+    diagnostics: dict[str, Any],
+) -> dict[str, Any]:
+    """把 `map->base_link` 失败下钻到缺 map、缺 odom/base、命名或 timing。"""
+    frame_contract = diagnostics.get("frame_contract") if isinstance(diagnostics.get("frame_contract"), dict) else tf_chain_frame_contract(args)
+    pairs = diagnostics.get("pairs") if isinstance(diagnostics.get("pairs"), dict) else {}
+    classification: dict[str, Any] = {
+        "map_to_base_link": "observed" if observed.get("map_to_base_link") else "not_observed",
+        "frame_naming_consistent": bool(frame_contract.get("consistent_with_defaults")),
+        "blocking_segment": None,
+        "reason": None,
+    }
+    if not classification["frame_naming_consistent"]:
+        classification.update(
+            {
+                "map_to_base_link": "frame_naming_mismatch",
+                "blocking_segment": "frame_contract",
+                "reason": "managed_frame_ids_differ_from_expected_defaults",
+            }
+        )
+        return classification
+    if observed.get("map_to_base_link"):
+        classification["reason"] = "complete_chain_observed"
+        return classification
+    if not observed.get("map_to_odom"):
+        classification.update(
+            {
+                "map_to_base_link": "blocked_by_missing_map_to_odom",
+                "blocking_segment": "map_to_odom",
+                "reason": pairs.get("map_to_odom", {}).get("failure_reason", "map_to_odom_not_observed"),
+            }
+        )
+        return classification
+    if not observed.get("odom_to_base_link"):
+        classification.update(
+            {
+                "map_to_base_link": "blocked_by_missing_odom_to_base_link",
+                "blocking_segment": "odom_to_base_link",
+                "reason": pairs.get("odom_to_base_link", {}).get("failure_reason", "odom_to_base_link_not_observed"),
+            }
+        )
+        return classification
+    classification.update(
+        {
+            "map_to_base_link": "tf2_timeout_or_chain_timing",
+            "blocking_segment": "map_to_base_link",
+            "reason": pairs.get("map_to_base_link", {}).get("failure_reason", "tf2_timeout_or_timing"),
+        }
+    )
+    return classification
+
+
+def tf_chain_root_causes(classification: dict[str, Any], observed: dict[str, bool]) -> list[dict[str, str]]:
+    """root_causes 只写会阻塞定位 reset 的链路段，laser 静态 TF 作为独立诊断。"""
+    causes: list[dict[str, str]] = []
+    state = str(classification.get("map_to_base_link") or "")
+    blocking_segment = str(classification.get("blocking_segment") or "")
+    reason = str(classification.get("reason") or state)
+    if state not in {"", "observed"}:
+        causes.append(
+            {
+                "layer": "Localization TF",
+                "reason": f"map_to_base_link_{state}",
+                "source": blocking_segment or "map_to_base_link",
+                "detail": reason,
+            }
+        )
+    if not observed.get("base_link_to_laser_frame"):
+        causes.append(
+            {
+                "layer": "Managed static TF",
+                "reason": "base_link_to_laser_frame_not_observed",
+                "source": "base_link_to_laser_frame",
+                "detail": "static_lidar_tf_missing_or_not_yet_observed",
+            }
+        )
+    return causes
+
+
 def package_checks(args: argparse.Namespace) -> tuple[dict[str, bool], dict[str, dict[str, Any]], dict[str, Any]]:
     """Nav2 包检查只做单次 source 的批量诊断，避免 preflight 吃掉定位主路径预算。"""
     available: dict[str, bool] = {}
@@ -1273,6 +1469,8 @@ def classify_root_causes(
     map_once_observed: bool,
     amcl_pose_observed: bool,
     localization_tf_observed: dict[str, bool],
+    tf_chain_observed: dict[str, bool],
+    tf_failure_classification: dict[str, Any],
     initialpose_enabled: bool,
 ) -> list[dict[str, str]]:
     """root cause 按层输出，方便下一轮知道是 map、runtime 还是 localization 卡住。"""
@@ -1295,8 +1493,7 @@ def classify_root_causes(
             causes.append({"layer": "AMCL localization", "reason": "/amcl_pose_once_not_observed"})
         if not localization_tf_observed.get("map_to_odom"):
             causes.append({"layer": "Localization TF", "reason": "map_to_odom_not_observed"})
-        if not localization_tf_observed.get("map_to_base_link"):
-            causes.append({"layer": "Localization TF", "reason": "map_to_base_link_not_observed"})
+        causes.extend(tf_chain_root_causes(tf_failure_classification, tf_chain_observed))
     return causes
 
 
@@ -1425,45 +1622,154 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         ),
     )
     phase_writer.record_phase("tf_probe")
+    frame_contract = tf_chain_frame_contract(args)
+    frame_ids = frame_contract["actual"]
+    tf_not_requested = {"executed": False, "ok": False, "boundary": "tf_probe_not_requested_without_initialpose_opt_in"}
+    tf_chain_results = {
+        "map_to_odom": tf_not_requested,
+        "odom_to_base_link": tf_not_requested,
+        "base_link_to_laser_frame": tf_not_requested,
+        "map_to_base_link": tf_not_requested,
+    }
+
+    def update_tf_progress() -> tuple[dict[str, bool], dict[str, Any], dict[str, Any], dict[str, bool]]:
+        """每段 TF probe 后立刻落 partial，避免 timeout 抹掉已观测链路。"""
+        observed = {
+            "map_to_odom": tf_echo_transform_observed(tf_chain_results["map_to_odom"]),
+            "odom_to_base_link": tf_echo_transform_observed(tf_chain_results["odom_to_base_link"]),
+            "base_link_to_laser_frame": tf_echo_transform_observed(tf_chain_results["base_link_to_laser_frame"]),
+            "map_to_base_link": tf_echo_transform_observed(tf_chain_results["map_to_base_link"]),
+        }
+        diagnostics = build_tf_chain_diagnostics(args=args, results=tf_chain_results, observed=observed)
+        classification = classify_tf_chain_failure(
+            args=args,
+            observed=observed,
+            diagnostics=diagnostics,
+        )
+        localization_observed = {
+            "map_to_odom": observed["map_to_odom"],
+            "map_to_base_link": observed["map_to_base_link"],
+        }
+        phase_writer.update_snapshot(
+            localization_tf_observed=localization_observed,
+            tf_chain_observed=observed,
+            tf_chain_diagnostics=diagnostics,
+            tf_failure_classification=classification,
+        )
+        return observed, diagnostics, classification, localization_observed
+
     map_to_odom_tf = (
         run_ros(
             args,
-            f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo map odom",
+            f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo map {shlex.quote(frame_ids['odom'])}",
             timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
         )
         if ros2_ok and initialpose_request_payload["enabled"]
-        else {"executed": False, "ok": False, "boundary": "tf_probe_not_requested_without_initialpose_opt_in"}
+        else tf_not_requested
     )
+    tf_chain_results["map_to_odom"] = map_to_odom_tf
+    tf_chain_observed, tf_chain_diagnostics, tf_failure_classification, localization_tf_probe_observed = update_tf_progress()
+    phase_writer.record_phase(
+        "tf_probe_map_to_odom",
+        ok=bool(tf_chain_observed["map_to_odom"]) if initialpose_request_payload["enabled"] else True,
+        root_cause=(
+            tf_segment_root_cause(tf_chain_diagnostics, "map_to_odom")
+            if initialpose_request_payload["enabled"] and not tf_chain_observed["map_to_odom"]
+            else None
+        ),
+    )
+    odom_to_base_link_tf = (
+        run_ros(
+            args,
+            (
+                f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo "
+                f"{shlex.quote(frame_ids['odom'])} {shlex.quote(frame_ids['base'])}"
+            ),
+            timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
+        )
+        if ros2_ok and initialpose_request_payload["enabled"]
+        else tf_not_requested
+    )
+    tf_chain_results["odom_to_base_link"] = odom_to_base_link_tf
+    tf_chain_observed, tf_chain_diagnostics, tf_failure_classification, localization_tf_probe_observed = update_tf_progress()
+    phase_writer.record_phase(
+        "tf_probe_odom_to_base_link",
+        ok=bool(tf_chain_observed["odom_to_base_link"]) if initialpose_request_payload["enabled"] else True,
+        root_cause=(
+            tf_segment_root_cause(tf_chain_diagnostics, "odom_to_base_link")
+            if initialpose_request_payload["enabled"] and not tf_chain_observed["odom_to_base_link"]
+            else None
+        ),
+    )
+    chain_inputs_observed = bool(tf_echo_transform_observed(map_to_odom_tf) and tf_echo_transform_observed(odom_to_base_link_tf))
     map_to_base_link_tf = (
         run_ros(
             args,
-            f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo map base_link",
+            f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo map {shlex.quote(frame_ids['base'])}",
             timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
         )
-        if ros2_ok and initialpose_request_payload["enabled"] and tf_echo_transform_observed(map_to_odom_tf)
+        if ros2_ok and initialpose_request_payload["enabled"] and chain_inputs_observed
         else {
             "executed": False,
             "ok": False,
             "boundary": (
-                "map_to_base_link_tf_probe_skipped_until_map_to_odom_observed"
+                "map_to_base_link_tf_probe_skipped_until_chain_inputs_observed"
                 if ros2_ok and initialpose_request_payload["enabled"]
                 else "tf_probe_not_requested_without_initialpose_opt_in"
             ),
         }
     )
-    tf_probe_observed = {
-        "map_to_odom": tf_echo_transform_observed(map_to_odom_tf),
-        "map_to_base_link": tf_echo_transform_observed(map_to_base_link_tf),
-    }
-    phase_writer.update_snapshot(localization_tf_observed=tf_probe_observed)
-    tf_root_cause = None
-    if initialpose_request_payload["enabled"] and not all(tf_probe_observed.values()):
-        missing_tf = "map_to_odom_not_observed" if not tf_probe_observed["map_to_odom"] else "map_to_base_link_not_observed"
-        tf_root_cause = {"layer": "Localization TF", "reason": missing_tf}
+    tf_chain_results["map_to_base_link"] = map_to_base_link_tf
+    tf_chain_observed, tf_chain_diagnostics, tf_failure_classification, localization_tf_probe_observed = update_tf_progress()
+    phase_writer.record_phase(
+        "tf_probe_map_to_base_link",
+        ok=bool(tf_chain_observed["map_to_base_link"]) if initialpose_request_payload["enabled"] else True,
+        root_cause=(
+            tf_chain_root_causes(tf_failure_classification, tf_chain_observed)[0]
+            if initialpose_request_payload["enabled"]
+            and not tf_chain_observed["map_to_base_link"]
+            and tf_chain_root_causes(tf_failure_classification, tf_chain_observed)
+            else None
+        ),
+    )
+    base_link_to_laser_frame_tf = (
+        run_ros(
+            args,
+            (
+                f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo "
+                f"{shlex.quote(frame_ids['base'])} {shlex.quote(frame_ids['laser'])}"
+            ),
+            timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
+        )
+        if ros2_ok and initialpose_request_payload["enabled"]
+        else tf_not_requested
+    )
+    tf_chain_results["base_link_to_laser_frame"] = base_link_to_laser_frame_tf
+    tf_chain_observed, tf_chain_diagnostics, tf_failure_classification, localization_tf_probe_observed = update_tf_progress()
+    phase_writer.record_phase(
+        "tf_probe_base_link_to_laser_frame",
+        ok=bool(tf_chain_observed["base_link_to_laser_frame"]) if initialpose_request_payload["enabled"] else True,
+        root_cause=(
+            tf_segment_root_cause(tf_chain_diagnostics, "base_link_to_laser_frame", layer="Managed static TF")
+            if initialpose_request_payload["enabled"] and not tf_chain_observed["base_link_to_laser_frame"]
+            else None
+        ),
+    )
+    tf_root_causes = (
+        tf_chain_root_causes(tf_failure_classification, tf_chain_observed)
+        if initialpose_request_payload["enabled"]
+        else []
+    )
     phase_writer.record_phase(
         "tf_probe",
-        ok=bool(all(tf_probe_observed.values())) if initialpose_request_payload["enabled"] else True,
-        root_cause=tf_root_cause,
+        ok=bool(localization_tf_probe_observed["map_to_odom"] and localization_tf_probe_observed["map_to_base_link"])
+        if initialpose_request_payload["enabled"]
+        else True,
+        root_cause=tf_root_causes[0] if tf_root_causes else None,
+        detail={
+            "tf_chain_observed": tf_chain_observed,
+            "tf_failure_classification": tf_failure_classification,
+        },
     )
     phase_writer.record_phase("package_checks", detail={"mode": "single_sourced_pkg_list_diagnostic"})
     if ros2_ok:
@@ -1529,13 +1835,28 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     scan_observed = topic_once_observed(scan_once)
     map_observed = topic_once_observed(map_once)
     amcl_pose_observed = bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once))
-    localization_tf_observed = {
+    tf_chain_observed = {
         "map_to_odom": tf_echo_transform_observed(map_to_odom_tf),
+        "odom_to_base_link": tf_echo_transform_observed(odom_to_base_link_tf),
+        "base_link_to_laser_frame": tf_echo_transform_observed(base_link_to_laser_frame_tf),
         "map_to_base_link": tf_echo_transform_observed(map_to_base_link_tf),
+    }
+    tf_chain_diagnostics = build_tf_chain_diagnostics(args=args, results=tf_chain_results, observed=tf_chain_observed)
+    tf_failure_classification = classify_tf_chain_failure(
+        args=args,
+        observed=tf_chain_observed,
+        diagnostics=tf_chain_diagnostics,
+    )
+    localization_tf_observed = {
+        "map_to_odom": tf_chain_observed["map_to_odom"],
+        "map_to_base_link": tf_chain_observed["map_to_base_link"],
     }
     phase_writer.update_snapshot(
         amcl_pose_observed=amcl_pose_observed,
         localization_tf_observed=localization_tf_observed,
+        tf_chain_observed=tf_chain_observed,
+        tf_chain_diagnostics=tf_chain_diagnostics,
+        tf_failure_classification=tf_failure_classification,
     )
     localization_ready = bool(
         scan_observed and map_observed and lifecycle_active.get("map_server") and lifecycle_active.get("amcl")
@@ -1573,6 +1894,8 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         map_once_observed=map_observed,
         amcl_pose_observed=amcl_pose_observed,
         localization_tf_observed=localization_tf_observed,
+        tf_chain_observed=tf_chain_observed,
+        tf_failure_classification=tf_failure_classification,
         initialpose_enabled=initialpose_request_payload["enabled"],
     )
     path_generation_preconditions_ready = bool(
@@ -1717,6 +2040,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             else "default_read_only_not_published_by_collector_no_motion_boundary"
         ),
         "localization_tf_observed": localization_tf_observed,
+        "tf_chain_observed": tf_chain_observed,
+        "tf_chain_diagnostics": tf_chain_diagnostics,
+        "tf_failure_classification": tf_failure_classification,
         "managed_runtime_requested": bool(managed_runtime["requested"]),
         "managed_runtime_started": bool(managed_runtime.get("started")),
         "managed_runtime_process_group": managed_runtime.get("process_group"),
@@ -1742,6 +2068,8 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             "initialpose_publish": initialpose_publish,
             "post_initialpose_amcl_pose_once": post_initialpose_amcl_pose_once,
             "map_to_odom_tf": map_to_odom_tf,
+            "odom_to_base_link_tf": odom_to_base_link_tf,
+            "base_link_to_laser_frame_tf": base_link_to_laser_frame_tf,
             "map_to_base_link_tf": map_to_base_link_tf,
             "initialpose_info": initialpose_info,
             "amcl_node_info": amcl_node_info,

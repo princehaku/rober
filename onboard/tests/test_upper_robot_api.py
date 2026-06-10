@@ -431,6 +431,26 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 "initialpose_published": True,
                 "amcl_pose_observed": True,
                 "localization_tf_observed": {"map_to_odom": True, "map_to_base_link": True},
+                "tf_chain_observed": {
+                    "map_to_odom": True,
+                    "odom_to_base_link": True,
+                    "base_link_to_laser_frame": True,
+                    "map_to_base_link": True,
+                },
+                "tf_chain_diagnostics": {
+                    "pairs": {
+                        "odom_to_base_link": {
+                            "source_frame": "odom",
+                            "target_frame": "base_link",
+                            "observed": True,
+                        }
+                    }
+                },
+                "tf_failure_classification": {
+                    "map_to_base_link": "observed",
+                    "frame_naming_consistent": True,
+                    "reason": "complete_chain_observed",
+                },
                 "managed_runtime_requested": True,
                 "managed_runtime_started": True,
                 "managed_runtime_cleanup_ok": True,
@@ -478,6 +498,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["amcl_pose_observed"])
         self.assertTrue(payload["localization_tf_observed"]["map_to_odom"])
         self.assertTrue(payload["localization_tf_observed"]["map_to_base_link"])
+        self.assertTrue(payload["tf_chain_observed"]["odom_to_base_link"])
+        self.assertTrue(payload["tf_chain_observed"]["base_link_to_laser_frame"])
+        self.assertEqual("observed", payload["tf_failure_classification"]["map_to_base_link"])
         self.assertTrue(payload["managed_runtime_started"])
         self.assertFalse(payload["path_generation_opt_in"])
         self.assertFalse(payload["safe_to_control"])
@@ -493,6 +516,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(latest["initialpose_published"])
         self.assertTrue(latest["amcl_pose_observed"])
         self.assertTrue(latest["latest_localization_tf_observed"])
+        self.assertTrue(latest["tf_chain_observed"]["map_to_base_link"])
         self.assertFalse(latest["safe_to_control"])
 
     def test_localize_proof_latest_exposes_phase_partial_fields(self) -> None:
@@ -514,6 +538,27 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 "initialpose_published": True,
                 "amcl_pose_observed": False,
                 "localization_tf_observed": {"map_to_odom": False, "map_to_base_link": False},
+                "tf_chain_observed": {
+                    "map_to_odom": True,
+                    "odom_to_base_link": False,
+                    "base_link_to_laser_frame": True,
+                    "map_to_base_link": False,
+                },
+                "tf_chain_diagnostics": {
+                    "pairs": {
+                        "odom_to_base_link": {
+                            "source_frame": "odom",
+                            "target_frame": "base_link",
+                            "observed": False,
+                            "failure_reason": "tf2_timeout_or_timing",
+                        }
+                    }
+                },
+                "tf_failure_classification": {
+                    "map_to_base_link": "blocked_by_missing_odom_to_base_link",
+                    "blocking_segment": "odom_to_base_link",
+                    "frame_naming_consistent": True,
+                },
                 "managed_runtime_requested": True,
                 "managed_runtime_started": True,
                 "managed_runtime_cleanup_ok": False,
@@ -544,6 +589,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(latest["package_checks_batch_ok"])
         self.assertTrue(latest["initialpose_published"])
         self.assertFalse(latest["amcl_pose_observed"])
+        self.assertTrue(latest["tf_chain_observed"]["map_to_odom"])
+        self.assertFalse(latest["tf_chain_observed"]["odom_to_base_link"])
+        self.assertEqual("blocked_by_missing_odom_to_base_link", latest["tf_failure_classification"]["map_to_base_link"])
         self.assertFalse(latest["safe_to_control"])
 
     def test_default_localization_artifact_resolves_to_onboard_runtime(self) -> None:

@@ -1,0 +1,147 @@
+last interrupted amcl_pose_probe
+tf_chain {
+  "base_link_to_laser_frame": false,
+  "map_to_base_link": false,
+  "map_to_odom": false,
+  "odom_to_base_link": false
+}
+tf_class {
+  "blocking_segment": "map_to_odom",
+  "frame_naming_consistent": true,
+  "map_to_base_link": "blocked_by_missing_map_to_odom",
+  "reason": "frame_missing_or_name_mismatch"
+}
+tf_diag {
+  "frame_contract": {
+    "actual": {
+      "base": "base_link",
+      "laser": "laser_frame",
+      "map": "map",
+      "odom": "odom"
+    },
+    "consistent_with_defaults": true,
+    "expected": {
+      "base": "base_link",
+      "laser": "laser_frame",
+      "map": "map",
+      "odom": "odom"
+    }
+  },
+  "pairs": {
+    "base_link_to_laser_frame": {
+      "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+      "elapsed_ms": null,
+      "executed": false,
+      "failure_reason": "tf2_empty_output_or_timing",
+      "observed": false,
+      "returncode": null,
+      "source_frame": "base_link",
+      "target_frame": "laser_frame"
+    },
+    "map_to_base_link": {
+      "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+      "elapsed_ms": null,
+      "executed": false,
+      "failure_reason": "tf2_empty_output_or_timing",
+      "observed": false,
+      "returncode": null,
+      "source_frame": "map",
+      "target_frame": "base_link"
+    },
+    "map_to_odom": {
+      "boundary": null,
+      "elapsed_ms": 5717,
+      "executed": true,
+      "failure_reason": "frame_missing_or_name_mismatch",
+      "observed": false,
+      "returncode": null,
+      "source_frame": "map",
+      "target_frame": "odom"
+    },
+    "odom_to_base_link": {
+      "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+      "elapsed_ms": null,
+      "executed": false,
+      "failure_reason": "tf2_empty_output_or_timing",
+      "observed": false,
+      "returncode": null,
+      "source_frame": "odom",
+      "target_frame": "base_link"
+    }
+  }
+}
+==== map_to_odom_tf
+null
+==== odom_to_base_link_tf
+null
+==== base_link_to_laser_frame_tf
+null
+==== map_to_base_link_tf
+null
+recent [
+  {
+    "command": "ros2 node list",
+    "elapsed_ms": 4029,
+    "error": {
+      "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 4.0 secon",
+      "type": "TimeoutExpired"
+    },
+    "finished_at_ms": 1781123901639,
+    "ok": false,
+    "returncode": null
+  },
+  {
+    "command": "ros2 node list",
+    "elapsed_ms": 4025,
+    "error": {
+      "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 4.0 secon",
+      "type": "TimeoutExpired"
+    },
+    "finished_at_ms": 1781123906669,
+    "ok": false,
+    "returncode": null
+  },
+  {
+    "command": "ros2 node list",
+    "elapsed_ms": 3955,
+    "error": null,
+    "finished_at_ms": 1781123911628,
+    "ok": true,
+    "returncode": 0
+  },
+  {
+    "command": "command -v ros2",
+    "elapsed_ms": 2176,
+    "error": null,
+    "finished_at_ms": 1781123913817,
+    "ok": true,
+    "returncode": 0
+  },
+  {
+    "command": "ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped '{\"header\": {\"frame_id\": \"map\"}, \"pose\": {\"pose\": {\"position\": {\"x\": 0.0, \"y\": 0.0, \"z\": 0.0}, \"orientation\": {\"x\": 0.0, \"y\": 0.0, \"z\": 0.0, \"w\": 1.0}}, \"covariance\": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853891945200942]}}'",
+    "elapsed_ms": 7406,
+    "error": null,
+    "finished_at_ms": 1781123921230,
+    "ok": true,
+    "returncode": 0
+  },
+  {
+    "command": "timeout 8 ros2 topic echo --once /amcl_pose",
+    "elapsed_ms": 5896,
+    "error": null,
+    "finished_at_ms": 1781123927143,
+    "ok": true,
+    "returncode": 0
+  },
+  {
+    "command": "timeout 4 ros2 run tf2_ros tf2_echo map odom",
+    "elapsed_ms": 5717,
+    "error": {
+      "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 4 ros2 run tf2_ros tf2_echo map odo",
+      "type": "TimeoutExpired"
+    },
+    "finished_at_ms": 1781123932874,
+    "ok": false,
+    "returncode": null
+  }
+]
