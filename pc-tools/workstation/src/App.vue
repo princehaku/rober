@@ -23,9 +23,8 @@ import type {
 } from "./shared/contracts";
 
 // App 只组合全局状态和布局，不再承载各页面的展示细节。
-// activePanel 是本地导航状态，不参与证明链路。
-// 首屏默认落到 Robot Control，让普通用户先看到简易控制页，而不是工程调试页。
-const activePanel = ref<WorkstationPanel>("robotControl");
+// activePanel 现在只用于默认关闭的高级工具，避免工程 tab 污染普通用户首屏。
+const activePanel = ref<WorkstationPanel>("route");
 // loading 只说明 API 请求中，不说明任何旧 gate 正在执行。
 const loading = ref(true);
 // error 展示 API 不可用原因，并继续保持主动作关闭。
@@ -92,20 +91,26 @@ onMounted(() => {
       Loading local workstation summary...
     </div>
 
-    <WorkstationTabs v-model="activePanel" />
+    <RobotControlConsolePanel />
 
-    <RouteDebugPanel
-      v-if="activePanel === 'route'"
-      v-model:route-inputs="routeInputs"
-      :route-summary="routeSummary"
-      @refresh="refresh"
-    />
-    <RobotControlConsolePanel v-if="activePanel === 'robotControl'" />
-    <O7OperatorConsolePanel v-if="activePanel === 'o7'" :operator-console="o7OperatorConsole" />
-    <O7FixturePreviewPanel v-if="activePanel === 'o7Previews'" />
-    <EvidenceToolsPanel v-if="activePanel === 'evidence'" :evidence-tools="evidenceTools" />
-    <WaveRoverMaterialCoveragePanel v-if="activePanel === 'hardware'" :hardware-materials="hardwareMaterials" />
-    <TrainingLabelingPanel v-if="activePanel === 'training'" :training-labeling="trainingLabeling" />
-    <ProofBoundaryPanel v-if="activePanel === 'boundary'" :health="health" :proof-boundary="proofBoundary" />
+    <details class="advanced-tools-details">
+      <summary>高级工具</summary>
+      <div class="advanced-tools-body">
+        <WorkstationTabs v-model="activePanel" />
+
+        <RouteDebugPanel
+          v-if="activePanel === 'route'"
+          v-model:route-inputs="routeInputs"
+          :route-summary="routeSummary"
+          @refresh="refresh"
+        />
+        <O7OperatorConsolePanel v-if="activePanel === 'o7'" :operator-console="o7OperatorConsole" />
+        <O7FixturePreviewPanel v-if="activePanel === 'o7Previews'" />
+        <EvidenceToolsPanel v-if="activePanel === 'evidence'" :evidence-tools="evidenceTools" />
+        <WaveRoverMaterialCoveragePanel v-if="activePanel === 'hardware'" :hardware-materials="hardwareMaterials" />
+        <TrainingLabelingPanel v-if="activePanel === 'training'" :training-labeling="trainingLabeling" />
+        <ProofBoundaryPanel v-if="activePanel === 'boundary'" :health="health" :proof-boundary="proofBoundary" />
+      </div>
+    </details>
   </main>
 </template>

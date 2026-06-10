@@ -450,6 +450,24 @@ h3 {
   color: #1b2a38;
 }
 
+.advanced-tools-details {
+  margin-top: 18px;
+  border: 1px solid #cbd5df;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px 14px 14px;
+}
+
+.advanced-tools-details > summary {
+  cursor: pointer;
+  color: #1b2a38;
+  font-weight: 760;
+}
+
+.advanced-tools-body {
+  margin-top: 12px;
+}
+
 .advanced-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -654,6 +672,7 @@ th {
     .robot-quick-connect,
     .robot-control-form,
     .robot-console-grid,
+    .advanced-tools-body,
     .advanced-grid,
     .locked-actions,
     .motion-limits,

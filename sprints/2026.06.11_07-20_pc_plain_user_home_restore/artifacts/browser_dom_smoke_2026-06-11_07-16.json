@@ -1,0 +1,55 @@
+{
+  "run_at": "2026-06-11 07:16:04 CST",
+  "url": "http://127.0.0.1:4174/",
+  "server": "PORT=4174 npm run api",
+  "default_visible_dom": {
+    "body_has_api_unavailable": false,
+    "title_visible": true,
+    "advanced_tools_open": false,
+    "advanced_diagnostics_open": false,
+    "cards": [
+      "小车连接",
+      "实时画面",
+      "雷达",
+      "地图",
+      "移动/导航"
+    ],
+    "buttons": [
+      "刷新",
+      "连接/刷新",
+      "打开画面",
+      "关闭画面",
+      "刷新雷达",
+      "刷新地图",
+      "地图列表",
+      "检查路径",
+      "停止"
+    ],
+    "unexpected_buttons": [],
+    "forbidden_hits_first_screen": [],
+    "forbidden_hits_visible_body": []
+  },
+  "advanced_tools_after_expand": {
+    "advanced_tools_open": true,
+    "robot_console_still_visible": true,
+    "tabs": [
+      "路线",
+      "控制台",
+      "预览",
+      "证据",
+      "硬件",
+      "数据",
+      "安全边界"
+    ],
+    "tabs_visible_in_body": [
+      "路线",
+      "控制台",
+      "预览",
+      "证据",
+      "硬件",
+      "数据",
+      "安全边界"
+    ]
+  },
+  "conclusion": "pass"
+}

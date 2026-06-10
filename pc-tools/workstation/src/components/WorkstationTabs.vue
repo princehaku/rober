@@ -1,7 +1,6 @@
 <script setup lang="ts">
 export type WorkstationPanel =
   | "route"
-  | "robotControl"
   | "o7"
   | "o7Previews"
   | "evidence"
@@ -12,8 +11,7 @@ export type WorkstationPanel =
 const activePanel = defineModel<WorkstationPanel>({ required: true });
 
 const panels: Array<{ id: WorkstationPanel; label: string }> = [
-  // 标签改成普通用户更容易理解的短中文，但入口能力保持不变。
-  { id: "robotControl", label: "机器人" },
+  // 高级工具默认收起；这里保留工程入口，但不再把它们放到普通用户第一屏。
   { id: "route", label: "路线" },
   { id: "o7", label: "控制台" },
   { id: "o7Previews", label: "预览" },

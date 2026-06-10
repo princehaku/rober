@@ -2990,21 +2990,19 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    await wrapper.findAll("button").find((button) => button.text() === "路线")?.trigger("click");
-    await wrapper.vm.$nextTick();
-
-    expect(wrapper.text()).toContain("node_route_json_loader");
-    expect(wrapper.text()).toContain("pc-tools/workstation/src/server/routeDebugLoader.ts");
-    expect(wrapper.text()).toContain("console_controls");
-    expect(wrapper.text()).toContain("read_only");
-    expect(wrapper.text()).toContain("not_loaded_pc_only");
-    expect(wrapper.text()).toContain("blocked_not_proven");
-    expect(wrapper.text()).toContain("status_json_not_provided");
-    expect(wrapper.text()).not.toContain("route_debug_web.py");
-    expect(wrapper.text()).not.toContain("python -m");
-    expect(wrapper.text()).not.toContain("workstation_executes_python_gate");
-    expect(wrapper.text()).not.toContain("/cmd_vel");
-    expect(wrapper.text()).not.toContain("/dev/tty");
+    const advancedToolsText = wrapper.find(".advanced-tools-details").text();
+    expect(advancedToolsText).toContain("node_route_json_loader");
+    expect(advancedToolsText).toContain("pc-tools/workstation/src/server/routeDebugLoader.ts");
+    expect(advancedToolsText).toContain("console_controls");
+    expect(advancedToolsText).toContain("read_only");
+    expect(advancedToolsText).toContain("not_loaded_pc_only");
+    expect(advancedToolsText).toContain("blocked_not_proven");
+    expect(advancedToolsText).toContain("status_json_not_provided");
+    expect(advancedToolsText).not.toContain("route_debug_web.py");
+    expect(advancedToolsText).not.toContain("python -m");
+    expect(advancedToolsText).not.toContain("workstation_executes_python_gate");
+    expect(advancedToolsText).not.toContain("/cmd_vel");
+    expect(advancedToolsText).not.toContain("/dev/tty");
   });
 
   it("submits route inputs through the workstation API query contract", async () => {
@@ -3015,10 +3013,9 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    await wrapper.findAll("button").find((button) => button.text() === "路线")?.trigger("click");
-    await wrapper.vm.$nextTick();
-
-    await wrapper.find("input").setValue("C:\\tmp\\status proof.json");
+    const routeInputs = wrapper.findAll("form.route-inputs input");
+    expect(routeInputs).toHaveLength(4);
+    await routeInputs[0]!.setValue("C:\\tmp\\status proof.json");
     await wrapper.find("form.route-inputs").trigger("submit");
     await flushPromises();
 
@@ -3028,8 +3025,9 @@ describe("App", () => {
     expect(routeCall).toBeTruthy();
     const parsed = new URL(routeCall ?? "", "http://workstation.local");
     expect(parsed.searchParams.get("statusJson")).toBe("C:\\tmp\\status proof.json");
-    expect(wrapper.text()).not.toContain("/cmd_vel");
-    expect(wrapper.text()).not.toContain("/dev/tty");
+    const advancedToolsText = wrapper.find(".advanced-tools-details").text();
+    expect(advancedToolsText).not.toContain("/cmd_vel");
+    expect(advancedToolsText).not.toContain("/dev/tty");
   });
 
   it("renders Robot Control V1 by default with Robot API proxy and locked command boundary", async () => {
@@ -3057,6 +3055,12 @@ describe("App", () => {
     expect(firstScreenText).toContain("停止");
     expect(firstScreenText).toContain("现场材料：未满足");
     const firstScreenForbiddenTokens = [
+      "路线",
+      "预览",
+      "证据",
+      "硬件",
+      "数据",
+      "安全边界",
       "保存地图",
       "开始建图",
       "重置地图",
@@ -3104,35 +3108,46 @@ describe("App", () => {
     }
     expect(wrapper.text()).not.toContain("source=software_proof");
     expect(wrapper.text()).not.toContain("proof_status=not_proven");
-    expect(wrapper.find(".tabs").text()).toContain("机器人");
-    expect(wrapper.find("details summary").text()).toContain("高级诊断");
-    expect(wrapper.find("details").attributes("open")).toBeUndefined();
-    expect(wrapper.find("details").text()).toContain("task_id");
-    expect(wrapper.find("details").text()).toContain("Robot API status");
-    expect(wrapper.find("details").text()).toContain("Node server only; Vue direct access=false");
-    expect(wrapper.find("details").text()).toContain("path_generated");
-    expect(wrapper.find("details").text()).toContain("planner_server_not_active");
-    expect(wrapper.find("details").text()).toContain("safe_to_control=false");
-    expect(wrapper.find("details").text()).toContain("delivery_success=false");
-    expect(wrapper.find("details").text()).toContain("primary_actions_enabled=false");
-    expect(wrapper.find("details").text()).toContain("现场 HIL 材料");
-    expect(wrapper.find("details").text()).toContain("operator_report_latest.structured_hil_claims");
-    expect(wrapper.find("details").text()).toContain("phone-video-0605.mp4");
-    expect(wrapper.find("details").text()).toContain("轮速反馈");
-    expect(wrapper.find("details").text()).toContain("field_operator_claim_ready_for_review");
-    expect(wrapper.find("details").text()).toContain("提交现场材料（高级）");
-    expect(wrapper.find("details").text()).toContain("operator report preflight");
-    expect(wrapper.find("details").text()).toContain("latest submit");
-    expect(wrapper.find("details").text()).toContain("/api/operator/report");
-    expect(wrapper.find("details").text()).toContain("现场点动设置 / 控制边界");
-    expect(wrapper.find("details").text()).toContain("Nav2 规划详情");
-    expect(wrapper.find("details").text()).toContain("导航目标预检（高级）");
-    expect(wrapper.find("details").text()).toContain("确认仅做导航目标预检");
-    expect(wrapper.find("details").text()).toContain("启动雷达（高级）");
-    expect(wrapper.find("details").text()).toContain("停止雷达（高级）");
-    expect(wrapper.find("details").text()).toContain("前进");
-    expect(wrapper.find("details").text()).toContain("速度上限");
-    expect(wrapper.find("details").text()).toContain("现场有人扶控并准备急停");
+    expect(wrapper.find(".shell > .tabs").exists()).toBe(false);
+    expect(wrapper.find(".advanced-tools-details > summary").text()).toContain("高级工具");
+    expect(wrapper.find(".advanced-tools-details").attributes("open")).toBeUndefined();
+    expect(wrapper.find(".advanced-tools-details .tabs").text()).toContain("路线");
+    expect(wrapper.find(".advanced-tools-details .tabs").text()).toContain("控制台");
+    expect(wrapper.find(".advanced-tools-details .tabs").text()).toContain("预览");
+    expect(wrapper.find(".advanced-tools-details .tabs").text()).toContain("证据");
+    expect(wrapper.find(".advanced-tools-details .tabs").text()).toContain("硬件");
+    expect(wrapper.find(".advanced-tools-details .tabs").text()).toContain("数据");
+    expect(wrapper.find(".advanced-tools-details .tabs").text()).toContain("安全边界");
+    expect(wrapper.find(".advanced-tools-details .tabs").text()).not.toContain("机器人");
+    const diagnostics = wrapper.find(".robot-console .advanced-details");
+    expect(diagnostics.find("summary").text()).toContain("高级诊断");
+    expect(diagnostics.attributes("open")).toBeUndefined();
+    expect(diagnostics.text()).toContain("task_id");
+    expect(diagnostics.text()).toContain("Robot API status");
+    expect(diagnostics.text()).toContain("Node server only; Vue direct access=false");
+    expect(diagnostics.text()).toContain("path_generated");
+    expect(diagnostics.text()).toContain("planner_server_not_active");
+    expect(diagnostics.text()).toContain("safe_to_control=false");
+    expect(diagnostics.text()).toContain("delivery_success=false");
+    expect(diagnostics.text()).toContain("primary_actions_enabled=false");
+    expect(diagnostics.text()).toContain("现场 HIL 材料");
+    expect(diagnostics.text()).toContain("operator_report_latest.structured_hil_claims");
+    expect(diagnostics.text()).toContain("phone-video-0605.mp4");
+    expect(diagnostics.text()).toContain("轮速反馈");
+    expect(diagnostics.text()).toContain("field_operator_claim_ready_for_review");
+    expect(diagnostics.text()).toContain("提交现场材料（高级）");
+    expect(diagnostics.text()).toContain("operator report preflight");
+    expect(diagnostics.text()).toContain("latest submit");
+    expect(diagnostics.text()).toContain("/api/operator/report");
+    expect(diagnostics.text()).toContain("现场点动设置 / 控制边界");
+    expect(diagnostics.text()).toContain("Nav2 规划详情");
+    expect(diagnostics.text()).toContain("导航目标预检（高级）");
+    expect(diagnostics.text()).toContain("确认仅做导航目标预检");
+    expect(diagnostics.text()).toContain("启动雷达（高级）");
+    expect(diagnostics.text()).toContain("停止雷达（高级）");
+    expect(diagnostics.text()).toContain("前进");
+    expect(diagnostics.text()).toContain("速度上限");
+    expect(diagnostics.text()).toContain("现场有人扶控并准备急停");
   });
 
   it("submits operator report material from advanced diagnostics without leaking it to the first screen", async () => {
@@ -3569,8 +3584,9 @@ describe("App", () => {
     expect(wrapper.text()).toContain("hardware_verified=false");
     expect(wrapper.text()).toContain("moduleType=1");
     expect(wrapper.text()).toContain("primary_actions_enabled");
-    expect(wrapper.text()).not.toContain("/cmd_vel");
-    expect(wrapper.text()).not.toContain("/dev/ttyUSB");
+    const advancedToolsText = wrapper.find(".advanced-tools-details").text();
+    expect(advancedToolsText).not.toContain("/cmd_vel");
+    expect(advancedToolsText).not.toContain("/dev/ttyUSB");
     expect(wrapper.text()).not.toMatch(/hardware connected|ready to control/i);
     expect(wrapper.text()).not.toContain("hil_pass=true");
   });
@@ -3701,14 +3717,15 @@ describe("App", () => {
     expect(wrapper.text()).toContain("operator.safe_command_preview.v1");
     expect(wrapper.text()).toContain("sends_to_robot=false");
     expect(wrapper.text()).toContain("pc_must_not_direct_connect_robot");
-    expect(wrapper.text()).not.toContain("/cmd_vel");
+    const advancedToolsText = wrapper.find(".advanced-tools-details").text();
+    expect(advancedToolsText).not.toContain("/cmd_vel");
     expect(wrapper.findAll("button").map((button) => button.text())).not.toContain("Manual turn envelope");
     expect(wrapper.text()).not.toMatch(/ready[_ ]?to[_ ]?control/i);
     expect(wrapper.text()).not.toMatch(/success[_ -]?claim[_ -]?allowed=true/i);
     expect(wrapper.text()).not.toMatch(/\bpass=true\b/i);
     expect(wrapper.text()).not.toMatch(/\bpassed=true\b/i);
-    expect(wrapper.text()).not.toContain("/dev/ttyUSB");
-    expect(wrapper.text()).not.toContain("/dev/ttyACM");
+    expect(advancedToolsText).not.toContain("/dev/ttyUSB");
+    expect(advancedToolsText).not.toContain("/dev/ttyACM");
     expect(wrapper.text()).not.toMatch(/success[_ ]?claim[_ ]?allowed true/i);
     expect(wrapper.text()).not.toMatch(/submit enabledtrue/i);
     expect(wrapper.text()).not.toMatch(/rollback enabledtrue/i);
@@ -4271,7 +4288,8 @@ describe("App", () => {
     expect(wrapper.text()).toContain("real_o7_annotation_submit");
     expect(wrapper.text()).toContain("real_o7_voice_api");
     expect(wrapper.text()).toContain("real_hil_safety");
-    expect(wrapper.text()).not.toContain("/cmd_vel");
+    const advancedToolsText = wrapper.find(".advanced-tools-details").text();
+    expect(advancedToolsText).not.toContain("/cmd_vel");
     expect(wrapper.text()).not.toMatch(
       /\bSend\b|\bSpeak\b|\bDispatch\b|\bRun\b|\bSubmit\b|\bControl\b|\bPlay\b|\bPause\b|\bExport\b|\bStop\b|\bCancel\b|\bRecovery\b/,
     );
@@ -4315,7 +4333,8 @@ describe("App", () => {
     expect(wrapper.text()).toContain("field_evidence_manifest_artifacts_complete_and_preflight_ready");
     expect(wrapper.text()).toContain("safe_to_controlfalse");
     expect(wrapper.text()).toContain("delivery_successfalse");
-    expect(wrapper.text()).not.toContain("/cmd_vel");
+    const advancedToolsText = wrapper.find(".advanced-tools-details").text();
+    expect(advancedToolsText).not.toContain("/cmd_vel");
   });
 
   it("blocks consumer-detail labeling queue primary path when labeling samples are missing", async () => {
