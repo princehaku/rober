@@ -20,6 +20,7 @@ export { buildO7VoicePreview } from "./o7VoicePreview";
 export { buildO7SafeCommandPreview } from "./o7SafeCommandPreview";
 export { buildO7CloudArchiveTasks } from "./o7CloudArchiveTasks";
 export {
+  buildMapLifecycleProxy,
   buildMapProofRefreshProxy,
   buildRadarScanProofRefreshProxy,
   computeRobotProofRefreshTimeoutMs,

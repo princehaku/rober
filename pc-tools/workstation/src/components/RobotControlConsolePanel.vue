@@ -3,8 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
   getO7ConsumerTaskDetail,
   getRobotControlSummary,
+  getRobotControlMapList,
   postRobotControlBaseManual,
   postRobotControlBaseStop,
+  postRobotControlMapSave,
   postRobotControlMapProofRefresh,
   postRobotControlRadarScanProofRefresh,
   postRobotControlCameraOffer,
@@ -13,6 +15,7 @@ import {
 import type {
   O7ConsumerTaskDetailResponse,
   RobotControlBaseCommandProxyResponse,
+  RobotControlMapLifecycleResponse,
   RobotControlPreviewStatus,
   RobotControlProofRefreshProxyResponse,
   RobotControlSummaryResponse,
@@ -29,8 +32,12 @@ const robotSummary = ref<RobotControlSummaryResponse | null>(null);
 const taskDetail = ref<O7ConsumerTaskDetailResponse | null>(null);
 const radarRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
+const mapLifecycleResult = ref<RobotControlMapLifecycleResponse | null>(null);
 const manualCommandResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
 const manualCommandPending = ref(false);
+const mapLifecyclePending = ref(false);
+const mapLifecycleMapName = ref("");
+const mapLifecycleArtifactPath = ref("");
 const jogSpeedMps = ref(0.08);
 const jogDurationMs = ref(500);
 const hilChecklist = ref([
@@ -163,6 +170,24 @@ function summarizeMapEvidence(): string {
   return `map ${mapVisible ? "可见" : "未见"}；evidence ${evidenceVisible ? "可见" : "未见"}。`;
 }
 
+function summarizeMapLifecycle(): { state: "未读取" | "处理中" | "已读取" | "失败"; hint: string } {
+  // lifecycle 摘要只说列表/保存结果，不把 start/reset 或工程 proof 细节放回首页。
+  if (mapLifecyclePending.value) {
+    return { state: "处理中", hint: "正在读取或保存地图。" };
+  }
+  const result = mapLifecycleResult.value;
+  if (!result) {
+    return { state: "未读取", hint: "还没有读取地图列表或保存地图。" };
+  }
+  if (result.proxy_status !== "lifecycle_forwarded" || result.status === "blocked") {
+    return { state: "失败", hint: result.failure_reason || "地图 lifecycle 请求被阻断。" };
+  }
+  if (result.action === "list") {
+    return { state: "已读取", hint: `地图列表 ${result.map_count ?? 0} 个候选。` };
+  }
+  return { state: "已读取", hint: `保存请求已返回；mode=${result.command_result.mode}，executed=${result.command_result.executed ? "true" : "false"}。` };
+}
+
 function syncJogInputsToBoundary(): void {
   // 输入框默认跟随后端安全边界收口，避免页面初值或手输值越界。
   const speedLimit = robotSummary.value?.safe_command_boundary.speed_limit_mps ?? 0.12;
@@ -175,6 +200,7 @@ const robotConnectionSummary = computed(() => summarizeRobotConnection());
 const cameraSummary = computed(() => summarizeCameraState());
 const radarSummary = computed(() => summarizeProofState(radarRefreshPending.value, radarRefreshResult.value));
 const mapSummary = computed(() => summarizeProofState(mapRefreshPending.value, mapRefreshResult.value));
+const mapLifecycleSummary = computed(() => summarizeMapLifecycle());
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
 const manualSpeedLimit = computed(() => manualBoundary.value?.speed_limit_mps ?? 0.12);
 const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_ms ?? 800);
@@ -327,6 +353,43 @@ function makeRefreshFallback(
   };
 }
 
+function mapLifecycleRequestBody() {
+  // 可选输入只从高级诊断进入；空值不发送，保持 save 的默认软件 guard 行为。
+  return {
+    ...(mapLifecycleMapName.value.trim() ? { map_name: mapLifecycleMapName.value.trim() } : {}),
+    ...(mapLifecycleArtifactPath.value.trim() ? { artifact_path: mapLifecycleArtifactPath.value.trim() } : {}),
+  };
+}
+
+function makeMapLifecycleFallback(action: "list" | "save", reason: string): RobotControlMapLifecycleResponse {
+  // fetch 级失败仍补完整字段，避免地图卡片在错误时消失或误读成成功。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    action,
+    proxy_status: "lifecycle_failed",
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    remote_endpoint: action === "list" ? "/api/map/list" : "/api/map/save",
+    remote_method: action === "list" ? "GET" : "POST",
+    remote_http_status: null,
+    status: "blocked",
+    map_count: null,
+    map_names: [],
+    command_result: { mode: "not_loaded", executed: false, ok: null },
+    request_body: action === "save" ? mapLifecycleRequestBody() : {},
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
 function stampNow(): string {
   // 时间戳使用浏览器本地 ISO 字符串，足够支撑 operator 复核最近一次 Start/Stop。
   return new Date().toISOString();
@@ -470,6 +533,35 @@ async function refreshMapProof(): Promise<void> {
     mapRefreshResult,
     mapRefreshPending,
   );
+}
+
+async function runMapLifecycleAction(
+  action: "list" | "save",
+  request: () => Promise<RobotControlMapLifecycleResponse>,
+): Promise<void> {
+  // 地图 lifecycle 动作结束后回刷 summary，让首页连接状态和高级 readback 保持一致。
+  if (!robotApiBaseUrl.value.trim() || mapLifecyclePending.value) {
+    return;
+  }
+  mapLifecyclePending.value = true;
+  try {
+    mapLifecycleResult.value = await request();
+  } catch (err) {
+    mapLifecycleResult.value = makeMapLifecycleFallback(action, err instanceof Error ? err.message : `${action}_request_failed`);
+  } finally {
+    mapLifecyclePending.value = false;
+    await refreshConsole();
+  }
+}
+
+async function loadMapList(): Promise<void> {
+  // 列表读取是 GET-only 固定代理，不触发建图、不启动底盘、不发送 /cmd_vel。
+  await runMapLifecycleAction("list", () => getRobotControlMapList(robotApiBaseUrl.value));
+}
+
+async function saveMap(): Promise<void> {
+  // 保存只调用固定 /api/map/save；命令未配置时预期由上位机返回 software guard。
+  await runMapLifecycleAction("save", () => postRobotControlMapSave(robotApiBaseUrl.value, mapLifecycleRequestBody()));
 }
 
 async function sendManualMotion(direction: "forward" | "back" | "left" | "right"): Promise<void> {
@@ -745,13 +837,21 @@ onBeforeUnmount(() => {
 
       <article class="snapshot-panel">
         <h3>地图</h3>
-        <div class="panel-action-row">
+        <div class="panel-action-row wrap-actions">
           <button type="button" :disabled="loading || mapRefreshPending || !robotApiBaseUrl.trim()" @click="refreshMapProof">
             刷新地图
           </button>
+          <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
+            地图列表
+          </button>
+          <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="saveMap">
+            保存地图
+          </button>
           <span class="status-chip" :data-state="mapSummary.state">{{ mapSummary.state }}</span>
+          <span class="status-chip" :data-state="mapLifecycleSummary.state">{{ mapLifecycleSummary.state }}</span>
         </div>
         <p class="panel-note">{{ mapSummary.hint }} {{ summarizeMapEvidence() }}</p>
+        <p class="panel-note">{{ mapLifecycleSummary.hint }}</p>
       </article>
 
       <article class="snapshot-panel">
@@ -895,6 +995,28 @@ onBeforeUnmount(() => {
 
         <section class="advanced-block">
           <h3>地图详情</h3>
+          <div class="robot-control-form">
+            <label>
+              <span>map_name（可选）</span>
+              <input v-model="mapLifecycleMapName" name="mapLifecycleMapName" maxlength="80" placeholder="floor_1">
+            </label>
+            <label>
+              <span>artifact_path（可选）</span>
+              <input v-model="mapLifecycleArtifactPath" name="mapLifecycleArtifactPath" maxlength="240" placeholder="maps/floor_1.yaml">
+            </label>
+            <button class="secondary" type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
+              地图列表
+            </button>
+            <button class="secondary" type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="saveMap">
+              保存地图
+            </button>
+            <button class="secondary" type="button" disabled title="受控/高级：本轮禁止真实 map start smoke">
+              Start（受控/高级，禁用）
+            </button>
+            <button class="secondary" type="button" disabled title="受控/高级：本轮不开放 reset">
+              Reset（受控/高级，禁用）
+            </button>
+          </div>
           <dl class="kv compact-kv">
             <dt>pending</dt>
             <dd>{{ mapRefreshPending ? "pending" : "idle" }}</dd>
@@ -912,6 +1034,34 @@ onBeforeUnmount(() => {
             <dd>{{ timestampText(mapRefreshResult?.last_refreshed_at_ms) }}</dd>
             <dt>blocked reasons</dt>
             <dd>{{ listText(mapRefreshResult?.blocked_reasons, "none") }}</dd>
+            <dt>lifecycle action</dt>
+            <dd>{{ mapLifecycleResult?.action ?? "not_loaded" }}</dd>
+            <dt>lifecycle HTTP</dt>
+            <dd>
+              {{ mapLifecycleResult?.remote_method ?? "n/a" }}
+              {{ mapLifecycleResult?.remote_endpoint ?? "not_loaded" }}
+              -> {{ mapLifecycleResult?.remote_http_status ?? "n/a" }}
+            </dd>
+            <dt>lifecycle status</dt>
+            <dd>{{ mapLifecycleResult?.proxy_status ?? "not_loaded" }} / {{ mapLifecycleResult?.status ?? "not_loaded" }}</dd>
+            <dt>map_count</dt>
+            <dd>{{ mapLifecycleResult?.map_count ?? "n/a" }}</dd>
+            <dt>map names</dt>
+            <dd>{{ listText(mapLifecycleResult?.map_names, "none") }}</dd>
+            <dt>command_result</dt>
+            <dd>
+              mode={{ mapLifecycleResult?.command_result.mode ?? "not_loaded" }},
+              executed={{ mapLifecycleResult?.command_result.executed ?? false }},
+              ok={{ mapLifecycleResult?.command_result.ok ?? "n/a" }}
+            </dd>
+            <dt>request body</dt>
+            <dd>{{ JSON.stringify(mapLifecycleResult?.request_body ?? {}) }}</dd>
+            <dt>lifecycle failure</dt>
+            <dd>{{ mapLifecycleResult?.failure_reason || "none" }}</dd>
+            <dt>lifecycle blocked reasons</dt>
+            <dd>{{ listText(mapLifecycleResult?.blocked_reasons, "none") }}</dd>
+            <dt>lifecycle dangerous fields</dt>
+            <dd>{{ listText(mapLifecycleResult?.hard_dangerous_true_fields, "none") }}</dd>
           </dl>
         </section>
 

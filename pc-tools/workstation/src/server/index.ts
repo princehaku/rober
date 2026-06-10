@@ -24,6 +24,7 @@ import {
   buildO7VoicePreview,
   buildProofBoundary,
   buildRadarScanProofRefreshProxy,
+  buildMapLifecycleProxy,
   buildMapProofRefreshProxy,
   buildRobotControlSummary,
   buildRouteDebugSummary,
@@ -49,6 +50,7 @@ import type {
   RobotControlEvidenceCaptureStatus,
   RobotControlEvidenceEndpointCapture,
   RobotControlEvidenceReadbackSummary,
+  RobotControlMapLifecycleAction,
 } from "../shared/contracts";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -116,6 +118,14 @@ function allowedDirection(value: unknown): RobotControlBaseCommandRequest["direc
   return typeof value === "string" && ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS.includes(value as never)
     ? (value as RobotControlBaseCommandRequest["direction"])
     : null;
+}
+
+function mapLifecycleStatusCode(proxyStatus: "lifecycle_forwarded" | "lifecycle_rejected" | "lifecycle_failed"): number {
+  // lifecycle 代理保留 HTTP 语义：本机拒绝是 400，上位机/危险字段失败是 502，固定代理成功是 200。
+  if (proxyStatus === "lifecycle_forwarded") {
+    return 200;
+  }
+  return proxyStatus === "lifecycle_rejected" ? 400 : 502;
 }
 
 function missingHilChecklist(confirmHilChecklist: boolean): string[] {
@@ -802,6 +812,24 @@ export function createWorkstationApp(): express.Express {
     res
       .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
       .json(response);
+  });
+
+  workstationApp.get("/api/robot-control/map/list", async (req, res) => {
+    // Map list 是固定 GET 代理；它只读取地图 artifact 候选，不开放任意 Robot API endpoint。
+    const response = await buildMapLifecycleProxy(queryString(req.query.baseUrl), "list");
+    res.status(mapLifecycleStatusCode(response.proxy_status)).json(response);
+  });
+
+  ([
+    ["start", "/api/robot-control/map/start"],
+    ["save", "/api/robot-control/map/save"],
+    ["reset", "/api/robot-control/map/reset"],
+  ] as Array<[RobotControlMapLifecycleAction, string]>).forEach(([action, route]) => {
+    workstationApp.post(route, async (req, res) => {
+      // lifecycle POST 只能转发到 action 对应的固定上位机 endpoint，body 由 helper 做短字段白名单。
+      const response = await buildMapLifecycleProxy(queryString(req.query.baseUrl), action, req.body);
+      res.status(mapLifecycleStatusCode(response.proxy_status)).json(response);
+    });
   });
 
   workstationApp.post("/api/robot-control/camera/offer", async (req, res) => {

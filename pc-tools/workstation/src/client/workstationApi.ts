@@ -23,6 +23,8 @@ import type {
   RobotControlCameraOfferProxyResponse,
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseCommandRequest,
+  RobotControlMapLifecycleRequest,
+  RobotControlMapLifecycleResponse,
   RobotControlSummaryResponse,
   RouteDebugSummaryResponse,
   TrainingLabelingResponse,
@@ -90,6 +92,10 @@ const API_ENDPOINTS = {
   robotControlBaseStop: "/api/robot-control/base/stop",
   robotControlRadarScanProofRefresh: "/api/robot-control/radar/scan-proof/refresh",
   robotControlMapProofRefresh: "/api/robot-control/map/proof/refresh",
+  robotControlMapList: "/api/robot-control/map/list",
+  robotControlMapStart: "/api/robot-control/map/start",
+  robotControlMapSave: "/api/robot-control/map/save",
+  robotControlMapReset: "/api/robot-control/map/reset",
   robotControlCameraOffer: "/api/robot-control/camera/offer",
   robotControlCameraPeersPrefix: "/api/robot-control/camera/peers/",
   proofBoundary: "/api/proof-boundary",
@@ -189,6 +195,17 @@ function robotControlCameraOfferUrl(baseUrl: string): string {
 
 function robotControlBaseProxyUrl(endpoint: string, baseUrl: string): string {
   // 点动/停止都只接受 baseUrl，远端路径固定在 Node 代理侧，浏览器不能拼接任意 POST。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  const query = params.toString();
+  return query ? `${endpoint}?${query}` : endpoint;
+}
+
+function robotControlMapLifecycleUrl(endpoint: string, baseUrl: string): string {
+  // map lifecycle 也只把 baseUrl 交给 Node 代理；地图 action 路径由 client 常量固定。
   const params = new URLSearchParams();
   const trimmed = baseUrl.trim();
   if (trimmed) {
@@ -402,6 +419,35 @@ export async function postRobotControlMapProofRefresh(baseUrl: string): Promise<
     robotControlProofRefreshUrl(API_ENDPOINTS.robotControlMapProofRefresh, baseUrl),
     {},
   );
+}
+
+export async function getRobotControlMapList(baseUrl: string): Promise<RobotControlMapLifecycleResponse> {
+  // Map list 是固定 GET 代理，不允许组件拼接 /api/map/list 或直接跨域访问上位机。
+  return loadJson<RobotControlMapLifecycleResponse>(robotControlMapLifecycleUrl(API_ENDPOINTS.robotControlMapList, baseUrl));
+}
+
+export async function postRobotControlMapStart(
+  baseUrl: string,
+  body: RobotControlMapLifecycleRequest = {},
+): Promise<RobotControlMapLifecycleResponse> {
+  // Start endpoint 存在但 UI 默认不开放；body 仍只允许 map_name/artifact_path。
+  return postJson<RobotControlMapLifecycleResponse>(robotControlMapLifecycleUrl(API_ENDPOINTS.robotControlMapStart, baseUrl), body);
+}
+
+export async function postRobotControlMapSave(
+  baseUrl: string,
+  body: RobotControlMapLifecycleRequest = {},
+): Promise<RobotControlMapLifecycleResponse> {
+  // Save 通过固定代理触发上位机软件 guard 或配置命令，不透传任意字段。
+  return postJson<RobotControlMapLifecycleResponse>(robotControlMapLifecycleUrl(API_ENDPOINTS.robotControlMapSave, baseUrl), body);
+}
+
+export async function postRobotControlMapReset(
+  baseUrl: string,
+  body: RobotControlMapLifecycleRequest = {},
+): Promise<RobotControlMapLifecycleResponse> {
+  // Reset 只保留高级诊断入口，默认不会在普通用户首屏变成可误点动作。
+  return postJson<RobotControlMapLifecycleResponse>(robotControlMapLifecycleUrl(API_ENDPOINTS.robotControlMapReset, baseUrl), body);
 }
 
 export async function postRobotControlCameraOffer(

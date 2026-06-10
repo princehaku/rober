@@ -3,6 +3,10 @@ import type {
   RobotApiEndpointReadback,
   RobotApiProofSummary,
   RobotApiReadEndpointId,
+  RobotControlMapLifecycleAction,
+  RobotControlMapLifecycleEndpoint,
+  RobotControlMapLifecycleRequest,
+  RobotControlMapLifecycleResponse,
   RobotControlProofRefreshProxyResponse,
   RobotControlProofRefreshKind,
   RobotControlSummaryResponse,
@@ -98,6 +102,19 @@ const MAP_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
     "map_metadata_observed",
     "blocked_reasons",
   ],
+};
+
+type RobotMapLifecycleConfig = {
+  action: RobotControlMapLifecycleAction;
+  endpoint: RobotControlMapLifecycleEndpoint;
+  method: "GET" | "POST";
+};
+
+const MAP_LIFECYCLE_CONFIGS: Record<RobotControlMapLifecycleAction, RobotMapLifecycleConfig> = {
+  list: { action: "list", endpoint: "/api/map/list", method: "GET" },
+  start: { action: "start", endpoint: "/api/map/start", method: "POST" },
+  save: { action: "save", endpoint: "/api/map/save", method: "POST" },
+  reset: { action: "reset", endpoint: "/api/map/reset", method: "POST" },
 };
 
 const REFRESH_NON_MOTION_EVIDENCE_ACTION_FIELDS = new Set(["sends_commands", "starts_ros2"]);
@@ -294,6 +311,214 @@ export function computeRobotProofRefreshTimeoutMs(config: Pick<RobotProofRefresh
   const warmupS = numericSeconds(config.request_body.runtime_warmup_s) ?? 0;
   const calculatedMs = Math.round((timeoutS + warmupS) * 1000 + Math.max(0, Math.trunc(config.safety_margin_ms)));
   return Math.min(config.timeout_cap_ms, calculatedMs);
+}
+
+function safeLifecycleText(value: unknown, maxLength: number): string | null {
+  // map lifecycle body 只允许短文本槽位，防止 UI 把任意 JSON 或 shell 片段透传到上位机。
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== "string") {
+    return "";
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed.length > maxLength || !/^[A-Za-z0-9._/ -]+$/.test(trimmed)) {
+    return "";
+  }
+  return trimmed;
+}
+
+function sanitizeMapLifecycleBody(body: unknown): { ok: true; body: RobotControlMapLifecycleRequest } | { ok: false; reason: string } {
+  // 固定代理只接受 map_name/artifact_path 两个短字段；未知字段直接拒绝，不做“忽略后转发”。
+  if (body === undefined || body === null) {
+    return { ok: true, body: {} };
+  }
+  const payload = asRecord(body);
+  if (!payload) {
+    return { ok: false, reason: "request_body_must_be_json_object" };
+  }
+  const unknownKeys = Object.keys(payload).filter((key) => key !== "map_name" && key !== "artifact_path");
+  if (unknownKeys.length > 0) {
+    return { ok: false, reason: `request_body_unknown_fields:${unknownKeys.slice(0, 4).join("|")}` };
+  }
+  const mapName = safeLifecycleText(payload.map_name, 80);
+  if (mapName === "") {
+    return { ok: false, reason: "map_name_invalid_or_too_long" };
+  }
+  const artifactPath = safeLifecycleText(payload.artifact_path, 240);
+  if (artifactPath === "") {
+    return { ok: false, reason: "artifact_path_invalid_or_too_long" };
+  }
+  return {
+    ok: true,
+    body: {
+      ...(mapName ? { map_name: mapName } : {}),
+      ...(artifactPath ? { artifact_path: artifactPath } : {}),
+    },
+  };
+}
+
+function mapNamesFromPayload(payload: JsonRecord | null): string[] {
+  // 地图列表只暴露短文件名摘要，避免把完整上位机路径或大量列表铺进首页。
+  const maps = findFirstKey(payload, ["maps"]);
+  if (!Array.isArray(maps)) {
+    return [];
+  }
+  return maps.slice(0, 12).flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return [];
+    }
+    const record = item as JsonRecord;
+    return typeof record.name === "string" && record.name.trim() ? [record.name.trim().slice(0, 120)] : [];
+  });
+}
+
+function mapCountFromPayload(payload: JsonRecord | null): number | null {
+  // map_count 优先使用上位机字段；缺字段时用 maps 数组长度兜底，仍不证明地图质量。
+  const count = findFirstKey(payload, ["map_count"]);
+  if (typeof count === "number" && Number.isFinite(count)) {
+    return count;
+  }
+  const maps = findFirstKey(payload, ["maps"]);
+  return Array.isArray(maps) ? maps.length : null;
+}
+
+function commandResultSummary(payload: JsonRecord | null): RobotControlMapLifecycleResponse["command_result"] {
+  // command_result.executed 只作为诊断字段；PC 响应顶层 robot_control_executed 仍固定 false。
+  const commandResult = asRecord(findFirstKey(payload, ["command_result"]));
+  return {
+    mode: asString(commandResult?.mode, "not_loaded"),
+    executed: commandResult?.executed === true,
+    ok: typeof commandResult?.ok === "boolean" ? commandResult.ok : null,
+  };
+}
+
+function blockedMapLifecycleResponse(
+  sourceBaseUrl: string,
+  config: RobotMapLifecycleConfig,
+  reason: string,
+  body: RobotControlMapLifecycleRequest = {},
+): RobotControlMapLifecycleResponse {
+  // URL、body 或 fetch 被拒时仍返回完整 fail-closed 合同，前端不用另造错误态。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
+    ...PROOF_FLAGS,
+    action: config.action,
+    proxy_status: "lifecycle_rejected",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    remote_endpoint: config.endpoint,
+    remote_method: config.method,
+    remote_http_status: null,
+    status: "blocked",
+    map_count: null,
+    map_names: [],
+    command_result: { mode: "not_loaded", executed: false, ok: null },
+    request_body: body,
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
+export async function buildMapLifecycleProxy(
+  baseUrl: string,
+  action: RobotControlMapLifecycleAction,
+  body: unknown = {},
+): Promise<RobotControlMapLifecycleResponse> {
+  // 这里是建图 lifecycle 的唯一固定代理：action 决定白名单 endpoint，浏览器不能传动态路径。
+  const config = MAP_LIFECYCLE_CONFIGS[action];
+  const sanitized = config.method === "GET" ? { ok: true as const, body: {} } : sanitizeMapLifecycleBody(body);
+  if (!sanitized.ok) {
+    return blockedMapLifecycleResponse(baseUrl, config, sanitized.reason);
+  }
+  const normalized = normalizeRobotApiBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return blockedMapLifecycleResponse(baseUrl, config, normalized.reason, sanitized.body);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(endpointUrl(normalized.normalized, config.endpoint), {
+      method: config.method,
+      headers: config.method === "POST" ? { "Content-Type": "application/json" } : undefined,
+      body: config.method === "POST" ? JSON.stringify(sanitized.body) : undefined,
+      signal: AbortSignal.timeout(config.action === "save" ? 10_000 : 5_000),
+    });
+  } catch (error) {
+    const reason =
+      error instanceof Error && error.name === "TimeoutError"
+        ? `fetch_timeout_${config.action === "save" ? 10_000 : 5_000}ms`
+        : error instanceof Error
+          ? error.message.slice(0, 180)
+          : "fetch_failed";
+    return {
+      ...blockedMapLifecycleResponse(baseUrl, config, reason, sanitized.body),
+      proxy_status: "lifecycle_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+    };
+  }
+
+  let bodyJson: unknown;
+  try {
+    bodyJson = await response.json();
+  } catch {
+    return {
+      ...blockedMapLifecycleResponse(baseUrl, config, "response_json_parse_failed", sanitized.body),
+      proxy_status: "lifecycle_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_http_status: response.status,
+      blocked_reasons: ["response_json_parse_failed", `map_lifecycle_http_status_${response.status}`],
+    };
+  }
+
+  const payload = asRecord(bodyJson);
+  if (!payload) {
+    return {
+      ...blockedMapLifecycleResponse(baseUrl, config, "response_json_not_object", sanitized.body),
+      proxy_status: "lifecycle_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_http_status: response.status,
+      blocked_reasons: ["response_json_not_object", `map_lifecycle_http_status_${response.status}`],
+    };
+  }
+
+  const hardDangerous = scanDangerousTrueFields(payload, "", HARD_DANGEROUS_TRUE_FIELDS);
+  const commandResult = commandResultSummary(payload);
+  const commandExecutedReason = commandResult.executed ? [`map_lifecycle_command_executed:${config.action}`] : [];
+  const blockedReasons = [
+    ...(response.ok ? [] : [`map_lifecycle_http_status_${response.status}`]),
+    ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
+    ...commandExecutedReason,
+  ];
+  const forwarded = response.ok && blockedReasons.length === 0;
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
+    ...PROOF_FLAGS,
+    action: config.action,
+    proxy_status: forwarded ? "lifecycle_forwarded" : "lifecycle_failed",
+    source_base_url: baseUrl,
+    normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+    remote_endpoint: config.endpoint,
+    remote_method: config.method,
+    remote_http_status: response.status,
+    status: forwarded ? "loaded_fail_closed_summary" : "blocked",
+    map_count: mapCountFromPayload(payload),
+    map_names: mapNamesFromPayload(payload),
+    command_result: commandResult,
+    request_body: sanitized.body,
+    failure_reason:
+      blockedReasons.length > 0
+        ? blockedReasons[0] ?? "map_lifecycle_blocked"
+        : asString(findFirstKey(payload, ["failure_reason", "error"]), ""),
+    blocked_reasons: blockedReasons,
+    hard_dangerous_true_fields: hardDangerous,
+    robot_control_executed: false,
+  };
 }
 
 async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise<RobotApiEndpointReadback> {

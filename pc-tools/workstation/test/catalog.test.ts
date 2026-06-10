@@ -858,6 +858,63 @@ function listenRobotProofRefreshApi(
   });
 }
 
+function listenRobotMapLifecycleApi(
+  handlers: Record<string, { payload: unknown; statusCode?: number; method: "GET" | "POST" }>,
+): Promise<{
+  baseUrl: string;
+  close: () => Promise<void>;
+  receivedBodies: Record<string, unknown[]>;
+  receivedGets: string[];
+}> {
+  // map lifecycle 代理既有 GET 也有 POST；测试要确认它们都只命中固定上位机路径。
+  const receivedBodies: Record<string, unknown[]> = {};
+  const receivedGets: string[] = [];
+  const server = http.createServer((req, res) => {
+    const url = req.url ?? "/";
+    const handler = handlers[url];
+    if (!handler || req.method !== handler.method) {
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+      return;
+    }
+    if (req.method === "GET") {
+      receivedGets.push(url);
+      res.statusCode = handler.statusCode ?? 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(handler.payload));
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+    req.on("end", () => {
+      if (!receivedBodies[url]) {
+        receivedBodies[url] = [];
+      }
+      receivedBodies[url].push(body ? JSON.parse(body) : {});
+      res.statusCode = handler.statusCode ?? 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(handler.payload));
+    });
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        receivedBodies,
+        receivedGets,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
 function listenRobotBaseCommandApi(
   postHandlers: Record<string, { payload: unknown; statusCode?: number }>,
   getHandlers: Record<string, { payload: unknown; statusCode?: number }>,
@@ -3902,6 +3959,178 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.blocked_reasons).toContain("hard_dangerous_true_field:safe_to_control");
       expect(body.hard_dangerous_true_fields).toContain("safe_to_control");
       expect(body.non_motion_evidence_actions_observed).toEqual([]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation map lifecycle proxies use fixed endpoints and whitelist short request body fields", async () => {
+    // lifecycle 代理覆盖 list/save/start/reset 四条固定路径，不接受任意 body 字段或动态 endpoint。
+    const upstream = await listenRobotMapLifecycleApi({
+      "/api/map/list": {
+        method: "GET",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_list_result",
+          status: "software_guard",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          map_count: 2,
+          maps: [{ name: "floor_1.yaml" }, { name: "floor_1.pgm" }],
+          command_result: { mode: "read_only_local_files", executed: false, ok: true },
+        },
+      },
+      "/api/map/save": {
+        method: "POST",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_lifecycle_result",
+          status: "software_guard",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          map_count: 2,
+          command_result: { mode: "software_guard_command_not_configured", executed: false, ok: false },
+        },
+      },
+      "/api/map/start": {
+        method: "POST",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_lifecycle_result",
+          status: "software_guard",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          command_result: { mode: "software_guard_command_not_configured", executed: false, ok: false },
+        },
+      },
+      "/api/map/reset": {
+        method: "POST",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_lifecycle_result",
+          status: "software_guard",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          command_result: { mode: "software_guard_command_not_configured", executed: false, ok: false },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const listResponse = await fetch(`${workstation.baseUrl}/api/robot-control/map/list?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const listBody = (await listResponse.json()) as {
+        proxy_status: string;
+        remote_endpoint: string;
+        remote_method: string;
+        map_count: number;
+        map_names: string[];
+        robot_control_executed: boolean;
+      };
+      expect(listResponse.status).toBe(200);
+      expect(listBody.proxy_status).toBe("lifecycle_forwarded");
+      expect(listBody.remote_endpoint).toBe("/api/map/list");
+      expect(listBody.remote_method).toBe("GET");
+      expect(listBody.map_count).toBe(2);
+      expect(listBody.map_names).toEqual(["floor_1.yaml", "floor_1.pgm"]);
+      expect(listBody.robot_control_executed).toBe(false);
+      expect(upstream.receivedGets).toEqual(["/api/map/list"]);
+
+      const rejected = await fetch(`${workstation.baseUrl}/api/robot-control/map/save?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ map_name: "floor_1", arbitrary_endpoint: "/api/base/manual" }),
+      });
+      const rejectedBody = (await rejected.json()) as { proxy_status: string; failure_reason: string };
+      expect(rejected.status).toBe(400);
+      expect(rejectedBody.proxy_status).toBe("lifecycle_rejected");
+      expect(rejectedBody.failure_reason).toContain("request_body_unknown_fields");
+      expect(upstream.receivedBodies["/api/map/save"]).toBeUndefined();
+
+      const saveResponse = await fetch(`${workstation.baseUrl}/api/robot-control/map/save?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ map_name: "floor_1", artifact_path: "maps/floor_1.yaml" }),
+      });
+      const saveBody = (await saveResponse.json()) as {
+        proxy_status: string;
+        remote_endpoint: string;
+        command_result: { mode: string; executed: boolean };
+        safe_to_control: boolean;
+      };
+      expect(saveResponse.status).toBe(200);
+      expect(saveBody.proxy_status).toBe("lifecycle_forwarded");
+      expect(saveBody.remote_endpoint).toBe("/api/map/save");
+      expect(saveBody.command_result.mode).toBe("software_guard_command_not_configured");
+      expect(saveBody.command_result.executed).toBe(false);
+      expect(saveBody.safe_to_control).toBe(false);
+      expect(upstream.receivedBodies["/api/map/save"]).toEqual([
+        { map_name: "floor_1", artifact_path: "maps/floor_1.yaml" },
+      ]);
+
+      const startResponse = await fetch(`${workstation.baseUrl}/api/robot-control/map/start?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ map_name: "floor_1" }),
+      });
+      const resetResponse = await fetch(`${workstation.baseUrl}/api/robot-control/map/reset?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artifact_path: "maps/floor_1.yaml" }),
+      });
+      expect(startResponse.status).toBe(200);
+      expect(resetResponse.status).toBe(200);
+      expect(upstream.receivedBodies["/api/map/start"]).toEqual([{ map_name: "floor_1" }]);
+      expect(upstream.receivedBodies["/api/map/reset"]).toEqual([{ artifact_path: "maps/floor_1.yaml" }]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation map lifecycle proxy fails closed on dangerous true fields and executed command result", async () => {
+    // 上位机如果声称危险 true 或命令已执行，PC 端仍保持 blocked/not_proven 合同。
+    const upstream = await listenRobotMapLifecycleApi({
+      "/api/map/save": {
+        method: "POST",
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_lifecycle_result",
+          status: "unexpected_success",
+          safe_to_control: true,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          command_result: { mode: "configured_command", executed: true, ok: true },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/map/save?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        status: string;
+        hard_dangerous_true_fields: string[];
+        blocked_reasons: string[];
+        robot_control_executed: boolean;
+      };
+      expect(response.status).toBe(502);
+      expect(body.proxy_status).toBe("lifecycle_failed");
+      expect(body.status).toBe("blocked");
+      expect(body.hard_dangerous_true_fields).toContain("safe_to_control");
+      expect(body.blocked_reasons).toEqual(expect.arrayContaining([
+        "hard_dangerous_true_field:safe_to_control",
+        "map_lifecycle_command_executed:save",
+      ]));
+      expect(body.robot_control_executed).toBe(false);
     } finally {
       await workstation.close();
       await upstream.close();

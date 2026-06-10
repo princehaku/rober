@@ -2097,6 +2097,44 @@ export interface RobotControlProofRefreshProxyResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export type RobotControlMapLifecycleAction = "list" | "start" | "save" | "reset";
+export type RobotControlMapLifecycleProxyStatus = "lifecycle_forwarded" | "lifecycle_rejected" | "lifecycle_failed";
+export type RobotControlMapLifecycleEndpoint =
+  | "/api/map/list"
+  | "/api/map/start"
+  | "/api/map/save"
+  | "/api/map/reset";
+
+// 地图 lifecycle 只开放固定 endpoint 与短字段白名单，不能退化成任意 Robot API 代理。
+export interface RobotControlMapLifecycleRequest {
+  map_name?: string;
+  artifact_path?: string;
+}
+
+export interface RobotControlMapLifecycleResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1";
+  action: RobotControlMapLifecycleAction;
+  proxy_status: RobotControlMapLifecycleProxyStatus;
+  source_base_url: string;
+  normalized_base_url: string;
+  remote_endpoint: RobotControlMapLifecycleEndpoint;
+  remote_method: "GET" | "POST";
+  remote_http_status: number | null;
+  status: "blocked" | "loaded_fail_closed_summary";
+  map_count: number | null;
+  map_names: string[];
+  command_result: {
+    mode: string;
+    executed: boolean;
+    ok: boolean | null;
+  };
+  request_body: RobotControlMapLifecycleRequest;
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
 export interface RobotControlCameraAnswerSummary {
   type: "answer" | "pranswer";
   sdp: string;

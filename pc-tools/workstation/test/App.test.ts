@@ -456,6 +456,46 @@ const fixtures: Record<string, unknown> = {
       non_motion_evidence_actions_observed: ["sends_commands", "starts_ros2"],
       ...PROOF_FLAGS,
     },
+  "/api/robot-control/map/list": {
+    schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
+    action: "list",
+    proxy_status: "lifecycle_forwarded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/map/list",
+    remote_method: "GET",
+    remote_http_status: 200,
+    status: "loaded_fail_closed_summary",
+    map_count: 2,
+    map_names: ["floor_1.yaml", "floor_1.pgm"],
+    command_result: { mode: "read_only_local_files", executed: false, ok: true },
+    request_body: {},
+    failure_reason: "",
+    blocked_reasons: [],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  },
+  "/api/robot-control/map/save": {
+    schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
+    action: "save",
+    proxy_status: "lifecycle_forwarded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/map/save",
+    remote_method: "POST",
+    remote_http_status: 200,
+    status: "loaded_fail_closed_summary",
+    map_count: 2,
+    map_names: [],
+    command_result: { mode: "software_guard_command_not_configured", executed: false, ok: false },
+    request_body: {},
+    failure_reason: "",
+    blocked_reasons: [],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  },
   "/api/robot-control/camera/offer": {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_offer_proxy.v1",
     proxy_status: "offer_forwarded",
@@ -2587,6 +2627,10 @@ function stubWorkstationFetch() {
       fixtureKey = "/api/robot-control/radar/scan-proof/refresh";
     } else if (url.startsWith("/api/robot-control/map/proof/refresh")) {
       fixtureKey = "/api/robot-control/map/proof/refresh";
+    } else if (url.startsWith("/api/robot-control/map/list")) {
+      fixtureKey = "/api/robot-control/map/list";
+    } else if (url.startsWith("/api/robot-control/map/save")) {
+      fixtureKey = "/api/robot-control/map/save";
     } else if (url.startsWith("/api/robot-control/camera/offer")) {
       fixtureKey = "/api/robot-control/camera/offer";
     } else if (url.startsWith("/api/robot-control/camera/peers/peer-preview-001/close")) {
@@ -2747,7 +2791,7 @@ describe("App", () => {
   });
 
   it("refreshes radar and map proof through fixed POST proxies and auto refreshes the summary", async () => {
-    // 刷新按钮只打 workstation 固定 POST 代理，动作结束后还要自动回刷 summary。
+    // 刷新与 lifecycle 按钮都只打 workstation 固定代理，动作结束后还要自动回刷 summary。
     const mockedFetch = stubWorkstationFetch();
 
     const wrapper = mount(App);
@@ -2757,9 +2801,14 @@ describe("App", () => {
     const firstScreenText = wrapper.find(".robot-console-grid").text();
     expect(firstScreenText).toContain("刷新雷达");
     expect(firstScreenText).toContain("刷新地图");
+    expect(firstScreenText).toContain("地图列表");
+    expect(firstScreenText).toContain("保存地图");
     expect(firstScreenText).toContain("未刷新");
+    expect(firstScreenText).toContain("未读取");
     expect(firstScreenText).not.toContain("scan_once_observed");
     expect(firstScreenText).not.toContain("map_once_observed");
+    expect(firstScreenText).not.toContain("Start");
+    expect(firstScreenText).not.toContain("Reset");
 
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
     await flushPromises();
@@ -2799,6 +2848,27 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/proof/refresh") && options?.method === "POST")).toBe(true);
     const summaryCallsAfterMap = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
     expect(summaryCallsAfterMap).toBeGreaterThan(summaryCallsAfterRadar);
+
+    await wrapper.findAll("button").find((button) => button.text() === "地图列表")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find(".robot-console-grid").text()).toContain("地图列表 2 个候选");
+    expect(wrapper.find("details").text()).toContain("lifecycle action");
+    expect(wrapper.find("details").text()).toContain("/api/map/list");
+    expect(wrapper.find("details").text()).toContain("floor_1.yaml");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/list") && !options)).toBe(true);
+
+    await wrapper.findAll("button").find((button) => button.text() === "保存地图")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find(".robot-console-grid").text()).toContain("保存请求已返回");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("executed=false");
+    expect(wrapper.find("details").text()).toContain("software_guard_command_not_configured");
+    expect(wrapper.find("details").text()).toContain("Start（受控/高级，禁用）");
+    expect(wrapper.find("details").text()).toContain("Reset（受控/高级，禁用）");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/save") && options?.method === "POST")).toBe(true);
   });
 
   it("starts and stops Camera Preview through workstation camera proxy while keeping control locked", async () => {
