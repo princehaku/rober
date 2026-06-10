@@ -59,6 +59,7 @@ PATH_GENERATION_ACTION_CANDIDATES = [
     "compute_path_to_pose",
 ]
 NAV2_PLANNER_CONFIG_PATH = Path(__file__).resolve().parents[1] / "src" / "ros2_trashbot_nav" / "config" / "nav2_params.yaml"
+ACTIVE_PHASE_WRITER: PhaseArtifactWriter | None = None
 
 
 def now_ms() -> int:
@@ -79,6 +80,141 @@ def safety_flags() -> dict[str, Any]:
         "hil_pass": False,
         "uses_base_uart": False,
     }
+
+
+class PhaseArtifactWriter:
+    """阶段性写 latest，避免 helper 被外层 timeout 打断时丢失现场定位进度。"""
+
+    def __init__(self, args: argparse.Namespace, started_ms: int) -> None:
+        self.output = str(args.output)
+        self.started_ms = started_ms
+        self.last_phase = "start"
+        self.last_successful_phase: str | None = None
+        self.current_command: dict[str, Any] | None = None
+        self.recent_commands: list[dict[str, Any]] = []
+        self.phase_history: list[dict[str, Any]] = []
+        self.root_causes: list[dict[str, str]] = []
+        self.snapshot: dict[str, Any] = {
+            "initialpose_publish_attempted": bool(getattr(args, "initialpose_opt_in", False)),
+            "initialpose_published": False,
+            "amcl_pose_observed": False,
+            "localization_tf_observed": {"map_to_odom": False, "map_to_base_link": False},
+            "managed_runtime_requested": bool(getattr(args, "managed_runtime_opt_in", False)),
+            "managed_runtime_started": False,
+            "managed_runtime_cleanup_ok": False,
+            "path_generation_requested": bool(getattr(args, "path_generation_opt_in", False)),
+            "path_generation_attempted": False,
+            "path_generated": False,
+            "path_generation_succeeded": False,
+            "path_point_count": 0,
+            "blocked_commands_not_sent": list(BLOCKED_COMMAND_TOKENS),
+            "blocked_devices_not_opened": ["/dev/ttyS5"],
+        }
+
+    def record_phase(
+        self,
+        phase: str,
+        *,
+        ok: bool | None = None,
+        detail: dict[str, Any] | None = None,
+        root_cause: dict[str, str] | None = None,
+    ) -> None:
+        """每个耗时阶段前后都落盘一次，latest 可以展示 last_phase 和成功边界。"""
+        self.last_phase = phase
+        if ok is True:
+            self.last_successful_phase = phase
+        if root_cause:
+            self.root_causes.append(root_cause)
+        entry: dict[str, Any] = {"phase": phase, "at_ms": now_ms()}
+        if ok is not None:
+            entry["ok"] = ok
+        if detail:
+            entry["detail"] = detail
+        if root_cause:
+            entry["root_cause"] = root_cause
+        self.phase_history.append(entry)
+        self.write_partial()
+
+    def before_command(self, command: str, timeout_s: float) -> None:
+        """ROS2 CLI 前先写 current_command，外层 SIGINT 时也能知道卡在哪条命令。"""
+        self.current_command = {
+            "command": command,
+            "timeout_s": timeout_s,
+            "started_at_ms": now_ms(),
+        }
+        self.write_partial()
+
+    def after_command(self, result: dict[str, Any]) -> None:
+        """命令结束后保存短摘要；stdout/stderr 已在 result 中截断，避免 artifact 过大。"""
+        command = {
+            "command": result.get("command"),
+            "ok": bool(result.get("ok")),
+            "returncode": result.get("returncode"),
+            "elapsed_ms": result.get("elapsed_ms"),
+            "error": result.get("error"),
+            "finished_at_ms": now_ms(),
+        }
+        self.recent_commands.append(command)
+        self.recent_commands = self.recent_commands[-12:]
+        self.current_command = None
+        self.write_partial()
+
+    def update_snapshot(self, **values: Any) -> None:
+        """阶段结果统一进 snapshot，确保 partial 和 final 字段形状一致。"""
+        self.snapshot.update(values)
+        self.write_partial()
+
+    def write_partial(self, *, status: str = "partial_runtime_in_progress") -> None:
+        """写入可被 upper 合并的 partial artifact；写失败不打断主 proof 流程。"""
+        proof = {
+            "status": status,
+            "evidence_ref": f"o10-amcl-nav2-runtime-partial-{self.started_ms}",
+            "evidence_type": "partial_runtime_material",
+            "started_at_ms": self.started_ms,
+            "generated_at_ms": now_ms(),
+            "elapsed_ms": now_ms() - self.started_ms,
+            "last_phase": self.last_phase,
+            "last_successful_phase": self.last_successful_phase,
+            "phase_history": self.phase_history[-60:],
+            "current_command": self.current_command,
+            "recent_commands": self.recent_commands[-12:],
+            "root_causes": list(self.root_causes),
+            "blockers": list(self.root_causes),
+            **self.snapshot,
+            **safety_flags(),
+        }
+        payload = {
+            "schema": SCHEMA,
+            "generated_at_ms": now_ms(),
+            "status": status,
+            "evidence_type": "partial_runtime_material",
+            "proof": proof,
+            "software_guard": True,
+            "not_proven": True,
+            **safety_flags(),
+        }
+        try:
+            write_json_atomic(self.output, payload)
+        except OSError:
+            # partial artifact 是证据增强，不应因为磁盘瞬态失败掩盖原始 ROS2 blocker。
+            pass
+
+
+def install_phase_signal_handlers(writer: PhaseArtifactWriter) -> None:
+    """外层 timeout 会发 SIGINT/SIGTERM；helper 必须先写中断状态再退出。"""
+
+    def handle_signal(signum: int, _frame: Any) -> None:
+        signal_name = signal.Signals(signum).name
+        writer.record_phase(
+            "interrupted",
+            ok=False,
+            root_cause={"layer": "helper process", "reason": f"{signal_name.lower()}_before_final_artifact"},
+        )
+        writer.write_partial(status="interrupted_before_final_artifact")
+        raise SystemExit(128 + signum)
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
 
 
 def compact_error(error: BaseException) -> dict[str, str]:
@@ -102,6 +238,9 @@ def run_ros(args: argparse.Namespace, command: str, timeout_s: float) -> dict[st
     """执行 ROS2 CLI；命令文本固定来自 helper 本身，不接受外部 shell 注入。"""
     started_ms = now_ms()
     process: subprocess.Popen[str] | None = None
+    phase_writer = getattr(args, "_phase_writer", None)
+    if isinstance(phase_writer, PhaseArtifactWriter):
+        phase_writer.before_command(command, timeout_s)
     try:
         process = subprocess.Popen(  # noqa: S603 - argv 固定为 bash -lc，命令来自本 helper。
             ["bash", "-lc", f"{source_prefix(args)}; {command}"],
@@ -111,7 +250,7 @@ def run_ros(args: argparse.Namespace, command: str, timeout_s: float) -> dict[st
             start_new_session=True,
         )
         stdout, stderr = process.communicate(timeout=timeout_s)
-        return {
+        result = {
             "command": command,
             "executed": True,
             "ok": process.returncode == 0,
@@ -120,6 +259,9 @@ def run_ros(args: argparse.Namespace, command: str, timeout_s: float) -> dict[st
             "stdout": stdout[-8000:],
             "stderr": stderr[-4000:],
         }
+        if isinstance(phase_writer, PhaseArtifactWriter):
+            phase_writer.after_command(result)
+        return result
     except subprocess.TimeoutExpired as exc:
         # ROS2 CLI 超时必须杀整个进程组，否则 echo/pub/tf2_echo 子进程会残留污染下一轮 proof。
         if process is not None:
@@ -135,7 +277,7 @@ def run_ros(args: argparse.Namespace, command: str, timeout_s: float) -> dict[st
         else:
             stdout = exc.stdout if isinstance(exc.stdout, str) else ""
             stderr = exc.stderr if isinstance(exc.stderr, str) else ""
-        return {
+        result = {
             "command": command,
             "executed": True,
             "ok": False,
@@ -145,6 +287,9 @@ def run_ros(args: argparse.Namespace, command: str, timeout_s: float) -> dict[st
             "stdout": (stdout or "")[-8000:],
             "stderr": (stderr or "")[-4000:],
         }
+        if isinstance(phase_writer, PhaseArtifactWriter):
+            phase_writer.after_command(result)
+        return result
 
 
 def write_json_atomic(path: str, payload: dict[str, Any]) -> None:
@@ -1114,7 +1259,19 @@ def classify_root_causes(
 def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     """执行一次 no-motion AMCL/Nav2 proof；成功或失败都写 latest artifact。"""
     started_ms = now_ms()
+    phase_writer = PhaseArtifactWriter(args, started_ms)
+    global ACTIVE_PHASE_WRITER
+    ACTIVE_PHASE_WRITER = phase_writer
+    install_phase_signal_handlers(phase_writer)
+    setattr(args, "_phase_writer", phase_writer)
+    phase_writer.record_phase("start", ok=True, detail={"mode": "no_motion_amcl_nav2_runtime_proof"})
     map_inputs = map_input_summary(args)
+    phase_writer.update_snapshot(map_inputs_ready=bool(map_inputs.get("inputs_ready")))
+    phase_writer.record_phase(
+        "map_inputs",
+        ok=bool(map_inputs.get("inputs_ready")),
+        detail={"source_proof_status": map_inputs.get("source_proof_status")},
+    )
     managed_map_yaml, managed_map_yaml_source = resolve_managed_map_yaml(args, map_inputs)
     managed_runtime: dict[str, Any] = {
         "requested": bool(args.managed_runtime_opt_in),
@@ -1129,15 +1286,37 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "startup_error": None,
     }
     if args.managed_runtime_opt_in:
+        phase_writer.record_phase(
+            "managed_runtime",
+            detail={"requested": True, "map_yaml_source": managed_map_yaml_source},
+        )
         if managed_map_yaml is None:
             managed_runtime["boundary"] = "managed_runtime_requested_but_map_yaml_missing"
             managed_runtime["startup_error"] = {
                 "layer": "managed runtime",
                 "reason": managed_map_yaml_source,
             }
+            phase_writer.record_phase(
+                "managed_runtime",
+                ok=False,
+                root_cause={"layer": "managed runtime", "reason": managed_map_yaml_source},
+            )
         else:
             try:
                 managed_runtime.update(start_managed_runtime(args, map_yaml=managed_map_yaml))
+                phase_writer.update_snapshot(
+                    managed_runtime_started=True,
+                    managed_runtime_process_group=managed_runtime.get("process_group"),
+                    managed_runtime_boundary=managed_runtime.get("boundary"),
+                )
+                phase_writer.record_phase(
+                    "managed_runtime_started",
+                    ok=True,
+                    detail={
+                        "process_group": managed_runtime.get("process_group"),
+                        "map_yaml": managed_runtime.get("map_yaml"),
+                    },
+                )
                 # planner_server 的 costmap 激活依赖 map->base_link；必须先让 AMCL 接收 initialpose。
                 # 因此 runtime 启动阶段只等待 localization 节点，planner 在定位 ready 后再复查。
                 managed_runtime["wait_result"] = wait_for_managed_runtime(
@@ -1145,17 +1324,35 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
                     managed_runtime,
                     require_planner_server=False,
                 )
+                phase_writer.record_phase(
+                    "managed_runtime_wait",
+                    ok=bool(managed_runtime["wait_result"].get("ok")),
+                    detail={"reason": managed_runtime["wait_result"].get("reason")},
+                )
             except Exception as exc:  # noqa: BLE001 - runtime 拉起失败必须结构化写回。
                 managed_runtime["startup_error"] = compact_error(exc)
                 managed_runtime["boundary"] = "managed_runtime_start_failed"
+                phase_writer.record_phase(
+                    "managed_runtime",
+                    ok=False,
+                    root_cause={"layer": "managed runtime", "reason": "managed_runtime_start_failed"},
+                    detail={"error": managed_runtime["startup_error"]},
+                )
+    else:
+        phase_writer.record_phase("managed_runtime", ok=True, detail={"requested": False})
 
+    phase_writer.record_phase("ros2_preflight")
     ros2_check = run_ros(args, "command -v ros2 && ros2 --help >/dev/null", timeout_s=6.0)
     # `ros2 --help` 在远端偶尔会慢于本 helper 的短超时，因此只要命令本体可见就继续验证。
     ros2_ok = bool(ros2_check.get("ok") or str(ros2_check.get("stdout") or "").strip())
+    phase_writer.record_phase("ros2_preflight", ok=ros2_ok)
     packages, package_results = package_checks(args) if ros2_ok else ({package: False for package in EXPECTED_PACKAGES}, {})
+    phase_writer.record_phase("package_checks", ok=bool(ros2_ok and all(packages.values())))
     topic_list = run_ros(args, "ros2 topic list", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
     node_list = run_ros(args, "ros2 node list", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
+    phase_writer.record_phase("graph_discovery", ok=bool(topic_list.get("ok") and node_list.get("ok")))
     lifecycle_active, lifecycle_results = lifecycle_checks(args) if ros2_ok else ({key: False for key in LOCALIZATION_LIFECYCLE_NODES}, {})
+    phase_writer.record_phase("lifecycle_probe", ok=bool(lifecycle_active.get("map_server") and lifecycle_active.get("amcl")))
     planner_nodes = {"planner_server": "/planner_server", "controller_server": "/controller_server"}
     planner_lifecycle_active, planner_lifecycle_results = (
         lifecycle_checks(args, planner_nodes) if ros2_ok else ({key: False for key in planner_nodes}, {})
@@ -1167,6 +1364,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     planner_node_info = run_ros(args, "ros2 node info /planner_server", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
     controller_node_info = run_ros(args, "ros2 node info /controller_server", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
     echo_timeout_s = min(max(float(args.timeout_s), 4.0), 18.0)
+    phase_writer.record_phase("topic_probe", detail={"echo_timeout_s": echo_timeout_s})
     scan_once = run_ros(args, "timeout 6 ros2 topic echo --once /scan", timeout_s=echo_timeout_s) if ros2_ok else {"executed": False, "ok": False}
     map_once = run_ros(args, "timeout 8 ros2 topic echo --once /map", timeout_s=echo_timeout_s + 2.0) if ros2_ok else {"executed": False, "ok": False}
     amcl_pose_once = (
@@ -1174,12 +1372,37 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         if ros2_ok
         else {"executed": False, "ok": False}
     )
+    phase_writer.record_phase(
+        "topic_probe",
+        ok=bool(topic_once_observed(scan_once) and topic_once_observed(map_once)),
+        detail={
+            "scan_once_observed": topic_once_observed(scan_once),
+            "map_once_observed": topic_once_observed(map_once),
+            "amcl_pose_observed_pre_initialpose": topic_once_observed(amcl_pose_once),
+        },
+    )
+    phase_writer.record_phase("initialpose")
     initialpose_request_payload, initialpose_publish = maybe_publish_initialpose(args, ros2_ok)
+    phase_writer.update_snapshot(
+        initialpose_publish_attempted=bool(initialpose_request_payload["enabled"]),
+        initialpose_published=bool(initialpose_publish.get("ok")),
+    )
+    phase_writer.record_phase(
+        "initialpose",
+        ok=bool(initialpose_publish.get("ok")) if initialpose_request_payload["enabled"] else True,
+        detail={"enabled": bool(initialpose_request_payload["enabled"])},
+    )
+    phase_writer.record_phase("amcl_pose_probe")
     post_initialpose_amcl_pose_once = (
         run_ros(args, "timeout 8 ros2 topic echo --once /amcl_pose", timeout_s=echo_timeout_s + 2.0)
         if ros2_ok and initialpose_request_payload["enabled"]
         else {"executed": False, "ok": False, "boundary": "post_initialpose_probe_not_requested"}
     )
+    phase_writer.record_phase(
+        "amcl_pose_probe",
+        ok=bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once)),
+    )
+    phase_writer.record_phase("tf_probe")
     map_to_odom_tf = (
         run_ros(args, "timeout 8 ros2 run tf2_ros tf2_echo map odom", timeout_s=echo_timeout_s + 2.0)
         if ros2_ok and initialpose_request_payload["enabled"]
@@ -1189,6 +1412,12 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         run_ros(args, "timeout 8 ros2 run tf2_ros tf2_echo map base_link", timeout_s=echo_timeout_s + 2.0)
         if ros2_ok and initialpose_request_payload["enabled"]
         else {"executed": False, "ok": False, "boundary": "tf_probe_not_requested_without_initialpose_opt_in"}
+    )
+    phase_writer.record_phase(
+        "tf_probe",
+        ok=bool(tf_echo_transform_observed(map_to_odom_tf) and tf_echo_transform_observed(map_to_base_link_tf))
+        if initialpose_request_payload["enabled"]
+        else True,
     )
     initialpose_info = run_ros(args, "ros2 topic info /initialpose --verbose", timeout_s=6.0) if ros2_ok else {"executed": False, "ok": False}
     amcl_node_info = run_ros(args, "ros2 node info /amcl", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
@@ -1214,6 +1443,10 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "map_to_odom": tf_echo_transform_observed(map_to_odom_tf),
         "map_to_base_link": tf_echo_transform_observed(map_to_base_link_tf),
     }
+    phase_writer.update_snapshot(
+        amcl_pose_observed=amcl_pose_observed,
+        localization_tf_observed=localization_tf_observed,
+    )
     localization_ready = bool(
         scan_observed and map_observed and lifecycle_active.get("map_server") and lifecycle_active.get("amcl")
     )
@@ -1255,11 +1488,24 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     path_generation_preconditions_ready = bool(
         initialpose_request_payload["enabled"] and localization_ready and not localization_root_causes
     )
+    phase_writer.record_phase("path_generation", detail={"requested": bool(args.path_generation_opt_in)})
     path_generation_request, path_generation_result, _path_generation_summary, path_generation_root_causes = maybe_compute_path_generation(
         args,
         ros2_ok=ros2_ok,
         localization_ready=path_generation_preconditions_ready,
         planner_server_active=planner_server_active,
+    )
+    phase_writer.update_snapshot(
+        path_generation_requested=bool(path_generation_request["enabled"]),
+        path_generation_attempted=bool(path_generation_result.get("attempted")),
+        path_generated=bool(path_generation_result.get("path_generated")),
+        path_generation_succeeded=bool(path_generation_result.get("ok")),
+        path_point_count=int(path_generation_result.get("path_point_count") or 0),
+    )
+    phase_writer.record_phase(
+        "path_generation",
+        ok=bool(path_generation_result.get("ok")) if path_generation_request["enabled"] else True,
+        detail={"boundary": path_generation_result.get("boundary")},
     )
     root_causes = list(localization_root_causes)
     if path_generation_request["enabled"]:
@@ -1283,16 +1529,21 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     )
 
     if managed_runtime.get("started"):
+        phase_writer.record_phase("cleanup", detail={"process_group": managed_runtime.get("process_group")})
         cleanup_result = cleanup_process_group(
             int(managed_runtime["process_group"]),
             managed_runtime.get("process"),
         )
         managed_runtime["cleanup_result"] = cleanup_result
         managed_runtime["cleanup_ok"] = bool(cleanup_result.get("ok"))
+        phase_writer.update_snapshot(managed_runtime_cleanup_ok=bool(managed_runtime.get("cleanup_ok")))
+        phase_writer.record_phase("cleanup", ok=bool(cleanup_result.get("ok")), detail={"cleanup_result": cleanup_result})
         try:
             Path(str(managed_runtime.get("params_path") or "")).unlink(missing_ok=True)
         except OSError:
             pass
+    else:
+        phase_writer.record_phase("cleanup", ok=True, detail={"managed_runtime_started": False})
     cleanup_guard = managed_runtime_cleanup_guard(managed_runtime.get("process_group"))
     blocked_commands_not_sent = list(BLOCKED_COMMAND_TOKENS)
     if not initialpose_request_payload["enabled"]:
@@ -1333,6 +1584,11 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "started_at_ms": started_ms,
         "generated_at_ms": now_ms(),
         "elapsed_ms": now_ms() - started_ms,
+        "last_phase": "final",
+        "last_successful_phase": phase_writer.last_successful_phase,
+        "phase_history": phase_writer.phase_history[-80:],
+        "current_command": phase_writer.current_command,
+        "recent_commands": phase_writer.recent_commands[-12:],
         "source_map_evidence_ref": map_inputs.get("source_evidence_ref"),
         "source_map_evidence_type": map_inputs.get("source_evidence_type"),
         "map_server_active": lifecycle_active.get("map_server", False),
@@ -1437,6 +1693,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "blocked_devices_not_opened": ["/dev/ttyS5"],
         **safety_flags(),
     }
+    phase_writer.record_phase("final", ok=complete, detail={"status": proof_status})
+    proof["phase_history"] = phase_writer.phase_history[-80:]
+    proof["last_successful_phase"] = phase_writer.last_successful_phase
     return {
         "schema": SCHEMA,
         "generated_at_ms": now_ms(),

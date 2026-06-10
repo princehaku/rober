@@ -167,6 +167,22 @@ runtime lifecycle 与 scan proof refresh 的关系：
 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`
 保持不变。
 
+## 2026-06-11 Localization Reset Phase Artifact Boundary
+
+`/api/localize/reset` 的 evidence capture 现在会在 helper 内按阶段写
+`runtime/localization_reset_latest.json`。这只改变诊断材料的完整性，不改变硬件边界：
+
+- 资料来源边界仍按 `docs/vendor/VENDOR_INDEX.md`：WAVE ROVER 底盘控制是
+  newline-delimited UART JSON，运动/反馈命令包含 `T=1/T=13/T=130/T=131`。
+- 本轮定位 reset proof 不发送上述底盘命令，不发布 `/cmd_vel`，不打开
+  `/dev/ttyS5`。
+- managed localization runtime 只允许使用 LiDAR `/dev/ttyACM0 @ 150000`、
+  static TF、`map_server`、`amcl` 和 lifecycle manager 采集 no-motion 证据。
+- helper 被上层 timeout 打断时，upper API 会优先保留 helper 已写的
+  `last_phase`、`last_successful_phase`、`current_command`、`recent_commands`、
+  `initialpose_published`、`amcl_pose_observed`、`localization_tf_observed` 和
+  `root_causes`，再追加 timeout blocker。
+
 ## 2026-06-10 LiDAR Motion Delta Retry
 
 `sprints/2026.06.10_03-45_lidar_motion_delta_retry/` 在聚合 `/scan`

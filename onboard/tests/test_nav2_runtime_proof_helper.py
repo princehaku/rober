@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -257,6 +258,27 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "read_only_existing_ros_graph_no_motion",
         ):
             self.assertIn(required, text)
+
+    def test_phase_artifact_writer_records_partial_progress(self) -> None:
+        """helper 被外层 timeout 打断前，partial artifact 必须已经有阶段和命令证据。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "localization_reset_latest.json"
+            args = HELPER.parse_args(["--output", str(output), "--managed-runtime-opt-in", "--initialpose-opt-in"])
+            writer = HELPER.PhaseArtifactWriter(args, HELPER.now_ms())
+
+            writer.record_phase("managed_runtime_started", ok=True, detail={"process_group": 123})
+            writer.before_command("ros2 topic echo --once /amcl_pose", 8.0)
+            writer.update_snapshot(managed_runtime_started=True, initialpose_published=True)
+            payload = json.loads(output.read_text(encoding="utf-8"))
+
+        proof = payload["proof"]
+        self.assertEqual("partial_runtime_in_progress", payload["status"])
+        self.assertEqual("managed_runtime_started", proof["last_successful_phase"])
+        self.assertEqual("ros2 topic echo --once /amcl_pose", proof["current_command"]["command"])
+        self.assertTrue(proof["managed_runtime_started"])
+        self.assertTrue(proof["initialpose_published"])
+        self.assertFalse(proof["sends_motion_commands"])
+        self.assertIn("/dev/ttyS5", proof["blocked_devices_not_opened"])
 
     def test_static_path_generation_opt_in_collector_shape(self) -> None:
         """path generation opt-in 分支必须显式存在，且默认仍然不进入控制层。"""
@@ -512,6 +534,79 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["publishes_cmd_vel"])
         self.assertIn("/dev/ttyS5", payload["proof"]["blocked_devices_not_opened"])
+
+    def test_upper_api_timeout_preserves_helper_partial_artifact(self) -> None:
+        """helper 已写 partial 时，upper timeout fallback 只能追加 root cause，不能抹掉阶段证据。"""
+        spec = importlib.util.spec_from_file_location("upper_robot_api", SCRIPT.parent / "upper_robot_api.py")
+        assert spec is not None and spec.loader is not None
+        api_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(api_mod)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "localization_reset_latest.json"
+            partial = {
+                "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+                "status": "partial_runtime_in_progress",
+                "proof": {
+                    "status": "partial_runtime_in_progress",
+                    "last_phase": "tf_probe",
+                    "last_successful_phase": "initialpose",
+                    "phase_history": [{"phase": "initialpose", "ok": True}],
+                    "current_command": {"command": "timeout 8 ros2 run tf2_ros tf2_echo map base_link"},
+                    "recent_commands": [{"command": "ros2 topic pub --once /initialpose", "ok": True}],
+                    "managed_runtime_requested": True,
+                    "managed_runtime_started": True,
+                    "initialpose_publish_attempted": True,
+                    "initialpose_published": True,
+                    "amcl_pose_observed": False,
+                    "localization_tf_observed": {"map_to_odom": False, "map_to_base_link": False},
+                    "root_causes": [{"layer": "AMCL localization", "reason": "/amcl_pose_once_not_observed"}],
+                    "blocked_devices_not_opened": ["/dev/ttyS5"],
+                },
+            }
+            artifact_path.write_text(json.dumps(partial), encoding="utf-8")
+            timeout_result = {
+                "timed_out": True,
+                "returncode": None,
+                "stdout": "",
+                "stderr": "",
+                "process_group": 123,
+                "cleanup_result": {"attempted": True, "ok": True},
+                "error": {"type": "TimeoutExpired", "message": "timeout"},
+            }
+            with mock.patch.object(api_mod, "run_helper_bash_process_group", return_value=timeout_result):
+                result = api_mod.run_nav2_runtime_proof_helper(
+                    artifact_path=str(artifact_path),
+                    map_proof_path="/tmp/map.json",
+                    map_artifact_dir="/tmp/maps",
+                    timeout_s=8.0,
+                    managed_runtime_opt_in=True,
+                    managed_timeout_s=12.0,
+                    managed_map_yaml="",
+                    initialpose_opt_in=True,
+                    initialpose_x=0.0,
+                    initialpose_y=0.0,
+                    initialpose_yaw=0.0,
+                    initialpose_frame_id="map",
+                    path_generation_opt_in=False,
+                    path_generation_timeout_s=4.0,
+                    path_goal_frame_id="map",
+                    path_goal_x=0.0,
+                    path_goal_y=0.0,
+                    path_goal_yaw=0.0,
+                )
+            payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["partial_artifact_preserved"])
+        self.assertTrue(payload["proof"]["partial_artifact_preserved"])
+        self.assertEqual("tf_probe", payload["proof"]["last_phase"])
+        self.assertEqual("initialpose", payload["proof"]["last_successful_phase"])
+        self.assertEqual("timeout 8 ros2 run tf2_ros tf2_echo map base_link", payload["proof"]["current_command"]["command"])
+        self.assertTrue(payload["proof"]["initialpose_published"])
+        self.assertTrue(payload["proof"]["managed_runtime_started"])
+        self.assertEqual("helper_process_timeout_after_partial_artifact", payload["proof"]["root_causes"][-1]["reason"])
+        self.assertEqual("/amcl_pose_once_not_observed", payload["proof"]["root_causes"][0]["reason"])
 
     def test_tf_echo_timeout_stdout_transform_counts_observed(self) -> None:
         """tf2_echo 正常持续输出时可能被 timeout 杀掉，不能因 rc=124 误判失败。"""

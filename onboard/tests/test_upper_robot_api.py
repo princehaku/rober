@@ -495,6 +495,65 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(latest["latest_localization_tf_observed"])
         self.assertFalse(latest["safe_to_control"])
 
+    def test_localize_proof_latest_exposes_phase_partial_fields(self) -> None:
+        """partial artifact 也要在 latest 顶层暴露阶段链，便于 PC/现场定位 timeout blocker。"""
+        partial_artifact = {
+            "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+            "status": "blocked_with_root_cause",
+            "proof": {
+                "status": "blocked_with_root_cause",
+                "last_phase": "amcl_pose_probe",
+                "last_successful_phase": "initialpose",
+                "phase_history": [{"phase": "initialpose", "ok": True}],
+                "current_command": {"command": "timeout 8 ros2 topic echo --once /amcl_pose"},
+                "recent_commands": [{"command": "ros2 topic pub --once /initialpose", "ok": True}],
+                "partial_artifact_preserved": True,
+                "initialpose_published": True,
+                "amcl_pose_observed": False,
+                "localization_tf_observed": {"map_to_odom": False, "map_to_base_link": False},
+                "managed_runtime_requested": True,
+                "managed_runtime_started": True,
+                "managed_runtime_cleanup_ok": False,
+                "root_causes": [{"layer": "upper API helper process", "reason": "helper_process_timeout_after_partial_artifact"}],
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            localization_path = Path(temp_dir) / "localization_reset_latest.json"
+            localization_path.write_text(json.dumps(partial_artifact), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                localization_artifact_path=str(localization_path),
+            )
+
+            http_status, latest = api.localize_proof_latest()
+
+        self.assertEqual(200, http_status)
+        self.assertEqual("blocked_with_root_cause", latest["status"])
+        self.assertEqual("amcl_pose_probe", latest["last_phase"])
+        self.assertEqual("initialpose", latest["last_successful_phase"])
+        self.assertEqual("timeout 8 ros2 topic echo --once /amcl_pose", latest["current_command"]["command"])
+        self.assertTrue(latest["partial_artifact_preserved"])
+        self.assertTrue(latest["initialpose_published"])
+        self.assertFalse(latest["amcl_pose_observed"])
+        self.assertFalse(latest["safe_to_control"])
+
+    def test_default_localization_artifact_resolves_to_onboard_runtime(self) -> None:
+        """默认 localization artifact 必须和 helper 工作目录一致，避免上下层读写两条路径。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+
+        self.assertEqual(
+            upper_robot_api.resolve_onboard_runtime_path(upper_robot_api.DEFAULT_LOCALIZATION_ARTIFACT_PATH),
+            api.localization_artifact_path,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

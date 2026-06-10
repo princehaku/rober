@@ -366,6 +366,29 @@ curl --max-time 150 -sS -X POST http://127.0.0.1:8787/api/nav2/proof/refresh \
   顶层不直接翻转为 runtime proven；读取方应消费
   `proof_latest.latest_proof_status` 和相关 `latest_*` 字段。
 
+## 2.7 Localization Reset Phase Artifact
+
+`/api/localize/reset` 现在通过 `o10_amcl_nav2_runtime_proof.py` 写阶段性
+partial artifact。即使 helper 被上层 HTTP/进程 timeout 打断，
+`/api/localize/proof/latest` 也应保留以下诊断字段：
+
+- `last_phase` / `last_successful_phase`
+- `phase_history`
+- `current_command` / `recent_commands`
+- `managed_runtime_started` / `managed_runtime_cleanup_ok`
+- `initialpose_publish_attempted` / `initialpose_published`
+- `amcl_pose_observed`
+- `localization_tf_observed`
+- `root_causes`
+
+这个机制只提升 evidence capture 可观测性，不改变 no-motion 边界：
+
+- 只允许显式定位 reset 入口发布一次 `/initialpose`。
+- 不发布 `/cmd_vel`，不调用 `/api/base/*`，不触发 `NavigateToPose`。
+- 不打开 WAVE ROVER 底盘 UART `/dev/ttyS5`。
+- managed runtime 只限 localization graph；路径生成和控制层仍由独立 opt-in
+  证据链处理。
+
 ## 3. Dry-Run Verification
 
 Run fixed-route logic without Nav2 movement:

@@ -530,28 +530,45 @@ def write_nav2_helper_failure_artifact(
     managed_runtime_opt_in: bool,
     initialpose_opt_in: bool,
     path_generation_opt_in: bool,
+    partial_artifact: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """helper 进程超时/异常时也要写 latest，避免 PC 只看到 missing artifact。"""
+    partial_proof = (
+        partial_artifact.get("proof")
+        if isinstance(partial_artifact, dict) and isinstance(partial_artifact.get("proof"), dict)
+        else {}
+    )
+    partial_root_causes = partial_proof.get("root_causes") if isinstance(partial_proof.get("root_causes"), list) else []
     root_cause = {"layer": "upper API helper process", "reason": reason}
     proof = {
         "status": status,
         "evidence_ref": f"o10-amcl-nav2-runtime-wrapper-failure-{now_ms()}",
         "evidence_type": "blocked_with_root_cause",
         "generated_at_ms": now_ms(),
-        "initialpose_publish_attempted": bool(initialpose_opt_in),
-        "initialpose_published": False,
-        "amcl_pose_observed": False,
-        "localization_tf_observed": {"map_to_odom": False, "map_to_base_link": False},
-        "managed_runtime_requested": bool(managed_runtime_opt_in),
-        "managed_runtime_started": False,
-        "managed_runtime_cleanup_ok": False,
-        "path_generation_requested": bool(path_generation_opt_in),
-        "path_generation_attempted": False,
-        "path_generated": False,
-        "path_generation_succeeded": False,
-        "path_point_count": 0,
-        "root_causes": [root_cause],
-        "blockers": [root_cause],
+        "partial_artifact_preserved": bool(partial_proof),
+        "last_phase": partial_proof.get("last_phase"),
+        "last_successful_phase": partial_proof.get("last_successful_phase"),
+        "phase_history": partial_proof.get("phase_history") if isinstance(partial_proof.get("phase_history"), list) else [],
+        "current_command": partial_proof.get("current_command") if isinstance(partial_proof.get("current_command"), dict) else None,
+        "recent_commands": partial_proof.get("recent_commands") if isinstance(partial_proof.get("recent_commands"), list) else [],
+        "initialpose_publish_attempted": bool(partial_proof.get("initialpose_publish_attempted", initialpose_opt_in)),
+        "initialpose_published": bool(partial_proof.get("initialpose_published")),
+        "amcl_pose_observed": bool(partial_proof.get("amcl_pose_observed")),
+        "localization_tf_observed": (
+            partial_proof.get("localization_tf_observed")
+            if isinstance(partial_proof.get("localization_tf_observed"), dict)
+            else {"map_to_odom": False, "map_to_base_link": False}
+        ),
+        "managed_runtime_requested": bool(partial_proof.get("managed_runtime_requested", managed_runtime_opt_in)),
+        "managed_runtime_started": bool(partial_proof.get("managed_runtime_started")),
+        "managed_runtime_cleanup_ok": bool(partial_proof.get("managed_runtime_cleanup_ok")),
+        "path_generation_requested": bool(partial_proof.get("path_generation_requested", path_generation_opt_in)),
+        "path_generation_attempted": bool(partial_proof.get("path_generation_attempted")),
+        "path_generated": bool(partial_proof.get("path_generated")),
+        "path_generation_succeeded": bool(partial_proof.get("path_generation_succeeded")),
+        "path_point_count": int(partial_proof.get("path_point_count") or 0),
+        "root_causes": [*partial_root_causes, root_cause],
+        "blockers": [*partial_root_causes, root_cause],
         "timeout_budget": timeout_budget,
         "command_result": command_result,
         "blocked_commands_not_sent": [
@@ -600,6 +617,34 @@ def write_nav2_helper_failure_artifact(
     write_result = atomic_write_json_artifact(artifact_path, payload)
     payload["artifact"] = {"path": artifact_path, "write": write_result}
     return payload
+
+
+def read_nav2_helper_partial_artifact(artifact_path: str) -> dict[str, Any] | None:
+    """timeout fallback 先读 helper 已写 partial，避免覆盖掉阶段证据链。"""
+    try:
+        parsed = json.loads(Path(artifact_path).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    proof = parsed.get("proof")
+    if not isinstance(proof, dict):
+        return None
+    if not proof.get("phase_history") and not proof.get("last_phase"):
+        return None
+    return parsed
+
+
+def wait_for_nav2_helper_partial_artifact(artifact_path: str, wait_s: float = 2.0) -> dict[str, Any] | None:
+    """helper 收到 SIGINT 后可能还在落盘，timeout fallback 短等一次 partial。"""
+    deadline = time.time() + max(0.0, wait_s)
+    latest: dict[str, Any] | None = None
+    while time.time() <= deadline:
+        latest = read_nav2_helper_partial_artifact(artifact_path)
+        if latest is not None:
+            return latest
+        time.sleep(0.2)
+    return latest
 
 
 def run_helper_bash_process_group(command: str, timeout_s: float, cwd: str) -> dict[str, Any]:
@@ -840,6 +885,12 @@ def run_nav2_runtime_proof_helper(
     try:
         completed = run_helper_bash_process_group(helper_command, process_timeout_s, DEFAULT_ONBOARD_WORKDIR)
         if completed.get("timed_out"):
+            partial_artifact = wait_for_nav2_helper_partial_artifact(artifact_path)
+            timeout_reason = (
+                "helper_process_timeout_after_partial_artifact"
+                if partial_artifact is not None
+                else "helper_process_timeout_before_artifact"
+            )
             command_result = {
                 "mode": "o10_amcl_nav2_runtime_proof_helper",
                 "executed": True,
@@ -867,14 +918,16 @@ def run_nav2_runtime_proof_helper(
             fallback_artifact = write_nav2_helper_failure_artifact(
                 artifact_path=artifact_path,
                 status="blocked_with_root_cause",
-                reason="helper_process_timeout_before_artifact",
+                reason=timeout_reason,
                 timeout_budget=timeout_budget,
                 command_result=command_result,
                 managed_runtime_opt_in=managed_runtime_opt_in,
                 initialpose_opt_in=initialpose_opt_in,
                 path_generation_opt_in=path_generation_opt_in,
+                partial_artifact=partial_artifact,
             )
             command_result["fallback_artifact_written"] = fallback_artifact.get("artifact", {}).get("write", {}).get("ok") is True
+            command_result["partial_artifact_preserved"] = partial_artifact is not None
             return command_result
         return {
             "mode": "o10_amcl_nav2_runtime_proof_helper",
@@ -901,6 +954,12 @@ def run_nav2_runtime_proof_helper(
             "hil_pass": False,
         }
     except subprocess.TimeoutExpired as exc:
+        partial_artifact = wait_for_nav2_helper_partial_artifact(artifact_path)
+        timeout_reason = (
+            "helper_process_timeout_after_partial_artifact"
+            if partial_artifact is not None
+            else "helper_process_timeout_before_artifact"
+        )
         cleanup_result = {}
         if isinstance(getattr(exc, "cmd", None), list):
             cleanup_result = {"attempted": True, "ok": True, "reason": "process_group_cleanup_attempted_before_timeout_response"}
@@ -930,14 +989,16 @@ def run_nav2_runtime_proof_helper(
         fallback_artifact = write_nav2_helper_failure_artifact(
             artifact_path=artifact_path,
             status="blocked_with_root_cause",
-            reason="helper_process_timeout_before_artifact",
+            reason=timeout_reason,
             timeout_budget=timeout_budget,
             command_result=command_result,
             managed_runtime_opt_in=managed_runtime_opt_in,
             initialpose_opt_in=initialpose_opt_in,
             path_generation_opt_in=path_generation_opt_in,
+            partial_artifact=partial_artifact,
         )
         command_result["fallback_artifact_written"] = fallback_artifact.get("artifact", {}).get("write", {}).get("ok") is True
+        command_result["partial_artifact_preserved"] = partial_artifact is not None
         return {
             **command_result,
         }
@@ -2061,6 +2122,12 @@ def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dic
         "status": status,
         "proof_state": status,
         "latest_proof_status": helper_status,
+        "last_phase": proof.get("last_phase"),
+        "last_successful_phase": proof.get("last_successful_phase"),
+        "phase_history": proof.get("phase_history") if isinstance(proof.get("phase_history"), list) else [],
+        "current_command": proof.get("current_command") if isinstance(proof.get("current_command"), dict) else None,
+        "recent_commands": proof.get("recent_commands") if isinstance(proof.get("recent_commands"), list) else [],
+        "partial_artifact_preserved": proof.get("partial_artifact_preserved") is True,
         "initialpose_published": initialpose_published,
         "latest_initialpose_published": initialpose_published,
         "amcl_pose_observed": amcl_pose_observed,
@@ -3326,7 +3393,7 @@ class UpperRobotApi:
         self.lidar_raw_packet_proof_artifact_path = lidar_raw_packet_proof_artifact_path
         self.map_artifact_dir = resolve_onboard_runtime_path(map_artifact_dir)
         self.map_lifecycle_proof_artifact_path = resolve_onboard_runtime_path(map_lifecycle_proof_artifact_path)
-        self.localization_artifact_path = localization_artifact_path
+        self.localization_artifact_path = resolve_onboard_runtime_path(localization_artifact_path)
         self.nav2_lifecycle_artifact_path = resolve_onboard_runtime_path(nav2_lifecycle_artifact_path)
         self.elevator_status_artifact_path = elevator_status_artifact_path
         self.operator_report_artifact_path = operator_report_artifact_path

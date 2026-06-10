@@ -1,0 +1,197 @@
+{
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "evidence_type": "partial_runtime_material",
+  "generated_at_ms": 1781121286460,
+  "hil_pass": false,
+  "not_proven": true,
+  "proof": {
+    "amcl_pose_observed": false,
+    "blocked_commands_not_sent": [
+      "T=1",
+      "T=13",
+      "T=130",
+      "T=131",
+      "/cmd_vel",
+      "/api/base/manual",
+      "/api/base/",
+      "/api/nav2/start",
+      "/api/nav2/stop",
+      "navigate_to_pose"
+    ],
+    "blocked_devices_not_opened": [
+      "/dev/ttyS5"
+    ],
+    "blockers": [],
+    "calls_base_manual": false,
+    "current_command": {
+      "command": "ros2 pkg prefix nav2_amcl",
+      "started_at_ms": 1781121286460,
+      "timeout_s": 6.0
+    },
+    "delivery_success": false,
+    "elapsed_ms": 38630,
+    "evidence_ref": "o10-amcl-nav2-runtime-partial-1781121247830",
+    "evidence_type": "partial_runtime_material",
+    "generated_at_ms": 1781121286460,
+    "hil_pass": false,
+    "initialpose_publish_attempted": true,
+    "initialpose_published": false,
+    "last_phase": "ros2_preflight",
+    "last_successful_phase": "ros2_preflight",
+    "localization_tf_observed": {
+      "map_to_base_link": false,
+      "map_to_odom": false
+    },
+    "managed_runtime_boundary": "explicit_opt_in_managed_localization_runtime_no_motion",
+    "managed_runtime_cleanup_ok": false,
+    "managed_runtime_process_group": 202468,
+    "managed_runtime_requested": true,
+    "managed_runtime_started": true,
+    "map_inputs_ready": true,
+    "path_generated": false,
+    "path_generation_attempted": false,
+    "path_generation_requested": false,
+    "path_generation_succeeded": false,
+    "path_point_count": 0,
+    "phase_history": [
+      {
+        "at_ms": 1781121247830,
+        "detail": {
+          "mode": "no_motion_amcl_nav2_runtime_proof"
+        },
+        "ok": true,
+        "phase": "start"
+      },
+      {
+        "at_ms": 1781121247839,
+        "detail": {
+          "source_proof_status": "map_once_artifact_metadata_observed"
+        },
+        "ok": true,
+        "phase": "map_inputs"
+      },
+      {
+        "at_ms": 1781121247843,
+        "detail": {
+          "map_yaml_source": "canonical_map_proof_yaml_candidate",
+          "requested": true
+        },
+        "phase": "managed_runtime"
+      },
+      {
+        "at_ms": 1781121247850,
+        "detail": {
+          "map_yaml": "/root/rober/onboard/runtime/maps/final_direct_save.yaml",
+          "process_group": 202468
+        },
+        "ok": true,
+        "phase": "managed_runtime_started"
+      },
+      {
+        "at_ms": 1781121272051,
+        "detail": {
+          "reason": null
+        },
+        "ok": true,
+        "phase": "managed_runtime_wait"
+      },
+      {
+        "at_ms": 1781121272055,
+        "phase": "ros2_preflight"
+      },
+      {
+        "at_ms": 1781121276527,
+        "ok": true,
+        "phase": "ros2_preflight"
+      }
+    ],
+    "publishes_cmd_vel": false,
+    "recent_commands": [
+      {
+        "command": "command -v ros2 && ros2 --help >/dev/null",
+        "elapsed_ms": 6038,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; command -v ros2 && ros2 --help >/dev/null']",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1781121253890,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "command -v ros2 && ros2 --help >/dev/null",
+        "elapsed_ms": 4778,
+        "error": null,
+        "finished_at_ms": 1781121259672,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 lifecycle get /map_server",
+        "elapsed_ms": 6277,
+        "error": null,
+        "finished_at_ms": 1781121265952,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 lifecycle get /amcl",
+        "elapsed_ms": 6093,
+        "error": null,
+        "finished_at_ms": 1781121272048,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "command -v ros2 && ros2 --help >/dev/null",
+        "elapsed_ms": 4467,
+        "error": null,
+        "finished_at_ms": 1781121276524,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 pkg prefix ros2_trashbot_bringup",
+        "elapsed_ms": 3300,
+        "error": null,
+        "finished_at_ms": 1781121279829,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 pkg prefix ros2_trashbot_nav",
+        "elapsed_ms": 3307,
+        "error": null,
+        "finished_at_ms": 1781121283139,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 pkg prefix nav2_map_server",
+        "elapsed_ms": 3315,
+        "error": null,
+        "finished_at_ms": 1781121286457,
+        "ok": true,
+        "returncode": 0
+      }
+    ],
+    "robot_control_executed": false,
+    "root_causes": [],
+    "safe_to_control": false,
+    "sends_base_motion_commands": false,
+    "sends_motion_commands": false,
+    "started_at_ms": 1781121247830,
+    "status": "partial_runtime_in_progress",
+    "uses_base_uart": false
+  },
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "safe_to_control": false,
+  "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+  "sends_base_motion_commands": false,
+  "sends_motion_commands": false,
+  "software_guard": true,
+  "status": "partial_runtime_in_progress",
+  "uses_base_uart": false
+}
