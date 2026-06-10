@@ -189,6 +189,8 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         for required in (
             "ros2 run ros2_trashbot_hardware lidar_driver",
             "/dev/ttyACM0",
+            "starting role=static_tf_odom_base",
+            "started role=static_tf_base_laser pid=",
             "nav2_map_server map_server",
             "nav2_amcl amcl",
             "nav2_lifecycle_manager lifecycle_manager",
@@ -410,12 +412,77 @@ transforms:
         self.assertTrue(source["tf_static_observed"])
         self.assertEqual("map", source["amcl_pose_frame_id"])
         self.assertEqual("True", source["amcl_tf_broadcast_param"])
+        self.assertTrue(source["amcl_param_probe_ok"])
+        self.assertTrue(source["amcl_node_info_observed"])
         self.assertTrue(source["odom_to_base_link_source_observed"])
         self.assertTrue(source["base_link_to_laser_frame_source_observed"])
+        self.assertTrue(source["tf_source_root_cause_detail"]["odom_to_base_link_source_observed"])
         self.assertFalse(source["map_to_odom_source_observed"])
         self.assertEqual("amcl_map_to_odom_tf_not_observed_on_tf", source["amcl_tf_root_cause"])
         self.assertEqual("blocked_by_missing_map_to_odom", classification["map_to_base_link"])
         self.assertEqual("amcl_map_to_odom_tf_not_observed_on_tf", classification["reason"])
+
+    def test_rclpy_amcl_probe_overrides_empty_cli_param_markers(self) -> None:
+        """AMCL 参数必须能从轻量 rclpy probe 填实，不能再停在 CLI marker 空段。"""
+        args = HELPER.parse_args([])
+        combined_stdout = """
+__TOPIC_LIST_T__
+/tf [tf2_msgs/msg/TFMessage]
+/tf_static [tf2_msgs/msg/TFMessage]
+__AMCL_NODE_INFO__
+__AMCL_PARAMS__
+__TF_ONCE__
+__TF_STATIC_ONCE__
+"""
+        amcl_probe = {
+            "param_probe_ok": True,
+            "node_info_observed": True,
+            "params": {
+                "tf_broadcast": True,
+                "global_frame_id": "map",
+                "odom_frame_id": "odom",
+                "base_frame_id": "base_link",
+            },
+            "publishers": [{"topic": "/amcl_pose", "type": "geometry_msgs/msg/PoseWithCovarianceStamped"}],
+            "subscribers": [{"topic": "/scan", "type": "sensor_msgs/msg/LaserScan"}],
+            "boundary": "rclpy_amcl_params_and_graph_observed",
+        }
+
+        source = HELPER.build_tf_source_diagnostics(
+            args,
+            {"stdout": combined_stdout, "ok": True},
+            amcl_pose_result={"stdout": "header:\n  frame_id: map\n"},
+            amcl_probe=amcl_probe,
+        )
+
+        self.assertTrue(source["amcl_param_probe_ok"])
+        self.assertTrue(source["amcl_node_info_observed"])
+        self.assertEqual("true", source["amcl_tf_broadcast_param"])
+        self.assertEqual("odom", source["amcl_frame_params"]["odom_frame_id"])
+        self.assertEqual("/amcl_pose", source["amcl_node_publishers"][0]["topic"])
+
+    def test_managed_static_tf_process_summary_classifies_roles(self) -> None:
+        """static TF 源必须记录进程角色，便于区分没启动和 QoS 未观测。"""
+        args = HELPER.parse_args([])
+        runtime = {"started": True, "process_group": 456}
+        fake_members = [
+            {
+                "pid": 11,
+                "pgid": 456,
+                "command": "ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link",
+            },
+            {
+                "pid": 12,
+                "pgid": 456,
+                "command": "ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link laser_frame",
+            },
+        ]
+        with mock.patch.object(HELPER, "process_group_members", return_value=fake_members):
+            summary = HELPER.managed_static_tf_process_summary(args, runtime)
+
+        self.assertTrue(summary["all_expected_processes_observed"])
+        self.assertEqual(["static_tf_base_laser", "static_tf_odom_base"], summary["observed_roles"])
+        self.assertEqual(2, len(summary["processes"]))
 
     def test_phase_artifact_writer_records_partial_progress(self) -> None:
         """helper 被外层 timeout 打断前，partial artifact 必须已经有阶段和命令证据。"""

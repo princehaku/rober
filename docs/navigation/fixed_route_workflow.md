@@ -1876,6 +1876,21 @@ delivery success。
 AMCL 是否实际广播 `map->odom`、managed static TF 是否存在、frame id 是否一致；
 不代表路径执行、底盘运动或 HIL 通过。
 
+2026-06-11 05:05 起，source snapshot 不再依赖多条串行 `ros2 param/node`
+CLI。helper 会在同一 Python 进程内用短生命周期 rclpy probe 查询 `/amcl` 的
+`tf_broadcast`、`global_frame_id`、`odom_frame_id`、`base_frame_id` 和 graph
+publisher/subscriber，并新增 `amcl_param_probe_ok`、`amcl_node_info_observed`、
+`tf_source_root_cause_detail`、`amcl_broadcast_conditions`。如果 `/amcl_pose` 已在
+`map` frame 发布但 `map->odom` 不出现，artifact 必须进一步指出是
+`tf_broadcast=false`、AMCL frame 参数不一致、`/scan`/`/map` 输入缺失，还是
+`odom->base_link` 等 static TF 输入缺失。
+
+managed localization runtime 也会在日志和 artifact 中记录 static TF source：
+`managed_static_tf_processes` 保存 `odom->base_link`、`base_link->laser_frame` 两个
+`static_transform_publisher` 的进程角色，`static_tf_source_observed` 只有在进程源和
+`/tf_static` 观测同时成立时才为 true。这样下一轮能区分“static publisher 没启动”、
+“进程启动但 `/tf_static` QoS/timing 未读到”和“AMCL 自身未广播 `map->odom`”。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

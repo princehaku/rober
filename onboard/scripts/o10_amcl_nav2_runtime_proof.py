@@ -117,8 +117,15 @@ class PhaseArtifactWriter:
             "amcl_pose_frame_id": None,
             "amcl_node_publishers": [],
             "amcl_node_subscribers": [],
+            "amcl_param_probe_ok": False,
+            "amcl_node_info_observed": False,
             "amcl_tf_broadcast_param": None,
             "amcl_frame_params": {},
+            "amcl_log_tail": "",
+            "managed_static_tf_processes": {},
+            "static_tf_source_observed": False,
+            "tf_source_root_cause_detail": {},
+            "amcl_broadcast_conditions": {},
             "map_frame_observed": False,
             "odom_frame_observed": False,
             "amcl_tf_root_cause": "not_evaluated",
@@ -976,6 +983,164 @@ def parse_param_probe(text: str) -> dict[str, str]:
     return params
 
 
+def parameter_value_to_artifact(value: Any) -> Any:
+    """把 rcl_interfaces/ParameterValue 转为 JSON 友好值，避免依赖 ros2 param CLI 文案。"""
+    # ROS2 ParameterType 常量值：1 bool、2 int、3 double、4 string；只读取本轮需要的类型。
+    value_type = int(getattr(value, "type", 0) or 0)
+    if value_type == 1:
+        return bool(getattr(value, "bool_value", False))
+    if value_type == 2:
+        return int(getattr(value, "integer_value", 0))
+    if value_type == 3:
+        return float(getattr(value, "double_value", 0.0))
+    if value_type == 4:
+        return str(getattr(value, "string_value", ""))
+    return None
+
+
+def normalize_param_artifact_value(value: Any) -> str | None:
+    """参数比较统一走字符串，兼容 ROS CLI 和 rclpy 两种 probe 来源。"""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value).strip().strip("'\"")
+
+
+def graph_topics_to_artifact(topics: list[tuple[str, list[str]]]) -> list[dict[str, str]]:
+    """rclpy graph API 返回类型数组；artifact 保持和 ros2 node info 解析后的形状一致。"""
+    return [{"topic": topic, "type": ",".join(types)} for topic, types in topics]
+
+
+def tf_message_edges(message: Any, *, source_topic: str) -> list[dict[str, str]]:
+    """从 rclpy 订阅到的 TFMessage 提取边，避免再跑慢 `ros2 topic echo`。"""
+    edges: list[dict[str, str]] = []
+    for transform in getattr(message, "transforms", []) or []:
+        header = getattr(transform, "header", None)
+        parent = str(getattr(header, "frame_id", "") or "")
+        child = str(getattr(transform, "child_frame_id", "") or "")
+        if parent and child:
+            edges.append({"parent": parent, "child": child, "topic": source_topic})
+    return edges
+
+
+def collect_amcl_rclpy_probe(timeout_s: float = 2.0) -> dict[str, Any]:
+    """用 rclpy 一次性取 /amcl 参数、graph 和 TF 样本，替代多条串行 ROS CLI。"""
+    result: dict[str, Any] = {
+        "executed": False,
+        "ok": False,
+        "param_probe_ok": False,
+        "node_info_observed": False,
+        "tf_inventory_observed": False,
+        "params": {},
+        "publishers": [],
+        "subscribers": [],
+        "topic_types": {},
+        "dynamic_edges": [],
+        "static_edges": [],
+        "command_statuses": {"rclpy_graph": None, "tf": None, "tf_static": None},
+        "error": None,
+        "elapsed_ms": 0,
+        "boundary": "rclpy_amcl_probe_not_started",
+    }
+    started_ms = now_ms()
+    node = None
+    rclpy_initialized = False
+    try:
+        import rclpy
+        from rcl_interfaces.srv import GetParameters  # type: ignore[import-not-found]
+        from rclpy.duration import Duration  # type: ignore[import-not-found]
+        from rclpy.qos import DurabilityPolicy, QoSProfile  # type: ignore[import-not-found]
+        from tf2_msgs.msg import TFMessage  # type: ignore[import-not-found]
+
+        result["executed"] = True
+        rclpy.init(args=[])
+        rclpy_initialized = True
+        node = rclpy.create_node("o10_amcl_param_graph_probe")
+        topic_pairs = node.get_topic_names_and_types()
+        result["topic_types"] = {topic: ",".join(types) for topic, types in topic_pairs}
+        result["command_statuses"]["rclpy_graph"] = 0
+        try:
+            publishers = node.get_publisher_names_and_types_by_node("amcl", "/")
+            subscribers = node.get_subscriber_names_and_types_by_node("amcl", "/")
+        except Exception as graph_exc:  # noqa: BLE001 - AMCL graph 名称瞬态不可见时仍继续查参数服务。
+            publishers = []
+            subscribers = []
+            result["node_info_error"] = compact_error(graph_exc)
+        result["publishers"] = graph_topics_to_artifact(publishers)
+        result["subscribers"] = graph_topics_to_artifact(subscribers)
+        result["node_info_observed"] = bool(publishers or subscribers)
+        client = node.create_client(GetParameters, "/amcl/get_parameters")
+        if not client.wait_for_service(timeout_sec=max(min(timeout_s, 1.0), 0.4)):
+            result["boundary"] = "amcl_parameter_service_unavailable"
+            return result
+        names = ["tf_broadcast", "global_frame_id", "odom_frame_id", "base_frame_id"]
+        request = GetParameters.Request()
+        request.names = names
+        future = client.call_async(request)
+        rclpy.spin_until_future_complete(node, future, timeout_sec=max(timeout_s, 0.8))
+        response = future.result()
+        if response is None:
+            result["boundary"] = "amcl_parameter_response_missing"
+            return result
+        values = getattr(response, "values", []) or []
+        params = {
+            name: parameter_value_to_artifact(value)
+            for name, value in zip(names, values)
+        }
+        dynamic_edges: list[dict[str, str]] = []
+        static_edges: list[dict[str, str]] = []
+
+        def on_dynamic_tf(message: Any) -> None:
+            dynamic_edges.extend(tf_message_edges(message, source_topic="/tf"))
+
+        def on_static_tf(message: Any) -> None:
+            static_edges.extend(tf_message_edges(message, source_topic="/tf_static"))
+
+        # transient local QoS 是读取 /tf_static 的关键，避免 CLI echo 的启动成本和时序抖动。
+        node.create_subscription(TFMessage, "/tf", on_dynamic_tf, QoSProfile(depth=10))
+        node.create_subscription(
+            TFMessage,
+            "/tf_static",
+            on_static_tf,
+            QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+        )
+        end_time = node.get_clock().now() + Duration(seconds=max(min(timeout_s, 1.5), 0.5))
+        while node.get_clock().now() < end_time:
+            rclpy.spin_once(node, timeout_sec=0.1)
+        result["dynamic_edges"] = dynamic_edges
+        result["static_edges"] = static_edges
+        result["command_statuses"]["tf"] = 0 if dynamic_edges else 124
+        result["command_statuses"]["tf_static"] = 0 if static_edges else 124
+        result["tf_inventory_observed"] = bool(dynamic_edges or static_edges or result["topic_types"])
+        result.update(
+            {
+                "ok": bool(result["node_info_observed"] and params and result["tf_inventory_observed"]),
+                "param_probe_ok": bool(params),
+                "params": params,
+                "boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+            }
+        )
+        return result
+    except Exception as exc:  # noqa: BLE001 - 现场缺 rclpy/服务超时都要结构化回写。
+        result["error"] = compact_error(exc)
+        result["boundary"] = "rclpy_amcl_probe_failed"
+        return result
+    finally:
+        result["elapsed_ms"] = now_ms() - started_ms
+        if node is not None:
+            try:
+                node.destroy_node()
+            except Exception:
+                pass
+        if rclpy_initialized:
+            try:
+                if rclpy.ok():
+                    rclpy.shutdown()
+            except Exception:
+                pass
+
+
 def parse_section_status(text: str, marker: str) -> int | None:
     """读取 source probe 中每段命令退出码；缺失时返回 None 代表旧 artifact。"""
     token = f"__{marker}__"
@@ -1009,23 +1174,17 @@ def collect_tf_source_diagnostics(
             "ok": False,
             "boundary": "ros2_unavailable_tf_source_probe_skipped",
         }, default_tf_source_diagnostics(args, amcl_pose_result=amcl_pose_result)
-    command = r"""
-set +e
-echo __TOPIC_LIST_T__
-timeout 2 ros2 topic list -t 2>&1
-echo __TOPIC_LIST_STATUS__$?
-echo __TF_STATIC_ONCE__
-timeout 2 ros2 topic echo --once /tf_static tf2_msgs/msg/TFMessage --qos-durability transient_local 2>&1
-echo __TF_STATIC_STATUS__$?
-echo __TF_ONCE__
-timeout 2 ros2 topic echo --once /tf tf2_msgs/msg/TFMessage 2>&1
-echo __TF_STATUS__$?
-echo __AMCL_PARAMS__
-echo __AMCL_NODE_INFO__
-true
-""".strip()
-    result = run_ros(args, command, timeout_s=7.0)
-    return result, build_tf_source_diagnostics(args, result, amcl_pose_result=amcl_pose_result)
+    amcl_probe = collect_amcl_rclpy_probe(timeout_s=2.0)
+    result = {
+        "executed": True,
+        "ok": bool(amcl_probe.get("ok")),
+        "boundary": amcl_probe.get("boundary"),
+        "elapsed_ms": amcl_probe.get("elapsed_ms"),
+        "stdout": "",
+        "stderr": "",
+    }
+    result["amcl_rclpy_probe"] = amcl_probe
+    return result, build_tf_source_diagnostics(args, result, amcl_pose_result=amcl_pose_result, amcl_probe=amcl_probe)
 
 
 def default_tf_source_diagnostics(
@@ -1043,8 +1202,12 @@ def default_tf_source_diagnostics(
         "amcl_pose_frame_id": amcl_pose_frame_id,
         "amcl_node_publishers": [],
         "amcl_node_subscribers": [],
+        "amcl_param_probe_ok": False,
+        "amcl_node_info_observed": False,
         "amcl_tf_broadcast_param": None,
         "amcl_frame_params": {},
+        "tf_source_root_cause_detail": {"reason": "tf_source_probe_not_executed"},
+        "amcl_broadcast_conditions": {},
         "map_frame_observed": False,
         "odom_frame_observed": False,
         "base_frame_observed": False,
@@ -1062,32 +1225,70 @@ def build_tf_source_diagnostics(
     result: dict[str, Any],
     *,
     amcl_pose_result: dict[str, Any],
+    amcl_probe: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """把 `/tf`、`/tf_static`、AMCL node info/params 汇总成稳定 source/timing 字段。"""
     stdout = str(result.get("stdout") or "")
     topic_types = parse_topic_list_with_types(extract_section(stdout, "TOPIC_LIST_T"))
     amcl_info = extract_section(stdout, "AMCL_NODE_INFO")
     params = parse_param_probe(extract_section(stdout, "AMCL_PARAMS"))
+    probe = amcl_probe if isinstance(amcl_probe, dict) else {}
+    probe_topic_types = probe.get("topic_types") if isinstance(probe.get("topic_types"), dict) else {}
+    if probe_topic_types:
+        topic_types = {str(topic): str(topic_type) for topic, topic_type in probe_topic_types.items()}
+    rclpy_params = probe.get("params") if isinstance(probe.get("params"), dict) else {}
+    for name, value in rclpy_params.items():
+        normalized = normalize_param_artifact_value(value)
+        if normalized is not None:
+            params[name] = normalized
     dynamic_text = extract_section(stdout, "TF_ONCE")
     static_text = extract_section(stdout, "TF_STATIC_ONCE")
+    probe_command_statuses = probe.get("command_statuses") if isinstance(probe.get("command_statuses"), dict) else {}
     command_statuses = {
         "topic_list": parse_section_status(stdout, "TOPIC_LIST_STATUS"),
         "tf_static": parse_section_status(stdout, "TF_STATIC_STATUS"),
         "tf": parse_section_status(stdout, "TF_STATUS"),
     }
+    if probe_command_statuses:
+        command_statuses = {
+            "topic_list": probe_command_statuses.get("rclpy_graph"),
+            "tf_static": probe_command_statuses.get("tf_static"),
+            "tf": probe_command_statuses.get("tf"),
+        }
     dynamic_edges = parse_tf_edges(dynamic_text, source_topic="/tf")
     static_edges = parse_tf_edges(static_text, source_topic="/tf_static")
+    if isinstance(probe.get("dynamic_edges"), list):
+        dynamic_edges = [edge for edge in probe["dynamic_edges"] if isinstance(edge, dict)]
+    if isinstance(probe.get("static_edges"), list):
+        static_edges = [edge for edge in probe["static_edges"] if isinstance(edge, dict)]
     edges = [*dynamic_edges, *static_edges]
     frames = sorted({value for edge in edges for value in (edge.get("parent"), edge.get("child")) if value})
     frame_ids = tf_chain_frame_contract(args)["actual"]
     map_to_odom_source_observed = edge_observed(dynamic_edges, "map", frame_ids["odom"])
     odom_to_base_source_observed = edge_observed(static_edges, frame_ids["odom"], frame_ids["base"])
     base_to_laser_source_observed = edge_observed(static_edges, frame_ids["base"], frame_ids["laser"])
+    param_probe_ok = bool(probe.get("param_probe_ok") or all(params.get(name) is not None for name in ("tf_broadcast", "global_frame_id", "odom_frame_id", "base_frame_id")))
+    amcl_publishers = (
+        probe.get("publishers")
+        if isinstance(probe.get("publishers"), list) and probe.get("publishers")
+        else parse_node_info_topics(amcl_info, "Publishers")
+    )
+    amcl_subscribers = (
+        probe.get("subscribers")
+        if isinstance(probe.get("subscribers"), list) and probe.get("subscribers")
+        else parse_node_info_topics(amcl_info, "Subscribers")
+    )
+    node_info_observed = bool(probe.get("node_info_observed") or amcl_publishers or amcl_subscribers)
+    amcl_pose_frame_id = parse_pose_frame_id(str(amcl_pose_result.get("stdout") or ""))
     root_cause = "source_inventory_observed"
     if "/tf" not in topic_types and command_statuses["topic_list"] not in (0, None):
         root_cause = "tf_topic_list_timeout_or_unavailable"
     elif "/tf" not in topic_types:
         root_cause = "/tf_topic_missing"
+    elif not node_info_observed:
+        root_cause = "amcl_node_info_not_observed"
+    elif not param_probe_ok:
+        root_cause = "amcl_param_probe_failed"
     elif params.get("tf_broadcast", "").lower() in {"false", "0"}:
         root_cause = "amcl_tf_broadcast_disabled"
     elif params.get("global_frame_id") and params.get("global_frame_id") != "map":
@@ -1102,6 +1303,46 @@ def build_tf_source_diagnostics(
         root_cause = "odom_to_base_link_static_tf_not_observed"
     elif not base_to_laser_source_observed:
         root_cause = "base_link_to_laser_frame_static_tf_not_observed"
+    detail = {
+        "reason": root_cause,
+        "amcl_param_probe_boundary": probe.get("boundary"),
+        "amcl_param_probe_error": probe.get("error") if isinstance(probe.get("error"), dict) else None,
+        "tf_command_statuses": command_statuses,
+        "amcl_node_info_observed": node_info_observed,
+        "amcl_param_probe_ok": param_probe_ok,
+        "expected_params": {
+            "tf_broadcast": "true",
+            "global_frame_id": "map",
+            "odom_frame_id": frame_ids["odom"],
+            "base_frame_id": frame_ids["base"],
+        },
+        "observed_params": {
+            "tf_broadcast": params.get("tf_broadcast"),
+            "global_frame_id": params.get("global_frame_id"),
+            "odom_frame_id": params.get("odom_frame_id"),
+            "base_frame_id": params.get("base_frame_id"),
+        },
+        "amcl_pose_frame_id": amcl_pose_frame_id,
+        "map_to_odom_source_observed": map_to_odom_source_observed,
+        "odom_to_base_link_source_observed": odom_to_base_source_observed,
+        "base_link_to_laser_frame_source_observed": base_to_laser_source_observed,
+    }
+    conditions = {
+        "initialpose_published": None,
+        "amcl_pose_observed": bool(amcl_pose_frame_id),
+        "amcl_pose_frame_id_is_map": amcl_pose_frame_id == "map",
+        "tf_broadcast_enabled": params.get("tf_broadcast", "").lower() not in {"false", "0", ""},
+        "amcl_frame_params_match_helper": bool(
+            params.get("global_frame_id") == "map"
+            and params.get("odom_frame_id") == frame_ids["odom"]
+            and params.get("base_frame_id") == frame_ids["base"]
+        ),
+        "map_to_odom_source_observed": map_to_odom_source_observed,
+        "odom_to_base_link_source_observed": odom_to_base_source_observed,
+        "base_link_to_laser_frame_source_observed": base_to_laser_source_observed,
+        "scan_once_observed": None,
+        "map_once_observed": None,
+    }
     return {
         "tf_topics_observed": {"/tf": "/tf" in topic_types, "/tf_static": "/tf_static" in topic_types},
         "tf_static_observed": bool(static_edges),
@@ -1113,9 +1354,11 @@ def build_tf_source_diagnostics(
             "topic_types": topic_types,
             "command_statuses": command_statuses,
         },
-        "amcl_pose_frame_id": parse_pose_frame_id(str(amcl_pose_result.get("stdout") or "")),
-        "amcl_node_publishers": parse_node_info_topics(amcl_info, "Publishers"),
-        "amcl_node_subscribers": parse_node_info_topics(amcl_info, "Subscribers"),
+        "amcl_pose_frame_id": amcl_pose_frame_id,
+        "amcl_node_publishers": amcl_publishers,
+        "amcl_node_subscribers": amcl_subscribers,
+        "amcl_param_probe_ok": param_probe_ok,
+        "amcl_node_info_observed": node_info_observed,
         "amcl_tf_broadcast_param": params.get("tf_broadcast"),
         "amcl_frame_params": {
             "global_frame_id": params.get("global_frame_id"),
@@ -1130,6 +1373,8 @@ def build_tf_source_diagnostics(
         "odom_to_base_link_source_observed": odom_to_base_source_observed,
         "base_link_to_laser_frame_source_observed": base_to_laser_source_observed,
         "amcl_tf_root_cause": root_cause,
+        "tf_source_root_cause_detail": detail,
+        "amcl_broadcast_conditions": conditions,
         "frame_contract": tf_chain_frame_contract(args),
     }
 
@@ -1483,10 +1728,8 @@ def build_managed_runtime_shell(
     laser_frame = shlex.quote(args.managed_laser_frame_id)
     commands = [
         # 这里单独记录 vendor 事实边界：LiDAR 只允许 /dev/ttyACM0@150000；不允许触碰 /dev/ttyS5。
-        "pids=()",
-        "cleanup(){ for pid in \"${pids[@]}\"; do kill -INT \"$pid\" 2>/dev/null || true; done; wait || true; }",
-        "trap cleanup EXIT INT TERM",
         (
+            "lidar_driver",
             "ros2 run ros2_trashbot_hardware lidar_driver --ros-args "
             f"-p serial_port:={lidar_port} "
             f"-p serial_baudrate:={lidar_baud} "
@@ -1495,18 +1738,22 @@ def build_managed_runtime_shell(
             "-p publish_raw_packets:=false"
         ),
         (
+            "static_tf_odom_base",
             "ros2 run tf2_ros static_transform_publisher "
             f"0.0 0.0 0.0 0.0 0.0 0.0 {odom_frame} {base_frame}"
         ),
         (
+            "static_tf_base_laser",
             "ros2 run tf2_ros static_transform_publisher "
             f"0.0 0.0 0.0 0.0 0.0 0.0 {base_frame} {laser_frame}"
         ),
         (
+            "map_server",
             "ros2 run nav2_map_server map_server --ros-args "
             f"--params-file {params} -r __node:=map_server"
         ),
         (
+            "amcl",
             "ros2 run nav2_amcl amcl --ros-args "
             f"--params-file {params} -r __node:=amcl"
         ),
@@ -1514,12 +1761,14 @@ def build_managed_runtime_shell(
     if include_planner_server:
         commands.append(
             (
+                "planner_server",
                 "ros2 run nav2_planner planner_server --ros-args "
                 f"--params-file {params} -r __node:=planner_server"
             )
         )
     commands.append(
         (
+            "lifecycle_manager",
             "ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args "
             f"--params-file {params} -r __node:=lifecycle_manager"
         ),
@@ -1538,9 +1787,10 @@ def build_managed_runtime_shell(
         ),
         "printf '%s\\n' 'blocked_device=/dev/ttyS5' >> " + log,
     ]
-    for command in commands[3:]:
+    for role, command in commands:
         # 每个子进程都追加到同一日志，便于远端 artifact 回放每个节点的启动顺序。
-        lines.append(f"({command}) >> {log} 2>&1 & pids+=($!)")
+        lines.append(f"printf '%s\\n' 'starting role={role}' >> {log}")
+        lines.append(f"({command}) >> {log} 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role={role} pid='$pid >> {log}")
     lines.append("wait")
     return "; ".join(lines)
 
@@ -1669,6 +1919,45 @@ def process_group_members(process_group: int) -> list[dict[str, Any]]:
     return result
 
 
+def managed_static_tf_process_summary(args: argparse.Namespace, runtime: dict[str, Any]) -> dict[str, Any]:
+    """记录 managed static TF 进程源，区分没启动、已退出和 QoS/timing 未观测。"""
+    expected = [
+        {
+            "role": "static_tf_odom_base",
+            "parent": str(args.managed_odom_frame_id),
+            "child": str(args.managed_base_frame_id),
+        },
+        {
+            "role": "static_tf_base_laser",
+            "parent": str(args.managed_base_frame_id),
+            "child": str(args.managed_laser_frame_id),
+        },
+    ]
+    process_group = runtime.get("process_group")
+    members = process_group_members(int(process_group)) if process_group else []
+    static_processes: list[dict[str, Any]] = []
+    observed_roles: list[str] = []
+    for process in members:
+        command = str(process.get("command") or "")
+        if "static_transform_publisher" not in command:
+            continue
+        matched_role = "unknown_static_tf"
+        for item in expected:
+            if item["parent"] in command and item["child"] in command:
+                matched_role = item["role"]
+                observed_roles.append(matched_role)
+                break
+        static_processes.append({**process, "role": matched_role})
+    return {
+        "expected": expected,
+        "observed_roles": sorted(set(observed_roles)),
+        "processes": static_processes,
+        "process_group": process_group,
+        "all_expected_processes_observed": all(item["role"] in observed_roles for item in expected),
+        "checked_before_cleanup": bool(runtime.get("started")),
+    }
+
+
 def managed_runtime_cleanup_guard(process_group: int | None) -> dict[str, Any]:
     """把清场守卫显式写成 artifact 字段，便于测试锁定 no-orphan 要求。"""
     if not process_group:
@@ -1679,6 +1968,54 @@ def managed_runtime_cleanup_guard(process_group: int | None) -> dict[str, Any]:
         "boundary": "managed_runtime_process_group_cleanup_guard",
         "remaining_processes": remaining,
     }
+
+
+def rclpy_node_names(timeout_s: float = 0.8) -> dict[str, Any]:
+    """用 rclpy graph 读取节点名，替代慢 `ros2 node list` CLI。"""
+    started_ms = now_ms()
+    result: dict[str, Any] = {
+        "executed": False,
+        "ok": False,
+        "node_names": [],
+        "elapsed_ms": 0,
+        "error": None,
+        "boundary": "rclpy_node_names_not_started",
+    }
+    node = None
+    rclpy_initialized = False
+    try:
+        import rclpy
+
+        result["executed"] = True
+        rclpy.init(args=[])
+        rclpy_initialized = True
+        node = rclpy.create_node("o10_managed_runtime_graph_probe")
+        deadline = time.time() + max(timeout_s, 0.2)
+        names: list[str] = []
+        while time.time() < deadline:
+            rclpy.spin_once(node, timeout_sec=0.05)
+            names = sorted({name for name in node.get_node_names() if name})
+            if names:
+                break
+        result.update({"ok": bool(names), "node_names": names, "boundary": "rclpy_node_names_observed"})
+        return result
+    except Exception as exc:  # noqa: BLE001 - graph 查询失败必须结构化，不回退阻塞 CLI。
+        result["error"] = compact_error(exc)
+        result["boundary"] = "rclpy_node_names_failed"
+        return result
+    finally:
+        result["elapsed_ms"] = now_ms() - started_ms
+        if node is not None:
+            try:
+                node.destroy_node()
+            except Exception:
+                pass
+        if rclpy_initialized:
+            try:
+                if rclpy.ok():
+                    rclpy.shutdown()
+            except Exception:
+                pass
 
 
 def wait_for_managed_runtime(
@@ -1703,9 +2040,9 @@ def wait_for_managed_runtime(
                 "history": history,
                 "log_tail": preview_file(runtime["log_path"]),
             }
-        # runtime wait 只确认节点已出现；完整 lifecycle 状态放到后续诊断，避免这里吃掉主证据预算。
-        node_list = run_ros(args, "ros2 node list", timeout_s=4.0)
-        node_lines = {line.strip() for line in str(node_list.get("stdout") or "").splitlines() if line.strip()}
+        # runtime wait 只确认节点已出现；用 rclpy graph 避免 ROS CLI 启动成本吃掉定位预算。
+        node_list = rclpy_node_names(timeout_s=0.8)
+        node_lines = {f"/{line.lstrip('/')}" for line in node_list.get("node_names", []) if isinstance(line, str)}
         lifecycle_active = {
             "map_server": "/map_server" in node_lines,
             "amcl": "/amcl" in node_lines,
@@ -1714,7 +2051,7 @@ def wait_for_managed_runtime(
             lifecycle_active["planner_server"] = "/planner_server" in node_lines
         if not node_list.get("ok"):
             history.append({"node_list": node_list, "lifecycle_active": lifecycle_active})
-            time.sleep(1.0)
+            time.sleep(0.6)
             continue
         snapshot = {
             "elapsed_ms": now_ms() - int(runtime["started_at_ms"]),
@@ -1726,7 +2063,7 @@ def wait_for_managed_runtime(
             not require_planner_server or lifecycle_active.get("planner_server")
         ):
             return {"ok": True, "history": history, "node_list": node_list, "boundary": "managed_runtime_nodes_observed"}
-        time.sleep(1.2)
+        time.sleep(0.8)
     return {
         "ok": False,
         "reason": "managed_runtime_wait_timeout",
@@ -1802,6 +2139,13 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "cleanup_result": {"attempted": False, "ok": True, "boundary": "managed_runtime_not_requested"},
         "startup_error": None,
     }
+    managed_static_tf_processes: dict[str, Any] = {
+        "expected": [],
+        "observed_roles": [],
+        "processes": [],
+        "all_expected_processes_observed": False,
+        "checked_before_cleanup": False,
+    }
     if args.managed_runtime_opt_in:
         phase_writer.record_phase(
             "managed_runtime",
@@ -1846,6 +2190,12 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
                     ok=bool(managed_runtime["wait_result"].get("ok")),
                     detail={"reason": managed_runtime["wait_result"].get("reason")},
                 )
+                managed_static_tf_processes = managed_static_tf_process_summary(args, managed_runtime)
+                phase_writer.update_snapshot(
+                    managed_static_tf_processes=managed_static_tf_processes,
+                    static_tf_source_observed=False,
+                    amcl_log_tail=preview_file(str(managed_runtime.get("log_path") or "")),
+                )
             except Exception as exc:  # noqa: BLE001 - runtime 拉起失败必须结构化写回。
                 managed_runtime["startup_error"] = compact_error(exc)
                 managed_runtime["boundary"] = "managed_runtime_start_failed"
@@ -1887,7 +2237,10 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         else {"executed": False, "ok": False, "boundary": "post_initialpose_probe_not_requested"}
     )
     amcl_pose_probe_ok = bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once))
-    phase_writer.update_snapshot(amcl_pose_observed=amcl_pose_probe_ok)
+    phase_writer.update_snapshot(
+        amcl_pose_observed=amcl_pose_probe_ok,
+        amcl_pose_frame_id=parse_pose_frame_id(str(post_initialpose_amcl_pose_once.get("stdout") or "")),
+    )
     phase_writer.record_phase(
         "amcl_pose_probe",
         ok=amcl_pose_probe_ok,
@@ -1910,8 +2263,18 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         amcl_pose_frame_id=tf_source_diagnostics["amcl_pose_frame_id"],
         amcl_node_publishers=tf_source_diagnostics["amcl_node_publishers"],
         amcl_node_subscribers=tf_source_diagnostics["amcl_node_subscribers"],
+        amcl_param_probe_ok=tf_source_diagnostics["amcl_param_probe_ok"],
+        amcl_node_info_observed=tf_source_diagnostics["amcl_node_info_observed"],
         amcl_tf_broadcast_param=tf_source_diagnostics["amcl_tf_broadcast_param"],
         amcl_frame_params=tf_source_diagnostics["amcl_frame_params"],
+        tf_source_root_cause_detail=tf_source_diagnostics["tf_source_root_cause_detail"],
+        amcl_broadcast_conditions=tf_source_diagnostics["amcl_broadcast_conditions"],
+        managed_static_tf_processes=managed_static_tf_processes,
+        static_tf_source_observed=bool(
+            managed_static_tf_processes.get("all_expected_processes_observed")
+            and tf_source_diagnostics["tf_static_observed"]
+        ),
+        amcl_log_tail=preview_file(str(managed_runtime.get("log_path") or "")),
         map_frame_observed=tf_source_diagnostics["map_frame_observed"],
         odom_frame_observed=tf_source_diagnostics["odom_frame_observed"],
         amcl_tf_root_cause=tf_source_diagnostics["amcl_tf_root_cause"],
@@ -2155,6 +2518,36 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     scan_observed = topic_once_observed(scan_once)
     map_observed = topic_once_observed(map_once)
     amcl_pose_observed = bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once))
+    amcl_broadcast_conditions = dict(tf_source_diagnostics.get("amcl_broadcast_conditions") or {})
+    amcl_broadcast_conditions.update(
+        {
+            "initialpose_published": bool(initialpose_publish.get("ok")),
+            "amcl_pose_observed": amcl_pose_observed,
+            "scan_once_observed": scan_observed,
+            "map_once_observed": map_observed,
+            "map_server_active": bool(lifecycle_active.get("map_server")),
+            "amcl_active": bool(lifecycle_active.get("amcl")),
+            "static_tf_processes_observed": bool(managed_static_tf_processes.get("all_expected_processes_observed")),
+        }
+    )
+    tf_source_root_cause_detail = dict(tf_source_diagnostics.get("tf_source_root_cause_detail") or {})
+    tf_source_root_cause_detail["amcl_broadcast_conditions"] = amcl_broadcast_conditions
+    if (
+        tf_source_diagnostics.get("amcl_tf_root_cause") == "amcl_map_to_odom_tf_not_observed_on_tf"
+        and not tf_source_diagnostics.get("odom_to_base_link_source_observed")
+    ):
+        # AMCL 发布 map->odom 需要 odom->base_link 输入；这里把下一层 blocker 写进 detail。
+        if not managed_static_tf_processes.get("all_expected_processes_observed"):
+            tf_source_root_cause_detail["next_blocking_condition"] = "managed_static_tf_process_missing_before_tf_static_observation"
+        else:
+            tf_source_root_cause_detail["next_blocking_condition"] = "managed_static_tf_process_running_but_tf_static_not_observed"
+    elif (
+        tf_source_diagnostics.get("amcl_tf_root_cause") == "amcl_map_to_odom_tf_not_observed_on_tf"
+        and not scan_observed
+    ):
+        tf_source_root_cause_detail["next_blocking_condition"] = "scan_input_missing_for_amcl_broadcast"
+    tf_source_diagnostics["amcl_broadcast_conditions"] = amcl_broadcast_conditions
+    tf_source_diagnostics["tf_source_root_cause_detail"] = tf_source_root_cause_detail
     tf_chain_observed = {
         "map_to_odom": bool(tf_source_diagnostics.get("map_to_odom_source_observed") or tf_echo_transform_observed(map_to_odom_tf)),
         "odom_to_base_link": bool(
@@ -2199,8 +2592,18 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         amcl_pose_frame_id=tf_source_diagnostics["amcl_pose_frame_id"],
         amcl_node_publishers=tf_source_diagnostics["amcl_node_publishers"],
         amcl_node_subscribers=tf_source_diagnostics["amcl_node_subscribers"],
+        amcl_param_probe_ok=tf_source_diagnostics["amcl_param_probe_ok"],
+        amcl_node_info_observed=tf_source_diagnostics["amcl_node_info_observed"],
         amcl_tf_broadcast_param=tf_source_diagnostics["amcl_tf_broadcast_param"],
         amcl_frame_params=tf_source_diagnostics["amcl_frame_params"],
+        tf_source_root_cause_detail=tf_source_diagnostics["tf_source_root_cause_detail"],
+        amcl_broadcast_conditions=tf_source_diagnostics["amcl_broadcast_conditions"],
+        managed_static_tf_processes=managed_static_tf_processes,
+        static_tf_source_observed=bool(
+            managed_static_tf_processes.get("all_expected_processes_observed")
+            and tf_source_diagnostics["tf_static_observed"]
+        ),
+        amcl_log_tail=preview_file(str(managed_runtime.get("log_path") or "")),
         map_frame_observed=tf_source_diagnostics["map_frame_observed"],
         odom_frame_observed=tf_source_diagnostics["odom_frame_observed"],
         amcl_tf_root_cause=tf_source_diagnostics["amcl_tf_root_cause"],
@@ -2395,8 +2798,18 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "amcl_pose_frame_id": tf_source_diagnostics["amcl_pose_frame_id"],
         "amcl_node_publishers": tf_source_diagnostics["amcl_node_publishers"],
         "amcl_node_subscribers": tf_source_diagnostics["amcl_node_subscribers"],
+        "amcl_param_probe_ok": tf_source_diagnostics["amcl_param_probe_ok"],
+        "amcl_node_info_observed": tf_source_diagnostics["amcl_node_info_observed"],
         "amcl_tf_broadcast_param": tf_source_diagnostics["amcl_tf_broadcast_param"],
         "amcl_frame_params": tf_source_diagnostics["amcl_frame_params"],
+        "amcl_log_tail": preview_file(str(managed_runtime.get("log_path") or "")),
+        "managed_static_tf_processes": managed_static_tf_processes,
+        "static_tf_source_observed": bool(
+            managed_static_tf_processes.get("all_expected_processes_observed")
+            and tf_source_diagnostics["tf_static_observed"]
+        ),
+        "tf_source_root_cause_detail": tf_source_diagnostics["tf_source_root_cause_detail"],
+        "amcl_broadcast_conditions": tf_source_diagnostics["amcl_broadcast_conditions"],
         "map_frame_observed": tf_source_diagnostics["map_frame_observed"],
         "odom_frame_observed": tf_source_diagnostics["odom_frame_observed"],
         "amcl_tf_root_cause": tf_source_diagnostics["amcl_tf_root_cause"],

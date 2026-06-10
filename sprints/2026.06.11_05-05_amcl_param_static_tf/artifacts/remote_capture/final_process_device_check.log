@@ -1,0 +1,2 @@
+active
+227807 zsh -c systemctl is-active trashbot-upper-robot-api.service; pgrep -af "rober_nav2_localization_|nav2_amcl|nav2_map_server|nav2_lifecycle_manager|static_transform_publisher|lidar_driver" || true; fuser /dev/ttyS5 /dev/ttyACM0 2>&1 || true; lsof /dev/ttyS5 /dev/ttyACM0 2>&1 || true

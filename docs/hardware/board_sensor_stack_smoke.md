@@ -1058,3 +1058,27 @@ artifact/readback 新增 `tf_topics_observed`、`tf_static_observed`、
 `map_frame_observed`、`odom_frame_observed` 和 `amcl_tf_root_cause`。这些字段只用于
 定位 AMCL/TF source/timing root cause；安全边界继续禁止 `/cmd_vel`、`/api/base/*`、
 `NavigateToPose`、`/dev/ttyS5` 和 WAVE ROVER `T=1/T=13/T=130/T=131`。
+
+## 2026-06-11 05:05 AMCL Params And Static TF Source
+
+本轮继续沿用 `docs/vendor/VENDOR_INDEX.md` 的硬件边界：WAVE ROVER 底盘 UART
+和运动/反馈命令仍不参与，helper 只允许 no-motion `/initialpose`、AMCL、LiDAR
+`/dev/ttyACM0 @ 150000` 和 TF 诊断。
+
+为避免用更长 timeout 掩盖问题，AMCL 参数和 graph 现在优先由短生命周期 rclpy
+probe 读取，而不是串行调用多条 ROS CLI。artifact/readback 新增或填实：
+
+- `amcl_param_probe_ok`
+- `amcl_node_info_observed`
+- `amcl_log_tail`
+- `managed_static_tf_processes`
+- `static_tf_source_observed`
+- `tf_source_root_cause_detail`
+- `amcl_broadcast_conditions`
+
+`managed_static_tf_processes` 必须记录两个 no-motion static publisher：
+`odom -> base_link` 和 `base_link -> laser_frame`。若进程存在但 `/tf_static`
+仍未观测到对应边，root cause 应落到 QoS/timing/source observation；若进程不存在，
+root cause 应落到 managed runtime 启动或 shell 启动顺序。`amcl_broadcast_conditions`
+用于区分 AMCL `map -> odom` 未广播是参数不生效、`/scan`/`/map` 输入缺失、
+static TF 输入缺失，还是 AMCL 自身广播条件未满足。

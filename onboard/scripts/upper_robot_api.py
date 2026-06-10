@@ -599,10 +599,29 @@ def write_nav2_helper_failure_artifact(
             if isinstance(partial_proof.get("amcl_node_subscribers"), list)
             else []
         ),
+        "amcl_param_probe_ok": bool(partial_proof.get("amcl_param_probe_ok")),
+        "amcl_node_info_observed": bool(partial_proof.get("amcl_node_info_observed")),
         "amcl_tf_broadcast_param": partial_proof.get("amcl_tf_broadcast_param"),
         "amcl_frame_params": (
             partial_proof.get("amcl_frame_params")
             if isinstance(partial_proof.get("amcl_frame_params"), dict)
+            else {}
+        ),
+        "amcl_log_tail": partial_proof.get("amcl_log_tail") if isinstance(partial_proof.get("amcl_log_tail"), str) else "",
+        "managed_static_tf_processes": (
+            partial_proof.get("managed_static_tf_processes")
+            if isinstance(partial_proof.get("managed_static_tf_processes"), dict)
+            else {}
+        ),
+        "static_tf_source_observed": bool(partial_proof.get("static_tf_source_observed")),
+        "tf_source_root_cause_detail": (
+            partial_proof.get("tf_source_root_cause_detail")
+            if isinstance(partial_proof.get("tf_source_root_cause_detail"), dict)
+            else {}
+        ),
+        "amcl_broadcast_conditions": (
+            partial_proof.get("amcl_broadcast_conditions")
+            if isinstance(partial_proof.get("amcl_broadcast_conditions"), dict)
             else {}
         ),
         "map_frame_observed": bool(partial_proof.get("map_frame_observed")),
@@ -2222,8 +2241,27 @@ def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dic
             if isinstance(proof.get("amcl_node_subscribers"), list)
             else []
         ),
+        "amcl_param_probe_ok": proof.get("amcl_param_probe_ok") is True,
+        "amcl_node_info_observed": proof.get("amcl_node_info_observed") is True,
         "amcl_tf_broadcast_param": proof.get("amcl_tf_broadcast_param"),
         "amcl_frame_params": proof.get("amcl_frame_params") if isinstance(proof.get("amcl_frame_params"), dict) else {},
+        "amcl_log_tail": proof.get("amcl_log_tail") if isinstance(proof.get("amcl_log_tail"), str) else "",
+        "managed_static_tf_processes": (
+            proof.get("managed_static_tf_processes")
+            if isinstance(proof.get("managed_static_tf_processes"), dict)
+            else {}
+        ),
+        "static_tf_source_observed": proof.get("static_tf_source_observed") is True,
+        "tf_source_root_cause_detail": (
+            proof.get("tf_source_root_cause_detail")
+            if isinstance(proof.get("tf_source_root_cause_detail"), dict)
+            else {}
+        ),
+        "amcl_broadcast_conditions": (
+            proof.get("amcl_broadcast_conditions")
+            if isinstance(proof.get("amcl_broadcast_conditions"), dict)
+            else {}
+        ),
         "map_frame_observed": proof.get("map_frame_observed") is True,
         "odom_frame_observed": proof.get("odom_frame_observed") is True,
         "amcl_tf_root_cause": proof.get("amcl_tf_root_cause"),
@@ -4047,8 +4085,15 @@ class UpperRobotApi:
                 "amcl_pose_frame_id": readback_contract["amcl_pose_frame_id"],
                 "amcl_node_publishers": readback_contract["amcl_node_publishers"],
                 "amcl_node_subscribers": readback_contract["amcl_node_subscribers"],
+                "amcl_param_probe_ok": readback_contract["amcl_param_probe_ok"],
+                "amcl_node_info_observed": readback_contract["amcl_node_info_observed"],
                 "amcl_tf_broadcast_param": readback_contract["amcl_tf_broadcast_param"],
                 "amcl_frame_params": readback_contract["amcl_frame_params"],
+                "amcl_log_tail": readback_contract["amcl_log_tail"],
+                "managed_static_tf_processes": readback_contract["managed_static_tf_processes"],
+                "static_tf_source_observed": readback_contract["static_tf_source_observed"],
+                "tf_source_root_cause_detail": readback_contract["tf_source_root_cause_detail"],
+                "amcl_broadcast_conditions": readback_contract["amcl_broadcast_conditions"],
                 "map_frame_observed": readback_contract["map_frame_observed"],
                 "odom_frame_observed": readback_contract["odom_frame_observed"],
                 "amcl_tf_root_cause": readback_contract["amcl_tf_root_cause"],
