@@ -1,0 +1,15 @@
+● trashbot-upper-robot-api.service - Trashbot unified upper robot API
+     Loaded: loaded (/etc/systemd/system/trashbot-upper-robot-api.service; enabled; vendor preset: enabled)
+    Drop-In: /etc/systemd/system/trashbot-upper-robot-api.service.d
+             └─20-lidar-scan-proof-runtime.conf
+     Active: active (running) since Wed 2026-06-10 22:30:19 CST; 3min 5s ago
+       Docs: file:/root/rober/docs/interfaces/o7_upper_robot_api.md
+   Main PID: 175212 (python3)
+      Tasks: 2 (limit: 2204)
+     Memory: 30.9M
+        CPU: 3min 37.919s
+     CGroup: /system.slice/trashbot-upper-robot-api.service
+             └─175212 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+
+Jun 10 22:30:19 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 10 22:30:20 op-z3-b6.home env[175212]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}

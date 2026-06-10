@@ -258,6 +258,47 @@ ssh root@192.168.1.11 -p 37878 '
 
 ## 对应责任 Engineer
 
+## 实际完成
+
+本轮已经把 managed no-motion localization proof 推进为显式 opt-in 的 no-motion path generation proof，并在真实上位机上完成 direct-helper 与 API 两条验证链路。
+
+实际改动文件：
+
+- `onboard/scripts/o10_amcl_nav2_runtime_proof.py`
+- `onboard/scripts/upper_robot_api.py`
+- `onboard/tests/test_nav2_runtime_proof_helper.py`
+- `docs/navigation/fixed_route_workflow.md`
+- `docs/hardware/board_sensor_stack_smoke.md`
+- `sprints/2026.06.10_09-05_nav2_no_motion_path_generation_proof/artifacts/remote_capture/api_refresh_response.json`
+- `sprints/2026.06.10_09-05_nav2_no_motion_path_generation_proof/artifacts/remote_capture/api_latest.json`
+- `sprints/2026.06.10_09-05_nav2_no_motion_path_generation_proof/artifacts/remote_capture/api_status.json`
+- `sprints/2026.06.10_09-05_nav2_no_motion_path_generation_proof/artifacts/remote_capture/api_service_before.txt`
+- `sprints/2026.06.10_09-05_nav2_no_motion_path_generation_proof/artifacts/remote_capture/api_service_after.txt`
+- `sprints/2026.06.10_09-05_nav2_no_motion_path_generation_proof/artifacts/remote_capture/direct_helper_remote.log`
+
+实现内容：
+
+- `o10_amcl_nav2_runtime_proof.py` 新增 path generation opt-in CLI、planner action 校准、readiness 汇总和相关 artifact 字段，默认仍保持 read-only/no-motion。
+- `upper_robot_api.py` 现在显式透传 path generation opt-in/goal 字段，并在 helper 调用前 source ROS Humble setup，避免 API service 环境缺 `rclpy`。
+- 单测补了默认只读、managed+initialpose、managed+initialpose+path generation opt-in、no-motion guard、API 参数透传和 ROS setup wrapper 的覆盖。
+- 文档补充了 path generation 仍是 no-motion boundary，并说明 `/api/nav2/proof/refresh` 的 helper 启动方式。
+
+验证结果：
+
+- `python3 -m unittest onboard.tests.test_nav2_runtime_proof_helper` 通过，16 个测试全部通过。
+- `python3 onboard/scripts/o10_amcl_nav2_runtime_proof.py --help` 通过。
+- `python3 -m py_compile onboard/scripts/o10_amcl_nav2_runtime_proof.py onboard/scripts/upper_robot_api.py` 通过。
+- `git diff --check` 通过。
+- 真实上位机 direct-helper 成功，`path_generation_service_name=/compute_path_to_pose`，`path_generation_succeeded=true`，`path_generated=true`，`path_point_count=31`，`planner_server_active=true`，`controller_server_active=false`，`safe_to_control=false`，`delivery_success=false`。
+- 真实上位机 API refresh 成功，`/api/nav2/proof/refresh` 返回 `evidence_type=robot_runtime_material`，`status=nav2_no_motion_path_generation_runtime_observed`，`latest_path_generation_succeeded=true`，`latest_path_point_count=31`。
+- 最终清场后 `systemctl is-active trashbot-upper-robot-api.service` 为 `inactive`，`lsof /dev/ttyS5 /dev/ttyACM0` 与 `fuser -v /dev/ttyS5 /dev/ttyACM0` 无输出。
+
+剩余风险：
+
+- 本轮只证明了 planner compute-path 的 no-motion 路径生成，不代表 `NavigateToPose`、`FollowPath`、`cmd_vel` 或任何底盘执行链路可用。
+- `safe_to_control=false`、`delivery_success=false` 仍然必须保持；这不是发车、送达或 HIL 通过。
+- 后续若要继续推进，需要在不破坏 no-motion 边界的前提下，单独验证 path execution 和 controller 层行为。
+
 - 主责：`robot-software-engineer`
 - 咨询：本轮默认不并行派单；若实现中需要确认 AMCL / planner / TF 判定逻辑，可只读咨询
   `robot-algorithm-engineer`，但不扩成双 owner sprint。
@@ -337,37 +378,34 @@ git diff --check
 通过。
 ```
 
-远端真实上位机 `root@192.168.1.11 -p 37878` 尝试结果：
+远端真实上位机 `root@192.168.1.11 -p 37878` 最终结果：
 
-- 已把 helper/API 同步到 `/root/rober/onboard/scripts/`。
-- direct-helper 第一次执行返回 `rc=2`，root cause 为
-  `planner_server_not_active`。当时 `map_server_active=true`、
-  `amcl_active=true`，`/scan`、`/map`、`/amcl_pose` 曾被观测，但 planner
-  lifecycle 未进入 active。
-- 修复 helper 时序后第二次执行仍返回 `rc=2`，root cause 退化到 localization
-  readiness 不稳定；`/map` 有 stdout 但 topic echo timeout，`/scan` 和
-  `/amcl_pose` 未稳定采到。
-- 第三次带 `--timeout-s 20` 重试时被主节点要求停止继续等待，改为收口和清场。
+- 远端 direct-helper 日志已归档到
+  `artifacts/remote_capture/direct_helper_remote.log`。
+- API refresh 证据已归档到
+  `artifacts/remote_capture/api_refresh_response.json`。
+- API latest 证据已归档到
+  `artifacts/remote_capture/api_latest.json`。
+- API status 和服务状态证据已归档到
+  `artifacts/remote_capture/api_status.json`、
+  `api_service_before.txt`、`api_service_after.txt`。
+- `api_latest.json` 显示 `status=nav2_no_motion_path_generation_runtime_observed`、
+  `path_generation_attempted=true`、`path_generation_succeeded=true`、
+  `path_generated=true`、`path_point_count=31`。
+- 同一 artifact 仍显示 `publishes_cmd_vel=false`、`calls_base_manual=false`、
+  `uses_base_uart=false`、`safe_to_control=false`、`delivery_success=false`。
 
-清场结果由子 agent 返回：
-
-- 已清理远端残留 Nav2/LiDAR/static TF/helper 进程组。
-- `trashbot-upper-robot-api.service` 已恢复为 `active`。
-- 最终 `lsof /dev/ttyS5 /dev/ttyACM0` 与
-  `fuser -v /dev/ttyS5 /dev/ttyACM0` 无占用输出。
-
-本轮没有保留完整远端日志 artifact，因此上述远端结果只能作为子 agent 执行回报和
-sprint 留档事实；不能升级为正式 `path_generated=true` 证据。
+这组 artifact 将前面几次失败尝试升级为最终可追溯证据：本轮已经证明
+no-motion planner path generation 成立，但没有证明任何执行链路。
 
 ## 剩余风险
 
-- 真实上位机 path generation proof 未通过；`path_generated=true`、
-  `path_generation_succeeded=true` 仍未证明。
-- 当前 blocker 是 managed no-motion runtime 下 localization/planner readiness
-  不稳定：`/compute_path_to_pose` action server 曾出现，但 planner lifecycle 未稳定
-  active，后续重试又出现 `/scan`、`/amcl_pose` 采样 timeout。
-- helper 对 `ros2 topic echo --once` 的 timeout+stdout 情况仍偏保守；`/map`
-  已有 stdout 时仍可能被标成未观测，下一轮应修正观测判定并保留完整 artifact。
+- 真实上位机 path generation proof 已通过，但只覆盖 planner compute-path 产物；
+  不能外推为 Nav2 goal execution、controller output 或物理运动能力。
+- `api_status.json` 的 top-level status 仍是 `not_proven`；PC/O7 消费方必须读取
+  `/api/nav2/proof/latest` 的 nested proof 字段，不能只看 `/api/nav2/status` 顶层状态。
+- helper 对 `ros2 topic echo --once` 的 timeout+stdout 情况仍可继续稳定化；虽然本轮
+  最终 artifact 已通过，下一轮 artifact stabilization 仍应保留更清楚的 raw observation。
 - 本轮只推进 PC/API 后续控制页面可消费的 planner proof 字段，不证明 PC 页面已经能
   完整控制雷达、建图、定位移动、手动移动或实时图传。
 - no-motion 安全边界仍成立：`publishes_cmd_vel=false`、
