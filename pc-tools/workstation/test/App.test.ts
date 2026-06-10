@@ -2763,12 +2763,13 @@ describe("App", () => {
     expect(firstScreenText).toContain("未连接");
     expect(firstScreenText).toContain("未打开");
     expect(firstScreenText).toContain("未刷新");
-    expect(firstScreenText).toContain("受控点动（需现场确认）");
     expect(firstScreenText).toContain("自动导航（未开放）");
-    expect(firstScreenText).toContain("最近证据：还没有请求。");
-    expect(firstScreenText).toContain("前进");
     expect(firstScreenText).toContain("停止");
-    expect(firstScreenText).toContain("现场有人扶控并准备急停");
+    expect(firstScreenText).toContain("最近证据：还没有请求。");
+    expect(firstScreenText).not.toContain("前进");
+    expect(firstScreenText).not.toContain("现场有人扶控并准备急停");
+    expect(firstScreenText).not.toContain("速度上限");
+    expect(firstScreenText).not.toContain("时长上限");
     expect(firstScreenText).not.toContain("task_id selector");
     expect(firstScreenText).not.toContain("O6 consumer base URL");
     expect(firstScreenText).not.toContain("peer_id");
@@ -2788,6 +2789,10 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("safe_to_control=false");
     expect(wrapper.find("details").text()).toContain("delivery_success=false");
     expect(wrapper.find("details").text()).toContain("primary_actions_enabled=false");
+    expect(wrapper.find("details").text()).toContain("现场点动设置 / 控制边界");
+    expect(wrapper.find("details").text()).toContain("前进");
+    expect(wrapper.find("details").text()).toContain("速度上限");
+    expect(wrapper.find("details").text()).toContain("现场有人扶控并准备急停");
   });
 
   it("refreshes radar and map proof through fixed POST proxies and auto refreshes the summary", async () => {
@@ -2801,8 +2806,8 @@ describe("App", () => {
     const firstScreenText = wrapper.find(".robot-console-grid").text();
     expect(firstScreenText).toContain("刷新雷达");
     expect(firstScreenText).toContain("刷新地图");
-    expect(firstScreenText).toContain("地图列表");
-    expect(firstScreenText).toContain("保存地图");
+    expect(firstScreenText).toContain("查看地图列表");
+    expect(firstScreenText).not.toContain("保存地图");
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("未读取");
     expect(firstScreenText).not.toContain("scan_once_observed");
@@ -2849,7 +2854,7 @@ describe("App", () => {
     const summaryCallsAfterMap = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
     expect(summaryCallsAfterMap).toBeGreaterThan(summaryCallsAfterRadar);
 
-    await wrapper.findAll("button").find((button) => button.text() === "地图列表")?.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "查看地图列表")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -2859,12 +2864,15 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("floor_1.yaml");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/list") && !options)).toBe(true);
 
+    await wrapper.find("details").element.setAttribute("open", "");
+    await wrapper.vm.$nextTick();
     await wrapper.findAll("button").find((button) => button.text() === "保存地图")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find(".robot-console-grid").text()).toContain("保存请求已返回");
-    expect(wrapper.find(".robot-console-grid").text()).toContain("executed=false");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("保存请求已返回");
+    expect(wrapper.find("details").text()).toContain("command_result");
+    expect(wrapper.find("details").text()).toContain("executed=false");
     expect(wrapper.find("details").text()).toContain("software_guard_command_not_configured");
     expect(wrapper.find("details").text()).toContain("Start（受控/高级，禁用）");
     expect(wrapper.find("details").text()).toContain("Reset（受控/高级，禁用）");

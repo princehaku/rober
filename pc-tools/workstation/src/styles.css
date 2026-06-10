@@ -366,6 +366,12 @@ h3 {
   color: #9a3412;
 }
 
+.compact-stop {
+  min-height: 36px;
+  border-radius: 6px;
+  padding: 0 16px;
+}
+
 .motion-limits {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -177,7 +177,7 @@ function summarizeMapLifecycle(): { state: "未读取" | "处理中" | "已读�
   }
   const result = mapLifecycleResult.value;
   if (!result) {
-    return { state: "未读取", hint: "还没有读取地图列表或保存地图。" };
+    return { state: "未读取", hint: "还没有读取地图列表。" };
   }
   if (result.proxy_status !== "lifecycle_forwarded" || result.status === "blocked") {
     return { state: "失败", hint: result.failure_reason || "地图 lifecycle 请求被阻断。" };
@@ -185,7 +185,7 @@ function summarizeMapLifecycle(): { state: "未读取" | "处理中" | "已读�
   if (result.action === "list") {
     return { state: "已读取", hint: `地图列表 ${result.map_count ?? 0} 个候选。` };
   }
-  return { state: "已读取", hint: `保存请求已返回；mode=${result.command_result.mode}，executed=${result.command_result.executed ? "true" : "false"}。` };
+  return { state: "已读取", hint: "地图高级操作已返回；详情在高级诊断。" };
 }
 
 function syncJogInputsToBoundary(): void {
@@ -784,10 +784,9 @@ onBeforeUnmount(() => {
     <div class="section-head compact-head">
       <div>
         <p class="eyebrow">小车控制</p>
-        <h2>Rober 小车</h2>
-        <p class="muted">面向普通用户的简易风格，真实控制仍保持锁定。</p>
+        <h2>Rober 小车控制台</h2>
+        <p class="muted">普通用户入口：连接、看画面、看雷达和地图，需要时只点停止。</p>
       </div>
-      <span class="pill danger">安全锁定</span>
     </div>
 
     <form class="robot-quick-connect" @submit.prevent="refreshConsole">
@@ -842,10 +841,7 @@ onBeforeUnmount(() => {
             刷新地图
           </button>
           <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
-            地图列表
-          </button>
-          <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="saveMap">
-            保存地图
+            查看地图列表
           </button>
           <span class="status-chip" :data-state="mapSummary.state">{{ mapSummary.state }}</span>
           <span class="status-chip" :data-state="mapLifecycleSummary.state">{{ mapLifecycleSummary.state }}</span>
@@ -859,37 +855,11 @@ onBeforeUnmount(() => {
         <div class="panel-action-row wrap-actions">
           <span class="status-chip" :data-state="manualMotionSummary.state">{{ manualMotionSummary.state }}</span>
           <span class="status-chip" data-state="locked">自动导航（未开放）</span>
+          <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
         </div>
-        <p class="panel-note">{{ manualBoundary?.manual_motion_entry_label ?? "受控点动（需现场确认）" }}</p>
-        <div class="motion-pad">
-          <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('forward')">前进</button>
-          <div class="motion-middle-row">
-            <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('left')">左转</button>
-            <button type="button" class="danger-button" :disabled="!canSendStop" @click="sendStop">停止</button>
-            <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('right')">右转</button>
-          </div>
-          <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('back')">后退</button>
-        </div>
-        <div class="motion-limits">
-          <label>
-            <span>速度上限（m/s）</span>
-            <input v-model.number="jogSpeedMps" type="number" min="0" :max="manualSpeedLimit" step="0.01">
-          </label>
-          <label>
-            <span>时长上限（ms）</span>
-            <input v-model.number="jogDurationMs" type="number" min="0" :max="manualDurationLimit" step="50">
-          </label>
-        </div>
-        <div class="checklist-box">
-          <p class="checklist-title">现场确认</p>
-          <label v-for="item in hilChecklist" :key="item.id" class="checklist-item">
-            <input v-model="item.checked" type="checkbox">
-            <span>{{ item.label }}</span>
-          </label>
-        </div>
+        <p class="panel-note">自动导航暂不开放；需要紧急处理时，只使用停止。</p>
         <p class="panel-note">{{ manualMotionSummary.hint }}</p>
         <p class="panel-note">{{ manualEvidenceSummary }}</p>
-        <p class="panel-note">非 stop 方向必须勾完整 checklist；stop 可单独发送。</p>
       </article>
     </div>
 
@@ -1098,8 +1068,36 @@ onBeforeUnmount(() => {
         </section>
 
         <section class="advanced-block">
-          <h3>控制边界 / readback</h3>
+          <h3>现场点动设置 / 控制边界</h3>
           <p class="muted">{{ robotSummary?.safe_command_boundary.locked_reason ?? "locked by V1 boundary" }}</p>
+          <div class="motion-pad">
+            <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('forward')">前进</button>
+            <div class="motion-middle-row">
+              <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('left')">左转</button>
+              <button type="button" class="danger-button" :disabled="!canSendStop" @click="sendStop">停止</button>
+              <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('right')">右转</button>
+            </div>
+            <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('back')">后退</button>
+          </div>
+          <div class="motion-limits">
+            <label>
+              <span>速度上限（m/s）</span>
+              <input v-model.number="jogSpeedMps" type="number" min="0" :max="manualSpeedLimit" step="0.01">
+            </label>
+            <label>
+              <span>时长上限（ms）</span>
+              <input v-model.number="jogDurationMs" type="number" min="0" :max="manualDurationLimit" step="50">
+            </label>
+          </div>
+          <div class="checklist-box">
+            <p class="checklist-title">现场确认</p>
+            <label v-for="item in hilChecklist" :key="item.id" class="checklist-item">
+              <input v-model="item.checked" type="checkbox">
+              <span>{{ item.label }}</span>
+            </label>
+          </div>
+          <p class="panel-note">{{ manualMotionSummary.hint }}</p>
+          <p class="panel-note">非 stop 方向必须勾完整 checklist；stop 可单独发送。</p>
           <dl class="kv compact-kv">
             <dt>manual motion entry</dt>
             <dd>{{ robotSummary?.safe_command_boundary.manual_motion_entry_status ?? "not_loaded" }}</dd>

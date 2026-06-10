@@ -1,0 +1,30 @@
+{
+  "run_at": "2026-06-11 01:20:00 CST",
+  "url": "http://127.0.0.1:8794/",
+  "first_screen": {
+    "title": "Rober 小车控制台",
+    "panel_title": "Rober 小车控制台",
+    "card_count": 5,
+    "headings": ["小车连接", "实时画面", "雷达", "地图", "移动/导航"],
+    "details_open": false,
+    "grid_has_save_map": false,
+    "grid_has_proof_source": false,
+    "grid_has_proof_status": false,
+    "grid_has_safe_to_control": false,
+    "grid_has_readback": false,
+    "grid_has_hil_checklist": false,
+    "grid_has_speed_duration": false,
+    "grid_has_directions": false,
+    "grid_has_stop": true
+  },
+  "advanced_diagnostics": {
+    "details_open_after_click": true,
+    "has_jog_gate": true,
+    "has_directions": true,
+    "has_speed_duration": true,
+    "has_save_map": true,
+    "has_readback": true,
+    "has_safe_fields": true,
+    "has_map_start_reset_disabled": true
+  }
+}
