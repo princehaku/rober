@@ -101,14 +101,6 @@ const canStopPreview = computed(
   () => !previewBusy.value && (previewPeerConnection.value !== null || previewPeerId.value.length > 0),
 );
 
-function recordContains(record: Record<string, string> | undefined, needle: string): boolean {
-  // 首屏只看人话摘要，具体 key 需要在详情里复核，所以这里用宽松字符串匹配。
-  if (!record) {
-    return false;
-  }
-  return Object.entries(record).some(([key, value]) => key.includes(needle) || value.includes(needle));
-}
-
 function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有异常"; hint: string } {
   // 连接状态只给普通用户看三档，细节放在折叠区。
   if (!robotApiBaseUrl.value.trim()) {
@@ -134,7 +126,7 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "已打开
     case "connecting_offer_posted":
       return { state: "连接中", hint: "正在打开实时画面。" };
     case "streaming":
-      return { state: "已打开", hint: "画面已打开，控制仍然锁定。" };
+      return { state: "已打开", hint: "画面已打开。" };
     case "start_failed":
     case "peer_cleanup_failed":
       return { state: "失败", hint: failureReason.value || "打开画面失败。" };
@@ -144,61 +136,39 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "已打开
 }
 
 function summarizeProofState(pending: boolean, result: RobotControlProofRefreshProxyResponse | null): { state: "未刷新" | "刷新中" | "已刷新" | "失败"; hint: string } {
-  // 雷达和地图首屏共用同一套人话状态，细节保留给详情区。
+  // 雷达和地图首屏共用同一套普通状态，避免把工程 proof 字段放回默认界面。
   if (pending) {
-    return { state: "刷新中", hint: "正在刷新证据。" };
+    return { state: "刷新中", hint: "正在刷新。" };
   }
   if (!result) {
-    return { state: "未刷新", hint: "还没有刷新过。" };
+    return { state: "未刷新", hint: "还没有刷新。" };
   }
   if (result.proxy_status === "refresh_failed" || result.status === "blocked" || result.last_result_status === "fetch_failed") {
     return { state: "失败", hint: result.failure_reason || "刷新失败。" };
   }
-  return { state: "已刷新", hint: "已经拿到最新证据。" };
+  return { state: "已刷新", hint: "已刷新。" };
 }
 
-function summarizeRadarEvidence(): string {
-  // 只给出 scan / tf 的人话判断，不把 raw packet 等字段铺到首屏。
-  if (!radarRefreshResult.value) {
-    return "scan 未见；tf 未见。";
-  }
-  const record = radarRefreshResult.value.latest_readback_key_values;
-  const scanVisible = recordContains(record, "scan");
-  const tfVisible = recordContains(record, "tf");
-  return `scan ${scanVisible ? "可见" : "未见"}；tf ${tfVisible ? "可见" : "未见"}。`;
-}
-
-function summarizeMapEvidence(): string {
-  // 地图首屏只说 map / evidence 的可见性，不展开 proof schema。
-  if (!mapRefreshResult.value) {
-    return "map 未见；evidence 未见。";
-  }
-  const record = mapRefreshResult.value.latest_readback_key_values;
-  const mapVisible = recordContains(record, "map");
-  const evidenceVisible = recordContains(record, "evidence");
-  return `map ${mapVisible ? "可见" : "未见"}；evidence ${evidenceVisible ? "可见" : "未见"}。`;
-}
-
-function summarizeNav2Planning(): { state: "路径未证明" | "检查中" | "路径可生成" | "检查失败"; hint: string } {
-  // Nav2 首页只说路径规划是否有 no-motion 证据，所有 proof 字段放进高级诊断。
+function summarizeNav2Planning(): { state: "未检查" | "检查中" | "路径可生成" | "检查失败"; hint: string } {
+  // Nav2 首页只保留“检查路径”的普通结果，所有 proof 字段放进高级诊断。
   if (nav2RefreshPending.value) {
     return { state: "检查中", hint: "正在检查路径是否可生成。" };
   }
   const result = nav2RefreshResult.value;
   if (!result) {
-    return { state: "路径未证明", hint: "还没有做规划检查。" };
+    return { state: "未检查", hint: "还没有检查路径。" };
   }
   const record = result.latest_readback_key_values;
   const pathGenerated = record.path_generated === "true" || record.path_generation_succeeded === "true";
   if (pathGenerated && result.proxy_status === "refresh_failed") {
-    return { state: "路径可生成", hint: "刷新请求超时，但 latest 已有 no-motion 路径证据；不会自动发车。" };
+    return { state: "路径可生成", hint: "检查已返回；不会发车。" };
   }
   if (result.proxy_status !== "refresh_forwarded" || result.status === "blocked") {
-    return { state: "检查失败", hint: result.failure_reason || "规划检查失败。" };
+    return { state: "检查失败", hint: result.failure_reason || "检查失败。" };
   }
   return pathGenerated
-    ? { state: "路径可生成", hint: "已观察到路径生成证据；不会自动发车。" }
-    : { state: "路径未证明", hint: "还没有观察到可用路径。" };
+    ? { state: "路径可生成", hint: "检查已返回；不会发车。" }
+    : { state: "未检查", hint: "还没有可用路径。" };
 }
 
 function summarizeMapLifecycle(): { state: "未读取" | "处理中" | "已读取" | "失败"; hint: string } {
@@ -276,21 +246,6 @@ const manualMotionSummary = computed(() => {
   }
   return { state: "失败", hint: manualCommandResult.value.failure_reason || "请求被拒绝或上位机不可达。" };
 });
-const manualEvidenceSummary = computed(() => {
-  // 证据状态只用一句话给普通用户看；具体 endpoint 和 before/after 差异放进高级诊断。
-  const result = manualCommandResult.value;
-  if (!result) {
-    return "最近证据：还没有请求。";
-  }
-  if (result.evidence_capture_status === "captured") {
-    return "最近证据：已采集本次请求前后快照；这不是 HIL 通过。";
-  }
-  if (result.evidence_capture_status === "partial") {
-    return "最近证据：只拿到部分前后快照；请看高级诊断。";
-  }
-  return "最近证据：没有拿到前后快照；请看高级诊断。";
-});
-
 function listText(items: string[] | undefined, fallback = "none"): string {
   // blocked/not_proven 只展示少量摘要，完整定位应回到后端日志或 artifact。
   return items && items.length ? items.slice(0, 6).join("; ") : fallback;
@@ -920,14 +875,14 @@ onBeforeUnmount(() => {
       {{ error }}；安全锁定保持不变。
     </div>
 
-    <div class="robot-console-grid">
+    <div class="robot-console-grid" data-smoke-scope="simple-robot-control-first-screen">
       <article class="snapshot-panel">
         <h3>小车连接</h3>
         <div class="simple-status-row">
           <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
           <span class="muted">{{ robotConnectionSummary.hint }}</span>
         </div>
-        <p class="panel-note">先输入地址，再点连接/刷新；真正控制始终关闭。</p>
+        <p class="panel-note">连接/刷新</p>
       </article>
 
       <article class="snapshot-panel">
@@ -949,7 +904,7 @@ onBeforeUnmount(() => {
           </button>
           <span class="status-chip" :data-state="radarSummary.state">{{ radarSummary.state }}</span>
         </div>
-        <p class="panel-note">{{ radarSummary.hint }} {{ summarizeRadarEvidence() }}</p>
+        <p class="panel-note">{{ radarSummary.hint }}</p>
       </article>
 
       <article class="snapshot-panel">
@@ -959,30 +914,25 @@ onBeforeUnmount(() => {
             刷新地图
           </button>
           <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
-            查看地图列表
+            地图列表
           </button>
           <span class="status-chip" :data-state="mapSummary.state">{{ mapSummary.state }}</span>
           <span class="status-chip" :data-state="mapLifecycleSummary.state">{{ mapLifecycleSummary.state }}</span>
         </div>
-        <p class="panel-note">{{ mapSummary.hint }} {{ summarizeMapEvidence() }}</p>
+        <p class="panel-note">{{ mapSummary.hint }}</p>
         <p class="panel-note">{{ mapLifecycleSummary.hint }}</p>
       </article>
 
       <article class="snapshot-panel">
         <h3>移动/导航</h3>
         <div class="panel-action-row wrap-actions">
-          <span class="status-chip" :data-state="manualMotionSummary.state">{{ manualMotionSummary.state }}</span>
           <button type="button" :disabled="loading || nav2RefreshPending || !robotApiBaseUrl.trim()" @click="refreshNav2Proof">
             检查路径
           </button>
           <span class="status-chip" :data-state="nav2PlanningSummary.state">{{ nav2PlanningSummary.state }}</span>
-          <span class="status-chip" data-state="locked">自动导航（未开放）</span>
           <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
         </div>
-        <p class="panel-note">规划检查只验证能否生成路径，不会发车；自动导航暂不开放。</p>
         <p class="panel-note">{{ nav2PlanningSummary.hint }}</p>
-        <p class="panel-note">{{ manualMotionSummary.hint }}</p>
-        <p class="panel-note">{{ manualEvidenceSummary }}</p>
       </article>
     </div>
 

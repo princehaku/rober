@@ -2823,6 +2823,8 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    const firstScreenCards = wrapper.findAll(".robot-console-grid > .snapshot-panel");
+    expect(firstScreenCards).toHaveLength(5);
     const firstScreenText = wrapper.find(".robot-console-grid").text();
     expect(firstScreenText).toContain("小车连接");
     expect(firstScreenText).toContain("实时画面");
@@ -2832,33 +2834,54 @@ describe("App", () => {
     expect(firstScreenText).toContain("未连接");
     expect(firstScreenText).toContain("未打开");
     expect(firstScreenText).toContain("未刷新");
+    expect(firstScreenText).toContain("地图列表");
     expect(firstScreenText).toContain("检查路径");
-    expect(firstScreenText).toContain("路径未证明");
-    expect(firstScreenText).toContain("自动导航（未开放）");
+    expect(firstScreenText).toContain("未检查");
     expect(firstScreenText).toContain("停止");
-    expect(firstScreenText).toContain("最近证据：还没有请求。");
-    expect(firstScreenText).not.toContain("启动雷达");
-    expect(firstScreenText).not.toContain("停止雷达");
-    expect(firstScreenText).not.toContain("前进");
-    expect(firstScreenText).not.toContain("现场有人扶控并准备急停");
-    expect(firstScreenText).not.toContain("HIL");
-    expect(firstScreenText).not.toContain("raw");
-    expect(firstScreenText).not.toContain("速度上限");
-    expect(firstScreenText).not.toContain("时长上限");
-    expect(firstScreenText).not.toContain("保存地图");
-    expect(firstScreenText).not.toContain("task_id selector");
-    expect(firstScreenText).not.toContain("O6 consumer base URL");
-    expect(firstScreenText).not.toContain("peer_id");
-    expect(firstScreenText).not.toContain("ice_connection_state");
-    expect(firstScreenText).not.toContain("scan_once_observed");
-    expect(firstScreenText).not.toContain("map_once_observed");
-    expect(firstScreenText).not.toContain("path_generation_succeeded");
-    expect(firstScreenText).not.toContain("path_point_count");
+    const firstScreenForbiddenTokens = [
+      "保存地图",
+      "开始建图",
+      "重置地图",
+      "启动雷达",
+      "停止雷达",
+      "前进",
+      "后退",
+      "左转",
+      "右转",
+      "HIL",
+      "现场确认",
+      "低速短时点动",
+      "速度",
+      "时长",
+      "proof",
+      "readback",
+      "raw",
+      "source",
+      "status key",
+      "safe_to_control",
+      "delivery_success",
+      "/cmd_vel",
+      "/api/base/manual",
+      "/dev/ttyS5",
+      "自动导航",
+      "最近证据",
+      "task_id",
+      "O6 consumer base URL",
+      "peer_id",
+      "ice_connection_state",
+      "scan_once_observed",
+      "map_once_observed",
+      "path_generation_succeeded",
+      "path_point_count",
+    ];
+    for (const token of firstScreenForbiddenTokens) {
+      expect(firstScreenText).not.toContain(token);
+    }
     expect(wrapper.text()).not.toContain("source=software_proof");
     expect(wrapper.text()).not.toContain("proof_status=not_proven");
-    expect(firstScreenText).not.toContain("/cmd_vel");
     expect(wrapper.find(".tabs").text()).toContain("机器人");
     expect(wrapper.find("details summary").text()).toContain("高级诊断");
+    expect(wrapper.find("details").attributes("open")).toBeUndefined();
     expect(wrapper.find("details").text()).toContain("task_id");
     expect(wrapper.find("details").text()).toContain("Robot API status");
     expect(wrapper.find("details").text()).toContain("Node server only; Vue direct access=false");
@@ -2887,14 +2910,14 @@ describe("App", () => {
     const firstScreenText = wrapper.find(".robot-console-grid").text();
     expect(firstScreenText).toContain("刷新雷达");
     expect(firstScreenText).toContain("刷新地图");
-    expect(firstScreenText).toContain("查看地图列表");
+    expect(firstScreenText).toContain("地图列表");
     expect(firstScreenText).toContain("检查路径");
     expect(firstScreenText).not.toContain("保存地图");
     expect(firstScreenText).not.toContain("启动雷达");
     expect(firstScreenText).not.toContain("停止雷达");
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("未读取");
-    expect(firstScreenText).toContain("路径未证明");
+    expect(firstScreenText).toContain("未检查");
     expect(firstScreenText).not.toContain("raw");
     expect(firstScreenText).not.toContain("HIL");
     expect(firstScreenText).not.toContain("scan_once_observed");
@@ -2913,8 +2936,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find(".robot-console-grid").text()).toContain("已刷新");
-    expect(wrapper.find(".robot-console-grid").text()).toContain("scan 可见");
-    expect(wrapper.find(".robot-console-grid").text()).toContain("tf 可见");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("scan 可见");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("tf 可见");
     expect(wrapper.find("details").text()).toContain("scan_once_observed");
     expect(wrapper.find("details").text()).toContain("scan_hz_observed");
     expect(wrapper.find("details").text()).toContain("tf_observed");
@@ -2955,8 +2978,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find(".robot-console-grid").text()).toContain("已刷新");
-    expect(wrapper.find(".robot-console-grid").text()).toContain("map 可见");
-    expect(wrapper.find(".robot-console-grid").text()).toContain("evidence 可见");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("map 可见");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("evidence 可见");
     expect(wrapper.find("details").text()).toContain("map_once_observed");
     expect(wrapper.find("details").text()).toContain("map_file_observed");
     expect(wrapper.find("details").text()).toContain("map_metadata_observed");
@@ -2969,7 +2992,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find(".robot-console-grid").text()).toContain("路径可生成");
-    expect(wrapper.find(".robot-console-grid").text()).toContain("刷新请求超时，但 latest 已有 no-motion 路径证据；不会自动发车。");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("检查已返回；不会发车。");
     expect(wrapper.find(".robot-console-grid").text()).not.toContain("path_generation_succeeded");
     expect(wrapper.find("details").text()).toContain("/api/nav2/proof/refresh");
     expect(wrapper.find("details").text()).toContain("nav2_no_motion_path_generation_runtime_observed");
@@ -2981,7 +3004,7 @@ describe("App", () => {
     const summaryCallsAfterNav2 = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
     expect(summaryCallsAfterNav2).toBeGreaterThan(summaryCallsAfterMap);
 
-    await wrapper.findAll("button").find((button) => button.text() === "查看地图列表")?.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "地图列表")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
