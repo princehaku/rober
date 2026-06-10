@@ -472,7 +472,7 @@ def run_nav2_runtime_proof_helper(
 ) -> dict[str, Any]:
     """运行 no-motion AMCL/Nav2 collector；managed runtime 与 initialpose 都必须显式 opt-in。"""
     script_path = Path(__file__).resolve().with_name("o10_amcl_nav2_runtime_proof.py")
-    command = [
+    helper_argv = [
         sys.executable,
         str(script_path),
         "--output",
@@ -527,21 +527,28 @@ def run_nav2_runtime_proof_helper(
                 str(path_goal_yaw),
             ]
         )
+    ros_setup_parts = [
+        "source /opt/ros/humble/setup.bash",
+        f"if [ -f {shlex.quote(str(Path(DEFAULT_ONBOARD_WORKDIR) / 'install' / 'setup.bash'))} ]; then source {shlex.quote(str(Path(DEFAULT_ONBOARD_WORKDIR) / 'install' / 'setup.bash'))}; fi",
+    ]
+    helper_command = " && ".join(ros_setup_parts + [shlex.join(helper_argv)])
     started_ms = now_ms()
     try:
         completed = subprocess.run(  # noqa: S603 - argv 固定为仓库 helper，不接受外部 shell。
-            command,
+            ["bash", "-lc", helper_command],
             check=False,
             text=True,
             capture_output=True,
             timeout=max(timeout_s * 8 + 20.0, 45.0),
+            cwd=DEFAULT_ONBOARD_WORKDIR,
         )
         return {
             "mode": "o10_amcl_nav2_runtime_proof_helper",
             "executed": True,
             "ok": completed.returncode == 0,
             "returncode": completed.returncode,
-            "argv": command,
+            "argv": ["bash", "-lc", helper_command],
+            "helper_argv": helper_argv,
             "elapsed_ms": now_ms() - started_ms,
             "stdout_preview": completed.stdout[-4000:],
             "stderr_preview": completed.stderr[-4000:],
@@ -560,7 +567,8 @@ def run_nav2_runtime_proof_helper(
             "mode": "o10_amcl_nav2_runtime_proof_helper",
             "executed": True,
             "ok": False,
-            "argv": command,
+            "argv": ["bash", "-lc", helper_command],
+            "helper_argv": helper_argv,
             "elapsed_ms": now_ms() - started_ms,
             "error": compact_error(exc),
             "stdout_preview": preview_text(exc.stdout, 4000),
@@ -579,7 +587,8 @@ def run_nav2_runtime_proof_helper(
             "mode": "o10_amcl_nav2_runtime_proof_helper",
             "executed": False,
             "ok": False,
-            "argv": command,
+            "argv": ["bash", "-lc", helper_command],
+            "helper_argv": helper_argv,
             "elapsed_ms": now_ms() - started_ms,
             "error": compact_error(exc),
             "safe_to_control": False,

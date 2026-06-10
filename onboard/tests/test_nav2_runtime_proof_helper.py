@@ -316,6 +316,54 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         ):
             self.assertIn(required, api_text)
 
+    def test_upper_api_runs_helper_under_ros_setup(self) -> None:
+        """API subprocess 必须显式 source ROS 环境，避免 rclpy 在 service 内失效。"""
+        api_mod = importlib.util.module_from_spec(
+            importlib.util.spec_from_file_location("upper_robot_api", SCRIPT.parent / "upper_robot_api.py")
+        )
+        assert api_mod is not None
+        spec = importlib.util.spec_from_file_location("upper_robot_api", SCRIPT.parent / "upper_robot_api.py")
+        assert spec is not None and spec.loader is not None
+        spec.loader.exec_module(api_mod)
+
+        fake_completed = subprocess.CompletedProcess(
+            args=["bash", "-lc", "source /opt/ros/humble/setup.bash"],
+            returncode=0,
+            stdout="ok",
+            stderr="",
+        )
+        with mock.patch.object(api_mod.subprocess, "run", return_value=fake_completed) as run_mock:
+            result = api_mod.run_nav2_runtime_proof_helper(
+                artifact_path="/tmp/nav2.json",
+                map_proof_path="/tmp/map.json",
+                map_artifact_dir="/tmp/maps",
+                timeout_s=1.0,
+                managed_runtime_opt_in=True,
+                managed_timeout_s=1.0,
+                managed_map_yaml="/tmp/test_map.yaml",
+                initialpose_opt_in=True,
+                initialpose_x=0.0,
+                initialpose_y=0.0,
+                initialpose_yaw=0.0,
+                initialpose_frame_id="map",
+                path_generation_opt_in=True,
+                path_generation_timeout_s=1.0,
+                path_goal_frame_id="map",
+                path_goal_x=0.8,
+                path_goal_y=0.0,
+                path_goal_yaw=0.0,
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(["bash", "-lc"], result["argv"][:2])
+        self.assertIn("source /opt/ros/humble/setup.bash", result["argv"][2])
+        self.assertIn("python3", result["argv"][2])
+        self.assertIn("--path-generation-opt-in", result["argv"][2])
+        self.assertIn("--initialpose-opt-in", result["argv"][2])
+        run_mock.assert_called_once()
+        self.assertEqual("/root/rober/onboard", run_mock.call_args.kwargs["cwd"])
+
+        api_text = (SCRIPT.parent / "upper_robot_api.py").read_text(encoding="utf-8")
         for required in (
             "\"publishes_cmd_vel\": False",
             "\"calls_base_manual\": False",
