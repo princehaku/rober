@@ -18,6 +18,7 @@ import type {
   O7SafeCommandPreviewResponse,
   O7VoicePreviewResponse,
   ProofBoundaryResponse,
+  RobotControlSummaryResponse,
   RouteDebugSummaryResponse,
   TrainingLabelingResponse,
 } from "../shared/contracts";
@@ -79,6 +80,7 @@ const API_ENDPOINTS = {
   o7VoicePreview: "/api/o7/voice-preview",
   o7SafeCommandPreview: "/api/o7/safe-command-preview",
   o7CloudArchiveTasks: "/api/o7/cloud-archive/tasks",
+  robotControlSummary: "/api/robot-control/summary",
   proofBoundary: "/api/proof-boundary",
 } as const;
 
@@ -124,6 +126,17 @@ function cloudArchiveTasksUrl(archiveJson: string): string {
   const params = new URLSearchParams();
   params.set("archiveJson", trimmed);
   return `${API_ENDPOINTS.o7CloudArchiveTasks}?${params.toString()}`;
+}
+
+function robotControlSummaryUrl(baseUrl: string): string {
+  // Robot API base URL 只进入本机 Node proxy，浏览器永远不直接跨域访问上位机。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  const query = params.toString();
+  return query ? `${API_ENDPOINTS.robotControlSummary}?${query}` : API_ENDPOINTS.robotControlSummary;
 }
 
 function consumerTaskListUrl(baseUrl: string): string {
@@ -284,6 +297,11 @@ export async function getO7SafeCommandPreview(fixtureJson: string): Promise<O7Sa
 export async function getO7CloudArchiveTasks(archiveJson: string): Promise<O7CloudArchiveTasksResponse> {
   // Cloud archive task API 只读本地 fixture，不连接 O6 云归档、实时、标注、语音或命令 API。
   return loadJson<O7CloudArchiveTasksResponse>(cloudArchiveTasksUrl(archiveJson));
+}
+
+export async function getRobotControlSummary(baseUrl: string): Promise<RobotControlSummaryResponse> {
+  // Robot Control V1 只读取 Node 代理后的 fail-closed 摘要，不接收前端任意 endpoint。
+  return loadJson<RobotControlSummaryResponse>(robotControlSummaryUrl(baseUrl));
 }
 
 export async function getO7ConsumerTaskList(baseUrl: string): Promise<O7ConsumerTaskListResponse> {

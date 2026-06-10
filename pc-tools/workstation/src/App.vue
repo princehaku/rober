@@ -5,6 +5,7 @@ import O7FixturePreviewPanel from "./components/O7FixturePreviewPanel.vue";
 import O7OperatorConsolePanel from "./components/O7OperatorConsolePanel.vue";
 import ProofBoundaryPanel from "./components/ProofBoundaryPanel.vue";
 import ProofFlagStrip from "./components/ProofFlagStrip.vue";
+import RobotControlConsolePanel from "./components/RobotControlConsolePanel.vue";
 import RouteDebugPanel from "./components/RouteDebugPanel.vue";
 import TrainingLabelingPanel from "./components/TrainingLabelingPanel.vue";
 import WaveRoverMaterialCoveragePanel from "./components/WaveRoverMaterialCoveragePanel.vue";
@@ -102,6 +103,7 @@ onMounted(() => {
       :route-summary="routeSummary"
       @refresh="refresh"
     />
+    <RobotControlConsolePanel v-else-if="activePanel === 'robotControl'" />
     <O7OperatorConsolePanel v-else-if="activePanel === 'o7'" :operator-console="o7OperatorConsole" />
     <O7FixturePreviewPanel v-else-if="activePanel === 'o7Previews'" />
     <EvidenceToolsPanel v-else-if="activePanel === 'evidence'" :evidence-tools="evidenceTools" />

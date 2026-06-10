@@ -6,7 +6,7 @@
 pc-tools/workstation/
 ```
 
-本目录不安装到 Orange Pi，不进入 onboard Docker/Humble 镜像，不访问真实硬件、ROS graph、Nav2 runtime、串口设备或云端生产链路。它只能证明 PC 本地软件入口、JSON fixture 索引和只读 route safe summary 能工作。
+本目录不安装到 Orange Pi，不进入 onboard Docker/Humble 镜像，不直接访问真实硬件、ROS graph、Nav2 runtime、串口设备或云端生产链路。当前 `workstation/` 已从纯只读 proof workstation 进入 **Robot API 控制台 V1**：可以通过 Node 代理读取上位机 Robot API 的 status/latest/readback 短摘要，并把 O6 consumer detail / Mock field evidence 作为 task_id 证据视图；危险动作仍全部 fail-closed。
 
 ## 当前入口
 
@@ -14,6 +14,14 @@ pc-tools/workstation/
 - `evidence/fixtures/`：保留脱敏 JSON fixture，由 Node API 和 Node 测试读取。
 - `route/`：保留 fixed-route 调试说明；实际读取能力在 `workstation/src/server/routeDebugLoader.ts`。
 - `training/`、`labeling/`：保留占位目录和后续工作入口，不代表真实训练或标注流水线已接入。
+
+## Robot Control Console V1
+
+`workstation/` 新增 `Robot Control` tab 和 `GET /api/robot-control/summary?baseUrl=<robot-api-base-url>`。Vue 不直接跨域访问上位机；Robot API base URL 只交给 Node server 代理。代理只读取 `/api/status`、O3 proof latest、Camera/LiDAR/Base status/latest/readback 类 GET endpoint，并拒绝 unsafe URL、credentials、query/hash、非回环或非 RFC1918 局域网 host、schema drift 和危险 true 字段。
+
+页面至少展示 task_id selector、Robot API connection、O3 proof summary、route replay/Mock fallback summary、evidence/keyframe/labeling readiness、manual/nav safe command boundary、Camera/LiDAR/Base readback 七区块。`task_id` detail 通过既有 O6 consumer adapter 获取；本地 field manifest 只作为显式 Mock/field evidence fallback。
+
+所有真实控制入口默认 locked/disabled：`/api/base/manual`、`/cmd_vel`、Nav2 goal、map start、radar start、keyboard control、map click goal。V1 固定 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`，不发布 `/cmd_vel`，不调用 `/api/base/manual`。
 
 ## O7 Operator Console
 

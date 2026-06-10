@@ -23,6 +23,7 @@ import {
   buildO7SafeCommandPreview,
   buildO7VoicePreview,
   buildProofBoundary,
+  buildRobotControlSummary,
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "./catalog";
@@ -176,6 +177,11 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/cloud-archive/tasks", async (req, res) => {
     // Cloud archive tasks 只读取用户指定的本地 archive fixture，不连接 O6 云端或真实 API。
     res.json(await buildO7CloudArchiveTasks({ archiveJson: queryString(req.query.archiveJson) }));
+  });
+
+  workstationApp.get("/api/robot-control/summary", async (req, res) => {
+    // Robot Control V1 只读代理上位机 GET status/latest/readback，拒绝浏览器直连和危险 URL。
+    res.json(await buildRobotControlSummary(queryString(req.query.baseUrl)));
   });
 
   workstationApp.get("/api/proof-boundary", (_req, res) => {

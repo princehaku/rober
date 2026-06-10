@@ -4,196 +4,167 @@
 
 micro
 
-## 本轮目标
+## owner
 
-为 Full-Stack Engineer 定义 PC Robot Control Console 第一版实现边界，让
-`pc-tools/workstation` 从 PC-only Node/Vue 只读 proof workstation，推进到可以消费
-上位机 Robot API 状态、展示真实上车 evidence capture 入口，并保留清晰的安全锁。
+`full-stack-software-engineer`
 
-本轮只做产品边界和 sprint 留档，不写产品代码、不改测试、不改硬件配置。第一版目标是
-PC 页面开始展示 Robot API connection、雷达/LiDAR、建图/地图、定位/Nav2、手动移动/Base、
-实时图传/Camera 和安全边界，不放开真实运动。
+## 用户价值和产品北极星
 
-采用的当前事实：
+用户价值不是再做一个漂亮但空心的 PC UI，而是让运营人员在 PC 端把真实上位机和
+Mock 数据源里的机器人证据链看清楚：每个 `task_id` 当前是什么状态、证据来自哪里、
+哪些 proof 已经成立、哪些仍是 `not_proven`，以及为什么不能控制机器人。
 
-- `pc-tools/workstation` 现状是 PC-only Node/Vue proof workstation，当前以只读 proof、
-  fixture、route/evidence/labeling 等面板为主。
-- `onboard/scripts/upper_robot_api.py` 已提供 `/api/camera/*`、`/api/radar/*`、
-  `/api/map/*`、`/api/nav2/*`、`/api/base/*` 和 unified status 入口。
-- 第一版 PC 控制台必须 fail-closed：Robot API 不可达、状态字段缺失、proof 未通过或
-  safety lock 未开启时，所有会导致真实运动或启动运行时的按钮都必须禁用。
+产品北极星保持不变：把 `rober` 做成一台面向普通手机用户的低成本 ROS2 自主垃圾投递
+机器人。PC 端本轮只服务运营调试、证据复盘和后续训练数据准备，不替代手机端，不绕过
+云端/Robot API，不把 no-motion proof、Mock replay 或 readback 状态包装成送达成功。
 
-## PC Robot Control Console 第一版设计
+## OKR 映射和方向判断
 
-### 页面入口
+- 对应 Objective：O7 PC 端运营调试与数据训练平台。
+- 关联证据 lane：现场 O3 验证 lane、O6 consumer read / archive / evidence 数据底座。
+- 方向判断：`继续`。
+- 继续理由：
+  - O7 当前仍是低完成度 Objective，主要缺真实/Mock 机器人证据消费、实时状态、回放、
+    标注和控制边界，而不是缺更多静态 surface。
+  - O3 现场链路已经推进到真实上位机 no-motion map/localization/Nav2 path generation
+    proof lane；PC 端必须消费这些 proof 的状态字段和 artifact，而不是继续展示 fixture
+    占位。
+  - 本地证据显示 `sprints/2026.06.10_09-05_nav2_no_motion_path_generation_proof/tech-done.md`
+    已补出 PC/API 可读的 path generation 字段，但 `path_generated=true` 仍未正式证明；
+    `sprints/2026.06.10_09-15_managed_nav2_localization_proof/tech-done.md` 则证明了 managed
+    no-motion localization。PC UI 必须准确展示这类通过/阻塞差异。
 
-在 `pc-tools/workstation` 新增或扩展一个顶层 tab：`Robot Control`。该页面是操作员
-上车 evidence capture 的 PC 主控台，不替代手机端，不声明交付成功，不绕过
-`upper_robot_api.py` 的安全 guard。
+## KR 拆解、更新或历史归档
 
-首屏必须显示：
+本轮不迁移 KR 到历史区，也不更新 `OKR.md` 百分比；本轮是 O7 micro sprint 设计稿，
+为下一轮工程实现定义最小可验收 KR：
 
-- Robot API connection：Robot API base URL、连接状态、最后刷新时间、schema/status、
-  unified status 摘要、`safe_to_control`、`primary_actions_enabled`、
-  `delivery_success`、`hil_pass` 或等价 guard 字段。
-- 全局安全边界：`PC console V1 = status/proof first`，默认不发送 `/cmd_vel`，
-  默认不调用 `/api/base/manual`，默认不启动 Nav2 goal。
-- 一键刷新：只允许刷新 unified status 和各区块 read-only/proof readback。
+- O7-KR1 状态地图/机器人位置：先展示 Robot API / O6 detail 中的 map、pose、Nav2 proof
+  readback 和 artifact source；没有真实 `/tf` 转发时必须显示 `not_proven`。
+- O7-KR3 历史路线回放：以 `task_id` 为主键读取 O6 consumer detail 或本地 Mock
+  replay JSONL，展示 trajectory/events/evidence/keyframe 摘要；没有 `task_id` 不渲染回放。
+- O7-KR4 数据标注准备：展示 evidence refs、keyframe refs、labeling 状态和缺口，不做提交。
+- O7-KR6 手控/寻路：第一版只展示 safe command envelope 和禁用原因，不实现真实下发。
 
-### Robot API connection
+已完成 KR 历史记录位置：本轮无新增归档。前序证据来源仍在：
 
-功能点：
+- `sprints/2026.06.10_09-05_nav2_no_motion_path_generation_proof/tech-done.md`
+- `sprints/2026.06.10_09-15_managed_nav2_localization_proof/tech-done.md`
+- `sprints/2026.06.10_02-05_field-run-bundle-replay-intake/tech-done.md`
+- `docs/process/okr_progress_log.md`
 
-- 支持在 PC 页面配置 Robot API base URL，默认可用 `http://127.0.0.1:8787` 或
-  局域网上位机地址，具体配置方式由 Full-Stack Engineer 结合现有 workstation pattern
-  选择。
-- Node server 侧应代理 Robot API，避免 Vue 直接跨域访问上位机；代理失败必须在 UI
-  显示 `unreachable` 和错误摘要。
-- 页面加载时调用 Robot API root 或 `/api/status`/unified status，展示 routes 列表和
-  guard flags。
+剩余风险：这些证据仍不等于真实运动路线、HIL、safe control 或 delivery success。
 
-允许按钮：
+## 本轮核心抓手
 
-- `Refresh status`：调用 Robot API root 或 unified status，只读。
-- `Refresh all proofs`：第一版只聚合读取 latest/status；不要默认触发会启动 runtime 的
-  refresh，除非按钮名称明确标注 proof refresh 且属于下方允许项。
+设计一个 PC Robot Control Console V1：以 `task_id` 和 proof artifact 为中心，把
+Robot API status、O6 consumer detail、O3 no-motion map/localization/Nav2 证据、Mock
+replay fallback 和控制禁用原因聚合到一个运营视图。每个区块都必须有来源、状态、刷新
+时间和禁止控制边界。
 
-锁定按钮：
+## 功能点完整清单
 
-- `Connect and arm robot` 不做。
-- `Enable real motion` 不做。
-- 任何会改变机器人运行态的动作必须进入 safety lock/HIL gate，第一版默认禁用。
+### 1. 任务证据选择器
 
-### 雷达/LiDAR
+- 输入/选择 `task_id`。
+- 显示数据来源：`robot_api`、`o6_consumer_detail`、`local_mock_replay_jsonl`、
+  `local_field_evidence_manifest`。
+- 显示 `task_status`、`proof_status`、`artifact_status`、`delivery_success=false`、
+  `safe_to_control=false`、`primary_actions_enabled=false`。
+- 没有 `task_id` 时页面只能显示空状态和下一步提示，不得渲染假任务。
 
-展示内容：
+### 2. Robot API 连接状态
 
-- `/api/radar/status` 摘要：设备、ROS topic、latest proof 状态、scan count/rate、
-  blocked reasons、artifact path。
-- `/api/radar/scan-proof/latest` 和 `/api/radar/raw-packet-proof/latest` 摘要。
+- 支持配置或读取 Robot API base URL，默认可使用本机回环或局域网上位机地址。
+- Node server 侧代理 Robot API；Vue 不直接跨域访问上位机。
+- 展示 Robot API root / unified status / `/api/status` 摘要、HTTP 状态、最后刷新时间、
+  schema、错误摘要和 guard flags。
+- 网络失败、schema mismatch、危险 true 字段或状态缺失时必须 fail-closed。
 
-允许按钮：
+### 3. O3 现场 proof 消费
 
-- `Refresh LiDAR status`：GET `/api/radar/status`。
-- `Read latest scan proof`：GET `/api/radar/scan-proof/latest`。
-- `Read latest raw packet proof`：GET `/api/radar/raw-packet-proof/latest`。
-- `Run scan proof refresh`：POST `/api/radar/scan-proof/refresh` 可作为显式按钮，
-  但必须标注 no-motion/proof refresh，并在 UI 上展示返回的 guard 字段。
+- 展示 map proof、localization proof、Nav2 proof/path generation proof 的 latest 摘要。
+- 必须可见字段：
+  - `managed_runtime_started`
+  - `scan_once_observed`
+  - `map_once_observed`
+  - `amcl_pose_observed`
+  - `localization_tf_observed`
+  - `planner_server_active`
+  - `path_generation_requested`
+  - `path_generation_succeeded`
+  - `path_generated`
+  - `path_point_count`
+  - `root_causes`
+  - `not_proven`
+- UI 必须把 `path_generated=false`、`path_generation_succeeded=false` 和 blocker 显示出来，
+  不得只显示“Nav2 已接入”。
 
-锁定或 gated 按钮：
+### 4. 路线回放 / Mock fallback
 
-- `/api/radar/start`、`/api/radar/stop` 默认禁用；只有 safety lock + HIL gate 明确开启
-  后才可调用。
-- 禁止从 PC 前端直接打开串口或绕过 Robot API。
+- 优先消费 O6 consumer detail：`GET /api/o6/consumer/tasks/<task_id>` 的
+  trajectory、events、evidence、labeling、inference、tunnel 摘要。
+- 如果 O6 detail 不可用，允许显式选择本地 Mock replay JSONL 或 field evidence manifest。
+- Mock fallback 必须显示 `source=local_mock` 或 `source=software_proof`，并保持
+  `delivery_success=false`。
+- 回放控件只允许浏览器内存里的 previous/next/play-pause cursor，不调用机器人 API。
 
-### 建图/地图
+### 5. Evidence / keyframe / 标注准备
 
-展示内容：
+- 展示 `evidence_ref`、keyframe basename、artifact path summary、capture time、schema、
+  label status 和缺口。
+- 允许只读查看待标注状态和下一步证据清单。
+- 禁止实现 submit、rollback、export、upload、train 或任何会写云端/本地数据集的动作。
 
-- `/api/map/list` 地图列表：yaml/pgm 路径、更新时间、是否可加载。
-- `/api/map/proof/latest` 最新 map proof：map artifact、tf/map readiness、blocked reasons。
-- 地图区第一版可先显示文本/表格，不强制做 canvas 地图渲染。
+### 6. 手动控制和自动寻路边界
 
-允许按钮：
+- 展示 safe command envelope、manual/navigate goal 未来接口、幂等 key、确认策略、
+  robot ACK 缺口和 timeout/cancel/stop/recovery 缺口。
+- 第一版所有真实控制入口必须 disabled：
+  - 前进、后退、左转、右转
+  - 速度 slider / joystick
+  - 键盘方向键
+  - map click goal
+  - Navigate to point
+  - `/api/base/manual`
+  - `/cmd_vel`
+  - Nav2 `NavigateToPose` / `FollowPath`
+- 可以显示 locked placeholder，但文案必须说明需要 safety lock、HIL gate 和 robot ACK
+  证据后才能放开。
 
-- `Refresh map list`：GET `/api/map/list`。
-- `Read latest map proof`：GET `/api/map/proof/latest`。
-- `Run map proof refresh`：POST `/api/map/proof/refresh` 可作为显式按钮，必须标注
-  no-motion/readiness proof，且不得自动调用 `/api/map/start`。
+### 7. Camera / LiDAR / Base readback
 
-锁定或 gated 按钮：
+- Camera：展示 `/api/camera/health`、`/api/camera/devices` 和可选 preview 状态。
+- LiDAR：展示 `/api/radar/status`、latest scan proof、raw packet proof。
+- Base：展示 `/api/base/status` 和 latest feedback samples。
+- 允许的按钮仅限 refresh/read latest/proof readback。任何 start/stop/manual/motion 类按钮
+  必须禁用或不渲染。
 
-- `/api/map/start`、`/api/map/reset`、`/api/map/save`、`/api/map/load` 默认禁用。
-- 如果实现只做 UI 占位，按钮文案必须显示 `Locked: requires safety lock/HIL gate`。
+## 必须实现
 
-### 定位/Nav2
+- 必须有 `Robot Control` 或等价 PC 控制台入口。
+- 必须以 `task_id` 驱动任务详情、路线回放和 evidence 区块。
+- 必须显示真实/Mock 数据来源和 artifact/proof source。
+- 必须消费 Robot API 或 O6 consumer detail 中的状态字段，而不是前端硬编码成功状态。
+- 必须在 Robot API 不可达、O6 detail 不可达、Mock 缺失、schema mismatch 或危险 true
+  字段出现时 fail-closed。
+- 必须保留 `safe_to_control=false`、`delivery_success=false`、
+  `primary_actions_enabled=false` 的可见状态。
+- 必须同步更新 `docs/product/pc_tools_workstation.md`，记录 V1 证据消费和禁止控制边界。
+- 所有新增技术注释必须使用中文，且注释比例超过 20%。
 
-展示内容：
+## 禁止实现
 
-- `/api/nav2/status`：AMCL/Nav2 readiness、map inputs、path/proof 状态、blocked reasons。
-- `/api/nav2/proof/latest`：最新 no-motion localization/path proof 摘要。
-- 如 unified status 提供 localize proof，显示 `/api/localize/proof/latest` 摘要。
+- 禁止绕过 Robot API 或云端/O6 直接连 ROS2、串口、WAVE ROVER UART 或 `/cmd_vel`。
+- 禁止把 Mock replay、no-motion proof、readback proof 写成真实路线通过。
+- 禁止默认启动 map/radar/nav2/base runtime。
+- 禁止真实手控、真实速度控制、真实转向控制、真实键盘控制、真实自动寻路下发。
+- 禁止 TTS 发送、speaker 播放、标注提交、训练导出、云端生产写入。
+- 禁止在没有 `task_id`、状态字段和 evidence source 的情况下渲染“任务成功”或“可控制”。
 
-允许按钮：
+## 文件范围
 
-- `Refresh Nav2 status`：GET `/api/nav2/status`。
-- `Read latest Nav2 proof`：GET `/api/nav2/proof/latest`。
-- `Run Nav2 proof refresh`：POST `/api/nav2/proof/refresh` 可作为显式按钮；第一版必须按
-  no-motion proof/readiness 处理，不发送 goal，不启动 `/cmd_vel`。
-- `Read latest localization proof`：GET `/api/localize/proof/latest`，若 API route 存在。
-
-锁定或 gated 按钮：
-
-- `/api/nav2/start`、`/api/nav2/stop` 默认禁用。
-- `Set initial pose`、`Send goal`、`Navigate to point`、`Follow route` 第一版只做 locked
-  占位，不调用 ROS action，不发布 `/initialpose`，不发布 `/cmd_vel`。
-
-### 手动移动/Base
-
-展示内容：
-
-- `/api/base/status` 摘要：base availability、feedback ack、guard flags、latest samples。
-- `/api/base/feedback-samples/latest` 摘要：左右轮反馈、ACK、采样窗口、blocked reasons。
-- 页面必须显式显示：第一版不放开真实手动移动。
-
-允许按钮：
-
-- `Refresh base status`：GET `/api/base/status`，但 UI 必须标注它可能触发 Robot API 内部
-  的非运动反馈 readback；不得把它描述为纯文件读取。
-- `Read latest feedback samples`：GET `/api/base/feedback-samples/latest`。
-- `Request feedback samples`：POST `/api/base/feedback-samples` 可作为显式 proof 按钮，
-  必须标注 non-motion feedback evidence，不得发送 `T=1`、`T=13` 或 `/cmd_vel`。
-
-锁定或 gated 按钮：
-
-- `/api/base/manual` 默认禁用。任何前进、后退、左转、右转、速度 slider、摇杆、键盘控制
-  第一版都只能显示 locked 状态。
-- `/api/base/stop` 可以显示为 locked emergency-stop placeholder；第一版若未经过真实 HIL
-  验收，不应让 PC 页面声称它是可靠急停。后续放开前必须由 Hardware/Robot Software
-  Engineer 明确验收。
-- 禁止 PC 页面直接生成 `/cmd_vel` 或直接写 WAVE ROVER UART。
-
-### 实时图传/Camera
-
-展示内容：
-
-- `/api/camera/health`：camera service、selected device、frame readiness、visible content
-  相关字段。
-- `/api/camera/devices`：`/dev/video*` 枚举和可用性。
-- Camera 区第一版优先显示 health/devices 和 WebRTC offer 入口状态；若已有
-  `/api/camera/offer` 可用，允许接入预览，但必须保留连接失败状态。
-
-允许按钮：
-
-- `Refresh camera health`：GET `/api/camera/health`。
-- `Refresh camera devices`：GET `/api/camera/devices`。
-- `Start preview`：允许调用 `/api/camera/offer` 建立实时图传预览；该动作不得发送底盘、
-  Nav2、map 或 LiDAR 控制命令。
-- `Close preview`：允许调用 `/api/camera/peers/{peer_id}/close` 关闭图传 peer。
-
-锁定或 gated 按钮：
-
-- 任何相机参数写入、设备重绑定、重启系统服务、改 v4l2 持久配置，第一版不做。
-
-### 安全边界
-
-第一版必须在 UI 和 server contract 中显式实现这些边界：
-
-- 默认 `safe_to_control=false`，页面不得因为 PC UI 存在而把 `primary_actions_enabled` 置真。
-- 所有真实运动入口都需要 safety lock + HIL gate；本轮实现不要求放开该 gate。
-- 禁止直接发布 `/cmd_vel`、直接调用 ROS action、直接写 `/dev/ttyS5` 或任何 WAVE ROVER
-  UART。
-- 允许调用的 POST 仅限明确的 proof/readback/preview 类入口，并且按钮文案必须让操作员
-  看出该动作是否会启动 runtime。
-- Robot API 返回 `status=not_proven`、`safe_to_control=false`、`hil_pass=false`、
-  `delivery_success=false` 或网络错误时，控制按钮必须保持 disabled。
-- 页面所有状态都必须保留来源字段：Robot API route、HTTP 状态、刷新时间、错误摘要。
-
-## Full-Stack Engineer 文件范围
-
-下一轮实现 owner：`full-stack-software-engineer`。
-
-允许改动：
+下一轮实现允许 `full-stack-software-engineer` 修改：
 
 - `pc-tools/workstation/src/App.vue`
 - `pc-tools/workstation/src/client/workstationApi.ts`
@@ -208,138 +179,131 @@ PC 页面开始展示 Robot API connection、雷达/LiDAR、建图/地图、定�
 - `pc-tools/README.md`
 - 新实现 sprint 的 `sprints/<new_round>/tech-done.md`
 
-不得改动：
+下一轮实现不得修改：
 
-- `onboard/scripts/upper_robot_api.py`
-- `onboard/**` ROS2/硬件配置
+- `onboard/**`
 - `firmware/**`
 - `docs/vendor/**`
 - WAVE ROVER/ESP32/Orange Pi UART、波特率、JSON 指令、速度映射、反馈协议等硬件事实
+- 任意会默认启用机器人运动的 launch、service 或 runtime 配置
 
-如下一轮发现 Robot API 合同缺字段，Full-Stack Engineer 只能先 fail-closed 展示缺字段；
-不得自行修改 onboard API。需要 Robot Software Engineer 另开 sprint 补 API 合同。
+如果实现中发现 Robot API 缺字段，Full-Stack Engineer 只能先 fail-closed 展示缺字段；
+不得自行修改 `onboard/scripts/upper_robot_api.py`，应另开 Robot Software sprint。
 
-## Full-Stack Engineer 验收命令
+## 优先级和验收口径
 
-下一轮实现至少运行：
+优先级：`P0`。
+
+工程实现验收必须同时满足：
+
+1. PC 页面存在控制台入口，并且任务证据选择器、Robot API 状态、O3 proof、路线回放、
+   evidence/标注准备、控制边界、Camera/LiDAR/Base readback 七个区块可见。
+2. 至少一条真实或 Mock `task_id` 能驱动详情、状态、trajectory/events/evidence 摘要。
+3. 所有状态都显示 source、schema/status、刷新时间和 fail-closed reason。
+4. Robot API / O6 detail 不可达时，页面仍能显示阻塞状态，不出现误导性成功。
+5. `/api/base/manual`、`/cmd_vel`、Nav2 goal、map start、radar start、键盘控制和 map click
+   goal 默认禁用或不渲染。
+6. 文档同步到 `docs/product/pc_tools_workstation.md`。
+7. 新增技术注释为中文，且注释比例满足项目要求。
+
+## 验收命令
+
+Product 设计阶段必须运行：
+
+```bash
+git status --short --branch
+test -f sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md
+rg -n "sprint_type|功能点|验收|owner|文件范围|O7|task_id|状态|控制|禁止|Mock|真实" sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md
+```
+
+下一轮 Full-Stack Engineer 实现阶段至少运行：
 
 ```bash
 git status --short --branch
 cd pc-tools/workstation && npm run build
 cd pc-tools/workstation && npm run test
 cd pc-tools/workstation && npm run lint
-rg -n "Robot Control|Robot API|safe_to_control|HIL|cmd_vel|/api/base/manual|/api/radar/status|/api/map/list|/api/nav2/status|/api/camera/health" pc-tools/workstation docs/product/pc_tools_workstation.md pc-tools/README.md
+rg -n "Robot Control|task_id|O7|Mock|真实|状态|safe_to_control|primary_actions_enabled|delivery_success|/api/base/manual|cmd_vel|path_generated" pc-tools/workstation docs/product/pc_tools_workstation.md pc-tools/README.md
 ```
 
-若实现了本地 server smoke，追加：
+如实现了本地 server smoke，追加：
 
 ```bash
 cd pc-tools/workstation && npm run dev
 curl -sS http://127.0.0.1:<port>/api/health
-curl -sS http://127.0.0.1:<port>/<new_robot_api_proxy_health_path>
+curl -sS http://127.0.0.1:<port>/<robot_control_proxy_or_summary_path>
 ```
 
-验收标准：
+## 对应责任 Engineer
 
-- PC 页面有 `Robot Control` 入口。
-- Robot API connection、雷达/LiDAR、建图/地图、定位/Nav2、手动移动/Base、
-  实时图传/Camera、安全边界七个区块都可见。
-- read-only/status/latest/proof refresh 按钮按本文件矩阵开放。
-- `/api/base/manual`、`/cmd_vel`、Nav2 goal、map start、radar start 等真实控制入口默认禁用。
-- Robot API 不可达时页面 fail-closed，不出现误导性成功状态。
-- `docs/product/pc_tools_workstation.md` 和 `pc-tools/README.md` 同步记录 V1 边界。
+- 主责：`full-stack-software-engineer`
+- 咨询：默认不并行派单。若 Robot API 合同缺字段，由 `robot-software-engineer` 另开 micro
+  sprint；若涉及硬件真实控制边界，由 `rober-hardware-engineer` 只读确认 vendor/硬件事实。
+
+## 风险、阻塞和需要补齐的证据链
+
+- O3 path generation lane 当前仍存在 `path_generated=true` 未正式证明的风险；PC 必须显示
+  blocker，而不是隐藏差异。
+- O7 控制台本轮仍不证明真实 RTC/视频、真实 ASR/TTS、真实手控/寻路、真实地图电梯状态、
+  真实云端生产链路或上车 delivery success。
+- Mock fallback 有产品风险：如果 UI 不显式标注来源，运营人员会误以为真实机器人已完成。
+- 后续要提升 O7 完成度，必须继续补齐 `task_id` 对应的真实 field run bundle、map.yaml、
+  route.csv、keyframe、rosbag、replay JSONL 或真实/Mock delivery result。
+
+## 需要创建或更新的 sprint 文档
+
+- 本轮是 micro sprint，只强制维护本文件：
+  `sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md`
+- 下一轮工程实现必须创建自己的 micro sprint `tech-done.md`，记录实际改动、验证结果、
+  失败定位和剩余风险。
 
 ## 本轮实际改动
 
-- 新增 `sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md`。
-- 未修改 `OKR.md`、`docs/product/*`、`pc-tools/*`、`onboard/*`、`firmware/*`、
-  vendor 文件、硬件配置或测试代码。
+- 更新 `sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md`。
+- 未修改 `docs/product/pc_tools_workstation.md`，因为本轮仍是工程前产品设计；产品边界已在
+  sprint 设计中明确，下一轮实现时再同步产品文档。
+- 未修改产品代码、测试代码、硬件配置、launch 参数、firmware 或 vendor 文件。
 
 ## 本轮验证结果
 
-已运行用户指定验收命令。
-
-`git status --short --branch`
+已运行用户指定验收命令：
 
 ```text
-## master...origin/master
-?? sprints/2026.06.10_09-45_pc_robot_control_console/
-```
-
-最终复核时工作区额外显示：
-
-```text
-## master...origin/master
- M onboard/scripts/upper_robot_api.py
- M onboard/tests/test_nav2_runtime_proof_helper.py
-?? sprints/2026.06.10_09-45_pc_robot_control_console/
-```
-
-`onboard/scripts/upper_robot_api.py` 和 `onboard/tests/test_nav2_runtime_proof_helper.py`
-不在本轮允许修改范围内，本轮未编辑、未回滚这些改动；本轮实际新增文件仍仅为当前
-sprint `tech-done.md`。
-
-`test -f sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md`
-
-```text
-退出码 0，目标文件存在。
-```
-
-`rg -n "sprint_type|PC|Robot API|雷达|建图|定位|手动|图传|safe|cmd_vel|HIL|文件范围|验收" sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md`
-
-```text
-1:# 2026-06-10 09:45 PC Robot Control Console
-3:## sprint_type
-9:为 Full-Stack Engineer 定义 PC Robot Control Console 第一版实现边界，让
-11:上位机 Robot API 状态、展示真实上车 evidence capture 入口，并保留清晰的安全锁。
-14:PC 页面开始展示 Robot API connection、雷达/LiDAR、建图/地图、定位/Nav2、手动移动/Base、
-15:实时图传/Camera 和安全边界，不放开真实运动。
-23:- 第一版 PC 控制台必须 fail-closed：Robot API 不可达、状态字段缺失、proof 未通过或
-26:## PC Robot Control Console 第一版设计
-36:- Robot API connection：Robot API base URL、连接状态、最后刷新时间、schema/status、
-37:  unified status 摘要、`safe_to_control`、`primary_actions_enabled`、
-39:- 全局安全边界：`PC console V1 = status/proof first`，默认不发送 `/cmd_vel`，
-43:### Robot API connection
-65:- 任何会改变机器人运行态的动作必须进入 safety lock/HIL gate，第一版默认禁用。
-67:### 雷达/LiDAR
-89:### 建图/地图
-109:### 定位/Nav2
-131:### 手动移动/Base
-156:### 实时图传/Camera
-182:- 默认 `safe_to_control=false`，页面不得因为 PC UI 存在而把 `primary_actions_enabled` 置真。
-183:- 所有真实运动入口都需要 safety lock + HIL gate；本轮实现不要求放开该 gate。
-184:- 禁止直接发布 `/cmd_vel`、直接调用 ROS action、直接写 `/dev/ttyS5` 或任何 WAVE ROVER
-192:## Full-Stack Engineer 文件范围
-222:## Full-Stack Engineer 验收命令
-242:验收标准：
-244:- PC 页面有 `Robot Control` 入口。
-245:- Robot API connection、雷达/LiDAR、建图/地图、定位/Nav2、手动移动/Base、
-246:  实时图传/Camera、安全边界七个区块都可见。
-248:- `/api/base/manual`、`/cmd_vel`、Nav2 goal、map start、radar start 等真实控制入口默认禁用。
-```
-
-完整 `rg` 输出在本轮终端验证中已确认覆盖 `sprint_type|PC|Robot API|雷达|建图|定位|手动|图传|safe|cmd_vel|HIL|文件范围|验收`
-全部关键词。
-
-复核命令：
-
-```bash
 git status --short --branch
-test -f sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md
-rg -n "sprint_type|PC|Robot API|雷达|建图|定位|手动|图传|safe|cmd_vel|HIL|文件范围|验收" sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md
+## master...origin/master
+ M docs/hardware/board_sensor_stack_smoke.md
+ M docs/navigation/fixed_route_workflow.md
+ M onboard/scripts/upper_robot_api.py
+ M sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md
+?? sprints/2026.06.10_14-40_nav2_path_generation_artifact_stabilization/
 ```
+
+说明：本轮只修改 `sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md`。
+其余工作区改动为本轮开始前或并行上下文中已有的非本轮范围改动，未被本轮回滚或覆盖。
+
+```text
+test -f sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md
+```
+
+结果：通过，无输出。
+
+```text
+rg -n "sprint_type|功能点|验收|owner|文件范围|O7|task_id|状态|控制|禁止|Mock|真实" sprints/2026.06.10_09-45_pc_robot_control_console/tech-done.md
+```
+
+结果：通过，命中 `sprint_type`、`owner`、`功能点完整清单`、`O7`、`task_id`、
+`状态`、`控制`、`禁止实现`、`Mock`、`真实`、`文件范围`、`验收命令` 等关键段落。
 
 ## 失败定位
 
-本轮是产品边界和 sprint 留档，不运行 PC workstation build/test，不连接真实 Robot API，
-不验证真实上车链路。若上述文件存在和关键词验收失败，先修本文档。
+暂无。三条指定验收命令均通过。
 
 ## 剩余风险
 
-- 本轮没有实现 PC 页面，只提供可交给 Full-Stack Engineer 的 V1 实现边界。
-- 未验证 Robot API 当前返回字段是否足够 UI 直连消费；下一轮应通过 mock/unreachable
-  fail-closed 和本地代理测试覆盖。
-- 实时图传是否能在 PC workstation 内完成 WebRTC 预览，仍取决于 `/api/camera/offer`
-  合同和浏览器端接入细节。
-- Base 区不放开真实手动移动；后续真实运动必须另走 safety lock/HIL gate，并由硬件和
-  Robot Software 证据确认。
+- 本轮只完成产品设计和 sprint 留档，不交付 PC UI。
+- 真实/Mock 数据接入、Node proxy、Vue 区块、测试和产品文档同步仍需下一轮
+  `full-stack-software-engineer` 实现。
+- 本轮未运行 `pc-tools/workstation` build/test/lint，因为用户明确要求不要写产品代码；
+  这些命令属于下一轮工程实现验收。
+
+记录时间：2026-06-10 09:45 CST。

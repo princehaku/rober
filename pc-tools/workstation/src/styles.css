@@ -116,7 +116,7 @@ h3 {
 }
 
 .tabs {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   margin: 10px 0 12px;
 }
 
@@ -193,6 +193,68 @@ h3 {
   background: #ffffff;
   color: #17202a;
   font: inherit;
+}
+
+.robot-control-form,
+.robot-console-grid,
+.locked-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.robot-control-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  align-items: end;
+  margin-bottom: 16px;
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  padding: 12px;
+  background: #f7f9fb;
+}
+
+.robot-control-form label,
+.robot-control-form span {
+  display: block;
+  min-width: 0;
+}
+
+.robot-control-form span,
+.muted {
+  color: #5f6b7a;
+  font-size: 12px;
+}
+
+.robot-control-form span {
+  margin-bottom: 5px;
+}
+
+.robot-control-form input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #bdc7d3;
+  border-radius: 6px;
+  padding: 0 9px;
+  background: #ffffff;
+  color: #17202a;
+  font: inherit;
+}
+
+.robot-console-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.locked-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 10px 0;
+}
+
+.locked-actions button {
+  min-height: 36px;
+  border: 1px solid #c8d0d9;
+  border-radius: 6px;
+  background: #eef1f4;
+  color: #6a7480;
+  cursor: not-allowed;
 }
 
 .section-head {
@@ -355,7 +417,10 @@ th {
     .two-col,
     .three-col,
     .kr-grid,
-    .route-inputs {
+    .route-inputs,
+    .robot-control-form,
+    .robot-console-grid,
+    .locked-actions {
     grid-template-columns: 1fr;
   }
 

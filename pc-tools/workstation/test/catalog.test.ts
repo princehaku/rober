@@ -15,6 +15,7 @@ import {
   buildEvidenceToolsResponse,
   buildHardwareMaterialsResponse,
   buildHealth,
+  buildRobotControlSummary,
   buildO7OperatorConsoleAcceptanceResponse,
   buildO7OperatorConsoleResponse,
   buildO7PreviewsAcceptanceResponse,
@@ -700,6 +701,26 @@ function listenJson(payload: unknown): Promise<{ baseUrl: string; close: () => P
     }
     res.statusCode = 404;
     res.end(JSON.stringify({ error: "not_found" }));
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
+function listenRobotApiReadback(payload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  // Robot Control 测试用任意 GET readback 服务；只返回 JSON，不实现 POST 或运动控制。
+  const server = http.createServer((_req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(payload));
   });
   return new Promise((resolve) => {
     server.listen(0, "127.0.0.1", () => {
@@ -3353,6 +3374,80 @@ describe("workstation fail-closed API contracts", () => {
     } finally {
       await upstream.close();
       await workstation.close();
+    }
+  });
+
+  it("Robot Control summary proxies Robot API readback endpoints and keeps commands locked", async () => {
+    // Robot API fixture server 只返回只读 JSON；测试不调用 /api/base/manual 或任何 POST endpoint。
+    const robotApi = await listenRobotApiReadback({
+      schema: "trashbot.upper_robot_api.v1.status",
+      status: "blocked_with_root_cause",
+      evidence_ref: "robot-control-test-proof",
+      managed_runtime_started: true,
+      scan_once_observed: true,
+      map_once_observed: true,
+      amcl_pose_observed: false,
+      localization_tf_observed: false,
+      planner_server_active: false,
+      path_generation_requested: true,
+      path_generation_succeeded: false,
+      path_generated: false,
+      path_point_count: 0,
+      root_causes: [{ layer: "Nav2", reason: "planner_server_not_active" }],
+      not_proven: ["path_generated", "delivery_success"],
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      publishes_cmd_vel: false,
+      calls_base_manual: false,
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.schema).toBe("trashbot.pc_tools_workstation.robot_control_summary.v1");
+      expect(summary.proxy_policy.node_proxy_only).toBe(true);
+      expect(summary.proxy_policy.vue_direct_robot_api_access).toBe(false);
+      expect(summary.robot_api_connection.loaded_count).toBeGreaterThan(0);
+      expect(summary.read_endpoints.some((endpoint) => endpoint.endpoint === "/api/status")).toBe(true);
+      expect(summary.read_endpoints.some((endpoint) => endpoint.endpoint === "/api/base/status")).toBe(true);
+      expect(summary.o3_proof_summary.path_generated).toBe(false);
+      expect(summary.o3_proof_summary.path_generation_succeeded).toBe(false);
+      expect(summary.safe_command_boundary.manual_endpoint).toBe("/api/base/manual");
+      expect(summary.safe_command_boundary.cmd_vel_topic).toBe("/cmd_vel");
+      expect(summary.safe_command_boundary.manual_control_enabled).toBe(false);
+      expect(summary.safe_to_control).toBe(false);
+      expect(summary.delivery_success).toBe(false);
+      expect(summary.primary_actions_enabled).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
+  it("Robot Control summary rejects unsafe URLs and dangerous true fields", async () => {
+    // URL 和 payload 任一层不安全都必须 fail-closed，防止控制台被误用为控制代理。
+    const missing = await buildRobotControlSummary("");
+    expect(missing.console_status).toBe("blocked");
+    expect(missing.blocked_reasons).toContain("baseUrl_not_provided");
+
+    const unsafeUrl = await buildRobotControlSummary("https://127.0.0.1:8787?token=secret");
+    expect(unsafeUrl.console_status).toBe("blocked");
+    expect(unsafeUrl.blocked_reasons).toContain("baseUrl_protocol_not_allowed");
+
+    const robotApi = await listenRobotApiReadback({
+      schema: "trashbot.upper_robot_api.v1.status",
+      status: "unsafe_control_claim",
+      safe_to_control: true,
+      delivery_success: false,
+      primary_actions_enabled: false,
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+      expect(summary.console_status).toBe("blocked");
+      expect(summary.robot_api_connection.dangerous_true_fields.some((field) => field.includes("safe_to_control"))).toBe(true);
+      expect(summary.safe_to_control).toBe(false);
+      expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
+    } finally {
+      await robotApi.close();
     }
   });
 

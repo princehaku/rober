@@ -296,6 +296,98 @@ const fixtures: Record<string, unknown> = {
       "coverage is not HIL pass; complete material coverage is still software_proof/not_proven and keeps hardware_connected=false, safe_to_control=false, delivery_success=false.",
     ...PROOF_FLAGS,
   },
+  "/api/robot-control/summary": {
+    schema: "trashbot.pc_tools_workstation.robot_control_summary.v1",
+    console_status: "blocked",
+    source_base_url: "http://127.0.0.1:8787",
+    normalized_base_url: "http://127.0.0.1:8787",
+    proxy_policy: {
+      vue_direct_robot_api_access: false,
+      node_proxy_only: true,
+      allowed_methods: ["GET"],
+      allowed_endpoint_class: "status_latest_readback_only",
+      unsafe_urls_rejected: true,
+    },
+    observed_at_ms: 1781040814776,
+    read_endpoints: [
+      {
+        id: "status",
+        endpoint: "/api/status",
+        http_status: 200,
+        request_status: "loaded",
+        schema: "trashbot.upper_robot_api.v1.status",
+        status: "blocked_not_proven",
+        evidence_ref: "robot-api-status-proof",
+        key_values: {
+          safe_to_control: "false",
+          delivery_success: "false",
+          primary_actions_enabled: "false",
+          path_generated: "false",
+        },
+        blocked_reasons: [],
+        dangerous_true_fields: [],
+      },
+    ],
+    o3_proof_summary: {
+      managed_runtime_started: true,
+      scan_once_observed: true,
+      map_once_observed: true,
+      amcl_pose_observed: false,
+      localization_tf_observed: false,
+      planner_server_active: false,
+      path_generation_requested: true,
+      path_generation_succeeded: false,
+      path_generated: false,
+      path_point_count: 0,
+      root_causes: ["planner_server_not_active"],
+      not_proven: ["path_generated", "delivery_success"],
+    },
+    robot_api_connection: {
+      status: "blocked",
+      loaded_count: 1,
+      blocked_count: 0,
+      failed_count: 0,
+      schema_mismatch_count: 0,
+      dangerous_true_fields: [],
+      blocked_reasons: ["dangerous actions locked by V1 boundary"],
+      last_refresh_ms: 1781040814776,
+    },
+    readback_summary: {
+      camera: {
+        status: "camera_health_not_proven",
+        devices_status: "camera_devices_not_proven",
+        preview_status: "locked_no_webrtc_session",
+      },
+      lidar: {
+        status: "radar_status_not_proven",
+        latest_scan_proof_status: "scan_once_observed",
+        latest_raw_packet_proof_status: "raw_packet_not_proven",
+      },
+      base: {
+        status: "base_status_not_proven",
+        latest_feedback_status: "feedback_samples_not_proven",
+        feedback_ack_status: "blocked_no_ack",
+      },
+    },
+    safe_command_boundary: {
+      manual_endpoint: "/api/base/manual",
+      cmd_vel_topic: "/cmd_vel",
+      nav2_goal: "Nav2 NavigateToPose locked",
+      map_start: "map start locked",
+      radar_start: "radar start locked",
+      keyboard_control: "keyboard control locked",
+      map_click_goal: "map click goal locked",
+      locked_reason: "requires safety lock, HIL gate, robot ACK, timeout/cancel/stop/recovery evidence before enablement",
+      command_dispatch_enabled: false,
+      manual_control_enabled: false,
+      navigate_goal_enabled: false,
+      keyboard_control_enabled: false,
+      robot_control_executed: false,
+    },
+    blocked_reasons: ["dangerous actions locked by V1 boundary"],
+    not_proven: ["O7", "path_generated", "delivery_success"],
+    ...PROOF_FLAGS,
+  },
   "/api/tools/training-labeling": {
     schema: "trashbot.pc_tools_workstation.training_labeling.v2",
     roots: { dataset: "pc-tools/training", labeling: "pc-tools/labeling" },
@@ -2388,6 +2480,8 @@ function stubWorkstationFetch() {
   const mockedFetch = vi.fn(async (url: string) => {
     const fixtureKey = url.startsWith("/api/route/debug-summary")
       ? "/api/route/debug-summary"
+      : url.startsWith("/api/robot-control/summary")
+        ? "/api/robot-control/summary"
       : url.startsWith("/api/o7/consumer-read/tasks/")
         ? "/api/o7/consumer-read/tasks/task-consumer-001"
         : url.startsWith("/api/o7/consumer-read/tasks")
@@ -2477,6 +2571,37 @@ describe("App", () => {
     expect(parsed.searchParams.get("statusJson")).toBe("C:\\tmp\\status proof.json");
     expect(wrapper.text()).not.toContain("/cmd_vel");
     expect(wrapper.text()).not.toContain("/dev/tty");
+  });
+
+  it("renders Robot Control V1 with Robot API proxy and locked command boundary", async () => {
+    // Robot Control 测试只验证 Node proxy 摘要和 locked UI，不触发任何真实控制 endpoint。
+    stubWorkstationFetch();
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.findAll("button").find((button) => button.text() === "Robot Control")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain("Robot Control");
+    expect(wrapper.text()).toContain("task_id selector");
+    expect(wrapper.text()).toContain("Robot API connection");
+    expect(wrapper.text()).toContain("O3 proof summary");
+    expect(wrapper.text()).toContain("route replay / Mock fallback");
+    expect(wrapper.text()).toContain("evidence / keyframe / labeling readiness");
+    expect(wrapper.text()).toContain("manual / nav safe command boundary");
+    expect(wrapper.text()).toContain("Camera / LiDAR / Base readback");
+    expect(wrapper.text()).toContain("Node server only; Vue direct access=false");
+    expect(wrapper.text()).toContain("path_generated");
+    expect(wrapper.text()).toContain("planner_server_not_active");
+    expect(wrapper.text()).toContain("safe_to_control=false");
+    expect(wrapper.text()).toContain("delivery_success=false");
+    expect(wrapper.text()).toContain("primary_actions_enabled=false");
+    expect(wrapper.text()).toContain("/api/base/manual locked");
+    expect(wrapper.text()).toContain("cmd_vel locked");
+    expect(wrapper.findAll("button[disabled]").some((button) => button.text().includes("Nav2 goal locked"))).toBe(true);
   });
 
   it("renders hardware material coverage with fail-closed copy", async () => {

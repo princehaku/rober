@@ -2,7 +2,7 @@
 
 ## 定位
 
-`pc-tools/workstation` 是 PC-only Node.js + Vue 工作站，也是 `pc-tools` 的主架构入口。它服务开发、调试、证据复盘、路线 JSON 摘要展示以及训练/标注准备，不服务普通手机用户，也不直接控制机器人。
+`pc-tools/workstation` 是 PC-only Node.js + Vue 工作站，也是 `pc-tools` 的主架构入口。它服务开发、调试、证据复盘、路线 JSON 摘要展示、Robot API 控制台 V1 只读状态聚合以及训练/标注准备，不服务普通手机用户，也不直接控制机器人。
 
 CEO 最新要求是删除 `pc-tools` 下旧 Python。当前产品边界中，旧 Python 脚本、Python helper、Python unittest 和 Python gate 入口均不再作为 `pc-tools` 资产保留。必要的非 Python 材料保留为 README、JSON fixture 或 Node/Vue 工作站测试资产。
 
@@ -12,7 +12,7 @@ CEO 最新要求是删除 `pc-tools` 下旧 Python。当前产品边界中，旧
 pc-tools/workstation/
   src/App.vue                         # 全局状态、布局和页面组合
   src/client/workstationApi.ts        # /api/* client 与 query 参数拼接
-  src/components/*.vue                # Route/Evidence/Training/Proof 页面组件
+  src/components/*.vue                # Route/Evidence/Training/Robot Control/Proof 页面组件
   src/server/index.ts                 # Express API 与静态 UI 托管入口
   src/server/catalog.ts               # Route Debug 响应聚合
   src/server/datasetAssets.ts         # Training/Labeling 本地资产只读清单
@@ -30,6 +30,7 @@ pc-tools/workstation/
   src/server/o7RouteReplayPreview.ts  # O7-KR3 本地 fixture route replay 预览摘要
   src/server/o7SafeCommandPreview.ts  # O7-KR6 本地 fixture safe command 预览摘要
   src/server/o7VoicePreview.ts        # O7-KR5 本地 fixture ASR/TTS 预览摘要
+  src/server/robotControlSummary.ts   # Robot API status/latest/readback 只读代理摘要
   src/server/waveRoverMaterialCoverage.ts # WAVE ROVER material coverage 只读扫描
   src/server/proofBoundary.ts         # Health、Training/Labeling、Proof Boundary 契约
   src/server/paths.ts                 # 仓库内路径和安全展示路径
@@ -46,7 +47,7 @@ pc-tools/workstation/
 前端分层约束：
 - `App.vue` 只保留全局状态、刷新流程、错误处理和页面组合。
 - `src/client/workstationApi.ts` 集中封装 `/api/*` 路径、fetch 和 route debug query 参数拼接。
-- `src/components/` 只做展示与本地交互，不直接拼 API URL，不发明机器人状态。`O7FixturePreviewPanel.vue` 通过 client 层调用 fixture preview、probe、archive fixture 和 O6 consumer read adapter；route replay 主路径消费 consumer detail，旧 archive fixture player 只作为次路径 / debug fallback；页面不自动读取本地路径。
+- `src/components/` 只做展示与本地交互，不直接拼 API URL，不发明机器人状态。`RobotControlConsolePanel.vue` 通过 client 层调用 Node `GET /api/robot-control/summary` 和 O6 consumer detail adapter；Vue 不直接跨域访问上位机 Robot API。`O7FixturePreviewPanel.vue` 通过 client 层调用 fixture preview、probe、archive fixture 和 O6 consumer read adapter；route replay 主路径消费 consumer detail，旧 archive fixture player 只作为次路径 / debug fallback；页面不自动读取本地路径。
 
 后端分层约束：
 - `index.ts` 只挂载本地 PC API 和构建后的静态 UI，不挂载 ROS2、串口、控制或云端生产客户端。
@@ -58,6 +59,7 @@ pc-tools/workstation/
 - `o7RealtimeElevatorPreview.ts` 只读 query 指定的本地 `trashbot.o7.realtime_elevator_fixture.v1` JSON，并生成 `trashbot.o7.realtime_elevator_preview.v1` 安全摘要；坏 JSON、缺文件、unsupported schema、unsafe copy、success/control/real realtime API/ROS2 /tf/latency <2s/route membership/elevator zone/real elevator state/elevator arrival/floor recognition/human takeover/robot control claim 均 fail-closed。
 - `o7RouteReplayPreview.ts` 只读 query 指定的本地 `trashbot.o7.route_replay_fixture.v1` JSON，并生成 `trashbot.o7.route_replay_preview.v1` 安全摘要；坏 JSON、缺文件、unsupported schema、unsafe copy、success/control claim 均 fail-closed。
 - `o7ConsumerReadAdapter.ts` 只允许本机 HTTP 回环 base URL，把 O6 `GET /api/o6/consumer/tasks` 和 `GET /api/o6/consumer/tasks/<task_id>` 压成 PC 端 `trashbot.pc_tools_workstation.o7_consumer_task_list.v1` / `trashbot.pc_tools_workstation.o7_consumer_task_detail.v1` 摘要；固定 `view=summary`、detail `include=trajectory,events,evidence,labeling,inference,tunnel`，递归扫描危险 true 字段，坏 URL、非回环、schema mismatch、fetch 失败或危险 true 字段均 fail-closed。detail 主路径优先使用远端 `trashbot.field_evidence_manifest.v1` 或已有 `trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1`；只有远端缺失 field evidence 且可选 query `fieldEvidenceManifestJson=<local-json>` 指向合法 `trashbot.field_evidence_manifest.v1` 时，才用本地 manifest 补齐 `field_evidence`，同时保持 `trajectory/events/evidence/labeling/inference/tunnel` 全部来自远端 O6 detail。本地 manifest 缺失、坏 JSON、顶层非 object、schema mismatch、unsafe copy 或危险 true claim 均 `fail_closed`。adapter 会把 `manifest_gate`、`artifact_status`、`not_proven`、`safe_to_control`、`delivery_success`、`primary_actions_enabled` 显式带到 O7 页面。
+- `robotControlSummary.ts` 是 Robot Control V1 的唯一 Robot API 代理。它只接受 `baseUrl`，拒绝空值、非 HTTP、credentials、query/hash、非回环或非 RFC1918 局域网 host；白名单读取 `/api/status`、`/api/map/proof/latest`、`/api/localize/proof/latest`、`/api/nav2/status`、`/api/nav2/proof/latest`、`/api/operator/report`、Camera/LiDAR/Base status/latest/readback 类 GET endpoint，返回 `trashbot.pc_tools_workstation.robot_control_summary.v1` 短摘要。它递归扫描 `safe_to_control=true`、`delivery_success=true`、`primary_actions_enabled=true`、`publishes_cmd_vel=true`、`calls_base_manual=true`、`sends_motion_commands=true`、`robot_control_executed=true` 等危险字段，命中即 blocked；响应仍固定 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
 - `o7LabelingPreview.ts` 只读 query 指定的本地 `trashbot.o7.labeling_fixture.v1` JSON，并生成 `trashbot.o7.labeling_preview.v1` 安全摘要；坏 JSON、缺文件、unsupported schema、unsafe copy、success/control/submit/rollback/export claim 均 fail-closed。
 - `o7SafeCommandPreview.ts` 只读 query 指定的本地 `trashbot.o7.safe_command_fixture.v1` JSON，并生成 `trashbot.o7.safe_command_preview.v1` 安全摘要；坏 JSON、缺文件、unsupported schema、unsafe copy、success/control/dispatch/manual/navigate/keyboard/real command API/real robot ACK/robot control executed/ACK success/HIL or hardware verified claim 均 fail-closed。
 
@@ -69,6 +71,7 @@ pc-tools/workstation/
 - Evidence Tools：索引 `pc-tools/evidence/fixtures/**/*.json`，展示 JSON fixture 资产分组。
 - Hardware Materials：`GET /api/hardware/wave-rover/material-coverage` 扫描 `pc-tools/evidence/fixtures/wave_rover_*` 下的 WAVE ROVER 材料组，识别 `feedback_T1001.log`、项目侧 `odom_once.jsonl`、项目侧 `imu_once.jsonl`、项目侧 `battery_once.jsonl`、`operator_hil_report` / `operator_hil_report.json` 的 present/missing coverage，并在 Vue 面板中展示 `fixture_groups`、`gaps`、vendor source、串口参考、命令事实和 `not_proven_boundaries`。兼容旧路径 `GET /api/tools/hardware-materials`，但新 UI 入口使用前者。
 - Training/Labeling：`GET /api/tools/training-labeling` 扫描 `pc-tools/training/` 和 `pc-tools/labeling/` 下的非 Python 资产，返回两个工作区的 roots、asset counts、manifest candidates、image/annotation counts、readiness、missing requirements 和 next actions；仍明确未接真实训练或标注流水线。
+- Robot Control：新增 `Robot Control` tab 和 `GET /api/robot-control/summary?baseUrl=<robot-api-base-url>`。页面以 `task_id` 为主键展示 task selector、Robot API connection、O3 proof summary、route replay/Mock fallback summary、evidence/keyframe/labeling readiness、manual/nav safe command boundary、Camera/LiDAR/Base readback 七区块。Robot API base URL 只交给 Node 代理；Vue 不直连上位机。O6 consumer detail 仍通过既有 `GET /api/o7/consumer-read/tasks/<task_id>` adapter 获取 trajectory/events/evidence/labeling/inference/tunnel 摘要，本地 field manifest 只作为显式 Mock/field evidence fallback。所有真实控制入口默认 locked/disabled，包括 `/api/base/manual`、`/cmd_vel`、Nav2 goal、map start、radar start、keyboard control 和 map click goal；页面只展示 locked placeholder、blocked reason 和恢复所需 safety lock / HIL gate / robot ACK / timeout-cancel-stop-recovery evidence。
 - O7 Operator Console：`GET /api/o7/operator-console` 返回 `trashbot.o7.operator_console.v1` cloud-contract draft，展示 O7 六个 KR 的最小视图：实时地图/机器人位置、电梯状态、历史路线回放、数据标注、ASR/TTS、手控/寻路。该入口的 `contract_source` 指向 `cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py`，状态固定为 `draft_blocked_not_proven` / `observe_only`，PC 不直连小车，不发送命令，不声明真实成功。O7 Console 现在同时展示 `realtime_map_snapshot`、`elevator_state_snapshot`、`route_replay_snapshot`、`labeling_queue_snapshot`、`voice_asr_tts_snapshot`、`safe_command_snapshot` 和 `board_media_preflight_summary`，让 operator 看到 map_ref、map frame、pose freshness、route membership、电梯状态链、楼层证据、人工接管原因、历史回放 task selector、selected task、trajectory frame count/sample、playback cursor/status、keyframe/evidence refs、state transition gaps、标注 review queue、selected item、label schema、allowed label types、draft labels、submit/rollback audit、dataset export 缺口、ASR stream status、partial/final transcript 槽位、TTS draft/voice profile、speaker dispatch/ACK/audit 缺口、手动转向 envelope、velocity/steering limits、navigate goal envelope、map goal slot、cloud command endpoint、idempotency key、confirmation policy、robot ACK status、timeout/cancel/stop/recovery evidence gaps 以及板端 RTC/摄像头/音频/ASR/TTS/on-robot media smoke 缺口，但仍不能替代真实上车 smoke、真实 ROS2 `/tf`、真实地图、真实电梯、真实历史任务归档、真实逐帧回放、真实标注队列、真实标注提交/回滚、真实训练集导出、真实 ASR 输入流、真实 TTS 播放、真实 speaker ACK、真实云端 voice API、真实 safe command API、真实 robot ACK、真实手控/键盘/寻路、真实 cancel/stop/recovery、真实底盘安全或 <2s 延迟证明。PC 的 realtime/elevator probe 也可以指向板端 operator gateway 回环 `GET /api/o7/realtime-elevator/snapshot`，此时只读取 board HTTP snapshot 中的 `/amcl_pose` 摘要；`local_ros_pose_topic_connected=true` 不等于 cloud production、ROS2 `/tf`、地图、电梯或控制链路已接通。
 - O7 Live Endpoints Manifest：`GET /api/o7/live-endpoints/manifest` 返回 `trashbot.o7.live_endpoints_manifest.v1`，只读取 PC 后端进程环境变量并生成 O7-KR1..KR6 未来真实 API 的配置 readiness。当前 env 名称为 `O7_RTC_REALTIME_URL` / `O7_RTC_REALTIME_TOKEN`、`O7_CLOUD_ARCHIVE_URL` / `O7_CLOUD_ARCHIVE_TOKEN`、`O7_ROUTE_REPLAY_URL` / `O7_ROUTE_REPLAY_TOKEN`、`O7_ANNOTATION_API_URL` / `O7_ANNOTATION_API_TOKEN`、`O7_VOICE_API_URL` / `O7_VOICE_API_TOKEN`、`O7_SAFE_COMMAND_API_URL` / `O7_SAFE_COMMAND_TOKEN`。URL 只展示 `protocol://host/path`，不展示 query、hash、用户名或密码；token 只展示 `present` / `absent`。URL 含 credentials、query 或 hash 时 capability 标记为 `blocked` 且 `display_url=blocked_unsafe_url`；未配置 env 时 6 个 capability 都是 `not_configured`、`proof_status=not_proven`。该入口固定 `env_only=true`、`network_probe_executed=false`、`sends_commands=false`、`safe_to_control=false`、`connects_cloud_production=false`、`robot_control_executed=false`、`reads_hardware=false`、`token_values_exposed=false`、`url_query_hash_credentials_exposed=false`，并通过 `required_live_evidence` / `remaining_real_capability_gaps` 明确仍缺真实 RTC/视频、实时 pose、云归档、路线回放、标注提交、ASR/TTS、safe command API、robot ACK 和硬件安全证据。O7 Previews 页面只提供 `Load live endpoints manifest` 手动加载按钮，不提供 ping/connect/send/test command 类按钮。
 - O7 RTC Signaling/Media Contract：机器人/云 relay 侧新增 `GET /api/o7/rtc-signaling/contract`，返回 `trashbot.o7.rtc_signaling_contract.v1` 静态 fail-closed 合同，作为 PC 后续 probe 和板端 RTC 对接的协议入口清单。它不读取 PC env 或 relay env token，不执行网络探测，不创建 WebRTC session，不读取硬件，不发送命令；固定 `source=software_proof`、`proof_status=not_proven`、`network_probe_executed=false`、`webrtc_session_created=false`、`media_transport_connected=false`、`video_track_received=false`、`realtime_pose_stream_connected=false`、`real_ros2_tf_connected=false`、`safe_to_control=false`、`sends_commands=false`、`reads_hardware=false`、`robot_control_executed=false`、`delivery_success=false`。合同只列出后续真实打通所需的 signaling endpoint、session/idempotency、offer/answer、ICE candidates、video/audio tracks、pose/elevator realtime events、credential handling、observability/evidence refs、failure/timeout semantics 和 forbidden actions；不得把该 endpoint 解释成 RTC/视频/ROS2 `/tf` 已通。
@@ -214,6 +217,8 @@ Hardware Materials 是 Node-native 只读入口，不恢复旧 Python evidence g
 
 即使本地 JSON 读取成功，`delivery_success=false`、`primary_actions_enabled=false`、`safe_to_control=false` 仍固定不变。工作站不得因为存在 route/evidence fixture 而声明真实路线通过、真实投放完成或机器人可控制。
 
+Robot Control V1 读取到 Robot API status/latest/readback 也只能证明“PC 端可读到短摘要”。它不证明真实手控、真实 `/cmd_vel` 发布、真实 `/api/base/manual` 可用、真实 Nav2 goal dispatch、真实 map/radar runtime 启动、真实 Camera/LiDAR/Base HIL、真实 robot ACK 或真实 delivery success。Robot API 不可达、schema drift、缺字段、Mock fallback、O6 detail 不可达或危险 true 字段出现时，页面必须继续显示 blocked reason，并保持 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
+
 ## 禁止声明
 
 第一阶段不得声明完成：
@@ -226,6 +231,7 @@ Hardware Materials 是 Node-native 只读入口，不恢复旧 Python evidence g
 - 4G、云端、OSS/CDN 生产链路
 - 真实训练、真实标注、真实投放或真实交付成功
 - O7 实时地图/机器人位置、电梯状态链、历史路线回放、标注提交、ASR/TTS runtime、手控或寻路 dispatch
+- Robot Control V1 已经放开真实 `/api/base/manual`、`/cmd_vel`、Nav2 goal、map start、radar start、keyboard control 或 map click goal
 
 UI 不提供 Start、Confirm、Cancel、Dropoff、Collect 或任何真实控制入口。
 

@@ -1946,6 +1946,113 @@ export interface O7ConsumerTaskDetailResponse extends ProofFlags {
   primary_actions_enabled: false;
 }
 
+export type RobotApiReadEndpointId =
+  | "status"
+  | "map_proof_latest"
+  | "localize_proof_latest"
+  | "nav2_status"
+  | "nav2_proof_latest"
+  | "operator_report_latest"
+  | "camera_health"
+  | "camera_devices"
+  | "radar_status"
+  | "radar_scan_proof_latest"
+  | "radar_raw_packet_proof_latest"
+  | "base_status"
+  | "base_feedback_samples_latest";
+
+export interface RobotApiEndpointReadback {
+  id: RobotApiReadEndpointId;
+  endpoint: string;
+  http_status: number | null;
+  request_status: "loaded" | "blocked" | "fetch_failed" | "bad_json" | "not_object";
+  schema: string;
+  status: string;
+  evidence_ref: string;
+  key_values: Record<string, string>;
+  blocked_reasons: string[];
+  dangerous_true_fields: string[];
+}
+
+export interface RobotApiProofSummary {
+  managed_runtime_started: boolean | null;
+  scan_once_observed: boolean | null;
+  map_once_observed: boolean | null;
+  amcl_pose_observed: boolean | null;
+  localization_tf_observed: boolean | null;
+  planner_server_active: boolean | null;
+  path_generation_requested: boolean | null;
+  path_generation_succeeded: boolean | null;
+  path_generated: boolean | null;
+  path_point_count: number | null;
+  root_causes: string[];
+  not_proven: string[];
+}
+
+export interface RobotControlSummaryResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_summary.v1";
+  console_status: "blocked" | "loaded_fail_closed_summary";
+  source_base_url: string;
+  normalized_base_url: string;
+  proxy_policy: {
+    vue_direct_robot_api_access: false;
+    node_proxy_only: true;
+    allowed_methods: ["GET"];
+    allowed_endpoint_class: "status_latest_readback_only";
+    unsafe_urls_rejected: true;
+  };
+  observed_at_ms: number;
+  read_endpoints: RobotApiEndpointReadback[];
+  o3_proof_summary: RobotApiProofSummary;
+  robot_api_connection: {
+    status: "not_configured" | "blocked" | "degraded" | "readable";
+    loaded_count: number;
+    blocked_count: number;
+    failed_count: number;
+    schema_mismatch_count: number;
+    dangerous_true_fields: string[];
+    blocked_reasons: string[];
+    last_refresh_ms: number;
+  };
+  readback_summary: {
+    camera: {
+      status: string;
+      devices_status: string;
+      preview_status: "locked_no_webrtc_session";
+    };
+    lidar: {
+      status: string;
+      latest_scan_proof_status: string;
+      latest_raw_packet_proof_status: string;
+    };
+    base: {
+      status: string;
+      latest_feedback_status: string;
+      feedback_ack_status: string;
+    };
+  };
+  safe_command_boundary: {
+    manual_endpoint: "/api/base/manual";
+    cmd_vel_topic: "/cmd_vel";
+    nav2_goal: "Nav2 NavigateToPose locked";
+    map_start: "map start locked";
+    radar_start: "radar start locked";
+    keyboard_control: "keyboard control locked";
+    map_click_goal: "map click goal locked";
+    locked_reason: string;
+    command_dispatch_enabled: false;
+    manual_control_enabled: false;
+    navigate_goal_enabled: false;
+    keyboard_control_enabled: false;
+    robot_control_executed: false;
+  };
+  blocked_reasons: string[];
+  not_proven: string[];
+  safe_to_control: false;
+  delivery_success: false;
+  primary_actions_enabled: false;
+}
+
 export interface O7CloudArchiveTasksProbeResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1";
   probe_status: "loaded_fail_closed_contract" | "fail_closed";
@@ -2158,6 +2265,7 @@ export const API_ROUTES = [
   "/api/o7/voice-preview?fixtureJson=<local-json>",
   "/api/o7/safe-command-preview?fixtureJson=<local-json>",
   "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+  "/api/robot-control/summary?baseUrl=<robot-api-base-url>",
   "/api/proof-boundary",
 ] as const;
 
