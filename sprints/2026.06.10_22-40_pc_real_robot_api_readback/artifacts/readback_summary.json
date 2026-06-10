@@ -1,0 +1,64 @@
+{
+  "schema": "trashbot.sprint.pc_real_robot_api_readback.summary.v1",
+  "sprint": "2026.06.10_22-40_pc_real_robot_api_readback",
+  "source_base_url": "http://192.168.1.11:8787",
+  "service": {
+    "host": "op-z3-b6.home",
+    "systemd_state_before_start": "inactive",
+    "systemd_state_after_start": "active",
+    "port_8787_listening": true
+  },
+  "workstation_summary": {
+    "console_status": "blocked",
+    "loaded_count": 6,
+    "blocked_count": 4,
+    "failed_count": 3,
+    "path_generated": true,
+    "path_generation_succeeded": true,
+    "path_point_count": 31
+  },
+  "camera": {
+    "direct_status": "ready",
+    "direct_devices": [
+      "/dev/video0",
+      "/dev/video1",
+      "/dev/video2"
+    ],
+    "workstation_status": "fetch_failed",
+    "workstation_blocker": "read_timeout_1500ms"
+  },
+  "radar": {
+    "direct_status": "fresh_scan_proof_observed",
+    "direct_latest_scan_proof_state": "scan_once_hz_raw_packet_tf_observed",
+    "workstation_status": "scan_once_hz_raw_packet_tf_observed"
+  },
+  "base": {
+    "direct_status": "loaded",
+    "port": "/dev/ttyS5",
+    "baudrate": 115200,
+    "t1001_observed": true,
+    "workstation_status": "blocked",
+    "workstation_blockers": [
+      "dangerous_true_field:feedback_readback.sends_commands",
+      "dangerous_true_field:sends_commands",
+      "dangerous_true_field:latest_result.sends_commands"
+    ]
+  },
+  "blocked_endpoints": [
+    "localize_proof_latest:http_status_404",
+    "operator_report_latest:http_status_404",
+    "base_status:dangerous_true_field",
+    "base_feedback_samples_latest:dangerous_true_field"
+  ],
+  "failed_endpoints": [
+    "status:timeout",
+    "camera_health:timeout",
+    "camera_devices:timeout"
+  ],
+  "proof_boundary": {
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "source": "software_proof"
+  }
+}

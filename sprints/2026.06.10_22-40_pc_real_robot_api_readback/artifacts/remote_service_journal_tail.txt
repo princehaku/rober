@@ -1,0 +1,49 @@
+Jun 10 14:41:15 op-z3-b6.home systemd[1]: Stopping Trashbot unified upper robot API...
+Jun 10 14:41:15 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Deactivated successfully.
+Jun 10 14:41:15 op-z3-b6.home systemd[1]: Stopped Trashbot unified upper robot API.
+Jun 10 14:41:15 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Consumed 1.156s CPU time.
+Jun 10 14:41:15 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 10 14:41:16 op-z3-b6.home env[165508]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
+Jun 10 22:14:36 op-z3-b6.home systemd[1]: Stopping Trashbot unified upper robot API...
+Jun 10 22:14:36 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Deactivated successfully.
+Jun 10 22:14:36 op-z3-b6.home systemd[1]: Stopped Trashbot unified upper robot API.
+Jun 10 22:14:36 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Consumed 3min 42.098s CPU time.
+Jun 10 22:14:36 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 10 22:14:37 op-z3-b6.home env[168705]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
+Jun 10 22:17:22 op-z3-b6.home systemd[1]: Stopping Trashbot unified upper robot API...
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: State 'final-sigterm' timed out. Killing.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Killing process 168919 (python3) with signal SIGKILL.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Killing process 168931 (n/a) with signal SIGKILL.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Killing process 168932 (python3) with signal SIGKILL.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Killing process 168933 (n/a) with signal SIGKILL.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Killing process 168934 (n/a) with signal SIGKILL.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Killing process 168935 (n/a) with signal SIGKILL.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Killing process 168936 (n/a) with signal SIGKILL.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Killing process 168937 (n/a) with signal SIGKILL.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Killing process 168938 (n/a) with signal SIGKILL.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Killing process 168939 (n/a) with signal SIGKILL.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Killing process 168941 (n/a) with signal SIGKILL.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Killing process 168942 (python3) with signal SIGKILL.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Failed with result 'timeout'.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: Stopped Trashbot unified upper robot API.
+Jun 10 22:18:52 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Consumed 3min 30.948s CPU time.
+Jun 10 22:22:37 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 10 22:22:38 op-z3-b6.home env[171403]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
+Jun 10 22:25:34 op-z3-b6.home systemd[1]: Stopping Trashbot unified upper robot API...
+Jun 10 22:25:34 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Deactivated successfully.
+Jun 10 22:25:34 op-z3-b6.home systemd[1]: Stopped Trashbot unified upper robot API.
+Jun 10 22:25:34 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Consumed 3min 27.658s CPU time.
+Jun 10 22:26:44 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 10 22:26:46 op-z3-b6.home env[173161]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
+Jun 10 22:29:42 op-z3-b6.home systemd[1]: Stopping Trashbot unified upper robot API...
+Jun 10 22:29:42 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Deactivated successfully.
+Jun 10 22:29:42 op-z3-b6.home systemd[1]: Stopped Trashbot unified upper robot API.
+Jun 10 22:29:42 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Consumed 3min 24.880s CPU time.
+Jun 10 22:30:19 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 10 22:30:20 op-z3-b6.home env[175212]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
+Jun 10 22:33:25 op-z3-b6.home systemd[1]: Stopping Trashbot unified upper robot API...
+Jun 10 22:33:25 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Deactivated successfully.
+Jun 10 22:33:25 op-z3-b6.home systemd[1]: Stopped Trashbot unified upper robot API.
+Jun 10 22:33:25 op-z3-b6.home systemd[1]: trashbot-upper-robot-api.service: Consumed 3min 37.933s CPU time.
+Jun 10 22:39:52 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 10 22:39:53 op-z3-b6.home env[177814]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
