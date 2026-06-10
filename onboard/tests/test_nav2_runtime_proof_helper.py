@@ -51,6 +51,12 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "--managed-map-yaml",
             "--initialpose-opt-in",
             "--initialpose-yaw",
+            "--path-generation-opt-in",
+            "--path-generation-timeout-s",
+            "--path-goal-frame-id",
+            "--path-goal-x",
+            "--path-goal-y",
+            "--path-goal-yaw",
         ):
             self.assertIn(required, result.stdout)
         self.assertNotIn("ros2 launch", result.stdout)
@@ -63,6 +69,12 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertEqual("", args.managed_map_yaml)
         self.assertEqual(20.0, args.managed_timeout_s)
         self.assertFalse(args.initialpose_opt_in)
+        self.assertFalse(args.path_generation_opt_in)
+        self.assertEqual(20.0, args.path_generation_timeout_s)
+        self.assertEqual("map", args.path_goal_frame_id)
+        self.assertEqual(0.8, args.path_goal_x)
+        self.assertEqual(0.0, args.path_goal_y)
+        self.assertEqual(0.0, args.path_goal_yaw)
 
     def test_parse_args_managed_without_initialpose(self) -> None:
         """managed runtime 与 initialpose 解耦，单独开启 runtime 时不能隐式发布 pose。"""
@@ -104,6 +116,7 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertAlmostEqual(1.5, request["x"])
         self.assertAlmostEqual(-0.5, request["y"])
         self.assertAlmostEqual(0.7, request["yaw"])
+        self.assertFalse(args.path_generation_opt_in)
 
     def test_managed_runtime_shell_stays_no_motion(self) -> None:
         """managed runtime 只允许 localization graph，禁止 planner/controller/底盘 UART。"""
@@ -140,6 +153,38 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "/cmd_vel",
             "serial.Serial",
         ):
+            self.assertNotIn(forbidden, shell)
+
+    def test_path_generation_opt_in_adds_planner_without_controller(self) -> None:
+        """path opt-in 只允许 planner_server 和 ComputePathToPose，不拉起 controller/BT。"""
+        args = HELPER.parse_args(
+            [
+                "--managed-runtime-opt-in",
+                "--managed-map-yaml",
+                "/tmp/test_map.yaml",
+                "--initialpose-opt-in",
+                "--path-generation-opt-in",
+                "--path-goal-x",
+                "0.8",
+            ]
+        )
+        request = HELPER.path_generation_request(args)
+        params = HELPER.managed_param_file_text(args, "/tmp/test_map.yaml", include_planner_server=True)
+        shell = HELPER.build_managed_runtime_shell(
+            args,
+            map_yaml="/tmp/test_map.yaml",
+            params_path="/tmp/runtime.yaml",
+            log_path="/tmp/runtime.log",
+            include_planner_server=True,
+        )
+
+        self.assertTrue(request["enabled"])
+        self.assertAlmostEqual(0.8, request["x"])
+        self.assertIn("planner_server:", params)
+        self.assertIn('node_names: ["map_server", "amcl", "planner_server"]', params)
+        self.assertIn("nav2_planner planner_server", shell)
+        self.assertIn("no_motion_path_generation_planner_only", shell)
+        for forbidden in ("controller_server", "bt_navigator", "FollowPath", "/cmd_vel", "ros2 action send_goal"):
             self.assertNotIn(forbidden, shell)
 
     def test_managed_param_file_only_lists_localization_nodes(self) -> None:
@@ -185,7 +230,9 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         for forbidden in (
             "ros2 action send_goal",
             "NavigateToPose",
-            "ComputePathToPose",
+            "FollowPath",
+            "ros2 run nav2_bt_navigator",
+            "controller_server --ros-args",
             "serial.Serial(",
         ):
             self.assertNotIn(forbidden, text)
@@ -210,6 +257,37 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         ):
             self.assertIn(required, text)
 
+    def test_static_path_generation_opt_in_collector_shape(self) -> None:
+        """path generation opt-in 分支必须显式存在，且默认仍然不进入控制层。"""
+        text = SCRIPT.read_text(encoding="utf-8")
+
+        for required in (
+            "path_generation_opt_in",
+            "path_generation_timeout_s",
+            "path_goal_frame_id",
+            "path_goal_x",
+            "path_goal_y",
+            "path_goal_yaw",
+            "ComputePathToPose",
+            "path_generation_service_name",
+            "path_generation_service_available",
+            "path_generation_succeeded",
+            "path_point_count",
+            "planner_server_active",
+            "controller_server_active",
+            "controller_server_requested",
+            "planner_readiness_summary",
+            "explicit_opt_in_compute_path_to_pose_action_no_motion",
+        ):
+            self.assertIn(required, text)
+
+        for forbidden in (
+            "NavigateToPose",
+            "FollowPath",
+            "delivery_success=true",
+        ):
+            self.assertNotIn(forbidden, text)
+
     def test_upper_api_passes_managed_and_initialpose_opt_in_only_from_body(self) -> None:
         """正式 HTTP refresh 必须显式透传 managed runtime 与 initialpose 两类 opt-in。"""
         api_text = (SCRIPT.parent / "upper_robot_api.py").read_text(encoding="utf-8")
@@ -219,10 +297,22 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "managed_timeout_s=clamp_float(body.get(\"managed_timeout_s\")",
             "managed_map_yaml=str(body.get(\"managed_map_yaml\") or \"\")[:400]",
             "initialpose_opt_in=bool(body.get(\"initialpose_opt_in\") is True)",
+            "path_generation_opt_in=bool(body.get(\"path_generation_opt_in\") is True)",
+            "path_generation_timeout_s=clamp_float(body.get(\"path_generation_timeout_s\")",
+            "path_goal_frame_id=str(body.get(\"path_goal_frame_id\") or \"map\")[:80]",
+            "path_goal_x=clamp_float(body.get(\"path_goal_x\")",
+            "path_goal_y=clamp_float(body.get(\"path_goal_y\")",
+            "path_goal_yaw=clamp_float(body.get(\"path_goal_yaw\")",
             "--managed-runtime-opt-in",
             "--managed-timeout-s",
             "--managed-map-yaml",
             "--initialpose-opt-in",
+            "--path-generation-opt-in",
+            "--path-generation-timeout-s",
+            "--path-goal-frame-id",
+            "--path-goal-x",
+            "--path-goal-y",
+            "--path-goal-yaw",
         ):
             self.assertIn(required, api_text)
 
@@ -231,6 +321,15 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "\"calls_base_manual\": False",
             "\"sends_base_motion_commands\": False",
             "\"hil_pass\": False",
+            "\"path_generation_requested\"",
+            "\"path_generation_service_name\"",
+            "\"path_generation_service_available\"",
+            "\"path_generation_succeeded\"",
+            "\"path_point_count\"",
+            "\"planner_server_active\"",
+            "\"controller_server_active\"",
+            "\"controller_server_requested\"",
+            "\"planner_readiness_summary\"",
         ):
             self.assertIn(required, api_text)
 

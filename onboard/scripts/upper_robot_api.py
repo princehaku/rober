@@ -463,6 +463,12 @@ def run_nav2_runtime_proof_helper(
     initialpose_y: float,
     initialpose_yaw: float,
     initialpose_frame_id: str,
+    path_generation_opt_in: bool,
+    path_generation_timeout_s: float,
+    path_goal_frame_id: str,
+    path_goal_x: float,
+    path_goal_y: float,
+    path_goal_yaw: float,
 ) -> dict[str, Any]:
     """运行 no-motion AMCL/Nav2 collector；managed runtime 与 initialpose 都必须显式 opt-in。"""
     script_path = Path(__file__).resolve().with_name("o10_amcl_nav2_runtime_proof.py")
@@ -504,6 +510,23 @@ def run_nav2_runtime_proof_helper(
                 initialpose_frame_id,
             ]
         )
+    if path_generation_opt_in:
+        # 路径生成同样必须显式 opt-in，默认 refresh 只做只读定位 proof。
+        command.extend(
+            [
+                "--path-generation-opt-in",
+                "--path-generation-timeout-s",
+                str(path_generation_timeout_s),
+                "--path-goal-frame-id",
+                path_goal_frame_id,
+                "--path-goal-x",
+                str(path_goal_x),
+                "--path-goal-y",
+                str(path_goal_y),
+                "--path-goal-yaw",
+                str(path_goal_yaw),
+            ]
+        )
     started_ms = now_ms()
     try:
         completed = subprocess.run(  # noqa: S603 - argv 固定为仓库 helper，不接受外部 shell。
@@ -528,6 +551,7 @@ def run_nav2_runtime_proof_helper(
             "calls_base_manual": False,
             "managed_runtime_opt_in": managed_runtime_opt_in,
             "initialpose_opt_in": initialpose_opt_in,
+            "path_generation_opt_in": path_generation_opt_in,
             "robot_control_executed": False,
             "hil_pass": False,
         }
@@ -546,6 +570,7 @@ def run_nav2_runtime_proof_helper(
             "publishes_cmd_vel": False,
             "calls_base_manual": False,
             "managed_runtime_opt_in": managed_runtime_opt_in,
+            "path_generation_opt_in": path_generation_opt_in,
             "robot_control_executed": False,
             "hil_pass": False,
         }
@@ -562,6 +587,7 @@ def run_nav2_runtime_proof_helper(
             "publishes_cmd_vel": False,
             "calls_base_manual": False,
             "managed_runtime_opt_in": managed_runtime_opt_in,
+            "path_generation_opt_in": path_generation_opt_in,
             "robot_control_executed": False,
             "hil_pass": False,
         }
@@ -1560,6 +1586,12 @@ def summarize_nav2_lifecycle_latest_artifact(path: str) -> dict[str, Any]:
             "latest_amcl_pose_observed": ("amcl_pose_observed", "/amcl_pose_observed"),
             "latest_path_generation_ready": ("path_generation_ready", "global_path_generation_ready"),
             "latest_path_generated": ("path_generated", "global_path_generated"),
+            "latest_path_generation_requested": ("path_generation_requested", "global_path_generation_requested"),
+            "latest_path_generation_attempted": ("path_generation_attempted", "global_path_generation_attempted"),
+            "latest_path_generation_service_name": ("path_generation_service_name", "global_path_generation_service_name"),
+            "latest_path_generation_service_available": ("path_generation_service_available", "global_path_generation_service_available"),
+            "latest_path_generation_succeeded": ("path_generation_succeeded", "global_path_generation_succeeded"),
+            "latest_path_point_count": ("path_point_count", "global_path_point_count"),
         },
     )
 
@@ -3223,6 +3255,12 @@ class UpperRobotApi:
             initialpose_y=clamp_float(body.get("initialpose_y"), 0.0, -1000.0, 1000.0),
             initialpose_yaw=clamp_float(body.get("initialpose_yaw"), 0.0, -6.283185307179586, 6.283185307179586),
             initialpose_frame_id=str(body.get("initialpose_frame_id") or "map")[:80],
+            path_generation_opt_in=bool(body.get("path_generation_opt_in") is True),
+            path_generation_timeout_s=clamp_float(body.get("path_generation_timeout_s"), timeout_s, 4.0, 45.0),
+            path_goal_frame_id=str(body.get("path_goal_frame_id") or "map")[:80],
+            path_goal_x=clamp_float(body.get("path_goal_x"), 0.8, -1000.0, 1000.0),
+            path_goal_y=clamp_float(body.get("path_goal_y"), 0.0, -1000.0, 1000.0),
+            path_goal_yaw=clamp_float(body.get("path_goal_yaw"), 0.0, -6.283185307179586, 6.283185307179586),
         )
         http_status, latest = self.nav2_proof_latest()
         proof = latest.get("latest_result", {}).get("proof") if isinstance(latest.get("latest_result"), dict) else {}
@@ -3246,6 +3284,12 @@ class UpperRobotApi:
                 "managed_timeout_s": clamp_float(body.get("managed_timeout_s"), timeout_s, 4.0, 45.0),
                 "managed_map_yaml": str(body.get("managed_map_yaml") or "")[:400],
                 "initialpose_opt_in": bool(body.get("initialpose_opt_in") is True),
+                "path_generation_opt_in": bool(body.get("path_generation_opt_in") is True),
+                "path_generation_timeout_s": clamp_float(body.get("path_generation_timeout_s"), timeout_s, 4.0, 45.0),
+                "path_goal_frame_id": str(body.get("path_goal_frame_id") or "map")[:80],
+                "path_goal_x": clamp_float(body.get("path_goal_x"), 0.8, -1000.0, 1000.0),
+                "path_goal_y": clamp_float(body.get("path_goal_y"), 0.0, -1000.0, 1000.0),
+                "path_goal_yaw": clamp_float(body.get("path_goal_yaw"), 0.0, -6.283185307179586, 6.283185307179586),
                 "latest_readback_http_status": http_status,
                 "latest_result": latest.get("latest_result"),
                 "proof_latest": summarize_nav2_lifecycle_latest_artifact(self.nav2_lifecycle_artifact_path),
@@ -3264,14 +3308,28 @@ class UpperRobotApi:
                 "robot_control_executed": False,
                 "safe_to_control": False,
                 "hil_pass": False,
-                "path_generated": False,
+                "path_generated": bool(proof.get("path_generated")) if isinstance(proof, dict) else False,
                 "path_execution_attempted": False,
+                "path_generation_requested": bool(proof.get("path_generation_requested")) if isinstance(proof, dict) else False,
+                "path_generation_attempted": bool(proof.get("path_generation_attempted")) if isinstance(proof, dict) else False,
+                "path_generation_service_name": proof.get("path_generation_service_name") if isinstance(proof, dict) else None,
+                "path_generation_service_available": bool(proof.get("path_generation_service_available")) if isinstance(proof, dict) else False,
+                "path_generation_succeeded": bool(proof.get("path_generation_succeeded")) if isinstance(proof, dict) else False,
+                "path_point_count": int(proof.get("path_point_count") or 0) if isinstance(proof, dict) else 0,
+                "path_goal_request": proof.get("path_goal_request") if isinstance(proof, dict) else None,
+                "path_goal_response": proof.get("path_goal_response") if isinstance(proof, dict) else None,
+                "path_generation_boundary": proof.get("path_generation_boundary") if isinstance(proof, dict) else None,
+                "planner_server_active": bool(proof.get("planner_server_active")) if isinstance(proof, dict) else False,
+                "controller_server_active": bool(proof.get("controller_server_active")) if isinstance(proof, dict) else False,
+                "controller_server_requested": bool(proof.get("controller_server_requested")) if isinstance(proof, dict) else False,
+                "planner_readiness_summary": proof.get("planner_readiness_summary") if isinstance(proof, dict) else None,
                 "read_only_existing_ros_graph": bool(body.get("managed_runtime_opt_in") is not True),
                 "blocked_commands_not_sent": ["T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual"],
                 "transition_to_proven": [
                     "managed runtime or existing graph keeps map_server/amcl active without /dev/ttyS5",
                     "/scan and /map observed in the same no-motion ROS2 graph",
                     "/amcl_pose observed when initialpose opt-in is requested",
+                    "explicit opt-in path generation may call ComputePathToPose without publishing /cmd_vel",
                     "cleanup leaves no managed runtime process group behind",
                     f"GET {ROUTE_PATHS['nav2_proof_latest']} returns the same artifact",
                 ],

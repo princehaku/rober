@@ -258,6 +258,19 @@ no-motion initialpose/localization proof。默认 body 不传
 - Artifact 必须继续保留 `safe_to_control=false`、`publishes_cmd_vel=false`、
   `calls_base_manual=false`、`uses_base_uart=false`、`delivery_success=false`。
 - 即使 `/amcl_pose` 或 TF 被观测，也只能说明 no-motion localization proof 前进；
+
+`2026-06-10 09:05` 起，path generation proof 也走同一个 helper/API，但仍然必须显式
+opt-in。默认 body 不传 `"path_generation_opt_in": true` 时，helper 不会调用
+`ComputePathToPose`；只有在 managed runtime + initialpose/localization 已成立后，
+才会在 no-motion 边界内尝试一次 planner 计算，并把 path 点数、目标、响应和
+planner readiness 一起写入 artifact。
+
+这一步仍然不等于可发车：
+
+- 允许：一次 `ComputePathToPose` 风格的 planner 计算。
+- 禁止：`NavigateToPose`、`FollowPath`、`/cmd_vel`、`/api/base/*`、`bt_navigator`
+  以及任何默认 motion side effect。
+- `safe_to_control`、`delivery_success` 仍然必须保持 `false`。
 仍不等于 path generation、path execution、fixed-route execution、HIL 或送达成功。
 
 `2026-06-10 09:15` 起，`o10_amcl_nav2_runtime_proof.py` 增加显式 opt-in 的

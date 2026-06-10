@@ -51,9 +51,14 @@ BLOCKED_COMMAND_TOKENS = [
     "/api/base/",
     "/api/nav2/start",
     "/api/nav2/stop",
-    "compute_path_to_pose",
     "navigate_to_pose",
 ]
+PATH_GENERATION_ACTION_CANDIDATES = [
+    "/planner_server/compute_path_to_pose",
+    "/compute_path_to_pose",
+    "compute_path_to_pose",
+]
+NAV2_PLANNER_CONFIG_PATH = Path(__file__).resolve().parents[1] / "src" / "ros2_trashbot_nav" / "config" / "nav2_params.yaml"
 
 
 def now_ms() -> int:
@@ -275,6 +280,83 @@ def initialpose_payload(request: dict[str, Any]) -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
+def path_generation_request(args: argparse.Namespace) -> dict[str, Any]:
+    """路径生成只接受显式 opt-in 的单次目标请求，默认不会进入 planner。"""
+    yaw = float(args.path_goal_yaw)
+    return {
+        "enabled": bool(args.path_generation_opt_in),
+        "frame_id": str(args.path_goal_frame_id),
+        "x": float(args.path_goal_x),
+        "y": float(args.path_goal_y),
+        "yaw": yaw,
+        # ComputePathToPose 允许显式 start，但 no-motion proof 优先依赖当前 TF/定位结果。
+        "use_start": False,
+        "planner_id": "",
+        "orientation_z": math.sin(yaw / 2.0),
+        "orientation_w": math.cos(yaw / 2.0),
+    }
+
+
+def path_goal_pose(request: dict[str, Any]) -> dict[str, Any]:
+    """把 planner 目标整理成 artifact 里的稳定结构，便于远端回放请求内容。"""
+    return {
+        "frame_id": request["frame_id"],
+        "position": {"x": request["x"], "y": request["y"], "z": 0.0},
+        "orientation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": request["orientation_z"],
+            "w": request["orientation_w"],
+        },
+    }
+
+
+def build_planner_readiness_summary(
+    *,
+    managed_runtime: dict[str, Any],
+    localization_ready: bool,
+    planner_server_active: bool,
+    controller_server_requested: bool,
+    controller_server_active: bool,
+    path_generation_request: dict[str, Any],
+    path_generation_attempted: bool,
+    path_generation_succeeded: bool,
+    path_point_count: int,
+) -> dict[str, Any]:
+    """把 planner readiness 压成一份可读摘要，避免下游从顶层布尔值误判可控状态。"""
+    return {
+        "managed_runtime_requested": bool(managed_runtime.get("requested")),
+        "managed_runtime_started": bool(managed_runtime.get("started")),
+        "managed_runtime_boundary": managed_runtime.get("boundary"),
+        "localization_ready": bool(localization_ready),
+        "path_generation_requested": bool(path_generation_request["enabled"]),
+        "path_generation_attempted": bool(path_generation_attempted),
+        "planner_server_active": bool(planner_server_active),
+        "controller_server_requested": bool(controller_server_requested),
+        "controller_server_active": bool(controller_server_active),
+        "path_generation_succeeded": bool(path_generation_succeeded),
+        "path_generated": bool(path_generation_succeeded and path_point_count > 0),
+        "path_point_count": int(path_point_count),
+    }
+
+
+def parse_pose_stamped(request: dict[str, Any]) -> str:
+    """把 path goal 转成 ROS2 CLI 可读的 PoseStamped JSON，便于 action / CLI 双路径调试。"""
+    payload = {
+        "header": {"frame_id": request["frame_id"]},
+        "pose": {
+            "position": {"x": request["x"], "y": request["y"], "z": 0.0},
+            "orientation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": request["orientation_z"],
+                "w": request["orientation_w"],
+            },
+        },
+    }
+    return json.dumps(payload, ensure_ascii=False)
+
+
 def maybe_publish_initialpose(args: argparse.Namespace, ros2_ok: bool) -> tuple[dict[str, Any], dict[str, Any]]:
     """显式 opt-in 时只发布一次 /initialpose；默认路径不产生任何额外 ROS 写动作。"""
     request = initialpose_request(args)
@@ -299,6 +381,221 @@ def maybe_publish_initialpose(args: argparse.Namespace, ros2_ok: bool) -> tuple[
         f"geometry_msgs/msg/PoseWithCovarianceStamped {shlex.quote(payload)}"
     )
     return request, run_ros(args, command, timeout_s=8.0)
+
+
+def maybe_compute_path_generation(
+    args: argparse.Namespace,
+    *,
+    ros2_ok: bool,
+    localization_ready: bool,
+    planner_server_active: bool,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[dict[str, str]]]:
+    """显式 opt-in 时只尝试一次 ComputePathToPose；默认路径不进入 planner/action。"""
+    request = path_generation_request(args)
+    if not request["enabled"]:
+        return request, {
+            "attempted": False,
+            "ok": False,
+            "boundary": "default_read_only_no_path_generation_attempt",
+        }, {
+            "attempted": False,
+            "ok": False,
+            "boundary": "path_generation_opt_in_disabled_no_compute_path_call",
+        }, []
+    if not ros2_ok:
+        return request, {
+            "attempted": False,
+            "ok": False,
+            "boundary": "path_generation_requested_but_ros2_unavailable",
+        }, {
+            "attempted": False,
+            "ok": False,
+            "boundary": "path_generation_requested_but_ros2_unavailable",
+        }, [{"layer": "ROS install/source", "reason": "ros2_command_unavailable_after_bash_source"}]
+    if not localization_ready:
+        return request, {
+            "attempted": False,
+            "ok": False,
+            "boundary": "path_generation_blocked_by_localization_not_ready",
+        }, {
+            "attempted": False,
+            "ok": False,
+            "boundary": "path_generation_blocked_by_localization_not_ready",
+        }, [{"layer": "planner readiness", "reason": "localization_not_ready_for_path_generation"}]
+    if not planner_server_active:
+        return request, {
+            "attempted": False,
+            "ok": False,
+            "boundary": "path_generation_blocked_by_planner_server_inactive",
+        }, {
+            "attempted": False,
+            "ok": False,
+            "boundary": "path_generation_blocked_by_planner_server_inactive",
+        }, [{"layer": "planner readiness", "reason": "planner_server_not_active"}]
+    try:
+        import rclpy
+        from geometry_msgs.msg import PoseStamped  # type: ignore[import-not-found]
+        from nav2_msgs.action import ComputePathToPose  # type: ignore[import-not-found]
+        from rclpy.action import ActionClient  # type: ignore[import-not-found]
+    except Exception as exc:  # noqa: BLE001 - 现场若缺 ROS Python 依赖，必须把 blocker 写回 artifact。
+        error = compact_error(exc)
+        boundary = "path_generation_python_runtime_unavailable"
+        return request, {
+            "attempted": True,
+            "ok": False,
+            "boundary": boundary,
+            "error": error,
+        }, {
+            "attempted": True,
+            "ok": False,
+            "boundary": boundary,
+            "error": error,
+        }, [{"layer": "ROS python runtime", "reason": f"{error['type']}:{error['message']}"}]
+
+    started_ms = now_ms()
+    action_name = ""
+    result_payload: dict[str, Any] = {
+        "attempted": True,
+        "ok": False,
+        "boundary": "path_generation_attempt_started",
+        "service_name": None,
+        "service_available": False,
+        "goal_accepted": False,
+        "result_received": False,
+        "result_ok": False,
+        "path_generated": False,
+        "path_point_count": 0,
+        "path_goal_request": {
+            "goal_frame_id": request["frame_id"],
+            "goal_x": request["x"],
+            "goal_y": request["y"],
+            "goal_yaw": request["yaw"],
+            "planner_id": request["planner_id"],
+            "use_start": request["use_start"],
+        },
+        "path_goal_response": {},
+        "planning_time_ms": None,
+        "elapsed_ms": 0,
+        "error": None,
+    }
+
+    node = None
+    rclpy_initialized = False
+    try:
+        rclpy.init(args=[])
+        rclpy_initialized = True
+        node = rclpy.create_node("o10_path_generation_probe")
+
+        def build_goal() -> Any:
+            goal_msg = ComputePathToPose.Goal()
+            goal_msg.goal = PoseStamped()
+            goal_msg.goal.header.frame_id = request["frame_id"]
+            goal_msg.goal.pose.position.x = request["x"]
+            goal_msg.goal.pose.position.y = request["y"]
+            goal_msg.goal.pose.position.z = 0.0
+            goal_msg.goal.pose.orientation.x = 0.0
+            goal_msg.goal.pose.orientation.y = 0.0
+            goal_msg.goal.pose.orientation.z = request["orientation_z"]
+            goal_msg.goal.pose.orientation.w = request["orientation_w"]
+            goal_msg.start = PoseStamped()
+            goal_msg.start.header.frame_id = request["frame_id"]
+            goal_msg.start.pose.position.x = request["x"]
+            goal_msg.start.pose.position.y = request["y"]
+            goal_msg.start.pose.orientation.z = request["orientation_z"]
+            goal_msg.start.pose.orientation.w = request["orientation_w"]
+            goal_msg.planner_id = request["planner_id"]
+            goal_msg.use_start = bool(request["use_start"])
+            return goal_msg
+
+        for candidate in PATH_GENERATION_ACTION_CANDIDATES:
+            client = ActionClient(node, ComputePathToPose, candidate)
+            if client.wait_for_server(timeout_sec=min(max(float(args.path_generation_timeout_s), 1.0), 5.0)):
+                action_name = candidate
+                result_payload["service_name"] = candidate
+                result_payload["service_available"] = True
+                goal_future = client.send_goal_async(build_goal())
+                rclpy.spin_until_future_complete(node, goal_future, timeout_sec=max(float(args.path_generation_timeout_s), 5.0))
+                goal_handle = goal_future.result()
+                if goal_handle is None:
+                    result_payload["boundary"] = "path_generation_goal_handle_missing"
+                    result_payload["error"] = {"type": "goal_handle_missing", "message": "action goal handle is None"}
+                    break
+                result_payload["goal_accepted"] = bool(getattr(goal_handle, "accepted", False))
+                if not result_payload["goal_accepted"]:
+                    result_payload["boundary"] = "path_generation_goal_rejected"
+                    result_payload["path_goal_response"] = {"accepted": False}
+                    break
+                result_future = goal_handle.get_result_async()
+                rclpy.spin_until_future_complete(
+                    node,
+                    result_future,
+                    timeout_sec=max(float(args.path_generation_timeout_s), 5.0),
+                )
+                result = result_future.result()
+                if result is None:
+                    result_payload["boundary"] = "path_generation_result_missing"
+                    result_payload["path_goal_response"] = {"accepted": True, "result_received": False}
+                    break
+                path = getattr(result.result, "path", None)
+                poses = list(getattr(path, "poses", []) or []) if path is not None else []
+                planning_time = getattr(result.result, "planning_time", None)
+                planning_time_ms = None
+                if planning_time is not None:
+                    planning_time_ms = int((float(getattr(planning_time, "sec", 0)) * 1000) + (float(getattr(planning_time, "nanosec", 0)) / 1_000_000.0))
+                result_payload.update(
+                    {
+                        "result_received": True,
+                        "result_ok": True,
+                        "path_generated": bool(poses),
+                        "path_point_count": len(poses),
+                        "planning_time_ms": planning_time_ms,
+                        "path_goal_response": {
+                            "accepted": True,
+                            "result_received": True,
+                            "path_frame_id": getattr(path.header, "frame_id", None) if path is not None else None,
+                            "path_point_count": len(poses),
+                            "planning_time_ms": planning_time_ms,
+                        },
+                    }
+                )
+                result_payload["boundary"] = "explicit_opt_in_compute_path_to_pose_action_no_motion"
+                break
+        else:
+            result_payload["boundary"] = "path_generation_action_unavailable"
+            result_payload["path_goal_response"] = {"accepted": False, "result_received": False}
+    except Exception as exc:  # noqa: BLE001 - action/client 失败必须回写结构化 blocker。
+        result_payload["boundary"] = "path_generation_attempt_failed"
+        result_payload["error"] = compact_error(exc)
+    finally:
+        result_payload["elapsed_ms"] = now_ms() - started_ms
+        result_payload["action_name"] = action_name
+        if node is not None:
+            try:
+                node.destroy_node()
+            except Exception:
+                pass
+        if rclpy_initialized:
+            try:
+                if rclpy.ok():
+                    rclpy.shutdown()
+            except Exception:
+                pass
+
+    path_generation_causes: list[dict[str, str]] = []
+    if not result_payload["service_available"]:
+        path_generation_causes.append({"layer": "planner action", "reason": "compute_path_to_pose_action_unavailable"})
+    if result_payload["service_available"] and not result_payload["goal_accepted"]:
+        path_generation_causes.append({"layer": "planner action", "reason": "compute_path_to_pose_goal_rejected"})
+    if result_payload["service_available"] and result_payload["goal_accepted"] and not result_payload["result_received"]:
+        path_generation_causes.append({"layer": "planner action", "reason": "compute_path_to_pose_result_missing"})
+    if result_payload["service_available"] and result_payload["result_received"] and not result_payload["path_generated"]:
+        path_generation_causes.append({"layer": "planner action", "reason": "compute_path_to_pose_empty_path"})
+    result_payload["ok"] = bool(result_payload["path_generated"])
+    return request, result_payload, {
+        "attempted": bool(result_payload["attempted"]),
+        "ok": bool(result_payload["ok"]),
+        "boundary": result_payload["boundary"],
+    }, path_generation_causes
 
 
 def text_contains_any(text: str, needles: list[str]) -> bool:
@@ -367,11 +664,14 @@ def parse_lifecycle_active(result: dict[str, Any]) -> bool:
     return False
 
 
-def lifecycle_checks(args: argparse.Namespace) -> tuple[dict[str, bool], dict[str, dict[str, Any]]]:
+def lifecycle_checks(
+    args: argparse.Namespace,
+    nodes: dict[str, str] | None = None,
+) -> tuple[dict[str, bool], dict[str, dict[str, Any]]]:
     """只读 lifecycle 状态；不调用 transition，不启动 planner/controller。"""
     active: dict[str, bool] = {}
     results: dict[str, dict[str, Any]] = {}
-    for key, node in LOCALIZATION_LIFECYCLE_NODES.items():
+    for key, node in (nodes or LOCALIZATION_LIFECYCLE_NODES).items():
         # 现场板子上 lifecycle RPC 偶发慢于 topic echo，因此给它更宽的超时窗口。
         result = run_ros(args, f"ros2 lifecycle get {shlex.quote(node)}", timeout_s=10.0)
         active[key] = parse_lifecycle_active(result)
@@ -395,67 +695,130 @@ def merge_lifecycle_recheck(
     return merged_active, merged_results
 
 
-def managed_param_file_text(args: argparse.Namespace, map_yaml: str) -> str:
-    """managed runtime 参数文件只覆盖 localization proof 所需字段，避免拉起运动能力。"""
-    return "\n".join(
-        [
-            "map_server:",
-            "  ros__parameters:",
-            f"    use_sim_time: false",
-            f"    yaml_filename: {json.dumps(map_yaml)}",
-            "amcl:",
-            "  ros__parameters:",
-            "    use_sim_time: false",
-            f"    base_frame_id: {json.dumps(args.managed_base_frame_id)}",
-            f"    odom_frame_id: {json.dumps(args.managed_odom_frame_id)}",
-            '    global_frame_id: "map"',
-            '    scan_topic: "scan"',
-            "    tf_broadcast: true",
-            "    set_initial_pose: false",
-            "    save_pose_rate: 0.5",
-            "    alpha1: 0.2",
-            "    alpha2: 0.2",
-            "    alpha3: 0.2",
-            "    alpha4: 0.2",
-            "    alpha5: 0.2",
-            "    beam_skip_distance: 0.5",
-            "    beam_skip_error_threshold: 0.9",
-            "    beam_skip_threshold: 0.3",
-            "    do_beamskip: false",
-            "    lambda_short: 0.1",
-            "    laser_likelihood_max_dist: 2.0",
-            "    laser_max_range: 100.0",
-            "    laser_min_range: -1.0",
-            "    laser_model_type: likelihood_field",
-            "    max_beams: 60",
-            "    max_particles: 2000",
-            "    min_particles: 500",
-            "    pf_err: 0.05",
-            "    pf_z: 0.99",
-            "    recovery_alpha_fast: 0.0",
-            "    recovery_alpha_slow: 0.0",
-            "    resample_interval: 1",
-            '    robot_model_type: "nav2_amcl::DifferentialMotionModel"',
-            "    sigma_hit: 0.2",
-            "    transform_tolerance: 1.0",
-            "    update_min_a: 0.2",
-            "    update_min_d: 0.25",
-            "    z_hit: 0.5",
-            "    z_max: 0.05",
-            "    z_rand: 0.5",
-            "    z_short: 0.05",
-            "lifecycle_manager:",
-            "  ros__parameters:",
-            "    use_sim_time: false",
-            "    autostart: true",
-            "    bond_timeout: 4.0",
-            '    node_names: ["map_server", "amcl"]',
-            "",
-        ]
-    )
+def managed_param_file_text(
+    args: argparse.Namespace,
+    map_yaml: str,
+    *,
+    include_planner_server: bool = False,
+) -> str:
+    """managed runtime 默认只覆盖 localization；路径生成 opt-in 时再追加 planner 配置。"""
+    lines = [
+        "map_server:",
+        "  ros__parameters:",
+        "    use_sim_time: false",
+        f"    yaml_filename: {json.dumps(map_yaml)}",
+        "amcl:",
+        "  ros__parameters:",
+        "    use_sim_time: false",
+        f"    base_frame_id: {json.dumps(args.managed_base_frame_id)}",
+        f"    odom_frame_id: {json.dumps(args.managed_odom_frame_id)}",
+        '    global_frame_id: "map"',
+        '    scan_topic: "scan"',
+        "    tf_broadcast: true",
+        "    set_initial_pose: false",
+        "    save_pose_rate: 0.5",
+        "    alpha1: 0.2",
+        "    alpha2: 0.2",
+        "    alpha3: 0.2",
+        "    alpha4: 0.2",
+        "    alpha5: 0.2",
+        "    beam_skip_distance: 0.5",
+        "    beam_skip_error_threshold: 0.9",
+        "    beam_skip_threshold: 0.3",
+        "    do_beamskip: false",
+        "    lambda_short: 0.1",
+        "    laser_likelihood_max_dist: 2.0",
+        "    laser_max_range: 100.0",
+        "    laser_min_range: -1.0",
+        "    laser_model_type: likelihood_field",
+        "    max_beams: 60",
+        "    max_particles: 2000",
+        "    min_particles: 500",
+        "    pf_err: 0.05",
+        "    pf_z: 0.99",
+        "    recovery_alpha_fast: 0.0",
+        "    recovery_alpha_slow: 0.0",
+        "    resample_interval: 1",
+        '    robot_model_type: "nav2_amcl::DifferentialMotionModel"',
+        "    sigma_hit: 0.2",
+        "    transform_tolerance: 1.0",
+        "    update_min_a: 0.2",
+        "    update_min_d: 0.25",
+        "    z_hit: 0.5",
+        "    z_max: 0.05",
+        "    z_rand: 0.5",
+        "    z_short: 0.05",
+    ]
+    if include_planner_server:
+        # 这里只追加 planner/costmap 的冻结配置，避免把 bt_navigator 之类的执行层一起拉起来。
+        lines.extend(
+            [
+                "planner_server:",
+                "  ros__parameters:",
+                "    expected_planner_frequency: 20.0",
+                '    planner_plugins: ["GridBased"]',
+                "    GridBased:",
+                '      plugin: "nav2_navfn_planner/NavfnPlanner"',
+                "      tolerance: 0.5",
+                "      use_astar: false",
+                "      allow_unknown: true",
+                "",
+                "costmap:",
+                "  ros__parameters:",
+                '    global_frame: "map"',
+                '    robot_base_frame: "base_link"',
+                "    update_frequency: 5.0",
+                "    publish_frequency: 1.0",
+                "    width: 10",
+                "    height: 10",
+                "    resolution: 0.05",
+                "    track_unknown_space: true",
+                '    plugins: ["static_layer", "obstacle_layer", "inflation_layer"]',
+                "    static_layer:",
+                '      plugin: "nav2_costmap_2d::StaticLayer"',
+                "      map_subscribe_transient_local: true",
+                "    obstacle_layer:",
+                '      plugin: "nav2_costmap_2d::ObstacleLayer"',
+                "      enabled: true",
+                "      observation_sources: scan",
+                "      scan:",
+                "        topic: /scan",
+                "        max_obstacle_height: 2.0",
+                "        clearing: true",
+                "        marking: true",
+                '        data_type: "LaserScan"',
+                "    inflation_layer:",
+                '      plugin: "nav2_costmap_2d::InflationLayer"',
+                "      cost_scaling_factor: 3.0",
+                "      inflation_radius: 0.55",
+                "",
+            ]
+        )
+        lines.append("lifecycle_manager:")
+        lines.append("  ros__parameters:")
+        lines.append("    use_sim_time: false")
+        lines.append("    autostart: true")
+        lines.append("    bond_timeout: 4.0")
+        lines.append('    node_names: ["map_server", "amcl", "planner_server"]')
+    else:
+        lines.append("lifecycle_manager:")
+        lines.append("  ros__parameters:")
+        lines.append("    use_sim_time: false")
+        lines.append("    autostart: true")
+        lines.append("    bond_timeout: 4.0")
+        lines.append('    node_names: ["map_server", "amcl"]')
+    lines.append("")
+    return "\n".join(lines)
 
 
-def build_managed_runtime_shell(args: argparse.Namespace, *, map_yaml: str, params_path: str, log_path: str) -> str:
+def build_managed_runtime_shell(
+    args: argparse.Namespace,
+    *,
+    map_yaml: str,
+    params_path: str,
+    log_path: str,
+    include_planner_server: bool = False,
+) -> str:
     """用一个 bash 进程组托管 runtime，便于统一 cleanup 且避免遗留后台子进程。"""
     lidar_port = shlex.quote(args.managed_lidar_serial_port)
     lidar_baud = int(args.managed_lidar_serial_baudrate)
@@ -494,16 +857,32 @@ def build_managed_runtime_shell(args: argparse.Namespace, *, map_yaml: str, para
             "ros2 run nav2_amcl amcl --ros-args "
             f"--params-file {params} -r __node:=amcl"
         ),
+    ]
+    if include_planner_server:
+        commands.append(
+            (
+                "ros2 run nav2_planner planner_server --ros-args "
+                f"--params-file {params} -r __node:=planner_server"
+            )
+        )
+    commands.append(
         (
             "ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args "
             f"--params-file {params} -r __node:=lifecycle_manager"
         ),
-    ]
+    )
     lines = [
         "set -e",
         f"{source_prefix(args)}",
+        "pids=()",
+        "cleanup(){ for pid in \"${pids[@]}\"; do kill -INT \"$pid\" 2>/dev/null || true; done; wait || true; }",
+        "trap cleanup EXIT INT TERM",
         f"printf '%s\\n' 'managed_map_yaml={map_yaml_quoted}' > {log}",
-        "printf '%s\\n' 'managed_runtime_boundary=no_motion_localization_only' >> " + log,
+        (
+            "printf '%s\\n' "
+            f"'managed_runtime_boundary={'no_motion_path_generation_planner_only' if include_planner_server else 'no_motion_localization_only'}' "
+            ">> " + log
+        ),
         "printf '%s\\n' 'blocked_device=/dev/ttyS5' >> " + log,
     ]
     for command in commands[3:]:
@@ -520,9 +899,23 @@ def start_managed_runtime(args: argparse.Namespace, *, map_yaml: str) -> dict[st
     os.close(params_fd)
     log_fd, log_path = tempfile.mkstemp(prefix="rober_nav2_localization_", suffix=".log")
     os.close(log_fd)
-    Path(params_path).write_text(managed_param_file_text(args, map_yaml), encoding="utf-8")
+    include_planner_server = bool(args.path_generation_opt_in)
+    Path(params_path).write_text(
+        managed_param_file_text(args, map_yaml, include_planner_server=include_planner_server),
+        encoding="utf-8",
+    )
     process = subprocess.Popen(  # noqa: S603 - argv 固定；runtime 内容完全由 helper 生成。
-        ["bash", "-lc", build_managed_runtime_shell(args, map_yaml=map_yaml, params_path=params_path, log_path=log_path)],
+        [
+            "bash",
+            "-lc",
+            build_managed_runtime_shell(
+                args,
+                map_yaml=map_yaml,
+                params_path=params_path,
+                log_path=log_path,
+                include_planner_server=include_planner_server,
+            ),
+        ],
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -537,7 +930,11 @@ def start_managed_runtime(args: argparse.Namespace, *, map_yaml: str) -> dict[st
         "params_path": params_path,
         "log_path": log_path,
         "map_yaml": map_yaml,
-        "boundary": "explicit_opt_in_managed_localization_runtime_no_motion",
+        "boundary": (
+            "explicit_opt_in_managed_path_generation_runtime_no_motion"
+            if include_planner_server
+            else "explicit_opt_in_managed_localization_runtime_no_motion"
+        ),
         "vendor_boundary": (
             "Vendor facts from docs/vendor/VENDOR_INDEX.md: WAVE ROVER base is newline-delimited "
             "UART JSON, vendor Raspberry Pi UART path is not Orange Pi fixed fact; this proof only "
@@ -631,10 +1028,18 @@ def managed_runtime_cleanup_guard(process_group: int | None) -> dict[str, Any]:
     }
 
 
-def wait_for_managed_runtime(args: argparse.Namespace, runtime: dict[str, Any]) -> dict[str, Any]:
+def wait_for_managed_runtime(
+    args: argparse.Namespace,
+    runtime: dict[str, Any],
+    *,
+    require_planner_server: bool = False,
+) -> dict[str, Any]:
     """runtime 拉起后轮询 lifecycle，尽量在 proof 窗口内拿到 active graph。"""
     deadline = time.time() + max(float(args.managed_timeout_s), 4.0)
     history: list[dict[str, Any]] = []
+    required_nodes = dict(LOCALIZATION_LIFECYCLE_NODES)
+    if require_planner_server:
+        required_nodes["planner_server"] = "/planner_server"
     while time.time() < deadline:
         process: subprocess.Popen[str] | None = runtime.get("process")
         if process is not None and process.poll() is not None:
@@ -650,13 +1055,15 @@ def wait_for_managed_runtime(args: argparse.Namespace, runtime: dict[str, Any]) 
             history.append({"ros2_check": ros2_check})
             time.sleep(1.0)
             continue
-        lifecycle_active, lifecycle_results = lifecycle_checks(args)
+        lifecycle_active, lifecycle_results = lifecycle_checks(args, required_nodes)
         snapshot = {
             "elapsed_ms": now_ms() - int(runtime["started_at_ms"]),
             "lifecycle_active": lifecycle_active,
         }
         history.append(snapshot)
-        if lifecycle_active.get("map_server") and lifecycle_active.get("amcl"):
+        if lifecycle_active.get("map_server") and lifecycle_active.get("amcl") and (
+            not require_planner_server or lifecycle_active.get("planner_server")
+        ):
             return {"ok": True, "history": history, "lifecycle": lifecycle_results}
         time.sleep(1.2)
     return {
@@ -705,7 +1112,7 @@ def classify_root_causes(
 
 
 def build_proof(args: argparse.Namespace) -> dict[str, Any]:
-    """执行一次 no-motion AMCL/Nav2 localization proof；成功或失败都写 latest artifact。"""
+    """执行一次 no-motion AMCL/Nav2 proof；成功或失败都写 latest artifact。"""
     started_ms = now_ms()
     map_inputs = map_input_summary(args)
     managed_map_yaml, managed_map_yaml_source = resolve_managed_map_yaml(args, map_inputs)
@@ -731,17 +1138,34 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         else:
             try:
                 managed_runtime.update(start_managed_runtime(args, map_yaml=managed_map_yaml))
-                managed_runtime["wait_result"] = wait_for_managed_runtime(args, managed_runtime)
+                # planner_server 的 costmap 激活依赖 map->base_link；必须先让 AMCL 接收 initialpose。
+                # 因此 runtime 启动阶段只等待 localization 节点，planner 在定位 ready 后再复查。
+                managed_runtime["wait_result"] = wait_for_managed_runtime(
+                    args,
+                    managed_runtime,
+                    require_planner_server=False,
+                )
             except Exception as exc:  # noqa: BLE001 - runtime 拉起失败必须结构化写回。
                 managed_runtime["startup_error"] = compact_error(exc)
                 managed_runtime["boundary"] = "managed_runtime_start_failed"
 
     ros2_check = run_ros(args, "command -v ros2 && ros2 --help >/dev/null", timeout_s=6.0)
-    ros2_ok = bool(ros2_check.get("ok"))
+    # `ros2 --help` 在远端偶尔会慢于本 helper 的短超时，因此只要命令本体可见就继续验证。
+    ros2_ok = bool(ros2_check.get("ok") or str(ros2_check.get("stdout") or "").strip())
     packages, package_results = package_checks(args) if ros2_ok else ({package: False for package in EXPECTED_PACKAGES}, {})
     topic_list = run_ros(args, "ros2 topic list", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
     node_list = run_ros(args, "ros2 node list", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
     lifecycle_active, lifecycle_results = lifecycle_checks(args) if ros2_ok else ({key: False for key in LOCALIZATION_LIFECYCLE_NODES}, {})
+    planner_nodes = {"planner_server": "/planner_server", "controller_server": "/controller_server"}
+    planner_lifecycle_active, planner_lifecycle_results = (
+        lifecycle_checks(args, planner_nodes) if ros2_ok else ({key: False for key in planner_nodes}, {})
+    )
+    planner_server_active = bool(planner_lifecycle_active.get("planner_server"))
+    controller_server_active = bool(planner_lifecycle_active.get("controller_server"))
+    # 本 proof 只允许 planner 计算路径；即使 path opt-in，也不得请求 controller 执行层。
+    controller_server_requested = False
+    planner_node_info = run_ros(args, "ros2 node info /planner_server", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
+    controller_node_info = run_ros(args, "ros2 node info /controller_server", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
     echo_timeout_s = min(max(float(args.timeout_s), 4.0), 18.0)
     scan_once = run_ros(args, "timeout 6 ros2 topic echo --once /scan", timeout_s=echo_timeout_s) if ros2_ok else {"executed": False, "ok": False}
     map_once = run_ros(args, "timeout 8 ros2 topic echo --once /map", timeout_s=echo_timeout_s + 2.0) if ros2_ok else {"executed": False, "ok": False}
@@ -790,15 +1214,34 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "map_to_odom": tf_echo_transform_observed(map_to_odom_tf),
         "map_to_base_link": tf_echo_transform_observed(map_to_base_link_tf),
     }
-    localization_ready = True
+    localization_ready = bool(
+        scan_observed and map_observed and lifecycle_active.get("map_server") and lifecycle_active.get("amcl")
+    )
     if initialpose_request_payload["enabled"]:
         localization_ready = bool(
-            amcl_pose_observed
+            localization_ready
+            and amcl_pose_observed
             and localization_tf_observed["map_to_odom"]
             and localization_tf_observed["map_to_base_link"]
         )
-    runtime_ready = bool(scan_observed and map_observed and lifecycle_active.get("map_server") and lifecycle_active.get("amcl"))
-    root_causes = classify_root_causes(
+    planner_lifecycle_recheck = {"executed": False, "boundary": "path_generation_planner_recheck_not_requested"}
+    if ros2_ok and args.path_generation_opt_in and localization_ready:
+        # AMCL 定位成立后再看 planner，避免把 costmap 等 TF 的瞬态误记成最终 planner blocker。
+        recheck_planner_active, recheck_planner_results = lifecycle_checks(args, planner_nodes)
+        planner_lifecycle_recheck = {
+            "executed": True,
+            "active": recheck_planner_active,
+            "results": recheck_planner_results,
+        }
+        if recheck_planner_active.get("planner_server"):
+            planner_server_active = True
+            planner_lifecycle_active["planner_server"] = True
+            planner_lifecycle_results["planner_server"] = recheck_planner_results["planner_server"]
+        if recheck_planner_active.get("controller_server"):
+            controller_server_active = True
+            planner_lifecycle_active["controller_server"] = True
+            planner_lifecycle_results["controller_server"] = recheck_planner_results["controller_server"]
+    localization_root_causes = classify_root_causes(
         map_inputs=map_inputs,
         ros2_ok=ros2_ok,
         packages=packages,
@@ -809,8 +1252,35 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         localization_tf_observed=localization_tf_observed,
         initialpose_enabled=initialpose_request_payload["enabled"],
     )
-    complete = bool(map_inputs["inputs_ready"] and runtime_ready and localization_ready and not root_causes)
-    proof_status = "nav2_no_motion_localization_runtime_observed" if complete else "blocked_with_root_cause"
+    path_generation_preconditions_ready = bool(
+        initialpose_request_payload["enabled"] and localization_ready and not localization_root_causes
+    )
+    path_generation_request, path_generation_result, _path_generation_summary, path_generation_root_causes = maybe_compute_path_generation(
+        args,
+        ros2_ok=ros2_ok,
+        localization_ready=path_generation_preconditions_ready,
+        planner_server_active=planner_server_active,
+    )
+    root_causes = list(localization_root_causes)
+    if path_generation_request["enabled"]:
+        root_causes.extend(path_generation_root_causes)
+    complete = bool(
+        map_inputs["inputs_ready"]
+        and localization_ready
+        and not localization_root_causes
+        and (
+            not path_generation_request["enabled"]
+            or bool(path_generation_result.get("ok"))
+        )
+        and not root_causes
+    )
+    proof_status = (
+        "nav2_no_motion_path_generation_runtime_observed"
+        if complete and path_generation_request["enabled"]
+        else "nav2_no_motion_localization_runtime_observed"
+        if complete
+        else "blocked_with_root_cause"
+    )
 
     if managed_runtime.get("started"):
         cleanup_result = cleanup_process_group(
@@ -827,6 +1297,35 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     blocked_commands_not_sent = list(BLOCKED_COMMAND_TOKENS)
     if not initialpose_request_payload["enabled"]:
         blocked_commands_not_sent.append("/initialpose")
+    if not path_generation_result.get("attempted"):
+        blocked_commands_not_sent.append("compute_path_to_pose")
+    planner_readiness = build_planner_readiness_summary(
+        managed_runtime=managed_runtime,
+        localization_ready=path_generation_preconditions_ready,
+        planner_server_active=planner_server_active,
+        controller_server_requested=controller_server_requested,
+        controller_server_active=controller_server_active,
+        path_generation_request=path_generation_request,
+        path_generation_attempted=bool(path_generation_result.get("attempted")),
+        path_generation_succeeded=bool(path_generation_result.get("ok")),
+        path_point_count=int(path_generation_result.get("path_point_count") or 0),
+    )
+    path_goal_request_summary = (
+        path_generation_result.get("path_goal_request")
+        if path_generation_request["enabled"]
+        else path_goal_pose(path_generation_request)
+    )
+    path_goal_response_summary = path_generation_result.get("path_goal_response")
+    if not isinstance(path_goal_response_summary, dict):
+        path_goal_response_summary = {}
+    if path_generation_request["enabled"] and not path_goal_response_summary:
+        path_goal_response_summary = {
+            "attempted": bool(path_generation_result.get("attempted")),
+            "accepted": False,
+            "result_received": False,
+        }
+    elif not path_generation_request["enabled"]:
+        path_goal_response_summary = {"accepted": False, "result_received": False}
     proof = {
         "status": proof_status,
         "evidence_ref": f"o10-amcl-nav2-runtime-{started_ms}",
@@ -838,14 +1337,25 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "source_map_evidence_type": map_inputs.get("source_evidence_type"),
         "map_server_active": lifecycle_active.get("map_server", False),
         "amcl_active": lifecycle_active.get("amcl", False),
-        # planner/controller 明确保持未启动，防止下游把 proof 错解成可发 goal 的 Nav2 graph。
-        "planner_active": False,
-        "controller_active": False,
-        "path_generation_ready": False,
-        "path_generated": False,
-        "path_generation_boundary": "localization_only_no_planner_no_controller_no_goal_no_compute_path",
-        "scan_consumed": runtime_ready,
-        "map_consumed": runtime_ready,
+        "planner_server_active": planner_server_active,
+        "controller_server_active": controller_server_active,
+        "controller_server_requested": controller_server_requested,
+        "planner_active": planner_server_active,
+        "controller_active": controller_server_active,
+        "path_generation_ready": bool(path_generation_result.get("ok")),
+        "path_generation_requested": bool(path_generation_request["enabled"]),
+        "path_generation_attempted": bool(path_generation_result.get("attempted")),
+        "path_generation_succeeded": bool(path_generation_result.get("ok")),
+        "path_generation_service_name": path_generation_result.get("service_name"),
+        "path_generation_service_available": bool(path_generation_result.get("service_available")),
+        "path_generated": bool(path_generation_result.get("path_generated")),
+        "path_point_count": int(path_generation_result.get("path_point_count") or 0),
+        "path_goal_request": path_goal_request_summary,
+        "path_goal_response": path_goal_response_summary,
+        "path_generation_boundary": path_generation_result.get("boundary"),
+        "planner_readiness_summary": planner_readiness,
+        "scan_consumed": localization_ready,
+        "map_consumed": localization_ready,
         "scan_once_observed": scan_observed,
         "map_once_observed": map_observed,
         "amcl_pose_observed": amcl_pose_observed,
@@ -875,6 +1385,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             "topic_list": topic_list,
             "node_list": node_list,
             "lifecycle": lifecycle_results,
+            "planner_lifecycle": planner_lifecycle_results,
             "scan_once": scan_once,
             "map_once": map_once,
             "amcl_pose_once": amcl_pose_once,
@@ -885,7 +1396,10 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             "initialpose_info": initialpose_info,
             "amcl_node_info": amcl_node_info,
             "map_server_info": map_server_info,
+            "planner_node_info": planner_node_info,
+            "controller_node_info": controller_node_info,
             "lifecycle_recheck": lifecycle_recheck,
+            "planner_lifecycle_recheck": planner_lifecycle_recheck,
             "managed_runtime": {
                 "requested": managed_runtime["requested"],
                 "started": managed_runtime.get("started"),
@@ -899,11 +1413,12 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
                 "log_path": managed_runtime.get("log_path"),
                 "log_tail": preview_file(managed_runtime["log_path"]) if managed_runtime.get("log_path") else "",
             },
+            "path_generation": {
+                "request": path_generation_request,
+                "result": path_generation_result,
+            },
         },
         "not_proven": [
-            "planner_server_runtime",
-            "controller_server_runtime",
-            "compute_path_call",
             "nav2_goal_execution",
             "controller_cmd_vel_output",
             "fixed_route_execution",
@@ -912,7 +1427,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             "safe_to_control_true",
         ],
         "collector_mode": (
-            "managed_no_motion_localization_runtime"
+            "managed_no_motion_path_generation_runtime"
+            if managed_runtime["requested"] and path_generation_request["enabled"]
+            else "managed_no_motion_localization_runtime"
             if managed_runtime["requested"]
             else "read_only_existing_ros_graph_no_motion"
         ),
@@ -952,6 +1469,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--initialpose-y", type=float, default=0.0)
     parser.add_argument("--initialpose-yaw", type=float, default=0.0)
     parser.add_argument("--initialpose-frame-id", default="map")
+    parser.add_argument("--path-generation-opt-in", action="store_true")
+    parser.add_argument("--path-generation-timeout-s", type=float, default=20.0)
+    parser.add_argument("--path-goal-frame-id", default="map")
+    parser.add_argument("--path-goal-x", type=float, default=0.8)
+    parser.add_argument("--path-goal-y", type=float, default=0.0)
+    parser.add_argument("--path-goal-yaw", type=float, default=0.0)
     parser.add_argument("--ros-setup", default=DEFAULT_ROS_SETUP)
     parser.add_argument("--onboard-setup", default=DEFAULT_ONBOARD_SETUP)
     parser.add_argument("--workdir", default=DEFAULT_WORKDIR)
@@ -963,7 +1486,10 @@ def main() -> int:
     payload = build_proof(args)
     write_json_atomic(args.output, payload)
     print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
-    return 0 if payload["proof"]["status"] == "nav2_no_motion_localization_runtime_observed" else 2
+    return 0 if payload["proof"]["status"] in {
+        "nav2_no_motion_localization_runtime_observed",
+        "nav2_no_motion_path_generation_runtime_observed",
+    } else 2
 
 
 if __name__ == "__main__":

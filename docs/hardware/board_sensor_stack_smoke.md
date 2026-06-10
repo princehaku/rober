@@ -819,6 +819,19 @@ fixed-route execution、safe_to_control 或 delivery_success。
 generation、controller output、真实底盘运动、fixed-route execution、HIL 或 delivery
 success。
 
+## 2026-06-10 09:05 Nav2 path generation opt-in boundary
+
+在 08:45 localization proof 之后，现场 no-motion proof 继续允许显式 opt-in 的
+planner `ComputePathToPose` 一次性计算，但仍然不是运动验证：
+
+- 默认不调用 `ComputePathToPose`，也不改变 `safe_to_control=false`。
+- 只有在 managed runtime + initialpose/localization 已成立时，才允许 path generation。
+- 不允许 `NavigateToPose`、`FollowPath`、`/cmd_vel`、`/api/base/*` 或 `bt_navigator`。
+- `/dev/ttyS5` 仍然只做只读占用检查，不能被打开写入。
+
+这一步输出的仍然只是 planner proof 和 path artifact，不是 path execution、
+fixed-route execution、delivery success 或 HIL pass。
+
 ## 资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`

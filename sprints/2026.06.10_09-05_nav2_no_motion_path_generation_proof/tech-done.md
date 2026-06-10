@@ -291,43 +291,85 @@ ssh root@192.168.1.11 -p 37878 '
     `map_server_active=true`、`amcl_active=true`、`amcl_pose_observed=true`
   - 剩余风险：尚未证明 planner compute-path 或 path generation
 
-## 需要创建或更新的 sprint 文档
-
-本轮只新增本 sprint 的 `tech-done.md` 和最小 OKR 方向记录；等实现阶段完成后，再同步
-更新以下运行边界文档：
-
-- `docs/navigation/fixed_route_workflow.md`
-- `docs/hardware/board_sensor_stack_smoke.md`
-
-如果后续 path generation proof 真的跑通，才需要把证据回写到 `docs/process/okr_progress_log.md`
-以及 `OKR.md` 的进展区。
-
 ## 本轮实际改动
 
-- 新建本 micro sprint 留档：
-  `sprints/2026.06.10_09-05_nav2_no_motion_path_generation_proof/tech-done.md`
-- 最小更新 `OKR.md` 当前优先级描述，使其从 managed localization proof 过渡到
-  planner readiness / path generation proof。
-- 未修改产品代码、测试代码、硬件配置或 vendor 资料。
+- `onboard/scripts/o10_amcl_nav2_runtime_proof.py`
+  - 增加显式 `--path-generation-opt-in` 分支；默认不调用 planner。
+  - managed runtime 在 path opt-in 时只追加 `planner_server`，不启动
+    `controller_server`、`bt_navigator`、`NavigateToPose` 或 `FollowPath`。
+  - 在 localization ready 且 `planner_server` active 后，才尝试一次
+    `ComputePathToPose` action，并把请求、响应、path 点数、planner readiness
+    和失败原因写入 artifact。
+  - artifact 继续强制 `publishes_cmd_vel=false`、`calls_base_manual=false`、
+    `uses_base_uart=false`、`safe_to_control=false`、`delivery_success=false`。
+- `onboard/scripts/upper_robot_api.py`
+  - `POST /api/nav2/proof/refresh` 增加 `path_generation_opt_in`、
+    `path_generation_timeout_s`、`path_goal_frame_id`、`path_goal_x`、
+    `path_goal_y`、`path_goal_yaw` 显式透传。
+  - `/api/nav2/proof/latest` / `/api/nav2/status` 摘要增加 path generation
+    readback 字段，便于 PC 页面后续读取 planner proof 状态。
+- `onboard/tests/test_nav2_runtime_proof_helper.py`
+  - 增加默认 read-only、path opt-in 只拉 planner、不拉 controller/BT、
+    API 透传和安全字段的回归覆盖。
+- `docs/navigation/fixed_route_workflow.md`
+  - 增加 09:05 path generation opt-in 的 no-motion 边界说明。
+- `docs/hardware/board_sensor_stack_smoke.md`
+  - 增加现场硬件 smoke 里的 planner proof 边界，明确不是 HIL、运动或送达成功。
+
+本轮未修改 firmware/vendor 文件、`autonomous.launch.py`、底盘配置或任何默认启用运动的
+launch 参数。
 
 ## 本轮验证结果
 
-本轮是设计阶段，只执行了目录创建和文档留档；产品实现与远端验证留给下一轮 Engineer。
+由 `robot-software-engineer` 子 agent 执行并返回：
 
-本轮待执行的设计阶段验收命令是：
+```text
+python3 -m unittest onboard.tests.test_nav2_runtime_proof_helper
+Ran 15 tests ... OK
 
-```bash
-git status --short --branch
-test -f sprints/2026.06.10_09-05_nav2_no_motion_path_generation_proof/tech-done.md
-rg -n "sprint_type|功能点|验收|no-motion|cmd_vel|compute|owner|文件范围" sprints/2026.06.10_09-05_nav2_no_motion_path_generation_proof/tech-done.md
+python3 onboard/scripts/o10_amcl_nav2_runtime_proof.py --help
+通过，help 输出包含 --path-generation-* 参数。
+
+python3 -m py_compile onboard/scripts/o10_amcl_nav2_runtime_proof.py onboard/scripts/upper_robot_api.py
+通过。
+
+git diff --check
+通过。
 ```
+
+远端真实上位机 `root@192.168.1.11 -p 37878` 尝试结果：
+
+- 已把 helper/API 同步到 `/root/rober/onboard/scripts/`。
+- direct-helper 第一次执行返回 `rc=2`，root cause 为
+  `planner_server_not_active`。当时 `map_server_active=true`、
+  `amcl_active=true`，`/scan`、`/map`、`/amcl_pose` 曾被观测，但 planner
+  lifecycle 未进入 active。
+- 修复 helper 时序后第二次执行仍返回 `rc=2`，root cause 退化到 localization
+  readiness 不稳定；`/map` 有 stdout 但 topic echo timeout，`/scan` 和
+  `/amcl_pose` 未稳定采到。
+- 第三次带 `--timeout-s 20` 重试时被主节点要求停止继续等待，改为收口和清场。
+
+清场结果由子 agent 返回：
+
+- 已清理远端残留 Nav2/LiDAR/static TF/helper 进程组。
+- `trashbot-upper-robot-api.service` 已恢复为 `active`。
+- 最终 `lsof /dev/ttyS5 /dev/ttyACM0` 与
+  `fuser -v /dev/ttyS5 /dev/ttyACM0` 无占用输出。
+
+本轮没有保留完整远端日志 artifact，因此上述远端结果只能作为子 agent 执行回报和
+sprint 留档事实；不能升级为正式 `path_generated=true` 证据。
 
 ## 剩余风险
 
-- 当前只是设计冻结，还没有真实上位机 path generation 证据。
-- planner compute-path 的接口形态、返回字段和服务名需要实现时再按实机结果校准，
-  不能凭记忆提前写死。
-- 现阶段仍然不能把 path generation 误读成 path execution，更不能把它写成
-  delivery success。
-- 如果未来发现 `upper_robot_api` 需要重启才能透传新字段，必须再次确认不会占用
-  `/dev/ttyS5` 并保持 no-motion 边界。
+- 真实上位机 path generation proof 未通过；`path_generated=true`、
+  `path_generation_succeeded=true` 仍未证明。
+- 当前 blocker 是 managed no-motion runtime 下 localization/planner readiness
+  不稳定：`/compute_path_to_pose` action server 曾出现，但 planner lifecycle 未稳定
+  active，后续重试又出现 `/scan`、`/amcl_pose` 采样 timeout。
+- helper 对 `ros2 topic echo --once` 的 timeout+stdout 情况仍偏保守；`/map`
+  已有 stdout 时仍可能被标成未观测，下一轮应修正观测判定并保留完整 artifact。
+- 本轮只推进 PC/API 后续控制页面可消费的 planner proof 字段，不证明 PC 页面已经能
+  完整控制雷达、建图、定位移动、手动移动或实时图传。
+- no-motion 安全边界仍成立：`publishes_cmd_vel=false`、
+  `calls_base_manual=false`、`uses_base_uart=false`、`safe_to_control=false`、
+  `delivery_success=false`。运动、HIL、fixed-route execution 和送达成功仍未证明。
