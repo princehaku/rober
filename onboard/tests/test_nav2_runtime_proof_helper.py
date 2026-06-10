@@ -189,8 +189,10 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         for required in (
             "ros2 run ros2_trashbot_hardware lidar_driver",
             "/dev/ttyACM0",
-            "starting role=static_tf_odom_base",
-            "started role=static_tf_base_laser pid=",
+            "starting role=static_tf_broadcaster",
+            "managed_static_tf_broadcaster",
+            "static_tf_odom_base static_tf_base_laser",
+            "StaticTransformBroadcaster",
             "nav2_map_server map_server",
             "nav2_amcl amcl",
             "nav2_lifecycle_manager lifecycle_manager",
@@ -469,12 +471,10 @@ __TF_STATIC_ONCE__
             {
                 "pid": 11,
                 "pgid": 456,
-                "command": "ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 odom base_link",
-            },
-            {
-                "pid": 12,
-                "pgid": 456,
-                "command": "ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link laser_frame",
+                "command": (
+                    "python3 -c 'rclpy.create_node(\"managed_static_tf_broadcaster\")' "
+                    "static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame"
+                ),
             },
         ]
         with mock.patch.object(HELPER, "process_group_members", return_value=fake_members):
@@ -482,7 +482,12 @@ __TF_STATIC_ONCE__
 
         self.assertTrue(summary["all_expected_processes_observed"])
         self.assertEqual(["static_tf_base_laser", "static_tf_odom_base"], summary["observed_roles"])
-        self.assertEqual(2, len(summary["processes"]))
+        self.assertEqual("single_rclpy_static_transform_broadcaster_transient_local", summary["source_strategy"])
+        self.assertEqual(1, len(summary["processes"]))
+        self.assertEqual(
+            ["static_tf_base_laser", "static_tf_odom_base"],
+            summary["processes"][0]["roles"],
+        )
 
     def test_phase_artifact_writer_records_partial_progress(self) -> None:
         """helper 被外层 timeout 打断前，partial artifact 必须已经有阶段和命令证据。"""

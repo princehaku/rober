@@ -1082,3 +1082,40 @@ probe 读取，而不是串行调用多条 ROS CLI。artifact/readback 新增或
 root cause 应落到 managed runtime 启动或 shell 启动顺序。`amcl_broadcast_conditions`
 用于区分 AMCL `map -> odom` 未广播是参数不生效、`/scan`/`/map` 输入缺失、
 static TF 输入缺失，还是 AMCL 自身广播条件未满足。
+
+## 2026-06-11 05:25 Static TF Broadcaster Evidence
+
+本轮继续沿用 `docs/vendor/VENDOR_INDEX.md` 的硬件事实边界：WAVE ROVER 底盘
+UART 是 newline-delimited JSON 控制链路，运动/反馈命令 `T=1/T=13/T=130/T=131`
+不参与本轮 no-motion localization reset。真实上车 smoke 只允许 helper 临时打开
+LiDAR `/dev/ttyACM0 @ 150000`，不打开 `/dev/ttyS5`，不调用 `/api/base/*`，
+不发布 `/cmd_vel`，不触发 `NavigateToPose` 或 HIL。
+
+为消除两个独立 `static_transform_publisher` 的 `/tf_static` latch/timing 抖动，
+helper 的 managed runtime 改为单个 rclpy `managed_static_tf_broadcaster`：
+
+- 同一个 `StaticTransformBroadcaster` 同时发布 `odom -> base_link` 与
+  `base_link -> laser_frame`。
+- `managed_static_tf_processes.source_strategy` 记录
+  `single_rclpy_static_transform_broadcaster_transient_local`。
+- `managed_static_tf_processes.observed_roles` 仍列出
+  `static_tf_odom_base` 与 `static_tf_base_laser`，便于和旧 readback 字段兼容。
+
+最终真实上位机 evidence 保存在
+`sprints/2026.06.11_05-25_static_tf_broadcaster/artifacts/remote_capture/`：
+
+- `localize_reset_response.final.json`
+- `localize_proof_latest.final.json`
+- `localization_reset_latest.final.remote.json`
+- `final_process_device_check.log`
+
+关键结果：
+
+- `status=nav2_no_motion_localization_runtime_observed`
+- `initialpose_published=true`
+- `amcl_pose_observed=true`
+- `/tf_static` 同时观测到 `odom -> base_link` 和 `base_link -> laser_frame`
+- `tf_chain_observed.map_to_base_link=true`
+- `root_causes=[]`
+- 清场后 `trashbot-upper-robot-api.service=active`，目标 ROS/helper 进程无残留，
+  `/dev/ttyS5`、`/dev/ttyACM0` 均无 `fuser/lsof` 占用输出。

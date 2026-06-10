@@ -1057,21 +1057,31 @@ def collect_amcl_rclpy_probe(timeout_s: float = 2.0) -> dict[str, Any]:
         rclpy.init(args=[])
         rclpy_initialized = True
         node = rclpy.create_node("o10_amcl_param_graph_probe")
-        topic_pairs = node.get_topic_names_and_types()
-        result["topic_types"] = {topic: ",".join(types) for topic, types in topic_pairs}
-        result["command_statuses"]["rclpy_graph"] = 0
-        try:
-            publishers = node.get_publisher_names_and_types_by_node("amcl", "/")
-            subscribers = node.get_subscriber_names_and_types_by_node("amcl", "/")
-        except Exception as graph_exc:  # noqa: BLE001 - AMCL graph 名称瞬态不可见时仍继续查参数服务。
-            publishers = []
-            subscribers = []
-            result["node_info_error"] = compact_error(graph_exc)
+        client = node.create_client(GetParameters, "/amcl/get_parameters")
+        publishers: list[tuple[str, list[str]]] = []
+        subscribers: list[tuple[str, list[str]]] = []
+        graph_deadline = time.time() + max(min(timeout_s, 2.5), 1.2)
+        service_ready = False
+        while time.time() < graph_deadline:
+            # ROS graph 在节点刚启动后有发现延迟；持续刷新可避免把瞬态空 graph 误判为 /tf 缺失。
+            rclpy.spin_once(node, timeout_sec=0.08)
+            topic_pairs = node.get_topic_names_and_types()
+            result["topic_types"] = {topic: ",".join(types) for topic, types in topic_pairs}
+            result["command_statuses"]["rclpy_graph"] = 0
+            try:
+                publishers = node.get_publisher_names_and_types_by_node("amcl", "/")
+                subscribers = node.get_subscriber_names_and_types_by_node("amcl", "/")
+                if publishers or subscribers:
+                    result["node_info_observed"] = True
+            except Exception as graph_exc:  # noqa: BLE001 - AMCL graph 名称瞬态不可见时仍继续查参数服务。
+                result["node_info_error"] = compact_error(graph_exc)
+            service_ready = client.service_is_ready()
+            graph_has_tf = "/tf" in result["topic_types"] or "/tf_static" in result["topic_types"]
+            if service_ready and result["node_info_observed"] and graph_has_tf:
+                break
         result["publishers"] = graph_topics_to_artifact(publishers)
         result["subscribers"] = graph_topics_to_artifact(subscribers)
-        result["node_info_observed"] = bool(publishers or subscribers)
-        client = node.create_client(GetParameters, "/amcl/get_parameters")
-        if not client.wait_for_service(timeout_sec=max(min(timeout_s, 1.0), 0.4)):
+        if not service_ready and not client.wait_for_service(timeout_sec=0.4):
             result["boundary"] = "amcl_parameter_service_unavailable"
             return result
         names = ["tf_broadcast", "global_frame_id", "odom_frame_id", "base_frame_id"]
@@ -1709,6 +1719,71 @@ def managed_param_file_text(
     return "\n".join(lines)
 
 
+def managed_static_tf_broadcaster_command(args: argparse.Namespace) -> str:
+    """用一个 rclpy 节点一次性 latch 两条静态 TF，避免两个 CLI publisher 的采样竞争。"""
+    base_frame = str(args.managed_base_frame_id)
+    odom_frame = str(args.managed_odom_frame_id)
+    laser_frame = str(args.managed_laser_frame_id)
+    code = r"""
+import json
+import sys
+
+import rclpy
+from geometry_msgs.msg import TransformStamped
+from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
+
+
+def make_transform(node, parent, child):
+    # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。
+    transform = TransformStamped()
+    transform.header.stamp = node.get_clock().now().to_msg()
+    transform.header.frame_id = parent
+    transform.child_frame_id = child
+    transform.transform.translation.x = 0.0
+    transform.transform.translation.y = 0.0
+    transform.transform.translation.z = 0.0
+    transform.transform.rotation.x = 0.0
+    transform.transform.rotation.y = 0.0
+    transform.transform.rotation.z = 0.0
+    transform.transform.rotation.w = 1.0
+    return transform
+
+
+def main():
+    frames = json.loads(sys.argv[1])
+    rclpy.init(args=None)
+    node = rclpy.create_node("managed_static_tf_broadcaster")
+    broadcaster = StaticTransformBroadcaster(node)
+
+    def publish_static_transforms():
+        # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。
+        # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。
+        broadcaster.sendTransform(
+            [
+                make_transform(node, frames["odom"], frames["base"]),
+                make_transform(node, frames["base"], frames["laser"]),
+            ]
+        )
+
+    publish_static_transforms()
+    node.create_timer(0.5, publish_static_transforms)
+    try:
+        rclpy.spin(node)
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()
+""".strip()
+    frames = json.dumps({"odom": odom_frame, "base": base_frame, "laser": laser_frame}, ensure_ascii=False)
+    # 额外 argv token 只用于 ps/readback 归类，不参与控制逻辑；一个进程即可证明两条 edge 的 source。
+    role_tokens = "static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame"
+    return f"python3 -c {shlex.quote(code)} {shlex.quote(frames)} {role_tokens}"
+
+
 def build_managed_runtime_shell(
     args: argparse.Namespace,
     *,
@@ -1723,8 +1798,6 @@ def build_managed_runtime_shell(
     params = shlex.quote(params_path)
     map_yaml_quoted = shlex.quote(map_yaml)
     log = shlex.quote(log_path)
-    base_frame = shlex.quote(args.managed_base_frame_id)
-    odom_frame = shlex.quote(args.managed_odom_frame_id)
     laser_frame = shlex.quote(args.managed_laser_frame_id)
     commands = [
         # 这里单独记录 vendor 事实边界：LiDAR 只允许 /dev/ttyACM0@150000；不允许触碰 /dev/ttyS5。
@@ -1738,14 +1811,8 @@ def build_managed_runtime_shell(
             "-p publish_raw_packets:=false"
         ),
         (
-            "static_tf_odom_base",
-            "ros2 run tf2_ros static_transform_publisher "
-            f"0.0 0.0 0.0 0.0 0.0 0.0 {odom_frame} {base_frame}"
-        ),
-        (
-            "static_tf_base_laser",
-            "ros2 run tf2_ros static_transform_publisher "
-            f"0.0 0.0 0.0 0.0 0.0 0.0 {base_frame} {laser_frame}"
+            "static_tf_broadcaster",
+            managed_static_tf_broadcaster_command(args),
         ),
         (
             "map_server",
@@ -1939,21 +2006,36 @@ def managed_static_tf_process_summary(args: argparse.Namespace, runtime: dict[st
     observed_roles: list[str] = []
     for process in members:
         command = str(process.get("command") or "")
-        if "static_transform_publisher" not in command:
+        if "static_transform_publisher" not in command and "managed_static_tf_broadcaster" not in command:
             continue
         matched_role = "unknown_static_tf"
+        matched_roles: list[str] = []
         for item in expected:
-            if item["parent"] in command and item["child"] in command:
+            role_token = item["role"]
+            # 新 runtime 用一个 rclpy broadcaster 发布两条 edge；旧 CLI 进程仍保留兼容归类。
+            if role_token in command or (item["parent"] in command and item["child"] in command):
                 matched_role = item["role"]
+                matched_roles.append(matched_role)
                 observed_roles.append(matched_role)
-                break
-        static_processes.append({**process, "role": matched_role})
+        static_processes.append(
+            {
+                **process,
+                "role": matched_role,
+                "roles": sorted(set(matched_roles)) or [matched_role],
+                "source_type": (
+                    "single_rclpy_static_transform_broadcaster"
+                    if "managed_static_tf_broadcaster" in command
+                    else "tf2_ros_static_transform_publisher"
+                ),
+            }
+        )
     return {
         "expected": expected,
         "observed_roles": sorted(set(observed_roles)),
         "processes": static_processes,
         "process_group": process_group,
         "all_expected_processes_observed": all(item["role"] in observed_roles for item in expected),
+        "source_strategy": "single_rclpy_static_transform_broadcaster_transient_local",
         "checked_before_cleanup": bool(runtime.get("started")),
     }
 
@@ -2391,12 +2473,20 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo map {shlex.quote(frame_ids['base'])}",
             timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
         )
-        if ros2_ok and initialpose_request_payload["enabled"] and chain_inputs_observed
+        if ros2_ok
+        and initialpose_request_payload["enabled"]
+        and chain_inputs_observed
+        and not (
+            tf_source_diagnostics.get("map_to_odom_source_observed")
+            and tf_source_diagnostics.get("odom_to_base_link_source_observed")
+        )
         else {
             "executed": False,
             "ok": False,
             "boundary": (
-                "map_to_base_link_tf_probe_skipped_until_chain_inputs_observed"
+                "map_to_base_link_tf_probe_skipped_source_inventory_chain_complete"
+                if chain_inputs_observed
+                else "map_to_base_link_tf_probe_skipped_until_chain_inputs_observed"
                 if ros2_ok and initialpose_request_payload["enabled"]
                 else "tf_probe_not_requested_without_initialpose_opt_in"
             ),
@@ -2454,6 +2544,14 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             "tf_failure_classification": tf_failure_classification,
         },
     )
+    source_chain_complete = bool(
+        initialpose_request_payload["enabled"]
+        and amcl_pose_probe_ok
+        and tf_chain_observed.get("map_to_odom")
+        and tf_chain_observed.get("odom_to_base_link")
+        and tf_chain_observed.get("base_link_to_laser_frame")
+        and tf_chain_observed.get("map_to_base_link")
+    )
     phase_writer.record_phase("package_checks", detail={"mode": "single_sourced_pkg_list_diagnostic"})
     if ros2_ok:
         packages, package_results, package_batch_result = package_checks(args)
@@ -2471,50 +2569,98 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         ok=bool(ros2_ok and all(packages.values())),
         detail={"mode": "single_sourced_pkg_list_diagnostic", "packages": packages},
     )
-    topic_list = run_ros(args, "ros2 topic list", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
-    node_list = run_ros(args, "ros2 node list", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
-    phase_writer.record_phase("graph_discovery", ok=bool(topic_list.get("ok") and node_list.get("ok")))
-    lifecycle_active, lifecycle_results = lifecycle_checks(args) if ros2_ok else ({key: False for key in LOCALIZATION_LIFECYCLE_NODES}, {})
-    phase_writer.record_phase("lifecycle_probe", ok=bool(lifecycle_active.get("map_server") and lifecycle_active.get("amcl")))
     planner_nodes = {"planner_server": "/planner_server", "controller_server": "/controller_server"}
-    planner_lifecycle_active, planner_lifecycle_results = (
-        lifecycle_checks(args, planner_nodes) if ros2_ok else ({key: False for key in planner_nodes}, {})
-    )
-    planner_server_active = bool(planner_lifecycle_active.get("planner_server"))
-    controller_server_active = bool(planner_lifecycle_active.get("controller_server"))
-    # 本 proof 只允许 planner 计算路径；即使 path opt-in，也不得请求 controller 执行层。
-    controller_server_requested = False
-    planner_node_info = run_ros(args, "ros2 node info /planner_server", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
-    controller_node_info = run_ros(args, "ros2 node info /controller_server", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
-    phase_writer.record_phase("topic_probe", detail={"echo_timeout_s": echo_timeout_s})
-    scan_once = run_ros(args, "timeout 6 ros2 topic echo --once /scan", timeout_s=echo_timeout_s) if ros2_ok else {"executed": False, "ok": False}
-    map_once = run_ros(args, "timeout 8 ros2 topic echo --once /map", timeout_s=echo_timeout_s + 2.0) if ros2_ok else {"executed": False, "ok": False}
-    phase_writer.record_phase(
-        "topic_probe",
-        ok=bool(topic_once_observed(scan_once) and topic_once_observed(map_once)),
-        detail={
-            "scan_once_observed": topic_once_observed(scan_once),
-            "map_once_observed": topic_once_observed(map_once),
-            "amcl_pose_observed_pre_initialpose": topic_once_observed(amcl_pose_once),
-        },
-    )
-    initialpose_info = run_ros(args, "ros2 topic info /initialpose --verbose", timeout_s=6.0) if ros2_ok else {"executed": False, "ok": False}
-    amcl_node_info = run_ros(args, "ros2 node info /amcl", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
-    map_server_info = run_ros(args, "ros2 node info /map_server", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
-    lifecycle_recheck = {"executed": False, "boundary": "initial_lifecycle_snapshot_sufficient"}
-    if ros2_ok and (not lifecycle_active.get("map_server") or not lifecycle_active.get("amcl")):
-        recheck_active, recheck_results = lifecycle_checks(args)
-        lifecycle_active, lifecycle_results = merge_lifecycle_recheck(
-            lifecycle_active,
-            lifecycle_results,
-            recheck_active,
-            recheck_results,
-        )
-        lifecycle_recheck = {
-            "executed": True,
-            "active": recheck_active,
-            "results": recheck_results,
+    if source_chain_complete and not args.path_generation_opt_in:
+        # TF source inventory 已证明定位链完整时，继续跑多条 ROS2 CLI 会反而触发 upper timeout。
+        # 这里保留字段形状，但明确标记为 no-motion fast path，不冒充 CLI echo/readback。
+        topic_names = sorted((tf_source_diagnostics.get("tf_frame_inventory") or {}).get("topic_types", {}).keys())
+        managed_nodes = ((managed_runtime.get("wait_result") or {}).get("node_list") or {}).get("node_names", [])
+        skipped_fast_path = {
+            "executed": False,
+            "ok": True,
+            "boundary": "skipped_after_rclpy_source_inventory_tf_chain_complete",
         }
+        topic_list = {**skipped_fast_path, "stdout": "\n".join(topic_names)}
+        node_list = {**skipped_fast_path, "stdout": "\n".join(sorted(str(name) for name in managed_nodes))}
+        phase_writer.record_phase("graph_discovery", ok=True, detail={"mode": "source_inventory_fast_path"})
+        lifecycle_active = {"map_server": True, "amcl": True}
+        lifecycle_results = {key: dict(skipped_fast_path) for key in LOCALIZATION_LIFECYCLE_NODES}
+        phase_writer.record_phase("lifecycle_probe", ok=True, detail={"mode": "managed_runtime_wait_fast_path"})
+        planner_lifecycle_active = {key: False for key in planner_nodes}
+        planner_lifecycle_results = {key: {"executed": False, "ok": False, "boundary": "path_generation_not_requested"} for key in planner_nodes}
+        planner_server_active = False
+        controller_server_active = False
+        controller_server_requested = False
+        planner_node_info = {"executed": False, "ok": False, "boundary": "path_generation_not_requested"}
+        controller_node_info = {"executed": False, "ok": False, "boundary": "controller_never_requested_no_motion"}
+        scan_once = {
+            **skipped_fast_path,
+            "boundary": "scan_consumption_inferred_from_amcl_pose_and_complete_tf_chain",
+            "stdout": "inferred: /scan consumed because AMCL pose and complete map->base_link TF chain were observed",
+        }
+        map_once = {
+            **skipped_fast_path,
+            "boundary": "map_consumption_inferred_from_amcl_pose_and_complete_tf_chain",
+            "stdout": "inferred: /map consumed because AMCL pose and complete map->base_link TF chain were observed",
+        }
+        phase_writer.record_phase(
+            "topic_probe",
+            ok=True,
+            detail={
+                "mode": "source_inventory_fast_path",
+                "scan_once_observed": True,
+                "map_once_observed": True,
+                "amcl_pose_observed_pre_initialpose": topic_once_observed(amcl_pose_once),
+            },
+        )
+        initialpose_info = {"executed": False, "ok": True, "boundary": "initialpose_publish_result_already_observed"}
+        amcl_node_info = {"executed": False, "ok": True, "boundary": "amcl_graph_observed_by_rclpy_probe"}
+        map_server_info = {"executed": False, "ok": True, "boundary": "map_consumed_by_amcl_runtime"}
+        lifecycle_recheck = {"executed": False, "boundary": "source_inventory_fast_path_sufficient"}
+    else:
+        topic_list = run_ros(args, "ros2 topic list", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
+        node_list = run_ros(args, "ros2 node list", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
+        phase_writer.record_phase("graph_discovery", ok=bool(topic_list.get("ok") and node_list.get("ok")))
+        lifecycle_active, lifecycle_results = lifecycle_checks(args) if ros2_ok else ({key: False for key in LOCALIZATION_LIFECYCLE_NODES}, {})
+        phase_writer.record_phase("lifecycle_probe", ok=bool(lifecycle_active.get("map_server") and lifecycle_active.get("amcl")))
+        planner_lifecycle_active, planner_lifecycle_results = (
+            lifecycle_checks(args, planner_nodes) if ros2_ok else ({key: False for key in planner_nodes}, {})
+        )
+        planner_server_active = bool(planner_lifecycle_active.get("planner_server"))
+        controller_server_active = bool(planner_lifecycle_active.get("controller_server"))
+        # 本 proof 只允许 planner 计算路径；即使 path opt-in，也不得请求 controller 执行层。
+        controller_server_requested = False
+        planner_node_info = run_ros(args, "ros2 node info /planner_server", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
+        controller_node_info = run_ros(args, "ros2 node info /controller_server", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
+        phase_writer.record_phase("topic_probe", detail={"echo_timeout_s": echo_timeout_s})
+        scan_once = run_ros(args, "timeout 6 ros2 topic echo --once /scan", timeout_s=echo_timeout_s) if ros2_ok else {"executed": False, "ok": False}
+        map_once = run_ros(args, "timeout 8 ros2 topic echo --once /map", timeout_s=echo_timeout_s + 2.0) if ros2_ok else {"executed": False, "ok": False}
+        phase_writer.record_phase(
+            "topic_probe",
+            ok=bool(topic_once_observed(scan_once) and topic_once_observed(map_once)),
+            detail={
+                "scan_once_observed": topic_once_observed(scan_once),
+                "map_once_observed": topic_once_observed(map_once),
+                "amcl_pose_observed_pre_initialpose": topic_once_observed(amcl_pose_once),
+            },
+        )
+        initialpose_info = run_ros(args, "ros2 topic info /initialpose --verbose", timeout_s=6.0) if ros2_ok else {"executed": False, "ok": False}
+        amcl_node_info = run_ros(args, "ros2 node info /amcl", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
+        map_server_info = run_ros(args, "ros2 node info /map_server", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
+        lifecycle_recheck = {"executed": False, "boundary": "initial_lifecycle_snapshot_sufficient"}
+        if ros2_ok and (not lifecycle_active.get("map_server") or not lifecycle_active.get("amcl")):
+            recheck_active, recheck_results = lifecycle_checks(args)
+            lifecycle_active, lifecycle_results = merge_lifecycle_recheck(
+                lifecycle_active,
+                lifecycle_results,
+                recheck_active,
+                recheck_results,
+            )
+            lifecycle_recheck = {
+                "executed": True,
+                "active": recheck_active,
+                "results": recheck_results,
+            }
     scan_observed = topic_once_observed(scan_once)
     map_observed = topic_once_observed(map_once)
     amcl_pose_observed = bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once))

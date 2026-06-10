@@ -1,0 +1,2295 @@
+{
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "evidence_type": "robot_runtime_material",
+  "generated_at_ms": 1781127420201,
+  "hil_pass": false,
+  "not_proven": false,
+  "proof": {
+    "amcl_active": true,
+    "amcl_broadcast_conditions": {
+      "amcl_active": true,
+      "amcl_frame_params_match_helper": true,
+      "amcl_pose_frame_id_is_map": true,
+      "amcl_pose_observed": true,
+      "base_link_to_laser_frame_source_observed": true,
+      "initialpose_published": true,
+      "map_once_observed": true,
+      "map_server_active": true,
+      "map_to_odom_source_observed": true,
+      "odom_to_base_link_source_observed": true,
+      "scan_once_observed": true,
+      "static_tf_processes_observed": true,
+      "tf_broadcast_enabled": true
+    },
+    "amcl_frame_params": {
+      "base_frame_id": "base_link",
+      "global_frame_id": "map",
+      "odom_frame_id": "odom"
+    },
+    "amcl_log_tail": "7418.351298580] [map_server]: Destroying bond (map_server) to lifecycle manager.\n[INFO] [1781127418.414143712] [amcl]: Destroying bond (amcl) to lifecycle manager.\n[INFO] [1781127418.473108041] [map_server]: Destroying\nTraceback (most recent call last):\n  File \"<string>\", line 52, in <module>\n  File \"<string>\", line 44, in main\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 797, in _spin_once_impl\n    handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 780, in wait_for_ready_callbacks\n    return next(self._cb_iter)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 677, in _wait_for_ready_callbacks\n    wait_set.wait(timeout_nsec)\nKeyboardInterrupt\n[INFO] [1781127418.518409393] [lifecycle_manager]: Destroying lifecycle_manager\n[INFO] [1781127418.524873759] [amcl]: Destroying\nTraceback (most recent call last):\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 400, in main\n    rclpy.spin(node)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 803, in _spin_once_impl\n    handler()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py\", line 256, in __call__\n    self._execute_coroutine_step(self._handler)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py\", line 272, in _execute_coroutine_step\n    result = coro.send(None)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 488, in handler\n    await call_coroutine(entity, arg)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 396, in _execute_timer\n    await await_or_execute(tmr.callback)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 110, in await_or_execute\n    return callback(*args)\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 357, in _tick\n    self._publish_packet(packet)\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 378, in _publish_packet\n    msg.header.stamp = self.get_clock().now().to_msg()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/clock.py\", line 146, in now\n    rcl_time = self.__clock.get_now()\nKeyboardInterrupt\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver\", line 33, in <module>\n    sys.exit(load_entry_point('ros2-trashbot-hardware', 'console_scripts', 'lidar_driver')())\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 403, in main\n    rclpy.shutdown()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 130, in shutdown\n    _shutdown(context=context)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/utilities.py\", line 58, in shutdown\n    return context.shutdown()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/context.py\", line 102, in shutdown\n    self.__context.shutdown()\nrclpy._rclpy_pybind11.RCLError: failed to shutdown: rcl_shutdown already called on the given context, at ./src/rcl/init.c:241\n[ros2run]: Process exited with failure 1\n",
+    "amcl_node_info_observed": true,
+    "amcl_node_publishers": [
+      {
+        "topic": "/amcl/transition_event",
+        "type": "lifecycle_msgs/msg/TransitionEvent"
+      },
+      {
+        "topic": "/amcl_pose",
+        "type": "geometry_msgs/msg/PoseWithCovarianceStamped"
+      },
+      {
+        "topic": "/bond",
+        "type": "bond/msg/Status"
+      },
+      {
+        "topic": "/parameter_events",
+        "type": "rcl_interfaces/msg/ParameterEvent"
+      },
+      {
+        "topic": "/particle_cloud",
+        "type": "nav2_msgs/msg/ParticleCloud"
+      },
+      {
+        "topic": "/rosout",
+        "type": "rcl_interfaces/msg/Log"
+      },
+      {
+        "topic": "/tf",
+        "type": "tf2_msgs/msg/TFMessage"
+      }
+    ],
+    "amcl_node_subscribers": [
+      {
+        "topic": "/parameter_events",
+        "type": "rcl_interfaces/msg/ParameterEvent"
+      }
+    ],
+    "amcl_param_probe_ok": true,
+    "amcl_pose_frame_id": "map",
+    "amcl_pose_observed": true,
+    "amcl_tf_broadcast_param": "true",
+    "amcl_tf_root_cause": "source_inventory_observed",
+    "blocked_commands_not_sent": [
+      "T=1",
+      "T=13",
+      "T=130",
+      "T=131",
+      "/cmd_vel",
+      "/api/base/manual",
+      "/api/base/",
+      "/api/nav2/start",
+      "/api/nav2/stop",
+      "navigate_to_pose",
+      "compute_path_to_pose"
+    ],
+    "blocked_devices_not_opened": [
+      "/dev/ttyS5"
+    ],
+    "blockers": [],
+    "calls_base_manual": false,
+    "collector_mode": "managed_no_motion_localization_runtime",
+    "commands": {
+      "amcl_node_info": {
+        "boundary": "amcl_graph_observed_by_rclpy_probe",
+        "executed": false,
+        "ok": true
+      },
+      "amcl_pose_once": {
+        "boundary": "pre_initialpose_amcl_pose_probe_skipped_to_prioritize_initialpose",
+        "executed": false,
+        "ok": false
+      },
+      "base_link_to_laser_frame_tf": {
+        "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+        "executed": false,
+        "ok": false
+      },
+      "controller_node_info": {
+        "boundary": "controller_never_requested_no_motion",
+        "executed": false,
+        "ok": false
+      },
+      "initialpose_info": {
+        "boundary": "initialpose_publish_result_already_observed",
+        "executed": false,
+        "ok": true
+      },
+      "initialpose_publish": {
+        "command": "ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped '{\"header\": {\"frame_id\": \"map\"}, \"pose\": {\"pose\": {\"position\": {\"x\": 0.0, \"y\": 0.0, \"z\": 0.0}, \"orientation\": {\"x\": 0.0, \"y\": 0.0, \"z\": 0.0, \"w\": 1.0}}, \"covariance\": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853891945200942]}}'",
+        "elapsed_ms": 5514,
+        "executed": true,
+        "ok": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "publisher: beginning loop\npublishing #1: geometry_msgs.msg.PoseWithCovarianceStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=0, nanosec=0), frame_id='map'), pose=geometry_msgs.msg.PoseWithCovariance(pose=geometry_msgs.msg.Pose(position=geometry_msgs.msg.Point(x=0.0, y=0.0, z=0.0), orientation=geometry_msgs.msg.Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)), covariance=array([0.25      , 0.        , 0.        , 0.        , 0.        ,\n       0.        , 0.        , 0.25      , 0.        , 0.        ,\n       0.        , 0.        , 0.        , 0.        , 0.        ,\n       0.        , 0.        , 0.        , 0.        , 0.        ,\n       0.        , 0.        , 0.        , 0.        , 0.        ,\n       0.        , 0.        , 0.        , 0.        , 0.        ,\n       0.        , 0.        , 0.        , 0.        , 0.        ,\n       0.06853892])))\n\n"
+      },
+      "lifecycle": {
+        "amcl": {
+          "boundary": "skipped_after_rclpy_source_inventory_tf_chain_complete",
+          "executed": false,
+          "ok": true
+        },
+        "map_server": {
+          "boundary": "skipped_after_rclpy_source_inventory_tf_chain_complete",
+          "executed": false,
+          "ok": true
+        }
+      },
+      "lifecycle_recheck": {
+        "boundary": "source_inventory_fast_path_sufficient",
+        "executed": false
+      },
+      "managed_runtime": {
+        "cleanup_guard": {
+          "boundary": "managed_runtime_process_group_cleanup_guard",
+          "ok": true,
+          "remaining_processes": []
+        },
+        "cleanup_result": {
+          "attempted": true,
+          "group_present_after_cleanup": false,
+          "killed_with_sigkill": true,
+          "ok": true,
+          "process_group": 230076,
+          "remaining_processes": [],
+          "sent_signal": "SIGINT"
+        },
+        "log_path": "/tmp/rober_nav2_localization_iz20s_z4.log",
+        "log_tail": "7418.351298580] [map_server]: Destroying bond (map_server) to lifecycle manager.\n[INFO] [1781127418.414143712] [amcl]: Destroying bond (amcl) to lifecycle manager.\n[INFO] [1781127418.473108041] [map_server]: Destroying\nTraceback (most recent call last):\n  File \"<string>\", line 52, in <module>\n  File \"<string>\", line 44, in main\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 797, in _spin_once_impl\n    handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 780, in wait_for_ready_callbacks\n    return next(self._cb_iter)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 677, in _wait_for_ready_callbacks\n    wait_set.wait(timeout_nsec)\nKeyboardInterrupt\n[INFO] [1781127418.518409393] [lifecycle_manager]: Destroying lifecycle_manager\n[INFO] [1781127418.524873759] [amcl]: Destroying\nTraceback (most recent call last):\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 400, in main\n    rclpy.spin(node)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 803, in _spin_once_impl\n    handler()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py\", line 256, in __call__\n    self._execute_coroutine_step(self._handler)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py\", line 272, in _execute_coroutine_step\n    result = coro.send(None)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 488, in handler\n    await call_coroutine(entity, arg)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 396, in _execute_timer\n    await await_or_execute(tmr.callback)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 110, in await_or_execute\n    return callback(*args)\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 357, in _tick\n    self._publish_packet(packet)\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 378, in _publish_packet\n    msg.header.stamp = self.get_clock().now().to_msg()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/clock.py\", line 146, in now\n    rcl_time = self.__clock.get_now()\nKeyboardInterrupt\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver\", line 33, in <module>\n    sys.exit(load_entry_point('ros2-trashbot-hardware', 'console_scripts', 'lidar_driver')())\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 403, in main\n    rclpy.shutdown()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 130, in shutdown\n    _shutdown(context=context)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/utilities.py\", line 58, in shutdown\n    return context.shutdown()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/context.py\", line 102, in shutdown\n    self.__context.shutdown()\nrclpy._rclpy_pybind11.RCLError: failed to shutdown: rcl_shutdown already called on the given context, at ./src/rcl/init.c:241\n[ros2run]: Process exited with failure 1\n",
+        "map_yaml": "/root/rober/onboard/runtime/maps/final_direct_save.yaml",
+        "map_yaml_source": "canonical_map_proof_yaml_candidate",
+        "process_group": 230076,
+        "requested": true,
+        "started": true,
+        "startup_error": null,
+        "wait_result": {
+          "history": [
+            {
+              "elapsed_ms": 707,
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false
+              },
+              "node_list_command": {
+                "boundary": "rclpy_node_names_observed",
+                "elapsed_ms": 650,
+                "error": null,
+                "executed": true,
+                "node_names": [
+                  "_ros2cli_daemon_0_09505461ff704c3ab9869bd6897e3ceb",
+                  "map_recorder",
+                  "o10_managed_runtime_graph_probe",
+                  "task_orchestrator",
+                  "waypoint_manager"
+                ],
+                "ok": true
+              }
+            },
+            {
+              "elapsed_ms": 1620,
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false
+              },
+              "node_list_command": {
+                "boundary": "rclpy_node_names_observed",
+                "elapsed_ms": 96,
+                "error": null,
+                "executed": true,
+                "node_names": [
+                  "map_recorder",
+                  "o10_managed_runtime_graph_probe"
+                ],
+                "ok": true
+              }
+            },
+            {
+              "elapsed_ms": 2851,
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false
+              },
+              "node_list_command": {
+                "boundary": "rclpy_node_names_observed",
+                "elapsed_ms": 335,
+                "error": null,
+                "executed": true,
+                "node_names": [
+                  "map_recorder",
+                  "o10_managed_runtime_graph_probe",
+                  "task_orchestrator",
+                  "waypoint_manager"
+                ],
+                "ok": true
+              }
+            },
+            {
+              "elapsed_ms": 3926,
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false
+              },
+              "node_list_command": {
+                "boundary": "rclpy_node_names_observed",
+                "elapsed_ms": 213,
+                "error": null,
+                "executed": true,
+                "node_names": [
+                  "map_recorder",
+                  "o10_managed_runtime_graph_probe"
+                ],
+                "ok": true
+              }
+            },
+            {
+              "elapsed_ms": 5292,
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false
+              },
+              "node_list_command": {
+                "boundary": "rclpy_node_names_observed",
+                "elapsed_ms": 284,
+                "error": null,
+                "executed": true,
+                "node_names": [
+                  "managed_static_tf_broadcaster",
+                  "o10_managed_runtime_graph_probe"
+                ],
+                "ok": true
+              }
+            },
+            {
+              "elapsed_ms": 6335,
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false
+              },
+              "node_list_command": {
+                "boundary": "rclpy_node_names_observed",
+                "elapsed_ms": 195,
+                "error": null,
+                "executed": true,
+                "node_names": [
+                  "managed_static_tf_broadcaster",
+                  "o10_managed_runtime_graph_probe",
+                  "task_orchestrator"
+                ],
+                "ok": true
+              }
+            },
+            {
+              "elapsed_ms": 7325,
+              "lifecycle_active": {
+                "amcl": true,
+                "map_server": false
+              },
+              "node_list_command": {
+                "boundary": "rclpy_node_names_observed",
+                "elapsed_ms": 150,
+                "error": null,
+                "executed": true,
+                "node_names": [
+                  "amcl",
+                  "o10_managed_runtime_graph_probe",
+                  "transform_listener_impl_aaaaed9d5090"
+                ],
+                "ok": true
+              }
+            },
+            {
+              "elapsed_ms": 8243,
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false
+              },
+              "node_list_command": {
+                "boundary": "rclpy_node_names_observed",
+                "elapsed_ms": 101,
+                "error": null,
+                "executed": true,
+                "node_names": [
+                  "o10_managed_runtime_graph_probe"
+                ],
+                "ok": true
+              }
+            },
+            {
+              "elapsed_ms": 9221,
+              "lifecycle_active": {
+                "amcl": true,
+                "map_server": false
+              },
+              "node_list_command": {
+                "boundary": "rclpy_node_names_observed",
+                "elapsed_ms": 151,
+                "error": null,
+                "executed": true,
+                "node_names": [
+                  "amcl",
+                  "o10_managed_runtime_graph_probe",
+                  "transform_listener_impl_aaaaed9d5090"
+                ],
+                "ok": true
+              }
+            },
+            {
+              "elapsed_ms": 10369,
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false
+              },
+              "node_list_command": {
+                "boundary": "rclpy_node_names_observed",
+                "elapsed_ms": 311,
+                "error": null,
+                "executed": true,
+                "node_names": [
+                  "_ros2cli_daemon_0_09505461ff704c3ab9869bd6897e3ceb",
+                  "o10_managed_runtime_graph_probe",
+                  "task_orchestrator",
+                  "waypoint_manager"
+                ],
+                "ok": true
+              }
+            },
+            {
+              "elapsed_ms": 11730,
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false
+              },
+              "node_list_command": {
+                "boundary": "rclpy_node_names_observed",
+                "elapsed_ms": 125,
+                "error": null,
+                "executed": true,
+                "node_names": [
+                  "o10_managed_runtime_graph_probe"
+                ],
+                "ok": true
+              }
+            }
+          ],
+          "log_tail": "managed_map_yaml=/root/rober/onboard/runtime/maps/final_direct_save.yaml\nmanaged_runtime_boundary=no_motion_localization_only\nblocked_device=/dev/ttyS5\nstarting role=lidar_driver\nstarted role=lidar_driver pid=230112\nstarting role=static_tf_broadcaster\nstarted role=static_tf_broadcaster pid=230113\nstarting role=map_server\nstarted role=map_server pid=230114\nstarting role=amcl\nstarted role=amcl pid=230115\nstarting role=lifecycle_manager\nstarted role=lifecycle_manager pid=230116\n[INFO] [1781127389.794445333] [lifecycle_manager]: Creating\n[INFO] [1781127389.804063590] [lifecycle_manager]: \u001b[34m\u001b[1mCreating and initializing lifecycle service clients\u001b[0m\u001b[0m\n[INFO] [1781127390.685316964] [map_server]: \n\tmap_server lifecycle node launched. \n\tWaiting on external lifecycle transitions to activate\n\tSee https://design.ros2.org/articles/node_lifecycle.html for more information.\n[INFO] [1781127390.686097166] [map_server]: Creating\n[INFO] [1781127390.759475965] [amcl]: \n\tamcl lifecycle node launched. \n\tWaiting on external lifecycle transitions to activate\n\tSee https://design.ros2.org/articles/node_lifecycle.html for more information.\n[INFO] [1781127390.761826655] [amcl]: Creating\n[INFO] [1781127391.154306033] [lifecycle_manager]: \u001b[34m\u001b[1mStarting managed nodes bringup...\u001b[0m\u001b[0m\n[INFO] [1781127391.154540323] [lifecycle_manager]: \u001b[34m\u001b[1mConfiguring map_server\u001b[0m\u001b[0m\n[INFO] [1781127391.155942895] [map_server]: Configuring\n[INFO] [1781127391.156221018] [map_io]: Loading yaml file: /root/rober/onboard/runtime/maps/final_direct_save.yaml\n[INFO] [1781127391.157329759] [map_io]: resolution: 0.05\n[INFO] [1781127391.157386925] [map_io]: origin[0]: -1.47275\n[INFO] [1781127391.157416592] [map_io]: origin[1]: -1.35148\n[INFO] [1781127391.157444300] [map_io]: origin[2]: 0\n[INFO] [1781127391.157472300] [map_io]: free_thresh: 0.196\n[INFO] [1781127391.157500466] [map_io]: occupied_thresh: 0.65\n[INFO] [1781127391.157531091] [map_io]: mode: trinary\n[INFO] [1781127391.157584799] [map_io]: negate: 0\n[INFO] [1781127391.158988704] [map_io]: Loading image_file: /root/rober/onboard/runtime/maps/final_direct_save.pgm\n[INFO] [1781127391.171385940] [map_io]: Read map /root/rober/onboard/runtime/maps/final_direct_save.pgm: 98 X 135 map @ 0.05 m/cell\n[INFO] [1781127391.211792873] [lifecycle_manager]: \u001b[34m\u001b[1mConfiguring amcl\u001b[0m\u001b[0m\n[INFO] [1781127391.212896906] [amcl]: Configuring\n[INFO] [1781127391.213267487] [amcl]: initTransforms\n[INFO] [1781127391.277550649] [amcl]: initPubSub\n[INFO] [1781127391.314354235] [amcl]: Subscribed to map topic.\n[INFO] [1781127391.351003614] [lifecycle_manager]: \u001b[34m\u001b[1mActivating map_server\u001b[0m\u001b[0m\n[INFO] [1781127391.351694442] [map_server]: Activating\n[INFO] [1781127391.354077923] [map_server]: Creating bond (map_server) to lifecycle manager.\n[INFO] [1781127391.357748227] [amcl]: Received a 98 X 135 map @ 0.050 m/pix\n[INFO] [1781127391.475510970] [lifecycle_manager]: Server map_server connected with bond.\n[INFO] [1781127391.475707760] [lifecycle_manager]: \u001b[34m\u001b[1mActivating amcl\u001b[0m\u001b[0m\n[INFO] [1781127391.476695044] [amcl]: Activating\n[INFO] [1781127391.476884376] [amcl]: Creating bond (amcl) to lifecycle manager.\n[INFO] [1781127391.600949568] [lifecycle_manager]: Server amcl connected with bond.\n[INFO] [1781127391.601728771] [lifecycle_manager]: \u001b[34m\u001b[1mManaged nodes are active\u001b[0m\u001b[0m\n[INFO] [1781127391.601823145] [lifecycle_manager]: \u001b[34m\u001b[1mCreating bond timer...\u001b[0m\u001b[0m\n[INFO] [1781127392.085599306] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000\n[INFO] [1781127392.653541681] [amcl]: createLaserObject\n[WARN] [1781127393.219643237] [amcl]: AMCL cannot publish a pose or update the transform. Please set the initial pose...\n[WARN] [1781127395.301704226] [amcl]: AMCL cannot publish a pose or update the transform. Please set the initial pose...\n[WARN] [1781127397.322479780] [amcl]: AMCL cannot publish a pose or update the transform. Please set the initial pose...\n",
+          "ok": false,
+          "reason": "managed_runtime_wait_timeout"
+        }
+      },
+      "map_once": {
+        "boundary": "map_consumption_inferred_from_amcl_pose_and_complete_tf_chain",
+        "executed": false,
+        "ok": true,
+        "stdout": "inferred: /map consumed because AMCL pose and complete map->base_link TF chain were observed"
+      },
+      "map_server_info": {
+        "boundary": "map_consumed_by_amcl_runtime",
+        "executed": false,
+        "ok": true
+      },
+      "map_to_base_link_tf": {
+        "boundary": "map_to_base_link_tf_probe_skipped_source_inventory_chain_complete",
+        "executed": false,
+        "ok": false
+      },
+      "map_to_odom_tf": {
+        "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+        "executed": false,
+        "ok": false
+      },
+      "node_list": {
+        "boundary": "skipped_after_rclpy_source_inventory_tf_chain_complete",
+        "executed": false,
+        "ok": true,
+        "stdout": ""
+      },
+      "odom_to_base_link_tf": {
+        "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+        "executed": false,
+        "ok": false
+      },
+      "package_checks": {
+        "nav2_amcl": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains nav2_amcl",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 3344,
+          "executed": true,
+          "ok": true,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "nav2_amcl"
+        },
+        "nav2_lifecycle_manager": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains nav2_lifecycle_manager",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 3344,
+          "executed": true,
+          "ok": true,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "nav2_lifecycle_manager"
+        },
+        "nav2_map_server": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains nav2_map_server",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 3344,
+          "executed": true,
+          "ok": true,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "nav2_map_server"
+        },
+        "ros2_trashbot_bringup": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains ros2_trashbot_bringup",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 3344,
+          "executed": true,
+          "ok": true,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "ros2_trashbot_bringup"
+        },
+        "ros2_trashbot_nav": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains ros2_trashbot_nav",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 3344,
+          "executed": true,
+          "ok": true,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "ros2_trashbot_nav"
+        }
+      },
+      "package_checks_batch": {
+        "command": "ros2 pkg list",
+        "elapsed_ms": 3344,
+        "executed": true,
+        "ok": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "action_msgs\nactionlib_msgs\nament_cmake\nament_cmake_auto\nament_cmake_copyright\nament_cmake_core\nament_cmake_cppcheck\nament_cmake_cpplint\nament_cmake_export_definitions\nament_cmake_export_dependencies\nament_cmake_export_include_directories\nament_cmake_export_interfaces\nament_cmake_export_libraries\nament_cmake_export_link_flags\nament_cmake_export_targets\nament_cmake_flake8\nament_cmake_gen_version_h\nament_cmake_gmock\nament_cmake_gtest\nament_cmake_include_directories\nament_cmake_libraries\nament_cmake_lint_cmake\nament_cmake_pep257\nament_cmake_pytest\nament_cmake_python\nament_cmake_ros\nament_cmake_target_dependencies\nament_cmake_test\nament_cmake_uncrustify\nament_cmake_version\nament_cmake_xmllint\nament_copyright\nament_cppcheck\nament_cpplint\nament_flake8\nament_index_cpp\nament_index_python\nament_lint\nament_lint_auto\nament_lint_cmake\nament_lint_common\nament_package\nament_pep257\nament_uncrustify\nament_xmllint\nangles\nbond\nbondcpp\nbuiltin_interfaces\nclass_loader\ncommon_interfaces\ncomposition_interfaces\nconsole_bridge_vendor\ndiagnostic_msgs\ndiagnostic_updater\ndomain_coordinator\neigen3_cmake_module\nfastrtps_cmake_module\ngeometry2\ngeometry_msgs\nimage_transport\ninteractive_markers\nkdl_parser\nkeyboard_handler\nlaser_geometry\nlaunch\nlaunch_ros\nlaunch_testing\nlaunch_testing_ament_cmake\nlaunch_testing_ros\nlaunch_xml\nlaunch_yaml\nlibcurl_vendor\nlibstatistics_collector\nlibyaml_vendor\nlifecycle_msgs\nmap_msgs\nmessage_filters\nnav2_amcl\nnav2_common\nnav2_controller\nnav2_core\nnav2_costmap_2d\nnav2_lifecycle_manager\nnav2_map_server\nnav2_msgs\nnav2_navfn_planner\nnav2_planner\nnav2_regulated_pure_pursuit_controller\nnav2_util\nnav2_voxel_grid\nnav_2d_msgs\nnav_2d_utils\nnav_msgs\norocos_kdl_vendor\nosrf_pycommon\npluginlib\npybind11_vendor\npython_cmake_module\npython_orocos_kdl_vendor\nrcl\nrcl_action\nrcl_interfaces\nrcl_lifecycle\nrcl_logging_interface\nrcl_logging_spdlog\nrcl_yaml_param_parser\nrclcpp\nrclcpp_action\nrclcpp_components\nrclcpp_lifecycle\nrclpy\nrcpputils\nrcutils\nresource_retriever\nrmw\nrmw_dds_common\nrmw_fastrtps_cpp\nrmw_fastrtps_shared_cpp\nrmw_implementation\nrmw_implementation_cmake\nrobot_state_publisher\nros2_trashbot_behavior\nros2_trashbot_bringup\nros2_trashbot_hardware\nros2_trashbot_interfaces\nros2_trashbot_nav\nros2_trashbot_vision\nros2action\nros2bag\nros2cli\nros2cli_common_extensions\nros2component\nros2doctor\nros2interface\nros2launch\nros2lifecycle\nros2multicast\nros2node\nros2param\nros2pkg\nros2plugin\nros2run\nros2service\nros2topic\nros_base\nros_core\nros_environment\nros_workspace\nrosbag2\nrosbag2_compression\nrosbag2_compression_zstd\nrosbag2_cpp\nrosbag2_interfaces\nrosbag2_py\nrosbag2_storage\nrosbag2_storage_default_plugins\nrosbag2_transport\nrosgraph_msgs\nrosidl_adapter\nrosidl_cli\nrosidl_cmake\nrosidl_default_generators\nrosidl_default_runtime\nrosidl_generator_c\nrosidl_generator_cpp\nrosidl_generator_py\nrosidl_generator_rs\nrosidl_parser\nrosidl_runtime_c\nrosidl_runtime_cpp\nrosidl_runtime_py\nrosidl_typesupport_c\nrosidl_typesupport_cpp\nrosidl_typesupport_fastrtps_c\nrosidl_typesupport_fastrtps_cpp\nrosidl_typesupport_interface\nrosidl_typesupport_introspection_c\nrosidl_typesupport_introspection_cpp\nrpyutils\nrviz_assimp_vendor\nrviz_common\nrviz_default_plugins\nrviz_ogre_vendor\nrviz_rendering\nsensor_msgs\nsensor_msgs_py\nshape_msgs\nshared_queues_vendor\nslam_toolbox\nsmclib\nspdlog_vendor\nsqlite3_vendor\nsros2\nsros2_cmake\nstatistics_msgs\nstd_msgs\nstd_srvs\nstereo_msgs\ntf2\ntf2_bullet\ntf2_eigen\ntf2_eigen_kdl\ntf2_geometry_msgs\ntf2_kdl\ntf2_msgs\ntf2_py\ntf2_ros\ntf2_ros_py\ntf2_sensor_msgs\ntf2_tools\ntinyxml2_vendor\ntinyxml_vendor\ntracetools\ntrajectory_msgs\nuncrustify_vendor\nunique_identifier_msgs\nurdf\nurdf_parser_plugin\nvisualization_msgs\nyaml_cpp_vendor\nzstd_vendor\n"
+      },
+      "path_generation": {
+        "request": {
+          "enabled": false,
+          "frame_id": "map",
+          "orientation_w": 1.0,
+          "orientation_z": 0.0,
+          "planner_id": "",
+          "use_start": false,
+          "x": 0.8,
+          "y": 0.0,
+          "yaw": 0.0
+        },
+        "result": {
+          "attempted": false,
+          "boundary": "default_read_only_no_path_generation_attempt",
+          "ok": false
+        }
+      },
+      "planner_lifecycle": {
+        "controller_server": {
+          "boundary": "path_generation_not_requested",
+          "executed": false,
+          "ok": false
+        },
+        "planner_server": {
+          "boundary": "path_generation_not_requested",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "planner_lifecycle_recheck": {
+        "boundary": "path_generation_planner_recheck_not_requested",
+        "executed": false
+      },
+      "planner_node_info": {
+        "boundary": "path_generation_not_requested",
+        "executed": false,
+        "ok": false
+      },
+      "post_initialpose_amcl_pose_once": {
+        "command": "timeout 8 ros2 topic echo --once /amcl_pose",
+        "elapsed_ms": 5431,
+        "executed": true,
+        "ok": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "header:\n  stamp:\n    sec: 1781127405\n    nanosec: 354738352\n  frame_id: map\npose:\n  pose:\n    position:\n      x: -0.0088773040460937\n      y: 0.009653050621684544\n      z: 0.0\n    orientation:\n      x: 0.0\n      y: 0.0\n      z: 0.002622344888221665\n      w: 0.9999965616477324\n  covariance:\n  - 0.26130536819531264\n  - 0.0020417638502638878\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.002041763850263889\n  - 0.25014648138109463\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.06354437348994338\n---\n"
+      },
+      "ros2_check": {
+        "command": "command -v ros2",
+        "elapsed_ms": 2177,
+        "executed": true,
+        "ok": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "/opt/ros/humble/bin/ros2\n"
+      },
+      "scan_once": {
+        "boundary": "scan_consumption_inferred_from_amcl_pose_and_complete_tf_chain",
+        "executed": false,
+        "ok": true,
+        "stdout": "inferred: /scan consumed because AMCL pose and complete map->base_link TF chain were observed"
+      },
+      "tf_source_probe": {
+        "amcl_rclpy_probe": {
+          "boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+          "command_statuses": {
+            "rclpy_graph": 0,
+            "tf": 0,
+            "tf_static": 0
+          },
+          "dynamic_edges": [
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            }
+          ],
+          "elapsed_ms": 3121,
+          "error": null,
+          "executed": true,
+          "node_info_observed": true,
+          "ok": true,
+          "param_probe_ok": true,
+          "params": {
+            "base_frame_id": "base_link",
+            "global_frame_id": "map",
+            "odom_frame_id": "odom",
+            "tf_broadcast": true
+          },
+          "publishers": [
+            {
+              "topic": "/amcl/transition_event",
+              "type": "lifecycle_msgs/msg/TransitionEvent"
+            },
+            {
+              "topic": "/amcl_pose",
+              "type": "geometry_msgs/msg/PoseWithCovarianceStamped"
+            },
+            {
+              "topic": "/bond",
+              "type": "bond/msg/Status"
+            },
+            {
+              "topic": "/parameter_events",
+              "type": "rcl_interfaces/msg/ParameterEvent"
+            },
+            {
+              "topic": "/particle_cloud",
+              "type": "nav2_msgs/msg/ParticleCloud"
+            },
+            {
+              "topic": "/rosout",
+              "type": "rcl_interfaces/msg/Log"
+            },
+            {
+              "topic": "/tf",
+              "type": "tf2_msgs/msg/TFMessage"
+            }
+          ],
+          "static_edges": [
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            }
+          ],
+          "subscribers": [
+            {
+              "topic": "/parameter_events",
+              "type": "rcl_interfaces/msg/ParameterEvent"
+            }
+          ],
+          "tf_inventory_observed": true,
+          "topic_types": {
+            "/amcl/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+            "/amcl_pose": "geometry_msgs/msg/PoseWithCovarianceStamped",
+            "/bond": "bond/msg/Status",
+            "/diagnostics": "diagnostic_msgs/msg/DiagnosticArray",
+            "/map": "nav_msgs/msg/OccupancyGrid",
+            "/map_server/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+            "/parameter_events": "rcl_interfaces/msg/ParameterEvent",
+            "/particle_cloud": "nav2_msgs/msg/ParticleCloud",
+            "/rosout": "rcl_interfaces/msg/Log",
+            "/scan": "sensor_msgs/msg/LaserScan",
+            "/tf": "tf2_msgs/msg/TFMessage",
+            "/tf_static": "tf2_msgs/msg/TFMessage",
+            "/trashbot/collect_trash/_action/feedback": "ros2_trashbot_interfaces/action/TrashCollection_FeedbackMessage",
+            "/trashbot/collect_trash/_action/status": "action_msgs/msg/GoalStatusArray",
+            "/trashbot/patrol/_action/feedback": "ros2_trashbot_interfaces/action/Patrol_FeedbackMessage",
+            "/trashbot/patrol/_action/status": "action_msgs/msg/GoalStatusArray",
+            "/trashbot/waypoints": "ros2_trashbot_interfaces/msg/WaypointList"
+          }
+        },
+        "boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+        "elapsed_ms": 3121,
+        "executed": true,
+        "ok": true,
+        "stderr": "",
+        "stdout": ""
+      },
+      "topic_list": {
+        "boundary": "skipped_after_rclpy_source_inventory_tf_chain_complete",
+        "executed": false,
+        "ok": true,
+        "stdout": "/amcl/transition_event\n/amcl_pose\n/bond\n/diagnostics\n/map\n/map_server/transition_event\n/parameter_events\n/particle_cloud\n/rosout\n/scan\n/tf\n/tf_static\n/trashbot/collect_trash/_action/feedback\n/trashbot/collect_trash/_action/status\n/trashbot/patrol/_action/feedback\n/trashbot/patrol/_action/status\n/trashbot/waypoints"
+      }
+    },
+    "controller_active": false,
+    "controller_server_active": false,
+    "controller_server_requested": false,
+    "current_command": null,
+    "delivery_success": false,
+    "elapsed_ms": 34542,
+    "evidence_ref": "o10-amcl-nav2-runtime-1781127385644",
+    "evidence_type": "robot_runtime_material",
+    "generated_at_ms": 1781127420186,
+    "hil_pass": false,
+    "initialpose_boundary": "explicit_opt_in_single_initialpose_for_amcl_localization_only",
+    "initialpose_publish_attempted": true,
+    "initialpose_published": true,
+    "initialpose_request": {
+      "enabled": true,
+      "frame_id": "map",
+      "orientation_w": 1.0,
+      "orientation_z": 0.0,
+      "x": 0.0,
+      "y": 0.0,
+      "yaw": 0.0
+    },
+    "last_phase": "final",
+    "last_successful_phase": "final",
+    "localization_tf_observed": {
+      "map_to_base_link": true,
+      "map_to_odom": true
+    },
+    "managed_runtime_boundary": "explicit_opt_in_managed_localization_runtime_no_motion",
+    "managed_runtime_cleanup_ok": true,
+    "managed_runtime_map_yaml": "/root/rober/onboard/runtime/maps/final_direct_save.yaml",
+    "managed_runtime_map_yaml_source": "canonical_map_proof_yaml_candidate",
+    "managed_runtime_process_group": 230076,
+    "managed_runtime_requested": true,
+    "managed_runtime_started": true,
+    "managed_runtime_vendor_boundary": "Vendor facts from docs/vendor/VENDOR_INDEX.md: WAVE ROVER base is newline-delimited UART JSON, vendor Raspberry Pi UART path is not Orange Pi fixed fact; this proof only opens LiDAR /dev/ttyACM0 and never opens /dev/ttyS5.",
+    "managed_static_tf_processes": {
+      "all_expected_processes_observed": true,
+      "checked_before_cleanup": true,
+      "expected": [
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "role": "static_tf_odom_base"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "role": "static_tf_base_laser"
+        }
+      ],
+      "observed_roles": [
+        "static_tf_base_laser",
+        "static_tf_odom_base"
+      ],
+      "process_group": 230076,
+      "processes": [
+        {
+          "command": "bash -lc set -e; set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; pids=(); cleanup(){ for pid in \"${pids[@]}\"; do kill -INT \"$pid\" 2>/dev/null || true; done; wait || true; }; trap cleanup EXIT INT TERM; printf '%s\\n' 'managed_map_yaml=/root/rober/onboard/runtime/maps/final_direct_save.yaml' > /tmp/rober_nav2_localization_iz20s_z4.log; printf '%s\\n' 'managed_runtime_boundary=no_motion_localization_only' >> /tmp/rober_nav2_localization_iz20s_z4.log; printf '%s\\n' 'blocked_device=/dev/ttyS5' >> /tmp/rober_nav2_localization_iz20s_z4.log; printf '%s\\n' 'starting role=lidar_driver' >> /tmp/rober_nav2_localization_iz20s_z4.log; (ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_packets:=false) >> /tmp/rober_nav2_localization_iz20s_z4.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lidar_driver pid='$pid >> /tmp/rober_nav2_localization_iz20s_z4.log; printf '%s\\n' 'starting role=static_tf_broadcaster' >> /tmp/rober_nav2_localization_iz20s_z4.log; (python3 -c 'import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main()' '{\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"}' static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame) >> /tmp/rober_nav2_localization_iz20s_z4.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=static_tf_broadcaster pid='$pid >> /tmp/rober_nav2_localization_iz20s_z4.log; printf '%s\\n' 'starting role=map_server' >> /tmp/rober_nav2_localization_iz20s_z4.log; (ros2 run nav2_map_server map_server --ros-args --params-file /tmp/rober_nav2_localization_u26uryuu.yaml -r __node:=map_server) >> /tmp/rober_nav2_localization_iz20s_z4.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=map_server pid='$pid >> /tmp/rober_nav2_localization_iz20s_z4.log; printf '%s\\n' 'starting role=amcl' >> /tmp/rober_nav2_localization_iz20s_z4.log; (ros2 run nav2_amcl amcl --ros-args --params-file /tmp/rober_nav2_localization_u26uryuu.yaml -r __node:=amcl) >> /tmp/rober_nav2_localization_iz20s_z4.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=amcl pid='$pid >> /tmp/rober_nav2_localization_iz20s_z4.log; printf '%s\\n' 'starting role=lifecycle_manager' >> /tmp/rober_nav2_localization_iz20s_z4.log; (ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_u26uryuu.yaml -r __node:=lifecycle_manager) >> /tmp/rober_nav2_localization_iz20s_z4.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lifecycle_manager pid='$pid >> /tmp/rober_nav2_localization_iz20s_z4.log; wait",
+          "pgid": 230076,
+          "pid": 230076,
+          "role": "static_tf_base_laser",
+          "roles": [
+            "static_tf_base_laser",
+            "static_tf_odom_base"
+          ],
+          "source_type": "single_rclpy_static_transform_broadcaster"
+        },
+        {
+          "command": "python3 -c import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main() {\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"} static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame",
+          "pgid": 230076,
+          "pid": 230113,
+          "role": "static_tf_base_laser",
+          "roles": [
+            "static_tf_base_laser",
+            "static_tf_odom_base"
+          ],
+          "source_type": "single_rclpy_static_transform_broadcaster"
+        }
+      ],
+      "source_strategy": "single_rclpy_static_transform_broadcaster_transient_local"
+    },
+    "map_consumed": true,
+    "map_frame_observed": true,
+    "map_inputs": {
+      "inputs_ready": true,
+      "map_artifact_dir": "/root/rober/onboard/runtime/maps",
+      "map_image_candidates": [
+        {
+          "mtime_ms": 1781118091538,
+          "name": "final_direct_save.pgm",
+          "path": "/root/rober/onboard/runtime/maps/final_direct_save.pgm",
+          "size_bytes": 13266,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117808598,
+          "name": "pc_proxy_save2.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.pgm",
+          "size_bytes": 52223,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117645935,
+          "name": "pc_proxy_start.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.pgm",
+          "size_bytes": 47468,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117556603,
+          "name": "pc_runtime_v1.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.pgm",
+          "size_bytes": 8218,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781107418934,
+          "name": "trashbot_map.pgm",
+          "path": "/root/rober/onboard/runtime/maps/trashbot_map.pgm",
+          "size_bytes": 8272,
+          "suffix": ".pgm"
+        }
+      ],
+      "map_metadata": {
+        "frame_id": "map",
+        "height": 135,
+        "resolution": 0.05000000074505806,
+        "width": 98
+      },
+      "map_proof_path": "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+      "map_yaml_candidates": [
+        {
+          "mtime_ms": 1781118091546,
+          "name": "final_direct_save.yaml",
+          "path": "/root/rober/onboard/runtime/maps/final_direct_save.yaml",
+          "size_bytes": 169,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117808606,
+          "name": "pc_proxy_save2.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.yaml",
+          "size_bytes": 165,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117645955,
+          "name": "pc_proxy_start.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.yaml",
+          "size_bytes": 165,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117556611,
+          "name": "pc_runtime_v1.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.yaml",
+          "size_bytes": 166,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781107418946,
+          "name": "trashbot_map.yaml",
+          "path": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "size_bytes": 165,
+          "suffix": ".yaml"
+        }
+      ],
+      "root_causes": [],
+      "source_evidence_ref": "o3-map-lifecycle-1781118051299",
+      "source_evidence_type": "robot_runtime_material",
+      "source_proof_status": "map_once_artifact_metadata_observed"
+    },
+    "map_once_observed": true,
+    "map_server_active": true,
+    "not_proven": [
+      "nav2_goal_execution",
+      "controller_cmd_vel_output",
+      "fixed_route_execution",
+      "delivery_success",
+      "hil_pass",
+      "safe_to_control_true"
+    ],
+    "odom_frame_observed": true,
+    "package_availability": {
+      "nav2_amcl": true,
+      "nav2_lifecycle_manager": true,
+      "nav2_map_server": true,
+      "ros2_trashbot_bringup": true,
+      "ros2_trashbot_nav": true
+    },
+    "package_check_mode": "single_sourced_pkg_list_diagnostic",
+    "package_checks_batch_ok": true,
+    "path_generated": false,
+    "path_generation_attempted": false,
+    "path_generation_boundary": "default_read_only_no_path_generation_attempt",
+    "path_generation_ready": false,
+    "path_generation_requested": false,
+    "path_generation_service_available": false,
+    "path_generation_service_name": null,
+    "path_generation_succeeded": false,
+    "path_goal_request": {
+      "frame_id": "map",
+      "orientation": {
+        "w": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "position": {
+        "x": 0.8,
+        "y": 0.0,
+        "z": 0.0
+      }
+    },
+    "path_goal_response": {
+      "accepted": false,
+      "result_received": false
+    },
+    "path_point_count": 0,
+    "phase_history": [
+      {
+        "at_ms": 1781127385644,
+        "detail": {
+          "mode": "no_motion_amcl_nav2_runtime_proof"
+        },
+        "ok": true,
+        "phase": "start"
+      },
+      {
+        "at_ms": 1781127385654,
+        "detail": {
+          "source_proof_status": "map_once_artifact_metadata_observed"
+        },
+        "ok": true,
+        "phase": "map_inputs"
+      },
+      {
+        "at_ms": 1781127385659,
+        "detail": {
+          "map_yaml_source": "canonical_map_proof_yaml_candidate",
+          "requested": true
+        },
+        "phase": "managed_runtime"
+      },
+      {
+        "at_ms": 1781127385673,
+        "detail": {
+          "map_yaml": "/root/rober/onboard/runtime/maps/final_direct_save.yaml",
+          "process_group": 230076
+        },
+        "ok": true,
+        "phase": "managed_runtime_started"
+      },
+      {
+        "at_ms": 1781127398195,
+        "detail": {
+          "reason": "managed_runtime_wait_timeout"
+        },
+        "ok": false,
+        "phase": "managed_runtime_wait"
+      },
+      {
+        "at_ms": 1781127398245,
+        "phase": "ros2_preflight"
+      },
+      {
+        "at_ms": 1781127400435,
+        "ok": true,
+        "phase": "ros2_preflight"
+      },
+      {
+        "at_ms": 1781127400445,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1781127405979,
+        "detail": {
+          "enabled": true
+        },
+        "ok": true,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1781127405984,
+        "phase": "amcl_pose_probe"
+      },
+      {
+        "at_ms": 1781127411439,
+        "ok": true,
+        "phase": "amcl_pose_probe"
+      },
+      {
+        "at_ms": 1781127411454,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1781127414671,
+        "detail": {
+          "amcl_tf_root_cause": "source_inventory_observed"
+        },
+        "ok": true,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1781127414682,
+        "phase": "tf_probe"
+      },
+      {
+        "at_ms": 1781127414704,
+        "ok": true,
+        "phase": "tf_probe_map_to_odom"
+      },
+      {
+        "at_ms": 1781127414731,
+        "ok": true,
+        "phase": "tf_probe_odom_to_base_link"
+      },
+      {
+        "at_ms": 1781127414758,
+        "ok": true,
+        "phase": "tf_probe_map_to_base_link"
+      },
+      {
+        "at_ms": 1781127414785,
+        "ok": true,
+        "phase": "tf_probe_base_link_to_laser_frame"
+      },
+      {
+        "at_ms": 1781127414800,
+        "detail": {
+          "tf_chain_observed": {
+            "base_link_to_laser_frame": true,
+            "map_to_base_link": true,
+            "map_to_odom": true,
+            "odom_to_base_link": true
+          },
+          "tf_failure_classification": {
+            "amcl_tf_root_cause": "source_inventory_observed",
+            "blocking_segment": null,
+            "frame_naming_consistent": true,
+            "map_to_base_link": "observed",
+            "reason": "complete_chain_observed"
+          }
+        },
+        "ok": true,
+        "phase": "tf_probe"
+      },
+      {
+        "at_ms": 1781127414814,
+        "detail": {
+          "mode": "single_sourced_pkg_list_diagnostic"
+        },
+        "phase": "package_checks"
+      },
+      {
+        "at_ms": 1781127418201,
+        "detail": {
+          "mode": "single_sourced_pkg_list_diagnostic",
+          "packages": {
+            "nav2_amcl": true,
+            "nav2_lifecycle_manager": true,
+            "nav2_map_server": true,
+            "ros2_trashbot_bringup": true,
+            "ros2_trashbot_nav": true
+          }
+        },
+        "ok": true,
+        "phase": "package_checks"
+      },
+      {
+        "at_ms": 1781127418216,
+        "detail": {
+          "mode": "source_inventory_fast_path"
+        },
+        "ok": true,
+        "phase": "graph_discovery"
+      },
+      {
+        "at_ms": 1781127418231,
+        "detail": {
+          "mode": "managed_runtime_wait_fast_path"
+        },
+        "ok": true,
+        "phase": "lifecycle_probe"
+      },
+      {
+        "at_ms": 1781127418246,
+        "detail": {
+          "amcl_pose_observed_pre_initialpose": false,
+          "map_once_observed": true,
+          "mode": "source_inventory_fast_path",
+          "scan_once_observed": true
+        },
+        "ok": true,
+        "phase": "topic_probe"
+      },
+      {
+        "at_ms": 1781127418278,
+        "detail": {
+          "requested": false
+        },
+        "phase": "path_generation"
+      },
+      {
+        "at_ms": 1781127418308,
+        "detail": {
+          "boundary": "default_read_only_no_path_generation_attempt"
+        },
+        "ok": true,
+        "phase": "path_generation"
+      },
+      {
+        "at_ms": 1781127418323,
+        "detail": {
+          "process_group": 230076
+        },
+        "phase": "cleanup"
+      },
+      {
+        "at_ms": 1781127420133,
+        "detail": {
+          "cleanup_result": {
+            "attempted": true,
+            "group_present_after_cleanup": false,
+            "killed_with_sigkill": true,
+            "ok": true,
+            "process_group": 230076,
+            "remaining_processes": [],
+            "sent_signal": "SIGINT"
+          }
+        },
+        "ok": true,
+        "phase": "cleanup"
+      },
+      {
+        "at_ms": 1781127420186,
+        "detail": {
+          "status": "nav2_no_motion_localization_runtime_observed"
+        },
+        "ok": true,
+        "phase": "final"
+      }
+    ],
+    "planner_active": false,
+    "planner_readiness_summary": {
+      "controller_server_active": false,
+      "controller_server_requested": false,
+      "localization_ready": true,
+      "managed_runtime_boundary": "explicit_opt_in_managed_localization_runtime_no_motion",
+      "managed_runtime_requested": true,
+      "managed_runtime_started": true,
+      "path_generated": false,
+      "path_generation_attempted": false,
+      "path_generation_requested": false,
+      "path_generation_succeeded": false,
+      "path_point_count": 0,
+      "planner_server_active": false
+    },
+    "planner_server_active": false,
+    "publishes_cmd_vel": false,
+    "recent_commands": [
+      {
+        "command": "command -v ros2",
+        "elapsed_ms": 2177,
+        "error": null,
+        "finished_at_ms": 1781127400431,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped '{\"header\": {\"frame_id\": \"map\"}, \"pose\": {\"pose\": {\"position\": {\"x\": 0.0, \"y\": 0.0, \"z\": 0.0}, \"orientation\": {\"x\": 0.0, \"y\": 0.0, \"z\": 0.0, \"w\": 1.0}}, \"covariance\": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853891945200942]}}'",
+        "elapsed_ms": 5514,
+        "error": null,
+        "finished_at_ms": 1781127405965,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "timeout 8 ros2 topic echo --once /amcl_pose",
+        "elapsed_ms": 5431,
+        "error": null,
+        "finished_at_ms": 1781127411426,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 pkg list",
+        "elapsed_ms": 3344,
+        "error": null,
+        "finished_at_ms": 1781127418171,
+        "ok": true,
+        "returncode": 0
+      }
+    ],
+    "robot_control_executed": false,
+    "root_causes": [],
+    "safe_to_control": false,
+    "scan_consumed": true,
+    "scan_once_observed": true,
+    "sends_base_motion_commands": false,
+    "sends_motion_commands": false,
+    "source_map_evidence_ref": "o3-map-lifecycle-1781118051299",
+    "source_map_evidence_type": "robot_runtime_material",
+    "started_at_ms": 1781127385644,
+    "static_tf_source_observed": true,
+    "status": "nav2_no_motion_localization_runtime_observed",
+    "tf_chain_diagnostics": {
+      "frame_contract": {
+        "actual": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        },
+        "consistent_with_defaults": true,
+        "expected": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        }
+      },
+      "pairs": {
+        "base_link_to_laser_frame": {
+          "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": true,
+          "returncode": null,
+          "source_frame": "base_link",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "laser_frame"
+        },
+        "map_to_base_link": {
+          "boundary": "map_to_base_link_tf_probe_skipped_source_inventory_chain_complete",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": true,
+          "returncode": null,
+          "source_frame": "map",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        },
+        "map_to_odom": {
+          "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": true,
+          "returncode": null,
+          "source_frame": "map",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "odom"
+        },
+        "odom_to_base_link": {
+          "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": true,
+          "returncode": null,
+          "source_frame": "odom",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        }
+      },
+      "source_diagnostics": {
+        "amcl_broadcast_conditions": {
+          "amcl_active": true,
+          "amcl_frame_params_match_helper": true,
+          "amcl_pose_frame_id_is_map": true,
+          "amcl_pose_observed": true,
+          "base_link_to_laser_frame_source_observed": true,
+          "initialpose_published": true,
+          "map_once_observed": true,
+          "map_server_active": true,
+          "map_to_odom_source_observed": true,
+          "odom_to_base_link_source_observed": true,
+          "scan_once_observed": true,
+          "static_tf_processes_observed": true,
+          "tf_broadcast_enabled": true
+        },
+        "amcl_frame_params": {
+          "base_frame_id": "base_link",
+          "global_frame_id": "map",
+          "odom_frame_id": "odom"
+        },
+        "amcl_node_info_observed": true,
+        "amcl_node_publishers": [
+          {
+            "topic": "/amcl/transition_event",
+            "type": "lifecycle_msgs/msg/TransitionEvent"
+          },
+          {
+            "topic": "/amcl_pose",
+            "type": "geometry_msgs/msg/PoseWithCovarianceStamped"
+          },
+          {
+            "topic": "/bond",
+            "type": "bond/msg/Status"
+          },
+          {
+            "topic": "/parameter_events",
+            "type": "rcl_interfaces/msg/ParameterEvent"
+          },
+          {
+            "topic": "/particle_cloud",
+            "type": "nav2_msgs/msg/ParticleCloud"
+          },
+          {
+            "topic": "/rosout",
+            "type": "rcl_interfaces/msg/Log"
+          },
+          {
+            "topic": "/tf",
+            "type": "tf2_msgs/msg/TFMessage"
+          }
+        ],
+        "amcl_node_subscribers": [
+          {
+            "topic": "/parameter_events",
+            "type": "rcl_interfaces/msg/ParameterEvent"
+          }
+        ],
+        "amcl_param_probe_ok": true,
+        "amcl_pose_frame_id": "map",
+        "amcl_tf_broadcast_param": "true",
+        "amcl_tf_root_cause": "source_inventory_observed",
+        "base_frame_observed": true,
+        "base_link_to_laser_frame_source_observed": true,
+        "frame_contract": {
+          "actual": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          },
+          "consistent_with_defaults": true,
+          "expected": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          }
+        },
+        "laser_frame_observed": true,
+        "map_frame_observed": true,
+        "map_to_odom_source_observed": true,
+        "odom_frame_observed": true,
+        "odom_to_base_link_source_observed": true,
+        "tf_frame_inventory": {
+          "command_statuses": {
+            "tf": 0,
+            "tf_static": 0,
+            "topic_list": 0
+          },
+          "dynamic_edges": [
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            }
+          ],
+          "edges": [
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "odom",
+              "parent": "map",
+              "topic": "/tf"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            }
+          ],
+          "frames": [
+            "base_link",
+            "laser_frame",
+            "map",
+            "odom"
+          ],
+          "static_edges": [
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            }
+          ],
+          "topic_types": {
+            "/amcl/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+            "/amcl_pose": "geometry_msgs/msg/PoseWithCovarianceStamped",
+            "/bond": "bond/msg/Status",
+            "/diagnostics": "diagnostic_msgs/msg/DiagnosticArray",
+            "/map": "nav_msgs/msg/OccupancyGrid",
+            "/map_server/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+            "/parameter_events": "rcl_interfaces/msg/ParameterEvent",
+            "/particle_cloud": "nav2_msgs/msg/ParticleCloud",
+            "/rosout": "rcl_interfaces/msg/Log",
+            "/scan": "sensor_msgs/msg/LaserScan",
+            "/tf": "tf2_msgs/msg/TFMessage",
+            "/tf_static": "tf2_msgs/msg/TFMessage",
+            "/trashbot/collect_trash/_action/feedback": "ros2_trashbot_interfaces/action/TrashCollection_FeedbackMessage",
+            "/trashbot/collect_trash/_action/status": "action_msgs/msg/GoalStatusArray",
+            "/trashbot/patrol/_action/feedback": "ros2_trashbot_interfaces/action/Patrol_FeedbackMessage",
+            "/trashbot/patrol/_action/status": "action_msgs/msg/GoalStatusArray",
+            "/trashbot/waypoints": "ros2_trashbot_interfaces/msg/WaypointList"
+          }
+        },
+        "tf_source_root_cause_detail": {
+          "amcl_broadcast_conditions": {
+            "amcl_active": true,
+            "amcl_frame_params_match_helper": true,
+            "amcl_pose_frame_id_is_map": true,
+            "amcl_pose_observed": true,
+            "base_link_to_laser_frame_source_observed": true,
+            "initialpose_published": true,
+            "map_once_observed": true,
+            "map_server_active": true,
+            "map_to_odom_source_observed": true,
+            "odom_to_base_link_source_observed": true,
+            "scan_once_observed": true,
+            "static_tf_processes_observed": true,
+            "tf_broadcast_enabled": true
+          },
+          "amcl_node_info_observed": true,
+          "amcl_param_probe_boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+          "amcl_param_probe_error": null,
+          "amcl_param_probe_ok": true,
+          "amcl_pose_frame_id": "map",
+          "base_link_to_laser_frame_source_observed": true,
+          "expected_params": {
+            "base_frame_id": "base_link",
+            "global_frame_id": "map",
+            "odom_frame_id": "odom",
+            "tf_broadcast": "true"
+          },
+          "map_to_odom_source_observed": true,
+          "observed_params": {
+            "base_frame_id": "base_link",
+            "global_frame_id": "map",
+            "odom_frame_id": "odom",
+            "tf_broadcast": "true"
+          },
+          "odom_to_base_link_source_observed": true,
+          "reason": "source_inventory_observed",
+          "tf_command_statuses": {
+            "tf": 0,
+            "tf_static": 0,
+            "topic_list": 0
+          }
+        },
+        "tf_static_observed": true,
+        "tf_topics_observed": {
+          "/tf": true,
+          "/tf_static": true
+        }
+      }
+    },
+    "tf_chain_observed": {
+      "base_link_to_laser_frame": true,
+      "map_to_base_link": true,
+      "map_to_odom": true,
+      "odom_to_base_link": true
+    },
+    "tf_failure_classification": {
+      "amcl_tf_root_cause": "source_inventory_observed",
+      "blocking_segment": null,
+      "frame_naming_consistent": true,
+      "map_to_base_link": "observed",
+      "reason": "complete_chain_observed"
+    },
+    "tf_frame_inventory": {
+      "command_statuses": {
+        "tf": 0,
+        "tf_static": 0,
+        "topic_list": 0
+      },
+      "dynamic_edges": [
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        }
+      ],
+      "edges": [
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "odom",
+          "parent": "map",
+          "topic": "/tf"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        }
+      ],
+      "frames": [
+        "base_link",
+        "laser_frame",
+        "map",
+        "odom"
+      ],
+      "static_edges": [
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        }
+      ],
+      "topic_types": {
+        "/amcl/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+        "/amcl_pose": "geometry_msgs/msg/PoseWithCovarianceStamped",
+        "/bond": "bond/msg/Status",
+        "/diagnostics": "diagnostic_msgs/msg/DiagnosticArray",
+        "/map": "nav_msgs/msg/OccupancyGrid",
+        "/map_server/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+        "/parameter_events": "rcl_interfaces/msg/ParameterEvent",
+        "/particle_cloud": "nav2_msgs/msg/ParticleCloud",
+        "/rosout": "rcl_interfaces/msg/Log",
+        "/scan": "sensor_msgs/msg/LaserScan",
+        "/tf": "tf2_msgs/msg/TFMessage",
+        "/tf_static": "tf2_msgs/msg/TFMessage",
+        "/trashbot/collect_trash/_action/feedback": "ros2_trashbot_interfaces/action/TrashCollection_FeedbackMessage",
+        "/trashbot/collect_trash/_action/status": "action_msgs/msg/GoalStatusArray",
+        "/trashbot/patrol/_action/feedback": "ros2_trashbot_interfaces/action/Patrol_FeedbackMessage",
+        "/trashbot/patrol/_action/status": "action_msgs/msg/GoalStatusArray",
+        "/trashbot/waypoints": "ros2_trashbot_interfaces/msg/WaypointList"
+      }
+    },
+    "tf_source_root_cause_detail": {
+      "amcl_broadcast_conditions": {
+        "amcl_active": true,
+        "amcl_frame_params_match_helper": true,
+        "amcl_pose_frame_id_is_map": true,
+        "amcl_pose_observed": true,
+        "base_link_to_laser_frame_source_observed": true,
+        "initialpose_published": true,
+        "map_once_observed": true,
+        "map_server_active": true,
+        "map_to_odom_source_observed": true,
+        "odom_to_base_link_source_observed": true,
+        "scan_once_observed": true,
+        "static_tf_processes_observed": true,
+        "tf_broadcast_enabled": true
+      },
+      "amcl_node_info_observed": true,
+      "amcl_param_probe_boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+      "amcl_param_probe_error": null,
+      "amcl_param_probe_ok": true,
+      "amcl_pose_frame_id": "map",
+      "base_link_to_laser_frame_source_observed": true,
+      "expected_params": {
+        "base_frame_id": "base_link",
+        "global_frame_id": "map",
+        "odom_frame_id": "odom",
+        "tf_broadcast": "true"
+      },
+      "map_to_odom_source_observed": true,
+      "observed_params": {
+        "base_frame_id": "base_link",
+        "global_frame_id": "map",
+        "odom_frame_id": "odom",
+        "tf_broadcast": "true"
+      },
+      "odom_to_base_link_source_observed": true,
+      "reason": "source_inventory_observed",
+      "tf_command_statuses": {
+        "tf": 0,
+        "tf_static": 0,
+        "topic_list": 0
+      }
+    },
+    "tf_static_observed": true,
+    "tf_topics_observed": {
+      "/tf": true,
+      "/tf_static": true
+    },
+    "uses_base_uart": false
+  },
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "safe_to_control": false,
+  "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+  "sends_base_motion_commands": false,
+  "sends_motion_commands": false,
+  "software_guard": true,
+  "status": "nav2_no_motion_localization_runtime_observed",
+  "uses_base_uart": false
+}

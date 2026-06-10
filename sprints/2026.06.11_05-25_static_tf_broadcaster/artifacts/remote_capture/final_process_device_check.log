@@ -1,0 +1,13 @@
+service=active
+target_processes_begin
+target_processes_end
+ttyS5_fuser_begin
+
+ttyS5_fuser_end
+ttyACM0_fuser_begin
+
+ttyACM0_fuser_end
+ttyS5_lsof_begin
+ttyS5_lsof_end
+ttyACM0_lsof_begin
+ttyACM0_lsof_end

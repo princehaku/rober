@@ -1891,6 +1891,39 @@ managed localization runtime 也会在日志和 artifact 中记录 static TF sou
 `/tf_static` 观测同时成立时才为 true。这样下一轮能区分“static publisher 没启动”、
 “进程启动但 `/tf_static` QoS/timing 未读到”和“AMCL 自身未广播 `map->odom`”。
 
+2026-06-11 05:25 起，managed localization runtime 不再用两个独立
+`static_transform_publisher` 进程发布 static TF。helper 改为启动一个
+`managed_static_tf_broadcaster` rclpy 节点，用同一个 `StaticTransformBroadcaster`
+一次性发布并周期性刷新同一组 transient-local static transforms：
+
+- `odom -> base_link`
+- `base_link -> laser_frame`
+
+这样 late subscriber 读取 `/tf_static` 时只需要接收同一个 source 的 TFMessage，
+不会再依赖两个独立 CLI publisher 的发现顺序或 latch timing。artifact 中
+`managed_static_tf_processes.source_strategy` 会写
+`single_rclpy_static_transform_broadcaster_transient_local`，同时继续用
+`observed_roles=["static_tf_base_laser","static_tf_odom_base"]` 证明两条 edge 都由
+本轮 source 覆盖。
+
+同轮真实上位机 evidence：
+
+- artifact：
+  `sprints/2026.06.11_05-25_static_tf_broadcaster/artifacts/remote_capture/localization_reset_latest.final.remote.json`
+- `status=nav2_no_motion_localization_runtime_observed`
+- `tf_chain_observed.map_to_odom=true`
+- `tf_chain_observed.odom_to_base_link=true`
+- `tf_chain_observed.base_link_to_laser_frame=true`
+- `tf_chain_observed.map_to_base_link=true`
+- `tf_frame_inventory.static_edges` 同时包含 `odom -> base_link` 与
+  `base_link -> laser_frame`
+- `root_causes=[]`
+
+helper 还会在 TF source inventory 已完整时跳过后续慢 `ros2 topic/node info`
+诊断，改用同轮 rclpy graph、AMCL 参数、`/amcl_pose` 和 TF inventory 作为
+no-motion fast path，避免在 upper/PC 固定预算内已经成功后又被诊断 CLI 拖成
+timeout。该 fast path 不扩大权限：仍不触发路径规划、运动控制、底盘 UART 或 HIL。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:
