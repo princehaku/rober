@@ -1,0 +1,1 @@
+Computer Use blocked on missing Accessibility/Screen Recording permission after 3 retries on 2026-06-10; real page Start/Stop preview evidence not captured in this run.

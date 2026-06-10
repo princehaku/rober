@@ -27,6 +27,12 @@ import {
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "./catalog";
+import { endpointUrl, normalizeRobotApiBaseUrl, scanDangerousTrueFields } from "./robotControlSummary";
+import type {
+  RobotControlCameraAnswerSummary,
+  RobotControlCameraCloseProxyResponse,
+  RobotControlCameraOfferProxyResponse,
+} from "../shared/contracts";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +42,136 @@ function queryString(value: unknown): string {
   // Express query 可能是数组或对象；只接受单个字符串，其他形态 fail closed 为空。
   // 为空会让 catalog 返回 not_proven/blocked，而不是把异常 query 当路径读取。
   return typeof value === "string" ? value : "";
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  // camera proxy 只接受/返回 JSON object；数组或字符串一律 fail-closed。
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function shortText(value: unknown, fallback: string): string {
+  // 响应只保留短摘要，避免把远端 traceback、路径或超长文本直接暴露给 UI。
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, 240) : fallback;
+}
+
+function normalizeAnswerSdp(value: string): string {
+  // 浏览器对 SDP 行结束更严格；这里不改写语义，只统一成 CRLF 并补最后一个 CRLF。
+  const crlfNormalized = value.replace(/\r?\n/g, "\r\n");
+  return crlfNormalized.endsWith("\r\n") ? crlfNormalized : `${crlfNormalized}\r\n`;
+}
+
+function safeAnswer(value: unknown): RobotControlCameraAnswerSummary | null {
+  // 前端必须拿到 answer.sdp/type 才能 setRemoteDescription；除此之外不透传更多媒体字段。
+  const payload = asRecord(value);
+  if (!payload) {
+    return null;
+  }
+  const sdp = typeof payload.sdp === "string" ? payload.sdp : "";
+  const type = payload.type === "answer" || payload.type === "pranswer" ? payload.type : null;
+  if (!sdp.trim() || !type) {
+    return null;
+  }
+  return { type, sdp: normalizeAnswerSdp(sdp) };
+}
+
+function safeAnswerFromPayload(payload: Record<string, unknown> | null): RobotControlCameraAnswerSummary | null {
+  // 真实上位机当前返回顶层 answer SDP；本机 proxy 同时兼容嵌套 answer 和顶层 answer。
+  return safeAnswer(payload?.answer) ?? safeAnswer(payload);
+}
+
+function peerIdText(value: unknown): string {
+  // peer_id 只保留短字母数字摘要，避免路径注入或日志污染。
+  return typeof value === "string" && /^[A-Za-z0-9_-]{1,120}$/.test(value) ? value : "";
+}
+
+function unsafeProxyFailure(
+  sourceBaseUrl: string,
+  reason: string,
+  remoteEndpoint: RobotControlCameraOfferProxyResponse["remote_endpoint"],
+): RobotControlCameraOfferProxyResponse;
+function unsafeProxyFailure(
+  sourceBaseUrl: string,
+  reason: string,
+  remoteEndpoint: RobotControlCameraCloseProxyResponse["remote_endpoint"],
+  peerId: string,
+): RobotControlCameraCloseProxyResponse;
+function unsafeProxyFailure(
+  sourceBaseUrl: string,
+  reason: string,
+  remoteEndpoint: string,
+  peerId = "",
+): RobotControlCameraOfferProxyResponse | RobotControlCameraCloseProxyResponse {
+  // URL/请求体验证失败时也返回固定 false 合同，避免前端为了错误态另写一套逻辑。
+  const common = {
+    source: "software_proof" as const,
+    proof_status: "not_proven" as const,
+    safe_to_control: false as const,
+    delivery_success: false as const,
+    primary_actions_enabled: false as const,
+    pc_only: true as const,
+    robot_control_executed: false as const,
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    remote_http_status: null,
+    blocked_reasons: [reason],
+  };
+  if (remoteEndpoint === "/api/camera/offer") {
+    return {
+      schema: "trashbot.pc_tools_workstation.robot_control_camera_offer_proxy.v1",
+      proxy_status: "offer_rejected",
+      remote_endpoint: "/api/camera/offer",
+      status: "blocked",
+      peer_id: "",
+      answer: null,
+      error: reason,
+      failure_reason: reason,
+      ...common,
+    };
+  }
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_camera_close_proxy.v1",
+    proxy_status: "close_rejected",
+    remote_endpoint: "/api/camera/peers/{peer_id}/close",
+    peer_id: peerId,
+    status: "blocked",
+    error: reason,
+    failure_reason: reason,
+    ...common,
+  };
+}
+
+async function fetchCameraProxySummary(
+  baseUrl: string,
+  endpoint: string,
+  body: Record<string, unknown>,
+): Promise<{ remote_http_status: number | null; payload: Record<string, unknown> | null; error: string }> {
+  // camera proxy 只向白名单 endpoint 发 POST JSON，不允许动态路径或浏览器跨域直连。
+  const normalized = normalizeRobotApiBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return { remote_http_status: null, payload: null, error: normalized.reason };
+  }
+  try {
+    const response = await fetch(endpointUrl(normalized.normalized, endpoint), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    });
+    const json = await response.json().catch(() => null);
+    return {
+      remote_http_status: response.status,
+      payload: asRecord(json),
+      error: "",
+    };
+  } catch (error) {
+    return {
+      remote_http_status: null,
+      payload: null,
+      error: error instanceof Error ? shortText(error.message, "upper_api_unreachable") : "upper_api_unreachable",
+    };
+  }
 }
 
 export function createWorkstationApp(): express.Express {
@@ -182,6 +318,121 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/robot-control/summary", async (req, res) => {
     // Robot Control V1 只读代理上位机 GET status/latest/readback，拒绝浏览器直连和危险 URL。
     res.json(await buildRobotControlSummary(queryString(req.query.baseUrl)));
+  });
+
+  workstationApp.post("/api/robot-control/camera/offer", async (req, res) => {
+    // camera offer 只允许本机 Node 代理固定上位机 endpoint，不开放任意 Robot API POST。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    if (!normalized.ok) {
+      res.status(400).json(unsafeProxyFailure(sourceBaseUrl, normalized.reason, "/api/camera/offer"));
+      return;
+    }
+    const payload = asRecord(req.body);
+    const sdp = typeof payload?.sdp === "string" ? payload.sdp.trim() : "";
+    const type = payload?.type === "offer" ? "offer" : "";
+    if (!payload || !sdp || type !== "offer") {
+      res.status(400).json(unsafeProxyFailure(sourceBaseUrl, "invalid_offer_request", "/api/camera/offer"));
+      return;
+    }
+    const remote = await fetchCameraProxySummary(sourceBaseUrl, "/api/camera/offer", { type, sdp });
+    if (remote.error) {
+      res.status(502).json(unsafeProxyFailure(sourceBaseUrl, remote.error, "/api/camera/offer"));
+      return;
+    }
+    const dangerous = scanDangerousTrueFields(remote.payload);
+    const answer = safeAnswerFromPayload(remote.payload);
+    const responseBody: RobotControlCameraOfferProxyResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_camera_offer_proxy.v1",
+      proxy_status:
+        remote.remote_http_status === 200 && dangerous.length === 0 && answer ? "offer_forwarded" : "offer_failed",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_endpoint: "/api/camera/offer",
+      remote_http_status: remote.remote_http_status,
+      status: shortText(remote.payload?.status, remote.remote_http_status === 200 ? "loaded" : "blocked"),
+      peer_id: peerIdText(remote.payload?.peer_id),
+      answer,
+      error: shortText(remote.payload?.error, ""),
+      failure_reason:
+        dangerous.length > 0
+          ? `dangerous_true_field:${dangerous[0]}`
+          : !answer
+            ? "remote_answer_missing"
+            : remote.remote_http_status === 200
+              ? ""
+              : `offer_http_status_${remote.remote_http_status}`,
+      blocked_reasons: [
+        ...(remote.remote_http_status === 200 ? [] : [`offer_http_status_${remote.remote_http_status}`]),
+        ...dangerous.map((field) => `dangerous_true_field:${field}`),
+        ...(answer ? [] : ["remote_answer_missing"]),
+      ],
+    };
+    res.status(responseBody.proxy_status === "offer_forwarded" ? 200 : 502).json(responseBody);
+  });
+
+  workstationApp.post("/api/robot-control/camera/peers/:peerId/close", async (req, res) => {
+    // peer cleanup 只允许关闭已知 peer_id；不接受任意路径、query 拼接或控制类 POST。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    const peerId = peerIdText(req.params.peerId ?? "");
+    if (!normalized.ok) {
+      res
+        .status(400)
+        .json(unsafeProxyFailure(sourceBaseUrl, normalized.reason, "/api/camera/peers/{peer_id}/close", peerId));
+      return;
+    }
+    if (!peerId) {
+      res
+        .status(400)
+        .json(unsafeProxyFailure(sourceBaseUrl, "peer_id_invalid", "/api/camera/peers/{peer_id}/close", peerId));
+      return;
+    }
+    const remote = await fetchCameraProxySummary(sourceBaseUrl, `/api/camera/peers/${peerId}/close`, {});
+    if (remote.error) {
+      res
+        .status(502)
+        .json(unsafeProxyFailure(sourceBaseUrl, remote.error, "/api/camera/peers/{peer_id}/close", peerId));
+      return;
+    }
+    const dangerous = scanDangerousTrueFields(remote.payload);
+    const responseBody: RobotControlCameraCloseProxyResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_camera_close_proxy.v1",
+      proxy_status:
+        remote.remote_http_status === 200 && dangerous.length === 0 ? "peer_closed" : "close_failed",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_endpoint: "/api/camera/peers/{peer_id}/close",
+      remote_http_status: remote.remote_http_status,
+      peer_id: peerId,
+      status: shortText(remote.payload?.status, remote.remote_http_status === 200 ? "closed" : "blocked"),
+      error: shortText(remote.payload?.error, ""),
+      failure_reason:
+        dangerous.length > 0
+          ? `dangerous_true_field:${dangerous[0]}`
+          : remote.remote_http_status === 200
+            ? ""
+            : `close_http_status_${remote.remote_http_status}`,
+      blocked_reasons: [
+        ...(remote.remote_http_status === 200 ? [] : [`close_http_status_${remote.remote_http_status}`]),
+        ...dangerous.map((field) => `dangerous_true_field:${field}`),
+      ],
+    };
+    res.status(responseBody.proxy_status === "peer_closed" ? 200 : 502).json(responseBody);
   });
 
   workstationApp.get("/api/proof-boundary", (_req, res) => {

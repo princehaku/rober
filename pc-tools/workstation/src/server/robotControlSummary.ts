@@ -101,7 +101,7 @@ function isPrivateIpv4(hostname: string): boolean {
   return a === 10 || a === 127 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31);
 }
 
-function normalizeRobotApiBaseUrl(baseUrl: string): { ok: true; normalized: URL } | { ok: false; reason: string } {
+export function normalizeRobotApiBaseUrl(baseUrl: string): { ok: true; normalized: URL } | { ok: false; reason: string } {
   // 不提供默认地址，是为了避免页面初次加载时误探 workstation 自己或真实机器人。
   const trimmed = baseUrl.trim();
   if (!trimmed) {
@@ -131,7 +131,7 @@ function normalizeRobotApiBaseUrl(baseUrl: string): { ok: true; normalized: URL 
   return { ok: true, normalized: parsed };
 }
 
-function endpointUrl(base: URL, endpoint: string): string {
+export function endpointUrl(base: URL, endpoint: string): string {
   // 允许 base URL 带只读网关前缀，但 endpoint 仍由白名单提供，operator 不能拼危险路径。
   const next = new URL(base.toString());
   const prefix = next.pathname === "/" ? "" : next.pathname.replace(/\/+$/, "");
@@ -141,7 +141,7 @@ function endpointUrl(base: URL, endpoint: string): string {
   return next.toString();
 }
 
-function scanDangerousTrueFields(value: unknown, path = ""): string[] {
+export function scanDangerousTrueFields(value: unknown, path = ""): string[] {
   // 任意层出现危险 true 字段都进入 blocked reason；PC 端仍固定不放开控制按钮。
   if (!value || typeof value !== "object") {
     return [];
@@ -391,7 +391,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       last_refresh_ms: observedAt,
     },
     readback_summary: {
-      camera: { status: "not_loaded", devices_status: "not_loaded", preview_status: "locked_no_webrtc_session" },
+      camera: { status: "not_loaded", devices_status: "not_loaded", preview_status: "idle_not_started" },
       lidar: { status: "not_loaded", latest_scan_proof_status: "not_loaded", latest_raw_packet_proof_status: "not_loaded" },
       base: { status: "not_loaded", latest_feedback_status: "not_loaded", feedback_ack_status: "not_loaded" },
     },
@@ -473,7 +473,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
       camera: {
         status: pickReadback(readbacks, "camera_health")?.status ?? "not_loaded",
         devices_status: pickReadback(readbacks, "camera_devices")?.status ?? "not_loaded",
-        preview_status: "locked_no_webrtc_session",
+        preview_status: "idle_not_started",
       },
       lidar: {
         status: pickReadback(readbacks, "radar_status")?.status ?? "not_loaded",

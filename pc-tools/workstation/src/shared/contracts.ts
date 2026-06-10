@@ -1989,6 +1989,15 @@ export interface RobotApiProofSummary {
   not_proven: string[];
 }
 
+export type RobotControlPreviewStatus =
+  | "idle_not_started"
+  | "starting_local_peer"
+  | "connecting_offer_posted"
+  | "streaming"
+  | "start_failed"
+  | "stopped_by_user"
+  | "peer_cleanup_failed";
+
 export interface RobotControlSummaryResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_summary.v1";
   console_status: "blocked" | "loaded_fail_closed_summary";
@@ -2018,7 +2027,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     camera: {
       status: string;
       devices_status: string;
-      preview_status: "locked_no_webrtc_session";
+      preview_status: RobotControlPreviewStatus;
     };
     lidar: {
       status: string;
@@ -2051,6 +2060,42 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   safe_to_control: false;
   delivery_success: false;
   primary_actions_enabled: false;
+}
+
+export interface RobotControlCameraAnswerSummary {
+  type: "answer" | "pranswer";
+  sdp: string;
+}
+
+export interface RobotControlCameraOfferProxyResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_camera_offer_proxy.v1";
+  proxy_status: "offer_forwarded" | "offer_rejected" | "offer_failed";
+  source_base_url: string;
+  normalized_base_url: string;
+  remote_endpoint: "/api/camera/offer";
+  remote_http_status: number | null;
+  status: string;
+  peer_id: string;
+  answer: RobotControlCameraAnswerSummary | null;
+  error: string;
+  failure_reason: string;
+  blocked_reasons: string[];
+  robot_control_executed: false;
+}
+
+export interface RobotControlCameraCloseProxyResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_camera_close_proxy.v1";
+  proxy_status: "peer_closed" | "close_rejected" | "close_failed";
+  source_base_url: string;
+  normalized_base_url: string;
+  remote_endpoint: "/api/camera/peers/{peer_id}/close";
+  remote_http_status: number | null;
+  peer_id: string;
+  status: string;
+  error: string;
+  failure_reason: string;
+  blocked_reasons: string[];
+  robot_control_executed: false;
 }
 
 export interface O7CloudArchiveTasksProbeResponse extends ProofFlags {

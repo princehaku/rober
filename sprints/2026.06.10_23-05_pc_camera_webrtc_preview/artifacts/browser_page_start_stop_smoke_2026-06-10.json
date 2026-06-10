@@ -1,0 +1,49 @@
+{
+  "schema": "trashbot.pc_tools_workstation.camera_preview_browser_smoke.v1",
+  "source": "browser_in_app_page_smoke",
+  "page_url": "http://127.0.0.1:8787/",
+  "robot_api_base_url": "http://192.168.1.11:8787",
+  "started_at_observed_iso": "2026-06-10T15:23:03.927Z",
+  "stopped_at_observed_iso": "2026-06-10T15:23:27.939Z",
+  "start_state": {
+    "preview_status": "streaming",
+    "failure_reason": "none",
+    "peer_id": "7e90454a0dd54307bf40461e72842be6",
+    "ice_connection_state": "connected",
+    "video_track_state": "live",
+    "camera_health": "ready",
+    "camera_devices": "loaded"
+  },
+  "stop_state": {
+    "preview_status": "stopped_by_user",
+    "failure_reason": "none",
+    "peer_id": "not_assigned",
+    "ice_connection_state": "closed",
+    "video_track_state": "stopped",
+    "cleanup_status": "peer_closed:closed"
+  },
+  "remote_camera_health_after_stop": {
+    "status": "ready",
+    "active_peer_connections": 0,
+    "active_peer_ids": [],
+    "stability_active_peer_count": 0
+  },
+  "screenshot_after_stop": "artifacts/browser_camera_preview_after_stop_2026-06-10.jpg",
+  "safety_boundary": {
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "command_dispatch_enabled": false,
+    "manual_control_enabled": false,
+    "navigate_goal_enabled": false,
+    "keyboard_control_enabled": false,
+    "robot_control_executed": false
+  },
+  "not_proven": [
+    "physical_motion",
+    "base_manual_control",
+    "cmd_vel",
+    "nav2_goal_execution",
+    "delivery_success"
+  ]
+}

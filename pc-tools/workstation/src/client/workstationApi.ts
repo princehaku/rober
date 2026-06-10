@@ -18,6 +18,8 @@ import type {
   O7SafeCommandPreviewResponse,
   O7VoicePreviewResponse,
   ProofBoundaryResponse,
+  RobotControlCameraCloseProxyResponse,
+  RobotControlCameraOfferProxyResponse,
   RobotControlSummaryResponse,
   RouteDebugSummaryResponse,
   TrainingLabelingResponse,
@@ -81,6 +83,8 @@ const API_ENDPOINTS = {
   o7SafeCommandPreview: "/api/o7/safe-command-preview",
   o7CloudArchiveTasks: "/api/o7/cloud-archive/tasks",
   robotControlSummary: "/api/robot-control/summary",
+  robotControlCameraOffer: "/api/robot-control/camera/offer",
+  robotControlCameraPeersPrefix: "/api/robot-control/camera/peers/",
   proofBoundary: "/api/proof-boundary",
 } as const;
 
@@ -91,6 +95,22 @@ async function loadJson<T>(url: string): Promise<T> {
     throw new Error(`${url} returned ${response.status}`);
   }
   return (await response.json()) as T;
+}
+
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  // POST 只用于 camera offer/close 本机代理；失败时仍由调用方保持 fail-closed UI。
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => null);
+  if (payload === null) {
+    throw new Error(`${url} returned ${response.status}`);
+  }
+  return payload as T;
 }
 
 function routeDebugUrl(inputs: RouteDebugInputs): string {
@@ -137,6 +157,26 @@ function robotControlSummaryUrl(baseUrl: string): string {
   }
   const query = params.toString();
   return query ? `${API_ENDPOINTS.robotControlSummary}?${query}` : API_ENDPOINTS.robotControlSummary;
+}
+
+function robotControlCameraOfferUrl(baseUrl: string): string {
+  // camera offer 只允许把上位机 base URL 交给本机 Node 代理，浏览器不直连机器人。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  return `${API_ENDPOINTS.robotControlCameraOffer}?${params.toString()}`;
+}
+
+function robotControlCameraCloseUrl(baseUrl: string, peerId: string): string {
+  // peer cleanup 路径固定白名单；peer_id 由 encodeURIComponent 防止路径注入。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  return `${API_ENDPOINTS.robotControlCameraPeersPrefix}${encodeURIComponent(peerId)}/close?${params.toString()}`;
 }
 
 function consumerTaskListUrl(baseUrl: string): string {
@@ -302,6 +342,22 @@ export async function getO7CloudArchiveTasks(archiveJson: string): Promise<O7Clo
 export async function getRobotControlSummary(baseUrl: string): Promise<RobotControlSummaryResponse> {
   // Robot Control V1 只读取 Node 代理后的 fail-closed 摘要，不接收前端任意 endpoint。
   return loadJson<RobotControlSummaryResponse>(robotControlSummaryUrl(baseUrl));
+}
+
+export async function postRobotControlCameraOffer(
+  baseUrl: string,
+  offer: { type: "offer"; sdp: string },
+): Promise<RobotControlCameraOfferProxyResponse> {
+  // WebRTC offer 只透过本机 Node 代理发给上位机，避免浏览器跨域绕过 URL 围栏。
+  return postJson<RobotControlCameraOfferProxyResponse>(robotControlCameraOfferUrl(baseUrl), offer);
+}
+
+export async function postRobotControlCameraPeerClose(
+  baseUrl: string,
+  peerId: string,
+): Promise<RobotControlCameraCloseProxyResponse> {
+  // cleanup 只允许关闭已知 peer_id，不允许把前端变成任意 Robot API POST 代理。
+  return postJson<RobotControlCameraCloseProxyResponse>(robotControlCameraCloseUrl(baseUrl, peerId), {});
 }
 
 export async function getO7ConsumerTaskList(baseUrl: string): Promise<O7ConsumerTaskListResponse> {

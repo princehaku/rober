@@ -771,6 +771,43 @@ function listenRobotApiReadbackByPath(
   });
 }
 
+function listenRobotCameraProxyApi(
+  handlers: Record<string, { payload: unknown; statusCode?: number }>,
+): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  // camera proxy 测试需要按固定 POST 路径返回 JSON，验证 workstation 不会退化成任意代理。
+  const server = http.createServer((req, res) => {
+    const url = req.url ?? "/";
+    const handler = handlers[url];
+    if (req.method !== "POST" || !handler) {
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+    req.on("end", () => {
+      res.statusCode = handler.statusCode ?? 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ...(handler.payload as Record<string, unknown>), echoed_body: body ? JSON.parse(body) : {} }));
+    });
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
 function listenCloudArchive(payload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
   // cloud archive probe 测试用本机 HTTP 服务，只返回给定 contract，不连接 relay、云或机器人。
   const server = http.createServer((req, res) => {
@@ -3630,6 +3667,142 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
       await robotApi.close();
+    }
+  });
+
+  it("workstation camera offer proxy keeps baseUrl guard and returns only safe answer summary", async () => {
+    // offer proxy 只允许 camera offer 白名单路径，且响应只保留 answer/peer/status/error 的安全摘要。
+    const upstream = await listenRobotCameraProxyApi({
+      "/api/camera/offer": {
+        payload: {
+          schema: "trashbot.local_webrtc_camera_offer.v1",
+          status: "ready",
+          peer_id: "peerABC123",
+          type: "answer",
+          sdp: "v=0\r\ns=remote-answer\r\n",
+          safe_to_control: true,
+          delivery_success: true,
+          primary_actions_enabled: true,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/camera/offer?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ type: "offer", sdp: "v=0\r\ns=local-offer\r\n" }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        answer: { type: string; sdp: string } | null;
+        blocked_reasons: string[];
+        safe_to_control: boolean;
+      };
+
+      expect(response.status).toBe(502);
+      expect(body.proxy_status).toBe("offer_failed");
+      expect(body.answer?.type).toBe("answer");
+      expect(body.answer?.sdp).toContain("remote-answer");
+      expect(body.answer?.sdp.endsWith("\r\n")).toBe(true);
+      expect(body.blocked_reasons).toContain("dangerous_true_field:safe_to_control");
+      expect(body.safe_to_control).toBe(false);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+
+    const server = await listen(createWorkstationApp());
+    try {
+      const rejected = await fetch(`${server.baseUrl}/api/robot-control/camera/offer?baseUrl=${encodeURIComponent("https://example.com")}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ type: "offer", sdp: "v=0\r\ns=local-offer\r\n" }),
+      });
+      const rejectedBody = (await rejected.json()) as { failure_reason: string };
+
+      expect(rejected.status).toBe(400);
+      expect(rejectedBody.failure_reason).toBe("baseUrl_protocol_not_allowed");
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("workstation camera offer proxy normalizes answer SDP line endings without changing semantics", async () => {
+    // 真实上位机 answer 需要保留为浏览器可解析的 SDP；这里只做 CRLF 和末尾换行补齐。
+    const upstream = await listenRobotCameraProxyApi({
+      "/api/camera/offer": {
+        payload: {
+          schema: "trashbot.local_webrtc_camera_offer.v1",
+          status: "ready",
+          peer_id: "peerSDP123",
+          type: "answer",
+          sdp: "v=0\nm=video 9 UDP/TLS/RTP/SAVPF 96\na=setup:active",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/camera/offer?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ type: "offer", sdp: "v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\n" }),
+      });
+      const body = (await response.json()) as { answer: { sdp: string } | null; proxy_status: string };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("offer_forwarded");
+      expect(body.answer?.sdp).toBe("v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\na=setup:active\r\n");
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation camera close proxy only closes whitelisted peer endpoint and keeps safe flags false", async () => {
+    // close proxy 只允许 peer_id 路径白名单，不开放任意 POST 代理或控制类字段透传。
+    const upstream = await listenRobotCameraProxyApi({
+      "/api/camera/peers/peerABC123/close": {
+        payload: {
+          schema: "trashbot.local_webrtc_camera_close.v1",
+          status: "closed",
+          peer_id: "peerABC123",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(
+        `${workstation.baseUrl}/api/robot-control/camera/peers/peerABC123/close?baseUrl=${encodeURIComponent(upstream.baseUrl)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
+        },
+      );
+      const body = (await response.json()) as { proxy_status: string; status: string; safe_to_control: boolean };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("peer_closed");
+      expect(body.status).toBe("closed");
+      expect(body.safe_to_control).toBe(false);
+    } finally {
+      await workstation.close();
+      await upstream.close();
     }
   });
 

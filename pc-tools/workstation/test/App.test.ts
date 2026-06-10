@@ -356,7 +356,7 @@ const fixtures: Record<string, unknown> = {
       camera: {
         status: "camera_health_not_proven",
         devices_status: "camera_devices_not_proven",
-        preview_status: "locked_no_webrtc_session",
+        preview_status: "idle_not_started",
       },
       lidar: {
         status: "radar_status_not_proven",
@@ -386,6 +386,38 @@ const fixtures: Record<string, unknown> = {
     },
     blocked_reasons: ["dangerous actions locked by V1 boundary"],
     not_proven: ["O7", "path_generated", "delivery_success"],
+    ...PROOF_FLAGS,
+  },
+  "/api/robot-control/camera/offer": {
+    schema: "trashbot.pc_tools_workstation.robot_control_camera_offer_proxy.v1",
+    proxy_status: "offer_forwarded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/camera/offer",
+    remote_http_status: 200,
+    status: "ready",
+    peer_id: "peer-preview-001",
+    answer: {
+      type: "answer",
+      sdp: "v=0\r\ns=remote-answer\r\n",
+    },
+    error: "",
+    failure_reason: "",
+    blocked_reasons: [],
+    ...PROOF_FLAGS,
+  },
+  "/api/robot-control/camera/peers/peer-preview-001/close": {
+    schema: "trashbot.pc_tools_workstation.robot_control_camera_close_proxy.v1",
+    proxy_status: "peer_closed",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/camera/peers/{peer_id}/close",
+    remote_http_status: 200,
+    peer_id: "peer-preview-001",
+    status: "closed",
+    error: "",
+    failure_reason: "",
+    blocked_reasons: [],
     ...PROOF_FLAGS,
   },
   "/api/tools/training-labeling": {
@@ -2477,12 +2509,16 @@ const fixtures: Record<string, unknown> = {
 
 function stubWorkstationFetch() {
   // 测试桩允许 route debug 带 query，确保表单路径仍走同一个只读 API。
-  const mockedFetch = vi.fn(async (url: string) => {
+  const mockedFetch = vi.fn(async (url: string, options?: RequestInit) => {
     const fixtureKey = url.startsWith("/api/route/debug-summary")
       ? "/api/route/debug-summary"
       : url.startsWith("/api/robot-control/summary")
         ? "/api/robot-control/summary"
-      : url.startsWith("/api/o7/consumer-read/tasks/")
+      : url.startsWith("/api/robot-control/camera/offer")
+        ? "/api/robot-control/camera/offer"
+        : url.startsWith("/api/robot-control/camera/peers/peer-preview-001/close")
+          ? "/api/robot-control/camera/peers/peer-preview-001/close"
+        : url.startsWith("/api/o7/consumer-read/tasks/")
         ? "/api/o7/consumer-read/tasks/task-consumer-001"
         : url.startsWith("/api/o7/consumer-read/tasks")
           ? "/api/o7/consumer-read/tasks"
@@ -2513,6 +2549,21 @@ function stubWorkstationFetch() {
                             : url.startsWith("/api/o7/realtime-elevator-probe")
                               ? "/api/o7/realtime-elevator-probe"
                               : url;
+    if (options?.method === "POST" && fixtureKey === "/api/robot-control/camera/offer") {
+      const body = JSON.parse(String(options.body ?? "{}")) as { type?: string; sdp?: string };
+      if (body.type !== "offer" || !body.sdp) {
+        return {
+          ok: false,
+          status: 400,
+          json: async () => ({
+            schema: "trashbot.pc_tools_workstation.robot_control_camera_offer_proxy.v1",
+            proxy_status: "offer_rejected",
+            failure_reason: "invalid_offer_request",
+            ...PROOF_FLAGS,
+          }),
+        };
+      }
+    }
     return {
       ok: true,
       json: async () => fixtures[fixtureKey],
@@ -2602,6 +2653,182 @@ describe("App", () => {
     expect(wrapper.text()).toContain("/api/base/manual locked");
     expect(wrapper.text()).toContain("cmd_vel locked");
     expect(wrapper.findAll("button[disabled]").some((button) => button.text().includes("Nav2 goal locked"))).toBe(true);
+  });
+
+  it("starts and stops Camera Preview through workstation camera proxy while keeping control locked", async () => {
+    // WebRTC UI 测试只验证本机代理和前端状态机，不连接真实浏览器媒体栈或机器人。
+    const mockedFetch = stubWorkstationFetch();
+    class FakeMediaStream {
+      tracks: Array<{ kind: string; readyState: string; stop: () => void }>;
+
+      constructor(tracks: Array<{ kind: string; readyState: string; stop: () => void }>) {
+        this.tracks = tracks;
+      }
+
+      getTracks() {
+        return this.tracks;
+      }
+    }
+
+    class FakePeerConnection {
+      iceConnectionState = "new";
+      localDescription: { type: "offer"; sdp: string } | null = null;
+      remoteDescription: { type: "answer"; sdp: string } | null = null;
+      oniceconnectionstatechange: (() => void) | null = null;
+      ontrack: ((event: { track: { kind: string; readyState: string; stop: () => void; onended: (() => void) | null } }) => void) | null =
+        null;
+
+      addTransceiver() {
+        return undefined;
+      }
+
+      async createOffer() {
+        return { type: "offer" as const, sdp: "v=0\r\ns=local-offer\r\n" };
+      }
+
+      async setLocalDescription(description: { type: "offer"; sdp: string }) {
+        this.localDescription = description;
+      }
+
+      async setRemoteDescription(description: { type: "answer"; sdp: string }) {
+        this.remoteDescription = description;
+        this.iceConnectionState = "connected";
+        this.oniceconnectionstatechange?.();
+        this.ontrack?.({
+          track: {
+            kind: "video",
+            readyState: "live",
+            stop: () => undefined,
+            onended: null,
+          },
+        });
+      }
+
+      getReceivers() {
+        return [];
+      }
+
+      close() {
+        this.iceConnectionState = "closed";
+        this.oniceconnectionstatechange?.();
+      }
+    }
+
+    vi.stubGlobal("MediaStream", FakeMediaStream as unknown as typeof MediaStream);
+    vi.stubGlobal("RTCPeerConnection", FakePeerConnection as unknown as typeof RTCPeerConnection);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.findAll("button").find((button) => button.text() === "Robot Control")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const robotBaseUrlInput = wrapper.find('input[name="robotApiBaseUrl"]');
+    await robotBaseUrlInput.setValue("http://192.168.1.11:8787");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "Start Preview")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain("Camera Preview");
+    expect(wrapper.text()).toContain("preview_status");
+    expect(wrapper.text()).toContain("streaming");
+    expect(wrapper.text()).toContain("peer-preview-001");
+    expect(wrapper.text()).toContain("ice_connection_state");
+    expect(wrapper.text()).toContain("connected");
+    expect(wrapper.text()).toContain("video_track_state");
+    expect(wrapper.text()).toContain("live");
+    expect(wrapper.text()).toContain("safe_to_control=false");
+    expect(wrapper.text()).toContain("/api/base/manual locked");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);
+
+    await wrapper.findAll("button").find((button) => button.text() === "Stop Preview")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain("stopped_by_user");
+    expect(wrapper.text()).toContain("peer_closed:closed");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).includes("/api/robot-control/camera/peers/peer-preview-001/close") && options?.method === "POST")).toBe(true);
+  });
+
+  it("keeps failure status after Start Preview fails instead of collapsing to stopped_by_user", async () => {
+    // Start 失败后仍要保留失败态，避免 operator 只看到 stopped_by_user 而丢失归因。
+    const mockedFetch = vi.fn(async (url: string) => {
+      if (url.startsWith("/api/robot-control/camera/offer")) {
+        return {
+          ok: false,
+          status: 502,
+          json: async () => ({
+            schema: "trashbot.pc_tools_workstation.robot_control_camera_offer_proxy.v1",
+            proxy_status: "offer_failed",
+            source_base_url: "http://192.168.1.11:8787",
+            normalized_base_url: "http://192.168.1.11:8787",
+            remote_endpoint: "/api/camera/offer",
+            remote_http_status: 502,
+            status: "blocked",
+            peer_id: "",
+            answer: null,
+            error: "",
+            failure_reason: "remote_answer_missing",
+            blocked_reasons: ["remote_answer_missing"],
+            ...PROOF_FLAGS,
+          }),
+        };
+      }
+      if (url.startsWith("/api/robot-control/camera/peers/")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => fixtures["/api/robot-control/camera/peers/peer-preview-001/close"],
+        };
+      }
+      const fixtureKey = url.startsWith("/api/route/debug-summary")
+        ? "/api/route/debug-summary"
+        : url.startsWith("/api/robot-control/summary")
+          ? "/api/robot-control/summary"
+          : url.startsWith("/api/o7/consumer-read/tasks/")
+            ? "/api/o7/consumer-read/tasks/task-consumer-001"
+            : url.startsWith("/api/o7/consumer-read/tasks")
+              ? "/api/o7/consumer-read/tasks"
+              : url;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => fixtures[fixtureKey],
+      };
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+    vi.stubGlobal("RTCPeerConnection", class {
+      iceConnectionState = "new";
+      localDescription = { type: "offer" as const, sdp: "v=0\r\ns=local-offer\r\n" };
+      addTransceiver() { return undefined; }
+      async createOffer() { return this.localDescription; }
+      async setLocalDescription() { return undefined; }
+      getReceivers() { return []; }
+      close() { this.iceConnectionState = "closed"; }
+    } as unknown as typeof RTCPeerConnection);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.findAll("button").find((button) => button.text() === "Robot Control")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "Start Preview")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain("start_failed");
+    expect(wrapper.text()).toContain("remote_answer_missing");
+    expect(wrapper.text()).not.toContain("preview_statusstopped_by_user");
   });
 
   it("renders hardware material coverage with fail-closed copy", async () => {

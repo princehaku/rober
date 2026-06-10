@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { getO7ConsumerTaskDetail, getRobotControlSummary } from "../client/workstationApi";
-import type { O7ConsumerTaskDetailResponse, RobotControlSummaryResponse } from "../shared/contracts";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import {
+  getO7ConsumerTaskDetail,
+  getRobotControlSummary,
+  postRobotControlCameraOffer,
+  postRobotControlCameraPeerClose,
+} from "../client/workstationApi";
+import type { O7ConsumerTaskDetailResponse, RobotControlPreviewStatus, RobotControlSummaryResponse } from "../shared/contracts";
 
-// 本组件是 PC 控制台入口，但 V1 只读状态和证据，不发送任何机器人命令。
+// 本组件仍然是 fail-closed 控制台；新增的 WebRTC 只负责观察视频，不负责任何运动控制。
 const robotApiBaseUrl = ref("");
 const o6ConsumerBaseUrl = ref("http://127.0.0.1:8088");
 const taskId = ref("");
@@ -12,6 +17,23 @@ const loading = ref(false);
 const error = ref("");
 const robotSummary = ref<RobotControlSummaryResponse | null>(null);
 const taskDetail = ref<O7ConsumerTaskDetailResponse | null>(null);
+
+// WebRTC 状态单独维护，是为了把“上位机 readback”与“本地页面会话状态”区分开。
+const previewStatus = ref<RobotControlPreviewStatus>("idle_not_started");
+const failureReason = ref("");
+const previewPeerId = ref("");
+const previewPeerBaseUrl = ref("");
+const iceConnectionState = ref("new");
+const videoTrackState = ref("not_received");
+const lastOfferAt = ref("");
+const lastStopAt = ref("");
+const cleanupStatus = ref("not_started");
+const previewVideo = ref<HTMLVideoElement | null>(null);
+const previewStream = ref<MediaStream | null>(null);
+const previewPeerConnection = ref<RTCPeerConnection | null>(null);
+const previewStartPending = ref(false);
+const previewStopPending = ref(false);
+const sessionEpoch = ref(0);
 
 const proofRows = computed(() => {
   // O3 proof 字段固定列出，缺字段也要显示 unknown，不能把缺失当作通过。
@@ -50,6 +72,12 @@ const routeReplaySource = computed(() => {
   return fieldSource === "not_loaded" ? "o6_consumer_detail_missing_or_blocked" : `${fieldSource} + O6 consumer detail`;
 });
 
+const previewBusy = computed(() => loading.value || previewStartPending.value || previewStopPending.value);
+const canStartPreview = computed(() => !previewBusy.value && robotApiBaseUrl.value.trim().length > 0);
+const canStopPreview = computed(
+  () => !previewBusy.value && (previewPeerConnection.value !== null || previewPeerId.value.length > 0),
+);
+
 function display(value: unknown): string {
   // 展示层统一把 null/undefined 压成 unknown，避免模板里散落 fallback 逻辑。
   if (value === null || value === undefined) {
@@ -74,6 +102,91 @@ function sampleText(items: Record<string, unknown>[] | undefined): string {
     .join(" | ");
 }
 
+function stampNow(): string {
+  // 时间戳使用浏览器本地 ISO 字符串，足够支撑 operator 复核最近一次 Start/Stop。
+  return new Date().toISOString();
+}
+
+function clearPreviewElement(): void {
+  // 离开页面或停止时必须清空 srcObject，避免 UI 继续显示上一轮残留帧。
+  if (previewVideo.value) {
+    previewVideo.value.srcObject = null;
+  }
+}
+
+function replacePreviewStream(track: MediaStreamTrack | null): void {
+  // 页面只消费远端 video track；不申请音频，也不把其他 track 混入 video 元素。
+  previewStream.value?.getTracks().forEach((streamTrack) => streamTrack.stop());
+  if (!track) {
+    previewStream.value = null;
+    clearPreviewElement();
+    return;
+  }
+  const nextStream = new MediaStream([track]);
+  previewStream.value = nextStream;
+  if (previewVideo.value) {
+    previewVideo.value.srcObject = nextStream;
+  }
+}
+
+function bindVideoTrack(track: MediaStreamTrack, epoch: number): void {
+  // track 生命周期要绑定到当前 session，避免旧 peer 的 ended 事件覆盖新会话状态。
+  if (sessionEpoch.value !== epoch) {
+    return;
+  }
+  videoTrackState.value = track.readyState;
+  replacePreviewStream(track);
+  previewStatus.value = "streaming";
+  failureReason.value = "";
+  track.onended = () => {
+    if (sessionEpoch.value !== epoch) {
+      return;
+    }
+    videoTrackState.value = track.readyState;
+  };
+}
+
+function closeLocalPeer(reason: RobotControlPreviewStatus): void {
+  // 本地 peer 先关，保证重复 Start、切换 baseUrl、卸载时不会持有旧的 ICE/track 资源。
+  previewPeerConnection.value?.getReceivers().forEach((receiver) => receiver.track?.stop());
+  previewPeerConnection.value?.close();
+  previewPeerConnection.value = null;
+  replacePreviewStream(null);
+  iceConnectionState.value = "closed";
+  videoTrackState.value = "stopped";
+  previewStatus.value = reason;
+}
+
+async function cleanupPreview(reason: RobotControlPreviewStatus, cleanupReason: string): Promise<void> {
+  // cleanup 是 Start/Stop/baseUrl 变化/组件卸载的统一入口，避免 peer 泄漏成僵尸会话。
+  const peerId = previewPeerId.value;
+  const peerBaseUrl = previewPeerBaseUrl.value;
+  closeLocalPeer(reason);
+  cleanupStatus.value = cleanupReason;
+  if (!peerId || !peerBaseUrl.trim()) {
+    previewPeerId.value = "";
+    previewPeerBaseUrl.value = "";
+    lastStopAt.value = stampNow();
+    return;
+  }
+  try {
+    const response = await postRobotControlCameraPeerClose(peerBaseUrl, peerId);
+    previewPeerId.value = "";
+    previewPeerBaseUrl.value = "";
+    lastStopAt.value = stampNow();
+    cleanupStatus.value = `${response.proxy_status}:${response.status}`;
+    if (response.proxy_status !== "peer_closed") {
+      previewStatus.value = "peer_cleanup_failed";
+      failureReason.value = response.failure_reason || response.error || "peer_cleanup_failed";
+    }
+  } catch (err) {
+    previewStatus.value = "peer_cleanup_failed";
+    failureReason.value = err instanceof Error ? err.message : "peer_cleanup_failed";
+    cleanupStatus.value = "peer_cleanup_failed";
+    lastStopAt.value = stampNow();
+  }
+}
+
 async function refreshConsole(): Promise<void> {
   // 刷新永远先读 Node proxy；只有 task_id 存在才读 O6 detail。
   loading.value = true;
@@ -95,9 +208,113 @@ async function refreshConsole(): Promise<void> {
   }
 }
 
+async function startPreview(): Promise<void> {
+  // Start Preview 只在显式用户点击后创建会话，页面初始不自动占用 camera peer。
+  if (!robotApiBaseUrl.value.trim() || previewStartPending.value) {
+    return;
+  }
+  previewStartPending.value = true;
+  failureReason.value = "";
+  cleanupStatus.value = "starting_new_session";
+  const epoch = sessionEpoch.value + 1;
+  sessionEpoch.value = epoch;
+  await cleanupPreview("stopped_by_user", "cleanup_before_restart");
+  try {
+    if (typeof globalThis.RTCPeerConnection !== "function") {
+      throw new Error("webrtc_not_supported");
+    }
+    const peer = new RTCPeerConnection();
+    previewPeerConnection.value = peer;
+    previewStatus.value = "starting_local_peer";
+    iceConnectionState.value = peer.iceConnectionState;
+    videoTrackState.value = "waiting_remote_track";
+
+    // recvonly transceiver 保证页面只收视频，不会在本机申请麦克风或发送媒体。
+    peer.addTransceiver("video", { direction: "recvonly" });
+    peer.oniceconnectionstatechange = () => {
+      if (sessionEpoch.value !== epoch) {
+        return;
+      }
+      iceConnectionState.value = peer.iceConnectionState;
+    };
+    peer.ontrack = (event) => {
+      if (sessionEpoch.value !== epoch) {
+        return;
+      }
+      const track = event.track;
+      if (track.kind !== "video") {
+        return;
+      }
+      bindVideoTrack(track, epoch);
+    };
+
+    const localOffer = await peer.createOffer();
+    await peer.setLocalDescription(localOffer);
+    const localDescription = peer.localDescription;
+    if (!localDescription?.sdp || localDescription.type !== "offer") {
+      throw new Error("invalid_local_offer");
+    }
+
+    previewStatus.value = "connecting_offer_posted";
+    lastOfferAt.value = stampNow();
+    const offerResponse = await postRobotControlCameraOffer(robotApiBaseUrl.value, {
+      type: "offer",
+      sdp: localDescription.sdp,
+    });
+    previewPeerId.value = offerResponse.peer_id;
+    previewPeerBaseUrl.value = robotApiBaseUrl.value.trim();
+    if (offerResponse.proxy_status !== "offer_forwarded" || !offerResponse.answer) {
+      throw new Error(offerResponse.failure_reason || offerResponse.error || "offer_request_failed");
+    }
+
+    // setRemoteDescription 成功只是信令已闭环；真正 streaming 仍以 video track 到达为准。
+    await peer.setRemoteDescription(offerResponse.answer);
+  } catch (err) {
+    const nextFailureReason = err instanceof Error ? err.message : "offer_request_failed";
+    await cleanupPreview("stopped_by_user", "start_failed_cleanup");
+    previewStatus.value = "start_failed";
+    failureReason.value = nextFailureReason;
+  } finally {
+    previewStartPending.value = false;
+  }
+}
+
+async function stopPreview(): Promise<void> {
+  // Stop Preview 必须显式回收本地 peer 和远端 peer_id，防止 8088 active peers 残留。
+  if (!canStopPreview.value) {
+    return;
+  }
+  previewStopPending.value = true;
+  failureReason.value = "";
+  await cleanupPreview("stopped_by_user", "stopped_by_user");
+  previewStopPending.value = false;
+}
+
+watch(previewVideo, (videoElement) => {
+  // video 元素可能在 tab 切换后重建；这里把现有 stream 重新绑定，避免黑屏。
+  if (videoElement && previewStream.value) {
+    videoElement.srcObject = previewStream.value;
+  }
+});
+
+watch(robotApiBaseUrl, async (nextValue, previousValue) => {
+  // baseUrl 切换必须先清旧 peer，避免把旧板端会话遗留在新的 operator 目标上。
+  if (nextValue.trim() === previousValue.trim()) {
+    return;
+  }
+  if (previewPeerConnection.value || previewPeerId.value) {
+    await cleanupPreview("stopped_by_user", "base_url_changed_cleanup");
+  }
+});
+
 onMounted(() => {
   // 初次加载只拿到 baseUrl_not_provided 的 blocked 摘要，不会探测真实机器人。
   void refreshConsole();
+});
+
+onBeforeUnmount(() => {
+  // 卸载时只做本地资源释放；远端 cleanup 尽量执行，但不能阻塞组件销毁。
+  void cleanupPreview("stopped_by_user", "component_unmounted");
 });
 </script>
 
@@ -170,6 +387,38 @@ onMounted(() => {
           <dt>blocked reason</dt>
           <dd>{{ listText(robotSummary?.robot_api_connection.blocked_reasons, "none") }}</dd>
         </dl>
+      </article>
+
+      <article class="snapshot-panel">
+        <h3>Camera Preview</h3>
+        <div class="locked-actions" aria-label="camera preview actions">
+          <button type="button" :disabled="!canStartPreview" @click="startPreview">Start Preview</button>
+          <button type="button" :disabled="!canStopPreview" @click="stopPreview">Stop Preview</button>
+        </div>
+        <video ref="previewVideo" autoplay muted playsinline />
+        <dl class="kv compact-kv">
+          <dt>preview_status</dt>
+          <dd>{{ previewStatus }}</dd>
+          <dt>failure_reason</dt>
+          <dd>{{ failureReason || "none" }}</dd>
+          <dt>peer_id</dt>
+          <dd>{{ previewPeerId || "not_assigned" }}</dd>
+          <dt>ice_connection_state</dt>
+          <dd>{{ iceConnectionState }}</dd>
+          <dt>video_track_state</dt>
+          <dd>{{ videoTrackState }}</dd>
+          <dt>last_offer_at</dt>
+          <dd>{{ lastOfferAt || "never" }}</dd>
+          <dt>last_stop_at</dt>
+          <dd>{{ lastStopAt || "never" }}</dd>
+          <dt>cleanup_status</dt>
+          <dd>{{ cleanupStatus }}</dd>
+        </dl>
+        <p class="muted">
+          camera_health={{ robotSummary?.readback_summary.camera.status ?? "not_loaded" }};
+          devices={{ robotSummary?.readback_summary.camera.devices_status ?? "not_loaded" }};
+          safe_to_control=false; delivery_success=false; primary_actions_enabled=false.
+        </p>
       </article>
 
       <article class="snapshot-panel">
