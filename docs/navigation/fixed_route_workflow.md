@@ -258,7 +258,86 @@ no-motion initialpose/localization proof。默认 body 不传
 - Artifact 必须继续保留 `safe_to_control=false`、`publishes_cmd_vel=false`、
   `calls_base_manual=false`、`uses_base_uart=false`、`delivery_success=false`。
 - 即使 `/amcl_pose` 或 TF 被观测，也只能说明 no-motion localization proof 前进；
-  仍不等于 path generation、path execution、fixed-route execution、HIL 或送达成功。
+仍不等于 path generation、path execution、fixed-route execution、HIL 或送达成功。
+
+`2026-06-10 09:15` 起，`o10_amcl_nav2_runtime_proof.py` 增加显式 opt-in 的
+managed no-motion localization runtime。默认不传 `managed_runtime_opt_in` 时仍保持
+read-only collector；只有显式传入时，helper 才会在 proof 窗口内短暂启动：
+
+- `ros2_trashbot_hardware/lidar_driver`：`/dev/ttyACM0 @ 150000`
+- `static_transform_publisher`：`odom -> base_link`
+- `static_transform_publisher`：`base_link -> laser_frame`
+- `nav2_map_server/map_server`
+- `nav2_amcl/amcl`
+- `nav2_lifecycle_manager/lifecycle_manager`
+
+该 managed runtime 的固定边界：
+
+- 允许：`/scan`、`/map`、`/amcl_pose`、`map -> odom`、`map -> base_link`、
+  lifecycle 和 topic once 证据采集。
+- 禁止：planner/controller、`ros2 action send_goal`、compute path、
+  `/cmd_vel`、`/api/base/*`、`/api/nav2/start`、`/api/nav2/stop`、
+  `autonomous.launch.py`、WAVE ROVER base UART `/dev/ttyS5`。
+- vendor 事实来源：`docs/vendor/VENDOR_INDEX.md`。WAVE ROVER base 是
+  newline-delimited UART JSON；vendor Raspberry Pi UART 路径不是 Orange Pi
+  固定事实；本 proof 只允许 LiDAR `/dev/ttyACM0`，不允许打开 `/dev/ttyS5`。
+
+推荐 direct-helper 命令：
+
+```bash
+cd /root/rober/onboard
+source /opt/ros/humble/setup.bash
+python3 scripts/o10_amcl_nav2_runtime_proof.py \
+  --managed-runtime-opt-in \
+  --managed-timeout-s 20 \
+  --managed-map-yaml /root/rober/onboard/runtime/maps/trashbot_map.yaml \
+  --initialpose-opt-in \
+  --initialpose-x 0.0 \
+  --initialpose-y 0.0 \
+  --initialpose-yaw 0.0
+```
+
+`2026-06-10 08:33 CST` 真实上位机 direct-helper 结果已经满足本轮 localization proof：
+
+- `status=nav2_no_motion_localization_runtime_observed`
+- `managed_runtime_started=true`
+- `managed_runtime_cleanup_ok=true`
+- `scan_once_observed=true`
+- `map_once_observed=true`
+- `map_server_active=true`
+- `amcl_active=true`
+- `amcl_pose_observed=true`
+- `localization_tf_observed.map_to_odom=true`
+- `localization_tf_observed.map_to_base_link=true`
+- `safe_to_control=false`
+
+清场后 `lsof /dev/ttyS5 /dev/ttyACM0` 与 `fuser -v /dev/ttyS5 /dev/ttyACM0`
+均无输出，说明本轮没有残留 runtime，也没有触碰 base UART。
+
+推荐 API 命令：
+
+```bash
+curl --max-time 90 -sS -X POST http://127.0.0.1:8787/api/nav2/proof/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"timeout_s":20}'
+
+curl --max-time 150 -sS -X POST http://127.0.0.1:8787/api/nav2/proof/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"timeout_s":20,"managed_runtime_opt_in":true,"managed_timeout_s":20,"managed_map_yaml":"/root/rober/onboard/runtime/maps/trashbot_map.yaml","initialpose_opt_in":true,"initialpose_x":0.0,"initialpose_y":0.0,"initialpose_yaw":0.0}'
+```
+
+`2026-06-10 08:37 CST` 真实上位机 API 结果：
+
+- 默认 body 仍为 read-only：`managed_runtime_requested=false`、
+  `managed_runtime_started=false`、`scan_once_observed=false`、
+  `map_once_observed=false`、`safe_to_control=false`。
+- managed body 成功：`proof_status=nav2_no_motion_localization_runtime_observed`，
+  且 direct-helper 与 API artifact 一致。
+- `GET /api/nav2/proof/latest` 的顶层 `status` 仍按 software guard 返回
+  `not_proven`，但 `latest_proof_status` 和 `latest_*` 字段已经反映最新 proof。
+- `GET /api/nav2/status` 当前通过嵌套 `proof_latest` 提供最新摘要，
+  顶层不直接翻转为 runtime proven；读取方应消费
+  `proof_latest.latest_proof_status` 和相关 `latest_*` 字段。
 
 ## 3. Dry-Run Verification
 

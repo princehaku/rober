@@ -359,6 +359,88 @@ UART 写入。
 - `map_artifact_proven=false`、`real_route_map_proven=false`、`nav2_runtime_proven=false`、
   `delivery_success=false` 均不能翻 true。
 
+## 2026-06-10 09:15 Managed Nav2 Localization Proof
+
+`sprints/2026.06.10_09-15_managed_nav2_localization_proof/` 把 no-motion Nav2
+localization proof 从“只读 collector + 手动 runtime”收敛为单次 helper/API
+显式 opt-in。硬件事实边界继续来自：
+
+- `docs/vendor/VENDOR_INDEX.md`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`
+
+关键事实：
+
+- WAVE ROVER base 是 newline-delimited UART JSON。
+- vendor Raspberry Pi 默认 UART 路径不是 Orange Pi 固定事实。
+- 本轮 managed proof 只允许 LiDAR `/dev/ttyACM0 @ 150000`，绝不打开
+  `/dev/ttyS5`。
+
+managed runtime 只启动 localization 所需最小图：
+
+- `lidar_driver`
+- `static_transform_publisher odom -> base_link`
+- `static_transform_publisher base_link -> laser_frame`
+- `map_server`
+- `amcl`
+- `lifecycle_manager`
+
+禁止项不变：
+
+- planner/controller
+- `ros2 action send_goal`
+- compute path
+- `/cmd_vel`
+- `/api/base/*`
+- `/api/nav2/start`
+- `/api/nav2/stop`
+- `autonomous.launch.py`
+- base UART `/dev/ttyS5`
+
+真实上位机 `root@192.168.1.11:37878` direct-helper 结果（`2026-06-10 08:33 CST`）：
+
+- `managed_runtime_started=true`
+- `managed_runtime_cleanup_ok=true`
+- `scan_once_observed=true`
+- `map_once_observed=true`
+- `map_server_active=true`
+- `amcl_active=true`
+- `amcl_pose_observed=true`
+- `localization_tf_observed.map_to_odom=true`
+- `localization_tf_observed.map_to_base_link=true`
+- `status=nav2_no_motion_localization_runtime_observed`
+- `safe_to_control=false`
+- `delivery_success=false`
+
+remote cleanup 结果：
+
+- `lsof /dev/ttyS5 /dev/ttyACM0` 无输出
+- `fuser -v /dev/ttyS5 /dev/ttyACM0` 无输出
+- `managed_runtime_process_group` 清理成功，无 orphan `ros2 topic echo/pub` /
+  `tf2_echo`
+
+`2026-06-10 08:37 CST` API 验证结果：
+
+- 为加载新 `upper_robot_api.py`，执行过一次
+  `systemctl restart trashbot-upper-robot-api.service`。
+- 重启前后 service 均为 `active (running)`；本轮记录见：
+  - `trashbot_upper_status_before.txt`
+  - `trashbot_upper_status_after.txt`
+- 默认 body `{"timeout_s":20}` 仍是 read-only：
+  `managed_runtime_requested=false`、`managed_runtime_started=false`。
+- managed body 成功返回 `status=refreshed`，proof 内
+  `status=nav2_no_motion_localization_runtime_observed`。
+- 结束后 `nav2_device_lsof.txt` 和 `nav2_device_fuser.txt` 均为空，未留下
+  `/dev/ttyS5` 或 `/dev/ttyACM0` 占用。
+
+已知剩余边界：
+
+- `GET /api/nav2/proof/latest` 顶层仍按 software guard 返回 `status=not_proven`，
+  但 `latest_proof_status` 和 `latest_*` 摘要字段已反映成功 proof。
+- `GET /api/nav2/status` 当前也通过嵌套 `proof_latest` 提供最新摘要，不直接把顶层
+  `status` 翻成 runtime proven。这是 API readback 合同层的保守设计，不是本轮
+  localization proof 失败。
+
 `GET /api/nav2/status` 只用于 downstream readiness readback，结果仍为
 `status=not_proven`；`amcl_nav2_readiness.status=blocked_with_root_cause`，blocker 为
 `map_lifecycle_proof_not_clean`、`map_once_not_observed` 和

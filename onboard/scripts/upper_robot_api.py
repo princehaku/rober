@@ -455,13 +455,16 @@ def run_nav2_runtime_proof_helper(
     map_proof_path: str,
     map_artifact_dir: str,
     timeout_s: float,
+    managed_runtime_opt_in: bool,
+    managed_timeout_s: float,
+    managed_map_yaml: str,
     initialpose_opt_in: bool,
     initialpose_x: float,
     initialpose_y: float,
     initialpose_yaw: float,
     initialpose_frame_id: str,
 ) -> dict[str, Any]:
-    """运行 no-motion AMCL/Nav2 collector；/initialpose 必须显式 opt-in 才发布。"""
+    """运行 no-motion AMCL/Nav2 collector；managed runtime 与 initialpose 都必须显式 opt-in。"""
     script_path = Path(__file__).resolve().with_name("o10_amcl_nav2_runtime_proof.py")
     command = [
         sys.executable,
@@ -475,6 +478,17 @@ def run_nav2_runtime_proof_helper(
         "--timeout-s",
         str(timeout_s),
     ]
+    if managed_runtime_opt_in:
+        # managed runtime 默认关闭；只有 body 明确 opt-in 才允许 helper 短暂拉起 localization graph。
+        command.extend(
+            [
+                "--managed-runtime-opt-in",
+                "--managed-timeout-s",
+                str(managed_timeout_s),
+            ]
+        )
+        if managed_map_yaml:
+            command.extend(["--managed-map-yaml", managed_map_yaml])
     if initialpose_opt_in:
         # 只有 HTTP body 明确 opt-in 时才把定位种子传给 helper，避免默认 refresh 变成写 topic。
         command.extend(
@@ -512,6 +526,7 @@ def run_nav2_runtime_proof_helper(
             "sends_base_motion_commands": False,
             "publishes_cmd_vel": False,
             "calls_base_manual": False,
+            "managed_runtime_opt_in": managed_runtime_opt_in,
             "initialpose_opt_in": initialpose_opt_in,
             "robot_control_executed": False,
             "hil_pass": False,
@@ -530,6 +545,7 @@ def run_nav2_runtime_proof_helper(
             "sends_base_motion_commands": False,
             "publishes_cmd_vel": False,
             "calls_base_manual": False,
+            "managed_runtime_opt_in": managed_runtime_opt_in,
             "robot_control_executed": False,
             "hil_pass": False,
         }
@@ -545,6 +561,7 @@ def run_nav2_runtime_proof_helper(
             "sends_base_motion_commands": False,
             "publishes_cmd_vel": False,
             "calls_base_manual": False,
+            "managed_runtime_opt_in": managed_runtime_opt_in,
             "robot_control_executed": False,
             "hil_pass": False,
         }
@@ -3198,6 +3215,9 @@ class UpperRobotApi:
             map_proof_path=self.map_lifecycle_proof_artifact_path,
             map_artifact_dir=self.map_artifact_dir,
             timeout_s=timeout_s,
+            managed_runtime_opt_in=bool(body.get("managed_runtime_opt_in") is True),
+            managed_timeout_s=clamp_float(body.get("managed_timeout_s"), timeout_s, 4.0, 45.0),
+            managed_map_yaml=str(body.get("managed_map_yaml") or "")[:400],
             initialpose_opt_in=bool(body.get("initialpose_opt_in") is True),
             initialpose_x=clamp_float(body.get("initialpose_x"), 0.0, -1000.0, 1000.0),
             initialpose_y=clamp_float(body.get("initialpose_y"), 0.0, -1000.0, 1000.0),
@@ -3222,6 +3242,9 @@ class UpperRobotApi:
                 "status": "refreshed" if evidence_type == "robot_runtime_material" else "blocked_with_root_cause",
                 "proof_state": proof_status,
                 "evidence_type": evidence_type,
+                "managed_runtime_opt_in": bool(body.get("managed_runtime_opt_in") is True),
+                "managed_timeout_s": clamp_float(body.get("managed_timeout_s"), timeout_s, 4.0, 45.0),
+                "managed_map_yaml": str(body.get("managed_map_yaml") or "")[:400],
                 "initialpose_opt_in": bool(body.get("initialpose_opt_in") is True),
                 "latest_readback_http_status": http_status,
                 "latest_result": latest.get("latest_result"),
@@ -3237,19 +3260,19 @@ class UpperRobotApi:
                 "calls_base_manual": False,
                 "sends_base_motion_commands": False,
                 "starts_ros2": False,
-                "starts_nav2": False,
+                "starts_nav2": bool(body.get("managed_runtime_opt_in") is True),
                 "robot_control_executed": False,
                 "safe_to_control": False,
                 "hil_pass": False,
                 "path_generated": False,
                 "path_execution_attempted": False,
-                "read_only_existing_ros_graph": True,
-                "blocked_commands_not_sent": ["T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual", "/initialpose"],
+                "read_only_existing_ros_graph": bool(body.get("managed_runtime_opt_in") is not True),
+                "blocked_commands_not_sent": ["T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual"],
                 "transition_to_proven": [
-                    "map_server/amcl/planner/controller lifecycle active",
+                    "managed runtime or existing graph keeps map_server/amcl active without /dev/ttyS5",
                     "/scan and /map observed in the same no-motion ROS2 graph",
-                    "/amcl_pose observed or /initialpose boundary explicitly blocked",
-                    "path generation readiness observed without sending a navigation goal",
+                    "/amcl_pose observed when initialpose opt-in is requested",
+                    "cleanup leaves no managed runtime process group behind",
                     f"GET {ROUTE_PATHS['nav2_proof_latest']} returns the same artifact",
                 ],
             },
