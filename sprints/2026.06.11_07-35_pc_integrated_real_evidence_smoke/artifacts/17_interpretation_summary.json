@@ -1,0 +1,112 @@
+{
+  "schema": "trashbot.pc_tools_workstation.integrated_real_evidence_interpretation.v1",
+  "generated_at": "2026-06-10T23:29:42.612Z",
+  "source_summary": "00_integrated_smoke_summary.json",
+  "ui_first_screen": {
+    "passed": true,
+    "title": "Rober 小车控制台",
+    "card_titles": [
+      "小车连接",
+      "实时画面",
+      "雷达",
+      "地图",
+      "移动/导航"
+    ],
+    "advanced_tools_open_default": false,
+    "visible_forbidden_hits": [],
+    "engineering_tabs_visible_after_open": true
+  },
+  "camera": {
+    "signaling_track_cleanup_observed": true,
+    "browser_visible_frame_proven": false,
+    "open_state_video_elements": [
+      {
+        "hasSrcObject": false,
+        "paused": true,
+        "readyState": 0,
+        "videoHeight": 0,
+        "videoWidth": 0
+      }
+    ],
+    "active_peer_connections_after_cleanup": 0,
+    "active_peer_ids_after_cleanup": [],
+    "health_status_after_cleanup": "ready",
+    "note": "Browser page showed streaming/connected/live and peer cleanup, but video element had no srcObject or frame dimensions in this run."
+  },
+  "radar": {
+    "start_scan_stop_observed": true,
+    "scan_key_values": {
+      "status": "refreshed",
+      "latest_proof_status": "raw_packets_parsed",
+      "scan_once_observed": "true",
+      "scan_hz_observed": "true",
+      "raw_packet_once_observed": "true",
+      "tf_observed": "true",
+      "blocked_reasons": "scan_continuity_not_observed"
+    },
+    "hard_dangerous_true_fields": []
+  },
+  "map": {
+    "proxy_save_passed": false,
+    "artifact_generated_or_listed": true,
+    "map_names": [
+      "final_direct_save.yaml",
+      "pc_integrated_smoke_20260611_0735.yaml",
+      "pc_proxy_save2.yaml",
+      "pc_proxy_start.yaml",
+      "pc_runtime_v1.yaml",
+      "trashbot_map.yaml",
+      "final_direct_save.pgm",
+      "pc_integrated_smoke_20260611_0735.pgm",
+      "pc_proxy_save2.pgm",
+      "pc_proxy_start.pgm",
+      "pc_runtime_v1.pgm",
+      "trashbot_map.pgm"
+    ],
+    "generated_map_files": [
+      {
+        "name": "pc_integrated_smoke_20260611_0735.yaml",
+        "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.yaml",
+        "size_bytes": 184
+      },
+      {
+        "name": "pc_integrated_smoke_20260611_0735.pgm",
+        "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.pgm",
+        "size_bytes": 42883
+      }
+    ],
+    "fail_closed_root_causes": [
+      {
+        "layer": "LiDAR/launch/topic remap",
+        "reason": "/scan_once_not_observed"
+      }
+    ],
+    "note": "Map YAML/PGM and metadata were generated/listed, but PC lifecycle save is correctly marked failed because helper root cause is /scan_once_not_observed."
+  },
+  "localization_path": {
+    "nav2_refresh_proxy_passed": true,
+    "path_generation_proven_this_refresh": false,
+    "latest_path_generated": false,
+    "latest_path_generation_succeeded": false,
+    "latest_path_point_count": 0,
+    "latest_status": "blocked_with_root_cause",
+    "root_causes": [
+      {
+        "layer": "helper process",
+        "reason": "sigint_before_final_artifact"
+      },
+      {
+        "layer": "upper API helper process",
+        "reason": "helper_process_timeout_after_partial_artifact"
+      }
+    ],
+    "localization_status": "nav2_no_motion_localization_runtime_observed",
+    "note": "This run did not prove a new path. The no-motion refresh returned blocked_with_root_cause: helper timeout after partial artifact and tf_source_probe_not_executed."
+  },
+  "stop_no_motion_safety": {
+    "stop_only_forwarded": true,
+    "forbidden_nonzero_motion_calls_from_this_script": [],
+    "dangerous_true_hits": [],
+    "robot_control_executed": false
+  }
+}

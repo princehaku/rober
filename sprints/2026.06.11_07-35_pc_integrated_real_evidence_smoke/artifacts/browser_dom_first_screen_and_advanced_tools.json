@@ -1,0 +1,284 @@
+{
+  "schema": "trashbot.pc_tools_workstation.browser_dom_smoke.v1",
+  "captured_at": "2026-06-10T23:28:34.302Z",
+  "firstScreen": {
+    "advanced_diagnostics_open_default": false,
+    "advanced_tools_open_default": false,
+    "card_titles": [
+      "小车连接",
+      "实时画面",
+      "雷达",
+      "地图",
+      "移动/导航"
+    ],
+    "title": "Rober 小车控制台",
+    "url": "http://127.0.0.1:8793/",
+    "visible_buttons": [
+      {
+        "disabled": false,
+        "text": "刷新"
+      },
+      {
+        "disabled": false,
+        "text": "连接/刷新"
+      },
+      {
+        "disabled": true,
+        "text": "打开画面"
+      },
+      {
+        "disabled": true,
+        "text": "关闭画面"
+      },
+      {
+        "disabled": true,
+        "text": "刷新雷达"
+      },
+      {
+        "disabled": true,
+        "text": "刷新地图"
+      },
+      {
+        "disabled": true,
+        "text": "地图列表"
+      },
+      {
+        "disabled": true,
+        "text": "检查路径"
+      },
+      {
+        "disabled": true,
+        "text": "停止"
+      },
+      {
+        "disabled": false,
+        "text": "刷新状态"
+      },
+      {
+        "disabled": true,
+        "text": "启动雷达（高级）"
+      },
+      {
+        "disabled": true,
+        "text": "停止雷达（高级）"
+      },
+      {
+        "disabled": true,
+        "text": "地图列表"
+      },
+      {
+        "disabled": true,
+        "text": "保存地图"
+      },
+      {
+        "disabled": true,
+        "text": "开始建图（高级）"
+      },
+      {
+        "disabled": true,
+        "text": "Reset（受控/高级，禁用）"
+      },
+      {
+        "disabled": true,
+        "text": "定位重置（高级）"
+      },
+      {
+        "disabled": true,
+        "text": "导航目标预检（高级）"
+      },
+      {
+        "disabled": true,
+        "text": "提交现场材料（高级）"
+      },
+      {
+        "disabled": true,
+        "text": "前进"
+      },
+      {
+        "disabled": true,
+        "text": "左转"
+      },
+      {
+        "disabled": true,
+        "text": "停止"
+      },
+      {
+        "disabled": true,
+        "text": "右转"
+      },
+      {
+        "disabled": true,
+        "text": "后退"
+      },
+      {
+        "disabled": false,
+        "text": "路线"
+      },
+      {
+        "disabled": false,
+        "text": "控制台"
+      },
+      {
+        "disabled": false,
+        "text": "预览"
+      },
+      {
+        "disabled": false,
+        "text": "证据"
+      },
+      {
+        "disabled": false,
+        "text": "硬件"
+      },
+      {
+        "disabled": false,
+        "text": "数据"
+      },
+      {
+        "disabled": false,
+        "text": "安全边界"
+      },
+      {
+        "disabled": false,
+        "text": "Refresh Route Summary"
+      }
+    ],
+    "visible_forbidden_hits": [],
+    "visible_text_excerpt": "Rober\n\nRober 小车控制台\n刷新\n\n小车控制\n\nRober 小车控制台\n\n普通用户入口：连接、看画面、看雷达和地图，需要时只点停止。\n\n小车地址\n连接/刷新\n未连接\n小车连接\n未连接\n先输入地址，再点连接/刷新。\n\n连接/刷新\n\n实时画面\n打开画面\n关闭画面\n未打开\n\n还没有打开实时画面。\n\n雷达\n刷新雷达\n未刷新\n\n还没有刷新。\n\n地图\n刷新地图\n地图列表\n未刷新\n未读取\n\n还没有刷新。\n\n还没有读取地图列表。\n\n移动/导航\n检查路径\n未检查\n停止\n\n还没有检查路径。\n\n现场材料：未满足。需要补齐现场材料后，才允许低速点动。\n\n高级诊断\n高级工具"
+  },
+  "advancedOpened": {
+    "advanced_tools_open": true,
+    "engineering_tabs_visible": true,
+    "visible_buttons": [
+      {
+        "disabled": false,
+        "text": "刷新"
+      },
+      {
+        "disabled": false,
+        "text": "连接/刷新"
+      },
+      {
+        "disabled": true,
+        "text": "打开画面"
+      },
+      {
+        "disabled": true,
+        "text": "关闭画面"
+      },
+      {
+        "disabled": true,
+        "text": "刷新雷达"
+      },
+      {
+        "disabled": true,
+        "text": "刷新地图"
+      },
+      {
+        "disabled": true,
+        "text": "地图列表"
+      },
+      {
+        "disabled": true,
+        "text": "检查路径"
+      },
+      {
+        "disabled": true,
+        "text": "停止"
+      },
+      {
+        "disabled": false,
+        "text": "刷新状态"
+      },
+      {
+        "disabled": true,
+        "text": "启动雷达（高级）"
+      },
+      {
+        "disabled": true,
+        "text": "停止雷达（高级）"
+      },
+      {
+        "disabled": true,
+        "text": "地图列表"
+      },
+      {
+        "disabled": true,
+        "text": "保存地图"
+      },
+      {
+        "disabled": true,
+        "text": "开始建图（高级）"
+      },
+      {
+        "disabled": true,
+        "text": "Reset（受控/高级，禁用）"
+      },
+      {
+        "disabled": true,
+        "text": "定位重置（高级）"
+      },
+      {
+        "disabled": true,
+        "text": "导航目标预检（高级）"
+      },
+      {
+        "disabled": true,
+        "text": "提交现场材料（高级）"
+      },
+      {
+        "disabled": true,
+        "text": "前进"
+      },
+      {
+        "disabled": true,
+        "text": "左转"
+      },
+      {
+        "disabled": true,
+        "text": "停止"
+      },
+      {
+        "disabled": true,
+        "text": "右转"
+      },
+      {
+        "disabled": true,
+        "text": "后退"
+      },
+      {
+        "disabled": false,
+        "text": "路线"
+      },
+      {
+        "disabled": false,
+        "text": "控制台"
+      },
+      {
+        "disabled": false,
+        "text": "预览"
+      },
+      {
+        "disabled": false,
+        "text": "证据"
+      },
+      {
+        "disabled": false,
+        "text": "硬件"
+      },
+      {
+        "disabled": false,
+        "text": "数据"
+      },
+      {
+        "disabled": false,
+        "text": "安全边界"
+      },
+      {
+        "disabled": false,
+        "text": "Refresh Route Summary"
+      }
+    ],
+    "visible_text_excerpt": "Rober\n\nRober 小车控制台\n刷新\n\n小车控制\n\nRober 小车控制台\n\n普通用户入口：连接、看画面、看雷达和地图，需要时只点停止。\n\n小车地址\n连接/刷新\n未连接\n小车连接\n未连接\n先输入地址，再点连接/刷新。\n\n连接/刷新\n\n实时画面\n打开画面\n关闭画面\n未打开\n\n还没有打开实时画面。\n\n雷达\n刷新雷达\n未刷新\n\n还没有刷新。\n\n地图\n刷新地图\n地图列表\n未刷新\n未读取\n\n还没有刷新。\n\n还没有读取地图列表。\n\n移动/导航\n检查路径\n未检查\n停止\n\n还没有检查路径。\n\n现场材料：未满足。需要补齐现场材料后，才允许低速点动。\n\n高级诊断\n高级工具\n路线\n控制台\n预览\n证据\n硬件\n数据\n安全边界\nRoute Debug\nread-only\nstatusJson\ntaskRecord\ntaskRecordDir\nelevatorRouteReconciliation\nRefresh Route Summary\nroute_root\npc-tools/route\nlegacy_schema\ntrashbot.pc_route_debug_console.v1\nevidence_boundary\nsoftware_proof_docker_pc_route_debug_console_gate\nconsole_controls\nread_only\nloader_name\nnode_route_json_loader\nimplementation\npc-tools/workstation/src/server/routeDebugLoader.ts\naccepts_local_json\ntrue\nexecutes_control\nfalse\nstatusJson\nnot_provided\ntaskRecord\nnot_provided\ntaskRecordDir\nnot_provided\nelevatorRouteReconciliation\nnot_provided\nNode loader safe summary\nroute_progress=null\nkeyframe_preflight=null\nmatch_status=blocked_not_proven\nfailure=blocked_not_proven\nrecent_task={\"provided\":false,\"lookup_status\":\"not_provided\",\"resolved_task_record\":\"\"}\nroute_elevator_reconciliation=not_provided\nMissing or blocked reason\nstatus_json_not_provided\nFail-closed conditions\nmissing_file\nbad_json\nunsupported_schema_or_boundary\nunsafe_copy\nsuccess_or_control_claim\nevidence_ref_mismatch\nMissing or external fields\nstatus_json\nreal_nav2_runtime"
+  }
+}

@@ -1,0 +1,204 @@
+{
+  "schema": "trashbot.pc_tools_workstation.integrated_real_evidence_smoke.v1",
+  "run_started_at": "2026-06-10T23:24:43.582Z",
+  "run_finished_at": "2026-06-10T23:26:41.994Z",
+  "workstation_base_url": "http://127.0.0.1:8793",
+  "remote_base_url": "http://192.168.1.11:8787",
+  "calls": [
+    {
+      "name": "01_summary_before",
+      "method": "GET",
+      "url": "http://127.0.0.1:8793/api/robot-control/summary?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "body": null,
+      "started_at": "2026-06-10T23:24:43.584Z"
+    },
+    {
+      "name": "02_remote_camera_health_before",
+      "method": "GET",
+      "url": "http://192.168.1.11:8787/api/camera/health",
+      "body": null,
+      "started_at": "2026-06-10T23:24:46.345Z"
+    },
+    {
+      "name": "03_remote_camera_devices",
+      "method": "GET",
+      "url": "http://192.168.1.11:8787/api/camera/devices",
+      "body": null,
+      "started_at": "2026-06-10T23:24:46.380Z"
+    },
+    {
+      "name": "04_radar_start",
+      "method": "POST",
+      "url": "http://127.0.0.1:8793/api/robot-control/radar/start?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "body": {},
+      "started_at": "2026-06-10T23:24:46.419Z"
+    },
+    {
+      "name": "05_radar_scan_proof_refresh",
+      "method": "POST",
+      "url": "http://127.0.0.1:8793/api/robot-control/radar/scan-proof/refresh?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "body": {},
+      "started_at": "2026-06-10T23:24:46.803Z"
+    },
+    {
+      "name": "06_radar_stop",
+      "method": "POST",
+      "url": "http://127.0.0.1:8793/api/robot-control/radar/stop?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "body": {},
+      "started_at": "2026-06-10T23:25:09.984Z"
+    },
+    {
+      "name": "07_map_save",
+      "method": "POST",
+      "url": "http://127.0.0.1:8793/api/robot-control/map/save?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "body": {
+        "map_name": "pc_integrated_smoke_20260611_0735"
+      },
+      "started_at": "2026-06-10T23:25:10.367Z"
+    },
+    {
+      "name": "08_map_list",
+      "method": "GET",
+      "url": "http://127.0.0.1:8793/api/robot-control/map/list?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "body": null,
+      "started_at": "2026-06-10T23:26:00.239Z"
+    },
+    {
+      "name": "09_nav2_no_motion_proof_refresh",
+      "method": "POST",
+      "url": "http://127.0.0.1:8793/api/robot-control/nav2/proof/refresh?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "body": {},
+      "started_at": "2026-06-10T23:26:00.259Z"
+    },
+    {
+      "name": "10_base_stop_only",
+      "method": "POST",
+      "url": "http://127.0.0.1:8793/api/robot-control/base/stop?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "body": {},
+      "started_at": "2026-06-10T23:26:36.555Z"
+    },
+    {
+      "name": "11_summary_after",
+      "method": "GET",
+      "url": "http://127.0.0.1:8793/api/robot-control/summary?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "body": null,
+      "started_at": "2026-06-10T23:26:39.139Z"
+    },
+    {
+      "name": "12_remote_camera_health_after",
+      "method": "GET",
+      "url": "http://192.168.1.11:8787/api/camera/health",
+      "body": null,
+      "started_at": "2026-06-10T23:26:41.846Z"
+    },
+    {
+      "name": "13_remote_radar_status_after",
+      "method": "GET",
+      "url": "http://192.168.1.11:8787/api/radar/status",
+      "body": null,
+      "started_at": "2026-06-10T23:26:41.878Z"
+    },
+    {
+      "name": "14_remote_map_proof_latest",
+      "method": "GET",
+      "url": "http://192.168.1.11:8787/api/map/proof/latest",
+      "body": null,
+      "started_at": "2026-06-10T23:26:41.898Z"
+    },
+    {
+      "name": "15_remote_nav2_proof_latest",
+      "method": "GET",
+      "url": "http://192.168.1.11:8787/api/nav2/proof/latest",
+      "body": null,
+      "started_at": "2026-06-10T23:26:41.912Z"
+    },
+    {
+      "name": "16_remote_localize_proof_latest",
+      "method": "GET",
+      "url": "http://192.168.1.11:8787/api/localize/proof/latest",
+      "body": null,
+      "started_at": "2026-06-10T23:26:41.932Z"
+    }
+  ],
+  "forbidden_nonzero_motion_calls_from_this_script": [],
+  "dangerous_true_hits": [],
+  "result_files": [
+    "01_summary_before.json",
+    "02_remote_camera_health_before.json",
+    "03_remote_camera_devices.json",
+    "04_radar_start.json",
+    "05_radar_scan_proof_refresh.json",
+    "06_radar_stop.json",
+    "07_map_save.json",
+    "08_map_list.json",
+    "09_nav2_no_motion_proof_refresh.json",
+    "10_base_stop_only.json",
+    "11_summary_after.json",
+    "12_remote_camera_health_after.json",
+    "13_remote_radar_status_after.json",
+    "14_remote_map_proof_latest.json",
+    "15_remote_nav2_proof_latest.json",
+    "16_remote_localize_proof_latest.json"
+  ],
+  "key_results": {
+    "camera": {
+      "health_status": "ready",
+      "active_peer_connections": 0,
+      "active_peer_ids": [],
+      "devices": [
+        {
+          "path": "/dev/video0",
+          "exists": true,
+          "readable": true,
+          "writable": true
+        },
+        {
+          "path": "/dev/video1",
+          "exists": true,
+          "readable": true,
+          "writable": true
+        },
+        {
+          "path": "/dev/video2",
+          "exists": true,
+          "readable": true,
+          "writable": true
+        }
+      ]
+    },
+    "radar": {
+      "start_proxy_status": "lifecycle_forwarded",
+      "start_remote_http_status": 200,
+      "scan_proxy_status": "refresh_forwarded",
+      "scan_latest_status": "loaded_fail_closed_summary",
+      "stop_proxy_status": "lifecycle_forwarded",
+      "stop_remote_http_status": 200
+    },
+    "map": {
+      "save_proxy_status": "lifecycle_failed",
+      "save_remote_http_status": 200,
+      "save_status": "blocked",
+      "save_command_result": {
+        "mode": "map_lifecycle_proof_helper",
+        "executed": true,
+        "ok": false
+      },
+      "proof_status": "not_proven"
+    },
+    "localization_path": {
+      "nav2_refresh_proxy_status": "refresh_forwarded",
+      "nav2_refresh_status": "loaded_fail_closed_summary",
+      "nav2_latest_status": "not_proven",
+      "localization_status": "localization_reset_observed",
+      "localization_reset_observed": true
+    },
+    "stop_no_motion": {
+      "stop_proxy_status": "command_forwarded",
+      "stop_remote_http_status": 200,
+      "stop_remote_endpoint": "/api/base/stop",
+      "robot_control_executed": false,
+      "forbidden_nonzero_motion_call_count": 0,
+      "dangerous_true_hit_count": 0
+    }
+  }
+}

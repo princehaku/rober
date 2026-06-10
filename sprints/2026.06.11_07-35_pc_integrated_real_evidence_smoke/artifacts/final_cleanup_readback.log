@@ -1,0 +1,26 @@
+## final cleanup/readback at 2026-06-11T07:28:52+08:00
+## service status
+active
+● trashbot-upper-robot-api.service - Trashbot unified upper robot API
+     Loaded: loaded (/etc/systemd/system/trashbot-upper-robot-api.service; enabled; vendor preset: enabled)
+    Drop-In: /etc/systemd/system/trashbot-upper-robot-api.service.d
+             └─20-lidar-scan-proof-runtime.conf
+     Active: active (running) since Thu 2026-06-11 05:49:17 CST; 1h 39min ago
+       Docs: file:/root/rober/docs/interfaces/o7_upper_robot_api.md
+   Main PID: 231108 (python3)
+      Tasks: 27 (limit: 2204)
+     Memory: 83.0M
+        CPU: 2min 44.089s
+     CGroup: /system.slice/trashbot-upper-robot-api.service
+             ├─231108 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+             ├─231888 /opt/ros/humble/lib/tf2_ros/static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id laser_frame
+             └─232078 /usr/bin/python3 /opt/ros/humble/bin/ros2 topic hz /scan
+
+Jun 11 05:49:17 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 11 05:49:18 op-z3-b6.home env[231108]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
+## device lsof/fuser
+-- /dev/ttyS5
+-- /dev/ttyACM0
+## target process residuals
+233268 zsh -c pgrep -af "o3_map_lifecycle_proof|o10_amcl_nav2_runtime_proof|lidar_driver|slam_toolbox|map_server|amcl|planner_server|controller_server" || true
+## journal endpoint scan since smoke window
