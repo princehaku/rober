@@ -456,6 +456,35 @@ const fixtures: Record<string, unknown> = {
       non_motion_evidence_actions_observed: ["sends_commands", "starts_ros2"],
       ...PROOF_FLAGS,
     },
+    "/api/robot-control/nav2/proof/refresh": {
+      schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+      robot_control_executed: false,
+      refresh_kind: "nav2_no_motion_proof_refresh",
+      proxy_status: "refresh_failed",
+      source_base_url: "http://192.168.1.11:8787",
+      normalized_base_url: "http://192.168.1.11:8787",
+      remote_endpoint: "/api/nav2/proof/refresh",
+      remote_http_status: null,
+      status: "blocked",
+      last_result_status: "nav2_no_motion_path_generation_runtime_observed",
+      last_result_schema: "trashbot.upper_robot_api.v1.nav2_proof_refresh",
+      last_result_evidence_ref: "nav2-refresh-proof",
+      last_refreshed_at_ms: 1781040817776,
+      latest_readback_key_values: {
+        status: "nav2_no_motion_path_generation_runtime_observed",
+        latest_proof_status: "nav2_no_motion_path_generation_runtime_observed",
+        path_generation_requested: "true",
+        path_generation_succeeded: "true",
+        path_generated: "true",
+        path_point_count: "17",
+        planner_server_active: "true",
+      },
+      failure_reason: "fetch_timeout_46000ms",
+      blocked_reasons: ["fetch_timeout_46000ms", "post_timeout_latest_readback_loaded"],
+      hard_dangerous_true_fields: [],
+      non_motion_evidence_actions_observed: [],
+      ...PROOF_FLAGS,
+    },
   "/api/robot-control/map/list": {
     schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
     action: "list",
@@ -2627,6 +2656,8 @@ function stubWorkstationFetch() {
       fixtureKey = "/api/robot-control/radar/scan-proof/refresh";
     } else if (url.startsWith("/api/robot-control/map/proof/refresh")) {
       fixtureKey = "/api/robot-control/map/proof/refresh";
+    } else if (url.startsWith("/api/robot-control/nav2/proof/refresh")) {
+      fixtureKey = "/api/robot-control/nav2/proof/refresh";
     } else if (url.startsWith("/api/robot-control/map/list")) {
       fixtureKey = "/api/robot-control/map/list";
     } else if (url.startsWith("/api/robot-control/map/save")) {
@@ -2763,6 +2794,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("未连接");
     expect(firstScreenText).toContain("未打开");
     expect(firstScreenText).toContain("未刷新");
+    expect(firstScreenText).toContain("检查路径");
+    expect(firstScreenText).toContain("路径未证明");
     expect(firstScreenText).toContain("自动导航（未开放）");
     expect(firstScreenText).toContain("停止");
     expect(firstScreenText).toContain("最近证据：还没有请求。");
@@ -2776,6 +2809,8 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("ice_connection_state");
     expect(firstScreenText).not.toContain("scan_once_observed");
     expect(firstScreenText).not.toContain("map_once_observed");
+    expect(firstScreenText).not.toContain("path_generation_succeeded");
+    expect(firstScreenText).not.toContain("path_point_count");
     expect(wrapper.text()).not.toContain("source=software_proof");
     expect(wrapper.text()).not.toContain("proof_status=not_proven");
     expect(firstScreenText).not.toContain("/cmd_vel");
@@ -2790,6 +2825,7 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("delivery_success=false");
     expect(wrapper.find("details").text()).toContain("primary_actions_enabled=false");
     expect(wrapper.find("details").text()).toContain("现场点动设置 / 控制边界");
+    expect(wrapper.find("details").text()).toContain("Nav2 规划详情");
     expect(wrapper.find("details").text()).toContain("前进");
     expect(wrapper.find("details").text()).toContain("速度上限");
     expect(wrapper.find("details").text()).toContain("现场有人扶控并准备急停");
@@ -2807,11 +2843,14 @@ describe("App", () => {
     expect(firstScreenText).toContain("刷新雷达");
     expect(firstScreenText).toContain("刷新地图");
     expect(firstScreenText).toContain("查看地图列表");
+    expect(firstScreenText).toContain("检查路径");
     expect(firstScreenText).not.toContain("保存地图");
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("未读取");
+    expect(firstScreenText).toContain("路径未证明");
     expect(firstScreenText).not.toContain("scan_once_observed");
     expect(firstScreenText).not.toContain("map_once_observed");
+    expect(firstScreenText).not.toContain("path_generation_succeeded");
     expect(firstScreenText).not.toContain("Start");
     expect(firstScreenText).not.toContain("Reset");
 
@@ -2853,6 +2892,23 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/proof/refresh") && options?.method === "POST")).toBe(true);
     const summaryCallsAfterMap = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
     expect(summaryCallsAfterMap).toBeGreaterThan(summaryCallsAfterRadar);
+
+    await wrapper.findAll("button").find((button) => button.text() === "检查路径")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find(".robot-console-grid").text()).toContain("路径可生成");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("刷新请求超时，但 latest 已有 no-motion 路径证据；不会自动发车。");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("path_generation_succeeded");
+    expect(wrapper.find("details").text()).toContain("/api/nav2/proof/refresh");
+    expect(wrapper.find("details").text()).toContain("nav2_no_motion_path_generation_runtime_observed");
+    expect(wrapper.find("details").text()).toContain("post_timeout_latest_readback_loaded");
+    expect(wrapper.find("details").text()).toContain("path_generation_succeeded");
+    expect(wrapper.find("details").text()).toContain("path_point_count");
+    expect(wrapper.find("details").text()).toContain("no Nav2 start/stop; no NavigateToPose; no /cmd_vel; no /api/base/manual");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh") && options?.method === "POST")).toBe(true);
+    const summaryCallsAfterNav2 = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
+    expect(summaryCallsAfterNav2).toBeGreaterThan(summaryCallsAfterMap);
 
     await wrapper.findAll("button").find((button) => button.text() === "查看地图列表")?.trigger("click");
     await flushPromises();

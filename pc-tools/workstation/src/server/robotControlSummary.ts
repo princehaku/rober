@@ -54,7 +54,7 @@ const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
 
 export type RobotProofRefreshConfig = {
   kind: RobotControlProofRefreshKind;
-  endpoint: "/api/radar/scan-proof/refresh" | "/api/map/proof/refresh";
+  endpoint: "/api/radar/scan-proof/refresh" | "/api/map/proof/refresh" | "/api/nav2/proof/refresh";
   request_body: Record<string, unknown>;
   timeout_cap_ms: number;
   safety_margin_ms: number;
@@ -103,6 +103,42 @@ const MAP_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
     "blocked_reasons",
   ],
 };
+
+const NAV2_NO_MOTION_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
+  kind: "nav2_no_motion_proof_refresh",
+  endpoint: "/api/nav2/proof/refresh",
+  request_body: {
+    timeout_s: 8,
+    managed_runtime_opt_in: false,
+    managed_timeout_s: 8,
+    managed_map_yaml: "",
+    initialpose_opt_in: false,
+    path_generation_opt_in: true,
+    path_generation_timeout_s: 8,
+    path_goal_frame_id: "map",
+    path_goal_x: 0.8,
+    path_goal_y: 0,
+    path_goal_yaw: 0,
+  },
+  timeout_cap_ms: 60_000,
+  safety_margin_ms: 30_000,
+  key_fields: [
+    "status",
+    "latest_proof_status",
+    "latest_result_status",
+    "evidence_ref",
+    "managed_runtime_started",
+    "initialpose_published",
+    "path_generation_requested",
+    "path_generated",
+    "path_generation_succeeded",
+    "path_point_count",
+    "planner_server_active",
+    "blocked_reasons",
+  ],
+};
+
+const NAV2_NO_MOTION_PROOF_LATEST_ENDPOINT = "/api/nav2/proof/latest" as const;
 
 type RobotMapLifecycleConfig = {
   action: RobotControlMapLifecycleAction;
@@ -309,7 +345,8 @@ export function computeRobotProofRefreshTimeoutMs(config: Pick<RobotProofRefresh
   // 代理 timeout 由 body 预估时长加安全余量推导，并且封顶，避免卡死 workstation。
   const timeoutS = numericSeconds(config.request_body.timeout_s) ?? 0;
   const warmupS = numericSeconds(config.request_body.runtime_warmup_s) ?? 0;
-  const calculatedMs = Math.round((timeoutS + warmupS) * 1000 + Math.max(0, Math.trunc(config.safety_margin_ms)));
+  const pathGenerationS = numericSeconds(config.request_body.path_generation_timeout_s) ?? 0;
+  const calculatedMs = Math.round((timeoutS + warmupS + pathGenerationS) * 1000 + Math.max(0, Math.trunc(config.safety_margin_ms)));
   return Math.min(config.timeout_cap_ms, calculatedMs);
 }
 
@@ -635,6 +672,104 @@ function blockedRefreshResponse(
   };
 }
 
+function failedRefreshResponse(
+  sourceBaseUrl: string,
+  normalizedBaseUrl: URL,
+  reason: string,
+  config: RobotProofRefreshConfig,
+  observedAt: number,
+  extras: Partial<RobotControlProofRefreshProxyResponse> = {},
+): RobotControlProofRefreshProxyResponse {
+  // POST 失败和 Nav2 latest 兜底共用一套响应骨架，避免在错误态漏掉 fail-closed 字段。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+    ...PROOF_FLAGS,
+    refresh_kind: config.kind,
+    proxy_status: "refresh_failed",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: normalizedBaseUrl.toString().replace(/\/$/, ""),
+    remote_endpoint: config.endpoint,
+    remote_http_status: null,
+    status: "blocked",
+    last_result_status: "fetch_failed",
+    last_result_schema: "not_loaded",
+    last_result_evidence_ref: "not_loaded",
+    last_refreshed_at_ms: observedAt,
+    latest_readback_key_values: {},
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    non_motion_evidence_actions_observed: [],
+    robot_control_executed: false,
+    ...extras,
+  };
+}
+
+async function nav2LatestReadbackAfterPostFailure(
+  baseUrl: string,
+  normalizedBaseUrl: URL,
+  config: RobotProofRefreshConfig,
+  observedAt: number,
+  postFailureReason: string,
+): Promise<RobotControlProofRefreshProxyResponse> {
+  // 只给 Nav2 no-motion refresh 提供固定 latest GET 兜底；不能扩展成任意 GET/POST 代理。
+  if (config.kind !== "nav2_no_motion_proof_refresh") {
+    return failedRefreshResponse(baseUrl, normalizedBaseUrl, postFailureReason, config, observedAt);
+  }
+
+  let latestResponse: Response;
+  try {
+    latestResponse = await fetch(endpointUrl(normalizedBaseUrl, NAV2_NO_MOTION_PROOF_LATEST_ENDPOINT), {
+      method: "GET",
+      signal: AbortSignal.timeout(DEFAULT_REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    const latestFailure =
+      error instanceof Error && error.name === "TimeoutError"
+        ? `latest_fetch_timeout_${DEFAULT_REQUEST_TIMEOUT_MS}ms`
+        : error instanceof Error
+          ? `latest_fetch_failed:${error.message.slice(0, 160)}`
+          : "latest_fetch_failed";
+    return failedRefreshResponse(baseUrl, normalizedBaseUrl, postFailureReason, config, observedAt, {
+      blocked_reasons: [postFailureReason, latestFailure],
+    });
+  }
+
+  const latestBody = await latestResponse.json().catch(() => null);
+  const latestPayload = asRecord(latestBody);
+  if (!latestResponse.ok || !latestPayload) {
+    return failedRefreshResponse(baseUrl, normalizedBaseUrl, postFailureReason, config, observedAt, {
+      blocked_reasons: [
+        postFailureReason,
+        latestPayload ? `latest_http_status_${latestResponse.status}` : "latest_response_json_not_object",
+      ],
+    });
+  }
+
+  const hardDangerous = scanDangerousTrueFields(latestPayload, "", HARD_DANGEROUS_TRUE_FIELDS);
+  if (hardDangerous.length > 0) {
+    return failedRefreshResponse(baseUrl, normalizedBaseUrl, postFailureReason, config, observedAt, {
+      failure_reason: `hard_dangerous_true_field:${hardDangerous[0]}`,
+      blocked_reasons: [
+        postFailureReason,
+        ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
+      ],
+      hard_dangerous_true_fields: hardDangerous,
+    });
+  }
+
+  return failedRefreshResponse(baseUrl, normalizedBaseUrl, postFailureReason, config, observedAt, {
+    last_result_status: asString(
+      findFirstKey(latestPayload, ["status", "latest_proof_status", "latest_result_status", "refresh_status", "result_status"]),
+      "loaded",
+    ),
+    last_result_schema: asString(latestPayload.schema, "schema_missing"),
+    last_result_evidence_ref: asString(findFirstKey(latestPayload, ["evidence_ref", "latest_evidence_ref", "result_evidence_ref"]), "not_loaded"),
+    latest_readback_key_values: compactKeyValues(latestPayload, config.key_fields),
+    blocked_reasons: [postFailureReason, "post_timeout_latest_readback_loaded"],
+  });
+}
+
 async function buildProofRefreshProxy(
   baseUrl: string,
   config: RobotProofRefreshConfig,
@@ -658,38 +793,13 @@ async function buildProofRefreshProxy(
       signal: AbortSignal.timeout(timeout_ms),
     });
   } catch (error) {
-    return {
-      schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
-      ...PROOF_FLAGS,
-      refresh_kind: config.kind,
-      proxy_status: "refresh_failed",
-      source_base_url: baseUrl,
-      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
-      remote_endpoint: config.endpoint,
-      remote_http_status: null,
-      status: "blocked",
-      last_result_status: "fetch_failed",
-      last_result_schema: "not_loaded",
-      last_result_evidence_ref: "not_loaded",
-      last_refreshed_at_ms: observedAt,
-      latest_readback_key_values: {},
-      failure_reason:
-        error instanceof Error && error.name === "TimeoutError"
-          ? `fetch_timeout_${timeout_ms}ms`
-          : error instanceof Error
-            ? error.message.slice(0, 180)
-            : "fetch_failed",
-      blocked_reasons: [
-        error instanceof Error && error.name === "TimeoutError"
-          ? `fetch_timeout_${timeout_ms}ms`
-          : error instanceof Error
-            ? error.message.slice(0, 180)
-            : "fetch_failed",
-      ],
-      hard_dangerous_true_fields: [],
-      non_motion_evidence_actions_observed: [],
-      robot_control_executed: false,
-    };
+    const reason =
+      error instanceof Error && error.name === "TimeoutError"
+        ? `fetch_timeout_${timeout_ms}ms`
+        : error instanceof Error
+          ? error.message.slice(0, 180)
+          : "fetch_failed";
+    return nav2LatestReadbackAfterPostFailure(baseUrl, normalized.normalized, config, observedAt, reason);
   }
 
   let body: unknown;
@@ -796,6 +906,11 @@ export async function buildRadarScanProofRefreshProxy(baseUrl: string): Promise<
 export async function buildMapProofRefreshProxy(baseUrl: string): Promise<RobotControlProofRefreshProxyResponse> {
   // Map refresh 只允许固定 no-motion map proof body，不开放导航、建图或控制参数。
   return buildProofRefreshProxy(baseUrl, MAP_PROOF_REFRESH_CONFIG);
+}
+
+export async function buildNav2NoMotionProofRefreshProxy(baseUrl: string): Promise<RobotControlProofRefreshProxyResponse> {
+  // Nav2 refresh 只请求 no-motion planner path proof，不启动 Nav2、不发 goal，也不触碰底盘控制链路。
+  return buildProofRefreshProxy(baseUrl, NAV2_NO_MOTION_PROOF_REFRESH_CONFIG);
 }
 
 function pickReadback(readbacks: RobotApiEndpointReadback[], id: RobotApiReadEndpointId): RobotApiEndpointReadback | null {

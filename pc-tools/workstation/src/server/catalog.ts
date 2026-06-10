@@ -21,6 +21,7 @@ export { buildO7SafeCommandPreview } from "./o7SafeCommandPreview";
 export { buildO7CloudArchiveTasks } from "./o7CloudArchiveTasks";
 export {
   buildMapLifecycleProxy,
+  buildNav2NoMotionProofRefreshProxy,
   buildMapProofRefreshProxy,
   buildRadarScanProofRefreshProxy,
   computeRobotProofRefreshTimeoutMs,

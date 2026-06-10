@@ -1,0 +1,12 @@
+{
+  "url": "http://127.0.0.1:8791",
+  "base_url": "http://192.168.1.11:8787",
+  "action": "click 检查路径",
+  "grid_has_path_ready": true,
+  "grid_has_latest_timeout_hint": true,
+  "grid_has_proof_noise": [],
+  "details_has_latest_key": true,
+  "details_has_fallback_reason": true,
+  "details_has_timeout": true,
+  "visible_summary": "路径可生成；刷新请求超时，但 latest 已有 no-motion 路径证据；不会自动发车。"
+}

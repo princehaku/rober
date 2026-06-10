@@ -26,6 +26,7 @@ import {
   buildRadarScanProofRefreshProxy,
   buildMapLifecycleProxy,
   buildMapProofRefreshProxy,
+  buildNav2NoMotionProofRefreshProxy,
   buildRobotControlSummary,
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
@@ -809,6 +810,14 @@ export function createWorkstationApp(): express.Express {
   workstationApp.post("/api/robot-control/map/proof/refresh", async (req, res) => {
     // Map refresh 只允许固定 POST body，不接受浏览器把它改造成建图/导航控制代理。
     const response = await buildMapProofRefreshProxy(queryString(req.query.baseUrl));
+    res
+      .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
+      .json(response);
+  });
+
+  workstationApp.post("/api/robot-control/nav2/proof/refresh", async (req, res) => {
+    // Nav2 refresh 只允许固定 no-motion planner proof body，不开放 start/stop、goal 或底盘动作。
+    const response = await buildNav2NoMotionProofRefreshProxy(queryString(req.query.baseUrl));
     res
       .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
       .json(response);

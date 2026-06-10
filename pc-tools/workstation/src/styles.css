@@ -254,7 +254,8 @@ h3 {
 
 .status-chip[data-state="已连接"],
 .status-chip[data-state="已打开"],
-.status-chip[data-state="已刷新"] {
+.status-chip[data-state="已刷新"],
+.status-chip[data-state="路径可生成"] {
   border-color: #bfd4c6;
   background: #eff8f1;
   color: #245d36;
@@ -262,6 +263,7 @@ h3 {
 
 .status-chip[data-state="连接中"],
 .status-chip[data-state="刷新中"],
+.status-chip[data-state="检查中"],
 .status-chip[data-state="发送中"] {
   border-color: #cfe0f0;
   background: #eef5fb;
@@ -271,6 +273,7 @@ h3 {
 .status-chip[data-state="未连接"],
 .status-chip[data-state="未打开"],
 .status-chip[data-state="未刷新"],
+.status-chip[data-state="路径未证明"],
 .status-chip[data-state="未确认"],
 .status-chip[data-state="locked"] {
   background: #f5f7fa;
@@ -285,7 +288,8 @@ h3 {
 }
 
 .status-chip[data-state="有异常"],
-.status-chip[data-state="失败"] {
+.status-chip[data-state="失败"],
+.status-chip[data-state="检查失败"] {
   border-color: #efc9c9;
   background: #fff1f1;
   color: #9a3412;

@@ -27,6 +27,7 @@ import {
   buildO7VoicePreview,
   buildProofBoundary,
   buildMapProofRefreshProxy,
+  buildNav2NoMotionProofRefreshProxy,
   buildRadarScanProofRefreshProxy,
   computeRobotProofRefreshTimeoutMs,
   buildRouteDebugSummary,
@@ -3811,7 +3812,7 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("workstation proof refresh proxies only allow fixed radar and map POST bodies", async () => {
+  it("workstation proof refresh proxies only allow fixed radar, map, and Nav2 POST bodies", async () => {
     // refresh 代理必须把 body 锁死成 workstation 预设值，且危险 true 字段仍然 fail closed。
     const upstream = await listenRobotProofRefreshApi({
       "/api/radar/scan-proof/refresh": {
@@ -3846,6 +3847,25 @@ describe("workstation fail-closed API contracts", () => {
           map_once_observed: true,
           map_file_observed: true,
           map_metadata_observed: true,
+        },
+      },
+      "/api/nav2/proof/refresh": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof_refresh",
+          status: "nav2_no_motion_path_generation_runtime_observed",
+          latest_proof_status: "nav2_no_motion_path_generation_runtime_observed",
+          evidence_ref: "nav2-refresh-proof",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          managed_runtime_started: false,
+          initialpose_published: false,
+          path_generation_requested: true,
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 17,
+          planner_server_active: true,
         },
       },
     });
@@ -3908,6 +3928,50 @@ describe("workstation fail-closed API contracts", () => {
       expect(mapBody.non_motion_evidence_actions_observed).toEqual(expect.arrayContaining(["sends_commands", "starts_ros2"]));
       expect(mapBody.latest_readback_key_values.map_once_observed).toBe("true");
       expect(upstream.receivedBodies["/api/map/proof/refresh"]?.[0]).toEqual({ timeout_s: 45 });
+
+      const nav2Response = await fetch(
+        `${workstation.baseUrl}/api/robot-control/nav2/proof/refresh?baseUrl=${encodeURIComponent(upstream.baseUrl)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ path_goal_x: 99, starts_nav2: true }),
+        },
+      );
+      const nav2Body = (await nav2Response.json()) as {
+        proxy_status: string;
+        safe_to_control: boolean;
+        delivery_success: boolean;
+        primary_actions_enabled: boolean;
+        robot_control_executed: boolean;
+        remote_endpoint: string;
+        latest_readback_key_values: Record<string, string>;
+        hard_dangerous_true_fields: string[];
+      };
+      expect(nav2Response.status).toBe(200);
+      expect(nav2Body.proxy_status).toBe("refresh_forwarded");
+      expect(nav2Body.remote_endpoint).toBe("/api/nav2/proof/refresh");
+      expect(nav2Body.safe_to_control).toBe(false);
+      expect(nav2Body.delivery_success).toBe(false);
+      expect(nav2Body.primary_actions_enabled).toBe(false);
+      expect(nav2Body.robot_control_executed).toBe(false);
+      expect(nav2Body.hard_dangerous_true_fields).toEqual([]);
+      expect(nav2Body.latest_readback_key_values.path_generated).toBe("true");
+      expect(nav2Body.latest_readback_key_values.path_generation_succeeded).toBe("true");
+      expect(upstream.receivedBodies["/api/nav2/proof/refresh"]?.[0]).toEqual({
+        timeout_s: 8,
+        managed_runtime_opt_in: false,
+        managed_timeout_s: 8,
+        managed_map_yaml: "",
+        initialpose_opt_in: false,
+        path_generation_opt_in: true,
+        path_generation_timeout_s: 8,
+        path_goal_frame_id: "map",
+        path_goal_x: 0.8,
+        path_goal_y: 0,
+        path_goal_yaw: 0,
+      });
     } finally {
       await workstation.close();
       await upstream.close();
@@ -3959,6 +4023,70 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.blocked_reasons).toContain("hard_dangerous_true_field:safe_to_control");
       expect(body.hard_dangerous_true_fields).toContain("safe_to_control");
       expect(body.non_motion_evidence_actions_observed).toEqual([]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation Nav2 no-motion proof refresh fails closed on motion and Nav2 start claims", async () => {
+    // Nav2 规划检查不能接受任何启动 Nav2、发布 /cmd_vel 或执行控制的上位机声明。
+    const upstream = await listenRobotProofRefreshApi({
+      "/api/nav2/proof/refresh": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof_refresh",
+          status: "unsafe_nav2_claim",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: true,
+          starts_nav2: true,
+          publishes_cmd_vel: true,
+          path_generated: true,
+          path_generation_succeeded: true,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(
+        `${workstation.baseUrl}/api/robot-control/nav2/proof/refresh?baseUrl=${encodeURIComponent(upstream.baseUrl)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ignored: true }),
+        },
+      );
+      const body = (await response.json()) as {
+        proxy_status: string;
+        status: string;
+        safe_to_control: boolean;
+        delivery_success: boolean;
+        primary_actions_enabled: boolean;
+        robot_control_executed: boolean;
+        hard_dangerous_true_fields: string[];
+        blocked_reasons: string[];
+      };
+
+      expect(response.status).toBe(502);
+      expect(body.proxy_status).toBe("refresh_failed");
+      expect(body.status).toBe("blocked");
+      expect(body.safe_to_control).toBe(false);
+      expect(body.delivery_success).toBe(false);
+      expect(body.primary_actions_enabled).toBe(false);
+      expect(body.robot_control_executed).toBe(false);
+      expect(body.hard_dangerous_true_fields).toEqual(expect.arrayContaining([
+        "robot_control_executed",
+        "starts_nav2",
+        "publishes_cmd_vel",
+      ]));
+      expect(body.blocked_reasons).toEqual(expect.arrayContaining([
+        "hard_dangerous_true_field:robot_control_executed",
+        "hard_dangerous_true_field:starts_nav2",
+        "hard_dangerous_true_field:publishes_cmd_vel",
+      ]));
     } finally {
       await workstation.close();
       await upstream.close();
@@ -4155,6 +4283,13 @@ describe("workstation fail-closed API contracts", () => {
     ).toBe(65_000);
     expect(
       computeRobotProofRefreshTimeoutMs({
+        request_body: { timeout_s: 8, path_generation_timeout_s: 8 },
+        timeout_cap_ms: 60_000,
+        safety_margin_ms: 30_000,
+      }),
+    ).toBe(46_000);
+    expect(
+      computeRobotProofRefreshTimeoutMs({
         request_body: { timeout_s: 999, runtime_warmup_s: 999 },
         timeout_cap_ms: 60_000,
         safety_margin_ms: 10_000,
@@ -4179,6 +4314,7 @@ describe("workstation fail-closed API contracts", () => {
     try {
       const response = await buildRadarScanProofRefreshProxy("http://127.0.0.1:8787");
       expect(timeoutSpy).toHaveBeenCalledWith(26_000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(response.proxy_status).toBe("refresh_failed");
       expect(response.failure_reason).toBe("fetch_timeout_26000ms");
       expect(response.blocked_reasons).toContain("fetch_timeout_26000ms");
@@ -4199,6 +4335,7 @@ describe("workstation fail-closed API contracts", () => {
     try {
       const response = await buildMapProofRefreshProxy("http://127.0.0.1:8787");
       expect(timeoutSpy).toHaveBeenCalledWith(65_000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(response.proxy_status).toBe("refresh_failed");
       expect(response.failure_reason).toBe("fetch_timeout_65000ms");
       expect(response.blocked_reasons).toContain("fetch_timeout_65000ms");
@@ -4207,6 +4344,97 @@ describe("workstation fail-closed API contracts", () => {
       globalThis.fetch = originalFetch;
       timeoutSpy.mockRestore();
     }
+  });
+
+  it("reports the computed fetch timeout ms when Nav2 no-motion refresh hangs", async () => {
+    // Nav2 no-motion 规划检查也使用固定 body 推导 timeout，避免无界等待阻塞工作站。
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    const originalFetch = globalThis.fetch;
+    const timeoutError = Object.assign(new Error("timeout"), { name: "TimeoutError" });
+    const fetchMock = vi.fn(() => Promise.reject(timeoutError));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const response = await buildNav2NoMotionProofRefreshProxy("http://127.0.0.1:8787");
+      expect(timeoutSpy).toHaveBeenCalledWith(46_000);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(response.proxy_status).toBe("refresh_failed");
+      expect(response.failure_reason).toBe("fetch_timeout_46000ms");
+      expect(response.blocked_reasons).toContain("fetch_timeout_46000ms");
+      expect(response.safe_to_control).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+      timeoutSpy.mockRestore();
+    }
+  });
+
+  it("loads fixed Nav2 latest proof readback after no-motion POST timeout", async () => {
+    // 只有 Nav2 no-motion refresh 在 POST 失败后读取固定 latest endpoint，用于表达“请求超时但 latest 已有路径证据”。
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    const originalFetch = globalThis.fetch;
+    const timeoutError = Object.assign(new Error("timeout"), { name: "TimeoutError" });
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(timeoutError)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            schema: "trashbot.upper_robot_api.v1.nav2_proof_latest",
+            status: "nav2_no_motion_path_generation_runtime_observed",
+            latest_proof_status: "nav2_no_motion_path_generation_runtime_observed",
+            evidence_ref: "nav2-latest-proof",
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+            robot_control_executed: false,
+            path_generation_requested: true,
+            path_generated: true,
+            path_generation_succeeded: true,
+            path_point_count: 31,
+            planner_server_active: true,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const response = await buildNav2NoMotionProofRefreshProxy("http://127.0.0.1:8787");
+      expect(timeoutSpy).toHaveBeenCalledWith(46_000);
+      expect(timeoutSpy).toHaveBeenCalledWith(1500);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(String(fetchMock.mock.calls[0]?.[0])).toBe("http://127.0.0.1:8787/api/nav2/proof/refresh");
+      expect(String(fetchMock.mock.calls[1]?.[0])).toBe("http://127.0.0.1:8787/api/nav2/proof/latest");
+      expect(response.proxy_status).toBe("refresh_failed");
+      expect(response.status).toBe("blocked");
+      expect(response.failure_reason).toBe("fetch_timeout_46000ms");
+      expect(response.blocked_reasons).toEqual(["fetch_timeout_46000ms", "post_timeout_latest_readback_loaded"]);
+      expect(response.latest_readback_key_values.path_generated).toBe("true");
+      expect(response.latest_readback_key_values.path_generation_succeeded).toBe("true");
+      expect(response.latest_readback_key_values.path_point_count).toBe("31");
+      expect(response.last_result_status).toBe("nav2_no_motion_path_generation_runtime_observed");
+      expect(response.last_result_schema).toBe("trashbot.upper_robot_api.v1.nav2_proof_latest");
+      expect(response.last_result_evidence_ref).toBe("nav2-latest-proof");
+      expect(response.safe_to_control).toBe(false);
+      expect(response.delivery_success).toBe(false);
+      expect(response.primary_actions_enabled).toBe(false);
+      expect(response.robot_control_executed).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+      timeoutSpy.mockRestore();
+    }
+  });
+
+  it("Nav2 no-motion proof refresh rejects missing and unsafe base URLs before fetch", async () => {
+    // baseUrl 不合法时必须本机拒绝，不能尝试访问任意主机或退化成通用 SSRF 代理。
+    const missing = await buildNav2NoMotionProofRefreshProxy("");
+    expect(missing.proxy_status).toBe("refresh_rejected");
+    expect(missing.failure_reason).toBe("baseUrl_not_provided");
+    expect(missing.remote_endpoint).toBe("/api/nav2/proof/refresh");
+    expect(missing.safe_to_control).toBe(false);
+
+    const unsafe = await buildNav2NoMotionProofRefreshProxy("https://example.com/api?token=secret");
+    expect(unsafe.proxy_status).toBe("refresh_rejected");
+    expect(unsafe.failure_reason).toBe("baseUrl_protocol_not_allowed");
+    expect(unsafe.robot_control_executed).toBe(false);
   });
 
   it("Robot Control summary rejects unsafe URLs and dangerous true fields", async () => {

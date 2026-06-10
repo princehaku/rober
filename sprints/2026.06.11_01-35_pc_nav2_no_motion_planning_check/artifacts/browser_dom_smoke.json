@@ -1,0 +1,17 @@
+{
+  "url": "http://127.0.0.1:8791",
+  "title": "Rober 小车控制台",
+  "card_headings": [
+    "小车连接",
+    "实时画面",
+    "雷达",
+    "地图",
+    "移动/导航"
+  ],
+  "has_planning_button": true,
+  "has_path_unproven_status": true,
+  "first_screen_has_proof_noise": [],
+  "details_has_nav2": true,
+  "details_has_endpoint": true,
+  "details_has_no_motion_boundary": true
+}

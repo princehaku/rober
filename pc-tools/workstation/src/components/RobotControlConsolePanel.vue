@@ -8,6 +8,7 @@ import {
   postRobotControlBaseStop,
   postRobotControlMapSave,
   postRobotControlMapProofRefresh,
+  postRobotControlNav2ProofRefresh,
   postRobotControlRadarScanProofRefresh,
   postRobotControlCameraOffer,
   postRobotControlCameraPeerClose,
@@ -32,6 +33,7 @@ const robotSummary = ref<RobotControlSummaryResponse | null>(null);
 const taskDetail = ref<O7ConsumerTaskDetailResponse | null>(null);
 const radarRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
+const nav2RefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapLifecycleResult = ref<RobotControlMapLifecycleResponse | null>(null);
 const manualCommandResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
 const manualCommandPending = ref(false);
@@ -59,6 +61,7 @@ const lastStopAt = ref("");
 const cleanupStatus = ref("not_started");
 const radarRefreshPending = ref(false);
 const mapRefreshPending = ref(false);
+const nav2RefreshPending = ref(false);
 const previewVideo = ref<HTMLVideoElement | null>(null);
 const previewStream = ref<MediaStream | null>(null);
 const previewPeerConnection = ref<RTCPeerConnection | null>(null);
@@ -170,6 +173,28 @@ function summarizeMapEvidence(): string {
   return `map ${mapVisible ? "可见" : "未见"}；evidence ${evidenceVisible ? "可见" : "未见"}。`;
 }
 
+function summarizeNav2Planning(): { state: "路径未证明" | "检查中" | "路径可生成" | "检查失败"; hint: string } {
+  // Nav2 首页只说路径规划是否有 no-motion 证据，所有 proof 字段放进高级诊断。
+  if (nav2RefreshPending.value) {
+    return { state: "检查中", hint: "正在检查路径是否可生成。" };
+  }
+  const result = nav2RefreshResult.value;
+  if (!result) {
+    return { state: "路径未证明", hint: "还没有做规划检查。" };
+  }
+  const record = result.latest_readback_key_values;
+  const pathGenerated = record.path_generated === "true" || record.path_generation_succeeded === "true";
+  if (pathGenerated && result.proxy_status === "refresh_failed") {
+    return { state: "路径可生成", hint: "刷新请求超时，但 latest 已有 no-motion 路径证据；不会自动发车。" };
+  }
+  if (result.proxy_status !== "refresh_forwarded" || result.status === "blocked") {
+    return { state: "检查失败", hint: result.failure_reason || "规划检查失败。" };
+  }
+  return pathGenerated
+    ? { state: "路径可生成", hint: "已观察到路径生成证据；不会自动发车。" }
+    : { state: "路径未证明", hint: "还没有观察到可用路径。" };
+}
+
 function summarizeMapLifecycle(): { state: "未读取" | "处理中" | "已读取" | "失败"; hint: string } {
   // lifecycle 摘要只说列表/保存结果，不把 start/reset 或工程 proof 细节放回首页。
   if (mapLifecyclePending.value) {
@@ -200,6 +225,7 @@ const robotConnectionSummary = computed(() => summarizeRobotConnection());
 const cameraSummary = computed(() => summarizeCameraState());
 const radarSummary = computed(() => summarizeProofState(radarRefreshPending.value, radarRefreshResult.value));
 const mapSummary = computed(() => summarizeProofState(mapRefreshPending.value, mapRefreshResult.value));
+const nav2PlanningSummary = computed(() => summarizeNav2Planning());
 const mapLifecycleSummary = computed(() => summarizeMapLifecycle());
 const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
 const manualSpeedLimit = computed(() => manualBoundary.value?.speed_limit_mps ?? 0.12);
@@ -318,13 +344,18 @@ function commandEvidenceFallback(commandKind: "manual" | "stop", reason: string)
 }
 
 function makeRefreshFallback(
-  kind: "radar_scan_proof_refresh" | "map_proof_refresh",
+  kind: "radar_scan_proof_refresh" | "map_proof_refresh" | "nav2_no_motion_proof_refresh",
   baseUrl: string,
   reason: string,
 ): RobotControlProofRefreshProxyResponse {
   // 网络错误或解析错误时也要保留卡片字段，避免 UI 空白后误读为成功。
   const now = Date.now();
-  const endpoint = kind === "radar_scan_proof_refresh" ? "/api/radar/scan-proof/refresh" : "/api/map/proof/refresh";
+  const endpoint =
+    kind === "radar_scan_proof_refresh"
+      ? "/api/radar/scan-proof/refresh"
+      : kind === "map_proof_refresh"
+        ? "/api/map/proof/refresh"
+        : "/api/nav2/proof/refresh";
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
     source: "software_proof",
@@ -497,7 +528,7 @@ async function refreshConsole(): Promise<void> {
 }
 
 async function runRefreshAction(
-  kind: "radar_scan_proof_refresh" | "map_proof_refresh",
+  kind: "radar_scan_proof_refresh" | "map_proof_refresh" | "nav2_no_motion_proof_refresh",
   action: () => Promise<RobotControlProofRefreshProxyResponse>,
   target: typeof radarRefreshResult,
   pending: typeof radarRefreshPending,
@@ -532,6 +563,16 @@ async function refreshMapProof(): Promise<void> {
     () => postRobotControlMapProofRefresh(robotApiBaseUrl.value),
     mapRefreshResult,
     mapRefreshPending,
+  );
+}
+
+async function refreshNav2Proof(): Promise<void> {
+  // Nav2 refresh 只做 no-motion planner proof，不调用 Nav2 start/stop、NavigateToPose 或底盘接口。
+  await runRefreshAction(
+    "nav2_no_motion_proof_refresh",
+    () => postRobotControlNav2ProofRefresh(robotApiBaseUrl.value),
+    nav2RefreshResult,
+    nav2RefreshPending,
   );
 }
 
@@ -854,10 +895,15 @@ onBeforeUnmount(() => {
         <h3>移动/导航</h3>
         <div class="panel-action-row wrap-actions">
           <span class="status-chip" :data-state="manualMotionSummary.state">{{ manualMotionSummary.state }}</span>
+          <button type="button" :disabled="loading || nav2RefreshPending || !robotApiBaseUrl.trim()" @click="refreshNav2Proof">
+            检查路径
+          </button>
+          <span class="status-chip" :data-state="nav2PlanningSummary.state">{{ nav2PlanningSummary.state }}</span>
           <span class="status-chip" data-state="locked">自动导航（未开放）</span>
           <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
         </div>
-        <p class="panel-note">自动导航暂不开放；需要紧急处理时，只使用停止。</p>
+        <p class="panel-note">规划检查只验证能否生成路径，不会发车；自动导航暂不开放。</p>
+        <p class="panel-note">{{ nav2PlanningSummary.hint }}</p>
         <p class="panel-note">{{ manualMotionSummary.hint }}</p>
         <p class="panel-note">{{ manualEvidenceSummary }}</p>
       </article>
@@ -1032,6 +1078,30 @@ onBeforeUnmount(() => {
             <dd>{{ listText(mapLifecycleResult?.blocked_reasons, "none") }}</dd>
             <dt>lifecycle dangerous fields</dt>
             <dd>{{ listText(mapLifecycleResult?.hard_dangerous_true_fields, "none") }}</dd>
+          </dl>
+        </section>
+
+        <section class="advanced-block">
+          <h3>Nav2 规划详情</h3>
+          <dl class="kv compact-kv">
+            <dt>pending</dt>
+            <dd>{{ nav2RefreshPending ? "pending" : "idle" }}</dd>
+            <dt>remote endpoint</dt>
+            <dd>{{ nav2RefreshResult?.remote_endpoint ?? "/api/nav2/proof/refresh" }}</dd>
+            <dt>last result status</dt>
+            <dd>{{ nav2RefreshResult?.last_result_status ?? "not_loaded" }}</dd>
+            <dt>failure reason</dt>
+            <dd>{{ nav2RefreshResult?.failure_reason || "none" }}</dd>
+            <dt>latest readback key values</dt>
+            <dd>{{ recordText(nav2RefreshResult?.latest_readback_key_values) }}</dd>
+            <dt>hard dangerous true fields</dt>
+            <dd>{{ listText(nav2RefreshResult?.hard_dangerous_true_fields, "none") }}</dd>
+            <dt>last refreshed time</dt>
+            <dd>{{ timestampText(nav2RefreshResult?.last_refreshed_at_ms) }}</dd>
+            <dt>blocked reasons</dt>
+            <dd>{{ listText(nav2RefreshResult?.blocked_reasons, "none") }}</dd>
+            <dt>control boundary</dt>
+            <dd>no Nav2 start/stop; no NavigateToPose; no /cmd_vel; no /api/base/manual</dd>
           </dl>
         </section>
 
