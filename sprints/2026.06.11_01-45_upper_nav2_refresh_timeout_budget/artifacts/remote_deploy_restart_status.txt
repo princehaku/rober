@@ -1,0 +1,4 @@
+active
+189326 zsh -c set -eu; python3 -m py_compile /root/rober/onboard/scripts/upper_robot_api.py.tmp_codex_timeout_budget; cp /root/rober/onboard/scripts/upper_robot_api.py /root/rober/onboard/scripts/upper_robot_api.py.pre_timeout_budget_20260611_0145; mv /root/rober/onboard/scripts/upper_robot_api.py.tmp_codex_timeout_budget /root/rober/onboard/scripts/upper_robot_api.py; systemctl restart trashbot-upper-robot-api.service; sleep 2; systemctl is-active trashbot-upper-robot-api.service; pgrep -af "upper_robot_api.py"; sha256sum /root/rober/onboard/scripts/upper_robot_api.py
+189331 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+649f0860a9288c36f1a4522fd1eeae734c016241e8e1dceb6ebc5dd4047a0aae  /root/rober/onboard/scripts/upper_robot_api.py

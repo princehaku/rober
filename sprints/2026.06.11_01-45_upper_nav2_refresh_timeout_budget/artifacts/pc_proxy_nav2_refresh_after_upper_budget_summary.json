@@ -1,0 +1,18 @@
+{
+  "blocked_reasons": [],
+  "delivery_success": false,
+  "failure_reason": "",
+  "hard_dangerous_true_fields": [],
+  "http_code": "200",
+  "last_result_status": "refreshed",
+  "path_generated": "true",
+  "path_generation_succeeded": "true",
+  "path_point_count": "31",
+  "primary_actions_enabled": false,
+  "proxy_status": "refresh_forwarded",
+  "remote_http_status": 200,
+  "robot_control_executed": false,
+  "safe_to_control": false,
+  "status": "loaded_fail_closed_summary",
+  "time_total_s": 36.143869
+}

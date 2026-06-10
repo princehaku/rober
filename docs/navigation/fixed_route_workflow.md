@@ -269,6 +269,16 @@ planner readiness 一起写入 artifact。
 这样 `rclpy` 和 Nav2 action client 的运行时依赖不会被 systemd 服务环境吞掉；
 但这个变化只影响 proof helper 的启动方式，不改变默认只读/no-motion 边界。
 
+`2026-06-11 01:45` 起，上位机 API 的 helper subprocess timeout 与 PC
+`检查路径` proxy 预算对齐。PC 固定 body 为 `timeout_s=8`、
+`path_generation_timeout_s=8`、`managed_runtime_opt_in=false`、
+`initialpose_opt_in=false`、`path_generation_opt_in=true`；对应上位机 subprocess
+预算为约 `36s`，低于 PC proxy 的 `46s` 等待窗口。这个预算只限制 HTTP refresh
+等待 helper 的最长时间，不改变 helper 内部 no-motion collector 的 ROS2 观测语义。
+如果真实 Nav2 proof refresh 仍慢于该窗口，上位机会先返回结构化 timeout/root cause，
+PC 再通过固定 `GET /api/nav2/proof/latest` 只读兜底展示最近 artifact；不能让 PC
+侧先出现 `fetch_timeout_46000ms` 后才知道上位机实际已经生成路径。
+
 这一步仍然不等于可发车：
 
 - 允许：一次 `ComputePathToPose` 风格的 planner 计算。

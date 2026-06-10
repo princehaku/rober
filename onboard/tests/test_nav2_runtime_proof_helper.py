@@ -316,6 +316,79 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         ):
             self.assertIn(required, api_text)
 
+    def test_upper_api_pc_path_generation_timeout_stays_under_proxy_budget(self) -> None:
+        """PC 检查路径固定 body 必须由上位机先收口，不能让 46s proxy 先超时。"""
+        spec = importlib.util.spec_from_file_location("upper_robot_api", SCRIPT.parent / "upper_robot_api.py")
+        assert spec is not None and spec.loader is not None
+        api_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(api_mod)
+
+        budget = api_mod.nav2_runtime_proof_process_timeout_budget(
+            timeout_s=8.0,
+            managed_runtime_opt_in=False,
+            managed_timeout_s=8.0,
+            initialpose_opt_in=False,
+            path_generation_opt_in=True,
+            path_generation_timeout_s=8.0,
+        )
+
+        # 8s collector + 8s ComputePathToPose + 固定余量约 36s，给 PC proxy 留 HTTP 返回余量。
+        self.assertEqual(36.0, budget["process_timeout_s"])
+        self.assertLess(budget["process_timeout_s"], budget["pc_proxy_budget_s"])
+        self.assertEqual("finish_before_pc_proxy_timeout_or_return_structured_timeout", budget["budget_policy"])
+
+        fake_completed = subprocess.CompletedProcess(
+            args=["bash", "-lc", "source /opt/ros/humble/setup.bash"],
+            returncode=0,
+            stdout="ok",
+            stderr="",
+        )
+        with mock.patch.object(api_mod.subprocess, "run", return_value=fake_completed) as run_mock:
+            result = api_mod.run_nav2_runtime_proof_helper(
+                artifact_path="/tmp/nav2.json",
+                map_proof_path="/tmp/map.json",
+                map_artifact_dir="/tmp/maps",
+                timeout_s=8.0,
+                managed_runtime_opt_in=False,
+                managed_timeout_s=8.0,
+                managed_map_yaml="",
+                initialpose_opt_in=False,
+                initialpose_x=0.0,
+                initialpose_y=0.0,
+                initialpose_yaw=0.0,
+                initialpose_frame_id="map",
+                path_generation_opt_in=True,
+                path_generation_timeout_s=8.0,
+                path_goal_frame_id="map",
+                path_goal_x=0.8,
+                path_goal_y=0.0,
+                path_goal_yaw=0.0,
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(36.0, result["process_timeout_s"])
+        self.assertEqual(36.0, run_mock.call_args.kwargs["timeout"])
+
+    def test_upper_api_managed_path_generation_timeout_is_capped(self) -> None:
+        """managed/runtime 扩展场景也要封顶，超长 helper 必须结构化 timeout。"""
+        spec = importlib.util.spec_from_file_location("upper_robot_api", SCRIPT.parent / "upper_robot_api.py")
+        assert spec is not None and spec.loader is not None
+        api_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(api_mod)
+
+        budget = api_mod.nav2_runtime_proof_process_timeout_budget(
+            timeout_s=30.0,
+            managed_runtime_opt_in=True,
+            managed_timeout_s=45.0,
+            initialpose_opt_in=True,
+            path_generation_opt_in=True,
+            path_generation_timeout_s=45.0,
+        )
+
+        # cap 小于 PC 46s；如果真实 runtime 更慢，API 先回 root cause，latest 仍可只读兜底。
+        self.assertEqual(42.0, budget["process_timeout_s"])
+        self.assertLess(budget["process_timeout_s"], budget["pc_proxy_budget_s"])
+
     def test_upper_api_runs_helper_under_ros_setup(self) -> None:
         """API subprocess 必须显式 source ROS 环境，避免 rclpy 在 service 内失效。"""
         api_mod = importlib.util.module_from_spec(

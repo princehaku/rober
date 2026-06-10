@@ -46,6 +46,11 @@ MAP_LIFECYCLE_OBSERVED_STATUS = "map_once_artifact_metadata_observed"
 DEFAULT_LOCALIZATION_ARTIFACT_PATH = "runtime/localization_reset_latest.json"
 DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_lifecycle_latest.json"
 DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S = 8.0
+NAV2_PROOF_PROCESS_BASE_MARGIN_S = 12.0
+NAV2_PROOF_PROCESS_PATH_MARGIN_S = 8.0
+NAV2_PROOF_PROCESS_MANAGED_MARGIN_S = 6.0
+NAV2_PROOF_PROCESS_INITIALPOSE_MARGIN_S = 4.0
+NAV2_PROOF_PROCESS_TIMEOUT_CAP_S = 42.0
 DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH = "runtime/elevator_status_latest.json"
 DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH = "runtime/operator_report_latest.json"
 DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS = 15 * 60 * 1000
@@ -449,6 +454,52 @@ def run_map_lifecycle_proof_helper(
         }
 
 
+def nav2_runtime_proof_process_timeout_budget(
+    *,
+    timeout_s: float,
+    managed_runtime_opt_in: bool,
+    managed_timeout_s: float,
+    initialpose_opt_in: bool,
+    path_generation_opt_in: bool,
+    path_generation_timeout_s: float,
+) -> dict[str, Any]:
+    """计算 HTTP refresh 等待 helper 的预算，确保 PC proxy 先收到结构化结果。"""
+    # `timeout_s` 是 collector 基础观测窗口；它不应再被乘以 8，否则 PC 46s 会先超时。
+    collector_timeout_s = max(float(timeout_s), 1.0)
+    # path generation 是 PC `检查路径` 的主要耗时项，只在显式 opt-in 时计入预算。
+    path_timeout_s = max(float(path_generation_timeout_s), 0.0) if path_generation_opt_in else 0.0
+    # managed runtime 默认关闭；只有上位机需要临时拉起 localization graph 时才计入额外窗口。
+    managed_window_s = max(float(managed_timeout_s), 0.0) if managed_runtime_opt_in else 0.0
+    # initialpose 发布本身很短，单独给小余量，避免把定位 opt-in 和 managed 启动时间混在一起。
+    initialpose_margin_s = NAV2_PROOF_PROCESS_INITIALPOSE_MARGIN_S if initialpose_opt_in else 0.0
+    # 固定余量覆盖 bash/source/Python 启动、artifact 落盘和 HTTP 组装，PC 场景必须留出响应时间。
+    raw_timeout_s = (
+        collector_timeout_s
+        + NAV2_PROOF_PROCESS_BASE_MARGIN_S
+        + path_timeout_s
+        + (NAV2_PROOF_PROCESS_PATH_MARGIN_S if path_generation_opt_in else 0.0)
+        + managed_window_s
+        + (NAV2_PROOF_PROCESS_MANAGED_MARGIN_S if managed_runtime_opt_in else 0.0)
+        + initialpose_margin_s
+    )
+    # 上限低于 PC proxy 的 46s 预算，真实 helper 超时时由上位机先返回 root cause。
+    process_timeout_s = min(max(raw_timeout_s, 15.0), NAV2_PROOF_PROCESS_TIMEOUT_CAP_S)
+    return {
+        "collector_timeout_s": collector_timeout_s,
+        "path_generation_timeout_s": path_timeout_s,
+        "managed_runtime_timeout_s": managed_window_s,
+        "initialpose_margin_s": initialpose_margin_s,
+        "base_margin_s": NAV2_PROOF_PROCESS_BASE_MARGIN_S,
+        "path_margin_s": NAV2_PROOF_PROCESS_PATH_MARGIN_S if path_generation_opt_in else 0.0,
+        "managed_margin_s": NAV2_PROOF_PROCESS_MANAGED_MARGIN_S if managed_runtime_opt_in else 0.0,
+        "raw_timeout_s": raw_timeout_s,
+        "process_timeout_s": process_timeout_s,
+        "cap_s": NAV2_PROOF_PROCESS_TIMEOUT_CAP_S,
+        "pc_proxy_budget_s": 46.0,
+        "budget_policy": "finish_before_pc_proxy_timeout_or_return_structured_timeout",
+    }
+
+
 def run_nav2_runtime_proof_helper(
     *,
     artifact_path: str,
@@ -532,6 +583,15 @@ def run_nav2_runtime_proof_helper(
         f"if [ -f {shlex.quote(str(Path(DEFAULT_ONBOARD_WORKDIR) / 'install' / 'setup.bash'))} ]; then source {shlex.quote(str(Path(DEFAULT_ONBOARD_WORKDIR) / 'install' / 'setup.bash'))}; fi",
     ]
     helper_command = " && ".join(ros_setup_parts + [shlex.join(helper_argv)])
+    timeout_budget = nav2_runtime_proof_process_timeout_budget(
+        timeout_s=timeout_s,
+        managed_runtime_opt_in=managed_runtime_opt_in,
+        managed_timeout_s=managed_timeout_s,
+        initialpose_opt_in=initialpose_opt_in,
+        path_generation_opt_in=path_generation_opt_in,
+        path_generation_timeout_s=path_generation_timeout_s,
+    )
+    process_timeout_s = timeout_budget["process_timeout_s"]
     started_ms = now_ms()
     try:
         completed = subprocess.run(  # noqa: S603 - argv 固定为仓库 helper，不接受外部 shell。
@@ -539,7 +599,7 @@ def run_nav2_runtime_proof_helper(
             check=False,
             text=True,
             capture_output=True,
-            timeout=max(timeout_s * 8 + 20.0, 45.0),
+            timeout=process_timeout_s,
             cwd=DEFAULT_ONBOARD_WORKDIR,
         )
         return {
@@ -550,6 +610,8 @@ def run_nav2_runtime_proof_helper(
             "argv": ["bash", "-lc", helper_command],
             "helper_argv": helper_argv,
             "elapsed_ms": now_ms() - started_ms,
+            "timeout_budget": timeout_budget,
+            "process_timeout_s": process_timeout_s,
             "stdout_preview": completed.stdout[-4000:],
             "stderr_preview": completed.stderr[-4000:],
             "safe_to_control": False,
@@ -570,6 +632,8 @@ def run_nav2_runtime_proof_helper(
             "argv": ["bash", "-lc", helper_command],
             "helper_argv": helper_argv,
             "elapsed_ms": now_ms() - started_ms,
+            "timeout_budget": timeout_budget,
+            "process_timeout_s": process_timeout_s,
             "error": compact_error(exc),
             "stdout_preview": preview_text(exc.stdout, 4000),
             "stderr_preview": preview_text(exc.stderr, 4000),
@@ -590,6 +654,8 @@ def run_nav2_runtime_proof_helper(
             "argv": ["bash", "-lc", helper_command],
             "helper_argv": helper_argv,
             "elapsed_ms": now_ms() - started_ms,
+            "timeout_budget": timeout_budget,
+            "process_timeout_s": process_timeout_s,
             "error": compact_error(exc),
             "safe_to_control": False,
             "sends_base_motion_commands": False,
