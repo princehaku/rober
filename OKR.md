@@ -177,13 +177,15 @@
 
 按完成度从低到高排序：
 
-1. **现场 O3 验证 lane（归档 Objective 临时激活）**：CEO 已提供真实上位机 SSH，必须优先产出 `map.yaml`、`route.csv`、keyframe、rosbag 或 replay JSONL，避免继续消费只读 handoff/review/surface。
+1. **现场 O3 验证 lane（归档 Objective 临时激活）**：CEO 已提供真实上位机 SSH，当前优先级是把 managed localization 继续推进到 no-motion planner readiness / path generation proof；随后再消费 `map.yaml`、`route.csv`、keyframe、rosbag 或 replay JSONL，避免继续停留在只读 handoff/review/surface。
 2. **O6（~30%）**：把 local/mock archive/tunnel/event/evidence/labeling/inference/consumer read proof 接到真实隧道、生产 DB/queue、OSS 与真实机器人数据。
 3. **O7（~12%）**：基于真实路线材料推进 PC 实时地图、历史回放、标注、ASR/TTS、手控/寻路，而不是继续只做 fixture surface。
 4. **O5（~80%）**：把已有命令/状态/ACK 控制面接到真实部署链路：公网 HTTPS、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收。
 5. **O1（~83%）**：真实 WAVE ROVER 上车，UART 实测，PR #5 硬件材料到位后提升。
 
 > 2026-06-09 方向调整：O6 最小 local/mock 数据底座已形成，CEO 又提供真实上位机 SSH。因此下一轮优先跑 `sprints/2026.06.09_13-00_board-live-slam-route/`，用真实上位机补 O3 路线证据；O6/O7 后续必须消费这份真实路线材料，而不是继续堆叠只读 surface。
+>
+> 2026-06-10 方向微调：在 managed localization proof 之后，O3 现场验证 lane 先推进 no-motion planner readiness / path generation proof，再进入 route execution 材料收集。
 
 ---
 
