@@ -118,6 +118,108 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(status["primary_actions_enabled"])
         self.assertFalse(status["robot_control_executed"])
 
+    def test_operator_report_persists_structured_hil_claims_without_hil_pass(self) -> None:
+        """结构化 HIL 字段必须可机器回读，但 report 本身仍不是 HIL pass。"""
+        # 这些字段来自人工现场材料；即使全部声明为 true，也只能作为 claim 保存。
+        report = {
+            "operator_present": True,
+            "evidence_ref": "field-hil-structured-test",
+            "physical_clearance_confirmed": True,
+            "emergency_stop_ready": True,
+            "observed_motion": True,
+            "observed_stop": True,
+            "operator_notes": "structured material claim only",
+            "reported_at": "2026-06-11T05:45:00+08:00",
+            "external_video_recorded": "true",
+            "external_video_ref": "sprints/test/artifacts/external.mp4",
+            "visible_content_proven": True,
+            "camera_artifacts_ref": "runtime/camera_visibility/latest_metrics.json",
+            "wheel_feedback_lr_nonzero_proven": "false",
+            "wheel_feedback_ref": "runtime/wave_rover_feedback_debug.jsonl",
+            "physical_motion_lidar_delta_proven": False,
+            "scan_delta_ref": "runtime/scan_delta/latest_metrics.json",
+            "real_route_map_proven": False,
+            "route_map_ref": "runtime/maps/field_route_manifest.json",
+            "delivery_success": True,
+            "site_state": "bench_no_motion_report_smoke",
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "operator_report_latest.json"
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                operator_report_artifact_path=str(artifact_path),
+            )
+
+            payload = api.operator_report(report)
+            http_status, latest = api.operator_report_latest()
+            persisted = json.loads(artifact_path.read_text(encoding="utf-8"))
+
+        claims = payload["structured_hil_claims"]
+        # POST、artifact、GET 三处都要回显同一份机器字段，避免只能塞 notes 文本。
+        self.assertEqual(200, http_status)
+        self.assertEqual(claims, persisted["structured_hil_claims"])
+        self.assertEqual(claims, latest["structured_hil_claims"])
+        self.assertTrue(claims["external_video_recorded"])
+        self.assertEqual("sprints/test/artifacts/external.mp4", claims["external_video_ref"])
+        self.assertTrue(claims["visible_content_proven"])
+        self.assertFalse(claims["wheel_feedback_lr_nonzero_proven"])
+        self.assertFalse(claims["physical_motion_lidar_delta_proven"])
+        self.assertFalse(claims["real_route_map_proven"])
+        self.assertTrue(claims["delivery_success"])
+        self.assertEqual("bench_no_motion_report_smoke", claims["site_state"])
+
+        # 顶层安全字段必须保持 fail-closed，delivery claim 不能升级成交付或 HIL 通过。
+        for candidate in (payload, persisted, latest):
+            self.assertTrue(candidate["operator_report_material_only"])
+            self.assertFalse(candidate["hil_pass"])
+            self.assertFalse(candidate["delivery_success"])
+            self.assertFalse(candidate["sends_motion_commands"])
+            self.assertFalse(candidate["opens_serial"])
+            self.assertFalse(candidate["report_replaces_stop_status_ack_or_hil"])
+
+    def test_operator_report_accepts_nested_structured_hil_claims(self) -> None:
+        """PC/上位机可直接提交 nested claims，顶层 delivery_success 仍被固定关闭。"""
+        report = {
+            "operator_present": True,
+            "evidence_ref": "field-hil-nested-claims-test",
+            "physical_clearance_confirmed": True,
+            "emergency_stop_ready": True,
+            "observed_motion": False,
+            "observed_stop": True,
+            "operator_notes": "nested structured claim only",
+            "reported_at": "2026-06-11T05:46:00+08:00",
+            "structured_hil_claims": {
+                "external_video_recorded": False,
+                "external_video_ref": "none",
+                "visible_content_proven": "true",
+                "camera_artifacts_ref": "camera-visible.json",
+                "wheel_feedback_lr_nonzero_proven": False,
+                "wheel_feedback_ref": "feedback.jsonl",
+                "physical_motion_lidar_delta_proven": False,
+                "scan_delta_ref": "scan-delta.json",
+                "real_route_map_proven": False,
+                "route_map_ref": "route-map.json",
+                "delivery_success": True,
+                "site_state": "floor_stationary",
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            payload = upper_robot_api.build_operator_report_payload(
+                str(Path(temp_dir) / "operator_report_latest.json"),
+                report,
+            )
+
+        claims = payload["operator_report"]["structured_hil_claims"]
+        self.assertTrue(claims["visible_content_proven"])
+        self.assertTrue(claims["delivery_success"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["hil_pass"])
+        self.assertFalse(payload["sends_motion_commands"])
+        self.assertFalse(payload["opens_serial"])
+
     def test_map_proof_latest_promotes_clean_runtime_material(self) -> None:
         """map proof 观测齐全时，readback 顶层应直接暴露可消费状态。"""
         # 这里用最小可读 artifact 模拟真实 no-motion helper 产物，避免依赖远端硬件。

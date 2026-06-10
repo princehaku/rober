@@ -30,8 +30,9 @@ WAVE ROVER 事实仍以 vendor 文件为准：上下位机链路是 UART，一�
 - `operator_report` 可以辅助解释现场观察，但不能单独把
   `visible_content_proven`、`physical_motion_lidar_delta_proven`、
   `wheel_feedback_lr_nonzero_proven` 或 `delivery_success` 翻为 true。
-- 当前 API normalizer 只持久化核心字段；细分布尔值必须写进 `operator_notes`
-  的结构化文本中，避免未识别顶层字段被忽略。
+- 当前 API normalizer 会把细分 HIL 材料持久化到 `structured_hil_claims`，并在
+  POST/GET 回包中回显；这些字段仍然只是人工材料 claim，不会把 `hil_pass`、
+  `delivery_success` 或 `safe_to_control` 翻为 true。
 
 ## 现场填写项
 
@@ -49,7 +50,9 @@ WAVE ROVER 事实仍以 vendor 文件为准：上下位机链路是 UART，一�
 - `operator_notes`：必须包含外部视频、相机、wheel feedback、scan delta、
   route/map、delivery 和异常说明。
 
-`operator_notes` 内必须包含以下结构化材料：
+提交 payload 必须包含以下结构化材料字段。字段可放在顶层，也可放在
+`structured_hil_claims` 对象中；顶层字段优先，API 会统一回写到
+`structured_hil_claims`：
 
 - `external_video_recorded`：是否有连续外部视频，且能看到轮子、地面参考物和 stop。
 - `external_video_ref`：视频文件名、OSS key、本地 artifact 路径或现场手机编号。
@@ -63,7 +66,7 @@ WAVE ROVER 事实仍以 vendor 文件为准：上下位机链路是 UART，一�
 - `real_route_map_proven`：route/map/keyframes/manifest 是否来自同一轮真实移动。
 - `route_map_ref`：`route.csv`、keyframes、manifest、`map.yaml/.pgm` 的引用。
 - `delivery_success`：真实送达是否完成；没有出发、到达、投放/提醒、停止或返回闭环时必须为 false。
-- `operator_report_material_only`：必须写为 true，提醒下游不要把 report 当 proof。
+- `operator_report_material_only`：API 回包固定为 true，提醒下游不要把 report 当 proof。
 
 ## JSON payload 示例
 
@@ -79,7 +82,48 @@ WAVE ROVER 事实仍以 vendor 文件为准：上下位机链路是 UART，一�
   "observed_motion": false,
   "observed_stop": true,
   "reported_at": "2026-06-10T04:45:00+08:00",
-  "operator_notes": "operator_report_material_only=true; external_video_recorded=false; external_video_ref=null; visible_content_proven=false; camera_artifacts_ref=runtime/camera_visibility/latest_metrics.json; wheel_feedback_lr_nonzero_proven=false; wheel_feedback_ref=runtime/wave_rover_feedback_debug.jsonl; physical_motion_lidar_delta_proven=false; scan_delta_ref=runtime/scan_delta/latest_metrics.json; real_route_map_proven=false; route_map_ref=null; delivery_success=false; site_state=bench_or_floor_status_to_fill; notes=No HIL or motion proof is claimed by this report alone."
+  "operator_notes": "No HIL or motion proof is claimed by this report alone.",
+  "external_video_recorded": false,
+  "external_video_ref": null,
+  "visible_content_proven": false,
+  "camera_artifacts_ref": "runtime/camera_visibility/latest_metrics.json",
+  "wheel_feedback_lr_nonzero_proven": false,
+  "wheel_feedback_ref": "runtime/wave_rover_feedback_debug.jsonl",
+  "physical_motion_lidar_delta_proven": false,
+  "scan_delta_ref": "runtime/scan_delta/latest_metrics.json",
+  "real_route_map_proven": false,
+  "route_map_ref": null,
+  "delivery_success": false,
+  "site_state": "bench_or_floor_status_to_fill"
+}
+```
+
+也可以把细分字段放到 nested claim 对象，便于 PC/上位机稳定消费：
+
+```json
+{
+  "operator_present": true,
+  "evidence_ref": "field-hil-20260610-0445-ab",
+  "physical_clearance_confirmed": true,
+  "emergency_stop_ready": true,
+  "observed_motion": false,
+  "observed_stop": true,
+  "reported_at": "2026-06-10T04:45:00+08:00",
+  "operator_notes": "Nested structured_hil_claims is material only.",
+  "structured_hil_claims": {
+    "external_video_recorded": false,
+    "external_video_ref": null,
+    "visible_content_proven": false,
+    "camera_artifacts_ref": "runtime/camera_visibility/latest_metrics.json",
+    "wheel_feedback_lr_nonzero_proven": false,
+    "wheel_feedback_ref": "runtime/wave_rover_feedback_debug.jsonl",
+    "physical_motion_lidar_delta_proven": false,
+    "scan_delta_ref": "runtime/scan_delta/latest_metrics.json",
+    "real_route_map_proven": false,
+    "route_map_ref": null,
+    "delivery_success": false,
+    "site_state": "bench_or_floor_status_to_fill"
+  }
 }
 ```
 
@@ -106,12 +150,15 @@ curl -sS http://127.0.0.1:8787/api/operator/report | python3 -m json.tool
 - `opens_serial=false`
 - `hil_pass=false`
 - `delivery_success=false`
+- `structured_hil_claims` 回显提交的细分材料字段；即使
+  `structured_hil_claims.delivery_success=true`，顶层 `delivery_success` 也必须保持
+  false。
 
 若回包缺少以上 fail-closed 字段，不得把本 report 纳入 HIL 证据。
 
 ## 证据升级规则
 
-`operator_notes` 中的布尔值只代表人工材料声明。证据升级必须按
+`structured_hil_claims` 中的布尔值只代表人工材料声明。证据升级必须按
 `docs/hardware/field_hil_execution_pack.md` 的成功判据执行：
 
 - `visible_content_proven=true` 需要原始图片、metrics 和设备 facts。

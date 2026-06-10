@@ -1119,3 +1119,27 @@ helper 的 managed runtime 改为单个 rclpy `managed_static_tf_broadcaster`：
 - `root_causes=[]`
 - 清场后 `trashbot-upper-robot-api.service=active`，目标 ROS/helper 进程无残留，
   `/dev/ttyS5`、`/dev/ttyACM0` 均无 `fuser/lsof` 占用输出。
+
+## 2026-06-11 05:45 Structured Operator HIL Report Intake
+
+本轮只升级 `/api/operator/report` 的现场材料 intake，不新增任何会发送运动命令的
+行为。硬件边界继续沿用 `docs/vendor/VENDOR_INDEX.md`、WAVE ROVER
+`base_ctrl.py`、`config.yaml` 和 `json_cmd.h`：底盘 UART 是 newline-delimited JSON，
+运动/反馈命令 `T=1/T=13/T=130/T=131` 不参与本轮 report smoke。
+
+新的 report schema 会把以下人工材料字段统一归一化到 `structured_hil_claims`：
+`external_video_recorded`、`external_video_ref`、`visible_content_proven`、
+`camera_artifacts_ref`、`wheel_feedback_lr_nonzero_proven`、`wheel_feedback_ref`、
+`physical_motion_lidar_delta_proven`、`scan_delta_ref`、`real_route_map_proven`、
+`route_map_ref`、`delivery_success` 和 `site_state`。
+
+安全边界：
+
+- `/api/operator/report` POST/GET 只写读 JSON artifact，不发布 `/cmd_vel`。
+- 不调用 `/api/base/manual`，不打开 `/dev/ttyS5`，不启动 Nav2 goal。
+- 即使 `structured_hil_claims.delivery_success=true`，API 顶层仍固定
+  `operator_report_material_only=true`、`hil_pass=false`、`delivery_success=false`、
+  `report_replaces_stop_status_ack_or_hil=false`、`sends_motion_commands=false` 和
+  `opens_serial=false`。
+- 真实 HIL 通过仍必须由外部视频、相机 artifact、`T=1001` feedback、scan delta、
+  route/map artifact、stop/API restore 记录共同证明；report 只是一份材料索引。

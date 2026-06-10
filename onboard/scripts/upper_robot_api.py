@@ -93,6 +93,23 @@ OPERATOR_REPORT_FIELDS = (
     "operator_notes",
     "reported_at",
 )
+OPERATOR_REPORT_HIL_BOOL_CLAIM_FIELDS = (
+    "external_video_recorded",
+    "visible_content_proven",
+    "wheel_feedback_lr_nonzero_proven",
+    "physical_motion_lidar_delta_proven",
+    "real_route_map_proven",
+    "delivery_success",
+)
+OPERATOR_REPORT_HIL_REF_CLAIM_FIELDS = (
+    "external_video_ref",
+    "camera_artifacts_ref",
+    "wheel_feedback_ref",
+    "scan_delta_ref",
+    "route_map_ref",
+    "site_state",
+)
+OPERATOR_REPORT_STRUCTURED_HIL_FIELDS = OPERATOR_REPORT_HIL_BOOL_CLAIM_FIELDS + OPERATOR_REPORT_HIL_REF_CLAIM_FIELDS
 OPERATOR_REPORT_PREFLIGHT_BOOL_FIELDS = (
     "operator_present",
     "physical_clearance_confirmed",
@@ -1206,6 +1223,47 @@ def coerce_report_bool(value: Any) -> bool | None:
     return None
 
 
+def normalize_optional_report_text(value: Any) -> str | None:
+    """结构化材料引用允许留空；有值时统一成短字符串，便于 artifact 稳定 diff。"""
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text if text else None
+
+
+def normalize_structured_hil_claims(report: dict[str, Any]) -> dict[str, Any]:
+    """把 HIL 细分声明提升为机器字段；它们仍只是材料 claim，不会翻转 HIL pass。"""
+    nested_claims = report.get("structured_hil_claims")
+    if not isinstance(nested_claims, dict):
+        nested_claims = {}
+    claims: dict[str, Any] = {}
+    missing_or_invalid_bool_fields: list[str] = []
+    provided_fields: list[str] = []
+    for field in OPERATOR_REPORT_HIL_BOOL_CLAIM_FIELDS:
+        # 顶层字段服务 curl/PC 表单，nested 字段服务未来稳定 schema；顶层优先便于人工覆盖。
+        raw_value = report[field] if field in report else nested_claims.get(field)
+        value = coerce_report_bool(raw_value)
+        claims[field] = value
+        if raw_value is not None:
+            provided_fields.append(field)
+        if raw_value is not None and value is None:
+            missing_or_invalid_bool_fields.append(field)
+    for field in OPERATOR_REPORT_HIL_REF_CLAIM_FIELDS:
+        raw_value = report[field] if field in report else nested_claims.get(field)
+        claims[field] = normalize_optional_report_text(raw_value)
+        if raw_value is not None:
+            provided_fields.append(field)
+    claims["normalization"] = {
+        "source": "top_level_fields_or_structured_hil_claims",
+        "source_fields": list(OPERATOR_REPORT_STRUCTURED_HIL_FIELDS),
+        "provided_fields": provided_fields,
+        "missing_or_invalid_bool_fields": missing_or_invalid_bool_fields,
+        "material_only": True,
+        "top_level_delivery_success_forced_false": True,
+    }
+    return claims
+
+
 def normalize_operator_report(report: dict[str, Any] | None) -> tuple[dict[str, Any] | None, str]:
     """把人工报告拆成执行前安全字段和执行后观察字段，避免用事后材料放行运动。"""
     if report is None:
@@ -1234,6 +1292,8 @@ def normalize_operator_report(report: dict[str, Any] | None) -> tuple[dict[str, 
     normalized["note"] = normalized["operator_notes"]
     reported_at = report.get("reported_at")
     normalized["reported_at"] = str(reported_at).strip() if reported_at else None
+    structured_hil_claims = normalize_structured_hil_claims(report)
+    normalized["structured_hil_claims"] = structured_hil_claims
     for field in OPERATOR_REPORT_REQUIRED_REVIEW_TEXT_FIELDS:
         value = normalized.get(field)
         if not isinstance(value, str) or not value.strip():
@@ -1247,10 +1307,12 @@ def normalize_operator_report(report: dict[str, Any] | None) -> tuple[dict[str, 
         "source_fields": list(OPERATOR_REPORT_FIELDS),
         "preflight_required_fields": list(OPERATOR_REPORT_PREFLIGHT_BOOL_FIELDS),
         "review_required_fields": list(OPERATOR_REPORT_REVIEW_BOOL_FIELDS) + list(OPERATOR_REPORT_REQUIRED_REVIEW_TEXT_FIELDS),
+        "structured_hil_fields": list(OPERATOR_REPORT_STRUCTURED_HIL_FIELDS),
         "missing_or_invalid_fields": preflight_missing_or_invalid + review_missing_or_invalid,
         "preflight_missing_or_invalid_fields": preflight_missing_or_invalid,
         "review_missing_or_invalid_fields": review_missing_or_invalid,
         "unsafe_fields": unsafe_fields,
+        "structured_hil_missing_or_invalid_bool_fields": structured_hil_claims["normalization"]["missing_or_invalid_bool_fields"],
     }
     return normalized, status
 
@@ -2995,9 +3057,11 @@ def build_operator_report_payload(path: str, report: dict[str, Any]) -> dict[str
         "endpoint": ROUTE_PATHS["operator_report"],
         "request": {"method": "POST", "endpoint": ROUTE_PATHS["operator_report"]},
         "operator_report": normalized_report,
+        "structured_hil_claims": normalized_report.get("structured_hil_claims") if isinstance(normalized_report, dict) else None,
         "operator_report_status": report_status,
         "command_payload_summary": {
             "evidence_ref": normalized_report.get("evidence_ref") if isinstance(normalized_report, dict) else None,
+            "structured_hil_fields": list(OPERATOR_REPORT_STRUCTURED_HIL_FIELDS),
             "report_note": report_note,
         },
         "artifact": {
@@ -3019,12 +3083,18 @@ def build_operator_report_latest_payload(
     latest_result: dict[str, Any] | None,
 ) -> dict[str, Any]:
     """GET readback 只回放 latest report 文件，不能把人工材料升级成 runtime proof。"""
+    structured_hil_claims = None
+    if isinstance(latest_result, dict):
+        structured_hil_claims = latest_result.get("structured_hil_claims")
+        if structured_hil_claims is None and isinstance(latest_result.get("operator_report"), dict):
+            structured_hil_claims = latest_result["operator_report"].get("structured_hil_claims")
     return {
         "schema": f"{SCHEMA}.operator_report_latest_result",
         "generated_at_ms": now_ms(),
         "endpoint": ROUTE_PATHS["operator_report"],
         "artifact": artifact_status,
         "latest_result": latest_result,
+        "structured_hil_claims": structured_hil_claims,
         "latest_endpoint_path": ROUTE_PATHS["operator_report"],
         "does_not_replace": list(OPERATOR_REPORT_DOES_NOT_REPLACE),
         "boundary": "operator_report_readback_only_not_ack_t1001_hil_stop_status_or_motion",
@@ -3069,6 +3139,7 @@ def summarize_operator_report_latest_artifact(path: str) -> dict[str, Any]:
         "operator_report_status": latest.get("operator_report_status") if isinstance(latest, dict) else None,
         "latest_evidence_ref": report.get("evidence_ref") if isinstance(report, dict) else None,
         "latest_report_note": report.get("operator_notes") if isinstance(report, dict) else None,
+        "structured_hil_claims": report.get("structured_hil_claims") if isinstance(report, dict) else None,
         **operator_report_guard_flags(),
     }
 

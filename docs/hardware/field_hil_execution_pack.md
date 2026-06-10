@@ -191,17 +191,24 @@
 - 返回中固定包含 `operator_report_material_only=true`、`not_proven=true`、
   `report_replaces_stop_status_ack_or_hil=false`、`sends_motion_commands=false`、
   `opens_serial=false`、`hil_pass=false` 和 `delivery_success=false`。
-- 当前 normalizer 只保留 `operator_present`、`evidence_ref`、
+- 当前 normalizer 保留 `operator_present`、`evidence_ref`、
   `physical_clearance_confirmed`、`emergency_stop_ready`、`observed_motion`、
-  `observed_stop`、`operator_notes`/`note`、`reported_at`；细分布尔值必须同时写入
-  `operator_notes` 的结构化文本中，不能只作为未识别顶层字段提交。
+  `observed_stop`、`operator_notes`/`note`、`reported_at`，并把
+  `external_video_recorded`、`external_video_ref`、`visible_content_proven`、
+  `camera_artifacts_ref`、`wheel_feedback_lr_nonzero_proven`、`wheel_feedback_ref`、
+  `physical_motion_lidar_delta_proven`、`scan_delta_ref`、`real_route_map_proven`、
+  `route_map_ref`、`delivery_success` 和 `site_state` 统一回写到
+  `structured_hil_claims`。这些结构化字段是材料 claim，不替代 HIL pass。
 
 现场填写和 `curl` 示例以 `docs/hardware/field_hil_operator_report_template.md` 为准。
-即使 report 中写入 `visible_content_proven=true`、`physical_motion_lidar_delta_proven=true`、
-`wheel_feedback_lr_nonzero_proven=true` 或 `delivery_success=true`，也只表示 operator
-声称材料已观察到对应现象；最终是否翻转 HIL/route/delivery 证据，仍必须由同一
-`evidence_ref` 下的原始视频、图片、`T=1001` JSONL、scan metrics、route/map artifacts
-和 stop/API restore 记录共同证明。
+即使 report 或 `structured_hil_claims` 中写入 `visible_content_proven=true`、
+`physical_motion_lidar_delta_proven=true`、`wheel_feedback_lr_nonzero_proven=true`
+或 `delivery_success=true`，也只表示 operator 声称材料已观察到对应现象；API 顶层
+仍必须保持 `hil_pass=false`、`delivery_success=false`、
+`operator_report_material_only=true` 和 `report_replaces_stop_status_ack_or_hil=false`。
+最终是否翻转 HIL/route/delivery 证据，仍必须由同一 `evidence_ref` 下的原始视频、
+图片、`T=1001` JSONL、scan metrics、route/map artifacts 和 stop/API restore 记录
+共同证明。
 
 ## 下一轮最低执行建议
 

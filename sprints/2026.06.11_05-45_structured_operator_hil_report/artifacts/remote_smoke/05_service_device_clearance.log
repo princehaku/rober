@@ -1,0 +1,4 @@
+# service active
+active
+# lsof /dev/ttyS5 /dev/ttyACM0
+# fuser -v /dev/ttyS5 /dev/ttyACM0
