@@ -104,6 +104,69 @@ ros2 topic echo --once /tf_static
 - no-motion smoke 只允许启动 LiDAR 并采样 `/scan` 指标，禁止发布 `/cmd_vel`。
   建议记录 `ranges_count`、`finite_count`、`angle_min/max` 和 `angle_span_deg`。
 
+## 2026-06-11 LiDAR Runtime Lifecycle V1
+
+`sprints/2026.06.11_02-30_upper_radar_lifecycle_runtime/` 将真实上位机已有的
+LiDAR-only smoke 脚本纳入仓库，并新增
+`onboard/scripts/o1_lidar_lifecycle.sh` 作为 `/api/radar/start|stop` 的受管 runtime。
+
+采用资料与事实边界：
+
+- WAVE ROVER 底盘事实仍来自 `docs/vendor/VENDOR_INDEX.md`、
+  `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、
+  `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml` 和
+  `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`：
+  底盘 UART 是 newline-delimited JSON，当前实板底盘路径按既有证据为
+  `/dev/ttyS5 @ 115200`，运动/反馈命令包含 `T=1/T=13/T=130/T=131`。
+- 本轮 LiDAR runtime 不使用 WAVE ROVER vendor 串口；真实上位机状态和既有
+  scan proof 证据显示 LiDAR 使用 `/dev/ttyACM0 @ 150000`，by-id 为
+  STC USB Serial。该事实来源是 `root@192.168.1.11:37878` 现场状态与本项目
+  2026-06-10/2026-06-11 artifacts，不是 WAVE ROVER 底盘文档。
+- 远端已有 `/root/rober/onboard/scripts/o1_lidar_ros2_scan_smoke.sh` 已纳入仓库，
+  远端来源 sha256 为
+  `4f4dcf150989b20b6833ca7be73e2b3d78c4b027491a331af9e570731197b8ba`。
+
+runtime lifecycle 与 scan proof refresh 的关系：
+
+- `/api/radar/start` 通过
+  `ROBER_RADAR_START_COMMAND=bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame`
+  后台启动 `ros2_trashbot_hardware lidar_driver` 和
+  `tf2_ros static_transform_publisher`，快速返回命令执行结果。
+- `/api/radar/stop` 通过
+  `ROBER_RADAR_STOP_COMMAND=bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop`
+  只停止 lifecycle 脚本创建的进程组，不按名称杀其他 ROS2 进程。
+- `/api/radar/scan-proof/refresh` 仍是证据采集入口；当 lifecycle 已 start 时，可用
+  `{"start_runtime": false, "timeout_s": 12}` 只读取现有 `/scan`、`/lidar/raw_packet`
+  和 TF，不再启动临时 smoke runtime。
+- `ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND` 继续保留，用于没有常驻 lifecycle 时的
+  临时 scan proof runtime。
+
+真实上位机 smoke 结果：
+
+- `POST /api/radar/start`：`command_result.executed=true`、`ok=true`，
+  `failure_reason=null`。
+- start 后 read-only scan proof refresh：`status=refreshed`，
+  `proof_state=scan_once_hz_raw_packet_tf_observed`，
+  `scan_runtime_proven=true`，`ros2_runtime_proven=true`，
+  `/scan` 平均约 `15.613Hz`。
+- during 阶段 `lsof /dev/ttyS5 /dev/ttyACM0` 只有 `lidar_driver` 占用
+  `/dev/ttyACM0`；无 `/dev/ttyS5` 行。
+- `POST /api/radar/stop`：`command_result.executed=true`、`ok=true`，
+  stop 后 `/dev/ttyS5` 和 `/dev/ttyACM0` 均无 lsof/fuser 占用，lifecycle status 为
+  `running=false`。
+
+关键 artifact：
+
+- `sprints/2026.06.11_02-30_upper_radar_lifecycle_runtime/artifacts/remote_capture/radar_lifecycle_smoke_20260611_023542/summary.json`
+- `sprints/2026.06.11_02-30_upper_radar_lifecycle_runtime/artifacts/remote_capture/radar_lifecycle_smoke_20260611_023542/04_during_device_process.log`
+- `sprints/2026.06.11_02-30_upper_radar_lifecycle_runtime/artifacts/remote_capture/radar_lifecycle_smoke_20260611_023542/06_after_stop_device_process.log`
+- `sprints/2026.06.11_02-30_upper_radar_lifecycle_runtime/artifacts/pc_proxy/pc_proxy_radar_start_8791.json`
+- `sprints/2026.06.11_02-30_upper_radar_lifecycle_runtime/artifacts/pc_proxy/pc_proxy_radar_stop_8791.json`
+
+本轮仍不是 HIL movement、Nav2 execution、真实路线或 delivery proof：
+`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`
+保持不变。
+
 ## 2026-06-10 LiDAR Motion Delta Retry
 
 `sprints/2026.06.10_03-45_lidar_motion_delta_retry/` 在聚合 `/scan`

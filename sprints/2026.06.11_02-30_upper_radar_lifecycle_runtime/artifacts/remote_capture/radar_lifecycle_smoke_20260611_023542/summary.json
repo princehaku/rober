@@ -1,0 +1,17 @@
+{
+  "artifact_dir": "/tmp/radar_lifecycle_smoke_20260611_023542",
+  "start_command_executed": true,
+  "start_command_ok": true,
+  "start_failure_reason": null,
+  "refresh_status": "refreshed",
+  "refresh_proof_state": "scan_once_hz_raw_packet_tf_observed",
+  "refresh_scan_runtime_proven": true,
+  "refresh_ros2_runtime_proven": true,
+  "refresh_uses_base_uart": false,
+  "refresh_sends_base_motion_commands": false,
+  "stop_command_executed": true,
+  "stop_command_ok": true,
+  "stop_failure_reason": null,
+  "status_after_stop_scan_status": "fresh_scan_proof_observed",
+  "status_after_stop_fresh_scan_proof_observed": true
+}

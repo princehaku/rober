@@ -78,6 +78,7 @@ BLOCKED_LIDAR_RUNTIME_COMMAND_TOKENS = (
     "T=131",
 )
 SAFE_LIDAR_RUNTIME_SCRIPT = "o1_lidar_ros2_scan_smoke.sh"
+SAFE_RADAR_LIFECYCLE_SCRIPT = "o1_lidar_lifecycle.sh"
 SAFE_LIDAR_RUNTIME_SHELLS = ("bash", "sh")
 OPERATOR_REPORT_FIELDS = (
     "operator_present",
@@ -910,6 +911,54 @@ def validate_lidar_runtime_command(command: str | None) -> tuple[list[str], dict
     if serial_port and not _is_lidar_serial_path(serial_port):
         return [], {"type": "unsafe_lidar_serial_path", "message": f"refusing non-LiDAR serial path: {serial_port}"}
     return argv, None
+
+
+def validate_radar_lifecycle_command(command: str | None, action: str) -> tuple[list[str], dict[str, str] | None]:
+    """雷达 start/stop 只能调用受管 lifecycle 脚本，防止 PC 代理变成任意命令入口。"""
+    if not command or not command.strip():
+        return [], {"type": "no_command_configured", "message": f"ROBER_RADAR_{action.upper()}_COMMAND is not configured"}
+    try:
+        argv = shlex.split(command)
+    except ValueError as exc:
+        return [], compact_error(exc)
+    if not argv:
+        return [], {"type": "empty_command", "message": "radar lifecycle command parsed to empty argv"}
+    joined = " ".join(argv)
+    if any(token in joined for token in (";", "&&", "||", "|", "$(", "`")):
+        return [], {"type": "unsafe_runtime_command", "message": "shell operators are not allowed in radar lifecycle command"}
+    for token in BLOCKED_LIDAR_RUNTIME_COMMAND_TOKENS:
+        if token in joined:
+            return [], {"type": "unsafe_runtime_command", "message": f"blocked token in radar lifecycle command: {token}"}
+    script_index = 1 if Path(argv[0]).name in SAFE_LIDAR_RUNTIME_SHELLS else 0
+    if script_index >= len(argv) or Path(argv[script_index]).name != SAFE_RADAR_LIFECYCLE_SCRIPT:
+        return [], {
+            "type": "unsupported_runtime_command",
+            "message": f"only {SAFE_RADAR_LIFECYCLE_SCRIPT} is allowed for radar start/stop",
+        }
+    action_index = script_index + 1
+    if action_index >= len(argv) or argv[action_index] != action:
+        return [], {"type": "unsupported_radar_action", "message": f"radar lifecycle command must call {action}"}
+    serial_port = _extract_flag_value(argv, "--serial-port")
+    if serial_port and not _is_lidar_serial_path(serial_port):
+        return [], {"type": "unsafe_lidar_serial_path", "message": f"refusing non-LiDAR serial path: {serial_port}"}
+    return argv, None
+
+
+def run_radar_lifecycle_command(command: str | None, action: str) -> dict[str, Any]:
+    """先校验 lifecycle 白名单，再执行显式配置命令。"""
+    argv, error = validate_radar_lifecycle_command(command, action)
+    if error:
+        return {
+            "mode": "command" if command and command.strip() else "dry_run_stub",
+            "executed": False,
+            "ok": False,
+            "argv": argv,
+            "error": error,
+            "allowed_script": SAFE_RADAR_LIFECYCLE_SCRIPT,
+            "sends_base_motion_commands": False,
+            "uses_base_uart": False,
+        }
+    return run_configured_command(command)
 
 
 def start_lidar_scan_proof_runtime(command: str | None, warmup_s: float) -> dict[str, Any]:
@@ -2963,10 +3012,14 @@ class UpperRobotApi:
                 "start": {
                     "endpoint": ROUTE_PATHS["radar_start"],
                     "command": command_config_info("ROBER_RADAR_START_COMMAND", self.radar_start_command),
+                    "recommended_command": "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame",
+                    "allowed_runtime_script": SAFE_RADAR_LIFECYCLE_SCRIPT,
                 },
                 "stop": {
                     "endpoint": ROUTE_PATHS["radar_stop"],
                     "command": command_config_info("ROBER_RADAR_STOP_COMMAND", self.radar_stop_command),
+                    "recommended_command": "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop",
+                    "allowed_runtime_script": SAFE_RADAR_LIFECYCLE_SCRIPT,
                 },
                 "scan_proof_refresh": {
                     "endpoint": ROUTE_PATHS["radar_scan_proof_refresh"],
@@ -3020,7 +3073,7 @@ class UpperRobotApi:
                 endpoint="/api/radar/{action}",
                 extra={"error": {"type": "unsupported_radar_action", "message": "action must be start or stop"}},
             )
-        command_result = run_configured_command(command)
+        command_result = run_radar_lifecycle_command(command, action)
         return software_guard_payload(
             schema_suffix="radar_control_result",
             action=f"radar_{action}",

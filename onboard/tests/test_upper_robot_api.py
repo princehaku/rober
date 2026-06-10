@@ -261,6 +261,94 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["delivery_success"])
         self.assertFalse(payload["sends_motion_commands"])
 
+    def test_radar_lifecycle_validation_accepts_lidar_only_start_stop(self) -> None:
+        """start/stop 只接受受管 LiDAR lifecycle 脚本和 LiDAR 串口。"""
+        start = (
+            "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
+            "--serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
+        )
+        stop = "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop"
+
+        start_argv, start_error = upper_robot_api.validate_radar_lifecycle_command(start, "start")
+        stop_argv, stop_error = upper_robot_api.validate_radar_lifecycle_command(stop, "stop")
+
+        self.assertIsNone(start_error)
+        self.assertIsNone(stop_error)
+        self.assertIn("o1_lidar_lifecycle.sh", start_argv[1])
+        self.assertEqual("stop", stop_argv[2])
+
+    def test_radar_lifecycle_validation_rejects_base_uart_and_motion_tokens(self) -> None:
+        """雷达命令不能指向 WAVE ROVER UART，也不能夹带底盘控制 token。"""
+        unsafe_port = (
+            "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
+            "--serial-port /dev/ttyS5 --serial-baudrate 150000"
+        )
+        unsafe_token = "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 T=1"
+
+        _, port_error = upper_robot_api.validate_radar_lifecycle_command(unsafe_port, "start")
+        _, token_error = upper_robot_api.validate_radar_lifecycle_command(unsafe_token, "start")
+
+        self.assertIsNotNone(port_error)
+        self.assertEqual("unsafe_runtime_command", port_error["type"])
+        self.assertIsNotNone(token_error)
+        self.assertEqual("unsafe_runtime_command", token_error["type"])
+
+    def test_radar_control_uses_validated_lifecycle_command_contract(self) -> None:
+        """API radar start 成功只代表 lifecycle 命令执行，不打开运动许可。"""
+        command = (
+            "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
+            "--serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
+        )
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+            radar_start_command=command,
+        )
+
+        with mock.patch.object(
+            upper_robot_api,
+            "run_configured_command",
+            return_value={"mode": "command", "executed": True, "ok": True, "returncode": 0},
+        ) as run_mock:
+            payload = api.radar_control("start")
+
+        run_mock.assert_called_once_with(command)
+        self.assertTrue(payload["command_result"]["executed"])
+        self.assertTrue(payload["command_result"]["ok"])
+        self.assertIsNone(payload["failure_reason"])
+        self.assertEqual("lidar_ros2_driver_only", payload["scope"])
+        self.assertFalse(payload["base_uart_touched"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["sends_base_motion_commands"])
+        self.assertIn("T=130", payload["blocked_commands_not_sent"])
+
+    def test_radar_control_rejects_unsafe_lifecycle_command_without_execution(self) -> None:
+        """危险 radar 命令必须在 subprocess 前失败。"""
+        command = (
+            "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
+            "--serial-port /dev/ttyS5 --serial-baudrate 150000"
+        )
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+            radar_start_command=command,
+        )
+
+        with mock.patch.object(upper_robot_api, "run_configured_command") as run_mock:
+            payload = api.radar_control("start")
+
+        run_mock.assert_not_called()
+        self.assertFalse(payload["command_result"]["executed"])
+        self.assertFalse(payload["command_result"]["ok"])
+        self.assertEqual("unsafe_runtime_command", payload["command_result"]["error"]["type"])
+        self.assertEqual("configured_command_failed", payload["failure_reason"])
+        self.assertFalse(payload["base_uart_touched"])
+        self.assertFalse(payload["safe_to_control"])
+
 
 if __name__ == "__main__":
     unittest.main()
