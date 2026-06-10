@@ -57,7 +57,7 @@ const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
 
 export type RobotProofRefreshConfig = {
   kind: RobotControlProofRefreshKind;
-  endpoint: "/api/radar/scan-proof/refresh" | "/api/map/proof/refresh" | "/api/nav2/proof/refresh";
+  endpoint: "/api/radar/scan-proof/refresh" | "/api/map/proof/refresh" | "/api/nav2/proof/refresh" | "/api/localize/reset";
   request_body: Record<string, unknown>;
   timeout_cap_ms: number;
   safety_margin_ms: number;
@@ -137,6 +137,38 @@ const NAV2_NO_MOTION_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
     "path_generation_succeeded",
     "path_point_count",
     "planner_server_active",
+    "blocked_reasons",
+  ],
+};
+
+const LOCALIZATION_RESET_CONFIG: RobotProofRefreshConfig = {
+  kind: "localization_reset",
+  endpoint: "/api/localize/reset",
+  request_body: {
+    timeout_s: 8,
+    managed_runtime_opt_in: true,
+    managed_timeout_s: 12,
+    initialpose_opt_in: true,
+    initialpose_x: 0,
+    initialpose_y: 0,
+    initialpose_yaw: 0,
+    initialpose_frame_id: "map",
+    path_generation_opt_in: false,
+  },
+  timeout_cap_ms: 60_000,
+  safety_margin_ms: 30_000,
+  key_fields: [
+    "status",
+    "latest_proof_status",
+    "latest_result_status",
+    "evidence_ref",
+    "initialpose_published",
+    "amcl_pose_observed",
+    "localization_tf_observed",
+    "managed_runtime_started",
+    "managed_runtime_cleanup_ok",
+    "localization_reset_observed",
+    "root_causes",
     "blocked_reasons",
   ],
 };
@@ -358,8 +390,9 @@ export function computeRobotProofRefreshTimeoutMs(config: Pick<RobotProofRefresh
   // 代理 timeout 由 body 预估时长加安全余量推导，并且封顶，避免卡死 workstation。
   const timeoutS = numericSeconds(config.request_body.timeout_s) ?? 0;
   const warmupS = numericSeconds(config.request_body.runtime_warmup_s) ?? 0;
+  const managedS = config.request_body.managed_runtime_opt_in === true ? numericSeconds(config.request_body.managed_timeout_s) ?? 0 : 0;
   const pathGenerationS = numericSeconds(config.request_body.path_generation_timeout_s) ?? 0;
-  const calculatedMs = Math.round((timeoutS + warmupS + pathGenerationS) * 1000 + Math.max(0, Math.trunc(config.safety_margin_ms)));
+  const calculatedMs = Math.round((timeoutS + warmupS + managedS + pathGenerationS) * 1000 + Math.max(0, Math.trunc(config.safety_margin_ms)));
   return Math.min(config.timeout_cap_ms, calculatedMs);
 }
 
@@ -1074,6 +1107,11 @@ export async function buildMapProofRefreshProxy(baseUrl: string): Promise<RobotC
 export async function buildNav2NoMotionProofRefreshProxy(baseUrl: string): Promise<RobotControlProofRefreshProxyResponse> {
   // Nav2 refresh 只请求 no-motion planner path proof，不启动 Nav2、不发 goal，也不触碰底盘控制链路。
   return buildProofRefreshProxy(baseUrl, NAV2_NO_MOTION_PROOF_REFRESH_CONFIG);
+}
+
+export async function buildLocalizationResetProxy(baseUrl: string): Promise<RobotControlProofRefreshProxyResponse> {
+  // 定位 reset 只请求固定 no-motion /initialpose + AMCL proof body，不开放任意 endpoint 或路径生成。
+  return buildProofRefreshProxy(baseUrl, LOCALIZATION_RESET_CONFIG);
 }
 
 function pickReadback(readbacks: RobotApiEndpointReadback[], id: RobotApiReadEndpointId): RobotApiEndpointReadback | null {

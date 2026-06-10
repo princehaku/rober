@@ -10,6 +10,7 @@ import importlib.util
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -337,13 +338,15 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertLess(budget["process_timeout_s"], budget["pc_proxy_budget_s"])
         self.assertEqual("finish_before_pc_proxy_timeout_or_return_structured_timeout", budget["budget_policy"])
 
-        fake_completed = subprocess.CompletedProcess(
-            args=["bash", "-lc", "source /opt/ros/humble/setup.bash"],
-            returncode=0,
-            stdout="ok",
-            stderr="",
-        )
-        with mock.patch.object(api_mod.subprocess, "run", return_value=fake_completed) as run_mock:
+        fake_completed = {
+            "timed_out": False,
+            "returncode": 0,
+            "stdout": "ok",
+            "stderr": "",
+            "process_group": 123,
+            "cleanup_result": {"attempted": False, "ok": True},
+        }
+        with mock.patch.object(api_mod, "run_helper_bash_process_group", return_value=fake_completed) as run_mock:
             result = api_mod.run_nav2_runtime_proof_helper(
                 artifact_path="/tmp/nav2.json",
                 map_proof_path="/tmp/map.json",
@@ -367,7 +370,7 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
 
         self.assertTrue(result["ok"])
         self.assertEqual(36.0, result["process_timeout_s"])
-        self.assertEqual(36.0, run_mock.call_args.kwargs["timeout"])
+        self.assertEqual(36.0, run_mock.call_args.args[1])
 
     def test_upper_api_managed_path_generation_timeout_is_capped(self) -> None:
         """managed/runtime 扩展场景也要封顶，超长 helper 必须结构化 timeout。"""
@@ -399,13 +402,15 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         assert spec is not None and spec.loader is not None
         spec.loader.exec_module(api_mod)
 
-        fake_completed = subprocess.CompletedProcess(
-            args=["bash", "-lc", "source /opt/ros/humble/setup.bash"],
-            returncode=0,
-            stdout="ok",
-            stderr="",
-        )
-        with mock.patch.object(api_mod.subprocess, "run", return_value=fake_completed) as run_mock:
+        fake_completed = {
+            "timed_out": False,
+            "returncode": 0,
+            "stdout": "ok",
+            "stderr": "",
+            "process_group": 123,
+            "cleanup_result": {"attempted": False, "ok": True},
+        }
+        with mock.patch.object(api_mod, "run_helper_bash_process_group", return_value=fake_completed) as run_mock:
             result = api_mod.run_nav2_runtime_proof_helper(
                 artifact_path="/tmp/nav2.json",
                 map_proof_path="/tmp/map.json",
@@ -434,7 +439,7 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertIn("--path-generation-opt-in", result["argv"][2])
         self.assertIn("--initialpose-opt-in", result["argv"][2])
         run_mock.assert_called_once()
-        self.assertEqual("/root/rober/onboard", run_mock.call_args.kwargs["cwd"])
+        self.assertEqual("/root/rober/onboard", run_mock.call_args.args[2])
 
         api_text = (SCRIPT.parent / "upper_robot_api.py").read_text(encoding="utf-8")
         for required in (
@@ -453,6 +458,60 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "\"planner_readiness_summary\"",
         ):
             self.assertIn(required, api_text)
+
+    def test_upper_api_timeout_writes_blocked_latest_artifact(self) -> None:
+        """helper 超时也要写 blocked latest，避免 PC latest readback 退回 missing。"""
+        spec = importlib.util.spec_from_file_location("upper_robot_api", SCRIPT.parent / "upper_robot_api.py")
+        assert spec is not None and spec.loader is not None
+        api_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(api_mod)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "localization_reset_latest.json"
+            timeout_result = {
+                "timed_out": True,
+                "returncode": None,
+                "stdout": "",
+                "stderr": "",
+                "process_group": 123,
+                "cleanup_result": {"attempted": True, "ok": True},
+                "error": {"type": "TimeoutExpired", "message": "timeout"},
+            }
+            with mock.patch.object(api_mod, "run_helper_bash_process_group", return_value=timeout_result):
+                result = api_mod.run_nav2_runtime_proof_helper(
+                    artifact_path=str(artifact_path),
+                    map_proof_path="/tmp/map.json",
+                    map_artifact_dir="/tmp/maps",
+                    timeout_s=8.0,
+                    managed_runtime_opt_in=True,
+                    managed_timeout_s=12.0,
+                    managed_map_yaml="",
+                    initialpose_opt_in=True,
+                    initialpose_x=0.0,
+                    initialpose_y=0.0,
+                    initialpose_yaw=0.0,
+                    initialpose_frame_id="map",
+                    path_generation_opt_in=False,
+                    path_generation_timeout_s=4.0,
+                    path_goal_frame_id="map",
+                    path_goal_x=0.0,
+                    path_goal_y=0.0,
+                    path_goal_yaw=0.0,
+                )
+            payload = api_mod.json.loads(artifact_path.read_text(encoding="utf-8"))
+
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["fallback_artifact_written"])
+        self.assertEqual("blocked_with_root_cause", payload["status"])
+        self.assertEqual("helper_process_timeout_before_artifact", payload["proof"]["root_causes"][0]["reason"])
+        self.assertTrue(payload["proof"]["managed_runtime_requested"])
+        self.assertTrue(payload["proof"]["initialpose_publish_attempted"])
+        self.assertFalse(payload["proof"]["path_generation_requested"])
+        self.assertFalse(payload["proof"]["initialpose_published"])
+        self.assertFalse(payload["proof"]["amcl_pose_observed"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["publishes_cmd_vel"])
+        self.assertIn("/dev/ttyS5", payload["proof"]["blocked_devices_not_opened"])
 
     def test_tf_echo_timeout_stdout_transform_counts_observed(self) -> None:
         """tf2_echo 正常持续输出时可能被 timeout 杀掉，不能因 rc=124 误判失败。"""

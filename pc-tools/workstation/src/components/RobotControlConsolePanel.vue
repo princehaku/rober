@@ -8,6 +8,7 @@ import {
   postRobotControlBaseStop,
   postRobotControlMapStart,
   postRobotControlMapSave,
+  postRobotControlLocalizeReset,
   postRobotControlMapProofRefresh,
   postRobotControlNav2ProofRefresh,
   postRobotControlRadarStart,
@@ -39,6 +40,7 @@ const radarRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(nul
 const radarLifecycleResult = ref<RobotControlRadarLifecycleResponse | null>(null);
 const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const nav2RefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
+const localizationResetResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapLifecycleResult = ref<RobotControlMapLifecycleResponse | null>(null);
 const manualCommandResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
 const manualCommandPending = ref(false);
@@ -68,6 +70,7 @@ const radarRefreshPending = ref(false);
 const radarLifecyclePending = ref(false);
 const mapRefreshPending = ref(false);
 const nav2RefreshPending = ref(false);
+const localizationResetPending = ref(false);
 const previewVideo = ref<HTMLVideoElement | null>(null);
 const previewStream = ref<MediaStream | null>(null);
 const previewPeerConnection = ref<RTCPeerConnection | null>(null);
@@ -316,7 +319,7 @@ function commandEvidenceFallback(commandKind: "manual" | "stop", reason: string)
 }
 
 function makeRefreshFallback(
-  kind: "radar_scan_proof_refresh" | "map_proof_refresh" | "nav2_no_motion_proof_refresh",
+  kind: "radar_scan_proof_refresh" | "map_proof_refresh" | "nav2_no_motion_proof_refresh" | "localization_reset",
   baseUrl: string,
   reason: string,
 ): RobotControlProofRefreshProxyResponse {
@@ -327,7 +330,9 @@ function makeRefreshFallback(
       ? "/api/radar/scan-proof/refresh"
       : kind === "map_proof_refresh"
         ? "/api/map/proof/refresh"
-        : "/api/nav2/proof/refresh";
+        : kind === "nav2_no_motion_proof_refresh"
+          ? "/api/nav2/proof/refresh"
+          : "/api/localize/reset";
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
     source: "software_proof",
@@ -600,6 +605,16 @@ async function refreshNav2Proof(): Promise<void> {
     () => postRobotControlNav2ProofRefresh(robotApiBaseUrl.value),
     nav2RefreshResult,
     nav2RefreshPending,
+  );
+}
+
+async function resetLocalizationProof(): Promise<void> {
+  // 定位重置只在高级诊断触发；它发布一次 /initialpose，不请求路径、不发 /cmd_vel。
+  await runRefreshAction(
+    "localization_reset",
+    () => postRobotControlLocalizeReset(robotApiBaseUrl.value),
+    localizationResetResult,
+    localizationResetPending,
   );
 }
 
@@ -1142,7 +1157,26 @@ onBeforeUnmount(() => {
 
         <section class="advanced-block">
           <h3>Nav2 规划详情</h3>
+          <div class="robot-control-form">
+            <button class="secondary" type="button" :disabled="loading || localizationResetPending || !robotApiBaseUrl.trim()" @click="resetLocalizationProof">
+              定位重置（高级）
+            </button>
+          </div>
           <dl class="kv compact-kv">
+            <dt>localize reset pending</dt>
+            <dd>{{ localizationResetPending ? "pending" : "idle" }}</dd>
+            <dt>localize reset endpoint</dt>
+            <dd>{{ localizationResetResult?.remote_endpoint ?? "/api/localize/reset" }}</dd>
+            <dt>localize reset status</dt>
+            <dd>{{ localizationResetResult?.last_result_status ?? "not_loaded" }}</dd>
+            <dt>localize reset keys</dt>
+            <dd>{{ recordText(localizationResetResult?.latest_readback_key_values) }}</dd>
+            <dt>localize reset failure</dt>
+            <dd>{{ localizationResetResult?.failure_reason || "none" }}</dd>
+            <dt>localize reset blocked reasons</dt>
+            <dd>{{ listText(localizationResetResult?.blocked_reasons, "none") }}</dd>
+            <dt>localize reset dangerous fields</dt>
+            <dd>{{ listText(localizationResetResult?.hard_dangerous_true_fields, "none") }}</dd>
             <dt>pending</dt>
             <dd>{{ nav2RefreshPending ? "pending" : "idle" }}</dd>
             <dt>remote endpoint</dt>

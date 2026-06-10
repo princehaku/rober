@@ -965,3 +965,32 @@ PC 代理 smoke：
 WAVE ROVER HIL、robot ACK 或 delivery success。WAVE ROVER 底盘 UART 事实仍以
 `docs/vendor/VENDOR_INDEX.md` 及其指向的 vendor 文件为准；本轮没有触碰
 `/dev/ttyS5 @ 115200`、`T=1/T=13/T=130/T=131` 或 JSON newline 底盘命令。
+
+## 2026-06-11 03:25 PC Localization Reset Controls V1
+
+本轮新增高级诊断专用 `POST /api/localize/reset` 和
+`POST /api/robot-control/localize/reset?baseUrl=<upper-api>`。该入口复用
+`o10_amcl_nav2_runtime_proof.py`，默认写
+`/root/rober/onboard/runtime/localization_reset_latest.json` 或配置的
+`runtime/localization_reset_latest.json`。helper 只允许短暂 managed localization
+runtime、发布一次 `/initialpose`、观察 `/amcl_pose` 和 localization TF。
+
+硬件/vendor 边界：
+
+- WAVE ROVER base UART、newline-delimited JSON、vendor Raspberry Pi 默认
+  `115200` 资料来源是 `docs/vendor/VENDOR_INDEX.md` 及其指向的
+  `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、
+  `config.yaml`、`WAVE_ROVER_V0.9/json_cmd.h`。
+- 项目真实上车证据采用底盘 UART `/dev/ttyS5 @ 115200`；该事实只作为本轮
+  blocked/safety boundary 写入文档和响应。
+- 本轮不打开 `/dev/ttyS5`，不发送 `T=1/T=13/T=130/T=131`，不调用
+  `/api/base/manual`，不发布 `/cmd_vel`，不调用 Nav2 start/stop 或
+  `NavigateToPose`。
+- `/dev/ttyACM0` 只可能被 helper 的 LiDAR/localization runtime 使用；最终 smoke
+  必须检查无 `o10_amcl_nav2_runtime_proof`、`lidar_driver`、`map_server`、
+  `amcl`、`planner_server` 残留，以及 `/dev/ttyS5`、`/dev/ttyACM0` 无异常占用。
+
+`GET /api/localize/proof/latest` 必须摘要：`initialpose_published`、
+`amcl_pose_observed`、`localization_tf_observed.map_to_odom`、
+`localization_tf_observed.map_to_base_link`、`managed_runtime_started`、
+`managed_runtime_cleanup_ok` 和 `root_causes`。所有安全字段继续保持 false。

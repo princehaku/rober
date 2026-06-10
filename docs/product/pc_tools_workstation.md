@@ -262,6 +262,48 @@ PC 代理 body 只允许短 `map_name` 和相对 `artifact_path` 字段；未知
 边界：该能力只证明 PC 可以经固定代理触发上位机 no-motion map runtime，不证明
 地图质量、Nav2 可行驶、真实运动、WAVE ROVER HIL、robot ACK 或 delivery success。
 
+## PC Localization Reset Controls V1
+
+2026-06-11 起，Robot Control 新增 `定位重置（高级）`。该按钮只放在默认关闭的
+`高级诊断 -> Nav2 规划详情` 中；普通首屏仍只有五张卡片和普通动作：
+`连接/刷新`、`打开画面/关闭画面`、`刷新雷达`、`刷新地图`、`地图列表`、
+`检查路径`、`停止`。首屏不显示 `定位重置`、`initialpose`、`AMCL`、
+`proof/readback/raw`、`HIL`、速度/点动、`safe_to_control`、`/cmd_vel` 或
+`/api/base/manual`。
+
+PC 后端新增固定代理：
+
+```text
+POST /api/robot-control/localize/reset?baseUrl=<robot-api-base-url>
+```
+
+代理只转发到上位机固定 `POST /api/localize/reset`，浏览器 body 被忽略。上位机请求
+body 固定为：
+
+```json
+{
+  "timeout_s": 8,
+  "managed_runtime_opt_in": true,
+  "managed_timeout_s": 12,
+  "initialpose_opt_in": true,
+  "initialpose_x": 0,
+  "initialpose_y": 0,
+  "initialpose_yaw": 0,
+  "initialpose_frame_id": "map",
+  "path_generation_opt_in": false
+}
+```
+
+响应摘要会展示 `initialpose_published`、`amcl_pose_observed`、
+`localization_tf_observed`、`managed_runtime_started`、
+`managed_runtime_cleanup_ok`、`localization_reset_observed` 和 blocked/root cause。
+PC 顶层仍固定 `safe_to_control=false`、`delivery_success=false`、
+`primary_actions_enabled=false`、`robot_control_executed=false`。
+
+该入口不调用 `NavigateToPose`、Nav2 start/stop、`ComputePathToPose`、
+`/cmd_vel`、`/api/base/manual`、底盘 UART 或 `/dev/ttyS5`。它只证明 no-motion
+AMCL localization material，不证明路径执行、真实运动、HIL 或 delivery success。
+
 ## 禁止声明
 
 第一阶段不得声明完成：
@@ -276,6 +318,7 @@ PC 代理 body 只允许短 `map_name` 和相对 `artifact_path` 字段；未知
 - O7 实时地图/机器人位置、电梯状态链、历史路线回放、标注提交、ASR/TTS runtime、手控或寻路 dispatch
 - Robot Control V1 已经放开真实持续手控、真实 `/cmd_vel`、真实自动导航、Nav2 goal、radar start、keyboard control 或 map click goal
 - PC Map Runtime Controls V1 已经证明地图质量、Nav2 可行驶、真实运动、HIL 或 delivery success
+- PC Localization Reset Controls V1 已经证明路径执行、真实运动、HIL 或 delivery success
 
 普通首屏不提供工程 Start/Save/Reset、Confirm、Cancel、Dropoff、Collect、Nav2 goal、
 手控、速度/点动或任何真实运动/交付控制入口。当前仅 `高级诊断` 地图详情提供

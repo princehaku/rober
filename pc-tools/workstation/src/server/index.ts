@@ -23,6 +23,7 @@ import {
   buildO7SafeCommandPreview,
   buildO7VoicePreview,
   buildProofBoundary,
+  buildLocalizationResetProxy,
   buildRadarLifecycleProxy,
   buildRadarScanProofRefreshProxy,
   buildMapLifecycleProxy,
@@ -831,6 +832,14 @@ export function createWorkstationApp(): express.Express {
   workstationApp.post("/api/robot-control/nav2/proof/refresh", async (req, res) => {
     // Nav2 refresh 只允许固定 no-motion planner proof body，不开放 start/stop、goal 或底盘动作。
     const response = await buildNav2NoMotionProofRefreshProxy(queryString(req.query.baseUrl));
+    res
+      .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
+      .json(response);
+  });
+
+  workstationApp.post("/api/robot-control/localize/reset", async (req, res) => {
+    // 定位 reset 只转发固定 /api/localize/reset body；浏览器不能传 initialpose 或任意 endpoint。
+    const response = await buildLocalizationResetProxy(queryString(req.query.baseUrl));
     res
       .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
       .json(response);

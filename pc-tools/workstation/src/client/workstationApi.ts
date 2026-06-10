@@ -96,6 +96,7 @@ const API_ENDPOINTS = {
   robotControlRadarStop: "/api/robot-control/radar/stop",
   robotControlMapProofRefresh: "/api/robot-control/map/proof/refresh",
   robotControlNav2ProofRefresh: "/api/robot-control/nav2/proof/refresh",
+  robotControlLocalizeReset: "/api/robot-control/localize/reset",
   robotControlMapList: "/api/robot-control/map/list",
   robotControlMapStart: "/api/robot-control/map/start",
   robotControlMapSave: "/api/robot-control/map/save",
@@ -456,6 +457,14 @@ export async function postRobotControlNav2ProofRefresh(baseUrl: string): Promise
   // Nav2 refresh 只请求 no-motion 路径规划证明，前端不能传 goal、start/stop 或任意 body。
   return postJson<RobotControlProofRefreshProxyResponse>(
     robotControlProofRefreshUrl(API_ENDPOINTS.robotControlNav2ProofRefresh, baseUrl),
+    {},
+  );
+}
+
+export async function postRobotControlLocalizeReset(baseUrl: string): Promise<RobotControlProofRefreshProxyResponse> {
+  // 定位重置只走固定 Node 代理；initialpose 和 timeout body 由后端写死，浏览器不能覆盖。
+  return postJson<RobotControlProofRefreshProxyResponse>(
+    robotControlProofRefreshUrl(API_ENDPOINTS.robotControlLocalizeReset, baseUrl),
     {},
   );
 }

@@ -519,6 +519,35 @@ const fixtures: Record<string, unknown> = {
       non_motion_evidence_actions_observed: [],
       ...PROOF_FLAGS,
     },
+    "/api/robot-control/localize/reset": {
+      schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+      robot_control_executed: false,
+      refresh_kind: "localization_reset",
+      proxy_status: "refresh_forwarded",
+      source_base_url: "http://192.168.1.11:8787",
+      normalized_base_url: "http://192.168.1.11:8787",
+      remote_endpoint: "/api/localize/reset",
+      remote_http_status: 200,
+      status: "loaded_fail_closed_summary",
+      last_result_status: "localization_reset_observed",
+      last_result_schema: "trashbot.upper_robot_api.v1.localization_reset_result",
+      last_result_evidence_ref: "localize-reset-proof",
+      last_refreshed_at_ms: 1781040818776,
+      latest_readback_key_values: {
+        status: "localization_reset_observed",
+        initialpose_published: "true",
+        amcl_pose_observed: "true",
+        localization_tf_observed: "{\"map_to_odom\":true,\"map_to_base_link\":true}",
+        managed_runtime_started: "true",
+        managed_runtime_cleanup_ok: "true",
+        localization_reset_observed: "true",
+      },
+      failure_reason: "",
+      blocked_reasons: [],
+      hard_dangerous_true_fields: [],
+      non_motion_evidence_actions_observed: [],
+      ...PROOF_FLAGS,
+    },
   "/api/robot-control/map/list": {
     schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
     action: "list",
@@ -2696,6 +2725,8 @@ function stubWorkstationFetch() {
       fixtureKey = "/api/robot-control/map/proof/refresh";
     } else if (url.startsWith("/api/robot-control/nav2/proof/refresh")) {
       fixtureKey = "/api/robot-control/nav2/proof/refresh";
+    } else if (url.startsWith("/api/robot-control/localize/reset")) {
+      fixtureKey = "/api/robot-control/localize/reset";
     } else if (url.startsWith("/api/robot-control/map/list")) {
       fixtureKey = "/api/robot-control/map/list";
     } else if (url.startsWith("/api/robot-control/map/save")) {
@@ -2923,6 +2954,8 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("scan_once_observed");
     expect(firstScreenText).not.toContain("map_once_observed");
     expect(firstScreenText).not.toContain("path_generation_succeeded");
+    expect(firstScreenText).not.toContain("定位重置");
+    expect(firstScreenText).not.toContain("AMCL");
     expect(firstScreenText).not.toContain("Start");
     expect(firstScreenText).not.toContain("Reset");
 
@@ -3003,6 +3036,20 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh") && options?.method === "POST")).toBe(true);
     const summaryCallsAfterNav2 = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
     expect(summaryCallsAfterNav2).toBeGreaterThan(summaryCallsAfterMap);
+
+    expect(wrapper.find("details").text()).toContain("定位重置（高级）");
+    await wrapper.findAll("button").find((button) => button.text() === "定位重置（高级）")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("定位重置");
+    expect(wrapper.find("details").text()).toContain("/api/localize/reset");
+    expect(wrapper.find("details").text()).toContain("localization_reset_observed");
+    expect(wrapper.find("details").text()).toContain("initialpose_published");
+    expect(wrapper.find("details").text()).toContain("amcl_pose_observed");
+    expect(wrapper.find("details").text()).toContain("managed_runtime_started");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/localize/reset") && options?.method === "POST")).toBe(true);
+    const summaryCallsAfterLocalize = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
+    expect(summaryCallsAfterLocalize).toBeGreaterThan(summaryCallsAfterNav2);
 
     await wrapper.findAll("button").find((button) => button.text() === "地图列表")?.trigger("click");
     await flushPromises();

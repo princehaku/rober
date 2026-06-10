@@ -2073,7 +2073,11 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   primary_actions_enabled: false;
 }
 
-export type RobotControlProofRefreshKind = "radar_scan_proof_refresh" | "map_proof_refresh" | "nav2_no_motion_proof_refresh";
+export type RobotControlProofRefreshKind =
+  | "radar_scan_proof_refresh"
+  | "map_proof_refresh"
+  | "nav2_no_motion_proof_refresh"
+  | "localization_reset";
 export type RobotControlProofRefreshProxyStatus = "refresh_forwarded" | "refresh_rejected" | "refresh_failed";
 
 export interface RobotControlProofRefreshProxyResponse extends ProofFlags {
@@ -2082,7 +2086,11 @@ export interface RobotControlProofRefreshProxyResponse extends ProofFlags {
   proxy_status: RobotControlProofRefreshProxyStatus;
   source_base_url: string;
   normalized_base_url: string;
-  remote_endpoint: "/api/radar/scan-proof/refresh" | "/api/map/proof/refresh" | "/api/nav2/proof/refresh";
+  remote_endpoint:
+    | "/api/radar/scan-proof/refresh"
+    | "/api/map/proof/refresh"
+    | "/api/nav2/proof/refresh"
+    | "/api/localize/reset";
   remote_http_status: number | null;
   status: "blocked" | "loaded_fail_closed_summary";
   last_result_status: string;
@@ -2488,6 +2496,7 @@ export const API_ROUTES = [
   "/api/robot-control/summary?baseUrl=<robot-api-base-url>",
   "/api/robot-control/base/manual?baseUrl=<robot-api-base-url>",
   "/api/robot-control/base/stop?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/localize/reset?baseUrl=<robot-api-base-url>",
   "/api/proof-boundary",
 ] as const;
 

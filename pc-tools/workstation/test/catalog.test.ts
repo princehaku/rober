@@ -26,6 +26,7 @@ import {
   buildO7SafeCommandPreview,
   buildO7VoicePreview,
   buildProofBoundary,
+  buildLocalizationResetProxy,
   buildMapProofRefreshProxy,
   buildNav2NoMotionProofRefreshProxy,
   buildRadarLifecycleProxy,
@@ -4571,6 +4572,73 @@ describe("workstation fail-closed API contracts", () => {
       globalThis.fetch = originalFetch;
       timeoutSpy.mockRestore();
     }
+  });
+
+  it("forwards localization reset with fixed no-motion initialpose body", async () => {
+    // localize/reset 是高级诊断固定代理；只能发 AMCL initialpose proof，不开放路径生成或底盘动作。
+    const robotApi = await listenRobotProofRefreshApi({
+      "/api/localize/reset": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_reset_result",
+          status: "localization_reset_observed",
+          evidence_ref: "localize-reset-proof",
+          initialpose_published: true,
+          amcl_pose_observed: true,
+          localization_tf_observed: { map_to_odom: true, map_to_base_link: true },
+          managed_runtime_started: true,
+          managed_runtime_cleanup_ok: true,
+          localization_reset_observed: true,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          sends_motion_commands: false,
+          publishes_cmd_vel: false,
+          calls_base_manual: false,
+          uses_base_uart: false,
+        },
+      },
+    });
+    try {
+      const response = await buildLocalizationResetProxy(robotApi.baseUrl);
+      expect(response.proxy_status).toBe("refresh_forwarded");
+      expect(response.remote_endpoint).toBe("/api/localize/reset");
+      expect(response.last_result_status).toBe("localization_reset_observed");
+      expect(response.latest_readback_key_values.initialpose_published).toBe("true");
+      expect(response.latest_readback_key_values.amcl_pose_observed).toBe("true");
+      expect(response.latest_readback_key_values.managed_runtime_started).toBe("true");
+      expect(response.safe_to_control).toBe(false);
+      expect(response.robot_control_executed).toBe(false);
+      expect(robotApi.receivedBodies["/api/localize/reset"]).toEqual([
+        {
+          timeout_s: 8,
+          managed_runtime_opt_in: true,
+          managed_timeout_s: 12,
+          initialpose_opt_in: true,
+          initialpose_x: 0,
+          initialpose_y: 0,
+          initialpose_yaw: 0,
+          initialpose_frame_id: "map",
+          path_generation_opt_in: false,
+        },
+      ]);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
+  it("localization reset proxy rejects missing and unsafe base URLs before fetch", async () => {
+    // URL 围栏和其它 Robot Control 代理一致，不能把 reset 入口扩成公网 SSRF。
+    const missing = await buildLocalizationResetProxy("");
+    expect(missing.proxy_status).toBe("refresh_rejected");
+    expect(missing.failure_reason).toBe("baseUrl_not_provided");
+    expect(missing.remote_endpoint).toBe("/api/localize/reset");
+    expect(missing.safe_to_control).toBe(false);
+
+    const unsafe = await buildLocalizationResetProxy("https://example.com/api?token=secret");
+    expect(unsafe.proxy_status).toBe("refresh_rejected");
+    expect(unsafe.failure_reason).toBe("baseUrl_protocol_not_allowed");
+    expect(unsafe.robot_control_executed).toBe(false);
   });
 
   it("loads fixed Nav2 latest proof readback after no-motion POST timeout", async () => {

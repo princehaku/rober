@@ -1788,7 +1788,42 @@ The procurement summary can be attached to route/elevator handoff material as co
 - fixed-route route.csv/keyframe/route replay 或真实路线 runtime log；
 - 无 `/cmd_vel` 误发、无 `/api/base/*`、无 `/dev/ttyS5` 底盘占用的同轮证据。
 
-### 7.3 Route code structure after 2026-05-25 refactor
+### 7.3 PC Localization Reset Controls V1 boundary
+
+2026-06-11 的 `PC Localization Reset Controls V1` 新增一个高级诊断专用的
+no-motion 定位重置入口：
+
+- 上位机：`POST /api/localize/reset`
+- 上位机 readback：`GET /api/localize/proof/latest`
+- PC 固定代理：`POST /api/robot-control/localize/reset?baseUrl=<upper-api>`
+- helper：`onboard/scripts/o10_amcl_nav2_runtime_proof.py`
+- artifact：`runtime/localization_reset_latest.json`
+
+该入口默认使用 O10 helper 的 localization-only 模式：短暂 managed runtime、
+发布一次 `/initialpose`，然后观察 `/amcl_pose`、`map->odom` 和 `map->base_link`
+TF。PC 代理 body 固定为 `timeout_s=8`、`managed_runtime_opt_in=true`、
+`managed_timeout_s=12`、`initialpose_opt_in=true`、`initialpose_x/y/yaw=0`、
+`initialpose_frame_id=map`、`path_generation_opt_in=false`。浏览器不能传任意
+body、goal、endpoint 或路径生成参数。
+
+安全边界：
+
+- 不调用 `NavigateToPose`、`FollowPath` 或 `ComputePathToPose`。
+- 不调用 `/api/nav2/start`、`/api/nav2/stop`、`/api/base/manual`。
+- 不发布 `/cmd_vel`，不打开底盘 UART `/dev/ttyS5`，不发送 `T=1/T=13/T=130/T=131`。
+- `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、
+  `robot_control_executed=false` 永远保持 false。
+
+`GET /api/localize/proof/latest` 会从 `runtime/localization_reset_latest.json`
+摘要：`initialpose_published`、`amcl_pose_observed`、
+`localization_tf_observed.map_to_odom/map_to_base_link`、`managed_runtime_started`、
+`managed_runtime_cleanup_ok`、`root_causes` 和 `blocked_devices_not_opened`。
+
+这一步最多证明 AMCL no-motion localization material，可以作为后续 planner
+readiness 的前置材料；它不证明路径执行、固定路线运行、真实运动、HIL pass 或
+delivery success。
+
+### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:
 

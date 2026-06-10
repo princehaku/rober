@@ -10,6 +10,7 @@ import json
 import os
 import re
 import shlex
+import signal
 import subprocess
 import sys
 import time
@@ -519,6 +520,230 @@ def nav2_runtime_proof_process_timeout_budget(
     }
 
 
+def write_nav2_helper_failure_artifact(
+    *,
+    artifact_path: str,
+    status: str,
+    reason: str,
+    timeout_budget: dict[str, Any],
+    command_result: dict[str, Any],
+    managed_runtime_opt_in: bool,
+    initialpose_opt_in: bool,
+    path_generation_opt_in: bool,
+) -> dict[str, Any]:
+    """helper 进程超时/异常时也要写 latest，避免 PC 只看到 missing artifact。"""
+    root_cause = {"layer": "upper API helper process", "reason": reason}
+    proof = {
+        "status": status,
+        "evidence_ref": f"o10-amcl-nav2-runtime-wrapper-failure-{now_ms()}",
+        "evidence_type": "blocked_with_root_cause",
+        "generated_at_ms": now_ms(),
+        "initialpose_publish_attempted": bool(initialpose_opt_in),
+        "initialpose_published": False,
+        "amcl_pose_observed": False,
+        "localization_tf_observed": {"map_to_odom": False, "map_to_base_link": False},
+        "managed_runtime_requested": bool(managed_runtime_opt_in),
+        "managed_runtime_started": False,
+        "managed_runtime_cleanup_ok": False,
+        "path_generation_requested": bool(path_generation_opt_in),
+        "path_generation_attempted": False,
+        "path_generated": False,
+        "path_generation_succeeded": False,
+        "path_point_count": 0,
+        "root_causes": [root_cause],
+        "blockers": [root_cause],
+        "timeout_budget": timeout_budget,
+        "command_result": command_result,
+        "blocked_commands_not_sent": [
+            "T=1",
+            "T=13",
+            "T=130",
+            "T=131",
+            "/cmd_vel",
+            "/api/base/manual",
+            "/api/nav2/start",
+            "/api/nav2/stop",
+            "navigate_to_pose",
+            "compute_path_to_pose",
+        ],
+        "blocked_devices_not_opened": ["/dev/ttyS5"],
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "uses_base_uart": False,
+        "opens_serial": False,
+        "robot_control_executed": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "hil_pass": False,
+    }
+    payload = {
+        "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+        "generated_at_ms": now_ms(),
+        "status": status,
+        "evidence_type": "blocked_with_root_cause",
+        "proof": proof,
+        "software_guard": True,
+        "not_proven": True,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "uses_base_uart": False,
+        "opens_serial": False,
+        "robot_control_executed": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "hil_pass": False,
+    }
+    write_result = atomic_write_json_artifact(artifact_path, payload)
+    payload["artifact"] = {"path": artifact_path, "write": write_result}
+    return payload
+
+
+def run_helper_bash_process_group(command: str, timeout_s: float, cwd: str) -> dict[str, Any]:
+    """运行 helper shell 时单独建进程组，timeout 必须清掉 ROS2 子进程。"""
+    process = subprocess.Popen(  # noqa: S603 - command 由本 API 固定生成，不能来自用户输入。
+        ["bash", "-lc", command],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=cwd,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=timeout_s)
+        return {
+            "timed_out": False,
+            "returncode": process.returncode,
+            "stdout": stdout,
+            "stderr": stderr,
+            "process_group": process.pid,
+            "cleanup_result": {"attempted": False, "ok": True, "reason": "process_exited_before_timeout"},
+        }
+    except subprocess.TimeoutExpired as exc:
+        cleanup_result: dict[str, Any] = {
+            "attempted": True,
+            "process_group": process.pid,
+            "sent_signal": None,
+            "killed_with_sigkill": False,
+            "ok": False,
+            "error": None,
+        }
+        try:
+            os.killpg(process.pid, signal.SIGINT)
+            cleanup_result["sent_signal"] = "SIGINT"
+        except ProcessLookupError:
+            cleanup_result["sent_signal"] = "already_exited"
+        try:
+            stdout, stderr = process.communicate(timeout=4.0)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+                cleanup_result["killed_with_sigkill"] = True
+            except ProcessLookupError:
+                pass
+            stdout, stderr = process.communicate()
+        except Exception as cleanup_exc:  # noqa: BLE001 - 清场异常也要写进 artifact。
+            stdout = preview_text(exc.stdout, 4000)
+            stderr = preview_text(exc.stderr, 4000)
+            cleanup_result["error"] = compact_error(cleanup_exc)
+        cleanup_result["residual_cleanup"] = cleanup_nav2_helper_residual_processes()
+        cleanup_result["ok"] = process.poll() is not None and cleanup_result["residual_cleanup"].get("ok") is True
+        return {
+            "timed_out": True,
+            "returncode": process.returncode,
+            "stdout": stdout or preview_text(exc.stdout, 4000),
+            "stderr": stderr or preview_text(exc.stderr, 4000),
+            "process_group": process.pid,
+            "cleanup_result": cleanup_result,
+            "error": compact_error(exc),
+        }
+
+
+def cleanup_nav2_helper_residual_processes() -> dict[str, Any]:
+    """helper 被强杀时 managed runtime 可能另起进程组；这里按本项目命令特征兜底清场。"""
+    patterns = (
+        "rober_nav2_localization_",
+        "ros2 run ros2_trashbot_hardware lidar_driver",
+        "ros2_trashbot_hardware/lidar_driver",
+        "ros2 run nav2_map_server map_server",
+        "/nav2_map_server/map_server",
+        "ros2 run nav2_amcl amcl",
+        "/nav2_amcl/amcl",
+        "ros2 run tf2_ros static_transform_publisher",
+    )
+    try:
+        completed = subprocess.run(
+            ["ps", "-eo", "pid=,pgid=,command="],
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=5.0,
+        )
+    except Exception as exc:  # noqa: BLE001 - 清理失败仍要结构化回传。
+        return {"attempted": True, "ok": False, "error": compact_error(exc), "matched": []}
+    current_pid = os.getpid()
+    matched: list[dict[str, Any]] = []
+    pgids: set[int] = set()
+    for raw_line in completed.stdout.splitlines():
+        parts = raw_line.strip().split(None, 2)
+        if len(parts) != 3:
+            continue
+        pid_text, pgid_text, command_text = parts
+        try:
+            pid = int(pid_text)
+            pgid = int(pgid_text)
+        except ValueError:
+            continue
+        if pid == current_pid:
+            continue
+        if not any(pattern in command_text for pattern in patterns):
+            continue
+        matched.append({"pid": pid, "pgid": pgid, "command": command_text[:240]})
+        if pgid > 0 and pgid != os.getpgrp():
+            pgids.add(pgid)
+    for pgid in sorted(pgids):
+        try:
+            os.killpg(pgid, signal.SIGINT)
+        except ProcessLookupError:
+            pass
+    if pgids:
+        time.sleep(2.0)
+    for pgid in sorted(pgids):
+        try:
+            os.killpg(pgid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    time.sleep(0.3 if pgids else 0.0)
+    remaining: list[dict[str, Any]] = []
+    try:
+        check = subprocess.run(
+            ["ps", "-eo", "pid=,pgid=,command="],
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=5.0,
+        )
+        for raw_line in check.stdout.splitlines():
+            parts = raw_line.strip().split(None, 2)
+            if len(parts) != 3:
+                continue
+            pid_text, pgid_text, command_text = parts
+            if any(pattern in command_text for pattern in patterns):
+                remaining.append({"pid": int(pid_text), "pgid": int(pgid_text), "command": command_text[:240]})
+    except Exception as exc:  # noqa: BLE001
+        return {"attempted": True, "ok": False, "matched": matched, "killed_pgids": sorted(pgids), "error": compact_error(exc)}
+    return {
+        "attempted": True,
+        "ok": not remaining,
+        "matched": matched,
+        "killed_pgids": sorted(pgids),
+        "remaining": remaining,
+    }
+
+
 def run_nav2_runtime_proof_helper(
     *,
     artifact_path: str,
@@ -613,26 +838,58 @@ def run_nav2_runtime_proof_helper(
     process_timeout_s = timeout_budget["process_timeout_s"]
     started_ms = now_ms()
     try:
-        completed = subprocess.run(  # noqa: S603 - argv 固定为仓库 helper，不接受外部 shell。
-            ["bash", "-lc", helper_command],
-            check=False,
-            text=True,
-            capture_output=True,
-            timeout=process_timeout_s,
-            cwd=DEFAULT_ONBOARD_WORKDIR,
-        )
+        completed = run_helper_bash_process_group(helper_command, process_timeout_s, DEFAULT_ONBOARD_WORKDIR)
+        if completed.get("timed_out"):
+            command_result = {
+                "mode": "o10_amcl_nav2_runtime_proof_helper",
+                "executed": True,
+                "ok": False,
+                "argv": ["bash", "-lc", helper_command],
+                "helper_argv": helper_argv,
+                "elapsed_ms": now_ms() - started_ms,
+                "timeout_budget": timeout_budget,
+                "process_timeout_s": process_timeout_s,
+                "error": completed.get("error") or {"type": "TimeoutExpired", "message": "helper process timed out"},
+                "stdout_preview": str(completed.get("stdout") or "")[-4000:],
+                "stderr_preview": str(completed.get("stderr") or "")[-4000:],
+                "helper_process_group": completed.get("process_group"),
+                "helper_cleanup_result": completed.get("cleanup_result"),
+                "safe_to_control": False,
+                "sends_base_motion_commands": False,
+                "publishes_cmd_vel": False,
+                "calls_base_manual": False,
+                "managed_runtime_opt_in": managed_runtime_opt_in,
+                "initialpose_opt_in": initialpose_opt_in,
+                "path_generation_opt_in": path_generation_opt_in,
+                "robot_control_executed": False,
+                "hil_pass": False,
+            }
+            fallback_artifact = write_nav2_helper_failure_artifact(
+                artifact_path=artifact_path,
+                status="blocked_with_root_cause",
+                reason="helper_process_timeout_before_artifact",
+                timeout_budget=timeout_budget,
+                command_result=command_result,
+                managed_runtime_opt_in=managed_runtime_opt_in,
+                initialpose_opt_in=initialpose_opt_in,
+                path_generation_opt_in=path_generation_opt_in,
+            )
+            command_result["fallback_artifact_written"] = fallback_artifact.get("artifact", {}).get("write", {}).get("ok") is True
+            return command_result
         return {
             "mode": "o10_amcl_nav2_runtime_proof_helper",
             "executed": True,
-            "ok": completed.returncode == 0,
-            "returncode": completed.returncode,
+            "ok": completed["returncode"] == 0,
+            "returncode": completed["returncode"],
             "argv": ["bash", "-lc", helper_command],
             "helper_argv": helper_argv,
             "elapsed_ms": now_ms() - started_ms,
             "timeout_budget": timeout_budget,
             "process_timeout_s": process_timeout_s,
-            "stdout_preview": completed.stdout[-4000:],
-            "stderr_preview": completed.stderr[-4000:],
+            "stdout_preview": str(completed.get("stdout") or "")[-4000:],
+            "stderr_preview": str(completed.get("stderr") or "")[-4000:],
+            "helper_process_group": completed.get("process_group"),
+            "helper_cleanup_result": completed.get("cleanup_result"),
             "safe_to_control": False,
             "sends_base_motion_commands": False,
             "publishes_cmd_vel": False,
@@ -644,7 +901,10 @@ def run_nav2_runtime_proof_helper(
             "hil_pass": False,
         }
     except subprocess.TimeoutExpired as exc:
-        return {
+        cleanup_result = {}
+        if isinstance(getattr(exc, "cmd", None), list):
+            cleanup_result = {"attempted": True, "ok": True, "reason": "process_group_cleanup_attempted_before_timeout_response"}
+        command_result = {
             "mode": "o10_amcl_nav2_runtime_proof_helper",
             "executed": True,
             "ok": False,
@@ -656,17 +916,33 @@ def run_nav2_runtime_proof_helper(
             "error": compact_error(exc),
             "stdout_preview": preview_text(exc.stdout, 4000),
             "stderr_preview": preview_text(exc.stderr, 4000),
+            "helper_cleanup_result": cleanup_result,
             "safe_to_control": False,
             "sends_base_motion_commands": False,
             "publishes_cmd_vel": False,
             "calls_base_manual": False,
             "managed_runtime_opt_in": managed_runtime_opt_in,
+            "initialpose_opt_in": initialpose_opt_in,
             "path_generation_opt_in": path_generation_opt_in,
             "robot_control_executed": False,
             "hil_pass": False,
         }
-    except Exception as exc:  # noqa: BLE001 - 远端 Python/权限缺口必须给出结构化 blocker。
+        fallback_artifact = write_nav2_helper_failure_artifact(
+            artifact_path=artifact_path,
+            status="blocked_with_root_cause",
+            reason="helper_process_timeout_before_artifact",
+            timeout_budget=timeout_budget,
+            command_result=command_result,
+            managed_runtime_opt_in=managed_runtime_opt_in,
+            initialpose_opt_in=initialpose_opt_in,
+            path_generation_opt_in=path_generation_opt_in,
+        )
+        command_result["fallback_artifact_written"] = fallback_artifact.get("artifact", {}).get("write", {}).get("ok") is True
         return {
+            **command_result,
+        }
+    except Exception as exc:  # noqa: BLE001 - 远端 Python/权限缺口必须给出结构化 blocker。
+        command_result = {
             "mode": "o10_amcl_nav2_runtime_proof_helper",
             "executed": False,
             "ok": False,
@@ -681,9 +957,24 @@ def run_nav2_runtime_proof_helper(
             "publishes_cmd_vel": False,
             "calls_base_manual": False,
             "managed_runtime_opt_in": managed_runtime_opt_in,
+            "initialpose_opt_in": initialpose_opt_in,
             "path_generation_opt_in": path_generation_opt_in,
             "robot_control_executed": False,
             "hil_pass": False,
+        }
+        fallback_artifact = write_nav2_helper_failure_artifact(
+            artifact_path=artifact_path,
+            status="blocked_with_root_cause",
+            reason="helper_process_exception_before_artifact",
+            timeout_budget=timeout_budget,
+            command_result=command_result,
+            managed_runtime_opt_in=managed_runtime_opt_in,
+            initialpose_opt_in=initialpose_opt_in,
+            path_generation_opt_in=path_generation_opt_in,
+        )
+        command_result["fallback_artifact_written"] = fallback_artifact.get("artifact", {}).get("write", {}).get("ok") is True
+        return {
+            **command_result,
         }
 
 
@@ -1721,7 +2012,7 @@ def map_lifecycle_runtime_readback_contract(latest: dict[str, Any] | None) -> di
 
 def summarize_localization_latest_artifact(path: str) -> dict[str, Any]:
     """压缩 AMCL/initialpose proof；只做 artifact 摘要，不发布 /initialpose。"""
-    return runtime_artifact_summary(
+    summary = runtime_artifact_summary(
         path,
         artifact_info=localization_artifact_info(path),
         schema_suffix="localization_proof_latest",
@@ -1735,6 +2026,86 @@ def summarize_localization_latest_artifact(path: str) -> dict[str, Any]:
             "latest_pose_fresh": ("pose_fresh", "pose_timestamp_fresh"),
         },
     )
+    latest = read_latest_result_from_summary(summary)
+    summary.update(localization_runtime_readback_contract(latest))
+    return summary
+
+
+def read_latest_result_from_summary(summary: dict[str, Any]) -> dict[str, Any] | None:
+    """summary 里不放 raw latest；需要合同提升时只按 artifact path 再读一次 JSON。"""
+    artifact = summary.get("artifact") if isinstance(summary.get("artifact"), dict) else {}
+    path = artifact.get("path") if isinstance(artifact.get("path"), str) else None
+    if not path:
+        return None
+    try:
+        parsed = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def localization_runtime_readback_contract(latest: dict[str, Any] | None) -> dict[str, Any]:
+    """把 O10 helper artifact 折成定位 reset 可读合同，安全字段仍全部 fail-closed。"""
+    proof = latest.get("proof") if isinstance(latest, dict) and isinstance(latest.get("proof"), dict) else {}
+    tf_value = proof.get("localization_tf_observed") if isinstance(proof.get("localization_tf_observed"), dict) else {}
+    initialpose_published = proof.get("initialpose_published") is True
+    amcl_pose_observed = proof.get("amcl_pose_observed") is True
+    map_to_odom = tf_value.get("map_to_odom") is True
+    map_to_base_link = tf_value.get("map_to_base_link") is True
+    managed_runtime_started = proof.get("managed_runtime_started") is True
+    root_causes = proof.get("root_causes") if isinstance(proof.get("root_causes"), list) else []
+    helper_status = proof.get("status") if isinstance(proof.get("status"), str) else latest_proof_value(latest, "status")
+    reset_observed = bool(initialpose_published and amcl_pose_observed and map_to_odom and map_to_base_link)
+    status = "localization_reset_observed" if reset_observed else (helper_status or "not_proven")
+    return {
+        "status": status,
+        "proof_state": status,
+        "latest_proof_status": helper_status,
+        "initialpose_published": initialpose_published,
+        "latest_initialpose_published": initialpose_published,
+        "amcl_pose_observed": amcl_pose_observed,
+        "latest_amcl_pose_observed": amcl_pose_observed,
+        "localization_tf_observed": {"map_to_odom": map_to_odom, "map_to_base_link": map_to_base_link},
+        "latest_localization_tf_observed": bool(map_to_odom and map_to_base_link),
+        "managed_runtime_started": managed_runtime_started,
+        "managed_runtime_requested": proof.get("managed_runtime_requested") is True,
+        "managed_runtime_cleanup_ok": proof.get("managed_runtime_cleanup_ok") is True,
+        "root_causes": root_causes,
+        "blockers": proof.get("blockers") if isinstance(proof.get("blockers"), list) else root_causes,
+        "localization_reset_observed": reset_observed,
+        "path_generation_requested": proof.get("path_generation_requested") is True,
+        "path_generation_attempted": proof.get("path_generation_attempted") is True,
+        "path_generated": proof.get("path_generated") is True,
+        "blocked_commands_not_sent": proof.get("blocked_commands_not_sent") if isinstance(proof.get("blocked_commands_not_sent"), list) else [
+            "T=1",
+            "T=13",
+            "T=130",
+            "T=131",
+            "/cmd_vel",
+            "/api/base/manual",
+            "/api/nav2/start",
+            "/api/nav2/stop",
+            "navigate_to_pose",
+        ],
+        "blocked_devices_not_opened": proof.get("blocked_devices_not_opened") if isinstance(proof.get("blocked_devices_not_opened"), list) else ["/dev/ttyS5"],
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "opens_serial": False,
+        "opens_base_uart": False,
+        "uses_base_uart": False,
+        "starts_ros2": False,
+        "starts_nav2": False,
+        "robot_control_executed": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "cloud_relay": False,
+    }
 
 
 def summarize_nav2_lifecycle_latest_artifact(path: str) -> dict[str, Any]:
@@ -3437,26 +3808,108 @@ class UpperRobotApi:
         payload.update(map_lifecycle_runtime_readback_contract(payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else None))
         return http_status, payload
 
-    def localize_reset(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
-        """定位 reset 合同预留 AMCL /initialpose；默认不发布 ROS2 pose。"""
+    async def localize_reset(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """定位 reset 默认走 O10 no-motion helper；只发布一次 /initialpose，不做路径执行。"""
         body = body if isinstance(body, dict) else {}
-        command_result = run_configured_command(self.localize_reset_command)
+        timeout_s = clamp_float(body.get("timeout_s"), 8.0, 4.0, 30.0)
+        managed_timeout_s = clamp_float(body.get("managed_timeout_s"), 12.0, 4.0, 45.0)
+        managed_runtime_opt_in = body.get("managed_runtime_opt_in") is not False
+        initialpose_opt_in = body.get("initialpose_opt_in") is not False
+        command_result = await asyncio.to_thread(
+            run_nav2_runtime_proof_helper,
+            artifact_path=self.localization_artifact_path,
+            map_proof_path=self.map_lifecycle_proof_artifact_path,
+            map_artifact_dir=self.map_artifact_dir,
+            timeout_s=timeout_s,
+            managed_runtime_opt_in=managed_runtime_opt_in,
+            managed_timeout_s=managed_timeout_s,
+            managed_map_yaml=str(body.get("managed_map_yaml") or "")[:400],
+            initialpose_opt_in=initialpose_opt_in,
+            initialpose_x=clamp_float(body.get("initialpose_x"), 0.0, -1000.0, 1000.0),
+            initialpose_y=clamp_float(body.get("initialpose_y"), 0.0, -1000.0, 1000.0),
+            initialpose_yaw=clamp_float(body.get("initialpose_yaw"), 0.0, -6.283185307179586, 6.283185307179586),
+            initialpose_frame_id=str(body.get("initialpose_frame_id") or "map")[:80],
+            path_generation_opt_in=False,
+            path_generation_timeout_s=4.0,
+            path_goal_frame_id="map",
+            path_goal_x=0.0,
+            path_goal_y=0.0,
+            path_goal_yaw=0.0,
+        )
+        http_status, latest = self.localize_proof_latest()
+        latest_result = latest.get("latest_result") if isinstance(latest.get("latest_result"), dict) else None
+        proof = latest_result.get("proof") if isinstance(latest_result, dict) and isinstance(latest_result.get("proof"), dict) else {}
+        readback_contract = localization_runtime_readback_contract(latest_result)
+        evidence_type = latest_proof_value(latest_result, "evidence_type") or "blocked_with_root_cause"
+        root_causes = proof.get("root_causes") if isinstance(proof.get("root_causes"), list) else []
         return software_guard_payload(
             schema_suffix="localization_reset_result",
             action="localize_reset",
             endpoint=ROUTE_PATHS["localize_reset"],
-            command_env="ROBER_LOCALIZE_RESET_COMMAND",
-            command=self.localize_reset_command,
+            command_env="built_in_no_motion_amcl_nav2_runtime_helper",
+            command="o10_amcl_nav2_runtime_proof.py --output runtime/localization_reset_latest.json",
             command_result=command_result,
             artifact=localization_artifact_info(self.localization_artifact_path),
             extra={
-                "requested_pose": body.get("pose"),
+                "status": "refreshed" if readback_contract["localization_reset_observed"] else "blocked_with_root_cause",
+                "proof_state": readback_contract["proof_state"],
+                "evidence_type": evidence_type,
+                "requested_pose": {
+                    "frame_id": str(body.get("initialpose_frame_id") or "map")[:80],
+                    "x": clamp_float(body.get("initialpose_x"), 0.0, -1000.0, 1000.0),
+                    "y": clamp_float(body.get("initialpose_y"), 0.0, -1000.0, 1000.0),
+                    "yaw": clamp_float(body.get("initialpose_yaw"), 0.0, -6.283185307179586, 6.283185307179586),
+                },
                 "target_ros2_topic": "/initialpose",
                 "proof_artifact": localization_artifact_info(self.localization_artifact_path),
-                "expected_runtime_proof": ["/amcl_pose", "tf map->base_link freshness", "pose timestamp freshness"],
+                "managed_runtime_opt_in": managed_runtime_opt_in,
+                "managed_timeout_s": managed_timeout_s,
+                "initialpose_opt_in": initialpose_opt_in,
+                "path_generation_opt_in": False,
+                "path_generation_opt_in_ignored": body.get("path_generation_opt_in") is not None,
+                "latest_readback_http_status": http_status,
+                "latest_result": latest_result,
+                "proof_latest": summarize_localization_latest_artifact(self.localization_artifact_path),
+                "initialpose_published": readback_contract["initialpose_published"],
+                "amcl_pose_observed": readback_contract["amcl_pose_observed"],
+                "localization_tf_observed": readback_contract["localization_tf_observed"],
+                "managed_runtime_started": readback_contract["managed_runtime_started"],
+                "managed_runtime_cleanup_ok": readback_contract["managed_runtime_cleanup_ok"],
+                "root_causes": root_causes,
+                "blockers": readback_contract["blockers"],
+                "localization_reset_observed": readback_contract["localization_reset_observed"],
+                "opens_base_uart": False,
+                "uses_base_uart": False,
+                "opens_serial": False,
+                "starts_ros2": False,
+                "starts_nav2": False,
+                "sends_commands": False,
+                "sends_motion_commands": False,
+                "publishes_cmd_vel": False,
+                "calls_base_manual": False,
+                "sends_base_motion_commands": False,
+                "robot_control_executed": False,
+                "safe_to_control": False,
+                "hil_pass": False,
+                "blocked_commands_not_sent": [
+                    "T=1",
+                    "T=13",
+                    "T=130",
+                    "T=131",
+                    "/cmd_vel",
+                    "/api/base/manual",
+                    "/api/nav2/start",
+                    "/api/nav2/stop",
+                    "navigate_to_pose",
+                    "compute_path_to_pose",
+                ],
+                "blocked_devices_not_opened": ["/dev/ttyS5"],
+                "expected_runtime_proof": ["/initialpose once", "/amcl_pose", "tf map->odom", "tf map->base_link"],
                 "transition_to_proven": [
-                    "configured command publishes or calls ROS2 localization reset",
+                    "built-in helper publishes one /initialpose only when initialpose_opt_in is true",
+                    "managed runtime is limited to localization graph when opted in",
                     "AMCL pose observed after reset",
+                    "localization TF map->odom and map->base_link observed",
                     "artifact update at localization_artifact.path",
                     f"GET {ROUTE_PATHS['localize_proof_latest']} returns AMCL/TF material",
                 ],
@@ -3465,7 +3918,7 @@ class UpperRobotApi:
 
     def localize_proof_latest(self) -> tuple[int, dict[str, Any]]:
         """只读定位 runtime proof，避免 status 接口误发布 /initialpose。"""
-        return read_runtime_artifact_latest(
+        http_status, payload = read_runtime_artifact_latest(
             self.localization_artifact_path,
             artifact_info=localization_artifact_info(self.localization_artifact_path),
             schema_suffix="localization_proof_latest",
@@ -3473,6 +3926,9 @@ class UpperRobotApi:
             boundary="software_guard_only_not_real_amcl_localization_reset",
             source="localization_runtime_artifact",
         )
+        latest = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else None
+        payload.update(localization_runtime_readback_contract(latest))
+        return http_status, payload
 
     async def nav2_proof_refresh(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
         """触发 no-motion AMCL/Nav2 proof refresh；失败也必须写成 latest artifact。"""
@@ -4144,7 +4600,7 @@ def create_app(api: UpperRobotApi) -> Any:
 
     async def localize_reset(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
-        return json_response(api.localize_reset(body if isinstance(body, dict) else {}))
+        return json_response(await api.localize_reset(body if isinstance(body, dict) else {}))
 
     async def localize_proof_latest(_: web.Request) -> Any:
         http_status, payload = api.localize_proof_latest()

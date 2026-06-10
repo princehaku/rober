@@ -419,6 +419,82 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["base_uart_touched"])
         self.assertFalse(payload["safe_to_control"])
 
+    def test_localize_reset_uses_builtin_no_motion_helper_defaults(self) -> None:
+        """定位 reset 默认调用 O10 helper 写 localization artifact，且禁止路径/运动。"""
+        clean_artifact = {
+            "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+            "status": "nav2_no_motion_localization_runtime_observed",
+            "evidence_type": "robot_runtime_material",
+            "proof": {
+                "status": "nav2_no_motion_localization_runtime_observed",
+                "evidence_type": "robot_runtime_material",
+                "initialpose_published": True,
+                "amcl_pose_observed": True,
+                "localization_tf_observed": {"map_to_odom": True, "map_to_base_link": True},
+                "managed_runtime_requested": True,
+                "managed_runtime_started": True,
+                "managed_runtime_cleanup_ok": True,
+                "path_generation_requested": False,
+                "path_generation_attempted": False,
+                "path_generated": False,
+                "root_causes": [],
+                "blocked_commands_not_sent": ["/cmd_vel", "/api/base/manual", "/api/nav2/start", "/api/nav2/stop"],
+                "blocked_devices_not_opened": ["/dev/ttyS5"],
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            localization_path = Path(temp_dir) / "localization_reset_latest.json"
+            localization_path.write_text(json.dumps(clean_artifact), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                localization_artifact_path=str(localization_path),
+                map_lifecycle_proof_artifact_path=str(Path(temp_dir) / "map_lifecycle_latest.json"),
+                map_artifact_dir=str(Path(temp_dir) / "maps"),
+            )
+
+            with mock.patch.object(
+                upper_robot_api,
+                "run_nav2_runtime_proof_helper",
+                return_value={"mode": "o10_amcl_nav2_runtime_proof_helper", "executed": True, "ok": True},
+            ) as helper_mock:
+                payload = asyncio.run(api.localize_reset({}))
+            http_status, latest = api.localize_proof_latest()
+
+        helper_mock.assert_called_once()
+        helper_kwargs = helper_mock.call_args.kwargs
+        self.assertEqual(str(localization_path), helper_kwargs["artifact_path"])
+        self.assertEqual(8.0, helper_kwargs["timeout_s"])
+        self.assertTrue(helper_kwargs["managed_runtime_opt_in"])
+        self.assertEqual(12.0, helper_kwargs["managed_timeout_s"])
+        self.assertTrue(helper_kwargs["initialpose_opt_in"])
+        self.assertEqual("map", helper_kwargs["initialpose_frame_id"])
+        self.assertFalse(helper_kwargs["path_generation_opt_in"])
+        self.assertEqual("refreshed", payload["status"])
+        self.assertEqual("localization_reset_observed", payload["proof_state"])
+        self.assertTrue(payload["initialpose_published"])
+        self.assertTrue(payload["amcl_pose_observed"])
+        self.assertTrue(payload["localization_tf_observed"]["map_to_odom"])
+        self.assertTrue(payload["localization_tf_observed"]["map_to_base_link"])
+        self.assertTrue(payload["managed_runtime_started"])
+        self.assertFalse(payload["path_generation_opt_in"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["sends_motion_commands"])
+        self.assertFalse(payload["publishes_cmd_vel"])
+        self.assertFalse(payload["calls_base_manual"])
+        self.assertFalse(payload["uses_base_uart"])
+        self.assertIn("/dev/ttyS5", payload["blocked_devices_not_opened"])
+        self.assertIn("/cmd_vel", payload["blocked_commands_not_sent"])
+        self.assertIn("/api/nav2/start", payload["blocked_commands_not_sent"])
+        self.assertEqual(200, http_status)
+        self.assertEqual("localization_reset_observed", latest["status"])
+        self.assertTrue(latest["initialpose_published"])
+        self.assertTrue(latest["amcl_pose_observed"])
+        self.assertTrue(latest["latest_localization_tf_observed"])
+        self.assertFalse(latest["safe_to_control"])
+
 
 if __name__ == "__main__":
     unittest.main()

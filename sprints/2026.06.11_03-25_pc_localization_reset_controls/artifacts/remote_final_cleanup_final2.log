@@ -1,0 +1,7 @@
+## final2 cleanup
+Thu Jun 11 03:40:04 AM CST 2026
+active
+processes
+201258 zsh -c set +e; echo "## final2 cleanup"; date; systemctl is-active trashbot-upper-robot-api.service; echo processes; pgrep -af "o10_amcl_nav2_runtime_proof|lidar_driver|map_server|amcl|planner_server" || true; echo devices; lsof /dev/ttyS5 /dev/ttyACM0 2>&1 || true; echo fuser; fuser -v /dev/ttyS5 /dev/ttyACM0 2>&1 || true
+devices
+fuser
