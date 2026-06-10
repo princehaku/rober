@@ -1,0 +1,32 @@
+{
+  "advancedHasDeliveryClaim": true,
+  "advancedHasExternalVideo": true,
+  "advancedHasHilMaterials": true,
+  "advancedHasReportStatus": true,
+  "advancedHasSiteState": true,
+  "advancedHasStructuredSource": true,
+  "advancedHasWheelFeedback": true,
+  "advancedOpen": true,
+  "firstScreenActions": [
+    "连接/刷新",
+    "打开画面",
+    "关闭画面",
+    "刷新雷达",
+    "刷新地图",
+    "地图列表",
+    "检查路径",
+    "停止"
+  ],
+  "firstScreenCardCount": 5,
+  "firstScreenCardTitles": [
+    "小车连接",
+    "实时画面",
+    "雷达",
+    "地图",
+    "移动/导航"
+  ],
+  "firstScreenForbiddenMatches": [],
+  "screenshot_status": "browser_capture_timed_out_twice_iab_visibility_not_supported_in_subagent",
+  "title": "Rober 小车控制台",
+  "url": "http://127.0.0.1:5173/"
+}

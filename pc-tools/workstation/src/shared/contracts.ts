@@ -1989,6 +1989,21 @@ export interface RobotApiProofSummary {
   not_proven: string[];
 }
 
+export interface RobotControlOperatorHilMaterialSummary {
+  status: "not_loaded" | "missing" | "loaded";
+  source_endpoint_id: "operator_report_latest";
+  source_path: "operator_report_latest.structured_hil_claims";
+  report_status: string;
+  evidence_ref: string;
+  external_video: string;
+  camera_visible: string;
+  wheel_feedback: string;
+  lidar_delta: string;
+  route_map: string;
+  delivery_claim: string;
+  site_state: string;
+}
+
 export type RobotControlPreviewStatus =
   | "idle_not_started"
   | "starting_local_peer"
@@ -2040,6 +2055,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       feedback_ack_status: string;
     };
   };
+  operator_hil_material_summary: RobotControlOperatorHilMaterialSummary;
   safe_command_boundary: {
     manual_endpoint: "/api/base/manual";
     stop_endpoint: "/api/base/stop";

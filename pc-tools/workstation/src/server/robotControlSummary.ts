@@ -3,6 +3,7 @@ import type {
   RobotApiEndpointReadback,
   RobotApiProofSummary,
   RobotApiReadEndpointId,
+  RobotControlOperatorHilMaterialSummary,
   RobotControlMapLifecycleAction,
   RobotControlMapLifecycleEndpoint,
   RobotControlMapLifecycleRequest,
@@ -16,6 +17,9 @@ import type {
 } from "../shared/contracts";
 
 type JsonRecord = Record<string, unknown>;
+type InternalRobotApiEndpointReadback = RobotApiEndpointReadback & {
+  payload: JsonRecord | null;
+};
 
 const ROBOT_CONTROL_SCHEMA = "trashbot.pc_tools_workstation.robot_control_summary.v1" as const;
 const DEFAULT_REQUEST_TIMEOUT_MS = 1500;
@@ -221,6 +225,12 @@ const HARD_DANGEROUS_TRUE_FIELDS = new Set([
 ]);
 
 const DANGEROUS_TRUE_FIELDS = new Set([...HARD_DANGEROUS_TRUE_FIELDS, ...REFRESH_NON_MOTION_EVIDENCE_ACTION_FIELDS]);
+const NO_TRUE_FIELD_EXEMPTIONS = new Set<string>();
+const OPERATOR_REPORT_CLAIM_TRUE_FIELD_EXEMPTIONS = new Set([
+  "structured_hil_claims.delivery_success",
+  "latest_result.structured_hil_claims.delivery_success",
+  "latest_result.operator_report.structured_hil_claims.delivery_success",
+]);
 
 const STATUS_KEYS = [
   "safe_to_control",
@@ -304,19 +314,88 @@ export function endpointUrl(base: URL, endpoint: string): string {
   return next.toString();
 }
 
-export function scanDangerousTrueFields(value: unknown, path = "", fields: ReadonlySet<string> = DANGEROUS_TRUE_FIELDS): string[] {
+export function scanDangerousTrueFields(
+  value: unknown,
+  path = "",
+  fields: ReadonlySet<string> = DANGEROUS_TRUE_FIELDS,
+  exemptTruePaths: ReadonlySet<string> = NO_TRUE_FIELD_EXEMPTIONS,
+): string[] {
   // 任意层出现危险 true 字段都进入 blocked reason；PC 端仍固定不放开控制按钮。
   if (!value || typeof value !== "object") {
     return [];
   }
   if (Array.isArray(value)) {
-    return value.flatMap((item, index) => scanDangerousTrueFields(item, `${path}[${index}]`, fields));
+    return value.flatMap((item, index) => scanDangerousTrueFields(item, `${path}[${index}]`, fields, exemptTruePaths));
   }
   return Object.entries(value as JsonRecord).flatMap(([key, nested]) => {
     const currentPath = path ? `${path}.${key}` : key;
-    const current = fields.has(key) && nested === true ? [currentPath] : [];
-    return current.concat(scanDangerousTrueFields(nested, currentPath, fields));
+    // 默认不豁免任何危险字段；只有调用方确认是 operator report claim 时才传精确路径白名单。
+    const current = fields.has(key) && nested === true && !exemptTruePaths.has(currentPath) ? [currentPath] : [];
+    return current.concat(scanDangerousTrueFields(nested, currentPath, fields, exemptTruePaths));
   });
+}
+
+function notLoadedHilMaterialSummary(status: RobotControlOperatorHilMaterialSummary["status"]): RobotControlOperatorHilMaterialSummary {
+  // 摘要只用于高级诊断；默认值保持材料缺失，不外推 HIL、delivery 或 safe control。
+  return {
+    status,
+    source_endpoint_id: "operator_report_latest",
+    source_path: "operator_report_latest.structured_hil_claims",
+    report_status: "not_loaded",
+    evidence_ref: "not_loaded",
+    external_video: "not_loaded",
+    camera_visible: "not_loaded",
+    wheel_feedback: "not_loaded",
+    lidar_delta: "not_loaded",
+    route_map: "not_loaded",
+    delivery_claim: "not_loaded",
+    site_state: "not_loaded",
+  };
+}
+
+function boolText(value: unknown): string {
+  // claim 布尔值必须原样标成 true/false，不能提升成 proof/pass 文案。
+  return typeof value === "boolean" ? String(value) : "not_loaded";
+}
+
+function claimWithRef(claim: unknown, ref: unknown): string {
+  // 每个现场材料都带引用，便于 operator 追溯原始视频、日志或地图产物。
+  const refText = asString(ref, "not_loaded");
+  return `${boolText(claim)}; ref=${refText}`;
+}
+
+function buildOperatorHilMaterialSummary(
+  readbacks: InternalRobotApiEndpointReadback[],
+): RobotControlOperatorHilMaterialSummary {
+  // 只消费 /api/operator/report 的 structured_hil_claims，不从其它 readback 猜 HIL 状态。
+  const operatorReadback = readbacks.find((item) => item.id === "operator_report_latest");
+  const payload = operatorReadback?.payload ?? null;
+  if (!payload) {
+    return notLoadedHilMaterialSummary("not_loaded");
+  }
+  const claims = asRecord(payload.structured_hil_claims) ?? asRecord(findFirstKey(payload, ["structured_hil_claims"]));
+  const reportStatus = asString(findFirstKey(payload, ["operator_report_status"]) ?? findFirstKey(payload, ["status"]), "not_loaded");
+  if (!claims) {
+    return {
+      ...notLoadedHilMaterialSummary("missing"),
+      report_status: reportStatus,
+      evidence_ref: asString(findFirstKey(payload, ["evidence_ref", "latest_evidence_ref"]), "not_loaded"),
+    };
+  }
+  return {
+    status: "loaded",
+    source_endpoint_id: "operator_report_latest",
+    source_path: "operator_report_latest.structured_hil_claims",
+    report_status: reportStatus,
+    evidence_ref: asString(findFirstKey(payload, ["evidence_ref", "latest_evidence_ref"]), "not_loaded"),
+    external_video: claimWithRef(claims.external_video_recorded, claims.external_video_ref),
+    camera_visible: claimWithRef(claims.visible_content_proven, claims.camera_artifacts_ref),
+    wheel_feedback: claimWithRef(claims.wheel_feedback_lr_nonzero_proven, claims.wheel_feedback_ref),
+    lidar_delta: claimWithRef(claims.physical_motion_lidar_delta_proven, claims.scan_delta_ref),
+    route_map: claimWithRef(claims.real_route_map_proven, claims.route_map_ref),
+    delivery_claim: boolText(claims.delivery_success),
+    site_state: asString(claims.site_state, "not_loaded"),
+  };
 }
 
 function findFirstKey(value: unknown, keys: string[], depth = 0): unknown {
@@ -754,7 +833,7 @@ export async function buildMapLifecycleProxy(
   };
 }
 
-async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise<RobotApiEndpointReadback> {
+async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise<InternalRobotApiEndpointReadback> {
   // 每条读请求都按白名单 endpoint 带独立超时；慢端点允许更宽窗口，但范围仍局限在只读 GET。
   const { id, endpoint, timeout_ms } = config;
   const url = endpointUrl(base, endpoint);
@@ -782,6 +861,7 @@ async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise
       key_values: {},
       blocked_reasons: [timeoutReason],
       dangerous_true_fields: [],
+      payload: null,
     };
   }
 
@@ -800,6 +880,7 @@ async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise
       key_values: {},
       blocked_reasons: ["response_json_parse_failed"],
       dangerous_true_fields: [],
+      payload: null,
     };
   }
 
@@ -816,10 +897,16 @@ async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise
       key_values: {},
       blocked_reasons: ["response_json_not_object"],
       dangerous_true_fields: [],
+      payload: null,
     };
   }
 
-  const dangerous = scanDangerousTrueFields(payload, "", DANGEROUS_TRUE_FIELDS);
+  const dangerous = scanDangerousTrueFields(
+    payload,
+    "",
+    DANGEROUS_TRUE_FIELDS,
+    id === "operator_report_latest" ? OPERATOR_REPORT_CLAIM_TRUE_FIELD_EXEMPTIONS : NO_TRUE_FIELD_EXEMPTIONS,
+  );
   const status = asString(findFirstKey(payload, ["status", "latest_proof_status", "state"]), response.ok ? "loaded" : "blocked");
   return {
     id,
@@ -835,6 +922,7 @@ async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise
       ...dangerous.map((field) => `dangerous_true_field:${field}`),
     ],
     dangerous_true_fields: dangerous,
+    payload,
   };
 }
 
@@ -1215,6 +1303,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       lidar: { status: "not_loaded", latest_scan_proof_status: "not_loaded", latest_raw_packet_proof_status: "not_loaded" },
       base: { status: "not_loaded", latest_feedback_status: "not_loaded", feedback_ack_status: "not_loaded" },
     },
+    operator_hil_material_summary: notLoadedHilMaterialSummary("not_loaded"),
     safe_command_boundary: lockedBoundary(),
     blocked_reasons: [reason],
     not_proven: ["robot_api_readback", "O7", "path_generated", "delivery_success"],
@@ -1260,6 +1349,19 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
   const readbacks = await Promise.all(
     READ_ENDPOINTS.map((item) => readEndpoint(normalized.normalized, item)),
   );
+  const readEndpoints: RobotApiEndpointReadback[] = readbacks.map((item) => ({
+    // summary 对外只暴露压缩 readback；完整 payload 只在本函数内用于现场材料摘要。
+    id: item.id,
+    endpoint: item.endpoint,
+    http_status: item.http_status,
+    request_status: item.request_status,
+    schema: item.schema,
+    status: item.status,
+    evidence_ref: item.evidence_ref,
+    key_values: item.key_values,
+    blocked_reasons: item.blocked_reasons,
+    dangerous_true_fields: item.dangerous_true_fields,
+  }));
   const dangerous = readbacks.flatMap((item) => item.dangerous_true_fields.map((field) => `${item.id}.${field}`));
   const loadedCount = readbacks.filter((item) => item.request_status === "loaded").length;
   const failedCount = readbacks.filter((item) => item.request_status === "fetch_failed" || item.request_status === "bad_json" || item.request_status === "not_object").length;
@@ -1285,7 +1387,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
       unsafe_urls_rejected: true,
     },
     observed_at_ms: observedAt,
-    read_endpoints: readbacks,
+    read_endpoints: readEndpoints,
     o3_proof_summary: buildProofSummary(readbacks),
     robot_api_connection: {
       status: dangerous.length || blockedCount > 0 ? "blocked" : failedCount > 0 ? "degraded" : "readable",
@@ -1314,6 +1416,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
         feedback_ack_status: pickReadback(readbacks, "base_status")?.key_values.feedback_ack_status ?? "not_loaded",
       },
     },
+    operator_hil_material_summary: buildOperatorHilMaterialSummary(readbacks),
     safe_command_boundary: lockedBoundary(),
     blocked_reasons: blockedReasons.length ? blockedReasons : ["dangerous actions locked by V1 boundary"],
     not_proven: ["O7", "path_generated", "delivery_success", "safe_to_control_true", "real_robot_ack"],

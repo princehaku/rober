@@ -3667,6 +3667,118 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary treats structured HIL delivery as operator material only", async () => {
+    // /api/operator/report 的 structured_hil_claims 是人工材料索引，不得把 delivery_success claim 当成顶层成功。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "ready",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/operator/report": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.operator_report",
+          status: "loaded",
+          evidence_ref: "field-hil-20260611-0605-op",
+          operator_report_material_only: true,
+          safe_to_control: false,
+          hil_pass: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          structured_hil_claims: {
+            external_video_recorded: true,
+            external_video_ref: "phone-video-0605.mp4",
+            visible_content_proven: true,
+            camera_artifacts_ref: "runtime/camera/latest_metrics.json",
+            wheel_feedback_lr_nonzero_proven: true,
+            wheel_feedback_ref: "runtime/wave_rover_feedback_debug.jsonl",
+            physical_motion_lidar_delta_proven: false,
+            scan_delta_ref: "runtime/scan_delta/latest_metrics.json",
+            real_route_map_proven: true,
+            route_map_ref: "runtime/routes/field-route.csv",
+            delivery_success: true,
+            site_state: "field_operator_claim_ready_for_review",
+          },
+          latest_result: {
+            status: "loaded",
+            operator_report_status: "ready_for_execution",
+            structured_hil_claims: {
+              delivery_success: true,
+            },
+            operator_report: {
+              structured_hil_claims: {
+                delivery_success: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+      const operatorReadback = summary.read_endpoints.find((item) => item.id === "operator_report_latest");
+
+      expect(operatorReadback?.request_status).toBe("loaded");
+      expect(operatorReadback?.dangerous_true_fields).toEqual([]);
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("operator_report_latest.structured_hil_claims.delivery_success");
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("operator_report_latest.latest_result.operator_report.structured_hil_claims.delivery_success");
+      expect(summary.operator_hil_material_summary.status).toBe("loaded");
+      expect(summary.operator_hil_material_summary.report_status).toBe("ready_for_execution");
+      expect(summary.operator_hil_material_summary.evidence_ref).toBe("field-hil-20260611-0605-op");
+      expect(summary.operator_hil_material_summary.external_video).toBe("true; ref=phone-video-0605.mp4");
+      expect(summary.operator_hil_material_summary.wheel_feedback).toBe("true; ref=runtime/wave_rover_feedback_debug.jsonl");
+      expect(summary.operator_hil_material_summary.lidar_delta).toBe("false; ref=runtime/scan_delta/latest_metrics.json");
+      expect(summary.operator_hil_material_summary.delivery_claim).toBe("true");
+      expect(summary.safe_to_control).toBe(false);
+      expect(summary.delivery_success).toBe(false);
+      expect(summary.primary_actions_enabled).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
+  it("Robot Control summary still blocks forged structured HIL claims outside operator report", async () => {
+    // 只有 operator_report_latest 端点的结构化 delivery claim 旁路；其它 endpoint 伪造同名字段仍 hard block。
+    const robotApi = await listenRobotApiReadback({
+      schema: "trashbot.upper_robot_api.v1.status",
+      status: "unsafe_non_claim_success",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      structured_hil_claims: {
+        delivery_success: true,
+      },
+      review: {
+        delivery_success: true,
+      },
+      hil_pass: true,
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+
+      expect(summary.console_status).toBe("blocked");
+      expect(summary.robot_api_connection.dangerous_true_fields).toEqual(expect.arrayContaining([
+        "status.structured_hil_claims.delivery_success",
+        "status.review.delivery_success",
+        "status.hil_pass",
+      ]));
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("operator_report_latest.structured_hil_claims.delivery_success");
+      expect(summary.blocked_reasons).toEqual(expect.arrayContaining([
+        "dangerous_true_field:status.structured_hil_claims.delivery_success",
+        "dangerous_true_field:status.review.delivery_success",
+        "dangerous_true_field:status.hil_pass",
+      ]));
+      expect(summary.safe_to_control).toBe(false);
+      expect(summary.delivery_success).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary keeps slow status and camera endpoints readable with endpoint timeouts", async () => {
     // status/camera 在真实板端可能慢于 proof latest；只要仍在白名单窗口内，就不应被误记成 fetch_failed。
     const robotApi = await listenRobotApiReadbackByPath({

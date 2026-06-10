@@ -1231,6 +1231,34 @@ onBeforeUnmount(() => {
         </section>
 
         <section class="advanced-block">
+          <h3>现场 HIL 材料</h3>
+          <dl class="kv compact-kv">
+            <dt>status</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.status ?? "not_loaded" }}</dd>
+            <dt>report status</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.report_status ?? "not_loaded" }}</dd>
+            <dt>evidence_ref</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.evidence_ref ?? "not_loaded" }}</dd>
+            <dt>外部视频</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.external_video ?? "not_loaded" }}</dd>
+            <dt>相机可见</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.camera_visible ?? "not_loaded" }}</dd>
+            <dt>轮速反馈</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.wheel_feedback ?? "not_loaded" }}</dd>
+            <dt>LiDAR delta</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.lidar_delta ?? "not_loaded" }}</dd>
+            <dt>route/map</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.route_map ?? "not_loaded" }}</dd>
+            <dt>delivery claim</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.delivery_claim ?? "not_loaded" }}</dd>
+            <dt>site_state</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.site_state ?? "not_loaded" }}</dd>
+            <dt>source</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.source_path ?? "operator_report_latest.structured_hil_claims" }}</dd>
+          </dl>
+        </section>
+
+        <section class="advanced-block">
           <h3>现场点动设置 / 控制边界</h3>
           <p class="muted">{{ robotSummary?.safe_command_boundary.locked_reason ?? "locked by V1 boundary" }}</p>
           <div class="motion-pad">

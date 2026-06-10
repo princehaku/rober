@@ -369,6 +369,20 @@ const fixtures: Record<string, unknown> = {
         feedback_ack_status: "blocked_no_ack",
       },
     },
+    operator_hil_material_summary: {
+      status: "loaded",
+      source_endpoint_id: "operator_report_latest",
+      source_path: "operator_report_latest.structured_hil_claims",
+      report_status: "ready_for_review",
+      evidence_ref: "field-hil-20260611-0605-op",
+      external_video: "true; ref=phone-video-0605.mp4",
+      camera_visible: "true; ref=runtime/camera/latest_metrics.json",
+      wheel_feedback: "true; ref=runtime/wave_rover_feedback_debug.jsonl",
+      lidar_delta: "false; ref=runtime/scan_delta/latest_metrics.json",
+      route_map: "true; ref=runtime/routes/field-route.csv",
+      delivery_claim: "true",
+      site_state: "field_operator_claim_ready_for_review",
+    },
     safe_command_boundary: {
       manual_endpoint: "/api/base/manual",
       stop_endpoint: "/api/base/stop",
@@ -2880,8 +2894,12 @@ describe("App", () => {
       "左转",
       "右转",
       "HIL",
+      "structured_hil_claims",
       "现场确认",
       "低速短时点动",
+      "外部视频",
+      "轮速反馈",
+      "视频材料",
       "速度",
       "时长",
       "proof",
@@ -2891,6 +2909,7 @@ describe("App", () => {
       "status key",
       "safe_to_control",
       "delivery_success",
+      "safe_to_control",
       "/cmd_vel",
       "/api/base/manual",
       "/dev/ttyS5",
@@ -2921,6 +2940,11 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("safe_to_control=false");
     expect(wrapper.find("details").text()).toContain("delivery_success=false");
     expect(wrapper.find("details").text()).toContain("primary_actions_enabled=false");
+    expect(wrapper.find("details").text()).toContain("现场 HIL 材料");
+    expect(wrapper.find("details").text()).toContain("operator_report_latest.structured_hil_claims");
+    expect(wrapper.find("details").text()).toContain("phone-video-0605.mp4");
+    expect(wrapper.find("details").text()).toContain("轮速反馈");
+    expect(wrapper.find("details").text()).toContain("field_operator_claim_ready_for_review");
     expect(wrapper.find("details").text()).toContain("现场点动设置 / 控制边界");
     expect(wrapper.find("details").text()).toContain("Nav2 规划详情");
     expect(wrapper.find("details").text()).toContain("启动雷达（高级）");
