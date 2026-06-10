@@ -207,6 +207,20 @@ const manualMotionSummary = computed(() => {
   }
   return { state: "失败", hint: manualCommandResult.value.failure_reason || "请求被拒绝或上位机不可达。" };
 });
+const manualEvidenceSummary = computed(() => {
+  // 证据状态只用一句话给普通用户看；具体 endpoint 和 before/after 差异放进高级诊断。
+  const result = manualCommandResult.value;
+  if (!result) {
+    return "最近证据：还没有请求。";
+  }
+  if (result.evidence_capture_status === "captured") {
+    return "最近证据：已采集本次请求前后快照；这不是 HIL 通过。";
+  }
+  if (result.evidence_capture_status === "partial") {
+    return "最近证据：只拿到部分前后快照；请看高级诊断。";
+  }
+  return "最近证据：没有拿到前后快照；请看高级诊断。";
+});
 
 function listText(items: string[] | undefined, fallback = "none"): string {
   // blocked/not_proven 只展示少量摘要，完整定位应回到后端日志或 artifact。
@@ -232,6 +246,24 @@ function recordText(record: Record<string, string> | undefined): string {
   return JSON.stringify(record).slice(0, 260);
 }
 
+function evidenceEndpointText(items: RobotControlBaseCommandProxyResponse["evidence_capture_endpoints"] | undefined): string {
+  // 运动证据 endpoint 列表只展示固定 GET 摘要，证明它不是任意代理或 raw dump。
+  if (!items || items.length === 0) {
+    return "none";
+  }
+  return items
+    .map((item) => `${item.phase}:${item.endpoint}:${item.method}:${item.request_status}:${item.http_status ?? "n/a"}`)
+    .join(" | ");
+}
+
+function evidenceReadbackText(readback: RobotControlBaseCommandProxyResponse["before_readback"] | undefined): string {
+  // before/after 只显示每个 endpoint 的短 key_values，足够排障且不会污染首页。
+  if (!readback || Object.keys(readback).length === 0) {
+    return "none";
+  }
+  return JSON.stringify(readback).slice(0, 520);
+}
+
 function timestampText(epochMs: number | null | undefined): string {
   // 刷新时间统一显示成 ISO 字符串，便于和上位机日志对齐。
   return typeof epochMs === "number" && Number.isFinite(epochMs) ? new Date(epochMs).toISOString() : "never";
@@ -245,6 +277,18 @@ function requestBodyForDirection(direction: "forward" | "back" | "left" | "right
     duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
     confirm_hil_checklist: hilChecklistConfirmed.value,
   } as const;
+}
+
+function commandEvidenceFallback(commandKind: "manual" | "stop", reason: string) {
+  // 浏览器层异常也必须补齐证据字段，避免错误态合同缺字段。
+  return {
+    evidence_capture_status: "blocked" as const,
+    evidence_capture_endpoints: [],
+    evidence_capture_blocked_reasons: [reason],
+    before_readback: {},
+    after_readback: {},
+    motion_evidence_summary: `${commandKind} command before/after fixed GET evidence snapshot blocked or unavailable; this is not HIL pass.`,
+  };
 }
 
 function makeRefreshFallback(
@@ -468,6 +512,7 @@ async function sendManualMotion(direction: "forward" | "back" | "left" | "right"
         max_duration_ms: manualDurationLimit.value,
         allowed_directions: manualBoundary.value?.allowed_directions ?? ["forward", "back", "left", "right", "stop"],
       },
+      ...commandEvidenceFallback("manual", err instanceof Error ? err.message : "manual_request_failed"),
       failure_reason: err instanceof Error ? err.message : "manual_request_failed",
       blocked_reasons: [err instanceof Error ? err.message : "manual_request_failed"],
     };
@@ -517,6 +562,7 @@ async function sendStop(): Promise<void> {
         max_duration_ms: manualDurationLimit.value,
         allowed_directions: manualBoundary.value?.allowed_directions ?? ["forward", "back", "left", "right", "stop"],
       },
+      ...commandEvidenceFallback("stop", err instanceof Error ? err.message : "stop_request_failed"),
       failure_reason: err instanceof Error ? err.message : "stop_request_failed",
       blocked_reasons: [err instanceof Error ? err.message : "stop_request_failed"],
     };
@@ -742,6 +788,7 @@ onBeforeUnmount(() => {
           </label>
         </div>
         <p class="panel-note">{{ manualMotionSummary.hint }}</p>
+        <p class="panel-note">{{ manualEvidenceSummary }}</p>
         <p class="panel-note">非 stop 方向必须勾完整 checklist；stop 可单独发送。</p>
       </article>
     </div>
@@ -947,6 +994,19 @@ onBeforeUnmount(() => {
               speed={{ manualCommandResult?.clamped_speed_mps ?? "n/a" }},
               duration={{ manualCommandResult?.clamped_duration_ms ?? "n/a" }}
             </dd>
+            <dt>evidence capture</dt>
+            <dd>
+              {{ manualCommandResult?.evidence_capture_status ?? "not_loaded" }} /
+              {{ manualCommandResult?.motion_evidence_summary ?? "none" }}
+            </dd>
+            <dt>evidence endpoints</dt>
+            <dd>{{ evidenceEndpointText(manualCommandResult?.evidence_capture_endpoints) }}</dd>
+            <dt>evidence blocked reasons</dt>
+            <dd>{{ listText(manualCommandResult?.evidence_capture_blocked_reasons, "none") }}</dd>
+            <dt>before readback</dt>
+            <dd>{{ evidenceReadbackText(manualCommandResult?.before_readback) }}</dd>
+            <dt>after readback</dt>
+            <dd>{{ evidenceReadbackText(manualCommandResult?.after_readback) }}</dd>
           </dl>
           <table class="preflight-table">
             <thead>

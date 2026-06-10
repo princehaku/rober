@@ -2721,6 +2721,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("受控点动（需现场确认）");
     expect(firstScreenText).toContain("自动导航（未开放）");
+    expect(firstScreenText).toContain("最近证据：还没有请求。");
     expect(firstScreenText).toContain("前进");
     expect(firstScreenText).toContain("停止");
     expect(firstScreenText).toContain("现场有人扶控并准备急停");

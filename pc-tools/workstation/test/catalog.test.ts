@@ -858,6 +858,65 @@ function listenRobotProofRefreshApi(
   });
 }
 
+function listenRobotBaseCommandApi(
+  postHandlers: Record<string, { payload: unknown; statusCode?: number }>,
+  getHandlers: Record<string, { payload: unknown; statusCode?: number }>,
+): Promise<{
+  baseUrl: string;
+  close: () => Promise<void>;
+  receivedBodies: Record<string, unknown[]>;
+  receivedGets: string[];
+}> {
+  // base command 代理测试同时需要固定 POST 和固定 GET-only 证据采集，不能用任意代理模拟。
+  const receivedBodies: Record<string, unknown[]> = {};
+  const receivedGets: string[] = [];
+  const server = http.createServer((req, res) => {
+    const url = req.url ?? "/";
+    if (req.method === "GET") {
+      receivedGets.push(url);
+      const handler = getHandlers[url];
+      res.statusCode = handler?.statusCode ?? (handler ? 200 : 404);
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(handler?.payload ?? { error: "not_found" }));
+      return;
+    }
+    const handler = postHandlers[url];
+    if (req.method !== "POST" || !handler) {
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+    req.on("end", () => {
+      if (!receivedBodies[url]) {
+        receivedBodies[url] = [];
+      }
+      receivedBodies[url].push(body ? JSON.parse(body) : {});
+      res.statusCode = handler.statusCode ?? 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(handler.payload));
+    });
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        receivedBodies,
+        receivedGets,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
 function listenCloudArchive(payload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
   // cloud archive probe 测试用本机 HTTP 服务，只返回给定 contract，不连接 relay、云或机器人。
   const server = http.createServer((req, res) => {
@@ -4065,6 +4124,76 @@ describe("workstation fail-closed API contracts", () => {
           confirm_hil_checklist: true,
         },
       ]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation base manual proxy captures fixed GET evidence around local checklist reject", async () => {
+    // 本地拒绝也要采集 before/after 证据快照；它只读固定 GET，不发送非零运动。
+    const upstream = await listenRobotBaseCommandApi(
+      {},
+      {
+        "/api/base/status": {
+          payload: {
+            schema: "trashbot.upper_robot_api.v1.base_status",
+            status: "base_ready",
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+          },
+        },
+        "/api/base/feedback-samples/latest": {
+          payload: {
+            schema: "trashbot.upper_robot_api.v1.base_feedback_samples_latest",
+            status: "feedback_ready",
+            feedback_ack_status: "ack_observed",
+            latest_t1001_observed_count: 2,
+          },
+        },
+        "/api/radar/status": {
+          payload: { schema: "trashbot.upper_robot_api.v1.radar_status", status: "radar_ready" },
+        },
+        "/api/radar/scan-proof/latest": {
+          payload: {
+            schema: "trashbot.upper_robot_api.v1.radar_scan_proof",
+            status: "scan_once_observed",
+            scan_once_observed: true,
+            tf_observed: true,
+          },
+        },
+      },
+    );
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ direction: "forward", speed: 0.08, duration_ms: 500, confirm_hil_checklist: false }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        evidence_capture_status: string;
+        evidence_capture_endpoints: Array<{ method: string; endpoint: string; phase: string; request_status: string }>;
+        before_readback: Record<string, { key_values: Record<string, string> }>;
+        after_readback: Record<string, { key_values: Record<string, string> }>;
+        motion_evidence_summary: string;
+        robot_control_executed: boolean;
+      };
+      expect(response.status).toBe(400);
+      expect(body.proxy_status).toBe("command_rejected");
+      expect(body.evidence_capture_status).toBe("captured");
+      expect(body.evidence_capture_endpoints).toHaveLength(8);
+      expect(body.evidence_capture_endpoints.every((endpoint) => endpoint.method === "GET")).toBe(true);
+      expect(body.before_readback.base_status?.key_values.status).toBe("base_ready");
+      expect(body.after_readback.base_feedback_samples_latest?.key_values.latest_t1001_observed_count).toBe("2");
+      expect(body.motion_evidence_summary).toContain("not HIL pass");
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+      expect(upstream.receivedGets.filter((endpoint) => endpoint === "/api/base/status")).toHaveLength(2);
     } finally {
       await workstation.close();
       await upstream.close();

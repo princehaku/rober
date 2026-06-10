@@ -44,6 +44,11 @@ import type {
   RobotControlCameraAnswerSummary,
   RobotControlCameraCloseProxyResponse,
   RobotControlCameraOfferProxyResponse,
+  RobotControlEvidenceCaptureEndpointId,
+  RobotControlEvidenceCapturePhase,
+  RobotControlEvidenceCaptureStatus,
+  RobotControlEvidenceEndpointCapture,
+  RobotControlEvidenceReadbackSummary,
 } from "../shared/contracts";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -128,6 +133,172 @@ const BASE_COMMAND_FAIL_CLOSED_FIELDS = new Set([
   "keyboard_control_enabled",
 ]);
 
+const BASE_COMMAND_EVIDENCE_ENDPOINTS: Array<{
+  id: RobotControlEvidenceCaptureEndpointId;
+  endpoint: RobotControlEvidenceEndpointCapture["endpoint"];
+}> = [
+  { id: "base_status", endpoint: "/api/base/status" },
+  { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest" },
+  { id: "radar_status", endpoint: "/api/radar/status" },
+  { id: "radar_scan_proof_latest", endpoint: "/api/radar/scan-proof/latest" },
+];
+
+const BASE_COMMAND_EVIDENCE_KEYS = [
+  "schema",
+  "status",
+  "proof_status",
+  "feedback_ack_status",
+  "latest_t1001_observed_count",
+  "latest_proof_status",
+  "latest_result_status",
+  "evidence_ref",
+  "scan_once_observed",
+  "scan_hz_observed",
+  "raw_packet_once_observed",
+  "tf_observed",
+  "safe_to_control",
+  "delivery_success",
+  "primary_actions_enabled",
+  "robot_control_executed",
+  "blocked_reasons",
+  "not_proven",
+];
+
+type BaseCommandEvidenceCapture = {
+  evidence_capture_status: RobotControlEvidenceCaptureStatus;
+  evidence_capture_endpoints: RobotControlEvidenceEndpointCapture[];
+  evidence_capture_blocked_reasons: string[];
+  before_readback: RobotControlEvidenceReadbackSummary;
+  after_readback: RobotControlEvidenceReadbackSummary;
+  motion_evidence_summary: string;
+};
+
+function compactKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
+  // 证据响应只保留排障短摘要，不把上位机 raw JSON 原样铺进 PC 合同或 UI。
+  if (!payload) {
+    return {};
+  }
+  const entries = BASE_COMMAND_EVIDENCE_KEYS.flatMap((key) => {
+    const value = payload[key];
+    if (value === undefined) {
+      return [];
+    }
+    const serialized = typeof value === "string" ? value : JSON.stringify(value);
+    return [[key, serialized.slice(0, 180)] as const];
+  });
+  return Object.fromEntries(entries);
+}
+
+function evidenceReadbackSummary(
+  endpoints: RobotControlEvidenceEndpointCapture[],
+  phase: RobotControlEvidenceCapturePhase,
+): RobotControlEvidenceReadbackSummary {
+  // before/after 摘要按固定 endpoint id 索引，前端和 reviewer 可以稳定比较同一类读数。
+  return Object.fromEntries(
+    endpoints.filter((endpoint) => endpoint.phase === phase).map((endpoint) => [endpoint.id, endpoint]),
+  ) as RobotControlEvidenceReadbackSummary;
+}
+
+function evidenceStatus(endpoints: RobotControlEvidenceEndpointCapture[], preflightReason = ""): RobotControlEvidenceCaptureStatus {
+  // captured 只代表固定 GET 快照完整，不代表 HIL pass、运动安全或送达成功。
+  if (preflightReason) {
+    return "blocked";
+  }
+  const loadedCount = endpoints.filter((endpoint) => endpoint.request_status === "loaded").length;
+  if (loadedCount === endpoints.length && endpoints.length > 0) {
+    return "captured";
+  }
+  return loadedCount > 0 ? "partial" : "blocked";
+}
+
+function buildMotionEvidenceSummary(
+  commandKind: "manual" | "stop",
+  status: RobotControlEvidenceCaptureStatus,
+): string {
+  // 这句话会进入响应合同和首页摘要，必须明确“证据快照不是 HIL 通过”。
+  const commandLabel = commandKind === "stop" ? "stop command" : "manual command";
+  if (status === "captured") {
+    return `${commandLabel} before/after fixed GET evidence snapshot captured; this is not HIL pass.`;
+  }
+  if (status === "partial") {
+    return `${commandLabel} before/after fixed GET evidence snapshot partially captured; this is not HIL pass.`;
+  }
+  return `${commandLabel} before/after fixed GET evidence snapshot blocked or unavailable; this is not HIL pass.`;
+}
+
+function buildEvidenceCapture(
+  commandKind: "manual" | "stop",
+  endpoints: RobotControlEvidenceEndpointCapture[],
+  preflightReason = "",
+): BaseCommandEvidenceCapture {
+  // evidence_capture_* 字段集中生成，保证成功、失败、本地拒绝三条路径合同一致。
+  const status = evidenceStatus(endpoints, preflightReason);
+  const endpointFailures = endpoints
+    .filter((endpoint) => endpoint.request_status !== "loaded")
+    .map((endpoint) => `${endpoint.phase}_${endpoint.id}:${endpoint.failure_reason}`);
+  return {
+    evidence_capture_status: status,
+    evidence_capture_endpoints: endpoints,
+    evidence_capture_blocked_reasons: [...(preflightReason ? [preflightReason] : []), ...endpointFailures],
+    before_readback: evidenceReadbackSummary(endpoints, "before"),
+    after_readback: evidenceReadbackSummary(endpoints, "after"),
+    motion_evidence_summary: buildMotionEvidenceSummary(commandKind, status),
+  };
+}
+
+function blockedEvidenceCapture(commandKind: "manual" | "stop", reason: string): BaseCommandEvidenceCapture {
+  // baseUrl 无法规范化时不能尝试任何远端 GET；响应仍显式写明采集被阻断。
+  return buildEvidenceCapture(commandKind, [], reason);
+}
+
+async function fetchEvidenceEndpoint(
+  baseUrl: URL,
+  phase: RobotControlEvidenceCapturePhase,
+  config: (typeof BASE_COMMAND_EVIDENCE_ENDPOINTS)[number],
+): Promise<RobotControlEvidenceEndpointCapture> {
+  // 运动证据采集只允许固定 GET endpoint；不接受用户提供 method、path 或 body。
+  try {
+    const response = await fetch(endpointUrl(baseUrl, config.endpoint), {
+      method: "GET",
+      signal: AbortSignal.timeout(1500),
+    });
+    const payload = asRecord(await response.json().catch(() => null));
+    return {
+      phase,
+      id: config.id,
+      endpoint: config.endpoint,
+      method: "GET",
+      request_status: response.ok && payload ? "loaded" : "failed",
+      http_status: response.status,
+      status: shortText(payload?.status, response.ok ? "loaded" : "blocked"),
+      schema: shortText(payload?.schema, "not_loaded"),
+      key_values: compactKeyValues(payload),
+      failure_reason: response.ok && payload ? "" : `http_status_${response.status}`,
+    };
+  } catch (error) {
+    return {
+      phase,
+      id: config.id,
+      endpoint: config.endpoint,
+      method: "GET",
+      request_status: "failed",
+      http_status: null,
+      status: "blocked",
+      schema: "not_loaded",
+      key_values: {},
+      failure_reason: error instanceof Error ? shortText(error.message, "fetch_failed") : "fetch_failed",
+    };
+  }
+}
+
+async function captureEvidencePhase(
+  baseUrl: URL,
+  phase: RobotControlEvidenceCapturePhase,
+): Promise<RobotControlEvidenceEndpointCapture[]> {
+  // before/after 两个阶段并行读取固定 GET 列表；阶段之间仍保持顺序，便于和主请求对齐。
+  return Promise.all(BASE_COMMAND_EVIDENCE_ENDPOINTS.map((endpoint) => fetchEvidenceEndpoint(baseUrl, phase, endpoint)));
+}
+
 function baseCommandFailure(
   sourceBaseUrl: string,
   commandKind: "manual" | "stop",
@@ -137,6 +308,7 @@ function baseCommandFailure(
   requestedSpeedMps: number | null,
   requestedDurationMs: number | null,
   confirmHilChecklist: boolean,
+  evidenceCapture: BaseCommandEvidenceCapture = blockedEvidenceCapture(commandKind, reason),
 ): RobotControlBaseCommandProxyResponse {
   // 即使失败也返回完整 fail-closed 合同，避免前端在错误态分叉出另一套解释逻辑。
   const isStop = requestedDirection === "stop" || commandKind === "stop";
@@ -175,6 +347,7 @@ function baseCommandFailure(
       max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
       allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
     },
+    ...evidenceCapture,
     failure_reason: reason,
     blocked_reasons: [reason],
   };
@@ -463,20 +636,29 @@ export function createWorkstationApp(): express.Express {
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", normalized.reason, "stop", speed, durationMs, confirmHilChecklist));
       return;
     }
+    const beforeEvidence = await captureEvidencePhase(normalized.normalized, "before");
     if (!direction) {
-      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "direction_invalid", "stop", speed, durationMs, confirmHilChecklist));
+      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
+      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "direction_invalid", "stop", speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
     if (direction === "stop") {
-      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "direction_stop_use_stop_endpoint", direction, speed, durationMs, confirmHilChecklist));
+      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
+      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "direction_stop_use_stop_endpoint", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
     if (speed === null || durationMs === null) {
-      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "manual_request_invalid_numbers", direction, speed, durationMs, confirmHilChecklist));
+      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
+      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "manual_request_invalid_numbers", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
     if (!confirmHilChecklist) {
-      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "confirm_hil_checklist_required", direction, speed, durationMs, confirmHilChecklist));
+      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
+      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "confirm_hil_checklist_required", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
 
@@ -488,8 +670,10 @@ export function createWorkstationApp(): express.Express {
       duration_ms: clampedDurationMs,
       confirm_hil_checklist: true,
     });
+    const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
+    const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
     if (remote.error) {
-      res.status(502).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", remote.error, direction, speed, durationMs, confirmHilChecklist));
+      res.status(502).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", remote.error, direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
     const dangerous = scanDangerousTrueFields(remote.payload, "", BASE_COMMAND_FAIL_CLOSED_FIELDS);
@@ -525,6 +709,7 @@ export function createWorkstationApp(): express.Express {
         max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
         allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
       },
+      ...evidenceCapture,
       failure_reason:
         dangerous.length > 0
           ? `dangerous_true_field:${dangerous[0]}`
@@ -547,9 +732,12 @@ export function createWorkstationApp(): express.Express {
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "stop", "/api/base/stop", normalized.reason, "stop", 0, 0, false));
       return;
     }
+    const beforeEvidence = await captureEvidencePhase(normalized.normalized, "before");
     const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/base/stop", {});
+    const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
+    const evidenceCapture = buildEvidenceCapture("stop", [...beforeEvidence, ...afterEvidence]);
     if (remote.error) {
-      res.status(502).json(baseCommandFailure(sourceBaseUrl, "stop", "/api/base/stop", remote.error, "stop", 0, 0, false));
+      res.status(502).json(baseCommandFailure(sourceBaseUrl, "stop", "/api/base/stop", remote.error, "stop", 0, 0, false, evidenceCapture));
       return;
     }
     const dangerous = scanDangerousTrueFields(remote.payload, "", BASE_COMMAND_FAIL_CLOSED_FIELDS);
@@ -585,6 +773,7 @@ export function createWorkstationApp(): express.Express {
         max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
         allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
       },
+      ...evidenceCapture,
       failure_reason:
         dangerous.length > 0
           ? `dangerous_true_field:${dangerous[0]}`

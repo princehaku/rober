@@ -2136,6 +2136,35 @@ export interface RobotControlCameraCloseProxyResponse extends ProofFlags {
 export type RobotControlBaseDirection = "forward" | "back" | "left" | "right" | "stop";
 export type RobotControlBaseCommandKind = "manual" | "stop";
 export type RobotControlBaseProxyStatus = "command_forwarded" | "command_rejected" | "command_failed";
+export type RobotControlEvidenceCaptureStatus = "captured" | "partial" | "blocked";
+export type RobotControlEvidenceCapturePhase = "before" | "after";
+export type RobotControlEvidenceCaptureEndpointId =
+  | "base_status"
+  | "base_feedback_samples_latest"
+  | "radar_status"
+  | "radar_scan_proof_latest";
+export type RobotControlEvidenceCaptureEndpointPath =
+  | "/api/base/status"
+  | "/api/base/feedback-samples/latest"
+  | "/api/radar/status"
+  | "/api/radar/scan-proof/latest";
+
+export interface RobotControlEvidenceEndpointCapture {
+  phase: RobotControlEvidenceCapturePhase;
+  id: RobotControlEvidenceCaptureEndpointId;
+  endpoint: RobotControlEvidenceCaptureEndpointPath;
+  method: "GET";
+  request_status: "loaded" | "failed" | "blocked";
+  http_status: number | null;
+  status: string;
+  schema: string;
+  key_values: Record<string, string>;
+  failure_reason: string;
+}
+
+export type RobotControlEvidenceReadbackSummary = Partial<
+  Record<RobotControlEvidenceCaptureEndpointId, RobotControlEvidenceEndpointCapture>
+>;
 
 // 点动请求只描述 workstation 到上位机的固定代理合同。
 // UI 不能借这份合同推导出“可控”或“HIL 已通过”。
@@ -2170,6 +2199,12 @@ export interface RobotControlBaseCommandProxyResponse extends ProofFlags {
     max_duration_ms: number;
     allowed_directions: RobotControlBaseDirection[];
   };
+  evidence_capture_status: RobotControlEvidenceCaptureStatus;
+  evidence_capture_endpoints: RobotControlEvidenceEndpointCapture[];
+  evidence_capture_blocked_reasons: string[];
+  before_readback: RobotControlEvidenceReadbackSummary;
+  after_readback: RobotControlEvidenceReadbackSummary;
+  motion_evidence_summary: string;
   failure_reason: string;
   blocked_reasons: string[];
   robot_control_executed: false;
