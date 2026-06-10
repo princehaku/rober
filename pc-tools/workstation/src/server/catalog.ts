@@ -22,6 +22,7 @@ export { buildO7CloudArchiveTasks } from "./o7CloudArchiveTasks";
 export {
   buildLocalizationResetProxy,
   buildMapLifecycleProxy,
+  buildNavGoalPreflightProxy,
   buildNav2NoMotionProofRefreshProxy,
   buildOperatorReportProxy,
   buildMapProofRefreshProxy,

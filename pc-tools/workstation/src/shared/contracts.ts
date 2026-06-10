@@ -2074,6 +2074,69 @@ export interface RobotControlOperatorReportProxyResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export interface RobotControlNavGoalPreflightRequest {
+  goal_frame_id?: "map";
+  goal_x?: number;
+  goal_y?: number;
+  goal_yaw?: number;
+  confirm_navigation_preflight?: boolean;
+}
+
+export type RobotControlNavGoalPreflightProxyStatus = "preflight_passed" | "preflight_rejected";
+export type RobotControlNavGoalPreflightStatus =
+  | "ready_for_navigation_goal_not_executed"
+  | "preflight_rejected";
+
+export interface RobotControlNavGoalPreflightResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_preflight.v1";
+  proxy_status: RobotControlNavGoalPreflightProxyStatus;
+  preflight_status: RobotControlNavGoalPreflightStatus;
+  source_base_url: string;
+  normalized_base_url: string;
+  workstation_endpoint: "/api/robot-control/nav2/goal/preflight";
+  remote_methods_used: Array<"GET">;
+  remote_read_endpoints: RobotApiEndpointReadback[];
+  forbidden_remote_endpoints_not_called: Array<"/api/nav2/start" | "NavigateToPose" | "/cmd_vel" | "/api/base/manual">;
+  goal_request: Required<Pick<RobotControlNavGoalPreflightRequest, "goal_frame_id" | "confirm_navigation_preflight">> & {
+    goal_x: number;
+    goal_y: number;
+    goal_yaw: number;
+  };
+  goal_limits: {
+    frame_id: "map";
+    x_min_m: number;
+    x_max_m: number;
+    y_min_m: number;
+    y_max_m: number;
+    yaw_min_rad: number;
+    yaw_max_rad: number;
+  };
+  operator_report_preflight: RobotControlOperatorReportPreflight;
+  localization_summary: {
+    request_status: RobotApiEndpointReadback["request_status"];
+    status: string;
+    localization_reset_observed: boolean;
+    nav2_no_motion_localization_runtime_observed: boolean;
+    map_to_base_link: boolean;
+  };
+  nav2_path_summary: {
+    request_status: RobotApiEndpointReadback["request_status"];
+    status: string;
+    path_generated: boolean;
+    path_generation_succeeded: boolean;
+    path_point_count: number;
+  };
+  nav2_status_summary: {
+    request_status: RobotApiEndpointReadback["request_status"];
+    status: string;
+  };
+  missing_requirements: string[];
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
 export type RobotControlPreviewStatus =
   | "idle_not_started"
   | "starting_local_peer"

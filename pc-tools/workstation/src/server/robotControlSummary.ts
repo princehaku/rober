@@ -9,6 +9,8 @@ import type {
   RobotControlMapLifecycleEndpoint,
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
+  RobotControlNavGoalPreflightRequest,
+  RobotControlNavGoalPreflightResponse,
   RobotControlOperatorReportProxyResponse,
   RobotControlOperatorReportRequest,
   RobotControlOperatorReportStructuredHilClaims,
@@ -182,6 +184,21 @@ const LOCALIZATION_RESET_CONFIG: RobotProofRefreshConfig = {
 };
 
 const NAV2_NO_MOTION_PROOF_LATEST_ENDPOINT = "/api/nav2/proof/latest" as const;
+const NAV_GOAL_PREFLIGHT_GOAL_LIMITS = {
+  frame_id: "map",
+  x_min_m: -3,
+  x_max_m: 3,
+  y_min_m: -3,
+  y_max_m: 3,
+  yaw_min_rad: -3.1416,
+  yaw_max_rad: 3.1416,
+} as const;
+const NAV_GOAL_PREFLIGHT_ENDPOINTS: RobotReadEndpointConfig[] = [
+  { id: "localize_proof_latest", endpoint: "/api/localize/proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  { id: "nav2_proof_latest", endpoint: "/api/nav2/proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  { id: "operator_report_latest", endpoint: "/api/operator/report", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  { id: "nav2_status", endpoint: "/api/nav2/status", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+];
 
 type RobotMapLifecycleConfig = {
   action: RobotControlMapLifecycleAction;
@@ -741,6 +758,47 @@ function sanitizeMapLifecycleBody(body: unknown): { ok: true; body: RobotControl
   };
 }
 
+function sanitizeNavGoalPreflightBody(
+  body: unknown,
+): { ok: true; body: Required<RobotControlNavGoalPreflightResponse["goal_request"]> } | { ok: false; reason: string } {
+  // 目标预检只接受短白名单坐标，不允许 endpoint、action、cmd_vel 或任意 Nav2 参数混入请求。
+  const payload = asRecord(body);
+  if (!payload) {
+    return { ok: false, reason: "request_body_must_be_json_object" };
+  }
+  const allowed = new Set(["goal_frame_id", "goal_x", "goal_y", "goal_yaw", "confirm_navigation_preflight"]);
+  const unknownKeys = Object.keys(payload).filter((key) => !allowed.has(key));
+  if (unknownKeys.length > 0) {
+    return { ok: false, reason: `request_body_unknown_fields:${unknownKeys.slice(0, 4).join("|")}` };
+  }
+  if (payload.goal_frame_id !== undefined && payload.goal_frame_id !== "map") {
+    return { ok: false, reason: "goal_frame_id_must_be_map" };
+  }
+  const numberOrDefault = (key: keyof RobotControlNavGoalPreflightRequest, fallback: number): number | null => {
+    const value = payload[key];
+    if (value === undefined) {
+      return fallback;
+    }
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  };
+  const goalX = numberOrDefault("goal_x", 0);
+  const goalY = numberOrDefault("goal_y", 0);
+  const goalYaw = numberOrDefault("goal_yaw", 0);
+  if (goalX === null || goalY === null || goalYaw === null) {
+    return { ok: false, reason: "goal_fields_must_be_finite_numbers" };
+  }
+  return {
+    ok: true,
+    body: {
+      goal_frame_id: "map",
+      goal_x: Math.min(NAV_GOAL_PREFLIGHT_GOAL_LIMITS.x_max_m, Math.max(NAV_GOAL_PREFLIGHT_GOAL_LIMITS.x_min_m, goalX)),
+      goal_y: Math.min(NAV_GOAL_PREFLIGHT_GOAL_LIMITS.y_max_m, Math.max(NAV_GOAL_PREFLIGHT_GOAL_LIMITS.y_min_m, goalY)),
+      goal_yaw: Math.min(NAV_GOAL_PREFLIGHT_GOAL_LIMITS.yaw_max_rad, Math.max(NAV_GOAL_PREFLIGHT_GOAL_LIMITS.yaw_min_rad, goalYaw)),
+      confirm_navigation_preflight: payload.confirm_navigation_preflight === true,
+    },
+  };
+}
+
 function sanitizeOperatorReportString(key: string, value: unknown): { ok: true; value: string } | { ok: false; reason: string } {
   // 字符串字段只做短文本材料引用，不能携带长 raw log、凭证、URL query 或二进制内容。
   if (typeof value !== "string") {
@@ -962,6 +1020,228 @@ export async function fetchManualMotionOperatorReportPreflight(baseUrl: URL): Pr
     );
   }
   return buildOperatorReportPreflightFromPayload(payload, response.status, response.ok ? "loaded" : "blocked");
+}
+
+function booleanObserved(payload: JsonRecord | null, keys: string[]): boolean {
+  // proof 字段可能嵌在 latest_result/status 内；只认显式 true，不用字符串猜测安全状态。
+  return keys.some((key) => findFirstKey(payload, [key]) === true);
+}
+
+function statusMentions(payload: JsonRecord | null, token: string): boolean {
+  // 真实上位机有些 proof 只在 status/latest_result_status 里给事件名；这里只匹配固定 token。
+  const statusValues = [
+    findFirstKey(payload, ["status"]),
+    findFirstKey(payload, ["proof_status"]),
+    findFirstKey(payload, ["latest_proof_status"]),
+    findFirstKey(payload, ["latest_result_status"]),
+  ];
+  return statusValues.some((value) => typeof value === "string" && value.includes(token));
+}
+
+function nestedBooleanKey(value: unknown, key: string, depth = 0): boolean {
+  // TF 证据可能是对象或数组；只要同名字段显式 true 才算 map_to_base_link 可见。
+  if (!value || typeof value !== "object" || depth > 5) {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.some((item) => nestedBooleanKey(item, key, depth + 1));
+  }
+  const record = value as JsonRecord;
+  if (record[key] === true) {
+    return true;
+  }
+  return Object.values(record).some((item) => nestedBooleanKey(item, key, depth + 1));
+}
+
+function mapToBaseLinkObserved(payload: JsonRecord | null): boolean {
+  // 定位放行必须看到 map->base_link 链路；字符串 JSON 只解析短文本，避免把任意长日志当结构化证据。
+  const candidates = [
+    findFirstKey(payload, ["localization_tf_observed"]),
+    findFirstKey(payload, ["tf_chain_observed"]),
+  ];
+  return candidates.some((candidate) => {
+    if (nestedBooleanKey(candidate, "map_to_base_link")) {
+      return true;
+    }
+    if (typeof candidate === "string" && candidate.length < 1000) {
+      try {
+        return nestedBooleanKey(JSON.parse(candidate), "map_to_base_link");
+      } catch {
+        return candidate.includes("map_to_base_link") && candidate.includes("true");
+      }
+    }
+    return false;
+  });
+}
+
+function numericField(payload: JsonRecord | null, keys: string[]): number {
+  // 路径点数必须是正数；字符串只兼容上位机 latest readback 的短数字摘要。
+  const found = findFirstKey(payload, keys);
+  if (typeof found === "number" && Number.isFinite(found)) {
+    return found;
+  }
+  if (typeof found === "string" && found.trim() && Number.isFinite(Number(found))) {
+    return Number(found);
+  }
+  return 0;
+}
+
+function readbackById(readbacks: InternalRobotApiEndpointReadback[], id: RobotApiReadEndpointId): InternalRobotApiEndpointReadback | null {
+  // 固定 id 查找比数组下标稳，后续增删可选 status endpoint 不影响 preflight 判定。
+  return readbacks.find((item) => item.id === id) ?? null;
+}
+
+function publicReadbacks(readbacks: InternalRobotApiEndpointReadback[]): RobotApiEndpointReadback[] {
+  // 内部 payload 只服务本机 preflight 判定，API/artifact 边界必须像 summary 一样只暴露短 readback 摘要。
+  return readbacks.map((readback) => {
+    const { payload, ...publicReadback } = readback;
+    void payload;
+    return publicReadback;
+  });
+}
+
+function blockedNavGoalPreflightResponse(
+  sourceBaseUrl: string,
+  reason: string,
+  goalRequest?: RobotControlNavGoalPreflightResponse["goal_request"],
+  readbacks: InternalRobotApiEndpointReadback[] = [],
+  operatorReportPreflight?: RobotControlOperatorReportPreflight,
+): RobotControlNavGoalPreflightResponse {
+  // 本机拒绝也必须返回完整 readback 摘要和禁止调用列表，用 artifact 证明没有执行导航或底盘运动。
+  const localize = readbackById(readbacks, "localize_proof_latest");
+  const nav2Proof = readbackById(readbacks, "nav2_proof_latest");
+  const nav2Status = readbackById(readbacks, "nav2_status");
+  const pathPointCount = numericField(nav2Proof?.payload ?? null, ["path_point_count", "latest_path_point_count"]);
+  const defaultGoal = goalRequest ?? {
+    goal_frame_id: "map",
+    goal_x: 0,
+    goal_y: 0,
+    goal_yaw: 0,
+    confirm_navigation_preflight: false,
+  };
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_preflight.v1",
+    ...PROOF_FLAGS,
+    proxy_status: "preflight_rejected",
+    preflight_status: "preflight_rejected",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    workstation_endpoint: "/api/robot-control/nav2/goal/preflight",
+    remote_methods_used: ["GET"],
+    remote_read_endpoints: publicReadbacks(readbacks),
+    forbidden_remote_endpoints_not_called: ["/api/nav2/start", "NavigateToPose", "/cmd_vel", "/api/base/manual"],
+    goal_request: defaultGoal,
+    goal_limits: NAV_GOAL_PREFLIGHT_GOAL_LIMITS,
+    operator_report_preflight: operatorReportPreflight ?? blockedOperatorReportPreflight(reason),
+    localization_summary: {
+      request_status: localize?.request_status ?? "blocked",
+      status: asString(findFirstKey(localize?.payload, ["status", "latest_proof_status", "latest_result_status"]), "not_loaded"),
+      localization_reset_observed: booleanObserved(localize?.payload ?? null, ["localization_reset_observed"]) || statusMentions(localize?.payload ?? null, "localization_reset_observed"),
+      nav2_no_motion_localization_runtime_observed: statusMentions(localize?.payload ?? null, "nav2_no_motion_localization_runtime_observed"),
+      map_to_base_link: mapToBaseLinkObserved(localize?.payload ?? null),
+    },
+    nav2_path_summary: {
+      request_status: nav2Proof?.request_status ?? "blocked",
+      status: asString(findFirstKey(nav2Proof?.payload, ["status", "latest_proof_status", "latest_result_status"]), "not_loaded"),
+      path_generated: booleanObserved(nav2Proof?.payload ?? null, ["path_generated", "latest_path_generated"]),
+      path_generation_succeeded: booleanObserved(nav2Proof?.payload ?? null, ["path_generation_succeeded"]),
+      path_point_count: pathPointCount,
+    },
+    nav2_status_summary: {
+      request_status: nav2Status?.request_status ?? "blocked",
+      status: asString(findFirstKey(nav2Status?.payload, ["status", "lifecycle_state", "nav2_status"]), "not_loaded"),
+    },
+    missing_requirements: [reason],
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: readbacks.flatMap((item) => item.dangerous_true_fields.map((field) => `${item.id}.${field}`)),
+    robot_control_executed: false,
+  };
+}
+
+export async function buildNavGoalPreflightProxy(
+  baseUrl: string,
+  body: unknown,
+): Promise<RobotControlNavGoalPreflightResponse> {
+  // 这是“执行导航前门禁”，不是导航执行入口；无论是否通过，都只做固定 GET readback。
+  const sanitized = sanitizeNavGoalPreflightBody(body);
+  if (!sanitized.ok) {
+    return blockedNavGoalPreflightResponse(baseUrl, sanitized.reason);
+  }
+  const normalized = normalizeRobotApiBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return blockedNavGoalPreflightResponse(baseUrl, normalized.reason, sanitized.body);
+  }
+
+  const readbacks = await Promise.all(NAV_GOAL_PREFLIGHT_ENDPOINTS.map((endpoint) => readEndpoint(normalized.normalized, endpoint)));
+  const localize = readbackById(readbacks, "localize_proof_latest");
+  const nav2Proof = readbackById(readbacks, "nav2_proof_latest");
+  const operator = readbackById(readbacks, "operator_report_latest");
+  const operatorReportPreflight = buildOperatorReportPreflightFromPayload(
+    operator?.payload ?? null,
+    operator?.http_status ?? null,
+    operator?.request_status === "loaded" ? "loaded" : operator?.request_status ?? "blocked",
+  );
+  const hardDangerous = readbacks.flatMap((item) => item.dangerous_true_fields.map((field) => `${item.id}.${field}`));
+  const localizationResetObserved =
+    booleanObserved(localize?.payload ?? null, ["localization_reset_observed"]) ||
+    statusMentions(localize?.payload ?? null, "localization_reset_observed");
+  const localizationRuntimeObserved = statusMentions(localize?.payload ?? null, "nav2_no_motion_localization_runtime_observed");
+  const mapToBaseLink = mapToBaseLinkObserved(localize?.payload ?? null);
+  const pathGenerated = booleanObserved(nav2Proof?.payload ?? null, ["path_generated", "latest_path_generated"]);
+  const pathSucceeded = booleanObserved(nav2Proof?.payload ?? null, ["path_generation_succeeded"]);
+  const pathPointCount = numericField(nav2Proof?.payload ?? null, ["path_point_count", "latest_path_point_count"]);
+  const missingRequirements = [
+    sanitized.body.confirm_navigation_preflight ? "" : "confirm_navigation_preflight_required",
+    localize?.request_status === "loaded" ? "" : "localization_latest_not_loaded",
+    localizationResetObserved || localizationRuntimeObserved ? "" : "localization_runtime_or_reset_not_observed",
+    mapToBaseLink ? "" : "map_to_base_link_tf_not_observed",
+    nav2Proof?.request_status === "loaded" ? "" : "nav2_proof_latest_not_loaded",
+    pathGenerated || pathSucceeded ? "" : "path_generation_not_observed",
+    pathPointCount > 0 ? "" : "path_point_count_not_positive",
+    operatorReportPreflight.status === "passed" ? "" : "operator_report_preflight_required",
+    ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
+  ].filter(Boolean);
+  const proxyStatus = missingRequirements.length === 0 ? "preflight_passed" : "preflight_rejected";
+  const response: RobotControlNavGoalPreflightResponse = {
+    schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_preflight.v1",
+    ...PROOF_FLAGS,
+    proxy_status: proxyStatus,
+    preflight_status: proxyStatus === "preflight_passed" ? "ready_for_navigation_goal_not_executed" : "preflight_rejected",
+    source_base_url: baseUrl,
+    normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+    workstation_endpoint: "/api/robot-control/nav2/goal/preflight",
+    remote_methods_used: ["GET"],
+    remote_read_endpoints: publicReadbacks(readbacks),
+    forbidden_remote_endpoints_not_called: ["/api/nav2/start", "NavigateToPose", "/cmd_vel", "/api/base/manual"],
+    goal_request: sanitized.body,
+    goal_limits: NAV_GOAL_PREFLIGHT_GOAL_LIMITS,
+    operator_report_preflight: operatorReportPreflight,
+    localization_summary: {
+      request_status: localize?.request_status ?? "blocked",
+      status: asString(findFirstKey(localize?.payload, ["status", "latest_proof_status", "latest_result_status"]), "not_loaded"),
+      localization_reset_observed: localizationResetObserved,
+      nav2_no_motion_localization_runtime_observed: localizationRuntimeObserved,
+      map_to_base_link: mapToBaseLink,
+    },
+    nav2_path_summary: {
+      request_status: nav2Proof?.request_status ?? "blocked",
+      status: asString(findFirstKey(nav2Proof?.payload, ["status", "latest_proof_status", "latest_result_status"]), "not_loaded"),
+      path_generated: pathGenerated,
+      path_generation_succeeded: pathSucceeded,
+      path_point_count: pathPointCount,
+    },
+    nav2_status_summary: {
+      request_status: readbackById(readbacks, "nav2_status")?.request_status ?? "blocked",
+      status: asString(findFirstKey(readbackById(readbacks, "nav2_status")?.payload, ["status", "lifecycle_state", "nav2_status"]), "not_loaded"),
+    },
+    missing_requirements: missingRequirements,
+    failure_reason: missingRequirements[0] ?? "",
+    blocked_reasons: missingRequirements,
+    hard_dangerous_true_fields: hardDangerous,
+    robot_control_executed: false,
+  };
+  return response;
 }
 
 function mapNamesFromPayload(payload: JsonRecord | null): string[] {

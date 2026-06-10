@@ -28,6 +28,7 @@ import {
   buildProofBoundary,
   buildLocalizationResetProxy,
   buildMapProofRefreshProxy,
+  buildNavGoalPreflightProxy,
   buildNav2NoMotionProofRefreshProxy,
   buildOperatorReportProxy,
   buildRadarLifecycleProxy,
@@ -4965,6 +4966,201 @@ describe("workstation fail-closed API contracts", () => {
     expect(unsafe.proxy_status).toBe("refresh_rejected");
     expect(unsafe.failure_reason).toBe("baseUrl_protocol_not_allowed");
     expect(unsafe.robot_control_executed).toBe(false);
+  });
+
+  it("Nav2 goal preflight uses fixed GET readbacks and never executes navigation", async () => {
+    // 通过态也只是“材料满足、未执行”；上游不能收到 /api/nav2/start、NavigateToPose、/cmd_vel 或 base manual。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_reset_result",
+          status: "localization_reset_observed",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          localization_reset_observed: true,
+          localization_tf_observed: { map_to_base_link: true },
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof_latest",
+          status: "nav2_no_motion_path_generation_runtime_observed",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 23,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_status",
+          status: "inactive",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+      },
+      "/api/operator/report": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.operator_report",
+          status: "loaded",
+          operator_present: true,
+          physical_clearance_confirmed: true,
+          emergency_stop_ready: true,
+          evidence_ref: "field-hil-nav-preflight",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          structured_hil_claims: {
+            external_video_recorded: true,
+            external_video_ref: "phone-video-nav.mp4",
+            visible_content_proven: true,
+            camera_artifacts_ref: "runtime/camera/latest_metrics.json",
+            wheel_feedback_lr_nonzero_proven: true,
+            wheel_feedback_ref: "runtime/wave_rover_feedback_debug.jsonl",
+            physical_motion_lidar_delta_proven: true,
+            scan_delta_ref: "runtime/scan_delta/latest_metrics.json",
+            delivery_success: true,
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const helperResponse = await buildNavGoalPreflightProxy(upstream.baseUrl, {
+        goal_frame_id: "map",
+        goal_x: 99,
+        goal_y: -99,
+        goal_yaw: 9,
+        confirm_navigation_preflight: true,
+      });
+      expect(helperResponse.proxy_status).toBe("preflight_passed");
+      expect(helperResponse.preflight_status).toBe("ready_for_navigation_goal_not_executed");
+      expect(helperResponse.goal_request.goal_x).toBe(3);
+      expect(helperResponse.goal_request.goal_y).toBe(-3);
+      expect(helperResponse.goal_request.goal_yaw).toBe(3.1416);
+      expect(helperResponse.remote_methods_used).toEqual(["GET"]);
+      expect(helperResponse.remote_read_endpoints.map((endpoint) => endpoint.endpoint)).toEqual(expect.arrayContaining([
+        "/api/localize/proof/latest",
+        "/api/nav2/proof/latest",
+        "/api/operator/report",
+        "/api/nav2/status",
+      ]));
+      expect(JSON.stringify(helperResponse.remote_read_endpoints)).not.toContain("\"payload\"");
+      expect(helperResponse.operator_report_preflight.status).toBe("passed");
+      expect(helperResponse.missing_requirements).toEqual([]);
+      expect(helperResponse.forbidden_remote_endpoints_not_called).toEqual(["/api/nav2/start", "NavigateToPose", "/cmd_vel", "/api/base/manual"]);
+      expect(helperResponse.robot_control_executed).toBe(false);
+      expect(helperResponse.safe_to_control).toBe(false);
+      expect(helperResponse.delivery_success).toBe(false);
+
+      const routeResponse = await fetch(`${workstation.baseUrl}/api/robot-control/nav2/goal/preflight?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goal_x: 0.8, goal_y: 0, goal_yaw: 0, confirm_navigation_preflight: true }),
+      });
+      const routeBody = (await routeResponse.json()) as { proxy_status: string; robot_control_executed: boolean };
+      expect(routeResponse.status).toBe(200);
+      expect(routeBody.proxy_status).toBe("preflight_passed");
+      expect(routeBody.robot_control_executed).toBe(false);
+      expect(JSON.stringify(routeBody)).not.toContain("\"payload\"");
+      expect(upstream.receivedBodies["/api/nav2/start"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+      expect(upstream.receivedBodies["/cmd_vel"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("Nav2 goal preflight rejects unknown fields and incomplete materials before execution", async () => {
+    // 未知字段先本机拒绝；材料不足时也只读 GET 并返回缺项，不向任何执行 endpoint 发 POST。
+    const unknown = await buildNavGoalPreflightProxy("http://127.0.0.1:8787", {
+      goal_x: 0.8,
+      confirm_navigation_preflight: true,
+      endpoint: "/api/nav2/start",
+    });
+    expect(unknown.proxy_status).toBe("preflight_rejected");
+    expect(unknown.failure_reason).toContain("request_body_unknown_fields");
+    expect(unknown.robot_control_executed).toBe(false);
+
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_reset_result",
+          status: "localization_pending",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof_latest",
+          status: "path_not_generated",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          path_generated: false,
+          path_generation_succeeded: false,
+          path_point_count: 0,
+        },
+      },
+      "/api/operator/report": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.operator_report",
+          status: "loaded",
+          operator_present: true,
+          physical_clearance_confirmed: true,
+          emergency_stop_ready: true,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          structured_hil_claims: {
+            external_video_recorded: true,
+            external_video_ref: "phone-video-nav.mp4",
+            visible_content_proven: false,
+            wheel_feedback_lr_nonzero_proven: false,
+            physical_motion_lidar_delta_proven: false,
+            delivery_success: true,
+          },
+        },
+      },
+    });
+    try {
+      const rejected = await buildNavGoalPreflightProxy(upstream.baseUrl, {
+        goal_x: 0.8,
+        goal_y: 0,
+        goal_yaw: 0,
+        confirm_navigation_preflight: false,
+      });
+      expect(rejected.proxy_status).toBe("preflight_rejected");
+      expect(rejected.missing_requirements).toEqual(expect.arrayContaining([
+        "confirm_navigation_preflight_required",
+        "localization_runtime_or_reset_not_observed",
+        "map_to_base_link_tf_not_observed",
+        "path_generation_not_observed",
+        "path_point_count_not_positive",
+        "operator_report_preflight_required",
+      ]));
+      expect(rejected.operator_report_preflight.missing_fields).not.toContain("delivery_success");
+      expect(JSON.stringify(rejected.remote_read_endpoints)).not.toContain("\"payload\"");
+      expect(rejected.robot_control_executed).toBe(false);
+      expect(upstream.receivedBodies["/api/nav2/start"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await upstream.close();
+    }
   });
 
   it("Robot Control summary rejects unsafe URLs and dangerous true fields", async () => {

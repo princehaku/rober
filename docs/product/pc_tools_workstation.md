@@ -226,6 +226,35 @@ Hardware Materials 是 Node-native 只读入口，不恢复旧 Python evidence g
 
 Robot Control V1 读取到 Robot API status/latest/readback 也只能证明“PC 端可读到短摘要”。端点级只读超时只用于减少真实慢端点被误判成 `fetch_failed`，固定 manual/stop 代理也只证明 workstation 能按安全门槛转发受控点动请求，不代表 UI 可以自由控制，也不代表控制安全边界放松。它不证明真实手控已开放、真实 `/cmd_vel` 发布、真实 `/api/base/manual` 已安全放开、真实 Nav2 goal dispatch、真实 map/radar runtime 启动、真实 Camera/LiDAR/Base HIL、真实 robot ACK 或真实 delivery success。Robot API 不可达、schema drift、缺字段、Mock fallback、O6 detail 不可达或危险 true 字段出现时，页面必须继续显示 blocked reason，并保持 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
 
+## PC Navigation Goal Preflight Gate V1
+
+2026-06-11 新增 PC 端“导航目标预检（高级）”，目标是 `navigation_goal_preflight_only_no_motion`。它不是导航执行、不是自动寻路下发，也不证明真实 NavigateToPose 可以使用。
+
+接口：
+
+- Workstation endpoint：`POST /api/robot-control/nav2/goal/preflight?baseUrl=<robot-api-base-url>`。
+- 请求体只允许 `goal_frame_id`、`goal_x`、`goal_y`、`goal_yaw`、`confirm_navigation_preflight` 五个字段。
+- `goal_frame_id` 固定为 `map`；坐标和 yaw 只接受有限数字，并在 Node 端 clamp 到 `x/y [-3, 3] m`、`yaw [-3.1416, 3.1416] rad`。
+- 未知字段、非 object body、非法 frame、非数字 goal 或非法 `baseUrl` 都由 workstation 本机 HTTP 400 拒绝。
+- Node 代理只读取固定 GET：`/api/localize/proof/latest`、`/api/nav2/proof/latest`、`/api/operator/report`、可选 `/api/nav2/status`。
+- 该 endpoint 永远不调用 `/api/nav2/start`、NavigateToPose、`/cmd_vel` 或 `/api/base/manual`；响应固定 `robot_control_executed=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+放行口径：
+
+- `confirm_navigation_preflight=true`。
+- localization latest 已加载，且 `status/latest proof` 显示 `localization_reset_observed` 或 `nav2_no_motion_localization_runtime_observed`。
+- `localization_tf_observed.map_to_base_link=true` 或 `tf_chain_observed.map_to_base_link=true`。
+- Nav2 proof latest 已加载，且 `path_generated=true` 或 `path_generation_succeeded=true`，同时 `path_point_count>0`。
+- `/api/operator/report` 的材料 preflight passed；`delivery_success` claim 不参与放行。
+
+通过时只返回 `proxy_status=preflight_passed`、`preflight_status=ready_for_navigation_goal_not_executed`。材料不足时返回 HTTP 400 `preflight_rejected`，带 `missing_requirements`、各 readback 摘要和 operator material gate 摘要，供 PC 高级诊断复核。
+
+UI：
+
+- 普通首屏仍只显示 `Rober 小车控制台` 与五张卡片：`小车连接`、`实时画面`、`雷达`、`地图`、`移动/导航`。
+- 目标坐标、确认 checkbox、预检按钮和最近结果只在默认关闭的 `高级诊断 -> Nav2 规划详情` 中展示。
+- 首屏不得出现目标坐标输入、Nav2 goal、HIL、structured_hil_claims、`/cmd_vel`、`/api/base/manual`、NavigateToPose 等工程词。
+
 ## PC Map Runtime Controls V1
 
 2026-06-11 起，Robot Control 的普通首屏仍保持五卡片简洁布局。地图卡片只显示

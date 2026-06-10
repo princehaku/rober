@@ -28,6 +28,7 @@ import {
   buildRadarScanProofRefreshProxy,
   buildMapLifecycleProxy,
   buildMapProofRefreshProxy,
+  buildNavGoalPreflightProxy,
   buildNav2NoMotionProofRefreshProxy,
   buildOperatorReportProxy,
   buildRobotControlSummary,
@@ -878,6 +879,12 @@ export function createWorkstationApp(): express.Express {
     res
       .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
       .json(response);
+  });
+
+  workstationApp.post("/api/robot-control/nav2/goal/preflight", async (req, res) => {
+    // 目标预检只读 fixed GET 材料；即使通过也不调用 NavigateToPose、/api/nav2/start、/cmd_vel 或 base manual。
+    const response = await buildNavGoalPreflightProxy(queryString(req.query.baseUrl), req.body);
+    res.status(response.proxy_status === "preflight_passed" ? 200 : 400).json(response);
   });
 
   workstationApp.post("/api/robot-control/localize/reset", async (req, res) => {

@@ -9,6 +9,7 @@ import {
   postRobotControlMapStart,
   postRobotControlMapSave,
   postRobotControlLocalizeReset,
+  postRobotControlNav2GoalPreflight,
   postRobotControlMapProofRefresh,
   postRobotControlNav2ProofRefresh,
   postRobotControlOperatorReport,
@@ -22,6 +23,7 @@ import type {
   O7ConsumerTaskDetailResponse,
   RobotControlBaseCommandProxyResponse,
   RobotControlMapLifecycleResponse,
+  RobotControlNavGoalPreflightResponse,
   RobotControlOperatorReportProxyResponse,
   RobotControlOperatorReportRequest,
   RobotControlPreviewStatus,
@@ -43,6 +45,7 @@ const radarRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(nul
 const radarLifecycleResult = ref<RobotControlRadarLifecycleResponse | null>(null);
 const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const nav2RefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
+const navGoalPreflightResult = ref<RobotControlNavGoalPreflightResponse | null>(null);
 const localizationResetResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapLifecycleResult = ref<RobotControlMapLifecycleResponse | null>(null);
 const manualCommandResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
@@ -75,6 +78,10 @@ const operatorReportFlags = ref({
 });
 const jogSpeedMps = ref(0.08);
 const jogDurationMs = ref(500);
+const navGoalX = ref(0.8);
+const navGoalY = ref(0);
+const navGoalYaw = ref(0);
+const confirmNavigationPreflight = ref(false);
 const hilChecklist = ref([
   { id: "operator_ready", checked: false, label: "现场有人扶控并准备急停" },
   { id: "clearance_confirmed", checked: false, label: "已确认小车周围无人和障碍" },
@@ -96,6 +103,7 @@ const radarRefreshPending = ref(false);
 const radarLifecyclePending = ref(false);
 const mapRefreshPending = ref(false);
 const nav2RefreshPending = ref(false);
+const navGoalPreflightPending = ref(false);
 const localizationResetPending = ref(false);
 const previewVideo = ref<HTMLVideoElement | null>(null);
 const previewStream = ref<MediaStream | null>(null);
@@ -443,6 +451,67 @@ function makeRefreshFallback(
   };
 }
 
+function makeNavGoalPreflightFallback(reason: string): RobotControlNavGoalPreflightResponse {
+  // 浏览器异常不会绕过后端门禁；这里补齐形状，只用于展示“本机未执行导航”。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_preflight.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    proxy_status: "preflight_rejected",
+    preflight_status: "preflight_rejected",
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    workstation_endpoint: "/api/robot-control/nav2/goal/preflight",
+    remote_methods_used: ["GET"],
+    remote_read_endpoints: [],
+    forbidden_remote_endpoints_not_called: ["/api/nav2/start", "NavigateToPose", "/cmd_vel", "/api/base/manual"],
+    goal_request: {
+      goal_frame_id: "map",
+      goal_x: navGoalX.value,
+      goal_y: navGoalY.value,
+      goal_yaw: navGoalYaw.value,
+      confirm_navigation_preflight: confirmNavigationPreflight.value,
+    },
+    goal_limits: {
+      frame_id: "map",
+      x_min_m: -3,
+      x_max_m: 3,
+      y_min_m: -3,
+      y_max_m: 3,
+      yaw_min_rad: -3.1416,
+      yaw_max_rad: 3.1416,
+    },
+    operator_report_preflight: commandOperatorReportPreflightFallback("manual", reason),
+    localization_summary: {
+      request_status: "blocked",
+      status: "not_loaded",
+      localization_reset_observed: false,
+      nav2_no_motion_localization_runtime_observed: false,
+      map_to_base_link: false,
+    },
+    nav2_path_summary: {
+      request_status: "blocked",
+      status: "not_loaded",
+      path_generated: false,
+      path_generation_succeeded: false,
+      path_point_count: 0,
+    },
+    nav2_status_summary: {
+      request_status: "blocked",
+      status: "not_loaded",
+    },
+    missing_requirements: [reason],
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
 function makeRadarLifecycleFallback(action: "start" | "stop", reason: string): RobotControlRadarLifecycleResponse {
   // 浏览器 fetch 异常时也保持与后端一致的安全字段，避免高级诊断误判。
   return {
@@ -756,6 +825,28 @@ async function resetLocalizationProof(): Promise<void> {
     localizationResetResult,
     localizationResetPending,
   );
+}
+
+async function runNavGoalPreflight(): Promise<void> {
+  // 预检按钮只请求 workstation 本机门禁；门禁通过也只是“可准备”，不会触发目标执行。
+  if (!robotApiBaseUrl.value.trim() || navGoalPreflightPending.value) {
+    return;
+  }
+  navGoalPreflightPending.value = true;
+  try {
+    navGoalPreflightResult.value = await postRobotControlNav2GoalPreflight(robotApiBaseUrl.value, {
+      goal_frame_id: "map",
+      goal_x: navGoalX.value,
+      goal_y: navGoalY.value,
+      goal_yaw: navGoalYaw.value,
+      confirm_navigation_preflight: confirmNavigationPreflight.value,
+    });
+  } catch (err) {
+    navGoalPreflightResult.value = makeNavGoalPreflightFallback(err instanceof Error ? err.message : "nav_goal_preflight_request_failed");
+  } finally {
+    navGoalPreflightPending.value = false;
+    await refreshConsole();
+  }
 }
 
 async function runMapLifecycleAction(
@@ -1321,7 +1412,60 @@ onBeforeUnmount(() => {
               定位重置（高级）
             </button>
           </div>
+          <form class="robot-control-form" @submit.prevent="runNavGoalPreflight">
+            <label>
+              <span>目标 x（m）</span>
+              <input v-model.number="navGoalX" name="navGoalX" type="number" min="-3" max="3" step="0.1">
+            </label>
+            <label>
+              <span>目标 y（m）</span>
+              <input v-model.number="navGoalY" name="navGoalY" type="number" min="-3" max="3" step="0.1">
+            </label>
+            <label>
+              <span>目标 yaw（rad）</span>
+              <input v-model.number="navGoalYaw" name="navGoalYaw" type="number" min="-3.1416" max="3.1416" step="0.1">
+            </label>
+            <label class="checkbox-inline">
+              <input v-model="confirmNavigationPreflight" name="confirmNavigationPreflight" type="checkbox">
+              <span>确认仅做导航目标预检</span>
+            </label>
+            <button class="secondary" type="submit" :disabled="loading || navGoalPreflightPending || !robotApiBaseUrl.trim()">
+              导航目标预检（高级）
+            </button>
+          </form>
           <dl class="kv compact-kv">
+            <dt>goal preflight pending</dt>
+            <dd>{{ navGoalPreflightPending ? "pending" : "idle" }}</dd>
+            <dt>goal preflight status</dt>
+            <dd>
+              {{ navGoalPreflightResult?.proxy_status ?? "not_loaded" }} /
+              {{ navGoalPreflightResult?.preflight_status ?? "not_loaded" }}
+            </dd>
+            <dt>goal request</dt>
+            <dd>{{ JSON.stringify(navGoalPreflightResult?.goal_request ?? { goal_frame_id: "map", goal_x: navGoalX, goal_y: navGoalY, goal_yaw: navGoalYaw, confirm_navigation_preflight: confirmNavigationPreflight }) }}</dd>
+            <dt>goal missing requirements</dt>
+            <dd>{{ listText(navGoalPreflightResult?.missing_requirements, "none") }}</dd>
+            <dt>goal localization summary</dt>
+            <dd>{{ JSON.stringify(navGoalPreflightResult?.localization_summary ?? {}) }}</dd>
+            <dt>goal path summary</dt>
+            <dd>{{ JSON.stringify(navGoalPreflightResult?.nav2_path_summary ?? {}) }}</dd>
+            <dt>goal operator material gate</dt>
+            <dd>
+              {{ navGoalPreflightResult?.operator_report_preflight.status ?? "not_loaded" }} /
+              {{ navGoalPreflightResult?.operator_report_preflight.failure_reason || "none" }}
+            </dd>
+            <dt>goal readback endpoints</dt>
+            <dd>
+              {{
+                navGoalPreflightResult?.remote_read_endpoints
+                  .map((endpoint) => `${endpoint.endpoint}:${endpoint.request_status}:${endpoint.http_status ?? "n/a"}`)
+                  .join(" | ") ?? "none"
+              }}
+            </dd>
+            <dt>goal forbidden endpoints</dt>
+            <dd>{{ listText(navGoalPreflightResult?.forbidden_remote_endpoints_not_called, "none") }}</dd>
+            <dt>goal robot_control_executed</dt>
+            <dd>robot_control_executed={{ navGoalPreflightResult?.robot_control_executed ?? false }}</dd>
             <dt>localize reset pending</dt>
             <dd>{{ localizationResetPending ? "pending" : "idle" }}</dd>
             <dt>localize reset endpoint</dt>

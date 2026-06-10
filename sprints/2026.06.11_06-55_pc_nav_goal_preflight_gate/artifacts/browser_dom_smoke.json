@@ -1,0 +1,19 @@
+{
+  "advanced_has_confirm_checkbox": true,
+  "advanced_has_forbidden_endpoint_list": true,
+  "advanced_has_missing_requirements": true,
+  "advanced_has_nav_goal_preflight": true,
+  "advanced_has_recent_result": true,
+  "card_titles": [
+    "小车连接",
+    "实时画面",
+    "雷达",
+    "地图",
+    "移动/导航"
+  ],
+  "details_open_default": false,
+  "first_screen_card_count": 5,
+  "first_screen_forbidden_hits": [],
+  "title": "Rober 小车控制台",
+  "url": "http://127.0.0.1:5173/"
+}

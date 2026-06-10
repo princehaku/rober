@@ -25,6 +25,8 @@ import type {
   RobotControlBaseCommandRequest,
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
+  RobotControlNavGoalPreflightRequest,
+  RobotControlNavGoalPreflightResponse,
   RobotControlOperatorReportProxyResponse,
   RobotControlOperatorReportRequest,
   RobotControlSummaryResponse,
@@ -98,6 +100,7 @@ const API_ENDPOINTS = {
   robotControlRadarStop: "/api/robot-control/radar/stop",
   robotControlMapProofRefresh: "/api/robot-control/map/proof/refresh",
   robotControlNav2ProofRefresh: "/api/robot-control/nav2/proof/refresh",
+  robotControlNav2GoalPreflight: "/api/robot-control/nav2/goal/preflight",
   robotControlLocalizeReset: "/api/robot-control/localize/reset",
   robotControlMapList: "/api/robot-control/map/list",
   robotControlMapStart: "/api/robot-control/map/start",
@@ -480,6 +483,17 @@ export async function postRobotControlNav2ProofRefresh(baseUrl: string): Promise
   return postJson<RobotControlProofRefreshProxyResponse>(
     robotControlProofRefreshUrl(API_ENDPOINTS.robotControlNav2ProofRefresh, baseUrl),
     {},
+  );
+}
+
+export async function postRobotControlNav2GoalPreflight(
+  baseUrl: string,
+  body: RobotControlNavGoalPreflightRequest,
+): Promise<RobotControlNavGoalPreflightResponse> {
+  // 目标预检只传短白名单字段；真正的只读材料 gate 和禁止执行保证在 Node 后端完成。
+  return postJson<RobotControlNavGoalPreflightResponse>(
+    robotControlProofRefreshUrl(API_ENDPOINTS.robotControlNav2GoalPreflight, baseUrl),
+    body,
   );
 }
 

@@ -589,6 +589,118 @@ const fixtures: Record<string, unknown> = {
       non_motion_evidence_actions_observed: [],
       ...PROOF_FLAGS,
     },
+    "/api/robot-control/nav2/goal/preflight": {
+      schema: "trashbot.pc_tools_workstation.robot_control_nav_goal_preflight.v1",
+      proxy_status: "preflight_rejected",
+      preflight_status: "preflight_rejected",
+      source_base_url: "http://192.168.1.11:8787",
+      normalized_base_url: "http://192.168.1.11:8787",
+      workstation_endpoint: "/api/robot-control/nav2/goal/preflight",
+      remote_methods_used: ["GET"],
+      remote_read_endpoints: [
+        {
+          id: "localize_proof_latest",
+          endpoint: "/api/localize/proof/latest",
+          http_status: 200,
+          request_status: "loaded",
+          schema: "trashbot.upper_robot_api.v1.localization_reset_result",
+          status: "localization_reset_observed",
+          evidence_ref: "localize-reset-proof",
+          key_values: {
+            localization_reset_observed: "true",
+            localization_tf_observed: "{\"map_to_base_link\":true}",
+          },
+          blocked_reasons: [],
+          dangerous_true_fields: [],
+        },
+        {
+          id: "nav2_proof_latest",
+          endpoint: "/api/nav2/proof/latest",
+          http_status: 200,
+          request_status: "loaded",
+          schema: "trashbot.upper_robot_api.v1.nav2_proof_latest",
+          status: "nav2_no_motion_path_generation_runtime_observed",
+          evidence_ref: "nav2-latest-proof",
+          key_values: {
+            path_generated: "true",
+            path_generation_succeeded: "true",
+            path_point_count: "17",
+          },
+          blocked_reasons: [],
+          dangerous_true_fields: [],
+        },
+      ],
+      forbidden_remote_endpoints_not_called: ["/api/nav2/start", "NavigateToPose", "/cmd_vel", "/api/base/manual"],
+      goal_request: {
+        goal_frame_id: "map",
+        goal_x: 0.8,
+        goal_y: 0,
+        goal_yaw: 0,
+        confirm_navigation_preflight: true,
+      },
+      goal_limits: {
+        frame_id: "map",
+        x_min_m: -3,
+        x_max_m: 3,
+        y_min_m: -3,
+        y_max_m: 3,
+        yaw_min_rad: -3.1416,
+        yaw_max_rad: 3.1416,
+      },
+      operator_report_preflight: {
+        status: "blocked",
+        source_endpoint: "/api/operator/report",
+        request_status: "loaded",
+        http_status: 200,
+        report_status: "ready_for_review",
+        evidence_ref: "field-hil-20260611-0605-op",
+        required_fields: ["scan_delta_ref"],
+        missing_fields: ["physical_motion_lidar_delta_proven"],
+        material_summary: {
+          status: "loaded",
+          source_endpoint_id: "operator_report_latest",
+          source_path: "operator_report_latest.structured_hil_claims",
+          report_status: "ready_for_review",
+          evidence_ref: "field-hil-20260611-0605-op",
+          operator_present: "true",
+          physical_clearance: "true",
+          emergency_stop: "true",
+          external_video: "true; ref=phone-video-0605.mp4",
+          camera_visible: "true; ref=runtime/camera/latest_metrics.json",
+          wheel_feedback: "true; ref=runtime/wave_rover_feedback_debug.jsonl",
+          lidar_delta: "false; ref=runtime/scan_delta/latest_metrics.json",
+          route_map: "true; ref=runtime/routes/field-route.csv",
+          delivery_claim: "true",
+          site_state: "field_operator_claim_ready_for_review",
+        },
+        failure_reason: "operator_report_preflight_required",
+        hard_dangerous_true_fields: [],
+      },
+      localization_summary: {
+        request_status: "loaded",
+        status: "localization_reset_observed",
+        localization_reset_observed: true,
+        nav2_no_motion_localization_runtime_observed: false,
+        map_to_base_link: true,
+      },
+      nav2_path_summary: {
+        request_status: "loaded",
+        status: "nav2_no_motion_path_generation_runtime_observed",
+        path_generated: true,
+        path_generation_succeeded: true,
+        path_point_count: 17,
+      },
+      nav2_status_summary: {
+        request_status: "loaded",
+        status: "inactive",
+      },
+      missing_requirements: ["operator_report_preflight_required"],
+      failure_reason: "operator_report_preflight_required",
+      blocked_reasons: ["operator_report_preflight_required"],
+      hard_dangerous_true_fields: [],
+      robot_control_executed: false,
+      ...PROOF_FLAGS,
+    },
     "/api/robot-control/localize/reset": {
       schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
       robot_control_executed: false,
@@ -2795,6 +2907,8 @@ function stubWorkstationFetch() {
       fixtureKey = "/api/robot-control/map/proof/refresh";
     } else if (url.startsWith("/api/robot-control/nav2/proof/refresh")) {
       fixtureKey = "/api/robot-control/nav2/proof/refresh";
+    } else if (url.startsWith("/api/robot-control/nav2/goal/preflight")) {
+      fixtureKey = "/api/robot-control/nav2/goal/preflight";
     } else if (url.startsWith("/api/robot-control/localize/reset")) {
       fixtureKey = "/api/robot-control/localize/reset";
     } else if (url.startsWith("/api/robot-control/map/list")) {
@@ -2982,6 +3096,8 @@ describe("App", () => {
       "map_once_observed",
       "path_generation_succeeded",
       "path_point_count",
+      "目标 x",
+      "导航目标预检",
     ];
     for (const token of firstScreenForbiddenTokens) {
       expect(firstScreenText).not.toContain(token);
@@ -3010,6 +3126,8 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("/api/operator/report");
     expect(wrapper.find("details").text()).toContain("现场点动设置 / 控制边界");
     expect(wrapper.find("details").text()).toContain("Nav2 规划详情");
+    expect(wrapper.find("details").text()).toContain("导航目标预检（高级）");
+    expect(wrapper.find("details").text()).toContain("确认仅做导航目标预检");
     expect(wrapper.find("details").text()).toContain("启动雷达（高级）");
     expect(wrapper.find("details").text()).toContain("停止雷达（高级）");
     expect(wrapper.find("details").text()).toContain("前进");
@@ -3173,6 +3291,34 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/nav2/proof/refresh") && options?.method === "POST")).toBe(true);
     const summaryCallsAfterNav2 = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
     expect(summaryCallsAfterNav2).toBeGreaterThan(summaryCallsAfterMap);
+
+    await wrapper.find("details").element.setAttribute("open", "");
+    await wrapper.vm.$nextTick();
+    await wrapper.find("input[name='navGoalX']").setValue("99");
+    await wrapper.find("input[name='confirmNavigationPreflight']").setValue(true);
+    const navGoalPreflightForm = wrapper.findAll("form").find((form) => form.text().includes("导航目标预检"));
+    expect(navGoalPreflightForm).toBeTruthy();
+    await navGoalPreflightForm?.trigger("submit");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("导航目标预检");
+    expect(wrapper.find("details").text()).toContain("preflight_rejected");
+    expect(wrapper.find("details").text()).toContain("operator_report_preflight_required");
+    expect(wrapper.find("details").text()).toContain("/api/localize/proof/latest");
+    expect(wrapper.find("details").text()).toContain("/api/nav2/proof/latest");
+    expect(wrapper.find("details").text()).toContain("/api/operator/report");
+    expect(wrapper.find("details").text()).toContain("robot_control_executed=false");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/nav2/goal/preflight") && options?.method === "POST")).toBe(true);
+    const navGoalCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/preflight"));
+    expect(JSON.parse(String(navGoalCall?.[1]?.body ?? "{}"))).toEqual({
+      goal_frame_id: "map",
+      goal_x: 99,
+      goal_y: 0,
+      goal_yaw: 0,
+      confirm_navigation_preflight: true,
+    });
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/nav2/start"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/base/manual"))).toBe(false);
 
     expect(wrapper.find("details").text()).toContain("定位重置（高级）");
     await wrapper.findAll("button").find((button) => button.text() === "定位重置（高级）")?.trigger("click");

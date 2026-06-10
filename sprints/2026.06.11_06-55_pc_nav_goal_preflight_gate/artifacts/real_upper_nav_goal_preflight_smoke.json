@@ -1,0 +1,234 @@
+{
+  "smoke_kind": "real_upper_no_motion_nav_goal_preflight_v1",
+  "started_at": "2026-06-10T23:03:16.888Z",
+  "finished_at": "2026-06-10T23:03:17.085Z",
+  "workstation_endpoint": "/api/robot-control/nav2/goal/preflight",
+  "robot_api_base_url": "http://192.168.1.11:8787",
+  "http_status": 400,
+  "response_body": {
+    "schema": "trashbot.pc_tools_workstation.robot_control_nav_goal_preflight.v1",
+    "source": "software_proof",
+    "proof_status": "not_proven",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "pc_only": true,
+    "proxy_status": "preflight_rejected",
+    "preflight_status": "preflight_rejected",
+    "source_base_url": "http://192.168.1.11:8787",
+    "normalized_base_url": "http://192.168.1.11:8787",
+    "workstation_endpoint": "/api/robot-control/nav2/goal/preflight",
+    "remote_methods_used": [
+      "GET"
+    ],
+    "remote_read_endpoints": [
+      {
+        "id": "localize_proof_latest",
+        "endpoint": "/api/localize/proof/latest",
+        "http_status": 200,
+        "request_status": "loaded",
+        "schema": "trashbot.upper_robot_api.v1.localization_proof_latest",
+        "status": "localization_reset_observed",
+        "evidence_ref": "o10-amcl-nav2-runtime-1781127385644",
+        "key_values": {
+          "safe_to_control": "false",
+          "delivery_success": "false",
+          "primary_actions_enabled": "false",
+          "path_generated": "false",
+          "path_generation_requested": "false",
+          "path_generation_succeeded": "false",
+          "path_point_count": "0",
+          "managed_runtime_started": "true",
+          "scan_once_observed": "true",
+          "map_once_observed": "true",
+          "amcl_pose_observed": "true",
+          "localization_tf_observed": "[object Object]",
+          "planner_server_active": "false",
+          "latest_proof_status": "nav2_no_motion_localization_runtime_observed"
+        },
+        "blocked_reasons": [],
+        "dangerous_true_fields": []
+      },
+      {
+        "id": "nav2_proof_latest",
+        "endpoint": "/api/nav2/proof/latest",
+        "http_status": 200,
+        "request_status": "loaded",
+        "schema": "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+        "status": "not_proven",
+        "evidence_ref": "o10-amcl-nav2-runtime-1781101832477",
+        "key_values": {
+          "safe_to_control": "false",
+          "delivery_success": "false",
+          "primary_actions_enabled": "false",
+          "path_generated": "true",
+          "path_generation_requested": "true",
+          "path_generation_succeeded": "true",
+          "path_point_count": "31",
+          "managed_runtime_started": "true",
+          "scan_once_observed": "true",
+          "map_once_observed": "true",
+          "amcl_pose_observed": "true",
+          "localization_tf_observed": "[object Object]",
+          "planner_server_active": "true"
+        },
+        "blocked_reasons": [],
+        "dangerous_true_fields": []
+      },
+      {
+        "id": "operator_report_latest",
+        "endpoint": "/api/operator/report",
+        "http_status": 200,
+        "request_status": "loaded",
+        "schema": "trashbot.upper_robot_api.v1.operator_report_latest_result",
+        "status": "loaded",
+        "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+        "key_values": {
+          "safe_to_control": "false",
+          "delivery_success": "false",
+          "primary_actions_enabled": "false"
+        },
+        "blocked_reasons": [],
+        "dangerous_true_fields": []
+      },
+      {
+        "id": "nav2_status",
+        "endpoint": "/api/nav2/status",
+        "http_status": 200,
+        "request_status": "loaded",
+        "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+        "status": "not_proven",
+        "evidence_ref": "o10-amcl-nav2-runtime-1781101832477",
+        "key_values": {
+          "safe_to_control": "false",
+          "delivery_success": "false",
+          "primary_actions_enabled": "false",
+          "map_once_observed": "true",
+          "latest_path_generated": "true",
+          "latest_proof_status": "nav2_no_motion_path_generation_runtime_observed"
+        },
+        "blocked_reasons": [],
+        "dangerous_true_fields": []
+      }
+    ],
+    "forbidden_remote_endpoints_not_called": [
+      "/api/nav2/start",
+      "NavigateToPose",
+      "/cmd_vel",
+      "/api/base/manual"
+    ],
+    "goal_request": {
+      "goal_frame_id": "map",
+      "goal_x": 0.8,
+      "goal_y": 0,
+      "goal_yaw": 0,
+      "confirm_navigation_preflight": true
+    },
+    "goal_limits": {
+      "frame_id": "map",
+      "x_min_m": -3,
+      "x_max_m": 3,
+      "y_min_m": -3,
+      "y_max_m": 3,
+      "yaw_min_rad": -3.1416,
+      "yaw_max_rad": 3.1416
+    },
+    "operator_report_preflight": {
+      "status": "blocked",
+      "source_endpoint": "/api/operator/report",
+      "request_status": "loaded",
+      "http_status": 200,
+      "report_status": "ready_for_execution",
+      "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+      "required_fields": [
+        "operator_present",
+        "physical_clearance_confirmed",
+        "emergency_stop_ready",
+        "external_video_recorded",
+        "external_video_ref",
+        "visible_content_proven",
+        "camera_artifacts_ref",
+        "wheel_feedback_lr_nonzero_proven",
+        "wheel_feedback_ref",
+        "physical_motion_lidar_delta_proven",
+        "scan_delta_ref"
+      ],
+      "missing_fields": [
+        "external_video_recorded",
+        "visible_content_proven",
+        "wheel_feedback_lr_nonzero_proven",
+        "physical_motion_lidar_delta_proven"
+      ],
+      "material_summary": {
+        "status": "loaded",
+        "source_endpoint_id": "operator_report_latest",
+        "source_path": "operator_report_latest.structured_hil_claims",
+        "report_status": "ready_for_execution",
+        "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+        "operator_present": "true",
+        "physical_clearance": "true",
+        "emergency_stop": "true",
+        "external_video": "false; ref=not_recorded_no_motion_smoke",
+        "camera_visible": "false; ref=not_attached_no_motion_smoke",
+        "wheel_feedback": "false; ref=not_attached_no_motion_smoke",
+        "lidar_delta": "false; ref=not_attached_no_motion_smoke",
+        "route_map": "false; ref=not_attached_no_motion_smoke",
+        "delivery_claim": "false",
+        "site_state": "pc_operator_report_no_motion_smoke"
+      },
+      "failure_reason": "operator_report_preflight_required",
+      "hard_dangerous_true_fields": []
+    },
+    "localization_summary": {
+      "request_status": "loaded",
+      "status": "localization_reset_observed",
+      "localization_reset_observed": true,
+      "nav2_no_motion_localization_runtime_observed": true,
+      "map_to_base_link": true
+    },
+    "nav2_path_summary": {
+      "request_status": "loaded",
+      "status": "not_proven",
+      "path_generated": true,
+      "path_generation_succeeded": true,
+      "path_point_count": 31
+    },
+    "nav2_status_summary": {
+      "request_status": "loaded",
+      "status": "not_proven"
+    },
+    "missing_requirements": [
+      "operator_report_preflight_required"
+    ],
+    "failure_reason": "operator_report_preflight_required",
+    "blocked_reasons": [
+      "operator_report_preflight_required"
+    ],
+    "hard_dangerous_true_fields": [],
+    "robot_control_executed": false
+  },
+  "no_motion_assertion": {
+    "workstation_route_only": true,
+    "expected_remote_methods": [
+      "GET"
+    ],
+    "forbidden_execution_endpoints": [
+      "/api/nav2/start",
+      "NavigateToPose",
+      "/cmd_vel",
+      "/api/base/manual"
+    ],
+    "robot_control_executed": false,
+    "response_robot_control_executed_false": true,
+    "response_forbidden_remote_endpoints_not_called": [
+      "/api/nav2/start",
+      "NavigateToPose",
+      "/cmd_vel",
+      "/api/base/manual"
+    ],
+    "response_remote_methods_used": [
+      "GET"
+    ],
+    "remote_read_endpoints_contains_payload": false
+  }
+}
