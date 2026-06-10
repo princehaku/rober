@@ -736,6 +736,41 @@ function listenRobotApiReadback(payload: unknown): Promise<{ baseUrl: string; cl
   });
 }
 
+function listenRobotApiReadbackByPath(
+  handlers: Record<string, { payload: unknown; delay_ms?: number; statusCode?: number }>,
+): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  // 真实上位机不同 endpoint 延迟不同；测试用按路径响应来验证只读超时预算不会误判慢端点。
+  const server = http.createServer((req, res) => {
+    const url = req.url ?? "/";
+    const handler = handlers[url];
+    if (!handler) {
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+      return;
+    }
+    const delayMs = handler.delay_ms ?? 0;
+    const statusCode = handler.statusCode ?? 200;
+    setTimeout(() => {
+      res.statusCode = statusCode;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(handler.payload));
+    }, delayMs);
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        close: () => new Promise((closeResolve, closeReject) => {
+          server.close((error) => (error ? closeReject(error) : closeResolve()));
+        }),
+      });
+    });
+  });
+}
+
 function listenCloudArchive(payload: unknown): Promise<{ baseUrl: string; close: () => Promise<void> }> {
   // cloud archive probe 测试用本机 HTTP 服务，只返回给定 contract，不连接 relay、云或机器人。
   const server = http.createServer((req, res) => {
@@ -3418,6 +3453,153 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_to_control).toBe(false);
       expect(summary.delivery_success).toBe(false);
       expect(summary.primary_actions_enabled).toBe(false);
+    } finally {
+      await robotApi.close();
+    }
+  });
+
+  it("Robot Control summary keeps slow status and camera endpoints readable with endpoint timeouts", async () => {
+    // status/camera 在真实板端可能慢于 proof latest；只要仍在白名单窗口内，就不应被误记成 fetch_failed。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        delay_ms: 2200,
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "camera_ready_from_status",
+          evidence_ref: "status-proof",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          managed_runtime_started: true,
+          scan_once_observed: true,
+          map_once_observed: true,
+          path_generated: true,
+          path_point_count: 31,
+        },
+      },
+      "/api/camera/health": {
+        delay_ms: 2400,
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.camera_health",
+          status: "ready",
+          evidence_ref: "camera-health-proof",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/camera/devices": {
+        delay_ms: 2300,
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.camera_devices",
+          status: "devices_ready",
+          evidence_ref: "camera-devices-proof",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/map/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_proof_latest",
+          status: "not_loaded",
+          evidence_ref: "map-proof",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_status",
+          status: "not_loaded",
+          evidence_ref: "nav2-status-proof",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.nav2_proof_latest",
+          status: "nav2_path_ready",
+          evidence_ref: "nav2-proof",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          path_generated: true,
+          path_point_count: 31,
+        },
+      },
+      "/api/radar/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_status",
+          status: "fresh_scan_proof_observed",
+          evidence_ref: "radar-proof",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/radar/scan-proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_scan_proof_latest",
+          status: "scan_once_observed",
+          evidence_ref: "radar-scan-proof",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/radar/raw-packet-proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_raw_packet_proof_latest",
+          status: "raw_packet_not_proven",
+          evidence_ref: "radar-raw-proof",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/base/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_status",
+          status: "blocked_by_safety_boundary",
+          evidence_ref: "base-status-proof",
+          sends_commands: true,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+      "/api/base/feedback-samples/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_feedback_samples",
+          status: "blocked_by_safety_boundary",
+          evidence_ref: "base-feedback-proof",
+          latest_result: {
+            sends_commands: true,
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+      const statusReadback = summary.read_endpoints.find((item) => item.id === "status");
+      const cameraHealth = summary.read_endpoints.find((item) => item.id === "camera_health");
+      const cameraDevices = summary.read_endpoints.find((item) => item.id === "camera_devices");
+
+      expect(statusReadback?.request_status).toBe("loaded");
+      expect(cameraHealth?.request_status).toBe("loaded");
+      expect(cameraDevices?.request_status).toBe("loaded");
+      expect(summary.robot_api_connection.failed_count).toBe(0);
+      expect(summary.robot_api_connection.blocked_count).toBeGreaterThanOrEqual(4);
+      expect(summary.readback_summary.camera.status).toBe("ready");
+      expect(summary.readback_summary.camera.devices_status).toBe("devices_ready");
+      expect(summary.o3_proof_summary.path_generated).toBe(true);
     } finally {
       await robotApi.close();
     }

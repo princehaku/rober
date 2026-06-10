@@ -9,22 +9,32 @@ import type {
 type JsonRecord = Record<string, unknown>;
 
 const ROBOT_CONTROL_SCHEMA = "trashbot.pc_tools_workstation.robot_control_summary.v1" as const;
-const REQUEST_TIMEOUT_MS = 1500;
+const DEFAULT_REQUEST_TIMEOUT_MS = 1500;
+const SLOW_READBACK_TIMEOUT_MS = 4000;
 
-const READ_ENDPOINTS: Array<{ id: RobotApiReadEndpointId; endpoint: string }> = [
-  { id: "status", endpoint: "/api/status" },
-  { id: "map_proof_latest", endpoint: "/api/map/proof/latest" },
-  { id: "localize_proof_latest", endpoint: "/api/localize/proof/latest" },
-  { id: "nav2_status", endpoint: "/api/nav2/status" },
-  { id: "nav2_proof_latest", endpoint: "/api/nav2/proof/latest" },
-  { id: "operator_report_latest", endpoint: "/api/operator/report" },
-  { id: "camera_health", endpoint: "/api/camera/health" },
-  { id: "camera_devices", endpoint: "/api/camera/devices" },
-  { id: "radar_status", endpoint: "/api/radar/status" },
-  { id: "radar_scan_proof_latest", endpoint: "/api/radar/scan-proof/latest" },
-  { id: "radar_raw_packet_proof_latest", endpoint: "/api/radar/raw-packet-proof/latest" },
-  { id: "base_status", endpoint: "/api/base/status" },
-  { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest" },
+type RobotReadEndpointConfig = {
+  id: RobotApiReadEndpointId;
+  endpoint: string;
+  timeout_ms: number;
+};
+
+const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
+  // 真实上位机 /api/status 会顺带聚合 camera/radar/base 子摘要，读取窗口要比 proof latest 更宽。
+  { id: "status", endpoint: "/api/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "map_proof_latest", endpoint: "/api/map/proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  { id: "localize_proof_latest", endpoint: "/api/localize/proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  { id: "nav2_status", endpoint: "/api/nav2/status", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  { id: "nav2_proof_latest", endpoint: "/api/nav2/proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  { id: "operator_report_latest", endpoint: "/api/operator/report", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  // camera 端点在真实板端会探测设备与健康摘要，允许更长只读窗口，避免误判成离线。
+  { id: "camera_health", endpoint: "/api/camera/health", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "camera_devices", endpoint: "/api/camera/devices", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "radar_status", endpoint: "/api/radar/status", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  { id: "radar_scan_proof_latest", endpoint: "/api/radar/scan-proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  { id: "radar_raw_packet_proof_latest", endpoint: "/api/radar/raw-packet-proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  // base 读取仍保持短超时；它被安全边界 blocked 的原因来自危险字段，不应靠放宽超时掩盖。
+  { id: "base_status", endpoint: "/api/base/status", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
 ];
 
 const DANGEROUS_TRUE_FIELDS = new Set([
@@ -200,16 +210,23 @@ function compactKeyValues(payload: JsonRecord | null): Record<string, string> {
   return Object.fromEntries(entries);
 }
 
-async function readEndpoint(base: URL, id: RobotApiReadEndpointId, endpoint: string): Promise<RobotApiEndpointReadback> {
-  // 每条读请求都有短超时；失败只影响该 endpoint，不阻断整个控制台 blocked 摘要。
+async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise<RobotApiEndpointReadback> {
+  // 每条读请求都按白名单 endpoint 带独立超时；慢端点允许更宽窗口，但范围仍局限在只读 GET。
+  const { id, endpoint, timeout_ms } = config;
   const url = endpointUrl(base, endpoint);
   let response: Response;
   try {
     response = await fetch(url, {
       method: "GET",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeout_ms),
     });
   } catch (error) {
+    const timeoutReason =
+      error instanceof Error && error.name === "TimeoutError"
+        ? `fetch_timeout_${timeout_ms}ms`
+        : error instanceof Error
+          ? error.message.slice(0, 180)
+          : "fetch_failed";
     return {
       id,
       endpoint,
@@ -219,7 +236,7 @@ async function readEndpoint(base: URL, id: RobotApiReadEndpointId, endpoint: str
       status: "fetch_failed",
       evidence_ref: "not_loaded",
       key_values: {},
-      blocked_reasons: [error instanceof Error ? error.message.slice(0, 180) : "fetch_failed"],
+      blocked_reasons: [timeoutReason],
       dangerous_true_fields: [],
     };
   }
@@ -413,7 +430,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
 
   const observedAt = Date.now();
   const readbacks = await Promise.all(
-    READ_ENDPOINTS.map((item) => readEndpoint(normalized.normalized, item.id, item.endpoint)),
+    READ_ENDPOINTS.map((item) => readEndpoint(normalized.normalized, item)),
   );
   const dangerous = readbacks.flatMap((item) => item.dangerous_true_fields.map((field) => `${item.id}.${field}`));
   const loadedCount = readbacks.filter((item) => item.request_status === "loaded").length;
