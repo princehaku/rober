@@ -249,12 +249,34 @@ const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_
 const checklistMissing = computed(() => hilChecklist.value.filter((item) => !item.checked).map((item) => item.label));
 const hilChecklistConfirmed = computed(() => checklistMissing.value.length === 0);
 const canSendStop = computed(() => !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
+const operatorMaterialGateSummary = computed(() => {
+  // 首页只给“现场材料”普通结论；具体字段名和引用全部留在高级诊断。
+  const summary = robotSummary.value?.operator_hil_material_summary;
+  if (!summary || summary.status !== "loaded") {
+    return { state: "未满足", hint: "需要补齐现场材料后，才允许低速点动。" };
+  }
+  const claimWithRefReady = (value: string) => value.startsWith("true; ref=") && !value.endsWith("not_loaded");
+  const ready =
+    summary.operator_present === "true" &&
+    summary.physical_clearance === "true" &&
+    summary.emergency_stop === "true" &&
+    claimWithRefReady(summary.external_video) &&
+    claimWithRefReady(summary.camera_visible) &&
+    claimWithRefReady(summary.wheel_feedback) &&
+    claimWithRefReady(summary.lidar_delta);
+  return ready
+    ? { state: "已满足", hint: "现场材料已满足；仍只允许一次低速短时点动。" }
+    : { state: "未满足", hint: "需要补齐现场材料后，才允许低速点动。" };
+});
 const manualBlockedReason = computed(() => {
   if (!robotApiBaseUrl.value.trim()) {
     return "先输入小车地址并连接。";
   }
   if (!hilChecklistConfirmed.value) {
     return `还缺现场确认：${checklistMissing.value.join("；")}。`;
+  }
+  if (operatorMaterialGateSummary.value.state !== "已满足") {
+    return "现场材料未满足；本机不会发送点动。";
   }
   return "允许发送一次低速短时点动；安全锁定不会解除。";
 });
@@ -341,6 +363,40 @@ function commandEvidenceFallback(commandKind: "manual" | "stop", reason: string)
     before_readback: {},
     after_readback: {},
     motion_evidence_summary: `${commandKind} command before/after fixed GET evidence snapshot blocked or unavailable; this is not HIL pass.`,
+  };
+}
+
+function commandOperatorReportPreflightFallback(commandKind: "manual" | "stop", reason: string) {
+  // 前端本地异常不会绕过后端 preflight；这里只补齐响应形状用于错误展示。
+  const required = manualBoundary.value?.operator_report_preflight_required_fields ?? [];
+  return {
+    status: commandKind === "stop" ? "not_required_for_stop" as const : "blocked" as const,
+    source_endpoint: "/api/operator/report" as const,
+    request_status: commandKind === "stop" ? "not_required" as const : "blocked" as const,
+    http_status: null,
+    report_status: commandKind === "stop" ? "not_required_for_stop" : "not_checked",
+    evidence_ref: commandKind === "stop" ? "not_required_for_stop" : "not_checked",
+    required_fields: required,
+    missing_fields: commandKind === "stop" ? [] : required,
+    material_summary: robotSummary.value?.operator_hil_material_summary ?? {
+      status: "not_loaded" as const,
+      source_endpoint_id: "operator_report_latest" as const,
+      source_path: "operator_report_latest.structured_hil_claims" as const,
+      report_status: "not_loaded",
+      evidence_ref: "not_loaded",
+      operator_present: "not_loaded",
+      physical_clearance: "not_loaded",
+      emergency_stop: "not_loaded",
+      external_video: "not_loaded",
+      camera_visible: "not_loaded",
+      wheel_feedback: "not_loaded",
+      lidar_delta: "not_loaded",
+      route_map: "not_loaded",
+      delivery_claim: "not_loaded",
+      site_state: "not_loaded",
+    },
+    failure_reason: commandKind === "stop" ? "" : reason,
+    hard_dangerous_true_fields: [],
   };
 }
 
@@ -787,6 +843,7 @@ async function sendManualMotion(direction: "forward" | "back" | "left" | "right"
       non_stop_requires_confirm_hil_checklist: true,
       hil_checklist_gate_status: hilChecklistConfirmed.value ? "manual_allowed" : "manual_blocked_missing_checklist",
       checklist_missing: checklistMissing.value,
+      operator_report_preflight: commandOperatorReportPreflightFallback("manual", err instanceof Error ? err.message : "manual_request_failed"),
       request_contract: {
         max_speed_mps: manualSpeedLimit.value,
         max_duration_ms: manualDurationLimit.value,
@@ -837,6 +894,7 @@ async function sendStop(): Promise<void> {
       non_stop_requires_confirm_hil_checklist: true,
       hil_checklist_gate_status: "stop_allowed_without_checklist",
       checklist_missing: [],
+      operator_report_preflight: commandOperatorReportPreflightFallback("stop", ""),
       request_contract: {
         max_speed_mps: manualSpeedLimit.value,
         max_duration_ms: manualDurationLimit.value,
@@ -1048,6 +1106,7 @@ onBeforeUnmount(() => {
           <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
         </div>
         <p class="panel-note">{{ nav2PlanningSummary.hint }}</p>
+        <p class="panel-note">现场材料：{{ operatorMaterialGateSummary.state }}。{{ operatorMaterialGateSummary.hint }}</p>
       </article>
     </div>
 
@@ -1442,6 +1501,12 @@ onBeforeUnmount(() => {
             <dd>{{ robotSummary?.operator_hil_material_summary.report_status ?? "not_loaded" }}</dd>
             <dt>evidence_ref</dt>
             <dd>{{ robotSummary?.operator_hil_material_summary.evidence_ref ?? "not_loaded" }}</dd>
+            <dt>operator_present</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.operator_present ?? "not_loaded" }}</dd>
+            <dt>physical_clearance</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.physical_clearance ?? "not_loaded" }}</dd>
+            <dt>emergency_stop</dt>
+            <dd>{{ robotSummary?.operator_hil_material_summary.emergency_stop ?? "not_loaded" }}</dd>
             <dt>外部视频</dt>
             <dd>{{ robotSummary?.operator_hil_material_summary.external_video ?? "not_loaded" }}</dd>
             <dt>相机可见</dt>
@@ -1495,6 +1560,20 @@ onBeforeUnmount(() => {
           <dl class="kv compact-kv">
             <dt>manual motion entry</dt>
             <dd>{{ robotSummary?.safe_command_boundary.manual_motion_entry_status ?? "not_loaded" }}</dd>
+            <dt>operator report preflight</dt>
+            <dd>
+              {{ manualCommandResult?.operator_report_preflight.status ?? "not_loaded" }} /
+              {{ manualCommandResult?.operator_report_preflight.failure_reason || "none" }}
+            </dd>
+            <dt>operator report preflight missing</dt>
+            <dd>{{ listText(manualCommandResult?.operator_report_preflight.missing_fields, "none") }}</dd>
+            <dt>operator report preflight summary</dt>
+            <dd>
+              endpoint={{ manualCommandResult?.operator_report_preflight.source_endpoint ?? "/api/operator/report" }},
+              http={{ manualCommandResult?.operator_report_preflight.http_status ?? "n/a" }},
+              report={{ manualCommandResult?.operator_report_preflight.report_status ?? "not_loaded" }},
+              evidence={{ manualCommandResult?.operator_report_preflight.evidence_ref ?? "not_loaded" }}
+            </dd>
             <dt>manual stop endpoint</dt>
             <dd>{{ robotSummary?.safe_command_boundary.stop_endpoint ?? "/api/base/stop" }}</dd>
             <dt>manual limits</dt>

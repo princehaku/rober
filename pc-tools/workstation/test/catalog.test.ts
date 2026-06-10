@@ -3657,7 +3657,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.manual_endpoint).toBe("/api/base/manual");
       expect(summary.safe_command_boundary.stop_endpoint).toBe("/api/base/stop");
       expect(summary.safe_command_boundary.cmd_vel_topic).toBe("/cmd_vel");
-      expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_hil_checklist");
+      expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_hil_checklist_and_operator_report");
+      expect(summary.safe_command_boundary.non_stop_requires_operator_report_preflight).toBe(true);
+      expect(summary.safe_command_boundary.operator_report_preflight_endpoint).toBe("/api/operator/report");
+      expect(summary.safe_command_boundary.operator_report_preflight_required_fields).toContain("scan_delta_ref");
       expect(summary.safe_command_boundary.allowed_directions).toEqual(["forward", "back", "left", "right", "stop"]);
       expect(summary.safe_command_boundary.manual_control_enabled).toBe(false);
       expect(summary.safe_to_control).toBe(false);
@@ -3690,6 +3693,9 @@ describe("workstation fail-closed API contracts", () => {
           hil_pass: false,
           delivery_success: false,
           primary_actions_enabled: false,
+          operator_present: true,
+          physical_clearance_confirmed: true,
+          emergency_stop_ready: true,
           structured_hil_claims: {
             external_video_recorded: true,
             external_video_ref: "phone-video-0605.mp4",
@@ -3711,8 +3717,23 @@ describe("workstation fail-closed API contracts", () => {
               delivery_success: true,
             },
             operator_report: {
+              operator_present: true,
+              physical_clearance_confirmed: true,
+              emergency_stop_ready: true,
+              evidence_ref: "field-hil-20260611-0605-op",
               structured_hil_claims: {
+                external_video_recorded: true,
+                external_video_ref: "phone-video-0605.mp4",
+                visible_content_proven: true,
+                camera_artifacts_ref: "runtime/camera/latest_metrics.json",
+                wheel_feedback_lr_nonzero_proven: true,
+                wheel_feedback_ref: "runtime/wave_rover_feedback_debug.jsonl",
+                physical_motion_lidar_delta_proven: false,
+                scan_delta_ref: "runtime/scan_delta/latest_metrics.json",
+                real_route_map_proven: true,
+                route_map_ref: "runtime/routes/field-route.csv",
                 delivery_success: true,
+                site_state: "field_operator_claim_ready_for_review",
               },
             },
           },
@@ -3730,6 +3751,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.operator_hil_material_summary.status).toBe("loaded");
       expect(summary.operator_hil_material_summary.report_status).toBe("ready_for_execution");
       expect(summary.operator_hil_material_summary.evidence_ref).toBe("field-hil-20260611-0605-op");
+      expect(summary.operator_hil_material_summary.operator_present).toBe("true");
+      expect(summary.operator_hil_material_summary.physical_clearance).toBe("true");
+      expect(summary.operator_hil_material_summary.emergency_stop).toBe("true");
       expect(summary.operator_hil_material_summary.external_video).toBe("true; ref=phone-video-0605.mp4");
       expect(summary.operator_hil_material_summary.wheel_feedback).toBe("true; ref=runtime/wave_rover_feedback_debug.jsonl");
       expect(summary.operator_hil_material_summary.lidar_delta).toBe("false; ref=runtime/scan_delta/latest_metrics.json");
@@ -5034,8 +5058,8 @@ describe("workstation fail-closed API contracts", () => {
   });
 
   it("workstation base manual proxy clamps request and requires confirm_hil_checklist", async () => {
-    // 受控点动代理只允许固定 manual endpoint，并且必须经过 checklist gate 与速度/时长 clamp。
-    const upstream = await listenRobotProofRefreshApi({
+    // 受控点动代理只允许固定 manual endpoint，并且必须经过 checklist gate、现场材料 gate 与速度/时长 clamp。
+    const upstream = await listenRobotBaseCommandApi({
       "/api/base/manual": {
         payload: {
           schema: "trashbot.upper_robot_api.v1.base_manual",
@@ -5043,6 +5067,31 @@ describe("workstation fail-closed API contracts", () => {
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
+        },
+      },
+    }, {
+      "/api/operator/report": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.operator_report",
+          status: "loaded",
+          operator_present: true,
+          physical_clearance_confirmed: true,
+          emergency_stop_ready: true,
+          evidence_ref: "field-hil-manual-preflight",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          structured_hil_claims: {
+            external_video_recorded: true,
+            external_video_ref: "phone-video-manual.mp4",
+            visible_content_proven: true,
+            camera_artifacts_ref: "runtime/camera/latest_metrics.json",
+            wheel_feedback_lr_nonzero_proven: true,
+            wheel_feedback_ref: "runtime/wave_rover_feedback_debug.jsonl",
+            physical_motion_lidar_delta_proven: true,
+            scan_delta_ref: "runtime/scan_delta/latest_metrics.json",
+            delivery_success: false,
+          },
         },
       },
     });
@@ -5073,12 +5122,16 @@ describe("workstation fail-closed API contracts", () => {
         applied_direction: string;
         clamped_speed_mps: number;
         clamped_duration_ms: number;
+        operator_report_preflight: { status: string; missing_fields: string[]; evidence_ref: string };
       };
       expect(forwarded.status).toBe(200);
       expect(forwardedBody.proxy_status).toBe("command_forwarded");
       expect(forwardedBody.applied_direction).toBe("forward");
       expect(forwardedBody.clamped_speed_mps).toBe(0.12);
       expect(forwardedBody.clamped_duration_ms).toBe(800);
+      expect(forwardedBody.operator_report_preflight.status).toBe("passed");
+      expect(forwardedBody.operator_report_preflight.missing_fields).toEqual([]);
+      expect(forwardedBody.operator_report_preflight.evidence_ref).toBe("field-hil-manual-preflight");
       expect(upstream.receivedBodies["/api/base/manual"]).toEqual([
         {
           direction: "forward",
@@ -5087,6 +5140,75 @@ describe("workstation fail-closed API contracts", () => {
           confirm_hil_checklist: true,
         },
       ]);
+      expect(upstream.receivedGets).toContain("/api/operator/report");
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation base manual proxy rejects checklist-confirmed motion when operator report material is incomplete", async () => {
+    // 材料 gate 失败必须在本机 400 截断，不能把 forward/back/left/right 透传给真实上位机。
+    const upstream = await listenRobotBaseCommandApi({
+      "/api/base/manual": {
+        payload: { schema: "trashbot.upper_robot_api.v1.base_manual", status: "should_not_be_called" },
+      },
+    }, {
+      "/api/operator/report": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.operator_report",
+          status: "loaded",
+          operator_present: true,
+          physical_clearance_confirmed: true,
+          emergency_stop_ready: true,
+          evidence_ref: "field-hil-incomplete",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          structured_hil_claims: {
+            external_video_recorded: true,
+            external_video_ref: "phone-video-incomplete.mp4",
+            visible_content_proven: true,
+            camera_artifacts_ref: "runtime/camera/latest_metrics.json",
+            wheel_feedback_lr_nonzero_proven: false,
+            wheel_feedback_ref: "",
+            physical_motion_lidar_delta_proven: false,
+            scan_delta_ref: "",
+            delivery_success: true,
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ direction: "forward", speed: 0.08, duration_ms: 500, confirm_hil_checklist: true }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        failure_reason: string;
+        operator_report_preflight: { status: string; missing_fields: string[]; failure_reason: string };
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(400);
+      expect(body.proxy_status).toBe("command_rejected");
+      expect(body.failure_reason).toBe("operator_report_preflight_required");
+      expect(body.operator_report_preflight.status).toBe("blocked");
+      expect(body.operator_report_preflight.missing_fields).toEqual(expect.arrayContaining([
+        "wheel_feedback_lr_nonzero_proven",
+        "wheel_feedback_ref",
+        "physical_motion_lidar_delta_proven",
+        "scan_delta_ref",
+      ]));
+      expect(body.operator_report_preflight.missing_fields).not.toContain("delivery_success");
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedGets).toContain("/api/operator/report");
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
     } finally {
       await workstation.close();
       await upstream.close();

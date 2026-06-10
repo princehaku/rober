@@ -1,0 +1,18 @@
+{
+  "advanced_details_open": false,
+  "advanced_has_manual_gate_detail": true,
+  "advanced_has_operator_material": true,
+  "advanced_has_operator_report_preflight": true,
+  "first_screen_card_count": 5,
+  "first_screen_forbidden_hits": [],
+  "first_screen_has_material_copy": true,
+  "first_screen_headings": [
+    "小车连接",
+    "实时画面",
+    "雷达",
+    "地图",
+    "移动/导航"
+  ],
+  "title": "Rober 小车控制台",
+  "url": "http://127.0.0.1:8791/"
+}

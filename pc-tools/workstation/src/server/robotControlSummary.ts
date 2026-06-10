@@ -4,6 +4,7 @@ import type {
   RobotApiProofSummary,
   RobotApiReadEndpointId,
   RobotControlOperatorHilMaterialSummary,
+  RobotControlOperatorReportPreflight,
   RobotControlMapLifecycleAction,
   RobotControlMapLifecycleEndpoint,
   RobotControlMapLifecycleRequest,
@@ -197,6 +198,20 @@ const MAP_LIFECYCLE_CONFIGS: Record<RobotControlMapLifecycleAction, RobotMapLife
 
 const OPERATOR_REPORT_REMOTE_ENDPOINT = "/api/operator/report" as const;
 const OPERATOR_REPORT_TIMEOUT_MS = 5000;
+export const ROBOT_CONTROL_OPERATOR_REPORT_PREFLIGHT_TIMEOUT_MS = 1500;
+export const ROBOT_CONTROL_OPERATOR_REPORT_PREFLIGHT_REQUIRED_FIELDS = [
+  "operator_present",
+  "physical_clearance_confirmed",
+  "emergency_stop_ready",
+  "external_video_recorded",
+  "external_video_ref",
+  "visible_content_proven",
+  "camera_artifacts_ref",
+  "wheel_feedback_lr_nonzero_proven",
+  "wheel_feedback_ref",
+  "physical_motion_lidar_delta_proven",
+  "scan_delta_ref",
+] as const;
 const OPERATOR_REPORT_TOP_LEVEL_FIELDS = new Set([
   "operator_present",
   "evidence_ref",
@@ -398,6 +413,9 @@ function notLoadedHilMaterialSummary(status: RobotControlOperatorHilMaterialSumm
     source_path: "operator_report_latest.structured_hil_claims",
     report_status: "not_loaded",
     evidence_ref: "not_loaded",
+    operator_present: "not_loaded",
+    physical_clearance: "not_loaded",
+    emergency_stop: "not_loaded",
     external_video: "not_loaded",
     camera_visible: "not_loaded",
     wheel_feedback: "not_loaded",
@@ -405,6 +423,46 @@ function notLoadedHilMaterialSummary(status: RobotControlOperatorHilMaterialSumm
     route_map: "not_loaded",
     delivery_claim: "not_loaded",
     site_state: "not_loaded",
+  };
+}
+
+function blockedOperatorReportPreflight(
+  reason: string,
+  materialSummary: RobotControlOperatorHilMaterialSummary = notLoadedHilMaterialSummary("not_loaded"),
+  requestStatus: RobotControlOperatorReportPreflight["request_status"] = "blocked",
+  httpStatus: number | null = null,
+  hardDangerousTrueFields: string[] = [],
+): RobotControlOperatorReportPreflight {
+  // 点动 preflight 的拒绝态必须列出完整缺项，便于 artifact 证明本机没有调用 /api/base/manual。
+  return {
+    status: "blocked",
+    source_endpoint: OPERATOR_REPORT_REMOTE_ENDPOINT,
+    request_status: requestStatus,
+    http_status: httpStatus,
+    report_status: materialSummary.report_status,
+    evidence_ref: materialSummary.evidence_ref,
+    required_fields: [...ROBOT_CONTROL_OPERATOR_REPORT_PREFLIGHT_REQUIRED_FIELDS],
+    missing_fields: [...ROBOT_CONTROL_OPERATOR_REPORT_PREFLIGHT_REQUIRED_FIELDS],
+    material_summary: materialSummary,
+    failure_reason: reason,
+    hard_dangerous_true_fields: hardDangerousTrueFields,
+  };
+}
+
+export function notRequiredOperatorReportPreflight(): RobotControlOperatorReportPreflight {
+  // stop 是 fail-safe，不能因为现场材料缺失而阻断；但响应仍显式记录没有做点动 preflight。
+  return {
+    status: "not_required_for_stop",
+    source_endpoint: OPERATOR_REPORT_REMOTE_ENDPOINT,
+    request_status: "not_required",
+    http_status: null,
+    report_status: "not_required_for_stop",
+    evidence_ref: "not_required_for_stop",
+    required_fields: [...ROBOT_CONTROL_OPERATOR_REPORT_PREFLIGHT_REQUIRED_FIELDS],
+    missing_fields: [],
+    material_summary: notLoadedHilMaterialSummary("not_loaded"),
+    failure_reason: "",
+    hard_dangerous_true_fields: [],
   };
 }
 
@@ -419,22 +477,46 @@ function claimWithRef(claim: unknown, ref: unknown): string {
   return `${boolText(claim)}; ref=${refText}`;
 }
 
-function buildOperatorHilMaterialSummary(
-  readbacks: InternalRobotApiEndpointReadback[],
-): RobotControlOperatorHilMaterialSummary {
+function operatorReportRecord(payload: JsonRecord | null): JsonRecord | null {
+  // 真实板端可能把 report 包在 latest_result.operator_report；这里只在 report 端点 payload 内找同源记录。
+  if (!payload) {
+    return null;
+  }
+  const latestResult = asRecord(payload.latest_result);
+  const nestedReport = asRecord(latestResult?.operator_report);
+  if (nestedReport) {
+    return nestedReport;
+  }
+  if (asRecord(payload.structured_hil_claims) || payload.operator_present !== undefined) {
+    return payload;
+  }
+  if (latestResult && (asRecord(latestResult.structured_hil_claims) || latestResult.operator_present !== undefined)) {
+    return latestResult;
+  }
+  return payload;
+}
+
+function operatorReportClaims(report: JsonRecord | null, payload: JsonRecord | null): JsonRecord | null {
+  // claims 优先跟随同一个 operator_report 记录，找不到时才兼容旧顶层 structured_hil_claims。
+  return asRecord(report?.structured_hil_claims) ?? asRecord(payload?.structured_hil_claims) ?? asRecord(findFirstKey(payload, ["structured_hil_claims"]));
+}
+
+function buildOperatorHilMaterialSummaryFromPayload(payload: JsonRecord | null): RobotControlOperatorHilMaterialSummary {
   // 只消费 /api/operator/report 的 structured_hil_claims，不从其它 readback 猜 HIL 状态。
-  const operatorReadback = readbacks.find((item) => item.id === "operator_report_latest");
-  const payload = operatorReadback?.payload ?? null;
   if (!payload) {
     return notLoadedHilMaterialSummary("not_loaded");
   }
-  const claims = asRecord(payload.structured_hil_claims) ?? asRecord(findFirstKey(payload, ["structured_hil_claims"]));
-  const reportStatus = asString(findFirstKey(payload, ["operator_report_status"]) ?? findFirstKey(payload, ["status"]), "not_loaded");
+  const report = operatorReportRecord(payload);
+  const claims = operatorReportClaims(report, payload);
+  const reportStatus = asString(findFirstKey(report, ["operator_report_status"]) ?? findFirstKey(payload, ["operator_report_status"]) ?? findFirstKey(payload, ["status"]), "not_loaded");
   if (!claims) {
     return {
       ...notLoadedHilMaterialSummary("missing"),
       report_status: reportStatus,
-      evidence_ref: asString(findFirstKey(payload, ["evidence_ref", "latest_evidence_ref"]), "not_loaded"),
+      evidence_ref: asString(findFirstKey(report, ["evidence_ref", "latest_evidence_ref"]) ?? findFirstKey(payload, ["evidence_ref", "latest_evidence_ref"]), "not_loaded"),
+      operator_present: boolText(report?.operator_present),
+      physical_clearance: boolText(report?.physical_clearance_confirmed),
+      emergency_stop: boolText(report?.emergency_stop_ready),
     };
   }
   return {
@@ -442,7 +524,10 @@ function buildOperatorHilMaterialSummary(
     source_endpoint_id: "operator_report_latest",
     source_path: "operator_report_latest.structured_hil_claims",
     report_status: reportStatus,
-    evidence_ref: asString(findFirstKey(payload, ["evidence_ref", "latest_evidence_ref"]), "not_loaded"),
+    evidence_ref: asString(findFirstKey(report, ["evidence_ref", "latest_evidence_ref"]) ?? findFirstKey(payload, ["evidence_ref", "latest_evidence_ref"]), "not_loaded"),
+    operator_present: boolText(report?.operator_present),
+    physical_clearance: boolText(report?.physical_clearance_confirmed),
+    emergency_stop: boolText(report?.emergency_stop_ready),
     external_video: claimWithRef(claims.external_video_recorded, claims.external_video_ref),
     camera_visible: claimWithRef(claims.visible_content_proven, claims.camera_artifacts_ref),
     wheel_feedback: claimWithRef(claims.wheel_feedback_lr_nonzero_proven, claims.wheel_feedback_ref),
@@ -450,6 +535,66 @@ function buildOperatorHilMaterialSummary(
     route_map: claimWithRef(claims.real_route_map_proven, claims.route_map_ref),
     delivery_claim: boolText(claims.delivery_success),
     site_state: asString(claims.site_state, "not_loaded"),
+  };
+}
+
+function buildOperatorHilMaterialSummary(
+  readbacks: InternalRobotApiEndpointReadback[],
+): RobotControlOperatorHilMaterialSummary {
+  // summary 只接受固定 operator_report_latest endpoint 的 payload，避免其它端点伪造同名 claim。
+  const operatorReadback = readbacks.find((item) => item.id === "operator_report_latest");
+  return buildOperatorHilMaterialSummaryFromPayload(operatorReadback?.payload ?? null);
+}
+
+function textPresent(value: unknown): boolean {
+  // ref 必须是非空字符串；布尔 true 不能替代可追溯材料路径。
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+export function buildOperatorReportPreflightFromPayload(
+  payload: JsonRecord | null,
+  httpStatus: number | null,
+  requestStatus: RobotControlOperatorReportPreflight["request_status"],
+): RobotControlOperatorReportPreflight {
+  // 点动 gate 同时要求“人在现场”和“可复核材料引用”，delivery_success 不参与放行。
+  const materialSummary = buildOperatorHilMaterialSummaryFromPayload(payload);
+  if (!payload || requestStatus !== "loaded") {
+    return blockedOperatorReportPreflight("operator_report_preflight_required", materialSummary, requestStatus, httpStatus);
+  }
+  const hardDangerous = scanDangerousTrueFields(
+    payload,
+    "",
+    HARD_DANGEROUS_TRUE_FIELDS,
+    OPERATOR_REPORT_CLAIM_TRUE_FIELD_EXEMPTIONS,
+  );
+  const report = operatorReportRecord(payload);
+  const claims = operatorReportClaims(report, payload);
+  const missingFields = [
+    report?.operator_present === true ? "" : "operator_present",
+    report?.physical_clearance_confirmed === true ? "" : "physical_clearance_confirmed",
+    report?.emergency_stop_ready === true ? "" : "emergency_stop_ready",
+    claims?.external_video_recorded === true ? "" : "external_video_recorded",
+    textPresent(claims?.external_video_ref) ? "" : "external_video_ref",
+    claims?.visible_content_proven === true ? "" : "visible_content_proven",
+    textPresent(claims?.camera_artifacts_ref) ? "" : "camera_artifacts_ref",
+    claims?.wheel_feedback_lr_nonzero_proven === true ? "" : "wheel_feedback_lr_nonzero_proven",
+    textPresent(claims?.wheel_feedback_ref) ? "" : "wheel_feedback_ref",
+    claims?.physical_motion_lidar_delta_proven === true ? "" : "physical_motion_lidar_delta_proven",
+    textPresent(claims?.scan_delta_ref) ? "" : "scan_delta_ref",
+    ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
+  ].filter(Boolean);
+  return {
+    status: missingFields.length ? "blocked" : "passed",
+    source_endpoint: OPERATOR_REPORT_REMOTE_ENDPOINT,
+    request_status: requestStatus,
+    http_status: httpStatus,
+    report_status: materialSummary.report_status,
+    evidence_ref: materialSummary.evidence_ref,
+    required_fields: [...ROBOT_CONTROL_OPERATOR_REPORT_PREFLIGHT_REQUIRED_FIELDS],
+    missing_fields: missingFields,
+    material_summary: materialSummary,
+    failure_reason: missingFields.length ? "operator_report_preflight_required" : "",
+    hard_dangerous_true_fields: hardDangerous,
   };
 }
 
@@ -788,6 +933,35 @@ export async function buildOperatorReportProxy(
     hard_dangerous_true_fields: hardDangerous,
     robot_control_executed: false,
   };
+}
+
+export async function fetchManualMotionOperatorReportPreflight(baseUrl: URL): Promise<RobotControlOperatorReportPreflight> {
+  // 非 stop 点动前必须重新读取上位机最新现场材料，不能只信浏览器 checkbox 的瞬时状态。
+  let response: Response;
+  try {
+    response = await fetch(endpointUrl(baseUrl, OPERATOR_REPORT_REMOTE_ENDPOINT), {
+      method: "GET",
+      signal: AbortSignal.timeout(ROBOT_CONTROL_OPERATOR_REPORT_PREFLIGHT_TIMEOUT_MS),
+    });
+  } catch {
+    return blockedOperatorReportPreflight(
+      "operator_report_preflight_required",
+      notLoadedHilMaterialSummary("not_loaded"),
+      "fetch_failed",
+      null,
+    );
+  }
+  const json = await response.json().catch(() => null);
+  const payload = asRecord(json);
+  if (!payload) {
+    return blockedOperatorReportPreflight(
+      "operator_report_preflight_required",
+      notLoadedHilMaterialSummary(response.ok ? "missing" : "not_loaded"),
+      response.ok ? "not_object" : "blocked",
+      response.status,
+    );
+  }
+  return buildOperatorReportPreflightFromPayload(payload, response.status, response.ok ? "loaded" : "blocked");
 }
 
 function mapNamesFromPayload(payload: JsonRecord | null): string[] {
@@ -1571,11 +1745,14 @@ function lockedBoundary(): RobotControlSummaryResponse["safe_command_boundary"] 
     radar_start: "radar start locked",
     keyboard_control: "keyboard control locked",
     map_click_goal: "map click goal locked",
-    locked_reason: "requires safety lock, HIL gate, robot ACK, timeout/cancel/stop/recovery evidence before enablement",
-    manual_motion_entry_status: "controlled_jog_requires_hil_checklist",
+    locked_reason: "requires safety lock, checklist, operator report materials, robot ACK, timeout/cancel/stop/recovery evidence before enablement",
+    manual_motion_entry_status: "controlled_jog_requires_hil_checklist_and_operator_report",
     manual_motion_entry_label: "受控点动（需现场确认）",
     allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
     non_stop_requires_confirm_hil_checklist: true,
+    non_stop_requires_operator_report_preflight: true,
+    operator_report_preflight_endpoint: OPERATOR_REPORT_REMOTE_ENDPOINT,
+    operator_report_preflight_required_fields: [...ROBOT_CONTROL_OPERATOR_REPORT_PREFLIGHT_REQUIRED_FIELDS],
     speed_limit_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
     duration_limit_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
     hil_checklist: [...ROBOT_CONTROL_HIL_CHECKLIST],

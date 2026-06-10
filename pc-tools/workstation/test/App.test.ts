@@ -375,6 +375,9 @@ const fixtures: Record<string, unknown> = {
       source_path: "operator_report_latest.structured_hil_claims",
       report_status: "ready_for_review",
       evidence_ref: "field-hil-20260611-0605-op",
+      operator_present: "true",
+      physical_clearance: "true",
+      emergency_stop: "true",
       external_video: "true; ref=phone-video-0605.mp4",
       camera_visible: "true; ref=runtime/camera/latest_metrics.json",
       wheel_feedback: "true; ref=runtime/wave_rover_feedback_debug.jsonl",
@@ -392,11 +395,26 @@ const fixtures: Record<string, unknown> = {
       radar_start: "radar start locked",
       keyboard_control: "keyboard control locked",
       map_click_goal: "map click goal locked",
-      locked_reason: "requires safety lock, HIL gate, robot ACK, timeout/cancel/stop/recovery evidence before enablement",
-      manual_motion_entry_status: "controlled_jog_requires_hil_checklist",
+      locked_reason: "requires safety lock, checklist, operator report materials, robot ACK, timeout/cancel/stop/recovery evidence before enablement",
+      manual_motion_entry_status: "controlled_jog_requires_hil_checklist_and_operator_report",
       manual_motion_entry_label: "受控点动（需现场确认）",
       allowed_directions: ["forward", "back", "left", "right", "stop"],
       non_stop_requires_confirm_hil_checklist: true,
+      non_stop_requires_operator_report_preflight: true,
+      operator_report_preflight_endpoint: "/api/operator/report",
+      operator_report_preflight_required_fields: [
+        "operator_present",
+        "physical_clearance_confirmed",
+        "emergency_stop_ready",
+        "external_video_recorded",
+        "external_video_ref",
+        "visible_content_proven",
+        "camera_artifacts_ref",
+        "wheel_feedback_lr_nonzero_proven",
+        "wheel_feedback_ref",
+        "physical_motion_lidar_delta_proven",
+        "scan_delta_ref",
+      ],
       speed_limit_mps: 0.12,
       duration_limit_ms: 800,
       hil_checklist: [
@@ -2923,6 +2941,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("检查路径");
     expect(firstScreenText).toContain("未检查");
     expect(firstScreenText).toContain("停止");
+    expect(firstScreenText).toContain("现场材料：未满足");
     const firstScreenForbiddenTokens = [
       "保存地图",
       "开始建图",
@@ -2986,6 +3005,7 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("轮速反馈");
     expect(wrapper.find("details").text()).toContain("field_operator_claim_ready_for_review");
     expect(wrapper.find("details").text()).toContain("提交现场材料（高级）");
+    expect(wrapper.find("details").text()).toContain("operator report preflight");
     expect(wrapper.find("details").text()).toContain("latest submit");
     expect(wrapper.find("details").text()).toContain("/api/operator/report");
     expect(wrapper.find("details").text()).toContain("现场点动设置 / 控制边界");

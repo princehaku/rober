@@ -41,6 +41,8 @@ import {
   ROBOT_CONTROL_HIL_CHECKLIST,
   ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
   ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
+  fetchManualMotionOperatorReportPreflight,
+  notRequiredOperatorReportPreflight,
   scanDangerousTrueFields,
 } from "./robotControlSummary";
 import type {
@@ -54,6 +56,7 @@ import type {
   RobotControlEvidenceCaptureStatus,
   RobotControlEvidenceEndpointCapture,
   RobotControlEvidenceReadbackSummary,
+  RobotControlOperatorReportPreflight,
   RobotControlMapLifecycleAction,
   RobotControlRadarLifecycleAction,
 } from "../shared/contracts";
@@ -324,9 +327,21 @@ function baseCommandFailure(
   requestedDurationMs: number | null,
   confirmHilChecklist: boolean,
   evidenceCapture: BaseCommandEvidenceCapture = blockedEvidenceCapture(commandKind, reason),
+  operatorReportPreflight: RobotControlOperatorReportPreflight = notRequiredOperatorReportPreflight(),
 ): RobotControlBaseCommandProxyResponse {
   // 即使失败也返回完整 fail-closed 合同，避免前端在错误态分叉出另一套解释逻辑。
   const isStop = requestedDirection === "stop" || commandKind === "stop";
+  const resolvedOperatorReportPreflight = isStop || operatorReportPreflight.status !== "not_required_for_stop"
+    ? operatorReportPreflight
+    : {
+        ...operatorReportPreflight,
+        status: "blocked" as const,
+        request_status: "blocked" as const,
+        report_status: "not_checked",
+        evidence_ref: "not_checked",
+        missing_fields: operatorReportPreflight.required_fields,
+        failure_reason: reason,
+      };
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
     command_kind: commandKind,
@@ -357,6 +372,7 @@ function baseCommandFailure(
         ? "manual_allowed"
         : "manual_blocked_missing_checklist",
     checklist_missing: isStop ? [] : missingHilChecklist(confirmHilChecklist),
+    operator_report_preflight: resolvedOperatorReportPreflight,
     request_contract: {
       max_speed_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
       max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
@@ -676,6 +692,24 @@ export function createWorkstationApp(): express.Express {
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "confirm_hil_checklist_required", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
+    const operatorReportPreflight = await fetchManualMotionOperatorReportPreflight(normalized.normalized);
+    if (operatorReportPreflight.status !== "passed") {
+      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
+      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+      res.status(400).json(baseCommandFailure(
+        sourceBaseUrl,
+        "manual",
+        "/api/base/manual",
+        "operator_report_preflight_required",
+        direction,
+        speed,
+        durationMs,
+        confirmHilChecklist,
+        evidenceCapture,
+        operatorReportPreflight,
+      ));
+      return;
+    }
 
     const clampedSpeed = clamp(speed, 0, ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS);
     const clampedDurationMs = clamp(durationMs, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS);
@@ -719,6 +753,7 @@ export function createWorkstationApp(): express.Express {
       non_stop_requires_confirm_hil_checklist: true,
       hil_checklist_gate_status: "manual_allowed",
       checklist_missing: [],
+      operator_report_preflight: operatorReportPreflight,
       request_contract: {
         max_speed_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
         max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
@@ -783,6 +818,7 @@ export function createWorkstationApp(): express.Express {
       non_stop_requires_confirm_hil_checklist: true,
       hil_checklist_gate_status: "stop_allowed_without_checklist",
       checklist_missing: [],
+      operator_report_preflight: notRequiredOperatorReportPreflight(),
       request_contract: {
         max_speed_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
         max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,

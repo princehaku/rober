@@ -1995,6 +1995,9 @@ export interface RobotControlOperatorHilMaterialSummary {
   source_path: "operator_report_latest.structured_hil_claims";
   report_status: string;
   evidence_ref: string;
+  operator_present: string;
+  physical_clearance: string;
+  emergency_stop: string;
   external_video: string;
   camera_visible: string;
   wheel_feedback: string;
@@ -2002,6 +2005,25 @@ export interface RobotControlOperatorHilMaterialSummary {
   route_map: string;
   delivery_claim: string;
   site_state: string;
+}
+
+export type RobotControlOperatorReportPreflightStatus =
+  | "not_required_for_stop"
+  | "passed"
+  | "blocked";
+
+export interface RobotControlOperatorReportPreflight {
+  status: RobotControlOperatorReportPreflightStatus;
+  source_endpoint: "/api/operator/report";
+  request_status: "not_required" | "loaded" | "fetch_failed" | "bad_json" | "not_object" | "blocked";
+  http_status: number | null;
+  report_status: string;
+  evidence_ref: string;
+  required_fields: string[];
+  missing_fields: string[];
+  material_summary: RobotControlOperatorHilMaterialSummary;
+  failure_reason: string;
+  hard_dangerous_true_fields: string[];
 }
 
 export interface RobotControlOperatorReportStructuredHilClaims {
@@ -2114,10 +2136,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     keyboard_control: "keyboard control locked";
     map_click_goal: "map click goal locked";
     locked_reason: string;
-    manual_motion_entry_status: "controlled_jog_requires_hil_checklist";
+    manual_motion_entry_status: "controlled_jog_requires_hil_checklist_and_operator_report";
     manual_motion_entry_label: "受控点动（需现场确认）";
     allowed_directions: Array<"forward" | "back" | "left" | "right" | "stop">;
     non_stop_requires_confirm_hil_checklist: true;
+    non_stop_requires_operator_report_preflight: true;
+    operator_report_preflight_endpoint: "/api/operator/report";
+    operator_report_preflight_required_fields: string[];
     speed_limit_mps: number;
     duration_limit_ms: number;
     hil_checklist: Array<{
@@ -2329,6 +2354,7 @@ export interface RobotControlBaseCommandProxyResponse extends ProofFlags {
   non_stop_requires_confirm_hil_checklist: true;
   hil_checklist_gate_status: "stop_allowed_without_checklist" | "manual_allowed" | "manual_blocked_missing_checklist";
   checklist_missing: string[];
+  operator_report_preflight: RobotControlOperatorReportPreflight;
   request_contract: {
     max_speed_mps: number;
     max_duration_ms: number;
