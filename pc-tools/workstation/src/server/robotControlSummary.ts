@@ -8,6 +8,9 @@ import type {
   RobotControlMapLifecycleEndpoint,
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
+  RobotControlOperatorReportProxyResponse,
+  RobotControlOperatorReportRequest,
+  RobotControlOperatorReportStructuredHilClaims,
   RobotControlProofRefreshProxyResponse,
   RobotControlProofRefreshKind,
   RobotControlRadarLifecycleAction,
@@ -190,6 +193,58 @@ const MAP_LIFECYCLE_CONFIGS: Record<RobotControlMapLifecycleAction, RobotMapLife
   start: { action: "start", endpoint: "/api/map/start", method: "POST" },
   save: { action: "save", endpoint: "/api/map/save", method: "POST" },
   reset: { action: "reset", endpoint: "/api/map/reset", method: "POST" },
+};
+
+const OPERATOR_REPORT_REMOTE_ENDPOINT = "/api/operator/report" as const;
+const OPERATOR_REPORT_TIMEOUT_MS = 5000;
+const OPERATOR_REPORT_TOP_LEVEL_FIELDS = new Set([
+  "operator_present",
+  "evidence_ref",
+  "physical_clearance_confirmed",
+  "emergency_stop_ready",
+  "observed_motion",
+  "observed_stop",
+  "reported_at",
+  "operator_notes",
+  "structured_hil_claims",
+]);
+const OPERATOR_REPORT_CLAIM_FIELDS = new Set([
+  "external_video_recorded",
+  "external_video_ref",
+  "visible_content_proven",
+  "camera_artifacts_ref",
+  "wheel_feedback_lr_nonzero_proven",
+  "wheel_feedback_ref",
+  "physical_motion_lidar_delta_proven",
+  "scan_delta_ref",
+  "real_route_map_proven",
+  "route_map_ref",
+  "delivery_success",
+  "site_state",
+]);
+const OPERATOR_REPORT_BOOLEAN_FIELDS = new Set([
+  "operator_present",
+  "physical_clearance_confirmed",
+  "emergency_stop_ready",
+  "observed_motion",
+  "observed_stop",
+  "external_video_recorded",
+  "visible_content_proven",
+  "wheel_feedback_lr_nonzero_proven",
+  "physical_motion_lidar_delta_proven",
+  "real_route_map_proven",
+  "delivery_success",
+]);
+const OPERATOR_REPORT_STRING_LIMITS: Record<string, number> = {
+  evidence_ref: 512,
+  reported_at: 80,
+  operator_notes: 2000,
+  external_video_ref: 512,
+  camera_artifacts_ref: 512,
+  wheel_feedback_ref: 512,
+  scan_delta_ref: 512,
+  route_map_ref: 512,
+  site_state: 160,
 };
 
 type RobotRadarLifecycleConfig = {
@@ -538,6 +593,200 @@ function sanitizeMapLifecycleBody(body: unknown): { ok: true; body: RobotControl
       ...(mapName ? { map_name: mapName } : {}),
       ...(artifactPath ? { artifact_path: artifactPath } : {}),
     },
+  };
+}
+
+function sanitizeOperatorReportString(key: string, value: unknown): { ok: true; value: string } | { ok: false; reason: string } {
+  // 字符串字段只做短文本材料引用，不能携带长 raw log、凭证、URL query 或二进制内容。
+  if (typeof value !== "string") {
+    return { ok: false, reason: `${key}_must_be_string` };
+  }
+  const limit = OPERATOR_REPORT_STRING_LIMITS[key] ?? 240;
+  const trimmed = value.trim();
+  if (trimmed.length > limit) {
+    return { ok: false, reason: `${key}_too_long` };
+  }
+  return { ok: true, value: trimmed };
+}
+
+function sanitizeOperatorReportValue(key: string, value: unknown): { ok: true; value: boolean | string } | { ok: false; reason: string } {
+  // 每个字段按类型白名单收口，避免把安全开关、endpoint、body 片段混进上位机 report。
+  if (OPERATOR_REPORT_BOOLEAN_FIELDS.has(key)) {
+    return typeof value === "boolean" ? { ok: true, value } : { ok: false, reason: `${key}_must_be_boolean` };
+  }
+  return sanitizeOperatorReportString(key, value);
+}
+
+function sanitizeOperatorReportClaims(
+  value: unknown,
+): { ok: true; claims: RobotControlOperatorReportStructuredHilClaims } | { ok: false; reason: string; rejected_fields: string[] } {
+  // structured_hil_claims 只允许材料 claim 和引用；delivery_success 也只能留在这一层。
+  if (value === undefined || value === null) {
+    return { ok: true, claims: {} };
+  }
+  const payload = asRecord(value);
+  if (!payload) {
+    return { ok: false, reason: "structured_hil_claims_must_be_json_object", rejected_fields: ["structured_hil_claims"] };
+  }
+  const rejectedFields = Object.keys(payload)
+    .filter((key) => !OPERATOR_REPORT_CLAIM_FIELDS.has(key))
+    .map((key) => `structured_hil_claims.${key}`);
+  if (rejectedFields.length > 0) {
+    return { ok: false, reason: `request_body_unknown_fields:${rejectedFields.slice(0, 4).join("|")}`, rejected_fields: rejectedFields };
+  }
+  const claims: RobotControlOperatorReportStructuredHilClaims = {};
+  for (const [key, rawValue] of Object.entries(payload)) {
+    const sanitized = sanitizeOperatorReportValue(key, rawValue);
+    if (!sanitized.ok) {
+      return { ok: false, reason: sanitized.reason, rejected_fields: [`structured_hil_claims.${key}`] };
+    }
+    Object.assign(claims, { [key]: sanitized.value });
+  }
+  return { ok: true, claims };
+}
+
+function sanitizeOperatorReportBody(
+  body: unknown,
+): { ok: true; body: RobotControlOperatorReportRequest } | { ok: false; reason: string; rejected_fields: string[] } {
+  // operator report 是 fail-closed 提交入口；未知字段拒绝，不能“忽略后继续转发”。
+  const payload = asRecord(body);
+  if (!payload) {
+    return { ok: false, reason: "request_body_must_be_json_object", rejected_fields: ["body"] };
+  }
+  const rejectedFields = Object.keys(payload).filter((key) => !OPERATOR_REPORT_TOP_LEVEL_FIELDS.has(key));
+  if (rejectedFields.length > 0) {
+    return { ok: false, reason: `request_body_unknown_fields:${rejectedFields.slice(0, 4).join("|")}`, rejected_fields: rejectedFields };
+  }
+  const claims = sanitizeOperatorReportClaims(payload.structured_hil_claims);
+  if (!claims.ok) {
+    return { ok: false, reason: claims.reason, rejected_fields: claims.rejected_fields };
+  }
+  const sanitizedBody: RobotControlOperatorReportRequest = {};
+  for (const [key, rawValue] of Object.entries(payload)) {
+    if (key === "structured_hil_claims") {
+      continue;
+    }
+    const sanitized = sanitizeOperatorReportValue(key, rawValue);
+    if (!sanitized.ok) {
+      return { ok: false, reason: sanitized.reason, rejected_fields: [key] };
+    }
+    Object.assign(sanitizedBody, { [key]: sanitized.value });
+  }
+  if (Object.keys(claims.claims).length > 0) {
+    sanitizedBody.structured_hil_claims = claims.claims;
+  }
+  return { ok: true, body: sanitizedBody };
+}
+
+function blockedOperatorReportResponse(
+  sourceBaseUrl: string,
+  reason: string,
+  rejectedFields: string[] = [],
+  requestBody: RobotControlOperatorReportRequest = {},
+): RobotControlOperatorReportProxyResponse {
+  // 拒绝态也返回固定 false 顶层字段，让前端和 artifact 都能证明没有控制或成功升级。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
+    ...PROOF_FLAGS,
+    proxy_status: "report_rejected",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    remote_endpoint: OPERATOR_REPORT_REMOTE_ENDPOINT,
+    remote_method: "POST",
+    remote_http_status: null,
+    status: "blocked",
+    request_body: requestBody,
+    structured_hil_claims: requestBody.structured_hil_claims ?? {},
+    rejected_fields: rejectedFields,
+    ignored_fields: [],
+    failure_reason: reason,
+    blocked_reasons: [reason, ...rejectedFields.map((field) => `rejected_field:${field}`)],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
+export async function buildOperatorReportProxy(
+  baseUrl: string,
+  body: unknown,
+): Promise<RobotControlOperatorReportProxyResponse> {
+  // 固定 POST 代理只服务 /api/operator/report；它不能调用 base/manual、cmd_vel、Nav2 goal、map/radar start。
+  const sanitized = sanitizeOperatorReportBody(body);
+  if (!sanitized.ok) {
+    return blockedOperatorReportResponse(baseUrl, sanitized.reason, sanitized.rejected_fields);
+  }
+  const normalized = normalizeRobotApiBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return blockedOperatorReportResponse(baseUrl, normalized.reason, [], sanitized.body);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(endpointUrl(normalized.normalized, OPERATOR_REPORT_REMOTE_ENDPOINT), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sanitized.body),
+      signal: AbortSignal.timeout(OPERATOR_REPORT_TIMEOUT_MS),
+    });
+  } catch (error) {
+    const reason =
+      error instanceof Error && error.name === "TimeoutError"
+        ? `fetch_timeout_${OPERATOR_REPORT_TIMEOUT_MS}ms`
+        : error instanceof Error
+          ? error.message.slice(0, 180)
+          : "fetch_failed";
+    return {
+      ...blockedOperatorReportResponse(baseUrl, reason, [], sanitized.body),
+      proxy_status: "report_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+    };
+  }
+
+  const bodyJson = await response.json().catch(() => null);
+  const payload = asRecord(bodyJson);
+  if (!payload) {
+    return {
+      ...blockedOperatorReportResponse(baseUrl, "response_json_not_object", [], sanitized.body),
+      proxy_status: "report_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_http_status: response.status,
+      blocked_reasons: ["response_json_not_object", `operator_report_http_status_${response.status}`],
+    };
+  }
+
+  const hardDangerous = scanDangerousTrueFields(
+    payload,
+    "",
+    HARD_DANGEROUS_TRUE_FIELDS,
+    OPERATOR_REPORT_CLAIM_TRUE_FIELD_EXEMPTIONS,
+  );
+  const blockedReasons = [
+    ...(response.ok ? [] : [`operator_report_http_status_${response.status}`]),
+    ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
+    ...remoteFailureReasons(payload, "operator_report"),
+  ];
+  const forwarded = response.ok && blockedReasons.length === 0;
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
+    ...PROOF_FLAGS,
+    proxy_status: forwarded ? "report_forwarded" : "report_failed",
+    source_base_url: baseUrl,
+    normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+    remote_endpoint: OPERATOR_REPORT_REMOTE_ENDPOINT,
+    remote_method: "POST",
+    remote_http_status: response.status,
+    status: forwarded ? "loaded_fail_closed_summary" : "blocked",
+    request_body: sanitized.body,
+    structured_hil_claims: sanitized.body.structured_hil_claims ?? {},
+    rejected_fields: [],
+    ignored_fields: [],
+    failure_reason:
+      blockedReasons.length > 0
+        ? blockedReasons[0] ?? "operator_report_blocked"
+        : asString(findFirstKey(payload, ["failure_reason", "error"]), ""),
+    blocked_reasons: blockedReasons,
+    hard_dangerous_true_fields: hardDangerous,
+    robot_control_executed: false,
   };
 }
 
@@ -1269,7 +1518,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       vue_direct_robot_api_access: false,
       node_proxy_only: true,
       allowed_methods: ["GET", "POST"],
-      allowed_endpoint_class: "status_latest_readback_plus_fixed_manual_stop",
+      allowed_endpoint_class: "status_latest_readback_plus_fixed_control_and_report_proxies",
       unsafe_urls_rejected: true,
     },
     observed_at_ms: observedAt,
@@ -1383,7 +1632,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
       vue_direct_robot_api_access: false,
       node_proxy_only: true,
       allowed_methods: ["GET", "POST"],
-      allowed_endpoint_class: "status_latest_readback_plus_fixed_manual_stop",
+      allowed_endpoint_class: "status_latest_readback_plus_fixed_control_and_report_proxies",
       unsafe_urls_rejected: true,
     },
     observed_at_ms: observedAt,

@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-06-10T22:21:56.206Z",
+  "target": "http://127.0.0.1:8890",
+  "before": {
+    "detailsOpenBeforeClick": false,
+    "firstScreenCardsText": [
+      "小车连接",
+      "实时画面",
+      "雷达",
+      "地图",
+      "移动/导航"
+    ],
+    "firstScreenForbiddenHits": [],
+    "snapshotPanelCount": 5,
+    "url": "http://127.0.0.1:8890/"
+  },
+  "after_open_advanced": {
+    "advancedHasDeliveryClaimCheckbox": true,
+    "advancedHasEvidenceRefInput": true,
+    "advancedHasFixedEndpointText": true,
+    "advancedHasHilMaterialSection": true,
+    "advancedHasSiteStateInput": true,
+    "advancedHasSubmitButton": true,
+    "detailsOpenAfterClick": true
+  },
+  "pass": true
+}

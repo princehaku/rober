@@ -305,7 +305,7 @@ const fixtures: Record<string, unknown> = {
       vue_direct_robot_api_access: false,
       node_proxy_only: true,
       allowed_methods: ["GET", "POST"],
-      allowed_endpoint_class: "status_latest_readback_plus_fixed_manual_stop",
+      allowed_endpoint_class: "status_latest_readback_plus_fixed_control_and_report_proxies",
       unsafe_urls_rejected: true,
     },
     observed_at_ms: 1781040814776,
@@ -413,6 +413,44 @@ const fixtures: Record<string, unknown> = {
     },
     blocked_reasons: ["dangerous actions locked by V1 boundary"],
     not_proven: ["O7", "path_generated", "delivery_success"],
+    ...PROOF_FLAGS,
+  },
+  "/api/robot-control/operator/report": {
+    schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
+    proxy_status: "report_forwarded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/operator/report",
+    remote_method: "POST",
+    remote_http_status: 200,
+    status: "loaded_fail_closed_summary",
+    request_body: {
+      operator_present: true,
+      evidence_ref: "field-hil-ui-submit",
+      physical_clearance_confirmed: true,
+      emergency_stop_ready: true,
+      observed_motion: false,
+      observed_stop: true,
+      reported_at: "2026-06-11T06:20:00.000Z",
+      structured_hil_claims: {
+        external_video_recorded: true,
+        external_video_ref: "phone-video-ui.mp4",
+        delivery_success: true,
+        site_state: "field_operator_claim_ready_for_review",
+      },
+    },
+    structured_hil_claims: {
+      external_video_recorded: true,
+      external_video_ref: "phone-video-ui.mp4",
+      delivery_success: true,
+      site_state: "field_operator_claim_ready_for_review",
+    },
+    rejected_fields: [],
+    ignored_fields: [],
+    failure_reason: "",
+    blocked_reasons: [],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
     ...PROOF_FLAGS,
   },
     "/api/robot-control/radar/scan-proof/refresh": {
@@ -2745,6 +2783,8 @@ function stubWorkstationFetch() {
       fixtureKey = "/api/robot-control/map/list";
     } else if (url.startsWith("/api/robot-control/map/save")) {
       fixtureKey = "/api/robot-control/map/save";
+    } else if (url.startsWith("/api/robot-control/operator/report")) {
+      fixtureKey = "/api/robot-control/operator/report";
     } else if (url.startsWith("/api/robot-control/camera/offer")) {
       fixtureKey = "/api/robot-control/camera/offer";
     } else if (url.startsWith("/api/robot-control/camera/peers/peer-preview-001/close")) {
@@ -2945,6 +2985,9 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("phone-video-0605.mp4");
     expect(wrapper.find("details").text()).toContain("轮速反馈");
     expect(wrapper.find("details").text()).toContain("field_operator_claim_ready_for_review");
+    expect(wrapper.find("details").text()).toContain("提交现场材料（高级）");
+    expect(wrapper.find("details").text()).toContain("latest submit");
+    expect(wrapper.find("details").text()).toContain("/api/operator/report");
     expect(wrapper.find("details").text()).toContain("现场点动设置 / 控制边界");
     expect(wrapper.find("details").text()).toContain("Nav2 规划详情");
     expect(wrapper.find("details").text()).toContain("启动雷达（高级）");
@@ -2952,6 +2995,56 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("前进");
     expect(wrapper.find("details").text()).toContain("速度上限");
     expect(wrapper.find("details").text()).toContain("现场有人扶控并准备急停");
+  });
+
+  it("submits operator report material from advanced diagnostics without leaking it to the first screen", async () => {
+    // 表单只在高级诊断里出现；提交走固定 workstation proxy，不把 delivery claim 升成顶层成功。
+    const mockedFetch = stubWorkstationFetch();
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("提交现场材料");
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    await wrapper.find('input[name="operatorReportEvidenceRef"]').setValue("field-hil-ui-submit");
+    await wrapper.find('input[name="operatorReportSiteState"]').setValue("field_operator_claim_ready_for_review");
+    await wrapper.find('input[name="operatorReportExternalVideoRef"]').setValue("phone-video-ui.mp4");
+    await wrapper.find('input[name="operatorReportCameraArtifactsRef"]').setValue("runtime/camera/latest_metrics.json");
+    await wrapper.find('input[name="operatorReportWheelFeedbackRef"]').setValue("runtime/wave_rover_feedback_debug.jsonl");
+    const claimChecks = wrapper.findAll(".compact-checklist input[type='checkbox']");
+    await claimChecks[0]?.setValue(true);
+    await claimChecks[1]?.setValue(true);
+    await claimChecks[2]?.setValue(true);
+    await claimChecks[5]?.setValue(true);
+    await claimChecks[6]?.setValue(true);
+    await claimChecks[10]?.setValue(true);
+
+    const reportForm = wrapper.findAll("form").find((form) => form.text().includes("提交现场材料"));
+    expect(reportForm).toBeTruthy();
+    await reportForm?.trigger("submit");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const reportCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/operator/report?"));
+    expect(reportCall).toBeTruthy();
+    const [url, options] = reportCall ?? ["", {} as RequestInit];
+    const parsed = new URL(String(url), "http://workstation.local");
+    const body = JSON.parse(String((options as RequestInit).body ?? "{}")) as Record<string, unknown>;
+    expect(parsed.searchParams.get("baseUrl")).toBe("http://192.168.1.11:8787");
+    expect((options as RequestInit).method).toBe("POST");
+    expect(body.delivery_success).toBeUndefined();
+    expect(body.safe_to_control).toBeUndefined();
+    expect(body.structured_hil_claims).toEqual(expect.objectContaining({
+      external_video_recorded: true,
+      visible_content_proven: true,
+      delivery_success: true,
+      external_video_ref: "phone-video-ui.mp4",
+    }));
+    expect(wrapper.find("details").text()).toContain("report_forwarded");
+    expect(wrapper.find("details").text()).toContain("phone-video-ui.mp4");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("delivery_success");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("外部视频");
   });
 
   it("refreshes radar and map proof through fixed POST proxies and auto refreshes the summary", async () => {

@@ -25,6 +25,8 @@ import type {
   RobotControlBaseCommandRequest,
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
+  RobotControlOperatorReportProxyResponse,
+  RobotControlOperatorReportRequest,
   RobotControlSummaryResponse,
   RobotControlRadarLifecycleResponse,
   RouteDebugSummaryResponse,
@@ -103,6 +105,7 @@ const API_ENDPOINTS = {
   robotControlMapReset: "/api/robot-control/map/reset",
   robotControlCameraOffer: "/api/robot-control/camera/offer",
   robotControlCameraPeersPrefix: "/api/robot-control/camera/peers/",
+  robotControlOperatorReport: "/api/robot-control/operator/report",
   proofBoundary: "/api/proof-boundary",
 } as const;
 
@@ -229,6 +232,17 @@ function robotControlRadarLifecycleUrl(endpoint: string, baseUrl: string): strin
   }
   const query = params.toString();
   return query ? `${endpoint}?${query}` : endpoint;
+}
+
+function robotControlOperatorReportUrl(baseUrl: string): string {
+  // operator report 提交只允许固定本机 Node 代理；上位机路径由 server 白名单写死。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  const query = params.toString();
+  return query ? `${API_ENDPOINTS.robotControlOperatorReport}?${query}` : API_ENDPOINTS.robotControlOperatorReport;
 }
 
 function robotControlCameraCloseUrl(baseUrl: string, peerId: string): string {
@@ -443,6 +457,14 @@ export async function postRobotControlRadarStop(baseUrl: string): Promise<RobotC
     robotControlRadarLifecycleUrl(API_ENDPOINTS.robotControlRadarStop, baseUrl),
     {},
   );
+}
+
+export async function postRobotControlOperatorReport(
+  baseUrl: string,
+  body: RobotControlOperatorReportRequest,
+): Promise<RobotControlOperatorReportProxyResponse> {
+  // 现场材料提交只能走固定 /api/operator/report；组件不能传 endpoint、method 或控制参数。
+  return postJson<RobotControlOperatorReportProxyResponse>(robotControlOperatorReportUrl(baseUrl), body);
 }
 
 export async function postRobotControlMapProofRefresh(baseUrl: string): Promise<RobotControlProofRefreshProxyResponse> {

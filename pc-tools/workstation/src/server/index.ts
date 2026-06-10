@@ -29,6 +29,7 @@ import {
   buildMapLifecycleProxy,
   buildMapProofRefreshProxy,
   buildNav2NoMotionProofRefreshProxy,
+  buildOperatorReportProxy,
   buildRobotControlSummary,
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
@@ -800,6 +801,12 @@ export function createWorkstationApp(): express.Express {
       ],
     };
     res.status(responseBody.proxy_status === "command_forwarded" ? 200 : 502).json(responseBody);
+  });
+
+  workstationApp.post("/api/robot-control/operator/report", async (req, res) => {
+    // 现场材料提交只转发固定 /api/operator/report；不开放底盘、Nav2、cmd_vel、map/radar start。
+    const response = await buildOperatorReportProxy(queryString(req.query.baseUrl), req.body);
+    res.status(response.proxy_status === "report_forwarded" ? 200 : response.proxy_status === "report_rejected" ? 400 : 502).json(response);
   });
 
   workstationApp.post("/api/robot-control/radar/scan-proof/refresh", async (req, res) => {

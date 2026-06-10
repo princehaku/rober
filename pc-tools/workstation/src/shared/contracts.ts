@@ -2004,6 +2004,54 @@ export interface RobotControlOperatorHilMaterialSummary {
   site_state: string;
 }
 
+export interface RobotControlOperatorReportStructuredHilClaims {
+  external_video_recorded?: boolean;
+  external_video_ref?: string;
+  visible_content_proven?: boolean;
+  camera_artifacts_ref?: string;
+  wheel_feedback_lr_nonzero_proven?: boolean;
+  wheel_feedback_ref?: string;
+  physical_motion_lidar_delta_proven?: boolean;
+  scan_delta_ref?: string;
+  real_route_map_proven?: boolean;
+  route_map_ref?: string;
+  delivery_success?: boolean;
+  site_state?: string;
+}
+
+// 现场 report 只是人工材料提交合同，不是运动控制或交付成功合同。
+// 顶层只允许现场确认、引用和 notes；delivery_success 只能作为 nested claim 存在。
+export interface RobotControlOperatorReportRequest {
+  operator_present?: boolean;
+  evidence_ref?: string;
+  physical_clearance_confirmed?: boolean;
+  emergency_stop_ready?: boolean;
+  observed_motion?: boolean;
+  observed_stop?: boolean;
+  reported_at?: string;
+  operator_notes?: string;
+  structured_hil_claims?: RobotControlOperatorReportStructuredHilClaims;
+}
+
+export interface RobotControlOperatorReportProxyResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1";
+  proxy_status: "report_forwarded" | "report_rejected" | "report_failed";
+  source_base_url: string;
+  normalized_base_url: string;
+  remote_endpoint: "/api/operator/report";
+  remote_method: "POST";
+  remote_http_status: number | null;
+  status: "blocked" | "loaded_fail_closed_summary";
+  request_body: RobotControlOperatorReportRequest;
+  structured_hil_claims: RobotControlOperatorReportStructuredHilClaims;
+  rejected_fields: string[];
+  ignored_fields: string[];
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
 export type RobotControlPreviewStatus =
   | "idle_not_started"
   | "starting_local_peer"
@@ -2022,7 +2070,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     vue_direct_robot_api_access: false;
     node_proxy_only: true;
     allowed_methods: Array<"GET" | "POST">;
-    allowed_endpoint_class: "status_latest_readback_plus_fixed_manual_stop";
+    allowed_endpoint_class: "status_latest_readback_plus_fixed_control_and_report_proxies";
     unsafe_urls_rejected: true;
   };
   observed_at_ms: number;

@@ -23,6 +23,7 @@ export {
   buildLocalizationResetProxy,
   buildMapLifecycleProxy,
   buildNav2NoMotionProofRefreshProxy,
+  buildOperatorReportProxy,
   buildMapProofRefreshProxy,
   buildRadarLifecycleProxy,
   buildRadarScanProofRefreshProxy,

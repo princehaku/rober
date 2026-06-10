@@ -29,6 +29,7 @@ import {
   buildLocalizationResetProxy,
   buildMapProofRefreshProxy,
   buildNav2NoMotionProofRefreshProxy,
+  buildOperatorReportProxy,
   buildRadarLifecycleProxy,
   buildRadarScanProofRefreshProxy,
   computeRobotProofRefreshTimeoutMs,
@@ -3779,6 +3780,125 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("operator report proxy posts only whitelisted material fields to fixed endpoint", async () => {
+    // 现场材料提交只能命中 /api/operator/report；delivery_success 只允许作为 structured claim 保留。
+    const upstream = await listenRobotProofRefreshApi({
+      "/api/operator/report": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.operator_report",
+          status: "operator_report_saved",
+          evidence_ref: "field-hil-submit-0620",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          structured_hil_claims: {
+            delivery_success: true,
+          },
+        },
+      },
+    });
+    try {
+      const response = await buildOperatorReportProxy(upstream.baseUrl, {
+        operator_present: true,
+        evidence_ref: "field-hil-submit-0620",
+        physical_clearance_confirmed: true,
+        emergency_stop_ready: true,
+        observed_motion: false,
+        observed_stop: true,
+        reported_at: "2026-06-11T06:20:00.000Z",
+        operator_notes: "no-motion material submit from PC",
+        structured_hil_claims: {
+          external_video_recorded: true,
+          external_video_ref: "phone-video-0620.mp4",
+          visible_content_proven: true,
+          camera_artifacts_ref: "runtime/camera/latest_metrics.json",
+          wheel_feedback_lr_nonzero_proven: false,
+          wheel_feedback_ref: "runtime/wave_rover_feedback_debug.jsonl",
+          physical_motion_lidar_delta_proven: false,
+          scan_delta_ref: "runtime/scan_delta/latest_metrics.json",
+          real_route_map_proven: true,
+          route_map_ref: "runtime/routes/field-route.csv",
+          delivery_success: true,
+          site_state: "field_operator_claim_ready_for_review",
+        },
+      });
+
+      expect(response.proxy_status).toBe("report_forwarded");
+      expect(response.remote_endpoint).toBe("/api/operator/report");
+      expect(response.remote_http_status).toBe(200);
+      expect(response.safe_to_control).toBe(false);
+      expect(response.delivery_success).toBe(false);
+      expect(response.primary_actions_enabled).toBe(false);
+      expect(response.robot_control_executed).toBe(false);
+      expect(response.structured_hil_claims.delivery_success).toBe(true);
+      expect(response.hard_dangerous_true_fields).toEqual([]);
+      expect(upstream.receivedBodies["/api/operator/report"]).toEqual([
+        {
+          operator_present: true,
+          evidence_ref: "field-hil-submit-0620",
+          physical_clearance_confirmed: true,
+          emergency_stop_ready: true,
+          observed_motion: false,
+          observed_stop: true,
+          reported_at: "2026-06-11T06:20:00.000Z",
+          operator_notes: "no-motion material submit from PC",
+          structured_hil_claims: {
+            external_video_recorded: true,
+            external_video_ref: "phone-video-0620.mp4",
+            visible_content_proven: true,
+            camera_artifacts_ref: "runtime/camera/latest_metrics.json",
+            wheel_feedback_lr_nonzero_proven: false,
+            wheel_feedback_ref: "runtime/wave_rover_feedback_debug.jsonl",
+            physical_motion_lidar_delta_proven: false,
+            scan_delta_ref: "runtime/scan_delta/latest_metrics.json",
+            real_route_map_proven: true,
+            route_map_ref: "runtime/routes/field-route.csv",
+            delivery_success: true,
+            site_state: "field_operator_claim_ready_for_review",
+          },
+        },
+      ]);
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+      expect(upstream.receivedBodies["/api/radar/start"]).toBeUndefined();
+    } finally {
+      await upstream.close();
+    }
+  });
+
+  it("operator report proxy rejects unknown or dangerous request fields before upstream POST", async () => {
+    // 未知字段直接 fail-closed，防止 report 代理被扩展成任意控制字段透传。
+    const upstream = await listenRobotProofRefreshApi({
+      "/api/operator/report": {
+        payload: { schema: "trashbot.upper_robot_api.v1.operator_report", status: "saved" },
+      },
+    });
+    try {
+      const topLevelRejected = await buildOperatorReportProxy(upstream.baseUrl, {
+        evidence_ref: "field-hil-submit-unknown",
+        safe_to_control: true,
+      });
+      expect(topLevelRejected.proxy_status).toBe("report_rejected");
+      expect(topLevelRejected.failure_reason).toContain("request_body_unknown_fields");
+      expect(topLevelRejected.rejected_fields).toContain("safe_to_control");
+      expect(topLevelRejected.safe_to_control).toBe(false);
+
+      const nestedRejected = await buildOperatorReportProxy(upstream.baseUrl, {
+        evidence_ref: "field-hil-submit-nested-unknown",
+        structured_hil_claims: {
+          delivery_success: true,
+          endpoint: "/api/base/manual",
+        },
+      });
+      expect(nestedRejected.proxy_status).toBe("report_rejected");
+      expect(nestedRejected.rejected_fields).toContain("structured_hil_claims.endpoint");
+      expect(nestedRejected.robot_control_executed).toBe(false);
+      expect(upstream.receivedBodies["/api/operator/report"]).toBeUndefined();
+    } finally {
+      await upstream.close();
+    }
+  });
+
   it("Robot Control summary keeps slow status and camera endpoints readable with endpoint timeouts", async () => {
     // status/camera 在真实板端可能慢于 proof latest；只要仍在白名单窗口内，就不应被误记成 fetch_failed。
     const robotApi = await listenRobotApiReadbackByPath({
@@ -4967,6 +5087,69 @@ describe("workstation fail-closed API contracts", () => {
           confirm_hil_checklist: true,
         },
       ]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation operator report route forwards only fixed report endpoint and keeps top-level flags false", async () => {
+    // Express route 只把白名单材料提交给上位机 /api/operator/report，不接受 endpoint/method/body 扩展。
+    const upstream = await listenRobotProofRefreshApi({
+      "/api/operator/report": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.operator_report",
+          status: "operator_report_saved",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          structured_hil_claims: {
+            delivery_success: true,
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/operator/report?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          operator_present: true,
+          evidence_ref: "field-hil-route-submit",
+          physical_clearance_confirmed: true,
+          emergency_stop_ready: true,
+          observed_motion: false,
+          observed_stop: true,
+          reported_at: "2026-06-11T06:20:00.000Z",
+          structured_hil_claims: {
+            external_video_recorded: true,
+            external_video_ref: "phone-video-route.mp4",
+            delivery_success: true,
+            site_state: "field_operator_claim_ready_for_review",
+          },
+        }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        safe_to_control: boolean;
+        delivery_success: boolean;
+        primary_actions_enabled: boolean;
+        robot_control_executed: boolean;
+        structured_hil_claims: { delivery_success?: boolean };
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("report_forwarded");
+      expect(body.safe_to_control).toBe(false);
+      expect(body.delivery_success).toBe(false);
+      expect(body.primary_actions_enabled).toBe(false);
+      expect(body.robot_control_executed).toBe(false);
+      expect(body.structured_hil_claims.delivery_success).toBe(true);
+      expect(upstream.receivedBodies["/api/operator/report"]).toHaveLength(1);
+      expect(Object.keys(upstream.receivedBodies)).toEqual(["/api/operator/report"]);
     } finally {
       await workstation.close();
       await upstream.close();

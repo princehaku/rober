@@ -11,6 +11,7 @@ import {
   postRobotControlLocalizeReset,
   postRobotControlMapProofRefresh,
   postRobotControlNav2ProofRefresh,
+  postRobotControlOperatorReport,
   postRobotControlRadarStart,
   postRobotControlRadarScanProofRefresh,
   postRobotControlRadarStop,
@@ -21,6 +22,8 @@ import type {
   O7ConsumerTaskDetailResponse,
   RobotControlBaseCommandProxyResponse,
   RobotControlMapLifecycleResponse,
+  RobotControlOperatorReportProxyResponse,
+  RobotControlOperatorReportRequest,
   RobotControlPreviewStatus,
   RobotControlProofRefreshProxyResponse,
   RobotControlRadarLifecycleResponse,
@@ -47,6 +50,29 @@ const manualCommandPending = ref(false);
 const mapLifecyclePending = ref(false);
 const mapLifecycleMapName = ref("");
 const mapLifecycleArtifactPath = ref("");
+const operatorReportPending = ref(false);
+const operatorReportResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
+const operatorReportEvidenceRef = ref("");
+const operatorReportSiteState = ref("field_operator_claim_ready_for_review");
+const operatorReportExternalVideoRef = ref("");
+const operatorReportCameraArtifactsRef = ref("");
+const operatorReportWheelFeedbackRef = ref("");
+const operatorReportScanDeltaRef = ref("");
+const operatorReportRouteMapRef = ref("");
+const operatorReportNotes = ref("");
+const operatorReportFlags = ref({
+  operator_present: false,
+  physical_clearance_confirmed: false,
+  emergency_stop_ready: false,
+  observed_motion: false,
+  observed_stop: false,
+  external_video_recorded: false,
+  visible_content_proven: false,
+  wheel_feedback_lr_nonzero_proven: false,
+  physical_motion_lidar_delta_proven: false,
+  real_route_map_proven: false,
+  delivery_success: false,
+});
 const jogSpeedMps = ref(0.08);
 const jogDurationMs = ref(500);
 const hilChecklist = ref([
@@ -424,6 +450,64 @@ function makeMapLifecycleFallback(action: "list" | "start" | "save", reason: str
   };
 }
 
+function operatorReportRequestBody(): RobotControlOperatorReportRequest {
+  // 现场材料提交只组装白名单字段；空 ref 不发送，减少上位机保存无意义空字符串。
+  const claims = {
+    external_video_recorded: operatorReportFlags.value.external_video_recorded,
+    ...(operatorReportExternalVideoRef.value.trim() ? { external_video_ref: operatorReportExternalVideoRef.value.trim() } : {}),
+    visible_content_proven: operatorReportFlags.value.visible_content_proven,
+    ...(operatorReportCameraArtifactsRef.value.trim() ? { camera_artifacts_ref: operatorReportCameraArtifactsRef.value.trim() } : {}),
+    wheel_feedback_lr_nonzero_proven: operatorReportFlags.value.wheel_feedback_lr_nonzero_proven,
+    ...(operatorReportWheelFeedbackRef.value.trim() ? { wheel_feedback_ref: operatorReportWheelFeedbackRef.value.trim() } : {}),
+    physical_motion_lidar_delta_proven: operatorReportFlags.value.physical_motion_lidar_delta_proven,
+    ...(operatorReportScanDeltaRef.value.trim() ? { scan_delta_ref: operatorReportScanDeltaRef.value.trim() } : {}),
+    real_route_map_proven: operatorReportFlags.value.real_route_map_proven,
+    ...(operatorReportRouteMapRef.value.trim() ? { route_map_ref: operatorReportRouteMapRef.value.trim() } : {}),
+    delivery_success: operatorReportFlags.value.delivery_success,
+    ...(operatorReportSiteState.value.trim() ? { site_state: operatorReportSiteState.value.trim() } : {}),
+  };
+  return {
+    operator_present: operatorReportFlags.value.operator_present,
+    ...(operatorReportEvidenceRef.value.trim() ? { evidence_ref: operatorReportEvidenceRef.value.trim() } : {}),
+    physical_clearance_confirmed: operatorReportFlags.value.physical_clearance_confirmed,
+    emergency_stop_ready: operatorReportFlags.value.emergency_stop_ready,
+    observed_motion: operatorReportFlags.value.observed_motion,
+    observed_stop: operatorReportFlags.value.observed_stop,
+    reported_at: new Date().toISOString(),
+    ...(operatorReportNotes.value.trim() ? { operator_notes: operatorReportNotes.value.trim() } : {}),
+    structured_hil_claims: claims,
+  };
+}
+
+function makeOperatorReportFallback(reason: string): RobotControlOperatorReportProxyResponse {
+  // 前端异常时也补齐同一响应合同，避免最近提交状态缺失安全字段。
+  const requestBody = operatorReportRequestBody();
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    proxy_status: "report_failed",
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    remote_endpoint: "/api/operator/report",
+    remote_method: "POST",
+    remote_http_status: null,
+    status: "blocked",
+    request_body: requestBody,
+    structured_hil_claims: requestBody.structured_hil_claims ?? {},
+    rejected_fields: [],
+    ignored_fields: [],
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
 function stampNow(): string {
   // 时间戳使用浏览器本地 ISO 字符串，足够支撑 operator 复核最近一次 Start/Stop。
   return new Date().toISOString();
@@ -650,6 +734,22 @@ async function startMapRuntime(): Promise<void> {
 async function saveMap(): Promise<void> {
   // 保存只调用固定 /api/map/save；上位机会忽略 artifact_path 并在固定目录产出地图。
   await runMapLifecycleAction("save", () => postRobotControlMapSave(robotApiBaseUrl.value, mapLifecycleRequestBody()));
+}
+
+async function submitOperatorReport(): Promise<void> {
+  // 现场材料提交只允许高级诊断显式点击；成功后回刷 /api/operator/report readback 摘要。
+  if (!robotApiBaseUrl.value.trim() || operatorReportPending.value) {
+    return;
+  }
+  operatorReportPending.value = true;
+  try {
+    operatorReportResult.value = await postRobotControlOperatorReport(robotApiBaseUrl.value, operatorReportRequestBody());
+  } catch (err) {
+    operatorReportResult.value = makeOperatorReportFallback(err instanceof Error ? err.message : "operator_report_request_failed");
+  } finally {
+    operatorReportPending.value = false;
+    await refreshConsole();
+  }
 }
 
 async function sendManualMotion(direction: "forward" | "back" | "left" | "right"): Promise<void> {
@@ -1232,7 +1332,110 @@ onBeforeUnmount(() => {
 
         <section class="advanced-block">
           <h3>现场 HIL 材料</h3>
+          <form class="robot-control-form" @submit.prevent="submitOperatorReport">
+            <label>
+              <span>evidence_ref</span>
+              <input v-model="operatorReportEvidenceRef" name="operatorReportEvidenceRef" maxlength="512" placeholder="field-hil-20260611-0620-op">
+            </label>
+            <label>
+              <span>site_state</span>
+              <input v-model="operatorReportSiteState" name="operatorReportSiteState" maxlength="160" placeholder="field_operator_claim_ready_for_review">
+            </label>
+            <label>
+              <span>外部视频 ref</span>
+              <input v-model="operatorReportExternalVideoRef" name="operatorReportExternalVideoRef" maxlength="512" placeholder="phone-video.mp4">
+            </label>
+            <label>
+              <span>相机 artifact ref</span>
+              <input v-model="operatorReportCameraArtifactsRef" name="operatorReportCameraArtifactsRef" maxlength="512" placeholder="runtime/camera/latest_metrics.json">
+            </label>
+            <label>
+              <span>feedback ref</span>
+              <input v-model="operatorReportWheelFeedbackRef" name="operatorReportWheelFeedbackRef" maxlength="512" placeholder="runtime/wave_rover_feedback_debug.jsonl">
+            </label>
+            <label>
+              <span>scan delta ref</span>
+              <input v-model="operatorReportScanDeltaRef" name="operatorReportScanDeltaRef" maxlength="512" placeholder="runtime/scan_delta/latest_metrics.json">
+            </label>
+            <label>
+              <span>route/map ref</span>
+              <input v-model="operatorReportRouteMapRef" name="operatorReportRouteMapRef" maxlength="512" placeholder="runtime/routes/field-route.csv">
+            </label>
+            <label>
+              <span>operator_notes</span>
+              <input v-model="operatorReportNotes" name="operatorReportNotes" maxlength="2000" placeholder="no-motion material submit from PC">
+            </label>
+            <div class="checklist-box compact-checklist">
+              <p class="checklist-title">现场材料 claim</p>
+              <label>
+                <input v-model="operatorReportFlags.operator_present" type="checkbox">
+                <span>operator present</span>
+              </label>
+              <label>
+                <input v-model="operatorReportFlags.physical_clearance_confirmed" type="checkbox">
+                <span>clearance</span>
+              </label>
+              <label>
+                <input v-model="operatorReportFlags.emergency_stop_ready" type="checkbox">
+                <span>emergency stop ready</span>
+              </label>
+              <label>
+                <input v-model="operatorReportFlags.observed_motion" type="checkbox">
+                <span>observed motion</span>
+              </label>
+              <label>
+                <input v-model="operatorReportFlags.observed_stop" type="checkbox">
+                <span>observed stop</span>
+              </label>
+              <label>
+                <input v-model="operatorReportFlags.external_video_recorded" type="checkbox">
+                <span>external video recorded</span>
+              </label>
+              <label>
+                <input v-model="operatorReportFlags.visible_content_proven" type="checkbox">
+                <span>camera visible</span>
+              </label>
+              <label>
+                <input v-model="operatorReportFlags.wheel_feedback_lr_nonzero_proven" type="checkbox">
+                <span>wheel feedback nonzero</span>
+              </label>
+              <label>
+                <input v-model="operatorReportFlags.physical_motion_lidar_delta_proven" type="checkbox">
+                <span>LiDAR delta</span>
+              </label>
+              <label>
+                <input v-model="operatorReportFlags.real_route_map_proven" type="checkbox">
+                <span>route/map</span>
+              </label>
+              <label>
+                <input v-model="operatorReportFlags.delivery_success" type="checkbox">
+                <span>delivery claim</span>
+              </label>
+            </div>
+            <button class="secondary" type="submit" :disabled="loading || operatorReportPending || !robotApiBaseUrl.trim()">
+              提交现场材料（高级）
+            </button>
+          </form>
           <dl class="kv compact-kv">
+            <dt>latest submit</dt>
+            <dd>
+              {{ operatorReportPending ? "pending" : operatorReportResult?.proxy_status ?? "not_submitted" }} /
+              {{ operatorReportResult?.status ?? "not_loaded" }}
+            </dd>
+            <dt>submit remote</dt>
+            <dd>
+              {{ operatorReportResult?.remote_method ?? "POST" }}
+              {{ operatorReportResult?.remote_endpoint ?? "/api/operator/report" }}
+              -> {{ operatorReportResult?.remote_http_status ?? "n/a" }}
+            </dd>
+            <dt>submit failure</dt>
+            <dd>{{ operatorReportResult?.failure_reason || "none" }}</dd>
+            <dt>submit rejected fields</dt>
+            <dd>{{ listText(operatorReportResult?.rejected_fields, "none") }}</dd>
+            <dt>submit dangerous fields</dt>
+            <dd>{{ listText(operatorReportResult?.hard_dangerous_true_fields, "none") }}</dd>
+            <dt>submit request claims</dt>
+            <dd>{{ JSON.stringify(operatorReportResult?.structured_hil_claims ?? {}) }}</dd>
             <dt>status</dt>
             <dd>{{ robotSummary?.operator_hil_material_summary.status ?? "not_loaded" }}</dd>
             <dt>report status</dt>
