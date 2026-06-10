@@ -120,6 +120,56 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertAlmostEqual(0.7, request["yaw"])
         self.assertFalse(args.path_generation_opt_in)
 
+    def test_package_checks_use_single_sourced_pkg_list_command(self) -> None:
+        """包可用性是诊断信息，必须一次 pkg list 检查，不能逐包 prefix 阻塞主路径。"""
+        args = HELPER.parse_args([])
+        stdout = "\n".join(HELPER.EXPECTED_PACKAGES)
+        with mock.patch.object(
+            HELPER,
+            "run_ros",
+            return_value={
+                "command": "ros2 pkg list",
+                "executed": True,
+                "ok": True,
+                "returncode": 0,
+                "elapsed_ms": 900,
+                "stdout": stdout,
+                "stderr": "",
+            },
+        ) as run_mock:
+            packages, results, batch_result = HELPER.package_checks(args)
+
+        run_mock.assert_called_once()
+        command = run_mock.call_args.args[1]
+        self.assertEqual("ros2 pkg list", command)
+        self.assertEqual(HELPER.PACKAGE_CHECK_BATCH_TIMEOUT_S, run_mock.call_args.kwargs["timeout_s"])
+        self.assertTrue(batch_result["ok"])
+        self.assertTrue(all(packages.values()))
+        self.assertEqual(set(HELPER.EXPECTED_PACKAGES), set(results))
+        for package in HELPER.EXPECTED_PACKAGES:
+            self.assertEqual(f"ros2 pkg list contains {package}", results[package]["command"])
+            self.assertEqual("single_sourced_pkg_list_package_check", results[package]["diagnostic_mode"])
+
+    def test_initialpose_phase_precedes_slow_topic_probe(self) -> None:
+        """定位 reset 必须先尝试 `/initialpose`，再进入可能耗时的 preflight 诊断。"""
+        text = SCRIPT.read_text(encoding="utf-8")
+        initialpose_index = text.index('phase_writer.record_phase("initialpose")')
+
+        self.assertLess(
+            initialpose_index,
+            text.index('phase_writer.record_phase(\n        "package_checks"'),
+        )
+        self.assertLess(
+            initialpose_index,
+            text.index('phase_writer.record_phase("graph_discovery"'),
+        )
+        self.assertLess(
+            initialpose_index,
+            text.index('phase_writer.record_phase("topic_probe"'),
+        )
+        self.assertIn('ROS2_PREFLIGHT_COMMAND = "command -v ros2"', text)
+        self.assertIn("pre_initialpose_amcl_pose_probe_skipped_to_prioritize_initialpose", text)
+
     def test_managed_runtime_shell_stays_no_motion(self) -> None:
         """managed runtime 只允许 localization graph，禁止 planner/controller/底盘 UART。"""
         args = HELPER.parse_args(
@@ -296,6 +346,10 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "path_generation_service_available",
             "path_generation_succeeded",
             "path_point_count",
+            "package_check_mode",
+            "package_availability",
+            "package_checks_batch",
+            "single_sourced_pkg_list_diagnostic",
             "planner_server_active",
             "controller_server_active",
             "controller_server_requested",
@@ -552,8 +606,11 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
                     "last_phase": "tf_probe",
                     "last_successful_phase": "initialpose",
                     "phase_history": [{"phase": "initialpose", "ok": True}],
-                    "current_command": {"command": "timeout 8 ros2 run tf2_ros tf2_echo map base_link"},
+                    "current_command": {"command": "timeout 4 ros2 run tf2_ros tf2_echo map base_link"},
                     "recent_commands": [{"command": "ros2 topic pub --once /initialpose", "ok": True}],
+                    "package_availability": {"nav2_amcl": True, "nav2_map_server": True},
+                    "package_check_mode": "single_sourced_pkg_list_diagnostic",
+                    "package_checks_batch_ok": True,
                     "managed_runtime_requested": True,
                     "managed_runtime_started": True,
                     "initialpose_publish_attempted": True,
@@ -602,7 +659,10 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertTrue(payload["proof"]["partial_artifact_preserved"])
         self.assertEqual("tf_probe", payload["proof"]["last_phase"])
         self.assertEqual("initialpose", payload["proof"]["last_successful_phase"])
-        self.assertEqual("timeout 8 ros2 run tf2_ros tf2_echo map base_link", payload["proof"]["current_command"]["command"])
+        self.assertEqual("timeout 4 ros2 run tf2_ros tf2_echo map base_link", payload["proof"]["current_command"]["command"])
+        self.assertEqual("single_sourced_pkg_list_diagnostic", payload["proof"]["package_check_mode"])
+        self.assertTrue(payload["proof"]["package_availability"]["nav2_amcl"])
+        self.assertTrue(payload["proof"]["package_checks_batch_ok"])
         self.assertTrue(payload["proof"]["initialpose_published"])
         self.assertTrue(payload["proof"]["managed_runtime_started"])
         self.assertEqual("helper_process_timeout_after_partial_artifact", payload["proof"]["root_causes"][-1]["reason"])

@@ -30,6 +30,7 @@ DEFAULT_MANAGED_TIMEOUT_S = 20.0
 DEFAULT_MANAGED_BASE_FRAME_ID = "base_link"
 DEFAULT_MANAGED_ODOM_FRAME_ID = "odom"
 DEFAULT_MANAGED_LASER_FRAME_ID = "laser_frame"
+ROS2_PREFLIGHT_COMMAND = "command -v ros2"
 LOCALIZATION_LIFECYCLE_NODES = {
     "map_server": "/map_server",
     "amcl": "/amcl",
@@ -41,6 +42,9 @@ EXPECTED_PACKAGES = [
     "nav2_amcl",
     "nav2_lifecycle_manager",
 ]
+PACKAGE_CHECK_BATCH_TIMEOUT_S = 5.0
+TF_ECHO_SHELL_TIMEOUT_S = 4.0
+TF_ECHO_PROCESS_TIMEOUT_S = 5.5
 BLOCKED_COMMAND_TOKENS = [
     "T=1",
     "T=13",
@@ -99,6 +103,9 @@ class PhaseArtifactWriter:
             "initialpose_published": False,
             "amcl_pose_observed": False,
             "localization_tf_observed": {"map_to_odom": False, "map_to_base_link": False},
+            "package_availability": {package: None for package in EXPECTED_PACKAGES},
+            "package_check_mode": "deferred_after_localization_main_path",
+            "package_checks_batch_ok": False,
             "managed_runtime_requested": bool(getattr(args, "managed_runtime_opt_in", False)),
             "managed_runtime_started": False,
             "managed_runtime_cleanup_ok": False,
@@ -205,6 +212,18 @@ def install_phase_signal_handlers(writer: PhaseArtifactWriter) -> None:
 
     def handle_signal(signum: int, _frame: Any) -> None:
         signal_name = signal.Signals(signum).name
+        contextual_root_cause = None
+        command_text = ""
+        if isinstance(writer.current_command, dict):
+            command_text = str(writer.current_command.get("command") or "")
+        if "tf2_echo map base_link" in command_text:
+            contextual_root_cause = {"layer": "Localization TF", "reason": "map_to_base_link_tf_probe_interrupted_before_transform_observed"}
+        elif "tf2_echo map odom" in command_text:
+            contextual_root_cause = {"layer": "Localization TF", "reason": "map_to_odom_tf_probe_interrupted_before_transform_observed"}
+        elif "/amcl_pose" in command_text:
+            contextual_root_cause = {"layer": "AMCL localization", "reason": "amcl_pose_probe_interrupted_before_observation"}
+        if contextual_root_cause:
+            writer.record_phase("interrupted_context", ok=False, root_cause=contextual_root_cause)
         writer.record_phase(
             "interrupted",
             ok=False,
@@ -784,15 +803,32 @@ def tf_echo_transform_observed(result: dict[str, Any]) -> bool:
     return bool(has_translation and has_rotation)
 
 
-def package_checks(args: argparse.Namespace) -> tuple[dict[str, bool], dict[str, dict[str, Any]]]:
-    """Nav2 包是否安装要单独记录，不能从 lifecycle node 缺失反推依赖。"""
+def package_checks(args: argparse.Namespace) -> tuple[dict[str, bool], dict[str, dict[str, Any]], dict[str, Any]]:
+    """Nav2 包检查只做单次 source 的批量诊断，避免 preflight 吃掉定位主路径预算。"""
     available: dict[str, bool] = {}
     results: dict[str, dict[str, Any]] = {}
+    command = "ros2 pkg list"
+    batch_result = run_ros(args, command, timeout_s=PACKAGE_CHECK_BATCH_TIMEOUT_S)
+    installed_packages = {
+        line.strip()
+        for line in str(batch_result.get("stdout") or "").splitlines()
+        if line.strip()
+    }
     for package in EXPECTED_PACKAGES:
-        result = run_ros(args, f"ros2 pkg prefix {shlex.quote(package)}", timeout_s=6.0)
-        available[package] = bool(result.get("ok"))
-        results[package] = result
-    return available, results
+        ok = bool(batch_result.get("ok") and package in installed_packages)
+        available[package] = ok
+        results[package] = {
+            "command": f"ros2 pkg list contains {package}",
+            "executed": bool(batch_result.get("executed")),
+            "ok": ok,
+            "returncode": batch_result.get("returncode"),
+            "elapsed_ms": batch_result.get("elapsed_ms"),
+            "stdout": package if ok else "",
+            "stderr": "" if ok else f"{package} not found in ros2 pkg list",
+            "diagnostic_mode": "single_sourced_pkg_list_package_check",
+            "batch_command": command,
+        }
+    return available, results, batch_result
 
 
 def parse_lifecycle_active(result: dict[str, Any]) -> bool:
@@ -1195,21 +1231,29 @@ def wait_for_managed_runtime(
                 "history": history,
                 "log_tail": preview_file(runtime["log_path"]),
             }
-        ros2_check = run_ros(args, "command -v ros2 && ros2 --help >/dev/null", timeout_s=6.0)
-        if not ros2_check.get("ok"):
-            history.append({"ros2_check": ros2_check})
+        # runtime wait 只确认节点已出现；完整 lifecycle 状态放到后续诊断，避免这里吃掉主证据预算。
+        node_list = run_ros(args, "ros2 node list", timeout_s=4.0)
+        node_lines = {line.strip() for line in str(node_list.get("stdout") or "").splitlines() if line.strip()}
+        lifecycle_active = {
+            "map_server": "/map_server" in node_lines,
+            "amcl": "/amcl" in node_lines,
+        }
+        if require_planner_server:
+            lifecycle_active["planner_server"] = "/planner_server" in node_lines
+        if not node_list.get("ok"):
+            history.append({"node_list": node_list, "lifecycle_active": lifecycle_active})
             time.sleep(1.0)
             continue
-        lifecycle_active, lifecycle_results = lifecycle_checks(args, required_nodes)
         snapshot = {
             "elapsed_ms": now_ms() - int(runtime["started_at_ms"]),
             "lifecycle_active": lifecycle_active,
+            "node_list_command": node_list,
         }
         history.append(snapshot)
         if lifecycle_active.get("map_server") and lifecycle_active.get("amcl") and (
             not require_planner_server or lifecycle_active.get("planner_server")
         ):
-            return {"ok": True, "history": history, "lifecycle": lifecycle_results}
+            return {"ok": True, "history": history, "node_list": node_list, "boundary": "managed_runtime_nodes_observed"}
         time.sleep(1.2)
     return {
         "ok": False,
@@ -1342,12 +1386,102 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         phase_writer.record_phase("managed_runtime", ok=True, detail={"requested": False})
 
     phase_writer.record_phase("ros2_preflight")
-    ros2_check = run_ros(args, "command -v ros2 && ros2 --help >/dev/null", timeout_s=6.0)
-    # `ros2 --help` 在远端偶尔会慢于本 helper 的短超时，因此只要命令本体可见就继续验证。
+    ros2_check = run_ros(args, ROS2_PREFLIGHT_COMMAND, timeout_s=3.0)
+    # 这里故意只检查 ros2 可执行文件，避免 `ros2 --help` 在现场服务环境中消耗定位窗口。
     ros2_ok = bool(ros2_check.get("ok") or str(ros2_check.get("stdout") or "").strip())
     phase_writer.record_phase("ros2_preflight", ok=ros2_ok)
-    packages, package_results = package_checks(args) if ros2_ok else ({package: False for package in EXPECTED_PACKAGES}, {})
-    phase_writer.record_phase("package_checks", ok=bool(ros2_ok and all(packages.values())))
+    phase_writer.record_phase("initialpose")
+    initialpose_request_payload, initialpose_publish = maybe_publish_initialpose(args, ros2_ok)
+    phase_writer.update_snapshot(
+        initialpose_publish_attempted=bool(initialpose_request_payload["enabled"]),
+        initialpose_published=bool(initialpose_publish.get("ok")),
+    )
+    phase_writer.record_phase(
+        "initialpose",
+        ok=bool(initialpose_publish.get("ok")) if initialpose_request_payload["enabled"] else True,
+        detail={"enabled": bool(initialpose_request_payload["enabled"])},
+    )
+    echo_timeout_s = min(max(float(args.timeout_s), 4.0), 18.0)
+    amcl_pose_once = {
+        "executed": False,
+        "ok": False,
+        "boundary": "pre_initialpose_amcl_pose_probe_skipped_to_prioritize_initialpose",
+    }
+    phase_writer.record_phase("amcl_pose_probe")
+    post_initialpose_amcl_pose_once = (
+        run_ros(args, "timeout 8 ros2 topic echo --once /amcl_pose", timeout_s=echo_timeout_s + 2.0)
+        if ros2_ok and initialpose_request_payload["enabled"]
+        else {"executed": False, "ok": False, "boundary": "post_initialpose_probe_not_requested"}
+    )
+    amcl_pose_probe_ok = bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once))
+    phase_writer.update_snapshot(amcl_pose_observed=amcl_pose_probe_ok)
+    phase_writer.record_phase(
+        "amcl_pose_probe",
+        ok=amcl_pose_probe_ok,
+        root_cause=(
+            {"layer": "AMCL localization", "reason": "/amcl_pose_once_not_observed"}
+            if initialpose_request_payload["enabled"] and not amcl_pose_probe_ok
+            else None
+        ),
+    )
+    phase_writer.record_phase("tf_probe")
+    map_to_odom_tf = (
+        run_ros(
+            args,
+            f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo map odom",
+            timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
+        )
+        if ros2_ok and initialpose_request_payload["enabled"]
+        else {"executed": False, "ok": False, "boundary": "tf_probe_not_requested_without_initialpose_opt_in"}
+    )
+    map_to_base_link_tf = (
+        run_ros(
+            args,
+            f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo map base_link",
+            timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
+        )
+        if ros2_ok and initialpose_request_payload["enabled"] and tf_echo_transform_observed(map_to_odom_tf)
+        else {
+            "executed": False,
+            "ok": False,
+            "boundary": (
+                "map_to_base_link_tf_probe_skipped_until_map_to_odom_observed"
+                if ros2_ok and initialpose_request_payload["enabled"]
+                else "tf_probe_not_requested_without_initialpose_opt_in"
+            ),
+        }
+    )
+    tf_probe_observed = {
+        "map_to_odom": tf_echo_transform_observed(map_to_odom_tf),
+        "map_to_base_link": tf_echo_transform_observed(map_to_base_link_tf),
+    }
+    phase_writer.update_snapshot(localization_tf_observed=tf_probe_observed)
+    tf_root_cause = None
+    if initialpose_request_payload["enabled"] and not all(tf_probe_observed.values()):
+        missing_tf = "map_to_odom_not_observed" if not tf_probe_observed["map_to_odom"] else "map_to_base_link_not_observed"
+        tf_root_cause = {"layer": "Localization TF", "reason": missing_tf}
+    phase_writer.record_phase(
+        "tf_probe",
+        ok=bool(all(tf_probe_observed.values())) if initialpose_request_payload["enabled"] else True,
+        root_cause=tf_root_cause,
+    )
+    phase_writer.record_phase("package_checks", detail={"mode": "single_sourced_pkg_list_diagnostic"})
+    if ros2_ok:
+        packages, package_results, package_batch_result = package_checks(args)
+    else:
+        packages = {package: False for package in EXPECTED_PACKAGES}
+        package_results = {}
+        package_batch_result = {"executed": False, "ok": False, "boundary": "ros2_unavailable_package_check_skipped"}
+    phase_writer.update_snapshot(
+        package_availability=packages,
+        package_check_mode="single_sourced_pkg_list_diagnostic",
+        package_checks_batch_ok=bool(package_batch_result.get("ok")),
+    )
+    phase_writer.record_phase(
+        "package_checks",
+        ok=bool(ros2_ok and all(packages.values())),
+        detail={"mode": "single_sourced_pkg_list_diagnostic", "packages": packages},
+    )
     topic_list = run_ros(args, "ros2 topic list", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
     node_list = run_ros(args, "ros2 node list", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
     phase_writer.record_phase("graph_discovery", ok=bool(topic_list.get("ok") and node_list.get("ok")))
@@ -1363,15 +1497,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     controller_server_requested = False
     planner_node_info = run_ros(args, "ros2 node info /planner_server", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
     controller_node_info = run_ros(args, "ros2 node info /controller_server", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
-    echo_timeout_s = min(max(float(args.timeout_s), 4.0), 18.0)
     phase_writer.record_phase("topic_probe", detail={"echo_timeout_s": echo_timeout_s})
     scan_once = run_ros(args, "timeout 6 ros2 topic echo --once /scan", timeout_s=echo_timeout_s) if ros2_ok else {"executed": False, "ok": False}
     map_once = run_ros(args, "timeout 8 ros2 topic echo --once /map", timeout_s=echo_timeout_s + 2.0) if ros2_ok else {"executed": False, "ok": False}
-    amcl_pose_once = (
-        run_ros(args, "timeout 8 ros2 topic echo --once /amcl_pose", timeout_s=echo_timeout_s + 2.0)
-        if ros2_ok
-        else {"executed": False, "ok": False}
-    )
     phase_writer.record_phase(
         "topic_probe",
         ok=bool(topic_once_observed(scan_once) and topic_once_observed(map_once)),
@@ -1380,44 +1508,6 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             "map_once_observed": topic_once_observed(map_once),
             "amcl_pose_observed_pre_initialpose": topic_once_observed(amcl_pose_once),
         },
-    )
-    phase_writer.record_phase("initialpose")
-    initialpose_request_payload, initialpose_publish = maybe_publish_initialpose(args, ros2_ok)
-    phase_writer.update_snapshot(
-        initialpose_publish_attempted=bool(initialpose_request_payload["enabled"]),
-        initialpose_published=bool(initialpose_publish.get("ok")),
-    )
-    phase_writer.record_phase(
-        "initialpose",
-        ok=bool(initialpose_publish.get("ok")) if initialpose_request_payload["enabled"] else True,
-        detail={"enabled": bool(initialpose_request_payload["enabled"])},
-    )
-    phase_writer.record_phase("amcl_pose_probe")
-    post_initialpose_amcl_pose_once = (
-        run_ros(args, "timeout 8 ros2 topic echo --once /amcl_pose", timeout_s=echo_timeout_s + 2.0)
-        if ros2_ok and initialpose_request_payload["enabled"]
-        else {"executed": False, "ok": False, "boundary": "post_initialpose_probe_not_requested"}
-    )
-    phase_writer.record_phase(
-        "amcl_pose_probe",
-        ok=bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once)),
-    )
-    phase_writer.record_phase("tf_probe")
-    map_to_odom_tf = (
-        run_ros(args, "timeout 8 ros2 run tf2_ros tf2_echo map odom", timeout_s=echo_timeout_s + 2.0)
-        if ros2_ok and initialpose_request_payload["enabled"]
-        else {"executed": False, "ok": False, "boundary": "tf_probe_not_requested_without_initialpose_opt_in"}
-    )
-    map_to_base_link_tf = (
-        run_ros(args, "timeout 8 ros2 run tf2_ros tf2_echo map base_link", timeout_s=echo_timeout_s + 2.0)
-        if ros2_ok and initialpose_request_payload["enabled"]
-        else {"executed": False, "ok": False, "boundary": "tf_probe_not_requested_without_initialpose_opt_in"}
-    )
-    phase_writer.record_phase(
-        "tf_probe",
-        ok=bool(tf_echo_transform_observed(map_to_odom_tf) and tf_echo_transform_observed(map_to_base_link_tf))
-        if initialpose_request_payload["enabled"]
-        else True,
     )
     initialpose_info = run_ros(args, "ros2 topic info /initialpose --verbose", timeout_s=6.0) if ros2_ok else {"executed": False, "ok": False}
     amcl_node_info = run_ros(args, "ros2 node info /amcl", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
@@ -1591,6 +1681,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "recent_commands": phase_writer.recent_commands[-12:],
         "source_map_evidence_ref": map_inputs.get("source_evidence_ref"),
         "source_map_evidence_type": map_inputs.get("source_evidence_type"),
+        "package_availability": packages,
+        "package_check_mode": "single_sourced_pkg_list_diagnostic",
+        "package_checks_batch_ok": bool(package_batch_result.get("ok")),
         "map_server_active": lifecycle_active.get("map_server", False),
         "amcl_active": lifecycle_active.get("amcl", False),
         "planner_server_active": planner_server_active,
@@ -1637,6 +1730,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "map_inputs": map_inputs,
         "commands": {
             "ros2_check": ros2_check,
+            "package_checks_batch": package_batch_result,
             "package_checks": package_results,
             "topic_list": topic_list,
             "node_list": node_list,

@@ -180,8 +180,11 @@ runtime lifecycle 与 scan proof refresh 的关系：
   static TF、`map_server`、`amcl` 和 lifecycle manager 采集 no-motion 证据。
 - helper 被上层 timeout 打断时，upper API 会优先保留 helper 已写的
   `last_phase`、`last_successful_phase`、`current_command`、`recent_commands`、
+  `package_availability`、`package_check_mode`、`package_checks_batch_ok`、
   `initialpose_published`、`amcl_pose_observed`、`localization_tf_observed` 和
   `root_causes`，再追加 timeout blocker。
+- package preflight 是单次 ROS 环境 source 后的 `ros2 pkg list` 批量诊断；
+  它不能再逐包阻塞 `/initialpose`、`/amcl_pose` 和 localization TF 主证据路径。
 
 ## 2026-06-10 LiDAR Motion Delta Retry
 

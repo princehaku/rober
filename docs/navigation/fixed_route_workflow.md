@@ -375,11 +375,19 @@ partial artifact。即使 helper 被上层 HTTP/进程 timeout 打断，
 - `last_phase` / `last_successful_phase`
 - `phase_history`
 - `current_command` / `recent_commands`
+- `package_availability` / `package_check_mode` / `package_checks_batch_ok`
 - `managed_runtime_started` / `managed_runtime_cleanup_ok`
 - `initialpose_publish_attempted` / `initialpose_published`
 - `amcl_pose_observed`
 - `localization_tf_observed`
 - `root_causes`
+
+Package availability remains part of the proof, but it is now a single sourced
+`ros2 pkg list` diagnostic instead of one `ros2 pkg prefix` process per
+package. The helper records each expected package result under
+`commands.package_checks` and the raw list command under
+`commands.package_checks_batch`, while `/initialpose`, `/amcl_pose`, and TF
+probes stay ahead of package and graph diagnostics in the evidence path.
 
 这个机制只提升 evidence capture 可观测性，不改变 no-motion 边界：
 

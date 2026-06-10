@@ -508,6 +508,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 "current_command": {"command": "timeout 8 ros2 topic echo --once /amcl_pose"},
                 "recent_commands": [{"command": "ros2 topic pub --once /initialpose", "ok": True}],
                 "partial_artifact_preserved": True,
+                "package_availability": {"nav2_amcl": True, "nav2_map_server": True},
+                "package_check_mode": "single_sourced_pkg_list_diagnostic",
+                "package_checks_batch_ok": True,
                 "initialpose_published": True,
                 "amcl_pose_observed": False,
                 "localization_tf_observed": {"map_to_odom": False, "map_to_base_link": False},
@@ -536,6 +539,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("initialpose", latest["last_successful_phase"])
         self.assertEqual("timeout 8 ros2 topic echo --once /amcl_pose", latest["current_command"]["command"])
         self.assertTrue(latest["partial_artifact_preserved"])
+        self.assertEqual("single_sourced_pkg_list_diagnostic", latest["package_check_mode"])
+        self.assertTrue(latest["package_availability"]["nav2_amcl"])
+        self.assertTrue(latest["package_checks_batch_ok"])
         self.assertTrue(latest["initialpose_published"])
         self.assertFalse(latest["amcl_pose_observed"])
         self.assertFalse(latest["safe_to_control"])
