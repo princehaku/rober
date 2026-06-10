@@ -3,6 +3,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
   getO7ConsumerTaskDetail,
   getRobotControlSummary,
+  postRobotControlBaseManual,
+  postRobotControlBaseStop,
   postRobotControlMapProofRefresh,
   postRobotControlRadarScanProofRefresh,
   postRobotControlCameraOffer,
@@ -10,6 +12,7 @@ import {
 } from "../client/workstationApi";
 import type {
   O7ConsumerTaskDetailResponse,
+  RobotControlBaseCommandProxyResponse,
   RobotControlPreviewStatus,
   RobotControlProofRefreshProxyResponse,
   RobotControlSummaryResponse,
@@ -26,6 +29,16 @@ const robotSummary = ref<RobotControlSummaryResponse | null>(null);
 const taskDetail = ref<O7ConsumerTaskDetailResponse | null>(null);
 const radarRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
+const manualCommandResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
+const manualCommandPending = ref(false);
+const jogSpeedMps = ref(0.08);
+const jogDurationMs = ref(500);
+const hilChecklist = ref([
+  { id: "operator_ready", checked: false, label: "现场有人扶控并准备急停" },
+  { id: "clearance_confirmed", checked: false, label: "已确认小车周围无人和障碍" },
+  { id: "low_speed_only", checked: false, label: "本轮仅做低速短时点动" },
+  { id: "not_autonomy_mode", checked: false, label: "本轮不是自动导航任务" },
+]);
 
 // WebRTC 状态单独维护，是为了把“上位机 readback”与“本地页面会话状态”区分开。
 const previewStatus = ref<RobotControlPreviewStatus>("idle_not_started");
@@ -150,10 +163,50 @@ function summarizeMapEvidence(): string {
   return `map ${mapVisible ? "可见" : "未见"}；evidence ${evidenceVisible ? "可见" : "未见"}。`;
 }
 
+function syncJogInputsToBoundary(): void {
+  // 输入框默认跟随后端安全边界收口，避免页面初值或手输值越界。
+  const speedLimit = robotSummary.value?.safe_command_boundary.speed_limit_mps ?? 0.12;
+  const durationLimit = robotSummary.value?.safe_command_boundary.duration_limit_ms ?? 800;
+  jogSpeedMps.value = Math.min(jogSpeedMps.value, speedLimit);
+  jogDurationMs.value = Math.min(jogDurationMs.value, durationLimit);
+}
+
 const robotConnectionSummary = computed(() => summarizeRobotConnection());
 const cameraSummary = computed(() => summarizeCameraState());
 const radarSummary = computed(() => summarizeProofState(radarRefreshPending.value, radarRefreshResult.value));
 const mapSummary = computed(() => summarizeProofState(mapRefreshPending.value, mapRefreshResult.value));
+const manualBoundary = computed(() => robotSummary.value?.safe_command_boundary ?? null);
+const manualSpeedLimit = computed(() => manualBoundary.value?.speed_limit_mps ?? 0.12);
+const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_ms ?? 800);
+const checklistMissing = computed(() => hilChecklist.value.filter((item) => !item.checked).map((item) => item.label));
+const hilChecklistConfirmed = computed(() => checklistMissing.value.length === 0);
+const canSendStop = computed(() => !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
+const manualBlockedReason = computed(() => {
+  if (!robotApiBaseUrl.value.trim()) {
+    return "先输入小车地址并连接。";
+  }
+  if (!hilChecklistConfirmed.value) {
+    return `还缺现场确认：${checklistMissing.value.join("；")}。`;
+  }
+  return "允许发送一次低速短时点动；安全锁定不会解除。";
+});
+const manualMotionSummary = computed(() => {
+  // 首屏只呈现普通用户能理解的状态，不把代理合同细节直接抛到第一屏。
+  if (manualCommandPending.value) {
+    return { state: "发送中", hint: "正在发送本次点动或停止请求。" };
+  }
+  if (!manualCommandResult.value) {
+    return hilChecklistConfirmed.value
+      ? { state: "可点动", hint: "现场确认已完成，可发送一次低速短时点动。" }
+      : { state: "未确认", hint: manualBlockedReason.value };
+  }
+  if (manualCommandResult.value.proxy_status === "command_forwarded") {
+    return manualCommandResult.value.command_kind === "stop"
+      ? { state: "已发送", hint: "已发送停止请求。" }
+      : { state: "已发送", hint: `已发送 ${manualCommandResult.value.applied_direction} 点动；速度和时长已按本机上限收口。` };
+  }
+  return { state: "失败", hint: manualCommandResult.value.failure_reason || "请求被拒绝或上位机不可达。" };
+});
 
 function listText(items: string[] | undefined, fallback = "none"): string {
   // blocked/not_proven 只展示少量摘要，完整定位应回到后端日志或 artifact。
@@ -182,6 +235,16 @@ function recordText(record: Record<string, string> | undefined): string {
 function timestampText(epochMs: number | null | undefined): string {
   // 刷新时间统一显示成 ISO 字符串，便于和上位机日志对齐。
   return typeof epochMs === "number" && Number.isFinite(epochMs) ? new Date(epochMs).toISOString() : "never";
+}
+
+function requestBodyForDirection(direction: "forward" | "back" | "left" | "right") {
+  // 提交前再次按当前边界 clamp，避免浏览器层被手工改值后越过安全上限。
+  return {
+    direction,
+    speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
+    duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
+    confirm_hil_checklist: hilChecklistConfirmed.value,
+  } as const;
 }
 
 function makeRefreshFallback(
@@ -365,6 +428,104 @@ async function refreshMapProof(): Promise<void> {
   );
 }
 
+async function sendManualMotion(direction: "forward" | "back" | "left" | "right"): Promise<void> {
+  // 非 stop 点动必须通过 checklist gate；即使远端成功，也继续维持 fail-closed UI。
+  if (!hilChecklistConfirmed.value || !robotApiBaseUrl.value.trim() || manualCommandPending.value) {
+    return;
+  }
+  manualCommandPending.value = true;
+  try {
+    manualCommandResult.value = await postRobotControlBaseManual(robotApiBaseUrl.value, requestBodyForDirection(direction));
+  } catch (err) {
+    manualCommandResult.value = {
+      schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+      command_kind: "manual",
+      proxy_status: "command_failed",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: robotApiBaseUrl.value,
+      normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+      remote_endpoint: "/api/base/manual",
+      remote_http_status: null,
+      status: "blocked",
+      requested_direction: direction,
+      applied_direction: direction,
+      requested_speed_mps: jogSpeedMps.value,
+      clamped_speed_mps: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
+      requested_duration_ms: jogDurationMs.value,
+      clamped_duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
+      confirm_hil_checklist: hilChecklistConfirmed.value,
+      non_stop_requires_confirm_hil_checklist: true,
+      hil_checklist_gate_status: hilChecklistConfirmed.value ? "manual_allowed" : "manual_blocked_missing_checklist",
+      checklist_missing: checklistMissing.value,
+      request_contract: {
+        max_speed_mps: manualSpeedLimit.value,
+        max_duration_ms: manualDurationLimit.value,
+        allowed_directions: manualBoundary.value?.allowed_directions ?? ["forward", "back", "left", "right", "stop"],
+      },
+      failure_reason: err instanceof Error ? err.message : "manual_request_failed",
+      blocked_reasons: [err instanceof Error ? err.message : "manual_request_failed"],
+    };
+  } finally {
+    manualCommandPending.value = false;
+    await refreshConsole();
+  }
+}
+
+async function sendStop(): Promise<void> {
+  // stop 始终保留，是为了在 checklist 未完成时也有 fail-safe 退路。
+  if (!robotApiBaseUrl.value.trim() || manualCommandPending.value) {
+    return;
+  }
+  manualCommandPending.value = true;
+  try {
+    manualCommandResult.value = await postRobotControlBaseStop(robotApiBaseUrl.value);
+  } catch (err) {
+    manualCommandResult.value = {
+      schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+      command_kind: "stop",
+      proxy_status: "command_failed",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: robotApiBaseUrl.value,
+      normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+      remote_endpoint: "/api/base/stop",
+      remote_http_status: null,
+      status: "blocked",
+      requested_direction: "stop",
+      applied_direction: "stop",
+      requested_speed_mps: 0,
+      clamped_speed_mps: 0,
+      requested_duration_ms: 0,
+      clamped_duration_ms: 0,
+      confirm_hil_checklist: false,
+      non_stop_requires_confirm_hil_checklist: true,
+      hil_checklist_gate_status: "stop_allowed_without_checklist",
+      checklist_missing: [],
+      request_contract: {
+        max_speed_mps: manualSpeedLimit.value,
+        max_duration_ms: manualDurationLimit.value,
+        allowed_directions: manualBoundary.value?.allowed_directions ?? ["forward", "back", "left", "right", "stop"],
+      },
+      failure_reason: err instanceof Error ? err.message : "stop_request_failed",
+      blocked_reasons: [err instanceof Error ? err.message : "stop_request_failed"],
+    };
+  } finally {
+    manualCommandPending.value = false;
+    await refreshConsole();
+  }
+}
+
 async function startPreview(): Promise<void> {
   // Start Preview 只在显式用户点击后创建会话，页面初始不自动占用 camera peer。
   if (!robotApiBaseUrl.value.trim() || previewStartPending.value) {
@@ -464,6 +625,11 @@ watch(robotApiBaseUrl, async (nextValue, previousValue) => {
   }
 });
 
+watch(manualBoundary, () => {
+  // 后端边界一旦变化，前端输入立即重新 clamp，避免显示值与实际允许值分叉。
+  syncJogInputsToBoundary();
+}, { immediate: true });
+
 onMounted(() => {
   // 初次加载只拿到 baseUrl_not_provided 的 blocked 摘要，不会探测真实机器人。
   void refreshConsole();
@@ -544,11 +710,39 @@ onBeforeUnmount(() => {
 
       <article class="snapshot-panel">
         <h3>移动/导航</h3>
-        <div class="locked-summary">
-          <span class="status-chip" data-state="locked">手动移动（未开放）</span>
+        <div class="panel-action-row wrap-actions">
+          <span class="status-chip" :data-state="manualMotionSummary.state">{{ manualMotionSummary.state }}</span>
           <span class="status-chip" data-state="locked">自动导航（未开放）</span>
         </div>
-        <p class="panel-note">手动移动和自动导航都未开放，相关端点继续留在详情里。</p>
+        <p class="panel-note">{{ manualBoundary?.manual_motion_entry_label ?? "受控点动（需现场确认）" }}</p>
+        <div class="motion-pad">
+          <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('forward')">前进</button>
+          <div class="motion-middle-row">
+            <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('left')">左转</button>
+            <button type="button" class="danger-button" :disabled="!canSendStop" @click="sendStop">停止</button>
+            <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('right')">右转</button>
+          </div>
+          <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('back')">后退</button>
+        </div>
+        <div class="motion-limits">
+          <label>
+            <span>速度上限（m/s）</span>
+            <input v-model.number="jogSpeedMps" type="number" min="0" :max="manualSpeedLimit" step="0.01">
+          </label>
+          <label>
+            <span>时长上限（ms）</span>
+            <input v-model.number="jogDurationMs" type="number" min="0" :max="manualDurationLimit" step="50">
+          </label>
+        </div>
+        <div class="checklist-box">
+          <p class="checklist-title">现场确认</p>
+          <label v-for="item in hilChecklist" :key="item.id" class="checklist-item">
+            <input v-model="item.checked" type="checkbox">
+            <span>{{ item.label }}</span>
+          </label>
+        </div>
+        <p class="panel-note">{{ manualMotionSummary.hint }}</p>
+        <p class="panel-note">非 stop 方向必须勾完整 checklist；stop 可单独发送。</p>
       </article>
     </div>
 
@@ -710,6 +904,15 @@ onBeforeUnmount(() => {
           <h3>控制边界 / readback</h3>
           <p class="muted">{{ robotSummary?.safe_command_boundary.locked_reason ?? "locked by V1 boundary" }}</p>
           <dl class="kv compact-kv">
+            <dt>manual motion entry</dt>
+            <dd>{{ robotSummary?.safe_command_boundary.manual_motion_entry_status ?? "not_loaded" }}</dd>
+            <dt>manual stop endpoint</dt>
+            <dd>{{ robotSummary?.safe_command_boundary.stop_endpoint ?? "/api/base/stop" }}</dd>
+            <dt>manual limits</dt>
+            <dd>
+              speed&lt;={{ robotSummary?.safe_command_boundary.speed_limit_mps ?? 0.12 }} m/s;
+              duration&lt;={{ robotSummary?.safe_command_boundary.duration_limit_ms ?? 800 }} ms
+            </dd>
             <dt>command_dispatch_enabled</dt>
             <dd>command_dispatch_enabled=false</dd>
             <dt>manual_control_enabled</dt>
@@ -732,6 +935,18 @@ onBeforeUnmount(() => {
             </dd>
             <dt>unsafe starts</dt>
             <dd>radar start=false; map start=false; base manual=false</dd>
+            <dt>latest base proxy</dt>
+            <dd>
+              {{ manualCommandResult?.command_kind ?? "not_loaded" }} /
+              {{ manualCommandResult?.proxy_status ?? "not_loaded" }} /
+              {{ manualCommandResult?.failure_reason || "none" }}
+            </dd>
+            <dt>latest base clamp</dt>
+            <dd>
+              dir={{ manualCommandResult?.applied_direction ?? "not_loaded" }},
+              speed={{ manualCommandResult?.clamped_speed_mps ?? "n/a" }},
+              duration={{ manualCommandResult?.clamped_duration_ms ?? "n/a" }}
+            </dd>
           </dl>
           <table class="preflight-table">
             <thead>

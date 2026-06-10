@@ -3535,7 +3535,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.o3_proof_summary.path_generated).toBe(false);
       expect(summary.o3_proof_summary.path_generation_succeeded).toBe(false);
       expect(summary.safe_command_boundary.manual_endpoint).toBe("/api/base/manual");
+      expect(summary.safe_command_boundary.stop_endpoint).toBe("/api/base/stop");
       expect(summary.safe_command_boundary.cmd_vel_topic).toBe("/cmd_vel");
+      expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_hil_checklist");
+      expect(summary.safe_command_boundary.allowed_directions).toEqual(["forward", "back", "left", "right", "stop"]);
       expect(summary.safe_command_boundary.manual_control_enabled).toBe(false);
       expect(summary.safe_to_control).toBe(false);
       expect(summary.delivery_success).toBe(false);
@@ -4005,6 +4008,108 @@ describe("workstation fail-closed API contracts", () => {
       expect(rejectedBody.failure_reason).toBe("baseUrl_protocol_not_allowed");
     } finally {
       await server.close();
+    }
+  });
+
+  it("workstation base manual proxy clamps request and requires confirm_hil_checklist", async () => {
+    // 受控点动代理只允许固定 manual endpoint，并且必须经过 checklist gate 与速度/时长 clamp。
+    const upstream = await listenRobotProofRefreshApi({
+      "/api/base/manual": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_manual",
+          status: "accepted",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const rejected = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ direction: "forward", speed: 9, duration_ms: 9999, confirm_hil_checklist: false }),
+      });
+      const rejectedBody = (await rejected.json()) as { proxy_status: string; failure_reason: string; safe_to_control: boolean };
+      expect(rejected.status).toBe(400);
+      expect(rejectedBody.proxy_status).toBe("command_rejected");
+      expect(rejectedBody.failure_reason).toBe("confirm_hil_checklist_required");
+      expect(rejectedBody.safe_to_control).toBe(false);
+
+      const forwarded = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ direction: "forward", speed: 9, duration_ms: 9999, confirm_hil_checklist: true }),
+      });
+      const forwardedBody = (await forwarded.json()) as {
+        proxy_status: string;
+        applied_direction: string;
+        clamped_speed_mps: number;
+        clamped_duration_ms: number;
+      };
+      expect(forwarded.status).toBe(200);
+      expect(forwardedBody.proxy_status).toBe("command_forwarded");
+      expect(forwardedBody.applied_direction).toBe("forward");
+      expect(forwardedBody.clamped_speed_mps).toBe(0.12);
+      expect(forwardedBody.clamped_duration_ms).toBe(800);
+      expect(upstream.receivedBodies["/api/base/manual"]).toEqual([
+        {
+          direction: "forward",
+          speed: 0.12,
+          duration_ms: 800,
+          confirm_hil_checklist: true,
+        },
+      ]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation base stop proxy stays fail-closed and allows stop without checklist", async () => {
+    // stop 是唯一允许在未勾 checklist 时执行的动作，但仍然只能走固定 stop endpoint。
+    const upstream = await listenRobotProofRefreshApi({
+      "/api/base/stop": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_stop",
+          status: "stopped",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/base/stop?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ confirm_hil_checklist: false }),
+      });
+      const body = (await response.json()) as {
+        command_kind: string;
+        proxy_status: string;
+        hil_checklist_gate_status: string;
+        safe_to_control: boolean;
+        primary_actions_enabled: boolean;
+      };
+      expect(response.status).toBe(200);
+      expect(body.command_kind).toBe("stop");
+      expect(body.proxy_status).toBe("command_forwarded");
+      expect(body.hil_checklist_gate_status).toBe("stop_allowed_without_checklist");
+      expect(body.safe_to_control).toBe(false);
+      expect(body.primary_actions_enabled).toBe(false);
+      expect(upstream.receivedBodies["/api/base/stop"]).toEqual([{}]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
     }
   });
 

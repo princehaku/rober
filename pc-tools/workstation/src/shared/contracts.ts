@@ -2006,8 +2006,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   proxy_policy: {
     vue_direct_robot_api_access: false;
     node_proxy_only: true;
-    allowed_methods: ["GET"];
-    allowed_endpoint_class: "status_latest_readback_only";
+    allowed_methods: Array<"GET" | "POST">;
+    allowed_endpoint_class: "status_latest_readback_plus_fixed_manual_stop";
     unsafe_urls_rejected: true;
   };
   observed_at_ms: number;
@@ -2042,6 +2042,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   };
   safe_command_boundary: {
     manual_endpoint: "/api/base/manual";
+    stop_endpoint: "/api/base/stop";
     cmd_vel_topic: "/cmd_vel";
     nav2_goal: "Nav2 NavigateToPose locked";
     map_start: "map start locked";
@@ -2049,6 +2050,16 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     keyboard_control: "keyboard control locked";
     map_click_goal: "map click goal locked";
     locked_reason: string;
+    manual_motion_entry_status: "controlled_jog_requires_hil_checklist";
+    manual_motion_entry_label: "受控点动（需现场确认）";
+    allowed_directions: Array<"forward" | "back" | "left" | "right" | "stop">;
+    non_stop_requires_confirm_hil_checklist: true;
+    speed_limit_mps: number;
+    duration_limit_ms: number;
+    hil_checklist: Array<{
+      id: "operator_ready" | "clearance_confirmed" | "low_speed_only" | "not_autonomy_mode";
+      label: string;
+    }>;
     command_dispatch_enabled: false;
     manual_control_enabled: false;
     navigate_goal_enabled: false;
@@ -2117,6 +2128,48 @@ export interface RobotControlCameraCloseProxyResponse extends ProofFlags {
   peer_id: string;
   status: string;
   error: string;
+  failure_reason: string;
+  blocked_reasons: string[];
+  robot_control_executed: false;
+}
+
+export type RobotControlBaseDirection = "forward" | "back" | "left" | "right" | "stop";
+export type RobotControlBaseCommandKind = "manual" | "stop";
+export type RobotControlBaseProxyStatus = "command_forwarded" | "command_rejected" | "command_failed";
+
+// 点动请求只描述 workstation 到上位机的固定代理合同。
+// UI 不能借这份合同推导出“可控”或“HIL 已通过”。
+export interface RobotControlBaseCommandRequest {
+  direction: RobotControlBaseDirection;
+  speed: number;
+  duration_ms: number;
+  confirm_hil_checklist: boolean;
+}
+
+export interface RobotControlBaseCommandProxyResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1";
+  command_kind: RobotControlBaseCommandKind;
+  proxy_status: RobotControlBaseProxyStatus;
+  source_base_url: string;
+  normalized_base_url: string;
+  remote_endpoint: "/api/base/manual" | "/api/base/stop";
+  remote_http_status: number | null;
+  status: string;
+  requested_direction: RobotControlBaseDirection;
+  applied_direction: RobotControlBaseDirection;
+  requested_speed_mps: number | null;
+  clamped_speed_mps: number;
+  requested_duration_ms: number | null;
+  clamped_duration_ms: number;
+  confirm_hil_checklist: boolean;
+  non_stop_requires_confirm_hil_checklist: true;
+  hil_checklist_gate_status: "stop_allowed_without_checklist" | "manual_allowed" | "manual_blocked_missing_checklist";
+  checklist_missing: string[];
+  request_contract: {
+    max_speed_mps: number;
+    max_duration_ms: number;
+    allowed_directions: RobotControlBaseDirection[];
+  };
   failure_reason: string;
   blocked_reasons: string[];
   robot_control_executed: false;
@@ -2335,6 +2388,8 @@ export const API_ROUTES = [
   "/api/o7/safe-command-preview?fixtureJson=<local-json>",
   "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
   "/api/robot-control/summary?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/base/manual?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/base/stop?baseUrl=<robot-api-base-url>",
   "/api/proof-boundary",
 ] as const;
 

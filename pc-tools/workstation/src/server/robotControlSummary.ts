@@ -13,6 +13,15 @@ type JsonRecord = Record<string, unknown>;
 const ROBOT_CONTROL_SCHEMA = "trashbot.pc_tools_workstation.robot_control_summary.v1" as const;
 const DEFAULT_REQUEST_TIMEOUT_MS = 1500;
 const SLOW_READBACK_TIMEOUT_MS = 4000;
+export const ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS = 0.12;
+export const ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS = 800;
+export const ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS = ["forward", "back", "left", "right", "stop"] as const;
+export const ROBOT_CONTROL_HIL_CHECKLIST = [
+  { id: "operator_ready", label: "现场有人扶控并准备急停" },
+  { id: "clearance_confirmed", label: "已确认小车周围无人和障碍" },
+  { id: "low_speed_only", label: "本轮仅做低速短时点动" },
+  { id: "not_autonomy_mode", label: "本轮不是自动导航任务" },
+] as const;
 
 type RobotReadEndpointConfig = {
   id: RobotApiReadEndpointId;
@@ -630,8 +639,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     proxy_policy: {
       vue_direct_robot_api_access: false,
       node_proxy_only: true,
-      allowed_methods: ["GET"],
-      allowed_endpoint_class: "status_latest_readback_only",
+      allowed_methods: ["GET", "POST"],
+      allowed_endpoint_class: "status_latest_readback_plus_fixed_manual_stop",
       unsafe_urls_rejected: true,
     },
     observed_at_ms: observedAt,
@@ -676,6 +685,7 @@ function lockedBoundary(): RobotControlSummaryResponse["safe_command_boundary"] 
   // 控制边界集中在后端返回，避免前端以后误加 enabled 状态。
   return {
     manual_endpoint: "/api/base/manual",
+    stop_endpoint: "/api/base/stop",
     cmd_vel_topic: "/cmd_vel",
     nav2_goal: "Nav2 NavigateToPose locked",
     map_start: "map start locked",
@@ -683,6 +693,13 @@ function lockedBoundary(): RobotControlSummaryResponse["safe_command_boundary"] 
     keyboard_control: "keyboard control locked",
     map_click_goal: "map click goal locked",
     locked_reason: "requires safety lock, HIL gate, robot ACK, timeout/cancel/stop/recovery evidence before enablement",
+    manual_motion_entry_status: "controlled_jog_requires_hil_checklist",
+    manual_motion_entry_label: "受控点动（需现场确认）",
+    allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
+    non_stop_requires_confirm_hil_checklist: true,
+    speed_limit_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
+    duration_limit_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
+    hil_checklist: [...ROBOT_CONTROL_HIL_CHECKLIST],
     command_dispatch_enabled: false,
     manual_control_enabled: false,
     navigate_goal_enabled: false,
@@ -722,8 +739,8 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
     proxy_policy: {
       vue_direct_robot_api_access: false,
       node_proxy_only: true,
-      allowed_methods: ["GET"],
-      allowed_endpoint_class: "status_latest_readback_only",
+      allowed_methods: ["GET", "POST"],
+      allowed_endpoint_class: "status_latest_readback_plus_fixed_manual_stop",
       unsafe_urls_rejected: true,
     },
     observed_at_ms: observedAt,

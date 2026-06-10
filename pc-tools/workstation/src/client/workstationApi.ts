@@ -21,6 +21,8 @@ import type {
   RobotControlProofRefreshProxyResponse,
   RobotControlCameraCloseProxyResponse,
   RobotControlCameraOfferProxyResponse,
+  RobotControlBaseCommandProxyResponse,
+  RobotControlBaseCommandRequest,
   RobotControlSummaryResponse,
   RouteDebugSummaryResponse,
   TrainingLabelingResponse,
@@ -84,6 +86,8 @@ const API_ENDPOINTS = {
   o7SafeCommandPreview: "/api/o7/safe-command-preview",
   o7CloudArchiveTasks: "/api/o7/cloud-archive/tasks",
   robotControlSummary: "/api/robot-control/summary",
+  robotControlBaseManual: "/api/robot-control/base/manual",
+  robotControlBaseStop: "/api/robot-control/base/stop",
   robotControlRadarScanProofRefresh: "/api/robot-control/radar/scan-proof/refresh",
   robotControlMapProofRefresh: "/api/robot-control/map/proof/refresh",
   robotControlCameraOffer: "/api/robot-control/camera/offer",
@@ -181,6 +185,17 @@ function robotControlCameraOfferUrl(baseUrl: string): string {
     params.set("baseUrl", trimmed);
   }
   return `${API_ENDPOINTS.robotControlCameraOffer}?${params.toString()}`;
+}
+
+function robotControlBaseProxyUrl(endpoint: string, baseUrl: string): string {
+  // 点动/停止都只接受 baseUrl，远端路径固定在 Node 代理侧，浏览器不能拼接任意 POST。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  const query = params.toString();
+  return query ? `${endpoint}?${query}` : endpoint;
 }
 
 function robotControlCameraCloseUrl(baseUrl: string, peerId: string): string {
@@ -356,6 +371,19 @@ export async function getO7CloudArchiveTasks(archiveJson: string): Promise<O7Clo
 export async function getRobotControlSummary(baseUrl: string): Promise<RobotControlSummaryResponse> {
   // Robot Control V1 只读取 Node 代理后的 fail-closed 摘要，不接收前端任意 endpoint。
   return loadJson<RobotControlSummaryResponse>(robotControlSummaryUrl(baseUrl));
+}
+
+export async function postRobotControlBaseManual(
+  baseUrl: string,
+  body: RobotControlBaseCommandRequest,
+): Promise<RobotControlBaseCommandProxyResponse> {
+  // 非 stop 点动也只能走固定 Node 代理，避免页面直接拿到任意 Robot API POST 权限。
+  return postJson<RobotControlBaseCommandProxyResponse>(robotControlBaseProxyUrl(API_ENDPOINTS.robotControlBaseManual, baseUrl), body);
+}
+
+export async function postRobotControlBaseStop(baseUrl: string): Promise<RobotControlBaseCommandProxyResponse> {
+  // stop 单独走固定 endpoint；即使成功也不能把 safe_to_control 变成 true。
+  return postJson<RobotControlBaseCommandProxyResponse>(robotControlBaseProxyUrl(API_ENDPOINTS.robotControlBaseStop, baseUrl), {});
 }
 
 export async function postRobotControlRadarScanProofRefresh(

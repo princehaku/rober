@@ -261,7 +261,8 @@ h3 {
 }
 
 .status-chip[data-state="连接中"],
-.status-chip[data-state="刷新中"] {
+.status-chip[data-state="刷新中"],
+.status-chip[data-state="发送中"] {
   border-color: #cfe0f0;
   background: #eef5fb;
   color: #22537a;
@@ -270,9 +271,17 @@ h3 {
 .status-chip[data-state="未连接"],
 .status-chip[data-state="未打开"],
 .status-chip[data-state="未刷新"],
+.status-chip[data-state="未确认"],
 .status-chip[data-state="locked"] {
   background: #f5f7fa;
   color: #5f6b7a;
+}
+
+.status-chip[data-state="可点动"],
+.status-chip[data-state="已发送"] {
+  border-color: #d5d2a9;
+  background: #fbf8e8;
+  color: #6a5710;
 }
 
 .status-chip[data-state="有异常"],
@@ -317,6 +326,104 @@ h3 {
   color: #44525f;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.wrap-actions {
+  justify-content: space-between;
+}
+
+.motion-pad {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.motion-pad > button,
+.motion-middle-row button {
+  min-height: 38px;
+  border: 1px solid #bdc7d3;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1b2a38;
+}
+
+.motion-pad button:disabled,
+.motion-middle-row button:disabled {
+  cursor: not-allowed;
+  background: #f3f5f7;
+  color: #7a8694;
+}
+
+.motion-middle-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.danger-button {
+  border-color: #e1b3b3;
+  background: #fff1f1;
+  color: #9a3412;
+}
+
+.motion-limits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.motion-limits label,
+.checklist-box label {
+  display: block;
+}
+
+.motion-limits span,
+.checklist-title {
+  display: block;
+  margin-bottom: 5px;
+  color: #5f6b7a;
+  font-size: 12px;
+}
+
+.motion-limits input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #bdc7d3;
+  border-radius: 6px;
+  padding: 0 9px;
+  background: #ffffff;
+  color: #17202a;
+  font: inherit;
+}
+
+.checklist-box {
+  margin-top: 10px;
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  padding: 10px;
+  background: #f7f9fb;
+}
+
+.checklist-title {
+  margin-bottom: 8px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #1b2a38;
+  font-size: 13px;
+}
+
+.checklist-item:last-child {
+  margin-bottom: 0;
+}
+
+.checklist-item input {
+  margin-top: 2px;
 }
 
 .advanced-details {
@@ -538,7 +645,9 @@ th {
     .robot-control-form,
     .robot-console-grid,
     .advanced-grid,
-    .locked-actions {
+    .locked-actions,
+    .motion-limits,
+    .motion-middle-row {
     grid-template-columns: 1fr;
   }
 

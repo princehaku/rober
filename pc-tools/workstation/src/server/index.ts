@@ -29,8 +29,18 @@ import {
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "./catalog";
-import { endpointUrl, normalizeRobotApiBaseUrl, scanDangerousTrueFields } from "./robotControlSummary";
+import {
+  endpointUrl,
+  normalizeRobotApiBaseUrl,
+  ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS,
+  ROBOT_CONTROL_HIL_CHECKLIST,
+  ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
+  ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
+  scanDangerousTrueFields,
+} from "./robotControlSummary";
 import type {
+  RobotControlBaseCommandProxyResponse,
+  RobotControlBaseCommandRequest,
   RobotControlCameraAnswerSummary,
   RobotControlCameraCloseProxyResponse,
   RobotControlCameraOfferProxyResponse,
@@ -84,6 +94,124 @@ function safeAnswerFromPayload(payload: Record<string, unknown> | null): RobotCo
 function peerIdText(value: unknown): string {
   // peer_id 只保留短字母数字摘要，避免路径注入或日志污染。
   return typeof value === "string" && /^[A-Za-z0-9_-]{1,120}$/.test(value) ? value : "";
+}
+
+function finiteNumber(value: unknown): number | null {
+  // 点动请求必须落到确定数值；NaN/Infinity/字符串都按无效处理。
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  // 代理和 UI 双重限幅，确保浏览器绕过 disabled 也拿不到更大速度/时长。
+  return Math.min(max, Math.max(min, value));
+}
+
+function allowedDirection(value: unknown): RobotControlBaseCommandRequest["direction"] | null {
+  // 方向只接受固定白名单，避免前端把 manual proxy 变成任意运动字符串通道。
+  return typeof value === "string" && ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS.includes(value as never)
+    ? (value as RobotControlBaseCommandRequest["direction"])
+    : null;
+}
+
+function missingHilChecklist(confirmHilChecklist: boolean): string[] {
+  // 本轮 checklist 只做完整确认 gate，不在 Node 端逐项收集现场真假，防止 UI 漂移。
+  return confirmHilChecklist ? [] : ROBOT_CONTROL_HIL_CHECKLIST.map((item) => item.id);
+}
+
+const BASE_COMMAND_FAIL_CLOSED_FIELDS = new Set([
+  "safe_to_control",
+  "delivery_success",
+  "primary_actions_enabled",
+  "manual_control_enabled",
+  "command_dispatch_enabled",
+  "navigate_goal_enabled",
+  "keyboard_control_enabled",
+]);
+
+function baseCommandFailure(
+  sourceBaseUrl: string,
+  commandKind: "manual" | "stop",
+  remoteEndpoint: "/api/base/manual" | "/api/base/stop",
+  reason: string,
+  requestedDirection: RobotControlBaseCommandRequest["direction"],
+  requestedSpeedMps: number | null,
+  requestedDurationMs: number | null,
+  confirmHilChecklist: boolean,
+): RobotControlBaseCommandProxyResponse {
+  // 即使失败也返回完整 fail-closed 合同，避免前端在错误态分叉出另一套解释逻辑。
+  const isStop = requestedDirection === "stop" || commandKind === "stop";
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+    command_kind: commandKind,
+    proxy_status: "command_rejected",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    robot_control_executed: false,
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    remote_endpoint: remoteEndpoint,
+    remote_http_status: null,
+    status: "blocked",
+    requested_direction: requestedDirection,
+    applied_direction: isStop ? "stop" : requestedDirection,
+    requested_speed_mps: requestedSpeedMps,
+    clamped_speed_mps: isStop ? 0 : clamp(requestedSpeedMps ?? 0, 0, ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS),
+    requested_duration_ms: requestedDurationMs,
+    clamped_duration_ms: isStop ? 0 : clamp(requestedDurationMs ?? 0, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS),
+    confirm_hil_checklist: confirmHilChecklist,
+    non_stop_requires_confirm_hil_checklist: true,
+    hil_checklist_gate_status: isStop
+      ? "stop_allowed_without_checklist"
+      : confirmHilChecklist
+        ? "manual_allowed"
+        : "manual_blocked_missing_checklist",
+    checklist_missing: isStop ? [] : missingHilChecklist(confirmHilChecklist),
+    request_contract: {
+      max_speed_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
+      max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
+      allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
+    },
+    failure_reason: reason,
+    blocked_reasons: [reason],
+  };
+}
+
+async function fetchFixedRobotPostSummary(
+  baseUrl: string,
+  endpoint: "/api/base/manual" | "/api/base/stop",
+  body: Record<string, unknown>,
+): Promise<{ remote_http_status: number | null; payload: Record<string, unknown> | null; error: string }> {
+  // 这里专门服务固定 base manual/stop 代理，不接受动态 endpoint，避免扩展成万能 POST 转发器。
+  const normalized = normalizeRobotApiBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return { remote_http_status: null, payload: null, error: normalized.reason };
+  }
+  try {
+    const response = await fetch(endpointUrl(normalized.normalized, endpoint), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    });
+    const json = await response.json().catch(() => null);
+    return {
+      remote_http_status: response.status,
+      payload: asRecord(json),
+      error: "",
+    };
+  } catch (error) {
+    return {
+      remote_http_status: null,
+      payload: null,
+      error: error instanceof Error ? shortText(error.message, "upper_api_unreachable") : "upper_api_unreachable",
+    };
+  }
 }
 
 function unsafeProxyFailure(
@@ -320,6 +448,155 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/robot-control/summary", async (req, res) => {
     // Robot Control V1 只读代理上位机 GET status/latest/readback，拒绝浏览器直连和危险 URL。
     res.json(await buildRobotControlSummary(queryString(req.query.baseUrl)));
+  });
+
+  workstationApp.post("/api/robot-control/base/manual", async (req, res) => {
+    // 点动代理只允许固定 manual endpoint；非 stop 动作必须明确通过 HIL checklist gate。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    const payload = asRecord(req.body);
+    const direction = allowedDirection(payload?.direction);
+    const speed = finiteNumber(payload?.speed);
+    const durationMs = finiteNumber(payload?.duration_ms);
+    const confirmHilChecklist = payload?.confirm_hil_checklist === true;
+    if (!normalized.ok) {
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", normalized.reason, "stop", speed, durationMs, confirmHilChecklist));
+      return;
+    }
+    if (!direction) {
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "direction_invalid", "stop", speed, durationMs, confirmHilChecklist));
+      return;
+    }
+    if (direction === "stop") {
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "direction_stop_use_stop_endpoint", direction, speed, durationMs, confirmHilChecklist));
+      return;
+    }
+    if (speed === null || durationMs === null) {
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "manual_request_invalid_numbers", direction, speed, durationMs, confirmHilChecklist));
+      return;
+    }
+    if (!confirmHilChecklist) {
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "confirm_hil_checklist_required", direction, speed, durationMs, confirmHilChecklist));
+      return;
+    }
+
+    const clampedSpeed = clamp(speed, 0, ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS);
+    const clampedDurationMs = clamp(durationMs, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS);
+    const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/base/manual", {
+      direction,
+      speed: clampedSpeed,
+      duration_ms: clampedDurationMs,
+      confirm_hil_checklist: true,
+    });
+    if (remote.error) {
+      res.status(502).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", remote.error, direction, speed, durationMs, confirmHilChecklist));
+      return;
+    }
+    const dangerous = scanDangerousTrueFields(remote.payload, "", BASE_COMMAND_FAIL_CLOSED_FIELDS);
+    const responseBody: RobotControlBaseCommandProxyResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+      command_kind: "manual",
+      proxy_status:
+        remote.remote_http_status === 200 && dangerous.length === 0 ? "command_forwarded" : "command_failed",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_endpoint: "/api/base/manual",
+      remote_http_status: remote.remote_http_status,
+      status: shortText(remote.payload?.status, remote.remote_http_status === 200 ? "loaded" : "blocked"),
+      requested_direction: direction,
+      applied_direction: direction,
+      requested_speed_mps: speed,
+      clamped_speed_mps: clampedSpeed,
+      requested_duration_ms: durationMs,
+      clamped_duration_ms: clampedDurationMs,
+      confirm_hil_checklist: true,
+      non_stop_requires_confirm_hil_checklist: true,
+      hil_checklist_gate_status: "manual_allowed",
+      checklist_missing: [],
+      request_contract: {
+        max_speed_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
+        max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
+        allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
+      },
+      failure_reason:
+        dangerous.length > 0
+          ? `dangerous_true_field:${dangerous[0]}`
+          : remote.remote_http_status === 200
+            ? ""
+            : `manual_http_status_${remote.remote_http_status}`,
+      blocked_reasons: [
+        ...(remote.remote_http_status === 200 ? [] : [`manual_http_status_${remote.remote_http_status}`]),
+        ...dangerous.map((field) => `dangerous_true_field:${field}`),
+      ],
+    };
+    res.status(responseBody.proxy_status === "command_forwarded" ? 200 : 502).json(responseBody);
+  });
+
+  workstationApp.post("/api/robot-control/base/stop", async (req, res) => {
+    // stop 是唯一允许在未勾 checklist 时执行的动作；它仍然只走固定 stop endpoint。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    if (!normalized.ok) {
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "stop", "/api/base/stop", normalized.reason, "stop", 0, 0, false));
+      return;
+    }
+    const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/base/stop", {});
+    if (remote.error) {
+      res.status(502).json(baseCommandFailure(sourceBaseUrl, "stop", "/api/base/stop", remote.error, "stop", 0, 0, false));
+      return;
+    }
+    const dangerous = scanDangerousTrueFields(remote.payload, "", BASE_COMMAND_FAIL_CLOSED_FIELDS);
+    const responseBody: RobotControlBaseCommandProxyResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+      command_kind: "stop",
+      proxy_status:
+        remote.remote_http_status === 200 && dangerous.length === 0 ? "command_forwarded" : "command_failed",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_endpoint: "/api/base/stop",
+      remote_http_status: remote.remote_http_status,
+      status: shortText(remote.payload?.status, remote.remote_http_status === 200 ? "stopped" : "blocked"),
+      requested_direction: "stop",
+      applied_direction: "stop",
+      requested_speed_mps: 0,
+      clamped_speed_mps: 0,
+      requested_duration_ms: 0,
+      clamped_duration_ms: 0,
+      confirm_hil_checklist: false,
+      non_stop_requires_confirm_hil_checklist: true,
+      hil_checklist_gate_status: "stop_allowed_without_checklist",
+      checklist_missing: [],
+      request_contract: {
+        max_speed_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
+        max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
+        allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
+      },
+      failure_reason:
+        dangerous.length > 0
+          ? `dangerous_true_field:${dangerous[0]}`
+          : remote.remote_http_status === 200
+            ? ""
+            : `stop_http_status_${remote.remote_http_status}`,
+      blocked_reasons: [
+        ...(remote.remote_http_status === 200 ? [] : [`stop_http_status_${remote.remote_http_status}`]),
+        ...dangerous.map((field) => `dangerous_true_field:${field}`),
+      ],
+    };
+    res.status(responseBody.proxy_status === "command_forwarded" ? 200 : 502).json(responseBody);
   });
 
   workstationApp.post("/api/robot-control/radar/scan-proof/refresh", async (req, res) => {

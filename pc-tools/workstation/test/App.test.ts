@@ -304,8 +304,8 @@ const fixtures: Record<string, unknown> = {
     proxy_policy: {
       vue_direct_robot_api_access: false,
       node_proxy_only: true,
-      allowed_methods: ["GET"],
-      allowed_endpoint_class: "status_latest_readback_only",
+      allowed_methods: ["GET", "POST"],
+      allowed_endpoint_class: "status_latest_readback_plus_fixed_manual_stop",
       unsafe_urls_rejected: true,
     },
     observed_at_ms: 1781040814776,
@@ -371,6 +371,7 @@ const fixtures: Record<string, unknown> = {
     },
     safe_command_boundary: {
       manual_endpoint: "/api/base/manual",
+      stop_endpoint: "/api/base/stop",
       cmd_vel_topic: "/cmd_vel",
       nav2_goal: "Nav2 NavigateToPose locked",
       map_start: "map start locked",
@@ -378,6 +379,18 @@ const fixtures: Record<string, unknown> = {
       keyboard_control: "keyboard control locked",
       map_click_goal: "map click goal locked",
       locked_reason: "requires safety lock, HIL gate, robot ACK, timeout/cancel/stop/recovery evidence before enablement",
+      manual_motion_entry_status: "controlled_jog_requires_hil_checklist",
+      manual_motion_entry_label: "受控点动（需现场确认）",
+      allowed_directions: ["forward", "back", "left", "right", "stop"],
+      non_stop_requires_confirm_hil_checklist: true,
+      speed_limit_mps: 0.12,
+      duration_limit_ms: 800,
+      hil_checklist: [
+        { id: "operator_ready", label: "现场有人扶控并准备急停" },
+        { id: "clearance_confirmed", label: "已确认小车周围无人和障碍" },
+        { id: "low_speed_only", label: "本轮仅做低速短时点动" },
+        { id: "not_autonomy_mode", label: "本轮不是自动导航任务" },
+      ],
       command_dispatch_enabled: false,
       manual_control_enabled: false,
       navigate_goal_enabled: false,
@@ -2706,8 +2719,11 @@ describe("App", () => {
     expect(firstScreenText).toContain("未连接");
     expect(firstScreenText).toContain("未打开");
     expect(firstScreenText).toContain("未刷新");
-    expect(firstScreenText).toContain("手动移动（未开放）");
+    expect(firstScreenText).toContain("受控点动（需现场确认）");
     expect(firstScreenText).toContain("自动导航（未开放）");
+    expect(firstScreenText).toContain("前进");
+    expect(firstScreenText).toContain("停止");
+    expect(firstScreenText).toContain("现场有人扶控并准备急停");
     expect(firstScreenText).not.toContain("task_id selector");
     expect(firstScreenText).not.toContain("O6 consumer base URL");
     expect(firstScreenText).not.toContain("peer_id");
