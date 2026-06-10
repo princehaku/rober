@@ -828,6 +828,8 @@ planner `ComputePathToPose` 一次性计算，但仍然不是运动验证：
 - 只有在 managed runtime + initialpose/localization 已成立时，才允许 path generation。
 - 不允许 `NavigateToPose`、`FollowPath`、`/cmd_vel`、`/api/base/*` 或 `bt_navigator`。
 - `/dev/ttyS5` 仍然只做只读占用检查，不能被打开写入。
+- `/api/nav2/proof/refresh` 会先 source ROS Humble setup 再拉起 helper，避免
+  systemd 服务环境把 `rclpy` 依赖吞掉；但这不改变默认 no-motion 边界。
 
 这一步输出的仍然只是 planner proof 和 path artifact，不是 path execution、
 fixed-route execution、delivery success 或 HIL pass。

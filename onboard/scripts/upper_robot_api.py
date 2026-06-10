@@ -486,7 +486,7 @@ def run_nav2_runtime_proof_helper(
     ]
     if managed_runtime_opt_in:
         # managed runtime 默认关闭；只有 body 明确 opt-in 才允许 helper 短暂拉起 localization graph。
-        command.extend(
+        helper_argv.extend(
             [
                 "--managed-runtime-opt-in",
                 "--managed-timeout-s",
@@ -494,10 +494,10 @@ def run_nav2_runtime_proof_helper(
             ]
         )
         if managed_map_yaml:
-            command.extend(["--managed-map-yaml", managed_map_yaml])
+            helper_argv.extend(["--managed-map-yaml", managed_map_yaml])
     if initialpose_opt_in:
         # 只有 HTTP body 明确 opt-in 时才把定位种子传给 helper，避免默认 refresh 变成写 topic。
-        command.extend(
+        helper_argv.extend(
             [
                 "--initialpose-opt-in",
                 "--initialpose-x",
@@ -512,7 +512,7 @@ def run_nav2_runtime_proof_helper(
         )
     if path_generation_opt_in:
         # 路径生成同样必须显式 opt-in，默认 refresh 只做只读定位 proof。
-        command.extend(
+        helper_argv.extend(
             [
                 "--path-generation-opt-in",
                 "--path-generation-timeout-s",

@@ -265,6 +265,10 @@ opt-in。默认 body 不传 `"path_generation_opt_in": true` 时，helper 不会
 才会在 no-motion 边界内尝试一次 planner 计算，并把 path 点数、目标、响应和
 planner readiness 一起写入 artifact。
 
+`/api/nav2/proof/refresh` 现在会先显式 source ROS Humble setup，再拉起 helper。
+这样 `rclpy` 和 Nav2 action client 的运行时依赖不会被 systemd 服务环境吞掉；
+但这个变化只影响 proof helper 的启动方式，不改变默认只读/no-motion 边界。
+
 这一步仍然不等于可发车：
 
 - 允许：一次 `ComputePathToPose` 风格的 planner 计算。
