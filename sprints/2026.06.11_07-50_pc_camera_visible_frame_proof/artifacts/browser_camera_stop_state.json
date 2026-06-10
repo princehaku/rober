@@ -1,0 +1,33 @@
+{
+  "schema": "trashbot.pc_tools_workstation.browser_camera_stop_state.v1",
+  "captured_at": "2026-06-10T23:47:20.835Z",
+  "detail": {
+    "cleanup_status": "peer_closed:closed",
+    "failure_reason": "none",
+    "ice_connection_state": "closed",
+    "peer_id": "not_assigned",
+    "preview_status": "stopped_by_user",
+    "video_element_frame_status": "not_bound",
+    "video_element_presented_frames": "0",
+    "video_element_ready_state": "0",
+    "video_element_size": "0x0",
+    "video_element_src_object": "false",
+    "video_track_state": "stopped"
+  },
+  "frameCallbackProven": false,
+  "sampled_at": "2026-06-10T23:47:20.829Z",
+  "video": {
+    "currentTime": 0,
+    "exists": true,
+    "hasSrcObject": false,
+    "paused": true,
+    "quality": null,
+    "readyState": 0,
+    "srcObjectTrackCount": 0,
+    "srcObjectVideoTrackStates": [],
+    "videoHeight": 0,
+    "videoWidth": 0
+  },
+  "visibleFrameProven": false,
+  "vueElementFrameProven": false
+}

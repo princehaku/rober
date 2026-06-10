@@ -111,6 +111,12 @@ const previewPeerConnection = ref<RTCPeerConnection | null>(null);
 const previewStartPending = ref(false);
 const previewStopPending = ref(false);
 const sessionEpoch = ref(0);
+const videoElementHasSrcObject = ref(false);
+const videoElementReadyState = ref(0);
+const videoElementWidth = ref(0);
+const videoElementHeight = ref(0);
+const videoElementPresentedFrames = ref<number | null>(null);
+const videoElementFrameStatus = ref("not_observed");
 
 const selectedTaskSummary = computed(() => {
   // task_id 是回放和 evidence 的主键；没有 task_id 时保持 blocked 空状态。
@@ -638,35 +644,121 @@ function stampNow(): string {
   return new Date().toISOString();
 }
 
+function waitForIceGatheringComplete(peer: RTCPeerConnection, epoch: number, timeoutMs = 3500): Promise<void> {
+  // 上位机当前不支持 trickle ICE；必须把 host candidates 收进 offer SDP 后再发给固定代理。
+  if (sessionEpoch.value !== epoch || peer.iceGatheringState === "complete") {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    const previousHandler = peer.onicegatheringstatechange;
+    const timeout = window.setTimeout(() => finish(), timeoutMs);
+    const finish = () => {
+      window.clearTimeout(timeout);
+      peer.onicegatheringstatechange = previousHandler;
+      resolve();
+    };
+    peer.onicegatheringstatechange = function handleIceGatheringStateChange(event: Event) {
+      previousHandler?.call(peer, event);
+      if (sessionEpoch.value !== epoch || peer.iceGatheringState === "complete") {
+        finish();
+      }
+    };
+  });
+}
+
 function clearPreviewElement(): void {
   // 离开页面或停止时必须清空 srcObject，避免 UI 继续显示上一轮残留帧。
   if (previewVideo.value) {
     previewVideo.value.srcObject = null;
   }
+  syncPreviewVideoElementDiagnostics();
 }
 
-function replacePreviewStream(track: MediaStreamTrack | null): void {
+function syncPreviewVideoElementDiagnostics(): void {
+  // 这些字段只放在高级诊断和 smoke artifact，用真实 video 元素状态补足 track/live 的间接证据。
+  const videoElement = previewVideo.value;
+  videoElementHasSrcObject.value = Boolean(videoElement?.srcObject);
+  videoElementReadyState.value = videoElement?.readyState ?? 0;
+  videoElementWidth.value = videoElement?.videoWidth ?? 0;
+  videoElementHeight.value = videoElement?.videoHeight ?? 0;
+  const quality = videoElement?.getVideoPlaybackQuality?.();
+  videoElementPresentedFrames.value = typeof quality?.totalVideoFrames === "number" ? quality.totalVideoFrames : null;
+  if (!videoElementHasSrcObject.value) {
+    videoElementFrameStatus.value = "not_bound";
+  } else if (videoElementWidth.value > 0 && videoElementHeight.value > 0 && videoElementReadyState.value >= 2) {
+    videoElementFrameStatus.value = "visible_frame_ready";
+  } else if (videoElementReadyState.value > 0) {
+    videoElementFrameStatus.value = "metadata_or_loading";
+  }
+}
+
+function requestPreviewFrameProbe(videoElement: HTMLVideoElement, epoch: number): void {
+  // requestVideoFrameCallback 能证明浏览器渲染管线真的收到帧；不支持时退回 readyState/尺寸采样。
+  if (typeof videoElement.requestVideoFrameCallback !== "function") {
+    syncPreviewVideoElementDiagnostics();
+    return;
+  }
+  videoElement.requestVideoFrameCallback((_now, metadata) => {
+    if (sessionEpoch.value !== epoch) {
+      return;
+    }
+    videoElementWidth.value = metadata.width || videoElement.videoWidth || 0;
+    videoElementHeight.value = metadata.height || videoElement.videoHeight || 0;
+    videoElementReadyState.value = videoElement.readyState;
+    videoElementHasSrcObject.value = Boolean(videoElement.srcObject);
+    videoElementPresentedFrames.value = typeof metadata.presentedFrames === "number" ? metadata.presentedFrames : videoElementPresentedFrames.value;
+    videoElementFrameStatus.value = "frame_callback_observed";
+  });
+}
+
+function bindPreviewStreamToElement(stream: MediaStream, epoch: number): void {
+  // 绑定后主动 play，避免部分浏览器只完成 WebRTC track 但 video 元素仍停在 HAVE_NOTHING。
+  const videoElement = previewVideo.value;
+  if (!videoElement) {
+    return;
+  }
+  videoElement.srcObject = stream;
+  syncPreviewVideoElementDiagnostics();
+  requestPreviewFrameProbe(videoElement, epoch);
+  try {
+    const playResult = videoElement.play();
+    if (playResult) {
+      void playResult
+        .then(() => {
+          syncPreviewVideoElementDiagnostics();
+          requestPreviewFrameProbe(videoElement, epoch);
+        })
+        .catch(() => {
+          syncPreviewVideoElementDiagnostics();
+        });
+    }
+  } catch {
+    syncPreviewVideoElementDiagnostics();
+  }
+}
+
+function replacePreviewStream(track: MediaStreamTrack | null, remoteStream: MediaStream | null, epoch: number): void {
   // 页面只消费远端 video track；不申请音频，也不把其他 track 混入 video 元素。
-  previewStream.value?.getTracks().forEach((streamTrack) => streamTrack.stop());
+  if (previewStream.value && previewStream.value !== remoteStream) {
+    previewStream.value.getTracks().forEach((streamTrack) => streamTrack.stop());
+  }
   if (!track) {
     previewStream.value = null;
     clearPreviewElement();
     return;
   }
-  const nextStream = new MediaStream([track]);
+  const nextStream = remoteStream ?? new MediaStream([track]);
   previewStream.value = nextStream;
-  if (previewVideo.value) {
-    previewVideo.value.srcObject = nextStream;
-  }
+  bindPreviewStreamToElement(nextStream, epoch);
 }
 
-function bindVideoTrack(track: MediaStreamTrack, epoch: number): void {
+function bindVideoTrack(track: MediaStreamTrack, remoteStream: MediaStream | null, epoch: number): void {
   // track 生命周期要绑定到当前 session，避免旧 peer 的 ended 事件覆盖新会话状态。
   if (sessionEpoch.value !== epoch) {
     return;
   }
   videoTrackState.value = track.readyState;
-  replacePreviewStream(track);
+  replacePreviewStream(track, remoteStream, epoch);
   previewStatus.value = "streaming";
   failureReason.value = "";
   track.onended = () => {
@@ -682,7 +774,7 @@ function closeLocalPeer(reason: RobotControlPreviewStatus): void {
   previewPeerConnection.value?.getReceivers().forEach((receiver) => receiver.track?.stop());
   previewPeerConnection.value?.close();
   previewPeerConnection.value = null;
-  replacePreviewStream(null);
+  replacePreviewStream(null, null, sessionEpoch.value);
   iceConnectionState.value = "closed";
   videoTrackState.value = "stopped";
   previewStatus.value = reason;
@@ -1038,11 +1130,14 @@ async function startPreview(): Promise<void> {
       if (track.kind !== "video") {
         return;
       }
-      bindVideoTrack(track, epoch);
+      const remoteStream = event.streams[0] ?? null;
+      bindVideoTrack(track, remoteStream, epoch);
     };
 
     const localOffer = await peer.createOffer();
     await peer.setLocalDescription(localOffer);
+    cleanupStatus.value = "waiting_ice_candidates";
+    await waitForIceGatheringComplete(peer, epoch);
     const localDescription = peer.localDescription;
     if (!localDescription?.sdp || localDescription.type !== "offer") {
       throw new Error("invalid_local_offer");
@@ -1086,8 +1181,10 @@ async function stopPreview(): Promise<void> {
 watch(previewVideo, (videoElement) => {
   // video 元素可能在 tab 切换后重建；这里把现有 stream 重新绑定，避免黑屏。
   if (videoElement && previewStream.value) {
-    videoElement.srcObject = previewStream.value;
+    bindPreviewStreamToElement(previewStream.value, sessionEpoch.value);
+    return;
   }
+  syncPreviewVideoElementDiagnostics();
 });
 
 watch(robotApiBaseUrl, async (nextValue, previousValue) => {
@@ -1156,7 +1253,17 @@ onBeforeUnmount(() => {
           <button type="button" :disabled="!canStopPreview" @click="stopPreview">关闭画面</button>
           <span class="status-chip" :data-state="cameraSummary.state">{{ cameraSummary.state }}</span>
         </div>
-        <video ref="previewVideo" autoplay muted playsinline />
+        <video
+          ref="previewVideo"
+          data-testid="robot-camera-preview-video"
+          autoplay
+          muted
+          playsinline
+          @loadedmetadata="syncPreviewVideoElementDiagnostics"
+          @loadeddata="syncPreviewVideoElementDiagnostics"
+          @playing="syncPreviewVideoElementDiagnostics"
+          @resize="syncPreviewVideoElementDiagnostics"
+        />
         <p class="panel-note">{{ cameraSummary.hint }}</p>
       </article>
 
@@ -1266,6 +1373,16 @@ onBeforeUnmount(() => {
             <dd>{{ iceConnectionState }}</dd>
             <dt>video_track_state</dt>
             <dd>{{ videoTrackState }}</dd>
+            <dt>video_element_src_object</dt>
+            <dd>{{ videoElementHasSrcObject ? "true" : "false" }}</dd>
+            <dt>video_element_ready_state</dt>
+            <dd>{{ videoElementReadyState }}</dd>
+            <dt>video_element_size</dt>
+            <dd>{{ videoElementWidth }}x{{ videoElementHeight }}</dd>
+            <dt>video_element_presented_frames</dt>
+            <dd>{{ videoElementPresentedFrames ?? "not_available" }}</dd>
+            <dt>video_element_frame_status</dt>
+            <dd>{{ videoElementFrameStatus }}</dd>
             <dt>last_offer_at</dt>
             <dd>{{ lastOfferAt || "never" }}</dd>
             <dt>last_stop_at</dt>

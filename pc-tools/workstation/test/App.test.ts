@@ -3397,10 +3397,16 @@ describe("App", () => {
 
     class FakePeerConnection {
       iceConnectionState = "new";
+      iceGatheringState = "complete";
       localDescription: { type: "offer"; sdp: string } | null = null;
       remoteDescription: { type: "answer"; sdp: string } | null = null;
       oniceconnectionstatechange: (() => void) | null = null;
-      ontrack: ((event: { track: { kind: string; readyState: string; stop: () => void; onended: (() => void) | null } }) => void) | null =
+      ontrack: ((
+        event: {
+          track: { kind: string; readyState: string; stop: () => void; onended: (() => void) | null };
+          streams: FakeMediaStream[];
+        },
+      ) => void) | null =
         null;
 
       addTransceiver() {
@@ -3416,16 +3422,19 @@ describe("App", () => {
       }
 
       async setRemoteDescription(description: { type: "answer"; sdp: string }) {
+        // fake stream 模拟真实浏览器 RTCTrackEvent.streams[0]，覆盖 video.srcObject 绑定路径。
+        const videoTrack = {
+          kind: "video",
+          readyState: "live",
+          stop: () => undefined,
+          onended: null,
+        };
         this.remoteDescription = description;
         this.iceConnectionState = "connected";
         this.oniceconnectionstatechange?.();
         this.ontrack?.({
-          track: {
-            kind: "video",
-            readyState: "live",
-            stop: () => undefined,
-            onended: null,
-          },
+          track: videoTrack,
+          streams: [new FakeMediaStream([videoTrack])],
         });
       }
 
@@ -3441,6 +3450,7 @@ describe("App", () => {
 
     vi.stubGlobal("MediaStream", FakeMediaStream as unknown as typeof MediaStream);
     vi.stubGlobal("RTCPeerConnection", FakePeerConnection as unknown as typeof RTCPeerConnection);
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
 
     const wrapper = mount(App);
     await flushPromises();
@@ -3463,6 +3473,9 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("connected");
     expect(wrapper.find("details").text()).toContain("video_track_state");
     expect(wrapper.find("details").text()).toContain("live");
+    expect(wrapper.find("details").text()).toContain("video_element_src_object");
+    expect(wrapper.find("details").text().replace(/\s+/g, "")).toContain("video_element_src_objecttrue");
+    expect((wrapper.find('[data-testid="robot-camera-preview-video"]').element as HTMLVideoElement).srcObject).not.toBeNull();
     expect(wrapper.find("details").text()).toContain("safe_to_control=false");
     expect(wrapper.find("details").text()).toContain("Node server only; Vue direct access=false");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);
@@ -3526,6 +3539,7 @@ describe("App", () => {
     vi.stubGlobal("fetch", mockedFetch);
     vi.stubGlobal("RTCPeerConnection", class {
       iceConnectionState = "new";
+      iceGatheringState = "complete";
       localDescription = { type: "offer" as const, sdp: "v=0\r\ns=local-offer\r\n" };
       addTransceiver() { return undefined; }
       async createOffer() { return this.localDescription; }

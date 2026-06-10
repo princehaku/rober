@@ -1,0 +1,17 @@
+{
+  "schema": "trashbot.pc_tools_workstation.browser_dom_first_screen.v1",
+  "captured_at": "2026-06-10T23:45:04.923Z",
+  "advancedDetailsOpen": false,
+  "advancedToolsDetailsOpen": false,
+  "cardTitles": [
+    "小车连接",
+    "实时画面",
+    "雷达",
+    "地图",
+    "移动/导航"
+  ],
+  "firstScreenText": "小车连接未连接先输入地址，再点连接/刷新。连接/刷新实时画面打开画面关闭画面未打开还没有打开实时画面。雷达 刷新雷达 未刷新还没有刷新。地图 刷新地图  地图列表 未刷新未读取还没有刷新。还没有读取地图列表。移动/导航 检查路径 未检查停止还没有检查路径。现场材料：未满足。需要补齐现场材料后，才允许低速点动。",
+  "forbiddenVisibleHits": [],
+  "title": "Rober 小车控制台",
+  "url": "http://127.0.0.1:8794/"
+}
