@@ -2097,6 +2097,31 @@ export interface RobotControlProofRefreshProxyResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export type RobotControlRadarLifecycleAction = "start" | "stop";
+export type RobotControlRadarLifecycleProxyStatus = "lifecycle_forwarded" | "lifecycle_rejected" | "lifecycle_failed";
+export type RobotControlRadarLifecycleEndpoint = "/api/radar/start" | "/api/radar/stop";
+
+export interface RobotControlRadarLifecycleResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_radar_lifecycle_proxy.v1";
+  action: RobotControlRadarLifecycleAction;
+  proxy_status: RobotControlRadarLifecycleProxyStatus;
+  source_base_url: string;
+  normalized_base_url: string;
+  remote_endpoint: RobotControlRadarLifecycleEndpoint;
+  remote_method: "POST";
+  remote_http_status: number | null;
+  status: "blocked" | "loaded_fail_closed_summary";
+  command_result: {
+    mode: string;
+    executed: boolean;
+    ok: boolean | null;
+  };
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
 export type RobotControlMapLifecycleAction = "list" | "start" | "save" | "reset";
 export type RobotControlMapLifecycleProxyStatus = "lifecycle_forwarded" | "lifecycle_rejected" | "lifecycle_failed";
 export type RobotControlMapLifecycleEndpoint =

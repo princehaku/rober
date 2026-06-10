@@ -28,6 +28,7 @@ import {
   buildProofBoundary,
   buildMapProofRefreshProxy,
   buildNav2NoMotionProofRefreshProxy,
+  buildRadarLifecycleProxy,
   buildRadarScanProofRefreshProxy,
   computeRobotProofRefreshTimeoutMs,
   buildRouteDebugSummary,
@@ -4087,6 +4088,163 @@ describe("workstation fail-closed API contracts", () => {
         "hard_dangerous_true_field:starts_nav2",
         "hard_dangerous_true_field:publishes_cmd_vel",
       ]));
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation radar lifecycle proxies use fixed endpoints, empty body, and local URL guard", async () => {
+    // radar lifecycle 只能触发 start/stop 两个固定传感器 endpoint，不能透传浏览器 body。
+    const directRejected = await buildRadarLifecycleProxy("", "stop");
+    expect(directRejected.proxy_status).toBe("lifecycle_rejected");
+    expect(directRejected.failure_reason).toBe("baseUrl_not_provided");
+    expect(directRejected.safe_to_control).toBe(false);
+
+    const upstream = await listenRobotProofRefreshApi({
+      "/api/radar/start": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_lifecycle",
+          status: "software_guard",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          sends_commands: true,
+          sends_motion_commands: false,
+          sends_base_motion_commands: false,
+          uses_base_uart: false,
+          command_result: { mode: "dry_run_stub", executed: false, ok: false },
+          failure_reason: "command_not_configured",
+          blocked_reasons: ["command_not_configured"],
+        },
+      },
+      "/api/radar/stop": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_lifecycle",
+          status: "software_guard",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          sends_commands: true,
+          sends_motion_commands: false,
+          sends_base_motion_commands: false,
+          uses_base_uart: false,
+          command_result: { mode: "dry_run_stub", executed: false, ok: false },
+          failure_reason: "command_not_configured",
+          blocked_reasons: ["command_not_configured"],
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const invalidBaseUrlResponse = await fetch(`${workstation.baseUrl}/api/robot-control/radar/stop?baseUrl=${encodeURIComponent("https://192.168.1.11:8787")}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: "/api/base/manual" }),
+      });
+      const invalidBaseUrlBody = (await invalidBaseUrlResponse.json()) as { proxy_status: string; failure_reason: string };
+      expect(invalidBaseUrlResponse.status).toBe(400);
+      expect(invalidBaseUrlBody.proxy_status).toBe("lifecycle_rejected");
+      expect(invalidBaseUrlBody.failure_reason).toBe("baseUrl_protocol_not_allowed");
+
+      const startResponse = await fetch(`${workstation.baseUrl}/api/robot-control/radar/start?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: "/api/base/manual", sends_motion_commands: true }),
+      });
+      const startBody = (await startResponse.json()) as {
+        action: string;
+        proxy_status: string;
+        remote_endpoint: string;
+        remote_http_status: number;
+        command_result: { mode: string; executed: boolean; ok: boolean };
+        failure_reason: string;
+        blocked_reasons: string[];
+        hard_dangerous_true_fields: string[];
+        robot_control_executed: boolean;
+        safe_to_control: boolean;
+      };
+      expect(startResponse.status).toBe(200);
+      expect(startBody.action).toBe("start");
+      expect(startBody.proxy_status).toBe("lifecycle_forwarded");
+      expect(startBody.remote_endpoint).toBe("/api/radar/start");
+      expect(startBody.remote_http_status).toBe(200);
+      expect(startBody.command_result).toEqual({ mode: "dry_run_stub", executed: false, ok: false });
+      expect(startBody.failure_reason).toBe("command_not_configured");
+      expect(startBody.blocked_reasons).toContain("command_not_configured");
+      expect(startBody.hard_dangerous_true_fields).toEqual([]);
+      expect(startBody.robot_control_executed).toBe(false);
+      expect(startBody.safe_to_control).toBe(false);
+
+      const stopResponse = await fetch(`${workstation.baseUrl}/api/robot-control/radar/stop?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ arbitrary_endpoint: "/api/radar/status" }),
+      });
+      const stopBody = (await stopResponse.json()) as { action: string; remote_endpoint: string; command_result: { mode: string; executed: boolean } };
+      expect(stopResponse.status).toBe(200);
+      expect(stopBody.action).toBe("stop");
+      expect(stopBody.remote_endpoint).toBe("/api/radar/stop");
+      expect(stopBody.command_result.mode).toBe("dry_run_stub");
+      expect(stopBody.command_result.executed).toBe(false);
+      expect(upstream.receivedBodies["/api/radar/start"]).toEqual([{}]);
+      expect(upstream.receivedBodies["/api/radar/stop"]).toEqual([{}]);
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation radar lifecycle proxy fails closed on hard dangerous fields but allows sensor sends_commands", async () => {
+    // sends_commands=true 可以是传感器 lifecycle 需要；底盘/运动/UART/控制 true 字段仍必须拦截。
+    const upstream = await listenRobotProofRefreshApi({
+      "/api/radar/stop": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_lifecycle",
+          status: "unsafe_claim",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          sends_commands: true,
+          sends_motion_commands: true,
+          sends_base_motion_commands: true,
+          uses_base_uart: true,
+          command_result: { mode: "dry_run_stub", executed: false, ok: false },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/radar/stop?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sends_commands: false }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        status: string;
+        failure_reason: string;
+        hard_dangerous_true_fields: string[];
+        blocked_reasons: string[];
+        robot_control_executed: boolean;
+      };
+      expect(response.status).toBe(502);
+      expect(body.proxy_status).toBe("lifecycle_failed");
+      expect(body.status).toBe("blocked");
+      expect(body.failure_reason).toBe("hard_dangerous_true_field:sends_motion_commands");
+      expect(body.hard_dangerous_true_fields).toEqual(expect.arrayContaining([
+        "sends_motion_commands",
+        "sends_base_motion_commands",
+        "uses_base_uart",
+      ]));
+      expect(body.hard_dangerous_true_fields).not.toContain("sends_commands");
+      expect(body.blocked_reasons).toContain("hard_dangerous_true_field:sends_motion_commands");
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedBodies["/api/radar/stop"]).toEqual([{}]);
     } finally {
       await workstation.close();
       await upstream.close();

@@ -9,7 +9,9 @@ import {
   postRobotControlMapSave,
   postRobotControlMapProofRefresh,
   postRobotControlNav2ProofRefresh,
+  postRobotControlRadarStart,
   postRobotControlRadarScanProofRefresh,
+  postRobotControlRadarStop,
   postRobotControlCameraOffer,
   postRobotControlCameraPeerClose,
 } from "../client/workstationApi";
@@ -19,6 +21,7 @@ import type {
   RobotControlMapLifecycleResponse,
   RobotControlPreviewStatus,
   RobotControlProofRefreshProxyResponse,
+  RobotControlRadarLifecycleResponse,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
 
@@ -32,6 +35,7 @@ const error = ref("");
 const robotSummary = ref<RobotControlSummaryResponse | null>(null);
 const taskDetail = ref<O7ConsumerTaskDetailResponse | null>(null);
 const radarRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
+const radarLifecycleResult = ref<RobotControlRadarLifecycleResponse | null>(null);
 const mapRefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const nav2RefreshResult = ref<RobotControlProofRefreshProxyResponse | null>(null);
 const mapLifecycleResult = ref<RobotControlMapLifecycleResponse | null>(null);
@@ -60,6 +64,7 @@ const lastOfferAt = ref("");
 const lastStopAt = ref("");
 const cleanupStatus = ref("not_started");
 const radarRefreshPending = ref(false);
+const radarLifecyclePending = ref(false);
 const mapRefreshPending = ref(false);
 const nav2RefreshPending = ref(false);
 const previewVideo = ref<HTMLVideoElement | null>(null);
@@ -224,6 +229,17 @@ function syncJogInputsToBoundary(): void {
 const robotConnectionSummary = computed(() => summarizeRobotConnection());
 const cameraSummary = computed(() => summarizeCameraState());
 const radarSummary = computed(() => summarizeProofState(radarRefreshPending.value, radarRefreshResult.value));
+const radarLifecycleSummary = computed(() => {
+  // 雷达 lifecycle 是高级诊断动作；摘要只说明代理和 guard 结果，不证明 runtime 已启动。
+  if (radarLifecyclePending.value) {
+    return "radar lifecycle pending";
+  }
+  const result = radarLifecycleResult.value;
+  if (!result) {
+    return "radar lifecycle not requested";
+  }
+  return `${result.action}:${result.proxy_status}; mode=${result.command_result.mode}; executed=${result.command_result.executed}; failure=${result.failure_reason || "none"}`;
+});
 const mapSummary = computed(() => summarizeProofState(mapRefreshPending.value, mapRefreshResult.value));
 const nav2PlanningSummary = computed(() => summarizeNav2Planning());
 const mapLifecycleSummary = computed(() => summarizeMapLifecycle());
@@ -380,6 +396,32 @@ function makeRefreshFallback(
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
     non_motion_evidence_actions_observed: [],
+    robot_control_executed: false,
+  };
+}
+
+function makeRadarLifecycleFallback(action: "start" | "stop", reason: string): RobotControlRadarLifecycleResponse {
+  // 浏览器 fetch 异常时也保持与后端一致的安全字段，避免高级诊断误判。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_radar_lifecycle_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    action,
+    proxy_status: "lifecycle_failed",
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    remote_endpoint: action === "start" ? "/api/radar/start" : "/api/radar/stop",
+    remote_method: "POST",
+    remote_http_status: null,
+    status: "blocked",
+    command_result: { mode: "not_loaded", executed: false, ok: null },
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
     robot_control_executed: false,
   };
 }
@@ -554,6 +596,35 @@ async function refreshRadarProof(): Promise<void> {
     radarRefreshResult,
     radarRefreshPending,
   );
+}
+
+async function runRadarLifecycleAction(
+  action: "start" | "stop",
+  request: () => Promise<RobotControlRadarLifecycleResponse>,
+): Promise<void> {
+  // lifecycle 只在高级诊断内触发；结果回写最近一次摘要并刷新只读状态。
+  if (!robotApiBaseUrl.value.trim() || radarLifecyclePending.value) {
+    return;
+  }
+  radarLifecyclePending.value = true;
+  try {
+    radarLifecycleResult.value = await request();
+  } catch (err) {
+    radarLifecycleResult.value = makeRadarLifecycleFallback(action, err instanceof Error ? err.message : `${action}_request_failed`);
+  } finally {
+    radarLifecyclePending.value = false;
+    await refreshConsole();
+  }
+}
+
+async function startRadarLifecycle(): Promise<void> {
+  // 启动雷达只走固定传感器 endpoint；不会调用底盘、Nav2 或 /cmd_vel。
+  await runRadarLifecycleAction("start", () => postRobotControlRadarStart(robotApiBaseUrl.value));
+}
+
+async function stopRadarLifecycle(): Promise<void> {
+  // 停止雷达用于真实上位机 dry-run guard smoke；不会触发任何底盘运动。
+  await runRadarLifecycleAction("stop", () => postRobotControlRadarStop(robotApiBaseUrl.value));
 }
 
 async function refreshMapProof(): Promise<void> {
@@ -989,6 +1060,14 @@ onBeforeUnmount(() => {
 
         <section class="advanced-block">
           <h3>雷达详情</h3>
+          <div class="robot-control-form">
+            <button class="secondary" type="button" :disabled="loading || radarLifecyclePending || !robotApiBaseUrl.trim()" @click="startRadarLifecycle">
+              启动雷达（高级）
+            </button>
+            <button class="secondary" type="button" :disabled="loading || radarLifecyclePending || !robotApiBaseUrl.trim()" @click="stopRadarLifecycle">
+              停止雷达（高级）
+            </button>
+          </div>
           <dl class="kv compact-kv">
             <dt>pending</dt>
             <dd>{{ radarRefreshPending ? "pending" : "idle" }}</dd>
@@ -1006,6 +1085,30 @@ onBeforeUnmount(() => {
             <dd>{{ timestampText(radarRefreshResult?.last_refreshed_at_ms) }}</dd>
             <dt>blocked reasons</dt>
             <dd>{{ listText(radarRefreshResult?.blocked_reasons, "none") }}</dd>
+            <dt>lifecycle pending</dt>
+            <dd>{{ radarLifecyclePending ? "pending" : "idle" }}</dd>
+            <dt>lifecycle summary</dt>
+            <dd>{{ radarLifecycleSummary }}</dd>
+            <dt>lifecycle remote</dt>
+            <dd>
+              {{ radarLifecycleResult?.remote_method ?? "POST" }}
+              {{ radarLifecycleResult?.remote_endpoint ?? "not_loaded" }}
+              -> {{ radarLifecycleResult?.remote_http_status ?? "n/a" }}
+            </dd>
+            <dt>lifecycle status</dt>
+            <dd>{{ radarLifecycleResult?.proxy_status ?? "not_loaded" }} / {{ radarLifecycleResult?.status ?? "not_loaded" }}</dd>
+            <dt>lifecycle command_result</dt>
+            <dd>
+              mode={{ radarLifecycleResult?.command_result.mode ?? "not_loaded" }},
+              executed={{ radarLifecycleResult?.command_result.executed ?? false }},
+              ok={{ radarLifecycleResult?.command_result.ok ?? "n/a" }}
+            </dd>
+            <dt>lifecycle failure</dt>
+            <dd>{{ radarLifecycleResult?.failure_reason || "none" }}</dd>
+            <dt>lifecycle blocked reasons</dt>
+            <dd>{{ listText(radarLifecycleResult?.blocked_reasons, "none") }}</dd>
+            <dt>lifecycle dangerous fields</dt>
+            <dd>{{ listText(radarLifecycleResult?.hard_dangerous_true_fields, "none") }}</dd>
           </dl>
         </section>
 

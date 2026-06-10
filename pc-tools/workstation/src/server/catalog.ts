@@ -23,6 +23,7 @@ export {
   buildMapLifecycleProxy,
   buildNav2NoMotionProofRefreshProxy,
   buildMapProofRefreshProxy,
+  buildRadarLifecycleProxy,
   buildRadarScanProofRefreshProxy,
   computeRobotProofRefreshTimeoutMs,
   buildRobotControlSummary,

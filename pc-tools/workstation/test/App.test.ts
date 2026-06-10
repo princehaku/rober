@@ -429,6 +429,40 @@ const fixtures: Record<string, unknown> = {
       non_motion_evidence_actions_observed: ["sends_commands", "starts_ros2"],
       ...PROOF_FLAGS,
     },
+    "/api/robot-control/radar/start": {
+      schema: "trashbot.pc_tools_workstation.robot_control_radar_lifecycle_proxy.v1",
+      action: "start",
+      proxy_status: "lifecycle_forwarded",
+      source_base_url: "http://192.168.1.11:8787",
+      normalized_base_url: "http://192.168.1.11:8787",
+      remote_endpoint: "/api/radar/start",
+      remote_method: "POST",
+      remote_http_status: 200,
+      status: "loaded_fail_closed_summary",
+      command_result: { mode: "dry_run_stub", executed: false, ok: false },
+      failure_reason: "command_not_configured",
+      blocked_reasons: ["command_not_configured"],
+      hard_dangerous_true_fields: [],
+      robot_control_executed: false,
+      ...PROOF_FLAGS,
+    },
+    "/api/robot-control/radar/stop": {
+      schema: "trashbot.pc_tools_workstation.robot_control_radar_lifecycle_proxy.v1",
+      action: "stop",
+      proxy_status: "lifecycle_forwarded",
+      source_base_url: "http://192.168.1.11:8787",
+      normalized_base_url: "http://192.168.1.11:8787",
+      remote_endpoint: "/api/radar/stop",
+      remote_method: "POST",
+      remote_http_status: 200,
+      status: "loaded_fail_closed_summary",
+      command_result: { mode: "dry_run_stub", executed: false, ok: false },
+      failure_reason: "command_not_configured",
+      blocked_reasons: ["command_not_configured"],
+      hard_dangerous_true_fields: [],
+      robot_control_executed: false,
+      ...PROOF_FLAGS,
+    },
     "/api/robot-control/map/proof/refresh": {
       schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
       robot_control_executed: false,
@@ -2654,6 +2688,10 @@ function stubWorkstationFetch() {
       fixtureKey = "/api/robot-control/summary";
     } else if (url.startsWith("/api/robot-control/radar/scan-proof/refresh")) {
       fixtureKey = "/api/robot-control/radar/scan-proof/refresh";
+    } else if (url.startsWith("/api/robot-control/radar/start")) {
+      fixtureKey = "/api/robot-control/radar/start";
+    } else if (url.startsWith("/api/robot-control/radar/stop")) {
+      fixtureKey = "/api/robot-control/radar/stop";
     } else if (url.startsWith("/api/robot-control/map/proof/refresh")) {
       fixtureKey = "/api/robot-control/map/proof/refresh";
     } else if (url.startsWith("/api/robot-control/nav2/proof/refresh")) {
@@ -2799,10 +2837,15 @@ describe("App", () => {
     expect(firstScreenText).toContain("自动导航（未开放）");
     expect(firstScreenText).toContain("停止");
     expect(firstScreenText).toContain("最近证据：还没有请求。");
+    expect(firstScreenText).not.toContain("启动雷达");
+    expect(firstScreenText).not.toContain("停止雷达");
     expect(firstScreenText).not.toContain("前进");
     expect(firstScreenText).not.toContain("现场有人扶控并准备急停");
+    expect(firstScreenText).not.toContain("HIL");
+    expect(firstScreenText).not.toContain("raw");
     expect(firstScreenText).not.toContain("速度上限");
     expect(firstScreenText).not.toContain("时长上限");
+    expect(firstScreenText).not.toContain("保存地图");
     expect(firstScreenText).not.toContain("task_id selector");
     expect(firstScreenText).not.toContain("O6 consumer base URL");
     expect(firstScreenText).not.toContain("peer_id");
@@ -2826,6 +2869,8 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("primary_actions_enabled=false");
     expect(wrapper.find("details").text()).toContain("现场点动设置 / 控制边界");
     expect(wrapper.find("details").text()).toContain("Nav2 规划详情");
+    expect(wrapper.find("details").text()).toContain("启动雷达（高级）");
+    expect(wrapper.find("details").text()).toContain("停止雷达（高级）");
     expect(wrapper.find("details").text()).toContain("前进");
     expect(wrapper.find("details").text()).toContain("速度上限");
     expect(wrapper.find("details").text()).toContain("现场有人扶控并准备急停");
@@ -2845,9 +2890,13 @@ describe("App", () => {
     expect(firstScreenText).toContain("查看地图列表");
     expect(firstScreenText).toContain("检查路径");
     expect(firstScreenText).not.toContain("保存地图");
+    expect(firstScreenText).not.toContain("启动雷达");
+    expect(firstScreenText).not.toContain("停止雷达");
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("未读取");
     expect(firstScreenText).toContain("路径未证明");
+    expect(firstScreenText).not.toContain("raw");
+    expect(firstScreenText).not.toContain("HIL");
     expect(firstScreenText).not.toContain("scan_once_observed");
     expect(firstScreenText).not.toContain("map_once_observed");
     expect(firstScreenText).not.toContain("path_generation_succeeded");
@@ -2878,6 +2927,28 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh") && options?.method === "POST")).toBe(true);
     const summaryCallsAfterRadar = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
     expect(summaryCallsAfterRadar).toBeGreaterThan(summaryCallsBefore);
+
+    expect(wrapper.find("details").text()).toContain("启动雷达（高级）");
+    expect(wrapper.find("details").text()).toContain("停止雷达（高级）");
+    await wrapper.find("details").element.setAttribute("open", "");
+    await wrapper.vm.$nextTick();
+    await wrapper.findAll("button").find((button) => button.text() === "启动雷达（高级）")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("启动雷达");
+    expect(wrapper.find("details").text()).toContain("start:lifecycle_forwarded");
+    expect(wrapper.find("details").text()).toContain("/api/radar/start");
+    expect(wrapper.find("details").text()).toContain("dry_run_stub");
+    expect(wrapper.find("details").text()).toContain("executed=false");
+    expect(wrapper.find("details").text()).toContain("command_not_configured");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/start") && options?.method === "POST")).toBe(true);
+
+    await wrapper.findAll("button").find((button) => button.text() === "停止雷达（高级）")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find("details").text()).toContain("stop:lifecycle_forwarded");
+    expect(wrapper.find("details").text()).toContain("/api/radar/stop");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/stop") && options?.method === "POST")).toBe(true);
 
     await wrapper.findAll("button").find((button) => button.text() === "刷新地图")?.trigger("click");
     await flushPromises();

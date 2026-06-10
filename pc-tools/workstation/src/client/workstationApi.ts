@@ -26,6 +26,7 @@ import type {
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
   RobotControlSummaryResponse,
+  RobotControlRadarLifecycleResponse,
   RouteDebugSummaryResponse,
   TrainingLabelingResponse,
 } from "../shared/contracts";
@@ -91,6 +92,8 @@ const API_ENDPOINTS = {
   robotControlBaseManual: "/api/robot-control/base/manual",
   robotControlBaseStop: "/api/robot-control/base/stop",
   robotControlRadarScanProofRefresh: "/api/robot-control/radar/scan-proof/refresh",
+  robotControlRadarStart: "/api/robot-control/radar/start",
+  robotControlRadarStop: "/api/robot-control/radar/stop",
   robotControlMapProofRefresh: "/api/robot-control/map/proof/refresh",
   robotControlNav2ProofRefresh: "/api/robot-control/nav2/proof/refresh",
   robotControlMapList: "/api/robot-control/map/list",
@@ -207,6 +210,17 @@ function robotControlBaseProxyUrl(endpoint: string, baseUrl: string): string {
 
 function robotControlMapLifecycleUrl(endpoint: string, baseUrl: string): string {
   // map lifecycle 也只把 baseUrl 交给 Node 代理；地图 action 路径由 client 常量固定。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  const query = params.toString();
+  return query ? `${endpoint}?${query}` : endpoint;
+}
+
+function robotControlRadarLifecycleUrl(endpoint: string, baseUrl: string): string {
+  // radar lifecycle 只传 baseUrl；start/stop 远端路径固定在 Node 后端。
   const params = new URLSearchParams();
   const trimmed = baseUrl.trim();
   if (trimmed) {
@@ -410,6 +424,22 @@ export async function postRobotControlRadarScanProofRefresh(
   // Radar refresh 只透过本机 Node 代理发给上位机，固定 body 由后端掌控。
   return postJson<RobotControlProofRefreshProxyResponse>(
     robotControlProofRefreshUrl(API_ENDPOINTS.robotControlRadarScanProofRefresh, baseUrl),
+    {},
+  );
+}
+
+export async function postRobotControlRadarStart(baseUrl: string): Promise<RobotControlRadarLifecycleResponse> {
+  // Radar start 是高级诊断固定入口；浏览器 body 为空，不能传上位机任意参数。
+  return postJson<RobotControlRadarLifecycleResponse>(
+    robotControlRadarLifecycleUrl(API_ENDPOINTS.robotControlRadarStart, baseUrl),
+    {},
+  );
+}
+
+export async function postRobotControlRadarStop(baseUrl: string): Promise<RobotControlRadarLifecycleResponse> {
+  // Radar stop 是高级诊断固定入口；即使远端 dry-run，也不改变顶层控制安全字段。
+  return postJson<RobotControlRadarLifecycleResponse>(
+    robotControlRadarLifecycleUrl(API_ENDPOINTS.robotControlRadarStop, baseUrl),
     {},
   );
 }

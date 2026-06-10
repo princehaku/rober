@@ -9,6 +9,9 @@ import type {
   RobotControlMapLifecycleResponse,
   RobotControlProofRefreshProxyResponse,
   RobotControlProofRefreshKind,
+  RobotControlRadarLifecycleAction,
+  RobotControlRadarLifecycleEndpoint,
+  RobotControlRadarLifecycleResponse,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
 
@@ -151,6 +154,16 @@ const MAP_LIFECYCLE_CONFIGS: Record<RobotControlMapLifecycleAction, RobotMapLife
   start: { action: "start", endpoint: "/api/map/start", method: "POST" },
   save: { action: "save", endpoint: "/api/map/save", method: "POST" },
   reset: { action: "reset", endpoint: "/api/map/reset", method: "POST" },
+};
+
+type RobotRadarLifecycleConfig = {
+  action: RobotControlRadarLifecycleAction;
+  endpoint: RobotControlRadarLifecycleEndpoint;
+};
+
+const RADAR_LIFECYCLE_CONFIGS: Record<RobotControlRadarLifecycleAction, RobotRadarLifecycleConfig> = {
+  start: { action: "start", endpoint: "/api/radar/start" },
+  stop: { action: "stop", endpoint: "/api/radar/stop" },
 };
 
 const REFRESH_NON_MOTION_EVIDENCE_ACTION_FIELDS = new Set(["sends_commands", "starts_ros2"]);
@@ -430,6 +443,123 @@ function commandResultSummary(payload: JsonRecord | null): RobotControlMapLifecy
     mode: asString(commandResult?.mode, "not_loaded"),
     executed: commandResult?.executed === true,
     ok: typeof commandResult?.ok === "boolean" ? commandResult.ok : null,
+  };
+}
+
+function blockedRadarLifecycleResponse(
+  sourceBaseUrl: string,
+  config: RobotRadarLifecycleConfig,
+  reason: string,
+): RobotControlRadarLifecycleResponse {
+  // URL、fetch 或危险字段失败时仍返回完整合同，前端不需要为错误态伪造安全字段。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_radar_lifecycle_proxy.v1",
+    ...PROOF_FLAGS,
+    action: config.action,
+    proxy_status: "lifecycle_rejected",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    remote_endpoint: config.endpoint,
+    remote_method: "POST",
+    remote_http_status: null,
+    status: "blocked",
+    command_result: { mode: "not_loaded", executed: false, ok: null },
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
+function remoteBlockedReasons(payload: JsonRecord | null): string[] {
+  // 上位机 guard 的 blocked_reasons 是诊断信息，不自动等同 PC 代理拦截。
+  return stringList(findFirstKey(payload, ["blocked_reasons"]), 8);
+}
+
+export async function buildRadarLifecycleProxy(
+  baseUrl: string,
+  action: RobotControlRadarLifecycleAction,
+): Promise<RobotControlRadarLifecycleResponse> {
+  // Radar lifecycle 只代理 start/stop 两个固定传感器 endpoint；浏览器 body 被忽略。
+  const config = RADAR_LIFECYCLE_CONFIGS[action];
+  const normalized = normalizeRobotApiBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return blockedRadarLifecycleResponse(baseUrl, config, normalized.reason);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(endpointUrl(normalized.normalized, config.endpoint), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch (error) {
+    const reason =
+      error instanceof Error && error.name === "TimeoutError"
+        ? "fetch_timeout_5000ms"
+        : error instanceof Error
+          ? error.message.slice(0, 180)
+          : "fetch_failed";
+    return {
+      ...blockedRadarLifecycleResponse(baseUrl, config, reason),
+      proxy_status: "lifecycle_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+    };
+  }
+
+  let bodyJson: unknown;
+  try {
+    bodyJson = await response.json();
+  } catch {
+    return {
+      ...blockedRadarLifecycleResponse(baseUrl, config, "response_json_parse_failed"),
+      proxy_status: "lifecycle_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_http_status: response.status,
+      blocked_reasons: ["response_json_parse_failed", `radar_lifecycle_http_status_${response.status}`],
+    };
+  }
+
+  const payload = asRecord(bodyJson);
+  if (!payload) {
+    return {
+      ...blockedRadarLifecycleResponse(baseUrl, config, "response_json_not_object"),
+      proxy_status: "lifecycle_failed",
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_http_status: response.status,
+      blocked_reasons: ["response_json_not_object", `radar_lifecycle_http_status_${response.status}`],
+    };
+  }
+
+  const hardDangerous = scanDangerousTrueFields(payload, "", HARD_DANGEROUS_TRUE_FIELDS);
+  const commandResult = commandResultSummary(payload);
+  const blockedReasons = [
+    ...(response.ok ? [] : [`radar_lifecycle_http_status_${response.status}`]),
+    ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
+    ...remoteBlockedReasons(payload),
+  ];
+  const forwarded = response.ok && hardDangerous.length === 0;
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_radar_lifecycle_proxy.v1",
+    ...PROOF_FLAGS,
+    action: config.action,
+    proxy_status: forwarded ? "lifecycle_forwarded" : "lifecycle_failed",
+    source_base_url: baseUrl,
+    normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+    remote_endpoint: config.endpoint,
+    remote_method: "POST",
+    remote_http_status: response.status,
+    status: forwarded ? "loaded_fail_closed_summary" : "blocked",
+    command_result: commandResult,
+    failure_reason:
+      hardDangerous.length > 0
+        ? `hard_dangerous_true_field:${hardDangerous[0]}`
+        : asString(findFirstKey(payload, ["failure_reason", "error"]), response.ok ? "" : `radar_lifecycle_http_status_${response.status}`),
+    blocked_reasons: blockedReasons,
+    hard_dangerous_true_fields: hardDangerous,
+    robot_control_executed: false,
   };
 }
 

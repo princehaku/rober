@@ -23,6 +23,7 @@ import {
   buildO7SafeCommandPreview,
   buildO7VoicePreview,
   buildProofBoundary,
+  buildRadarLifecycleProxy,
   buildRadarScanProofRefreshProxy,
   buildMapLifecycleProxy,
   buildMapProofRefreshProxy,
@@ -52,6 +53,7 @@ import type {
   RobotControlEvidenceEndpointCapture,
   RobotControlEvidenceReadbackSummary,
   RobotControlMapLifecycleAction,
+  RobotControlRadarLifecycleAction,
 } from "../shared/contracts";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -805,6 +807,17 @@ export function createWorkstationApp(): express.Express {
     res
       .status(response.proxy_status === "refresh_forwarded" ? 200 : response.proxy_status === "refresh_rejected" ? 400 : 502)
       .json(response);
+  });
+
+  ([
+    ["start", "/api/robot-control/radar/start"],
+    ["stop", "/api/robot-control/radar/stop"],
+  ] as Array<[RobotControlRadarLifecycleAction, string]>).forEach(([action, route]) => {
+    workstationApp.post(route, async (req, res) => {
+      // Radar lifecycle 只转发固定 start/stop；body 被忽略，避免退化成任意 Robot API POST。
+      const response = await buildRadarLifecycleProxy(queryString(req.query.baseUrl), action);
+      res.status(mapLifecycleStatusCode(response.proxy_status)).json(response);
+    });
   });
 
   workstationApp.post("/api/robot-control/map/proof/refresh", async (req, res) => {
