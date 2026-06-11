@@ -551,3 +551,38 @@ cleanup 结果：
 - `/api/camera/health` 最终 `active_peer_count=0`。
 - `/dev/video0`、`/dev/video1`、`/dev/video2`、`/dev/ttyS5` 的 `lsof/fuser`
   结束时均无本轮残留占用。
+
+## 2026-06-11 21:20 reproducible first-frame probe tool
+
+`sprints/2026.06.11_21-20_camera_first_frame_probe_tool/` 新增
+`onboard/scripts/camera_first_frame_probe.py`，把之前临时 SSH 里的 OpenCV
+首帧读取逻辑沉淀成可复用工具。资料入口仍以 `docs/vendor/VENDOR_INDEX.md`
+为准；本工具只触碰 UVC/V4L2 camera path，不写 WAVE ROVER UART，不调用
+`/api/base/manual`，不发布 `/cmd_vel`。
+
+典型用法：
+
+```bash
+python3 /root/rober/onboard/scripts/camera_first_frame_probe.py \
+  --device /dev/video1 \
+  --width 640 \
+  --height 480 \
+  --fps 15 \
+  --fourcc MJPG \
+  --timeout-s 3 \
+  --read-call-timeout-s 4 \
+  --sample-path /tmp/rober-camera-first-frame.jpg
+```
+
+输出是单行 JSON，schema 为 `trashbot.camera_first_frame_probe.v1`。关键字段：
+
+- `status=dependency_missing|open_error|open_failed|first_frame_timeout|probe_error|frame_read`
+- `open_ok`、`read_ok`、`first_frame_timeout`、`failure_reason`、`attempts`、`elapsed_ms`
+- `timeout_s` 与 `read_call_timeout_s`，用于区分整体 deadline 和单次 `cap.read()` 阻塞
+- `frame_metrics.mean_luma`、`dynamic_range_luma`、`non_black_ratio`
+- `frame_metrics.visible_content_candidate`
+- `visible_content_proven=false`
+
+这里刻意保留 `visible_content_proven=false`：脚本读到一帧只能证明本机 camera
+首帧通路恢复，并给出图像质量候选；运动 HIL gate 仍需要 PC canvas/外部视频、
+轮速反馈非零和 LiDAR motion delta 共同证明。
