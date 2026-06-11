@@ -78,8 +78,10 @@ const RADAR_SCAN_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
   kind: "radar_scan_proof_refresh",
   endpoint: "/api/radar/scan-proof/refresh",
   request_body: {
-    timeout_s: 10,
-    runtime_warmup_s: 6,
+    // 真实上位机冷启动 LiDAR runtime 需要先等 ROS2 driver、raw packet 和 TF 都进入稳定窗口；
+    // 固定长 warmup 仍是 no-motion 证据采集，不开放浏览器自定义控制参数。
+    timeout_s: 20,
+    runtime_warmup_s: 15,
     start_runtime: true,
   },
   timeout_cap_ms: 60_000,
@@ -670,6 +672,60 @@ function compactKeyValues(payload: JsonRecord | null, keys: readonly string[] = 
     return found === undefined ? [] : [[key, String(found).slice(0, 120)] as const];
   });
   return Object.fromEntries(entries);
+}
+
+function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord | null {
+  // 上位机 refresh 回包可能同时包含本轮 collector 直接结果和随后读取的 radar status；
+  // PC 控制台必须只用最终 scan proof readback 做摘要，避免递归搜索再次捡到旧 collector 字段。
+  if (!payload) {
+    return null;
+  }
+  const upperApi = asRecord(payload.upper_api);
+  const radarStatusEnvelope = asRecord(upperApi?.radar_status);
+  const radarStatus = asRecord(radarStatusEnvelope?.payload) ?? radarStatusEnvelope;
+  if (!radarStatus) {
+    return payload;
+  }
+  const latestScanProof = asRecord(radarStatus.latest_scan_proof);
+  const scanProofLatest = asRecord(radarStatus.scan_proof_latest);
+  const readback: JsonRecord = {};
+  if (payload.status !== undefined) {
+    readback.status = payload.status;
+  }
+  const assignFirst = (targetKey: string, values: unknown[]) => {
+    const found = values.find((value) => value !== undefined);
+    if (found !== undefined) {
+      readback[targetKey] = found;
+    }
+  };
+  assignFirst("latest_proof_status", [
+    radarStatus.latest_scan_proof_state,
+    latestScanProof?.state,
+    scanProofLatest?.latest_proof_status,
+  ]);
+  assignFirst("scan_once_observed", [
+    latestScanProof?.scan_once_observed,
+    scanProofLatest?.latest_scan_once_observed,
+  ]);
+  assignFirst("scan_hz_observed", [
+    latestScanProof?.scan_hz_observed,
+    scanProofLatest?.latest_scan_hz_observed,
+  ]);
+  assignFirst("raw_packet_once_observed", [
+    latestScanProof?.raw_packet_once_observed,
+    scanProofLatest?.latest_raw_packet_once_observed,
+  ]);
+  assignFirst("tf_observed", [
+    latestScanProof?.tf_observed,
+    scanProofLatest?.latest_tf_observed,
+  ]);
+  const finalBlockedReasons = radarStatus.latest_scan_proof_blocked_reasons ?? latestScanProof?.blocked_reasons;
+  if (Array.isArray(finalBlockedReasons) && finalBlockedReasons.length > 0) {
+    readback.blocked_reasons = finalBlockedReasons;
+  } else if (typeof finalBlockedReasons === "string" && finalBlockedReasons.trim()) {
+    readback.blocked_reasons = finalBlockedReasons;
+  }
+  return Object.keys(readback).length > 0 ? readback : payload;
 }
 
 function compactTrueFields(fields: string[]): string[] {
@@ -1859,6 +1915,7 @@ async function buildProofRefreshProxy(
     ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
   ];
   const refreshSuccessful = response.ok && hardDangerous.length === 0;
+  const readbackPayload = config.kind === "radar_scan_proof_refresh" ? radarScanProofReadbackPayload(payload) : payload;
 
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
@@ -1874,7 +1931,7 @@ async function buildProofRefreshProxy(
     last_result_schema: lastResultSchema,
     last_result_evidence_ref: lastResultEvidenceRef,
     last_refreshed_at_ms: observedAt,
-    latest_readback_key_values: compactKeyValues(payload, config.key_fields),
+    latest_readback_key_values: compactKeyValues(readbackPayload, config.key_fields),
     failure_reason:
       hardDangerous.length > 0
         ? `hard_dangerous_true_field:${hardDangerous[0]}`

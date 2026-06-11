@@ -1,0 +1,6 @@
+local_cleanup_checked_at=2026-06-11T01:59:51Z
+
+## lsof tcp 18787
+
+## pgrep workstation server
+18087

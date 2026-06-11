@@ -1,0 +1,41 @@
+run_started_at=2026-06-11T01:53:47Z
+PC=http://127.0.0.1:18787
+UPPER=http://192.168.1.11:8787
+
+[2026-06-11T01:53:47Z] POST http://127.0.0.1:18787/api/robot-control/radar/stop?baseUrl=http%3A%2F%2F192.168.1.11%3A8787
+__HTTP_STATUS__:200
+
+[2026-06-11T01:53:48Z] GET http://192.168.1.11:8787/api/radar/status
+__HTTP_STATUS__:200
+
+[2026-06-11T01:53:48Z] GET http://192.168.1.11:8787/api/radar/scan-proof/latest
+__HTTP_STATUS__:200
+
+[2026-06-11T01:53:48Z] POST http://127.0.0.1:18787/api/robot-control/radar/start?baseUrl=http%3A%2F%2F192.168.1.11%3A8787
+__HTTP_STATUS__:200
+
+[2026-06-11T01:53:48Z] GET http://192.168.1.11:8787/api/radar/status
+__HTTP_STATUS__:200
+
+[2026-06-11T01:53:48Z] POST http://127.0.0.1:18787/api/robot-control/radar/scan-proof/refresh?baseUrl=http%3A%2F%2F192.168.1.11%3A8787
+__HTTP_STATUS__:200
+
+[2026-06-11T01:54:30Z] GET http://192.168.1.11:8787/api/radar/scan-proof/latest
+__HTTP_STATUS__:200
+
+[2026-06-11T01:54:30Z] GET http://192.168.1.11:8787/api/radar/raw-packet-proof/latest
+__HTTP_STATUS__:200
+
+[2026-06-11T01:54:30Z] GET http://127.0.0.1:18787/api/robot-control/summary?baseUrl=http%3A%2F%2F192.168.1.11%3A8787
+__HTTP_STATUS__:200
+
+[2026-06-11T01:54:33Z] POST http://127.0.0.1:18787/api/robot-control/radar/stop?baseUrl=http%3A%2F%2F192.168.1.11%3A8787
+__HTTP_STATUS__:200
+
+[2026-06-11T01:54:33Z] GET http://192.168.1.11:8787/api/radar/status
+__HTTP_STATUS__:200
+
+[2026-06-11T01:54:33Z] GET http://192.168.1.11:8787/api/radar/scan-proof/latest
+__HTTP_STATUS__:200
+
+run_finished_at=2026-06-11T01:54:33Z

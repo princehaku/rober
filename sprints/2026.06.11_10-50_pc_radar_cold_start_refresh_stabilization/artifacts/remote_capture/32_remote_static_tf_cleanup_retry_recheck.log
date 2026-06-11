@@ -1,0 +1,14 @@
+cleanup_tf_retry_checked_at=2026-06-11T02:01:12Z
+
+## exact static tf pids before retry
+246197  246197 /opt/ros/humble/lib/tf2_ros/static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id laser_frame
+249082  249082 /opt/ros/humble/lib/tf2_ros/static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id laser_frame
+
+## helper processes after retry
+
+## lsof devices after retry
+
+## fuser devices after retry
+
+## upper api service after retry
+active

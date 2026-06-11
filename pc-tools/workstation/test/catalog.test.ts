@@ -4086,10 +4086,29 @@ describe("workstation fail-closed API contracts", () => {
           robot_control_executed: false,
           sends_commands: true,
           starts_ros2: true,
-          scan_once_observed: true,
-          scan_hz_observed: 10,
-          raw_packet_once_observed: true,
+          blocked_reasons: [
+            "latest_scan_proof_required_observations_missing:scan_once,scan_hz,raw_packet_once,all_required_observations",
+            "scan_continuity_not_observed",
+          ],
+          scan_once_observed: false,
+          scan_hz_observed: false,
+          raw_packet_once_observed: false,
           tf_observed: true,
+          upper_api: {
+            radar_status: {
+              status: "loaded",
+              payload: {
+                latest_scan_proof_state: "scan_once_hz_raw_packet_tf_observed",
+                latest_scan_proof_blocked_reasons: [],
+                latest_scan_proof: {
+                  scan_once_observed: true,
+                  scan_hz_observed: true,
+                  raw_packet_once_observed: true,
+                  tf_observed: true,
+                },
+              },
+            },
+          },
         },
       },
       "/api/map/proof/refresh": {
@@ -4155,9 +4174,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(radarBody.hard_dangerous_true_fields).toEqual([]);
       expect(radarBody.non_motion_evidence_actions_observed).toEqual(expect.arrayContaining(["sends_commands", "starts_ros2"]));
       expect(radarBody.latest_readback_key_values.scan_once_observed).toBe("true");
+      expect(radarBody.latest_readback_key_values.scan_hz_observed).toBe("true");
+      expect(radarBody.latest_readback_key_values.raw_packet_once_observed).toBe("true");
+      expect(radarBody.latest_readback_key_values.tf_observed).toBe("true");
+      expect(radarBody.latest_readback_key_values.latest_proof_status).toBe("scan_once_hz_raw_packet_tf_observed");
+      expect(radarBody.latest_readback_key_values.blocked_reasons).toBeUndefined();
       expect(upstream.receivedBodies["/api/radar/scan-proof/refresh"]?.[0]).toEqual({
-        timeout_s: 10,
-        runtime_warmup_s: 6,
+        timeout_s: 20,
+        runtime_warmup_s: 15,
         start_runtime: true,
       });
 
@@ -4736,11 +4760,11 @@ describe("workstation fail-closed API contracts", () => {
     // timeout 由 body 预估时长加余量推导，不再用拍脑袋的固定 15s / 50s。
     expect(
       computeRobotProofRefreshTimeoutMs({
-        request_body: { timeout_s: 10, runtime_warmup_s: 6, start_runtime: true },
+        request_body: { timeout_s: 20, runtime_warmup_s: 15, start_runtime: true },
         timeout_cap_ms: 60_000,
         safety_margin_ms: 10_000,
       }),
-    ).toBe(26_000);
+    ).toBe(45_000);
     expect(
       computeRobotProofRefreshTimeoutMs({
         request_body: { timeout_s: 45 },
@@ -4780,11 +4804,11 @@ describe("workstation fail-closed API contracts", () => {
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     try {
       const response = await buildRadarScanProofRefreshProxy("http://127.0.0.1:8787");
-      expect(timeoutSpy).toHaveBeenCalledWith(26_000);
+      expect(timeoutSpy).toHaveBeenCalledWith(45_000);
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(response.proxy_status).toBe("refresh_failed");
-      expect(response.failure_reason).toBe("fetch_timeout_26000ms");
-      expect(response.blocked_reasons).toContain("fetch_timeout_26000ms");
+      expect(response.failure_reason).toBe("fetch_timeout_45000ms");
+      expect(response.blocked_reasons).toContain("fetch_timeout_45000ms");
       expect(response.safe_to_control).toBe(false);
     } finally {
       globalThis.fetch = originalFetch;

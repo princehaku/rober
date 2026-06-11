@@ -1,0 +1,21 @@
+cleanup_tf_checked_at=2026-06-11T02:00:50Z
+
+## matched static tf before cleanup
+ 246197       1 Sl   /opt/ros/humble/lib/tf2_ros/static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id laser_frame
+ 249082       1 Sl   /opt/ros/humble/lib/tf2_ros/static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id laser_frame
+
+## sending TERM to exact static tf pids
+246197
+249082
+zsh:kill:8: illegal pid: 246197\n249082
+
+## helper processes after cleanup
+ 246197       1 Sl   /opt/ros/humble/lib/tf2_ros/static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id laser_frame
+ 249082       1 Sl   /opt/ros/humble/lib/tf2_ros/static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id laser_frame
+
+## lsof devices after cleanup
+
+## fuser devices after cleanup
+
+## upper api service after cleanup
+active

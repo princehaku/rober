@@ -167,6 +167,22 @@ runtime lifecycle 与 scan proof refresh 的关系：
 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`
 保持不变。
 
+## 2026-06-11 PC Radar Cold Start Refresh Stabilization
+
+`sprints/2026.06.11_10-50_pc_radar_cold_start_refresh_stabilization/`
+把 PC workstation 的固定雷达 refresh body 从
+`{"timeout_s":10,"runtime_warmup_s":6,"start_runtime":true}` 调整为
+`{"timeout_s":20,"runtime_warmup_s":15,"start_runtime":true}`。这是 PC 代理层的
+真实冷启动稳定性修正：从清理/冷状态开始时，给 LiDAR runtime、`/scan`、
+`/lidar/raw_packet`、scan hz 和 TF 一个更宽的 no-motion 证据窗口。
+
+本轮未改变 vendor/hardware facts，未修改 `docs/vendor/**`，未触碰 WAVE ROVER
+UART、串口配置、firmware 或底盘控制默认值。硬件事实入口仍是
+`docs/vendor/VENDOR_INDEX.md`；PC 代理只调用上位机 HTTP Robot API，不直接打开
+`/dev/ttyS5` 或 `/dev/ttyACM0`。真实 smoke 仍必须证明 refresh 后
+`scan_once_observed=true`、`scan_hz_observed=true`、
+`raw_packet_once_observed=true`、`tf_observed=true`，且硬危险字段保持 false。
+
 ## 2026-06-11 Localization Reset Phase Artifact Boundary
 
 `/api/localize/reset` 的 evidence capture 现在会在 helper 内按阶段写
