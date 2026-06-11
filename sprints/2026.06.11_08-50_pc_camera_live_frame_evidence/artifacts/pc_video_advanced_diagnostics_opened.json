@@ -1,0 +1,21 @@
+{
+  "heading": "实时画面详情",
+  "values": {
+    "camera_devices": "loaded",
+    "camera_health": "ready",
+    "cleanup_status": "waiting_ice_candidates",
+    "failure_reason": "none",
+    "ice_connection_state": "connected",
+    "last_offer_at": "2026-06-11T00:52:08.586Z",
+    "last_stop_at": "2026-06-11T00:52:08.447Z",
+    "peer base URL": "http://192.168.1.11:8787",
+    "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74",
+    "preview_status": "streaming",
+    "video_element_frame_status": "frame_callback_observed",
+    "video_element_presented_frames": "2",
+    "video_element_ready_state": "4",
+    "video_element_size": "640x480",
+    "video_element_src_object": "true",
+    "video_track_state": "live"
+  }
+}

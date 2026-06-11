@@ -1,0 +1,33 @@
+{
+  "at": "2026-06-11T01:00:33.720Z",
+  "diagnostics": {
+    "heading": "实时画面详情",
+    "values": {
+      "preview_status": "stopped_by_user",
+      "failure_reason": "none",
+      "peer_id": "not_assigned",
+      "peer base URL": "not_assigned",
+      "ice_connection_state": "closed",
+      "video_track_state": "stopped",
+      "video_element_src_object": "false",
+      "video_element_ready_state": "0",
+      "video_element_size": "0x0",
+      "video_element_presented_frames": "0",
+      "video_element_frame_status": "not_bound",
+      "last_offer_at": "2026-06-11T01:00:29.153Z",
+      "last_stop_at": "2026-06-11T01:00:31.784Z",
+      "cleanup_status": "peer_closed:closed",
+      "camera_health": "ready",
+      "camera_devices": "loaded"
+    }
+  },
+  "videoAfterClose": {
+    "exists": true,
+    "srcObjectExists": false,
+    "readyState": 0,
+    "videoWidth": 0,
+    "videoHeight": 0,
+    "paused": true
+  },
+  "firstScreenScopeText": "小车连接有异常可读到部分信息，但有字段被阻断或失败。连接/刷新实时画面打开画面关闭画面未打开还没有打开实时画面。雷达 刷新雷达 未刷新还没有刷新。地图 刷新地图 地图列表 未刷新未读取还没有刷新。还没有读取地图列表。移动/导航待命停止需要时可直接停止。"
+}

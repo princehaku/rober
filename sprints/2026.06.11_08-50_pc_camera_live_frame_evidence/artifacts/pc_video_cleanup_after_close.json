@@ -1,0 +1,33 @@
+{
+  "at": "2026-06-11T00:54:56.273Z",
+  "firstScreenScopeText": "小车连接有异常可读到部分信息，但有字段被阻断或失败。连接/刷新实时画面打开画面关闭画面未打开还没有打开实时画面。雷达 刷新雷达 未刷新还没有刷新。地图 刷新地图 地图列表 未刷新未读取还没有刷新。还没有读取地图列表。移动/导航待命停止需要时可直接停止。",
+  "videoDiagnostics": {
+    "heading": "实时画面详情",
+    "values": {
+      "camera_devices": "loaded",
+      "camera_health": "ready",
+      "cleanup_status": "peer_closed:closed",
+      "failure_reason": "none",
+      "ice_connection_state": "closed",
+      "last_offer_at": "2026-06-11T00:52:08.586Z",
+      "last_stop_at": "2026-06-11T00:54:54.868Z",
+      "peer base URL": "not_assigned",
+      "peer_id": "not_assigned",
+      "preview_status": "stopped_by_user",
+      "video_element_frame_status": "not_bound",
+      "video_element_presented_frames": "0",
+      "video_element_ready_state": "0",
+      "video_element_size": "0x0",
+      "video_element_src_object": "false",
+      "video_track_state": "stopped"
+    }
+  },
+  "videoElementAfterClose": {
+    "exists": true,
+    "paused": true,
+    "readyState": 0,
+    "srcObjectExists": false,
+    "videoHeight": 0,
+    "videoWidth": 0
+  }
+}

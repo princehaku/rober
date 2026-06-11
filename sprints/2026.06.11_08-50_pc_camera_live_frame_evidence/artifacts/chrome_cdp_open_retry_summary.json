@@ -1,0 +1,104 @@
+{
+  "status": "completed",
+  "opened": {
+    "at": "2026-06-11T01:00:31.613Z",
+    "beforeClick": {
+      "openDisabled": false,
+      "text": "小车连接有异常可读到部分信息，但有字段被阻断或失败。连接/刷新实时画面打开画面关闭画面未打开还没有打开实时画面。雷达 刷新雷达 未刷新还没有刷新。地图 刷新地图 地图列表 未刷新未读取还没有刷新。还没有读取地图列表。移动/导航待命停止需要时可直接停止。"
+    },
+    "firstScreenScopeText": "小车连接有异常可读到部分信息，但有字段被阻断或失败。连接/刷新实时画面打开画面关闭画面已打开画面已打开。雷达 刷新雷达 未刷新还没有刷新。地图 刷新地图 地图列表 未刷新未读取还没有刷新。还没有读取地图列表。移动/导航待命停止需要时可直接停止。",
+    "video": {
+      "exists": true,
+      "srcObjectExists": true,
+      "readyState": 4,
+      "videoWidth": 640,
+      "videoHeight": 480,
+      "currentTime": 0.77,
+      "paused": false,
+      "playbackQualityTotalVideoFrames": 11,
+      "playbackQualityDroppedVideoFrames": 0,
+      "requestVideoFrameCallbackSupported": true,
+      "requestVideoFrameCallbackObserved": true,
+      "requestVideoFrameCallbackMetadata": {
+        "width": 640,
+        "height": 480,
+        "presentedFrames": 11,
+        "presentationTime": 8277.7
+      }
+    },
+    "pixelSample": {
+      "width": 96,
+      "height": 72,
+      "nonBlackPixels": 0,
+      "nonTransparentPixels": 6912,
+      "averageRgbSum": 4,
+      "pngDataUrl": "[saved separately]"
+    },
+    "canvasError": "",
+    "diagnostics": {
+      "heading": "实时画面详情",
+      "values": {
+        "preview_status": "streaming",
+        "failure_reason": "none",
+        "peer_id": "77b984e67f4645808d09258a3b585c50",
+        "peer base URL": "http://192.168.1.11:8787",
+        "ice_connection_state": "connected",
+        "video_track_state": "live",
+        "video_element_src_object": "true",
+        "video_element_ready_state": "4",
+        "video_element_size": "640x480",
+        "video_element_presented_frames": "2",
+        "video_element_frame_status": "frame_callback_observed",
+        "last_offer_at": "2026-06-11T01:00:29.153Z",
+        "last_stop_at": "2026-06-11T01:00:28.754Z",
+        "cleanup_status": "waiting_ice_candidates",
+        "camera_health": "ready",
+        "camera_devices": "loaded"
+      }
+    },
+    "openDisabled": false,
+    "closeDisabled": false
+  },
+  "closed": {
+    "at": "2026-06-11T01:00:33.720Z",
+    "diagnostics": {
+      "heading": "实时画面详情",
+      "values": {
+        "preview_status": "stopped_by_user",
+        "failure_reason": "none",
+        "peer_id": "not_assigned",
+        "peer base URL": "not_assigned",
+        "ice_connection_state": "closed",
+        "video_track_state": "stopped",
+        "video_element_src_object": "false",
+        "video_element_ready_state": "0",
+        "video_element_size": "0x0",
+        "video_element_presented_frames": "0",
+        "video_element_frame_status": "not_bound",
+        "last_offer_at": "2026-06-11T01:00:29.153Z",
+        "last_stop_at": "2026-06-11T01:00:31.784Z",
+        "cleanup_status": "peer_closed:closed",
+        "camera_health": "ready",
+        "camera_devices": "loaded"
+      }
+    },
+    "videoAfterClose": {
+      "exists": true,
+      "srcObjectExists": false,
+      "readyState": 0,
+      "videoWidth": 0,
+      "videoHeight": 0,
+      "paused": true
+    },
+    "firstScreenScopeText": "小车连接有异常可读到部分信息，但有字段被阻断或失败。连接/刷新实时画面打开画面关闭画面未打开还没有打开实时画面。雷达 刷新雷达 未刷新还没有刷新。地图 刷新地图 地图列表 未刷新未读取还没有刷新。还没有读取地图列表。移动/导航待命停止需要时可直接停止。"
+  },
+  "activeDuring": 1,
+  "activeAfter": 0,
+  "artifacts": {
+    "openedJson": "chrome_cdp_open_retry_video_frame_evidence_opened.json",
+    "openedScreenshot": "pc_camera_opened_chrome_cdp_open_retry.png",
+    "openedCanvas": "chrome_cdp_open_retry_video_frame_canvas_opened.png",
+    "cleanupJson": "chrome_cdp_open_retry_video_cleanup_after_close.json",
+    "afterCloseScreenshot": "pc_camera_after_close_chrome_cdp_open_retry.png"
+  }
+}
