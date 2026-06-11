@@ -1971,6 +1971,16 @@ artifact；`/scan_once_observed` 仍必须为 true 才能进入 clean pass。这
 no-motion map lifecycle material，不证明地图质量、AMCL 定位、Nav2 规划、固定路线
 执行或 delivery success。
 
+2026-06-11 11:05 起，任何真实上车 Nav2/path proof 或后续运动实跑前，应先确认
+上位机 ROS graph 没有历史 `waypoint_manager`、`map_recorder`、
+`task_orchestrator` 残留。`sprints/2026.06.11_11-05_upper_ros_quiescence_baseline/`
+已在 `root@192.168.1.11:37878` 上清理三组三类目标残留，并记录
+`upper_ros_quiescent=true`：清场后目标 `ps` 过滤为空，`ros2 node list` 不再出现这些
+节点，`/dev/ttyS5`、`/dev/ttyACM0` 和视频设备无 `lsof/fuser` 占用输出，
+`trashbot-upper-robot-api.service` 与 `trashbot-local-webrtc-camera.service` 仍为
+active。该基线只是后续定位、planner readiness、Nav2 或运动证据的前置清洁条件，
+不证明路径执行、固定路线运行、真实运动、HIL pass 或 delivery success。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

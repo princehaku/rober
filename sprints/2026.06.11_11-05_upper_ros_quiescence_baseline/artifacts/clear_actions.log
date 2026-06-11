@@ -1,0 +1,29 @@
+# upper ros quiescence clear actions
+timestamp=2026-06-11T10:56:00+08:00
+
+## matched_before
+  89708       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_2onpg4e3
+  89710       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_dsaxn8kl
+  89714       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_u339gbb6
+  90724       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_r4pb2h7_
+  90726       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_qnhml2vi
+  90730       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_5l8vn9w_
+  95878       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_no94j9rg
+  95880       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_rbxtj8bc
+  95884       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_zz0cmio_
+
+## sigint
+SIGINT pid=89708 cmd=/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_2onpg4e3
+SIGINT pid=89710 cmd=/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_dsaxn8kl
+SIGINT pid=89714 cmd=/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_u339gbb6
+SIGINT pid=90724 cmd=/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_r4pb2h7_
+SIGINT pid=90726 cmd=/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_qnhml2vi
+SIGINT pid=90730 cmd=/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_5l8vn9w_
+SIGINT pid=95878 cmd=/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_no94j9rg
+SIGINT pid=95880 cmd=/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_rbxtj8bc
+SIGINT pid=95884 cmd=/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_zz0cmio_
+
+## remaining_after_sigint
+
+
+## matched_after

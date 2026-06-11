@@ -1405,3 +1405,48 @@ HTTP 400 拒绝，`failure_reason=operator_report_preflight_required`，
 `/dev/ttyS5`、`/dev/ttyACM0` 的 `lsof`/`fuser` 无占用输出。本轮结论不等于 HIL
 movement pass；下一步现场必须补外部视频、可见相机 artifact、轮速反馈引用和 LiDAR
 运动 delta 引用后，才允许通过 PC proxy 做 exactly one 低速短时 jog。
+
+## 2026-06-11 11:05 Upper ROS Quiescence Baseline
+
+`sprints/2026.06.11_11-05_upper_ros_quiescence_baseline/` 在真实上位机
+`root@192.168.1.11:37878` 上做了一轮不运动 ROS 清场基线。硬件事实入口仍是
+`docs/vendor/VENDOR_INDEX.md`：WAVE ROVER 底盘控制是 UART newline-delimited JSON，
+本轮没有发布 `/cmd_vel`、没有调用 `/api/base/manual`、没有写 `/dev/ttyS5`，也没有
+发送 `T=1/T=13/T=130/T=131` 等底盘指令。
+
+清场前 `ps` 和 `ros2 node list` 显示三组历史 ROS 应用进程残留：
+
+- `waypoint_manager`：PID `89708`、`90724`、`95878`
+- `map_recorder`：PID `89710`、`90726`、`95880`
+- `task_orchestrator`：PID `89714`、`90730`、`95884`
+
+这些进程均为 PPID 1 的历史 ROS 应用残留。清场只对上述 9 个精确 PID 发送
+SIGINT；5 秒后目标进程已全部退出，未进入 SIGTERM。未执行 `killall python3`，
+未杀 `trashbot-upper-robot-api.service`、`trashbot-local-webrtc-camera.service`、
+`frpc`、`sshd`、`ros2 daemon`、LiDAR lifecycle 或系统服务。
+
+清场后基线：
+
+- `upper_ros_quiescent=true`
+- `ps -eo pid,ppid,stat,cmd` 过滤 `waypoint_manager|map_recorder|task_orchestrator`
+  无输出。
+- `ros2 node list` 无 `waypoint_manager`、`map_recorder`、`task_orchestrator`。
+- `/dev/ttyS5`、`/dev/ttyACM0`、`/dev/video0`、`/dev/video1`、`/dev/video2` 的
+  `lsof`/`fuser` 无占用输出。
+- `trashbot-upper-robot-api.service=active`、
+  `trashbot-local-webrtc-camera.service=active`，`sshd` 保持 active；`frpc` 进程仍在
+  `ss` UDP 摘要中可见但 `frpc.service=inactive`，本轮未触碰。
+- Robot API 只做 readback：`/api/status`、`/api/base/status`、
+  `/api/camera/health`、`/api/radar/status`、`/api/radar/scan-proof/latest`、
+  `/api/operator/report`。返回材料继续显示 `safe_to_control=false`、
+  `delivery_success=false`、`primary_actions_enabled=false`。
+
+artifact：
+
+- `sprints/2026.06.11_11-05_upper_ros_quiescence_baseline/artifacts/pre_clear_readback.log`
+- `sprints/2026.06.11_11-05_upper_ros_quiescence_baseline/artifacts/clear_actions.log`
+- `sprints/2026.06.11_11-05_upper_ros_quiescence_baseline/artifacts/post_clear_readback.log`
+
+该基线只说明后续 LiDAR、camera、map、Nav2/path proof 或运动实跑前，上位机没有这三类
+历史 ROS 应用残留污染 ROS graph；它不等于 motion/HIL/pass、Nav2 execution、真实路线
+执行或 delivery success。
