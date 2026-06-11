@@ -1808,6 +1808,47 @@ Artifacts：
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_ssh_process_device_check.txt`
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_summary.json`
 
+## 2026-06-11 19:25 Nav2 No-Motion Path Regression Recovery
+
+`sprints/2026.06.11_19-25_nav2_no_motion_path_regression_recovery/` 使用 direct Robot
+API 访问真实上位机 `http://192.168.1.11:8787`，恢复 Nav2 no-motion path proof，并把
+PC proxy smoke 中的 `o10-amcl-nav2-runtime-wrapper-failure-1781172997846` 定位为
+wrapper timeout 回归。
+
+边界：本轮未调用 `/api/base/manual`、`/api/base/status`、`/api/base/stop` 或
+`/api/nav2/start`/`stop`，未发布 `/cmd_vel`，未执行 `NavigateToPose`，未打开 WAVE ROVER
+底盘 UART `/dev/ttyS5`。硬件事实仍以 `docs/vendor/VENDOR_INDEX.md` 为入口：WAVE ROVER
+base 是 UART newline-delimited JSON，当前 `/dev/ttyS5 @ 115200` 是现场串口事实，不写入
+通用默认。
+
+Direct refresh 结果：
+
+- `POST /api/nav2/proof/refresh` HTTP 200。
+- `evidence_ref=o10-amcl-nav2-runtime-1781173633739`。
+- `status=nav2_no_motion_path_generation_runtime_observed`。
+- `managed_runtime_started=true`、`managed_runtime_cleanup_ok=true`。
+- `initialpose_published=true`、`amcl_pose_observed=true`。
+- `planner_server_active=true`。
+- `path_generation_requested=true`、`path_generation_attempted=true`、
+  `path_generation_succeeded=true`、`path_generated=true`、`path_point_count=32`。
+- `root_causes=[]`、`blockers=[]`。
+- `publishes_cmd_vel=false`、`calls_base_manual=false`、`uses_base_uart=false`、
+  `safe_to_control=false`、`robot_control_executed=false`、`delivery_success=false`。
+
+Cleanup 结果：
+
+- `trashbot-upper-robot-api.service=active`。
+- 无 `o10_amcl_nav2_runtime_proof`、`map_server`、`amcl`、`planner_server`、
+  `lifecycle_manager`、`controller_server` helper 残留。
+- `ros2 topic info /cmd_vel` 返回 `Unknown topic '/cmd_vel'`。
+- `ros2 topic echo --once /cmd_vel` 返回无法确定 topic type。
+- `lsof /dev/ttyS5` 与 `fuser -v /dev/ttyS5` 无 holder 输出。
+
+结论：Nav2 no-motion path proof 已从上一轮 PC proxy wrapper failure 恢复。上一轮退化的
+直接原因是 helper 已经通过 lifecycle probe 后被约 `84s` outer process timeout 打断，
+而不是 map 文件损坏、planner 包缺失或底盘串口问题。本轮仍不证明真实运动、controller
+执行、fixed-route execution、HIL 或 delivery success。
+
 ## 2026-06-11 15:00 PC Radar Lifecycle Continuity Smoke
 
 `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/` 使用本机

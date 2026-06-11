@@ -1,0 +1,990 @@
+__HOST__
+op-z3-b6.home
+Thu Jun 11 06:26:31 PM CST 2026
+__SERVICE_ACTIVE__
+active
+__SERVICE_STATUS__
+● trashbot-upper-robot-api.service - Trashbot unified upper robot API
+     Loaded: loaded (/etc/systemd/system/trashbot-upper-robot-api.service; enabled; vendor preset: enabled)
+    Drop-In: /etc/systemd/system/trashbot-upper-robot-api.service.d
+             └─20-lidar-scan-proof-runtime.conf
+     Active: active (running) since Thu 2026-06-11 15:14:56 CST; 3h 11min ago
+       Docs: file:/root/rober/docs/interfaces/o7_upper_robot_api.md
+   Main PID: 267620 (python3)
+      Tasks: 2 (limit: 2204)
+     Memory: 35.8M
+        CPU: 15min 52.737s
+     CGroup: /system.slice/trashbot-upper-robot-api.service
+             └─267620 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+
+Jun 11 15:14:56 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 11 15:14:57 op-z3-b6.home env[267620]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
+__API_NAV2_LATEST__
+{"schema": "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "generated_at_ms": 1781173591728, "endpoint": "/api/nav2/proof/latest", "source": "nav2_lifecycle_runtime_artifact", "artifact": {"path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "configured_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "resolved_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "canonical_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "configured_by": "ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH or --nav2-lifecycle-artifact-path", "format": "json", "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof", "expected_material": ["map_server lifecycle state", "amcl lifecycle state", "planner/controller lifecycle state", "Nav2 consumes /scan + map", "path generated or explicitly blocked"], "ok": true, "status": "loaded", "bytes_read": 42035}, "latest_result": {"calls_base_manual": false, "delivery_success": false, "evidence_type": "blocked_with_root_cause", "generated_at_ms": 1781172997846, "hil_pass": false, "not_proven": true, "opens_serial": false, "proof": {"amcl_broadcast_conditions": {"amcl_frame_params_match_helper": false, "amcl_pose_frame_id_is_map": true, "amcl_pose_observed": true, "base_link_to_laser_frame_source_observed": false, "initialpose_published": null, "map_once_observed": null, "map_to_odom_source_observed": false, "odom_to_base_link_source_observed": false, "scan_once_observed": null, "tf_broadcast_enabled": false}, "amcl_frame_params": {"base_frame_id": null, "global_frame_id": null, "odom_frame_id": null}, "amcl_log_tail": "D \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172921.688041804] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[WARN] [1781172921.840950683] [amcl]: AMCL cannot publish a pose or update the transform. Please set the initial pose...\n[INFO] [1781172922.188037372] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172922.688045981] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172923.188039131] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172923.688043199] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[WARN] [1781172923.905155113] [amcl]: AMCL cannot publish a pose or update the transform. Please set the initial pose...\n[INFO] [1781172924.188038558] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172924.688047333] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172925.188040943] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172925.688046385] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[WARN] [1781172925.995981012] [amcl]: AMCL cannot publish a pose or update the transform. Please set the initial pose...\n[INFO] [1781172926.188032119] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172926.688033311] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172927.188030795] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172927.319948856] [amcl]: initialPoseReceived\n[INFO] [1781172927.320434646] [amcl]: Setting pose (1781172927.320430): 0.000 0.000 0.000\n[INFO] [1781172927.688458278] [global_costmap.global_costmap]: start\n[INFO] [1781172927.938972852] [planner_server]: Activating plugin GridBased of type NavfnPlanner\n[INFO] [1781172927.943160466] [planner_server]: Creating bond (planner_server) to lifecycle manager.\n[INFO] [1781172928.063404350] [lifecycle_manager]: Server planner_server connected with bond.\n[INFO] [1781172928.063650224] [lifecycle_manager]: \u001b[34m\u001b[1mManaged nodes are active\u001b[0m\u001b[0m\n[INFO] [1781172928.063709932] [lifecycle_manager]: \u001b[34m\u001b[1mCreating bond timer...\u001b[0m\u001b[0m\n", "amcl_node_info_observed": false, "amcl_node_publishers": [], "amcl_node_subscribers": [], "amcl_param_probe_ok": false, "amcl_pose_frame_id": "map", "amcl_pose_observed": true, "amcl_tf_broadcast_param": null, "amcl_tf_root_cause": "/tf_topic_missing", "blocked_commands_not_sent": ["T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual", "/api/nav2/start", "/api/nav2/stop", "navigate_to_pose", "compute_path_to_pose"], "blocked_devices_not_opened": ["/dev/ttyS5"], "blockers": [{"detail": "tf2_timeout_or_timing", "layer": "Localization TF", "reason": "map_to_odom_not_observed", "source": "map_to_odom"}, {"detail": "tf2_timeout_or_timing", "layer": "Localization TF", "reason": "odom_to_base_link_not_observed", "source": "odom_to_base_link"}, {"detail": "/tf_topic_missing", "layer": "Localization TF", "reason": "map_to_base_link_blocked_by_missing_map_to_odom", "source": "map_to_odom"}, {"detail": "tf2_timeout_or_timing", "layer": "Managed static TF", "reason": "base_link_to_laser_frame_not_observed", "source": "base_link_to_laser_frame"}, {"detail": "/tf_topic_missing", "layer": "Localization TF", "reason": "map_to_base_link_blocked_by_missing_map_to_odom", "source": "map_to_odom"}, {"layer": "helper process", "reason": "sigint_before_final_artifact"}, {"layer": "upper API helper process", "reason": "helper_process_timeout_after_partial_artifact"}], "calls_base_manual": false, "command_result": {"argv": ["bash", "-lc", "source /opt/ros/humble/setup.bash && if [ -f /root/rober/onboard/install/setup.bash ]; then source /root/rober/onboard/install/setup.bash; fi && /usr/bin/python3 /root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py --output /root/rober/onboard/runtime/nav2_lifecycle_latest.json --map-proof /root/rober/onboard/runtime/map_lifecycle_latest.json --map-dir /root/rober/onboard/runtime/maps --timeout-s 30.0 --managed-runtime-opt-in --managed-timeout-s 30.0 --managed-map-yaml /root/rober/onboard/runtime/maps/trashbot_map.yaml --initialpose-opt-in --initialpose-x 0.0 --initialpose-y 0.0 --initialpose-yaw 0.0 --initialpose-frame-id map --path-generation-opt-in --path-generation-timeout-s 30.0 --path-goal-frame-id map --path-goal-x 0.8 --path-goal-y 0.0 --path-goal-yaw 0.0"], "calls_base_manual": false, "elapsed_ms": 86813, "error": {"message": "Command '['bash', '-lc', 'source /opt/ros/humble/setup.bash && if [ -f /root/rober/onboard/install/setup.bash ]; then source /root/rober/onboard/install/setup.bash; fi && /usr/bin/python3 /root/rober/onboard/scripts/o10_amcl_nav2_runtime_pr", "type": "TimeoutExpired"}, "executed": true, "helper_argv": ["/usr/bin/python3", "/root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py", "--output", "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "--map-proof", "/root/rober/onboard/runtime/map_lifecycle_latest.json", "--map-dir", "/root/rober/onboard/runtime/maps", "--timeout-s", "30.0", "--managed-runtime-opt-in", "--managed-timeout-s", "30.0", "--managed-map-yaml", "/root/rober/onboard/runtime/maps/trashbot_map.yaml", "--initialpose-opt-in", "--initialpose-x", "0.0", "--initialpose-y", "0.0", "--initialpose-yaw", "0.0", "--initialpose-frame-id", "map", "--path-generation-opt-in", "--path-generation-timeout-s", "30.0", "--path-goal-frame-id", "map", "--path-goal-x", "0.8", "--path-goal-y", "0.0", "--path-goal-yaw", "0.0"], "helper_cleanup_result": {"attempted": true, "error": null, "killed_with_sigkill": false, "ok": true, "process_group": 286088, "residual_cleanup": {"attempted": true, "killed_pgids": [286111], "matched": [{"command": "bash -lc set -e; set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; pids=(); cleanup(){ for pid in \"${pids[@]}\"; do kill", "pgid": 286111, "pid": 286111}, {"command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_packets:=false", "pgid": 286111, "pid": 286147}, {"command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_map_server map_server --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=map_server", "pgid": 286111, "pid": 286149}, {"command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_amcl amcl --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=amcl", "pgid": 286111, "pid": 286150}, {"command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_planner planner_server --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=planner_server", "pgid": 286111, "pid": 286151}, {"command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=lifecycle_manager", "pgid": 286111, "pid": 286152}, {"command": "/opt/ros/humble/lib/nav2_map_server/map_server --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=map_server", "pgid": 286111, "pid": 286165}, {"command": "/opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=lifecycle_manager", "pgid": 286111, "pid": 286185}, {"command": "/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_pack", "pgid": 286111, "pid": 286196}, {"command": "/opt/ros/humble/lib/nav2_amcl/amcl --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=amcl", "pgid": 286111, "pid": 286206}, {"command": "/opt/ros/humble/lib/nav2_planner/planner_server --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=planner_server", "pgid": 286111, "pid": 286208}], "ok": true, "remaining": []}, "sent_signal": "SIGINT"}, "helper_process_group": 286088, "hil_pass": false, "initialpose_opt_in": true, "managed_runtime_opt_in": true, "mode": "o10_amcl_nav2_runtime_proof_helper", "ok": false, "path_generation_opt_in": true, "process_timeout_s": 84.0, "publishes_cmd_vel": false, "robot_control_executed": false, "safe_to_control": false, "sends_base_motion_commands": false, "stderr_preview": "", "stdout_preview": "", "timeout_budget": {"base_margin_s": 12.0, "budget_policy": "finish_before_pc_proxy_timeout_or_return_structured_timeout", "cap_s": 84.0, "collector_timeout_s": 30.0, "initialpose_margin_s": 4.0, "managed_margin_s": 6.0, "managed_runtime_timeout_s": 30.0, "path_generation_timeout_s": 30.0, "path_margin_s": 8.0, "pc_proxy_budget_s": 90.0, "process_timeout_s": 84.0, "raw_timeout_s": 120.0}}, "current_command": {"command": "timeout 8 ros2 topic echo --once /map", "started_at_ms": 1781172990292, "timeout_s": 20.0}, "delivery_success": false, "evidence_ref": "o10-amcl-nav2-runtime-wrapper-failure-1781172997846", "evidence_type": "blocked_with_root_cause", "generated_at_ms": 1781172997846, "hil_pass": false, "initialpose_publish_attempted": true, "initialpose_published": true, "last_phase": "interrupted", "last_successful_phase": "lifecycle_probe", "localization_tf_observed": {"map_to_base_link": false, "map_to_odom": false}, "managed_runtime_cleanup_ok": false, "managed_runtime_requested": true, "managed_runtime_started": true, "managed_static_tf_processes": {"all_expected_processes_observed": true, "checked_before_cleanup": true, "expected": [{"child": "base_link", "parent": "odom", "role": "static_tf_odom_base"}, {"child": "laser_frame", "parent": "base_link", "role": "static_tf_base_laser"}], "observed_roles": ["static_tf_base_laser", "static_tf_odom_base"], "process_group": 286111, "processes": [{"command": "bash -lc set -e; set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; pids=(); cleanup(){ for pid in \"${pids[@]}\"; do kill -INT \"$pid\" 2>/dev/null || true; done; wait || true; }; trap cleanup EXIT INT TERM; printf '%s\\n' 'managed_map_yaml=/root/rober/onboard/runtime/maps/trashbot_map.yaml' > /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'managed_runtime_boundary=no_motion_path_generation_planner_only' >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'blocked_device=/dev/ttyS5' >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'starting role=lidar_driver' >> /tmp/rober_nav2_localization_n5khvzbm.log; (ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_packets:=false) >> /tmp/rober_nav2_localization_n5khvzbm.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lidar_driver pid='$pid >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'starting role=static_tf_broadcaster' >> /tmp/rober_nav2_localization_n5khvzbm.log; (python3 -c 'import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # \u4e24\u6761\u8fb9\u90fd\u662f no-motion proof \u7684\u56fa\u5b9a\u51e0\u4f55\u5173\u7cfb\uff1b\u8fd9\u91cc\u663e\u5f0f\u7f6e\u96f6\uff0c\u907f\u514d\u5f15\u5165\u5e95\u76d8\u91cc\u7a0b\u8ba1\u5047\u8bbe\u3002     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # \u540c\u4e00\u4e2a TFMessage \u540c\u65f6\u5305\u542b odom->base_link \u4e0e base_link->laser_frame\u3002         # transient-local late subscriber \u56e0\u6b64\u4e0d\u518d\u4f9d\u8d56\u4e24\u4e2a\u72ec\u7acb CLI publisher \u7684\u53d1\u73b0\u65f6\u5e8f\u3002         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main()' '{\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"}' static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame) >> /tmp/rober_nav2_localization_n5khvzbm.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=static_tf_broadcaster pid='$pid >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'starting role=map_server' >> /tmp/rober_nav2_localization_n5khvzbm.log; (ros2 run nav2_map_server map_server --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=map_server) >> /tmp/rober_nav2_localization_n5khvzbm.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=map_server pid='$pid >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'starting role=amcl' >> /tmp/rober_nav2_localization_n5khvzbm.log; (ros2 run nav2_amcl amcl --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=amcl) >> /tmp/rober_nav2_localization_n5khvzbm.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=amcl pid='$pid >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'starting role=planner_server' >> /tmp/rober_nav2_localization_n5khvzbm.log; (ros2 run nav2_planner planner_server --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=planner_server) >> /tmp/rober_nav2_localization_n5khvzbm.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=planner_server pid='$pid >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'starting role=lifecycle_manager' >> /tmp/rober_nav2_localization_n5khvzbm.log; (ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=lifecycle_manager) >> /tmp/rober_nav2_localization_n5khvzbm.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lifecycle_manager pid='$pid >> /tmp/rober_nav2_localization_n5khvzbm.log; wait", "pgid": 286111, "pid": 286111, "role": "static_tf_base_laser", "roles": ["static_tf_base_laser", "static_tf_odom_base"], "source_type": "single_rclpy_static_transform_broadcaster"}, {"command": "python3 -c import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # \u4e24\u6761\u8fb9\u90fd\u662f no-motion proof \u7684\u56fa\u5b9a\u51e0\u4f55\u5173\u7cfb\uff1b\u8fd9\u91cc\u663e\u5f0f\u7f6e\u96f6\uff0c\u907f\u514d\u5f15\u5165\u5e95\u76d8\u91cc\u7a0b\u8ba1\u5047\u8bbe\u3002     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # \u540c\u4e00\u4e2a TFMessage \u540c\u65f6\u5305\u542b odom->base_link \u4e0e base_link->laser_frame\u3002         # transient-local late subscriber \u56e0\u6b64\u4e0d\u518d\u4f9d\u8d56\u4e24\u4e2a\u72ec\u7acb CLI publisher \u7684\u53d1\u73b0\u65f6\u5e8f\u3002         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main() {\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"} static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame", "pgid": 286111, "pid": 286148, "role": "static_tf_base_laser", "roles": ["static_tf_base_laser", "static_tf_odom_base"], "source_type": "single_rclpy_static_transform_broadcaster"}], "source_strategy": "single_rclpy_static_transform_broadcaster_transient_local"}, "map_frame_observed": false, "odom_frame_observed": false, "opens_serial": false, "package_availability": {"nav2_amcl": true, "nav2_lifecycle_manager": true, "nav2_map_server": true, "ros2_trashbot_bringup": true, "ros2_trashbot_nav": true}, "package_check_mode": "single_sourced_pkg_list_diagnostic", "package_checks_batch_ok": true, "partial_artifact_preserved": true, "path_generated": false, "path_generation_attempted": false, "path_generation_requested": true, "path_generation_succeeded": false, "path_point_count": 0, "phase_history": [{"at_ms": 1781172913220, "detail": {"mode": "no_motion_amcl_nav2_runtime_proof"}, "ok": true, "phase": "start"}, {"at_ms": 1781172913227, "detail": {"source_proof_status": "map_once_artifact_metadata_observed"}, "ok": true, "phase": "map_inputs"}, {"at_ms": 1781172913229, "detail": {"map_yaml_source": "explicit_cli_managed_map_yaml", "requested": true}, "phase": "managed_runtime"}, {"at_ms": 1781172913240, "detail": {"map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml", "process_group": 286111}, "ok": true, "phase": "managed_runtime_started"}, {"at_ms": 1781172919897, "detail": {"reason": null}, "ok": true, "phase": "managed_runtime_wait"}, {"at_ms": 1781172919946, "phase": "ros2_preflight"}, {"at_ms": 1781172922115, "ok": true, "phase": "ros2_preflight"}, {"at_ms": 1781172922121, "phase": "initialpose"}, {"at_ms": 1781172927931, "detail": {"enabled": true}, "ok": true, "phase": "initialpose"}, {"at_ms": 1781172927937, "phase": "amcl_pose_probe"}, {"at_ms": 1781172933214, "ok": true, "phase": "amcl_pose_probe"}, {"at_ms": 1781172933219, "phase": "tf_source_probe"}, {"at_ms": 1781172935865, "detail": {"amcl_tf_root_cause": "/tf_topic_missing"}, "ok": false, "phase": "tf_source_probe"}, {"at_ms": 1781172935875, "phase": "tf_probe"}, {"at_ms": 1781172938914, "ok": false, "phase": "tf_probe_map_to_odom", "root_cause": {"detail": "tf2_timeout_or_timing", "layer": "Localization TF", "reason": "map_to_odom_not_observed", "source": "map_to_odom"}}, {"at_ms": 1781172941953, "ok": false, "phase": "tf_probe_odom_to_base_link", "root_cause": {"detail": "tf2_timeout_or_timing", "layer": "Localization TF", "reason": "odom_to_base_link_not_observed", "source": "odom_to_base_link"}}, {"at_ms": 1781172941968, "ok": false, "phase": "tf_probe_map_to_base_link", "root_cause": {"detail": "/tf_topic_missing", "layer": "Localization TF", "reason": "map_to_base_link_blocked_by_missing_map_to_odom", "source": "map_to_odom"}}, {"at_ms": 1781172945008, "ok": false, "phase": "tf_probe_base_link_to_laser_frame", "root_cause": {"detail": "tf2_timeout_or_timing", "layer": "Managed static TF", "reason": "base_link_to_laser_frame_not_observed", "source": "base_link_to_laser_frame"}}, {"at_ms": 1781172945016, "detail": {"tf_chain_observed": {"base_link_to_laser_frame": false, "map_to_base_link": false, "map_to_odom": false, "odom_to_base_link": false}, "tf_failure_classification": {"amcl_tf_root_cause": "/tf_topic_missing", "blocking_segment": "map_to_odom", "frame_naming_consistent": true, "map_to_base_link": "blocked_by_missing_map_to_odom", "reason": "/tf_topic_missing"}}, "ok": false, "phase": "tf_probe", "root_cause": {"detail": "/tf_topic_missing", "layer": "Localization TF", "reason": "map_to_base_link_blocked_by_missing_map_to_odom", "source": "map_to_odom"}}, {"at_ms": 1781172945024, "detail": {"mode": "single_sourced_pkg_list_diagnostic"}, "phase": "package_checks"}, {"at_ms": 1781172948407, "detail": {"mode": "single_sourced_pkg_list_diagnostic", "packages": {"nav2_amcl": true, "nav2_lifecycle_manager": true, "nav2_map_server": true, "ros2_trashbot_bringup": true, "ros2_trashbot_nav": true}}, "ok": true, "phase": "package_checks"}, {"at_ms": 1781172956549, "ok": true, "phase": "graph_discovery"}, {"at_ms": 1781172966638, "ok": true, "phase": "lifecycle_probe"}, {"at_ms": 1781172984924, "detail": {"echo_timeout_s": 18.0}, "phase": "topic_probe"}, {"at_ms": 1781172995118, "ok": false, "phase": "interrupted", "root_cause": {"layer": "helper process", "reason": "sigint_before_final_artifact"}}], "publishes_cmd_vel": false, "recent_commands": [{"command": "timeout 2 ros2 run tf2_ros tf2_echo odom base_link", "elapsed_ms": 3019, "error": {"message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 2 ros2 run tf2_ros tf2_echo odom ba", "type": "TimeoutExpired"}, "finished_at_ms": 1781172941939, "ok": false, "returncode": null}, {"command": "timeout 2 ros2 run tf2_ros tf2_echo base_link laser_frame", "elapsed_ms": 3018, "error": {"message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 2 ros2 run tf2_ros tf2_echo base_li", "type": "TimeoutExpired"}, "finished_at_ms": 1781172944994, "ok": false, "returncode": null}, {"command": "ros2 pkg list", "elapsed_ms": 3360, "error": null, "finished_at_ms": 1781172948391, "ok": true, "returncode": 0}, {"command": "ros2 topic list", "elapsed_ms": 4140, "error": null, "finished_at_ms": 1781172952555, "ok": true, "returncode": 0}, {"command": "ros2 node list", "elapsed_ms": 3976, "error": null, "finished_at_ms": 1781172956540, "ok": true, "returncode": 0}, {"command": "ros2 lifecycle get /map_server", "elapsed_ms": 5032, "error": null, "finished_at_ms": 1781172961590, "ok": true, "returncode": 0}, {"command": "ros2 lifecycle get /amcl", "elapsed_ms": 5030, "error": null, "finished_at_ms": 1781172966629, "ok": true, "returncode": 0}, {"command": "ros2 lifecycle get /planner_server", "elapsed_ms": 5999, "error": null, "finished_at_ms": 1781172972646, "ok": true, "returncode": 0}, {"command": "ros2 lifecycle get /controller_server", "elapsed_ms": 4154, "error": null, "finished_at_ms": 1781172976809, "ok": false, "returncode": 1}, {"command": "ros2 node info /planner_server", "elapsed_ms": 4054, "error": null, "finished_at_ms": 1781172980871, "ok": true, "returncode": 0}, {"command": "ros2 node info /controller_server", "elapsed_ms": 4035, "error": null, "finished_at_ms": 1781172984916, "ok": false, "returncode": 1}, {"command": "timeout 6 ros2 topic echo --once /scan", "elapsed_ms": 5350, "error": null, "finished_at_ms": 1781172990283, "ok": true, "returncode": 0}], "robot_control_executed": false, "root_causes": [{"detail": "tf2_timeout_or_timing", "layer": "Localization TF", "reason": "map_to_odom_not_observed", "source": "map_to_odom"}, {"detail": "tf2_timeout_or_timing", "layer": "Localization TF", "reason": "odom_to_base_link_not_observed", "source": "odom_to_base_link"}, {"detail": "/tf_topic_missing", "layer": "Localization TF", "reason": "map_to_base_link_blocked_by_missing_map_to_odom", "source": "map_to_odom"}, {"detail": "tf2_timeout_or_timing", "layer": "Managed static TF", "reason": "base_link_to_laser_frame_not_observed", "source": "base_link_to_laser_frame"}, {"detail": "/tf_topic_missing", "layer": "Localization TF", "reason": "map_to_base_link_blocked_by_missing_map_to_odom", "source": "map_to_odom"}, {"layer": "helper process", "reason": "sigint_before_final_artifact"}, {"layer": "upper API helper process", "reason": "helper_process_timeout_after_partial_artifact"}], "safe_to_control": false, "sends_base_motion_commands": false, "sends_motion_commands": false, "static_tf_source_observed": false, "status": "blocked_with_root_cause", "tf_chain_diagnostics": {"frame_contract": {"actual": {"base": "base_link", "laser": "laser_frame", "map": "map", "odom": "odom"}, "consistent_with_defaults": true, "expected": {"base": "base_link", "laser": "laser_frame", "map": "map", "odom": "odom"}}, "pairs": {"base_link_to_laser_frame": {"boundary": null, "elapsed_ms": 3018, "error": {"message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 2 ros2 run tf2_ros tf2_echo base_li", "type": "TimeoutExpired"}, "executed": true, "failure_reason": "tf2_timeout_or_timing", "observed": false, "returncode": null, "source_frame": "base_link", "stderr_preview": "", "stdout_preview": "", "target_frame": "laser_frame"}, "map_to_base_link": {"boundary": "map_to_base_link_tf_probe_skipped_until_chain_inputs_observed", "elapsed_ms": null, "error": null, "executed": false, "failure_reason": "tf2_empty_output_or_timing", "observed": false, "returncode": null, "source_frame": "map", "stderr_preview": "", "stdout_preview": "", "target_frame": "base_link"}, "map_to_odom": {"boundary": null, "elapsed_ms": 3019, "error": {"message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 2 ros2 run tf2_ros tf2_echo map odo", "type": "TimeoutExpired"}, "executed": true, "failure_reason": "tf2_timeout_or_timing", "observed": false, "returncode": null, "source_frame": "map", "stderr_preview": "", "stdout_preview": "", "target_frame": "odom"}, "odom_to_base_link": {"boundary": null, "elapsed_ms": 3019, "error": {"message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 2 ros2 run tf2_ros tf2_echo odom ba", "type": "TimeoutExpired"}, "executed": true, "failure_reason": "tf2_timeout_or_timing", "observed": false, "returncode": null, "source_frame": "odom", "stderr_preview": "", "stdout_preview": "", "target_frame": "base_link"}}, "source_diagnostics": {"amcl_broadcast_conditions": {"amcl_frame_params_match_helper": false, "amcl_pose_frame_id_is_map": true, "amcl_pose_observed": true, "base_link_to_laser_frame_source_observed": false, "initialpose_published": null, "map_once_observed": null, "map_to_odom_source_observed": false, "odom_to_base_link_source_observed": false, "scan_once_observed": null, "tf_broadcast_enabled": false}, "amcl_frame_params": {"base_frame_id": null, "global_frame_id": null, "odom_frame_id": null}, "amcl_node_info_observed": false, "amcl_node_publishers": [], "amcl_node_subscribers": [], "amcl_param_probe_ok": false, "amcl_pose_frame_id": "map", "amcl_tf_broadcast_param": null, "amcl_tf_root_cause": "/tf_topic_missing", "base_frame_observed": false, "base_link_to_laser_frame_source_observed": false, "frame_contract": {"actual": {"base": "base_link", "laser": "laser_frame", "map": "map", "odom": "odom"}, "consistent_with_defaults": true, "expected": {"base": "base_link", "laser": "laser_frame", "map": "map", "odom": "odom"}}, "laser_frame_observed": false, "map_frame_observed": false, "map_to_odom_source_observed": false, "odom_frame_observed": false, "odom_to_base_link_source_observed": false, "tf_frame_inventory": {"command_statuses": {"tf": null, "tf_static": null, "topic_list": 0}, "dynamic_edges": [], "edges": [], "frames": [], "static_edges": [], "topic_types": {"/parameter_events": "rcl_interfaces/msg/ParameterEvent", "/rosout": "rcl_interfaces/msg/Log", "/scan": "sensor_msgs/msg/LaserScan"}}, "tf_source_root_cause_detail": {"amcl_node_info_observed": false, "amcl_param_probe_boundary": "amcl_parameter_service_unavailable", "amcl_param_probe_error": null, "amcl_param_probe_ok": false, "amcl_pose_frame_id": "map", "base_link_to_laser_frame_source_observed": false, "expected_params": {"base_frame_id": "base_link", "global_frame_id": "map", "odom_frame_id": "odom", "tf_broadcast": "true"}, "map_to_odom_source_observed": false, "observed_params": {"base_frame_id": null, "global_frame_id": null, "odom_frame_id": null, "tf_broadcast": null}, "odom_to_base_link_source_observed": false, "reason": "/tf_topic_missing", "tf_command_statuses": {"tf": null, "tf_static": null, "topic_list": 0}}, "tf_static_observed": false, "tf_topics_observed": {"/tf": false, "/tf_static": false}}}, "tf_chain_observed": {"base_link_to_laser_frame": false, "map_to_base_link": false, "map_to_odom": false, "odom_to_base_link": false}, "tf_failure_classification": {"amcl_tf_root_cause": "/tf_topic_missing", "blocking_segment": "map_to_odom", "frame_naming_consistent": true, "map_to_base_link": "blocked_by_missing_map_to_odom", "reason": "/tf_topic_missing"}, "tf_frame_inventory": {"command_statuses": {"tf": null, "tf_static": null, "topic_list": 0}, "dynamic_edges": [], "edges": [], "frames": [], "static_edges": [], "topic_types": {"/parameter_events": "rcl_interfaces/msg/ParameterEvent", "/rosout": "rcl_interfaces/msg/Log", "/scan": "sensor_msgs/msg/LaserScan"}}, "tf_source_root_cause_detail": {"amcl_node_info_observed": false, "amcl_param_probe_boundary": "amcl_parameter_service_unavailable", "amcl_param_probe_error": null, "amcl_param_probe_ok": false, "amcl_pose_frame_id": "map", "base_link_to_laser_frame_source_observed": false, "expected_params": {"base_frame_id": "base_link", "global_frame_id": "map", "odom_frame_id": "odom", "tf_broadcast": "true"}, "map_to_odom_source_observed": false, "observed_params": {"base_frame_id": null, "global_frame_id": null, "odom_frame_id": null, "tf_broadcast": null}, "odom_to_base_link_source_observed": false, "reason": "/tf_topic_missing", "tf_command_statuses": {"tf": null, "tf_static": null, "topic_list": 0}}, "tf_static_observed": false, "tf_topics_observed": {"/tf": false, "/tf_static": false}, "timeout_budget": {"base_margin_s": 12.0, "budget_policy": "finish_before_pc_proxy_timeout_or_return_structured_timeout", "cap_s": 84.0, "collector_timeout_s": 30.0, "initialpose_margin_s": 4.0, "managed_margin_s": 6.0, "managed_runtime_timeout_s": 30.0, "path_generation_timeout_s": 30.0, "path_margin_s": 8.0, "pc_proxy_budget_s": 90.0, "process_timeout_s": 84.0, "raw_timeout_s": 120.0}, "uses_base_uart": false}, "publishes_cmd_vel": false, "robot_control_executed": false, "safe_to_control": false, "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof", "sends_base_motion_commands": false, "sends_motion_commands": false, "software_guard": true, "status": "blocked_with_root_cause", "uses_base_uart": false}, "status": "not_proven", "proof_state": "not_proven", "software_guard": true, "not_proven": true, "boundary": "software_guard_only_not_real_nav2_path_execution_or_delivery", "readback_sends_commands": false, "sends_commands": false, "sends_motion_commands": false, "sends_base_motion_commands": false, "uses_base_uart": false, "opens_serial": false, "starts_ros2": false, "ros2_runtime_proven": false, "map_artifact_proven": false, "localization_proven": false, "nav2_runtime_proven": false, "elevator_runtime_proven": false, "field_hil_material": false, "safe_to_control": false, "delivery_success": false, "primary_actions_enabled": false, "robot_control_executed": false, "cloud_relay": false}
+__API_NAV2_STATUS__
+{"schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_status", "generated_at_ms": 1781173591760, "status": "not_proven", "software_guard": true, "not_proven": true, "artifact": {"path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "configured_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "resolved_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "canonical_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "configured_by": "ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH or --nav2-lifecycle-artifact-path", "format": "json", "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof", "expected_material": ["map_server lifecycle state", "amcl lifecycle state", "planner/controller lifecycle state", "Nav2 consumes /scan + map", "path generated or explicitly blocked"]}, "proof_latest": {"schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_proof_latest_summary", "generated_at_ms": 1781173591763, "endpoint": "/api/nav2/proof/latest", "http_status": 200, "artifact": {"path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "configured_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "resolved_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "canonical_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json", "configured_by": "ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH or --nav2-lifecycle-artifact-path", "format": "json", "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof", "expected_material": ["map_server lifecycle state", "amcl lifecycle state", "planner/controller lifecycle state", "Nav2 consumes /scan + map", "path generated or explicitly blocked"], "ok": true, "status": "loaded", "bytes_read": 42035}, "latest_result_schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof", "latest_proof_status": "blocked_with_root_cause", "latest_evidence_ref": "o10-amcl-nav2-runtime-wrapper-failure-1781172997846", "status": "not_proven", "software_guard": true, "not_proven": true, "boundary": "software_guard_only_not_real_nav2_runtime_or_path_execution", "readback_sends_commands": false, "sends_commands": false, "sends_motion_commands": false, "sends_base_motion_commands": false, "uses_base_uart": false, "opens_serial": false, "starts_ros2": false, "ros2_runtime_proven": false, "map_artifact_proven": false, "localization_proven": false, "nav2_runtime_proven": false, "elevator_runtime_proven": false, "field_hil_material": false, "safe_to_control": false, "delivery_success": false, "primary_actions_enabled": false, "robot_control_executed": false, "cloud_relay": false, "latest_map_server_active": null, "latest_amcl_active": null, "latest_planner_active": null, "latest_controller_active": null, "latest_scan_consumed": null, "latest_map_consumed": null, "latest_amcl_pose_observed": true, "latest_path_generation_ready": null, "latest_path_generated": false, "latest_path_generation_requested": true, "latest_path_generation_attempted": false, "latest_path_generation_service_name": null, "latest_path_generation_service_available": null, "latest_path_generation_succeeded": false, "latest_path_point_count": 0}, "amcl_nav2_readiness": {"schema": "trashbot.upper_robot_api.v1.amcl_nav2_readiness_from_map_proof.v1", "generated_at_ms": 1781173591764, "status": "map_inputs_ready_for_no_motion_nav2_collector", "evidence_type": "software_guard", "source_evidence_type": "robot_runtime_material", "source_evidence_ref": "o3-map-lifecycle-1781172868360", "source_http_status": 200, "source_latest_status": "map_once_artifact_metadata_observed", "map_proof_artifact": {"path": "/root/rober/onboard/runtime/map_lifecycle_latest.json", "configured_path": "/root/rober/onboard/runtime/map_lifecycle_latest.json", "resolved_path": "/root/rober/onboard/runtime/map_lifecycle_latest.json", "canonical_path": "/root/rober/onboard/runtime/map_lifecycle_latest.json", "legacy_path": "/root/rober/runtime/map_lifecycle_latest.json", "compatibility_paths": ["/root/rober/runtime/map_lifecycle_latest.json"], "legacy_exists": true, "configured_by": "ROBER_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH or --map-lifecycle-proof-artifact-path", "format": "json", "schema": "trashbot.upper_robot_api.v1.map_lifecycle_runtime_proof", "expected_material": ["/scan once", "/map once", "map yaml/image or pbstream", "map metadata", "slam_toolbox lifecycle state"], "ok": true, "status": "loaded", "bytes_read": 25013}, "expected_map_artifact_dir": "/root/rober/onboard/runtime/maps", "observed_map_artifact_dir": "/root/rober/onboard/runtime/maps", "map_yaml_candidates": [{"mtime_ms": 1781118091546, "name": "final_direct_save.yaml", "path": "/root/rober/onboard/runtime/maps/final_direct_save.yaml", "size_bytes": 169, "suffix": ".yaml"}, {"mtime_ms": 1781140891871, "name": "pc_integrated_current_20260611_0920.yaml", "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_20260611_0920.yaml", "size_bytes": 172, "suffix": ".yaml"}, {"mtime_ms": 1781141101890, "name": "pc_integrated_current_retry_20260611_0920.yaml", "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_retry_20260611_0920.yaml", "size_bytes": 178, "suffix": ".yaml"}, {"mtime_ms": 1781133958369, "name": "pc_integrated_smoke_20260611_0735.yaml", "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.yaml", "size_bytes": 184, "suffix": ".yaml"}, {"mtime_ms": 1781156934781, "name": "pc_map_lifecycle_20260611_1350.yaml", "path": "/root/rober/onboard/runtime/maps/pc_map_lifecycle_20260611_1350.yaml", "size_bytes": 182, "suffix": ".yaml"}, {"mtime_ms": 1781166497893, "name": "pc_no_motion_20260611_162507.yaml", "path": "/root/rober/onboard/runtime/maps/pc_no_motion_20260611_162507.yaml", "size_bytes": 181, "suffix": ".yaml"}, {"mtime_ms": 1781117808606, "name": "pc_proxy_save2.yaml", "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.yaml", "size_bytes": 165, "suffix": ".yaml"}, {"mtime_ms": 1781135890525, "name": "pc_proxy_scan_stabilize_20260611_0758.yaml", "path": "/root/rober/onboard/runtime/maps/pc_proxy_scan_stabilize_20260611_0758.yaml", "size_bytes": 171, "suffix": ".yaml"}, {"mtime_ms": 1781117645955, "name": "pc_proxy_start.yaml", "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.yaml", "size_bytes": 165, "suffix": ".yaml"}, {"mtime_ms": 1781117556611, "name": "pc_runtime_v1.yaml", "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.yaml", "size_bytes": 166, "suffix": ".yaml"}, {"mtime_ms": 1781135634030, "name": "scan_stabilize_20260611_075301.yaml", "path": "/root/rober/onboard/runtime/maps/scan_stabilize_20260611_075301.yaml", "size_bytes": 181, "suffix": ".yaml"}, {"mtime_ms": 1781135815410, "name": "scan_stabilize_fixed_20260611_0756.yaml", "path": "/root/rober/onboard/runtime/maps/scan_stabilize_fixed_20260611_0756.yaml", "size_bytes": 188, "suffix": ".yaml"}, {"mtime_ms": 1781172908857, "name": "trashbot_map.yaml", "path": "/root/rober/onboard/runtime/maps/trashbot_map.yaml", "size_bytes": 164, "suffix": ".yaml"}], "map_image_candidates": [{"mtime_ms": 1781118091538, "name": "final_direct_save.pgm", "path": "/root/rober/onboard/runtime/maps/final_direct_save.pgm", "size_bytes": 13266, "suffix": ".pgm"}, {"mtime_ms": 1781140891863, "name": "pc_integrated_current_20260611_0920.pgm", "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_20260611_0920.pgm", "size_bytes": 19316, "suffix": ".pgm"}, {"mtime_ms": 1781141101886, "name": "pc_integrated_current_retry_20260611_0920.pgm", "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_retry_20260611_0920.pgm", "size_bytes": 7036, "suffix": ".pgm"}, {"mtime_ms": 1781133958365, "name": "pc_integrated_smoke_20260611_0735.pgm", "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.pgm", "size_bytes": 42883, "suffix": ".pgm"}, {"mtime_ms": 1781156934777, "name": "pc_map_lifecycle_20260611_1350.pgm", "path": "/root/rober/onboard/runtime/maps/pc_map_lifecycle_20260611_1350.pgm", "size_bytes": 28892, "suffix": ".pgm"}, {"mtime_ms": 1781166497889, "name": "pc_no_motion_20260611_162507.pgm", "path": "/root/rober/onboard/runtime/maps/pc_no_motion_20260611_162507.pgm", "size_bytes": 31758, "suffix": ".pgm"}, {"mtime_ms": 1781117808598, "name": "pc_proxy_save2.pgm", "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.pgm", "size_bytes": 52223, "suffix": ".pgm"}, {"mtime_ms": 1781135890521, "name": "pc_proxy_scan_stabilize_20260611_0758.pgm", "path": "/root/rober/onboard/runtime/maps/pc_proxy_scan_stabilize_20260611_0758.pgm", "size_bytes": 29318, "suffix": ".pgm"}, {"mtime_ms": 1781117645935, "name": "pc_proxy_start.pgm", "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.pgm", "size_bytes": 47468, "suffix": ".pgm"}, {"mtime_ms": 1781117556603, "name": "pc_runtime_v1.pgm", "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.pgm", "size_bytes": 8218, "suffix": ".pgm"}, {"mtime_ms": 1781135633986, "name": "scan_stabilize_20260611_075301.pgm", "path": "/root/rober/onboard/runtime/maps/scan_stabilize_20260611_075301.pgm", "size_bytes": 30502, "suffix": ".pgm"}, {"mtime_ms": 1781135815398, "name": "scan_stabilize_fixed_20260611_0756.pgm", "path": "/root/rober/onboard/runtime/maps/scan_stabilize_fixed_20260611_0756.pgm", "size_bytes": 8070, "suffix": ".pgm"}, {"mtime_ms": 1781172908849, "name": "trashbot_map.pgm", "path": "/root/rober/onboard/runtime/maps/trashbot_map.pgm", "size_bytes": 31658, "suffix": ".pgm"}], "map_metadata": {"frame_id": "map", "height": 124, "resolution": 0.05000000074505806, "width": 255}, "readiness_inputs": {"canonical_latest_loaded": true, "map_once_observed": true, "map_file_observed": true, "map_metadata_observed": true, "canonical_map_dir_matched": true, "map_yaml_available": true, "map_image_available": true}, "root_causes": [], "blockers": [], "next_no_motion_steps": ["run map quality gate against selected YAML and same-frame waypoints", "collect AMCL /initialpose and /amcl_pose material under a new artifact", "collect map_server/amcl/planner/controller lifecycle readback without /cmd_vel"], "not_proven": ["map_quality_pass", "real_amcl_localization", "real_nav2_scan_map_consumption", "path_generated", "fixed_route_execution", "delivery_success"], "software_guard": true, "readback_sends_commands": false, "sends_commands": false, "sends_motion_commands": false, "sends_base_motion_commands": false, "publishes_cmd_vel": false, "calls_base_manual": false, "uses_base_uart": false, "starts_ros2": false, "robot_control_executed": false, "safe_to_control": false, "hil_pass": false, "delivery_success": false, "primary_actions_enabled": false, "cloud_relay": false}, "routes": {"status": "/api/nav2/status", "proof_refresh": "/api/nav2/proof/refresh", "proof_latest": "/api/nav2/proof/latest", "start": "/api/nav2/start", "stop": "/api/nav2/stop"}, "commands": {"start": {"env": "ROBER_NAV2_START_COMMAND", "configured": false, "mode": "dry_run_stub", "argv": [], "error": null}, "stop": {"env": "ROBER_NAV2_STOP_COMMAND", "configured": false, "mode": "dry_run_stub", "argv": [], "error": null}}, "runtime_entrypoints": {"autonomous_launch": "ros2 launch ros2_trashbot_bringup autonomous.launch.py map_file:=<map.yaml>", "lifecycle_nodes_expected": ["map_server", "amcl", "planner_server", "controller_server"], "required_inputs": ["/scan", "map yaml/image", "tf map->base_link"], "proof_refresh": "/api/nav2/proof/refresh", "proof_latest": "/api/nav2/proof/latest"}, "readback_sends_commands": false, "sends_commands": false, "sends_motion_commands": false, "sends_base_motion_commands": false, "uses_base_uart": false, "opens_serial": false, "starts_ros2": false, "ros2_runtime_proven": false, "map_artifact_proven": false, "localization_proven": false, "nav2_runtime_proven": false, "elevator_runtime_proven": false, "field_hil_material": false, "safe_to_control": false, "delivery_success": false, "primary_actions_enabled": false, "robot_control_executed": false, "cloud_relay": false}
+__NAV2_ARTIFACT__
+{
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "evidence_type": "blocked_with_root_cause",
+  "generated_at_ms": 1781172997846,
+  "hil_pass": false,
+  "not_proven": true,
+  "opens_serial": false,
+  "proof": {
+    "amcl_broadcast_conditions": {
+      "amcl_frame_params_match_helper": false,
+      "amcl_pose_frame_id_is_map": true,
+      "amcl_pose_observed": true,
+      "base_link_to_laser_frame_source_observed": false,
+      "initialpose_published": null,
+      "map_once_observed": null,
+      "map_to_odom_source_observed": false,
+      "odom_to_base_link_source_observed": false,
+      "scan_once_observed": null,
+      "tf_broadcast_enabled": false
+    },
+    "amcl_frame_params": {
+      "base_frame_id": null,
+      "global_frame_id": null,
+      "odom_frame_id": null
+    },
+    "amcl_log_tail": "D \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172921.688041804] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[WARN] [1781172921.840950683] [amcl]: AMCL cannot publish a pose or update the transform. Please set the initial pose...\n[INFO] [1781172922.188037372] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172922.688045981] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172923.188039131] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172923.688043199] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[WARN] [1781172923.905155113] [amcl]: AMCL cannot publish a pose or update the transform. Please set the initial pose...\n[INFO] [1781172924.188038558] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172924.688047333] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172925.188040943] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172925.688046385] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[WARN] [1781172925.995981012] [amcl]: AMCL cannot publish a pose or update the transform. Please set the initial pose...\n[INFO] [1781172926.188032119] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172926.688033311] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172927.188030795] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1781172927.319948856] [amcl]: initialPoseReceived\n[INFO] [1781172927.320434646] [amcl]: Setting pose (1781172927.320430): 0.000 0.000 0.000\n[INFO] [1781172927.688458278] [global_costmap.global_costmap]: start\n[INFO] [1781172927.938972852] [planner_server]: Activating plugin GridBased of type NavfnPlanner\n[INFO] [1781172927.943160466] [planner_server]: Creating bond (planner_server) to lifecycle manager.\n[INFO] [1781172928.063404350] [lifecycle_manager]: Server planner_server connected with bond.\n[INFO] [1781172928.063650224] [lifecycle_manager]: \u001b[34m\u001b[1mManaged nodes are active\u001b[0m\u001b[0m\n[INFO] [1781172928.063709932] [lifecycle_manager]: \u001b[34m\u001b[1mCreating bond timer...\u001b[0m\u001b[0m\n",
+    "amcl_node_info_observed": false,
+    "amcl_node_publishers": [],
+    "amcl_node_subscribers": [],
+    "amcl_param_probe_ok": false,
+    "amcl_pose_frame_id": "map",
+    "amcl_pose_observed": true,
+    "amcl_tf_broadcast_param": null,
+    "amcl_tf_root_cause": "/tf_topic_missing",
+    "blocked_commands_not_sent": [
+      "T=1",
+      "T=13",
+      "T=130",
+      "T=131",
+      "/cmd_vel",
+      "/api/base/manual",
+      "/api/nav2/start",
+      "/api/nav2/stop",
+      "navigate_to_pose",
+      "compute_path_to_pose"
+    ],
+    "blocked_devices_not_opened": [
+      "/dev/ttyS5"
+    ],
+    "blockers": [
+      {
+        "detail": "tf2_timeout_or_timing",
+        "layer": "Localization TF",
+        "reason": "map_to_odom_not_observed",
+        "source": "map_to_odom"
+      },
+      {
+        "detail": "tf2_timeout_or_timing",
+        "layer": "Localization TF",
+        "reason": "odom_to_base_link_not_observed",
+        "source": "odom_to_base_link"
+      },
+      {
+        "detail": "/tf_topic_missing",
+        "layer": "Localization TF",
+        "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+        "source": "map_to_odom"
+      },
+      {
+        "detail": "tf2_timeout_or_timing",
+        "layer": "Managed static TF",
+        "reason": "base_link_to_laser_frame_not_observed",
+        "source": "base_link_to_laser_frame"
+      },
+      {
+        "detail": "/tf_topic_missing",
+        "layer": "Localization TF",
+        "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+        "source": "map_to_odom"
+      },
+      {
+        "layer": "helper process",
+        "reason": "sigint_before_final_artifact"
+      },
+      {
+        "layer": "upper API helper process",
+        "reason": "helper_process_timeout_after_partial_artifact"
+      }
+    ],
+    "calls_base_manual": false,
+    "command_result": {
+      "argv": [
+        "bash",
+        "-lc",
+        "source /opt/ros/humble/setup.bash && if [ -f /root/rober/onboard/install/setup.bash ]; then source /root/rober/onboard/install/setup.bash; fi && /usr/bin/python3 /root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py --output /root/rober/onboard/runtime/nav2_lifecycle_latest.json --map-proof /root/rober/onboard/runtime/map_lifecycle_latest.json --map-dir /root/rober/onboard/runtime/maps --timeout-s 30.0 --managed-runtime-opt-in --managed-timeout-s 30.0 --managed-map-yaml /root/rober/onboard/runtime/maps/trashbot_map.yaml --initialpose-opt-in --initialpose-x 0.0 --initialpose-y 0.0 --initialpose-yaw 0.0 --initialpose-frame-id map --path-generation-opt-in --path-generation-timeout-s 30.0 --path-goal-frame-id map --path-goal-x 0.8 --path-goal-y 0.0 --path-goal-yaw 0.0"
+      ],
+      "calls_base_manual": false,
+      "elapsed_ms": 86813,
+      "error": {
+        "message": "Command '['bash', '-lc', 'source /opt/ros/humble/setup.bash && if [ -f /root/rober/onboard/install/setup.bash ]; then source /root/rober/onboard/install/setup.bash; fi && /usr/bin/python3 /root/rober/onboard/scripts/o10_amcl_nav2_runtime_pr",
+        "type": "TimeoutExpired"
+      },
+      "executed": true,
+      "helper_argv": [
+        "/usr/bin/python3",
+        "/root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+        "--output",
+        "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+        "--map-proof",
+        "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+        "--map-dir",
+        "/root/rober/onboard/runtime/maps",
+        "--timeout-s",
+        "30.0",
+        "--managed-runtime-opt-in",
+        "--managed-timeout-s",
+        "30.0",
+        "--managed-map-yaml",
+        "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+        "--initialpose-opt-in",
+        "--initialpose-x",
+        "0.0",
+        "--initialpose-y",
+        "0.0",
+        "--initialpose-yaw",
+        "0.0",
+        "--initialpose-frame-id",
+        "map",
+        "--path-generation-opt-in",
+        "--path-generation-timeout-s",
+        "30.0",
+        "--path-goal-frame-id",
+        "map",
+        "--path-goal-x",
+        "0.8",
+        "--path-goal-y",
+        "0.0",
+        "--path-goal-yaw",
+        "0.0"
+      ],
+      "helper_cleanup_result": {
+        "attempted": true,
+        "error": null,
+        "killed_with_sigkill": false,
+        "ok": true,
+        "process_group": 286088,
+        "residual_cleanup": {
+          "attempted": true,
+          "killed_pgids": [
+            286111
+          ],
+          "matched": [
+            {
+              "command": "bash -lc set -e; set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; pids=(); cleanup(){ for pid in \"${pids[@]}\"; do kill",
+              "pgid": 286111,
+              "pid": 286111
+            },
+            {
+              "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_packets:=false",
+              "pgid": 286111,
+              "pid": 286147
+            },
+            {
+              "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_map_server map_server --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=map_server",
+              "pgid": 286111,
+              "pid": 286149
+            },
+            {
+              "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_amcl amcl --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=amcl",
+              "pgid": 286111,
+              "pid": 286150
+            },
+            {
+              "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_planner planner_server --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=planner_server",
+              "pgid": 286111,
+              "pid": 286151
+            },
+            {
+              "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=lifecycle_manager",
+              "pgid": 286111,
+              "pid": 286152
+            },
+            {
+              "command": "/opt/ros/humble/lib/nav2_map_server/map_server --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=map_server",
+              "pgid": 286111,
+              "pid": 286165
+            },
+            {
+              "command": "/opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=lifecycle_manager",
+              "pgid": 286111,
+              "pid": 286185
+            },
+            {
+              "command": "/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_pack",
+              "pgid": 286111,
+              "pid": 286196
+            },
+            {
+              "command": "/opt/ros/humble/lib/nav2_amcl/amcl --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=amcl",
+              "pgid": 286111,
+              "pid": 286206
+            },
+            {
+              "command": "/opt/ros/humble/lib/nav2_planner/planner_server --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=planner_server",
+              "pgid": 286111,
+              "pid": 286208
+            }
+          ],
+          "ok": true,
+          "remaining": []
+        },
+        "sent_signal": "SIGINT"
+      },
+      "helper_process_group": 286088,
+      "hil_pass": false,
+      "initialpose_opt_in": true,
+      "managed_runtime_opt_in": true,
+      "mode": "o10_amcl_nav2_runtime_proof_helper",
+      "ok": false,
+      "path_generation_opt_in": true,
+      "process_timeout_s": 84.0,
+      "publishes_cmd_vel": false,
+      "robot_control_executed": false,
+      "safe_to_control": false,
+      "sends_base_motion_commands": false,
+      "stderr_preview": "",
+      "stdout_preview": "",
+      "timeout_budget": {
+        "base_margin_s": 12.0,
+        "budget_policy": "finish_before_pc_proxy_timeout_or_return_structured_timeout",
+        "cap_s": 84.0,
+        "collector_timeout_s": 30.0,
+        "initialpose_margin_s": 4.0,
+        "managed_margin_s": 6.0,
+        "managed_runtime_timeout_s": 30.0,
+        "path_generation_timeout_s": 30.0,
+        "path_margin_s": 8.0,
+        "pc_proxy_budget_s": 90.0,
+        "process_timeout_s": 84.0,
+        "raw_timeout_s": 120.0
+      }
+    },
+    "current_command": {
+      "command": "timeout 8 ros2 topic echo --once /map",
+      "started_at_ms": 1781172990292,
+      "timeout_s": 20.0
+    },
+    "delivery_success": false,
+    "evidence_ref": "o10-amcl-nav2-runtime-wrapper-failure-1781172997846",
+    "evidence_type": "blocked_with_root_cause",
+    "generated_at_ms": 1781172997846,
+    "hil_pass": false,
+    "initialpose_publish_attempted": true,
+    "initialpose_published": true,
+    "last_phase": "interrupted",
+    "last_successful_phase": "lifecycle_probe",
+    "localization_tf_observed": {
+      "map_to_base_link": false,
+      "map_to_odom": false
+    },
+    "managed_runtime_cleanup_ok": false,
+    "managed_runtime_requested": true,
+    "managed_runtime_started": true,
+    "managed_static_tf_processes": {
+      "all_expected_processes_observed": true,
+      "checked_before_cleanup": true,
+      "expected": [
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "role": "static_tf_odom_base"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "role": "static_tf_base_laser"
+        }
+      ],
+      "observed_roles": [
+        "static_tf_base_laser",
+        "static_tf_odom_base"
+      ],
+      "process_group": 286111,
+      "processes": [
+        {
+          "command": "bash -lc set -e; set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; pids=(); cleanup(){ for pid in \"${pids[@]}\"; do kill -INT \"$pid\" 2>/dev/null || true; done; wait || true; }; trap cleanup EXIT INT TERM; printf '%s\\n' 'managed_map_yaml=/root/rober/onboard/runtime/maps/trashbot_map.yaml' > /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'managed_runtime_boundary=no_motion_path_generation_planner_only' >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'blocked_device=/dev/ttyS5' >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'starting role=lidar_driver' >> /tmp/rober_nav2_localization_n5khvzbm.log; (ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_packets:=false) >> /tmp/rober_nav2_localization_n5khvzbm.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lidar_driver pid='$pid >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'starting role=static_tf_broadcaster' >> /tmp/rober_nav2_localization_n5khvzbm.log; (python3 -c 'import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main()' '{\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"}' static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame) >> /tmp/rober_nav2_localization_n5khvzbm.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=static_tf_broadcaster pid='$pid >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'starting role=map_server' >> /tmp/rober_nav2_localization_n5khvzbm.log; (ros2 run nav2_map_server map_server --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=map_server) >> /tmp/rober_nav2_localization_n5khvzbm.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=map_server pid='$pid >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'starting role=amcl' >> /tmp/rober_nav2_localization_n5khvzbm.log; (ros2 run nav2_amcl amcl --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=amcl) >> /tmp/rober_nav2_localization_n5khvzbm.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=amcl pid='$pid >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'starting role=planner_server' >> /tmp/rober_nav2_localization_n5khvzbm.log; (ros2 run nav2_planner planner_server --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=planner_server) >> /tmp/rober_nav2_localization_n5khvzbm.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=planner_server pid='$pid >> /tmp/rober_nav2_localization_n5khvzbm.log; printf '%s\\n' 'starting role=lifecycle_manager' >> /tmp/rober_nav2_localization_n5khvzbm.log; (ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_9n48aio0.yaml -r __node:=lifecycle_manager) >> /tmp/rober_nav2_localization_n5khvzbm.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lifecycle_manager pid='$pid >> /tmp/rober_nav2_localization_n5khvzbm.log; wait",
+          "pgid": 286111,
+          "pid": 286111,
+          "role": "static_tf_base_laser",
+          "roles": [
+            "static_tf_base_laser",
+            "static_tf_odom_base"
+          ],
+          "source_type": "single_rclpy_static_transform_broadcaster"
+        },
+        {
+          "command": "python3 -c import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main() {\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"} static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame",
+          "pgid": 286111,
+          "pid": 286148,
+          "role": "static_tf_base_laser",
+          "roles": [
+            "static_tf_base_laser",
+            "static_tf_odom_base"
+          ],
+          "source_type": "single_rclpy_static_transform_broadcaster"
+        }
+      ],
+      "source_strategy": "single_rclpy_static_transform_broadcaster_transient_local"
+    },
+    "map_frame_observed": false,
+    "odom_frame_observed": false,
+    "opens_serial": false,
+    "package_availability": {
+      "nav2_amcl": true,
+      "nav2_lifecycle_manager": true,
+      "nav2_map_server": true,
+      "ros2_trashbot_bringup": true,
+      "ros2_trashbot_nav": true
+    },
+    "package_check_mode": "single_sourced_pkg_list_diagnostic",
+    "package_checks_batch_ok": true,
+    "partial_artifact_preserved": true,
+    "path_generated": false,
+    "path_generation_attempted": false,
+    "path_generation_requested": true,
+    "path_generation_succeeded": false,
+    "path_point_count": 0,
+    "phase_history": [
+      {
+        "at_ms": 1781172913220,
+        "detail": {
+          "mode": "no_motion_amcl_nav2_runtime_proof"
+        },
+        "ok": true,
+        "phase": "start"
+      },
+      {
+        "at_ms": 1781172913227,
+        "detail": {
+          "source_proof_status": "map_once_artifact_metadata_observed"
+        },
+        "ok": true,
+        "phase": "map_inputs"
+      },
+      {
+        "at_ms": 1781172913229,
+        "detail": {
+          "map_yaml_source": "explicit_cli_managed_map_yaml",
+          "requested": true
+        },
+        "phase": "managed_runtime"
+      },
+      {
+        "at_ms": 1781172913240,
+        "detail": {
+          "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "process_group": 286111
+        },
+        "ok": true,
+        "phase": "managed_runtime_started"
+      },
+      {
+        "at_ms": 1781172919897,
+        "detail": {
+          "reason": null
+        },
+        "ok": true,
+        "phase": "managed_runtime_wait"
+      },
+      {
+        "at_ms": 1781172919946,
+        "phase": "ros2_preflight"
+      },
+      {
+        "at_ms": 1781172922115,
+        "ok": true,
+        "phase": "ros2_preflight"
+      },
+      {
+        "at_ms": 1781172922121,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1781172927931,
+        "detail": {
+          "enabled": true
+        },
+        "ok": true,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1781172927937,
+        "phase": "amcl_pose_probe"
+      },
+      {
+        "at_ms": 1781172933214,
+        "ok": true,
+        "phase": "amcl_pose_probe"
+      },
+      {
+        "at_ms": 1781172933219,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1781172935865,
+        "detail": {
+          "amcl_tf_root_cause": "/tf_topic_missing"
+        },
+        "ok": false,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1781172935875,
+        "phase": "tf_probe"
+      },
+      {
+        "at_ms": 1781172938914,
+        "ok": false,
+        "phase": "tf_probe_map_to_odom",
+        "root_cause": {
+          "detail": "tf2_timeout_or_timing",
+          "layer": "Localization TF",
+          "reason": "map_to_odom_not_observed",
+          "source": "map_to_odom"
+        }
+      },
+      {
+        "at_ms": 1781172941953,
+        "ok": false,
+        "phase": "tf_probe_odom_to_base_link",
+        "root_cause": {
+          "detail": "tf2_timeout_or_timing",
+          "layer": "Localization TF",
+          "reason": "odom_to_base_link_not_observed",
+          "source": "odom_to_base_link"
+        }
+      },
+      {
+        "at_ms": 1781172941968,
+        "ok": false,
+        "phase": "tf_probe_map_to_base_link",
+        "root_cause": {
+          "detail": "/tf_topic_missing",
+          "layer": "Localization TF",
+          "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+          "source": "map_to_odom"
+        }
+      },
+      {
+        "at_ms": 1781172945008,
+        "ok": false,
+        "phase": "tf_probe_base_link_to_laser_frame",
+        "root_cause": {
+          "detail": "tf2_timeout_or_timing",
+          "layer": "Managed static TF",
+          "reason": "base_link_to_laser_frame_not_observed",
+          "source": "base_link_to_laser_frame"
+        }
+      },
+      {
+        "at_ms": 1781172945016,
+        "detail": {
+          "tf_chain_observed": {
+            "base_link_to_laser_frame": false,
+            "map_to_base_link": false,
+            "map_to_odom": false,
+            "odom_to_base_link": false
+          },
+          "tf_failure_classification": {
+            "amcl_tf_root_cause": "/tf_topic_missing",
+            "blocking_segment": "map_to_odom",
+            "frame_naming_consistent": true,
+            "map_to_base_link": "blocked_by_missing_map_to_odom",
+            "reason": "/tf_topic_missing"
+          }
+        },
+        "ok": false,
+        "phase": "tf_probe",
+        "root_cause": {
+          "detail": "/tf_topic_missing",
+          "layer": "Localization TF",
+          "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+          "source": "map_to_odom"
+        }
+      },
+      {
+        "at_ms": 1781172945024,
+        "detail": {
+          "mode": "single_sourced_pkg_list_diagnostic"
+        },
+        "phase": "package_checks"
+      },
+      {
+        "at_ms": 1781172948407,
+        "detail": {
+          "mode": "single_sourced_pkg_list_diagnostic",
+          "packages": {
+            "nav2_amcl": true,
+            "nav2_lifecycle_manager": true,
+            "nav2_map_server": true,
+            "ros2_trashbot_bringup": true,
+            "ros2_trashbot_nav": true
+          }
+        },
+        "ok": true,
+        "phase": "package_checks"
+      },
+      {
+        "at_ms": 1781172956549,
+        "ok": true,
+        "phase": "graph_discovery"
+      },
+      {
+        "at_ms": 1781172966638,
+        "ok": true,
+        "phase": "lifecycle_probe"
+      },
+      {
+        "at_ms": 1781172984924,
+        "detail": {
+          "echo_timeout_s": 18.0
+        },
+        "phase": "topic_probe"
+      },
+      {
+        "at_ms": 1781172995118,
+        "ok": false,
+        "phase": "interrupted",
+        "root_cause": {
+          "layer": "helper process",
+          "reason": "sigint_before_final_artifact"
+        }
+      }
+    ],
+    "publishes_cmd_vel": false,
+    "recent_commands": [
+      {
+        "command": "timeout 2 ros2 run tf2_ros tf2_echo odom base_link",
+        "elapsed_ms": 3019,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 2 ros2 run tf2_ros tf2_echo odom ba",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1781172941939,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "timeout 2 ros2 run tf2_ros tf2_echo base_link laser_frame",
+        "elapsed_ms": 3018,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 2 ros2 run tf2_ros tf2_echo base_li",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1781172944994,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 pkg list",
+        "elapsed_ms": 3360,
+        "error": null,
+        "finished_at_ms": 1781172948391,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 topic list",
+        "elapsed_ms": 4140,
+        "error": null,
+        "finished_at_ms": 1781172952555,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 node list",
+        "elapsed_ms": 3976,
+        "error": null,
+        "finished_at_ms": 1781172956540,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 lifecycle get /map_server",
+        "elapsed_ms": 5032,
+        "error": null,
+        "finished_at_ms": 1781172961590,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 lifecycle get /amcl",
+        "elapsed_ms": 5030,
+        "error": null,
+        "finished_at_ms": 1781172966629,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 lifecycle get /planner_server",
+        "elapsed_ms": 5999,
+        "error": null,
+        "finished_at_ms": 1781172972646,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 lifecycle get /controller_server",
+        "elapsed_ms": 4154,
+        "error": null,
+        "finished_at_ms": 1781172976809,
+        "ok": false,
+        "returncode": 1
+      },
+      {
+        "command": "ros2 node info /planner_server",
+        "elapsed_ms": 4054,
+        "error": null,
+        "finished_at_ms": 1781172980871,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 node info /controller_server",
+        "elapsed_ms": 4035,
+        "error": null,
+        "finished_at_ms": 1781172984916,
+        "ok": false,
+        "returncode": 1
+      },
+      {
+        "command": "timeout 6 ros2 topic echo --once /scan",
+        "elapsed_ms": 5350,
+        "error": null,
+        "finished_at_ms": 1781172990283,
+        "ok": true,
+        "returncode": 0
+      }
+    ],
+    "robot_control_executed": false,
+    "root_causes": [
+      {
+        "detail": "tf2_timeout_or_timing",
+        "layer": "Localization TF",
+        "reason": "map_to_odom_not_observed",
+        "source": "map_to_odom"
+      },
+      {
+        "detail": "tf2_timeout_or_timing",
+        "layer": "Localization TF",
+        "reason": "odom_to_base_link_not_observed",
+        "source": "odom_to_base_link"
+      },
+      {
+        "detail": "/tf_topic_missing",
+        "layer": "Localization TF",
+        "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+        "source": "map_to_odom"
+      },
+      {
+        "detail": "tf2_timeout_or_timing",
+        "layer": "Managed static TF",
+        "reason": "base_link_to_laser_frame_not_observed",
+        "source": "base_link_to_laser_frame"
+      },
+      {
+        "detail": "/tf_topic_missing",
+        "layer": "Localization TF",
+        "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+        "source": "map_to_odom"
+      },
+      {
+        "layer": "helper process",
+        "reason": "sigint_before_final_artifact"
+      },
+      {
+        "layer": "upper API helper process",
+        "reason": "helper_process_timeout_after_partial_artifact"
+      }
+    ],
+    "safe_to_control": false,
+    "sends_base_motion_commands": false,
+    "sends_motion_commands": false,
+    "static_tf_source_observed": false,
+    "status": "blocked_with_root_cause",
+    "tf_chain_diagnostics": {
+      "frame_contract": {
+        "actual": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        },
+        "consistent_with_defaults": true,
+        "expected": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        }
+      },
+      "pairs": {
+        "base_link_to_laser_frame": {
+          "boundary": null,
+          "elapsed_ms": 3018,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 2 ros2 run tf2_ros tf2_echo base_li",
+            "type": "TimeoutExpired"
+          },
+          "executed": true,
+          "failure_reason": "tf2_timeout_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "base_link",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "laser_frame"
+        },
+        "map_to_base_link": {
+          "boundary": "map_to_base_link_tf_probe_skipped_until_chain_inputs_observed",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "map",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        },
+        "map_to_odom": {
+          "boundary": null,
+          "elapsed_ms": 3019,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 2 ros2 run tf2_ros tf2_echo map odo",
+            "type": "TimeoutExpired"
+          },
+          "executed": true,
+          "failure_reason": "tf2_timeout_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "map",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "odom"
+        },
+        "odom_to_base_link": {
+          "boundary": null,
+          "elapsed_ms": 3019,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 2 ros2 run tf2_ros tf2_echo odom ba",
+            "type": "TimeoutExpired"
+          },
+          "executed": true,
+          "failure_reason": "tf2_timeout_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "odom",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        }
+      },
+      "source_diagnostics": {
+        "amcl_broadcast_conditions": {
+          "amcl_frame_params_match_helper": false,
+          "amcl_pose_frame_id_is_map": true,
+          "amcl_pose_observed": true,
+          "base_link_to_laser_frame_source_observed": false,
+          "initialpose_published": null,
+          "map_once_observed": null,
+          "map_to_odom_source_observed": false,
+          "odom_to_base_link_source_observed": false,
+          "scan_once_observed": null,
+          "tf_broadcast_enabled": false
+        },
+        "amcl_frame_params": {
+          "base_frame_id": null,
+          "global_frame_id": null,
+          "odom_frame_id": null
+        },
+        "amcl_node_info_observed": false,
+        "amcl_node_publishers": [],
+        "amcl_node_subscribers": [],
+        "amcl_param_probe_ok": false,
+        "amcl_pose_frame_id": "map",
+        "amcl_tf_broadcast_param": null,
+        "amcl_tf_root_cause": "/tf_topic_missing",
+        "base_frame_observed": false,
+        "base_link_to_laser_frame_source_observed": false,
+        "frame_contract": {
+          "actual": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          },
+          "consistent_with_defaults": true,
+          "expected": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          }
+        },
+        "laser_frame_observed": false,
+        "map_frame_observed": false,
+        "map_to_odom_source_observed": false,
+        "odom_frame_observed": false,
+        "odom_to_base_link_source_observed": false,
+        "tf_frame_inventory": {
+          "command_statuses": {
+            "tf": null,
+            "tf_static": null,
+            "topic_list": 0
+          },
+          "dynamic_edges": [],
+          "edges": [],
+          "frames": [],
+          "static_edges": [],
+          "topic_types": {
+            "/parameter_events": "rcl_interfaces/msg/ParameterEvent",
+            "/rosout": "rcl_interfaces/msg/Log",
+            "/scan": "sensor_msgs/msg/LaserScan"
+          }
+        },
+        "tf_source_root_cause_detail": {
+          "amcl_node_info_observed": false,
+          "amcl_param_probe_boundary": "amcl_parameter_service_unavailable",
+          "amcl_param_probe_error": null,
+          "amcl_param_probe_ok": false,
+          "amcl_pose_frame_id": "map",
+          "base_link_to_laser_frame_source_observed": false,
+          "expected_params": {
+            "base_frame_id": "base_link",
+            "global_frame_id": "map",
+            "odom_frame_id": "odom",
+            "tf_broadcast": "true"
+          },
+          "map_to_odom_source_observed": false,
+          "observed_params": {
+            "base_frame_id": null,
+            "global_frame_id": null,
+            "odom_frame_id": null,
+            "tf_broadcast": null
+          },
+          "odom_to_base_link_source_observed": false,
+          "reason": "/tf_topic_missing",
+          "tf_command_statuses": {
+            "tf": null,
+            "tf_static": null,
+            "topic_list": 0
+          }
+        },
+        "tf_static_observed": false,
+        "tf_topics_observed": {
+          "/tf": false,
+          "/tf_static": false
+        }
+      }
+    },
+    "tf_chain_observed": {
+      "base_link_to_laser_frame": false,
+      "map_to_base_link": false,
+      "map_to_odom": false,
+      "odom_to_base_link": false
+    },
+    "tf_failure_classification": {
+      "amcl_tf_root_cause": "/tf_topic_missing",
+      "blocking_segment": "map_to_odom",
+      "frame_naming_consistent": true,
+      "map_to_base_link": "blocked_by_missing_map_to_odom",
+      "reason": "/tf_topic_missing"
+    },
+    "tf_frame_inventory": {
+      "command_statuses": {
+        "tf": null,
+        "tf_static": null,
+        "topic_list": 0
+      },
+      "dynamic_edges": [],
+      "edges": [],
+      "frames": [],
+      "static_edges": [],
+      "topic_types": {
+        "/parameter_events": "rcl_interfaces/msg/ParameterEvent",
+        "/rosout": "rcl_interfaces/msg/Log",
+        "/scan": "sensor_msgs/msg/LaserScan"
+      }
+    },
+    "tf_source_root_cause_detail": {
+      "amcl_node_info_observed": false,
+      "amcl_param_probe_boundary": "amcl_parameter_service_unavailable",
+      "amcl_param_probe_error": null,
+      "amcl_param_probe_ok": false,
+      "amcl_pose_frame_id": "map",
+      "base_link_to_laser_frame_source_observed": false,
+      "expected_params": {
+        "base_frame_id": "base_link",
+        "global_frame_id": "map",
+        "odom_frame_id": "odom",
+        "tf_broadcast": "true"
+      },
+      "map_to_odom_source_observed": false,
+      "observed_params": {
+        "base_frame_id": null,
+        "global_frame_id": null,
+        "odom_frame_id": null,
+        "tf_broadcast": null
+      },
+      "odom_to_base_link_source_observed": false,
+      "reason": "/tf_topic_missing",
+      "tf_command_statuses": {
+        "tf": null,
+        "tf_static": null,
+        "topic_list": 0
+      }
+    },
+    "tf_static_observed": false,
+    "tf_topics_observed": {
+      "/tf": false,
+      "/tf_static": false
+    },
+    "timeout_budget": {
+      "base_margin_s": 12.0,
+      "budget_policy": "finish_before_pc_proxy_timeout_or_return_structured_timeout",
+      "cap_s": 84.0,
+      "collector_timeout_s": 30.0,
+      "initialpose_margin_s": 4.0,
+      "managed_margin_s": 6.0,
+      "managed_runtime_timeout_s": 30.0,
+      "path_generation_timeout_s": 30.0,
+      "path_margin_s": 8.0,
+      "pc_proxy_budget_s": 90.0,
+      "process_timeout_s": 84.0,
+      "raw_timeout_s": 120.0
+    },
+    "uses_base_uart": false
+  },
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "safe_to_control": false,
+  "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+  "sends_base_motion_commands": false,
+  "sends_motion_commands": false,
+  "software_guard": true,
+  "status": "blocked_with_root_cause",
+  "uses_base_uart": false
+}
+__RUNTIME_NAV2_FILES__
+2026-06-10 09:20:30.9446252620 43686 /root/rober/onboard/runtime/o10_path_generation_backup/o10_amcl_nav2_runtime_proof.py.20260610092030
+2026-06-10 09:28:32.3988956770 0 /root/rober/onboard/runtime/o10_path_generation_direct_stdout.json
+2026-06-10 09:29:17.6627368530 1200 /root/rober/onboard/runtime/o10_path_generation_direct_stderr.log
+2026-06-11 18:16:37.8532223520 42035 /root/rober/onboard/runtime/nav2_lifecycle_latest.json
+__O10_PROCESSES__
+ 267620       1  267620 Ssl     03:11:36 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+__ROS_GRAPH__
+__LIFECYCLE_NODES__
+__TOPIC_LIST_T__
+/parameter_events [rcl_interfaces/msg/ParameterEvent]
+/rosout [rcl_interfaces/msg/Log]
+__CMD_VEL_INFO__

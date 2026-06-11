@@ -353,6 +353,34 @@ helper 内部 no-motion collector 的 ROS2 观测语义。如果真实 Nav2 proo
 - `safe_to_control`、`delivery_success` 仍然必须保持 `false`。
 仍不等于 path generation、path execution、fixed-route execution、HIL 或送达成功。
 
+`2026-06-11 19:25` direct Robot API 复跑定位了上一轮 PC proxy 回归：
+`o10-amcl-nav2-runtime-wrapper-failure-1781172997846` 的直接原因是 outer helper
+timeout。该 artifact 中 managed runtime 已启动、`/initialpose` 已发布、
+`/amcl_pose` 已观测，`last_successful_phase=lifecycle_probe`，但 helper 在
+`current_command=timeout 8 ros2 topic echo --once /map` 时被 PC proxy/upper wrapper 的
+约 `84s` process cap 打断，因此写成 `blocked_with_root_cause` 且
+`path_generation_attempted=false`。同一现场随后用 direct Robot API 固定 30s body
+复跑成功：
+
+- `POST /api/nav2/proof/refresh` HTTP 200。
+- `evidence_ref=o10-amcl-nav2-runtime-1781173633739`。
+- `managed_runtime_started=true`、`managed_runtime_cleanup_ok=true`。
+- `initialpose_published=true`、`amcl_pose_observed=true`。
+- `planner_server_active=true`。
+- `path_generation_attempted=true`、`path_generation_succeeded=true`、
+  `path_generated=true`、`path_point_count=32`。
+- `root_causes=[]`、`blockers=[]`。
+- `publishes_cmd_vel=false`、`calls_base_manual=false`、`uses_base_uart=false`、
+  `safe_to_control=false`、`robot_control_executed=false`、`delivery_success=false`。
+
+清理读回显示没有 `o10_amcl_nav2_runtime_proof`、`map_server`、`amcl`、
+`planner_server`、`lifecycle_manager`、`controller_server` helper 残留；
+`ros2 topic info /cmd_vel` 为 `Unknown topic '/cmd_vel'`。`lsof /dev/ttyS5` 与
+`fuser -v /dev/ttyS5` 均无 holder 输出。`ps` 中只有常驻
+`upper_robot_api.py --base-port /dev/ttyS5` 服务参数包含底盘串口字符串，不代表本轮
+helper 打开了 WAVE ROVER UART。后续若经 PC proxy 再次出现 wrapper timeout，应优先调整
+PC proxy/upper API timeout 预算，而不是把它判为 map 或 planner 回归。
+
 `2026-06-10 09:15` 起，`o10_amcl_nav2_runtime_proof.py` 增加显式 opt-in 的
 managed no-motion localization runtime。默认不传 `managed_runtime_opt_in` 时仍保持
 read-only collector；只有显式传入时，helper 才会在 proof 窗口内短暂启动：
