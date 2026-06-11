@@ -1,0 +1,38 @@
+   1172       1 python3 /root/rober/onboard/scripts/local_webrtc_camera_smoke.py --host 0.0.0.0 --port 8088 --video-source auto --width 640 --height 480 --fps 15
+   1174       1 /usr/bin/python3 /usr/share/unattended-upgrades/unattended-upgrade-shutdown --wait-for-signal
+   2895    2041 /usr/bin/python3 /usr/bin/blueman-applet
+   2908    2041 /usr/bin/python3 /usr/share/system-config-printer/applet.py
+   3019       1 /usr/bin/python3 /usr/bin/blueman-tray
+  89708       1 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_2onpg4e3
+  89710       1 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_dsaxn8kl
+  89714       1 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_u339gbb6
+  90724       1 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_r4pb2h7_
+  90726       1 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_qnhml2vi
+  90730       1 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_5l8vn9w_
+  95878       1 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_no94j9rg
+  95880       1 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_rbxtj8bc
+  95884       1 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_zz0cmio_
+ 170272       1 /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 0 --rmw-implementation rmw_fastrtps_cpp
+ 238873       1 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+---systemd---
+● trashbot-upper-robot-api.service - Trashbot unified upper robot API
+     Loaded: loaded (/etc/systemd/system/trashbot-upper-robot-api.service; enabled; vendor preset: enabled)
+    Drop-In: /etc/systemd/system/trashbot-upper-robot-api.service.d
+             └─20-lidar-scan-proof-runtime.conf
+     Active: active (running) since Thu 2026-06-11 08:29:20 CST; 38min ago
+       Docs: file:/root/rober/docs/interfaces/o7_upper_robot_api.md
+   Main PID: 238873 (python3)
+      Tasks: 2 (limit: 2204)
+     Memory: 35.2M
+        CPU: 2min 30.551s
+     CGroup: /system.slice/trashbot-upper-robot-api.service
+             └─238873 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+
+Jun 11 08:29:20 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 11 08:29:21 op-z3-b6.home env[238873]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
+---camera8088---
+LISTEN 0      128          0.0.0.0:8088       0.0.0.0:*    users:(("python3",pid=1172,fd=6))    
+LISTEN 0      128          0.0.0.0:8787       0.0.0.0:*    users:(("python3",pid=238873,fd=6))  
+---env---
+ExecStart={ path=/usr/bin/env ; argv[]=/usr/bin/env bash /root/rober/onboard/scripts/upper_robot_api.sh ; ignore_errors=no ; start_time=[Thu 2026-06-11 08:29:20 CST] ; stop_time=[n/a] ; pid=238873 ; code=(null) ; status=0/0 }
+Environment=HOST=0.0.0.0 PORT=8787 ROBER_CAMERA_BASE_URL=http://127.0.0.1:8088 ROBER_BASE_SERIAL_PORT=/dev/ttyS5 ROBER_BASE_BAUDRATE=115200 ROBER_BASE_MAX_SPEED=0.12 PYTHONUNBUFFERED=1 HOME=/root USER=root LOGNAME=root ROS_HOME=/root/.ros ROS_LOG_DIR=/root/.ros/log "ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND=bash /root/rober/onboard/scripts/o1_lidar_ros2_scan_smoke.sh --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame" "ROBER_RADAR_START_COMMAND=bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame" "ROBER_RADAR_STOP_COMMAND=bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop"

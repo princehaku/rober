@@ -1,0 +1,88 @@
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:6:import argparse
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:279:def normalize_video_source(video_source: str) -> int | str:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:281:    source = str(video_source).strip()
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:288:        return cv2_module.VideoCapture(source, cv2_module.CAP_V4L2)
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:289:    return cv2_module.VideoCapture(source)
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:293:    video_source: str,
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:302:    requested = str(video_source).strip()
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:304:        selected = normalize_video_source(requested)
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:447:def build_health(port: int, video_source: str) -> dict[str, Any]:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:460:        "video_source": video_source,
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:461:        "video_source_mode": "auto" if str(video_source).strip().lower() in ("", "auto", "autodetect") else "explicit",
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:498:def html_page(port: int, video_source: str) -> str:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:500:    health = json.dumps(build_health(port, video_source), ensure_ascii=False, indent=2)
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:617:def parse_args() -> argparse.Namespace:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:618:    parser = argparse.ArgumentParser(description=__doc__)
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:621:    parser.add_argument("--video-source", default=os.getenv("ROBER_CAMERA_SOURCE", DEFAULT_VIDEO_SOURCE))
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:639:async def self_test_client(args: argparse.Namespace) -> int:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:755:def fallback_server(args: argparse.Namespace) -> None:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:768:                payload = json.dumps(build_health(args.port, args.video_source), ensure_ascii=False).encode()
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:774:                self._send(HTTPStatus.OK, "text/html; charset=utf-8", html_page(args.port, args.video_source).encode())
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:785:    print(json.dumps({"event": "fallback_server_started", "health": build_health(args.port, args.video_source)}))
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:789:async def aiohttp_server(args: argparse.Namespace) -> None:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:812:                args.video_source,
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:820:                self.stats["last_error"] = f"camera_auto_source_failed:{args.video_source}"
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:822:                raise RuntimeError(f"camera_auto_source_failed:{args.video_source}")
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:828:                self.stats["last_error"] = f"camera_open_failed:{args.video_source}"
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:830:                raise RuntimeError(f"camera_open_failed:{args.video_source}")
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:834:                    "resolved_video_source": source,
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:887:        return web.Response(text=html_page(args.port, args.video_source), content_type="text/html")
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:890:        payload = build_health(args.port, args.video_source)
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:1030:    log_event("aiohttp_server_started", health=build_health(args.port, args.video_source))
+/root/rober/onboard/scripts/install_o7_camera_service.sh:8:REPO_ROOT="${ROBER_REPO_ROOT:-${DEFAULT_REPO_ROOT}}"
+/root/rober/onboard/scripts/install_o7_camera_service.sh:19:Defaults: HOST=0.0.0.0 PORT=8088 ROBER_CAMERA_SOURCE=auto.
+/root/rober/onboard/scripts/install_o7_camera_service.sh:99:print_step "defaults=HOST=0.0.0.0 PORT=8088 ROBER_CAMERA_SOURCE=auto"
+/root/rober/onboard/scripts/install_o7_camera_service.sh:103:  print_step "[dry-run] render ${TEMPLATE_PATH} -> ${UNIT_PATH} with @ROBER_REPO_ROOT@=${REPO_ROOT}"
+/root/rober/onboard/scripts/install_o7_camera_service.sh:107:  sed "s/@ROBER_REPO_ROOT@/$(escape_sed_replacement "${REPO_ROOT}")/g" "${TEMPLATE_PATH}" > "${tmp_unit}"
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:6:import argparse
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:279:def normalize_video_source(video_source: str) -> int | str:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:281:    source = str(video_source).strip()
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:288:        return cv2_module.VideoCapture(source, cv2_module.CAP_V4L2)
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:289:    return cv2_module.VideoCapture(source)
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:293:    video_source: str,
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:302:    requested = str(video_source).strip()
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:304:        selected = normalize_video_source(requested)
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:447:def build_health(port: int, video_source: str) -> dict[str, Any]:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:460:        "video_source": video_source,
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:461:        "video_source_mode": "auto" if str(video_source).strip().lower() in ("", "auto", "autodetect") else "explicit",
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:498:def html_page(port: int, video_source: str) -> str:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:500:    health = json.dumps(build_health(port, video_source), ensure_ascii=False, indent=2)
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:617:def parse_args() -> argparse.Namespace:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:618:    parser = argparse.ArgumentParser(description=__doc__)
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:621:    parser.add_argument("--video-source", default=os.getenv("ROBER_CAMERA_SOURCE", DEFAULT_VIDEO_SOURCE))
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:639:async def self_test_client(args: argparse.Namespace) -> int:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:755:def fallback_server(args: argparse.Namespace) -> None:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:768:                payload = json.dumps(build_health(args.port, args.video_source), ensure_ascii=False).encode()
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:774:                self._send(HTTPStatus.OK, "text/html; charset=utf-8", html_page(args.port, args.video_source).encode())
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:785:    print(json.dumps({"event": "fallback_server_started", "health": build_health(args.port, args.video_source)}))
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:789:async def aiohttp_server(args: argparse.Namespace) -> None:
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:812:                args.video_source,
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:820:                self.stats["last_error"] = f"camera_auto_source_failed:{args.video_source}"
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:822:                raise RuntimeError(f"camera_auto_source_failed:{args.video_source}")
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:828:                self.stats["last_error"] = f"camera_open_failed:{args.video_source}"
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:830:                raise RuntimeError(f"camera_open_failed:{args.video_source}")
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:834:                    "resolved_video_source": source,
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:887:        return web.Response(text=html_page(args.port, args.video_source), content_type="text/html")
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:890:        payload = build_health(args.port, args.video_source)
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.py:1030:    log_event("aiohttp_server_started", health=build_health(args.port, args.video_source))
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.sh:9:VIDEO_SOURCE="${ROBER_CAMERA_SOURCE:-auto}"
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.sh:15:if [[ -n "${ROBER_WEBRTC_SELF_TEST_URL:-}" ]]; then
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.sh:17:    --self-test-url "${ROBER_WEBRTC_SELF_TEST_URL}" \
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.sh:18:    --self-test-timeout "${ROBER_WEBRTC_SELF_TEST_TIMEOUT:-8}" \
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.sh:19:    ${ROBER_WEBRTC_REQUIRE_FRAME:+--require-frame}
+/root/rober/onboard/scripts/local_webrtc_camera_smoke.sh:26:  --video-source "${VIDEO_SOURCE}" \
+/root/rober/onboard/scripts/test_local_webrtc_camera_smoke.py:88:    """fake cv2 只提供 auto source 选择需要的 VideoCapture 和常量。"""
+/root/rober/onboard/scripts/test_local_webrtc_camera_smoke.py:99:    def VideoCapture(self, source, *_args):  # noqa: N802 - 模拟 OpenCV API 名称。
+/etc/systemd/system/trashbot-upper-robot-api.service:12:Environment=ROBER_CAMERA_BASE_URL=http://127.0.0.1:8088
+/etc/systemd/system/trashbot-upper-robot-api.service:13:Environment=ROBER_BASE_SERIAL_PORT=/dev/ttyS5
+/etc/systemd/system/trashbot-upper-robot-api.service:14:Environment=ROBER_BASE_BAUDRATE=115200
+/etc/systemd/system/trashbot-upper-robot-api.service:15:Environment=ROBER_BASE_MAX_SPEED=0.12
+/etc/systemd/system/trashbot-upper-robot-api.service.d/20-lidar-scan-proof-runtime.conf:7:Environment="ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND=bash /root/rober/onboard/scripts/o1_lidar_ros2_scan_smoke.sh --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
+/etc/systemd/system/trashbot-upper-robot-api.service.d/20-lidar-scan-proof-runtime.conf:8:Environment="ROBER_RADAR_START_COMMAND=bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
+/etc/systemd/system/trashbot-upper-robot-api.service.d/20-lidar-scan-proof-runtime.conf:9:Environment="ROBER_RADAR_STOP_COMMAND=bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop"
+/etc/systemd/system/multi-user.target.wants/trashbot-upper-robot-api.service:12:Environment=ROBER_CAMERA_BASE_URL=http://127.0.0.1:8088
+/etc/systemd/system/multi-user.target.wants/trashbot-upper-robot-api.service:13:Environment=ROBER_BASE_SERIAL_PORT=/dev/ttyS5
+/etc/systemd/system/multi-user.target.wants/trashbot-upper-robot-api.service:14:Environment=ROBER_BASE_BAUDRATE=115200
+/etc/systemd/system/multi-user.target.wants/trashbot-upper-robot-api.service:15:Environment=ROBER_BASE_MAX_SPEED=0.12
+/etc/systemd/system/multi-user.target.wants/trashbot-local-webrtc-camera.service:12:Environment=ROBER_CAMERA_SOURCE=auto
+/etc/systemd/system/trashbot-local-webrtc-camera.service:12:Environment=ROBER_CAMERA_SOURCE=auto

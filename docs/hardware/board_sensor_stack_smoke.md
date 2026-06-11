@@ -259,6 +259,46 @@ camera/OpenCV/v4l2/ROS camera topic，未发布 `/cmd_vel`，未启动底盘控�
   `non_black_ratio=0.0`、`edge_count=0`，不能用于路线关键帧、视觉定位、障碍识别或远程可视验收。
 - 本轮不构成运动、导航、里程计或送达闭环证据。
 
+## 2026-06-11 09:05 Camera Device Visibility Probe
+
+`sprints/2026.06.11_09-05_camera_device_visibility_probe/` 在真实上位机
+`root@192.168.1.11:37878` 上复查 PC 实时图传近黑根因。本轮只访问 Robot API
+camera readback、v4l2 摄像头枚举、OpenCV/ffmpeg 单帧抓取和 UVC 控制项；
+未触碰 `/cmd_vel`、`/api/base/manual`、Nav2、底盘串口或雷达 runtime。
+
+采用来源：
+
+- `docs/vendor/VENDOR_INDEX.md`：硬件事实必须本地可追溯；本轮不新增 WAVE ROVER
+  底盘、UART、电压或引脚结论。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`：vendor 上位机视频默认
+  `640x480`，但没有证明 Orange Pi 当前 USB 摄像头可见内容。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/cv_ctrl.py`：vendor USB camera 路径使用
+  OpenCV `VideoCapture(0)`；rober 现场仍必须按 `/dev/video*` 实测，不把 Raspberry Pi
+  上位机假设写成 Orange Pi 默认。
+
+真实上位机结论：
+
+- Robot API `/api/camera/health`：`status=ready`、`video_source=auto`、
+  `video_source_mode=auto`，上游 camera service 为 `http://127.0.0.1:8088`。
+- `v4l2-ctl --list-devices`：`/dev/video0` 是 `cedrus` platform 视频解码器；
+  `/dev/video1` 和 `/dev/video2` 属于 `USB Composite Device: DV20 USB`。
+- `/dev/video1` 是唯一真实 Video Capture 节点，支持 MJPG `1280x720/640x480/480x320/1920x1080`
+  和 YUYV `640x480/320x240`；`/dev/video2` 是 UVC metadata capture，不能作为 PC 图传源。
+- WebRTC camera service 的 auto selection 日志显示：尝试 `/dev/video0` 打不开，
+  随后选择 `/dev/video1`，因此当前近黑不是 auto 误选到 `/dev/video0` 或 `/dev/video2`。
+- `/dev/video1` OpenCV 单帧：`640x480`，`mean_gray=1.0`，
+  `nonblack_pixels_gt10=0`，`edge_pixels_canny=0`。
+- `/dev/video1` ffmpeg 单帧交叉验证：`640x480`，`mean_gray=1.0`，
+  `nonblack_pixels_gt10=0`，`edge_pixels_canny=0`。
+- 临时拉高 `brightness/gain/gamma/backlight_compensation` 后仍未改善：
+  `mean_gray≈0.0012`，`nonblack_pixels_gt10=0`，`edge_pixels_canny=0`。结束后
+  brightness/gain/backlight 已恢复；`gamma=17` 被驱动按 step 量化为 `20`。
+
+结论：当前 PC WebRTC 链路能传输真实帧，但真实摄像头输出本身近黑；
+`visible_content_proven=false`，不能作为路线关键帧、远程可视、视觉定位或障碍识别证据。
+下一步需要现场检查 DV20 摄像头镜头遮挡/保护膜/朝向/环境光/USB 摄像头本体，
+或更换一个已知可见画面的 USB UVC 摄像头后重跑同一 probe。
+
 下一步必须现场人工确认镜头盖/保护膜/遮挡、朝向、补光、USB 口和相机本体。
 
 ## 2026-06-10 WAVE ROVER Min Actuation Probe

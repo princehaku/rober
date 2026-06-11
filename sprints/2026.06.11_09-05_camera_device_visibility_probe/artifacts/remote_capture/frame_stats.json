@@ -1,0 +1,48 @@
+{
+  "schema": "trashbot.camera_device_visibility_probe.v1",
+  "created_at_ms": 1781140165420,
+  "devices": [
+    {
+      "device": "/dev/video0",
+      "exists": true,
+      "opened": false,
+      "read_success": false
+    },
+    {
+      "device": "/dev/video1",
+      "exists": true,
+      "opened": true,
+      "read_success": true,
+      "read_failures": 0,
+      "capture_width": 640.0,
+      "capture_height": 480.0,
+      "capture_fps": 30.0,
+      "frame_path": "/tmp/rober_camera_device_visibility_probe_20260611_0905/frames/dev_video1.jpg",
+      "height": 480,
+      "width": 640,
+      "channels": 3,
+      "mean_gray": 1.0,
+      "max_gray": 1,
+      "min_gray": 1,
+      "std_gray": 0.0,
+      "average_rgb_sum": 5.091666666666667,
+      "nonzero_pixels": 307200,
+      "nonblack_pixels_gt10": 0,
+      "nonblack_pixels_gt25": 0,
+      "nonblack_ratio_gt10": 0.0,
+      "nonblack_ratio_gt25": 0.0,
+      "saturated_pixels_gt245": 0,
+      "edge_pixels_canny": 0,
+      "file_size_bytes": 5647
+    },
+    {
+      "device": "/dev/video2",
+      "exists": true,
+      "opened": false,
+      "read_success": false
+    }
+  ],
+  "sends_commands": false,
+  "opens_base_uart": false,
+  "starts_nav2": false
+}

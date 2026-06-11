@@ -1,0 +1,9 @@
+  trashbot-local-webrtc-camera.service    loaded    active   running Trashbot LAN-only local WebRTC camera smoke
+  trashbot-upper-robot-api.service        loaded    active   running Trashbot unified upper robot API
+---files---
+-rw-r--r--  1 root root  856 Jun  3 02:11 trashbot-local-webrtc-camera.service
+-rw-r--r--  1 root root  836 Jun  3 03:08 trashbot-upper-robot-api.service
+drwxr-xr-x  2 root root 4096 Jun  5 01:43 trashbot-upper-robot-api.service.d
+---source-hash---
+f77e1b5ee942de322afdb5b4dd18df0a369e7e3c4be4c0c2b9ab9735f719f8f6  /root/rober/onboard/scripts/local_webrtc_camera_smoke.py
+e99e7d49de2a21ac5fb0a5121d8edf81684ec274396a3329b729614b875afd3a  /root/rober/onboard/scripts/upper_robot_api.py

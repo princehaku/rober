@@ -1,0 +1,10 @@
+2026-06-11T09:07:57+08:00
+cedrus (platform:cedrus):
+	/dev/video0
+	/dev/media0
+
+USB Composite Device: DV20 USB  (usb-5310000.usb-1):
+	/dev/video1
+	/dev/video2
+	/dev/media1
+

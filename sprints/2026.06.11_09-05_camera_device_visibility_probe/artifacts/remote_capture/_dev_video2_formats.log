@@ -1,0 +1,4 @@
+device=/dev/video2
+ioctl: VIDIOC_ENUM_FMT
+	Type: Video Capture
+

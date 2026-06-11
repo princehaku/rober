@@ -1,0 +1,29 @@
+[mjpeg @ 0xaaab22af07f0] EOI missing, emulating
+Input #0, video4linux2,v4l2, from '/dev/video1':
+  Duration: N/A, start: 205678.347514, bitrate: N/A
+  Stream #0:0: Video: mjpeg (Baseline), yuvj422p(pc, bt470bg/unknown/unknown), 640x480 [SAR 1:1 DAR 4:3], 30 fps, 30 tbr, 1000k tbn, 1000k tbc
+Stream mapping:
+  Stream #0:0 -> #0:0 (mjpeg (native) -> mjpeg (native))
+Press [q] to stop, [?] for help
+Output #0, image2, to '/frames/dev_video1_ffmpeg.jpg':
+  Metadata:
+    encoder         : Lavf58.76.100
+  Stream #0:0: Video: mjpeg, yuvj422p(pc, bt470bg/unknown/unknown, progressive), 640x480 [SAR 1:1 DAR 4:3], q=2-31, 200 kb/s, 30 fps, 30 tbn
+    Metadata:
+      encoder         : Lavc58.134.100 mjpeg
+    Side data:
+      cpb: bitrate max/min/avg: 0/0/200000 buffer size: 0 vbv_delay: N/A
+frame=    1 fps=0.0 q=1.6 size=N/A time=00:00:00.03 bitrate=N/A speed=3.33e+04x    frame=    1 fps=0.0 q=1.6 Lsize=N/A time=00:00:00.03 bitrate=N/A speed=0.243x    
+video:3kB audio:0kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+{
+  "path": "/frames/dev_video1_ffmpeg.jpg",
+  "exists": true,
+  "height": 480,
+  "width": 640,
+  "mean_gray": 1.0,
+  "max_gray": 1,
+  "min_gray": 1,
+  "nonblack_pixels_gt10": 0,
+  "edge_pixels_canny": 0,
+  "file_size_bytes": 2621
+}

@@ -1,0 +1,143 @@
+{
+  "device": "/dev/video1",
+  "mode": "temporary_brightness_gain_boost",
+  "before_all": {
+    "cmd": [
+      "v4l2-ctl",
+      "-d",
+      "/dev/video1",
+      "--all"
+    ],
+    "returncode": 0,
+    "stdout": "Driver Info:\n\tDriver name      : uvcvideo\n\tCard type        : USB Composite Device: DV20 USB \n\tBus info         : usb-5310000.usb-1\n\tDriver version   : 6.1.31\n\tCapabilities     : 0x84a00001\n\t\tVideo Capture\n\t\tMetadata Capture\n\t\tStreaming\n\t\tExtended Pix Format\n\t\tDevice Capabilities\n\tDevice Caps      : 0x04200001\n\t\tVideo Capture\n\t\tStreaming\n\t\tExtended Pix Format\nMedia Driver Info:\n\tDriver name      : uvcvideo\n\tModel            : USB Composite Device: DV20 USB \n\tSerial           : \n\tBus info         : usb-5310000.usb-1\n\tMedia version    : 6.1.31\n\tHardware revision: 0x00000100 (256)\n\tDriver version   : 6.1.31\nInterface Info:\n\tID               : 0x03000002\n\tType             : V4L Video\nEntity Info:\n\tID               : 0x00000001 (1)\n\tName             : USB Composite Device: DV20 USB \n\tFunction         : V4L2 I/O\n\tFlags            : default\n\tPad 0x01000007   : 0: Sink\n\t  Link 0x02000010: from remote pad 0x100000a of entity 'Extension 3' (Video Pixel Formatter): Data, Enabled, Immutable\nPriority: 2\nVideo input : 0 (Input 1: ok)\nFormat Video Capture:\n\tWidth/Height      : 640/480\n\tPixel Format      : 'MJPG' (Motion-JPEG)\n\tField             : None\n\tBytes per Line    : 0\n\tSize Image        : 4177920\n\tColorspace        : sRGB\n\tTransfer Function : Default (maps to sRGB)\n\tYCbCr/HSV Encoding: Default (maps to ITU-R 601)\n\tQuantization      : Default (maps to Full Range)\n\tFlags             : \nCrop Capability Video Capture:\n\tBounds      : Left 0, Top 0, Width 640, Height 480\n\tDefault     : Left 0, Top 0, Width 640, Height 480\n\tPixel Aspect: 1/1\nSelection Video Capture: crop_default, Left 0, Top 0, Width 640, Height 480, Flags: \nSelection Video Capture: crop_bounds, Left 0, Top 0, Width 640, Height 480, Flags: \nStreaming Parameters Video Capture:\n\tCapabilities     : timeperframe\n\tFrames per second: 30.000 (30/1)\n\tRead buffers     : 0\n\nUser Controls\n\n                     brightness 0x00980900 (int)    : min=-127 max=127 step=1 default=0 value=0\n                       contrast 0x00980901 (int)    : min=0 max=511 step=1 default=256 value=256\n                     saturation 0x00980902 (int)    : min=0 max=511 step=1 default=256 value=250\n                          gamma 0x00980910 (int)    : min=10 max=30 step=10 default=20 value=17\n                           gain 0x00980913 (int)    : min=1 max=7 step=1 default=4 value=4\n           power_line_frequency 0x00980918 (menu)   : min=0 max=2 default=0 value=0 (Disabled)\n\t\t\t\t0: Disabled\n\t\t\t\t1: 50 Hz\n\t\t\t\t2: 60 Hz\n      white_balance_temperature 0x0098091a (int)    : min=0 max=6500 step=1 default=4500 value=4500\n                      sharpness 0x0098091b (int)    : min=0 max=256 step=1 default=128 value=100\n         backlight_compensation 0x0098091c (int)    : min=0 max=255 step=1 default=0 value=0\n\nCamera Controls\n\n                  auto_exposure 0x009a0901 (menu)   : min=0 max=3 default=3 value=3 (Aperture Priority Mode)\n\t\t\t\t1: Manual Mode\n\t\t\t\t3: Aperture Priority Mode\n         exposure_time_absolute 0x009a0902 (int)    : min=80 max=100000 step=1 default=80 value=80 flags=inactive\n",
+    "stderr": ""
+  },
+  "set_results": [
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "-c",
+        "brightness=127"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "-c",
+        "gain=7"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "-c",
+        "gamma=30"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "-c",
+        "backlight_compensation=255"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "opened": true,
+  "read_failures": 0,
+  "read_success": true,
+  "frame_path": "/tmp/rober_camera_device_visibility_probe_20260611_0905/frames/dev_video1_boosted.jpg",
+  "mean_gray": 0.0011588541666666668,
+  "max_gray": 1,
+  "min_gray": 0,
+  "std_gray": 0.034022216619248466,
+  "average_rgb_sum": 3.0937955729166666,
+  "nonblack_pixels_gt10": 0,
+  "nonblack_pixels_gt25": 0,
+  "nonblack_ratio_gt10": 0.0,
+  "edge_pixels_canny": 0,
+  "file_size_bytes": 6713,
+  "restore_results": [
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "-c",
+        "brightness=0"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "-c",
+        "gain=4"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "-c",
+        "gamma=17"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "-c",
+        "backlight_compensation=0"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "after_restore_all": {
+    "cmd": [
+      "v4l2-ctl",
+      "-d",
+      "/dev/video1",
+      "--all"
+    ],
+    "returncode": 0,
+    "stdout": "Driver Info:\n\tDriver name      : uvcvideo\n\tCard type        : USB Composite Device: DV20 USB \n\tBus info         : usb-5310000.usb-1\n\tDriver version   : 6.1.31\n\tCapabilities     : 0x84a00001\n\t\tVideo Capture\n\t\tMetadata Capture\n\t\tStreaming\n\t\tExtended Pix Format\n\t\tDevice Capabilities\n\tDevice Caps      : 0x04200001\n\t\tVideo Capture\n\t\tStreaming\n\t\tExtended Pix Format\nMedia Driver Info:\n\tDriver name      : uvcvideo\n\tModel            : USB Composite Device: DV20 USB \n\tSerial           : \n\tBus info         : usb-5310000.usb-1\n\tMedia version    : 6.1.31\n\tHardware revision: 0x00000100 (256)\n\tDriver version   : 6.1.31\nInterface Info:\n\tID               : 0x03000002\n\tType             : V4L Video\nEntity Info:\n\tID               : 0x00000001 (1)\n\tName             : USB Composite Device: DV20 USB \n\tFunction         : V4L2 I/O\n\tFlags            : default\n\tPad 0x01000007   : 0: Sink\n\t  Link 0x02000010: from remote pad 0x100000a of entity 'Extension 3' (Video Pixel Formatter): Data, Enabled, Immutable\nPriority: 2\nVideo input : 0 (Input 1: ok)\nFormat Video Capture:\n\tWidth/Height      : 640/480\n\tPixel Format      : 'YUYV' (YUYV 4:2:2)\n\tField             : None\n\tBytes per Line    : 1280\n\tSize Image        : 614400\n\tColorspace        : sRGB\n\tTransfer Function : Rec. 709\n\tYCbCr/HSV Encoding: ITU-R 601\n\tQuantization      : Default (maps to Limited Range)\n\tFlags             : \nCrop Capability Video Capture:\n\tBounds      : Left 0, Top 0, Width 640, Height 480\n\tDefault     : Left 0, Top 0, Width 640, Height 480\n\tPixel Aspect: 1/1\nSelection Video Capture: crop_default, Left 0, Top 0, Width 640, Height 480, Flags: \nSelection Video Capture: crop_bounds, Left 0, Top 0, Width 640, Height 480, Flags: \nStreaming Parameters Video Capture:\n\tCapabilities     : timeperframe\n\tFrames per second: 22.000 (22/1)\n\tRead buffers     : 0\n\nUser Controls\n\n                     brightness 0x00980900 (int)    : min=-127 max=127 step=1 default=0 value=0\n                       contrast 0x00980901 (int)    : min=0 max=511 step=1 default=256 value=256\n                     saturation 0x00980902 (int)    : min=0 max=511 step=1 default=256 value=250\n                          gamma 0x00980910 (int)    : min=10 max=30 step=10 default=20 value=20\n                           gain 0x00980913 (int)    : min=1 max=7 step=1 default=4 value=4\n           power_line_frequency 0x00980918 (menu)   : min=0 max=2 default=0 value=0 (Disabled)\n\t\t\t\t0: Disabled\n\t\t\t\t1: 50 Hz\n\t\t\t\t2: 60 Hz\n      white_balance_temperature 0x0098091a (int)    : min=0 max=6500 step=1 default=4500 value=4500\n                      sharpness 0x0098091b (int)    : min=0 max=256 step=1 default=128 value=100\n         backlight_compensation 0x0098091c (int)    : min=0 max=255 step=1 default=0 value=0\n\nCamera Controls\n\n                  auto_exposure 0x009a0901 (menu)   : min=0 max=3 default=3 value=3 (Aperture Priority Mode)\n\t\t\t\t1: Manual Mode\n\t\t\t\t3: Aperture Priority Mode\n         exposure_time_absolute 0x009a0902 (int)    : min=80 max=100000 step=1 default=80 value=80 flags=inactive\n",
+    "stderr": ""
+  },
+  "sends_commands": false,
+  "opens_base_uart": false,
+  "starts_nav2": false
+}

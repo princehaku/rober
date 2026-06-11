@@ -1,0 +1,224 @@
+   270	            "path": str(path),
+   271	            "exists": path.exists(),
+   272	            "readable": os.access(path, os.R_OK),
+   273	            "writable": os.access(path, os.W_OK),
+   274	        }
+   275	        devices.append(item)
+   276	    return devices
+   277	
+   278	
+   279	def normalize_video_source(video_source: str) -> int | str:
+   280	    """显式 source 保持兼容：数字走 OpenCV index，路径/URL 按字符串传给后端。"""
+   281	    source = str(video_source).strip()
+   282	    return int(source) if source.isdigit() else source
+   283	
+   284	
+   285	def open_video_capture(cv2_module: Any, source: int | str) -> Any:
+   286	    """Linux video 节点显式走 V4L2 backend，避免 OpenCV 后端自动探测漂移。"""
+   287	    if hasattr(cv2_module, "CAP_V4L2") and (isinstance(source, int) or str(source).startswith("/dev/video")):
+   288	        return cv2_module.VideoCapture(source, cv2_module.CAP_V4L2)
+   289	    return cv2_module.VideoCapture(source)
+   290	
+   291	
+   292	def resolve_camera_source(
+   293	    video_source: str,
+   294	    cv2_module: Any,
+   295	    video_device_paths: list[str] | None = None,
+   296	    *,
+   297	    width: int,
+   298	    height: int,
+   299	    fps: int,
+   300	) -> tuple[int | str | None, dict[str, Any]]:
+   301	    """auto 模式逐个读首帧，避免 Orange Pi 平台视频节点被误当成 USB 摄像头。"""
+   302	    requested = str(video_source).strip()
+   303	    if requested.lower() not in ("", "auto", "autodetect"):
+   304	        selected = normalize_video_source(requested)
+   305	        return selected, {
+   306	            "mode": "explicit",
+   307	            "requested_source": requested,
+   308	            "selected_source": selected,
+   309	            "attempts": [],
+   310	        }
+   311	
+   312	    candidates = video_device_paths if video_device_paths is not None else [item["path"] for item in list_video_devices()]
+   313	    diagnostics: dict[str, Any] = {
+   314	        "mode": "auto",
+   315	        "requested_source": requested or "auto",
+   316	        "candidate_sources": list(candidates),
+   317	        "selected_source": None,
+   318	        "attempts": [],
+   319	    }
+   320	    for candidate in candidates:
+   321	        attempt: dict[str, Any] = {
+   322	            "source": candidate,
+   323	            "opened": False,
+   324	            "read_ok": False,
+   325	            "backend": None,
+   326	            "frame_shape": None,
+   327	            "error": None,
+   328	        }
+   329	        cap = None
+   330	        try:
+---
+   800	    closed_peer_stats: dict[str, Any] | None = None
+   801	    started_at_ms = now_ms()
+   802	
+   803	    class CameraTrack(VideoStreamTrack):
+   804	        """每个 peer 单独持有摄像头，第一版限制单连接来降低设备占用风险。"""
+   805	
+   806	        def __init__(self, peer_id: str, stats: dict[str, Any]) -> None:
+   807	            super().__init__()
+   808	            self.peer_id = peer_id
+   809	            self.stats = stats
+   810	            self._stopped = False
+   811	            source, source_selection = resolve_camera_source(
+   812	                args.video_source,
+   813	                cv2,
+   814	                width=args.width,
+   815	                height=args.height,
+   816	                fps=args.fps,
+   817	            )
+   818	            self.stats["source_selection"] = source_selection
+   819	            if source is None:
+   820	                self.stats["last_error"] = f"camera_auto_source_failed:{args.video_source}"
+   821	                self.stats["last_error_ts_ms"] = now_ms()
+   822	                raise RuntimeError(f"camera_auto_source_failed:{args.video_source}")
+   823	            self.cap = open_video_capture(cv2, source)
+   824	            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
+   825	            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+   826	            self.cap.set(cv2.CAP_PROP_FPS, args.fps)
+   827	            if not self.cap.isOpened():
+   828	                self.stats["last_error"] = f"camera_open_failed:{args.video_source}"
+   829	                self.stats["last_error_ts_ms"] = now_ms()
+   830	                raise RuntimeError(f"camera_open_failed:{args.video_source}")
+   831	            self.stats.update(
+   832	                {
+   833	                    "camera_opened": True,
+   834	                    "resolved_video_source": source,
+   835	                    "capture_backend": self.cap.getBackendName() if hasattr(self.cap, "getBackendName") else None,
+   836	                    "configured_width": args.width,
+   837	                    "configured_height": args.height,
+   838	                    "configured_fps": args.fps,
+   839	                    "actual_width": self.cap.get(cv2.CAP_PROP_FRAME_WIDTH),
+   840	                    "actual_height": self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
+---
+Jun 11 08:53:13 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 930, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139193285, "width": 640}
+Jun 11 08:53:14 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 945, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139194299, "width": 640}
+Jun 11 08:53:15 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 960, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139195306, "width": 640}
+Jun 11 08:53:16 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 975, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139196315, "width": 640}
+Jun 11 08:53:17 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 990, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139197326, "width": 640}
+Jun 11 08:53:18 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1005, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139198342, "width": 640}
+Jun 11 08:53:19 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1020, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139199360, "width": 640}
+Jun 11 08:53:20 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1035, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139200373, "width": 640}
+Jun 11 08:53:21 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1050, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139201380, "width": 640}
+Jun 11 08:53:22 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1065, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139202400, "width": 640}
+Jun 11 08:53:23 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1080, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139203410, "width": 640}
+Jun 11 08:53:24 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1095, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139204432, "width": 640}
+Jun 11 08:53:25 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1110, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139205441, "width": 640}
+Jun 11 08:53:26 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1125, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139206452, "width": 640}
+Jun 11 08:53:27 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1140, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139207461, "width": 640}
+Jun 11 08:53:28 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1155, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139208471, "width": 640}
+Jun 11 08:53:29 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1170, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139209483, "width": 640}
+Jun 11 08:53:30 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1185, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139210499, "width": 640}
+Jun 11 08:53:31 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1200, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139211519, "width": 640}
+Jun 11 08:53:32 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1215, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139212530, "width": 640}
+Jun 11 08:53:33 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1230, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139213539, "width": 640}
+Jun 11 08:53:34 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1245, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139214544, "width": 640}
+Jun 11 08:53:35 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1260, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139215552, "width": 640}
+Jun 11 08:53:36 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1275, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139216568, "width": 640}
+Jun 11 08:53:37 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1290, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139217590, "width": 640}
+Jun 11 08:53:38 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1305, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139218606, "width": 640}
+Jun 11 08:53:39 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1320, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139219622, "width": 640}
+Jun 11 08:53:40 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1335, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139220641, "width": 640}
+Jun 11 08:53:41 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1350, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139221653, "width": 640}
+Jun 11 08:53:42 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1365, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139222662, "width": 640}
+Jun 11 08:53:43 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1380, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139223828, "width": 640}
+Jun 11 08:53:44 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1395, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139224836, "width": 640}
+Jun 11 08:53:45 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1410, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139225846, "width": 640}
+Jun 11 08:53:46 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1425, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139226866, "width": 640}
+Jun 11 08:53:47 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1440, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139227876, "width": 640}
+Jun 11 08:53:48 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1455, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139228882, "width": 640}
+Jun 11 08:53:49 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1470, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139229891, "width": 640}
+Jun 11 08:53:50 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1485, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139230899, "width": 640}
+Jun 11 08:53:51 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1500, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139231915, "width": 640}
+Jun 11 08:53:52 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1515, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139232933, "width": 640}
+Jun 11 08:53:53 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1530, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139233947, "width": 640}
+Jun 11 08:53:54 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1545, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139234960, "width": 640}
+Jun 11 08:53:55 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1560, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139235971, "width": 640}
+Jun 11 08:53:56 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1575, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139236989, "width": 640}
+Jun 11 08:53:58 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1590, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139238005, "width": 640}
+Jun 11 08:53:59 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1605, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139239013, "width": 640}
+Jun 11 08:54:00 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1620, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139240023, "width": 640}
+Jun 11 08:54:01 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1635, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139241036, "width": 640}
+Jun 11 08:54:02 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1650, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139242048, "width": 640}
+Jun 11 08:54:03 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1665, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139243062, "width": 640}
+Jun 11 08:54:04 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1680, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139244075, "width": 640}
+Jun 11 08:54:05 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1695, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139245091, "width": 640}
+Jun 11 08:54:06 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1710, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139246103, "width": 640}
+Jun 11 08:54:07 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1725, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139247111, "width": 640}
+Jun 11 08:54:08 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1740, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139248119, "width": 640}
+Jun 11 08:54:09 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1755, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139249125, "width": 640}
+Jun 11 08:54:10 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1770, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139250134, "width": 640}
+Jun 11 08:54:11 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1785, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139251148, "width": 640}
+Jun 11 08:54:12 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1800, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139252157, "width": 640}
+Jun 11 08:54:13 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1815, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139253180, "width": 640}
+Jun 11 08:54:14 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1830, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139254195, "width": 640}
+Jun 11 08:54:15 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1845, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139255205, "width": 640}
+Jun 11 08:54:16 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1860, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139256225, "width": 640}
+Jun 11 08:54:17 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1875, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139257240, "width": 640}
+Jun 11 08:54:18 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1890, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139258248, "width": 640}
+Jun 11 08:54:19 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1905, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139259260, "width": 640}
+Jun 11 08:54:20 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1920, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139260279, "width": 640}
+Jun 11 08:54:21 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1935, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139261291, "width": 640}
+Jun 11 08:54:22 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1950, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139262307, "width": 640}
+Jun 11 08:54:23 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1965, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139263325, "width": 640}
+Jun 11 08:54:24 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1980, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139264335, "width": 640}
+Jun 11 08:54:25 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1995, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139265344, "width": 640}
+Jun 11 08:54:26 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2010, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139266354, "width": 640}
+Jun 11 08:54:27 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2025, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139267373, "width": 640}
+Jun 11 08:54:28 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2040, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139268395, "width": 640}
+Jun 11 08:54:29 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2055, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139269414, "width": 640}
+Jun 11 08:54:30 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2070, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139270438, "width": 640}
+Jun 11 08:54:31 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2085, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139271450, "width": 640}
+Jun 11 08:54:32 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2100, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139272464, "width": 640}
+Jun 11 08:54:33 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2115, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139273478, "width": 640}
+Jun 11 08:54:34 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2130, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139274490, "width": 640}
+Jun 11 08:54:35 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2145, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139275500, "width": 640}
+Jun 11 08:54:36 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2160, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139276508, "width": 640}
+Jun 11 08:54:37 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2175, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139277521, "width": 640}
+Jun 11 08:54:38 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2190, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139278545, "width": 640}
+Jun 11 08:54:39 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2205, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139279562, "width": 640}
+Jun 11 08:54:40 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2220, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139280572, "width": 640}
+Jun 11 08:54:41 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2235, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139281581, "width": 640}
+Jun 11 08:54:42 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2250, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139282589, "width": 640}
+Jun 11 08:54:43 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2265, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139283613, "width": 640}
+Jun 11 08:54:44 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2280, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139284638, "width": 640}
+Jun 11 08:54:45 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2295, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139285654, "width": 640}
+Jun 11 08:54:46 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2310, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139286669, "width": 640}
+Jun 11 08:54:47 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2325, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139287689, "width": 640}
+Jun 11 08:54:48 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2340, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139288712, "width": 640}
+Jun 11 08:54:49 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2355, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139289724, "width": 640}
+Jun 11 08:54:50 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2370, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139290735, "width": 640}
+Jun 11 08:54:51 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2385, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139291754, "width": 640}
+Jun 11 08:54:52 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2400, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139292763, "width": 640}
+Jun 11 08:54:53 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2415, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139293777, "width": 640}
+Jun 11 08:54:54 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2430, "height": 480, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "ts_ms": 1781139294783, "width": 640}
+Jun 11 08:54:55 op-z3-b6.home env[1172]: {"event": "camera_track_stopped", "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "stats": {"actual_fps": 22.0, "actual_height": 480.0, "actual_width": 640.0, "camera_opened": true, "camera_read_failures": 0, "capture_backend": "V4L2", "configured_fps": 15, "configured_height": 480, "configured_width": 640, "connection_state": "connected", "connection_state_ts_ms": 1781139130215, "created_ts_ms": 1781139128771, "frames_read": 2432, "ice_connection_state": "completed", "ice_connection_state_ts_ms": 1781139130197, "ice_gathering_state": "complete", "ice_gathering_state_ts_ms": 1781139130107, "last_frame_height": 480, "last_frame_pts": 7293000, "last_frame_ts_ms": 1781139294917, "last_frame_width": 640, "local_sdp_has_video": true, "local_sdp_type": "answer", "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "remote_sdp_candidate_count": 2, "remote_sdp_end_of_candidates": false, "remote_sdp_has_video": true, "remote_sdp_type": "offer", "remote_sdp_video_direction": "a=recvonly", "resolved_video_source": "/dev/video1", "signaling_state": "stable", "signaling_state_ts_ms": 1781139130102, "source_selection": {"attempts": [{"backend": null, "error": null, "frame_shape": null, "opened": false, "read_ok": false, "source": "/dev/video0"}, {"backend": "V4L2", "error": null, "frame_shape": [480, 640, 3], "opened": true, "read_ok": true, "source": "/dev/video1"}], "candidate_sources": ["/dev/video0", "/dev/video1", "/dev/video2"], "mode": "auto", "requested_source": "auto", "selected_source": "/dev/video1"}, "track_stopped": true, "track_stopped_ts_ms": 1781139294979}, "ts_ms": 1781139295003}
+Jun 11 08:54:55 op-z3-b6.home env[1172]: {"event": "peer_ice_connection_state", "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "state": "closed", "ts_ms": 1781139295008}
+Jun 11 08:54:55 op-z3-b6.home env[1172]: {"event": "peer_connection_state", "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "state": "closed", "ts_ms": 1781139295008}
+Jun 11 08:54:55 op-z3-b6.home env[1172]: {"cleanup": {"close_error": null, "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "stopped_tracks": [], "track_stop_errors": []}, "event": "peer_closed", "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "stats": {"actual_fps": 22.0, "actual_height": 480.0, "actual_width": 640.0, "camera_opened": true, "camera_read_failures": 0, "capture_backend": "V4L2", "configured_fps": 15, "configured_height": 480, "configured_width": 640, "connection_state": "closed", "connection_state_ts_ms": 1781139295008, "created_ts_ms": 1781139128771, "frames_read": 2432, "ice_connection_state": "closed", "ice_connection_state_ts_ms": 1781139295008, "ice_gathering_state": "complete", "ice_gathering_state_ts_ms": 1781139130107, "last_frame_height": 480, "last_frame_pts": 7293000, "last_frame_ts_ms": 1781139294917, "last_frame_width": 640, "local_sdp_has_video": true, "local_sdp_type": "answer", "peer_id": "07a24d740a7c4f7a8b6e344b7a851e74", "remote_sdp_candidate_count": 2, "remote_sdp_end_of_candidates": false, "remote_sdp_has_video": true, "remote_sdp_type": "offer", "remote_sdp_video_direction": "a=recvonly", "resolved_video_source": "/dev/video1", "signaling_state": "closed", "signaling_state_ts_ms": 1781139295007, "source_selection": {"attempts": [{"backend": null, "error": null, "frame_shape": null, "opened": false, "read_ok": false, "source": "/dev/video0"}, {"backend": "V4L2", "error": null, "frame_shape": [480, 640, 3], "opened": true, "read_ok": true, "source": "/dev/video1"}], "candidate_sources": ["/dev/video0", "/dev/video1", "/dev/video2"], "mode": "auto", "requested_source": "auto", "selected_source": "/dev/video1"}, "track_stopped": true, "track_stopped_ts_ms": 1781139294979}, "ts_ms": 1781139295011}
+Jun 11 09:00:29 op-z3-b6.home env[1172]: {"event": "offer_received", "peer_id": "77b984e67f4645808d09258a3b585c50", "remote_sdp_has_video": true, "ts_ms": 1781139629330}
+Jun 11 09:00:29 op-z3-b6.home env[1172]: [ WARN:0@204924.302] global cap.cpp:204 open VIDEOIO(V4L2): backend is generally available but can't be used to capture by name
+Jun 11 09:00:29 op-z3-b6.home env[1172]: {"event": "camera_track_opened", "peer_id": "77b984e67f4645808d09258a3b585c50", "stats": {"actual_fps": 22.0, "actual_height": 480.0, "actual_width": 640.0, "camera_opened": true, "camera_read_failures": 0, "capture_backend": "V4L2", "configured_fps": 15, "configured_height": 480, "configured_width": 640, "connection_state": "new", "created_ts_ms": 1781139629330, "frames_read": 0, "ice_connection_state": "new", "ice_gathering_state": "new", "peer_id": "77b984e67f4645808d09258a3b585c50", "remote_sdp_candidate_count": 2, "remote_sdp_end_of_candidates": false, "remote_sdp_has_video": true, "remote_sdp_type": "offer", "remote_sdp_video_direction": "a=recvonly", "resolved_video_source": "/dev/video1", "signaling_state": "stable", "source_selection": {"attempts": [{"backend": null, "error": null, "frame_shape": null, "opened": false, "read_ok": false, "source": "/dev/video0"}, {"backend": "V4L2", "error": null, "frame_shape": [480, 640, 3], "opened": true, "read_ok": true, "source": "/dev/video1"}], "candidate_sources": ["/dev/video0", "/dev/video1", "/dev/video2"], "mode": "auto", "requested_source": "auto", "selected_source": "/dev/video1"}, "track_stopped": false}, "ts_ms": 1781139629565}
+Jun 11 09:00:30 op-z3-b6.home env[1172]: {"event": "offer_answered", "local_sdp_has_video": true, "peer_id": "77b984e67f4645808d09258a3b585c50", "ts_ms": 1781139630600}
+Jun 11 09:00:30 op-z3-b6.home env[1172]: {"event": "peer_ice_connection_state", "peer_id": "77b984e67f4645808d09258a3b585c50", "state": "checking", "ts_ms": 1781139630604}
+Jun 11 09:00:30 op-z3-b6.home env[1172]: {"event": "peer_connection_state", "peer_id": "77b984e67f4645808d09258a3b585c50", "state": "connecting", "ts_ms": 1781139630604}
+Jun 11 09:00:30 op-z3-b6.home env[1172]: {"event": "peer_ice_connection_state", "peer_id": "77b984e67f4645808d09258a3b585c50", "state": "completed", "ts_ms": 1781139630710}
+Jun 11 09:00:30 op-z3-b6.home env[1172]: {"event": "peer_connection_state", "peer_id": "77b984e67f4645808d09258a3b585c50", "state": "connected", "ts_ms": 1781139630729}
+Jun 11 09:00:30 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 1, "height": 480, "peer_id": "77b984e67f4645808d09258a3b585c50", "ts_ms": 1781139630901, "width": 640}
+Jun 11 09:00:30 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 2, "height": 480, "peer_id": "77b984e67f4645808d09258a3b585c50", "ts_ms": 1781139630976, "width": 640}
+Jun 11 09:00:31 op-z3-b6.home env[1172]: {"event": "camera_frame_encoded", "frames_read": 3, "height": 480, "peer_id": "77b984e67f4645808d09258a3b585c50", "ts_ms": 1781139631044, "width": 640}
+Jun 11 09:00:31 op-z3-b6.home env[1172]: {"event": "camera_track_stopped", "peer_id": "77b984e67f4645808d09258a3b585c50", "stats": {"actual_fps": 22.0, "actual_height": 480.0, "actual_width": 640.0, "camera_opened": true, "camera_read_failures": 0, "capture_backend": "V4L2", "configured_fps": 15, "configured_height": 480, "configured_width": 640, "connection_state": "connected", "connection_state_ts_ms": 1781139630729, "created_ts_ms": 1781139629330, "frames_read": 13, "ice_connection_state": "completed", "ice_connection_state_ts_ms": 1781139630710, "ice_gathering_state": "complete", "ice_gathering_state_ts_ms": 1781139630598, "last_frame_height": 480, "last_frame_pts": 36000, "last_frame_ts_ms": 1781139631819, "last_frame_width": 640, "local_sdp_has_video": true, "local_sdp_type": "answer", "peer_id": "77b984e67f4645808d09258a3b585c50", "remote_sdp_candidate_count": 2, "remote_sdp_end_of_candidates": false, "remote_sdp_has_video": true, "remote_sdp_type": "offer", "remote_sdp_video_direction": "a=recvonly", "resolved_video_source": "/dev/video1", "signaling_state": "stable", "signaling_state_ts_ms": 1781139630593, "source_selection": {"attempts": [{"backend": null, "error": null, "frame_shape": null, "opened": false, "read_ok": false, "source": "/dev/video0"}, {"backend": "V4L2", "error": null, "frame_shape": [480, 640, 3], "opened": true, "read_ok": true, "source": "/dev/video1"}], "candidate_sources": ["/dev/video0", "/dev/video1", "/dev/video2"], "mode": "auto", "requested_source": "auto", "selected_source": "/dev/video1"}, "track_stopped": true, "track_stopped_ts_ms": 1781139631881}, "ts_ms": 1781139631916}
+Jun 11 09:00:31 op-z3-b6.home env[1172]: {"event": "peer_ice_connection_state", "peer_id": "77b984e67f4645808d09258a3b585c50", "state": "closed", "ts_ms": 1781139631921}
+Jun 11 09:00:31 op-z3-b6.home env[1172]: {"event": "peer_connection_state", "peer_id": "77b984e67f4645808d09258a3b585c50", "state": "closed", "ts_ms": 1781139631922}
+Jun 11 09:00:31 op-z3-b6.home env[1172]: {"cleanup": {"close_error": null, "peer_id": "77b984e67f4645808d09258a3b585c50", "stopped_tracks": [], "track_stop_errors": []}, "event": "peer_closed", "peer_id": "77b984e67f4645808d09258a3b585c50", "stats": {"actual_fps": 22.0, "actual_height": 480.0, "actual_width": 640.0, "camera_opened": true, "camera_read_failures": 0, "capture_backend": "V4L2", "configured_fps": 15, "configured_height": 480, "configured_width": 640, "connection_state": "closed", "connection_state_ts_ms": 1781139631922, "created_ts_ms": 1781139629330, "frames_read": 13, "ice_connection_state": "closed", "ice_connection_state_ts_ms": 1781139631921, "ice_gathering_state": "complete", "ice_gathering_state_ts_ms": 1781139630598, "last_frame_height": 480, "last_frame_pts": 36000, "last_frame_ts_ms": 1781139631819, "last_frame_width": 640, "local_sdp_has_video": true, "local_sdp_type": "answer", "peer_id": "77b984e67f4645808d09258a3b585c50", "remote_sdp_candidate_count": 2, "remote_sdp_end_of_candidates": false, "remote_sdp_has_video": true, "remote_sdp_type": "offer", "remote_sdp_video_direction": "a=recvonly", "resolved_video_source": "/dev/video1", "signaling_state": "closed", "signaling_state_ts_ms": 1781139631920, "source_selection": {"attempts": [{"backend": null, "error": null, "frame_shape": null, "opened": false, "read_ok": false, "source": "/dev/video0"}, {"backend": "V4L2", "error": null, "frame_shape": [480, 640, 3], "opened": true, "read_ok": true, "source": "/dev/video1"}], "candidate_sources": ["/dev/video0", "/dev/video1", "/dev/video2"], "mode": "auto", "requested_source": "auto", "selected_source": "/dev/video1"}, "track_stopped": true, "track_stopped_ts_ms": 1781139631881}, "ts_ms": 1781139631924}

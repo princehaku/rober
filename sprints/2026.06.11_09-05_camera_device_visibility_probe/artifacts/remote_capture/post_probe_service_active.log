@@ -1,0 +1,4 @@
+active
+active
+LISTEN 0      128          0.0.0.0:8088       0.0.0.0:*    users:(("python3",pid=1172,fd=6))    
+LISTEN 0      128          0.0.0.0:8787       0.0.0.0:*    users:(("python3",pid=238873,fd=6))  
