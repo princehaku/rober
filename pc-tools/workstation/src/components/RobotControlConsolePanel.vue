@@ -1240,85 +1240,87 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <form class="robot-quick-connect" @submit.prevent="refreshConsole">
-      <label>
-        <span>小车地址</span>
-        <input v-model="robotApiBaseUrl" name="robotApiBaseUrl" placeholder="http://192.168.x.x:8787">
-      </label>
-      <button class="secondary" type="submit" :disabled="loading">连接/刷新</button>
-      <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
-    </form>
+    <div class="simple-user-console" data-testid="pc-simple-user-first-screen">
+      <form class="robot-quick-connect" @submit.prevent="refreshConsole">
+        <label>
+          <span>小车地址</span>
+          <input v-model="robotApiBaseUrl" name="robotApiBaseUrl" placeholder="http://192.168.x.x:8787">
+        </label>
+        <button class="secondary" type="submit" :disabled="loading">连接/刷新</button>
+        <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
+      </form>
 
-    <div v-if="error" class="notice" role="alert">
-      {{ error }}；安全锁定保持不变。
-    </div>
+      <div v-if="error" class="notice" role="alert">
+        {{ error }}；安全锁定保持不变。
+      </div>
 
-    <div class="robot-console-grid" data-smoke-scope="simple-robot-control-first-screen">
-      <article class="snapshot-panel">
-        <h3>小车连接</h3>
-        <div class="simple-status-row">
-          <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
-          <span class="muted">{{ robotConnectionSummary.hint }}</span>
-        </div>
-        <p class="panel-note">连接/刷新</p>
-      </article>
+      <div class="robot-console-grid" data-smoke-scope="simple-robot-control-first-screen">
+        <article class="snapshot-panel">
+          <h3>小车连接</h3>
+          <div class="simple-status-row">
+            <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
+            <span class="muted">{{ robotConnectionSummary.hint }}</span>
+          </div>
+          <p class="panel-note">连接/刷新</p>
+        </article>
 
-      <article class="snapshot-panel">
-        <h3>实时画面</h3>
-        <div class="panel-action-row">
-          <button type="button" :disabled="!canStartPreview" @click="startPreview">打开画面</button>
-          <button type="button" :disabled="!canStopPreview" @click="stopPreview">关闭画面</button>
-          <span class="status-chip" :data-state="cameraSummary.state">{{ cameraSummary.state }}</span>
-        </div>
-        <video
-          ref="previewVideo"
-          data-testid="robot-camera-preview-video"
-          autoplay
-          muted
-          playsinline
-          @loadedmetadata="syncPreviewVideoElementDiagnostics"
-          @loadeddata="syncPreviewVideoElementDiagnostics"
-          @playing="syncPreviewVideoElementDiagnostics"
-          @resize="syncPreviewVideoElementDiagnostics"
-        />
-        <p class="panel-note">{{ cameraSummary.hint }}</p>
-      </article>
+        <article class="snapshot-panel">
+          <h3>实时画面</h3>
+          <div class="panel-action-row">
+            <button type="button" :disabled="!canStartPreview" @click="startPreview">打开画面</button>
+            <button type="button" :disabled="!canStopPreview" @click="stopPreview">关闭画面</button>
+            <span class="status-chip" :data-state="cameraSummary.state">{{ cameraSummary.state }}</span>
+          </div>
+          <video
+            ref="previewVideo"
+            data-testid="robot-camera-preview-video"
+            autoplay
+            muted
+            playsinline
+            @loadedmetadata="syncPreviewVideoElementDiagnostics"
+            @loadeddata="syncPreviewVideoElementDiagnostics"
+            @playing="syncPreviewVideoElementDiagnostics"
+            @resize="syncPreviewVideoElementDiagnostics"
+          />
+          <p class="panel-note">{{ cameraSummary.hint }}</p>
+        </article>
 
-      <article class="snapshot-panel">
-        <h3>雷达</h3>
-        <div class="panel-action-row">
-          <button type="button" :disabled="loading || radarRefreshPending || !robotApiBaseUrl.trim()" @click="refreshRadarProof">
-            刷新雷达
-          </button>
-          <span class="status-chip" :data-state="radarSummary.state">{{ radarSummary.state }}</span>
-        </div>
-        <p class="panel-note">{{ radarSummary.hint }}</p>
-      </article>
+        <article class="snapshot-panel">
+          <h3>雷达</h3>
+          <div class="panel-action-row">
+            <button type="button" :disabled="loading || radarRefreshPending || !robotApiBaseUrl.trim()" @click="refreshRadarProof">
+              刷新雷达
+            </button>
+            <span class="status-chip" :data-state="radarSummary.state">{{ radarSummary.state }}</span>
+          </div>
+          <p class="panel-note">{{ radarSummary.hint }}</p>
+        </article>
 
-      <article class="snapshot-panel">
-        <h3>地图</h3>
-        <div class="panel-action-row wrap-actions">
-          <button type="button" :disabled="loading || mapRefreshPending || !robotApiBaseUrl.trim()" @click="refreshMapProof">
-            刷新地图
-          </button>
-          <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
-            地图列表
-          </button>
-          <span class="status-chip" :data-state="mapSummary.state">{{ mapSummary.state }}</span>
-          <span class="status-chip" :data-state="mapLifecycleSummary.state">{{ mapLifecycleSummary.state }}</span>
-        </div>
-        <p class="panel-note">{{ mapSummary.hint }}</p>
-        <p class="panel-note">{{ mapLifecycleSummary.hint }}</p>
-      </article>
+        <article class="snapshot-panel">
+          <h3>地图</h3>
+          <div class="panel-action-row wrap-actions">
+            <button type="button" :disabled="loading || mapRefreshPending || !robotApiBaseUrl.trim()" @click="refreshMapProof">
+              刷新地图
+            </button>
+            <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
+              地图列表
+            </button>
+            <span class="status-chip" :data-state="mapSummary.state">{{ mapSummary.state }}</span>
+            <span class="status-chip" :data-state="mapLifecycleSummary.state">{{ mapLifecycleSummary.state }}</span>
+          </div>
+          <p class="panel-note">{{ mapSummary.hint }}</p>
+          <p class="panel-note">{{ mapLifecycleSummary.hint }}</p>
+        </article>
 
-      <article class="snapshot-panel">
-        <h3>移动/导航</h3>
-        <div class="panel-action-row wrap-actions">
-          <span class="status-chip" :data-state="plainMotionSummary.state">{{ plainMotionSummary.state }}</span>
-          <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
-        </div>
-        <p class="panel-note">{{ plainMotionSummary.hint }}</p>
-      </article>
+        <article class="snapshot-panel">
+          <h3>移动/导航</h3>
+          <div class="panel-action-row wrap-actions">
+            <span class="status-chip" :data-state="plainMotionSummary.state">{{ plainMotionSummary.state }}</span>
+            <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
+          </div>
+          <p class="panel-note">{{ plainMotionSummary.hint }}</p>
+        </article>
+      </div>
     </div>
 
     <details class="advanced-details">

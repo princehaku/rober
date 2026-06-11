@@ -1,4 +1,5 @@
 import { flushPromises, mount } from "@vue/test-utils";
+import type { VueWrapper } from "@vue/test-utils";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +9,7 @@ import { PROOF_FLAGS } from "../src/shared/contracts";
 
 const SPRINT_ARTIFACT_DIR = resolve(
   process.cwd(),
-  "../../sprints/2026.06.11_08-20_pc_plain_user_home_second_restore/artifacts",
+  "../../sprints/2026.06.11_10-30_pc_simple_user_interface_restore/artifacts",
 );
 
 const DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS = [
@@ -21,6 +22,11 @@ const DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS = [
   "/cmd_vel",
   "/api/base/manual",
   "可点动",
+  "task_id",
+  "O6",
+  "O7",
+  "Mock",
+  "field manifest",
 ] as const;
 
 const fixtures: Record<string, unknown> = {
@@ -3023,6 +3029,14 @@ function writePlainHomeSmokeArtifact(firstScreenText: string, advancedText: stri
   );
 }
 
+function visiblePlainHomeText(wrapper: VueWrapper): string {
+  // Vue Test Utils 会把关闭的 details 文本也算进 wrapper.text()；这里显式拼默认可见首屏。
+  return [
+    wrapper.find(".topbar").text(),
+    wrapper.find(".simple-user-console").text(),
+  ].join("\n");
+}
+
 describe("App", () => {
   afterEach(() => {
     // 清理全局 fetch，避免后续用例误用上一轮 API fixture。
@@ -3087,7 +3101,8 @@ describe("App", () => {
 
     const firstScreenCards = wrapper.findAll(".robot-console-grid > .snapshot-panel");
     expect(firstScreenCards).toHaveLength(5);
-    const firstScreenText = wrapper.find(".robot-console-grid").text();
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("Rober 小车控制台");
     expect(firstScreenText).toContain("小车连接");
     expect(firstScreenText).toContain("实时画面");
     expect(firstScreenText).toContain("雷达");
@@ -3255,7 +3270,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    const firstScreenText = wrapper.find(".robot-console-grid").text();
+    const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("刷新雷达");
     expect(firstScreenText).toContain("刷新地图");
     expect(firstScreenText).toContain("地图列表");
@@ -3286,9 +3301,9 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find(".robot-console-grid").text()).toContain("已刷新");
-    expect(wrapper.find(".robot-console-grid").text()).not.toContain("scan 可见");
-    expect(wrapper.find(".robot-console-grid").text()).not.toContain("tf 可见");
+    expect(visiblePlainHomeText(wrapper)).toContain("已刷新");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("scan 可见");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("tf 可见");
     expect(wrapper.find("details").text()).toContain("scan_once_observed");
     expect(wrapper.find("details").text()).toContain("scan_hz_observed");
     expect(wrapper.find("details").text()).toContain("tf_observed");
@@ -3309,7 +3324,7 @@ describe("App", () => {
     await wrapper.findAll("button").find((button) => button.text() === "启动雷达（高级）")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find(".robot-console-grid").text()).not.toContain("启动雷达");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("启动雷达");
     expect(wrapper.find("details").text()).toContain("start:lifecycle_forwarded");
     expect(wrapper.find("details").text()).toContain("/api/radar/start");
     expect(wrapper.find("details").text()).toContain("dry_run_stub");
@@ -3328,9 +3343,9 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find(".robot-console-grid").text()).toContain("已刷新");
-    expect(wrapper.find(".robot-console-grid").text()).not.toContain("map 可见");
-    expect(wrapper.find(".robot-console-grid").text()).not.toContain("evidence 可见");
+    expect(visiblePlainHomeText(wrapper)).toContain("已刷新");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("map 可见");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("evidence 可见");
     expect(wrapper.find("details").text()).toContain("map_once_observed");
     expect(wrapper.find("details").text()).toContain("map_file_observed");
     expect(wrapper.find("details").text()).toContain("map_metadata_observed");
@@ -3342,10 +3357,10 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find(".robot-console-grid").text()).not.toContain("路径可生成");
-    expect(wrapper.find(".robot-console-grid").text()).not.toContain("检查已返回；不会发车。");
-    expect(wrapper.find(".robot-console-grid").text()).not.toContain("检查路径");
-    expect(wrapper.find(".robot-console-grid").text()).not.toContain("path_generation_succeeded");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("路径可生成");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("检查已返回；不会发车。");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("检查路径");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("path_generation_succeeded");
     expect(wrapper.find("details").text()).toContain("/api/nav2/proof/refresh");
     expect(wrapper.find("details").text()).toContain("nav2_no_motion_path_generation_runtime_observed");
     expect(wrapper.find("details").text()).toContain("post_timeout_latest_readback_loaded");
@@ -3365,7 +3380,7 @@ describe("App", () => {
     await navGoalPreflightForm?.trigger("submit");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find(".robot-console-grid").text()).not.toContain("导航目标预检");
+    expect(visiblePlainHomeText(wrapper)).not.toContain("导航目标预检");
     expect(wrapper.find("details").text()).toContain("preflight_rejected");
     expect(wrapper.find("details").text()).toContain("operator_report_preflight_required");
     expect(wrapper.find("details").text()).toContain("/api/localize/proof/latest");

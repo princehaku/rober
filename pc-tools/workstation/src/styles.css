@@ -316,6 +316,18 @@ h3 {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 }
 
+.simple-user-console {
+  /* 这个作用域只承载普通用户首屏，测试会用它隔离关闭的高级诊断文本。 */
+  border: 1px solid #d7dee6;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfd;
+}
+
+.simple-user-console .robot-quick-connect {
+  margin-bottom: 12px;
+}
+
 .simple-status-row,
 .panel-action-row,
 .locked-summary {
