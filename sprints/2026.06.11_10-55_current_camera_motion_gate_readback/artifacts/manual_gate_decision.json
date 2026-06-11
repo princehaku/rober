@@ -1,0 +1,101 @@
+{
+  "schema": "trashbot.sprint.current_camera_motion_gate_readback.v1",
+  "generated_at": "2026-06-11T10:48:14+08:00",
+  "nonzero_motion_executed": false,
+  "stop_executed": false,
+  "direct_base_manual_called": false,
+  "cmd_vel_published": false,
+  "dev_ttyS5_written_by_this_run": false,
+  "jog_decision": "not_attempted",
+  "jog_reject_reasons": [
+    "safe_to_control_false",
+    "primary_actions_enabled_false",
+    "visible_content_proven_false",
+    "external_video_recorded_false",
+    "wheel_feedback_lr_nonzero_proven_false",
+    "physical_motion_lidar_delta_proven_false",
+    "delivery_success_false",
+    "radar_scan_continuity_not_observed"
+  ],
+  "operator_report": {
+    "status": "ready_for_execution",
+    "operator_present": true,
+    "physical_clearance_confirmed": true,
+    "emergency_stop_ready": true,
+    "observed_motion": false,
+    "observed_stop": true,
+    "structured_hil_claims": {
+      "camera_artifacts_ref": "not_attached_no_motion_smoke",
+      "delivery_success": false,
+      "external_video_recorded": false,
+      "external_video_ref": "not_recorded_no_motion_smoke",
+      "normalization": {
+        "material_only": true,
+        "missing_or_invalid_bool_fields": [],
+        "provided_fields": [
+          "external_video_recorded",
+          "visible_content_proven",
+          "wheel_feedback_lr_nonzero_proven",
+          "physical_motion_lidar_delta_proven",
+          "real_route_map_proven",
+          "delivery_success",
+          "external_video_ref",
+          "camera_artifacts_ref",
+          "wheel_feedback_ref",
+          "scan_delta_ref",
+          "route_map_ref",
+          "site_state"
+        ],
+        "source": "top_level_fields_or_structured_hil_claims",
+        "source_fields": [
+          "external_video_recorded",
+          "visible_content_proven",
+          "wheel_feedback_lr_nonzero_proven",
+          "physical_motion_lidar_delta_proven",
+          "real_route_map_proven",
+          "delivery_success",
+          "external_video_ref",
+          "camera_artifacts_ref",
+          "wheel_feedback_ref",
+          "scan_delta_ref",
+          "route_map_ref",
+          "site_state"
+        ],
+        "top_level_delivery_success_forced_false": true
+      },
+      "physical_motion_lidar_delta_proven": false,
+      "real_route_map_proven": false,
+      "route_map_ref": "not_attached_no_motion_smoke",
+      "scan_delta_ref": "not_attached_no_motion_smoke",
+      "site_state": "pc_operator_report_no_motion_smoke",
+      "visible_content_proven": false,
+      "wheel_feedback_lr_nonzero_proven": false,
+      "wheel_feedback_ref": "not_attached_no_motion_smoke"
+    }
+  },
+  "base": {
+    "port": "/dev/ttyS5",
+    "baudrate": 115200,
+    "t1001_observed": true,
+    "readback_sends_commands": true,
+    "sends_motion_commands": false,
+    "safe_to_control": false
+  },
+  "camera": {
+    "device": "/dev/video1",
+    "ok": true,
+    "width": 640,
+    "height": 480,
+    "mean_luma": 0.00103515625,
+    "nonblack_ratio_gt20": 0.0,
+    "near_black": true
+  },
+  "radar": {
+    "scan_status": "fresh_scan_proof_observed",
+    "blocked_reasons": [
+      "scan_continuity_not_observed"
+    ],
+    "sends_motion_commands": false,
+    "safe_to_control": false
+  }
+}

@@ -1,0 +1,125 @@
+captured_at=2026-06-11T10:45:33+08:00
+hostname=op-z3-b6.home
+kernel=Linux op-z3-b6.home 6.1.31-sun50iw9 #1.0.4 SMP Thu Jul 11 16:37:41 CST 2024 aarch64 aarch64 aarch64 GNU/Linux
+
+[systemctl is-active]
+trashbot-upper-robot-api.service=active
+rc=0
+rober-upper-robot-api.service=inactive
+rc=3
+rober-lidar.service=inactive
+rc=3
+trashbot-lidar.service=inactive
+rc=3
+
+[matching services]
+  trashbot-local-webrtc-camera.service    loaded    active   running Trashbot LAN-only local WebRTC camera smoke
+  trashbot-upper-robot-api.service        loaded    active   running Trashbot unified upper robot API
+
+[trashbot-upper status]
+● trashbot-upper-robot-api.service - Trashbot unified upper robot API
+     Loaded: loaded (/etc/systemd/system/trashbot-upper-robot-api.service; enabled; vendor preset: enabled)
+    Drop-In: /etc/systemd/system/trashbot-upper-robot-api.service.d
+             └─20-lidar-scan-proof-runtime.conf
+     Active: active (running) since Thu 2026-06-11 08:29:20 CST; 2h 16min ago
+       Docs: file:/root/rober/docs/interfaces/o7_upper_robot_api.md
+   Main PID: 238873 (python3)
+      Tasks: 3 (limit: 2204)
+     Memory: 69.3M
+        CPU: 15min 21.240s
+     CGroup: /system.slice/trashbot-upper-robot-api.service
+             └─238873 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+
+Jun 11 08:29:20 op-z3-b6.home systemd[1]: Started Trashbot unified upper robot API.
+Jun 11 08:29:21 op-z3-b6.home env[238873]: {"event": "upper_robot_api_started", "host": "0.0.0.0", "port": 8787}
+
+[ss listening]
+Netid State  Recv-Q Send-Q                     Local Address:Port  Peer Address:PortProcess                                     
+udp   UNCONN 0      0                           192.168.1.11:58958      0.0.0.0:*    users:(("task_orchestrat",pid=89714,fd=18))
+udp   UNCONN 0      0                           192.168.1.11:44661      0.0.0.0:*    users:(("map_recorder",pid=90726,fd=18))   
+udp   UNCONN 0      0                                0.0.0.0:55999      0.0.0.0:*    users:(("waypoint_manage",pid=95878,fd=17))
+udp   UNCONN 0      0                                0.0.0.0:34541      0.0.0.0:*    users:(("waypoint_manage",pid=90724,fd=17))
+udp   UNCONN 0      0                           192.168.1.11:55037      0.0.0.0:*    users:(("waypoint_manage",pid=90724,fd=18))
+udp   UNCONN 0      0                           192.168.1.11:54039      0.0.0.0:*    users:(("task_orchestrat",pid=90730,fd=18))
+udp   UNCONN 0      0                                0.0.0.0:39762      0.0.0.0:*    users:(("waypoint_manage",pid=89708,fd=17))
+udp   UNCONN 0      0                           192.168.1.11:59225      0.0.0.0:*    users:(("waypoint_manage",pid=89708,fd=18))
+udp   UNCONN 0      0                                0.0.0.0:51076      0.0.0.0:*    users:(("map_recorder",pid=89710,fd=17))   
+udp   UNCONN 0      0                                0.0.0.0:41892      0.0.0.0:*    users:(("map_recorder",pid=90726,fd=17))   
+udp   UNCONN 0      0                           192.168.1.11:58316      0.0.0.0:*    users:(("task_orchestrat",pid=95884,fd=18))
+udp   UNCONN 0      0                           192.168.1.11:51204      0.0.0.0:*    users:(("map_recorder",pid=89710,fd=18))   
+udp   UNCONN 0      0                           192.168.1.11:38928      0.0.0.0:*    users:(("python3",pid=170272,fd=18))       
+udp   UNCONN 0      0                                0.0.0.0:53         0.0.0.0:*    users:(("dnsmasq",pid=1275,fd=4))          
+udp   UNCONN 0      0                                0.0.0.0:46179      0.0.0.0:*    users:(("task_orchestrat",pid=90730,fd=17))
+udp   UNCONN 0      0                                0.0.0.0:40145      0.0.0.0:*    users:(("task_orchestrat",pid=89714,fd=17))
+udp   UNCONN 0      0                                0.0.0.0:7400       0.0.0.0:*    users:(("python3",pid=170272,fd=13))       
+udp   UNCONN 0      0                                0.0.0.0:7400       0.0.0.0:*    users:(("task_orchestrat",pid=95884,fd=13))
+udp   UNCONN 0      0                                0.0.0.0:7400       0.0.0.0:*    users:(("waypoint_manage",pid=95878,fd=13))
+udp   UNCONN 0      0                                0.0.0.0:7400       0.0.0.0:*    users:(("map_recorder",pid=95880,fd=13))   
+udp   UNCONN 0      0                                0.0.0.0:7400       0.0.0.0:*    users:(("task_orchestrat",pid=90730,fd=13))
+udp   UNCONN 0      0                                0.0.0.0:7400       0.0.0.0:*    users:(("waypoint_manage",pid=90724,fd=13))
+udp   UNCONN 0      0                                0.0.0.0:7400       0.0.0.0:*    users:(("map_recorder",pid=90726,fd=13))   
+udp   UNCONN 0      0                                0.0.0.0:7400       0.0.0.0:*    users:(("task_orchestrat",pid=89714,fd=13))
+udp   UNCONN 0      0                                0.0.0.0:7400       0.0.0.0:*    users:(("waypoint_manage",pid=89708,fd=13))
+udp   UNCONN 0      0                                0.0.0.0:7400       0.0.0.0:*    users:(("map_recorder",pid=89710,fd=13))   
+udp   UNCONN 0      0                                0.0.0.0:5353       0.0.0.0:*    users:(("avahi-daemon",pid=689,fd=12))     
+udp   UNCONN 0      0                                0.0.0.0:7412       0.0.0.0:*    users:(("map_recorder",pid=89710,fd=14))   
+udp   UNCONN 0      0                                0.0.0.0:7413       0.0.0.0:*    users:(("map_recorder",pid=89710,fd=16))   
+udp   UNCONN 0      0                                0.0.0.0:7414       0.0.0.0:*    users:(("waypoint_manage",pid=89708,fd=14))
+udp   UNCONN 0      0                                0.0.0.0:7415       0.0.0.0:*    users:(("waypoint_manage",pid=89708,fd=16))
+udp   UNCONN 0      0                                0.0.0.0:7416       0.0.0.0:*    users:(("map_recorder",pid=90726,fd=14))   
+udp   UNCONN 0      0                                0.0.0.0:7417       0.0.0.0:*    users:(("map_recorder",pid=90726,fd=16))   
+udp   UNCONN 0      0                                0.0.0.0:7418       0.0.0.0:*    users:(("task_orchestrat",pid=89714,fd=14))
+udp   UNCONN 0      0                                0.0.0.0:58618      0.0.0.0:*    users:(("frpc",pid=1269,fd=7))             
+udp   UNCONN 0      0                                0.0.0.0:7419       0.0.0.0:*    users:(("task_orchestrat",pid=89714,fd=16))
+udp   UNCONN 0      0                                0.0.0.0:7420       0.0.0.0:*    users:(("waypoint_manage",pid=90724,fd=14))
+udp   UNCONN 0      0                                0.0.0.0:7421       0.0.0.0:*    users:(("waypoint_manage",pid=90724,fd=16))
+udp   UNCONN 0      0                                0.0.0.0:7422       0.0.0.0:*    users:(("map_recorder",pid=95880,fd=14))   
+udp   UNCONN 0      0                                0.0.0.0:7423       0.0.0.0:*    users:(("map_recorder",pid=95880,fd=16))   
+udp   UNCONN 0      0                                0.0.0.0:7424       0.0.0.0:*    users:(("task_orchestrat",pid=90730,fd=14))
+udp   UNCONN 0      0                                0.0.0.0:7425       0.0.0.0:*    users:(("task_orchestrat",pid=90730,fd=16))
+udp   UNCONN 0      0                                0.0.0.0:7426       0.0.0.0:*    users:(("waypoint_manage",pid=95878,fd=14))
+udp   UNCONN 0      0                                0.0.0.0:7427       0.0.0.0:*    users:(("waypoint_manage",pid=95878,fd=16))
+udp   UNCONN 0      0                                0.0.0.0:7430       0.0.0.0:*    users:(("task_orchestrat",pid=95884,fd=14))
+udp   UNCONN 0      0                                0.0.0.0:7431       0.0.0.0:*    users:(("task_orchestrat",pid=95884,fd=16))
+udp   UNCONN 0      0                                0.0.0.0:7432       0.0.0.0:*    users:(("python3",pid=170272,fd=14))       
+udp   UNCONN 0      0                                0.0.0.0:7433       0.0.0.0:*    users:(("python3",pid=170272,fd=16))       
+udp   UNCONN 0      0                              127.0.0.1:323        0.0.0.0:*    users:(("chronyd",pid=1239,fd=5))          
+udp   UNCONN 0      0                           192.168.1.11:57692      0.0.0.0:*    users:(("waypoint_manage",pid=95878,fd=18))
+udp   UNCONN 0      0                           192.168.1.11:60810      0.0.0.0:*    users:(("map_recorder",pid=95880,fd=18))   
+udp   UNCONN 0      0                                0.0.0.0:60884      0.0.0.0:*    users:(("task_orchestrat",pid=95884,fd=17))
+udp   UNCONN 0      0                                0.0.0.0:56821      0.0.0.0:*    users:(("map_recorder",pid=95880,fd=17))   
+udp   UNCONN 0      0                                0.0.0.0:47615      0.0.0.0:*    users:(("python3",pid=170272,fd=17))       
+udp   UNCONN 0      0                                0.0.0.0:43542      0.0.0.0:*    users:(("avahi-daemon",pid=689,fd=14))     
+udp   UNCONN 0      0                                   [::]:43667         [::]:*    users:(("avahi-daemon",pid=689,fd=15))     
+udp   UNCONN 0      0                                   [::]:53            [::]:*    users:(("dnsmasq",pid=1275,fd=6))          
+udp   UNCONN 0      0                                   [::]:5353          [::]:*    users:(("avahi-daemon",pid=689,fd=13))     
+udp   UNCONN 0      0                                  [::1]:323           [::]:*    users:(("chronyd",pid=1239,fd=6))          
+udp   UNCONN 0      0      [fe80::3d9d:e15f:6e7c:a7d9]%wlan0:546           [::]:*    users:(("NetworkManager",pid=702,fd=27))   
+tcp   LISTEN 0      128                              0.0.0.0:8088       0.0.0.0:*    users:(("python3",pid=1172,fd=6))          
+tcp   LISTEN 0      128                            127.0.0.1:631        0.0.0.0:*    users:(("cupsd",pid=1138,fd=7))            
+tcp   LISTEN 0      128                              0.0.0.0:37878      0.0.0.0:*    users:(("sshd",pid=1260,fd=3))             
+tcp   LISTEN 0      128                              0.0.0.0:8787       0.0.0.0:*    users:(("python3",pid=238873,fd=6))        
+tcp   LISTEN 0      5                              127.0.0.1:11511      0.0.0.0:*    users:(("python3",pid=170272,fd=3))        
+tcp   LISTEN 0      32                               0.0.0.0:53         0.0.0.0:*    users:(("dnsmasq",pid=1275,fd=5))          
+tcp   LISTEN 0      2                                  [::1]:3350          [::]:*    users:(("xrdp-sesman",pid=1326,fd=7))      
+tcp   LISTEN 0      128                                 [::]:37878         [::]:*    users:(("sshd",pid=1260,fd=4))             
+tcp   LISTEN 0      2                                      *:3389             *:*    users:(("xrdp",pid=1368,fd=11))            
+tcp   LISTEN 0      128                                [::1]:631           [::]:*    users:(("cupsd",pid=1138,fd=6))            
+tcp   LISTEN 0      32                                  [::]:53            [::]:*    users:(("dnsmasq",pid=1275,fd=7))          
+
+[lsof selected devices]
+
+[fuser selected devices]
+
+[process subset]
+  89708       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_2onpg4e3
+  89710       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_dsaxn8kl
+  89714       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_u339gbb6
+  90724       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_r4pb2h7_
+  90726       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_qnhml2vi
+  90730       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_5l8vn9w_
+  95878       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/waypoint_manager --ros-args -r __node:=waypoint_manager --params-file /tmp/launch_params_no94j9rg
+  95880       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_nav/lib/ros2_trashbot_nav/map_recorder --ros-args -r __node:=map_recorder --params-file /tmp/launch_params_rbxtj8bc
+  95884       1 Sl   /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_behavior/lib/ros2_trashbot_behavior/task_orchestrator --ros-args -r __node:=task_orchestrator --params-file /tmp/launch_params_zz0cmio_
+ 170272       1 Sl   /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 0 --rmw-implementation rmw_fastrtps_cpp
+ 238873       1 Ssl  python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12

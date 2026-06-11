@@ -1,0 +1,21 @@
+{
+  "captured_at_ms": 1781145984391,
+  "channels": 3,
+  "controls_changed": false,
+  "device": "/dev/video1",
+  "frames_read": 5,
+  "height": 480,
+  "laplacian_variance": 0.008307288953993056,
+  "max_luma": 1,
+  "mean_luma": 0.00103515625,
+  "method": "opencv_v4l2_default_read_only_no_control_changes",
+  "min_luma": 0,
+  "near_black": true,
+  "near_black_threshold": "mean_luma < 10 or nonblack_ratio_gt20 < 0.05",
+  "nonblack_ratio_gt20": 0.0,
+  "ok": true,
+  "opened": true,
+  "std_luma": 0.03215718740092308,
+  "very_dark_ratio_lt10": 1.0,
+  "width": 640
+}

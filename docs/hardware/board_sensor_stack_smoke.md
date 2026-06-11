@@ -369,6 +369,86 @@ preview；未触碰底盘、运动、串口、雷达、Nav2 或 vendor 文件。
 - 换一个已知可见画面的 USB UVC 摄像头接到同一 Orange Pi USB 口，重跑
   `/api/camera/devices`、OpenCV/ffmpeg 单帧和 PC WebRTC smoke。
 
+## 2026-06-11 10:55 Current Camera Motion Gate Readback
+
+`sprints/2026.06.11_10-55_current_camera_motion_gate_readback/` 在真实上位机
+`root@192.168.1.11:37878` 和 Robot API `http://192.168.1.11:8787` 上做了一次
+非侵入 readback。本轮只读 API、SSH、v4l2 和 OpenCV 默认帧统计；未修改 PC 首屏、
+onboard 代码、vendor、firmware 或硬件配置。
+
+采用来源与边界：
+
+- `docs/vendor/VENDOR_INDEX.md` 是硬件事实入口。
+- WAVE ROVER 底盘 UART/JSON 事实继续来自
+  `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、
+  `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`、
+  `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`、
+  `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h` 和
+  `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h`。
+- vendor Raspberry Pi 参考串口是 `/dev/ttyAMA0` 或 `/dev/serial0`、`115200`；
+  Orange Pi 现场路径必须按实测。当前 Robot API readback 显示底盘口仍为
+  `/dev/ttyS5 @ 115200`。
+- 本轮没有直接写 `/dev/ttyS5`。`/api/base/status` 内部执行了非运动 `T=130`
+  feedback readback 并观察到 `T=1001`；这只证明反馈可见，不等于 HIL、stop、
+  wheel nonzero 或运动准入。
+
+当前 readback 结果：
+
+- `/api/operator/report`：人工 preflight 字段为
+  `operator_present=true`、`physical_clearance_confirmed=true`、
+  `emergency_stop_ready=true`，`operator_report_status=ready_for_execution`；
+  但 structured claims 仍为 `visible_content_proven=false`、
+  `external_video_recorded=false`、`wheel_feedback_lr_nonzero_proven=false`、
+  `physical_motion_lidar_delta_proven=false`、`delivery_success=false`。
+- `/api/base/status`：`write_control_available=true`、`pyserial_available=true`、
+  `T=1001 observed`，但顶层保持 `safe_to_control=false`、
+  `primary_actions_enabled=false`、`sends_motion_commands=false`。
+- `/api/base/feedback-samples/latest`：latest artifact 可加载但 stale；
+  `hil_pass=false`、`safe_to_control=false`。
+- `/api/camera/health`：`status=ready`，上次 WebRTC auto selection 仍选择
+  `/dev/video1`，active peers 为 0。
+- `/api/camera/devices` 与 `v4l2-ctl --list-devices`：`/dev/video0` 是 `cedrus`
+  platform 节点，`/dev/video1` 和 `/dev/video2` 属于 `USB Composite Device: DV20 USB`；
+  `/dev/video1` 是 capture 节点，`/dev/video2` 是 metadata capture。
+- OpenCV 默认读 `/dev/video1` 5 帧，最后一帧 `640x480`，
+  `mean_luma=0.00103515625`、`max_luma=1`、`nonblack_ratio_gt20=0.0`、
+  `near_black=true`。因此当前相机仍 near-black，`visible_content_proven=false`
+  不能翻转。
+- `/api/radar/status`：`scan_status=fresh_scan_proof_observed`，但仍有
+  `blocked_reasons=["scan_continuity_not_observed"]`。
+- `/api/radar/scan-proof/latest`：latest proof 内 `/scan` once、scan hz、
+  `/lidar/raw_packet` 和 TF 观察为 true，平均约 `12.482Hz`；这仍是 LiDAR
+  artifact，不是运动或底盘 HIL。
+
+只读服务和占用状态：
+
+- `trashbot-upper-robot-api.service=active`，参数包含
+  `--base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12`。
+- `trashbot-local-webrtc-camera.service` active；`rober-lidar.service` 和
+  `trashbot-lidar.service` inactive。
+- `lsof /dev/ttyS5 /dev/ttyACM0 /dev/video0 /dev/video1 /dev/video2` 无输出；
+  `fuser -v` 对同一组设备也无占用输出。
+- 仍观察到多组历史 `waypoint_manager`、`map_recorder`、`task_orchestrator`
+  ROS 进程。本轮只记录不清理；后续进入运动或 Nav2 前需要先做进程归一和清场。
+
+Manual non-stop gate 判定：
+
+- `artifacts/manual_gate_decision.json` 记录 `jog_decision=not_attempted`。
+- 原因：`safe_to_control=false`、`primary_actions_enabled=false`、相机仍 near-black、
+  没有外部视频、wheel feedback 非零未证明、物理 LiDAR motion delta 未证明、
+  `delivery_success=false` 且雷达仍缺 continuity。
+- 本轮没有执行任何非零运动，没有调用远端 `/api/base/manual`，没有发布 `/cmd_vel`，
+  没有直接写 `/dev/ttyS5`，也没有执行 stop。
+
+关键 artifact：
+
+- `sprints/2026.06.11_10-55_current_camera_motion_gate_readback/artifacts/manual_gate_decision.json`
+- `sprints/2026.06.11_10-55_current_camera_motion_gate_readback/artifacts/camera/default_frame_stats.json`
+- `sprints/2026.06.11_10-55_current_camera_motion_gate_readback/artifacts/api/base_status.json`
+- `sprints/2026.06.11_10-55_current_camera_motion_gate_readback/artifacts/api/operator_report.json`
+- `sprints/2026.06.11_10-55_current_camera_motion_gate_readback/artifacts/ssh/remote_readonly_service_device_status.log`
+- `sprints/2026.06.11_10-55_current_camera_motion_gate_readback/artifacts/ssh/remote_v4l2_readonly.log`
+
 ## 2026-06-10 WAVE ROVER Min Actuation Probe
 
 `sprints/2026.06.10_04-15_wave_rover_min_actuation_probe/` 在真实上位机

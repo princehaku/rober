@@ -369,6 +369,70 @@ PC gate 重新判定通过。当前普通首屏结构和所有危险字段保持
 `robot_control_executed=false`。后续 gate 全部通过时，也只能通过 PC proxy 做 exactly
 one 低速短时 jog 并立即 stop，不能直调远端 `/api/base/manual`。
 
+## PC 普通用户简易控制契约 V1
+
+2026-06-11 10:45 起，PC workstation 的默认首屏按 CEO 反馈恢复并锁定为
+“普通用户简易控制台”。后续增加雷达、摄像头、建图、定位、移动或导航能力时，必须先
+满足本节契约；不得为了暴露工程能力再次把首屏改成 debug / HIL / proof 面板。
+
+不可变首屏契约：
+
+- 默认首屏标题固定为 `Rober 小车控制台`。
+- 默认首屏只允许一个短地址输入和五张普通用户卡片：`小车连接`、`实时画面`、`雷达`、
+  `地图`、`移动/导航`。
+- 默认可见动作只允许：`连接/刷新`、`打开画面/关闭画面`、`刷新雷达`、`刷新地图`、
+  `地图列表`、`停止`。
+- 默认首屏不展示工程词、协议词、证据词、调参控件或危险动作，包括但不限于：
+  `HIL`、`proof`、`Nav2`、`/cmd_vel`、`/api/base/manual`、`O6`、`O7`、
+  `Mock`、`field manifest`、`task_id`、`key values`、`现场材料`、`检查路径`、
+  `保存地图`、`开始建图`、`定位重置`、速度、时长、点动、导航目标坐标、raw/readback。
+- 工程能力必须放在默认关闭的 `高级诊断` 或 `高级工具` 内；展开高级区是显式 operator 行为，
+  不能影响普通首屏的第一眼观感。
+
+渐进解锁契约：
+
+- `实时画面`：首屏只提供打开/关闭和一句可读状态。WebRTC peer、ICE/SDP、video 元素、
+  canvas pixel、设备枚举、近黑判断和 cleanup 细节只进高级诊断。图传成功也不解锁移动。
+- `雷达`：首屏只提供 `刷新雷达` 和短状态；默认刷新路径使用
+  `scan-proof refresh(start_runtime=true)` 的 no-motion 证据窗口。雷达 start/stop、
+  scan hz、raw packet、TF、blocked reasons 和 lifecycle 细节只进高级诊断。雷达刷新通过
+  只证明 LiDAR/TF 可观测，不等于可运动或可导航。
+- `地图`/建图：首屏只提供 `刷新地图` 与 `地图列表`。`开始建图（高级）`、`保存地图`、
+  map_name、artifact_path、map lifecycle HTTP 细节只进高级诊断。建图能力只能作为 no-motion
+  SLAM/runtime evidence capture 渐进开放，不能在首屏暴露 Start/Save/Reset 风格按钮。
+- `定位/路径检查`：首屏不出现 `检查路径`、`定位重置`、initialpose、AMCL、Nav2 goal 或
+  坐标输入。定位重置、no-motion path generation、导航目标预检都只作为高级诊断里的
+  “检查/预检”能力；通过只表示 readiness / preflight，不表示 NavigateToPose 已执行。
+- `移动/导航`：首屏默认只显示普通状态和 `停止`。停止是 fail-safe 常驻动作；非 stop 手动移动、
+  方向点动、速度/时长、键盘连续控制、地图点击目标、自动导航下发全部默认隐藏。只有在真实
+  operator report、可见图传、轮速反馈、LiDAR delta 和外部视频引用等现场材料全部通过后，
+  才能在高级诊断中做一次低速短时 jog；首屏仍不得出现方向按钮。
+
+后续编码验收口径：
+
+- 前端回归必须继续以 `.simple-user-console` 为普通首屏作用域，断言五张卡片存在，且上述禁词
+  在该作用域内全部不存在。
+- 新增任何 PC 能力时，必须同时给出两类断言：普通首屏不被污染；高级诊断中相应能力可见且
+  仍保持 fail-closed 字段。
+- Browser/DOM smoke 需要覆盖桌面视口下首屏第一屏，不得只靠组件单测证明。
+- PC build/test/lint 通过只能证明软件侧 UI/contract；真实上车 evidence capture 仍需分别
+  记录雷达、实时图传、建图、定位/路径检查、手动移动的真实 artifact。
+- OKR 进度不得因为新增首屏按钮或本地 fixture 预览上调；只有真实上位机、真实 browser 或
+  真实现场 artifact 可提升 O7 证据质量。
+
+下一步 owner 和最短执行路径：
+
+- 主责 owner：`full-stack-software-engineer` 负责 PC 简易首屏 contract 的代码回归和 UI
+  smoke；涉及上位机 endpoint 稳定性时，只请 `robot-software-engineer` 补固定 API 事实，
+  不让工程细节进入首屏。
+- 最短路径 1：先保持首屏五卡片不变，补 `.simple-user-console` 禁词测试与 Browser smoke
+  作为每次 PC 能力变更的固定验收。
+- 最短路径 2：按真实 evidence capture 顺序推进：`打开画面` 修到可见内容 → `刷新雷达`
+  稳定 no-motion scan proof → `刷新地图/地图列表` 产出地图材料 → 高级诊断做定位/路径
+  预检 → 材料齐备后高级诊断执行 exactly one 低速短时 jog 并 stop。
+- 最短路径 3：每一步只把普通用户需要知道的结果同步到五张卡片，把 endpoint、raw JSON、
+  proof flags、HIL 材料和失败根因留在高级诊断。
+
 ## 禁止声明
 
 第一阶段不得声明完成：
