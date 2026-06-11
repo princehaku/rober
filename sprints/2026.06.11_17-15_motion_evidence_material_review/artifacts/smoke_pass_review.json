@@ -1,0 +1,71 @@
+{
+  "schema": "trashbot.motion_evidence_material_review.v1",
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+  ],
+  "manual_response_ref": "sprints/2026.06.11_17-15_motion_evidence_material_review/artifacts/smoke_pass_manual_response.json",
+  "motion_evidence_summary": "manual command before/after fixed GET evidence snapshot captured; this is not HIL pass.",
+  "review_status": "ready_for_operator_report_material",
+  "wheel_feedback_lr_nonzero_proven": true,
+  "wheel_feedback_ref": "sprints/2026.06.11_17-15_motion_evidence_material_review/artifacts/smoke_pass_feedback.jsonl",
+  "physical_motion_lidar_delta_proven": true,
+  "scan_delta_ref": "sprints/2026.06.11_17-15_motion_evidence_material_review/artifacts/smoke_pass_scan_before.json -> sprints/2026.06.11_17-15_motion_evidence_material_review/artifacts/smoke_pass_scan_after.json",
+  "operator_report_claims": {
+    "wheel_feedback_lr_nonzero_proven": true,
+    "wheel_feedback_ref": "sprints/2026.06.11_17-15_motion_evidence_material_review/artifacts/smoke_pass_feedback.jsonl",
+    "physical_motion_lidar_delta_proven": true,
+    "scan_delta_ref": "sprints/2026.06.11_17-15_motion_evidence_material_review/artifacts/smoke_pass_scan_before.json -> sprints/2026.06.11_17-15_motion_evidence_material_review/artifacts/smoke_pass_scan_after.json",
+    "real_route_map_proven": false,
+    "route_map_ref": null,
+    "delivery_success": false
+  },
+  "failure_reasons": [],
+  "warnings": [
+    "manual_response_motion_evidence_summary_treated_as_context_only_not_motion_proof"
+  ],
+  "scan_delta_thresholds": {
+    "min_valid_beams": 8,
+    "average_abs_delta_min_m": 0.03,
+    "max_abs_delta_min_m": 0.08
+  },
+  "details": {
+    "wheel_review": {
+      "candidate_frame_count": 2,
+      "matched_frame_count": 2,
+      "matched_field_pairs": [
+        {
+          "feedback_type": 1001,
+          "left": 0.0,
+          "right": 0.0
+        },
+        {
+          "feedback_type": 1001,
+          "left": 0.06,
+          "right": 0.05
+        }
+      ]
+    },
+    "scan_review": {
+      "valid_beam_count": 8,
+      "average_abs_delta_m": 0.10500000000000007,
+      "max_abs_delta_m": 0.1499999999999999,
+      "paired_beam_window_size": 8,
+      "source": "raw_ranges"
+    },
+    "manual_response_keys": [
+      "after_readback",
+      "before_readback",
+      "evidence_capture_endpoints",
+      "motion_evidence_summary",
+      "schema"
+    ],
+    "evidence_capture_endpoint_count": 2
+  },
+  "safe_to_control": false,
+  "delivery_success": false,
+  "hil_pass": false,
+  "robot_control_executed": false,
+  "sends_motion_commands": false
+}

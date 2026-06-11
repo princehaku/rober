@@ -34,6 +34,51 @@ WAVE ROVER 事实仍以 vendor 文件为准：上下位机链路是 UART，一�
   POST/GET 回包中回显；这些字段仍然只是人工材料 claim，不会把 `hil_pass`、
   `delivery_success` 或 `safe_to_control` 翻为 true。
 
+## file-only 材料草稿工具
+
+本轮新增 `onboard/scripts/motion_evidence_material_review.py`，用于把一次 PC manual proxy
+响应和后续保存的 wheel/scan artifact 复核成可粘贴到
+`/api/operator/report.structured_hil_claims` 的草稿字段。该工具有以下边界：
+
+- 只读文件：不打开串口、不发 HTTP、不连 ROS、不调用 `/api/base/manual`，也不发布 `/cmd_vel`。
+- 输入来源：
+  - `--manual-response <json>`：读取 `before_readback`、`after_readback`、
+    `evidence_capture_endpoints`、`motion_evidence_summary`。
+  - `--base-feedback <json-or-jsonl>`：读取原始 `/api/base/feedback-samples/latest` 或
+    `T=1001` JSONL。
+  - `--scan-before <json>`、`--scan-after <json>`：读取 baseline/post scan 或已有 scan proof。
+- 输出 schema：`trashbot.motion_evidence_material_review.v1`。
+- 顶层安全字段固定保持 false：`safe_to_control=false`、`delivery_success=false`、
+  `hil_pass=false`、`robot_control_executed=false`、`sends_motion_commands=false`。
+
+推荐命令：
+
+```bash
+python3 onboard/scripts/motion_evidence_material_review.py \
+  --manual-response runtime/manual_response.json \
+  --base-feedback runtime/base_feedback_samples_latest.json \
+  --scan-before runtime/scan_before.json \
+  --scan-after runtime/scan_after.json \
+  --output runtime/motion_evidence_material_review.json
+python3 -m json.tool runtime/motion_evidence_material_review.json
+```
+
+输出中的以下对象可以直接作为 operator report 草稿的 `structured_hil_claims` 基础：
+
+- `operator_report_claims.wheel_feedback_lr_nonzero_proven`
+- `operator_report_claims.wheel_feedback_ref`
+- `operator_report_claims.physical_motion_lidar_delta_proven`
+- `operator_report_claims.scan_delta_ref`
+
+`review_status=ready_for_operator_report_material` 的前提是：
+
+- wheel feedback 只基于可解析 `T=1001` 或明确 left/right wheel 字段，且同一帧左右轮都非零。
+- scan delta 只基于 raw `ranges` 或已有 `average_abs_delta_m` / `max_abs_delta_m` /
+  `valid_beam_count` summary，且满足保守阈值。
+
+如果输出是 `insufficient_material` 或 `invalid_input`，只能把失败原因作为补料清单，不能把
+对应 wheel/scan claim 写成 true。
+
 ## 现场填写项
 
 每轮现场 HIL 使用一个唯一 `evidence_ref`，建议格式：

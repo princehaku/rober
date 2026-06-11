@@ -210,6 +210,12 @@
 图片、`T=1001` JSONL、scan metrics、route/map artifacts 和 stop/API restore 记录
 共同证明。
 
+若现场已保存 PC manual proxy 响应、`T=1001` feedback JSON/JSONL，以及 baseline/post
+scan JSON，可先在本地运行 `onboard/scripts/motion_evidence_material_review.py` 生成
+`trashbot.motion_evidence_material_review.v1` 草稿。该脚本只复核文件，不接触串口、HTTP、
+ROS 或运动接口；其输出只能作为 operator report 材料整理工具，不能替代现场 stop、
+外部视频或原始 wheel/scan artifact。
+
 ## 下一轮最低执行建议
 
 下一轮不要继续盲跑远程低速 probe。推荐顺序是：

@@ -1,0 +1,40 @@
+{
+  "schema": "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+  "before_readback": {
+    "base_feedback_samples_latest": {
+      "artifact": {
+        "path": "runtime/base_feedback_samples_latest.json"
+      }
+    },
+    "radar_scan_proof_latest": {
+      "artifact": {
+        "path": "runtime/scan_before_latest.json"
+      }
+    }
+  },
+  "after_readback": {
+    "base_feedback_samples_latest": {
+      "artifact": {
+        "path": "runtime/base_feedback_samples_latest.json"
+      }
+    },
+    "radar_scan_proof_latest": {
+      "artifact": {
+        "path": "runtime/scan_after_latest.json"
+      }
+    }
+  },
+  "evidence_capture_endpoints": [
+    {
+      "phase": "before",
+      "id": "base_feedback_samples_latest",
+      "endpoint": "/api/base/feedback-samples/latest"
+    },
+    {
+      "phase": "after",
+      "id": "radar_scan_proof_latest",
+      "endpoint": "/api/radar/scan-proof/latest"
+    }
+  ],
+  "motion_evidence_summary": "manual command before/after fixed GET evidence snapshot captured; this is not HIL pass."
+}

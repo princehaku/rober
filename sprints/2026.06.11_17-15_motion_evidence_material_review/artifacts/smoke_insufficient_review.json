@@ -1,0 +1,65 @@
+{
+  "schema": "trashbot.motion_evidence_material_review.v1",
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+  ],
+  "manual_response_ref": "sprints/2026.06.11_17-15_motion_evidence_material_review/artifacts/smoke_insufficient_manual_response.json",
+  "motion_evidence_summary": "manual command before/after fixed GET evidence snapshot captured; this is not HIL pass.",
+  "review_status": "insufficient_material",
+  "wheel_feedback_lr_nonzero_proven": false,
+  "wheel_feedback_ref": "sprints/2026.06.11_17-15_motion_evidence_material_review/artifacts/smoke_insufficient_feedback.json",
+  "physical_motion_lidar_delta_proven": false,
+  "scan_delta_ref": "runtime/scan_after_latest.json",
+  "operator_report_claims": {
+    "wheel_feedback_lr_nonzero_proven": false,
+    "wheel_feedback_ref": "sprints/2026.06.11_17-15_motion_evidence_material_review/artifacts/smoke_insufficient_feedback.json",
+    "physical_motion_lidar_delta_proven": false,
+    "scan_delta_ref": "runtime/scan_after_latest.json",
+    "real_route_map_proven": false,
+    "route_map_ref": null,
+    "delivery_success": false
+  },
+  "failure_reasons": [
+    "scan_before_or_after_file_not_provided",
+    "wheel_feedback_single_side_nonzero_only"
+  ],
+  "warnings": [
+    "manual_response_motion_evidence_summary_treated_as_context_only_not_motion_proof"
+  ],
+  "scan_delta_thresholds": {
+    "min_valid_beams": 8,
+    "average_abs_delta_min_m": 0.03,
+    "max_abs_delta_min_m": 0.08
+  },
+  "details": {
+    "wheel_review": {
+      "candidate_frame_count": 1,
+      "matched_frame_count": 1,
+      "matched_field_pairs": [
+        {
+          "feedback_type": 1001,
+          "left": 0.08,
+          "right": 0.0
+        }
+      ]
+    },
+    "scan_review": {
+      "source": "missing"
+    },
+    "manual_response_keys": [
+      "after_readback",
+      "before_readback",
+      "evidence_capture_endpoints",
+      "motion_evidence_summary",
+      "schema"
+    ],
+    "evidence_capture_endpoint_count": 2
+  },
+  "safe_to_control": false,
+  "delivery_success": false,
+  "hil_pass": false,
+  "robot_control_executed": false,
+  "sends_motion_commands": false
+}
