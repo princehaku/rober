@@ -1,0 +1,7 @@
+active
+59:NAV2_PROOF_PROCESS_TIMEOUT_CAP_S = 132.0
+62:NAV2_PROOF_PC_PROXY_TIMEOUT_BUDGET_S = 150.0
+565:    process_timeout_s = min(max(raw_timeout_s, 15.0), NAV2_PROOF_PROCESS_TIMEOUT_CAP_S)
+576:        "cap_s": NAV2_PROOF_PROCESS_TIMEOUT_CAP_S,
+577:        "pc_proxy_budget_s": NAV2_PROOF_PC_PROXY_TIMEOUT_BUDGET_S,
+1aee9a5e6849cbbe63d71c5099f7be0330d75184f83e4df65d9614b03215b252  /root/rober/onboard/scripts/upper_robot_api.py

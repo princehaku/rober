@@ -1,0 +1,6 @@
+service_active=active
+target_processes:
+cmd_vel_info:
+Unknown topic '/cmd_vel'
+ttyS5_lsof:
+ttyS5_fuser:

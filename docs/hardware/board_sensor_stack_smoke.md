@@ -1808,6 +1808,23 @@ Artifacts：
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_ssh_process_device_check.txt`
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_summary.json`
 
+## 2026-06-11 19:45 Nav2 PC Proxy Timeout Budget Repair
+
+`sprints/2026.06.11_19-45_nav2_pc_proxy_timeout_budget_repair/` 修复 PC
+workstation 触发真实上位机 Nav2 no-motion path proof 时的 timeout 分层。上位机
+`upper_robot_api.py` 的 helper cap 从 84s 提升到 132s；固定 PC body
+`timeout_s=30 + managed_timeout_s=30 + path_generation_timeout_s=30` 的 upper raw
+预算为 120s，不再被 wrapper 提前截断。PC proxy `检查路径（高级）` 的 fetch timeout
+改为 150s（固定 body 90s + 60s 余量，受 150s cap 限制），明确晚于上位机 helper cap，
+避免 PC 先报 wrapper failure。
+
+边界保持 no-motion：本轮只允许调用固定
+`POST /api/robot-control/nav2/proof/refresh?baseUrl=http://192.168.1.11:8787`
+代理和上位机固定 `/api/nav2/proof/refresh`；禁止 NavigateToPose、
+`/api/nav2/start`/`stop`、`/cmd_vel`、`/api/base/manual` 和 `/dev/ttyS5`。硬件事实入口仍是
+`docs/vendor/VENDOR_INDEX.md`；本轮不改 WAVE ROVER UART、底盘驱动、串口配置或
+launch 硬件参数。
+
 ## 2026-06-11 19:25 Nav2 No-Motion Path Regression Recovery
 
 `sprints/2026.06.11_19-25_nav2_no_motion_path_regression_recovery/` 使用 direct Robot

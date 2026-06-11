@@ -54,7 +54,12 @@ NAV2_PROOF_PROCESS_BASE_MARGIN_S = 12.0
 NAV2_PROOF_PROCESS_PATH_MARGIN_S = 8.0
 NAV2_PROOF_PROCESS_MANAGED_MARGIN_S = 6.0
 NAV2_PROOF_PROCESS_INITIALPOSE_MARGIN_S = 4.0
-NAV2_PROOF_PROCESS_TIMEOUT_CAP_S = 84.0
+# 30s collector + 30s managed runtime + 30s path generation 的固定 PC body
+# 会形成 120s helper raw 预算；cap 必须高于该值，避免外层 wrapper 先误杀。
+NAV2_PROOF_PROCESS_TIMEOUT_CAP_S = 132.0
+# PC workstation proxy 的 Nav2 POST timeout 当前固定为 150s；上位机只记录该契约，
+# 用于 artifact/测试表达“PC 等得比 upper helper 久”，不从这里控制 PC 行为。
+NAV2_PROOF_PC_PROXY_TIMEOUT_BUDGET_S = 150.0
 DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH = "runtime/elevator_status_latest.json"
 DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH = "runtime/operator_report_latest.json"
 DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS = 15 * 60 * 1000
@@ -546,7 +551,7 @@ def nav2_runtime_proof_process_timeout_budget(
     managed_window_s = max(float(managed_timeout_s), 0.0) if managed_runtime_opt_in else 0.0
     # initialpose 发布本身很短，单独给小余量，避免把定位 opt-in 和 managed 启动时间混在一起。
     initialpose_margin_s = NAV2_PROOF_PROCESS_INITIALPOSE_MARGIN_S if initialpose_opt_in else 0.0
-    # 固定余量覆盖 bash/source/Python 启动、artifact 落盘和 HTTP 组装，PC 场景必须留出响应时间。
+    # 固定余量覆盖 bash/source/Python 启动、artifact 落盘和 HTTP 组装。
     raw_timeout_s = (
         collector_timeout_s
         + NAV2_PROOF_PROCESS_BASE_MARGIN_S
@@ -556,7 +561,7 @@ def nav2_runtime_proof_process_timeout_budget(
         + (NAV2_PROOF_PROCESS_MANAGED_MARGIN_S if managed_runtime_opt_in else 0.0)
         + initialpose_margin_s
     )
-    # 上限低于 PC proxy 的 90s 预算，真实 helper 超时时由上位机先返回 root cause。
+    # 上限仍是有限值，避免异常 helper 无限占住 HTTP；PC proxy 预算必须比它更长。
     process_timeout_s = min(max(raw_timeout_s, 15.0), NAV2_PROOF_PROCESS_TIMEOUT_CAP_S)
     return {
         "collector_timeout_s": collector_timeout_s,
@@ -569,7 +574,7 @@ def nav2_runtime_proof_process_timeout_budget(
         "raw_timeout_s": raw_timeout_s,
         "process_timeout_s": process_timeout_s,
         "cap_s": NAV2_PROOF_PROCESS_TIMEOUT_CAP_S,
-        "pc_proxy_budget_s": 90.0,
+        "pc_proxy_budget_s": NAV2_PROOF_PC_PROXY_TIMEOUT_BUDGET_S,
         "budget_policy": "finish_before_pc_proxy_timeout_or_return_structured_timeout",
     }
 

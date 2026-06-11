@@ -335,15 +335,16 @@ collector/runtime/path 窗口放宽到 30s；结果为
 且 `/dev/ttyS5`、`/dev/ttyACM0` 无占用。
 
 `2026-06-11 01:45` 起，上位机 API 的 helper subprocess timeout 与 PC
-`检查路径` proxy 预算对齐。2026-06-11 08:25 后 PC 固定 body 为
-`timeout_s=20`、`path_generation_timeout_s=20`、`managed_runtime_opt_in=true`、
-`managed_timeout_s=20`、`initialpose_opt_in=true`、`path_generation_opt_in=true`；
-对应上位机 subprocess 原始预算为约 `90s`，实际 cap 为 `84s`，低于 PC proxy 的
-`90s` 等待窗口。这个预算只限制 HTTP refresh 等待 helper 的最长时间，不改变
+`检查路径` proxy 预算按固定 body 对齐；该早期合同在 08:25 后仍以 84s upper cap 和
+90s PC cap 为边界。2026-06-11 19:45 修复后，PC 固定 body 改为
+`timeout_s=30`、`path_generation_timeout_s=30`、`managed_runtime_opt_in=true`、
+`managed_timeout_s=30`、`initialpose_opt_in=true`、`path_generation_opt_in=true`；
+对应上位机 subprocess raw 预算为 `120s`，helper cap 为 `132s`，PC proxy fetch
+timeout 为 `150s`。这个预算只限制 HTTP refresh 等待 helper 的最长时间，不改变
 helper 内部 no-motion collector 的 ROS2 观测语义。如果真实 Nav2 proof refresh
 仍慢于该窗口，上位机会先返回结构化 timeout/root cause，PC 再通过固定
 `GET /api/nav2/proof/latest` 只读兜底展示最近 artifact；不能让 PC 侧先出现
-`fetch_timeout_90000ms` 后才知道上位机实际已经生成路径。
+`fetch_timeout_150000ms` 后才知道上位机实际已经生成路径。
 
 这一步仍然不等于可发车：
 
@@ -2064,6 +2065,15 @@ Cleanup 只读 SSH 复核显示 `trashbot-upper-robot-api.service=active`，无�
 localize/Nav2/AMCL/helper 进程残留，`/dev/ttyS5` 与 `/dev/ttyACM0` 的 `lsof/fuser`
 均无输出。该证据仍不证明路径执行、固定路线运行、真实运动、HIL pass 或 delivery
 success；它只是后续 planner readiness / path proof 的定位前置材料。
+
+2026-06-11 19:45 起，PC workstation 的固定 `检查路径（高级）` 代理和上位机
+Nav2 helper 使用分层 timeout 预算：上位机 helper cap 为 132s，覆盖固定
+`timeout_s=30` collector、`managed_timeout_s=30` runtime、`path_generation_timeout_s=30`
+以及 helper 启动/路径/managed/initialpose 余量后的 120s raw 预算；PC proxy
+fetch timeout 为 150s，明确比上位机 helper cap 多出 HTTP 返回余量。该修复只处理
+PC/upper wrapper timeout 误报，不改变 no-motion 合同：仍不执行 NavigateToPose，不发布
+`/cmd_vel`，不调用 `/api/base/manual`，不打开 `/dev/ttyS5`，也不证明 fixed-route
+execution、真实运动、HIL pass 或 delivery success。
 
 ### 7.4 Route code structure after 2026-05-25 refactor
 

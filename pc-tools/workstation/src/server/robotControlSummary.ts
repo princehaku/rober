@@ -145,8 +145,8 @@ const NAV2_NO_MOTION_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
     path_goal_y: 0,
     path_goal_yaw: 0,
   },
-  timeout_cap_ms: 90_000,
-  safety_margin_ms: 30_000,
+  timeout_cap_ms: 150_000,
+  safety_margin_ms: 60_000,
   key_fields: [
     "status",
     "latest_proof_status",

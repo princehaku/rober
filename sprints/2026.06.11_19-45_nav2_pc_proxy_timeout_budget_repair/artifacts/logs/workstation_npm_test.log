@@ -1,0 +1,13 @@
+
+> rober-pc-tools-workstation@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.7 /Users/m1/apps/rober/pc-tools/workstation
+
+
+ Test Files  2 passed (2)
+      Tests  92 passed (92)
+   Start at  18:42:28
+   Duration  10.08s (transform 6.11s, setup 0ms, import 6.78s, tests 7.47s, environment 4.04s)
+
