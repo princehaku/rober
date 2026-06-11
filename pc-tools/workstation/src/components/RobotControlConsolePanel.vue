@@ -441,12 +441,14 @@ const manualMotionSummary = computed(() => {
 });
 
 const plainMotionSummary = computed(() => {
-  // 首屏只呈现“能不能停”和最近停止结果，不暴露点动、路径、材料或接口细节。
+  // 首屏只呈现停靠状态和普通检查提示，不暴露点动、路径、材料或接口细节。
   if (manualCommandPending.value) {
     return { state: "处理中", hint: "正在处理请求。" };
   }
   if (!manualCommandResult.value) {
-    return { state: "待命", hint: "需要时可直接停止。" };
+    return operatorMaterialReady.value
+      ? { state: "待命", hint: "已完成移动前检查；需要时可直接停止。" }
+      : { state: "待检查", hint: "移动前先完成画面、轮子和周围环境检查；需要时可直接停止。" };
   }
   if (manualCommandResult.value.command_kind === "stop" && manualCommandResult.value.proxy_status === "command_forwarded") {
     return { state: "已停止", hint: "停止请求已发送。" };
@@ -454,7 +456,9 @@ const plainMotionSummary = computed(() => {
   if (manualCommandResult.value.command_kind === "stop") {
     return { state: "停止失败", hint: manualCommandResult.value.failure_reason || "停止请求失败。" };
   }
-  return { state: "待命", hint: "需要时可直接停止。" };
+  return operatorMaterialReady.value
+    ? { state: "待命", hint: "已完成移动前检查；需要时可直接停止。" }
+    : { state: "待检查", hint: "移动前先完成画面、轮子和周围环境检查；需要时可直接停止。" };
 });
 
 const plainEvidenceSweepSummary = computed(() => {

@@ -3175,7 +3175,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("未打开");
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("地图列表");
-    expect(firstScreenText).toContain("待命");
+    expect(firstScreenText).toContain("待检查");
+    expect(firstScreenText).toContain("移动前先完成画面、轮子和周围环境检查；需要时可直接停止。");
     expect(firstScreenText).toContain("停止");
     expect(firstScreenText).not.toContain("普通用户入口");
     expect(wrapper.find(".robot-console > .section-head").exists()).toBe(false);
@@ -3445,6 +3446,12 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("visible_content_proven");
     expect(diagnostics.text()).toContain("wheel_feedback_lr_nonzero_proven");
     expect(diagnostics.text()).toContain("physical_motion_lidar_delta_proven");
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("待检查");
+    expect(firstScreenText).toContain("移动前先完成画面、轮子和周围环境检查；需要时可直接停止。");
+    expect(firstScreenText).not.toContain("现场材料");
+    expect(firstScreenText).not.toContain("external_video_recorded");
+    expect(firstScreenText).not.toContain("physical_motion_lidar_delta_proven");
 
     const motionButtons = wrapper.findAll(".motion-pad button");
     const forwardButton = motionButtons.find((button) => button.text() === "前进");
@@ -3564,6 +3571,8 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("NavigateToPose"))).toBe(false);
 
     const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("待命");
+    expect(firstScreenText).toContain("已完成移动前检查；需要时可直接停止。");
     for (const token of DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS) {
       expect(firstScreenText).not.toContain(token);
     }
