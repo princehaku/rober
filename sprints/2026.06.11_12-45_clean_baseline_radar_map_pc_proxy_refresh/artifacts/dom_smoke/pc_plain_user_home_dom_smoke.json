@@ -1,0 +1,35 @@
+{
+  "schema": "trashbot.pc_workstation.plain_user_home_dom_smoke.v1",
+  "checked_at": "2026-06-11T05:17:01.147Z",
+  "simple_user_console_exists": true,
+  "title_text": "Rober 小车控制台",
+  "first_screen_card_titles": [
+    "小车连接",
+    "实时画面",
+    "雷达",
+    "地图",
+    "移动/导航"
+  ],
+  "expected_card_titles": [
+    "小车连接",
+    "实时画面",
+    "雷达",
+    "地图",
+    "移动/导航"
+  ],
+  "forbidden_token_presence": {
+    "HIL": false,
+    "proof": false,
+    "Nav2": false,
+    "/cmd_vel": false,
+    "/api/base/manual": false,
+    "task_id": false,
+    "Mock": false,
+    "检查路径": false
+  },
+  "all_forbidden_tokens_absent": true,
+  "advanced_diagnostics_closed_by_default": true,
+  "fetch_calls": [
+    "/api/robot-control/summary"
+  ]
+}

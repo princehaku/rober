@@ -1,0 +1,12 @@
+{
+  "schema": "trashbot.pc_proxy_refresh_run_context.v1",
+  "run_started_at": "2026-06-11T05:05:22.613Z",
+  "workstation_api": "http://127.0.0.1:18788",
+  "target_robot_api": "http://192.168.1.11:8787",
+  "safety_boundary": [
+    "no /api/base/manual",
+    "no /cmd_vel",
+    "no nonzero motion",
+    "no WAVE ROVER serial config change"
+  ]
+}

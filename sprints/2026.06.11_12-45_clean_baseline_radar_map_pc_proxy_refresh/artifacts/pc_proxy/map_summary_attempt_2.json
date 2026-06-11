@@ -1,0 +1,34 @@
+{
+  "kind": "map",
+  "attempt": 2,
+  "workstation_api": "http://127.0.0.1:18788",
+  "target_robot_api": "http://192.168.1.11:8787",
+  "run_started_at": "2026-06-11T05:05:22.613Z",
+  "request_started_at": "2026-06-11T05:07:31.942Z",
+  "response_ended_at": "2026-06-11T05:08:14.537Z",
+  "http_status": 200,
+  "proxy_status": "refresh_forwarded",
+  "remote_http_status": 200,
+  "generated_at_values": [],
+  "latest_generated_at": null,
+  "generated_at_fresh_for_this_run": false,
+  "evidence_ref_values": [
+    {
+      "path": "latest_readback_key_values.evidence_ref",
+      "value": "o3-map-lifecycle-1781154452321"
+    }
+  ],
+  "hard_dangerous_true_fields": [],
+  "dangerous_true_fields_recursive": [],
+  "expected_fields": {
+    "map_once_observed": false,
+    "map_file_observed": false,
+    "map_metadata_observed": false,
+    "sends_motion_commands": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "opens_base_uart": false,
+    "uses_base_uart": false
+  },
+  "passed": false
+}

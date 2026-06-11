@@ -183,6 +183,60 @@ UART、串口配置、firmware 或底盘控制默认值。硬件事实入口仍�
 `scan_once_observed=true`、`scan_hz_observed=true`、
 `raw_packet_once_observed=true`、`tf_observed=true`，且硬危险字段保持 false。
 
+## 2026-06-11 12:45 Clean-Baseline PC Proxy Radar/Map Refresh
+
+`sprints/2026.06.11_12-45_clean_baseline_radar_map_pc_proxy_refresh/`
+在真实上位机 `http://192.168.1.11:8787` 上通过 PC workstation 本地固定代理
+`http://127.0.0.1:18788` 重跑 radar/map proof refresh。硬件事实边界仍以
+`docs/vendor/VENDOR_INDEX.md` 为入口：WAVE ROVER 底盘 UART 是 vendor
+newline-delimited JSON 控制链路；本轮没有发布 `/cmd_vel`，没有调用
+`/api/base/manual`，没有打开或修改 `/dev/ttyS5`，也没有改 WAVE ROVER、ESP32、
+Orange Pi 串口或 launch 配置。
+
+Radar refresh 结果：
+
+- PC proxy `POST /api/robot-control/radar/scan-proof/refresh?baseUrl=http://192.168.1.11:8787`
+  返回 HTTP 200，远端 `/api/radar/scan-proof/refresh` HTTP 200。
+- `latest_readback_key_values.scan_once_observed=true`
+- `latest_readback_key_values.scan_hz_observed=true`
+- `latest_readback_key_values.raw_packet_once_observed=true`
+- `latest_readback_key_values.tf_observed=true`
+- `hard_dangerous_true_fields=[]`
+- direct latest readback `latest_result.generated_at=2026-06-11T05:06:46.418393Z`，
+  晚于本轮 `run_started_at=2026-06-11T05:05:22.613Z`。
+- 当前 radar latest contract 不输出独立 `evidence_ref`，只输出
+  `artifact.path=runtime/lidar_scan_proof_latest.json`；本轮把该差异记录为
+  `passed_with_radar_evidence_ref_contract_gap`。
+
+Map refresh 结果：
+
+- PC proxy `POST /api/robot-control/map/proof/refresh?baseUrl=http://192.168.1.11:8787`
+  返回 HTTP 200，远端 `/api/map/proof/refresh` HTTP 200。
+- `latest_readback_key_values.evidence_ref=o3-map-lifecycle-1781154452321`
+- `latest_readback_key_values.map_once_observed=true`
+- `latest_readback_key_values.map_file_observed=true`
+- `latest_readback_key_values.map_metadata_observed=true`
+- direct latest readback `latest_result.generated_at_ms=1781154494512`，晚于本轮开始时间。
+- `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、
+  `robot_control_executed=false`、`sends_motion_commands=false`、
+  `sends_base_motion_commands=false`、`publishes_cmd_vel=false`、
+  `calls_base_manual=false`、`uses_base_uart=false`。
+
+Cleanup readback：
+
+- 本地临时 workstation API 已停止；`curl http://127.0.0.1:18788/api/health`
+  失败为 expected closed，`lsof -iTCP:18788` 无监听。
+- 目标侧 `ps` 过滤 `o1_lidar_ros2_scan_smoke|o1_lidar_lifecycle|slam_toolbox|map_server|lidar_driver`
+  无残留 helper 行。
+- 目标侧 `lsof /dev/ttyS5 /dev/ttyACM0` 与
+  `fuser -v /dev/ttyS5 /dev/ttyACM0` 均无输出。
+
+关键 artifact：
+
+- `sprints/2026.06.11_12-45_clean_baseline_radar_map_pc_proxy_refresh/artifacts/pc_proxy/refresh_corrected_summary.json`
+- `sprints/2026.06.11_12-45_clean_baseline_radar_map_pc_proxy_refresh/artifacts/pc_proxy/direct_latest_readback_after_proxy_refresh.json`
+- `sprints/2026.06.11_12-45_clean_baseline_radar_map_pc_proxy_refresh/artifacts/cleanup/target_cleanup_readback.log`
+
 ## 2026-06-11 Localization Reset Phase Artifact Boundary
 
 `/api/localize/reset` 的 evidence capture 现在会在 helper 内按阶段写

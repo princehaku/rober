@@ -27,6 +27,24 @@ Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打
 
 Robot Control 也已经接入 Radar/Map proof refresh V2。Vue 通过 workstation Node 固定 POST 代理调用 `POST /api/robot-control/radar/scan-proof/refresh?baseUrl=<robot-api-base-url>` 和 `POST /api/robot-control/map/proof/refresh?baseUrl=<robot-api-base-url>`，上位机 body 分别固定为 `{ timeout_s: 20, runtime_warmup_s: 15, start_runtime: true }` 与 `{ timeout_s: 45 }`。Radar body 使用更长的真实冷启动 no-motion 证据窗口，给 LiDAR driver、raw packet、scan hz 和 TF 同时稳定的时间；这不开放浏览器自定义参数，也不改变 vendor/hardware facts。这两个动作只刷新 no-motion 证据窗，允许出现 `sends_commands=true`、`starts_ros2=true` 这类证据级 helper 行为，但首屏只显示“刷新雷达/刷新地图”、一个短状态和 `scan/tf` 或 `map/evidence` 的人话摘要；`latest_readback_key_values`、`non_motion_evidence_actions`、`hard_dangerous_true_fields`、`last refreshed time` 和 blocked reasons 都收进高级诊断区。它仍然不会打开 `/cmd_vel`、`/api/base/manual`、Radar start、Map start、Nav2 goal、keyboard control 或 map click goal；动作结束后会自动回刷 Robot Control summary。只有 `safe_to_control=true`、`delivery_success=true`、`primary_actions_enabled=true`、`robot_control_executed=true`、`command_dispatch_enabled=true`、`manual_control_enabled=true`、`navigate_goal_enabled=true`、`keyboard_control_enabled=true`、`sends_motion_commands=true`、`publishes_cmd_vel=true`、`calls_base_manual=true`、`opens_base_uart=true`、`uses_base_uart=true`、`hil_pass=true` 等硬危险 true 字段才会 fail closed。
 
+2026-06-11 12:45 clean-baseline refresh 继续只通过本机 PC proxy `http://127.0.0.1:18788`
+触发真实上位机 `http://192.168.1.11:8787` 的 radar/map proof refresh。artifact 位于
+`sprints/2026.06.11_12-45_clean_baseline_radar_map_pc_proxy_refresh/artifacts/`。
+本轮 radar proxy 返回 `scan_once_observed=true`、`scan_hz_observed=true`、
+`raw_packet_once_observed=true`、`tf_observed=true`，`hard_dangerous_true_fields=[]`；
+direct latest readback 里的 `latest_result.generated_at=2026-06-11T05:06:46.418393Z`
+晚于本轮 `run_started_at=2026-06-11T05:05:22.613Z`，证明不是旧 radar proof。
+当前 radar latest contract 不输出独立 `evidence_ref`，只输出
+`artifact.path=runtime/lidar_scan_proof_latest.json`，因此本轮记录为
+`passed_with_radar_evidence_ref_contract_gap`。Map proxy 返回
+`map_once_observed=true`、`map_file_observed=true`、`map_metadata_observed=true`，
+`evidence_ref=o3-map-lifecycle-1781154452321`，direct latest `generated_at_ms`
+晚于本轮开始时间，且 `safe_to_control=false`、`delivery_success=false`、
+`primary_actions_enabled=false`、`robot_control_executed=false`、
+`sends_motion_commands=false`、`publishes_cmd_vel=false`、`calls_base_manual=false`、
+`uses_base_uart=false`。cleanup readback 显示本机 18788 已停止，上位机 helper
+无残留，`/dev/ttyS5` 与 `/dev/ttyACM0` 无 `lsof`/`fuser` 占用。
+
 Robot Control 的 `检查路径（高级）` 只在默认关闭的高级诊断中出现。它通过固定代理调用上位机 `/api/nav2/proof/refresh`，body 固定为 managed no-motion path proof：`timeout_s=30`、`managed_runtime_opt_in=true`、`managed_timeout_s=30`、`managed_map_yaml=/root/rober/onboard/runtime/maps/trashbot_map.yaml`、`initialpose_opt_in=true`、`initialpose_x/y/yaw=0`、`path_generation_opt_in=true`、`path_generation_timeout_s=30`、目标点 `map:(0.8,0,0)`。30s 是 clean-baseline direct Robot API 在同一 no-motion contract 下实测稳定窗口：20s 首轮可能 timeout，30s 可 fresh pass，观测到 `path_generated=true`、`path_point_count=31`、`root_causes=[]`。workstation fetch timeout 仍按固定 body 加余量计算并由 90s cap 封顶，避免无限等待。这个动作只允许上位机拉起 no-motion ROS2 证据 runtime、发布一次 `/initialpose` 并调用 planner 计算接口；它不是 NavigateToPose，不调用 `/api/nav2/start` 或 `/api/nav2/stop`，不发布 `/cmd_vel`，不调用 `/api/base/manual`，不打开 `/dev/ttyS5`，不代表真实运动或 delivery success。普通首屏仍不得出现 `检查路径`、Nav2/proof/key-values、`/cmd_vel` 或 `/api/base/manual`。
 
 2026-06-11 10:35 真实 PC proxy gate smoke 继续证明非 stop 手动点动必须 fail closed。

@@ -1,0 +1,10 @@
+
+ RUN  v4.1.7 /Users/m1/apps/rober
+
+ ✓ sprints/2026.06.11_12-45_clean_baseline_radar_map_pc_proxy_refresh/artifacts/dom_smoke/pc_plain_user_home_dom_smoke.test.ts > plain user console DOM smoke > keeps the default first screen simple 45ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  13:17:00
+   Duration  941ms (transform 202ms, setup 0ms, import 253ms, tests 45ms, environment 502ms)
+

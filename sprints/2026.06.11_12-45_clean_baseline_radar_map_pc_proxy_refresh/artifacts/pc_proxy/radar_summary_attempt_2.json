@@ -1,0 +1,25 @@
+{
+  "kind": "radar",
+  "attempt": 2,
+  "workstation_api": "http://127.0.0.1:18788",
+  "target_robot_api": "http://192.168.1.11:8787",
+  "run_started_at": "2026-06-11T05:05:22.613Z",
+  "request_started_at": "2026-06-11T05:06:04.600Z",
+  "response_ended_at": "2026-06-11T05:06:46.409Z",
+  "http_status": 200,
+  "proxy_status": "refresh_forwarded",
+  "remote_http_status": 200,
+  "generated_at_values": [],
+  "latest_generated_at": null,
+  "generated_at_fresh_for_this_run": false,
+  "evidence_ref_values": [],
+  "hard_dangerous_true_fields": [],
+  "dangerous_true_fields_recursive": [],
+  "expected_fields": {
+    "scan_once_observed": false,
+    "scan_hz_observed": false,
+    "raw_packet_once_observed": false,
+    "tf_observed": false
+  },
+  "passed": false
+}

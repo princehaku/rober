@@ -1,0 +1,88 @@
+{
+  "schema": "trashbot.pc_proxy_radar_map_refresh_corrected_summary.v1",
+  "run_started_at": "2026-06-11T05:05:22.613Z",
+  "corrected_at": "2026-06-11T05:13:27.173Z",
+  "workstation_api": "http://127.0.0.1:18788",
+  "target_robot_api": "http://192.168.1.11:8787",
+  "note": "Initial auto summary treated string key-values as false; this corrected summary uses the actual proxy contract latest_readback_key_values and direct read-only latest artifacts.",
+  "radar": {
+    "proxy_attempt_used": 2,
+    "proxy_http_status": 200,
+    "remote_http_status": 200,
+    "proxy_status": "refresh_forwarded",
+    "latest_readback_key_values": {
+      "status": "refreshed",
+      "latest_proof_status": "raw_packets_parsed",
+      "scan_once_observed": "true",
+      "scan_hz_observed": "true",
+      "raw_packet_once_observed": "true",
+      "tf_observed": "true",
+      "blocked_reasons": "scan_continuity_not_observed"
+    },
+    "expected_fields": {
+      "scan_once_observed": true,
+      "scan_hz_observed": true,
+      "raw_packet_once_observed": true,
+      "tf_observed": true
+    },
+    "hard_dangerous_true_fields": [],
+    "generated_at": "2026-06-11T05:06:46.418393Z",
+    "generated_at_ms": 1781154380155,
+    "generated_at_fresh_for_this_run": true,
+    "evidence_ref": "not_loaded",
+    "artifact_path": "runtime/lidar_scan_proof_latest.json",
+    "evidence_ref_contract_status": "contract_absent_for_radar_latest",
+    "non_motion_evidence_actions_observed": [
+      "sends_commands",
+      "starts_ros2"
+    ],
+    "safety_fields": {
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "robot_control_executed": false,
+      "sends_motion_commands": false
+    },
+    "expected_fields_passed": true
+  },
+  "map": {
+    "proxy_attempt_used": 2,
+    "proxy_http_status": 200,
+    "remote_http_status": 200,
+    "proxy_status": "refresh_forwarded",
+    "latest_readback_key_values": {
+      "status": "map_once_artifact_metadata_observed",
+      "latest_proof_status": "map_once_artifact_metadata_observed",
+      "evidence_ref": "o3-map-lifecycle-1781154452321",
+      "map_once_observed": "true",
+      "map_file_observed": "true",
+      "map_metadata_observed": "true"
+    },
+    "expected_fields": {
+      "map_once_observed": true,
+      "map_file_observed": true,
+      "map_metadata_observed": true
+    },
+    "hard_dangerous_true_fields": [],
+    "generated_at_ms": 1781154494512,
+    "generated_at_fresh_for_this_run": true,
+    "evidence_ref": "o3-map-lifecycle-1781154452321",
+    "evidence_ref_fresh_for_this_run": true,
+    "non_motion_evidence_actions_observed": [
+      "sends_commands"
+    ],
+    "safety_fields": {
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "robot_control_executed": false,
+      "sends_motion_commands": false,
+      "sends_base_motion_commands": false,
+      "publishes_cmd_vel": false,
+      "calls_base_manual": false,
+      "uses_base_uart": false
+    },
+    "expected_fields_passed": true
+  },
+  "final_status": "passed_with_radar_evidence_ref_contract_gap"
+}

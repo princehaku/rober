@@ -1,0 +1,16 @@
+{
+  "schema": "trashbot.pc_proxy_refresh_request_artifact.v1",
+  "kind": "radar",
+  "attempt": 1,
+  "method": "POST",
+  "workstation_url": "http://127.0.0.1:18788/api/robot-control/radar/scan-proof/refresh?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+  "target_robot_api": "http://192.168.1.11:8787",
+  "request_body_sent_to_workstation": null,
+  "fixed_remote_body_contract": {
+    "timeout_s": 20,
+    "runtime_warmup_s": 15,
+    "start_runtime": true
+  },
+  "started_at": "2026-06-11T05:05:22.615Z",
+  "safety_boundary": "no /api/base/manual, no /cmd_vel, no WAVE ROVER UART control from PC proxy"
+}
