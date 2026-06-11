@@ -1,0 +1,167 @@
+{
+  "schema": "trashbot.live_evidence_status_recapture.summary.v1",
+  "base_url": "http://192.168.1.11:8787",
+  "camera_service": {
+    "final_systemd_active": true,
+    "final_pid": 303723,
+    "status": "source_first_frame_failed",
+    "source_readiness": "first_frame_failed",
+    "source_failure_reason": "first_frame_timeout",
+    "offer_http_status": 503,
+    "offer_error": "first_frame_unreadable"
+  },
+  "pc_summary_after": {
+    "connection": "blocked",
+    "camera": {
+      "status": "source_first_frame_failed",
+      "source_readiness": "first_frame_failed",
+      "source_failure_reason": "first_frame_timeout",
+      "last_offer_error": "first_frame_unreadable",
+      "video_source": "/dev/video1"
+    },
+    "lidar": {
+      "status": "scan_once_hz_raw_packet_tf_observed",
+      "latest_scan_proof_status": "loaded",
+      "latest_raw_packet_proof_status": "loaded",
+      "continuous_scan_status": "latest_proof_present_but_lifecycle_not_running",
+      "lifecycle_running": "false",
+      "lifecycle_state": "stopped",
+      "continuous_window_observed": "false",
+      "continuity_window_status": "latest_proof_present_but_lifecycle_not_running",
+      "latest_scan_proof_fresh": "true"
+    },
+    "operator": {
+      "status": "loaded",
+      "source_endpoint_id": "operator_report_latest",
+      "source_path": "operator_report_latest.structured_hil_claims",
+      "report_status": "ready_for_execution",
+      "evidence_ref": "sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/artifacts/remote_capture/opencv_short_timeout_probe_files",
+      "operator_present": "true",
+      "physical_clearance": "true",
+      "emergency_stop": "true",
+      "external_video": "false; ref=not_recorded_camera_only_no_motion",
+      "camera_visible": "false; ref=sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/artifacts/remote_capture/opencv_short_timeout_probe_files",
+      "wheel_feedback": "false; ref=not_tested_camera_only_no_motion",
+      "lidar_delta": "false; ref=not_tested_camera_only_no_motion",
+      "route_map": "false; ref=not_tested_camera_only_no_motion",
+      "delivery_claim": "false",
+      "site_state": "camera_direct_first_frame_timeout"
+    },
+    "safe_to_control": false
+  },
+  "sweep_summary": [
+    {
+      "step": "summary_before",
+      "http_status": 200,
+      "elapsed_ms": 3274,
+      "safe_to_control": false
+    },
+    {
+      "step": "camera_first_frame_probe",
+      "http_status": 502,
+      "remote_http_status": 503,
+      "status": "first_frame_timeout",
+      "failure_reason": "capture_read_call_timeout",
+      "elapsed_ms": 5084,
+      "safe_to_control": false,
+      "robot_control_executed": false
+    },
+    {
+      "step": "radar_scan_proof_refresh",
+      "http_status": 200,
+      "remote_http_status": 200,
+      "status": "loaded_fail_closed_summary",
+      "last_result_status": "refreshed",
+      "failure_reason": "",
+      "elapsed_ms": 41980,
+      "safe_to_control": false,
+      "robot_control_executed": false
+    },
+    {
+      "step": "map_proof_refresh",
+      "http_status": 200,
+      "remote_http_status": 200,
+      "status": "loaded_fail_closed_summary",
+      "last_result_status": "map_once_artifact_metadata_observed",
+      "failure_reason": "",
+      "elapsed_ms": 43100,
+      "safe_to_control": false,
+      "robot_control_executed": false
+    },
+    {
+      "step": "localize_reset",
+      "http_status": 200,
+      "remote_http_status": 200,
+      "status": "loaded_fail_closed_summary",
+      "last_result_status": "refreshed",
+      "failure_reason": "",
+      "elapsed_ms": 32593,
+      "safe_to_control": false,
+      "robot_control_executed": false
+    },
+    {
+      "step": "nav2_no_motion_proof_refresh",
+      "http_status": 200,
+      "remote_http_status": 200,
+      "status": "loaded_fail_closed_summary",
+      "last_result_status": "blocked_with_root_cause",
+      "failure_reason": "",
+      "elapsed_ms": 113139,
+      "safe_to_control": false,
+      "robot_control_executed": false
+    },
+    {
+      "step": "base_stop",
+      "http_status": 200,
+      "remote_http_status": 200,
+      "status": "stopped",
+      "failure_reason": "",
+      "elapsed_ms": 2858,
+      "safe_to_control": false,
+      "robot_control_executed": false
+    },
+    {
+      "step": "summary_after",
+      "http_status": 200,
+      "elapsed_ms": 3147,
+      "safe_to_control": false
+    }
+  ],
+  "nav2_root_cause_after_recapture": {
+    "status": "blocked_with_root_cause",
+    "evidence_ref": "o10-amcl-nav2-runtime-1781183302822",
+    "path_generated": false,
+    "path_generation_succeeded": false,
+    "path_point_count": 0,
+    "planner_server_active": true,
+    "blockers": [
+      {
+        "layer": "Localization TF",
+        "reason": "map_to_odom_not_observed"
+      },
+      {
+        "detail": "/tf_topic_missing",
+        "layer": "Localization TF",
+        "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+        "source": "map_to_odom"
+      },
+      {
+        "detail": "static_lidar_tf_missing_or_not_yet_observed",
+        "layer": "Managed static TF",
+        "reason": "base_link_to_laser_frame_not_observed",
+        "source": "base_link_to_laser_frame"
+      },
+      {
+        "layer": "planner readiness",
+        "reason": "localization_not_ready_for_path_generation"
+      }
+    ],
+    "amcl_tf_root_cause": "/tf_topic_missing"
+  },
+  "forbidden_actions_not_requested": [
+    "/api/base/manual",
+    "/cmd_vel",
+    "NavigateToPose",
+    "/api/nav2/start"
+  ]
+}

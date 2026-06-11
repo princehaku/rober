@@ -621,3 +621,25 @@ PC 页面获得了可重复触发的底层相机诊断闭环，没有恢复实�
 同一服务会显示 `status=source_first_frame_failed`、
 `source_readiness=first_frame_failed`、`source_failure_reason=first_frame_timeout`。
 这只是让状态从“源已选择”变成“源首帧失败”的诚实诊断，不代表实时图传可见内容恢复。
+
+## 2026-06-11 23:45 camera service supervisor recapture
+
+`sprints/2026.06.11_23-45_live_evidence_status_recapture/` 发现真实上位机
+`trashbot-local-webrtc-camera.service` 处于 `inactive`，但 8088 仍由手工残留进程
+`python3 /root/rober/onboard/scripts/local_webrtc_camera_smoke.py ...` 提供。这会让 PC
+实时图传依赖不可重复的 orphan process。
+
+本轮先记录该状态，再停止手工进程并通过 systemd 重新启动
+`trashbot-local-webrtc-camera.service`。最终状态：
+
+- `trashbot-upper-robot-api.service=active`
+- `trashbot-local-webrtc-camera.service=active`
+- 8088 由 systemd 管理的 `local_webrtc_camera_smoke.py` 进程监听。
+- `/health` 重新选择 `/dev/video1`，初始为 `source_selected_not_probed`。
+- 对 systemd 管理进程发起真实 aiortc offer 后，仍返回 HTTP 503
+  `first_frame_unreadable/first_frame_timeout`，并把 `/health` 标回
+  `status=source_first_frame_failed`、`source_readiness=first_frame_failed`、
+  `source_failure_reason=first_frame_timeout`。
+
+这次修复的是 camera service 运行形态和可重复性，不是 `/dev/video1` 首帧问题本身。
+`visible_content_proven=false` 仍成立。

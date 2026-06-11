@@ -1,0 +1,39 @@
+{
+  "connection": "blocked",
+  "camera": {
+    "status": "source_first_frame_failed",
+    "source_readiness": "first_frame_failed",
+    "source_failure_reason": "first_frame_timeout",
+    "last_offer_error": "first_frame_unreadable",
+    "video_source": "/dev/video1"
+  },
+  "lidar": {
+    "status": "scan_once_hz_raw_packet_tf_observed",
+    "latest_scan_proof_status": "loaded",
+    "latest_raw_packet_proof_status": "loaded",
+    "continuous_scan_status": "latest_proof_present_but_lifecycle_not_running",
+    "lifecycle_running": "false",
+    "lifecycle_state": "stopped",
+    "continuous_window_observed": "false",
+    "continuity_window_status": "latest_proof_present_but_lifecycle_not_running",
+    "latest_scan_proof_fresh": "true"
+  },
+  "operator": {
+    "status": "loaded",
+    "source_endpoint_id": "operator_report_latest",
+    "source_path": "operator_report_latest.structured_hil_claims",
+    "report_status": "ready_for_execution",
+    "evidence_ref": "sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/artifacts/remote_capture/opencv_short_timeout_probe_files",
+    "operator_present": "true",
+    "physical_clearance": "true",
+    "emergency_stop": "true",
+    "external_video": "false; ref=not_recorded_camera_only_no_motion",
+    "camera_visible": "false; ref=sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/artifacts/remote_capture/opencv_short_timeout_probe_files",
+    "wheel_feedback": "false; ref=not_tested_camera_only_no_motion",
+    "lidar_delta": "false; ref=not_tested_camera_only_no_motion",
+    "route_map": "false; ref=not_tested_camera_only_no_motion",
+    "delivery_claim": "false",
+    "site_state": "camera_direct_first_frame_timeout"
+  },
+  "safe_to_control": false
+}

@@ -836,6 +836,31 @@ evidence capture 串成一键高级巡检，但实时图传可见内容和非 st
 - `sprints/2026.06.11_22-15_pc_evidence_sweep_button/artifacts/08_sweep_summary.json`
 - `sprints/2026.06.11_22-15_pc_evidence_sweep_button/artifacts/09_cleanup.txt`
 
+## 2026-06-11 Live Evidence Status Recapture
+
+`sprints/2026.06.11_23-45_live_evidence_status_recapture/` 通过 PC fixed proxy 对真实上位机
+`http://192.168.1.11:8787` 重新走了一轮安全 evidence recapture。调用顺序为 summary、
+camera first-frame probe、radar scan proof refresh、map proof refresh、localize reset、
+Nav2 no-motion proof refresh、base stop、summary after。该链路没有请求
+`/api/base/manual`、`/cmd_vel`、NavigateToPose 或 `/api/nav2/start`。
+
+本轮结果：
+
+- Camera：systemd camera service 已恢复 active；PC summary 读回
+  `source_first_frame_failed/first_frame_timeout`，仍未证明可见图传。
+- Radar：`radar_scan_proof_refresh` HTTP 200，summary after 显示
+  `latest_scan_proof_fresh=true`，但 lifecycle 仍是 stopped。
+- Map：`map_proof_refresh` HTTP 200，结果为 `map_once_artifact_metadata_observed`。
+- Localization：`localize_reset` HTTP 200，固定 no-motion reset 路径可执行。
+- Nav2：`nav2_no_motion_proof_refresh` HTTP 200，但结果为 `blocked_with_root_cause`，
+  当前 root cause 是 localization TF：`map_to_odom_not_observed`、
+  `/tf_topic_missing`、`base_link_to_laser_frame_not_observed`，因此
+  `path_generated=false`。
+- Stop：`base_stop` HTTP 200，`status=stopped`，`evidence_capture_status=captured`。
+
+这证明 PC fixed proxy 能重新采集雷达、地图、定位和 stop 的安全证据，同时也把当前阻塞
+明确收敛为 camera 首帧失败、Nav2 localization TF 缺口和运动前材料缺失。
+
 ## 运行与验证
 
 工作站验证只使用 Node/Vue gate：

@@ -382,6 +382,26 @@ timeout。该 artifact 中 managed runtime 已启动、`/initialpose` 已发布�
 helper 打开了 WAVE ROVER UART。后续若经 PC proxy 再次出现 wrapper timeout，应优先调整
 PC proxy/upper API timeout 预算，而不是把它判为 map 或 planner 回归。
 
+`2026-06-11 23:45` PC fixed proxy 重新执行安全 evidence recapture 时，
+`POST /api/robot-control/nav2/proof/refresh?baseUrl=http://192.168.1.11:8787`
+返回 HTTP 200，说明 proxy/upper timeout 预算没有先截断；但上位机最新 artifact
+`o10-amcl-nav2-runtime-1781183302822` 重新落到 `blocked_with_root_cause`：
+
+- `planner_server_active=true`
+- `path_generation_requested=true`
+- `path_generated=false`
+- `path_generation_succeeded=false`
+- `path_point_count=0`
+- blockers 为 `map_to_odom_not_observed`、
+  `map_to_base_link_blocked_by_missing_map_to_odom`（detail: `/tf_topic_missing`）、
+  `base_link_to_laser_frame_not_observed` 和 `localization_not_ready_for_path_generation`
+
+因此本轮 root cause 不再是 PC/upper wrapper timeout，而是 managed no-motion runtime 内
+localization TF 未成链：`map -> odom -> base_link -> laser_frame` 没有在 proof 窗口
+同时被观测。后续应优先检查 AMCL frame 参数、`tf_broadcast`、static lidar TF 启动时机和
+proof collector 的 TF 观测窗口；仍不得用 NavigateToPose、`/cmd_vel` 或
+`/api/base/manual` 绕过 no-motion 证明。
+
 `2026-06-10 09:15` 起，`o10_amcl_nav2_runtime_proof.py` 增加显式 opt-in 的
 managed no-motion localization runtime。默认不传 `managed_runtime_opt_in` 时仍保持
 read-only collector；只有显式传入时，helper 才会在 proof 窗口内短暂启动：
