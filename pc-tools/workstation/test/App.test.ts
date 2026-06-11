@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App.vue";
 import TrainingLabelingPanel from "../src/components/TrainingLabelingPanel.vue";
-import { PROOF_FLAGS } from "../src/shared/contracts";
+import { PROOF_FLAGS, type RobotControlSummaryResponse } from "../src/shared/contracts";
 
 const SPRINT_ARTIFACT_DIR = resolve(
   process.cwd(),
@@ -3282,6 +3282,32 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("速度上限");
     expect(diagnostics.text()).toContain("现场有人扶控并准备急停");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
+  });
+
+  it("turns camera source first-frame failure into a plain first-screen hint", async () => {
+    // 首屏可以提示用户检查摄像头/视频线，但不能把 source_readiness 或 first_frame_timeout 露出来。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "first_frame_timeout";
+    summaryFixture.readback_summary.camera.last_offer_error = "first_frame_unreadable";
+    summaryFixture.readback_summary.camera.last_offer_failure_reason = "first_frame_timeout";
+    stubWorkstationFetch({ "/api/robot-control/summary": summaryFixture });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    expect(firstScreenText).toContain("实时画面");
+    expect(firstScreenText).toContain("失败");
+    expect(firstScreenText).toContain("相机没有出画面，检查摄像头/视频线。");
+    expect(firstScreenText).not.toContain("source_readiness");
+    expect(firstScreenText).not.toContain("first_frame_timeout");
+    expect(firstScreenText).not.toContain("/dev/video1");
+    for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
+      expect(wrapper.find(".simple-user-console").text()).not.toContain(token);
+    }
   });
 
   it("submits operator report material from advanced diagnostics without leaking it to the first screen", async () => {

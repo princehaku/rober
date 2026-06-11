@@ -180,8 +180,23 @@ function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有�
   return { state: "未连接", hint: "还没有连上可读状态。" };
 }
 
+function cameraSourcePlainFailureHint(): string {
+  // summary 已经完成工程归因；普通首屏只翻译成可处理的现场动作。
+  const camera = robotSummary.value?.readback_summary.camera;
+  if (!camera) {
+    return "";
+  }
+  const sourceFailed =
+    camera.status === "source_first_frame_failed"
+    || camera.source_readiness === "first_frame_failed"
+    || camera.source_failure_reason === "first_frame_timeout"
+    || camera.last_offer_failure_reason === "first_frame_timeout";
+  return sourceFailed ? "相机没有出画面，检查摄像头/视频线。" : "";
+}
+
 function summarizeCameraState(): { state: "未打开" | "连接中" | "已打开" | "画面可见" | "画面偏暗" | "失败"; hint: string } {
   // 摄像头首屏只暴露普通用户能理解的结论，不泄露 peer / ICE / SDP / canvas 细节。
+  const sourceFailureHint = cameraSourcePlainFailureHint();
   switch (previewStatus.value) {
     case "starting_local_peer":
     case "connecting_offer_posted":
@@ -202,8 +217,14 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "已打开
       return { state: "已打开", hint: "画面已打开。" };
     case "start_failed":
     case "peer_cleanup_failed":
+      if (sourceFailureHint) {
+        return { state: "失败", hint: sourceFailureHint };
+      }
       return { state: "失败", hint: failureReason.value || "打开画面失败。" };
     default:
+      if (sourceFailureHint) {
+        return { state: "失败", hint: sourceFailureHint };
+      }
       return { state: "未打开", hint: "还没有打开实时画面。" };
   }
 }

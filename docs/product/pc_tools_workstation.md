@@ -410,7 +410,9 @@ one 低速短时 jog 并立即 stop，不能直调远端 `/api/base/manual`。
 渐进解锁契约：
 
 - `实时画面`：首屏只提供打开/关闭和一句可读状态。WebRTC peer、ICE/SDP、video 元素、
-  canvas pixel、设备枚举、近黑判断和 cleanup 细节只进高级诊断。图传成功也不解锁移动。
+  canvas pixel、设备枚举、近黑判断和 cleanup 细节只进高级诊断。若 summary 已证明当前相机源
+  首帧失败，首屏只显示普通提示“相机没有出画面，检查摄像头/视频线。”，不得显示
+  `source_readiness`、`first_frame_timeout` 或 `/dev/video*`。图传成功也不解锁移动。
 - `雷达`：首屏只提供 `刷新雷达` 和短状态；默认刷新路径使用
   `scan-proof refresh(start_runtime=true)` 的 no-motion 证据窗口。雷达 start/stop、
   scan hz、raw packet、TF、blocked reasons 和 lifecycle 细节只进高级诊断。雷达刷新通过
