@@ -34,9 +34,12 @@ Robot Control 也已经接入 Radar/Map proof refresh V2。Vue 通过 workstatio
 `raw_packet_once_observed=true`、`tf_observed=true`，`hard_dangerous_true_fields=[]`；
 direct latest readback 里的 `latest_result.generated_at=2026-06-11T05:06:46.418393Z`
 晚于本轮 `run_started_at=2026-06-11T05:05:22.613Z`，证明不是旧 radar proof。
-当前 radar latest contract 不输出独立 `evidence_ref`，只输出
-`artifact.path=runtime/lidar_scan_proof_latest.json`，因此本轮记录为
-`passed_with_radar_evidence_ref_contract_gap`。Map proxy 返回
+2026-06-11 13:35 起，radar latest/refresh/status 合同补齐独立 evidence ref：
+若 LiDAR artifact 自带 `evidence_ref` 则保持原值，否则从 `generated_at_ms`
+稳定派生 `o1-lidar-scan-proof-<generated_at_ms>`，旧 ISO `generated_at` 则派生
+安全可读 ref；artifact 缺失、坏 JSON 或根节点非 object 时不伪造成功 ref。
+PC proxy 的 `last_result_evidence_ref` 会直接读取上位机 refresh 回包的
+`evidence_ref/latest_evidence_ref`。Map proxy 返回
 `map_once_observed=true`、`map_file_observed=true`、`map_metadata_observed=true`，
 `evidence_ref=o3-map-lifecycle-1781154452321`，direct latest `generated_at_ms`
 晚于本轮开始时间，且 `safe_to_control=false`、`delivery_success=false`、

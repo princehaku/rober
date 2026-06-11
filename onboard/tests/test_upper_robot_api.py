@@ -521,6 +521,164 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["base_uart_touched"])
         self.assertFalse(payload["safe_to_control"])
 
+    def test_radar_scan_proof_latest_preserves_explicit_evidence_ref(self) -> None:
+        """LiDAR artifact 已有 evidence_ref 时，API 必须保持 producer 原值。"""
+        artifact = {
+            "schema": "trashbot.o1.lidar_scan_proof.v1",
+            "evidence_ref": "field-lidar-proof-explicit",
+            "generated_at_ms": 1781154494512,
+            "proof": {
+                "status": "scan_once_hz_raw_packet_tf_observed",
+                "scan_once_observed": True,
+                "scan_hz_observed": True,
+                "raw_packet_once_observed": True,
+                "tf_observed": True,
+                "all_required_observations_observed": True,
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "lidar_scan_proof_latest.json"
+            artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                lidar_scan_proof_artifact_path=str(artifact_path),
+            )
+
+            http_status, latest = api.radar_scan_proof_latest()
+            status = api.radar_status()
+
+        self.assertEqual(200, http_status)
+        self.assertEqual("field-lidar-proof-explicit", latest["evidence_ref"])
+        self.assertEqual("field-lidar-proof-explicit", latest["latest_evidence_ref"])
+        self.assertEqual("field-lidar-proof-explicit", status["evidence_ref"])
+        self.assertEqual("field-lidar-proof-explicit", status["scan_proof_latest"]["latest_evidence_ref"])
+        self.assertEqual("field-lidar-proof-explicit", status["latest_scan_proof"]["latest_evidence_ref"])
+        self.assertTrue(status["fresh_scan_proof_observed"])
+        self.assertFalse(status["safe_to_control"])
+        self.assertFalse(status["sends_motion_commands"])
+
+    def test_radar_scan_proof_latest_derives_evidence_ref_from_generated_at_ms(self) -> None:
+        """缺显式 ref 时，用 generated_at_ms 派生稳定 LiDAR evidence id。"""
+        artifact = {
+            "schema": "trashbot.o1.lidar_scan_proof.v1",
+            "generated_at_ms": 1781154494512,
+            "proof": {
+                "status": "scan_once_hz_raw_packet_tf_observed",
+                "scan_once_observed": True,
+                "scan_hz_observed": True,
+                "raw_packet_once_observed": True,
+                "tf_observed": True,
+                "all_required_observations_observed": True,
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "lidar_scan_proof_latest.json"
+            artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                lidar_scan_proof_artifact_path=str(artifact_path),
+            )
+
+            http_status, latest = api.radar_scan_proof_latest()
+            summary = upper_robot_api.summarize_lidar_scan_proof_latest_artifact(str(artifact_path))
+
+        self.assertEqual(200, http_status)
+        self.assertEqual("o1-lidar-scan-proof-1781154494512", latest["latest_evidence_ref"])
+        self.assertEqual("o1-lidar-scan-proof-1781154494512", summary["latest_evidence_ref"])
+        self.assertFalse(latest["safe_to_control"])
+        self.assertFalse(latest["robot_control_executed"])
+
+    def test_radar_scan_proof_latest_derives_safe_evidence_ref_from_iso_generated_at(self) -> None:
+        """旧 artifact 只有 ISO generated_at 时，也要派生安全可读 ref。"""
+        artifact = {
+            "schema": "trashbot.o1.lidar_scan_proof.v1",
+            "generated_at": "2026-06-11T05:06:46.418393Z",
+            "proof": {
+                "status": "scan_once_hz_raw_packet_tf_observed",
+                "scan_once_observed": True,
+                "scan_hz_observed": True,
+                "raw_packet_once_observed": True,
+                "tf_observed": True,
+                "all_required_observations_observed": True,
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "lidar_scan_proof_latest.json"
+            artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+
+            http_status, latest = upper_robot_api.read_lidar_scan_proof_latest_artifact(str(artifact_path))
+
+        self.assertEqual(200, http_status)
+        self.assertEqual("o1-lidar-scan-proof-2026-06-11T05-06-46-418393Z", latest["evidence_ref"])
+        self.assertEqual(latest["evidence_ref"], latest["latest_evidence_ref"])
+
+    def test_radar_scan_proof_latest_bad_json_does_not_forge_evidence_ref(self) -> None:
+        """坏 JSON 必须 fail closed，不能用 artifact path 伪造 evidence_ref。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "lidar_scan_proof_latest.json"
+            artifact_path.write_text("{bad json", encoding="utf-8")
+
+            http_status, latest = upper_robot_api.read_lidar_scan_proof_latest_artifact(str(artifact_path))
+            summary = upper_robot_api.summarize_lidar_scan_proof_latest_artifact(str(artifact_path))
+
+        self.assertEqual(422, http_status)
+        self.assertIsNone(latest["evidence_ref"])
+        self.assertIsNone(latest["latest_evidence_ref"])
+        self.assertIsNone(summary["latest_evidence_ref"])
+        self.assertEqual("bad_json", latest["artifact"]["status"])
+        self.assertFalse(latest["safe_to_control"])
+        self.assertFalse(latest["primary_actions_enabled"])
+
+    def test_radar_scan_proof_refresh_attaches_latest_evidence_ref(self) -> None:
+        """refresh 回包要带 latest evidence ref，供 PC last_result_evidence_ref 直接读取。"""
+        artifact = {
+            "schema": "trashbot.o1.lidar_scan_proof.v1",
+            "generated_at_ms": 1781154494512,
+            "proof": {
+                "status": "scan_once_hz_raw_packet_tf_observed",
+                "scan_once_observed": True,
+                "scan_hz_observed": True,
+                "raw_packet_once_observed": True,
+                "tf_observed": True,
+                "all_required_observations_observed": True,
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "lidar_scan_proof_latest.json"
+            artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                lidar_scan_proof_artifact_path=str(artifact_path),
+            )
+
+            with mock.patch.object(
+                upper_robot_api,
+                "run_lidar_scan_proof_collector",
+                return_value={
+                    "command_result": {"ok": True, "reason": "ok"},
+                    "collector_payload": artifact,
+                    "parse_error": None,
+                },
+            ):
+                payload = asyncio.run(api.radar_scan_proof_refresh({"timeout_s": 1, "start_runtime": False}))
+
+        self.assertEqual("refreshed", payload["status"])
+        self.assertEqual("o1-lidar-scan-proof-1781154494512", payload["evidence_ref"])
+        self.assertEqual("o1-lidar-scan-proof-1781154494512", payload["latest_evidence_ref"])
+        self.assertEqual(200, payload["latest_readback_http_status"])
+        self.assertTrue(payload["ros2_runtime_proven"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["uses_base_uart"])
+
     def test_localize_reset_uses_builtin_no_motion_helper_defaults(self) -> None:
         """定位 reset 默认调用 O10 helper 写 localization artifact，且禁止路径/运动。"""
         clean_artifact = {

@@ -351,6 +351,41 @@ def lidar_scan_proof_artifact_info(path: str) -> dict[str, Any]:
     }
 
 
+def safe_lidar_evidence_ref_suffix(value: Any) -> str | None:
+    """把时间字段转成稳定 ref 后缀，避免 ISO 冒号等字符影响 URL/文件名消费。"""
+    if value is None:
+        return None
+    # bool 也是 int 的子类，但它不是时间戳；显式排除能防止派生出 True/False 证据号。
+    if isinstance(value, bool):
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    # 证据 ref 只保留常见安全字符；其它字符统一折叠成单个 `-`，保持可读且可比对。
+    suffix = re.sub(r"[^A-Za-z0-9]+", "-", raw).strip("-")
+    return suffix[:96] if suffix else None
+
+
+def derive_lidar_scan_proof_evidence_ref(artifact_payload: dict[str, Any]) -> str | None:
+    """从成功加载的 LiDAR artifact 获取稳定 evidence_ref，缺坏材料时调用方保持 null。"""
+    proof = artifact_payload.get("proof") if isinstance(artifact_payload.get("proof"), dict) else {}
+    # 已有 evidence_ref 是 producer 最强合同；既兼容根节点，也兼容 proof 子节点。
+    for candidate in (artifact_payload.get("evidence_ref"), proof.get("evidence_ref")):
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+    # 没有显式 ref 时，优先用毫秒时间戳，保证同一 artifact 多次 readback 得到同一 ID。
+    generated_at_ms = artifact_payload.get("generated_at_ms", proof.get("generated_at_ms"))
+    suffix = safe_lidar_evidence_ref_suffix(generated_at_ms)
+    if suffix:
+        return f"o1-lidar-scan-proof-{suffix}"
+    # 旧 artifact 可能只有 ISO generated_at；保留可读时间但移除 URL/路径不友好的字符。
+    generated_at = artifact_payload.get("generated_at", proof.get("generated_at"))
+    suffix = safe_lidar_evidence_ref_suffix(generated_at)
+    if suffix:
+        return f"o1-lidar-scan-proof-{suffix}"
+    return None
+
+
 def lidar_raw_packet_proof_artifact_info(path: str) -> dict[str, Any]:
     """LiDAR raw packet proof artifact 只读入口，只代表串口原始材料可回放。"""
     return {
@@ -1825,6 +1860,8 @@ def build_lidar_scan_proof_refresh_payload(
     parse_error = refresh_result.get("parse_error") if isinstance(refresh_result.get("parse_error"), dict) else None
     proof_summary = lidar_refresh_proof_summary(collector_payload)
     blockers = summarize_lidar_refresh_blockers(command_result, collector_payload, parse_error, runtime_result)
+    latest_http_status, latest_readback = read_lidar_scan_proof_latest_artifact(artifact_path)
+    latest_evidence_ref = latest_readback.get("latest_evidence_ref") if latest_http_status == 200 else None
     scan_runtime_proven = bool(proof_summary.get("scan_once_observed") and proof_summary.get("scan_hz_observed"))
     all_required_observed = bool(proof_summary.get("all_required_observations_observed"))
     runtime_ok = not runtime_requested or bool(runtime_result and runtime_result.get("ok"))
@@ -1850,6 +1887,9 @@ def build_lidar_scan_proof_refresh_payload(
         },
         "status": status,
         "proof_state": proof_summary.get("proof_status") or "not_proven",
+        "evidence_ref": latest_evidence_ref,
+        "latest_evidence_ref": latest_evidence_ref,
+        "latest_readback_http_status": latest_http_status,
         "evidence_type": evidence_type,
         "runtime_start": runtime_result,
         "collector": {
@@ -2560,6 +2600,8 @@ def read_lidar_scan_proof_latest_artifact(path: str) -> tuple[int, dict[str, Any
         "generated_at_ms": now_ms(),
         "vendor_sources": LIDAR_VENDOR_SOURCES,
         "artifact": artifact,
+        "evidence_ref": None,
+        "latest_evidence_ref": None,
         "latest_result": None,
         "readback_sends_commands": False,
         "sends_commands": False,
@@ -2587,6 +2629,9 @@ def read_lidar_scan_proof_latest_artifact(path: str) -> tuple[int, dict[str, Any
         artifact.update({"ok": False, "status": "json_not_object", "error": {"type": "ValueError", "message": "latest LiDAR artifact JSON root is not an object"}})
         return 422, payload
     artifact.update({"ok": True, "status": "loaded", "bytes_read": len(raw.encode("utf-8"))})
+    evidence_ref = derive_lidar_scan_proof_evidence_ref(parsed)
+    payload["evidence_ref"] = evidence_ref
+    payload["latest_evidence_ref"] = evidence_ref
     payload["latest_result"] = parsed
     return 200, payload
 
@@ -2666,6 +2711,8 @@ def summarize_lidar_scan_proof_latest_artifact(path: str) -> dict[str, Any]:
         "endpoint": ROUTE_PATHS["radar_scan_proof_latest"],
         "http_status": http_status,
         "artifact": payload["artifact"],
+        "evidence_ref": payload.get("latest_evidence_ref"),
+        "latest_evidence_ref": payload.get("latest_evidence_ref"),
         "latest_proof_status": proof.get("status") if isinstance(proof, dict) else None,
         "latest_scan_once_observed": proof.get("scan_once_observed") if isinstance(proof, dict) else None,
         "latest_scan_hz_observed": proof.get("scan_hz_observed") if isinstance(proof, dict) else None,
@@ -2719,6 +2766,8 @@ def build_radar_latest_scan_proof_status(scan_proof_latest: dict[str, Any]) -> d
         "artifact": artifact,
         "state": state,
         "observed": observed,
+        "evidence_ref": scan_proof_latest.get("latest_evidence_ref"),
+        "latest_evidence_ref": scan_proof_latest.get("latest_evidence_ref"),
         "failure_reason": failure_reason,
         "scan_once_observed": scan_proof_latest.get("latest_scan_once_observed"),
         "scan_hz_observed": scan_proof_latest.get("latest_scan_hz_observed"),
@@ -3675,6 +3724,8 @@ class UpperRobotApi:
         return {
             "schema": f"{SCHEMA}.radar_status",
             "generated_at_ms": now_ms(),
+            "evidence_ref": latest_scan_proof["latest_evidence_ref"],
+            "latest_evidence_ref": latest_scan_proof["latest_evidence_ref"],
             "scan_status": "fresh_scan_proof_observed" if fresh_scan_proof_observed else "not_proven",
             "continuous_scan_status": "not_proven",
             "fresh_scan_proof_observed": fresh_scan_proof_observed,

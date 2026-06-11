@@ -1,0 +1,42 @@
+{
+  "latest": {
+    "evidence_ref": "o1-lidar-scan-proof-1781154380155",
+    "latest_evidence_ref": "o1-lidar-scan-proof-1781154380155",
+    "artifact_status": "loaded",
+    "scan_once_observed": true,
+    "scan_hz_observed": true,
+    "raw_packet_once_observed": true,
+    "tf_observed": true,
+    "safe_to_control": false,
+    "sends_motion_commands": false
+  },
+  "refresh": {
+    "status": "refreshed",
+    "proof_state": "scan_once_hz_raw_packet_tf_observed",
+    "evidence_ref": "o1-lidar-scan-proof-1781156280313",
+    "latest_evidence_ref": "o1-lidar-scan-proof-1781156280313",
+    "latest_readback_http_status": 200,
+    "scan_once_observed": true,
+    "scan_hz_observed": true,
+    "raw_packet_once_observed": true,
+    "tf_observed": true,
+    "all_required_observations_observed": true,
+    "safe_to_control": false,
+    "sends_motion_commands": false,
+    "sends_base_motion_commands": false,
+    "uses_base_uart": false,
+    "robot_control_executed": false,
+    "blocked_reasons": []
+  },
+  "latest_after_refresh": {
+    "evidence_ref": "o1-lidar-scan-proof-1781156280313",
+    "latest_evidence_ref": "o1-lidar-scan-proof-1781156280313",
+    "artifact_status": "loaded",
+    "scan_once_observed": true,
+    "scan_hz_observed": true,
+    "raw_packet_once_observed": true,
+    "tf_observed": true,
+    "safe_to_control": false,
+    "sends_motion_commands": false
+  }
+}

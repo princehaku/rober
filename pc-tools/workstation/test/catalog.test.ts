@@ -4163,6 +4163,7 @@ describe("workstation fail-closed API contracts", () => {
         proxy_status: string;
         safe_to_control: boolean;
         blocked_reasons: string[];
+        last_result_evidence_ref: string;
         latest_readback_key_values: Record<string, string>;
         hard_dangerous_true_fields: string[];
         non_motion_evidence_actions_observed: string[];
@@ -4171,6 +4172,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(radarBody.proxy_status).toBe("refresh_forwarded");
       expect(radarBody.safe_to_control).toBe(false);
       expect(radarBody.blocked_reasons).toEqual([]);
+      expect(radarBody.last_result_evidence_ref).toBe("radar-refresh-proof");
       expect(radarBody.hard_dangerous_true_fields).toEqual([]);
       expect(radarBody.non_motion_evidence_actions_observed).toEqual(expect.arrayContaining(["sends_commands", "starts_ros2"]));
       expect(radarBody.latest_readback_key_values.scan_once_observed).toBe("true");

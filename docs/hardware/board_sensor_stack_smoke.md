@@ -204,9 +204,10 @@ Radar refresh 结果：
 - `hard_dangerous_true_fields=[]`
 - direct latest readback `latest_result.generated_at=2026-06-11T05:06:46.418393Z`，
   晚于本轮 `run_started_at=2026-06-11T05:05:22.613Z`。
-- 当前 radar latest contract 不输出独立 `evidence_ref`，只输出
-  `artifact.path=runtime/lidar_scan_proof_latest.json`；本轮把该差异记录为
-  `passed_with_radar_evidence_ref_contract_gap`。
+- 当时 radar latest contract 不输出独立 `evidence_ref`，只输出
+  `artifact.path=runtime/lidar_scan_proof_latest.json`；该差异记录为
+  `passed_with_radar_evidence_ref_contract_gap`，并在
+  `sprints/2026.06.11_13-35_radar_evidence_ref_contract/` 后续 micro sprint 中修复。
 
 Map refresh 结果：
 
@@ -236,6 +237,23 @@ Cleanup readback：
 - `sprints/2026.06.11_12-45_clean_baseline_radar_map_pc_proxy_refresh/artifacts/pc_proxy/refresh_corrected_summary.json`
 - `sprints/2026.06.11_12-45_clean_baseline_radar_map_pc_proxy_refresh/artifacts/pc_proxy/direct_latest_readback_after_proxy_refresh.json`
 - `sprints/2026.06.11_12-45_clean_baseline_radar_map_pc_proxy_refresh/artifacts/cleanup/target_cleanup_readback.log`
+
+## 2026-06-11 Radar Evidence Ref Contract
+
+`sprints/2026.06.11_13-35_radar_evidence_ref_contract/` 补齐雷达 proof 的只读
+证据 ID 合同。`GET /api/radar/scan-proof/latest`、`POST /api/radar/scan-proof/refresh`
+和 `/api/radar/status` 现在都会暴露同一个最新 `evidence_ref/latest_evidence_ref`：
+
+- LiDAR artifact 根节点或 `proof` 内已有 `evidence_ref` 时保持 producer 原值。
+- 缺显式 ref 但有 `generated_at_ms` 时派生
+  `o1-lidar-scan-proof-<generated_at_ms>`，同一 artifact 多次 readback 稳定一致。
+- 只有 ISO `generated_at` 时派生安全可读 ref，移除冒号等不适合 URL/文件名消费的字符。
+- artifact 缺失、坏 JSON、读取失败或根节点非 object 时不伪造成功 ref，仍按
+  `missing/bad_json/read_failed/json_not_object` fail closed。
+
+该合同只是 artifact/readback ID 补强，不改变 LiDAR 串口、WAVE ROVER 底盘 UART、
+ROS2 launch 参数或运动控制边界。真实 refresh 仍只允许 no-motion scan proof：
+禁止 `/cmd_vel`、`/api/base/manual`、`T=1/T=13/T=130/T=131` 和 `/dev/ttyS5`。
 
 ## 2026-06-11 Localization Reset Phase Artifact Boundary
 
