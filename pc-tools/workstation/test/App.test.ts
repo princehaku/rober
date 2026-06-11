@@ -3199,6 +3199,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("保存地图");
     expect(firstScreenText).toContain("待检查");
     expect(firstScreenText).toContain("移动前先完成画面、轮子和周围环境检查；需要时可直接停止。");
+    expect(firstScreenText).toContain("重新定位");
     expect(firstScreenText).toContain("停止");
     expect(firstScreenText).not.toContain("普通用户入口");
     expect(wrapper.find(".robot-console > .section-head").exists()).toBe(false);
@@ -3631,6 +3632,7 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("scan_once_observed");
     expect(firstScreenText).not.toContain("map_once_observed");
     expect(firstScreenText).not.toContain("path_generation_succeeded");
+    expect(firstScreenText).toContain("重新定位");
     expect(firstScreenText).not.toContain("定位重置");
     expect(firstScreenText).not.toContain("AMCL");
     expect(firstScreenText).not.toContain("Start");
@@ -3747,10 +3749,14 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/base/manual"))).toBe(false);
 
     expect(wrapper.find("details").text()).toContain("定位重置（高级）");
-    await wrapper.findAll("button").find((button) => button.text() === "定位重置（高级）")?.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "重新定位")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(visiblePlainHomeText(wrapper)).toContain("已定位");
+    expect(visiblePlainHomeText(wrapper)).toContain("定位已返回；需要时可直接停止。");
     expect(wrapper.find(".robot-console-grid").text()).not.toContain("定位重置");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("initialpose");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("AMCL");
     expect(wrapper.find("details").text()).toContain("/api/localize/reset");
     expect(wrapper.find("details").text()).toContain("localization_reset_observed");
     expect(wrapper.find("details").text()).toContain("initialpose_published");

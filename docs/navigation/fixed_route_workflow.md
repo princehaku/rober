@@ -1964,8 +1964,8 @@ no-motion 定位重置入口：
 
 该入口默认使用 O10 helper 的 localization-only 模式：短暂 managed runtime、
 发布一次 `/initialpose`，然后观察 `/amcl_pose`、`map->odom` 和 `map->base_link`
-TF。PC 代理 body 固定为 `timeout_s=8`、`managed_runtime_opt_in=true`、
-`managed_timeout_s=12`、`initialpose_opt_in=true`、`initialpose_x/y/yaw=0`、
+TF。PC 代理 body 固定为 `timeout_s=30`、`managed_runtime_opt_in=true`、
+`managed_timeout_s=30`、`initialpose_opt_in=true`、`initialpose_x/y/yaw=0`、
 `initialpose_frame_id=map`、`path_generation_opt_in=false`。浏览器不能传任意
 body、goal、endpoint 或路径生成参数。
 
@@ -2139,6 +2139,28 @@ execution。
 LiDAR+SLAM 窗口并得到 `o3-map-lifecycle-1781190084998`，但随后 `/api/map/list`
 仍显示 `usable_map_count=0`、`no_free_cell_map_count=13`。因此建图控制入口已通，
 可导航地图仍未完成；进入定位移动前仍必须采到含 free cell 的地图。
+
+2026-06-12 04:45 起，PC 普通 `移动/导航` 卡片新增 `重新定位`。该入口仍只调用
+workstation 固定 `POST /api/robot-control/localize/reset?baseUrl=<upper-api>`，由 PC
+后端转发到上位机固定 `POST /api/localize/reset`，不会接收浏览器传入的 goal、
+endpoint、initialpose 参数或路径生成参数。真实 PC proxy 对
+`http://192.168.1.11:8787` 的本轮结果为：
+
+- `proxy_status=refresh_forwarded`
+- `remote_endpoint=/api/localize/reset`
+- `remote_http_status=200`
+- `latest_proof_status=nav2_no_motion_localization_runtime_observed`
+- `initialpose_published=true`
+- `amcl_pose_observed=true`
+- `localization_reset_observed=true`
+- `managed_runtime_cleanup_ok=true`
+- `hard_dangerous_true_fields=[]`
+
+上位机 `GET /api/localize/proof/latest` 二次回读同样显示
+`localization_reset_observed=true`、`managed_runtime_cleanup_ok=true`。该入口只把
+AMCL no-motion 定位材料放到普通用户可理解的按钮上，不执行 NavigateToPose，不调用
+`/api/base/manual`，不发布 `/cmd_vel`，不证明 fixed-route execution、真实运动、HIL
+pass 或 delivery success。
 
 ### 7.4 Route code structure after 2026-05-25 refactor
 

@@ -466,7 +466,16 @@ const manualMotionSummary = computed(() => {
 });
 
 const plainMotionSummary = computed(() => {
-  // 首屏只呈现停靠状态和普通检查提示，不暴露点动、路径、材料或接口细节。
+  // 首屏只呈现定位/停靠状态和普通检查提示，不暴露点动、路径、材料或接口细节。
+  if (localizationResetPending.value) {
+    return { state: "定位中", hint: "正在重新定位；不会发车。" };
+  }
+  if (localizationResetResult.value) {
+    if (localizationResetResult.value.proxy_status === "refresh_forwarded" && localizationResetResult.value.status !== "blocked") {
+      return { state: "已定位", hint: "定位已返回；需要时可直接停止。" };
+    }
+    return { state: "定位失败", hint: localizationResetResult.value.failure_reason || "定位请求失败。" };
+  }
   if (manualCommandPending.value) {
     return { state: "处理中", hint: "正在处理请求。" };
   }
@@ -1315,7 +1324,7 @@ async function refreshNav2Proof(): Promise<void> {
 }
 
 async function resetLocalizationProof(): Promise<void> {
-  // 定位重置只在高级诊断触发；它发布一次 /initialpose，不请求路径、不发 /cmd_vel。
+  // 重新定位只走固定 /api/localize/reset；发布一次初始位姿，不请求路径、不发 /cmd_vel。
   await runRefreshAction(
     "localization_reset",
     () => postRobotControlLocalizeReset(robotApiBaseUrl.value),
@@ -1785,6 +1794,9 @@ onBeforeUnmount(() => {
           <h3>移动/导航</h3>
           <div class="panel-action-row wrap-actions">
             <span class="status-chip" :data-state="plainMotionSummary.state">{{ plainMotionSummary.state }}</span>
+            <button type="button" :disabled="loading || localizationResetPending || !robotApiBaseUrl.trim()" @click="resetLocalizationProof">
+              重新定位
+            </button>
             <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
           </div>
           <p class="panel-note">{{ plainMotionSummary.hint }}</p>

@@ -2122,3 +2122,28 @@ PC 普通地图卡片新增 `重新建图` 与 `保存地图`。这两个按钮�
 `slam_toolbox` 或 LiDAR helper 残留；`/dev/ttyS5` 和 `/dev/ttyACM0` 无占用输出。
 该 smoke 只证明 PC 普通入口可以触发 no-motion 建图窗口，不证明机器人已移动或地图含
 free cell。
+
+## 2026-06-12 04:45 Plain PC Relocalize Control
+
+PC 普通 `移动/导航` 卡片新增 `重新定位`。本轮仍以 `docs/vendor/VENDOR_INDEX.md`
+为硬件事实入口；实际动作只通过上位机 HTTP 固定代理触发 no-motion AMCL 定位材料采集，
+未改 WAVE ROVER、ESP32、Orange Pi 串口、底盘 launch 或硬件配置。
+
+真实 PC proxy 对 `http://192.168.1.11:8787` 执行固定 localize reset：
+
+- `proxy_status=refresh_forwarded`
+- `remote_endpoint=/api/localize/reset`
+- `remote_http_status=200`
+- `latest_proof_status=nav2_no_motion_localization_runtime_observed`
+- `initialpose_published=true`
+- `amcl_pose_observed=true`
+- `localization_reset_observed=true`
+- `managed_runtime_cleanup_ok=true`
+- `hard_dangerous_true_fields=[]`
+
+上位机 latest readback 继续显示 `localization_reset_observed=true` 和
+`managed_runtime_cleanup_ok=true`。Browser DOM smoke 确认普通 `.simple-user-console`
+有 `重新定位` 与 `停止`，默认高级诊断关闭，普通首屏不出现 `定位重置`、`initialpose`、
+`AMCL`、`Nav2`、`proof`、`HIL`、`/cmd_vel` 或 `/api/base/manual`。本轮没有调用
+NavigateToPose，没有发布 `/cmd_vel`，没有调用 `/api/base/manual`，没有写 `/dev/ttyS5`；
+因此它仍不证明真实移动、轮速非零、LiDAR motion delta、HIL pass 或 delivery success。

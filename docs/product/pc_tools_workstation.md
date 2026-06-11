@@ -315,10 +315,12 @@ PGM 可能被截断；完整 YAML/PGM 仍以远端 `/api/map/list` 或 latest pr
 
 ## PC Localization Reset Controls V1
 
-2026-06-11 起，Robot Control 新增 `定位重置（高级）`。该按钮只放在默认关闭的
-`高级诊断 -> Nav2 规划详情` 中；普通首屏仍只有五张卡片和普通动作：
-`连接/刷新`、`打开画面/关闭画面`、`刷新雷达`、`刷新地图`、`地图列表`、
-`停止`。首屏不显示 `检查路径`、`定位重置`、`initialpose`、`AMCL`、
+2026-06-11 起，Robot Control 新增 `定位重置（高级）`。该按钮放在默认关闭的
+`高级诊断 -> Nav2 规划详情` 中。2026-06-12 起，普通首屏的 `移动/导航` 卡片允许
+一个用户语言按钮 `重新定位`，复用同一个固定 no-motion localize reset 代理；普通首屏
+仍只有五张卡片和普通动作：`连接/刷新`、`检查小车`、`打开画面/关闭画面`、`刷新雷达`、
+`刷新地图`、`地图列表`、`重新建图`、`保存地图`、`重新定位`、`停止`。首屏不显示
+`检查路径`、`定位重置`、`initialpose`、`AMCL`、
 `proof/readback/raw`、`HIL`、速度/点动、`safe_to_control`、`/cmd_vel` 或
 `/api/base/manual`。
 
@@ -367,6 +369,18 @@ AMCL localization material，不证明路径执行、真实运动、HIL 或 deli
 `operator_report_preflight_required`，没有执行 NavigateToPose、`/cmd_vel` 或
 `/api/base/manual`。
 
+2026-06-12 04:45 起，普通首屏 `移动/导航` 卡片新增 `重新定位`。本轮 Browser DOM
+smoke 确认 `.simple-user-console` 默认可见按钮包含 `重新定位` 和 `停止`，高级诊断
+默认关闭，普通首屏不出现 `定位重置`、`initialpose`、`AMCL`、`Nav2`、`proof`、
+`HIL`、`/cmd_vel` 或 `/api/base/manual`。真实 PC proxy 对
+`http://192.168.1.11:8787` 调用固定 `POST /api/robot-control/localize/reset`
+返回 `proxy_status=refresh_forwarded`、`remote_http_status=200`，
+`latest_proof_status=nav2_no_motion_localization_runtime_observed`，
+`initialpose_published=true`、`amcl_pose_observed=true`、
+`localization_reset_observed=true`、`managed_runtime_cleanup_ok=true`、
+`hard_dangerous_true_fields=[]`。这只证明普通 PC 触点能触发 no-motion 重新定位材料，
+不证明 NavigateToPose、底盘移动、HIL 或 delivery success。
+
 ## PC Manual HIL Gate Current Evidence
 
 2026-06-11 10:35 的真实 PC proxy smoke 证明当前 `手动移动/运动` 非 stop gate
@@ -402,7 +416,7 @@ one 低速短时 jog 并立即 stop，不能直调远端 `/api/base/manual`。
 - 默认首屏只允许一个短地址输入和五张普通用户卡片：`小车连接`、`实时画面`、`雷达`、
   `地图`、`移动/导航`。
 - 默认可见动作只允许：`连接/刷新`、`检查小车`、`打开画面/关闭画面`、`刷新雷达`、
-  `刷新地图`、`地图列表`、`重新建图`、`保存地图`、`停止`。
+  `刷新地图`、`地图列表`、`重新建图`、`保存地图`、`重新定位`、`停止`。
 - 默认首屏不展示工程词、协议词、证据词、调参控件或危险动作，包括但不限于：
   `HIL`、`proof`、`Nav2`、`/cmd_vel`、`/api/base/manual`、`O6`、`O7`、
   `Mock`、`field manifest`、`task_id`、`key values`、`现场材料`、`检查路径`、
@@ -423,10 +437,11 @@ one 低速短时 jog 并立即 stop，不能直调远端 `/api/base/manual`。
 - `地图`/建图：首屏提供 `刷新地图`、`地图列表`、`重新建图`、`保存地图`。`map_name`、
   `artifact_path`、map lifecycle HTTP 细节和 Reset 只进高级诊断。建图能力只能作为
   no-motion SLAM/runtime evidence capture 渐进开放，首屏不能暴露 Start/Reset 风格按钮。
-- `定位/路径检查`：首屏不出现 `检查路径`、`定位重置`、initialpose、AMCL、Nav2 goal 或
-  坐标输入。定位重置、no-motion path generation、导航目标预检都只作为高级诊断里的
-  “检查/预检”能力；通过只表示 readiness / preflight，不表示 NavigateToPose 已执行。
-- `移动/导航`：首屏默认只显示普通状态和 `停止`。停止是 fail-safe 常驻动作；非 stop 手动移动、
+- `定位/路径检查`：首屏允许 `重新定位` 这个普通用户动作，但不出现 `检查路径`、`定位重置`、
+  initialpose、AMCL、Nav2 goal 或坐标输入。`重新定位` 只调用固定 no-motion
+  `/api/localize/reset` 代理；定位重置详情、no-motion path generation、导航目标预检都只作为
+  高级诊断里的“检查/预检”能力；通过只表示 readiness / preflight，不表示 NavigateToPose 已执行。
+- `移动/导航`：首屏默认只显示普通状态、`重新定位` 和 `停止`。停止是 fail-safe 常驻动作；非 stop 手动移动、
   方向点动、速度/时长、键盘连续控制、地图点击目标、自动导航下发全部默认隐藏。只有在真实
   operator report、可见图传、轮速反馈、LiDAR delta 和外部视频引用等现场材料全部通过后，
   才能在高级诊断中做一次低速短时 jog；首屏仍不得出现方向按钮。缺少运动前材料时，首屏只显示
