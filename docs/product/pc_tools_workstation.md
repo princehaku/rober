@@ -861,6 +861,35 @@ Nav2 no-motion proof refresh、base stop、summary after。该链路没有请求
 这证明 PC fixed proxy 能重新采集雷达、地图、定位和 stop 的安全证据，同时也把当前阻塞
 明确收敛为 camera 首帧失败、Nav2 localization TF 缺口和运动前材料缺失。
 
+## 2026-06-12 Nav2 TF Readiness Reprobe
+
+`sprints/2026.06.12_00-20_nav2_tf_readiness_reprobe/` 去掉 subagent 依赖后，直接在
+`root@192.168.1.11:37878` 上复测 Nav2 no-motion proof。代码只改
+`o10_amcl_nav2_runtime_proof.py` 的 source probe/readiness 窗口，不改 PC 普通用户简易首屏，
+不请求 `/api/base/manual`、不发布 `/cmd_vel`、不打开 `/dev/ttyS5`。
+
+本轮结果：
+
+- TF source：`/tf=true`、`/tf_static=true`，AMCL 参数读回
+  `global_frame_id=map`、`odom_frame_id=odom`、`base_frame_id=base_link`、
+  `tf_broadcast=true`。
+- TF chain：`map_to_odom=true`、`odom_to_base_link=true`、
+  `base_link_to_laser_frame=true`、`map_to_base_link=true`。
+- Nav2 path：`ComputePathToPose` action 可用且 goal accepted，但返回
+  `path_point_count=0`，当前 root cause 已收敛为
+  `compute_path_to_pose_empty_path`。
+- Safety：`safe_to_control=false`、`sends_motion_commands=false`、
+  `uses_base_uart=false`、`managed_runtime_cleanup_ok=true`。
+
+证据文件：
+
+- `sprints/2026.06.12_00-20_nav2_tf_readiness_reprobe/artifacts/02_direct_helper_nav2_after_tf_readiness_fix.clean.json`
+- `sprints/2026.06.12_00-20_nav2_tf_readiness_reprobe/artifacts/03_upper_runtime_nav2_latest_after_api_refresh.json`
+- `sprints/2026.06.12_00-20_nav2_tf_readiness_reprobe/artifacts/05_upper_api_nav2_latest_summary.json`
+
+这意味着上一轮的 localization TF blocker 已解除；下一轮应集中处理 planner/costmap 返回空
+path 的原因，而不是继续消耗 `/tf_topic_missing`。
+
 ## 运行与验证
 
 工作站验证只使用 Node/Vue gate：

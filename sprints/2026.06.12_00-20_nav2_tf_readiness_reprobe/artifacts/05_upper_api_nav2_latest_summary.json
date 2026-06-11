@@ -1,0 +1,35 @@
+{
+  "amcl_frame_params": {
+    "base_frame_id": "base_link",
+    "global_frame_id": "map",
+    "odom_frame_id": "odom"
+  },
+  "amcl_tf_root_cause": "source_inventory_observed",
+  "endpoint_status": "not_proven",
+  "latest_status": "blocked_with_root_cause",
+  "managed_runtime_cleanup_ok": true,
+  "path_generation_attempted": true,
+  "path_generation_requested": true,
+  "path_generation_service_available": true,
+  "path_generation_succeeded": false,
+  "path_point_count": 0,
+  "root_causes": [
+    {
+      "layer": "planner action",
+      "reason": "compute_path_to_pose_empty_path"
+    }
+  ],
+  "safe_to_control": false,
+  "sends_motion_commands": false,
+  "tf_chain_observed": {
+    "base_link_to_laser_frame": true,
+    "map_to_base_link": true,
+    "map_to_odom": true,
+    "odom_to_base_link": true
+  },
+  "tf_topics_observed": {
+    "/tf": true,
+    "/tf_static": true
+  },
+  "uses_base_uart": false
+}

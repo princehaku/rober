@@ -463,6 +463,45 @@ __TF_STATIC_ONCE__
         self.assertEqual("odom", source["amcl_frame_params"]["odom_frame_id"])
         self.assertEqual("/amcl_pose", source["amcl_node_publishers"][0]["topic"])
 
+    def test_tf_source_diagnostics_keeps_static_tf_when_amcl_params_lag(self) -> None:
+        """AMCL 参数服务晚到时，source probe 仍必须保留 /tf_static 采样结果。"""
+        args = HELPER.parse_args([])
+        amcl_probe = {
+            "param_probe_ok": False,
+            "node_info_observed": False,
+            "params": {},
+            "topic_types": {"/tf_static": "tf2_msgs/msg/TFMessage"},
+            "static_edges": [
+                {"parent": "odom", "child": "base_link", "topic": "/tf_static"},
+                {"parent": "base_link", "child": "laser_frame", "topic": "/tf_static"},
+            ],
+            "dynamic_edges": [],
+            "command_statuses": {"rclpy_graph": 0, "tf": 124, "tf_static": 0},
+            "boundary": "amcl_parameter_service_unavailable_after_tf_probe",
+        }
+
+        source = HELPER.build_tf_source_diagnostics(
+            args,
+            {"stdout": "", "ok": False},
+            amcl_pose_result={"stdout": "header:\n  frame_id: map\n"},
+            amcl_probe=amcl_probe,
+        )
+
+        self.assertFalse(source["tf_topics_observed"]["/tf"])
+        self.assertTrue(source["tf_static_observed"])
+        self.assertTrue(source["odom_to_base_link_source_observed"])
+        self.assertTrue(source["base_link_to_laser_frame_source_observed"])
+        self.assertFalse(source["amcl_param_probe_ok"])
+        self.assertEqual("/tf_topic_missing", source["amcl_tf_root_cause"])
+
+    def test_tf_probe_uses_wider_echo_window_after_source_probe(self) -> None:
+        """现场 ros2 CLI 启动慢，四段 fallback tf2_echo 必须使用统一宽窗口。"""
+        text = SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("collect_amcl_rclpy_probe(timeout_s=4.0)", text)
+        self.assertEqual(4, text.count("timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo"))
+        self.assertNotIn("timeout 2 ros2 run tf2_ros tf2_echo", text)
+
     def test_managed_static_tf_process_summary_classifies_roles(self) -> None:
         """static TF 源必须记录进程角色，便于区分没启动和 QoS 未观测。"""
         args = HELPER.parse_args([])

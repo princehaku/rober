@@ -1049,7 +1049,6 @@ def collect_amcl_rclpy_probe(timeout_s: float = 2.0) -> dict[str, Any]:
     try:
         import rclpy
         from rcl_interfaces.srv import GetParameters  # type: ignore[import-not-found]
-        from rclpy.duration import Duration  # type: ignore[import-not-found]
         from rclpy.qos import DurabilityPolicy, QoSProfile  # type: ignore[import-not-found]
         from tf2_msgs.msg import TFMessage  # type: ignore[import-not-found]
 
@@ -1081,23 +1080,15 @@ def collect_amcl_rclpy_probe(timeout_s: float = 2.0) -> dict[str, Any]:
                 break
         result["publishers"] = graph_topics_to_artifact(publishers)
         result["subscribers"] = graph_topics_to_artifact(subscribers)
-        if not service_ready and not client.wait_for_service(timeout_sec=0.4):
-            result["boundary"] = "amcl_parameter_service_unavailable"
-            return result
         names = ["tf_broadcast", "global_frame_id", "odom_frame_id", "base_frame_id"]
-        request = GetParameters.Request()
-        request.names = names
-        future = client.call_async(request)
-        rclpy.spin_until_future_complete(node, future, timeout_sec=max(timeout_s, 0.8))
-        response = future.result()
-        if response is None:
-            result["boundary"] = "amcl_parameter_response_missing"
-            return result
-        values = getattr(response, "values", []) or []
-        params = {
-            name: parameter_value_to_artifact(value)
-            for name, value in zip(names, values)
-        }
+        params: dict[str, Any] = {}
+        param_future: Any = None
+        param_boundary = "amcl_parameter_service_unavailable"
+        if service_ready or client.wait_for_service(timeout_sec=0.4):
+            request = GetParameters.Request()
+            request.names = names
+            param_future = client.call_async(request)
+            param_boundary = "amcl_parameter_response_pending"
         dynamic_edges: list[dict[str, str]] = []
         static_edges: list[dict[str, str]] = []
 
@@ -1115,9 +1106,40 @@ def collect_amcl_rclpy_probe(timeout_s: float = 2.0) -> dict[str, Any]:
             on_static_tf,
             QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL),
         )
-        end_time = node.get_clock().now() + Duration(seconds=max(min(timeout_s, 1.5), 0.5))
-        while node.get_clock().now() < end_time:
+        end_time = time.time() + max(min(timeout_s, 3.0), 0.8)
+        while time.time() < end_time:
+            # 参数服务偶发晚于 /amcl 节点出现在 graph；不要因此跳过 TF/static TF 采样。
             rclpy.spin_once(node, timeout_sec=0.1)
+            topic_pairs = node.get_topic_names_and_types()
+            result["topic_types"] = {topic: ",".join(types) for topic, types in topic_pairs}
+            result["command_statuses"]["rclpy_graph"] = 0
+            try:
+                publishers = node.get_publisher_names_and_types_by_node("amcl", "/")
+                subscribers = node.get_subscriber_names_and_types_by_node("amcl", "/")
+                if publishers or subscribers:
+                    result["node_info_observed"] = True
+                    result["publishers"] = graph_topics_to_artifact(publishers)
+                    result["subscribers"] = graph_topics_to_artifact(subscribers)
+            except Exception as graph_exc:  # noqa: BLE001 - graph 继续发现，错误只留给 artifact。
+                result["node_info_error"] = compact_error(graph_exc)
+            if param_future is None and client.service_is_ready():
+                request = GetParameters.Request()
+                request.names = names
+                param_future = client.call_async(request)
+                param_boundary = "amcl_parameter_response_pending"
+            if param_future is not None and param_future.done() and not params:
+                response = param_future.result()
+                if response is None:
+                    param_boundary = "amcl_parameter_response_missing"
+                else:
+                    values = getattr(response, "values", []) or []
+                    params = {
+                        name: parameter_value_to_artifact(value)
+                        for name, value in zip(names, values)
+                    }
+                    param_boundary = "amcl_parameter_response_observed"
+            if dynamic_edges and static_edges and params and result["node_info_observed"]:
+                break
         result["dynamic_edges"] = dynamic_edges
         result["static_edges"] = static_edges
         result["command_statuses"]["tf"] = 0 if dynamic_edges else 124
@@ -1128,7 +1150,11 @@ def collect_amcl_rclpy_probe(timeout_s: float = 2.0) -> dict[str, Any]:
                 "ok": bool(result["node_info_observed"] and params and result["tf_inventory_observed"]),
                 "param_probe_ok": bool(params),
                 "params": params,
-                "boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+                "boundary": (
+                    "rclpy_amcl_params_graph_tf_probe_observed"
+                    if params
+                    else f"{param_boundary}_after_tf_probe"
+                ),
             }
         )
         return result
@@ -1184,7 +1210,7 @@ def collect_tf_source_diagnostics(
             "ok": False,
             "boundary": "ros2_unavailable_tf_source_probe_skipped",
         }, default_tf_source_diagnostics(args, amcl_pose_result=amcl_pose_result)
-    amcl_probe = collect_amcl_rclpy_probe(timeout_s=2.0)
+    amcl_probe = collect_amcl_rclpy_probe(timeout_s=4.0)
     result = {
         "executed": True,
         "ok": bool(amcl_probe.get("ok")),
@@ -2426,8 +2452,8 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     map_to_odom_tf = (
         run_ros(
             args,
-            f"timeout 2 ros2 run tf2_ros tf2_echo map {shlex.quote(frame_ids['odom'])}",
-            timeout_s=3.0,
+            f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo map {shlex.quote(frame_ids['odom'])}",
+            timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
         )
         if ros2_ok and initialpose_request_payload["enabled"] and not tf_source_diagnostics.get("map_to_odom_source_observed")
         else tf_not_requested
@@ -2447,10 +2473,10 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         run_ros(
             args,
             (
-                f"timeout 2 ros2 run tf2_ros tf2_echo "
+                f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo "
                 f"{shlex.quote(frame_ids['odom'])} {shlex.quote(frame_ids['base'])}"
             ),
-            timeout_s=3.0,
+            timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
         )
         if ros2_ok and initialpose_request_payload["enabled"] and not tf_source_diagnostics.get("odom_to_base_link_source_observed")
         else tf_not_requested
@@ -2509,10 +2535,10 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         run_ros(
             args,
             (
-                f"timeout 2 ros2 run tf2_ros tf2_echo "
+                f"timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo "
                 f"{shlex.quote(frame_ids['base'])} {shlex.quote(frame_ids['laser'])}"
             ),
-            timeout_s=3.0,
+            timeout_s=TF_ECHO_PROCESS_TIMEOUT_S,
         )
         if ros2_ok and initialpose_request_payload["enabled"] and not tf_source_diagnostics.get("base_link_to_laser_frame_source_observed")
         else tf_not_requested
