@@ -1,0 +1,45 @@
+{
+  "id": "05_map_save_unknown_field_reject",
+  "requested_at": "2026-06-11T05:48:56.746Z",
+  "workstation_url": "http://127.0.0.1:18790/api/robot-control/map/save?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+  "method": "POST",
+  "request_body": {
+    "map_name": "pc_map_lifecycle_20260611_1350",
+    "arbitrary_endpoint": "/api/base/manual"
+  },
+  "http_status": 400,
+  "ok": false,
+  "json_parse_ok": true,
+  "response": {
+    "schema": "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1",
+    "source": "software_proof",
+    "proof_status": "not_proven",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "pc_only": true,
+    "action": "save",
+    "proxy_status": "lifecycle_rejected",
+    "source_base_url": "http://192.168.1.11:8787",
+    "normalized_base_url": "not_loaded",
+    "remote_endpoint": "/api/map/save",
+    "remote_method": "POST",
+    "remote_http_status": null,
+    "status": "blocked",
+    "map_count": null,
+    "map_names": [],
+    "command_result": {
+      "mode": "not_loaded",
+      "executed": false,
+      "ok": null
+    },
+    "request_body": {},
+    "failure_reason": "request_body_unknown_fields:arbitrary_endpoint",
+    "blocked_reasons": [
+      "request_body_unknown_fields:arbitrary_endpoint"
+    ],
+    "hard_dangerous_true_fields": [],
+    "robot_control_executed": false
+  },
+  "raw_text": ""
+}

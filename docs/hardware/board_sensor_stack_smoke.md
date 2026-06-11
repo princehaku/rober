@@ -1584,3 +1584,56 @@ OpenCV 结论：
    `/dev/video*` 节点。
 5. 重跑本 sprint OpenCV stats；在 `visible_content_proven=true` 前，不得放行非 stop
    手动运动或 HIL movement gate。
+
+## 2026-06-11 13:50 PC Map Lifecycle Real Proxy Smoke
+
+`sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/` 在 PC workstation
+通过本机固定代理访问真实上位机 `http://192.168.1.11:8787`，验证 map lifecycle
+start/save/list 能从 PC 触发上位机 no-motion 建图材料采集。本轮未修改 WAVE ROVER、
+ESP32、Orange Pi 串口、底盘 launch 或硬件配置；硬件事实入口仍是
+`docs/vendor/VENDOR_INDEX.md`。Vendor index 说明 WAVE ROVER 上下位机链路是 UART
+newline-delimited JSON，vendor Raspberry Pi 默认串口不是 Orange Pi 通用事实；本轮只记录
+现场 readback 中的 `/dev/ttyS5` 和 `/dev/ttyACM0`，不把它们外推为默认配置。
+
+执行结果：
+
+- PC proxy 前置 `map/list`：`proxy_status=lifecycle_forwarded`，
+  `remote_http_status=200`，`map_count=22`。
+- PC proxy `map/start`：`map_name=pc_map_lifecycle_20260611_1350`，
+  `command_result.mode=map_lifecycle_proof_helper`，`executed=true`，`ok=true`。
+- PC proxy `map/save`：同一 `map_name`，`command_result.executed=true`，
+  `ok=true`。
+- save 后 `map/list`：`map_count=24`，包含
+  `pc_map_lifecycle_20260611_1350.yaml`。
+- reset 未执行：`not_attempted_by_safety_boundary`。
+- 恶意字段拒绝 smoke：`arbitrary_endpoint=/api/base/manual` 被本机 HTTP 400 拒绝，
+  `remote_http_status=null`。
+
+No-motion / no-base-control 边界：
+
+- 未调用 `/api/base/manual`。
+- 未发布 `/cmd_vel`。
+- 未写 WAVE ROVER UART。
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `robot_control_executed=false`
+- `sends_motion_commands=false`
+- `publishes_cmd_vel=false`
+- `calls_base_manual=false`
+- `uses_base_uart=false`
+
+Cleanup 结果：
+
+- 本机临时 workstation API `127.0.0.1:18790` 已停止，端口无监听。
+- 上位机 `upper_robot_api.py --port 8787` 仍 active。
+- SSH 只读检查 `root@192.168.1.11:37878` 未发现长期 `slam_toolbox`、
+  `map_lifecycle`、`learn.launch`、`nav2`、`amcl`、`map_server`、`planner_server`、
+  `controller_server` 或 `ros2 launch/run` 残留；匹配输出只包含本次检查命令自身。
+- `/dev/ttyS5` 和 `/dev/ttyACM0` 的 `fuser` 无占用输出。
+
+Artifacts：
+
+- `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/map_lifecycle_smoke_summary.json`
+- `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/cleanup_ssh_process_device_check.txt`
+- `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/cleanup_summary.json`

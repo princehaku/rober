@@ -1,0 +1,5 @@
+{
+  "id": "06_map_reset",
+  "status": "not_attempted_by_safety_boundary",
+  "reason": "destructive reset can remove or disturb existing map/runtime state; task instructed default not to test reset unless confirmed safe."
+}

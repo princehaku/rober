@@ -1,0 +1,7 @@
+checked_at=2026-06-11T13:53:21+08:00
+-- api/service candidates --
+261344 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+263092 zsh -c printf "checked_at="; date -Iseconds; echo "-- api/service candidates --"; pgrep -af "uvicorn|fastapi|upper|robot_api|workstation|tsx|node" || true; echo "-- map/slam/helper candidates --"; pgrep -af "slam_toolbox|map_lifecycle|o3_map|learn.launch|nav2|amcl|map_server|planner_server|controller_server|ros2 launch|ros2 run" || true; echo "-- device occupancy --"; (command -v fuser >/dev/null 2>&1 && { fuser -v /dev/ttyS5 /dev/ttyACM0 2>&1 || true; }) || (command -v lsof >/dev/null 2>&1 && { lsof /dev/ttyS5 /dev/ttyACM0 2>&1 || true; }) || true
+-- map/slam/helper candidates --
+263092 zsh -c printf "checked_at="; date -Iseconds; echo "-- api/service candidates --"; pgrep -af "uvicorn|fastapi|upper|robot_api|workstation|tsx|node" || true; echo "-- map/slam/helper candidates --"; pgrep -af "slam_toolbox|map_lifecycle|o3_map|learn.launch|nav2|amcl|map_server|planner_server|controller_server|ros2 launch|ros2 run" || true; echo "-- device occupancy --"; (command -v fuser >/dev/null 2>&1 && { fuser -v /dev/ttyS5 /dev/ttyACM0 2>&1 || true; }) || (command -v lsof >/dev/null 2>&1 && { lsof /dev/ttyS5 /dev/ttyACM0 2>&1 || true; }) || true
+-- device occupancy --

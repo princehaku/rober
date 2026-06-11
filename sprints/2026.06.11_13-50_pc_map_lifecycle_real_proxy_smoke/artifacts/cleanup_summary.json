@@ -1,0 +1,30 @@
+{
+  "schema": "trashbot.pc_workstation.map_lifecycle_cleanup_summary.v1",
+  "checked_at": "2026-06-11T05:53:49.515Z",
+  "upper_api_status_schema": "trashbot.upper_robot_api.v1.status",
+  "upper_api_generated_at_ms": 1781157130416,
+  "upper_service_http_active": true,
+  "upper_service_process_active": true,
+  "map_status": "map_once_artifact_metadata_observed",
+  "map_latest_evidence_ref": "o3-map-lifecycle-1781156894071",
+  "base_port": "/dev/ttyS5",
+  "lidar_port": "/dev/ttyACM0",
+  "top_level_safe_to_control": false,
+  "top_level_delivery_success": false,
+  "top_level_primary_actions_enabled": false,
+  "top_level_robot_control_executed": false,
+  "top_level_sends_commands": false,
+  "map_safety": {
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "robot_control_executed": false
+  },
+  "ssh_process_device_check": {
+    "attempted": true,
+    "target": "root@192.168.1.11:37878",
+    "upper_robot_api_process_observed": true,
+    "no_long_running_map_slam_helper_observed": true,
+    "ttyS5_ttyACM0_fuser_output_empty": true
+  }
+}

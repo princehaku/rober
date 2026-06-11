@@ -137,3 +137,51 @@ cd pc-tools/workstation && npm run lint
 - `pc_only=true`
 
 即使本地 JSON 读取成功，工作站也不得声明真实 Nav2/fixed-route runtime pass、真实 HIL、真实 WAVE ROVER feedback、真实手机验收、dropoff/cancel completion 或 delivery success。
+
+## 2026-06-11 PC Map Lifecycle Real Proxy Smoke
+
+`sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/` 使用临时
+workstation API `http://127.0.0.1:18790`，通过 PC 固定代理访问真实上位机
+`http://192.168.1.11:8787`，完成一次 no-motion map lifecycle smoke。
+
+执行顺序：
+
+- `GET /api/robot-control/map/list?baseUrl=http://192.168.1.11:8787`
+- `POST /api/robot-control/map/start?baseUrl=http://192.168.1.11:8787`
+  body `{"map_name":"pc_map_lifecycle_20260611_1350"}`
+- `POST /api/robot-control/map/save?baseUrl=http://192.168.1.11:8787`
+  body `{"map_name":"pc_map_lifecycle_20260611_1350"}`
+- save 后再次 `GET /api/robot-control/map/list?...`
+- reset 未执行，原因是 destructive reset 可能影响既有地图或运行状态。
+
+结果：四个 lifecycle 请求均由固定 PC endpoint 转发成功，
+`proxy_status=lifecycle_forwarded`、`remote_http_status=200`。前置 list
+`map_count=22`，后置 list `map_count=24`，并看到
+`pc_map_lifecycle_20260611_1350.yaml`。`start/save` 返回
+`command_result.mode=map_lifecycle_proof_helper`、`executed=true`、`ok=true`。
+补充恶意字段 smoke 对 `arbitrary_endpoint=/api/base/manual` 返回本机 HTTP 400，
+`failure_reason=request_body_unknown_fields:arbitrary_endpoint`，
+`remote_http_status=null`，证明浏览器/请求不能把 map proxy 变成任意路径透传。
+
+安全边界保持：
+
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `robot_control_executed=false`
+- `sends_motion_commands=false`
+- `publishes_cmd_vel=false`
+- `calls_base_manual=false`
+- `uses_base_uart=false`
+
+首屏 DOM smoke 仍证明 `.simple-user-console` 是 `Rober 小车控制台` + 五卡片：
+`小车连接`、`实时画面`、`雷达`、`地图`、`移动/导航`。默认可见首屏未出现
+`开始建图`、`保存地图`、`HIL`、`proof`、`Nav2`、`/cmd_vel`、
+`/api/base/manual`、`task_id`、`Mock`、`检查路径`；高级诊断继续保留
+`开始建图（高级）`、`保存地图` 和 `地图列表`。
+
+Artifacts：
+
+- `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/map_lifecycle_smoke_summary.json`
+- `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/pc_plain_user_home_dom_smoke.json`
+- `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/cleanup_summary.json`

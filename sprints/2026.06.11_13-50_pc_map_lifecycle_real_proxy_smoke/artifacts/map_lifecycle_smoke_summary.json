@@ -1,0 +1,115 @@
+{
+  "schema": "trashbot.pc_workstation.map_lifecycle_real_proxy_smoke.v1",
+  "started_at": "2026-06-11T05:47:30.911Z",
+  "finished_at": "2026-06-11T05:48:56.746Z",
+  "workstation_base_url": "http://127.0.0.1:18790",
+  "robot_base_url": "http://192.168.1.11:8787",
+  "map_name": "pc_map_lifecycle_20260611_1350",
+  "reset": {
+    "id": "06_map_reset",
+    "status": "not_attempted_by_safety_boundary",
+    "reason": "destructive reset can remove or disturb existing map/runtime state; task instructed default not to test reset unless confirmed safe."
+  },
+  "safety_boundary": {
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "robot_control_executed": false,
+    "sends_motion_commands": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "calls_base_manual_endpoint_attempted": false,
+    "cmd_vel_publish_attempted": false
+  },
+  "fixed_proxy_checks": [
+    {
+      "id": "01_map_list_before",
+      "http_status": 200,
+      "proxy_status": "lifecycle_forwarded",
+      "remote_endpoint": "/api/map/list",
+      "remote_method": "GET",
+      "remote_http_status": 200,
+      "command_mode": "read_only_local_files",
+      "command_executed": false,
+      "command_ok": true,
+      "failure_reason": "",
+      "blocked_reasons": [],
+      "hard_dangerous_true_fields": [],
+      "forbidden_true_fields_observed": []
+    },
+    {
+      "id": "02_map_start",
+      "http_status": 200,
+      "proxy_status": "lifecycle_forwarded",
+      "remote_endpoint": "/api/map/start",
+      "remote_method": "POST",
+      "remote_http_status": 200,
+      "command_mode": "map_lifecycle_proof_helper",
+      "command_executed": true,
+      "command_ok": true,
+      "failure_reason": "",
+      "blocked_reasons": [],
+      "hard_dangerous_true_fields": [],
+      "forbidden_true_fields_observed": []
+    },
+    {
+      "id": "03_map_save",
+      "http_status": 200,
+      "proxy_status": "lifecycle_forwarded",
+      "remote_endpoint": "/api/map/save",
+      "remote_method": "POST",
+      "remote_http_status": 200,
+      "command_mode": "map_lifecycle_proof_helper",
+      "command_executed": true,
+      "command_ok": true,
+      "failure_reason": "",
+      "blocked_reasons": [],
+      "hard_dangerous_true_fields": [],
+      "forbidden_true_fields_observed": []
+    },
+    {
+      "id": "04_map_list_after",
+      "http_status": 200,
+      "proxy_status": "lifecycle_forwarded",
+      "remote_endpoint": "/api/map/list",
+      "remote_method": "GET",
+      "remote_http_status": 200,
+      "command_mode": "read_only_local_files",
+      "command_executed": false,
+      "command_ok": true,
+      "failure_reason": "",
+      "blocked_reasons": [],
+      "hard_dangerous_true_fields": [],
+      "forbidden_true_fields_observed": []
+    },
+    {
+      "id": "05_map_save_unknown_field_reject",
+      "http_status": 400,
+      "proxy_status": "lifecycle_rejected",
+      "remote_endpoint": "/api/map/save",
+      "remote_method": "POST",
+      "remote_http_status": null,
+      "command_mode": "not_loaded",
+      "command_executed": false,
+      "command_ok": null,
+      "failure_reason": "request_body_unknown_fields:arbitrary_endpoint",
+      "blocked_reasons": [
+        "request_body_unknown_fields:arbitrary_endpoint"
+      ],
+      "hard_dangerous_true_fields": [],
+      "forbidden_true_fields_observed": []
+    }
+  ],
+  "result": {
+    "lifecycle_sequence_attempted": [
+      "list_before",
+      "start",
+      "save",
+      "list_after"
+    ],
+    "lifecycle_all_proxy_forwarded": true,
+    "reject_smoke_passed": true,
+    "no_forbidden_true_fields_observed": true
+  }
+}

@@ -457,6 +457,49 @@ one 低速短时 jog 并立即 stop，不能直调远端 `/api/base/manual`。
 no-motion map runtime 的 `开始建图（高级）` / `保存地图` 固定入口；它们只触发
 LiDAR+SLAM 建图材料采集，不等于真实底盘控制、Nav2 执行、delivery 或安全放行。
 
+## 2026-06-11 真实 PC Proxy Map Lifecycle 证据
+
+本轮 `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/` 未改 PC 产品代码，
+只用临时 workstation API `http://127.0.0.1:18790` 通过固定代理访问真实上位机
+`http://192.168.1.11:8787`。普通首屏保持简易风格，建图/保存只在默认关闭的
+`高级诊断` 内作为 operator 入口。
+
+真实代理链路结果：
+
+- `GET /api/robot-control/map/list?...` 前置读取成功，`map_count=22`。
+- `POST /api/robot-control/map/start?...` 使用短安全 `map_name`：
+  `pc_map_lifecycle_20260611_1350`，返回 `lifecycle_forwarded`。
+- `POST /api/robot-control/map/save?...` 使用同一 `map_name`，返回
+  `lifecycle_forwarded`。
+- save 后再次 list 成功，`map_count=24`，新增候选包含
+  `pc_map_lifecycle_20260611_1350.yaml`。
+- reset 未测，记录为 `not_attempted_by_safety_boundary`，避免破坏既有地图或状态。
+- 未知字段拒绝 smoke：`POST /api/robot-control/map/save?...` 加
+  `arbitrary_endpoint=/api/base/manual` 被本机 400 拒绝，
+  `remote_http_status=null`，没有透传到上位机。
+
+安全语义：本轮是 no-motion map lifecycle evidence capture，不是用户发车、
+手控、Nav2 执行或 HIL。artifact summary 固定记录：
+`safe_to_control=false`、`delivery_success=false`、
+`primary_actions_enabled=false`、`robot_control_executed=false`、
+`sends_motion_commands=false`、`publishes_cmd_vel=false`、
+`calls_base_manual=false`、`uses_base_uart=false`。
+
+首屏边界：DOM smoke 证明 `.simple-user-console` 仍包含标题
+`Rober 小车控制台` 和五卡片 `小车连接 / 实时画面 / 雷达 / 地图 / 移动/导航`。
+默认可见首屏未出现 `开始建图`、`保存地图`、`HIL`、`proof`、`Nav2`、
+`/cmd_vel`、`/api/base/manual`、`task_id`、`Mock`、`检查路径`。高级诊断中仍保留
+`开始建图（高级）`、`保存地图`、`地图列表`，作为 operator 显式展开后的固定代理入口。
+
+证据文件：
+
+- `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/01_map_list_before.json`
+- `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/02_map_start.json`
+- `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/03_map_save.json`
+- `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/04_map_list_after.json`
+- `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/05_map_save_unknown_field_reject.json`
+- `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/pc_plain_user_home_dom_smoke.json`
+
 ## 运行与验证
 
 工作站验证只使用 Node/Vue gate：
