@@ -691,6 +691,58 @@ size、readyState/currentTime 和 cleanup diagnostics，只能说明图传链路
 
 - `sprints/2026.06.11_14-20_pc_camera_plain_ui_current_smoke/artifacts/pc_camera_visible_video_stats.json`
 
+## 2026-06-11 PC Proxy Real Board Control Smoke 证据
+
+本轮 `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/` 未改 PC UI 代码、
+普通首屏组件或样式，只用临时 workstation API `http://127.0.0.1:18793` 通过固定 PC
+proxy 连接真实上位机 `http://192.168.1.11:8787`。执行范围限定为 summary 读取、
+radar/map/Nav2 no-motion proof refresh、camera health/devices 只读 readback、
+base stop smoke，以及 manual 非 stop gate rejection。
+
+结果：
+
+- summary、radar refresh、map refresh、Nav2 refresh、base stop 均返回 HTTP 200；
+  manual forward gate rejection 返回本机 HTTP 400。
+- radar refresh 经 PC proxy 转发到 `/api/radar/scan-proof/refresh`，生成
+  `evidence_ref=o1-lidar-scan-proof-1781172841393`，`scan_once_observed=true`、
+  `scan_hz_observed=true`、`raw_packet_once_observed=true`、`tf_observed=true`；
+  但 lifecycle stopped，continuous window 未证明。
+- map refresh 经 PC proxy 转发到 `/api/map/proof/refresh`，生成
+  `evidence_ref=o3-map-lifecycle-1781172868360`，`map_once_observed=true`、
+  `map_file_observed=true`、`map_metadata_observed=true`。
+- Nav2 no-motion refresh 经 PC proxy 转发到 `/api/nav2/proof/refresh`，但真实上位机返回
+  `blocked_with_root_cause`，`path_generated=false`、`path_generation_succeeded=false`、
+  `path_point_count=0`、`planner_server_active=false`。这只证明 proxy 链路可达，不证明
+  Nav2 规划可用。
+- camera 本轮只消费 summary 的固定 proxy readback，`camera.status=ready`、
+  `devices_status=loaded`、`preview_status=idle_not_started`；未打开 WebRTC peer，
+  因此无 camera cleanup 需求。
+- base stop 经 PC proxy 转发到固定 `/api/base/stop`，`remote_http_status=200`、
+  `status=stopped`、`evidence_capture_status=captured`，但顶层仍固定
+  `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、
+  `robot_control_executed=false`。
+- manual forward `speed=0.12 duration_ms=800 confirm_hil_checklist=true` 被本机 proxy
+  拒绝，`remote_http_status=null`、`failure_reason=operator_report_preflight_required`。
+  缺少 `external_video_recorded`、`visible_content_proven`、
+  `wheel_feedback_lr_nonzero_proven`、`physical_motion_lidar_delta_proven`，所以未调用真实
+  `/api/base/manual` 成功路径。
+
+安全边界保持：未执行非 stop motion，未发布 `/cmd_vel`，未改变普通用户默认首屏。默认首屏
+仍是 `Rober 小车控制台` + `.simple-user-console` 五卡片
+`小车连接 / 实时画面 / 雷达 / 地图 / 移动/导航`；工程项继续留在默认关闭的
+`高级诊断` / `高级工具`。
+
+Artifacts：
+
+- `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/pc_proxy_smoke_key_conclusions.json`
+- `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/raw/summary.json`
+- `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/raw/radar_refresh.json`
+- `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/raw/map_refresh.json`
+- `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/raw/nav2_refresh.json`
+- `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/raw/camera_health_devices_from_summary.json`
+- `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/raw/base_stop.json`
+- `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/raw/manual_non_stop_gate_rejection.json`
+
 ## 运行与验证
 
 工作站验证只使用 Node/Vue gate：

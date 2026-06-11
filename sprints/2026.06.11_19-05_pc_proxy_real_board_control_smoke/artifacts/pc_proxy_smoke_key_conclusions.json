@@ -1,0 +1,108 @@
+{
+  "workstation_proxy_base": "http://127.0.0.1:18793",
+  "robot_api_base": "http://192.168.1.11:8787",
+  "http_codes": {
+    "summary": 200,
+    "radar_refresh": 200,
+    "map_refresh": 200,
+    "nav2_refresh": 200,
+    "base_stop": 200,
+    "manual_non_stop_gate_rejection": 400
+  },
+  "safety_boundary": {
+    "non_stop_motion_executed": false,
+    "base_manual_success_path_called": false,
+    "cmd_vel_published_by_workstation": false,
+    "ui_default_first_screen_changed": false,
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  },
+  "radar": {
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "remote_endpoint": "/api/radar/scan-proof/refresh",
+    "evidence_ref": "o1-lidar-scan-proof-1781172841393",
+    "latest_readback_key_values": {
+      "status": "refreshed",
+      "latest_proof_status": "raw_packets_parsed",
+      "evidence_ref": "o1-lidar-scan-proof-1781172841393",
+      "scan_once_observed": "true",
+      "scan_hz_observed": "true",
+      "raw_packet_once_observed": "true",
+      "tf_observed": "true",
+      "continuous_scan_status": "latest_proof_present_but_lifecycle_not_running",
+      "continuous_window_observed": "false",
+      "continuity_window_status": "latest_proof_present_but_lifecycle_not_running",
+      "lifecycle_running": "false",
+      "lifecycle_state": "stopped",
+      "latest_scan_proof_fresh": "false",
+      "blocked_reasons": "lidar_lifecycle_not_running",
+      "continuity_blocked_reasons": "lidar_lifecycle_not_running"
+    },
+    "hard_dangerous_true_fields": []
+  },
+  "map": {
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "remote_endpoint": "/api/map/proof/refresh",
+    "evidence_ref": "o3-map-lifecycle-1781172868360",
+    "latest_readback_key_values": {
+      "status": "map_once_artifact_metadata_observed",
+      "latest_proof_status": "map_once_artifact_metadata_observed",
+      "evidence_ref": "o3-map-lifecycle-1781172868360",
+      "map_once_observed": "true",
+      "map_file_observed": "true",
+      "map_metadata_observed": "true"
+    },
+    "hard_dangerous_true_fields": []
+  },
+  "nav2": {
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "remote_endpoint": "/api/nav2/proof/refresh",
+    "evidence_ref": "o10-amcl-nav2-runtime-wrapper-failure-1781172997846",
+    "latest_readback_key_values": {
+      "status": "blocked_with_root_cause",
+      "latest_proof_status": "blocked_with_root_cause",
+      "evidence_ref": "o10-amcl-nav2-runtime-wrapper-failure-1781172997846",
+      "managed_runtime_started": "true",
+      "initialpose_published": "true",
+      "path_generation_requested": "true",
+      "path_generated": "false",
+      "path_generation_succeeded": "false",
+      "path_point_count": "0",
+      "planner_server_active": "false"
+    },
+    "hard_dangerous_true_fields": [],
+    "failure_boundary": "remote no-motion proof refreshed but path generation blocked_with_root_cause; no motion was executed"
+  },
+  "camera": {
+    "health_status": "ready",
+    "health_request_status": "loaded",
+    "devices_status": "loaded",
+    "offer_started": false,
+    "cleanup_required": false
+  },
+  "base_stop": {
+    "proxy_status": "command_forwarded",
+    "remote_http_status": 200,
+    "remote_endpoint": "/api/base/stop",
+    "status": "stopped",
+    "evidence_capture_status": "captured",
+    "robot_control_executed": false
+  },
+  "manual_gate": {
+    "proxy_status": "command_rejected",
+    "http_status": 400,
+    "remote_http_status": null,
+    "failure_reason": "operator_report_preflight_required",
+    "missing_fields": [
+      "external_video_recorded",
+      "visible_content_proven",
+      "wheel_feedback_lr_nonzero_proven",
+      "physical_motion_lidar_delta_proven"
+    ],
+    "robot_control_executed": false
+  }
+}

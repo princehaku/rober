@@ -1,0 +1,7 @@
+summary_http=200
+radar_refresh_http=200
+map_refresh_http=200
+nav2_refresh_http=200
+post_summary_http=200
+base_stop_http=200
+manual_non_stop_gate_rejection_http=400

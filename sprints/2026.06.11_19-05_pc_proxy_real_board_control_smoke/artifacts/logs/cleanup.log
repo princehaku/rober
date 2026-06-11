@@ -1,0 +1,4 @@
+stopped_workstation_api_port=18793
+lsof_listen_output=none
+lsof_exit_code=1
+checked_at=2026-06-11T18:18:40+08:00

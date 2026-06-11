@@ -1,0 +1,43 @@
+{
+  "source": "workstation_proxy_summary_read_endpoints",
+  "base_url": "http://192.168.1.11:8787",
+  "camera_health": {
+    "id": "camera_health",
+    "endpoint": "/api/camera/health",
+    "http_status": 200,
+    "request_status": "loaded",
+    "schema": "trashbot.local_webrtc_camera_smoke.v1",
+    "status": "ready",
+    "evidence_ref": "not_loaded",
+    "key_values": {
+      "safe_to_control": "false"
+    },
+    "blocked_reasons": [],
+    "dangerous_true_fields": []
+  },
+  "camera_devices": {
+    "id": "camera_devices",
+    "endpoint": "/api/camera/devices",
+    "http_status": 200,
+    "request_status": "loaded",
+    "schema": "trashbot.local_webrtc_camera_devices.v1",
+    "status": "loaded",
+    "evidence_ref": "not_loaded",
+    "key_values": {},
+    "blocked_reasons": [],
+    "dangerous_true_fields": []
+  },
+  "readback_summary_camera": {
+    "status": "ready",
+    "devices_status": "loaded",
+    "preview_status": "idle_not_started"
+  },
+  "boundary": {
+    "offer_not_started": true,
+    "peer_not_opened": true,
+    "cleanup_not_required": true,
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false
+  }
+}

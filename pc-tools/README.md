@@ -348,3 +348,42 @@ Artifacts：
 - `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/pc_proxy/01_pc_proxy_radar_start.json`
 - `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/direct_upper/02_during_window.jsonl`
 - `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/pc_proxy/03_pc_proxy_radar_stop.json`
+
+## 2026-06-11 PC Proxy Real Board Control Smoke
+
+`sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/` 使用临时 workstation API
+`http://127.0.0.1:18793`，通过固定 PC proxy 连接真实上位机
+`http://192.168.1.11:8787`。本轮没有改 PC UI 代码、普通首屏组件或样式，只保存
+artifacts 和证据边界。
+
+执行结果：
+
+- `GET /api/robot-control/summary?baseUrl=http://192.168.1.11:8787` 返回 HTTP 200，
+  顶层继续保持 `safe_to_control=false`、`delivery_success=false`、
+  `primary_actions_enabled=false`。
+- `POST /api/robot-control/radar/scan-proof/refresh?...` 返回 HTTP 200，
+  `evidence_ref=o1-lidar-scan-proof-1781172841393`，一次性 scan/raw/tf 证据存在，
+  但 continuous lifecycle/window 未证明。
+- `POST /api/robot-control/map/proof/refresh?...` 返回 HTTP 200，
+  `evidence_ref=o3-map-lifecycle-1781172868360`，map file/metadata 证据存在。
+- `POST /api/robot-control/nav2/proof/refresh?...` 返回 HTTP 200，但真实上位机结果是
+  `blocked_with_root_cause`，`path_generated=false`、`planner_server_active=false`；
+  这不证明 Nav2 规划可用。
+- camera 只读 readback 来自 summary 的 `camera_health` / `camera_devices`：
+  `status=ready`、`devices_status=loaded`、`preview_status=idle_not_started`。
+  本轮未打开 camera offer peer。
+- `POST /api/robot-control/base/stop?...` 返回 HTTP 200，固定转发到 `/api/base/stop`。
+- `POST /api/robot-control/base/manual?...` 的 forward 请求被本机 HTTP 400 拒绝，
+  `remote_http_status=null`，原因是 operator report 仍缺外部视频、相机可见内容、
+  轮速非零反馈和 LiDAR delta 材料。
+
+安全边界保持：未执行非 stop motion，未调用真实 `/api/base/manual` 成功路径，未发布
+`/cmd_vel`，未改变普通用户默认首屏。默认首屏仍是 `Rober 小车控制台` +
+`.simple-user-console` 五卡片 `小车连接 / 实时画面 / 雷达 / 地图 / 移动/导航`。
+
+Artifacts：
+
+- `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/pc_proxy_smoke_key_conclusions.json`
+- `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/raw/*.json`
+- `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/logs/http_codes.log`
+- `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/logs/cleanup.log`
