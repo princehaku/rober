@@ -1,8 +1,27 @@
 import { flushPromises, mount } from "@vue/test-utils";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App.vue";
 import TrainingLabelingPanel from "../src/components/TrainingLabelingPanel.vue";
 import { PROOF_FLAGS } from "../src/shared/contracts";
+
+const SPRINT_ARTIFACT_DIR = resolve(
+  process.cwd(),
+  "../../sprints/2026.06.11_08-20_pc_plain_user_home_second_restore/artifacts",
+);
+
+const DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS = [
+  "检查路径",
+  "现场材料",
+  "HIL",
+  "Nav2",
+  "proof",
+  "key values",
+  "/cmd_vel",
+  "/api/base/manual",
+  "可点动",
+] as const;
 
 const fixtures: Record<string, unknown> = {
   "/api/health": {
@@ -2976,6 +2995,34 @@ function stubWorkstationFetch() {
   return mockedFetch;
 }
 
+function writePlainHomeSmokeArtifact(firstScreenText: string, advancedText: string): void {
+  // 该 artifact 只证明默认 DOM 文案收敛，不把折叠区的诊断能力解释成已联调。
+  mkdirSync(SPRINT_ARTIFACT_DIR, { recursive: true });
+  const forbiddenTokenPresence = Object.fromEntries(
+    DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS.map((token) => [token, firstScreenText.includes(token)]),
+  );
+  writeFileSync(
+    resolve(SPRINT_ARTIFACT_DIR, "pc_plain_user_home_dom_smoke.json"),
+    `${JSON.stringify(
+      {
+        schema: "trashbot.pc_workstation.plain_user_home_dom_smoke.v1",
+        checked_at: new Date().toISOString(),
+        first_screen_card_titles: ["小车连接", "实时画面", "雷达", "地图", "移动/导航"],
+        forbidden_token_presence: forbiddenTokenPresence,
+        advanced_diagnostics_closed_by_default: true,
+        advanced_entries_retained: {
+          check_path: advancedText.includes("检查路径（高级）"),
+          nav_goal_preflight: advancedText.includes("导航目标预检（高级）"),
+          hil_materials: advancedText.includes("现场 HIL 材料"),
+          proof_readback: advancedText.includes("latest readback key values"),
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}
+
 describe("App", () => {
   afterEach(() => {
     // 清理全局 fetch，避免后续用例误用上一轮 API fixture。
@@ -3050,11 +3097,10 @@ describe("App", () => {
     expect(firstScreenText).toContain("未打开");
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("地图列表");
-    expect(firstScreenText).toContain("检查路径");
-    expect(firstScreenText).toContain("未检查");
+    expect(firstScreenText).toContain("待命");
     expect(firstScreenText).toContain("停止");
-    expect(firstScreenText).toContain("现场材料：未满足");
     const firstScreenForbiddenTokens = [
+      ...DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS,
       "路线",
       "预览",
       "证据",
@@ -3070,7 +3116,6 @@ describe("App", () => {
       "后退",
       "左转",
       "右转",
-      "HIL",
       "structured_hil_claims",
       "现场确认",
       "低速短时点动",
@@ -3079,7 +3124,6 @@ describe("App", () => {
       "视频材料",
       "速度",
       "时长",
-      "proof",
       "readback",
       "raw",
       "source",
@@ -3087,8 +3131,6 @@ describe("App", () => {
       "safe_to_control",
       "delivery_success",
       "safe_to_control",
-      "/cmd_vel",
-      "/api/base/manual",
       "/dev/ttyS5",
       "自动导航",
       "最近证据",
@@ -3098,6 +3140,9 @@ describe("App", () => {
       "ice_connection_state",
       "scan_once_observed",
       "map_once_observed",
+      "未检查",
+      "路径可生成",
+      "导航目标",
       "path_generation_succeeded",
       "path_point_count",
       "目标 x",
@@ -3141,6 +3186,7 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("/api/operator/report");
     expect(diagnostics.text()).toContain("现场点动设置 / 控制边界");
     expect(diagnostics.text()).toContain("Nav2 规划详情");
+    expect(diagnostics.text()).toContain("检查路径（高级）");
     expect(diagnostics.text()).toContain("导航目标预检（高级）");
     expect(diagnostics.text()).toContain("确认仅做导航目标预检");
     expect(diagnostics.text()).toContain("启动雷达（高级）");
@@ -3148,6 +3194,7 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("前进");
     expect(diagnostics.text()).toContain("速度上限");
     expect(diagnostics.text()).toContain("现场有人扶控并准备急停");
+    writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text());
   });
 
   it("submits operator report material from advanced diagnostics without leaking it to the first screen", async () => {
@@ -3212,15 +3259,16 @@ describe("App", () => {
     expect(firstScreenText).toContain("刷新雷达");
     expect(firstScreenText).toContain("刷新地图");
     expect(firstScreenText).toContain("地图列表");
-    expect(firstScreenText).toContain("检查路径");
+    expect(firstScreenText).toContain("停止");
     expect(firstScreenText).not.toContain("保存地图");
     expect(firstScreenText).not.toContain("启动雷达");
     expect(firstScreenText).not.toContain("停止雷达");
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("未读取");
-    expect(firstScreenText).toContain("未检查");
+    for (const token of DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS) {
+      expect(firstScreenText).not.toContain(token);
+    }
     expect(firstScreenText).not.toContain("raw");
-    expect(firstScreenText).not.toContain("HIL");
     expect(firstScreenText).not.toContain("scan_once_observed");
     expect(firstScreenText).not.toContain("map_once_observed");
     expect(firstScreenText).not.toContain("path_generation_succeeded");
@@ -3290,12 +3338,13 @@ describe("App", () => {
     const summaryCallsAfterMap = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary")).length;
     expect(summaryCallsAfterMap).toBeGreaterThan(summaryCallsAfterRadar);
 
-    await wrapper.findAll("button").find((button) => button.text() === "检查路径")?.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "检查路径（高级）")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find(".robot-console-grid").text()).toContain("路径可生成");
-    expect(wrapper.find(".robot-console-grid").text()).toContain("检查已返回；不会发车。");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("路径可生成");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("检查已返回；不会发车。");
+    expect(wrapper.find(".robot-console-grid").text()).not.toContain("检查路径");
     expect(wrapper.find(".robot-console-grid").text()).not.toContain("path_generation_succeeded");
     expect(wrapper.find("details").text()).toContain("/api/nav2/proof/refresh");
     expect(wrapper.find("details").text()).toContain("nav2_no_motion_path_generation_runtime_observed");

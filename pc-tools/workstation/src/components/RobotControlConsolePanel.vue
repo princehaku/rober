@@ -193,7 +193,7 @@ function summarizeProofState(pending: boolean, result: RobotControlProofRefreshP
 }
 
 function summarizeNav2Planning(): { state: "未检查" | "检查中" | "路径可生成" | "检查失败"; hint: string } {
-  // Nav2 首页只保留“检查路径”的普通结果，所有 proof 字段放进高级诊断。
+  // 路径规划属于诊断信息，只能在高级区展示，避免普通用户首屏被工程语义污染。
   if (nav2RefreshPending.value) {
     return { state: "检查中", hint: "正在检查路径是否可生成。" };
   }
@@ -295,7 +295,7 @@ const manualBlockedReason = computed(() => {
   return "允许发送一次低速短时点动；安全锁定不会解除。";
 });
 const manualMotionSummary = computed(() => {
-  // 首屏只呈现普通用户能理解的状态，不把代理合同细节直接抛到第一屏。
+  // 高级点动区需要解释门禁原因；首屏不会直接展示这段工程化文字。
   if (manualCommandPending.value) {
     return { state: "发送中", hint: "正在发送本次点动或停止请求。" };
   }
@@ -310,6 +310,23 @@ const manualMotionSummary = computed(() => {
       : { state: "已发送", hint: `已发送 ${manualCommandResult.value.applied_direction} 点动；速度和时长已按本机上限收口。` };
   }
   return { state: "失败", hint: manualCommandResult.value.failure_reason || "请求被拒绝或上位机不可达。" };
+});
+
+const plainMotionSummary = computed(() => {
+  // 首屏只呈现“能不能停”和最近停止结果，不暴露点动、路径、材料或接口细节。
+  if (manualCommandPending.value) {
+    return { state: "处理中", hint: "正在处理请求。" };
+  }
+  if (!manualCommandResult.value) {
+    return { state: "待命", hint: "需要时可直接停止。" };
+  }
+  if (manualCommandResult.value.command_kind === "stop" && manualCommandResult.value.proxy_status === "command_forwarded") {
+    return { state: "已停止", hint: "停止请求已发送。" };
+  }
+  if (manualCommandResult.value.command_kind === "stop") {
+    return { state: "停止失败", hint: manualCommandResult.value.failure_reason || "停止请求失败。" };
+  }
+  return { state: "待命", hint: "需要时可直接停止。" };
 });
 function listText(items: string[] | undefined, fallback = "none"): string {
   // blocked/not_proven 只展示少量摘要，完整定位应回到后端日志或 artifact。
@@ -1297,14 +1314,10 @@ onBeforeUnmount(() => {
       <article class="snapshot-panel">
         <h3>移动/导航</h3>
         <div class="panel-action-row wrap-actions">
-          <button type="button" :disabled="loading || nav2RefreshPending || !robotApiBaseUrl.trim()" @click="refreshNav2Proof">
-            检查路径
-          </button>
-          <span class="status-chip" :data-state="nav2PlanningSummary.state">{{ nav2PlanningSummary.state }}</span>
+          <span class="status-chip" :data-state="plainMotionSummary.state">{{ plainMotionSummary.state }}</span>
           <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
         </div>
-        <p class="panel-note">{{ nav2PlanningSummary.hint }}</p>
-        <p class="panel-note">现场材料：{{ operatorMaterialGateSummary.state }}。{{ operatorMaterialGateSummary.hint }}</p>
+        <p class="panel-note">{{ plainMotionSummary.hint }}</p>
       </article>
     </div>
 
@@ -1525,10 +1538,14 @@ onBeforeUnmount(() => {
         <section class="advanced-block">
           <h3>Nav2 规划详情</h3>
           <div class="robot-control-form">
+            <button class="secondary" type="button" :disabled="loading || nav2RefreshPending || !robotApiBaseUrl.trim()" @click="refreshNav2Proof">
+              检查路径（高级）
+            </button>
             <button class="secondary" type="button" :disabled="loading || localizationResetPending || !robotApiBaseUrl.trim()" @click="resetLocalizationProof">
               定位重置（高级）
             </button>
           </div>
+          <p class="panel-note">{{ nav2PlanningSummary.state }}：{{ nav2PlanningSummary.hint }}</p>
           <form class="robot-control-form" @submit.prevent="runNavGoalPreflight">
             <label>
               <span>目标 x（m）</span>
