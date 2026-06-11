@@ -224,3 +224,40 @@ ROS 或运动接口；其输出只能作为 operator report 材料整理工具�
 2. 在 observer 外部视频下复跑低速 `0.03-0.09m/s` 短脉冲，先证明肉眼/视频物理运动。
 3. 如果仍无运动，现场检查电机供电、急停、遥控/模式和底盘架空/落地状态后再决定是否提升 `T=1` 或速度。
 4. 只有真实运动、stop、feedback、scan 和 artifacts 都闭环后，再进入 route/map 或 delivery 证明。
+
+## 2026-06-11 18:20 live evidence sweep 补充
+
+`sprints/2026.06.11_18-20_board_live_evidence_sweep/` 在真实上位机
+`root@192.168.1.11:37878` 重新采集当前 live readback。SSH gate 通过：
+
+```text
+op-z3-b6.home
+Thu Jun 11 05:49:45 PM CST 2026
+active
+```
+
+本轮只执行 no-motion refresh 与 stop smoke，没有执行非 stop motion、没有调用
+`/api/base/manual`、没有发布 `/cmd_vel`。operator report 仍是 no-motion smoke 材料：
+`external_video_recorded=false`、`visible_content_proven=false`、
+`wheel_feedback_lr_nonzero_proven=false`、`physical_motion_lidar_delta_proven=false`。
+因此非 stop 点动门禁不满足，fail-closed 保持正确。
+
+本轮 stop smoke 只写入 `{"T":1,"L":0,"R":0}`，HTTP 200，`stop_result.ok=true`，
+`bytes_written=20`。`/api/base/status` 的非运动 `T=130` readback 读到 `T=1001`，
+`read_line_count=23`、`parsed_json_count=23`，但这仍不是项目 robot ACK、轮速非零或
+物理运动证明。
+
+本轮 cleanup readback 显示 `trashbot-upper-robot-api.service active`，未见
+`o1_lidar/o3_map/o10_amcl/nav2/slam/lidar_driver/camera_publisher/topic pub/cmd_vel`
+残留，`ros2 topic info /cmd_vel` 返回 `Unknown topic '/cmd_vel'`。
+
+当前矩阵更新：
+
+| 项目 | 2026-06-11 18:20 状态 | 边界 |
+| --- | --- | --- |
+| LiDAR scan proof | `proven` | fresh no-motion proof `o1-lidar-scan-proof-1781171493054`，post status rate `15.926Hz`；不证明机械标定或运动。 |
+| map proof | `proven` | `o3-map-lifecycle-1781171513110`，`map_once/map_file/map_metadata=true`；不证明地图质量或真实路线。 |
+| Nav2 path proof | `proven` | `o10-amcl-nav2-runtime-1781171562670`，path generated succeeded，31 points；未执行路径。 |
+| stop smoke | `proven` | 零速 `T=1` 写入成功；不替代外部视频或 HIL pass。 |
+| non-stop motion | `not_executed` | operator report 材料不满足非 stop gate。 |
+| camera visible content | `not_proven` | 仍无可见 frame artifact。 |

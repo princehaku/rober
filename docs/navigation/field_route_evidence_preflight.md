@@ -260,3 +260,39 @@ python3 onboard/scripts/field_route_evidence_manifest.py \
 ```
 
 如果 SSH 仍不可达，必须保留 `blocked_ssh_unreachable` 与 `not_proven=true`，但可以用本地完整 fixture 和缺失 fixture 验证 manifest 功能，确保不再次只消费同一 SSH blocker。无论 artifact gate 是否通过，manifest 仍保持 `delivery_success=false` 和 `primary_actions_enabled=false`，直到真实现场路线和送达验收另行证明。
+
+## 2026-06-11 18:20 live no-motion refresh 补充
+
+`sprints/2026.06.11_18-20_board_live_evidence_sweep/` 在真实上位机
+`root@192.168.1.11:37878` 执行当前 live readback 与 no-motion refresh。所有要求的
+Robot API readback 均返回 HTTP 200：`/api/status`、`/api/camera/health`、
+`/api/camera/devices`、`/api/radar/status`、`/api/map/proof/latest`、
+`/api/nav2/status`、`/api/operator/report`、`/api/base/status`。
+
+本轮 refresh 结果：
+
+- Radar：`POST /api/radar/scan-proof/refresh` HTTP 200，`status=refreshed`，
+  `proof_state=scan_once_hz_raw_packet_tf_observed`，
+  `evidence_ref=o1-lidar-scan-proof-1781171493054`。refresh 后 status 读回
+  `lifecycle_running=false`、`lifecycle_state=stopped`、`freshness=fresh`、
+  `/scan` hz `15.926`、raw packet 和 TF 均 observed。
+- Map：`POST /api/map/proof/refresh` HTTP 200，
+  `status=map_once_artifact_metadata_observed`，`command_result.ok=true`，
+  `map_once_observed=true`、`map_file_observed=true`、`map_metadata_observed=true`。
+  后续 latest evidence 为 `o3-map-lifecycle-1781171513110`。
+- Nav2：`POST /api/nav2/proof/refresh` HTTP 200，
+  `proof_state=nav2_no_motion_path_generation_runtime_observed`，
+  `evidence_ref=o10-amcl-nav2-runtime-1781171562670`，
+  `path_generated=true`、`path_generation_succeeded=true`、`path_point_count=31`、
+  `planner_server_active=true`。
+
+安全边界保持不变：
+
+- Radar/map/Nav2 refresh 均返回 `sends_motion_commands=false`、
+  `sends_base_motion_commands=false`、`calls_base_manual=false` 或等价 false 字段，
+  `uses_base_uart=false`、`robot_control_executed=false`。
+- Cleanup 读回 `ros2 topic info /cmd_vel` 为 `Unknown topic '/cmd_vel'`，未见
+  `o1_lidar/o3_map/o10_amcl/nav2/slam/lidar_driver/camera_publisher/topic pub/cmd_vel`
+  残留。
+- 本轮没有 route execution、NavigateToPose、controller 执行、`/api/base/manual` 或
+  非 stop 底盘动作；Nav2 只证明 no-motion path generation readiness。

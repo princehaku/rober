@@ -155,6 +155,41 @@ ros2 launch ros2_trashbot_bringup bringup.launch.py \
 `first-frame timeout`，不是已恢复可见内容，也还没有进入可稳定判定的 near-black frame
 采样阶段。
 
+## 2026-06-11 18:20 live evidence sweep camera readback
+
+`sprints/2026.06.11_18-20_board_live_evidence_sweep/` 重新读取真实上位机 camera
+health/devices，只做 camera-only 状态和设备复查，没有打开点动、Nav2 执行或底盘运动。
+
+`GET /api/camera/health` 返回 HTTP 200，核心字段：
+
+- `status=ready`
+- `host=op-z3-b6.home`
+- `video_source=auto`
+- `active_peer_count=0`
+- `active_frames_read=0`
+- `active_camera_read_failures=0`
+- `safe_to_control=false`
+- `robot_control_executed=false`
+
+`GET /api/camera/devices` 返回 HTTP 200，`v4l2-ctl --list-devices` 仍显示：
+
+```text
+cedrus (platform:cedrus):
+        /dev/video0
+        /dev/media0
+
+USB Composite Device: DV20 USB  (usb-5310000.usb-1):
+        /dev/video1
+        /dev/video2
+        /dev/media1
+```
+
+因此 `/dev/video1` 仍是当前实板 DV20 USB UVC capture 节点，`/dev/video0` 仍是
+Cedrus decoder。由于本轮没有成功采集可见 frame，且 `/api/operator/report` 仍为
+`visible_content_proven=false`、`camera_artifacts_ref=not_attached_no_motion_smoke`，
+当前只能证明 camera service/device readback 可用，不能把视觉内容用于路线关键帧、
+视觉定位、障碍识别或远程可视验收。
+
 ## 本地资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`
