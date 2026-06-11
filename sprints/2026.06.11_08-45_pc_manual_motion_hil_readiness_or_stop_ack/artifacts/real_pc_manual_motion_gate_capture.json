@@ -1,0 +1,2583 @@
+{
+  "schema": "rober.sprint.pc_manual_motion_hil_readiness_or_stop_ack.v1",
+  "started_at": "2026-06-11T00:43:09.508Z",
+  "finished_at": "2026-06-11T00:43:20.124Z",
+  "robot_base_url": "http://192.168.1.11:8787",
+  "pc_proxy_base_url": "http://127.0.0.1:8787",
+  "requested_manual": {
+    "direction": "forward",
+    "speed": 0.05,
+    "duration_ms": 400,
+    "confirm_hil_checklist": true
+  },
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h"
+  ],
+  "direct_readbacks_before": {
+    "operator_report": {
+      "label": "before /api/operator/report",
+      "url": "http://192.168.1.11:8787/api/operator/report",
+      "method": "GET",
+      "http_status": 200,
+      "elapsed_ms": 138,
+      "error": null,
+      "payload": {
+        "schema": "trashbot.upper_robot_api.v1.operator_report_latest_result",
+        "generated_at_ms": 1781138589792,
+        "endpoint": "/api/operator/report",
+        "artifact": {
+          "path": "runtime/operator_report_latest.json",
+          "configured_by": "ROBER_OPERATOR_REPORT_ARTIFACT_PATH or --operator-report-artifact-path",
+          "format": "json",
+          "schema": "trashbot.upper_robot_api.v1.operator_report_result",
+          "ok": true,
+          "status": "loaded",
+          "bytes_read": 7420
+        },
+        "latest_result": {
+          "artifact": {
+            "configured_by": "ROBER_OPERATOR_REPORT_ARTIFACT_PATH or --operator-report-artifact-path",
+            "format": "json",
+            "path": "runtime/operator_report_latest.json",
+            "schema": "trashbot.upper_robot_api.v1.operator_report_result",
+            "write": {
+              "method": "atomic_replace",
+              "ok": true
+            },
+            "written_at_ms": 1781130262991
+          },
+          "boundary": "operator_report_is_human_site_material_only_not_ack_t1001_hil_stop_status_or_motion",
+          "calls_base_manual": false,
+          "cloud_relay": false,
+          "command_payload_summary": {
+            "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+            "report_note": "PC workstation no-motion operator report submit smoke; no movement command requested.",
+            "structured_hil_fields": [
+              "external_video_recorded",
+              "visible_content_proven",
+              "wheel_feedback_lr_nonzero_proven",
+              "physical_motion_lidar_delta_proven",
+              "real_route_map_proven",
+              "delivery_success",
+              "external_video_ref",
+              "camera_artifacts_ref",
+              "wheel_feedback_ref",
+              "scan_delta_ref",
+              "route_map_ref",
+              "site_state"
+            ]
+          },
+          "delivery_success": false,
+          "does_not_replace": [
+            "/api/base/stop",
+            "/api/base/status",
+            "/api/base/feedback-request",
+            "/api/base/feedback-samples",
+            "T=1001",
+            "robot ACK",
+            "HIL",
+            "ROS /odom /imu/data /battery",
+            "field video or现场记录"
+          ],
+          "endpoint": "/api/operator/report",
+          "evidence_type": "software_guard",
+          "field_hil_material": false,
+          "generated_at_ms": 1781130262991,
+          "hil_pass": false,
+          "not_proven": true,
+          "opens_serial": false,
+          "operator_report": {
+            "emergency_stop_ready": true,
+            "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+            "normalization": {
+              "missing_or_invalid_fields": [],
+              "preflight_missing_or_invalid_fields": [],
+              "preflight_required_fields": [
+                "operator_present",
+                "physical_clearance_confirmed",
+                "emergency_stop_ready"
+              ],
+              "review_missing_or_invalid_fields": [],
+              "review_required_fields": [
+                "observed_motion",
+                "observed_stop",
+                "operator_notes",
+                "reported_at"
+              ],
+              "source_fields": [
+                "operator_present",
+                "evidence_ref",
+                "physical_clearance_confirmed",
+                "emergency_stop_ready",
+                "observed_motion",
+                "observed_stop",
+                "operator_notes",
+                "reported_at"
+              ],
+              "structured_hil_fields": [
+                "external_video_recorded",
+                "visible_content_proven",
+                "wheel_feedback_lr_nonzero_proven",
+                "physical_motion_lidar_delta_proven",
+                "real_route_map_proven",
+                "delivery_success",
+                "external_video_ref",
+                "camera_artifacts_ref",
+                "wheel_feedback_ref",
+                "scan_delta_ref",
+                "route_map_ref",
+                "site_state"
+              ],
+              "structured_hil_missing_or_invalid_bool_fields": [],
+              "unsafe_fields": []
+            },
+            "note": "PC workstation no-motion operator report submit smoke; no movement command requested.",
+            "observed_motion": false,
+            "observed_stop": true,
+            "operator_notes": "PC workstation no-motion operator report submit smoke; no movement command requested.",
+            "operator_present": true,
+            "physical_clearance_confirmed": true,
+            "reported_at": "2026-06-10T22:24:22.727Z",
+            "structured_hil_claims": {
+              "camera_artifacts_ref": "not_attached_no_motion_smoke",
+              "delivery_success": false,
+              "external_video_recorded": false,
+              "external_video_ref": "not_recorded_no_motion_smoke",
+              "normalization": {
+                "material_only": true,
+                "missing_or_invalid_bool_fields": [],
+                "provided_fields": [
+                  "external_video_recorded",
+                  "visible_content_proven",
+                  "wheel_feedback_lr_nonzero_proven",
+                  "physical_motion_lidar_delta_proven",
+                  "real_route_map_proven",
+                  "delivery_success",
+                  "external_video_ref",
+                  "camera_artifacts_ref",
+                  "wheel_feedback_ref",
+                  "scan_delta_ref",
+                  "route_map_ref",
+                  "site_state"
+                ],
+                "source": "top_level_fields_or_structured_hil_claims",
+                "source_fields": [
+                  "external_video_recorded",
+                  "visible_content_proven",
+                  "wheel_feedback_lr_nonzero_proven",
+                  "physical_motion_lidar_delta_proven",
+                  "real_route_map_proven",
+                  "delivery_success",
+                  "external_video_ref",
+                  "camera_artifacts_ref",
+                  "wheel_feedback_ref",
+                  "scan_delta_ref",
+                  "route_map_ref",
+                  "site_state"
+                ],
+                "top_level_delivery_success_forced_false": true
+              },
+              "physical_motion_lidar_delta_proven": false,
+              "real_route_map_proven": false,
+              "route_map_ref": "not_attached_no_motion_smoke",
+              "scan_delta_ref": "not_attached_no_motion_smoke",
+              "site_state": "pc_operator_report_no_motion_smoke",
+              "visible_content_proven": false,
+              "wheel_feedback_lr_nonzero_proven": false,
+              "wheel_feedback_ref": "not_attached_no_motion_smoke"
+            }
+          },
+          "operator_report_material_only": true,
+          "operator_report_status": "ready_for_execution",
+          "primary_actions_enabled": false,
+          "publishes_cmd_vel": false,
+          "readback_sends_commands": false,
+          "report_replaces_stop_status_ack_or_hil": false,
+          "request": {
+            "endpoint": "/api/operator/report",
+            "method": "POST"
+          },
+          "robot_control_executed": false,
+          "safe_to_control": false,
+          "schema": "trashbot.upper_robot_api.v1.operator_report_result",
+          "sends_base_motion_commands": false,
+          "sends_commands": false,
+          "sends_motion_commands": false,
+          "software_guard": true,
+          "starts_ros2": false,
+          "structured_hil_claims": {
+            "camera_artifacts_ref": "not_attached_no_motion_smoke",
+            "delivery_success": false,
+            "external_video_recorded": false,
+            "external_video_ref": "not_recorded_no_motion_smoke",
+            "normalization": {
+              "material_only": true,
+              "missing_or_invalid_bool_fields": [],
+              "provided_fields": [
+                "external_video_recorded",
+                "visible_content_proven",
+                "wheel_feedback_lr_nonzero_proven",
+                "physical_motion_lidar_delta_proven",
+                "real_route_map_proven",
+                "delivery_success",
+                "external_video_ref",
+                "camera_artifacts_ref",
+                "wheel_feedback_ref",
+                "scan_delta_ref",
+                "route_map_ref",
+                "site_state"
+              ],
+              "source": "top_level_fields_or_structured_hil_claims",
+              "source_fields": [
+                "external_video_recorded",
+                "visible_content_proven",
+                "wheel_feedback_lr_nonzero_proven",
+                "physical_motion_lidar_delta_proven",
+                "real_route_map_proven",
+                "delivery_success",
+                "external_video_ref",
+                "camera_artifacts_ref",
+                "wheel_feedback_ref",
+                "scan_delta_ref",
+                "route_map_ref",
+                "site_state"
+              ],
+              "top_level_delivery_success_forced_false": true
+            },
+            "physical_motion_lidar_delta_proven": false,
+            "real_route_map_proven": false,
+            "route_map_ref": "not_attached_no_motion_smoke",
+            "scan_delta_ref": "not_attached_no_motion_smoke",
+            "site_state": "pc_operator_report_no_motion_smoke",
+            "visible_content_proven": false,
+            "wheel_feedback_lr_nonzero_proven": false,
+            "wheel_feedback_ref": "not_attached_no_motion_smoke"
+          },
+          "uses_base_uart": false
+        },
+        "structured_hil_claims": {
+          "camera_artifacts_ref": "not_attached_no_motion_smoke",
+          "delivery_success": false,
+          "external_video_recorded": false,
+          "external_video_ref": "not_recorded_no_motion_smoke",
+          "normalization": {
+            "material_only": true,
+            "missing_or_invalid_bool_fields": [],
+            "provided_fields": [
+              "external_video_recorded",
+              "visible_content_proven",
+              "wheel_feedback_lr_nonzero_proven",
+              "physical_motion_lidar_delta_proven",
+              "real_route_map_proven",
+              "delivery_success",
+              "external_video_ref",
+              "camera_artifacts_ref",
+              "wheel_feedback_ref",
+              "scan_delta_ref",
+              "route_map_ref",
+              "site_state"
+            ],
+            "source": "top_level_fields_or_structured_hil_claims",
+            "source_fields": [
+              "external_video_recorded",
+              "visible_content_proven",
+              "wheel_feedback_lr_nonzero_proven",
+              "physical_motion_lidar_delta_proven",
+              "real_route_map_proven",
+              "delivery_success",
+              "external_video_ref",
+              "camera_artifacts_ref",
+              "wheel_feedback_ref",
+              "scan_delta_ref",
+              "route_map_ref",
+              "site_state"
+            ],
+            "top_level_delivery_success_forced_false": true
+          },
+          "physical_motion_lidar_delta_proven": false,
+          "real_route_map_proven": false,
+          "route_map_ref": "not_attached_no_motion_smoke",
+          "scan_delta_ref": "not_attached_no_motion_smoke",
+          "site_state": "pc_operator_report_no_motion_smoke",
+          "visible_content_proven": false,
+          "wheel_feedback_lr_nonzero_proven": false,
+          "wheel_feedback_ref": "not_attached_no_motion_smoke"
+        },
+        "latest_endpoint_path": "/api/operator/report",
+        "does_not_replace": [
+          "/api/base/stop",
+          "/api/base/status",
+          "/api/base/feedback-request",
+          "/api/base/feedback-samples",
+          "T=1001",
+          "robot ACK",
+          "HIL",
+          "ROS /odom /imu/data /battery",
+          "field video or现场记录"
+        ],
+        "boundary": "operator_report_readback_only_not_ack_t1001_hil_stop_status_or_motion",
+        "operator_report_material_only": true,
+        "software_guard": true,
+        "not_proven": true,
+        "evidence_type": "software_guard",
+        "report_replaces_stop_status_ack_or_hil": false,
+        "field_hil_material": false,
+        "readback_sends_commands": false,
+        "sends_commands": false,
+        "sends_motion_commands": false,
+        "sends_base_motion_commands": false,
+        "publishes_cmd_vel": false,
+        "calls_base_manual": false,
+        "uses_base_uart": false,
+        "opens_serial": false,
+        "starts_ros2": false,
+        "robot_control_executed": false,
+        "hil_pass": false,
+        "safe_to_control": false,
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "cloud_relay": false
+      }
+    },
+    "base_status": {
+      "label": "before /api/base/status",
+      "url": "http://192.168.1.11:8787/api/base/status",
+      "method": "GET",
+      "http_status": 200,
+      "elapsed_ms": 1234,
+      "error": null,
+      "payload": {
+        "schema": "trashbot.upper_robot_api.v1.base_status",
+        "generated_at_ms": 1781138591026,
+        "vendor_sources": [
+          "docs/vendor/VENDOR_INDEX.md",
+          "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+          "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+        ],
+        "port": "/dev/ttyS5",
+        "baudrate": 115200,
+        "port_info": {
+          "path": "/dev/ttyS5",
+          "exists": true,
+          "lexists": true,
+          "is_symlink": false,
+          "realpath": "/dev/ttyS5",
+          "error": null,
+          "mode_octal": "0o660",
+          "uid": 0,
+          "gid": 20
+        },
+        "pyserial_available": true,
+        "pyserial_error": null,
+        "write_control_available": true,
+        "feedback_ack": {
+          "t1001_observed": true,
+          "robot_ack_connected": false,
+          "source": "fresh_readback",
+          "reason": "T=1001 observed by this /api/base/status non-motion T=130 readback"
+        },
+        "feedback_readback": {
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_request_result",
+          "generated_at_ms": 1781138591026,
+          "vendor_sources": [
+            "docs/vendor/VENDOR_INDEX.md",
+            "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+            "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+          ],
+          "port": "/dev/ttyS5",
+          "baudrate": 115200,
+          "request": {
+            "method": "POST",
+            "endpoint": "/api/base/feedback-request",
+            "command": {
+              "T": 130
+            },
+            "read_timeout_s": 0.2,
+            "read_window_s": 1.2
+          },
+          "serial_open": {
+            "ok": true,
+            "port": "/dev/ttyS5",
+            "baudrate": 115200,
+            "timeout_s": 0.2
+          },
+          "serial_write": {
+            "ok": true,
+            "command": {
+              "T": 130
+            },
+            "bytes_written": 10
+          },
+          "serial_read": {
+            "ok": true,
+            "window_s": 1.2,
+            "error": null
+          },
+          "read_line_count": 23,
+          "parsed_json_count": 23,
+          "invalid_json_count": 0,
+          "observed_feedback_types": [
+            1001
+          ],
+          "t1001_feedback_status": "observed",
+          "feedback_ack": {
+            "t1001_observed": true,
+            "robot_ack_connected": false,
+            "reason": "T=1001 observed after explicit T=130 request; this is vendor feedback material, not project robot ACK or HIL proof"
+          },
+          "blocked_commands_not_sent": [
+            "T=1",
+            "T=13",
+            "T=131",
+            "cmd_vel",
+            "/api/base/manual"
+          ],
+          "safe_to_control": false,
+          "sends_commands": true,
+          "sends_motion_commands": false,
+          "robot_control_executed": false,
+          "delivery_success": false,
+          "hil_pass": false,
+          "primary_actions_enabled": false
+        },
+        "feedback_samples_latest": {
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_summary",
+          "generated_at_ms": 1781138589816,
+          "endpoint": "/api/base/feedback-samples/latest",
+          "artifact": {
+            "path": "runtime/base_feedback_samples_latest.json",
+            "configured_by": "ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH or --feedback-samples-artifact-path",
+            "format": "json",
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+            "ok": true,
+            "status": "loaded",
+            "mtime_ms": 1781020997105,
+            "age_ms": 117592711,
+            "updated_at_ms": 1781020997101,
+            "bytes_read": 3868
+          },
+          "freshness": {
+            "status": "stale",
+            "stale_after_ms": 900000,
+            "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control"
+          },
+          "latest_t1001_observed_count": 2,
+          "latest_all_samples_observed_t1001": true,
+          "readback_sends_commands": false,
+          "sends_commands": false,
+          "sends_motion_commands": false,
+          "robot_control_executed": false,
+          "delivery_success": false,
+          "hil_pass": false,
+          "safe_to_control": false,
+          "primary_actions_enabled": false
+        },
+        "control_policy": {
+          "mode": "low_speed_pulse_with_auto_stop",
+          "max_speed": 0.12,
+          "max_pulse_ms": 800,
+          "stop_command": {
+            "T": 1,
+            "L": 0,
+            "R": 0
+          }
+        },
+        "readback_sends_commands": true,
+        "sends_commands": true,
+        "sends_motion_commands": false,
+        "safe_to_control": false,
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "robot_control_executed": false,
+        "cloud_relay": false
+      }
+    },
+    "feedback_latest": {
+      "label": "before /api/base/feedback-samples/latest",
+      "url": "http://192.168.1.11:8787/api/base/feedback-samples/latest",
+      "method": "GET",
+      "http_status": 200,
+      "elapsed_ms": 17,
+      "error": null,
+      "payload": {
+        "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+        "generated_at_ms": 1781138591043,
+        "artifact": {
+          "path": "runtime/base_feedback_samples_latest.json",
+          "configured_by": "ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH or --feedback-samples-artifact-path",
+          "format": "json",
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+          "ok": true,
+          "status": "loaded",
+          "bytes_read": 3868
+        },
+        "latest_result": {
+          "all_samples_observed_t1001": true,
+          "artifact": {
+            "configured_by": "ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH or --feedback-samples-artifact-path",
+            "format": "json",
+            "path": "runtime/base_feedback_samples_latest.json",
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+            "write": {
+              "method": "atomic_replace",
+              "ok": true
+            },
+            "written_at_ms": 1781020997101
+          },
+          "baudrate": 115200,
+          "blocked_commands_not_sent": [
+            "T=1",
+            "T=13",
+            "T=131",
+            "cmd_vel",
+            "/api/base/manual"
+          ],
+          "completed_sample_count": 2,
+          "delivery_success": false,
+          "feedback_ack": {
+            "reason": "T=1001 observed in 2/2 samples; this is vendor feedback material, not project robot ACK or HIL proof",
+            "robot_ack_connected": false,
+            "t1001_observed": true
+          },
+          "generated_at_ms": 1781020997101,
+          "hil_pass": false,
+          "observed_feedback_types": [
+            1001
+          ],
+          "partial_samples_observed_t1001": false,
+          "port": "/dev/ttyS5",
+          "primary_actions_enabled": false,
+          "request": {
+            "command": {
+              "T": 130
+            },
+            "endpoint": "/api/base/feedback-samples",
+            "method": "POST",
+            "read_timeout_s": 0.2,
+            "read_window_s": 0.8,
+            "sample_count": 2,
+            "sample_interval_s": 0.2
+          },
+          "requested_sample_count": 2,
+          "robot_control_executed": false,
+          "safe_to_control": false,
+          "samples": [
+            {
+              "delivery_success": false,
+              "feedback_ack": {
+                "reason": "T=1001 observed after explicit T=130 request; this is vendor feedback material, not project robot ACK or HIL proof",
+                "robot_ack_connected": false,
+                "t1001_observed": true
+              },
+              "hil_pass": false,
+              "invalid_json_count": 0,
+              "observed_feedback_types": [
+                1001
+              ],
+              "parsed_json_count": 8,
+              "read_line_count": 8,
+              "robot_control_executed": false,
+              "safe_to_control": false,
+              "sample_index": 1,
+              "schema": "trashbot.upper_robot_api.v1.base_feedback_request_result",
+              "sends_motion_commands": false,
+              "serial_open": {
+                "baudrate": 115200,
+                "ok": true,
+                "port": "/dev/ttyS5",
+                "timeout_s": 0.2
+              },
+              "serial_read": {
+                "error": null,
+                "ok": true,
+                "window_s": 0.8
+              },
+              "serial_write": {
+                "bytes_written": 10,
+                "command": {
+                  "T": 130
+                },
+                "ok": true
+              },
+              "t1001_feedback_status": "observed"
+            },
+            {
+              "delivery_success": false,
+              "feedback_ack": {
+                "reason": "T=1001 observed after explicit T=130 request; this is vendor feedback material, not project robot ACK or HIL proof",
+                "robot_ack_connected": false,
+                "t1001_observed": true
+              },
+              "hil_pass": false,
+              "invalid_json_count": 0,
+              "observed_feedback_types": [
+                1001
+              ],
+              "parsed_json_count": 8,
+              "read_line_count": 8,
+              "robot_control_executed": false,
+              "safe_to_control": false,
+              "sample_index": 2,
+              "schema": "trashbot.upper_robot_api.v1.base_feedback_request_result",
+              "sends_motion_commands": false,
+              "serial_open": {
+                "baudrate": 115200,
+                "ok": true,
+                "port": "/dev/ttyS5",
+                "timeout_s": 0.2
+              },
+              "serial_read": {
+                "error": null,
+                "ok": true,
+                "window_s": 0.8
+              },
+              "serial_write": {
+                "bytes_written": 10,
+                "command": {
+                  "T": 130
+                },
+                "ok": true
+              },
+              "t1001_feedback_status": "observed"
+            }
+          ],
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+          "sends_commands": true,
+          "sends_motion_commands": false,
+          "t1001_observed_count": 2,
+          "vendor_sources": [
+            "docs/vendor/VENDOR_INDEX.md",
+            "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+            "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+          ]
+        },
+        "latest_endpoint_path": "/api/base/feedback-samples/latest",
+        "readback_sends_commands": false,
+        "safe_to_control": false,
+        "sends_commands": false,
+        "sends_motion_commands": false,
+        "robot_control_executed": false,
+        "delivery_success": false,
+        "hil_pass": false,
+        "primary_actions_enabled": false
+      }
+    }
+  },
+  "pc_summary_before": {
+    "label": "pc summary before",
+    "url": "http://127.0.0.1:8787/api/robot-control/summary?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+    "method": "GET",
+    "http_status": 200,
+    "elapsed_ms": 2820,
+    "error": null,
+    "payload": {
+      "schema": "trashbot.pc_tools_workstation.robot_control_summary.v1",
+      "console_status": "blocked",
+      "source_base_url": "http://192.168.1.11:8787",
+      "normalized_base_url": "http://192.168.1.11:8787",
+      "proxy_policy": {
+        "vue_direct_robot_api_access": false,
+        "node_proxy_only": true,
+        "allowed_methods": [
+          "GET",
+          "POST"
+        ],
+        "allowed_endpoint_class": "status_latest_readback_plus_fixed_control_and_report_proxies",
+        "unsafe_urls_rejected": true
+      },
+      "observed_at_ms": 1781138590903,
+      "read_endpoints": [
+        {
+          "id": "status",
+          "endpoint": "/api/status",
+          "http_status": 200,
+          "request_status": "blocked",
+          "schema": "trashbot.upper_robot_api.v1.status",
+          "status": "ready",
+          "evidence_ref": "o3-map-lifecycle-1781135848134",
+          "key_values": {
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "path_generated": "false",
+            "path_generation_requested": "false",
+            "managed_runtime_started": "true",
+            "scan_once_observed": "true",
+            "map_once_observed": "true",
+            "amcl_pose_observed": "true",
+            "localization_tf_observed": "[object Object]",
+            "latest_path_generated": "true",
+            "latest_proof_status": "scan_once_hz_raw_packet_tf_observed",
+            "latest_t1001_observed_count": "2",
+            "latest_scan_once_observed": "true"
+          },
+          "blocked_reasons": [
+            "dangerous_true_field:base.feedback_readback.sends_commands",
+            "dangerous_true_field:base.sends_commands"
+          ],
+          "dangerous_true_fields": [
+            "base.feedback_readback.sends_commands",
+            "base.sends_commands"
+          ]
+        },
+        {
+          "id": "map_proof_latest",
+          "endpoint": "/api/map/proof/latest",
+          "http_status": 200,
+          "request_status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.map_lifecycle_proof_latest",
+          "status": "map_once_artifact_metadata_observed",
+          "evidence_ref": "o3-map-lifecycle-1781135848134",
+          "key_values": {
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "scan_once_observed": "true",
+            "map_once_observed": "true",
+            "latest_proof_status": "map_once_artifact_metadata_observed"
+          },
+          "blocked_reasons": [],
+          "dangerous_true_fields": []
+        },
+        {
+          "id": "localize_proof_latest",
+          "endpoint": "/api/localize/proof/latest",
+          "http_status": 200,
+          "request_status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.localization_proof_latest",
+          "status": "localization_reset_observed",
+          "evidence_ref": "o10-amcl-nav2-runtime-1781127385644",
+          "key_values": {
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "path_generated": "false",
+            "path_generation_requested": "false",
+            "path_generation_succeeded": "false",
+            "path_point_count": "0",
+            "managed_runtime_started": "true",
+            "scan_once_observed": "true",
+            "map_once_observed": "true",
+            "amcl_pose_observed": "true",
+            "localization_tf_observed": "[object Object]",
+            "planner_server_active": "false",
+            "latest_proof_status": "nav2_no_motion_localization_runtime_observed"
+          },
+          "blocked_reasons": [],
+          "dangerous_true_fields": []
+        },
+        {
+          "id": "nav2_status",
+          "endpoint": "/api/nav2/status",
+          "http_status": 200,
+          "request_status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+          "status": "not_proven",
+          "evidence_ref": "o10-amcl-nav2-runtime-1781137888554",
+          "key_values": {
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "map_once_observed": "true",
+            "latest_path_generated": "true",
+            "latest_proof_status": "nav2_no_motion_path_generation_runtime_observed"
+          },
+          "blocked_reasons": [],
+          "dangerous_true_fields": []
+        },
+        {
+          "id": "nav2_proof_latest",
+          "endpoint": "/api/nav2/proof/latest",
+          "http_status": 200,
+          "request_status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+          "status": "not_proven",
+          "evidence_ref": "o10-amcl-nav2-runtime-1781137888554",
+          "key_values": {
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "path_generated": "true",
+            "path_generation_requested": "true",
+            "path_generation_succeeded": "true",
+            "path_point_count": "31",
+            "managed_runtime_started": "true",
+            "scan_once_observed": "true",
+            "map_once_observed": "true",
+            "amcl_pose_observed": "true",
+            "localization_tf_observed": "[object Object]",
+            "planner_server_active": "true"
+          },
+          "blocked_reasons": [],
+          "dangerous_true_fields": []
+        },
+        {
+          "id": "operator_report_latest",
+          "endpoint": "/api/operator/report",
+          "http_status": 200,
+          "request_status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.operator_report_latest_result",
+          "status": "loaded",
+          "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+          "key_values": {
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false"
+          },
+          "blocked_reasons": [],
+          "dangerous_true_fields": []
+        },
+        {
+          "id": "camera_health",
+          "endpoint": "/api/camera/health",
+          "http_status": 200,
+          "request_status": "loaded",
+          "schema": "trashbot.local_webrtc_camera_smoke.v1",
+          "status": "ready",
+          "evidence_ref": "not_loaded",
+          "key_values": {
+            "safe_to_control": "false"
+          },
+          "blocked_reasons": [],
+          "dangerous_true_fields": []
+        },
+        {
+          "id": "camera_devices",
+          "endpoint": "/api/camera/devices",
+          "http_status": 200,
+          "request_status": "loaded",
+          "schema": "trashbot.local_webrtc_camera_devices.v1",
+          "status": "loaded",
+          "evidence_ref": "not_loaded",
+          "key_values": {},
+          "blocked_reasons": [],
+          "dangerous_true_fields": []
+        },
+        {
+          "id": "radar_status",
+          "endpoint": "/api/radar/status",
+          "http_status": 200,
+          "request_status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.radar_status",
+          "status": "scan_once_hz_raw_packet_tf_observed",
+          "evidence_ref": "not_loaded",
+          "key_values": {
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "scan_once_observed": "true",
+            "latest_proof_status": "scan_once_hz_raw_packet_tf_observed",
+            "latest_scan_once_observed": "true"
+          },
+          "blocked_reasons": [],
+          "dangerous_true_fields": []
+        },
+        {
+          "id": "radar_scan_proof_latest",
+          "endpoint": "/api/radar/scan-proof/latest",
+          "http_status": 200,
+          "request_status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+          "status": "loaded",
+          "evidence_ref": "not_loaded",
+          "key_values": {
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "scan_once_observed": "true",
+            "latest_proof_status": "raw_packets_parsed",
+            "latest_scan_once_observed": "true"
+          },
+          "blocked_reasons": [],
+          "dangerous_true_fields": []
+        },
+        {
+          "id": "radar_raw_packet_proof_latest",
+          "endpoint": "/api/radar/raw-packet-proof/latest",
+          "http_status": 200,
+          "request_status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_result",
+          "status": "loaded",
+          "evidence_ref": "not_loaded",
+          "key_values": {
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false"
+          },
+          "blocked_reasons": [],
+          "dangerous_true_fields": []
+        },
+        {
+          "id": "base_status",
+          "endpoint": "/api/base/status",
+          "http_status": 200,
+          "request_status": "blocked",
+          "schema": "trashbot.upper_robot_api.v1.base_status",
+          "status": "loaded",
+          "evidence_ref": "not_loaded",
+          "key_values": {
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "latest_t1001_observed_count": "2"
+          },
+          "blocked_reasons": [
+            "dangerous_true_field:feedback_readback.sends_commands",
+            "dangerous_true_field:sends_commands"
+          ],
+          "dangerous_true_fields": [
+            "feedback_readback.sends_commands",
+            "sends_commands"
+          ]
+        },
+        {
+          "id": "base_feedback_samples_latest",
+          "endpoint": "/api/base/feedback-samples/latest",
+          "http_status": 200,
+          "request_status": "blocked",
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          "status": "loaded",
+          "evidence_ref": "not_loaded",
+          "key_values": {
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false"
+          },
+          "blocked_reasons": [
+            "dangerous_true_field:latest_result.sends_commands"
+          ],
+          "dangerous_true_fields": [
+            "latest_result.sends_commands"
+          ]
+        }
+      ],
+      "o3_proof_summary": {
+        "managed_runtime_started": true,
+        "scan_once_observed": true,
+        "map_once_observed": true,
+        "amcl_pose_observed": true,
+        "localization_tf_observed": null,
+        "planner_server_active": false,
+        "path_generation_requested": false,
+        "path_generation_succeeded": false,
+        "path_generated": false,
+        "path_point_count": 0,
+        "root_causes": [
+          "root_causes_not_loaded"
+        ],
+        "not_proven": [
+          "Robot API proof fields not loaded",
+          "delivery_success"
+        ]
+      },
+      "robot_api_connection": {
+        "status": "blocked",
+        "loaded_count": 10,
+        "blocked_count": 3,
+        "failed_count": 0,
+        "schema_mismatch_count": 2,
+        "dangerous_true_fields": [
+          "status.base.feedback_readback.sends_commands",
+          "status.base.sends_commands",
+          "base_status.feedback_readback.sends_commands",
+          "base_status.sends_commands",
+          "base_feedback_samples_latest.latest_result.sends_commands"
+        ],
+        "blocked_reasons": [
+          "status:dangerous_true_field:base.feedback_readback.sends_commands",
+          "status:dangerous_true_field:base.sends_commands",
+          "base_status:dangerous_true_field:feedback_readback.sends_commands",
+          "base_status:dangerous_true_field:sends_commands",
+          "base_feedback_samples_latest:dangerous_true_field:latest_result.sends_commands",
+          "dangerous_true_field:status.base.feedback_readback.sends_commands",
+          "dangerous_true_field:status.base.sends_commands",
+          "dangerous_true_field:base_status.feedback_readback.sends_commands",
+          "dangerous_true_field:base_status.sends_commands",
+          "dangerous_true_field:base_feedback_samples_latest.latest_result.sends_commands"
+        ],
+        "last_refresh_ms": 1781138590903
+      },
+      "readback_summary": {
+        "camera": {
+          "status": "ready",
+          "devices_status": "loaded",
+          "preview_status": "idle_not_started"
+        },
+        "lidar": {
+          "status": "scan_once_hz_raw_packet_tf_observed",
+          "latest_scan_proof_status": "loaded",
+          "latest_raw_packet_proof_status": "loaded"
+        },
+        "base": {
+          "status": "loaded",
+          "latest_feedback_status": "loaded",
+          "feedback_ack_status": "not_loaded"
+        }
+      },
+      "operator_hil_material_summary": {
+        "status": "loaded",
+        "source_endpoint_id": "operator_report_latest",
+        "source_path": "operator_report_latest.structured_hil_claims",
+        "report_status": "ready_for_execution",
+        "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+        "operator_present": "true",
+        "physical_clearance": "true",
+        "emergency_stop": "true",
+        "external_video": "false; ref=not_recorded_no_motion_smoke",
+        "camera_visible": "false; ref=not_attached_no_motion_smoke",
+        "wheel_feedback": "false; ref=not_attached_no_motion_smoke",
+        "lidar_delta": "false; ref=not_attached_no_motion_smoke",
+        "route_map": "false; ref=not_attached_no_motion_smoke",
+        "delivery_claim": "false",
+        "site_state": "pc_operator_report_no_motion_smoke"
+      },
+      "safe_command_boundary": {
+        "manual_endpoint": "/api/base/manual",
+        "stop_endpoint": "/api/base/stop",
+        "cmd_vel_topic": "/cmd_vel",
+        "nav2_goal": "Nav2 NavigateToPose locked",
+        "map_start": "map start locked",
+        "radar_start": "radar start locked",
+        "keyboard_control": "keyboard control locked",
+        "map_click_goal": "map click goal locked",
+        "locked_reason": "requires safety lock, checklist, operator report materials, robot ACK, timeout/cancel/stop/recovery evidence before enablement",
+        "manual_motion_entry_status": "controlled_jog_requires_hil_checklist_and_operator_report",
+        "manual_motion_entry_label": "受控点动（需现场确认）",
+        "allowed_directions": [
+          "forward",
+          "back",
+          "left",
+          "right",
+          "stop"
+        ],
+        "non_stop_requires_confirm_hil_checklist": true,
+        "non_stop_requires_operator_report_preflight": true,
+        "operator_report_preflight_endpoint": "/api/operator/report",
+        "operator_report_preflight_required_fields": [
+          "operator_present",
+          "physical_clearance_confirmed",
+          "emergency_stop_ready",
+          "external_video_recorded",
+          "external_video_ref",
+          "visible_content_proven",
+          "camera_artifacts_ref",
+          "wheel_feedback_lr_nonzero_proven",
+          "wheel_feedback_ref",
+          "physical_motion_lidar_delta_proven",
+          "scan_delta_ref"
+        ],
+        "speed_limit_mps": 0.12,
+        "duration_limit_ms": 800,
+        "hil_checklist": [
+          {
+            "id": "operator_ready",
+            "label": "现场有人扶控并准备急停"
+          },
+          {
+            "id": "clearance_confirmed",
+            "label": "已确认小车周围无人和障碍"
+          },
+          {
+            "id": "low_speed_only",
+            "label": "本轮仅做低速短时点动"
+          },
+          {
+            "id": "not_autonomy_mode",
+            "label": "本轮不是自动导航任务"
+          }
+        ],
+        "command_dispatch_enabled": false,
+        "manual_control_enabled": false,
+        "navigate_goal_enabled": false,
+        "keyboard_control_enabled": false,
+        "robot_control_executed": false
+      },
+      "blocked_reasons": [
+        "status:dangerous_true_field:base.feedback_readback.sends_commands",
+        "status:dangerous_true_field:base.sends_commands",
+        "base_status:dangerous_true_field:feedback_readback.sends_commands",
+        "base_status:dangerous_true_field:sends_commands",
+        "base_feedback_samples_latest:dangerous_true_field:latest_result.sends_commands",
+        "dangerous_true_field:status.base.feedback_readback.sends_commands",
+        "dangerous_true_field:status.base.sends_commands",
+        "dangerous_true_field:base_status.feedback_readback.sends_commands",
+        "dangerous_true_field:base_status.sends_commands",
+        "dangerous_true_field:base_feedback_samples_latest.latest_result.sends_commands"
+      ],
+      "not_proven": [
+        "O7",
+        "path_generated",
+        "delivery_success",
+        "safe_to_control_true",
+        "real_robot_ack"
+      ],
+      "source": "software_proof",
+      "proof_status": "not_proven",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "pc_only": true
+    }
+  },
+  "stop_smoke_before_manual": {
+    "label": "pc stop before manual",
+    "url": "http://127.0.0.1:8787/api/robot-control/base/stop?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+    "method": "POST",
+    "http_status": 200,
+    "elapsed_ms": 2584,
+    "error": null,
+    "payload": {
+      "schema": "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+      "command_kind": "stop",
+      "proxy_status": "command_forwarded",
+      "source": "software_proof",
+      "proof_status": "not_proven",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "pc_only": true,
+      "robot_control_executed": false,
+      "source_base_url": "http://192.168.1.11:8787",
+      "normalized_base_url": "http://192.168.1.11:8787",
+      "remote_endpoint": "/api/base/stop",
+      "remote_http_status": 200,
+      "status": "stopped",
+      "requested_direction": "stop",
+      "applied_direction": "stop",
+      "requested_speed_mps": 0,
+      "clamped_speed_mps": 0,
+      "requested_duration_ms": 0,
+      "clamped_duration_ms": 0,
+      "confirm_hil_checklist": false,
+      "non_stop_requires_confirm_hil_checklist": true,
+      "hil_checklist_gate_status": "stop_allowed_without_checklist",
+      "checklist_missing": [],
+      "operator_report_preflight": {
+        "status": "not_required_for_stop",
+        "source_endpoint": "/api/operator/report",
+        "request_status": "not_required",
+        "http_status": null,
+        "report_status": "not_required_for_stop",
+        "evidence_ref": "not_required_for_stop",
+        "required_fields": [
+          "operator_present",
+          "physical_clearance_confirmed",
+          "emergency_stop_ready",
+          "external_video_recorded",
+          "external_video_ref",
+          "visible_content_proven",
+          "camera_artifacts_ref",
+          "wheel_feedback_lr_nonzero_proven",
+          "wheel_feedback_ref",
+          "physical_motion_lidar_delta_proven",
+          "scan_delta_ref"
+        ],
+        "missing_fields": [],
+        "material_summary": {
+          "status": "not_loaded",
+          "source_endpoint_id": "operator_report_latest",
+          "source_path": "operator_report_latest.structured_hil_claims",
+          "report_status": "not_loaded",
+          "evidence_ref": "not_loaded",
+          "operator_present": "not_loaded",
+          "physical_clearance": "not_loaded",
+          "emergency_stop": "not_loaded",
+          "external_video": "not_loaded",
+          "camera_visible": "not_loaded",
+          "wheel_feedback": "not_loaded",
+          "lidar_delta": "not_loaded",
+          "route_map": "not_loaded",
+          "delivery_claim": "not_loaded",
+          "site_state": "not_loaded"
+        },
+        "failure_reason": "",
+        "hard_dangerous_true_fields": []
+      },
+      "request_contract": {
+        "max_speed_mps": 0.12,
+        "max_duration_ms": 800,
+        "allowed_directions": [
+          "forward",
+          "back",
+          "left",
+          "right",
+          "stop"
+        ]
+      },
+      "evidence_capture_status": "captured",
+      "evidence_capture_endpoints": [
+        {
+          "phase": "before",
+          "id": "base_status",
+          "endpoint": "/api/base/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "before",
+          "id": "base_feedback_samples_latest",
+          "endpoint": "/api/base/feedback-samples/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "before",
+          "id": "radar_status",
+          "endpoint": "/api/radar/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.radar_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.radar_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false",
+            "blocked_reasons": "[\"scan_continuity_not_observed\"]"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "before",
+          "id": "radar_scan_proof_latest",
+          "endpoint": "/api/radar/scan-proof/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "after",
+          "id": "base_status",
+          "endpoint": "/api/base/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "after",
+          "id": "base_feedback_samples_latest",
+          "endpoint": "/api/base/feedback-samples/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "after",
+          "id": "radar_status",
+          "endpoint": "/api/radar/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.radar_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.radar_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false",
+            "blocked_reasons": "[\"scan_continuity_not_observed\"]"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "after",
+          "id": "radar_scan_proof_latest",
+          "endpoint": "/api/radar/scan-proof/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        }
+      ],
+      "evidence_capture_blocked_reasons": [],
+      "before_readback": {
+        "base_status": {
+          "phase": "before",
+          "id": "base_status",
+          "endpoint": "/api/base/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        "base_feedback_samples_latest": {
+          "phase": "before",
+          "id": "base_feedback_samples_latest",
+          "endpoint": "/api/base/feedback-samples/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        "radar_status": {
+          "phase": "before",
+          "id": "radar_status",
+          "endpoint": "/api/radar/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.radar_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.radar_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false",
+            "blocked_reasons": "[\"scan_continuity_not_observed\"]"
+          },
+          "failure_reason": ""
+        },
+        "radar_scan_proof_latest": {
+          "phase": "before",
+          "id": "radar_scan_proof_latest",
+          "endpoint": "/api/radar/scan-proof/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        }
+      },
+      "after_readback": {
+        "base_status": {
+          "phase": "after",
+          "id": "base_status",
+          "endpoint": "/api/base/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        "base_feedback_samples_latest": {
+          "phase": "after",
+          "id": "base_feedback_samples_latest",
+          "endpoint": "/api/base/feedback-samples/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        "radar_status": {
+          "phase": "after",
+          "id": "radar_status",
+          "endpoint": "/api/radar/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.radar_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.radar_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false",
+            "blocked_reasons": "[\"scan_continuity_not_observed\"]"
+          },
+          "failure_reason": ""
+        },
+        "radar_scan_proof_latest": {
+          "phase": "after",
+          "id": "radar_scan_proof_latest",
+          "endpoint": "/api/radar/scan-proof/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        }
+      },
+      "motion_evidence_summary": "stop command before/after fixed GET evidence snapshot captured; this is not HIL pass.",
+      "failure_reason": "",
+      "blocked_reasons": []
+    }
+  },
+  "manual_attempt": {
+    "label": "pc manual forward low speed",
+    "url": "http://127.0.0.1:8787/api/robot-control/base/manual?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+    "method": "POST",
+    "http_status": 400,
+    "elapsed_ms": 2563,
+    "error": null,
+    "payload": {
+      "schema": "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+      "command_kind": "manual",
+      "proxy_status": "command_rejected",
+      "source": "software_proof",
+      "proof_status": "not_proven",
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "pc_only": true,
+      "robot_control_executed": false,
+      "source_base_url": "http://192.168.1.11:8787",
+      "normalized_base_url": "not_loaded",
+      "remote_endpoint": "/api/base/manual",
+      "remote_http_status": null,
+      "status": "blocked",
+      "requested_direction": "forward",
+      "applied_direction": "forward",
+      "requested_speed_mps": 0.05,
+      "clamped_speed_mps": 0.05,
+      "requested_duration_ms": 400,
+      "clamped_duration_ms": 400,
+      "confirm_hil_checklist": true,
+      "non_stop_requires_confirm_hil_checklist": true,
+      "hil_checklist_gate_status": "manual_allowed",
+      "checklist_missing": [],
+      "operator_report_preflight": {
+        "status": "blocked",
+        "source_endpoint": "/api/operator/report",
+        "request_status": "loaded",
+        "http_status": 200,
+        "report_status": "ready_for_execution",
+        "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+        "required_fields": [
+          "operator_present",
+          "physical_clearance_confirmed",
+          "emergency_stop_ready",
+          "external_video_recorded",
+          "external_video_ref",
+          "visible_content_proven",
+          "camera_artifacts_ref",
+          "wheel_feedback_lr_nonzero_proven",
+          "wheel_feedback_ref",
+          "physical_motion_lidar_delta_proven",
+          "scan_delta_ref"
+        ],
+        "missing_fields": [
+          "external_video_recorded",
+          "visible_content_proven",
+          "wheel_feedback_lr_nonzero_proven",
+          "physical_motion_lidar_delta_proven"
+        ],
+        "material_summary": {
+          "status": "loaded",
+          "source_endpoint_id": "operator_report_latest",
+          "source_path": "operator_report_latest.structured_hil_claims",
+          "report_status": "ready_for_execution",
+          "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+          "operator_present": "true",
+          "physical_clearance": "true",
+          "emergency_stop": "true",
+          "external_video": "false; ref=not_recorded_no_motion_smoke",
+          "camera_visible": "false; ref=not_attached_no_motion_smoke",
+          "wheel_feedback": "false; ref=not_attached_no_motion_smoke",
+          "lidar_delta": "false; ref=not_attached_no_motion_smoke",
+          "route_map": "false; ref=not_attached_no_motion_smoke",
+          "delivery_claim": "false",
+          "site_state": "pc_operator_report_no_motion_smoke"
+        },
+        "failure_reason": "operator_report_preflight_required",
+        "hard_dangerous_true_fields": []
+      },
+      "request_contract": {
+        "max_speed_mps": 0.12,
+        "max_duration_ms": 800,
+        "allowed_directions": [
+          "forward",
+          "back",
+          "left",
+          "right",
+          "stop"
+        ]
+      },
+      "evidence_capture_status": "captured",
+      "evidence_capture_endpoints": [
+        {
+          "phase": "before",
+          "id": "base_status",
+          "endpoint": "/api/base/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "before",
+          "id": "base_feedback_samples_latest",
+          "endpoint": "/api/base/feedback-samples/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "before",
+          "id": "radar_status",
+          "endpoint": "/api/radar/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.radar_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.radar_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false",
+            "blocked_reasons": "[\"scan_continuity_not_observed\"]"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "before",
+          "id": "radar_scan_proof_latest",
+          "endpoint": "/api/radar/scan-proof/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "after",
+          "id": "base_status",
+          "endpoint": "/api/base/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "after",
+          "id": "base_feedback_samples_latest",
+          "endpoint": "/api/base/feedback-samples/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "after",
+          "id": "radar_status",
+          "endpoint": "/api/radar/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.radar_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.radar_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false",
+            "blocked_reasons": "[\"scan_continuity_not_observed\"]"
+          },
+          "failure_reason": ""
+        },
+        {
+          "phase": "after",
+          "id": "radar_scan_proof_latest",
+          "endpoint": "/api/radar/scan-proof/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        }
+      ],
+      "evidence_capture_blocked_reasons": [],
+      "before_readback": {
+        "base_status": {
+          "phase": "before",
+          "id": "base_status",
+          "endpoint": "/api/base/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        "base_feedback_samples_latest": {
+          "phase": "before",
+          "id": "base_feedback_samples_latest",
+          "endpoint": "/api/base/feedback-samples/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        "radar_status": {
+          "phase": "before",
+          "id": "radar_status",
+          "endpoint": "/api/radar/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.radar_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.radar_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false",
+            "blocked_reasons": "[\"scan_continuity_not_observed\"]"
+          },
+          "failure_reason": ""
+        },
+        "radar_scan_proof_latest": {
+          "phase": "before",
+          "id": "radar_scan_proof_latest",
+          "endpoint": "/api/radar/scan-proof/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        }
+      },
+      "after_readback": {
+        "base_status": {
+          "phase": "after",
+          "id": "base_status",
+          "endpoint": "/api/base/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        "base_feedback_samples_latest": {
+          "phase": "after",
+          "id": "base_feedback_samples_latest",
+          "endpoint": "/api/base/feedback-samples/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        },
+        "radar_status": {
+          "phase": "after",
+          "id": "radar_status",
+          "endpoint": "/api/radar/status",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.radar_status",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.radar_status",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false",
+            "blocked_reasons": "[\"scan_continuity_not_observed\"]"
+          },
+          "failure_reason": ""
+        },
+        "radar_scan_proof_latest": {
+          "phase": "after",
+          "id": "radar_scan_proof_latest",
+          "endpoint": "/api/radar/scan-proof/latest",
+          "method": "GET",
+          "request_status": "loaded",
+          "http_status": 200,
+          "status": "loaded",
+          "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+          "key_values": {
+            "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+            "safe_to_control": "false",
+            "delivery_success": "false",
+            "primary_actions_enabled": "false",
+            "robot_control_executed": "false"
+          },
+          "failure_reason": ""
+        }
+      },
+      "motion_evidence_summary": "manual command before/after fixed GET evidence snapshot captured; this is not HIL pass.",
+      "failure_reason": "operator_report_preflight_required",
+      "blocked_reasons": [
+        "operator_report_preflight_required"
+      ]
+    }
+  },
+  "stop_after_manual_if_needed": null,
+  "direct_readbacks_after": {
+    "operator_report": {
+      "label": "after /api/operator/report",
+      "url": "http://192.168.1.11:8787/api/operator/report",
+      "method": "GET",
+      "http_status": 200,
+      "elapsed_ms": 20,
+      "error": null,
+      "payload": {
+        "schema": "trashbot.upper_robot_api.v1.operator_report_latest_result",
+        "generated_at_ms": 1781138599034,
+        "endpoint": "/api/operator/report",
+        "artifact": {
+          "path": "runtime/operator_report_latest.json",
+          "configured_by": "ROBER_OPERATOR_REPORT_ARTIFACT_PATH or --operator-report-artifact-path",
+          "format": "json",
+          "schema": "trashbot.upper_robot_api.v1.operator_report_result",
+          "ok": true,
+          "status": "loaded",
+          "bytes_read": 7420
+        },
+        "latest_result": {
+          "artifact": {
+            "configured_by": "ROBER_OPERATOR_REPORT_ARTIFACT_PATH or --operator-report-artifact-path",
+            "format": "json",
+            "path": "runtime/operator_report_latest.json",
+            "schema": "trashbot.upper_robot_api.v1.operator_report_result",
+            "write": {
+              "method": "atomic_replace",
+              "ok": true
+            },
+            "written_at_ms": 1781130262991
+          },
+          "boundary": "operator_report_is_human_site_material_only_not_ack_t1001_hil_stop_status_or_motion",
+          "calls_base_manual": false,
+          "cloud_relay": false,
+          "command_payload_summary": {
+            "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+            "report_note": "PC workstation no-motion operator report submit smoke; no movement command requested.",
+            "structured_hil_fields": [
+              "external_video_recorded",
+              "visible_content_proven",
+              "wheel_feedback_lr_nonzero_proven",
+              "physical_motion_lidar_delta_proven",
+              "real_route_map_proven",
+              "delivery_success",
+              "external_video_ref",
+              "camera_artifacts_ref",
+              "wheel_feedback_ref",
+              "scan_delta_ref",
+              "route_map_ref",
+              "site_state"
+            ]
+          },
+          "delivery_success": false,
+          "does_not_replace": [
+            "/api/base/stop",
+            "/api/base/status",
+            "/api/base/feedback-request",
+            "/api/base/feedback-samples",
+            "T=1001",
+            "robot ACK",
+            "HIL",
+            "ROS /odom /imu/data /battery",
+            "field video or现场记录"
+          ],
+          "endpoint": "/api/operator/report",
+          "evidence_type": "software_guard",
+          "field_hil_material": false,
+          "generated_at_ms": 1781130262991,
+          "hil_pass": false,
+          "not_proven": true,
+          "opens_serial": false,
+          "operator_report": {
+            "emergency_stop_ready": true,
+            "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+            "normalization": {
+              "missing_or_invalid_fields": [],
+              "preflight_missing_or_invalid_fields": [],
+              "preflight_required_fields": [
+                "operator_present",
+                "physical_clearance_confirmed",
+                "emergency_stop_ready"
+              ],
+              "review_missing_or_invalid_fields": [],
+              "review_required_fields": [
+                "observed_motion",
+                "observed_stop",
+                "operator_notes",
+                "reported_at"
+              ],
+              "source_fields": [
+                "operator_present",
+                "evidence_ref",
+                "physical_clearance_confirmed",
+                "emergency_stop_ready",
+                "observed_motion",
+                "observed_stop",
+                "operator_notes",
+                "reported_at"
+              ],
+              "structured_hil_fields": [
+                "external_video_recorded",
+                "visible_content_proven",
+                "wheel_feedback_lr_nonzero_proven",
+                "physical_motion_lidar_delta_proven",
+                "real_route_map_proven",
+                "delivery_success",
+                "external_video_ref",
+                "camera_artifacts_ref",
+                "wheel_feedback_ref",
+                "scan_delta_ref",
+                "route_map_ref",
+                "site_state"
+              ],
+              "structured_hil_missing_or_invalid_bool_fields": [],
+              "unsafe_fields": []
+            },
+            "note": "PC workstation no-motion operator report submit smoke; no movement command requested.",
+            "observed_motion": false,
+            "observed_stop": true,
+            "operator_notes": "PC workstation no-motion operator report submit smoke; no movement command requested.",
+            "operator_present": true,
+            "physical_clearance_confirmed": true,
+            "reported_at": "2026-06-10T22:24:22.727Z",
+            "structured_hil_claims": {
+              "camera_artifacts_ref": "not_attached_no_motion_smoke",
+              "delivery_success": false,
+              "external_video_recorded": false,
+              "external_video_ref": "not_recorded_no_motion_smoke",
+              "normalization": {
+                "material_only": true,
+                "missing_or_invalid_bool_fields": [],
+                "provided_fields": [
+                  "external_video_recorded",
+                  "visible_content_proven",
+                  "wheel_feedback_lr_nonzero_proven",
+                  "physical_motion_lidar_delta_proven",
+                  "real_route_map_proven",
+                  "delivery_success",
+                  "external_video_ref",
+                  "camera_artifacts_ref",
+                  "wheel_feedback_ref",
+                  "scan_delta_ref",
+                  "route_map_ref",
+                  "site_state"
+                ],
+                "source": "top_level_fields_or_structured_hil_claims",
+                "source_fields": [
+                  "external_video_recorded",
+                  "visible_content_proven",
+                  "wheel_feedback_lr_nonzero_proven",
+                  "physical_motion_lidar_delta_proven",
+                  "real_route_map_proven",
+                  "delivery_success",
+                  "external_video_ref",
+                  "camera_artifacts_ref",
+                  "wheel_feedback_ref",
+                  "scan_delta_ref",
+                  "route_map_ref",
+                  "site_state"
+                ],
+                "top_level_delivery_success_forced_false": true
+              },
+              "physical_motion_lidar_delta_proven": false,
+              "real_route_map_proven": false,
+              "route_map_ref": "not_attached_no_motion_smoke",
+              "scan_delta_ref": "not_attached_no_motion_smoke",
+              "site_state": "pc_operator_report_no_motion_smoke",
+              "visible_content_proven": false,
+              "wheel_feedback_lr_nonzero_proven": false,
+              "wheel_feedback_ref": "not_attached_no_motion_smoke"
+            }
+          },
+          "operator_report_material_only": true,
+          "operator_report_status": "ready_for_execution",
+          "primary_actions_enabled": false,
+          "publishes_cmd_vel": false,
+          "readback_sends_commands": false,
+          "report_replaces_stop_status_ack_or_hil": false,
+          "request": {
+            "endpoint": "/api/operator/report",
+            "method": "POST"
+          },
+          "robot_control_executed": false,
+          "safe_to_control": false,
+          "schema": "trashbot.upper_robot_api.v1.operator_report_result",
+          "sends_base_motion_commands": false,
+          "sends_commands": false,
+          "sends_motion_commands": false,
+          "software_guard": true,
+          "starts_ros2": false,
+          "structured_hil_claims": {
+            "camera_artifacts_ref": "not_attached_no_motion_smoke",
+            "delivery_success": false,
+            "external_video_recorded": false,
+            "external_video_ref": "not_recorded_no_motion_smoke",
+            "normalization": {
+              "material_only": true,
+              "missing_or_invalid_bool_fields": [],
+              "provided_fields": [
+                "external_video_recorded",
+                "visible_content_proven",
+                "wheel_feedback_lr_nonzero_proven",
+                "physical_motion_lidar_delta_proven",
+                "real_route_map_proven",
+                "delivery_success",
+                "external_video_ref",
+                "camera_artifacts_ref",
+                "wheel_feedback_ref",
+                "scan_delta_ref",
+                "route_map_ref",
+                "site_state"
+              ],
+              "source": "top_level_fields_or_structured_hil_claims",
+              "source_fields": [
+                "external_video_recorded",
+                "visible_content_proven",
+                "wheel_feedback_lr_nonzero_proven",
+                "physical_motion_lidar_delta_proven",
+                "real_route_map_proven",
+                "delivery_success",
+                "external_video_ref",
+                "camera_artifacts_ref",
+                "wheel_feedback_ref",
+                "scan_delta_ref",
+                "route_map_ref",
+                "site_state"
+              ],
+              "top_level_delivery_success_forced_false": true
+            },
+            "physical_motion_lidar_delta_proven": false,
+            "real_route_map_proven": false,
+            "route_map_ref": "not_attached_no_motion_smoke",
+            "scan_delta_ref": "not_attached_no_motion_smoke",
+            "site_state": "pc_operator_report_no_motion_smoke",
+            "visible_content_proven": false,
+            "wheel_feedback_lr_nonzero_proven": false,
+            "wheel_feedback_ref": "not_attached_no_motion_smoke"
+          },
+          "uses_base_uart": false
+        },
+        "structured_hil_claims": {
+          "camera_artifacts_ref": "not_attached_no_motion_smoke",
+          "delivery_success": false,
+          "external_video_recorded": false,
+          "external_video_ref": "not_recorded_no_motion_smoke",
+          "normalization": {
+            "material_only": true,
+            "missing_or_invalid_bool_fields": [],
+            "provided_fields": [
+              "external_video_recorded",
+              "visible_content_proven",
+              "wheel_feedback_lr_nonzero_proven",
+              "physical_motion_lidar_delta_proven",
+              "real_route_map_proven",
+              "delivery_success",
+              "external_video_ref",
+              "camera_artifacts_ref",
+              "wheel_feedback_ref",
+              "scan_delta_ref",
+              "route_map_ref",
+              "site_state"
+            ],
+            "source": "top_level_fields_or_structured_hil_claims",
+            "source_fields": [
+              "external_video_recorded",
+              "visible_content_proven",
+              "wheel_feedback_lr_nonzero_proven",
+              "physical_motion_lidar_delta_proven",
+              "real_route_map_proven",
+              "delivery_success",
+              "external_video_ref",
+              "camera_artifacts_ref",
+              "wheel_feedback_ref",
+              "scan_delta_ref",
+              "route_map_ref",
+              "site_state"
+            ],
+            "top_level_delivery_success_forced_false": true
+          },
+          "physical_motion_lidar_delta_proven": false,
+          "real_route_map_proven": false,
+          "route_map_ref": "not_attached_no_motion_smoke",
+          "scan_delta_ref": "not_attached_no_motion_smoke",
+          "site_state": "pc_operator_report_no_motion_smoke",
+          "visible_content_proven": false,
+          "wheel_feedback_lr_nonzero_proven": false,
+          "wheel_feedback_ref": "not_attached_no_motion_smoke"
+        },
+        "latest_endpoint_path": "/api/operator/report",
+        "does_not_replace": [
+          "/api/base/stop",
+          "/api/base/status",
+          "/api/base/feedback-request",
+          "/api/base/feedback-samples",
+          "T=1001",
+          "robot ACK",
+          "HIL",
+          "ROS /odom /imu/data /battery",
+          "field video or现场记录"
+        ],
+        "boundary": "operator_report_readback_only_not_ack_t1001_hil_stop_status_or_motion",
+        "operator_report_material_only": true,
+        "software_guard": true,
+        "not_proven": true,
+        "evidence_type": "software_guard",
+        "report_replaces_stop_status_ack_or_hil": false,
+        "field_hil_material": false,
+        "readback_sends_commands": false,
+        "sends_commands": false,
+        "sends_motion_commands": false,
+        "sends_base_motion_commands": false,
+        "publishes_cmd_vel": false,
+        "calls_base_manual": false,
+        "uses_base_uart": false,
+        "opens_serial": false,
+        "starts_ros2": false,
+        "robot_control_executed": false,
+        "hil_pass": false,
+        "safe_to_control": false,
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "cloud_relay": false
+      }
+    },
+    "base_status": {
+      "label": "after /api/base/status",
+      "url": "http://192.168.1.11:8787/api/base/status",
+      "method": "GET",
+      "http_status": 200,
+      "elapsed_ms": 1224,
+      "error": null,
+      "payload": {
+        "schema": "trashbot.upper_robot_api.v1.base_status",
+        "generated_at_ms": 1781138600258,
+        "vendor_sources": [
+          "docs/vendor/VENDOR_INDEX.md",
+          "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+          "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+        ],
+        "port": "/dev/ttyS5",
+        "baudrate": 115200,
+        "port_info": {
+          "path": "/dev/ttyS5",
+          "exists": true,
+          "lexists": true,
+          "is_symlink": false,
+          "realpath": "/dev/ttyS5",
+          "error": null,
+          "mode_octal": "0o660",
+          "uid": 0,
+          "gid": 20
+        },
+        "pyserial_available": true,
+        "pyserial_error": null,
+        "write_control_available": true,
+        "feedback_ack": {
+          "t1001_observed": true,
+          "robot_ack_connected": false,
+          "source": "fresh_readback",
+          "reason": "T=1001 observed by this /api/base/status non-motion T=130 readback"
+        },
+        "feedback_readback": {
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_request_result",
+          "generated_at_ms": 1781138600258,
+          "vendor_sources": [
+            "docs/vendor/VENDOR_INDEX.md",
+            "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+            "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+          ],
+          "port": "/dev/ttyS5",
+          "baudrate": 115200,
+          "request": {
+            "method": "POST",
+            "endpoint": "/api/base/feedback-request",
+            "command": {
+              "T": 130
+            },
+            "read_timeout_s": 0.2,
+            "read_window_s": 1.2
+          },
+          "serial_open": {
+            "ok": true,
+            "port": "/dev/ttyS5",
+            "baudrate": 115200,
+            "timeout_s": 0.2
+          },
+          "serial_write": {
+            "ok": true,
+            "command": {
+              "T": 130
+            },
+            "bytes_written": 10
+          },
+          "serial_read": {
+            "ok": true,
+            "window_s": 1.2,
+            "error": null
+          },
+          "read_line_count": 23,
+          "parsed_json_count": 23,
+          "invalid_json_count": 0,
+          "observed_feedback_types": [
+            1001
+          ],
+          "t1001_feedback_status": "observed",
+          "feedback_ack": {
+            "t1001_observed": true,
+            "robot_ack_connected": false,
+            "reason": "T=1001 observed after explicit T=130 request; this is vendor feedback material, not project robot ACK or HIL proof"
+          },
+          "blocked_commands_not_sent": [
+            "T=1",
+            "T=13",
+            "T=131",
+            "cmd_vel",
+            "/api/base/manual"
+          ],
+          "safe_to_control": false,
+          "sends_commands": true,
+          "sends_motion_commands": false,
+          "robot_control_executed": false,
+          "delivery_success": false,
+          "hil_pass": false,
+          "primary_actions_enabled": false
+        },
+        "feedback_samples_latest": {
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_summary",
+          "generated_at_ms": 1781138599054,
+          "endpoint": "/api/base/feedback-samples/latest",
+          "artifact": {
+            "path": "runtime/base_feedback_samples_latest.json",
+            "configured_by": "ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH or --feedback-samples-artifact-path",
+            "format": "json",
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+            "ok": true,
+            "status": "loaded",
+            "mtime_ms": 1781020997105,
+            "age_ms": 117601949,
+            "updated_at_ms": 1781020997101,
+            "bytes_read": 3868
+          },
+          "freshness": {
+            "status": "stale",
+            "stale_after_ms": 900000,
+            "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control"
+          },
+          "latest_t1001_observed_count": 2,
+          "latest_all_samples_observed_t1001": true,
+          "readback_sends_commands": false,
+          "sends_commands": false,
+          "sends_motion_commands": false,
+          "robot_control_executed": false,
+          "delivery_success": false,
+          "hil_pass": false,
+          "safe_to_control": false,
+          "primary_actions_enabled": false
+        },
+        "control_policy": {
+          "mode": "low_speed_pulse_with_auto_stop",
+          "max_speed": 0.12,
+          "max_pulse_ms": 800,
+          "stop_command": {
+            "T": 1,
+            "L": 0,
+            "R": 0
+          }
+        },
+        "readback_sends_commands": true,
+        "sends_commands": true,
+        "sends_motion_commands": false,
+        "safe_to_control": false,
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "robot_control_executed": false,
+        "cloud_relay": false
+      }
+    },
+    "feedback_latest": {
+      "label": "after /api/base/feedback-samples/latest",
+      "url": "http://192.168.1.11:8787/api/base/feedback-samples/latest",
+      "method": "GET",
+      "http_status": 200,
+      "elapsed_ms": 8,
+      "error": null,
+      "payload": {
+        "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+        "generated_at_ms": 1781138600271,
+        "artifact": {
+          "path": "runtime/base_feedback_samples_latest.json",
+          "configured_by": "ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH or --feedback-samples-artifact-path",
+          "format": "json",
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+          "ok": true,
+          "status": "loaded",
+          "bytes_read": 3868
+        },
+        "latest_result": {
+          "all_samples_observed_t1001": true,
+          "artifact": {
+            "configured_by": "ROBER_BASE_FEEDBACK_SAMPLES_ARTIFACT_PATH or --feedback-samples-artifact-path",
+            "format": "json",
+            "path": "runtime/base_feedback_samples_latest.json",
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+            "write": {
+              "method": "atomic_replace",
+              "ok": true
+            },
+            "written_at_ms": 1781020997101
+          },
+          "baudrate": 115200,
+          "blocked_commands_not_sent": [
+            "T=1",
+            "T=13",
+            "T=131",
+            "cmd_vel",
+            "/api/base/manual"
+          ],
+          "completed_sample_count": 2,
+          "delivery_success": false,
+          "feedback_ack": {
+            "reason": "T=1001 observed in 2/2 samples; this is vendor feedback material, not project robot ACK or HIL proof",
+            "robot_ack_connected": false,
+            "t1001_observed": true
+          },
+          "generated_at_ms": 1781020997101,
+          "hil_pass": false,
+          "observed_feedback_types": [
+            1001
+          ],
+          "partial_samples_observed_t1001": false,
+          "port": "/dev/ttyS5",
+          "primary_actions_enabled": false,
+          "request": {
+            "command": {
+              "T": 130
+            },
+            "endpoint": "/api/base/feedback-samples",
+            "method": "POST",
+            "read_timeout_s": 0.2,
+            "read_window_s": 0.8,
+            "sample_count": 2,
+            "sample_interval_s": 0.2
+          },
+          "requested_sample_count": 2,
+          "robot_control_executed": false,
+          "safe_to_control": false,
+          "samples": [
+            {
+              "delivery_success": false,
+              "feedback_ack": {
+                "reason": "T=1001 observed after explicit T=130 request; this is vendor feedback material, not project robot ACK or HIL proof",
+                "robot_ack_connected": false,
+                "t1001_observed": true
+              },
+              "hil_pass": false,
+              "invalid_json_count": 0,
+              "observed_feedback_types": [
+                1001
+              ],
+              "parsed_json_count": 8,
+              "read_line_count": 8,
+              "robot_control_executed": false,
+              "safe_to_control": false,
+              "sample_index": 1,
+              "schema": "trashbot.upper_robot_api.v1.base_feedback_request_result",
+              "sends_motion_commands": false,
+              "serial_open": {
+                "baudrate": 115200,
+                "ok": true,
+                "port": "/dev/ttyS5",
+                "timeout_s": 0.2
+              },
+              "serial_read": {
+                "error": null,
+                "ok": true,
+                "window_s": 0.8
+              },
+              "serial_write": {
+                "bytes_written": 10,
+                "command": {
+                  "T": 130
+                },
+                "ok": true
+              },
+              "t1001_feedback_status": "observed"
+            },
+            {
+              "delivery_success": false,
+              "feedback_ack": {
+                "reason": "T=1001 observed after explicit T=130 request; this is vendor feedback material, not project robot ACK or HIL proof",
+                "robot_ack_connected": false,
+                "t1001_observed": true
+              },
+              "hil_pass": false,
+              "invalid_json_count": 0,
+              "observed_feedback_types": [
+                1001
+              ],
+              "parsed_json_count": 8,
+              "read_line_count": 8,
+              "robot_control_executed": false,
+              "safe_to_control": false,
+              "sample_index": 2,
+              "schema": "trashbot.upper_robot_api.v1.base_feedback_request_result",
+              "sends_motion_commands": false,
+              "serial_open": {
+                "baudrate": 115200,
+                "ok": true,
+                "port": "/dev/ttyS5",
+                "timeout_s": 0.2
+              },
+              "serial_read": {
+                "error": null,
+                "ok": true,
+                "window_s": 0.8
+              },
+              "serial_write": {
+                "bytes_written": 10,
+                "command": {
+                  "T": 130
+                },
+                "ok": true
+              },
+              "t1001_feedback_status": "observed"
+            }
+          ],
+          "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+          "sends_commands": true,
+          "sends_motion_commands": false,
+          "t1001_observed_count": 2,
+          "vendor_sources": [
+            "docs/vendor/VENDOR_INDEX.md",
+            "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+            "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+          ]
+        },
+        "latest_endpoint_path": "/api/base/feedback-samples/latest",
+        "readback_sends_commands": false,
+        "safe_to_control": false,
+        "sends_commands": false,
+        "sends_motion_commands": false,
+        "robot_control_executed": false,
+        "delivery_success": false,
+        "hil_pass": false,
+        "primary_actions_enabled": false
+      }
+    }
+  },
+  "assertions": {
+    "stop_channel_reachable": true,
+    "stop_operator_report_not_required": true,
+    "manual_http_status": 400,
+    "manual_proxy_status": "command_rejected",
+    "manual_failure_reason": "operator_report_preflight_required",
+    "manual_operator_report_preflight_status": "blocked",
+    "manual_operator_report_missing_fields": [
+      "external_video_recorded",
+      "visible_content_proven",
+      "wheel_feedback_lr_nonzero_proven",
+      "physical_motion_lidar_delta_proven"
+    ],
+    "manual_remote_http_status": null,
+    "manual_robot_control_executed": false,
+    "manual_evidence_capture_calls_base_manual": null,
+    "manual_evidence_capture_publishes_cmd_vel": null,
+    "actual_nonzero_motion_forwarded": false,
+    "cleanup_stop_sent_after_forwarded_manual": null
+  }
+}
