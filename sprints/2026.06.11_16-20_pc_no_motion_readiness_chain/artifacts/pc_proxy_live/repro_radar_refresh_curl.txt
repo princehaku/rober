@@ -1,0 +1,11 @@
+*   Trying 127.0.0.1:18792...
+* Connected to 127.0.0.1 (127.0.0.1) port 18792
+> POST /api/robot-control/radar/scan-proof/refresh?baseUrl=http://192.168.1.11:8787 HTTP/1.1
+> Host: 127.0.0.1:18792
+> User-Agent: curl/8.7.1
+> Accept: */*
+> content-type: application/json
+> Content-Length: 2
+> 
+} [2 bytes data]
+* upload completely sent off: 2 bytes

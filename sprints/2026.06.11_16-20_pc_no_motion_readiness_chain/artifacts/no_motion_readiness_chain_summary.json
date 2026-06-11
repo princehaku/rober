@@ -1,0 +1,118 @@
+{
+  "schema": "trashbot.pc_no_motion_readiness_chain.summary.v1",
+  "base_url": "http://192.168.1.11:8787",
+  "pc_url": "http://127.0.0.1:18794",
+  "map_name": "pc_no_motion_20260611_162507",
+  "summary_before": {
+    "console_status": "blocked",
+    "loaded_count": 10,
+    "blocked_count": 1,
+    "failed_count": 2
+  },
+  "radar_refresh": {
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "starts_ros2": null,
+    "latest_result_status": null,
+    "evidence_ref": null,
+    "key_values": {
+      "status": "refreshed",
+      "latest_proof_status": "raw_packets_parsed",
+      "evidence_ref": "o1-lidar-scan-proof-1781166326352",
+      "scan_once_observed": "true",
+      "scan_hz_observed": "true",
+      "raw_packet_once_observed": "true",
+      "tf_observed": "true",
+      "continuous_scan_status": "latest_proof_present_but_lifecycle_not_running",
+      "continuous_window_observed": "false",
+      "continuity_window_status": "latest_proof_present_but_lifecycle_not_running",
+      "lifecycle_running": "false",
+      "lifecycle_state": "stopped",
+      "latest_scan_proof_fresh": "false",
+      "blocked_reasons": "lidar_lifecycle_not_running",
+      "continuity_blocked_reasons": "lidar_lifecycle_not_running"
+    },
+    "lidar_summary": {
+      "status": "fetch_failed",
+      "latest_scan_proof_status": "fetch_failed",
+      "latest_raw_packet_proof_status": "fetch_failed",
+      "continuous_scan_status": "not_loaded",
+      "lifecycle_running": "not_loaded",
+      "lifecycle_state": "not_loaded",
+      "continuous_window_observed": "not_loaded",
+      "continuity_window_status": "not_loaded",
+      "latest_scan_proof_fresh": "not_loaded"
+    }
+  },
+  "map_refresh": {
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "starts_ros2": null,
+    "latest_result_status": null,
+    "evidence_ref": null
+  },
+  "map_list": {
+    "before_count": 24,
+    "after_count": 26,
+    "created_entry_present": false
+  },
+  "map_start": {
+    "proxy_status": "lifecycle_forwarded",
+    "remote_http_status": 200,
+    "command_mode": "map_lifecycle_proof_helper",
+    "executed": true,
+    "ok": true
+  },
+  "map_save": {
+    "proxy_status": "lifecycle_forwarded",
+    "remote_http_status": 200,
+    "command_mode": "map_lifecycle_proof_helper",
+    "executed": true,
+    "ok": true
+  },
+  "localize_reset": {
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "starts_ros2": null,
+    "latest_result_status": null,
+    "evidence_ref": null,
+    "key_values": {
+      "status": "refreshed",
+      "latest_proof_status": "nav2_no_motion_localization_runtime_observed",
+      "evidence_ref": "o10-amcl-nav2-runtime-1781166505381",
+      "initialpose_published": "true",
+      "amcl_pose_observed": "true",
+      "localization_tf_observed": "[object Object]",
+      "managed_runtime_started": "true",
+      "managed_runtime_cleanup_ok": "true",
+      "localization_reset_observed": "true",
+      "root_causes": ""
+    }
+  },
+  "nav2_refresh": {
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "starts_ros2": null,
+    "latest_result_status": null,
+    "evidence_ref": null,
+    "key_values": {
+      "status": "refreshed",
+      "latest_proof_status": "nav2_no_motion_path_generation_runtime_observed",
+      "evidence_ref": "o10-amcl-nav2-runtime-1781166547645",
+      "managed_runtime_started": "true",
+      "initialpose_published": "true",
+      "path_generation_requested": "true",
+      "path_generated": "true",
+      "path_generation_succeeded": "true",
+      "path_point_count": "18",
+      "planner_server_active": "true"
+    }
+  },
+  "fail_closed_fields": {
+    "radar_refresh_safe_to_control": false,
+    "map_refresh_safe_to_control": false,
+    "localize_safe_to_control": false,
+    "nav2_safe_to_control": false,
+    "nav2_robot_control_executed": false
+  }
+}

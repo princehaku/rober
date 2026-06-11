@@ -460,6 +460,51 @@ one 低速短时 jog 并立即 stop，不能直调远端 `/api/base/manual`。
 no-motion map runtime 的 `开始建图（高级）` / `保存地图` 固定入口；它们只触发
 LiDAR+SLAM 建图材料采集，不等于真实底盘控制、Nav2 执行、delivery 或安全放行。
 
+## 2026-06-11 PC No-motion Readiness Chain Current Smoke
+
+`sprints/2026.06.11_16-20_pc_no_motion_readiness_chain/` 这一轮只收口既有 no-motion
+readiness artifacts，不重跑真实上位机链路，也不把任何结果解释成自动导航、真实移动或
+送达成功。
+
+本轮已实测的 proxy / readback 事实：
+
+- `radar proof refresh` 返回 `raw_packets_parsed`，`scan_once_observed=true`、
+  `scan_hz_observed=true`、`raw_packet_once_observed=true`、`tf_observed=true`；
+  但 `lifecycle_running=false`、`continuous_window_observed=false`，仍是 no-motion
+  readiness，不是持续运动证明。
+- `map proof refresh` 返回 `map_once_artifact_metadata_observed`。
+- `map list` 由 24 增至 26，新增 `pc_no_motion_20260611_162507.yaml` 可见；
+  `map start` 与 `map save` 仅作为固定 no-motion lifecycle helper 通过。
+- `localize reset` 返回 `nav2_no_motion_localization_runtime_observed`，
+  `initialpose_published=true`、`amcl_pose_observed=true`、`managed_runtime_cleanup_ok=true`。
+- `nav2 proof refresh` 返回 `nav2_no_motion_path_generation_runtime_observed`，
+  `path_generation_succeeded=true`、`path_point_count=18`、`planner_server_active=true`。
+
+Cleanup 读回继续证明 no motion / no base manual / no ttyS5 占用：
+
+- `cmd_vel_topic_count=0`
+- `base_manual_http_count=0`
+- `ttyS5_lsof_begin`、`ttyS5_fuser_begin`、`cmd_vel_publishers_begin` 均无占用结果
+
+普通首屏契约仍保持不变：默认标题是 `Rober 小车控制台`，`.simple-user-console`
+仍只保留五张普通卡片 `小车连接 / 实时画面 / 雷达 / 地图 / 移动/导航`，
+默认首屏不出现 `检查路径`、`现场材料`、`HIL`、`Nav2`、`proof`、`/cmd_vel`、
+`/api/base/manual`、`Mock`、`field manifest`、`task_id` 等工程词。
+
+证据文件：
+
+- `sprints/2026.06.11_16-20_pc_no_motion_readiness_chain/artifacts/no_motion_readiness_chain_summary.json`
+- `sprints/2026.06.11_16-20_pc_no_motion_readiness_chain/artifacts/raw/02_pc_radar_refresh.json`
+- `sprints/2026.06.11_16-20_pc_no_motion_readiness_chain/artifacts/raw/04_pc_map_proof_refresh.json`
+- `sprints/2026.06.11_16-20_pc_no_motion_readiness_chain/artifacts/raw/05_pc_map_list_before.json`
+- `sprints/2026.06.11_16-20_pc_no_motion_readiness_chain/artifacts/raw/06_pc_map_start.json`
+- `sprints/2026.06.11_16-20_pc_no_motion_readiness_chain/artifacts/raw/07_pc_map_save.json`
+- `sprints/2026.06.11_16-20_pc_no_motion_readiness_chain/artifacts/raw/08_pc_map_list_after.json`
+- `sprints/2026.06.11_16-20_pc_no_motion_readiness_chain/artifacts/raw/10_pc_localize_reset.json`
+- `sprints/2026.06.11_16-20_pc_no_motion_readiness_chain/artifacts/raw/12_pc_nav2_refresh.json`
+- `sprints/2026.06.11_16-20_pc_no_motion_readiness_chain/artifacts/raw/15_remote_cleanup_readback.log`
+- `sprints/2026.06.11_16-20_pc_no_motion_readiness_chain/artifacts/pc_plain_home_smoke_vitest.json`
+
 ## 2026-06-11 真实 PC Proxy Map Lifecycle 证据
 
 本轮 `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/` 未改 PC 产品代码，
