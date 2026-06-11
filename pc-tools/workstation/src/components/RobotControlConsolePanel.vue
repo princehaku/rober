@@ -4,6 +4,7 @@ import {
   getO7ConsumerTaskDetail,
   getRobotControlSummary,
   getRobotControlMapList,
+  postRobotControlBaseFeedbackSamples,
   postRobotControlBaseManual,
   postRobotControlBaseStop,
   postRobotControlMapStart,
@@ -23,6 +24,7 @@ import {
 import type {
   O7ConsumerTaskDetailResponse,
   RobotControlBaseCommandProxyResponse,
+  RobotControlBaseFeedbackSamplesProxyResponse,
   RobotControlCameraFirstFrameProbeProxyResponse,
   RobotControlMapLifecycleResponse,
   RobotControlNavGoalPreflightResponse,
@@ -130,6 +132,8 @@ const previewFrameSampleAttempts = ref(0);
 const previewFrameSampleCanvasSize = ref("not_sampled");
 const cameraFirstFrameProbePending = ref(false);
 const cameraFirstFrameProbeResult = ref<RobotControlCameraFirstFrameProbeProxyResponse | null>(null);
+const baseFeedbackSamplesPending = ref(false);
+const baseFeedbackSamplesResult = ref<RobotControlBaseFeedbackSamplesProxyResponse | null>(null);
 const evidenceSweepPending = ref(false);
 const evidenceSweepStartedAt = ref("");
 const evidenceSweepCompletedAt = ref("");
@@ -338,6 +342,18 @@ const cameraFirstFrameProbeSummary = computed(() => {
   }
   const values = result.probe_key_values;
   return `${result.proxy_status}; status=${result.status}; open=${values.open_ok}; read=${values.read_ok}; backend=${values.backend_smoke_status}; reason=${result.failure_reason || values.failure_reason}`;
+});
+const baseFeedbackSamplesSummary = computed(() => {
+  // 底盘反馈样本只说明 T=130/T=1001 只读链路，不能解释成手动运动已经可用。
+  if (baseFeedbackSamplesPending.value) {
+    return "feedback samples pending";
+  }
+  const result = baseFeedbackSamplesResult.value;
+  if (!result) {
+    return "feedback samples not requested";
+  }
+  const values = result.sample_key_values;
+  return `${result.proxy_status}; status=${result.status}; t1001=${values.t1001_observed_count}/${values.completed_sample_count}; motion=${values.sends_motion_commands}; reason=${result.failure_reason || "none"}`;
 });
 const evidenceSweepSummary = computed(() => {
   // 一键巡检聚合固定代理结果；blocked 仍按 blocked 展示，不伪装成全量通过。
@@ -846,6 +862,42 @@ function makeCameraFirstFrameProbeFallback(reason: string): RobotControlCameraFi
   };
 }
 
+function makeBaseFeedbackSamplesFallback(reason: string): RobotControlBaseFeedbackSamplesProxyResponse {
+  // PC fetch 异常时也保持“未采集/不可控”，避免高级诊断误导 operator。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    proxy_status: "samples_failed",
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    remote_endpoint: "/api/base/feedback-samples",
+    remote_http_status: null,
+    status: "blocked",
+    sample_key_values: {
+      schema: "not_loaded",
+      requested_sample_count: "not_loaded",
+      completed_sample_count: "not_loaded",
+      t1001_observed_count: "not_loaded",
+      all_samples_observed_t1001: "not_loaded",
+      partial_samples_observed_t1001: "not_loaded",
+      feedback_ack_t1001_observed: "not_loaded",
+      observed_feedback_types: "not_loaded",
+      sends_motion_commands: "false",
+      robot_control_executed: "false",
+    },
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    sends_motion_commands: false,
+    robot_control_executed: false,
+  };
+}
+
 function stampNow(): string {
   // 时间戳使用浏览器本地 ISO 字符串，足够支撑 operator 复核最近一次 Start/Stop。
   return new Date().toISOString();
@@ -1343,6 +1395,24 @@ async function runCameraFirstFrameProbe(): Promise<void> {
   }
 }
 
+async function runBaseFeedbackSamples(): Promise<void> {
+  // 反馈样本采集只走固定 T=130 只读代理，不发送方向、速度或 stop/manual 命令。
+  if (!robotApiBaseUrl.value.trim() || baseFeedbackSamplesPending.value) {
+    return;
+  }
+  baseFeedbackSamplesPending.value = true;
+  try {
+    baseFeedbackSamplesResult.value = await postRobotControlBaseFeedbackSamples(robotApiBaseUrl.value);
+  } catch (err) {
+    baseFeedbackSamplesResult.value = makeBaseFeedbackSamplesFallback(
+      err instanceof Error ? err.message : "base_feedback_samples_request_failed",
+    );
+  } finally {
+    baseFeedbackSamplesPending.value = false;
+    await refreshConsole();
+  }
+}
+
 function appendEvidenceSweepLine(label: string, value: string): void {
   // 巡检行只保留短状态，完整 payload 留在各自高级卡片和 sprint artifact。
   evidenceSweepLines.value = [...evidenceSweepLines.value, `${label}:${value}`];
@@ -1372,6 +1442,9 @@ async function runEvidenceSweep(): Promise<void> {
 
     await refreshNav2Proof();
     appendEvidenceSweepLine("nav2", nav2RefreshResult.value?.last_result_status ?? "not_loaded");
+
+    await runBaseFeedbackSamples();
+    appendEvidenceSweepLine("base_feedback", baseFeedbackSamplesResult.value?.status ?? "not_loaded");
 
     await sendStop();
     appendEvidenceSweepLine("stop", manualCommandResult.value?.status ?? "not_loaded");
@@ -2299,7 +2372,24 @@ onBeforeUnmount(() => {
             材料未满足，本机不会发送点动。缺项：{{ operatorMaterialMissingFields.join("、") }}
           </p>
           <p class="panel-note">非 stop 方向必须同时满足地址、checklist、现场材料且当前没有 pending；stop 可在材料缺失时单独发送。</p>
+          <button class="secondary" type="button" :disabled="baseFeedbackSamplesPending || !robotApiBaseUrl.trim()" @click="runBaseFeedbackSamples">
+            {{ baseFeedbackSamplesPending ? "采集中..." : "采集底盘反馈（高级）" }}
+          </button>
           <dl class="kv compact-kv">
+            <dt>base feedback samples</dt>
+            <dd>{{ baseFeedbackSamplesSummary }}</dd>
+            <dt>base feedback key values</dt>
+            <dd>
+              t1001={{ baseFeedbackSamplesResult?.sample_key_values.t1001_observed_count ?? "not_loaded" }},
+              completed={{ baseFeedbackSamplesResult?.sample_key_values.completed_sample_count ?? "not_loaded" }},
+              ack={{ baseFeedbackSamplesResult?.sample_key_values.feedback_ack_t1001_observed ?? "not_loaded" }}
+            </dd>
+            <dt>base feedback safety</dt>
+            <dd>
+              motion={{ baseFeedbackSamplesResult?.sample_key_values.sends_motion_commands ?? "false" }},
+              executed={{ baseFeedbackSamplesResult?.sample_key_values.robot_control_executed ?? "false" }},
+              dangerous={{ listText(baseFeedbackSamplesResult?.hard_dangerous_true_fields, "none") }}
+            </dd>
             <dt>manual motion entry</dt>
             <dd>{{ robotSummary?.safe_command_boundary.manual_motion_entry_status ?? "not_loaded" }}</dd>
             <dt>material gate</dt>

@@ -67,6 +67,15 @@
 - ACK 识别只依赖 vendor `T=1001` 帧身份；`y` 为 JSON `null` 或字符串 `"null"` 只代表 yaw unavailable，不能导致整帧被丢弃。
 - 该字段不是 ROS `/odom`、`/imu/data`、`/battery` 的对齐证明，也不是导航级 HIL pass；真实运动、轮向、里程计和电池/IMU 对齐仍按 run 级 HIL 证据归档。
 
+### 2026-06-12 PC feedback samples proxy 实测
+
+在真实上位机 `root@192.168.1.11:37878` 上，本轮通过 direct upper API 和 PC workstation proxy 各执行一次短批量 `T=130` 反馈采样：
+
+- Direct upper：`POST /api/base/feedback-samples`，body 为 `sample_count=3`、`sample_interval_s=0.15`、`read_timeout_s=0.25`、`read_window_s=0.35`。
+- PC proxy：`POST /api/robot-control/base/feedback-samples?baseUrl=http://192.168.1.11:8787`，浏览器侧 body 为空，固定 body 由 Node 后端生成。
+- 两次结果均观察到 vendor `T=1001`，PC proxy 摘要为 `completed_sample_count=3`、`t1001_observed_count=3`、`feedback_ack_t1001_observed=true`、`observed_feedback_types=[1001]`。
+- 该路径只发送 `T=130` 只读反馈请求，`sends_motion_commands=false`、`robot_control_executed=false`，不得作为轮速非零、真实运动、HIL pass 或手动点动放行证据。
+
 ### HIL 运行参数留存模板（与 run 级证据绑定）
 
 - 每次 `source=hil_pass` 运行前需记录参数快照：

@@ -49,6 +49,7 @@ import {
 import type {
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseCommandRequest,
+  RobotControlBaseFeedbackSamplesProxyResponse,
   RobotControlCameraAnswerSummary,
   RobotControlCameraCloseProxyResponse,
   RobotControlCameraFirstFrameProbeProxyResponse,
@@ -151,6 +152,48 @@ function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotCon
   };
 }
 
+function baseFeedbackSampleKeyValues(payload: Record<string, unknown> | null): RobotControlBaseFeedbackSamplesProxyResponse["sample_key_values"] {
+  // 反馈采集只展示样本摘要；原始串口帧留在上位机 artifact，避免 PC 页面误读为 HIL pass。
+  const feedbackAck = asRecord(payload?.feedback_ack);
+  return {
+    schema: shortText(payload?.schema, "not_loaded"),
+    requested_sample_count: shortValue(payload?.requested_sample_count),
+    completed_sample_count: shortValue(payload?.completed_sample_count),
+    t1001_observed_count: shortValue(payload?.t1001_observed_count),
+    all_samples_observed_t1001: shortValue(payload?.all_samples_observed_t1001),
+    partial_samples_observed_t1001: shortValue(payload?.partial_samples_observed_t1001),
+    feedback_ack_t1001_observed: shortValue(feedbackAck?.t1001_observed),
+    observed_feedback_types: shortValue(payload?.observed_feedback_types),
+    sends_motion_commands: shortValue(payload?.sends_motion_commands),
+    robot_control_executed: shortValue(payload?.robot_control_executed),
+  };
+}
+
+function baseFeedbackSamplesFailure(sourceBaseUrl: string, reason: string): RobotControlBaseFeedbackSamplesProxyResponse {
+  // 本机拒绝时不能触发任何串口请求；响应仍保持完整 fail-closed 形状。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    proxy_status: "samples_rejected",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    remote_endpoint: "/api/base/feedback-samples",
+    remote_http_status: null,
+    status: "blocked",
+    sample_key_values: baseFeedbackSampleKeyValues(null),
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    sends_motion_commands: false,
+    robot_control_executed: false,
+  };
+}
+
 function finiteNumber(value: unknown): number | null {
   // 点动请求必须落到确定数值；NaN/Infinity/字符串都按无效处理。
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -189,6 +232,21 @@ const BASE_COMMAND_FAIL_CLOSED_FIELDS = new Set([
   "command_dispatch_enabled",
   "navigate_goal_enabled",
   "keyboard_control_enabled",
+]);
+
+const BASE_FEEDBACK_SAMPLE_FAIL_CLOSED_FIELDS = new Set([
+  "safe_to_control",
+  "delivery_success",
+  "primary_actions_enabled",
+  "manual_control_enabled",
+  "command_dispatch_enabled",
+  "navigate_goal_enabled",
+  "keyboard_control_enabled",
+  "robot_control_executed",
+  "sends_motion_commands",
+  "sends_base_motion_commands",
+  "publishes_cmd_vel",
+  "calls_base_manual",
 ]);
 
 const BASE_COMMAND_EVIDENCE_ENDPOINTS: Array<{
@@ -573,6 +631,43 @@ async function fetchCameraProxySummary(
   }
 }
 
+async function fetchBaseFeedbackSamplesProxy(
+  baseUrl: string,
+): Promise<{ remote_http_status: number | null; payload: Record<string, unknown> | null; error: string }> {
+  // 这个 POST 只发送 vendor T=130 反馈采样参数，不接受浏览器传入 body 或运动方向。
+  const normalized = normalizeRobotApiBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return { remote_http_status: null, payload: null, error: normalized.reason };
+  }
+  try {
+    const response = await fetch(endpointUrl(normalized.normalized, "/api/base/feedback-samples"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        sample_count: 3,
+        sample_interval_s: 0.15,
+        read_timeout_s: 0.25,
+        read_window_s: 0.35,
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+    const json = await response.json().catch(() => null);
+    return {
+      remote_http_status: response.status,
+      payload: asRecord(json),
+      error: "",
+    };
+  } catch (error) {
+    return {
+      remote_http_status: null,
+      payload: null,
+      error: error instanceof Error ? shortText(error.message, "upper_api_unreachable") : "upper_api_unreachable",
+    };
+  }
+}
+
 export function createWorkstationApp(): express.Express {
   const workstationApp = express();
 
@@ -902,6 +997,56 @@ export function createWorkstationApp(): express.Express {
       ],
     };
     res.status(responseBody.proxy_status === "command_forwarded" ? 200 : 502).json(responseBody);
+  });
+
+  workstationApp.post("/api/robot-control/base/feedback-samples", async (req, res) => {
+    // 反馈样本只触发固定 T=130 只读采集，不接受浏览器 body，也不调用 manual/stop/cmd_vel。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    if (!normalized.ok) {
+      res.status(400).json(baseFeedbackSamplesFailure(sourceBaseUrl, normalized.reason));
+      return;
+    }
+    const remote = await fetchBaseFeedbackSamplesProxy(sourceBaseUrl);
+    if (remote.error) {
+      res.status(502).json({
+        ...baseFeedbackSamplesFailure(sourceBaseUrl, remote.error),
+        proxy_status: "samples_failed",
+      } satisfies RobotControlBaseFeedbackSamplesProxyResponse);
+      return;
+    }
+    const dangerous = scanDangerousTrueFields(remote.payload, "", BASE_FEEDBACK_SAMPLE_FAIL_CLOSED_FIELDS);
+    const responseBody: RobotControlBaseFeedbackSamplesProxyResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
+      proxy_status:
+        remote.remote_http_status === 200 && dangerous.length === 0 ? "samples_forwarded" : "samples_failed",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_endpoint: "/api/base/feedback-samples",
+      remote_http_status: remote.remote_http_status,
+      status: shortText(remote.payload?.status, remote.remote_http_status === 200 ? "loaded" : "blocked"),
+      sample_key_values: baseFeedbackSampleKeyValues(remote.payload),
+      failure_reason:
+        dangerous.length > 0
+          ? `dangerous_true_field:${dangerous[0]}`
+          : remote.remote_http_status === 200
+            ? ""
+            : `feedback_samples_http_status_${remote.remote_http_status}`,
+      blocked_reasons: [
+        ...(remote.remote_http_status === 200 ? [] : [`feedback_samples_http_status_${remote.remote_http_status}`]),
+        ...dangerous.map((field) => `dangerous_true_field:${field}`),
+      ],
+      hard_dangerous_true_fields: dangerous,
+      sends_motion_commands: false,
+      robot_control_executed: false,
+    };
+    res.status(responseBody.proxy_status === "samples_forwarded" ? 200 : 502).json(responseBody);
   });
 
   workstationApp.post("/api/robot-control/operator/report", async (req, res) => {

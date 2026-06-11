@@ -24,6 +24,7 @@ import type {
   RobotControlCameraOfferProxyResponse,
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseCommandRequest,
+  RobotControlBaseFeedbackSamplesProxyResponse,
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
   RobotControlNavGoalPreflightRequest,
@@ -96,6 +97,7 @@ const API_ENDPOINTS = {
   robotControlSummary: "/api/robot-control/summary",
   robotControlBaseManual: "/api/robot-control/base/manual",
   robotControlBaseStop: "/api/robot-control/base/stop",
+  robotControlBaseFeedbackSamples: "/api/robot-control/base/feedback-samples",
   robotControlRadarScanProofRefresh: "/api/robot-control/radar/scan-proof/refresh",
   robotControlRadarStart: "/api/robot-control/radar/start",
   robotControlRadarStop: "/api/robot-control/radar/stop",
@@ -446,6 +448,16 @@ export async function postRobotControlBaseManual(
 export async function postRobotControlBaseStop(baseUrl: string): Promise<RobotControlBaseCommandProxyResponse> {
   // stop 单独走固定 endpoint；即使成功也不能把 safe_to_control 变成 true。
   return postJson<RobotControlBaseCommandProxyResponse>(robotControlBaseProxyUrl(API_ENDPOINTS.robotControlBaseStop, baseUrl), {});
+}
+
+export async function postRobotControlBaseFeedbackSamples(
+  baseUrl: string,
+): Promise<RobotControlBaseFeedbackSamplesProxyResponse> {
+  // 底盘反馈样本只走固定 T=130 只读采集代理，前端不能传方向、速度或串口参数。
+  return postJson<RobotControlBaseFeedbackSamplesProxyResponse>(
+    robotControlBaseProxyUrl(API_ENDPOINTS.robotControlBaseFeedbackSamples, baseUrl),
+    {},
+  );
 }
 
 export async function postRobotControlRadarScanProofRefresh(
