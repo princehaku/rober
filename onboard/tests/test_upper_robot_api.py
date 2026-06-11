@@ -754,6 +754,107 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             api.localization_artifact_path,
         )
 
+    def test_nav2_proof_refresh_managed_path_generation_stays_no_motion(self) -> None:
+        """PC 检查路径使用 managed runtime，但不能被包装成 Nav2 start 或底盘控制。"""
+        clean_artifact = {
+            "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+            "status": "nav2_no_motion_path_generation_runtime_observed",
+            "evidence_type": "robot_runtime_material",
+            "not_proven": False,
+            "proof": {
+                "status": "nav2_no_motion_path_generation_runtime_observed",
+                "evidence_type": "robot_runtime_material",
+                "managed_runtime_requested": True,
+                "managed_runtime_started": True,
+                "managed_runtime_cleanup_ok": True,
+                "initialpose_published": True,
+                "amcl_pose_observed": True,
+                "localization_tf_observed": {"map_to_odom": True, "map_to_base_link": True},
+                "path_generation_requested": True,
+                "path_generation_attempted": True,
+                "path_generation_service_name": "/compute_path_to_pose",
+                "path_generation_service_available": True,
+                "path_generation_succeeded": True,
+                "path_generated": True,
+                "path_point_count": 31,
+                "planner_server_active": True,
+                "controller_server_active": False,
+                "controller_server_requested": False,
+                "planner_readiness_summary": {"path_generation_succeeded": True},
+                "blocked_commands_not_sent": ["/cmd_vel", "/api/base/manual", "/api/nav2/start", "/api/nav2/stop"],
+                "blocked_devices_not_opened": ["/dev/ttyS5"],
+                "safe_to_control": False,
+                "delivery_success": False,
+                "publishes_cmd_vel": False,
+                "calls_base_manual": False,
+                "uses_base_uart": False,
+                "robot_control_executed": False,
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            nav2_path = Path(temp_dir) / "nav2_lifecycle_latest.json"
+            nav2_path.write_text(json.dumps(clean_artifact), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                nav2_lifecycle_artifact_path=str(nav2_path),
+                map_lifecycle_proof_artifact_path=str(Path(temp_dir) / "map_lifecycle_latest.json"),
+                map_artifact_dir=str(Path(temp_dir) / "maps"),
+            )
+
+            with mock.patch.object(
+                upper_robot_api,
+                "run_nav2_runtime_proof_helper",
+                return_value={"mode": "o10_amcl_nav2_runtime_proof_helper", "executed": True, "ok": True},
+            ) as helper_mock:
+                payload = asyncio.run(
+                    api.nav2_proof_refresh(
+                        {
+                            "timeout_s": 20,
+                            "managed_runtime_opt_in": True,
+                            "managed_timeout_s": 20,
+                            "managed_map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+                            "initialpose_opt_in": True,
+                            "initialpose_x": 0.0,
+                            "initialpose_y": 0.0,
+                            "initialpose_yaw": 0.0,
+                            "path_generation_opt_in": True,
+                            "path_generation_timeout_s": 20,
+                            "path_goal_frame_id": "map",
+                            "path_goal_x": 0.8,
+                            "path_goal_y": 0.0,
+                            "path_goal_yaw": 0.0,
+                        }
+                    )
+                )
+
+        helper_mock.assert_called_once()
+        helper_kwargs = helper_mock.call_args.kwargs
+        self.assertTrue(helper_kwargs["managed_runtime_opt_in"])
+        self.assertEqual(20.0, helper_kwargs["managed_timeout_s"])
+        self.assertTrue(helper_kwargs["initialpose_opt_in"])
+        self.assertTrue(helper_kwargs["path_generation_opt_in"])
+        self.assertEqual(20.0, helper_kwargs["path_generation_timeout_s"])
+        self.assertEqual("refreshed", payload["status"])
+        self.assertEqual("nav2_no_motion_path_generation_runtime_observed", payload["proof_state"])
+        self.assertTrue(payload["starts_ros2"])
+        self.assertFalse(payload["starts_nav2"])
+        self.assertTrue(payload["managed_runtime_opt_in"])
+        self.assertTrue(payload["initialpose_opt_in"])
+        self.assertTrue(payload["path_generation_opt_in"])
+        self.assertTrue(payload["path_generated"])
+        self.assertEqual(31, payload["path_point_count"])
+        self.assertTrue(payload["planner_server_active"])
+        self.assertFalse(payload["controller_server_active"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["delivery_success"])
+        self.assertFalse(payload["publishes_cmd_vel"])
+        self.assertFalse(payload["calls_base_manual"])
+        self.assertFalse(payload["uses_base_uart"])
+        self.assertFalse(payload["robot_control_executed"])
+
 
 if __name__ == "__main__":
     unittest.main()

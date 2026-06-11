@@ -2570,9 +2570,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         detail={"mode": "single_sourced_pkg_list_diagnostic", "packages": packages},
     )
     planner_nodes = {"planner_server": "/planner_server", "controller_server": "/controller_server"}
-    if source_chain_complete and not args.path_generation_opt_in:
+    if source_chain_complete:
         # TF source inventory 已证明定位链完整时，继续跑多条 ROS2 CLI 会反而触发 upper timeout。
-        # 这里保留字段形状，但明确标记为 no-motion fast path，不冒充 CLI echo/readback。
+        # path proof 也复用这个 fast path；planner active 由后面的 recheck 单独确认。
         topic_names = sorted((tf_source_diagnostics.get("tf_frame_inventory") or {}).get("topic_types", {}).keys())
         managed_nodes = ((managed_runtime.get("wait_result") or {}).get("node_list") or {}).get("node_names", [])
         skipped_fast_path = {
@@ -2587,11 +2587,16 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         lifecycle_results = {key: dict(skipped_fast_path) for key in LOCALIZATION_LIFECYCLE_NODES}
         phase_writer.record_phase("lifecycle_probe", ok=True, detail={"mode": "managed_runtime_wait_fast_path"})
         planner_lifecycle_active = {key: False for key in planner_nodes}
-        planner_lifecycle_results = {key: {"executed": False, "ok": False, "boundary": "path_generation_not_requested"} for key in planner_nodes}
+        planner_boundary = (
+            "planner_recheck_deferred_until_localization_ready"
+            if args.path_generation_opt_in
+            else "path_generation_not_requested"
+        )
+        planner_lifecycle_results = {key: {"executed": False, "ok": False, "boundary": planner_boundary} for key in planner_nodes}
         planner_server_active = False
         controller_server_active = False
         controller_server_requested = False
-        planner_node_info = {"executed": False, "ok": False, "boundary": "path_generation_not_requested"}
+        planner_node_info = {"executed": False, "ok": False, "boundary": planner_boundary}
         controller_node_info = {"executed": False, "ok": False, "boundary": "controller_never_requested_no_motion"}
         scan_once = {
             **skipped_fast_path,

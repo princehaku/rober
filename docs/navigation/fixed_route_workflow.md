@@ -265,19 +265,58 @@ opt-in。默认 body 不传 `"path_generation_opt_in": true` 时，helper 不会
 才会在 no-motion 边界内尝试一次 planner 计算，并把 path 点数、目标、响应和
 planner readiness 一起写入 artifact。
 
+## 2.7 Nav2 No-Motion Path Generation Refresh
+
+2026-06-11 起，PC 高级诊断里的“检查路径（高级）”固定通过 workstation
+代理调用上位机 `/api/nav2/proof/refresh`，body 使用 managed no-motion
+runtime：
+
+```json
+{
+  "timeout_s": 20,
+  "managed_runtime_opt_in": true,
+  "managed_timeout_s": 20,
+  "managed_map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+  "initialpose_opt_in": true,
+  "initialpose_x": 0,
+  "initialpose_y": 0,
+  "initialpose_yaw": 0,
+  "path_generation_opt_in": true,
+  "path_generation_timeout_s": 20,
+  "path_goal_frame_id": "map",
+  "path_goal_x": 0.8,
+  "path_goal_y": 0,
+  "path_goal_yaw": 0
+}
+```
+
+这个入口只拉起 map_server、AMCL、planner_server 和必要的静态 TF/LiDAR
+证据 runtime，用一次 `/initialpose` 建立 AMCL 定位，再调用
+`ComputePathToPose` 风格的 planner 计算接口生成全局路径。它不是
+`NavigateToPose`，不启动 controller/BT navigator，不发布 `/cmd_vel`，
+不调用 `/api/base/manual`，不打开 WAVE ROVER 底盘 UART `/dev/ttyS5`。
+上位机 artifact 必须保持 `safe_to_control=false`、`delivery_success=false`、
+`publishes_cmd_vel=false`、`calls_base_manual=false`、`uses_base_uart=false`。
+
+如果 refresh 失败，artifact 应优先把 blocker 缩到具体层级：map source、
+AMCL/TF readiness、planner lifecycle、ComputePath action、outer timeout 或
+cleanup。PC 代理只转发固定 body 并读取 latest，不允许前端传入任意 goal、
+Nav2 start/stop 或底盘控制参数。
+
 `/api/nav2/proof/refresh` 现在会先显式 source ROS Humble setup，再拉起 helper。
 这样 `rclpy` 和 Nav2 action client 的运行时依赖不会被 systemd 服务环境吞掉；
 但这个变化只影响 proof helper 的启动方式，不改变默认只读/no-motion 边界。
 
 `2026-06-11 01:45` 起，上位机 API 的 helper subprocess timeout 与 PC
-`检查路径` proxy 预算对齐。PC 固定 body 为 `timeout_s=8`、
-`path_generation_timeout_s=8`、`managed_runtime_opt_in=false`、
-`initialpose_opt_in=false`、`path_generation_opt_in=true`；对应上位机 subprocess
-预算为约 `36s`，低于 PC proxy 的 `46s` 等待窗口。这个预算只限制 HTTP refresh
-等待 helper 的最长时间，不改变 helper 内部 no-motion collector 的 ROS2 观测语义。
-如果真实 Nav2 proof refresh 仍慢于该窗口，上位机会先返回结构化 timeout/root cause，
-PC 再通过固定 `GET /api/nav2/proof/latest` 只读兜底展示最近 artifact；不能让 PC
-侧先出现 `fetch_timeout_46000ms` 后才知道上位机实际已经生成路径。
+`检查路径` proxy 预算对齐。2026-06-11 08:25 后 PC 固定 body 为
+`timeout_s=20`、`path_generation_timeout_s=20`、`managed_runtime_opt_in=true`、
+`managed_timeout_s=20`、`initialpose_opt_in=true`、`path_generation_opt_in=true`；
+对应上位机 subprocess 原始预算为约 `90s`，实际 cap 为 `84s`，低于 PC proxy 的
+`90s` 等待窗口。这个预算只限制 HTTP refresh 等待 helper 的最长时间，不改变
+helper 内部 no-motion collector 的 ROS2 观测语义。如果真实 Nav2 proof refresh
+仍慢于该窗口，上位机会先返回结构化 timeout/root cause，PC 再通过固定
+`GET /api/nav2/proof/latest` 只读兜底展示最近 artifact；不能让 PC 侧先出现
+`fetch_timeout_90000ms` 后才知道上位机实际已经生成路径。
 
 这一步仍然不等于可发车：
 

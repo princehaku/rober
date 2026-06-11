@@ -535,8 +535,11 @@ __TF_STATIC_ONCE__
             "controller_server_requested",
             "planner_readiness_summary",
             "explicit_opt_in_compute_path_to_pose_action_no_motion",
+            "if source_chain_complete:",
+            "planner_recheck_deferred_until_localization_ready",
         ):
             self.assertIn(required, text)
+        self.assertNotIn("source_chain_complete and not args.path_generation_opt_in", text)
 
         for forbidden in (
             "NavigateToPose",
@@ -574,23 +577,23 @@ __TF_STATIC_ONCE__
             self.assertIn(required, api_text)
 
     def test_upper_api_pc_path_generation_timeout_stays_under_proxy_budget(self) -> None:
-        """PC 检查路径固定 body 必须由上位机先收口，不能让 46s proxy 先超时。"""
+        """PC 检查路径固定 body 必须由上位机先收口，不能让 90s proxy 先超时。"""
         spec = importlib.util.spec_from_file_location("upper_robot_api", SCRIPT.parent / "upper_robot_api.py")
         assert spec is not None and spec.loader is not None
         api_mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(api_mod)
 
         budget = api_mod.nav2_runtime_proof_process_timeout_budget(
-            timeout_s=8.0,
-            managed_runtime_opt_in=False,
-            managed_timeout_s=8.0,
-            initialpose_opt_in=False,
+            timeout_s=20.0,
+            managed_runtime_opt_in=True,
+            managed_timeout_s=20.0,
+            initialpose_opt_in=True,
             path_generation_opt_in=True,
-            path_generation_timeout_s=8.0,
+            path_generation_timeout_s=20.0,
         )
 
-        # 8s collector + 8s ComputePathToPose + 固定余量约 36s，给 PC proxy 留 HTTP 返回余量。
-        self.assertEqual(36.0, budget["process_timeout_s"])
+        # 当前 managed path proof 原始预算 90s，upper cap 84s，给 PC proxy 留 HTTP 返回余量。
+        self.assertEqual(84.0, budget["process_timeout_s"])
         self.assertLess(budget["process_timeout_s"], budget["pc_proxy_budget_s"])
         self.assertEqual("finish_before_pc_proxy_timeout_or_return_structured_timeout", budget["budget_policy"])
 
@@ -607,17 +610,17 @@ __TF_STATIC_ONCE__
                 artifact_path="/tmp/nav2.json",
                 map_proof_path="/tmp/map.json",
                 map_artifact_dir="/tmp/maps",
-                timeout_s=8.0,
-                managed_runtime_opt_in=False,
-                managed_timeout_s=8.0,
-                managed_map_yaml="",
-                initialpose_opt_in=False,
+                timeout_s=20.0,
+                managed_runtime_opt_in=True,
+                managed_timeout_s=20.0,
+                managed_map_yaml="/tmp/maps/trashbot_map.yaml",
+                initialpose_opt_in=True,
                 initialpose_x=0.0,
                 initialpose_y=0.0,
                 initialpose_yaw=0.0,
                 initialpose_frame_id="map",
                 path_generation_opt_in=True,
-                path_generation_timeout_s=8.0,
+                path_generation_timeout_s=20.0,
                 path_goal_frame_id="map",
                 path_goal_x=0.8,
                 path_goal_y=0.0,
@@ -625,8 +628,8 @@ __TF_STATIC_ONCE__
             )
 
         self.assertTrue(result["ok"])
-        self.assertEqual(36.0, result["process_timeout_s"])
-        self.assertEqual(36.0, run_mock.call_args.args[1])
+        self.assertEqual(84.0, result["process_timeout_s"])
+        self.assertEqual(84.0, run_mock.call_args.args[1])
 
     def test_upper_api_managed_path_generation_timeout_is_capped(self) -> None:
         """managed/runtime 扩展场景也要封顶，超长 helper 必须结构化 timeout。"""
@@ -644,8 +647,8 @@ __TF_STATIC_ONCE__
             path_generation_timeout_s=45.0,
         )
 
-        # cap 小于 PC 46s；如果真实 runtime 更慢，API 先回 root cause，latest 仍可只读兜底。
-        self.assertEqual(42.0, budget["process_timeout_s"])
+        # cap 小于 PC 90s；如果真实 runtime 更慢，API 先回 root cause，latest 仍可只读兜底。
+        self.assertEqual(84.0, budget["process_timeout_s"])
         self.assertLess(budget["process_timeout_s"], budget["pc_proxy_budget_s"])
 
     def test_upper_api_runs_helper_under_ros_setup(self) -> None:

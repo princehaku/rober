@@ -4219,13 +4219,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(nav2Body.latest_readback_key_values.path_generated).toBe("true");
       expect(nav2Body.latest_readback_key_values.path_generation_succeeded).toBe("true");
       expect(upstream.receivedBodies["/api/nav2/proof/refresh"]?.[0]).toEqual({
-        timeout_s: 8,
-        managed_runtime_opt_in: false,
-        managed_timeout_s: 8,
-        managed_map_yaml: "",
-        initialpose_opt_in: false,
+        timeout_s: 20,
+        managed_runtime_opt_in: true,
+        managed_timeout_s: 20,
+        managed_map_yaml: "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+        initialpose_opt_in: true,
+        initialpose_x: 0,
+        initialpose_y: 0,
+        initialpose_yaw: 0,
         path_generation_opt_in: true,
-        path_generation_timeout_s: 8,
+        path_generation_timeout_s: 20,
         path_goal_frame_id: "map",
         path_goal_x: 0.8,
         path_goal_y: 0,
@@ -4747,11 +4750,11 @@ describe("workstation fail-closed API contracts", () => {
     ).toBe(65_000);
     expect(
       computeRobotProofRefreshTimeoutMs({
-        request_body: { timeout_s: 8, path_generation_timeout_s: 8 },
-        timeout_cap_ms: 60_000,
+        request_body: { timeout_s: 20, managed_runtime_opt_in: true, managed_timeout_s: 20, path_generation_timeout_s: 20 },
+        timeout_cap_ms: 90_000,
         safety_margin_ms: 30_000,
       }),
-    ).toBe(46_000);
+    ).toBe(90_000);
     expect(
       computeRobotProofRefreshTimeoutMs({
         request_body: { timeout_s: 999, runtime_warmup_s: 999 },
@@ -4819,11 +4822,11 @@ describe("workstation fail-closed API contracts", () => {
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     try {
       const response = await buildNav2NoMotionProofRefreshProxy("http://127.0.0.1:8787");
-      expect(timeoutSpy).toHaveBeenCalledWith(46_000);
+      expect(timeoutSpy).toHaveBeenCalledWith(90_000);
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(response.proxy_status).toBe("refresh_failed");
-      expect(response.failure_reason).toBe("fetch_timeout_46000ms");
-      expect(response.blocked_reasons).toContain("fetch_timeout_46000ms");
+      expect(response.failure_reason).toBe("fetch_timeout_90000ms");
+      expect(response.blocked_reasons).toContain("fetch_timeout_90000ms");
       expect(response.safe_to_control).toBe(false);
     } finally {
       globalThis.fetch = originalFetch;
@@ -4929,15 +4932,15 @@ describe("workstation fail-closed API contracts", () => {
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     try {
       const response = await buildNav2NoMotionProofRefreshProxy("http://127.0.0.1:8787");
-      expect(timeoutSpy).toHaveBeenCalledWith(46_000);
+      expect(timeoutSpy).toHaveBeenCalledWith(90_000);
       expect(timeoutSpy).toHaveBeenCalledWith(1500);
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(String(fetchMock.mock.calls[0]?.[0])).toBe("http://127.0.0.1:8787/api/nav2/proof/refresh");
       expect(String(fetchMock.mock.calls[1]?.[0])).toBe("http://127.0.0.1:8787/api/nav2/proof/latest");
       expect(response.proxy_status).toBe("refresh_failed");
       expect(response.status).toBe("blocked");
-      expect(response.failure_reason).toBe("fetch_timeout_46000ms");
-      expect(response.blocked_reasons).toEqual(["fetch_timeout_46000ms", "post_timeout_latest_readback_loaded"]);
+      expect(response.failure_reason).toBe("fetch_timeout_90000ms");
+      expect(response.blocked_reasons).toEqual(["fetch_timeout_90000ms", "post_timeout_latest_readback_loaded"]);
       expect(response.latest_readback_key_values.path_generated).toBe("true");
       expect(response.latest_readback_key_values.path_generation_succeeded).toBe("true");
       expect(response.latest_readback_key_values.path_point_count).toBe("31");

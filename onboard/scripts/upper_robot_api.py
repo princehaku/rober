@@ -53,7 +53,7 @@ NAV2_PROOF_PROCESS_BASE_MARGIN_S = 12.0
 NAV2_PROOF_PROCESS_PATH_MARGIN_S = 8.0
 NAV2_PROOF_PROCESS_MANAGED_MARGIN_S = 6.0
 NAV2_PROOF_PROCESS_INITIALPOSE_MARGIN_S = 4.0
-NAV2_PROOF_PROCESS_TIMEOUT_CAP_S = 42.0
+NAV2_PROOF_PROCESS_TIMEOUT_CAP_S = 84.0
 DEFAULT_ELEVATOR_STATUS_ARTIFACT_PATH = "runtime/elevator_status_latest.json"
 DEFAULT_OPERATOR_REPORT_ARTIFACT_PATH = "runtime/operator_report_latest.json"
 DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS = 15 * 60 * 1000
@@ -520,7 +520,7 @@ def nav2_runtime_proof_process_timeout_budget(
         + (NAV2_PROOF_PROCESS_MANAGED_MARGIN_S if managed_runtime_opt_in else 0.0)
         + initialpose_margin_s
     )
-    # 上限低于 PC proxy 的 46s 预算，真实 helper 超时时由上位机先返回 root cause。
+    # 上限低于 PC proxy 的 90s 预算，真实 helper 超时时由上位机先返回 root cause。
     process_timeout_s = min(max(raw_timeout_s, 15.0), NAV2_PROOF_PROCESS_TIMEOUT_CAP_S)
     return {
         "collector_timeout_s": collector_timeout_s,
@@ -533,7 +533,7 @@ def nav2_runtime_proof_process_timeout_budget(
         "raw_timeout_s": raw_timeout_s,
         "process_timeout_s": process_timeout_s,
         "cap_s": NAV2_PROOF_PROCESS_TIMEOUT_CAP_S,
-        "pc_proxy_budget_s": 46.0,
+        "pc_proxy_budget_s": 90.0,
         "budget_policy": "finish_before_pc_proxy_timeout_or_return_structured_timeout",
     }
 
@@ -4305,8 +4305,8 @@ class UpperRobotApi:
                 "publishes_cmd_vel": False,
                 "calls_base_manual": False,
                 "sends_base_motion_commands": False,
-                "starts_ros2": False,
-                "starts_nav2": bool(body.get("managed_runtime_opt_in") is True),
+                "starts_ros2": bool(body.get("managed_runtime_opt_in") is True),
+                "starts_nav2": False,
                 "robot_control_executed": False,
                 "safe_to_control": False,
                 "hil_pass": False,

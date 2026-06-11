@@ -178,6 +178,16 @@ runtime lifecycle 与 scan proof refresh 的关系：
   `/dev/ttyS5`。
 - managed localization runtime 只允许使用 LiDAR `/dev/ttyACM0 @ 150000`、
   static TF、`map_server`、`amcl` 和 lifecycle manager 采集 no-motion 证据。
+
+## 2026-06-11 Nav2 Path Proof Device Boundary
+
+`/api/nav2/proof/refresh` 在显式 managed no-motion path-generation opt-in 下，
+会为了 AMCL/Planner 证据短暂使用 LiDAR `/dev/ttyACM0 @ 150000`、static TF、
+`map_server`、`amcl`、`planner_server` 和 lifecycle manager。该路径仍禁止
+打开 WAVE ROVER 底盘 UART `/dev/ttyS5`，禁止发布 `/cmd_vel`，禁止调用
+`/api/base/manual`，禁止 `NavigateToPose` 或 controller/BT 执行层。验证结束后
+必须检查 helper 进程、Nav2 lifecycle 进程和 LiDAR 进程是否清理干净；若
+`/dev/ttyACM0` 被残留占用，需要把占用者写进 sprint artifact，而不能声明 clean pass。
 - helper 被上层 timeout 打断时，upper API 会优先保留 helper 已写的
   `last_phase`、`last_successful_phase`、`current_command`、`recent_commands`、
   `package_availability`、`package_check_mode`、`package_checks_batch_ok`、
