@@ -9,7 +9,7 @@ import { PROOF_FLAGS } from "../src/shared/contracts";
 
 const SPRINT_ARTIFACT_DIR = resolve(
   process.cwd(),
-  "../../sprints/2026.06.11_10-30_pc_simple_user_interface_restore/artifacts",
+  "../../sprints/2026.06.11_11-25_pc_nav2_proof_30s_budget/artifacts",
 );
 
 const DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS = [

@@ -4243,16 +4243,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(nav2Body.latest_readback_key_values.path_generated).toBe("true");
       expect(nav2Body.latest_readback_key_values.path_generation_succeeded).toBe("true");
       expect(upstream.receivedBodies["/api/nav2/proof/refresh"]?.[0]).toEqual({
-        timeout_s: 20,
+        timeout_s: 30,
         managed_runtime_opt_in: true,
-        managed_timeout_s: 20,
+        managed_timeout_s: 30,
         managed_map_yaml: "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
         initialpose_opt_in: true,
         initialpose_x: 0,
         initialpose_y: 0,
         initialpose_yaw: 0,
         path_generation_opt_in: true,
-        path_generation_timeout_s: 20,
+        path_generation_timeout_s: 30,
         path_goal_frame_id: "map",
         path_goal_x: 0.8,
         path_goal_y: 0,
@@ -4774,7 +4774,7 @@ describe("workstation fail-closed API contracts", () => {
     ).toBe(65_000);
     expect(
       computeRobotProofRefreshTimeoutMs({
-        request_body: { timeout_s: 20, managed_runtime_opt_in: true, managed_timeout_s: 20, path_generation_timeout_s: 20 },
+        request_body: { timeout_s: 30, managed_runtime_opt_in: true, managed_timeout_s: 30, path_generation_timeout_s: 30 },
         timeout_cap_ms: 90_000,
         safety_margin_ms: 30_000,
       }),

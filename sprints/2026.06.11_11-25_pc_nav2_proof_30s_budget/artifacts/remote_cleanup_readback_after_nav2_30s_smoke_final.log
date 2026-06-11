@@ -1,0 +1,6 @@
+schema=trashbot.pc_workstation.remote_cleanup_readback_after_nav2_30s_smoke.v1
+checked_at=2026-06-11T04:19:22Z
+ssh_target=root@192.168.1.11:37878
+## process_readback_filtered
+## device_readback
+## lsof_readback

@@ -1,0 +1,22 @@
+{
+  "schema": "trashbot.pc_workstation.nav2_no_motion_30s_proxy_smoke_summary.v1",
+  "created_at": "2026-06-11T04:18:43.782Z",
+  "attempts": 1,
+  "final_attempt_artifact": "pc_proxy_nav2_30s_response_attempt_1.json",
+  "final_status": "refresh_forwarded",
+  "final_remote_http_status": 200,
+  "final_last_result_status": "refreshed",
+  "final_key_values": {
+    "status": "refreshed",
+    "latest_proof_status": "nav2_no_motion_path_generation_runtime_observed",
+    "evidence_ref": "o10-amcl-nav2-runtime-1781151480223",
+    "managed_runtime_started": "true",
+    "initialpose_published": "true",
+    "path_generation_requested": "true",
+    "path_generated": "true",
+    "path_generation_succeeded": "true",
+    "path_point_count": "31",
+    "planner_server_active": "true"
+  },
+  "final_blocked_reasons": []
+}
