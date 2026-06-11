@@ -291,6 +291,18 @@ PC 代理 body 只允许短 `map_name` 和相对 `artifact_path` 字段；未知
 边界：该能力只证明 PC 可以经固定代理触发上位机 no-motion map runtime，不证明
 地图质量、Nav2 可行驶、真实运动、WAVE ROVER HIL、robot ACK 或 delivery success。
 
+2026-06-11 08:05 起，上位机 map lifecycle helper 对 `/scan` clean proof 做了
+稳定化：`/scan_once_observed` 仍是必需条件，但 helper 会用 sensor_data QoS 的
+`ros2 topic echo --once /scan` 做最多 2 次独立采样并记录 attempts。PC 代理因此可在
+远端 clean pass 时返回 `proxy_status=lifecycle_forwarded`、`remote_http_status=200`
+和 `command_result.ok=true`。
+
+PC `GET /api/robot-control/map/list` 当前返回的是截断摘要：`map_count` 代表远端总数，
+`map_names` 只展示前若干项。因此当地图数量较多时，新 YAML 可能在摘要里可见，而同名
+PGM 可能被截断；完整 YAML/PGM 仍以远端 `/api/map/list` 或 latest proof 的
+`proof.map_files` 为准。后续如需 PC 页面逐项核对 YAML/PGM，应扩展 PC server 的 list
+摘要，而不是放宽上位机 map lifecycle gate。
+
 ## PC Localization Reset Controls V1
 
 2026-06-11 起，Robot Control 新增 `定位重置（高级）`。该按钮只放在默认关闭的

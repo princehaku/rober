@@ -100,6 +100,18 @@ class MapLifecycleProofHelperTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, text)
 
+    def test_scan_once_probe_uses_retry_and_sensor_data_qos(self) -> None:
+        """`/scan` clean proof 不能再被单次 echo discovery 抖动误杀。"""
+        text = SCRIPT.read_text(encoding="utf-8")
+
+        # 失败 artifact 已证明 /map 和 YAML/PGM 可成功但单次 /scan echo 超时；
+        # helper 必须保留 /scan_once_observed gate，同时让采样方式具备重试证据。
+        self.assertIn("def observe_topic_once", text)
+        self.assertIn('topic="/scan"', text)
+        self.assertIn('qos_profile="sensor_data"', text)
+        self.assertIn("attempts=2", text)
+        self.assertIn("stable_observation_strategy", text)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1143,3 +1143,36 @@ helper 的 managed runtime 改为单个 rclpy `managed_static_tf_broadcaster`：
   `opens_serial=false`。
 - 真实 HIL 通过仍必须由外部视频、相机 artifact、`T=1001` feedback、scan delta、
   route/map artifact、stop/API restore 记录共同证明；report 只是一份材料索引。
+
+## 2026-06-11 08:05 Map Lifecycle `/scan` Observation Stabilization
+
+本轮只稳定 no-motion LiDAR + SLAM map lifecycle proof，不新增底盘运动。硬件边界
+继续以 `docs/vendor/VENDOR_INDEX.md` 为入口；WAVE ROVER UART `/dev/ttyS5`、
+`/cmd_vel`、`/api/base/manual` 和 `T=1/T=13/T=130/T=131` 均不参与。本轮只使用
+既有真实上位机 evidence 中的 LiDAR `/dev/ttyACM0 @ 150000`。
+
+上一轮失败 artifact 显示 `/scan` 已出现在 topic list，`/map` 已观测，地图
+YAML/PGM 也已生成，但单次 `timeout 8 ros2 topic echo --once /scan` 超时，导致
+helper root cause 为 `/scan_once_not_observed`。因此问题归类为 `/scan` clean proof
+采样窗口抖动，而不是 SLAM 完全未消费雷达。
+
+`o3_map_lifecycle_proof.py` 现在保留 `/scan_once_observed=true` 的硬 gate，但用
+`ros2 topic echo --once --qos-profile sensor_data /scan` 做最多 2 次独立采样，并在
+artifact 中记录 `attempts`、`attempt_count` 和
+`stable_observation_strategy=retry_topic_echo_once`。这不会绕过 `/scan` proof；只有
+真实 echo 到 LaserScan 文本时才算 clean pass。
+
+真实上位机验证：
+
+- direct `POST /api/map/save`，`map_name=scan_stabilize_fixed_20260611_0756`：
+  `command_result.ok=true`，`scan_once_observed=true`，`map_once_observed=true`，
+  `map_file_observed=true`，`map_metadata_observed=true`。
+- PC proxy `POST /api/robot-control/map/save`，
+  `map_name=pc_proxy_scan_stabilize_20260611_0758`：
+  `proxy_status=lifecycle_forwarded`，`remote_http_status=200`，
+  `command_result.ok=true`。
+- 远端 `/api/map/list` 列出
+  `pc_proxy_scan_stabilize_20260611_0758.yaml` 与
+  `pc_proxy_scan_stabilize_20260611_0758.pgm`。
+- 最终 `lsof`/`fuser` 对 `/dev/ttyS5`、`/dev/ttyACM0` 无输出，目标
+  helper/SLAM/LiDAR 进程无残留。

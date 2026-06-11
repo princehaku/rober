@@ -29,10 +29,10 @@ DEFAULT_MAP_DIR = "/root/rober/onboard/runtime/maps"
 SAFE_MAP_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 VENDOR_SOURCES = [
     "docs/vendor/VENDOR_INDEX.md",
-    "docs/vendor/lidar_pkg_ros2-main/README.md",
-    "docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp",
-    "docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml",
-    "docs/vendor/lidar_pkg_ros2-main/launch/lidar.launch.py",
+]
+FIELD_EVIDENCE_SOURCES = [
+    "docs/hardware/board_sensor_stack_smoke.md",
+    "docs/navigation/fixed_route_workflow.md",
 ]
 
 
@@ -111,6 +111,50 @@ def run_ros(args: argparse.Namespace, command: str, timeout_s: float) -> dict[st
             "stdout": (exc.stdout or "")[-8000:] if isinstance(exc.stdout, str) else "",
             "stderr": (exc.stderr or "")[-4000:] if isinstance(exc.stderr, str) else "",
         }
+
+
+def observe_topic_once(
+    args: argparse.Namespace,
+    *,
+    topic: str,
+    per_attempt_timeout_s: float,
+    attempts: int,
+    qos_profile: str | None = None,
+    settle_s: float = 1.0,
+) -> dict[str, Any]:
+    """多次采样 topic 首帧，避免 DDS 发现和雷达聚合首帧窗口造成误判。"""
+    started_ms = now_ms()
+    command_parts = ["ros2 topic echo --once"]
+    if qos_profile:
+        # `/scan` 是传感器流，显式 sensor_data QoS 可兼容真实雷达首帧抖动。
+        command_parts.append(f"--qos-profile {shlex.quote(qos_profile)}")
+    command_parts.append(shlex.quote(topic))
+    base_command = " ".join(command_parts)
+    attempt_results: list[dict[str, Any]] = []
+    for index in range(max(1, attempts)):
+        # 每次都新建 ros2 echo 进程，给 discovery 和 publisher matching 一个新窗口。
+        result = run_ros(args, f"timeout {per_attempt_timeout_s:g} {base_command}", timeout_s=per_attempt_timeout_s + 2.0)
+        result["attempt"] = index + 1
+        result["topic"] = topic
+        result["qos_profile"] = qos_profile
+        attempt_results.append(result)
+        if result.get("ok") and str(result.get("stdout") or "").strip():
+            result = dict(result)
+            result["attempts"] = attempt_results
+            result["attempt_count"] = len(attempt_results)
+            result["elapsed_ms"] = now_ms() - started_ms
+            result["stable_observation_strategy"] = "retry_topic_echo_once"
+            return result
+        if index + 1 < attempts:
+            time.sleep(max(0.0, settle_s))
+
+    last = dict(attempt_results[-1])
+    # 失败时保留全部尝试，现场能区分 topic 缺失、QoS 不匹配和首帧过晚。
+    last["attempts"] = attempt_results
+    last["attempt_count"] = len(attempt_results)
+    last["elapsed_ms"] = now_ms() - started_ms
+    last["stable_observation_strategy"] = "retry_topic_echo_once"
+    return last
 
 
 def package_available(args: argparse.Namespace, package: str) -> tuple[bool, dict[str, Any]]:
@@ -311,7 +355,18 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         runtime = start_runtime(args)
 
     topic_list = run_ros(args, "ros2 topic list", timeout_s=8.0) if ros2_ok else {"executed": False, "ok": False}
-    scan_once = run_ros(args, "timeout 8 ros2 topic echo --once /scan", timeout_s=10.0) if runtime else {"executed": False, "ok": False}
+    scan_once = (
+        observe_topic_once(
+            args,
+            topic="/scan",
+            per_attempt_timeout_s=8.0,
+            attempts=2,
+            qos_profile="sensor_data",
+            settle_s=1.0,
+        )
+        if runtime
+        else {"executed": False, "ok": False}
+    )
     # 真实板端 slam_toolbox 偶尔需要十几秒才发布第一帧 /map；窗口略宽能减少误报。
     map_once = run_ros(args, "timeout 20 ros2 topic echo --once /map", timeout_s=24.0) if runtime else {"executed": False, "ok": False}
     save_map = (
@@ -377,6 +432,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "schema": SCHEMA,
         "generated_at_ms": now_ms(),
         "vendor_sources": VENDOR_SOURCES,
+        "field_evidence_sources": FIELD_EVIDENCE_SOURCES,
         "proof": proof,
         "status": proof_status,
         "evidence_type": proof["evidence_type"],

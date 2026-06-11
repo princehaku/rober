@@ -1,0 +1,6 @@
+## service
+active
+## lsof
+## fuser
+## runtime_processes
+ 235030  235024 S    grep            grep -E o3_map_lifecycle_proof|learn.launch|slam_toolbox|lidar_driver|static_transform_publisher

@@ -1924,6 +1924,14 @@ helper 还会在 TF source inventory 已完整时跳过后续慢 `ros2 topic/nod
 no-motion fast path，避免在 upper/PC 固定预算内已经成功后又被诊断 CLI 拖成
 timeout。该 fast path 不扩大权限：仍不触发路径规划、运动控制、底盘 UART 或 HIL。
 
+2026-06-11 08:05 起，map lifecycle 的 `/scan` 观测同样采用稳定化采样。失败
+artifact 曾证明 `/scan` 在 topic list 中存在、`/map` 与 YAML/PGM 已成功，但一次性
+`ros2 topic echo --once /scan` 可能在 DDS discovery 或聚合首帧窗口内超时。helper
+现在用 sensor_data QoS 的 `/scan` echo 做最多 2 次独立尝试，并把每次尝试写入
+artifact；`/scan_once_observed` 仍必须为 true 才能进入 clean pass。这一步只证明
+no-motion map lifecycle material，不证明地图质量、AMCL 定位、Nav2 规划、固定路线
+执行或 delivery success。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

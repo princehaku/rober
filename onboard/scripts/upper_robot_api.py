@@ -399,6 +399,7 @@ def map_lifecycle_proof_artifact_info(path: str) -> dict[str, Any]:
         "format": "json",
         "schema": f"{SCHEMA}.map_lifecycle_runtime_proof",
         "expected_material": [
+            "/scan once",
             "/map once",
             "map yaml/image or pbstream",
             "map metadata",
