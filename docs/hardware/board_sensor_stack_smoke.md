@@ -1515,3 +1515,54 @@ artifact：
 该基线只说明后续 LiDAR、camera、map、Nav2/path proof 或运动实跑前，上位机没有这三类
 历史 ROS 应用残留污染 ROS graph；它不等于 motion/HIL/pass、Nav2 execution、真实路线
 执行或 delivery success。
+
+## 2026-06-11 13:25 Camera Visible Gate Live Probe
+
+`sprints/2026.06.11_13-25_camera_visible_gate_live_probe/` 复核了真实上位机
+camera visible content gate。本轮没有调用 `/api/base/manual`，没有发布 `/cmd_vel`，
+没有打开或修改 `/dev/ttyS5`、`/dev/ttyACM0`，也没有改 WAVE ROVER、ESP32 或底盘
+launch 配置。
+
+采用资料来源：
+
+- `docs/vendor/VENDOR_INDEX.md`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/cv_ctrl.py`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/tutorial_en/12/flask_camera.py`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/tutorial_cn/12/flask_camera.py`
+
+真实上位机 readback：
+
+- `trashbot-upper-robot-api.service=active`
+- `trashbot-local-webrtc-camera.service=active`
+- `/api/camera/health active_peer_count=0`
+- `/api/camera/devices` 显示 `/dev/video0`、`/dev/video1`、`/dev/video2`。
+- `v4l2-ctl --list-devices` 仍显示 `/dev/video1` 是 DV20 USB capture，
+  `/dev/video2` 是 metadata，`/dev/video0` 是 Cedrus 编解码设备。
+
+OpenCV 结论：
+
+- `/dev/video1` 默认、`MJPG`、`YUYV` 和多分辨率均可读帧，但默认样本仍是黑场。
+- temporary boosted controls 后仍不可见。
+- temporary manual exposure 最亮样本为 `mean_luma=7.29296875`、`max_luma=59`、
+  `nonblack_ratio_gt10=0.172783203125`，能看到极弱轮廓，但不足以作为 HIL/manual gate
+  的可见内容证据。
+- 结束时 camera controls 已恢复到原值，probe 进程无残留，`/dev/ttyS5` 与
+  `/dev/ttyACM0` 的 `lsof/fuser` 无输出。
+
+当前 gate 状态：
+
+- `camera_device_opened=true`
+- `camera_service_active=true`
+- `visible_content_proven=false`
+- `manual_motion_hil_gate=blocked`
+
+下一步现场动作清单：
+
+1. 检查镜头盖、保护膜、遮挡、摄像头朝向和是否对准纯暗面。
+2. 将镜头对准有纹理的高对比目标，并打开强补光。
+3. 如果 DV20 是采集卡，确认 HDMI/AV视频源已接入且源端不是黑屏。
+4. 若 DV20 仍无法输出清晰内容，插入 known-good USB UVC camera 并确认新的 capture
+   `/dev/video*` 节点。
+5. 重跑本 sprint OpenCV stats；在 `visible_content_proven=true` 前，不得放行非 stop
+   手动运动或 HIL movement gate。

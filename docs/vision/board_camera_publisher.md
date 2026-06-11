@@ -205,3 +205,71 @@ ROS topic smoke 结论：
 1. 确认镜头盖、保护膜、遮挡和摄像头朝向。
 2. 对准有纹理的高对比目标，并打开补光。
 3. 必要时更换 USB 口或 USB 摄像头本体后重跑本 sprint 的 OpenCV/ROS 双路径采样。
+
+## 2026-06-11 13:25 camera visible gate live probe
+
+`sprints/2026.06.11_13-25_camera_visible_gate_live_probe/` 在真实上位机
+`root@192.168.1.11:37878` 上做了非运动 live recovery/probe。本轮只读或临时
+设置 V4L2 camera controls，并在结束时恢复；未调用 `/api/base/manual`，未发布
+`/cmd_vel`，未触碰 WAVE ROVER 底盘串口或运动配置。
+
+资料来源仍以 `docs/vendor/VENDOR_INDEX.md` 为入口，并只引用 camera 相关本地资料：
+
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`：vendor 视频默认
+  `640x480`。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/cv_ctrl.py`：vendor Raspberry Pi 参考
+  app 优先 USB camera，使用 OpenCV `VideoCapture`。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/tutorial_en/12/flask_camera.py` 与
+  `tutorial_cn/12/flask_camera.py`：Picamera2/JPEG streaming 只是 Raspberry Pi/CSI
+  参考，本项目 Orange Pi + DV20 不能直接照搬。
+
+设备事实保持不变：
+
+- `/dev/video0` 是 `cedrus (platform:cedrus)` 编解码设备，不是相机采集节点。
+- `/dev/video1` 是 `uvcvideo` 的 `USB Composite Device: DV20 USB`，具备
+  `Video Capture`。
+- `/dev/video2` 是同一 DV20 的 metadata 节点，不是可用图像采集节点。
+- camera service 当前 `video_source=auto`，`/api/camera/health` 显示 active peers 为
+  `0`，last closed peer 曾自动选择 `/dev/video1` 并读到 `108` 帧。
+
+OpenCV 采样覆盖 `/dev/video1` 默认、`MJPG`/`YUYV`、`640x480`、`1280x720`、
+`1920x1080`、`320x240`，并试过一次可恢复的 controls boost 与 manual exposure。
+所有默认/格式样本仍接近黑场：
+
+| 样本 | read_ok | mean_luma | max_luma | nonblack_ratio_gt10 | 结论 |
+| --- | --- | ---: | ---: | ---: | --- |
+| `video1_default` | true | 0.0011458333 | 1 | 0.0 | 不可见 |
+| `video1_mjpg_640x480` | true | 1.0 | 1 | 0.0 | 不可见 |
+| `video1_yuyv_640x480` | true | 0.0008658854 | 1 | 0.0 | 不可见 |
+| `video1_mjpg_1280x720` | true | 1.0 | 1 | 0.0 | 不可见 |
+| `video1_mjpg_1920x1080` | true | 1.0 | 1 | 0.0 | 不可见 |
+| `video1_yuyv_320x240` | true | 0.0013802083 | 1 | 0.0 | 不可见 |
+| `video1_boosted_controls_mjpg_640x480` | true | 1.0 | 1 | 0.0 | 不可见 |
+| `video1_manual_exposure_mjpg_640x480` | true | 7.29296875 | 59 | 0.172783203125 | 极暗轮廓，不足以通过 gate |
+
+manual exposure 样例能看到很弱的暗场轮廓，但仍不足以声明稳定可见内容。最终 controls 已恢复：
+
+```text
+brightness: 0
+contrast: 256
+saturation: 250
+gamma: 20
+gain: 4
+power_line_frequency: 0
+white_balance_temperature: 4500
+sharpness: 100
+backlight_compensation: 0
+auto_exposure: 3 (Aperture Priority Mode)
+exposure_time_absolute: 80
+```
+
+布尔结论：
+
+- `camera_device_opened=true`
+- `camera_service_active=true`
+- `active_peers=0`
+- `visible_content_proven=false`
+
+因此手动运动/HIL gate 仍不得放行。下一步现场动作必须先处理镜头盖/保护膜/遮挡/朝向/光照；
+如果 DV20 是采集卡，还要确认 HDMI/AV视频源是否已接入且不是黑屏；必要时插入 known-good
+USB UVC camera 后重跑 `/api/camera/devices` 与 OpenCV stats。

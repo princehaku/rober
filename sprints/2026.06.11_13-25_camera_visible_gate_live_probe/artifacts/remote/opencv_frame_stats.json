@@ -1,0 +1,574 @@
+{
+  "schema": "trashbot.camera_visible_gate_live_probe.v1",
+  "run_time": "2026-06-11T13:23:28+0800",
+  "original_controls": {
+    "brightness": 0,
+    "contrast": 256,
+    "saturation": 250,
+    "gamma": 20,
+    "gain": 4,
+    "power_line_frequency": 0,
+    "white_balance_temperature": 4500,
+    "sharpness": 100,
+    "backlight_compensation": 0,
+    "auto_exposure": "auto_exposure: 3 (Aperture Priority Mode)",
+    "exposure_time_absolute": 80
+  },
+  "control_attempts": [
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "brightness=127"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "contrast=511"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "saturation=511"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "gain=7"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "backlight_compensation=255"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "power_line_frequency=1"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "auto_exposure=3"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "auto_exposure=1"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "exposure_time_absolute=100000"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "gain=7"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "brightness=127"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "backlight_compensation=255"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "restore_results": [
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "brightness=0"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "contrast=256"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "saturation=250"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "gamma=20"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "gain=4"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "power_line_frequency=0"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "white_balance_temperature=4500"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "sharpness=100"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "backlight_compensation=0"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "exposure_time_absolute=80"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "restored_controls": {
+    "brightness": 0,
+    "contrast": 256,
+    "saturation": 250,
+    "gamma": 20,
+    "gain": 4,
+    "power_line_frequency": 0,
+    "white_balance_temperature": 4500,
+    "sharpness": 100,
+    "backlight_compensation": 0,
+    "auto_exposure": "auto_exposure: 1 (Manual Mode)",
+    "exposure_time_absolute": 80
+  },
+  "cases": [
+    {
+      "name": "video0_default",
+      "device": "/dev/video0",
+      "fourcc": null,
+      "width": null,
+      "height": null,
+      "fps": null,
+      "opened": false,
+      "read_ok": false
+    },
+    {
+      "name": "video1_default",
+      "device": "/dev/video1",
+      "fourcc": null,
+      "width": null,
+      "height": null,
+      "fps": null,
+      "opened": true,
+      "actual_fourcc_int": 1448695129,
+      "actual_width": 640.0,
+      "actual_height": 480.0,
+      "actual_fps": 22.0,
+      "read_ok": true,
+      "shape": [
+        480,
+        640,
+        3
+      ],
+      "mean_luma": 0.0011458333333333333,
+      "min_luma": 0,
+      "max_luma": 1,
+      "std_luma": 0.03383076113990868,
+      "nonblack_ratio_gt10": 0.0,
+      "dynamic_range_luma": 1,
+      "near_black": true,
+      "visible_content_proven": false,
+      "image_path": "/tmp/rober_camera_visible_gate_1325/frames/video1_default.jpg"
+    },
+    {
+      "name": "video1_mjpg_640x480",
+      "device": "/dev/video1",
+      "fourcc": "MJPG",
+      "width": 640,
+      "height": 480,
+      "fps": 30,
+      "opened": true,
+      "actual_fourcc_int": 1196444237,
+      "actual_width": 640.0,
+      "actual_height": 480.0,
+      "actual_fps": 30.0,
+      "read_ok": true,
+      "shape": [
+        480,
+        640,
+        3
+      ],
+      "mean_luma": 1.0,
+      "min_luma": 1,
+      "max_luma": 1,
+      "std_luma": 0.0,
+      "nonblack_ratio_gt10": 0.0,
+      "dynamic_range_luma": 0,
+      "near_black": true,
+      "visible_content_proven": false,
+      "image_path": "/tmp/rober_camera_visible_gate_1325/frames/video1_mjpg_640x480.jpg"
+    },
+    {
+      "name": "video1_yuyv_640x480",
+      "device": "/dev/video1",
+      "fourcc": "YUYV",
+      "width": 640,
+      "height": 480,
+      "fps": 22,
+      "opened": true,
+      "actual_fourcc_int": 1448695129,
+      "actual_width": 640.0,
+      "actual_height": 480.0,
+      "actual_fps": 22.0,
+      "read_ok": true,
+      "shape": [
+        480,
+        640,
+        3
+      ],
+      "mean_luma": 0.0008658854166666667,
+      "min_luma": 0,
+      "max_luma": 1,
+      "std_luma": 0.029413188523379617,
+      "nonblack_ratio_gt10": 0.0,
+      "dynamic_range_luma": 1,
+      "near_black": true,
+      "visible_content_proven": false,
+      "image_path": "/tmp/rober_camera_visible_gate_1325/frames/video1_yuyv_640x480.jpg"
+    },
+    {
+      "name": "video1_mjpg_1280x720",
+      "device": "/dev/video1",
+      "fourcc": "MJPG",
+      "width": 1280,
+      "height": 720,
+      "fps": 30,
+      "opened": true,
+      "actual_fourcc_int": 1196444237,
+      "actual_width": 1280.0,
+      "actual_height": 720.0,
+      "actual_fps": 30.0,
+      "read_ok": true,
+      "shape": [
+        720,
+        1280,
+        3
+      ],
+      "mean_luma": 1.0,
+      "min_luma": 1,
+      "max_luma": 1,
+      "std_luma": 0.0,
+      "nonblack_ratio_gt10": 0.0,
+      "dynamic_range_luma": 0,
+      "near_black": true,
+      "visible_content_proven": false,
+      "image_path": "/tmp/rober_camera_visible_gate_1325/frames/video1_mjpg_1280x720.jpg"
+    },
+    {
+      "name": "video1_mjpg_1920x1080",
+      "device": "/dev/video1",
+      "fourcc": "MJPG",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "opened": true,
+      "actual_fourcc_int": 1196444237,
+      "actual_width": 1920.0,
+      "actual_height": 1080.0,
+      "actual_fps": 30.0,
+      "read_ok": true,
+      "shape": [
+        1080,
+        1920,
+        3
+      ],
+      "mean_luma": 1.0,
+      "min_luma": 1,
+      "max_luma": 1,
+      "std_luma": 0.0,
+      "nonblack_ratio_gt10": 0.0,
+      "dynamic_range_luma": 0,
+      "near_black": true,
+      "visible_content_proven": false,
+      "image_path": "/tmp/rober_camera_visible_gate_1325/frames/video1_mjpg_1920x1080.jpg"
+    },
+    {
+      "name": "video1_yuyv_320x240",
+      "device": "/dev/video1",
+      "fourcc": "YUYV",
+      "width": 320,
+      "height": 240,
+      "fps": 25,
+      "opened": true,
+      "actual_fourcc_int": 1448695129,
+      "actual_width": 320.0,
+      "actual_height": 240.0,
+      "actual_fps": 25.0,
+      "read_ok": true,
+      "shape": [
+        240,
+        320,
+        3
+      ],
+      "mean_luma": 0.0013802083333333333,
+      "min_luma": 0,
+      "max_luma": 1,
+      "std_luma": 0.03712550818897878,
+      "nonblack_ratio_gt10": 0.0,
+      "dynamic_range_luma": 1,
+      "near_black": true,
+      "visible_content_proven": false,
+      "image_path": "/tmp/rober_camera_visible_gate_1325/frames/video1_yuyv_320x240.jpg"
+    },
+    {
+      "name": "video2_default",
+      "device": "/dev/video2",
+      "fourcc": null,
+      "width": null,
+      "height": null,
+      "fps": null,
+      "opened": false,
+      "read_ok": false
+    },
+    {
+      "name": "video1_boosted_controls_mjpg_640x480",
+      "device": "/dev/video1",
+      "fourcc": "MJPG",
+      "width": 640,
+      "height": 480,
+      "fps": 30,
+      "opened": true,
+      "actual_fourcc_int": 1196444237,
+      "actual_width": 640.0,
+      "actual_height": 480.0,
+      "actual_fps": 30.0,
+      "read_ok": true,
+      "shape": [
+        480,
+        640,
+        3
+      ],
+      "mean_luma": 1.0,
+      "min_luma": 1,
+      "max_luma": 1,
+      "std_luma": 0.0,
+      "nonblack_ratio_gt10": 0.0,
+      "dynamic_range_luma": 0,
+      "near_black": true,
+      "visible_content_proven": false,
+      "image_path": "/tmp/rober_camera_visible_gate_1325/frames/video1_boosted_controls_mjpg_640x480.jpg"
+    },
+    {
+      "name": "video1_manual_exposure_mjpg_640x480",
+      "device": "/dev/video1",
+      "fourcc": "MJPG",
+      "width": 640,
+      "height": 480,
+      "fps": 30,
+      "opened": true,
+      "actual_fourcc_int": 1196444237,
+      "actual_width": 640.0,
+      "actual_height": 480.0,
+      "actual_fps": 30.0,
+      "read_ok": true,
+      "shape": [
+        480,
+        640,
+        3
+      ],
+      "mean_luma": 7.29296875,
+      "min_luma": 0,
+      "max_luma": 59,
+      "std_luma": 4.405371814267225,
+      "nonblack_ratio_gt10": 0.172783203125,
+      "dynamic_range_luma": 59,
+      "near_black": false,
+      "visible_content_proven": false,
+      "image_path": "/tmp/rober_camera_visible_gate_1325/frames/video1_manual_exposure_mjpg_640x480.jpg"
+    }
+  ],
+  "visible_content_proven": false,
+  "visible_cases": [],
+  "best_case_by_mean_luma": {
+    "name": "video1_manual_exposure_mjpg_640x480",
+    "device": "/dev/video1",
+    "fourcc": "MJPG",
+    "width": 640,
+    "height": 480,
+    "fps": 30,
+    "opened": true,
+    "actual_fourcc_int": 1196444237,
+    "actual_width": 640.0,
+    "actual_height": 480.0,
+    "actual_fps": 30.0,
+    "read_ok": true,
+    "shape": [
+      480,
+      640,
+      3
+    ],
+    "mean_luma": 7.29296875,
+    "min_luma": 0,
+    "max_luma": 59,
+    "std_luma": 4.405371814267225,
+    "nonblack_ratio_gt10": 0.172783203125,
+    "dynamic_range_luma": 59,
+    "near_black": false,
+    "visible_content_proven": false,
+    "image_path": "/tmp/rober_camera_visible_gate_1325/frames/video1_manual_exposure_mjpg_640x480.jpg"
+  }
+}

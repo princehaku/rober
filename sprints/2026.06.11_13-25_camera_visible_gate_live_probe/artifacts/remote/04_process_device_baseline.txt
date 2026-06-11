@@ -1,0 +1,14 @@
+# processes
+   1172       1 SLsl python3         python3 /root/rober/onboard/scripts/local_webrtc_camera_smoke.py --host 0.0.0.0 --port 8088 --video-source auto --width 640 --height 480 --fps 15
+   1174       1 Ssl  unattended-upgr /usr/bin/python3 /usr/share/unattended-upgrades/unattended-upgrade-shutdown --wait-for-signal
+   2895    2041 Sl   blueman-applet  /usr/bin/python3 /usr/bin/blueman-applet
+   2908    2041 S    applet.py       /usr/bin/python3 /usr/share/system-config-printer/applet.py
+   3019       1 Sl   blueman-tray    /usr/bin/python3 /usr/bin/blueman-tray
+ 170272       1 Sl   python3         /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 0 --rmw-implementation rmw_fastrtps_cpp
+ 238873       1 Ssl  python3         python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+ 260054  259529 Ss   zsh             zsh -c set -u; echo "# /dev/video*"; ls -l /dev/video* 2>/dev/null || true; echo; echo "# v4l2 devices"; v4l2-ctl --list-devices; echo; for d in /dev/video*; do [ -e "$d" ] || continue; echo "===== $d all ====="; timeout 5 v4l2-ctl --all -d "$d" 2>&1 || true; echo "===== $d formats ====="; timeout 5 v4l2-ctl --list-formats-ext -d "$d" 2>&1 || true; echo "===== $d controls ====="; timeout 5 v4l2-ctl -l -d "$d" 2>&1 || true; done
+ 260087  259528 Ss   zsh             zsh -c curl -sS http://127.0.0.1:8787/api/camera/health; printf "\n---DEVICES---\n"; curl -sS http://127.0.0.1:8787/api/camera/devices; printf "\n"
+
+# camera fuser
+
+# serial fuser
