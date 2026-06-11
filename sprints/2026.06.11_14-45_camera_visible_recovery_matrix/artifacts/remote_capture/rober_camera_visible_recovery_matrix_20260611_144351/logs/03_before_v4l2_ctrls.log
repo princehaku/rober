@@ -1,0 +1,17 @@
+
+User Controls
+
+                     brightness 0x00980900 (int)    : min=-127 max=127 step=1 default=0 value=0
+                       contrast 0x00980901 (int)    : min=0 max=511 step=1 default=256 value=256
+                     saturation 0x00980902 (int)    : min=0 max=511 step=1 default=256 value=250
+                          gamma 0x00980910 (int)    : min=10 max=30 step=10 default=20 value=20
+                           gain 0x00980913 (int)    : min=1 max=7 step=1 default=4 value=4
+           power_line_frequency 0x00980918 (menu)   : min=0 max=2 default=0 value=0 (Disabled)
+      white_balance_temperature 0x0098091a (int)    : min=0 max=6500 step=1 default=4500 value=4500
+                      sharpness 0x0098091b (int)    : min=0 max=256 step=1 default=128 value=100
+         backlight_compensation 0x0098091c (int)    : min=0 max=255 step=1 default=0 value=0
+
+Camera Controls
+
+                  auto_exposure 0x009a0901 (menu)   : min=0 max=3 default=3 value=3 (Aperture Priority Mode)
+         exposure_time_absolute 0x009a0902 (int)    : min=80 max=100000 step=1 default=80 value=80 flags=inactive

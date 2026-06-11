@@ -1,0 +1,1519 @@
+{
+  "commands": [
+    {
+      "cmd": "date -Iseconds && hostname && uname -a",
+      "output": "2026-06-11T14:43:51+08:00\nop-z3-b6.home\nLinux op-z3-b6.home 6.1.31-sun50iw9 #1.0.4 SMP Thu Jul 11 16:37:41 CST 2024 aarch64 aarch64 aarch64 GNU/Linux\n",
+      "returncode": 0
+    },
+    {
+      "cmd": "lsof /dev/video0 /dev/video1 /dev/video2 /dev/ttyS5 /dev/ttyACM0 2>&1 || true; echo __FUSER__; fuser -v /dev/video0 /dev/video1 /dev/video2 /dev/ttyS5 /dev/ttyACM0 2>&1 || true",
+      "output": "__FUSER__\n",
+      "returncode": 0
+    },
+    {
+      "cmd": "v4l2-ctl -d /dev/video1 --all",
+      "output": "Driver Info:\n\tDriver name      : uvcvideo\n\tCard type        : USB Composite Device: DV20 USB \n\tBus info         : usb-5310000.usb-1\n\tDriver version   : 6.1.31\n\tCapabilities     : 0x84a00001\n\t\tVideo Capture\n\t\tMetadata Capture\n\t\tStreaming\n\t\tExtended Pix Format\n\t\tDevice Capabilities\n\tDevice Caps      : 0x04200001\n\t\tVideo Capture\n\t\tStreaming\n\t\tExtended Pix Format\nMedia Driver Info:\n\tDriver name      : uvcvideo\n\tModel            : USB Composite Device: DV20 USB \n\tSerial           : \n\tBus info         : usb-5310000.usb-1\n\tMedia version    : 6.1.31\n\tHardware revision: 0x00000100 (256)\n\tDriver version   : 6.1.31\nInterface Info:\n\tID               : 0x03000002\n\tType             : V4L Video\nEntity Info:\n\tID               : 0x00000001 (1)\n\tName             : USB Composite Device: DV20 USB \n\tFunction         : V4L2 I/O\n\tFlags            : default\n\tPad 0x01000007   : 0: Sink\n\t  Link 0x02000010: from remote pad 0x100000a of entity 'Extension 3' (Video Pixel Formatter): Data, Enabled, Immutable\nPriority: 2\nVideo input : 0 (Input 1: ok)\nFormat Video Capture:\n\tWidth/Height      : 640/480\n\tPixel Format      : 'YUYV' (YUYV 4:2:2)\n\tField             : None\n\tBytes per Line    : 1280\n\tSize Image        : 614400\n\tColorspace        : sRGB\n\tTransfer Function : Rec. 709\n\tYCbCr/HSV Encoding: ITU-R 601\n\tQuantization      : Default (maps to Limited Range)\n\tFlags             : \nCrop Capability Video Capture:\n\tBounds      : Left 0, Top 0, Width 640, Height 480\n\tDefault     : Left 0, Top 0, Width 640, Height 480\n\tPixel Aspect: 1/1\nSelection Video Capture: crop_default, Left 0, Top 0, Width 640, Height 480, Flags: \nSelection Video Capture: crop_bounds, Left 0, Top 0, Width 640, Height 480, Flags: \nStreaming Parameters Video Capture:\n\tCapabilities     : timeperframe\n\tFrames per second: 22.000 (22/1)\n\tRead buffers     : 0\n\nUser Controls\n\n                     brightness 0x00980900 (int)    : min=-127 max=127 step=1 default=0 value=0\n                       contrast 0x00980901 (int)    : min=0 max=511 step=1 default=256 value=256\n                     saturation 0x00980902 (int)    : min=0 max=511 step=1 default=256 value=250\n                          gamma 0x00980910 (int)    : min=10 max=30 step=10 default=20 value=20\n                           gain 0x00980913 (int)    : min=1 max=7 step=1 default=4 value=4\n           power_line_frequency 0x00980918 (menu)   : min=0 max=2 default=0 value=0 (Disabled)\n\t\t\t\t0: Disabled\n\t\t\t\t1: 50 Hz\n\t\t\t\t2: 60 Hz\n      white_balance_temperature 0x0098091a (int)    : min=0 max=6500 step=1 default=4500 value=4500\n                      sharpness 0x0098091b (int)    : min=0 max=256 step=1 default=128 value=100\n         backlight_compensation 0x0098091c (int)    : min=0 max=255 step=1 default=0 value=0\n\nCamera Controls\n\n                  auto_exposure 0x009a0901 (menu)   : min=0 max=3 default=3 value=3 (Aperture Priority Mode)\n\t\t\t\t1: Manual Mode\n\t\t\t\t3: Aperture Priority Mode\n         exposure_time_absolute 0x009a0902 (int)    : min=80 max=100000 step=1 default=80 value=80 flags=inactive\n",
+      "returncode": 0
+    },
+    {
+      "cmd": "v4l2-ctl -d /dev/video1 --list-ctrls",
+      "output": "\nUser Controls\n\n                     brightness 0x00980900 (int)    : min=-127 max=127 step=1 default=0 value=0\n                       contrast 0x00980901 (int)    : min=0 max=511 step=1 default=256 value=256\n                     saturation 0x00980902 (int)    : min=0 max=511 step=1 default=256 value=250\n                          gamma 0x00980910 (int)    : min=10 max=30 step=10 default=20 value=20\n                           gain 0x00980913 (int)    : min=1 max=7 step=1 default=4 value=4\n           power_line_frequency 0x00980918 (menu)   : min=0 max=2 default=0 value=0 (Disabled)\n      white_balance_temperature 0x0098091a (int)    : min=0 max=6500 step=1 default=4500 value=4500\n                      sharpness 0x0098091b (int)    : min=0 max=256 step=1 default=128 value=100\n         backlight_compensation 0x0098091c (int)    : min=0 max=255 step=1 default=0 value=0\n\nCamera Controls\n\n                  auto_exposure 0x009a0901 (menu)   : min=0 max=3 default=3 value=3 (Aperture Priority Mode)\n         exposure_time_absolute 0x009a0902 (int)    : min=80 max=100000 step=1 default=80 value=80 flags=inactive\n",
+      "returncode": 0
+    },
+    {
+      "cmd": "v4l2-ctl -d /dev/video1 --list-formats-ext",
+      "output": "ioctl: VIDIOC_ENUM_FMT\n\tType: Video Capture\n\n\t[0]: 'MJPG' (Motion-JPEG, compressed)\n\t\tSize: Discrete 1280x720\n\t\t\tInterval: Discrete 0.033s (30.000 fps)\n\t\tSize: Discrete 640x480\n\t\t\tInterval: Discrete 0.033s (30.000 fps)\n\t\tSize: Discrete 480x320\n\t\t\tInterval: Discrete 0.033s (30.000 fps)\n\t\tSize: Discrete 1920x1080\n\t\t\tInterval: Discrete 0.033s (30.000 fps)\n\t[1]: 'YUYV' (YUYV 4:2:2)\n\t\tSize: Discrete 640x480\n\t\t\tInterval: Discrete 0.045s (22.000 fps)\n\t\tSize: Discrete 320x240\n\t\t\tInterval: Discrete 0.040s (25.000 fps)\n\t\t\tInterval: Discrete 0.050s (20.000 fps)\n",
+      "returncode": 0
+    },
+    {
+      "cmd": "v4l2-ctl -d /dev/video1 --all",
+      "output": "Driver Info:\n\tDriver name      : uvcvideo\n\tCard type        : USB Composite Device: DV20 USB \n\tBus info         : usb-5310000.usb-1\n\tDriver version   : 6.1.31\n\tCapabilities     : 0x84a00001\n\t\tVideo Capture\n\t\tMetadata Capture\n\t\tStreaming\n\t\tExtended Pix Format\n\t\tDevice Capabilities\n\tDevice Caps      : 0x04200001\n\t\tVideo Capture\n\t\tStreaming\n\t\tExtended Pix Format\nMedia Driver Info:\n\tDriver name      : uvcvideo\n\tModel            : USB Composite Device: DV20 USB \n\tSerial           : \n\tBus info         : usb-5310000.usb-1\n\tMedia version    : 6.1.31\n\tHardware revision: 0x00000100 (256)\n\tDriver version   : 6.1.31\nInterface Info:\n\tID               : 0x03000002\n\tType             : V4L Video\nEntity Info:\n\tID               : 0x00000001 (1)\n\tName             : USB Composite Device: DV20 USB \n\tFunction         : V4L2 I/O\n\tFlags            : default\n\tPad 0x01000007   : 0: Sink\n\t  Link 0x02000010: from remote pad 0x100000a of entity 'Extension 3' (Video Pixel Formatter): Data, Enabled, Immutable\nPriority: 2\nVideo input : 0 (Input 1: ok)\nFormat Video Capture:\n\tWidth/Height      : 640/480\n\tPixel Format      : 'MJPG' (Motion-JPEG)\n\tField             : None\n\tBytes per Line    : 0\n\tSize Image        : 4177920\n\tColorspace        : sRGB\n\tTransfer Function : Default (maps to sRGB)\n\tYCbCr/HSV Encoding: Default (maps to ITU-R 601)\n\tQuantization      : Default (maps to Full Range)\n\tFlags             : \nCrop Capability Video Capture:\n\tBounds      : Left 0, Top 0, Width 640, Height 480\n\tDefault     : Left 0, Top 0, Width 640, Height 480\n\tPixel Aspect: 1/1\nSelection Video Capture: crop_default, Left 0, Top 0, Width 640, Height 480, Flags: \nSelection Video Capture: crop_bounds, Left 0, Top 0, Width 640, Height 480, Flags: \nStreaming Parameters Video Capture:\n\tCapabilities     : timeperframe\n\tFrames per second: 30.000 (30/1)\n\tRead buffers     : 0\n\nUser Controls\n\n                     brightness 0x00980900 (int)    : min=-127 max=127 step=1 default=0 value=0\n                       contrast 0x00980901 (int)    : min=0 max=511 step=1 default=256 value=256\n                     saturation 0x00980902 (int)    : min=0 max=511 step=1 default=256 value=250\n                          gamma 0x00980910 (int)    : min=10 max=30 step=10 default=20 value=20\n                           gain 0x00980913 (int)    : min=1 max=7 step=1 default=4 value=4\n           power_line_frequency 0x00980918 (menu)   : min=0 max=2 default=0 value=0 (Disabled)\n\t\t\t\t0: Disabled\n\t\t\t\t1: 50 Hz\n\t\t\t\t2: 60 Hz\n      white_balance_temperature 0x0098091a (int)    : min=0 max=6500 step=1 default=4500 value=4500\n                      sharpness 0x0098091b (int)    : min=0 max=256 step=1 default=128 value=100\n         backlight_compensation 0x0098091c (int)    : min=0 max=255 step=1 default=0 value=0\n\nCamera Controls\n\n                  auto_exposure 0x009a0901 (menu)   : min=0 max=3 default=3 value=3 (Aperture Priority Mode)\n\t\t\t\t1: Manual Mode\n\t\t\t\t3: Aperture Priority Mode\n         exposure_time_absolute 0x009a0902 (int)    : min=80 max=100000 step=1 default=80 value=50000 flags=inactive\n",
+      "returncode": 0
+    },
+    {
+      "cmd": "v4l2-ctl -d /dev/video1 --list-ctrls",
+      "output": "\nUser Controls\n\n                     brightness 0x00980900 (int)    : min=-127 max=127 step=1 default=0 value=0\n                       contrast 0x00980901 (int)    : min=0 max=511 step=1 default=256 value=256\n                     saturation 0x00980902 (int)    : min=0 max=511 step=1 default=256 value=250\n                          gamma 0x00980910 (int)    : min=10 max=30 step=10 default=20 value=20\n                           gain 0x00980913 (int)    : min=1 max=7 step=1 default=4 value=4\n           power_line_frequency 0x00980918 (menu)   : min=0 max=2 default=0 value=0 (Disabled)\n      white_balance_temperature 0x0098091a (int)    : min=0 max=6500 step=1 default=4500 value=4500\n                      sharpness 0x0098091b (int)    : min=0 max=256 step=1 default=128 value=100\n         backlight_compensation 0x0098091c (int)    : min=0 max=255 step=1 default=0 value=0\n\nCamera Controls\n\n                  auto_exposure 0x009a0901 (menu)   : min=0 max=3 default=3 value=3 (Aperture Priority Mode)\n         exposure_time_absolute 0x009a0902 (int)    : min=80 max=100000 step=1 default=80 value=50000 flags=inactive\n",
+      "returncode": 0
+    },
+    {
+      "cmd": "lsof /dev/video0 /dev/video1 /dev/video2 /dev/ttyS5 /dev/ttyACM0 2>&1 || true; echo __FUSER__; fuser -v /dev/video0 /dev/video1 /dev/video2 /dev/ttyS5 /dev/ttyACM0 2>&1 || true",
+      "output": "__FUSER__\n",
+      "returncode": 0
+    }
+  ],
+  "control_matrix": [
+    {
+      "applied_controls": {},
+      "apply_result": [],
+      "current_controls": {
+        "auto_exposure": 3,
+        "backlight_compensation": 0,
+        "brightness": 0,
+        "contrast": 256,
+        "exposure_time_absolute": 80,
+        "gain": 4,
+        "gamma": 20,
+        "power_line_frequency": 0,
+        "saturation": 250,
+        "sharpness": 100,
+        "white_balance_temperature": 4500
+      },
+      "label": "ctrl_original_mjpg_640x480",
+      "restore_before_profile": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 3
+        },
+        {
+          "name": "exposure_time_absolute",
+          "output": "Error setting controls: Permission denied\nVIDIOC_S_EXT_CTRLS: failed: Permission denied",
+          "returncode": 255,
+          "value": 80
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 256
+        },
+        {
+          "name": "saturation",
+          "output": "",
+          "returncode": 0,
+          "value": 250
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 20
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 4
+        },
+        {
+          "name": "power_line_frequency",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "white_balance_temperature",
+          "output": "",
+          "returncode": 0,
+          "value": 4500
+        },
+        {
+          "name": "sharpness",
+          "output": "",
+          "returncode": 0,
+          "value": 100
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        }
+      ],
+      "sample": {
+        "actual_fourcc": "MJPG",
+        "actual_fps": 30.0,
+        "actual_height": 480,
+        "actual_width": 640,
+        "edge_count": 0,
+        "fps_request": 5,
+        "frame_shape": [
+          480,
+          640,
+          3
+        ],
+        "gray_max": 1,
+        "gray_mean": 1.0,
+        "gray_min": 1,
+        "gray_p50": 1.0,
+        "gray_p95": 1.0,
+        "gray_std": 0.0,
+        "height_request": 480,
+        "heuristic_visible_content": false,
+        "label": "ctrl_original_mjpg_640x480",
+        "near_black_ratio_lt8": 1.0,
+        "non_black_ratio_ge16": 0.0,
+        "opened": true,
+        "pixfmt_request": "MJPG",
+        "read_count": 20,
+        "read_ok": true,
+        "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/ctrl_original_mjpg_640x480.jpg",
+        "sample_sha256": "8a2014d66c2d6e3604d98343c44b7b81884f611ad1fdbcc0ec3941442635b381",
+        "width_request": 640
+      }
+    },
+    {
+      "applied_controls": {
+        "auto_exposure": 3,
+        "backlight_compensation": 255,
+        "brightness": 80,
+        "contrast": 300,
+        "gain": 7,
+        "gamma": 30,
+        "power_line_frequency": 1
+      },
+      "apply_result": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 3
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 80
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 300
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 30
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 7
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 255
+        },
+        {
+          "name": "power_line_frequency",
+          "output": "",
+          "returncode": 0,
+          "value": 1
+        }
+      ],
+      "current_controls": {
+        "auto_exposure": 3,
+        "backlight_compensation": 255,
+        "brightness": 80,
+        "contrast": 300,
+        "exposure_time_absolute": 80,
+        "gain": 7,
+        "gamma": 30,
+        "power_line_frequency": 1,
+        "saturation": 250,
+        "sharpness": 100,
+        "white_balance_temperature": 4500
+      },
+      "label": "ctrl_auto_balanced_boost_mjpg_640x480",
+      "restore_before_profile": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 3
+        },
+        {
+          "name": "exposure_time_absolute",
+          "output": "Error setting controls: Permission denied\nVIDIOC_S_EXT_CTRLS: failed: Permission denied",
+          "returncode": 255,
+          "value": 80
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 256
+        },
+        {
+          "name": "saturation",
+          "output": "",
+          "returncode": 0,
+          "value": 250
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 20
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 4
+        },
+        {
+          "name": "power_line_frequency",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "white_balance_temperature",
+          "output": "",
+          "returncode": 0,
+          "value": 4500
+        },
+        {
+          "name": "sharpness",
+          "output": "",
+          "returncode": 0,
+          "value": 100
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        }
+      ],
+      "sample": {
+        "actual_fourcc": "MJPG",
+        "actual_fps": 30.0,
+        "actual_height": 480,
+        "actual_width": 640,
+        "edge_count": 0,
+        "fps_request": 5,
+        "frame_shape": [
+          480,
+          640,
+          3
+        ],
+        "gray_max": 1,
+        "gray_mean": 1.0,
+        "gray_min": 1,
+        "gray_p50": 1.0,
+        "gray_p95": 1.0,
+        "gray_std": 0.0,
+        "height_request": 480,
+        "heuristic_visible_content": false,
+        "label": "ctrl_auto_balanced_boost_mjpg_640x480",
+        "near_black_ratio_lt8": 1.0,
+        "non_black_ratio_ge16": 0.0,
+        "opened": true,
+        "pixfmt_request": "MJPG",
+        "read_count": 20,
+        "read_ok": true,
+        "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/ctrl_auto_balanced_boost_mjpg_640x480.jpg",
+        "sample_sha256": "5d837db0a1d618b659664663e93589d4d32725debf9c85f46b51c3978d6d92ab",
+        "width_request": 640
+      }
+    },
+    {
+      "applied_controls": {
+        "auto_exposure": 3,
+        "backlight_compensation": 255,
+        "brightness": 127,
+        "contrast": 511,
+        "gain": 7,
+        "gamma": 30,
+        "power_line_frequency": 1
+      },
+      "apply_result": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 3
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 127
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 511
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 30
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 7
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 255
+        },
+        {
+          "name": "power_line_frequency",
+          "output": "",
+          "returncode": 0,
+          "value": 1
+        }
+      ],
+      "current_controls": {
+        "auto_exposure": 3,
+        "backlight_compensation": 255,
+        "brightness": 127,
+        "contrast": 511,
+        "exposure_time_absolute": 80,
+        "gain": 7,
+        "gamma": 30,
+        "power_line_frequency": 1,
+        "saturation": 250,
+        "sharpness": 100,
+        "white_balance_temperature": 4500
+      },
+      "label": "ctrl_auto_max_boost_mjpg_640x480",
+      "restore_before_profile": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 3
+        },
+        {
+          "name": "exposure_time_absolute",
+          "output": "Error setting controls: Permission denied\nVIDIOC_S_EXT_CTRLS: failed: Permission denied",
+          "returncode": 255,
+          "value": 80
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 256
+        },
+        {
+          "name": "saturation",
+          "output": "",
+          "returncode": 0,
+          "value": 250
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 20
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 4
+        },
+        {
+          "name": "power_line_frequency",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "white_balance_temperature",
+          "output": "",
+          "returncode": 0,
+          "value": 4500
+        },
+        {
+          "name": "sharpness",
+          "output": "",
+          "returncode": 0,
+          "value": 100
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        }
+      ],
+      "sample": {
+        "actual_fourcc": "MJPG",
+        "actual_fps": 30.0,
+        "actual_height": 480,
+        "actual_width": 640,
+        "edge_count": 0,
+        "fps_request": 5,
+        "frame_shape": [
+          480,
+          640,
+          3
+        ],
+        "gray_max": 1,
+        "gray_mean": 1.0,
+        "gray_min": 1,
+        "gray_p50": 1.0,
+        "gray_p95": 1.0,
+        "gray_std": 0.0,
+        "height_request": 480,
+        "heuristic_visible_content": false,
+        "label": "ctrl_auto_max_boost_mjpg_640x480",
+        "near_black_ratio_lt8": 1.0,
+        "non_black_ratio_ge16": 0.0,
+        "opened": true,
+        "pixfmt_request": "MJPG",
+        "read_count": 20,
+        "read_ok": true,
+        "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/ctrl_auto_max_boost_mjpg_640x480.jpg",
+        "sample_sha256": "7aecad72cf70e134f7e9b211246667170868d6376daaebde4c32a5c4b936af5a",
+        "width_request": 640
+      }
+    },
+    {
+      "applied_controls": {
+        "auto_exposure": 1,
+        "backlight_compensation": 0,
+        "brightness": 0,
+        "contrast": 256,
+        "exposure_time_absolute": 80,
+        "gain": 4,
+        "gamma": 20
+      },
+      "apply_result": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 1
+        },
+        {
+          "name": "exposure_time_absolute",
+          "output": "",
+          "returncode": 0,
+          "value": 80
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 4
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 256
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 20
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        }
+      ],
+      "current_controls": {
+        "auto_exposure": 1,
+        "backlight_compensation": 0,
+        "brightness": 0,
+        "contrast": 256,
+        "exposure_time_absolute": 80,
+        "gain": 4,
+        "gamma": 20,
+        "power_line_frequency": 0,
+        "saturation": 250,
+        "sharpness": 100,
+        "white_balance_temperature": 4500
+      },
+      "label": "ctrl_manual_exp_80_gain4_mjpg_640x480",
+      "restore_before_profile": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 3
+        },
+        {
+          "name": "exposure_time_absolute",
+          "output": "Error setting controls: Permission denied\nVIDIOC_S_EXT_CTRLS: failed: Permission denied",
+          "returncode": 255,
+          "value": 80
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 256
+        },
+        {
+          "name": "saturation",
+          "output": "",
+          "returncode": 0,
+          "value": 250
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 20
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 4
+        },
+        {
+          "name": "power_line_frequency",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "white_balance_temperature",
+          "output": "",
+          "returncode": 0,
+          "value": 4500
+        },
+        {
+          "name": "sharpness",
+          "output": "",
+          "returncode": 0,
+          "value": 100
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        }
+      ],
+      "sample": {
+        "actual_fourcc": "MJPG",
+        "actual_fps": 30.0,
+        "actual_height": 480,
+        "actual_width": 640,
+        "edge_count": 0,
+        "fps_request": 5,
+        "frame_shape": [
+          480,
+          640,
+          3
+        ],
+        "gray_max": 1,
+        "gray_mean": 1.0,
+        "gray_min": 1,
+        "gray_p50": 1.0,
+        "gray_p95": 1.0,
+        "gray_std": 0.0,
+        "height_request": 480,
+        "heuristic_visible_content": false,
+        "label": "ctrl_manual_exp_80_gain4_mjpg_640x480",
+        "near_black_ratio_lt8": 1.0,
+        "non_black_ratio_ge16": 0.0,
+        "opened": true,
+        "pixfmt_request": "MJPG",
+        "read_count": 20,
+        "read_ok": true,
+        "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/ctrl_manual_exp_80_gain4_mjpg_640x480.jpg",
+        "sample_sha256": "896651b28bbe5e6df05cb4cf1650a5b0a77813396542ddb6d4e731b3009a13c6",
+        "width_request": 640
+      }
+    },
+    {
+      "applied_controls": {
+        "auto_exposure": 1,
+        "backlight_compensation": 255,
+        "brightness": 80,
+        "contrast": 300,
+        "exposure_time_absolute": 1000,
+        "gain": 7,
+        "gamma": 30
+      },
+      "apply_result": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 1
+        },
+        {
+          "name": "exposure_time_absolute",
+          "output": "",
+          "returncode": 0,
+          "value": 1000
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 7
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 80
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 300
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 30
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 255
+        }
+      ],
+      "current_controls": {
+        "auto_exposure": 1,
+        "backlight_compensation": 255,
+        "brightness": 80,
+        "contrast": 300,
+        "exposure_time_absolute": 1000,
+        "gain": 7,
+        "gamma": 30,
+        "power_line_frequency": 0,
+        "saturation": 250,
+        "sharpness": 100,
+        "white_balance_temperature": 4500
+      },
+      "label": "ctrl_manual_exp_1000_gain7_boost_mjpg_640x480",
+      "restore_before_profile": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 3
+        },
+        {
+          "name": "exposure_time_absolute",
+          "output": "Error setting controls: Permission denied\nVIDIOC_S_EXT_CTRLS: failed: Permission denied",
+          "returncode": 255,
+          "value": 80
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 256
+        },
+        {
+          "name": "saturation",
+          "output": "",
+          "returncode": 0,
+          "value": 250
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 20
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 4
+        },
+        {
+          "name": "power_line_frequency",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "white_balance_temperature",
+          "output": "",
+          "returncode": 0,
+          "value": 4500
+        },
+        {
+          "name": "sharpness",
+          "output": "",
+          "returncode": 0,
+          "value": 100
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        }
+      ],
+      "sample": {
+        "actual_fourcc": "MJPG",
+        "actual_fps": 30.0,
+        "actual_height": 480,
+        "actual_width": 640,
+        "edge_count": 0,
+        "fps_request": 5,
+        "frame_shape": [
+          480,
+          640,
+          3
+        ],
+        "gray_max": 3,
+        "gray_mean": 1.0007552083333333,
+        "gray_min": 0,
+        "gray_p50": 1.0,
+        "gray_p95": 1.0,
+        "gray_std": 0.03266707813237353,
+        "height_request": 480,
+        "heuristic_visible_content": false,
+        "label": "ctrl_manual_exp_1000_gain7_boost_mjpg_640x480",
+        "near_black_ratio_lt8": 1.0,
+        "non_black_ratio_ge16": 0.0,
+        "opened": true,
+        "pixfmt_request": "MJPG",
+        "read_count": 20,
+        "read_ok": true,
+        "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/ctrl_manual_exp_1000_gain7_boost_mjpg_640x480.jpg",
+        "sample_sha256": "ed4bbe17fcc0467f6eb80f6200cdaf548650eb33d48da1ab30fec2e5f01800e6",
+        "width_request": 640
+      }
+    },
+    {
+      "applied_controls": {
+        "auto_exposure": 1,
+        "backlight_compensation": 255,
+        "brightness": 127,
+        "contrast": 511,
+        "exposure_time_absolute": 10000,
+        "gain": 7,
+        "gamma": 30
+      },
+      "apply_result": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 1
+        },
+        {
+          "name": "exposure_time_absolute",
+          "output": "",
+          "returncode": 0,
+          "value": 10000
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 7
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 127
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 511
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 30
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 255
+        }
+      ],
+      "current_controls": {
+        "auto_exposure": 1,
+        "backlight_compensation": 255,
+        "brightness": 127,
+        "contrast": 511,
+        "exposure_time_absolute": 10000,
+        "gain": 7,
+        "gamma": 30,
+        "power_line_frequency": 0,
+        "saturation": 250,
+        "sharpness": 100,
+        "white_balance_temperature": 4500
+      },
+      "label": "ctrl_manual_exp_10000_gain7_boost_mjpg_640x480",
+      "restore_before_profile": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 3
+        },
+        {
+          "name": "exposure_time_absolute",
+          "output": "Error setting controls: Permission denied\nVIDIOC_S_EXT_CTRLS: failed: Permission denied",
+          "returncode": 255,
+          "value": 80
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 256
+        },
+        {
+          "name": "saturation",
+          "output": "",
+          "returncode": 0,
+          "value": 250
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 20
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 4
+        },
+        {
+          "name": "power_line_frequency",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "white_balance_temperature",
+          "output": "",
+          "returncode": 0,
+          "value": 4500
+        },
+        {
+          "name": "sharpness",
+          "output": "",
+          "returncode": 0,
+          "value": 100
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        }
+      ],
+      "sample": {
+        "actual_fourcc": "MJPG",
+        "actual_fps": 30.0,
+        "actual_height": 480,
+        "actual_width": 640,
+        "edge_count": 70,
+        "fps_request": 5,
+        "frame_shape": [
+          480,
+          640,
+          3
+        ],
+        "gray_max": 19,
+        "gray_mean": 2.2662760416666665,
+        "gray_min": 0,
+        "gray_p50": 2.0,
+        "gray_p95": 6.0,
+        "gray_std": 1.5561314167836204,
+        "height_request": 480,
+        "heuristic_visible_content": false,
+        "label": "ctrl_manual_exp_10000_gain7_boost_mjpg_640x480",
+        "near_black_ratio_lt8": 0.99486328125,
+        "non_black_ratio_ge16": 0.00018229166666666667,
+        "opened": true,
+        "pixfmt_request": "MJPG",
+        "read_count": 20,
+        "read_ok": true,
+        "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/ctrl_manual_exp_10000_gain7_boost_mjpg_640x480.jpg",
+        "sample_sha256": "8aee73f9cd6c75db3ec2065ca93548923be0bbddb7879e3543cb14ddebb98e28",
+        "width_request": 640
+      }
+    },
+    {
+      "applied_controls": {
+        "auto_exposure": 1,
+        "backlight_compensation": 255,
+        "brightness": 127,
+        "contrast": 511,
+        "exposure_time_absolute": 50000,
+        "gain": 7,
+        "gamma": 30
+      },
+      "apply_result": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 1
+        },
+        {
+          "name": "exposure_time_absolute",
+          "output": "",
+          "returncode": 0,
+          "value": 50000
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 7
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 127
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 511
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 30
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 255
+        }
+      ],
+      "current_controls": {
+        "auto_exposure": 1,
+        "backlight_compensation": 255,
+        "brightness": 127,
+        "contrast": 511,
+        "exposure_time_absolute": 50000,
+        "gain": 7,
+        "gamma": 30,
+        "power_line_frequency": 0,
+        "saturation": 250,
+        "sharpness": 100,
+        "white_balance_temperature": 4500
+      },
+      "label": "ctrl_manual_exp_50000_gain7_boost_mjpg_640x480",
+      "restore_before_profile": [
+        {
+          "name": "auto_exposure",
+          "output": "",
+          "returncode": 0,
+          "value": 3
+        },
+        {
+          "name": "exposure_time_absolute",
+          "output": "Error setting controls: Permission denied\nVIDIOC_S_EXT_CTRLS: failed: Permission denied",
+          "returncode": 255,
+          "value": 80
+        },
+        {
+          "name": "brightness",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "contrast",
+          "output": "",
+          "returncode": 0,
+          "value": 256
+        },
+        {
+          "name": "saturation",
+          "output": "",
+          "returncode": 0,
+          "value": 250
+        },
+        {
+          "name": "gamma",
+          "output": "",
+          "returncode": 0,
+          "value": 20
+        },
+        {
+          "name": "gain",
+          "output": "",
+          "returncode": 0,
+          "value": 4
+        },
+        {
+          "name": "power_line_frequency",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        },
+        {
+          "name": "white_balance_temperature",
+          "output": "",
+          "returncode": 0,
+          "value": 4500
+        },
+        {
+          "name": "sharpness",
+          "output": "",
+          "returncode": 0,
+          "value": 100
+        },
+        {
+          "name": "backlight_compensation",
+          "output": "",
+          "returncode": 0,
+          "value": 0
+        }
+      ],
+      "sample": {
+        "actual_fourcc": "MJPG",
+        "actual_fps": 30.0,
+        "actual_height": 480,
+        "actual_width": 640,
+        "edge_count": 391,
+        "fps_request": 5,
+        "frame_shape": [
+          480,
+          640,
+          3
+        ],
+        "gray_max": 40,
+        "gray_mean": 5.280279947916667,
+        "gray_min": 0,
+        "gray_p50": 4.0,
+        "gray_p95": 12.0,
+        "gray_std": 3.1854442594342314,
+        "height_request": 480,
+        "heuristic_visible_content": false,
+        "label": "ctrl_manual_exp_50000_gain7_boost_mjpg_640x480",
+        "near_black_ratio_lt8": 0.812060546875,
+        "non_black_ratio_ge16": 0.004417317708333333,
+        "opened": true,
+        "pixfmt_request": "MJPG",
+        "read_count": 20,
+        "read_ok": true,
+        "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/ctrl_manual_exp_50000_gain7_boost_mjpg_640x480.jpg",
+        "sample_sha256": "47d1b2ee89872fc4037a986655a504057612582f3dfa5e3cabbbd6a05578ce65",
+        "width_request": 640
+      }
+    }
+  ],
+  "controls_restored_ok": false,
+  "device": "/dev/video1",
+  "final_restore_result": [
+    {
+      "name": "auto_exposure",
+      "output": "",
+      "returncode": 0,
+      "value": 3
+    },
+    {
+      "name": "exposure_time_absolute",
+      "output": "Error setting controls: Permission denied\nVIDIOC_S_EXT_CTRLS: failed: Permission denied",
+      "returncode": 255,
+      "value": 80
+    },
+    {
+      "name": "brightness",
+      "output": "",
+      "returncode": 0,
+      "value": 0
+    },
+    {
+      "name": "contrast",
+      "output": "",
+      "returncode": 0,
+      "value": 256
+    },
+    {
+      "name": "saturation",
+      "output": "",
+      "returncode": 0,
+      "value": 250
+    },
+    {
+      "name": "gamma",
+      "output": "",
+      "returncode": 0,
+      "value": 20
+    },
+    {
+      "name": "gain",
+      "output": "",
+      "returncode": 0,
+      "value": 4
+    },
+    {
+      "name": "power_line_frequency",
+      "output": "",
+      "returncode": 0,
+      "value": 0
+    },
+    {
+      "name": "white_balance_temperature",
+      "output": "",
+      "returncode": 0,
+      "value": 4500
+    },
+    {
+      "name": "sharpness",
+      "output": "",
+      "returncode": 0,
+      "value": 100
+    },
+    {
+      "name": "backlight_compensation",
+      "output": "",
+      "returncode": 0,
+      "value": 0
+    }
+  ],
+  "format_matrix": [
+    {
+      "actual_fourcc": "MJPG",
+      "actual_fps": 30.0,
+      "actual_height": 480,
+      "actual_width": 640,
+      "edge_count": 0,
+      "fps_request": 5,
+      "frame_shape": [
+        480,
+        640,
+        3
+      ],
+      "gray_max": 1,
+      "gray_mean": 1.0,
+      "gray_min": 1,
+      "gray_p50": 1.0,
+      "gray_p95": 1.0,
+      "gray_std": 0.0,
+      "height_request": 480,
+      "heuristic_visible_content": false,
+      "label": "orig_mjpg_640x480",
+      "near_black_ratio_lt8": 1.0,
+      "non_black_ratio_ge16": 0.0,
+      "opened": true,
+      "pixfmt_request": "MJPG",
+      "read_count": 20,
+      "read_ok": true,
+      "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/orig_mjpg_640x480.jpg",
+      "sample_sha256": "e09673715b216f568b985c73b1ab8eea95b0241eb9869316b2a23c6ae702bc92",
+      "width_request": 640
+    },
+    {
+      "actual_fourcc": "MJPG",
+      "actual_fps": 30.0,
+      "actual_height": 720,
+      "actual_width": 1280,
+      "edge_count": 0,
+      "fps_request": 5,
+      "frame_shape": [
+        720,
+        1280,
+        3
+      ],
+      "gray_max": 1,
+      "gray_mean": 1.0,
+      "gray_min": 1,
+      "gray_p50": 1.0,
+      "gray_p95": 1.0,
+      "gray_std": 0.0,
+      "height_request": 720,
+      "heuristic_visible_content": false,
+      "label": "orig_mjpg_1280x720",
+      "near_black_ratio_lt8": 1.0,
+      "non_black_ratio_ge16": 0.0,
+      "opened": true,
+      "pixfmt_request": "MJPG",
+      "read_count": 20,
+      "read_ok": true,
+      "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/orig_mjpg_1280x720.jpg",
+      "sample_sha256": "434bb5dd201f08bdf21a70b9141d1ec2d2c56382a51a78292770cc21351657a6",
+      "width_request": 1280
+    },
+    {
+      "actual_fourcc": "MJPG",
+      "actual_fps": 30.0,
+      "actual_height": 320,
+      "actual_width": 480,
+      "edge_count": 0,
+      "fps_request": 5,
+      "frame_shape": [
+        320,
+        480,
+        3
+      ],
+      "gray_max": 1,
+      "gray_mean": 1.0,
+      "gray_min": 1,
+      "gray_p50": 1.0,
+      "gray_p95": 1.0,
+      "gray_std": 0.0,
+      "height_request": 240,
+      "heuristic_visible_content": false,
+      "label": "orig_mjpg_320x240_request",
+      "near_black_ratio_lt8": 1.0,
+      "non_black_ratio_ge16": 0.0,
+      "opened": true,
+      "pixfmt_request": "MJPG",
+      "read_count": 20,
+      "read_ok": true,
+      "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/orig_mjpg_320x240_request.jpg",
+      "sample_sha256": "858860106a0d7b1de982936eaf3bd0dd265ba39c2063c080a5de1d44a6506581",
+      "width_request": 320
+    },
+    {
+      "actual_fourcc": "MJPG",
+      "actual_fps": 30.0,
+      "actual_height": 320,
+      "actual_width": 480,
+      "edge_count": 0,
+      "fps_request": 5,
+      "frame_shape": [
+        320,
+        480,
+        3
+      ],
+      "gray_max": 1,
+      "gray_mean": 1.0,
+      "gray_min": 1,
+      "gray_p50": 1.0,
+      "gray_p95": 1.0,
+      "gray_std": 0.0,
+      "height_request": 320,
+      "heuristic_visible_content": false,
+      "label": "orig_mjpg_480x320_supported",
+      "near_black_ratio_lt8": 1.0,
+      "non_black_ratio_ge16": 0.0,
+      "opened": true,
+      "pixfmt_request": "MJPG",
+      "read_count": 20,
+      "read_ok": true,
+      "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/orig_mjpg_480x320_supported.jpg",
+      "sample_sha256": "76ce71915494956f9b38c3a78060b6852b5694ad2f996e373f826c48fc6eb3eb",
+      "width_request": 480
+    },
+    {
+      "actual_fourcc": "YUYV",
+      "actual_fps": 22.0,
+      "actual_height": 480,
+      "actual_width": 640,
+      "edge_count": 0,
+      "fps_request": 5,
+      "frame_shape": [
+        480,
+        640,
+        3
+      ],
+      "gray_max": 2,
+      "gray_mean": 0.0008203125,
+      "gray_min": 0,
+      "gray_p50": 0.0,
+      "gray_p95": 0.0,
+      "gray_std": 0.02885585591757203,
+      "height_request": 480,
+      "heuristic_visible_content": false,
+      "label": "orig_yuyv_640x480",
+      "near_black_ratio_lt8": 1.0,
+      "non_black_ratio_ge16": 0.0,
+      "opened": true,
+      "pixfmt_request": "YUYV",
+      "read_count": 20,
+      "read_ok": true,
+      "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/orig_yuyv_640x480.jpg",
+      "sample_sha256": "a9c69056165987ecf8017bec606858f738d64e7d01a89c8dcec765e0860cb968",
+      "width_request": 640
+    },
+    {
+      "actual_fourcc": "YUYV",
+      "actual_fps": 22.0,
+      "actual_height": 480,
+      "actual_width": 640,
+      "edge_count": 0,
+      "fps_request": 5,
+      "frame_shape": [
+        480,
+        640,
+        3
+      ],
+      "gray_max": 1,
+      "gray_mean": 0.00083984375,
+      "gray_min": 0,
+      "gray_p50": 0.0,
+      "gray_p95": 0.0,
+      "gray_std": 0.02896788588205198,
+      "height_request": 720,
+      "heuristic_visible_content": false,
+      "label": "orig_yuyv_1280x720_request",
+      "near_black_ratio_lt8": 1.0,
+      "non_black_ratio_ge16": 0.0,
+      "opened": true,
+      "pixfmt_request": "YUYV",
+      "read_count": 20,
+      "read_ok": true,
+      "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/orig_yuyv_1280x720_request.jpg",
+      "sample_sha256": "b6b89fdf871295bd615e9f6e4555649fbea80ffdf3a28b2bd31031b9808e2c80",
+      "width_request": 1280
+    },
+    {
+      "actual_fourcc": "YUYV",
+      "actual_fps": 20.0,
+      "actual_height": 240,
+      "actual_width": 320,
+      "edge_count": 0,
+      "fps_request": 5,
+      "frame_shape": [
+        240,
+        320,
+        3
+      ],
+      "gray_max": 1,
+      "gray_mean": 0.0009635416666666667,
+      "gray_min": 0,
+      "gray_p50": 0.0,
+      "gray_p95": 0.0,
+      "gray_std": 0.03102600931675332,
+      "height_request": 240,
+      "heuristic_visible_content": false,
+      "label": "orig_yuyv_320x240",
+      "near_black_ratio_lt8": 1.0,
+      "non_black_ratio_ge16": 0.0,
+      "opened": true,
+      "pixfmt_request": "YUYV",
+      "read_count": 20,
+      "read_ok": true,
+      "sample_path": "/tmp/rober_camera_visible_recovery_matrix_20260611_144351/samples/orig_yuyv_320x240.jpg",
+      "sample_sha256": "a2c9523dee44e189af2848516c4a20006d8cdbe60040f5f34cefbd2bfa1b35b2",
+      "width_request": 320
+    }
+  ],
+  "notes": [
+    "MJPG 320x240 is not listed by v4l2; requested sample records actual negotiated mode.",
+    "YUYV 1280x720 is not listed by v4l2; requested sample records actual negotiated mode.",
+    "All samples are camera-only; no base command, cmd_vel, Nav2, or non-zero motion was sent."
+  ],
+  "original_controls": {
+    "auto_exposure": 3,
+    "backlight_compensation": 0,
+    "brightness": 0,
+    "contrast": 256,
+    "exposure_time_absolute": 80,
+    "gain": 4,
+    "gamma": 20,
+    "power_line_frequency": 0,
+    "saturation": 250,
+    "sharpness": 100,
+    "white_balance_temperature": 4500
+  },
+  "probable_failure_class": "physical_occlusion_dark_scene_or_input_source_black_frame",
+  "restore_mismatches": {
+    "exposure_time_absolute": {
+      "original": 80,
+      "restored": 50000
+    }
+  },
+  "restored_controls": {
+    "auto_exposure": 3,
+    "backlight_compensation": 0,
+    "brightness": 0,
+    "contrast": 256,
+    "exposure_time_absolute": 50000,
+    "gain": 4,
+    "gamma": 20,
+    "power_line_frequency": 0,
+    "saturation": 250,
+    "sharpness": 100,
+    "white_balance_temperature": 4500
+  },
+  "run_started_at": "2026-06-11T14:43:51+08:00",
+  "source_boundary": {
+    "no_motion_actions_executed": true,
+    "no_wave_rover_uart_write_executed": true,
+    "vendor_index": "docs/vendor/VENDOR_INDEX.md",
+    "vendor_raspberry_pi_uart_not_extrapolated_to_orange_pi": true,
+    "wave_rover_commands_not_exercised_this_run": [
+      "T=1",
+      "T=13",
+      "T=130",
+      "T=131"
+    ],
+    "wave_rover_uart_protocol_sources": [
+      "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+      "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+      "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+      "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h"
+    ]
+  },
+  "visible_content_proven": false,
+  "visible_samples": []
+}

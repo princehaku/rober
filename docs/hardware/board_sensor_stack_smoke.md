@@ -214,6 +214,57 @@ WAVE ROVER 底盘 UART 是 newline-delimited UTF-8 JSON；vendor Raspberry Pi
 - `sprints/2026.06.11_14-20_camera_motion_gate_current_readback/artifacts/camera/video1_sample.jpg`
 - `sprints/2026.06.11_14-20_camera_motion_gate_current_readback/artifacts/cleanup/remote_device_process_cleanup_final.log`
 
+## 2026-06-11 14:45 Camera Visible Recovery Matrix
+
+`sprints/2026.06.11_14-45_camera_visible_recovery_matrix/` 在真实上位机
+`root@192.168.1.11:37878` 上只做 `/dev/video1` camera-only V4L2/OpenCV
+恢复矩阵。本轮未写 WAVE ROVER UART，未调用 `/api/base/manual` 非 stop，未发布
+`/cmd_vel`，未执行 Nav2，也未发送任何非零运动。
+
+硬件资料边界继续以 `docs/vendor/VENDOR_INDEX.md` 为入口，并采用
+`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、
+`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`、
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h` 和
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h` 确认：
+WAVE ROVER 底盘 UART 是 newline-delimited UTF-8 JSON；vendor Raspberry Pi
+串口路径不能外推到 Orange Pi；关键底盘命令边界为 `T=1/T=13/T=130/T=131`，
+本轮均未执行。
+
+V4L2 支持矩阵：
+
+- `/dev/video1` 仍是 `uvcvideo` 的 `USB Composite Device: DV20 USB`。
+- `MJPG` 支持 `1280x720`、`640x480`、`480x320`、`1920x1080`。
+- `YUYV` 支持 `640x480`、`320x240`。
+- 请求不支持的 `MJPG 320x240` 会协商到 `480x320`；
+  请求不支持的 `YUYV 1280x720` 会协商到 `640x480`。
+
+矩阵结论：
+
+- 默认/格式样本全部不可见：`MJPG 640x480/1280x720/480x320` 均
+  `gray_mean=1.0`、`gray_max=1`；`YUYV 640x480/320x240` 均接近
+  `gray_mean≈0.001`、`gray_max<=2`。
+- auto exposure + brightness/gain/gamma/backlight boost 仍不可见。
+- manual exposure 10000/50000 + gain/brightness boost 能出现极暗轮廓，
+  最高档 `gray_mean=5.280280`、`gray_max=40`、
+  `non_black_ratio_ge16=0.004417`、`edge_count=391`，但仍低于可用画面阈值。
+- `visible_content_proven=false`，motion gate 继续锁住。
+
+控制恢复：
+
+- 原始控制项已记录在
+  `sprints/2026.06.11_14-45_camera_visible_recovery_matrix/artifacts/remote_capture/rober_camera_visible_recovery_matrix_20260611_144351/original_controls.json`。
+- 第一次脚本恢复时 `exposure_time_absolute` 因 `auto_exposure=3` 下 inactive
+  仍显示 `50000`，已补执行“切手动、设回 80、切回自动”。
+- 最终
+  `final_remote_readback_after_restore_rerun.log` 显示 `auto_exposure=3`、
+  `exposure_time_absolute=80 flags=inactive`，其它控制项回到原值；
+  `/dev/video0`、`/dev/video1`、`/dev/video2`、`/dev/ttyS5`、
+  `/dev/ttyACM0` 的 `lsof/fuser` 无占用输出。
+
+失败定位：格式/分辨率、设备路径或常规曝光配置错误的概率已降低。最高曝光档能看到
+暗轮廓，说明更符合物理暗场、镜头盖/保护膜/遮挡、摄像头朝向纯暗面或补光不足；
+如果 DV20 是采集卡，还必须现场确认输入源已接入且源端不是黑屏。
+
 ## 2026-06-11 PC Radar Cold Start Refresh Stabilization
 
 `sprints/2026.06.11_10-50_pc_radar_cold_start_refresh_stabilization/`

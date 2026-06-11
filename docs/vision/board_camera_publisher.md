@@ -273,3 +273,58 @@ exposure_time_absolute: 80
 因此手动运动/HIL gate 仍不得放行。下一步现场动作必须先处理镜头盖/保护膜/遮挡/朝向/光照；
 如果 DV20 是采集卡，还要确认 HDMI/AV视频源是否已接入且不是黑屏；必要时插入 known-good
 USB UVC camera 后重跑 `/api/camera/devices` 与 OpenCV stats。
+
+## 2026-06-11 14:45 camera visible recovery matrix
+
+`sprints/2026.06.11_14-45_camera_visible_recovery_matrix/` 在真实上位机
+`root@192.168.1.11:37878` 上继续做 camera-only V4L2/OpenCV 恢复矩阵。本轮不改
+`camera_publisher`、bringup、launch 或任何产品代码；未写 WAVE ROVER UART，未调用
+`/api/base/manual` 非 stop，未发布 `/cmd_vel`，未执行 Nav2。
+
+资料来源边界：
+
+- WAVE ROVER 底盘安全边界来自 `docs/vendor/VENDOR_INDEX.md`、
+  `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、
+  `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`、
+  `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h` 和
+  `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`。
+- 底盘 UART 是 newline-delimited UTF-8 JSON；vendor Raspberry Pi 串口路径不能外推到
+  Orange Pi；`T=1/T=13/T=130/T=131` 均未在本轮执行。
+
+格式/分辨率覆盖：
+
+| 样本 | 请求 | 实际 | gray_mean | gray_max | non_black_ratio_ge16 | 结论 |
+| --- | --- | --- | ---: | ---: | ---: | --- |
+| `orig_mjpg_640x480` | MJPG 640x480 | MJPG 640x480 | 1.0 | 1 | 0.0 | 不可见 |
+| `orig_mjpg_1280x720` | MJPG 1280x720 | MJPG 1280x720 | 1.0 | 1 | 0.0 | 不可见 |
+| `orig_mjpg_320x240_request` | MJPG 320x240 | MJPG 480x320 | 1.0 | 1 | 0.0 | 不可见 |
+| `orig_yuyv_640x480` | YUYV 640x480 | YUYV 640x480 | 0.000820 | 2 | 0.0 | 不可见 |
+| `orig_yuyv_320x240` | YUYV 320x240 | YUYV 320x240 | 0.000964 | 1 | 0.0 | 不可见 |
+
+控制矩阵覆盖原始控制、auto exposure boost、manual exposure 80/1000/10000/50000。
+其中最高曝光档：
+
+- `ctrl_manual_exp_50000_gain7_boost_mjpg_640x480`
+- `gray_mean=5.280280`
+- `gray_max=40`
+- `non_black_ratio_ge16=0.004417`
+- `edge_count=391`
+- 可见极暗轮廓，但不足以作为路线关键帧、视觉定位、障碍识别或远程可视验收。
+
+最终结论：
+
+- `camera_device_opened=true`
+- `visible_content_proven=false`
+- `probable_failure_class=physical_occlusion_dark_scene_or_input_source_black_frame`
+- 更具体地看，最高曝光档出现暗轮廓，说明格式/路径错误概率较低；现场最应先排查
+  镜头盖/保护膜/遮挡、朝向纯暗面、环境光不足和 DV20 输入源黑屏。
+
+控制恢复状态：
+
+- 初次脚本恢复后发现 inactive 的 `exposure_time_absolute` 仍为 `50000`。
+- 已补恢复为 `auto_exposure=3`、`exposure_time_absolute=80 flags=inactive`。
+- 最终 readback 与 `lsof/fuser` 清场证据见
+  `sprints/2026.06.11_14-45_camera_visible_recovery_matrix/artifacts/remote_capture/final_remote_readback_after_restore_rerun.log`。
+
+在 `visible_content_proven=true` 前，`/dev/video1` 仍只能用于链路存在性证明，
+不能用于 motion gate 放行。
