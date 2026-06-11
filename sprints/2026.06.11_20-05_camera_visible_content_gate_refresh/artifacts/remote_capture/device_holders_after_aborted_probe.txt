@@ -1,0 +1,13 @@
+=== /dev/video0 lsof ===
+=== /dev/video0 fuser ===
+=== /dev/video1 lsof ===
+COMMAND    PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+python3 289209 root  mem    CHR   81,1           619 /dev/video1
+python3 289209 root    3u   CHR   81,1      0t0  619 /dev/video1
+=== /dev/video1 fuser ===
+                     USER        PID ACCESS COMMAND
+/dev/video1:         root      289209 F...m python3
+=== /dev/video2 lsof ===
+=== /dev/video2 fuser ===
+=== /dev/ttyS5 lsof ===
+=== /dev/ttyS5 fuser ===

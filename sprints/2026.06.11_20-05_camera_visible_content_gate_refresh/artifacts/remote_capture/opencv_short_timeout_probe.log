@@ -1,0 +1,79 @@
+{
+  "attempts": [
+    {
+      "actual": {
+        "fourcc_int": 1448695129,
+        "fourcc_text": "YUYV",
+        "fps": 22.0,
+        "height": 480,
+        "width": 640
+      },
+      "first_frame_timeout": true,
+      "frames_read": 0,
+      "metrics_json": "/tmp/rober_camera_visible_content_gate_refresh_20260611_2005_short/default.metrics.json",
+      "name": "default",
+      "open_ok": true,
+      "read_attempts": 1,
+      "read_ok": false,
+      "requested": {
+        "fourcc": null,
+        "fps": null,
+        "height": null,
+        "name": "default",
+        "width": null
+      }
+    },
+    {
+      "actual": {
+        "fourcc_int": 1196444237,
+        "fourcc_text": "MJPG",
+        "fps": 30.0,
+        "height": 480,
+        "width": 640
+      },
+      "first_frame_timeout": true,
+      "frames_read": 0,
+      "metrics_json": "/tmp/rober_camera_visible_content_gate_refresh_20260611_2005_short/mjpg_640x480.metrics.json",
+      "name": "mjpg_640x480",
+      "open_ok": true,
+      "read_attempts": 1,
+      "read_ok": false,
+      "requested": {
+        "fourcc": "MJPG",
+        "fps": 30,
+        "height": 480,
+        "name": "mjpg_640x480",
+        "width": 640
+      }
+    },
+    {
+      "actual": {
+        "fourcc_int": 1448695129,
+        "fourcc_text": "YUYV",
+        "fps": 22.0,
+        "height": 480,
+        "width": 640
+      },
+      "first_frame_timeout": true,
+      "frames_read": 0,
+      "metrics_json": "/tmp/rober_camera_visible_content_gate_refresh_20260611_2005_short/yuyv_640x480.metrics.json",
+      "name": "yuyv_640x480",
+      "open_ok": true,
+      "read_attempts": 1,
+      "read_ok": false,
+      "requested": {
+        "fourcc": "YUYV",
+        "fps": 22,
+        "height": 480,
+        "name": "yuyv_640x480",
+        "width": 640
+      }
+    }
+  ],
+  "device": "/dev/video1",
+  "finished_at_ms": 1781175229752,
+  "schema": "trashbot.camera_visible_content_probe.v1",
+  "started_at_ms": 1781175199339,
+  "timeout_per_mode_s": 14,
+  "visible_content_proven": false
+}

@@ -1,0 +1,22 @@
+{
+  "actual": {
+    "fourcc_int": 1196444237,
+    "fourcc_text": "MJPG",
+    "fps": 30.0,
+    "height": 480,
+    "width": 640
+  },
+  "first_frame_timeout": true,
+  "frames_read": 0,
+  "name": "mjpg_640x480",
+  "open_ok": true,
+  "read_attempts": 1,
+  "read_ok": false,
+  "requested": {
+    "fourcc": "MJPG",
+    "fps": 30,
+    "height": 480,
+    "name": "mjpg_640x480",
+    "width": 640
+  }
+}

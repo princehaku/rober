@@ -1,0 +1,12 @@
+op-z3-b6.home
+Thu Jun 11 06:54:33 PM CST 2026
+api=active
+webrtc=active
+=== /dev/video0 lsof ===
+=== /dev/video0 fuser ===
+=== /dev/video1 lsof ===
+=== /dev/video1 fuser ===
+=== /dev/video2 lsof ===
+=== /dev/video2 fuser ===
+=== /dev/ttyS5 lsof ===
+=== /dev/ttyS5 fuser ===

@@ -190,6 +190,43 @@ Cedrus decoder。由于本轮没有成功采集可见 frame，且 `/api/operator
 当前只能证明 camera service/device readback 可用，不能把视觉内容用于路线关键帧、
 视觉定位、障碍识别或远程可视验收。
 
+## 2026-06-11 20:05 camera visible content gate refresh
+
+`sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/` 继续只做
+camera-only 复核，没有调用 `/api/base/manual`，没有发布 `/cmd_vel`，没有执行
+Nav2/NavigateToPose，也没有打开底盘 `/dev/ttyS5`。
+
+本轮采用的本地 vendor 来源：
+
+- `docs/vendor/VENDOR_INDEX.md`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/cv_ctrl.py`
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/tutorial_cn/12/flask_camera.py`
+
+真实上位机 `root@192.168.1.11:37878` 与 Robot API `http://192.168.1.11:8787`
+读回显示 camera service 仍为 `status=ready`，`active_peer_count=0`。V4L2 事实保持：
+`/dev/video1` 是 `uvcvideo` 的 `USB Composite Device: DV20 USB`，具备
+`Video Capture`，支持 `MJPG 640x480 @ 30fps` 和 `YUYV 640x480 @ 22fps`。
+
+短超时 OpenCV direct probe 结果：
+
+| 样本 | open_ok | read_ok | first_frame_timeout | 实际格式 | visible_content_proven |
+| --- | --- | --- | --- | --- | --- |
+| `default` | true | false | true | `YUYV 640x480 @ 22fps` | false |
+| `mjpg_640x480` | true | false | true | `MJPG 640x480 @ 30fps` | false |
+| `yuyv_640x480` | true | false | true | `YUYV 640x480 @ 22fps` | false |
+
+由于底层 direct frame 没有任何 `read_ok=true` 样本，本轮没有 sample JPG/PNG，也没有
+可见 frame luma/edge metrics；`visible_content_proven=false` 保持成立。未执行
+PC/WebRTC offer self-test，原因是 direct frame 尚不可用，继续验证上层信令不能证明
+“实时图传能看到可见内容”。
+
+本轮已把 `/api/operator/report` 更新为
+`site_state=camera_direct_first_frame_timeout`，且 `visible_content_proven=false`、
+`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`
+全部保持。下一步应转现场硬件动作：检查 DV20 输入源/镜头盖/保护膜/遮挡/朝向/补光，
+并用 known-good UVC USB 摄像头替换验证。
+
 ## 本地资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`

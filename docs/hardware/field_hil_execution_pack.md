@@ -261,3 +261,33 @@ active
 | stop smoke | `proven` | 零速 `T=1` 写入成功；不替代外部视频或 HIL pass。 |
 | non-stop motion | `not_executed` | operator report 材料不满足非 stop gate。 |
 | camera visible content | `not_proven` | 仍无可见 frame artifact。 |
+
+## 2026-06-11 20:05 camera gate 补充
+
+`sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/` 复核后，camera
+可见内容缺口仍未恢复。本轮只做 camera-only，不调用 `/api/base/manual`，不发布
+`/cmd_vel`，不执行 Nav2/NavigateToPose，不打开底盘 `/dev/ttyS5`。
+
+新增证据：
+
+- Robot API `/api/camera/health`：`status=ready`，`active_peer_count=0`。
+- `/dev/video1` 仍为 `USB Composite Device: DV20 USB` 的 `uvcvideo`
+  `Video Capture` 节点。
+- OpenCV direct `default`、`MJPG 640x480`、`YUYV 640x480` 均
+  `open_ok=true`、`read_ok=false`、`first_frame_timeout=true`。
+- `/api/operator/report` 已更新为
+  `site_state=camera_direct_first_frame_timeout`、`visible_content_proven=false`、
+  `camera_artifacts_ref=sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/artifacts/remote_capture/opencv_short_timeout_probe_files`。
+- cleanup：`trashbot-upper-robot-api.service` 与
+  `trashbot-local-webrtc-camera.service` 均 `active`，`/dev/video0`、`/dev/video1`、
+  `/dev/video2`、`/dev/ttyS5` 无占用。
+
+现场执行包的 Step 0 仍是下一步硬门槛。当前失败类型已从“仅 near-black”收敛到
+“当前直采 first-frame timeout”；现场动作必须先处理物理链路：
+
+1. 若 DV20 是采集卡，确认输入源、线缆和源端画面，不允许源端黑屏或无信号。
+2. 若 DV20 是 USB 摄像头，拆除镜头盖/保护膜/遮挡，确认朝向和补光。
+3. 重新插拔 USB 设备，必要时更换 USB 口、线缆或供电 hub。
+4. 换 known-good UVC USB camera 后，重跑 camera-only OpenCV direct probe。
+5. 只有至少一路 direct frame 保存清晰 sample 且 metrics 达标后，才进入 PC/WebRTC
+   图传可见性复核；在此之前非 stop motion gate 仍不得放开。

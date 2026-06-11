@@ -1,0 +1,22 @@
+{
+  "actual": {
+    "fourcc_int": 1448695129,
+    "fourcc_text": "YUYV",
+    "fps": 22.0,
+    "height": 480,
+    "width": 640
+  },
+  "first_frame_timeout": true,
+  "frames_read": 0,
+  "name": "default",
+  "open_ok": true,
+  "read_attempts": 1,
+  "read_ok": false,
+  "requested": {
+    "fourcc": null,
+    "fps": null,
+    "height": null,
+    "name": "default",
+    "width": null
+  }
+}

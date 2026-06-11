@@ -286,6 +286,58 @@ V4L2 支持矩阵：
 暗轮廓，说明更符合物理暗场、镜头盖/保护膜/遮挡、摄像头朝向纯暗面或补光不足；
 如果 DV20 是采集卡，还必须现场确认输入源已接入且源端不是黑屏。
 
+## 2026-06-11 20:05 Camera Visible Content Gate Refresh
+
+`sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/` 在真实上位机
+`root@192.168.1.11:37878` 和 Robot API `http://192.168.1.11:8787` 上复核当前
+camera gate。本轮是 camera-only：没有调用 `/api/base/manual`，没有发布 `/cmd_vel`，
+没有执行 Nav2/NavigateToPose，没有打开底盘 `/dev/ttyS5`。
+
+本轮硬件/vendor 事实入口仍是 `docs/vendor/VENDOR_INDEX.md`，并采用
+`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`、
+`docs/vendor/waveshare_wave_rover/ugv_rpi/cv_ctrl.py` 和
+`docs/vendor/waveshare_wave_rover/ugv_rpi/tutorial_cn/12/flask_camera.py` 作为
+Waveshare 上位机 USB/OpenCV/图传参考；Orange Pi 实板设备事实以本轮
+`v4l2-ctl` 与 OpenCV 读回为准。
+
+当前 readback：
+
+- `/api/camera/health`：`status=ready`，`active_peer_count=0`。
+- `/api/camera/devices`：`/dev/video0`、`/dev/video1`、`/dev/video2` 均存在；
+  `USB Composite Device: DV20 USB` 仍对应 `/dev/video1`/`/dev/video2`。
+- `/dev/video1`：`uvcvideo`，具备 `Video Capture`，支持 `MJPG` 与 `YUYV`
+  已知档位。
+- `trashbot-upper-robot-api.service` 与 `trashbot-local-webrtc-camera.service`
+  均为 `active`。
+
+OpenCV direct 三档短超时 probe：
+
+| 样本 | open_ok | read_ok | first_frame_timeout | 结论 |
+| --- | --- | --- | --- | --- |
+| `default` | true | false | true | 无 frame，不能证明可见内容 |
+| `mjpg_640x480` | true | false | true | 无 frame，不能证明可见内容 |
+| `yuyv_640x480` | true | false | true | 无 frame，不能证明可见内容 |
+
+本轮布尔结论：
+
+- `camera_device_opened=true`
+- `camera_frame_read_ok=false`
+- `visible_content_proven=false`
+- `probable_failure_class=first_frame_timeout`
+
+由于 direct frame 不可用，PC/WebRTC 实时图传未复核；继续跑 offer self-test 只能证明
+服务/信令，不会证明可见内容。最终 cleanup 显示 `active_peer_count=0`，且
+`/dev/video0`、`/dev/video1`、`/dev/video2`、`/dev/ttyS5` 均无 `lsof/fuser`
+占用输出。
+
+operator report 已更新为本轮失败材料：
+`camera_artifacts_ref=sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/artifacts/remote_capture/opencv_short_timeout_probe_files`，
+`site_state=camera_direct_first_frame_timeout`，`visible_content_proven=false`，
+`safe_to_control=false`，`primary_actions_enabled=false`。
+
+下一步不再扩大软件矩阵；现场必须确认 DV20 输入源、镜头盖/保护膜/遮挡、朝向、
+补光、USB 线缆/接口，并用 known-good UVC camera 替换复核。
+
 ## 2026-06-11 PC Radar Cold Start Refresh Stabilization
 
 `sprints/2026.06.11_10-50_pc_radar_cold_start_refresh_stabilization/`
