@@ -1,0 +1,122 @@
+{
+  "schema": "trashbot.hardware.manual_motion_gate_decision.v1",
+  "run_id": "2026.06.11_14-20_camera_motion_gate_current_readback",
+  "generated_at_local": "2026-06-11T14:20:00+08:00",
+  "target": {
+    "api_base_url": "http://192.168.1.11:8787",
+    "ssh": "root@192.168.1.11:37878"
+  },
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h"
+  ],
+  "vendor_facts_used": {
+    "uart_framing": "one UTF-8 JSON object per line ending with newline",
+    "vendor_raspberry_pi_default": "/dev/ttyAMA0 @ 115200",
+    "orange_pi_rule": "do not extrapolate Raspberry Pi UART path to Orange Pi; use target readback",
+    "key_commands": [
+      "T=1 speed",
+      "T=13 ROS ctrl",
+      "T=130 base feedback request",
+      "T=131 feedback flow"
+    ]
+  },
+  "prohibited_actions_respected": {
+    "wave_rover_uart_write": "only API /api/base/status issued non-motion T=130 readback; no direct UART write by this run",
+    "api_base_manual_non_stop": false,
+    "cmd_vel_published": false,
+    "nav2_executed": false,
+    "nonzero_motion_executed": false
+  },
+  "camera": {
+    "health_status": "ready",
+    "api_selected_source": "/dev/video1",
+    "devices": [
+      {
+        "path": "/dev/video0",
+        "exists": true,
+        "readable": true,
+        "writable": true
+      },
+      {
+        "path": "/dev/video1",
+        "exists": true,
+        "readable": true,
+        "writable": true
+      },
+      {
+        "path": "/dev/video2",
+        "exists": true,
+        "readable": true,
+        "writable": true
+      }
+    ],
+    "v4l2_list_devices_stdout": "cedrus (platform:cedrus):\n\t/dev/video0\n\t/dev/media0\n\nUSB Composite Device: DV20 USB  (usb-5310000.usb-1):\n\t/dev/video1\n\t/dev/video2\n\t/dev/media1",
+    "current_frame_stats": {
+      "device": "/dev/video1",
+      "opened": true,
+      "frames_read": 12,
+      "read_failures": 0,
+      "frame_shape": [
+        480,
+        640,
+        3
+      ],
+      "gray_mean": 0.0010677083333333333,
+      "gray_std": 0.0326583577702288,
+      "gray_min": 0,
+      "gray_max": 1,
+      "near_black_ratio_lt8": 1.0,
+      "non_black_ratio_ge16": 0.0,
+      "laplacian_variance": 0.007330647108289927,
+      "heuristic_visible_content": false,
+      "heuristic_near_black": true
+    },
+    "sample_image_artifact": "artifacts/camera/video1_sample.jpg",
+    "visible_content_proven": false,
+    "near_black_currently": true
+  },
+  "base": {
+    "port": "/dev/ttyS5",
+    "baudrate": 115200,
+    "t1001_observed_by_non_motion_t130_status": true,
+    "latest_samples_all_t1001": true,
+    "base_status_safe_to_control": false,
+    "base_status_sends_motion_commands": false,
+    "base_status_robot_control_executed": false,
+    "base_status_primary_actions_enabled": false
+  },
+  "radar": {
+    "scan_status": "fresh_scan_proof_observed",
+    "fresh_scan_proof_observed": true,
+    "continuous_scan_status": "not_proven",
+    "safe_to_control": false,
+    "sends_motion_commands": false,
+    "calls_base_manual": false,
+    "publishes_cmd_vel": false,
+    "primary_actions_enabled": false
+  },
+  "operator_report": {
+    "safe_to_control": false,
+    "primary_actions_enabled": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "robot_control_executed": false,
+    "structured_visible_content_proven": false,
+    "structured_wheel_feedback_lr_nonzero_proven": false,
+    "structured_physical_motion_lidar_delta_proven": false
+  },
+  "gate_decision": {
+    "manual_motion_gate_allowed": false,
+    "nonzero_motion_allowed": false,
+    "reason": "current /dev/video1 frame is still near-black and safety/HIL fields remain false; only stop/read-only confirmation is allowed",
+    "required_before_motion_sprint": [
+      "visible camera content proof or explicit camera-not-required acceptance",
+      "fresh HIL preflight with operator present and clearance",
+      "motion sprint owner approval; this run intentionally did not execute nonzero motion"
+    ]
+  }
+}

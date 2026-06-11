@@ -1,0 +1,136 @@
+{
+  "schema": "trashbot.pc_workstation.camera_plain_ui_current_smoke.v1",
+  "checked_at": "2026-06-11T06:25:37.391Z",
+  "local_workstation_url": "http://127.0.0.1:5173/",
+  "source_robot_api_base_url": "http://192.168.1.11:8787",
+  "allowed_actions_executed": [
+    "connect_refresh",
+    "open_camera_preview",
+    "close_camera_preview",
+    "dom_read"
+  ],
+  "forbidden_actions_not_executed": [
+    "/api/base/manual",
+    "/cmd_vel",
+    "Nav2 start",
+    "nonzero motion",
+    "WAVE ROVER UART"
+  ],
+  "video_stream_boundary": "This evidence shows the PC video element and 640x480 frame transport were active. It does not prove visible scene content; same-round hardware/OpenCV evidence still reports /dev/video1 near-black.",
+  "first_screen_contract": {
+    "combined_forbidden_hits": [],
+    "combined_text_excerpt": "RoberRober 小车控制台刷新 小车控制Rober 小车控制台普通用户入口：连接、看画面、看雷达和地图，需要时只点停止。 小车地址连接/刷新有异常小车连接有异常可读到部分信息，但有字段被阻断或失败。连接/刷新实时画面打开画面关闭画面未打开还没有打开实时画面。雷达 刷新雷达 未刷新还没有刷新。地图 刷新地图 地图列表 未刷新未读取还没有刷新。还没有读取地图列表。移动/导航待命停止需要时可直接停止。",
+    "simple_card_titles": [
+      "小车连接",
+      "实时画面",
+      "雷达",
+      "地图",
+      "移动/导航"
+    ],
+    "simple_forbidden_hits": [],
+    "simple_text_excerpt": "小车地址连接/刷新有异常小车连接有异常可读到部分信息，但有字段被阻断或失败。连接/刷新实时画面打开画面关闭画面未打开还没有打开实时画面。雷达 刷新雷达 未刷新还没有刷新。地图 刷新地图 地图列表 未刷新未读取还没有刷新。还没有读取地图列表。移动/导航待命停止需要时可直接停止。",
+    "simple_user_console_present": true,
+    "title_in_combined_first_screen": true,
+    "title_inside_simple_user_console": false
+  },
+  "first_screen_contract_note": "The visible title is in the robot-console section head/topbar; five cards live inside .simple-user-console, matching App.test.ts visiblePlainHomeText().",
+  "video_canvas_stats_before_cleanup": {
+    "canvases": [],
+    "label": "before_cleanup_retry",
+    "observed_at": "2026-06-11T06:25:33.376Z",
+    "simple_user_console": {
+      "forbidden_visible_hits": [],
+      "headings": [
+        "小车连接",
+        "实时画面",
+        "雷达",
+        "地图",
+        "移动/导航"
+      ],
+      "present": true,
+      "text_excerpt": "小车地址连接/刷新有异常小车连接有异常可读到部分信息，但有字段被阻断或失败。连接/刷新实时画面打开画面关闭画面已打开画面已打开。雷达 刷新雷达 未刷新还没有刷新。地图 刷新地图 地图列表 未刷新未读取还没有刷新。还没有读取地图列表。移动/导航待命停止需要时可直接停止。",
+      "title_present": false,
+      "visible": true
+    },
+    "url": "http://127.0.0.1:5173/",
+    "video": {
+      "bounding_box": {
+        "height": 480,
+        "width": 640,
+        "x": 362,
+        "y": 375
+      },
+      "currentTime": 376.085,
+      "muted": true,
+      "paused": false,
+      "present": true,
+      "quality": null,
+      "readyState": 4,
+      "srcObjectPresent": false,
+      "videoHeight": 480,
+      "videoWidth": 640,
+      "visible": true
+    }
+  },
+  "cleanup_attempt": {
+    "close_button_count": 1,
+    "close_button_enabled": true,
+    "clicked": true,
+    "error": ""
+  },
+  "cleanup_stats": {
+    "canvases": [],
+    "label": "after_close_cleanup_retry",
+    "observed_at": "2026-06-11T06:25:37.310Z",
+    "simple_user_console": {
+      "forbidden_visible_hits": [],
+      "headings": [
+        "小车连接",
+        "实时画面",
+        "雷达",
+        "地图",
+        "移动/导航"
+      ],
+      "present": true,
+      "text_excerpt": "小车地址连接/刷新有异常小车连接有异常可读到部分信息，但有字段被阻断或失败。连接/刷新实时画面打开画面关闭画面未打开还没有打开实时画面。雷达 刷新雷达 未刷新还没有刷新。地图 刷新地图 地图列表 未刷新未读取还没有刷新。还没有读取地图列表。移动/导航待命停止需要时可直接停止。",
+      "title_present": false,
+      "visible": true
+    },
+    "url": "http://127.0.0.1:5173/",
+    "video": {
+      "bounding_box": {
+        "height": 150,
+        "width": 300,
+        "x": 362,
+        "y": 375
+      },
+      "currentTime": 0,
+      "muted": true,
+      "paused": true,
+      "present": true,
+      "quality": null,
+      "readyState": 0,
+      "srcObjectPresent": false,
+      "videoHeight": 0,
+      "videoWidth": 0,
+      "visible": true
+    }
+  },
+  "advanced_camera_diagnostics": {
+    "camera_devices": "camera_devicesloaded雷达详情 启动雷达（高级） 停止雷达（高级） pendingidlelast result statusnot_loadedfailure reasonnonelatest readback key valuesnonenon-motion evidence actionsnonehard dangerous true",
+    "camera_health": "camera_healthreadycamera_devicesloaded雷达详情 启动雷达（高级） 停止雷达（高级） pendingidlelast result statusnot_loadedfailure reasonnonelatest readback key valuesnonenon-motion evidence actionsnoneh",
+    "cleanup_status": "cleanup_statuspeer_closed:closedcamera_healthreadycamera_devicesloaded雷达详情 启动雷达（高级） 停止雷达（高级） pendingidlelast result statusnot_loadedfailure reasonnonelatest readback key valuesnone",
+    "ice_connection_state": "ice_connection_stateclosedvideo_track_statestoppedvideo_element_src_objectfalsevideo_element_ready_state0video_element_size0x0video_element_presented_frames0video_element_frame_sta",
+    "peer_id": "peer_idnot_assignedpeer base URLnot_assignedice_connection_stateclosedvideo_track_statestoppedvideo_element_src_objectfalsevideo_element_ready_state0video_element_size0x0video_elem",
+    "preview_status": "preview_statusstopped_by_userfailure_reasonnonepeer_idnot_assignedpeer base URLnot_assignedice_connection_stateclosedvideo_track_statestoppedvideo_element_src_objectfalsevideo_elem",
+    "video_element_ready_state": "video_element_ready_state0video_element_size0x0video_element_presented_frames0video_element_frame_statusnot_boundlast_offer_at2026-06-11T06:19:15.460Zlast_stop_at2026-06-11T06:25:3",
+    "video_element_size": "video_element_size0x0video_element_presented_frames0video_element_frame_statusnot_boundlast_offer_at2026-06-11T06:19:15.460Zlast_stop_at2026-06-11T06:25:33.639Zcleanup_statuspeer_c",
+    "video_element_src_object": "video_element_src_objectfalsevideo_element_ready_state0video_element_size0x0video_element_presented_frames0video_element_frame_statusnot_boundlast_offer_at2026-06-11T06:19:15.460Zl",
+    "video_track_state": "video_track_statestoppedvideo_element_src_objectfalsevideo_element_ready_state0video_element_size0x0video_element_presented_frames0video_element_frame_statusnot_boundlast_offer_at2"
+  },
+  "screenshot_pixel_stats": {
+    "status": "not_captured",
+    "failure_reason": "browser_captureScreenshot_timeout_during_video_clip",
+    "impact": "DOM/video element stats only show the video element and 640x480 frame transport were active; they do not prove visible scene content. Pixel luma stats were unavailable in this runtime."
+  }
+}

@@ -23,7 +23,7 @@ pc-tools/workstation/
 
 所有真实控制入口默认 locked/disabled：`/api/base/manual`、`/cmd_vel`、Nav2 goal、map start、radar start、keyboard control、map click goal。V1 固定 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`，不发布 `/cmd_vel`，不调用 `/api/base/manual`。
 
-Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打开画面/关闭画面”和一句简单状态；`peer_id`、`ICE`、`SDP`、`cleanup` 和会话细节都收进 `<details>`。Vue 只通过 workstation Node 代理调用 `POST /api/robot-control/camera/offer?baseUrl=<robot-api-base-url>` 和 `POST /api/robot-control/camera/peers/:peerId/close?baseUrl=<robot-api-base-url>`；浏览器不直接访问上位机 `/api/camera/offer` 或 `/api/camera/peers/{peer_id}/close`。代理继承既有 `baseUrl` 安全围栏：仅允许 HTTP、loopback/RFC1918、拒绝 credentials/query/hash，且只暴露 camera offer/close 两个固定路径。当前上位机真实 contract 返回的是顶层 `type/sdp/peer_id` answer，workstation proxy 同时兼容这一路径和设计稿中的嵌套 `answer` 形态。页面默认 `preview_status=idle_not_started`，只在用户显式点击 `打开画面` 后创建 `RTCPeerConnection`、以 `recvonly video` 协商远端视频；发送 offer 前会等待 `iceGatheringState=complete` 或短超时，因为上位机当前按非 trickle SDP 处理，需要 offer 内包含 host candidates。收到远端 track 后优先绑定 `RTCTrackEvent.streams[0]` 到 `data-testid="robot-camera-preview-video"` 的 `<video>`，主动 `play()`，并在高级诊断暴露真实元素的 `srcObject`、`readyState`、尺寸和帧回调/播放质量采样。点击 `关闭画面`、切换 `baseUrl`、重复打开或组件卸载时，都会先清理旧 peer。若打开失败，最终 `preview_status` 保留 `start_failed`，不会被 cleanup 覆盖成 `stopped_by_user`。真实浏览器 smoke 必须证明 video 元素绑定和可见帧，不能只用 `streaming/live` 间接状态替代。即使图传成功，所有控制入口仍保持 disabled，`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false` 不变。
+Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打开画面/关闭画面”和一句简单状态；`peer_id`、`ICE`、`SDP`、`cleanup` 和会话细节都收进 `<details>`。Vue 只通过 workstation Node 代理调用 `POST /api/robot-control/camera/offer?baseUrl=<robot-api-base-url>` 和 `POST /api/robot-control/camera/peers/:peerId/close?baseUrl=<robot-api-base-url>`；浏览器不直接访问上位机 `/api/camera/offer` 或 `/api/camera/peers/{peer_id}/close`。代理继承既有 `baseUrl` 安全围栏：仅允许 HTTP、loopback/RFC1918、拒绝 credentials/query/hash，且只暴露 camera offer/close 两个固定路径。当前上位机真实 contract 返回的是顶层 `type/sdp/peer_id` answer，workstation proxy 同时兼容这一路径和设计稿中的嵌套 `answer` 形态。页面默认 `preview_status=idle_not_started`，只在用户显式点击 `打开画面` 后创建 `RTCPeerConnection`、以 `recvonly video` 协商远端视频；发送 offer 前会等待 `iceGatheringState=complete` 或短超时，因为上位机当前按非 trickle SDP 处理，需要 offer 内包含 host candidates。收到远端 track 后优先绑定 `RTCTrackEvent.streams[0]` 到 `data-testid="robot-camera-preview-video"` 的 `<video>`，主动 `play()`，并在高级诊断暴露真实元素的 `srcObject`、`readyState`、尺寸和帧回调/播放质量采样。点击 `关闭画面`、切换 `baseUrl`、重复打开或组件卸载时，都会先清理旧 peer。若打开失败，最终 `preview_status` 保留 `start_failed`，不会被 cleanup 覆盖成 `stopped_by_user`。真实浏览器 smoke 必须证明 video 元素绑定和帧流到达，不能只用 `streaming/live` 间接状态替代；画面内容是否可见必须依赖像素/luma 或现场 artifact，不能由元素尺寸单独推出。即使图传链路活跃，所有控制入口仍保持 disabled，`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false` 不变。
 
 Robot Control 也已经接入 Radar/Map proof refresh V2。Vue 通过 workstation Node 固定 POST 代理调用 `POST /api/robot-control/radar/scan-proof/refresh?baseUrl=<robot-api-base-url>` 和 `POST /api/robot-control/map/proof/refresh?baseUrl=<robot-api-base-url>`，上位机 body 分别固定为 `{ timeout_s: 20, runtime_warmup_s: 15, start_runtime: true }` 与 `{ timeout_s: 45 }`。Radar body 使用更长的真实冷启动 no-motion 证据窗口，给 LiDAR driver、raw packet、scan hz 和 TF 同时稳定的时间；这不开放浏览器自定义参数，也不改变 vendor/hardware facts。这两个动作只刷新 no-motion 证据窗，允许出现 `sends_commands=true`、`starts_ros2=true` 这类证据级 helper 行为，但首屏只显示“刷新雷达/刷新地图”、一个短状态和 `scan/tf` 或 `map/evidence` 的人话摘要；`latest_readback_key_values`、`non_motion_evidence_actions`、`hard_dangerous_true_fields`、`last refreshed time` 和 blocked reasons 都收进高级诊断区。它仍然不会打开 `/cmd_vel`、`/api/base/manual`、Radar start、Map start、Nav2 goal、keyboard control 或 map click goal；动作结束后会自动回刷 Robot Control summary。只有 `safe_to_control=true`、`delivery_success=true`、`primary_actions_enabled=true`、`robot_control_executed=true`、`command_dispatch_enabled=true`、`manual_control_enabled=true`、`navigate_goal_enabled=true`、`keyboard_control_enabled=true`、`sends_motion_commands=true`、`publishes_cmd_vel=true`、`calls_base_manual=true`、`opens_base_uart=true`、`uses_base_uart=true`、`hil_pass=true` 等硬危险 true 字段才会 fail closed。
 
@@ -242,3 +242,43 @@ Artifacts：
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/pc_proxy/localize_reset_smoke_corrected_summary.json`
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/dom_smoke/pc_plain_user_home_dom_smoke.json`
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_summary.json`
+
+## 2026-06-11 PC Camera Link Plain UI Current Smoke
+
+`sprints/2026.06.11_14-20_pc_camera_plain_ui_current_smoke/` 使用本机
+workstation UI `http://127.0.0.1:5173/` 和本机 API `http://127.0.0.1:8787`，
+通过固定 PC 代理连接真实上位机 `http://192.168.1.11:8787`，只执行连接/刷新、
+打开实时画面、关闭实时画面和 DOM/video stats 读取。
+
+本轮没有改 PC 产品代码或样式。图传打开期间 DOM 统计只证明 video 元素与
+`640x480` 帧流活跃，不证明画面内容可见；同轮硬件/OpenCV 证据仍显示
+`/dev/video1` near-black。PC 侧统计如下：
+
+- `video.present=true`
+- `video.visible=true`
+- `video.videoWidth=640`
+- `video.videoHeight=480`
+- `video.readyState=4`
+- `video.paused=false`
+- `video.currentTime=376.085`
+- `canvases=[]`
+
+关闭后 cleanup 统计显示 `preview_status=stopped_by_user`、
+`ice_connection_state=closed`、`video_track_state=stopped`、
+`cleanup_status=peer_closed:closed`，video 回到 `readyState=0` 和 `0x0`。
+
+普通首屏边界仍保持：可见首屏组合包含 `Rober 小车控制台`，`.simple-user-console`
+内五卡片为 `小车连接 / 实时画面 / 雷达 / 地图 / 移动/导航`。默认可见文本未出现
+`HIL`、`proof`、`Nav2`、`/cmd_vel`、`/api/base/manual`、`定位重置`、`AMCL`、
+`task_id`、`Mock`、`检查路径`。当前 DOM 事实是标题位于 `robot-console`
+section head/topbar，五卡片位于 `.simple-user-console`；这与现有测试
+`visiblePlainHomeText()` 的组合首屏口径一致。
+
+安全边界保持：本轮未调用 `/api/base/manual`、未发布 `/cmd_vel`、未启动 Nav2、
+未发送非零运动、未访问 WAVE ROVER UART。浏览器截图裁剪在 video clip 阶段超时，
+因此本轮没有像素 luma 统计；证据边界是 video/canvas DOM stats、video intrinsic
+size、readyState/currentTime 和 cleanup diagnostics，只能说明图传链路/视频元素活跃。
+
+Artifacts：
+
+- `sprints/2026.06.11_14-20_pc_camera_plain_ui_current_smoke/artifacts/pc_camera_visible_video_stats.json`

@@ -1,0 +1,32 @@
+{
+  "backend": "cv2.CAP_V4L2",
+  "bgr_mean": [
+    3.405234375,
+    0.0,
+    0.0015690104166666667
+  ],
+  "bright_ratio_gt220": 0.0,
+  "device": "/dev/video1",
+  "frame_shape": [
+    480,
+    640,
+    3
+  ],
+  "frames_read": 12,
+  "gray_max": 1,
+  "gray_mean": 0.0010677083333333333,
+  "gray_min": 0,
+  "gray_std": 0.0326583577702288,
+  "heuristic_near_black": true,
+  "heuristic_visible_content": false,
+  "laplacian_variance": 0.007330647108289927,
+  "near_black_ratio_lt8": 1.0,
+  "non_black_ratio_ge16": 0.0,
+  "opened": true,
+  "read_failures": 0,
+  "sample_image_remote_path": "/tmp/rober_camera_gate_sample_video1.jpg",
+  "sample_image_written": true,
+  "schema": "trashbot.camera_frame_stats.v1",
+  "started_at_ms": 1781158653497,
+  "very_dark_ratio_lt16": 1.0
+}

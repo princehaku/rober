@@ -1,0 +1,13 @@
+{
+  "device": "/dev/video1",
+  "frame_shape": [
+    480,
+    640,
+    3
+  ],
+  "opened": true,
+  "sample_image_remote_path": "/tmp/rober_camera_gate_sample_video1.jpg",
+  "sample_image_written": true,
+  "schema": "trashbot.camera_sample_image_capture.v1",
+  "started_at_ms": 1781158700302
+}

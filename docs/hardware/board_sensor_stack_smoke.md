@@ -167,6 +167,53 @@ runtime lifecycle 与 scan proof refresh 的关系：
 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`
 保持不变。
 
+## 2026-06-11 14:20 Camera Motion Gate Current Readback
+
+`sprints/2026.06.11_14-20_camera_motion_gate_current_readback/` 通过真实上位机
+`root@192.168.1.11:37878` 与 `http://192.168.1.11:8787` 复核当前相机内容和
+motion gate。硬件事实仍以 `docs/vendor/VENDOR_INDEX.md` 为入口，并采用
+`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`、
+`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`、
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h` 和
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`：
+WAVE ROVER 底盘 UART 是 newline-delimited UTF-8 JSON；vendor Raspberry Pi
+默认 `/dev/ttyAMA0 @ 115200` 不能外推到 Orange Pi；底盘关键命令边界为
+`T=1/T=13/T=130/T=131`。
+
+本轮禁止并实际未执行 `/cmd_vel`、Nav2、`/api/base/manual` 非 stop、
+`T=1/T=13/T=131` 或任何非零运动。`/api/base/status` 仅触发 API 侧的非运动
+`T=130` feedback readback，用于确认 `T=1001` 反馈材料存在。
+
+当前相机结论：
+
+- `v4l2-ctl --list-devices --all` 与 `/api/camera/devices` 均显示
+  `USB Composite Device: DV20 USB` 对应 `/dev/video1` 和 `/dev/video2`。
+- `/api/camera/health` 显示服务 `status=ready`，最近实际选择 `/dev/video1`。
+- OpenCV 直接读取 `/dev/video1` 成功，12/12 帧可读，分辨率 `640x480`。
+- 画面内容仍不可见：`gray_mean=0.0011`、`gray_max=1`、
+  `near_black_ratio_lt8=1.0`、`non_black_ratio_ge16=0.0`，
+  `heuristic_visible_content=false`。
+
+当前 motion gate 结论：
+
+- `/api/operator/report`、`/api/base/status`、`/api/radar/status` 均保持
+  `safe_to_control=false`、`primary_actions_enabled=false`。
+- `/api/operator/report` 明确 `hil_pass=false`、`delivery_success=false`、
+  `visible_content_proven=false`、
+  `wheel_feedback_lr_nonzero_proven=false`、
+  `physical_motion_lidar_delta_proven=false`。
+- 本轮 `manual_motion_gate_decision.json` 判定
+  `manual_motion_gate_allowed=false`、`nonzero_motion_allowed=false`。
+
+清场结果显示无本轮采样进程残留，且 `/dev/video0`、`/dev/video1`、
+`/dev/video2`、`/dev/ttyS5`、`/dev/ttyACM0` 无 `lsof/fuser` 占用输出。
+关键 artifact：
+
+- `sprints/2026.06.11_14-20_camera_motion_gate_current_readback/artifacts/manual_motion_gate_decision.json`
+- `sprints/2026.06.11_14-20_camera_motion_gate_current_readback/artifacts/camera/video1_frame_stats.json`
+- `sprints/2026.06.11_14-20_camera_motion_gate_current_readback/artifacts/camera/video1_sample.jpg`
+- `sprints/2026.06.11_14-20_camera_motion_gate_current_readback/artifacts/cleanup/remote_device_process_cleanup_final.log`
+
 ## 2026-06-11 PC Radar Cold Start Refresh Stabilization
 
 `sprints/2026.06.11_10-50_pc_radar_cold_start_refresh_stabilization/`
