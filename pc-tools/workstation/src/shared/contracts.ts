@@ -2200,6 +2200,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       status: string;
       latest_feedback_status: string;
       feedback_ack_status: string;
+      latest_t1001_observed_count: string;
+      feedback_link_status: string;
     };
   };
   operator_hil_material_summary: RobotControlOperatorHilMaterialSummary;

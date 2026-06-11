@@ -3738,6 +3738,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("status.base.feedback_readback.sends_commands");
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.feedback_readback.sends_commands");
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_feedback_samples_latest.latest_result.sends_commands");
+      expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("3");
+      expect(summary.readback_summary.base.feedback_ack_status).toBe("t1001_observed");
+      expect(summary.readback_summary.base.feedback_link_status).toBe("t1001_observed_not_motion_proof");
     } finally {
       await robotApi.close();
     }
@@ -4174,6 +4177,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.lidar.continuous_window_observed).toBe("true");
       expect(summary.readback_summary.lidar.continuity_window_status).toBe("fresh_window_observed");
       expect(summary.readback_summary.lidar.latest_scan_proof_fresh).toBe("true");
+      expect(summary.readback_summary.base.feedback_link_status).toBe("not_observed");
       expect(summary.o3_proof_summary.path_generated).toBe(true);
     } finally {
       await robotApi.close();

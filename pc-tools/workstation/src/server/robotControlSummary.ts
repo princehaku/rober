@@ -49,17 +49,17 @@ type RobotReadEndpointConfig = {
 const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
   // 真实上位机 /api/status 会顺带聚合 camera/radar/base 子摘要，读取窗口要比 proof latest 更宽。
   { id: "status", endpoint: "/api/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
-  { id: "map_proof_latest", endpoint: "/api/map/proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
-  { id: "localize_proof_latest", endpoint: "/api/localize/proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
-  { id: "nav2_status", endpoint: "/api/nav2/status", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
-  { id: "nav2_proof_latest", endpoint: "/api/nav2/proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
-  { id: "operator_report_latest", endpoint: "/api/operator/report", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  { id: "map_proof_latest", endpoint: "/api/map/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "localize_proof_latest", endpoint: "/api/localize/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "nav2_status", endpoint: "/api/nav2/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "nav2_proof_latest", endpoint: "/api/nav2/proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "operator_report_latest", endpoint: "/api/operator/report", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   // camera 端点在真实板端会探测设备与健康摘要，允许更长只读窗口，避免误判成离线。
   { id: "camera_health", endpoint: "/api/camera/health", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "camera_devices", endpoint: "/api/camera/devices", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
-  { id: "radar_status", endpoint: "/api/radar/status", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
-  { id: "radar_scan_proof_latest", endpoint: "/api/radar/scan-proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
-  { id: "radar_raw_packet_proof_latest", endpoint: "/api/radar/raw-packet-proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  { id: "radar_status", endpoint: "/api/radar/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "radar_scan_proof_latest", endpoint: "/api/radar/scan-proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "radar_raw_packet_proof_latest", endpoint: "/api/radar/raw-packet-proof/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   // base status 可能触发 T=130 只读反馈窗口；用较宽读取预算，但危险字段扫描仍保持 fail-closed。
   { id: "base_status", endpoint: "/api/base/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
   { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
@@ -361,6 +361,7 @@ const STATUS_KEYS = [
   "latest_proof_status",
   "feedback_ack_status",
   "latest_t1001_observed_count",
+  "t1001_observed_count",
   "latest_scan_once_observed",
   "continuous_scan_status",
   "continuous_window_observed",
@@ -2192,7 +2193,13 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         continuity_window_status: "not_loaded",
         latest_scan_proof_fresh: "not_loaded",
       },
-      base: { status: "not_loaded", latest_feedback_status: "not_loaded", feedback_ack_status: "not_loaded" },
+      base: {
+        status: "not_loaded",
+        latest_feedback_status: "not_loaded",
+        feedback_ack_status: "not_loaded",
+        latest_t1001_observed_count: "not_loaded",
+        feedback_link_status: "not_observed",
+      },
     },
     operator_hil_material_summary: notLoadedHilMaterialSummary("not_loaded"),
     safe_command_boundary: lockedBoundary(),
@@ -2229,6 +2236,23 @@ function lockedBoundary(): RobotControlSummaryResponse["safe_command_boundary"] 
     navigate_goal_enabled: false,
     keyboard_control_enabled: false,
     robot_control_executed: false,
+  };
+}
+
+function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[]): RobotControlSummaryResponse["readback_summary"]["base"] {
+  // T=1001 只说明 WAVE ROVER feedback 链路有回包，不代表轮速非零、真实运动或 HIL pass。
+  const baseStatus = pickReadback(readbacks, "base_status");
+  const feedbackLatest = pickReadback(readbacks, "base_feedback_samples_latest");
+  const statusT1001 = baseStatus?.key_values.latest_t1001_observed_count;
+  const latestT1001 = feedbackLatest?.key_values.latest_t1001_observed_count ?? feedbackLatest?.key_values.t1001_observed_count;
+  const observedCount = statusT1001 ?? latestT1001 ?? "not_loaded";
+  const ackStatus = baseStatus?.key_values.feedback_ack_status ?? (Number(observedCount) > 0 ? "t1001_observed" : "not_loaded");
+  return {
+    status: baseStatus?.status ?? "not_loaded",
+    latest_feedback_status: feedbackLatest?.status ?? "not_loaded",
+    feedback_ack_status: ackStatus,
+    latest_t1001_observed_count: observedCount,
+    feedback_link_status: Number(observedCount) > 0 ? "t1001_observed_not_motion_proof" : "not_observed",
   };
 }
 
@@ -2296,11 +2320,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
     readback_summary: {
       camera: cameraSummaryFromReadbacks(readbacks),
       lidar: lidarSummaryFromReadbacks(readbacks),
-      base: {
-        status: pickReadback(readbacks, "base_status")?.status ?? "not_loaded",
-        latest_feedback_status: pickReadback(readbacks, "base_feedback_samples_latest")?.status ?? "not_loaded",
-        feedback_ack_status: pickReadback(readbacks, "base_status")?.key_values.feedback_ack_status ?? "not_loaded",
-      },
+      base: baseSummaryFromReadbacks(readbacks),
     },
     operator_hil_material_summary: buildOperatorHilMaterialSummary(readbacks),
     safe_command_boundary: lockedBoundary(),

@@ -2438,7 +2438,9 @@ onBeforeUnmount(() => {
               lifecycle={{ robotSummary?.readback_summary.lidar.lifecycle_running ?? "not_loaded" }}/{{ robotSummary?.readback_summary.lidar.lifecycle_state ?? "not_loaded" }},
               window={{ robotSummary?.readback_summary.lidar.continuous_window_observed ?? "not_loaded" }}/{{ robotSummary?.readback_summary.lidar.continuity_window_status ?? "not_loaded" }},
               /api/base/status={{ robotSummary?.readback_summary.base.status ?? "not_loaded" }},
-              readback={{ robotSummary?.readback_summary.base.latest_feedback_status ?? "not_loaded" }}
+              readback={{ robotSummary?.readback_summary.base.latest_feedback_status ?? "not_loaded" }},
+              t1001={{ robotSummary?.readback_summary.base.latest_t1001_observed_count ?? "not_loaded" }},
+              link={{ robotSummary?.readback_summary.base.feedback_link_status ?? "not_observed" }}
             </dd>
             <dt>unsafe starts</dt>
             <dd>radar start=false; map start=false; base manual=false</dd>
