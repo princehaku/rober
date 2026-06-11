@@ -25,6 +25,18 @@ pc-tools/workstation/
 
 Robot Control 现在还包含 `Camera Preview` 卡片，但首屏只显示“打开画面/关闭画面”和一句简单状态；`peer_id`、`ICE`、`SDP`、`cleanup` 和会话细节都收进 `<details>`。Vue 只通过 workstation Node 代理调用 `POST /api/robot-control/camera/offer?baseUrl=<robot-api-base-url>` 和 `POST /api/robot-control/camera/peers/:peerId/close?baseUrl=<robot-api-base-url>`；浏览器不直接访问上位机 `/api/camera/offer` 或 `/api/camera/peers/{peer_id}/close`。代理继承既有 `baseUrl` 安全围栏：仅允许 HTTP、loopback/RFC1918、拒绝 credentials/query/hash，且只暴露 camera offer/close 两个固定路径。当前上位机真实 contract 返回的是顶层 `type/sdp/peer_id` answer，workstation proxy 同时兼容这一路径和设计稿中的嵌套 `answer` 形态。页面默认 `preview_status=idle_not_started`，只在用户显式点击 `打开画面` 后创建 `RTCPeerConnection`、以 `recvonly video` 协商远端视频；发送 offer 前会等待 `iceGatheringState=complete` 或短超时，因为上位机当前按非 trickle SDP 处理，需要 offer 内包含 host candidates。收到远端 track 后优先绑定 `RTCTrackEvent.streams[0]` 到 `data-testid="robot-camera-preview-video"` 的 `<video>`，主动 `play()`，并在高级诊断暴露真实元素的 `srcObject`、`readyState`、尺寸和帧回调/播放质量采样。点击 `关闭画面`、切换 `baseUrl`、重复打开或组件卸载时，都会先清理旧 peer。若打开失败，最终 `preview_status` 保留 `start_failed`，不会被 cleanup 覆盖成 `stopped_by_user`。真实浏览器 smoke 必须证明 video 元素绑定和帧流到达，不能只用 `streaming/live` 间接状态替代；画面内容是否可见必须依赖像素/luma 或现场 artifact，不能由元素尺寸单独推出。即使图传链路活跃，所有控制入口仍保持 disabled，`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false` 不变。
 
+2026-06-11 15:15 起，Robot Control 继续保持普通用户简易首屏不变，但上位机
+`GET /api/radar/status` 的只读合同更精确了：除了既有 latest scan proof 状态，还会额外
+只读 `o1_lidar_lifecycle.sh status`，输出 `lifecycle_status`、
+`lifecycle_running`、`lifecycle_state`、`lifecycle_pid`、
+`continuous_window_observed`、`continuity_window_status`、
+`continuity_blocked_reasons`。当 lifecycle 正在运行且 latest proof 四项观测齐全、
+artifact freshness 为 `fresh` 时，`continuous_scan_status` 会返回
+`latest_proof_fresh_while_lifecycle_running`，说明“当前连续窗口已观察到 lifecycle
+running + fresh proof”，避免 UI 再误报“雷达根本没跑起来”。这仍然只是只读雷达证据，
+不是运动许可；`safe_to_control=false`、`primary_actions_enabled=false`、
+`robot_control_executed=false`、`delivery_success=false` 保持不变。
+
 Robot Control 也已经接入 Radar/Map proof refresh V2。Vue 通过 workstation Node 固定 POST 代理调用 `POST /api/robot-control/radar/scan-proof/refresh?baseUrl=<robot-api-base-url>` 和 `POST /api/robot-control/map/proof/refresh?baseUrl=<robot-api-base-url>`，上位机 body 分别固定为 `{ timeout_s: 20, runtime_warmup_s: 15, start_runtime: true }` 与 `{ timeout_s: 45 }`。Radar body 使用更长的真实冷启动 no-motion 证据窗口，给 LiDAR driver、raw packet、scan hz 和 TF 同时稳定的时间；这不开放浏览器自定义参数，也不改变 vendor/hardware facts。这两个动作只刷新 no-motion 证据窗，允许出现 `sends_commands=true`、`starts_ros2=true` 这类证据级 helper 行为，但首屏只显示“刷新雷达/刷新地图”、一个短状态和 `scan/tf` 或 `map/evidence` 的人话摘要；`latest_readback_key_values`、`non_motion_evidence_actions`、`hard_dangerous_true_fields`、`last refreshed time` 和 blocked reasons 都收进高级诊断区。它仍然不会打开 `/cmd_vel`、`/api/base/manual`、Radar start、Map start、Nav2 goal、keyboard control 或 map click goal；动作结束后会自动回刷 Robot Control summary。只有 `safe_to_control=true`、`delivery_success=true`、`primary_actions_enabled=true`、`robot_control_executed=true`、`command_dispatch_enabled=true`、`manual_control_enabled=true`、`navigate_goal_enabled=true`、`keyboard_control_enabled=true`、`sends_motion_commands=true`、`publishes_cmd_vel=true`、`calls_base_manual=true`、`opens_base_uart=true`、`uses_base_uart=true`、`hil_pass=true` 等硬危险 true 字段才会 fail closed。
 
 2026-06-11 12:45 clean-baseline refresh 继续只通过本机 PC proxy `http://127.0.0.1:18788`

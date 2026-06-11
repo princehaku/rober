@@ -618,6 +618,145 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("o1-lidar-scan-proof-2026-06-11T05-06-46-418393Z", latest["evidence_ref"])
         self.assertEqual(latest["evidence_ref"], latest["latest_evidence_ref"])
 
+    def test_radar_status_reports_lifecycle_running_with_fresh_latest_proof(self) -> None:
+        """lifecycle running 且 latest proof 新鲜时，status 必须明确表达当前连续窗口已观察到。"""
+        artifact = {
+            "schema": "trashbot.o1.lidar_scan_proof.v1",
+            "generated_at_ms": 1781154494512,
+            "proof": {
+                "status": "scan_once_hz_raw_packet_tf_observed",
+                "scan_once_observed": True,
+                "scan_hz_observed": True,
+                "raw_packet_once_observed": True,
+                "tf_observed": True,
+                "all_required_observations_observed": True,
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "lidar_scan_proof_latest.json"
+            artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                lidar_scan_proof_artifact_path=str(artifact_path),
+            )
+
+            with mock.patch.object(
+                upper_robot_api,
+                "read_radar_lifecycle_status",
+                return_value={
+                    "status": "loaded",
+                    "running": True,
+                    "state": "running",
+                    "pid": 4321,
+                    "latest_result": {"running": True, "state": "running", "pid": 4321},
+                },
+            ):
+                status = api.radar_status()
+
+        self.assertEqual("latest_proof_fresh_while_lifecycle_running", status["continuous_scan_status"])
+        self.assertEqual("latest_proof_fresh_while_lifecycle_running", status["continuity_window_status"])
+        self.assertEqual("latest_proof_fresh_while_lifecycle_running", status["lifecycle_status"])
+        self.assertTrue(status["continuous_window_observed"])
+        self.assertTrue(status["lifecycle_running"])
+        self.assertEqual("running", status["lifecycle_state"])
+        self.assertEqual(4321, status["lifecycle_pid"])
+        self.assertEqual([], status["continuous_blocked_reasons"])
+        self.assertNotIn("scan_continuity_not_observed", status["blocked_reasons"])
+        self.assertFalse(status["safe_to_control"])
+        self.assertFalse(status["robot_control_executed"])
+
+    def test_radar_status_keeps_blocker_when_latest_proof_present_but_lifecycle_stopped(self) -> None:
+        """latest proof 仍在时，如果 lifecycle 已停，status 必须继续 fail-closed。"""
+        artifact = {
+            "schema": "trashbot.o1.lidar_scan_proof.v1",
+            "generated_at_ms": 1781154494512,
+            "proof": {
+                "status": "scan_once_hz_raw_packet_tf_observed",
+                "scan_once_observed": True,
+                "scan_hz_observed": True,
+                "raw_packet_once_observed": True,
+                "tf_observed": True,
+                "all_required_observations_observed": True,
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "lidar_scan_proof_latest.json"
+            artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                lidar_scan_proof_artifact_path=str(artifact_path),
+            )
+
+            with mock.patch.object(
+                upper_robot_api,
+                "read_radar_lifecycle_status",
+                return_value={
+                    "status": "loaded",
+                    "running": False,
+                    "state": "stopped",
+                    "pid": None,
+                    "latest_result": {"running": False, "state": "stopped", "pid": None},
+                },
+            ):
+                status = api.radar_status()
+
+        self.assertEqual("latest_proof_present_but_lifecycle_not_running", status["continuous_scan_status"])
+        self.assertFalse(status["continuous_window_observed"])
+        self.assertIn("lidar_lifecycle_not_running", status["continuous_blocked_reasons"])
+        self.assertIn("lidar_lifecycle_not_running", status["blocked_reasons"])
+        self.assertFalse(status["safe_to_control"])
+
+    def test_radar_status_fail_closed_when_lifecycle_status_readback_fails(self) -> None:
+        """脚本缺失或坏 JSON 时，status 只能报告 readback 失败，不能伪造 continuity 成功。"""
+        artifact = {
+            "schema": "trashbot.o1.lidar_scan_proof.v1",
+            "generated_at_ms": 1781154494512,
+            "proof": {
+                "status": "scan_once_hz_raw_packet_tf_observed",
+                "scan_once_observed": True,
+                "scan_hz_observed": True,
+                "raw_packet_once_observed": True,
+                "tf_observed": True,
+                "all_required_observations_observed": True,
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "lidar_scan_proof_latest.json"
+            artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                lidar_scan_proof_artifact_path=str(artifact_path),
+            )
+
+            with mock.patch.object(
+                upper_robot_api,
+                "read_radar_lifecycle_status",
+                return_value={
+                    "status": "read_failed",
+                    "running": False,
+                    "state": "unknown",
+                    "pid": None,
+                    "failure_reason": "bad_json",
+                    "attempts": [{"source": "managed_runtime_absolute", "status": "bad_json"}],
+                },
+            ):
+                status = api.radar_status()
+
+        self.assertEqual("lifecycle_status_unavailable", status["continuous_scan_status"])
+        self.assertEqual("status_read_failed", status["lifecycle_status"])
+        self.assertIn("lifecycle_status_read_failed", status["continuous_blocked_reasons"])
+        self.assertFalse(status["continuous_window_observed"])
+        self.assertFalse(status["safe_to_control"])
+
     def test_radar_scan_proof_latest_bad_json_does_not_forge_evidence_ref(self) -> None:
         """坏 JSON 必须 fail closed，不能用 artifact path 伪造 evidence_ref。"""
         with tempfile.TemporaryDirectory() as temp_dir:

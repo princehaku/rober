@@ -37,6 +37,7 @@ DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.j
 DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
 DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S = 5.0
 DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S = 6.0
+DEFAULT_RADAR_LIFECYCLE_STATUS_TIMEOUT_S = 3.0
 DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH = "runtime/lidar_raw_packet_proof_latest.json"
 DEFAULT_ROBER_ROOT = "/root/rober"
 DEFAULT_ONBOARD_WORKDIR = "/root/rober/onboard"
@@ -2692,6 +2693,30 @@ def summarize_lidar_scan_proof_latest_artifact(path: str) -> dict[str, Any]:
     latest_result = payload.get("latest_result") if isinstance(payload.get("latest_result"), dict) else None
     proof = latest_result.get("proof", {}) if isinstance(latest_result, dict) else {}
     required_observations = proof.get("required_observations") if isinstance(proof, dict) else None
+    generated_at_ms = now_ms()
+    stale_after_ms = DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS
+    artifact = payload["artifact"]
+    freshness: dict[str, Any] = {
+        "status": "unknown",
+        "age_seconds": None,
+        "stale_after_ms": stale_after_ms,
+        "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control",
+    }
+    artifact_path = artifact.get("path")
+    if isinstance(artifact_path, str):
+        try:
+            stat_result = Path(artifact_path).stat()
+        except FileNotFoundError:
+            freshness["status"] = "missing"
+        except OSError:
+            freshness["status"] = "read_failed"
+        else:
+            mtime_ms = int(stat_result.st_mtime_ns / 1_000_000)
+            age_ms = max(0, generated_at_ms - mtime_ms)
+            artifact["mtime_ms"] = mtime_ms
+            artifact["age_ms"] = age_ms
+            freshness["age_seconds"] = round(age_ms / 1000.0, 3)
+            freshness["status"] = freshness_from_age(age_ms, stale_after_ms)
     # status 面只压缩 artifact 已经写好的机器字段，不能在这里从 stdout 猜结果或触发 ROS2。
     compact_required_observations = {
         key: {
@@ -2723,6 +2748,7 @@ def summarize_lidar_scan_proof_latest_artifact(path: str) -> dict[str, Any]:
         "latest_required_observations": compact_required_observations,
         "latest_runtime_summary_fallback_used": proof.get("runtime_summary_fallback_used") if isinstance(proof, dict) else None,
         "latest_runtime_summary_path": proof.get("runtime_summary_path") if isinstance(proof, dict) else None,
+        "freshness": freshness,
         "readback_sends_commands": False,
         "sends_commands": False,
         "sends_motion_commands": False,
@@ -2739,6 +2765,8 @@ def build_radar_latest_scan_proof_status(scan_proof_latest: dict[str, Any]) -> d
     artifact = scan_proof_latest.get("artifact") if isinstance(scan_proof_latest.get("artifact"), dict) else {}
     artifact_status = str(artifact.get("status") or "unknown")
     state = str(scan_proof_latest.get("latest_proof_status") or artifact_status)
+    freshness = scan_proof_latest.get("freshness") if isinstance(scan_proof_latest.get("freshness"), dict) else {}
+    freshness_status = str(freshness.get("status") or "unknown")
     # fresh proof 必须四项机器字段全为 True；这里保留缺项名，方便 PC/协调者直接定位。
     required_fields = {
         "latest_scan_once_observed": "scan_once",
@@ -2766,6 +2794,9 @@ def build_radar_latest_scan_proof_status(scan_proof_latest: dict[str, Any]) -> d
         "artifact": artifact,
         "state": state,
         "observed": observed,
+        "freshness": freshness,
+        "freshness_status": freshness_status,
+        "fresh_while_observed": observed and freshness_status == "fresh",
         "evidence_ref": scan_proof_latest.get("latest_evidence_ref"),
         "latest_evidence_ref": scan_proof_latest.get("latest_evidence_ref"),
         "failure_reason": failure_reason,
@@ -2790,6 +2821,157 @@ def build_radar_latest_scan_proof_status(scan_proof_latest: dict[str, Any]) -> d
         "hil_pass": False,
         "safe_to_control": False,
         "primary_actions_enabled": False,
+    }
+
+
+def default_radar_lifecycle_status_commands() -> list[dict[str, str]]:
+    """优先走真实部署脚本，缺失时再退回同目录脚本，避免只因路径漂移丢掉状态读回。"""
+    local_script = Path(__file__).resolve().with_name(SAFE_RADAR_LIFECYCLE_SCRIPT)
+    return [
+        {
+            "source": "managed_runtime_absolute",
+            "command": f"bash {DEFAULT_ONBOARD_WORKDIR}/scripts/{SAFE_RADAR_LIFECYCLE_SCRIPT} status",
+        },
+        {
+            "source": "local_script_fallback",
+            "command": f"bash {local_script} status",
+        },
+    ]
+
+
+def read_radar_lifecycle_status(timeout_s: float = DEFAULT_RADAR_LIFECYCLE_STATUS_TIMEOUT_S) -> dict[str, Any]:
+    """只读 lifecycle status 脚本；失败时继续 fail-closed，不影响 radar status 主响应。"""
+    attempts: list[dict[str, Any]] = []
+    for candidate in default_radar_lifecycle_status_commands():
+        command = candidate["command"]
+        source = candidate["source"]
+        argv, error = validate_radar_lifecycle_command(command, "status")
+        if error:
+            attempts.append({"source": source, "command": command, "status": "invalid_command", "error": error})
+            continue
+        try:
+            completed = subprocess.run(
+                argv,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=max(0.5, float(timeout_s)),
+            )
+        except subprocess.TimeoutExpired as exc:
+            attempts.append(
+                {
+                    "source": source,
+                    "command": command,
+                    "argv": argv,
+                    "status": "timeout",
+                    "error": {"type": "TimeoutExpired", "message": str(exc)},
+                    "stdout_preview": preview_text(exc.stdout),
+                    "stderr_preview": preview_text(exc.stderr),
+                }
+            )
+            continue
+        except FileNotFoundError as exc:
+            attempts.append(
+                {
+                    "source": source,
+                    "command": command,
+                    "argv": argv,
+                    "status": "script_missing",
+                    "error": compact_error(exc),
+                }
+            )
+            continue
+        except OSError as exc:
+            attempts.append(
+                {
+                    "source": source,
+                    "command": command,
+                    "argv": argv,
+                    "status": "exec_failed",
+                    "error": compact_error(exc),
+                }
+            )
+            continue
+        stdout_text = completed.stdout or ""
+        stderr_text = completed.stderr or ""
+        if completed.returncode != 0:
+            attempts.append(
+                {
+                    "source": source,
+                    "command": command,
+                    "argv": argv,
+                    "status": "command_failed",
+                    "returncode": completed.returncode,
+                    "stdout_preview": preview_text(stdout_text),
+                    "stderr_preview": preview_text(stderr_text),
+                }
+            )
+            continue
+        try:
+            parsed = json.loads(stdout_text)
+        except json.JSONDecodeError as exc:
+            attempts.append(
+                {
+                    "source": source,
+                    "command": command,
+                    "argv": argv,
+                    "status": "bad_json",
+                    "returncode": completed.returncode,
+                    "stdout_preview": preview_text(stdout_text),
+                    "stderr_preview": preview_text(stderr_text),
+                    "error": compact_error(exc),
+                }
+            )
+            continue
+        if not isinstance(parsed, dict):
+            attempts.append(
+                {
+                    "source": source,
+                    "command": command,
+                    "argv": argv,
+                    "status": "json_not_object",
+                    "returncode": completed.returncode,
+                    "stdout_preview": preview_text(stdout_text),
+                    "stderr_preview": preview_text(stderr_text),
+                }
+            )
+            continue
+        return {
+            "status": "loaded",
+            "source": source,
+            "command": command,
+            "argv": argv,
+            "running": bool(parsed.get("running")),
+            "state": parsed.get("state"),
+            "pid": parsed.get("pid") if isinstance(parsed.get("pid"), int) else None,
+            "message": parsed.get("message"),
+            "latest_result": parsed,
+            "attempts": attempts,
+            "readback_sends_commands": False,
+            "sends_commands": False,
+            "sends_motion_commands": False,
+            "uses_base_uart": False,
+            "robot_control_executed": False,
+            **proof_flags(),
+        }
+    return {
+        "status": "read_failed",
+        "source": attempts[-1].get("source") if attempts else None,
+        "command": attempts[-1].get("command") if attempts else None,
+        "argv": attempts[-1].get("argv") if attempts else None,
+        "running": False,
+        "state": "unknown",
+        "pid": None,
+        "message": "radar lifecycle status read failed",
+        "latest_result": None,
+        "attempts": attempts,
+        "failure_reason": str(attempts[-1].get("status") or "lifecycle_status_read_failed") if attempts else "lifecycle_status_read_failed",
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "uses_base_uart": False,
+        "robot_control_executed": False,
+        **proof_flags(),
     }
 
 
@@ -3715,24 +3897,61 @@ class UpperRobotApi:
         lidar_observed = bool(tty_acm0["exists"])
         scan_proof_latest = summarize_lidar_scan_proof_latest_artifact(self.lidar_scan_proof_artifact_path)
         latest_scan_proof = build_radar_latest_scan_proof_status(scan_proof_latest)
+        lifecycle_status_readback = read_radar_lifecycle_status()
+        lifecycle_running = bool(lifecycle_status_readback.get("running"))
+        lifecycle_state = lifecycle_status_readback.get("state")
+        lifecycle_pid = lifecycle_status_readback.get("pid")
         fresh_scan_proof_observed = bool(latest_scan_proof["observed"])
-        # 单次 fresh proof 只能解除“没有任何 /scan 材料”的说法；长稳连续雷达另走独立 blocker。
-        continuous_blocked_reasons = ["scan_continuity_not_observed"]
+        latest_scan_proof_fresh = bool(latest_scan_proof.get("fresh_while_observed"))
         latest_scan_proof_blocked_reasons = (
             [] if fresh_scan_proof_observed else [str(latest_scan_proof["failure_reason"] or "latest_scan_proof_not_observed")]
         )
+        continuity_window_status = "lifecycle_status_unavailable"
+        continuity_blocked_reasons: list[str] = []
+        if lifecycle_status_readback.get("status") != "loaded":
+            continuity_blocked_reasons.append("lifecycle_status_read_failed")
+        elif not lifecycle_running:
+            continuity_window_status = "lifecycle_not_running"
+            continuity_blocked_reasons.append("lidar_lifecycle_not_running")
+            if fresh_scan_proof_observed:
+                continuity_window_status = "latest_proof_present_but_lifecycle_not_running"
+            else:
+                continuity_window_status = "lifecycle_not_running"
+        elif latest_scan_proof_fresh:
+            continuity_window_status = "latest_proof_fresh_while_lifecycle_running"
+        elif fresh_scan_proof_observed:
+            continuity_window_status = "latest_proof_stale_while_lifecycle_running"
+            continuity_blocked_reasons.append("latest_scan_proof_stale")
+        elif latest_scan_proof.get("artifact", {}).get("status") == "missing":
+            continuity_window_status = "latest_proof_missing_while_lifecycle_running"
+            continuity_blocked_reasons.append("latest_scan_proof_missing")
+        else:
+            continuity_window_status = "latest_proof_incomplete_while_lifecycle_running"
+            continuity_blocked_reasons.extend(latest_scan_proof_blocked_reasons)
+        continuous_window_observed = continuity_window_status == "latest_proof_fresh_while_lifecycle_running"
+        continuous_scan_status = continuity_window_status
+        continuous_blocked_reasons = [] if continuous_window_observed else list(dict.fromkeys(continuity_blocked_reasons or ["scan_continuity_not_observed"]))
         return {
             "schema": f"{SCHEMA}.radar_status",
             "generated_at_ms": now_ms(),
             "evidence_ref": latest_scan_proof["latest_evidence_ref"],
             "latest_evidence_ref": latest_scan_proof["latest_evidence_ref"],
             "scan_status": "fresh_scan_proof_observed" if fresh_scan_proof_observed else "not_proven",
-            "continuous_scan_status": "not_proven",
+            "continuous_scan_status": continuous_scan_status,
             "fresh_scan_proof_observed": fresh_scan_proof_observed,
+            "latest_scan_proof_fresh": latest_scan_proof_fresh,
             "latest_scan_proof_state": latest_scan_proof["state"],
             "latest_scan_hz_average_rate_hz": latest_scan_proof["scan_hz_average_rate_hz"],
             "runtime_summary_fallback_used": latest_scan_proof["runtime_summary_fallback_used"],
             "latest_scan_proof": latest_scan_proof,
+            "lifecycle_status": continuity_window_status if lifecycle_status_readback.get("status") == "loaded" else "status_read_failed",
+            "lifecycle_running": lifecycle_running,
+            "lifecycle_state": lifecycle_state,
+            "lifecycle_pid": lifecycle_pid,
+            "lifecycle_status_readback": lifecycle_status_readback,
+            "continuous_window_observed": continuous_window_observed,
+            "continuity_window_status": continuity_window_status,
+            "continuity_blocked_reasons": continuous_blocked_reasons,
             "pointcloud_fabricated": False,
             "dev_lidar": describe_path("/dev/lidar"),
             "observed_lidar_port": "/dev/ttyACM0" if lidar_observed else None,

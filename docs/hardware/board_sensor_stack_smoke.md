@@ -141,6 +141,27 @@ runtime lifecycle 与 scan proof refresh 的关系：
 - `ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND` 继续保留，用于没有常驻 lifecycle 时的
   临时 scan proof runtime。
 
+`GET /api/radar/status` 从 2026-06-11 15:15 这一轮开始新增只读 continuity/lifecycle
+合同，用来表达“当前 lifecycle 是否在运行、latest proof 是否足够新鲜”，而不是只会固定回
+`continuous_scan_status=not_proven`：
+
+- status 只读 `runtime/lidar_scan_proof_latest.json` 和
+  `o1_lidar_lifecycle.sh status`；不会启动 ROS2、不会打开 `/dev/ttyS5`，也不会发送
+  `T=1/T=13/T=130/T=131`、`/cmd_vel` 或 `/api/base/manual`。
+- 新增字段包括 `lifecycle_status`、`lifecycle_running`、`lifecycle_state`、
+  `lifecycle_pid`、`continuous_window_observed`、`continuity_window_status`、
+  `continuity_blocked_reasons`。
+- 当 lifecycle `running=true` 且 latest proof 四项观测齐全、artifact freshness 为
+  `fresh` 时，`continuous_scan_status` / `continuity_window_status` 会返回
+  `latest_proof_fresh_while_lifecycle_running`；这只表示“当前连续窗口内观察到 LiDAR
+  正在运行且 fresh proof 新鲜”，**不是**“长稳连续扫描已经严格统计证明”，更不是运动许可。
+- 若 lifecycle 已停，则 blocked reason 必须包含
+  `lidar_lifecycle_not_running`；若 lifecycle status 脚本缺失、坏 JSON、超时或执行失败，
+  status 会 fail-closed 为 `status_read_failed` / `lifecycle_status_unavailable`。
+- 无论 status 如何变化，`safe_to_control=false`、
+  `primary_actions_enabled=false`、`robot_control_executed=false`、
+  `delivery_success=false` 保持不变。
+
 真实上位机 smoke 结果：
 
 - `POST /api/radar/start`：`command_result.executed=true`、`ok=true`，
