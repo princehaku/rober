@@ -4682,7 +4682,20 @@ describe("workstation fail-closed API contracts", () => {
           primary_actions_enabled: false,
           robot_control_executed: false,
           map_count: 2,
-          maps: [{ name: "floor_1.yaml" }, { name: "floor_1.pgm" }],
+          maps: [
+            { name: "floor_1.yaml", quality: { checked: true, ok: true, cell_counts: { free: 0, unknown: 100, occupied: 2 }, has_free_cells: false } },
+            { name: "floor_1.pgm" },
+          ],
+          map_quality_summary: {
+            status: "no_free_cells",
+            message: "当前地图没有可通行区域，需要重新建图。",
+            checked_yaml_count: 1,
+            usable_map_count: 0,
+            no_free_cell_map_count: 1,
+            analysis_failed_count: 0,
+          },
+          map_usable_for_navigation: false,
+          map_needs_rebuild: true,
           command_result: { mode: "read_only_local_files", executed: false, ok: true },
         },
       },
@@ -4733,6 +4746,9 @@ describe("workstation fail-closed API contracts", () => {
         remote_method: string;
         map_count: number;
         map_names: string[];
+        map_quality_summary: { status: string; no_free_cell_map_count: number };
+        map_usable_for_navigation: boolean;
+        map_needs_rebuild: boolean;
         robot_control_executed: boolean;
       };
       expect(listResponse.status).toBe(200);
@@ -4741,6 +4757,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(listBody.remote_method).toBe("GET");
       expect(listBody.map_count).toBe(2);
       expect(listBody.map_names).toEqual(["floor_1.yaml", "floor_1.pgm"]);
+      expect(listBody.map_quality_summary.status).toBe("no_free_cells");
+      expect(listBody.map_quality_summary.no_free_cell_map_count).toBe(1);
+      expect(listBody.map_usable_for_navigation).toBe(false);
+      expect(listBody.map_needs_rebuild).toBe(true);
       expect(listBody.robot_control_executed).toBe(false);
       expect(upstream.receivedGets).toEqual(["/api/map/list"]);
 

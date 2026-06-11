@@ -1,0 +1,14 @@
+{
+  "schema": "trashbot.pc_workstation.plain_map_quality_browser_smoke.v1",
+  "checked_at": "2026-06-11T14:56:00Z",
+  "frontend_url": "http://127.0.0.1:5179/",
+  "pc_api_url": "http://127.0.0.1:8787",
+  "robot_api_base_url": "http://192.168.1.11:8787",
+  "has_simple_console": true,
+  "advanced_open": false,
+  "map_card_text": "地图 刷新地图 地图列表 未刷新失败还没有刷新。当前地图不可导航，需要重新建图。",
+  "contains_rebuild_hint": true,
+  "forbidden_terms_on_plain_grid": [],
+  "safe_to_control": false,
+  "robot_control_executed": false
+}

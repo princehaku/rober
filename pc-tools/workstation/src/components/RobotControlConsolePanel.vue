@@ -316,6 +316,12 @@ function summarizeMapLifecycle(): { state: "未读取" | "处理中" | "已读�
     return { state: "失败", hint: result.failure_reason || "地图 lifecycle 请求被阻断。" };
   }
   if (result.action === "list") {
+    if (result.map_usable_for_navigation) {
+      return { state: "已读取", hint: `已有可用地图，${result.map_count ?? 0} 个候选。` };
+    }
+    if (result.map_needs_rebuild) {
+      return { state: "失败", hint: "当前地图不可导航，需要重新建图。" };
+    }
     return { state: "已读取", hint: `地图列表 ${result.map_count ?? 0} 个候选。` };
   }
   return { state: "已读取", hint: "地图高级操作已返回；详情在高级诊断。" };
@@ -756,6 +762,16 @@ function makeMapLifecycleFallback(action: "list" | "start" | "save", reason: str
     status: "blocked",
     map_count: null,
     map_names: [],
+    map_quality_summary: {
+      status: "not_loaded",
+      message: "地图质量还没有读取。",
+      checked_yaml_count: 0,
+      usable_map_count: 0,
+      no_free_cell_map_count: 0,
+      analysis_failed_count: 0,
+    },
+    map_usable_for_navigation: false,
+    map_needs_rebuild: false,
     command_result: { mode: "not_loaded", executed: false, ok: null },
     request_body: action === "start" || action === "save" ? mapLifecycleRequestBody() : {},
     failure_reason: reason,
@@ -2041,6 +2057,12 @@ onBeforeUnmount(() => {
             <dd>{{ mapLifecycleResult?.map_count ?? "n/a" }}</dd>
             <dt>map names</dt>
             <dd>{{ listText(mapLifecycleResult?.map_names, "none") }}</dd>
+            <dt>map quality</dt>
+            <dd>
+              status={{ mapLifecycleResult?.map_quality_summary.status ?? "not_loaded" }},
+              usable={{ mapLifecycleResult?.map_quality_summary.usable_map_count ?? 0 }},
+              no_free={{ mapLifecycleResult?.map_quality_summary.no_free_cell_map_count ?? 0 }}
+            </dd>
             <dt>command_result</dt>
             <dd>
               mode={{ mapLifecycleResult?.command_result.mode ?? "not_loaded" }},

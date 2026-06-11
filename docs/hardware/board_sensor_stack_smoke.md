@@ -2081,3 +2081,23 @@ WAVE ROVER UART `/dev/ttyS5`。
 NavigateToPose，没有写 WAVE ROVER UART `/dev/ttyS5`。收尾服务仍为 active，未观察到
 helper/Nav2/LiDAR 残留进程。下一步如果要让 PC 完整控制“建图、定位移动”，必须先获得含
 free cell 的真实地图；当前地图质量不足是比 Nav2 action 本身更靠前的 blocker。
+
+## 2026-06-12 04:05 Map Quality List Readback
+
+本轮继续以 `docs/vendor/VENDOR_INDEX.md` 为硬件事实入口，但实际变更只做只读地图质量
+分析，不触碰 WAVE ROVER UART、`/cmd_vel`、`/api/base/manual` 或 NavigateToPose。
+已部署新版 `upper_robot_api.py` 到真实上位机，`trashbot-upper-robot-api.service`
+重启后保持 active。
+
+真实 `/api/map/list` 结果：
+
+- `map_count=26`
+- YAML checked: `13`
+- usable maps: `0`
+- no-free-cell maps: `13`
+- `map_usable_for_navigation=false`
+- `map_needs_rebuild=true`
+
+PC fixed proxy 同样读回 `map_quality_summary.status=no_free_cells` 且 dangerous fields
+为空。该状态证明当前地图质量不足，并不证明 LiDAR/SLAM 重新建图已经采到可导航 free
+cell；下一步需要现场移动或传感器视角变化后的真实地图采集。

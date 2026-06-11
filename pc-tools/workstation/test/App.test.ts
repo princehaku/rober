@@ -803,6 +803,16 @@ const fixtures: Record<string, unknown> = {
     status: "loaded_fail_closed_summary",
     map_count: 2,
     map_names: ["floor_1.yaml", "floor_1.pgm"],
+    map_quality_summary: {
+      status: "no_free_cells",
+      message: "当前地图没有可通行区域，需要重新建图。",
+      checked_yaml_count: 1,
+      usable_map_count: 0,
+      no_free_cell_map_count: 1,
+      analysis_failed_count: 0,
+    },
+    map_usable_for_navigation: false,
+    map_needs_rebuild: true,
     command_result: { mode: "read_only_local_files", executed: false, ok: true },
     request_body: {},
     failure_reason: "",
@@ -823,6 +833,16 @@ const fixtures: Record<string, unknown> = {
     status: "loaded_fail_closed_summary",
     map_count: 2,
     map_names: [],
+    map_quality_summary: {
+      status: "not_loaded",
+      message: "地图质量还没有读取。",
+      checked_yaml_count: 0,
+      usable_map_count: 0,
+      no_free_cell_map_count: 0,
+      analysis_failed_count: 0,
+    },
+    map_usable_for_navigation: false,
+    map_needs_rebuild: false,
     command_result: { mode: "software_guard_command_not_configured", executed: false, ok: false },
     request_body: {},
     failure_reason: "",
@@ -3742,10 +3762,12 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find(".robot-console-grid").text()).toContain("地图列表 2 个候选");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("当前地图不可导航，需要重新建图");
     expect(wrapper.find("details").text()).toContain("lifecycle action");
     expect(wrapper.find("details").text()).toContain("/api/map/list");
     expect(wrapper.find("details").text()).toContain("floor_1.yaml");
+    expect(wrapper.find("details").text()).toContain("status=no_free_cells");
+    expect(wrapper.find("details").text()).toContain("no_free=1");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/map/list") && !options)).toBe(true);
 
     await wrapper.find("details").element.setAttribute("open", "");

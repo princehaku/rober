@@ -505,6 +505,39 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["command_result"]["executed"])
         self.assertFalse(payload["safe_to_control"])
 
+    def test_map_list_reports_no_free_cell_quality(self) -> None:
+        """map list 必须把 free=0 的 YAML/PGM 标成需重新建图，而不是只说文件存在。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            map_dir = Path(temp_dir) / "maps"
+            map_dir.mkdir()
+            # PGM 像素全部 unknown/occupied，模拟真实板端当前不可导航地图。
+            (map_dir / "floor_1.pgm").write_bytes(b"P5\n3 2\n255\n" + bytes([205, 205, 205, 0, 205, 205]))
+            (map_dir / "floor_1.yaml").write_text(
+                "image: floor_1.pgm\nresolution: 0.05\norigin: [0.0, -1.0, 0.0]\n",
+                encoding="utf-8",
+            )
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                map_artifact_dir=str(map_dir),
+            )
+
+            payload = api.map_list()
+
+        self.assertEqual(2, payload["map_count"])
+        self.assertFalse(payload["map_usable_for_navigation"])
+        self.assertTrue(payload["map_needs_rebuild"])
+        self.assertEqual("no_free_cells", payload["map_quality_summary"]["status"])
+        self.assertEqual(1, payload["map_quality_summary"]["no_free_cell_map_count"])
+        yaml_entry = next(entry for entry in payload["maps"] if entry["name"] == "floor_1.yaml")
+        self.assertTrue(yaml_entry["quality"]["ok"])
+        self.assertFalse(yaml_entry["quality"]["has_free_cells"])
+        self.assertEqual(0, yaml_entry["quality"]["cell_counts"]["free"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["robot_control_executed"])
+
     def test_radar_lifecycle_validation_accepts_lidar_only_start_stop(self) -> None:
         """start/stop 只接受受管 LiDAR lifecycle 脚本和 LiDAR 串口。"""
         start = (

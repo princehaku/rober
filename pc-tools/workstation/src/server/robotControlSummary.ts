@@ -7,6 +7,7 @@ import type {
   RobotControlOperatorReportPreflight,
   RobotControlMapLifecycleAction,
   RobotControlMapLifecycleEndpoint,
+  RobotControlMapQualitySummary,
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
   RobotControlNavGoalPreflightRequest,
@@ -1455,6 +1456,44 @@ function mapCountFromPayload(payload: JsonRecord | null): number | null {
   return Array.isArray(maps) ? maps.length : null;
 }
 
+function finiteNumberOrZero(value: unknown): number {
+  // 上位机质量摘要只接收非负计数；异常值按 0 处理，防止旧 payload 污染 UI。
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function defaultMapQualitySummary(status: RobotControlMapQualitySummary["status"] = "not_loaded"): RobotControlMapQualitySummary {
+  // 旧上位机或代理失败都保留稳定结构，未知状态不能被当作有可导航地图。
+  return {
+    status,
+    message: status === "not_loaded" ? "地图质量还没有读取。" : "没有可分析的 YAML 地图。",
+    checked_yaml_count: 0,
+    usable_map_count: 0,
+    no_free_cell_map_count: 0,
+    analysis_failed_count: 0,
+  };
+}
+
+function mapQualitySummaryFromPayload(payload: JsonRecord | null): RobotControlMapQualitySummary {
+  // PC 只透出上位机聚合后的短摘要；完整 YAML/PGM 路径留在远端 artifact，不进普通 UI。
+  const summary = asRecord(findFirstKey(payload, ["map_quality_summary"]));
+  if (!summary) {
+    return defaultMapQualitySummary();
+  }
+  const rawStatus = asString(summary.status, "not_checked");
+  const status: RobotControlMapQualitySummary["status"] =
+    rawStatus === "has_usable_map" || rawStatus === "no_free_cells" || rawStatus === "analysis_failed" || rawStatus === "not_checked"
+      ? rawStatus
+      : "not_checked";
+  return {
+    status,
+    message: asString(summary.message, defaultMapQualitySummary(status).message),
+    checked_yaml_count: finiteNumberOrZero(summary.checked_yaml_count),
+    usable_map_count: finiteNumberOrZero(summary.usable_map_count),
+    no_free_cell_map_count: finiteNumberOrZero(summary.no_free_cell_map_count),
+    analysis_failed_count: finiteNumberOrZero(summary.analysis_failed_count),
+  };
+}
+
 function commandResultSummary(payload: JsonRecord | null): RobotControlMapLifecycleResponse["command_result"] {
   // command_result.executed 只作为诊断字段；PC 响应顶层 robot_control_executed 仍固定 false。
   const commandResult = asRecord(findFirstKey(payload, ["command_result"]));
@@ -1618,6 +1657,9 @@ function blockedMapLifecycleResponse(
     status: "blocked",
     map_count: null,
     map_names: [],
+    map_quality_summary: defaultMapQualitySummary(),
+    map_usable_for_navigation: false,
+    map_needs_rebuild: false,
     command_result: { mode: "not_loaded", executed: false, ok: null },
     request_body: body,
     failure_reason: reason,
@@ -1691,6 +1733,9 @@ export async function buildMapLifecycleProxy(
 
   const hardDangerous = scanDangerousTrueFields(payload, "", HARD_DANGEROUS_TRUE_FIELDS);
   const commandResult = commandResultSummary(payload);
+  const mapQualitySummary = mapQualitySummaryFromPayload(payload);
+  const mapUsableForNavigation = payload.map_usable_for_navigation === true || mapQualitySummary.status === "has_usable_map";
+  const mapNeedsRebuild = payload.map_needs_rebuild === true || mapQualitySummary.status === "no_free_cells" || mapQualitySummary.status === "analysis_failed";
   const blockedReasons = [
     ...(response.ok ? [] : [`map_lifecycle_http_status_${response.status}`]),
     ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
@@ -1710,6 +1755,9 @@ export async function buildMapLifecycleProxy(
     status: forwarded ? "loaded_fail_closed_summary" : "blocked",
     map_count: mapCountFromPayload(payload),
     map_names: mapNamesFromPayload(payload),
+    map_quality_summary: mapQualitySummary,
+    map_usable_for_navigation: mapUsableForNavigation,
+    map_needs_rebuild: mapNeedsRebuild,
     command_result: commandResult,
     request_body: sanitized.body,
     failure_reason:

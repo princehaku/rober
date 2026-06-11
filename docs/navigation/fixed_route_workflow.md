@@ -2129,6 +2129,11 @@ execution、真实运动、HIL pass 或 delivery success。
 localize/Nav2 no-motion proof。该结论仍保持 no-motion 边界：不发布 `/cmd_vel`，不调用
 `/api/base/manual`，不执行 NavigateToPose。
 
+2026-06-12 04:05 起，`/api/map/list` 也会直接暴露同一份地图质量摘要。真实上位机
+当前 13 张 YAML 地图均为 `free=0`，因此 PC 侧可在进入 Nav2 proof 前提示“当前地图不
+可导航，需要重新建图”。这只是地图质量 readback，不代表已经完成重新建图或 fixed-route
+execution。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

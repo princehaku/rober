@@ -990,6 +990,25 @@ root cause 的展示：Robot Control summary / fixed proxy 的 key values 现在
 cell，不是浏览器参数、PC proxy body、NavigateToPose 或底盘串口问题。本轮仍不放开
 `/api/base/manual`、`/cmd_vel` 或 NavigateToPose。
 
+## 2026-06-12 Map Quality Readback On Plain Console
+
+`sprints/2026.06.12_04-05_map_quality_readback/` 把同一份地图质量 blocker 前移到
+PC 地图列表链路。上位机 `/api/map/list` 现在会只读解析本地 map YAML/PGM，并返回
+`map_quality_summary`、`map_usable_for_navigation` 和 `map_needs_rebuild`。PC fixed
+proxy 只白名单透出短摘要，不把完整路径或栅格细节塞进普通首屏。
+
+真实上位机 readback 显示：
+
+- `map_count=26`
+- `checked_yaml_count=13`
+- `usable_map_count=0`
+- `no_free_cell_map_count=13`
+- `map_quality_summary.status=no_free_cells`
+
+普通 `.simple-user-console` 的地图卡片现在在点击“地图列表”后显示：
+`当前地图不可导航，需要重新建图。`。浏览器验证确认高级诊断仍默认关闭，首屏没有出现
+`Nav2`、`proof`、`HIL`、`/cmd_vel` 或 `/api/base/manual`。
+
 ## 运行与验证
 
 工作站验证只使用 Node/Vue gate：

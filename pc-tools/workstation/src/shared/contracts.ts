@@ -2312,6 +2312,15 @@ export interface RobotControlMapLifecycleRequest {
   artifact_path?: string;
 }
 
+export interface RobotControlMapQualitySummary {
+  status: "has_usable_map" | "no_free_cells" | "analysis_failed" | "not_checked" | "not_loaded";
+  message: string;
+  checked_yaml_count: number;
+  usable_map_count: number;
+  no_free_cell_map_count: number;
+  analysis_failed_count: number;
+}
+
 export interface RobotControlMapLifecycleResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_map_lifecycle_proxy.v1";
   action: RobotControlMapLifecycleAction;
@@ -2324,6 +2333,9 @@ export interface RobotControlMapLifecycleResponse extends ProofFlags {
   status: "blocked" | "loaded_fail_closed_summary";
   map_count: number | null;
   map_names: string[];
+  map_quality_summary: RobotControlMapQualitySummary;
+  map_usable_for_navigation: boolean;
+  map_needs_rebuild: boolean;
   command_result: {
     mode: string;
     executed: boolean;

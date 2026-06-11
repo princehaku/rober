@@ -417,6 +417,141 @@ def map_artifact_info(path: str) -> dict[str, Any]:
     }
 
 
+def parse_map_yaml_for_quality(yaml_path: Path) -> dict[str, Any]:
+    """只读解析 map YAML 的 image/resolution/origin，给 PC 判断是否需要重新建图。"""
+    text = yaml_path.read_text(encoding="utf-8", errors="replace")
+    image_name = ""
+    resolution: float | None = None
+    origin_values: list[float] = []
+    lines = text.splitlines()
+    for index, raw_line in enumerate(lines):
+        line = raw_line.strip()
+        if line.startswith("image:"):
+            image_name = line.split(":", 1)[1].strip().strip("'\"")
+        elif line.startswith("resolution:"):
+            resolution = float(line.split(":", 1)[1].strip())
+        elif line.startswith("origin:"):
+            # map_server 常见写法是 origin: [x, y, yaw]；旧 helper 也兼容多行列表。
+            inline = line.split(":", 1)[1].strip()
+            if inline.startswith("[") and inline.endswith("]"):
+                origin_values = [float(part.strip()) for part in inline.strip("[]").split(",") if part.strip()]
+            else:
+                for offset in range(1, 4):
+                    if index + offset >= len(lines):
+                        continue
+                    value_text = lines[index + offset].strip()
+                    if value_text.startswith("-"):
+                        value_text = value_text[1:].strip()
+                    origin_values.append(float(value_text))
+    if resolution is None or len(origin_values) < 2:
+        raise ValueError("map yaml missing resolution or origin")
+    image_path = (yaml_path.parent / image_name) if image_name else yaml_path.with_suffix(".pgm")
+    return {
+        "image": str(image_path),
+        "resolution": resolution,
+        "origin": origin_values[:3],
+    }
+
+
+def read_pgm_cell_counts(image_path: Path) -> dict[str, Any]:
+    """读取二进制 PGM 栅格统计；free=254/unknown=205/occupied=0 来自 ROS map_saver 输出约定。"""
+    with image_path.open("rb") as pgm_file:
+        if pgm_file.readline().strip() != b"P5":
+            raise ValueError("map image is not binary PGM P5")
+        size_line = pgm_file.readline()
+        while size_line.startswith(b"#"):
+            size_line = pgm_file.readline()
+        width, height = [int(value) for value in size_line.split()]
+        pgm_file.readline()
+        data = pgm_file.read()
+    free_cells = data.count(254)
+    unknown_cells = data.count(205)
+    occupied_cells = data.count(0)
+    return {
+        "width": width,
+        "height": height,
+        "cell_counts": {
+            "free": free_cells,
+            "unknown": unknown_cells,
+            "occupied": occupied_cells,
+            "other": len(data) - free_cells - unknown_cells - occupied_cells,
+        },
+    }
+
+
+def analyze_map_yaml_quality(path: Path) -> dict[str, Any]:
+    """地图文件存在不等于可导航；free cell 为 0 时必须提示重新建图。"""
+    result: dict[str, Any] = {
+        "checked": path.suffix == ".yaml",
+        "ok": False,
+        "map_yaml": str(path),
+        "image": None,
+        "resolution": None,
+        "origin": None,
+        "width": None,
+        "height": None,
+        "cell_counts": {},
+        "has_free_cells": False,
+        "navigation_quality": "not_checked" if path.suffix != ".yaml" else "blocked",
+        "failure_reason": None,
+    }
+    if path.suffix != ".yaml":
+        return result
+    try:
+        yaml_quality = parse_map_yaml_for_quality(path)
+        image_path = Path(str(yaml_quality["image"]))
+        pgm_quality = read_pgm_cell_counts(image_path)
+        cell_counts = pgm_quality["cell_counts"]
+        free_cells = int(cell_counts.get("free") or 0)
+        result.update(
+            {
+                "ok": True,
+                **yaml_quality,
+                **pgm_quality,
+                "has_free_cells": free_cells > 0,
+                "navigation_quality": "has_free_cells" if free_cells > 0 else "no_free_cells",
+            }
+        )
+    except Exception as exc:  # noqa: BLE001 - 坏地图也要进入列表，不能让 PC 误以为没有地图。
+        result["failure_reason"] = compact_error(exc)
+        result["navigation_quality"] = "analysis_failed"
+    return result
+
+
+def summarize_map_quality(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    """把多张地图压成 PC 可读摘要，避免普通首屏展示一堆文件细节。"""
+    checked_entries = [entry for entry in entries if isinstance(entry.get("quality"), dict) and entry["quality"].get("checked")]
+    usable_entries = [entry for entry in checked_entries if entry["quality"].get("has_free_cells")]
+    no_free_entries = [
+        entry for entry in checked_entries if entry["quality"].get("ok") and not entry["quality"].get("has_free_cells")
+    ]
+    failed_entries = [entry for entry in checked_entries if not entry["quality"].get("ok")]
+    return {
+        "checked_yaml_count": len(checked_entries),
+        "usable_map_count": len(usable_entries),
+        "no_free_cell_map_count": len(no_free_entries),
+        "analysis_failed_count": len(failed_entries),
+        "status": (
+            "has_usable_map"
+            if usable_entries
+            else "no_free_cells"
+            if no_free_entries
+            else "analysis_failed"
+            if failed_entries
+            else "not_checked"
+        ),
+        "message": (
+            "至少一张地图包含 free cell，可进入后续定位/路径检查。"
+            if usable_entries
+            else "当前地图没有可通行区域，需要重新建图。"
+            if no_free_entries
+            else "地图质量分析失败，需要检查 YAML/PGM。"
+            if failed_entries
+            else "没有可分析的 YAML 地图。"
+        ),
+    }
+
+
 def resolve_onboard_runtime_path(path: str) -> str:
     """map proof 相对路径统一落到 onboard workdir，避免 systemd cwd 漂到仓库根。"""
     candidate = Path(path)
@@ -4399,8 +4534,10 @@ class UpperRobotApi:
                             "suffix": path.suffix,
                             "size_bytes": stat_result.st_size,
                             "mtime_ms": int(stat_result.st_mtime_ns / 1_000_000),
+                            "quality": analyze_map_yaml_quality(path),
                         }
                     )
+        map_quality_summary = summarize_map_quality(entries)
         return software_guard_payload(
             schema_suffix="map_list_result",
             action="map_list",
@@ -4410,6 +4547,9 @@ class UpperRobotApi:
                 "artifact_dir_exists": root.exists(),
                 "maps": entries,
                 "map_count": len(entries),
+                "map_quality_summary": map_quality_summary,
+                "map_usable_for_navigation": map_quality_summary["status"] == "has_usable_map",
+                "map_needs_rebuild": map_quality_summary["status"] in {"no_free_cells", "analysis_failed"},
                 "command_result": {"mode": "read_only_local_files", "executed": False, "ok": root.exists()},
                 "failure_reason": None if root.exists() else "map_artifact_dir_missing",
             },
