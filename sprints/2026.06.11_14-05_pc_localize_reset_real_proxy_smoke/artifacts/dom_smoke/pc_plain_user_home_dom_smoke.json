@@ -1,0 +1,53 @@
+{
+  "schema": "trashbot.pc_workstation.plain_user_home_dom_smoke.v1",
+  "checked_at": "2026-06-11T06:06:11.159Z",
+  "validation_command": "cd pc-tools/workstation && npm run test -- test/App.test.ts -t \"renders Robot Control V1\"",
+  "validation_result": "passed: 1 passed, 12 skipped, 1 test file passed",
+  "validation_source": "pc-tools/workstation/test/App.test.ts renders Robot Control V1 by default with Robot API proxy and locked command boundary",
+  "source_summary_artifact": "sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/pc_proxy/summary_after_reset.json",
+  "source_localize_evidence_ref": "o10-amcl-nav2-runtime-1781157704384",
+  "simple_user_console_scope": ".simple-user-console",
+  "simple_user_console_exists": true,
+  "title_text": "Rober 小车控制台",
+  "first_screen_card_titles": [
+    "小车连接",
+    "实时画面",
+    "雷达",
+    "地图",
+    "移动/导航"
+  ],
+  "expected_card_titles": [
+    "小车连接",
+    "实时画面",
+    "雷达",
+    "地图",
+    "移动/导航"
+  ],
+  "forbidden_token_presence": {
+    "定位重置": false,
+    "initialpose": false,
+    "AMCL": false,
+    "HIL": false,
+    "proof": false,
+    "Nav2": false,
+    "/cmd_vel": false,
+    "/api/base/manual": false,
+    "task_id": false,
+    "Mock": false,
+    "检查路径": false
+  },
+  "all_forbidden_tokens_absent": true,
+  "advanced_diagnostics_closed_by_default": true,
+  "advanced_entries_retained": {
+    "localize_reset": true,
+    "localize_reset_label": "定位重置（高级）",
+    "localize_reset_endpoint": "/api/localize/reset",
+    "initialpose_readback": true,
+    "amcl_pose_readback": true,
+    "nav2_path_check": true
+  },
+  "notes": [
+    "Existing App.test mounts the Vue app and explicitly builds visiblePlainHomeText from .topbar + .simple-user-console so closed details text is excluded.",
+    "The same test asserts 定位重置（高级） remains in details and .robot-console-grid does not contain 定位重置 after triggering the advanced action."
+  ]
+}

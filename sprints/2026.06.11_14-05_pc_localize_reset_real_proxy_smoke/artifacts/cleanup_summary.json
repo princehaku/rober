@@ -1,0 +1,57 @@
+{
+  "schema": "trashbot.pc_localize_reset_real_proxy_smoke.cleanup_summary.v1",
+  "checked_at": "2026-06-11T06:06:58.877Z",
+  "workstation_api_cleanup": {
+    "command": "lsof -nP -iTCP:18791 -sTCP:LISTEN",
+    "exit_status": 1,
+    "stdout": "",
+    "stderr": "",
+    "listening": false
+  },
+  "upper_api_active": true,
+  "upper_api_status": {
+    "http_status": 200,
+    "schema": "trashbot.upper_robot_api.v1.status",
+    "status": "not_loaded",
+    "console_relevant_flags": {
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false
+    }
+  },
+  "managed_localize_runtime_cleanup": {
+    "latest_http_status": 200,
+    "cleanup_result_ok": true,
+    "cleanup_guard_ok": true,
+    "remaining_processes": [],
+    "localize_nav2_amcl_helper_long_term_residual": false
+  },
+  "device_and_motion_cleanup": {
+    "blocked_devices_not_opened": [
+      "/dev/ttyS5"
+    ],
+    "ttyS5_not_opened_by_localize_helper": true,
+    "ttyACM0_long_term_occupancy_not_proven_by_this_no_motion_smoke": false,
+    "base_status_http_status": 200,
+    "base_status_flags": {
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "robot_control_executed": false,
+      "uses_base_uart": "not_loaded",
+      "calls_base_manual": "not_loaded"
+    },
+    "radar_status_http_status": 200,
+    "radar_device_note": "No localize reset request touched /dev/ttyS5 or base UART. /dev/ttyACM0 occupancy requires SSH/lsof or a dedicated board endpoint; this PC proxy smoke only used Robot API readbacks.",
+    "ttyACM0_no_long_term_occupancy_by_ssh": true,
+    "ttyS5_no_long_term_occupancy_by_ssh": true
+  },
+  "ssh_cleanup_readback": {
+    "artifact": "sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_ssh_process_device_check.txt",
+    "command_boundary": "ssh read-only: systemctl is-active, ps grep, lsof, fuser; no service restart, no kill, no serial write",
+    "upper_service_active": true,
+    "no_localize_nav2_amcl_helper_process_rows": true,
+    "no_ttyS5_or_ttyACM0_lsof_rows": true,
+    "no_ttyS5_or_ttyACM0_fuser_rows": true
+  }
+}

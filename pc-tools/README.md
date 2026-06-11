@@ -185,3 +185,60 @@ Artifacts：
 - `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/map_lifecycle_smoke_summary.json`
 - `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/pc_plain_user_home_dom_smoke.json`
 - `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/cleanup_summary.json`
+
+## 2026-06-11 PC Localize Reset Real Proxy Smoke
+
+`sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/` 使用临时
+workstation API `http://127.0.0.1:18791`，通过 PC 固定代理访问真实上位机
+`http://192.168.1.11:8787`，完成一次 no-motion localization reset smoke。
+
+本轮没有改 PC 产品代码，也没有改普通用户首屏组件或样式。执行顺序：
+
+- 前置 `GET /api/robot-control/summary?baseUrl=http://192.168.1.11:8787`
+- 前置直接只读 `GET /api/localize/proof/latest`
+- `POST /api/robot-control/localize/reset?baseUrl=http://192.168.1.11:8787`
+- 后置 `GET /api/robot-control/summary?...`
+- 后置直接只读 `GET /api/localize/proof/latest`
+
+POST 故意携带 `endpoint=/api/base/manual`、`path_generation_opt_in=true`、
+`sends_motion_commands=true`、`publishes_cmd_vel=true`、`calls_base_manual=true` 和伪造
+`cmd_vel` 的恶意/无关 body。Workstation route 仍忽略浏览器 body，只调用固定上位机
+`/api/localize/reset`，返回 `proxy_status=refresh_forwarded`、`remote_http_status=200`、
+`evidence_ref=o10-amcl-nav2-runtime-1781157704384`。
+
+定位材料结果：
+
+- `initialpose_published=true`
+- `amcl_pose_observed=true`
+- `amcl_pose_frame_id=map`
+- `amcl_frame_params={base_frame_id: base_link, global_frame_id: map, odom_frame_id: odom}`
+- `root_causes=[]`
+- `managed_runtime_cleanup_ok=true`
+- `managed_runtime_remaining_processes=[]`
+
+安全边界保持：
+
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `robot_control_executed=false`
+- `sends_motion_commands=false`
+- `publishes_cmd_vel=false`
+- `calls_base_manual=false`
+- `uses_base_uart=false`
+
+首屏 DOM smoke 继续证明 `.simple-user-console` 是 `Rober 小车控制台` + 五卡片：
+`小车连接`、`实时画面`、`雷达`、`地图`、`移动/导航`。默认可见首屏未出现
+`定位重置`、`initialpose`、`AMCL`、`HIL`、`proof`、`Nav2`、`/cmd_vel`、
+`/api/base/manual`、`task_id`、`Mock`、`检查路径`；`定位重置（高级）` 仍只保留在
+默认关闭的高级诊断中。
+
+Cleanup：临时 API `127.0.0.1:18791` 已停止且端口无监听；SSH 只读检查显示
+`trashbot-upper-robot-api.service=active`，无长期 localize/Nav2/AMCL/helper 进程残留，
+`/dev/ttyS5` 和 `/dev/ttyACM0` 的 `lsof/fuser` 均无输出。
+
+Artifacts：
+
+- `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/pc_proxy/localize_reset_smoke_corrected_summary.json`
+- `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/dom_smoke/pc_plain_user_home_dom_smoke.json`
+- `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_summary.json`

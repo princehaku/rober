@@ -500,6 +500,54 @@ LiDAR+SLAM 建图材料采集，不等于真实底盘控制、Nav2 执行、deli
 - `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/05_map_save_unknown_field_reject.json`
 - `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/pc_plain_user_home_dom_smoke.json`
 
+## 2026-06-11 真实 PC Proxy Localization Reset 证据
+
+本轮 `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/` 未改 PC 产品代码，
+只用临时 workstation API `http://127.0.0.1:18791` 通过固定代理访问真实上位机
+`http://192.168.1.11:8787`。普通首屏保持简易风格，`定位重置（高级）` 继续只在默认
+关闭的 `高级诊断` 内作为 operator 入口。
+
+真实代理链路结果：
+
+- 前置 summary 和直接 `/api/localize/proof/latest` 只读成功。
+- `POST /api/robot-control/localize/reset?...` 返回 HTTP 200，
+  `proxy_status=refresh_forwarded`、`remote_endpoint=/api/localize/reset`、
+  `remote_http_status=200`。
+- 请求故意携带 `endpoint=/api/base/manual`、`path_generation_opt_in=true`、
+  `sends_motion_commands=true`、`publishes_cmd_vel=true`、`calls_base_manual=true`
+  和伪造 `cmd_vel`；代理仍忽略浏览器 body，没有透传任意 endpoint 或运动字段。
+- `evidence_ref=o10-amcl-nav2-runtime-1781157704384`。
+- 后置 latest readback 证明 `initialpose_published=true`、
+  `amcl_pose_observed=true`、`amcl_pose_frame_id=map`、
+  `amcl_frame_params={base_frame_id: base_link, global_frame_id: map, odom_frame_id: odom}`、
+  `root_causes=[]`。
+
+安全语义：本轮是 no-motion `/initialpose + AMCL` 定位材料采集，不是用户发车、
+手控、NavigateToPose、Nav2 goal、固定路线执行或 HIL。artifact summary 固定记录：
+`safe_to_control=false`、`delivery_success=false`、
+`primary_actions_enabled=false`、`robot_control_executed=false`、
+`sends_motion_commands=false`、`publishes_cmd_vel=false`、
+`calls_base_manual=false`、`uses_base_uart=false`。
+
+首屏边界：DOM smoke 证明 `.simple-user-console` 仍包含标题
+`Rober 小车控制台` 和五卡片 `小车连接 / 实时画面 / 雷达 / 地图 / 移动/导航`。
+默认可见首屏未出现 `定位重置`、`initialpose`、`AMCL`、`HIL`、`proof`、`Nav2`、
+`/cmd_vel`、`/api/base/manual`、`task_id`、`Mock`、`检查路径`。高级诊断中仍保留
+`定位重置（高级）`、`/api/localize/reset`、`initialpose_published` 和
+`amcl_pose_observed`。
+
+Cleanup：本机临时 API `127.0.0.1:18791` 已停止且端口无监听；SSH 只读检查
+`root@192.168.1.11:37878` 显示 `trashbot-upper-robot-api.service=active`，无长期
+localize/Nav2/AMCL/helper 进程残留，`/dev/ttyS5` 和 `/dev/ttyACM0` 的 `lsof/fuser`
+均无输出。
+
+证据文件：
+
+- `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/pc_proxy/localize_reset_proxy_response.json`
+- `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/pc_proxy/localize_reset_smoke_corrected_summary.json`
+- `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/dom_smoke/pc_plain_user_home_dom_smoke.json`
+- `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_ssh_process_device_check.txt`
+
 ## 运行与验证
 
 工作站验证只使用 Node/Vue gate：

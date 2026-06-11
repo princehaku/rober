@@ -2008,6 +2008,35 @@ no-motion map lifecycle material，不证明地图质量、AMCL 定位、Nav2 �
 active。该基线只是后续定位、planner readiness、Nav2 或运动证据的前置清洁条件，
 不证明路径执行、固定路线运行、真实运动、HIL pass 或 delivery success。
 
+2026-06-11 14:05，PC workstation 用临时本机 API `http://127.0.0.1:18791`
+通过固定代理触发真实上位机 `http://192.168.1.11:8787` 的
+`/api/localize/reset`。本轮只证明 PC 触点可以触发 no-motion `/initialpose + AMCL`
+定位材料：
+
+- `proxy_status=refresh_forwarded`
+- `remote_endpoint=/api/localize/reset`
+- `evidence_ref=o10-amcl-nav2-runtime-1781157704384`
+- `initialpose_published=true`
+- `amcl_pose_observed=true`
+- `amcl_pose_frame_id=map`
+- `amcl_frame_params.base_frame_id=base_link`
+- `amcl_frame_params.global_frame_id=map`
+- `amcl_frame_params.odom_frame_id=odom`
+- `root_causes=[]`
+
+该 smoke 故意向 PC proxy 发送包含 `/api/base/manual`、`cmd_vel` 和运动危险字段的
+浏览器 body；workstation route 忽略 body，仍只调用固定 `/api/localize/reset`。
+本轮没有调用 NavigateToPose、`compute_path_to_pose`、`/cmd_vel`、
+`/api/base/manual` 或 fixed-route execution，也没有写 WAVE ROVER UART。
+`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、
+`robot_control_executed=false`、`sends_motion_commands=false`、`publishes_cmd_vel=false`、
+`calls_base_manual=false`、`uses_base_uart=false` 保持不变。
+
+Cleanup 只读 SSH 复核显示 `trashbot-upper-robot-api.service=active`，无长期
+localize/Nav2/AMCL/helper 进程残留，`/dev/ttyS5` 与 `/dev/ttyACM0` 的 `lsof/fuser`
+均无输出。该证据仍不证明路径执行、固定路线运行、真实运动、HIL pass 或 delivery
+success；它只是后续 planner readiness / path proof 的定位前置材料。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

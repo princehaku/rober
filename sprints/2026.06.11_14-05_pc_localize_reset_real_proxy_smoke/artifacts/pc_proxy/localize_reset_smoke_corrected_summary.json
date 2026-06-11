@@ -1,0 +1,137 @@
+{
+  "schema": "trashbot.pc_localize_reset_real_proxy_smoke.corrected_summary.v1",
+  "created_at": "2026-06-11T06:03:23.328Z",
+  "correction_note": "Corrects derived summary field paths only; raw request/response artifacts are unchanged.",
+  "workstation_api": "http://127.0.0.1:18791",
+  "target_robot_api": "http://192.168.1.11:8787",
+  "proxy_result": {
+    "http_status": 200,
+    "proxy_status": "refresh_forwarded",
+    "remote_endpoint": "/api/localize/reset",
+    "remote_http_status": 200,
+    "refresh_kind": "localization_reset",
+    "status": "loaded_fail_closed_summary",
+    "last_result_status": "refreshed",
+    "evidence_ref": "o10-amcl-nav2-runtime-1781157704384",
+    "failure_reason": "",
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": [],
+    "non_motion_evidence_actions_observed": []
+  },
+  "fixed_proxy_body_proof": {
+    "malicious_browser_body_sent": true,
+    "malicious_body_was_not_forwarded_as_endpoint_or_motion": true,
+    "remote_endpoint_observed": "/api/localize/reset",
+    "implementation_reference": "pc-tools/workstation/src/server/index.ts:890 and pc-tools/workstation/src/server/robotControlSummary.ts:1963"
+  },
+  "localize_key_values_from_proxy": {
+    "status": "refreshed",
+    "latest_proof_status": "nav2_no_motion_localization_runtime_observed",
+    "evidence_ref": "o10-amcl-nav2-runtime-1781157704384",
+    "initialpose_published": "true",
+    "amcl_pose_observed": "true",
+    "localization_tf_observed": "[object Object]",
+    "managed_runtime_started": "true",
+    "managed_runtime_cleanup_ok": "true",
+    "localization_reset_observed": "true",
+    "root_causes": ""
+  },
+  "direct_latest_before": {
+    "http_status": 200,
+    "evidence_ref": "not_loaded",
+    "generated_at_ms": 1781127420201
+  },
+  "direct_latest_after": {
+    "http_status": 200,
+    "status": "localization_reset_observed",
+    "evidence_ref": "not_loaded",
+    "generated_at_ms": 1781157736998,
+    "initialpose_published": true,
+    "amcl_pose_observed": true,
+    "amcl_pose_frame_id": "map",
+    "amcl_frame_params": {
+      "base_frame_id": "base_link",
+      "global_frame_id": "map",
+      "odom_frame_id": "odom"
+    },
+    "root_causes": [],
+    "managed_runtime_cleanup_ok": true,
+    "managed_runtime_remaining_processes": [],
+    "blocked_commands_not_sent": [
+      "T=1",
+      "T=13",
+      "T=130",
+      "T=131",
+      "/cmd_vel",
+      "/api/base/manual",
+      "/api/base/",
+      "/api/nav2/start",
+      "/api/nav2/stop",
+      "navigate_to_pose",
+      "compute_path_to_pose"
+    ],
+    "blocked_devices_not_opened": [
+      "/dev/ttyS5"
+    ]
+  },
+  "workstation_summary_after": {
+    "http_status": 200,
+    "console_status": "blocked",
+    "localize_readback_request_status": "loaded",
+    "localize_readback_evidence_ref": "o10-amcl-nav2-runtime-1781157704384",
+    "localize_readback_key_values": {
+      "safe_to_control": "false",
+      "delivery_success": "false",
+      "primary_actions_enabled": "false",
+      "path_generated": "false",
+      "path_generation_requested": "false",
+      "path_generation_succeeded": "false",
+      "path_point_count": "0",
+      "managed_runtime_started": "true",
+      "scan_once_observed": "true",
+      "map_once_observed": "true",
+      "amcl_pose_observed": "true",
+      "localization_tf_observed": "[object Object]",
+      "planner_server_active": "false",
+      "latest_proof_status": "nav2_no_motion_localization_runtime_observed"
+    },
+    "o3_proof_summary": {
+      "managed_runtime_started": true,
+      "scan_once_observed": true,
+      "map_once_observed": true,
+      "amcl_pose_observed": true,
+      "localization_tf_observed": null,
+      "planner_server_active": false,
+      "path_generation_requested": false,
+      "path_generation_succeeded": false,
+      "path_generated": false,
+      "path_point_count": 0,
+      "root_causes": [
+        "root_causes_not_loaded"
+      ],
+      "not_proven": [
+        "Robot API proof fields not loaded",
+        "delivery_success"
+      ]
+    }
+  },
+  "no_motion_contract_checks": {
+    "safe_to_control": true,
+    "delivery_success": true,
+    "primary_actions_enabled": true,
+    "robot_control_executed": true,
+    "sends_motion_commands": true,
+    "publishes_cmd_vel": true,
+    "calls_base_manual": true,
+    "uses_base_uart": true
+  },
+  "no_motion_contract_passed": true,
+  "not_executed": {
+    "navigate_to_pose": true,
+    "compute_path_to_pose": true,
+    "cmd_vel_publish": false,
+    "base_manual_call": false,
+    "wave_rover_uart": false,
+    "fixed_route_execution": false
+  }
+}

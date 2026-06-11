@@ -1,0 +1,23 @@
+{
+  "schema": "trashbot.pc_localize_reset_real_proxy_smoke.browser_body_attempt.v1",
+  "note": "This body was intentionally sent to the workstation fixed proxy. The Express route ignores req.body and buildLocalizationResetProxy uses LOCALIZATION_RESET_CONFIG.",
+  "workstation_endpoint": "/api/robot-control/localize/reset",
+  "target_robot_endpoint_expected": "/api/localize/reset",
+  "body_sent_by_browser_or_curl": {
+    "endpoint": "/api/base/manual",
+    "arbitrary_endpoint": "/api/base/manual",
+    "timeout_s": 999,
+    "managed_timeout_s": 999,
+    "initialpose_x": 99,
+    "initialpose_y": 99,
+    "initialpose_yaw": 3.14,
+    "path_generation_opt_in": true,
+    "sends_motion_commands": true,
+    "publishes_cmd_vel": true,
+    "calls_base_manual": true,
+    "cmd_vel": {
+      "linear_x": 1,
+      "angular_z": 1
+    }
+  }
+}

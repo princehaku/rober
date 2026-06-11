@@ -1637,3 +1637,54 @@ Artifacts：
 - `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/map_lifecycle_smoke_summary.json`
 - `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/cleanup_ssh_process_device_check.txt`
 - `sprints/2026.06.11_13-50_pc_map_lifecycle_real_proxy_smoke/artifacts/cleanup_summary.json`
+
+## 2026-06-11 14:05 PC Localize Reset Real Proxy Smoke
+
+`sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/` 在 PC workstation
+通过本机固定代理访问真实上位机 `http://192.168.1.11:8787`，验证 PC 可以触发上位机
+no-motion `/initialpose + AMCL` 定位材料采集。本轮未修改 WAVE ROVER、ESP32、Orange
+Pi 串口、底盘 launch 或硬件配置；硬件事实入口仍是 `docs/vendor/VENDOR_INDEX.md`。
+Vendor index 说明 WAVE ROVER 上下位机链路是 UART newline-delimited JSON，vendor
+Raspberry Pi 默认串口不是 Orange Pi 通用事实；本轮只记录现场 readback 中的
+`/dev/ttyS5` 和 `/dev/ttyACM0`，不把它们外推为默认配置。
+
+执行结果：
+
+- PC proxy `localize/reset`：`proxy_status=refresh_forwarded`，
+  `remote_endpoint=/api/localize/reset`，`remote_http_status=200`。
+- 恶意/无关浏览器 body 包含 `/api/base/manual`、`cmd_vel` 和运动危险字段，但
+  workstation route 忽略 body，仅调用固定 `/api/localize/reset`。
+- 定位 readback：`initialpose_published=true`、`amcl_pose_observed=true`、
+  `amcl_pose_frame_id=map`。
+- AMCL frame 参数：`base_frame_id=base_link`、`global_frame_id=map`、
+  `odom_frame_id=odom`。
+- `root_causes=[]`，`managed_runtime_cleanup_ok=true`，`remaining_processes=[]`。
+
+No-motion / no-base-control 边界：
+
+- 未调用 `/api/base/manual`。
+- 未发布 `/cmd_vel`。
+- 未执行 `NavigateToPose` 或 fixed-route execution。
+- 未写 WAVE ROVER UART。
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `robot_control_executed=false`
+- `sends_motion_commands=false`
+- `publishes_cmd_vel=false`
+- `calls_base_manual=false`
+- `uses_base_uart=false`
+
+Cleanup 结果：
+
+- 本机临时 workstation API `127.0.0.1:18791` 已停止，端口无监听。
+- 上位机 `trashbot-upper-robot-api.service=active`。
+- SSH 只读检查 `root@192.168.1.11:37878` 未发现长期 localize/Nav2/AMCL/helper
+  进程残留。
+- `/dev/ttyS5` 和 `/dev/ttyACM0` 的 `lsof/fuser` 无占用输出。
+
+Artifacts：
+
+- `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/pc_proxy/localize_reset_smoke_corrected_summary.json`
+- `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_ssh_process_device_check.txt`
+- `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_summary.json`
