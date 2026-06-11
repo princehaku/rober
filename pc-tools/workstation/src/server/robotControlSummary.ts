@@ -60,9 +60,9 @@ const READ_ENDPOINTS: RobotReadEndpointConfig[] = [
   { id: "radar_status", endpoint: "/api/radar/status", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
   { id: "radar_scan_proof_latest", endpoint: "/api/radar/scan-proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
   { id: "radar_raw_packet_proof_latest", endpoint: "/api/radar/raw-packet-proof/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
-  // base 读取仍保持短超时；它被安全边界 blocked 的原因来自危险字段，不应靠放宽超时掩盖。
-  { id: "base_status", endpoint: "/api/base/status", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
-  { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest", timeout_ms: DEFAULT_REQUEST_TIMEOUT_MS },
+  // base status 可能触发 T=130 只读反馈窗口；用较宽读取预算，但危险字段扫描仍保持 fail-closed。
+  { id: "base_status", endpoint: "/api/base/status", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
+  { id: "base_feedback_samples_latest", endpoint: "/api/base/feedback-samples/latest", timeout_ms: SLOW_READBACK_TIMEOUT_MS },
 ];
 
 export type RobotProofRefreshConfig = {
@@ -325,6 +325,18 @@ const HARD_DANGEROUS_TRUE_FIELDS = new Set([
 
 const DANGEROUS_TRUE_FIELDS = new Set([...HARD_DANGEROUS_TRUE_FIELDS, ...REFRESH_NON_MOTION_EVIDENCE_ACTION_FIELDS]);
 const NO_TRUE_FIELD_EXEMPTIONS = new Set<string>();
+const STATUS_BASE_FEEDBACK_TRUE_FIELD_EXEMPTIONS = new Set([
+  "base.sends_commands",
+  "base.feedback_readback.sends_commands",
+]);
+const BASE_STATUS_FEEDBACK_TRUE_FIELD_EXEMPTIONS = new Set([
+  "sends_commands",
+  "feedback_readback.sends_commands",
+]);
+const BASE_FEEDBACK_SAMPLES_TRUE_FIELD_EXEMPTIONS = new Set([
+  "sends_commands",
+  "latest_result.sends_commands",
+]);
 const OPERATOR_REPORT_CLAIM_TRUE_FIELD_EXEMPTIONS = new Set([
   "structured_hil_claims.delivery_success",
   "latest_result.structured_hil_claims.delivery_success",
@@ -438,6 +450,23 @@ export function scanDangerousTrueFields(
     const current = fields.has(key) && nested === true && !exemptTruePaths.has(currentPath) ? [currentPath] : [];
     return current.concat(scanDangerousTrueFields(nested, currentPath, fields, exemptTruePaths));
   });
+}
+
+function dangerousTrueFieldExemptionsForEndpoint(id: RobotApiReadEndpointId): ReadonlySet<string> {
+  // T=130 只读底盘反馈会标记 sends_commands=true；它不是运动命令，不能把 PC summary 整体打成 blocked。
+  if (id === "status") {
+    return STATUS_BASE_FEEDBACK_TRUE_FIELD_EXEMPTIONS;
+  }
+  if (id === "base_status") {
+    return BASE_STATUS_FEEDBACK_TRUE_FIELD_EXEMPTIONS;
+  }
+  if (id === "base_feedback_samples_latest") {
+    return BASE_FEEDBACK_SAMPLES_TRUE_FIELD_EXEMPTIONS;
+  }
+  if (id === "operator_report_latest") {
+    return OPERATOR_REPORT_CLAIM_TRUE_FIELD_EXEMPTIONS;
+  }
+  return NO_TRUE_FIELD_EXEMPTIONS;
 }
 
 function notLoadedHilMaterialSummary(status: RobotControlOperatorHilMaterialSummary["status"]): RobotControlOperatorHilMaterialSummary {
@@ -1744,7 +1773,7 @@ async function readEndpoint(base: URL, config: RobotReadEndpointConfig): Promise
     payload,
     "",
     DANGEROUS_TRUE_FIELDS,
-    id === "operator_report_latest" ? OPERATOR_REPORT_CLAIM_TRUE_FIELD_EXEMPTIONS : NO_TRUE_FIELD_EXEMPTIONS,
+    dangerousTrueFieldExemptionsForEndpoint(id),
   );
   const status = asString(findFirstKey(payload, ["status", "latest_proof_status", "state"]), response.ok ? "loaded" : "blocked");
   return {

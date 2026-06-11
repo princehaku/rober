@@ -3672,6 +3672,77 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control summary does not block on T130 read-only base feedback sends_commands", async () => {
+    // T=130 反馈采样会出现 sends_commands=true；只要 motion/control 字段为 false，就不应误判成底盘运动。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.status",
+          status: "ready",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          base: {
+            sends_commands: true,
+            sends_motion_commands: false,
+            robot_control_executed: false,
+            feedback_readback: {
+              sends_commands: true,
+              sends_motion_commands: false,
+              observed_feedback_types: [1001],
+            },
+          },
+        },
+      },
+      "/api/base/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_status",
+          status: "ready",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          feedback_readback: {
+            sends_commands: true,
+            sends_motion_commands: false,
+            observed_feedback_types: [1001],
+          },
+        },
+      },
+      "/api/base/feedback-samples/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          latest_result: {
+            sends_commands: true,
+            sends_motion_commands: false,
+            robot_control_executed: false,
+            t1001_observed_count: 3,
+          },
+        },
+      },
+    });
+    try {
+      const summary = await buildRobotControlSummary(robotApi.baseUrl);
+      const statusReadback = summary.read_endpoints.find((item) => item.id === "status");
+      const baseStatusReadback = summary.read_endpoints.find((item) => item.id === "base_status");
+      const feedbackLatestReadback = summary.read_endpoints.find((item) => item.id === "base_feedback_samples_latest");
+
+      expect(statusReadback?.dangerous_true_fields).not.toContain("base.sends_commands");
+      expect(statusReadback?.dangerous_true_fields).not.toContain("base.feedback_readback.sends_commands");
+      expect(baseStatusReadback?.dangerous_true_fields).not.toContain("feedback_readback.sends_commands");
+      expect(feedbackLatestReadback?.dangerous_true_fields).not.toContain("latest_result.sends_commands");
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("status.base.sends_commands");
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("status.base.feedback_readback.sends_commands");
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.feedback_readback.sends_commands");
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_feedback_samples_latest.latest_result.sends_commands");
+    } finally {
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary treats structured HIL delivery as operator material only", async () => {
     // /api/operator/report 的 structured_hil_claims 是人工材料索引，不得把 delivery_success claim 当成顶层成功。
     const robotApi = await listenRobotApiReadbackByPath({
@@ -4083,7 +4154,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(cameraHealth?.request_status).toBe("loaded");
       expect(cameraDevices?.request_status).toBe("loaded");
       expect(summary.robot_api_connection.failed_count).toBe(0);
-      expect(summary.robot_api_connection.blocked_count).toBeGreaterThanOrEqual(4);
+      expect(summary.robot_api_connection.blocked_count).toBeGreaterThanOrEqual(2);
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.sends_commands");
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_feedback_samples_latest.latest_result.sends_commands");
       expect(summary.readback_summary.camera.status).toBe("ready");
       expect(summary.readback_summary.camera.devices_status).toBe("devices_ready");
       expect(summary.readback_summary.camera.video_source).toBe("/dev/video1");
