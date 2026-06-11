@@ -1,0 +1,98 @@
+{
+  "schema": "trashbot.pc_workstation.camera_frame_quality_live_smoke.v1",
+  "checked_at": "2026-06-11T07:58:30.171Z",
+  "workstation_ui_url": "http://127.0.0.1:18794/",
+  "workstation_api_url": "http://127.0.0.1:18794/",
+  "robot_api_url": "http://192.168.1.11:8787",
+  "page": {
+    "advanced_text": "高级诊断连接详情task_idO6 consumer base URLMock/field manifest JSON刷新状态selectedtask_id not selected; route replay/mock fallback summary blockedsourceblocked_not_loadedtask statusblocked_not_loadedsafe_to_controlsafe_to_control=falsedelivery_successdelivery_success=falseprimary_actions_enabledprimary_actions_enabled=falseproxyNode server only; Vue direct access=falsenormalized base URLhttp://192.168.1.11:8787Robot API statusblockedread count loaded=10, failed=2, blocked=1blocked reasonstatus:dangerous_true_field:base.feedback_readback.sends_commands; status:dangerous_true_field:base.sends_commands; base_status:fetch_timeout_1500ms; base_feedback_samples_latest:fetch_timeout_1500ms; dangerous_true_field:status.base.feedback_readback.sends_commands; dangerous_true_field:status.base.sends_commands实时画面详情preview_statusstart_failedfailure_reasonThe operation was aborted due to timeoutpeer_idnot_assignedpeer base URLnot_assignedice_connection_stateclosedvideo_track_statestoppedvideo_element_src_objectfalsevideo_element_ready_state0video_element_size0x0video_element_presented_frames0video_element_frame_statusnot_boundsample_statusnot_sampledmean_lumanot_sampledmax_lumanot_samplednon_black_ratio_ge16not_sampledsample_attempts0sample_canvas_sizenot_sampledsampled_atneversample_failurenonelast_offer_at2026-06-11T07:57:21.266Zlast_stop_at2026-06-11T07:57:26.295Zcleanup_statusstart_failed_cleanupcamera_healthreadycamera_devicesloaded雷达详情 启动雷达（高级） 停止雷达（高级） pendingidlelast result statusnot_loadedfailure reasonnonelatest readback key valuesnonenon-motion evidence actionsnonehard dangerous true fieldsnonelast refreshed timeneverblocked reasonsnonelifecycle pendingidlelifecycle summaryradar lifecycle not requestedlifecycle remotePOST not_loaded -> n/alifecycle statusnot_loaded / not_loadedlifecycle command_result mode=not_loaded, executed=false, ok=n/alifecycle failurenonelifecycle blocked reasonsnonelifecycle dangerous fieldsnone地图详情map_name（可选）artifact_path（可选） 地图列表 保存地图 开始建图（高级） Reset（受控/高级，禁用） pendingidlelast result statusnot_loadedfailure reasonnonelatest readback key valuesnonenon-motion evidence actionsnonehard dangerous true fieldsnonelast refreshed timeneverblocked reasonsnonelifecycle actionnot_loadedlifecycle HTTPn/a not_loaded -> n/alifecycle statusnot_loaded / not_loadedmap_countn/amap namesnonecommand_result mode=not_loaded, executed=false, ok=n/arequest body{}lifecycle failurenonelifecycle blocked reasonsnonelifecycle dangerous fieldsnoneNav2 规划详情 检查路径（高级） 定位重置（高级） 未检查：还没有检查路径。目标 x（m）目标 y（m）目标 yaw（rad）确认仅做导航目标预检 导航目标预检（高级） goal preflight pendingidlegoal preflight statusnot_loaded / not_loadedgoal request{\"goal_frame_id\":\"map\",\"goal_x\":0.8,\"goal_y\":0,\"goal_yaw\":0,\"confirm_navigation_preflight\":false}goal missing requirementsnonegoal localization summary{}goal path summary{}goal operator material gatenot_loaded / nonegoal readback endpointsnonegoal forbidden endpointsnonegoal robot_control_executedrobot_control_executed=falselocalize reset pendingidlelocalize reset endpoint/api/localize/resetlocalize reset statusnot_loadedlocalize reset keysnonelocalize reset failurenonelocalize reset blocked reasonsnonelocalize reset dangerous fieldsnonependingidleremote endpoint/api/nav2/proof/refreshlast result statusnot_loadedfailure reasonnonelatest readback key valuesnonehard dangerous true fieldsnonelast refreshed timeneverblocked reasonsnonecontrol boundaryno Nav2 start/stop; no NavigateToPose; no /cmd_vel; no /api/base/manual任务与证据O3 proof summarynot_loaded; false; falseroot_causesroot_causes_not_loadednot_provenRobot API proof fields not loaded; delivery_successroute replayblocked_not_loaded / frames=0eventsblocked_not_loaded / count=0tunnelblocked_not_loadedfield evidenceblocked_not_loadedmanifest gateblocked_not_loadedevidenceblocked_not_loaded / count=0labelingblocked_not_loaded / labels=0keyframe/samplenone现场 HIL 材料evidence_refsite_state外部视频 ref相机 artifact reffeedback refscan delta refroute/map refoperator_notes现场材料 claimoperator presentclearanceemergency stop readyobserved motionobserved stopexternal video recordedcamera visiblewheel feedback nonzeroLiDAR deltaroute/mapdelivery claim 提交现场材料（高级） latest submitnot_submitted / not_loadedsubmit remotePOST /api/operator/report -> n/asubmit failurenonesubmit rejected fieldsnonesubmit dangerous fieldsnonesubmit request claims{}statusloadedreport statusready_for_executionevidence_reffield-hil-20260611-0620-pc-submit-no-motionoperator_presenttruephysical_clearancetrueemergency_stoptrue外部视频false; ref=not_recorded_no_motion_smoke相机可见false; ref=not_attached_no_motion_smoke轮速反馈false; ref=not_attached_no_motion_smokeLiDAR deltafalse; ref=not_attached_no_motion_smokeroute/mapfalse; ref=not_attached_no_motion_smokedelivery claimfalsesite_statepc_operator_report_no_motion_smokesourceoperator_report_latest.structured_hil_claims现场点动设置 / 控制边界requires safety lock, checklist, operator report materials, robot ACK, timeout/cancel/stop/recovery evidence before enablement前进左转停止右转后退速度上限（m/s）时长上限（ms）现场确认现场有人扶控并准备急停已确认小车周围无人和障碍本轮仅做低速短时点动本轮不是自动导航任务还缺现场确认：现场有人扶控并准备急停；已确认小车周围无人和障碍；本轮仅做低速短时点动；本轮不是自动导航任务。非 stop 方向必须勾完整 checklist；stop 可单独发送。manual motion entrycontrolled_jog_requires_hil_checklist_and_operator_reportoperator report preflightnot_loaded / noneoperator report preflight missingnoneoperator report preflight summary endpoint=/api/operator/report, http=n/a, report=not_loaded, evidence=not_loadedmanual stop endpoint/api/base/stopmanual limits speed<=0.12 m/s; duration<=800 ms command_dispatch_enabledcommand_dispatch_enabled=falsemanual_control_enabledmanual_control_enabled=falsenavigate_goal_enablednavigate_goal_enabled=falsekeyboard_control_enabledkeyboard_control_enabled=falserobot_control_executedrobot_control_executed=falseCamera / LiDAR / Base /api/camera/health=ready, /api/camera/devices=loaded, /api/radar/status=scan_once_hz_raw_packet_tf_observed, scan=loaded, raw=loaded, continuous=latest_proof_present_but_lifecycle_not_running, lifecycle=false/stopped, window=false/latest_proof_present_but_lifecycle_not_running, /api/base/status=fetch_failed, readback=fetch_failedunsafe startsradar start=false; map start=false; base manual=falselatest base proxynot_loaded / not_loaded / nonelatest base clamp dir=not_loaded, speed=n/a, duration=n/aevidence capturenot_loaded / noneevidence endpointsnoneevidence blocked reasonsnonebefore readbacknoneafter readbacknoneendpointHTTP状态schemakey readback/api/status200blocked / readytrashbot.upper_robot_api.v1.status{\"safe_to_control\":\"false\",\"delivery_success\":\"false\",\"primary_actions_enabled\":\"false\",\"path_generated\":\"false\",\"path_generation_requested\":\"false\",\"managed_runtime_started\":\"true\",\"scan_once_observed\":\"true\",\"map_once_/api/map/proof/latest200loaded / map_once_artifact_metadata_observedtrashbot.upper_robot_api.v1.map_lifecycle_proof_latest{\"safe_to_control\":\"false\",\"delivery_success\":\"false\",\"primary_actions_enabled\":\"false\",\"scan_once_observed\":\"true\",\"map_once_observed\":\"true\",\"latest_proof_status\":\"map_once_artifact_metadata_observed\"}/api/localize/proof/latest200loaded / localization_reset_observedtrashbot.upper_robot_api.v1.localization_proof_latest{\"safe_to_control\":\"false\",\"delivery_success\":\"false\",\"primary_actions_enabled\":\"false\",\"path_generated\":\"false\",\"path_generation_requested\":\"false\",\"path_generation_succeeded\":\"false\",\"path_point_count\":\"0\",\"managed_run/api/nav2/status200loaded / not_proventrashbot.upper_robot_api.v1.nav2_lifecycle_status{\"safe_to_control\":\"false\",\"delivery_success\":\"false\",\"primary_actions_enabled\":\"false\",\"map_once_observed\":\"true\",\"latest_path_generated\":\"true\",\"latest_proof_status\":\"nav2_no_motion_path_generation_runtime_observed\"}/api/nav2/proof/latest200loaded / not_proventrashbot.upper_robot_api.v1.nav2_runtime_proof_latest{\"safe_to_control\":\"false\",\"delivery_success\":\"false\",\"primary_actions_enabled\":\"false\",\"path_generated\":\"true\",\"path_generation_requested\":\"true\",\"path_generation_succeeded\":\"true\",\"path_point_count\":\"31\",\"managed_runti/api/operator/report200loaded / loadedtrashbot.upper_robot_api.v1.operator_report_latest_result{\"safe_to_control\":\"false\",\"delivery_success\":\"false\",\"primary_actions_enabled\":\"false\"}/api/camera/health200loaded / readytrashbot.local_webrtc_camera_smoke.v1{\"safe_to_control\":\"false\"}/api/camera/devices200loaded / loadedtrashbot.local_webrtc_camera_devices.v1{}/api/radar/status200loaded / scan_once_hz_raw_packet_tf_observedtrashbot.upper_robot_api.v1.radar_status{\"safe_to_control\":\"false\",\"delivery_success\":\"false\",\"primary_actions_enabled\":\"false\",\"scan_once_observed\":\"true\",\"latest_proof_status\":\"scan_once_hz_raw_packet_tf_observed\",\"latest_scan_once_observed\":\"true\",\"continuo/api/radar/scan-proof/latest200loaded / loadedtrashbot.upper_robot_api.v1.lidar_scan_proof_latest_result{\"safe_to_control\":\"false\",\"delivery_success\":\"false\",\"primary_actions_enabled\":\"false\",\"scan_once_observed\":\"true\",\"latest_proof_status\":\"raw_packets_parsed\",\"latest_scan_once_observed\":\"true\",\"continuous_scan_status\":\"/api/radar/raw-packet-proof/latest200loaded / loadedtrashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_result{\"safe_to_control\":\"false\",\"delivery_success\":\"false\",\"primary_actions_enabled\":\"false\"}/api/base/statusn/afetch_failed / fetch_failednot_loaded{}/api/base/feedback-samples/latestn/afetch_failed / fetch_failednot_loaded{}",
+    "first_screen_text": "小车地址连接/刷新有异常小车连接有异常可读到部分信息，但有字段被阻断或失败。连接/刷新实时画面打开画面关闭画面失败The operation was aborted due to timeout雷达 刷新雷达 雷达未运行还没有看到雷达正在运行。地图 刷新地图 地图列表 未刷新未读取还没有刷新。还没有读取地图列表。移动/导航待命停止需要时可直接停止。",
+    "video_current_time": 0,
+    "video_height": 0,
+    "video_present": true,
+    "video_ready_state": 0,
+    "video_src_object_bound": false,
+    "video_width": 0
+  },
+  "camera_health": {
+    "status": "ready",
+    "active_peer_count": 0,
+    "active_peer_ids": [],
+    "last_closed_peer": {
+      "peer_id": "f1fa6956a5f340fd8c551383001455b0",
+      "created_ts_ms": 1781164641417,
+      "frames_read": 0,
+      "camera_read_failures": 0,
+      "camera_opened": false,
+      "track_stopped": false,
+      "connection_state": "closed",
+      "ice_connection_state": "closed",
+      "ice_gathering_state": "new",
+      "signaling_state": "closed",
+      "remote_sdp_type": "offer",
+      "remote_sdp_has_video": true,
+      "remote_sdp_video_direction": "a=recvonly",
+      "remote_sdp_candidate_count": 2,
+      "remote_sdp_end_of_candidates": false,
+      "source_selection": {
+        "mode": "auto",
+        "requested_source": "auto",
+        "candidate_sources": [
+          "/dev/video0",
+          "/dev/video1",
+          "/dev/video2"
+        ],
+        "selected_source": null,
+        "attempts": [
+          {
+            "source": "/dev/video0",
+            "opened": false,
+            "read_ok": false,
+            "backend": null,
+            "frame_shape": null,
+            "error": null
+          },
+          {
+            "source": "/dev/video1",
+            "opened": true,
+            "read_ok": false,
+            "backend": "V4L2",
+            "frame_shape": null,
+            "error": null
+          },
+          {
+            "source": "/dev/video2",
+            "opened": false,
+            "read_ok": false,
+            "backend": null,
+            "frame_shape": null,
+            "error": null
+          }
+        ],
+        "failure_reason": "no_candidate_opened_and_read_first_frame"
+      },
+      "last_error": "camera_auto_source_failed:auto",
+      "last_error_ts_ms": 1781164651554,
+      "signaling_state_ts_ms": 1781164651557,
+      "ice_connection_state_ts_ms": 1781164651557,
+      "connection_state_ts_ms": 1781164651558
+    }
+  },
+  "workstation_camera_summary": {
+    "status": "ready",
+    "devices_status": "loaded",
+    "preview_status": "idle_not_started"
+  },
+  "safety_flags": {
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "robot_control_executed": false
+  },
+  "smoke_result": {
+    "preview_open_result": "start_failed",
+    "content_visibility_result": "not_sampled_due_preview_timeout",
+    "failure_reason": "The operation was aborted due to timeout",
+    "peer_cleanup_confirmed": true
+  }
+}

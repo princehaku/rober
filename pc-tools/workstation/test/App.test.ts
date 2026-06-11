@@ -9,7 +9,7 @@ import { PROOF_FLAGS } from "../src/shared/contracts";
 
 const SPRINT_ARTIFACT_DIR = resolve(
   process.cwd(),
-  "../../sprints/2026.06.11_15-25_pc_radar_continuity_summary/artifacts",
+  "../../sprints/2026.06.11_15-50_pc_camera_frame_quality_indicator/artifacts",
 );
 
 const DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS = [
@@ -3041,6 +3041,15 @@ function writePlainHomeSmokeArtifact(firstScreenText: string, advancedText: stri
   );
 }
 
+function writeCameraFrameQualityArtifact(payload: Record<string, unknown>): void {
+  // 该 artifact 只记录前端本地 video/canvas 诊断，不包含真实图像内容或截图落盘。
+  mkdirSync(SPRINT_ARTIFACT_DIR, { recursive: true });
+  writeFileSync(
+    resolve(SPRINT_ARTIFACT_DIR, "camera_frame_quality_dom_smoke.json"),
+    `${JSON.stringify(payload, null, 2)}\n`,
+  );
+}
+
 function visiblePlainHomeText(wrapper: VueWrapper): string {
   // Vue Test Utils 会把关闭的 details 文本也算进 wrapper.text()；这里显式拼默认可见首屏。
   return [
@@ -3052,6 +3061,8 @@ function visiblePlainHomeText(wrapper: VueWrapper): string {
 describe("App", () => {
   afterEach(() => {
     // 清理全局 fetch，避免后续用例误用上一轮 API fixture。
+    vi.useRealTimers();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -3466,7 +3477,24 @@ describe("App", () => {
 
   it("starts and stops Camera Preview through workstation camera proxy while keeping control locked", async () => {
     // WebRTC UI 测试只验证本机代理和前端状态机，不连接真实浏览器媒体栈或机器人。
+    vi.useFakeTimers();
     const mockedFetch = stubWorkstationFetch();
+    const visibleFrameData = new Uint8ClampedArray(32 * 24 * 4);
+    for (let index = 0; index < visibleFrameData.length; index += 4) {
+      visibleFrameData[index] = 220;
+      visibleFrameData[index + 1] = 200;
+      visibleFrameData[index + 2] = 180;
+      visibleFrameData[index + 3] = 255;
+    }
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((contextId: string) => {
+      if (contextId !== "2d") {
+        return null;
+      }
+      return {
+        drawImage: () => undefined,
+        getImageData: () => ({ data: visibleFrameData }),
+      } as unknown as CanvasRenderingContext2D;
+    });
     class FakeMediaStream {
       tracks: Array<{ kind: string; readyState: string; stop: () => void }>;
 
@@ -3547,9 +3575,18 @@ describe("App", () => {
     await wrapper.findAll("button").find((button) => button.text() === "打开画面")?.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
+    const previewVideoElement = wrapper.find('[data-testid="robot-camera-preview-video"]').element as HTMLVideoElement;
+    Object.defineProperty(previewVideoElement, "videoWidth", { configurable: true, value: 640 });
+    Object.defineProperty(previewVideoElement, "videoHeight", { configurable: true, value: 480 });
+    Object.defineProperty(previewVideoElement, "readyState", { configurable: true, value: 4 });
+    previewVideoElement.dispatchEvent(new Event("loadeddata"));
+    previewVideoElement.dispatchEvent(new Event("playing"));
+    await vi.advanceTimersByTimeAsync(1100);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
 
-    expect(wrapper.find(".robot-console-grid").text()).toContain("已打开");
-    expect(wrapper.find(".robot-console-grid").text()).toContain("画面已打开");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("画面可见");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("画面可见。");
     expect(wrapper.find("details").text()).toContain("preview_status");
     expect(wrapper.find("details").text()).toContain("streaming");
     expect(wrapper.find("details").text()).toContain("peer-preview-001");
@@ -3559,10 +3596,29 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("live");
     expect(wrapper.find("details").text()).toContain("video_element_src_object");
     expect(wrapper.find("details").text().replace(/\s+/g, "")).toContain("video_element_src_objecttrue");
-    expect((wrapper.find('[data-testid="robot-camera-preview-video"]').element as HTMLVideoElement).srcObject).not.toBeNull();
+    expect(wrapper.find("details").text()).toContain("sample_status");
+    expect(wrapper.find("details").text()).toContain("visible_content_observed");
+    expect(wrapper.find("details").text()).toContain("mean_luma");
+    expect(wrapper.find("details").text()).toContain("non_black_ratio_ge16");
+    expect(previewVideoElement.srcObject).not.toBeNull();
     expect(wrapper.find("details").text()).toContain("safe_to_control=false");
     expect(wrapper.find("details").text()).toContain("Node server only; Vue direct access=false");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);
+    writeCameraFrameQualityArtifact({
+      schema: "trashbot.pc_workstation.camera_frame_quality_dom_smoke.v1",
+      checked_at: new Date().toISOString(),
+      plain_status: "画面可见",
+      preview_status: "streaming",
+      sample_status: "visible_content_observed",
+      mean_luma: 202,
+      max_luma: 202,
+      non_black_ratio_ge16: 1,
+      video_size: "640x480",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      robot_control_executed: false,
+    });
 
     await wrapper.findAll("button").find((button) => button.text() === "关闭画面")?.trigger("click");
     await flushPromises();
@@ -3572,6 +3628,107 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("stopped_by_user");
     expect(wrapper.find("details").text()).toContain("peer_closed:closed");
     expect(mockedFetch.mock.calls.some(([url, options]) => String(url).includes("/api/robot-control/camera/peers/peer-preview-001/close") && options?.method === "POST")).toBe(true);
+  });
+
+  it("marks near-black preview as 画面偏暗 instead of optimistic 已打开", async () => {
+    // 只要本地像素采样接近纯黑，就必须给普通用户更真实的“画面偏暗”而不是“已打开”。
+    vi.useFakeTimers();
+    const mockedFetch = stubWorkstationFetch();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => ({
+      drawImage: () => undefined,
+      getImageData: () => ({ data: new Uint8ClampedArray(32 * 24 * 4) }),
+    }) as unknown as CanvasRenderingContext2D);
+    class FakeMediaStream {
+      tracks: Array<{ kind: string; readyState: string; stop: () => void }>;
+
+      constructor(tracks: Array<{ kind: string; readyState: string; stop: () => void }>) {
+        this.tracks = tracks;
+      }
+
+      getTracks() {
+        return this.tracks;
+      }
+    }
+
+    class FakePeerConnection {
+      iceConnectionState = "new";
+      iceGatheringState = "complete";
+      localDescription: { type: "offer"; sdp: string } | null = null;
+      remoteDescription: { type: "answer"; sdp: string } | null = null;
+      oniceconnectionstatechange: (() => void) | null = null;
+      ontrack: ((
+        event: {
+          track: { kind: string; readyState: string; stop: () => void; onended: (() => void) | null };
+          streams: FakeMediaStream[];
+        },
+      ) => void) | null = null;
+
+      addTransceiver() {
+        return undefined;
+      }
+
+      async createOffer() {
+        return { type: "offer" as const, sdp: "v=0\r\ns=local-offer\r\n" };
+      }
+
+      async setLocalDescription(description: { type: "offer"; sdp: string }) {
+        this.localDescription = description;
+      }
+
+      async setRemoteDescription(description: { type: "answer"; sdp: string }) {
+        const videoTrack = {
+          kind: "video",
+          readyState: "live",
+          stop: () => undefined,
+          onended: null,
+        };
+        this.remoteDescription = description;
+        this.iceConnectionState = "connected";
+        this.oniceconnectionstatechange?.();
+        this.ontrack?.({
+          track: videoTrack,
+          streams: [new FakeMediaStream([videoTrack])],
+        });
+      }
+
+      getReceivers() {
+        return [];
+      }
+
+      close() {
+        this.iceConnectionState = "closed";
+        this.oniceconnectionstatechange?.();
+      }
+    }
+
+    vi.stubGlobal("MediaStream", FakeMediaStream as unknown as typeof MediaStream);
+    vi.stubGlobal("RTCPeerConnection", FakePeerConnection as unknown as typeof RTCPeerConnection);
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    await flushPromises();
+    await wrapper.findAll("button").find((button) => button.text() === "打开画面")?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const previewVideoElement = wrapper.find('[data-testid="robot-camera-preview-video"]').element as HTMLVideoElement;
+    Object.defineProperty(previewVideoElement, "videoWidth", { configurable: true, value: 640 });
+    Object.defineProperty(previewVideoElement, "videoHeight", { configurable: true, value: 480 });
+    Object.defineProperty(previewVideoElement, "readyState", { configurable: true, value: 4 });
+    previewVideoElement.dispatchEvent(new Event("loadeddata"));
+    previewVideoElement.dispatchEvent(new Event("playing"));
+    await vi.advanceTimersByTimeAsync(1100);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find(".robot-console-grid").text()).toContain("画面偏暗");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("画面太暗，先检查镜头/光线。");
+    expect(wrapper.find("details").text()).toContain("near_black");
+    expect(wrapper.find("details").text()).toContain("max_luma");
+    expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/camera/offer") && options?.method === "POST")).toBe(true);
   });
 
   it("keeps failure status after Start Preview fails instead of collapsing to stopped_by_user", async () => {

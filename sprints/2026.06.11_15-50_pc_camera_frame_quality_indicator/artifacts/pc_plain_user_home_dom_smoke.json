@@ -1,0 +1,34 @@
+{
+  "schema": "trashbot.pc_workstation.plain_user_home_dom_smoke.v1",
+  "checked_at": "2026-06-11T07:55:25.946Z",
+  "first_screen_card_titles": [
+    "小车连接",
+    "实时画面",
+    "雷达",
+    "地图",
+    "移动/导航"
+  ],
+  "forbidden_token_presence": {
+    "检查路径": false,
+    "现场材料": false,
+    "HIL": false,
+    "Nav2": false,
+    "proof": false,
+    "key values": false,
+    "/cmd_vel": false,
+    "/api/base/manual": false,
+    "可点动": false,
+    "task_id": false,
+    "O6": false,
+    "O7": false,
+    "Mock": false,
+    "field manifest": false
+  },
+  "advanced_diagnostics_closed_by_default": true,
+  "advanced_entries_retained": {
+    "check_path": true,
+    "nav_goal_preflight": true,
+    "hil_materials": true,
+    "proof_readback": true
+  }
+}

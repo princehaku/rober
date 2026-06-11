@@ -1,0 +1,15 @@
+{
+  "schema": "trashbot.pc_workstation.camera_frame_quality_dom_smoke.v1",
+  "checked_at": "2026-06-11T07:55:27.518Z",
+  "plain_status": "画面可见",
+  "preview_status": "streaming",
+  "sample_status": "visible_content_observed",
+  "mean_luma": 202,
+  "max_luma": 202,
+  "non_black_ratio_ge16": 1,
+  "video_size": "640x480",
+  "safe_to_control": false,
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "robot_control_executed": false
+}

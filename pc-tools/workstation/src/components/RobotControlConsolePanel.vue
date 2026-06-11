@@ -117,6 +117,16 @@ const videoElementWidth = ref(0);
 const videoElementHeight = ref(0);
 const videoElementPresentedFrames = ref<number | null>(null);
 const videoElementFrameStatus = ref("not_observed");
+type CameraFrameSampleStatus = "not_sampled" | "sampling" | "visible_content_observed" | "near_black" | "sample_failed";
+const previewFrameSampleStatus = ref<CameraFrameSampleStatus>("not_sampled");
+const previewFrameSampleMeanLuma = ref<number | null>(null);
+const previewFrameSampleMaxLuma = ref<number | null>(null);
+const previewFrameSampleNonBlackRatio = ref<number | null>(null);
+const previewFrameSampledAt = ref("");
+const previewFrameSampleFailure = ref("");
+const previewFrameSampleAttempts = ref(0);
+const previewFrameSampleCanvasSize = ref("not_sampled");
+let previewFrameSampleTimers: number[] = [];
 
 const selectedTaskSummary = computed(() => {
   // task_id 是回放和 evidence 的主键；没有 task_id 时保持 blocked 空状态。
@@ -162,13 +172,25 @@ function summarizeRobotConnection(): { state: "未连接" | "已连接" | "有�
   return { state: "未连接", hint: "还没有连上可读状态。" };
 }
 
-function summarizeCameraState(): { state: "未打开" | "连接中" | "已打开" | "失败"; hint: string } {
-  // 摄像头首屏只暴露会话进度，不泄露 peer / ICE / SDP 细节。
+function summarizeCameraState(): { state: "未打开" | "连接中" | "已打开" | "画面可见" | "画面偏暗" | "失败"; hint: string } {
+  // 摄像头首屏只暴露普通用户能理解的结论，不泄露 peer / ICE / SDP / canvas 细节。
   switch (previewStatus.value) {
     case "starting_local_peer":
     case "connecting_offer_posted":
       return { state: "连接中", hint: "正在打开实时画面。" };
     case "streaming":
+      if (previewFrameSampleStatus.value === "visible_content_observed") {
+        return { state: "画面可见", hint: "画面可见。" };
+      }
+      if (previewFrameSampleStatus.value === "near_black") {
+        return { state: "画面偏暗", hint: "画面太暗，先检查镜头/光线。" };
+      }
+      if (previewFrameSampleStatus.value === "sampling") {
+        return { state: "已打开", hint: "画面已打开，正在确认内容。" };
+      }
+      if (previewFrameSampleStatus.value === "sample_failed") {
+        return { state: "已打开", hint: "画面已打开，暂时无法判断明暗。" };
+      }
       return { state: "已打开", hint: "画面已打开。" };
     case "start_failed":
     case "peer_cleanup_failed":
@@ -725,6 +747,25 @@ function clearPreviewElement(): void {
   syncPreviewVideoElementDiagnostics();
 }
 
+function clearPreviewFrameSamplingTimers(): void {
+  // 采样只允许低频短时重试；会话结束或重启时必须清掉旧 timer，避免旧结果污染新会话。
+  previewFrameSampleTimers.forEach((timer) => window.clearTimeout(timer));
+  previewFrameSampleTimers = [];
+}
+
+function resetPreviewFrameSampling(): void {
+  // 新会话或停止后必须清空上一轮亮度结论，避免普通首屏继续展示过期“可见/偏暗”。
+  clearPreviewFrameSamplingTimers();
+  previewFrameSampleStatus.value = "not_sampled";
+  previewFrameSampleMeanLuma.value = null;
+  previewFrameSampleMaxLuma.value = null;
+  previewFrameSampleNonBlackRatio.value = null;
+  previewFrameSampledAt.value = "";
+  previewFrameSampleFailure.value = "";
+  previewFrameSampleAttempts.value = 0;
+  previewFrameSampleCanvasSize.value = "not_sampled";
+}
+
 function syncPreviewVideoElementDiagnostics(): void {
   // 这些字段只放在高级诊断和 smoke artifact，用真实 video 元素状态补足 track/live 的间接证据。
   const videoElement = previewVideo.value;
@@ -762,6 +803,110 @@ function requestPreviewFrameProbe(videoElement: HTMLVideoElement, epoch: number)
   });
 }
 
+function roundFrameMetric(value: number): number {
+  // 采样指标只用于人眼可见性诊断，保留三位小数足够复核且不会引入伪精度。
+  return Math.round(value * 1000) / 1000;
+}
+
+function classifyPreviewFrameQuality(meanLuma: number, maxLuma: number, nonBlackRatio: number): CameraFrameSampleStatus {
+  // 阈值故意保守：只有亮度均值、亮点上界和非黑比例同时过线，才允许首屏显示“画面可见”。
+  if (meanLuma >= 18 && maxLuma >= 96 && nonBlackRatio >= 0.05) {
+    return "visible_content_observed";
+  }
+  return "near_black";
+}
+
+function samplePreviewFrame(epoch: number): void {
+  // 采样只在本地浏览器内存完成；它只判断画面内容是否近黑，不承担任何控制放行职责。
+  if (sessionEpoch.value !== epoch || previewStatus.value !== "streaming") {
+    return;
+  }
+  previewFrameSampleAttempts.value += 1;
+  const videoElement = previewVideo.value;
+  if (!videoElement || !videoElement.srcObject) {
+    previewFrameSampleStatus.value = "sample_failed";
+    previewFrameSampleFailure.value = "video_src_object_missing";
+    return;
+  }
+  if (videoElement.videoWidth <= 0 || videoElement.videoHeight <= 0 || videoElement.readyState < 2) {
+    if (previewFrameSampleAttempts.value >= 3) {
+      previewFrameSampleStatus.value = "sample_failed";
+    }
+    previewFrameSampleFailure.value = "video_frame_not_ready";
+    return;
+  }
+  previewFrameSampleStatus.value = "sampling";
+  const sampleWidth = Math.max(16, Math.min(64, Math.floor(videoElement.videoWidth / 10) || 32));
+  const sampleHeight = Math.max(16, Math.min(48, Math.floor(videoElement.videoHeight / 10) || 24));
+  previewFrameSampleCanvasSize.value = `${sampleWidth}x${sampleHeight}`;
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = sampleWidth;
+    canvas.height = sampleHeight;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) {
+      previewFrameSampleStatus.value = "sample_failed";
+      previewFrameSampleFailure.value = "canvas_2d_context_unavailable";
+      return;
+    }
+    context.drawImage(videoElement, 0, 0, sampleWidth, sampleHeight);
+    const imageData = context.getImageData(0, 0, sampleWidth, sampleHeight);
+    const pixels = imageData.data;
+    const totalPixels = pixels.length / 4;
+    let lumaSum = 0;
+    let lumaMax = 0;
+    let nonBlackCount = 0;
+    for (let index = 0; index < pixels.length; index += 4) {
+      const luma = Math.round((pixels[index]! * 77 + pixels[index + 1]! * 150 + pixels[index + 2]! * 29) / 256);
+      lumaSum += luma;
+      if (luma > lumaMax) {
+        lumaMax = luma;
+      }
+      if (luma >= 16) {
+        nonBlackCount += 1;
+      }
+    }
+    const meanLuma = totalPixels > 0 ? lumaSum / totalPixels : 0;
+    const nonBlackRatio = totalPixels > 0 ? nonBlackCount / totalPixels : 0;
+    previewFrameSampleMeanLuma.value = roundFrameMetric(meanLuma);
+    previewFrameSampleMaxLuma.value = lumaMax;
+    previewFrameSampleNonBlackRatio.value = roundFrameMetric(nonBlackRatio);
+    previewFrameSampledAt.value = stampNow();
+    previewFrameSampleFailure.value = "";
+    previewFrameSampleStatus.value = classifyPreviewFrameQuality(meanLuma, lumaMax, nonBlackRatio);
+  } catch (err) {
+    previewFrameSampleStatus.value = "sample_failed";
+    previewFrameSampleFailure.value = err instanceof Error ? err.message : "frame_sampling_failed";
+  }
+}
+
+function schedulePreviewFrameSampling(epoch: number): void {
+  // 单次 loadeddata/playing 可能还拿不到稳定像素，因此每会话允许最多三次低频补采样。
+  if (sessionEpoch.value !== epoch || previewStatus.value !== "streaming") {
+    return;
+  }
+  clearPreviewFrameSamplingTimers();
+  previewFrameSampleStatus.value = "sampling";
+  previewFrameSampleFailure.value = "";
+  const delaysMs = [0, 300, 1000];
+  previewFrameSampleTimers = delaysMs.map((delayMs) =>
+    window.setTimeout(() => {
+      if (sessionEpoch.value !== epoch || previewStatus.value !== "streaming") {
+        return;
+      }
+      samplePreviewFrame(epoch);
+    }, delayMs),
+  );
+}
+
+function handlePreviewVideoReady(): void {
+  // video 元素发出 loadeddata/playing 时，才说明浏览器已有机会读到真实像素内容。
+  syncPreviewVideoElementDiagnostics();
+  if (previewStatus.value === "streaming") {
+    schedulePreviewFrameSampling(sessionEpoch.value);
+  }
+}
+
 function bindPreviewStreamToElement(stream: MediaStream, epoch: number): void {
   // 绑定后主动 play，避免部分浏览器只完成 WebRTC track 但 video 元素仍停在 HAVE_NOTHING。
   const videoElement = previewVideo.value;
@@ -778,6 +923,7 @@ function bindPreviewStreamToElement(stream: MediaStream, epoch: number): void {
         .then(() => {
           syncPreviewVideoElementDiagnostics();
           requestPreviewFrameProbe(videoElement, epoch);
+          schedulePreviewFrameSampling(epoch);
         })
         .catch(() => {
           syncPreviewVideoElementDiagnostics();
@@ -808,6 +954,8 @@ function bindVideoTrack(track: MediaStreamTrack, remoteStream: MediaStream | nul
   if (sessionEpoch.value !== epoch) {
     return;
   }
+  resetPreviewFrameSampling();
+  previewFrameSampleStatus.value = "sampling";
   videoTrackState.value = track.readyState;
   replacePreviewStream(track, remoteStream, epoch);
   previewStatus.value = "streaming";
@@ -826,6 +974,7 @@ function closeLocalPeer(reason: RobotControlPreviewStatus): void {
   previewPeerConnection.value?.close();
   previewPeerConnection.value = null;
   replacePreviewStream(null, null, sessionEpoch.value);
+  resetPreviewFrameSampling();
   iceConnectionState.value = "closed";
   videoTrackState.value = "stopped";
   previewStatus.value = reason;
@@ -1312,8 +1461,8 @@ onBeforeUnmount(() => {
             muted
             playsinline
             @loadedmetadata="syncPreviewVideoElementDiagnostics"
-            @loadeddata="syncPreviewVideoElementDiagnostics"
-            @playing="syncPreviewVideoElementDiagnostics"
+            @loadeddata="handlePreviewVideoReady"
+            @playing="handlePreviewVideoReady"
             @resize="syncPreviewVideoElementDiagnostics"
           />
           <p class="panel-note">{{ cameraSummary.hint }}</p>
@@ -1432,6 +1581,22 @@ onBeforeUnmount(() => {
             <dd>{{ videoElementPresentedFrames ?? "not_available" }}</dd>
             <dt>video_element_frame_status</dt>
             <dd>{{ videoElementFrameStatus }}</dd>
+            <dt>sample_status</dt>
+            <dd>{{ previewFrameSampleStatus }}</dd>
+            <dt>mean_luma</dt>
+            <dd>{{ previewFrameSampleMeanLuma ?? "not_sampled" }}</dd>
+            <dt>max_luma</dt>
+            <dd>{{ previewFrameSampleMaxLuma ?? "not_sampled" }}</dd>
+            <dt>non_black_ratio_ge16</dt>
+            <dd>{{ previewFrameSampleNonBlackRatio ?? "not_sampled" }}</dd>
+            <dt>sample_attempts</dt>
+            <dd>{{ previewFrameSampleAttempts }}</dd>
+            <dt>sample_canvas_size</dt>
+            <dd>{{ previewFrameSampleCanvasSize }}</dd>
+            <dt>sampled_at</dt>
+            <dd>{{ previewFrameSampledAt || "never" }}</dd>
+            <dt>sample_failure</dt>
+            <dd>{{ previewFrameSampleFailure || "none" }}</dd>
             <dt>last_offer_at</dt>
             <dd>{{ lastOfferAt || "never" }}</dd>
             <dt>last_stop_at</dt>

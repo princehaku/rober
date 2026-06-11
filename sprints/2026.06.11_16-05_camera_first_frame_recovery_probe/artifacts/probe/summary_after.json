@@ -1,0 +1,75 @@
+{
+  "ts": 1781165340.3814638,
+  "device": "/dev/video1",
+  "results": [
+    {
+      "device": "/dev/video1",
+      "mode": {
+        "name": "mjpg_640x480",
+        "fourcc": "MJPG",
+        "w": 640,
+        "h": 480
+      },
+      "opened": true,
+      "read_ok": false,
+      "frame_shape": null,
+      "gray_mean": null,
+      "gray_max": null,
+      "non_black_ratio": null,
+      "elapsed_ms": 40684.48,
+      "warnings": [
+        "no_frame_after_reads"
+      ],
+      "actual_fourcc": 1196444237,
+      "actual_width": 640,
+      "actual_height": 480,
+      "actual_fps": 30.0
+    },
+    {
+      "device": "/dev/video1",
+      "mode": {
+        "name": "yuyv_640x480",
+        "fourcc": "YUYV",
+        "w": 640,
+        "h": 480
+      },
+      "opened": true,
+      "read_ok": false,
+      "frame_shape": null,
+      "gray_mean": null,
+      "gray_max": null,
+      "non_black_ratio": null,
+      "elapsed_ms": 40667.77,
+      "warnings": [
+        "no_frame_after_reads"
+      ],
+      "actual_fourcc": 1448695129,
+      "actual_width": 640,
+      "actual_height": 480,
+      "actual_fps": 22.0
+    },
+    {
+      "device": "/dev/video1",
+      "mode": {
+        "name": "mjpg_1280x720",
+        "fourcc": "MJPG",
+        "w": 1280,
+        "h": 720
+      },
+      "opened": true,
+      "read_ok": false,
+      "frame_shape": null,
+      "gray_mean": null,
+      "gray_max": null,
+      "non_black_ratio": null,
+      "elapsed_ms": 40718.8,
+      "warnings": [
+        "no_frame_after_reads"
+      ],
+      "actual_fourcc": 1196444237,
+      "actual_width": 1280,
+      "actual_height": 720,
+      "actual_fps": 30.0
+    }
+  ]
+}

@@ -328,3 +328,71 @@ USB UVC camera 后重跑 `/api/camera/devices` 与 OpenCV stats。
 
 在 `visible_content_proven=true` 前，`/dev/video1` 仍只能用于链路存在性证明，
 不能用于 motion gate 放行。
+
+## 2026-06-11 16:05 camera first-frame recovery probe
+
+`sprints/2026.06.11_16-05_camera_first_frame_recovery_probe/` 在真实上位机
+`root@192.168.1.11:37878` 上做了一次更窄的 first-frame recovery probe，
+目标不是证明画面是否可见，而是判断当前 `preview_open_result=start_failed` /
+`failure_reason=The operation was aborted due to timeout` 是否来自前端、camera service，
+还是 `/dev/video1` 自身首帧 readback 卡死。
+
+本轮资料边界继续以 `docs/vendor/VENDOR_INDEX.md` 为入口，并采用：
+
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`
+  - vendor 底盘控制走 `/dev/ttyAMA0 @ 115200` UART JSON，这一事实只用于界定
+    WAVE ROVER 底盘链路边界，不外推到 Orange Pi 当前设备名。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/cv_ctrl.py`
+  - vendor 参考上位机把 USB camera 作为 `cv2.VideoCapture(...)` 输入源；
+    相机路径与底盘 UART 是两条独立链路。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
+  - vendor 视频默认分辨率 `640x480`。
+
+因此本轮明确结论是：DV20 `/dev/video1` 的 UVC/V4L2 首帧读取问题，不属于
+WAVE ROVER `T=1/T=13/T=130/T=131`、`/cmd_vel`、`/dev/ttyS5` 或底盘 UART 范畴。
+本轮实际未调用 `/api/base/manual`、未发布 `/cmd_vel`、未占用 `/dev/ttyS5`。
+
+重启前 readback：
+
+- `/api/camera/health` 显示上一次失败 peer 的 `source_selection` 为：
+  - `/dev/video0 opened=false`
+  - `/dev/video1 opened=true read_ok=false`
+  - `/dev/video2 opened=false`
+  - `failure_reason=no_candidate_opened_and_read_first_frame`
+- `journalctl -u trashbot-local-webrtc-camera.service` 记录：
+  - 14:25 的旧 peer 曾在 `/dev/video1` 上稳定编码 `5653` 帧。
+  - 15:57 的失败 peer 对 `/dev/video1` 触发
+    `VIDEOIO(V4L2:/dev/video1): select() timeout`，随后 `offer_failed`。
+- probe 前 `lsof/fuser /dev/video0 /dev/video1 /dev/video2 /dev/ttyS5` 均无残留占用。
+
+最小 OpenCV first-frame probe（重启前）：
+
+- `MJPG 640x480`：`opened=true`，`read_ok=false`，约 `40.7s` 内四次读帧全部超时。
+- `YUYV 640x480`：`opened=true`，`read_ok=false`，约 `40.7s` 内四次读帧全部超时。
+- `MJPG 1280x720`：`opened=true`，`read_ok=false`，约 `40.7s` 内四次读帧全部超时。
+- 因为一帧都没有读到，所以本轮没有 `frame_shape/gray_mean/gray_max/non_black_ratio`，
+  也没有 sample JPG artifact。
+
+安全重启 `trashbot-local-webrtc-camera.service` 后：
+
+- service 恢复 `active`，`/api/camera/health` 返回 `status=ready`、`active_peer_count=0`。
+- 直接访问板端 `http://127.0.0.1:8088/health` 也返回 `200 OK`。
+- 但同一组 OpenCV probe 结果不变：三种模式全部 `opened=true read_ok=false`，并继续出现
+  `VIDEOIO(V4L2:/dev/video1): select() timeout`。
+
+因此当前更接近以下结论，而不是“前端 preview 状态脏了”：
+
+1. `trashbot-local-webrtc-camera.service` 本身可以被安全重启并恢复到 `active/ready`。
+2. 当前失败点停留在更底层的 `/dev/video1` 首帧 readback；仅重启 camera service
+   不能恢复。
+3. 由于 probe 前后都没有 `/dev/video1` 占用者，当前不像普通的 device busy，更像
+   DV20/UVC 流在设备或物理输入侧进入了“可 open、不可 first-frame read”状态。
+4. 结合 14:25 曾稳定出帧、16:05 后稳定 read timeout，本轮更偏向“DV20/物理输入源/
+   设备临时卡死或黑场上游异常”，而不是单纯的上位机 HTTP/WebRTC service 状态问题。
+
+cleanup 结果：
+
+- `trashbot-local-webrtc-camera.service` 结束时保持 `active`。
+- `/api/camera/health` 最终 `active_peer_count=0`。
+- `/dev/video0`、`/dev/video1`、`/dev/video2`、`/dev/ttyS5` 的 `lsof/fuser`
+  结束时均无本轮残留占用。
