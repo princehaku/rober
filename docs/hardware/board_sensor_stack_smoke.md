@@ -317,6 +317,58 @@ camera readback、v4l2 摄像头枚举、OpenCV/ffmpeg 单帧抓取和 UVC 控�
 
 下一步必须现场人工确认镜头盖/保护膜/遮挡、朝向、补光、USB 口和相机本体。
 
+## 2026-06-11 10:15 Camera Visible Content Recovery
+
+`sprints/2026.06.11_10-15_camera_visible_content_recovery/` 继续排查 PC
+实时图传近黑问题。本轮只访问真实上位机 camera/WebRTC 服务、Robot API、
+V4L2/USB/media readback、OpenCV/ffmpeg 单帧抓取和 PC workstation camera
+preview；未触碰底盘、运动、串口、雷达、Nav2 或 vendor 文件。
+
+采用来源与边界：
+
+- `docs/vendor/VENDOR_INDEX.md`：硬件事实必须先查本地 vendor 资料；本轮不新增
+  WAVE ROVER、UART、电压、引脚或运动结论。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`、`tutorial_cn/13 在 Jupyter Lab 中显示实时画面.ipynb`
+  与 `tutorial_en/13 Displaying Real-Time Video Stream in Jupyter Lab.ipynb`：
+  vendor 只提供 Raspberry Pi/OpenCV/USB camera 参考，包含 `640x480` 和
+  `cv2.VideoCapture` 用法；不能外推为 Orange Pi 当前设备路径或画面可见事实。
+
+真实上位机结论：
+
+- `trashbot-upper-robot-api.service` 与 `trashbot-local-webrtc-camera.service` 保持
+  `active`；camera service 参数为 `--video-source auto --width 640 --height 480 --fps 15`。
+- `/api/camera/health` 为 `status=ready`，WebRTC auto selection 仍选择
+  `/dev/video1`；Stop/cleanup 后 `active_peer_connections=0`。
+- `/dev/video1` 是 `uvcvideo` 的 `USB Composite Device: DV20 USB` capture 节点；
+  `/dev/video0` 是 `cedrus` platform decoder，`/dev/video2` 是 metadata capture。
+- `/dev/video1` 只有 `Input 1`，支持 MJPG `1280x720/640x480/480x320/1920x1080`
+  和 YUYV `640x480/320x240`。USB descriptor 暴露 PAL/SECAM/NTSC capability，
+  但本轮没有发现可通过 V4L2 input 切换解决的第二输入源。
+- OpenCV 逐项尝试 YUYV/MJPG、多分辨率和亮度/增益/背光/伽马：
+  默认 YUYV `mean_gray≈0.0013`、MJPG `mean_gray=1.0`、全部
+  `nonblack_pixels_gt10=0`、`edge_pixels=0`。
+- 极端 `auto_exposure=Manual`、`exposure_time_absolute=100000`、高亮度/对比度/增益
+  只能得到很暗轮廓：`mean_gray≈1.33`、`nonblack_pixels_gt10=7315/307200`、
+  `edge_pixels=597`。这证明 UVC 管线和解码可工作，但不是可用实时画面。
+- ffmpeg 交叉采样 YUYV/MJPG 仍为近黑：YUYV `mean_gray≈0.019`、MJPG
+  `mean_gray=1.0`，均 `nonblack_pixels_gt10=0`。
+- PC workstation 通过真实页面 `打开画面 -> 关闭画面` 跑通，Chrome canvas 从
+  `<video>` 采样 `320x240`：`srcObject=true`、`readyState=4`、`videoWidth=640`、
+  `videoHeight=480`、`meanGray=1`、`nonBlackPixelsGt10=0`。video 区域截图仍为黑场。
+
+结论：当前根因等级为 **物理输入侧待现场处理**。软件侧服务参数、auto 选源、
+格式、分辨率、常规 UVC 控件和 PC WebRTC/Canvas 链路均已排除为主要原因；
+在现场未补光、调整朝向、移除遮挡/保护膜或更换已知可见 USB UVC 摄像头前，
+`visible_content_proven=false` 不能翻转。
+
+现场动作清单：
+
+- 检查镜头盖、保护膜、遮挡、安装朝向和是否对着暗处/车体内部。
+- 在镜头前放置强光高对比目标，重跑 OpenCV default YUYV 与 PC 页面 canvas。
+- 若 DV20 是采集卡而不是普通摄像头，确认 HDMI/AV 输入源已开机、输出制式/分辨率兼容。
+- 换一个已知可见画面的 USB UVC 摄像头接到同一 Orange Pi USB 口，重跑
+  `/api/camera/devices`、OpenCV/ffmpeg 单帧和 PC WebRTC smoke。
+
 ## 2026-06-10 WAVE ROVER Min Actuation Probe
 
 `sprints/2026.06.10_04-15_wave_rover_min_actuation_probe/` 在真实上位机

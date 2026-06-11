@@ -1,0 +1,28 @@
+[
+  {
+    "file": "ffmpeg_yuyv_640x480.jpg",
+    "read": true,
+    "shape": [
+      480,
+      640,
+      3
+    ],
+    "mean_gray": 0.019016927083333333,
+    "max_gray": 1,
+    "nonblack_pixels_gt10": 0,
+    "edge_pixels": 0
+  },
+  {
+    "file": "ffmpeg_mjpg_640x480.jpg",
+    "read": true,
+    "shape": [
+      480,
+      640,
+      3
+    ],
+    "mean_gray": 1.0,
+    "max_gray": 1,
+    "nonblack_pixels_gt10": 0,
+    "edge_pixels": 0
+  }
+]

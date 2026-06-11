@@ -1,0 +1,1147 @@
+{
+  "schema": "trashbot.camera_visible_content_probe.v1",
+  "device": "/dev/video1",
+  "finished_at_ms": 1781143947328,
+  "original_controls": {
+    "brightness": {
+      "value": 0,
+      "raw": "brightness: 0",
+      "returncode": 0
+    },
+    "contrast": {
+      "value": 256,
+      "raw": "contrast: 256",
+      "returncode": 0
+    },
+    "saturation": {
+      "value": 250,
+      "raw": "saturation: 250",
+      "returncode": 0
+    },
+    "gamma": {
+      "value": 20,
+      "raw": "gamma: 20",
+      "returncode": 0
+    },
+    "gain": {
+      "value": 4,
+      "raw": "gain: 4",
+      "returncode": 0
+    },
+    "power_line_frequency": {
+      "value": 0,
+      "raw": "power_line_frequency: 0",
+      "returncode": 0
+    },
+    "white_balance_temperature": {
+      "value": 4500,
+      "raw": "white_balance_temperature: 4500",
+      "returncode": 0
+    },
+    "sharpness": {
+      "value": 100,
+      "raw": "sharpness: 100",
+      "returncode": 0
+    },
+    "backlight_compensation": {
+      "value": 0,
+      "raw": "backlight_compensation: 0",
+      "returncode": 0
+    },
+    "auto_exposure": {
+      "value": null,
+      "raw": "auto_exposure: 3 (Aperture Priority Mode)",
+      "returncode": 0
+    },
+    "exposure_time_absolute": {
+      "value": 80,
+      "raw": "exposure_time_absolute: 80",
+      "returncode": 0
+    }
+  },
+  "attempts": [
+    {
+      "label": "default_yuyv_640x480",
+      "fourcc": "YUYV",
+      "width": 640,
+      "height": 480,
+      "fps": 22,
+      "controls": {},
+      "set_controls": [],
+      "set_format": [
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-fmt-video",
+            "width=640,height=480,pixelformat=YUYV"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-parm",
+            "22"
+          ],
+          "returncode": 0,
+          "stdout": "Frame rate set to 22.000 fps\n",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--get-fmt-video"
+          ],
+          "returncode": 0,
+          "stdout": "Format Video Capture:\n\tWidth/Height      : 640/480\n\tPixel Format      : 'YUYV' (YUYV 4:2:2)\n\tField             : None\n\tBytes per Line    : 1280\n\tSize Image        : 614400\n\tColorspace        : sRGB\n\tTransfer Function : Rec. 709\n\tYCbCr/HSV Encoding: ITU-R 601\n\tQuantization      : Default (maps to Limited Range)\n\tFlags             : \n",
+          "stderr": ""
+        }
+      ],
+      "opened": true,
+      "read_failures": 0,
+      "frames_read": 12,
+      "actual": {
+        "width": 640.0,
+        "height": 480.0,
+        "fps": 22.0,
+        "fourcc_int": 1448695129.0
+      },
+      "shape": [
+        480,
+        640,
+        3
+      ],
+      "mean_gray": 0.0012825520833333332,
+      "std_gray": 0.03597121038858998,
+      "min_gray": 0,
+      "max_gray": 2,
+      "p50_gray": 0.0,
+      "p95_gray": 0.0,
+      "p99_gray": 0.0,
+      "nonblack_pixels_gt10": 0,
+      "nonblack_ratio_gt10": 0.0,
+      "edge_pixels": 0,
+      "hist16": [
+        307200,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "jpg": "/tmp/rober_camera_visible_content_recovery/default_yuyv_640x480.jpg",
+      "png": "/tmp/rober_camera_visible_content_recovery/default_yuyv_640x480.png"
+    },
+    {
+      "label": "mjpg_640x480",
+      "fourcc": "MJPG",
+      "width": 640,
+      "height": 480,
+      "fps": 30,
+      "controls": {},
+      "set_controls": [],
+      "set_format": [
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-fmt-video",
+            "width=640,height=480,pixelformat=MJPG"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-parm",
+            "30"
+          ],
+          "returncode": 0,
+          "stdout": "Frame rate set to 30.000 fps\n",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--get-fmt-video"
+          ],
+          "returncode": 0,
+          "stdout": "Format Video Capture:\n\tWidth/Height      : 640/480\n\tPixel Format      : 'MJPG' (Motion-JPEG)\n\tField             : None\n\tBytes per Line    : 0\n\tSize Image        : 4177920\n\tColorspace        : sRGB\n\tTransfer Function : Default (maps to sRGB)\n\tYCbCr/HSV Encoding: Default (maps to ITU-R 601)\n\tQuantization      : Default (maps to Full Range)\n\tFlags             : \n",
+          "stderr": ""
+        }
+      ],
+      "opened": true,
+      "read_failures": 0,
+      "frames_read": 12,
+      "actual": {
+        "width": 640.0,
+        "height": 480.0,
+        "fps": 30.0,
+        "fourcc_int": 1196444237.0
+      },
+      "shape": [
+        480,
+        640,
+        3
+      ],
+      "mean_gray": 1.0,
+      "std_gray": 0.0,
+      "min_gray": 1,
+      "max_gray": 1,
+      "p50_gray": 1.0,
+      "p95_gray": 1.0,
+      "p99_gray": 1.0,
+      "nonblack_pixels_gt10": 0,
+      "nonblack_ratio_gt10": 0.0,
+      "edge_pixels": 0,
+      "hist16": [
+        307200,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "jpg": "/tmp/rober_camera_visible_content_recovery/mjpg_640x480.jpg",
+      "png": "/tmp/rober_camera_visible_content_recovery/mjpg_640x480.png"
+    },
+    {
+      "label": "mjpg_1280x720",
+      "fourcc": "MJPG",
+      "width": 1280,
+      "height": 720,
+      "fps": 30,
+      "controls": {},
+      "set_controls": [],
+      "set_format": [
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-fmt-video",
+            "width=1280,height=720,pixelformat=MJPG"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-parm",
+            "30"
+          ],
+          "returncode": 0,
+          "stdout": "Frame rate set to 30.000 fps\n",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--get-fmt-video"
+          ],
+          "returncode": 0,
+          "stdout": "Format Video Capture:\n\tWidth/Height      : 1280/720\n\tPixel Format      : 'MJPG' (Motion-JPEG)\n\tField             : None\n\tBytes per Line    : 0\n\tSize Image        : 4177920\n\tColorspace        : sRGB\n\tTransfer Function : Default (maps to sRGB)\n\tYCbCr/HSV Encoding: Default (maps to ITU-R 601)\n\tQuantization      : Default (maps to Full Range)\n\tFlags             : \n",
+          "stderr": ""
+        }
+      ],
+      "opened": true,
+      "read_failures": 0,
+      "frames_read": 12,
+      "actual": {
+        "width": 1280.0,
+        "height": 720.0,
+        "fps": 30.0,
+        "fourcc_int": 1196444237.0
+      },
+      "shape": [
+        720,
+        1280,
+        3
+      ],
+      "mean_gray": 1.0,
+      "std_gray": 0.0,
+      "min_gray": 1,
+      "max_gray": 1,
+      "p50_gray": 1.0,
+      "p95_gray": 1.0,
+      "p99_gray": 1.0,
+      "nonblack_pixels_gt10": 0,
+      "nonblack_ratio_gt10": 0.0,
+      "edge_pixels": 0,
+      "hist16": [
+        921600,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "jpg": "/tmp/rober_camera_visible_content_recovery/mjpg_1280x720.jpg",
+      "png": "/tmp/rober_camera_visible_content_recovery/mjpg_1280x720.png"
+    },
+    {
+      "label": "mjpg_1920x1080",
+      "fourcc": "MJPG",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "controls": {},
+      "set_controls": [],
+      "set_format": [
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-fmt-video",
+            "width=1920,height=1080,pixelformat=MJPG"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-parm",
+            "30"
+          ],
+          "returncode": 0,
+          "stdout": "Frame rate set to 30.000 fps\n",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--get-fmt-video"
+          ],
+          "returncode": 0,
+          "stdout": "Format Video Capture:\n\tWidth/Height      : 1920/1080\n\tPixel Format      : 'MJPG' (Motion-JPEG)\n\tField             : None\n\tBytes per Line    : 0\n\tSize Image        : 4177920\n\tColorspace        : sRGB\n\tTransfer Function : Default (maps to sRGB)\n\tYCbCr/HSV Encoding: Default (maps to ITU-R 601)\n\tQuantization      : Default (maps to Full Range)\n\tFlags             : \n",
+          "stderr": ""
+        }
+      ],
+      "opened": true,
+      "read_failures": 0,
+      "frames_read": 12,
+      "actual": {
+        "width": 1920.0,
+        "height": 1080.0,
+        "fps": 30.0,
+        "fourcc_int": 1196444237.0
+      },
+      "shape": [
+        1080,
+        1920,
+        3
+      ],
+      "mean_gray": 1.0,
+      "std_gray": 0.0,
+      "min_gray": 1,
+      "max_gray": 1,
+      "p50_gray": 1.0,
+      "p95_gray": 1.0,
+      "p99_gray": 1.0,
+      "nonblack_pixels_gt10": 0,
+      "nonblack_ratio_gt10": 0.0,
+      "edge_pixels": 0,
+      "hist16": [
+        2073600,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "jpg": "/tmp/rober_camera_visible_content_recovery/mjpg_1920x1080.jpg",
+      "png": "/tmp/rober_camera_visible_content_recovery/mjpg_1920x1080.png"
+    },
+    {
+      "label": "yuyv_320x240",
+      "fourcc": "YUYV",
+      "width": 320,
+      "height": 240,
+      "fps": 25,
+      "controls": {},
+      "set_controls": [],
+      "set_format": [
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-fmt-video",
+            "width=320,height=240,pixelformat=YUYV"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-parm",
+            "25"
+          ],
+          "returncode": 0,
+          "stdout": "Frame rate set to 25.000 fps\n",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--get-fmt-video"
+          ],
+          "returncode": 0,
+          "stdout": "Format Video Capture:\n\tWidth/Height      : 320/240\n\tPixel Format      : 'YUYV' (YUYV 4:2:2)\n\tField             : None\n\tBytes per Line    : 640\n\tSize Image        : 153600\n\tColorspace        : sRGB\n\tTransfer Function : Rec. 709\n\tYCbCr/HSV Encoding: ITU-R 601\n\tQuantization      : Default (maps to Limited Range)\n\tFlags             : \n",
+          "stderr": ""
+        }
+      ],
+      "opened": true,
+      "read_failures": 0,
+      "frames_read": 12,
+      "actual": {
+        "width": 320.0,
+        "height": 240.0,
+        "fps": 25.0,
+        "fourcc_int": 1448695129.0
+      },
+      "shape": [
+        240,
+        320,
+        3
+      ],
+      "mean_gray": 0.0012239583333333334,
+      "std_gray": 0.034963699165442966,
+      "min_gray": 0,
+      "max_gray": 1,
+      "p50_gray": 0.0,
+      "p95_gray": 0.0,
+      "p99_gray": 0.0,
+      "nonblack_pixels_gt10": 0,
+      "nonblack_ratio_gt10": 0.0,
+      "edge_pixels": 0,
+      "hist16": [
+        76800,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "jpg": "/tmp/rober_camera_visible_content_recovery/yuyv_320x240.jpg",
+      "png": "/tmp/rober_camera_visible_content_recovery/yuyv_320x240.png"
+    },
+    {
+      "label": "bright_gain_yuyv_640x480",
+      "fourcc": "YUYV",
+      "width": 640,
+      "height": 480,
+      "fps": 22,
+      "controls": {
+        "brightness": 127,
+        "contrast": 511,
+        "gain": 7,
+        "backlight_compensation": 255,
+        "gamma": 30,
+        "power_line_frequency": 1
+      },
+      "set_controls": [
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "brightness=127"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "contrast=511"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "gain=7"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "backlight_compensation=255"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "gamma=30"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "power_line_frequency=1"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      ],
+      "set_format": [
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-fmt-video",
+            "width=640,height=480,pixelformat=YUYV"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-parm",
+            "22"
+          ],
+          "returncode": 0,
+          "stdout": "Frame rate set to 22.000 fps\n",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--get-fmt-video"
+          ],
+          "returncode": 0,
+          "stdout": "Format Video Capture:\n\tWidth/Height      : 640/480\n\tPixel Format      : 'YUYV' (YUYV 4:2:2)\n\tField             : None\n\tBytes per Line    : 1280\n\tSize Image        : 614400\n\tColorspace        : sRGB\n\tTransfer Function : Rec. 709\n\tYCbCr/HSV Encoding: ITU-R 601\n\tQuantization      : Default (maps to Limited Range)\n\tFlags             : \n",
+          "stderr": ""
+        }
+      ],
+      "opened": true,
+      "read_failures": 0,
+      "frames_read": 12,
+      "actual": {
+        "width": 640.0,
+        "height": 480.0,
+        "fps": 22.0,
+        "fourcc_int": 1448695129.0
+      },
+      "shape": [
+        480,
+        640,
+        3
+      ],
+      "mean_gray": 0.0011328125,
+      "std_gray": 0.03363821094885761,
+      "min_gray": 0,
+      "max_gray": 1,
+      "p50_gray": 0.0,
+      "p95_gray": 0.0,
+      "p99_gray": 0.0,
+      "nonblack_pixels_gt10": 0,
+      "nonblack_ratio_gt10": 0.0,
+      "edge_pixels": 0,
+      "hist16": [
+        307200,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "jpg": "/tmp/rober_camera_visible_content_recovery/bright_gain_yuyv_640x480.jpg",
+      "png": "/tmp/rober_camera_visible_content_recovery/bright_gain_yuyv_640x480.png"
+    },
+    {
+      "label": "manual_exposure_bright_yuyv_640x480",
+      "fourcc": "YUYV",
+      "width": 640,
+      "height": 480,
+      "fps": 22,
+      "controls": {
+        "auto_exposure": 1,
+        "exposure_time_absolute": 100000,
+        "brightness": 127,
+        "contrast": 511,
+        "gain": 7,
+        "backlight_compensation": 255,
+        "gamma": 30
+      },
+      "set_controls": [
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "auto_exposure=1"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "exposure_time_absolute=100000"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "brightness=127"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "contrast=511"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "gain=7"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "backlight_compensation=255"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-ctrl",
+            "gamma=30"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      ],
+      "set_format": [
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-fmt-video",
+            "width=640,height=480,pixelformat=YUYV"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-parm",
+            "22"
+          ],
+          "returncode": 0,
+          "stdout": "Frame rate set to 22.000 fps\n",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--get-fmt-video"
+          ],
+          "returncode": 0,
+          "stdout": "Format Video Capture:\n\tWidth/Height      : 640/480\n\tPixel Format      : 'YUYV' (YUYV 4:2:2)\n\tField             : None\n\tBytes per Line    : 1280\n\tSize Image        : 614400\n\tColorspace        : sRGB\n\tTransfer Function : Rec. 709\n\tYCbCr/HSV Encoding: ITU-R 601\n\tQuantization      : Default (maps to Limited Range)\n\tFlags             : \n",
+          "stderr": ""
+        }
+      ],
+      "opened": true,
+      "read_failures": 0,
+      "frames_read": 12,
+      "actual": {
+        "width": 640.0,
+        "height": 480.0,
+        "fps": 22.0,
+        "fourcc_int": 1448695129.0
+      },
+      "shape": [
+        480,
+        640,
+        3
+      ],
+      "mean_gray": 1.3288899739583333,
+      "std_gray": 3.746152367016682,
+      "min_gray": 0,
+      "max_gray": 79,
+      "p50_gray": 0.0,
+      "p95_gray": 9.0,
+      "p99_gray": 14.0,
+      "nonblack_pixels_gt10": 7315,
+      "nonblack_ratio_gt10": 0.023811848958333333,
+      "edge_pixels": 597,
+      "hist16": [
+        305491,
+        981,
+        420,
+        203,
+        105,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "jpg": "/tmp/rober_camera_visible_content_recovery/manual_exposure_bright_yuyv_640x480.jpg",
+      "png": "/tmp/rober_camera_visible_content_recovery/manual_exposure_bright_yuyv_640x480.png"
+    },
+    {
+      "label": "default_restored_yuyv_640x480",
+      "fourcc": "YUYV",
+      "width": 640,
+      "height": 480,
+      "fps": 22,
+      "controls": {},
+      "set_controls": [],
+      "set_format": [
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-fmt-video",
+            "width=640,height=480,pixelformat=YUYV"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--set-parm",
+            "22"
+          ],
+          "returncode": 0,
+          "stdout": "Frame rate set to 22.000 fps\n",
+          "stderr": ""
+        },
+        {
+          "cmd": [
+            "v4l2-ctl",
+            "-d",
+            "/dev/video1",
+            "--get-fmt-video"
+          ],
+          "returncode": 0,
+          "stdout": "Format Video Capture:\n\tWidth/Height      : 640/480\n\tPixel Format      : 'YUYV' (YUYV 4:2:2)\n\tField             : None\n\tBytes per Line    : 1280\n\tSize Image        : 614400\n\tColorspace        : sRGB\n\tTransfer Function : Rec. 709\n\tYCbCr/HSV Encoding: ITU-R 601\n\tQuantization      : Default (maps to Limited Range)\n\tFlags             : \n",
+          "stderr": ""
+        }
+      ],
+      "opened": true,
+      "read_failures": 0,
+      "frames_read": 12,
+      "actual": {
+        "width": 640.0,
+        "height": 480.0,
+        "fps": 22.0,
+        "fourcc_int": 1448695129.0
+      },
+      "shape": [
+        480,
+        640,
+        3
+      ],
+      "mean_gray": 0.00193359375,
+      "std_gray": 0.043930114559490516,
+      "min_gray": 0,
+      "max_gray": 1,
+      "p50_gray": 0.0,
+      "p95_gray": 0.0,
+      "p99_gray": 0.0,
+      "nonblack_pixels_gt10": 0,
+      "nonblack_ratio_gt10": 0.0,
+      "edge_pixels": 0,
+      "hist16": [
+        307200,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "jpg": "/tmp/rober_camera_visible_content_recovery/default_restored_yuyv_640x480.jpg",
+      "png": "/tmp/rober_camera_visible_content_recovery/default_restored_yuyv_640x480.png"
+    }
+  ],
+  "restore_controls": [
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "brightness=0"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "contrast=256"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "saturation=250"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "gamma=20"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "gain=4"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "power_line_frequency=0"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "white_balance_temperature=4500"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "sharpness=100"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "backlight_compensation=0"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": [
+        "v4l2-ctl",
+        "-d",
+        "/dev/video1",
+        "--set-ctrl",
+        "exposure_time_absolute=80"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "final_controls": {
+    "brightness": {
+      "value": 0,
+      "raw": "brightness: 0",
+      "returncode": 0
+    },
+    "contrast": {
+      "value": 256,
+      "raw": "contrast: 256",
+      "returncode": 0
+    },
+    "saturation": {
+      "value": 250,
+      "raw": "saturation: 250",
+      "returncode": 0
+    },
+    "gamma": {
+      "value": 20,
+      "raw": "gamma: 20",
+      "returncode": 0
+    },
+    "gain": {
+      "value": 4,
+      "raw": "gain: 4",
+      "returncode": 0
+    },
+    "power_line_frequency": {
+      "value": 0,
+      "raw": "power_line_frequency: 0",
+      "returncode": 0
+    },
+    "white_balance_temperature": {
+      "value": 4500,
+      "raw": "white_balance_temperature: 4500",
+      "returncode": 0
+    },
+    "sharpness": {
+      "value": 100,
+      "raw": "sharpness: 100",
+      "returncode": 0
+    },
+    "backlight_compensation": {
+      "value": 0,
+      "raw": "backlight_compensation: 0",
+      "returncode": 0
+    },
+    "auto_exposure": {
+      "value": null,
+      "raw": "auto_exposure: 1 (Manual Mode)",
+      "returncode": 0
+    },
+    "exposure_time_absolute": {
+      "value": 80,
+      "raw": "exposure_time_absolute: 80",
+      "returncode": 0
+    }
+  },
+  "final_format": {
+    "cmd": [
+      "v4l2-ctl",
+      "-d",
+      "/dev/video1",
+      "--get-fmt-video"
+    ],
+    "returncode": 0,
+    "stdout": "Format Video Capture:\n\tWidth/Height      : 640/480\n\tPixel Format      : 'YUYV' (YUYV 4:2:2)\n\tField             : None\n\tBytes per Line    : 1280\n\tSize Image        : 614400\n\tColorspace        : sRGB\n\tTransfer Function : Rec. 709\n\tYCbCr/HSV Encoding: ITU-R 601\n\tQuantization      : Default (maps to Limited Range)\n\tFlags             : \n",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,149 @@
+## lsusb
+Bus 009 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+Bus 003 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 006 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+Bus 004 Device 003: ID 4c4a:4a55 Jieli Technology USB Composite Device
+Bus 004 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 005 Device 002: ID 34bf:ff0a STC STC USB Serial
+Bus 005 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+Bus 002 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 007 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 008 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+## lsusb dv20 verbose filtered
+      iFunction               5 DV20 USB CAMERA
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        0
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass        14 Video
+      bInterfaceSubClass      1 Video Control
+      bInterfaceProtocol      0 
+      iInterface              5 DV20 USB CAMERA
+      VideoControl Interface Descriptor:
+        bLength                13
+        bDescriptorType        36
+        bDescriptorSubtype      1 (HEADER)
+        bcdUVC               1.00
+        wTotalLength       0x0050
+        dwClockFrequency       30.000000MHz
+        bInCollection           1
+        baInterfaceNr( 0)       1
+      VideoControl Interface Descriptor:
+        bLength                18
+        bDescriptorType        36
+        bDescriptorSubtype      2 (INPUT_TERMINAL)
+        bTerminalID             1
+        wTerminalType      0x0201 Camera Sensor
+        bAssocTerminal          0
+        iTerminal               0 
+        wObjectiveFocalLengthMin      0
+        wObjectiveFocalLengthMax      0
+        wOcularFocalLength            0
+        bControlSize                  3
+        bmControls           0x0000000a
+          Auto-Exposure Mode
+          Exposure Time (Absolute)
+      VideoControl Interface Descriptor:
+        bLength                11
+        bDescriptorType        36
+        bDescriptorSubtype      5 (PROCESSING_UNIT)
+      Warning: Descriptor too short
+        bUnitID                 2
+        bSourceID               1
+        wMaxMultiplier          0
+        bControlSize            2
+        bmControls     0x0000077b
+          Brightness
+          Contrast
+          Saturation
+          Sharpness
+          Gamma
+          White Balance Temperature
+          Backlight Compensation
+          Gain
+          Power Line Frequency
+        iProcessing             0 
+        bmVideoStandards     0x1d
+          None
+          PAL - 625/50
+          SECAM - 625/50
+          NTSC - 625/50
+      VideoControl Interface Descriptor:
+        bLength                29
+        bDescriptorType        36
+        bDescriptorSubtype      6 (EXTENSION_UNIT)
+        bUnitID                 3
+        guidExtensionCode         {28f03370-6311-4a2e-ba2c-6890eb334016}
+        bNumControls            8
+        bNrInPins               1
+        baSourceID( 0)          2
+        bControlSize            4
+        bmControls( 0)       0xff
+        bmControls( 1)       0xff
+        bmControls( 2)       0xff
+        bmControls( 3)       0xff
+        iExtension              0 
+      VideoControl Interface Descriptor:
+        bLength                 9
+        bDescriptorType        36
+        bDescriptorSubtype      3 (OUTPUT_TERMINAL)
+        bTerminalID             5
+        wTerminalType      0x0101 USB Streaming
+## media ctl
+Media controller API version 6.1.31
+
+Media device information
+------------------------
+driver          uvcvideo
+model           USB Composite Device: DV20 USB 
+serial          
+bus info        usb-5310000.usb-1
+hw revision     0x100
+driver version  6.1.31
+
+Device topology
+- entity 1: USB Composite Device: DV20 USB  (1 pad, 1 link)
+            type Node subtype V4L flags 1
+            device node name /dev/video1
+	pad0: Sink
+		<- "Extension 3":1 [ENABLED,IMMUTABLE]
+
+- entity 4: USB Composite Device: DV20 USB  (0 pad, 0 link)
+            type Node subtype V4L flags 0
+            device node name /dev/video2
+
+- entity 8: Extension 3 (2 pads, 2 links)
+            type V4L2 subdev subtype Unknown flags 0
+	pad0: Sink
+		<- "Processing 2":1 [ENABLED,IMMUTABLE]
+	pad1: Source
+		-> "USB Composite Device: DV20 USB ":0 [ENABLED,IMMUTABLE]
+
+- entity 11: Processing 2 (2 pads, 2 links)
+             type V4L2 subdev subtype Unknown flags 0
+	pad0: Sink
+		<- "Input 1":0 [ENABLED,IMMUTABLE]
+	pad1: Source
+		-> "Extension 3":0 [ENABLED,IMMUTABLE]
+
+- entity 14: Input 1 (1 pad, 1 link)
+             type V4L2 subdev subtype Sensor flags 0
+	pad0: Source
+		-> "Processing 2":0 [ENABLED,IMMUTABLE]
+
+## dmesg uvc recent
+[    1.795309] ehci-platform 5310000.usb: EHCI Host Controller
+[    1.795321] ehci-platform 5310000.usb: new USB bus registered, assigned bus number 4
+[    1.795381] ehci-platform 5310000.usb: irq 297, io mem 0x05310000
+[    1.856713] ehci-platform 5310000.usb: USB 2.0 started, EHCI 1.00
+[    1.858867] usb usb4: SerialNumber: 5310000.usb
+[   11.120805] videodev: Linux video capture interface: v2.00
+[   11.280990] cedrus 1c0e000.video-codec: Device registered as /dev/video0
+[   11.513842] usb 4-1: Found UVC 1.00 device USB Composite Device (4c4a:4a55)
+[   11.521510] input: USB Composite Device: DV20 USB  as /devices/platform/soc/5310000.usb/usb4/4-1/4-1:1.0/input/input1
+[   11.521770] usbcore: registered new interface driver uvcvideo
+[168404.145594] usb 4-1: Found UVC 1.00 device USB Composite Device (4c4a:4a55)
+[168404.148474] input: USB Composite Device: DV20 USB  as /devices/platform/soc/5310000.usb/usb4/4-1/4-1:1.0/input/input2

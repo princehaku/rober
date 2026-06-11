@@ -1,0 +1,25 @@
+# /etc/systemd/system/trashbot-local-webrtc-camera.service
+[Unit]
+Description=Trashbot LAN-only local WebRTC camera smoke
+Documentation=file:/root/rober/docs/interfaces/o7_local_webrtc_camera_smoke.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/rober
+Environment=HOST=0.0.0.0
+Environment=PORT=8088
+Environment=ROBER_CAMERA_SOURCE=auto
+Environment=PYTHONUNBUFFERED=1
+# 该服务只启动本地摄像头 HTTP/WebRTC smoke，不启动 ROS2、串口或底盘控制。
+ExecStart=/usr/bin/env bash /root/rober/onboard/scripts/local_webrtc_camera_smoke.sh
+# 现场摄像头/依赖短暂抖动时允许 systemd 接管重启，避免 operator-run/nohup 漂移。
+Restart=on-failure
+RestartSec=3
+# 安全限制只收紧进程权限；不能禁用 /dev/video*，否则相机 smoke 无法证明真实画面。
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+## env dropins

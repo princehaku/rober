@@ -1,0 +1,35 @@
+{
+  "openState": {
+    "hasVideo": true,
+    "srcObject": true,
+    "readyState": 4,
+    "videoWidth": 640,
+    "videoHeight": 480,
+    "paused": false,
+    "currentTime": 10.007,
+    "nonBlackPixels": 76800,
+    "nonBlackPixelsGt10": 0,
+    "meanGray": 1,
+    "minGray": 1,
+    "maxGray": 1,
+    "sampleWidth": 320,
+    "sampleHeight": 240,
+    "visibleText": "Rober\n\nRober 小车控制台\n刷新\n\n小车控制\n\nRober 小车控制台\n\n普通用户入口：连接、看画面、看雷达和地图，需要时只点停止。\n\n小车地址\n连接/刷新\n有异常\n小车连接\n有异常\n可读到部分信息，但有字段被阻断或失败。\n\n连接/刷新\n\n实时画面\n打开画面\n关闭画面\n已打开\n\n画面已打开。\n\n雷达\n刷新雷达\n未刷新\n\n还没有刷新。\n\n地图\n刷新地图\n地图列表\n未刷新\n未读取\n\n还没有刷新。\n\n还没有读取地图列表。\n\n移动/导航\n待命\n停止\n\n需要时可直接停止。\n\n高级诊断\n高级工具"
+  },
+  "closeState": {
+    "text": "Rober\n\nRober 小车控制台\n刷新\n\n小车控制\n\nRober 小车控制台\n\n普通用户入口：连接、看画面、看雷达和地图，需要时只点停止。\n\n小车地址\n连接/刷新\n有异常\n小车连接\n有异常\n可读到部分信息，但有字段被阻断或失败。\n\n连接/刷新\n\n实时画面\n打开画面\n关闭画面\n未打开\n\n还没有打开实时画面。\n\n雷达\n刷新雷达\n未刷新\n\n还没有刷新。\n\n地图\n刷新地图\n地图列表\n未刷新\n未读取\n\n还没有刷新。\n\n还没有读取地图列表。\n\n移动/导航\n待命\n停止\n\n需要时可直接停止。\n\n高级诊断\n高级工具",
+    "video": {
+      "readyState": 0,
+      "srcObject": false,
+      "videoWidth": 0,
+      "videoHeight": 0,
+      "paused": true
+    }
+  },
+  "health": {
+    "status": 200,
+    "active_peer_connections": 0,
+    "active_peer_ids": [],
+    "last_closed_frames_read": 149
+  }
+}
