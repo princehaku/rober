@@ -1,0 +1,16 @@
+# time
+2026-06-11T10:33:54+08:00
+# systemctl active
+trashbot-upper-robot-api.service active
+trashbot-local-webrtc-camera.service active
+# listening ports
+LISTEN 0      128          0.0.0.0:8088       0.0.0.0:*    users:(("python3",pid=1172,fd=6))    
+LISTEN 0      128          0.0.0.0:8787       0.0.0.0:*    users:(("python3",pid=238873,fd=6))  
+# devices
+crw-rw---- 1 root dialout 166,  0 Jun 11 09:59 /dev/ttyACM0
+crw-rw---- 1 root dialout   4, 69 Jun 11 10:33 /dev/ttyS5
+# lsof devices
+# fuser devices
+# helper process grep
+root        1172       1  0 Jun09 ?        00:34:35 python3 /root/rober/onboard/scripts/local_webrtc_camera_smoke.py --host 0.0.0.0 --port 8088 --video-source auto --width 640 --height 480 --fps 15
+root      238873       1  0 08:29 ?        00:00:11 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12

@@ -1,0 +1,613 @@
+{
+  "ok": true,
+  "http_status": 200,
+  "elapsed_ms": 19,
+  "body": {
+    "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+    "generated_at_ms": 1781145178079,
+    "vendor_sources": [
+      "docs/vendor/VENDOR_INDEX.md",
+      "docs/vendor/lidar_pkg_ros2-main/README.md",
+      "docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp",
+      "docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml",
+      "docs/vendor/lidar_pkg_ros2-main/launch/lidar.launch.py",
+      "docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules"
+    ],
+    "artifact": {
+      "path": "runtime/lidar_scan_proof_latest.json",
+      "configured_by": "ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH or --lidar-scan-proof-artifact-path",
+      "format": "json",
+      "schema": "trashbot.o1.lidar_scan_proof.v1",
+      "ok": true,
+      "status": "loaded",
+      "bytes_read": 27478
+    },
+    "latest_result": {
+      "blocked_commands_not_sent": [
+        {
+          "command": {
+            "T": 1
+          },
+          "reason": "LiDAR proof must not send wheel speed commands"
+        },
+        {
+          "command": {
+            "T": 13
+          },
+          "reason": "LiDAR proof must not send ROS velocity control JSON"
+        },
+        {
+          "command": {
+            "T": 130
+          },
+          "reason": "base feedback probe is outside LiDAR scan proof"
+        },
+        {
+          "command": {
+            "T": 131
+          },
+          "reason": "feedback-flow state change is outside LiDAR scan proof"
+        },
+        {
+          "command": "cmd_vel",
+          "reason": "collector reads LiDAR topics only and never publishes motion"
+        },
+        {
+          "command": "A5 60",
+          "reason": "collector does not start the LiDAR driver; run driver manually when runtime is ready"
+        }
+      ],
+      "blockers": [],
+      "delivery_success": false,
+      "evidence_boundary": "lidar_scan_proof_artifact_not_base_hil",
+      "generated_at": "2026-06-11T01:59:11.214761Z",
+      "generated_at_ms": 1781143124897,
+      "hil_pass": false,
+      "lidar_devices": {
+        "/dev/lidar": {
+          "error": null,
+          "exists": false,
+          "is_symlink": false,
+          "lexists": false,
+          "path": "/dev/lidar",
+          "realpath": null
+        },
+        "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00": {
+          "error": null,
+          "exists": true,
+          "gid": 20,
+          "is_symlink": true,
+          "lexists": true,
+          "mode_octal": "0o660",
+          "path": "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00",
+          "realpath": "/dev/ttyACM0",
+          "uid": 0
+        },
+        "/dev/ttyACM0": {
+          "error": null,
+          "exists": true,
+          "gid": 20,
+          "is_symlink": false,
+          "lexists": true,
+          "mode_octal": "0o660",
+          "path": "/dev/ttyACM0",
+          "realpath": "/dev/ttyACM0",
+          "uid": 0
+        }
+      },
+      "primary_actions_enabled": false,
+      "proof": {
+        "all_required_observations_observed": true,
+        "driver_started_by_collector": false,
+        "lidar_start_command_sent_by_collector": false,
+        "pointcloud_fabricated": false,
+        "raw_packet_once_observed": true,
+        "raw_packet_topic": "/lidar/raw_packet",
+        "required_observations": {
+          "raw_packet_once": {
+            "observed": true,
+            "result_key": "raw_packet_once",
+            "topic": "/lidar/raw_packet"
+          },
+          "scan_hz": {
+            "average_rate_hz": 12.482,
+            "observed": true,
+            "result_key": "scan_hz",
+            "topic": "/scan"
+          },
+          "scan_once": {
+            "observed": true,
+            "result_key": "scan_once",
+            "topic": "/scan"
+          },
+          "tf": {
+            "child_frame": "laser_frame",
+            "observed": true,
+            "parent_frame": "base_link",
+            "result_key": "tf"
+          }
+        },
+        "scan_hz_average_rate_hz": 12.482,
+        "scan_hz_observed": true,
+        "scan_once_observed": true,
+        "scan_topic": "/scan",
+        "status": "scan_once_hz_raw_packet_tf_observed",
+        "tf_child_frame": "laser_frame",
+        "tf_observed": true,
+        "tf_parent_frame": "base_link"
+      },
+      "robot_control_executed": false,
+      "ros_runtime": {
+        "humble_setup": {
+          "exists": true,
+          "path": "/opt/ros/humble/setup.bash"
+        },
+        "rober_install_setup": {
+          "exists": true,
+          "path": "/root/rober/onboard/install/setup.bash"
+        },
+        "ros2_available": true,
+        "ros2_cli_check": {
+          "command": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && command -v ros2 && ros2 --help >/dev/null",
+          "ok": true,
+          "returncode": 0,
+          "stderr_preview": "",
+          "stdout_preview": "/opt/ros/humble/bin/ros2\n"
+        },
+        "ros_home_default": "/root/.ros",
+        "ros_log_dir_default": "/root/.ros/log"
+      },
+      "safe_to_control": false,
+      "schema": "trashbot.o1.lidar_scan_proof.v1",
+      "sends_commands": false,
+      "sends_motion_commands": false,
+      "topic_reads": {
+        "attempted": true,
+        "commands": {
+          "raw_packet_once": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 20 ros2 topic echo --once /lidar/raw_packet",
+          "scan_hz": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 20 ros2 topic hz /scan",
+          "scan_once": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 20 ros2 topic echo --once /scan",
+          "tf": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 20 ros2 run tf2_ros tf2_echo base_link laser_frame"
+        },
+        "mode": "parallel_topic_and_tf_observation",
+        "reason": "expect_existing_topics_requested_read_only_ros2_topic_observation",
+        "results": {
+          "raw_packet_once": {
+            "command": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 20 ros2 topic echo --once /lidar/raw_packet",
+            "ok": true,
+            "returncode": 0,
+            "stderr_preview": "",
+            "stdout_preview": "A message was lost!!!\n\ttotal count change:3\n\ttotal count: 3---\nA message was lost!!!\n\ttotal count change:1\n\ttotal count: 4---\nA message was lost!!!\n\ttotal count change:4\n\ttotal count: 8---\nlayout:\n  dim: []\n  data_offset: 0\ndata:\n- 170\n- 85\n- 0\n- 8\n- 61\n- 71\n- 189\n- 74\n- 250\n- 80\n- 249\n- 188\n- 0\n- 71\n- 232\n- 5\n- 43\n- 240\n- 5\n- 46\n- 0\n- 0\n- 63\n- 220\n- 6\n- 255\n- 232\n- 6\n- 255\n- 228\n- 6\n- 248\n---\n"
+          },
+          "scan_hz": {
+            "command": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 20 ros2 topic hz /scan",
+            "error": {
+              "message": "Command '['bash', '-lc', 'export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 20 ros2 topic hz /scan']' timed out after 22.0 seconds",
+              "type": "TimeoutExpired"
+            },
+            "ok": false,
+            "returncode": null,
+            "stderr_preview": "",
+            "stdout_preview": "average rate: 12.482\n\tmin: 0.003s max: 0.370s std dev: 0.08957s window: 14\naverage rate: 15.459\n\tmin: 0.002s max: 0.370s std dev: 0.06720s window: 33\naverage rate: 15.186\n\tmin: 0.001s max: 0.370s std dev: 0.05782s window: 49\naverage rate: 14.939\n\tmin: 0.001s max: 0.370s std dev: 0.05249s window: 64\naverage rate: 14.887\n\tmin: 0.001s max: 0.370s std dev: 0.04927s window: 79\naverage rate: 14.892\n\tmin: 0.001s max: 0.370s std dev: 0.04681s window: 95\naverage rate: 14.742\n\tmin: 0.001s max: 0.370s std dev: 0.04489s window: 110\naverage rate: 14.759\n\tmin: 0.001s max: 0.370s std dev: 0.04314s window: 125\naverage rate: 14.689\n\tmin: 0.001s max: 0.370s std dev: 0.04185s window: 140\naverage rate: 14.695\n\tmin: 0.001s max: 0.370s std dev: 0.04118s window: 155\naverage rate: 14.797\n\tmin: 0.001s max: 0.370s std dev: 0.04068s window: 172\naverage rate: 14.794\n\tmin: 0.001s max: 0.370s std dev: 0.03989s window: 188\naverage rate: 14.724\n\tmin: 0.001s max: 0.370s std dev: 0.03904s window: 203\n"
+          },
+          "scan_once": {
+            "command": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 20 ros2 topic echo --once /scan",
+            "ok": true,
+            "returncode": 0,
+            "stderr_preview": "",
+            "stdout_preview": "header:\n  stamp:\n    sec: 1781143138\n    nanosec: 28440852\n  frame_id: laser_frame\nangle_min: 0.0035451999865472317\nangle_max: 6.271459102630615\nangle_increment: 0.5698103308677673\ntime_increment: 9.999999747378752e-05\nscan_time: 0.10000000149011612\nrange_min: 0.05000000074505806\nrange_max: 8.0\nranges:\n- 4.980000019073486\n- 4.337500095367432\n- 2.1559998989105225\n- 2.1579999923706055\n- 2.1619999408721924\n- 2.1679999828338623\n- 2.1700000762939453\n- 2.177999973297119\n- 2.186000108718872\n- 7.261499881744385\n- 2.059000015258789\n- 1.8849999904632568\nintensities:\n- 175.0\n- 226.0\n- 224.0\n- 223.0\n- 223.0\n- 222.0\n- 223.0\n- 220.0\n- 199.0\n- 152.0\n- 157.0\n- 173.0\n---\n"
+          },
+          "tf": {
+            "command": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 20 ros2 run tf2_ros tf2_echo base_link laser_frame",
+            "error": {
+              "message": "Command '['bash', '-lc', 'export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 20 ros2 run tf2_ros tf2_echo base_link laser_frame']' timed out after 22.0 seconds",
+              "type": "TimeoutExpired"
+            },
+            "ok": false,
+            "returncode": null,
+            "stderr_preview": "[INFO] [1781143133.198541064] [tf2_echo]: Waiting for transform base_link ->  laser_frame: Invalid frame ID \"base_link\" passed to canTransform argument target_frame - frame does not exist\n",
+            "stdout_preview": " 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\n"
+          }
+        }
+      },
+      "upper_api": {
+        "health": {
+          "ok": true,
+          "payload": {
+            "cloud_relay": false,
+            "delivery_success": false,
+            "generated_at_ms": 1781143124912,
+            "primary_actions_enabled": false,
+            "robot_control_executed": false,
+            "safe_to_control": false,
+            "schema": "trashbot.upper_robot_api.v1.health",
+            "status": "ready"
+          },
+          "status": "loaded"
+        },
+        "radar_status": {
+          "ok": true,
+          "payload": {
+            "baudrate": 150000,
+            "blocked_reasons": [
+              "latest_scan_proof_required_observations_missing:scan_once,scan_hz,raw_packet_once,all_required_observations",
+              "scan_continuity_not_observed"
+            ],
+            "calls_base_manual": false,
+            "candidates": [
+              {
+                "error": null,
+                "exists": true,
+                "gid": 20,
+                "is_symlink": true,
+                "lexists": true,
+                "mode_octal": "0o660",
+                "path": "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00",
+                "realpath": "/dev/ttyACM0",
+                "uid": 0
+              },
+              {
+                "error": null,
+                "exists": true,
+                "gid": 20,
+                "is_symlink": true,
+                "lexists": true,
+                "mode_octal": "0o660",
+                "path": "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0",
+                "realpath": "/dev/ttyACM0",
+                "uid": 0
+              },
+              {
+                "error": null,
+                "exists": true,
+                "gid": 20,
+                "is_symlink": false,
+                "lexists": true,
+                "mode_octal": "0o660",
+                "path": "/dev/ttyACM0",
+                "realpath": "/dev/ttyACM0",
+                "uid": 0
+              }
+            ],
+            "cloud_relay": false,
+            "continuous_blocked_reasons": [
+              "scan_continuity_not_observed"
+            ],
+            "continuous_scan_status": "not_proven",
+            "controls": {
+              "scan_proof_refresh": {
+                "allowed_runtime_script": "o1_lidar_ros2_scan_smoke.sh",
+                "artifact": {
+                  "configured_by": "ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH or --lidar-scan-proof-artifact-path",
+                  "format": "json",
+                  "path": "runtime/lidar_scan_proof_latest.json",
+                  "schema": "trashbot.o1.lidar_scan_proof.v1"
+                },
+                "endpoint": "/api/radar/scan-proof/refresh",
+                "mode": "api_managed_lidar_runtime_then_topic_observation",
+                "opens_lidar_serial": true,
+                "runtime_command": {
+                  "argv": [
+                    "bash",
+                    "/root/rober/onboard/scripts/o1_lidar_ros2_scan_smoke.sh",
+                    "--serial-port",
+                    "/dev/ttyACM0",
+                    "--serial-baudrate",
+                    "150000",
+                    "--frame-id",
+                    "laser_frame"
+                  ],
+                  "configured": true,
+                  "env": "ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND",
+                  "error": null,
+                  "mode": "command"
+                },
+                "runtime_warmup_s": 6,
+                "sends_lidar_start_command": true,
+                "sends_motion_commands": false,
+                "starts_driver": true
+              },
+              "start": {
+                "allowed_runtime_script": "o1_lidar_lifecycle.sh",
+                "command": {
+                  "argv": [
+                    "bash",
+                    "/root/rober/onboard/scripts/o1_lidar_lifecycle.sh",
+                    "start",
+                    "--serial-port",
+                    "/dev/ttyACM0",
+                    "--serial-baudrate",
+                    "150000",
+                    "--frame-id",
+                    "laser_frame"
+                  ],
+                  "configured": true,
+                  "env": "ROBER_RADAR_START_COMMAND",
+                  "error": null,
+                  "mode": "command"
+                },
+                "endpoint": "/api/radar/start",
+                "recommended_command": "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
+              },
+              "stop": {
+                "allowed_runtime_script": "o1_lidar_lifecycle.sh",
+                "command": {
+                  "argv": [
+                    "bash",
+                    "/root/rober/onboard/scripts/o1_lidar_lifecycle.sh",
+                    "stop"
+                  ],
+                  "configured": true,
+                  "env": "ROBER_RADAR_STOP_COMMAND",
+                  "error": null,
+                  "mode": "command"
+                },
+                "endpoint": "/api/radar/stop",
+                "recommended_command": "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop"
+              }
+            },
+            "delivery_success": false,
+            "dev_lidar": {
+              "error": null,
+              "exists": false,
+              "is_symlink": false,
+              "lexists": false,
+              "path": "/dev/lidar",
+              "realpath": null
+            },
+            "fresh_scan_proof_observed": false,
+            "generated_at_ms": 1781143124921,
+            "latest_scan_hz_average_rate_hz": null,
+            "latest_scan_proof": {
+              "all_required_observations_observed": false,
+              "artifact": {
+                "bytes_read": 26408,
+                "configured_by": "ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH or --lidar-scan-proof-artifact-path",
+                "format": "json",
+                "ok": true,
+                "path": "runtime/lidar_scan_proof_latest.json",
+                "schema": "trashbot.o1.lidar_scan_proof.v1",
+                "status": "loaded"
+              },
+              "calls_base_manual": false,
+              "delivery_success": false,
+              "endpoint": "/api/radar/scan-proof/latest",
+              "failure_reason": "latest_scan_proof_required_observations_missing:scan_once,scan_hz,raw_packet_once,all_required_observations",
+              "hil_pass": false,
+              "missing_required_observations": [
+                "scan_once",
+                "scan_hz",
+                "raw_packet_once",
+                "all_required_observations"
+              ],
+              "observed": false,
+              "primary_actions_enabled": false,
+              "publishes_cmd_vel": false,
+              "raw_packet_once_observed": false,
+              "readback_sends_commands": false,
+              "required_observations": {
+                "raw_packet_once": {
+                  "average_rate_hz": null,
+                  "child_frame": null,
+                  "observed": false,
+                  "parent_frame": null,
+                  "result_key": "raw_packet_once",
+                  "topic": "/lidar/raw_packet"
+                },
+                "scan_hz": {
+                  "average_rate_hz": null,
+                  "child_frame": null,
+                  "observed": false,
+                  "parent_frame": null,
+                  "result_key": "scan_hz",
+                  "topic": "/scan"
+                },
+                "scan_once": {
+                  "average_rate_hz": null,
+                  "child_frame": null,
+                  "observed": false,
+                  "parent_frame": null,
+                  "result_key": "scan_once",
+                  "topic": "/scan"
+                },
+                "tf": {
+                  "average_rate_hz": null,
+                  "child_frame": "laser_frame",
+                  "observed": true,
+                  "parent_frame": "base_link",
+                  "result_key": "tf",
+                  "topic": null
+                }
+              },
+              "robot_control_executed": false,
+              "runtime_summary_fallback_used": false,
+              "runtime_summary_path": null,
+              "safe_to_control": false,
+              "scan_hz_average_rate_hz": null,
+              "scan_hz_observed": false,
+              "scan_once_observed": false,
+              "sends_base_motion_commands": false,
+              "sends_commands": false,
+              "sends_motion_commands": false,
+              "state": "partially_observed",
+              "tf_observed": true
+            },
+            "latest_scan_proof_blocked_reasons": [
+              "latest_scan_proof_required_observations_missing:scan_once,scan_hz,raw_packet_once,all_required_observations"
+            ],
+            "latest_scan_proof_state": "partially_observed",
+            "observed_lidar_port": "/dev/ttyACM0",
+            "observed_lidar_port_info": {
+              "error": null,
+              "exists": true,
+              "gid": 20,
+              "is_symlink": false,
+              "lexists": true,
+              "mode_octal": "0o660",
+              "path": "/dev/ttyACM0",
+              "realpath": "/dev/ttyACM0",
+              "uid": 0
+            },
+            "pointcloud_fabricated": false,
+            "primary_actions_enabled": false,
+            "publishes_cmd_vel": false,
+            "raw_packet_proof_latest": {
+              "artifact": {
+                "age_ms": 653644105,
+                "bytes_read": 3220,
+                "configured_by": "ROBER_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH or --lidar-raw-packet-proof-artifact-path",
+                "format": "json",
+                "mtime_ms": 1780489480816,
+                "ok": true,
+                "path": "runtime/lidar_raw_packet_proof_latest.json",
+                "schema": "trashbot.o1.lidar_raw_packet_proof.v1",
+                "status": "loaded"
+              },
+              "bytes_read": 9086,
+              "calls_base_manual": false,
+              "delivery_success": false,
+              "endpoint": "/api/radar/raw-packet-proof/latest",
+              "freshness": {
+                "age_seconds": 653644.105,
+                "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control",
+                "stale_after_ms": 900000,
+                "status": "stale"
+              },
+              "generated_at_ms": 1781143124921,
+              "hil_pass": false,
+              "latest_bytes_read": 9086,
+              "latest_packet_parse_ok": true,
+              "latest_packets_parse_ok": 275,
+              "latest_points_observed": true,
+              "latest_points_total": 1923,
+              "latest_proof_status": "raw_packets_parsed",
+              "latest_raw_bytes_observed": true,
+              "latest_sync_header_count": 275,
+              "latest_sync_header_observed": true,
+              "opens_lidar_serial": false,
+              "packet_parse_ok": true,
+              "packets_parse_ok": 275,
+              "points_observed": true,
+              "points_total": 1923,
+              "primary_actions_enabled": false,
+              "raw_bytes_observed": true,
+              "readback_sends_commands": false,
+              "robot_control_executed": false,
+              "safe_to_control": false,
+              "schema": "trashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_summary",
+              "sends_commands": false,
+              "sends_lidar_start_command": false,
+              "sends_motion_commands": false,
+              "starts_ros2": false,
+              "sync_header_count": 275,
+              "sync_header_observed": true
+            },
+            "robot_control_executed": false,
+            "ros2": {
+              "driver": "ros2_trashbot_hardware lidar_driver",
+              "frame_id": "laser_frame",
+              "launch": "ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 lidar_publish_raw_packets:=true",
+              "raw_packet_topic": "/lidar/raw_packet",
+              "scan_topic": "/scan"
+            },
+            "runtime_summary_fallback_used": false,
+            "safe_to_control": false,
+            "scan_proof_latest": {
+              "artifact": {
+                "bytes_read": 26408,
+                "configured_by": "ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH or --lidar-scan-proof-artifact-path",
+                "format": "json",
+                "ok": true,
+                "path": "runtime/lidar_scan_proof_latest.json",
+                "schema": "trashbot.o1.lidar_scan_proof.v1",
+                "status": "loaded"
+              },
+              "delivery_success": false,
+              "endpoint": "/api/radar/scan-proof/latest",
+              "generated_at_ms": 1781143124921,
+              "hil_pass": false,
+              "http_status": 200,
+              "latest_all_required_observations_observed": false,
+              "latest_proof_status": "partially_observed",
+              "latest_raw_packet_once_observed": false,
+              "latest_required_observations": {
+                "raw_packet_once": {
+                  "average_rate_hz": null,
+                  "child_frame": null,
+                  "observed": false,
+                  "parent_frame": null,
+                  "result_key": "raw_packet_once",
+                  "topic": "/lidar/raw_packet"
+                },
+                "scan_hz": {
+                  "average_rate_hz": null,
+                  "child_frame": null,
+                  "observed": false,
+                  "parent_frame": null,
+                  "result_key": "scan_hz",
+                  "topic": "/scan"
+                },
+                "scan_once": {
+                  "average_rate_hz": null,
+                  "child_frame": null,
+                  "observed": false,
+                  "parent_frame": null,
+                  "result_key": "scan_once",
+                  "topic": "/scan"
+                },
+                "tf": {
+                  "average_rate_hz": null,
+                  "child_frame": "laser_frame",
+                  "observed": true,
+                  "parent_frame": "base_link",
+                  "result_key": "tf",
+                  "topic": null
+                }
+              },
+              "latest_runtime_summary_fallback_used": null,
+              "latest_runtime_summary_path": null,
+              "latest_scan_hz_average_rate_hz": null,
+              "latest_scan_hz_observed": false,
+              "latest_scan_once_observed": false,
+              "latest_tf_observed": true,
+              "primary_actions_enabled": false,
+              "readback_sends_commands": false,
+              "robot_control_executed": false,
+              "safe_to_control": false,
+              "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_summary",
+              "sends_commands": false,
+              "sends_motion_commands": false
+            },
+            "scan_status": "not_proven",
+            "schema": "trashbot.upper_robot_api.v1.radar_status",
+            "sends_base_motion_commands": false,
+            "sends_commands": false,
+            "sends_motion_commands": false,
+            "start_command_hex": "a5 60",
+            "stop_command_hex": "a5 00 a5 65 a5 65"
+          },
+          "status": "loaded"
+        }
+      },
+      "upper_api_base_url": "http://127.0.0.1:8787",
+      "vendor_sources": [
+        "AGENTS.md",
+        "OKR.md",
+        "docs/vendor/VENDOR_INDEX.md",
+        "docs/vendor/lidar_pkg_ros2-main/README.md",
+        "docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp",
+        "docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml",
+        "docs/vendor/lidar_pkg_ros2-main/launch/lidar.launch.py",
+        "docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules"
+      ]
+    },
+    "readback_sends_commands": false,
+    "sends_commands": false,
+    "sends_motion_commands": false,
+    "robot_control_executed": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "primary_actions_enabled": false
+  }
+}

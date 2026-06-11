@@ -346,6 +346,29 @@ PC 顶层仍固定 `safe_to_control=false`、`delivery_success=false`、
 `/cmd_vel`、`/api/base/manual`、底盘 UART 或 `/dev/ttyS5`。它只证明 no-motion
 AMCL localization material，不证明路径执行、真实运动、HIL 或 delivery success。
 
+## PC Manual HIL Gate Current Evidence
+
+2026-06-11 10:35 的真实 PC proxy smoke 证明当前 `手动移动/运动` 非 stop gate
+仍应保持关闭。PC workstation 对 `http://192.168.1.11:8787` 读取
+`/api/operator/report`、`/api/base/status`、`/api/base/feedback-samples/latest`、
+`/api/radar/status` 和 `/api/radar/scan-proof/latest` 均为 HTTP 200；但
+operator report 仍缺 `external_video_recorded`、`visible_content_proven`、
+`wheel_feedback_lr_nonzero_proven` 和 `physical_motion_lidar_delta_proven`。
+
+本轮只通过 PC proxy 执行 `POST /api/robot-control/base/stop`，远端固定
+`/api/base/stop` 返回 HTTP 200。随后一次 `forward speed=0.12 duration_ms=800`
+manual request 带 `confirm_hil_checklist=true`，但 PC 本地返回 HTTP 400
+`command_rejected` / `operator_report_preflight_required`，响应内
+`remote_http_status=null`。该结果是 gate 正常拒绝，不是运动失败；它证明 PC 未绕过
+preflight 调用远端 `/api/base/manual`。
+
+上一轮相机近黑结论仍参与 gate：`visible_content_proven=false` 是阻止真实手动运动的
+合理缺口，除非 operator report 后续提供独立外部视频和可见相机 artifact refs，并且
+PC gate 重新判定通过。当前普通首屏结构和所有危险字段保持不变：
+`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、
+`robot_control_executed=false`。后续 gate 全部通过时，也只能通过 PC proxy 做 exactly
+one 低速短时 jog 并立即 stop，不能直调远端 `/api/base/manual`。
+
 ## 禁止声明
 
 第一阶段不得声明完成：
@@ -361,6 +384,8 @@ AMCL localization material，不证明路径执行、真实运动、HIL 或 deli
 - Robot Control V1 已经放开真实持续手控、真实 `/cmd_vel`、真实自动导航、Nav2 goal、radar start、keyboard control 或 map click goal
 - PC Map Runtime Controls V1 已经证明地图质量、Nav2 可行驶、真实运动、HIL 或 delivery success
 - PC Localization Reset Controls V1 已经证明路径执行、真实运动、HIL 或 delivery success
+- PC Manual HIL Gate Current Evidence 已经证明真实非零手动运动、HIL movement pass、
+  `safe_to_control=true` 或可绕过 PC proxy 直接调用 `/api/base/manual`
 
 普通首屏不提供工程 Start/Save/Reset、Confirm、Cancel、Dropoff、Collect、Nav2 goal、
 手控、速度/点动或任何真实运动/交付控制入口。当前仅 `高级诊断` 地图详情提供

@@ -1,0 +1,54 @@
+{
+  "schema": "trashbot.pc_manual_hil_gate.current_decision.v1",
+  "captured_at_ms": 1781145180753,
+  "remote_base_url": "http://192.168.1.11:8787",
+  "pc_proxy_url": "http://127.0.0.1:8796",
+  "requested_endpoints": [
+    "/api/operator/report",
+    "/api/base/status",
+    "/api/base/feedback-samples/latest",
+    "/api/radar/status",
+    "/api/radar/scan-proof/latest"
+  ],
+  "raw_http_statuses": {
+    "/api/operator/report": 200,
+    "/api/base/status": 200,
+    "/api/base/feedback-samples/latest": 200,
+    "/api/radar/status": 200,
+    "/api/radar/scan-proof/latest": 200
+  },
+  "pc_summary_http_status": 200,
+  "pc_summary_proxy_status": null,
+  "operator_gate": {
+    "status": "blocked",
+    "missing_fields": [
+      "external_video_recorded",
+      "visible_content_proven",
+      "wheel_feedback_lr_nonzero_proven",
+      "physical_motion_lidar_delta_proven"
+    ],
+    "report_status": "unknown",
+    "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+    "operator_present": true,
+    "physical_clearance_confirmed": true,
+    "emergency_stop_ready": true,
+    "external_video_recorded": false,
+    "visible_content_proven": false,
+    "wheel_feedback_lr_nonzero_proven": false,
+    "physical_motion_lidar_delta_proven": false,
+    "refs": {
+      "external_video_ref": "not_recorded_no_motion_smoke",
+      "camera_artifacts_ref": "not_attached_no_motion_smoke",
+      "wheel_feedback_ref": "not_attached_no_motion_smoke",
+      "scan_delta_ref": "not_attached_no_motion_smoke"
+    }
+  },
+  "visible_content_proven_blocks_motion": true,
+  "manual_nonzero_policy": "do_not_send_nonzero_expect_pc_local_reject",
+  "safety_boundary": {
+    "no_direct_remote_base_manual": true,
+    "no_cmd_vel": true,
+    "no_nav2_start": true,
+    "no_tty_write": true
+  }
+}

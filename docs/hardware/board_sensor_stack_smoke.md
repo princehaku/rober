@@ -1294,3 +1294,34 @@ artifact 中记录 `attempts`、`attempt_count` 和
   `pc_proxy_scan_stabilize_20260611_0758.pgm`。
 - 最终 `lsof`/`fuser` 对 `/dev/ttyS5`、`/dev/ttyACM0` 无输出，目标
   helper/SLAM/LiDAR 进程无残留。
+
+## 2026-06-11 10:35 PC Manual HIL Gate Current Evidence
+
+`sprints/2026.06.11_10-35_pc_manual_hil_gate_current_evidence/` 通过 PC
+workstation proxy 对真实上位机 `http://192.168.1.11:8787` 复核手动移动 HIL gate。
+本轮继续沿用 `docs/vendor/VENDOR_INDEX.md` 及其指向的 WAVE ROVER 资料：
+底盘控制是 UART newline-delimited JSON，运动/反馈命令包括 `T=1/T=13/T=130/T=131`；
+PC workstation 只调用上位机 HTTP API，不直接写 `/dev/ttyS5`，不发布 `/cmd_vel`。
+
+当前 `/api/operator/report`、`/api/base/status`、
+`/api/base/feedback-samples/latest`、`/api/radar/status` 和
+`/api/radar/scan-proof/latest` 均可读，但 manual 非 stop gate 仍为 `blocked`：
+
+- `operator_present=true`
+- `physical_clearance_confirmed=true`
+- `emergency_stop_ready=true`
+- `external_video_recorded=false`
+- `visible_content_proven=false`
+- `wheel_feedback_lr_nonzero_proven=false`
+- `physical_motion_lidar_delta_proven=false`
+
+因此本轮未执行真实非零运动。PC proxy stop safety smoke 成功转发固定
+`/api/base/stop`，随后一次 `forward speed=0.12 duration_ms=800` manual 请求被本地
+HTTP 400 拒绝，`failure_reason=operator_report_preflight_required`，
+`remote_http_status=null`，证明未调用远端 `/api/base/manual`。
+
+清场 readback 显示 `trashbot-upper-robot-api.service` 和
+`trashbot-local-webrtc-camera.service` 均为 active，`8088/8787` 正常监听，
+`/dev/ttyS5`、`/dev/ttyACM0` 的 `lsof`/`fuser` 无占用输出。本轮结论不等于 HIL
+movement pass；下一步现场必须补外部视频、可见相机 artifact、轮速反馈引用和 LiDAR
+运动 delta 引用后，才允许通过 PC proxy 做 exactly one 低速短时 jog。

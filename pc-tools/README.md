@@ -29,6 +29,15 @@ Robot Control 也已经接入 Radar/Map proof refresh V2。Vue 通过 workstatio
 
 Robot Control 的 `检查路径（高级）` 只在默认关闭的高级诊断中出现。它通过固定代理调用上位机 `/api/nav2/proof/refresh`，body 固定为 managed no-motion path proof：`timeout_s=20`、`managed_runtime_opt_in=true`、`managed_timeout_s=20`、`managed_map_yaml=/root/rober/onboard/runtime/maps/trashbot_map.yaml`、`initialpose_opt_in=true`、`initialpose_x/y/yaw=0`、`path_generation_opt_in=true`、`path_generation_timeout_s=20`、目标点 `map:(0.8,0,0)`。这个动作只允许上位机拉起 no-motion ROS2 证据 runtime、发布一次 `/initialpose` 并调用 planner 计算接口；它不是 NavigateToPose，不调用 `/api/nav2/start` 或 `/api/nav2/stop`，不发布 `/cmd_vel`，不调用 `/api/base/manual`，不打开 `/dev/ttyS5`。普通首屏仍不得出现 `检查路径`、Nav2/proof/key-values、`/cmd_vel` 或 `/api/base/manual`。
 
+2026-06-11 10:35 真实 PC proxy gate smoke 继续证明非 stop 手动点动必须 fail closed。
+当前真实上位机 `/api/operator/report` 已确认现场有人、周围清空和急停准备，但仍缺
+`external_video_recorded`、`visible_content_proven`、`wheel_feedback_lr_nonzero_proven`
+和 `physical_motion_lidar_delta_proven`。因此 PC proxy 只转发 stop；一次
+`forward speed=0.12 duration_ms=800` manual request 被本机 HTTP 400 拒绝，
+`remote_http_status=null`，未调用远端 `/api/base/manual`。这不是 PC 首屏或代理 bug，
+而是当前真实 HIL 材料不足；`visible_content_proven=false` 会继续阻止真实手动运动，
+直到现场补齐外部视频和可见相机 artifact refs 等材料。
+
 ## O7 Operator Console
 
 `workstation/` 现在包含 O7 Operator Console tab。该 tab 只消费 `GET /api/o7/operator-console` 返回的 `trashbot.o7.operator_console.v1` 契约，展示 O7 六个 KR 的 draft/blocked/not_proven 状态：实时地图/机器人位置、电梯状态、历史路线回放、数据标注、ASR/TTS、手控/寻路。
