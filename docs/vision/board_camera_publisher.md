@@ -586,3 +586,17 @@ python3 /root/rober/onboard/scripts/camera_first_frame_probe.py \
 这里刻意保留 `visible_content_proven=false`：脚本读到一帧只能证明本机 camera
 首帧通路恢复，并给出图像质量候选；运动 HIL gate 仍需要 PC canvas/外部视频、
 轮速反馈非零和 LiDAR motion delta 共同证明。
+
+## 2026-06-11 22:00 PC-triggered first-frame probe
+
+`sprints/2026.06.11_22-00_pc_camera_first_frame_probe_proxy/` 将同一个首帧探针接入
+上位机 API 和 PC 高级诊断：
+
+- 上位机：`POST /api/camera/first-frame/probe`
+- PC proxy：`POST /api/robot-control/camera/first-frame/probe?baseUrl=...`
+- PC UI：默认关闭的 `高级诊断 / 实时画面详情 / 首帧探针（高级）`
+
+真实 PC proxy smoke 仍显示 `/dev/video1` 为当前源，`requested_fourcc=MJPG`、
+`open_ok=true`、`read_ok=false`、`first_frame_timeout=true`、
+`failure_reason=capture_read_call_timeout`、`visible_content_proven=false`。因此本轮只让
+PC 页面获得了可重复触发的底层相机诊断闭环，没有恢复实时图传可见内容。

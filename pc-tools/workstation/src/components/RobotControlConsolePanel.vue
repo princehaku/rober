@@ -18,10 +18,12 @@ import {
   postRobotControlRadarStop,
   postRobotControlCameraOffer,
   postRobotControlCameraPeerClose,
+  postRobotControlCameraFirstFrameProbe,
 } from "../client/workstationApi";
 import type {
   O7ConsumerTaskDetailResponse,
   RobotControlBaseCommandProxyResponse,
+  RobotControlCameraFirstFrameProbeProxyResponse,
   RobotControlMapLifecycleResponse,
   RobotControlNavGoalPreflightResponse,
   RobotControlOperatorReportProxyResponse,
@@ -126,6 +128,8 @@ const previewFrameSampledAt = ref("");
 const previewFrameSampleFailure = ref("");
 const previewFrameSampleAttempts = ref(0);
 const previewFrameSampleCanvasSize = ref("not_sampled");
+const cameraFirstFrameProbePending = ref(false);
+const cameraFirstFrameProbeResult = ref<RobotControlCameraFirstFrameProbeProxyResponse | null>(null);
 let previewFrameSampleTimers: number[] = [];
 
 const selectedTaskSummary = computed(() => {
@@ -298,6 +302,18 @@ function syncJogInputsToBoundary(): void {
 
 const robotConnectionSummary = computed(() => summarizeRobotConnection());
 const cameraSummary = computed(() => summarizeCameraState());
+const cameraFirstFrameProbeSummary = computed(() => {
+  // 首帧探针是高级诊断结果：只说明底层 camera readback，不升级为实时图传成功。
+  if (cameraFirstFrameProbePending.value) {
+    return "probe pending";
+  }
+  const result = cameraFirstFrameProbeResult.value;
+  if (!result) {
+    return "probe not requested";
+  }
+  const values = result.probe_key_values;
+  return `${result.proxy_status}; status=${result.status}; open=${values.open_ok}; read=${values.read_ok}; reason=${result.failure_reason || values.failure_reason}`;
+});
 const radarSummary = computed(() => summarizeRadarState());
 const radarLifecycleSummary = computed(() => {
   // 雷达 lifecycle 是高级诊断动作；摘要只说明代理和 guard 结果，不证明 runtime 已启动。
@@ -725,6 +741,42 @@ function makeOperatorReportFallback(reason: string): RobotControlOperatorReportP
     structured_hil_claims: requestBody.structured_hil_claims ?? {},
     rejected_fields: [],
     ignored_fields: [],
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
+function makeCameraFirstFrameProbeFallback(reason: string): RobotControlCameraFirstFrameProbeProxyResponse {
+  // 浏览器 fetch 异常时仍显示完整 fail-closed 响应，不把异常当作相机状态成功。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    proxy_status: "probe_failed",
+    source_base_url: robotApiBaseUrl.value,
+    normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+    remote_endpoint: "/api/camera/first-frame/probe",
+    remote_http_status: null,
+    status: "blocked",
+    probe_key_values: {
+      schema: "not_loaded",
+      device: "not_loaded",
+      requested_fourcc: "not_loaded",
+      open_ok: "not_loaded",
+      read_ok: "not_loaded",
+      first_frame_timeout: "not_loaded",
+      failure_reason: reason,
+      visible_content_proven: "false",
+      elapsed_ms: "not_loaded",
+      mean_luma: "not_available",
+      non_black_ratio: "not_available",
+    },
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
@@ -1211,6 +1263,24 @@ async function submitOperatorReport(): Promise<void> {
   }
 }
 
+async function runCameraFirstFrameProbe(): Promise<void> {
+  // 这个按钮只触发上位机固定首帧探针，不创建 WebRTC peer，也不发送任何运动命令。
+  if (!robotApiBaseUrl.value.trim() || cameraFirstFrameProbePending.value) {
+    return;
+  }
+  cameraFirstFrameProbePending.value = true;
+  try {
+    cameraFirstFrameProbeResult.value = await postRobotControlCameraFirstFrameProbe(robotApiBaseUrl.value);
+  } catch (err) {
+    cameraFirstFrameProbeResult.value = makeCameraFirstFrameProbeFallback(
+      err instanceof Error ? err.message : "camera_first_frame_probe_request_failed",
+    );
+  } finally {
+    cameraFirstFrameProbePending.value = false;
+    await refreshConsole();
+  }
+}
+
 async function sendManualMotion(direction: "forward" | "back" | "left" | "right"): Promise<void> {
   // 非 stop 点动必须通过 checklist gate；即使远端成功，也继续维持 fail-closed UI。
   if (!canSendManualMotion.value) {
@@ -1570,7 +1640,46 @@ onBeforeUnmount(() => {
 
         <section class="advanced-block">
           <h3>实时画面详情</h3>
+          <div class="robot-control-form">
+            <button
+              class="secondary"
+              type="button"
+              :disabled="loading || cameraFirstFrameProbePending || !robotApiBaseUrl.trim()"
+              @click="runCameraFirstFrameProbe"
+            >
+              首帧探针（高级）
+            </button>
+          </div>
           <dl class="kv compact-kv">
+            <dt>first_frame_probe</dt>
+            <dd>{{ cameraFirstFrameProbeSummary }}</dd>
+            <dt>probe_remote</dt>
+            <dd>
+              {{ cameraFirstFrameProbeResult?.remote_endpoint ?? "/api/camera/first-frame/probe" }}
+              -> {{ cameraFirstFrameProbeResult?.remote_http_status ?? "n/a" }}
+            </dd>
+            <dt>probe_device</dt>
+            <dd>{{ cameraFirstFrameProbeResult?.probe_key_values.device ?? "not_loaded" }}</dd>
+            <dt>probe_fourcc</dt>
+            <dd>{{ cameraFirstFrameProbeResult?.probe_key_values.requested_fourcc ?? "not_loaded" }}</dd>
+            <dt>probe_open_read</dt>
+            <dd>
+              open={{ cameraFirstFrameProbeResult?.probe_key_values.open_ok ?? "not_loaded" }},
+              read={{ cameraFirstFrameProbeResult?.probe_key_values.read_ok ?? "not_loaded" }}
+            </dd>
+            <dt>probe_timeout</dt>
+            <dd>{{ cameraFirstFrameProbeResult?.probe_key_values.first_frame_timeout ?? "not_loaded" }}</dd>
+            <dt>probe_failure</dt>
+            <dd>{{ cameraFirstFrameProbeResult?.failure_reason || cameraFirstFrameProbeResult?.probe_key_values.failure_reason || "none" }}</dd>
+            <dt>probe_visible</dt>
+            <dd>{{ cameraFirstFrameProbeResult?.probe_key_values.visible_content_proven ?? "false" }}</dd>
+            <dt>probe_luma</dt>
+            <dd>
+              mean={{ cameraFirstFrameProbeResult?.probe_key_values.mean_luma ?? "not_available" }},
+              non_black={{ cameraFirstFrameProbeResult?.probe_key_values.non_black_ratio ?? "not_available" }}
+            </dd>
+            <dt>probe_dangerous_fields</dt>
+            <dd>{{ listText(cameraFirstFrameProbeResult?.hard_dangerous_true_fields, "none") }}</dd>
             <dt>preview_status</dt>
             <dd>{{ previewStatus }}</dd>
             <dt>failure_reason</dt>

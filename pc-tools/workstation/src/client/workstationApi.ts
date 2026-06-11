@@ -20,6 +20,7 @@ import type {
   ProofBoundaryResponse,
   RobotControlProofRefreshProxyResponse,
   RobotControlCameraCloseProxyResponse,
+  RobotControlCameraFirstFrameProbeProxyResponse,
   RobotControlCameraOfferProxyResponse,
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseCommandRequest,
@@ -107,6 +108,7 @@ const API_ENDPOINTS = {
   robotControlMapSave: "/api/robot-control/map/save",
   robotControlMapReset: "/api/robot-control/map/reset",
   robotControlCameraOffer: "/api/robot-control/camera/offer",
+  robotControlCameraFirstFrameProbe: "/api/robot-control/camera/first-frame/probe",
   robotControlCameraPeersPrefix: "/api/robot-control/camera/peers/",
   robotControlOperatorReport: "/api/robot-control/operator/report",
   proofBoundary: "/api/proof-boundary",
@@ -202,6 +204,16 @@ function robotControlCameraOfferUrl(baseUrl: string): string {
     params.set("baseUrl", trimmed);
   }
   return `${API_ENDPOINTS.robotControlCameraOffer}?${params.toString()}`;
+}
+
+function robotControlCameraFirstFrameProbeUrl(baseUrl: string): string {
+  // first-frame probe 只把 baseUrl 交给 Node 代理，探针参数由后端固定白名单生成。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  return `${API_ENDPOINTS.robotControlCameraFirstFrameProbe}?${params.toString()}`;
 }
 
 function robotControlBaseProxyUrl(endpoint: string, baseUrl: string): string {
@@ -548,6 +560,13 @@ export async function postRobotControlCameraPeerClose(
 ): Promise<RobotControlCameraCloseProxyResponse> {
   // cleanup 只允许关闭已知 peer_id，不允许把前端变成任意 Robot API POST 代理。
   return postJson<RobotControlCameraCloseProxyResponse>(robotControlCameraCloseUrl(baseUrl, peerId), {});
+}
+
+export async function postRobotControlCameraFirstFrameProbe(
+  baseUrl: string,
+): Promise<RobotControlCameraFirstFrameProbeProxyResponse> {
+  // 相机首帧探针是高级诊断固定入口；前端 body 为空，不能传任意设备或 shell 参数。
+  return postJson<RobotControlCameraFirstFrameProbeProxyResponse>(robotControlCameraFirstFrameProbeUrl(baseUrl), {});
 }
 
 export async function getO7ConsumerTaskList(baseUrl: string): Promise<O7ConsumerTaskListResponse> {

@@ -745,6 +745,47 @@ Artifacts：
 - `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/raw/base_stop.json`
 - `sprints/2026.06.11_19-05_pc_proxy_real_board_control_smoke/artifacts/raw/manual_non_stop_gate_rejection.json`
 
+## 2026-06-11 PC Camera First-frame Probe Proxy
+
+`sprints/2026.06.11_22-00_pc_camera_first_frame_probe_proxy/` 把板端
+`onboard/scripts/camera_first_frame_probe.py` 接入 PC 高级诊断。新增链路为：
+
+```text
+Vue 高级诊断按钮
+  -> POST /api/robot-control/camera/first-frame/probe
+  -> POST /api/camera/first-frame/probe
+  -> camera_first_frame_probe.py
+```
+
+普通用户首屏不变，仍是 `.simple-user-console` 的
+`小车连接 / 实时画面 / 雷达 / 地图 / 移动/导航` 五卡片；首帧探针只出现在默认关闭的
+“高级诊断 / 实时画面详情”中。
+
+真实 PC proxy smoke 连接 `http://192.168.1.11:8787` 后返回：
+
+- `schema=trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1`
+- `remote_endpoint=/api/camera/first-frame/probe`
+- `remote_http_status=503`
+- `status=first_frame_timeout`
+- `probe_key_values.device=/dev/video1`
+- `probe_key_values.requested_fourcc=MJPG`
+- `probe_key_values.open_ok=true`
+- `probe_key_values.read_ok=false`
+- `probe_key_values.failure_reason=capture_read_call_timeout`
+- `probe_key_values.visible_content_proven=false`
+- `safe_to_control=false`
+- `robot_control_executed=false`
+
+这证明 PC 页面已经能触发真实板端底层 camera first-frame 诊断；但它也再次证明当前
+`/dev/video1` 首帧不可读，不能宣称实时图传可见内容恢复。下一步仍需要现场排查
+DV20 输入源、线缆、供电、采集卡状态，或换 known-good UVC 后用同一高级按钮复测。
+
+证据文件：
+
+- `sprints/2026.06.11_22-00_pc_camera_first_frame_probe_proxy/artifacts/04_pc_proxy_first_frame_probe.json`
+- `sprints/2026.06.11_22-00_pc_camera_first_frame_probe_proxy/artifacts/05_pc_proxy_summary_after_probe.json`
+- `sprints/2026.06.11_22-00_pc_camera_first_frame_probe_proxy/artifacts/06_remote_cleanup.txt`
+
 ## 运行与验证
 
 工作站验证只使用 Node/Vue gate：

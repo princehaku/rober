@@ -2368,6 +2368,33 @@ export interface RobotControlCameraCloseProxyResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export interface RobotControlCameraFirstFrameProbeProxyResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1";
+  proxy_status: "probe_forwarded" | "probe_rejected" | "probe_failed";
+  source_base_url: string;
+  normalized_base_url: string;
+  remote_endpoint: "/api/camera/first-frame/probe";
+  remote_http_status: number | null;
+  status: string;
+  probe_key_values: {
+    schema: string;
+    device: string;
+    requested_fourcc: string;
+    open_ok: string;
+    read_ok: string;
+    first_frame_timeout: string;
+    failure_reason: string;
+    visible_content_proven: string;
+    elapsed_ms: string;
+    mean_luma: string;
+    non_black_ratio: string;
+  };
+  failure_reason: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  robot_control_executed: false;
+}
+
 export type RobotControlBaseDirection = "forward" | "back" | "left" | "right" | "stop";
 export type RobotControlBaseCommandKind = "manual" | "stop";
 export type RobotControlBaseProxyStatus = "command_forwarded" | "command_rejected" | "command_failed";

@@ -51,6 +51,7 @@ import type {
   RobotControlBaseCommandRequest,
   RobotControlCameraAnswerSummary,
   RobotControlCameraCloseProxyResponse,
+  RobotControlCameraFirstFrameProbeProxyResponse,
   RobotControlCameraOfferProxyResponse,
   RobotControlEvidenceCaptureEndpointId,
   RobotControlEvidenceCapturePhase,
@@ -110,6 +111,39 @@ function safeAnswerFromPayload(payload: Record<string, unknown> | null): RobotCo
 function peerIdText(value: unknown): string {
   // peer_id 只保留短字母数字摘要，避免路径注入或日志污染。
   return typeof value === "string" && /^[A-Za-z0-9_-]{1,120}$/.test(value) ? value : "";
+}
+
+function shortValue(value: unknown, fallback = "not_loaded"): string {
+  // probe 摘要只展示短标量，避免 UI/契约承载整份远端 JSON。
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+  if (typeof value === "string") {
+    return value.trim() ? value.trim().slice(0, 180) : fallback;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return JSON.stringify(value).slice(0, 180);
+}
+
+function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotControlCameraFirstFrameProbeProxyResponse["probe_key_values"] {
+  // 上位机把真实脚本输出放在 probe_payload；没有时按顶层兼容，便于旧 artifact 测试。
+  const probePayload = asRecord(payload?.probe_payload) ?? payload;
+  const metrics = asRecord(probePayload?.frame_metrics);
+  return {
+    schema: shortValue(probePayload?.schema),
+    device: shortValue(probePayload?.device),
+    requested_fourcc: shortValue(probePayload?.requested_fourcc, "default"),
+    open_ok: shortValue(probePayload?.open_ok),
+    read_ok: shortValue(probePayload?.read_ok),
+    first_frame_timeout: shortValue(probePayload?.first_frame_timeout),
+    failure_reason: shortValue(probePayload?.failure_reason, "none"),
+    visible_content_proven: shortValue(probePayload?.visible_content_proven),
+    elapsed_ms: shortValue(probePayload?.elapsed_ms ?? payload?.elapsed_ms),
+    mean_luma: shortValue(metrics?.mean_luma, "not_available"),
+    non_black_ratio: shortValue(metrics?.non_black_ratio, "not_available"),
+  };
 }
 
 function finiteNumber(value: unknown): number | null {
@@ -475,10 +509,35 @@ function unsafeProxyFailure(
   };
 }
 
+function cameraProbeFailure(sourceBaseUrl: string, reason: string): RobotControlCameraFirstFrameProbeProxyResponse {
+  // 本机拒绝或 fetch 失败也返回完整合同，避免高级诊断分叉成异常栈展示。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    proxy_status: "probe_rejected",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    remote_endpoint: "/api/camera/first-frame/probe",
+    remote_http_status: null,
+    status: "blocked",
+    probe_key_values: cameraProbeKeyValues(null),
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
+
 async function fetchCameraProxySummary(
   baseUrl: string,
   endpoint: string,
   body: Record<string, unknown>,
+  timeoutMs = 5000,
 ): Promise<{ remote_http_status: number | null; payload: Record<string, unknown> | null; error: string }> {
   // camera proxy 只向白名单 endpoint 发 POST JSON，不允许动态路径或浏览器跨域直连。
   const normalized = normalizeRobotApiBaseUrl(baseUrl);
@@ -492,7 +551,7 @@ async function fetchCameraProxySummary(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     const json = await response.json().catch(() => null);
     return {
@@ -1026,6 +1085,58 @@ export function createWorkstationApp(): express.Express {
       ],
     };
     res.status(responseBody.proxy_status === "peer_closed" ? 200 : 502).json(responseBody);
+  });
+
+  workstationApp.post("/api/robot-control/camera/first-frame/probe", async (req, res) => {
+    // 首帧探针只转发到固定上位机 endpoint；body 为空，不能让浏览器指定任意设备或命令。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    if (!normalized.ok) {
+      res.status(400).json(cameraProbeFailure(sourceBaseUrl, normalized.reason));
+      return;
+    }
+    const remote = await fetchCameraProxySummary(sourceBaseUrl, "/api/camera/first-frame/probe", {}, 12000);
+    if (remote.error) {
+      res.status(502).json({ ...cameraProbeFailure(sourceBaseUrl, remote.error), proxy_status: "probe_failed" });
+      return;
+    }
+    const dangerous = scanDangerousTrueFields(remote.payload);
+    const probeValues = cameraProbeKeyValues(remote.payload);
+    const status = shortText(remote.payload?.status, remote.remote_http_status === 200 ? "loaded" : "blocked");
+    const failureReason =
+      dangerous.length > 0
+        ? `dangerous_true_field:${dangerous[0]}`
+        : probeValues.failure_reason !== "none"
+          ? probeValues.failure_reason
+          : remote.remote_http_status === 200
+            ? ""
+            : `probe_http_status_${remote.remote_http_status}`;
+    const responseBody: RobotControlCameraFirstFrameProbeProxyResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      proxy_status:
+        remote.remote_http_status === 200 && dangerous.length === 0 ? "probe_forwarded" : "probe_failed",
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_endpoint: "/api/camera/first-frame/probe",
+      remote_http_status: remote.remote_http_status,
+      status,
+      probe_key_values: probeValues,
+      failure_reason: failureReason,
+      blocked_reasons: [
+        ...(remote.remote_http_status === 200 ? [] : [`probe_http_status_${remote.remote_http_status}`]),
+        ...dangerous.map((field) => `dangerous_true_field:${field}`),
+        ...(failureReason && dangerous.length === 0 ? [failureReason] : []),
+      ],
+      hard_dangerous_true_fields: dangerous,
+      robot_control_executed: false,
+    };
+    res.status(responseBody.proxy_status === "probe_forwarded" ? 200 : 502).json(responseBody);
   });
 
   workstationApp.get("/api/proof-boundary", (_req, res) => {

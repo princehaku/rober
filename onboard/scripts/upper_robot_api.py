@@ -142,6 +142,7 @@ ROUTE_PATHS = {
     "camera_devices": "/api/camera/devices",
     "camera_offer": "/api/camera/offer",
     "camera_peer_close": "/api/camera/peers/{peer_id}/close",
+    "camera_first_frame_probe": "/api/camera/first-frame/probe",
     "radar_status": "/api/radar/status",
     "radar_start": "/api/radar/start",
     "radar_stop": "/api/radar/stop",
@@ -3799,6 +3800,120 @@ async def fetch_json(url: str, method: str = "GET", payload: dict[str, Any] | No
         return 502, {"error": "camera_proxy_failed", "detail": compact_error(exc)}
 
 
+def safe_camera_probe_request(body: dict[str, Any] | None = None) -> dict[str, Any]:
+    """相机首帧 probe 只接受短白名单参数，避免 HTTP body 变成任意 argv。"""
+    payload = body if isinstance(body, dict) else {}
+    device = payload.get("device", "/dev/video1")
+    if not isinstance(device, str) or not re.fullmatch(r"/dev/video[0-9]{1,2}", device):
+        device = "/dev/video1"
+    fourcc = payload.get("fourcc", "MJPG")
+    if fourcc not in ("MJPG", "YUYV", None, ""):
+        fourcc = "MJPG"
+    width = int(payload.get("width", 640)) if str(payload.get("width", 640)).isdigit() else 640
+    height = int(payload.get("height", 480)) if str(payload.get("height", 480)).isdigit() else 480
+    fps = float(payload.get("fps", 15.0)) if isinstance(payload.get("fps", 15.0), (int, float)) else 15.0
+    timeout_s = float(payload.get("timeout_s", 3.0)) if isinstance(payload.get("timeout_s", 3.0), (int, float)) else 3.0
+    read_call_timeout_s = (
+        float(payload.get("read_call_timeout_s", 4.0))
+        if isinstance(payload.get("read_call_timeout_s", 4.0), (int, float))
+        else 4.0
+    )
+    return {
+        "device": device,
+        "fourcc": fourcc or None,
+        "width": min(max(width, 160), 1920),
+        "height": min(max(height, 120), 1080),
+        "fps": min(max(fps, 1.0), 30.0),
+        "timeout_s": min(max(timeout_s, 0.5), 8.0),
+        "read_call_timeout_s": min(max(read_call_timeout_s, 0.5), 8.0),
+    }
+
+
+async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+    """执行入仓首帧探针；该路径只读 camera，不导入 ROS2、不打开底盘串口。"""
+    request = safe_camera_probe_request(body)
+    script_path = Path(__file__).with_name("camera_first_frame_probe.py")
+    if not script_path.exists():
+        return 503, {
+            "schema": f"{SCHEMA}.camera_first_frame_probe_proxy",
+            "status": "probe_script_missing",
+            "probe_request": request,
+            "script_path": str(script_path),
+            **proof_flags(),
+            "opens_serial": False,
+            "sends_motion_commands": False,
+        }
+
+    command = [
+        sys.executable,
+        str(script_path),
+        "--device",
+        request["device"],
+        "--width",
+        str(request["width"]),
+        "--height",
+        str(request["height"]),
+        "--fps",
+        str(request["fps"]),
+        "--timeout-s",
+        str(request["timeout_s"]),
+        "--read-call-timeout-s",
+        str(request["read_call_timeout_s"]),
+    ]
+    if request["fourcc"]:
+        command.extend(["--fourcc", request["fourcc"]])
+
+    started_ms = now_ms()
+    process = await asyncio.create_subprocess_exec(
+        *command,
+        cwd=str(Path(__file__).resolve().parents[1]),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    try:
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=request["read_call_timeout_s"] + 6.0)
+    except asyncio.TimeoutError:
+        process.kill()
+        await process.communicate()
+        return 504, {
+            "schema": f"{SCHEMA}.camera_first_frame_probe_proxy",
+            "status": "probe_process_timeout",
+            "probe_request": request,
+            "elapsed_ms": now_ms() - started_ms,
+            "stderr_preview": "process_timeout",
+            **proof_flags(),
+            "opens_serial": False,
+            "sends_motion_commands": False,
+        }
+
+    stdout_text = stdout.decode("utf-8", errors="replace").strip()
+    stderr_text = stderr.decode("utf-8", errors="replace").strip()
+    try:
+        probe_payload = json.loads(stdout_text.splitlines()[-1]) if stdout_text else {}
+    except json.JSONDecodeError:
+        probe_payload = {"status": "bad_probe_json", "stdout_preview": stdout_text[:400]}
+    if not isinstance(probe_payload, dict):
+        probe_payload = {"status": "probe_json_not_object"}
+
+    status = str(probe_payload.get("status", "unknown"))
+    http_status = 200 if process.returncode == 0 and status == "frame_read" else 503
+    return http_status, {
+        "schema": f"{SCHEMA}.camera_first_frame_probe_proxy",
+        "status": status,
+        "generated_at_ms": now_ms(),
+        "probe_request": request,
+        "probe_payload": probe_payload,
+        "probe_returncode": process.returncode,
+        "stderr_preview": stderr_text[:400],
+        "elapsed_ms": now_ms() - started_ms,
+        "upper_api_proxy": True,
+        **proof_flags(),
+        "opens_serial": False,
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+    }
+
+
 class UpperRobotApi:
     """把上位机各硬件入口收敛到一个 HTTP API，PC 不再分散猜端口。"""
 
@@ -4768,6 +4883,10 @@ class UpperRobotApi:
         payload["upper_api_proxy"] = True
         return status, payload
 
+    async def camera_first_frame_probe(self, body: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+        """PC 高级诊断触发的相机首帧探针；不经过 WebRTC，也不触碰底盘。"""
+        return await run_camera_first_frame_probe(body)
+
     async def unified_status(self) -> dict[str, Any]:
         """PC 首屏只拉一个状态接口即可获得 camera/radar/base 总览。"""
         camera_http_status, camera = await self.camera_health()
@@ -5124,6 +5243,11 @@ def create_app(api: UpperRobotApi) -> Any:
         http_status, payload = await api.camera_peer_close(request.match_info["peer_id"], body if isinstance(body, dict) else {})
         return json_response(payload, status=http_status)
 
+    async def camera_first_frame_probe(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        http_status, payload = await api.camera_first_frame_probe(body if isinstance(body, dict) else {})
+        return json_response(payload, status=http_status)
+
     async def radar_status(_: web.Request) -> Any:
         return json_response(api.radar_status())
 
@@ -5255,6 +5379,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_get(ROUTE_PATHS["camera_devices"], camera_devices)
     app.router.add_post(ROUTE_PATHS["camera_offer"], camera_offer)
     app.router.add_post(ROUTE_PATHS["camera_peer_close"], camera_peer_close)
+    app.router.add_post(ROUTE_PATHS["camera_first_frame_probe"], camera_first_frame_probe)
     app.router.add_get(ROUTE_PATHS["radar_status"], radar_status)
     app.router.add_post(ROUTE_PATHS["radar_start"], radar_start)
     app.router.add_post(ROUTE_PATHS["radar_stop"], radar_stop)

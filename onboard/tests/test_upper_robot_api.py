@@ -218,6 +218,73 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["delivery_success"])
         self.assertFalse(payload["hil_pass"])
         self.assertFalse(payload["sends_motion_commands"])
+
+    def test_camera_probe_request_is_whitelisted(self) -> None:
+        """camera probe HTTP body 只能影响白名单参数，不能注入任意 argv。"""
+        request = upper_robot_api.safe_camera_probe_request(
+            {
+                "device": "/tmp/not-video;rm -rf /",
+                "fourcc": "H264",
+                "width": 99999,
+                "height": 1,
+                "fps": 999,
+                "timeout_s": 99,
+                "read_call_timeout_s": 99,
+            }
+        )
+
+        self.assertEqual("/dev/video1", request["device"])
+        self.assertEqual("MJPG", request["fourcc"])
+        self.assertEqual(1920, request["width"])
+        self.assertEqual(120, request["height"])
+        self.assertEqual(30.0, request["fps"])
+        self.assertEqual(8.0, request["timeout_s"])
+        self.assertEqual(8.0, request["read_call_timeout_s"])
+
+    def test_camera_probe_missing_script_fails_closed_without_serial_or_motion(self) -> None:
+        """首帧探针脚本不存在时也必须结构化失败，且不触碰底盘。"""
+        with mock.patch.object(upper_robot_api.Path, "exists", return_value=False):
+            http_status, payload = asyncio.run(upper_robot_api.run_camera_first_frame_probe({"device": "/dev/video1"}))
+
+        self.assertEqual(503, http_status)
+        self.assertEqual("probe_script_missing", payload["status"])
+        self.assertFalse(payload["opens_serial"])
+        self.assertFalse(payload["sends_motion_commands"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["robot_control_executed"])
+
+    def test_camera_probe_parses_subprocess_json_without_control_enable(self) -> None:
+        """首帧探针成功执行时只回传 camera JSON，不提升控制许可。"""
+
+        class FakeProcess:
+            returncode = 0
+
+            async def communicate(self):
+                payload = {
+                    "schema": "trashbot.camera_first_frame_probe.v1",
+                    "status": "first_frame_timeout",
+                    "open_ok": True,
+                    "read_ok": False,
+                    "first_frame_timeout": True,
+                    "visible_content_proven": False,
+                }
+                return json.dumps(payload).encode("utf-8"), b""
+
+            def kill(self) -> None:
+                self.killed = True
+
+        with mock.patch.object(upper_robot_api.Path, "exists", return_value=True):
+            with mock.patch.object(upper_robot_api.asyncio, "create_subprocess_exec", return_value=FakeProcess()):
+                http_status, payload = asyncio.run(upper_robot_api.run_camera_first_frame_probe({"fourcc": "MJPG"}))
+
+        self.assertEqual(503, http_status)
+        self.assertEqual("first_frame_timeout", payload["status"])
+        self.assertTrue(payload["probe_payload"]["open_ok"])
+        self.assertFalse(payload["probe_payload"]["read_ok"])
+        self.assertFalse(payload["probe_payload"]["visible_content_proven"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["robot_control_executed"])
+        self.assertFalse(payload["sends_motion_commands"])
         self.assertFalse(payload["opens_serial"])
 
     def test_map_proof_latest_promotes_clean_runtime_material(self) -> None:
