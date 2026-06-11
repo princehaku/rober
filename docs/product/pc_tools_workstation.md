@@ -548,6 +548,62 @@ localize/Nav2/AMCL/helper 进程残留，`/dev/ttyS5` 和 `/dev/ttyACM0` 的 `ls
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/dom_smoke/pc_plain_user_home_dom_smoke.json`
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_ssh_process_device_check.txt`
 
+## 2026-06-11 PC Radar Lifecycle Continuity Current Smoke
+
+`sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/` 未改 PC 产品代码或样式。
+本机 workstation API `http://127.0.0.1:18792` 通过固定 PC radar lifecycle 代理连接
+真实上位机 `http://192.168.1.11:8787`，执行雷达
+start -> during readback -> proof refresh -> stop -> cleanup。
+
+PC proxy 结果：
+
+- `POST /api/robot-control/radar/start?baseUrl=http://192.168.1.11:8787` 返回
+  `proxy_status=lifecycle_forwarded`、`remote_http_status=200`、
+  `command_result.executed=true`、`command_result.ok=true`。
+- `POST /api/robot-control/radar/stop?baseUrl=http://192.168.1.11:8787` 返回同样的
+  forwarded/200/executed/ok。
+- PC 响应顶层继续固定 `robot_control_executed=false`，没有把 sensor lifecycle
+  误声明成机器人控制执行。
+
+during window 结果：
+
+- 4 轮 direct upper `POST /api/radar/scan-proof/refresh`，body 固定为
+  `{"start_runtime":false,"timeout_s":12}`，只观察 already-running lifecycle。
+- 每轮都得到新 evidence ref，proof state 均为
+  `scan_once_hz_raw_packet_tf_observed`。
+- scan hz 约 `14.555`、`15.807`、`15.532`、`15.925` Hz；raw packet once 与 TF
+  均观测到。
+- refresh readback 固定 `read_only_topic_observation=true`、
+  `sends_base_motion_commands=false`、`sends_motion_commands=false`、
+  `uses_base_uart=false`。
+
+产品/接口 gap：`GET /api/radar/status` during 和 after stop 都仍返回
+`continuous_scan_status=not_proven`，blocked reason 为 `scan_continuity_not_observed`。
+因此 PC 当前可通过 proxy 控制雷达 start/stop 并刷新 proof，但 status 合同还不能表达
+continuous lifecycle running、窗口连续性或 freshness；页面仍只能基于 latest proof
+展示一次性观测。
+
+安全边界保持：
+
+- 未调用 `/api/base/manual`。
+- 未发布 `/cmd_vel`。
+- 未启动 Nav2。
+- 未发送非零运动。
+- 未写 WAVE ROVER UART `/dev/ttyS5`。
+- 未执行 `T=1/T=13/T=130/T=131`。
+
+Cleanup：临时 API `127.0.0.1:18792` 已停止且端口无监听；SSH 只读检查显示 LiDAR
+lifecycle stopped，`/dev/ttyACM0` 与 `/dev/ttyS5` 的 `lsof/fuser` 均无输出，
+上位机 `upper_robot_api.py --port 8787` 仍在运行，radar status HTTP 200。
+
+证据文件：
+
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/summary.json`
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/pc_proxy/01_pc_proxy_radar_start.json`
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/direct_upper/02_during_window.jsonl`
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/pc_proxy/03_pc_proxy_radar_stop.json`
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/remote_device/04_after_stop_device_process.log`
+
 ## 2026-06-11 真实 PC Camera Link Plain UI Current Smoke 证据
 
 本轮 `sprints/2026.06.11_14-20_pc_camera_plain_ui_current_smoke/` 未改 PC 产品代码，

@@ -1,0 +1,14 @@
+2026-06-11T14:53:22+08:00
+## lifecycle status
+{"schema": "trashbot.o1.lidar_lifecycle.v1", "generated_at_ms": 1781160802526, "running": false, "pid": null, "state": "stopped", "message": "LiDAR lifecycle not running", "serial_port": "/dev/ttyACM0", "baudrate": 150000, "frame_id": "laser_frame", "runtime_dir": "/tmp/rober_lidar_lifecycle", "log_dir": "/tmp/rober_lidar_lifecycle/logs", "driver": "ros2_trashbot_hardware lidar_driver", "static_tf": "base_link -> laser_frame", "sends_base_motion_commands": false, "uses_base_uart": false, "publishes_cmd_vel": false, "blocked_base_uart": "/dev/ttyS5", "blocked_commands_not_sent": ["T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual"]}
+## lsof ttyACM0 ttyS5
+COMMAND    PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+python3 261344 root   23u   CHR   4,69      0t0  120 /dev/ttyS5
+## fuser ttyACM0 ttyS5
+                     USER        PID ACCESS COMMAND
+/dev/ttyS5:          root      261344 F.... python3
+## pgrep lidar
+266123 zsh -c set -u; date -Iseconds; echo "## lifecycle status"; bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh status 2>&1 || true; echo "## lsof ttyACM0 ttyS5"; lsof /dev/ttyACM0 /dev/ttyS5 2>&1 || true; echo "## fuser ttyACM0 ttyS5"; fuser -v /dev/ttyACM0 /dev/ttyS5 2>&1 || true; echo "## pgrep lidar"; pgrep -af "lidar_driver|o1_lidar_lifecycle|static_transform_publisher" || true; echo "## service"; systemctl is-active rober-api 2>&1 || systemctl is-active trashbot-robot-api 2>&1 || true
+## service
+inactive
+inactive

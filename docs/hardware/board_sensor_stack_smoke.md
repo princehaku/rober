@@ -1786,3 +1786,51 @@ Artifacts：
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/pc_proxy/localize_reset_smoke_corrected_summary.json`
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_ssh_process_device_check.txt`
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_summary.json`
+
+## 2026-06-11 15:00 PC Radar Lifecycle Continuity Smoke
+
+`sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/` 使用本机
+workstation API `http://127.0.0.1:18792`，通过 PC 固定 radar lifecycle 代理访问真实
+上位机 `http://192.168.1.11:8787`，完成一轮 no-motion 雷达
+start -> during readback -> proof refresh -> stop -> cleanup。
+
+采用资料与边界：硬件事实入口为 `docs/vendor/VENDOR_INDEX.md`，并核对 WAVE ROVER
+vendor `ugv_rpi/base_ctrl.py`、`ugv_rpi/config.yaml`、
+`WAVE_ROVER_V0.9/json_cmd.h`、`uart_ctrl.h`、`movtion_module.h`。这些资料只用于确认
+底盘 UART 是 UTF-8 newline JSON、vendor Raspberry Pi 串口不能外推到 Orange Pi、
+以及 `T=1/T=13/T=130/T=131` 是底盘运动/反馈命令边界。本轮只操作 LiDAR
+`/dev/ttyACM0` 与 ROS2 `/scan`、`/lidar/raw_packet`、TF；未调用
+`/api/base/manual`，未发布 `/cmd_vel`，未执行 Nav2，未写 `/dev/ttyS5`，未执行
+`T=1/T=13/T=130/T=131`。
+
+执行结果：
+
+- PC proxy `radar/start` 返回 `proxy_status=lifecycle_forwarded`、
+  `remote_http_status=200`、`command_result.executed=true`、`ok=true`。
+- during SSH readback 显示 lifecycle `running=true`，只有 `lidar_driver` 占用
+  `/dev/ttyACM0`；`sends_base_motion_commands=false`、`uses_base_uart=false`、
+  `publishes_cmd_vel=false`。
+- 4 轮 direct upper read-only refresh 使用
+  `{"start_runtime":false,"timeout_s":12}` 观察 existing lifecycle，均返回
+  `status=refreshed`、`proof_state=scan_once_hz_raw_packet_tf_observed`。
+- 新 evidence refs 为 `o1-lidar-scan-proof-1781160878302`、
+  `o1-lidar-scan-proof-1781160901312`、`o1-lidar-scan-proof-1781160924388`、
+  `o1-lidar-scan-proof-1781160947425`。
+- scan hz 约 `14.555`、`15.807`、`15.532`、`15.925` Hz；raw packet once 和 TF
+  均观测到。
+- PC proxy `radar/stop` 返回 `proxy_status=lifecycle_forwarded`、
+  `remote_http_status=200`、`command_result.executed=true`、`ok=true`。
+- cleanup readback 显示 lifecycle `running=false`、`state=stopped`，
+  `/dev/ttyACM0` 和 `/dev/ttyS5` 的 `lsof/fuser` 均无占用输出；上位机
+  `upper_robot_api.py --port 8787` 仍在运行，`GET /api/radar/status` HTTP 200。
+
+接口 gap：`/api/radar/status` 在 during 和 after stop 都仍返回
+`continuous_scan_status=not_proven` 与 `scan_continuity_not_observed`。因此当前 status
+合同仍只能稳定表达 latest scan proof，不能表达 continuous lifecycle running 或窗口连续性。
+
+关键 artifact：
+
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/summary.json`
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/direct_upper/02_during_window.jsonl`
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/remote_device/02_during_device_process.log`
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/remote_device/04_after_stop_device_process.log`

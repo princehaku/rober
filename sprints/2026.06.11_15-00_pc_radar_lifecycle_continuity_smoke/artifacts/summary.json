@@ -1,0 +1,106 @@
+{
+  "schema": "trashbot.sprint.pc_radar_lifecycle_continuity_smoke.summary.v1",
+  "generated_at_utc": "2026-06-11T06:57:15Z",
+  "pc_proxy": {
+    "start": {
+      "proxy_status": "lifecycle_forwarded",
+      "remote_http_status": 200,
+      "command_result": {
+        "mode": "command",
+        "executed": true,
+        "ok": true
+      },
+      "hard_dangerous_true_fields": [],
+      "robot_control_executed": false
+    },
+    "stop": {
+      "proxy_status": "lifecycle_forwarded",
+      "remote_http_status": 200,
+      "command_result": {
+        "mode": "command",
+        "executed": true,
+        "ok": true
+      },
+      "hard_dangerous_true_fields": [],
+      "robot_control_executed": false
+    }
+  },
+  "during_window": [
+    {
+      "observed_at": "2026-06-11T06:54:37Z",
+      "continuous_scan_status": "not_proven",
+      "latest_scan_proof_state": "scan_once_hz_raw_packet_tf_observed",
+      "refresh_status": "refreshed",
+      "refresh_proof_state": "scan_once_hz_raw_packet_tf_observed",
+      "refresh_evidence_ref": "o1-lidar-scan-proof-1781160878302",
+      "scan_runtime_proven": true,
+      "ros2_runtime_proven": true,
+      "scan_hz_average_rate_hz": 14.555,
+      "raw_packet_once_observed": true,
+      "tf_observed": true,
+      "read_only_topic_observation": true,
+      "sends_base_motion_commands": false,
+      "sends_motion_commands": false,
+      "uses_base_uart": false
+    },
+    {
+      "observed_at": "2026-06-11T06:55:00Z",
+      "continuous_scan_status": "not_proven",
+      "latest_scan_proof_state": "scan_once_hz_raw_packet_tf_observed",
+      "refresh_status": "refreshed",
+      "refresh_proof_state": "scan_once_hz_raw_packet_tf_observed",
+      "refresh_evidence_ref": "o1-lidar-scan-proof-1781160901312",
+      "scan_runtime_proven": true,
+      "ros2_runtime_proven": true,
+      "scan_hz_average_rate_hz": 15.807,
+      "raw_packet_once_observed": true,
+      "tf_observed": true,
+      "read_only_topic_observation": true,
+      "sends_base_motion_commands": false,
+      "sends_motion_commands": false,
+      "uses_base_uart": false
+    },
+    {
+      "observed_at": "2026-06-11T06:55:23Z",
+      "continuous_scan_status": "not_proven",
+      "latest_scan_proof_state": "scan_once_hz_raw_packet_tf_observed",
+      "refresh_status": "refreshed",
+      "refresh_proof_state": "scan_once_hz_raw_packet_tf_observed",
+      "refresh_evidence_ref": "o1-lidar-scan-proof-1781160924388",
+      "scan_runtime_proven": true,
+      "ros2_runtime_proven": true,
+      "scan_hz_average_rate_hz": 15.532,
+      "raw_packet_once_observed": true,
+      "tf_observed": true,
+      "read_only_topic_observation": true,
+      "sends_base_motion_commands": false,
+      "sends_motion_commands": false,
+      "uses_base_uart": false
+    },
+    {
+      "observed_at": "2026-06-11T06:55:46Z",
+      "continuous_scan_status": "not_proven",
+      "latest_scan_proof_state": "scan_once_hz_raw_packet_tf_observed",
+      "refresh_status": "refreshed",
+      "refresh_proof_state": "scan_once_hz_raw_packet_tf_observed",
+      "refresh_evidence_ref": "o1-lidar-scan-proof-1781160947425",
+      "scan_runtime_proven": true,
+      "ros2_runtime_proven": true,
+      "scan_hz_average_rate_hz": 15.925,
+      "raw_packet_once_observed": true,
+      "tf_observed": true,
+      "read_only_topic_observation": true,
+      "sends_base_motion_commands": false,
+      "sends_motion_commands": false,
+      "uses_base_uart": false
+    }
+  ],
+  "after_stop": {
+    "continuous_scan_status": "not_proven",
+    "latest_scan_proof_state": "scan_once_hz_raw_packet_tf_observed",
+    "latest_scan_hz_average_rate_hz": 15.925,
+    "safe_to_control": false,
+    "robot_control_executed": false,
+    "sends_motion_commands": false
+  }
+}

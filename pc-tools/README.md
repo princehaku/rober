@@ -282,3 +282,48 @@ size、readyState/currentTime 和 cleanup diagnostics，只能说明图传链路
 Artifacts：
 
 - `sprints/2026.06.11_14-20_pc_camera_plain_ui_current_smoke/artifacts/pc_camera_visible_video_stats.json`
+
+## 2026-06-11 PC Radar Lifecycle Continuity Smoke
+
+`sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/` 使用本机
+workstation API `http://127.0.0.1:18792` 通过固定 PC proxy 连接真实上位机
+`http://192.168.1.11:8787`，只执行雷达 start/stop lifecycle 与 read-only proof
+readback。
+
+本轮没有改 PC 产品代码、普通首屏组件或样式。执行顺序：
+
+- `POST /api/robot-control/radar/start?baseUrl=http://192.168.1.11:8787`
+- SSH 只读检查 lifecycle 与 `/dev/ttyACM0`、`/dev/ttyS5` 占用。
+- 4 轮 direct upper read-only `POST /api/radar/scan-proof/refresh`，
+  body `{"start_runtime":false,"timeout_s":12}`。
+- `POST /api/robot-control/radar/stop?baseUrl=http://192.168.1.11:8787`
+- cleanup readback。
+
+结果：
+
+- PC proxy start/stop 均返回 `proxy_status=lifecycle_forwarded`、
+  `remote_http_status=200`、`command_result.executed=true`、`command_result.ok=true`。
+- during window 4 轮 refresh 均为 `status=refreshed`、
+  `proof_state=scan_once_hz_raw_packet_tf_observed`。
+- 新 evidence refs 为 `o1-lidar-scan-proof-1781160878302`、
+  `o1-lidar-scan-proof-1781160901312`、`o1-lidar-scan-proof-1781160924388`、
+  `o1-lidar-scan-proof-1781160947425`。
+- scan hz 约 `14.555`、`15.807`、`15.532`、`15.925` Hz，raw packet once 和 TF
+  均观测到。
+- cleanup 后 LiDAR lifecycle `running=false`，`/dev/ttyACM0` 与 `/dev/ttyS5`
+  的 `lsof/fuser` 均无占用输出，本机端口 `18792` 已释放。
+
+重要 gap：`/api/radar/status` during 和 after stop 仍返回
+`continuous_scan_status=not_proven` / `scan_continuity_not_observed`。所以当前 PC 侧
+已经能通过固定代理完成雷达 start/stop 与 proof readback，但 status 合同尚不能表达
+continuous lifecycle running 或窗口连续性。
+
+安全边界保持：未调用 `/api/base/manual`，未发布 `/cmd_vel`，未启动 Nav2，未发送非零运动，
+未写 WAVE ROVER UART `/dev/ttyS5`，未执行 `T=1/T=13/T=130/T=131`。
+
+Artifacts：
+
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/summary.json`
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/pc_proxy/01_pc_proxy_radar_start.json`
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/direct_upper/02_during_window.jsonl`
+- `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/pc_proxy/03_pc_proxy_radar_stop.json`
