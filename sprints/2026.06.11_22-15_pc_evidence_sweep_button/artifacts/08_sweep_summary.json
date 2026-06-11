@@ -1,0 +1,97 @@
+{
+  "01_summary.json": {
+    "schema": "trashbot.pc_tools_workstation.robot_control_summary.v1",
+    "status": "blocked",
+    "proxy_status": null,
+    "remote_http_status": null,
+    "last_result_status": null,
+    "failure_reason": null,
+    "safe_to_control": false,
+    "robot_control_executed": null
+  },
+  "02_camera_probe.json": {
+    "schema": "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
+    "status": "first_frame_timeout",
+    "proxy_status": "probe_failed",
+    "remote_http_status": 503,
+    "last_result_status": null,
+    "failure_reason": "capture_read_call_timeout",
+    "safe_to_control": false,
+    "robot_control_executed": false
+  },
+  "03_radar_refresh.json": {
+    "schema": "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+    "status": "loaded_fail_closed_summary",
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "last_result_status": "refreshed",
+    "failure_reason": "",
+    "safe_to_control": false,
+    "robot_control_executed": false
+  },
+  "04_map_refresh.json": {
+    "schema": "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+    "status": "loaded_fail_closed_summary",
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "last_result_status": "map_once_artifact_metadata_observed",
+    "failure_reason": "",
+    "safe_to_control": false,
+    "robot_control_executed": false
+  },
+  "05_nav2_refresh.json": {
+    "schema": "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+    "status": "loaded_fail_closed_summary",
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "last_result_status": "refreshed",
+    "failure_reason": "",
+    "safe_to_control": false,
+    "robot_control_executed": false
+  },
+  "06_stop.json": {
+    "schema": "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+    "status": "stopped",
+    "proxy_status": "command_forwarded",
+    "remote_http_status": 200,
+    "last_result_status": null,
+    "failure_reason": "",
+    "safe_to_control": false,
+    "robot_control_executed": false
+  },
+  "07_summary_after_sweep.json": {
+    "schema": "trashbot.pc_tools_workstation.robot_control_summary.v1",
+    "status": "blocked",
+    "proxy_status": null,
+    "remote_http_status": null,
+    "last_result_status": null,
+    "failure_reason": null,
+    "safe_to_control": false,
+    "robot_control_executed": null
+  },
+  "camera_probe_key_values": {
+    "schema": "trashbot.camera_first_frame_probe.v1",
+    "device": "/dev/video1",
+    "requested_fourcc": "MJPG",
+    "open_ok": "true",
+    "read_ok": "false",
+    "first_frame_timeout": "true",
+    "failure_reason": "capture_read_call_timeout",
+    "visible_content_proven": "false",
+    "elapsed_ms": "4655",
+    "mean_luma": "not_available",
+    "non_black_ratio": "not_available"
+  },
+  "stop_evidence_status": "captured",
+  "after_camera": {
+    "status": "ready",
+    "devices_status": "loaded",
+    "preview_status": "idle_not_started",
+    "video_source": "/dev/video1",
+    "video_source_mode": "auto",
+    "selected_path": "/dev/video1",
+    "active_peer_count": "0",
+    "last_offer_error": "first_frame_unreadable",
+    "last_offer_failure_reason": "first_frame_timeout"
+  }
+}

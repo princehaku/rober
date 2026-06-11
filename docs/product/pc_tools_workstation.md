@@ -786,6 +786,29 @@ DV20 输入源、线缆、供电、采集卡状态，或换 known-good UVC 后�
 - `sprints/2026.06.11_22-00_pc_camera_first_frame_probe_proxy/artifacts/05_pc_proxy_summary_after_probe.json`
 - `sprints/2026.06.11_22-00_pc_camera_first_frame_probe_proxy/artifacts/06_remote_cleanup.txt`
 
+## 2026-06-11 PC Evidence Sweep Button
+
+`sprints/2026.06.11_22-15_pc_evidence_sweep_button/` 在默认关闭的
+`高级诊断 / 任务与证据` 中新增“一键证据巡检（高级）”。它按固定顺序复用现有代理：
+
+1. summary
+2. camera first-frame probe
+3. radar scan proof refresh
+4. map proof refresh
+5. Nav2 no-motion proof refresh
+6. base stop
+
+普通用户首屏不变；该按钮不调用 `/api/base/manual` 成功路径，不发布 `/cmd_vel`，不执行
+NavigateToPose。真实 PC proxy smoke 连接 `http://192.168.1.11:8787` 后，雷达、地图、
+Nav2 no-motion 和 stop 均返回固定代理结果；相机仍返回
+`first_frame_timeout/capture_read_call_timeout`。这说明 PC 已经能把当前可安全执行的
+evidence capture 串成一键高级巡检，但实时图传可见内容和非 stop 运动 gate 仍未完成。
+
+证据文件：
+
+- `sprints/2026.06.11_22-15_pc_evidence_sweep_button/artifacts/08_sweep_summary.json`
+- `sprints/2026.06.11_22-15_pc_evidence_sweep_button/artifacts/09_cleanup.txt`
+
 ## 运行与验证
 
 工作站验证只使用 Node/Vue gate：

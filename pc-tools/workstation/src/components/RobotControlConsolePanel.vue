@@ -130,6 +130,10 @@ const previewFrameSampleAttempts = ref(0);
 const previewFrameSampleCanvasSize = ref("not_sampled");
 const cameraFirstFrameProbePending = ref(false);
 const cameraFirstFrameProbeResult = ref<RobotControlCameraFirstFrameProbeProxyResponse | null>(null);
+const evidenceSweepPending = ref(false);
+const evidenceSweepStartedAt = ref("");
+const evidenceSweepCompletedAt = ref("");
+const evidenceSweepLines = ref<string[]>([]);
 let previewFrameSampleTimers: number[] = [];
 
 const selectedTaskSummary = computed(() => {
@@ -314,6 +318,16 @@ const cameraFirstFrameProbeSummary = computed(() => {
   const values = result.probe_key_values;
   return `${result.proxy_status}; status=${result.status}; open=${values.open_ok}; read=${values.read_ok}; reason=${result.failure_reason || values.failure_reason}`;
 });
+const evidenceSweepSummary = computed(() => {
+  // 一键巡检聚合固定代理结果；blocked 仍按 blocked 展示，不伪装成全量通过。
+  if (evidenceSweepPending.value) {
+    return "evidence sweep pending";
+  }
+  if (!evidenceSweepLines.value.length) {
+    return "evidence sweep not requested";
+  }
+  return evidenceSweepLines.value.join(" | ");
+});
 const radarSummary = computed(() => summarizeRadarState());
 const radarLifecycleSummary = computed(() => {
   // 雷达 lifecycle 是高级诊断动作；摘要只说明代理和 guard 结果，不证明 runtime 已启动。
@@ -335,6 +349,7 @@ const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_
 const checklistMissing = computed(() => hilChecklist.value.filter((item) => !item.checked).map((item) => item.label));
 const hilChecklistConfirmed = computed(() => checklistMissing.value.length === 0);
 const canSendStop = computed(() => !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
+const canRunEvidenceSweep = computed(() => !evidenceSweepPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
 function claimWithRefReady(value: string | undefined): boolean {
   // 现场材料的四类引用型 claim 必须同时满足 true 且带 ref，缺任一条件都按未满足处理。
   return typeof value === "string" && value.startsWith("true; ref=") && !value.endsWith("not_loaded");
@@ -1281,6 +1296,46 @@ async function runCameraFirstFrameProbe(): Promise<void> {
   }
 }
 
+function appendEvidenceSweepLine(label: string, value: string): void {
+  // 巡检行只保留短状态，完整 payload 留在各自高级卡片和 sprint artifact。
+  evidenceSweepLines.value = [...evidenceSweepLines.value, `${label}:${value}`];
+}
+
+async function runEvidenceSweep(): Promise<void> {
+  // 一键巡检只走 summary/camera/radar/map/Nav2/stop 固定代理；不会发非 stop 运动。
+  if (!canRunEvidenceSweep.value) {
+    return;
+  }
+  evidenceSweepPending.value = true;
+  evidenceSweepStartedAt.value = stampNow();
+  evidenceSweepCompletedAt.value = "";
+  evidenceSweepLines.value = [];
+  try {
+    await refreshConsole();
+    appendEvidenceSweepLine("summary", robotSummary.value?.robot_api_connection.status ?? "not_loaded");
+
+    await runCameraFirstFrameProbe();
+    appendEvidenceSweepLine("camera_probe", cameraFirstFrameProbeResult.value?.status ?? "not_loaded");
+
+    await refreshRadarProof();
+    appendEvidenceSweepLine("radar", radarRefreshResult.value?.last_result_status ?? "not_loaded");
+
+    await refreshMapProof();
+    appendEvidenceSweepLine("map", mapRefreshResult.value?.last_result_status ?? "not_loaded");
+
+    await refreshNav2Proof();
+    appendEvidenceSweepLine("nav2", nav2RefreshResult.value?.last_result_status ?? "not_loaded");
+
+    await sendStop();
+    appendEvidenceSweepLine("stop", manualCommandResult.value?.status ?? "not_loaded");
+  } catch (err) {
+    appendEvidenceSweepLine("error", err instanceof Error ? err.message : "evidence_sweep_failed");
+  } finally {
+    evidenceSweepCompletedAt.value = stampNow();
+    evidenceSweepPending.value = false;
+  }
+}
+
 async function sendManualMotion(direction: "forward" | "back" | "left" | "right"): Promise<void> {
   // 非 stop 点动必须通过 checklist gate；即使远端成功，也继续维持 fail-closed UI。
   if (!canSendManualMotion.value) {
@@ -1971,7 +2026,18 @@ onBeforeUnmount(() => {
 
         <section class="advanced-block">
           <h3>任务与证据</h3>
+          <div class="robot-control-form">
+            <button class="secondary" type="button" :disabled="!canRunEvidenceSweep" @click="runEvidenceSweep">
+              一键证据巡检（高级）
+            </button>
+          </div>
           <dl class="kv compact-kv">
+            <dt>evidence_sweep</dt>
+            <dd>{{ evidenceSweepSummary }}</dd>
+            <dt>sweep_started_at</dt>
+            <dd>{{ evidenceSweepStartedAt || "never" }}</dd>
+            <dt>sweep_completed_at</dt>
+            <dd>{{ evidenceSweepCompletedAt || "never" }}</dd>
             <dt>O3 proof summary</dt>
             <dd>
               {{ robotSummary?.o3_proof_summary.proof_status ?? "not_loaded" }};
