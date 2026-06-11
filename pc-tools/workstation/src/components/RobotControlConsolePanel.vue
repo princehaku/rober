@@ -435,6 +435,25 @@ const plainMotionSummary = computed(() => {
   }
   return { state: "待命", hint: "需要时可直接停止。" };
 });
+
+const plainEvidenceSweepSummary = computed(() => {
+  // 普通首屏只给“检查小车”结果，不暴露 proof/Nav2/HIL 等工程语义。
+  if (evidenceSweepPending.value) {
+    return { state: "检查中", hint: "正在依次检查画面、雷达、地图、定位和停止。" };
+  }
+  if (!evidenceSweepLines.value.length) {
+    return { state: "待检查", hint: "点击检查小车，自动读取关键状态。" };
+  }
+  const hasCameraIssue = evidenceSweepLines.value.some((line) => line.includes("camera_probe:first_frame_timeout"));
+  const hasError = evidenceSweepLines.value.some((line) => line.startsWith("error:"));
+  if (hasError) {
+    return { state: "检查失败", hint: "检查没有完整跑完，详情在高级诊断。" };
+  }
+  if (hasCameraIssue) {
+    return { state: "需要处理", hint: "基础检查已返回；实时画面仍需处理。" };
+  }
+  return { state: "已检查", hint: "关键状态已读取，详情可展开高级诊断。" };
+});
 function listText(items: string[] | undefined, fallback = "none"): string {
   // blocked/not_proven 只展示少量摘要，完整定位应回到后端日志或 artifact。
   return items && items.length ? items.slice(0, 6).join("; ") : fallback;
@@ -1581,7 +1600,11 @@ onBeforeUnmount(() => {
             <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
             <span class="muted">{{ robotConnectionSummary.hint }}</span>
           </div>
-          <p class="panel-note">输入上位机地址后，点击连接/刷新即可读取状态。</p>
+          <div class="panel-action-row wrap-actions">
+            <button type="button" :disabled="!canRunEvidenceSweep" @click="runEvidenceSweep">检查小车</button>
+            <span class="status-chip" :data-state="plainEvidenceSweepSummary.state">{{ plainEvidenceSweepSummary.state }}</span>
+          </div>
+          <p class="panel-note">{{ plainEvidenceSweepSummary.hint }}</p>
         </article>
 
         <article class="snapshot-panel">
