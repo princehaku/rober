@@ -1435,14 +1435,6 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="workspace robot-console">
-    <div class="section-head compact-head">
-      <div>
-        <p class="eyebrow">小车控制</p>
-        <h2>Rober 小车控制台</h2>
-        <p class="muted">普通用户入口：连接、看画面、看雷达和地图，需要时只点停止。</p>
-      </div>
-    </div>
-
     <div class="simple-user-console" data-testid="pc-simple-user-first-screen">
       <form class="robot-quick-connect" @submit.prevent="refreshConsole">
         <label>
@@ -1464,7 +1456,7 @@ onBeforeUnmount(() => {
             <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
             <span class="muted">{{ robotConnectionSummary.hint }}</span>
           </div>
-          <p class="panel-note">连接/刷新</p>
+          <p class="panel-note">输入上位机地址后，点击连接/刷新即可读取状态。</p>
         </article>
 
         <article class="snapshot-panel">

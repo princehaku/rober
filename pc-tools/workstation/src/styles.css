@@ -1,6 +1,6 @@
 :root {
   color: #17202a;
-  background: #eef1f4;
+  background: #f4f6f8;
   font-family: Inter, "Segoe UI", Arial, sans-serif;
 }
 
@@ -17,17 +17,17 @@ button {
 }
 
 .shell {
-  width: min(1280px, calc(100% - 32px));
+  width: min(1120px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 20px 0 32px;
+  padding: 18px 0 32px;
 }
 
 .topbar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .eyebrow {
@@ -44,9 +44,16 @@ p {
 }
 
 h1 {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 760;
   letter-spacing: 0;
+}
+
+.topbar-subtitle {
+  margin-top: 6px;
+  color: #5f6b7a;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 h2 {
@@ -108,11 +115,11 @@ h3 {
 
 .notice {
   margin-bottom: 12px;
-  border: 1px solid #d49c9c;
+  border: 1px solid #d8dee6;
   border-radius: 6px;
   padding: 10px 12px;
-  background: #fff1f1;
-  color: #8a1f1f;
+  background: #ffffff;
+  color: #435160;
 }
 
 .tabs {
@@ -131,11 +138,11 @@ h3 {
 }
 
 .workspace {
-  min-height: 540px;
-  border: 1px solid #ccd5de;
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 18px;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .route-inputs {
@@ -200,11 +207,11 @@ h3 {
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: end;
-  margin-bottom: 14px;
-  border: 1px solid #d7dee6;
-  border-radius: 6px;
-  padding: 12px;
-  background: #f7f9fb;
+  margin-bottom: 12px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .robot-quick-connect label,
@@ -318,10 +325,11 @@ h3 {
 
 .simple-user-console {
   /* 这个作用域只承载普通用户首屏，测试会用它隔离关闭的高级诊断文本。 */
-  border: 1px solid #d7dee6;
+  border: 1px solid #d8dee6;
   border-radius: 8px;
-  padding: 12px;
-  background: #fbfcfd;
+  padding: 16px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgb(17 24 39 / 5%);
 }
 
 .simple-user-console .robot-quick-connect {
@@ -647,9 +655,16 @@ th {
 }
 
 .snapshot-panel {
-  border: 1px solid #d7dee6;
-  border-radius: 6px;
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
   padding: 14px;
+  background: #fbfcfd;
+}
+
+.snapshot-panel h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 15px;
 }
 
 .compact-section {

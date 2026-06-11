@@ -77,18 +77,18 @@ onMounted(() => {
   <main class="shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">Rober</p>
         <h1>Rober 小车控制台</h1>
+        <p class="topbar-subtitle">连接小车、查看画面和地图，必要时一键停止。</p>
       </div>
-      <button class="secondary" type="button" @click="refresh">刷新</button>
+      <button class="secondary" type="button" @click="refresh">刷新页面</button>
     </header>
 
     <div v-if="error" class="notice" role="alert">
-      API unavailable: {{ error }}. primary_actions_enabled=false.
+      页面暂时没有读到本机服务：{{ error }}。
     </div>
 
     <div v-if="loading" class="notice" role="status">
-      Loading local workstation summary...
+      正在读取本机状态...
     </div>
 
     <RobotControlConsolePanel />

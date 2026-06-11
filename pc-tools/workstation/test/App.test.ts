@@ -9,7 +9,7 @@ import { PROOF_FLAGS } from "../src/shared/contracts";
 
 const SPRINT_ARTIFACT_DIR = resolve(
   process.cwd(),
-  "../../sprints/2026.06.11_16-45_pc_manual_motion_readiness_ui/artifacts",
+  "../../sprints/2026.06.11_18-00_pc_simple_user_console_repair/artifacts",
 );
 
 const DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS = [
@@ -22,6 +22,22 @@ const DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS = [
   "/cmd_vel",
   "/api/base/manual",
   "可点动",
+  "task_id",
+  "O6",
+  "O7",
+  "Mock",
+  "field manifest",
+] as const;
+
+const SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS = [
+  "检查路径",
+  "现场材料",
+  "HIL",
+  "Nav2",
+  "proof",
+  "key values",
+  "/cmd_vel",
+  "/api/base/manual",
   "task_id",
   "O6",
   "O7",
@@ -3023,7 +3039,7 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
   return mockedFetch;
 }
 
-function writePlainHomeSmokeArtifact(firstScreenText: string, advancedText: string): void {
+function writePlainHomeSmokeArtifact(firstScreenText: string, advancedText: string, advancedDetailsClosed: boolean): void {
   // 该 artifact 只证明默认 DOM 文案收敛，不把折叠区的诊断能力解释成已联调。
   mkdirSync(SPRINT_ARTIFACT_DIR, { recursive: true });
   const forbiddenTokenPresence = Object.fromEntries(
@@ -3036,6 +3052,9 @@ function writePlainHomeSmokeArtifact(firstScreenText: string, advancedText: stri
         schema: "trashbot.pc_workstation.plain_user_home_dom_smoke.v1",
         checked_at: new Date().toISOString(),
         first_screen_card_titles: ["小车连接", "实时画面", "雷达", "地图", "移动/导航"],
+        simple_user_console_forbidden_token_presence: Object.fromEntries(
+          SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS.map((token) => [token, firstScreenText.includes(token)]),
+        ),
         forbidden_token_presence: forbiddenTokenPresence,
         advanced_diagnostics_closed_by_default: true,
         advanced_entries_retained: {
@@ -3043,6 +3062,7 @@ function writePlainHomeSmokeArtifact(firstScreenText: string, advancedText: stri
           nav_goal_preflight: advancedText.includes("导航目标预检（高级）"),
           hil_materials: advancedText.includes("现场 HIL 材料"),
           proof_readback: advancedText.includes("latest readback key values"),
+          advanced_details_closed: advancedDetailsClosed,
         },
       },
       null,
@@ -3136,6 +3156,7 @@ describe("App", () => {
     expect(firstScreenCards).toHaveLength(5);
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("Rober 小车控制台");
+    expect(firstScreenText).toContain("连接小车、查看画面和地图，必要时一键停止。");
     expect(firstScreenText).toContain("小车连接");
     expect(firstScreenText).toContain("实时画面");
     expect(firstScreenText).toContain("雷达");
@@ -3148,6 +3169,12 @@ describe("App", () => {
     expect(firstScreenText).toContain("地图列表");
     expect(firstScreenText).toContain("待命");
     expect(firstScreenText).toContain("停止");
+    expect(firstScreenText).not.toContain("普通用户入口");
+    expect(wrapper.find(".robot-console > .section-head").exists()).toBe(false);
+    const simpleUserConsoleText = wrapper.find(".simple-user-console").text();
+    for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
+      expect(simpleUserConsoleText).not.toContain(token);
+    }
     const firstScreenForbiddenTokens = [
       ...DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS,
       "路线",
@@ -3246,7 +3273,7 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("前进");
     expect(diagnostics.text()).toContain("速度上限");
     expect(diagnostics.text()).toContain("现场有人扶控并准备急停");
-    writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text());
+    writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
   });
 
   it("submits operator report material from advanced diagnostics without leaking it to the first screen", async () => {
