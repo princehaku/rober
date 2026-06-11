@@ -1,0 +1,13 @@
+{
+  "schema": "trashbot.pc_workstation.plain_map_controls_browser_smoke.v1",
+  "checked_at": "2026-06-11T15:02:00Z",
+  "frontend_url": "http://127.0.0.1:5179/",
+  "has_simple_console": true,
+  "advanced_open": false,
+  "map_card_text": "地图 刷新地图 地图列表 重新建图 保存地图 未刷新未读取还没有刷新。还没有读取地图列表。",
+  "contains_rebuild_button": true,
+  "contains_save_button": true,
+  "forbidden_terms_on_plain_grid": [],
+  "safe_to_control": false,
+  "robot_control_executed": false
+}

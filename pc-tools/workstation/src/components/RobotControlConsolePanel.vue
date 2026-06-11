@@ -304,7 +304,7 @@ function summarizeNav2Planning(): { state: "未检查" | "检查中" | "路径�
 }
 
 function summarizeMapLifecycle(): { state: "未读取" | "处理中" | "已读取" | "失败"; hint: string } {
-  // lifecycle 摘要只说列表/保存结果，不把 start/reset 或工程 proof 细节放回首页。
+  // lifecycle 摘要只说普通建图动作结果，不把 endpoint、proof 或命令细节放回首页。
   if (mapLifecyclePending.value) {
     return { state: "处理中", hint: "正在读取或保存地图。" };
   }
@@ -324,7 +324,10 @@ function summarizeMapLifecycle(): { state: "未读取" | "处理中" | "已读�
     }
     return { state: "已读取", hint: `地图列表 ${result.map_count ?? 0} 个候选。` };
   }
-  return { state: "已读取", hint: "地图高级操作已返回；详情在高级诊断。" };
+  if (result.action === "start") {
+    return { state: "已读取", hint: "重新建图已返回；再查看地图质量。" };
+  }
+  return { state: "已读取", hint: "保存地图已返回；再查看地图质量。" };
 }
 
 function syncJogInputsToBoundary(): void {
@@ -1368,12 +1371,12 @@ async function loadMapList(): Promise<void> {
 }
 
 async function startMapRuntime(): Promise<void> {
-  // 开始建图只在高级诊断内开放，走固定 /api/map/start no-motion runtime helper。
+  // 普通按钮只走固定 /api/map/start，不接受浏览器传运动、串口或 ROS 参数。
   await runMapLifecycleAction("start", () => postRobotControlMapStart(robotApiBaseUrl.value, mapLifecycleRequestBody()));
 }
 
 async function saveMap(): Promise<void> {
-  // 保存只调用固定 /api/map/save；上位机会忽略 artifact_path 并在固定目录产出地图。
+  // 保存只调用固定 /api/map/save；普通入口不暴露 map_name/artifact_path 输入。
   await runMapLifecycleAction("save", () => postRobotControlMapSave(robotApiBaseUrl.value, mapLifecycleRequestBody()));
 }
 
@@ -1764,6 +1767,12 @@ onBeforeUnmount(() => {
             </button>
             <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="loadMapList">
               地图列表
+            </button>
+            <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="startMapRuntime">
+              重新建图
+            </button>
+            <button type="button" :disabled="loading || mapLifecyclePending || !robotApiBaseUrl.trim()" @click="saveMap">
+              保存地图
             </button>
             <span class="status-chip" :data-state="mapSummary.state">{{ mapSummary.state }}</span>
             <span class="status-chip" :data-state="mapLifecycleSummary.state">{{ mapLifecycleSummary.state }}</span>

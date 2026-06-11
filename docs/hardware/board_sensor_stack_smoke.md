@@ -2101,3 +2101,24 @@ free cell 的真实地图；当前地图质量不足是比 Nav2 action 本身更
 PC fixed proxy 同样读回 `map_quality_summary.status=no_free_cells` 且 dangerous fields
 为空。该状态证明当前地图质量不足，并不证明 LiDAR/SLAM 重新建图已经采到可导航 free
 cell；下一步需要现场移动或传感器视角变化后的真实地图采集。
+
+## 2026-06-12 04:25 Plain PC Map Rebuild Control
+
+PC 普通地图卡片新增 `重新建图` 与 `保存地图`。这两个按钮仍只走 workstation 固定代理：
+`/api/robot-control/map/start` 和 `/api/robot-control/map/save`，不会让浏览器传串口、
+速度、ROS 参数或任意 endpoint。
+
+真实 PC proxy 已对 `http://192.168.1.11:8787` 执行一次 `map/start`：
+
+- `proxy_status=lifecycle_forwarded`
+- `remote_http_status=200`
+- `command_result.mode=map_lifecycle_proof_helper`
+- `command_result.executed=true`
+- `command_result.ok=true`
+- `hard_dangerous_true_fields=[]`
+- 上位机 latest proof: `o3-map-lifecycle-1781190084998`
+
+收尾服务仍为 active，未观察到长期 `o3_map_lifecycle_proof`、`learn.launch`、
+`slam_toolbox` 或 LiDAR helper 残留；`/dev/ttyS5` 和 `/dev/ttyACM0` 无占用输出。
+该 smoke 只证明 PC 普通入口可以触发 no-motion 建图窗口，不证明机器人已移动或地图含
+free cell。

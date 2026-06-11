@@ -3195,6 +3195,8 @@ describe("App", () => {
     expect(firstScreenText).toContain("未打开");
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("地图列表");
+    expect(firstScreenText).toContain("重新建图");
+    expect(firstScreenText).toContain("保存地图");
     expect(firstScreenText).toContain("待检查");
     expect(firstScreenText).toContain("移动前先完成画面、轮子和周围环境检查；需要时可直接停止。");
     expect(firstScreenText).toContain("停止");
@@ -3212,7 +3214,6 @@ describe("App", () => {
       "硬件",
       "数据",
       "安全边界",
-      "保存地图",
       "开始建图",
       "重置地图",
       "启动雷达",
@@ -3615,8 +3616,9 @@ describe("App", () => {
     expect(firstScreenText).toContain("刷新雷达");
     expect(firstScreenText).toContain("刷新地图");
     expect(firstScreenText).toContain("地图列表");
+    expect(firstScreenText).toContain("重新建图");
+    expect(firstScreenText).toContain("保存地图");
     expect(firstScreenText).toContain("停止");
-    expect(firstScreenText).not.toContain("保存地图");
     expect(firstScreenText).not.toContain("启动雷达");
     expect(firstScreenText).not.toContain("停止雷达");
     expect(firstScreenText).toContain("雷达已运行");
@@ -3776,7 +3778,7 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find(".robot-console-grid").text()).not.toContain("保存请求已返回");
+    expect(wrapper.find(".robot-console-grid").text()).toContain("保存地图已返回");
     expect(wrapper.find("details").text()).toContain("command_result");
     expect(wrapper.find("details").text()).toContain("executed=false");
     expect(wrapper.find("details").text()).toContain("software_guard_command_not_configured");

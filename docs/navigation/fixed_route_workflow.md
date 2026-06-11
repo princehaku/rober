@@ -2134,6 +2134,12 @@ localize/Nav2 no-motion proof。该结论仍保持 no-motion 边界：不发布 
 可导航，需要重新建图”。这只是地图质量 readback，不代表已经完成重新建图或 fixed-route
 execution。
 
+2026-06-12 04:25 起，PC 普通地图卡片新增 `重新建图` 与 `保存地图` 两个普通按钮，
+仍只调用固定 map lifecycle 代理。真实 PC proxy 已执行一次 `/api/map/start` no-motion
+LiDAR+SLAM 窗口并得到 `o3-map-lifecycle-1781190084998`，但随后 `/api/map/list`
+仍显示 `usable_map_count=0`、`no_free_cell_map_count=13`。因此建图控制入口已通，
+可导航地图仍未完成；进入定位移动前仍必须采到含 free cell 的地图。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:
