@@ -1,0 +1,5 @@
+
+> rober-pc-tools-workstation@0.1.0 api
+> tsx src/server/index.ts
+
+pc-tools workstation API listening on http://127.0.0.1:18806

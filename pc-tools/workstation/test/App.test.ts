@@ -398,6 +398,12 @@ const fixtures: Record<string, unknown> = {
         status: "camera_health_not_proven",
         devices_status: "camera_devices_not_proven",
         preview_status: "idle_not_started",
+        video_source: "/dev/video1",
+        video_source_mode: "auto",
+        selected_path: "/dev/video1",
+        active_peer_count: "0",
+        last_offer_error: "none",
+        last_offer_failure_reason: "none",
       },
       lidar: {
         status: "radar_status_not_proven",

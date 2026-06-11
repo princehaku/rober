@@ -3949,6 +3949,18 @@ describe("workstation fail-closed API contracts", () => {
           schema: "trashbot.upper_robot_api.v1.camera_health",
           status: "ready",
           evidence_ref: "camera-health-proof",
+          video_source: "/dev/video1",
+          video_source_mode: "auto",
+          active_peer_count: 0,
+          current_selection: {
+            selected_path: "/dev/video1",
+          },
+          media_diagnostics: {
+            last_offer_error: {
+              error: "first_frame_unreadable",
+              failure_reason: "first_frame_timeout",
+            },
+          },
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
@@ -4072,6 +4084,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.robot_api_connection.blocked_count).toBeGreaterThanOrEqual(4);
       expect(summary.readback_summary.camera.status).toBe("ready");
       expect(summary.readback_summary.camera.devices_status).toBe("devices_ready");
+      expect(summary.readback_summary.camera.video_source).toBe("/dev/video1");
+      expect(summary.readback_summary.camera.video_source_mode).toBe("auto");
+      expect(summary.readback_summary.camera.selected_path).toBe("/dev/video1");
+      expect(summary.readback_summary.camera.active_peer_count).toBe("0");
+      expect(summary.readback_summary.camera.last_offer_error).toBe("first_frame_unreadable");
+      expect(summary.readback_summary.camera.last_offer_failure_reason).toBe("first_frame_timeout");
       expect(summary.readback_summary.lidar.status).toBe("latest_proof_fresh_while_lifecycle_running");
       expect(summary.readback_summary.lidar.continuous_scan_status).toBe("latest_proof_fresh_while_lifecycle_running");
       expect(summary.readback_summary.lidar.lifecycle_running).toBe("true");

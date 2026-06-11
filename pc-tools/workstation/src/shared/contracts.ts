@@ -2176,6 +2176,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       status: string;
       devices_status: string;
       preview_status: RobotControlPreviewStatus;
+      video_source: string;
+      video_source_mode: string;
+      selected_path: string;
+      active_peer_count: string;
+      last_offer_error: string;
+      last_offer_failure_reason: string;
     };
     lidar: {
       status: string;

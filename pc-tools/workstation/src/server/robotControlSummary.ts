@@ -778,6 +778,31 @@ function lidarSummaryFromReadbacks(
   };
 }
 
+function cameraSummaryFromReadbacks(
+  readbacks: InternalRobotApiEndpointReadback[],
+): RobotControlSummaryResponse["readback_summary"]["camera"] {
+  // Camera 诊断只取 health/devices 的短字段；普通首屏仍只显示简化状态，工程细节留在高级诊断。
+  const healthReadback = readbackById(readbacks, "camera_health");
+  const devicesReadback = readbackById(readbacks, "camera_devices");
+  const healthPayload = healthReadback?.payload ?? null;
+  const currentSelection = asRecord(findFirstKey(healthPayload, ["current_selection"]));
+  const sourceSummary = asRecord(findFirstKey(healthPayload, ["source_summary"]));
+  const sourceSummarySelection = asRecord(sourceSummary?.current_selection);
+  const mediaDiagnostics = asRecord(findFirstKey(healthPayload, ["media_diagnostics"]));
+  const lastOfferError = asRecord(mediaDiagnostics?.last_offer_error);
+  return {
+    status: healthReadback?.status ?? "not_loaded",
+    devices_status: devicesReadback?.status ?? "not_loaded",
+    preview_status: "idle_not_started",
+    video_source: summaryValueText(healthPayload, ["video_source"]),
+    video_source_mode: summaryValueText(healthPayload, ["video_source_mode"]),
+    selected_path: asString(currentSelection?.selected_path ?? sourceSummarySelection?.selected_path),
+    active_peer_count: summaryValueText(healthPayload, ["active_peer_count", "active_peer_connections"]),
+    last_offer_error: asString(lastOfferError?.error, "none"),
+    last_offer_failure_reason: asString(lastOfferError?.failure_reason, "none"),
+  };
+}
+
 function compactTrueFields(fields: string[]): string[] {
   // 响应只保留短字段名，避免把完整对象路径直接塞进卡片和日志摘要。
   return fields.map((field) => field.slice(0, 180));
@@ -2112,7 +2137,17 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
       last_refresh_ms: observedAt,
     },
     readback_summary: {
-      camera: { status: "not_loaded", devices_status: "not_loaded", preview_status: "idle_not_started" },
+      camera: {
+        status: "not_loaded",
+        devices_status: "not_loaded",
+        preview_status: "idle_not_started",
+        video_source: "not_loaded",
+        video_source_mode: "not_loaded",
+        selected_path: "not_loaded",
+        active_peer_count: "not_loaded",
+        last_offer_error: "none",
+        last_offer_failure_reason: "none",
+      },
       lidar: {
         status: "not_loaded",
         latest_scan_proof_status: "not_loaded",
@@ -2226,11 +2261,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
       last_refresh_ms: observedAt,
     },
     readback_summary: {
-      camera: {
-        status: pickReadback(readbacks, "camera_health")?.status ?? "not_loaded",
-        devices_status: pickReadback(readbacks, "camera_devices")?.status ?? "not_loaded",
-        preview_status: "idle_not_started",
-      },
+      camera: cameraSummaryFromReadbacks(readbacks),
       lidar: lidarSummaryFromReadbacks(readbacks),
       base: {
         status: pickReadback(readbacks, "base_status")?.status ?? "not_loaded",
