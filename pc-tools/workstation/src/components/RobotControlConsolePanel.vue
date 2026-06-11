@@ -337,7 +337,7 @@ const cameraFirstFrameProbeSummary = computed(() => {
     return "probe not requested";
   }
   const values = result.probe_key_values;
-  return `${result.proxy_status}; status=${result.status}; open=${values.open_ok}; read=${values.read_ok}; reason=${result.failure_reason || values.failure_reason}`;
+  return `${result.proxy_status}; status=${result.status}; open=${values.open_ok}; read=${values.read_ok}; backend=${values.backend_smoke_status}; reason=${result.failure_reason || values.failure_reason}`;
 });
 const evidenceSweepSummary = computed(() => {
   // 一键巡检聚合固定代理结果；blocked 仍按 blocked 展示，不伪装成全量通过。
@@ -835,6 +835,9 @@ function makeCameraFirstFrameProbeFallback(reason: string): RobotControlCameraFi
       elapsed_ms: "not_loaded",
       mean_luma: "not_available",
       non_black_ratio: "not_available",
+      backend_smoke_status: "not_requested",
+      backend_frame_observed: "false",
+      backend_attempts: "0",
     },
     failure_reason: reason,
     blocked_reasons: [reason],
@@ -1780,6 +1783,12 @@ onBeforeUnmount(() => {
             <dd>
               mean={{ cameraFirstFrameProbeResult?.probe_key_values.mean_luma ?? "not_available" }},
               non_black={{ cameraFirstFrameProbeResult?.probe_key_values.non_black_ratio ?? "not_available" }}
+            </dd>
+            <dt>probe_backends</dt>
+            <dd>
+              status={{ cameraFirstFrameProbeResult?.probe_key_values.backend_smoke_status ?? "not_requested" }},
+              frame={{ cameraFirstFrameProbeResult?.probe_key_values.backend_frame_observed ?? "false" }},
+              attempts={{ cameraFirstFrameProbeResult?.probe_key_values.backend_attempts ?? "0" }}
             </dd>
             <dt>probe_dangerous_fields</dt>
             <dd>{{ listText(cameraFirstFrameProbeResult?.hard_dangerous_true_fields, "none") }}</dd>

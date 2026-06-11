@@ -643,3 +643,31 @@ PC 页面获得了可重复触发的底层相机诊断闭环，没有恢复实�
 
 这次修复的是 camera service 运行形态和可重复性，不是 `/dev/video1` 首帧问题本身。
 `visible_content_proven=false` 仍成立。
+
+## 2026-06-12 camera backend capture matrix
+
+`sprints/2026.06.12_01-15_camera_backend_capture_matrix/` 继续在真实上位机
+`root@192.168.1.11:37878` 上排查 DV20 `/dev/video1` 首帧失败。本轮先停止
+`trashbot-local-webrtc-camera.service`，确认 `/dev/video0/1/2` 和 `/dev/ttyS5`
+无 holder，再分别用 OpenCV、`v4l2-ctl` 和 `ffmpeg` 取首帧。
+
+结果：
+
+- `/dev/video1` 仍是 `USB Composite Device: DV20 USB` 的 `Video Capture` 节点。
+- `v4l2-ctl --all -d /dev/video1` 显示 input ok，支持 `MJPG` 与 `YUYV`。
+- `v4l2-ctl` default、`MJPG 640x480`、`YUYV 640x480` 的 stream 输出均为 0 bytes。
+- `ffmpeg -f v4l2 -input_format mjpeg` 和 `yuyv422` 均没有写出 frame。
+- 上位机 `POST /api/camera/first-frame/probe` 新增 `include_backend_smoke=true`
+  后回报 `backend_smoke.status=backend_no_frame_observed`、`frame_observed=false`。
+- PC 高级诊断同一路径回报 `backend_smoke_status=backend_no_frame_observed`、
+  `backend_frame_observed=false`、`backend_attempts=4`。
+
+这说明当前 blocker 不只是 WebRTC 或 OpenCV：同一 DV20 设备在底层 V4L2/ffmpeg
+路径也没有实际帧输出。下一步应检查 DV20 输入源、HDMI/USB 线缆、供电和采集卡状态，
+或替换 known-good UVC 后用同一 PC 高级按钮复测。
+
+证据文件：
+
+- `sprints/2026.06.12_01-15_camera_backend_capture_matrix/artifacts/01_board_camera_backend_matrix.log`
+- `sprints/2026.06.12_01-15_camera_backend_capture_matrix/artifacts/02_upper_camera_probe_backend_smoke.json`
+- `sprints/2026.06.12_01-15_camera_backend_capture_matrix/artifacts/03_pc_proxy_camera_probe_backend_smoke.json`

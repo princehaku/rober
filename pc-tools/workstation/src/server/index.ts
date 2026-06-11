@@ -131,6 +131,8 @@ function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotCon
   // 上位机把真实脚本输出放在 probe_payload；没有时按顶层兼容，便于旧 artifact 测试。
   const probePayload = asRecord(payload?.probe_payload) ?? payload;
   const metrics = asRecord(probePayload?.frame_metrics);
+  const backendSmoke = asRecord(probePayload?.backend_smoke);
+  const backendAttempts = Array.isArray(backendSmoke?.attempts) ? backendSmoke.attempts : [];
   return {
     schema: shortValue(probePayload?.schema),
     device: shortValue(probePayload?.device),
@@ -143,6 +145,9 @@ function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotCon
     elapsed_ms: shortValue(probePayload?.elapsed_ms ?? payload?.elapsed_ms),
     mean_luma: shortValue(metrics?.mean_luma, "not_available"),
     non_black_ratio: shortValue(metrics?.non_black_ratio, "not_available"),
+    backend_smoke_status: shortValue(backendSmoke?.status, "not_requested"),
+    backend_frame_observed: shortValue(backendSmoke?.frame_observed, "false"),
+    backend_attempts: shortValue(backendAttempts.length),
   };
 }
 
@@ -1095,7 +1100,12 @@ export function createWorkstationApp(): express.Express {
       res.status(400).json(cameraProbeFailure(sourceBaseUrl, normalized.reason));
       return;
     }
-    const remote = await fetchCameraProxySummary(sourceBaseUrl, "/api/camera/first-frame/probe", {}, 12000);
+    const remote = await fetchCameraProxySummary(
+      sourceBaseUrl,
+      "/api/camera/first-frame/probe",
+      { include_backend_smoke: true },
+      60000,
+    );
     if (remote.error) {
       res.status(502).json({ ...cameraProbeFailure(sourceBaseUrl, remote.error), proxy_status: "probe_failed" });
       return;

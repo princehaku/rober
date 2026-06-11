@@ -6,7 +6,9 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import shutil
 import signal
+import subprocess
 import time
 from pathlib import Path
 from typing import Any
@@ -21,6 +23,7 @@ DEFAULT_TIMEOUT_S = 3.0
 DEFAULT_INTERVAL_S = 0.05
 DEFAULT_READ_CALL_TIMEOUT_S = 4.0
 DEFAULT_DARK_THRESHOLD = 8.0
+BACKEND_SMOKE_TIMEOUT_S = 8.0
 
 
 def now_ms() -> int:
@@ -43,6 +46,149 @@ def proof_flags() -> dict[str, bool]:
 def compact_error(error: BaseException) -> dict[str, str]:
     """错误文本只保留短消息，避免现场机器路径污染 PC 展示。"""
     return {"type": type(error).__name__, "message": str(error)[:240]}
+
+
+def run_backend_command(name: str, command: list[str], timeout_s: float = BACKEND_SMOKE_TIMEOUT_S) -> dict[str, Any]:
+    """运行固定白名单采集命令，用于区分 OpenCV 问题和 V4L2/驱动无帧。"""
+    started = time.monotonic()
+    if shutil.which(command[0]) is None:
+        return {
+            "name": name,
+            "available": False,
+            "executed": False,
+            "ok": False,
+            "returncode": None,
+            "elapsed_ms": 0,
+            "stdout_preview": "",
+            "stderr_preview": f"{command[0]} not found",
+            "output_bytes": 0,
+        }
+    output_path = Path(command[-1]) if command[-2] in {"--stream-to", "-y"} else None
+    if output_path is not None:
+        try:
+            output_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=timeout_s,
+        )
+        timed_out = False
+    except subprocess.TimeoutExpired as exc:
+        completed = subprocess.CompletedProcess(
+            command,
+            returncode=None,
+            stdout=exc.stdout if isinstance(exc.stdout, str) else "",
+            stderr=exc.stderr if isinstance(exc.stderr, str) else "",
+        )
+        timed_out = True
+    output_bytes = output_path.stat().st_size if output_path is not None and output_path.exists() else 0
+    return {
+        "name": name,
+        "available": True,
+        "executed": True,
+        "ok": bool(not timed_out and completed.returncode == 0 and output_bytes > 0),
+        "timed_out": timed_out,
+        "returncode": completed.returncode,
+        "elapsed_ms": int((time.monotonic() - started) * 1000),
+        "stdout_preview": str(completed.stdout or "")[-400:],
+        "stderr_preview": str(completed.stderr or "")[-800:],
+        "output_path": str(output_path) if output_path is not None else None,
+        "output_bytes": output_bytes,
+    }
+
+
+def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
+    """用 v4l2-ctl/ffmpeg 各取一帧；只读 camera，不写 controls，不碰底盘。"""
+    output_dir = Path("/tmp/rober_camera_backend_smoke")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    width = str(args.width)
+    height = str(args.height)
+    device = str(args.device)
+    attempts = [
+        run_backend_command(
+            "v4l2_mjpg_mmap",
+            [
+                "v4l2-ctl",
+                "-d",
+                device,
+                f"--set-fmt-video=width={width},height={height},pixelformat=MJPG",
+                "--stream-mmap=3",
+                "--stream-count=1",
+                "--stream-to",
+                str(output_dir / "v4l2_mjpg.raw"),
+            ],
+        ),
+        run_backend_command(
+            "v4l2_yuyv_mmap",
+            [
+                "v4l2-ctl",
+                "-d",
+                device,
+                f"--set-fmt-video=width={width},height={height},pixelformat=YUYV",
+                "--stream-mmap=3",
+                "--stream-count=1",
+                "--stream-to",
+                str(output_dir / "v4l2_yuyv.raw"),
+            ],
+        ),
+        run_backend_command(
+            "ffmpeg_mjpg",
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "info",
+                "-f",
+                "v4l2",
+                "-input_format",
+                "mjpeg",
+                "-video_size",
+                f"{width}x{height}",
+                "-i",
+                device,
+                "-frames:v",
+                "1",
+                "-y",
+                str(output_dir / "ffmpeg_mjpg.jpg"),
+            ],
+            timeout_s=12.0,
+        ),
+        run_backend_command(
+            "ffmpeg_yuyv",
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "info",
+                "-f",
+                "v4l2",
+                "-input_format",
+                "yuyv422",
+                "-video_size",
+                f"{width}x{height}",
+                "-i",
+                device,
+                "-frames:v",
+                "1",
+                "-y",
+                str(output_dir / "ffmpeg_yuyv.jpg"),
+            ],
+            timeout_s=12.0,
+        ),
+    ]
+    frame_observed = any(item.get("output_bytes", 0) > 0 for item in attempts)
+    return {
+        "executed": True,
+        "frame_observed": frame_observed,
+        "status": "backend_frame_observed" if frame_observed else "backend_no_frame_observed",
+        "attempts": attempts,
+        "output_dir": str(output_dir),
+    }
 
 
 def import_cv2() -> Any:
@@ -231,6 +377,8 @@ def probe_device(args: argparse.Namespace) -> dict[str, Any]:
                     "failure_reason": failure_reason or "deadline_expired",
                 }
             )
+            if getattr(args, "include_backend_smoke", False):
+                payload["backend_smoke"] = backend_smoke_probe(args)
             return payload
 
         metrics = frame_metrics(frame, args.dark_threshold)
@@ -263,6 +411,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--interval-s", type=float, default=DEFAULT_INTERVAL_S)
     parser.add_argument("--dark-threshold", type=float, default=DEFAULT_DARK_THRESHOLD)
     parser.add_argument("--sample-path", type=Path, default=None)
+    parser.add_argument("--include-backend-smoke", action="store_true")
     return parser
 
 

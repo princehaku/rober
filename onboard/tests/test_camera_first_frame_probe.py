@@ -84,6 +84,7 @@ class CameraFirstFrameProbeTests(unittest.TestCase):
             "interval_s": 0.001,
             "dark_threshold": 8.0,
             "sample_path": None,
+            "include_backend_smoke": False,
         }
         values.update(overrides)
         return SimpleNamespace(**values)
@@ -126,6 +127,30 @@ class CameraFirstFrameProbeTests(unittest.TestCase):
         self.assertFalse(result["visible_content_proven"])
         self.assertTrue(capture.released)
         self.assertGreaterEqual(len(capture.set_calls), 4)
+
+    def test_backend_smoke_runs_only_when_requested_after_timeout(self) -> None:
+        """高级后端矩阵只在显式请求且 OpenCV 首帧失败后执行。"""
+        capture = FakeCapture("/dev/video1", opened=True, frames=[])
+        fake_cv2 = FakeCv2(capture)
+        backend_result = {"executed": True, "status": "backend_no_frame_observed", "frame_observed": False}
+
+        with mock.patch.object(probe, "import_cv2", return_value=fake_cv2):
+            with mock.patch.object(probe, "backend_smoke_probe", return_value=backend_result) as backend_mock:
+                result = probe.probe_device(self.make_args(fourcc="MJPG", include_backend_smoke=True))
+
+        self.assertEqual("first_frame_timeout", result["status"])
+        self.assertEqual(backend_result, result["backend_smoke"])
+        backend_mock.assert_called_once()
+
+    def test_backend_command_missing_tool_is_structured(self) -> None:
+        """底层工具缺失时要结构化返回，而不是抛异常或影响安全字段。"""
+        with mock.patch.object(probe.shutil, "which", return_value=None):
+            result = probe.run_backend_command("v4l2_mjpg_mmap", ["v4l2-ctl", "--version"])
+
+        self.assertFalse(result["available"])
+        self.assertFalse(result["executed"])
+        self.assertFalse(result["ok"])
+        self.assertEqual(0, result["output_bytes"])
 
     def test_frame_read_reports_luma_metrics_without_motion_proof(self) -> None:
         """读到帧后只给图像质量候选，不把它冒充运动 gate 证明。"""

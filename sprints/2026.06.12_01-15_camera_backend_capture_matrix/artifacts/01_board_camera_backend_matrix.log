@@ -1,0 +1,196 @@
+## services
+○ trashbot-local-webrtc-camera.service - Trashbot LAN-only local WebRTC camera smoke
+     Loaded: loaded (/etc/systemd/system/trashbot-local-webrtc-camera.service; enabled; vendor preset: enabled)
+     Active: inactive (dead) since Thu 2026-06-11 21:41:40 CST; 1s ago
+       Docs: file:/root/rober/docs/interfaces/o7_local_webrtc_camera_smoke.md
+    Process: 303723 ExecStart=/usr/bin/env bash /root/rober/onboard/scripts/local_webrtc_camera_smoke.sh (code=killed, signal=TERM)
+   Main PID: 303723 (code=killed, signal=TERM)
+        CPU: 3.544s
+
+Jun 11 21:12:36 op-z3-b6.home env[303723]: {"client": "127.0.0.1", "event": "http_access", "message": "\"POST /offer HTTP/1.1\" 503 -", "ts_ms": 1781183556491}
+Jun 11 21:12:36 op-z3-b6.home env[303723]: {"client": "127.0.0.1", "event": "http_access", "message": "\"GET /health HTTP/1.1\" 200 -", "ts_ms": 1781183556670}
+Jun 11 21:12:36 op-z3-b6.home env[303723]: {"client": "127.0.0.1", "event": "http_access", "message": "\"GET /health HTTP/1.1\" 200 -", "ts_ms": 1781183556762}
+Jun 11 21:13:20 op-z3-b6.home env[303723]: {"client": "127.0.0.1", "event": "http_access", "message": "\"GET /devices HTTP/1.1\" 200 -", "ts_ms": 1781183600855}
+Jun 11 21:13:20 op-z3-b6.home env[303723]: {"client": "127.0.0.1", "event": "http_access", "message": "\"GET /health HTTP/1.1\" 200 -", "ts_ms": 1781183600868}
+Jun 11 21:13:20 op-z3-b6.home env[303723]: {"client": "127.0.0.1", "event": "http_access", "message": "\"GET /health HTTP/1.1\" 200 -", "ts_ms": 1781183600871}
+Jun 11 21:41:40 op-z3-b6.home systemd[1]: Stopping Trashbot LAN-only local WebRTC camera smoke...
+Jun 11 21:41:40 op-z3-b6.home systemd[1]: trashbot-local-webrtc-camera.service: Deactivated successfully.
+Jun 11 21:41:40 op-z3-b6.home systemd[1]: Stopped Trashbot LAN-only local WebRTC camera smoke.
+Jun 11 21:41:40 op-z3-b6.home systemd[1]: trashbot-local-webrtc-camera.service: Consumed 3.544s CPU time.
+## fuser before
+DEVICE=/dev/video0
+DEVICE=/dev/video1
+DEVICE=/dev/video2
+DEVICE=/dev/ttyS5
+## commands
+/usr/bin/v4l2-ctl
+/usr/local/bin/ffmpeg
+/usr/bin/gst-launch-1.0
+## list-devices
+cedrus (platform:cedrus):
+	/dev/video0
+	/dev/media0
+
+USB Composite Device: DV20 USB  (usb-5310000.usb-1):
+	/dev/video1
+	/dev/video2
+	/dev/media1
+
+## all video1
+Driver Info:
+	Driver name      : uvcvideo
+	Card type        : USB Composite Device: DV20 USB 
+	Bus info         : usb-5310000.usb-1
+	Driver version   : 6.1.31
+	Capabilities     : 0x84a00001
+		Video Capture
+		Metadata Capture
+		Streaming
+		Extended Pix Format
+		Device Capabilities
+	Device Caps      : 0x04200001
+		Video Capture
+		Streaming
+		Extended Pix Format
+Media Driver Info:
+	Driver name      : uvcvideo
+	Model            : USB Composite Device: DV20 USB 
+	Serial           : 
+	Bus info         : usb-5310000.usb-1
+	Media version    : 6.1.31
+	Hardware revision: 0x00000100 (256)
+	Driver version   : 6.1.31
+Interface Info:
+	ID               : 0x03000002
+	Type             : V4L Video
+Entity Info:
+	ID               : 0x00000001 (1)
+	Name             : USB Composite Device: DV20 USB 
+	Function         : V4L2 I/O
+	Flags            : default
+	Pad 0x01000007   : 0: Sink
+	  Link 0x02000010: from remote pad 0x100000a of entity 'Extension 3' (Video Pixel Formatter): Data, Enabled, Immutable
+Priority: 2
+Video input : 0 (Input 1: ok)
+Format Video Capture:
+	Width/Height      : 640/480
+	Pixel Format      : 'YUYV' (YUYV 4:2:2)
+	Field             : None
+	Bytes per Line    : 1280
+	Size Image        : 614400
+	Colorspace        : sRGB
+	Transfer Function : Rec. 709
+	YCbCr/HSV Encoding: ITU-R 601
+	Quantization      : Default (maps to Limited Range)
+	Flags             : 
+Crop Capability Video Capture:
+	Bounds      : Left 0, Top 0, Width 640, Height 480
+	Default     : Left 0, Top 0, Width 640, Height 480
+	Pixel Aspect: 1/1
+Selection Video Capture: crop_default, Left 0, Top 0, Width 640, Height 480, Flags: 
+Selection Video Capture: crop_bounds, Left 0, Top 0, Width 640, Height 480, Flags: 
+Streaming Parameters Video Capture:
+	Capabilities     : timeperframe
+	Frames per second: 22.000 (22/1)
+	Read buffers     : 0
+
+User Controls
+
+                     brightness 0x00980900 (int)    : min=-127 max=127 step=1 default=0 value=0
+                       contrast 0x00980901 (int)    : min=0 max=511 step=1 default=256 value=256
+                     saturation 0x00980902 (int)    : min=0 max=511 step=1 default=256 value=250
+                          gamma 0x00980910 (int)    : min=10 max=30 step=10 default=20 value=17
+                           gain 0x00980913 (int)    : min=1 max=7 step=1 default=4 value=4
+           power_line_frequency 0x00980918 (menu)   : min=0 max=2 default=0 value=0 (Disabled)
+				0: Disabled
+				1: 50 Hz
+				2: 60 Hz
+      white_balance_temperature 0x0098091a (int)    : min=0 max=6500 step=1 default=4500 value=4500
+                      sharpness 0x0098091b (int)    : min=0 max=256 step=1 default=128 value=100
+         backlight_compensation 0x0098091c (int)    : min=0 max=255 step=1 default=0 value=0
+
+Camera Controls
+
+                  auto_exposure 0x009a0901 (menu)   : min=0 max=3 default=3 value=3 (Aperture Priority Mode)
+				1: Manual Mode
+				3: Aperture Priority Mode
+         exposure_time_absolute 0x009a0902 (int)    : min=80 max=100000 step=1 default=80 value=80 flags=inactive
+## formats video1
+ioctl: VIDIOC_ENUM_FMT
+	Type: Video Capture
+
+	[0]: 'MJPG' (Motion-JPEG, compressed)
+		Size: Discrete 1280x720
+			Interval: Discrete 0.033s (30.000 fps)
+		Size: Discrete 640x480
+			Interval: Discrete 0.033s (30.000 fps)
+		Size: Discrete 480x320
+			Interval: Discrete 0.033s (30.000 fps)
+		Size: Discrete 1920x1080
+			Interval: Discrete 0.033s (30.000 fps)
+	[1]: 'YUYV' (YUYV 4:2:2)
+		Size: Discrete 640x480
+			Interval: Discrete 0.045s (22.000 fps)
+		Size: Discrete 320x240
+			Interval: Discrete 0.040s (25.000 fps)
+			Interval: Discrete 0.050s (20.000 fps)
+## stream default
+## stream mjpg 640
+## stream yuyv 640
+## ffmpeg mjpg
+[video4linux2,v4l2 @ 0xaaaadfb26800] Could not find codec parameters for stream 0 (Video: mjpeg, none(bt470bg/unknown/unknown), 640x480): unspecified pixel format
+Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (5000000) options
+Input #0, video4linux2,v4l2, from '/dev/video1':
+  Duration: N/A, bitrate: N/A
+  Stream #0:0: Video: mjpeg, none(bt470bg/unknown/unknown), 640x480, 30 fps, 30 tbr, 1000k tbn, 1000k tbc
+Stream mapping:
+  Stream #0:0 -> #0:0 (mjpeg (native) -> mjpeg (native))
+Press [q] to stop, [?] for help
+Cannot determine format of input stream 0:0 after EOF
+Error marking filters as finished
+Exiting normally, received signal 15.
+## ffmpeg yuyv
+Input #0, video4linux2,v4l2, from '/dev/video1':
+  Duration: N/A, bitrate: 108134 kb/s
+  Stream #0:0: Video: rawvideo (YUY2 / 0x32595559), yuyv422, 640x480, 108134 kb/s, 22 fps, 22 tbr, 1000k tbn, 1000k tbc
+Stream mapping:
+  Stream #0:0 -> #0:0 (rawvideo (native) -> mjpeg (native))
+Press [q] to stop, [?] for help
+Finishing stream 0:0 without any data written to it.
+[swscaler @ 0xaaaaf7f31c10] deprecated pixel format used, make sure you did set range correctly
+Output #0, image2, to '/tmp/rober_camera_matrix/ffmpeg_yuyv.jpg':
+  Metadata:
+    encoder         : Lavf58.76.100
+  Stream #0:0: Video: mjpeg, yuvj422p(pc), 640x480, q=2-31, 200 kb/s, 22 fps, 22 tbn
+    Metadata:
+      encoder         : Lavc58.134.100 mjpeg
+    Side data:
+      cpb: bitrate max/min/avg: 0/0/200000 buffer size: 0 vbv_delay: N/A
+frame=    0 fps=0.0 q=0.0 Lsize=N/A time=00:00:00.00 bitrate=N/A speed=   0x    
+video:0kB audio:0kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+Output file is empty, nothing was encoded (check -ss / -t / -frames parameters if used)
+Exiting normally, received signal 15.
+## file sizes
+total 8
+-rw-r--r-- 1 root root 7757 Jun 11 21:42 matrix.log
+-rw-r--r-- 1 root root    0 Jun 11 21:41 v4l2_default.raw
+-rw-r--r-- 1 root root    0 Jun 11 21:41 v4l2_mjpg_640.raw
+-rw-r--r-- 1 root root    0 Jun 11 21:41 v4l2_yuyv_640.raw
+## fuser after
+DEVICE=/dev/video0
+DEVICE=/dev/video1
+DEVICE=/dev/video2
+DEVICE=/dev/ttyS5
+● trashbot-local-webrtc-camera.service - Trashbot LAN-only local WebRTC camera smoke
+     Loaded: loaded (/etc/systemd/system/trashbot-local-webrtc-camera.service; enabled; vendor preset: enabled)
+     Active: active (running) since Thu 2026-06-11 21:42:30 CST; 1s ago
+       Docs: file:/root/rober/docs/interfaces/o7_local_webrtc_camera_smoke.md
+   Main PID: 309227 (python3)
+      Tasks: 1 (limit: 2204)
+     Memory: 14.2M
+        CPU: 496ms
+     CGroup: /system.slice/trashbot-local-webrtc-camera.service
+             └─309227 python3 /root/rober/onboard/scripts/local_webrtc_camera_smoke.py --host 0.0.0.0 --port 8088 --video-source auto --width 640 --height 480 --fps 15
+
+Jun 11 21:42:30 op-z3-b6.home systemd[1]: Started Trashbot LAN-only local WebRTC camera smoke.
+Jun 11 21:42:31 op-z3-b6.home env[309227]: {"event": "camera_service_started", "fps": 15, "height": 480, "host": "0.0.0.0", "port": 8088, "ts_ms": 1781185351349, "video_source": "auto", "width": 640}

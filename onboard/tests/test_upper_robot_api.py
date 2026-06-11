@@ -230,6 +230,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 "fps": 999,
                 "timeout_s": 99,
                 "read_call_timeout_s": 99,
+                "include_backend_smoke": "yes please",
             }
         )
 
@@ -240,6 +241,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual(30.0, request["fps"])
         self.assertEqual(8.0, request["timeout_s"])
         self.assertEqual(8.0, request["read_call_timeout_s"])
+        self.assertFalse(request["include_backend_smoke"])
 
     def test_camera_probe_missing_script_fails_closed_without_serial_or_motion(self) -> None:
         """首帧探针脚本不存在时也必须结构化失败，且不触碰底盘。"""
@@ -274,8 +276,10 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 self.killed = True
 
         with mock.patch.object(upper_robot_api.Path, "exists", return_value=True):
-            with mock.patch.object(upper_robot_api.asyncio, "create_subprocess_exec", return_value=FakeProcess()):
-                http_status, payload = asyncio.run(upper_robot_api.run_camera_first_frame_probe({"fourcc": "MJPG"}))
+            with mock.patch.object(upper_robot_api.asyncio, "create_subprocess_exec", return_value=FakeProcess()) as process_mock:
+                http_status, payload = asyncio.run(
+                    upper_robot_api.run_camera_first_frame_probe({"fourcc": "MJPG", "include_backend_smoke": True})
+                )
 
         self.assertEqual(503, http_status)
         self.assertEqual("first_frame_timeout", payload["status"])
@@ -286,6 +290,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["robot_control_executed"])
         self.assertFalse(payload["sends_motion_commands"])
         self.assertFalse(payload["opens_serial"])
+        self.assertIn("--include-backend-smoke", process_mock.call_args.args)
 
     def test_map_proof_latest_promotes_clean_runtime_material(self) -> None:
         """map proof 观测齐全时，readback 顶层应直接暴露可消费状态。"""

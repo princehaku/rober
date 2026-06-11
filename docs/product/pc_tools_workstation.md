@@ -800,6 +800,29 @@ Vue 高级诊断按钮
 `/dev/video1` 首帧不可读，不能宣称实时图传可见内容恢复。下一步仍需要现场排查
 DV20 输入源、线缆、供电、采集卡状态，或换 known-good UVC 后用同一高级按钮复测。
 
+## 2026-06-12 PC Camera Backend Smoke
+
+`sprints/2026.06.12_01-15_camera_backend_capture_matrix/` 把相机首帧高级诊断扩展为
+backend matrix。PC 代理调用 `/api/camera/first-frame/probe` 时固定传
+`include_backend_smoke=true`，上位机在 OpenCV 首帧失败后继续运行固定白名单采集：
+`v4l2-ctl MJPG`、`v4l2-ctl YUYV`、`ffmpeg mjpeg`、`ffmpeg yuyv422`。普通首屏不变；
+这些结果只显示在默认关闭的 `高级诊断 / 实时画面详情`。
+
+真实 PC proxy 连接 `http://192.168.1.11:8787` 后返回：
+
+- `remote_http_status=503`
+- `status=first_frame_timeout`
+- `probe_key_values.open_ok=true`
+- `probe_key_values.read_ok=false`
+- `probe_key_values.failure_reason=capture_read_call_timeout`
+- `probe_key_values.backend_smoke_status=backend_no_frame_observed`
+- `probe_key_values.backend_frame_observed=false`
+- `probe_key_values.backend_attempts=4`
+
+这把实时图传 blocker 从“WebRTC/OpenCV 首帧失败”进一步下钻为“DV20 `/dev/video1`
+在 V4L2/ffmpeg 后端也没有帧输出”。PC 页面现在能给现场人员一个更直接的结论：检查
+DV20 输入源、HDMI/USB 线缆、供电、采集卡，或换 known-good UVC 复测。
+
 证据文件：
 
 - `sprints/2026.06.11_22-00_pc_camera_first_frame_probe_proxy/artifacts/04_pc_proxy_first_frame_probe.json`

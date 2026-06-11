@@ -3826,6 +3826,7 @@ def safe_camera_probe_request(body: dict[str, Any] | None = None) -> dict[str, A
         "fps": min(max(fps, 1.0), 30.0),
         "timeout_s": min(max(timeout_s, 0.5), 8.0),
         "read_call_timeout_s": min(max(read_call_timeout_s, 0.5), 8.0),
+        "include_backend_smoke": bool(payload.get("include_backend_smoke") is True),
     }
 
 
@@ -3862,6 +3863,8 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
     ]
     if request["fourcc"]:
         command.extend(["--fourcc", request["fourcc"]])
+    if request["include_backend_smoke"]:
+        command.append("--include-backend-smoke")
 
     started_ms = now_ms()
     process = await asyncio.create_subprocess_exec(
@@ -3871,7 +3874,8 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
         stderr=asyncio.subprocess.PIPE,
     )
     try:
-        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=request["read_call_timeout_s"] + 6.0)
+        process_timeout_s = request["read_call_timeout_s"] + (44.0 if request["include_backend_smoke"] else 6.0)
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=process_timeout_s)
     except asyncio.TimeoutError:
         process.kill()
         await process.communicate()
