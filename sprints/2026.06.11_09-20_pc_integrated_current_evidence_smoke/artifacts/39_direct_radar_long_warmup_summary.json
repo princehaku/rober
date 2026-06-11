@@ -1,0 +1,29 @@
+{
+  "directRefresh": {
+    "status": "refreshed",
+    "artifact": {
+      "path": "runtime/lidar_scan_proof_latest.json",
+      "configured_by": "ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH or --lidar-scan-proof-artifact-path",
+      "format": "json",
+      "schema": "trashbot.o1.lidar_scan_proof.v1"
+    },
+    "collector": {
+      "script_path": "/root/rober/onboard/scripts/o1_lidar_scan_proof_collector.py",
+      "expect_existing_topics": true,
+      "starts_driver": true,
+      "opens_lidar_serial": true,
+      "sends_lidar_start_command": true
+    }
+  },
+  "statusAfter": {
+    "scan_status": "fresh_scan_proof_observed",
+    "latest_scan_proof_state": "scan_once_hz_raw_packet_tf_observed",
+    "scan_once": true,
+    "scan_hz": true,
+    "raw_packet_once": true,
+    "tf": true,
+    "blocked": [
+      "scan_continuity_not_observed"
+    ]
+  }
+}

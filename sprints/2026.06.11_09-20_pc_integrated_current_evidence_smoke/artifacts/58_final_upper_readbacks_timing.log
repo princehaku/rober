@@ -1,0 +1,11 @@
+final_readbacks_started=2026-06-11 09:33:18 CST
+58_final_upper_status /api/status http=200
+59_final_upper_camera_health /api/camera/health http=200
+60_final_upper_radar_status /api/radar/status http=200
+61_final_upper_map_list /api/map/list http=200
+62_final_upper_map_proof_latest /api/map/proof/latest http=200
+63_final_upper_localize_proof_latest /api/localize/proof/latest http=200
+64_final_upper_nav2_proof_latest /api/nav2/proof/latest http=200
+65_final_upper_operator_report /api/operator/report http=200
+66_final_upper_base_status /api/base/status http=200
+final_readbacks_finished=2026-06-11 09:33:21 CST

@@ -1,0 +1,70 @@
+{
+  "samples": [
+    {
+      "at": "2026-06-11T01:32:58.778Z",
+      "video": {
+        "exists": true,
+        "srcObjectExists": true,
+        "readyState": 4,
+        "videoWidth": 640,
+        "videoHeight": 480,
+        "currentTime": 0,
+        "paused": false,
+        "playbackQualityTotalVideoFrames": 1,
+        "playbackQualityDroppedVideoFrames": 0,
+        "requestVideoFrameCallbackSupported": true,
+        "requestVideoFrameCallbackObserved": true,
+        "requestVideoFrameCallbackMetadata": {
+          "width": 640,
+          "height": 480,
+          "presentedFrames": 1,
+          "presentationTime": 6576.5
+        }
+      },
+      "pixelSample": {
+        "width": 96,
+        "height": 72,
+        "nonBlackPixels": 0,
+        "nonTransparentPixels": 6912,
+        "averageRgbSum": 1
+      },
+      "pngDataUrl": "[saved separately]",
+      "firstScreenScopeText": "小车连接\n有异常\n可读到部分信息，但有字段被阻断或失败。\n\n连接/刷新\n\n实时画面\n打开画面\n关闭画面\n已打开\n\n画面已打开。\n\n雷达\n刷新雷达\n未刷新\n\n还没有刷新。\n\n地图\n刷新地图\n地图列表\n未刷新\n未读取\n\n还没有刷新。\n\n还没有读取地图列表。\n\n移动/导航\n待命\n停止\n\n需要时可直接停止。",
+      "openDisabled": false,
+      "closeDisabled": false
+    }
+  ],
+  "final": {
+    "at": "2026-06-11T01:32:58.778Z",
+    "video": {
+      "exists": true,
+      "srcObjectExists": true,
+      "readyState": 4,
+      "videoWidth": 640,
+      "videoHeight": 480,
+      "currentTime": 0,
+      "paused": false,
+      "playbackQualityTotalVideoFrames": 1,
+      "playbackQualityDroppedVideoFrames": 0,
+      "requestVideoFrameCallbackSupported": true,
+      "requestVideoFrameCallbackObserved": true,
+      "requestVideoFrameCallbackMetadata": {
+        "width": 640,
+        "height": 480,
+        "presentedFrames": 1,
+        "presentationTime": 6576.5
+      }
+    },
+    "pixelSample": {
+      "width": 96,
+      "height": 72,
+      "nonBlackPixels": 0,
+      "nonTransparentPixels": 6912,
+      "averageRgbSum": 1
+    },
+    "pngDataUrl": "[saved separately]",
+    "firstScreenScopeText": "小车连接\n有异常\n可读到部分信息，但有字段被阻断或失败。\n\n连接/刷新\n\n实时画面\n打开画面\n关闭画面\n已打开\n\n画面已打开。\n\n雷达\n刷新雷达\n未刷新\n\n还没有刷新。\n\n地图\n刷新地图\n地图列表\n未刷新\n未读取\n\n还没有刷新。\n\n还没有读取地图列表。\n\n移动/导航\n待命\n停止\n\n需要时可直接停止。",
+    "openDisabled": false,
+    "closeDisabled": false
+  }
+}

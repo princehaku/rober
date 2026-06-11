@@ -1,0 +1,24 @@
+final_cleanup_started=2026-06-11 09:34:07 CST
+__SERVICES__
+active
+● trashbot-upper-robot-api.service - Trashbot unified upper robot API
+     Loaded: loaded (/etc/systemd/system/trashbot-upper-robot-api.service; enabled; vendor preset: enabled)
+    Drop-In: /etc/systemd/system/trashbot-upper-robot-api.service.d
+             └─20-lidar-scan-proof-runtime.conf
+     Active: active (running) since Thu 2026-06-11 08:29:20 CST; 1h 4min ago
+       Docs: file:/root/rober/docs/interfaces/o7_upper_robot_api.md
+   Main PID: 238873 (python3)
+      Tasks: 81 (limit: 2204)
+     Memory: 219.1M
+        CPU: 11min 19.975s
+     CGroup: /system.slice/trashbot-upper-robot-api.service
+             ├─238873 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+__CAMERA_HEALTH_LOCAL_SUMMARY__
+{"status": "ready", "active_peer_connections": 0, "active_peer_ids": [], "last_closed_frames_read": 3}
+__TARGET_HELPER_PROCS__
+249769 zsh -c set +e { echo "final_cleanup_started=$(date "+%Y-%m-%d %H:%M:%S %Z")" echo __SERVICES__ systemctl is-active trashbot-upper-robot-api.service systemctl status trashbot-upper-robot-api.service --no-pager | sed -n "1,12p" echo __CAMERA_HEALTH_LOCAL_SUMMARY__ curl --max-time 8 -sS http://127.0.0.1:8787/api/camera/health | python3 -c "import sys,json; data=json.load(sys.stdin); print(json.dumps({\"status\":data.get(\"status\"),\"active_peer_connections\":data.get(\"active_peer_connections\"),\"active_peer_ids\":data.get(\"active_peer_ids\"),\"last_closed_frames_read\":data.get(\"stability_metrics\",{}).get(\"last_closed_frames_read\")}, ensure_ascii=False))" echo __TARGET_HELPER_PROCS__ pgrep -af "o3_map_lifecycle_proof|o10_amcl_nav2_runtime_proof|o1_lidar_ros2_scan_smoke|o1_lidar_scan_proof_collector|lidar_driver|slam_toolbox|map_server|amcl|planner_server|controller_server|lifecycle_manager" || true echo __TTYS5_LSOF__ lsof /dev/ttyS5 || true echo __ACM0_LSOF__ lsof /dev/ttyACM0 || true echo __TTYS5_FUSER__ fuser -v /dev/ttyS5 2>&1 || true echo __ACM0_FUSER__ fuser -v /dev/ttyACM0 2>&1 || true echo "final_cleanup_finished=$(date "+%Y-%m-%d %H:%M:%S %Z")" } 
+__TTYS5_LSOF__
+__ACM0_LSOF__
+__TTYS5_FUSER__
+__ACM0_FUSER__
+final_cleanup_finished=2026-06-11 09:34:08 CST

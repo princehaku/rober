@@ -1,0 +1,87 @@
+{
+  "radarStart": {
+    "proxy_status": "lifecycle_forwarded",
+    "remote_http_status": 200,
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": []
+  },
+  "radarRefresh": {
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "latest_readback_key_values.scan_once_observed": "false",
+    "latest_readback_key_values.raw_packet_once_observed": "false",
+    "latest_readback_key_values.scan_hz_observed": "false",
+    "latest_readback_key_values.tf_observed": "true",
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": []
+  },
+  "radarStop": {
+    "proxy_status": "lifecycle_forwarded",
+    "remote_http_status": 200,
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": []
+  },
+  "mapSave": {
+    "proxy_status": "lifecycle_failed",
+    "remote_http_status": 200,
+    "failure_reason": "map_lifecycle_remote_failure:map_lifecycle_runtime_helper_failed",
+    "blocked_reasons": [
+      "map_lifecycle_remote_failure:map_lifecycle_runtime_helper_failed"
+    ],
+    "hard_dangerous_true_fields": []
+  },
+  "mapList": {
+    "proxy_status": "lifecycle_forwarded",
+    "remote_http_status": 200,
+    "map_count": 20,
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": []
+  },
+  "mapProof": {
+    "status": "not_proven",
+    "latest_result.status": "blocked_with_root_cause"
+  },
+  "nav2": {
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "latest_readback_key_values.path_generated": "false",
+    "latest_readback_key_values.path_generation_succeeded": "false",
+    "latest_readback_key_values.path_point_count": "0",
+    "latest_readback_key_values.planner_server_active": "true",
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": []
+  },
+  "nav2Latest": {
+    "status": "not_proven",
+    "latest_result.publishes_cmd_vel": false,
+    "latest_result.calls_base_manual": false
+  },
+  "stop": {
+    "proxy_status": "command_forwarded",
+    "remote_http_status": 200,
+    "robot_control_executed": false,
+    "operator_report_preflight.status": "not_required_for_stop",
+    "blocked_reasons": []
+  },
+  "manual": {
+    "proxy_status": "command_rejected",
+    "remote_http_status": null,
+    "failure_reason": "operator_report_preflight_required",
+    "robot_control_executed": false,
+    "operator_report_preflight.status": "blocked",
+    "operator_report_preflight.missing_fields": [
+      "external_video_recorded",
+      "visible_content_proven",
+      "wheel_feedback_lr_nonzero_proven",
+      "physical_motion_lidar_delta_proven"
+    ],
+    "blocked_reasons": [
+      "operator_report_preflight_required"
+    ]
+  },
+  "cameraAfter": {
+    "status": "ready",
+    "active_peer_connections": 0,
+    "active_peer_ids": []
+  }
+}

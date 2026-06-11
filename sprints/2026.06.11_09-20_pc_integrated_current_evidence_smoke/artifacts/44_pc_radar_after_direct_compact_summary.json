@@ -1,0 +1,28 @@
+{
+  "pcRadarRefreshAfterDirect": {
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "latest_readback_key_values.scan_once_observed": "true",
+    "latest_readback_key_values.scan_hz_observed": "true",
+    "latest_readback_key_values.raw_packet_once_observed": "true",
+    "latest_readback_key_values.tf_observed": "true",
+    "latest_readback_key_values.blocked_reasons": "scan_continuity_not_observed",
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": [],
+    "non_motion_evidence_actions_observed": [
+      "sends_commands",
+      "starts_ros2"
+    ]
+  },
+  "statusAfter": {
+    "scan_status": "fresh_scan_proof_observed",
+    "latest_scan_proof_state": "scan_once_hz_raw_packet_tf_observed",
+    "latest_scan_proof.scan_once_observed": true,
+    "latest_scan_proof.scan_hz_observed": true,
+    "latest_scan_proof.raw_packet_once_observed": true,
+    "latest_scan_proof.tf_observed": true,
+    "blocked_reasons": [
+      "scan_continuity_not_observed"
+    ]
+  }
+}

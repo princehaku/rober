@@ -1,0 +1,301 @@
+{
+  "schema": "trashbot.pc_integrated_current_evidence_smoke.v1",
+  "run_time": "2026-06-11 09:20-09:34 CST",
+  "robot_api_base_url": "http://192.168.1.11:8787",
+  "pc_proxy_url": "http://127.0.0.1:8795",
+  "first_screen": {
+    "status": "pass",
+    "titleVisible": true,
+    "expectedCards": {
+      "小车连接": true,
+      "实时画面": true,
+      "雷达": true,
+      "地图": true,
+      "移动/导航": true
+    },
+    "forbiddenInFirstScreenScope": [],
+    "advancedDiagnosticsOpen": false,
+    "advancedToolsOpen": false,
+    "artifact": "52_chrome_cdp_retry_first_screen.json"
+  },
+  "camera": {
+    "status": "pass_with_near_black_risk",
+    "video": {
+      "exists": true,
+      "srcObjectExists": true,
+      "readyState": 4,
+      "videoWidth": 640,
+      "videoHeight": 480,
+      "currentTime": 0,
+      "paused": false,
+      "playbackQualityTotalVideoFrames": 1,
+      "playbackQualityDroppedVideoFrames": 0,
+      "requestVideoFrameCallbackSupported": true,
+      "requestVideoFrameCallbackObserved": true,
+      "requestVideoFrameCallbackMetadata": {
+        "width": 640,
+        "height": 480,
+        "presentedFrames": 1,
+        "presentationTime": 6576.5
+      }
+    },
+    "pixelSample": {
+      "width": 96,
+      "height": 72,
+      "nonBlackPixels": 0,
+      "nonTransparentPixels": 6912,
+      "averageRgbSum": 1
+    },
+    "activeDuring": 1,
+    "activeAfter": 0,
+    "upperAfter": {
+      "status": "ready",
+      "active_peer_connections": 0,
+      "active_peer_ids": []
+    },
+    "risk": "real WebRTC frame reached browser video element, but canvas sample is near black; visible scene content is not proven",
+    "artifacts": [
+      "53_chrome_cdp_retry_camera_frame_opened.json",
+      "53_chrome_cdp_retry_camera_frame_canvas.png",
+      "53_chrome_cdp_retry_camera_opened.png",
+      "56_upper_camera_health_after_chrome_retry_close.json"
+    ]
+  },
+  "radar": {
+    "status": "pass_after_direct_long_warmup",
+    "pcProxyAfterDirect": {
+      "proxy_status": "refresh_forwarded",
+      "remote_http_status": 200,
+      "latest_readback_key_values.scan_once_observed": "true",
+      "latest_readback_key_values.scan_hz_observed": "true",
+      "latest_readback_key_values.raw_packet_once_observed": "true",
+      "latest_readback_key_values.tf_observed": "true",
+      "latest_readback_key_values.blocked_reasons": "scan_continuity_not_observed",
+      "blocked_reasons": [],
+      "hard_dangerous_true_fields": [],
+      "non_motion_evidence_actions_observed": [
+        "sends_commands",
+        "starts_ros2"
+      ]
+    },
+    "statusAfter": {
+      "scan_status": "fresh_scan_proof_observed",
+      "latest_scan_proof_state": "scan_once_hz_raw_packet_tf_observed",
+      "latest_scan_proof.scan_once_observed": true,
+      "latest_scan_proof.scan_hz_observed": true,
+      "latest_scan_proof.raw_packet_once_observed": true,
+      "latest_scan_proof.tf_observed": true,
+      "blocked_reasons": [
+        "scan_continuity_not_observed"
+      ]
+    },
+    "directLongWarmupDiagnostic": {
+      "directRefresh": {
+        "status": "refreshed",
+        "artifact": {
+          "path": "runtime/lidar_scan_proof_latest.json",
+          "configured_by": "ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH or --lidar-scan-proof-artifact-path",
+          "format": "json",
+          "schema": "trashbot.o1.lidar_scan_proof.v1"
+        },
+        "collector": {
+          "script_path": "/root/rober/onboard/scripts/o1_lidar_scan_proof_collector.py",
+          "expect_existing_topics": true,
+          "starts_driver": true,
+          "opens_lidar_serial": true,
+          "sends_lidar_start_command": true
+        }
+      },
+      "statusAfter": {
+        "scan_status": "fresh_scan_proof_observed",
+        "latest_scan_proof_state": "scan_once_hz_raw_packet_tf_observed",
+        "scan_once": true,
+        "scan_hz": true,
+        "raw_packet_once": true,
+        "tf": true,
+        "blocked": [
+          "scan_continuity_not_observed"
+        ]
+      }
+    },
+    "note": "first PC proxy attempt observed only TF; direct long warmup made fresh LiDAR proof, then PC proxy start/refresh/stop readback observed scan/raw/hz/TF. scan_continuity_not_observed remains a continuous-runtime risk, not a motion risk.",
+    "artifacts": [
+      "29_retry_pc_radar_scan_proof_refresh.json",
+      "37_direct_upper_radar_long_warmup_refresh.json",
+      "39_direct_radar_long_warmup_summary.json",
+      "41_pc_radar_after_direct_scan_proof_refresh.json",
+      "44_pc_radar_after_direct_compact_summary.json",
+      "68_final_cleanup_readback_clean.log"
+    ]
+  },
+  "map": {
+    "status": "pass",
+    "requested_map_name": "pc_integrated_current_retry_20260611_0920",
+    "initial_requested_map_name": "pc_integrated_current_20260611_0920",
+    "save": {
+      "proxy_status": "lifecycle_forwarded",
+      "remote_http_status": 200,
+      "status": "loaded_fail_closed_summary",
+      "command_result_ok": true
+    },
+    "list": {
+      "proxy_status": "lifecycle_forwarded",
+      "remote_http_status": 200,
+      "map_count": 22,
+      "map_names": [
+        "pc_integrated_current_20260611_0920.yaml",
+        "pc_integrated_current_retry_20260611_0920.yaml"
+      ]
+    },
+    "proof": {
+      "status": "map_once_artifact_metadata_observed",
+      "latest_proof_status": "map_once_artifact_metadata_observed",
+      "scan_once_observed": true,
+      "map_once_observed": true,
+      "map_file_observed": true,
+      "map_metadata_observed": true
+    },
+    "artifacts": [
+      "13_pc_map_save.json",
+      "31_retry_pc_map_save.json",
+      "32_retry_pc_map_list.json",
+      "33_retry_upper_map_proof_latest.json",
+      "61_final_upper_map_list.json",
+      "62_final_upper_map_proof_latest.json"
+    ]
+  },
+  "nav2": {
+    "status": "pass",
+    "pcProxy": {
+      "proxy_status": "refresh_forwarded",
+      "remote_http_status": 200,
+      "latest_readback_key_values": {
+        "status": "refreshed",
+        "latest_proof_status": "nav2_no_motion_path_generation_runtime_observed",
+        "evidence_ref": "o10-amcl-nav2-runtime-1781141106293",
+        "managed_runtime_started": "true",
+        "initialpose_published": "true",
+        "path_generation_requested": "true",
+        "path_generated": "true",
+        "path_generation_succeeded": "true",
+        "path_point_count": "31",
+        "planner_server_active": "true"
+      },
+      "hard_dangerous_true_fields": []
+    },
+    "latest": {
+      "path_generated": true,
+      "path_generation_succeeded": true,
+      "path_point_count": 31,
+      "planner_server_active": true,
+      "publishes_cmd_vel": false,
+      "calls_base_manual": false
+    },
+    "forbidden_not_called": [
+      "/cmd_vel",
+      "NavigateToPose",
+      "/api/base/manual",
+      "/api/nav2/start"
+    ],
+    "artifacts": [
+      "34_retry_pc_nav2_proof_refresh.json",
+      "35_retry_upper_nav2_proof_latest.json",
+      "64_final_upper_nav2_proof_latest.json"
+    ]
+  },
+  "stop_manual_gate": {
+    "status": "pass",
+    "stop": {
+      "proxy_status": "command_forwarded",
+      "remote_http_status": 200,
+      "robot_control_executed": false
+    },
+    "manual_attempt": {
+      "proxy_status": "command_rejected",
+      "remote_http_status": null,
+      "failure_reason": "operator_report_preflight_required",
+      "robot_control_executed": false,
+      "operator_report_preflight": {
+        "status": "blocked",
+        "source_endpoint": "/api/operator/report",
+        "request_status": "loaded",
+        "http_status": 200,
+        "report_status": "ready_for_execution",
+        "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+        "required_fields": [
+          "operator_present",
+          "physical_clearance_confirmed",
+          "emergency_stop_ready",
+          "external_video_recorded",
+          "external_video_ref",
+          "visible_content_proven",
+          "camera_artifacts_ref",
+          "wheel_feedback_lr_nonzero_proven",
+          "wheel_feedback_ref",
+          "physical_motion_lidar_delta_proven",
+          "scan_delta_ref"
+        ],
+        "missing_fields": [
+          "external_video_recorded",
+          "visible_content_proven",
+          "wheel_feedback_lr_nonzero_proven",
+          "physical_motion_lidar_delta_proven"
+        ],
+        "material_summary": {
+          "status": "loaded",
+          "source_endpoint_id": "operator_report_latest",
+          "source_path": "operator_report_latest.structured_hil_claims",
+          "report_status": "ready_for_execution",
+          "evidence_ref": "field-hil-20260611-0620-pc-submit-no-motion",
+          "operator_present": "true",
+          "physical_clearance": "true",
+          "emergency_stop": "true",
+          "external_video": "false; ref=not_recorded_no_motion_smoke",
+          "camera_visible": "false; ref=not_attached_no_motion_smoke",
+          "wheel_feedback": "false; ref=not_attached_no_motion_smoke",
+          "lidar_delta": "false; ref=not_attached_no_motion_smoke",
+          "route_map": "false; ref=not_attached_no_motion_smoke",
+          "delivery_claim": "false",
+          "site_state": "pc_operator_report_no_motion_smoke"
+        },
+        "failure_reason": "operator_report_preflight_required",
+        "hard_dangerous_true_fields": []
+      }
+    },
+    "artifacts": [
+      "16_pc_base_stop.json",
+      "17_pc_manual_attempt_expected_reject.json",
+      "65_final_upper_operator_report.json",
+      "66_final_upper_base_status.json"
+    ]
+  },
+  "cleanup": {
+    "status": "pass",
+    "upper_api_service": "active (see 68_final_cleanup_readback_clean.log)",
+    "camera_health": {
+      "status": "ready",
+      "active_peer_connections": 0,
+      "active_peer_ids": []
+    },
+    "pc_api_port_8795": "closed (lsof empty)",
+    "target_filtered_process_check": "empty (69_final_filtered_target_process_check.log)",
+    "ttyS5": "no lsof/fuser output",
+    "ttyACM0": "no lsof/fuser output",
+    "artifacts": [
+      "68_final_cleanup_readback_clean.log",
+      "69_final_filtered_target_process_check.log"
+    ]
+  },
+  "motion_boundary": {
+    "real_nonzero_motion": false,
+    "cmd_vel_sent": false,
+    "navigate_to_pose_sent": false,
+    "remote_base_manual_executed": false,
+    "final_base_status": {
+      "robot_control_executed": false,
+      "safe_to_control": false,
+      "sends_motion_commands": false
+    },
+    "final_status_robot_control_executed": false
+  }
+}

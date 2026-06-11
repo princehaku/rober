@@ -1,0 +1,81 @@
+{
+  "radarStart": {
+    "proxy_status": "lifecycle_forwarded",
+    "remote_http_status": 200,
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": []
+  },
+  "radarWarmStatus": {
+    "scan_status": "not_proven",
+    "continuous_scan_status": "not_proven",
+    "fresh_scan_proof_observed": false,
+    "latest_scan_proof_state": "partially_observed",
+    "latest_scan_proof.scan_once_observed": false,
+    "latest_scan_proof.raw_packet_once_observed": false,
+    "latest_scan_proof.scan_hz_observed": false,
+    "latest_scan_proof.tf_observed": true,
+    "latest_scan_hz_average_rate_hz": null
+  },
+  "radarRefresh": {
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "latest_readback_key_values.scan_once_observed": "false",
+    "latest_readback_key_values.raw_packet_once_observed": "false",
+    "latest_readback_key_values.scan_hz_observed": "false",
+    "latest_readback_key_values.tf_observed": "true",
+    "latest_readback_key_values.blocked_reasons": "latest_scan_proof_required_observations_missing:scan_once,scan_hz,raw_packet_once,all_required_observations,scan_continu",
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": [],
+    "non_motion_evidence_actions_observed": [
+      "sends_commands",
+      "starts_ros2"
+    ]
+  },
+  "radarStop": {
+    "proxy_status": "lifecycle_forwarded",
+    "remote_http_status": 200,
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": []
+  },
+  "mapSave": {
+    "proxy_status": "lifecycle_forwarded",
+    "remote_http_status": 200,
+    "status": "loaded_fail_closed_summary",
+    "command_result.ok": true,
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": []
+  },
+  "mapList": {
+    "proxy_status": "lifecycle_forwarded",
+    "remote_http_status": 200,
+    "map_count": 22,
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": []
+  },
+  "mapProof": {
+    "status": "map_once_artifact_metadata_observed",
+    "latest_proof_status": "map_once_artifact_metadata_observed",
+    "scan_once_observed": true,
+    "map_once_observed": true,
+    "map_file_observed": true,
+    "map_metadata_observed": true
+  },
+  "nav2": {
+    "proxy_status": "refresh_forwarded",
+    "remote_http_status": 200,
+    "latest_readback_key_values.path_generated": "true",
+    "latest_readback_key_values.path_generation_succeeded": "true",
+    "latest_readback_key_values.path_point_count": "31",
+    "latest_readback_key_values.planner_server_active": "true",
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": [],
+    "non_motion_evidence_actions_observed": [
+      "starts_ros2"
+    ]
+  },
+  "nav2Latest": {
+    "status": "not_proven",
+    "latest_result.publishes_cmd_vel": false,
+    "latest_result.calls_base_manual": false
+  }
+}
