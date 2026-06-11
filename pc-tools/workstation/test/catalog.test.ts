@@ -4829,6 +4829,13 @@ describe("workstation fail-closed API contracts", () => {
     ).toBe(150_000);
     expect(
       computeRobotProofRefreshTimeoutMs({
+        request_body: { timeout_s: 30, managed_runtime_opt_in: true, managed_timeout_s: 30, path_generation_opt_in: false },
+        timeout_cap_ms: 120_000,
+        safety_margin_ms: 60_000,
+      }),
+    ).toBe(120_000);
+    expect(
+      computeRobotProofRefreshTimeoutMs({
         request_body: { timeout_s: 999, runtime_warmup_s: 999 },
         timeout_cap_ms: 60_000,
         safety_margin_ms: 10_000,
@@ -4943,9 +4950,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.robot_control_executed).toBe(false);
       expect(robotApi.receivedBodies["/api/localize/reset"]).toEqual([
         {
-          timeout_s: 8,
+          timeout_s: 30,
           managed_runtime_opt_in: true,
-          managed_timeout_s: 12,
+          managed_timeout_s: 30,
           initialpose_opt_in: true,
           initialpose_x: 0,
           initialpose_y: 0,

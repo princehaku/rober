@@ -1860,6 +1860,59 @@ Artifacts：
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_ssh_process_device_check.txt`
 - `sprints/2026.06.11_14-05_pc_localize_reset_real_proxy_smoke/artifacts/cleanup_summary.json`
 
+## 2026-06-11 22:45 PC Localization/Nav Preflight Real Proxy Smoke
+
+`sprints/2026.06.11_22-45_pc_localize_nav_preflight_real_proxy/` 通过 PC workstation
+固定代理访问真实上位机 `http://192.168.1.11:8787`，验证定位 reset、Nav2 no-motion
+路径刷新和导航目标预检。硬件事实仍以 `docs/vendor/VENDOR_INDEX.md` 为入口；本轮未改
+WAVE ROVER、ESP32、Orange Pi 串口、电气或底盘配置，未打开底盘 UART `/dev/ttyS5`。
+
+修复前结果：
+
+- PC proxy `POST /api/robot-control/localize/reset` 返回 HTTP 200，但
+  `last_result_status=blocked_with_root_cause`；readback 已有
+  `initialpose_published=true`、`amcl_pose_observed=true`，但
+  `localization_reset_observed=false`、`managed_runtime_cleanup_ok=false`。
+- PC proxy `POST /api/robot-control/nav2/proof/refresh` 成功返回
+  `path_generated=true`、`path_generation_succeeded=true`、`path_point_count=31`。
+- PC proxy `POST /api/robot-control/nav2/goal/preflight` 返回 HTTP 400，缺项包括
+  `localization_runtime_or_reset_not_observed`、`map_to_base_link_tf_not_observed` 和
+  `operator_report_preflight_required`。
+
+修复动作：
+
+- 上位机 `/api/localize/reset` 默认窗口从
+  `timeout_s=8 / managed_timeout_s=12` 提升到
+  `timeout_s=30 / managed_timeout_s=30`。
+- PC `POST /api/robot-control/localize/reset` 固定 body 同步提升到
+  `timeout_s=30 / managed_timeout_s=30`，fetch cap 提升到 `120000ms`。
+
+修复后真实 PC proxy 结果：
+
+- `localize/reset` 返回 `refresh_forwarded/refreshed`，readback 显示
+  `latest_proof_status=nav2_no_motion_localization_runtime_observed`、
+  `initialpose_published=true`、`amcl_pose_observed=true`、
+  `managed_runtime_cleanup_ok=true`、`localization_reset_observed=true`。
+- `nav2/proof/refresh` 返回 `refresh_forwarded/refreshed`，readback 显示
+  `path_generated=true`、`path_generation_succeeded=true`、`path_point_count=31`、
+  `planner_server_active=true`。
+- `nav2/goal/preflight` 仍返回 HTTP 400，但缺项已收窄为
+  `operator_report_preflight_required`；定位和路径条件已满足。
+- operator report 仍缺
+  `external_video_recorded`、`visible_content_proven`、
+  `wheel_feedback_lr_nonzero_proven`、`physical_motion_lidar_delta_proven`。
+
+No-motion / no-base-control 边界：
+
+- 未执行 NavigateToPose。
+- 未发布 `/cmd_vel`。
+- 未调用 `/api/base/manual` 成功路径。
+- 未写 WAVE ROVER UART。
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `robot_control_executed=false`
+
 ## 2026-06-11 19:45 Nav2 PC Proxy Timeout Budget Repair
 
 `sprints/2026.06.11_19-45_nav2_pc_proxy_timeout_budget_repair/` 修复 PC

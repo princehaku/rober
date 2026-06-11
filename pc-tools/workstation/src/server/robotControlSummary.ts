@@ -167,9 +167,9 @@ const LOCALIZATION_RESET_CONFIG: RobotProofRefreshConfig = {
   kind: "localization_reset",
   endpoint: "/api/localize/reset",
   request_body: {
-    timeout_s: 8,
+    timeout_s: 30,
     managed_runtime_opt_in: true,
-    managed_timeout_s: 12,
+    managed_timeout_s: 30,
     initialpose_opt_in: true,
     initialpose_x: 0,
     initialpose_y: 0,
@@ -177,8 +177,8 @@ const LOCALIZATION_RESET_CONFIG: RobotProofRefreshConfig = {
     initialpose_frame_id: "map",
     path_generation_opt_in: false,
   },
-  timeout_cap_ms: 60_000,
-  safety_margin_ms: 30_000,
+  timeout_cap_ms: 120_000,
+  safety_margin_ms: 60_000,
   key_fields: [
     "status",
     "latest_proof_status",

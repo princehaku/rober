@@ -330,9 +330,9 @@ body 固定为：
 
 ```json
 {
-  "timeout_s": 8,
+  "timeout_s": 30,
   "managed_runtime_opt_in": true,
-  "managed_timeout_s": 12,
+  "managed_timeout_s": 30,
   "initialpose_opt_in": true,
   "initialpose_x": 0,
   "initialpose_y": 0,
@@ -351,6 +351,18 @@ PC 顶层仍固定 `safe_to_control=false`、`delivery_success=false`、
 该入口不调用 `NavigateToPose`、Nav2 start/stop、`ComputePathToPose`、
 `/cmd_vel`、`/api/base/manual`、底盘 UART 或 `/dev/ttyS5`。它只证明 no-motion
 AMCL localization material，不证明路径执行、真实运动、HIL 或 delivery success。
+
+2026-06-11 22:45 真实 PC proxy 复测发现旧固定 body
+`timeout_s=8 / managed_timeout_s=12` 在实板定位 runtime 上窗口偏短：上位机已发布
+`/initialpose` 且看到 `/amcl_pose`，但 `map->base_link` TF 未完整观测时就被 wrapper
+截断，导致 `localization_reset_observed=false`。本轮将 PC 固定 body 与上位机默认值同步
+提升到 `timeout_s=30 / managed_timeout_s=30`，PC fetch cap 提升到 `120000ms`。
+复测后 `定位重置（高级）` 返回 `refresh_forwarded/refreshed`，readback 显示
+`localization_reset_observed=true`、`managed_runtime_cleanup_ok=true`；随后
+`检查路径（高级）` 返回 `path_generated=true/path_generation_succeeded=true/path_point_count=31`。
+`导航目标预检（高级）` 仍因 operator report 材料不足返回 HTTP 400，只剩
+`operator_report_preflight_required`，没有执行 NavigateToPose、`/cmd_vel` 或
+`/api/base/manual`。
 
 ## PC Manual HIL Gate Current Evidence
 

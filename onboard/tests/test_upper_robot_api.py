@@ -968,9 +968,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         helper_mock.assert_called_once()
         helper_kwargs = helper_mock.call_args.kwargs
         self.assertEqual(str(localization_path), helper_kwargs["artifact_path"])
-        self.assertEqual(8.0, helper_kwargs["timeout_s"])
+        self.assertEqual(30.0, helper_kwargs["timeout_s"])
         self.assertTrue(helper_kwargs["managed_runtime_opt_in"])
-        self.assertEqual(12.0, helper_kwargs["managed_timeout_s"])
+        self.assertEqual(30.0, helper_kwargs["managed_timeout_s"])
         self.assertTrue(helper_kwargs["initialpose_opt_in"])
         self.assertEqual("map", helper_kwargs["initialpose_frame_id"])
         self.assertFalse(helper_kwargs["path_generation_opt_in"])

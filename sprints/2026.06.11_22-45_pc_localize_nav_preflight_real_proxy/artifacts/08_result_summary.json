@@ -1,0 +1,134 @@
+{
+  "02_localize_reset": {
+    "http": "200",
+    "proxy_status": "refresh_forwarded",
+    "status": "loaded_fail_closed_summary",
+    "last_result_status": "blocked_with_root_cause",
+    "remote_http_status": 200,
+    "failure_reason": "",
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": [],
+    "latest_readback_key_values": {
+      "status": "blocked_with_root_cause",
+      "latest_proof_status": "blocked_with_root_cause",
+      "evidence_ref": "o10-amcl-nav2-runtime-wrapper-failure-1781180781754",
+      "initialpose_published": "true",
+      "amcl_pose_observed": "true",
+      "localization_tf_observed": "[object Object]",
+      "managed_runtime_started": "true",
+      "managed_runtime_cleanup_ok": "false",
+      "localization_reset_observed": "false",
+      "root_causes": "[object Object],[object Object],[object Object],[object Object],[object Object],[object Object]"
+    },
+    "missing_requirements": null,
+    "operator_report_preflight": null,
+    "localization_summary": null,
+    "nav2_path_summary": null
+  },
+  "03_nav2_refresh": {
+    "http": "200",
+    "proxy_status": "refresh_forwarded",
+    "status": "loaded_fail_closed_summary",
+    "last_result_status": "refreshed",
+    "remote_http_status": 200,
+    "failure_reason": "",
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": [],
+    "latest_readback_key_values": {
+      "status": "refreshed",
+      "latest_proof_status": "nav2_no_motion_path_generation_runtime_observed",
+      "evidence_ref": "o10-amcl-nav2-runtime-1781180784284",
+      "managed_runtime_started": "true",
+      "initialpose_published": "true",
+      "path_generation_requested": "true",
+      "path_generated": "true",
+      "path_generation_succeeded": "true",
+      "path_point_count": "31",
+      "planner_server_active": "true"
+    },
+    "missing_requirements": null,
+    "operator_report_preflight": null,
+    "localization_summary": null,
+    "nav2_path_summary": null
+  },
+  "04_nav_goal_preflight": {
+    "http": "400",
+    "proxy_status": "preflight_rejected",
+    "status": null,
+    "last_result_status": null,
+    "remote_http_status": null,
+    "failure_reason": "localization_runtime_or_reset_not_observed",
+    "blocked_reasons": [
+      "localization_runtime_or_reset_not_observed",
+      "map_to_base_link_tf_not_observed",
+      "operator_report_preflight_required"
+    ],
+    "hard_dangerous_true_fields": [],
+    "latest_readback_key_values": null,
+    "missing_requirements": [
+      "localization_runtime_or_reset_not_observed",
+      "map_to_base_link_tf_not_observed",
+      "operator_report_preflight_required"
+    ],
+    "operator_report_preflight": {
+      "status": "blocked",
+      "source_endpoint": "/api/operator/report",
+      "request_status": "loaded",
+      "http_status": 200,
+      "report_status": "ready_for_execution",
+      "evidence_ref": "sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/artifacts/remote_capture/opencv_short_timeout_probe_files",
+      "required_fields": [
+        "operator_present",
+        "physical_clearance_confirmed",
+        "emergency_stop_ready",
+        "external_video_recorded",
+        "external_video_ref",
+        "visible_content_proven",
+        "camera_artifacts_ref",
+        "wheel_feedback_lr_nonzero_proven",
+        "wheel_feedback_ref",
+        "physical_motion_lidar_delta_proven",
+        "scan_delta_ref"
+      ],
+      "missing_fields": [
+        "external_video_recorded",
+        "visible_content_proven",
+        "wheel_feedback_lr_nonzero_proven",
+        "physical_motion_lidar_delta_proven"
+      ],
+      "material_summary": {
+        "status": "loaded",
+        "source_endpoint_id": "operator_report_latest",
+        "source_path": "operator_report_latest.structured_hil_claims",
+        "report_status": "ready_for_execution",
+        "evidence_ref": "sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/artifacts/remote_capture/opencv_short_timeout_probe_files",
+        "operator_present": "true",
+        "physical_clearance": "true",
+        "emergency_stop": "true",
+        "external_video": "false; ref=not_recorded_camera_only_no_motion",
+        "camera_visible": "false; ref=sprints/2026.06.11_20-05_camera_visible_content_gate_refresh/artifacts/remote_capture/opencv_short_timeout_probe_files",
+        "wheel_feedback": "false; ref=not_tested_camera_only_no_motion",
+        "lidar_delta": "false; ref=not_tested_camera_only_no_motion",
+        "route_map": "false; ref=not_tested_camera_only_no_motion",
+        "delivery_claim": "false",
+        "site_state": "camera_direct_first_frame_timeout"
+      },
+      "failure_reason": "operator_report_preflight_required",
+      "hard_dangerous_true_fields": []
+    },
+    "localization_summary": {
+      "request_status": "loaded",
+      "status": "blocked_with_root_cause",
+      "localization_reset_observed": false,
+      "nav2_no_motion_localization_runtime_observed": false,
+      "map_to_base_link": false
+    },
+    "nav2_path_summary": {
+      "request_status": "loaded",
+      "status": "not_proven",
+      "path_generated": true,
+      "path_generation_succeeded": true,
+      "path_point_count": 31
+    }
+  }
+}

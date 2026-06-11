@@ -1,0 +1,13 @@
+services
+active
+listeners
+LISTEN 0      5            0.0.0.0:8088       0.0.0.0:*    users:(("python3",pid=291464,fd=3))  
+LISTEN 0      128          0.0.0.0:8787       0.0.0.0:*    users:(("python3",pid=297816,fd=6))  
+processes
+ 291464       1 SLsl python3 /root/rober/onboard/scripts/local_webrtc_camera_smoke.py --host 0.0.0.0 --port 8088 --video-source auto --width 640 --height 480 --fps 15
+ 297816       1 Ssl  python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+fuser
+hashes
+fc6bb4127881ce59405bdbe4ea99e3ac3239f84895f3a27c0900c4f86cb9cf39  /root/rober/onboard/scripts/upper_robot_api.py
+health
+{"active_camera_read_failures": 0, "active_frames_read": 0, "active_peer_connections": 0, "active_peer_count": 0, "app": "rober-local-webrtc-camera-smoke", "current_selection": {"mode": "auto", "requested_source": "auto", "selected_path": "/dev/video1"}, "delivery_success": false, "dependencies": {"aiortc": true, "av": true, "cv2": true}, "fps": 15, "generated_at_ms": 1781181214561, "height": 480, "media_diagnostics": {"active_peers": {}, "last_closed_peer": null, "last_offer_error": {"app": "rober-local-webrtc-camera-smoke", "delivery_success": false, "error": "first_frame_unreadable", "failu

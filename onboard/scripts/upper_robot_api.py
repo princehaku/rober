@@ -4477,8 +4477,8 @@ class UpperRobotApi:
     async def localize_reset(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
         """定位 reset 默认走 O10 no-motion helper；只发布一次 /initialpose，不做路径执行。"""
         body = body if isinstance(body, dict) else {}
-        timeout_s = clamp_float(body.get("timeout_s"), 8.0, 4.0, 30.0)
-        managed_timeout_s = clamp_float(body.get("managed_timeout_s"), 12.0, 4.0, 45.0)
+        timeout_s = clamp_float(body.get("timeout_s"), 30.0, 4.0, 30.0)
+        managed_timeout_s = clamp_float(body.get("managed_timeout_s"), 30.0, 4.0, 45.0)
         managed_runtime_opt_in = body.get("managed_runtime_opt_in") is not False
         initialpose_opt_in = body.get("initialpose_opt_in") is not False
         command_result = await asyncio.to_thread(

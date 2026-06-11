@@ -1,0 +1,8 @@
+services
+active
+inactive
+processes
+297195 zsh -c set -e; echo services; systemctl is-active trashbot-upper-robot-api.service || true; systemctl is-active trashbot-camera-webrtc.service || true; echo processes; pgrep -af "o10_amcl_nav2_runtime_proof|map_server|amcl|planner_server|controller_server|bt_navigator|lifecycle_manager|lidar_driver|slam_toolbox|camera_first_frame_probe" || true; echo tty; fuser /dev/ttyS5 /dev/ttyACM0 /dev/video0 /dev/video1 /dev/video2 2>/dev/null || true; echo camera_health; curl -sS --max-time 6 http://127.0.0.1:8787/api/camera/health | head -c 1000
+tty
+camera_health
+{"active_camera_read_failures": 0, "active_frames_read": 0, "active_peer_connections": 0, "active_peer_count": 0, "app": "rober-local-webrtc-camera-smoke", "current_selection": {"mode": "auto", "requested_source": "auto", "selected_path": "/dev/video1"}, "delivery_success": false, "dependencies": {"aiortc": true, "av": true, "cv2": true}, "fps": 15, "generated_at_ms": 1781180854235, "height": 480, "media_diagnostics": {"active_peers": {}, "last_closed_peer": null, "last_offer_error": {"app": "rober-local-webrtc-camera-smoke", "delivery_success": false, "error": "first_frame_unreadable", "failure_reason": "first_frame_timeout", "first_frame_timeout_s": 3.0, "generated_at_ms": 1781177341396, "last_read_error": "capture_read_returned_false", "primary_actions_enabled": false, "robot_control_executed": false, "safe_to_control": false, "schema": "trashbot.local_webrtc_camera_smoke.v1", "status": "error", "video_source": "/dev/video1"}}, "primary_actions_enabled": false, "requested_video_sour

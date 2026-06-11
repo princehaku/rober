@@ -1,0 +1,168 @@
+{
+  "schema": "trashbot.sprint.pc_localize_nav_preflight_real_proxy_summary.v1",
+  "robot_api_base_url": "http://192.168.1.11:8787",
+  "pc_api_after_fix": "http://127.0.0.1:18811",
+  "before_budget_fix": {
+    "02_localize_reset": {
+      "http": "200",
+      "proxy_status": "refresh_forwarded",
+      "last_result_status": "blocked_with_root_cause",
+      "preflight_status": null,
+      "failure_reason": "",
+      "missing_requirements": null,
+      "latest_readback_key_values": {
+        "status": "blocked_with_root_cause",
+        "latest_proof_status": "blocked_with_root_cause",
+        "evidence_ref": "o10-amcl-nav2-runtime-wrapper-failure-1781180781754",
+        "initialpose_published": "true",
+        "amcl_pose_observed": "true",
+        "localization_tf_observed": "[object Object]",
+        "managed_runtime_started": "true",
+        "managed_runtime_cleanup_ok": "false",
+        "localization_reset_observed": "false",
+        "root_causes": "[object Object],[object Object],[object Object],[object Object],[object Object],[object Object]"
+      },
+      "localization_summary": null,
+      "nav2_path_summary": null
+    },
+    "03_nav2_refresh": {
+      "http": "200",
+      "proxy_status": "refresh_forwarded",
+      "last_result_status": "refreshed",
+      "preflight_status": null,
+      "failure_reason": "",
+      "missing_requirements": null,
+      "latest_readback_key_values": {
+        "status": "refreshed",
+        "latest_proof_status": "nav2_no_motion_path_generation_runtime_observed",
+        "evidence_ref": "o10-amcl-nav2-runtime-1781180784284",
+        "managed_runtime_started": "true",
+        "initialpose_published": "true",
+        "path_generation_requested": "true",
+        "path_generated": "true",
+        "path_generation_succeeded": "true",
+        "path_point_count": "31",
+        "planner_server_active": "true"
+      },
+      "localization_summary": null,
+      "nav2_path_summary": null
+    },
+    "04_nav_goal_preflight": {
+      "http": "400",
+      "proxy_status": "preflight_rejected",
+      "last_result_status": null,
+      "preflight_status": "preflight_rejected",
+      "failure_reason": "localization_runtime_or_reset_not_observed",
+      "missing_requirements": [
+        "localization_runtime_or_reset_not_observed",
+        "map_to_base_link_tf_not_observed",
+        "operator_report_preflight_required"
+      ],
+      "latest_readback_key_values": null,
+      "localization_summary": {
+        "request_status": "loaded",
+        "status": "blocked_with_root_cause",
+        "localization_reset_observed": false,
+        "nav2_no_motion_localization_runtime_observed": false,
+        "map_to_base_link": false
+      },
+      "nav2_path_summary": {
+        "request_status": "loaded",
+        "status": "not_proven",
+        "path_generated": true,
+        "path_generation_succeeded": true,
+        "path_point_count": 31
+      }
+    }
+  },
+  "after_budget_fix": {
+    "09_localize_reset_after_budget_fix": {
+      "http": "200",
+      "proxy_status": "refresh_forwarded",
+      "last_result_status": "refreshed",
+      "preflight_status": null,
+      "failure_reason": "",
+      "missing_requirements": null,
+      "latest_readback_key_values": {
+        "status": "refreshed",
+        "latest_proof_status": "nav2_no_motion_localization_runtime_observed",
+        "evidence_ref": "o10-amcl-nav2-runtime-1781181108820",
+        "initialpose_published": "true",
+        "amcl_pose_observed": "true",
+        "localization_tf_observed": "[object Object]",
+        "managed_runtime_started": "true",
+        "managed_runtime_cleanup_ok": "true",
+        "localization_reset_observed": "true",
+        "root_causes": ""
+      },
+      "localization_summary": null,
+      "nav2_path_summary": null,
+      "operator_report_missing_fields": null,
+      "hard_dangerous_true_fields": []
+    },
+    "10_nav2_refresh_after_budget_fix": {
+      "http": "200",
+      "proxy_status": "refresh_forwarded",
+      "last_result_status": "refreshed",
+      "preflight_status": null,
+      "failure_reason": "",
+      "missing_requirements": null,
+      "latest_readback_key_values": {
+        "status": "refreshed",
+        "latest_proof_status": "nav2_no_motion_path_generation_runtime_observed",
+        "evidence_ref": "o10-amcl-nav2-runtime-1781181138926",
+        "managed_runtime_started": "true",
+        "initialpose_published": "true",
+        "path_generation_requested": "true",
+        "path_generated": "true",
+        "path_generation_succeeded": "true",
+        "path_point_count": "31",
+        "planner_server_active": "true"
+      },
+      "localization_summary": null,
+      "nav2_path_summary": null,
+      "operator_report_missing_fields": null,
+      "hard_dangerous_true_fields": []
+    },
+    "11_nav_goal_preflight_after_budget_fix": {
+      "http": "400",
+      "proxy_status": "preflight_rejected",
+      "last_result_status": null,
+      "preflight_status": "preflight_rejected",
+      "failure_reason": "operator_report_preflight_required",
+      "missing_requirements": [
+        "operator_report_preflight_required"
+      ],
+      "latest_readback_key_values": null,
+      "localization_summary": {
+        "request_status": "loaded",
+        "status": "localization_reset_observed",
+        "localization_reset_observed": true,
+        "nav2_no_motion_localization_runtime_observed": true,
+        "map_to_base_link": true
+      },
+      "nav2_path_summary": {
+        "request_status": "loaded",
+        "status": "not_proven",
+        "path_generated": true,
+        "path_generation_succeeded": true,
+        "path_point_count": 31
+      },
+      "operator_report_missing_fields": [
+        "external_video_recorded",
+        "visible_content_proven",
+        "wheel_feedback_lr_nonzero_proven",
+        "physical_motion_lidar_delta_proven"
+      ],
+      "hard_dangerous_true_fields": []
+    }
+  },
+  "safety_boundary": {
+    "navigate_to_pose_executed": false,
+    "cmd_vel_published": false,
+    "base_manual_success_path_called": false,
+    "robot_control_executed": false,
+    "safe_to_control": false,
+    "delivery_success": false
+  }
+}
