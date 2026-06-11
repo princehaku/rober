@@ -319,22 +319,39 @@ const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_
 const checklistMissing = computed(() => hilChecklist.value.filter((item) => !item.checked).map((item) => item.label));
 const hilChecklistConfirmed = computed(() => checklistMissing.value.length === 0);
 const canSendStop = computed(() => !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
+function claimWithRefReady(value: string | undefined): boolean {
+  // 现场材料的四类引用型 claim 必须同时满足 true 且带 ref，缺任一条件都按未满足处理。
+  return typeof value === "string" && value.startsWith("true; ref=") && !value.endsWith("not_loaded");
+}
+
+const operatorMaterialMissingFields = computed(() => {
+  // 这里直接输出后端约定字段名，方便现场人员对照材料清单补证据。
+  const summary = robotSummary.value?.operator_hil_material_summary;
+  const checks = [
+    { id: "operator_present", ready: summary?.operator_present === "true" },
+    { id: "physical_clearance_confirmed", ready: summary?.physical_clearance === "true" },
+    { id: "emergency_stop_ready", ready: summary?.emergency_stop === "true" },
+    { id: "external_video_recorded", ready: claimWithRefReady(summary?.external_video) },
+    { id: "visible_content_proven", ready: claimWithRefReady(summary?.camera_visible) },
+    { id: "wheel_feedback_lr_nonzero_proven", ready: claimWithRefReady(summary?.wheel_feedback) },
+    { id: "physical_motion_lidar_delta_proven", ready: claimWithRefReady(summary?.lidar_delta) },
+  ];
+  return checks.filter((item) => !item.ready).map((item) => item.id);
+});
+
+const operatorMaterialReady = computed(() => {
+  // 未加载 summary 时会自然落入缺项列表，因此这里不再额外放宽。
+  return robotSummary.value?.operator_hil_material_summary?.status === "loaded" && operatorMaterialMissingFields.value.length === 0;
+});
+
+const canSendManualMotion = computed(() => {
+  // 非 stop 方向必须同时满足地址、checklist、现场材料和“当前无 pending”。
+  return !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0 && hilChecklistConfirmed.value && operatorMaterialReady.value;
+});
+
 const operatorMaterialGateSummary = computed(() => {
   // 首页只给“现场材料”普通结论；具体字段名和引用全部留在高级诊断。
-  const summary = robotSummary.value?.operator_hil_material_summary;
-  if (!summary || summary.status !== "loaded") {
-    return { state: "未满足", hint: "需要补齐现场材料后，才允许低速点动。" };
-  }
-  const claimWithRefReady = (value: string) => value.startsWith("true; ref=") && !value.endsWith("not_loaded");
-  const ready =
-    summary.operator_present === "true" &&
-    summary.physical_clearance === "true" &&
-    summary.emergency_stop === "true" &&
-    claimWithRefReady(summary.external_video) &&
-    claimWithRefReady(summary.camera_visible) &&
-    claimWithRefReady(summary.wheel_feedback) &&
-    claimWithRefReady(summary.lidar_delta);
-  return ready
+  return operatorMaterialReady.value
     ? { state: "已满足", hint: "现场材料已满足；仍只允许一次低速短时点动。" }
     : { state: "未满足", hint: "需要补齐现场材料后，才允许低速点动。" };
 });
@@ -342,11 +359,14 @@ const manualBlockedReason = computed(() => {
   if (!robotApiBaseUrl.value.trim()) {
     return "先输入小车地址并连接。";
   }
+  if (manualCommandPending.value || loading.value) {
+    return "当前仍有请求处理中；本机不会并发发送点动。";
+  }
   if (!hilChecklistConfirmed.value) {
     return `还缺现场确认：${checklistMissing.value.join("；")}。`;
   }
-  if (operatorMaterialGateSummary.value.state !== "已满足") {
-    return "现场材料未满足；本机不会发送点动。";
+  if (!operatorMaterialReady.value) {
+    return `材料未满足，本机不会发送点动。缺项：${operatorMaterialMissingFields.value.join("、")}。`;
   }
   return "允许发送一次低速短时点动；安全锁定不会解除。";
 });
@@ -356,7 +376,7 @@ const manualMotionSummary = computed(() => {
     return { state: "发送中", hint: "正在发送本次点动或停止请求。" };
   }
   if (!manualCommandResult.value) {
-    return hilChecklistConfirmed.value
+    return canSendManualMotion.value
       ? { state: "可点动", hint: "现场确认已完成，可发送一次低速短时点动。" }
       : { state: "未确认", hint: manualBlockedReason.value };
   }
@@ -1193,7 +1213,7 @@ async function submitOperatorReport(): Promise<void> {
 
 async function sendManualMotion(direction: "forward" | "back" | "left" | "right"): Promise<void> {
   // 非 stop 点动必须通过 checklist gate；即使远端成功，也继续维持 fail-closed UI。
-  if (!hilChecklistConfirmed.value || !robotApiBaseUrl.value.trim() || manualCommandPending.value) {
+  if (!canSendManualMotion.value) {
     return;
   }
   manualCommandPending.value = true;
@@ -2009,13 +2029,13 @@ onBeforeUnmount(() => {
           <h3>现场点动设置 / 控制边界</h3>
           <p class="muted">{{ robotSummary?.safe_command_boundary.locked_reason ?? "locked by V1 boundary" }}</p>
           <div class="motion-pad">
-            <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('forward')">前进</button>
+            <button type="button" :disabled="!canSendManualMotion" @click="sendManualMotion('forward')">前进</button>
             <div class="motion-middle-row">
-              <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('left')">左转</button>
+              <button type="button" :disabled="!canSendManualMotion" @click="sendManualMotion('left')">左转</button>
               <button type="button" class="danger-button" :disabled="!canSendStop" @click="sendStop">停止</button>
-              <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('right')">右转</button>
+              <button type="button" :disabled="!canSendManualMotion" @click="sendManualMotion('right')">右转</button>
             </div>
-            <button type="button" :disabled="manualCommandPending || !hilChecklistConfirmed || !robotApiBaseUrl.trim()" @click="sendManualMotion('back')">后退</button>
+            <button type="button" :disabled="!canSendManualMotion" @click="sendManualMotion('back')">后退</button>
           </div>
           <div class="motion-limits">
             <label>
@@ -2035,10 +2055,17 @@ onBeforeUnmount(() => {
             </label>
           </div>
           <p class="panel-note">{{ manualMotionSummary.hint }}</p>
-          <p class="panel-note">非 stop 方向必须勾完整 checklist；stop 可单独发送。</p>
+          <p v-if="operatorMaterialMissingFields.length" class="panel-note">
+            材料未满足，本机不会发送点动。缺项：{{ operatorMaterialMissingFields.join("、") }}
+          </p>
+          <p class="panel-note">非 stop 方向必须同时满足地址、checklist、现场材料且当前没有 pending；stop 可在材料缺失时单独发送。</p>
           <dl class="kv compact-kv">
             <dt>manual motion entry</dt>
             <dd>{{ robotSummary?.safe_command_boundary.manual_motion_entry_status ?? "not_loaded" }}</dd>
+            <dt>material gate</dt>
+            <dd>{{ operatorMaterialGateSummary.state }} / {{ operatorMaterialGateSummary.hint }}</dd>
+            <dt>material missing fields</dt>
+            <dd>{{ operatorMaterialMissingFields.length ? operatorMaterialMissingFields.join(", ") : "none" }}</dd>
             <dt>operator report preflight</dt>
             <dd>
               {{ manualCommandResult?.operator_report_preflight.status ?? "not_loaded" }} /

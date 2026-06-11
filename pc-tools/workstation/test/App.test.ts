@@ -9,7 +9,7 @@ import { PROOF_FLAGS } from "../src/shared/contracts";
 
 const SPRINT_ARTIFACT_DIR = resolve(
   process.cwd(),
-  "../../sprints/2026.06.11_15-50_pc_camera_frame_quality_indicator/artifacts",
+  "../../sprints/2026.06.11_16-45_pc_manual_motion_readiness_ui/artifacts",
 );
 
 const DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS = [
@@ -2926,14 +2926,24 @@ const fixtures: Record<string, unknown> = {
   },
 };
 
-function stubWorkstationFetch() {
+function cloneFixture<T>(value: T): T {
+  // fixture 需要在单测内局部改写；深拷贝可以避免跨用例串改共享常量。
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
   // 测试桩允许 route debug 带 query，确保表单路径仍走同一个只读 API。
+  const localFixtures = { ...fixtures, ...fixtureOverrides };
   const mockedFetch = vi.fn(async (url: string, options?: RequestInit) => {
     let fixtureKey = url;
     if (url.startsWith("/api/route/debug-summary")) {
       fixtureKey = "/api/route/debug-summary";
     } else if (url.startsWith("/api/robot-control/summary")) {
       fixtureKey = "/api/robot-control/summary";
+    } else if (url.startsWith("/api/robot-control/base/manual")) {
+      fixtureKey = "/api/robot-control/base/manual";
+    } else if (url.startsWith("/api/robot-control/base/stop")) {
+      fixtureKey = "/api/robot-control/base/stop";
     } else if (url.startsWith("/api/robot-control/radar/scan-proof/refresh")) {
       fixtureKey = "/api/robot-control/radar/scan-proof/refresh";
     } else if (url.startsWith("/api/robot-control/radar/start")) {
@@ -3006,7 +3016,7 @@ function stubWorkstationFetch() {
     }
     return {
       ok: true,
-      json: async () => fixtures[fixtureKey],
+      json: async () => localFixtures[fixtureKey],
     };
   });
   vi.stubGlobal("fetch", mockedFetch);
@@ -3287,6 +3297,220 @@ describe("App", () => {
     expect(wrapper.find("details").text()).toContain("phone-video-ui.mp4");
     expect(wrapper.find(".robot-console-grid").text()).not.toContain("delivery_success");
     expect(wrapper.find(".robot-console-grid").text()).not.toContain("外部视频");
+  });
+
+  it("keeps non-stop motion disabled when operator material is incomplete but still allows stop", async () => {
+    // 非 stop 点动必须等 checklist 和现场材料都齐；材料缺项时只能保留 stop 作为 fail-safe。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.external_video = "not_loaded";
+    summaryFixture.operator_hil_material_summary.camera_visible = "not_loaded";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "not_loaded";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "false; ref=runtime/scan_delta/latest_metrics.json";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": {
+        proxy_status: "should_not_be_called",
+      },
+      "/api/robot-control/base/stop": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "stop",
+        proxy_status: "command_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        robot_control_executed: false,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/stop",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        requested_direction: "stop",
+        applied_direction: "stop",
+        requested_speed_mps: 0,
+        clamped_speed_mps: 0,
+        requested_duration_ms: 0,
+        clamped_duration_ms: 0,
+        confirm_hil_checklist: false,
+        non_stop_requires_confirm_hil_checklist: true,
+        hil_checklist_gate_status: "stop_allowed_without_checklist",
+        checklist_missing: [],
+        operator_report_preflight: {
+          status: "not_required_for_stop",
+          source_endpoint: "/api/operator/report",
+          request_status: "not_required",
+          http_status: null,
+          report_status: "not_required_for_stop",
+          evidence_ref: "not_required_for_stop",
+          required_fields: [],
+          missing_fields: [],
+          material_summary: summaryFixture.operator_hil_material_summary,
+          failure_reason: "",
+          hard_dangerous_true_fields: [],
+        },
+        request_contract: {
+          max_speed_mps: 0.12,
+          max_duration_ms: 800,
+          allowed_directions: ["forward", "back", "left", "right", "stop"],
+        },
+        evidence_capture_status: "blocked",
+        evidence_capture_endpoints: [],
+        evidence_capture_blocked_reasons: [],
+        before_readback: {},
+        after_readback: {},
+        motion_evidence_summary: "stop command evidence snapshot blocked in fixture",
+        failure_reason: "",
+        blocked_reasons: [],
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    const checklistInputs = wrapper.findAll(".checklist-box input[type='checkbox']");
+    for (const checkbox of checklistInputs) {
+      await checkbox.setValue(true);
+    }
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const diagnostics = wrapper.find(".robot-console .advanced-details");
+    expect(diagnostics.text()).toContain("材料未满足，本机不会发送点动");
+    expect(diagnostics.text()).toContain("external_video_recorded");
+    expect(diagnostics.text()).toContain("visible_content_proven");
+    expect(diagnostics.text()).toContain("wheel_feedback_lr_nonzero_proven");
+    expect(diagnostics.text()).toContain("physical_motion_lidar_delta_proven");
+
+    const motionButtons = wrapper.findAll(".motion-pad button");
+    const forwardButton = motionButtons.find((button) => button.text() === "前进");
+    const stopButton = motionButtons.find((button) => button.text() === "停止");
+    expect(forwardButton?.attributes("disabled")).toBeDefined();
+    expect(stopButton?.attributes("disabled")).toBeUndefined();
+
+    await forwardButton?.trigger("click");
+    await flushPromises();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+
+    await stopButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const stopCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/base/stop?"));
+    expect(stopCall).toBeTruthy();
+    expect((stopCall?.[1] as RequestInit | undefined)?.method).toBe("POST");
+  });
+
+  it("enables non-stop motion only after complete operator material and still uses the fixed workstation proxy", async () => {
+    // 材料齐全时，前端只放开固定 proxy 点动；普通用户首屏仍不出现工程词。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=runtime/wave_rover_feedback_debug.jsonl";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=runtime/scan_delta/latest_metrics.json";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        robot_control_executed: false,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/manual",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        requested_direction: "forward",
+        applied_direction: "forward",
+        requested_speed_mps: 0.08,
+        clamped_speed_mps: 0.08,
+        requested_duration_ms: 500,
+        clamped_duration_ms: 500,
+        confirm_hil_checklist: true,
+        non_stop_requires_confirm_hil_checklist: true,
+        hil_checklist_gate_status: "manual_allowed",
+        checklist_missing: [],
+        operator_report_preflight: {
+          status: "loaded",
+          source_endpoint: "/api/operator/report",
+          request_status: "loaded",
+          http_status: 200,
+          report_status: "ready_for_execution",
+          evidence_ref: "field-hil-20260611-0605-op",
+          required_fields: [],
+          missing_fields: [],
+          material_summary: summaryFixture.operator_hil_material_summary,
+          failure_reason: "",
+          hard_dangerous_true_fields: [],
+        },
+        request_contract: {
+          max_speed_mps: 0.12,
+          max_duration_ms: 800,
+          allowed_directions: ["forward", "back", "left", "right", "stop"],
+        },
+        evidence_capture_status: "captured",
+        evidence_capture_endpoints: [],
+        evidence_capture_blocked_reasons: [],
+        before_readback: {},
+        after_readback: {},
+        motion_evidence_summary: "manual command evidence captured in fixture",
+        failure_reason: "",
+        blocked_reasons: [],
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    const checklistInputs = wrapper.findAll(".checklist-box input[type='checkbox']");
+    for (const checkbox of checklistInputs) {
+      await checkbox.setValue(true);
+    }
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const forwardButton = wrapper.findAll(".motion-pad button").find((button) => button.text() === "前进");
+    expect(forwardButton?.attributes("disabled")).toBeUndefined();
+    expect(wrapper.find(".robot-console .advanced-details").text().replace(/\s+/g, "")).toContain("materialmissingfieldsnone");
+
+    await forwardButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const manualCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/base/manual?"));
+    expect(manualCall).toBeTruthy();
+    const [manualUrl, manualOptions] = manualCall ?? ["", {} as RequestInit];
+    const parsed = new URL(String(manualUrl), "http://workstation.local");
+    const manualBody = JSON.parse(String((manualOptions as RequestInit).body ?? "{}")) as Record<string, unknown>;
+    expect(parsed.searchParams.get("baseUrl")).toBe("http://192.168.1.11:8787");
+    expect((manualOptions as RequestInit).method).toBe("POST");
+    expect(manualBody).toEqual(expect.objectContaining({
+      direction: "forward",
+      confirm_hil_checklist: true,
+    }));
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("NavigateToPose"))).toBe(false);
+
+    const firstScreenText = visiblePlainHomeText(wrapper);
+    for (const token of DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS) {
+      expect(firstScreenText).not.toContain(token);
+    }
+    expect(firstScreenText).not.toContain("HIL");
+    expect(firstScreenText).not.toContain("proof");
+    expect(firstScreenText).not.toContain("cmd_vel");
+    expect(firstScreenText).not.toContain("base_manual");
+    expect(firstScreenText).not.toContain("task_id");
   });
 
   it("refreshes radar and map proof through fixed POST proxies and auto refreshes the summary", async () => {
