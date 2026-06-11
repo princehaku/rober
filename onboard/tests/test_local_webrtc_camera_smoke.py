@@ -140,6 +140,49 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertIn("--list-formats-ext", flattened)
         self.assertNotIn("--set-ctrl", flattened)
 
+    def test_uvc_capture_with_metadata_capability_still_counts_as_video(self) -> None:
+        """DV20 这类 UVC 复合设备会列出 metadata capability，但 /dev/video1 仍是图像节点。"""
+
+        def fake_command(args: list[str], timeout_s: float = 0.0) -> dict[str, object]:
+            if "--all" in args:
+                return {
+                    "available": True,
+                    "stdout": "\n".join(
+                        [
+                            "Driver name      : uvcvideo",
+                            "Card type        : USB Composite Device: DV20 USB",
+                            "Capabilities     : Video Capture Metadata Capture Streaming",
+                            "Device Caps      : Video Capture Streaming",
+                            "Format Video Capture:",
+                            "Pixel Format      : 'YUYV' (YUYV 4:2:2)",
+                        ]
+                    ),
+                    "stderr": "",
+                    "returncode": 0,
+                }
+            return {
+                "available": True,
+                "stdout": "\n".join(
+                    [
+                        "ioctl: VIDIOC_ENUM_FMT",
+                        "Type: Video Capture",
+                        "[0]: 'MJPG' (Motion-JPEG, compressed)",
+                        "[1]: 'YUYV' (YUYV 4:2:2)",
+                    ]
+                ),
+                "stderr": "",
+                "returncode": 0,
+            }
+
+        with mock.patch.object(camera.os.path, "exists", return_value=True):
+            with mock.patch.object(camera, "run_readonly_command", side_effect=fake_command):
+                with mock.patch.object(camera, "read_sysfs_video_name", return_value="USB Composite Device: DV20 USB"):
+                    candidate = camera.build_device_candidate("/dev/video1", "USB Composite Device: DV20 USB")
+
+        self.assertTrue(candidate["is_video_capture"])
+        self.assertFalse(candidate["is_metadata"])
+        self.assertTrue(candidate["is_uvc_or_usb"])
+
     def test_devices_success_schema_uses_historical_contract(self) -> None:
         """`/devices` 成功响应保持历史 schema，不从 health schema 派生。"""
         state = camera.CameraServiceState(video_source="auto", width=640, height=480, fps=15)

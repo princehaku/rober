@@ -1,0 +1,5 @@
+12ae0bf6798f08991ac7daa587c181c84af6bbf8436bc80d0c8dbe4ba72d6611  /root/rober/onboard/scripts/local_webrtc_camera_smoke.py
+active
+active
+ 287939 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12
+ 291464 python3 /root/rober/onboard/scripts/local_webrtc_camera_smoke.py --host 0.0.0.0 --port 8088 --video-source auto --width 640 --height 480 --fps 15

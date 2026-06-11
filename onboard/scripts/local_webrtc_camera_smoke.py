@@ -338,8 +338,21 @@ def build_device_candidate(path: str, v4l2_name: str | None = None) -> dict[str,
         text_parts.append(str(all_result.get("stderr") or ""))
     if formats_result.get("available"):
         text_parts.append(str(formats_result.get("stdout") or ""))
+    all_stdout = str(all_result.get("stdout") or "") if all_result.get("available") else ""
+    formats_stdout = str(formats_result.get("stdout") or "") if formats_result.get("available") else ""
     combined_text = "\n".join(text_parts)
     lower_text = combined_text.lower()
+    formats_lower = formats_stdout.lower()
+    # UVC 复合设备的全局 Capabilities 可能同时包含 Metadata Capture；真正要看
+    # 当前节点是否暴露图像帧格式。`/dev/video1` 有 Format Video Capture/MJPG/YUYV，
+    # `/dev/video2` 只有 Format Metadata Capture，不能简单按 metadata 字样一刀切。
+    has_frame_format = (
+        "format video capture" in lower_text
+        or "'mjpg'" in formats_lower
+        or "'yuyv'" in formats_lower
+        or "motion-jpeg" in formats_lower
+    )
+    is_metadata_only = "format metadata capture" in lower_text and not has_frame_format
     return {
         "path": path,
         "exists": os.path.exists(path),
@@ -348,8 +361,8 @@ def build_device_candidate(path: str, v4l2_name: str | None = None) -> dict[str,
         "sysfs_name": sysfs_name,
         "capability_text_available": bool(all_result.get("available")),
         "formats_text_available": bool(formats_result.get("available")),
-        "is_video_capture": "video capture" in lower_text and "metadata capture" not in lower_text,
-        "is_metadata": "metadata capture" in lower_text or "metadata" in lower_text,
+        "is_video_capture": "video capture" in lower_text and has_frame_format,
+        "is_metadata": is_metadata_only,
         "is_decoder": "cedrus" in lower_text or "decoder" in lower_text or "mem2mem" in lower_text,
         "is_uvc_or_usb": "uvc" in lower_text or "usb" in lower_text,
         "readonly_probe": {

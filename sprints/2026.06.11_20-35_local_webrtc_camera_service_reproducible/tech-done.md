@@ -159,7 +159,9 @@ curl http://127.0.0.1:<temp>/devices
   `VideoCapture`，成功 schema 对齐历史 `trashbot.local_webrtc_camera_close.v1`，
   并在 health 的 `media_diagnostics.last_closed_peer` 中回读。
 - 新增 `onboard/tests/test_local_webrtc_camera_smoke.py`，覆盖 auto 选源、
-  显式源、invalid offer、缺依赖 fail-closed、只读 devices 命令和 health 字段。
+  显式源、invalid offer、缺依赖 fail-closed、只读 devices 命令、health 字段，
+  以及 DV20 这类 UVC 复合设备同时暴露 `Video Capture`/`Metadata Capture`
+  capability 时仍应把 `/dev/video1` 识别为图像采集节点。
 - 同步更新：
   - `docs/vision/board_camera_publisher.md`
   - `docs/product/pc_tools_workstation.md`
@@ -168,9 +170,9 @@ curl http://127.0.0.1:<temp>/devices
 
 ```text
 $ python3 -m unittest discover onboard/tests -p '*camera*'
-.........
+..........
 ----------------------------------------------------------------------
-Ran 9 tests in 0.031s
+Ran 10 tests in 0.031s
 
 OK
 ```

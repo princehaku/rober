@@ -257,6 +257,41 @@ PC/WebRTC offer self-test，原因是 direct frame 尚不可用，继续验证�
 不再自动切换。该入仓动作只让服务可复现、可测试、可诊断；它没有解决
 `/dev/video1` 当前 direct `first-frame timeout`，也不证明 PC 可见内容已恢复。
 
+## 2026-06-11 20:55 local WebRTC camera service 上板部署
+
+`sprints/2026.06.11_20-55_camera_service_board_deploy/` 已把仓库内
+`onboard/scripts/local_webrtc_camera_smoke.py` 部署到真实上位机
+`root@192.168.1.11:37878`，并重启 `trashbot-local-webrtc-camera.service`。
+
+部署过程中真实板端暴露了一个 auto 选源兼容问题：DV20 `/dev/video1` 的全局
+Capabilities 同时包含 `Video Capture` 与 `Metadata Capture`，但它的 `Device Caps`
+与格式表实际是图像采集。代码已改为以 `Format Video Capture`、`MJPG`、`YUYV`
+等真实图像帧格式作为图像节点判据，避免把 `/dev/video1` 误判为 metadata。
+
+修复后，直接 8088 与经 8787 Robot API 代理读回一致：
+
+- `/health`：`schema=trashbot.local_webrtc_camera_smoke.v1`，
+  `status=ready`，`video_source=/dev/video1`，`video_source_mode=auto`，
+  `active_peer_count=0`，`safe_to_control=false`，`robot_control_executed=false`。
+- `/devices`：`schema=trashbot.local_webrtc_camera_devices.v1`，
+  `status=loaded`，`paths=["/dev/video0","/dev/video1","/dev/video2"]`。
+- auto 选择分数：`/dev/video0=-895` 且 `is_decoder=true`，
+  `/dev/video1=148` 且 `is_video_capture=true`，
+  `/dev/video2=-1055` 且 `is_metadata=true`。
+
+真实 `aiortc` recvonly offer smoke 仍返回 fail-closed：
+
+- `offer_http_status=503`
+- `offer_error=first_frame_unreadable`
+- `offer_failure_reason=first_frame_timeout`
+- `offer_video_source=/dev/video1`
+- `peer_id=None`
+- offer 后 `/health.active_peer_count=0`
+
+因此当前结论更新为：camera service 已由仓库版本在真实上位机复现，并能稳定识别
+`/dev/video1`；但 `/dev/video1` 首帧仍不可读。PC 实时图传可见内容仍未恢复，
+下一步必须做 DV20 输入源/线缆/供电/采集卡状态检查或 known-good USB UVC 替换验证。
+
 ## 本地资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`
