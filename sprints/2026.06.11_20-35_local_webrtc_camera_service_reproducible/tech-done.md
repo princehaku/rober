@@ -132,21 +132,78 @@ curl http://127.0.0.1:<temp>/devices
 
 ## 本轮实际结果
 
-- 主节点完成只读排查和功能设计。
-- 尝试派发 `robot-software-engineer` 子 agent 执行实现，但当前 Codex 子 agent
-  运行时返回：
+- 新增 `onboard/scripts/local_webrtc_camera_smoke.py`，把 8088 LAN-only camera
+  WebRTC 服务正规化进仓库。服务兼容：
+  - `GET /health`
+  - `GET /devices`
+  - `POST /offer`
+  - `POST /peers/{peer_id}/close`
+- `/health` 现在输出 `schema`、`app`、`status`、`video_source`、
+  `video_source_mode`、`active_peer_count`、`active_frames_read`、
+  `active_camera_read_failures`、`system_diagnostics`、`media_diagnostics`、
+  `source_candidates_summary`、`current_selection` 和 last offer/last closed peer
+  摘要；安全字段固定 `safe_to_control=false`、`robot_control_executed=false`、
+  `delivery_success=false`、`primary_actions_enabled=false`。
+- `/devices` 只读枚举 `/dev/video*`、`v4l2-ctl --list-devices`、`--all` 和
+  `--list-formats-ext`，成功 schema 对齐历史
+  `trashbot.local_webrtc_camera_devices.v1`，并显式返回 `writes_controls=false`、
+  `opens_serial=false`、`sends_motion_commands=false`。
+- `--video-source auto` 用只读能力摘要跳过 Cedrus decoder、metadata 和非
+  `Video Capture` 节点，优先 UVC/USB capture；按当前实板事实应选择
+  `/dev/video1`。显式指定源时保持 `mode=explicit` 并尊重传入路径。
+- `POST /offer` 成功 schema 对齐历史 `trashbot.local_webrtc_camera_offer.v1`。
+  在 invalid offer、缺 `aiortc/cv2/av`、auto 无采集源、OpenCV 打不开设备或
+  首帧不可读时结构化 fail-closed，不生成黑帧或 placeholder。读到真实首帧后
+  才创建 `RTCPeerConnection` 和 video answer。
+- `POST /peers/{peer_id}/close` 关闭 peer connection、停止 track、释放
+  `VideoCapture`，成功 schema 对齐历史 `trashbot.local_webrtc_camera_close.v1`，
+  并在 health 的 `media_diagnostics.last_closed_peer` 中回读。
+- 新增 `onboard/tests/test_local_webrtc_camera_smoke.py`，覆盖 auto 选源、
+  显式源、invalid offer、缺依赖 fail-closed、只读 devices 命令和 health 字段。
+- 同步更新：
+  - `docs/vision/board_camera_publisher.md`
+  - `docs/product/pc_tools_workstation.md`
+
+## 验证结果
 
 ```text
-spawn_agent could not resolve the child model for service tier validation
+$ python3 -m unittest discover onboard/tests -p '*camera*'
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 0.031s
+
+OK
 ```
 
-- 因项目 `AGENTS.md` 明确要求主节点不得直接写产品代码、测试代码或运行实现/测试/修复命令，
-  本轮没有新增 `local_webrtc_camera_smoke.py`，也没有修改 PC/上位机产品代码。
+```text
+$ python3 -m py_compile onboard/scripts/local_webrtc_camera_smoke.py
+# pass
+```
+
+```text
+$ git diff --check
+# pass
+```
+
+no-hardware local smoke：
+
+```text
+GET /health  -> HTTP 200, schema=trashbot.local_webrtc_camera_smoke.v1,
+                status=no_video_source, video_source=auto,
+                video_source_mode=auto, safe_to_control=false
+GET /devices -> HTTP 200, schema=trashbot.local_webrtc_camera_devices.v1,
+                status=loaded, candidate_count=0, safe_to_control=false
+```
+
+本机没有 `/dev/video*` 和 WebRTC 依赖，因此 no-hardware smoke 只证明
+health/devices 可复现、只读和安全字段关闭；没有尝试 `/offer` 真实媒体建链。
 
 ## 剩余风险
 
-- 当前真实相机 `first-frame timeout` 未解决；本设计只能让 camera service 从运行态文件
-  收敛为仓库内可复现、可测试、可演进的服务。
+- 当前真实相机 `/dev/video1` `first-frame timeout` 未解决；本轮只让 camera
+  service 从运行态文件收敛为仓库内可复现、可测试、可诊断的服务。
 - 未恢复 direct frame 前，PC 页面不能证明实时图传可见内容；运动 HIL gate 仍缺
   `visible_content_proven=true`、外部视频、轮速非零和 LiDAR motion delta。
-- 子 agent 运行时故障需要恢复后，才能按项目纪律进入代码实现。
+- 本机缺少真实 `/dev/video1`、`aiortc`、`cv2` 和 `av`，未执行真实 `/offer`
+  媒体 answer smoke；真实板端仍需部署后用 `/dev/video1` 重跑 offer/close 和
+  first-frame 诊断。

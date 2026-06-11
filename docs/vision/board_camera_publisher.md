@@ -227,6 +227,36 @@ PC/WebRTC offer self-test，原因是 direct frame 尚不可用，继续验证�
 全部保持。下一步应转现场硬件动作：检查 DV20 输入源/镜头盖/保护膜/遮挡/朝向/补光，
 并用 known-good UVC USB 摄像头替换验证。
 
+## 2026-06-11 19:14 local WebRTC camera service 入仓
+
+本轮把真实板端正在运行的 8088 camera WebRTC 服务正规化为仓库脚本
+`onboard/scripts/local_webrtc_camera_smoke.py`。服务提供：
+
+- `GET /health`：返回 `schema=trashbot.local_webrtc_camera_smoke.v1`、`app`、
+  `status`、`video_source`、`video_source_mode`、active peer/frame/failure 计数、
+  `system_diagnostics`、`media_diagnostics`、`source_candidates_summary` 和
+  `current_selection`；安全字段固定 `safe_to_control=false`、
+  `robot_control_executed=false`、`delivery_success=false`、
+  `primary_actions_enabled=false`。
+- `GET /devices`：成功 schema 保持历史兼容
+  `trashbot.local_webrtc_camera_devices.v1`；只读枚举 `/dev/video*`、
+  `v4l2-ctl --list-devices`、`--all` 和 `--list-formats-ext`，不写 V4L2
+  controls，不打开底盘串口。
+- `POST /offer`：成功 schema 保持历史兼容
+  `trashbot.local_webrtc_camera_offer.v1`；校验 `type=offer` 和非空 SDP 后，只有在 `aiortc/cv2/av`
+  存在且 OpenCV 从真实源读到首帧时才创建 WebRTC answer；依赖缺失、
+  invalid offer 或首帧不可读均结构化 fail-closed，不生成黑帧或 placeholder。
+- `POST /peers/{peer_id}/close`：成功 schema 保持历史兼容
+  `trashbot.local_webrtc_camera_close.v1`；释放 `RTCPeerConnection`、track 和
+  `VideoCapture`，并在 `/health.media_diagnostics.last_closed_peer` 回读 close
+  摘要。
+
+`--video-source auto` 只用只读设备能力做选择：跳过 Cedrus decoder、metadata
+节点和非 `Video Capture` 候选，优先 UVC/USB capture。按当前实板事实，auto 应选择
+`/dev/video1`；如果现场显式传 `--video-source /dev/videoX`，服务会尊重显式源，
+不再自动切换。该入仓动作只让服务可复现、可测试、可诊断；它没有解决
+`/dev/video1` 当前 direct `first-frame timeout`，也不证明 PC 可见内容已恢复。
+
 ## 本地资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`
