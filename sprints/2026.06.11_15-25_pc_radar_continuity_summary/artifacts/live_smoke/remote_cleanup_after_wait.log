@@ -1,0 +1,4 @@
+== ttyS5 lsof ==
+== ttyS5 fuser ==
+== radar helpers ==
+root      269767       1  0 15:33 ?        00:00:00 /opt/ros/humble/lib/tf2_ros/static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id laser_frame

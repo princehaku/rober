@@ -9,7 +9,7 @@ import { PROOF_FLAGS } from "../src/shared/contracts";
 
 const SPRINT_ARTIFACT_DIR = resolve(
   process.cwd(),
-  "../../sprints/2026.06.11_11-25_pc_nav2_proof_30s_budget/artifacts",
+  "../../sprints/2026.06.11_15-25_pc_radar_continuity_summary/artifacts",
 );
 
 const DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS = [
@@ -387,6 +387,12 @@ const fixtures: Record<string, unknown> = {
         status: "radar_status_not_proven",
         latest_scan_proof_status: "scan_once_observed",
         latest_raw_packet_proof_status: "raw_packet_not_proven",
+        continuous_scan_status: "latest_proof_fresh_while_lifecycle_running",
+        lifecycle_running: "true",
+        lifecycle_state: "running",
+        continuous_window_observed: "true",
+        continuity_window_status: "fresh_window_observed",
+        latest_scan_proof_fresh: "true",
       },
       base: {
         status: "base_status_not_proven",
@@ -517,6 +523,12 @@ const fixtures: Record<string, unknown> = {
         scan_hz_observed: "10",
         raw_packet_once_observed: "true",
         tf_observed: "true",
+        continuous_scan_status: "latest_proof_fresh_while_lifecycle_running",
+        lifecycle_running: "true",
+        lifecycle_state: "running",
+        continuous_window_observed: "true",
+        continuity_window_status: "fresh_window_observed",
+        latest_scan_proof_fresh: "true",
       },
       failure_reason: "",
       blocked_reasons: [],
@@ -3106,6 +3118,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("小车连接");
     expect(firstScreenText).toContain("实时画面");
     expect(firstScreenText).toContain("雷达");
+    expect(firstScreenText).toContain("雷达已运行");
     expect(firstScreenText).toContain("地图");
     expect(firstScreenText).toContain("移动/导航");
     expect(firstScreenText).toContain("未连接");
@@ -3206,6 +3219,9 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("确认仅做导航目标预检");
     expect(diagnostics.text()).toContain("启动雷达（高级）");
     expect(diagnostics.text()).toContain("停止雷达（高级）");
+    expect(diagnostics.text()).toContain("latest_proof_fresh_while_lifecycle_running");
+    expect(diagnostics.text()).toContain("lifecycle=true/running");
+    expect(diagnostics.text()).toContain("window=true/fresh_window_observed");
     expect(diagnostics.text()).toContain("前进");
     expect(diagnostics.text()).toContain("速度上限");
     expect(diagnostics.text()).toContain("现场有人扶控并准备急停");
@@ -3278,6 +3294,7 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("保存地图");
     expect(firstScreenText).not.toContain("启动雷达");
     expect(firstScreenText).not.toContain("停止雷达");
+    expect(firstScreenText).toContain("雷达已运行");
     expect(firstScreenText).toContain("未刷新");
     expect(firstScreenText).toContain("未读取");
     for (const token of DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS) {
@@ -3301,12 +3318,15 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(visiblePlainHomeText(wrapper)).toContain("已刷新");
+    expect(visiblePlainHomeText(wrapper)).toContain("雷达已运行");
     expect(visiblePlainHomeText(wrapper)).not.toContain("scan 可见");
     expect(visiblePlainHomeText(wrapper)).not.toContain("tf 可见");
     expect(wrapper.find("details").text()).toContain("scan_once_observed");
     expect(wrapper.find("details").text()).toContain("scan_hz_observed");
     expect(wrapper.find("details").text()).toContain("tf_observed");
+    expect(wrapper.find("details").text()).toContain("continuous_scan_status");
+    expect(wrapper.find("details").text()).toContain("lifecycle_running");
+    expect(wrapper.find("details").text()).toContain("continuous_window_observed");
     expect(wrapper.find("details").text()).toContain("non-motion evidence actions");
     expect(wrapper.find("details").text()).toContain("sends_commands");
     expect(wrapper.find("details").text()).toContain("starts_ros2");

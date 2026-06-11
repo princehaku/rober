@@ -1,0 +1,67 @@
+{
+  "pc_start": {
+    "proxy_status": "lifecycle_forwarded",
+    "remote_http_status": 200
+  },
+  "direct_upper_refresh": {
+    "status": "refreshed",
+    "latest_proof_status": null,
+    "evidence_ref": "o1-lidar-scan-proof-1781163720952",
+    "scan_once_observed": null,
+    "scan_hz_observed": null,
+    "raw_packet_once_observed": null,
+    "tf_observed": null,
+    "continuous_scan_status": null,
+    "continuous_window_observed": null,
+    "continuity_window_status": null,
+    "lifecycle_running": null,
+    "lifecycle_state": null,
+    "latest_scan_proof_fresh": null,
+    "continuity_blocked_reasons": null,
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "robot_control_executed": false
+  },
+  "pc_summary_lidar": {
+    "status": "scan_once_hz_raw_packet_tf_observed",
+    "latest_scan_proof_status": "loaded",
+    "latest_raw_packet_proof_status": "loaded",
+    "continuous_scan_status": "latest_proof_fresh_while_lifecycle_running",
+    "lifecycle_running": "true",
+    "lifecycle_state": "running",
+    "continuous_window_observed": "true",
+    "continuity_window_status": "latest_proof_fresh_while_lifecycle_running",
+    "latest_scan_proof_fresh": "true"
+  },
+  "pc_summary_top_level": {
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "robot_control_executed": null
+  },
+  "pc_summary_robot_api_connection": {
+    "status": "blocked",
+    "loaded_count": 10,
+    "blocked_count": 1,
+    "failed_count": 2,
+    "schema_mismatch_count": 4,
+    "dangerous_true_fields": [
+      "status.base.feedback_readback.sends_commands",
+      "status.base.sends_commands"
+    ],
+    "blocked_reasons": [
+      "status:dangerous_true_field:base.feedback_readback.sends_commands",
+      "status:dangerous_true_field:base.sends_commands",
+      "base_status:response_json_parse_failed",
+      "base_feedback_samples_latest:fetch_timeout_1500ms",
+      "dangerous_true_field:status.base.feedback_readback.sends_commands",
+      "dangerous_true_field:status.base.sends_commands"
+    ],
+    "last_refresh_ms": 1781163739995
+  },
+  "pc_stop": {
+    "proxy_status": "lifecycle_forwarded",
+    "remote_http_status": 200
+  }
+}

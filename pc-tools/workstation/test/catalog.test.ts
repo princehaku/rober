@@ -4000,7 +4000,14 @@ describe("workstation fail-closed API contracts", () => {
       "/api/radar/status": {
         payload: {
           schema: "trashbot.upper_robot_api.v1.radar_status",
-          status: "fresh_scan_proof_observed",
+          status: "latest_proof_fresh_while_lifecycle_running",
+          continuous_scan_status: "latest_proof_fresh_while_lifecycle_running",
+          continuous_window_observed: true,
+          continuity_window_status: "fresh_window_observed",
+          continuity_blocked_reasons: [],
+          lifecycle_running: true,
+          lifecycle_state: "running",
+          latest_scan_proof_fresh: true,
           evidence_ref: "radar-proof",
           safe_to_control: false,
           delivery_success: false,
@@ -4065,6 +4072,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.robot_api_connection.blocked_count).toBeGreaterThanOrEqual(4);
       expect(summary.readback_summary.camera.status).toBe("ready");
       expect(summary.readback_summary.camera.devices_status).toBe("devices_ready");
+      expect(summary.readback_summary.lidar.status).toBe("latest_proof_fresh_while_lifecycle_running");
+      expect(summary.readback_summary.lidar.continuous_scan_status).toBe("latest_proof_fresh_while_lifecycle_running");
+      expect(summary.readback_summary.lidar.lifecycle_running).toBe("true");
+      expect(summary.readback_summary.lidar.lifecycle_state).toBe("running");
+      expect(summary.readback_summary.lidar.continuous_window_observed).toBe("true");
+      expect(summary.readback_summary.lidar.continuity_window_status).toBe("fresh_window_observed");
+      expect(summary.readback_summary.lidar.latest_scan_proof_fresh).toBe("true");
       expect(summary.o3_proof_summary.path_generated).toBe(true);
     } finally {
       await robotApi.close();
@@ -4098,6 +4112,13 @@ describe("workstation fail-closed API contracts", () => {
             radar_status: {
               status: "loaded",
               payload: {
+                continuous_scan_status: "latest_proof_fresh_while_lifecycle_running",
+                continuous_window_observed: true,
+                continuity_window_status: "fresh_window_observed",
+                continuity_blocked_reasons: [],
+                lifecycle_running: true,
+                lifecycle_state: "running",
+                latest_scan_proof_fresh: true,
                 latest_scan_proof_state: "scan_once_hz_raw_packet_tf_observed",
                 latest_scan_proof_blocked_reasons: [],
                 latest_scan_proof: {
@@ -4180,7 +4201,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(radarBody.latest_readback_key_values.raw_packet_once_observed).toBe("true");
       expect(radarBody.latest_readback_key_values.tf_observed).toBe("true");
       expect(radarBody.latest_readback_key_values.latest_proof_status).toBe("scan_once_hz_raw_packet_tf_observed");
+      expect(radarBody.latest_readback_key_values.continuous_scan_status).toBe("latest_proof_fresh_while_lifecycle_running");
+      expect(radarBody.latest_readback_key_values.lifecycle_running).toBe("true");
+      expect(radarBody.latest_readback_key_values.lifecycle_state).toBe("running");
+      expect(radarBody.latest_readback_key_values.continuous_window_observed).toBe("true");
+      expect(radarBody.latest_readback_key_values.continuity_window_status).toBe("fresh_window_observed");
+      expect(radarBody.latest_readback_key_values.latest_scan_proof_fresh).toBe("true");
       expect(radarBody.latest_readback_key_values.blocked_reasons).toBeUndefined();
+      expect(radarBody.latest_readback_key_values.continuity_blocked_reasons).toBeUndefined();
       expect(upstream.receivedBodies["/api/radar/scan-proof/refresh"]?.[0]).toEqual({
         timeout_s: 20,
         runtime_warmup_s: 15,

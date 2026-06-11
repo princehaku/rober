@@ -1,0 +1,10 @@
+== ttyS5 lsof ==
+== ttyS5 fuser ==
+== radar helpers ==
+root      269762  269719  0 15:33 ?        00:00:00 timeout 60 ros2 run tf2_ros static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id laser_frame
+root      269763  269719  0 15:33 ?        00:00:00 timeout 60 ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p publish_raw_packets:=true
+root      269765  269762  2 15:33 ?        00:00:01 /usr/bin/python3 /opt/ros/humble/bin/ros2 run tf2_ros static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id laser_frame
+root      269766  269763  2 15:33 ?        00:00:01 /usr/bin/python3 /opt/ros/humble/bin/ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p publish_raw_packets:=true
+root      269767       1  0 15:33 ?        00:00:00 /opt/ros/humble/lib/tf2_ros/static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id laser_frame
+root      269779  269766 13 15:33 ?        00:00:05 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p publish_raw_packets:=true
+root      269780  269765  0 15:33 ?        00:00:00 /opt/ros/humble/lib/tf2_ros/static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id base_link --child-frame-id laser_frame

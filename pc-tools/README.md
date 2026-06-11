@@ -37,6 +37,15 @@ running + fresh proof”，避免 UI 再误报“雷达根本没跑起来”。�
 不是运动许可；`safe_to_control=false`、`primary_actions_enabled=false`、
 `robot_control_executed=false`、`delivery_success=false` 保持不变。
 
+2026-06-11 15:25 起，workstation 也真正消费了这组字段：`robotControlSummary.ts`
+会把 `continuous_scan_status`、`lifecycle_running`、`lifecycle_state`、
+`continuous_window_observed`、`continuity_window_status`、`latest_scan_proof_fresh`
+压到 `readback_summary.lidar` 和 radar refresh `latest_readback_key_values`。
+普通用户首屏雷达卡只显示 `雷达已运行 / 雷达未运行 / 刷新中 / 刷新失败`，不会把
+`proof`、`HIL`、`Nav2`、`/cmd_vel`、`/api/base/manual`、`task_id`、`Mock`、
+`启动雷达`、`停止雷达` 放回默认可见首屏；完整 continuity/lifecycle 细节继续留在
+默认关闭的 `高级诊断`。
+
 Robot Control 也已经接入 Radar/Map proof refresh V2。Vue 通过 workstation Node 固定 POST 代理调用 `POST /api/robot-control/radar/scan-proof/refresh?baseUrl=<robot-api-base-url>` 和 `POST /api/robot-control/map/proof/refresh?baseUrl=<robot-api-base-url>`，上位机 body 分别固定为 `{ timeout_s: 20, runtime_warmup_s: 15, start_runtime: true }` 与 `{ timeout_s: 45 }`。Radar body 使用更长的真实冷启动 no-motion 证据窗口，给 LiDAR driver、raw packet、scan hz 和 TF 同时稳定的时间；这不开放浏览器自定义参数，也不改变 vendor/hardware facts。这两个动作只刷新 no-motion 证据窗，允许出现 `sends_commands=true`、`starts_ros2=true` 这类证据级 helper 行为，但首屏只显示“刷新雷达/刷新地图”、一个短状态和 `scan/tf` 或 `map/evidence` 的人话摘要；`latest_readback_key_values`、`non_motion_evidence_actions`、`hard_dangerous_true_fields`、`last refreshed time` 和 blocked reasons 都收进高级诊断区。它仍然不会打开 `/cmd_vel`、`/api/base/manual`、Radar start、Map start、Nav2 goal、keyboard control 或 map click goal；动作结束后会自动回刷 Robot Control summary。只有 `safe_to_control=true`、`delivery_success=true`、`primary_actions_enabled=true`、`robot_control_executed=true`、`command_dispatch_enabled=true`、`manual_control_enabled=true`、`navigate_goal_enabled=true`、`keyboard_control_enabled=true`、`sends_motion_commands=true`、`publishes_cmd_vel=true`、`calls_base_manual=true`、`opens_base_uart=true`、`uses_base_uart=true`、`hil_pass=true` 等硬危险 true 字段才会 fail closed。
 
 2026-06-11 12:45 clean-baseline refresh 继续只通过本机 PC proxy `http://127.0.0.1:18788`

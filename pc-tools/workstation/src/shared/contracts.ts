@@ -2181,6 +2181,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       status: string;
       latest_scan_proof_status: string;
       latest_raw_packet_proof_status: string;
+      continuous_scan_status: string;
+      lifecycle_running: string;
+      lifecycle_state: string;
+      continuous_window_observed: string;
+      continuity_window_status: string;
+      latest_scan_proof_fresh: string;
     };
     base: {
       status: string;

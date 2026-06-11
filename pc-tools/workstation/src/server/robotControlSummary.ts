@@ -95,7 +95,14 @@ const RADAR_SCAN_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
     "scan_hz_observed",
     "raw_packet_once_observed",
     "tf_observed",
+    "continuous_scan_status",
+    "continuous_window_observed",
+    "continuity_window_status",
+    "lifecycle_running",
+    "lifecycle_state",
+    "latest_scan_proof_fresh",
     "blocked_reasons",
+    "continuity_blocked_reasons",
   ],
 };
 
@@ -343,6 +350,12 @@ const STATUS_KEYS = [
   "feedback_ack_status",
   "latest_t1001_observed_count",
   "latest_scan_once_observed",
+  "continuous_scan_status",
+  "continuous_window_observed",
+  "continuity_window_status",
+  "lifecycle_running",
+  "lifecycle_state",
+  "latest_scan_proof_fresh",
 ] as const;
 
 function asRecord(value: unknown): JsonRecord | null {
@@ -674,6 +687,12 @@ function compactKeyValues(payload: JsonRecord | null, keys: readonly string[] = 
   return Object.fromEntries(entries);
 }
 
+function summaryValueText(payload: JsonRecord | null, keys: string[], fallback = "not_loaded"): string {
+  // summary 既要保留字符串状态，也要保留布尔 continuity/lifecycle 结论，因此统一转成短文本。
+  const found = findFirstKey(payload, keys);
+  return found === undefined ? fallback : String(found).slice(0, 120);
+}
+
 function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord | null {
   // 上位机 refresh 回包可能同时包含本轮 collector 直接结果和随后读取的 radar status；
   // PC 控制台必须只用最终 scan proof readback 做摘要，避免递归搜索再次捡到旧 collector 字段。
@@ -719,13 +738,44 @@ function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord |
     latestScanProof?.tf_observed,
     scanProofLatest?.latest_tf_observed,
   ]);
+  // refresh 成功后优先消费最终 radar_status continuity/lifecycle 结论，避免旧 collector blocker 覆盖最终状态。
+  assignFirst("continuous_scan_status", [radarStatus.continuous_scan_status]);
+  assignFirst("continuous_window_observed", [radarStatus.continuous_window_observed]);
+  assignFirst("continuity_window_status", [radarStatus.continuity_window_status]);
+  assignFirst("lifecycle_running", [radarStatus.lifecycle_running]);
+  assignFirst("lifecycle_state", [radarStatus.lifecycle_state]);
+  assignFirst("latest_scan_proof_fresh", [radarStatus.latest_scan_proof_fresh]);
   const finalBlockedReasons = radarStatus.latest_scan_proof_blocked_reasons ?? latestScanProof?.blocked_reasons;
   if (Array.isArray(finalBlockedReasons) && finalBlockedReasons.length > 0) {
     readback.blocked_reasons = finalBlockedReasons;
   } else if (typeof finalBlockedReasons === "string" && finalBlockedReasons.trim()) {
     readback.blocked_reasons = finalBlockedReasons;
   }
+  const continuityBlockedReasons = radarStatus.continuity_blocked_reasons;
+  if (Array.isArray(continuityBlockedReasons) && continuityBlockedReasons.length > 0) {
+    readback.continuity_blocked_reasons = continuityBlockedReasons;
+  } else if (typeof continuityBlockedReasons === "string" && continuityBlockedReasons.trim()) {
+    readback.continuity_blocked_reasons = continuityBlockedReasons;
+  }
   return Object.keys(readback).length > 0 ? readback : payload;
+}
+
+function lidarSummaryFromReadbacks(
+  readbacks: InternalRobotApiEndpointReadback[],
+): RobotControlSummaryResponse["readback_summary"]["lidar"] {
+  // 普通首屏只消费 summary 压缩字段，因此把 radar status 的 continuity/lifecycle 结论集中收口在这里。
+  const radarStatusPayload = readbackById(readbacks, "radar_status")?.payload ?? null;
+  return {
+    status: readbackById(readbacks, "radar_status")?.status ?? "not_loaded",
+    latest_scan_proof_status: readbackById(readbacks, "radar_scan_proof_latest")?.status ?? "not_loaded",
+    latest_raw_packet_proof_status: readbackById(readbacks, "radar_raw_packet_proof_latest")?.status ?? "not_loaded",
+    continuous_scan_status: summaryValueText(radarStatusPayload, ["continuous_scan_status"]),
+    lifecycle_running: summaryValueText(radarStatusPayload, ["lifecycle_running"]),
+    lifecycle_state: summaryValueText(radarStatusPayload, ["lifecycle_state"]),
+    continuous_window_observed: summaryValueText(radarStatusPayload, ["continuous_window_observed"]),
+    continuity_window_status: summaryValueText(radarStatusPayload, ["continuity_window_status"]),
+    latest_scan_proof_fresh: summaryValueText(radarStatusPayload, ["latest_scan_proof_fresh"]),
+  };
 }
 
 function compactTrueFields(fields: string[]): string[] {
@@ -2063,7 +2113,17 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     },
     readback_summary: {
       camera: { status: "not_loaded", devices_status: "not_loaded", preview_status: "idle_not_started" },
-      lidar: { status: "not_loaded", latest_scan_proof_status: "not_loaded", latest_raw_packet_proof_status: "not_loaded" },
+      lidar: {
+        status: "not_loaded",
+        latest_scan_proof_status: "not_loaded",
+        latest_raw_packet_proof_status: "not_loaded",
+        continuous_scan_status: "not_loaded",
+        lifecycle_running: "not_loaded",
+        lifecycle_state: "not_loaded",
+        continuous_window_observed: "not_loaded",
+        continuity_window_status: "not_loaded",
+        latest_scan_proof_fresh: "not_loaded",
+      },
       base: { status: "not_loaded", latest_feedback_status: "not_loaded", feedback_ack_status: "not_loaded" },
     },
     operator_hil_material_summary: notLoadedHilMaterialSummary("not_loaded"),
@@ -2171,11 +2231,7 @@ export async function buildRobotControlSummary(baseUrl: string): Promise<RobotCo
         devices_status: pickReadback(readbacks, "camera_devices")?.status ?? "not_loaded",
         preview_status: "idle_not_started",
       },
-      lidar: {
-        status: pickReadback(readbacks, "radar_status")?.status ?? "not_loaded",
-        latest_scan_proof_status: pickReadback(readbacks, "radar_scan_proof_latest")?.status ?? "not_loaded",
-        latest_raw_packet_proof_status: pickReadback(readbacks, "radar_raw_packet_proof_latest")?.status ?? "not_loaded",
-      },
+      lidar: lidarSummaryFromReadbacks(readbacks),
       base: {
         status: pickReadback(readbacks, "base_status")?.status ?? "not_loaded",
         latest_feedback_status: pickReadback(readbacks, "base_feedback_samples_latest")?.status ?? "not_loaded",

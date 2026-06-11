@@ -192,6 +192,40 @@ function summarizeProofState(pending: boolean, result: RobotControlProofRefreshP
   return { state: "已刷新", hint: "已刷新。" };
 }
 
+function radarFieldIsTrue(value: string | undefined): boolean {
+  // summary 已经把布尔值压成字符串；这里统一识别，避免普通首屏掺入字段名判断。
+  return value === "true";
+}
+
+function summarizeRadarState(): { state: "雷达未运行" | "刷新中" | "雷达已运行" | "刷新失败"; hint: string } {
+  // 雷达首屏优先消费 summary 的最终 lifecycle/continuity 结论；只有最近一次 refresh 明确失败时才覆盖。
+  if (radarRefreshPending.value) {
+    return { state: "刷新中", hint: "正在刷新雷达状态。" };
+  }
+  if (
+    radarRefreshResult.value &&
+    (radarRefreshResult.value.proxy_status === "refresh_failed" ||
+      radarRefreshResult.value.status === "blocked" ||
+      radarRefreshResult.value.last_result_status === "fetch_failed")
+  ) {
+    return { state: "刷新失败", hint: radarRefreshResult.value.failure_reason || "暂时没有拿到新的雷达状态。" };
+  }
+  const lidar = robotSummary.value?.readback_summary.lidar;
+  if (!lidar) {
+    return { state: "雷达未运行", hint: "先连接小车，再读取雷达状态。" };
+  }
+  const lifecycleRunning = radarFieldIsTrue(lidar.lifecycle_running);
+  const windowObserved = radarFieldIsTrue(lidar.continuous_window_observed);
+  const latestFresh = radarFieldIsTrue(lidar.latest_scan_proof_fresh);
+  if (lifecycleRunning && windowObserved && latestFresh) {
+    return { state: "雷达已运行", hint: "当前窗口已看到新的雷达状态。" };
+  }
+  if (lifecycleRunning) {
+    return { state: "雷达未运行", hint: "雷达正在准备，先点刷新再看结果。" };
+  }
+  return { state: "雷达未运行", hint: "还没有看到雷达正在运行。" };
+}
+
 function summarizeNav2Planning(): { state: "未检查" | "检查中" | "路径可生成" | "检查失败"; hint: string } {
   // 路径规划属于诊断信息，只能在高级区展示，避免普通用户首屏被工程语义污染。
   if (nav2RefreshPending.value) {
@@ -242,7 +276,7 @@ function syncJogInputsToBoundary(): void {
 
 const robotConnectionSummary = computed(() => summarizeRobotConnection());
 const cameraSummary = computed(() => summarizeCameraState());
-const radarSummary = computed(() => summarizeProofState(radarRefreshPending.value, radarRefreshResult.value));
+const radarSummary = computed(() => summarizeRadarState());
 const radarLifecycleSummary = computed(() => {
   // 雷达 lifecycle 是高级诊断动作；摘要只说明代理和 guard 结果，不证明 runtime 已启动。
   if (radarLifecyclePending.value) {
@@ -349,7 +383,7 @@ function recordText(record: Record<string, string> | undefined): string {
   if (!record || Object.keys(record).length === 0) {
     return "none";
   }
-  return JSON.stringify(record).slice(0, 260);
+  return JSON.stringify(record).slice(0, 520);
 }
 
 function evidenceEndpointText(items: RobotControlBaseCommandProxyResponse["evidence_capture_endpoints"] | undefined): string {
@@ -1878,6 +1912,9 @@ onBeforeUnmount(() => {
               /api/radar/status={{ robotSummary?.readback_summary.lidar.status ?? "not_loaded" }},
               scan={{ robotSummary?.readback_summary.lidar.latest_scan_proof_status ?? "not_loaded" }},
               raw={{ robotSummary?.readback_summary.lidar.latest_raw_packet_proof_status ?? "not_loaded" }},
+              continuous={{ robotSummary?.readback_summary.lidar.continuous_scan_status ?? "not_loaded" }},
+              lifecycle={{ robotSummary?.readback_summary.lidar.lifecycle_running ?? "not_loaded" }}/{{ robotSummary?.readback_summary.lidar.lifecycle_state ?? "not_loaded" }},
+              window={{ robotSummary?.readback_summary.lidar.continuous_window_observed ?? "not_loaded" }}/{{ robotSummary?.readback_summary.lidar.continuity_window_status ?? "not_loaded" }},
               /api/base/status={{ robotSummary?.readback_summary.base.status ?? "not_loaded" }},
               readback={{ robotSummary?.readback_summary.base.latest_feedback_status ?? "not_loaded" }}
             </dd>

@@ -1,0 +1,41 @@
+{
+  "stop_second_proxy_status": "lifecycle_forwarded",
+  "stop_second_remote_http_status": 200,
+  "summary_lidar": {
+    "status": "scan_once_hz_raw_packet_tf_observed",
+    "latest_scan_proof_status": "loaded",
+    "latest_raw_packet_proof_status": "loaded",
+    "continuous_scan_status": "latest_proof_present_but_lifecycle_not_running",
+    "lifecycle_running": "false",
+    "lifecycle_state": "stopped",
+    "continuous_window_observed": "false",
+    "continuity_window_status": "latest_proof_present_but_lifecycle_not_running",
+    "latest_scan_proof_fresh": "true"
+  },
+  "summary_robot_api_connection": {
+    "status": "blocked",
+    "loaded_count": 10,
+    "blocked_count": 1,
+    "failed_count": 2,
+    "schema_mismatch_count": 4,
+    "dangerous_true_fields": [
+      "status.base.feedback_readback.sends_commands",
+      "status.base.sends_commands"
+    ],
+    "blocked_reasons": [
+      "status:dangerous_true_field:base.feedback_readback.sends_commands",
+      "status:dangerous_true_field:base.sends_commands",
+      "base_status:fetch_timeout_1500ms",
+      "base_feedback_samples_latest:fetch_timeout_1500ms",
+      "dangerous_true_field:status.base.feedback_readback.sends_commands",
+      "dangerous_true_field:status.base.sends_commands"
+    ],
+    "last_refresh_ms": 1781163368398
+  },
+  "dangerous_top_level_false": {
+    "safe_to_control": true,
+    "delivery_success": true,
+    "primary_actions_enabled": true,
+    "robot_control_executed": false
+  }
+}
