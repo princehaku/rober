@@ -307,6 +307,33 @@ Nav2 start/stop 或底盘控制参数。
 这样 `rclpy` 和 Nav2 action client 的运行时依赖不会被 systemd 服务环境吞掉；
 但这个变化只影响 proof helper 的启动方式，不改变默认只读/no-motion 边界。
 
+`2026-06-11 11:15` clean-baseline refresh 复核了上一轮 `upper_ros_quiescent=true`
+之后的 fresh no-motion path proof。清场前目标 `ps`、`ros2 node list`、
+`/dev/ttyS5`/`/dev/ttyACM0` 的 `lsof/fuser` 均无 `o10_amcl_nav2_runtime_proof`、
+`map_server`、`amcl`、`planner_server`、`lifecycle_manager` 或 `lidar_driver`
+残留。第一次 direct API refresh 使用 20s collector/runtime/path 窗口，保留了
+partial artifact 并定位为 helper timeout：`/amcl_pose` 已观测，但 partial
+诊断里 static TF 未完整观测，`map -> base_link` 因 `odom -> base_link` 缺失而阻塞。
+按“失败后最多一次重试”规则，第二次仍使用同一 no-motion opt-in contract，只把
+collector/runtime/path 窗口放宽到 30s；结果为
+`nav2_no_motion_path_generation_runtime_observed`：
+
+- `evidence_ref=o10-amcl-nav2-runtime-1781147133452`，`generated_at_ms=1781147181031`，
+  新于本轮 `run_start_ms=1781146923423`。
+- `managed_runtime_started=true`、`managed_runtime_cleanup_ok=true`、
+  `initialpose_published=true`、`amcl_pose_observed=true`。
+- `map_server_active=true`、`amcl_active=true`、`planner_server_active=true`。
+- `path_generation_succeeded=true`、`path_generated=true`、`path_point_count=31`、
+  `root_causes=[]`。
+
+这仍然只证明 clean-baseline 下 map/AMCL/planner 能在 no-motion 边界内生成一条
+`map:(0.8, 0, 0)` 全局路径。它不是 `NavigateToPose`、不是 controller/BT 执行、
+不是固定路线执行、不是物理运动 gate，也不是 delivery success。artifact 继续保持
+`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、
+`robot_control_executed=false`、`publishes_cmd_vel=false`、`calls_base_manual=false`、
+`uses_base_uart=false`。结束读回必须仍确认 managed runtime 和 LiDAR 进程无残留，
+且 `/dev/ttyS5`、`/dev/ttyACM0` 无占用。
+
 `2026-06-11 01:45` 起，上位机 API 的 helper subprocess timeout 与 PC
 `检查路径` proxy 预算对齐。2026-06-11 08:25 后 PC 固定 body 为
 `timeout_s=20`、`path_generation_timeout_s=20`、`managed_runtime_opt_in=true`、

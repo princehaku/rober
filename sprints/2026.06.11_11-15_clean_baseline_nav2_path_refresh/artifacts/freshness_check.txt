@@ -1,0 +1,6 @@
+run_start_ms=1781146923423
+proof_generated_at_ms=1781147181031
+response_generated_at_ms=1781147181530
+evidence_ref=o10-amcl-nav2-runtime-1781147133452
+fresh_vs_run_start=true
+response_fresh_vs_run_start=true

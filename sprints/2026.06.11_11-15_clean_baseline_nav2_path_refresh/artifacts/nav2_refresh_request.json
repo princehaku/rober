@@ -1,0 +1,16 @@
+{
+  "timeout_s": 20,
+  "managed_runtime_opt_in": true,
+  "managed_timeout_s": 20,
+  "managed_map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+  "initialpose_opt_in": true,
+  "initialpose_x": 0.0,
+  "initialpose_y": 0.0,
+  "initialpose_yaw": 0.0,
+  "path_generation_opt_in": true,
+  "path_generation_timeout_s": 20,
+  "path_goal_frame_id": "map",
+  "path_goal_x": 0.8,
+  "path_goal_y": 0.0,
+  "path_goal_yaw": 0.0
+}

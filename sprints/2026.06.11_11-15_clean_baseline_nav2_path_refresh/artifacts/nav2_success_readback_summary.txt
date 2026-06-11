@@ -1,0 +1,74 @@
+## retry response paths
+[
+  "latest_result",
+  "proof"
+]
+[
+  "latest_result",
+  "proof",
+  "planner_readiness_summary"
+]
+[
+  "planner_readiness_summary"
+]
+## latest success summary
+{
+  "schema": "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+  "status": "not_proven",
+  "latest_proof_status": null,
+  "generated_at_ms": 1781147207659,
+  "latest_evidence_ref": null,
+  "latest_generated_at_ms": null,
+  "latest_managed_runtime_started": null,
+  "latest_managed_runtime_cleanup_ok": null,
+  "latest_initialpose_published": null,
+  "latest_amcl_pose_observed": null,
+  "latest_map_server_active": null,
+  "latest_amcl_active": null,
+  "latest_planner_server_active": null,
+  "latest_path_generation_succeeded": null,
+  "latest_path_generated": null,
+  "latest_path_point_count": null,
+  "latest_root_causes": null,
+  "safe_to_control": false,
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "robot_control_executed": false,
+  "publishes_cmd_vel": null,
+  "calls_base_manual": null,
+  "uses_base_uart": false,
+  "sends_motion_commands": false,
+  "sends_base_motion_commands": false,
+  "proof": null
+}
+## status success summary
+{
+  "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+  "status": "not_proven",
+  "generated_at_ms": 1781147207730,
+  "proof_latest": {
+    "latest_proof_status": "nav2_no_motion_path_generation_runtime_observed",
+    "latest_evidence_ref": "o10-amcl-nav2-runtime-1781147133452",
+    "latest_generated_at_ms": null,
+    "latest_managed_runtime_started": null,
+    "latest_managed_runtime_cleanup_ok": null,
+    "latest_initialpose_published": null,
+    "latest_amcl_pose_observed": true,
+    "latest_map_server_active": true,
+    "latest_amcl_active": true,
+    "latest_planner_server_active": null,
+    "latest_path_generation_succeeded": true,
+    "latest_path_generated": true,
+    "latest_path_point_count": 31,
+    "latest_root_causes": null
+  },
+  "safe_to_control": false,
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "robot_control_executed": false,
+  "publishes_cmd_vel": null,
+  "calls_base_manual": null,
+  "uses_base_uart": false,
+  "sends_motion_commands": false,
+  "sends_base_motion_commands": false
+}

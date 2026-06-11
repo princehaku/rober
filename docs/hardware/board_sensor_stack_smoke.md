@@ -212,6 +212,17 @@ UART、串口配置、firmware 或底盘控制默认值。硬件事实入口仍�
 - package preflight 是单次 ROS 环境 source 后的 `ros2 pkg list` 批量诊断；
   它不能再逐包阻塞 `/initialpose`、`/amcl_pose` 和 localization TF 主证据路径。
 
+`sprints/2026.06.11_11-15_clean_baseline_nav2_path_refresh/` 从上一轮
+`upper_ros_quiescent=true` 基线重新跑 fresh no-motion path proof。第二次 direct
+API refresh 成功生成 `map:(0.8, 0, 0)` 路径，`path_point_count=31`，
+`managed_runtime_cleanup_ok=true`，结束读回确认无 `o10_amcl_nav2_runtime_proof`、
+`map_server`、`amcl`、`planner_server`、`lifecycle_manager` 或 `lidar_driver`
+残留，`/dev/ttyS5` 与 `/dev/ttyACM0` 无占用。本轮硬件事实边界仍按
+`docs/vendor/VENDOR_INDEX.md`：WAVE ROVER 底盘 UART 是 vendor newline-delimited
+JSON 控制链路，本 proof 不打开底盘 UART、不发布 `/cmd_vel`、不调用
+`/api/base/manual`。它只证明 LiDAR/static TF/map/AMCL/planner 的 no-motion
+路径生成链路，不等于 NavigateToPose、固定路线执行、真实运动、HIL 或送达成功。
+
 ## 2026-06-10 LiDAR Motion Delta Retry
 
 `sprints/2026.06.10_03-45_lidar_motion_delta_retry/` 在聚合 `/scan`

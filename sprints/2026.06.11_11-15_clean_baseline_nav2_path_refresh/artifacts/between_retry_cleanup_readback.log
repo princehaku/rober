@@ -1,0 +1,25 @@
+remote_readback_phase=between_retry_cleanup
+remote_date=2026-06-11 11:05:05 CST +0800
+remote_ms=1781147105381
+
+## exact target ps before cleanup
+
+## exact cleanup action
+matched_before_cleanup: empty
+
+## exact target ps after cleanup
+
+## ros2 node list after cleanup
+
+## devices after cleanup
+-- /dev/ttyS5 lsof --
+-- /dev/ttyS5 fuser --
+-- /dev/ttyACM0 lsof --
+-- /dev/ttyACM0 fuser --
+
+## services after cleanup
+trashbot-upper-robot-api.service=active
+trashbot-local-webrtc-camera.service=active
+frpc.service=inactive
+ssh.service=active
+sshd.service=active

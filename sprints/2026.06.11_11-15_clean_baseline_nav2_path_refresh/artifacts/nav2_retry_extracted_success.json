@@ -1,0 +1,63 @@
+{
+  "response_schema": "trashbot.upper_robot_api.v1.nav2_runtime_proof_refresh_result",
+  "response_status": "refreshed",
+  "response_generated_at_ms": 1781147181530,
+  "response_proof_state": "nav2_no_motion_path_generation_runtime_observed",
+  "evidence_ref": "o10-amcl-nav2-runtime-1781147133452",
+  "proof_generated_at_ms": 1781147181031,
+  "managed_runtime_started": true,
+  "managed_runtime_cleanup_ok": true,
+  "initialpose_published": true,
+  "amcl_pose_observed": true,
+  "map_server_active": true,
+  "amcl_active": true,
+  "planner_server_active": true,
+  "path_generation_requested": true,
+  "path_generation_succeeded": true,
+  "path_generated": true,
+  "path_point_count": 31,
+  "root_causes": [],
+  "blockers": [],
+  "path_goal_request": {
+    "goal_frame_id": "map",
+    "goal_x": 0.8,
+    "goal_y": 0.0,
+    "goal_yaw": 0.0,
+    "planner_id": "",
+    "use_start": false
+  },
+  "path_goal_response": {
+    "accepted": true,
+    "path_frame_id": "map",
+    "path_point_count": 31,
+    "planning_time_ms": 1,
+    "result_received": true
+  },
+  "safety": {
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "robot_control_executed": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "sends_motion_commands": false,
+    "sends_base_motion_commands": false,
+    "starts_nav2": false,
+    "starts_ros2": true,
+    "opens_base_uart": false,
+    "path_execution_attempted": false
+  },
+  "blocked_commands_not_sent": [
+    "T=1",
+    "T=13",
+    "T=130",
+    "T=131",
+    "/cmd_vel",
+    "/api/base/manual"
+  ],
+  "blocked_devices_not_touched": [
+    "/dev/ttyS5",
+    "/dev/ttyS5"
+  ]
+}

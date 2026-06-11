@@ -1,0 +1,23 @@
+remote_readback_phase=post_success_cleanup
+remote_date=2026-06-11 11:06:48 CST +0800
+remote_ms=1781147208311
+
+## target ps
+
+## ros2 node list
+
+## devices lsof/fuser
+-- /dev/ttyS5 lsof --
+-- /dev/ttyS5 fuser --
+-- /dev/ttyACM0 lsof --
+-- /dev/ttyACM0 fuser --
+
+## services
+trashbot-upper-robot-api.service=active
+trashbot-local-webrtc-camera.service=active
+frpc.service=inactive
+ssh.service=active
+sshd.service=active
+
+## nav2 latest artifact file stats
+path=/root/rober/onboard/runtime/nav2_lifecycle_latest.json size=97125 mtime_ms=1781147181000
