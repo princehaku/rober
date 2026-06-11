@@ -1,0 +1,11 @@
+brightness: 0
+contrast: 256
+saturation: 250
+gamma: 20
+gain: 4
+power_line_frequency: 0
+white_balance_temperature: 4500
+sharpness: 100
+backlight_compensation: 0
+auto_exposure: 3 (Aperture Priority Mode)
+exposure_time_absolute: 80

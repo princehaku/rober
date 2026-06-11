@@ -1,0 +1,37 @@
+== systemd ==
+active
+active
+== controls before restore ==
+brightness: 0
+contrast: 256
+saturation: 250
+gamma: 20
+gain: 4
+power_line_frequency: 0
+white_balance_temperature: 4500
+sharpness: 100
+backlight_compensation: 0
+auto_exposure: 3 (Aperture Priority Mode)
+exposure_time_absolute: 80
+== restore ==
+VIDIOC_S_EXT_CTRLS: failed: Permission denied
+== controls after restore ==
+brightness: 0
+contrast: 256
+saturation: 250
+gamma: 20
+gain: 4
+power_line_frequency: 0
+white_balance_temperature: 4500
+sharpness: 100
+backlight_compensation: 0
+auto_exposure: 3 (Aperture Priority Mode)
+exposure_time_absolute: 80
+== health ==
+{"schema": "trashbot.local_webrtc_camera_smoke.v1", "app": "rober-local-webrtc-camera-smoke", "status": "ready", "host": "op-z3-b6.home", "platform": "Linux-6.1.31-sun50iw9-aarch64-with-glibc2.35", "python": "3.10.12", "port": 8088, "video_source": "auto", "video_source_mode": "auto", "imports": {"aiohttp": true, "aiortc": true, "cv2": true, "av": true}, "lan_only": true, "cloud_relay": false, "turn_required": false, "sends_commands": false, "safe_to_control": false, "robot_control_executed": false, "system_metrics": {"process_uptime_s": 3442.068, "load_1m": 1.1572265625, "process_rss_bytes": 112517120, "temperature_celsius": 50.768}, "stability_metrics": {"active_peer_count": 0, "active_frames_read": 0, "active_camera_read_failures": 0, "last_closed_frames_read": null, "last_closed_fps_estimate": null, "last_closed_camera_read_failures": null, "last_closed_track_stopped": null}, "system_diagnostics": {"sample": {"wall_time_ms": 1781168614441, "monotonic_s": 233957.211841198, "process_started_wall_time_ms": 1781165172373, "process_uptime_s": 3442.068}, "cpu": {"available": true, "cpu_count": 4, "load_average": {"1m": 1.1572265625, "5m": 1.10498046875, "15m": 1.09619140625}, "process_cpu_percent": {"available": true, "value": 0.0}, "system_cpu_percent": {"available": true, "value": 2.3}}, "memory": {"available": true, "source": "psutil", "process_rss_bytes": 112517120, "process_vms_bytes": 531636224, "system_total_bytes": 2082848768, "system_available_bytes": 1334755328, "system_percent": 35.9}, "temperature": {"available": true, "samples": [{"path": "/sys/class/thermal/thermal_zone0/temp", "celsius": 50.768, "raw": 50768.0}, {"path": "/sys/class/thermal/thermal_zone1/temp", "celsius": 50.849, "raw": 50849.0}, {"path": "/sys/class/thermal/thermal_zone2/temp", "celsius": 51.092, "raw": 51092.0}, {"path": "/sys/class/thermal/thermal_zone3/temp", "celsius": 51.173, "raw": 51173.0}, {"path": "/sys/class/hwmon/hwmon0/temp1_input", "celsius": 50.768, "raw": 50768.0}, {"path": "/sys/class/hwmon/hwmon1/temp1_input", "celsius": 50.849, "raw": 50849.0}, {"path": "/sys/class/hwmon/hwmon2/temp1_input", "celsius": 51.092, "raw": 51092.0}, {"path": "/sys/class/hwmon/hwmon3/temp1_input", "celsius": 51.173, "raw": 51173.0}]}}, "media_stability_summary": {"active_peers": {}, "last_closed_peer": null, "totals": {"active_frames_read": 0, "active_camera_read_failures": 0}}, "diagnostics": {"offer_self_test": "/offer recvonly SDP client is available via --self-test-url", "frame_boundary": "first_frame_received proves aiortc answer plus one decoded video frame", "stability_metrics": "system/media fields are read-only evidence for O7 short-run stability, not robot control inputs"}, "vendor_reference": ["docs/vendor/VENDOR_INDEX.md", "docs/interfaces/o7_realtime_hardware_sources.md", "docs/vendor/waveshare_wave_rover/ugv_rpi/app.py"], "active_peer_connections": 0, "active_peer_ids": [], "media_diagnostics": {"server_started_at_ms": 1781165174660, "server_uptime_ms": 3439786, "active_peers": {}, "last_closed_peer": null}, "peer_cleanup": {"close_one": "/peers/{peer_id}/close", "reason": "health exposes peer ids only for LAN smoke cleanup after browser/test aborts"}, "upper_api_proxy": true, "upper_api_camera_base_url": "http://127.0.0.1:8088"}== devices ==
+{"schema": "trashbot.local_webrtc_camera_devices.v1", "devices": [{"path": "/dev/video0", "exists": true, "readable": true, "writable": true}, {"path": "/dev/video1", "exists": true, "readable": true, "writable": true}, {"path": "/dev/video2", "exists": true, "readable": true, "writable": true}], "v4l2_ctl": "/usr/bin/v4l2-ctl", "v4l2_list_devices": {"available": true, "returncode": 0, "stdout": "cedrus (platform:cedrus):\n\t/dev/video0\n\t/dev/media0\n\nUSB Composite Device: DV20 USB  (usb-5310000.usb-1):\n\t/dev/video1\n\t/dev/video2\n\t/dev/media1", "stderr": "", "cmd": ["/usr/bin/v4l2-ctl", "--list-devices"]}, "upper_api_proxy": true}== lsof ==
+== fuser ==
+
+STDERR:
+sh: 0: -c requires an argument
+Error setting controls: Permission denied

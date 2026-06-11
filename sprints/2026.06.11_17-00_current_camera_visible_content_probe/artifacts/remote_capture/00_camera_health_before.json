@@ -1,0 +1,149 @@
+{
+  "active_peer_connections": 0,
+  "active_peer_ids": [],
+  "app": "rober-local-webrtc-camera-smoke",
+  "cloud_relay": false,
+  "diagnostics": {
+    "frame_boundary": "first_frame_received proves aiortc answer plus one decoded video frame",
+    "offer_self_test": "/offer recvonly SDP client is available via --self-test-url",
+    "stability_metrics": "system/media fields are read-only evidence for O7 short-run stability, not robot control inputs"
+  },
+  "host": "op-z3-b6.home",
+  "imports": {
+    "aiohttp": true,
+    "aiortc": true,
+    "av": true,
+    "cv2": true
+  },
+  "lan_only": true,
+  "media_diagnostics": {
+    "active_peers": {},
+    "last_closed_peer": null,
+    "server_started_at_ms": 1781165174660,
+    "server_uptime_ms": 3195611
+  },
+  "media_stability_summary": {
+    "active_peers": {},
+    "last_closed_peer": null,
+    "totals": {
+      "active_camera_read_failures": 0,
+      "active_frames_read": 0
+    }
+  },
+  "peer_cleanup": {
+    "close_one": "/peers/{peer_id}/close",
+    "reason": "health exposes peer ids only for LAN smoke cleanup after browser/test aborts"
+  },
+  "platform": "Linux-6.1.31-sun50iw9-aarch64-with-glibc2.35",
+  "port": 8088,
+  "python": "3.10.12",
+  "robot_control_executed": false,
+  "safe_to_control": false,
+  "schema": "trashbot.local_webrtc_camera_smoke.v1",
+  "sends_commands": false,
+  "stability_metrics": {
+    "active_camera_read_failures": 0,
+    "active_frames_read": 0,
+    "active_peer_count": 0,
+    "last_closed_camera_read_failures": null,
+    "last_closed_fps_estimate": null,
+    "last_closed_frames_read": null,
+    "last_closed_track_stopped": null
+  },
+  "status": "ready",
+  "system_diagnostics": {
+    "cpu": {
+      "available": true,
+      "cpu_count": 4,
+      "load_average": {
+        "15m": 1.09912109375,
+        "1m": 1.2783203125,
+        "5m": 1.07958984375
+      },
+      "process_cpu_percent": {
+        "available": true,
+        "value": 0.0
+      },
+      "system_cpu_percent": {
+        "available": true,
+        "value": 1.5
+      }
+    },
+    "memory": {
+      "available": true,
+      "process_rss_bytes": 112517120,
+      "process_vms_bytes": 531636224,
+      "source": "psutil",
+      "system_available_bytes": 1318531072,
+      "system_percent": 36.7,
+      "system_total_bytes": 2082848768
+    },
+    "sample": {
+      "monotonic_s": 233713.036511247,
+      "process_started_wall_time_ms": 1781165172373,
+      "process_uptime_s": 3197.893,
+      "wall_time_ms": 1781168370266
+    },
+    "temperature": {
+      "available": true,
+      "samples": [
+        {
+          "celsius": 50.363,
+          "path": "/sys/class/thermal/thermal_zone0/temp",
+          "raw": 50363.0
+        },
+        {
+          "celsius": 50.768,
+          "path": "/sys/class/thermal/thermal_zone1/temp",
+          "raw": 50768.0
+        },
+        {
+          "celsius": 51.092,
+          "path": "/sys/class/thermal/thermal_zone2/temp",
+          "raw": 51092.0
+        },
+        {
+          "celsius": 50.93,
+          "path": "/sys/class/thermal/thermal_zone3/temp",
+          "raw": 50930.0
+        },
+        {
+          "celsius": 50.363,
+          "path": "/sys/class/hwmon/hwmon0/temp1_input",
+          "raw": 50363.0
+        },
+        {
+          "celsius": 50.768,
+          "path": "/sys/class/hwmon/hwmon1/temp1_input",
+          "raw": 50768.0
+        },
+        {
+          "celsius": 51.092,
+          "path": "/sys/class/hwmon/hwmon2/temp1_input",
+          "raw": 51092.0
+        },
+        {
+          "celsius": 50.93,
+          "path": "/sys/class/hwmon/hwmon3/temp1_input",
+          "raw": 50930.0
+        }
+      ]
+    }
+  },
+  "system_metrics": {
+    "load_1m": 1.2783203125,
+    "process_rss_bytes": 112517120,
+    "process_uptime_s": 3197.893,
+    "temperature_celsius": 50.363
+  },
+  "turn_required": false,
+  "upper_api_camera_base_url": "http://127.0.0.1:8088",
+  "upper_api_proxy": true,
+  "vendor_reference": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/interfaces/o7_realtime_hardware_sources.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/app.py"
+  ],
+  "video_source": "auto",
+  "video_source_mode": "auto"
+}

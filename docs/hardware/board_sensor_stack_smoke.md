@@ -1855,3 +1855,16 @@ vendor `ugv_rpi/base_ctrl.py`、`ugv_rpi/config.yaml`、
 - `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/direct_upper/02_during_window.jsonl`
 - `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/remote_device/02_during_device_process.log`
 - `sprints/2026.06.11_15-00_pc_radar_lifecycle_continuity_smoke/artifacts/remote_device/04_after_stop_device_process.log`
+
+## 2026-06-11 17:00 current camera visible content probe
+
+本轮 `sprints/2026.06.11_17-00_current_camera_visible_content_probe/` 只做
+camera-only 收口，没有重新启动 motion、Nav2 或 radar runtime。复核结果：
+
+- `trashbot-upper-robot-api.service=active`
+- `trashbot-local-webrtc-camera.service=active`
+- `/api/camera/health` 返回 `active_peer_count=0`
+- `/dev/video0`、`/dev/video1`、`/dev/video2`、`/dev/ttyS5` 的 `lsof/fuser` 无残留
+- controls 读回仍是原值，未留下临时 exposure/brightness/contrast 改动
+
+这轮现场状态仍更接近 `/dev/video1` 首帧 readback timeout，而不是已证明的可见内容。

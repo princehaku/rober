@@ -1,0 +1,61 @@
+{
+  "attempts": [
+    {
+      "idx": 1,
+      "ok": false
+    },
+    {
+      "idx": 2,
+      "ok": false
+    },
+    {
+      "idx": 3,
+      "ok": false
+    },
+    {
+      "idx": 4,
+      "ok": false
+    },
+    {
+      "idx": 5,
+      "ok": false
+    },
+    {
+      "idx": 6,
+      "ok": false
+    },
+    {
+      "idx": 7,
+      "ok": false
+    },
+    {
+      "idx": 8,
+      "ok": false
+    },
+    {
+      "idx": 9,
+      "ok": false
+    },
+    {
+      "idx": 10,
+      "ok": false
+    },
+    {
+      "idx": 11,
+      "ok": false
+    },
+    {
+      "idx": 12,
+      "ok": false
+    }
+  ],
+  "device": "/dev/video1",
+  "first_frame_timeout": true,
+  "label": "default",
+  "open_ok": true,
+  "read_ok": false,
+  "requested_height": null,
+  "requested_pixfmt": null,
+  "requested_width": null,
+  "set_fmt_rc": 0
+}

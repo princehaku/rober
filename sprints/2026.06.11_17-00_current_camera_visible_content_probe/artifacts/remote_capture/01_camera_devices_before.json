@@ -1,0 +1,35 @@
+{
+  "devices": [
+    {
+      "exists": true,
+      "path": "/dev/video0",
+      "readable": true,
+      "writable": true
+    },
+    {
+      "exists": true,
+      "path": "/dev/video1",
+      "readable": true,
+      "writable": true
+    },
+    {
+      "exists": true,
+      "path": "/dev/video2",
+      "readable": true,
+      "writable": true
+    }
+  ],
+  "schema": "trashbot.local_webrtc_camera_devices.v1",
+  "upper_api_proxy": true,
+  "v4l2_ctl": "/usr/bin/v4l2-ctl",
+  "v4l2_list_devices": {
+    "available": true,
+    "cmd": [
+      "/usr/bin/v4l2-ctl",
+      "--list-devices"
+    ],
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "cedrus (platform:cedrus):\n\t/dev/video0\n\t/dev/media0\n\nUSB Composite Device: DV20 USB  (usb-5310000.usb-1):\n\t/dev/video1\n\t/dev/video2\n\t/dev/media1"
+  }
+}

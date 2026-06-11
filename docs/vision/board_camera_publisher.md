@@ -137,6 +137,24 @@ ros2 launch ros2_trashbot_bringup bringup.launch.py \
 本轮只修正默认设备选择，`visible_content_proven=false` 仍成立：在可见内容被证明前，
 不能把这路画面用于路线关键帧、视觉定位、障碍识别或远程可视验收。
 
+## 2026-06-11 17:00 current camera visible content probe
+
+`sprints/2026.06.11_17-00_current_camera_visible_content_probe/` 只做 camera-only
+当前状态再判定，没有触碰底盘、Nav2、雷达或手动运动。真实上位机
+`http://192.168.1.11:8787` 读回仍显示 `active_peer_count=0`。
+
+远端 `/dev/video1` 的 default OpenCV probe 结果是：
+
+- `open_ok=true`
+- `read_ok=false`
+- `attempts=12`
+- `first_frame_timeout=true`
+
+后续只启动到 `mjpg_640x480_set_fmt.txt`，没有形成可用 sample JPG 或有效 frame metrics JSON，
+也没有把相机状态升级为 `visible_content_proven=true`。因此当前更像
+`first-frame timeout`，不是已恢复可见内容，也还没有进入可稳定判定的 near-black frame
+采样阶段。
+
 ## 本地资料来源
 
 - `docs/vendor/VENDOR_INDEX.md`
