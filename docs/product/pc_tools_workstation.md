@@ -969,6 +969,27 @@ PC 侧本轮已证明的能力：
 `path_generated=false/path_point_count=0`。PC 高级诊断当前能判断失败，但 localize 的对象型
 root cause 在摘要里仍会被压成 `[object Object]`，后续应单独改善可读性。
 
+## 2026-06-12 Nav2 Map Quality Blocker Readback
+
+`sprints/2026.06.12_03-20_nav2_map_quality_blocker/` 修正了 PC 高级诊断里对象型
+root cause 的展示：Robot Control summary / fixed proxy 的 key values 现在会把 object/array
+压成短 JSON，而不是 `[object Object]`。普通 `.simple-user-console` 首屏未改，工程 root cause
+仍只在默认关闭的高级诊断中展示。
+
+真实 PC proxy 连接 `http://192.168.1.11:8787` 后，Nav2 fixed proxy 读回：
+
+- `proxy_status=refresh_forwarded`
+- `remote_http_status=200`
+- `last_result_status=blocked_with_root_cause`
+- `path_generation_boundary=path_generation_blocked_by_map_has_no_free_cells`
+- `path_generated=false`
+- `path_point_count=0`
+- `root_causes=[{"layer":"map quality","reason":"map_has_no_free_cells_for_nav2_path_proof"}]`
+
+这说明 PC 页面已经能把当前“不能定位移动”的主要原因展示成可读诊断：现有地图没有 free
+cell，不是浏览器参数、PC proxy body、NavigateToPose 或底盘串口问题。本轮仍不放开
+`/api/base/manual`、`/cmd_vel` 或 NavigateToPose。
+
 ## 运行与验证
 
 工作站验证只使用 Node/Vue gate：

@@ -2112,6 +2112,23 @@ PC/upper wrapper timeout 误报，不改变 no-motion 合同：仍不执行 Navi
 `/cmd_vel`，不调用 `/api/base/manual`，不打开 `/dev/ttyS5`，也不证明 fixed-route
 execution、真实运动、HIL pass 或 delivery success。
 
+2026-06-12 03:20 起，Nav2 no-motion path proof 不再对 `free=0` 的 map 继续调用
+`ComputePathToPose`。真实上位机当前 `/root/rober/onboard/runtime/maps/*.yaml` 对应 PGM
+全部为 `free=0`，只有 unknown/occupied cell；这类地图不能作为可导航地图质量证据。
+
+新收口语义：
+
+- `path_generation_boundary=path_generation_blocked_by_map_has_no_free_cells`
+- `root_causes=[{"layer":"map quality","reason":"map_has_no_free_cells_for_nav2_path_proof"}]`
+- `path_generation_attempted=false`
+- `path_generated=false`
+- `path_point_count=0`
+
+这不是 Nav2 运行时包缺失，也不是 PC proxy timeout；它是建图质量 blocker。后续要进入
+定位移动或 fixed-route execution，必须先采到至少包含 free cell 的真实地图，再重跑
+localize/Nav2 no-motion proof。该结论仍保持 no-motion 边界：不发布 `/cmd_vel`，不调用
+`/api/base/manual`，不执行 NavigateToPose。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

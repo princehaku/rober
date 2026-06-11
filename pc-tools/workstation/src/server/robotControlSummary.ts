@@ -155,10 +155,12 @@ const NAV2_NO_MOTION_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
     "managed_runtime_started",
     "initialpose_published",
     "path_generation_requested",
+    "path_generation_boundary",
     "path_generated",
     "path_generation_succeeded",
     "path_point_count",
     "planner_server_active",
+    "root_causes",
     "blocked_reasons",
   ],
 };
@@ -708,11 +710,29 @@ function stringList(value: unknown, limit = 8): string[] {
   });
 }
 
+function compactValueText(value: unknown, limit = 120): string {
+  // 上位机 root_causes/localization_tf 等字段常是 object/array；不能退化成 [object Object]。
+  if (typeof value === "string") {
+    return value.slice(0, limit);
+  }
+  if (typeof value === "number" || typeof value === "boolean" || value === null) {
+    return String(value).slice(0, limit);
+  }
+  if (value && typeof value === "object") {
+    try {
+      return JSON.stringify(value).slice(0, limit);
+    } catch {
+      return "json_value_unserializable";
+    }
+  }
+  return String(value).slice(0, limit);
+}
+
 function compactKeyValues(payload: JsonRecord | null, keys: readonly string[] = STATUS_KEYS): Record<string, string> {
   // 关键字段白名单足够支撑控制台判断，不透传完整上位机 payload。
   const entries = keys.flatMap((key) => {
     const found = findFirstKey(payload, [key]);
-    return found === undefined ? [] : [[key, String(found).slice(0, 120)] as const];
+    return found === undefined ? [] : [[key, compactValueText(found)] as const];
   });
   return Object.fromEntries(entries);
 }
@@ -720,7 +740,7 @@ function compactKeyValues(payload: JsonRecord | null, keys: readonly string[] = 
 function summaryValueText(payload: JsonRecord | null, keys: string[], fallback = "not_loaded"): string {
   // summary 既要保留字符串状态，也要保留布尔 continuity/lifecycle 结论，因此统一转成短文本。
   const found = findFirstKey(payload, keys);
-  return found === undefined ? fallback : String(found).slice(0, 120);
+  return found === undefined ? fallback : compactValueText(found);
 }
 
 function radarScanProofReadbackPayload(payload: JsonRecord | null): JsonRecord | null {

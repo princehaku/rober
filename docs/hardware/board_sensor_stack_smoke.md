@@ -2062,3 +2062,22 @@ WAVE ROVER UART `/dev/ttyS5`。
   `path_point_count=0`。
 - Motion gate：仍缺外部视频、可见图传、左右轮非零反馈和 LiDAR motion delta；因此
   `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。
+
+## 2026-06-12 03:20 Nav2 Map Quality Blocker
+
+`sprints/2026.06.12_03-20_nav2_map_quality_blocker/` 复查真实上位机
+`/root/rober/onboard/runtime/maps/*.yaml`，对应 PGM 全部为 `free=0`。这意味着目前地图文件
+和 metadata 虽然存在，但没有可通行 free cell，不能作为真实导航或定位移动放行材料。
+
+本轮 helper 已部署到真实上位机，并把 Nav2 no-motion path proof 稳定收敛到地图质量：
+
+- `root_causes=[{"layer":"map quality","reason":"map_has_no_free_cells_for_nav2_path_proof"}]`
+- `path_generation_boundary=path_generation_blocked_by_map_has_no_free_cells`
+- `path_generation_attempted=false`
+- `path_generated=false`
+- `path_point_count=0`
+
+安全边界保持不变：没有调用 `/api/base/manual`，没有发布 `/cmd_vel`，没有执行
+NavigateToPose，没有写 WAVE ROVER UART `/dev/ttyS5`。收尾服务仍为 active，未观察到
+helper/Nav2/LiDAR 残留进程。下一步如果要让 PC 完整控制“建图、定位移动”，必须先获得含
+free cell 的真实地图；当前地图质量不足是比 Nav2 action 本身更靠前的 blocker。

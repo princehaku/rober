@@ -570,6 +570,14 @@ def point_in_map_bounds(x: float, y: float, map_analysis: dict[str, Any]) -> boo
     )
 
 
+def map_has_free_cells_for_path_proof(map_analysis: dict[str, Any] | None) -> bool:
+    """Nav2 proof 至少要看到 free cell；unknown-only 地图不能被包装成可规划地图。"""
+    if not isinstance(map_analysis, dict) or not map_analysis.get("ok"):
+        return True
+    cell_counts = map_analysis.get("cell_counts") if isinstance(map_analysis.get("cell_counts"), dict) else {}
+    return int(cell_counts.get("free") or 0) > 0
+
+
 def clamp_point_to_map_bounds(x: float, y: float, map_analysis: dict[str, Any]) -> tuple[float, float]:
     """no-motion planner proof 允许把测试点夹到地图内侧，避免固定点因新地图裁剪失效。"""
     bounds = map_analysis.get("bounds") if isinstance(map_analysis.get("bounds"), dict) else {}
@@ -678,6 +686,9 @@ def path_generation_request(
             map_analysis=map_analysis,
             initialpose_payload=initialpose_payload,
         )
+        cell_counts = map_analysis.get("cell_counts") if isinstance(map_analysis.get("cell_counts"), dict) else {}
+        request["map_free_cell_count"] = int(cell_counts.get("free") or 0)
+        request["map_has_free_cells_for_path_proof"] = map_has_free_cells_for_path_proof(map_analysis)
     return request
 
 
@@ -822,6 +833,43 @@ def maybe_compute_path_generation(
             "ok": False,
             "boundary": "path_generation_blocked_by_planner_server_inactive",
         }, [{"layer": "planner readiness", "reason": "planner_server_not_active"}]
+    if map_analysis is not None and not map_has_free_cells_for_path_proof(map_analysis):
+        # 当前板端 no-motion 地图可能只有 unknown/occupied，没有任何 free cell。
+        # 这种地图即使偶发返回 path，也不能代表可导航地图质量；这里在 action 前稳定挡住。
+        return request, {
+            "attempted": False,
+            "ok": False,
+            "boundary": "path_generation_blocked_by_map_has_no_free_cells",
+            "service_name": None,
+            "service_available": False,
+            "path_generated": False,
+            "path_point_count": 0,
+            "path_goal_request": {
+                "goal_frame_id": request["frame_id"],
+                "goal_x": request["x"],
+                "goal_y": request["y"],
+                "goal_yaw": request["yaw"],
+                "planner_id": request["planner_id"],
+                "use_start": request["use_start"],
+                "start_x": request.get("start_x"),
+                "start_y": request.get("start_y"),
+                "adapted_from_map_bounds": bool(request.get("adapted_from_map_bounds")),
+                "adaptation_boundary": request.get("adaptation_boundary"),
+                "original_goal": request.get("original_goal"),
+                "map_goal_diagnostics": request.get("map_goal_diagnostics"),
+                "map_free_cell_count": request.get("map_free_cell_count"),
+                "map_has_free_cells_for_path_proof": request.get("map_has_free_cells_for_path_proof"),
+            },
+            "path_goal_response": {
+                "accepted": False,
+                "result_received": False,
+                "blocked_before_action": True,
+            },
+        }, {
+            "attempted": False,
+            "ok": False,
+            "boundary": "path_generation_blocked_by_map_has_no_free_cells",
+        }, [{"layer": "map quality", "reason": "map_has_no_free_cells_for_nav2_path_proof"}]
     try:
         import rclpy
         from geometry_msgs.msg import PoseStamped  # type: ignore[import-not-found]

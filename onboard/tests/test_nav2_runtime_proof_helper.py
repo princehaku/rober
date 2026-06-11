@@ -281,6 +281,46 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertAlmostEqual(0.8, request["x"])
         self.assertFalse(request["map_goal_diagnostics"]["start_in_bounds"])
         self.assertFalse(request["map_goal_diagnostics"]["goal_in_bounds"])
+        self.assertEqual(0, request["map_free_cell_count"])
+        self.assertFalse(request["map_has_free_cells_for_path_proof"])
+
+    def test_path_generation_blocks_unknown_only_map_before_action(self) -> None:
+        """没有 free cell 的地图不能进入 Nav2 action，避免把弱地图误报为可规划。"""
+        args = HELPER.parse_args(
+            [
+                "--initialpose-opt-in",
+                "--path-generation-opt-in",
+                "--path-goal-x",
+                "0.8",
+            ]
+        )
+        map_analysis = {
+            "ok": True,
+            "resolution": 0.05,
+            "bounds": {"min_x": -6.15, "min_y": -5.92, "max_x": 5.10, "max_y": -0.02},
+            "cell_counts": {"free": 0, "unknown": 26506, "occupied": 44, "other": 0},
+        }
+
+        request, result, summary, root_causes = HELPER.maybe_compute_path_generation(
+            args,
+            ros2_ok=True,
+            localization_ready=True,
+            planner_server_active=True,
+            map_analysis=map_analysis,
+            initialpose_payload=HELPER.initialpose_request(args),
+        )
+
+        self.assertTrue(request["enabled"])
+        self.assertFalse(result["attempted"])
+        self.assertFalse(result["service_available"])
+        self.assertEqual("path_generation_blocked_by_map_has_no_free_cells", result["boundary"])
+        self.assertEqual("path_generation_blocked_by_map_has_no_free_cells", summary["boundary"])
+        self.assertEqual(
+            [{"layer": "map quality", "reason": "map_has_no_free_cells_for_nav2_path_proof"}],
+            root_causes,
+        )
+        self.assertEqual(0, result["path_goal_request"]["map_free_cell_count"])
+        self.assertFalse(result["path_goal_request"]["map_has_free_cells_for_path_proof"])
 
     def test_managed_param_file_only_lists_localization_nodes(self) -> None:
         """参数文件只能包含 map_server/amcl/lifecycle_manager，不能偷偷把运动栈拉起来。"""

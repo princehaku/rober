@@ -4250,20 +4250,22 @@ describe("workstation fail-closed API contracts", () => {
       "/api/nav2/proof/refresh": {
         payload: {
           schema: "trashbot.upper_robot_api.v1.nav2_proof_refresh",
-          status: "nav2_no_motion_path_generation_runtime_observed",
-          latest_proof_status: "nav2_no_motion_path_generation_runtime_observed",
+          status: "blocked_with_root_cause",
+          latest_proof_status: "blocked_with_root_cause",
           evidence_ref: "nav2-refresh-proof",
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
           robot_control_executed: false,
-          managed_runtime_started: false,
-          initialpose_published: false,
+          managed_runtime_started: true,
+          initialpose_published: true,
           path_generation_requested: true,
-          path_generated: true,
-          path_generation_succeeded: true,
-          path_point_count: 17,
+          path_generation_boundary: "path_generation_blocked_by_map_has_no_free_cells",
+          path_generated: false,
+          path_generation_succeeded: false,
+          path_point_count: 0,
           planner_server_active: true,
+          root_causes: [{ layer: "map quality", reason: "map_has_no_free_cells_for_nav2_path_proof" }],
         },
       },
     });
@@ -4369,8 +4371,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(nav2Body.primary_actions_enabled).toBe(false);
       expect(nav2Body.robot_control_executed).toBe(false);
       expect(nav2Body.hard_dangerous_true_fields).toEqual([]);
-      expect(nav2Body.latest_readback_key_values.path_generated).toBe("true");
-      expect(nav2Body.latest_readback_key_values.path_generation_succeeded).toBe("true");
+      expect(nav2Body.latest_readback_key_values.path_generated).toBe("false");
+      expect(nav2Body.latest_readback_key_values.path_generation_succeeded).toBe("false");
+      expect(nav2Body.latest_readback_key_values.root_causes).toContain("map_has_no_free_cells_for_nav2_path_proof");
+      expect(nav2Body.latest_readback_key_values.root_causes).not.toBe("[object Object]");
       expect(upstream.receivedBodies["/api/nav2/proof/refresh"]?.[0]).toEqual({
         timeout_s: 30,
         managed_runtime_opt_in: true,
