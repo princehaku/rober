@@ -3952,6 +3952,8 @@ describe("workstation fail-closed API contracts", () => {
           video_source: "/dev/video1",
           video_source_mode: "auto",
           active_peer_count: 0,
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "first_frame_timeout",
           current_selection: {
             selected_path: "/dev/video1",
           },
@@ -4087,6 +4089,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.video_source).toBe("/dev/video1");
       expect(summary.readback_summary.camera.video_source_mode).toBe("auto");
       expect(summary.readback_summary.camera.selected_path).toBe("/dev/video1");
+      expect(summary.readback_summary.camera.source_readiness).toBe("first_frame_failed");
+      expect(summary.readback_summary.camera.source_failure_reason).toBe("first_frame_timeout");
       expect(summary.readback_summary.camera.active_peer_count).toBe("0");
       expect(summary.readback_summary.camera.last_offer_error).toBe("first_frame_unreadable");
       expect(summary.readback_summary.camera.last_offer_failure_reason).toBe("first_frame_timeout");

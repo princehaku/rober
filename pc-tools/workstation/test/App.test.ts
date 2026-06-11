@@ -401,6 +401,8 @@ const fixtures: Record<string, unknown> = {
         video_source: "/dev/video1",
         video_source_mode: "auto",
         selected_path: "/dev/video1",
+        source_readiness: "source_selected_not_probed",
+        source_failure_reason: "none",
         active_peer_count: "0",
         last_offer_error: "none",
         last_offer_failure_reason: "none",

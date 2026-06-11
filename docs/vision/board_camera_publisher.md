@@ -600,3 +600,24 @@ python3 /root/rober/onboard/scripts/camera_first_frame_probe.py \
 `open_ok=true`、`read_ok=false`、`first_frame_timeout=true`、
 `failure_reason=capture_read_call_timeout`、`visible_content_proven=false`。因此本轮只让
 PC 页面获得了可重复触发的底层相机诊断闭环，没有恢复实时图传可见内容。
+
+## 2026-06-11 23:05 camera source readiness refresh
+
+`sprints/2026.06.11_23-05_camera_source_auto_probe_refresh/` 在真实上位机
+`root@192.168.1.11:37878` 上重新枚举 `/dev/video*` 并跑 `camera_first_frame_probe.py`
+矩阵。资料入口仍以 `docs/vendor/VENDOR_INDEX.md` 为准；本轮只触碰 UVC/V4L2 camera
+链路，不写 WAVE ROVER UART，不调用 `/api/base/manual`，不发布 `/cmd_vel`。
+
+真实设备枚举保持不变：`/dev/video0` 是 `cedrus (platform:cedrus)` decoder，
+`/dev/video1` 是 DV20 USB `Video Capture`，`/dev/video2` 是同一 DV20 的 metadata
+节点。首帧矩阵结论是 `/dev/video1` 可 open，但 default、`MJPG 640x480` 与
+`YUYV 640x480` 均 `read_ok=false`、`first_frame_timeout=true`、
+`failure_reason=capture_read_call_timeout`；`/dev/video0` 和 `/dev/video2` 均不可作为
+图像源打开。
+
+`onboard/scripts/local_webrtc_camera_smoke.py` 的 `/health` 因此新增只读字段
+`source_readiness` 与 `source_failure_reason`。未发 offer 时，选到 `/dev/video1`
+会显示 `source_readiness=source_selected_not_probed`；真实 aiortc offer 触发首帧失败后，
+同一服务会显示 `status=source_first_frame_failed`、
+`source_readiness=first_frame_failed`、`source_failure_reason=first_frame_timeout`。
+这只是让状态从“源已选择”变成“源首帧失败”的诚实诊断，不代表实时图传可见内容恢复。

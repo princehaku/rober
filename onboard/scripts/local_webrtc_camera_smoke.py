@@ -139,7 +139,7 @@ TEMPERATURE_GLOBS = (
 # 实现边界说明 092：`video_source` 在 auto 下返回实际 selected path，更利于排障。
 # 实现边界说明 093：没有 selected path 时 `video_source` 回到 requested 值。
 # 实现边界说明 094：`status=no_video_source` 只说明本机没有候选，不说明上车失败。
-# 实现边界说明 095：`status=ready` 也不证明画面可见，只证明诊断入口有源。
+# 实现边界说明 095：`status=source_first_frame_failed` 说明有源但最近 offer 证明首帧不可读。
 # 实现边界说明 096：`first_frame_read=true` 只在 answer 成功时返回。
 # 实现边界说明 097：远端 SDP candidate count 只解释网络协商，不代表画面可见。
 # 实现边界说明 098：本地 SDP candidate count 只解释 answer 内容，不代表公网可用。
@@ -582,14 +582,25 @@ class CameraServiceState:
         active_frames = sum(int(item.get("frames_read") or 0) for item in active_summaries.values())
         active_failures = sum(int(item.get("camera_read_failures") or 0) for item in active_summaries.values())
         selected_path = selection.get("selected_path")
+        last_offer_error = self.last_offer_error if isinstance(self.last_offer_error, dict) else {}
+        last_offer_source = last_offer_error.get("video_source")
+        last_offer_reason = str(last_offer_error.get("failure_reason") or "")
+        source_failed = bool(
+            selected_path
+            and last_offer_source == selected_path
+            and last_offer_reason in {"first_frame_timeout", "capture_read_call_timeout"}
+        )
+        source_readiness = "first_frame_failed" if source_failed else ("source_selected_not_probed" if selected_path else "no_video_source")
         return {
             "schema": SCHEMA,
             "app": APP_NAME,
-            "status": "ready" if selected_path or self.video_source != "auto" else "no_video_source",
+            "status": "source_first_frame_failed" if source_failed else ("ready" if selected_path or self.video_source != "auto" else "no_video_source"),
             "generated_at_ms": now_ms(),
             "video_source": selected_path or self.video_source,
             "video_source_mode": selection.get("mode"),
             "requested_video_source": self.video_source,
+            "source_readiness": source_readiness,
+            "source_failure_reason": last_offer_reason if source_failed else "",
             "width": self.width,
             "height": self.height,
             "fps": self.fps,

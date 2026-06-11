@@ -1812,6 +1812,10 @@ onBeforeUnmount(() => {
             <dd>{{ robotSummary?.readback_summary.camera.selected_path ?? "not_loaded" }}</dd>
             <dt>camera_source_mode</dt>
             <dd>{{ robotSummary?.readback_summary.camera.video_source_mode ?? "not_loaded" }}</dd>
+            <dt>camera_source_readiness</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.source_readiness ?? "not_loaded" }}</dd>
+            <dt>camera_source_failure_reason</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.source_failure_reason ?? "none" }}</dd>
             <dt>camera_active_peer_count</dt>
             <dd>{{ robotSummary?.readback_summary.camera.active_peer_count ?? "not_loaded" }}</dd>
             <dt>camera_last_offer_error</dt>

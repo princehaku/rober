@@ -270,6 +270,8 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual(camera.SCHEMA, payload["schema"])
         self.assertEqual(camera.APP_NAME, payload["app"])
         self.assertEqual("ready", payload["status"])
+        self.assertEqual("source_selected_not_probed", payload["source_readiness"])
+        self.assertEqual("", payload["source_failure_reason"])
         self.assertEqual("/dev/video1", payload["video_source"])
         self.assertEqual("auto", payload["video_source_mode"])
         self.assertEqual(0, payload["active_peer_count"])
@@ -278,6 +280,38 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertIn("system_diagnostics", payload)
         self.assertIn("media_diagnostics", payload)
         self.assertIn("source_candidates_summary", payload)
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["robot_control_executed"])
+
+    def test_health_marks_selected_source_failed_after_first_frame_offer_error(self) -> None:
+        """最近 offer 已证明首帧失败时，health 不能继续把源说成 ready。"""
+        state = camera.CameraServiceState(video_source="auto", width=640, height=480, fps=15)
+        state.last_offer_error = {
+            "error": "first_frame_unreadable",
+            "failure_reason": "first_frame_timeout",
+            "video_source": "/dev/video1",
+        }
+        snapshot = {
+            "candidates": [
+                {
+                    "path": "/dev/video1",
+                    "exists": True,
+                    "is_video_capture": True,
+                    "is_uvc_or_usb": True,
+                    "is_decoder": False,
+                    "is_metadata": False,
+                    "v4l2_name": "USB camera",
+                    "sysfs_name": "USB camera",
+                }
+            ]
+        }
+
+        with mock.patch.object(camera, "collect_video_candidates", return_value=snapshot):
+            payload = state.health()
+
+        self.assertEqual("source_first_frame_failed", payload["status"])
+        self.assertEqual("first_frame_failed", payload["source_readiness"])
+        self.assertEqual("first_frame_timeout", payload["source_failure_reason"])
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["robot_control_executed"])
 

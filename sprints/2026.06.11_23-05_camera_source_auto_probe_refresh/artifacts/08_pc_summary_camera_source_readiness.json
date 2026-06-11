@@ -1,0 +1,9 @@
+{
+  "camera": {
+    "status": "source_first_frame_failed",
+    "source_readiness": "first_frame_failed",
+    "source_failure_reason": "first_frame_timeout",
+    "video_source": "/dev/video1",
+    "last_offer_error": "first_frame_unreadable"
+  }
+}

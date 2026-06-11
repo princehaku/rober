@@ -1,0 +1,123 @@
+{
+  "schema": "trashbot.camera_source_probe_matrix_summary.v1",
+  "devices": [
+    {
+      "device": "/dev/video0",
+      "requested_fourcc": "MJPG",
+      "status": "open_failed",
+      "open_ok": false,
+      "read_ok": false,
+      "first_frame_timeout": false,
+      "failure_reason": null,
+      "visible_content_proven": false,
+      "mean_luma": null,
+      "non_black_ratio_ge16": null,
+      "sample_path": "/tmp/rober_camera_probe_2305/video0_MJPG.jpg"
+    },
+    {
+      "device": "/dev/video0",
+      "requested_fourcc": null,
+      "status": "open_failed",
+      "open_ok": false,
+      "read_ok": false,
+      "first_frame_timeout": false,
+      "failure_reason": null,
+      "visible_content_proven": false,
+      "mean_luma": null,
+      "non_black_ratio_ge16": null,
+      "sample_path": "/tmp/rober_camera_probe_2305/video0_default.jpg"
+    },
+    {
+      "device": "/dev/video0",
+      "requested_fourcc": "YUYV",
+      "status": "open_failed",
+      "open_ok": false,
+      "read_ok": false,
+      "first_frame_timeout": false,
+      "failure_reason": null,
+      "visible_content_proven": false,
+      "mean_luma": null,
+      "non_black_ratio_ge16": null,
+      "sample_path": "/tmp/rober_camera_probe_2305/video0_YUYV.jpg"
+    },
+    {
+      "device": "/dev/video1",
+      "requested_fourcc": "MJPG",
+      "status": "first_frame_timeout",
+      "open_ok": true,
+      "read_ok": false,
+      "first_frame_timeout": true,
+      "failure_reason": "capture_read_call_timeout",
+      "visible_content_proven": false,
+      "mean_luma": null,
+      "non_black_ratio_ge16": null,
+      "sample_path": "/tmp/rober_camera_probe_2305/video1_MJPG.jpg"
+    },
+    {
+      "device": "/dev/video1",
+      "requested_fourcc": null,
+      "status": "first_frame_timeout",
+      "open_ok": true,
+      "read_ok": false,
+      "first_frame_timeout": true,
+      "failure_reason": "capture_read_call_timeout",
+      "visible_content_proven": false,
+      "mean_luma": null,
+      "non_black_ratio_ge16": null,
+      "sample_path": "/tmp/rober_camera_probe_2305/video1_default.jpg"
+    },
+    {
+      "device": "/dev/video1",
+      "requested_fourcc": "YUYV",
+      "status": "first_frame_timeout",
+      "open_ok": true,
+      "read_ok": false,
+      "first_frame_timeout": true,
+      "failure_reason": "capture_read_call_timeout",
+      "visible_content_proven": false,
+      "mean_luma": null,
+      "non_black_ratio_ge16": null,
+      "sample_path": "/tmp/rober_camera_probe_2305/video1_YUYV.jpg"
+    },
+    {
+      "device": "/dev/video2",
+      "requested_fourcc": "MJPG",
+      "status": "open_failed",
+      "open_ok": false,
+      "read_ok": false,
+      "first_frame_timeout": false,
+      "failure_reason": null,
+      "visible_content_proven": false,
+      "mean_luma": null,
+      "non_black_ratio_ge16": null,
+      "sample_path": "/tmp/rober_camera_probe_2305/video2_MJPG.jpg"
+    },
+    {
+      "device": "/dev/video2",
+      "requested_fourcc": null,
+      "status": "open_failed",
+      "open_ok": false,
+      "read_ok": false,
+      "first_frame_timeout": false,
+      "failure_reason": null,
+      "visible_content_proven": false,
+      "mean_luma": null,
+      "non_black_ratio_ge16": null,
+      "sample_path": "/tmp/rober_camera_probe_2305/video2_default.jpg"
+    },
+    {
+      "device": "/dev/video2",
+      "requested_fourcc": "YUYV",
+      "status": "open_failed",
+      "open_ok": false,
+      "read_ok": false,
+      "first_frame_timeout": false,
+      "failure_reason": null,
+      "visible_content_proven": false,
+      "mean_luma": null,
+      "non_black_ratio_ge16": null,
+      "sample_path": "/tmp/rober_camera_probe_2305/video2_YUYV.jpg"
+    }
+  ],
+  "readable_devices": []
+}

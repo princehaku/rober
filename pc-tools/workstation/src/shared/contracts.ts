@@ -2179,6 +2179,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       video_source: string;
       video_source_mode: string;
       selected_path: string;
+      source_readiness: string;
+      source_failure_reason: string;
       active_peer_count: string;
       last_offer_error: string;
       last_offer_failure_reason: string;
