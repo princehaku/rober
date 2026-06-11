@@ -1,0 +1,52 @@
+{
+  "http_status": 200,
+  "elapsed_ms": 42020,
+  "endpoint": "/api/robot-control/radar/scan-proof/refresh?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+  "method": "POST",
+  "body": {
+    "schema": "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
+    "source": "software_proof",
+    "proof_status": "not_proven",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "pc_only": true,
+    "refresh_kind": "radar_scan_proof_refresh",
+    "proxy_status": "refresh_forwarded",
+    "source_base_url": "http://192.168.1.11:8787",
+    "normalized_base_url": "http://192.168.1.11:8787",
+    "remote_endpoint": "/api/radar/scan-proof/refresh",
+    "remote_http_status": 200,
+    "status": "loaded_fail_closed_summary",
+    "last_result_status": "refreshed",
+    "last_result_schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_refresh_result",
+    "last_result_evidence_ref": "o1-lidar-scan-proof-1781187807175",
+    "last_refreshed_at_ms": 1781187791575,
+    "latest_readback_key_values": {
+      "status": "refreshed",
+      "latest_proof_status": "raw_packets_parsed",
+      "evidence_ref": "o1-lidar-scan-proof-1781187807175",
+      "scan_once_observed": "true",
+      "scan_hz_observed": "true",
+      "raw_packet_once_observed": "true",
+      "tf_observed": "true",
+      "continuous_scan_status": "latest_proof_stale_while_lifecycle_running",
+      "continuous_window_observed": "false",
+      "continuity_window_status": "latest_proof_stale_while_lifecycle_running",
+      "lifecycle_running": "true",
+      "lifecycle_state": "running",
+      "latest_scan_proof_fresh": "false",
+      "blocked_reasons": "latest_scan_proof_stale",
+      "continuity_blocked_reasons": "latest_scan_proof_stale"
+    },
+    "failure_reason": "",
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": [],
+    "non_motion_evidence_actions_observed": [
+      "sends_commands",
+      "starts_ros2"
+    ],
+    "robot_control_executed": false
+  },
+  "fetch_error": ""
+}

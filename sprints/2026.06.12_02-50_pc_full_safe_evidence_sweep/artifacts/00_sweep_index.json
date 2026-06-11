@@ -1,0 +1,144 @@
+{
+  "schema": "trashbot.pc_safe_evidence_sweep_index.v1",
+  "robot_base_url": "http://192.168.1.11:8787",
+  "generated_at": "2026-06-11T14:27:12.655Z",
+  "steps": [
+    {
+      "file": "01_summary_before.json",
+      "method": "GET",
+      "endpoint": "/api/robot-control/summary?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 200,
+      "elapsed_ms": 3474,
+      "failure_reason": "",
+      "fetch_error": ""
+    },
+    {
+      "file": "02_camera_first_frame_probe.json",
+      "method": "POST",
+      "endpoint": "/api/robot-control/camera/first-frame/probe?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 502,
+      "elapsed_ms": 5979,
+      "status": "first_frame_timeout",
+      "proxy_status": "probe_failed",
+      "failure_reason": "capture_read_call_timeout",
+      "fetch_error": ""
+    },
+    {
+      "file": "03_radar_start.json",
+      "method": "POST",
+      "endpoint": "/api/robot-control/radar/start?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 200,
+      "elapsed_ms": 333,
+      "status": "loaded_fail_closed_summary",
+      "proxy_status": "lifecycle_forwarded",
+      "failure_reason": "",
+      "fetch_error": ""
+    },
+    {
+      "file": "04_radar_scan_refresh.json",
+      "method": "POST",
+      "endpoint": "/api/robot-control/radar/scan-proof/refresh?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 200,
+      "elapsed_ms": 42020,
+      "status": "loaded_fail_closed_summary",
+      "proxy_status": "refresh_forwarded",
+      "failure_reason": "",
+      "fetch_error": ""
+    },
+    {
+      "file": "05_summary_after_radar.json",
+      "method": "GET",
+      "endpoint": "/api/robot-control/summary?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 200,
+      "elapsed_ms": 3114,
+      "failure_reason": "",
+      "fetch_error": ""
+    },
+    {
+      "file": "06_map_list.json",
+      "method": "GET",
+      "endpoint": "/api/robot-control/map/list?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 200,
+      "elapsed_ms": 19,
+      "status": "loaded_fail_closed_summary",
+      "proxy_status": "lifecycle_forwarded",
+      "failure_reason": "",
+      "fetch_error": ""
+    },
+    {
+      "file": "07_map_refresh.json",
+      "method": "POST",
+      "endpoint": "/api/robot-control/map/proof/refresh?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 200,
+      "elapsed_ms": 55018,
+      "status": "loaded_fail_closed_summary",
+      "proxy_status": "refresh_forwarded",
+      "failure_reason": "",
+      "fetch_error": ""
+    },
+    {
+      "file": "08_localize_reset.json",
+      "method": "POST",
+      "endpoint": "/api/robot-control/localize/reset?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 200,
+      "elapsed_ms": 85015,
+      "status": "loaded_fail_closed_summary",
+      "proxy_status": "refresh_forwarded",
+      "failure_reason": "",
+      "fetch_error": ""
+    },
+    {
+      "file": "09_nav2_refresh.json",
+      "method": "POST",
+      "endpoint": "/api/robot-control/nav2/proof/refresh?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 200,
+      "elapsed_ms": 47904,
+      "status": "loaded_fail_closed_summary",
+      "proxy_status": "refresh_forwarded",
+      "failure_reason": "",
+      "fetch_error": ""
+    },
+    {
+      "file": "10_base_feedback_samples.json",
+      "method": "POST",
+      "endpoint": "/api/robot-control/base/feedback-samples?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 200,
+      "elapsed_ms": 1537,
+      "status": "loaded",
+      "proxy_status": "samples_forwarded",
+      "failure_reason": "",
+      "fetch_error": ""
+    },
+    {
+      "file": "11_base_stop.json",
+      "method": "POST",
+      "endpoint": "/api/robot-control/base/stop?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 200,
+      "elapsed_ms": 2980,
+      "status": "stopped",
+      "proxy_status": "command_forwarded",
+      "failure_reason": "",
+      "fetch_error": ""
+    },
+    {
+      "file": "12_radar_stop.json",
+      "method": "POST",
+      "endpoint": "/api/robot-control/radar/stop?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 200,
+      "elapsed_ms": 283,
+      "status": "loaded_fail_closed_summary",
+      "proxy_status": "lifecycle_forwarded",
+      "failure_reason": "",
+      "fetch_error": ""
+    },
+    {
+      "file": "13_summary_after.json",
+      "method": "GET",
+      "endpoint": "/api/robot-control/summary?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+      "http_status": 200,
+      "elapsed_ms": 3185,
+      "failure_reason": "",
+      "fetch_error": ""
+    }
+  ]
+}

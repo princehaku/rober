@@ -944,6 +944,31 @@ path 的原因，而不是继续消耗 `/tf_topic_missing`。
 下一步如果要进入真实移动，需要先补齐更强地图质量、相机可见内容、外部视频、轮速非零和
 LiDAR motion delta；本轮不构成真实导航或手动移动放行。
 
+## 2026-06-12 PC Full Safe Evidence Sweep
+
+`sprints/2026.06.12_02-50_pc_full_safe_evidence_sweep/` 在不使用 subagent 的前提下，
+通过 PC fixed proxy 对真实上位机 `http://192.168.1.11:8787` 跑了一轮完整安全巡检。
+调用顺序覆盖 summary、camera first-frame probe、radar start/refresh/stop、map
+list/refresh、localize reset、Nav2 no-motion proof refresh、base feedback samples 和
+base stop。该巡检没有调用 `/api/base/manual` 成功路径，没有发布 `/cmd_vel`，没有执行
+NavigateToPose，也没有把普通用户首屏改回工程风格。
+
+PC 侧本轮已证明的能力：
+
+- summary 可读：`robot_api_connection.status=readable`，危险字段为空。
+- 雷达固定代理可触发 lifecycle start/stop，scan proof refresh 读到 scan、scan hz、
+  raw packet 和 TF，证据号 `o1-lidar-scan-proof-1781187807175`。
+- 地图固定代理可 refresh 到 `map_once_artifact_metadata_observed`，证据号
+  `o3-map-lifecycle-1781183225157`。
+- 底盘反馈固定只读采样 3/3 读到 `T=1001`，但这仍是 feedback link，不是运动证明。
+- stop 固定代理返回 `status=stopped`。
+
+本轮未完成项也必须留在 PC 产品边界里：camera first-frame probe 仍是
+`first_frame_timeout/capture_read_call_timeout`；localize reset 与 Nav2 no-motion proof
+在这次 full sweep 中回落为 `blocked_with_root_cause`，其中 Nav2 readback 为
+`path_generated=false/path_point_count=0`。PC 高级诊断当前能判断失败，但 localize 的对象型
+root cause 在摘要里仍会被压成 `[object Object]`，后续应单独改善可读性。
+
 ## 运行与验证
 
 工作站验证只使用 Node/Vue gate：

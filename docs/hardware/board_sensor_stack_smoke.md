@@ -2031,3 +2031,34 @@ camera-only 收口，没有重新启动 motion、Nav2 或 radar runtime。复核
 - controls 读回仍是原值，未留下临时 exposure/brightness/contrast 改动
 
 这轮现场状态仍更接近 `/dev/video1` 首帧 readback timeout，而不是已证明的可见内容。
+
+## 2026-06-12 02:50 PC Full Safe Evidence Sweep
+
+`sprints/2026.06.12_02-50_pc_full_safe_evidence_sweep/` 通过本机 PC API 对真实上位机
+`http://192.168.1.11:8787` 进行安全总巡检。硬件事实仍以 `docs/vendor/VENDOR_INDEX.md`
+为入口；本轮没有执行非 stop 底盘运动，没有发布 `/cmd_vel`，没有 NavigateToPose，没有写
+WAVE ROVER UART `/dev/ttyS5`。
+
+已观测到的正向证据：
+
+- LiDAR：`radar/start` 与 `radar/stop` 固定代理均转发成功；`radar/scan-proof/refresh`
+  读到 `scan_once_observed=true`、`scan_hz_observed=true`、
+  `raw_packet_once_observed=true`、`tf_observed=true`，证据号
+  `o1-lidar-scan-proof-1781187807175`。
+- Map：`map/proof/refresh` 读到 `map_once_artifact_metadata_observed`，证据号
+  `o3-map-lifecycle-1781183225157`。
+- Base feedback：PC 固定只读采样代理读到 3/3 个 `T=1001` 样本，
+  `feedback_ack_t1001_observed=true`，`sends_motion_commands=false`。
+- Stop：固定 `/api/base/stop` 代理返回 `status=stopped`。
+
+仍然阻塞真实移动的证据：
+
+- Camera：`/dev/video1` first-frame probe 仍为 HTTP 503、
+  `first_frame_timeout/capture_read_call_timeout`，backend smoke 未观察到帧。
+- Radar continuity：lifecycle running 时 readback 仍出现
+  `latest_proof_stale_while_lifecycle_running`，说明本轮只可声明一次性 scan proof。
+- Localization/Nav2：本轮 refresh 后 localize reset 和 Nav2 no-motion proof 均为
+  `blocked_with_root_cause`；Nav2 readback 为 `path_generated=false`、
+  `path_point_count=0`。
+- Motion gate：仍缺外部视频、可见图传、左右轮非零反馈和 LiDAR motion delta；因此
+  `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`。

@@ -1,0 +1,33 @@
+{
+  "http_status": 200,
+  "elapsed_ms": 333,
+  "endpoint": "/api/robot-control/radar/start?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+  "method": "POST",
+  "body": {
+    "schema": "trashbot.pc_tools_workstation.robot_control_radar_lifecycle_proxy.v1",
+    "source": "software_proof",
+    "proof_status": "not_proven",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "pc_only": true,
+    "action": "start",
+    "proxy_status": "lifecycle_forwarded",
+    "source_base_url": "http://192.168.1.11:8787",
+    "normalized_base_url": "http://192.168.1.11:8787",
+    "remote_endpoint": "/api/radar/start",
+    "remote_method": "POST",
+    "remote_http_status": 200,
+    "status": "loaded_fail_closed_summary",
+    "command_result": {
+      "mode": "command",
+      "executed": true,
+      "ok": true
+    },
+    "failure_reason": "",
+    "blocked_reasons": [],
+    "hard_dangerous_true_fields": [],
+    "robot_control_executed": false
+  },
+  "fetch_error": ""
+}

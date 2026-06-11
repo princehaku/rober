@@ -671,3 +671,24 @@ PC 页面获得了可重复触发的底层相机诊断闭环，没有恢复实�
 - `sprints/2026.06.12_01-15_camera_backend_capture_matrix/artifacts/01_board_camera_backend_matrix.log`
 - `sprints/2026.06.12_01-15_camera_backend_capture_matrix/artifacts/02_upper_camera_probe_backend_smoke.json`
 - `sprints/2026.06.12_01-15_camera_backend_capture_matrix/artifacts/03_pc_proxy_camera_probe_backend_smoke.json`
+
+## 2026-06-12 02:50 PC full sweep camera status
+
+`sprints/2026.06.12_02-50_pc_full_safe_evidence_sweep/` 复用 PC fixed proxy
+`POST /api/robot-control/camera/first-frame/probe?baseUrl=http://192.168.1.11:8787`
+再次确认真实上位机 camera 状态。本轮没有触碰底盘运动、Nav2 执行或 `/cmd_vel`。
+
+结果保持为硬件输入层 blocker：
+
+- `remote_http_status=503`
+- `status=first_frame_timeout`
+- `failure_reason=capture_read_call_timeout`
+- `device=/dev/video1`
+- `open_ok=true`
+- `read_ok=false`
+- `visible_content_proven=false`
+- `backend_smoke.status=backend_no_frame_observed`
+
+这与上一轮 V4L2/ffmpeg backend matrix 一致：PC、WebRTC 和 OpenCV 之外的底层后端也没有
+观察到实际帧。下一步仍应优先检查 DV20 输入源、HDMI/USB 线缆、供电、采集卡，或替换
+known-good UVC 后复测；不能把 `/api/camera/health ready` 当成可见图传验收。

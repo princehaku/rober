@@ -1,0 +1,217 @@
+{
+  "summary_before": {
+    "console": "loaded_fail_closed_summary",
+    "connection": "readable",
+    "dangerous": [],
+    "base": {
+      "status": "loaded",
+      "latest_feedback_status": "loaded",
+      "feedback_ack_status": "t1001_observed",
+      "latest_t1001_observed_count": "3",
+      "feedback_link_status": "t1001_observed_not_motion_proof"
+    },
+    "radar": {
+      "status": "scan_once_hz_raw_packet_tf_observed",
+      "latest_scan_proof_status": "loaded",
+      "latest_raw_packet_proof_status": "loaded",
+      "continuous_scan_status": "latest_proof_present_but_lifecycle_not_running",
+      "lifecycle_running": "false",
+      "lifecycle_state": "stopped",
+      "continuous_window_observed": "false",
+      "continuity_window_status": "latest_proof_present_but_lifecycle_not_running",
+      "latest_scan_proof_fresh": "false"
+    },
+    "camera": {
+      "status": "ready",
+      "devices_status": "loaded",
+      "preview_status": "idle_not_started",
+      "video_source": "/dev/video1",
+      "video_source_mode": "auto",
+      "selected_path": "/dev/video1",
+      "source_readiness": "source_selected_not_probed",
+      "source_failure_reason": "",
+      "active_peer_count": "0",
+      "last_offer_error": "none",
+      "last_offer_failure_reason": "none"
+    }
+  },
+  "camera_probe": {
+    "proxy": "probe_failed",
+    "remote": 503,
+    "status": "first_frame_timeout",
+    "reason": "capture_read_call_timeout",
+    "values": {
+      "schema": "trashbot.camera_first_frame_probe.v1",
+      "device": "/dev/video1",
+      "requested_fourcc": "MJPG",
+      "open_ok": "true",
+      "read_ok": "false",
+      "first_frame_timeout": "true",
+      "failure_reason": "capture_read_call_timeout",
+      "visible_content_proven": "false",
+      "elapsed_ms": "5328",
+      "mean_luma": "not_available",
+      "non_black_ratio": "not_available",
+      "backend_smoke_status": "backend_no_frame_observed",
+      "backend_frame_observed": "false",
+      "backend_attempts": "4"
+    }
+  },
+  "radar_start": {
+    "proxy": "lifecycle_forwarded",
+    "status": "loaded_fail_closed_summary",
+    "command": {
+      "mode": "command",
+      "executed": true,
+      "ok": true
+    },
+    "dangerous": []
+  },
+  "radar_refresh": {
+    "proxy": "refresh_forwarded",
+    "remote": 200,
+    "status": "refreshed",
+    "evidence": "o1-lidar-scan-proof-1781187807175",
+    "values": {
+      "status": "refreshed",
+      "latest_proof_status": "raw_packets_parsed",
+      "evidence_ref": "o1-lidar-scan-proof-1781187807175",
+      "scan_once_observed": "true",
+      "scan_hz_observed": "true",
+      "raw_packet_once_observed": "true",
+      "tf_observed": "true",
+      "continuous_scan_status": "latest_proof_stale_while_lifecycle_running",
+      "continuous_window_observed": "false",
+      "continuity_window_status": "latest_proof_stale_while_lifecycle_running",
+      "lifecycle_running": "true",
+      "lifecycle_state": "running",
+      "latest_scan_proof_fresh": "false",
+      "blocked_reasons": "latest_scan_proof_stale",
+      "continuity_blocked_reasons": "latest_scan_proof_stale"
+    }
+  },
+  "map_list": {
+    "proxy": "lifecycle_forwarded",
+    "status": "loaded_fail_closed_summary"
+  },
+  "map_refresh": {
+    "proxy": "refresh_forwarded",
+    "remote": 200,
+    "status": "not_proven",
+    "evidence": "o3-map-lifecycle-1781183225157",
+    "values": {
+      "status": "not_proven",
+      "latest_proof_status": "map_once_artifact_metadata_observed",
+      "evidence_ref": "o3-map-lifecycle-1781183225157",
+      "map_once_observed": "true",
+      "map_file_observed": "true",
+      "map_metadata_observed": "true"
+    }
+  },
+  "localize_reset": {
+    "proxy": "refresh_forwarded",
+    "remote": 200,
+    "status": "blocked_with_root_cause",
+    "evidence": "o10-amcl-nav2-runtime-wrapper-failure-1781187976819",
+    "values": {
+      "status": "blocked_with_root_cause",
+      "latest_proof_status": "blocked_with_root_cause",
+      "evidence_ref": "o10-amcl-nav2-runtime-wrapper-failure-1781187976819",
+      "initialpose_published": "true",
+      "amcl_pose_observed": "false",
+      "localization_tf_observed": "[object Object]",
+      "managed_runtime_started": "true",
+      "managed_runtime_cleanup_ok": "false",
+      "localization_reset_observed": "false",
+      "root_causes": "[object Object],[object Object],[object Object]"
+    }
+  },
+  "nav2_refresh": {
+    "proxy": "refresh_forwarded",
+    "remote": 200,
+    "status": "blocked_with_root_cause",
+    "evidence": "o10-amcl-nav2-runtime-1781187979244",
+    "values": {
+      "status": "blocked_with_root_cause",
+      "latest_proof_status": "blocked_with_root_cause",
+      "evidence_ref": "o10-amcl-nav2-runtime-1781187979244",
+      "managed_runtime_started": "true",
+      "initialpose_published": "true",
+      "path_generation_requested": "true",
+      "path_generated": "false",
+      "path_generation_succeeded": "false",
+      "path_point_count": "0",
+      "planner_server_active": "true"
+    }
+  },
+  "base_feedback": {
+    "proxy": "samples_forwarded",
+    "remote": 200,
+    "status": "loaded",
+    "values": {
+      "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+      "requested_sample_count": "3",
+      "completed_sample_count": "3",
+      "t1001_observed_count": "3",
+      "all_samples_observed_t1001": "true",
+      "partial_samples_observed_t1001": "false",
+      "feedback_ack_t1001_observed": "true",
+      "observed_feedback_types": "[1001]",
+      "sends_motion_commands": "false",
+      "robot_control_executed": "false"
+    },
+    "dangerous": []
+  },
+  "stop": {
+    "proxy": "command_forwarded",
+    "status": "stopped",
+    "remote": 200,
+    "evidence": "partial",
+    "dangerousFailure": ""
+  },
+  "radar_stop": {
+    "proxy": "lifecycle_forwarded",
+    "status": "loaded_fail_closed_summary",
+    "command": {
+      "mode": "command",
+      "executed": true,
+      "ok": true
+    }
+  },
+  "summary_after": {
+    "console": "loaded_fail_closed_summary",
+    "connection": "readable",
+    "dangerous": [],
+    "base": {
+      "status": "loaded",
+      "latest_feedback_status": "loaded",
+      "feedback_ack_status": "t1001_observed",
+      "latest_t1001_observed_count": "3",
+      "feedback_link_status": "t1001_observed_not_motion_proof"
+    },
+    "radar": {
+      "status": "scan_once_hz_raw_packet_tf_observed",
+      "latest_scan_proof_status": "loaded",
+      "latest_raw_packet_proof_status": "loaded",
+      "continuous_scan_status": "latest_proof_present_but_lifecycle_not_running",
+      "lifecycle_running": "false",
+      "lifecycle_state": "stopped",
+      "continuous_window_observed": "false",
+      "continuity_window_status": "latest_proof_present_but_lifecycle_not_running",
+      "latest_scan_proof_fresh": "true"
+    },
+    "camera": {
+      "status": "ready",
+      "devices_status": "loaded",
+      "preview_status": "idle_not_started",
+      "video_source": "/dev/video1",
+      "video_source_mode": "auto",
+      "selected_path": "/dev/video1",
+      "source_readiness": "source_selected_not_probed",
+      "source_failure_reason": "",
+      "active_peer_count": "0",
+      "last_offer_error": "none",
+      "last_offer_failure_reason": "none"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "http_status": 502,
+  "elapsed_ms": 5979,
+  "endpoint": "/api/robot-control/camera/first-frame/probe?baseUrl=http%3A%2F%2F192.168.1.11%3A8787",
+  "method": "POST",
+  "body": {
+    "schema": "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
+    "source": "software_proof",
+    "proof_status": "not_proven",
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "pc_only": true,
+    "proxy_status": "probe_failed",
+    "source_base_url": "http://192.168.1.11:8787",
+    "normalized_base_url": "http://192.168.1.11:8787",
+    "remote_endpoint": "/api/camera/first-frame/probe",
+    "remote_http_status": 503,
+    "status": "first_frame_timeout",
+    "probe_key_values": {
+      "schema": "trashbot.camera_first_frame_probe.v1",
+      "device": "/dev/video1",
+      "requested_fourcc": "MJPG",
+      "open_ok": "true",
+      "read_ok": "false",
+      "first_frame_timeout": "true",
+      "failure_reason": "capture_read_call_timeout",
+      "visible_content_proven": "false",
+      "elapsed_ms": "5328",
+      "mean_luma": "not_available",
+      "non_black_ratio": "not_available",
+      "backend_smoke_status": "backend_no_frame_observed",
+      "backend_frame_observed": "false",
+      "backend_attempts": "4"
+    },
+    "failure_reason": "capture_read_call_timeout",
+    "blocked_reasons": [
+      "probe_http_status_503",
+      "capture_read_call_timeout"
+    ],
+    "hard_dangerous_true_fields": [],
+    "robot_control_executed": false
+  },
+  "fetch_error": ""
+}

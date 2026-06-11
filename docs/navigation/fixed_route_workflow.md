@@ -402,6 +402,23 @@ localization TF 未成链：`map -> odom -> base_link -> laser_frame` 没有在 
 proof collector 的 TF 观测窗口；仍不得用 NavigateToPose、`/cmd_vel` 或
 `/api/base/manual` 绕过 no-motion 证明。
 
+`2026-06-12 02:50` PC full safe evidence sweep 重新通过 fixed proxy 串起
+localize reset 与 Nav2 no-motion proof refresh。PC summary 在巡检前能读到上一轮
+Nav2 latest `path_generated=true/path_point_count=30`，但本轮 refresh 后再次回落：
+
+- `localize/reset`：HTTP 200，`status=blocked_with_root_cause`，
+  `initialpose_published=true`，`amcl_pose_observed=false`，
+  `managed_runtime_cleanup_ok=false`。
+- `nav2/proof/refresh`：HTTP 200，`status=blocked_with_root_cause`，
+  `planner_server_active=true`，`path_generation_requested=true`，
+  `path_generated=false`，`path_generation_succeeded=false`，`path_point_count=0`。
+- 边界仍保持 no-motion：未执行 NavigateToPose，未发布 `/cmd_vel`，未调用
+  `/api/base/manual` 成功路径，未打开 WAVE ROVER UART。
+
+因此当前结论不是“Nav2 已稳定可用”，而是 no-motion proof 已具备 PC 触发入口，但运行时
+稳定性仍不足。下一轮应优先固定 managed runtime cleanup、AMCL pose/TF 观测窗口和 planner
+输入一致性，再谈真实移动或固定路线执行。
+
 `2026-06-10 09:15` 起，`o10_amcl_nav2_runtime_proof.py` 增加显式 opt-in 的
 managed no-motion localization runtime。默认不传 `managed_runtime_opt_in` 时仍保持
 read-only collector；只有显式传入时，helper 才会在 proof 窗口内短暂启动：
