@@ -1,0 +1,62 @@
+{
+  "endpoint_status": "not_proven",
+  "latest_status": "nav2_no_motion_path_generation_runtime_observed",
+  "path_generation_succeeded": true,
+  "path_goal_request": {
+    "adaptation_boundary": "map_bounds_adapted_no_motion_planner_probe",
+    "adapted_from_map_bounds": true,
+    "goal_frame_id": "map",
+    "goal_x": 0.8,
+    "goal_y": -0.27467727804371744,
+    "goal_yaw": 0.0,
+    "map_goal_diagnostics": {
+      "adaptation_boundary": "map_bounds_adapted_no_motion_planner_probe",
+      "adapted": true,
+      "adapted_goal": {
+        "x": 0.8,
+        "y": -0.27467727804371744
+      },
+      "adapted_start": {
+        "x": 0.0,
+        "y": -0.27467727804371744
+      },
+      "bounds": {
+        "max_x": 5.102164774232206,
+        "max_y": -0.024677274318427145,
+        "min_x": -6.147835393405858,
+        "min_y": -5.924677362235278
+      },
+      "cell_counts": {
+        "free": 0,
+        "occupied": 44,
+        "other": 0,
+        "unknown": 26506
+      },
+      "goal_in_bounds": false,
+      "map_analysis_ok": true,
+      "original_goal": {
+        "x": 0.8,
+        "y": 0.0
+      },
+      "original_start": {
+        "x": 0.0,
+        "y": 0.0
+      },
+      "start_in_bounds": false
+    },
+    "original_goal": {
+      "x": 0.8,
+      "y": 0.0,
+      "yaw": 0.0
+    },
+    "planner_id": "",
+    "start_x": 0.0,
+    "start_y": -0.27467727804371744,
+    "use_start": true
+  },
+  "path_point_count": 30,
+  "root_causes": [],
+  "safe_to_control": false,
+  "sends_motion_commands": false,
+  "uses_base_uart": false
+}

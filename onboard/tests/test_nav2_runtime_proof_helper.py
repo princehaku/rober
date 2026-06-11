@@ -243,6 +243,45 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         for forbidden in ("controller_server", "bt_navigator", "FollowPath", "/cmd_vel", "ros2 action send_goal"):
             self.assertNotIn(forbidden, shell)
 
+    def test_path_generation_request_adapts_out_of_bounds_goal_to_map(self) -> None:
+        """固定 proof 点越过新地图边界时，只能改 planner-only 起终点，不能触发运动层。"""
+        args = HELPER.parse_args(
+            [
+                "--initialpose-opt-in",
+                "--initialpose-x",
+                "0",
+                "--initialpose-y",
+                "0",
+                "--path-generation-opt-in",
+                "--path-goal-x",
+                "0.8",
+                "--path-goal-y",
+                "0",
+            ]
+        )
+        map_analysis = {
+            "ok": True,
+            "resolution": 0.05,
+            "bounds": {"min_x": -6.15, "min_y": -5.92, "max_x": 5.10, "max_y": -0.02},
+            "cell_counts": {"free": 0, "unknown": 26506, "occupied": 44, "other": 0},
+        }
+
+        request = HELPER.path_generation_request(
+            args,
+            map_analysis=map_analysis,
+            initialpose_payload=HELPER.initialpose_request(args),
+        )
+
+        self.assertTrue(request["enabled"])
+        self.assertTrue(request["use_start"])
+        self.assertTrue(request["adapted_from_map_bounds"])
+        self.assertEqual("map_bounds_adapted_no_motion_planner_probe", request["adaptation_boundary"])
+        self.assertAlmostEqual(-0.27, request["start_y"], places=2)
+        self.assertAlmostEqual(-0.27, request["y"], places=2)
+        self.assertAlmostEqual(0.8, request["x"])
+        self.assertFalse(request["map_goal_diagnostics"]["start_in_bounds"])
+        self.assertFalse(request["map_goal_diagnostics"]["goal_in_bounds"])
+
     def test_managed_param_file_only_lists_localization_nodes(self) -> None:
         """参数文件只能包含 map_server/amcl/lifecycle_manager，不能偷偷把运动栈拉起来。"""
         args = HELPER.parse_args([])

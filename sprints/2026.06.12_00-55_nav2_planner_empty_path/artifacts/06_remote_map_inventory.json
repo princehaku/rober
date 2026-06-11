@@ -1,0 +1,223 @@
+[
+  {
+    "yaml": "trashbot_map.yaml",
+    "image": "trashbot_map.pgm",
+    "yaml_size": 163,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -6.147835393405858,
+      -5.924677362235278,
+      0.0
+    ],
+    "width": 225,
+    "height": 118,
+    "free": 0,
+    "unknown": 26506,
+    "occupied": 44,
+    "other": 0
+  },
+  {
+    "yaml": "scan_stabilize_fixed_20260611_0756.yaml",
+    "image": "scan_stabilize_fixed_20260611_0756.pgm",
+    "yaml_size": 188,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -0.4816038921813044,
+      -0.04347426218809523,
+      0.0
+    ],
+    "width": 78,
+    "height": 103,
+    "free": 0,
+    "unknown": 8034,
+    "occupied": 0,
+    "other": 0
+  },
+  {
+    "yaml": "scan_stabilize_20260611_075301.yaml",
+    "image": "scan_stabilize_20260611_075301.pgm",
+    "yaml_size": 181,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -6.063997175405548,
+      -5.970356774430534,
+      0.0
+    ],
+    "width": 256,
+    "height": 119,
+    "free": 0,
+    "unknown": 30419,
+    "occupied": 45,
+    "other": 0
+  },
+  {
+    "yaml": "pc_runtime_v1.yaml",
+    "image": "pc_runtime_v1.pgm",
+    "yaml_size": 166,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -0.5807570660053352,
+      -0.3674331146788179,
+      0.0
+    ],
+    "width": 88,
+    "height": 93,
+    "free": 0,
+    "unknown": 8184,
+    "occupied": 0,
+    "other": 0
+  },
+  {
+    "yaml": "pc_proxy_start.yaml",
+    "image": "pc_proxy_start.pgm",
+    "yaml_size": 165,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -6.160781959742697,
+      -3.035495748240447,
+      0.0
+    ],
+    "width": 279,
+    "height": 170,
+    "free": 0,
+    "unknown": 47383,
+    "occupied": 47,
+    "other": 0
+  },
+  {
+    "yaml": "pc_proxy_scan_stabilize_20260611_0758.yaml",
+    "image": "pc_proxy_scan_stabilize_20260611_0758.pgm",
+    "yaml_size": 171,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -5.5168843808154,
+      0.0,
+      0.0
+    ],
+    "width": 240,
+    "height": 122,
+    "free": 0,
+    "unknown": 29228,
+    "occupied": 52,
+    "other": 0
+  },
+  {
+    "yaml": "pc_proxy_save2.yaml",
+    "image": "pc_proxy_save2.pgm",
+    "yaml_size": 165,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -6.061363967540578,
+      -4.919013294453117,
+      0.0
+    ],
+    "width": 245,
+    "height": 213,
+    "free": 0,
+    "unknown": 52163,
+    "occupied": 22,
+    "other": 0
+  },
+  {
+    "yaml": "pc_no_motion_20260611_162507.yaml",
+    "image": "pc_no_motion_20260611_162507.pgm",
+    "yaml_size": 181,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -6.003357563416436,
+      -0.39438733488638317,
+      0.0
+    ],
+    "width": 260,
+    "height": 122,
+    "free": 0,
+    "unknown": 31663,
+    "occupied": 57,
+    "other": 0
+  },
+  {
+    "yaml": "pc_map_lifecycle_20260611_1350.yaml",
+    "image": "pc_map_lifecycle_20260611_1350.pgm",
+    "yaml_size": 182,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -6.1025856980963935,
+      -5.969282626324649,
+      0.0
+    ],
+    "width": 229,
+    "height": 126,
+    "free": 0,
+    "unknown": 28809,
+    "occupied": 45,
+    "other": 0
+  },
+  {
+    "yaml": "pc_integrated_smoke_20260611_0735.yaml",
+    "image": "pc_integrated_smoke_20260611_0735.pgm",
+    "yaml_size": 184,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -4.398093127064995,
+      -5.579835018305759,
+      0.0
+    ],
+    "width": 209,
+    "height": 205,
+    "free": 0,
+    "unknown": 42839,
+    "occupied": 6,
+    "other": 0
+  },
+  {
+    "yaml": "pc_integrated_current_retry_20260611_0920.yaml",
+    "image": "pc_integrated_current_retry_20260611_0920.pgm",
+    "yaml_size": 178,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -1.5782425989205657,
+      0.0,
+      0.0
+    ],
+    "width": 100,
+    "height": 70,
+    "free": 0,
+    "unknown": 7000,
+    "occupied": 0,
+    "other": 0
+  },
+  {
+    "yaml": "pc_integrated_current_20260611_0920.yaml",
+    "image": "pc_integrated_current_20260611_0920.pgm",
+    "yaml_size": 172,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -1.8073195024044695,
+      0.0,
+      0.0
+    ],
+    "width": 189,
+    "height": 102,
+    "free": 0,
+    "unknown": 19253,
+    "occupied": 25,
+    "other": 0
+  },
+  {
+    "yaml": "final_direct_save.yaml",
+    "image": "final_direct_save.pgm",
+    "yaml_size": 169,
+    "resolution": 0.05000000074505806,
+    "origin": [
+      -1.472745310075687,
+      -1.3514837889440183,
+      0.0
+    ],
+    "width": 98,
+    "height": 135,
+    "free": 0,
+    "unknown": 13230,
+    "occupied": 0,
+    "other": 0
+  }
+]

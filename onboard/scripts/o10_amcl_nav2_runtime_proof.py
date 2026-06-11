@@ -478,10 +478,187 @@ def initialpose_payload(request: dict[str, Any]) -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
-def path_generation_request(args: argparse.Namespace) -> dict[str, Any]:
+def map_yaml_runtime_analysis(map_yaml: str | None) -> dict[str, Any]:
+    """轻量解析当前 map yaml/PGM；用于判断 proof 目标是否落在地图范围内。"""
+    result: dict[str, Any] = {
+        "executed": bool(map_yaml),
+        "ok": False,
+        "map_yaml": map_yaml,
+        "image": None,
+        "resolution": None,
+        "origin": None,
+        "width": None,
+        "height": None,
+        "bounds": None,
+        "cell_counts": {},
+        "error": None,
+    }
+    if not map_yaml:
+        result["error"] = {"type": "map_yaml_missing", "message": "managed map yaml is not resolved"}
+        return result
+    try:
+        yaml_path = Path(map_yaml)
+        text = yaml_path.read_text(encoding="utf-8", errors="replace")
+        image_name = ""
+        origin_values: list[float] = []
+        resolution: float | None = None
+        lines = text.splitlines()
+        for index, raw_line in enumerate(lines):
+            line = raw_line.strip()
+            if line.startswith("image:"):
+                image_name = line.split(":", 1)[1].strip().strip("'\"")
+            elif line.startswith("resolution:"):
+                resolution = float(line.split(":", 1)[1].strip())
+            elif line.startswith("origin:"):
+                for offset in range(1, 4):
+                    if index + offset < len(lines):
+                        value_text = lines[index + offset].strip()
+                        if value_text.startswith("-"):
+                            value_text = value_text[1:].strip()
+                        origin_values.append(float(value_text))
+        if resolution is None or len(origin_values) < 2:
+            raise ValueError("map yaml missing resolution or origin")
+        image_path = (yaml_path.parent / image_name) if image_name else yaml_path.with_suffix(".pgm")
+        with image_path.open("rb") as pgm_file:
+            if pgm_file.readline().strip() != b"P5":
+                raise ValueError("map image is not binary PGM P5")
+            size_line = pgm_file.readline()
+            while size_line.startswith(b"#"):
+                size_line = pgm_file.readline()
+            width, height = [int(value) for value in size_line.split()]
+            pgm_file.readline()
+            data = pgm_file.read()
+        free_cells = data.count(254)
+        unknown_cells = data.count(205)
+        occupied_cells = data.count(0)
+        bounds = {
+            "min_x": origin_values[0],
+            "min_y": origin_values[1],
+            "max_x": origin_values[0] + (width * resolution),
+            "max_y": origin_values[1] + (height * resolution),
+        }
+        result.update(
+            {
+                "ok": True,
+                "image": str(image_path),
+                "resolution": resolution,
+                "origin": origin_values[:3],
+                "width": width,
+                "height": height,
+                "bounds": bounds,
+                "cell_counts": {
+                    "free": free_cells,
+                    "unknown": unknown_cells,
+                    "occupied": occupied_cells,
+                    "other": len(data) - free_cells - unknown_cells - occupied_cells,
+                },
+            }
+        )
+        return result
+    except Exception as exc:  # noqa: BLE001 - map 诊断失败不能阻塞已有 proof 主路径。
+        result["error"] = compact_error(exc)
+        return result
+
+
+def point_in_map_bounds(x: float, y: float, map_analysis: dict[str, Any]) -> bool:
+    """只用 map metadata 判断点是否在地图矩形内；不把 unknown/free 混成安全可行驶。"""
+    bounds = map_analysis.get("bounds") if isinstance(map_analysis.get("bounds"), dict) else {}
+    return bool(
+        map_analysis.get("ok")
+        and float(bounds.get("min_x", 0.0)) <= x <= float(bounds.get("max_x", 0.0))
+        and float(bounds.get("min_y", 0.0)) <= y <= float(bounds.get("max_y", 0.0))
+    )
+
+
+def clamp_point_to_map_bounds(x: float, y: float, map_analysis: dict[str, Any]) -> tuple[float, float]:
+    """no-motion planner proof 允许把测试点夹到地图内侧，避免固定点因新地图裁剪失效。"""
+    bounds = map_analysis.get("bounds") if isinstance(map_analysis.get("bounds"), dict) else {}
+    resolution = float(map_analysis.get("resolution") or 0.05)
+    margin = max(resolution * 5.0, 0.25)
+    min_x = float(bounds["min_x"]) + margin
+    max_x = float(bounds["max_x"]) - margin
+    min_y = float(bounds["min_y"]) + margin
+    max_y = float(bounds["max_y"]) - margin
+    if min_x > max_x:
+        min_x = max_x = (float(bounds["min_x"]) + float(bounds["max_x"])) / 2.0
+    if min_y > max_y:
+        min_y = max_y = (float(bounds["min_y"]) + float(bounds["max_y"])) / 2.0
+    return min(max(x, min_x), max_x), min(max(y, min_y), max_y)
+
+
+def adapt_path_request_to_map_bounds(
+    request: dict[str, Any],
+    *,
+    map_analysis: dict[str, Any],
+    initialpose_payload: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """当固定 no-motion 起终点越界时，生成地图内的 planner-only 测试请求。"""
+    if not map_analysis.get("ok"):
+        request["map_goal_diagnostics"] = {"map_analysis_ok": False, "adapted": False}
+        return request
+    start_x = float((initialpose_payload or {}).get("x", 0.0))
+    start_y = float((initialpose_payload or {}).get("y", 0.0))
+    goal_x = float(request["x"])
+    goal_y = float(request["y"])
+    start_in_bounds = point_in_map_bounds(start_x, start_y, map_analysis)
+    goal_in_bounds = point_in_map_bounds(goal_x, goal_y, map_analysis)
+    diagnostics = {
+        "map_analysis_ok": True,
+        "adapted": False,
+        "start_in_bounds": start_in_bounds,
+        "goal_in_bounds": goal_in_bounds,
+        "bounds": map_analysis.get("bounds"),
+        "cell_counts": map_analysis.get("cell_counts"),
+        "original_start": {"x": start_x, "y": start_y},
+        "original_goal": {"x": goal_x, "y": goal_y},
+    }
+    if start_in_bounds and goal_in_bounds:
+        request["start_x"] = start_x
+        request["start_y"] = start_y
+        request["map_goal_diagnostics"] = diagnostics
+        return request
+    adapted_start_x, adapted_start_y = clamp_point_to_map_bounds(start_x, start_y, map_analysis)
+    adapted_goal_x, adapted_goal_y = clamp_point_to_map_bounds(goal_x, goal_y, map_analysis)
+    if math.hypot(adapted_goal_x - adapted_start_x, adapted_goal_y - adapted_start_y) < 0.25:
+        # 如果起终点被夹到同一小片区域，优先沿 x 方向制造一段仍在地图内的 planner-only 目标。
+        bounds = map_analysis.get("bounds") if isinstance(map_analysis.get("bounds"), dict) else {}
+        candidate_x = adapted_start_x + 0.8
+        if candidate_x > float(bounds.get("max_x", candidate_x)):
+            candidate_x = adapted_start_x - 0.8
+        adapted_goal_x, adapted_goal_y = clamp_point_to_map_bounds(candidate_x, adapted_start_y, map_analysis)
+    request.update(
+        {
+            "x": adapted_goal_x,
+            "y": adapted_goal_y,
+            "start_x": adapted_start_x,
+            "start_y": adapted_start_y,
+            "use_start": True,
+            "adapted_from_map_bounds": True,
+            "adaptation_boundary": "map_bounds_adapted_no_motion_planner_probe",
+            "original_goal": {"x": goal_x, "y": goal_y, "yaw": request["yaw"]},
+        }
+    )
+    diagnostics.update(
+        {
+            "adapted": True,
+            "adaptation_boundary": request["adaptation_boundary"],
+            "adapted_start": {"x": adapted_start_x, "y": adapted_start_y},
+            "adapted_goal": {"x": adapted_goal_x, "y": adapted_goal_y},
+        }
+    )
+    request["map_goal_diagnostics"] = diagnostics
+    return request
+
+
+def path_generation_request(
+    args: argparse.Namespace,
+    *,
+    map_analysis: dict[str, Any] | None = None,
+    initialpose_payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """路径生成只接受显式 opt-in 的单次目标请求，默认不会进入 planner。"""
     yaw = float(args.path_goal_yaw)
-    return {
+    request = {
         "enabled": bool(args.path_generation_opt_in),
         "frame_id": str(args.path_goal_frame_id),
         "x": float(args.path_goal_x),
@@ -489,10 +666,19 @@ def path_generation_request(args: argparse.Namespace) -> dict[str, Any]:
         "yaw": yaw,
         # ComputePathToPose 允许显式 start，但 no-motion proof 优先依赖当前 TF/定位结果。
         "use_start": False,
+        "start_x": float(getattr(args, "initialpose_x", 0.0)),
+        "start_y": float(getattr(args, "initialpose_y", 0.0)),
         "planner_id": "",
         "orientation_z": math.sin(yaw / 2.0),
         "orientation_w": math.cos(yaw / 2.0),
     }
+    if map_analysis is not None:
+        request = adapt_path_request_to_map_bounds(
+            request,
+            map_analysis=map_analysis,
+            initialpose_payload=initialpose_payload,
+        )
+    return request
 
 
 def path_goal_pose(request: dict[str, Any]) -> dict[str, Any]:
@@ -587,9 +773,15 @@ def maybe_compute_path_generation(
     ros2_ok: bool,
     localization_ready: bool,
     planner_server_active: bool,
+    map_analysis: dict[str, Any] | None = None,
+    initialpose_payload: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[dict[str, str]]]:
     """显式 opt-in 时只尝试一次 ComputePathToPose；默认路径不进入 planner/action。"""
-    request = path_generation_request(args)
+    request = path_generation_request(
+        args,
+        map_analysis=map_analysis,
+        initialpose_payload=initialpose_payload,
+    )
     if not request["enabled"]:
         return request, {
             "attempted": False,
@@ -670,6 +862,12 @@ def maybe_compute_path_generation(
             "goal_yaw": request["yaw"],
             "planner_id": request["planner_id"],
             "use_start": request["use_start"],
+            "start_x": request.get("start_x"),
+            "start_y": request.get("start_y"),
+            "adapted_from_map_bounds": bool(request.get("adapted_from_map_bounds")),
+            "adaptation_boundary": request.get("adaptation_boundary"),
+            "original_goal": request.get("original_goal"),
+            "map_goal_diagnostics": request.get("map_goal_diagnostics"),
         },
         "path_goal_response": {},
         "planning_time_ms": None,
@@ -697,8 +895,8 @@ def maybe_compute_path_generation(
             goal_msg.goal.pose.orientation.w = request["orientation_w"]
             goal_msg.start = PoseStamped()
             goal_msg.start.header.frame_id = request["frame_id"]
-            goal_msg.start.pose.position.x = request["x"]
-            goal_msg.start.pose.position.y = request["y"]
+            goal_msg.start.pose.position.x = float(request.get("start_x", request["x"]))
+            goal_msg.start.pose.position.y = float(request.get("start_y", request["y"]))
             goal_msg.start.pose.orientation.z = request["orientation_z"]
             goal_msg.start.pose.orientation.w = request["orientation_w"]
             goal_msg.planner_id = request["planner_id"]
@@ -737,6 +935,8 @@ def maybe_compute_path_generation(
                 path = getattr(result.result, "path", None)
                 poses = list(getattr(path, "poses", []) or []) if path is not None else []
                 planning_time = getattr(result.result, "planning_time", None)
+                error_code = getattr(result.result, "error_code", None)
+                error_msg = getattr(result.result, "error_msg", None)
                 planning_time_ms = None
                 if planning_time is not None:
                     planning_time_ms = int((float(getattr(planning_time, "sec", 0)) * 1000) + (float(getattr(planning_time, "nanosec", 0)) / 1_000_000.0))
@@ -753,7 +953,11 @@ def maybe_compute_path_generation(
                             "path_frame_id": getattr(path.header, "frame_id", None) if path is not None else None,
                             "path_point_count": len(poses),
                             "planning_time_ms": planning_time_ms,
+                            "error_code": error_code,
+                            "error_msg": error_msg,
                         },
+                        "planner_error_code": error_code,
+                        "planner_error_msg": error_msg,
                     }
                 )
                 result_payload["boundary"] = "explicit_opt_in_compute_path_to_pose_action_no_motion"
@@ -2235,6 +2439,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         detail={"source_proof_status": map_inputs.get("source_proof_status")},
     )
     managed_map_yaml, managed_map_yaml_source = resolve_managed_map_yaml(args, map_inputs)
+    managed_map_analysis = map_yaml_runtime_analysis(managed_map_yaml)
     managed_runtime: dict[str, Any] = {
         "requested": bool(args.managed_runtime_opt_in),
         "started": False,
@@ -2243,6 +2448,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "boundary": "default_read_only_existing_ros_graph_no_runtime_start",
         "map_yaml": managed_map_yaml,
         "map_yaml_source": managed_map_yaml_source,
+        "map_analysis": managed_map_analysis,
         "wait_result": {"executed": False, "ok": False, "boundary": "managed_runtime_not_requested"},
         "cleanup_result": {"attempted": False, "ok": True, "boundary": "managed_runtime_not_requested"},
         "startup_error": None,
@@ -2834,6 +3040,8 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         ros2_ok=ros2_ok,
         localization_ready=path_generation_preconditions_ready,
         planner_server_active=planner_server_active,
+        map_analysis=managed_map_analysis,
+        initialpose_payload=initialpose_request_payload,
     )
     phase_writer.update_snapshot(
         path_generation_requested=bool(path_generation_request["enabled"]),
@@ -2998,6 +3206,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "managed_runtime_boundary": managed_runtime.get("boundary"),
         "managed_runtime_map_yaml": managed_runtime.get("map_yaml"),
         "managed_runtime_map_yaml_source": managed_runtime.get("map_yaml_source"),
+        "managed_runtime_map_analysis": managed_map_analysis,
         "managed_runtime_vendor_boundary": managed_runtime.get("vendor_boundary"),
         "root_causes": root_causes,
         "blockers": root_causes,
@@ -3033,6 +3242,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
                 "process_group": managed_runtime.get("process_group"),
                 "map_yaml": managed_runtime.get("map_yaml"),
                 "map_yaml_source": managed_runtime.get("map_yaml_source"),
+                "map_analysis": managed_runtime.get("map_analysis"),
                 "wait_result": managed_runtime.get("wait_result"),
                 "cleanup_result": managed_runtime.get("cleanup_result"),
                 "cleanup_guard": cleanup_guard,

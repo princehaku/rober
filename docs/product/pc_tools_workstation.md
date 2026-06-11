@@ -890,6 +890,34 @@ Nav2 no-motion proof refresh、base stop、summary after。该链路没有请求
 这意味着上一轮的 localization TF blocker 已解除；下一轮应集中处理 planner/costmap 返回空
 path 的原因，而不是继续消耗 `/tf_topic_missing`。
 
+## 2026-06-12 Nav2 Planner Empty Path Recovery
+
+`sprints/2026.06.12_00-55_nav2_planner_empty_path/` 继续不使用 subagent，直接定位
+`compute_path_to_pose_empty_path`。根因不是 TF，而是当前 `trashbot_map.yaml` 的 bounds 为
+`x=-6.1478..5.1021`、`y=-5.9246..-0.0246`，而固定 no-motion proof 使用的
+原始 start/goal `(0,0)->(0.8,0)` 已落在地图上边界外。当前 runtime map 还显示
+`free=0`、`unknown=26506`、`occupied=44`，因此这只能作为 planner 软件证据，不是可行驶路线证明。
+
+本轮结果：
+
+- Helper 新增 map yaml/PGM analysis，artifact 写入 bounds、origin、resolution、尺寸和 cell 计数。
+- 当固定 proof 点越界时，只在 planner-only `ComputePathToPose` 中使用
+  `map_bounds_adapted_no_motion_planner_probe`：原始点仍保留，实际 no-motion test start/goal
+  夹到地图内侧。
+- 真实上位机 API refresh 返回 `nav2_no_motion_path_generation_runtime_observed`，
+  `path_generation_succeeded=true`、`path_point_count=30`、`root_causes=[]`。
+- Safety 仍保持 `safe_to_control=false`、`sends_motion_commands=false`、`uses_base_uart=false`，
+  未请求 `/api/base/manual`、未发布 `/cmd_vel`、未打开 `/dev/ttyS5`。
+
+证据文件：
+
+- `sprints/2026.06.12_00-55_nav2_planner_empty_path/artifacts/06_remote_map_inventory.json`
+- `sprints/2026.06.12_00-55_nav2_planner_empty_path/artifacts/08_upper_runtime_nav2_latest_after_map_adaptive_goal.json`
+- `sprints/2026.06.12_00-55_nav2_planner_empty_path/artifacts/10_upper_api_nav2_latest_summary.json`
+
+下一步如果要进入真实移动，需要先补齐更强地图质量、相机可见内容、外部视频、轮速非零和
+LiDAR motion delta；本轮不构成真实导航或手动移动放行。
+
 ## 运行与验证
 
 工作站验证只使用 Node/Vue gate：
