@@ -2147,3 +2147,35 @@ PC 普通 `移动/导航` 卡片新增 `重新定位`。本轮仍以 `docs/vendo
 `AMCL`、`Nav2`、`proof`、`HIL`、`/cmd_vel` 或 `/api/base/manual`。本轮没有调用
 NavigateToPose，没有发布 `/cmd_vel`，没有调用 `/api/base/manual`，没有写 `/dev/ttyS5`；
 因此它仍不证明真实移动、轮速非零、LiDAR motion delta、HIL pass 或 delivery success。
+
+## 2026-06-12 05:05 Plain PC Motion Precheck
+
+PC 普通 `移动/导航` 卡片新增 `移动前检查`。本轮仍以
+`docs/vendor/VENDOR_INDEX.md` 为硬件事实入口；该入口只通过上位机 HTTP 固定代理写
+operator report 基础现场确认，不直接操作 WAVE ROVER UART、ESP32、GPIO、`/cmd_vel`
+或 Nav2。
+
+真实 PC proxy 对 `http://192.168.1.11:8787` 提交基础检查后：
+
+- `proxy_status=report_forwarded`
+- `remote_http_status=200`
+- `operator_present=true`
+- `physical_clearance=true`
+- `emergency_stop=true`
+- `external_video=false; ref=not_loaded`
+- `camera_visible=false; ref=not_loaded`
+- `wheel_feedback=false; ref=not_loaded`
+- `lidar_delta=false; ref=not_loaded`
+
+随后用同一个 PC proxy 尝试 `forward speed=0.08 duration_ms=500`，并传
+`confirm_hil_checklist=true`。本机返回 HTTP 400：
+
+- `proxy_status=command_rejected`
+- `failure_reason=operator_report_preflight_required`
+- `remote_http_status=null`
+- `robot_control_executed=false`
+- 缺项仍包括 external video/ref、visible camera/ref、wheel feedback/ref 和 scan delta/ref。
+
+这证明普通 `移动前检查` 只降低现场人员填报门槛，不会把非 stop 点动放行。真实移动仍需
+外部视频、可见图传、左右轮非零反馈和 LiDAR motion delta 全部带 ref 后，才能进入受控
+低速短时点动验证。

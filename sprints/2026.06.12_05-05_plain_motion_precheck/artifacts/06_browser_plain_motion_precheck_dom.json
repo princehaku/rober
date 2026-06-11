@@ -1,0 +1,62 @@
+{
+  "advancedOpen": [],
+  "buttons": [
+    {
+      "disabled": false,
+      "text": "连接/刷新"
+    },
+    {
+      "disabled": false,
+      "text": "检查小车"
+    },
+    {
+      "disabled": false,
+      "text": "打开画面"
+    },
+    {
+      "disabled": true,
+      "text": "关闭画面"
+    },
+    {
+      "disabled": false,
+      "text": "刷新雷达"
+    },
+    {
+      "disabled": false,
+      "text": "刷新地图"
+    },
+    {
+      "disabled": false,
+      "text": "地图列表"
+    },
+    {
+      "disabled": false,
+      "text": "重新建图"
+    },
+    {
+      "disabled": false,
+      "text": "保存地图"
+    },
+    {
+      "disabled": false,
+      "text": "重新定位"
+    },
+    {
+      "disabled": false,
+      "text": "移动前检查"
+    },
+    {
+      "disabled": false,
+      "text": "停止"
+    }
+  ],
+  "checkedAt": "2026-06-11T15:20:48.333Z",
+  "forbiddenOnPlainScreen": [],
+  "hasPlainMotionPrecheckButton": true,
+  "hasRelocalizeButton": true,
+  "hasSimpleUserConsole": true,
+  "hasStopButton": true,
+  "note": "DOM verification only; real precheck submit verified through PC proxy artifact 02 and manual gate artifact 05.",
+  "plainTextExcerpt": "小车地址连接/刷新未连接小车连接未连接还没有连上可读状态。检查小车待检查点击检查小车，自动读取关键状态。实时画面打开画面关闭画面未打开还没有打开实时画面。雷达 刷新雷达 雷达未运行还没有看到雷达正在运行。地图 刷新地图 地图列表 重新建图 保存地图 未刷新未读取还没有刷新。还没有读取地图列表。移动/导航待检查 重新定位 移动前检查 停止移动前先完成画面、轮子和周围环境检查；需要时可直接停止。",
+  "url": "http://127.0.0.1:5179/"
+}

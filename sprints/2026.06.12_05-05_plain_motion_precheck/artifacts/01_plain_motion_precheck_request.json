@@ -1,0 +1,19 @@
+{
+  "operator_present": true,
+  "evidence_ref": "plain-motion-precheck-real-20260612-0505",
+  "physical_clearance_confirmed": true,
+  "emergency_stop_ready": true,
+  "observed_motion": false,
+  "observed_stop": true,
+  "reported_at": "2026-06-12T05:05:00+08:00",
+  "operator_notes": "plain PC motion precheck only; does not prove video, wheel feedback, lidar delta, or motion.",
+  "structured_hil_claims": {
+    "external_video_recorded": false,
+    "visible_content_proven": false,
+    "wheel_feedback_lr_nonzero_proven": false,
+    "physical_motion_lidar_delta_proven": false,
+    "real_route_map_proven": false,
+    "delivery_success": false,
+    "site_state": "plain_motion_precheck_ready_for_review"
+  }
+}

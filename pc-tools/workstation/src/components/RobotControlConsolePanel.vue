@@ -59,6 +59,8 @@ const mapLifecycleMapName = ref("");
 const mapLifecycleArtifactPath = ref("");
 const operatorReportPending = ref(false);
 const operatorReportResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
+const plainMotionPrecheckPending = ref(false);
+const plainMotionPrecheckResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const operatorReportEvidenceRef = ref("");
 const operatorReportSiteState = ref("field_operator_claim_ready_for_review");
 const operatorReportExternalVideoRef = ref("");
@@ -470,11 +472,20 @@ const plainMotionSummary = computed(() => {
   if (localizationResetPending.value) {
     return { state: "定位中", hint: "正在重新定位；不会发车。" };
   }
+  if (plainMotionPrecheckPending.value) {
+    return { state: "检查中", hint: "正在记录移动前检查；不会发车。" };
+  }
   if (localizationResetResult.value) {
     if (localizationResetResult.value.proxy_status === "refresh_forwarded" && localizationResetResult.value.status !== "blocked") {
       return { state: "已定位", hint: "定位已返回；需要时可直接停止。" };
     }
     return { state: "定位失败", hint: localizationResetResult.value.failure_reason || "定位请求失败。" };
+  }
+  if (plainMotionPrecheckResult.value) {
+    if (plainMotionPrecheckResult.value.proxy_status === "report_forwarded" && plainMotionPrecheckResult.value.status !== "blocked") {
+      return { state: "已记录", hint: "移动前检查已记录；还需要画面、轮子和雷达材料。" };
+    }
+    return { state: "检查失败", hint: plainMotionPrecheckResult.value.failure_reason || "移动前检查提交失败。" };
   }
   if (manualCommandPending.value) {
     return { state: "处理中", hint: "正在处理请求。" };
@@ -822,9 +833,8 @@ function operatorReportRequestBody(): RobotControlOperatorReportRequest {
   };
 }
 
-function makeOperatorReportFallback(reason: string): RobotControlOperatorReportProxyResponse {
+function makeOperatorReportFallback(reason: string, requestBody: RobotControlOperatorReportRequest = operatorReportRequestBody()): RobotControlOperatorReportProxyResponse {
   // 前端异常时也补齐同一响应合同，避免最近提交状态缺失安全字段。
-  const requestBody = operatorReportRequestBody();
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_operator_report_proxy.v1",
     source: "software_proof",
@@ -848,6 +858,29 @@ function makeOperatorReportFallback(reason: string): RobotControlOperatorReportP
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
     robot_control_executed: false,
+  };
+}
+
+function plainMotionPrecheckRequestBody(): RobotControlOperatorReportRequest {
+  // 普通检查只确认人在场、周围安全和急停可用；四类真实运动材料仍必须另行采集。
+  return {
+    operator_present: true,
+    evidence_ref: `plain-motion-precheck-${Date.now()}`,
+    physical_clearance_confirmed: true,
+    emergency_stop_ready: true,
+    observed_motion: false,
+    observed_stop: true,
+    reported_at: new Date().toISOString(),
+    operator_notes: "plain PC motion precheck only; does not prove video, wheel feedback, lidar delta, or motion.",
+    structured_hil_claims: {
+      external_video_recorded: false,
+      visible_content_proven: false,
+      wheel_feedback_lr_nonzero_proven: false,
+      physical_motion_lidar_delta_proven: false,
+      real_route_map_proven: false,
+      delivery_success: false,
+      site_state: "plain_motion_precheck_ready_for_review",
+    },
   };
 }
 
@@ -1405,6 +1438,25 @@ async function submitOperatorReport(): Promise<void> {
   }
 }
 
+async function submitPlainMotionPrecheck(): Promise<void> {
+  // 普通首屏只提交基础现场确认，不伪造视频、轮速或 LiDAR motion delta 材料。
+  if (!robotApiBaseUrl.value.trim() || plainMotionPrecheckPending.value || operatorReportPending.value) {
+    return;
+  }
+  const requestBody = plainMotionPrecheckRequestBody();
+  plainMotionPrecheckPending.value = true;
+  localizationResetResult.value = null;
+  try {
+    plainMotionPrecheckResult.value = await postRobotControlOperatorReport(robotApiBaseUrl.value, requestBody);
+  } catch (err) {
+    plainMotionPrecheckResult.value = makeOperatorReportFallback(err instanceof Error ? err.message : "plain_motion_precheck_failed", requestBody);
+  } finally {
+    operatorReportResult.value = plainMotionPrecheckResult.value;
+    plainMotionPrecheckPending.value = false;
+    await refreshConsole();
+  }
+}
+
 async function runCameraFirstFrameProbe(): Promise<void> {
   // 这个按钮只触发上位机固定首帧探针，不创建 WebRTC peer，也不发送任何运动命令。
   if (!robotApiBaseUrl.value.trim() || cameraFirstFrameProbePending.value) {
@@ -1796,6 +1848,9 @@ onBeforeUnmount(() => {
             <span class="status-chip" :data-state="plainMotionSummary.state">{{ plainMotionSummary.state }}</span>
             <button type="button" :disabled="loading || localizationResetPending || !robotApiBaseUrl.trim()" @click="resetLocalizationProof">
               重新定位
+            </button>
+            <button type="button" :disabled="loading || plainMotionPrecheckPending || operatorReportPending || !robotApiBaseUrl.trim()" @click="submitPlainMotionPrecheck">
+              移动前检查
             </button>
             <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
           </div>

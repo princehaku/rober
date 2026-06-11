@@ -2160,7 +2160,27 @@ endpoint、initialpose 参数或路径生成参数。真实 PC proxy 对
 `localization_reset_observed=true`、`managed_runtime_cleanup_ok=true`。该入口只把
 AMCL no-motion 定位材料放到普通用户可理解的按钮上，不执行 NavigateToPose，不调用
 `/api/base/manual`，不发布 `/cmd_vel`，不证明 fixed-route execution、真实运动、HIL
-pass 或 delivery success。
+ pass 或 delivery success。
+
+2026-06-12 05:05 起，PC 普通 `移动/导航` 卡片新增 `移动前检查`。该入口只提交
+operator report 的基础现场确认：
+
+- `operator_present=true`
+- `physical_clearance_confirmed=true`
+- `emergency_stop_ready=true`
+- `observed_stop=true`
+- `site_state=plain_motion_precheck_ready_for_review`
+
+它显式保持以下材料为 false 或缺 ref：`external_video_recorded`、
+`visible_content_proven`、`wheel_feedback_lr_nonzero_proven`、
+`physical_motion_lidar_delta_proven`、`real_route_map_proven`、`delivery_success`。
+真实 PC proxy 提交后，上位机 summary readback 显示基础三项为 true，但 external video、
+camera visible、wheel feedback、LiDAR delta 均为 `false; ref=not_loaded`。随后本轮
+PC fixed proxy 尝试 `forward speed=0.08 duration_ms=500` 且
+`confirm_hil_checklist=true` 时，本机返回 HTTP 400 `operator_report_preflight_required`，
+`remote_http_status=null`，缺项仍包括 external video/ref、visible camera/ref、wheel
+feedback/ref 和 scan delta/ref。该结果证明普通预检查不会绕过 motion gate，也不会执行
+NavigateToPose、`/cmd_vel`、`/api/base/manual` 或 fixed-route movement。
 
 ### 7.4 Route code structure after 2026-05-25 refactor
 
