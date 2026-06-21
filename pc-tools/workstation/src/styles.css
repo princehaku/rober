@@ -352,6 +352,23 @@ h3 {
   line-height: 1.45;
 }
 
+.plain-video-ref {
+  display: grid;
+  gap: 4px;
+  min-width: 160px;
+  flex: 1 1 180px;
+}
+
+.plain-video-ref span {
+  color: #526171;
+  font-size: 12px;
+}
+
+.plain-video-ref input {
+  width: 100%;
+  min-height: 34px;
+}
+
 .wrap-actions {
   justify-content: space-between;
 }

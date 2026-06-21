@@ -2193,6 +2193,12 @@ wheel feedback 与 LiDAR motion delta 必须在第一次真实动作后才能生
 `first_jog_preflight_required`、`remote_http_status=null`，没有调用远端
 `/api/base/manual`。这仍不是 fixed-route movement、Nav2 execution 或 delivery proof。
 
+同日 23:50 起，普通 PC 首屏把 first-jog 接成“记录现场画面 -> 试动一下”的普通流程。
+`记录画面` 只提交 external video ref，不提交 wheel feedback、LiDAR delta 或 route map
+成功；`试动一下` 固定请求 `forward speed=0.08 duration_ms=500` 的 first-jog 代理。
+真实 smoke 在当前缺外部视频/可见相机材料时仍返回 HTTP 400，未调用远端
+`/api/base/manual`，因此它只是 PC 控制触点推进，不是路线移动、建图移动或自动导航完成。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

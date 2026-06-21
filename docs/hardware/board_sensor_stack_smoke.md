@@ -2212,3 +2212,32 @@ first-jog 与普通 manual gate 的区别：
 
 因此本轮只完成首次试动 gate 的安全出口设计和 PC 后端验证，没有证明真实移动、轮速非零、
 LiDAR motion delta、地图可导航、HIL pass 或 delivery success。
+
+## 2026-06-21 Plain First Jog PC Control
+
+普通 PC 首屏 `移动/导航` 卡片新增 `现场画面记录`、`记录画面` 和 `试动一下`。本轮仍以
+`docs/vendor/VENDOR_INDEX.md` 为硬件事实入口，未修改 WAVE ROVER UART、ESP32 固件、
+Orange Pi 串口或底盘速度映射。
+
+安全边界：
+
+- `记录画面` 只通过固定 `/api/robot-control/operator/report` 代理提交人工外部视频 ref。
+- 提交内容仍将 wheel feedback、LiDAR motion delta、route map 和 delivery success 保持
+  false，不能伪造成 HIL pass。
+- `试动一下` 只调用 PC 固定 first-jog 代理，普通首屏不开放方向键、速度、时长、串口、
+  `/cmd_vel`、Nav2 goal 或任意 endpoint。
+- first-jog 后端 preflight 仍是最终门禁；材料不足时不会调用远端 `/api/base/manual`。
+
+真实 PC proxy smoke 使用本机 `http://127.0.0.1:18822` 对真实上位机
+`http://192.168.1.11:8787` 发起 first-jog 请求，当前 operator report 仍缺
+external video 或 visible camera 材料，因此返回：
+
+- HTTP `400`
+- `proxy_status=command_rejected`
+- `failure_reason=first_jog_preflight_required`
+- `remote_http_status=null`
+- `robot_control_executed=false`
+- `missing_fields=["external_video_or_visible_camera"]`
+
+该结果证明普通 PC 控制入口已接入，但当前真实现场仍没有发送运动命令，也没有证明轮速非零、
+LiDAR motion delta、地图可导航、HIL pass 或 delivery success。

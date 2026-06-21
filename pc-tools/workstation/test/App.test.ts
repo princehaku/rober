@@ -2984,6 +2984,8 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/route/debug-summary";
     } else if (url.startsWith("/api/robot-control/summary")) {
       fixtureKey = "/api/robot-control/summary";
+    } else if (url.startsWith("/api/robot-control/base/first-jog")) {
+      fixtureKey = "/api/robot-control/base/first-jog";
     } else if (url.startsWith("/api/robot-control/base/manual")) {
       fixtureKey = "/api/robot-control/base/manual";
     } else if (url.startsWith("/api/robot-control/base/stop")) {
@@ -3550,6 +3552,138 @@ describe("App", () => {
     expect(firstScreenText).not.toContain("structured_hil_claims");
     expect(firstScreenText).not.toContain("external_video_recorded");
     expect(mockedFetch.mock.calls.some(([callUrl]) => String(callUrl).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+  });
+
+  it("records a plain video reference and sends first-jog through the fixed proxy only", async () => {
+    // 普通首屏可以走 first-jog 入口，但不会伪造轮速/LiDAR，也不会退回旧 manual 代理。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.external_video = "not_loaded";
+    summaryFixture.operator_hil_material_summary.camera_visible = "not_loaded";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "not_loaded";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "not_loaded";
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/first-jog": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "manual",
+        proxy_status: "command_rejected",
+        source: "software_proof",
+        proof_status: "not_proven",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        pc_only: true,
+        robot_control_executed: false,
+        source_base_url: "http://192.168.1.11:8787",
+        normalized_base_url: "http://192.168.1.11:8787",
+        remote_endpoint: "/api/base/manual",
+        remote_http_status: null,
+        status: "blocked",
+        requested_direction: "forward",
+        applied_direction: "forward",
+        requested_speed_mps: 0.08,
+        clamped_speed_mps: 0.08,
+        requested_duration_ms: 500,
+        clamped_duration_ms: 500,
+        confirm_hil_checklist: true,
+        non_stop_requires_confirm_hil_checklist: true,
+        hil_checklist_gate_status: "manual_allowed",
+        checklist_missing: [],
+        operator_report_preflight: {
+          status: "blocked",
+          source_endpoint: "/api/operator/report",
+          request_status: "loaded",
+          http_status: 200,
+          report_status: "ready_for_review",
+          evidence_ref: "plain-first-jog-video-fixture",
+          required_fields: ["operator_present", "physical_clearance_confirmed", "emergency_stop_ready", "external_video_or_visible_camera"],
+          missing_fields: ["external_video_or_visible_camera"],
+          material_summary: summaryFixture.operator_hil_material_summary,
+          failure_reason: "first_jog_preflight_required",
+          hard_dangerous_true_fields: [],
+        },
+        request_contract: {
+          max_speed_mps: 0.12,
+          max_duration_ms: 800,
+          allowed_directions: ["forward", "back", "left", "right", "stop"],
+        },
+        evidence_capture_status: "blocked",
+        evidence_capture_endpoints: [],
+        evidence_capture_blocked_reasons: ["first_jog_preflight_required"],
+        before_readback: {},
+        after_readback: {},
+        motion_evidence_summary: "first-jog rejected before remote manual",
+        failure_reason: "first_jog_preflight_required",
+        blocked_reasons: ["first_jog_preflight_required"],
+        hard_dangerous_true_fields: [],
+      },
+      "/api/robot-control/base/manual": {
+        proxy_status: "should_not_be_called",
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+
+    const firstScreen = wrapper.find(".simple-user-console");
+    expect(firstScreen.text()).toContain("现场画面记录");
+    expect(firstScreen.text()).toContain("记录画面");
+    expect(firstScreen.text()).toContain("试动一下");
+    for (const token of SIMPLE_USER_CONSOLE_FORBIDDEN_TOKENS) {
+      expect(firstScreen.text()).not.toContain(token);
+    }
+
+    await wrapper.find('input[name="plainExternalVideoRef"]').setValue("phone-video-plain-001.mp4");
+    const recordButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "记录画面");
+    await recordButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const reportCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/operator/report?"));
+    expect(reportCall).toBeTruthy();
+    const reportBody = JSON.parse(String((reportCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, any>;
+    expect(reportBody.operator_present).toBe(true);
+    expect(reportBody.physical_clearance_confirmed).toBe(true);
+    expect(reportBody.emergency_stop_ready).toBe(true);
+    expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
+      external_video_recorded: true,
+      external_video_ref: "phone-video-plain-001.mp4",
+      visible_content_proven: false,
+      wheel_feedback_lr_nonzero_proven: false,
+      physical_motion_lidar_delta_proven: false,
+      delivery_success: false,
+      site_state: "plain_first_jog_visual_ready_for_review",
+    }));
+    expect(reportBody.safe_to_control).toBeUndefined();
+    expect(reportBody.delivery_success).toBeUndefined();
+
+    const firstJogButton = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
+    await firstJogButton?.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const firstJogCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"));
+    expect(firstJogCall).toBeTruthy();
+    const [firstJogUrl, firstJogOptions] = firstJogCall ?? ["", {} as RequestInit];
+    const parsed = new URL(String(firstJogUrl), "http://workstation.local");
+    const firstJogBody = JSON.parse(String((firstJogOptions as RequestInit).body ?? "{}")) as Record<string, unknown>;
+    expect(parsed.searchParams.get("baseUrl")).toBe("http://192.168.1.11:8787");
+    expect((firstJogOptions as RequestInit).method).toBe("POST");
+    expect(firstJogBody).toEqual({
+      direction: "forward",
+      speed: 0.08,
+      duration_ms: 500,
+      confirm_hil_checklist: true,
+    });
+    expect(mockedFetch.mock.calls.some(([callUrl]) => String(callUrl).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+
+    const firstScreenAfter = visiblePlainHomeText(wrapper);
+    expect(firstScreenAfter).toContain("未试动");
+    expect(firstScreenAfter).toContain("还需要先记录现场画面，小车没有移动。");
+    expect(firstScreenAfter).not.toContain("first_jog_preflight_required");
+    expect(firstScreenAfter).not.toContain("external_video_or_visible_camera");
   });
 
   it("enables non-stop motion only after complete operator material and still uses the fixed workstation proxy", async () => {

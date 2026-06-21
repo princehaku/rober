@@ -5,6 +5,7 @@ import {
   getRobotControlSummary,
   getRobotControlMapList,
   postRobotControlBaseFeedbackSamples,
+  postRobotControlBaseFirstJog,
   postRobotControlBaseManual,
   postRobotControlBaseStop,
   postRobotControlMapStart,
@@ -23,6 +24,7 @@ import {
 } from "../client/workstationApi";
 import type {
   O7ConsumerTaskDetailResponse,
+  RobotControlBaseCommandRequest,
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseFeedbackSamplesProxyResponse,
   RobotControlCameraFirstFrameProbeProxyResponse,
@@ -61,6 +63,10 @@ const operatorReportPending = ref(false);
 const operatorReportResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
 const plainMotionPrecheckPending = ref(false);
 const plainMotionPrecheckResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
+const plainVisualMaterialPending = ref(false);
+const plainVisualMaterialResult = ref<RobotControlOperatorReportProxyResponse | null>(null);
+const plainFirstJogResult = ref<RobotControlBaseCommandProxyResponse | null>(null);
+const plainExternalVideoRef = ref("");
 const operatorReportEvidenceRef = ref("");
 const operatorReportSiteState = ref("field_operator_claim_ready_for_review");
 const operatorReportExternalVideoRef = ref("");
@@ -475,11 +481,29 @@ const plainMotionSummary = computed(() => {
   if (plainMotionPrecheckPending.value) {
     return { state: "检查中", hint: "正在记录移动前检查；不会发车。" };
   }
+  if (plainVisualMaterialPending.value) {
+    return { state: "记录中", hint: "正在记录现场画面；不会发车。" };
+  }
   if (localizationResetResult.value) {
     if (localizationResetResult.value.proxy_status === "refresh_forwarded" && localizationResetResult.value.status !== "blocked") {
       return { state: "已定位", hint: "定位已返回；需要时可直接停止。" };
     }
     return { state: "定位失败", hint: localizationResetResult.value.failure_reason || "定位请求失败。" };
+  }
+  if (plainFirstJogResult.value) {
+    if (plainFirstJogResult.value.proxy_status === "command_forwarded") {
+      return { state: "已试动", hint: "试动请求已发送；观察小车，需要时点停止。" };
+    }
+    if (plainFirstJogResult.value.failure_reason === "first_jog_preflight_required") {
+      return { state: "未试动", hint: "还需要先记录现场画面，小车没有移动。" };
+    }
+    return { state: "试动失败", hint: "请求被拒绝，小车没有移动。" };
+  }
+  if (plainVisualMaterialResult.value) {
+    if (plainVisualMaterialResult.value.proxy_status === "report_forwarded" && plainVisualMaterialResult.value.status !== "blocked") {
+      return { state: "已记录", hint: "现场画面已记录；可以试动一下。" };
+    }
+    return { state: "记录失败", hint: "现场画面记录失败，小车没有移动。" };
   }
   if (plainMotionPrecheckResult.value) {
     if (plainMotionPrecheckResult.value.proxy_status === "report_forwarded" && plainMotionPrecheckResult.value.status !== "blocked") {
@@ -881,6 +905,41 @@ function plainMotionPrecheckRequestBody(): RobotControlOperatorReportRequest {
       delivery_success: false,
       site_state: "plain_motion_precheck_ready_for_review",
     },
+  };
+}
+
+function plainVisualMaterialRequestBody(): RobotControlOperatorReportRequest {
+  // 普通记录画面只提交人工外部视频索引，不伪造轮速、LiDAR delta、路线地图或交付成功。
+  const videoRef = plainExternalVideoRef.value.trim();
+  return {
+    operator_present: true,
+    evidence_ref: `plain-first-jog-video-${Date.now()}`,
+    physical_clearance_confirmed: true,
+    emergency_stop_ready: true,
+    observed_motion: false,
+    observed_stop: true,
+    reported_at: new Date().toISOString(),
+    operator_notes: "plain PC first-jog visual material; does not prove wheel feedback, lidar delta, route map, or delivery success.",
+    structured_hil_claims: {
+      external_video_recorded: true,
+      external_video_ref: videoRef,
+      visible_content_proven: false,
+      wheel_feedback_lr_nonzero_proven: false,
+      physical_motion_lidar_delta_proven: false,
+      real_route_map_proven: false,
+      delivery_success: false,
+      site_state: "plain_first_jog_visual_ready_for_review",
+    },
+  };
+}
+
+function plainFirstJogRequestBody(): RobotControlBaseCommandRequest {
+  // 普通首屏只发固定 forward 低速短时 first-jog；方向、速度和时长不开放给普通用户。
+  return {
+    direction: "forward",
+    speed: 0.08,
+    duration_ms: 500,
+    confirm_hil_checklist: true,
   };
 }
 
@@ -1457,6 +1516,80 @@ async function submitPlainMotionPrecheck(): Promise<void> {
   }
 }
 
+async function submitPlainVisualMaterial(): Promise<void> {
+  // 记录画面只更新 operator report；没有填写视频索引时不提交，避免制造空 ref。
+  if (!robotApiBaseUrl.value.trim() || plainVisualMaterialPending.value || operatorReportPending.value || !plainExternalVideoRef.value.trim()) {
+    return;
+  }
+  const requestBody = plainVisualMaterialRequestBody();
+  plainVisualMaterialPending.value = true;
+  localizationResetResult.value = null;
+  plainFirstJogResult.value = null;
+  try {
+    plainVisualMaterialResult.value = await postRobotControlOperatorReport(robotApiBaseUrl.value, requestBody);
+  } catch (err) {
+    plainVisualMaterialResult.value = makeOperatorReportFallback(err instanceof Error ? err.message : "plain_visual_material_failed", requestBody);
+  } finally {
+    operatorReportResult.value = plainVisualMaterialResult.value;
+    plainVisualMaterialPending.value = false;
+    await refreshConsole();
+  }
+}
+
+async function sendPlainFirstJog(): Promise<void> {
+  // 试动按钮只调用 first-jog 固定代理；后端 preflight 不通过时不会调用远端 manual。
+  if (!robotApiBaseUrl.value.trim() || manualCommandPending.value || loading.value) {
+    return;
+  }
+  manualCommandPending.value = true;
+  localizationResetResult.value = null;
+  try {
+    plainFirstJogResult.value = await postRobotControlBaseFirstJog(robotApiBaseUrl.value, plainFirstJogRequestBody());
+  } catch (err) {
+    plainFirstJogResult.value = {
+      schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+      command_kind: "manual",
+      proxy_status: "command_failed",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: robotApiBaseUrl.value,
+      normalized_base_url: robotApiBaseUrl.value.trim() || "not_loaded",
+      remote_endpoint: "/api/base/manual",
+      remote_http_status: null,
+      status: "blocked",
+      requested_direction: "forward",
+      applied_direction: "forward",
+      requested_speed_mps: 0.08,
+      clamped_speed_mps: 0.08,
+      requested_duration_ms: 500,
+      clamped_duration_ms: 500,
+      confirm_hil_checklist: true,
+      non_stop_requires_confirm_hil_checklist: true,
+      hil_checklist_gate_status: "manual_allowed",
+      checklist_missing: [],
+      operator_report_preflight: commandOperatorReportPreflightFallback("manual", err instanceof Error ? err.message : "first_jog_request_failed"),
+      request_contract: {
+        max_speed_mps: manualSpeedLimit.value,
+        max_duration_ms: manualDurationLimit.value,
+        allowed_directions: manualBoundary.value?.allowed_directions ?? ["forward", "back", "left", "right", "stop"],
+      },
+      ...commandEvidenceFallback("manual", err instanceof Error ? err.message : "first_jog_request_failed"),
+      failure_reason: err instanceof Error ? err.message : "first_jog_request_failed",
+      blocked_reasons: [err instanceof Error ? err.message : "first_jog_request_failed"],
+      hard_dangerous_true_fields: [],
+    };
+  } finally {
+    manualCommandResult.value = plainFirstJogResult.value;
+    manualCommandPending.value = false;
+    await refreshConsole();
+  }
+}
+
 async function runCameraFirstFrameProbe(): Promise<void> {
   // 这个按钮只触发上位机固定首帧探针，不创建 WebRTC peer，也不发送任何运动命令。
   if (!robotApiBaseUrl.value.trim() || cameraFirstFrameProbePending.value) {
@@ -1851,6 +1984,16 @@ onBeforeUnmount(() => {
             </button>
             <button type="button" :disabled="loading || plainMotionPrecheckPending || operatorReportPending || !robotApiBaseUrl.trim()" @click="submitPlainMotionPrecheck">
               移动前检查
+            </button>
+            <label class="plain-video-ref">
+              <span>现场画面记录</span>
+              <input v-model="plainExternalVideoRef" name="plainExternalVideoRef" placeholder="手机视频编号">
+            </label>
+            <button type="button" :disabled="loading || plainVisualMaterialPending || operatorReportPending || !robotApiBaseUrl.trim() || !plainExternalVideoRef.trim()" @click="submitPlainVisualMaterial">
+              记录画面
+            </button>
+            <button type="button" :disabled="loading || manualCommandPending || !robotApiBaseUrl.trim()" @click="sendPlainFirstJog">
+              试动一下
             </button>
             <button type="button" class="danger-button compact-stop" :disabled="!canSendStop" @click="sendStop">停止</button>
           </div>

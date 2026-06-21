@@ -96,6 +96,7 @@ const API_ENDPOINTS = {
   o7CloudArchiveTasks: "/api/o7/cloud-archive/tasks",
   robotControlSummary: "/api/robot-control/summary",
   robotControlBaseManual: "/api/robot-control/base/manual",
+  robotControlBaseFirstJog: "/api/robot-control/base/first-jog",
   robotControlBaseStop: "/api/robot-control/base/stop",
   robotControlBaseFeedbackSamples: "/api/robot-control/base/feedback-samples",
   robotControlRadarScanProofRefresh: "/api/robot-control/radar/scan-proof/refresh",
@@ -443,6 +444,14 @@ export async function postRobotControlBaseManual(
 ): Promise<RobotControlBaseCommandProxyResponse> {
   // 非 stop 点动也只能走固定 Node 代理，避免页面直接拿到任意 Robot API POST 权限。
   return postJson<RobotControlBaseCommandProxyResponse>(robotControlBaseProxyUrl(API_ENDPOINTS.robotControlBaseManual, baseUrl), body);
+}
+
+export async function postRobotControlBaseFirstJog(
+  baseUrl: string,
+  body: RobotControlBaseCommandRequest,
+): Promise<RobotControlBaseCommandProxyResponse> {
+  // 首次试动只走 first-jog 固定代理；后端仍负责现场材料 gate 和固定 /api/base/manual 转发。
+  return postJson<RobotControlBaseCommandProxyResponse>(robotControlBaseProxyUrl(API_ENDPOINTS.robotControlBaseFirstJog, baseUrl), body);
 }
 
 export async function postRobotControlBaseStop(baseUrl: string): Promise<RobotControlBaseCommandProxyResponse> {
