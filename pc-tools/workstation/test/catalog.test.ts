@@ -5598,6 +5598,156 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation first-jog proxy rejects current circular motion evidence gap before remote manual", async () => {
+    // 首次试动不要求轮速/LiDAR delta 前置，但仍必须有外部视频或可见相机材料。
+    const upstream = await listenRobotBaseCommandApi({
+      "/api/base/manual": {
+        payload: { schema: "trashbot.upper_robot_api.v1.base_manual", status: "should_not_be_called" },
+      },
+    }, {
+      "/api/operator/report": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.operator_report",
+          status: "loaded",
+          operator_present: true,
+          physical_clearance_confirmed: true,
+          emergency_stop_ready: true,
+          evidence_ref: "field-hil-first-jog-missing-visual",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          structured_hil_claims: {
+            external_video_recorded: false,
+            external_video_ref: "",
+            visible_content_proven: false,
+            camera_artifacts_ref: "",
+            wheel_feedback_lr_nonzero_proven: false,
+            wheel_feedback_ref: "",
+            physical_motion_lidar_delta_proven: false,
+            scan_delta_ref: "",
+            delivery_success: false,
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/base/first-jog?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ direction: "forward", speed: 0.08, duration_ms: 500, confirm_hil_checklist: true }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        failure_reason: string;
+        operator_report_preflight: { status: string; required_fields: string[]; missing_fields: string[]; failure_reason: string };
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(400);
+      expect(body.proxy_status).toBe("command_rejected");
+      expect(body.failure_reason).toBe("first_jog_preflight_required");
+      expect(body.operator_report_preflight.failure_reason).toBe("first_jog_preflight_required");
+      expect(body.operator_report_preflight.required_fields).toEqual([
+        "operator_present",
+        "physical_clearance_confirmed",
+        "emergency_stop_ready",
+        "external_video_or_visible_camera",
+      ]);
+      expect(body.operator_report_preflight.missing_fields).toContain("external_video_or_visible_camera");
+      expect(body.operator_report_preflight.missing_fields).not.toContain("wheel_feedback_lr_nonzero_proven");
+      expect(body.operator_report_preflight.missing_fields).not.toContain("physical_motion_lidar_delta_proven");
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation first-jog proxy forwards one clamped manual command when visual preflight is present", async () => {
+    // first-jog 只解开首次运动证据死锁；仍只转发固定 /api/base/manual 且响应保持 fail-closed 顶层。
+    const upstream = await listenRobotBaseCommandApi({
+      "/api/base/manual": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_manual",
+          status: "accepted",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    }, {
+      "/api/operator/report": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.operator_report",
+          status: "loaded",
+          operator_present: true,
+          physical_clearance_confirmed: true,
+          emergency_stop_ready: true,
+          evidence_ref: "field-hil-first-jog-visual",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          structured_hil_claims: {
+            external_video_recorded: true,
+            external_video_ref: "phone-video-first-jog.mp4",
+            visible_content_proven: false,
+            camera_artifacts_ref: "",
+            wheel_feedback_lr_nonzero_proven: false,
+            wheel_feedback_ref: "",
+            physical_motion_lidar_delta_proven: false,
+            scan_delta_ref: "",
+            delivery_success: false,
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/base/first-jog?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ direction: "left", speed: 9, duration_ms: 9999, confirm_hil_checklist: true }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        applied_direction: string;
+        clamped_speed_mps: number;
+        clamped_duration_ms: number;
+        operator_report_preflight: { status: string; missing_fields: string[]; evidence_ref: string };
+        robot_control_executed: boolean;
+        safe_to_control: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("command_forwarded");
+      expect(body.applied_direction).toBe("left");
+      expect(body.clamped_speed_mps).toBe(0.12);
+      expect(body.clamped_duration_ms).toBe(800);
+      expect(body.operator_report_preflight.status).toBe("passed");
+      expect(body.operator_report_preflight.missing_fields).toEqual([]);
+      expect(body.operator_report_preflight.evidence_ref).toBe("field-hil-first-jog-visual");
+      expect(body.robot_control_executed).toBe(false);
+      expect(body.safe_to_control).toBe(false);
+      expect(upstream.receivedBodies["/api/base/manual"]).toEqual([
+        {
+          direction: "left",
+          speed: 0.12,
+          duration_ms: 800,
+          confirm_hil_checklist: true,
+        },
+      ]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation operator report route forwards only fixed report endpoint and keeps top-level flags false", async () => {
     // Express route 只把白名单材料提交给上位机 /api/operator/report，不接受 endpoint/method/body 扩展。
     const upstream = await listenRobotProofRefreshApi({

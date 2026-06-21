@@ -2182,6 +2182,17 @@ PC fixed proxy 尝试 `forward speed=0.08 duration_ms=500` 且
 feedback/ref 和 scan delta/ref。该结果证明普通预检查不会绕过 motion gate，也不会执行
 NavigateToPose、`/cmd_vel`、`/api/base/manual` 或 fixed-route movement。
 
+2026-06-21 起，PC 后端新增首次低速试动固定入口
+`POST /api/robot-control/base/first-jog?baseUrl=<robot-api-base-url>`，用于处理
+wheel feedback 与 LiDAR motion delta 必须在第一次真实动作后才能生成的循环。该入口
+只允许 `forward/back/left/right`、`speed<=0.12m/s`、`duration<=800ms`，仍要求
+`confirm_hil_checklist=true`、operator 基础三项为 true，并且必须存在外部视频 ref 或
+可见相机 artifact ref；它不把 wheel feedback/LiDAR delta 当作前置材料，而是把它们
+留作试动后的输出证据。真实上位机 smoke 中当前 operator report 只有基础三项，缺
+`external_video_or_visible_camera`，因此 PC 本机返回 HTTP 400
+`first_jog_preflight_required`、`remote_http_status=null`，没有调用远端
+`/api/base/manual`。这仍不是 fixed-route movement、Nav2 execution 或 delivery proof。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

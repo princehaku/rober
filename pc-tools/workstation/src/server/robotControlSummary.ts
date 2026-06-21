@@ -244,6 +244,12 @@ export const ROBOT_CONTROL_OPERATOR_REPORT_PREFLIGHT_REQUIRED_FIELDS = [
   "physical_motion_lidar_delta_proven",
   "scan_delta_ref",
 ] as const;
+export const ROBOT_CONTROL_FIRST_JOG_PREFLIGHT_REQUIRED_FIELDS = [
+  "operator_present",
+  "physical_clearance_confirmed",
+  "emergency_stop_ready",
+  "external_video_or_visible_camera",
+] as const;
 const OPERATOR_REPORT_TOP_LEVEL_FIELDS = new Set([
   "operator_present",
   "evidence_ref",
@@ -662,6 +668,52 @@ export function buildOperatorReportPreflightFromPayload(
     missing_fields: missingFields,
     material_summary: materialSummary,
     failure_reason: missingFields.length ? "operator_report_preflight_required" : "",
+    hard_dangerous_true_fields: hardDangerous,
+  };
+}
+
+export function buildFirstJogOperatorReportPreflightFromPayload(
+  payload: JsonRecord | null,
+  httpStatus: number | null,
+  requestStatus: RobotControlOperatorReportPreflight["request_status"],
+): RobotControlOperatorReportPreflight {
+  // 首次试动的轮速和 LiDAR delta 是输出证据，不能作为第一次试动的前置死锁条件。
+  const materialSummary = buildOperatorHilMaterialSummaryFromPayload(payload);
+  if (!payload || requestStatus !== "loaded") {
+    return {
+      ...blockedOperatorReportPreflight("first_jog_preflight_required", materialSummary, requestStatus, httpStatus),
+      required_fields: [...ROBOT_CONTROL_FIRST_JOG_PREFLIGHT_REQUIRED_FIELDS],
+      missing_fields: [...ROBOT_CONTROL_FIRST_JOG_PREFLIGHT_REQUIRED_FIELDS],
+    };
+  }
+  const hardDangerous = scanDangerousTrueFields(
+    payload,
+    "",
+    HARD_DANGEROUS_TRUE_FIELDS,
+    OPERATOR_REPORT_CLAIM_TRUE_FIELD_EXEMPTIONS,
+  );
+  const report = operatorReportRecord(payload);
+  const claims = operatorReportClaims(report, payload);
+  const externalVideoReady = claims?.external_video_recorded === true && textPresent(claims.external_video_ref);
+  const cameraVisibleReady = claims?.visible_content_proven === true && textPresent(claims.camera_artifacts_ref);
+  const missingFields = [
+    report?.operator_present === true ? "" : "operator_present",
+    report?.physical_clearance_confirmed === true ? "" : "physical_clearance_confirmed",
+    report?.emergency_stop_ready === true ? "" : "emergency_stop_ready",
+    externalVideoReady || cameraVisibleReady ? "" : "external_video_or_visible_camera",
+    ...hardDangerous.map((field) => `hard_dangerous_true_field:${field}`),
+  ].filter(Boolean);
+  return {
+    status: missingFields.length ? "blocked" : "passed",
+    source_endpoint: OPERATOR_REPORT_REMOTE_ENDPOINT,
+    request_status: requestStatus,
+    http_status: httpStatus,
+    report_status: materialSummary.report_status,
+    evidence_ref: materialSummary.evidence_ref,
+    required_fields: [...ROBOT_CONTROL_FIRST_JOG_PREFLIGHT_REQUIRED_FIELDS],
+    missing_fields: missingFields,
+    material_summary: materialSummary,
+    failure_reason: missingFields.length ? "first_jog_preflight_required" : "",
     hard_dangerous_true_fields: hardDangerous,
   };
 }
@@ -1207,6 +1259,43 @@ export async function fetchManualMotionOperatorReportPreflight(baseUrl: URL): Pr
     );
   }
   return buildOperatorReportPreflightFromPayload(payload, response.status, response.ok ? "loaded" : "blocked");
+}
+
+export async function fetchFirstJogOperatorReportPreflight(baseUrl: URL): Promise<RobotControlOperatorReportPreflight> {
+  // 首次试动仍必须重新读上位机材料；浏览器 checkbox 不能单独放行真实底盘动作。
+  let response: Response;
+  try {
+    response = await fetch(endpointUrl(baseUrl, OPERATOR_REPORT_REMOTE_ENDPOINT), {
+      method: "GET",
+      signal: AbortSignal.timeout(ROBOT_CONTROL_OPERATOR_REPORT_PREFLIGHT_TIMEOUT_MS),
+    });
+  } catch {
+    return {
+      ...blockedOperatorReportPreflight(
+        "first_jog_preflight_required",
+        notLoadedHilMaterialSummary("not_loaded"),
+        "fetch_failed",
+        null,
+      ),
+      required_fields: [...ROBOT_CONTROL_FIRST_JOG_PREFLIGHT_REQUIRED_FIELDS],
+      missing_fields: [...ROBOT_CONTROL_FIRST_JOG_PREFLIGHT_REQUIRED_FIELDS],
+    };
+  }
+  const json = await response.json().catch(() => null);
+  const payload = asRecord(json);
+  if (!payload) {
+    return {
+      ...blockedOperatorReportPreflight(
+        "first_jog_preflight_required",
+        notLoadedHilMaterialSummary(response.ok ? "missing" : "not_loaded"),
+        response.ok ? "not_object" : "blocked",
+        response.status,
+      ),
+      required_fields: [...ROBOT_CONTROL_FIRST_JOG_PREFLIGHT_REQUIRED_FIELDS],
+      missing_fields: [...ROBOT_CONTROL_FIRST_JOG_PREFLIGHT_REQUIRED_FIELDS],
+    };
+  }
+  return buildFirstJogOperatorReportPreflightFromPayload(payload, response.status, response.ok ? "loaded" : "blocked");
 }
 
 function booleanObserved(payload: JsonRecord | null, keys: string[]): boolean {

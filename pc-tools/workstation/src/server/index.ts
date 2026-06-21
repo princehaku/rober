@@ -42,6 +42,7 @@ import {
   ROBOT_CONTROL_HIL_CHECKLIST,
   ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
   ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
+  fetchFirstJogOperatorReportPreflight,
   fetchManualMotionOperatorReportPreflight,
   notRequiredOperatorReportPreflight,
   scanDangerousTrueFields,
@@ -479,6 +480,7 @@ function baseCommandFailure(
     ...evidenceCapture,
     failure_reason: reason,
     blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
   };
 }
 
@@ -814,6 +816,130 @@ export function createWorkstationApp(): express.Express {
     res.json(await buildRobotControlSummary(queryString(req.query.baseUrl)));
   });
 
+  workstationApp.post("/api/robot-control/base/first-jog", async (req, res) => {
+    // 首次试动只解除“轮速/LiDAR delta 必须先存在”的循环；仍要求现场与可视材料。
+    const sourceBaseUrl = queryString(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    const payload = asRecord(req.body);
+    const direction = allowedDirection(payload?.direction);
+    const speed = finiteNumber(payload?.speed);
+    const durationMs = finiteNumber(payload?.duration_ms);
+    const confirmHilChecklist = payload?.confirm_hil_checklist === true;
+    if (!normalized.ok) {
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", normalized.reason, "stop", speed, durationMs, confirmHilChecklist));
+      return;
+    }
+    const beforeEvidence = await captureEvidencePhase(normalized.normalized, "before");
+    if (!direction || direction === "stop") {
+      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
+      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+      res.status(400).json(baseCommandFailure(
+        sourceBaseUrl,
+        "manual",
+        "/api/base/manual",
+        direction === "stop" ? "first_jog_stop_use_stop_endpoint" : "direction_invalid",
+        direction ?? "stop",
+        speed,
+        durationMs,
+        confirmHilChecklist,
+        evidenceCapture,
+      ));
+      return;
+    }
+    if (speed === null || durationMs === null) {
+      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
+      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "manual_request_invalid_numbers", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
+      return;
+    }
+    if (!confirmHilChecklist) {
+      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
+      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "confirm_hil_checklist_required", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
+      return;
+    }
+    const operatorReportPreflight = await fetchFirstJogOperatorReportPreflight(normalized.normalized);
+    if (operatorReportPreflight.status !== "passed") {
+      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
+      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+      res.status(400).json(baseCommandFailure(
+        sourceBaseUrl,
+        "manual",
+        "/api/base/manual",
+        "first_jog_preflight_required",
+        direction,
+        speed,
+        durationMs,
+        confirmHilChecklist,
+        evidenceCapture,
+        operatorReportPreflight,
+      ));
+      return;
+    }
+    const clampedSpeed = clamp(speed, 0, ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS);
+    const clampedDurationMs = clamp(durationMs, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS);
+    const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/base/manual", {
+      direction,
+      speed: clampedSpeed,
+      duration_ms: clampedDurationMs,
+      confirm_hil_checklist: true,
+    });
+    const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
+    const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+    if (remote.error) {
+      res.status(502).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", remote.error, direction, speed, durationMs, confirmHilChecklist, evidenceCapture, operatorReportPreflight));
+      return;
+    }
+    const dangerous = scanDangerousTrueFields(remote.payload, "", BASE_COMMAND_FAIL_CLOSED_FIELDS);
+    const responseBody: RobotControlBaseCommandProxyResponse = {
+      schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+      command_kind: "manual",
+      proxy_status:
+        remote.remote_http_status === 200 && dangerous.length === 0 ? "command_forwarded" : "command_failed",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      robot_control_executed: false,
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      remote_endpoint: "/api/base/manual",
+      remote_http_status: remote.remote_http_status,
+      status: shortText(remote.payload?.status, remote.remote_http_status === 200 ? "loaded" : "blocked"),
+      requested_direction: direction,
+      applied_direction: direction,
+      requested_speed_mps: speed,
+      clamped_speed_mps: clampedSpeed,
+      requested_duration_ms: durationMs,
+      clamped_duration_ms: clampedDurationMs,
+      confirm_hil_checklist: true,
+      non_stop_requires_confirm_hil_checklist: true,
+      hil_checklist_gate_status: "manual_allowed",
+      checklist_missing: [],
+      operator_report_preflight: operatorReportPreflight,
+      request_contract: {
+        max_speed_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
+        max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
+        allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
+      },
+      ...evidenceCapture,
+      failure_reason:
+        dangerous.length > 0
+          ? `dangerous_true_field:${dangerous[0]}`
+          : remote.remote_http_status === 200
+            ? ""
+            : `manual_http_status_${remote.remote_http_status}`,
+      blocked_reasons: [
+        ...(remote.remote_http_status === 200 ? [] : [`manual_http_status_${remote.remote_http_status}`]),
+        ...dangerous.map((field) => `dangerous_true_field:${field}`),
+      ],
+      hard_dangerous_true_fields: dangerous,
+    };
+    res.status(responseBody.proxy_status === "command_forwarded" ? 200 : 502).json(responseBody);
+  });
+
   workstationApp.post("/api/robot-control/base/manual", async (req, res) => {
     // 点动代理只允许固定 manual endpoint；非 stop 动作必须明确通过 HIL checklist gate。
     const sourceBaseUrl = queryString(req.query.baseUrl);
@@ -930,6 +1056,7 @@ export function createWorkstationApp(): express.Express {
         ...(remote.remote_http_status === 200 ? [] : [`manual_http_status_${remote.remote_http_status}`]),
         ...dangerous.map((field) => `dangerous_true_field:${field}`),
       ],
+      hard_dangerous_true_fields: dangerous,
     };
     res.status(responseBody.proxy_status === "command_forwarded" ? 200 : 502).json(responseBody);
   });
@@ -995,6 +1122,7 @@ export function createWorkstationApp(): express.Express {
         ...(remote.remote_http_status === 200 ? [] : [`stop_http_status_${remote.remote_http_status}`]),
         ...dangerous.map((field) => `dangerous_true_field:${field}`),
       ],
+      hard_dangerous_true_fields: dangerous,
     };
     res.status(responseBody.proxy_status === "command_forwarded" ? 200 : 502).json(responseBody);
   });

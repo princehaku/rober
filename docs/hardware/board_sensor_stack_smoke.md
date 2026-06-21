@@ -2179,3 +2179,36 @@ operator report 基础现场确认，不直接操作 WAVE ROVER UART、ESP32、G
 这证明普通 `移动前检查` 只降低现场人员填报门槛，不会把非 stop 点动放行。真实移动仍需
 外部视频、可见图传、左右轮非零反馈和 LiDAR motion delta 全部带 ref 后，才能进入受控
 低速短时点动验证。
+
+## 2026-06-21 First Jog Gate
+
+本轮继续以 `docs/vendor/VENDOR_INDEX.md` 为硬件事实入口；WAVE ROVER 底盘 UART、
+JSON 命令、Orange Pi 实际串口和波特率事实没有被本轮代码改动。新增的是 PC 后端固定
+HTTP 代理 `POST /api/robot-control/base/first-jog?baseUrl=<robot-api-base-url>`，
+用于在现场可视材料存在时执行一次受控低速试动，并把 wheel feedback / LiDAR motion
+delta 留作动作后的输出证据。
+
+first-jog 与普通 manual gate 的区别：
+
+- 仍要求 `operator_present=true`、`physical_clearance_confirmed=true`、
+  `emergency_stop_ready=true` 和 `confirm_hil_checklist=true`。
+- 仍要求外部视频 ref 或可见相机 artifact ref，避免现场不可见时发送运动。
+- 不要求 `wheel_feedback_lr_nonzero_proven` 或 `physical_motion_lidar_delta_proven`
+  作为前置，因为这两个材料只有第一次真实低速动作后才可能生成。
+- 仍只转发到上位机固定 `/api/base/manual`，不会开放 UART、`/cmd_vel`、Nav2 goal、
+  任意 endpoint 或连续键盘控制。
+
+2026-06-21 真实 PC proxy smoke 对 `http://192.168.1.11:8787` 执行 first-jog 请求：
+
+- 请求方向 `forward`、`speed=0.08`、`duration_ms=500`、
+  `confirm_hil_checklist=true`。
+- PC 本机返回 HTTP 400、`proxy_status=command_rejected`、
+  `failure_reason=first_jog_preflight_required`。
+- `remote_http_status=null`、`robot_control_executed=false`，说明未调用远端
+  `/api/base/manual`。
+- 缺项为 `external_video_or_visible_camera`；真实 readback 中基础三项为 true，但
+  external video、camera visible、wheel feedback 和 LiDAR delta 均仍为
+  `false; ref=not_loaded`。
+
+因此本轮只完成首次试动 gate 的安全出口设计和 PC 后端验证，没有证明真实移动、轮速非零、
+LiDAR motion delta、地图可导航、HIL pass 或 delivery success。

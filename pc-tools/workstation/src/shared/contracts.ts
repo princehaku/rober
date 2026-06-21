@@ -2516,6 +2516,7 @@ export interface RobotControlBaseCommandProxyResponse extends ProofFlags {
   motion_evidence_summary: string;
   failure_reason: string;
   blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
   robot_control_executed: false;
 }
 
@@ -2733,6 +2734,7 @@ export const API_ROUTES = [
   "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
   "/api/robot-control/summary?baseUrl=<robot-api-base-url>",
   "/api/robot-control/base/manual?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/base/first-jog?baseUrl=<robot-api-base-url>",
   "/api/robot-control/base/stop?baseUrl=<robot-api-base-url>",
   "/api/robot-control/localize/reset?baseUrl=<robot-api-base-url>",
   "/api/proof-boundary",
