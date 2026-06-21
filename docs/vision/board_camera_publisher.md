@@ -692,3 +692,24 @@ PC 页面获得了可重复触发的底层相机诊断闭环，没有恢复实�
 这与上一轮 V4L2/ffmpeg backend matrix 一致：PC、WebRTC 和 OpenCV 之外的底层后端也没有
 观察到实际帧。下一步仍应优先检查 DV20 输入源、HDMI/USB 线缆、供电、采集卡，或替换
 known-good UVC 后复测；不能把 `/api/camera/health ready` 当成可见图传验收。
+
+## 2026-06-22 first-frame visible sample artifact
+
+`sprints/2026.06.22_01-10_camera_visual_material_probe/` 修复了 camera first-frame
+probe 的证据闭环：`camera_first_frame_probe.py` 只有在 `visible_content_candidate=true`
+且样张文件写入成功时，才把 `visible_content_proven=true` 写入 probe payload。
+`upper_robot_api.py` 调用该 probe 时会固定传入
+`/root/rober/onboard/runtime/camera/first_frame_probe_<timestamp>.jpg`，避免只有亮度指标、
+没有可追溯样张的状态被误当成 first-jog 视觉材料。
+
+真实上位机 `root@192.168.1.11:37878` / Robot API `http://192.168.1.11:8787`
+本轮实测：
+
+- 直连 `/api/camera/first-frame/probe` 返回 `status=frame_read`、
+  `open_ok=true`、`read_ok=true`、`sample_write_ok=true`、
+  `visible_content_candidate=true`、`visible_content_proven=true`。
+- PC 代理 `/api/robot-control/camera/first-frame/probe` 返回
+  `proxy_status=probe_forwarded`、`remote_http_status=200`，并透出样张路径
+  `/root/rober/onboard/runtime/camera/first_frame_probe_1782060889824.jpg`。
+- 本轮没有把相机可见样张解释成路线关键帧、视觉定位、障碍识别或交付成功；
+  它只满足 first-jog 的 `external_video_or_visible_camera` 前置材料。

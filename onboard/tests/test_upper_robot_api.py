@@ -290,6 +290,10 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["robot_control_executed"])
         self.assertFalse(payload["sends_motion_commands"])
         self.assertFalse(payload["opens_serial"])
+        command = process_mock.call_args.args
+        self.assertIn("--sample-path", command)
+        sample_path = command[command.index("--sample-path") + 1]
+        self.assertIn("/runtime/camera/first_frame_probe_", sample_path)
         self.assertIn("--include-backend-smoke", process_mock.call_args.args)
 
     def test_map_proof_latest_promotes_clean_runtime_material(self) -> None:

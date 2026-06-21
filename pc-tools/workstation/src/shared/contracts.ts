@@ -2408,8 +2408,13 @@ export interface RobotControlCameraFirstFrameProbeProxyResponse extends ProofFla
     first_frame_timeout: string;
     failure_reason: string;
     visible_content_proven: string;
+    visible_content_candidate: string;
+    sample_path: string;
+    sample_write_ok: string;
     elapsed_ms: string;
     mean_luma: string;
+    max_luma: string;
+    dynamic_range_luma: string;
     non_black_ratio: string;
     backend_smoke_status: string;
     backend_frame_observed: string;

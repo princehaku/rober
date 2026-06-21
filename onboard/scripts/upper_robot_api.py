@@ -3980,6 +3980,8 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
     """执行入仓首帧探针；该路径只读 camera，不导入 ROS2、不打开底盘串口。"""
     request = safe_camera_probe_request(body)
     script_path = Path(__file__).with_name("camera_first_frame_probe.py")
+    started_ms = now_ms()
+    sample_path = Path(__file__).resolve().parents[1] / "runtime" / "camera" / f"first_frame_probe_{started_ms}.jpg"
     if not script_path.exists():
         return 503, {
             "schema": f"{SCHEMA}.camera_first_frame_probe_proxy",
@@ -4006,13 +4008,14 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
         str(request["timeout_s"]),
         "--read-call-timeout-s",
         str(request["read_call_timeout_s"]),
+        "--sample-path",
+        str(sample_path),
     ]
     if request["fourcc"]:
         command.extend(["--fourcc", request["fourcc"]])
     if request["include_backend_smoke"]:
         command.append("--include-backend-smoke")
 
-    started_ms = now_ms()
     process = await asyncio.create_subprocess_exec(
         *command,
         cwd=str(Path(__file__).resolve().parents[1]),

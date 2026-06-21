@@ -6,6 +6,26 @@
 
 ---
 
+## 2026-06-22 系列
+
+### 2026-06-22 01-10｜camera visual material probe｜真实上位机 first-jog 材料闭环
+
+本轮 `sprints/2026.06.22_01-10_camera_visual_material_probe/` 在不使用 subagent 的前提下闭环真实上位机相机首帧材料：`camera_first_frame_probe.py` 只有在可见内容候选成立且样张写入成功时才设置 `visible_content_proven=true`，`upper_robot_api.py` 固定写出 `/root/rober/onboard/runtime/camera/first_frame_probe_<timestamp>.jpg`。PC workstation 代理新增 `visible_content_candidate`、`sample_path`、`sample_write_ok`、`max_luma` 和 `dynamic_range_luma` 摘要字段，仍只放在默认关闭的高级诊断。
+
+真实上位机验证显示 `/api/camera/first-frame/probe` 与 PC 代理均返回 `visible_content_proven=true`，样张 ref 为 `/root/rober/onboard/runtime/camera/first_frame_probe_1782060889824.jpg`。随后通过 PC operator report 只声明相机可见材料，不声明外部视频、轮速、LiDAR delta、路线地图或 delivery success；PC summary 的 first-jog readiness 变为 `ready_for_first_jog`。执行一次固定 first-jog 后，PC 代理返回 `command_forwarded`、`remote_http_status=200`、`speed=0.08`、`duration=500ms`，反馈采样读到 `T=1001` 为 `3/3`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 从约 83% 小幅提升到约 84% | 真实上位机 low-speed first-jog 已通过 PC 代理转发，底盘反馈采样观察到 `T=1001`；但没有外部视频、LiDAR delta 或轮速非零材料证明车体实际位移，也没有 HIL pass。 |
+| Objective 7：PC 端运营调试平台 | 从约 12% 小幅提升到约 13% | PC 普通首屏/代理链路已能连接真实上位机、提交可见相机材料并触发受控 first-jog；但仍缺真实 RTC/视频体验、真实 ASR/TTS、云端手控/寻路、实时地图、历史回放、标注和上车验证。 |
+| Objective 3：可验证导航与固定路线 | 保持归档软件约 99%，现场仍未完成 | 当前 map list 仍无可导航地图，`usable_map_count=0`、`map_needs_rebuild=true`；本轮没有证明建图可用、Nav2 路线或路线执行。 |
+
+本轮验证范围：Python targeted unittest 38 tests OK、`py_compile` OK、PC workstation `npm run test` 99 tests OK、`npm run build` OK、`npm run lint` OK、真实上位机 probe/operator report/first-jog/feedback samples 已留 artifact。未完成真实外部视频位移证明、LiDAR motion delta、轮速非零 HIL、可导航地图、Nav2 route execution、Docker/Humble colcon build。
+
+更新时间：2026-06-22 01:10 Asia/Shanghai。
+
+---
+
 ## 2026-05-27 系列
 
 ### 2026-05-27 01-02｜o7-rtc-realtime-foundation｜O7 RTC realtime foundation

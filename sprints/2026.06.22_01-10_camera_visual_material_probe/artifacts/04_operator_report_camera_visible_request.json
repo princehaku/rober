@@ -1,0 +1,20 @@
+{
+  "operator_present": true,
+  "evidence_ref": "camera-first-frame-visible-artifact-1782060915875",
+  "physical_clearance_confirmed": true,
+  "emergency_stop_ready": true,
+  "observed_motion": false,
+  "observed_stop": true,
+  "reported_at": "2026-06-21T16:55:15.874Z",
+  "operator_notes": "PC proxy verified upper camera first-frame visible sample; artifact=/root/rober/onboard/runtime/camera/first_frame_probe_1782060889824.jpg; no motion command executed.",
+  "structured_hil_claims": {
+    "external_video_recorded": false,
+    "visible_content_proven": true,
+    "camera_artifacts_ref": "/root/rober/onboard/runtime/camera/first_frame_probe_1782060889824.jpg",
+    "wheel_feedback_lr_nonzero_proven": false,
+    "physical_motion_lidar_delta_proven": false,
+    "real_route_map_proven": false,
+    "delivery_success": false,
+    "site_state": "camera_first_frame_visible_ready_for_first_jog_review"
+  }
+}

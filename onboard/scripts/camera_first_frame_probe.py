@@ -386,6 +386,8 @@ def probe_device(args: argparse.Namespace) -> dict[str, Any]:
         if args.sample_path:
             args.sample_path.parent.mkdir(parents=True, exist_ok=True)
             payload["sample_write_ok"] = bool(cv2.imwrite(str(args.sample_path), frame))
+            # 只有同时有可见内容指标和样张 artifact，才可作为 first-jog 的可追溯视觉材料。
+            payload["visible_content_proven"] = bool(metrics.get("visible_content_candidate") and payload["sample_write_ok"])
         return payload
     except Exception as error:
         payload.update({"status": "probe_error", "error": compact_error(error)})

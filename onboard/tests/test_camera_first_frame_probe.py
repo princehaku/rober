@@ -152,8 +152,8 @@ class CameraFirstFrameProbeTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(0, result["output_bytes"])
 
-    def test_frame_read_reports_luma_metrics_without_motion_proof(self) -> None:
-        """读到帧后只给图像质量候选，不把它冒充运动 gate 证明。"""
+    def test_frame_read_with_visible_sample_proves_visual_material(self) -> None:
+        """读到可见帧且写出样张后，才升级为可追溯视觉材料。"""
         frame = [
             [[0, 0, 0], [20, 40, 60]],
             [[80, 100, 120], [200, 210, 220]],
@@ -169,8 +169,8 @@ class CameraFirstFrameProbeTests(unittest.TestCase):
         self.assertEqual([2, 2, 3], result["frame_metrics"]["shape"])
         self.assertEqual(4, result["frame_metrics"]["pixel_count"])
         self.assertTrue(result["frame_metrics"]["visible_content_candidate"])
-        self.assertFalse(result["visible_content_proven"])
         self.assertTrue(result["sample_write_ok"])
+        self.assertTrue(result["visible_content_proven"])
         self.assertEqual("/tmp/sample.jpg", fake_cv2.imwrite_calls[0][0])
 
     def test_main_prints_json(self) -> None:
