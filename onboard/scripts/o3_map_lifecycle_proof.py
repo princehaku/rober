@@ -289,6 +289,111 @@ def list_map_files(map_dir: str) -> list[dict[str, Any]]:
     return files
 
 
+def parse_map_yaml(map_yaml: Path) -> dict[str, Any]:
+    """解析 map_saver 生成的 YAML；只读 metadata，不调用 ROS graph。"""
+    text = map_yaml.read_text(encoding="utf-8", errors="replace")
+    image_name = ""
+    resolution: float | None = None
+    origin_values: list[float] = []
+    lines = text.splitlines()
+    for index, raw_line in enumerate(lines):
+        line = raw_line.strip()
+        if line.startswith("image:"):
+            image_name = line.split(":", 1)[1].strip().strip("'\"")
+        elif line.startswith("resolution:"):
+            resolution = float(line.split(":", 1)[1].strip())
+        elif line.startswith("origin:"):
+            inline = line.split(":", 1)[1].strip()
+            if inline.startswith("[") and inline.endswith("]"):
+                origin_values = [float(part.strip()) for part in inline.strip("[]").split(",") if part.strip()]
+            else:
+                for offset in range(1, 4):
+                    if index + offset >= len(lines):
+                        continue
+                    value_text = lines[index + offset].strip()
+                    if value_text.startswith("-"):
+                        value_text = value_text[1:].strip()
+                    origin_values.append(float(value_text))
+    if resolution is None or len(origin_values) < 2:
+        raise ValueError("map yaml missing resolution or origin")
+    return {
+        "image": str((map_yaml.parent / image_name) if image_name else map_yaml.with_suffix(".pgm")),
+        "resolution": resolution,
+        "origin": origin_values[:3],
+    }
+
+
+def read_pgm_quality(image_path: Path) -> dict[str, Any]:
+    """统计 PGM 栅格质量；ROS map_saver 常见 free/unknown/occupied 为 254/205/0。"""
+    with image_path.open("rb") as pgm_file:
+        if pgm_file.readline().strip() != b"P5":
+            raise ValueError("map image is not binary PGM P5")
+        size_line = pgm_file.readline()
+        while size_line.startswith(b"#"):
+            size_line = pgm_file.readline()
+        width, height = [int(value) for value in size_line.split()]
+        pgm_file.readline()
+        data = pgm_file.read()
+    counts: dict[int, int] = {}
+    for value in data:
+        counts[value] = counts.get(value, 0) + 1
+    free_cells = counts.get(254, 0)
+    unknown_cells = counts.get(205, 0)
+    occupied_cells = counts.get(0, 0)
+    top_pixel_values = [
+        {"value": value, "count": count}
+        for value, count in sorted(counts.items(), key=lambda item: item[1], reverse=True)[:8]
+    ]
+    return {
+        "width": width,
+        "height": height,
+        "cell_counts": {
+            "free": free_cells,
+            "unknown": unknown_cells,
+            "occupied": occupied_cells,
+            "other": len(data) - free_cells - unknown_cells - occupied_cells,
+        },
+        "top_pixel_values": top_pixel_values,
+    }
+
+
+def analyze_saved_map_quality(map_dir: str, map_name: str) -> dict[str, Any]:
+    """评估本轮保存的地图是否可导航；文件存在不能等价于建图成功。"""
+    map_yaml = Path(map_dir) / f"{validate_map_name(map_name)}.yaml"
+    result: dict[str, Any] = {
+        "checked": True,
+        "ok": False,
+        "map_yaml": str(map_yaml),
+        "image": None,
+        "resolution": None,
+        "origin": None,
+        "width": None,
+        "height": None,
+        "cell_counts": {},
+        "top_pixel_values": [],
+        "has_free_cells": False,
+        "navigation_quality": "blocked",
+        "failure_reason": None,
+    }
+    try:
+        yaml_quality = parse_map_yaml(map_yaml)
+        pgm_quality = read_pgm_quality(Path(str(yaml_quality["image"])))
+        free_cells = int(pgm_quality["cell_counts"].get("free") or 0)
+        result.update(
+            {
+                "ok": True,
+                **yaml_quality,
+                **pgm_quality,
+                "has_free_cells": free_cells > 0,
+                "navigation_quality": "has_free_cells" if free_cells > 0 else "no_free_cells",
+            }
+        )
+    except Exception as exc:  # noqa: BLE001 - 质量诊断失败也要进入 proof root cause。
+        result["failure_reason"] = compact_error(exc)
+        result["navigation_quality"] = "analysis_failed"
+    return result
+
+
 def workdir_path(args: argparse.Namespace, path: str) -> str:
     """相对路径统一按 onboard workdir 解析，避免 systemd cwd 让 artifact 误判。"""
     candidate = Path(path)
@@ -381,6 +486,15 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     scan_observed = bool(scan_once.get("ok") and str(scan_once.get("stdout") or "").strip())
     map_observed = bool(map_once.get("ok") and str(map_once.get("stdout") or "").strip())
     save_ok = bool(save_map.get("ok") and "success=True" in str(save_map.get("stdout") or ""))
+    slam_map_quality = analyze_saved_map_quality(map_artifact_dir, args.map_name) if save_ok else {
+        "checked": False,
+        "ok": False,
+        "navigation_quality": "not_checked",
+        "failure_reason": "skipped_until_map_saved",
+        "has_free_cells": False,
+        "cell_counts": {},
+        "top_pixel_values": [],
+    }
     metadata = parse_map_metadata(str(map_once.get("stdout") or ""))
     root_causes = classify_root_causes(
         ros2_ok=ros2_ok,
@@ -390,6 +504,10 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         save_ok=save_ok,
         map_files=map_files,
     )
+    if save_ok and slam_map_quality.get("ok") and not slam_map_quality.get("has_free_cells"):
+        root_causes.append({"layer": "map quality", "reason": "map_has_no_free_cells_after_slam_save"})
+    elif save_ok and not slam_map_quality.get("ok"):
+        root_causes.append({"layer": "map quality", "reason": "map_quality_analysis_failed_after_slam_save"})
     complete = bool(scan_observed and map_observed and metadata and map_files and not root_causes)
     proof_status = "map_once_artifact_metadata_observed" if complete else "blocked_with_root_cause"
     proof = {
@@ -407,6 +525,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "root_causes": root_causes,
         "blockers": root_causes,
         "map_metadata": metadata,
+        "slam_map_quality": slam_map_quality,
         "map_files": map_files,
         "map_artifact_dir": map_artifact_dir,
         "commands": {
@@ -420,8 +539,8 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             "stop_runtime": stop_result,
         },
         "algorithm_boundary": {
-            "slam_map_quality_evaluated": False,
-            "map_usable_for_navigation": False,
+            "slam_map_quality_evaluated": bool(slam_map_quality.get("checked")),
+            "map_usable_for_navigation": bool(slam_map_quality.get("has_free_cells")),
             "amcl_ready": False,
             "nav2_ready": False,
             "fixed_route_ready": False,

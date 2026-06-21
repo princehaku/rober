@@ -2353,6 +2353,14 @@ def map_lifecycle_runtime_readback_contract(latest: dict[str, Any] | None) -> di
     latest_map_once = latest_proof_value(latest, "map_once_observed", "/map_once_observed")
     latest_map_file = latest_proof_value(latest, "map_file_observed", "map_yaml_observed", "map_pbstream_observed")
     latest_map_metadata = latest_proof_value(latest, "map_metadata_observed", "metadata_observed")
+    proof = latest.get("proof") if isinstance(latest, dict) and isinstance(latest.get("proof"), dict) else {}
+    algorithm_boundary = proof.get("algorithm_boundary") if isinstance(proof.get("algorithm_boundary"), dict) else {}
+    slam_map_quality = proof.get("slam_map_quality") if isinstance(proof.get("slam_map_quality"), dict) else {}
+    latest_map_usable_for_navigation = bool(algorithm_boundary.get("map_usable_for_navigation"))
+    latest_map_quality_status = str(slam_map_quality.get("navigation_quality") or "not_loaded")
+    cell_counts = slam_map_quality.get("cell_counts") if isinstance(slam_map_quality.get("cell_counts"), dict) else {}
+    raw_free_cells = cell_counts.get("free")
+    latest_map_free_cell_count = int(raw_free_cells) if isinstance(raw_free_cells, (int, float)) else 0
     required_observations = (
         latest_status == MAP_LIFECYCLE_OBSERVED_STATUS
         and latest_scan_once is True
@@ -2370,6 +2378,9 @@ def map_lifecycle_runtime_readback_contract(latest: dict[str, Any] | None) -> di
         "map_once_observed": latest_map_once is True,
         "map_file_observed": latest_map_file is True,
         "map_metadata_observed": latest_map_metadata is True,
+        "latest_map_usable_for_navigation": latest_map_usable_for_navigation,
+        "latest_map_quality_status": latest_map_quality_status,
+        "latest_map_free_cell_count": latest_map_free_cell_count,
         "ros2_runtime_proven": required_observations,
         "map_artifact_proven": required_observations,
         "not_proven": not required_observations,

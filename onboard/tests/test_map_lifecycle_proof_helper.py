@@ -7,14 +7,26 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "o3_map_lifecycle_proof.py"
+
+
+def load_helper_module():
+    """按文件路径加载 helper，避免测试依赖 PYTHONPATH 或真实 ROS 环境。"""
+    spec = importlib.util.spec_from_file_location("o3_map_lifecycle_proof_for_test", SCRIPT)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("failed to load o3_map_lifecycle_proof.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class MapLifecycleProofHelperTests(unittest.TestCase):
@@ -111,6 +123,44 @@ class MapLifecycleProofHelperTests(unittest.TestCase):
         self.assertIn('qos_profile="sensor_data"', text)
         self.assertIn("attempts=2", text)
         self.assertIn("stable_observation_strategy", text)
+
+    def test_saved_map_quality_detects_unknown_only_map(self) -> None:
+        """保存出 YAML/PGM 还不够；没有 free cell 的地图必须被标记为不可导航。"""
+        helper = load_helper_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "floor.pgm").write_bytes(b"P5\n3 2\n255\n" + bytes([205, 205, 205, 0, 205, 205]))
+            (root / "floor.yaml").write_text(
+                "image: floor.pgm\nresolution: 0.05\norigin: [0.0, -1.0, 0.0]\n",
+                encoding="utf-8",
+            )
+
+            quality = helper.analyze_saved_map_quality(str(root), "floor")
+
+        self.assertTrue(quality["ok"])
+        self.assertFalse(quality["has_free_cells"])
+        self.assertEqual("no_free_cells", quality["navigation_quality"])
+        self.assertEqual(0, quality["cell_counts"]["free"])
+        self.assertEqual(5, quality["cell_counts"]["unknown"])
+        self.assertEqual([{"value": 205, "count": 5}, {"value": 0, "count": 1}], quality["top_pixel_values"])
+
+    def test_saved_map_quality_accepts_free_cells(self) -> None:
+        """只有 PGM 里实际出现 free cell，map lifecycle 才能把地图质量抬高。"""
+        helper = load_helper_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "floor.pgm").write_bytes(b"P5\n3 2\n255\n" + bytes([254, 254, 205, 0, 205, 205]))
+            (root / "floor.yaml").write_text(
+                "image: floor.pgm\nresolution: 0.05\norigin:\n- 0.0\n- -1.0\n- 0.0\n",
+                encoding="utf-8",
+            )
+
+            quality = helper.analyze_saved_map_quality(str(root), "floor")
+
+        self.assertTrue(quality["ok"])
+        self.assertTrue(quality["has_free_cells"])
+        self.assertEqual("has_free_cells", quality["navigation_quality"])
+        self.assertEqual(2, quality["cell_counts"]["free"])
 
 
 if __name__ == "__main__":

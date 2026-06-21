@@ -309,6 +309,15 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 "map_metadata_observed": True,
                 "evidence_ref": "map-proof-clean",
                 "slam_toolbox_state": "runtime_attempted",
+                "slam_map_quality": {
+                    "navigation_quality": "has_free_cells",
+                    "has_free_cells": True,
+                    "cell_counts": {"free": 7, "unknown": 2, "occupied": 1, "other": 0},
+                },
+                "algorithm_boundary": {
+                    "slam_map_quality_evaluated": True,
+                    "map_usable_for_navigation": True,
+                },
             },
         }
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -331,6 +340,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("map_once_artifact_metadata_observed", payload["proof_state"])
         self.assertTrue(payload["ros2_runtime_proven"])
         self.assertTrue(payload["map_artifact_proven"])
+        self.assertTrue(payload["latest_map_usable_for_navigation"])
+        self.assertEqual("has_free_cells", payload["latest_map_quality_status"])
+        self.assertEqual(7, payload["latest_map_free_cell_count"])
         self.assertFalse(payload["not_proven"])
         self.assertFalse(payload["software_guard"])
         # 安全面仍然必须关闭，证明地图材料可消费不等于可发车。

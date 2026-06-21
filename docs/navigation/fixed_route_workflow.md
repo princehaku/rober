@@ -41,6 +41,13 @@ ros2 launch ros2_trashbot_bringup learn.launch.py \
 - `camera_publisher`、`lidar_driver`、`static_transform_publisher`、synthetic `/odom` 只为 route/keyframe 软件链路补齐输入拓扑，不代表真实运动、真实里程计或机械标定已完成。
 - `route_data_recorder` 在缺 `cv_bridge` 时会自动退化到 numpy/cv2 raw buffer fallback；若图像仍无法转换，也必须继续写 `route.csv` 并落盘 `image_conversion_status.json`。
 
+2026-06-22 起，map lifecycle proof 会在保存后继续检查 PGM 质量：只有保存出的地图
+包含 `254` free cell，`algorithm_boundary.map_usable_for_navigation` 才能为 true。当前
+真实上位机 no-motion 保存出的 runtime maps 只有 `205` unknown 和少量 `0` occupied，
+没有 free cell，因此 `proof_status=blocked_with_root_cause`、
+root cause 为 `map_has_no_free_cells_after_slam_save`。这类地图只能证明保存链路存在，
+不能作为 Nav2 readiness、固定路线转换或自主导航验收材料。
+
 Use these launch arguments when the robot topic names differ from defaults:
 
 - `route_camera_topic` defaults to `/camera/image_raw`.

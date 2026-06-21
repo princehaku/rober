@@ -123,6 +123,9 @@ const MAP_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
     "map_once_observed",
     "map_file_observed",
     "map_metadata_observed",
+    "latest_map_quality_status",
+    "latest_map_free_cell_count",
+    "latest_map_usable_for_navigation",
     "blocked_reasons",
   ],
 };

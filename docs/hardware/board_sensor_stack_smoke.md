@@ -53,6 +53,28 @@ ros2 topic echo --once /tf_static
   不应写死成所有板卡的默认值。
 - 本入口只解决传感器证据采集，不解决 `/dev/ttyS5` 与底盘桥的串口独占。
 
+## 2026-06-22 Map Lifecycle Quality Gate
+
+`sprints/2026.06.22_00-00_map_lifecycle_quality_gate/` 在真实上位机
+`root@192.168.1.11:37878` 上补齐地图保存后的质量门禁。本轮仍是 no-motion
+验证：不发布 `/cmd_vel`，不调用 `/api/base/manual`，不打开 WAVE ROVER UART。
+
+硬件资料入口仍按 `docs/vendor/VENDOR_INDEX.md` 执行；WAVE ROVER 底盘事实来自该入口
+指向的本地 vendor 资料，尤其是 newline-delimited JSON、`T=1/T=13/T=130/T=131`
+命令边界与 vendor Raspberry Pi 默认 `/dev/ttyAMA0 @ 115200` 不能外推到当前
+Orange Pi 串口路径的约束。本轮地图质量门禁未使用这些运动命令。
+
+`o3_map_lifecycle_proof.py` 现在会在 `/trashbot/save_map` 后读取本轮保存的
+`map_name.yaml/.pgm`，统计 `254/free`、`205/unknown`、`0/occupied` 像素，并输出
+`slam_map_quality`。真实上位机当前保存出的 runtime maps 只有 unknown/occupied，
+没有 `254` free cell；因此 proof 正确收敛为
+`proof_status=blocked_with_root_cause`，root cause 为
+`map_has_no_free_cells_after_slam_save`。
+
+这说明“地图文件可保存”与“地图可导航”已经分开验收。当前结论是：
+`map_usable_for_navigation=false`，不能把这批 no-free-cell 地图用于 Nav2 readiness
+或固定路线验收。
+
 ## 2026-06-10 LiDAR Motion Delta Probe
 
 `sprints/2026.06.10_03-10_lidar_motion_delta_probe/` 在真实上位机

@@ -299,8 +299,17 @@ PC 代理 body 只允许短 `map_name` 和相对 `artifact_path` 字段；未知
 `Reset`、`raw`、`HIL`、`速度`、`点动`。打开 `高级诊断` 后，地图详情包含
 `开始建图（高级）`、`保存地图`、`map_name（可选）` 和 `artifact_path（可选）`。
 
-边界：该能力只证明 PC 可以经固定代理触发上位机 no-motion map runtime，不证明
-地图质量、Nav2 可行驶、真实运动、WAVE ROVER HIL、robot ACK 或 delivery success。
+边界：该能力只证明 PC 可以经固定代理触发上位机 no-motion map runtime；地图质量必须
+继续由上位机 latest proof/readback 判定，不证明 Nav2 可行驶、真实运动、WAVE ROVER HIL、
+robot ACK 或 delivery success。
+
+2026-06-22 起，上位机 map lifecycle proof 会在保存后输出 `slam_map_quality`，PC
+map proof refresh 的高级诊断 readback 同步展示
+`latest_map_quality_status`、`latest_map_free_cell_count` 和
+`latest_map_usable_for_navigation`。真实上位机当前结果为
+`latest_map_quality_status=no_free_cells`、`latest_map_free_cell_count=0`、
+`latest_map_usable_for_navigation=false`；PC 首屏仍只保留普通地图动作，不把这些
+工程字段暴露到 `.simple-user-console`。
 
 2026-06-11 08:05 起，上位机 map lifecycle helper 对 `/scan` clean proof 做了
 稳定化：`/scan_once_observed` 仍是必需条件，但 helper 会用 sensor_data QoS 的
