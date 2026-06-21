@@ -1,0 +1,9 @@
+free_thresh: 0.196
+image: fixed_free_cells_20260622_0112.pgm
+negate: 0
+occupied_thresh: 0.65
+origin:
+- -6.123615887125964
+- -0.46174336695235196
+- 0.0
+resolution: 0.05000000074505806

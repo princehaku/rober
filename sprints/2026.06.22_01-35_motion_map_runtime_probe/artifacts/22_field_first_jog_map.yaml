@@ -1,0 +1,9 @@
+free_thresh: 0.196
+image: field_first_jog_20260622_0135.pgm
+negate: 0
+occupied_thresh: 0.65
+origin:
+- -6.004760349762483
+- -0.39549492022015054
+- 0.0
+resolution: 0.05000000074505806

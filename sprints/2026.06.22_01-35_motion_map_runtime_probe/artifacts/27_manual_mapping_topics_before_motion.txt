@@ -1,0 +1,194 @@
+TOPICS
+/lidar/raw_packet
+/map
+/map_metadata
+/parameter_events
+/pose
+/rosout
+/scan
+/slam_toolbox/feedback
+/slam_toolbox/graph_visualization
+/slam_toolbox/scan_visualization
+/slam_toolbox/update
+/tf
+/tf_static
+MAP_ONCE
+header:
+  stamp:
+    sec: 1782061806
+    nanosec: 567462759
+  frame_id: map
+info:
+  map_load_time:
+    sec: 0
+    nanosec: 0
+  resolution: 0.05000000074505806
+  width: 240
+  height: 184
+  origin:
+    position:
+      x: -6.024836342681401
+      y: -3.196421878311302
+      z: 0.0
+    orientation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+data:
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- -1
+- '...'
+---
+SCAN_JSON
+{"ranges_count": 186, "finite_count": 186, "angle_span_deg": 182.18750499868128, "finite_min_m": 0.03500000014901161, "finite_max_m": 7.016250133514404}
+LOG
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-22-01-09-45-957785-op-z3-b6.home-13737
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [async_slam_toolbox_node-1]: process started with pid [13738]
+[INFO] [map_recorder-2]: process started with pid [13740]
+[INFO] [lidar_driver-3]: process started with pid [13742]
+[INFO] [static_transform_publisher-4]: process started with pid [13744]
+[INFO] [static_transform_publisher-5]: process started with pid [13746]
+[static_transform_publisher-4] [WARN] [1782061786.305263030] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-5] [WARN] [1782061786.327501629] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-5] [INFO] [1782061786.441005825] [no_motion_static_odom_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-5] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-5] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-5] from 'odom' to 'base_link'
+[async_slam_toolbox_node-1] [INFO] [1782061786.598513387] [slam_toolbox]: Using solver plugin solver_plugins::CeresSolver
+[static_transform_publisher-4] [INFO] [1782061786.813815898] [static_laser_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-4] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-4] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-4] from 'base_link' to 'laser_frame'
+[lidar_driver-3] [INFO] [1782061788.064426882] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000
+[async_slam_toolbox_node-1] [WARN] [1782061788.876362077] [slam_toolbox]: minimum laser range setting (0.0 m) exceeds the capabilities of the used Lidar (0.1 m)
+[async_slam_toolbox_node-1] [WARN] [1782061788.876923450] [slam_toolbox]: maximum laser range setting (25.0 m) exceeds the capabilities of the used Lidar (8.0 m)
+[async_slam_toolbox_node-1] Info: clipped range threshold to be within minimum and maximum range!
+[async_slam_toolbox_node-1] Registering sensor: [Custom Described Lidar]

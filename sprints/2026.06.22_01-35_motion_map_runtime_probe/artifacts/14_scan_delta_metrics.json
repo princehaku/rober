@@ -1,0 +1,20 @@
+{
+  "schema": "trashbot.scan_delta_review.v1",
+  "before_ref": "09_scan_before_first_jog.json",
+  "after_ref": "11_scan_after_first_jog.json",
+  "paired_bins": 162,
+  "valid_beam_count": 162,
+  "average_abs_delta_m": 2.075762333509363,
+  "median_abs_diff_m": 1.7350000441074371,
+  "max_abs_delta_m": 7.859500169754028,
+  "changed_bin_ratio": 1,
+  "thresholds": {
+    "paired_bins_min": 40,
+    "median_abs_diff_min_m": 0.03,
+    "changed_bin_ratio_min": 0.12,
+    "review_script_average_abs_delta_min_m": 0.03,
+    "review_script_max_abs_delta_min_m": 0.08
+  },
+  "field_pack_pass": true,
+  "review_script_pass": true
+}

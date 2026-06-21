@@ -8,6 +8,22 @@
 
 ## 2026-06-22 系列
 
+### 2026-06-22 01-35｜motion map runtime probe｜LiDAR delta 与 free-cell map
+
+本轮 `sprints/2026.06.22_01-35_motion_map_runtime_probe/` 继续推进“能建图，能移动，能在 PC 上连接和控制”。PC 固定 first-jog 代理在真实上位机上两次返回 `command_forwarded`，其中 scan delta 复核使用完整 `/scan` JSON，得到 `paired_bins=162`、`median_abs_diff_m=1.735`、`changed_bin_ratio=1.0`，超过现场 HIL execution pack 阈值。Operator report 已提交 `physical_motion_lidar_delta_proven=true` 与上位机 `scan_delta_ref`，但仍保持 `wheel_feedback_lr_nonzero_proven=false`、`delivery_success=false`。
+
+本轮同时修复 `map_recorder.py` 的 PGM 保存 bug：OccupancyGrid free cell `0` 之前被写成 PGM `205` unknown，导致保存地图永远没有 free cells；现在改为 unknown `205`、free `254`、occupied `0`，并新增静态测试。部署到上位机后，PC map lifecycle 重新生成 `fixed_free_cells_20260622_0112.yaml/.pgm`，`map/list` 返回 `map_quality_summary.status=has_usable_map`、`usable_map_count=1`、`map_usable_for_navigation=true`；PGM 像素复核含 `394` 个 free pixels。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 从约 84% 小幅提升到约 85% | 真实 first-jog 后 LiDAR delta 已过阈值，能证明环境变化；T1001 反馈可读。但当前反馈 artifact 不含原始 L/R 轮速，不能证明 wheel feedback nonzero，也不是 HIL pass。 |
+| Objective 3：可验证导航与固定路线 | 归档软件约 99%，现场地图材料明显推进 | 修复 map_recorder 后真实 PC map lifecycle 已生成含 free cells 的小范围地图；仍缺 route.csv/keyframe、Nav2 path/runtime 执行和路线完成信号。 |
+| Objective 7：PC 端运营调试平台 | 保持约 13% | PC 已能连接真实上位机、触发受控 first-jog、提交 operator report、启动 map lifecycle 并读取 usable map 质量；仍缺真实 RTC/视频体验、云端手控/寻路、历史回放、标注和上车验证。 |
+
+验证范围：map_recorder 静态测试 OK、`py_compile` OK、真实上位机 first-jog/stop/scan delta/map lifecycle/map list artifacts 齐备。未完成 Docker/Humble colcon build、wheel raw L/R 非零、外部视频、Nav2 route execution 和 delivery success。
+
+更新时间：2026-06-22 01:35 Asia/Shanghai。
+
 ### 2026-06-22 01-10｜camera visual material probe｜真实上位机 first-jog 材料闭环
 
 本轮 `sprints/2026.06.22_01-10_camera_visual_material_probe/` 在不使用 subagent 的前提下闭环真实上位机相机首帧材料：`camera_first_frame_probe.py` 只有在可见内容候选成立且样张写入成功时才设置 `visible_content_proven=true`，`upper_robot_api.py` 固定写出 `/root/rober/onboard/runtime/camera/first_frame_probe_<timestamp>.jpg`。PC workstation 代理新增 `visible_content_candidate`、`sample_path`、`sample_write_ok`、`max_luma` 和 `dynamic_range_luma` 摘要字段，仍只放在默认关闭的高级诊断。

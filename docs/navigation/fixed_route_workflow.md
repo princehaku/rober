@@ -2206,6 +2206,23 @@ wheel feedback 与 LiDAR motion delta 必须在第一次真实动作后才能生
 真实 smoke 在当前缺外部视频/可见相机材料时仍返回 HTTP 400，未调用远端
 `/api/base/manual`，因此它只是 PC 控制触点推进，不是路线移动、建图移动或自动导航完成。
 
+2026-06-22 起，`sprints/2026.06.22_01-35_motion_map_runtime_probe/` 把该入口推进到
+真实 LiDAR delta 和小范围地图材料：
+
+- PC first-jog 固定代理在真实上位机上返回 `command_forwarded`，速度 `0.08m/s`、
+  时长 `800ms`。
+- 运动前后 `/scan` JSON 对比得到 `paired_bins=162`、`median_abs_diff_m=1.735`、
+  `changed_bin_ratio=1.0`，满足现场 HIL execution pack 的 scan delta 阈值。
+- Operator report 已提交 `physical_motion_lidar_delta_proven=true`，但仍保持
+  `wheel_feedback_lr_nonzero_proven=false`，因为当前反馈 artifact 没有原始 L/R 轮速。
+- 修复 `map_recorder.py` 后，PC map lifecycle 生成
+  `fixed_free_cells_20260622_0112.yaml/.pgm`，`map/list` 显示
+  `map_usable_for_navigation=true`，PGM 复核含 `394` 个 free pixels。
+
+该证据说明 PC 可连接和触发受控试动、LiDAR 观察到真实环境变化、小范围地图可保存为
+含 free cells 的 map_server 兼容地图。仍未完成完整路线采集、route.csv/keyframe、
+Nav2 path/runtime 执行、外部视频和 wheel L/R 非零反馈。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

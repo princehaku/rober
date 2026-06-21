@@ -1,0 +1,94 @@
+{
+  "schema": "trashbot.motion_evidence_material_review.v1",
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+  ],
+  "manual_response_ref": "sprints/2026.06.22_01-35_motion_map_runtime_probe/artifacts/10_pc_first_jog_for_scan_delta.json",
+  "motion_evidence_summary": "manual command before/after fixed GET evidence snapshot partially captured; this is not HIL pass.",
+  "review_status": "insufficient_material",
+  "wheel_feedback_lr_nonzero_proven": false,
+  "wheel_feedback_ref": "sprints/2026.06.22_01-35_motion_map_runtime_probe/artifacts/12_pc_feedback_samples_after_scan_delta_jog.json",
+  "physical_motion_lidar_delta_proven": true,
+  "scan_delta_ref": "sprints/2026.06.22_01-35_motion_map_runtime_probe/artifacts/09_scan_before_first_jog.json -> sprints/2026.06.22_01-35_motion_map_runtime_probe/artifacts/11_scan_after_first_jog.json",
+  "operator_report_claims": {
+    "wheel_feedback_lr_nonzero_proven": false,
+    "wheel_feedback_ref": "sprints/2026.06.22_01-35_motion_map_runtime_probe/artifacts/12_pc_feedback_samples_after_scan_delta_jog.json",
+    "physical_motion_lidar_delta_proven": true,
+    "scan_delta_ref": "sprints/2026.06.22_01-35_motion_map_runtime_probe/artifacts/09_scan_before_first_jog.json -> sprints/2026.06.22_01-35_motion_map_runtime_probe/artifacts/11_scan_after_first_jog.json",
+    "real_route_map_proven": false,
+    "route_map_ref": null,
+    "delivery_success": false
+  },
+  "failure_reasons": [
+    "base_feedback_missing_parseable_t1001_or_explicit_wheel_fields"
+  ],
+  "warnings": [
+    "manual_response_motion_evidence_summary_treated_as_context_only_not_motion_proof"
+  ],
+  "scan_delta_thresholds": {
+    "min_valid_beams": 8,
+    "average_abs_delta_min_m": 0.03,
+    "max_abs_delta_min_m": 0.08
+  },
+  "details": {
+    "wheel_review": {
+      "candidate_frame_count": 0,
+      "matched_frame_count": 0,
+      "matched_field_pairs": []
+    },
+    "scan_review": {
+      "valid_beam_count": 162,
+      "average_abs_delta_m": 2.075762333509363,
+      "max_abs_delta_m": 7.859500169754028,
+      "paired_beam_window_size": 162,
+      "source": "raw_ranges"
+    },
+    "manual_response_keys": [
+      "after_readback",
+      "applied_direction",
+      "before_readback",
+      "blocked_reasons",
+      "checklist_missing",
+      "clamped_duration_ms",
+      "clamped_speed_mps",
+      "command_kind",
+      "confirm_hil_checklist",
+      "delivery_success",
+      "evidence_capture_blocked_reasons",
+      "evidence_capture_endpoints",
+      "evidence_capture_status",
+      "failure_reason",
+      "hard_dangerous_true_fields",
+      "hil_checklist_gate_status",
+      "motion_evidence_gaps",
+      "motion_evidence_summary",
+      "non_stop_requires_confirm_hil_checklist",
+      "normalized_base_url",
+      "operator_report_preflight",
+      "pc_only",
+      "primary_actions_enabled",
+      "proof_status",
+      "proxy_status",
+      "remote_endpoint",
+      "remote_http_status",
+      "request_contract",
+      "requested_direction",
+      "requested_duration_ms",
+      "requested_speed_mps",
+      "robot_control_executed",
+      "safe_to_control",
+      "schema",
+      "source",
+      "source_base_url",
+      "status"
+    ],
+    "evidence_capture_endpoint_count": 8
+  },
+  "safe_to_control": false,
+  "delivery_success": false,
+  "hil_pass": false,
+  "robot_control_executed": false,
+  "sends_motion_commands": false
+}

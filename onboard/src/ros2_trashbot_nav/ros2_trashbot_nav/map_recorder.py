@@ -7,7 +7,7 @@ import os
 
 
 class MapRecorder(Node):
-    """Saves and loads maps. Handles the learn-phase map persistence."""
+    """保存学习阶段地图，供后续 Nav2 与路线复盘复用。"""
 
     def __init__(self):
         super().__init__('map_recorder')
@@ -19,11 +19,11 @@ class MapRecorder(Node):
         self.declare_parameter('default_map_name', 'trashbot_map')
         self.default_map_name = self.get_parameter('default_map_name').value
 
-        # Subscribe to map topic
+        # 地图保存只消费 SLAM 的 /map，不在这里启动或控制底盘。
         self.map_sub = self.create_subscription(
             OccupancyGrid, '/map', self._map_callback, 10)
 
-        # Service to save map
+        # 保存动作由显式服务触发，避免学习阶段每帧地图都写盘。
         self.save_map_srv = self.create_service(
             Trigger, '/trashbot/save_map', self._save_map)
 
@@ -34,14 +34,14 @@ class MapRecorder(Node):
         self.latest_map = msg
 
     def _save_map(self, request, response):
-        """Save current map to disk."""
+        """把最近一次 /map 写成 ROS map_server 可读的 YAML/PGM。"""
         success, message = self.save_current_map()
         response.success = success
         response.message = message
         return response
 
     def save_current_map(self):
-        """Save current map to disk and return a service-compatible result."""
+        """保存当前地图，并返回 Trigger service 能直接使用的结果。"""
         if self.latest_map is None:
             return False, 'No map data received'
 
@@ -60,27 +60,27 @@ class MapRecorder(Node):
             return False, message
 
     def _write_pgm(self, msg: OccupancyGrid, path: str):
-        """Write occupancy grid to PGM image."""
+        """把 OccupancyGrid 写成 map_server 约定的 PGM 灰度图。"""
         width = msg.info.width
         height = msg.info.height
         data = msg.data
 
         with open(path, 'wb') as f:
-            # PGM header
+            # PGM header 保留注释，便于现场 artifact 直接识别尺寸来源。
             f.write(f'P5\n# trashbot map {width}x{height}\n{width} {height}\n255\n'.encode())
-            # Convert occupancy to grayscale: -1->205(free), 0->205, 100->0(wall)
+            # ROS map_server 约定：unknown=205，free=254，occupied=0；free 不能写成 unknown。
             pixels = []
             for val in data:
                 if val == -1:
                     pixels.append(205)  # unknown
                 elif val == 0:
-                    pixels.append(205)  # free
+                    pixels.append(254)  # free
                 else:
                     pixels.append(0)    # occupied
             f.write(bytes(pixels))
 
     def _write_yaml(self, msg: OccupancyGrid, path: str):
-        """Write map metadata as YAML."""
+        """写出 Nav2/map_server 可加载的地图元数据。"""
         data = {
             'image': os.path.basename(path).replace('.yaml', '.pgm'),
             'resolution': msg.info.resolution,

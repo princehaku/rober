@@ -2263,3 +2263,34 @@ external video 或 visible camera 材料，因此返回：
 
 该结果证明普通 PC 控制入口已接入，但当前真实现场仍没有发送运动命令，也没有证明轮速非零、
 LiDAR motion delta、地图可导航、HIL pass 或 delivery success。
+
+## 2026-06-22 Motion Delta And Free-Cell Map
+
+`sprints/2026.06.22_01-35_motion_map_runtime_probe/` 在真实上位机上把 first-jog
+继续推进到 LiDAR delta 和可用地图材料：
+
+- PC 固定 first-jog 代理返回 `command_forwarded`，速度 `0.08m/s`，时长 `800ms`。
+- 运动前后完整 `/scan` JSON 对比得到 `paired_bins=162`、`median_abs_diff_m=1.735`、
+  `changed_bin_ratio=1.0`，超过现场 execution pack 的 scan delta 阈值。
+- Operator report 已提交 `physical_motion_lidar_delta_proven=true` 和上位机
+  `scan_delta_ref`；但仍保持 `wheel_feedback_lr_nonzero_proven=false`，因为当前
+  feedback latest 只有 T1001 观察摘要，没有原始 L/R 轮速值。
+
+本轮同时修复 `map_recorder.py` 的保存语义。之前 free cell `0` 被写成 PGM `205`，
+与 unknown cell 无法区分，导致地图质量检查一直得到 `no_free_cells`。现在保存规则为：
+
+- OccupancyGrid `-1` -> PGM `205` unknown。
+- OccupancyGrid `0` -> PGM `254` free。
+- OccupancyGrid `>0` -> PGM `0` occupied。
+
+修复部署到上位机后，PC map lifecycle 生成
+`fixed_free_cells_20260622_0112.yaml/.pgm`，`map/list` 返回：
+
+- `map_quality_summary.status=has_usable_map`
+- `usable_map_count=1`
+- `map_usable_for_navigation=true`
+- `map_needs_rebuild=false`
+
+PGM 像素复核显示 `free_pixel_count=394`、`occupied_pixel_count=48`、
+`unknown_pixel_count=32582`。该证据证明小范围地图已能保存出可通行 free cells；
+仍不等于完整路线地图、Nav2 路线执行、HIL pass 或 delivery success。

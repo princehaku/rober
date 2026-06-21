@@ -1,0 +1,9 @@
+free_thresh: 0.196
+image: manual_motion_map_20260622_0135.pgm
+negate: 0
+occupied_thresh: 0.65
+origin:
+- -6.024836342681401
+- -3.196421878311302
+- 0.0
+resolution: 0.05000000074505806

@@ -1,0 +1,17 @@
+{
+  "schema": "trashbot.map_pgm_pixel_review.v1",
+  "file": "sprints/2026.06.22_01-35_motion_map_runtime_probe/artifacts/31_manual_motion_map.pgm",
+  "magic": "P5",
+  "width": 240,
+  "height": 184,
+  "max_value": 255,
+  "total_pixels": 44160,
+  "counts": {
+    "0": 44,
+    "205": 44116
+  },
+  "free_pixel_count": 0,
+  "unknown_pixel_count": 44116,
+  "occupied_pixel_count": 44,
+  "has_free_cells": false
+}

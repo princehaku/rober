@@ -1,0 +1,38 @@
+SAVE
+waiting for service to become available...
+requester: making request: std_srvs.srv.Trigger_Request()
+
+response:
+std_srvs.srv.Trigger_Response(success=True, message='Map saved to /root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.pgm')
+
+STOPPID
+    PID STAT COMMAND
+  13737 Sl   /usr/bin/python3 /opt/ros/humble/bin/ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=150000 lidar_frame_id:=laser_frame lidar_publish_raw_packets:=true static_laser_tf_enabled:=true no_motion_static_odom_tf:=true waypoint_manager:=false map_dir:=/root/rober/onboard/runtime/maps default_map_name:=manual_motion_map_20260622_0135
+FILES
+-rw-r--r-- 1 root root 44198 Jun 22 01:10 /root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.pgm
+-rw-r--r-- 1 root root   182 Jun 22 01:10 /root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.yaml
+LOGTAIL
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-22-01-09-45-957785-op-z3-b6.home-13737
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [async_slam_toolbox_node-1]: process started with pid [13738]
+[INFO] [map_recorder-2]: process started with pid [13740]
+[INFO] [lidar_driver-3]: process started with pid [13742]
+[INFO] [static_transform_publisher-4]: process started with pid [13744]
+[INFO] [static_transform_publisher-5]: process started with pid [13746]
+[static_transform_publisher-4] [WARN] [1782061786.305263030] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-5] [WARN] [1782061786.327501629] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-5] [INFO] [1782061786.441005825] [no_motion_static_odom_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-5] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-5] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-5] from 'odom' to 'base_link'
+[async_slam_toolbox_node-1] [INFO] [1782061786.598513387] [slam_toolbox]: Using solver plugin solver_plugins::CeresSolver
+[static_transform_publisher-4] [INFO] [1782061786.813815898] [static_laser_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-4] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-4] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-4] from 'base_link' to 'laser_frame'
+[lidar_driver-3] [INFO] [1782061788.064426882] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 150000
+[async_slam_toolbox_node-1] [WARN] [1782061788.876362077] [slam_toolbox]: minimum laser range setting (0.0 m) exceeds the capabilities of the used Lidar (0.1 m)
+[async_slam_toolbox_node-1] [WARN] [1782061788.876923450] [slam_toolbox]: maximum laser range setting (25.0 m) exceeds the capabilities of the used Lidar (8.0 m)
+[async_slam_toolbox_node-1] Info: clipped range threshold to be within minimum and maximum range!
+[async_slam_toolbox_node-1] Registering sensor: [Custom Described Lidar]
+[map_recorder-2] [INFO] [1782061841.959324011] [map_recorder]: Map saved to /root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.pgm

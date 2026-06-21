@@ -1,0 +1,17 @@
+{
+  "schema": "trashbot.map_pgm_pixel_review.v1",
+  "file": "sprints/2026.06.22_01-35_motion_map_runtime_probe/artifacts/23_field_first_jog_map.pgm",
+  "magic": "P5",
+  "width": 254,
+  "height": 123,
+  "max_value": 255,
+  "total_pixels": 31242,
+  "counts": {
+    "0": 51,
+    "205": 31191
+  },
+  "free_pixel_count": 0,
+  "unknown_pixel_count": 31191,
+  "occupied_pixel_count": 51,
+  "has_free_cells": false
+}

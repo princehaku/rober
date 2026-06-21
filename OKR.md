@@ -89,7 +89,7 @@
 
 ### Objective 1：打通官方硬件协议，建立可信底盘控制层
 
-**当前进度：约 84%** | 主要缺口：真实 WAVE ROVER 上车实测的物理位移证明、轮速方向、IMU/battery 标定、HIL 准入和 PR #5 2D LiDAR / ToF 硬件材料。（开发阶段支持通过 Mock/虚拟串口模式完成软件控制链路并进行验证，真机实测留待后期集成）
+**当前进度：约 85%** | 主要缺口：真实 WAVE ROVER 上车实测的轮速非零原始反馈、轮速方向、IMU/battery 标定、HIL 准入和 PR #5 2D LiDAR / ToF 硬件材料。（开发阶段支持通过 Mock/虚拟串口模式完成软件控制链路并进行验证，真机实测留待后期集成）
 
 **Key Results**
 
@@ -156,7 +156,7 @@
 
 | Objective | 进度 | 主要缺口 |
 | --- | --- | --- |
-| O1：硬件协议可信底盘 | ~84% | 已有真实上位机 first-jog 转发和 T1001 反馈采样；仍缺物理位移证明、轮速方向、HIL 准入、PR #5 2D LiDAR/ToF 硬件材料 |
+| O1：硬件协议可信底盘 | ~85% | 已有真实上位机 first-jog 转发、T1001 反馈采样和 LiDAR delta 过阈值；仍缺轮速非零原始反馈、轮速方向、HIL 准入、PR #5 2D LiDAR/ToF 硬件材料 |
 | O5：云中转控制面 | ~80% | 真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收 |
 | O6：云端核心后端 | ~30% | archive、tunnel online、event/evidence、labeling、model inference、consumer read API 已有 local/mock software proof；仍缺真实隧道、生产 DB/queue、OSS、TLS/4G、真实机器人数据 |
 | O7：PC 端运营调试平台 | ~13% | PC 普通首屏已能连接真实上位机、提交 first-jog 视觉材料并转发受控试动；仍缺真实 RTC/视频、真实 ASR/TTS、真实手控/寻路、真实地图/电梯/回放/标注数据流和上车验证 |
@@ -181,7 +181,7 @@
 2. **O6（~30%）**：把 local/mock archive/tunnel/event/evidence/labeling/inference/consumer read proof 接到真实隧道、生产 DB/queue、OSS 与真实机器人数据。
 3. **O7（~13%）**：基于真实路线材料推进 PC 实时地图、历史回放、标注、ASR/TTS、手控/寻路，而不是继续只做 fixture surface。
 4. **O5（~80%）**：把已有命令/状态/ACK 控制面接到真实部署链路：公网 HTTPS、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收。
-5. **O1（~84%）**：真实 WAVE ROVER 上车，补物理位移/轮速方向/HIL 证据，PR #5 硬件材料到位后继续提升。
+5. **O1（~85%）**：真实 WAVE ROVER 上车，补轮速非零原始反馈、轮速方向和 HIL 证据，PR #5 硬件材料到位后继续提升。
 
 > 2026-06-09 方向调整：O6 最小 local/mock 数据底座已形成，CEO 又提供真实上位机 SSH。因此下一轮优先跑 `sprints/2026.06.09_13-00_board-live-slam-route/`，用真实上位机补 O3 路线证据；O6/O7 后续必须消费这份真实路线材料，而不是继续堆叠只读 surface。
 >
