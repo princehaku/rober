@@ -5862,6 +5862,7 @@ describe("workstation fail-closed API contracts", () => {
         before_readback: Record<string, { key_values: Record<string, string> }>;
         after_readback: Record<string, { key_values: Record<string, string> }>;
         motion_evidence_summary: string;
+        motion_evidence_gaps: string[];
         robot_control_executed: boolean;
       };
       expect(response.status).toBe(400);
@@ -5872,6 +5873,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.before_readback.base_status?.key_values.status).toBe("base_ready");
       expect(body.after_readback.base_feedback_samples_latest?.key_values.latest_t1001_observed_count).toBe("2");
       expect(body.motion_evidence_summary).toContain("not HIL pass");
+      expect(body.motion_evidence_gaps).toEqual(expect.arrayContaining([
+        "motion_command_not_forwarded",
+        "wheel_feedback_lr_nonzero_not_proven",
+        "physical_motion_lidar_delta_not_proven",
+      ]));
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
       expect(upstream.receivedGets.filter((endpoint) => endpoint === "/api/base/status")).toHaveLength(2);

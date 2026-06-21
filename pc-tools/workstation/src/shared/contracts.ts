@@ -2514,6 +2514,7 @@ export interface RobotControlBaseCommandProxyResponse extends ProofFlags {
   before_readback: RobotControlEvidenceReadbackSummary;
   after_readback: RobotControlEvidenceReadbackSummary;
   motion_evidence_summary: string;
+  motion_evidence_gaps: string[];
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];

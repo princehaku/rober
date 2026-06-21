@@ -288,6 +288,7 @@ type BaseCommandEvidenceCapture = {
   before_readback: RobotControlEvidenceReadbackSummary;
   after_readback: RobotControlEvidenceReadbackSummary;
   motion_evidence_summary: string;
+  motion_evidence_gaps: string[];
 };
 
 function compactKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
@@ -343,6 +344,37 @@ function buildMotionEvidenceSummary(
   return `${commandLabel} before/after fixed GET evidence snapshot blocked or unavailable; this is not HIL pass.`;
 }
 
+function evidenceKeyTrue(readback: RobotControlEvidenceReadbackSummary, endpointId: RobotControlEvidenceCaptureEndpointId, keys: string[]): boolean {
+  // 上位机后续若补出结构化运动 proof，PC 才能把对应 gap 清掉；只读 T=1001 不算轮速非零。
+  const keyValues = readback[endpointId]?.key_values ?? {};
+  return keys.some((key) => keyValues[key] === "true");
+}
+
+function buildMotionEvidenceGaps(
+  commandKind: "manual" | "stop",
+  status: RobotControlEvidenceCaptureStatus,
+  afterReadback: RobotControlEvidenceReadbackSummary,
+  preflightReason = "",
+): string[] {
+  // gap 是下一步补证据清单，不是放行依据；stop 永远不是运动证明。
+  if (commandKind === "stop") {
+    return ["stop_command_not_motion_proof"];
+  }
+  const gaps = [
+    preflightReason ? "motion_command_not_forwarded" : "",
+    status === "captured" ? "" : "before_after_evidence_snapshot_incomplete",
+    evidenceKeyTrue(afterReadback, "base_status", ["wheel_feedback_lr_nonzero_proven", "wheel_feedback_nonzero_observed"])
+      || evidenceKeyTrue(afterReadback, "base_feedback_samples_latest", ["wheel_feedback_lr_nonzero_proven", "wheel_feedback_nonzero_observed"])
+      ? ""
+      : "wheel_feedback_lr_nonzero_not_proven",
+    evidenceKeyTrue(afterReadback, "radar_status", ["physical_motion_lidar_delta_proven", "lidar_motion_delta_proven", "scan_delta_observed"])
+      || evidenceKeyTrue(afterReadback, "radar_scan_proof_latest", ["physical_motion_lidar_delta_proven", "lidar_motion_delta_proven", "scan_delta_observed"])
+      ? ""
+      : "physical_motion_lidar_delta_not_proven",
+  ];
+  return gaps.filter(Boolean);
+}
+
 function buildEvidenceCapture(
   commandKind: "manual" | "stop",
   endpoints: RobotControlEvidenceEndpointCapture[],
@@ -350,6 +382,8 @@ function buildEvidenceCapture(
 ): BaseCommandEvidenceCapture {
   // evidence_capture_* 字段集中生成，保证成功、失败、本地拒绝三条路径合同一致。
   const status = evidenceStatus(endpoints, preflightReason);
+  const beforeReadback = evidenceReadbackSummary(endpoints, "before");
+  const afterReadback = evidenceReadbackSummary(endpoints, "after");
   const endpointFailures = endpoints
     .filter((endpoint) => endpoint.request_status !== "loaded")
     .map((endpoint) => `${endpoint.phase}_${endpoint.id}:${endpoint.failure_reason}`);
@@ -357,9 +391,10 @@ function buildEvidenceCapture(
     evidence_capture_status: status,
     evidence_capture_endpoints: endpoints,
     evidence_capture_blocked_reasons: [...(preflightReason ? [preflightReason] : []), ...endpointFailures],
-    before_readback: evidenceReadbackSummary(endpoints, "before"),
-    after_readback: evidenceReadbackSummary(endpoints, "after"),
+    before_readback: beforeReadback,
+    after_readback: afterReadback,
     motion_evidence_summary: buildMotionEvidenceSummary(commandKind, status),
+    motion_evidence_gaps: buildMotionEvidenceGaps(commandKind, status, afterReadback, preflightReason),
   };
 }
 
@@ -430,6 +465,12 @@ function baseCommandFailure(
 ): RobotControlBaseCommandProxyResponse {
   // 即使失败也返回完整 fail-closed 合同，避免前端在错误态分叉出另一套解释逻辑。
   const isStop = requestedDirection === "stop" || commandKind === "stop";
+  const failureEvidenceCapture = isStop || evidenceCapture.motion_evidence_gaps.includes("motion_command_not_forwarded")
+    ? evidenceCapture
+    : {
+        ...evidenceCapture,
+        motion_evidence_gaps: ["motion_command_not_forwarded", ...evidenceCapture.motion_evidence_gaps],
+      };
   const resolvedOperatorReportPreflight = isStop || operatorReportPreflight.status !== "not_required_for_stop"
     ? operatorReportPreflight
     : {
@@ -477,7 +518,7 @@ function baseCommandFailure(
       max_duration_ms: ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
       allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
     },
-    ...evidenceCapture,
+    ...failureEvidenceCapture,
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],

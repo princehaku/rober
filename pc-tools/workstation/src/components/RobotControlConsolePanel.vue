@@ -624,6 +624,9 @@ function commandEvidenceFallback(commandKind: "manual" | "stop", reason: string)
     before_readback: {},
     after_readback: {},
     motion_evidence_summary: `${commandKind} command before/after fixed GET evidence snapshot blocked or unavailable; this is not HIL pass.`,
+    motion_evidence_gaps: commandKind === "stop"
+      ? ["stop_command_not_motion_proof"]
+      : ["motion_command_not_forwarded", "wheel_feedback_lr_nonzero_not_proven", "physical_motion_lidar_delta_not_proven"],
   };
 }
 
@@ -2716,6 +2719,8 @@ onBeforeUnmount(() => {
             <dd>{{ evidenceEndpointText(manualCommandResult?.evidence_capture_endpoints) }}</dd>
             <dt>evidence blocked reasons</dt>
             <dd>{{ listText(manualCommandResult?.evidence_capture_blocked_reasons, "none") }}</dd>
+            <dt>motion evidence gaps</dt>
+            <dd>{{ listText(manualCommandResult?.motion_evidence_gaps, "none") }}</dd>
             <dt>before readback</dt>
             <dd>{{ evidenceReadbackText(manualCommandResult?.before_readback) }}</dd>
             <dt>after readback</dt>
