@@ -374,6 +374,8 @@ const STATUS_KEYS = [
   "feedback_ack_status",
   "latest_t1001_observed_count",
   "t1001_observed_count",
+  "wheel_feedback_lr_nonzero_proven",
+  "wheel_feedback_nonzero_observed",
   "latest_scan_once_observed",
   "continuous_scan_status",
   "continuous_window_observed",
@@ -2353,13 +2355,15 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         continuity_window_status: "not_loaded",
         latest_scan_proof_fresh: "not_loaded",
       },
-      base: {
-        status: "not_loaded",
-        latest_feedback_status: "not_loaded",
-        feedback_ack_status: "not_loaded",
-        latest_t1001_observed_count: "not_loaded",
-        feedback_link_status: "not_observed",
-      },
+    base: {
+      status: "not_loaded",
+      latest_feedback_status: "not_loaded",
+      feedback_ack_status: "not_loaded",
+      latest_t1001_observed_count: "not_loaded",
+      wheel_feedback_lr_nonzero_proven: "not_loaded",
+      wheel_feedback_nonzero_observed: "not_loaded",
+      feedback_link_status: "not_observed",
+    },
     },
     operator_hil_material_summary: notLoadedHilMaterialSummary("not_loaded"),
     first_jog_readiness_summary: buildFirstJogReadinessSummary(notLoadedHilMaterialSummary("not_loaded")),
@@ -2451,12 +2455,22 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   const latestT1001 = feedbackLatest?.key_values.latest_t1001_observed_count ?? feedbackLatest?.key_values.t1001_observed_count;
   const observedCount = statusT1001 ?? latestT1001 ?? "not_loaded";
   const ackStatus = baseStatus?.key_values.feedback_ack_status ?? (Number(observedCount) > 0 ? "t1001_observed" : "not_loaded");
+  const wheelFeedbackProven = baseStatus?.key_values.wheel_feedback_lr_nonzero_proven
+    ?? feedbackLatest?.key_values.wheel_feedback_lr_nonzero_proven
+    ?? "not_loaded";
+  const wheelFeedbackObserved = baseStatus?.key_values.wheel_feedback_nonzero_observed
+    ?? feedbackLatest?.key_values.wheel_feedback_nonzero_observed
+    ?? "not_loaded";
   return {
     status: baseStatus?.status ?? "not_loaded",
     latest_feedback_status: feedbackLatest?.status ?? "not_loaded",
     feedback_ack_status: ackStatus,
     latest_t1001_observed_count: observedCount,
-    feedback_link_status: Number(observedCount) > 0 ? "t1001_observed_not_motion_proof" : "not_observed",
+    wheel_feedback_lr_nonzero_proven: wheelFeedbackProven,
+    wheel_feedback_nonzero_observed: wheelFeedbackObserved,
+    feedback_link_status: wheelFeedbackProven === "true" || wheelFeedbackObserved === "true"
+      ? "t1001_lr_nonzero_material_observed_not_hil"
+      : Number(observedCount) > 0 ? "t1001_observed_not_motion_proof" : "not_observed",
   };
 }
 

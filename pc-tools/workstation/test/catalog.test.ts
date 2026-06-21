@@ -3712,6 +3712,8 @@ describe("workstation fail-closed API contracts", () => {
         payload: {
           schema: "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
           status: "loaded",
+          wheel_feedback_lr_nonzero_proven: true,
+          wheel_feedback_nonzero_observed: true,
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
@@ -3739,8 +3741,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.feedback_readback.sends_commands");
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_feedback_samples_latest.latest_result.sends_commands");
       expect(summary.readback_summary.base.latest_t1001_observed_count).toBe("3");
+      expect(summary.readback_summary.base.wheel_feedback_lr_nonzero_proven).toBe("true");
+      expect(summary.readback_summary.base.wheel_feedback_nonzero_observed).toBe("true");
       expect(summary.readback_summary.base.feedback_ack_status).toBe("t1001_observed");
-      expect(summary.readback_summary.base.feedback_link_status).toBe("t1001_observed_not_motion_proof");
+      expect(summary.readback_summary.base.feedback_link_status).toBe("t1001_lr_nonzero_material_observed_not_hil");
     } finally {
       await robotApi.close();
     }
@@ -5880,6 +5884,8 @@ describe("workstation fail-closed API contracts", () => {
             status: "feedback_ready",
             feedback_ack_status: "ack_observed",
             latest_t1001_observed_count: 2,
+            wheel_feedback_lr_nonzero_proven: true,
+            wheel_feedback_nonzero_observed: true,
           },
         },
         "/api/radar/status": {
@@ -5921,12 +5927,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.evidence_capture_endpoints.every((endpoint) => endpoint.method === "GET")).toBe(true);
       expect(body.before_readback.base_status?.key_values.status).toBe("base_ready");
       expect(body.after_readback.base_feedback_samples_latest?.key_values.latest_t1001_observed_count).toBe("2");
+      expect(body.after_readback.base_feedback_samples_latest?.key_values.wheel_feedback_lr_nonzero_proven).toBe("true");
       expect(body.motion_evidence_summary).toContain("not HIL pass");
       expect(body.motion_evidence_gaps).toEqual(expect.arrayContaining([
         "motion_command_not_forwarded",
-        "wheel_feedback_lr_nonzero_not_proven",
         "physical_motion_lidar_delta_not_proven",
       ]));
+      expect(body.motion_evidence_gaps).not.toContain("wheel_feedback_lr_nonzero_not_proven");
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
       expect(upstream.receivedGets.filter((endpoint) => endpoint === "/api/base/status")).toHaveLength(2);

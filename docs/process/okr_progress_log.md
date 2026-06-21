@@ -20,9 +20,24 @@
 | Objective 3：可验证导航与固定路线 | 归档软件约 99%，现场地图材料明显推进 | 修复 map_recorder 后真实 PC map lifecycle 已生成含 free cells 的小范围地图；仍缺 route.csv/keyframe、Nav2 path/runtime 执行和路线完成信号。 |
 | Objective 7：PC 端运营调试平台 | 保持约 13% | PC 已能连接真实上位机、触发受控 first-jog、提交 operator report、启动 map lifecycle 并读取 usable map 质量；仍缺真实 RTC/视频体验、云端手控/寻路、历史回放、标注和上车验证。 |
 
-验证范围：map_recorder 静态测试 OK、`py_compile` OK、真实上位机 first-jog/stop/scan delta/map lifecycle/map list artifacts 齐备。未完成 Docker/Humble colcon build、wheel raw L/R 非零、外部视频、Nav2 route execution 和 delivery success。
+验证范围：map_recorder 静态测试 OK、`py_compile` OK、PC `npm run test/build` OK、Docker/Humble `colcon build` OK，真实上位机 first-jog/stop/scan delta/map lifecycle/map list artifacts 齐备。未完成 wheel raw L/R 非零、外部视频、Nav2 route execution 和 delivery success。
 
 更新时间：2026-06-22 01:35 Asia/Shanghai。
+
+### 2026-06-22 01-25｜wheel feedback material probe｜T1001 L/R 字段透传
+
+本轮 `sprints/2026.06.22_01-25_wheel_feedback_material_probe/` 继续补“能移动”证据链里最弱的 wheel raw L/R 材料。上位机 `/api/base/feedback-samples` 现在会保留精简 `t1001_feedback_frames`，只包含 vendor `T=1001` 的 `T/L/R/r/p/y/v`；`wheel_feedback_summary` 只在同一帧 `L/R` 都是有限非零时置 true。PC proxy 和 Robot Control summary 同步透出 `wheel_feedback_lr_nonzero_proven`、`wheel_feedback_nonzero_observed`、latest L/R speed 和 source。
+
+真实上位机验证中，静止采样和 800ms 低速点动期间并发采样都能读到 `T=1001`，其中并发采样 `t1001_observed_count=4`，但 `L/R` 仍均为 `0`。PC proxy 返回 `samples_forwarded`、`remote_http_status=200`、`wheel_feedback_lr_nonzero_proven=false`、`wheel_feedback_latest_left_speed=0`、`wheel_feedback_latest_right_speed=0`。PC summary 重试后恢复 `robot_api_connection.status=readable`、`loaded_count=13`、`failed_count=0`，first-jog readiness 仍为 `ready_for_first_jog`；PC first-jog UI body 通过专用代理返回 `command_forwarded`，stop 代理也返回 `command_forwarded`。
+
+| Objective | 当前进度判断 | 证据与缺口 |
+| --- | --- | --- |
+| Objective 1：硬件协议可信底盘 | 保持约 85% | 现在可以机器判定真实 T1001 L/R 是否同帧非零，并证明当前材料仍为 false；这修复了“artifact 不含 L/R 字段”的诊断缺口，但未证明 wheel raw nonzero 或 HIL pass。 |
+| Objective 7：PC 端运营调试平台 | 保持约 13% | PC proxy/summary 能展示 wheel material 状态，普通 first-jog/stop 链路保持可用；但真实手控、路线导航、RTC/视频体验和交付闭环仍未完成。 |
+
+验证范围：`python3 -m py_compile onboard/scripts/upper_robot_api.py` OK、`python3 -m unittest onboard.tests.test_upper_robot_api` OK、PC `catalog.test.ts` OK，真实上位机部署重启 OK，真实 PC proxy/summary/first-jog/stop artifacts 齐备。剩余缺口是 raw L/R 非零、完整 HIL、Nav2 route execution 和 delivery success。
+
+更新时间：2026-06-22 01:25 Asia/Shanghai。
 
 ### 2026-06-22 01-10｜camera visual material probe｜真实上位机 first-jog 材料闭环
 

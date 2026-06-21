@@ -2201,6 +2201,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       latest_feedback_status: string;
       feedback_ack_status: string;
       latest_t1001_observed_count: string;
+      wheel_feedback_lr_nonzero_proven: string;
+      wheel_feedback_nonzero_observed: string;
       feedback_link_status: string;
     };
   };
@@ -2441,6 +2443,12 @@ export interface RobotControlBaseFeedbackSamplesProxyResponse extends ProofFlags
     t1001_observed_count: string;
     all_samples_observed_t1001: string;
     partial_samples_observed_t1001: string;
+    wheel_feedback_lr_nonzero_proven: string;
+    wheel_feedback_nonzero_observed: string;
+    wheel_feedback_nonzero_frame_count: string;
+    wheel_feedback_latest_left_speed: string;
+    wheel_feedback_latest_right_speed: string;
+    wheel_feedback_source: string;
     feedback_ack_t1001_observed: string;
     observed_feedback_types: string;
     sends_motion_commands: string;

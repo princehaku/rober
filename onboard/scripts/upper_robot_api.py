@@ -7,6 +7,7 @@ import argparse
 import asyncio
 import glob
 import json
+import math
 import os
 import re
 import shlex
@@ -3289,6 +3290,9 @@ def summarize_feedback_samples_latest_artifact(
         },
         "latest_t1001_observed_count": None,
         "latest_all_samples_observed_t1001": None,
+        "wheel_feedback_summary": {},
+        "wheel_feedback_nonzero_observed": False,
+        "wheel_feedback_lr_nonzero_proven": False,
         "readback_sends_commands": False,
         "sends_commands": False,
         "sends_motion_commands": False,
@@ -3338,6 +3342,11 @@ def summarize_feedback_samples_latest_artifact(
     base_summary["freshness"]["status"] = freshness_from_age(age_ms, stale_after_ms)
     base_summary["latest_t1001_observed_count"] = parsed.get("t1001_observed_count")
     base_summary["latest_all_samples_observed_t1001"] = parsed.get("all_samples_observed_t1001")
+    wheel_summary = parsed.get("wheel_feedback_summary") if isinstance(parsed.get("wheel_feedback_summary"), dict) else {}
+    wheel_nonzero = bool(wheel_summary.get("lr_nonzero_observed") or parsed.get("wheel_feedback_lr_nonzero_proven") is True)
+    base_summary["wheel_feedback_summary"] = wheel_summary
+    base_summary["wheel_feedback_nonzero_observed"] = wheel_nonzero
+    base_summary["wheel_feedback_lr_nonzero_proven"] = wheel_nonzero
     return base_summary
 
 
@@ -3389,12 +3398,17 @@ def persist_feedback_samples_artifact(path: str, payload: dict[str, Any]) -> dic
 
 def build_latest_readback_payload(path: str, artifact_status: dict[str, Any], latest_result: dict[str, Any] | None) -> dict[str, Any]:
     """latest 回放只描述文件读取结果，历史 payload 放在 latest_result 里。"""
+    wheel_summary = latest_result.get("wheel_feedback_summary") if isinstance(latest_result, dict) and isinstance(latest_result.get("wheel_feedback_summary"), dict) else {}
+    wheel_nonzero = bool(wheel_summary.get("lr_nonzero_observed") or (isinstance(latest_result, dict) and latest_result.get("wheel_feedback_lr_nonzero_proven") is True))
     return {
         "schema": f"{SCHEMA}.base_feedback_samples_latest_result",
         "generated_at_ms": now_ms(),
         "artifact": artifact_status,
         "latest_result": latest_result,
         "latest_endpoint_path": ROUTE_PATHS["base_feedback_samples_latest"],
+        "wheel_feedback_summary": wheel_summary,
+        "wheel_feedback_nonzero_observed": wheel_nonzero,
+        "wheel_feedback_lr_nonzero_proven": wheel_nonzero,
         "readback_sends_commands": False,
         "safe_to_control": False,
         "sends_commands": False,
@@ -3565,6 +3579,66 @@ def t1001_feedback_observed_in_frame(frame: dict[str, Any]) -> bool:
     return feedback_type_from_frame(frame) == BASE_FEEDBACK_ID
 
 
+def finite_feedback_number(value: Any) -> float | None:
+    """只接受有限数值或数字字符串，避免把 null/yaw 字符串误算成轮速。"""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(number):
+        return None
+    return number
+
+
+def compact_t1001_feedback_frame(frame: dict[str, Any]) -> dict[str, Any] | None:
+    """保留 vendor T=1001 复核所需最小字段，不把整行串口内容暴露给 PC。"""
+    if not t1001_feedback_observed_in_frame(frame):
+        return None
+    compact: dict[str, Any] = {"T": BASE_FEEDBACK_ID}
+    for key in ("L", "R", "r", "p", "y", "v"):
+        if key in frame:
+            compact[key] = frame.get(key)
+    return compact
+
+
+def wheel_feedback_summary_from_frames(frames: list[dict[str, Any]]) -> dict[str, Any]:
+    """从同一 T=1001 帧内提取 L/R 非零材料；单侧非零或跨帧拼接都不算通过。"""
+    matched_frames: list[dict[str, Any]] = []
+    nonzero_frames: list[dict[str, Any]] = []
+    latest_pair: dict[str, Any] | None = None
+    for frame in frames:
+        left_speed = finite_feedback_number(frame.get("L"))
+        right_speed = finite_feedback_number(frame.get("R"))
+        if left_speed is None or right_speed is None:
+            continue
+        pair = {
+            "source": "vendor_t1001_L_R",
+            "left_speed": left_speed,
+            "right_speed": right_speed,
+        }
+        matched_frames.append(pair)
+        latest_pair = pair
+        if abs(left_speed) > 0.0 and abs(right_speed) > 0.0:
+            nonzero_frames.append(pair)
+
+    observed = bool(nonzero_frames)
+    return {
+        "source": "vendor_t1001_L_R",
+        "frame_count": len(frames),
+        "matched_frame_count": len(matched_frames),
+        "nonzero_frame_count": len(nonzero_frames),
+        "lr_nonzero_observed": observed,
+        "latest_pair": latest_pair,
+        "reason": (
+            "same T=1001 frame contains finite nonzero L/R wheel feedback"
+            if observed
+            else "no same T=1001 frame contained finite nonzero L/R wheel feedback"
+        ),
+    }
+
+
 def feedback_ack_from_fresh_evidence(
     readback: dict[str, Any],
     latest_artifact_summary: dict[str, Any],
@@ -3614,6 +3688,7 @@ def request_base_feedback_once(
     parsed_json_count = 0
     invalid_json_count = 0
     observed_feedback_types: list[int] = []
+    t1001_feedback_frames: list[dict[str, Any]] = []
     serial_obj = None
 
     if serial_module is None:
@@ -3636,6 +3711,7 @@ def request_base_feedback_once(
             parsed_json_count=0,
             invalid_json_count=0,
             observed_feedback_types=[],
+            t1001_feedback_frames=[],
             t1001_feedback_status=status,
         )
 
@@ -3663,6 +3739,7 @@ def request_base_feedback_once(
             parsed_json_count=0,
             invalid_json_count=0,
             observed_feedback_types=[],
+            t1001_feedback_frames=[],
             t1001_feedback_status=status,
         )
 
@@ -3694,6 +3771,10 @@ def request_base_feedback_once(
                 feedback_type = feedback_type_from_frame(parsed)
                 if feedback_type is not None:
                     observed_feedback_types.append(feedback_type)
+                compact_frame = compact_t1001_feedback_frame(parsed)
+                if compact_frame is not None:
+                    # T1001 帧数量由短 read window 限制；保留精简字段可直接复核 L/R。
+                    t1001_feedback_frames.append(compact_frame)
         except Exception as exc:  # noqa: BLE001 - 读阶段错误独立暴露，不改写 open/write 结果。
             serial_read["error"] = compact_error(exc)
         else:
@@ -3724,6 +3805,7 @@ def request_base_feedback_once(
         parsed_json_count=parsed_json_count,
         invalid_json_count=invalid_json_count,
         observed_feedback_types=sorted(set(observed_feedback_types)),
+        t1001_feedback_frames=t1001_feedback_frames,
         t1001_feedback_status=status,
     )
 
@@ -3741,10 +3823,12 @@ def build_base_feedback_payload(
     parsed_json_count: int,
     invalid_json_count: int,
     observed_feedback_types: list[int],
+    t1001_feedback_frames: list[dict[str, Any]],
     t1001_feedback_status: str,
 ) -> dict[str, Any]:
     """统一反馈请求输出；即使看到 T=1001，也只能作为材料而不是 HIL pass。"""
     t1001_observed = BASE_FEEDBACK_ID in observed_feedback_types
+    wheel_summary = wheel_feedback_summary_from_frames(t1001_feedback_frames)
     return {
         "schema": f"{SCHEMA}.base_feedback_request_result",
         "generated_at_ms": now_ms(),
@@ -3765,7 +3849,11 @@ def build_base_feedback_payload(
         "parsed_json_count": parsed_json_count,
         "invalid_json_count": invalid_json_count,
         "observed_feedback_types": observed_feedback_types,
+        "t1001_feedback_frames": t1001_feedback_frames,
         "t1001_feedback_status": t1001_feedback_status,
+        "wheel_feedback_summary": wheel_summary,
+        "wheel_feedback_nonzero_observed": wheel_summary["lr_nonzero_observed"],
+        "wheel_feedback_lr_nonzero_proven": wheel_summary["lr_nonzero_observed"],
         "feedback_ack": {
             "t1001_observed": t1001_observed,
             "robot_ack_connected": False,
@@ -3800,12 +3888,18 @@ def build_base_feedback_samples_payload(
     observed_type_set: set[int] = set()
     t1001_observed_count = 0
     sample_results: list[dict[str, Any]] = []
+    t1001_feedback_frames: list[dict[str, Any]] = []
     for index, sample in enumerate(samples, start=1):
         observed_types = [
             item for item in sample.get("observed_feedback_types", [])
             if isinstance(item, int)
         ]
         observed_type_set.update(observed_types)
+        sample_frames = [
+            item for item in sample.get("t1001_feedback_frames", [])
+            if isinstance(item, dict)
+        ]
+        t1001_feedback_frames.extend(sample_frames)
         sample_t1001_observed = bool(sample.get("feedback_ack", {}).get("t1001_observed"))
         if sample_t1001_observed:
             t1001_observed_count += 1
@@ -3821,8 +3915,10 @@ def build_base_feedback_samples_payload(
                 "parsed_json_count": sample.get("parsed_json_count"),
                 "invalid_json_count": sample.get("invalid_json_count"),
                 "observed_feedback_types": observed_types,
+                "t1001_feedback_frame_count": len(sample_frames),
                 "t1001_feedback_status": sample.get("t1001_feedback_status"),
                 "feedback_ack": sample.get("feedback_ack"),
+                "wheel_feedback_summary": sample.get("wheel_feedback_summary"),
                 "safe_to_control": False,
                 "sends_motion_commands": False,
                 "robot_control_executed": False,
@@ -3832,6 +3928,7 @@ def build_base_feedback_samples_payload(
         )
     all_samples_observed = bool(samples) and t1001_observed_count == len(samples)
     partial_samples_observed = 0 < t1001_observed_count < len(samples)
+    wheel_summary = wheel_feedback_summary_from_frames(t1001_feedback_frames)
     return {
         "schema": f"{SCHEMA}.base_feedback_samples_result",
         "generated_at_ms": now_ms(),
@@ -3850,10 +3947,14 @@ def build_base_feedback_samples_payload(
         "requested_sample_count": sample_count,
         "completed_sample_count": len(samples),
         "samples": sample_results,
+        "t1001_feedback_frames": t1001_feedback_frames,
         "t1001_observed_count": t1001_observed_count,
         "observed_feedback_types": sorted(observed_type_set),
         "all_samples_observed_t1001": all_samples_observed,
         "partial_samples_observed_t1001": partial_samples_observed,
+        "wheel_feedback_summary": wheel_summary,
+        "wheel_feedback_nonzero_observed": wheel_summary["lr_nonzero_observed"],
+        "wheel_feedback_lr_nonzero_proven": wheel_summary["lr_nonzero_observed"],
         "feedback_ack": {
             "t1001_observed": bool(t1001_observed_count),
             "robot_ack_connected": False,
@@ -4138,6 +4239,10 @@ class UpperRobotApi:
             read_window_s=DEFAULT_FEEDBACK_READ_WINDOW_S,
         )
         feedback_ack = feedback_ack_from_fresh_evidence(feedback_readback, feedback_samples_latest)
+        wheel_feedback_nonzero = bool(
+            feedback_readback.get("wheel_feedback_lr_nonzero_proven")
+            or feedback_samples_latest.get("wheel_feedback_lr_nonzero_proven")
+        )
         return {
             "schema": f"{SCHEMA}.base_status",
             "generated_at_ms": now_ms(),
@@ -4151,6 +4256,8 @@ class UpperRobotApi:
             "feedback_ack": feedback_ack,
             "feedback_readback": feedback_readback,
             "feedback_samples_latest": feedback_samples_latest,
+            "wheel_feedback_nonzero_observed": wheel_feedback_nonzero,
+            "wheel_feedback_lr_nonzero_proven": wheel_feedback_nonzero,
             "control_policy": {
                 "mode": "low_speed_pulse_with_auto_stop",
                 "max_speed": self.max_speed,

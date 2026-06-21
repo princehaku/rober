@@ -83,6 +83,69 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("fresh_artifact", fresh_ack["source"])
         self.assertFalse(stale_ack["t1001_observed"])
 
+    def test_feedback_samples_payload_summarizes_lr_nonzero_t1001_frames(self) -> None:
+        """多样本反馈必须把同一 T1001 帧内的 L/R 非零材料结构化保留。"""
+        # 第一帧是零轮速，只能证明反馈链路；第二帧同帧 L/R 非零才算 wheel material。
+        payload = upper_robot_api.build_base_feedback_samples_payload(
+            port="/dev/ttyS5",
+            baudrate=115200,
+            sample_count=2,
+            sample_interval_s=0.0,
+            read_timeout_s=0.2,
+            read_window_s=1.2,
+            samples=[
+                {
+                    "schema": "trashbot.upper_robot_api.v1.base_feedback_request_result",
+                    "observed_feedback_types": [1001],
+                    "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "r": 0, "p": 0, "y": "null", "v": 10.5}],
+                    "feedback_ack": {"t1001_observed": True},
+                    "wheel_feedback_summary": {"lr_nonzero_observed": False},
+                },
+                {
+                    "schema": "trashbot.upper_robot_api.v1.base_feedback_request_result",
+                    "observed_feedback_types": [1001],
+                    "t1001_feedback_frames": [{"T": 1001, "L": 0.08, "R": 0.08, "r": 0, "p": 0, "y": None, "v": 10.6}],
+                    "feedback_ack": {"t1001_observed": True},
+                    "wheel_feedback_summary": {"lr_nonzero_observed": True},
+                },
+            ],
+        )
+
+        # wheel proof 只来自同一帧 L/R 同时非零，不会打开任何控制或 HIL 标志。
+        self.assertEqual(2, payload["t1001_observed_count"])
+        self.assertTrue(payload["wheel_feedback_nonzero_observed"])
+        self.assertTrue(payload["wheel_feedback_lr_nonzero_proven"])
+        self.assertEqual(1, payload["wheel_feedback_summary"]["nonzero_frame_count"])
+        self.assertEqual(0.08, payload["wheel_feedback_summary"]["latest_pair"]["left_speed"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["hil_pass"])
+        self.assertFalse(payload["sends_motion_commands"])
+
+    def test_feedback_latest_readback_lifts_wheel_summary_without_commands(self) -> None:
+        """latest GET 必须把 wheel material 提到顶层，且保持只读回放边界。"""
+        latest = {
+            "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_result",
+            "wheel_feedback_summary": {
+                "lr_nonzero_observed": True,
+                "nonzero_frame_count": 1,
+                "latest_pair": {"left_speed": 0.08, "right_speed": 0.08},
+            },
+            "wheel_feedback_lr_nonzero_proven": True,
+        }
+
+        payload = upper_robot_api.build_latest_readback_payload(
+            "/tmp/base_feedback_samples_latest.json",
+            {"ok": True, "status": "loaded"},
+            latest,
+        )
+
+        # PC evidence capture 只压缩顶层 key，所以 latest readback 必须显式提升该字段。
+        self.assertTrue(payload["wheel_feedback_lr_nonzero_proven"])
+        self.assertTrue(payload["wheel_feedback_nonzero_observed"])
+        self.assertFalse(payload["readback_sends_commands"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["robot_control_executed"])
+
     def test_base_status_reports_non_motion_readback_without_control_enable(self) -> None:
         """status 可以做只读反馈探测，但不能开启 safe_to_control。"""
         # /api/base/status 允许发送 T=130，但不得打开运动控制或交付成功标志。

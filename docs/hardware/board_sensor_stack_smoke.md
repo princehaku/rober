@@ -2294,3 +2294,33 @@ LiDAR motion delta、地图可导航、HIL pass 或 delivery success。
 PGM 像素复核显示 `free_pixel_count=394`、`occupied_pixel_count=48`、
 `unknown_pixel_count=32582`。该证据证明小范围地图已能保存出可通行 free cells；
 仍不等于完整路线地图、Nav2 路线执行、HIL pass 或 delivery success。
+
+## 2026-06-22 Wheel Feedback Material Probe
+
+`sprints/2026.06.22_01-25_wheel_feedback_material_probe/` 继续补齐 WAVE ROVER
+`T=1001` 反馈材料链路。硬件事实仍采用 `docs/vendor/VENDOR_INDEX.md`，其中 WAVE
+ROVER 上下位机链路为 UART newline-delimited JSON，`T=130` 是只读 base feedback
+请求，`T=1001` 的 base fields 为 `L/R/r/p/y/v`。
+
+本轮更新上位机 `/api/base/feedback-samples` 与
+`/api/base/feedback-samples/latest`：
+
+- 每次 `T=130` 采样会保留精简 `t1001_feedback_frames`，只包含 `T/L/R/r/p/y/v`。
+- `wheel_feedback_summary` 只在同一帧 `T=1001` 内同时看到有限且非零的 `L` 与 `R`
+  时置 `lr_nonzero_observed=true`。
+- 顶层 `wheel_feedback_lr_nonzero_proven` 和 `wheel_feedback_nonzero_observed` 只是材料
+  判定，不会提升 `safe_to_control`、`hil_pass` 或 `delivery_success`。
+
+真实上位机验证：
+
+- 静止采样 `01_upper_feedback_samples_after_deploy.json` 观察到 `T=1001`，并返回
+  `t1001_feedback_frames`，但 `L=0/R=0`，所以 wheel material 仍为 false。
+- 800ms 低速点动期间并发采样 `04_upper_feedback_samples_during_manual.json` 得到
+  `t1001_observed_count=4`，但 4 帧 `L/R` 仍均为 `0`。
+- PC proxy `06_pc_feedback_samples_proxy_after_fields.json` 已透传
+  `wheel_feedback_lr_nonzero_proven=false`、`wheel_feedback_latest_left_speed=0`、
+  `wheel_feedback_latest_right_speed=0`。
+
+结论：当前链路已经能证明不是 PC 或 API 丢失 L/R 字段；本轮真实板端材料仍未证明
+轮速非零。车辆移动仍以 2026-06-22 LiDAR delta 材料作为物理变化证据，wheel raw
+nonzero 仍是后续 HIL/固件反馈待解项。
