@@ -8,6 +8,14 @@
 
 ## 2026-06-22 系列
 
+### 2026-06-22 01-34｜goal completion audit｜建图/移动/PC 连接控制目标收口
+
+本轮 `sprints/2026.06.22_01-34_goal_completion_audit/` 对活跃目标“能建图，能移动，能在 PC 上连接和控制”做当前态审计。PC summary 当前 `robot_api_connection.status=readable`、`loaded_count=13`、`failed_count=0`、`first_jog_readiness_summary.status=ready_for_first_jog`。PC map/list 与上位机 map/list 都返回 `map_quality_summary.status=has_usable_map`、`usable_map_count=1`。PC first-jog 固定代理返回 `command_forwarded`、`remote_http_status=200`、`clamped_speed_mps=0.08`、`clamped_duration_ms=500`，stop 固定代理返回 `command_forwarded`、`status=stopped`。移动证明引用同日 LiDAR delta artifact：`field_pack_pass=true`、`review_script_pass=true`、`median_abs_diff_m=1.735`、`changed_bin_ratio=1`。
+
+本轮审计结论为 `08_goal_completion_audit_summary.json.passed=true`，目标按当前定义收口。未声称完成 wheel raw L/R nonzero、完整 Nav2 route execution、delivery success 或云端/键盘连续手控。
+
+更新时间：2026-06-22 01:34 Asia/Shanghai。
+
 ### 2026-06-22 01-35｜motion map runtime probe｜LiDAR delta 与 free-cell map
 
 本轮 `sprints/2026.06.22_01-35_motion_map_runtime_probe/` 继续推进“能建图，能移动，能在 PC 上连接和控制”。PC 固定 first-jog 代理在真实上位机上两次返回 `command_forwarded`，其中 scan delta 复核使用完整 `/scan` JSON，得到 `paired_bins=162`、`median_abs_diff_m=1.735`、`changed_bin_ratio=1.0`，超过现场 HIL execution pack 阈值。Operator report 已提交 `physical_motion_lidar_delta_proven=true` 与上位机 `scan_delta_ref`，但仍保持 `wheel_feedback_lr_nonzero_proven=false`、`delivery_success=false`。

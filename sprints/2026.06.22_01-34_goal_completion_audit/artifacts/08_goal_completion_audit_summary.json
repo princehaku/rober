@@ -1,0 +1,90 @@
+{
+  "goal": "能建图，能移动，能在PC上连接和控制",
+  "not_claimed_as_complete": [
+    "wheel raw L/R nonzero feedback",
+    "full Nav2 route execution",
+    "delivery success",
+    "cloud/manual keyboard control beyond fixed first-jog and stop"
+  ],
+  "passed": true,
+  "requirements": {
+    "map_building": {
+      "passed": true,
+      "pc_map_quality_summary": {
+        "analysis_failed_count": 0,
+        "checked_yaml_count": 16,
+        "message": "至少一张地图包含 free cell，可进入后续定位/路径检查。",
+        "no_free_cell_map_count": 15,
+        "status": "has_usable_map",
+        "usable_map_count": 1
+      },
+      "upper_map_quality_summary": {
+        "analysis_failed_count": 0,
+        "checked_yaml_count": 16,
+        "message": "至少一张地图包含 free cell，可进入后续定位/路径检查。",
+        "no_free_cell_map_count": 15,
+        "status": "has_usable_map",
+        "usable_map_count": 1
+      }
+    },
+    "movement": {
+      "first_jog": {
+        "clamped_duration_ms": 500,
+        "clamped_speed_mps": 0.08,
+        "failure_reason": "",
+        "proxy_status": "command_forwarded",
+        "remote_http_status": 200
+      },
+      "operator_lidar_delta": true,
+      "passed": true,
+      "scan_delta": {
+        "changed_bin_ratio": 1,
+        "field_pack_pass": true,
+        "median_abs_diff_m": 1.7350000441074371,
+        "paired_bins": 162,
+        "review_script_pass": true,
+        "valid_beam_count": 162
+      }
+    },
+    "pc_connection": {
+      "connection": {
+        "blocked_count": 0,
+        "blocked_reasons": [],
+        "dangerous_true_fields": [],
+        "failed_count": 0,
+        "last_refresh_ms": 1782063292344,
+        "loaded_count": 13,
+        "schema_mismatch_count": 2,
+        "status": "readable"
+      },
+      "console_status": "loaded_fail_closed_summary",
+      "first_jog_readiness": {
+        "basic_safety_ready": true,
+        "missing_fields": [],
+        "next_action": "press_try_move",
+        "status": "ready_for_first_jog",
+        "visual_material_ready": true
+      },
+      "passed": true
+    },
+    "pc_control": {
+      "first_jog": {
+        "applied_direction": "forward",
+        "clamped_duration_ms": 500,
+        "clamped_speed_mps": 0.08,
+        "proxy_status": "command_forwarded",
+        "remote_http_status": 200,
+        "requested_direction": "forward"
+      },
+      "passed": true,
+      "stop": {
+        "applied_direction": "stop",
+        "proxy_status": "command_forwarded",
+        "remote_http_status": 200,
+        "requested_direction": "stop",
+        "status": "stopped"
+      }
+    }
+  },
+  "schema": "trashbot.goal_completion_audit.v1"
+}
